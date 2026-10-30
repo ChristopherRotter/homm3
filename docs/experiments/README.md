@@ -190,8 +190,10 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   it too). `[map.underground]` (E08 T22a1): a second level, `terrain` (a land terrain) and its
   own `[[map.underground.patch]]` rectangles (`rock` for walls); no roads or grounds on it.
   `[[map.town]]` (E23 T7): a town no encounter fights, `entrance = [column, row]`, `faction`,
-  `owner` (`blue`, the default, `tan` or `neutral`), `buildings`, `garrison`: batch 4b's Tavern
-  town of Tan's, which the computer's retreat test asks for.
+  `owner` (`blue`, the default, `tan`, `neutral` or, E08 T78, `red`), `buildings`, `garrison`: batch
+  4b's Tavern town of Tan's, which the computer's retreat test asks for; batch E9b's town of each
+  player, which a run past the seventh day needs (a player without a town is defeated seven days
+  after, the original's countdown).
   `format` (E08 T56): `sod` (the default) or `roe`, the map in the RoE format (version `0x0E`,
   batch E7's row E7-7): no level limit, banned skills, towns, hero spells or primary skills (its
   heroes take `defaults`) and RoE's codes only; `h3-map`'s writer refuses the rest.

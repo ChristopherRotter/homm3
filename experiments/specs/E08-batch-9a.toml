@@ -34,6 +34,12 @@
 # priced by a throwaway search over the written map; a target is within the explored tiles at its
 # click, the scouting radius being 5).
 #
+# **Boarding** without the Admiral's Hat leaves the hero 0 points (ADV-SEA-002; the original keeps
+# the land's maximum, A-28): no hero sails on the day it boards.
+#
+# **Estates is banned** (`banned_skills`): E9-1's and E9-2r's level-ups after their battles cannot
+# add its gold to Red's day 2 income. The scenario's information does not show the ban.
+#
 # The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
 # artifact or a resource. The template asks for gold; anything the spec does not give goes under
 # "anything odd". The treasuries are compared within a player's turns, so the bonus cancels out.
@@ -44,6 +50,7 @@ description = "Engine-generated experiment map (E08, batch E9a): mines, Lighthou
 size = 72
 terrain = "grass"
 difficulty = "easy"
+banned_skills = ["Estates"]
 instructions = [
     "Copy `E08-batch-9a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
     "Use the HD launcher with plain HD (HD+ off).",
@@ -51,7 +58,7 @@ instructions = [
     "Most records are the game's memory: the mine and Lighthouse records (game +0x4E38C, 0x40 bytes each: owner +0x0, resource +0x1, abandoned +0x2, the guards' creature types +0x4 and counts +0x20, the entrance +0x3C; survey §2.1), a Shipyard's tile word (owner, boat tile), the boats' records (game +0x4E3BC, `docs/exe/structs.toml` \"boat\"), a hero's tile, movement points (+0x4D) and day's maximum (+0x49), the players' treasuries, the explored tiles, a battle's terrain, special field and stacks at its opening and its sides' owners and controllers (`battle_manager`). The capture harness reads them (`clients/capture/batches/E08-batch-9a.toml`, E08 T79). Played by hand, read the screens instead and leave the memory-only lines empty.",
     "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). A visit: walk to the tile named, then click the object's entrance from there (twice).",
     "Each battle by auto combat; a tactics phase is ended at once (its Start button). A level-up's dialog after a battle: take the left skill.",
-    "Order: day 1, Red's turn: E9-4's first reads, E9-1, E9-3, E9-4 (boards), E9-5; Red's treasury; end the turn. Blue's turn: Blue's treasury, E9-2 (Leave Guards), E9-3b; Blue's treasury; end the turn. Day 2, Red's turn: Red's treasury, E9-4's reads, E9-2r's two battles; end the turn. Blue's turn: Blue's treasury. Then the map is done.",
+    "Order: day 1, Red's turn: E9-4's first reads, E9-1, E9-3, E9-4 (boards), E9-5's visit and refusal; Red's treasury; end the turn. Blue's turn: Blue's treasury, E9-2 (Leave Guards), E9-3b; Blue's treasury; end the turn. Day 2, Red's turn: Red's treasury, E9-4's reads, E9-5's use without a visit, E9-2r's two battles; end the turn. Blue's turn: Blue's treasury. Then the map is done.",
     "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
 ]
 
@@ -154,9 +161,11 @@ predictions = """
   abandoned mine. … infested with Troglodytes. Do you wish to enter?"). A win: ADVEVENT 85 ("You
   beat the Troglodytes …"), then the drawn resource's mine message (MINEEVNT; A crystal or gems,
   B gold); the record's owner Red, its guards empty.
-- **Seeded by the hero's tile before the step** instead (another reading of the position): A from
-  (7, 9) draws 24 then 68, two stacks none upgraded; B from (13, 9) 33 then 57, two stacks none
-  upgraded.
+- **Seeded by another tile** (other readings of the position): by the hero's tile before the
+  step, A from (7, 9) draws 24 then 68, two stacks none upgraded, and B from (13, 9) 33 then 57, two
+  stacks none upgraded; by the mine's position (`at`), A (9, 8) draws 95 then 80, three stacks none
+  upgraded, and B (15, 8) draws 4: **one stack** (no second draw), so B alone would look like
+  VCMI's: A's three stacks tell the split from it.
 - **VCMI** (`CGMine`, `startBattle`): **one stack** of c Troglodytes each, never split.
 """
 [encounter.hero]
@@ -293,8 +302,9 @@ record = [
 predictions = """
 - **The code** (survey §4): each Lighthouse Red owns adds 500 to its heroes' sea maximum
   (`count_owned_records` × 500), without Navigation's scaling: on day 2 in the boat **2 500**
-  points of **2 500** (1 500 + 2 × 500). The records: owner Red, resource 100. At boarding the
-  maximum is 2 500 too (the points by HER-ADV-009's conversion of the land points left).
+  points of **2 500** (1 500 + 2 × 500). The records: owner Red, resource 100. At boarding without
+  the Admiral's Hat: **0 points**, the maximum the land's **2 000** (A-28, `ADV-QUIRK-31`; the engine,
+  which does not reproduce A-28: 0 of 2 500).
 - **A-33** (survey §2.2): `setup_map_objects` case 42 sets the record's word with no owner call, so
   a Lighthouse owned at load **reveals nothing**: none of the eight tiles explored at day 1
   (no hero sees them).
@@ -317,19 +327,19 @@ id = "E9-5"
 title = "Red's Shipyard: a boat bought at a visit, the refusal with a hero on the boat tile, the use without a visit"
 questions = ["ADV-SHY-001", "ADV-SHY-002", "ADV-SHY-003"]
 procedure = [
-    "Day 1, Red's turn: the Shipyard Y covers (32, 50) to (34, 50), its entrance (33, 50); the lake lies west of it (columns 20 to 31). Read Y's tile word (owner, boat tile) and Red's treasury.",
+    "Day 1, Red's turn: the Shipyard Y covers (32, 50) to (34, 50), its entrance (33, 50); the lake lies west of it (columns 20 to 31). Read the three tiles' words (owner, boat tile; a hero on a tile: its +0x14) and Red's treasury.",
     "E9-5 stands at (35, 53) with one Angel. Walk to (33, 51), then click Y's entrance (33, 50). Note what opens; build the boat. Note the treasury and the new boat's record (tile, type, facing, owner, captain).",
-    "Click (32, 51) (off the entrance), then click the boat: E9-5 boards it. Sail to (29, 50), then back to (31, 50) (the boat tile).",
-    "Select E9-5b (at (40, 62), far away). Click Y's west tile (32, 50). Note what the cursor shows over it and what opens; close any dialog without building. Note the treasury.",
-    "Select E9-5; sail to (29, 50). Select E9-5b; click (32, 50) again. Note what opens; build the boat. Note the treasury and the boats' records.",
+    "Click (32, 51) (off the entrance), then click the boat on (31, 50): E9-5 boards it and stays there, on the boat tile (boarding leaves it no points).",
+    "Select E9-5b (at (40, 62), far away). Click Y's west tile (32, 50). Note what the cursor shows over it and what opens; close any dialog without building. Note the treasury and the three tiles' words.",
+    "Day 2, Red's turn, after the treasury's read: select E9-5; sail to (29, 50). Select E9-5b; click (32, 50) again. Note the cursor and what opens; build the boat. Note the treasury, the boats' records and the three tiles' words.",
 ]
 record = [
-    { field = "before: Y's word (owner, boat tile); Red's treasury (wood, gold)" },
+    { field = "before: the words of (32, 50), (33, 50), (34, 50); Red's treasury (wood, gold)" },
     { field = "the visit: what opens" },
     { field = "after building: Red's treasury; the boat's record" },
-    { field = "E9-5 on the boat tile, the click from E9-5b: the cursor; what opens; the treasury" },
-    { field = "the boat tile free, the click: what opens" },
-    { field = "after building: Red's treasury; both boats' records" },
+    { field = "E9-5 on the boat tile, the click from E9-5b: the cursor; what opens; the treasury; the three words" },
+    { field = "day 2, the boat tile free, the click: the cursor; what opens" },
+    { field = "after building: Red's treasury; both boats' records; the three words" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -337,9 +347,12 @@ predictions = """
   that is clear water: (−2, 0) from (33, 50), **(31, 50)**. The visit of an own Shipyard: the boat
   offer (the boat dialog); the build takes **1 000 gold and 10 wood**; the boat is a type-1 boat on
   (31, 50), facing 2, owner Red, no captain. With E9-5 in its boat on (31, 50) the click from far
-  (cursor 6, click mode 8 over an own Shipyard's tile) runs `visit_shipyard` on the clicked tile:
-  **GENRLTXT 52** ("Cannot build another boat"), nothing paid. With the tile free the click opens
-  **the offer** without a visit; the second boat as the first, another 1 000 and 10.
+  (cursor 6, click mode 8 over an own Shipyard's tile) runs `visit_shipyard` on the **clicked
+  tile's** word: **GENRLTXT 52** ("Cannot build another boat"), nothing paid. On day 2, the tile
+  free, the click opens **the offer** without a visit; the second boat as the first, another 1 000
+  and 10. The side tiles' words (their owner bytes after a flag) were not read (survey §5.3, §14):
+  the three words recorded settle what the click reads; the boat tile's bytes are the same in all
+  three (§5.1).
 - **VCMI and the wiki** agree on the price, the twelve tiles in this order and the refusal; both
   allow the use without a visit (an own Shipyard's left tile).
 """
@@ -373,7 +386,9 @@ record = [
 predictions = """
 - **The code** (survey §7.1, §8.1, §8.3): no income on day 1; at day 2's start every player gets
   its income at once. **Red:** +1 000 gold (B, a gold mine, if won) and +1 crystal or gems (A, as
-  drawn, if won); the Lighthouses and the Shipyard produce nothing. **Blue** (day 1's end against
+  drawn, if won); the Lighthouses and the Shipyard produce nothing; Estates is banned, so no
+  level-up adds gold. Day 1's end includes E9-5's first boat (−1 000 gold, −10 wood); its second
+  is bought after day 2's read. **Blue** (day 1's end against
   day 2's start): +4 wood (E9-2's sawmill and N), +1 crystal (E9-2's cavern), nothing else.
 - **VCMI and the wiki:** the same amounts.
 """

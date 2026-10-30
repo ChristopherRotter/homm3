@@ -18,10 +18,16 @@
 # |       |                                          | days from day 2                               | not apply)                              |
 # | E9-12 | §12: spell points                        | +2 a day; +3; the maximum                     | consensus                               |
 #
-# **The players' incomes** are kept apart: Red holds every income of E9-6 and E9-7; Blue (E9-11's
-# events) only E9-11's Endless Purse of Gold (+500 a day), so its events can be told apart from the
-# floor. No other hero of either player has an income specialty, Estates, Mysticism or an income
-# artifact (each `specialty` checks it).
+# **A town each** (the reviewer's finding): a player without a town is defeated after seven days
+# (the original's countdown, player +0x3D; VCMI's standard loss too), and the run lasts fifteen. Red
+# has a Castle at (8, 64), Blue a Stronghold at (30, 66), each with the editor's standard buildings
+# (its Village Hall's 500 gold a day; E09's rule, consensus), far from every tile read; no hero
+# enters them.
+#
+# **The players' incomes** are kept apart: Red holds every income of E9-6 and E9-7 and its town's;
+# Blue (E9-11's events) only its town's 500 a day, so its events can be told apart from the floor.
+# No other hero of either player has an income specialty, Estates, Mysticism or an income artifact
+# (each `specialty` checks it).
 #
 # **The pictures** (`Objects.txt`; docs/experiments/README.md, "Increment 9's objects"): the
 # Windmill blocks only its entrance, the tile west of `at`; the Water Wheel covers two rows of
@@ -47,9 +53,10 @@ instructions = [
     "Copy `E08-batch-9b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
     "Use the HD launcher with plain HD (HD+ off).",
     "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of Red's turn on days 2, 3, 8, 9 and 15 (saves 2 to 6).",
+    "A hero standing on an object's entrance hides the object's word: read it in the hero's record (+0x14, `docs/exe/structs.toml` \"hero\"), the object's class in +0xC.",
     "Most records are the game's memory: the date (game +0x1F63E day of the week, +0x1F640 week, +0x1F642 month), the players' treasuries and their income (player +0x108), the mine records (game +0x4E38C, survey §2.1), the explored tiles, a hero's spell points, the Mystical Garden's mask of a player (+0xB8), the weekly objects' and the monsters' tile words (a Windmill's resource bits 0 to 3 and amount bits 13 to 16, a Water Wheel's gold bits 0 to 4 in 500s, a Garden's resource bits 6 to 9 and full bit 10; a monster's count bits 0 to 11 and sixteenths bits 27 to 30). The capture harness reads them (`clients/capture/batches/E08-batch-9b.toml`, E08 T79). Played by hand, read the screens instead and leave the memory-only lines empty.",
     "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). A visit: walk to the tile named, then click the object's entrance from there (twice).",
-    "Order: day 1, Red's turn: E9-6's reads, Red's treasury, E9-12, E9-8; Red's treasury; end the turn. Blue's turn: Blue's gold (E9-11), E9-11's visits (E9-8); end the turn. Day 2: Red: the treasury, E9-12, E9-8 again, the treasury; Blue: the gold. Days 3 to 7: Red's treasury (and E9-12 on day 3), Blue's gold until day 6; end each turn. Day 8: Red: the treasury, E9-9's reads, E9-8, the treasury. Day 9: Red: the treasury, Ivor's visits (E9-8), the treasury. Days 10 to 14: end the turns. Day 15: Red: E9-9's reads. Then the map is done.",
+    "Order: day 1, Red's turn: E9-6's reads, E9-9's first reads, Red's treasury, E9-12, E9-8; Red's treasury; end the turn. Blue's turn: Blue's gold (E9-11), E9-11's visits (E9-8); end the turn. Day 2: Red: the treasury, E9-12, E9-8 again, the treasury; Blue: the gold. Days 3 to 7: Red's treasury (and E9-12 on day 3), Blue's gold until day 6; end each turn. Day 8: Red: the treasury, E9-9's reads, E9-8, the treasury. Day 9: Red: the treasury, Ivor's visits (E9-8), the treasury. Days 10 to 14: end the turns. Day 15: Red: E9-9's reads. Then the map is done.",
     "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
 ]
 
@@ -90,6 +97,18 @@ at = [10, 8]
 [[map.object]]
 picture = "AVTmyst0"
 at = [14, 8]
+
+# --- The players' towns (past the seventh day), far from every tile read ----------------------------
+
+[[map.town]]
+entrance = [8, 64]
+faction = "castle"
+owner = "red"
+
+[[map.town]]
+entrance = [30, 66]
+faction = "stronghold"
+owner = "blue"
 
 # --- E9-9, E9-10: growing monsters (and one that does not grow), far from every hero -------------
 
@@ -170,23 +189,27 @@ questions = ["GAM-CAL-002", "GAM-RES-003", "GAM-RES-004", "GAM-RES-005", "A-33"]
 procedure = [
     "Day 1, Red's turn, before any hero moves (E9-6): Red owns a gold mine G (entrance (63, 8)) and an ore pit O (entrance (63, 20)), far from every hero. Read whether these tiles are explored for Red: (63, 11), (63, 12), (65, 10), (66, 10), (60, 8), (59, 8), (63, 23), (63, 24). Read both mines' records.",
     "Red's heroes of this row never move but Ivor on day 9 (E9-8): E9-7 at (4, 4), Basic Estates, one Crystal Dragon; Ryland at (6, 4), the Endless Purse of Gold; Ivor at (6, 6), the Cornucopia; Sephinroth at (10, 4), a crystal specialist.",
-    "Read Red's treasury (the seven resources) and the date at the start of each Red turn of days 1 to 9, and at the end of each (after E9-8's visits on days 1, 2, 8 and 9).",
+    "Read Red's treasury (the seven resources) and the date at the start of each Red turn of days 1 to 9, and at the end of each (after E9-8's visits on days 1, 2, 8 and 9). Read Red's income (player +0x108, seven amounts) on days 2 and 8.",
 ]
 record = [
     { table = ["tile", "explored for Red at day 1"], labels = ["(63, 11)", "(63, 12)", "(65, 10)", "(66, 10)", "(60, 8)", "(59, 8)", "(63, 23)", "(63, 24)"] },
     { field = "G's and O's records (owner, resource)" },
     { table = ["Red, day", "when", "wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold"], labels = ["1", "1", "2", "2", "3", "3", "4", "4", "5", "5", "6", "6", "7", "7", "8", "8", "9", "9"] },
     { field = "the date's words at days 1, 8 and 9" },
+    { field = "Red's income (+0x108) on day 2" },
+    { field = "Red's income (+0x108) on day 8" },
     { field = "anything odd" },
 ]
 predictions = """
 - **The code** (survey §7.1, §7.2, §8): no new day on day 1, so no income before day 2. From day 2
   every player's income is paid at the day's start, before its first turn: each Red turn's start
-  less the turn's end before it is **+1 625 gold** (the gold mine's 1 000, Basic Estates' 125 for a
-  hero who is no Estates specialist, the Purse's 500), **+2 ore** (the ore pit), **+5 mercury, +5
+  less the turn's end before it is **+2 125 gold** (the gold mine's 1 000, Basic Estates' 125 for a
+  hero who is no Estates specialist, the Purse's 500, the town's 500), **+2 ore** (the ore pit), **+5 mercury, +5
   sulfur, +5 gems** and **+6 crystal** (the Cornucopia's 5 each; Sephinroth's 1 crystal), no wood.
   **Day 8** (the week's first day): **+3 crystal** more for the Crystal Dragon (9 crystal). Within a
-  turn only E9-8's visits change the treasury (their gains in E9-8's table). The date: day 1 = (1,
+  turn only E9-8's visits change the treasury (their gains in E9-8's table). The income vector
+  holds the same amounts (day 2: 0, 5, 2, 5, 6, 5, 2 125; day 8 crystal 9), so a part that differs
+  shows there: the town's gold by its building, the Cornucopia by mercury. The date: day 1 = (1,
   1, 1); day 8 = (1, 2, 1); day 9 = (2, 2, 1).
 - **E9-6's start** (survey §2.2): `setup_map_objects` case 53 calls `set_mine_owner` for an owned
   mine, which reveals radius 3 around its entrance: (63, 11), (65, 10), (60, 8), (63, 23) explored;
@@ -311,7 +334,7 @@ id = "E9-11"
 title = "Timed events: their order, the floor at 0, the repeat"
 questions = ["GAM-CAL-004"]
 procedure = [
-    "Blue owns nothing; E9-11 (at (12, 44)) wears the Endless Purse of Gold (+500 gold a day from day 2). The map's events, in this order: day 1 takes 99 999 gold; day 1 gives 300 gold; from day 2 every two days takes 500 gold; all for Blue.",
+    "Blue owns only its town (+500 gold a day from day 2); E9-11 (at (12, 44)) has no income. The map's events, in this order: day 1 takes 99 999 gold; day 1 gives 300 gold; from day 2 every two days takes 500 gold; all for Blue.",
     "Read Blue's gold at the start of each Blue turn of days 1 to 6 (after the messages), and note the messages.",
 ]
 record = [
@@ -321,9 +344,12 @@ record = [
 predictions = """
 - **The code** (survey §11): at each Blue turn's start the events fire in the list's order when
   their day comes; each resource floored at 0. Day 1: the take leaves **0**, then **300** (the
-  list's order; the other order would leave 0). Then the Purse's 500 at each day's start, the take
+  list's order; the other order would leave 0). Then the town's 500 at each day's start, the take
   of 500 on days 2, 4 and 6: **300, 300, 800, 800, 1 300, 1 300** for days 1 to 6. Unfloored, day 1
-  would be negative. The messages: the two on day 1, one on days 2, 4 and 6.
+  would be negative; the floor shows on day 1 only (the take of 500 always finds 800 or more). Were
+  the events fired before the day's income: 300, **500** (floored to 0, then +500), 1 000, 1 000,
+  1 500, 1 500. The messages: the two on day 1, one on days 2, 4 and 6. Blue's E9-8 visits on day 1
+  give nothing (decision 201); were they to give gold, subtract it from days 2 to 6.
 - **VCMI** (`CMapEvent::occursToday`) and the wiki: the same days for an interval of 2, the same
   floor.
 """
@@ -334,7 +360,6 @@ owner = "blue"
 at = [12, 44]
 primary = [1, 1, 1, 1]
 army = [["Angel", 2]]
-artifacts = { "misc 1" = "Endless Purse of Gold" }
 
 # --- E9-12: spell points --------------------------------------------------------------------------
 

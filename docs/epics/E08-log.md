@@ -9240,3 +9240,81 @@ calls as recommended. **T77b done**; T78 is ready.
 sandbox's VM restarted before it, killing the setup's baseline run, so the scoped run stands in);
 `scripts/exe.py cited`: every cited address mapped. CI's full verify on the pull request is the
 record.
+
+### Increment 9, round 2: T78, batch E9's maps and specs (2026-10-30, `adventure/e08-t78`, `cross-lane`)
+
+**The cut** (decisions 205, 206): measured at the start (the writer about 350 lines with tests,
+the spec's fields about 250 in the battle-owned `h3-experiment`, the specs about 1 000 lines of
+TOML), the user took T78 whole, as T67, and chose the writer's `Map` field for the timed events,
+which touches one line each of the client, map-client and AI lanes' literal `Map`s.
+
+**The writer** (`h3_map::writer`, module `economy`): `MapObject::Owned(OwnedObject)`, a template
+and an `OwnedBody`: `Owner(Option<u8>)` for a mine (53 below subclass 7), a Lighthouse (42) and a
+Shipyard (87), an owner a colour the map's players play; `Resources(u8)` for an abandoned mine (53.7
+or SoD's 220.7), the set it may draw (bits 0 to 6, at least one; bit 7 and an empty set refused, the
+editor's rule, A-31's bound; 220 refused in an RoE map). The weekly objects (55, 109, 112) join
+`PLAIN_OBJECTS` (no body; 20 classes). `Map::events: Vec<TimedEvent>` (name, message, seven
+resources, players, human, computer, the file's first day, the interval) written in the list's
+order, an RoE map without the human byte (refused unless `true`). Tests (`tests/economy.rs`): the ten
+objects and three events read back in SoD, the RoE layout, the refusals, and the map imports (until
+T83 the classes untyped, the events dropped). The literal writer `Map`s in other lanes gain
+`events: Vec::new()` (decision 206): `h3-view`'s situations, `h3-map-view`'s situations and art test,
+`h3-cli`'s AI tests; `h3-experiment`'s exhaustive matches the new variant.
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane` by decisions 198 and 202):
+`[[map.ownable]]` (`picture`, `at`, `owner`, an abandoned mine's `resources`; a colour that owns one
+plays), `[[map.monster]]` (a wandering monster of no encounter, with `grows`; every encounter's
+monster keeps "does not grow"), `[[map.timed_event]]` (`day` the game's day, `interval`, `players`,
+`human`, `computer`, `resources`, `message`, `name`), `Tables::ownables`, a map town of Red's
+(`[[map.town]]`, the review's finding 1; an opponent's town stays Blue's, Tan's or neutral); the
+weekly objects through `[[map.object]]`; a hero's Estates, Mysticism and specialty needed nothing new
+(`skills`, `type`).
+**The queue's "mines with guards" dropped:** the format holds no guards for a mine (`load_mine_body`
+leaves them empty, survey §2.1): an abandoned mine's Troglodytes are drawn at the new game, other
+guards are left in play (Leave Guards, E9-2). `docs/experiments/README.md` documents the fields and
+the pictures (each template's blocked tiles and entrance from `Objects.txt`: a mine three wide entered
+at the middle from the row below, the grass sawmill four, the ore pit and gem pond two rows; the
+Lighthouse one tile; the Shipyard three, entered at the middle, land only; the Windmill only its
+entrance; the Water Wheel two rows of three entered at `at`; the Garden three).
+
+**The specs** (compiled with the staged tables; every leg priced by a throwaway test that imports
+the written map, moves the hero in a cloned setup to the leg's start and reads
+`AdventureState::reach`, not committed): `E08-batch-9a` (72 × 72, two days; E9-1 to E9-5 and E9-0,
+the treasuries; Red 7 heroes, Blue 2) and `-9b` (72 × 72, fifteen days; E9-6 to E9-12; Red 8, Blue
+2). The predictions beyond survey §15's rows:
+- **E9-1** computed: six Archangels against at most 200 Troglodytes give two stacks before the draws;
+  seeded by the entrance, (8, 8) draws 100 then 87 (three stacks, none upgraded) and (14, 8) 41 then
+  44 (two, the second Infernal Troglodytes); seeded by the hero's tile before the step, two stacks
+  none upgraded at both; seeded by the mine's position, (9, 8) three stacks and (15, 8) one (so
+  A's three tell the split from VCMI's one stack).
+- **E9-2** (design §17): Blue's guards are Angels (a speed-12 army, so Blue's two visits fit a day);
+  the record asks whether the hot-seat game hands the guards' side to Blue.
+- **E9-3** corrects survey §15: Red leaves no guards, so Blue's flag asks **no** question (§3.1 step
+  2 needs guards).
+- **E9-4** (A-33): eight tiles around the two Lighthouses, read before any hero moves; the reading
+  none explored, the engine and VCMI the radius-3 disk.
+- **E9-5:** the boat tile (31, 50), (−2, 0) of the twelve; on day 1 the visit's boat and the
+  refusal with the hero in it on the tile (boarding leaves 0 points), on day 2 the use without a
+  visit with another hero selected; the three tiles' words recorded at each click.
+- **E9-6, E9-7:** Red holds every income (2 125 gold with its town's 500, 2 ore, 5 mercury, sulfur
+  and gems, 6 crystal a day; +3 crystal on day 8), its income vector read on days 2 and 8; E9-6's
+  start reveal checked as A-33's control (mines reveal).
+- **E9-8:** Blue visits the first set after Red on day 1 (decision 201: nothing); Red's hero stands
+  on the Windmill's entrance from day 2 to day 8 (the week's scan lifts it off and resets the object).
+- **E9-11** moved to Blue, whose town's 500 a day shows the repeats against the floor: 300, 300,
+  800, 800, 1 300, 1 300 (the events before the income: 300, 500, 1 000, 1 000, 1 500, 1 500).
+- **E9-12:** each hero's event takes exactly its 20 spell points; Uland's Charm of Mana with Basic
+  Mysticism (+3 a day), Melodia's Wizard's Well alone.
+
+**The review** (a fresh agent against survey §15 and the sections the rows cite; ten findings, all
+taken): (1) a player without a town is defeated after seven days and 9b lasts fifteen: a town each
+(Red's Castle, Blue's Stronghold, the standard buildings, far from every read; the spec's map town
+may be Red's), its 500 in the predictions, Blue's Purse dropped; (2) boarding without the Admiral's
+Hat leaves 0 points, so E9-5's sailing moved to day 2; (3) E9-4 after boarding: 0 of the land's 2 000
+(A-28; the engine 0 of 2 500); (4) a hero on an entrance hides the object's word: read the hero's
++0x14; (5) E9-1's third reading, seeded by the mine's position; (6) E9-5 records the Shipyard's three
+tile words (the click reads the clicked tile's, the side tiles' owner bytes unread); (7) Estates
+banned in 9a, so a level-up after E9-1's or E9-2r's battles adds no gold; (8) E9-11's other order, its
+floor on day 1 only, Blue's visits subtracted; (9) the order names E9-9's day-1 read; (10) the income
+vector recorded. The legs priced again on the rebuilt maps.
+

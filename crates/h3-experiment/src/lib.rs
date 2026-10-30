@@ -598,7 +598,7 @@ pub struct MapTownSpec {
     pub entrance: [u8; 2],
     /// Faction ([`FACTIONS`]).
     pub faction: String,
-    /// "blue" (the default), "tan" or "neutral".
+    /// "blue" (the default), "tan", "neutral" or (E08 T78) "red".
     #[serde(default = "blue")]
     pub owner: String,
     /// Built buildings by name, as a [`TownSpec`]'s.
@@ -1187,6 +1187,11 @@ pub fn build_only(
                 at: None,
             }) => {
                 let entrance = (x, y.saturating_sub(1));
+                if t.owner == "red" {
+                    return Err(ctx(
+                        "a town's owner is blue, tan or neutral, not `red`".into()
+                    ));
+                }
                 let (town, mut summary) = town_object(t, tables, entrance, size).map_err(ctx)?;
                 if let Some(owner) = town.owner {
                     towns_per_player[usize::from(owner)] += 1;
@@ -1526,12 +1531,14 @@ fn town_object(
         .map(|(_, template)| template.clone())
         .ok_or_else(|| format!("no town template for {}", t.faction))?;
     let owner = match t.owner.as_str() {
+        // A map town's only (E08 T78: batch E9b's players keep a town past the seventh day).
+        "red" => Some(0),
         "blue" => Some(1),
         "tan" => Some(2),
         "neutral" => None,
         other => {
             return Err(format!(
-                "a town's owner is blue, tan or neutral, not `{other}`"
+                "a town's owner is red, blue, tan or neutral, not `{other}`"
             ));
         }
     };
@@ -1569,6 +1576,7 @@ fn town_object(
         garrison[slot] = Some((creature as u16, *count));
     }
     let owner_name = match owner {
+        Some(0) => "Red",
         Some(1) => "Blue",
         Some(_) => "Tan (the computer's)",
         None => "Neutral",
@@ -2653,6 +2661,19 @@ mod tests {
         let bad = spec.replace("entrance = [24, 20]", "entrance = [2, 20]");
         let error = build(&parse(&bad).expect("spec"), &tables(), "t.h3m").expect_err("bad");
         assert!(error.starts_with("the town at [2, 20]: "), "{error}");
+        // E08 T78: a map town may be Red's (batch E9b), not an unknown colour.
+        let red = spec.replace("owner = \"tan\"", "owner = \"red\"");
+        let (map, _) = build(&parse(&red).expect("spec"), &tables(), "t.h3m").expect("build");
+        let MapObject::Town(town) = map.objects.last().expect("objects") else {
+            panic!("not a town");
+        };
+        assert_eq!(town.owner, Some(0));
+        let pink = spec.replace("owner = \"tan\"", "owner = \"pink\"");
+        let error = build(&parse(&pink).expect("spec"), &tables(), "t.h3m").expect_err("pink");
+        assert!(
+            error.contains("red, blue, tan or neutral, not `pink`"),
+            "{error}"
+        );
     }
 
     #[test]
