@@ -532,14 +532,21 @@ def gold_bonus(game, players=2):
     The right arrow goes Random, Artifact, Gold (then Resource where the town allows one); the
     computer's rows change as the human's. Gold changes nothing in a battle.
 
-    The choice is not checked afterwards (E17 M5 T8b1, R7-8, left open): the screen's probes
-    (screens.toml) hold no picture of the Gold bonus, which only a run of the game can learn, and
-    no address of the scenario's starting bonuses has been read for `h3mem`."""
+    The choice is checked in the game's memory (E17 M5 T8b2, R7-8: `h3mem.starting_bonuses`):
+    exactly `players` rows Gold and none Artifact or Resource, else the run stops (a lost click
+    would have left Artifact)."""
+    import h3mem
+
     game.click(*ADVANCED_OPTIONS, 1.0)
     x, y, step = BONUS_RIGHT
     for row in range(players):
         for _ in range(2):
             game.click(x, y + step * row, 0.5)
+    bonuses = h3mem.starting_bonuses(h3mem.Mem())
+    wrong = {h3mem.BONUS_ARTIFACT, h3mem.BONUS_RESOURCE} & set(bonuses)
+    if bonuses.count(h3mem.BONUS_GOLD) != players or wrong:
+        raise RuntimeError(f"the starting bonuses read {bonuses} (1 Gold, 0 Artifact, 2 Resource, "
+                           f"3 Random), not Gold for {players} players: a click was lost")
 
 
 def to_scenario(game, gold=False):

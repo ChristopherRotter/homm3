@@ -346,6 +346,15 @@ RETREATED, SURRENDERED, WINNER = 0x132B0, 0x132B2, 0x13D48
 SIDE_OWNERS, SIDE_HUMAN, SIDE_HUMAN_HERE = 0x54A8, 0x54A4, 0x54A6
 # Auto combat on (i32 +0x132C4; the button, control 2004, toggles it: structs.toml).
 AUTO_COMBAT = 0x132C4
+# The scenario list's dialog while it is open (E17 M5 T8b2, R7-8; `select_scenario_dialog_pointer`
+# 0x69FBE8, map.toml, H3API's H3SelectScenarioDialog): two arrays of eight scenario player rows
+# (+0x1064, +0x1444; 0x7C bytes each), each row's starting bonus an i32 at +0x6C, stepped by the
+# advanced options' right arrow 3 (Random), 0 (Artifact), 1 (Gold); 2 (Resource) by H3API, not
+# seen. Observed in the running game: on a two-player map the human's row 0 is the first array's
+# entry 0, the computer's row 1 the second's entry 1; every other entry stays 3.
+SCENARIO_DIALOG_POINTER, SCENARIO_ROWS, SCENARIO_ROW_SIZE, SCENARIO_BONUS = (
+    0x69FBE8, (0x1064, 0x1444), 0x7C, 0x6C)
+BONUS_RANDOM, BONUS_ARTIFACT, BONUS_GOLD, BONUS_RESOURCE = 3, 0, 1, 2
 # The battle's log (E17 M3 T6b, design §9.8): the combat dialog (a pointer at the manager's
 # +0x132FC) holds the entries (a vector of string pointers: begin +0x58, end +0x5C), the new
 # entries' count +0x64, the first shown +0x68 and the time it last showed them +0x6C (the
@@ -403,6 +412,16 @@ def game_pid():
         except OSError:
             continue
     raise RuntimeError(f"no running Heroes3.exe in the prefix {prefix}")
+
+
+def starting_bonuses(mem):
+    """The starting bonus of every scenario player row of the scenario list's dialog, both arrays
+    (16 values; E17 M5 T8b2, R7-8); an error when the dialog is not open."""
+    dialog = mem.u32(SCENARIO_DIALOG_POINTER)
+    if not dialog:
+        raise RuntimeError("the scenario list's dialog is not open: no starting bonus to read")
+    return [mem.i32(dialog + rows + i * SCENARIO_ROW_SIZE + SCENARIO_BONUS)
+            for rows in SCENARIO_ROWS for i in range(8)]
 
 
 class Mem:
