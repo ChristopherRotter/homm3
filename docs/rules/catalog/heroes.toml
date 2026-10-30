@@ -644,7 +644,7 @@ numeric  = "integer"
 id       = "HER-MAN-001"
 title    = "A hero's maximum spell points"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "A hero's maximum spell points are 10 x its effective Knowledge (HER-BAT-001: the base and its worn artifacts', at least 1, at most 99) grown by the sum of its max_mana effects (Intelligence 25/50/100 %, an Intelligence specialist's grown by 5 % of itself per level, as HER-BAT-004's growth), rounded down. Under quirk Q-0005 the rate is the original's single-precision value: trunc((1 + f32(r x (1 + 0.05 x level))) x 10 K), so a specialist can have one point less (level 1, Basic, Knowledge 8: 100, not 101). A hero starts the game with them (GAM-HER-001). E08 T18b: `h3_heroes::max_mana`."
 numeric  = "float"
 
@@ -659,6 +659,13 @@ numeric  = "float"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L1167-L1170"
   retrieved  = "2026-10-14"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-12 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30): three heroes of Knowledge 2 without Intelligence start with 20 spell points; the Wizard's Well's hero regains up to 20 and no more"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+  note       = "The base only (10 x Knowledge); Intelligence and Q-0005's rate stay the reading's. E08 T80 (survey E08-economy.md §19)."
 
 [[rule]]
 id       = "HER-EXP-001"

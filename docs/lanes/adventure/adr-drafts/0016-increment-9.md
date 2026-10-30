@@ -2,6 +2,7 @@
 
 - Status: Proposed (E08 T77b, 2026-10-30); accepted by the user at ADV-Q38 (E08 decisions
   201–204) with decision 201's two changes written in, applied by T81 with batch E9's outcome
+  (folded in by E08 T80: D-47, D-49 and A-32 confirmed, A-33 withdrawn; survey §19)
 - Amends: ADR-0016 points 1, 3, 4, 5 and 6, and its consequences
 - Sources: survey `docs/rules/surveys/E08-economy.md` (T77a1 §0 to §6, T77a2 §7 to §18); the
   answers at ADV-Q36 and ADV-Q37 (the epic's decisions 192, 193, 196–199); the working detail in
@@ -109,8 +110,8 @@ growth and view), and the boats' own table exists because a boat moves.
 >     wandering monster grows** unless it does not grow (ADV-MON-013): its count kept in the
 >     original's sixteenths (the count × 16 plus the fraction), a tenth of that value added,
 >     truncated, the result capped at 4 000 × 16 (A-32: a larger stack from the map becomes 4 000
->     at its first week; no flag); a battle's survivors keep the fraction (D-49 as batch E9
->     decides).
+>     at its first week; no flag; batch E9's E9-10); a battle's survivors keep the fraction (D-49,
+>     confirmed by batch E9's E9-9).
 >   - **The month's step** (ADR-0017 point 3), in a month of a creature (ADV-MON-014): every land
 >     tile of both levels in level, row and column order that no object blocks or is visited
 >     from, with no event and no hero, gets a monster with one chance in 200: the
@@ -127,10 +128,11 @@ writes it today, the week reads both.
 
 > From increment 9 a **flag** reveals the tiles within 3 of the object's entrance to its new
 > owner (its team from E10; ADV-FOG-002's disk), and the start of the game reveals the same around
-> every object owned at load. The original reveals for an owned mine or Shipyard at load but not
-> for a Lighthouse (A-33: none of the shipped maps owns one at load; not reproduced, no flag).
+> every object owned at load, as the original does (batch E9's E9-4 and E9-6).
 
-*Agent's call:* A-33 not reproduced: one rule for every owned object, VCMI's.
+*Batch E9 (E08 T80):* A-33 withdrawn. The reading had the original skip an owned Lighthouse at
+load; its game start reveals around every owned object (`reveal_owned` from
+`adventure_manager_start`, survey §19), as VCMI. One rule for every owned object, no quirk.
 
 ## Point 6 (information hiding): appended after increment 8's sentences
 
@@ -160,6 +162,6 @@ writes it today, the week reads both.
 >   amended for E08 increment 9, mines, the week and owned objects: the owners, a mine's guards,
 >   the weekly contents, the monsters' fractions and the objects added in play; Leave Guards; the
 >   kinds mine, abandoned mine, Lighthouse, Shipyard, Windmill, Water Wheel and Garden with
->   flagging, the boat tile and the week's and month's steps; the flag's reveal (A-33 not
->   reproduced); owners public, a mine's production its owner's. Drafted in E08 T77b (survey
->   `E08-economy.md`); batch E9's outcome folded in.
+>   flagging, the boat tile and the week's and month's steps; the flag's and the start's reveal;
+>   owners public, a mine's production its owner's. Drafted in E08 T77b (survey
+>   `E08-economy.md`); batch E9's outcome folded in (E08 T80).

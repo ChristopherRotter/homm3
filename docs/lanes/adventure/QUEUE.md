@@ -8,19 +8,24 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 done (`adventure/e08-t79a`: the harness's mine records, tile words, boat dialog, Leave Guards,
 battle sides and `auto again`; the recipe `E08-batch-9a` and its runs); T79b done whole (decision
 208; `adventure/e08-t79b`: the harness's income, Garden mask, weekly objects' and monsters' words,
-end-turn messages; the recipe `E08-batch-9b` and its runs). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+end-turn messages; the recipe `E08-batch-9b` and its runs). T80 done (decisions 209, 210: whole
+with A-33's re-read; `adventure/e08-t80`, `cross-lane`: batch E9 scored, survey §19, A-33
+withdrawn). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T80 — Batch E9 scored**
+**E08 T81 — The `shared/` task: the ADRs, the kinds, the creature's abilities and the packs**
 
-- **Scope:** survey `E08-economy.md` §19 (new): each row of batches E9a and E9b against its
-  prediction; D-47 (E9-1), D-49 (E9-9), A-32 (E9-10), A-33 (E9-4) and design §13's call on who plays
-  an owned mine's guards (E9-2) settled; a dispute a row contradicts reverts to the other side
-  (decision 196) or becomes an `ADV-Q`; the consensus rows' sources `verified`; D-48 and D-50 stay
-  as read (decision 199); the README's batch row evaluated.
-- **Inputs:** the results (T79a: `experiments/results/E08-batch-9a.md`, `-run2.md`; T79b:
-  `E08-batch-9b.md`, `-run2.md`); the specs' predictions; survey §14, §15; T79a's and T79b's
-  records in `E08-log.md` (the runs' draws).
-- **Depends on:** T79b (done). **Status:** ready.
+- **Scope:** design §18's round 4, a `shared/e08-t81` pull request (`cross-lane`: the packs and
+  the harvester's gap-fill are the battle lane's): the three drafts (`adr-drafts/0013-`, `0016-`,
+  `0017-increment-9.md`, batch E9's outcome folded in by T80) applied to ADR-0013, -0016 and
+  -0017 (and ADR-0015 point 2's core row); the four kinds (daily resource, the day's mana regain,
+  the extra regain, full mana), the two hero parameters and the core creature's abilities outside
+  battle (`weekly_resource`, decision 201) in `h3-content` and `h3-pack`, with the packs and the
+  gap-fill; `docs/03-domain.md`'s terms (owner, flag, ownable object, mine, guards, Leave Guards,
+  weekly object, the week's and the month's steps, the month's kind, timed event, income); core
+  ruleset hash v51, pack format v50 (design §16).
+- **Inputs:** design §1 to §3, §16, §18; the drafts; survey `E08-economy.md` §19; T70's record in
+  `E08-log.md` (increment 8's `shared/` task) as the pattern.
+- **Depends on:** T80 (done). **Status:** ready; its cut confirmed with the user at its start.
 
 ## Inbox
 

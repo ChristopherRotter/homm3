@@ -2,6 +2,7 @@
 
 - Status: Proposed (E08 T77b, 2026-10-30); accepted by the user at ADV-Q38 (E08 decisions
   201–204) with decision 201's two changes written in, applied by T81 with batch E9's outcome
+  (E08 T80: the Cornucopia's 5 and the day's spell points confirmed; survey §19)
 - Amends: ADR-0013 points 3 and 13 (13.6), adds point 16
 - Sources: survey `docs/rules/surveys/E08-economy.md` §4, §8, §12, §17 (T77a1, T77a2); the
   answers at ADV-Q37 (the epic's decisions 196–199: decision 197 adds the heroes' income and the
