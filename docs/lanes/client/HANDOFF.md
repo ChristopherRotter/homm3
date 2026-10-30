@@ -16,12 +16,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   steps, `cross-lane`; the dissolves and the created stacks, §7.25, `anim::created`, the engine's
   `NotCreated`, `cross-lane`; T5b cut in two, the palette effects done, §7.26,
   `h3_render::recolour`; the panel by each turn's controller and the sounds' waits, §8.3,
-  `Timeline::controllers`, `sound::Lengths`, the harness's `sound` runs: T5 done). **Next: M5 T6**
-  (a game on a server: the WebSocket+TLS dependency the user's call; QUEUE). Open PR: T5b2's
-  (#591, `client/e17-m5-t5b2`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's
-  float DCT) and the user's Demons note (T5a's dissolve, to re-investigate) wait for a free slot.
+  `Timeline::controllers`, `sound::Lengths`, the harness's `sound` runs: T5 done; T6 cut in two
+  by the user, T6a done: the connection headless, design §11.1, `h3_view::remote`, the binary's
+  `net` and `connect`, the server's TLS stack the user's choice). **Next: M5 T6b** (the window
+  over a server and the record that opens mid-battle: needs the original data staged; big, so
+  propose a cut to the user first, e.g. the window playing a seat, then the mid-battle record
+  with a restart's re-join and `remote_turn`; QUEUE). Open PR: T6a's #592 (branch
+  `claude/optimistic-mayer-bo0pv5`; check it first). The inbox's CLT-Q30 task (`h3-bink` as
+  BINKW32's float DCT) and the user's Demons note (T5a's dissolve, to re-investigate) wait for a
+  free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
-  in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
+  in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
   `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
@@ -47,7 +52,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T5b2 (done; #591 open: check it first).** Kept whole by the user;
+- **2026-10-30, E17 M5 T6a (done; #592 open: check it first).** No original data in the
+  session; the user chose the server's stack (blocking only on the I/O thread) and cut T6: the
+  part without original content now. Built `h3_view::remote` (the welcome's checks, the pins,
+  join or create, the record fetched and grown, the content check), the binary's `net` (the I/O
+  thread, `ws://` and `wss://` with graviola) and `h3-view connect` (headless, the plain player,
+  `--drop`); loopback tests (plain and TLS, a drop and a re-join) and a run against `h3-server`.
+  Items 48 to 51; T6b in the queue.
+
+- **2026-10-30, E17 M5 T5b2 (done; #591 merged).** Kept whole by the user;
   CLT-Q34 answered (a). Read the acting side by the controller and `wait_for_sample`'s 30 battle
   sites (design §8.3). Built `Timeline::controllers`, `Panels::with_controllers`, the timeline's
   waits (`sound::Lengths`, `wait_for`, the grid after a wait), the window's lengths, the
@@ -62,10 +75,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   reference), the timeline's `LookKey`s, `Draw::Creature`'s `effect`; the harness's `stone_gaze`
   roll. `bloodlust` and `stone` recorded, their glows exact; `clone` exact; CLT-Q34; items 40
   to 42.
-
-- **2026-10-29, E17 M5 T5a (done; #578 merged).** T5 cut in two with the
-  user; the engine's `NotCreated` (`cross-lane`, the user's call, wire v36). Read the dissolve's
-  blend and rectangle, the stacks removed without a corpse, the created stacks, Clone, Teleport
-  (design §7.25). Built `Screen::dissolve_rect`, `anim::created`, the window's notices.
-  `teleport`, `clone`, `summon`, `demons` recorded, `sacrifice` exact; the clone's colours to
-  T5b and the Demons' back buffer a slip not copied (the user's); CLT-Q33; items 36 to 39.

@@ -9,11 +9,13 @@ mod bot;
 mod boxes;
 #[cfg(test)]
 mod clicks;
+mod connect;
 mod gate;
 mod harvest;
 mod live;
 mod log;
 mod motion;
+mod net;
 mod play;
 mod pointer;
 mod render;
@@ -163,6 +165,21 @@ commands:
           frames as <stem>.yuv (raw YUV 4:2:0, as FFmpeg's rawvideo yuv420p), prints each
           clip's size, frames and hash; --reference compares each with <dir>/<stem>.yuv (exit 1
           on a difference). clients/scripts/bink-check.sh runs it against FFmpeg.
+  connect <ws://… | wss://…> (--game <id> | --create <offer>) --seat attacker|defender|spectator
+          [--token <t>] [--name <display>] [--pins <file>] [--packs <dir>] [--out <file>]
+          [--drop <n>]
+          a game on a server (h3-server), headless: dials the address (wss:// through TLS, the
+          certificate checked against the operating system's roots), checks the welcome (its id
+          the address dialed, its signature by the server's key) and pins that key for the address
+          in <file> (default pins.txt in the working directory; a key that changed ends the
+          connection: remove its line only if the server's operator confirms the new key), joins
+          the game as the seat by its token (a seat not taken yet without one), or creates a game
+          of the server's offer and takes the seat in it, runs the content check (the manifest's packs and
+          profile compiled from <dir>, default the repository's packs/: same, different or
+          absent), plays the seat with a plain player (it shoots or strikes if it may, else walks
+          toward the enemy) until the game ends, and writes the seat's record (default
+          clients/out/connect/g<id>-<seat>.jsonl). --drop drops the connection after <n> commands
+          and re-joins by the token.
   help    show this message
 ";
 
@@ -172,6 +189,10 @@ fn main() -> ExitCode {
         None => help(),
         Some((command, rest)) => match command.as_str() {
             "help" | "--help" | "-h" => help(),
+            "connect" => match connect::Options::parse(rest) {
+                Ok(options) => connect::run(&options),
+                Err(message) => usage_error(&message),
+            },
             "gate" => match gate::Options::parse(rest) {
                 Ok(options) => gate::run(&options),
                 Err(message) => usage_error(&message),
