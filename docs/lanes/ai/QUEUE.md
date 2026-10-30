@@ -33,6 +33,13 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-10-30 (the adventure lane, E08 T81b, `shared/e08-t81b`, `cross-lane`; for your
+  information, nothing to do): core ruleset hash v51 (four hero effect kinds, two hero parameters,
+  a creature's abilities outside battle; pack format v50). `python/records/bots-report-v1.json`
+  and `bots-neutral-v1.json` regenerated: only `engine.core` moved (`962e87e7a01056f6`); the
+  `e25-*` run records keep the hash they ran with. Nothing reaches the battle's observation or
+  your encodings.
+
 - 2026-10-30 (the adventure lane, E08 T77b, `adventure/e08-t77b`; decisions 202, 203; **for
   you: a notice, nothing to do now**): increment 9 (mines, the week and owned objects) adds one
   command, `AdventureCommand::BuildBoat { object_type, anchor }` (a boat from an own or allied

@@ -9522,3 +9522,68 @@ not enabled for it).
   queue (T81a out, T81b in).
 
 T81b (`shared/`, `cross-lane`: the kinds, the parameters, the creature's abilities, the packs) next.
+
+### Increment 9, round 4: T81b, the kinds, the parameters, the creature's abilities and the packs (2026-10-30, `shared/e08-t81b`, `cross-lane`)
+
+**The cut** (decision 212; asked at the start, `AskUserQuestion`): whole, one pull request
+(recommended), the creature's abilities to be split off only if the context ran short. Not
+chosen: the hero side then the creature's abilities; the code then the packs. **Baseline:**
+`master` 50f0cc5 (#612, T81a, merged; CI's `master` run on 1d21289's code green, the docs-only
+merges since run no full verify). The installation's files staged from the user's repo folder at
+the start (the four LODs, the executables, the DLLs, the sound and video archives, `maps.tar`,
+`extracted.tar`, the 40 MP3s); the setup's full baseline stopped (the shallow-clone trap).
+
+- **`h3-content`** (design §1): `HeroEffect` gains a sixth generic, `R` (resources; `HeroEffectDef`
+  and `CompiledHeroEffect` alias it, `try_map` takes a sixth closure): `DailyResource { resource,
+  amount }` (1 to `MAX_DAILY_AMOUNT`, 2³¹ − 1, a treasury's bound; one per resource in a list),
+  `ManaRegain { points }` and `ExtraManaRegain { points }` (1 to `MAX_REGAIN`, 999), `FullMana`,
+  codes 56 to 59, with `NAMES`, the checks, the collision rule and the hash. `HeroParams` gains
+  `base_mana_regain` and `regain_specialist_bonus` (0 to 999 each, hashed). A new module
+  `ability`: `CreatureAbility<R>` with `WeeklyResource { resource, amount }` (code 0), at most
+  `MAX_CREATURE_ABILITIES` (4) a creature, one per resource; `CreatureInfoDef::abilities`,
+  `CreaturePatch::abilities` (replacing the list) and `CreatureInfo::abilities`, resolved in the
+  pack's scope, validated with the creature, hashed after the upgrades. **Core ruleset hash v51**
+  (the golden base hash `0x5db3_28ea_c192_3be6`).
+- **`h3-pack`** (pack format v50): the four kinds (`full_mana` a struct variant `{}`), the two
+  parameters (required, as `mana_ceiling`), the creature's and the override's
+  `abilities_outside_battle` (decision 212: `abilities` stays the battle file's field, which the
+  harvester's split routes to `battle.toml`); tests `the_income_and_mana_kinds_parse`,
+  `the_creature_abilities_parse`, `the_regain_parameters_parse_and_are_required` and
+  `the_harvested_income_and_mana` (every expansion: the parameters, Estates, Mysticism, the
+  twelve income and mana artifacts, the thirteen specialists, the Crystal Dragon with AB, the
+  Cornucopia and the Wizard's Well with SoD).
+- **The harvester** (battle-owned, `cross-lane`): `Context` gains the resources; a resource
+  specialist (kind 2) gets a `daily_resource` of the table's resource (gold, the last, its own
+  amount) from `[heroes.resource_specialty]` (1, gold 350), so the report's "specialties not
+  modelled" lists only the creature upgrades and Adrienne's none; an artifact effect's `resource`
+  and the new `[[creature_abilities_outside_battle]]` table's are qualified as their pack refers to
+  `base`'s (`resource_ref`, an unknown resource refused); a skill effect's and an artifact
+  effect's `resource` come before its amount. The gap-fill: `[heroes.params]`' 1 and 1, Estates'
+  125, 250, 500 gold and Mysticism's 2, 3, 4 as `[[heroes.skill_effects]]`, the six resource
+  artifacts' 1, the gold artifacts' 1 000, 750, 500, the Cornucopia's 4 of mercury, sulfur,
+  crystal and gems (its parts' 1 each make the original's 5; design §1's call), the Charm,
+  Talisman and Mystic Orb's 1, 2, 3, the Wizard's Well's `full_mana`, the Crystal Dragon's 3
+  crystal; the `pending` list keeps the Grail and the Legion ("growth, the Grail"); four sources
+  (`exe-daily-income`: 0x4B8AF0, 0x4BABD0, 0x4C7930, 0x4E4390, 0x63EA18, batch E9's E9-7;
+  `exe-mana-regain`: 0x4C7FE0, 0x4E3F40, 0x63E9C8, E9-12; `vcmi-income`: the survey's §8.4 and
+  §12 reading; `wiki-income`: Estates, Mysticism, Spell point, Hero specialty and Resource, read
+  today). The thirteen specialists the table gives (Caitlin, Jenova, Rissa, Aine, Octavia, Calid,
+  Clavius, Nagash, Damacon, Sephinroth, Saurug; Gelare and Grindan in `ab`) are the wiki's Hero
+  specialty list exactly (no wood or ore specialist). `exe.py data` read the two skill tables
+  again (0, 125, 250, 500; 1, 2, 3, 4). `base`, `ab` and `sod` re-harvested from the staged
+  installation: only those lines changed.
+- **Synthetic packs:** `synthetic`'s `[hero_params]` the two parameters; `synthetic-ext`'s
+  `wayfarer_sash` the four kinds (15 effects; `h3-pack-battle`'s every-kind check) and the
+  Lurker a `weekly_resource` of shards. `packs/README.md`: the kinds, the parameters, the
+  creature's field.
+- **Replays and records:** the 42 golden replays keep commands and state hashes; only
+  `ruleset_hash` moved (synthetic faithful `0xb0bd4ac2601bb638`, base faithful
+  `0x962e87e7a01056f6`, strict-fixed `0x7e53fc5fe7380887`; computed with a throwaway test,
+  confirmed by the replay tests, which refuse a stale header). The AI lane's
+  `bots-report-v1.json` and `bots-neutral-v1.json` regenerated: only `engine.core` moved; the
+  `e25-*` run records keep the hash they ran with.
+- **Docs:** decision 212 and the task's line; the design note's §1, §3, §16, §18; the queue (T81b
+  out, T82 and T83 in); the battle and AI lanes' inboxes, the battle HANDOFF's shared versions.
+
+T82 (`h3-heroes`: the income, the day's spell points, the Lighthouses' input) and T83 (the import,
+kinds and state) next, round 5.
