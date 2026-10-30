@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 15);
+    assert_eq!(sequences.sequence.len(), 18);
     // The status window's kind asked at 0 (E24 M3 T5b2).
     let date = sequences.get("status-date-end").unwrap();
     assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));
@@ -202,4 +202,33 @@ fn the_selected_hero() {
     let two = [hero(1, 0, Facing::Up), hero(2, 0, Facing::Up)];
     assert!(selected(&two, 0).is_err());
     assert!(selected_index(&two, 0).is_err());
+}
+
+#[test]
+fn the_selected_hero_by_the_mouse_overs_facts() {
+    let (_, mut live, _) = crate::hover::tests::fixture(false);
+    // Without the facts, the one hero of the viewer's colour (here two).
+    let mut bare = live.clone();
+    bare.hover = None;
+    assert!(selected_in(&bare).unwrap_err().contains("2 heroes"));
+    // With them, the kingdom's selected hero by its record index.
+    assert_eq!(selected_in(&live), Err("no hero selected".into()));
+    live.kingdom.selected = Selected::Hero(1);
+    assert_eq!(selected_in(&live), Ok(1));
+    let hero = selected_hero(&live).unwrap();
+    assert_eq!((hero.at.x, hero.at.y), (7, 3));
+    live.kingdom.selected = Selected::Hero(5);
+    assert!(
+        selected_in(&live)
+            .unwrap_err()
+            .contains("past the facts' list")
+    );
+    live.kingdom.selected = Selected::Hero(0);
+    live.hover.as_mut().unwrap().hero_list[0].0 = 99;
+    assert!(
+        selected_in(&live)
+            .unwrap_err()
+            .contains("not on the view's level")
+    );
+    assert!(selected_hero(&live).is_err());
 }

@@ -119,8 +119,8 @@ pub fn for_sequence<'a>(
     // The mouse-over's facts (E24 M3 T6a1) select a hero too: the cursor reads it.
     let (hero, paths) = if walks || painter.live.hover.is_some() {
         let live = &painter.live;
-        let hero = sequence::selected_hero(live)
-            .map_err(|e| format!("{}: {e}", live_path.display()))?;
+        let hero =
+            sequence::selected_hero(live).map_err(|e| format!("{}: {e}", live_path.display()))?;
         painter.selected = sequence::selected_in(live).ok();
         let paths = if walks {
             sequence.paths(recorded.as_deref().unwrap_or_default())?

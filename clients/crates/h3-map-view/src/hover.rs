@@ -28,13 +28,14 @@ use alloc::vec::Vec;
 
 use h3_map::model::Pos;
 use h3_ui::text::{Args, Catalogue};
+use serde::Deserialize;
 
 use crate::art::MapArt;
 use crate::layout::AdventureLayout;
 use crate::lists::SLOTS;
 use crate::live::{Buttons, Explored, Kingdom, Live};
-use crate::panels::{self, id};
 use crate::objects::{self, DrawLists, Entry};
+use crate::panels::{self, id};
 use crate::record::Records;
 use crate::status::{hero_key, town_key};
 
@@ -109,6 +110,22 @@ pub struct Facts {
     pub day_points: i32,
 }
 
+/// The live part's `[hover]` table as it is written.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Written {
+    words: Vec<i64>,
+    armed: Vec<u8>,
+    towns: Vec<(u16, u8)>,
+    hero_ids: Vec<(u8, u8)>,
+    hero_list: Vec<(u8, u8, u8)>,
+    town_list: Vec<usize>,
+    teams: [u8; 8],
+    guarded: Vec<String>,
+    reach: Vec<(i32, i32, u32)>,
+    day_points: i32,
+}
+
 impl Facts {
     /// The facts of the live part's `[hover]` table for a map of `size` and `levels` with
     /// `objects` objects and `heroes` heroes: `words` (one per object, -1 none), `armed` (one
@@ -125,104 +142,53 @@ impl Facts {
         size: usize,
         levels: usize,
     ) -> Option<Self> {
-        let table = value.as_table()?;
-        let array = |key: &str| table.get(key).and_then(toml::Value::as_array);
-        let int = |v: &toml::Value| v.as_integer();
-        let ints = |v: &toml::Value| -> Option<Vec<i64>> {
-            v.as_array()?.iter().map(toml::Value::as_integer).collect()
-        };
-        let flag = |n: i64| match n {
-            0 => Some(false),
-            1 => Some(true),
-            _ => None,
-        };
-        let byte = |n: i64| u8::try_from(n).ok();
-        let words: Vec<Option<u32>> = array("words")?
-            .iter()
-            .map(|v| match int(v)? {
-                -1 => Some(None),
-                n => u32::try_from(n).ok().map(Some),
-            })
-            .collect::<Option<_>>()?;
-        let armed: Vec<bool> = array("armed")?
-            .iter()
-            .map(|v| int(v).and_then(flag))
-            .collect::<Option<_>>()?;
-        let towns = array("towns")?
-            .iter()
-            .map(|v| match ints(v)?.as_slice() {
-                &[name, kind] => Some((u16::try_from(name).ok()?, byte(kind)?)),
-                _ => None,
-            })
-            .collect::<Option<_>>()?;
-        let hero_ids: Vec<(u8, bool)> = array("hero_ids")?
-            .iter()
-            .map(|v| match ints(v)?.as_slice() {
-                &[id, own] => Some((byte(id)?, flag(own)?)),
-                _ => None,
-            })
-            .collect::<Option<_>>()?;
-        let hero_list = array("hero_list")?
-            .iter()
-            .map(|v| match ints(v)?.as_slice() {
-                &[id, class, own] => Some((byte(id)?, byte(class)?, flag(own)?)),
-                _ => None,
-            })
-            .collect::<Option<_>>()?;
-        let town_list = array("town_list")?
-            .iter()
-            .map(|v| int(v).and_then(|n| usize::try_from(n).ok()))
-            .collect::<Option<_>>()?;
-        let teams: Vec<u8> = array("teams")?
-            .iter()
-            .map(|v| int(v).and_then(byte))
-            .collect::<Option<_>>()?;
-        let rows: Vec<&str> = array("guarded")?
-            .iter()
-            .map(toml::Value::as_str)
-            .collect::<Option<_>>()?;
-        let mut guarded = Explored::all(size, levels, false);
-        if rows.len() != size.saturating_mul(levels) {
+        let w: Written = value.clone().try_into().ok()?;
+        let flag = |n: u8| (n < 2).then_some(n == 1);
+        let fits = w.words.len() == objects
+            && w.armed.len() == objects
+            && w.hero_ids.len() == heroes
+            && w.guarded.len() == size.saturating_mul(levels)
+            && w.guarded.iter().all(|r| r.len() == size);
+        if !fits {
             return None;
         }
-        for (r, row) in rows.iter().enumerate() {
-            if row.len() != size {
-                return None;
-            }
+        let mut guarded = Explored::all(size, levels, false);
+        for (r, row) in w.guarded.iter().enumerate() {
             let (z, y) = (r / size.max(1), r % size.max(1));
             for (x, c) in row.bytes().enumerate() {
-                let on = match c {
-                    b'0' => false,
-                    b'1' => true,
-                    _ => return None,
-                };
-                let to_i32 = |v: usize| i32::try_from(v).ok();
-                guarded.set(to_i32(x)?, to_i32(y)?, u8::try_from(z).ok()?, on);
+                let on = flag(c.wrapping_sub(b'0'))?;
+                guarded.set(to_i32(x), to_i32(y), u8::try_from(z).unwrap_or(u8::MAX), on);
             }
         }
-        let reach = array("reach")?
-            .iter()
-            .map(|v| match ints(v)?.as_slice() {
-                &[x, y, cost] => Some((
-                    (i32::try_from(x).ok()?, i32::try_from(y).ok()?),
-                    u32::try_from(cost).ok()?,
-                )),
-                _ => None,
-            })
-            .collect::<Option<_>>()?;
-        let day_points = int(table.get("day_points")?).and_then(|n| i32::try_from(n).ok())?;
-        let fits = words.len() == objects && armed.len() == objects && hero_ids.len() == heroes;
-        fits.then_some(Self {
-            words,
-            armed,
-            towns,
-            heroes: hero_ids,
-            hero_list,
-            town_list,
-            teams: teams.try_into().ok()?,
+        Some(Self {
+            words: w
+                .words
+                .iter()
+                .map(|&n| {
+                    if n == -1 {
+                        Some(None)
+                    } else {
+                        u32::try_from(n).ok().map(Some)
+                    }
+                })
+                .collect::<Option<_>>()?,
+            armed: w.armed.into_iter().map(flag).collect::<Option<_>>()?,
+            towns: w.towns,
+            heroes: w
+                .hero_ids
+                .into_iter()
+                .map(|(id, own)| Some((id, flag(own)?)))
+                .collect::<Option<_>>()?,
+            hero_list: w
+                .hero_list
+                .into_iter()
+                .map(|(id, class, own)| Some((id, class, flag(own)?)))
+                .collect::<Option<_>>()?,
+            town_list: w.town_list,
+            teams: w.teams,
             guarded,
-            reach,
-            day_points,
+            reach: w.reach.into_iter().map(|(x, y, c)| ((x, y), c)).collect(),
+            day_points: w.day_points,
         })
     }
 }
@@ -264,9 +230,9 @@ pub const GROUNDS: [u32; 10] = [21, 46, 222, 224, 225, 226, 227, 228, 229, 231];
 /// 0, 3, 26 and 36 (the special ground), 34 (a hero), 54 (a monster) and 98 (a town); the rest
 /// show their name too until T6a2 (MCL-STUB-7).
 pub const OWN_CASES: [u32; 62] = [
-    0, 3, 4, 9, 10, 11, 14, 16, 17, 20, 22, 23, 24, 25, 26, 28, 30, 31, 32, 34, 35, 36, 38, 39,
-    41, 42, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 61, 63, 64, 79, 83, 84, 85, 88, 89, 90, 92,
-    94, 96, 98, 100, 102, 104, 105, 107, 108, 109, 110, 112, 113, 212, 215,
+    0, 3, 4, 9, 10, 11, 14, 16, 17, 20, 22, 23, 24, 25, 26, 28, 30, 31, 32, 34, 35, 36, 38, 39, 41,
+    42, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 61, 63, 64, 79, 83, 84, 85, 88, 89, 90, 92, 94, 96,
+    98, 100, 102, 104, 105, 107, 108, 109, 110, 112, 113, 212, 215,
 ];
 
 /// The object classes the original names (`OBJNAMES.TXT`'s records).
@@ -457,39 +423,35 @@ impl Hover {
         let facts = live.hover.clone()?;
         let size = art.size;
         let mut tiles = Vec::with_capacity(size.saturating_mul(size).saturating_mul(art.levels));
-        for (z, level) in (0u8..).zip(lists.iter().take(art.levels)) {
-            for y in 0..size {
-                for x in 0..size {
-                    let (x, y) = (to_i32(x), to_i32(y));
-                    let Some(tile) = art.tile(x, y, z) else {
-                        tiles.push(Tile::default());
-                        continue;
-                    };
-                    let entries = level.at(x, y);
-                    let record = records.record(art, live, tile, entries);
-                    let ground = ground(records, art, live, entries);
-                    let word = record
-                        .object
-                        .and_then(|o| facts.words.get(o).copied().flatten());
-                    let owner = record
-                        .object
-                        .filter(|_| OWNED_BY_ENTRANCE.contains(&record.class))
-                        .and_then(|o| live.objects.get(o))
-                        .and_then(|o| o.owner);
-                    tiles.push(Tile {
-                        class: record.class,
-                        subclass: record.subclass,
-                        object: record.object,
-                        entrance: record.entrance,
-                        blocked: record.blocked,
-                        water: tile.terrain.code == WATER,
-                        ground,
-                        word,
-                        owner,
-                        hero: None,
-                    });
-                }
-            }
+        let side = size.max(1);
+        for (i, tile) in art.tiles.iter().enumerate() {
+            let (x, y) = (to_i32(i % side), to_i32(i / side % side));
+            let entries = lists
+                .get(i / side / side)
+                .map(|l| l.at(x, y))
+                .unwrap_or_default();
+            let record = records.record(art, live, tile, entries);
+            let ground = ground(records, art, live, entries);
+            let word = record
+                .object
+                .and_then(|o| facts.words.get(o).copied().flatten());
+            let owner = record
+                .object
+                .filter(|_| OWNED_BY_ENTRANCE.contains(&record.class))
+                .and_then(|o| live.objects.get(o))
+                .and_then(|o| o.owner);
+            tiles.push(Tile {
+                class: record.class,
+                subclass: record.subclass,
+                object: record.object,
+                entrance: record.entrance,
+                blocked: record.blocked,
+                water: tile.terrain.code == WATER,
+                ground,
+                word,
+                owner,
+                hero: None,
+            });
         }
         let heroes = live
             .heroes
@@ -569,12 +531,14 @@ impl Hover {
     /// else the entrance tile of its object when another, with a hero or boat standing there
     /// taken off, else its own.
     #[must_use]
-    pub fn hint_tile(&self, at: [i32; 3], middle: bool, selected: Option<Selection>) -> Option<Tile> {
+    pub fn hint_tile(
+        &self,
+        at: [i32; 3],
+        middle: bool,
+        selected: Option<Selection>,
+    ) -> Option<Tile> {
         if middle && let Some(s) = selected.filter(|s| s.lifted) {
-            let shown = Selection {
-                lifted: false,
-                ..s
-            };
+            let shown = Selection { lifted: false, ..s };
             return self.current(at, Some(shown));
         }
         let tile = self.current(at, selected)?;
@@ -584,7 +548,7 @@ impl Hover {
         if door == at {
             return Some(tile);
         }
-        let there = self.current(door, selected)?;
+        let there = self.current(door, selected).unwrap_or(tile);
         if there.class == tile.class {
             return Some(there);
         }
@@ -621,7 +585,7 @@ impl Hover {
         if [0, 3, 26, 36].contains(&tile.class) {
             return None;
         }
-        let (x, y) = self.entrances.get(&tile.object?).copied()?;
+        let (x, y) = tile.object.and_then(|o| self.entrances.get(&o)).copied()?;
         Some([x, y, at[2]])
     }
 
@@ -637,18 +601,22 @@ impl Hover {
                 0 => Hint::Empty,
                 ground => Hint::Object(ground),
             },
-            crate::live::HERO_CLASS => tile
-                .hero
-                .or_else(|| tile.word.and_then(|w| u8::try_from(w).ok()))
-                .and_then(|id| self.hero(id))
-                .map_or(Hint::Empty, |h| Hint::Hero {
-                    id: h.0,
-                    class: h.1,
-                    own_name: h.2,
-                }),
+            crate::live::HERO_CLASS => {
+                tile.hero
+                    .and_then(|id| self.hero(id))
+                    .map_or(Hint::Empty, |h| Hint::Hero {
+                        id: h.0,
+                        class: h.1,
+                        own_name: h.2,
+                    })
+            }
             crate::live::TOWN_CLASS => tile
                 .word
-                .and_then(|w| self.facts.towns.get(usize::try_from(w).ok()?))
+                .and_then(|w| {
+                    self.facts
+                        .towns
+                        .get(usize::try_from(w).unwrap_or(usize::MAX))
+                })
                 .map_or(Hint::Empty, |&(name, kind)| Hint::Town { name, kind }),
             MONSTER if tile.entrance => Hint::Monster {
                 creature: tile.subclass,
@@ -791,10 +759,10 @@ impl Hover {
     /// visit on water, else the sail; on land a visit of an entrance (on water a shipwreck's),
     /// else the move.
     fn kind(&self, tile: &Tile, at: [i32; 3], boat: bool) -> u32 {
-        let guarded = self
-            .facts
-            .guarded
-            .explored(at[0], at[1], u8::try_from(at[2]).unwrap_or(u8::MAX));
+        let guarded =
+            self.facts
+                .guarded
+                .explored(at[0], at[1], u8::try_from(at[2]).unwrap_or(u8::MAX));
         if guarded && !(tile.entrance && NOT_ENTERED.contains(&tile.class)) {
             return frame::ATTACK;
         }
@@ -949,7 +917,10 @@ pub fn panel_hint(item: Option<u16>, kingdom: &Kingdom, facts: Option<&Facts>) -
     };
     if let Some(slot) = hero_slot {
         return facts
-            .and_then(|f| f.hero_list.get(heroes_top.saturating_add(usize::from(slot))))
+            .and_then(|f| {
+                f.hero_list
+                    .get(heroes_top.saturating_add(usize::from(slot)))
+            })
             .map_or(Hint::Empty, |&(id, class, own_name)| Hint::Hero {
                 id,
                 class,
@@ -959,7 +930,9 @@ pub fn panel_hint(item: Option<u16>, kingdom: &Kingdom, facts: Option<&Facts>) -
     if let 32..=36 = item {
         return facts
             .and_then(|f| {
-                let town = f.town_list.get(towns_top.saturating_add(usize::from(item - 32)))?;
+                let town = f
+                    .town_list
+                    .get(towns_top.saturating_add(usize::from(item - 32)))?;
                 f.towns.get(*town)
             })
             .map_or(Hint::Empty, |&(name, kind)| Hint::Town { name, kind });
@@ -986,4 +959,4 @@ pub fn parked_hint(layout: &AdventureLayout, live: &Live, levels: usize, point: 
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
