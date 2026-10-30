@@ -5,7 +5,9 @@
 //! legal walks, strikes, shots, wall shots, heals, Wait, Defend and `EndTactics`
 //! (`h3_view::mouse::click`, `button`), each stack facing its side's way as the engine has it;
 //! but the original's one gap, a two-hex stack's step back by one hex where two are open too
-//! (CLT-Q25, copied: an option later).
+//! (CLT-Q25, copied: an option later). An acting two-hex stack turned the other way (its poses
+//! mirrored then, `pointer::facing`) takes its other hexes: its presses give other commands, each
+//! one legal still (E17 M5 T8a, R3-6).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -107,13 +109,30 @@ fn unpressed(observation: &Observation, commands: &[Command]) -> BTreeSet<String
     }
 }
 
-/// What a scenario's turns check: the turns, the commands compared, the turns that differ.
+/// What a scenario's turns check: the turns, the commands compared, the turns that differ; the
+/// turns of a two-hex stack checked turned too, and those whose presses then changed.
 #[derive(Default)]
 struct Checked {
     turns: usize,
     commands: usize,
     gaps: usize,
     failures: Vec<String>,
+    turned: usize,
+    changed: usize,
+}
+
+/// The stacks facing left when `observation`'s acting stack, two hexes wide, turned the other way
+/// (none for another stack).
+fn turned(observation: &Observation) -> Option<Facing> {
+    let acting = observation
+        .active
+        .and_then(|id| observation.stacks.iter().find(|s| s.id == id))
+        .filter(|s| s.two_hex)?;
+    let left = (observation.stacks.iter())
+        .filter(|s| (s.side == Side::Defender) != (s.id == acting.id))
+        .map(|s| s.id)
+        .collect();
+    Some(Facing::Left(left))
 }
 
 /// What the presses are checked with: the layout, the asset tables, the hexes' points, the
@@ -169,6 +188,21 @@ fn check(path: &Path, with: &mut With, out: &mut Checked) {
             .map(|c| format!("{c:?}"))
             .filter(|c| !gap.contains(c))
             .collect();
+        if let Some(facing) = turned(&observation) {
+            let field = Field {
+                facing: &facing,
+                ..field
+            };
+            let presses = pressed(&with.layout, &field, &with.hexes);
+            let all: BTreeSet<String> = commands.iter().map(|c| format!("{c:?}")).collect();
+            let illegal: Vec<_> = presses.difference(&all).collect();
+            if !illegal.is_empty() {
+                out.failures
+                    .push(format!("{name}, turn {i}, turned: illegal {illegal:?}"));
+            }
+            out.turned += 1;
+            out.changed += usize::from(presses != got);
+        }
         out.turns += 1;
         out.commands += want.len();
         out.gaps += gap.len();
@@ -207,10 +241,16 @@ fn presses_give_exactly_the_engine_s_legal_commands() {
         commands,
         gaps,
         failures,
+        turned,
+        changed,
     } = checked;
     assert!(
         turns > 1_000 && commands > 10_000 && gaps > 0,
         "{turns} turns, {commands} commands, {gaps} gaps"
+    );
+    assert!(
+        turned > 100 && changed > 100,
+        "{turned} turns turned, {changed} changed"
     );
     assert!(
         failures.is_empty(),

@@ -496,6 +496,8 @@ pub struct Battle<'g> {
     message: Option<(h3_view::message::Open, u32, Asked)>,
     /// The result window was closed (E17 M5 T4b1): the battle's screen is done.
     result_closed: bool,
+    /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
+    behind: h3_view::result::Behind,
     /// How many of the timeline's notices opened (E17 M5 T5a).
     notices: usize,
     /// The tactics phase's message the battle opened with is still open (E17 M5 T4c2a, design
@@ -695,6 +697,7 @@ impl<'g> Battle<'g> {
             aiming: None,
             message: None,
             result_closed: false,
+            behind: h3_view::result::Behind::default(),
             notices: 0,
             opening: false,
         };
@@ -1763,6 +1766,7 @@ impl<'g> Battle<'g> {
             return false;
         };
         self.message = Some((h3_view::message::Open::new(window), ended, Asked::Result));
+        self.behind = h3_view::result::Behind::default();
         true
     }
 
@@ -2075,10 +2079,10 @@ impl<'g> Battle<'g> {
         self.head.seek(timeline, at);
         let mut moment = self.head.moment(timeline);
         // Behind the result window the battle stands as it ended, its flags as last shown (E17 M5
-        // T4b1, `h3_view::result::behind`).
+        // T4b1, `h3_view::result::behind`), the moment before read once (E17 M5 T8a, R3-2).
         if self.result_open() {
-            let before = Moment::at(timeline, at.saturating_sub(1));
-            h3_view::result::behind(&mut moment, &before);
+            self.behind
+                .show(&mut moment, at, |t| Moment::at(timeline, t));
         }
         let mut list = self.list(at, &moment)?;
         if let Some((open, _, player)) = &self.book {
