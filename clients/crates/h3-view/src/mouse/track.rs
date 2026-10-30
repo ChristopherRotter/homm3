@@ -66,12 +66,17 @@ pub enum Input {
     Auto {
         /// When.
         at: u32,
+        /// The turn it switched in (0 the opening's; T8b2, R5c-1: the one waiting, which a
+        /// command that takes no time ends in the same millisecond).
+        turn: usize,
     },
     /// A key or a mouse button pressed while Auto Combat plays (E17 M5 T4c1): it stops as the
     /// next turn starts ([`crate::auto`]); nothing else.
     Stop {
         /// When.
         at: u32,
+        /// The turn it was pressed in (0 the opening's): it stops as the one after starts.
+        turn: usize,
     },
 }
 
@@ -85,8 +90,8 @@ impl Input {
             | Self::Aim { at, .. }
             | Self::Book { at }
             | Self::Cancel { at }
-            | Self::Auto { at }
-            | Self::Stop { at } => at,
+            | Self::Auto { at, .. }
+            | Self::Stop { at, .. } => at,
         }
     }
 }

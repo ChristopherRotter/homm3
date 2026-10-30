@@ -979,11 +979,18 @@ fn auto_combat_s_switch_and_stop_move_nothing_themselves() {
         &log,
         &starts,
         &[turn],
-        &[moved, Input::Auto { at: 100 }, Input::Stop { at: 150 }],
+        &[
+            moved,
+            Input::Auto { at: 100, turn: 0 },
+            Input::Stop { at: 150, turn: 0 },
+        ],
     );
     assert_eq!(with, run(&log, &starts, &[turn], &[moved]));
     assert_eq!(
-        [Input::Auto { at: 5 }.at(), Input::Stop { at: 6 }.at()],
+        [
+            Input::Auto { at: 5, turn: 0 }.at(),
+            Input::Stop { at: 6, turn: 0 }.at()
+        ],
         [5, 6]
     );
 }

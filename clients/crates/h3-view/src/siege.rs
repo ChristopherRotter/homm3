@@ -92,6 +92,14 @@ const MOAT_ROWS: [i32; 2] = [36, 42];
 const MOAT_HEXES: [u8; 11] = [11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181];
 /// The Fortress's second moat row (`moat_hexes_fortress` 0x63BCF4).
 const FORTRESS_MOAT_HEXES: [u8; 11] = [10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180];
+/// The gate row's moat hexes: the drawbridge's, then the outer bridge's (the second row's, in
+/// every town): while the gate is closed the drawbridge's blocks, and a stack or corpse on either
+/// keeps the defender from opening it (BAT-SIE-003, the engine's `siege::blocked_for`; E17 M5
+/// T8b2, R5c-6).
+pub const BRIDGES: [u8; 2] = [
+    MOAT_HEXES[GATE_ROW as usize],
+    FORTRESS_MOAT_HEXES[GATE_ROW as usize],
+];
 
 /// A turret: the keep, the lower tower or the upper tower (the manager's records +0x13D78,
 /// +0x13D9C, +0x13DC0).

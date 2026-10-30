@@ -16,6 +16,7 @@ use h3_protocol::wire::{Observation, Side, Stack, Tactics};
 
 use crate::battle_log::Logged;
 use crate::mouse::neighbour;
+use crate::siege::{BRIDGES, GATE_HEX};
 
 /// Hexes in a row (`hex mod 17` is the column).
 const COLUMNS: u8 = 17;
@@ -37,13 +38,16 @@ pub fn told(observation: &Observation) -> bool {
 
 /// Whether `hex` lies in the tactics phase's zone (`outside_tactics_zone` 0x4763F0, BAT-TAC-001):
 /// the phase's side's `columns` standable columns nearest its edge (the attacker's from column
-/// 1, the defender's up to column 15).
+/// 1, the defender's up to column 15; more columns than the field has, as a hostile server may
+/// send, the whole field: E17 M5 T8b2, R5c-2).
 #[must_use]
 pub fn in_zone(tactics: &Tactics, hex: u8) -> bool {
     let column = hex % COLUMNS;
     match tactics.side {
         Side::Attacker => (1..=tactics.columns).contains(&column),
-        Side::Defender => (COLUMNS - 1 - tactics.columns..COLUMNS - 1).contains(&column),
+        Side::Defender => {
+            ((COLUMNS - 1).saturating_sub(tactics.columns)..COLUMNS - 1).contains(&column)
+        }
     }
 }
 
@@ -149,10 +153,10 @@ pub fn shade_at(
     battle.map_or_else(BTreeSet::new, shade)
 }
 
-/// The field as the moving stack's search sees it: the hexes obstacles block and the other
-/// living stacks.
+/// The field as the moving stack's search sees it: the hexes obstacles and a town's walls block
+/// and the other living stacks.
 struct Field<'a> {
-    /// The hexes natural obstacles block.
+    /// The hexes natural obstacles and a siege's walls block.
     blocked: BTreeSet<u8>,
     /// The other living stacks.
     stacks: alloc::vec::Vec<&'a Stack>,
@@ -162,7 +166,7 @@ struct Field<'a> {
 
 impl<'a> Field<'a> {
     fn of(observation: &'a Observation, mover: &'a Stack) -> Self {
-        Self {
+        let mut field = Self {
             blocked: observation.obstacles.iter().copied().collect(),
             stacks: observation
                 .stacks
@@ -170,7 +174,26 @@ impl<'a> Field<'a> {
                 .filter(|s| s.alive && s.id != mover.id)
                 .collect(),
             mover,
+        };
+        // A siege (the engine runs the phase there too, BAT-TAC-002; E17 M5 T8b2, R5c-6): the
+        // standing walls block, and while the gate is closed its hex and the drawbridge's, unless
+        // the mover is the defender's, whose step opens it, with no stack or corpse on a bridge
+        // (BAT-SIE-002, BAT-SIE-003: the engine's `siege::blocked_for`).
+        if let Some(siege) = &observation.siege {
+            let on_bridge = observation
+                .stacks
+                .iter()
+                .any(|s| field.hexes(s, s.hex).iter().any(|h| BRIDGES.contains(h)));
+            let passes = mover.controller == Side::Defender && !on_bridge;
+            let gate = [GATE_HEX, BRIDGES[0]];
+            if siege.gate_open || passes {
+                let walls = siege.walls.iter().filter(|h| !gate.contains(h));
+                field.blocked.extend(walls);
+            } else {
+                field.blocked.extend(siege.walls.iter().chain(&gate[1..]));
+            }
         }
+        field
     }
 
     /// A stack's hexes standing at `hex`: the hex and, two hexes wide, its front hex towards its

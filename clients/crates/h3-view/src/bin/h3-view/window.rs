@@ -578,9 +578,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut inputs: Vec<Input> = Vec::new();
     let mut scrolls: Vec<(u32, i64)> = Vec::new();
     let mut held: Option<Held> = None;
-    // A battle's own key that stopped Auto Combat, and when (E17 M5 T4c1): it acts on the turn
-    // the stop comes at if a human's (0x474625).
-    let mut stopped_by: Option<(Do, u32)> = None;
+    // A battle's own key that stopped Auto Combat, and the turn the stop comes at (E17 M5 T4c1;
+    // its index, T8b2 R5c-4): it acts on that turn if a human's (0x474625).
+    let mut stopped_by: Option<(Do, usize)> = None;
     // Either Control key held (E24 M3 T1b: a chord's Ctrl+).
     let mut ctrl = [false; 2];
     let mut report = Report::default();
@@ -681,11 +681,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
         // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
         // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it.
-        if let Some((command, pressed)) = stopped_by
-            && let Some(start) = battle.turn_after(pressed)
+        if let Some((command, turn)) = stopped_by
+            && let Some(&(start, _)) = battle.timeline().turns.get(turn - 1)
         {
-            let last = battle.timeline().turns.last().map(|&(t, _)| t);
-            if battle.waiting() && last == Some(start) {
+            let last = battle.timeline().turns.len();
+            if battle.waiting() && last == turn {
                 stopped_by = None;
                 match command {
                     Do::LogUp | Do::LogDown => {
@@ -703,7 +703,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 mouse_changed = true;
-            } else if last > Some(start) {
+            } else if last > turn {
                 stopped_by = None;
             }
         }
@@ -723,9 +723,22 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             let at = clock.ms(now);
             match event {
                 Event::Quit => break 'run,
-                // Control held with a key makes another chord (E24 M3 T1b).
+                // Control held with a key makes another chord (E24 M3 T1b). Itself a key down, it
+                // stops Auto Combat as any key does (T8b2, R5c-5; design §7.22).
                 Event::Key(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
                     ctrl[usize::from(k == Key::RightCtrl)] = true;
+                    let context = Context::of(
+                        battle.result_open(),
+                        battle.message_open(),
+                        battle.book_open(),
+                        battle.aiming(),
+                    );
+                    if options.run.is_none()
+                        && context == Context::Battle
+                        && battle.stop_auto(at).is_some()
+                    {
+                        mouse_changed = true;
+                    }
                 }
                 Event::KeyUp(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
                     ctrl[usize::from(k == Key::RightCtrl)] = false;
@@ -760,11 +773,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     // nothing else (E17 M5 T4c1, 0x4741F9); the window's own keys stay its own.
                     if context == Context::Battle
                         && !matches!(command, Some(Do::Window(_)))
-                        && battle.stop_auto(at, &mut inputs)
+                        && let Some(turn) = battle.stop_auto(at)
                     {
                         stopped_by = command
                             .filter(|c| matches!(c, Do::LogUp | Do::LogDown | Do::DragonSpell))
-                            .map(|c| (c, at));
+                            .map(|c| (c, turn));
                         mouse_changed = true;
                         continue;
                     }
@@ -812,7 +825,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                                     clock.seek(now, options.from);
                                     // The inputs and scrolls after it are gone (design
                                     // §9.10; E17 M3 T9b, the reviewer: they played again at
-                                    // their times).
+                                    // their times); Auto Combat's switches and stops stay the
+                                    // battle's, and a key that stopped it still acts on the
+                                    // turn it stops at (T8b2, R5c-4).
                                     inputs.retain(|i| i.at() <= options.from);
                                     scrolls.retain(|&(t, _)| t <= options.from);
                                     mouse_changed = true;
@@ -933,7 +948,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         }
                         // A switches Auto Combat on (E17 M5 T4c1).
                         if h.id == h3_view::panel::AUTO_COMBAT {
-                            grew |= battle.switch_auto(at, &mut inputs)?;
+                            grew |= battle.switch_auto(at)?;
                         }
                         // C opens the spell book (E17 M5 T3a).
                         if h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
@@ -1008,7 +1023,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 // A press while Auto Combat plays stops it as the next turn starts and does
                 // nothing else (E17 M5 T4c1).
-                Event::Click { down: true, .. } if battle.stop_auto(at, &mut inputs) => {
+                Event::Click { down: true, .. } if battle.stop_auto(at).is_some() => {
                     mouse_changed = true;
                 }
                 // A press made while a battle fought here takes no input is dropped, its release
@@ -1043,7 +1058,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         }
                         // Auto Combat switches on (E17 M5 T4c1).
                         if h.over && h.id == h3_view::panel::AUTO_COMBAT {
-                            grew |= battle.switch_auto(at, &mut inputs)?;
+                            grew |= battle.switch_auto(at)?;
                         }
                         // The spell book opens as its button is released over it (E17 M5 T3a).
                         if h.over && h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
@@ -1399,7 +1414,7 @@ impl Presser {
         // Auto Combat stopped by a press two commands after it was switched on (E17 M5 T4c1).
         if let Some((on, None)) = self.switched
             && battle.commands() >= on + 2
-            && battle.stop_auto(now, inputs)
+            && battle.stop_auto(now).is_some()
         {
             self.switched = Some((on, Some(battle.commands())));
             return Ok(true);
@@ -1423,7 +1438,7 @@ impl Presser {
                 inputs.retain(|i| i.at() <= now);
                 inputs.push(Input::Move { at: now, to });
             }
-            if battle.switch_auto(now, inputs)? {
+            if battle.switch_auto(now)? {
                 self.switched = Some((commands, None));
                 self.buttons += 1;
                 return Ok(true);

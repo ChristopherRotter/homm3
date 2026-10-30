@@ -27,7 +27,7 @@ use h3_view::anim::Timeline;
 use h3_view::anim::{
     self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed, Stage,
 };
-use h3_view::auto::Auto;
+use h3_view::auto::{Auto, turn_at};
 use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
@@ -530,6 +530,10 @@ pub struct Battle<'g> {
     /// start of `shown`'s.
     follower: crate::pointer::Follower<'g>,
     inputs: Vec<Input>,
+    /// Auto Combat's switches and stops the battle took (E17 M5 T4c1; T8b2, R5c-3 and R5c-4:
+    /// apart from the window's inputs, so a seek back or Restart keeps them and a turn's Auto
+    /// Combat costs the turns only).
+    switches: Vec<Input>,
     /// The log scrolled (each at a time, by entries).
     scrolls: Vec<(u32, i64)>,
     /// The panel's button pressed (the mouse's or a hotkey's).
@@ -767,6 +771,7 @@ impl<'g> Battle<'g> {
             shown: Shown::default(),
             follower: crate::pointer::Follower::default(),
             inputs: Vec::new(),
+            switches: Vec::new(),
             scrolls: Vec::new(),
             pressed: None,
             book: None,
@@ -900,18 +905,12 @@ impl<'g> Battle<'g> {
         if next {
             starts.push(u32::MAX);
         }
-        Auto::of(&self.inputs, &starts).from_start(starts.len() - 1)
+        Auto::of(&self.switches, &starts).from_start(starts.len() - 1)
     }
 
-    /// When the first turn started after `at` starts (E17 M5 T4c1: the one a stop pressed at `at`
-    /// comes at), if the battle grew that far.
-    pub fn turn_after(&self, at: u32) -> Option<u32> {
-        self.played
-            .timeline()
-            .turns
-            .iter()
-            .map(|&(t, _)| t)
-            .find(|&t| t > at)
+    /// Auto Combat over the battle's turns as played so far (E17 M5 T4c1).
+    fn auto(&self) -> Auto {
+        crate::pointer::auto(&self.switches, self.played.timeline())
     }
 
     /// Whether Auto Combat is on for the turns to come (E17 M5 T4c1): a key or a button pressed
@@ -922,35 +921,43 @@ impl<'g> Battle<'g> {
 
     /// Auto Combat's button clicked (or its key released) at `at` (E17 M5 T4c1, design §7.22):
     /// on a human's turn waiting for its command, the button enabled (not both sides human,
-    /// 0x46BB40), it switches on, the bot playing the turn from then; the switch joins `inputs`
-    /// (the window's). Whether it did.
-    pub fn switch_auto(&mut self, at: u32, inputs: &mut Vec<Input>) -> Result<bool, String> {
-        let both = self
-            .turned
-            .last()
-            .is_some_and(|t| t.observation.sides.iter().all(|s| s.human));
-        // Not on a server (E17 M5 T6b1, *provisional*: the M5 review list).
-        if !matches!(self.fight, Some(Fight::Here(_))) || both || !self.takes(at) {
+    /// 0x46BB40), it switches on, the bot playing the turn from then; the switch joins the
+    /// battle's, in the turn waiting (T8b2, R5c-1: the bot's command may take no time, the next
+    /// turn starting at `at` too). Whether it did.
+    pub fn switch_auto(&mut self, at: u32) -> Result<bool, String> {
+        if !self.takes_auto() || !self.takes(at) {
             return Ok(false);
         }
-        inputs.retain(|i| i.at() <= at);
-        inputs.push(Input::Auto { at });
-        self.inputs.clone_from(inputs);
+        let turn = self.played.timeline().turns.len();
+        self.switches.push(Input::Auto { at, turn });
         let choice = self.choice().ok_or("no command for the turn waiting")?;
         self.command(at, choice)
     }
 
+    /// Whether the battle takes Auto Combat's switch at all: fought here (not on a server, E17 M5
+    /// T6b1, *provisional*: the M5 review list), not both sides human (0x46BB40). Its button is
+    /// drawn disabled otherwise (T8b2, R5c-7).
+    fn takes_auto(&self) -> bool {
+        let both = self
+            .turned
+            .last()
+            .is_some_and(|t| t.observation.sides.iter().all(|s| s.human));
+        matches!(self.fight, Some(Fight::Here(_))) && !both
+    }
+
     /// A key or a mouse button pressed at `at` while Auto Combat is on (E17 M5 T4c1): it stops as
-    /// the next turn starts, the press doing nothing else; the stop joins `inputs`. Whether it
-    /// did (nothing while it is off).
-    pub fn stop_auto(&mut self, at: u32, inputs: &mut Vec<Input>) -> bool {
+    /// the next turn starts, the press doing nothing else; the stop joins the battle's. The
+    /// index of the turn it stops at (none while it is off): the one after the turn started last
+    /// by `at`, but never one the bot already played (T8b2, R5c-4: a press while Restart replays
+    /// the battle stops it at its next turn to come).
+    pub fn stop_auto(&mut self, at: u32) -> Option<usize> {
         if !self.auto_on() {
-            return false;
+            return None;
         }
-        inputs.retain(|i| i.at() <= at);
-        inputs.push(Input::Stop { at });
-        self.inputs.clone_from(inputs);
-        true
+        let turns = &self.played.timeline().turns;
+        let turn = turn_at(turns, at).max(turns.len().saturating_sub(1));
+        self.switches.push(Input::Stop { at, turn });
+        Some(turn + 1)
     }
 
     /// A human's `command`, pressed at `at` while the battle waits for it (E17 M5 T2b): sent
@@ -1323,7 +1330,7 @@ impl<'g> Battle<'g> {
         };
         let inputs = inputs.unwrap_or(&self.inputs);
         let words = (&ground.layout, &name as _, Bugs::Fixed);
-        self.follower.shown(timeline, inputs, words)
+        (self.follower).shown(timeline, (inputs, &self.switches), words)
     }
 
     /// The mouse, the timeline shown and the panel after the battle grew (or as it starts): the
@@ -1395,8 +1402,22 @@ impl<'g> Battle<'g> {
     }
 
     /// The panel over the record so far, its log through the mouse's hints and the scrolls once
-    /// the mouse moved (else the timeline's own).
+    /// the mouse moved (else the timeline's own), Auto Combat as the window switched it (E17 M5
+    /// T4c1), its button disabled on a server's seat (T8b2, R5c-7: the window takes no switch
+    /// there, review item 55, as the original's when both players are human).
     fn panel(&self) -> Result<Panels, String> {
+        let mut panels = self.logged_panel()?;
+        if let Some(snapshot) = self.record.first_snapshot() {
+            panels = panels.with_auto(snapshot, self.auto());
+        }
+        if matches!(self.fight, Some(Fight::Server(_))) {
+            panels = panels.without_switch();
+        }
+        Ok(panels)
+    }
+
+    /// [`Battle::panel`] but Auto Combat.
+    fn logged_panel(&self) -> Result<Panels, String> {
         let ground = self.ground;
         let Some(writer) = &ground.writer else {
             let parsed = parse(&ground.archives)?;
@@ -1420,15 +1441,7 @@ impl<'g> Battle<'g> {
             let i = logged.partition_point(|(t, _)| *t <= at);
             logged.insert(i, (at, Logged::Scroll(by)));
         }
-        // Auto Combat as the window switched it (E17 M5 T4c1).
-        let snapshot = self
-            .record
-            .first_snapshot()
-            .ok_or("the record holds no snapshot")?;
-        let auto = crate::pointer::auto(&self.inputs, self.played.timeline());
-        Ok(writer
-            .panels(&self.record, (&logged, &self.played.timeline().controllers))?
-            .with_auto(snapshot, auto))
+        writer.panels(&self.record, (&logged, &self.played.timeline().controllers))
     }
 
     /// The cursor at `t`: the spell book's once it set one (E17 M5 T3a), else the combat cursor's
@@ -2062,7 +2075,7 @@ impl<'g> Battle<'g> {
         .map_err(|e| format!("{t} ms: {e}"))?;
         let text = self.panels.text(t);
         if self.opening {
-            list.extend(Panels::before(snapshot, layout));
+            list.extend(self.panels.before(snapshot, layout));
         } else {
             list.extend(self.panels.at_pressed(
                 snapshot,

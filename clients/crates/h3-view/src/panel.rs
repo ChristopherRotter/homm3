@@ -170,6 +170,9 @@ pub struct Autoplay {
     pub plays: bool,
     /// Its button is selected from the human players' last turn.
     pub selected: bool,
+    /// The window takes no switch (E17 M5 T8b2, R5c-7: a seat on a server, *provisional*): its
+    /// button disabled, as when both players are human (0x46BB40).
+    pub off: bool,
 }
 
 /// What the panel shows when the stacks of `side` (the active stack's controller; none before a
@@ -194,7 +197,7 @@ pub fn shown(
     let mut states = BTreeMap::new();
     // As built (0x46BB40, 0x46BE64): Auto Combat disabled when both sides are human, the scroll
     // buttons disabled until a human's turn enables them; Auto Combat selected as kept.
-    let both = human(Side::Attacker) && human(Side::Defender);
+    let both = (human(Side::Attacker) && human(Side::Defender)) || auto.off;
     let auto_button = |disabled: bool| State {
         disabled,
         selected: auto.selected,
