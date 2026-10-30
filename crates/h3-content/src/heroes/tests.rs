@@ -9,8 +9,9 @@ use crate::pack::{
     HeroClassDef, HeroParamsDef, HeroTypeDef, ProfileDef, SecondarySkillDef, SpellDef,
     SpellSchoolDef, StartingStackDef,
 };
+use crate::ruleset::ResourceId;
 use crate::ruleset::Ruleset;
-use crate::ruleset::tests::{creature, faction, key, manifest};
+use crate::ruleset::tests::{creature, faction, key, manifest, resource};
 
 fn school(k: &str) -> SpellSchoolDef {
     SpellSchoolDef {
@@ -898,6 +899,44 @@ fn with_params(def: HeroParamsDef) -> ContentPack {
     let mut p = pack();
     p.hero_params = Some(def);
     p
+}
+
+#[test]
+fn a_daily_resource_names_a_resource_of_the_closure() {
+    // E08 T81b: a `daily_resource` effect's resource resolves like a cost's (pack format v50).
+    let mut p = pack();
+    p.resources = vec![resource("t:gold")];
+    p.skills.push(skill(
+        "t:estates",
+        [125, 250, 500].map(|amount| {
+            vec![HeroEffect::DailyResource {
+                resource: key("t:gold"),
+                amount,
+            }]
+        }),
+    ));
+    let r = compile(std::slice::from_ref(&p)).unwrap();
+    let estates = r.skill(r.skill_by_key("t:estates").unwrap()).unwrap();
+    assert_eq!(
+        estates.levels[2],
+        [HeroEffect::DailyResource {
+            resource: ResourceId::from_raw(0),
+            amount: 500
+        }]
+    );
+    if let Some(s) = p.skills.last_mut() {
+        s.levels[0] = vec![HeroEffect::DailyResource {
+            resource: key("t:mud"),
+            amount: 1,
+        }];
+    }
+    assert_eq!(
+        fails(p),
+        CompileError::UnknownReference {
+            kind: "resource",
+            key: "t:mud".into()
+        }
+    );
 }
 
 #[test]
