@@ -127,6 +127,12 @@ HERO_OBJECT, BOAT_OBJECT, ENTRANCE = 34, 8, 0x10
 # keeps the class and word of the object under it (i32 +0xC, +0x14; hero_hide).
 MINES, MINE_RECORD, MINE_GUARDS, MINE_ENTRANCE, LIGHTHOUSE = 0x4E38C, 0x40, 0x4, 0x3C, 100
 HERO_UNDER_CLASS, HERO_UNDER_WORD = 0xC, 0x14
+# A player's day's income (E08 T79b, batch E9b; survey E08-economy §8.1, structs.toml
+# "player_record"): seven i32 at +0x108, wood to gold, computed at each day's start
+# (player_daily_income 0x4B8AF0) and kept until the next; its Mystical Gardens' mask (u32 +0xB8,
+# a bit per Garden by the index in its word's bits 0-4, §9.3). A wandering monster's word keeps
+# the sixteenths of its count in bits 27-30 (§10.1; the count in bits 0-11).
+PLAYER_INCOME, PLAYER_GARDENS, SIXTEENTHS_SHIFT = 0x108, 0xB8, 27
 # The map hint's visit marks (E24 M3 T6a2a; E24 design §4.11, structs.toml): per class the kind
 # whose bit of the viewing player in the game's kinds_visited (u8[28] +0x4E344) shows its bonus
 # ("word": the object's word's bit 5 + the shown player, 0x69778C; None no bonus) and its mark's
@@ -679,6 +685,9 @@ class Mem:
             "selected": struct.unpack_from("<i", raw, 0x4)[0],
             "heroes": list(struct.unpack_from(f"<{count}i", raw, 0x8)),
             "resources": dict(zip(RESOURCES, struct.unpack_from("<7i", raw, 0x9C))),
+            # E08 T79b (batch E9b): the day's income and the Mystical Gardens' mask.
+            "income": dict(zip(RESOURCES, struct.unpack_from("<7i", raw, PLAYER_INCOME))),
+            "gardens": struct.unpack_from("<I", raw, PLAYER_GARDENS)[0],
         }
 
     def hero(self, index):
@@ -1890,7 +1899,8 @@ class Mem:
 
     def monster(self, x, y, z=0):
         """The wandering monster on a tile from its word (E17 H1; E3-3), None for none: its
-        creature, count, aggression (-4 to 10, signed 5 bits), never flees and does not grow."""
+        creature, count, aggression (-4 to 10, signed 5 bits), never flees and does not grow;
+        since E08 T79b the sixteenths of its count (bits 27-30, batch E9b's growth) and the word."""
         t = self.tile(x, y, z)
         if t["class"] != MONSTER_CLASS:
             return None
@@ -1898,7 +1908,8 @@ class Mem:
         aggression = (word >> 12) & 0x1F
         return {"creature": t["subclass"], "count": word & 0xFFF,
                 "aggression": aggression - 32 * (aggression >= 16),
-                "never_flees": bool(word >> 17 & 1), "fixed_count": bool(word >> 18 & 1)}
+                "never_flees": bool(word >> 17 & 1), "fixed_count": bool(word >> 18 & 1),
+                "sixteenths": word >> SIXTEENTHS_SHIFT & 0xF, "word": word}
 
     def creature_name(self, creature, count=1):
         """A creature's name from the game's creature table, plural unless count is 1."""

@@ -1,0 +1,544 @@
+# E08 batch E9b played by the capture harness (E08 T79b; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-9b.toml as steps, on Easy, with T79b's reads (README, "Mines,
+# Lighthouses and Shipyards", "The day's start"). Hot seat, Red and Blue human, the starting bonus
+# Gold, in the spec's order: day 1, Red: E9-6's reads, E9-9's first reads, Red's treasury, E9-12,
+# E9-8, the treasury; Blue: the messages and gold (E9-11), E9-11's visits (E9-8). Day 2, Red: the
+# treasury and income, E9-12, E9-8 again, the treasury; Blue: the messages and gold. Days 3 to 7:
+# Red's treasury (E9-12 on day 3), Blue's messages and gold until day 6. Day 8, Red: the treasury
+# and income, E9-9's reads, the six words, E9-8, the treasury. Day 9, Red: the treasury, Ivor's
+# visits, the treasury. Days 10 to 14 ended. Day 15, Red: E9-9's reads.
+#
+# Red's reads are E9-7's (it never moves), Blue's E9-11's or E9-9's. A table's second row of a
+# day is `<day>#2` (h3adv.fill); an end-turn step records the new turn's messages.
+
+spec = "experiments/specs/E08-batch-9b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Day 1, Red: the reads before any hero moves ----------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "(63, 11)" = "explored:63,11:red", "(63, 12)" = "explored:63,12:red", "(65, 10)" = "explored:65,10:red", "(66, 10)" = "explored:66,10:red", "(60, 8)" = "explored:60,8:red", "(59, 8)" = "explored:59,8:red", "(63, 23)" = "explored:63,23:red", "(63, 24)" = "explored:63,24:red", "G's and O's records (owner, resource)" = ["mine:63,8", "mine:63,20"], "+the date's words at days 1, 8 and 9" = "date", "1 | when" = "text:start", "1 | wood" = "resource:wood:red", "1 | mercury" = "resource:mercury:red", "1 | ore" = "resource:ore:red", "1 | sulfur" = "resource:sulfur:red", "1 | crystal" = "resource:crystal:red", "1 | gems" = "resource:gems:red", "1 | gold" = "resource:gold:red" }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "the game's version" = "map_kind", "Red's income at day 1 (+0x108)" = "income:red", "Red's Garden mask at day 1" = "gardens:red" }
+
+[[step]]
+encounter = "E9-9"
+hero = "E9-7"
+record = { "43 Pikemen (44, 58) | day 1" = "growth:44,58", "81 Archers (48, 58) | day 1" = "growth:48,58", "15 Griffins (52, 58) | day 1" = "growth:52,58", "43 Pikemen, no growth (56, 58) | day 1" = "growth:56,58", "4 095 Troglodytes (60, 58) | day 1" = "growth:60,58" }
+note = { "the monsters' words at day 1 (count, aggression)" = ["monster:44,58", "monster:48,58", "monster:52,58", "monster:56,58", "monster:60,58"] }
+
+# --- Day 1, Red: E9-12, each hero steps onto its event ----------------------------------------
+
+[[step]]
+encounter = "E9-12"
+hero = "E9-12"
+walk = [5, 16]
+expect = { dialogs = true }
+record = { "E9-12 | day 1 after the event" = "hero:spell_points" }
+note = { "E9-12, day 1: the points before; the messages" = ["before:hero:spell_points", "messages"] }
+
+[[step]]
+encounter = "E9-12"
+hero = "Uland"
+walk = [9, 16]
+expect = { dialogs = true }
+record = { "Uland | day 1 after the event" = "hero:spell_points" }
+note = { "Uland, day 1: the points before; the messages" = ["before:hero:spell_points", "messages"] }
+
+[[step]]
+encounter = "E9-12"
+hero = "Melodia"
+walk = [13, 16]
+expect = { dialogs = true }
+record = { "Melodia | day 1 after the event" = "hero:spell_points" }
+note = { "Melodia, day 1: the points before; the messages" = ["before:hero:spell_points", "messages"] }
+
+# --- Day 1, Red: E9-8 visits the first set ----------------------------------------------------
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+record = { "W1 | word at day 1's start" = ["word:10,40", "object:10,40"], "H1 | word at day 1's start" = ["word:14,40", "object:14,40"], "M1 | word at day 1's start" = ["word:17,40", "object:17,40"], "W2 | word at day 1's start" = ["word:5,8", "object:5,8"], "H2 | word at day 1's start" = ["word:10,8", "object:10,8"], "M2 | word at day 1's start" = ["word:13,8", "object:13,8"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [10, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [10, 40]
+expect = { dialogs = true }
+record = { "1 | visitor" = "text:E9-8 (Red)", "1 | object" = "text:W1 (10, 40)", "1 | message" = "messages", "1 | gain" = "gain", "1 | word after" = ["word:10,40", "object:10,40"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [13, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [14, 40]
+expect = { dialogs = true }
+record = { "1#2 | visitor" = "text:E9-8 (Red)", "1#2 | object" = "text:H1 (14, 40)", "1#2 | message" = "messages", "1#2 | gain" = "gain", "1#2 | word after" = ["word:14,40", "object:14,40"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [16, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [17, 40]
+expect = { dialogs = true }
+record = { "1#3 | visitor" = "text:E9-8 (Red)", "1#3 | object" = "text:M1 (17, 40)", "1#3 | message" = "messages", "1#3 | gain" = "gain", "1#3 | word after" = ["word:17,40", "object:17,40"] }
+note = { "M1's visit by E9-8 (1): Red's Garden mask before; after" = ["before:gardens", "gardens"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [19, 42]
+
+# --- Day 1, Red's treasury; Blue's turn -------------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "1#2 | when" = "text:end", "1#2 | wood" = "resource:wood:red", "1#2 | mercury" = "resource:mercury:red", "1#2 | ore" = "resource:ore:red", "1#2 | sulfur" = "resource:sulfur:red", "1#2 | crystal" = "resource:crystal:red", "1#2 | gems" = "resource:gems:red", "1#2 | gold" = "resource:gold:red" }
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+record = { "1 | messages" = ["messages", "message_pictures"] }
+
+[[step]]
+encounter = "E9-11"
+hero = "E9-11"
+record = { "1 | gold at the turn's start" = "resource:gold:blue" }
+note = { "Blue, day 1: the date; its treasury" = ["date", "treasury:blue"] }
+
+# --- Day 1, Blue: E9-11 visits the first set after Red ----------------------------------------
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-11"
+walk = [10, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-11"
+walk = [10, 40]
+expect = { dialogs = true }
+record = { "1#4 | visitor" = "text:E9-11 (Blue)", "1#4 | object" = "text:W1 (10, 40)", "1#4 | message" = "messages", "1#4 | gain" = "gain", "1#4 | word after" = ["word:10,40", "object:10,40"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-11"
+walk = [13, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-11"
+walk = [14, 40]
+expect = { dialogs = true }
+record = { "1#5 | visitor" = "text:E9-11 (Blue)", "1#5 | object" = "text:H1 (14, 40)", "1#5 | message" = "messages", "1#5 | gain" = "gain", "1#5 | word after" = ["word:14,40", "object:14,40"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-11"
+walk = [16, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-11"
+walk = [17, 40]
+expect = { dialogs = true }
+record = { "1#6 | visitor" = "text:E9-11 (Blue)", "1#6 | object" = "text:M1 (17, 40)", "1#6 | message" = "messages", "1#6 | gain" = "gain", "1#6 | word after" = ["word:17,40", "object:17,40"] }
+note = { "M1's visit by E9-11 (1): Blue's Garden mask before; after" = ["before:gardens", "gardens"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-11"
+walk = [18, 43]
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 2's start: the messages" = "messages" }
+
+# --- Day 2, Red -------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "2 | when" = "text:start", "2 | wood" = "resource:wood:red", "2 | mercury" = "resource:mercury:red", "2 | ore" = "resource:ore:red", "2 | sulfur" = "resource:sulfur:red", "2 | crystal" = "resource:crystal:red", "2 | gems" = "resource:gems:red", "2 | gold" = "resource:gold:red", "Red's income (+0x108) on day 2" = "income:red" }
+note = { "Red, day 2: the date; G's and O's records" = ["date", "mine:63,8", "mine:63,20"] }
+
+[[step]]
+encounter = "E9-12"
+hero = "E9-7"
+record = { "E9-12 | day 2" = "hero[E9-12]:spell_points", "Uland | day 2" = "hero[Uland]:spell_points", "Melodia | day 2" = "hero[Melodia]:spell_points" }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [16, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [17, 40]
+expect = { dialogs = true }
+record = { "2 | visitor" = "text:E9-8 (Red)", "2 | object" = "text:M1 (17, 40)", "2 | message" = "messages", "2 | gain" = "gain", "2 | word after" = ["word:17,40", "object:17,40"] }
+note = { "M1's visit by E9-8 (2): Red's Garden mask before; after" = ["before:gardens", "gardens"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [15, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [14, 40]
+expect = { dialogs = true }
+record = { "2#2 | visitor" = "text:E9-8 (Red)", "2#2 | object" = "text:H1 (14, 40)", "2#2 | message" = "messages", "2#2 | gain" = "gain", "2#2 | word after" = ["word:14,40", "object:14,40"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [11, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [10, 40]
+expect = { dialogs = true }
+record = { "2#3 | visitor" = "text:E9-8 (Red)", "2#3 | object" = "text:W1 (10, 40)", "2#3 | message" = "messages", "2#3 | gain" = "gain", "2#3 | word after" = ["word:10,40", "object:10,40"] }
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "2#2 | when" = "text:end", "2#2 | wood" = "resource:wood:red", "2#2 | mercury" = "resource:mercury:red", "2#2 | ore" = "resource:ore:red", "2#2 | sulfur" = "resource:sulfur:red", "2#2 | crystal" = "resource:crystal:red", "2#2 | gems" = "resource:gems:red", "2#2 | gold" = "resource:gold:red" }
+note = { "day 2's end, E9-7 selected: E9-8's tile; W1's tile and W1 (through E9-8's record)" = ["hero[E9-8]:tile", "tile:10,40", "object:10,40"] }
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+record = { "2 | messages" = ["messages", "message_pictures"] }
+
+[[step]]
+encounter = "E9-11"
+hero = "E9-11"
+record = { "2 | gold at the turn's start" = "resource:gold:blue" }
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 3's start: the messages" = "messages" }
+
+# --- Day 3, Red: the treasury, E9-12 ----------------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "3 | when" = "text:start", "3 | wood" = "resource:wood:red", "3 | mercury" = "resource:mercury:red", "3 | ore" = "resource:ore:red", "3 | sulfur" = "resource:sulfur:red", "3 | crystal" = "resource:crystal:red", "3 | gems" = "resource:gems:red", "3 | gold" = "resource:gold:red", "3#2 | when" = "text:end", "3#2 | wood" = "resource:wood:red", "3#2 | mercury" = "resource:mercury:red", "3#2 | ore" = "resource:ore:red", "3#2 | sulfur" = "resource:sulfur:red", "3#2 | crystal" = "resource:crystal:red", "3#2 | gems" = "resource:gems:red", "3#2 | gold" = "resource:gold:red" }
+note = { "Red, day 3: the date" = "date" }
+
+[[step]]
+encounter = "E9-12"
+hero = "E9-7"
+record = { "E9-12 | day 3" = "hero[E9-12]:spell_points", "Uland | day 3" = "hero[Uland]:spell_points", "Melodia | day 3" = "hero[Melodia]:spell_points" }
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+record = { "3 | messages" = ["messages", "message_pictures"] }
+
+[[step]]
+encounter = "E9-11"
+hero = "E9-11"
+record = { "3 | gold at the turn's start" = "resource:gold:blue" }
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 4's start: the messages" = ["messages", "message_pictures"] }
+
+# --- Day 4: the treasuries --------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "4 | when" = "text:start", "4 | wood" = "resource:wood:red", "4 | mercury" = "resource:mercury:red", "4 | ore" = "resource:ore:red", "4 | sulfur" = "resource:sulfur:red", "4 | crystal" = "resource:crystal:red", "4 | gems" = "resource:gems:red", "4 | gold" = "resource:gold:red", "4#2 | when" = "text:end", "4#2 | wood" = "resource:wood:red", "4#2 | mercury" = "resource:mercury:red", "4#2 | ore" = "resource:ore:red", "4#2 | sulfur" = "resource:sulfur:red", "4#2 | crystal" = "resource:crystal:red", "4#2 | gems" = "resource:gems:red", "4#2 | gold" = "resource:gold:red" }
+note = { "Red, day 4: the date" = "date" }
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+record = { "4 | messages" = ["messages", "message_pictures"] }
+
+[[step]]
+encounter = "E9-11"
+hero = "E9-11"
+record = { "4 | gold at the turn's start" = "resource:gold:blue" }
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 5's start: the messages" = ["messages", "message_pictures"] }
+
+# --- Day 5: the treasuries --------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "5 | when" = "text:start", "5 | wood" = "resource:wood:red", "5 | mercury" = "resource:mercury:red", "5 | ore" = "resource:ore:red", "5 | sulfur" = "resource:sulfur:red", "5 | crystal" = "resource:crystal:red", "5 | gems" = "resource:gems:red", "5 | gold" = "resource:gold:red", "5#2 | when" = "text:end", "5#2 | wood" = "resource:wood:red", "5#2 | mercury" = "resource:mercury:red", "5#2 | ore" = "resource:ore:red", "5#2 | sulfur" = "resource:sulfur:red", "5#2 | crystal" = "resource:crystal:red", "5#2 | gems" = "resource:gems:red", "5#2 | gold" = "resource:gold:red" }
+note = { "Red, day 5: the date" = "date" }
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+record = { "5 | messages" = ["messages", "message_pictures"] }
+
+[[step]]
+encounter = "E9-11"
+hero = "E9-11"
+record = { "5 | gold at the turn's start" = "resource:gold:blue" }
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 6's start: the messages" = ["messages", "message_pictures"] }
+
+# --- Day 6: the treasuries --------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "6 | when" = "text:start", "6 | wood" = "resource:wood:red", "6 | mercury" = "resource:mercury:red", "6 | ore" = "resource:ore:red", "6 | sulfur" = "resource:sulfur:red", "6 | crystal" = "resource:crystal:red", "6 | gems" = "resource:gems:red", "6 | gold" = "resource:gold:red", "6#2 | when" = "text:end", "6#2 | wood" = "resource:wood:red", "6#2 | mercury" = "resource:mercury:red", "6#2 | ore" = "resource:ore:red", "6#2 | sulfur" = "resource:sulfur:red", "6#2 | crystal" = "resource:crystal:red", "6#2 | gems" = "resource:gems:red", "6#2 | gold" = "resource:gold:red" }
+note = { "Red, day 6: the date" = "date" }
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+record = { "6 | messages" = ["messages", "message_pictures"] }
+
+[[step]]
+encounter = "E9-11"
+hero = "E9-11"
+record = { "6 | gold at the turn's start" = "resource:gold:blue" }
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 7's start: the messages" = ["messages", "message_pictures"] }
+
+# --- Day 7: the treasuries --------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "7 | when" = "text:start", "7 | wood" = "resource:wood:red", "7 | mercury" = "resource:mercury:red", "7 | ore" = "resource:ore:red", "7 | sulfur" = "resource:sulfur:red", "7 | crystal" = "resource:crystal:red", "7 | gems" = "resource:gems:red", "7 | gold" = "resource:gold:red", "7#2 | when" = "text:end", "7#2 | wood" = "resource:wood:red", "7#2 | mercury" = "resource:mercury:red", "7#2 | ore" = "resource:ore:red", "7#2 | sulfur" = "resource:sulfur:red", "7#2 | crystal" = "resource:crystal:red", "7#2 | gems" = "resource:gems:red", "7#2 | gold" = "resource:gold:red" }
+note = { "Red, day 7: the date" = "date" }
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+note = { "Blue, day 7's start: the messages; its gold" = ["messages", "resource:gold:blue"] }
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 8's start: the messages" = ["messages", "message_pictures"] }
+
+# --- Day 8, Red: the week's start -------------------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "8 | when" = "text:start", "8 | wood" = "resource:wood:red", "8 | mercury" = "resource:mercury:red", "8 | ore" = "resource:ore:red", "8 | sulfur" = "resource:sulfur:red", "8 | crystal" = "resource:crystal:red", "8 | gems" = "resource:gems:red", "8 | gold" = "resource:gold:red", "Red's income (+0x108) on day 8" = "income:red", "+the date's words at days 1, 8 and 9" = "date" }
+note = { "day 8's start, E9-7 selected: W1's tile and W1 (through E9-8's record)" = ["tile:10,40", "object:10,40"] }
+
+[[step]]
+encounter = "E9-9"
+hero = "E9-7"
+record = { "43 Pikemen (44, 58) | day 8" = "growth:44,58", "81 Archers (48, 58) | day 8" = "growth:48,58", "15 Griffins (52, 58) | day 8" = "growth:52,58", "43 Pikemen, no growth (56, 58) | day 8" = "growth:56,58", "4 095 Troglodytes (60, 58) | day 8" = "growth:60,58" }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+record = { "W1 | word at day 8's start" = ["word:10,40", "object:10,40"], "H1 | word at day 8's start" = ["word:14,40", "object:14,40"], "M1 | word at day 8's start" = ["word:17,40", "object:17,40"], "W2 | word at day 8's start" = ["word:5,8", "object:5,8"], "H2 | word at day 8's start" = ["word:10,8", "object:10,8"], "M2 | word at day 8's start" = ["word:13,8", "object:13,8"] }
+note = { "day 8's start: E9-8's tile (on W1's entrance); W1's tile" = ["hero:tile", "tile:10,40"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [10, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [10, 40]
+expect = { dialogs = true }
+record = { "8 | visitor" = "text:E9-8 (Red)", "8 | object" = "text:W1 (10, 40)", "8 | message" = "messages", "8 | gain" = "gain", "8 | word after" = ["word:10,40", "object:10,40"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [13, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [14, 40]
+expect = { dialogs = true }
+record = { "8#2 | visitor" = "text:E9-8 (Red)", "8#2 | object" = "text:H1 (14, 40)", "8#2 | message" = "messages", "8#2 | gain" = "gain", "8#2 | word after" = ["word:14,40", "object:14,40"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [16, 41]
+
+[[step]]
+encounter = "E9-8"
+hero = "E9-8"
+walk = [17, 40]
+expect = { dialogs = true }
+record = { "8#3 | visitor" = "text:E9-8 (Red)", "8#3 | object" = "text:M1 (17, 40)", "8#3 | message" = "messages", "8#3 | gain" = "gain", "8#3 | word after" = ["word:17,40", "object:17,40"] }
+note = { "M1's visit by E9-8 (8): Red's Garden mask before; after" = ["before:gardens", "gardens"] }
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "8#2 | when" = "text:end", "8#2 | wood" = "resource:wood:red", "8#2 | mercury" = "resource:mercury:red", "8#2 | ore" = "resource:ore:red", "8#2 | sulfur" = "resource:sulfur:red", "8#2 | crystal" = "resource:crystal:red", "8#2 | gems" = "resource:gems:red", "8#2 | gold" = "resource:gold:red" }
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+note = { "Blue, day 8's start: the messages; its gold" = ["messages", "resource:gold:blue"] }
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 9's start: the messages" = ["messages", "message_pictures"] }
+
+# --- Day 9, Red: Ivor visits the second set ---------------------------------------------------
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "9 | when" = "text:start", "9 | wood" = "resource:wood:red", "9 | mercury" = "resource:mercury:red", "9 | ore" = "resource:ore:red", "9 | sulfur" = "resource:sulfur:red", "9 | crystal" = "resource:crystal:red", "9 | gems" = "resource:gems:red", "9 | gold" = "resource:gold:red", "+the date's words at days 1, 8 and 9" = "date" }
+
+[[step]]
+encounter = "E9-8"
+hero = "Ivor"
+note = { "day 9, before Ivor's visits: W2's, H2's and M2's words" = ["word:5,8", "object:5,8", "word:10,8", "object:10,8", "word:13,8", "object:13,8"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "Ivor"
+walk = [5, 9]
+
+[[step]]
+encounter = "E9-8"
+hero = "Ivor"
+walk = [5, 8]
+expect = { dialogs = true }
+record = { "9 | visitor" = "text:Ivor (Red)", "9 | object" = "text:W2 (5, 8)", "9 | message" = "messages", "9 | gain" = "gain", "9 | word after" = ["word:5,8", "object:5,8"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "Ivor"
+walk = [10, 9]
+
+[[step]]
+encounter = "E9-8"
+hero = "Ivor"
+walk = [10, 8]
+expect = { dialogs = true }
+record = { "9#2 | visitor" = "text:Ivor (Red)", "9#2 | object" = "text:H2 (10, 8)", "9#2 | message" = "messages", "9#2 | gain" = "gain", "9#2 | word after" = ["word:10,8", "object:10,8"] }
+
+[[step]]
+encounter = "E9-8"
+hero = "Ivor"
+walk = [13, 9]
+
+[[step]]
+encounter = "E9-8"
+hero = "Ivor"
+walk = [13, 8]
+expect = { dialogs = true }
+record = { "9#3 | visitor" = "text:Ivor (Red)", "9#3 | object" = "text:M2 (13, 8)", "9#3 | message" = "messages", "9#3 | gain" = "gain", "9#3 | word after" = ["word:13,8", "object:13,8"] }
+note = { "M2's visit by Ivor (9): Red's Garden mask before; after" = ["before:gardens", "gardens"] }
+
+[[step]]
+encounter = "E9-7"
+hero = "E9-7"
+record = { "9#2 | when" = "text:end", "9#2 | wood" = "resource:wood:red", "9#2 | mercury" = "resource:mercury:red", "9#2 | ore" = "resource:ore:red", "9#2 | sulfur" = "resource:sulfur:red", "9#2 | crystal" = "resource:crystal:red", "9#2 | gems" = "resource:gems:red", "9#2 | gold" = "resource:gold:red" }
+
+# --- Days 9 to 14 ended -----------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+
+[[step]]
+encounter = "E9-11"
+end_turn = true
+
+[[step]]
+encounter = "E9-7"
+end_turn = true
+note = { "Red, day 15's start: the messages" = "messages" }
+
+# --- Day 15, Red: the monsters again ----------------------------------------------------------
+
+[[step]]
+encounter = "E9-9"
+hero = "E9-7"
+record = { "43 Pikemen (44, 58) | day 15" = "growth:44,58", "81 Archers (48, 58) | day 15" = "growth:48,58", "15 Griffins (52, 58) | day 15" = "growth:52,58", "43 Pikemen, no growth (56, 58) | day 15" = "growth:56,58", "4 095 Troglodytes (60, 58) | day 15" = "growth:60,58" }
+note = { "Red, day 15: the date" = "date" }
+

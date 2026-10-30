@@ -497,6 +497,7 @@ the same way:
 | `again`, `key` | since E08 T68a: whether a walk with `again_if` clicked a second time (yes or no); what a `key` step did: `stepped`, `scrolled` (the view moved, the hero did not) or `nothing` |
 | `battle:tile`, `boat_record:x,y[,level]`, `treasury_changed`, `text:<literal>` | since E08 T68b: the step's hero's tile as the last battle opened; every boat record on a tile, in use or not (a beaten hero's boat freed); whether the step changed the hero's player's treasury (yes or no); a literal (a table row's tile) |
 | `mine:x,y[,level]`, `tile:x,y[,level]`, `cursor`, `screens`, `opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>`, `stops` | since E08 T79a: below, "Mines, Lighthouses and Shipyards" |
+| `income[:<colour>]`, `gardens[:<colour>]`, `growth:x,y[,level]`, `gain[:<colour>]` | since E08 T79b: below, "The day's start" |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
 notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
@@ -607,6 +608,28 @@ waiting for an order or acting without one (`stops`). A section with two tables 
 column fills the second by `row:<column>#2` (E9-1's two battles' slots). `h3lod` names a mine's
 flag message `MINEEVNT:<n>` (the first run named it `GENRLTXT:4`, its picture's caption), a
 record's title braces optional.
+
+**The day's start** (E08 T79b, batch E9b; `docs/rules/surveys/E08-economy.md` §7 to §12).
+`income[:<colour>]` reads a player's day's income (player +0x108, seven i32, wood to gold: `0 wood,
+5 mercury, 2 ore, …`; computed at each day's start, `player_daily_income` 0x4B8AF0, and kept until
+the next), `gardens[:<colour>]` its Mystical Gardens' mask (+0xB8: `0x00000001 (Gardens 0)`, a bit
+per Garden by the index in its word), `growth:x,y[,level]` a wandering monster's count with the
+sixteenths of its word's bits 27 to 30 (`47 Pikemen and 4/16 (756 sixteenths), grows`; `does not
+grow` with the map's flag, bit 18), `gain[:<colour>]` what the step changed in the player's
+treasury (`+4 sulfur`, `none`); the player is the step's hero's owner, in an end-turn step the new
+current player, unless named. `object:x,y` decodes the weekly objects' words: a Windmill's (112:
+`Windmill: 4 sulfur; marks 0x01`, `empty (sulfur)` once taken: the amount bits 13 to 16, the
+resource 0 to 3), a Water Wheel's (109: `500 gold` or `empty`, bits 0 to 4 in 500s) and a Mystical
+Garden's (55: `Garden 0: full, 5 gems` or `empty (500 gold)`: bit 10, the resource bits 6 to 9, the
+index 0 to 4), the visited marks of the first two the teams' bits 5 to 12; an object a hero stands
+on is read through the hero's record (+0xC, +0x14: `… (under E9-8)`, `word:` too). An end-turn
+step takes `encounter`, `record` and `note`: the new turn's messages (`messages`,
+`message_pictures`: the hot-seat turn's and the timed events' at its start, `dismiss`) and every
+player's resources after it. A message whose text is one of the spec's own (its timed events'
+and events' `message`s) is named `the map's text "..."`. A table row whose label an earlier row of
+its table has is keyed `<label>#<n>` (n from 2: `1 | wood`, then `1#2 | wood`), by `fill` and
+`compare` alike. A recipe's `gold = true` gives every player the starting bonus Gold (E17 M5 T8a's
+`to_hot_seat(gold=True)`), which the filled template's header names.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
