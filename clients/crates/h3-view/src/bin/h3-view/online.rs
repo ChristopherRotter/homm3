@@ -258,7 +258,7 @@ impl Online {
         };
         let taken = match self.record.as_ref().map(|taken| rejoined(taken, record)) {
             None => record.clone(),
-            Some(Rejoined::Extends(merged)) => merged,
+            Some(Rejoined::Extends(merged)) => *merged,
             Some(Rejoined::Afresh) => {
                 self.timelines += 1;
                 self.lines.push(format!(

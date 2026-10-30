@@ -246,8 +246,11 @@ the stacks created mid-battle.
       (`h3_view::remote::seen`), both content outcomes, a drop's re-join keeping the timeline,
       `remote_turn` (the seat's player the one human here); two windows on a local `h3-server`
       played a battle to its end, every frame exact.
-    - **T6b2, the record that opens mid-battle:** R2-8 with M4 T3a's R1-3, a join mid-battle,
-      a server restart's re-join (a new timeline), re-dialing until a restarted server answers.
+    - **T6b2, the record that opens mid-battle** (done 2026-10-30, kept whole by the user;
+      design §11.3): the snapshot's dead among the corpses (R2-8: raised as recorded), the box
+      by the timeline's living set, the moat's strip by the fixed rows (R1-3); a re-join's
+      record extends the one taken or opens afresh (`remote::rejoined`): a new timeline; a join
+      mid-battle and a restart of a local `h3-server` played, every frame exact.
 - **T7, accounts:** the account's key from the login and the password (argon2id, Ed25519; their
   dependencies the user's decision, at the task), the login with the welcome's check, seats by
   account, `Rekey` after a password change, the new goodbyes.
@@ -524,3 +527,17 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     the window's input wait at most 10 ms; Auto Combat off; a dropped connection dialed again
     after a second; the unattended player the plain one, casting first the first spell the server
     lets the hero cast at its first target (the book and the aim pressed).
+56. A corpse at a record's opening (T6b2, R2-8): its death group's last frame facing its side's
+    way (the snapshot holds no facing), its record kept; a stack the battle made after the
+    war machines by id. The corpses on a hex by the snapshot's order of death, then the
+    timeline's by id (a stack raised and killed again keeps its first place).
+57. The moat's strip (T6b2, R1-3): by the fixed rows 0x63BCE8, the Fortress's second row
+    0x63BCF4 found by the record's moat holding one of its hexes (no Fortress flag on the wire).
+58. A seat's window starts where its record stands (T6b2): a join mid-battle does not play the
+    history again (the log still lists it); the start sound only from the battle's start.
+59. A new timeline (T6b2): a record fetched at a re-join whose numbers do not go on from the
+    one taken (a restart; a gap past the server's bound) opens the battle again from its
+    snapshot, the window's clock, inputs and presses reset; the sounds stay keyed by the first
+    opening's stacks.
+60. Re-dialing (T6b2): once a second until a server answers, however long; the drop said once
+    until a welcome.

@@ -20,11 +20,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   by the user, T6a done: the connection headless, design §11.1, `h3_view::remote`, the binary's
   `net` and `connect`, the server's TLS stack the user's choice; T6b cut in two by the user,
   T6b1 done: the window plays a seat on a server, design §11.2, `remote::seen`, the binary's
-  `online`, `Battle`'s `Fight`). **Next: M5 T6b2** (the record that opens mid-battle, R2-8 with
-  R1-3, a join mid-battle, a server restart's re-join and re-dialing: needs the original data
-  staged; QUEUE). Open PR: T6b1's #594 (branch `client/e17-m5-t6b1`; check it first). The inbox's
-  CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons note (T5a's dissolve, to
-  re-investigate) wait for a free slot.
+  `online`, `Battle`'s `Fight`; T6b2 done, kept whole by the user: the record that opens
+  mid-battle, design §11.3, `anim::lies`, `scene::living`, the moat by fixed rows,
+  `remote::rejoined`, `Battle::afresh`: T6 done). **Next: M5 T7** (accounts: the dependencies
+  the user's at the task; QUEUE). Open PR: T6b2's (branch `client/e17-m5-t6b2`; check it
+  first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
+  note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
   `E17-log.md`.
@@ -52,7 +53,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T6b1 (done; #594 open: check it first).** The original data staged; T6b
+- **2026-10-30, E17 M5 T6b2 (done; PR open: check it first).** The original data staged;
+  the agent's cut into T6b2a/b declined by the user (kept whole); the VM restarted ~10 minutes
+  in (CI's green `master` the baseline). Built the record that opens mid-battle (R2-8, R1-3) and
+  the restart's new timeline (design §11.3); checked against the recorded `raise` cut after its
+  deaths, and live: two windows through a restart of a local `h3-server` (Resurrection on an
+  opening corpse), a join mid-battle with a small record bound, every frame exact. Items 56 to
+  60; T7 next.
+
+- **2026-10-30, E17 M5 T6b1 (done; #594 merged).** The original data staged; T6b
   cut in two by the user (the agent's proposal). Built the window's seat on a server (design
   §11.2): `online::Online`, `Battle`'s `Fight::Server` polled each frame, the turn from
   `YourTurn` with the aims' targets by `Query`, `remote::seen`, `results::served`, the seat as the
@@ -67,11 +76,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   thread, `ws://` and `wss://` with graviola) and `h3-view connect` (headless, the plain player,
   `--drop`); loopback tests (plain and TLS, a drop and a re-join) and a run against `h3-server`.
   Items 48 to 51; T6b in the queue.
-
-- **2026-10-30, E17 M5 T5b2 (done; #591 merged).** Kept whole by the user;
-  CLT-Q34 answered (a). Read the acting side by the controller and `wait_for_sample`'s 30 battle
-  sites (design §8.3). Built `Timeline::controllers`, `Panels::with_controllers`, the timeline's
-  waits (`sound::Lengths`, `wait_for`, the grid after a wait), the window's lengths, the
-  harness's `sound` runs (xdd.dll 6.: Miles on the virtual clock). `hypnotize` exact,
-  `summon-turn` and six `*-sound` sequences recorded; the engine's round-2 order after a created
-  stack into the battle lane's inbox; items 43 to 47.

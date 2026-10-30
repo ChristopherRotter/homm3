@@ -545,7 +545,7 @@ pub enum Rejoined {
     /// Its numbers go on from the one taken (the same server's: a drop): the one taken with what
     /// the fetched one adds. The server's bound may have let the fetched one's start go, so it
     /// may start after the taken one's first message; where both hold a message, it is the same.
-    Extends(Record),
+    Extends(Box<Record>),
     /// The same game's and seat's, its numbers afresh or past a gap: a restarted server's
     /// restored game, opened at the re-join's snapshot (`docs/lanes/client/NOTES.md`, "The live
     /// client", 2026-10-11), or one whose bound let go of what was taken. A new timeline.
@@ -570,7 +570,7 @@ pub fn rejoined(taken: &Record, fetched: &Record) -> Rejoined {
         if fetched.messages[..both] == taken.messages[skip..] {
             let mut merged = taken.clone();
             merged.messages.extend_from_slice(&fetched.messages[both..]);
-            return Rejoined::Extends(merged);
+            return Rejoined::Extends(Box::new(merged));
         }
     }
     Rejoined::Afresh

@@ -119,6 +119,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   input wait capped at 10 ms. The clients' clippy bans `std::time::Instant`: an adapter's timing
   takes the window's clock (`win.ticks_ns()`) or a channel's timeout. A local `h3-server` drains
   at the first SIGTERM and stops at the second; kill it by its pid (`pidof`), never `pgrep -f`.
+  Started on another data directory it makes a new key, which the windows' pins refuse: copy
+  `server.key` along (its journals restore its games at the next start: a restart's test).
+- A record that opens mid-battle (E17 M5 T6b2, design §11.3): the snapshot's dead lie among the
+  corpses (`anim::lies`), so a stage's looks take their creatures; whether a stack lives is its
+  timeline pose's (`scene::living`), never the snapshot's `alive`; the records count every
+  snapshot stack, a dead or gone one's too. A battle on a server opens again from a record
+  opened afresh (`Battle::afresh`): state kept across it in the window resets there.
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

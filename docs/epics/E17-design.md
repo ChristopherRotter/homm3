@@ -4659,8 +4659,8 @@ T6b2 the record that opens mid-battle (R2-8, R1-3) with a restart's re-join.
 - **A drop:** a closed connection is dialed again (at most once a second by the window's clock,
   which no pause stops) and the seat re-joined by its token; the record fetched must extend the
   one taken (the same header, every message taken first: the timeline kept; the re-join's own
-  snapshot in it is no event and draws nothing); one that does not ends the run (a restarted
-  server's: T6b2). `--drop <n>` drops after n commands (a test).
+  snapshot in it is no event and draws nothing); one that does not opens afresh (a restarted
+  server's: §11.3). `--drop <n>` drops after n commands (a test).
 - **Unattended** (`--check`, `--measure`): the presser plays the seat's turns (`Battle::takes`:
   not the other seat's) with a test's player (*provisional*): the hero casts first the first
   spell the server lets it cast at its first target, through the book and the aim; else
@@ -4679,3 +4679,55 @@ T6b2 the record that opens mid-battle (R2-8, R1-3) with a restart's re-join.
   24 commands to the end, 1 837 and 1 888 frames exact. Frames
   after their time: median 6.1 to 9.8 ms with two windows and a server on two cores (hot seat's
   7.8 ms alone).
+
+### 11.3 The record that opens mid-battle and a server's restart (M5 T6b2)
+
+Kept whole by the user (2026-10-30). A seat's record opens mid-battle after a restarted server's
+restored game (its numbers afresh from the re-join's snapshot: `NOTES.md`, "The live client",
+2026-10-11) or when the server's bound (`record_bytes`) let its start go before a join.
+
+- **The corpses at the opening** (R2-8; `anim::Growing::new`): every stack of the snapshot holds
+  its record, a dead one's too (a stack gone without a corpse, `corpse` 65 535: its record held,
+  not drawn), and the stacks the battle made (summoned, cloned, raised: `created`, `raised` or
+  slot 255) come after the war machines by id, the order they were made in (0x47A12B; a killed
+  one's record taken again by the id the engine reuses). A dead one lies among the corpses from
+  the start (`anim::lies`): its death group's last frame in the corpses' pass, facing its side's
+  way (*provisional*: the snapshot holds no facing), in the player's corpses, so a raise
+  (`raise_stack` 0x5A7560) and a Pit Lord's Demons find it. The stage's looks take the corpses'
+  creatures (`motion::looks`).
+- **Who lives is the timeline's** (`scene::living`): the count box and the hexes a box cannot take
+  follow the pose the timeline holds (among the corpses or gone: dead), not the snapshot's
+  `alive`: a corpse raised since shows its box. The corpses on a hex lie in the order they died
+  (the hex's corpse list, `battle_redraw` 0x4948C7 calls `draw_battle_stack` for each): the
+  snapshot's by its `corpse` order first, then the timeline's by id (*provisional*: a stack
+  raised and killed again keeps its first place).
+- **The moat over a stack** (R1-3; `SiegeLook::over_stack`): `draw_hex_stack` 0x494FFE tests the
+  stack's hex, and 0x495039 a two-hex stack's other hex, against its row's entry of the fixed
+  table 0x63BCE8, and with the Fortress flag +0x53A9 of 0x63BCF4; the record's moat leaves out
+  the bridges while the gate is open, so a record opening with the gate open drew no strip on
+  hex 95 once it closed. The Fortress flag is read as the record's moat holding a hex of the
+  second row (no flag on the wire).
+- **Checked against the original:** `seq-raise` (recorded) opened after both deaths, its raises
+  at their recorded times: from the first raise's first frame every stack takes the same poses
+  for the same spans as the whole recorded sequence, the frames shifted by the deadline's history
+  (0x698998: the whole sequence's redraws moved it on), and the boxes show the same counts.
+- **A re-join's record** (`remote::rejoined`): it extends the one taken when its numbers go on
+  (the same server's; its start may be past the taken one's first message, the overlap the same);
+  else, for the same game, seat and content, it opens afresh: a new timeline; another game's or
+  seat's ends the run. `Online` counts the timelines; `Battle::poll` takes nothing of a record
+  opened afresh, and the window opens the battle again from its snapshot (`Battle::afresh`), its
+  clock, inputs, presses and frames starting over (*provisional*). A dropped connection is dialed
+  again once a second until a server answers, the drop said once until a welcome.
+- **A seat's window starts where its record stands** (*provisional*): at its timeline's end as
+  loaded, so a join mid-battle does not play the history again (the log lists it); the start
+  sound only from the battle's start.
+- **Checked:** `online`'s loopback host restarts its game from its journal (`Session::restore`):
+  the seat re-joins, its record opens afresh mid-battle, played to the end. Against a local
+  `h3-server` under Xvfb, `--check`: two windows on a game of `situations/seq-raise.toml`, the
+  server stopped (`Goodbye { Shutdown }`) after the defender's two kills and started again 2 s
+  later: both dialed through the refusals (5 dials), re-joined the restored game, opened a new
+  timeline at its snapshot (both corpses), the attacker's first command Resurrection on the
+  Pikeman's corpse (`A cast 38 stack 0`), played to the result window, 759 and 687 frames exact;
+  then, with `record_bytes` 16 KiB, a window joining the attacker's seat by its token after
+  another had left it: its record opened mid-battle (the last 8 of the game's 15 commands), the
+  corpses drawn (a screenshot), played to the end, 415 frames exact.
