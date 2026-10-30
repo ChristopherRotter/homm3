@@ -95,6 +95,10 @@ pub struct SoundArt {
     pub grounds: Vec<u32>,
     /// Their loops; a ground without one has none.
     pub ground_loops: Vec<ClassSound>,
+    /// The panels' buttons' press (`button.wav`, loaded at 0x4EDA51 into 0x694DA4; E24 M3 T6b1),
+    /// none: silent.
+    #[serde(default)]
+    pub button: Option<String>,
 }
 
 /// A loop by class (and subclass).
@@ -133,6 +137,8 @@ pub struct SoundRules {
     pub steps: BTreeMap<u8, String>,
     /// The flying hero's step sound.
     pub flying: String,
+    /// A panel's button's press (E24 M3 T6b1), if the tables name it.
+    pub button: Option<String>,
     /// The sounds played once ([`Cue::Effect`]; E24 M3 T5b2: the day's status window's, the
     /// tables' `[map.status.date]`), which the window decodes with the rest.
     pub effects: Vec<String>,
@@ -165,7 +171,13 @@ impl SoundRules {
         music: BTreeMap<u8, String>,
         steps: BTreeMap<u8, String>,
     ) -> Result<Self, String> {
-        for name in art.loops.iter().chain(steps.values()).chain([&art.flying]) {
+        for name in art
+            .loops
+            .iter()
+            .chain(steps.values())
+            .chain([&art.flying])
+            .chain(&art.button)
+        {
             wav(name)?;
         }
         if art.loops.len() > usize::from(u8::MAX) + 1 {
@@ -210,7 +222,8 @@ impl SoundRules {
             music,
             steps,
             flying: art.flying.clone(),
-            effects: Vec::new(),
+            button: art.button.clone(),
+            effects: art.button.iter().cloned().collect(),
             volumes: art.volumes.clone(),
             shore: index(&art.shore)?,
             shore_pictures: art.shore_pictures,
@@ -512,6 +525,14 @@ impl Sound {
     /// design §4.9).
     pub fn effect(&mut self, t: u32, name: &str) {
         self.cues.push((t, Cue::Effect(name.into())));
+    }
+
+    /// A panel's button pressed (`def_button_message` 0x456860, E24 M3 T6b1): its sound, when
+    /// the tables name it.
+    pub fn press(&mut self, t: u32) {
+        if let Some(name) = self.rules.button.clone() {
+            self.effect(t, &name);
+        }
     }
 
     /// The cues given since the last take, with their milliseconds, in order.

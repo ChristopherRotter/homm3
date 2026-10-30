@@ -506,8 +506,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // Whether the window had the focus at the last look (the edge scroll's `app_active`).
     let mut focused = true;
     let mut log: Vec<Change> = Vec::new();
-    // The actions given: scrolls, steps, the pointer's moves, clicks.
-    let mut given = [0_usize; 4];
+    // The actions given: scrolls, steps, the pointer's moves, the mouse's button, hotkeys.
+    let mut given = [0_usize; 5];
     let mut given_at: BTreeSet<u32> = BTreeSet::new();
     let mut renew = look.live;
     let mut report = Report::default();
@@ -557,20 +557,27 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     (mouse, pointer) = (Some(at), Some(at));
                     continue;
                 }
-                Event::Click {
-                    down: true,
-                    at: (x, y),
-                } => {
-                    // The click's own move is the click's.
+                Event::Click { down, at: (x, y) } => {
+                    // The button's own move is the press's or the release's (E24 M3 T6b1: a
+                    // panel's button held down until the release).
                     (mouse, pointer) = (Some([x, y]), None);
-                    input.push(Action::Click([x, y]));
+                    input.push(if down {
+                        Action::Press([x, y])
+                    } else {
+                        Action::Release([x, y])
+                    });
                     continue;
                 }
-                Event::Click { down: false, .. } => continue,
                 Event::KeyUp(k) => {
                     held.remove(&k);
                     if matches!(k, Key::LeftCtrl | Key::RightCtrl) {
                         ctrl[usize::from(k == Key::RightCtrl)] = false;
+                    }
+                    // A panel's hotkey released clicks its button (E24 M3 T6b1).
+                    let command = keys.command((), ctrl.contains(&true), k.name());
+                    if let Some(action) = command.and_then(Command::release) {
+                        input.extend(pointer.take().map(Action::Pointer));
+                        input.push(action);
                     }
                     continue;
                 }
@@ -642,7 +649,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     win.set_vsync(on);
                 }
                 // A frame on while running: nothing.
-                Some(Command::Scroll(_) | Command::Hero(_) | Command::Window(Own::Frame))
+                Some(
+                    Command::Scroll(_)
+                    | Command::Hero(_)
+                    | Command::Panel(_)
+                    | Command::Window(Own::Frame),
+                )
                 | None => {}
             }
         }
@@ -667,7 +679,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     Action::Scroll(_) => 0,
                     Action::Step(_) => 1,
                     Action::Pointer(_) => 2,
-                    Action::Click(_) => 3,
+                    Action::Click(_) | Action::Press(_) | Action::Release(_) => 3,
+                    Action::Key(_) | Action::KeyUp(_) => 4,
                 }] += 1;
                 replay.give(t, action);
             }
@@ -803,15 +816,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))?;
     }
     drop(win);
-    let [scrolls, steps, moves, clicks] = given;
+    let [scrolls, steps, moves, clicks, hotkeys] = given;
     let view = shown
         .as_ref()
         .map(|f| f.change.drawn.view)
         .unwrap_or(start.view);
     lines.push(format!(
         "{what}, keys: {keys_from}; {} frames shown in {seconds} ms, {} passed over, the map run \
-         to {} ms; given: {scrolls} scrolls, {steps} steps, {moves} moves, {clicks} clicks; the \
-         view at ({}, {}, {})",
+         to {} ms; given: {scrolls} scrolls, {steps} steps, {moves} moves, {clicks} presses and \
+         releases, {hotkeys} hotkeys; the view at ({}, {}, {})",
         report.late_us.len(),
         report.skipped,
         replay.ran(),

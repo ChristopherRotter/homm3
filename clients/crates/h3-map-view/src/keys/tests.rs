@@ -41,22 +41,40 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
         assert_eq!(keys.command((), true, key), None, "{key}");
     }
     assert_eq!(keys.command((), false, "P"), None);
+    // The panels' hotkeys (E24 M3 T6b1): the original's letters.
+    for (key, hotkey) in [
+        ("K", Hotkey::Kingdom),
+        ("U", Hotkey::Underground),
+        ("Q", Hotkey::Quests),
+        ("Z", Hotkey::Sleep),
+        ("W", Hotkey::Wake),
+        ("M", Hotkey::MoveHero),
+        ("C", Hotkey::Cast),
+        ("A", Hotkey::Adventure),
+        ("O", Hotkey::System),
+        ("H", Hotkey::NextHero),
+        ("E", Hotkey::EndTurn),
+    ] {
+        assert_eq!(keys.command((), false, key), Some(Command::Panel(hotkey)));
+        assert_eq!(keys.command((), true, key), None);
+    }
     // Every command bound, in the table's order: the map's twice (the key and the keypad's).
     let chords = keys.chords();
-    assert_eq!(chords.len(), 41);
+    assert_eq!(chords.len(), 52);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, Command::all());
     assert_eq!(chords[0].1.to_string(), "Ctrl+Up");
     assert_eq!(chords[1].1.to_string(), "Ctrl+Keypad8");
     assert_eq!(chords[16].1.to_string(), "Up");
-    assert_eq!(chords[40].1.to_string(), "Escape");
+    assert_eq!(chords[32].1.to_string(), "K");
+    assert_eq!(chords[51].1.to_string(), "Escape");
 }
 
 #[test]
 fn every_command_has_a_name_and_the_maps_its_action() {
     let all = Command::all();
-    assert_eq!(all.len(), 25);
+    assert_eq!(all.len(), 36);
     for &command in &all {
         assert_eq!(Command::from_name(&command.name()), Some(command));
     }
@@ -64,7 +82,23 @@ fn every_command_has_a_name_and_the_maps_its_action() {
     assert_eq!(names[..2], ["scroll-north", "scroll-north-east"]);
     assert_eq!(names[13], "hero-south-west");
     assert_eq!(
-        names[16..],
+        names[16..27],
+        [
+            "kingdom-overview",
+            "underground",
+            "quest-log",
+            "sleep",
+            "wake",
+            "move-hero",
+            "cast-spell",
+            "adventure-options",
+            "system-options",
+            "next-hero",
+            "end-turn"
+        ]
+    );
+    assert_eq!(
+        names[27..],
         [
             "music",
             "effects",
@@ -87,13 +121,19 @@ fn every_command_has_a_name_and_the_maps_its_action() {
         Some(Action::Step(Direction::SouthEast))
     );
     assert_eq!(Command::Window(Window::Pause).action(), None);
+    // A hotkey's key down presses its button, its release clicks it (E24 M3 T6b1); the rest's
+    // release does nothing.
+    let next = Command::Panel(Hotkey::NextHero);
+    assert_eq!(next.action(), Some(Action::Key(Hotkey::NextHero)));
+    assert_eq!(next.release(), Some(Action::KeyUp(Hotkey::NextHero)));
+    assert_eq!(Command::Hero(Direction::North).release(), None);
 }
 
 #[test]
 fn a_users_file_overrides_command_by_command() {
     let keys = Keys::with_file(
         "# mine\n[map]\npause = [\"Space\", \"P\", \"P\"]\nquit = []\nhero-north = [\"W\"]\n\
-         scroll-north = [\"Ctrl+W\", \"Ctrl+Up\"]\n",
+         scroll-north = [\"Ctrl+W\", \"Ctrl+Up\"]\nwake = [\"J\"]\n",
     )
     .unwrap();
     assert_eq!(
@@ -127,7 +167,7 @@ fn a_users_file_overrides_command_by_command() {
         Some(Command::Window(Window::Frame))
     );
     let chords = keys.chords();
-    assert_eq!(chords.len(), 41);
+    assert_eq!(chords.len(), 52);
     assert!(
         chords
             .iter()

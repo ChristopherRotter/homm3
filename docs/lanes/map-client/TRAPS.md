@@ -64,10 +64,18 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - **The visit marks' facts check themselves** (M3 T6a2a, design §4.11): a situation's `visits`
   are written by `h3mem.VISIT_RULES` inverted and the live part's `[hover]` `visits` read back by
   the same rules, so a wrong rule agrees with itself; only the original's status bar (a sequence
-  in `hinted`) tells. They are the selected hero's as staged: a sequence that selects another
-  (T6b's clicks) needs them read again; so do the contents' (M3 T6a2b, §4.12: a Shrine's spell
-  known, a Tree's mark, a Witch Hut's skill). A kind known is a kind's bit: every object of the
-  kind shows its bonus.
+  in `hinted`) tells. They are the selected hero's as staged, as are the contents' (M3 T6a2b,
+  §4.12: a Shrine's spell known, a Tree's mark, a Witch Hut's skill) and the reach: after a hero's
+  choice (M3 T6b1) the viewer keeps them, so a sequence moves the pointer over the map only before
+  its first choice. A kind known is a kind's bit: every object of the kind shows its bonus.
+- **A button held stops the map** (M3 T6b1, design §4.13): from the press to the release only the
+  tick runs (the palettes step in memory, no redraw, no edge scroll, no hint); the release's
+  millisecond redraws. A list's redraw (a choice, an arrow, Next Hero, a lift that centres, a walk
+  that ends unable to move) leaves the status bar empty on screen with the hint in memory
+  (MCL-Q22): only another item's hint shows a text again.
+- **`choose = true` stages slowly** (M3 T6b1): `choose_each` clicks through every hero and town,
+  then the staging's selection and the lists' first slots by their arrows; it needs the
+  situation's `select` (the lists' writes) and every path's tile inside the situation's view.
 - **The harness's writes run none of the game's updates** (M3 T6a2b): a quest's visitors written
   left the Quest Log as the map's start set it, so the live part reads the shown item's state
   (`Mem.item_states`), never one recomputed from what the harness wrote.

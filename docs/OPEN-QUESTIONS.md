@@ -186,6 +186,21 @@ part (built: an empty name, the rest as the original's); (b) the client refuses 
 import (the engine's, M4). **Recommendation:** (a) now and (b) with M4's import (the adventure
 lane's A-31 refuses an empty resource set the same way). **Blocked:** nothing.
 
+#### MCL-Q22 — The status bar's hint hidden by a list's redraw (E24 M3 T6b1, a recording)
+
+Every update of the hero or town list with its redraw draws every item of the adventure dialog
+(E24 design §4.13): a hero or town chosen from its list, Next Hero, a list's arrow, a key's step
+that lifts the hero, a walk's end that leaves it unable to move. The chat's edit, added over the
+status bar after it, then paints its own empty picture over the hint, while the status bar keeps
+its text and the game the item it looked at last: the bar stays empty until the mouse reaches
+another item (or the map's next hint). Recorded in `choose-lists` (each choice leaves the bar
+empty with the mouse still on the slot it clicked). **Options:** (a) the original's (built, for
+both: the comparisons are exact); (b) the client draws the hint again after such a redraw (the
+mouse's item's), the original's behind `--bugs original` for the comparisons; (c) an option.
+**Recommendation:** (b): the empty bar is a redraw artifact (the edit was never meant to show),
+and a player clicking through the lists loses the hint of the slot under the mouse. **Blocked:**
+nothing; built as the original's.
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):

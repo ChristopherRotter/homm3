@@ -17,7 +17,10 @@
 # the view, M3's, stays out of the frames, but at hero speed 4, whose walk ends inside the
 # click's millisecond: the cursor stays at the click's point until the next mouse poll, 33 ms).
 # Since E24 M3 T5b2 `status = [kind, end]`: the status window's kind (1 the date's, 2 the kingdom's)
-# asked at 0 until `end` ms after it, built afresh by 0's redraw (design §4.9).
+# asked at 0 until `end` ms after it, built afresh by 0's redraw (design §4.9). Since E24 M3 T6b1
+# `press` and `release` (the left button down and up apart at a point: a panel's button held
+# between them) and the panels' hotkeys by their letters (`keydown = "h"`: the key down presses
+# the button, the key up clicks it; design §4.13).
 
 [[sequence]]
 id = "idle-cycles"
@@ -515,4 +518,72 @@ inputs = [
     { at = 1300, pointer = [272, 376] }, { at = 1400, pointer = [368, 376] },
     { at = 1500, pointer = [464, 376] }, { at = 1600, pointer = [528, 376] },
     { at = 1700, pointer = [700, 300] },
+]
+
+# The lists' clicks (E24 M3 T6b1, design §4.13): Red's heroes and towns chosen from their lists
+# by the left button's press (each one's view centred, its path shown, its status window), the
+# lists' arrows held and clicked (the map standing still while the mouse holds a button), a
+# disabled arrow pressed, a town chosen while a hero shows its path, next hero by its button
+# and by H (passing the hero without points, round to the first).
+[[sequence]]
+id = "choose-lists"
+situation = "seq-lists"
+ms = 6000
+why = "heroes and towns chosen from their lists, the lists' arrows, next hero by its button and H"
+inputs = [
+    { at = 200, press = [641, 292] }, { at = 260, release = [641, 292] },
+    { at = 500, press = [641, 228] }, { at = 560, release = [641, 228] },
+    { at = 800, press = [771, 260] }, { at = 860, release = [771, 260] },
+    { at = 1100, press = [641, 380] }, { at = 1250, release = [641, 380] },
+    { at = 1500, press = [641, 380] }, { at = 1560, release = [641, 380] },
+    { at = 1800, press = [641, 380] }, { at = 1860, release = [641, 380] },
+    { at = 2100, press = [641, 356] }, { at = 2160, release = [641, 356] },
+    { at = 2400, press = [641, 204] }, { at = 2460, release = [641, 204] },
+    { at = 2700, press = [771, 356] }, { at = 2760, release = [771, 356] },
+    { at = 3000, press = [771, 380] }, { at = 3060, release = [771, 380] },
+    { at = 3300, press = [771, 356] }, { at = 3360, release = [771, 356] },
+    { at = 3600, press = [711, 340] }, { at = 3660, release = [711, 340] },
+    { at = 3900, press = [711, 340] }, { at = 3960, release = [711, 340] },
+    { at = 4200, keydown = "h" }, { at = 4260, keyup = "h" },
+    { at = 4500, keydown = "h" }, { at = 4560, keyup = "h" },
+    { at = 4800, keydown = "h" }, { at = 4860, keyup = "h" },
+    { at = 5100, keydown = "h" }, { at = 5160, keyup = "h" },
+    { at = 5400, keydown = "h" }, { at = 5460, keyup = "h" },
+    { at = 5700, pointer = [700, 300] },
+]
+
+# The buttons' presses (E24 M3 T6b1, design §4.13): each button held by the mouse, moved off and
+# on (a dialog's or the engine's released off it: nothing), the disabled ones (the quest log
+# without a quest, the underground on one level) taking none; the lists' down arrows and next
+# hero clicked; the hotkeys held (each a button pressed until the sequence's end; Q, U, W and M
+# pressing none: no quest, one level, the hero awake, no path), H pressed and released.
+[[sequence]]
+id = "press-buttons"
+situation = "seq-lists"
+ms = 5200
+why = "the buttons held by the mouse and by their hotkeys, the disabled ones taking none"
+inputs = [
+    { at = 200, press = [695, 212] }, { at = 350, pointer = [695, 185] },
+    { at = 450, pointer = [695, 212] }, { at = 550, pointer = [695, 185] },
+    { at = 650, release = [695, 185] },
+    { at = 900, press = [695, 244] }, { at = 960, release = [695, 244] },
+    { at = 1100, press = [727, 212] }, { at = 1160, release = [727, 212] },
+    { at = 1300, press = [727, 244] }, { at = 1450, pointer = [760, 244] },
+    { at = 1550, release = [760, 244] },
+    { at = 1700, press = [695, 276] }, { at = 1850, release = [695, 300] },
+    { at = 2000, press = [727, 276] }, { at = 2100, release = [727, 300] },
+    { at = 2200, press = [695, 308] }, { at = 2300, release = [695, 330] },
+    { at = 2400, press = [727, 308] }, { at = 2500, release = [760, 308] },
+    { at = 2600, press = [711, 372] }, { at = 2700, release = [711, 395] },
+    { at = 2800, press = [641, 380] }, { at = 2900, release = [641, 380] },
+    { at = 3000, press = [771, 380] }, { at = 3100, release = [771, 380] },
+    { at = 3200, press = [711, 340] }, { at = 3300, pointer = [711, 320] },
+    { at = 3400, pointer = [711, 340] }, { at = 3500, release = [711, 340] },
+    { at = 3800, keydown = "k" }, { at = 3900, keydown = "q" },
+    { at = 4000, keydown = "u" }, { at = 4100, keydown = "w" },
+    { at = 4200, keydown = "z" }, { at = 4300, keydown = "c" },
+    { at = 4400, keydown = "a" }, { at = 4500, keydown = "o" },
+    { at = 4600, keydown = "e" }, { at = 4700, keydown = "m" },
+    { at = 4800, keydown = "h" }, { at = 4850, keyup = "h" },
+    { at = 5000, pointer = [700, 300] },
 ]

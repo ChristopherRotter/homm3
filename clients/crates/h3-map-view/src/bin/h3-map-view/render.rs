@@ -18,8 +18,8 @@ use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::hover::{self, Facts};
 use h3_map_view::live::{
-    Arrow, Boat, Buttons, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero, Moment,
-    Status, TOWN_CLASS,
+    Arrow, Boat, Buttons, Chosen, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero,
+    Moment, Status, TOWN_CLASS,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
@@ -593,6 +593,15 @@ pub fn read_live(
         live.kingdom.selection = Some(
             Status::read(value).ok_or_else(|| failed("`selection` is not a `status`'s table"))?,
         );
+    }
+    if let Some(value) = table.get("chosen") {
+        // What choosing each hero and town shows (E24 M3 T6b1).
+        live.chosen = Chosen::read(value).ok_or_else(|| {
+            failed(
+                "`[chosen]` is not heroes = [{ hero, status, path = [[x, y, level, arrow]] } or \
+                 {}] and towns = [{ at = [x, y, level], status } or {}]",
+            )
+        })?;
     }
     if let Some(value) = table.get("hover") {
         // The game's facts the mouse-over reads (E24 M3 T6a1, design §4.10).

@@ -694,3 +694,100 @@ fn a_live_parts_status_read() {
         }
     }
 }
+
+#[test]
+fn a_maps_start_and_a_live_parts_choices() {
+    // E24 M3 T6b1 (design §4.13): at a map's start each hero's and town's choice shows what the
+    // map gives, a town centred on its entrance; none for a colour without either.
+    let raw = raw(&map());
+    let art = MapArt::from_raw(&raw).unwrap();
+    let chosen = |viewer| Live::at_start(&raw, &art, viewer, &towns()).chosen;
+    let red = chosen(0);
+    let hero = red.heroes[0].as_ref().unwrap();
+    assert_eq!((hero.hero, hero.status.hero, hero.path.len()), (0, 16, 0));
+    let blue = chosen(1);
+    let town = blue.towns[0].as_ref().unwrap();
+    assert_eq!((town.status.name, town.status.buildings), (0, 1 << 7));
+    assert!(town.at.x > 0);
+    assert_eq!(chosen(2), Chosen::default());
+    // The live part's `[chosen]` (`h3map.py`'s `chosen_toml`).
+    let read = |text: &str| {
+        let table: toml::Table = toml::from_str(&alloc::format!("[chosen]\n{text}")).unwrap();
+        Chosen::read(&table["chosen"])
+    };
+    let army = "army = [[-1, 0], [-1, 0], [-1, 0], [-1, 0], [-1, 0], [-1, 0], [-1, 0]]";
+    let hero_status = alloc::format!(
+        "{{ kind = 3, hero = 5, own_name = 0, skills = [1, 1, 1, 1], morale = 0, luck = 0, {army} }}"
+    );
+    let town_status = alloc::format!(
+        "{{ kind = 4, name = 3, buildings = [7], garrison = 0, {army}, silo = [], income = 500 }}"
+    );
+    let all = alloc::format!(
+        "heroes = [{{ hero = 1, status = {hero_status}, path = [[3, 4, 0, 14]] }}, {{}}]\n\
+         towns = [{{ at = [6, 12, 0], status = {town_status} }}, {{}}]"
+    );
+    let got = read(&all).unwrap();
+    let hero = got.heroes[0].as_ref().unwrap();
+    assert_eq!((hero.hero, hero.status.hero), (1, 5));
+    assert_eq!(
+        hero.path,
+        [Arrow {
+            at: pos(3, 4),
+            arrow: 14
+        }]
+    );
+    assert_eq!(got.heroes[1], None);
+    let town = got.towns[0].as_ref().unwrap();
+    assert_eq!((town.at, town.status.income), (pos(6, 12), 500));
+    assert_eq!(got.towns[1], None);
+    // What breaks it: a list missing, a row not a table, a key missing or of the wrong kind, a
+    // hero's status a town's (and the reverse), an arrow or a place not of three bytes.
+    let hero = |row: &str| alloc::format!("heroes = [{row}]\ntowns = []");
+    let town = |row: &str| alloc::format!("heroes = []\ntowns = [{row}]");
+    let path = |p: &str| {
+        hero(&alloc::format!(
+            "{{ hero = 1, status = {hero_status}, path = {p} }}"
+        ))
+    };
+    let place = |at: &str| town(&alloc::format!("{{ at = {at}, status = {town_status} }}"));
+    let broken = [
+        "heroes = []".to_string(),
+        "towns = []".to_string(),
+        hero("1"),
+        town("1"),
+        hero("{ hero = 1, path = [] }"),
+        hero("{ hero = 1, status = 1, path = [] }"),
+        hero(&alloc::format!(
+            "{{ hero = 1, status = {town_status}, path = [] }}"
+        )),
+        hero(&alloc::format!("{{ hero = 1, status = {hero_status} }}")),
+        hero(&alloc::format!("{{ status = {hero_status}, path = [] }}")),
+        hero(&alloc::format!(
+            "{{ hero = \"a\", status = {hero_status}, path = [] }}"
+        )),
+        hero(&alloc::format!(
+            "{{ hero = -1, status = {hero_status}, path = [] }}"
+        )),
+        path("1"),
+        path("[1]"),
+        path("[[3, 4, 0]]"),
+        path("[[300, 4, 0, 14]]"),
+        path("[[3, 400, 0, 14]]"),
+        path("[[3, 4, 300, 14]]"),
+        path("[[3, 4, 0, \"a\"]]"),
+        path("[[3, 4, 0, -1]]"),
+        town("{ at = [6, 12, 0] }"),
+        town("{ at = [6, 12, 0], status = 1 }"),
+        town(&alloc::format!(
+            "{{ at = [6, 12, 0], status = {hero_status} }}"
+        )),
+        town(&alloc::format!("{{ status = {town_status} }}")),
+        place("1"),
+        place("[6, 12]"),
+    ];
+    for text in &broken {
+        assert_eq!(read(text), None, "{text}");
+    }
+    let table: toml::Table = toml::from_str("chosen = 1").unwrap();
+    assert_eq!(Chosen::read(&table["chosen"]), None);
+}

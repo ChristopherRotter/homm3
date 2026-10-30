@@ -58,6 +58,120 @@ pub struct Live {
     /// The status bar's hint as a timeline last set it (E24 M3 T6a1); none: the panels' hint at
     /// the pointer (a still).
     pub hint: Option<Hint>,
+    /// What choosing each of the kingdom's heroes and towns shows (E24 M3 T6b1): a comparison's
+    /// `[chosen]` table, empty for a live part written before.
+    pub chosen: Chosen,
+    /// The panels' buttons shown pressed, in their click frames (E24 M3 T6b1: a press held by the
+    /// mouse or by a hotkey), by id in order; none in a still.
+    pub pressed: Vec<u16>,
+}
+
+/// What choosing each hero and town of the kingdom's lists shows (E24 M3 T6b1, design §4.13,
+/// *provisional*): the hero's place among the map's heroes, its status window and the path its
+/// selection shows; the town's place and its status window. A comparison reads them from the
+/// original's memory, each one chosen in turn before the sequence's 0 (`h3map.py`'s
+/// `choose_each`); [`Live::at_start`] what a map gives; from M4 on the engine. None for one not
+/// read.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Chosen {
+    /// By the hero list's order.
+    pub heroes: Vec<Option<ChosenHero>>,
+    /// By the town list's order.
+    pub towns: Vec<Option<ChosenTown>>,
+}
+
+/// A hero of the kingdom's as its choice shows it (`hero_select` 0x417B20).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChosenHero {
+    /// Its index among the live part's [`Live::heroes`] (its tile and facing there).
+    pub hero: usize,
+    /// Its status window.
+    pub status: HeroStatus,
+    /// The path its selection shows (`make_hero_path` 0x418DD0 to its destination, its record's
+    /// +0x35), each arrow by tile; empty without one.
+    pub path: Vec<Arrow>,
+}
+
+/// A town of the kingdom's as its choice shows it (`town_select` 0x417830).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChosenTown {
+    /// Its place (the town record's +5 to +7): the view's middle once chosen.
+    pub at: Pos,
+    /// Its status window.
+    pub status: TownStatus,
+}
+
+impl Chosen {
+    /// A live part's `[chosen]` table as the harness writes it (`h3map.py`'s `chosen_toml`):
+    /// `heroes = [{ hero = <index among the heroes>, status = <a hero's status>, path = [[x, y,
+    /// level, arrow], ...] }, ...]` and `towns = [{ at = [x, y, level], status = <a town's
+    /// status> }, ...]` in their lists' orders, `{}` for one not read; none for anything else.
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        let table = value.as_table()?;
+        let list = |key: &str| table.get(key)?.as_array();
+        let int = |v: &toml::Value| v.as_integer();
+        let byte = |v: &toml::Value| int(v).and_then(|n| u8::try_from(n).ok());
+        let at = |x: &toml::Value, y: &toml::Value, z: &toml::Value| {
+            Some(Pos {
+                x: byte(x)?,
+                y: byte(y)?,
+                z: byte(z)?,
+            })
+        };
+        let pos = |v: &toml::Value| -> Option<Pos> {
+            match v.as_array()?.as_slice() {
+                [x, y, z] => at(x, y, z),
+                _ => None,
+            }
+        };
+        let heroes = list("heroes")?
+            .iter()
+            .map(|h| {
+                let h = h.as_table()?;
+                if h.is_empty() {
+                    return Some(None);
+                }
+                let Status::Hero(status) = Status::read(h.get("status")?)? else {
+                    return None;
+                };
+                let path = h
+                    .get("path")?
+                    .as_array()?
+                    .iter()
+                    .map(|a| match a.as_array()?.as_slice() {
+                        [x, y, z, arrow] => Some(Arrow {
+                            at: at(x, y, z)?,
+                            arrow: u16::try_from(int(arrow)?).ok()?,
+                        }),
+                        _ => None,
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+                Some(Some(ChosenHero {
+                    hero: usize::try_from(int(h.get("hero")?)?).ok()?,
+                    status,
+                    path,
+                }))
+            })
+            .collect::<Option<Vec<_>>>()?;
+        let towns = list("towns")?
+            .iter()
+            .map(|t| {
+                let t = t.as_table()?;
+                if t.is_empty() {
+                    return Some(None);
+                }
+                let Status::Town(status) = Status::read(t.get("status")?)? else {
+                    return None;
+                };
+                Some(Some(ChosenTown {
+                    at: pos(t.get("at")?)?,
+                    status,
+                }))
+            })
+            .collect::<Option<Vec<_>>>()?;
+        Some(Self { heroes, towns })
+    }
 }
 
 /// What the adventure screen's panels show of the viewing player's kingdom (E24 M3 T2a, design
@@ -748,6 +862,9 @@ impl Live {
         // The viewer's heroes' portraits and towns, in the map's order (the kingdom below).
         let mut portraits = Vec::new();
         let mut types = Vec::new();
+        // Each one's place among the map's heroes and the town's (E24 M3 T6b1: their choice).
+        let mut places = Vec::new();
+        let mut town_places = Vec::new();
         let mut towns_kept = Vec::new();
         let mut towns_built = Vec::new();
         let mut objects = Vec::with_capacity(art.objects.len());
@@ -761,6 +878,7 @@ impl Live {
                         if owner == viewer {
                             portraits.push(hero.portrait.unwrap_or(hero.hero_type));
                             types.push(hero.hero_type);
+                            places.push(heroes.len());
                         }
                         heroes.push(LiveHero {
                             at,
@@ -788,6 +906,8 @@ impl Live {
             {
                 let built = built_at_start(&town.buildings);
                 towns_built.push(built);
+                // Its record's place, the entrance (design §4.5).
+                town_places.push(at.unwrap_or(object.anchor));
                 towns_kept.push(KingdomTown {
                     faction: u8::try_from(t.subclass).unwrap_or(u8::MAX),
                     fort: [tables::FORT, tables::CITADEL, tables::CASTLE]
@@ -830,28 +950,61 @@ impl Live {
             (0, _) => Selected::Town(0),
             _ => Selected::Hero(0),
         };
+        // Each hero's and town's status window, and so each one's choice (E24 M3 T6b1): no path.
+        let hero_status = |hero: u8| HeroStatus {
+            hero,
+            own_name: art.hero_names.contains_key(&hero),
+            skills: [0; 4],
+            morale: 0,
+            luck: 0,
+            army: [None; 7],
+        };
+        let town_status = |town: &KingdomTown, buildings: u64| TownStatus {
+            name: u16::from(town.faction).saturating_mul(TOWN_NAMES),
+            buildings,
+            garrison: false,
+            army: [None; 7],
+            silo: Vec::new(),
+            income: 0,
+        };
+        let chosen = Chosen {
+            heroes: types
+                .iter()
+                .zip(&places)
+                .map(|(&hero, &place)| {
+                    Some(ChosenHero {
+                        hero: place,
+                        status: hero_status(hero),
+                        path: Vec::new(),
+                    })
+                })
+                .collect(),
+            towns: towns_kept
+                .iter()
+                .zip(&towns_built)
+                .zip(&town_places)
+                .map(|((town, &built), &at)| {
+                    Some(ChosenTown {
+                        at,
+                        status: town_status(town, built),
+                    })
+                })
+                .collect(),
+        };
         let status = match selected {
             Selected::None => Some(Status::Date(DateStatus { frame: 0 })),
-            Selected::Hero(_) => Some(Status::Hero(HeroStatus {
-                hero: types.first().copied().unwrap_or_default(),
-                own_name: types
-                    .first()
-                    .is_some_and(|t| art.hero_names.contains_key(t)),
-                skills: [0; 4],
-                morale: 0,
-                luck: 0,
-                army: [None; 7],
-            })),
-            Selected::Town(_) => Some(Status::Town(TownStatus {
-                name: towns_kept
-                    .first()
-                    .map_or(0, |t| u16::from(t.faction).saturating_mul(TOWN_NAMES)),
-                buildings: towns_built.first().copied().unwrap_or_default(),
-                garrison: false,
-                army: [None; 7],
-                silo: Vec::new(),
-                income: 0,
-            })),
+            Selected::Hero(_) => chosen
+                .heroes
+                .first()
+                .cloned()
+                .flatten()
+                .map(|h| Status::Hero(h.status)),
+            Selected::Town(_) => chosen
+                .towns
+                .first()
+                .cloned()
+                .flatten()
+                .map(|t| Status::Town(t.status)),
         };
         let kingdom = Kingdom {
             heroes: portraits
@@ -887,6 +1040,8 @@ impl Live {
             minimap: None,
             hover: None,
             hint: None,
+            chosen,
+            pressed: Vec::new(),
         }
     }
 }
