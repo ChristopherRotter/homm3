@@ -281,8 +281,8 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         163 => Some("base:random_monster_6"),
         164 => Some("base:random_monster_7"),
         212 => by_subclass(&BORDER_GATES),
-        // E08 T61a (design §7): increment 7's 31 classes; a placed artifact's subclass is its
-        // artifact (ARTIFACTS), a Shrine's level its class.
+        // E08 T61a (increment 7's design note §7): increment 7's 31 classes; a placed artifact's
+        // subclass is its artifact (ARTIFACTS), a Shrine's level its class.
         4 => Some("base:arena"),
         ARTIFACT => Some("base:artifact"),
         6 => Some("base:pandoras_box"),
@@ -323,8 +323,8 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         229 => Some("sod:magic_clouds"),
         230 => Some("sod:magic_plains"),
         231 => Some("sod:rocklands"),
-        // E08 T72 (design §4): the sea's four pickups, a hole and Favorable Winds; a boat (class
-        // 8) is no object ([`BOAT`]).
+        // E08 T72 (increment 8's design note §4): the sea's four pickups, a hole and Favorable
+        // Winds; a boat (class 8) is no object ([`BOAT`]).
         29 => Some("base:flotsam"),
         59 => Some("base:ocean_bottle"),
         82 => Some("base:sea_chest"),

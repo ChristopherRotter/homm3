@@ -316,8 +316,8 @@ fn typed(
             (setup.guards, unsupported) = guarded(message.as_ref(), &has_text)?;
         }
         Body::Monster(body) => setup.monster = Some(monster(rules, template, body)?),
-        // E08 T61a (design §7): a placed artifact's is its subclass; a guarded artifact always
-        // asks (D-29), a random one is drawn when the game is built.
+        // E08 T61a (increment 7's design note §7): a placed artifact's is its subclass; a guarded
+        // artifact always asks (D-29), a random one is drawn when the game is built.
         Body::Artifact(message) => {
             if template.class == codes::ARTIFACT {
                 let code = u16::try_from(template.subclass).unwrap_or(u16::MAX);

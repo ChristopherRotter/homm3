@@ -1124,8 +1124,8 @@ proptest! {
                 .any(|e| matches!(e, GameEvent::OfferAnswered { accepted: true, .. }));
             // E08 T64b: a visit of increment 7's objects shows the visitor what the build drew
             // (a chest's gold, a Shrine's spell, a Tree's price, a University's skills, a random
-            // artifact; design §13): its gains, a choice or University opened, a price refused,
-            // or what its owner now knows.
+            // artifact; increment 7's design note §13): its gains, a choice or University opened, a
+            // price refused, or what its owner now knows.
             let shows = |events: &[GameEvent]| {
                 visit
                     && events.iter().any(|e| {
@@ -1358,12 +1358,12 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
     }
 }
 
-/// Another player's level-up shows nothing of its draws (E08 T31, design §14; GAM-DEC-002,
-/// ADR-0017 points 5 and 6), in both profiles: red's hero, at 990 experience, beats eight savage
-/// wolf riders beside it, out of the sight of blue's hero underground, and levels; in the other
-/// game it also knows Scholar, which no battle or move reads, so the same battle opens a level-up
-/// with other offers for some seeds (drawn from its level seed in `faithful`, for most of them;
-/// from red's stream in `strict-fixed`, for two of these sixteen). Blue is shown the same
+/// Another player's level-up shows nothing of its draws (E08 T31, increment 4's design note §14;
+/// GAM-DEC-002, ADR-0017 points 5 and 6), in both profiles: red's hero, at 990 experience, beats
+/// eight savage wolf riders beside it, out of the sight of blue's hero underground, and levels; in
+/// the other game it also knows Scholar, which no battle or move reads, so the same battle opens a
+/// level-up with other offers for some seeds (drawn from its level seed in `faithful`, for most of
+/// them; from red's stream in `strict-fixed`, for two of these sixteen). Blue is shown the same
 /// observation, legal commands and moves and told the same events at every step: that the game
 /// waits for red, never what red is offered or takes.
 // covers: GAM-DEC-002

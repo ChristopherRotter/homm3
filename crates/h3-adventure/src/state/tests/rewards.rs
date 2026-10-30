@@ -1,7 +1,7 @@
-//! Tests of the visits of increment 7's pickups, teachers and finds (E08 T62a; design §11, §13):
-//! what each kind gives, asks, refuses or turns into, the marks, the knowledge and the finds
-//! emptied, the choices' answers, a monster's treasure artifact, `ADV-QUIRK-22` in both profiles,
-//! and what the observation shows of them.
+//! Tests of the visits of increment 7's pickups, teachers and finds (E08 T62a; increment 7's design
+//! note §11, §13): what each kind gives, asks, refuses or turns into, the marks, the knowledge and
+//! the finds emptied, the choices' answers, a monster's treasure artifact, `ADV-QUIRK-22` in both
+//! profiles, and what the observation shows of them.
 
 use std::sync::Arc;
 use std::vec;

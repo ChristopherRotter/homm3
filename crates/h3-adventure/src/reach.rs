@@ -37,16 +37,16 @@
 //! search goes on over guarded tiles (0x56BBCE). Its destinations are the stop nodes. A walking
 //! hero's search keeps its one node per tile and its own loop (`bench-check`).
 //!
-//! Boats (E08 T73b; ADV-SEA-002 to -005, design §9). A hero in a boat is searched over one node
-//! per tile, every water tile a stop, by `AdventureState::passage`'s rows of a boat and a boat's
-//! prices (`Pricing::sail`, the drop of `Pricing::left_by`): a landing onto a free coastal tile,
-//! a visit from the boat's tile (an object's, another hero's) and a water tile a monster guards
-//! are destinations it goes no further from, a landing with the points its conversion leaves
-//! (`converted_points` to the land's maximum, as the move's). A walking hero's water neighbour is
-//! tested out of its loop, only where another hero stands in a boat or an empty boat lies: the
-//! hero is visited, the boat boarded (with a boat's drop and the conversion to the sea's maximum,
-//! as a flyer's and a water walker's boarding), each a destination. Events stay unseen, at sea as
-//! on land (decision 131).
+//! Boats (E08 T73b; ADV-SEA-002 to -005, increment 8's design note §9). A hero in a boat is
+//! searched over one node per tile, every water tile a stop, by `AdventureState::passage`'s rows of
+//! a boat and a boat's prices (`Pricing::sail`, the drop of `Pricing::left_by`): a landing onto a
+//! free coastal tile, a visit from the boat's tile (an object's, another hero's) and a water tile a
+//! monster guards are destinations it goes no further from, a landing with the points its
+//! conversion leaves (`converted_points` to the land's maximum, as the move's). A walking hero's
+//! water neighbour is tested out of its loop, only where another hero stands in a boat or an empty
+//! boat lies: the hero is visited, the boat boarded (with a boat's drop and the conversion to the
+//! sea's maximum, as a flyer's and a water walker's boarding), each a destination. Events stay
+//! unseen, at sea as on land (decision 131).
 
 use alloc::collections::BinaryHeap;
 use alloc::sync::Arc;
@@ -337,12 +337,12 @@ impl Reach {
     }
 
     /// A walking hero's step from `from` onto the water tile of `next` in `dir` with `points`
-    /// (E08 T73b; design §9), where another hero stands in a boat or an empty boat lies: as
-    /// `MoveHero`'s `check_step`, not down across the top of an object's tile (ADV-OBJ-004), a
-    /// hero visited from `from` (GAM-BAT-004, GAM-MET-001) with the walker's drop, else the boat
-    /// boarded (ADV-SEA-002) with a boat's drop and the conversion ([`Search::boarded`]); each a
-    /// destination the search goes no further from. The step is priced as the walker's from its
-    /// land tile.
+    /// (E08 T73b; increment 8's design note §9), where another hero stands in a boat or an empty
+    /// boat lies: as `MoveHero`'s `check_step`, not down across the top of an object's tile
+    /// (ADV-OBJ-004), a hero visited from `from` (GAM-BAT-004, GAM-MET-001) with the walker's drop,
+    /// else the boat boarded (ADV-SEA-002) with a boat's drop and the conversion
+    /// ([`Search::boarded`]); each a destination the search goes no further from. The step is
+    /// priced as the walker's from its land tile.
     // rule: ADV-SEA-002, GAM-BAT-004, GAM-MET-001
     #[cold]
     #[inline(never)]
@@ -375,12 +375,13 @@ impl Reach {
         self.improve((next, Node::Stop), left, dir as u8);
     }
 
-    /// A hero in a boat's search (E08 T73b; design §9; ADV-SEA-003 to -005): Dijkstra's over one
-    /// node per tile, the most points first (ties by slot), from the boat's tile with `points`,
-    /// every step one [`AdventureState::passage`] allows the boat `boat` (each a stop), priced
-    /// from the water tile ([`Pricing::sail`]) with the drop of [`Pricing::left_by`]. A landing,
-    /// a visit and a water tile a monster guards are destinations the search goes no further
-    /// from; a landing keeps the points of its conversion ([`Search::landed`]).
+    /// A hero in a boat's search (E08 T73b; increment 8's design note §9; ADV-SEA-003 to -005):
+    /// Dijkstra's over one node per tile, the most points first (ties by slot), from the boat's
+    /// tile with `points`, every step one [`AdventureState::passage`] allows the boat `boat` (each
+    /// a stop), priced from the water tile ([`Pricing::sail`]) with the drop of
+    /// [`Pricing::left_by`]. A landing, a visit and a water tile a monster guards are destinations
+    /// the search goes no further from; a landing keeps the points of its conversion
+    /// ([`Search::landed`]).
     // rule: ADV-SEA-003, ADV-SEA-004, ADV-SEA-005, ADV-MON-006
     fn search_sail(&mut self, search: &Search<'_>, boat: u32, points: u32) {
         let mut queue = BinaryHeap::new();

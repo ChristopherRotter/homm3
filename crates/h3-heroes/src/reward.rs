@@ -1,9 +1,10 @@
 //! A reward record's hero half (E08 T60b; ADR-0013 points 15.2 and 15.4, HER-CHG-003): what a
 //! Pandora's Box or an event gives the hero, in the original's order, as the changes the game
 //! applies, and whether a hero can receive an artifact at all (A-25, `ADV-QUIRK-22`). Survey
-//! `docs/rules/surveys/E08-rewards.md` §7.4, §8.2, §15; design §3 (`docs/epics/E08-design.md`,
-//! since T60b in `E08-log.md`). The record's resources and creatures are the adventure's, its
-//! experience the game's to give last (ADR-0016 point 4, ADR-0017 point 6).
+//! `docs/rules/surveys/E08-rewards.md` §7.4, §8.2, §15; increment 7's design note §3
+//! (in `docs/epics/E08-log.md` since T65). The record's resources and creatures
+//! are the adventure's, its experience the game's to give last (ADR-0016 point 4, ADR-0017 point
+//! 6).
 
 use alloc::vec::Vec;
 

@@ -1,11 +1,11 @@
-//! Tests of the battles at sea (E08 T74b; design §13; GAM-BAT-001, GAM-BAT-003 amended,
-//! ADV-SEA-006): a battle with a hero in a boat on either side is fought on the sea terrain and
-//! the deck, one with both on the two boats, before the underground and under a special ground's
-//! battlefield; a monster's battle against a boat on the deck, a landing's guards' on land; after
-//! the battle a beaten hero in a boat leaves the map with its boat, a winner stays in it. Batch
-//! E8's rows as sources: E8-11 (the deck from the shore, the beaten hero's boat freed), E8-12 (the
-//! two boats, a retreated hero's boat gone, the winner still in its boat), E8-13 (a water
-//! monster's battle at once, on the deck), E8-15 (a landing's guards on land).
+//! Tests of the battles at sea (E08 T74b; increment 8's design note §13; GAM-BAT-001, GAM-BAT-003
+//! amended, ADV-SEA-006): a battle with a hero in a boat on either side is fought on the sea
+//! terrain and the deck, one with both on the two boats, before the underground and under a special
+//! ground's battlefield; a monster's battle against a boat on the deck, a landing's guards' on
+//! land; after the battle a beaten hero in a boat leaves the map with its boat, a winner stays in
+//! it. Batch E8's rows as sources: E8-11 (the deck from the shore, the beaten hero's boat freed),
+//! E8-12 (the two boats, a retreated hero's boat gone, the winner still in its boat), E8-13 (a
+//! water monster's battle at once, on the deck), E8-15 (a landing's guards on land).
 
 use std::vec;
 use std::vec::Vec;

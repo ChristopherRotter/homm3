@@ -162,10 +162,11 @@
 //!   the guarded Learning Stone (its level-up, then the guard's battle), a School of Magic paid,
 //!   the University's four purchases, a chest's experience and its level-up, a Witch Hut.
 //!
-//! **Scripted** (E08 T64a: the order-dependent paths of design §16), on the same map, recorded with
-//! `h3 adventure run --map fixtures/maps/e08-rewards-36.h3m --seed 1 --checkpoint-every 5 --script
-//! <script> --record <replay>` (the battles' commands from a scratch driver that attacks or shoots
-//! when it can, else defends; not committed); each ends with both players' turns:
+//! **Scripted** (E08 T64a: the order-dependent paths of increment 7's design note §16), on the same
+//! map, recorded with `h3 adventure run --map fixtures/maps/e08-rewards-36.h3m --seed 1
+//! --checkpoint-every 5 --script <script> --record <replay>` (the battles' commands from a scratch
+//! driver that attacks or shoots when it can, else defends; not committed); each ends with both
+//! players' turns:
 //!
 //! - `rewards-box-dialog-s1`: Orrin opens the box east of him (ADV-PIK-013) with no room: the army
 //!   dialog opens with the ten wood elves (GAM-DEC-004); he dismisses his cavaliers and takes the
@@ -203,11 +204,11 @@
 //! - `sea-s2611-d28`: five boardings and three landings, Favorable Winds sailed, a Sea Chest taken,
 //!   a battle on the two boats whose beaten hero leaves with its boat, a monster's battle on land.
 //!
-//! **Scripted** (E08 T75a: design §15's paths), on the same map, recorded with `h3 adventure run
-//! --map fixtures/maps/e08-sea-36.h3m --seed 1 --checkpoint-every 5 --script <script> --record
-//! <replay>` (the moves from a scratch probe walking each hero to its tile through the explored
-//! reachable ones, the battles' commands from the original's battle AI for both sides, E23's
-//! `h3_battle_ai::choose`; not committed); each ends with both players' turns:
+//! **Scripted** (E08 T75a: increment 8's design note §15's paths), on the same map, recorded with
+//! `h3 adventure run --map fixtures/maps/e08-sea-36.h3m --seed 1 --checkpoint-every 5 --script
+//! <script> --record <replay>` (the moves from a scratch probe walking each hero to its tile
+//! through the explored reachable ones, the battles' commands from the original's battle AI for
+//! both sides, E23's `h3_battle_ai::choose`; not committed); each ends with both players' turns:
 //!
 //! - `sea-board-hat-s1`: Sylvia boards her boat with the Admiral's Hat: her points after the step
 //!   become the share of the sea's maximum (1 700 of 2 000 to 3 251 of 3 825), she sails east and

@@ -1552,9 +1552,8 @@ fn diplomacy_gives_a_join_bonus_of_its_level() {
     }
 }
 
-// E08 T61a (design §7): what the map puts in increment 7's objects, their guards, the records and
-// what makes a map unsupported or unknown.
-// covers: ADV-OBJ-002
+// E08 T61a (increment 7's design note §7): what the map puts in increment 7's objects, their
+// guards, the records and what makes a map unsupported or unknown. covers: ADV-OBJ-002
 #[test]
 fn increment_7_bodies_import_with_their_guards_and_records() {
     let core = SOD.core();

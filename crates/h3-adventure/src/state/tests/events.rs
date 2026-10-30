@@ -1,7 +1,8 @@
-//! Tests of events (E08 T62b2; design §12, §13): the step that fires one and ends the move there,
-//! the colours and the computer flag, the repeats, the guards at once and their battle's end, an
-//! event on a guarded tile after its guard's visit (E08 T63b), a flyer stopped on one, and what no
-//! player sees of one: never in a view, nothing in the paths or the reachable tiles.
+//! Tests of events (E08 T62b2; increment 7's design note §12, §13): the step that fires one and
+//! ends the move there, the colours and the computer flag, the repeats, the guards at once and
+//! their battle's end, an event on a guarded tile after its guard's visit (E08 T63b), a flyer
+//! stopped on one, and what no player sees of one: never in a view, nothing in the paths or the
+//! reachable tiles.
 
 use std::boxed::Box;
 use std::sync::Arc;

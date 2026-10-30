@@ -1,5 +1,5 @@
-//! Tests of the visits' block (E08 T61b; design §10): a hero's marks, a player's knowledge, the
-//! emptied objects, and the state's hash and reader.
+//! Tests of the visits' block (E08 T61b; increment 7's design note §10): a hero's marks, a player's
+//! knowledge, the emptied objects, and the state's hash and reader.
 
 use std::sync::Arc;
 

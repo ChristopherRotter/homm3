@@ -47,9 +47,9 @@ impl ObjectBits {
     }
 }
 
-/// What visits left on the map's objects (design §10): a hero's marks, a player's knowledge and
-/// the objects emptied, each a bit per object index. A value only the state stores: building or
-/// changing one changes no game.
+/// What visits left on the map's objects (increment 7's design note §10): a hero's marks, a
+/// player's knowledge and the objects emptied, each a bit per object index. A value only the state
+/// stores: building or changing one changes no game.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Visits {
     /// How many objects the static map holds.

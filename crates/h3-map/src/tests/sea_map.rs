@@ -1,10 +1,10 @@
-//! The sea map committed under `fixtures/maps/` (E08 T75a, design §15): a strait between two
-//! shores with boats of the three kinds beside both coasts, the sea's four pickups, events on
-//! water with and without guards, a monster on water, Favorable Winds, a hole and a guarded tile
-//! on a coast, and heroes with each of the sea's sources (Navigation and its specialists, the
-//! Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat) beside a boat, a flyer
-//! beside a coastal Flotsam and a water walker. Written by [`crate::writer`] as the rewards map
-//! (`rewards_map.rs`); the scripted golden replays play its paths
+//! The sea map committed under `fixtures/maps/` (E08 T75a, increment 8's design note §15): a strait
+//! between two shores with boats of the three kinds beside both coasts, the sea's four pickups,
+//! events on water with and without guards, a monster on water, Favorable Winds, a hole and a
+//! guarded tile on a coast, and heroes with each of the sea's sources (Navigation and its
+//! specialists, the Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat) beside a
+//! boat, a flyer beside a coastal Flotsam and a water walker. Written by [`crate::writer`] as the
+//! rewards map (`rewards_map.rs`); the scripted golden replays play its paths
 //! (`crates/h3-cli/tests/adventure_replays.rs`). The test checks that the committed file reads to
 //! the map written here and imports with every sea class, and the flyer's refusal beside the
 //! Flotsam (D-46), which a replay cannot record; it rewrites the file when `H3_WRITE_FIXTURES` is
