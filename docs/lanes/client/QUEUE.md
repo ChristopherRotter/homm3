@@ -20,24 +20,34 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M5 T6b — the window over a server
+T6b cut in two by the user (2026-10-30): T6b1 the window playing a seat joined at the battle's
+start, T6b2 the record that opens mid-battle with a restart's re-join.
+
+### E17 M5 T6b1 — the window plays a seat on a server (in progress, 2026-10-30)
 
 - **Scope:** `h3-view window` plays a seat on a server through T6a's `h3_view::remote` and the
   binary's `net` (design §11.1): the address, the game (joined by its token, or created), the
-  seat; the window polls the connection each frame (never waits on it); the record growing
-  from the server's messages into the window's timeline (`anim::Growing`), the turn from the
-  server's `YourTurn` (its `legal` and `castable` for the mouse and the book), the previews
-  (damage ranges, reachable hexes) only when the content check is `Same`, a visible note
-  otherwise; a record that opens mid-battle (R2-8: the snapshot's dead stacks as corpses, the
-  box by the timeline's living set; M4 T3a's R1-3: the moat's strip by the fixed moat rows,
-  0x63BCE8 and 0x63BCF4) for a join and a re-join after a drop (the record fetched extends the
-  one before: the timeline kept) or a server restart (the numbering afresh: a new timeline),
-  the window re-dialing after a closed connection; the end's `remote_turn`. The server lane's
-  notes: `NOTES.md`, "The live client"; the detail: `QUEUE-ARCHIVE.md`, 2026-10-23 (T9b).
+  seat, joined before the battle's first command; the window polls the connection each frame
+  (never waits on it); the record growing from the server's messages into the window's timeline
+  (`anim::Growing`), the turn from the server's `YourTurn` (its `legal` and `castable` for the
+  mouse and the book; the aims' targets by the protocol's `Query`), the previews only when the
+  content check is `Same`, a visible note otherwise; a drop on the same server and the re-join
+  by the token (the record fetched extends the one before: the timeline kept); the end's
+  `remote_turn`. The server lane's notes: `NOTES.md`, "The live client".
 - **Acceptance:** a battle played to its end in two windows on a local `h3-server`, a seat each;
-  a drop and a re-join; a server restart and a re-join; both outcomes of the content check; the
-  mid-battle record drawn against the original where it has a reference; the Definition of Done.
-- **Depends on:** T6a (done 2026-10-30); the original data staged. **Status:** ready.
+  a drop and a re-join; both outcomes of the content check; the Definition of Done.
+- **Depends on:** T6a (done 2026-10-30); the original data staged. **Status:** in progress.
+
+### E17 M5 T6b2 — the record that opens mid-battle
+
+- **Scope:** a record that opens mid-battle (R2-8: the snapshot's dead stacks as corpses, a raise
+  of one drawn, the box by the timeline's living set; M4 T3a's R1-3: the moat's strip by the
+  fixed moat rows, 0x63BCE8 and 0x63BCF4, not the record's moat) for a join mid-battle and a
+  re-join after a server restart (the numbering afresh: a new timeline); the window re-dialing
+  until a restarted server answers. The detail: `QUEUE-ARCHIVE.md`, 2026-10-23 (T9b).
+- **Acceptance:** a join mid-battle; a server restart and a re-join; the mid-battle record drawn
+  against the original where it has a reference; the Definition of Done.
+- **Depends on:** T6b1; the original data staged. **Status:** ready after T6b1.
 
 ### E17 M5 T7 — accounts
 
