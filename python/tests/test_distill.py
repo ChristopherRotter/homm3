@@ -92,6 +92,23 @@ def test_every_committed_bench_config_is_valid() -> None:
     assert kinds == ["mlp", "mlp", "mlp", "hexconv", "hexformer", "entity"]
 
 
+def test_every_committed_bench_report_is_complete() -> None:
+    # `records/distill/<bench>.json` (E25 T7c): a bench's `report.json`, every evaluation scoring
+    # every student, the bench's settings loadable.
+    reports = sorted((Path(__file__).parents[1] / "records" / "distill").glob("*.json"))
+    assert reports
+    for path in reports:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        assert {"teacher", "bench", "identity", "students", "evaluations", "ended"} <= set(report)
+        assert report["ended"] in ("budget", "stop")
+        bench = Bench(**report["bench"])
+        assert list(report["students"]) == list(bench.students)
+        assert report["evaluations"][0]["samples"] == 0
+        for evaluation in report["evaluations"]:
+            assert list(evaluation["students"]) == list(bench.students)
+            assert set(evaluation["categories"]) == set(CATEGORIES)
+
+
 def test_the_categories_follow_the_entries_and_the_tactics_phase() -> None:
     obs = torch.ones(9, L.OBSERVATION_LEN)
     obs[8, L.ROUND] = 0.0

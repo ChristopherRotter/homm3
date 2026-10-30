@@ -9,24 +9,20 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
 2026-10-27; increments 1 and 2 closed 2026-10-28 and 29 (`E25-archive.md`).
 **`e25-scale-1` #3 is the lineage's current best** (the user at T6, 2026-10-29). **Increment 3, the network's architecture** (AI-Q11, the user):
-a distillation bench ranks a deeper and a wider MLP, a hex convolution network, a hex
-transformer and E06's entity network against the current MLP, then the best go to RL. The
+a distillation bench ranked a deeper and a wider MLP, a hex convolution network, a hex
+transformer and E06's entity network against the current MLP (T7c: the wide MLP leads); it
+goes to RL (T7d). The
 faithful system actor still trains no agent and no neutral battles train (decision 2); each
 run's length is agreed with the user (decision 5). All on observation v22 and action v13: no
 encoding or ABI change.
 
-- **T7c The bench run.** *Scope:* on the user's machine (the GPU; its length agreed with the
-  user), from `python/`: `uv run --group train python -m h3env.train.distill --teacher
-  runs/e25-scale-1/best.pt --config configs/distill/e25.toml --out runs/distill-1` (4 M
-  samples; each evaluation prints the students' seconds; Ctrl-C scores and saves). The report
-  committed (`python/records/distill/distill-1.json`) and read in `E25-log.md`: which kinds fit
-  the teacher best per sample and per second, and where the entity network fails (the move
-  head or not). *Depends on:* T7b (done 2026-10-29); the user. *Status:* next (the user's run).
-- **T7d The A/B.** *Scope:* the best one or two kinds at 20 M on `e25-scale.toml`'s settings
-  (from scratch, or from the bench's weights: imitation of the lineage's own network, not of
-  the system actor or a bot), against `e25-scale-1`; the user's machine; a hex network with
-  `[ppo] minibatches` raised to fit the GPU (`TRAPS.md`, Python). *Depends on:* T7c.
-  *Status:* waiting.
+- **T7d The A/B.** *Scope:* on the user's machine, `e25-wide-1`: `configs/e25-wide.toml`
+  (`e25-scale.toml`'s settings at 20 M samples with `[network] hidden = 1024`, from scratch; the
+  user at T7c, 2026-10-30; about 1.5 to 2 hours): `uv run --group train python -m h3env.train
+  --config configs/e25-wide.toml --out runs/e25-wide-1`. The record committed and read against
+  `e25-scale-1` (the ladders; the tactics share and the decisions' mix, `records/inspect/
+  battles.py` on its `best.pt`). *Depends on:* T7c (done 2026-10-30: `E25-log.md` T7c); the
+  user. *Status:* next (the user's run).
 - **T8 Increment 3's checkpoint.** *Scope:* T7c's and T7d's reads put to the user; increment 4
   chosen. *Depends on:* T7d. *Status:* waiting.
 

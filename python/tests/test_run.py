@@ -675,6 +675,13 @@ def test_increment_2s_configs_are_shaping_with_the_tactics_bound() -> None:
     assert dataclasses.replace(scale, samples=20_000_000, lr_horizon=0, tactics_rounds=1) == (
         dataclasses.replace(bound, lr_horizon=0)
     )
+    # T7d's run (the user at T7c): the scale run's settings at 20 M with the MLP twice as wide.
+    wide = load_config((configs / "e25-wide.toml").read_text())
+    trainable(wide)
+    assert (wide.kind, wide.hidden, wide.layers, wide.samples) == ("mlp", 1024, 2, 20_000_000)
+    assert dataclasses.replace(wide, hidden=512, samples=60_000_000, lr_horizon=0) == (
+        dataclasses.replace(scale, lr_horizon=0)
+    )
 
 
 def test_the_league_draws_scores_and_retires() -> None:
