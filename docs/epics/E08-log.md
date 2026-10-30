@@ -9487,3 +9487,38 @@ ADV-FOG-003 (its source corrected, E9-4 and E9-6), ADV-MON-009 (E9-1), GAM-BAT-0
 (`cross-lane`, decision 210). No version.
 
 T81 (`shared/`) next.
+
+### Increment 9, round 4: T81a, the ADRs and the glossary (2026-10-30, `shared/e08-t81a`, `cross-lane`)
+
+**The cut** (decision 211; asked at the start, `AskUserQuestion`): T81 in two, the ADRs first
+(recommended): T81a a docs-only `shared/` pull request, T81b the code and packs the next session.
+Not chosen: the code first; whole, as T70; three pull requests (the creature's abilities apart).
+One pull request with the lane's own docs, `cross-lane` (the user, asked when `check-lane` flagged
+them; not chosen: a second, adventure pull request as T26a's). **Baseline:** `master` 0b4f612 (T80 merged). A docs-only change: no build, no original data; the
+sandbox ran `check-docs` only. This session had no GitHub API or push access (the repository was
+not enabled for it).
+
+- **The ADRs** (the three drafts accepted at ADV-Q38, decisions 201–204, applied with batch E9's
+  outcome as T80 folded it in, then deleted): ADR-0013 point 3 (the four kinds, the two
+  parameters, the thirteen specialists; the Cornucopia's 4 and the specialists as a specialty's
+  effect folded into the point), 13.6 (the Lighthouses' input), a new point 16 (the income each
+  copy counting, the day's spell points with the specialists' `+ 1` as a parameter, every hero of
+  the store), a consequence and the history; ADR-0016 point 1 (owners, guards, the weekly
+  contents, the fractions, the objects added in play, the boat tile), 3 (Leave Guards), 4
+  (increment 9's kinds and the week's and month's steps; D-47 written as batch E9 decided), 5
+  (the flag's and the start's reveal, A-33 withdrawn), 6 (owners public, production the owner's),
+  a consequence, an alternative (the agent's calls' rejected options) and the history; ADR-0017
+  points 1 (`BuildBoat`, the setup's owners and timed events), 3 (the day's start, the month's
+  kind; the agent's call on the week and names folded in), 4 (the streams), 6 (the decisions), 8
+  (the env's `BuildBoat`; "as increment 8's observation" corrected to increment 7's typed answers,
+  decision 187 having replaced decision 172), 10 (the income and timed events), 11 (a mine's
+  guards in battle, E9-2), a consequence (the core creature's abilities, the versions), an
+  alternative and the history; ADR-0015's amendment R01 point 1 (the core keeps a creature's
+  abilities outside battle) and its history; the index's four Read-when cells.
+- **The glossary** (`docs/03-domain.md`): ownable object, owner (neutral), flag, mine (abandoned
+  mine), guards, Leave Guards, weekly object; day's start with the week's step, the month's kind
+  and step; income; timed event.
+- **Docs**: design note's header, §3, §16, §18; decision 211 and the task's line in the epic; the
+  queue (T81a out, T81b in).
+
+T81b (`shared/`, `cross-lane`: the kinds, the parameters, the creature's abilities, the packs) next.

@@ -6,8 +6,7 @@ the code's comments cite these notes as "increment N's design note §M".
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 9's
 amendments of ADR-0013 (points 3, 13.6, a new point 16), ADR-0016 (points 1, 3, 4, 5, 6) and
-ADR-0017 (points 1, 3, 4, 6, 8, 10, 11), drafted in
-`docs/lanes/adventure/adr-drafts/*-increment-9.md` and applied by the increment's `shared/` task;
+ADR-0017 (points 1, 3, 4, 6, 8, 10, 11), drafted in the lane's `adr-drafts/` and applied by T81a (`shared/e08-t81a`, decision 211; the drafts deleted);
 written by T77b from T77a's survey and the answers at ADV-Q36 and ADV-Q37 (the epic's decisions
 192, 193, 196–199). The task that builds a section deletes it; the file goes when the epic
 closes. Facts and sources: survey `docs/rules/surveys/E08-economy.md` (§ numbers are the
@@ -87,7 +86,7 @@ B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E9
 
 HER-MAN-002 (the day's spell points), GAM-RES-004 (the heroes' income: its derivation here, its
 payment the game's), HER-ADV-009 amended (the Lighthouses' input). No quirk. Shared: the four
-kinds, the two parameters, the core creature's abilities, the packs and the gap-fill (T81).
+kinds, the two parameters, the core creature's abilities, the packs and the gap-fill (T81b).
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
@@ -369,7 +368,7 @@ the map.
 
 | Version | Change | Task |
 |---|---|---|
-| core ruleset hash v51, pack format v50 | the four kinds, the two hero parameters, the core creature's abilities; the packs | T81 (`shared/`) |
+| core ruleset hash v51, pack format v50 | the four kinds, the two hero parameters, the core creature's abilities; the packs | T81b (`shared/`) |
 | adventure ruleset part v14 | the seven kinds; the calendar, growth, months and income parameters | T83 |
 | map import v15 | classes 42, 53, 55, 87, 109, 112, 220; owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater` | T83 |
 | adventure state hash v17, game state hash v21 | owners, guards, weekly, fractions, added objects; the month, the events, the dialog's holder | T83, T85 |
@@ -409,11 +408,12 @@ Lighthouses owned at load are explored on day 1 (A-33: the reading says not; the
 
 ### 18. Shared and `cross-lane` work; the building tasks; the exit criteria
 
-**Shared and `cross-lane`:** T81's `shared/` task (the three ADRs applied with batch E9's outcome;
-the four kinds, the two parameters and the core creature's abilities in `h3-content` and `h3-pack`
-with the packs and the harvester's gap-fill, `cross-lane`; `docs/03-domain.md`'s terms: owner, flag, ownable object,
-mine, guards, Leave Guards, weekly object, the week's and the month's steps, the month's kind,
-timed event, income); batch E9's spec (`h3-experiment`, `cross-lane`, T78); the harness (common,
+**Shared and `cross-lane`:** T81's `shared/` task in two (decision 211): T81a the three ADRs
+applied with batch E9's outcome and `docs/03-domain.md`'s terms (owner, flag, ownable object, mine,
+guards, Leave Guards, weekly object, the day's start with the week's and the month's steps, the
+month's kind, timed event, income), done; T81b the four kinds, the two parameters and the core
+creature's abilities in `h3-content` and `h3-pack` with the packs and the harvester's gap-fill,
+`cross-lane`; batch E9's spec (`h3-experiment`, `cross-lane`, T78); the harness (common,
 T79); the env's action encoding (`h3-sim`, `cross-lane`, T85b). Everything else is the lane's own.
 
 **The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut
@@ -424,7 +424,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 |---|---|---|
 | 2 | **T78** | Batch E9's maps: the writer's seven classes and timed events (§4); the spec's fields (`cross-lane`); the two specs and templates (§17) |
 | 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
-| 4 | **T81** | `shared/`: the three ADRs amended with T80's outcome (and ADR-0015 point 2's core row), the four kinds, the parameters, the core creature's abilities and the packs, the glossary |
+| 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs |
 | 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small). T83: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v15, part v14, adventure state hash v17 |
 | 6 | **T84** | `h3-adventure` and `h3-game`: the owned objects' visits (§7), `BuildBoat` (§8), the weekly visits (§9), the mines' battles (§13), the kept dialog and the boat offer (§14); likely cut in two at its start (flagging and mines with their battles; Lighthouses, Shipyards, `BuildBoat` and the weekly visits) |
 | 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |

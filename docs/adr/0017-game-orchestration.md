@@ -75,6 +75,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    `MoveHero`'s path, and the sea's pickups give at once. The setup gains the map's **boats**
    (ADR-0016 point 1), which the import fills; a hero placed on water is refused (`Unsupported`,
    D-44). The turn start's points follow the hero's surface (ADR-0016 point 3).
+   **Increment 9** adds one command, **`BuildBoat`** (an adventure command naming a Shipyard by
+   its type and anchor, as the observation names it): a boat built from an own or allied
+   Shipyard without a visit (ADV-SHY-003; the original's click on the Shipyard, VCMI's and the
+   wiki's). No hero is named; the player's turn must be running with no open decision; the
+   Shipyard must lie on a tile the player has explored, its boat tile must exist and be free,
+   and the treasury must pay the kind's price, which the game checks before the adventure
+   applies. Flagging, a mine's visit, a Lighthouse's and the weekly objects' are steps of
+   `MoveHero`; the day's start is `EndTurn`'s (the last group's), no command of its own. The
+   setup gains the ownable objects' **owners** (ADR-0016 point 1, from the map) and the map's
+   **timed events** (the game's: for each its players, whether it applies to humans and to
+   computers, its first day, its interval, its seven resources and its message by index); the
+   import refuses an owner colour nobody plays.
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -106,6 +118,29 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    E09). Sequential play is one player per group in player
    order, the only schedule of increment 1. Commands interleave in one authoritative order, the
    server's log, which is the replay; logic stays single-threaded per game (ADR-0003).
+   From increment 9 the **day's start** has the original's order (`new_day` 0x4C7FE0;
+   GAM-CAL-002), on every day advance, so from day 2 (the game's start runs none of it: day 1
+   gives no income, grows and resets nothing): the calendar; on the first day of a week (days 8,
+   15, …: weeks of seven days) **the adventure's week step** (ADR-0016 point 4: the weekly
+   objects, then the monsters' growth); on the first day of a month (days 29, 57, …: months of
+   four weeks) **the month's kind** drawn, then **the adventure's month step** (a creature
+   month's monsters); then **the day's income** of every player (GAM-RES-003 to -005; every
+   player not defeated, E10's defeat) added to its treasury; then **every hero's spell points**
+   (HER-MAN-002: every hero of the store); then the adventure's start-of-day step (increment 5's
+   reveal under `strict-fixed`). Then the first group's turn starts. At **each player's turn
+   start**, after the contexts' start-of-turn steps, the map's **timed events** fire for that
+   player (GAM-CAL-004): in the map's order, each whose players include it, which applies to its
+   kind (human or computer, the setup's flag) and whose day it is (its first day, the file's day
+   + 1, or every interval after it); its resources are added to the treasury, a loss floored at
+   0. Day 1's fire when the game is built, with the first group's turn. The week and the month
+   are derived from the day (no state of their own; the original's three words are one number
+   here).
+   The **month's kind** is game state: normal (the first month's), a creature's month (one of the
+   parameters' twelve creatures) or the Plague; drawn at each new month as the parameters' odds
+   (5, 4 and 1 in 10). The Plague changes nothing before the towns (E09). **The week's kind** (a
+   week of a creature) and its towns' effects come with E09 (E08 decision 197). The month's and
+   the week's names (the original draws one for its message) are not drawn: a name is the
+   client's, and no draw of ours is the original's.
 4. **An RNG stream per player** (kernel streams, ADR-0003 point 7). Randomness caused by a
    player's command draws only from that player's stream; the day advance draws from a game
    stream, and the random placeholders of a setup are resolved from a setup stream when the
@@ -133,6 +168,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    state is built (ADR-0016 point 4); no visit of increment 7 draws. The Pyramid's monster battle
    splits its guards as a monster's (`ADV-QUIRK-6`: the tile under `faithful`, the attacking
    player's stream under `strict-fixed`).
+   Increment 9's **setup placeholders**, drawn from the setup stream when the state is built, in
+   one walk after increment 7's and 8's in object order: an abandoned mine's resource then its
+   guards' count, a Windmill's resource then amount, a Garden's gift (the first week's contents
+   with the other placeholders: a game's build draws nothing from the game's stream). **The
+   day's start draws from the game's stream** (the day advance's): at a new week the Windmills'
+   resource and amount and the Gardens' gift, in object order; at a new month its kind, a
+   creature month's creature, then the spawn's walk, each candidate tile one draw and each
+   monster placed its count and its aggression right after its tile's draw. E09's week of a
+   creature draws from a stream of its own (E08 decision 197), so adding it shifts none of these.
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -226,6 +270,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 
    Each of increment 7's questions is its owner's alone, holds no one else and blocks its owner's
    `EndTurn` like an offer.
+
+   Increment 9's decisions reuse increment 2's to 6's kinds: **a guarded mine's question** is a
+   guarded pile's (`Fight`, accepted: the battle; declined: nothing); **the Leave Guards dialog**
+   is the army dialog (GAM-DEC-004) over the mine's guards as its group, which its owner's
+   `Close` keeps on the mine (a join's group is lost at its close, as before); **the Shipyard's
+   boat offer** at a visit is an offer with the kind's price, made only when the treasury can pay
+   (else refused, as every price), accepted: the price paid and the boat built. Nothing at the
+   day's start asks.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -277,7 +329,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    observation the env returns gains the boats on the viewer's explored tiles (tile, type,
    facing) and each seen hero's boat: `h3_game::GameObservation` as it is, since the adventure
    env has no flat encoding, so nothing of the AI lane's moves (E08 decision 187, replacing
-   decision 172's `cross-lane` change).
+   decision 172's `cross-lane` change). Increment 9 adds `BuildBoat` to the action encoding (one
+   entry per Shipyard the viewer may use, by its anchor), masked by its legality; the
+   observation the env returns gains the owners, the weekly marks and the month's kind, which no
+   flat encoding carries yet (decision 187). The action encoding's change is the AI lane's
+   (point 8's ownership), made `cross-lane` in the game's task with the user's consent, as
+   increment 7's typed answers were (E08 decision 138).
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -321,7 +378,17 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     command's. Increment 8's outcomes reuse increment 7's: a sea pickup's resources and artifact
     (with the full backpack's turn or loss), a removal; a boarding or a landing reports the
     hero's boat and its points after the conversion (to its owner); a bottle's message (to its
-    visitor's owner).
+    visitor's owner). Increment 9's outcomes: a weekly object's gain (as a pickup's resources); a
+    flag (the object and its new owner); a boat offer accepted or `BuildBoat` (the boat and the
+    price, which the game pays: for `BuildBoat` checked before the adventure applies, so a
+    rejection leaves everything untouched). **The day's income** is no outcome but the game's own
+    step: the game asks the adventure for each player's production (its mines' daily amounts; on
+    a week's first day, for each creature type with a **`weekly_resource` ability** in one of the
+    player's heroes' armies, its amount once, however many: the Crystal Dragons' 3 crystal) and
+    `h3-heroes` for each of its heroes' income on the map (ADR-0013 point 16), adds them and pays
+    them, saturating (GAM-RES-001), one `ResourceGained` per resource and player in player order.
+    **A timed event's** resources are added the same way, its losses taken down to 0 at most
+    (`ResourceLost`, the amount actually taken).
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -368,6 +435,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     boat's reaches a monster on the water (ADR-0016 point 4; D-45 reverted). A hero in a boat
     that loses, retreats or surrenders leaves the map **with its boat** (GAM-BAT-003 amended,
     ADV-SEA-006); a winner in a boat stays in it.
+    **Increment 9's battles** (GAM-BAT-001 amended): a mine's guards defend on the mine's
+    entrance. A neutral mine's single stack is a wandering monster's defender (split as a
+    monster's, `ADV-QUIRK-6`'s draws; D-47, confirmed by batch E9's E9-1); any other guards
+    defend as an army without a hero: a neutral mine's played by the neutral seat, an owned
+    mine's by its **owner** (a side with an owner is its owner's, as a hero's), who answers
+    outside its turn as a hero battle's defender (the original hands its human owner the guards'
+    side, each stack waiting for its order: batch E9's E9-2). The battle terrain is the mine
+    type's when it has one (the subterranean of the crystal, gold and abandoned mines), else the
+    tile's. The guards' survivors stay on the mine; a win flags it for the attacker.
 
 ## Consequences
 
@@ -418,6 +494,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   boats (no seam change: `BattleSetup` already names its terrain and battlefield). The env's
   observation encoding changes (the AI lane's, `cross-lane`). Simultaneous play's inventory
   (point 7) grows by the empty boats (two players' heroes may board one) and the sea's pickups.
+- Increment 9: the core creature gains **abilities** outside battle (the user at ADV-Q38, E08
+  decision 201: the Crystal Dragons' crystal is an innate creature ability), a closed core kind
+  beside its growth and flags, whose first is `weekly_resource { resource, amount }`; the battle
+  part's abilities (ADR-0012) stay the battle's, and ADR-0015 point 2's core row gains "a
+  creature's abilities outside battle". One command (`BuildBoat`), so the adventure replay format
+  moves; the game state hash gains the month's kind and the timed events; the env's action
+  encoding changes (the AI lane's, `cross-lane`). The day's start becomes `EndTurn`'s costliest
+  step on a new week and a new month (the scan over the weekly objects and monsters; the spawn's
+  walk over every tile).
 
 ## Alternatives considered
 
@@ -468,6 +553,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   rest given before it opens (VCMI's order, D-39: batch E7 showed the code's side, E08 T58).
 - Increment 8 (ADV-Q33): the env's observation of boats left to the AI lane's inbox after the
   build (its agents would see a hero in a boat as on its tile until then).
+- Increment 9 (ADV-Q36 to ADV-Q38): the week and the month as state of their own (they follow
+  from the day); the first week's weekly contents drawn from the game's stream (a build draws
+  nothing from it); the neutral seat playing an owned mine's guards (batch E9's E9-2 showed the
+  owner playing them).
 
 ## Revision history
 
@@ -530,3 +619,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   setup and a hero on water refused, the env's observation with the boats, the battle at sea (the
   deck by either hero's boat, the two boats by both) and a boat leaving with its beaten hero.
   Drafted in E08 T66b (survey `E08-sea.md`), batch E8's outcome folded in.
+- 2026-10-30 (E08 T81a `shared/`; the user at ADV-Q36 to ADV-Q38, E08 decisions 192–204):
+  points 1, 3, 4, 6, 8, 10 and 11 amended for E08 increment 9, mines, the week and owned
+  objects: `BuildBoat`; the owners and the timed events in the setup; the day's start in the
+  original's order from day 2 (the week's and the month's steps, the income, the spell points)
+  and the timed events at each player's turn start; the month's kind; the streams of the setup's
+  and the day's draws; Leave Guards as a kept army dialog, the boat offer; the env's
+  `BuildBoat`; a mine's guards in battle, an owned mine's played by its owner; the core
+  creature's abilities outside battle. Drafted in E08 T77b (survey `E08-economy.md`), batch E9's
+  outcome (T80, §19: D-47 confirmed, E9-2 the owner's guards) folded in.

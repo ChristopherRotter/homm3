@@ -92,7 +92,9 @@ Point 3 carried out (BACKLOG R01; detail in `docs/epics/R01-content-split.md`):
 
 1. **The cut.** The core keeps, beside point 3's list, the whole hero content (classes, types and
    specialties, secondary skills, artifacts, their effects: the hero context's vocabulary, which
-   `h3-heroes` translates to both seams), the creatures' flags and `Formation`.
+   `h3-heroes` translates to both seams), the creatures' flags, their abilities outside battle
+   (E08 increment 9: a closed core kind beside the growth and flags, first `weekly_resource`,
+   read by the game's day, never by the battle; ADR-0017's consequences) and `Formation`.
    `h3-content-battle` holds the battle part: creature battle stats, casts and abilities, the
    spells' battle magic (polarity, effects, counters, dispels, spares, `tests_as`, `summons`),
    obstacle types and the battle parameters.
@@ -129,3 +131,6 @@ Point 3 carried out (BACKLOG R01; detail in `docs/epics/R01-content-split.md`):
 - 2026-10-14 (E08 T18a; the user, ADV-Q13): point 1 amended: `h3-heroes` is the hero model in the
   `shared` layer (ADR-0013 point 2); `h3-game` depends on `h3-adventure`, `h3-battle` and it,
   `h3-adventure` on it.
+- 2026-10-30 (E08 T81a `shared/`; the user at ADV-Q38, E08 decision 201): amendment R01's
+  point 1 amended: the core keeps a creature's abilities outside battle (`weekly_resource`, the
+  Crystal Dragons' crystal), the battle's abilities staying the battle part's.
