@@ -159,6 +159,9 @@ pub enum Key {
     /// The mouse's right button, down and up as a key's (E17 M5 T3b: it gives a spell's aim up),
     /// wherever the mouse is.
     RightButton,
+    /// Any other key (E17 M5 T8b2, R5c-5: a key down stops the battle's Auto Combat, whatever
+    /// key it is); no table names it ([`Key::ALL`] leaves it out), so it gives no command.
+    Other,
 }
 
 impl Key {
@@ -274,10 +277,11 @@ impl Key {
             Self::Keypad8 => "Keypad8",
             Self::Keypad9 => "Keypad9",
             Self::RightButton => "RightButton",
+            Self::Other => "Other",
         }
     }
 
-    /// Every key, in the enum's order.
+    /// Every key a table may name, in the enum's order: all but [`Key::Other`].
     pub const ALL: [Self; 51] = [
         Self::Escape,
         Self::Space,
@@ -607,9 +611,9 @@ impl Window {
             match ty {
                 SDL_EVENT_QUIT | SDL_EVENT_WINDOW_CLOSE_REQUESTED => Some(Event::Quit),
                 SDL_EVENT_KEY_DOWN if self.repeats || !ev.key.repeat => {
-                    Key::of(ev.key.key).map(Event::Key)
+                    Some(Event::Key(Key::of(ev.key.key).unwrap_or(Key::Other)))
                 }
-                SDL_EVENT_KEY_UP => Key::of(ev.key.key).map(Event::KeyUp),
+                SDL_EVENT_KEY_UP => Some(Event::KeyUp(Key::of(ev.key.key).unwrap_or(Key::Other))),
                 SDL_EVENT_MOUSE_BUTTON_DOWN | SDL_EVENT_MOUSE_BUTTON_UP
                     if i32::from(ev.button.button) == SDL_BUTTON_LEFT =>
                 {
@@ -1312,5 +1316,8 @@ mod tests {
         assert_eq!(Key::from_name("Keypad3"), Some(Key::Keypad3));
         assert_eq!(Key::of(SDLK_KP_5), None);
         assert_eq!(Key::of(SDLK_TAB), None);
+        // A key no table names (E17 M5 T8b2): after every named one, found by no name.
+        assert!(Key::ALL.iter().all(|&k| k < Key::Other));
+        assert_eq!(Key::from_name(Key::Other.name()), None);
     }
 }

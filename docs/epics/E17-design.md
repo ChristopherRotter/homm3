@@ -2629,7 +2629,18 @@ kinds), `ai_battle_action` 0x477EE0's head, `ai_hero_cast_turn` 0x422DA0's head.
   human's turn it stops at waits, its stack outlined from its start
   (`Growing::outline_waiting`: the command before was pushed as followed by the computer's);
   unattended, `--auto <n>` switches it on at the human's n-th turn and stops it two commands
-  later.
+  later. Since T8b2 (R5c): a switch and a stop name the turn they were made in (`Input::Auto`'s
+  and `Input::Stop`'s `turn`; `Auto::of` takes each in it, not by its time): the switch the turn
+  waiting, as the bot's command for it may take no time (`EndTactics`: round 1's first turn
+  starts in the same millisecond, and plays itself from its start); a stop the turn started last
+  by its time, never one the bot already played (a press while Restart replays the battle stops
+  it at its next turn to come); a sequence's the turn started last by its time (`auto::turn_at`,
+  its `key:a` trusted to come on a human's waiting turn). The battle keeps them apart from the
+  window's inputs (`Battle::switches`): a seek back or Restart keeps them, and the turns' Auto
+  Combat costs the turns only (the mouse's `Follower` too, its mark dropped when a turn before it
+  plays otherwise). Any key down stops it: Control too, and a key no table names (`h3_sdl`'s
+  `Key::Other`). On a server's seat the button is disabled throughout (`Panels::without_switch`,
+  `Autoplay::off`), as when both players are human, while the window takes no switch there.
 - **Recorded** (`auto`, the melee's battle): A at the Angels' turn, the flight at 0 ms; the mouse
   moved to (400, 300); A again at 1 500 ms, the stop at the Wolf Riders' turn; the Pikemen's turn
   at 7 530 waits. The timeline as recorded (101 changes); the 106 frames' panel and cursor exact
@@ -2720,7 +2731,10 @@ cell pictures, the player record's reset 0x4B9E20 (+0x88).
 - **Built** (`h3_view::tactics`, the scene's `Draw::Shade` and `Moment::shade`, the layout's
   `cell_shade` and `[tactics_panel]`, `panel::NEXT_CREATURE` and `START_COMBAT`, `Panels::before`,
   `Moment::before_first_turn`): `tactics::shade` from an observation (*provisional*: a flyer
-  passes over any run of hexes; the phase's turns after the first: T4c2b), `tactics::told` (a
+  passes over any run of hexes; the phase's turns after the first: T4c2b; since T8b2, R5c-6, in a
+  siege the walls block and the closed gate and the drawbridge too, but for the defender, whose
+  step opens the gate unless a stack or corpse lies on a bridge, as the engine's
+  `siege::blocked_for`; a zone wider than the field is the whole field, R5c-2), `tactics::told` (a
   battle in the client is a game of its own, so every battle opening with a human's phase shows
   the message, *provisional*), the panel built for the defender (it was the opening's side,
   *provisional*), the situations' and the window's message at the opening, the pointer the

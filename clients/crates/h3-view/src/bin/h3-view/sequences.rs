@@ -737,7 +737,7 @@ pub(crate) fn draw_frames(
         // *provisional*, the situations' battles write no lines; T6c-2 times it).
         let text = status.as_deref().unwrap_or_else(|| panels.text(at));
         if opening {
-            list.extend(Panels::before(snapshot, layout));
+            list.extend(panels.before(snapshot, layout));
         } else {
             list.extend(panels.at_showing(snapshot, &timeline.turns, at, layout, text));
         }

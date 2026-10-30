@@ -54,6 +54,18 @@ fn the_zone_is_the_sides_columns_at_its_edge() {
         columns: 7,
     };
     assert_eq!(zone(&widest), [9, 10, 11, 12, 13, 14, 15]);
+    // T8b2, R5c-2: a zone wider than the field (a hostile server's) is the whole field.
+    for n in [16, 17, 255] {
+        let wide = |side| Tactics { side, columns: n };
+        assert_eq!(zone(&wide(Side::Defender)), (0..16).collect::<Vec<_>>());
+        assert_eq!(zone(&wide(Side::Attacker)), (1..17).collect::<Vec<_>>());
+        let mut o = phase(
+            n,
+            alloc::vec![stack(0, Side::Defender, 0, hex(5, 15), true)],
+        );
+        o.tactics = Some(wide(Side::Defender));
+        assert_eq!(shade(&o), columns(1, 15));
+    }
 }
 
 #[test]
@@ -84,6 +96,69 @@ fn a_humans_phase_opens_with_its_message() {
     o.tactics = None;
     o.sides[0].human = true;
     assert!(!told(&o));
+    // The defender's phase: its player's (T8b2, R5c-9).
+    o.tactics = Some(Tactics {
+        side: Side::Defender,
+        columns: 3,
+    });
+    assert!(told(&o));
+    o.sides[1].human = false;
+    assert!(!told(&o));
+}
+
+#[test]
+fn a_sieges_walls_and_closed_gate_block_the_phase() {
+    // T8b2, R5c-6 (BAT-SIE-002, BAT-SIE-003, the engine's `siege::blocked_for`).
+    use crate::siege::WALL_HEXES;
+    use h3_protocol::wire::Siege;
+    let wall = |h: u8| WALL_HEXES[usize::from(h / COLUMNS)];
+    let closed = Siege {
+        faction: 0,
+        fort: 1,
+        moat: 0,
+        gate_open: false,
+        walls: WALL_HEXES.to_vec(),
+        moat_hexes: Vec::new(),
+        parts: Vec::new(),
+    };
+    let mut o = phase(
+        12,
+        alloc::vec![stack(0, Side::Attacker, 0, hex(5, 1), false)],
+    );
+    o.siege = Some(closed.clone());
+    // The walls, the closed gate and the drawbridge keep the attacker outside.
+    let mut outside: BTreeSet<u8> = columns(1, 12)
+        .into_iter()
+        .filter(|&h| h < wall(h))
+        .collect();
+    outside.remove(&BRIDGES[0]);
+    assert_eq!(shade(&o), outside);
+    // Open, the gate lets it in: the zone but the standing walls.
+    o.siege.as_mut().unwrap().gate_open = true;
+    let mut open = columns(1, 12);
+    open.retain(|&h| h == GATE_HEX || !WALL_HEXES.contains(&h));
+    assert_eq!(shade(&o), open);
+    // The defender's step opens the closed gate: the zone but the walls.
+    let mut d = phase(
+        7,
+        alloc::vec![stack(0, Side::Defender, 0, hex(5, 14), false)],
+    );
+    d.tactics = Some(Tactics {
+        side: Side::Defender,
+        columns: 7,
+    });
+    d.siege = Some(closed);
+    let mut through = columns(9, 15);
+    through.retain(|&h| h == GATE_HEX || !WALL_HEXES.contains(&h));
+    assert_eq!(shade(&d), through);
+    // Not with a stack on a bridge (here a friend on the outer one): only inside the walls.
+    d.stacks
+        .push(stack(1, Side::Defender, 0, BRIDGES[1], false));
+    let inside: BTreeSet<u8> = columns(9, 15)
+        .into_iter()
+        .filter(|&h| h > wall(h))
+        .collect();
+    assert_eq!(shade(&d), inside);
 }
 
 #[test]
