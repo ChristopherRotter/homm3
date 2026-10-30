@@ -65,7 +65,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   are written by `h3mem.VISIT_RULES` inverted and the live part's `[hover]` `visits` read back by
   the same rules, so a wrong rule agrees with itself; only the original's status bar (a sequence
   in `hinted`) tells. They are the selected hero's as staged: a sequence that selects another
-  (T6b's clicks) needs them read again.
+  (T6b's clicks) needs them read again; so do the contents' (M3 T6a2b, §4.12: a Shrine's spell
+  known, a Tree's mark, a Witch Hut's skill). A kind known is a kind's bit: every object of the
+  kind shows its bonus.
+- **The harness's writes run none of the game's updates** (M3 T6a2b): a quest's visitors written
+  left the Quest Log as the map's start set it, so the live part reads the shown item's state
+  (`Mem.item_states`), never one recomputed from what the harness wrote.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain

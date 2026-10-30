@@ -190,8 +190,10 @@ viewers share.
   status bar compared; MCL-Q17 to MCL-Q19; the log), and T6a2, those cases, cut with the user
   (2026-10-30) by what runs the hint into T6a2a, the 35 classes of the visit marks (**done**
   2026-10-30: their cases read and built, the facts' `visits`, MCL-Q18's fix; four new sequences
-  exact with the status bar; the log), and T6a2b, the 20 of the owners and contents (seven
-  sub-functions); every capture again with the hint unmasked moved to T7; T6b, the clicks, the
+  exact with the status bar; the log), and T6a2b, the 20 of the owners and contents (kept whole by
+  the user; **done** 2026-10-30: the seven sub-functions and the nine quests' texts read and
+  built, the facts' contents, the writer's quests; four new sequences exact with the status bar;
+  MCL-Q20, MCL-Q21; the log); every capture again with the hint unmasked moved to T7; T6b, the clicks, the
   keys during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a
   seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
@@ -387,3 +389,15 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   selected only: the marks a class keeps by a hero read as needing one, not recorded without.
   MCL-Q18's fix (the mouse's tile by the view's origin; the original's under `--bugs original`)
   changes the window's clicks and hints: T7's hand test.
+- **M3 T6a2b, the owners and contents** (*provisional*, design §4.12): the live part's `[hover]`
+  contents (sparse rows by object: `mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`,
+  each holding what the hint reads already decided for its player: the viewing, the shown or the
+  current one, one in the comparisons; the engine's from M4), the Tent's mark a `visits` rule;
+  `Hint`'s eight new variants (`Hint` now `Clone`, not `Copy`); the catalogue's 34 keys and 13
+  families (a quest's text a key per type with six context forms, SeerHut.txt's columns); a
+  situation's `visits` with `hero` and `guards` (`h3mem.Mem.write_content`) and an object's
+  `quest` (the writer's `Extras::quests`, the adventure lane's crate, additive). The Quest Log's
+  state is the shown item's now (`Mem.item_states`), not recomputed from the quests. Not recorded:
+  the players apart (hot seat, M5), a defeat-hero quest without its hero (MCL-Q21), the skills
+  quest's spaced texts (SeerHut.txt's variants 2 and 3: the new game drew variant 1 for it; the
+  other types' variants have one text, several drawn).

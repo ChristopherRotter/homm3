@@ -901,3 +901,363 @@ original = [{ at = "ARRAYTXT:196" }]
 [[key]]
 id = "map.army.8"
 original = [{ at = "ARRAYTXT:199" }]
+
+# What the hints of the owners and contents show (E24 M3 T6a2b; docs/epics/E24-design.md §4.12).
+# A Border Guard's, a Border Gate's and a Keymaster's Tent's (0x40B311, 0x40B33A): the executable's
+# "%s %s" with the colour's name (TentColr.txt, `keymaster.<n>`) and the class's.
+[[key]]
+id = "map.hint.keymaster"
+args = { colour = "text", name = "text" }
+original = [{ at = "EXE:0x660344", printf = ["colour", "name"] }]
+
+# An owned dwelling's (0x40B5FF): the executable's "%s - %s" with its name and its owner's
+# (ARRAYTXT.TXT's "Owned by" records, `player-owned.<n>`); a Lighthouse's owner after its name
+# (0x40BEFA): " - %s".
+[[key]]
+id = "map.hint.owned"
+args = { name = "text", owner = "text" }
+original = [{ at = "EXE:0x66033C", printf = ["name", "owner"] }]
+
+[[key]]
+id = "map.hint.owner"
+args = { owner = "text" }
+original = [{ at = "EXE:0x660334", printf = ["owner"] }]
+
+# The brackets around a mine's resource and a bank's guards (0x40D793, 0x40D7E7, 0x40D578).
+[[key]]
+id = "map.hint.open"
+original = [{ at = "EXE:0x660354" }]
+
+[[key]]
+id = "map.hint.close"
+original = [{ at = "EXE:0x660350" }]
+
+# The guards of a mine and a creature bank (`army_description_text` 0x40ABE0 without its details):
+# GENRLTXT's record 203, then the size word of their count (`map.guards.<n>`) and their creature's
+# plural, or GENRLTXT's record 44 for several kinds.
+[[key]]
+id = "map.hint.guarded"
+original = [{ at = "GENRLTXT:203" }]
+
+[[key]]
+id = "map.hint.creatures"
+original = [{ at = "GENRLTXT:44" }]
+
+[[key]]
+id = "map.guards.0"
+original = [{ at = "ARRAYTXT:176" }]
+
+[[key]]
+id = "map.guards.1"
+original = [{ at = "ARRAYTXT:179" }]
+
+[[key]]
+id = "map.guards.2"
+original = [{ at = "ARRAYTXT:182" }]
+
+[[key]]
+id = "map.guards.3"
+original = [{ at = "ARRAYTXT:185" }]
+
+[[key]]
+id = "map.guards.4"
+original = [{ at = "ARRAYTXT:188" }]
+
+[[key]]
+id = "map.guards.5"
+original = [{ at = "ARRAYTXT:191" }]
+
+[[key]]
+id = "map.guards.6"
+original = [{ at = "ARRAYTXT:194" }]
+
+[[key]]
+id = "map.guards.7"
+original = [{ at = "ARRAYTXT:197" }]
+
+[[key]]
+id = "map.guards.8"
+original = [{ at = "ARRAYTXT:200" }]
+
+# What a visited Shrine (0x40D9D2, 0x40DA5D: GENRLTXT 356 and 355) and Witch Hut (0x40DD92,
+# 0x40DE17: 357 and 358) teach, and whether the selected hero knows it already.
+[[key]]
+id = "map.hint.learn-spell"
+args = { name = "text" }
+original = [{ at = "GENRLTXT:356", printf = ["name"] }]
+
+[[key]]
+id = "map.hint.spell-known"
+original = [{ at = "GENRLTXT:355" }]
+
+[[key]]
+id = "map.hint.learn-skill"
+args = { name = "text" }
+original = [{ at = "GENRLTXT:357", printf = ["name"] }]
+
+[[key]]
+id = "map.hint.skill-known"
+original = [{ at = "GENRLTXT:358" }]
+
+# A visited Seer's Hut's name (0x574288: GENRLTXT 348) with its seer's (`seer-name.<n>`).
+[[key]]
+id = "map.hint.seer"
+args = { name = "text" }
+original = [{ at = "GENRLTXT:348", printf = ["name"] }]
+
+# A quest's list (0x56C960): ", " between its items, GENRLTXT's record 142 before the last.
+[[key]]
+id = "map.hint.comma"
+original = [{ at = "EXE:0x66032C" }]
+
+[[key]]
+id = "map.hint.and"
+original = [{ at = "GENRLTXT:142" }]
+
+# A quest's items: a primary skill and its value (0x56DFF6: "%s %i"), a count of creatures or of
+# a resource (0x57059A, 0x5715E3: "%d %s").
+[[key]]
+id = "map.quest.skill"
+args = { skill = "text", value = "number" }
+original = [{ at = "EXE:0x683220", printf = ["skill", "value"] }]
+
+[[key]]
+id = "map.quest.count"
+args = { amount = "number", name = "text" }
+original = [{ at = "EXE:0x6778A4", printf = ["amount", "name"] }]
+
+# A quest's text in its hint (the quest's vtable +0x1C, by its type 1 to 9: SeerHut.txt's
+# "rollover" record 5 x type), a form by the seer's or the guard's variant (its column).
+
+[[key]]
+id = "map.quest.1"
+args = { level = "number" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:5:1", printf = ["level"] },
+    { form = "seer-2", at = "SEERHUT:5:2", printf = ["level"] },
+    { form = "seer-3", at = "SEERHUT:5:3", printf = ["level"] },
+    { form = "guard-1", at = "SEERHUT:5:4", printf = ["level"] },
+    { form = "guard-2", at = "SEERHUT:5:5", printf = ["level"] },
+    { form = "guard-3", at = "SEERHUT:5:6", printf = ["level"] },
+]
+
+[[key]]
+id = "map.quest.2"
+args = { what = "text" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:10:1", printf = ["what"] },
+    { form = "seer-2", at = "SEERHUT:10:2", printf = ["what"] },
+    { form = "seer-3", at = "SEERHUT:10:3", printf = ["what"] },
+    { form = "guard-1", at = "SEERHUT:10:4", printf = ["what"] },
+    { form = "guard-2", at = "SEERHUT:10:5", printf = ["what"] },
+    { form = "guard-3", at = "SEERHUT:10:6", printf = ["what"] },
+]
+
+[[key]]
+id = "map.quest.3"
+args = { what = "text" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:15:1", printf = ["what"] },
+    { form = "seer-2", at = "SEERHUT:15:2", printf = ["what"] },
+    { form = "seer-3", at = "SEERHUT:15:3", printf = ["what"] },
+    { form = "guard-1", at = "SEERHUT:15:4", printf = ["what"] },
+    { form = "guard-2", at = "SEERHUT:15:5", printf = ["what"] },
+    { form = "guard-3", at = "SEERHUT:15:6", printf = ["what"] },
+]
+
+[[key]]
+id = "map.quest.4"
+args = { what = "text" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:20:1", printf = ["what"] },
+    { form = "seer-2", at = "SEERHUT:20:2", printf = ["what"] },
+    { form = "seer-3", at = "SEERHUT:20:3", printf = ["what"] },
+    { form = "guard-1", at = "SEERHUT:20:4", printf = ["what"] },
+    { form = "guard-2", at = "SEERHUT:20:5", printf = ["what"] },
+    { form = "guard-3", at = "SEERHUT:20:6", printf = ["what"] },
+]
+
+[[key]]
+id = "map.quest.5"
+args = { what = "text" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:25:1", printf = ["what"] },
+    { form = "seer-2", at = "SEERHUT:25:2", printf = ["what"] },
+    { form = "seer-3", at = "SEERHUT:25:3", printf = ["what"] },
+    { form = "guard-1", at = "SEERHUT:25:4", printf = ["what"] },
+    { form = "guard-2", at = "SEERHUT:25:5", printf = ["what"] },
+    { form = "guard-3", at = "SEERHUT:25:6", printf = ["what"] },
+]
+
+[[key]]
+id = "map.quest.6"
+args = { what = "text" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:30:1", printf = ["what"] },
+    { form = "seer-2", at = "SEERHUT:30:2", printf = ["what"] },
+    { form = "seer-3", at = "SEERHUT:30:3", printf = ["what"] },
+    { form = "guard-1", at = "SEERHUT:30:4", printf = ["what"] },
+    { form = "guard-2", at = "SEERHUT:30:5", printf = ["what"] },
+    { form = "guard-3", at = "SEERHUT:30:6", printf = ["what"] },
+]
+
+[[key]]
+id = "map.quest.7"
+args = { what = "text" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:35:1", printf = ["what"] },
+    { form = "seer-2", at = "SEERHUT:35:2", printf = ["what"] },
+    { form = "seer-3", at = "SEERHUT:35:3", printf = ["what"] },
+    { form = "guard-1", at = "SEERHUT:35:4", printf = ["what"] },
+    { form = "guard-2", at = "SEERHUT:35:5", printf = ["what"] },
+    { form = "guard-3", at = "SEERHUT:35:6", printf = ["what"] },
+]
+
+[[key]]
+id = "map.quest.8"
+args = { what = "text" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:40:1", printf = ["what"] },
+    { form = "seer-2", at = "SEERHUT:40:2", printf = ["what"] },
+    { form = "seer-3", at = "SEERHUT:40:3", printf = ["what"] },
+    { form = "guard-1", at = "SEERHUT:40:4", printf = ["what"] },
+    { form = "guard-2", at = "SEERHUT:40:5", printf = ["what"] },
+    { form = "guard-3", at = "SEERHUT:40:6", printf = ["what"] },
+]
+
+[[key]]
+id = "map.quest.9"
+args = { what = "text" }
+contexts = ["seer-1", "seer-2", "seer-3", "guard-1", "guard-2", "guard-3"]
+original = [
+    { form = "seer-1", at = "SEERHUT:45:1", printf = ["what"] },
+    { form = "seer-2", at = "SEERHUT:45:2", printf = ["what"] },
+    { form = "seer-3", at = "SEERHUT:45:3", printf = ["what"] },
+    { form = "guard-1", at = "SEERHUT:45:4", printf = ["what"] },
+    { form = "guard-2", at = "SEERHUT:45:5", printf = ["what"] },
+    { form = "guard-3", at = "SEERHUT:45:6", printf = ["what"] },
+]
+
+# The owners' and contents' names (E24 M3 T6a2b). Only the map viewer lists them.
+# A Keymaster's colour (TentColr.txt, `keymaster_colour_names` 0x6A7520 as 0x5B9880 loads it).
+[[family]]
+id = "keymaster"
+table = "TENTCOLR"
+first = 0
+count = 8
+column = 0
+optional = true
+
+# A colour's "Owned by" text (ARRAYTXT.TXT's records 23 to 30, 0x6A5898 as `arraytxt_load` 0x5B9CC0 loads them).
+[[family]]
+id = "player-owned"
+table = "ARRAYTXT"
+first = 23
+count = 8
+column = 0
+optional = true
+
+# A dwelling's name (CrGen1.txt, `dwelling1_names` 0x6914FC).
+[[family]]
+id = "dwelling1"
+table = "CRGEN1"
+first = 0
+count = 80
+column = 0
+optional = true
+
+# A dwelling of class 20's name (CrGen4.txt, `dwelling4_names` 0x691354).
+[[family]]
+id = "dwelling4"
+table = "CRGEN4"
+first = 0
+count = 2
+column = 0
+optional = true
+
+# A resource's name (RESTYPES.TXT, `resource_names` 0x6A5E64 as 0x5B9310 loads them).
+[[family]]
+id = "resource"
+table = "RESTYPES"
+first = 0
+count = 8
+column = 0
+optional = true
+
+# A mine's name (MineName.txt, 0x6A74D0 as 0x5B9340 loads them; the eighth an abandoned mine's).
+[[family]]
+id = "mine"
+table = "MINENAME"
+first = 0
+count = 8
+column = 0
+optional = true
+
+# A creature bank's name (CrBanks.txt's records whose first column is filled, from record 2, as 0x47AB30 loads them).
+[[family]]
+id = "bank"
+table = "CRBANKS"
+first = 2
+by = 0
+column = 0
+optional = true
+
+# A Tree of Knowledge's price (ARRAYTXT.TXT's records 202 to 204, 0x6A64D8; each begins with a space).
+[[family]]
+id = "tree-price"
+table = "ARRAYTXT"
+first = 202
+count = 3
+column = 0
+optional = true
+
+# A secondary skill's name (SSTRAITS.TXT's first column, from record 2).
+[[family]]
+id = "secondary-skill"
+table = "SSTRAITS"
+first = 2
+column = 0
+optional = true
+
+# A seer's name (SeerHut.txt's records 50 to 97).
+[[family]]
+id = "seer-name"
+table = "SEERHUT"
+first = 50
+count = 48
+column = 0
+optional = true
+
+# A primary skill's name (PRISKILL.TXT, 0x6A5390).
+[[family]]
+id = "primary-skill"
+table = "PRISKILL"
+first = 0
+count = 4
+column = 0
+optional = true
+
+# An artifact's name (ARTRAITS.TXT's first column, from record 2; the artifacts' setup +0x0).
+[[family]]
+id = "artifact"
+table = "ARTRAITS"
+first = 2
+column = 0
+optional = true
+
+# A colour's name (PlColors.txt, 0x6A7DF8), which a quest shows in lower case.
+[[family]]
+id = "player-colour"
+table = "PLCOLORS"
+first = 0
+count = 8
+column = 0
+optional = true

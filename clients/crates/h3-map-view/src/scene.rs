@@ -431,7 +431,7 @@ pub fn scene_in(
     let mut shown = panels::dialog(layout, lists, live, art.levels, at.z)
         .ok_or_else(|| SceneError::Live("a hero's portrait is past the tables'".into()))?;
     // The status bar's hint (E24 M3 T6a1, design §4.10): the live part's, none an empty text.
-    let hint = live.hint.unwrap_or_default();
+    let hint = live.hint.clone().unwrap_or_default();
     shown.texts.insert(
         panels::id::STATUS_BAR,
         hint.text(&art.hero_names, &tables.texts),

@@ -19,6 +19,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_map::RawMap;
+use h3_map::model::{Mission, Stack};
 use h3_map::writer::{
     AnyObject, Extras, GivenTile, Hero, Map, MapObject, ObjectTemplate, Patch, Player, RiverKind,
     Road, RoadKind, Terrain, Town, TownBuildings,
@@ -98,7 +99,7 @@ pub struct Situation {
 /// What the viewer knows of the object anchored on a tile (E24 M3 T6a2a): whether Red knows its
 /// kind's bonus, and whether it was visited (by the selected hero, where the class keeps it so)
 /// or as the new game left it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VisitSpec {
     /// The object's anchor.
@@ -109,6 +110,39 @@ pub struct VisitSpec {
     /// Visited or not; none as the new game left it.
     #[serde(default)]
     pub visited: Option<bool>,
+    /// The selected hero's own (E24 M3 T6a2b, design §4.12): a Tree of Knowledge's visit, a
+    /// Shrine's spell known, a Witch Hut's skill learned; none as the new game left it.
+    #[serde(default)]
+    pub hero: Option<bool>,
+    /// A mine's or a creature bank's guards as [creature, count] stacks (E24 M3 T6a2b), in its
+    /// army's slots; none as the new game left them, empty none.
+    #[serde(default)]
+    pub guards: Option<Vec<[u32; 2]>>,
+}
+
+/// A Seer's Hut's or a Quest Guard's quest (E24 M3 T6a2b, design §4.12), the writer's mission
+/// (`h3_map::writer::Extras::quests`): the hero and the monster to defeat named by their tiles.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum QuestSpec {
+    /// Reach this level.
+    Level(u32),
+    /// Reach these primary skills (attack, defense, power, knowledge).
+    Skills([u8; 4]),
+    /// Defeat the hero standing on this tile, one of the situation's.
+    Hero([u8; 2]),
+    /// Defeat the monster anchored on this tile, one of the situation's objects.
+    Monster([u8; 2]),
+    /// Bring these artifacts.
+    Artifacts(Vec<u16>),
+    /// Bring these [creature, count] stacks.
+    Creatures(Vec<[u16; 2]>),
+    /// Bring these resources (in the original's order).
+    Resources([u32; 7]),
+    /// Be the hero of this type.
+    BeHero(u8),
+    /// Belong to this colour.
+    Player(u8),
 }
 
 /// What a situation selects (E24 M3 T4a): Red's hero standing on a tile (after its walk) or Red's
@@ -243,6 +277,9 @@ pub struct ObjectSpec {
     /// writer's `AnyObject`): a colour with a hero, which makes it a player. None is neutral.
     #[serde(default)]
     pub owner: Option<u8>,
+    /// A Seer's Hut's or a Quest Guard's quest (E24 M3 T6a2b); none without one.
+    #[serde(default)]
+    pub quest: Option<QuestSpec>,
 }
 
 /// A town (E24 M1 T5b1): its faction's template (`Objects.txt`'s first of class 98 and the
@@ -423,6 +460,8 @@ pub struct BoatSpec {
 
 /// The boats' class.
 const BOAT_CLASS: u32 = 8;
+/// The monsters' class (54), whose object a quest may name (E24 M3 T6a2b).
+const MONSTER_CLASS: u32 = 54;
 
 /// The hero type of the `nth` hero (from 0) of `class` on a map: the class's eight types in
 /// order (classes 0–15 the types 8 × class onwards, the AB classes 16 and 17 the types 128 and
@@ -534,6 +573,7 @@ impl Situation {
                 objects.extend(copied_objects(c, raw));
             }
         }
+        let first = objects.len();
         for o in &self.objects {
             let template = templates
                 .iter()
@@ -611,9 +651,11 @@ impl Situation {
             level_limit: 0,
             banned_skills: vec![],
         };
+        let quests = self.quests(&map.objects, &objects, first)?;
         let extras = Extras {
             tiles: given.into_values().collect(),
             objects,
+            quests,
         };
         Ok((map, extras))
     }
@@ -686,6 +728,60 @@ impl Situation {
             return Err("a situation needs a hero of Red's and of another colour".into());
         }
         Ok((players, heroes))
+    }
+
+    /// The given objects' quests as the writer takes them (E24 M3 T6a2b), by their index among
+    /// the extras' `objects` (the given ones from `first`): a hero's mission names the identifier
+    /// of the hero standing on its tile (its index among the map's `placed` objects, plus one),
+    /// a monster's that of the monster object anchored there (after them).
+    fn quests(
+        &self,
+        placed: &[MapObject],
+        objects: &[AnyObject],
+        first: usize,
+    ) -> Result<BTreeMap<usize, Mission>, String> {
+        let identifier = |i: usize| u32::try_from(i + 1).unwrap_or(u32::MAX);
+        let mut quests = BTreeMap::new();
+        for (k, o) in self.objects.iter().enumerate() {
+            let Some(quest) = &o.quest else {
+                continue;
+            };
+            let mission = match quest {
+                QuestSpec::Level(n) => Mission::Level(*n),
+                QuestSpec::Skills(s) => Mission::PrimarySkills(*s),
+                QuestSpec::Hero(at) => {
+                    let j = placed
+                        .iter()
+                        .position(|p| matches!(p, MapObject::Hero(h) if h.tile == (at[0], at[1])))
+                        .ok_or_else(|| format!("the quest at {:?}: no hero on {at:?}", o.at))?;
+                    Mission::KillHero(identifier(j))
+                }
+                QuestSpec::Monster(at) => {
+                    let i = (0..self.objects.len())
+                        .find(|&i| {
+                            self.objects[i].at == *at
+                                && objects
+                                    .get(first + i)
+                                    .is_some_and(|m| m.template.class == MONSTER_CLASS)
+                        })
+                        .ok_or_else(|| {
+                            format!("the quest at {:?}: no monster anchored on {at:?}", o.at)
+                        })?;
+                    Mission::KillCreature(identifier(placed.len() + first + i))
+                }
+                QuestSpec::Artifacts(a) => Mission::Artifacts(a.clone()),
+                QuestSpec::Creatures(c) => Mission::Army(
+                    c.iter()
+                        .map(|&[creature, count]| Stack { creature, count })
+                        .collect(),
+                ),
+                QuestSpec::Resources(r) => Mission::Resources(*r),
+                QuestSpec::BeHero(h) => Mission::Hero(*h),
+                QuestSpec::Player(p) => Mission::Player(*p),
+            };
+            quests.insert(first + k, mission);
+        }
+        Ok(quests)
     }
 
     /// The harness's writes into the lists and its selection (E24 M3 T4a): a town's day written

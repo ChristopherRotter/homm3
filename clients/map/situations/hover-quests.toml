@@ -1,0 +1,47 @@
+# The Seer's Huts' and Quest Guards' hints of the map hint (E24 M3 T6a2b; clients/map/sequences.toml
+# `hover-quests`; E24 design §4.12): Red's selected hero at (17, 1), in the view from (0, 0), nine
+# Seer's Huts with a quest of each type, all visited but the last of a second level quest, in two
+# rows; five Quest Guards (four visited) and a visited Seer's Hut without a quest in the third;
+# Blue's hero far off, whose defeat a quest asks, and a monster another's.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [17, 1], class = 2 },
+    { at = [34, 34], owner = 1 },
+]
+objects = [
+    { def = "AVXseer0.def", at = [3, 3], quest = { level = 10 } },
+    { def = "AVXseer0.def", at = [6, 3], quest = { skills = [1, 2, 0, 3] } },
+    { def = "AVXseer0.def", at = [9, 3], quest = { hero = [34, 34] } },
+    { def = "AVXseer0.def", at = [12, 3], quest = { monster = [30, 30] } },
+    { def = "AVXseer0.def", at = [15, 3], quest = { artifacts = [7, 8, 9] } },
+    { def = "AVXseer0.def", at = [3, 7], quest = { creatures = [[0, 10], [1, 1]] } },
+    { def = "AVXseer0.def", at = [6, 7], quest = { resources = [0, 0, 0, 0, 0, 5, 1000] } },
+    { def = "AVXseer0.def", at = [9, 7], quest = { be_hero = 0 } },
+    { def = "AVXseer0.def", at = [12, 7], quest = { player = 1 } },
+    { def = "AVXseer0.def", at = [15, 7], quest = { level = 5 } },
+    { def = "avxbor80.def", at = [2, 11], quest = { level = 8 } },
+    { def = "avxbor80.def", at = [5, 11], quest = { artifacts = [5] } },
+    { def = "avxbor80.def", at = [8, 11], quest = { creatures = [[13, 2]] } },
+    { def = "avxbor80.def", at = [11, 11], quest = { player = 2 } },
+    { def = "avxbor80.def", at = [14, 11], quest = { resources = [10, 0, 0, 0, 0, 0, 0] } },
+    { def = "AVXseer0.def", at = [17, 11] },
+    { def = "AVWpikx0.def", at = [30, 30] },
+]
+visits = [
+    { at = [3, 3], visited = true },
+    { at = [6, 3], visited = true },
+    { at = [9, 3], visited = true },
+    { at = [12, 3], visited = true },
+    { at = [15, 3], visited = true },
+    { at = [3, 7], visited = true },
+    { at = [6, 7], visited = true },
+    { at = [9, 7], visited = true },
+    { at = [12, 7], visited = true },
+    { at = [2, 11], visited = true },
+    { at = [5, 11], visited = true },
+    { at = [8, 11], visited = true },
+    { at = [11, 11], visited = true },
+    { at = [17, 11], visited = true },
+]
+view = [0, 0, 0]

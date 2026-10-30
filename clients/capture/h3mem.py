@@ -143,6 +143,21 @@ VISIT_RULES = {
     105: (None, ("current",)), 107: (10, ("hero", 0x7B)), 108: (None, ("current",)),
     109: (None, ("left", 0x1F)), 110: (27, ("flags", 1 << 6)), 112: (None, ("left", 0xF << 13)),
 }
+# The owners' and contents' hints (E24 M3 T6a2b; E24 design §4.12, structs.toml): the game's mines
+# and Lighthouses (+0x4E38C, 0x40 bytes: owner i8 +0, resource +1, abandoned +2, the guards' army
+# +4), creature banks (+0x4E3DC, 0x6C bytes: the guards' army +0; a bank's tile word: its index
+# bits 13-24, looted bit 25, the visitors' bits 5 + colour), the kinds of a Witch Hut (12), a Tree
+# (18) and the Shrines (19-21) in kinds_visited; the Keymaster's Tents' visitors by colour (u8[8]
+# +0x4E364); a hero's spells (u8[70] +0x430) and Trees visited (u32 +0x6B); a quest: its vtable
+# QUEST_VTABLE + 0x3C x its type (1-9, `quest_create` 0x573240), its texts' variant (i32 +0x38),
+# its data from +0x40. The classes: a mine 53, the banks, the Shrines 88-90, a Tree 102, a Witch
+# Hut 113, a Seer's Hut 83, a Quest Guard 215; a Keymaster's Tent 10 is a visit rule's.
+MINES, MINE_SIZE, BANKS, BANK_SIZE, KEYMASTERS = 0x4E38C, 0x40, 0x4E3DC, 0x6C, 0x4E364
+WITCH_KIND, TREE_KIND, SHRINE_KIND = 12, 18, 19
+HERO_SPELLS, HERO_TREES, BANK_LOOTED = 0x430, 0x6B, 1 << 25
+QUEST_VTABLE, QUEST_VTABLE_SIZE, QUEST_VARIANT = 0x64174C, 0x3C, 0x38
+BANK_CLASSES = (16, 24, 25, 84, 85)
+CONTENT_CLASSES = (10, 53, 83, 88, 89, 90, 102, 113, 215) + BANK_CLASSES
 # The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
 # clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
 # the view once the clock reaches FRAME_DEADLINE (0x408A88; design §1.6).
@@ -248,7 +263,7 @@ TOWN_GARRISON_HERO, TOWN_ARMY, TOWN_NAME, TOWN_STANDING = 0xC, 0xE0, 0xC8, 0x150
 # by their teams (+0x1F879) against the shown player's (0x69778C).
 STATUS_ASKED, STATUS_END, STATUS_NONE, STATUS_DATE_DEF = 0x398, 0x39C, 8, 2001
 OUT_OF_GAME, TEAMS, SHOWN_PLAYER, HALL_BITS = 0x1F636, 0x1F879, 0x69778C, (13, 12, 11)
-MOVE_HERO, NEXT_HERO = 7, 11
+MOVE_HERO, NEXT_HERO, QUEST_LOG = 7, 11, 5
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
 # The battle animations' next frame time (0x4F82F0 waits for it); on the adventure map the
@@ -1120,7 +1135,9 @@ class Mem:
             chosen = [0, 0]
         dialog = self.manager_field(ADVENTURE_DIALOG)
         tops = [self.i32(dialog + HERO_TOP), self.i32(dialog + TOWN_TOP)]
-        quests = any(self.visited_quest(at, size, colour) for at, size in QUEST_VECTORS)
+        # The Quest Log's state as shown (E24 M3 T6a2b): `quest_log_state` 0x4039B0 sets it at the
+        # map's start and after a visit, not when the harness writes a quest's visitors.
+        quests = self.item_states([QUEST_LOG])[QUEST_LOG] & 0x20 == 0
         resources = list(struct.unpack_from("<7i", raw, 0x9C))
         return {"heroes": rows, "towns": town_rows, "selected": chosen, "tops": tops,
                 "quests": int(quests), "resources": resources, "date": list(self.date())}
@@ -1129,29 +1146,22 @@ class Mem:
         """Move hero's and next hero's states on the adventure screen (E24 M3 T2a; design §4.1),
         `[move, next]`, 1 enabled: the items 7 and 11 of the adventure dialog (the manager's
         +0x44), a state with bit 8 or 0x20 disabled."""
+        states = self.item_states([MOVE_HERO, NEXT_HERO])
+        return [int(not states[i] & 0x28) for i in (MOVE_HERO, NEXT_HERO)]
+
+    def item_states(self, ids):
+        """The states (u16 +0x16) of the adventure dialog's items `ids` (the manager's +0x44),
+        by id (E24 M3 T2a; since T6a2b the Quest Log's)."""
         dialog = self.manager_field(ADVENTURE_DIALOG)
         states, item, seen = {}, self.u32(dialog + FIRST_ITEM), set()
-        while item and item not in seen and len(seen) < 512 and len(states) < 2:
+        while item and item not in seen and len(seen) < 512 and len(states) < len(ids):
             seen.add(item)
             raw = self.read(item, ITEM_STATE + 2)
             ident = struct.unpack_from("<H", raw, ITEM_ID)[0]
-            if ident in (MOVE_HERO, NEXT_HERO):
+            if ident in ids:
                 states[ident] = struct.unpack_from("<H", raw, ITEM_STATE)[0]
             item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
-        return [int(not states[i] & 0x28) for i in (MOVE_HERO, NEXT_HERO)]
-
-    def visited_quest(self, vector, size, colour):
-        """Whether a record of the quests' vector at game + `vector` (`size` bytes each) holds a
-        quest the player `colour` visited (E24 M3 T2a)."""
-        begin, end = struct.unpack("<2I", self.read(self.game() + vector, 8))
-        if not begin or end <= begin:
-            return False
-        data = self.read(begin, end - begin)
-        for at in range(0, len(data) - size + 1, size):
-            quest, visitors = struct.unpack_from("<IB", data, at)
-            if quest and visitors >> colour & 1:
-                return True
-        return False
+        return states
 
     def cursor(self):
         """The cursor (E24 M2 T1a2): its type (0 `crdeflt.DEF`, 1 `cradvntr.DEF`, ...), its
@@ -1358,7 +1368,7 @@ class Mem:
 
         begin, end = struct.unpack("<II", self.read(game + TOWNS, 8))
         town_records = [begin + TOWN_SIZE * i for i in range((end - begin) // TOWN_SIZE)]
-        words, armed, marks = [], [], {}
+        words, armed, marks, subclasses = [], [], {}, {}
         for x, y, level, template, _ in self.map_objects():
             at = entrance_cell(templates, side, x, y, template)
             if at is None:
@@ -1376,6 +1386,7 @@ class Mem:
             words.append(word if word != 0xFFFFFFFF else -1)
             cls = classes[template][1]
             marks[len(words) - 1] = (cls, word)
+            subclasses[len(words) - 1] = classes[template][2]
             defended = False
             if cls == 98 and word < len(town_records):
                 town = town_records[word]
@@ -1415,9 +1426,15 @@ class Mem:
         state = self.visit_state(colour)
         visits = [self.visit(*marks[i], state) if i in marks else [0, -1]
                   for i in range(len(words))]
+        # A Keymaster's Tent's mark (E24 M3 T6a2b): the viewer's bit of its colour's.
+        for i, (cls, _) in marks.items():
+            if cls == 10:
+                colour_bits = self.read(game + KEYMASTERS + subclasses[i] % 8, 1)[0]
+                visits[i] = [0, int(0 <= colour < 8 and colour_bits >> colour & 1)]
         return {"words": words, "armed": armed, "towns": towns, "hero_ids": hero_ids,
                 "hero_list": hero_list, "town_list": town_list, "teams": teams,
-                "guarded": guarded, "reach": reach, "day_points": day_points, "visits": visits}
+                "guarded": guarded, "reach": reach, "day_points": day_points, "visits": visits,
+                **self.contents(marks, state, own_name)}
 
     def visit_state(self, colour):
         """What the visit marks read for the viewing player `colour` (E24 M3 T6a2a; design
@@ -1478,7 +1495,163 @@ class Mem:
             mark = word & rule[1] == 0
         return [int(bool(known)), -1 if mark is None else int(bool(mark))]
 
-    def write_visit(self, colour, x, y, known, visited):
+    def contents(self, marks, state, own_name):
+        """The contents' lists of `[hover]` (E24 M3 T6a2b; design §4.12, the viewer's
+        `hover::contents::Written`) of the objects `marks` gives ({object: (class, word)} of
+        their entrance tiles), for the players of `state` (`visit_state`): the viewing one a Seer's
+        Hut's visit reads, the shown one a bank's and a Quest Guard's, the current one a
+        Shrine's, a Tree's and a Witch Hut's; the selected hero's spells, skills and Trees.
+        `own_name(index)`: 1 when a hero's name is the map's own."""
+        game = self.game()
+        hero = state["hero"]
+        out = {"mines": [], "banks": [], "shrines": [], "trees": [], "witch_huts": [],
+               "quests": []}
+
+        def bit(word, player):
+            return int(0 <= player < 8 and word >> 5 + player & 1)
+
+        def army(at):
+            raw = struct.unpack("<14i", self.read(at, 56))
+            return [[t, c] for t, c in zip(raw[:7], raw[7:]) if t != -1]
+
+        def known(kind):
+            current = state["current"]
+            return int(0 <= current < 8 and state["kinds"][kind] >> current & 1)
+
+        current = state["current"]
+        for i, (cls, word) in sorted(marks.items()):
+            if cls == 53:
+                record = self.u32(game + MINES) + MINE_SIZE * word
+                out["mines"].append([i, self.read(record + 1, 1)[0], army(record + 4)])
+            elif cls in BANK_CLASSES:
+                record = self.u32(game + BANKS) + BANK_SIZE * (word >> 13 & 0xFFF)
+                out["banks"].append([i, bit(word, state["shown"]),
+                                     [] if word & BANK_LOOTED else army(record)])
+            elif cls in (88, 89, 90):
+                spell = signed(word, 13, 10) if bit(word, current) else -1
+                learned = int(hero is not None and 0 <= spell < 70
+                              and hero[HERO_SPELLS + spell] != 0)
+                out["shrines"].append([i, known(SHRINE_KIND + cls - 88), spell, learned])
+            elif cls == 102:
+                price = signed(word, 13, 3) if bit(word, current) else -1
+                mark = (-1 if hero is None
+                        else struct.unpack_from("<I", hero, HERO_TREES)[0] >> (word & 0x1F) & 1)
+                out["trees"].append([i, known(TREE_KIND), price, mark])
+            elif cls == 113:
+                if word & 0xFE000 == 0xFE000:
+                    out["witch_huts"].append([i, 0, -1, 0])
+                    continue
+                skill = signed(word, 13, 7) if bit(word, current) else -1
+                learned = int(hero is not None and 0 <= skill < 28
+                              and hero[SECONDARY + skill] != 0)
+                out["witch_huts"].append([i, known(WITCH_KIND), skill, learned])
+            elif cls in (83, 215):
+                vector, size = QUEST_VECTORS[0 if cls == 83 else 1]
+                record = self.read(self.u32(game + vector) + size * word, size)
+                quest, visitors = struct.unpack_from("<IB", record, 0)
+                player = state["viewer"] if cls == 83 else state["shown"]
+                row = [i, int(0 <= player < 8 and visitors >> player & 1),
+                       record[0x11] if cls == 83 else 0]
+                out["quests"].append(row + (self.quest(quest, own_name) if quest
+                                            else [0, 0, [], []]))
+        return out
+
+    def quest(self, address, own_name):
+        """[type, variant, values, pairs] of the quest at `address` (E24 M3 T6a2b; design §4.12,
+        the viewer's quest row): its type by its vtable, its texts' variant, and what its hint
+        names: a level, the four primary skills, a hero [index, own name], a monster's creature,
+        the artifacts, a creature quest's [type, count] pairs, the seven resources, a hero to
+        be, a colour."""
+        raw = self.read(address, 0x60)
+        vtable, = struct.unpack_from("<I", raw, 0)
+        kind, rest = divmod(vtable - QUEST_VTABLE, QUEST_VTABLE_SIZE)
+        if rest or not 1 <= kind <= 9:
+            raise RuntimeError(f"a quest at {address:#x} of vtable {vtable:#x}")
+        variant, = struct.unpack_from("<i", raw, QUEST_VARIANT)
+
+        def field(offset):
+            return struct.unpack_from("<i", raw, offset)[0]
+
+        def vector(offset):
+            begin, end = struct.unpack_from("<II", raw, offset)
+            count = (end - begin) // 4 if begin and end > begin else 0
+            return list(struct.unpack(f"<{count}i", self.read(begin, 4 * count))) if count else []
+
+        values, pairs = [], []
+        if kind in (1, 4, 9):
+            values = [field(0x48 if kind == 4 else 0x40)]
+        elif kind == 2:
+            values = list(struct.unpack_from("<4b", raw, 0x40))
+        elif kind in (3, 8):
+            index = field(0x44 if kind == 3 else 0x40)
+            values = [index, own_name(index)]
+        elif kind == 5:
+            values = vector(0x44)
+        elif kind == 6:
+            pairs = [list(p) for p in zip(vector(0x54), vector(0x44))]
+        else:
+            values = list(struct.unpack_from("<7i", raw, 0x40))
+        return [kind, variant, values, pairs]
+
+    def write_content(self, cls, tile, word, subclass, colour, known, visited, hero, guards):
+        """Writes a situation's visit of an object of the owners' and contents' hints (E24 M3
+        T6a2b; design §4.12) whose entrance tile is at `tile` with `word` and `subclass`, for the
+        viewing player `colour`, by what `contents` reads inverted: its kind known (a Shrine's, a
+        Tree's, a Witch Hut's), visited or not (a Tent's colour bit, a bank's or a Shrine's, Tree's
+        or Witch Hut's word bit, a Seer's Hut's or Quest Guard's visitor bit), the selected
+        hero's own (`hero`: a Shrine's spell known, a Tree visited, a Witch Hut's skill at basic),
+        the guards of a mine or a bank (`guards`, [creature, count] stacks; a bank's not looted)."""
+        game = self.game()
+        state = self.visit_state(colour)
+        player = game + PLAYERS + PLAYER_SIZE * colour
+        selected = self.i32(player + 0x4)
+        hero_at = game + HEROES + HERO_SIZE * selected
+
+        def set_bit(address, n, on=True):
+            value = self.u32(address)
+            self.write_u32(address, value | 1 << n if on else value & ~(1 << n))
+
+        def word_bit(value, p, on):
+            return value | 1 << 5 + p if on else value & ~(1 << 5 + p)
+
+        kinds = {102: TREE_KIND, 113: WITCH_KIND, 88: SHRINE_KIND, 89: SHRINE_KIND + 1,
+                 90: SHRINE_KIND + 2}
+        if known and cls not in kinds:
+            raise RuntimeError(f"class {cls} shows no bonus")
+        if hero is not None and (cls not in kinds or selected < 0):
+            raise RuntimeError(f"class {cls}: no hero's own, or no hero selected")
+        if guards is not None and cls != 53 and cls not in BANK_CLASSES:
+            raise RuntimeError(f"class {cls} has no guards")
+        if known:
+            set_bit(game + KINDS_VISITED + kinds[cls], state["current"])
+        if cls == 10 and visited is not None:
+            set_bit(game + KEYMASTERS + subclass % 8, colour, visited)
+        elif cls in BANK_CLASSES:
+            if visited is not None:
+                word = word_bit(word, state["shown"], visited)
+            if guards is not None:
+                self.write_army(self.u32(game + BANKS) + BANK_SIZE * (word >> 13 & 0xFFF), guards)
+                word &= ~BANK_LOOTED
+        elif cls == 53 and guards is not None:
+            self.write_army(self.u32(game + MINES) + MINE_SIZE * word + 4, guards)
+        elif cls in kinds:
+            if visited is not None:
+                word = word_bit(word, state["current"], visited)
+            if hero is not None and cls == 102:
+                set_bit(hero_at + HERO_TREES, word & 0x1F, hero)
+            elif hero is not None:
+                at = (HERO_SPELLS + signed(word, 13, 10) if cls != 113
+                      else SECONDARY + signed(word, 13, 7))
+                self.write_bytes(hero_at + at, bytes([int(hero)]))
+        elif cls in (83, 215) and visited is not None:
+            vector, size = QUEST_VECTORS[0 if cls == 83 else 1]
+            at = self.u32(game + vector) + size * word + 4
+            p = state["viewer"] if cls == 83 else state["shown"]
+            bits = self.read(at, 1)[0]
+            self.write_bytes(at, bytes([bits | 1 << p if visited else bits & ~(1 << p) & 0xFF]))
+        self.write_u32(tile, word)
+
+    def write_visit(self, colour, x, y, known, visited, hero=None, guards=None):
         """Writes into the game that the viewing player `colour` knows the bonus of the object
         anchored on (x, y) of the surface (`known`) and that it was visited or not (`visited`,
         None leaves it), by `VISIT_RULES` inverted (E24 M3 T6a2a; design §4.11): its kind's bit
@@ -1495,11 +1668,16 @@ class Mem:
             raise RuntimeError(f"no single object anchored on {(x, y)}")
         template, level = found[0]
         cls = classes[template][1]
-        if cls not in VISIT_RULES:
-            raise RuntimeError(f"the object on {(x, y)} (class {cls}) has no visit marks")
         at = entrance_cell(templates, side, x, y, template)
         tile = self.u32(game + TILES) + TILE_SIZE * ((level * side + at[1]) * side + at[0])
         word = self.u32(tile)
+        if cls in CONTENT_CLASSES:
+            return self.write_content(cls, tile, word, classes[template][2], colour, known,
+                                      visited, hero, guards)
+        if cls not in VISIT_RULES:
+            raise RuntimeError(f"the object on {(x, y)} (class {cls}) has no visit marks")
+        if hero is not None or guards is not None:
+            raise RuntimeError(f"class {cls}: no hero's own or guards")
         kind, rule = VISIT_RULES[cls]
         state = self.visit_state(colour)
 
@@ -1672,6 +1850,12 @@ class Mem:
                 texts.append(text)
             item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
         return "\n".join(texts)
+
+
+def signed(word, low, bits):
+    """The signed field of `bits` bits from bit `low` of `word` (the hint's `shl`, `sar` pairs)."""
+    value = word >> low & (1 << bits) - 1
+    return value - (1 << bits) if value >> bits - 1 & 1 else value
 
 
 def entrance_cell(templates, side, x, y, template):

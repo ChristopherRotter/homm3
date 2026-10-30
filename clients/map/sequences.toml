@@ -445,3 +445,74 @@ inputs = [
     { at = 1900, pointer = [336, 536] }, { at = 2000, pointer = [176, 184] },
     { at = 2100, pointer = [700, 300] },
 ]
+
+[[sequence]]
+id = "hover-owners"
+situation = "hover-owners"
+ms = 2100
+points = 1000
+why = "the map hint over the owners' classes: guards, a tent, lighthouses, resources, dwellings, mines"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [144, 120] },
+    { at = 300, pointer = [240, 120] }, { at = 400, pointer = [336, 120] },
+    { at = 500, pointer = [400, 120] }, { at = 600, pointer = [464, 120] },
+    { at = 700, pointer = [528, 120] }, { at = 800, pointer = [112, 248] },
+    { at = 900, pointer = [208, 248] }, { at = 1000, pointer = [336, 248] },
+    { at = 1100, pointer = [496, 248] }, { at = 1200, pointer = [80, 376] },
+    { at = 1300, pointer = [208, 376] }, { at = 1400, pointer = [336, 376] },
+    { at = 1500, pointer = [464, 376] }, { at = 1600, pointer = [112, 504] },
+    { at = 1700, pointer = [272, 504] }, { at = 1800, pointer = [400, 504] },
+    { at = 1900, pointer = [528, 504] }, { at = 2000, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-banks"
+situation = "hover-banks"
+ms = 1300
+points = 1000
+why = "the map hint over the eleven creature banks, not visited, visited, empty and guarded"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [208, 120] },
+    { at = 300, pointer = [336, 120] }, { at = 400, pointer = [432, 120] },
+    { at = 500, pointer = [528, 120] }, { at = 600, pointer = [80, 248] },
+    { at = 700, pointer = [208, 248] }, { at = 800, pointer = [336, 248] },
+    { at = 900, pointer = [496, 280] }, { at = 1000, pointer = [144, 472] },
+    { at = 1100, pointer = [336, 472] }, { at = 1200, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-teach"
+situation = "hover-teach"
+ms = 2000
+points = 1000
+why = "the map hint over Shrines, Trees of Knowledge and Witch Huts known, visited and learned, a visited tent"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [144, 120] },
+    { at = 300, pointer = [208, 120] }, { at = 400, pointer = [272, 120] },
+    { at = 500, pointer = [336, 120] }, { at = 600, pointer = [400, 120] },
+    { at = 700, pointer = [464, 120] }, { at = 800, pointer = [528, 120] },
+    { at = 900, pointer = [80, 248] }, { at = 1000, pointer = [176, 248] },
+    { at = 1100, pointer = [272, 248] }, { at = 1200, pointer = [368, 248] },
+    { at = 1300, pointer = [464, 248] }, { at = 1400, pointer = [80, 376] },
+    { at = 1500, pointer = [176, 376] }, { at = 1600, pointer = [272, 376] },
+    { at = 1700, pointer = [368, 376] }, { at = 1800, pointer = [464, 376] },
+    { at = 1900, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-quests"
+situation = "hover-quests"
+ms = 1800
+points = 1000
+why = "the map hint over Seer's Huts of the nine quest types and Quest Guards"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [176, 120] },
+    { at = 300, pointer = [272, 120] }, { at = 400, pointer = [368, 120] },
+    { at = 500, pointer = [464, 120] }, { at = 600, pointer = [80, 248] },
+    { at = 700, pointer = [176, 248] }, { at = 800, pointer = [272, 248] },
+    { at = 900, pointer = [368, 248] }, { at = 1000, pointer = [464, 248] },
+    { at = 1100, pointer = [80, 376] }, { at = 1200, pointer = [176, 376] },
+    { at = 1300, pointer = [272, 376] }, { at = 1400, pointer = [368, 376] },
+    { at = 1500, pointer = [464, 376] }, { at = 1600, pointer = [528, 376] },
+    { at = 1700, pointer = [700, 300] },
+]

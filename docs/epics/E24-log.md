@@ -1888,3 +1888,40 @@ code); CI's `master` green.
   mouse, the situation's visits); coverage 100 %; clippy; fmt.
 - **Not recorded:** a class's mark without a selected hero (read as none for the classes a hero
   keeps; the comparisons select one), the other bits of a flag of several (written as its lowest).
+
+### M3 T6a2b — the map hint's owners and contents (2026-10-30)
+
+On `map-client/e24-m3-t6a2b`, the user present: T6a2b kept whole (the agent's proposed cut,
+T6a2b1 without the quests and T6a2b2 the Seer's Huts and Quest Guards, declined). `master` at
+d2d4c70 (#598 merged). The original data staged from the user's repo folder first (the computer
+went offline later); the sandbox's baseline green (`clients` verified on `master`'s code); CI's
+`master` green.
+
+- **The reading** (design §4.12; map entries: the seven hint functions read whole,
+  `army_description_text` 0x40ABE0, `list_join` 0x56C960, the quests' texts 0x56D410 to 0x572670
+  and lists 0x56DFA0, 0x56F5F0, 0x5704E0, 0x571580, `quest_create` 0x573240, `quest_vtables`
+  0x64174C, the loaders 0x5B9880, 0x5B9310, 0x5B9340, 0x47AB30, the name tables and pointers,
+  six format strings; `map_hint` 0x40B150's summary): the 20 cases, each a name and the parts its
+  owner, contents or the viewer's knowledge give, by the viewing, the shown or the current player.
+- **Built:** `hover::contents` (`Content`, `Quest`, `Mission`, `Guards`, `BankMark`, `Teach`, the
+  `[hover]` rows `mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`, the texts), `Hint`'s
+  variants `Keymaster`, `Dwelling`, `Lighthouse`, `Resource`, `Mine`, `Bank`, `Teaches`, `Quest`
+  (`Hint` now `Clone`), `Hover::contents` with the objects' owners; 34 keys and 13 families in
+  `clients/text/keys.toml` (and the viewer's `FAMILIES`, `spell` among them); the situation's
+  `QuestSpec` (an object's `quest`) and the visits' `hero` and `guards`; the writer's
+  `Extras::quests` (`h3-map`, additive, `cross-lane`: the adventure lane's inbox); the harness's
+  `Mem.contents`, `Mem.quest`, `Mem.write_content`, the Tent's mark among the visits, the Quest
+  Log's shown state (`Mem.item_states`: the harness's writes of a quest's visitors left the
+  button as the map's start set it, so the recomputed state differed from the screen); the
+  situations `hover-owners`, `hover-banks`, `hover-teach`, `hover-quests` and their sequences, in
+  `masks.toml`'s `hinted`.
+- **Checked:** `frames --only` on the four (recorded, then again with the recorded timeline for
+  the selected hero's points, then with the frames recorded): 50, 30, 45 and 44 frames exact with
+  the status bar compared, each timeline as recorded; the original's texts looked at (every part
+  as read: the Tree's price after two spaces, MCL-Q20; a kind known shows on every object of the
+  kind); `drawn`: the 50 situations and 22 sequences recorded before all the same, `drawn --record`
+  (1 015 frames of 26 sequences); unit tests (the contents read and refused, each hint's text,
+  the 20 classes' hints, the guards merged, the writer's quests read back and refused, the
+  situation's quests); coverage 100 % (`h3-map-view`), clippy, fmt.
+- **Questions:** MCL-Q20 (the Tree's two spaces: the original's, recommended), MCL-Q21 (an object
+  whose data names nothing: nothing shown there, refused at M4's import, recommended).
