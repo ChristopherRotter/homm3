@@ -7,8 +7,8 @@
 use std::collections::BTreeMap;
 
 use super::{
-    ARMY_SLOTS, Map, ObjectTemplate, Out, RoadKind, Terrain, Town, TownBuildings,
-    WriteError, out_of_range, write_army, write_town,
+    ARMY_SLOTS, Map, ObjectTemplate, Out, RoadKind, Terrain, Town, TownBuildings, WriteError,
+    out_of_range, write_army, write_town,
 };
 use crate::model::Mission;
 
@@ -129,7 +129,10 @@ pub(super) fn validate(map: &Map, extras: &Extras) -> Result<(), WriteError> {
     for (&index, mission) in &extras.quests {
         let class = extras.objects.get(index).map(|o| o.template.class);
         if !matches!(class, Some(83 | 215)) {
-            return Err(out_of_range("quest of an object without one (index)", index));
+            return Err(out_of_range(
+                "quest of an object without one (index)",
+                index,
+            ));
         }
         let listed = match mission {
             Mission::Artifacts(a) => a.len(),
@@ -972,9 +975,15 @@ mod tests {
         };
         for (i, mission) in missions.iter().enumerate() {
             let Body::SeerHut(Some(task)) = &m.objects[placed + 2 * i].body else {
-                panic!("a seer hut with a quest: {:?}", m.objects[placed + 2 * i].body)
+                panic!(
+                    "a seer hut with a quest: {:?}",
+                    m.objects[placed + 2 * i].body
+                )
             };
-            assert_eq!((&task.quest, task.reward), (&quest(mission), Reward::Nothing));
+            assert_eq!(
+                (&task.quest, task.reward),
+                (&quest(mission), Reward::Nothing)
+            );
             assert_eq!(
                 m.objects[placed + 2 * i + 1].body,
                 Body::QuestGuard(Some(quest(mission)))
