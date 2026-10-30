@@ -3548,6 +3548,39 @@ tests and deny had passed): CI's green `master` (d2d4c70, then 56976c7) stood in
   `argon2`'s licences); the scoped verify with the original data passed every step it runs.
 - **Found:** review items 61 to 65; no question.
 
+### M5 T8a — M5's closure, part 1: the harness's two instances, the bonus Gold, reviewers and captures in parallel (2026-10-30)
+
+On `client/e17-m5-t8a`, the user present at the start, the original data staged at once.
+**The user's cut** (over the agent's five sequential parts): the closure partitioned over three
+concurrent sub-agents, two capturing and one reviewing, each given a fraction small enough to
+fill about half its context; later fractions in later rounds. The VM restarted about 10 minutes
+in; the baseline had passed (`verify-once clients`: CI's fingerprint, the light gates).
+
+- **The harness, two instances** (the runbook, "Traps"): `H3_RUN`, `H3_DISPLAY` and
+  `WINEPREFIX` choose another run directory, display and prefix for `setup.sh` and
+  `h3drive.py` (defaults unchanged); instance 2 is `original-data/wine2`, `:96`,
+  `~/.wine-h3b`. Each run's `wineserver -k` ends only its own prefix's game.
+- **The bonus Gold** (M4's review item 15): `h3drive.gold_bonus` opens the scenario list's
+  advanced options and presses each player's Starting Bonus right arrow twice (Random,
+  Artifact, Gold; read on the screen: the computer's rows change too); `to_scenario` and
+  `h3adv.to_hot_seat` take `gold`, which `capture` and `sequence` pass (the adventure batches and
+  the map's stills keep the random bonus). Checked on `walk`'s map (single scenario) and
+  `behind`'s (hot seat): both rows Gold.
+- **Reviewer R1, the network and accounts** (T6a to T7; read-only): R1-1 the window's turn
+  start sends a `Query` per castable spell at once, over the server's 20 messages a second: a
+  `RateLimited` goodbye and a re-dial loop for ever (high); R1-2 `--register`'s display on every
+  login (the server's 20 account changes an hour), `connect` printing a goodbye's reason only on
+  success; R1-3 no silence detection (no connect or handshake timeout, pings not counted); R1-4
+  the accounts and pins files truncated then written (a crash empties them), 0600 only at
+  creation, a pin another process wrote lost; R1-5 `rejoined` deep-compares and clones the
+  record at every `Grew` (quadratic), `poll` unbounded; R1-6 `seen`'s mana sums overflow
+  (a hostile server panics the window); R1-7 the re-join count counts dials; R1-8 a refused
+  re-key's doc (the run ends); R1-9 the server's names printed with control characters.
+  Checked fine: the welcome's checks before the pin, the signed bytes, the accounts' earlier
+  keys, the nonce, TLS, hostile input elsewhere, the final goodbyes.
+- **In progress:** fixer F1b (R1-2, 4, 6, 8, 9); capture agent C1 (instance 1: the 91 stills,
+  sequences 0 to 9), C2 (instance 2: sequences 10 to 21).
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
