@@ -1,0 +1,382 @@
+# Experiment batch E9b (E08 T78; decisions 193, 198, 201, 202): rows E9-6 to E9-12 of increment
+# 9's plan (survey docs/rules/surveys/E08-economy.md §15; docs/epics/E08-design.md §17), the day's
+# start, in SoD on Easy, hot seat, fifteen days of end turns. Batch E9a (`E08-batch-9a`) is the
+# visits. Build: docs/experiments/README.md. Predictions are for the agent who evaluates the
+# results; the template never shows them.
+#
+# | row   | settles                                  | the reading (faithful)                       | the other source(s)                     |
+# | E9-6  | §7.1, §8.3: no income on day 1; mines    | no change on day 1; +1 000 gold and +2 ore    | consensus; the start's reveal: VCMI and |
+# |       |                                          | from day 2; their surroundings explored       | the engine the same                     |
+# | E9-7  | §8.1, §8.2: the heroes' and creatures'   | +125, +500, +5 of mercury, sulfur, crystal,   | VCMI: the Cornucopia +4 each            |
+# |       | income                                   | gems, +1 crystal a day; +3 crystal on day 8   |                                         |
+# | E9-8  | §9, decision 201: the weekly objects     | 3 to 6, 500, 5 gems or 500; nothing on day 2  | consensus                               |
+# |       |                                          | nor to Blue; again on day 8 (the Wheel        |                                         |
+# |       |                                          | 1 000); the unvisited set full on day 9       |                                         |
+# | E9-9  | D-49: growth in sixteenths               | 47, 89, 16 then 51, 97, 18; 43 kept           | VCMI: 52 and 98 on day 15               |
+# | E9-10 | A-32: the cap above 4 000                | 4 095 becomes 4 000 on day 8                  | VCMI: 4 095 kept                        |
+# | E9-11 | §11: timed events                        | the list's order, floored at 0, every two     | consensus (VCMI's interval-1 slip does  |
+# |       |                                          | days from day 2                               | not apply)                              |
+# | E9-12 | §12: spell points                        | +2 a day; +3; the maximum                     | consensus                               |
+#
+# **The players' incomes** are kept apart: Red holds every income of E9-6 and E9-7; Blue (E9-11's
+# events) only E9-11's Endless Purse of Gold (+500 a day), so its events can be told apart from the
+# floor. No other hero of either player has an income specialty, Estates, Mysticism or an income
+# artifact (each `specialty` checks it).
+#
+# **The pictures** (`Objects.txt`; docs/experiments/README.md, "Increment 9's objects"): the
+# Windmill blocks only its entrance, the tile west of `at`; the Water Wheel covers two rows of
+# three ending on `at` and is entered at `at`; the Mystical Garden covers three tiles on `at`'s row
+# and is entered at the middle one. An object is entered from a tile beside it or below it, never
+# from above. A mine as in batch E9a.
+#
+# **The points.** Angels 2 000 a day (packs/base/adventure.toml `land_points`); a step 100 on
+# grass, 141 diagonally; each day's walk below is within its points with a margin (each leg priced
+# by a throwaway search over the written map; a target is within the explored tiles at its click).
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or a resource. The template asks for gold; anything the spec does not give goes under
+# "anything odd". The treasuries are compared between turns, so the bonus cancels out.
+
+[map]
+name = "E08 batch E9b"
+description = "Engine-generated experiment map (E08, batch E9b): the day's start: no income on day 1, the mines', heroes' and Crystal Dragons' income, the weekly objects, the monsters' growth, timed events, spell points. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-9b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of Red's turn on days 2, 3, 8, 9 and 15 (saves 2 to 6).",
+    "Most records are the game's memory: the date (game +0x1F63E day of the week, +0x1F640 week, +0x1F642 month), the players' treasuries and their income (player +0x108), the mine records (game +0x4E38C, survey §2.1), the explored tiles, a hero's spell points, the Mystical Garden's mask of a player (+0xB8), the weekly objects' and the monsters' tile words (a Windmill's resource bits 0 to 3 and amount bits 13 to 16, a Water Wheel's gold bits 0 to 4 in 500s, a Garden's resource bits 6 to 9 and full bit 10; a monster's count bits 0 to 11 and sixteenths bits 27 to 30). The capture harness reads them (`clients/capture/batches/E08-batch-9b.toml`, E08 T79). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). A visit: walk to the tile named, then click the object's entrance from there (twice).",
+    "Order: day 1, Red's turn: E9-6's reads, Red's treasury, E9-12, E9-8; Red's treasury; end the turn. Blue's turn: Blue's gold (E9-11), E9-11's visits (E9-8); end the turn. Day 2: Red: the treasury, E9-12, E9-8 again, the treasury; Blue: the gold. Days 3 to 7: Red's treasury (and E9-12 on day 3), Blue's gold until day 6; end each turn. Day 8: Red: the treasury, E9-9's reads, E9-8, the treasury. Day 9: Red: the treasury, Ivor's visits (E9-8), the treasury. Days 10 to 14: end the turns. Day 15: Red: E9-9's reads. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- E9-6: Red's gold mine and ore pit, far from every hero -------------------------------------
+
+[[map.ownable]]
+picture = "AVMgold0"
+at = [64, 8]
+owner = "red"
+
+[[map.ownable]]
+picture = "AVMore0"
+at = [64, 20]
+owner = "red"
+
+# --- E9-8: the weekly objects: the first set (visited days 1, 2, 8), the second (day 9) ----------
+
+[[map.object]]
+picture = "AVMwndd0"
+at = [11, 40]
+
+[[map.object]]
+picture = "AVMwwhl0"
+at = [14, 40]
+
+[[map.object]]
+picture = "AVTmyst0"
+at = [18, 40]
+
+[[map.object]]
+picture = "AVMwndd0"
+at = [6, 8]
+
+[[map.object]]
+picture = "AVMwwhl0"
+at = [10, 8]
+
+[[map.object]]
+picture = "AVTmyst0"
+at = [14, 8]
+
+# --- E9-9, E9-10: growing monsters (and one that does not grow), far from every hero -------------
+
+[[map.monster]]
+creature = "Pikeman"
+count = 43
+at = [44, 58]
+grows = true
+
+[[map.monster]]
+creature = "Archer"
+count = 81
+at = [48, 58]
+grows = true
+
+[[map.monster]]
+creature = "Griffin"
+count = 15
+at = [52, 58]
+grows = true
+
+[[map.monster]]
+creature = "Pikeman"
+count = 43
+at = [56, 58]
+
+[[map.monster]]
+creature = "Troglodyte"
+count = 4095
+at = [60, 58]
+grows = true
+
+# --- E9-11: Blue's timed events, in this order ----------------------------------------------------
+
+[[map.timed_event]]
+name = "Take"
+message = "A tax collector takes your gold."
+day = 1
+players = ["blue"]
+resources = { gold = -99999 }
+
+[[map.timed_event]]
+name = "Give"
+message = "A patron gives you 300 gold."
+day = 1
+players = ["blue"]
+resources = { gold = 300 }
+
+[[map.timed_event]]
+name = "Every two days"
+message = "A toll of 500 gold."
+day = 2
+interval = 2
+players = ["blue"]
+resources = { gold = -500 }
+
+# --- E9-12: each hero's event, which takes its 20 spell points on day 1 ---------------------------
+
+[[map.event]]
+at = [5, 16]
+players = ["red"]
+gives = { mana = -20 }
+
+[[map.event]]
+at = [9, 16]
+players = ["red"]
+gives = { mana = -20 }
+
+[[map.event]]
+at = [13, 16]
+players = ["red"]
+gives = { mana = -20 }
+
+[[encounter]]
+id = "E9-7"
+title = "The day's income: Red's mines (E9-6), heroes and a Crystal Dragon (E9-7)"
+questions = ["GAM-CAL-002", "GAM-RES-003", "GAM-RES-004", "GAM-RES-005", "A-33"]
+procedure = [
+    "Day 1, Red's turn, before any hero moves (E9-6): Red owns a gold mine G (entrance (63, 8)) and an ore pit O (entrance (63, 20)), far from every hero. Read whether these tiles are explored for Red: (63, 11), (63, 12), (65, 10), (66, 10), (60, 8), (59, 8), (63, 23), (63, 24). Read both mines' records.",
+    "Red's heroes of this row never move but Ivor on day 9 (E9-8): E9-7 at (4, 4), Basic Estates, one Crystal Dragon; Ryland at (6, 4), the Endless Purse of Gold; Ivor at (6, 6), the Cornucopia; Sephinroth at (10, 4), a crystal specialist.",
+    "Read Red's treasury (the seven resources) and the date at the start of each Red turn of days 1 to 9, and at the end of each (after E9-8's visits on days 1, 2, 8 and 9).",
+]
+record = [
+    { table = ["tile", "explored for Red at day 1"], labels = ["(63, 11)", "(63, 12)", "(65, 10)", "(66, 10)", "(60, 8)", "(59, 8)", "(63, 23)", "(63, 24)"] },
+    { field = "G's and O's records (owner, resource)" },
+    { table = ["Red, day", "when", "wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold"], labels = ["1", "1", "2", "2", "3", "3", "4", "4", "5", "5", "6", "6", "7", "7", "8", "8", "9", "9"] },
+    { field = "the date's words at days 1, 8 and 9" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §7.1, §7.2, §8): no new day on day 1, so no income before day 2. From day 2
+  every player's income is paid at the day's start, before its first turn: each Red turn's start
+  less the turn's end before it is **+1 625 gold** (the gold mine's 1 000, Basic Estates' 125 for a
+  hero who is no Estates specialist, the Purse's 500), **+2 ore** (the ore pit), **+5 mercury, +5
+  sulfur, +5 gems** and **+6 crystal** (the Cornucopia's 5 each; Sephinroth's 1 crystal), no wood.
+  **Day 8** (the week's first day): **+3 crystal** more for the Crystal Dragon (9 crystal). Within a
+  turn only E9-8's visits change the treasury (their gains in E9-8's table). The date: day 1 = (1,
+  1, 1); day 8 = (1, 2, 1); day 9 = (2, 2, 1).
+- **E9-6's start** (survey §2.2): `setup_map_objects` case 53 calls `set_mine_owner` for an owned
+  mine, which reveals radius 3 around its entrance: (63, 11), (65, 10), (60, 8), (63, 23) explored;
+  (63, 12), (66, 10), (59, 8), (63, 24) not (dx² + dy² ≤ 12, ADV-FOG-002). The records: owner Red,
+  resources 6 and 2.
+- **VCMI** (`generatePlayerIncome`): the same but the Cornucopia's **+4** of each (mercury, sulfur,
+  gems +4, crystal +5); whether its parts' +1 add on top was not checked. The wiki: income at
+  each day's start. VCMI reveals the owned objects' radius 3 at the start (`initFogOfWar`).
+"""
+[encounter.hero]
+type = "Ufretin"
+specialty = "creature Dwarf"
+at = [4, 4]
+primary = [1, 1, 1, 1]
+skills = [["Estates", 1]]
+army = [["Crystal Dragon", 1]]
+
+[[encounter.also]]
+type = "Ryland"
+specialty = "creature Dendroid Guard"
+at = [6, 4]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+artifacts = { "misc 1" = "Endless Purse of Gold" }
+
+[[encounter.also]]
+type = "Ivor"
+specialty = "creature Wood Elf"
+at = [6, 6]
+primary = [1, 1, 1, 1]
+army = [["Angel", 2]]
+artifacts = { "misc 1" = "Cornucopia" }
+
+[[encounter.also]]
+type = "Sephinroth"
+specialty = "resource crystal"
+at = [10, 4]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- E9-8: the weekly objects ---------------------------------------------------------------------
+
+[[encounter]]
+id = "E9-8"
+title = "The Windmill, the Water Wheel and the Mystical Garden through two weeks"
+questions = ["ADV-WEK-001", "ADV-WEK-002", "ADV-WEK-003", "ADV-VIS-006"]
+procedure = [
+    "The first set: the Windmill W1 (entrance (10, 40)), the Water Wheel H1 (entrance (14, 40); it covers (12, 39) to (14, 40)), the Mystical Garden M1 (entrance (17, 40); it covers (16, 40) to (18, 40)). The second set: W2 (entrance (5, 8)), H2 (entrance (10, 8); it covers (8, 7) to (10, 8)), M2 (entrance (13, 8)). For each visit note the message, the gain (the treasury before and after) and, before and after, the object's word (the Garden's: and the visitor's mask).",
+    "Day 1, Red's turn: before the visits read all six words. E9-8 stands at (12, 42) with two Angels. Walk to (10, 41), click W1 (10, 40); walk to (13, 41), click H1 (14, 40); walk to (16, 41), click M1 (17, 40); walk to (19, 42).",
+    "Day 1, Blue's turn: E9-11 stands at (12, 44) with two Angels. As Red: walk to (10, 41), click W1; walk to (13, 41), click H1; walk to (16, 41), click M1; walk to (18, 43).",
+    "Day 2, Red's turn: E9-8 visits the first set again, in the other order: walk to (16, 41), click M1 (17, 40); walk to (15, 41), click H1 (14, 40); walk to (11, 41), click W1 (10, 40). It stays on W1's entrance until day 8.",
+    "Day 8, Red's turn: before the visits read all six words (E9-8 still stands on W1's entrance). Click (10, 41) (off the entrance), then W1 (10, 40) again; walk to (13, 41), click H1; walk to (16, 41), click M1.",
+    "Day 9, Red's turn: before the visits read W2's, H2's and M2's words. Ivor (E9-7's, at (6, 6)) walks to (5, 9), clicks W2 (5, 8); walks to (10, 9), clicks H2 (10, 8); walks to (13, 9), clicks M2 (13, 8).",
+]
+record = [
+    { table = ["object", "word at day 1's start", "word at day 8's start"], labels = ["W1", "H1", "M1", "W2", "H2", "M2"] },
+    { table = ["day", "visitor", "object", "message", "gain", "word after"], labels = ["1", "1", "1", "1", "1", "1", "2", "2", "2", "8", "8", "8", "9", "9", "9"] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §9; no new day on day 1, the week's scan on day 8 resets every weekly
+  object, visited or not; decision 201: one load a week, taken by whoever visits first):
+  - **Day 1, Red:** W1 gives its drawn resource, **3 to 6 of mercury, ore, sulfur, crystal or
+    gems** (never wood or gold), its amount cleared; H1 **500 gold** (the first week's 1); M1 **5
+    gems or 500 gold** (one in two), its full bit cleared, Red's mask bit set.
+  - **Day 1, Blue:** **nothing** at all three (W1's and H1's empty messages; M1's "already"; Blue's
+    mask bit set): the content was taken, not one per player.
+  - **Day 2, Red:** nothing at all three.
+  - **Day 8, Red:** W1 a new draw (3 to 6 of mercury to gems) though E9-8 stood on its entrance
+    at the week's scan (the scan lifts the hero off and resets the object under it, survey §7.3),
+    H1 **1 000 gold** (the week's reset to 2), M1 5 gems or 500 gold, full again.
+  - **Day 9, Ivor:** W2, H2 (**1 000 gold**, not 500 nor 1 500: the day-8 reset sets 2 whatever it
+    held) and M2 full, with day 8's draws.
+  - The visited marks (W's and H's bits 5 to 12 by team, M's player mask) are never cleared.
+- **VCMI and the wiki** agree on the amounts and on one visit a week, reset at the week's start.
+"""
+[encounter.hero]
+type = "Clancy"
+specialty = "creature Unicorn"
+at = [12, 42]
+primary = [1, 1, 1, 1]
+army = [["Angel", 2]]
+
+# --- E9-9, E9-10: the monsters' growth ------------------------------------------------------------
+
+[[encounter]]
+id = "E9-9"
+title = "The monsters' growth in sixteenths (E9-9) and its cap above 4 000 (E9-10)"
+questions = ["D-49", "A-32", "ADV-MON-013"]
+procedure = [
+    "Five wandering monsters stand on row 58, far from every hero: 43 Pikemen at (44, 58), 81 Archers at (48, 58), 15 Griffins at (52, 58) and 4 095 Troglodytes at (60, 58) grow; 43 Pikemen at (56, 58) do not grow (the map's flag). E9-9 (Blue's) stands at (50, 66) and never moves.",
+    "Read each monster's count and sixteenths (its tile word) at day 1, at Red's turn of day 8 and at Red's turn of day 15.",
+]
+record = [
+    { table = ["monster", "day 1", "day 8", "day 15"], labels = ["43 Pikemen (44, 58)", "81 Archers (48, 58)", "15 Griffins (52, 58)", "43 Pikemen, no growth (56, 58)", "4 095 Troglodytes (60, 58)"] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §10.1): the count held in sixteenths, a week adding a tenth of the value,
+  truncated, the result capped at 0xFA00 (4 000.0); the loader leaves the sixteenths 0.
+  - 43: 688 → 756 (**47**, sixteenths 4) → 831 (**51**, 15).
+  - 81: 1 296 → 1 425 (**89**, 1) → 1 567 (**97**, 15).
+  - 15: 240 → 264 (**16**, 8) → 290 (**18**, 2).
+  - 43 not growing: **43** (0) both days.
+  - 4 095: 65 520 + 6 552 capped → **4 000** (0) on day 8 (A-32), 4 000 on day 15.
+- **VCMI** (`temppower` in thousandths, +10 % a week, no growth at 4 000 or more): day 8 the same
+  47, 89, 16; day 15 **52** and **98**, 18; the 4 095 **kept** (D-49, A-32). The wiki's exact formula
+  agrees with both for the 15.
+"""
+[encounter.hero]
+type = "Aislinn"
+specialty = "spell Meteor Shower"
+owner = "blue"
+at = [50, 66]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- E9-11: Blue's timed events -------------------------------------------------------------------
+
+[[encounter]]
+id = "E9-11"
+title = "Timed events: their order, the floor at 0, the repeat"
+questions = ["GAM-CAL-004"]
+procedure = [
+    "Blue owns nothing; E9-11 (at (12, 44)) wears the Endless Purse of Gold (+500 gold a day from day 2). The map's events, in this order: day 1 takes 99 999 gold; day 1 gives 300 gold; from day 2 every two days takes 500 gold; all for Blue.",
+    "Read Blue's gold at the start of each Blue turn of days 1 to 6 (after the messages), and note the messages.",
+]
+record = [
+    { table = ["Blue, day", "messages", "gold at the turn's start"], labels = ["1", "2", "3", "4", "5", "6"] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §11): at each Blue turn's start the events fire in the list's order when
+  their day comes; each resource floored at 0. Day 1: the take leaves **0**, then **300** (the
+  list's order; the other order would leave 0). Then the Purse's 500 at each day's start, the take
+  of 500 on days 2, 4 and 6: **300, 300, 800, 800, 1 300, 1 300** for days 1 to 6. Unfloored, day 1
+  would be negative. The messages: the two on day 1, one on days 2, 4 and 6.
+- **VCMI** (`CMapEvent::occursToday`) and the wiki: the same days for an interval of 2, the same
+  floor.
+"""
+[encounter.hero]
+type = "Alagar"
+specialty = "spell Ice Bolt"
+owner = "blue"
+at = [12, 44]
+primary = [1, 1, 1, 1]
+army = [["Angel", 2]]
+artifacts = { "misc 1" = "Endless Purse of Gold" }
+
+# --- E9-12: spell points --------------------------------------------------------------------------
+
+[[encounter]]
+id = "E9-12"
+title = "The day's spell points: Mysticism, the Charm of Mana, the Wizard's Well"
+questions = ["HER-MAN-002"]
+procedure = [
+    "Day 1, Red's turn: three heroes with Knowledge 2 (20 spell points at most) stand on row 16, an event east of each that takes 20 spell points: E9-12 at (4, 16) (Basic Mysticism), Uland at (8, 16) (Basic Mysticism and the Charm of Mana), Melodia at (12, 16) (the Wizard's Well). Click (5, 16) with E9-12, (9, 16) with Uland, (13, 16) with Melodia: each steps onto its event. Read each hero's spell points.",
+    "Days 2 and 3, Red's turn's start: read each hero's spell points.",
+]
+record = [
+    { table = ["hero", "day 1 after the event", "day 2", "day 3"], labels = ["E9-12", "Uland", "Melodia"] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §12): the events leave **0**. At each new day: the regain is Mysticism's by
+  level (Basic **2**), +1 for the Charm of Mana, at most the maximum (20); the Wizard's Well sets
+  the points to the maximum. E9-12 **0, 2, 4**; Uland **0, 3, 6**; Melodia **0, 20, 20**.
+- **VCMI** (`getManaNewTurn`, `manaRegain`) and the wiki: the same.
+"""
+[encounter.hero]
+type = "Coronius"
+specialty = "spell Slayer"
+at = [4, 16]
+primary = [1, 1, 1, 2]
+skills = [["Mysticism", 1]]
+army = [["Pikeman", 1]]
+
+[[encounter.also]]
+type = "Uland"
+specialty = "spell Cure"
+at = [8, 16]
+primary = [1, 1, 1, 2]
+skills = [["Mysticism", 1]]
+army = [["Pikeman", 1]]
+artifacts = { "misc 1" = "Charm of Mana" }
+
+[[encounter.also]]
+type = "Melodia"
+specialty = "spell Fortune"
+at = [12, 16]
+primary = [1, 1, 1, 2]
+army = [["Pikeman", 1]]
+artifacts = { "misc 1" = "Wizard's Well" }
