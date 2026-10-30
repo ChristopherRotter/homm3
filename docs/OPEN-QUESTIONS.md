@@ -164,6 +164,28 @@ box (it would run over the next cell's picture). **Recommendation:** (a) for now
 a resource is beyond a normal game; revisit with M4's engine if its amounts can reach it (b).
 **Blocked:** nothing; built as the original's.
 
+#### MCL-Q20 — A Tree of Knowledge's price after two spaces (E24 M3 T6a2b, a reading)
+
+A visited Tree of Knowledge's hint is its name, the separator (a space) and its price's text
+(`tree_of_knowledge_hint` 0x40DB00, `tree_price_names` 0x6A64D8); the three texts (ARRAYTXT.TXT's
+records 202 to 204, " (+1 level)" and the gold and gems ones) begin with a space of their own, so
+the status bar shows `Tree of Knowledge  (+1 level for 2000 gold)` with two spaces, where every
+other mark has one (E24 design §4.12). **Options:** (a) the original's (built: the viewer composes
+the same parts); (b) the client trims the price's leading space, behind `--bugs original` for the
+comparisons. **Recommendation:** (a): the status bar centres the text, a second space is barely
+seen. **Blocked:** nothing; built as the original's.
+
+#### MCL-Q21 — A hint whose object names nothing (E24 M3 T6a2b, a reading)
+
+Some hints index a table by the object's data without a bound (E24 design §4.12): a Border Guard's,
+a Gate's or a Tent's colour (its subclass) into eight names, a resource's (its subclass) into
+eight, a dwelling's kind into CrGen1's 80, a seer's name into 48; a defeat-hero quest whose hero
+index is -1 passes the address 0x23 to `sprintf` (0x56E3B3, a crash). A map the editor writes
+never holds such data; a crafted one could. **Options:** (a) the client shows nothing for that
+part (built: an empty name, the rest as the original's); (b) the client refuses such a map at its
+import (the engine's, M4). **Recommendation:** (a) now and (b) with M4's import (the adventure
+lane's A-31 refuses an empty resource set the same way). **Blocked:** nothing.
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):

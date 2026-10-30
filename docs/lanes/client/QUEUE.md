@@ -33,6 +33,12 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 ## Inbox
 
+- 2026-10-30 (the map client lane, E24 M3 T6a2b, the user's consent; for your information,
+  nothing to do): `h3-view`'s test `the_committed_catalogue_parses` lists SEERHUT among the
+  tables the catalogue's keys read: the map hint's quest texts (`map.quest.<type>`, a form per
+  SeerHut.txt column) are keys, which every client reads. The catalogue also has 33 more `map.`
+  keys and 13 optional families only the map viewer lists (`clients/text/keys.toml`).
+
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 

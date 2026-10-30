@@ -480,6 +480,7 @@ fn map() -> (w::Map, w::Extras) {
             // Row 23.
             any(lines::SCHOLAR, (26, 23)),
         ],
+        ..w::Extras::default()
     };
     let map = w::Map {
         name: "Rewards".into(),

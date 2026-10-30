@@ -237,7 +237,7 @@ fn the_hint_of_a_visited_object() {
         bonus: Some(1),
         visited: Some(true),
     };
-    assert_eq!((hint(4, 1), hint(3, 1)), (pond, pond));
+    assert_eq!((hint(4, 1), hint(3, 1)), (pond.clone(), pond));
     // Known without a mark; a mark without a bonus; neither; known with no bonus to show.
     assert_eq!(
         hint(6, 1),

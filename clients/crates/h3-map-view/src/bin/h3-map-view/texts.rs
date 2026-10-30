@@ -24,8 +24,10 @@ use crate::files;
 /// [`status::town_key`]); since T6a1 the hints' (design §4.10): a panel item's, an object class's,
 /// a hero class's, a town type's and a creature's names (`map-hint.7`, `object.54`,
 /// `hero-class.2`, `town-type.0`, `creature.13`); since T6a2a an object's bonus (`map-bonus.3`,
-/// design §4.11).
-pub const FAMILIES: [&str; 8] = [
+/// design §4.11); since T6a2b the owners' and contents' names (design §4.12: a colour's, a
+/// dwelling's, a resource's, a mine's, a bank's, a spell's, a Tree's price, a skill's, a seer's,
+/// an artifact's).
+pub const FAMILIES: [&str; 22] = [
     "hero",
     "town-name",
     "map-hint",
@@ -34,6 +36,20 @@ pub const FAMILIES: [&str; 8] = [
     "town-type",
     "creature",
     "map-bonus",
+    "keymaster",
+    "player-owned",
+    "dwelling1",
+    "dwelling4",
+    "resource",
+    "mine",
+    "bank",
+    "spell",
+    "tree-price",
+    "secondary-skill",
+    "seer-name",
+    "primary-skill",
+    "artifact",
+    "player-colour",
 ];
 
 /// The committed key catalogue (`clients/text/keys.toml`).
@@ -68,6 +84,7 @@ pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
         .into_iter()
         .chain(status::KEYS)
         .chain(hover::KEYS)
+        .chain(hover::contents::KEYS)
     {
         let key = all
             .keys
@@ -196,6 +213,7 @@ mod tests {
                 .into_iter()
                 .chain(status::KEYS)
                 .chain(hover::KEYS)
+                .chain(hover::contents::KEYS)
                 .collect();
             ids.extend(["hero.0", "hero.1", "town-name.0"]);
             ids.sort_unstable();

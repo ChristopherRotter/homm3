@@ -1492,7 +1492,7 @@ impl Loop {
             path: self.arrows(),
             minimap: self.minimap,
             kingdom: Arc::clone(&self.drawn.kingdom),
-            hint: self.drawn.hint,
+            hint: self.drawn.hint.clone(),
         };
         self.choose(t, false);
     }

@@ -20,5 +20,6 @@ panels = []
 hint = [[8, 556, 600, 574]]
 hinted = [
     "hover-panels", "hover-map", "hover-sail", "hover-visits-a", "hover-visited-a",
-    "hover-visits-b", "hover-visited-b",
+    "hover-visits-b", "hover-visited-b", "hover-owners", "hover-banks", "hover-teach",
+    "hover-quests",
 ]
