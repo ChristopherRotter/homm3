@@ -1067,7 +1067,9 @@ design §7.1.
 - **Two instances side by side** (E17 M5 T8a): `H3_RUN` (the run directory's parent, default
   `original-data/wine`), `WINEPREFIX` and `H3_DISPLAY` (default `:99`) choose another instance
   for `setup.sh` (one setup at a time: both boot on `:98`) and for `h3drive.py`; each run ends
-  the games of its own prefix only. Give each instance other ids (`clients/out/<kind>/<id>` and
+  the games of its own prefix only, and `h3mem.game_pid` reads only its own prefix's game (at
+  first it took the first `Heroes3.exe` found, the other instance's: reads and writes went to
+  the wrong game). Give each instance other ids (`clients/out/<kind>/<id>` and
   `kept/` are per id), leave `drawn --record` to after both, and rerun a `CHANGED` alone before
   believing it (two games load both cores: the trap of a build beside a capture).
 - A click at the frozen clock acts at once and the computer's reply too (the AI acts in the same
