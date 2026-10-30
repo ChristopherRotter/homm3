@@ -175,8 +175,8 @@ pub struct KnownObject {
 }
 
 /// What a visit told its hero's owner of an object (ADV-VIS-006; survey `E08-rewards.md` §8.4,
-/// design §13): what the build drew for it, or whether it is emptied, as the original's
-/// right-click shows it to the visitor's team.
+/// increment 7's design note §13): what the build drew for it, or whether it is emptied, as the
+/// original's right-click shows it to the visitor's team.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Known {
     /// A Shrine's spell; none for one without a spell to give.

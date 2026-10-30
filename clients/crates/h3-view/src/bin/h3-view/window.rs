@@ -83,6 +83,10 @@ const IDLE_SPAN_MS: u32 = 60_000;
 /// The longest wait for input, so that the clock is read now and then.
 const WAIT_MS: u32 = 250;
 
+/// The longest wait for input while a seat on a server is played (E17 M5 T6b1, *provisional*):
+/// what the server sent is taken at least this often.
+const POLL_MS: u32 = 10;
+
 /// How long after a human's turn started an unattended run presses its command (E17 M5 T2b):
 /// a few idle steps show first.
 const PRESS_AFTER_MS: u32 = 400;
@@ -138,7 +142,10 @@ fn sides(name: &str) -> Option<[bool; 2]> {
 }
 
 impl Options {
-    /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
+    /// Parses `(<scenario.toml | record.jsonl> | --server <ws://… | wss://…> (--game <id> |
+    /// --create <offer>) --seat attacker|defender [--token <t>] [--name <display>]
+    /// [--pins <file>] [--drop <n>] [--login <login> [--register <display>] [--accounts <file>]])
+    /// [--seed <n>] [--speed <0-2>] [--packs <dir>]
     /// [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--scale <n>] [--vsync]
     /// [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute] [--check <s> | --measure <s>]
     /// [--leave retreat|surrender] [--auto <turn>]`.
@@ -149,6 +156,8 @@ impl Options {
         let (mut scale, mut vsync, mut drawn_cursor, mut fullscreen) = (None, false, false, false);
         let (mut from, mut run, mut mute, mut humans) = (0, None, false, [false; 2]);
         let (mut leave, mut keys, mut auto) = (None, None, None);
+        // A seat on a server (E17 M5 T6b1): `connect`'s options.
+        let mut server: Vec<String> = Vec::new();
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -194,6 +203,15 @@ impl Options {
                     let turn = usize::try_from(number(value()?)?).unwrap_or(usize::MAX);
                     auto = Some(turn.max(1));
                 }
+                "--server" | "--game" | "--create" | "--seat" | "--token" | "--name" | "--pins"
+                | "--drop" | "--login" | "--register" | "--accounts" => {
+                    let v = value()?;
+                    if arg == "--server" {
+                        server.insert(0, v);
+                    } else {
+                        server.extend([arg.clone(), v]);
+                    }
+                }
                 flag if flag.starts_with("--") => {
                     return Err(format!("window: unknown option `{flag}`"));
                 }
@@ -201,9 +219,19 @@ impl Options {
                 extra => return Err(format!("window: unexpected `{extra}`")),
             }
         }
+        let server = (!server.is_empty())
+            .then(|| online_server(&server))
+            .transpose()?;
+        if server.is_some() && (input.is_some() || humans.contains(&true)) {
+            return Err("window: a seat on a server, or a scenario or record, not both".into());
+        }
         Ok(Self {
             source: Source {
-                input: input.ok_or("window: needs a scenario or a record file")?,
+                input: match (input, &server) {
+                    (Some(input), _) => input,
+                    (None, Some(_)) => PathBuf::new(),
+                    (None, None) => return Err("window: needs a scenario or a record file".into()),
+                },
                 seed,
                 speed: Speed::new(u8::try_from(speed).unwrap_or(2)),
                 packs: packs.unwrap_or_else(|| clients.join("../packs")),
@@ -211,6 +239,7 @@ impl Options {
                     .or(env)
                     .unwrap_or_else(|| clients.join("../original-data/install")),
                 humans,
+                server,
             },
             scale,
             vsync,
@@ -224,6 +253,39 @@ impl Options {
             keys,
         })
     }
+}
+
+/// The note a seat on a server shows when the content check finds the game's content not this
+/// client's own (E17 M5 T6b1, *provisional*: the window's title): none when it is the same.
+const fn content_note(content: h3_view::remote::Content) -> Option<&'static str> {
+    match content {
+        h3_view::remote::Content::Same => None,
+        h3_view::remote::Content::Different => {
+            Some("the server's rules are not this client's packs: no previews")
+        }
+        // The battle does not load without them (`Ground::load`).
+        h3_view::remote::Content::Absent => Some("the game's packs are not here"),
+    }
+}
+
+/// The seat on a server `args` name (`--server`'s address first, then `connect`'s other options;
+/// E17 M5 T6b1): an attacker's or a defender's seat.
+fn online_server(args: &[String]) -> Result<crate::online::Server, String> {
+    let options =
+        crate::connect::Options::parse(args).map_err(|e| e.replacen("connect", "window", 1))?;
+    if options.seat == h3_protocol::wire::Seat::Spectator {
+        return Err("window: a seat on a server is an attacker's or a defender's".into());
+    }
+    Ok(crate::online::Server {
+        address: options.address,
+        game: options.game,
+        seat: options.seat,
+        token: options.token,
+        name: options.name,
+        pins: options.pins,
+        drop: options.drop,
+        account: options.account,
+    })
 }
 
 /// The table of keys: the user's file (`--keys`, else `keys.toml` here if there is one; its
@@ -427,8 +489,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut cursor_visible = true;
     let (_, hardware) = cursors.get(&battle, &frame_now)?;
     let [width, height] = battle.frame_size();
+    // A seat on a server: the content check's note in the title (E17 M5 T6b1).
+    let note = ground.content().and_then(content_note);
+    if let Some(note) = note {
+        lines.push(format!("note: {note}"));
+    }
     let mut win = Window::open(&Config {
-        title: format!("h3-view — {}", source.stem()),
+        title: note.map_or_else(
+            || format!("h3-view — {}", source.stem()),
+            |note| format!("h3-view — {} — {note}", source.stem()),
+        ),
         width,
         height,
         scale: options.scale,
@@ -466,19 +536,33 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
         None => None,
     };
-    let mut cue = battle.timeline().cue_from(options.from);
+    // With its sound playing, the battle waits for its samples as the original does on a
+    // computer with sound (E17 M5 T5b2, design §8.3): made again with their lengths.
+    if let (Some(_), Some(lib)) = (player.as_ref(), library.as_ref()) {
+        ground.play_sounds(lib.lengths());
+        battle = Battle::new(&ground)?;
+        battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
+    }
+    // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
+    // before the window joined is not played again.
+    let start = if ground.online().is_some() {
+        options.from.max(battle.timeline().end)
+    } else {
+        options.from
+    };
+    let mut cue = battle.timeline().cue_from(start);
     // Whether the battle's end's tune started (E17 M3 T8).
     let mut ended = false;
 
     let mut changes = Changes::new(&battle);
-    let mut clock = Clock::new(win.ticks_ns(), options.from);
+    let mut clock = Clock::new(win.ticks_ns(), start);
     // The clock is held under a notice's box (E17 M5 T5a).
     let mut notice_held = false;
     // The opening: the clock waits while the start sound plays (from the battle's start only).
     let mut opening_until = None;
     if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
         let now = win.ticks_ns();
-        let wait = if options.from == 0 { p.start(lib) } else { 0 };
+        let wait = if start == 0 { p.start(lib) } else { 0 };
         if wait > 0 {
             clock.toggle(now);
             opening_until = Some(now + u64::from(wait) * 1_000_000);
@@ -487,7 +571,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
     }
     let mut shown: Option<Frame> = None;
-    let from = changes.latest(&mut battle, options.from)?;
+    let from = changes.latest(&mut battle, start)?;
     let mut next = Some(frame_at(&mut battle, from)?);
     let mut pointer: Option<(i32, i32)> = None;
     // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2).
@@ -501,7 +585,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut ctrl = [false; 2];
     let mut report = Report::default();
     // An unattended run presses a human's commands itself (E17 M5 T2b).
-    let mut presser = (options.run.is_some() && source.humans.contains(&true)).then(|| Presser {
+    let plays = source.humans.contains(&true) || ground.content().is_some();
+    let mut presser = (options.run.is_some() && plays).then(|| Presser {
         points: crate::pointer::press_points(battle.layout()),
         leave: options.leave,
         auto: options.auto,
@@ -525,7 +610,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 u32::try_from(ns / 1_000_000)
                     .unwrap_or(WAIT_MS)
                     .min(WAIT_MS)
-            });
+            })
+            .min(if battle.online() { POLL_MS } else { WAIT_MS });
         let mut redraw = false;
         let mut mouse_changed = false;
         let mut grew = false;
@@ -551,6 +637,38 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         if notice_held && !battle.message_open() {
             clock.toggle(win.ticks_ns());
             notice_held = false;
+        }
+        // A seat on a server: what the server sent since (E17 M5 T6b1), never waited on.
+        let ticks = win.ticks_ns();
+        grew |= battle.poll(clock.ms(ticks), ticks / 1_000_000)?;
+        // A restarted server's record opened afresh (E17 M5 T6b2): the battle and the window's
+        // clock, inputs and presses start again from its new opening, a new timeline.
+        if battle.opened_afresh() {
+            battle = battle.afresh()?;
+            battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
+            lines.push(format!(
+                "a new timeline at {} ms of the one before",
+                clock.ms(win.ticks_ns())
+            ));
+            let start = battle.timeline().end;
+            clock = Clock::new(win.ticks_ns(), start);
+            (notice_held, ended, held, stopped_by) = (false, false, None, None);
+            inputs.clear();
+            scrolls.clear();
+            changes = Changes::new(&battle);
+            cue = battle.timeline().cue_from(start);
+            let from = changes.latest(&mut battle, start)?;
+            next = Some(frame_at(&mut battle, from)?);
+            shown = None;
+            if let Some(p) = presser.as_mut() {
+                *p = Presser {
+                    points: core::mem::take(&mut p.points),
+                    leave: options.leave,
+                    auto: options.auto,
+                    ..Presser::default()
+                };
+            }
+            continue 'run;
         }
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
@@ -1106,6 +1224,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 yes(over)
             ));
             ok &= before && over;
+        } else if let Some(online) = ground.online() {
+            // A seat on a server (E17 M5 T6b1): what the connection did, whether the game ended.
+            let online = online.borrow();
+            lines.extend(online.lines.iter().cloned());
+            lines.push(format!(
+                "re-joined {} times; the game over: {}",
+                online.rejoined,
+                yes(online.over())
+            ));
         } else {
             let same = battle.as_the_bot_fights().unwrap_or(Ok(false))?;
             lines.push(format!(
@@ -1240,7 +1367,12 @@ impl Presser {
             self.switched = Some((on, Some(battle.commands())));
             return Ok(true);
         }
-        if !battle.waiting() || now < battle.timeline().end.saturating_add(PRESS_AFTER_MS) {
+        // A seat on a server waits for the other seat's turns too, taking no press then (E17 M5
+        // T6b1).
+        if !battle.waiting()
+            || now < battle.timeline().end.saturating_add(PRESS_AFTER_MS)
+            || !battle.takes(now)
+        {
             return Ok(false);
         }
         if self.met != Some(battle.commands()) {

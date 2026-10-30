@@ -1,0 +1,56 @@
+0 view 0 4 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 0
+0 points 300
+100 cursor 1 2 700 300
+100 screen 247,290,712,572
+132 cursor 1 2 304 272
+132 screen 292,262,712,310
+180 objects 1
+180 screen 64,232,308,313
+200 cycles 1 1
+200 cursor 1 6 304 272
+200 screen 247,250,360,569
+231 cursor 1 6 304 240
+231 screen 284,218,324,290
+300 cursor 1 12 304 240
+300 screen 314,249,320,258
+330 cursor 1 12 304 80
+330 screen 284,58,324,258
+360 objects 2
+360 screen 8,8,600,313
+400 cycles 2 2
+400 cursor 1 7 304 80
+400 screen 284,58,324,98
+429 cursor 1 7 240 272
+429 screen 228,64,318,288
+500 cursor 1 0 240 272
+500 screen 228,256,254,290
+528 cursor 1 0 304 336
+528 screen 240,272,314,354
+540 objects 3
+540 screen 8,8,600,313
+600 cycles 3 3
+600 cursor 1 12 304 336
+600 screen 284,314,324,354
+627 cursor 1 12 80 48
+627 screen 60,26,324,354
+700 cursor 1 0 80 48
+700 screen 60,26,351,572
+720 objects 4
+720 screen 8,8,600,313
+726 cursor 1 0 80 336
+726 screen 80,48,90,354
+800 cycles 4 4
+800 cursor 1 12 80 336
+800 screen 60,314,351,572
+825 cursor 1 12 496 112
+825 screen 60,90,516,354
+900 objects 5
+900 cursor 1 0 496 112
+900 screen 8,8,600,313
+924 cursor 1 0 700 300
+924 screen 496,112,710,318
+1000 cycles 5 5

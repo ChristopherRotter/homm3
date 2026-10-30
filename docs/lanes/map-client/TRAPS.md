@@ -44,6 +44,33 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   by the scene's cycles) needs a new `Composer`, and a scene's `view.origin` must be the point
   every piece of the view moves by (the clip's pixels move by its change), or a scroll leaves
   stale pixels. The window's `--check` line `afresh` finds either.
+- **The status window over time** (M3 T5b2, design §4.9): the timeline's `Loop::draw` is a view's
+  draw (0x40F3F0) and ends with the status window's chooser, so a new caller of it chooses too
+  (a date's window steps, a kind asked ends there); a status the live part does not give (none)
+  is left as it is, and a kind asked ends into the selection's window only when the live part
+  gives it (`selection`, which the harness reads before it asks a kind: at the staging when the
+  situation asks one, so a sequence asking a kind over it keeps that one). A date's window at a
+  sequence's 0 must be the sequence's own `status` (built at 0): the harness refuses another.
+- **The mouse-over's costs are per tile looked at** (M3 T6a1, design §4.10): the original's
+  pathfinder stops at the tile under the pointer, so the live part's `[hover]` `reach` holds only
+  the tiles a sequence's inputs visit (`h3map.look_over_view` reads each before 0): a new or moved
+  pointer input over the view needs a new `frames` run, and a still's `reach` is empty (the window
+  shows the arrow over the tiles it has no cost for, as after a walk). `[hover]` is the live part's
+  last table: a key written after it belongs to it.
+- **The status bar's hint is compared only in `masks.toml`'s `hinted`** (M3 T6a1): a new
+  situation or sequence recorded with the hint goes into that list; the others keep it masked
+  (their digests and recorded screens without it) until T7 captures everything again (moved from
+  T6a2 at its cut).
+- **The visit marks' facts check themselves** (M3 T6a2a, design §4.11): a situation's `visits`
+  are written by `h3mem.VISIT_RULES` inverted and the live part's `[hover]` `visits` read back by
+  the same rules, so a wrong rule agrees with itself; only the original's status bar (a sequence
+  in `hinted`) tells. They are the selected hero's as staged: a sequence that selects another
+  (T6b's clicks) needs them read again; so do the contents' (M3 T6a2b, §4.12: a Shrine's spell
+  known, a Tree's mark, a Witch Hut's skill). A kind known is a kind's bit: every object of the
+  kind shows its bonus.
+- **The harness's writes run none of the game's updates** (M3 T6a2b): a quest's visitors written
+  left the Quest Log as the map's start set it, so the live part reads the shown item's state
+  (`Mem.item_states`), never one recomputed from what the harness wrote.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain

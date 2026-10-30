@@ -428,8 +428,14 @@ pub fn scene_in(
     // view after them.
     let players = &layout.player_palette;
     let lists = &tables.map.lists;
-    let shown = panels::dialog(layout, lists, live, art.levels, at.z)
+    let mut shown = panels::dialog(layout, lists, live, art.levels, at.z)
         .ok_or_else(|| SceneError::Live("a hero's portrait is past the tables'".into()))?;
+    // The status bar's hint (E24 M3 T6a1, design §4.10): the live part's, none an empty text.
+    let hint = live.hint.clone().unwrap_or_default();
+    shown.texts.insert(
+        panels::id::STATUS_BAR,
+        hint.text(&art.hero_names, &tables.texts),
+    );
     let bar = panels::resource_bar(layout, live, &tables.texts);
     // The status window's panel (E24 M3 T5b1, design §4.8): its items join the dialog's after the
     // resource bar's (none overlaps another panel's).

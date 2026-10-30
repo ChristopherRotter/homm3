@@ -8401,3 +8401,842 @@ staged. The user's cut (decision 187): whole, the lane's own paths only; the sec
 - *Agent's calls (change freely):* `BoatRemoved` names the hero and the boat's type, as `Boarded`
   (the viewers saw the hero in it); a gone boat's tile is the hero's last tile, not the stale
   boarding tile the record kept while aboard.
+
+### Increment 8, round 8: T75a, the sea map, its replays and the random-play benchmark (2026-10-29, `adventure/e08-t75a`)
+
+**The cut** (decision 189): T75 in two, the user's "Two parts (Recommended)", as T64's: T75a the
+sea map, its replays and `random-play-sea-36`; T75b the properties, the sea XL with its two
+workloads and the original data's census. **Baseline:** `master` 331ce3b (#581, #582 merged; CI
+green on 6947cce, the code's last run); the sandbox's light gates passed on its code (CI's
+fingerprint); the original data staged from the user's computer.
+
+- **The sea map** (`fixtures/maps/e08-sea-36.h3m`, 837 bytes; `h3-map`'s `tests/sea_map.rs`,
+  `the_sea_map_is_committed_as_written`): SoD, 36 × 36, no underground, written by
+  `h3_map::writer::write` with the original's templates (`sea.rs`' lines); grass on columns 0 to
+  11 and 24 to 35, the sea between. Six empty boats of the three kinds beside both coasts (the
+  test checks them as `MapSetup::boats`); red's Sylvia (hero 0, a Navigation specialist, the
+  Admiral's Hat, twenty archangels) on (9, 4) beside her boat on (12, 4), ten savage pikemen on
+  water at (16, 4), an event on water at (14, 7) (500 gold) and one at (17, 7) whose five
+  pikemen fight first (five crystals); Orrin (hero 1, his type's own) on (9, 10) beside his boat;
+  Mephala (hero 2, Angel Wings) on (10, 16) beside a Flotsam on (12, 16); Tyris (hero 3, Boots of
+  Levitation, five angels) on (9, 27); blue's Voy (hero 4, a Navigation specialist, the Necklace,
+  64 Centaur's Axes in his backpack: `ADV-QUIRK-22`'s full backpack) on (27, 22) and Fiona (hero
+  5, expert Navigation, the Sea Captain's Hat) on (27, 28), each beside a boat, and Astral (hero 6,
+  one pikeman) on red's shore at (10, 31) beside his; Favorable Winds on (18, 12) to (20, 14), two
+  Flotsams, two Sea Chests, the Shipwreck Survivor, a bottle with a message and an empty one; a
+  hole on the west coast at (11, 20); two gnolls on (25, 16) guarding the coast's (24, 16). The
+  test imports it (the heroes, the boats, increment 8's classes) and checks the flyer beside the
+  Flotsam (D-46, ADV-PIK-018): a flight onto its tile or across it is refused and leaves the state
+  as it was, `Reach` offers no path through it, a flight over the plain water beside it lands.
+- **The golden replays** (`adventure_replays.rs` lists what each meets; the test expects 32):
+  random play `sea-s103-d28`, `-s1503-d28` and `-s2611-d28` (`--seed N --agent-seed N --days
+  28`), the best union of three in a scratch search over the seeds 1 to 3 000 (17 features
+  counted; the three meet 15: boardings, landings, Favorable Winds, the four pickups, both events
+  on water, battles on the deck, the shore, the two boats and land, a boat leaving; neither a hero
+  battle on the deck nor the water monster's battle, which the scripted ones hold; of the 3 000
+  games 1 907 board, 2 fight on the two boats, 11 a hero on the deck, 10 lose a boat with its
+  hero); scripted (`--seed 1 --checkpoint-every 5 --script`): `sea-board-hat-s1` (the conversion
+  both ways: 1 700 of 2 000 to 3 251 of 3 825 at the boarding, 1 846 of 3 825 to 965 of 2 000 at
+  the landing), `sea-board-s1` (0 points at both), `sea-deck-shore-s1` (`base:deck`, Astral's boat
+  leaving after `HeroRemoved`), `sea-deck-monster-s1` (`base:deck` at the monster's tile, attacked
+  at once), `sea-two-boats-s1` (`base:boats`, the loser's boat leaving, the winner aboard),
+  `sea-landing-guards-s1` (over the winds; the guards' battle on grass at their tile, no special
+  field), `sea-event-s1` (the plain event's stop, the guarded one's battle on the deck before its
+  crystals), `sea-flyer-s1` (a flight over the water beside the Flotsam). The moves came from a
+  scratch probe walking each hero toward its tile through explored reachable ones (`Reach` gives
+  no path onto an unexplored tile), the battles' commands from E23's `h3_battle_ai::choose` for
+  both sides (an attack-or-defend driver stalled on the deck: the stacks never close in).
+- **The benchmark** `random-play-sea-36` (5 games of 28 days, `--seed 1`, 1 532 steps, inside
+  `random_rollout`): 2 625 483 594 Ir, about 1 714 000 a step (the rewards map's 862 000, the
+  duel's 305 000); its games board four times, land three times, sail over the winds, fire both
+  events on water (the guarded one's battle on the deck) and fight a hero on the shore. Callgrind's
+  inclusive profile: `Reach::expand_layered` 52 % (the flyer's and the water walker's two-layer
+  search over the open sea), `AdventureState::passage` 31 %, `Reach::expand_sail` 4 %: the inbox's
+  entry on a lifted hero's query (`reach-lifted-xl-144`) grows. The benches README's row:
+  `shared/e08-t75a-benches`.
+- *Agent's calls (change freely):* decision 189's; the map's heroes and objects; the seeds.
+- **Versions:** none.
+- **Gates:** the scoped verify with the original data passed every step (coverage, determinism
+  with the 32 replays, `bench-check` with the eleven workloads, the 160 maps) but
+  `scripts/exe.py check`: two sizes of E17 M5 T5b1's entries (#583; `rgb_to_hsv` 0x523190,
+  `hsv_to_rgb` 0x5232F0) disagreed with the executable, fixed with `--fix-sizes` in this pull
+  request (`docs/exe/map.toml` is common), the check then clean; `clippy -p h3-map -p h3-cli
+  --all-targets` clean, the CLI's replay test passed (the scope builds no `h3-cli`).
+
+### Increment 8, round 8: T75b, the properties at sea, the sea XL and its benchmarks, the census (2026-10-30, `adventure/e08-t75b`)
+
+**The cut** (decision 190): whole, the user's "Whole, one PR" (recommended was two: the properties
+and the census, then the sea XL with its workloads). **Baseline:** `master` f33f837 (#586, #587
+merged; CI green on it); the sandbox's light gates passed on its code (CI's fingerprint); the
+original data staged from the user's computer.
+
+- **The plans' sea** (`h3-map`'s `tests/play.rs`; design §15): eight kinds appended to `KINDS`
+  (`SEA`: the three boats, Flotsam, the Sea Chest, the Shipwreck Survivor, the Ocean Bottle with a
+  message, Favorable Winds as a ground of one tile), and a draw appended last to `plan()`
+  (`Sea`, in three plans of four): a strait of two to four columns over the whole height of a
+  hero's level, one or two columns east of it; one to three boats, two of three on its coast
+  beside the hero's rows; up to five pickups, winds and monsters on it; the hero's Navigation (0
+  to 3) and one of the Necklace, the Sea Captain's Hat or (SoD only) the Admiral's Hat, the Hat
+  half the time (`SEAFARERS`). `lay_out` lays the boats out last (`boats_laid_out`: on water, on
+  no tile an object covers, one a tile; any other left out, as the setup would refuse it) and,
+  on a map with boats, marks the coast as the writer does (every tile but water with water on a
+  neighbour: a boat lands only on the coast, D-42); a plan without boats keeps its map, so the
+  committed fixtures (`fixtures.rs`) are unchanged.
+- **The checks after every command** (`every_step_keeps_the_commands_invariants`):
+  `check_invariants` asserts `AdventureState::check_boats` (design §6's invariants); a move ends
+  where a hero may stop or, a hero in a boat, at sea; `check_sea_move`: a hero not in a boat
+  steps onto no water tile an object still on the map is visited on, nor visits one from the
+  shore (ADV-PIK-018, D-46), and a boarding or a landing leaves the hero at most its new maximum
+  with free boarding and 0 without (ADV-SEA-002, -003; D-41); `landing` takes a pickup's removal
+  after its visit; `visit_gains` counts a find that leaves at its removal by the find's own rules
+  (its artifact, its turn) and `check_conservation`'s removal path leaves finds to it, as chests
+  (a first try counted a Flotsam twice; 600 cases found it). A second 600-case run found a walker
+  on the shore attacking a hero in a boat that had entered a Keymaster's tent lying in the strait
+  (an entered object on water, which a boat enters): legal (ADV-SEA-005), so the check skips a
+  tile another hero stands on. `view.rs`: `vary` keeps a boat's tile
+  water and adds no blocker over it (a boat the viewer never sees may go, as a blocker), and
+  `check_told` follows the boats: a boarding takes the empty boat the viewer saw, a landing leaves
+  one facing its way, a hero's boat changes only by a boarding, a landing or its leaving, a boat
+  shows untold only where the viewer's sight grew. The cover test `the_plans_sail` (512 fixed
+  cases, steps that prefer a boarding or a sail, `at_sea`): 406 boardings (34 with free boarding),
+  202 landings, 679 sails (27 over the winds), the pickups 11, 14, 8 and 18, 14 battles with a
+  monster on water, 74 on the deck, 13 on the two boats, 49 boats leaving with their heroes. The
+  appended draw moved every later draw of the fixed-case tests; all kept their counts. Stress: the
+  three properties at 600 cases (the gate runs 48).
+- **The passage's fix** (`h3-adventure`'s `state/passage.rs`; ADV-PIK-018 amended): a flight's
+  step up off the visitable tile of an object not visited from above (ADV-OBJ-004's pass, landing
+  nowhere) returned the pass before D-46's water test, so a flyer leaving a chart upward crossed a
+  water tile a Shipwreck Survivor is visited on (the property's case: hero 1, Angel Wings, from a
+  chart onto the Survivor's water tile and back to land). Now a water tile an object is visited
+  on refuses that flight too (`Blocked`), the reachable-tiles query with it (it calls the
+  passage); the other modes' `FromAbove` unchanged. New test
+  `a_flight_up_off_a_closed_top_never_passes_a_water_tile_an_object_is_visited_from` (fails
+  without the fix). The reading behind D-46 closes the node onto the water entrance itself
+  (`pathfinder_expand`'s flying-only branch 0x4B27FB to 0x4B282D, survey §16's re-read), not by
+  the step's source, so the early return was the engine's own: the fix follows the reading; no
+  batch row covers a flight up off a closed top onto it. No replay changed (determinism).
+- **The sea XL** `fixtures/maps/e08-sea-144.h3m` (1 778 bytes; `tests/sea_xl_map.rs`, written by
+  `h3_map::writer` with `sea_map.rs`' templates and helpers, now `pub(super)`): SoD, 144 × 144, one
+  level of sea with sixteen 5 × 5 grass islands, one in each 36 × 36 cell; red's four heroes and
+  blue's four on their islands' east coasts (types 0, 17, 34, …, 119), each with Navigation 1 to
+  3 in turn and in turn the Admiral's Hat, the Necklace, the Sea Captain's Hat or nothing, each
+  beside its boat; seven more boats beside the other islands (15, Myth and Legend's count; types
+  0, 1, 2 in turn); a pickup in each cell's sea (the four in turn) and Favorable Winds in every
+  other cell's. Its tests: committed as written and importing (8 heroes, 15 boats, 24 typed
+  objects), and `the_sea_xl_map_plays_and_forks` (400 steps preferring the sea: boardings and a
+  landing, the boats' invariants; a fork evolves as its parent). 12 × 12 islands first: random play
+  boarded too seldom (105 queries of heroes in boats in two games of 28 days); 5 × 5 gives 1 832
+  in two games of 56 days.
+- **The benchmarks:** `h3 adventure bench --workload reach` queries the heroes in boats apart
+  (`heroes_by_lift` returns them first; `sail_queries`, the third counted function, `Lift` keeping
+  the three apart); `fork` reports the heroes aboard at the forks (`BenchResult::afloat`). New
+  baselines: `reach-sea-xl-144` (2 games of 56 days, 1 832 queries, 4 193 142 577 Ir, about 2.29 M
+  a query: `Reach::expand_sail` 91 %, `AdventureState::passage` 55 %, `Search::landed` 8.7 %,
+  which computes the land's day points, `day_points`, at every landing tile: once a query would do,
+  the inbox) and `fork-sea-xl-144` (100 000 forks after 7 days, one hero aboard, 3 654 Ir a fork,
+  about `fork-xl-144`'s 3 564 with eight heroes too). The benches README's rows:
+  `shared/e08-t75b-benches`. The CLI's bench test runs both on the sea XL.
+- **The census** (`--with-original-data`, `examples/original_data.rs` as T72 built it): 160 of 160
+  maps read, every static layer imports and validates (no boat refused), the same 8 maps whole;
+  no hero placed on water (`HeroOnWater` among no map's reasons); 118 boats on 41 maps (20, 51,
+  47 by type), 2 019 Flotsam, 826 Sea Chests, 362 Survivors, 29 bottles, 732 holes, 154 winds
+  (none of a picture the import lacks), 9 events on water: T72's counts.
+- *Agent's calls (change freely):* the strait's draw and weights; boats laid out last; the coast
+  marked only on maps with boats; the sea XL's layout (one level, small islands so that random
+  play boards); the reach workload's 56 days.
+- **Versions:** none.
+- **Gates:** the scoped verify with the original data passed every step it runs (coverage,
+  determinism with the 32 replays, `bench-check` with the thirteen workloads, the 160 maps,
+  `exe.py check`); `clippy -p h3-cli -p h3-map -p h3-adventure --all-targets` clean, `cargo test
+  -p h3-cli` passed (the scope builds no `h3-cli`), `cargo check --workspace --all-targets` clean;
+  `every_step_keeps_the_commands_invariants` and `view.rs`' properties at 600 cases passed.
+
+### Increment 8, round 8: T76, the audit; increment 8 closed; increment 9 refined (2026-10-30, `adventure/e08-t76`)
+
+Baseline: `master` at 62c5bf1 (#589 and #590 merged; CI's full verify green on d378a77, #590's
+merge; the setup's baseline passed only the light gates, the engine code verified there). The
+160 maps and the extracted tables staged, then the executable and the two LODs. At its start the
+user chose T76 whole (decision 191, `AskUserQuestion`; not chosen: T76a the audit and the
+closure, T76b the refinement) and answered increment 9's questions with it (ADV-Q36).
+
+**The audit of increment 8's exit criteria** (design §18, moved below), on `master`'s code:
+
+1. Boats import without a cap (`MapSetup::boats`, the persistent table and grid; ADV-SEA-001,
+   `ADV-QUIRK-32`: `a_map_holds_more_boats_than_the_original_s_64`), a hero on water refused
+   (`Unsupported::HeroOnWater`, ADV-SEA-007, D-44 kept by decision 178), any hero boards any empty
+   boat (E8-16), the owner and captain kept and never shown (`BoatView`: tile, kind, facing only),
+   a boat leaving with its beaten hero (`BoatRemoved`, ADV-SEA-006, GAM-BAT-003). Observed: E8-2,
+   E8-5, E8-11, E8-12, E8-16.
+2. Boarding and landing (ADV-SEA-002, -003): the walk ends, the free coastal tile only (D-42), the
+   Admiral's Hat's conversion after the drop (D-41), the maximum switched (`ADV-QUIRK-31`, A-28 not
+   reproduced), no guard at a boarding, the landing's guards at the monster's tile. Observed: E8-1,
+   E8-2, E8-3, E8-10, E8-15, E8-16.
+3. Sailing (ADV-SEA-004, HER-ADV-009 with `h3_heroes::{sea_points, free_boarding}`): the sea's
+   prices with Favorable Winds, the drop and D-43's exception, never onto an empty boat; `Reach`'s
+   boat search (`Reach::search_sail`) and `MoveHero` agree in `the_query_and_move_hero_agree`
+   (a hero in a boat in a quarter of its cases since T73b) and in `h3-map`'s plans. Observed:
+   E8-1, E8-4, E8-6, E8-10.
+4. Visits at sea (ADV-SEA-005, ADV-OBJ-007, ADV-MOV-011): from the neighbouring water tile, a boat's
+   hero met or attacked from the neighbour or the shore, events on water firing and stopping the
+   move, a water monster's battle at once. Observed: E8-13, E8-14.
+5. The battle at sea (GAM-BAT-001, `AdventureState::sea_battle_ground`): the deck, the two boats.
+   Observed: E8-11 to E8-15.
+6. The sea's pickups (ADV-PIK-014 to -018): draws, gains, the full backpack's turn and loss, the
+   leaving, the bottle's `MessageRead`; only a boat takes one (D-45 reverted, D-46). Observed: E8-6
+   to E8-9, E8-17a, E8-17b.
+7. Information (ADV-FOG-006, -008): empty boats' tiles, kinds and facings, every seen hero's boat,
+   never an owner, captain or contents (`h3-map`'s `view.rs` properties, the views following the
+   boats since T75b).
+8. `check-rules` passes; the gates: CI's full verify on #590 and on `master` after it (coverage,
+   determinism with the eleven replays on the sea map, `bench-check` with `random-play-sea-36`,
+   `reach-sea-xl-144` and `fork-sea-xl-144` baselined); the env plays on at sea (the three random
+   replays `sea-s103-d28`, `sea-s1503-d28`, `sea-s2611-d28` recorded through `AdventureEnv`, T75a;
+   decision 187: no flat encoding exists to change). The ledger held `ADV-QUIRK-31` and `-32`
+   but **not `-30`**: the gap below.
+9. Batch E8 run and scored (T68a, T68b, T69: D-41 to D-43 confirmed, D-44 refused, D-45 reverted)
+   and batch E8c (T69b: D-46 confirmed); every row E8-1 to E8-17 is cited by a rule, and every rule
+   whose rows confirm it whole is `verified`.
+
+**The gaps fixed:**
+
+- **`ADV-QUIRK-30`** (A-27, a computer player's hero leaves an Ocean Bottle; decision 166: not
+  reproduced, no flag) was cited by ADR-0016 and ADV-PIK-017 but had no ledger entry (T74a built
+  the visit and named the id). Now recorded, with a regression test: the bottle test runs red as a
+  computer player too (`sea_pickups.rs`, `seated` and `afloat_as` set the seat's `human`), and its
+  hero reads and takes the bottle as a human's.
+- **Batch E8's observations** missing from three rules whose summaries cite them: ADV-MOV-009
+  (D-46: E8-17a to E8-17e, `E08-batch-8c.md`), ADV-MOV-011 and ADV-OBJ-007 (E8-14,
+  `E08-batch-8b.md`); all three were `verified` already.
+- **Still `implemented`, by design:** ADV-SEA-007 (the engine refuses where the original plays on:
+  no observation can match it), GAM-BAT-001 and GAM-BAT-003 (their sea parts observed; draws, the
+  obstacles' tile seed and the store of heroes not), ADV-FOG-008 and ADV-FOG-006 (projections, a
+  design), ADV-MOV-007.
+
+**The design notes' citations:** the code and the catalog cited every design note as "design §N",
+so since T66b the citations of increments 4 and 7 pointed at increment 8's note, and with
+increment 9's they would point at a fourth. All 96 in 48 files (the adventure lane's crates, its
+catalog and ledger) now name their note, "increment N's design note §M", by the task each one
+names (increment 4: T27 to T31, 9; increment 5: T41, 2; increment 7: T55b to T64b, 44; increment
+8: T72 to T75b, 41), their comment paragraphs refilled to 100 columns; ADV-FOG-008's design source and `h3-heroes`'
+`reward.rs` and `teach.rs` named the file itself. Left as they are: `state.rs`'s "E08 design §3"
+(T20a2a, an increment 3 note that the log does not hold) and `h3-heroes`' `tests/derive.rs`
+(E04a's note). The AI lane's crates cite E05's note, not touched.
+
+**The design note** moved below ("Increment 8's design note at its closure"); `E08-design.md`
+keeps a pointer until T77b writes increment 9's note.
+
+**Increment 8 closed** (2026-10-30); its scope, decisions 158 to 191 and task list moved to
+`E08-archive.md`.
+
+**Increment 9 refined** (ADV-Q36; decisions 192, 193), from a census of the 160 shipped maps
+(objects / maps; on the 8 maps that import whole today): mines (53) 5 979 / 158 (313): sawmills
+1 136, alchemist's labs 753, ore pits 1 069, sulfur dunes 749, crystal caverns 741, gem ponds 714,
+gold mines 753 (on 140 maps), abandoned mines (subclass 7) 64 / 41, SoD's abandoned mine (220)
+94 / 32; windmills (112) 780 / 145 (45), water wheels (109) 430 / 118 (21), mystical gardens (55)
+286 / 103 (24); lighthouses (42) 83 / 54 (22), shipyards (87) 331 / 82 (11). Beside them, not
+chosen: dwellings (17: 1 981 / 116; 20: 80 / 38; random 216 to 218: 276 / 22, 1 326 / 75, 1 / 1) and the
+Refugee Camp (78: 321 / 101), garrisons (33: 168 / 53; 219: 70 / 25), Subterranean Gates (103:
+602 / 98), Monoliths (43 to 45: 845 / 98), Whirlpools (111: 224 / 62). The user chose **mines,
+the week and owned objects**, not the whole sketch item 9, dwellings and hiring first, or the
+teleporters and simple visitables; the first round a survey, then the ADR amendment drafts with
+the design note and the cut (T77a, T77b), not the survey alone. The sketch renumbered: dwellings
+and hiring item 10, the banks 11, the quests 12.
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data`
+passed every step it runs (fmt, clippy, check-arch, check-rules, check-stubs, check-docs,
+check-exe-map, clients-lock, check-lane, test, coverage, determinism, bench-check, doc-drift,
+original-data; deny and ffi-smoke skipped by the scope; exit 2, its normal result); the
+benchmarks as on `master` (no code changes but a test's). CI's full verify on the pull request
+is the record.
+
+#### Increment 8's design note at its closure (moved by T76)
+
+The note as T75b left it, every section built (T67 to T75b; T76 marked round 8 done); its §
+numbers are the ones the code's comments cite as "increment 8's design note".
+
+A handover, not binding (`docs/adr/README.md`): the working detail behind increment 8's
+amendments of ADR-0013 (points 3, 13), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1, 8,
+10, 11), drafted in `docs/lanes/adventure/adr-drafts/*-increment-8.md` (applied and deleted by
+T70, `shared/`), written by T66b from T66a's survey and the answers at ADV-Q32 (the epic's
+decisions 162–168), accepted as written with the cut at ADV-Q33 (decisions 170–173). The task that builds a section deletes it; the file goes
+when the epic closes. Facts and sources: survey `docs/rules/surveys/E08-sea.md` (§ numbers are the
+survey's unless they name this note); the proposed rule ids are the survey's §12.
+
+Increment 7's note is in `E08-log.md` ("Increment 7's design note at its closure", moved by T65).
+
+Written whole (decision 169): **part A**, the hero side (`h3-heroes`, the core content); **part
+B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E8 and the cut.
+*Agent's call (change freely)* marks a choice the user accepted at the checkpoint (decision 173)
+and may still change.
+
+##### Part A — the hero side (`h3-heroes`, the core content)
+
+###### 1. The data (the core content and packs: shared)
+
+Built by T70 (`shared/e08-t70`): `h3_content::HeroEffect`'s `navigation { level }` (1..=3),
+`sea_movement_points { points }` (≥ 1) and `free_boarding`, codes 53 to 55, none reaching
+`BattleEffect`; pack format v49, core ruleset hash v50; the gap-fill gives Navigation 1, 2, 3, the
+Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500 and the Admiral's Hat `free_boarding`
+(its points by its parts), the three out of the `pending` list; the Navigation specialists keep
+their `skill_specialty` (`bp_per_level` 500). Details: `packs/README.md`'s effect table, the
+gap-fill's sources (`exe-sea-movement`, `exe-free-boarding`, `vcmi-sea-movement`,
+`wiki-sea-movement`).
+
+###### 2. The day's sea points and free boarding (HER-ADV-009)
+
+Built by T71 (`adventure/e08-t71`): `h3_heroes::sea_points(details, core, table: &[u32; 4])`
+and `h3_heroes::free_boarding(details, core)`, HER-ADV-009 `verified` (E8-1, E8-6, E8-10); any
+source of the three kinds counts, as the land's. Lighthouses (item 9) and the computer's bonus
+(E10) come as inputs then.
+
+###### 3. Rule ids, quirks, shared needs (the hero side)
+
+Built by T71: HER-ADV-009, no quirk, no `HeroDetails` field (the details' hash keeps its
+version); a hero's boat, points and day's maximum are the adventure's (§6).
+
+##### Part B — the map (`h3-map`, `h3-adventure`)
+
+###### 4. The import (`h3-map`; map import v14)
+
+| Class | Becomes | Body |
+|---|---|---|
+| 8 boat | `MapSetup::boats` (built so by T72: `GameSetup` carries the static layer's setup): a `BoatSetup { tile, kind }`, the kind the template's subclass (0 to 2), facing 2, no owner, nobody aboard | none (`load_object_body` case 8 reads nothing) |
+| 29 Flotsam, 82 Sea Chest, 86 Shipwreck Survivor | typed objects `base:flotsam`, `base:sea_chest`, `base:shipwreck_survivor` | none |
+| 59 Ocean Bottle | `base:ocean_bottle` | the message read and dropped (the client reads the map's text) |
+| 124 hole | `base:hole`, lying on its picture's tiles | none |
+| 225 Favorable Winds | `sod:favorable_winds`, lying on its picture's tiles (water only) | none |
+
+- **The pictures' sizes** (codes.rs's table of the special grounds' `.msk`, ADV-GRD-001) gain the
+  eight holes' (`AVLhlds0`, `AVLhlsn0`, `AVLhold0`, `AVLholg0`, `AVLholl0`, `AVLholr0`,
+  `AVLhols0`, `AVLholx0`: passable everywhere, no visitable tile, land only, `Objects.txt`) and the
+  eight Favorable Winds pictures (`AVXfw0` to `AVXfw7`: water only); read from the sprite
+  archives by T67 (`H3sprite.lod`, as T20a2a read the grounds'): every hole 1 × 1, the winds 6 × 4,
+  8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2, 2 × 5 in that order (§19).
+- **D-44** (decisions 163, 178: kept after E8-5): a hero object (34) on a water tile is `Unsupported::HeroOnWater(index)`
+  (counted by reason in `examples/original_data.rs`: none of the 160 shipped maps, §1).
+- **The boats' bound** (decision 164): the setup refuses a boat off water, two boats on one tile,
+  a boat on a tile an object blocks or is visited from, or under a hero (`SetupError::Boat`); no
+  count limit beyond one per water tile. The build's census confirms that no shipped map trips it
+  (the census of §1 counted every boat on water, one visitable tile each; a boat sharing a tile
+  with another object was not counted).
+- The eight maps that import whole stay eight; Race for Ardintinny and Faeries gain their boats
+  and every sea pickup typed (§1). Version: `MAP_IMPORT_VERSION` 14.
+
+###### 5. The kinds and the part (`h3-adventure`, `h3-pack-adventure`; adventure ruleset part v13)
+
+- **The sea's three finds** (ADV-PIK-014 to -016) extend `Find` (increment 7's kind):
+  - a content of **fixed resources with an optional artifact** beside them (Flotsam's bundles:
+    nothing, 5 wood, 5 wood and 200 gold, 10 wood and 500 gold at 25 % each; the Sea Chest's 20 %
+    nothing, 70 % 1 500 gold, 10 % 1 000 gold and a treasure artifact);
+  - a full backpack's **turn replaces the whole entry**: the chest's `Give(1 500 gold)` instead of
+    both its artifact and its 1 000 gold (survey §8.3); a new turn **`Lost`** (the Survivor's: the
+    artifact lost, the object leaves anyway, §8.4);
+  - **`leaves`**: the find leaves the map at its visit (the four sea pickups), not emptied in
+    place (the land's finds).
+  *Agent's call:* the find extended, not three new kinds: the draw at the build, the backpack's
+  test and the turn are the find's (increment 7), only the content's shape and the leaving are new.
+- **`Message { leaves }`** (ADV-PIK-017): its visit tells the visitor's owner which object's
+  message it read (`MessageRead`); the Ocean Bottle leaves; the Sign (91, a later increment) will
+  not. Every visitor reads it (A-27 not reproduced, decision 166).
+- **`SeaGround`** (Favorable Winds, part of ADV-SEA-004): lies on its picture's tiles, never
+  visited, no battlefield; the static map marks the tiles it tops (`StaticTile::winds`, as
+  `no_native` for Cursed Ground: the tile's top ground decides). The price factor is the part's
+  parameter `sea_ground = [2, 3]` (two thirds, truncated; survey §4.1 point 1). *Agent's call:* one
+  factor in the part's parameters, the kind without parameters, as long as one such ground exists.
+- **`Hole`** (part of ADV-SEA-003): lies on its picture's tiles, never visited; forbids a landing
+  on them (`StaticTile::hole`). It blocks nothing else (`Objects.txt`: passable everywhere).
+- **Object types** (`packs/base/adventure.toml`, `packs/sod/adventure.toml`): `flotsam`,
+  `sea_chest`, `shipwreck_survivor`, `ocean_bottle` (visited from the neighbouring tile and from
+  above: classes 29, 59, 82, 86 are on both of the original's lists, 0x63AA58 and 0x63AB00),
+  `hole`, `favorable_winds` (entered, from above, as the grounds).
+- **Parameters:** `sea_points = [1500, 2250, 3000, 3750]` (`movement.txt`'s sea column, the
+  original's 0x698AEC); `sea_ground = [2, 3]`; `[params.battle]` gains `sea = "water"`, `deck =
+  "deck"`, `boats = "boats"` (checked against the battle part when the game bundles the parts).
+
+###### 6. The state (`h3-adventure`; adventure state hash v16, game state hash v20)
+
+- **`Boats`** (ADR-0016 point 1; ADV-SEA-001): `records: persistent::Table<Boat>` by boat index
+  (the setup's order) and `empty: BitGrid`, the tiles an empty boat lies on; none for a map without
+  boats, so today's forks keep their cost (`bench-check`). `Boat { tile, kind: u8, facing: u8,
+  owner: Option<PlayerId>, captain: Option<HeroId>, aboard: bool, gone: bool }`: `tile` is where an
+  empty boat lies (while aboard the hero's tile is the boat's); `facing` the original's 0 to 7 (a
+  map's boat 2; a landing's the step's direction in the original's order: the mapping from
+  `DIRECTIONS` is the build's, with a test against E8-15's record); `gone` once its hero left the
+  map (the record stays, so indexes never move).
+- **`HeroOnMap`** gains `boat: Option<u32>` (the boat aboard) and `max_movement: u32` (the day's
+  maximum, ADR-0016 point 3), set by `start_game`, `start_turn`, a boarding and a landing (T72
+  built the first two by the surface, §14's `day_points` branch: `movement::day_maximum`; the
+  boarding's state change is `AdventureState::put_aboard`, tests only until T73).
+- **Invariants** (`check_invariants` in the properties, and the setup's checks): every empty boat's
+  tile is set in `empty` and no other tile is; a boat aboard has exactly one hero holding it, on a
+  water tile, and no empty boat lies there; a hero on water is in a boat; no two boats on a tile.
+- **The hash:** the boats in index order (tile, kind, facing, owner, captain, aboard, gone), each
+  hero's boat and maximum: adventure state hash v16; the game state hash v20 (it hashes the
+  adventure's).
+
+###### 7. Moving: the modes and the passage (ADV-MOV-007 amended; ADV-SEA-002 to -005, ADV-PIK-018)
+
+`Mode::Sail` for a hero in a boat, before flying and water walking (a hero in a boat neither flies
+nor water-walks, whatever it wears; survey §4.1). `Meets` gains **`Board(u32)`** and **`Land`**:
+both end the move (a longer path is `PastVisit`), and the reachable-tiles query treats both as
+leaves. The rows below extend increment 5's passage table (`state/passage.rs`; the walking hero's
+in `check_step` and the walking search):
+
+| Onto | Walking (on land) | Flying | Water walking | In a boat |
+|---|---|---|---|---|
+| an empty boat's tile | boards (a stop; no guard test there) | boards from a stop node; a flight passes it, from land or water (batch E8c) | boards from a stop node; never from water | never |
+| a hero in a boat | visit from the tile (battle, meeting: the deck) | visit from a stop node; passes | visit from a stop node | visit from the neighbouring water tile (the two boats) |
+| an object on water visited from the neighbour (the sea's pickups, a monster) | never | **never, and no pass** (D-45 reverted by E8-7; D-46 confirmed by batch E8c) | never | visit from the neighbouring water tile |
+| an entered object on water (a water Cartographer) | never | **no stop, no pass** (D-46: the pickups' branch, confirmed by batch E8c; today it passes, ADV-MOV-009) | never | entered |
+| plain water | never | passes | passes | a stop |
+| a blocked water tile | never | passes | never | never |
+| a free coastal tile | as land | as land | as land | **lands** (a stop, a leaf; no guard test at the step) |
+| any other land tile (an object's, an event's, a hole's, a hero's, blocked) | as land | as land | as land | never |
+
+- **The diagonal at sea:** water to water only when both side tiles are water (0x4B2703, 0x481D33);
+  a diagonal landing has no side test (T66b's reading: the land branch 0x4B2867 and the move's
+  0x481CDB test the sides only for a water destination); a water walker's diagonal has none either
+  (unchanged).
+- **The free coastal tile** (D-42, decision 162; the original's class 3): the map's coast flag
+  (`StaticMap::is_coast`), and as it stands now no object blocking it or visited from it (the live
+  occupancy), no event on it still on the map (`events_at`), no hole on it, no hero. A tile an
+  object left becomes one again (0x5056A5).
+- **Guards:** a boat's step onto a water tile a monster guards (water guards water, ADV-MON-005) is
+  attacked at once; boarding tests no guard (0x480108); a landing tests none at the step, and the
+  landing tile's guard visits after the landing, at the monster's tile (§13). T73a: at once in
+  the move's outcome, after the landing's state change (a landing opens no decision, so no
+  `guard_after` is needed).
+- **Events on water** (ADV-OBJ-007, ADV-MOV-011 amended): a boat's step fires them as a walker's
+  (`firing_event`) and ends the move there; their guards fight on the deck. `Reach` stays blind to
+  them (decision 131's rule).
+
+###### 8. Prices, the drop and the conversion (ADV-SEA-002 to -004; D-41, D-43, A-28)
+
+- **A boat's step:** water's straight price from the part (`Passage::Water`, 100) from the source
+  tile; on a `winds` tile × 2 ÷ 3, truncated (66); the diagonal ⌊straight × √2⌋ (141, 93);
+  neither roads, nor native terrain, nor Pathfinding, nor the lifts. **The diagonal exception**
+  (ADV-MOV-005) compares the points left with water's price (100), never the winds' (D-43): on a
+  winds tile with 66 to 92 points the diagonal (93) is refused, with 93 to 99 it costs 93, with 100
+  to 141 the straight 66. `Pricing::sail` (one price function, no `LIFTED` branch).
+- **The drop** after a step (ADV-MOV-006's rule): the cheapest step from the new tile as a boat
+  prices it when the step ends at sea or boards (100; 66 on a winds tile), as a walker without
+  lifts when it lands (the coast tile's road price, else the native price; Cursed Ground's
+  terrain price under it), in both profiles: the hero is in a boat at a landing's step and is one
+  after a boarding's (`ADV-QUIRK-17` concerns a walking hero's lifts and does not apply).
+- **Boarding's step** is priced by the hero's mode on land (a walker's, a flyer's or a water
+  walker's price from its land tile); **a landing's** by the boat's price from the water tile.
+- **The conversion at the visit** (D-41, decision 162): the new maximum computed then (the sea
+  points of §2 at a boarding; the land points, `day_points`, at a landing); with free boarding
+  the points become ⌊points × new maximum ÷ old maximum⌋ (a 64-bit product; an old maximum of 0
+  gives 0), the points being those after the step's drop; without it 0; the maximum becomes the
+  new one in both cases (A-28, `ADV-QUIRK-31`, not reproduced: decision 166). E8-1 and E8-2
+  confirm or revert the drop before the proportion (VCMI: (left − price) × new ÷ old).
+
+###### 9. The reachable-tiles query (`Reach`; ADV-MOV-007 amended)
+
+- **A hero in a boat:** a third search beside the walking and the two-layer ones: one node per tile
+  (every water tile a stop), Dijkstra by points left as the walker's, with §7's sail rows and §8's
+  prices; a landing tile, a visited tile (an object or a hero) and a guarded water tile are
+  destinations it goes no further from; the start in a boat. Its paths are ones `MoveHero` accepts
+  (the property extended).
+- **A walking hero:** a water neighbour (the terrain test fails) is tested for an empty boat
+  (`Boats::empty`, one bit) and a hero, out of the hot loop (`#[cold]`, as `guarded`), so
+  `reach-xl-144` stays within its gate; a boarding tile is a destination, a leaf.
+- **A flying or water-walking hero:** §7's rows in `passage` (the boarding stop, the hero in a
+  boat; D-46's water entrances closed to a flight).
+- **Destinations** (the env's mask, `legal_moves`): the boarding and landing tiles, the visits at
+  sea, every water tile a boat reaches. Today's reach only (the sea's next day is not the
+  engine's, survey §9). A boarding's points are those the move leaves: the boat's drop, then the
+  conversion (T73a for a flyer and a water walker; the property compares them).
+- **T73a's interim** (ADV-STUB-11): a hero in a boat reaches its own tile only and a walker no
+  boat, until T73b builds the boat's search and the walker's test. Built by T73b (the stub
+  closed): the walker's test reads the window's `occupied` flags, which mark empty boats beside
+  other heroes, rather than `Boats::empty` per water neighbour, and only in a window holding a
+  boat or a hero in one (log: the test in every query cost `reach-xl-144` 5 %).
+
+###### 10. Visits at sea (ADV-SEA-005)
+
+- From a boat, an object visited from the neighbouring tile is visited from the boat's water tile
+  (the step's price paid, the hero stays; ADV-OBJ-003) and an entered one is entered (the boat's
+  hero stands on its tile in its boat); another hero in a boat is attacked or met from the
+  neighbouring water tile (GAM-BAT-004, GAM-MET-001); a boat never reaches a hero on land.
+- The kinds already built become reachable by boat (§1's counts: 55 monsters on water, 57 water
+  Cartographers, a few artifacts, resources and a chest on water); the creature generators and the
+  Eye of the Magi on water stay blockers (later increments).
+
+###### 11. The sea's pickups (ADV-PIK-014 to -018)
+
+- **The draws** when the game is built (`state/draws.rs`, ADR-0016 point 4), from the setup stream
+  in object order with increment 7's finds: Flotsam one of its four entries, the Sea Chest's and
+  the Survivor's 0–99 by their chances, their artifacts from increment 7's pool of the random
+  artifacts (D-32: never one banned, placed or drawn before until the pool is exhausted). One draw
+  of 0–99 each, not the original's `random_between(0, 3)` for Flotsam: the streams are the
+  engine's, the chances the original's.
+- **The visit:** the drawn content to the visitor (the resources to its owner, the artifact
+  through `can_receive_artifact` and `HeroGains`); a hero that cannot receive it (`ADV-QUIRK-22`'s
+  count under `faithful`, the placement first under `strict-fixed`) gets the chest's 1 500 gold
+  instead of the 1 000 and the artifact, and nothing of the Survivor's; then the object leaves
+  (`ObjectRemoved` where seen). The bottle: `MessageRead { hero, object }` to the visitor's owner
+  alone, then it leaves. No question.
+- **Who takes them** (ADV-PIK-018): a boat from the neighbouring water tile only; never a flyer, a
+  walker or a water walker (§7; D-45 reverted by E8-7, survey §15).
+
+###### 12. Information (ADV-FOG-006 amended, ADV-FOG-008)
+
+- **Views:** `AdventureView::boats` (the empty boats on explored tiles, in tile order: tile, kind,
+  facing; never owner or captain); `HeroView::boat` (its boat's kind, public: the original draws
+  the hero's flag on it); `OwnHeroView::max_movement` (the day's maximum, its owner's).
+- **Events** (each `seen_by` the viewers of its tiles): `Boarded { hero, boat, at }` (the boat
+  leaves the tile's view, the hero steps onto it), `Landed { hero, boat, at, facing }` (the boat
+  left on `at`, the water tile; T73a: seen by the viewers of `at` only, the landing tile told by
+  the step's own `HeroStepped`, so no viewer learns a tile it does not see; `boat` the type, never
+  the index), `BoatRemoved { hero, boat, at }` right after `HeroRemoved` (T74b: the same viewers), `MessageRead { hero, object }`
+  (the visitor's owner only). A hero's points after a conversion are its owner's
+  (`OwnHeroView`).
+- **The fog:** unchanged (the scouting radius has no boat term, §4.4); `docs/06-security.md`'s
+  viewer knowledge list gains the boats (the adventure epic's).
+
+##### Part C — the game, the env, batch E8 and the cut
+
+###### 13. The battle at sea (GAM-BAT-001, -003 amended; ADV-SEA-006)
+
+- `battle_at` passes the two sides' boats: either hero in a boat → (`sea`, `deck`), both →
+  (`sea`, `boats`), before the underground; then a special ground on the tile replaces the
+  battlefield as on land (none lies on water in the shipped maps). A monster or an event's guards
+  against a boat's hero: the deck. A landing's guards: the monster's tile's battlefield, as any
+  guards' (E8-15: the shore only when that tile is coastal). No hero but a boat's reaches a
+  monster on water (D-45 reverted), so no battle on water lacks a boat. The
+  background (GAM-BAT-011) and the attacker's ground (GAM-BAT-013) unchanged. The battle lane's
+  `deck` and `boats` battlefields exist (BAT-TER-002, BAT-GEO-004): no battle change, no seam
+  change.
+- **After the battle:** a hero in a boat that lost, retreated or surrendered, or both after a draw,
+  leaves the map with its boat (`gone`, `BoatRemoved` where seen); a winner in a boat stays in it.
+  Built by T74b (`sea_battle_ground`, `remove_boat`; decision 187).
+
+###### 14. The game (`h3-game`)
+
+- The turn start and the start of the game set the points and the maximum by the surface
+  (`day_points` gains the sea's branch: `sea_points` with the part's table).
+- No command, decision or answer is new; the outcomes' shapes are increment 7's; the new events
+  are projected as §12 says; `GameObservation` carries the adventure's views. The adventure replay
+  format keeps v7.
+
+###### 15. The env, replays, fixtures, properties, benchmarks
+
+- **The env** (the AI lane's, ADR-0017 point 8): no change (decision 187, T74b's finding): the
+  adventure env has no flat observation encoding, it returns `GameObservation`, whose views carry
+  the empty boats and each seen hero's boat since T72; the action encoding keeps v5 (a boarding or
+  a landing is a tile). The AI lane's inbox told; T75's random play on the sea map shows the env
+  plays on at sea.
+- **The sea fixture** `fixtures/maps/e08-sea-36.h3m` (written by `h3_map::writer` in
+  `tests/sea_map.rs`): two players; boats of the three kinds beside coasts; the four pickups (a
+  hero with a full backpack); events on water with and without guards; a monster on water;
+  Favorable Winds; a hole and a guarded tile on a coast; heroes with Navigation, the Necklace, the
+  Sea Captain's Hat, the Admiral's Hat, Angel Wings beside a coastal Flotsam, Boots of Levitation.
+- **Golden replays:** random play on the sea map (three seeds); scripted: boarding and landing with
+  and without the Hat, a battle on the deck from the shore and against a monster on water, two
+  boats, a landing into guards, an event on water, a flyer refused beside a pickup, a boat leaving with its beaten
+  hero. Every golden re-recorded once (the state hash versions).
+- **Properties** (`h3-map`'s `play.rs`, `view.rs`): generated maps with water regions and boats
+  beside their coasts; `check_boats` (§6's invariants after every command); `Reach`'s paths
+  accepted at sea; the conversion's bounds (without the Hat 0; with it at most the new maximum);
+  no path of a hero not in a boat ends on a water entrance or, for a flyer, crosses one but a
+  boat's, a hero's in a boat or class 85's (D-46, confirmed by batch E8c); fixed cases on the sea
+  map. T74a for T75: `play.rs`'s `visit_gains` counts a find's gains at its emptying (`emptied`),
+  and a find that leaves is never emptied: its gains come at its removal (`ObjectRemoved`), as a
+  chest's.
+- **T75a's finding for T75b:** `random-play-sea-36` costs about 1 714 000 Ir a step (the rewards
+  map's 862 000), 52 % of it in the flyer's and the water walker's layered search over the open
+  sea (`Reach::expand_layered`), the boats' own search 4 %: the inbox's lever (the lane's QUEUE).
+- **Benchmarks:** `reach-sea-xl-144` (a boat's search; a new XL fixture `e08-sea-144.h3m`, mostly
+  sea, 15 boats as Myth and Legend's), `random-play-sea-36`, `fork-sea-xl-144`; the ten workloads
+  at their baselines (`reach-xl-144` the walker's cold boat test).
+- **`--with-original-data`:** the shipped maps import with boats and the pickups typed; the census
+  by reason gains `HeroOnWater` (0) and the boats' refusals (0 expected).
+
+###### 16. Versions, rule ids, quirks
+
+| Version | Change | Task |
+|---|---|---|
+| core ruleset hash v50, pack format v49 | the three effect kinds; Navigation and the three artifacts | T70 (`shared/`): done |
+| adventure ruleset part v13 | the find's extension, `Message`, `SeaGround`, `Hole`; the sea's parameters | T72 |
+| map import v14 | classes 8, 29, 59, 82, 86, 124, 225; `HeroOnWater` | T72 |
+| adventure state hash v16, game state hash v20 | the boats, a hero's boat and maximum | T72 |
+| env observation encoding (the AI lane's) | none: no flat encoding exists (decision 187) | T74b: nothing to bump |
+
+Rule ids: survey §12 (ADV-SEA-001 to -007, ADV-PIK-014 to -018, HER-ADV-009 and the amendments).
+Quirks, recorded in `docs/rules/quirks-adventure.md` without flags (decisions 164, 166):
+`ADV-QUIRK-30` A-27 (a computer's hero leaves a bottle), `ADV-QUIRK-31` A-28 (the day's maximum
+kept without the Hat), `ADV-QUIRK-32` the 64 boats (a 65th dropped at load); all not reproduced.
+
+###### 17. Batch E8
+
+Survey §11's 16 rows in two runs (decision 165), on the harness (`clients/capture/`, common) in
+SoD on Easy, hot seat, from maps `h3-experiment` writes: **E8a** movement and the shore (E8-1 to
+E8-5, E8-7, E8-10, E8-15, E8-16), **E8b** the pickups and the battles (E8-6, E8-8, E8-9, E8-11 to
+E8-14).
+
+- **The writer and the specs:** built by T67 (`E08-log.md`, T67): the writer's boat, pickups,
+  holes and bottle text, the spec's `[[map.bottle]]` and a monster's own `at`, the specs
+  `E08-batch-8a`, `-8a-water` (E8-5 on its own map) and `-8b` with their templates; the
+  predictions correct two of survey §11's rows (E8-4: the drop to 0 after the straight winds step;
+  E8-13: no path goes on past a guarded tile).
+- **The harness** (common; CLT-Q18: this lane builds it with its check and tells the client and
+  map-client lanes' inboxes): reads of the boats' records (game +0x4E3BC, `structs.toml` "boat"),
+  a hero's in-boat bit (+0x105 bit 18) and day's maximum (+0x49), the battle's ship flag
+  (`battle_manager` +0x53C6), terrain, special field and blocked hexes at the opening, an object's
+  word; clicks at a coastal tile from a boat and at a boat from land; an arrow key toward a tile
+  (E8-7).
+- **The scoring:** survey §15 (new), each row against §11's prediction; a dispute a row contradicts
+  reverts to the other side (decision 162) or becomes an `ADV-Q`; the consensus rows' sources
+  `verified`. E8-5 decides whether D-44's refusal stays (decision 163). **Done** (T69, survey §15;
+  decisions 177–179): D-41 to D-43 confirmed, D-44's refusal kept, D-45 reverted, E8-15's battle
+  at the monster's tile; the re-read's **D-46** (a flight over a water tile holding an object)
+  goes to a one-row **batch E8c** (T69b) before T70. **Done** (T69b, survey §16; decision 180):
+  D-46 confirmed (E8-17a, E8-17b), an empty boat crossed from land and from water (E8-17d,
+  E8-17e); the re-read's 0x4B2CF3 corrected (it skips the stop node only).
+
+###### 18. Shared and `cross-lane` work; the building tasks; the exit criteria
+
+**Shared and `cross-lane`:** T70's `shared/` task (the three ADRs applied with batch E8's outcome;
+the three effect kinds in `h3-content` and `h3-pack` with the core packs; `docs/03-domain.md`'s
+terms: boat, in a boat, boarding, landing, free coastal tile, ground of the sea); batch E8's spec
+(`h3-experiment`, `cross-lane`); the harness (common); the env's observation encoding (`h3-sim`,
+`cross-lane`, T74). Everything else is the lane's own.
+
+**The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut confirmed
+at its start). **Batch E8 runs before the build and before the shared task** (decision 165, as
+increment 7's decision 139), so the ADRs are applied once with the disputes' verdicts:
+
+| Round | Tasks | Content |
+|---|---|---|
+| 2 | **T67** | Batch E8's maps: the writer's boat, pickups, hole, winds and a hero and monster on water (§17); the spec's fields (`cross-lane`); the two specs and templates |
+| 3 | **T68** + **T69** (+ **T69b**) | T68: the harness's reads and clicks, the recipes, the runs E8a and E8b. T69: scored (survey §15); D-41 to D-45 settled. T69b: batch E8c, D-46 confirmed (survey §16) |
+| 4 | **T70** | `shared/`: the three ADRs amended with T69's outcome, the three effect kinds and the packs, the glossary (done, decision 181) |
+| 5 | **T71** + **T72** | T71: `h3-heroes` (§2; small). T72: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v14, ruleset part v13, adventure state hash v16 |
+| 6 | **T73** | `h3-adventure`: moving (§7), the prices, the drop and the conversion (§8), `Reach` (§9), visits and events at sea (§10); likely cut in two at its start (the boat's moves and prices; `Reach`) |
+| 7 | **T74** | `h3-adventure` and `h3-game`: the pickups' visits (§11), the battle at sea and the boat leaving with its hero (§13), the game (§14), the env's observation (`cross-lane`, §15) |
+| 8 | **T75** + **T76** | T75 in two (decision 189): T75a the sea map, its replays and `random-play-sea-36` (done); T75b the properties, the sea XL with `reach-sea-xl-144` and `fork-sea-xl-144`, `--with-original-data` (§15) (done). T76: the audit against the exit criteria, increment 8 closed, increment 9 refined (done, decision 191) |
+
+**Increment 8's exit criteria:**
+1. Boats import without the original's cap and a hero placed on water is refused (D-44 as batch
+   E8 left it); any hero boards any empty boat; the owner and captain are kept and never shown; a
+   boat leaves the map with its hero (ADV-SEA-001, -006, -007, GAM-BAT-003).
+2. Boarding and landing are the original's: the walk ends, the free coastal tile only (D-42), the
+   Admiral's Hat's conversion after the step's drop (D-41 as batch E8 decided), the day's maximum
+   switched (A-28 not reproduced), no guard at a boarding, the landing's guards at their tile
+   (ADV-SEA-002, -003).
+3. A boat sails at the sea's prices with Favorable Winds, the diagonal between two waters, never
+   onto an empty boat, with the drop and the diagonal exception at sea (D-43 as decided); the day's
+   sea points come from Navigation, its specialists, the Necklace and the two Hats at the turn
+   start in a boat (ADV-SEA-004, HER-ADV-009, ADV-MOV-001, -002); every path `Reach` gives a boat
+   is one `MoveHero` accepts.
+4. At sea objects are visited from the neighbouring water tile, a boat's hero is met or attacked
+   from the neighbour or from the shore and never attacks the shore, events on water fire and stop
+   the move, a water monster attacks a boat at once (ADV-SEA-005, ADV-OBJ-007, ADV-MOV-011).
+5. A battle with a hero in a boat is fought on the deck, with both in boats on the two boats
+   (GAM-BAT-001).
+6. Flotsam, the Sea Chest, the Shipwreck Survivor and the Ocean Bottle draw, give, turn, lose and
+   leave as the original; only a boat takes one, never a flyer, a walker or a water walker (D-45
+   reverted; ADV-PIK-014 to -018).
+7. A viewer sees empty boats' tiles, kinds and facings and every seen hero's boat, never a boat's
+   owner or captain nor a pickup's contents (ADV-FOG-006, ADV-FOG-008).
+8. Every new rule has its id, source and tests; `ADV-QUIRK-30` to `-32` recorded as not
+   reproduced; the gates pass (coverage, determinism with the re-recorded and new replays, the
+   benchmarks at their baselines and the new ones baselined); the env plays on at sea.
+9. Batch E8 run and scored (T69: D-41 to D-43 confirmed, D-44 refused, D-45 reverted) and batch
+   E8c's D-46 (T69b: confirmed); the consensus rows `verified`.
+
+###### 19. Risks and open points
+
+- **Boats are the first objects that move.** The boat's records, the empty boats' grid and the
+  heroes' boats must agree after every path (a move, a battle's removal, a fork's write): §6's
+  invariants are checked after every command in the properties, and the hash covers all three.
+- **A third search** in `Reach`: its cost on the sea XL is new (`reach-sea-xl-144`); the walker's
+  boat test must stay out of the hot loop (`bench-check` on `reach-xl-144`).
+- **The pictures' sizes** (read by T67 from the sprite archives' `.msk`): every hole 1 × 1;
+  Favorable Winds `AVXfw0` to `AVXfw7` 6 × 4, 8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2, 2 × 5 (the
+  Clover Field's eight sizes): T72 adds them to `GROUND_PICTURES`. A hole on a coastal tile was
+  not counted in the shipped maps (§1), nor a boat sharing a tile with another object (§4): the
+  build's census.
+- **The facing's order:** the original's facing numbers against the engine's `DIRECTIONS` (§6),
+  for the view only; E8-15 records a landing's facing.
+- **D-45's flyer against a monster on water** (§13) followed the pickups' rule: E8-7 reverted
+  both (T69). **D-46** (a flight over a water tile holding an object, survey §15) changes
+  ADV-MOV-009, built and `verified` in increment 5: batch E8c confirmed the code (T69b, survey
+  §16), so T73 closes those tiles to a flight in `passage` and `Reach`, a boat's tile staying a
+  flight's pass.
+- **The env's encoding** (`cross-lane`, §15): if the user prefers the AI lane's inbox, the env
+  encodes no boat until the AI lane takes it, and its agents see a hero in a boat as on its tile.
+- **Not in increment 8** (decision 168): Shipyards and Lighthouses (item 9), Whirlpools, Buoys,
+  Mermaids, Sirens, the Derelict Ship and the Shipwreck (item 10), Summon Boat and Scuttle Boat, the
+  computer player's boats (E10).
+
+### Increment 9, round 1: T77a1, the survey's visits: flagging, mines, Lighthouses, Shipyards (2026-10-30, `adventure/e08-t77a1`)
+
+Baseline: `master` at 283bfbd (#593 merged; CI's full verify green there; the setup's baseline
+ran only the light gates, the engine code verified there). The executable, the four LODs, the
+sound and video archives, the five DLLs, `maps.tar` and `extracted.tar` staged at the start (the
+user's computer went offline soon after, as announced). At its start the user cut T77a in two by
+what runs the rule (decision 194, `AskUserQuestion`; not chosen: the queue's sketch, three parts,
+whole): T77a1 what a visit does, T77a2 what the day's start does with the rest.
+
+**The survey** `docs/rules/surveys/E08-economy.md` §0 to §6:
+
+- **The census** (§1) of the 160 shipped maps with a throwaway example (deleted): the owned
+  classes by subclass, owners at load (60 mines, 1 Shipyard; no Lighthouse; no colour that does not
+  play), the abandoned mines' resource sets (wood never, none empty), entrances (none on water or
+  rock, none shared, no hero on one), monsters beside entrances, the Shipyards' boat tiles by the
+  original's rule (none for two, both on Hoard), flag all mines on 4 maps; for T77a2 the timed
+  events and the non-growing monsters.
+- **The reading** (§2 to §5): the mine records shared with Lighthouses (`mine_record`), class 220
+  loaded as 53 (`object_class_values`), the Shipyard's word; the owner at load (`setup_map_objects`
+  cases 42, 53, 87), the two owner setters (radius-3 reveal for the team, the Shipyards' list per
+  player), who flags what by team, a player's defeat (`player_defeated`: objects neutral, a mine's
+  guards kept), a hero on an entrance, what a viewer sees (`mine_hint_text`: production for the
+  owner's team only, guards for all); `visit_mine` whole (the questions, a neutral single stack as
+  a wandering monster, any other as an army, the subterranean field for crystal, gold and abandoned
+  mines, Leave Guards); the abandoned mine's resource (at load) and 100 to 200 Troglodytes (at the
+  new game); the income table; the Lighthouse's visit and +500 per owned one (`count_owned_records`)
+  and the Castle building's bonus without an owner test; the Shipyard's boat tile fixed at load
+  (`shipyard_boat_tiles`, twelve offsets), its visit (the flag, the refusals, 1 000 gold and 10 wood,
+  a type-1 boat), its use without a visit (the cursor and `hero_move_loop`'s case 7 read; the click
+  between them not traced).
+- **VCMI 1.7.5 and the wiki** compared at each point; disputes **D-47** (a neutral mine's single
+  guard stack split as a wandering monster; VCMI one stack: a batch E9 row proposed) and **D-48**
+  (100 to 200 Troglodytes; VCMI 100 to 199); quirk candidates **A-29** (a single guard stack
+  outside slot 0 after a defeat), **A-30** (the Castle's Lighthouse building for every hero, E09),
+  **A-31** (an abandoned mine without a resource gives resource 8: refused at the import); the
+  Shipyard's tile fixed at load agrees with VCMI's search on every shipped map (no dispute).
+- **The address map:** 25 new entries (16 functions, 7 sites, 2 tables) and `visit_mine` read;
+  `structs.toml`'s `mine_record`, player +0x8C (the Shipyards' list), game +0x1F636 (defeated).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data` passed every
+step it runs (fmt, clippy, check-arch, check-rules, check-stubs, check-docs, check-exe-map,
+clients-lock, check-lane, test, coverage, determinism, bench-check, doc-drift, original-data;
+deny and ffi-smoke skipped by the scope; exit 2, its normal result); no code changed. CI's full
+verify on the pull request is the record.
+
+### Increment 9, round 1: T77a2, the survey's day's start; the checkpoint (2026-10-30, `adventure/e08-t77a2`)
+
+Baseline: `master` at 7f46f18 (#596 merged; CI's push run on `master` green there; the setup's
+baseline verified the engine code on 7f46f18). The executable, the four LODs, the sound and video
+archives, the five DLLs, `maps.tar` and `extracted.tar` staged at the start (the user's computer
+went offline after, then came back). At its start the agent measured the task (`new_day` 0x462
+bytes, the new week 0x7B7, the new month 0x378, the income 0x573, the three visits, the timed
+events) and recommended a cut by rules then synthesis; the user chose **whole** (decision 195,
+`AskUserQuestion`).
+
+**The survey** `docs/rules/surveys/E08-economy.md` §7 to §18 (and §0, §1, the Sources):
+
+- **The day's start** (§7): the date's three words (weeks of 7 days, months of 4 weeks); `new_day`
+  only after the round's last turn, never for day 1 (no income, growth or reset on day 1); its
+  order (the new week, the new month, towns, the heroes' day flags, the income added to every
+  player not defeated, the scenario's test, the spell points); the new week whole (the week's
+  kind, towns, the taverns, the dwellings, the map's scan of entrance tiles by class with a hero
+  lifted off, the Stables' bit, the rumour, neutral towns); the new month whole (its kind: 50 %
+  normal, 40 % one of twelve creatures, 10 % the Plague; the tutorial and the Deity of Fire; the
+  towns' dwellings; a creature month's monsters; the Artifact Merchants); the player's turn start
+  (the timed events).
+- **The income** (§8): `player_daily_income` whole (mines below resource 6 by a second table,
+  towns, Crystal Dragons, the resource artifacts with the Cornucopia's 5, specialists, the
+  computer's bonus, the handicap) and the gold (`player_gold_income`: 1 000 a gold mine by a
+  constant, the gold artifacts, Estates, the 350 of a gold specialist, the computer's and the
+  handicap's factors).
+- **The weekly objects** (§9): the Windmill, the Water Wheel (500 then 1 000) and the Mystical
+  Garden, their words, setup, visits, weekly reset (visited or not) and visited marks (the team's;
+  the Garden's the player's), kept across weeks.
+- **Monsters** (§10): growth in sixteenths (bits 27 to 30), a tenth a week, the 0xFA00 cap; the
+  month's monsters (one chance in 200 a free land tile, twice the creature's range, mood 1 to 10).
+- **Timed events** (§11): the record, the loader's first day + 1, the day test, the floor at 0;
+  **spell points** (§12): the cap, Mysticism and the mana artifacts, the Wizard's Well, every hero
+  record.
+- **VCMI 1.7.5 and the wiki** compared at each point: **D-49** (growth in sixteenths against
+  VCMI's thousandths and the wiki's exact formula: a batch row), **D-50** (the month's monsters:
+  per tile and twice the range against VCMI's exact count and one range); the Cornucopia's 5
+  agrees with the wiki (4 + its parts' 1), so no dispute; **A-32** (the 4 000 cap shrinks a larger
+  stack); **A-31 corrected** (resource 8 adds no income; the import's refusal stays as a bound).
+- **The interfaces** (§13), **batch E9's plan** (§15: 12 rows in two runs, the harness's and the
+  spec's gaps), **the proposed ids** (§16: the new families ADV-OWN, ADV-MIN, ADV-SHY, ADV-WEK;
+  GAM-CAL-002 to -004, GAM-RES-003 to -005, ADV-MON-013, -014, HER-MAN-002 and amendments).
+- **The census** (§1, §11) with a throwaway example (deleted): the timed events' intervals and
+  amounts, no monster above 4 000, the weekly objects' most on a map.
+- **The second reading** (§17): two fresh agents in turn from questions only; **A** (the new day,
+  the income, the week, the month, the spell points) confirmed every point and added the towns'
+  byte, the Cover of Darkness's order, the dragons' garrison, a possible double count of a
+  garrison hero; **B** (the weekly objects, the timed events, T77a1's open points) confirmed and
+  **corrected T77a1's §5.3**: the Shipyard's use runs for the cursor's click mode 8 (the loop's
+  index is the mode minus 1), the click's path closed, the clicked tile's word used; it added
+  A-29's empty-army battle, the sixteenths surviving a fight, and a combination's parts never
+  counted.
+- **The address map:** 31 new entries (22 functions, 4 tables, 5 globals), `new_day` and
+  `new_day_week_events` read whole, `resource_pile_defs` corrected to eight pointers (its ninth
+  word is the income table's), the Shipyard's three entries corrected.
+
+**The checkpoint** (`ADV-Q37`, asked at the end, four questions): every recommendation accepted
+(decisions 196–199): D-47 and D-49 built from the reading and checked by batch E9; the heroes'
+income, the Crystal Dragons, the day's spell points and the month's monsters added to the
+increment, the week's creature with E09; batch E9 whole before the build; the rest as written.
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data`
+passed every step it runs but `check-exe-map`, which failed on one address cited after the run
+began; mapped, `check-exe-map` and `check-docs` passed (the steps the change touches; no code
+changed). CI's full verify on the pull request is the record.
+
+### Increment 9, round 1: T77b, the ADR amendment drafts, the design note and the cut (2026-10-30, `adventure/e08-t77b`)
+
+Baseline: `master` at 56976c7 (#599 merged; CI on `master` green at d2d4c70, its run on 56976c7, a
+docs-only merge, under way). Original data staged at the start (the executable, the five DLLs,
+the four LODs, the sounds and videos, `maps.tar`, `extracted.tar`; the computer went offline
+after). The user's cut at the start (decision 200): **whole** (recommended was two parts by what
+runs the rule, the visits then the day's start; not chosen either: two parts by crate).
+
+**The drafts** (`docs/lanes/adventure/adr-drafts/*-increment-9.md`): ADR-0013 points 3 (the kinds
+`daily_resource`, `mana_regain`, `extra_mana_regain`, `full_mana`; the base regain and the
+specialists' bonus), 13.6 (the Lighthouses' input to the sea points) and a new point 16 (the
+heroes' income, each worn copy counting; the day's spell points; every hero of the store);
+ADR-0016 points 1 (the owners, a mine's guards, the weekly contents, the monsters' fractions,
+objects added in play, the Shipyard's boat tile), 3 (Leave Guards; no revisit), 4 (the seven
+kinds, flagging, the week's and the month's steps, the import's refusals), 5 (the flag's reveal,
+A-33 not reproduced), 6 (owners public, a mine's production its owner's team's, the weekly marks);
+ADR-0017 points 1 (`BuildBoat`, the setup's owners and timed events), 3 (the day's start in the
+original's order from day 2, the timed events at each turn start, the month's kind), 4 (the
+setup's and the day's draws), 6 (the kept army dialog, the boat offer), 8 (the env's
+`BuildBoat`), 10 (the income as the game's step), 11 (a mine's guards in battle, an owned mine's
+played by its owner).
+
+**The design note** `E08-design.md` written for increment 9: part A (§1 the data, §2 the
+derivations, §3 ids), part B (§4 the import, §5 the kinds and parameters, §6 the state, §7 the
+owned objects' visits, §8 `BuildBoat`, §9 the weekly visits, §10 the week's step, §11 the month's
+step, §12 information), part C (§13 the mines' battles, §14 the game, §15 the env, replays,
+fixtures, properties and benchmarks, §16 versions, ids and quirks, §17 batch E9, §18 the cut and
+the exit criteria, §19 risks).
+
+**A reading of its own** (`Heroes3.exe`, `scripts/exe.py`): `hero_gold_income` 0x4E4390 and
+`hero_mana_regained` 0x4E3F40 keep the specialists' factor 1 + 0.05 × level in the x87 register
+(only the 0.05 is a single, 0x63EAE4), so the Estates and Mysticism specialists' products equal
+the exact ones at every level: no Q-0005 term (the survey's "in f32" read as the constant's
+width). The Mysticism specialist's growth and its `+ 1` run only with the skill (0x4E3F5F); the
+three mana artifacts count once each (`hero_wears_artifact`). The census of the packs: the
+thirteen resource and gold specialists (eleven in `base`, Gelare and Grindan in `ab`) are the
+heroes whose specialty the packs leave empty today.
+
+**The cut** (§18; decision 202): seven rounds, batch E9 first and before the `shared/` task
+(T78 the maps and specs; T79 the harness and runs + T80 the scoring; T81 `shared/`; T82
+`h3-heroes` + T83 the import, kinds and state; T84 the visits; T85 the day's start, in two; T86
+the replays and gates + T87 the audit). T78 queued.
+
+**The checkpoint** (ADV-Q38, asked interactively with the four files sent to the user; decisions
+201–204): the drafts and the design accepted as written with two changes, written in: the
+Crystal Dragons' crystal is an **innate creature ability**, a closed kind of the core creature
+beside its growth and flags (`weekly_resource`; the user chose the core over the battle part's
+abilities), not the adventure part's parameter proposed; a weekly object's contents are **the
+object's, one a week for whoever comes first**, never once per player, said plainly, the visited
+marks kept as hint data. The cut, the env's `BuildBoat` `cross-lane` in T85b and the other agent's
+calls as recommended. **T77b done**; T78 is ready.
+
+**Verify:** no code changed. The scoped `cargo xtask verify --scope adventure --summary
+--with-original-data` passed every step it runs (deny and ffi-smoke skipped by the scope; the
+sandbox's VM restarted before it, killing the setup's baseline run, so the scoped run stands in);
+`scripts/exe.py cited`: every cited address mapped. CI's full verify on the pull request is the
+record.

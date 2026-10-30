@@ -34,7 +34,8 @@ fn key_of(text: &str) -> ContentKey {
 // covers: ADV-PIK-014, ADV-PIK-015, ADV-PIK-016, HER-ADV-009, GAM-BAT-001
 #[test]
 fn the_packs_type_the_sea_s_objects() {
-    // E08 T72 (design §5): the sea's parameters, its four pickups, the hole and Favorable Winds.
+    // E08 T72 (increment 8's design note §5): the sea's parameters, its four pickups, the hole and
+    // Favorable Winds.
     let (core, part) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
     let params = part.params();
     assert_eq!(params.sea_points(), &[1500, 2250, 3000, 3750]);
@@ -394,7 +395,8 @@ fn the_base_pack_types_the_objects_of_increment_2() {
 // covers: ADV-OBJ-002
 #[test]
 fn the_base_pack_types_the_rewards_of_increment_7() {
-    // E08 T61a (design §8): the classes' kinds and parameters as the survey read them.
+    // E08 T61a (increment 7's design note §8): the classes' kinds and parameters as the survey read
+    // them.
     let (core, part) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
     let ty = |key: &str| {
         part.object_type(part.object_type_by_key(key).unwrap())

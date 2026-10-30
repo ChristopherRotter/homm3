@@ -3223,6 +3223,74 @@ step); the viewer's timeline as recorded, its `end` at 3 730. Its record in the 
 20`): the tune (`Win Battle.mp3`, hot seat's human winner) alone in the mix, whole and once, 3 692
 ms after the music's start (the disk driver's pacing, as the effects'), then silence.
 
+### 8.3 The sounds' waits (M5 T5b2)
+
+**Read.** `wait_for_sample` 0x59A4C0 (ecx the milliseconds, 4 000 when negative; the WAV object
+and its sample handle): with the sound manager's driver (+0x3C) and 0x699290 clear, it loops while
+`AIL_sample_status` says the handle plays (4) and the game's clock is before the call's time plus
+the milliseconds, pumping messages (`pump_messages` 0x4F7FB0, `adventure_tick` 0x4ED490): no battle
+redraw, so the screen and its idle steps stand still; then it ends the sample and frees the WAV.
+`sample_wait` 0x599EC0 the same on a handle, ending nothing. `play_sample` 0x59A210 plays nothing
+without the driver or at the effects' volume 0 (0x698764), so nothing is waited for then. Every
+battle site but the start (0x46304B, 10 s, the window's since M2 T5b) passes −1. The sites and what
+each waits for, in its order:
+
+| Site | Waits for | Where |
+|---|---|---|
+| First Aid Tent 0x478D28 | `Regener` | after the heal's frames |
+| good morale 0x464B05; bad morale 0x464D1D, Fear 0x464F3D | `GoodMrle`; `BadMrle`, `Fear` | after the animation and line, before the redraw (good) |
+| Life Drain 0x440E8D | `DrainLif` | after animation 74 |
+| Death Stare 0x441178 | spell 79's sound | after the reaction |
+| the Thunderbird's bolt 0x441374 | `LightBlt` | after 49 over the marked stack |
+| the Rust Dragon's acid 0x441577 | spell 80's sound | after 81, before the reaction |
+| Fire Shield's return 0x440BAE | Fire Shield's sound | after the damage's line |
+| a one-target shot 0x43FDF9 | the shooter's shot sound (its handle) | after the line; an area shot none (0x4400EB) |
+| a creature's cast's end 0x4486E2 | its shot sound (its handle) | before it turns back |
+| the Archangel's raise 0x4485DE; the Pit Lord's 0x5A754E | `Resurect` | after the raise; after the line |
+| a resisted cast 0x5A2053 | `MagicRes` | after 78 |
+| Quicksand's and Land Mine's objects 0x5A04DD, 0x5A06FF | each object's sound | after its redraw |
+| a turret's shot 0x465F05 | its shot sound | after its standing redraw |
+| a wall shot 0x4464C2, 0x4464D3 | the shot's, then the landing's | after the end's redraw |
+| the drawbridge 0x4672A5, 0x46742C | its sound | after the three states |
+| a Tower's mine 0x59FC94 | the blast's | after 57 over the stack |
+
+Not built, as their effects are not drawn yet: the Wraiths' mana drain at a turn's start 0x4657CA
+(77, `ManaDrai`), regeneration 0x447097 (79), Poison's damage at a round's start 0x44730E (67),
+Death Blow 0x443B46 (73), Ice Bolt's explosion 0x5A0AFB (`IceRayEx`), the Familiars' channel
+0x5A2740 and 0x5A2750 (`MagChDrn`, `MagChFil`).
+
+**Built.** A cue returns itself; a site waits from now until the cue's start plus its sample's
+length or now plus 4 s, whichever comes first (`Player::wait_for`; `wait_last` for a stack's own
+sound by its handle). The lengths (`sound::Lengths`): a sample's `fact` frames at its rate,
+rounded up (*provisional*: on a sound card Miles' mixer ends it, perhaps a few ms later; the
+harness's samples end so). The timeline waits only with them: the window once its sound opened
+(not `--mute`, a device: the battle made again with the library's lengths, `Ground::play_sounds`),
+a sequence with `sound`; without, nothing changes (every capture before). A site waits on its own
+sample's handle: a handle another sample took meanwhile (its own done, or every channel of the
+category busy, `play_sample`'s turn) would have the original wait for that one; not built
+(*provisional*, no recorded case).
+
+**The harness** (the runbook's "Sound"): Wine's ALSA driver over ALSA's null sink, the effects'
+volume 5, the music's 0; `xdd.dll` plays a sample its length on the virtual clock; the opening at
+the start sound's end; the adventure map's sounds settled first; the main thread's reads alone.
+
+**Checked.** `machines` with sound: its silent timeline exactly (the heal's 1 881 ms within the
+animation's 2 100 at speed 0). The sequences whose timelines the waits change (the viewer's
+comparison over every sequence with the lengths: `thunder`, `acid`, `obstacles`, `gate`,
+`gate-fortress`, `mine`; and by a wall shot's landing alone `breach`, `tower`, `cyclops`, `moat`,
+`quake`, `through`, not captured again: the landing's wait is `gate-sound`'s, `gate-fortress-sound`'s
+and `mine-sound`'s) recorded again with sound (`*-sound`): the original's waits
+where the viewer's are, every timeline as recorded (`thunder-sound`: the Vampire Lords' reaction
+27 ms later, 7 287; `acid-sound` 72 ms, 8 472; `obstacles-sound` the Force Field's turn 3 012 ms
+later for Quicksand's objects; `gate-sound` and `gate-fortress-sound` the landing's 202 ms and the
+drawbridge's; `mine-sound` 202 ms), their frames as the silent ones' (`obstacles-sound` all 80
+exact; the others the same redraw artifacts at their new times). One more fix the recordings
+asked for: the deadline after a wait (no tick ran meanwhile: a command at the wait's end has its
+frames from there, `gate-sound`'s first step at 4 077, not on the old grid's 4 075), and a wall
+shot's landing among the battle's sounds (the window played none).
+
+
+
 ## 9. The string catalogue (M3 T4b-1)
 
 The user's decisions: every text the client shows comes from a key → string catalogue, easy to
@@ -3899,8 +3967,9 @@ and `push_seen`, `anim::Object::owner`, `Timeline::humans` and `screen`; the bin
   (`Live`: the engine's events, each with the side that alone sees it, `push_seen`): an object an
   event one side alone sees places is that side's (`Object::owner`) until an `ObstacleRevealed`
   shows it to both from the next frame drawn; the opening's are both sides' (`Live::obstacles`:
-  a Tower's mines). `Timeline::screen` names the screen's side at a time by the turn's stack's side
-  (*provisional*: Hypnotize's controller not followed, R3-1, M5 T5); without a human here every
+  a Tower's mines). `Timeline::screen` names the screen's side at a time by the acting side its
+  turn's start set (M5 T5b2: `Timeline::controllers`, the stack's controller, a hypnotized
+  stack's the other side; `Panels::with_controllers` the panel's alike); without a human here every
   object shows, as a record holds only what its viewer sees (`render --seat`, the Tower's still:
   the keep's turn, the defender's screen). The placing animations play on every screen: Land
   Mine's handler tests only whether the battle is hidden before its sample and each mine's
@@ -3918,6 +3987,13 @@ and `push_seen`, `anim::Object::owner`, `Timeline::humans` and `screen`; the bin
   Defend by its key, Wait by its button, a walk, the panel's colours the defender's on its turn;
   the Tower's siege in hot seat: its mines on the keep's and the towers' turns, none on the
   Catapult's.
+- **The panel by the turn's controller** (M5 T5b2, R3-1): `stack_activation` sets the acting side
+  +0x132C0 to the active stack's controller (installation.md §7.21), so a hypnotized stack's turn
+  shows its controller's panel (its colours, its hero's book) and its screen; a created stack's
+  turn its side's. Built: `Timeline::controllers` (Hypnotize's look by `SpellLook::original`),
+  `Timeline::screen`, `Panels::with_controllers`. Recorded: `hypnotize` (Orrin hypnotizes the
+  Archers: their turn Red's) all 44 frames exact; `summon-turn` (`summon`'s elementals' waited
+  turn after the Archers') all 30 exact.
 
 ## 10. The siege (M4)
 
@@ -4482,3 +4558,235 @@ dialog, box, state and hint, in `states.jsonl` and `frames.jsonl`), read-only.
   first move into the panel; `states.jsonl` is read after each action, never inside a cast, so
   the 11 casts' sequences show the picture after each cast's park whether the book forgot it or
   not: the book's forgetting stays *provisional*, every frame as recorded either way.
+
+## 11. Live play on a server (M5 T6)
+
+The server lane's asks of a client: `docs/lanes/client/NOTES.md`, "The live client" (2026-10-11:
+the content check and a server restart; 2026-10-13: the welcome, the pins). T6 cut with the user
+(2026-10-30): **T6a** the connection, headless (no original data needed); **T6b** the window
+over a server, the record that opens mid-battle (R2-8, R1-3) and the end's `remote_turn`.
+
+### 11.1 The connection (M5 T6a)
+
+- **The dependency** (the user, 2026-10-30): the server's stack, blocking on the I/O thread only:
+  `tungstenite` 0.30 (sync; `handshake`, `rustls-tls-native-roots`), `rustls` 0.23 without its
+  default features (no `ring`, no `aws-lc`: not GPLv2-compatible), `rustls-graviola` (pure Rust;
+  x86_64 and aarch64 with their crypto extensions), `rustls-native-certs`; `ed25519-dalek` (the
+  welcome's signature, `verify_strict`, no weak key) and `getrandom` (the hello's nonce). The
+  binary's only (`tests/purity.rs`' `BINARY_ONLY`); `cargo deny` passes as the engine's.
+- **Pure, `h3_view::remote`:** `Client` is the connection's state without I/O: the hello (this
+  protocol, a nonce, the address dialed); the welcome's checks in order (protocol, `id` the
+  address dialed, the key, challenge and signature hex of their sizes, the signature over
+  `account::welcome_message(id, nonce, challenge)`, the key the one pinned: a first contact pins
+  it, `Note::Pinned`; another key is `Fault::KeyChanged`, shouted, as SSH does); `join` by a
+  token or `create` an offer's game (`GameCreated`, then its `Joined`); at `Joined` a
+  `FetchRecord`, the numbered messages held meanwhile; the record (`record::parse`) the seat's
+  and opened at its first snapshot (`header.first` its number: the server's bound,
+  `record_bytes` 512 KiB by default, may have let the start go), the held messages after its
+  last added; each numbered message after it in order (`Fault::Gap` otherwise); `turn` the
+  record's last `YourTurn` unless an `Accepted` or the end follows it (a `Rejected` keeps it);
+  a `Goodbye` closes it. `remote::number` says which messages are the viewer's (a `Rejected`
+  numbered 0 is a connection's without a seat). `content` compares the game's manifest with
+  the one compiled here: both hashes equal `Same`, else `Different`, none `Absent`.
+  `Pins` is the pins file (*provisional*: a line per address, `address key-hex`, sorted, `#`
+  comments; a duplicate or a bad line is an error with its number).
+- **Why the record is fetched** (*provisional*): one code path for a first join, a re-join after
+  a drop (the record holds what came while away: one timeline for the window) and a re-join
+  after a restart (the numbers afresh: `first` 1 again). A drop on the same server gives a
+  record that extends the one before; the window (T6b) keeps its timeline then and starts a
+  new one otherwise.
+- **The adapter, `net`:** `Connection::open` spawns the I/O thread (`thread::Builder`: the
+  workspace bans `thread::spawn`), which dials (TCP, then TLS for `wss://` with graviola and the
+  roots given, then the handshake), sets the socket's read timeout to 5 ms (through a cloned
+  handle: the handshake needs blocking reads) and loops: what the caller queued sent, one read
+  (a timeout is no error; tungstenite answers pings), a server message passed on. The caller's
+  thread never waits on the socket; a dial's failure arrives as `Incoming::Closed`. Messages up
+  to 64 MiB (*provisional*: a record comes whole in one).
+- **`h3-view connect`** (headless): the session above with the pins file (default `pins.txt` in
+  the working directory, *provisional*), the content check (`scenario::ruleset` and
+  `map::manifest` over the manifest's packs), the plain player (*provisional*, a test's player:
+  ends a tactics phase, shoots, strikes, else walks toward the enemy's edge by the hex's column,
+  else defends; never leaves), `--drop <n>` (drops after n commands and re-joins by the token),
+  and the record written (`clients/out/connect/g<game>-<seat>.jsonl`).
+- **Tested over loopback** (`connect/tests.rs`): a host on threads serving `h3-protocol`'s
+  `Connection` and `Session` over a real WebSocket, plain or behind TLS with the server tests'
+  certificate (localhost, valid to 2126). A battle to its end against the host's bot (the key
+  pinned, the record numbered from 1 and its end); two seats over `wss://`, the defender dropping
+  after its first command and re-joining mid-battle (its record holds both snapshots and one
+  end, the attacker's the same end); a changed key, a wrong token, a bad address, a bad pins
+  file; no packs: `Absent`. Twenty runs in a row passed.
+
+### 11.2 The window plays a seat (M5 T6b1)
+
+T6b cut in two by the user (2026-10-30): T6b1 the window plays a seat joined at the battle's start;
+T6b2 the record that opens mid-battle (R2-8, R1-3) with a restart's re-join.
+
+- **`h3-view window --server <address> (--game <id> | --create <offer>) --seat attacker|defender
+  [--token] [--name] [--pins] [--drop <n>]`** (`connect`'s options; no scenario or record, no
+  `--human`). `Ground::load` opens the seat (`online::Online::open`, the binary): dials, joins or
+  creates, waits for the record to open (each message within 30 s: the window is not open yet),
+  compiles the game's packs here for the content check. The ground's record is the opening (the
+  first snapshot) with its sides' `human` set to the seat's alone: the seat's player is the one
+  human here, so the panel, the cursor, the result window and the end's tune follow the seat
+  (`remote_turn`, 0x691209: set in network play, the other player not "a human here"; its own
+  branches not read).
+- **No engine runs here.** The battle (`Battle`'s `Fight::Server`) idles at its timeline's end
+  (`Played::Waiting`) whenever the server has sent nothing more; the window's loop polls it at
+  every pass (`Battle::poll`, its input wait at most 10 ms), never waiting on the socket. What
+  came joins the record; each `Events` grows the timeline from the poll's time (or the end of the
+  action before), a turn it starts outlined as a human's, the other seat's too (*provisional*);
+  `GameEnded` finishes it. A command pressed is sent and nothing more taken until the server's
+  next turn.
+- **The turn** (`Battle::serve_turn`): once the server's `YourTurn` came and every query it
+  asked for was answered (`Online` asks, at each new turn, the targets of every spell in
+  `castable` and of the active stack's own cast: `Query::CastTargets`, `CreatureCastTargets`),
+  the mouse and the book get the turn: the server's `legal`, the Faerie Dragon's aim from its
+  targets, and the battle as the seat sees it, `h3_view::remote::seen`: the opening with the
+  record's events applied as far as the mouse, the panel and the book read them (the panel's
+  turns' fold for the active stack, round, wait phase, casts and tactics; the moves, teleports
+  and creations in order for the hexes; the timeline's counts and deaths, its created stacks; the
+  mana by the casts' costs, the book's formula, and the mana channelled and drained; the gate).
+  The book's choice is aimed from the server's targets (`aims::served`: the area, level and stack
+  kind by the ruleset only when the content is `Same`; else no area, a stack aim when every
+  target is a stack); a spell whose targets hold `None` is cast at once.
+- **The content check:** `Same` as in hot seat; `Different` plays with a note in the window's
+  title, the client's own ruleset drawing the book and the result window, no aim area;
+  `Absent` stops the loading with a message (the stage's spells and created creatures need the
+  packs, `motion::casts`).
+- **The result window** (`results::served`): the outcome from the record: `GameEnded`'s result (a
+  forfeit the other side's victory, a void game a draw), each stack's creatures at the opening
+  and at the end (the seat's battle at the timeline's end), its origin by its flags.
+- **A drop:** a closed connection is dialed again (at most once a second by the window's clock,
+  which no pause stops) and the seat re-joined by its token; the record fetched must extend the
+  one taken (the same header, every message taken first: the timeline kept; the re-join's own
+  snapshot in it is no event and draws nothing); one that does not opens afresh (a restarted
+  server's: §11.3). `--drop <n>` drops after n commands (a test).
+- **Unattended** (`--check`, `--measure`): the presser plays the seat's turns (`Battle::takes`:
+  not the other seat's) with a test's player (*provisional*): the hero casts first the first
+  spell the server lets it cast at its first target, through the book and the aim; else
+  `connect::plain`.
+- **Checked:** `online`'s loopback tests (the seat played as the window plays it against a
+  headless other seat, dropping after its first command and re-joining with its record kept;
+  a refusal, a dead address), ten runs in a row; `remote::seen` and `Client::query` at 100 %.
+  Against `h3-server` (built from `master`) under Xvfb, `--check`: two windows on one game of
+  `scenarios/battle.toml` (one seat each, the defender dropping after 3 commands): 21 commands
+  each, the same timeline from the first command, both result windows, 2 085 and 2 076 frames
+  read back exact; one window against the server's bot dropping after 2 commands and re-joining;
+  two windows on `situations/seq-haste.toml`, each hero's cast pressed through its book and aim
+  (the server's replay: `D cast 54 stack 0`, `A cast 53 stack 0`), every frame exact; a
+  `Different` content (a pack's cost changed) with its note; an `Absent` one stopping; on the
+  final code both seats of a `battle.toml` game dropping (after 2 and 4 commands) and re-joining,
+  24 commands to the end, 1 837 and 1 888 frames exact. Frames
+  after their time: median 6.1 to 9.8 ms with two windows and a server on two cores (hot seat's
+  7.8 ms alone).
+
+### 11.3 The record that opens mid-battle and a server's restart (M5 T6b2)
+
+Kept whole by the user (2026-10-30). A seat's record opens mid-battle after a restarted server's
+restored game (its numbers afresh from the re-join's snapshot: `NOTES.md`, "The live client",
+2026-10-11) or when the server's bound (`record_bytes`) let its start go before a join.
+
+- **The corpses at the opening** (R2-8; `anim::Growing::new`): every stack of the snapshot holds
+  its record, a dead one's too (a stack gone without a corpse, `corpse` 65 535: its record held,
+  not drawn), and the stacks the battle made (summoned, cloned, raised: `created`, `raised` or
+  slot 255) come after the war machines by id, the order they were made in (0x47A12B; a killed
+  one's record taken again by the id the engine reuses). A dead one lies among the corpses from
+  the start (`anim::lies`): its death group's last frame in the corpses' pass, facing its side's
+  way (*provisional*: the snapshot holds no facing), in the player's corpses, so a raise
+  (`raise_stack` 0x5A7560) and a Pit Lord's Demons find it. The stage's looks take the corpses'
+  creatures (`motion::looks`).
+- **Who lives is the timeline's** (`scene::living`): the count box and the hexes a box cannot take
+  follow the pose the timeline holds (among the corpses or gone: dead), not the snapshot's
+  `alive`: a corpse raised since shows its box. The corpses on a hex lie in the order they died
+  (the hex's corpse list, `battle_redraw` 0x4948C7 calls `draw_battle_stack` for each): the
+  snapshot's by its `corpse` order first, then the timeline's by id (*provisional*: a stack
+  raised and killed again keeps its first place).
+- **The moat over a stack** (R1-3; `SiegeLook::over_stack`): `draw_hex_stack` 0x494FFE tests the
+  stack's hex, and 0x495039 a two-hex stack's other hex, against its row's entry of the fixed
+  table 0x63BCE8, and with the Fortress flag +0x53A9 of 0x63BCF4; the record's moat leaves out
+  the bridges while the gate is open, so a record opening with the gate open drew no strip on
+  hex 95 once it closed. The Fortress flag is read as the record's moat holding a hex of the
+  second row (no flag on the wire).
+- **Checked against the original:** `seq-raise` (recorded) opened after both deaths, its raises
+  at their recorded times: from the first raise's first frame every stack takes the same poses
+  for the same spans as the whole recorded sequence, the frames shifted by the deadline's history
+  (0x698998: the whole sequence's redraws moved it on), and the boxes show the same counts.
+- **A re-join's record** (`remote::rejoined`): it extends the one taken when its numbers go on
+  (the same server's; its start may be past the taken one's first message, the overlap the same);
+  else, for the same game, seat and content, it opens afresh: a new timeline; another game's or
+  seat's ends the run. `Online` counts the timelines; `Battle::poll` takes nothing of a record
+  opened afresh, and the window opens the battle again from its snapshot (`Battle::afresh`), its
+  clock, inputs, presses and frames starting over (*provisional*). A dropped connection is dialed
+  again once a second until a server answers, the drop said once until a welcome.
+- **A seat's window starts where its record stands** (*provisional*): at its timeline's end as
+  loaded, so a join mid-battle does not play the history again (the log lists it); the start
+  sound only from the battle's start.
+- **Checked:** `online`'s loopback host restarts its game from its journal (`Session::restore`):
+  the seat re-joins, its record opens afresh mid-battle, played to the end. Against a local
+  `h3-server` under Xvfb, `--check`: two windows on a game of `situations/seq-raise.toml`, the
+  server stopped (`Goodbye { Shutdown }`) after the defender's two kills and started again 2 s
+  later: both dialed through the refusals (5 dials), re-joined the restored game, opened a new
+  timeline at its snapshot (both corpses), the attacker's first command Resurrection on the
+  Pikeman's corpse (`A cast 38 stack 0`), played to the result window, 759 and 687 frames exact;
+  then, with `record_bytes` 16 KiB, a window joining the attacker's seat by its token after
+  another had left it: its record opened mid-battle (the last 8 of the game's 15 commands), the
+  corpses drawn (a screenshot), played to the end, 415 frames exact.
+
+### 11.4 Accounts (M5 T7)
+
+Kept whole by the user (2026-10-30); the server lane's asks: `NOTES.md`, "The live client",
+2026-10-12 (wire 13, `docs/epics/E16-design.md` §10, ADR-0019 point 1).
+
+- **The dependencies** (the user, 2026-10-30): `argon2` 0.6, the engine's version and features
+  (`alloc`, `zeroize`; MIT OR Apache-2.0), the binary's only; Ed25519's signing by T6a's
+  `ed25519-dalek`. The password is read from standard input, a line shown as typed (the user's
+  choice over the `console` crate's hidden input and a dialog in the window; `rpassword` is
+  Apache-2.0 alone, not on the licence list), its prompt only on a terminal.
+- **The key** (`h3-view account <login> [--change] [--accounts] [--pins]`, the binary's
+  `account`): the login lowercased (`account::is_login_name`), the seed Argon2id (64 MiB, 3
+  passes, 1 lane, version 0x13, salt `h3-account-v1:<login>`, 32 bytes), Ed25519's secret key;
+  the server lane's test vector reproduced. Kept in the accounts file (`remote::Accounts`,
+  *provisional*: default `accounts.txt` in the working directory as the pins file; a line per key,
+  `<login> key <seed>` then the account's `<login> old <seed> <address>...`; the file made
+  owner-only on Unix; its debug print leaves the seeds out), never the password. Run again, it
+  replaces the key (a new device, or after `Rekeyed`), the earlier keys kept.
+- **A password change** (`--change`; the current password first unless its key is kept here):
+  the key so far becomes an earlier key due at every server the pins file names, those an older
+  key is still due at left to it (the re-key there goes from that one); an earlier key due
+  nowhere is forgotten (`Accounts::done`).
+- **The login** (`remote::Client::login`, after the welcome's checks: its id is the address
+  dialed, so a login signs nothing a hostile server could relay): `Login` signed over
+  `account::login_message(address, challenge, login, display)` by the account's key, a
+  registration's display name with it (`--register`: the server takes it as a login when the
+  account exists with this key). With an earlier key due at this server: the login by it (no
+  registration), at its `Account` the `Rekey` (`account::rekey_message`, signed by both, made
+  with the login: the adapter signs once, `Signer`), at its `Account` `Note::Rekeyed` and
+  `LoggedIn`; refused `BadLogin`, the server holds the earlier key no more (re-keyed from another
+  device, or never registered): `Note::OldKeyRefused` and the login by the account's key. Either
+  note ends the earlier key's due there (`Account::done` rewrites the file). Any other refusal
+  ends the login (by the earlier key accepted and its re-key refused, the connection stays
+  logged in by it); the adapters end the run.
+- **Seats by account** (`connect` and `window --server` with `--login`; `--accounts`): the join
+  waits for `LoggedIn` and carries no token (the given `--token` if any); the server's `Joined`
+  gives none, so a re-join after a drop logs in again and joins the same way, and so does a new
+  process (the seat is the account's).
+- **The goodbyes** (`remote::farewell`, *provisional*): `Rekeyed` (log in again with the new
+  password: `h3-view account`), `CommandLimit` (the game is void), `Abandoned` (gone before it
+  started), `Replaced` (another connection took the seat: re-taking it would take turns with
+  that one) and `Protocol` end the run with their reason (`connect` fails; the window closes,
+  the reason on standard error); after the game's end they are lines only; every other goodbye
+  (a shutdown, a timeout, a pause) is a drop: dialed again.
+- **Checked:** `remote`'s login, re-key, refusals and `Accounts` at 100 %; the binary's test
+  vector, the file and its mode, the login's and the re-key's signatures verified by Ed25519.
+  Against a local `h3-server` (`anonymous = false`): anonymous refused (`NotLoggedIn`); headless,
+  both seats registered, each dropping (after 3 and 2 commands) and re-joined by account to the
+  end; a password change, a second connection re-keying the account (`players.log`'s
+  `Rekeyed`) while the first, logged in by the earlier key, heard `Goodbye { Rekeyed }` and
+  stopped with its reason; a second device's stale earlier key refused and the login going on;
+  a server with `commands_per_game = 6` (`CommandLimit` at both seats) and a spectator of a
+  waiting game its player left (`Abandoned`). Under Xvfb, `--check`: two windows logged in on
+  `battle.toml`, each dropping and re-joining (1 179 and 1 174 frames exact), then two new
+  windows taking both seats back by account alone (1 828 and 1 789 frames exact); two windows on
+  `seq-raise.toml` at speed 2, the attacker dropping after 2 commands, both to the result window
+  (494 and 465 frames exact); a window whose seat another connection of the account took closed
+  with "another connection took the seat".

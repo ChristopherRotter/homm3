@@ -33,6 +33,15 @@ h3-map.workspace = true
 h3-sdl.workspace = true
 # The music (E17 M2 T5b): MP3, the binary's only.
 nanomp3.workspace = true
+# A game on a server (E17 M5 T6a): the connection's I/O thread, the binary's only.
+tungstenite.workspace = true
+rustls.workspace = true
+rustls-graviola.workspace = true
+rustls-native-certs.workspace = true
+ed25519-dalek.workspace = true
+getrandom.workspace = true
+# Accounts (E17 M5 T7): the key's derivation, the binary's only.
+argon2.workspace = true
 
 [lints]
 workspace = true

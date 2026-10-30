@@ -3379,6 +3379,175 @@ the rock clipped out is the slip, the corpse gone before the fade's end is not p
 - **Found:** CLT-Q34 (the greys' hue from the channels' unequal scales, the glow's last step
   replaced in its millisecond); review items 40 to 42.
 
+### M5 T5b2 — The panel by the turn's controller, the sounds' waits (2026-10-29)
+
+On `client/e17-m5-t5b2`, the user present at the start. The sandbox new; the files staged from the
+user's `original-data/` first (the device link dropped later; nothing more was needed). Asked at
+the start: T5b2 kept whole (the user, against the recommended cut: the panel now, the sounds
+next); CLT-Q34 answered (a), copy both.
+
+- **Read:** the panel's and the screen's side from `stack_activation` 0x465330 (the acting side
+  +0x132C0 the active stack's controller; installation.md §7.21, design §9.12). The sounds' waits
+  (design §8.3): `wait_for_sample` 0x59A4C0, `sample_wait` 0x599EC0, `play_sample` 0x59A210 (nothing
+  at the effects' volume 0), their 30 battle sites (callers), each one's sample and place; the
+  battle's start 0x46304B (10 s, the clocks after it). Map entries amended where cited.
+- **Built:** `Timeline::controllers` (each turn's acting side: Hypnotize's look by
+  `SpellLook::original`, a created stack's side), `Timeline::screen` by it,
+  `Panels::with_controllers` (the panel's kept colours, Auto Combat's selection), the writer's
+  panels with the timeline's controllers. `sound::Lengths` and `length_ms`, `Stage::lengths`,
+  `Player::wait_for` and `wait_last` at the sites (design §8.3's table), the deadline's grid from
+  a wait's end (`Clock::waited`); the binary's lengths (`audio::lengths`, `Library::lengths`), the
+  window's battle made again once its sound opened (`Ground::play_sounds`), a sequence's `sound`;
+  the battle's sound list with a wall shot's landing (`WallHit`, `WallMiss`: the window played
+  none before). The harness's `sound` runs (runbook, "Sound"): `xdd.dll` 6. (Miles' nine sample
+  imports on the virtual clock, `clock/sounds`; with sound the main thread's reads alone),
+  `h3drive.py` (`sound_settings`, Wine's ALSA driver over the null sink, `sounds_settled`,
+  `after_start_sound`, reads growing over three acknowledgements).
+- **Found on the way:** with sound the hot seat's new day waits for its samples and a key pressed
+  meanwhile is lost once the clock stops (`sounds_settled`); the game's sound thread reads the
+  clock and holds the sound manager's lock in real time, so 20 reads of any thread took a busy
+  main thread for idle (`machines`' heal read a millisecond late, three causes ruled out first).
+- **Recorded:** `machines` with sound: its silent timeline exactly. The viewer's comparison over
+  every sequence with the lengths named the sequences the waits change (`thunder`, `acid`,
+  `obstacles`, `gate`, `gate-fortress`, `mine`; with the landing's sound added, `breach`,
+  `tower`, `cyclops`, `moat`, `quake`, `through` by a wall shot's landing alone, not captured
+  again); the six recorded again with sound (`*-sound`), the
+  commands' times from the new turns: every timeline as recorded (the turns after a wait 27 ms
+  to 3 012 ms later), after two fixes they asked for (the deadline's grid after a wait; a wall
+  shot's landing among the battle's sounds); their frames as the silent ones' (`obstacles-sound`
+  all 80 exact, the rest the same redraw artifacts at their new times). `hypnotize` (Orrin hypnotizes
+  the Archers; their turn Red's) all 44 frames exact; `summon-turn` (`summon`'s elementals'
+  waited turn after the Archers', left waiting) all 30 exact. Its first recording went on into
+  round 2 (the elementals defending at their waited turn): the original's round starts with the
+  elementals (speed 6), the engine's with the Swordsmen (5): the battle lane's inbox.
+- **Found:** review items 43 to 47; no question.
+
+### M5 T6a — The connection, headless (2026-10-30)
+
+On `claude/optimistic-mayer-bo0pv5` (the session's branch; the lane inferred from its paths), the
+user present at the start, no original data in the session. Asked at the start: the dependency
+(the server's stack, the I/O thread alone blocking: the user's yes) and the cut (the user: the
+infrastructure that needs no original content now; the window and the record that opens
+mid-battle, T6b, with the original data).
+
+- **Built** (design §11.1): the client workspace's dependencies (`tungstenite` 0.30, `rustls`
+  0.23 without defaults, `rustls-graviola` 0.4, `rustls-native-certs` 0.8, `ed25519-dalek` 3,
+  `getrandom` 0.3: the engine's versions; `cargo deny` as the engine's), the binary's only.
+  `h3_view::remote` (pure): `Client` (the hello, the welcome's checks, the pin, `join`,
+  `create`, the record fetched at `Joined` and grown, `command`, `turn`, `over`), `Note`,
+  `Fault`, `number`, `content`, `Pins`. The binary's `net` (the I/O thread, `Connection`,
+  `os_roots`, `verify`, `nonce`) and `connect` (`h3-view connect`: the session, the plain
+  player, `--create`, `--drop`).
+- **Tested:** `remote` 13 tests at 100 % of lines and regions; `connect` 6 over loopback against
+  a host of `h3-protocol`'s `Connection` and `Session` on threads (plain and TLS with the server
+  tests' certificate: a battle against the host's bot to its end; two seats over `wss://`, the
+  defender dropping after its first command and re-joining mid-battle; a changed key, a wrong
+  token, a bad address and pins file; no packs `Absent`), twenty runs in a row passing.
+- **Run against `h3-server`** (built from `master`, a duel offer with and without the server's
+  bot): the key pinned, a game created and played to its end against the bot (content `Same`);
+  two headless players on one created game, the defender taking the free seat without a token
+  and dropping after 2 commands, re-joining by the token the server handed it: the battle had
+  ended meanwhile, its record holding the end and then the re-join's snapshot (12 messages),
+  the attacker's the end (13).
+- **Not built (T6b):** the window over a server, a re-join after a server restart (the headless
+  session ends on a closed connection; `remote` starts every connection's record afresh), the
+  record that opens mid-battle drawn (R2-8, R1-3), `remote_turn`.
+- **Found:** review items 48 to 51; no question.
+
+### M5 T6b1 — The window plays a seat on a server (2026-10-30)
+
+On `client/e17-m5-t6b1`, the user present at the start, the original data staged. T6b proposed in
+two by the agent and cut so by the user (T6b1 the window playing a seat joined at the start, T6b2
+the record that opens mid-battle with a restart's re-join).
+
+- **Built** (design §11.2): `h3_view::remote::seen` (the seat's battle from its record and
+  timeline), `Client::query` and `Client::answer`, `anim::Pose::dead`; the binary's `online`
+  (`Online`: the seat's connection for the window, the record opened before the window shows, the
+  turn's queries, the re-dial and re-join, the content check), `Battle`'s `Fight` (here or on a
+  server) with `poll`, `take_served`, `serve_turn`, `served_outcome`; `aims::served`,
+  `spellbook::cost`, `results::served`; `window --server` and its report; `net::Connection::poll`.
+- **Tested:** `remote` 15 tests at 100 %; `online` 2 over loopback (ten runs in a row).
+- **Run against `h3-server`** (two windows under Xvfb, `--check`): `scenarios/battle.toml` to its
+  end with a drop and a re-join, every frame exact; a window against the server's bot with a
+  drop; `situations/seq-haste.toml` with both heroes' casts through the book and the aim; both
+  content outcomes; both seats dropping and re-joining on the final code (design §11.2,
+  "Checked").
+- **Gates:** `clients/scripts/check.sh` all passed (100 % lines and regions); the scoped verify
+  with the original data passed every step it runs.
+- **Not built (T6b2):** a record that opens mid-battle drawn (R2-8, R1-3), a join mid-battle, a
+  restart's re-join (a new timeline), re-dialing until a restarted server answers.
+- **Found:** review items 52 to 55; no question.
+
+### M5 T6b2 — The record that opens mid-battle and a server's restart (2026-10-30)
+
+On `client/e17-m5-t6b2`, the user present at the start, the original data staged (the device link
+dropped later, as expected). The agent proposed a cut (T6b2a the drawing, T6b2b the restart); the
+user kept T6b2 whole. The VM restarted about 10 minutes in and its baseline check died: CI's
+green `master` (819f41d) stood in.
+
+- **Built** (design §11.3): `anim::lies` and the corpses at the opening in `Growing::new` (every
+  snapshot stack's record, the made ones after the war machines, `Live::of`); `scene::living`
+  (the box and the taken hexes by the timeline's pose), the corpses on a hex by their death's
+  order; `SiegeLook::over_stack` by the fixed moat rows (`MOAT_HEXES`, `FORTRESS_MOAT_HEXES`);
+  `remote::rejoined` (`Rejoined::Extends`, `Afresh`, `Other`); the binary's `Online::take` by
+  it, `Online::timelines`, the drop said once while re-dialing; `Battle::open`, `afresh`,
+  `opened_afresh`, `seat_opening`, the fidget frames by the battle's own opening; the window's
+  new timeline and its start at the record's end; `motion::looks` with the corpses; the test
+  host's `restartable` (`Session::restore` from its journal).
+- **Tested:** `seq-raise` cut after its deaths against the whole recorded sequence (the same
+  poses for the same spans from the first raise on, the same counts); a scene with a raised
+  corpse's box, two corpses on a hex by their order, a stack gone; the moat's strip over hex 95
+  with a record opened gate open, the Fortress's second row; `rejoined`'s cases; `online` over
+  loopback through a restart of its host. The library at 100 %.
+- **Run against `h3-server`** (`master`'s, under Xvfb, `--check`): two windows on
+  `situations/seq-raise.toml`, the server stopped after the defender's two kills and started
+  again 2 s later: both re-dialed through the refusals (5 dials), opened a new timeline at the
+  restored game's snapshot, the attacker cast Resurrection on the Pikeman's corpse first
+  (`A cast 38 stack 0`), both played to the result window, 759 and 687 frames exact; with
+  `record_bytes` 16 KiB a window joining the attacker's seat by its token after another left:
+  its record held the last 8 of the game's 15 commands, the corpses drawn (screenshot), 415
+  frames exact.
+- **Gates:** `clients/scripts/check.sh` all passed (100 % lines and regions); the scoped verify
+  with the original data passed every step it runs.
+- **Found:** review items 56 to 60; no question.
+
+### M5 T7 — Accounts (2026-10-30)
+
+On `client/e17-m5-t7`, the user present at the start, the original data staged at once (the
+device link dropped later, as expected). The user chose the dependencies (`argon2` 0.6, the
+engine's; Ed25519 already T6a's `ed25519-dalek`), the password from standard input shown as
+typed (over the `console` crate's hidden input and a window dialog; `rpassword` is Apache-2.0
+alone) and kept T7 whole (the agent proposed T7a the login, T7b the password change). The VM
+restarted about 10 minutes in and its baseline died in its coverage step (fmt, clippy, the doc
+tests and deny had passed): CI's green `master` (d2d4c70, then 56976c7) stood in.
+
+- **Built** (design §11.4): `remote::Accounts` (the accounts file: `parse`, `text`, `key`,
+  `due`, `set`, `change`, `done`; seeds out of its debug print), `Login`, `Signer`,
+  `Client::login` (the login's step `Old`, `Rekey`, `Key`; the re-key and the account's login
+  made and signed with the first), `Client::account`, `Note::LoggedIn`, `Rekeyed`,
+  `OldKeyRefused`, `remote::farewell`, `Pins::addresses`; the binary's `account` (`derive`,
+  `public`, `login_name`, `h3-view account`, `keep`, the file owner-only on Unix, `Account`'s
+  `login` and `done`), `connect`'s `--login`, `--register`, `--accounts` (the window's too),
+  `connect::join` shared with `online`, the final goodbyes ending `connect` and the window; the
+  window's `--server` in the help.
+- **Tested:** the lib's login (signed for the address and the challenge; a registration; by an
+  earlier key then the re-key; the earlier key refused; other refusals), the accounts file, the
+  final goodbyes; the binary's test vector, the file's text and mode, a change's due servers, the
+  login's and the re-key's signatures verified by Ed25519; `connect`'s options. The library at
+  100 %.
+- **Run against `h3-server`** (`master`'s, `anonymous = false`): headless, two accounts
+  registered, both seats dropping and re-joined by account to the end; a password change, the
+  re-key on a second connection (the first heard `Rekeyed`, stopped with its reason), a stale
+  earlier key refused on a second device and the login going on; `CommandLimit` (6 commands) at
+  both seats; `Abandoned` at a spectator. Under Xvfb, `--check`: two windows on `battle.toml`
+  dropping and re-joining (1 179 and 1 174 frames exact), two new windows taking the seats back
+  by account alone (1 828 and 1 789 exact; the battle outlasted the 150 s runs); `seq-raise.toml`
+  at speed 2 to both result windows, the attacker dropping (494 and 465 exact); a window whose
+  seat another connection of the account took closed with its reason.
+- **Gates:** `clients/scripts/check.sh` all passed (100 % lines and regions; `cargo deny` with
+  `argon2`'s licences); the scoped verify with the original data passed every step it runs.
+- **Found:** review items 61 to 65; no question.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

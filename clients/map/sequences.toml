@@ -16,6 +16,8 @@
 # pointer is then parked over the right panel in the same millisecond, so that the cursor over
 # the view, M3's, stays out of the frames, but at hero speed 4, whose walk ends inside the
 # click's millisecond: the cursor stays at the click's point until the next mouse poll, 33 ms).
+# Since E24 M3 T5b2 `status = [kind, end]`: the status window's kind (1 the date's, 2 the kingdom's)
+# asked at 0 until `end` ms after it, built afresh by 0's redraw (design §4.9).
 
 [[sequence]]
 id = "idle-cycles"
@@ -250,4 +252,267 @@ why = "a boat sailing: its waves, flag and boat moving with the view"
 inputs = [
     { at = 100, click = [472, 120] }, { at = 100, pointer = [700, 300] },
     { at = 300, click = [472, 120] }, { at = 300, pointer = [700, 300] },
+]
+
+# The status window over time (E24 M3 T5b2; design §4.9): a kind asked at 0 for a time (`status`:
+# the harness writes the manager's +0x398 and +0x39C, the kind shown none, so 0's redraw builds it
+# afresh), the window shown until the first view's draw at or after its end, then the selection's.
+# The kingdom's asked for 700 ms over the kingdom's situation (its hero's window read at the
+# staging): the redraw at 720 shows the hero's again.
+
+[[sequence]]
+id = "status-kingdom-end"
+situation = "status-kingdom"
+ms = 900
+status = [2, 700]
+why = "the kingdom's status window asked for 700 ms, then the selected hero's at the next redraw"
+
+# The date's asked for 3 000 ms (the original's own time for a new day's), the day's picture
+# stepping a frame at each redraw (180 ms apart, at least 100 after the last) to its tenth, then the
+# hero's window at the redraw at 3 060.
+
+[[sequence]]
+id = "status-date-end"
+situation = "status-date"
+ms = 3300
+status = [1, 3000]
+why = "the date's status window built at 0, its picture stepping to its last frame, then the selected hero's"
+
+# The mouse over the panels and the map (E24 M3 T6a1; E24 design §4.10), the status bar's hint
+# compared (`masks.toml`'s `hinted`). Over the panels: each item in turn, the hint of the one under
+# the pointer once it changes (`adventure_panel_hint` 0x403010): the minimap, the status window's
+# margin and its inside (no hint), the buttons (a disabled one takes no mouse: the arrow, no hint;
+# the quest log does), the lists' arrows, the hero list's slots (a hero's name and class; the empty
+# one's frame, nothing) and bars, the town list's slots, the status bar, the resource bar, the
+# frame between the panels, then the parking.
+
+[[sequence]]
+id = "hover-panels"
+situation = "seq-hover"
+ms = 2800
+why = "the status bar's hint over each panel's item"
+inputs = [
+    { at = 100, pointer = [700, 98] }, { at = 200, pointer = [607, 395] },
+    { at = 300, pointer = [700, 480] }, { at = 400, pointer = [695, 212] },
+    { at = 500, pointer = [727, 212] }, { at = 600, pointer = [695, 244] },
+    { at = 700, pointer = [727, 244] }, { at = 800, pointer = [695, 276] },
+    { at = 900, pointer = [727, 276] }, { at = 1000, pointer = [695, 308] },
+    { at = 1100, pointer = [727, 308] }, { at = 1200, pointer = [711, 340] },
+    { at = 1300, pointer = [711, 372] }, { at = 1400, pointer = [641, 204] },
+    { at = 1500, pointer = [641, 228] }, { at = 1600, pointer = [641, 260] },
+    { at = 1700, pointer = [641, 292] }, { at = 1800, pointer = [613, 228] },
+    { at = 1900, pointer = [669, 260] }, { at = 2000, pointer = [771, 204] },
+    { at = 2100, pointer = [771, 228] }, { at = 2200, pointer = [771, 260] },
+    { at = 2300, pointer = [300, 565] }, { at = 2400, pointer = [60, 580] },
+    { at = 2500, pointer = [700, 580] }, { at = 2600, pointer = [604, 180] },
+    { at = 2700, pointer = [700, 300] },
+]
+
+# Over the map, the selected hero with 100 points left: the cursor by the tile under the pointer
+# (`adventure_mouse_move` 0x40E360: the hero, a move today and one, two and three days or more
+# away, an attack on a monster and on a tile it guards, a visit, an exchange with Red's other hero,
+# an attack on Blue's, Red's town's body and entrance, Blue's town's, Blue's garrison, water, the
+# boat, the Magic Plains, a mountain, a drawn row's last 8 pixels, a tile not explored) and the
+# tile's hint (0x40B150); then the parking (the hint stays: the panel's item looked at last is the
+# parking's, MCL-Q17), the view again and its column and row again after the parking (nothing
+# looked at), the kingdom overview's button and the parking.
+
+[[sequence]]
+id = "hover-map"
+situation = "seq-hover"
+ms = 3100
+points = 100
+why = "the cursor and the status bar's hint over the map's tiles"
+inputs = [
+    { at = 100, pointer = [48, 48] }, { at = 200, pointer = [80, 48] },
+    { at = 300, pointer = [592, 528] }, { at = 400, pointer = [368, 80] },
+    { at = 500, pointer = [464, 400] }, { at = 600, pointer = [80, 240] },
+    { at = 700, pointer = [112, 208] }, { at = 800, pointer = [176, 144] },
+    { at = 900, pointer = [208, 240] }, { at = 1000, pointer = [240, 48] },
+    { at = 1100, pointer = [144, 304] }, { at = 1200, pointer = [112, 112] },
+    { at = 1300, pointer = [176, 48] }, { at = 1400, pointer = [368, 144] },
+    { at = 1500, pointer = [304, 176] }, { at = 1600, pointer = [496, 176] },
+    { at = 1700, pointer = [560, 144] }, { at = 1800, pointer = [432, 336] },
+    { at = 1900, pointer = [48, 464] }, { at = 2000, pointer = [144, 464] },
+    { at = 2100, pointer = [336, 400] }, { at = 2200, pointer = [496, 496] },
+    { at = 2300, pointer = [368, 100] }, { at = 2400, pointer = [560, 16] },
+    { at = 2500, pointer = [700, 300] }, { at = 2600, pointer = [80, 48] },
+    { at = 2700, pointer = [700, 300] }, { at = 2800, pointer = [80, 48] },
+    { at = 2900, pointer = [690, 212] }, { at = 3000, pointer = [700, 300] },
+]
+
+# A hero in a boat (`seq-sail`'s, boarded by the staging's walk) with 300 points: the cursor over
+# the water (the sail, by the days), the coast (the landing), land beyond it, Blue's hero ashore
+# (the arrow) and the hero itself; the hints of the water and the land (none) and of the heroes.
+
+[[sequence]]
+id = "hover-sail"
+situation = "seq-sail"
+ms = 1000
+points = 300
+why = "the cursor of a hero in a boat over the water, the coast and the land"
+inputs = [
+    { at = 100, pointer = [304, 272] }, { at = 200, pointer = [304, 240] },
+    { at = 300, pointer = [304, 80] }, { at = 400, pointer = [240, 272] },
+    { at = 500, pointer = [304, 336] }, { at = 600, pointer = [80, 48] },
+    { at = 700, pointer = [80, 336] }, { at = 800, pointer = [496, 112] },
+    { at = 900, pointer = [700, 300] },
+]
+
+# The map hint's visit marks (E24 M3 T6a2a; E24 design §4.11), the status bar's hint compared
+# (`masks.toml`'s `hinted`): Red's selected hero with 1000 points, the pointer over the entrance
+# of each object of the 35 classes whose hint shows a bonus or a mark, then over a body (the
+# Library's, the University's: the entrance's hint), then the parking. `hover-visits-*` as the new
+# game leaves them (nothing known: the marks of the selected hero's not visited, the Wagon's and
+# the Warrior's Tomb's too, the Water Wheel's and the Windmill's none), `hover-visited-*` with
+# every one known and visited (the situations' `visits`; the second Water Wheel and Windmill not
+# visited, something left).
+
+[[sequence]]
+id = "hover-visits-a"
+situation = "hover-visits-a"
+ms = 2100
+points = 1000
+why = "the map hint over the first 18 visit-mark classes, nothing visited"
+inputs = [
+    { at = 100, pointer = [80, 152] }, { at = 200, pointer = [176, 152] },
+    { at = 300, pointer = [272, 152] }, { at = 400, pointer = [368, 152] },
+    { at = 500, pointer = [432, 152] }, { at = 600, pointer = [528, 152] },
+    { at = 700, pointer = [80, 280] }, { at = 800, pointer = [144, 280] },
+    { at = 900, pointer = [240, 280] }, { at = 1000, pointer = [304, 280] },
+    { at = 1100, pointer = [400, 280] }, { at = 1200, pointer = [528, 280] },
+    { at = 1300, pointer = [48, 408] }, { at = 1400, pointer = [144, 408] },
+    { at = 1500, pointer = [208, 408] }, { at = 1600, pointer = [304, 408] },
+    { at = 1700, pointer = [432, 408] }, { at = 1800, pointer = [560, 408] },
+    { at = 1900, pointer = [496, 248] }, { at = 2000, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-visited-a"
+situation = "hover-visited-a"
+ms = 2100
+points = 1000
+why = "the map hint over the first 18 visit-mark classes, every bonus known and object visited"
+inputs = [
+    { at = 100, pointer = [80, 152] }, { at = 200, pointer = [176, 152] },
+    { at = 300, pointer = [272, 152] }, { at = 400, pointer = [368, 152] },
+    { at = 500, pointer = [432, 152] }, { at = 600, pointer = [528, 152] },
+    { at = 700, pointer = [80, 280] }, { at = 800, pointer = [144, 280] },
+    { at = 900, pointer = [240, 280] }, { at = 1000, pointer = [304, 280] },
+    { at = 1100, pointer = [400, 280] }, { at = 1200, pointer = [528, 280] },
+    { at = 1300, pointer = [48, 408] }, { at = 1400, pointer = [144, 408] },
+    { at = 1500, pointer = [208, 408] }, { at = 1600, pointer = [304, 408] },
+    { at = 1700, pointer = [432, 408] }, { at = 1800, pointer = [560, 408] },
+    { at = 1900, pointer = [496, 248] }, { at = 2000, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-visits-b"
+situation = "hover-visits-b"
+ms = 2200
+points = 1000
+why = "the map hint over the other 17 visit-mark classes, nothing visited"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [144, 120] },
+    { at = 300, pointer = [240, 120] }, { at = 400, pointer = [336, 120] },
+    { at = 500, pointer = [432, 120] }, { at = 600, pointer = [496, 120] },
+    { at = 700, pointer = [80, 216] }, { at = 800, pointer = [208, 216] },
+    { at = 900, pointer = [304, 216] }, { at = 1000, pointer = [432, 216] },
+    { at = 1100, pointer = [560, 216] }, { at = 1200, pointer = [144, 312] },
+    { at = 1300, pointer = [304, 312] }, { at = 1400, pointer = [368, 312] },
+    { at = 1500, pointer = [528, 312] }, { at = 1600, pointer = [80, 408] },
+    { at = 1700, pointer = [112, 536] }, { at = 1800, pointer = [208, 536] },
+    { at = 1900, pointer = [336, 536] }, { at = 2000, pointer = [176, 184] },
+    { at = 2100, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-visited-b"
+situation = "hover-visited-b"
+ms = 2200
+points = 1000
+why = "the map hint over the other 17 visit-mark classes, every bonus known and object visited"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [144, 120] },
+    { at = 300, pointer = [240, 120] }, { at = 400, pointer = [336, 120] },
+    { at = 500, pointer = [432, 120] }, { at = 600, pointer = [496, 120] },
+    { at = 700, pointer = [80, 216] }, { at = 800, pointer = [208, 216] },
+    { at = 900, pointer = [304, 216] }, { at = 1000, pointer = [432, 216] },
+    { at = 1100, pointer = [560, 216] }, { at = 1200, pointer = [144, 312] },
+    { at = 1300, pointer = [304, 312] }, { at = 1400, pointer = [368, 312] },
+    { at = 1500, pointer = [528, 312] }, { at = 1600, pointer = [80, 408] },
+    { at = 1700, pointer = [112, 536] }, { at = 1800, pointer = [208, 536] },
+    { at = 1900, pointer = [336, 536] }, { at = 2000, pointer = [176, 184] },
+    { at = 2100, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-owners"
+situation = "hover-owners"
+ms = 2100
+points = 1000
+why = "the map hint over the owners' classes: guards, a tent, lighthouses, resources, dwellings, mines"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [144, 120] },
+    { at = 300, pointer = [240, 120] }, { at = 400, pointer = [336, 120] },
+    { at = 500, pointer = [400, 120] }, { at = 600, pointer = [464, 120] },
+    { at = 700, pointer = [528, 120] }, { at = 800, pointer = [112, 248] },
+    { at = 900, pointer = [208, 248] }, { at = 1000, pointer = [336, 248] },
+    { at = 1100, pointer = [496, 248] }, { at = 1200, pointer = [80, 376] },
+    { at = 1300, pointer = [208, 376] }, { at = 1400, pointer = [336, 376] },
+    { at = 1500, pointer = [464, 376] }, { at = 1600, pointer = [112, 504] },
+    { at = 1700, pointer = [272, 504] }, { at = 1800, pointer = [400, 504] },
+    { at = 1900, pointer = [528, 504] }, { at = 2000, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-banks"
+situation = "hover-banks"
+ms = 1300
+points = 1000
+why = "the map hint over the eleven creature banks, not visited, visited, empty and guarded"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [208, 120] },
+    { at = 300, pointer = [336, 120] }, { at = 400, pointer = [432, 120] },
+    { at = 500, pointer = [528, 120] }, { at = 600, pointer = [80, 248] },
+    { at = 700, pointer = [208, 248] }, { at = 800, pointer = [336, 248] },
+    { at = 900, pointer = [496, 280] }, { at = 1000, pointer = [144, 472] },
+    { at = 1100, pointer = [336, 472] }, { at = 1200, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-teach"
+situation = "hover-teach"
+ms = 2000
+points = 1000
+why = "the map hint over Shrines, Trees of Knowledge and Witch Huts known, visited and learned, a visited tent"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [144, 120] },
+    { at = 300, pointer = [208, 120] }, { at = 400, pointer = [272, 120] },
+    { at = 500, pointer = [336, 120] }, { at = 600, pointer = [400, 120] },
+    { at = 700, pointer = [464, 120] }, { at = 800, pointer = [528, 120] },
+    { at = 900, pointer = [80, 248] }, { at = 1000, pointer = [176, 248] },
+    { at = 1100, pointer = [272, 248] }, { at = 1200, pointer = [368, 248] },
+    { at = 1300, pointer = [464, 248] }, { at = 1400, pointer = [80, 376] },
+    { at = 1500, pointer = [176, 376] }, { at = 1600, pointer = [272, 376] },
+    { at = 1700, pointer = [368, 376] }, { at = 1800, pointer = [464, 376] },
+    { at = 1900, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-quests"
+situation = "hover-quests"
+ms = 1800
+points = 1000
+why = "the map hint over Seer's Huts of the nine quest types and Quest Guards"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [176, 120] },
+    { at = 300, pointer = [272, 120] }, { at = 400, pointer = [368, 120] },
+    { at = 500, pointer = [464, 120] }, { at = 600, pointer = [80, 248] },
+    { at = 700, pointer = [176, 248] }, { at = 800, pointer = [272, 248] },
+    { at = 900, pointer = [368, 248] }, { at = 1000, pointer = [464, 248] },
+    { at = 1100, pointer = [80, 376] }, { at = 1200, pointer = [176, 376] },
+    { at = 1300, pointer = [272, 376] }, { at = 1400, pointer = [368, 376] },
+    { at = 1500, pointer = [464, 376] }, { at = 1600, pointer = [528, 376] },
+    { at = 1700, pointer = [700, 300] },
 ]

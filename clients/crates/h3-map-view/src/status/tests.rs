@@ -24,6 +24,8 @@ fn lists() -> ListArt {
 fn texts() -> Catalogue {
     let json = concat!(
         r#"{ "map.status.number": "{{number}}", "map.status.thousands": "{{thousands}}k", "#,
+        r#""map.status.date": "{{word}} {{number}}", "map.status.side": "{{word}}:", "#,
+        r#""word": { "day": "Day", "week": "Week", "allies": "Allies", "enemies": "Enemies" }, "#,
         r#""hero": { "48": "Fiona" }, "town-name": { "37": "Arcton" } }"#,
     );
     Catalogue {
@@ -49,6 +51,8 @@ fn live(kingdom: Kingdom) -> Live {
         kingdom,
         buttons: None,
         minimap: None,
+        hover: None,
+        hint: None,
     }
 }
 
@@ -375,7 +379,7 @@ fn nothing_drawn_but_a_hero_s_or_a_town_s_window_of_the_selection() {
         ..hero_kingdom(fiona())
     }));
     assert!(!draw(Kingdom {
-        status: Some(Status::Other(1)),
+        status: Some(Status::Other(5)),
         ..hero_kingdom(fiona())
     }));
     // A hero's window with a town selected, a town's with a hero, a selection past its list.
@@ -446,4 +450,160 @@ fn the_tables_rules_checked() {
         "a skill's lowest above its highest"
     );
     assert_eq!(broken(|a| a.thousands = 0), "thousands below 1");
+    // The date's (E24 M3 T5b2): a picture's frames for each picture, none 0.
+    let unmatched = "the date's pictures and their frames do not match";
+    assert_eq!(broken(|a| a.date.frames.truncate(4)), unmatched);
+    assert_eq!(broken(|a| a.date.frames[2] = 0), unmatched);
+}
+
+fn date_kingdom(frame: u32, [month, week, day]: [u16; 3]) -> Kingdom {
+    Kingdom {
+        status: Some(Status::Date(DateStatus { frame })),
+        date: Date { month, week, day },
+        ..hero_kingdom(fiona())
+    }
+}
+
+#[test]
+fn the_date_s_window_by_the_day_or_the_week() {
+    let layout = layout();
+    let shown = |kingdom: Kingdom| {
+        let (panel, shown) = window(
+            &layout,
+            &art(),
+            &lists(),
+            &live(kingdom),
+            &names(),
+            &texts(),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(panel.place, layout.status_date.place);
+        assert_eq!(panel.items.len(), 3);
+        shown
+    };
+    // A day: the day's picture at its frame and the day's text, whatever the selection.
+    let day = shown(date_kingdom(4, [1, 2, 3]));
+    assert_eq!(day.defs[&id::DATE_PICTURE], "NewDay.def");
+    assert_eq!(day.frames[&id::DATE_PICTURE], 4);
+    assert_eq!(texts_of(&day), [(id::DATE_TEXT, "Day 3")]);
+    // A week's first day: the week's picture and text; the game's first day the day's.
+    let week = shown(date_kingdom(0, [2, 3, 1]));
+    assert_eq!(week.defs[&id::DATE_PICTURE], "NewWeek3.def");
+    assert_eq!(texts_of(&week), [(id::DATE_TEXT, "Week 3")]);
+    let first = shown(Kingdom {
+        selected: Selected::None,
+        ..date_kingdom(0, [1, 1, 1])
+    });
+    assert_eq!(first.defs[&id::DATE_PICTURE], "NewDay.def");
+    assert_eq!(texts_of(&first), [(id::DATE_TEXT, "Day 1")]);
+    assert_eq!(
+        shown(date_kingdom(0, [1, 2, 1])).defs[&id::DATE_PICTURE],
+        "NewWeek2.def"
+    );
+}
+
+#[test]
+fn what_the_date_shows() {
+    let art = art().date;
+    let at = |month, week, day| art.shows(Date { month, week, day });
+    assert_eq!(
+        at(1, 1, 1),
+        DateShows {
+            def: "NewDay.def",
+            frames: 10,
+            week: false
+        }
+    );
+    assert_eq!(
+        at(3, 4, 1),
+        DateShows {
+            def: "NewWeek4.def",
+            frames: 16,
+            week: true
+        }
+    );
+    assert_eq!(at(2, 1, 1).def, "NewWeek1.def");
+    assert_eq!(at(2, 1, 2).def, "NewDay.def");
+    // A week past the table's (or 0): the day's.
+    assert_eq!(at(2, 5, 1).def, "NewDay.def");
+    assert_eq!(at(2, 0, 1).def, "NewDay.def");
+    // A picture without its frames given: one.
+    let mut short = art.clone();
+    short.frames.truncate(1);
+    assert_eq!(
+        short
+            .shows(Date {
+                month: 2,
+                week: 3,
+                day: 1
+            })
+            .frames,
+        1
+    );
+}
+
+#[test]
+fn the_kingdom_s_window() {
+    let layout = layout();
+    let realm = KingdomStatus {
+        halls: [0, 2, 1, 12],
+        allies: vec![0, 2],
+        enemies: vec![1, 3, 4, 5, 6, 7],
+    };
+    let kingdom = Kingdom {
+        status: Some(Status::Kingdom(realm)),
+        ..town_kingdom(town())
+    };
+    let (panel, shown) = window(
+        &layout,
+        &art(),
+        &lists(),
+        &live(kingdom),
+        &names(),
+        &texts(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(panel.place, layout.status_kingdom.place);
+    // The halls' frames 0 to 3; the counts where there are towns; the labels.
+    let frames: Vec<(u16, u32)> = shown.frames.iter().map(|(&i, &f)| (i, f)).collect();
+    assert_eq!(frames[..4], [(2001, 0), (2002, 1), (2003, 2), (2004, 3)]);
+    assert_eq!(
+        texts_of(&shown),
+        [
+            (2022, "2"),
+            (2023, "1"),
+            (2024, "12"),
+            (id::ALLIES, "Allies:"),
+            (id::ENEMIES, "Enemies:"),
+        ]
+    );
+    // Each row's flags from its first place, the colour the frame; the rest hidden.
+    assert_eq!(
+        frames[4..],
+        [
+            (2041, 0),
+            (2042, 2),
+            (2051, 1),
+            (2052, 3),
+            (2053, 4),
+            (2054, 5),
+            (2055, 6),
+            (2056, 7),
+        ]
+    );
+    let mut hidden_ids = vec![2021];
+    hidden_ids.extend(2043..2049);
+    hidden_ids.extend([2057, 2058]);
+    assert_eq!(hidden(&shown), hidden_ids);
+    // Every item the window gives is the panel's.
+    for id in shown
+        .frames
+        .keys()
+        .chain(shown.texts.keys())
+        .chain(shown.states.keys())
+    {
+        assert!(panel.item(*id).is_some(), "{id}");
+    }
 }

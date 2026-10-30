@@ -11,60 +11,15 @@ closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game
 its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
 the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T4a done
 2026-10-28, T4b cut in two, T4b1 done 2026-10-28, T4b2 and T4c1 done 2026-10-28, T4c2a and
-T4c2b 2026-10-29: T4 done). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
+T4c2b 2026-10-29: T4 done; T5 cut in two, T5a done 2026-10-29, T5b cut in two, T5b1 and T5b2
+done 2026-10-29: T5 done; T6 cut in two by the user, T6a done 2026-10-30, T6b cut in two by
+the user, T6b1 and T6b2 done 2026-10-30; T7 kept whole by the user, done 2026-10-30). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local
 check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M5 T5 — what a played battle shows
-
-Cut in two by the user (2026-10-29): T5a the dissolves and the created stacks (with the engine's
-event for a stack without a place, `cross-lane`; done 2026-10-29), T5b the panel by each turn's
-controller, the sounds' waits and the palette effects, cut in two again by the user (2026-10-29,
-at its start): T5b1 the palette effects (done 2026-10-29), T5b2 the panel and the sounds' waits.
-The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
-
-#### E17 M5 T5b2 — the panel by the turn's controller, the sounds' waits
-
-- **Scope:** the panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the
-  battle waiting for the heal's sound and the other effects' (the Pit Lord's `Resurect.wav`,
-  0x5A754E, among them). Recorded against the original.
-- **Acceptance:** the new sequences as recorded, or each difference listed; the Definition of
-  Done.
-- **Depends on:** T5a (done). **Status:** ready.
-
-### E17 M5 T6 — a game on a server
-
-- **Scope:** the window connects to `h3-server` over its WebSocket: the hello (a fresh nonce, the
-  address dialed), the welcome's checks (its signature, its `id` the address dialed), the key
-  pinned per address, a game joined by its seat token, the content check (the manifest's packs
-  and profile compiled, the ruleset hash compared: the previews only when equal), the commands
-  sent and the record growing from the server's messages; a record that opens mid-battle (R2-8:
-  the snapshot's dead stacks as corpses, the box by the timeline's living set; M4 T3a's R1-3:
-  the moat's strip by the fixed moat rows, 0x63BCE8 and 0x63BCF4) for a join and a re-join after
-  a drop or a server restart (the numbering afresh); the end's `remote_turn`. The server lane's
-  notes: `NOTES.md`, "The live client"; the detail: `QUEUE-ARCHIVE.md`, 2026-10-23 (T9b). Its
-  dependency (a WebSocket client with TLS): asked of the user before it is added.
-- **Acceptance:** a battle played to its end in two windows on a local `h3-server`, a seat each;
-  a drop and a re-join; both outcomes of the content check; tests over loopback where the
-  adapter allows; the Definition of Done.
-- **Depends on:** T2b (done 2026-10-27); the user's choice of the dependency. **Status:** ready
-  (the dependency asked at the task).
-
-### E17 M5 T7 — accounts
-
-- **Scope:** the account's key from the login and the password (argon2id with the server lane's
-  parameters, the seed as Ed25519's secret key; the test vector in `NOTES.md`, "The live
-  client"), derived once per device and cached (never the password); the login signed only for
-  the address dialed, a registration's display name; seats by account (joined without a token,
-  re-taken after a drop); `Rekey` after a password change; the goodbyes `Rekeyed`,
-  `CommandLimit`, `Abandoned`. Its dependencies (argon2, Ed25519): asked of the user at the task.
-- **Acceptance:** the test vector reproduced; a battle played logged in on a local `h3-server`,
-  the seat re-taken after a drop; the Definition of Done.
-- **Depends on:** T6; the user's choice of the dependencies. **Status:** ready after T6.
 
 ### E17 M5 T8 — M5's closure
 
@@ -74,9 +29,15 @@ The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
   refined with the user (the ladders, the pause, the server browser; HD; graphics options).
 - **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
   the next milestone's tasks in this queue; M5 done.
-- **Depends on:** T1 to T7. **Status:** waiting (the user, at its checkpoint).
+- **Depends on:** T1 to T7 (done 2026-10-30). **Status:** ready (the user, at its checkpoint).
 
 ## Inbox
+
+- 2026-10-30 (the map client lane, E24 M3 T6a2b, the user's consent; for your information,
+  nothing to do): `h3-view`'s test `the_committed_catalogue_parses` lists SEERHUT among the
+  tables the catalogue's keys read: the map hint's quest texts (`map.quest.<type>`, a form per
+  SeerHut.txt column) are keys, which every client reads. The catalogue also has 33 more `map.`
+  keys and 13 optional families only the map viewer lists (`clients/text/keys.toml`).
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.

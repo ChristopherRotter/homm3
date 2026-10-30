@@ -12,6 +12,8 @@ mod play;
 mod rewards;
 mod rewards_map;
 mod sea;
+mod sea_map;
+mod sea_xl_map;
 mod strategy;
 mod view;
 

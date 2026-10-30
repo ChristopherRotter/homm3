@@ -365,6 +365,11 @@ fn keys_refuse_mistakes() {
     let listed = optional.replace("\"spell\"", "\"creature\"");
     let keys = Keys::parse(&listed, &entries()).unwrap();
     assert!(keys.keys.contains_key("creature.base:imp"));
+    // A family of records one by one (E24 M3 T6a1): id n is record first + n, blank or not.
+    let counted = listed.replace("first = 0", "first = 3\ncount = 9");
+    let keys = Keys::parse(&counted, &entries()).unwrap();
+    let original = &keys.keys["creature.base:imp"].original;
+    assert!(original.iter().all(|(_, s, _)| s.row == Row::Record(3)));
     let shown: Vec<String> = [
         KeysError::Parse(s("x")),
         KeysError::Id(s("A")),

@@ -12,6 +12,16 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-30 (the client lane, E17 M5 T5b2; **a difference from the original, for you to
+  look at**): the turn order after a created stack's round. `seq-summon.toml` (hot seat, seed 1):
+  Orrin summons two Fire Elementals (speed 6) at the Swordsmen's (speed 5) turn, the Swordsmen
+  defend, the elementals wait, the Archers defend, the elementals defend at their waited turn;
+  round 2 then starts with the elementals in the original (the harness's memory: the active
+  stack stays attacker record 1 at 1 200 ms) but with the Swordsmen in the engine
+  (`RoundStarted { round: 2 }`, `TurnStarted { stack: 0 }`). The client's `summon-turn`
+  sequence stops before round 2; the commands that showed it are in its comment's history (the
+  E17 log, "M5 T5b2").
+
 - 2026-10-29 (the client lane, E17 M5 T5a, `cross-lane` with the user's consent; **done in
   your crate, for you to review**): a Clone or Summon Elemental that finds no place now reports
   it: `EventKind::NotCreated { side, creature, count, original }` (public; BAT-MAG-037's "Not

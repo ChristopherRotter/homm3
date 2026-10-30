@@ -61,7 +61,7 @@ pub fn experience_cap(params: &HeroParams, level_limit: u8) -> u32 {
 /// further than the threshold of the hero's level, which the details' validation keeps at most
 /// the experience's: a hero whose level exceeds the limit, which the original keeps at its level
 /// with less experience, cannot arise when the game gives every hero its experience under the
-/// limit (D-21, design §3).
+/// limit (D-21, increment 4's design note §3).
 pub fn gained_under_limit(
     details: &HeroDetails,
     params: &HeroParams,
@@ -73,7 +73,7 @@ pub fn gained_under_limit(
 }
 
 /// The levels the hero's experience gives beyond those it has been given: its pending level-ups,
-/// which the game gives one at a time (design §7).
+/// which the game gives one at a time (increment 4's design note §7).
 pub fn pending_levels(details: &HeroDetails, params: &HeroParams) -> u8 {
     level_of(params, details.experience).saturating_sub(details.level)
 }

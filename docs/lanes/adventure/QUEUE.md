@@ -4,15 +4,44 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179); T69b done (`adventure/e08-t69b`, decision 180: whole; batch E8c run and scored, D-46 confirmed, survey §16). Round 4: T70 done (`shared/e08-t70`, `cross-lane`, decision 181: whole; the three ADRs applied, the effect kinds, the packs and the glossary). Round 5: T71 done (`adventure/e08-t71`, decision 182: with the inbox's property case; HER-ADV-009), T72 done (`adventure/e08-t72`, `cross-lane`, decision 183: whole; the import, kinds, state and views; the AI lane's bots tables' fingerprint). Round 6: T73 in two (decision 184): T73a done (`adventure/e08-t73a`: the boat's moves, prices, conversion and events; ADV-SEA-002 to -005), T73b done (`adventure/e08-t73b`, decision 185: whole; the boat's reach, the walker's boat test, the property; ADV-STUB-11 closed). Round 7: T74 in two (decision 186): T74a done (`adventure/e08-t74a`: the sea's pickups' visits from a boat, ADV-PIK-017, -018; `random-play-duel-36` re-baselined), T74b done (`adventure/e08-t74b`, decision 187: whole, no `cross-lane`; the battle at sea, a beaten hero leaving with its boat, ADV-SEA-006; the env needs no encoding change); the security doc's increment 8 in `shared/e08-security` (decision 188). Next: round 8, T75 (the sea fixtures, the golden and scripted replays, the properties with boats and pickups, the benchmarks, `--with-original-data`; design §15) and T76 (the audit), each cut confirmed with the user at its start (design §18). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). T77b done whole (decision 200; `adventure/e08-t77b`: the drafts, `E08-design.md`, the cut in rounds 2 to 8, decision 202; the checkpoint's `ADV-Q38`, decisions 201–204). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+
+**E08 T78 — Batch E9's maps and specs**
+
+- **Scope:** increment 9's design note §4 (the writer) and §17: `h3_map::writer` writes the seven
+  classes with their bodies (a mine's owner by subclass, an abandoned mine's resource set, a
+  Lighthouse's and a Shipyard's owner, the three weekly objects) and the map's timed events (it
+  writes none today), with tests that read them back; the spec's fields in `h3-experiment`
+  (battle-owned, `cross-lane` by decisions 198 and 202): mines by subclass with an owner and
+  guards, the abandoned mine's set, Lighthouses, Shipyards, the weekly objects, a monster's "does
+  not grow", timed events, a hero's Estates, Mysticism and specialty; the specs `E08-batch-9a`
+  (E9-1 to E9-5) and `-9b` (E9-6 to E9-12) with their templates and each row's prediction (survey
+  §15, plus design §17's two: E9-2 who plays Blue's guards, E9-4 the Lighthouses' surroundings at
+  day 1). `docs/experiments/README.md` names the new fields.
+- **Inputs:** survey `E08-economy.md` §15 (the plan, the harness's and the spec's gaps); design
+  §4, §17; T67's record in `E08-log.md` (increment 8's writer and specs, the same shape).
+- **Depends on:** T77b (done; ADV-Q38 answered, decisions 201–204). **Status:** ready; its cut
+  confirmed at its start (T67 was taken whole).
 
 ## Inbox
+
+- 2026-10-30 (the map client lane, E24 M3 T6a2b; the user's standing consent for the writer, E24
+  T0; for your information, nothing to do): **the writer writes quests**: `Extras::quests` maps
+  an index of `Extras::objects` (a Seer's Hut, 83, or a Quest Guard, 215) to a
+  `model::Mission`, written in the SoD layout with no deadline, no texts and a seer's reward
+  nothing (`writer::extras::write_quest`; refused on another class or with a list past 255).
+  A literal `Extras { tiles, objects }` now needs `..Extras::default()`.
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
   against `reach-xl-144`'s 148 k on the same games), and random play on the duel with one of each
   costs 56 % more a step (`random-play-duel-36`): `Reach::search_layered`'s second layer is the
-  lever (`crates/h3-adventure/src/reach.rs`).
+  lever (`crates/h3-adventure/src/reach.rs`). E08 T75a: on the sea map (`random-play-sea-36`,
+  one flyer and one water walker beside a 12-column sea) `Reach::expand_layered` is 52 % of the
+  workload's Ir, the boats' search 4 %. E08 T75b: a boat's query on the open sea costs about
+  2.29 M Ir (`reach-sea-xl-144`), 91 % in `Reach::expand_sail`; 8.7 % is `Search::landed`
+  computing the land's day points (`movement::day_points`) at every landing tile, the same for
+  all of a query's landings: computing it once a query is an easy cut.
 
 - 2026-10-22 (the battle lane, E23 T4c, `battle/e23-t4c`; **for the neutral seat**, E23 exit criterion 5): the original's battle AI for a side without a hero is complete: `h3_battle_ai::choose(&BattleState, &BattleRuleset, BattleSide, &mut Rng) -> Command` (shots, melee, moves, waits, defends, the creature casts), pure, deterministic, its draws from the stream given, its choice validated (Defend if refused). The neutral seat (decision 27, your random stand-in) can call it for a monster battle's unowned side; `POLICY_VERSION` 9. A side with a hero (a computer player's) casts nothing and never retreats until E23 T5 and T6 (BAT-STUB-5).
 

@@ -225,17 +225,39 @@ the stacks created mid-battle.
       redraws, Stone Gaze's line), built (`h3_render::recolour`, the timeline's `LookKey`s,
       `Draw::Creature`'s `effect`); `bloodlust` and `stone` recorded, their glows and looks exact;
       `clone`'s colours exact; CLT-Q34.
-    - **T5b2, the panel and the sounds' waits:** the panel's side by each turn's controller
-      (R3-1: Hypnotize, a created stack); the battle waiting for the heal's sound and the other
-      effects'; recorded.
-- **T6, a game on a server:** joined over the server's WebSocket by a seat token: the hello and
-  the welcome's checks, the key pinned per address, the content check (`docs/lanes/client/NOTES.md`,
-  "The live client"); a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a join and
-  a re-join after a drop or a server restart. Its dependency (a WebSocket client with TLS): the
-  user's decision, at the task.
-- **T7, accounts:** the account's key from the login and the password (argon2id, Ed25519; their
-  dependencies the user's decision, at the task), the login with the welcome's check, seats by
-  account, `Rekey` after a password change, the new goodbyes.
+    - **T5b2, the panel and the sounds' waits** (done 2026-10-29, kept whole by the user;
+      design §8.3, §9.12): read (the acting side by the controller, `wait_for_sample` and
+      `sample_wait` at their 30 battle sites), built (`Timeline::controllers`,
+      `Panels::with_controllers`, `sound::Lengths`, the timeline's waits, the window's lengths;
+      the harness's `sound` runs); `hypnotize`, `summon-turn` and six `*-sound` sequences
+      recorded; CLT-Q34 answered (a).
+- **T6, a game on a server** (cut in two by the user, 2026-10-30: the part that needs no
+  original data first; design §11):
+  - **T6a, the connection, headless** (done 2026-10-30; design §11.1): the user's dependency
+    (the server's stack, blocking on the I/O thread only: `tungstenite`, `rustls` with
+    `rustls-graviola` and the OS roots, `ed25519-dalek`, `getrandom`); `h3_view::remote` (the
+    hello, the welcome's checks, the pins, a join by token or a game created, the record fetched
+    and grown, commands, the content check), the I/O thread (`net`), `h3-view connect`; tested
+    over loopback (`ws://` and `wss://`, a drop and a re-join) and against `h3-server`.
+  - **T6b, the window over a server** (cut in two by the user, 2026-10-30):
+    - **T6b1, the window plays a seat** (done 2026-10-30; design §11.2): `h3-view window
+      --server`, the battle growing by what the server sends (polled at each frame), the turn
+      from `YourTurn` with the aims' targets by `Query`, the seat's battle derived
+      (`h3_view::remote::seen`), both content outcomes, a drop's re-join keeping the timeline,
+      `remote_turn` (the seat's player the one human here); two windows on a local `h3-server`
+      played a battle to its end, every frame exact.
+    - **T6b2, the record that opens mid-battle** (done 2026-10-30, kept whole by the user;
+      design §11.3): the snapshot's dead among the corpses (R2-8: raised as recorded), the box
+      by the timeline's living set, the moat's strip by the fixed rows (R1-3); a re-join's
+      record extends the one taken or opens afresh (`remote::rejoined`): a new timeline; a join
+      mid-battle and a restart of a local `h3-server` played, every frame exact.
+- **T7, accounts** (done 2026-10-30, kept whole by the user; design §11.4): `argon2` the
+  engine's (the user's choice), the password from standard input shown as typed (the user's
+  choice); `h3-view account` derives and keeps the key (`remote::Accounts`), the test vector
+  reproduced; `Client::login` with the re-key from an earlier key due at the server after a
+  password change; seats by account; `remote::farewell`; played logged in on a local
+  `h3-server`, headless and in two windows to the result window, seats re-taken by account
+  after drops, every frame exact.
 - **T8, M5's closure:** a fresh reviewer, the recipes' starting bonus set to Gold (M4's item 15),
   every capture afresh, the review list, the next milestone refined.
 - **Exit:** a battle played to its end in the window, in hot seat and on a server; the new
@@ -467,3 +489,74 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     changes).
 42. Not built (T5b1): an Ogre Magi's Bloodlust (a creature's cast other than an area spell takes
     effect at once, M3 T7c-3): it glows nothing.
+43. A sample's length (T5b2; design §8.3): its `fact` frames at its rate, rounded up; on a sound
+    card Miles' mixer ends it, perhaps a few ms later. The harness's samples end so too, so the
+    recordings confirm where the waits are and how long, not the mixer's slack.
+44. A wait on a handle another sample took meanwhile (T5b2): the original would wait for that
+    sample; the viewer waits for its own (no recorded case: every channel of a category busy, or
+    the cue's sample over and the handle given again before the wait).
+45. Not built (T5b2): the waits of the effects the viewer does not draw yet (the Wraiths' mana
+    drain, regeneration, Poison's round damage, Death Blow, Ice Bolt's explosion, the Familiars'
+    channel; design §8.3's list); the effects' switch (E) does not stop the waits (the original's
+    volume 0 would: a setting, later).
+46. The window makes its battle twice when its sound opens (T5b2, `Ground::play_sounds`): the
+    library loads after the window opened; a live battle's opening plays twice (cheap, seeded).
+47. The harness's sound (T5b2, the runbook's "Sound"): Wine's ALSA driver over the null sink and
+    `xdd.dll`'s Miles hooks (nine imports): an emulation of a sample's end, not Miles' own; only
+    the main thread's clock reads count in a `sound` run (the silent runs as before).
+48. The connection's formats (T6a; design §11.1): the pins file (`address key-hex` a line,
+    sorted; default `pins.txt` in the working directory, as `keys.toml`: a per-user place
+    later), `remote::Client`'s notes and faults, `connect`'s options and its record's default
+    path.
+49. The record fetched at every join (T6a): one path for a join, a re-join after a drop and one
+    after a restart, at the cost of a record's bytes (512 KiB at most by the server's default)
+    per join; opened at its first snapshot.
+50. The I/O thread polls (T6a): its read waits 5 ms, then it looks at the queue (a command waits
+    up to 5 ms to leave); messages up to 64 MiB.
+51. The plain player (T6a, `connect::plain`): a test's player, not an opponent (ends a tactics
+    phase, shoots, strikes, else walks toward the enemy's edge by the column); the window's
+    player is the human.
+52. The seat's battle derived on a server (T6b1, `remote::seen`): the panel's turns, the moves,
+    teleports and creations, the timeline's counts and deaths, the heroes' mana by the casts
+    (the enemy hero's casts cost nothing: its book is unknown), the gate; a shooter's shots, the
+    stacks' effects, the walls' hexes and parts stay the opening's (hints only: the commands are
+    the server's).
+53. The other seat's turn (T6b1): outlined from its start as a human's, its command's action
+    from the poll it arrived at; the panel's buttons as on a computer's turn (the seat's player
+    the one human here, so the end's window and tune by the seat: `remote_turn`); the original's
+    network turn not read.
+54. The content note (T6b1): in the window's title (`Different`: the client's own ruleset for
+    the book and the result window, no aim areas); `Absent` stops the loading with a message.
+55. The window on a server (T6b1): the loading waits for the record (30 s between messages);
+    the window's input wait at most 10 ms; Auto Combat off; a dropped connection dialed again
+    after a second; the unattended player the plain one, casting first the first spell the server
+    lets the hero cast at its first target (the book and the aim pressed).
+56. A corpse at a record's opening (T6b2, R2-8): its death group's last frame facing its side's
+    way (the snapshot holds no facing), its record kept; a stack the battle made after the
+    war machines by id. The corpses on a hex by the snapshot's order of death, then the
+    timeline's by id (a stack raised and killed again keeps its first place).
+57. The moat's strip (T6b2, R1-3): by the fixed rows 0x63BCE8, the Fortress's second row
+    0x63BCF4 found by the record's moat holding one of its hexes (no Fortress flag on the wire).
+58. A seat's window starts where its record stands (T6b2): a join mid-battle does not play the
+    history again (the log still lists it); the start sound only from the battle's start.
+59. A new timeline (T6b2): a record fetched at a re-join whose numbers do not go on from the
+    one taken (a restart; a gap past the server's bound) opens the battle again from its
+    snapshot, the window's clock, inputs and presses reset; the sounds stay keyed by the first
+    opening's stacks.
+60. Re-dialing (T6b2): once a second until a server answers, however long; the drop said once
+    until a welcome.
+61. The accounts file (T7): `accounts.txt` in the working directory by default (as `pins.txt`),
+    a line per key (`<login> key|old <seed> [<address>...]`), the seed in the clear, the file
+    made owner-only on Unix (Windows: the folder's permissions); no system keychain.
+62. The password (T7, the user's choice): from standard input, a line shown as typed, its prompt
+    only on a terminal; derived once per device by `h3-view account`; no dialog in the window
+    (the original has none to copy; the server browser's milestone may want one).
+63. A password change (T7): the key so far due at every server pinned then (an older key's
+    servers left to it), re-keyed at the next login there; an earlier key due nowhere is
+    forgotten; a server never dialed again keeps it in the file (its line edited by hand).
+64. The final goodbyes (T7, `remote::farewell`): `Rekeyed`, `CommandLimit`, `Abandoned`,
+    `Replaced` and `Protocol` end a seat's run with their reason (the window closes, the reason
+    on standard error); `Replaced` re-dialed before T7, which made two connections of a seat take
+    it from each other in turn. Other goodbyes re-dial as a drop.
+65. A login refused ends the run (no second attempt, no prompt); `--register` is sent at every
+    login of a run (the server takes it as a login once the account exists with the key).

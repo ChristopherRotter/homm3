@@ -568,11 +568,11 @@ impl<'a> Pricing<'a> {
     }
 
     /// The points left on `to` after a step that left `left` and met `met` (ADV-MOV-006's drop,
-    /// E08 T73; design §8): a step that ends at sea or boards drops to 0 below a boat's cheapest
-    /// step from `to` (the straight step of [`Self::sea_straight`]: 100, 66 on Favorable Winds;
-    /// the original's `cheapest_step_from` 0x4B1880 for a boat); a landing as a walker without
-    /// its levels ([`Self::walking_left_after`]: the coast tile's road price, else the native
-    /// price, Cursed Ground's terrain price under it), in both profiles; any other step
+    /// E08 T73; increment 8's design note §8): a step that ends at sea or boards drops to 0 below a
+    /// boat's cheapest step from `to` (the straight step of [`Self::sea_straight`]: 100, 66 on
+    /// Favorable Winds; the original's `cheapest_step_from` 0x4B1880 for a boat); a landing as a
+    /// walker without its levels ([`Self::walking_left_after`]: the coast tile's road price, else
+    /// the native price, Cursed Ground's terrain price under it), in both profiles; any other step
     /// [`Self::left_after`].
     // rule: ADV-MOV-006, ADV-SEA-002, ADV-SEA-003, ADV-SEA-004
     pub(crate) fn left_by(

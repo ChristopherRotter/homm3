@@ -734,7 +734,8 @@ pub fn write_in(map: &Map, format: Format) -> Result<Vec<u8>, WriteError> {
 /// # Errors
 /// As [`write()`]; also a given tile off the map or given twice, an object's level or position
 /// off the map (past the edges by more than its template can reach), a hero class, an owner
-/// for a class without one or without a playable player.
+/// for a class without one or without a playable player; a quest of an object neither a Seer's
+/// Hut nor a Quest Guard, or a quest's list longer than 255 (E24 M3 T6a2b).
 pub fn write_with(map: &Map, extras: &Extras) -> Result<Vec<u8>, WriteError> {
     write_all(map, extras, Format::Sod)
 }
@@ -829,7 +830,7 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
         out.u32(len32(template_index.unwrap_or(0)));
         out.bytes(&[0; 5]);
         let identifier = len32(placed + index).saturating_add(1);
-        extras::write_empty_body(&mut out, object, identifier);
+        extras::write_empty_body(&mut out, object, identifier, extras.quests.get(&index));
     }
     out.u32(0); // no timed events
     Ok(out.0)

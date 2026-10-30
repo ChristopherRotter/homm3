@@ -93,12 +93,17 @@ TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 # `panels`: what T5 and T6 draw of the adventure screen's panels (the status window, the amounts
 # and the date, the status bar's hint), the situations' and the sequences' (since E24 M3 T4b one
 # list again: T4a's `stills` left the lists out for the situations alone).
-MASKS = {name: [tuple(r) for r in rects]
-         for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
+# `hint` (E24 M3 T6a1): the status bar's hint, left out but of the items `hinted` lists.
+_MASKS = tomllib.loads((CLIENTS / "map/masks.toml").read_text())
+HINTED = set(_MASKS.pop("hinted", []))
+MASKS = {name: [tuple(r) for r in rects] for name, rects in _MASKS.items()}
 # What `lists` writes into a situation's hero's record (E24 M3 T4a, T5b1).
 HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army"}
-# The status window's kinds the viewer draws (E24 M3 T5b1: a hero's and a town's, design §4.8).
-STATUS_DRAWN = (3, 4)
+# The status window's kinds the viewer draws (E24 M3 T5b1: a hero's and a town's, design §4.8;
+# T5b2 the date's and the kingdom's, §4.9).
+STATUS_DRAWN = (1, 2, 3, 4)
+# How long a situation's kind asked lasts (E24 M3 T5b2): far past any still.
+STATUS_LONG = 10_000_000
 
 
 def run(*args):
@@ -199,6 +204,20 @@ def masked(names, shape=(600, 800)):
     for name in names:
         for x0, y0, x1, y1 in MASKS[name]:
             m[y0:y1, x0:x1] = True
+    return m
+
+
+def panel_rects(ident):
+    """The panels' mask of the situation or sequence `ident` (E24 M3 T6a1): `panels`, and the
+    status bar's hint (`hint`) unless `hinted` lists it."""
+    return MASKS["panels"] + ([] if ident in HINTED else MASKS["hint"])
+
+
+def masked_for(ident, shape=(600, 800)):
+    """`panel_rects(ident)` as a mask of `shape`."""
+    m = np.zeros(shape, dtype=bool)
+    for x0, y0, x1, y1 in panel_rects(ident):
+        m[y0:y1, x0:x1] = True
     return m
 
 
@@ -514,10 +533,77 @@ def stage(situation_path, out):
         for boat in sit.get("boats", []):
             if "colour" in boat:
                 mem.write_boat_colour(*boat["at"], 0, boat["colour"])
+        # The status window's (E24 M3 T5b2; design §4.9): the teams the kingdom's window reads,
+        # then the kind asked, built by the next view draw.
+        if "teams" in sit:
+            mem.write_bytes(mem.game() + h3mem.TEAMS, bytes(sit["teams"]))
+        # The visit marks a situation gives (E24 M3 T6a2a; design §4.11), for the hero selected
+        # as staged: the hint reads them at each change of the tile under the pointer; since
+        # T6a2b (§4.12) the selected hero's own and a mine's or a bank's guards too.
+        for visit in sit.get("visits", []):
+            mem.write_visit(mem.current_player(), *visit["at"], visit.get("known", False),
+                            visit.get("visited"), visit.get("hero"), visit.get("guards"))
+        if "status" in sit:
+            ask_status(mem, sit["status"], max(mem.map_due()) + STATUS_LONG)
+            h3adv.wait_for(lambda: mem.status_shown() == sit["status"],
+                           lambda: f"the status window's kind {sit['status']} built "
+                                   f"({mem.status_shown()} shown)")
     except BaseException:
         game.stop()
         raise
     return game, mem, sit, turn
+
+
+def ask_status(mem, kind, end, rebuild=False):
+    """Asks the status window for `kind` until the clock time `end` (E24 M3 T5b2; design §4.9),
+    the selection's window read first unless a kind asked before read it (`mem.selection`, the
+    live part's `selection`: what a timed kind's end builds again); with `rebuild` the window
+    built afresh by the next view draw."""
+    if not getattr(mem, "selection", None):
+        mem.selection = status_toml(mem, mem.current_player())
+    mem.ask_status(kind, end, rebuild)
+
+
+def over_view(point):
+    """Whether a point of the screen lies over the view's item (8, 8, 592 x 544)."""
+    return 8 <= point[0] < 600 and 8 <= point[1] < 552
+
+
+def status_bar_text(mem):
+    """The status bar's text (the adventure dialog's item 200, E24 M3 T6a1), None when empty."""
+    return next((i["text"] for i in mem.dialog_items() if i["id"] == 200), None)
+
+
+def look_over_view(game, mem, sit, points):
+    """The selected hero's costs of the view's tiles under `points` (E24 M3 T6a1; design §4.10):
+    the pointer moved over each in turn (`adventure_mouse_move` runs the pathfinder for the
+    selected hero to the tile under it, `movement_calculations_mouse` 0x4194A0, which stops once
+    that tile is reached: its node holds the cost the cursor's days read), each one's cost read
+    (`Mem.node_cost`; one the run did not reach left out, as a tile the cursor finds no path to),
+    kept as `mem.reach` for `live_part`; then the pointer over the kingdom overview's button and
+    back to the parking (its item looked at again: the status bar's hint as before), the view's
+    column and row forgotten (the manager's +0xEC and +0xF0 -1, as after a walk), so that a
+    sequence's first move over the view looks at its tile. The clock runs."""
+    before = status_bar_text(mem)
+    vx, vy, vz = sit["view"]
+    reach = {}
+    for x, y in points:
+        tile = (vx + x // 32, vy + y // 32)
+        game.move(x, y)
+        h3adv.wait_for(lambda: mem.mouse_tile()[:2] == tile,
+                       lambda: f"the mouse over the view's tile {tile}")
+        game.clock("step 0", settle_reads=200)
+        cost = mem.node_cost(*tile, vz)
+        if cost is not None:
+            reach[tile] = cost
+    mem.reach = reach
+    game.move(690, 212)
+    game.move(*h3adv.PARK)
+    manager = mem.u32(h3mem.ADVENTURE_MANAGER_POINTER)
+    mem.write_u32(manager + 0xEC, 0xFFFFFFFF)
+    mem.write_u32(manager + 0xF0, 0xFFFFFFFF)
+    h3adv.wait_for(lambda: status_bar_text(mem) == before,
+                   lambda: f"the status bar's hint as before the look ({status_bar_text(mem)!r})")
 
 
 def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
@@ -532,8 +618,9 @@ def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
     path shown (T5b2). The viewer's kingdom the panels show, move hero's and next hero's states as
     the original last set them and the mouse's point, where the cursor is drawn (M3 T2a); the
     kingdom as `kingdom` gives it when the panels show another than memory's (M3 T4b: a
-    sequence's `points` written after the hero list was drawn). Checks the heroes and boats
-    against what the situation staged."""
+    sequence's `points` written after the hero list was drawn); the status window shown (M3
+    T5b1) and, when a kind was asked, the selection's window read before (M3 T5b2,
+    `ask_status`). Checks the heroes and boats against what the situation staged."""
     objects, templates = mem.map_objects(), mem.map_templates()
     heroes, boats = mem.map_heroes(sit["view"][2])
     live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
@@ -548,11 +635,16 @@ def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
             "path": mem.path_arrows(),
             "kingdom": kingdom_toml(kingdom or mem.kingdom(mem.current_player())),
             "status": status_toml(mem, mem.current_player()),
+            **({"selection": mem.selection} if getattr(mem, "selection", None) else {}),
             "buttons": mem.buttons(),
             "pointer": mem.cursor()[2:],
             "situation": json.dumps(situation_digest(sit))}
     check_staged(sit, turn, heroes, boats)
-    return "".join(f"{key} = {value}\n" for key, value in live.items())
+    # The game's facts the mouse-over reads (E24 M3 T6a1; design §4.10), a table of its own last.
+    hover = mem.hover(mem.current_player(), ids_from("HOTRAITS.TXT", 2),
+                      ids_from("TownName.txt", 0), sit["view"][2], getattr(mem, "reach", None))
+    return ("".join(f"{key} = {value}\n" for key, value in live.items()) + "\n[hover]\n"
+            + "".join(f"{key} = {json.dumps(value)}\n" for key, value in hover.items()))
 
 
 def kingdom_toml(kingdom):
@@ -572,8 +664,8 @@ def status_toml(mem, colour):
     harness keeps numbers, never the text, ADR-0009); a hero's `own_name` 1 when its record's name
     is not its type's (a shipped map's hero: the viewer takes the map's). A town whose name the
     table lacks (a map's own) is the harness's failure (the town's own names are M4's), as is a
-    kind the viewer does not draw yet (the date's, the kingdom's: T5b2), since the status window
-    is compared."""
+    kind the viewer does not draw yet (another player's turn, a message's: M4's), since the status
+    window is compared. The date's and the kingdom's (M3 T5b2) as `Mem.status` gives them."""
     status = mem.status(colour)
     if status["kind"] not in STATUS_DRAWN:
         raise RuntimeError(f"the status window shows the kind {status['kind']}: not drawn yet")
@@ -582,7 +674,7 @@ def status_toml(mem, colour):
         status = {"kind": 3, "hero": status["hero"],
                   "own_name": int(ids_from("HOTRAITS.TXT", 2)[status["hero"]] != name),
                   **{k: v for k, v in status.items() if k not in ("kind", "hero")}}
-    else:
+    elif status["kind"] == 4:
         names = ids_from("TownName.txt", 0)
         if status["name"] not in names:
             raise RuntimeError("a town's name is not in TownName.txt")
@@ -644,7 +736,7 @@ def compare(situation_path, out, cap):
     except RuntimeError as err:
         raise Refused(last_lines(err)) from err
     ours = h3cap.png565(out / "ours.png")
-    mask = masked(["panels"], cap.shape)
+    mask = masked_for(situation_path.stem, cap.shape)
     n, where = h3cap.compare(cap, ours, mask, out / "diff.png")
     return n, int((~mask).sum()), where
 
@@ -668,11 +760,11 @@ def cycle_now(mem, tries=10):
     raise RuntimeError(f"the palettes in memory are no steady rotation of the files' ({fits})")
 
 
-def view_changed(before, after):
+def view_changed(before, after, ident):
     """The box `[x0, y0, x1, y1]` (x1, y1 exclusive) of the pixels that differ between two
-    screens outside the panels' mask (since E24 M3 T2a the whole screen but `MASKS["panels"]`;
-    None: none)."""
-    keep = ~masked(["panels"], before.shape)
+    screens outside the panels' mask of sequence `ident` (since E24 M3 T2a the whole screen but
+    the panels' mask; since T6a1 `panel_rects`; None: none)."""
+    keep = ~masked_for(ident, before.shape)
     return h3drive.changed_box(np.where(keep, before, 0), np.where(keep, after, 0))
 
 
@@ -747,9 +839,15 @@ def sequence_inputs(entry):
     ranges; each input one of `INPUTS` at a millisecond from 1 to `ms` (0 is the still the frame
     check compares), in order of time, a key released only once pressed, a pointer inside the
     screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
-    unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", *OPTIONS}
+    unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", *OPTIONS}
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
+    # The status window's kind asked at 0 and its end (E24 M3 T5b2; design §4.9).
+    if "status" in entry:
+        status = entry["status"]
+        if not (len(status) == 2 and status[0] in (1, 2) and 1 <= status[1] <= 600_000):
+            raise ValueError(f"{entry['id']}: `status` is [1 or 2, an end from 1 to 600000 ms]: "
+                             f"{status}")
     options = []
     for name, (address, values) in OPTIONS.items():
         if name in entry:
@@ -845,6 +943,9 @@ def sequence(entry, out):
                 mem.write_points(index, value)
             else:
                 mem.write_u32(address, value)
+        # The reach of the tiles the pointer visits, for the points written (E24 M3 T6a1).
+        look_over_view(game, mem, sit, [v for t in sorted(inputs) for k, v in inputs[t]
+                                        if k in ("pointer", "click") and over_view(v)])
         # The display's own key repeat is off (T1a2): it repeats a held key in real time, which
         # a step of the virtual clock spans many times over; the original repeats nothing itself
         # (a key held is one press, design §3.4).
@@ -864,6 +965,11 @@ def sequence(entry, out):
         # parked outside the edge zones `edge_scroll` sets it to the clock at every call
         # (0x419978), so the 70 ms run from the millisecond the pointer enters a zone.
         mem.align_mouse_poll(t0)
+        # The status window's kind a sequence asks (E24 M3 T5b2; design §4.9): until its end
+        # after 0, built afresh by the redraw at 0 (the date's from its first picture).
+        if "status" in entry:
+            kind, end = entry["status"]
+            ask_status(mem, kind, t0 + end, rebuild=True)
         if game.clock("step 1", settle_reads=500) != t0:
             raise RuntimeError("the clock did not step to the sequence's 0")
         # The tick and the redraw came at 0 (each moved its next time on), so the screen shows
@@ -871,6 +977,13 @@ def sequence(entry, out):
         h3adv.wait_for(lambda: mem.map_due() == (t0 + 200, t0 + 180),
                        lambda: f"the tick and the redraw at the sequence's 0 ({t0}: next "
                                f"{mem.map_due()})")
+        # The date's window steps its picture at the view's draws from when it was built: one
+        # built before 0 steps at times the viewer does not know (E24 M3 T5b2).
+        shown_kind = mem.status_shown()
+        if shown_kind == 1 and entry.get("status", [0])[0] != 1:
+            raise RuntimeError("the date's status window at 0 without the sequence's `status`")
+        if "status" in entry and shown_kind != entry["status"][0]:
+            raise RuntimeError(f"the status window's kind {shown_kind} at 0, not the one asked")
         base = {"objects": mem.frame_steps(), "cycles": cycle_now(mem)}
         counted = {"cycles": base["cycles"], "ticks": (0, 0)}
         live = live_part(mem, sit, turn, *base["cycles"], kingdom=shown)
@@ -888,7 +1001,7 @@ def sequence(entry, out):
                  "buttons": mem.buttons()}
             if index >= 0:
                 s["points"] = [mem.points(index)]
-            box = None if before is None else view_changed(before, pix)
+            box = None if before is None else view_changed(before, pix, entry["id"])
             if before is None or box:
                 s["changed"] = box
                 s["frame"] = f"t{t - t0:05d}.npz"
@@ -936,8 +1049,8 @@ def sequence(entry, out):
                 g.write(json.dumps(s) + "\n")
     (out / "timeline.txt").write_text("\n".join(map_timeline(states)) + "\n")
     draw_ours(out / "map.h3m", sit, out / "live.toml", out / "ours.png")
-    n, _ = h3cap.compare(first, h3cap.png565(out / "ours.png"), masked(["panels"], first.shape),
-                         out / "diff.png")
+    n, _ = h3cap.compare(first, h3cap.png565(out / "ours.png"),
+                         masked_for(entry["id"], first.shape), out / "diff.png")
     return states, n
 
 
@@ -973,7 +1086,7 @@ def frame_check(entry, here):
         if not png.exists():
             raise RuntimeError(f"the viewer drew no frame at {npz.stem}")
         ours = h3cap.png565(png)
-        mask = masked(["panels"], cap.shape)
+        mask = masked_for(entry["id"], cap.shape)
         n, _ = h3cap.compare(cap, ours, mask)
         if n:
             diffs.mkdir(exist_ok=True)
@@ -1004,8 +1117,8 @@ def reused(entry, here):
     (here / "timeline.txt").write_text("\n".join(map_timeline(states)) + "\n")
     first = np.load(here / "frames" / "t00000.npz")["screen"]
     draw_ours(here / "map.h3m", sit, here / "live.toml", here / "ours.png")
-    n, _ = h3cap.compare(first, h3cap.png565(here / "ours.png"), masked(["panels"], first.shape),
-                         here / "diff.png")
+    n, _ = h3cap.compare(first, h3cap.png565(here / "ours.png"),
+                         masked_for(entry["id"], first.shape), here / "diff.png")
     return states, n
 
 
@@ -1189,7 +1302,7 @@ def run_drawn(rest):
             failed += 1
             broken += 1
             continue
-        got[ident] = h3drive.png_digest(here / "ours.png", MASKS["panels"])
+        got[ident] = h3drive.png_digest(here / "ours.png", panel_rects(ident))
         before = recorded.get(ident)
         verdict = "new" if before is None else ("same" if before == got[ident] else "CHANGED")
         failed += verdict != "same"
@@ -1254,7 +1367,7 @@ def drawn_sequences(rest, base, record):
             failed += 1
             broken += 1
             continue
-        mine = {(ident, png.stem): h3drive.png_digest(png, MASKS["panels"])
+        mine = {(ident, png.stem): h3drive.png_digest(png, panel_rects(ident))
                 for png in sorted((here / "ours").glob("t*.png"))}
         before = {k: v for k, v in recorded.items() if k[0] == ident}
         verdict = ("new" if not before else "same" if before == mine else "CHANGED")

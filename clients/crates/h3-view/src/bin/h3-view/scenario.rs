@@ -19,7 +19,7 @@ use h3_protocol::{codec, map};
 use h3_view::mouse::aim::Aim;
 
 /// The game's id in the in-process session.
-const GAME: u32 = 1;
+pub(crate) const GAME: u32 = 1;
 
 fn read(path: &Path) -> Result<String, String> {
     fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))
@@ -645,7 +645,7 @@ pub fn fought(
 
 /// The host's configuration of a game of `setup` with `seed`: one spectator, every message
 /// recorded.
-fn config(setup: BattleSetup, seed: u64) -> GameConfig {
+pub(crate) fn config(setup: BattleSetup, seed: u64) -> GameConfig {
     GameConfig {
         game: GAME,
         setup,

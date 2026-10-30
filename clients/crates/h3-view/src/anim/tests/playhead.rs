@@ -141,6 +141,7 @@ fn a_growing_timeline_carries_its_heroes() {
         casts: &casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![at(0, Side::Attacker, PIKEMAN, 50, false)]);
     let heroes = Heroes::new([None, None], [true, true], tables.battle.hero_groups, None);
@@ -231,6 +232,7 @@ fn a_turn_pushed_as_the_computers_outlines_its_stack_once_a_human_plays_it() {
         casts: &casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, PIKEMAN, 50, false),

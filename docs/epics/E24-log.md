@@ -1746,3 +1746,182 @@ other kinds, another player's turn, a resource found and a text, M4's); `master`
   (0.4); *Tale of two lands* 11.2 %, 1.2 (1.2); `path-objects` 5.2 %, 0.9–1.0 (1.0). The
   status window is part of the background: no sequence changes it (M4's events and T6's clicks
   will, and a changed text draws only its box again, §4.7).
+
+### M3 T5b2 — the date's and the kingdom's status windows, and when each shows (2026-10-29)
+
+On `map-client/e24-m3-t5b2`, the user present (T5b2 kept whole by the user at its start; MCL-Q16
+answered: the original's income kept); `master` at 23f739b (#584 merged). The original data
+staged from the user's repo folder first; the sandbox restarted during the setup (its background
+baseline stopped): CI's green `master` the starting point.
+
+- **The reading** (design §4.9; map entries `status_date_create` 0x450DD0 and
+  `status_kingdom_create` 0x452B80 read in full, `status_date_update` 0x4511A0,
+  `status_date_vtable` 0x63BB0C, `status_date_destroy` 0x4510F0, `empty_ret` 0x5BC690,
+  `status_panel_update` 0x402B90, `status_date_week_defs` 0x660BA0, `status_date_format`
+  0x660C98, `status_side_format` 0x660D28): the date's window (the day's picture and "Day n", or
+  on a week's first day but the game's first the week's and "Week n", the day's sound), its step
+  (a frame at a view's draw 100 ms or more after the last, up to the picture's last, its
+  rectangle shown at once); the kingdom's (the towns by their halls, the counts where there are
+  towns, "Allies:" and "Enemies:", the flags of the players in the game by team); every view's
+  draw ends with the chooser, so a timed kind's end is met at the first draw at or after it; a
+  centring `hero_select` and a key's step's end build the window again.
+- **Built** (design §4.9): the live part's `Status::Date`, `Status::Kingdom`, `Status::kind`,
+  `Kingdom::selection`; `status::window`'s two windows (`DateArt`, `DateShows`), the layout's
+  `status_date` and `status_kingdom`, the tables' `[map.status.date]`; the catalogue's keys
+  `map.status.date`, `map.status.side`, `word.allies`, `word.enemies`; the gate's checks of the
+  pictures, the halls' and flags' DEFs and the date's pictures' frames (exactly); the timeline's
+  chooser (`Loop::choose`, `Loop::date_window`, `Start::asked`, `Asked`), `Cue::Effect`,
+  `Sound::effect`, `SoundRules::effects`, the window's stream for a sound played once; a map's
+  start without a selection the date's window; the harness's `Mem.status` for the kinds 1 and 2,
+  `Mem.ask_status`, `Mem.status_shown`, `h3map.ask_status`; a situation's `status` and `teams`, a
+  sequence's `status`; `TownBuilt::TownHall` and `CityHall`; the situations `status-date`,
+  `status-week`, `status-kingdom`; the sequences `status-kingdom-end`, `status-date-end`.
+- **Seen:** nothing the reading had not said: the three stills and both sequences exact at their
+  first capture.
+- **Checked:** `h3map.py still` then `set --only` on the three situations, exact; `frames --only`
+  on both sequences, every frame exact (6, 19), the viewer's timeline as recorded; `drawn`: the 47
+  situations and 13 sequences recorded before all the same; `drawn --record` (50 situations, 484
+  frames of 15 sequences); unit tests (the windows, the date's pictures, the chooser over time,
+  its rebuilds, the sound, the situations' and sequences' new keys); coverage 100 %; clippy; the
+  window under Xvfb (`status-date-end`, `status-kingdom-end`, `status-kingdom`, `status-week`,
+  `--check 10`): every frame read back exact, made as the same frame composed afresh, every
+  change the headless loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each): the
+  same: `walk-1` 24.8 % uploaded, a frame made in a median 0.5 ms (0.4–0.6); *Tale of two lands*
+  11.2 %, 1.2–1.3 (1.2).
+
+### M3 T6a1 — the mouse over the map and the panels (2026-10-30)
+
+On `map-client/e24-m3-t6a`, the user present: T6 cut in two (T6a the mouse-over, T6b the clicks,
+the keys during a walk and the sound without the focus), then T6a cut again once the map's hint
+showed 59 cases (T6a1: the cursor by tile, the panels' hints, the map hint's frame, the special
+grounds, the classes without a case, heroes, towns and monsters; T6a2: the other 58 cases);
+`master` at d378a77 (#588 merged). The original data staged from the user's repo folder first;
+the sandbox restarted during the setup (its background baseline stopped): CI's green `master` (CI
+and Clients) the starting point.
+
+- **The reading** (design §4.10; map entries `panel_hint_index` 0x402C50, `adventure_panel_hint`
+  0x403010, `hint_tile` 0x40AFB0, `map_hint` 0x40B150, `tile_cursor_kind` 0x40E280,
+  `hero_class_name` 0x4D8F70, `objnames_load` 0x5B92D0, `town_defended` 0x5BDFE0,
+  `panel_hint_item` 0x65F228, `name_type_format` 0x65F3D4, `two_words_format` 0x660344,
+  `adventure_hints` 0x6A56E0, `army_size_words` 0x6A5BB8, `town_type_names` 0x6A74F4,
+  `object_names` 0x6A79EC; `adventure_mouse_move` 0x40E360 and `view_mouse_tile` 0x40DEB0 read
+  whole; `movement_calculations_mouse` 0x4194A0, `pathfinder_run` 0x56B440's stop,
+  `tile_special_ground` 0x4FCE20's end corrected (none gives 0), `help_text_load` 0x5B98B0 and
+  `arraytxt_load` 0x5B9CC0's groups): the tile under the mouse by the screen's point (8 pixels
+  off the drawn rows, MCL-Q18), looked at only when the view's column or row changes; the cursor
+  by the tile, the selected hero and the pathfinder's cost there (its run stops at the tile:
+  MCL-Q19); the panel's hint by the item under the pointer, written only when that item changes
+  (the map's hints leave it: MCL-Q17); the map's hint by the tile of the object's entrance.
+- **Seen:** the hit test's items are the adventure dialog's own and the chat's edit (over the
+  status bar: no text); the status window's and the resource bar's are panels of their own (the
+  status window's area under the whole window: "Status Window"); a disabled button (state 0x8)
+  takes no mouse, the quest log's 0x20 does; a list's empty slots take none but the hero list's
+  frames; water is never the coast's class 3 (`record`'s rule corrected: `hover-sail` showed the
+  sail, not a landing, on water of a shore picture).
+- **Built:** `h3_map_view::hover` (`Facts`, `Hover`, `Tile`, `Hint`, `Selection`, `Cursor`,
+  `PanelItems`, `takes`, `panel_hint`, `parked_hint`, `days`, the tables of the original's classes
+  `OWN_CASES` and `NOT_ENTERED`); the live part's `hover` and `hint`, `[hover]` read by `render
+  --live`; the timeline's `Loop::moved` over the view (`over_map`) and outside it (`panel_hint`,
+  `Rules::keeps_edge`), the click's move first, a step's stale reach, `Rules::column_at`,
+  `Start::hover` and `levels`, `Draw::hint`; `panels::disabled`; the scene's status bar text; the
+  binary's mouse-over from every level's draw lists, the selected hero by the facts
+  (`sequence::selected_in`, `selected_hero`), a still's parked hint; the catalogue's families
+  `map-hint`, `object`, `hero-class`, `town-type` and the map viewer's `creature`, the keys
+  `map.hint.hero`, `map.hint.town`, `map.hint.monster`, `map.army.0` to `8`; h3-ui's family
+  `count` (records one by one, blank ones included; additive); `masks.toml`'s `hint` and `hinted`
+  (the status bar compared in the items recorded with it); the harness's `Mem.hover`,
+  `Mem.node_cost`, `h3map.look_over_view` (each input tile's cost before 0, the parking's hint
+  back, the column forgotten), the `[hover]` table in every live part, the per-item mask
+  (`panel_rects`, `masked_for`); the situation `seq-hover`; the sequences `hover-panels`,
+  `hover-map`, `hover-sail`.
+- **Checked:** `frames --only` on the three sequences: every frame exact (62, 73, 23), each
+  timeline as recorded (the cursor's frames 0, 2 to 7, 9 to 16 and 21 among them); `still` of
+  `seq-hover` exact with its status bar; `drawn`: the 50 situations and 15 sequences recorded
+  before all the same; `drawn --record` (50 situations, 642 frames of 18 sequences); unit tests
+  (the facts, the tiles, the hints, the cursors on land, in a boat, without a hero and on another
+  level, the panels' items, the loop over the map and the panels); coverage 100 %; clippy;
+  `scripts/verify-once.sh clients` passed; the window under Xvfb (`hover-map` `--check 14` with
+  seven moves of the pointer live after its inputs): 136 of 136 frames read back exact, each made
+  as the same frame afresh, 141 of 141 changes the headless loop's.
+- **Measured** (the sandbox, `walk-1`, `--measure 20`): a frame made in a median 0.5 ms, 24.6 %
+  uploaded (T5b2's 0.5, 24.8 %).
+
+### M3 T6a2a — the map hint's visit marks (2026-10-30)
+
+On `map-client/e24-m3-t6a2a`, the user present: T6a2 cut by what runs the hint (the agent's
+proposal, taken): T6a2a, the 35 classes whose case is inline and shows what was visited, T6a2b,
+the 20 of the owners and contents (seven sub-functions); the recapture with the hint unmasked moved
+to T7, which records everything again anyway. MCL-Q17 (the original's), MCL-Q18 (fixed, the
+original's under `--bugs original`) and MCL-Q19 (copied in M4's engine query) answered at the
+start. `master` at 819f41d (#595 merged), later 7f46f18 merged in (a conflict in `map.toml`:
+both sides kept). The original data staged from the user's repo folder first; the sandbox
+restarted during the setup, its baseline run again and green (`clients` verified on `master`'s
+code); CI's `master` green.
+
+- **The reading** (design §4.11; map entries `xtrainfo_load` 0x405D80, `crgen_load` 0x405D20,
+  `space_string` 0x660330, `space_format` 0x66034C, `xtra_info` 0x69127C, `dwelling1_names`
+  0x6914FC, `dwelling4_names` 0x691354, `map_hint` 0x40B150's summary; inferred for T6a2b:
+  `creature_bank_hint` 0x40D3F0, `shrine_hint` 0x40D8D0, `tree_of_knowledge_hint` 0x40DB00,
+  `witch_hut_hint` 0x40DCC0, `quest_guard_hint` 0x573040, `seer_hut_hint` 0x5741B0,
+  `resource_names` 0x6A5E64, `keymaster_colour_names` 0x6A7520; structs: the game's
+  `kinds_visited` u8[28] with each kind and `obelisks_visited` +0x4E3E9, the hero's
+  `status_flags` bits, the player's +0xB8 and +0xBC): the 35 cases read whole, each the name, on
+  the entrance the bonus (XtraInfo.txt's row by the viewing player's bit of the kind) and the
+  mark (GENRLTXT 353 or 354) by the selected hero's flags or per-object fields, the screen
+  player's fields, the object's word with the hero's owner, the shown or the current player, or
+  what a Water Wheel or Windmill has left.
+- **Built:** `hover::Visit` and `Facts::visits` (`[hover]`'s `visits`, left out none known),
+  `Hint::Visits`, `VISITS`, `BONUSES`; the keys `map.hint.more` (`EXE:0x66034C`),
+  `map.hint.visited`, `map.hint.not-visited` and the family `map-bonus` (XtraInfo.txt, 28);
+  `Rules::origin` and `column_at` by it unless `Bugs::Original` (MCL-Q18); the situation's
+  `visits` (`VisitSpec`, each of an object given, once); the harness's `h3mem.VISIT_RULES`,
+  `Mem.visit_state`, `Mem.visit` (into `[hover]`), `Mem.write_visit` (the rules inverted, written
+  by `h3map.stage` after the view); the situations `hover-visits-a`, `hover-visited-a`,
+  `hover-visits-b`, `hover-visited-b` and their sequences, in `masks.toml`'s `hinted`.
+- **Checked:** `frames --only` on the four (recorded, then again with the recorded timeline for
+  the selected hero's points): 50, 50, 52 and 52 frames exact with the status bar compared, each
+  timeline as recorded; the original's texts looked at (every mark and bonus as read, the second
+  Water Wheel and Windmill not visited with something left); `drawn`: the 50 situations and 18
+  sequences recorded before all the same, `drawn --record` (846 frames of 22 sequences); unit
+  tests (the visits read, the hints of a visited object, their text, the drawn tile under the
+  mouse, the situation's visits); coverage 100 %; clippy; fmt.
+- **Not recorded:** a class's mark without a selected hero (read as none for the classes a hero
+  keeps; the comparisons select one), the other bits of a flag of several (written as its lowest).
+
+### M3 T6a2b — the map hint's owners and contents (2026-10-30)
+
+On `map-client/e24-m3-t6a2b`, the user present: T6a2b kept whole (the agent's proposed cut,
+T6a2b1 without the quests and T6a2b2 the Seer's Huts and Quest Guards, declined). `master` at
+d2d4c70 (#598 merged). The original data staged from the user's repo folder first (the computer
+went offline later); the sandbox's baseline green (`clients` verified on `master`'s code); CI's
+`master` green.
+
+- **The reading** (design §4.12; map entries: the seven hint functions read whole,
+  `army_description_text` 0x40ABE0, `list_join` 0x56C960, the quests' texts 0x56D410 to 0x572670
+  and lists 0x56DFA0, 0x56F5F0, 0x5704E0, 0x571580, `quest_create` 0x573240, `quest_vtables`
+  0x64174C, the loaders 0x5B9880, 0x5B9310, 0x5B9340, 0x47AB30, the name tables and pointers,
+  six format strings; `map_hint` 0x40B150's summary): the 20 cases, each a name and the parts its
+  owner, contents or the viewer's knowledge give, by the viewing, the shown or the current player.
+- **Built:** `hover::contents` (`Content`, `Quest`, `Mission`, `Guards`, `BankMark`, `Teach`, the
+  `[hover]` rows `mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`, the texts), `Hint`'s
+  variants `Keymaster`, `Dwelling`, `Lighthouse`, `Resource`, `Mine`, `Bank`, `Teaches`, `Quest`
+  (`Hint` now `Clone`), `Hover::contents` with the objects' owners; 34 keys and 13 families in
+  `clients/text/keys.toml` (and the viewer's `FAMILIES`, `spell` among them); the situation's
+  `QuestSpec` (an object's `quest`) and the visits' `hero` and `guards`; the writer's
+  `Extras::quests` (`h3-map`, additive, `cross-lane`: the adventure lane's inbox); the harness's
+  `Mem.contents`, `Mem.quest`, `Mem.write_content`, the Tent's mark among the visits, the Quest
+  Log's shown state (`Mem.item_states`: the harness's writes of a quest's visitors left the
+  button as the map's start set it, so the recomputed state differed from the screen); the
+  situations `hover-owners`, `hover-banks`, `hover-teach`, `hover-quests` and their sequences, in
+  `masks.toml`'s `hinted`.
+- **Checked:** `frames --only` on the four (recorded, then again with the recorded timeline for
+  the selected hero's points, then with the frames recorded): 50, 30, 45 and 44 frames exact with
+  the status bar compared, each timeline as recorded; the original's texts looked at (every part
+  as read: the Tree's price after two spaces, MCL-Q20; a kind known shows on every object of the
+  kind); `drawn`: the 50 situations and 22 sequences recorded before all the same, `drawn --record`
+  (1 015 frames of 26 sequences); unit tests (the contents read and refused, each hint's text,
+  the 20 classes' hints, the guards merged, the writer's quests read back and refused, the
+  situation's quests); coverage 100 % (`h3-map-view`), clippy, fmt.
+- **Questions:** MCL-Q20 (the Tree's two spaces: the original's, recommended), MCL-Q21 (an object
+  whose data names nothing: nothing shown there, refused at M4's import, recommended).

@@ -1,0 +1,59 @@
+commands = [
+    "0 move 0 10,4,0 11,4,0 12,4,0",
+    "0 move 0 12,5,0 12,6,0 12,7,0 12,8,0 12,9,0 13,10,0 13,11,0 13,12,0 13,13,0 13,14,0 13,15,0 13,16,0 14,17,0 15,18,0",
+    "0 move 0 16,18,0 17,18,0 18,18,0 19,18,0 20,19,0",
+    "0 end-turn",
+    "1 move 4 26,22,0 25,22,0 24,22,0 23,22,0",
+    "1 end-turn",
+    "0 move 0 21,20,0 22,21,0 23,22,0",
+    "0 battle attack 1 65",
+    "1 battle move 99",
+    "1 battle shoot 0 66",
+    "0 battle attack 3 82",
+    "1 battle attack 0 100",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x8068c1664420fb37",
+    "0x6025018c42a82a51",
+]
+
+[replay]
+format = 7
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xba830fc8f504b846"
+adventure_ruleset_hash = "0x8b3cb263b9bac1c5"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 20
+adventure_state_hash_version = 16
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-sea-36.h3m"
+hash = "0x22096c6bf8ae59ca"
+import_version = 14
+
+[result]
+day = 3
+final_hash = "0xe8f02c19a6b83f9b"

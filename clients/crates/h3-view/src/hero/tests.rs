@@ -38,6 +38,7 @@ fn idle(turns: &[(u32, u8)], actions: Vec<Action>) -> Timeline {
         casts: &anim::Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let mut timeline = anim::timeline(
         &observation(),

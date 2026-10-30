@@ -1,0 +1,50 @@
+# The Shrines', Trees of Knowledge's and Witch Huts' hints of the map hint (E24 M3 T6a2b;
+# clients/map/sequences.toml `hover-teach`; E24 design §4.12): Red's selected hero at (17, 1), in
+# the view from (0, 0), eight Shrines of the three levels and a visited Keymaster's Tent in the
+# first row, five Trees in the second, five Witch Huts in the third: the kind known (a kind's bit,
+# so every object of the kind shows its bonus), visited (the spell, the price, the skill), the
+# selected hero's own (the spell known, the Tree visited, the skill learned); Blue's hero far off.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [17, 1], class = 2 },
+    { at = [34, 34], owner = 1 },
+]
+objects = [
+    { def = "AVXl1sh0.def", at = [2, 3] },  # Shrine of Magic Incantation (88)
+    { def = "AVXl1sh0.def", at = [4, 3] },  # (88)
+    { def = "AVXl1sh0.def", at = [6, 3] },  # (88)
+    { def = "AVXl2sh0.def", at = [8, 3] },  # Shrine of Magic Gesture (89)
+    { def = "AVXl2sh0.def", at = [10, 3] },  # (89)
+    { def = "AVXl3sh0.def", at = [12, 3] },  # Shrine of Magic Thought (90)
+    { def = "AVXl3sh0.def", at = [14, 3] },  # (90)
+    { def = "AVXkey40.def", at = [16, 3] },  # Keymaster's Tent (10), brown
+    { def = "AVXtrek0.def", at = [3, 7] },  # Tree of Knowledge (102)
+    { def = "AVXtrek0.def", at = [6, 7] },  # (102)
+    { def = "AVXtrek0.def", at = [9, 7] },  # (102)
+    { def = "AVXtrek0.def", at = [12, 7] },  # (102)
+    { def = "AVXtrek0.def", at = [15, 7] },  # (102)
+    { def = "AVSwtch0.def", at = [3, 11] },  # Witch Hut (113)
+    { def = "AVSwtch0.def", at = [6, 11] },  # (113)
+    { def = "AVSwtch0.def", at = [9, 11] },  # (113)
+    { def = "AVSwtch0.def", at = [12, 11] },  # (113)
+    { def = "AVSwtch0.def", at = [15, 11] },  # (113)
+]
+visits = [
+    { at = [4, 3], known = true },
+    { at = [6, 3], visited = true },
+    { at = [8, 3], visited = true, hero = true },
+    { at = [10, 3], known = true },
+    { at = [12, 3], known = true, visited = true },
+    { at = [14, 3], visited = true, hero = true },
+    { at = [16, 3], visited = true },
+    { at = [6, 7], known = true },
+    { at = [9, 7], visited = true },
+    { at = [12, 7], visited = true, hero = true },
+    { at = [15, 7], known = true, hero = true },
+    { at = [6, 11], known = true },
+    { at = [9, 11], visited = true },
+    { at = [12, 11], visited = true, hero = true },
+    { at = [15, 11], known = true, visited = true },
+]
+view = [0, 0, 0]

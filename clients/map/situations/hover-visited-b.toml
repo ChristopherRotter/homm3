@@ -1,0 +1,57 @@
+# The visit marks of the map hint (E24 M3 T6a2a; clients/map/sequences.toml `hover-visited-b`; E24
+# design §4.11): Red's selected hero at (17, 2), the other 17 classes' objects (a second Water
+# Wheel and Windmill) in four rows and the Buoy, the Mermaid and the Sirens on a lake, in the view
+# from (17, 0); Blue's hero far off.
+# Every object known and visited by the rules the original reads (`visits`, the harness's
+# writes): the bonuses and the visited marks; the University known only,
+# the second Water Wheel and Windmill visited by Red with something left (not visited).
+size = 36
+terrain = "grass"
+patches = [{ terrain = "water", from = [19, 14], to = [34, 17] }]
+heroes = [
+    { at = [17, 2], class = 2 },
+    { at = [34, 34], owner = 1 },
+]
+objects = [
+    { def = "AvXOblG.def", at = [19, 3] },  # Obelisk (57)
+    { def = "AVSaxis0.def", at = [21, 3] },  # Star Axis (61)
+    { def = "AVXprmd0.def", at = [24, 3] },  # Pyramid (63)
+    { def = "AVXrlly0.def", at = [27, 3] },  # Rally Flag (64)
+    { def = "AVXstbl0.def", at = [30, 3] },  # Stables (94)
+    { def = "AVStmpl0.def", at = [33, 3] },  # Temple (96)
+    { def = "AVSgzbo0.def", at = [19, 6] },  # Learning Stone (100)
+    { def = "AVSuniv0.def", at = [24, 6] },  # University (104)
+    { def = "AVTwagn0.def", at = [26, 6] },  # Wagon (105)
+    { def = "AVSwar20.def", at = [31, 6] },  # School of War (107)
+    { def = "AVXtomb0.def", at = [34, 6] },  # Warrior's Tomb (108)
+    { def = "AVMwwhl0.def", at = [21, 9] },  # Water Wheel (109)
+    { def = "AVXwtrh0.def", at = [26, 9] },  # Watering Hole (110)
+    { def = "AVMwndd0.def", at = [29, 9] },  # Windmill (112)
+    { def = "AVMwwhl0.def", at = [33, 9] },  # Water Wheel (109)
+    { def = "AVMwndd0.def", at = [20, 12] },  # Windmill (112)
+    { def = "AVSbuoy0.def", at = [20, 16] },  # Buoy (11)
+    { def = "AVXmerm0.def", at = [24, 16] },  # Mermaid (52)
+    { def = "AVXsirn0.def", at = [28, 16] },  # Sirens (92)
+]
+visits = [
+    { at = [19, 3], visited = true },
+    { at = [21, 3], known = true, visited = true },
+    { at = [24, 3], visited = true },
+    { at = [27, 3], known = true, visited = true },
+    { at = [30, 3], visited = true },
+    { at = [33, 3], known = true, visited = true },
+    { at = [19, 6], known = true, visited = true },
+    { at = [24, 6], known = true },
+    { at = [26, 6], visited = true },
+    { at = [31, 6], known = true, visited = true },
+    { at = [34, 6], visited = true },
+    { at = [21, 9], visited = true },
+    { at = [26, 9], known = true, visited = true },
+    { at = [29, 9], visited = true },
+    { at = [33, 9], visited = false },
+    { at = [20, 12], visited = false },
+    { at = [20, 16], known = true, visited = true },
+    { at = [24, 16], known = true, visited = true },
+    { at = [28, 16], visited = true },
+]
+view = [17, 0, 0]

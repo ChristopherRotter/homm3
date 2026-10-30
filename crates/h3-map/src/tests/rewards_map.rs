@@ -1,8 +1,8 @@
-//! The rewards map committed under `fixtures/maps/` (E08 T64a, design §16): every object class
-//! of increment 7 on one map, written by [`crate::writer`] (not laid out from a plan as the
-//! other fixtures, `fixtures.rs`), and beside red's three heroes the order-dependent paths the
-//! scripted golden replays play (`crates/h3-cli/tests/adventure_replays.rs`). The test checks
-//! that the committed file reads to the map written here and imports with every class; it
+//! The rewards map committed under `fixtures/maps/` (E08 T64a, increment 7's design note §16):
+//! every object class of increment 7 on one map, written by [`crate::writer`] (not laid out from a
+//! plan as the other fixtures, `fixtures.rs`), and beside red's three heroes the order-dependent
+//! paths the scripted golden replays play (`crates/h3-cli/tests/adventure_replays.rs`). The test
+//! checks that the committed file reads to the map written here and imports with every class; it
 //! rewrites the file when `H3_WRITE_FIXTURES` is set (a change invalidates the replays that name
 //! the map by content hash, ADV-Q2).
 
@@ -480,6 +480,7 @@ fn map() -> (w::Map, w::Extras) {
             // Row 23.
             any(lines::SCHOLAR, (26, 23)),
         ],
+        ..w::Extras::default()
     };
     let map = w::Map {
         name: "Rewards".into(),

@@ -116,23 +116,6 @@ leave out either way (nothing created). **Recommendation:** (b): the log should 
 summon that did not happen. **Built:** as the original's (the line written). **Blocked:**
 nothing.
 
-#### CLT-Q34 — The palette effects' slips (E17 M5 T5b1)
-
-**Context.** `draw_battle_stack`'s palette effects (`docs/epics/E17-design.md` §7.26) take each
-colour through HSV with every channel scaled to 0x7FFFFFFF / its mask. (1) The scales differ (at
-5-6-5 a full blue scales to 2^31 − 2, a full red to 2^31 − 2 048), so a grey or white has a hue
-(white's is a cyan, 0.51) and a saturation just above 0; where the effect moves the hue (Bloodlust's
-glow), white turns purple on its way to pink instead of going straight to pink, and the round trip
-through f32 values changes some colours with no effect intended (Bloodlust's step 0, Stone Gaze's
-1.0: 0x1234 becomes 0x1213; a blue of 1 becomes black). (2) Each glow's last step (strength 0.1) is
-drawn and shown, then replaced in the same millisecond by the redraw that clears the flag
-(0x5A11DB): it never stays on the screen. **Options:** (a) copy both; (b) fix (1) in the client
-(the channels scaled alike, a grey without hue), the original's for the comparisons only
-(`Bugs::Original`, as the cursor's x), and copy (2); (c) fix both, the original's for the
-comparisons. **Recommendation:** (a): both are how the original looks, briefly and on a few
-colours, and no reference shows what was meant instead. **Built:** as the original's (both).
-**Blocked:** nothing.
-
 ### Map client lane (`MCL-Q<n>`)
 
 #### MCL-Q13 — A monster's head under the Dragon Utopia (E24 M3 T2b1; the user, 2026-10-28)
@@ -181,16 +164,27 @@ box (it would run over the next cell's picture). **Recommendation:** (a) for now
 a resource is beyond a normal game; revisit with M4's engine if its amounts can reach it (b).
 **Blocked:** nothing; built as the original's.
 
-#### MCL-Q16 — A town's income shown by its low 16 bits (E24 M3 T5b1, a reading)
+#### MCL-Q20 — A Tree of Knowledge's price after two spaces (E24 M3 T6a2b, a reading)
 
-The town's status window (`AdStatCs.pcx`, built by 0x4521F0; E24 design §4.8) writes the town's
-gold income by `%d`, but from the low 16 bits of `H3Town::GoldIncome` 0x5BF600's result, sign
-extended (0x45279F: `movsx edx, ax`): an income above 32 767 would show negative (40 000 as
-−25 536), above 65 535 wrapped. Not seen: a town's income stays far below (a Capitol's 4 000 and
-the Grail's bonus), so no situation can show it. **Options:** (a) the original's (built: the
-viewer shows the same 16 bits); (b) the client shows the whole income, behind `--bugs original`
-for the comparisons. **Recommendation:** (a): unreachable in play; revisit if M4's engine or a
-mod lets an income pass 32 767 (then (b)). **Blocked:** nothing; built as the original's.
+A visited Tree of Knowledge's hint is its name, the separator (a space) and its price's text
+(`tree_of_knowledge_hint` 0x40DB00, `tree_price_names` 0x6A64D8); the three texts (ARRAYTXT.TXT's
+records 202 to 204, " (+1 level)" and the gold and gems ones) begin with a space of their own, so
+the status bar shows `Tree of Knowledge  (+1 level for 2000 gold)` with two spaces, where every
+other mark has one (E24 design §4.12). **Options:** (a) the original's (built: the viewer composes
+the same parts); (b) the client trims the price's leading space, behind `--bugs original` for the
+comparisons. **Recommendation:** (a): the status bar centres the text, a second space is barely
+seen. **Blocked:** nothing; built as the original's.
+
+#### MCL-Q21 — A hint whose object names nothing (E24 M3 T6a2b, a reading)
+
+Some hints index a table by the object's data without a bound (E24 design §4.12): a Border Guard's,
+a Gate's or a Tent's colour (its subclass) into eight names, a resource's (its subclass) into
+eight, a dwelling's kind into CrGen1's 80, a seer's name into 48; a defeat-hero quest whose hero
+index is -1 passes the address 0x23 to `sprintf` (0x56E3B3, a crash). A map the editor writes
+never holds such data; a crafted one could. **Options:** (a) the client shows nothing for that
+part (built: an empty name, the rest as the original's); (b) the client refuses such a map at its
+import (the engine's, M4). **Recommendation:** (a) now and (b) with M4's import (the adventure
+lane's A-31 refuses an empty resource set the same way). **Blocked:** nothing.
 
 ## Answered
 

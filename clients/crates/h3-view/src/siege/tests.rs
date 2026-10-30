@@ -491,6 +491,40 @@ fn the_moat_covers_a_stack_s_feet_and_its_box_is_drawn_again() {
         opened.over_stack((44, false, false), 4, &lay, None),
         [strip(476, 170)]
     );
+    // A record that opens with the gate open leaves the bridge out of its moat (E17 M5 T6b2,
+    // R1-3): the strip is by the fixed rows, so once the gate closed it covers hex 95 again.
+    let mut gate_open = siege(3);
+    gate_open.gate_open = true;
+    gate_open.moat_hexes.retain(|&h| h != 95);
+    let shut = Walls {
+        gate: GATE_CLOSED,
+        ..Walls::of(&gate_open)
+    };
+    let closed = look(&t, &gate_open, "base:castle", Some(shut), &stacks, None).unwrap();
+    let [x, y] = lay.hex_box(5, 10);
+    assert_eq!(
+        closed.over_stack((95, false, false), 4, &lay, None),
+        [strip(x, y)]
+    );
+    // The Fortress's second row (+0x53A9, 0x63BCF4) besides the first, as its record's moat
+    // holds it; a Castle's moat has none there.
+    let mut fortress = siege(3);
+    fortress.moat_hexes = vec![10, 11, 27, 28, 43, 44];
+    let both = look(&t, &fortress, "base:castle", None, &stacks, None).unwrap();
+    let [x, y] = lay.hex_box(2, 9);
+    assert_eq!(
+        both.over_stack((43, false, false), 4, &lay, None),
+        [strip(x, y)]
+    );
+    assert_eq!(
+        both.over_stack((43, true, false), 4, &lay, None),
+        [strip(x, y), strip(476, 170)]
+    );
+    assert!(
+        castle
+            .over_stack((43, false, false), 4, &lay, None)
+            .is_empty()
+    );
     // Without the moat flag nothing.
     let tower = look(&t, &siege(3), "base:tower", None, &stacks, None).unwrap();
     assert!(

@@ -26,9 +26,9 @@ use h3_view::tables::{Creature, Tables, Town};
 
 use crate::render::lookup;
 
-/// The [`Look`] of every creature a living stack of the record's first snapshot shows, by its
-/// handle; a siege's turrets (off the field, E17 M4 T2b) by the town's shooter's, its missile the
-/// turret's.
+/// The [`Look`] of every creature a living stack or a corpse (E17 M5 T6b2) of the record's first
+/// snapshot shows, by its handle; a siege's turrets (off the field, E17 M4 T2b) by the town's
+/// shooter's, its missile the turret's.
 pub fn looks(
     record: &Record,
     tables: &Tables,
@@ -41,7 +41,9 @@ pub fn looks(
     let mut looks = BTreeMap::new();
     let field = record.header.manifest.field;
     let cells = u16::from(field.width) * u16::from(field.height);
-    for stack in snapshot.stacks.iter().filter(|s| s.alive) {
+    // The dead lie among the corpses of a record that opens mid-battle (E17 M5 T6b2).
+    let drawn = |s: &&h3_protocol::wire::Stack| s.alive || h3_view::anim::lies(s);
+    for stack in snapshot.stacks.iter().filter(drawn) {
         if looks.contains_key(&stack.creature) {
             continue;
         }
@@ -758,5 +760,6 @@ pub fn stage<'a>(
         casts,
         bugs: Bugs::Fixed,
         siege,
+        lengths: None,
     }
 }

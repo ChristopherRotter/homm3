@@ -98,6 +98,13 @@ thousands = 10000
 halls = [11, 12, 13]
 forts = [7, 8, 9]
 
+[map.status.date]
+day = "newday.def"
+weeks = ["newweek1.def", "newweek2.def"]
+frames = [10, 4, 8]
+step = 100
+sound = "newday.wav"
+
 [[terrain]]
 code = 0
 def = "dirttl.def"

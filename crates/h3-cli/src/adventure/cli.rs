@@ -300,6 +300,7 @@ fn bench(args: &Args) -> Result<(), String> {
             "forks with the visits block: {} of {} games",
             r.visits, options.games
         );
+        println!("heroes in boats at the forks: {}", r.afloat);
     }
     if workload == Workload::Manage || options.meeting {
         println!("a meeting open: {} of {} games", r.meetings, options.games);

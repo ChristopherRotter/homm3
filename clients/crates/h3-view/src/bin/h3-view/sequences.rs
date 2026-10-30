@@ -61,6 +61,11 @@ struct Sequence {
     /// generator makes the same way with it; default 1).
     #[serde(default = "first_seed")]
     seed: u64,
+    /// Recorded with the original playing its sounds (E17 M5 T5b2, the harness's `sound`): the
+    /// battle waits for them, so the viewer's timeline does too (the samples' lengths from the
+    /// installation's sound archives).
+    #[serde(default)]
+    sound: bool,
 }
 
 /// The engine's seed unless a sequence names one.
@@ -305,8 +310,20 @@ fn sequences(options: &Options) -> Result<usize, String> {
             casts.rays = kept_rays(&dir.join(&sequence.id))?;
         }
         // The original's drawing bugs, as its captures show them (E17 M3 T7d, CLT-Q8).
+        let lengths = if sequence.sound {
+            let sounds = (
+                crate::battle::stack_sounds(&record, &tables),
+                crate::battle::battle_sounds(&record, &tables),
+            );
+            let mut lines = Vec::new();
+            // A sound the archives lack is waited for as the original would: not at all.
+            Some(crate::audio::lengths(&options.install, sounds, &mut lines)?)
+        } else {
+            None
+        };
         let stage = anim::Stage {
             bugs: Bugs::Original,
+            lengths: lengths.as_ref(),
             ..motion::stage(&record, &tables, &layout, (&magic, &casts, siege.as_ref()))
         };
         // The harness acts `pre` ms after the opening, and then at each command's `at`.
@@ -445,7 +462,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             // Auto Combat as the actions switched it (E17 M5 T4c1).
             let panels = log::panels(
                 &record,
-                &shown.log,
+                (&shown.log, &timeline.controllers),
                 &tables,
                 &layout,
                 (&archives, &exe),

@@ -654,7 +654,11 @@ entrance tile and the owner's record, -1 none; T5b1), the viewer's explored bits
 a hero's or a town's record, the window's own items for the morale, luck, silo and income; a
 town's name as its record of `TownName.txt`, a hero's `own_name` when its record's name is not its
 type's; a window of another kind, or a town's name the table lacks, fails the still), all into
-`live.toml`. Ours:
+`live.toml`; since M3 T5b2 the situation's `teams` written into the game (+0x1F879) and its
+`status`, 1 the date's or 2 the kingdom's, asked last until long after the still (the manager's
++0x398 and +0x39C: the next view's draw builds it, the still waits for it), the selection's window
+read first as the live part's `selection`; `Mem.status` gives the date's picture's frame and the
+kingdom's towns by their halls and players by team. Ours:
 `h3-map-view render --bugs original --live live.toml` with the same view and hidden rectangles;
 it refuses a `live.toml` whose anchors are not its map's (but a random dwelling's, which the
 map's load moves: T5b1, design §2.9) and one whose towns' pictures are not those their buildings
@@ -700,7 +704,11 @@ map, the game, the walks, the explored tiles, the view, the path, the facings), 
 once both the palette tick's and the redraw's next times lie ahead of it; then its 0 is the next
 millisecond: `frames` writes both next times and the mouse poll's there (`Mem.write_u32`, the
 harness's own timers: the phase between them is the map's load's real time) and checks that the
-tick and the redraw ran at 0. Then 1-ms steps (each waits for 500 clock reads, as E17's
+tick and the redraw ran at 0 (since E24 M3 T5b2 a sequence's `status = [kind, end]` asks that
+status window's kind there until `end` ms after 0, the kind shown set to none so that 0's redraw
+builds it afresh: the date's from its first frame; the selection's window read first, or at the
+staging when the situation asked a kind; a date's window at 0 the sequence did not ask is
+refused, its steps' times being unknown). Then 1-ms steps (each waits for 500 clock reads, as E17's
 sequences) to `ms`, each followed by the state memory holds (the view, the frame steps, both
 kinds' palette steps by `cycle_now`, the next times) and the screen (`Game.settled`): each screen
 whose pixels outside the panels' mask changed is kept (`<out>/<id>/frames/t<ms>.npz`, its state in
@@ -719,14 +727,29 @@ frame at 0 is drawn and compared (`ours.png`,
 `<out>` defaults to `out/map-frames`. A new sequence is recorded twice, its second run `ok`
 (the first run's `timeline.txt` copied to `map/timelines/<id>.txt` by hand).
 
+**The mouse-over** (E24 M3 T6a1, design §4.10): every live part ends with a `[hover]` table,
+`Mem.hover`'s facts the cursor and the hints read that the map cannot give (each object's entrance
+word and army, the towns' names as `TownName.txt` records and their types, the heroes' record
+indices and own names, the viewer's lists, the teams, the guarded tiles, the selected hero's
+costs and day points; numbers only). The costs: the original's pathfinder stops at the tile under
+the pointer, so before a sequence's 0 `look_over_view` moves the pointer over each tile its
+inputs visit and reads that tile's node (`Mem.node_cost`), then over the kingdom overview's button
+and back to the parking (the status bar's hint as before) and writes the manager's +0xEC and
++0xF0 -1; a still reads none. The status bar's hint is compared only for the items
+`map/masks.toml`'s `hinted` lists (`panel_rects`): add a new item recorded with it there. Since
+M3 T6a2a (design §4.11) `[hover]` holds `visits` too, per object what the viewer knows of it
+(`Mem.visit` by `h3mem.VISIT_RULES`, the reading's rules; for the hero selected as read), and a
+situation's `visits` (per object anchored on `at`: `known`, `visited`) are written after the view
+is set (`Mem.write_visit`: the rules inverted, on the object's first entrance tile).
+
 **Options and inputs** (E24 M2 T1a2, design §3.4): a sequence's `scroll_speed` (0 to 2) and
 `hero_speed` (1 to 4), the values the original holds, are written into its settings once the
 situation is staged (`h3mem.SCROLL_SPEED`, `WALK_SPEED`); its `inputs` are each at a millisecond
 from 1 to `ms`: `keydown` and `keyup` (xdotool's key names; `ctrl+Up` presses and releases the
 Control key with Up: the map scrolls by Ctrl and the direction keys `Up`, `Prior`, `Right`,
 `Next`, `Down`, `End`, `Left`, `Home`, without Ctrl they walk the selected hero) and `pointer` (a
-point of the screen; the map scrolls while it lies within 16 pixels of a side: keep it outside
-the view, x below 8 or y below 8 or over the panels, until M3 draws the cursor over the view).
+point of the screen; the map scrolls while it lies within 16 pixels of a side; since E24 M3
+T6a1 over the view too, with the mouse-over's facts below).
 The step to that millisecond comes first, then the inputs, then the game reads the frozen clock
 500 times more (it handles them at that millisecond), then the state and the screen. The
 scroll's 70 ms run from its own last time, which `edge_scroll` sets to the clock at every call
@@ -825,9 +848,10 @@ folder's `clock/`), it runs in real time until a command arrives in `ctl`, one l
 `<seq> <time> <reads>`, the reads of the clock since the command (then the forced rolls'
 three numbers, below; since E17 M5 T4b2b an eighth, 1 when `BINKW32.DLL`'s own `timeGetTime`
 import points at the same clock: the result window's clip plays on the virtual clock, its reads
-not counted as the game's). A game that keeps reading a stopped clock is idle at that time:
-`Game.clock` waits for 20 reads, `Game.settled` for two equal dumps (Wine may draw a moment
-later).
+not counted as the game's; since E17 M5 T5b2 a ninth, the Miles imports hooked in a `sound`
+run, below). A game that keeps reading a stopped clock is idle at that time: `Game.clock` waits
+for 20 reads (with sound the main thread's, growing over three acknowledgements), `Game.settled`
+for two equal dumps (Wine may draw a moment later).
 
 ## The clips
 
@@ -852,6 +876,37 @@ window), then ticks every millisecond: one line per frame drawn, `<ms> <clip> <f
 every colour (`h3_bink::build` raw blocks, 256 frames of 256 × 256) in an archive of its own gave
 the colour tables. The DLL's frames match `h3-bink`'s converted (`h3_view::clip::rgb565`) but
 where the inverse DCT rounds otherwise (CLT-Q30).
+
+## Sound
+
+E17 M5 T5b2 (`docs/epics/E17-design.md` §8.3): every capture runs the original without sound
+(setup.sh: no Wine audio driver, the effects' and the music's volumes 0), so it never waits for a
+sample (`wait_for_sample` 0x59A4C0 and `sample_wait` 0x599EC0 do nothing without the sound
+manager's driver; `play_sample` plays nothing at the effects' volume 0). A sequence with
+`sound = true` (`h3drive.py`'s `Game(out, sound)`) plays them:
+
+- before the game starts, `sound_settings` writes the effects' volume 5 (the music's stays 0) and
+  Wine's driver `alsa` (a run without sound writes them back: 0 and none); the game's environment
+  points ALSA at its null sink (`ALSA_CONFIG_PATH`: the system's `alsa.conf` and the run's
+  `clock/null.conf`), so Miles opens its digital driver in a sandbox without a sound card, and
+  sets `H3SOUND`;
+- `xdd.dll` (its 6.) hooks the nine Miles imports that load, start, end, pause, resume, serve and
+  ask after a sample: a sample plays its WAV's `fact` frames at its rate on the virtual clock (the
+  null sink mixes faster than real time; the game reads only the hooks' answers), each start
+  appended to `clock/sounds` as `<time> <channel> <length ms> <loops>`; the ack's ninth field
+  counts the imports hooked (9);
+- the adventure map's sounds play out first, the clock running (`sounds_settled`: hot seat's new
+  day waits for its samples, and a key pressed meanwhile is lost once the clock stops);
+- the opening is the start sound's end (`after_start_sound`): the battle shows its battlefield,
+  waits while `BATTLE0n` plays, then starts its clocks (0x463093), the viewer's time 0;
+- the game's sound thread reads the clock and holds the sound manager's lock in real time, so only
+  the main thread's reads count and `Game.clock` takes the game for idle only once they grow over
+  three acknowledgements in a row (with 20 reads of any thread, `machines`' heal was read before
+  its first frame was set: a millisecond late).
+
+`machines` with sound records the silent timeline exactly (the heal's sound ends inside its
+animation). The viewer waits only in a sequence with `sound` (`h3-view sequences`: the samples'
+lengths from the installation's sound archives).
 
 ## Forced rolls
 

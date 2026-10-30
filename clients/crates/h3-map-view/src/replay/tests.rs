@@ -72,6 +72,9 @@ fn idle() -> Replay {
         kingdom: crate::live::Kingdom::default(),
         points: Vec::new(),
         buttons: None,
+        asked: None,
+        hover: None,
+        levels: 1,
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -227,6 +230,9 @@ fn its_cues_are_handed_out_once() {
         kingdom: crate::live::Kingdom::default(),
         points: Vec::new(),
         buttons: None,
+        asked: None,
+        hover: None,
+        levels: 1,
     };
     let actions = BTreeMap::from([
         (1, vec![Action::Click(dest)]),

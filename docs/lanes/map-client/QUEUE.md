@@ -21,54 +21,46 @@ done: the epic's log). T4 cut with the user (2026-10-29) the same way: T4a the l
 T4b the lists over time, T4c a changed panel item drawn again alone (all done: the epic's log).
 T5 cut with the user (2026-10-29): T5a the resource bar's amounts, the date and a text's reach
 (done: the epic's log), T5b the status window, cut with the user (2026-10-29) into T5b1, a hero's
-and a town's (done: the epic's log), and T5b2, the date's and the kingdom's; the other kinds
-(another player's turn, a resource found, a text) are M4's (the epic's "Later").
+and a town's, and T5b2, the date's and the kingdom's (kept whole by the user; both done: the
+epic's log); the other kinds (another player's turn, a resource found, a text) are M4's (the
+epic's "Later"). T6 cut with the user (2026-10-30): T6a the mouse-over, cut into T6a1, T6a2a and
+T6a2b (all done: the epic's log), and T6b.
 
-### E24 M3 T5b2 — the date's and the kingdom's status windows, and when each shows
+### E24 M3 T6b — the clicks, the keys during a walk, the sound without the focus
 
-- **Scope:** read and built (design §4.8 has the kinds and the chooser): the date's window (kind
-  1, `status_date_create` 0x450DD0: `AdStatOt.pcx`, `NewDay.def`'s frames by the day, `newday.wav`,
-  its `medfont.fnt` text; its panel's own drawing over time, its vtable) and the kingdom's (kind 2,
-  `status_kingdom_create` 0x452B80: `AdStatin.pcx`, `itmtl.def`, the texts by `"%s:"`); when each
-  shows: kind 0 without a selection (the date's builder), a timed kind's end (3 000 ms) met at a
-  view's redraw (0x40F861) and the window built again, the status window's click cycling the
-  kingdom's, the date's and the selection's (0x409FD8: the click itself is T6's; T5b2 stages a
-  kind by the manager's +0x398 and +0x39C, or by the click if the harness's `h3adv` can give it);
-  the texts through the catalogue's keys; the live part's `status` for the two kinds (the
-  harness's `status_toml` refuses them until then). Situations for each, and a sequence of a timed
-  kind's end back to the selection's window.
-- **Acceptance:** the status window exact on every situation and sequence, the new ones too; the
-  Definition of Done.
-- **Depends on:** T5b1. **Status:** ready.
-
-### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
-
-- **Scope:** `adventure_mouse_move` 0x40E360's unread part and `view_mouse_tile` 0x40DEB0 (the
-  8-pixel question, design §1.8): the cursor over the map by its tile (`cradvntr.def`'s kinds;
-  the reach and its days given: a recording's from the original's memory), the status bar's
-  hints over the map's objects and the panels (the catalogue's keys); the view-only clicks (a
-  hero or a town chosen, the lists scrolled, Next Hero, the underground, the minimap, the status
-  window) and the other buttons' press; the panels' hotkeys through the key table; MCL-Q10's
-  keys during a walk (Space's cancel, the input ring's bound of 63); the sound without the focus
-  (`QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T6a2: the rest read, the window by
-  `Window::focused()`). Recorded: sequences with the clicks and the cursor's kinds.
+- **Scope:** the view-only clicks (a hero or a town chosen, the lists scrolled, Next Hero, the
+  underground, the minimap, the status window) and the other buttons' press; the panels'
+  hotkeys through the key table; MCL-Q10's keys during a walk (Space's cancel, the input ring's
+  bound of 63); the sound without the focus (`QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T6a2: the
+  rest read, the window by `Window::focused()`). Recorded: sequences with the clicks.
 - **Acceptance:** the new sequences as recorded, every frame; the clicks in the window; the
   Definition of Done.
-- **Depends on:** T3 to T5b2. **Status:** ready after T5b2.
+- **Depends on:** T6a1 (done; independent of T6a2). **Status:** ready.
 
 ### E24 M3 T7 — M3's closure
 
-- **Scope:** fresh reviewers (one per area), their fixes; every situation and sequence recorded
-  again; the review list with the user; the window cross-built for the user's machine and a
+- **Scope:** fresh reviewers (one per area), their fixes; the status bar's hint unmasked everywhere
+  (`masks.toml`'s `hint` into `panels`, `hinted` gone; moved here from T6a2 at its cut) and every
+  situation and sequence recorded again; the review list with the user; the window cross-built for the user's machine and a
   hand test (`clients/out/win/`, a `.cmd` with the checks on screen and a notes file); M3
   archived; M4 refined with the user.
 - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
-- **Depends on:** T1a to T6. **Status:** waiting (the user, at its checkpoint).
+- **Depends on:** T1a to T6b (T6a2b too). **Status:** waiting (the user, at its checkpoint).
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
+
+- 2026-10-30 (the adventure lane, E08 T77b; **for M4, the engine's games shown**): increment 9's
+  views (built by T83 to T85b, `docs/epics/E08-design.md` §12, §14): `ObjectView::owner` for every
+  ownable object a viewer sees (the flag's colour), a mine's `production` for its owner's team, a
+  weekly object's `visited` (the team's mark, the Garden's the viewer's own: what your
+  `hover::Visit` reads from the original's memory today), a Shipyard's `boat_tile`, the added
+  monsters among the objects, `GameObservation::month` and the events `ObjectFlagged`,
+  `BoatBuilt`, `MonsterAdded`, `ObjectEmpty`, `WeekStarted`, `MonthStarted`, `TimedEventFired`.
+  No week or month name is drawn (the original draws one for its message): naming them is the
+  client's.
 
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended

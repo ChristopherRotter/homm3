@@ -181,8 +181,21 @@ viewers share.
   a hero and a town (**done** 2026-10-29: 0x451AB0 and 0x4521F0 read and built, the selection's
   window, the names by the catalogue or the map's own; three new situations and the 47 and the 13
   sequences exact with the window; MCL-Q16; the log), T5b2, the date's and the kingdom's windows
-  and when each shows; T6, the mouse, the keys during a walk, the sound without the focus; T7,
-  M3's closure. A task that grows is cut at a seam agreed with the user.
+  and when each shows (kept whole by the user; **done** 2026-10-29: 0x450DD0, 0x452B80 and the
+  date's step 0x4511A0 read and built, the chooser at every view's draw, a timed kind's end, the
+  rebuilds; three new situations and two new sequences exact; the log); T6 cut with the user
+  (2026-10-30): T6a, the mouse-over, cut again with the user (2026-10-30) into T6a1, the cursor by
+  tile and the hints of the panels and the map but the map's 58 own cases (**done** 2026-10-30:
+  0x40E360, 0x40DEB0, 0x40B150's frame, 0x403010 read and built; three new sequences exact, their
+  status bar compared; MCL-Q17 to MCL-Q19; the log), and T6a2, those cases, cut with the user
+  (2026-10-30) by what runs the hint into T6a2a, the 35 classes of the visit marks (**done**
+  2026-10-30: their cases read and built, the facts' `visits`, MCL-Q18's fix; four new sequences
+  exact with the status bar; the log), and T6a2b, the 20 of the owners and contents (kept whole by
+  the user; **done** 2026-10-30: the seven sub-functions and the nine quests' texts read and
+  built, the facts' contents, the writer's quests; four new sequences exact with the status bar;
+  MCL-Q20, MCL-Q21; the log); every capture again with the hint unmasked moved to T7; T6b, the clicks, the
+  keys during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a
+  seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
   window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand
@@ -354,3 +367,37 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   `map.status.thousands`; a situation's `skills`, `morale`, `luck`, `army`, `garrison`,
   `garrison_hero` and `silo` (the garrison hero a hero of Red's standing elsewhere: only the
   window reads it).
+- **M3 T5b2, the date's and the kingdom's windows** (*provisional*, design §4.9): the layout's
+  `status_date` and `status_kingdom` (our ids for the original's id-less counts and labels, the
+  flags by row and place), the tables' `[map.status.date]` (the pictures' frames given and checked
+  by the gate, the step, the sound); the live part's `status` of the kinds 1 (`frame`) and 2
+  (`halls`, `allies`, `enemies`, the harness computing them from memory: the engine's from M4)
+  and `selection` (the selection's window read before a kind is asked); a sequence's `status =
+  [kind, end]` (`Start::asked`; a date's window at 0 the sequence did not ask refused), a
+  situation's `status` and `teams` (written by the harness: the writer has no teams); the
+  timeline's chooser (every draw, forced at a centring lift and a key's step's end; a window
+  the live part does not give left alone); `Cue::Effect` and an audio stream of its own for a sound
+  played once (the next cuts it off).
+- **M3 T6a2a, the visit marks** (*provisional*, design §4.11): the live part's `[hover]` `visits`
+  (per object whether the viewer knows its bonus and its mark; left out none known), derived by
+  the harness from memory by the reading's rules (`h3mem.VISIT_RULES`, `Mem.visits`: the
+  engine's from M4) for the hero selected as read (a click that selects another, T6b, reads them
+  again); a situation's `visits` (`h3mem.Mem.write_visit`, the rules inverted: a kind's or the
+  word's bit, the hero's or the player's field; a flag of several bits written as its lowest);
+  `Hint::Visits` and the keys `map.hint.more` (the executable's " %s"), `map.hint.visited`,
+  `map.hint.not-visited` and the family `map-bonus` (XtraInfo.txt). Recorded with a hero
+  selected only: the marks a class keeps by a hero read as needing one, not recorded without.
+  MCL-Q18's fix (the mouse's tile by the view's origin; the original's under `--bugs original`)
+  changes the window's clicks and hints: T7's hand test.
+- **M3 T6a2b, the owners and contents** (*provisional*, design §4.12): the live part's `[hover]`
+  contents (sparse rows by object: `mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`,
+  each holding what the hint reads already decided for its player: the viewing, the shown or the
+  current one, one in the comparisons; the engine's from M4), the Tent's mark a `visits` rule;
+  `Hint`'s eight new variants (`Hint` now `Clone`, not `Copy`); the catalogue's 34 keys and 13
+  families (a quest's text a key per type with six context forms, SeerHut.txt's columns); a
+  situation's `visits` with `hero` and `guards` (`h3mem.Mem.write_content`) and an object's
+  `quest` (the writer's `Extras::quests`, the adventure lane's crate, additive). The Quest Log's
+  state is the shown item's now (`Mem.item_states`), not recomputed from the quests. Not recorded:
+  the players apart (hot seat, M5), a defeat-hero quest without its hero (MCL-Q21), the skills
+  quest's spaced texts (SeerHut.txt's variants 2 and 3: the new game drew variant 1 for it; the
+  other types' variants have one text, several drawn).

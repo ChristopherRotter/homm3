@@ -104,6 +104,33 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `tactics::shade_at` (the log's `Action` and `Turn` entries, the turns' battles from
   `Panels::turns`); a placement's walk comes hex by hex in the engine's events (a recording
   sink), and `EndTactics` draws no frame.
+- The sounds' waits (E17 M5 T5b2, design §8.3): the timeline waits only with `Stage::lengths`
+  (the window once its sound opened, a sequence with `sound`); a new wait site keeps the cue its
+  `cue()` returns and calls `Player::wait_for` where the original's `wait_for_sample` stands (a
+  stack's own sound by its handle: `wait_last`). The window makes its battle again once the sound
+  opened (`Ground::play_sounds`): state set on the first `Battle` before that is lost. A `sound`
+  capture counts only the main thread's clock reads and settles the adventure map's sounds first
+  (runbook, "Sound"); a sequence without `sound` must stay silent (its timeline would change).
+- The panel's and the screen's side is each turn's controller (`Timeline::controllers`, E17 M5
+  T5b2): a new list of turns built beside `turns` needs its controller pushed with it.
+- A seat on a server (E17 M5 T6b1, design §11.2): the battle idles `Waiting` on both seats'
+  turns, so a press counts only while `Battle::takes` (the server's turn served, its queries
+  answered), the presser too; the window polls the connection every pass (`Battle::poll`), its
+  input wait capped at 10 ms. The clients' clippy bans `std::time::Instant`: an adapter's timing
+  takes the window's clock (`win.ticks_ns()`) or a channel's timeout. A local `h3-server` drains
+  at the first SIGTERM and stops at the second; kill it by its pid (`pidof`), never `pgrep -f`.
+  Started on another data directory it makes a new key, which the windows' pins refuse: copy
+  `server.key` along (its journals restore its games at the next start: a restart's test).
+- A record that opens mid-battle (E17 M5 T6b2, design §11.3): the snapshot's dead lie among the
+  corpses (`anim::lies`), so a stage's looks take their creatures; whether a stack lives is its
+  timeline pose's (`scene::living`), never the snapshot's `alive`; the records count every
+  snapshot stack, a dead or gone one's too. A battle on a server opens again from a record
+  opened afresh (`Battle::afresh`): state kept across it in the window resets there.
+- Accounts on a local `h3-server` (E17 M5 T7, design §11.4): an account is a server's (another
+  data directory: `--register` again); `anonymous = false` makes every join need `--login`; a
+  created game's id is its journal's name in `<data>/games/`; a `battle.toml` game outlasts a
+  150 s `--check` at speed 0, `seq-raise.toml` at `--speed 2` reaches the result window in ~25 s.
+  `h3-view account` reads the password from standard input: pipe it in unattended.
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

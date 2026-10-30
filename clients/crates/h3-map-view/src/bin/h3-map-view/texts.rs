@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
-use h3_map_view::{panels, status};
+use h3_map_view::{hover, panels, status};
 use h3_ui::text::Catalogue;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, KeysFile, Row, address_field};
 use h3_ui::text::pack::{Pack, Tables};
@@ -21,8 +21,36 @@ use crate::files;
 
 /// The families the viewer names by (E24 M3 T5b1, design §4.8): a hero type's name and a town's,
 /// each keyed by its original id (`hero.12`, `town-name.37`: [`status::hero_key`],
-/// [`status::town_key`]).
-pub const FAMILIES: [&str; 2] = ["hero", "town-name"];
+/// [`status::town_key`]); since T6a1 the hints' (design §4.10): a panel item's, an object class's,
+/// a hero class's, a town type's and a creature's names (`map-hint.7`, `object.54`,
+/// `hero-class.2`, `town-type.0`, `creature.13`); since T6a2a an object's bonus (`map-bonus.3`,
+/// design §4.11); since T6a2b the owners' and contents' names (design §4.12: a colour's, a
+/// dwelling's, a resource's, a mine's, a bank's, a spell's, a Tree's price, a skill's, a seer's,
+/// an artifact's).
+pub const FAMILIES: [&str; 22] = [
+    "hero",
+    "town-name",
+    "map-hint",
+    "object",
+    "hero-class",
+    "town-type",
+    "creature",
+    "map-bonus",
+    "keymaster",
+    "player-owned",
+    "dwelling1",
+    "dwelling4",
+    "resource",
+    "mine",
+    "bank",
+    "spell",
+    "tree-price",
+    "secondary-skill",
+    "seer-name",
+    "primary-skill",
+    "artifact",
+    "player-colour",
+];
 
 /// The committed key catalogue (`clients/text/keys.toml`).
 pub fn default_keys() -> PathBuf {
@@ -52,7 +80,12 @@ pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
         .collect();
     let mut all = Keys::parse(text, &entries).map_err(|e| e.to_string())?;
     let mut keys = Keys::default();
-    for id in panels::KEYS.into_iter().chain(status::KEYS) {
+    for id in panels::KEYS
+        .into_iter()
+        .chain(status::KEYS)
+        .chain(hover::KEYS)
+        .chain(hover::contents::KEYS)
+    {
         let key = all
             .keys
             .remove(id)
@@ -81,6 +114,11 @@ pub fn family_ids(
         .iter()
         .filter(|f| FAMILIES.contains(&f.id.as_str()))
     {
+        if let Some(count) = family.count {
+            // A family of records one by one (E24 M3 T6a1): its count.
+            ids.insert(family.id.clone(), count);
+            continue;
+        }
         let name = format!("{}.TXT", family.table);
         let (_, bytes) = files::find(archives, &name)?.ok_or_else(|| format!("no {name}"))?;
         let table = TextTable::parse(&bytes).map_err(|e| format!("{name}: {e:?}"))?;
@@ -171,7 +209,12 @@ mod tests {
         let ids = BTreeMap::from([("hero".to_string(), 2), ("town-name".to_string(), 1)]);
         let keys = keys(&text, &ids).unwrap();
         assert_eq!(keys.keys.keys().map(String::as_str).collect::<Vec<_>>(), {
-            let mut ids: Vec<&str> = panels::KEYS.into_iter().chain(status::KEYS).collect();
+            let mut ids: Vec<&str> = panels::KEYS
+                .into_iter()
+                .chain(status::KEYS)
+                .chain(hover::KEYS)
+                .chain(hover::contents::KEYS)
+                .collect();
             ids.extend(["hero.0", "hero.1", "town-name.0"]);
             ids.sort_unstable();
             ids

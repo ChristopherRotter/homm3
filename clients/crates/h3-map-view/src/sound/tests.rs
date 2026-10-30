@@ -98,7 +98,9 @@ fn the_tables_sounds_are_the_originals() {
         ("horse00.wav", "horse09.wav")
     );
     assert_eq!(r.flying, "horse10.wav");
-    assert_eq!(r.wavs().len(), 81);
+    // The loops, the step sounds, the flying one and (E24 M3 T5b2) the day's status window's.
+    assert_eq!(r.wavs().len(), 82);
+    assert_eq!(r.effects, ["newday.wav"]);
     let volumes: Vec<u8> = (0..5).map(|d| r.volume(d)).collect();
     assert_eq!(volumes, [32, 28, 20, 10, 0]);
     assert_eq!(
@@ -197,8 +199,9 @@ fn the_tables_with_and_without_sound() {
     let text = include_str!("../../../../map/assets/base.toml");
     let t = tables::load(&[tables::parse(text).unwrap()], "base").unwrap();
     let sounds = t.sounds();
-    assert_eq!(sounds.len(), 81);
-    assert!(sounds.contains("LOOPANIM") && sounds.contains("HORSE10"));
+    // Since E24 M3 T5b2 the day's status window's sound among them.
+    assert_eq!(sounds.len(), 82);
+    assert!(sounds.contains("LOOPANIM") && sounds.contains("HORSE10") && sounds.contains("NEWDAY"));
     assert_eq!(t.tracks().len(), 9);
     // Without `[map.sound]`, no sound; a river's music, an error.
     let without = text.replace("[map.sound]", "[unused]");
@@ -324,6 +327,8 @@ pub(crate) fn map_with(
         kingdom: crate::live::Kingdom::default(),
         buttons: None,
         minimap: None,
+        hover: None,
+        hint: None,
     };
     (art, live, shapes)
 }
@@ -658,4 +663,8 @@ fn the_music_and_the_step_sounds_follow_the_terrain() {
         line(1, &Cue::LoopStop { slot: 2 }),
         "1 loop-stop 2".to_string()
     );
+    // A sound played once (E24 M3 T5b2).
+    let mut s = sound(tiles(36, |_, _| 2, |_, _| None));
+    s.effect(7, "newday.wav");
+    assert_eq!(names(&s.take()), ["7 effect newday.wav"]);
 }

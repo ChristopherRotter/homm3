@@ -42,6 +42,8 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         kingdom,
         buttons: None,
         minimap: None,
+        hover: None,
+        hint: None,
     }
 }
 

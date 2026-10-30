@@ -16,6 +16,8 @@
 //! - **The step sound** on one stream (category 0's one sample), looping, at 127.
 //! - **The ambient loops**, a stream per slot (4; the original's category 3 takes 8 handles, its
 //!   slots at most 4 of them), looping, each at its cue's volume (32, 28, 20 or 10 by distance).
+//! - **A sound played once** (E24 M3 T5b2: the day's status window's `newday.wav`) on a stream of
+//!   its own at 127, the next one cutting it off.
 //!
 //! The volumes are SDL gains of volume / 127 (both settings at their highest, as `h3-view`'s:
 //! no settings yet), the music's fades scaling its samples. The music and the effects (the step
@@ -229,6 +231,8 @@ pub struct Player {
     bugs: Bugs,
     step: Lane,
     slots: Vec<Lane>,
+    /// The sound played once (E24 M3 T5b2): its stream, never queued again.
+    effect: Lane,
     /// Whether the music and the effects are heard.
     pub music_on: bool,
     pub effects_on: bool,
@@ -254,6 +258,7 @@ impl Player {
         let slots = (0..SLOTS)
             .map(|_| lane(&mut out))
             .collect::<Result<Vec<_>, _>>()?;
+        let effect = lane(&mut out)?;
         Ok(Self {
             out,
             music_stream,
@@ -261,6 +266,7 @@ impl Player {
             bugs,
             step,
             slots,
+            effect,
             music_on: true,
             effects_on: true,
             played: 0,
@@ -310,6 +316,12 @@ impl Player {
                     self.out.set_gain(lane.stream, gain(v));
                 }
             }
+            Cue::Effect(name) => {
+                let on = self.effects_on;
+                play(&mut self.out, &mut self.effect, library, name, FULL, on);
+                // Once: `service` queues only the loops again.
+                self.effect.clip = None;
+            }
         }
     }
 
@@ -318,6 +330,7 @@ impl Player {
         self.out.clear(self.music_stream);
         self.music = Queue::new(MUSIC_RATE, self.bugs);
         stop(&mut self.out, &mut self.step);
+        stop(&mut self.out, &mut self.effect);
         for lane in &mut self.slots {
             stop(&mut self.out, lane);
         }
@@ -326,7 +339,7 @@ impl Player {
     /// The effects heard or not: the step's and the slots' gains.
     pub fn set_effects(&mut self, on: bool) {
         self.effects_on = on;
-        for lane in std::iter::once(&self.step).chain(&self.slots) {
+        for lane in [&self.step, &self.effect].into_iter().chain(&self.slots) {
             let v = if on { lane.volume } else { 0 };
             self.out.set_gain(lane.stream, gain(v));
         }

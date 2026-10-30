@@ -95,13 +95,7 @@ pub fn hero(
         let bits = indices.iter().fold(0u8, |b, &i| b | (1 << i));
         let raised = battlefield.is_some_and(|b| b.raises(&spell.schools));
         let mastery = if raised { 3 } else { entry.mastery.min(3) };
-        let base = spell.cost[usize::from(mastery)];
-        let cost = if base == 0 {
-            0
-        } else {
-            u16::try_from((i32::from(base) + i32::from(side.cost_change)).max(1))
-                .unwrap_or(u16::MAX)
-        };
+        let cost = mastered_cost(spell.cost[usize::from(mastery)], side.cost_change);
         let key = manifest.keys.spells.get(usize::from(entry.spell))?;
         let original = tables.spells.get(key).map_or(0, |s| u32::from(s.original));
         let description = catalogue.text(
@@ -126,6 +120,50 @@ pub fn hero(
         schools,
         spells,
     })
+}
+
+/// A spell's cost `base` at the caster's mastery changed by the armies' `change`: at least 1, a
+/// free spell free (0x4E5240, BAT-MAG-054; [`hero`]'s).
+fn mastered_cost(base: u16, change: i8) -> u16 {
+    if base == 0 {
+        0
+    } else {
+        u16::try_from((i32::from(base) + i32::from(change)).max(1)).unwrap_or(u16::MAX)
+    }
+}
+
+/// What `side`'s hero's cast of `spell` costs in the battle `observation` shows (E17 M5 T6b1: the
+/// seat's battle on a server spends its mana by its casts, `h3_view::remote::seen`), as the book
+/// prices it ([`hero`]): the observation's own hero's alone (another hero's book is unknown: 0).
+pub fn cost(
+    observation: &Observation,
+    ruleset: &BattleRuleset,
+    side: h3_protocol::wire::Side,
+    spell: u16,
+) -> u16 {
+    let (Some(own), Some(view)) = (
+        observation
+            .own_hero
+            .as_ref()
+            .filter(|_| side == observation.viewer),
+        observation
+            .sides
+            .get(usize::from(side == h3_protocol::wire::Side::Defender)),
+    ) else {
+        return 0;
+    };
+    let (Some(entry), Some(record)) = (
+        own.spell_book.iter().find(|b| b.spell == spell),
+        ruleset.spell(Handle::from_raw(spell)),
+    ) else {
+        return 0;
+    };
+    let raised = observation
+        .battlefield
+        .and_then(|b| ruleset.battlefield(Handle::from_raw(b)))
+        .is_some_and(|b| b.raises(&record.schools));
+    let mastery = if raised { 3 } else { entry.mastery.min(3) };
+    mastered_cost(record.cost[usize::from(mastery)], view.cost_change)
 }
 
 /// What a capture-set situation's actions leave of the spell book over its opening (E17 M5 T3a):

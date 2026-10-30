@@ -226,6 +226,19 @@ fn gate(options: &Options) -> Result<usize, String> {
             status.forts.len() + 1,
         ),
         ("silo", &layout.status_town, status::id::SILO, RESOURCES),
+        // E24 M3 T5b2 (design §4.9): the kingdom's halls and the players' flags.
+        (
+            "kingdom hall",
+            &layout.status_kingdom,
+            status::id::HALLS,
+            usize::from(status::HALLS),
+        ),
+        (
+            "flag",
+            &layout.status_kingdom,
+            status::id::ALLY_FLAGS,
+            usize::from(status::FLAGS),
+        ),
     ] {
         match panel.item(id) {
             Some(Item::Def(d)) if d.def.is_some() => {
@@ -233,6 +246,26 @@ fn gate(options: &Options) -> Result<usize, String> {
             }
             _ => problems.push(format!("{what}: item {id} is no DEF item with a DEF")),
         }
+    }
+    // The date's pictures (E24 M3 T5b2): the window steps up to the tables' last frame, so each
+    // holds exactly the tables' frames in group 0.
+    let date = &status.date;
+    for (name, &frames) in std::iter::once(&date.day)
+        .chain(&date.weeks)
+        .zip(&date.frames)
+    {
+        match find(name)? {
+            None => problems.push(format!("date: {name} in no archive")),
+            Some((_, data)) => match check::summarize(&data) {
+                Ok(summary) if summary.frames == usize::try_from(frames).unwrap_or(0) => {}
+                Ok(summary) => problems.push(format!(
+                    "date: {name}: {} frames in group 0, the tables {frames}",
+                    summary.frames
+                )),
+                Err(e) => problems.push(format!("date: {name}: does not decode ({e:?})")),
+            },
+        }
+        needs.push(("date".into(), name.clone(), 1, 1));
     }
     for (what, name, frames, groups) in &needs {
         let Some((archive, data)) = find(name)? else {
@@ -376,7 +409,12 @@ fn status_pictures(
     problems: &mut Vec<String>,
 ) -> Result<(), String> {
     println!("\nthe status window's pictures:");
-    let panels = [&layout.status_hero, &layout.status_town];
+    let panels = [
+        &layout.status_date,
+        &layout.status_kingdom,
+        &layout.status_hero,
+        &layout.status_town,
+    ];
     let mut wanted: Vec<(String, Option<[i32; 2]>)> = panels
         .iter()
         .flat_map(|panel| &panel.items)

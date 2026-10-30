@@ -19,6 +19,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_map::RawMap;
+use h3_map::model::{Mission, Stack};
 use h3_map::writer::{
     AnyObject, Extras, GivenTile, Hero, Map, MapObject, ObjectTemplate, Patch, Player, RiverKind,
     Road, RoadKind, Terrain, Town, TownBuildings,
@@ -78,6 +79,70 @@ pub struct Situation {
     /// a week from 1 to 4 and a day from 1 to 7; as the resources, with a hero's selection.
     #[serde(default)]
     pub date: Option<[u16; 3]>,
+    /// The status window's kind the harness asks for after its selection (E24 M3 T5b2, design
+    /// §4.9): 1 the date's, 2 the kingdom's, until long after the still (the manager's +0x398 and
+    /// +0x39C, as `status_window_set_kind` 0x415D60 sets them); the next view draw builds it.
+    #[serde(default)]
+    pub status: Option<u8>,
+    /// The players' teams by colour, which the harness writes into the game (E24 M3 T5b2, design
+    /// §4.9: the kingdom's window shows the players of Red's team and the others; the writer's
+    /// maps have none, each player its own), each from 0 to 7.
+    #[serde(default)]
+    pub teams: Option<[u8; 8]>,
+    /// What the viewer knows of objects, which the harness writes into the game after the view
+    /// is set (E24 M3 T6a2a, design §4.11): the hint over a map object of a class with visit
+    /// marks shows them (the viewer takes them from the live part's `[hover]`, not from here).
+    #[serde(default)]
+    pub visits: Vec<VisitSpec>,
+}
+
+/// What the viewer knows of the object anchored on a tile (E24 M3 T6a2a): whether Red knows its
+/// kind's bonus, and whether it was visited (by the selected hero, where the class keeps it so)
+/// or as the new game left it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VisitSpec {
+    /// The object's anchor.
+    pub at: [u8; 2],
+    /// Red knows its kind's bonus.
+    #[serde(default)]
+    pub known: bool,
+    /// Visited or not; none as the new game left it.
+    #[serde(default)]
+    pub visited: Option<bool>,
+    /// The selected hero's own (E24 M3 T6a2b, design §4.12): a Tree of Knowledge's visit, a
+    /// Shrine's spell known, a Witch Hut's skill learned; none as the new game left it.
+    #[serde(default)]
+    pub hero: Option<bool>,
+    /// A mine's or a creature bank's guards as [creature, count] stacks (E24 M3 T6a2b), in its
+    /// army's slots; none as the new game left them, empty none.
+    #[serde(default)]
+    pub guards: Option<Vec<[u32; 2]>>,
+}
+
+/// A Seer's Hut's or a Quest Guard's quest (E24 M3 T6a2b, design §4.12), the writer's mission
+/// (`h3_map::writer::Extras::quests`): the hero and the monster to defeat named by their tiles.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum QuestSpec {
+    /// Reach this level.
+    Level(u32),
+    /// Reach these primary skills (attack, defense, power, knowledge).
+    Skills([u8; 4]),
+    /// Defeat the hero standing on this tile, one of the situation's.
+    Hero([u8; 2]),
+    /// Defeat the monster anchored on this tile, one of the situation's objects.
+    Monster([u8; 2]),
+    /// Bring these artifacts.
+    Artifacts(Vec<u16>),
+    /// Bring these [creature, count] stacks.
+    Creatures(Vec<[u16; 2]>),
+    /// Bring these resources (in the original's order).
+    Resources([u32; 7]),
+    /// Be the hero of this type.
+    BeHero(u8),
+    /// Belong to this colour.
+    Player(u8),
 }
 
 /// What a situation selects (E24 M3 T4a): Red's hero standing on a tile (after its walk) or Red's
@@ -212,6 +277,9 @@ pub struct ObjectSpec {
     /// writer's `AnyObject`): a colour with a hero, which makes it a player. None is neutral.
     #[serde(default)]
     pub owner: Option<u8>,
+    /// A Seer's Hut's or a Quest Guard's quest (E24 M3 T6a2b); none without one.
+    #[serde(default)]
+    pub quest: Option<QuestSpec>,
 }
 
 /// A town (E24 M1 T5b1): its faction's template (`Objects.txt`'s first of class 98 and the
@@ -276,6 +344,11 @@ pub enum TownBuilt {
     Fort,
     /// A Fort and a Citadel.
     Citadel,
+    /// The Town Hall and a Fort (E24 M3 T5b2: the kingdom's window counts the towns by their
+    /// halls).
+    TownHall,
+    /// The Town and City Halls and a Fort (E24 M3 T5b2).
+    CityHall,
     /// A Fort, a Citadel and a Castle.
     Castle,
     /// The Town, City Hall and Capitol, a Fort, a Citadel and a Castle.
@@ -295,6 +368,8 @@ impl TownBuilt {
             Self::Village => TownBuildings::Standard { fort: false },
             Self::Fort => TownBuildings::Standard { fort: true },
             Self::Citadel => custom(0b1_1000),
+            Self::TownHall => custom(0b1001),
+            Self::CityHall => custom(0b1011),
             Self::Castle => custom(0b11_1000),
             Self::Capitol => custom(0b11_1111),
         }
@@ -385,6 +460,8 @@ pub struct BoatSpec {
 
 /// The boats' class.
 const BOAT_CLASS: u32 = 8;
+/// The monsters' class (54), whose object a quest may name (E24 M3 T6a2b).
+const MONSTER_CLASS: u32 = 54;
 
 /// The hero type of the `nth` hero (from 0) of `class` on a map: the class's eight types in
 /// order (classes 0–15 the types 8 × class onwards, the AB classes 16 and 17 the types 128 and
@@ -496,6 +573,7 @@ impl Situation {
                 objects.extend(copied_objects(c, raw));
             }
         }
+        let first = objects.len();
         for o in &self.objects {
             let template = templates
                 .iter()
@@ -573,9 +651,11 @@ impl Situation {
             level_limit: 0,
             banned_skills: vec![],
         };
+        let quests = self.quests(&map.objects, &objects, first)?;
         let extras = Extras {
             tiles: given.into_values().collect(),
             objects,
+            quests,
         };
         Ok((map, extras))
     }
@@ -650,6 +730,60 @@ impl Situation {
         Ok((players, heroes))
     }
 
+    /// The given objects' quests as the writer takes them (E24 M3 T6a2b), by their index among
+    /// the extras' `objects` (the given ones from `first`): a hero's mission names the identifier
+    /// of the hero standing on its tile (its index among the map's `placed` objects, plus one),
+    /// a monster's that of the monster object anchored there (after them).
+    fn quests(
+        &self,
+        placed: &[MapObject],
+        objects: &[AnyObject],
+        first: usize,
+    ) -> Result<BTreeMap<usize, Mission>, String> {
+        let identifier = |i: usize| u32::try_from(i + 1).unwrap_or(u32::MAX);
+        let mut quests = BTreeMap::new();
+        for (k, o) in self.objects.iter().enumerate() {
+            let Some(quest) = &o.quest else {
+                continue;
+            };
+            let mission = match quest {
+                QuestSpec::Level(n) => Mission::Level(*n),
+                QuestSpec::Skills(s) => Mission::PrimarySkills(*s),
+                QuestSpec::Hero(at) => {
+                    let j = placed
+                        .iter()
+                        .position(|p| matches!(p, MapObject::Hero(h) if h.tile == (at[0], at[1])))
+                        .ok_or_else(|| format!("the quest at {:?}: no hero on {at:?}", o.at))?;
+                    Mission::KillHero(identifier(j))
+                }
+                QuestSpec::Monster(at) => {
+                    let i = (0..self.objects.len())
+                        .find(|&i| {
+                            self.objects[i].at == *at
+                                && objects
+                                    .get(first + i)
+                                    .is_some_and(|m| m.template.class == MONSTER_CLASS)
+                        })
+                        .ok_or_else(|| {
+                            format!("the quest at {:?}: no monster anchored on {at:?}", o.at)
+                        })?;
+                    Mission::KillCreature(identifier(placed.len() + first + i))
+                }
+                QuestSpec::Artifacts(a) => Mission::Artifacts(a.clone()),
+                QuestSpec::Creatures(c) => Mission::Army(
+                    c.iter()
+                        .map(|&[creature, count]| Stack { creature, count })
+                        .collect(),
+                ),
+                QuestSpec::Resources(r) => Mission::Resources(*r),
+                QuestSpec::BeHero(h) => Mission::Hero(*h),
+                QuestSpec::Player(p) => Mission::Player(*p),
+            };
+            quests.insert(first + k, mission);
+        }
+        Ok(quests)
+    }
+
     /// The harness's writes into the lists and its selection (E24 M3 T4a): a town's day written
     /// only for Red's; the selection Red's hero on its tile (after its walk) or Red's town on its
     /// anchor; a selection whenever something is written, so that the lists show it; a hero's
@@ -671,6 +805,29 @@ impl Situation {
         let bar = self.resources.is_some() || self.date.is_some();
         if bar && !matches!(self.select, Some(SelectSpec::Hero(_))) {
             return Err("the resources or the date without a hero's selection".into());
+        }
+        // The status window's kind asked (E24 M3 T5b2): the date's or the kingdom's; the teams.
+        if let Some(kind) = self.status
+            && !(1..=2).contains(&kind)
+        {
+            return Err(format!("the status window's kind {kind}: not 1 or 2"));
+        }
+        if let Some(teams) = self.teams
+            && teams.iter().any(|&t| t > 7)
+        {
+            return Err(format!("the teams {teams:?}: one past 7"));
+        }
+        // The visit marks (E24 M3 T6a2a): each of an object the situation gives, once.
+        for (i, v) in self.visits.iter().enumerate() {
+            if !self.objects.iter().any(|o| o.at == v.at) {
+                return Err(format!(
+                    "the visits at {:?}: no object anchored there",
+                    v.at
+                ));
+            }
+            if self.visits[..i].iter().any(|w| w.at == v.at) {
+                return Err(format!("the visits at {:?}: given twice", v.at));
+            }
         }
         // The status window's (E24 M3 T5b1): Red's towns' garrisons and garrison heroes, of
         // Red's; seven slots at most; a silo with chosen buildings.

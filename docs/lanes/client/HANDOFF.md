@@ -8,25 +8,34 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 to T4 done** (the playhead; the timeline that grows,
+  dependencies the user's at T6 and T7. **T1 to T7 done** (the playhead; the timeline that grows,
   `live.rs`; the click's command; hot seat in the window; the spell book, design §7.17; the
   hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result window, §7.20, its
   Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21; Auto Combat, §7.22, `h3_view::auto`; the
   tactics phase drawn, §7.23, `h3_view::tactics`, and played, §7.24: the engine's placement
   steps, `cross-lane`; the dissolves and the created stacks, §7.25, `anim::created`, the engine's
   `NotCreated`, `cross-lane`; T5b cut in two, the palette effects done, §7.26,
-  `h3_render::recolour`). **Next: M5 T5b2** (the panel by the turn's controller, the sounds'
-  waits: QUEUE), then T6. Open PR: T5b1's (#583, `client/e17-m5-t5b1`; check it first). The inbox's
-  CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons note (T5a's dissolve, to
-  re-investigate) wait for a free slot.
+  `h3_render::recolour`; the panel by each turn's controller and the sounds' waits, §8.3,
+  `Timeline::controllers`, `sound::Lengths`, the harness's `sound` runs: T5 done; T6 cut in two
+  by the user, T6a done: the connection headless, design §11.1, `h3_view::remote`, the binary's
+  `net` and `connect`, the server's TLS stack the user's choice; T6b cut in two by the user,
+  T6b1 done: the window plays a seat on a server, design §11.2, `remote::seen`, the binary's
+  `online`, `Battle`'s `Fight`; T6b2 done, kept whole by the user: the record that opens
+  mid-battle, design §11.3, `anim::lies`, `scene::living`, the moat by fixed rows,
+  `remote::rejoined`, `Battle::afresh`: T6 done; T7 done, kept whole by the user: accounts,
+  design §11.4, `argon2` the engine's and the password from standard input (the user's
+  choices), `h3-view account`, `remote::Accounts`, `Client::login` with the re-key,
+  `remote::farewell`). **Next: M5 T8** (M5's closure, at the user's checkpoint; QUEUE). Open
+  PR: T7's (branch `client/e17-m5-t7`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
+  note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
-  in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
+  in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
   `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
-  CLT-Q26, CLT-Q27, CLT-Q28, CLT-Q32, CLT-Q33, CLT-Q34. Next id: CLT-Q35.
+  CLT-Q26, CLT-Q27, CLT-Q28, CLT-Q32, CLT-Q33. Next id: CLT-Q35.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -46,25 +55,26 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-29, E17 M5 T5b1 (done; #583 open: check it first).** T5b cut in two with the
-  user (T5b1 the palette effects); the user's Demons note recorded (design §7.25, QUEUE inbox).
-  Read `draw_battle_stack`'s palette effects, the HSV round trip, the glows' redraws, Stone
-  Gaze's line (design §7.26). Built `h3_render::recolour` (exact in integers against an IEEE
-  reference), the timeline's `LookKey`s, `Draw::Creature`'s `effect`; the harness's `stone_gaze`
-  roll. `bloodlust` and `stone` recorded, their glows exact; `clone` exact; CLT-Q34; items 40
-  to 42.
+- **2026-10-30, E17 M5 T7 (done; its PR open: check it first).** The original data staged; the
+  user chose `argon2` (the engine's), the password from standard input shown as typed, and kept
+  T7 whole (the agent proposed a cut); the VM restarted ~10 minutes in (CI's green `master` the
+  baseline). Built the accounts (design §11.4): the key derived and kept, the login and the
+  re-key, seats by account, the final goodbyes; the test vector reproduced; live on a local
+  `h3-server`, headless and in two windows to the result window, seats re-taken by account
+  after drops and by new processes, every frame exact. Items 61 to 65; T8 next.
 
-- **2026-10-29, E17 M5 T5a (done; #578 merged).** T5 cut in two with the
-  user; the engine's `NotCreated` (`cross-lane`, the user's call, wire v36). Read the dissolve's
-  blend and rectangle, the stacks removed without a corpse, the created stacks, Clone, Teleport
-  (design §7.25). Built `Screen::dissolve_rect`, `anim::created`, the window's notices.
-  `teleport`, `clone`, `summon`, `demons` recorded, `sacrifice` exact; the clone's colours to
-  T5b and the Demons' back buffer a slip not copied (the user's); CLT-Q33; items 36 to 39.
+- **2026-10-30, E17 M5 T6b2 (done; #597 merged).** The original data staged;
+  the agent's cut into T6b2a/b declined by the user (kept whole); the VM restarted ~10 minutes
+  in (CI's green `master` the baseline). Built the record that opens mid-battle (R2-8, R1-3) and
+  the restart's new timeline (design §11.3); checked against the recorded `raise` cut after its
+  deaths, and live: two windows through a restart of a local `h3-server` (Resurrection on an
+  opening corpse), a join mid-battle with a small record bound, every frame exact. Items 56 to
+  60; T7 next.
 
-- **2026-10-29, E17 M5 T4c2b (done; #569 merged).** Kept whole by the user;
-  the placement's path from the engine (`cross-lane`, the user's call: `tactics::place`, the gate
-  opened on the way). Read the placement as the walk, Next Creature, Start Combat and the
-  panels' swap, the shade over the turns, the computer's phase, Auto Combat in it, the keys
-  (design §7.24). Built the buttons' commands, `Context::Tactics`, the window's panel shown,
-  `tactics::shade_at`. `tactics-play` recorded: timeline as recorded, its frames exact but the
-  walk's redraw artifacts; review items 32 to 35; no question.
+- **2026-10-30, E17 M5 T6b1 (done; #594 merged).** The original data staged; T6b
+  cut in two by the user (the agent's proposal). Built the window's seat on a server (design
+  §11.2): `online::Online`, `Battle`'s `Fight::Server` polled each frame, the turn from
+  `YourTurn` with the aims' targets by `Query`, `remote::seen`, `results::served`, the seat as the
+  one human here (`remote_turn`); two windows on a local `h3-server` played `battle.toml` to its
+  end with a drop and a re-join, and `seq-haste` with both casts through the book and the aim,
+  every frame exact; both content outcomes. Items 52 to 55; T6b2 next.

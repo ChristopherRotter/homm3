@@ -1,6 +1,6 @@
-//! Tests of the boats (E08 T72, design §6; ADR-0016 point 1): the setup's boats, their checks and
-//! invariants, a hero's boat and its day's maximum by its surface, the hash; the static map's
-//! marks of the sea's grounds and the holes (design §5).
+//! Tests of the boats (E08 T72, increment 8's design note §6; ADR-0016 point 1): the setup's boats,
+//! their checks and invariants, a hero's boat and its day's maximum by its surface, the hash; the
+//! static map's marks of the sea's grounds and the holes (increment 8's design note §5).
 
 use std::sync::Arc;
 

@@ -1,7 +1,7 @@
-//! Tests of Pandora's Box, the Pyramid and the reward record (E08 T62b1; design §11, §11.1,
-//! §11.2): the questions, the guards' battles, the record's parts (the hero's half by `grant`, the
-//! resources gained and lost, the creatures and the group without room), the removal, a looted
-//! Pyramid's luck, its spell after a win, and what its visitor's owner learns.
+//! Tests of Pandora's Box, the Pyramid and the reward record (E08 T62b1; increment 7's design note
+//! §11, §11.1, §11.2): the questions, the guards' battles, the record's parts (the hero's half by
+//! `grant`, the resources gained and lost, the creatures and the group without room), the removal,
+//! a looted Pyramid's luck, its spell after a win, and what its visitor's owner learns.
 
 use std::boxed::Box;
 use std::sync::Arc;

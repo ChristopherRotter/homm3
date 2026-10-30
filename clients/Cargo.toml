@@ -72,6 +72,25 @@ sdl3-sys = { version = "0.7.2", default-features = false, features = [
     "no-sdl-sensor",
     "no-sdl-tray",
 ] }
+# A game on a server (E17 M5 T6a; the user, 2026-10-30: the server's stack, blocking on the I/O
+# thread only): the WebSocket client, dialing `wss://` through rustls with the pure-Rust graviola
+# backend and the operating system's roots, as the server dials its peers (ADR-0021 point 4); the
+# welcome's Ed25519 signature checked strictly; the hello's nonce from the OS. The engine's
+# versions; `ring` and `aws-lc` are not GPLv2-compatible: no default features. Licenses: MIT OR
+# Apache-2.0 (tungstenite, getrandom), Apache-2.0 OR ISC OR MIT (rustls, rustls-native-certs),
+# Apache-2.0 OR ISC OR MIT-0 (rustls-graviola), BSD-3-Clause (ed25519-dalek). Only `h3-view`'s
+# binary names them.
+tungstenite = { version = "0.30", default-features = false, features = ["handshake", "rustls-tls-native-roots"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12"] }
+rustls-graviola = "0.4"
+rustls-native-certs = "0.8"
+ed25519-dalek = "3"
+getrandom = "0.3"
+# Accounts (E17 M5 T7; the user, 2026-10-30: the engine's crate, version and features): the
+# account's key derived from the login and the password as the server lane's test client derives
+# it (Argon2id, `docs/lanes/client/NOTES.md`, "The live client"), the login signed by
+# `ed25519-dalek` above. License: MIT OR Apache-2.0. Only `h3-view`'s binary names it.
+argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
 # Test-only (the engine's version and features).
 # MP3 for the music (E17 M2 T5b; ADR-0024 point 5): pure Rust, minimp3's samples.
 nanomp3 = { version = "0.2", default-features = false, features = ["std"] }

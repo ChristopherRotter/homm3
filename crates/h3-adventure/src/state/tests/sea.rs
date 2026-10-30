@@ -1,11 +1,11 @@
-//! Tests of moving at sea (E08 T73a; design §7, §8 and §10; ADV-SEA-002 to -005): boarding from a
-//! walk, a flight and a water walk, a boat's steps and prices with Favorable Winds, the drop and
-//! D-43's exception, visits from a boat, landing onto a free coastal tile only (D-42), the
-//! conversion of the points with free boarding (D-41) and the day's maximum switched (A-28 not
-//! reproduced), the landing's facing, the events, D-46's water tiles closed to a flight, and the
-//! reachable tiles of a boat and of a walker beside one (E08 T73b). Batch E8's rows as sources:
-//! E8-1 and E8-2 (the conversion after the drop), E8-3 (no landing on a hole or an event), E8-4
-//! (the diagonal at sea on Favorable Winds), E8-15 (a guarded landing, the boat's facing).
+//! Tests of moving at sea (E08 T73a; increment 8's design note §7, §8 and §10; ADV-SEA-002 to
+//! -005): boarding from a walk, a flight and a water walk, a boat's steps and prices with Favorable
+//! Winds, the drop and D-43's exception, visits from a boat, landing onto a free coastal tile only
+//! (D-42), the conversion of the points with free boarding (D-41) and the day's maximum switched
+//! (A-28 not reproduced), the landing's facing, the events, D-46's water tiles closed to a flight,
+//! and the reachable tiles of a boat and of a walker beside one (E08 T73b). Batch E8's rows as
+//! sources: E8-1 and E8-2 (the conversion after the drop), E8-3 (no landing on a hole or an event),
+//! E8-4 (the diagonal at sea on Favorable Winds), E8-15 (a guarded landing, the boat's facing).
 
 use std::sync::Arc;
 
@@ -354,6 +354,33 @@ fn a_flight_neither_ends_on_nor_passes_a_water_tile_an_object_is_visited_from() 
             Err(closed),
             "{c}"
         );
+    }
+}
+
+// covers: ADV-MOV-009, ADV-OBJ-004, ADV-PIK-018
+#[test]
+fn a_flight_up_off_a_closed_top_never_passes_a_water_tile_an_object_is_visited_from() {
+    // E08 T75b (found by the plans' property, `h3-map`'s `check_sea_move`): a step up off the
+    // visitable tile of an object not visited from above (a chart) is a flight's pass only
+    // (ADV-OBJ-004), and D-46 closes a water tile an object is visited from to a flight: the two
+    // together refuse the step; over plain water the flight passes.
+    let (rules, _, _) = sea_rules(true);
+    let flyer = store(&[(FLYING, 3)]);
+    for (c, open) in [('V', false), ('g', true)] {
+        let top: std::string::String = ['g', '#', c].iter().collect();
+        let mut setup = coasted(
+            &[&top, "gCg", "ggg"],
+            vec![hero_at(1, 0, p(0, 1), &[PEASANT])],
+        );
+        set_terrain(&mut setup, p(2, 0), SEA);
+        let mut s = started(&rules, &setup).unwrap();
+        let flown = sail(&mut s, &rules, &flyer, &[p(1, 1), p(2, 0), p(2, 1)]);
+        let expected = if open {
+            Ok(p(2, 1))
+        } else {
+            Err(blocked(1, StandError::Blocked))
+        };
+        assert_eq!(flown.map(|_| hero(&s).0), expected, "{c}");
     }
 }
 

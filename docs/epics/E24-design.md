@@ -2160,3 +2160,300 @@ other player's turn and the messages are M4's).
 - **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build): the same:
   `walk-1` 24.8 % uploaded, a frame made in a median 0.4–0.5 ms; *Tale of two lands* 11.2 %, 1.2;
   `path-objects` 5.2 %, 0.9–1.0.
+
+### 4.9 The date's and the kingdom's status windows, and when each shows (M3 T5b2)
+
+Read: `status_date_create` 0x450DD0 and `status_kingdom_create` 0x452B80 in full, the date's
+panel's step `status_date_update` 0x4511A0 and its vtable 0x63BB0C, `status_panel_update`
+0x402B90 and its callers, `status_window_date` 0x415FB0 again, the item message 0x5FE4F0's subtype
+5 (0x5FE599 to 0x5FE5E4), every caller of `adventure_view_draw` 0x40F3F0 for its fifth argument
+(1 at each), `hero_select`'s chooser call (0x417FEF to 0x41800B), a key's step's (0x4090F6). The
+other kinds (another player's turn, a resource found, a text) are M4's (the user, T5b1's cut).
+
+- **The date's** (0x450DD0; kind 1): the panel at (614, 400), 176 × 166; 2000 `AdStatOt.pcx`
+  (0, 0); on a week's first day but the game's first (0x450EB4: day 1, not week 1 of month 1)
+  the week's picture (the table 0x660BA0 by the week of the month: `NewWeek1.def` to
+  `NewWeek4.def`, 4, 8, 12 and 16 frames) and "%s %d" (0x660C98) with GENRLTXT 64 ("Week") and
+  the week, no sound; else `NewDay.def` (10 frames) and GENRLTXT 65 ("Day") with the day of the
+  week, then `newday.wav` (`play_sound_async`, time-out 30 000, category 3). 2001 the picture at
+  (0, 0), 175 × 166 (a column narrower than the panel), frame 0; 2002 the text in `medfont.fnt`,
+  colour 4, alignment 1, at (10, 10), 148 × 146. The panel keeps the picture (+0x38), the text
+  (+0x34), the frame (+0x3C, 0), its step (+0x40, 100 ms) and its last step's time (+0x44, the
+  clock at the build). Every picture's frame is 175 × 166, opaque but 62 transparent pixels at
+  the same places in each (so a frame drawn over the last shows the panel's picture there as
+  over the picture itself).
+- **Its step** (0x4511A0, the vtable's +4; `status_panel_update` 0x402B90 calls it when its
+  argument is 0 or the dialog's +0x6C is set; the other panels' +4 is a lone `ret` 0x5BC690):
+  while the frame is not the picture's group 0's last and the clock is 100 ms or more past +0x44,
+  the frame + 1, the picture drawn and the text over it, the picture's rectangle shown at once
+  (0x5FE7C0 with 5, 0x4000: the item message's subtype 5 adds the state and, with 0x4000, shows
+  the item's rectangle and clears it), +0x44 the clock now. `status_window_date` 0x415FB0 calls
+  it (with 0) when the date's shows and it is not forced; three sites in the computer's turns
+  (M4's) and a message box (with 1) too.
+- **The kingdom's** (0x452B80; kind 2): 2000 `AdStatin.pcx`; the current player's towns counted
+  by their every-built sets (+0x158; `building_bits` 13, 12, 11: the Capitol, the City Hall, the
+  Town Hall, tested in that order, else a village; the town's window tests the standing set
+  +0x150, the same in play); for each hall i of four `itmtl.def`'s frame i at (6 + 42 i, 11),
+  38 × 38 (ids 2001 to 2004), and under it, when it has towns, the count by `%d` in
+  `smalfont.fnt`, colour 4, centred, at (7 + 42 i, 56), 37 × 17 (id −1); "%s:" (0x660D28) with
+  GENRLTXT 391 ("Allies") at (10, 103) and 392 ("Enemies") at (10, 134), 57 × 20, left (id −1);
+  then by colour each player not out of the game (game +0x1F636) of the shown player's team
+  (+0x1F879, the shown player 0x69778C among them) on the first row, `itgflags.def`'s frame the
+  colour at (67 + 15 k, 102), 15 × 20, the others on the second at (67 + 15 k, 133), each row
+  stepping by its own flags, ids from 2005 in the order made.
+- **When each shows** (§4.8's chooser, read again): every view's draw ends with the chooser (0,
+  1, 1: each caller of 0x40F3F0 passes its fifth argument 1, so the idle redraws, a scroll's, a
+  walk's frames and the rest), so a kind asked for a time (+0x398 and +0x39C,
+  `status_window_set_kind`: a new day asks the date's for 3 000 ms) shows until the first draw at
+  or after its end and then the selection's (kind 0: the selected hero's, else the selected
+  town's, else the date's); the date's, asked or the selection's, steps its frame at each draw
+  100 ms or more after its last step, up to its last (at the idle redraws, every 180 ms). Forced:
+  `hero_select` with its c (0x417FF6: a lift that centres the view) and a key's step's end
+  (0x4090FE, after its visit and the mouse's move) build the window again: the date's at its
+  first frame, with its sound. The status window's click (0x409FD8, T6) cycles the kingdom's, the
+  date's and the selection's.
+- **Seen** (the captures): the date's (the day's at frame 1, the third week's) and the kingdom's
+  (four towns by their halls, two teams written) as read, pixel for pixel, first time; the kind
+  asked at a sequence's 0 shows from 0's redraw; the kingdom's gives way to the hero's at the
+  redraw at 720 (asked for 700 ms); the date's steps at 180, 360 … 1 620 to its tenth frame,
+  each step's screen change the picture's rectangle, and gives way to the hero's at 3 060; the
+  colours out of the game (no player) show no flag.
+- **Built** (*provisional*): the live part's `Status::Date` (the frame) and `Status::Kingdom`
+  (the halls' counts, the allies' and the enemies' colours), `Status::kind`, the kingdom's
+  `selection` (the selection's window, read before a kind is asked: what the end builds again);
+  `status::window`'s date's and kingdom's (the layout's `status_date`, `status_kingdom`: our ids
+  2021 to 2024 for the counts, 2031 and 2032 for the labels, 2041 and 2051 for the two rows'
+  eight places), the tables' `[map.status.date]` (the day's and the weeks' pictures, their frames,
+  the step, the sound; the gate checks each picture's frames exactly), `DateArt::shows`; the
+  catalogue's keys `map.status.date`, `map.status.side`, `word.allies`, `word.enemies`;
+  `timeline::Loop`'s chooser at the end of each draw and forced at a centring lift and a key's
+  step's end (`Start::asked`: a recording's kind asked at 0 and its end; none: a date's or
+  kingdom's window at 0 asked until no end), the date's step and build (`Cue::Effect` for its
+  sound, played once on a stream of the window's own; `SoundRules::effects`); a status window
+  the live part does not give (none) is left as it is. A map's start without a selection gives
+  the date's at its first frame. The harness: `Mem.status` for the kinds 1 and 2 (the frame from
+  the picture's item; the halls, allies and enemies computed from memory), `Mem.ask_status`
+  (+0x398, +0x39C, with `rebuild` +0x394 none), `h3map.ask_status` (the selection's window read
+  first); a situation's `status` (1 or 2, asked until long after the still) and `teams` (written
+  into +0x1F879), a sequence's `status = [kind, end]` (asked at 0, built afresh by 0's redraw; a
+  date's window at 0 the sequence did not ask is refused: its steps' times are unknown), the
+  situations `status-date`, `status-week`, `status-kingdom` (`TownBuilt`'s `townhall` and
+  `cityhall`, additive), the sequences `status-kingdom-end`, `status-date-end`. Not built: the
+  date's window over a computer's walk (M4's), a message box's (+0x6C), the click (T6).
+- **Checked:** `set --only` on the three new situations: exact (0 of 469 344 differing);
+  `frames --only` on the two new sequences: every frame exact (6 and 19), the viewer's timeline
+  the recorded one line for line; `drawn` all the 47 situations and 13 sequences recorded before
+  the same, then `--record`; unit tests (the windows, what the date shows, the chooser over time:
+  the date's steps and last frame, the ends, a town's selection, a selection's window unknown,
+  nothing selected, a still's date stepping on, a lift's and a key's step's rebuild, the sound
+  when built and not for a week or a later frame), 100 % coverage; the window under Xvfb
+  (`status-date-end`, `status-kingdom-end`, `status-kingdom`, `status-week`, `--check 10`): every
+  frame read back exact, made as the same frame composed afresh, every change the headless
+  loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each): the
+  same: `walk-1` 24.8 % uploaded, a frame made in a median 0.5 ms (0.4–0.6 on `master`); *Tale of
+  two lands* 11.2 %, 1.2–1.3 (1.2). The chooser at each draw compares a status or returns.
+
+### 4.10 The mouse over the map and the panels (M3 T6a1)
+
+Read: `adventure_mouse_move` 0x40E360 whole (its human turn's part from 0x40E392), `view_mouse_tile`
+0x40DEB0 (another player's turn: the tile, its hint and three cursors; M4's), `tile_cursor_kind`
+0x40E280, `town_defended` 0x5BDFE0, `map_hint` 0x40B150's frame (0x40B150 to 0x40B215 and its tail
+0x40D0B0 to 0x40D225) and its cases 0 (the classes 0, 3, 26, 36), 17 (34), 29 (54), 46 (98) and the
+default, `hint_tile` 0x40AFB0, `adventure_panel_hint` 0x403010, `panel_hint_index` 0x402C50,
+`dialog_item_at` 0x5FF3E0, the loads of the texts (`help_text_load` 0x5B98B0's groups,
+`arraytxt_load` 0x5B9CC0's, `objnames_load` 0x5B92D0) and `pathfinder_run` 0x56B440's stop. Built in
+`h3_map_view::hover` and the timeline's `Loop::moved` (*provisional*); recorded and compared:
+`hover-panels`, `hover-map`, `hover-sail` (every frame exact, each timeline the recorded one; their
+status bar compared, `masks.toml`'s `hinted`).
+
+- **The tile under the mouse** (0x40E3D2): the view's corner plus the mouse message's point divided
+  by 32, x and y: the point is the screen's, so a drawn row's last 8 pixels give the tile below
+  (§1.2; observed: (336, 196) over the drawn row 5 is row 6; MCL-Q18). The item's bounds compare x
+  with its x and with its y plus its width (both 8: no effect). The tile is looked at only when the
+  view's column or row under the mouse changes (+0xEC, +0xF0; set to -1 after a walk's end, 0x40812F,
+  and a key's step, 0x4090F1): a scroll under a still pointer looks at nothing, nor does a return to
+  the column and row last looked at after the pointer left the view (MCL-Q17).
+- **On a change** (0x40E41A on): the click's action +0x40 to -1; off the map or on a tile the
+  viewer has not explored the arrow and nothing else (the hint left); else the tile's hint
+  (0x40E521), then the cursor (type 1, `cradvntr.def`). Without a hero selected (0x40E570): a town
+  of the player's team (by its entrance's setup, `tile_object_entrance` 0x4FCAA0 and
+  `tile_object_setup` 0x4FCC30; or the manager's +0x3D, a debug flag, not modelled) frame 3 and
+  action 3, a hero of the player's own (its +0x22 the current player, not the team) frame 2 and
+  action 2, a shipyard of the team (its setup's low byte the owner) frame 6 and action 8; else the
+  arrow. With one: another level the arrow; its own tile frame 2, action 2; a blocked tile (+0xD
+  bit 0x01, 0x40E730): a town's of the team frame 3, action 5, a shipyard's frame 6, action 8, else
+  the arrow (the pathfinder's path list emptied, 0x40E836: nothing drawn changes); from land a
+  water tile only with a hero, a boat or a shipwreck (85) on its entrance, from a boat only water or
+  the coast (class 3), else the arrow (0x40E862). Then (0x40E91B) the pathfinder run for the
+  selected hero to the tile (`movement_calculations_mouse` 0x4194A0 → `pathfinder_run` 0x56B440,
+  with the hero's points now), and the tile's node (+0x24 at ((y + 2 z h) w + x), 30 bytes): not
+  reached the arrow; else the action 1 and the days d = 0 within the points (+0x4D), else
+  (cost − points − 1) / day points (+0x49) + 1, at most 3 (0x40E98F). The kind by the tile's class
+  (switch 0x40E9DE, index table 0x40EC18): the coast from a boat 7 (a landing), a boat 6 (from a
+  boat 0 and the action -1), a garrison's or town's entrance not the team's with an army (its
+  record +0x4 / `town_defended`: a garrisoned hero, else a visiting hero's army, else its own) 5, a
+  hero of the team 8, another hero or a monster 5; else `tile_cursor_kind`: a tile a monster guards
+  (the vision word's bit 8) 5 unless an entrance of a class never entered (the object settings'
+  first byte, `object_classes_not_entered` 0x63AA58); from a boat a water entrance 0x1C, else 6;
+  on land an entrance 9 (on water only a shipwreck's), else 4. The frame: kind + 6 d, but 0x1C
+  from a boat 28 + d. Seen: 0 2 3 4 5 6 7 9 10 11 12 13 14 15 16 21 in the three sequences.
+- **The pathfinder stops** (0x56BC7E): after each expansion, once the destination's node is
+  reached (its +4 bit 0 set when found), so its cost is the one it was first found at, not always
+  the cheapest (MCL-Q19). The harness therefore reads each tile's cost after a run to it: before a
+  sequence's 0 it moves the pointer over each tile its inputs visit (`look_over_view`), then over
+  the kingdom overview and back to the parking (the hint as before) and writes +0xEC and +0xF0 -1.
+- **Outside the view** (0x40EB7D): an edge cursor (32 to 39) stays while the mouse now lies on the
+  screen within 16 pixels of a side (x < 16 or x > 784, y < 16 or y > 584, x not rounded), any
+  other cursor becomes the arrow; then the panel's hint.
+- **The panel's hint** (0x403010): with the chat's edit not editing, the item under the point
+  (`dialog_item_at` 0x5FF3E0: the dialog's items from the last back, the first whose box holds it
+  and whose state has 0x2 without 0x8 or 0x1000); the same id as the static 0x65F228 (initially -1)
+  does nothing, so the map's hints leave it (MCL-Q17). -1: the arrow and no text. Read from the
+  running original's items: a disabled button (the underground on one level, move hero without a
+  green arrow, a list's arrow at its end) has 0x8 and takes no mouse, the quest log's 0x20 does; a
+  list's portrait and bars take it only in a slot holding a hero or a town, the hero list's
+  selection frames (39 to 43, added after the portraits) always; the chat's edit 38 lies over the
+  status bar (no text there); the resource bar's and the status window's items are panels of their
+  own: none over the bar, the status window's area 2 over the whole window (observed). The text:
+  a hero's slot (15 to 29 and 39 to 43, by its list's top) GENRLTXT's record 16 ("%s the %s") with
+  its name (+0x23) and class (`hero_class_name` 0x4D8F70: the class record's +0x4, HCTRAITS; a
+  campaign hero's own text, not modelled), a town's slot (32 to 36) "%s, %s" (0x65F3D4) with its
+  name (+0xC8, none an empty text) and type (`town_type_names` 0x6A74F4: ARRAYTXT's records 219 to
+  227), the ids 1001 to 1015 none, else `panel_hint_index`: 1 to 14 the pair id − 1, 15 to 29 and
+  39 to 43 14, 30 15, 31 16, 32 to 36 17, 200 26, the resource bar's 1001 to 1015 18 to 25 (other
+  screens'), else none; the pairs 0x6A56E0 are Help.txt's records 291 to 317. The text set into the
+  status bar (200), the item drawn and its rectangle shown at once (0x4031AA to 0x4031E9).
+- **The map's hint** (0x40B150; nothing while the chat edits): `hint_tile` 0x40AFB0 with the view's
+  column and row: at (9, 8) with a selected hero off its tile (+6 0, the lifted one) the hero shown
+  there for the hint (`hero_show`) and the mouse's tile; else the entrance of the tile's object
+  (`tile_object_entrance`) when another: the same class there that tile, a hero or a boat standing
+  there taken off (`hero_hide`) and that tile, else that tile. By its class (switch 0x40B20E, index
+  table 0x40D314, 59 cases): 0, 3, 26, 36 the special ground's name (`tile_special_ground`
+  0x4FCE20: none gives 0, no text), 34 a hero's text as its slot's, 98 a town's as its slot's, 54 on
+  an entrance "%s %s" (0x660344) with the size word of its count (the word's low 12 bits;
+  `creature_quantity_word` 0x44ADE0 with form 1: ARRAYTXT's records 175 + 3 n) and its creature's
+  plural name (+0x18, none above 150); every class without a case (0x40D0E7) its name
+  (`object_names` 0x6A79EC: OBJNAMES's record per class, 0 to 231); the other 58 cases (visits,
+  owners, contents): T6a2. The message buffer set into the status bar, drawn and shown at once
+  (0x40D178 to 0x40D1D1).
+- **Built:** the live part's `[hover]` (the facts only the game knows: each object's entrance word
+  and army, the towns' names and types, the heroes' indices and own names, the viewer's lists, the
+  teams, the guarded tiles, the selected hero's costs of the tiles looked at and its day points;
+  `h3mem.Mem.hover`); the tiles from the map's objects (`record`, the heroes and boats on them; a
+  water tile is never the coast's class 3, M3 T6a1's fix to `record`); the timeline's
+  `Loop::moved` over the view and outside it, the click's move first; the status bar's text in the
+  scene by the catalogue (the families `map-hint`, `object`, `hero-class`, `town-type`, `creature`,
+  the keys `map.hint.*`, `map.army.*`; h3-ui's families learn `count`: records one by one, blank
+  ones included). A still's hint: the panel's at its parked pointer. After a walk the costs are no
+  longer the hero's: the arrow over the tiles they gave (the engine's from M4).
+- **Not built:** another player's turn (0x40DEB0's), the chat's edit, a debug flag +0x3D, a
+  campaign hero's class text, the hints' 55 cases (T6a2a: §4.11; T6a2b), the clicks (T6b).
+
+### 4.11 The map hint's visit marks (M3 T6a2a)
+
+Read in the sandbox (`scripts/exe.py`, the cases of switch 0x40B20E; M3 T6a2 cut with the user,
+2026-10-30, by what runs the hint: T6a2a the 35 classes whose case is inline and shows what was
+visited, T6a2b the 20 others: owners, contents and the seven sub-functions their cases call).
+Every one of the 35 starts as a class
+without a case: its name (`object_names` 0x6A79EC) into the message buffer; on a tile that is
+not its object's entrance (+0xD bit 0x10) nothing more. On the entrance it appends, each by
+" %s" (0x66034C) or a space (0x660330) and the text, in this order:
+
+- **The bonus** (XtraInfo.txt's record n, `xtrainfo_load` 0x405D80 into `xtra_info` 0x69127C,
+  28 records) when the viewing player (`viewing_player` 0x4CEA20, 0 to 7) knows the kind: its
+  bit in the game's `kinds_visited` +0x4E344 + k (structs.toml). Class (k, n): Buoy 11 (0, 0),
+  Swan Pond 14 (1, 1), Faerie Ring 28 (2, 2), Garden of Revelation 32 (4, 4), Learning Stone 100
+  (5, 5), Library 41 (6, 6), Marletto Tower 23 (7, 7), Mercenary Camp 51 (8, 8), School of Magic
+  47 (9, 9), School of War 107 (10, 10), Star Axis 61 (11, 11), Fountain of Youth 31 (13, 13),
+  Hill Fort 35 (14, 14), Magic Spring 48 (15, 15), Mermaid 52 (16, 16), Rally Flag 64 (17, 17),
+  Idol of Fortune 38 (22, 22), Temple 96 (23, 23), University 104 (24, 24), Magic Well 49 (25,
+  25), Oasis 56 (26, 26), Watering Hole 110 (27, 27); the Fountain of Fortune 30 (n 3) by its
+  own word instead: bit 5 + `shown_player` (0x69778C, 0 to 7).
+- **The mark** (GENRLTXT's record 353 visited, 354 not visited), by what the class keeps:
+  - with a selected hero only (the screen player's +0x4, `game_screen_player` 0x4CE9B0), by its
+    `status_flags` +0x105: Magic Well bit 0, Stables 94 bit 1, Buoy 2, Swan Pond 3, Idol bits 4
+    or 25, Fountain of Fortune bits 5, 27, 28 or 29, Watering Hole 6, Oasis 7, Temple 8 or 26,
+    Faerie Ring 13, Fountain of Youth 14, Mermaid 15, Rally Flag 16, Sirens 92 bit 20; by the bit
+    (word & 0x1F) of its per-object field: Learning Stone +0x57, Marletto +0x5B, Garden +0x5F,
+    Mercenary Camp +0x63, Star Axis +0x67, Library +0x6F, Arena 4 +0x73, School of Magic +0x77,
+    School of War +0x7B; by that bit of the screen player's record: Corpse 22 +0xC0, Lean To 39
+    +0xC4, Magic Spring +0xBC (and its word's bit 6 clear, else not visited); the Pyramid 63 by
+    its word's bit 5 + the hero's owner (+0x22, 0 to 7; else not visited).
+  - without one too: the Mystical Garden 55 by the bit (word & 0x1F) of the screen player's
+    +0xB8 and its word's bit 10 clear; the Obelisk 57 by the viewing player's bit in the game's
+    +0x4E3E9 + its word (a signed byte); the Wagon 105 and Warrior's Tomb 108 by the word's bit
+    5 + `current_player` (0x69CCA8, 0 to 7; else not visited); the Water Wheel 109 and Windmill
+    112 only when that bit is set: visited when what is left is none (the wheel's word & 0x1F
+    times 500 in 16 bits, the mill's bits 13 to 16), else not visited.
+  - none: Hill Fort, University.
+
+The four players are one in a human's turn of a single-player game (the comparisons'); their
+differences matter in the hot seat (M5). **Built:** the live part's `[hover]` `visits`, per map
+object whether the viewer knows its bonus and its mark (visited, not visited or none), which the
+harness derives from memory by the rules above (`h3mem.Mem.visits`) and the engine gives from M4
+(for the hero selected when it is read: a selection changed by a click, T6b, reads it again);
+`Hint::Visits` composes the name, the bonus (`map-bonus.<n>`) and the mark (`map.hint.visited`,
+`map.hint.not-visited`) with `map.hint.more` (0x66034C) between. A situation's `visits` writes
+them into the original for a comparison (`h3map.stage`: the same rules inverted).
+
+### 4.12 The map hint's owners and contents (M3 T6a2b)
+
+Read in the sandbox (kept whole by the user, 2026-10-30): the other 20 cases of switch 0x40B20E and
+the sub-functions they call. Each starts with a name; the separators the sub-functions take are a
+space (0x660330), so every part after the name is " %s" (`map.hint.more`).
+
+- **Border Guard and Gate** (9, 212; 0x40B2FD) and **Keymaster's Tent** (10, 0x40B328): "%s %s"
+  (0x660344) with the colour's name (`keymaster_colour_names` 0x6A7520, TentColr.txt by
+  `tentcolr_load` 0x5B9880; the tile's +0x22 subclass) and the class's; a Tent on its entrance
+  its mark (GENRLTXT 353/354) by the viewing player's bit of the game's u8[8] +0x4E364 + colour.
+- **Dwellings** (17, 20; 0x40B587, 0x40B5CA): the dwelling record's (game +0x4E39C, 0x5C bytes, by
+  the word) name by its +1 (CrGen1, CrGen4), with an owner (+0x57) "%s - %s" (0x66033C) and its
+  "Owned by" text (`player_owned_names` 0x6A5898, ARRAYTXT 23-30); no entrance test.
+- **Lighthouse** (42, 0x40BEA2): its name, on its entrance with an owner (game +0x4E38C, 0x40
+  bytes, +0) " - %s" (0x660334). **Resource** (79, 0x40C785): `resource_names` 0x6A5E64
+  (RESTYPES, `restypes_load` 0x5B9310) by its subclass.
+- **Mine** (53, `mine_hint_text` 0x40D670, the viewing player): the name (`mine_names` 0x6A74D0,
+  MineName by the record's +1; its +2 set the eighth, an abandoned mine's), then with an owner its
+  "Owned by" text; where the owner is of the viewer's team (game +0x1F879) "(" (0x660354), the
+  resource's name and ")"; with guards (the record's army +4) `army_description_text` 0x40ABE0
+  without its details: GENRLTXT 203, the size word of the total count in form 2 (ARRAYTXT 176 +
+  3 n) and the only creature's plural, or GENRLTXT 44 for several (the stacks merged by creature,
+  `army_add_stack` 0x44ACE0). No entrance test.
+- **Creature banks** (`creature_bank_hint` 0x40D3F0, the shown player; 16 its subclass, 85 kind 7,
+  24 kind 8, 84 kind 9, 25 kind 10): the kind's name (CrBanks.txt's record 2 + 4 k, the table at
+  `creature_bank_kinds_pointer` 0x67029C), then GENRLTXT 354 unless the word's bit 5 + player;
+  visited, GENRLTXT 353 once looted (bit 25) or its army (game +0x4E3DC, 0x6C bytes, by bits
+  13-24) empty, else "(" and the guards as a mine's and ")". No entrance test.
+- **Shrines** (88-90, `shrine_hint` 0x40D8D0), **Tree of Knowledge** (102, 0x40DB00), **Witch Hut**
+  (113, 0x40DCC0), the current player: the name; on the entrance, once the word's bit 5 +
+  player: a Shrine's "(Learn %s)" (GENRLTXT 356) with its spell (bits 13-22, signed) and, when
+  the selected hero has it (+0x430 + spell), GENRLTXT 355; a Tree's price (`tree_price_names`
+  0x6A64D8, ARRAYTXT 202-204 by bits 13-15; each text begins with a space: MCL-Q20); a Witch Hut
+  with a skill (bits 13-19 not all set) "(Learn %s)" (GENRLTXT 357) with it and, when the hero
+  has it (+0xC9 + skill), GENRLTXT 358. Else, once the kind is known (kinds_visited 19-21, 18,
+  12 by the current player), its XtraInfo row. A Tree then shows the selected hero's mark by its
+  +0x6B bit (word & 0x1F).
+- **Seer's Hut** (83, `seer_hut_hint` 0x5741B0; its 19-byte record at game +0x1FBD4 by the word,
+  the viewing player) and **Quest Guard** (215, `quest_guard_hint` 0x573040; 5 bytes at +0x1FBE4,
+  the shown player): a Seer's Hut not visited (its +4 bit) its name, visited GENRLTXT 348 with
+  the seer's name (SeerHut.txt 50 + its +0x11); a Quest Guard its name; then, visited and with a
+  quest (+0), a space and the quest's text: its vtable (`quest_vtables` 0x64174C + 0x3C x type,
+  `quest_create` 0x573240) +0x1C, SeerHut.txt's "rollover" record 5 x type in the column of the
+  quest's +4 (seer 1-3, guard 4-6) by its variant +0x38, formatted with the level (+0x40), the
+  primary skills above 0 ("%s %i", PRISKILL), the hero's name (+0x44, +0x40 to be), the monster's
+  plural (+0x48), the artifacts' names (+0x44's vector), the creatures ("%d %s", the singular for
+  one; +0x54's types, +0x44's counts), the resources above 0 ("%d %s"), or the colour's name
+  (PlColors) in lower case (0x6172B6); a list joined by ", " and GENRLTXT 142 before its last
+  (`list_join` 0x56C960).
+
+The players again are one in the comparisons (§4.11). **Built:** `hover::contents`: the live part's
+`[hover]` contents (`mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`: sparse rows by
+object; the Tent's mark a `visits` rule), `Hint`'s variants (`Keymaster`, `Dwelling`,
+`Lighthouse`, `Resource`, `Mine`, `Bank`, `Teaches`, `Quest`; `Hint` no longer `Copy`), the
+catalogue's keys and families (`clients/text/keys.toml`); the harness's `Mem.contents`,
+`Mem.quest`, `Mem.write_content` (a situation's `visits` with `hero` and `guards`) and the Quest
+Log's state as shown (`Mem.item_states`: the harness's writes do not run `quest_log_state`); the
+writer's quests (`Extras::quests`, a situation object's `quest`). An object whose data names
+nothing (a colour or resource past its table, a defeat-hero quest without its hero) shows nothing
+there (MCL-Q21).

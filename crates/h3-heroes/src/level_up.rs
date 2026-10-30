@@ -87,9 +87,9 @@ pub enum Choice {
     Second,
 }
 
-/// What a level-up draws (design §6): the new level, the primary skill it raises, its offers and
-/// the levels at which Wisdom and a school were last offered after it. Drawing it changes
-/// nothing; [`LevelUp::change`] is the answer.
+/// What a level-up draws (increment 4's design note §6): the new level, the primary skill it
+/// raises, its offers and the levels at which Wisdom and a school were last offered after it.
+/// Drawing it changes nothing; [`LevelUp::change`] is the answer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LevelUp {
     /// The new level.

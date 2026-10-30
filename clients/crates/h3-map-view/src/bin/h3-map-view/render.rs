@@ -16,6 +16,7 @@ use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{MapArt, TemplateArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
+use h3_map_view::hover::{self, Facts};
 use h3_map_view::live::{
     Arrow, Boat, Buttons, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero, Moment,
     Status, TOWN_CLASS,
@@ -205,6 +206,10 @@ fn render(options: &Options) -> Result<PathBuf, String> {
         )?;
     }
     hide(&art, &mut live, options.view.z, &options.hidden);
+    // The status bar's hint of the parked mouse (E24 M3 T6a1, design §4.10).
+    if let Some(point) = pointer {
+        live.hint = Some(hover::parked_hint(&layout, &live, art.levels, point));
+    }
     let mut shapes = files::load_shapes(&archives, &objects::pictures(&art, &live))?;
     let heroes: Vec<String> = tables
         .map
@@ -309,7 +314,8 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// list shows them, T4b); `buttons`
 /// (T2a), move hero's and next hero's states as the original last set them, `[move, next]`, 1
 /// enabled; `pointer`
-/// (T2a), where the parked mouse is, returned. Each key is optional (`defs` and `classes`
+/// (T2a), where the parked mouse is, returned; the table `[hover]` (E24 M3 T6a1, design §4.10),
+/// the mouse-over's facts ([`Facts::read`]). Each key is optional (`defs` and `classes`
 /// together); other keys are left. The file's `cycles`, `frames` and `viewer` override
 /// `--cycles`, `--at` and `--viewer`: the comparisons draw the original's.
 pub fn read_live(
@@ -574,11 +580,33 @@ pub fn read_live(
         // What the status window shows (E24 M3 T5b1, design §4.8).
         live.kingdom.status = Some(Status::read(value).ok_or_else(|| {
             failed(
-                "`status` is not { kind = 3, hero, skills = [4], morale, luck, army = [[type, \
-                 count] x 7] }, { kind = 4, name, buildings = [ids], garrison, army, silo = \
-                 [resources], income } or { kind }",
+                "`status` is not { kind = 1, frame }, { kind = 2, halls = [4], allies = \
+                 [colours], enemies = [colours] }, { kind = 3, hero, skills = [4], morale, luck, \
+                 army = [[type, count] x 7] }, { kind = 4, name, buildings = [ids], garrison, \
+                 army, silo = [resources], income } or { kind }",
             )
         })?);
+    }
+    if let Some(value) = table.get("selection") {
+        // The selection's window, which a kind asked for a time gives way to (E24 M3 T5b2,
+        // design §4.9).
+        live.kingdom.selection = Some(
+            Status::read(value).ok_or_else(|| failed("`selection` is not a `status`'s table"))?,
+        );
+    }
+    if let Some(value) = table.get("hover") {
+        // The game's facts the mouse-over reads (E24 M3 T6a1, design §4.10).
+        let (objects, heroes) = (art.objects.len(), live.heroes.len());
+        live.hover = Some(
+            Facts::read(value, objects, heroes, art.size, art.levels).ok_or_else(|| {
+                failed(
+                    "`[hover]` is not words and armed (one per object), towns ([[name, type]]), \
+                     hero_ids ([[index, own name]], one per hero), hero_list ([[index, class, own \
+                     name]]), town_list, teams (8), guarded (rows), reach ([[x, y, cost]]) and \
+                     day_points",
+                )
+            })?,
+        );
     }
     table.get("pointer").map_or(Ok(None), |value| {
         let point: Option<Vec<i32>> = value.as_array().and_then(|a| {

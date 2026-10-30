@@ -1185,6 +1185,46 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
 }
 
 #[test]
+fn the_panel_follows_each_turns_controller() {
+    // E17 M5 T5b2 (R3-1): stack 2 the defender's (a computer), hypnotized by the attacker (Red,
+    // human) for its second turn: that turn's panel is Red's and lit; a stack the opening lacks
+    // (created, 7: no side by the opening's stacks, the panel as with none) by its controller the
+    // timeline names, here the defender's. Controllers past the turns are ignored.
+    let layout = layout();
+    let mut o = battle_view();
+    o.sides[0].human = true;
+    let events = [
+        Event::TurnStarted { stack: 2 },
+        Event::TurnStarted { stack: 2 },
+        Event::TurnStarted { stack: 7 },
+    ];
+    let started = [(100, 2), (200, 2), (300, 7)];
+    let wait = |list: &[Draw]| match &list[6] {
+        Draw::Dialog(ui::Draw::Button { frame, .. }) => *frame,
+        _ => 9,
+    };
+    let by_opening = Panels::new(&o, &events, Vec::new());
+    assert_eq!(
+        [150, 250, 350].map(|t| wait(&by_opening.at(&o, &started, t, &layout))),
+        [2, 2, 0]
+    );
+    let controllers = [
+        Side::Defender,
+        Side::Attacker,
+        Side::Defender,
+        Side::Attacker,
+    ];
+    let panels = Panels::new(&o, &events, Vec::new()).with_controllers(&o, &controllers);
+    assert_eq!(
+        [150, 250, 350].map(|t| wait(&panels.at(&o, &started, t, &layout))),
+        [2, 0, 2]
+    );
+    // Auto Combat's selection reads the same sides.
+    let auto = panels.with_auto(&o, Auto::default());
+    assert_eq!(wait(&auto.at(&o, &started, 250, &layout)), 0);
+}
+
+#[test]
 fn a_heros_cast_disables_its_spell_book_for_the_turn() {
     // E17 M3 T7b-1 (the recorded `cast`): from the cast's start, the side's hero has cast this
     // round; the other side's cast leaves this turn's book as it is.
@@ -1567,4 +1607,73 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
     assert!(fails(&ghost, &nothing, DissolveArea::Battlefield));
     assert!(fails(&ghost, &nothing, DissolveArea::Stacks(vec![5])));
     assert!(fails(&nothing, &ghost, DissolveArea::Stacks(vec![5])));
+}
+
+#[test]
+fn a_record_opening_mid_battle_boxes_a_raised_corpse_and_lays_corpses_as_they_died() {
+    // E17 M5 T6b2 (R2-8): whether a stack lives is the timeline's: a corpse of the snapshot
+    // raised since shows its box and takes its hex; two corpses on one hex lie in the order they
+    // died (the hex's corpse list, 0x4948C7), whatever their ids; a stack gone without a corpse
+    // is not drawn.
+    let dead = |mut s: Stack, order: u16| {
+        (s.alive, s.count, s.corpse) = (false, 0, order);
+        s
+    };
+    let at = hex(4, 5);
+    let mut o = observation();
+    o.active = None;
+    o.stacks = vec![
+        dead(stack(0, Side::Attacker, 0, at, false), 2),
+        dead(stack(1, Side::Attacker, 1, at, false), 1),
+        dead(stack(2, Side::Defender, 0, hex(6, 8), false), 3),
+        dead(stack(3, Side::Defender, 1, hex(7, 2), false), u16::MAX),
+    ];
+    let pose = |hex: u8, mirrored: bool, layer: u8| Pose {
+        group: if layer == 1 { 5 } else { 2 },
+        frame: 0,
+        hex,
+        offset: [0, 0],
+        mirrored,
+        layer,
+        boxless: false,
+    };
+    let moment = Moment {
+        poses: [
+            (0, pose(at, false, 1)),
+            (1, pose(at, false, 1)),
+            (2, pose(hex(6, 8), true, STANDING)),
+        ]
+        .into_iter()
+        .collect(),
+        counts: [(2, 7)].into_iter().collect(),
+        ..Moment::default()
+    };
+    let t = tables();
+    let layout = layout();
+    let list = battle_at(&o, &moment, &keys(), &t, &layout).unwrap();
+    let def = |key: &str| t.creatures[key].def.clone();
+    let creatures: Vec<(String, u32)> = (list.iter())
+        .filter_map(|d| match d {
+            Draw::Creature { def, group, .. } => Some((def.clone(), *group)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        creatures,
+        [
+            (def("base:dragon"), 5),
+            (def("base:pikeman"), 5),
+            (def("base:pikeman"), 2)
+        ]
+    );
+    let boxes: Vec<(u8, u32)> = (list.iter())
+        .filter_map(|d| match d {
+            Draw::CountBox { stack, count, .. } => Some((*stack, *count)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(boxes, [(2, 7)]);
+    // The raised stack takes its hex from the boxes; the corpses take none.
+    let taken = taken(&o, &moment, &t);
+    assert!(taken.contains(&hex(6, 8)) && !taken.contains(&at));
 }

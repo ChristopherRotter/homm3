@@ -1,0 +1,24 @@
+# The kingdom's status window (E24 M3 T5b2; design §4.9, AdStatin.pcx built by 0x452B80): Red's four
+# towns by their halls (no village, two Town Halls, a City Hall and a Capitol: the counts under
+# itmtl.def's frames 1 to 3, none under the villages'), Blue's town not counted; the teams written
+# (Red and Tan one team, Blue and Green others), so Red's and Tan's flags show on the first row,
+# Blue's and Green's on the second (the players out of the game none); the kingdom's kind asked
+# over the turn start's window (Red's hero's).
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [4, 6] },
+    { at = [30, 30], owner = 1 },
+    { at = [30, 4], owner = 2 },
+    { at = [4, 30], owner = 3 },
+]
+towns = [
+    { at = [12, 10], faction = 0, owner = 0, buildings = "townhall" },
+    { at = [20, 10], faction = 1, owner = 0, buildings = "cityhall" },
+    { at = [12, 18], faction = 2, owner = 0, buildings = "capitol" },
+    { at = [20, 18], faction = 3, owner = 0, buildings = "townhall" },
+    { at = [12, 26], faction = 4, owner = 1, buildings = "capitol" },
+]
+teams = [0, 1, 0, 2, 3, 4, 5, 6]
+status = 2
+view = [0, 0, 0]
