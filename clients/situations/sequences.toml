@@ -1465,12 +1465,13 @@ command = [
 
 # E17 M5 T5b2: a created stack's turn after the other side's (R3-1): `summon`'s Fire Elementals
 # wait, the Archers defend, then the elementals' waited turn is Red's again (their side's; the
-# opening's stacks do not name them). Hot seat.
+# opening's stacks do not name them), left waiting (round 2 would start with the elementals in
+# the original, with the Swordsmen in the engine: the battle lane's inbox). Hot seat.
 [[sequence]]
 id = "summon-turn"
 scenario = "seq-summon.toml"
 hot_seat = true
-actions = ["cast:0", "key:d", "turn:0.1", "key:w", "turn:1.0", "key:d", "turn:0.1", "key:d"]
+actions = ["cast:0", "key:d", "turn:0.1", "key:w", "turn:1.0", "key:d", "turn:0.1"]
 ms = 1500
 heroes = true
 screens = true
@@ -1482,7 +1483,6 @@ command = [
     { seat = "Attacker", at = 1200, command = { Defend = {} } },
     { seat = "Attacker", at = 1200, command = { Wait = {} } },
     { seat = "Defender", at = 1200, command = { Defend = {} } },
-    { seat = "Attacker", at = 1200, command = { Defend = {} } },
 ]
 
 # E17 M5 T5b2: the sounds' waits (design §8.3). The sequences whose timelines change when the

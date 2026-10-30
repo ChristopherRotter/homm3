@@ -225,9 +225,12 @@ the stacks created mid-battle.
       redraws, Stone Gaze's line), built (`h3_render::recolour`, the timeline's `LookKey`s,
       `Draw::Creature`'s `effect`); `bloodlust` and `stone` recorded, their glows and looks exact;
       `clone`'s colours exact; CLT-Q34.
-    - **T5b2, the panel and the sounds' waits:** the panel's side by each turn's controller
-      (R3-1: Hypnotize, a created stack); the battle waiting for the heal's sound and the other
-      effects'; recorded.
+    - **T5b2, the panel and the sounds' waits** (done 2026-10-29, kept whole by the user;
+      design §8.3, §9.12): read (the acting side by the controller, `wait_for_sample` and
+      `sample_wait` at their 30 battle sites), built (`Timeline::controllers`,
+      `Panels::with_controllers`, `sound::Lengths`, the timeline's waits, the window's lengths;
+      the harness's `sound` runs); `hypnotize`, `summon-turn` and six `*-sound` sequences
+      recorded; CLT-Q34 answered (a).
 - **T6, a game on a server:** joined over the server's WebSocket by a seat token: the hello and
   the welcome's checks, the key pinned per address, the content check (`docs/lanes/client/NOTES.md`,
   "The live client"); a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a join and

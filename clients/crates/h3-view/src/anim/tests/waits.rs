@@ -244,3 +244,42 @@ fn a_hypnotized_stacks_turn_is_its_controllers() {
     let t = waited(&o, &commands[..1], (&magic, &none), None);
     assert_eq!(t.controllers, [Side::Defender]);
 }
+
+#[test]
+fn a_command_after_a_wait_starts_the_frames_grid_at_the_waits_end() {
+    // E17 M5 T5b2 (`gate-sound`): no tick keeps the deadline on its grid while the battle waits
+    // for a sample, so a command at the wait's end (or later) has its frames from there: the
+    // Goblins' first step 100 ms after the wait's end, not on the grid the heal left behind.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        machine(1, Side::Attacker, TENT, 153, 18),
+        at(2, Side::Defender, GOBLIN, 100, false),
+    ]);
+    let heal = vec![
+        Event::TurnStarted { stack: 1 },
+        healed(1, 0),
+        Event::TurnStarted { stack: 2 },
+    ];
+    let (magic, casts) = (magic(), Casts::default());
+    let silent = waited(&o, &[(Some(0), heal.clone())], (&magic, &casts), None);
+    let turn = silent.turns[0].0;
+    // The heal's frames end at turn + 400; the sound 302 ms later.
+    let lengths = named(Sound::Heal, 702);
+    let end = turn + 702;
+    let walk = |at| (Some(at), vec![moved(2, 100, 99), Event::TurnStarted { stack: 0 }]);
+    let t = waited(&o, &[(Some(0), heal.clone()), walk(end)], (&magic, &casts), Some(&lengths));
+    assert_eq!(t.turns[1], (end, 2));
+    let first = |t: &Timeline, after: u32| {
+        t.keys
+            .iter()
+            .filter(|k| k.stack == 2 && k.shown > after)
+            .map(|k| k.shown)
+            .min()
+    };
+    assert_eq!(first(&t, end), Some(end + 100));
+    // A wait that ends within a grid step of the deadline leaves the grid as it was.
+    let near = named(Sound::Heal, 450);
+    let t = waited(&o, &[(Some(0), heal), walk(turn + 450)], (&magic, &casts), Some(&near));
+    assert_eq!(t.turns[1], (turn + 450, 2));
+    assert_eq!(first(&t, turn + 450).map(|s| (s - turn) % 100), Some(0));
+}

@@ -3278,8 +3278,16 @@ the start sound's end; the adventure map's sounds settled first; the main thread
 animation's 2 100 at speed 0). The sequences whose timelines the waits change (the viewer's
 comparison over every sequence with the lengths: `thunder`, `acid`, `obstacles`, `gate`,
 `gate-fortress`, `mine`; no other) recorded again with sound (`*-sound`): the original's waits
-where the viewer's are (`thunder-sound`: the Vampire Lords' reaction 27 ms later, 7 287; `acid-sound`
-72 ms, 8 472); RESULTS.
+where the viewer's are, every timeline as recorded (`thunder-sound`: the Vampire Lords' reaction
+27 ms later, 7 287; `acid-sound` 72 ms, 8 472; `obstacles-sound` the Force Field's turn 3 012 ms
+later for Quicksand's objects; `gate-sound` and `gate-fortress-sound` the landing's 202 ms and the
+drawbridge's; `mine-sound` 202 ms), their frames as the silent ones' (`obstacles-sound` all 80
+exact; the others the same redraw artifacts at their new times). One more fix the recordings
+asked for: the deadline after a wait (no tick ran meanwhile: a command at the wait's end has its
+frames from there, `gate-sound`'s first step at 4 077, not on the old grid's 4 075), and a wall
+shot's landing among the battle's sounds (the window played none).
+
+
 
 ## 9. The string catalogue (M3 T4b-1)
 
@@ -3977,6 +3985,13 @@ and `push_seen`, `anim::Object::owner`, `Timeline::humans` and `screen`; the bin
   Defend by its key, Wait by its button, a walk, the panel's colours the defender's on its turn;
   the Tower's siege in hot seat: its mines on the keep's and the towers' turns, none on the
   Catapult's.
+- **The panel by the turn's controller** (M5 T5b2, R3-1): `stack_activation` sets the acting side
+  +0x132C0 to the active stack's controller (installation.md §7.21), so a hypnotized stack's turn
+  shows its controller's panel (its colours, its hero's book) and its screen; a created stack's
+  turn its side's. Built: `Timeline::controllers` (Hypnotize's look by `SpellLook::original`),
+  `Timeline::screen`, `Panels::with_controllers`. Recorded: `hypnotize` (Orrin hypnotizes the
+  Archers: their turn Red's) all 44 frames exact; `summon-turn` (`summon`'s elementals' waited
+  turn after the Archers') all 30 exact.
 
 ## 10. The siege (M4)
 
