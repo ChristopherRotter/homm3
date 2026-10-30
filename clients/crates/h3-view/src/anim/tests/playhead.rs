@@ -211,6 +211,15 @@ fn a_dissolve_keeps_the_battle_without_the_one_blending_then() {
     assert_eq!(second.before.dissolve, None);
     assert!(Moment::at(&timeline, 200).dissolve.is_some());
     agrees(&timeline);
+    // E17 M5 T8b2 (R6-4): a dissolve's battle is kept while it blends, dropped once it ends.
+    let mut head = Playhead::new(&timeline);
+    let kept = [99, 100, 200, 700, 800].map(|t| {
+        head.seek(&timeline, t);
+        head.dissolves_kept()
+    });
+    assert_eq!(kept, [0, 1, 2, 1, 0]);
+    head.seek(&timeline, timeline.end + 1_000);
+    assert_eq!(head.dissolves_kept(), 0);
 }
 
 #[test]

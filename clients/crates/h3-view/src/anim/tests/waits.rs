@@ -14,7 +14,9 @@ use super::{
     GOBLIN, MARKSMAN, PIKEMAN, TENT, at, flags, healed, layout, looks, machine, magic, moved,
     roll_magic, snapshot, struck, tables,
 };
-use crate::anim::{Casts, Command, HYPNOTIZE, MagicLook, Sound, Speed, SpellLook, Stage, Timeline};
+use crate::anim::{
+    Casts, Command, Cue, HYPNOTIZE, MagicLook, Sound, Speed, SpellLook, Stage, Timeline,
+};
 use crate::sound::{Lengths, SAMPLE_WAIT, length_ms};
 
 /// Hypnotize's handle in these tests (the base pack's 59).
@@ -63,19 +65,33 @@ fn a_samples_length_rounds_its_frames_up() {
     );
     assert_eq!(length_ms(5, 0), 0);
     assert_eq!(length_ms(u64::MAX / 1000, 1), u32::MAX);
-    // A cue's sample: the battle's own sound by its cue first, else the stack's.
+    // A cue's sample: the battle's own sound by its cue first, else a created stack's by its
+    // creature (E17 M5 T8b2, R6-1), else the stack's.
     let lengths = Lengths {
         stacks: [((2, Sound::Shot), 700), ((2, Sound::Heal), 5)]
             .into_iter()
             .collect(),
+        creatures: [((MARKSMAN, Sound::Shot), 650)].into_iter().collect(),
         named: [(Sound::Heal, 900)].into_iter().collect(),
     };
-    assert_eq!(lengths.of(2, Sound::Shot), Some(700));
-    assert_eq!(lengths.of(2, Sound::Heal), Some(900));
+    let of = |stack, sound, creature| {
+        lengths.of(&Cue {
+            at: 0,
+            stack,
+            sound,
+            stop: false,
+            creature,
+        })
+    };
+    assert_eq!(of(2, Sound::Shot, None), Some(700));
+    assert_eq!(of(2, Sound::Heal, None), Some(900));
     assert_eq!(
-        [lengths.of(3, Sound::Shot), lengths.of(2, Sound::Move)],
+        [of(3, Sound::Shot, None), of(2, Sound::Move, None)],
         [None, None]
     );
+    assert_eq!(of(2, Sound::Shot, Some(MARKSMAN)), Some(650));
+    assert_eq!(of(2, Sound::Heal, Some(MARKSMAN)), Some(900));
+    assert_eq!(of(2, Sound::Move, Some(MARKSMAN)), None);
 }
 
 #[test]
@@ -181,6 +197,70 @@ fn a_one_target_shot_waits_for_the_shooters_shot_sound() {
         ..Lengths::default()
     };
     let t = waited(&o, &[(None, events)], (&magic, &casts), Some(&lengths));
+    assert_eq!(t.turns.last(), Some(&(next + 250, 2)));
+}
+
+#[test]
+fn a_created_stack_waits_for_its_creatures_sounds_not_its_ids() {
+    // E17 M5 T8b2 (R6-1): a clone of the Marksmen (in the id of a stack gone, as the engine
+    // reuses one) shoots: `stack_shot` 0x43FDF9 waits on the clone's own shot sound, its
+    // creature's (`create_battle_stack` 0x47A100 loads them), not the gone stack's.
+    let mut gone = at(3, Side::Attacker, GOBLIN, 0, false);
+    (gone.alive, gone.corpse) = (false, u16::MAX);
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 35, false),
+        at(2, Side::Defender, GOBLIN, 49, false),
+        gone,
+    ]);
+    let clone = vec![
+        Event::SpellCast {
+            side: Side::Attacker,
+            spell: 65,
+            target: h3_protocol::wire::Target::Stack { stack: 0 },
+            second: h3_protocol::wire::Target::None {},
+        },
+        Event::StackCreated {
+            stack: 3,
+            creature: MARKSMAN,
+            count: 40,
+            hex: 52,
+            original: Some(0),
+        },
+    ];
+    let shot = vec![
+        struck(3, 2, 3, flags(true, false, false)),
+        Event::TurnStarted { stack: 2 },
+    ];
+    let commands = [(None, clone), (None, shot)];
+    let (magic, casts) = (magic(), Casts::default());
+    let silent = waited(&o, &commands, (&magic, &casts), None);
+    let cue = silent
+        .cues
+        .iter()
+        .find(|c| c.sound == Sound::Shot && c.stack == 3)
+        .copied()
+        .unwrap();
+    assert_eq!(cue.creature, Some(MARKSMAN));
+    assert!(
+        silent
+            .cues
+            .iter()
+            .filter(|c| c.stack == 0)
+            .all(|c| c.creature.is_none())
+    );
+    let next = silent.turns.last().unwrap().0;
+    let long = next - cue.at + 250;
+    let by_id = Lengths {
+        stacks: [((3, Sound::Shot), long)].into_iter().collect(),
+        ..Lengths::default()
+    };
+    let t = waited(&o, &commands, (&magic, &casts), Some(&by_id));
+    assert_eq!(t.turns.last(), Some(&(next, 2)));
+    let by_creature = Lengths {
+        creatures: [((MARKSMAN, Sound::Shot), long)].into_iter().collect(),
+        ..Lengths::default()
+    };
+    let t = waited(&o, &commands, (&magic, &casts), Some(&by_creature));
     assert_eq!(t.turns.last(), Some(&(next + 250, 2)));
 }
 

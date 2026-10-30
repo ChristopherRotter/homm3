@@ -161,6 +161,19 @@ fn the_effects_spare_the_keyed_entries() {
 }
 
 #[test]
+fn a_mask_of_two_to_the_31_or_more_scales_by_one() {
+    // R6-5: 0x7FFFFFFF / mask is 0 there, and the way back divided by it; no 16-bit format has
+    // such a mask, so the scale 1 is only a guard (every valid mask's scale is 1 or more).
+    let wide = [u32::MAX; 3];
+    assert_eq!(Effect::Petrified.colour(0x1234, wide), 0x1234);
+    let top = [0x8000_0000, 0x07E0, 0x001F];
+    for effect in [Effect::Clone, Effect::Bloodlust(5), Effect::StoneGlow(5)] {
+        let _ = effect.colour(0xFFFF, top);
+        let _ = effect.colour(0x1234, wide);
+    }
+}
+
+#[test]
 fn a_strength_above_one_moves_toward_one() {
     // Steps above 10 the executable never passes (palette-reference.py's functions at step 20):
     // the factor above 1 moves the saturation toward 1 (0x522AB0); white, its blue the largest

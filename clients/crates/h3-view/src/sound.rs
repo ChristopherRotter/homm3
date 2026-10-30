@@ -28,7 +28,7 @@ use alloc::string::String;
 
 use h3_protocol::wire::{Outcome, Side};
 
-use crate::anim::Sound;
+use crate::anim::{Cue, Sound};
 
 /// The longest the battle waits for its start sound, in ms (0x463045).
 pub const START_WAIT: u32 = 10_000;
@@ -38,28 +38,37 @@ pub const START_WAIT: u32 = 10_000;
 pub const SAMPLE_WAIT: u32 = 4_000;
 
 /// How long each sample the battle may wait for plays, in ms (E17 M5 T5b2, design §8.3): the
-/// stacks' own sounds by stack and kind, the battle's other sounds by cue, as the window's sound
-/// library resolves a cue (a named sound first). A sample's length is its frames at its rate,
-/// rounded up (`ceil(frames × 1000 / rate)`; the frames the WAV's `fact` count, as the decoder's).
-/// The battle waits for its samples only when it plays them: a computer with a sound device and
-/// an effects volume above 0 (`play_sample` 0x59A210 plays nothing at 0, so nothing is waited
-/// for); without, the timeline has no lengths, as every capture before T5b2 (the harness's
-/// `sound` runs give the original a device).
+/// stacks' own sounds by stack and kind, the created stacks' by creature and kind (E17 M5 T8b2,
+/// R6-1), the battle's other sounds by cue, as the window's sound library resolves a cue (a named
+/// sound first, then a created stack's creature's, else the stack's). A sample's length is its
+/// frames at its rate, rounded up (`ceil(frames × 1000 / rate)`; the frames the WAV's `fact`
+/// count, as the decoder's). The battle waits for its samples only when it plays them: a computer
+/// with a sound device and an effects volume above 0 (`play_sample` 0x59A210 plays nothing at 0,
+/// so nothing is waited for); without, the timeline has no lengths, as every capture before T5b2
+/// (the harness's `sound` runs give the original a device).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Lengths {
-    /// Each stack's sounds by stack id and kind ([`Sound::Move`] to [`Sound::End`]).
+    /// Each stack's sounds by stack id and kind ([`Sound::Move`] to [`Sound::End`]): the stacks
+    /// of the record's first snapshot.
     pub stacks: BTreeMap<(u8, Sound), u32>,
+    /// The sounds of each creature the battle may create, by its handle and kind.
+    pub creatures: BTreeMap<(u16, Sound), u32>,
     /// The battle's other sounds by cue.
     pub named: BTreeMap<Sound, u32>,
 }
 
 impl Lengths {
-    /// How long `stack`'s cue `sound` plays, if it has a sample.
+    /// How long `cue`'s sample plays, if it has one ([`Cue::creature`]: a created stack's by its
+    /// creature).
     #[must_use]
-    pub fn of(&self, stack: u8, sound: Sound) -> Option<u32> {
+    pub fn of(&self, cue: &Cue) -> Option<u32> {
+        let sound = cue.sound;
         self.named
             .get(&sound)
-            .or_else(|| self.stacks.get(&(stack, sound)))
+            .or_else(|| match cue.creature {
+                Some(creature) => self.creatures.get(&(creature, sound)),
+                None => self.stacks.get(&(cue.stack, sound)),
+            })
             .copied()
     }
 }
