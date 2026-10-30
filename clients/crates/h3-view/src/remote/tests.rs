@@ -786,7 +786,10 @@ fn a_record_fetched_at_a_re_join_extends_the_one_taken_or_opens_afresh() {
     assert_eq!(rejoined(&taken, &whole), Rejoined::Extends(merged.clone()));
     // Its start let go by the server's bound: the overlap holds, the start is kept.
     let bounded = at(2, vec![your_turn(2), snapshot(3)]);
-    assert_eq!(rejoined(&taken, &bounded), Rejoined::Extends(merged.clone()));
+    assert_eq!(
+        rejoined(&taken, &bounded),
+        Rejoined::Extends(merged.clone())
+    );
     let right_after = at(3, vec![snapshot(3)]);
     assert_eq!(rejoined(&taken, &right_after), Rejoined::Extends(merged));
     // Numbered afresh (a restart): another first snapshot under the same numbers; past a gap;
@@ -805,8 +808,14 @@ fn a_record_fetched_at_a_re_join_extends_the_one_taken_or_opens_afresh() {
         ],
     );
     assert_eq!(rejoined(&taken, &restarted), Rejoined::Afresh);
-    assert_eq!(rejoined(&taken, &at(4, vec![snapshot(4)])), Rejoined::Afresh);
-    assert_eq!(rejoined(&taken, &at(1, vec![snapshot(1)])), Rejoined::Afresh);
+    assert_eq!(
+        rejoined(&taken, &at(4, vec![snapshot(4)])),
+        Rejoined::Afresh
+    );
+    assert_eq!(
+        rejoined(&taken, &at(1, vec![snapshot(1)])),
+        Rejoined::Afresh
+    );
     // Another game's or seat's.
     let other = |game, seat| Record {
         header: header(game, seat, 1),

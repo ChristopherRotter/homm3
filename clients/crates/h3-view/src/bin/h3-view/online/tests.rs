@@ -114,8 +114,7 @@ fn a_restarted_server_s_record_opens_afresh_and_the_seat_plays_on() {
     // seat dials again, re-joins by its token, and its record opens afresh at the re-join's
     // snapshot, mid-battle: a new timeline, played to the end.
     let greedy = || SeatKind::Bot(Box::new(crate::bot::Greedy));
-    let (address, _, restart) =
-        restartable([player("attacker"), greedy()], false);
+    let (address, _, restart) = restartable([player("attacker"), greedy()], false);
     let dir = scratch("online-restart");
     let packs = repo().join("packs");
     let seat = server(&address, Seat::Attacker, &dir);
@@ -128,7 +127,9 @@ fn a_restarted_server_s_record_opens_afresh_and_the_seat_plays_on() {
         assert!(now < 60_000, "no turn: {:?}", online.lines);
         online.poll(now).unwrap();
         if let Some((legal, _)) = online.turn() {
-            online.send(plain(legal, online.seat(), width).unwrap()).unwrap();
+            online
+                .send(plain(legal, online.seat(), width).unwrap())
+                .unwrap();
             sent += 1;
         }
         std::thread::sleep(Duration::from_millis(2));

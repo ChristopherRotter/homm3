@@ -79,6 +79,8 @@ pub struct Online {
     pub rejoined: u32,
     /// How often its record opened afresh ([`Online::timelines`]).
     timelines: u32,
+    /// The connection dropped and no server welcomed the seat since.
+    down: bool,
     /// What happened, a line each.
     pub lines: Vec<String>,
 }
@@ -119,6 +121,7 @@ impl Online {
             queries: Vec::new(),
             rejoined: 0,
             timelines: 0,
+            down: false,
             lines: Vec::new(),
         };
         while online.record.is_none() {
@@ -159,8 +162,13 @@ impl Online {
                         self.connection = None;
                         break;
                     }
-                    self.lines
-                        .push(format!("the connection dropped ({why}): re-joining"));
+                    // Dialed again until the server answers (E17 M5 T6b2: a restart's
+                    // downtime), the drop said once.
+                    if !self.down {
+                        self.lines
+                            .push(format!("the connection dropped ({why}): re-joining"));
+                        self.down = true;
+                    }
                     self.connection = None;
                 }
             }
@@ -212,6 +220,7 @@ impl Online {
                 }
                 Note::Welcomed(server) => {
                     self.lines.push(format!("welcomed by {server}"));
+                    self.down = false;
                     let (seat, token) = (self.server.seat, self.token.clone());
                     let ask = match (&self.server.game, self.joined) {
                         (_, Some(game)) | (&Game::Join(game), None) => {

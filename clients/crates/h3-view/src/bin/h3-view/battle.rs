@@ -1223,9 +1223,15 @@ impl<'g> Battle<'g> {
             let stacks = self.record.first_snapshot().map(|o| o.stacks.as_slice());
             let frames = |id: u8| {
                 let s = stacks.unwrap_or_default().iter().find(|s| s.id == id);
-                s.and_then(|s| self.ground.looks.get(&s.creature)?.frames.get(&u32::from(group)))
-                    .copied()
-                    .unwrap_or(0)
+                s.and_then(|s| {
+                    self.ground
+                        .looks
+                        .get(&s.creature)?
+                        .frames
+                        .get(&u32::from(group))
+                })
+                .copied()
+                .unwrap_or(0)
             };
             timeline.enter(&shown.entered, u32::from(group), &frames);
             timeline
