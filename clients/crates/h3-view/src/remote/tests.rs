@@ -654,6 +654,14 @@ fn the_seat_sees_the_moves_deaths_creations_and_mana() {
     let timeline = play_created(&opening, &commands);
     let mut events: Vec<Event> = commands.iter().flat_map(|(_, e)| e.clone()).collect();
     events.extend([
+        // A stack risen where it lay, then teleported: the latter's hex.
+        Event::RoseFromCorpse {
+            stack: 2,
+            corpse: 2,
+            creature: PIKEMAN,
+            count: 40,
+            hex: 90,
+        },
         Event::Teleported {
             stack: 2,
             from: 120,
