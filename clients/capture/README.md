@@ -785,8 +785,8 @@ costs and day points; numbers only). The costs: the original's pathfinder stops 
 the pointer, so before a sequence's 0 `look_over_view` moves the pointer over each tile its
 inputs visit and reads that tile's node (`Mem.node_cost`), then over the kingdom overview's button
 and back to the parking (the status bar's hint as before) and writes the manager's +0xEC and
-+0xF0 -1; a still reads none. The status bar's hint is compared only for the items
-`map/masks.toml`'s `hinted` lists (`panel_rects`): add a new item recorded with it there. Since
++0xF0 -1; a still reads none. The status bar's hint is compared in every situation and sequence
+since M3 T7a (from T6a1 only in the items `map/masks.toml`'s `hinted` listed). Since
 M3 T6a2a (design §4.11) `[hover]` holds `visits` too, per object what the viewer knows of it
 (`Mem.visit` by `h3mem.VISIT_RULES`, the reading's rules; for the hero selected as read), and a
 situation's `visits` (per object anchored on `at`: `known`, `visited`) are written after the view

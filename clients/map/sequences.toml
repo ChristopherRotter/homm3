@@ -282,7 +282,7 @@ status = [1, 3000]
 why = "the date's status window built at 0, its picture stepping to its last frame, then the selected hero's"
 
 # The mouse over the panels and the map (E24 M3 T6a1; E24 design §4.10), the status bar's hint
-# compared (`masks.toml`'s `hinted`). Over the panels: each item in turn, the hint of the one under
+# compared (everywhere since M3 T7a). Over the panels: each item in turn, the hint of the one under
 # the pointer once it changes (`adventure_panel_hint` 0x403010): the minimap, the status window's
 # margin and its inside (no hint), the buttons (a disabled one takes no mouse: the arrow, no hint;
 # the quest log does), the lists' arrows, the hero list's slots (a hero's name and class; the empty
@@ -363,7 +363,7 @@ inputs = [
 ]
 
 # The map hint's visit marks (E24 M3 T6a2a; E24 design §4.11), the status bar's hint compared
-# (`masks.toml`'s `hinted`): Red's selected hero with 1000 points, the pointer over the entrance
+# (everywhere since M3 T7a): Red's selected hero with 1000 points, the pointer over the entrance
 # of each object of the 35 classes whose hint shows a bonus or a mark, then over a body (the
 # Library's, the University's: the entrance's hint), then the parking. `hover-visits-*` as the new
 # game leaves them (nothing known: the marks of the selected hero's not visited, the Wagon's and

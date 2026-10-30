@@ -29,6 +29,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-10-30, E24 M3 T7a** (*in progress*; the user present: T7 cut into T7a, the hint unmasked
+  and everything recorded again, beside up to three reviewer sub-agents on fractions of M3, their
+  findings on the branch `map-client/e24-m3-t7-review`, `docs/lanes/map-client/review-m3/`, for
+  T7b to consolidate and fix): the original data staged first; the VM restarted during the
+  baseline: CI's green `master` the starting point. Done: `masks.toml`'s `hint` and `hinted` gone
+  (`h3map.py`, the viewer's `load_masks`), the harness set up again (#614's R7). Next: `set`, then
+  `frames`, each `CHANGED` checked and recorded, `drawn --record`.
 - **2026-10-30, E24 M3 T6b3** (the user present: T6b3 kept whole, the agent's cut declined):
   T6b3 built (the log's "M3 T6b3"; its pull request); the original data staged from the user's
   repo folder first; the VM restarted during the baseline: CI's green `master` the starting
@@ -37,7 +44,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   T6b2"; its pull request); the original data staged from the user's repo folder first; the
   baseline green; the status window's item list read from the running original's memory to settle
   the click. Nothing is waiting on the user's computer.
-- **2026-10-30, E24 M3 T6b1** (the user present: T6b cut into T6b1, T6b2, T6b3, the agent's
-  proposal): T6b1 built (the log's "M3 T6b1"; #605); the original data staged from the user's repo
-  folder first (the computer went offline later); the VM restarted during the setup: CI's green
-  `master` the starting point. Nothing is waiting on the user's computer.

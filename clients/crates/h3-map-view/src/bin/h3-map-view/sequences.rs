@@ -191,7 +191,7 @@ impl Context<'_> {
             fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
         // The screen the `screen` lines look at: outside the panels' mask (E24 M3 T2a).
-        let masked = files::load_masks(&self.options.map, &sequence.id)?;
+        let masked = files::load_masks(&self.options.map)?;
         let mut screens = BTreeMap::new();
         let (mut kept, mut current): (Option<Screen>, Option<Screen>) = (None, None);
         let mut shown: Option<(Draw, Buttons, Cursor)> = None;

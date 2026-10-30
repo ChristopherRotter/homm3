@@ -64,28 +64,21 @@ pub fn load_layout(map: &Path) -> Result<AdventureLayout, String> {
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The panels' mask of sequence or situation `id` (`<map>/masks.toml`, E24 M3 T2a; `h3map.py`
-/// reads it too): what the viewer does not draw yet, `panels`, and the status bar's hint, `hint`,
-/// unless `hinted` lists `id` (E24 M3 T6a1: the items recorded with the hints); rectangles [x0,
-/// y0, x1, y1], the last two excluded.
-pub fn load_masks(map: &Path, id: &str) -> Result<Vec<[i32; 4]>, String> {
+/// The panels' mask of every sequence and situation (`<map>/masks.toml`, E24 M3 T2a; `h3map.py`
+/// reads it too): what the viewer does not draw yet, `panels`; rectangles [x0, y0, x1, y1], the
+/// last two excluded. The status bar's hint, masked from T6a1 but for the items `hinted` listed,
+/// is compared everywhere since M3 T7a: another key is refused.
+pub fn load_masks(map: &Path) -> Result<Vec<[i32; 4]>, String> {
     #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
     struct Masks {
         panels: Vec<[i32; 4]>,
-        hint: Vec<[i32; 4]>,
-        hinted: Vec<String>,
     }
     let path = map.join("masks.toml");
     fs::read_to_string(&path)
         .map_err(|e| e.to_string())
         .and_then(|t| toml::from_str::<Masks>(&t).map_err(|e| e.to_string()))
-        .map(|m| {
-            let hinted = m.hinted.iter().any(|h| h == id);
-            m.panels
-                .into_iter()
-                .chain(m.hint.into_iter().filter(|_| !hinted))
-                .collect()
-        })
+        .map(|m| m.panels)
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
