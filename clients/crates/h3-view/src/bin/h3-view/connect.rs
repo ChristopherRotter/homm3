@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Duration;
 
+use h3_protocol::account::KEY_BYTES;
 use h3_protocol::codec;
 use h3_protocol::map;
 use h3_protocol::wire::{ClientMessage, Command, Seat, ServerMessage};
@@ -30,8 +31,9 @@ pub(crate) mod tests;
 /// The program's name in the hello (the window's too, E17 M5 T6b1).
 pub const PROGRAM: &str = concat!("h3-view ", env!("CARGO_PKG_VERSION"));
 
-/// How long a headless session waits for the server's next message.
-const SILENCE: Duration = Duration::from_secs(30);
+/// How long a headless session waits for the server's next frame, a ping's too (E17 M5 review
+/// R1-3: an opponent may think longer than that).
+const SILENCE: Duration = net::SILENT;
 
 /// The most commands the plain player sends before it gives up (*provisional*, as `play`'s
 /// `FOUGHT_LIMIT`).
@@ -158,18 +160,20 @@ impl Options {
     }
 }
 
-/// Runs the command.
+/// Runs the command: what happened, a line each, printed whether the session ends well or not
+/// (E17 M5 review R1-2: a goodbye's reason).
 pub fn run(options: &Options) -> ExitCode {
-    let ran = session(options, net::os_roots).and_then(|done| {
+    let mut lines = Vec::new();
+    let ran = session(options, net::os_roots, &mut lines).and_then(|done| {
         let path = options.record_path(done.record.header.game);
         write(&path, &text(&done.record))?;
         Ok((done, path))
     });
+    for line in &lines {
+        println!("{line}");
+    }
     match ran {
         Ok((done, path)) => {
-            for line in &done.lines {
-                println!("{line}");
-            }
             println!(
                 "content: {:?}; re-joined {} times",
                 done.content, done.rejoined
@@ -193,18 +197,22 @@ pub struct Done {
     pub content: Content,
     /// How often the connection was re-joined.
     pub rejoined: u32,
-    /// What happened, a line each.
-    pub lines: Vec<String>,
 }
 
 /// A session: dials, joins and plays until the game ends, re-joining once after the drop
-/// `options` asks for; `roots` checks a `wss://` server's certificate.
-pub fn session(options: &Options, roots: fn() -> RootCertStore) -> Result<Done, String> {
+/// `options` asks for; `roots` checks a `wss://` server's certificate. What happened goes to
+/// `lines`, a line each, whether it ends well or not.
+pub fn session(
+    options: &Options,
+    roots: fn() -> RootCertStore,
+    lines: &mut Vec<String>,
+) -> Result<Done, String> {
     let mut pins = read_pins(&options.pins)?;
     let mut token = options.token.clone();
     let mut sent = 0;
     let mut drop = options.drop;
-    let mut lines = Vec::new();
+    // The account's registration asked until a login succeeds (E17 M5 review R1-2).
+    let mut account = options.account.clone();
     let mut content = None;
     let mut rejoined = 0;
     // The game joined: a re-join joins it, not a new one.
@@ -220,6 +228,8 @@ pub fn session(options: &Options, roots: fn() -> RootCertStore) -> Result<Done, 
             let message = match connection.wait(SILENCE) {
                 None => return Err(format!("nothing from the server in {SILENCE:?}")),
                 Some(Incoming::Closed(why)) => return Err(why),
+                // A ping: the server is there, and nothing changed.
+                Some(Incoming::Heard) => continue,
                 Some(Incoming::Message(message)) => message,
             };
             let notes = client
@@ -229,26 +239,30 @@ pub fn session(options: &Options, roots: fn() -> RootCertStore) -> Result<Done, 
                 match note {
                     Note::Send(message) => connection.send(message),
                     Note::Pinned(key) => {
-                        pins.pin(&options.address, key);
-                        write(&options.pins, &pins.text())?;
+                        pins = pin(&options.pins, &options.address, key)?;
                         lines.push(format!("pinned the server's key {}", hex(&key)));
                     }
                     Note::Welcomed(server) => {
-                        lines.push(format!("welcomed by {server}"));
-                        let ask = match &options.account {
+                        lines.push(format!("welcomed by {}", printable(&server)));
+                        let ask = match &account {
                             Some(account) => account.login(&mut client, &options.address)?,
                             None => join(&mut client, &options.game, joined, options.seat, &token)?,
                         };
                         connection.send(ask);
                     }
                     Note::LoggedIn(display) => {
-                        lines.push(format!("logged in as {display}"));
+                        lines.push(format!("logged in as {}", printable(&display)));
+                        // Registered: a re-dial logs in without the display name, which the
+                        // server counts as an account change (rate-limited) at every login.
+                        if let Some(account) = &mut account {
+                            account.register = None;
+                        }
                         let game = &options.game;
                         connection.send(join(&mut client, game, joined, options.seat, &token)?);
                     }
                     Note::Rekeyed | Note::OldKeyRefused => {
                         lines.push(rekeyed(&note));
-                        if let Some(account) = &options.account {
+                        if let Some(account) = &account {
                             account.done(&options.address)?;
                         }
                     }
@@ -296,7 +310,6 @@ pub fn session(options: &Options, roots: fn() -> RootCertStore) -> Result<Done, 
                     record,
                     content,
                     rejoined,
-                    lines,
                 });
             }
             if client.closed() {
@@ -386,6 +399,15 @@ fn check(packs: &Path, manifest: &h3_protocol::wire::Manifest) -> Content {
     remote::content(manifest, own.as_ref())
 }
 
+/// Pins `key` for `address` in the pins file at `path`, read again just before (E17 M5 review
+/// R1-4: a pin another process wrote since is kept); the pins as written.
+pub fn pin(path: &Path, address: &str, key: [u8; KEY_BYTES]) -> Result<Pins, String> {
+    let mut pins = read_pins(path)?;
+    pins.pin(address, key);
+    write(path, &pins.text())?;
+    Ok(pins)
+}
+
 /// The pins file at `path`; none yet when it does not exist.
 pub fn read_pins(path: &Path) -> Result<Pins, String> {
     match std::fs::read_to_string(path) {
@@ -406,12 +428,62 @@ pub fn text(record: &Record) -> String {
     text
 }
 
-/// Writes `text` to `path`, its folder made first.
+/// Writes `text` to `path` ([`replace`]).
 pub fn write(path: &Path, text: &str) -> Result<(), String> {
-    if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
+    replace(path, text, false)
+}
+
+/// Writes `text` to `path` readable by its owner alone where the system has such modes
+/// ([`replace`]): the accounts file.
+pub fn write_private(path: &Path, text: &str) -> Result<(), String> {
+    replace(path, text, true)
+}
+
+/// Writes `text` to `path` whole or not at all (E17 M5 review R1-4), its folder made first: to a
+/// new file beside it, synced, then renamed over it (a crash leaves the file before, never an
+/// empty one); with `private`, the new file is made with mode 0600 on Unix, so each write sets it.
+fn replace(path: &Path, text: &str, private: bool) -> Result<(), String> {
+    use std::io::Write as _;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    // The writes of this process so far: two threads writing one file use two names.
+    static WRITES: AtomicU32 = AtomicU32::new(0);
+    let failed = |e: std::io::Error| format!("{}: {e}", path.display());
+    let dir = path.parent().filter(|d| !d.as_os_str().is_empty());
+    if let Some(dir) = dir {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
-    std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
+    let name = path
+        .file_name()
+        .ok_or_else(|| format!("{}: no file name", path.display()))?;
+    let n = WRITES.fetch_add(1, Ordering::Relaxed);
+    let mut temporary = std::ffi::OsString::from(".");
+    temporary.push(name);
+    temporary.push(format!(".{}-{n}.tmp", std::process::id()));
+    let temporary = path.with_file_name(temporary);
+    let mut open = std::fs::OpenOptions::new();
+    open.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut open, if private { 0o600 } else { 0o666 });
+    #[cfg(not(unix))]
+    let _ = private;
+    let written = open.open(&temporary).and_then(|mut file| {
+        file.write_all(text.as_bytes())?;
+        file.sync_all()?;
+        drop(file);
+        std::fs::rename(&temporary, path)
+    });
+    if written.is_err() {
+        let _ = std::fs::remove_file(&temporary);
+    }
+    written.map_err(failed)
+}
+
+/// `text` with every control character (a terminal's escapes among them) replaced by `?`
+/// (E17 M5 review R1-9): a name the server sent, printed.
+pub fn printable(text: &str) -> String {
+    text.chars()
+        .map(|c| if c.is_control() { '?' } else { c })
+        .collect()
 }
 
 /// `bytes` as lowercase hex.

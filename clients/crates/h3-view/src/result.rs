@@ -379,6 +379,26 @@ pub fn behind(now: &mut Moment, before: &Moment) {
     }
 }
 
+/// The battle behind the result window as its frames go on (E17 M5 T8a, R3-2): [`behind`]
+/// with the moment just before the window's time read once while that time stays (the battle
+/// stands still behind the window), not at every frame.
+#[derive(Debug, Clone, Default)]
+pub struct Behind(Option<(u32, Moment)>);
+
+impl Behind {
+    /// [`behind`] for `now` at `at`: the moment just before it, `before`'s at `at - 1`, read once
+    /// for each `at` and kept.
+    pub fn show(&mut self, now: &mut Moment, at: u32, before: impl FnOnce(u32) -> Moment) {
+        if self.0.as_ref().is_some_and(|(kept, _)| *kept != at) {
+            self.0 = None;
+        }
+        let (_, kept) = self
+            .0
+            .get_or_insert_with(|| (at, before(at.saturating_sub(1))));
+        behind(now, kept);
+    }
+}
+
 /// A side's name.
 fn face_name(face: &Face) -> &str {
     match face {

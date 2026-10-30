@@ -54,7 +54,12 @@ pub fn takes(observation: &Observation) -> bool {
 /// BAT-MAG-054, as the engine's `mana::cost`: *provisional*, the client's copy of that formula: the
 /// M5 review list); the hero's mastery of each school its mastery of the book's spells of that
 /// school alone (the school a spell of several shows under on the tab of all schools; a school
-/// none of them names counts as none: *provisional*). None without the own hero or its view.
+/// none of them names counts as none: *provisional*). A spell the ruleset or the manifest does not
+/// know, or a creature's ability, is left out; one of none of the layout's schools shows on the tab
+/// of all schools alone (R4-4). None without the own hero or its view.
+///
+/// The mastery and the cost copy the engine's (`crates/h3-battle/src/magic.rs` `mastery_at`,
+/// `mana.rs` `cost`; `mastered_cost`'s tests pin the cost's cases): a change there is one here.
 pub fn hero(
     observation: &Observation,
     (manifest, ruleset): (&Manifest, &BattleRuleset),
@@ -73,12 +78,17 @@ pub fn hero(
     let school_of = |school: h3_content::SchoolId| {
         let key = core.spell_schools().get(school.index())?.key.as_str();
         let name = key.rsplit(':').next().unwrap_or(key);
-        layout.schools.iter().position(|s| s == name)
+        // The book's four alone (its bits 1 to 8; `parse_battle` takes no other layout).
+        layout.schools.iter().take(4).position(|s| s == name)
     };
     let mut schools = [0u8; 4];
     let mut spells = Vec::new();
     for entry in &own.spell_book {
-        let Some(spell) = ruleset.spell(Handle::from_raw(entry.spell)) else {
+        // A spell the ruleset or the manifest does not know: left out, the rest shown (R4-1).
+        let (Some(spell), Some(key)) = (
+            ruleset.spell(Handle::from_raw(entry.spell)),
+            manifest.keys.spells.get(usize::from(entry.spell)),
+        ) else {
             continue;
         };
         let kind = match spell.category {
@@ -90,13 +100,12 @@ pub fn hero(
         if let [only] = indices[..]
             && let Some(level) = schools.get_mut(only)
         {
-            *level = (*level).max(entry.mastery);
+            *level = (*level).max(entry.mastery.min(3));
         }
         let bits = indices.iter().fold(0u8, |b, &i| b | (1 << i));
         let raised = battlefield.is_some_and(|b| b.raises(&spell.schools));
         let mastery = if raised { 3 } else { entry.mastery.min(3) };
         let cost = mastered_cost(spell.cost[usize::from(mastery)], side.cost_change);
-        let key = manifest.keys.spells.get(usize::from(entry.spell))?;
         let original = tables.spells.get(key).map_or(0, |s| u32::from(s.original));
         let description = catalogue.text(
             &format!("spell-text.{key}"),
@@ -123,7 +132,8 @@ pub fn hero(
 }
 
 /// A spell's cost `base` at the caster's mastery changed by the armies' `change`: at least 1, a
-/// free spell free (0x4E5240, BAT-MAG-054; [`hero`]'s).
+/// free spell free (0x4E5240, BAT-MAG-054; [`hero`]'s). The engine's `cost`
+/// (`crates/h3-battle/src/mana.rs`) copied: keep the two alike.
 fn mastered_cost(base: u16, change: i8) -> u16 {
     if base == 0 {
         0
@@ -239,7 +249,8 @@ struct Asking {
 
 /// A situation's `actions` played at its opening (`h3drive.py`'s `act` at the frozen clock, after
 /// the mouse's move to `mouse`): `key:<k>` opens the book of the hero `hero` gives (while the
-/// panel's spell book button takes it) by its key C, Surrender's or Retreat's question by S or R
+/// panel's spell book button takes it; made once, at the first C, a later C after the book closed
+/// opens it again) by its key C, Surrender's or Retreat's question by S or R
 /// (E17 M5 T4a, with `boxes`), or is the open box's key or the open book's; `click:<x>,<y>`
 /// moves the mouse there, presses and releases (the open box's or book's) and parks it;
 /// `move:<x>,<y>` moves it, over the open book its hover (0x59D6C4). The book's refusal and
@@ -255,7 +266,9 @@ pub fn still(
     boxes: Option<&Boxes<'_>>,
 ) -> Result<Still, String> {
     let mut memory = Memory::default();
-    let mut hero = Some(hero);
+    // The hero made at the first opening, each later one (the book closed) a copy (R4-3).
+    let mut make = Some(hero);
+    let mut hero: Option<Hero> = None;
     let mut still = Still {
         open: None,
         message: None,
@@ -395,7 +408,10 @@ pub fn still(
                     }
                     _ if context != Context::Battle => {}
                     (Some(Do::Button(h3_view::panel::SPELL_BOOK)), _) => {
-                        if let Some(h) = hero.take().and_then(|f| f()) {
+                        if let Some(f) = make.take() {
+                            hero = f();
+                        }
+                        if let Some(h) = hero.clone() {
                             still.open = Some(Open::new(&mut memory, h, catalogue));
                         }
                     }
@@ -568,6 +584,162 @@ mod tests {
         }
         // No book to open: nothing open.
         assert_eq!(played(&["key:c"], None).unwrap().open, None);
+    }
+
+    #[test]
+    fn a_second_c_after_the_book_closed_opens_it_again() {
+        // R4-3: the hero made once, at the first C; reopened, the book shows it again.
+        let made = std::cell::Cell::new(0);
+        let actions: Vec<String> = ["key:c", "key:Escape", "key:c", "key:Escape", "key:c"]
+            .iter()
+            .map(|a| (*a).to_owned())
+            .collect();
+        let catalogue = Catalogue::default();
+        let make = || {
+            made.set(made.get() + 1);
+            Some(hero())
+        };
+        let still = still(
+            &actions,
+            crate::pointer::PARK,
+            make,
+            (&layout(), &catalogue),
+            None,
+        )
+        .unwrap();
+        assert_eq!(still.open.map(|o| o.hero), Some(hero()));
+        assert_eq!(made.get(), 1);
+    }
+
+    #[test]
+    fn a_cost_changed_stays_at_least_1_and_a_free_spell_free() {
+        // R4-2: as the engine's `mana::cost` (BAT-MAG-054).
+        assert_eq!(mastered_cost(0, -2), 0);
+        assert_eq!(mastered_cost(0, 3), 0);
+        assert_eq!(mastered_cost(3, -5), 1);
+        assert_eq!(mastered_cost(5, 2), 7);
+        assert_eq!(mastered_cost(5, 0), 5);
+        assert_eq!(mastered_cost(u16::MAX, 1), u16::MAX);
+    }
+
+    /// The book situation's battle at its opening (`situations/book.toml`: Orrin's Champions to
+    /// act, Red human): its ruleset, the attacker's own observation and its record's manifest.
+    fn opening() -> (BattleRuleset, Observation, Manifest) {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let (ruleset, setup) =
+            crate::scenario::battle(&dir.join("situations/book.toml"), &dir.join("../packs"), 1)
+                .unwrap();
+        let (observation, record) = {
+            let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, false]).unwrap();
+            (live.own_view().unwrap(), live.record().unwrap())
+        };
+        let manifest = h3_view::record::parse(&record).unwrap().header.manifest;
+        (ruleset, observation, manifest)
+    }
+
+    #[test]
+    fn the_book_s_hero_is_the_own_hero_s_at_the_battlefield_s_masteries() {
+        // R4-2: `hero` and `cost` on the book situation (its school skills Expert Air, Basic
+        // Fire; 20 combat spells and two adventure ones).
+        let (ruleset, mut observation, mut manifest) = opening();
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let catalogue = Catalogue::default();
+        let layout = layout();
+        let handle = |key: &str| ruleset.spell_by_key(key).unwrap().raw();
+        let (haste, slow, arrow) = (
+            handle("base:haste"),
+            handle("base:slow"),
+            handle("base:magic_arrow"),
+        );
+        let made = |observation: &Observation, manifest: &Manifest| {
+            super::hero(
+                observation,
+                (manifest, &ruleset),
+                (&tables, &catalogue),
+                &layout,
+            )
+        };
+        let of = |hero: &Hero, handle: u16| -> Spell {
+            hero.spells
+                .iter()
+                .find(|s| s.handle == handle)
+                .unwrap()
+                .clone()
+        };
+        let base = |handle: u16| ruleset.spell(Handle::from_raw(handle)).unwrap().cost;
+        let attacker = h3_protocol::wire::Side::Attacker;
+        let book = made(&observation, &manifest).unwrap();
+        assert_eq!((book.mana, book.spells.len()), (20, 22));
+        // The school levels from the spells of one school alone: Magic Arrow (all four, Expert)
+        // raises none.
+        assert_eq!(book.schools, [3, 1, 0, 0]);
+        assert_eq!(
+            (of(&book, arrow).schools, of(&book, arrow).mastery),
+            (0xF, 3)
+        );
+        let kinds = |hero: &Hero, kind| hero.spells.iter().filter(|s| s.kind == kind).count();
+        assert_eq!(kinds(&book, Kind::Adventure), 2);
+        // Slow unskilled: its cost at no mastery, the armies' change added; `cost` the same.
+        observation.sides[0].cost_change = 2;
+        let book = made(&observation, &manifest).unwrap();
+        let slowed = of(&book, slow);
+        assert_eq!((slowed.mastery, slowed.schools), (0, 8));
+        assert_eq!(slowed.cost, base(slow)[0] + 2);
+        assert_eq!(cost(&observation, &ruleset, attacker, slow), slowed.cost);
+        // Magic Plains raise every school: Slow at Expert, the school levels the hero's still.
+        let plains = ruleset.battlefield_by_key("base:magic_plains").unwrap();
+        observation.battlefield = Some(plains.raw());
+        let raised = made(&observation, &manifest).unwrap();
+        assert_eq!(of(&raised, slow).mastery, 3);
+        assert_eq!(of(&raised, slow).cost, base(slow)[3] + 2);
+        assert_eq!(
+            cost(&observation, &ruleset, attacker, slow),
+            base(slow)[3] + 2
+        );
+        assert_eq!(raised.schools, [3, 1, 0, 0]);
+        // A mastery past Expert counts as Expert (the cost's and the description's index).
+        observation.battlefield = None;
+        let own = observation.own_hero.as_mut().unwrap();
+        own.spell_book = vec![
+            h3_protocol::wire::BookSpell {
+                spell: slow,
+                mastery: 9,
+            },
+            h3_protocol::wire::BookSpell {
+                spell: haste,
+                mastery: 3,
+            },
+        ];
+        let past = made(&observation, &manifest).unwrap();
+        assert_eq!(of(&past, slow).mastery, 3);
+        assert_eq!(of(&past, slow).cost, base(slow)[3] + 2);
+        assert_eq!(
+            cost(&observation, &ruleset, attacker, slow),
+            base(slow)[3] + 2
+        );
+        assert_eq!(past.schools, [3, 0, 0, 3]);
+        // A creature's ability, a spell the ruleset does not know: left out.
+        let gaze = handle("base:stone_gaze");
+        let own = observation.own_hero.as_mut().unwrap();
+        for spell in [gaze, u16::MAX] {
+            own.spell_book
+                .push(h3_protocol::wire::BookSpell { spell, mastery: 0 });
+        }
+        assert_eq!(made(&observation, &manifest).unwrap().spells.len(), 2);
+        // R4-1: a spell the manifest does not know left out, its school none; the rest shown.
+        assert!(haste < slow);
+        manifest.keys.spells.truncate(usize::from(slow));
+        let short = made(&observation, &manifest).unwrap();
+        let handles: Vec<u16> = short.spells.iter().map(|s| s.handle).collect();
+        assert_eq!((handles, short.schools), (vec![haste], [3, 0, 0, 0]));
+        // The other side's hero's cost, a spell not in the book: unknown, 0.
+        let defender = h3_protocol::wire::Side::Defender;
+        assert_eq!(cost(&observation, &ruleset, defender, slow), 0);
+        assert_eq!(cost(&observation, &ruleset, attacker, arrow), 0);
+        // No own hero: no book.
+        observation.own_hero = None;
+        assert_eq!(made(&observation, &manifest), None);
     }
 
     /// A box of one button `id` at (10, 10), 64 × 30 (its keys the table's).

@@ -467,6 +467,11 @@ fn a_fault_says_what_ended_the_connection() {
             Fault::NotDialed("ws://x".to_string()),
             "the welcome names ws://x, not the address dialed",
         ),
+        // The server's id printed without a terminal's escapes (E17 M5 review R1-9).
+        (
+            Fault::NotDialed("ws://\u{1b}[2Jx\u{9b}é".to_string()),
+            "the welcome names ws://?[2Jx?é, not the address dialed",
+        ),
         (
             Fault::Malformed,
             "the welcome's key, challenge or signature",
@@ -741,6 +746,59 @@ fn the_seat_sees_the_moves_deaths_creations_and_mana() {
         cost,
     );
     assert!(closed.siege.is_some_and(|s| !s.gate_open));
+}
+
+/// A hostile server's mana events overflow no sum (E17 M5 review R1-6: overflow checks panic in
+/// release too): the heroes' mana stays within a `u16`, channelled up to its most, drained and
+/// spent down to none.
+#[test]
+fn the_seat_sees_the_mana_within_its_bounds_whatever_the_server_sends() {
+    use crate::anim::tests::created::{SUMMON, spell};
+    use crate::anim::tests::{SWORDSMAN, at, snapshot};
+    use h3_protocol::wire::{Event, Hero, Side, Target};
+    let mut opening = snapshot(vec![at(0, Side::Attacker, SWORDSMAN, 86, false)]);
+    let hero = Hero {
+        hero_type: 0,
+        attack: 1,
+        defense: 1,
+        power: 1,
+        knowledge: 1,
+        mana: 20,
+        max_mana: 30,
+        casts: 0,
+        commands_ballista: false,
+        commands_tent: false,
+        commands_catapult: false,
+        spell_book: true,
+        sex: None,
+    };
+    opening.sides[0].hero = Some(hero);
+    opening.sides[1].hero = Some(hero);
+    let channeled = Event::ManaChanneled {
+        side: Side::Attacker,
+        mana: u16::MAX,
+    };
+    let drained = Event::ManaDrained {
+        stack: 0,
+        side: Side::Defender,
+        mana: u16::MAX,
+    };
+    let mut events = vec![channeled; 40_000];
+    events.extend(vec![drained; 40_000]);
+    let mana = |events: &[Event]| {
+        let now = seen(
+            &opening,
+            events,
+            &crate::anim::Timeline::default(),
+            0,
+            |_, _| u16::MAX,
+        );
+        now.sides.map(|side| side.hero.map(|h| h.mana))
+    };
+    assert_eq!(mana(&events), [Some(u16::MAX), Some(0)]);
+    // As many casts at the most a spell costs: none left.
+    let casts = vec![spell(SUMMON, Target::None {}); 40_000];
+    assert_eq!(mana(&casts), [Some(0), Some(20)]);
 }
 
 /// A query once the record is open (E17 M5 T6b1): its sequence number, its answer by that number.
@@ -1035,6 +1093,8 @@ fn a_seat_is_not_taken_again_after_a_final_goodbye() {
         GoodbyeReason::Abandoned,
         GoodbyeReason::Replaced,
         GoodbyeReason::Protocol,
+        // E17 M5 review R1-1: dialed again, the same burst would close it again, for ever.
+        GoodbyeReason::RateLimited,
     ] {
         assert!(farewell(reason).is_some(), "{reason:?}");
     }
@@ -1045,4 +1105,77 @@ fn a_seat_is_not_taken_again_after_a_final_goodbye() {
     ] {
         assert_eq!(farewell(reason), None, "{reason:?}");
     }
+}
+
+/// E17 M5 review R1-1 (*provisional*): a turn's burst of queries goes at the client's pace, at
+/// most `PACE_MOST` within any `PACE_WINDOW_MS` of its clock, in order.
+#[test]
+fn a_burst_of_queries_goes_at_the_client_s_pace() {
+    let mut pace = Pace::default();
+    for spell in 0..25 {
+        pace.push(Query::CastTargets { spell });
+    }
+    assert_eq!(pace.waiting(), 25);
+    // Released as a window's frames poll, every 10 ms of the client's clock.
+    let mut gone = Vec::new();
+    for now in (0..5_000).step_by(10) {
+        gone.extend(pace.release(Some(now)).into_iter().map(|q| (now, q)));
+    }
+    let spells: Vec<Query> = gone.iter().map(|&(_, q)| q).collect();
+    let all: Vec<Query> = (0..25).map(|spell| Query::CastTargets { spell }).collect();
+    assert_eq!(spells, all);
+    assert_eq!(pace.waiting(), 0);
+    let times: Vec<u64> = gone.iter().map(|&(at, _)| at).collect();
+    // The last over two seconds after the first; never more than ten within a second.
+    assert!(times[24] - times[0] >= 2_000, "{times:?}");
+    for (i, &at) in times.iter().enumerate() {
+        let within = times[i..]
+            .iter()
+            .filter(|&&t| t < at + PACE_WINDOW_MS)
+            .count();
+        assert!(within <= PACE_MOST, "{times:?}");
+    }
+}
+
+/// Sends before the clock was read count as within the window until its next reading, which
+/// stamps them (the window's opening waits without one); a connection's end drops what waits.
+#[test]
+fn sends_before_the_clock_count_until_it_is_read() {
+    let mut pace = Pace::default();
+    for k in 0..12_u8 {
+        pace.push(k);
+    }
+    assert_eq!(pace.release(None), (0..10).collect::<Vec<u8>>());
+    assert!(pace.release(None).is_empty());
+    // Read at 5 000 ms: the ten are stamped then, not long before.
+    assert!(pace.release(Some(5_000)).is_empty());
+    assert!(pace.release(Some(5_999)).is_empty());
+    assert_eq!(pace.release(Some(6_000)), vec![10_u8, 11]);
+    pace.push(12);
+    pace.clear();
+    assert_eq!(pace.waiting(), 0);
+    assert!(pace.release(Some(9_000)).is_empty());
+}
+
+/// E17 M5 review R1-5: a growth appends the connection's new tail alone; a long series of them
+/// copies each message once (linear, where comparing and copying the whole at each was
+/// quadratic).
+#[test]
+fn a_growth_appends_the_new_tail_alone() {
+    let mut fetched = Record {
+        header: header(7, Seat::Attacker, 1),
+        messages: vec![snapshot(1)],
+    };
+    let mut taken = fetched.clone();
+    let mut copied = fetched.messages.len();
+    let mut appended = 0;
+    for n in 2..2_000 {
+        fetched.messages.push(your_turn(n));
+        appended += grown(&mut taken, &fetched, copied);
+        copied = fetched.messages.len();
+    }
+    assert_eq!(appended, 1_998);
+    assert_eq!(taken, fetched);
+    // Nothing new: nothing appended.
+    assert_eq!(grown(&mut taken, &fetched, copied), 0);
 }

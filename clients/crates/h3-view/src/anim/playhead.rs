@@ -39,6 +39,9 @@ pub struct Playhead {
     /// The viewer's fidgets after the last command, and the poses they gave.
     fidgets: Option<Fidgets>,
     fidgeted: BTreeMap<u8, Pose>,
+    /// What of the timeline was read beyond the lists swept: an extend by a timeline that
+    /// changed nothing keeps the playhead (E17 M5 T8a, R3-3).
+    read: Read,
     /// The heroes (none: none drawn) and the turn started by their last idle step.
     posing: Option<Posing>,
     turns: Sweep,
@@ -103,6 +106,7 @@ impl Playhead {
             pulse: 0,
             fidgets: timeline.fidgets.clone(),
             fidgeted: BTreeMap::new(),
+            read: Read::of(timeline),
             posing: timeline.heroes.as_ref().map(crate::hero::Heroes::posing),
             turns: Sweep::new(timeline.turns.iter().map(|(at, _)| *at)),
             turn: None,
@@ -129,15 +133,10 @@ impl Playhead {
             blasts: Sweep::new(timeline.blasts.iter().map(|k| k.shown)),
             blast: None,
             blasted: BTreeMap::new(),
-            flights: Spans::new(timeline.flights.iter().map(|f| (f.from, f.until()))),
-            beams: Spans::new(timeline.beams.iter().map(|b| (b.from, u64::from(b.until)))),
-            shakes: Spans::new(timeline.quakes.iter().map(|q| (q.from, q.shaken()))),
-            bridges: Spans::new(
-                timeline
-                    .bridges
-                    .iter()
-                    .map(|b| (b.from, u64::from(b.until))),
-            ),
+            flights: Spans::new(timeline.flights.iter().map(flying)),
+            beams: Spans::new(timeline.beams.iter().map(beaming)),
+            shakes: Spans::new(timeline.quakes.iter().map(shaking)),
+            bridges: Spans::new(timeline.bridges.iter().map(bridging)),
             befores: Befores::of(timeline),
             bridged: BTreeMap::new(),
             created: Sweep::new(timeline.created.iter().map(|k| k.shown)),
@@ -167,8 +166,13 @@ impl Playhead {
     /// Follows `timeline` grown from the one it was read from ([`super::Growing`], E17 M5 T1b):
     /// its lists only appended to, what was added showing from the old end on, which joins what
     /// is still to take. A playhead that reached the old end (the idle steps after it may have
-    /// run) or the time something added shows starts over, at the time it reached.
+    /// run) or the time something added shows starts over, at the time it reached; one by a
+    /// timeline that changed nothing ([`Playhead::unchanged`]) stays as it is (E17 M5 T8a, R3-3:
+    /// the window follows its timeline as a turn comes, grown or not).
     pub fn extend(&mut self, timeline: &Timeline) {
+        if self.unchanged(timeline) {
+            return;
+        }
         let at = self.at;
         let grown = [
             at < self.end,
@@ -197,21 +201,11 @@ impl Playhead {
                 .extend(timeline.turrets.iter().map(|k| k.shown), at),
             self.blasts
                 .extend(timeline.blasts.iter().map(|k| k.shown), at),
-            self.flights
-                .extend(timeline.flights.iter().map(|f| (f.from, f.until())), at),
-            self.beams.extend(
-                timeline.beams.iter().map(|b| (b.from, u64::from(b.until))),
-                at,
-            ),
-            self.shakes
-                .extend(timeline.quakes.iter().map(|q| (q.from, q.shaken())), at),
-            self.bridges.extend(
-                timeline
-                    .bridges
-                    .iter()
-                    .map(|b| (b.from, u64::from(b.until))),
-                at,
-            ),
+            self.flights.extend(timeline.flights.iter().map(flying), at),
+            self.beams.extend(timeline.beams.iter().map(beaming), at),
+            self.shakes.extend(timeline.quakes.iter().map(shaking), at),
+            self.bridges
+                .extend(timeline.bridges.iter().map(bridging), at),
             // The battle before a redraw added is kept as the playhead passes it, even now.
             self.befores.extend(timeline, at),
             self.created
@@ -223,11 +217,42 @@ impl Playhead {
             // No idle step after the old end has run: they go on from the new one.
             self.idle = timeline.idle;
             self.fidgets.clone_from(&timeline.fidgets);
+            self.read = Read::of(timeline);
             self.end = timeline.end;
         } else {
             *self = Self::new(timeline);
             self.reach(timeline, at);
         }
+    }
+
+    /// Whether `timeline` is the one read (E17 M5 T8a, R3-3): no list it reads forward longer,
+    /// no span's end moved, the same end and the same [`Read`].
+    fn unchanged(&self, timeline: &Timeline) -> bool {
+        let t = timeline;
+        let sweeps = [
+            (&self.keys, t.keys.len()),
+            (&self.turns, t.turns.len()),
+            (&self.outlines, t.outlines.len()),
+            (&self.magics, t.magics.len()),
+            (&self.spots, t.spots.len()),
+            (&self.fields, t.fields.len()),
+            (&self.walls, t.walls.len()),
+            (&self.objects, t.objects.len()),
+            (&self.counts, t.counts.len()),
+            (&self.tints, t.tints.len()),
+            (&self.looks, t.looks.len()),
+            (&self.turrets, t.turrets.len()),
+            (&self.blasts, t.blasts.len()),
+            (&self.created, t.created.len()),
+        ];
+        sweeps.iter().all(|(sweep, len)| sweep.order.len() == *len)
+            && self.flights.ends(t.flights.iter().map(flying))
+            && self.beams.ends(t.beams.iter().map(beaming))
+            && self.shakes.ends(t.quakes.iter().map(shaking))
+            && self.bridges.ends(t.bridges.iter().map(bridging))
+            && self.dissolves.ends(t.dissolves.iter().map(blending))
+            && t.end == self.end
+            && self.read.is(t)
     }
 
     /// Moves forward to `t`, keeping the battle as it stands before each drawbridge's redraws and
@@ -236,10 +261,14 @@ impl Playhead {
         while let Some(&(before, kept)) = self.befores.next_by(t) {
             self.befores.next += 1;
             self.advance(timeline, before);
-            let moment = Box::new(self.moment(timeline));
+            let mut moment = Box::new(self.moment(timeline));
             match kept {
                 Kept::Bridge(i) => self.bridged.insert(i, moment),
-                Kept::Dissolve(i) => self.dissolved.insert(i, moment),
+                // A dissolve's battle blends no other dissolve open then ([`Moment::at`]'s).
+                Kept::Dissolve(i) => {
+                    moment.dissolve = None;
+                    self.dissolved.insert(i, moment)
+                }
             };
         }
         self.advance(timeline, t);
@@ -431,6 +460,44 @@ impl Playhead {
     }
 }
 
+/// What of a timeline a playhead read beyond the lists it sweeps (E17 M5 T8a, R3-3): the
+/// lengths of those it reads on by place (the idle steps, the heroes' keys and actions, the
+/// controllers), the idle steps after the last command and the fidgets.
+#[derive(Debug, Clone)]
+struct Read {
+    lengths: [usize; 4],
+    idle: Idle,
+    fidgets: Option<Fidgets>,
+}
+
+impl Read {
+    /// What `timeline` gives to read.
+    fn of(timeline: &Timeline) -> Self {
+        Self {
+            lengths: Self::lengths(timeline),
+            idle: timeline.idle,
+            fidgets: timeline.fidgets.clone(),
+        }
+    }
+
+    /// The lengths of the lists of `t` read on by place.
+    fn lengths(t: &Timeline) -> [usize; 4] {
+        [
+            t.steps.len(),
+            t.hero_keys.len(),
+            t.actions.len(),
+            t.controllers.len(),
+        ]
+    }
+
+    /// Whether `timeline` gives what was read.
+    fn is(&self, timeline: &Timeline) -> bool {
+        self.lengths == Self::lengths(timeline)
+            && self.idle == timeline.idle
+            && self.fidgets == timeline.fidgets
+    }
+}
+
 /// One list's keys in the order they show: each one's time and place in the list, sorted (the
 /// place breaks a tie); the next to take.
 #[derive(Debug, Clone, Default)]
@@ -565,6 +632,11 @@ impl Spans {
         self.starts.extend(starts.into_iter(), at)
     }
 
+    /// Whether the list `spans` holds the spans held, each ending as held.
+    fn ends(&self, spans: impl Iterator<Item = (u32, u64)>) -> bool {
+        spans.map(|(_, until)| until).eq(self.ends.iter().copied())
+    }
+
     /// Moves to `t`: the spans begun by then open, those ended by then close.
     fn to(&mut self, t: u32) {
         self.open.extend(self.starts.to(t));
@@ -576,6 +648,26 @@ impl Spans {
     fn open(&self) -> impl Iterator<Item = usize> + '_ {
         self.open.iter().copied()
     }
+}
+
+/// A projectile's flight.
+fn flying(f: &super::Flight) -> (u32, u64) {
+    (f.from, f.until())
+}
+
+/// A ray's span.
+fn beaming(b: &super::Beam) -> (u32, u64) {
+    (b.from, u64::from(b.until))
+}
+
+/// A shake's span.
+fn shaking(q: &super::QuakeKey) -> (u32, u64) {
+    (q.from, q.shaken())
+}
+
+/// A drawbridge's redraws.
+fn bridging(b: &super::BridgeKey) -> (u32, u64) {
+    (b.from, u64::from(b.until))
 }
 
 /// A dissolve's blending span (E17 M5 T5a, [`super::DissolveKey::step_at`]).

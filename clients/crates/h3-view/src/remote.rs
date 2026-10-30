@@ -44,11 +44,13 @@ use h3_protocol::wire::{
 use crate::record::{self, Record, RecordError};
 
 mod accounts;
+mod pace;
 mod seen;
 #[cfg(test)]
 mod tests;
 
 pub use accounts::{Accounts, SEED_BYTES};
+pub use pace::{PACE_MOST, PACE_WINDOW_MS, Pace};
 pub use seen::seen;
 
 /// Where a connection stands.
@@ -214,7 +216,15 @@ impl fmt::Display for Fault {
                 f,
                 "the server speaks protocol {v}, this client {PROTOCOL_VERSION}"
             ),
-            Self::NotDialed(id) => write!(f, "the welcome names {id}, not the address dialed"),
+            Self::NotDialed(id) => {
+                // The server's text, its control characters (a terminal's escapes) as `?` (E17
+                // M5 review R1-9, as the adapter's `connect::printable`).
+                let shown: String = id
+                    .chars()
+                    .map(|c| if c.is_control() { '?' } else { c })
+                    .collect();
+                write!(f, "the welcome names {shown}, not the address dialed")
+            }
             Self::Malformed => write!(f, "the welcome's key, challenge or signature is malformed"),
             Self::Signature => write!(f, "the welcome's signature does not verify"),
             Self::KeyChanged { pinned, offered } => write!(
@@ -560,8 +570,9 @@ impl Client {
     }
 
     /// A login refused at `step` for `reason` (E17 M5 T7): by an earlier key the server does not
-    /// hold, the login by the account's key follows; else no login (by an earlier key accepted and
-    /// its re-key refused, the connection stays logged in by that one).
+    /// hold, the login by the account's key follows; else [`Note::Refused`], on which the adapters
+    /// end the run (E17 M5 review R1-8: a re-key refused after a login by an earlier key too; that
+    /// key stays due there).
     fn login_refused(&mut self, step: Step, reason: Refusal) -> Vec<Note> {
         let current = self.later.pop();
         self.later.clear();
@@ -663,10 +674,15 @@ pub fn number(message: &ServerMessage) -> Option<u32> {
 
 /// Why a seat is not taken again after the server's goodbye `reason` (E17 M5 T7, *provisional*):
 /// the account re-keyed elsewhere, a void game, an abandoned one, the seat taken by another
-/// connection, another protocol version; none when the adapter dials again (a drop, a shutdown: a
-/// restart's).
+/// connection, another protocol version, too many messages (E17 M5 review R1-1: dialed again,
+/// the same burst would close it again, for ever; the client's [`Pace`] keeps under the server's
+/// default); none when the adapter dials again (a drop, a shutdown: a restart's).
 pub const fn farewell(reason: GoodbyeReason) -> Option<&'static str> {
     match reason {
+        GoodbyeReason::RateLimited => Some(
+            "the server closed the connection for sending too many messages a second (its limit \
+             is below this client's pace)",
+        ),
         GoodbyeReason::Rekeyed => Some(
             "the account was re-keyed on another connection: the key kept here is an earlier \
              one (`h3-view account <login>` with the new password)",
@@ -732,7 +748,8 @@ pub enum Rejoined {
     Other,
 }
 
-/// How `fetched`, the record fetched at a re-join, stands to `taken`, the one taken before.
+/// How `fetched`, the record fetched at a re-join, stands to `taken`, the one taken before (once
+/// per opening: it compares and copies the whole; a growth takes [`grown`]).
 pub fn rejoined(taken: &Record, fetched: &Record) -> Rejoined {
     let (t, f) = (&taken.header, &fetched.header);
     if (t.format, t.game, t.seat, &t.manifest) != (f.format, f.game, f.seat, &f.manifest) {
@@ -752,6 +769,17 @@ pub fn rejoined(taken: &Record, fetched: &Record) -> Rejoined {
         }
     }
     Rejoined::Afresh
+}
+
+/// What the connection's record `fetched` added since `copied` of its messages were taken,
+/// appended to `taken` (E17 M5 review R1-5: at a [`Note::Grew`] the new tail alone, neither
+/// compared nor copied whole); how many messages it appended.
+pub fn grown(taken: &mut Record, fetched: &Record, copied: usize) -> usize {
+    let before = taken.messages.len();
+    taken
+        .messages
+        .extend(fetched.messages.iter().skip(copied).cloned());
+    taken.messages.len() - before
 }
 
 /// The servers' keys pinned by address (ADR-0021 point 1: a bookmark is an address and a key), as

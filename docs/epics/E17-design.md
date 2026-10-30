@@ -4597,17 +4597,19 @@ over a server, the record that opens mid-battle (R2-8, R1-3) and the end's `remo
   new one otherwise.
 - **The adapter, `net`:** `Connection::open` spawns the I/O thread (`thread::Builder`: the
   workspace bans `thread::spawn`), which dials (TCP, then TLS for `wss://` with graviola and the
-  roots given, then the handshake), sets the socket's read timeout to 5 ms (through a cloned
-  handle: the handshake needs blocking reads) and loops: what the caller queued sent, one read
-  (a timeout is no error; tungstenite answers pings), a server message passed on. The caller's
-  thread never waits on the socket; a dial's failure arrives as `Incoming::Closed`. Messages up
-  to 64 MiB (*provisional*: a record comes whole in one).
+  roots given, then the handshake; the TCP connection and each handshake read wait at most 10 s,
+  `net::DIAL_WAIT`, *provisional*, review R1-3), sets the socket's read timeout to 5 ms (through
+  a cloned handle) and loops: what the caller queued sent, one read (a timeout is no error;
+  tungstenite answers pings), a server message passed on, any other frame (a ping) as
+  `Incoming::Heard`. The caller's thread never waits on the socket; a dial's failure arrives as
+  `Incoming::Closed`. Messages up to 64 MiB (*provisional*: a record comes whole in one).
 - **`h3-view connect`** (headless): the session above with the pins file (default `pins.txt` in
   the working directory, *provisional*), the content check (`scenario::ruleset` and
   `map::manifest` over the manifest's packs), the plain player (*provisional*, a test's player:
   ends a tactics phase, shoots, strikes, else walks toward the enemy's edge by the hex's column,
   else defends; never leaves), `--drop <n>` (drops after n commands and re-joins by the token),
-  and the record written (`clients/out/connect/g<game>-<seat>.jsonl`).
+  and the record written (`clients/out/connect/g<game>-<seat>.jsonl`). It fails when nothing,
+  not even a ping, came for `net::SILENT` (60 s, review R1-3).
 - **Tested over loopback** (`connect/tests.rs`): a host on threads serving `h3-protocol`'s
   `Connection` and `Session` over a real WebSocket, plain or behind TLS with the server tests'
   certificate (localhost, valid to 2126). A battle to its end against the host's bot (the key
@@ -4660,7 +4662,18 @@ T6b2 the record that opens mid-battle (R2-8, R1-3) with a restart's re-join.
   which no pause stops) and the seat re-joined by its token; the record fetched must extend the
   one taken (the same header, every message taken first: the timeline kept; the re-join's own
   snapshot in it is no event and draws nothing); one that does not opens afresh (a restarted
-  server's: §11.3). `--drop <n>` drops after n commands (a test).
+  server's: §11.3). `--drop <n>` drops after n commands (a test). A connection silent (pings
+  count as heard) for longer than `net::SILENT` by the window's clock is a drop too (60 s,
+  *provisional*: twice the server's ping interval, which nothing on the wire carries; review
+  R1-3). `Online::rejoined` counts the record's openings after the first, not the dials (R1-7).
+  The record taken is compared with the connection's at an opening only (`remote::rejoined`); a
+  growth appends the new tail (`remote::grown`), and a poll takes at most 256 frames, the rest at
+  the next frame (R1-5).
+- **The client's pace** (`remote::Pace`, *provisional*, review R1-1): a turn's queries come in a
+  burst, and a server closes a connection past its `messages_per_second` (20 by default, not on
+  the wire) with `Goodbye(RateLimited)`; so the window sends at most 10 messages within any
+  1 000 ms of its clock, the rest waiting their turn in order (the opening's handful, sent before
+  the clock is read, count until its first reading). A connection's end drops what waits.
 - **Unattended** (`--check`, `--measure`): the presser plays the seat's turns (`Battle::takes`:
   not the other seat's) with a test's player (*provisional*): the hero casts first the first
   spell the server lets it cast at its first target, through the book and the aim; else
@@ -4764,8 +4777,8 @@ Kept whole by the user (2026-10-30); the server lane's asks: `NOTES.md`, "The li
   `LoggedIn`; refused `BadLogin`, the server holds the earlier key no more (re-keyed from another
   device, or never registered): `Note::OldKeyRefused` and the login by the account's key. Either
   note ends the earlier key's due there (`Account::done` rewrites the file). Any other refusal
-  ends the login (by the earlier key accepted and its re-key refused, the connection stays
-  logged in by it); the adapters end the run.
+  ends the login with `Note::Refused`, and the adapters end the run (a re-key refused after the
+  login by the earlier key too: that key stays due there).
 - **Seats by account** (`connect` and `window --server` with `--login`; `--accounts`): the join
   waits for `LoggedIn` and carries no token (the given `--token` if any); the server's `Joined`
   gives none, so a re-join after a drop logs in again and joins the same way, and so does a new
@@ -4773,7 +4786,8 @@ Kept whole by the user (2026-10-30); the server lane's asks: `NOTES.md`, "The li
 - **The goodbyes** (`remote::farewell`, *provisional*): `Rekeyed` (log in again with the new
   password: `h3-view account`), `CommandLimit` (the game is void), `Abandoned` (gone before it
   started), `Replaced` (another connection took the seat: re-taking it would take turns with
-  that one) and `Protocol` end the run with their reason (`connect` fails; the window closes,
+  that one), `Protocol` and `RateLimited` (review R1-1: dialed again, the same burst would close
+  it again, for ever) end the run with their reason (`connect` fails; the window closes,
   the reason on standard error); after the game's end they are lines only; every other goodbye
   (a shutdown, a timeout, a pause) is a drop: dialed again.
 - **Checked:** `remote`'s login, re-key, refusals and `Accounts` at 100 %; the binary's test

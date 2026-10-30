@@ -96,6 +96,10 @@ fn the_key_is_kept_and_a_password_change_leaves_it_due_at_the_servers_pinned() {
             .permissions()
             .mode();
         assert_eq!(mode & 0o777, 0o600, "the owner's alone");
+        // Made readable by others meanwhile, the next write makes it the owner's again (E17 M5
+        // review R1-4).
+        let others = std::fs::Permissions::from_mode(0o644);
+        std::fs::set_permissions(&options.accounts, others).unwrap();
     }
     // The change: the key kept here is the current one; the new password alone is read.
     let pins = format!("ws://x {}\nwss://y {}\n", hex(&[1; 32]), hex(&[2; 32]));
@@ -112,6 +116,12 @@ fn the_key_is_kept_and_a_password_change_leaves_it_due_at_the_servers_pinned() {
             "re-keyed at the next login at wss://y"
         ]
     );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let mode = std::fs::metadata(&options.accounts).unwrap().permissions();
+        assert_eq!(mode.mode() & 0o777, 0o600, "the owner's alone again");
+    }
     let accounts = read_accounts(&options.accounts).unwrap();
     let before = account::from_hex(ALICE_SEED);
     assert_eq!(accounts.due("alice", "wss://y"), before);

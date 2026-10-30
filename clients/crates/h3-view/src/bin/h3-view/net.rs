@@ -8,7 +8,7 @@
 //! the cryptography they take ([`verify`], [`nonce`]). An adapter.
 
 use std::io::ErrorKind;
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::time::Duration;
@@ -21,7 +21,7 @@ use rustls::{ClientConfig, RootCertStore};
 use tungstenite::http::Uri;
 use tungstenite::protocol::WebSocketConfig;
 use tungstenite::stream::MaybeTlsStream;
-use tungstenite::{Connector, Message, WebSocket};
+use tungstenite::{Connector, HandshakeError, Message, WebSocket};
 
 /// The largest message read (*provisional*): a record comes whole in one, and a server bounds a
 /// viewer's record at 512 KiB by default (`record_bytes`, up to 256 MiB).
@@ -30,11 +30,24 @@ pub const MAX_MESSAGE: usize = 64 << 20;
 /// How long the I/O thread's read waits before it looks at the queue again.
 const POLL: Duration = Duration::from_millis(5);
 
+/// The longest a dial waits for the TCP connection, and then for each read of the TLS and
+/// WebSocket handshakes (E17 M5 review R1-3, *provisional*): a silent server fails the dial.
+pub const DIAL_WAIT: Duration = Duration::from_secs(10);
+
+/// The longest a connection may be silent, pings included, before it counts as dropped (E17 M5
+/// review R1-3, *provisional*): twice the server's ping interval, which neither the welcome nor
+/// the client's options carry; 60 s, twice `h3-server`'s default `ping_timeout_ms`, four times
+/// its `ping_every_ms`.
+pub const SILENT: Duration = Duration::from_secs(60);
+
 /// What came from the connection.
 #[derive(Debug)]
 pub enum Incoming {
     /// A message from the server.
     Message(Box<ServerMessage>),
+    /// A frame without a message (a ping, a pong): the server is there (E17 M5 review R1-3; the
+    /// server pings an idle connection, `h3-server`'s `ping_every_ms`).
+    Heard,
     /// The connection ended, and why; nothing comes after it.
     Closed(String),
 }
@@ -52,8 +65,14 @@ type Socket = WebSocket<MaybeTlsStream<TcpStream>>;
 impl Connection {
     /// Dials `address` (`ws://…` or `wss://…`) on a thread of its own, a `wss://` server's
     /// certificate checked against the roots `roots` gives ([`os_roots`]; tests pass their own).
-    /// A failure to dial arrives as [`Incoming::Closed`].
+    /// A failure to dial arrives as [`Incoming::Closed`], a silent server's after [`DIAL_WAIT`].
     pub fn open(address: &str, roots: fn() -> RootCertStore) -> Self {
+        Self::open_within(address, roots, DIAL_WAIT)
+    }
+
+    /// As [`Connection::open`], the dial waiting at most `wait` for the TCP connection and for
+    /// each handshake read (a test's shorter).
+    pub fn open_within(address: &str, roots: fn() -> RootCertStore, wait: Duration) -> Self {
         let (out, queued) = mpsc::channel();
         let (sender, incoming) = mpsc::channel();
         let address = address.to_owned();
@@ -61,7 +80,7 @@ impl Connection {
         let spawned = std::thread::Builder::new()
             .name("h3-view connection".to_owned())
             .spawn(move || {
-                let why = match dial(&address, roots) {
+                let why = match dial(&address, roots, wait) {
                     Ok(socket) => serve(socket, &queued, &sender),
                     Err(why) => why,
                 };
@@ -103,9 +122,10 @@ fn ended() -> Incoming {
     Incoming::Closed("the connection ended".to_owned())
 }
 
-/// The WebSocket at `address`: TCP, then TLS for `wss://`, then the handshake; the socket's reads
-/// wait at most [`POLL`] from then on.
-fn dial(address: &str, roots: fn() -> RootCertStore) -> Result<Socket, String> {
+/// The WebSocket at `address`: TCP, then TLS for `wss://`, then the handshake, each step waiting
+/// at most `wait` for the connection or for a read (E17 M5 review R1-3); the socket's reads wait
+/// at most [`POLL`] from then on. (The name's lookup has no deadline: the system's.)
+fn dial(address: &str, roots: fn() -> RootCertStore, wait: Duration) -> Result<Socket, String> {
     let failed = |e: &dyn std::fmt::Display| format!("{address}: {e}");
     let uri: Uri = address.parse().map_err(|e| failed(&e))?;
     let secure = match uri.scheme_str() {
@@ -116,11 +136,26 @@ fn dial(address: &str, roots: fn() -> RootCertStore) -> Result<Socket, String> {
     let host = uri.host().ok_or_else(|| failed(&"no host"))?;
     let host = host.trim_start_matches('[').trim_end_matches(']');
     let port = uri.port_u16().unwrap_or(if secure { 443 } else { 80 });
-    let stream = TcpStream::connect((host, port)).map_err(|e| failed(&e))?;
+    // Each of the name's addresses in turn, as `TcpStream::connect` tries them.
+    let mut why = "the name has no address".to_owned();
+    let mut connected = None;
+    for at in (host, port).to_socket_addrs().map_err(|e| failed(&e))? {
+        match TcpStream::connect_timeout(&at, wait) {
+            Ok(stream) => {
+                connected = Some(stream);
+                break;
+            }
+            Err(e) => why = e.to_string(),
+        }
+    }
+    let stream = connected.ok_or_else(|| failed(&why))?;
     stream.set_nodelay(true).map_err(|e| failed(&e))?;
-    // The socket's options are shared by its handles: the read timeout is set through this one
-    // after the handshake, which needs blocking reads.
+    // The socket's options are shared by its handles: the handshake's reads wait at most `wait`
+    // (a timeout interrupts it: it fails), the I/O thread's at most `POLL`, set through this one.
     let handle = stream.try_clone().map_err(|e| failed(&e))?;
+    handle
+        .set_read_timeout(Some(wait))
+        .map_err(|e| failed(&e))?;
     let connector = if secure {
         Connector::Rustls(tls(roots()).map_err(|e| failed(&e))?)
     } else {
@@ -131,7 +166,12 @@ fn dial(address: &str, roots: fn() -> RootCertStore) -> Result<Socket, String> {
         .max_frame_size(Some(MAX_MESSAGE));
     let (socket, _) =
         tungstenite::client_tls_with_config(address, stream, Some(bounds), Some(connector))
-            .map_err(|e| failed(&e))?;
+            .map_err(|e| match e {
+                HandshakeError::Interrupted(_) => {
+                    failed(&format!("no answer to the handshake within {wait:?}"))
+                }
+                HandshakeError::Failure(e) => failed(&e),
+            })?;
     handle
         .set_read_timeout(Some(POLL))
         .map_err(|e| failed(&e))?;
@@ -193,8 +233,10 @@ fn serve(
                 Err(e) => return format!("a malformed message from the server: {e:?}"),
             },
             // A ping is answered by tungstenite at the next read or write; a close is answered
-            // too, and the next read ends.
-            Ok(_) => {}
+            // too, and the next read ends. Either says the server is there (E17 M5 review R1-3).
+            Ok(_) => {
+                let _ = incoming.send(Incoming::Heard);
+            }
             Err(tungstenite::Error::Io(e))
                 if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {}
             Err(tungstenite::Error::ConnectionClosed) => {
@@ -222,3 +264,6 @@ pub fn verify(key: &[u8; KEY_BYTES], message: &[u8], signature: &[u8; SIGNATURE_
                 .is_ok()
     })
 }
+
+#[cfg(test)]
+mod tests;
