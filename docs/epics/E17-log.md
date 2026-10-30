@@ -3470,7 +3470,10 @@ the record that opens mid-battle with a restart's re-join).
 - **Run against `h3-server`** (two windows under Xvfb, `--check`): `scenarios/battle.toml` to its
   end with a drop and a re-join, every frame exact; a window against the server's bot with a
   drop; `situations/seq-haste.toml` with both heroes' casts through the book and the aim; both
-  content outcomes (design §11.2, "Checked").
+  content outcomes; both seats dropping and re-joining on the final code (design §11.2,
+  "Checked").
+- **Gates:** `clients/scripts/check.sh` all passed (100 % lines and regions); the scoped verify
+  with the original data passed every step it runs.
 - **Not built (T6b2):** a record that opens mid-battle drawn (R2-8, R1-3), a join mid-battle, a
   restart's re-join (a new timeline), re-dialing until a restarted server answers.
 - **Found:** review items 52 to 55; no question.

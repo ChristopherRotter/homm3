@@ -4674,6 +4674,8 @@ T6b2 the record that opens mid-battle (R2-8, R1-3) with a restart's re-join.
   read back exact; one window against the server's bot dropping after 2 commands and re-joining;
   two windows on `situations/seq-haste.toml`, each hero's cast pressed through its book and aim
   (the server's replay: `D cast 54 stack 0`, `A cast 53 stack 0`), every frame exact; a
-  `Different` content (a pack's cost changed) with its note; an `Absent` one stopping. Frames
+  `Different` content (a pack's cost changed) with its note; an `Absent` one stopping; on the
+  final code both seats of a `battle.toml` game dropping (after 2 and 4 commands) and re-joining,
+  24 commands to the end, 1 837 and 1 888 frames exact. Frames
   after their time: median 6.1 to 9.8 ms with two windows and a server on two cores (hot seat's
   7.8 ms alone).
