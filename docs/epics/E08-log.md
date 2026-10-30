@@ -8642,7 +8642,12 @@ teleporters and simple visitables; the first round a survey, then the ADR amendm
 the design note and the cut (T77a, T77b), not the survey alone. The sketch renumbered: dwellings
 and hiring item 10, the banks 11, the quests 12.
 
-**Verify:** see the lane HANDOFF's session entry.
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data`
+passed every step it runs (fmt, clippy, check-arch, check-rules, check-stubs, check-docs,
+check-exe-map, clients-lock, check-lane, test, coverage, determinism, bench-check, doc-drift,
+original-data; deny and ffi-smoke skipped by the scope; exit 2, its normal result); the
+benchmarks as on `master` (no code changes but a test's). CI's full verify on the pull request
+is the record.
 
 #### Increment 8's design note at its closure (moved by T76)
 
