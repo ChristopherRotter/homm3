@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1 closed 2026-10-28, increment 2 refined · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 and 2 closed 2026-10-28 and 29, increment 3 refined · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -96,25 +96,33 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 | Increment | Closed | Tasks | Content |
 |---|---|---|---|
 | 1 | 2026-10-28 | T1a–T1c, T2a, T2b, T3 | the search's terminal by reward v1 and the true world (no gain: the evaluation limits it), shaping (+0.04, a tactics-phase loop), the faithful actor out of training; C ABI v35 |
+| 2 | 2026-10-29 | T4a, T4b, T5, T6 | the tactics bound (the loop gone, no cost), the scale run (flat from 20 M; `e25-scale-1` #3 the current best) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
 AI v1 and the baseline. **Since T4b** (the user, 2026-10-29) **`e25-bound-1`** (#2, 20 M) is the
-current best, the network the exit criteria are judged on.
+current best; **since T6** (the user, 2026-10-29) **`e25-scale-1` #3** (30 M, three tactics
+rounds), the network the exit criteria are judged on.
 
-**Increment 2: shaping, bounded, then scale** (refined 2026-10-28; the AI queue's tasks):
+**Increment 3: the network's architecture** (refined 2026-10-29, AI-Q11; the AI queue's tasks).
+Every run since E05 is the 2 × 512 MLP over the flat observation; the search (T1c) and scale
+(T5) stopped at its limit. Candidates, all on observation v22 (no encoding change): a deeper and
+a wider MLP; a **hex convolution** network (the field in axial coordinates, a 3 × 3 kernel
+without two opposite corners: a hex's six neighbours); a **hex transformer** (the hexes as
+tokens, a bias per axial offset); E06's entity network as it is. A distillation bench ranks them
+against the current MLP before any RL run.
 
-- [x] **T4a The tactics bound** (2026-10-28; `E25-log.md` T4a): `[network] tactics_rounds`
-  (off by default; T4b's `configs/e25-bound.toml` 1): past that many rounds of its own phase End
-  tactics is the agent's only entry, wherever the network plays; the binding counts the phase's
-  turns from the observations (Python only, no ABI change).
-- [x] **T4b The A/B** (2026-10-29; `E25-log.md` T4b): `e25-bound-1` at or above
-  `e25-shaping-1` against every engine seat (inside the intervals), the loop gone (the phase 2.5 %
-  of its decisions, none cut), 73 minutes against 90; the user: it is the current best.
-- [ ] **T5 The scale run** (the user's machine, 60 M from scratch, about 3.5 to 4 hours; the
-  user at T4b): `configs/e25-scale.toml`, T4b's settings with the original's computer's three
-  rounds (`tactics_rounds = 3`); the ladders against `e25-bound-1` and `t7-1`.
-- [ ] **T6 Increment 2's checkpoint:** T4b's and T5's reads; the user chooses increment 3.
+- [x] **T7a The network kinds** (2026-10-29; `E25-log.md` T7a): `[network] layers` for the MLP,
+  `kind = "hexconv"` and `"hexformer"` (`h3env.train.hexnet`: the stacks drawn on their hexes,
+  the entity network's heads, `entity.Pointed`), `field_width`, `field_height`; tests; the costs
+  on the sandbox's CPU (`hexconv` 64 × 6 15 times the MLP's operations).
+- [x] **T7b The distillation bench** (2026-10-29; `E25-log.md` T7b): `h3env.train.distill`,
+  every student trained on the same rollouts of the teacher (`e25-scale-1` #3) to its heads and
+  its λ-returns, scored on held-out rollouts per head and category; `configs/distill/e25.toml`
+  (six students); a CPU smoke (minibatches of 512 rows: PPO's do not fit the hex networks).
+- [ ] **T7c The bench run** (the user's machine) and its read: which kinds go to RL.
+- [ ] **T7d The A/B** (the user's machine, 20 M): the best one or two against `e25-scale-1`.
+- [ ] **T8 Increment 3's checkpoint.**
 
 ## Exit criteria
 

@@ -1,8 +1,8 @@
 # E25 — archive: closed increments
 
 Moved out of `E25-battle-ai-v2.md` verbatim when an increment closes (increment 1 on
-2026-10-28, at its checkpoint), so that the epic file holds what is open and the decisions that
-apply to the whole epic. Each task's full record is in `E25-log.md` (grep its id).
+2026-10-28, increment 2 on 2026-10-29, at their checkpoints), so that the epic file holds what
+is open and the decisions that apply to the whole epic. Each task's full record is in `E25-log.md` (grep its id).
 
 ## Increment 1 (closed 2026-10-28)
 
@@ -30,3 +30,23 @@ apply to the whole epic. Each task's full record is in `E25-log.md` (grep its id
   the control's 10 to 12 %; 0.2 % of training battles cut).
 - [x] **T3 Increment 1's checkpoint** (2026-10-28; `E25-log.md` T3): the user chose increment 2,
   shaping bounded, then scale; `e25-shaping-1` is the lineage's current best.
+
+## Increment 2 (closed 2026-10-29)
+
+**Increment 2: shaping, bounded, then scale** (refined 2026-10-28; the AI queue's tasks):
+
+- [x] **T4a The tactics bound** (2026-10-28; `E25-log.md` T4a): `[network] tactics_rounds`
+  (off by default; T4b's `configs/e25-bound.toml` 1): past that many rounds of its own phase End
+  tactics is the agent's only entry, wherever the network plays; the binding counts the phase's
+  turns from the observations (Python only, no ABI change).
+- [x] **T4b The A/B** (2026-10-29; `E25-log.md` T4b): `e25-bound-1` at or above
+  `e25-shaping-1` against every engine seat (inside the intervals), the loop gone (the phase 2.5 %
+  of its decisions, none cut), 73 minutes against 90; the user: it is the current best.
+- [x] **T5 The scale run** (2026-10-29; `E25-log.md` T5): `e25-scale-1`
+  (`configs/e25-scale.toml`, three tactics rounds), stopped by the user at 41.3 M of 60 M, the
+  curve flat from 20 M; best #3 (30 M) at `e25-bound-1`'s level against every engine seat
+  (0.418 against the system actor; the differences inside the intervals), the phase 4 % of its
+  decisions, no loop. Scale gains nothing at these settings.
+- [x] **T6 Increment 2's checkpoint** (2026-10-29; `E25-log.md` T6, AI-Q11): the current best
+  `e25-scale-1` #3; the head-to-heads skipped; increment 3 is the network's architecture, a
+  distillation bench first (the user).

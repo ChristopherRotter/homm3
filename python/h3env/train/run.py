@@ -67,7 +67,7 @@ IDENTITY = (
 
 
 #: The networks `[network] kind` names (`policy.build`).
-NETWORK_KINDS = ("mlp", "entity")
+NETWORK_KINDS = ("mlp", "entity", "hexconv", "hexformer")
 
 
 def _in(table: str) -> dict:
@@ -93,17 +93,24 @@ class Config:
     #: only, the ladders score at reward v1's (`evaluate.CURRENCY`, `MANA_PRICE`).
     currency: str = field(default="ai_value", metadata=_in("env"))
     mana_price: int = field(default=10, metadata=_in("env"))
-    #: The network (design §11): "mlp" (E05's) or "entity"; a saved file without the key is an
-    #: MLP's.
+    #: The network (design §11; E25 T7a): "mlp" (E05's), "entity", "hexconv" or "hexformer"
+    #: (`hexnet`); a saved file without the key is an MLP's.
     kind: str = field(default="mlp", metadata=_in("network"))
-    #: The MLP's layers.
+    #: The MLP's layers' units.
     hidden: int = field(default=512, metadata=_in("network"))
-    #: Both kinds' spell and target embeddings.
+    #: Every kind's spell and target embeddings.
     embed: int = field(default=32, metadata=_in("network"))
-    #: The entity network's token width, transformer blocks and attention heads.
+    #: The width of the entity network's tokens, of the hex networks' channels or tokens.
     width: int = field(default=128, metadata=_in("network"))
+    #: The MLP's layers (E25 T7a; two before), the entity network's and the hex transformer's
+    #: blocks, the hex convolution network's residual blocks.
     layers: int = field(default=2, metadata=_in("network"))
+    #: The attention heads of the entity network and the hex transformer.
     heads: int = field(default=4, metadata=_in("network"))
+    #: The battlefield's size the hex networks draw on (the base ruleset's, `[battle]
+    #: field_width`, `field_height`).
+    field_width: int = field(default=17, metadata=_in("network"))
+    field_height: int = field(default=11, metadata=_in("network"))
     #: Whether the MLP's entry head reads the batch's kill preview (AI-Q7 (b) part 2, E06 T6d:
     #: each legal strike's previewed kills, `policy`'s documentation); every batch the network
     #: plays then writes it.
@@ -335,7 +342,17 @@ def resolve(config: Config) -> Config:
     if c.lr_horizon == 0:
         c = dataclasses.replace(c, lr_horizon=c.samples)
     problems = []
-    for key in ("samples", "envs", "max_steps", "rollout", "epochs", "minibatches", "hidden"):
+    for key in (
+        "samples",
+        "envs",
+        "max_steps",
+        "rollout",
+        "epochs",
+        "minibatches",
+        "hidden",
+        "field_width",
+        "field_height",
+    ):
         if getattr(c, key) <= 0:
             problems.append(f"`{key}` must be positive")
     if c.kind not in NETWORK_KINDS:
