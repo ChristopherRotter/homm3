@@ -266,8 +266,18 @@ fn a_command_after_a_wait_starts_the_frames_grid_at_the_waits_end() {
     // The heal's frames end at turn + 400; the sound 302 ms later.
     let lengths = named(Sound::Heal, 702);
     let end = turn + 702;
-    let walk = |at| (Some(at), vec![moved(2, 100, 99), Event::TurnStarted { stack: 0 }]);
-    let t = waited(&o, &[(Some(0), heal.clone()), walk(end)], (&magic, &casts), Some(&lengths));
+    let walk = |at| {
+        (
+            Some(at),
+            vec![moved(2, 100, 99), Event::TurnStarted { stack: 0 }],
+        )
+    };
+    let t = waited(
+        &o,
+        &[(Some(0), heal.clone()), walk(end)],
+        (&magic, &casts),
+        Some(&lengths),
+    );
     assert_eq!(t.turns[1], (end, 2));
     let first = |t: &Timeline, after: u32| {
         t.keys
@@ -279,7 +289,12 @@ fn a_command_after_a_wait_starts_the_frames_grid_at_the_waits_end() {
     assert_eq!(first(&t, end), Some(end + 100));
     // A wait that ends within a grid step of the deadline leaves the grid as it was.
     let near = named(Sound::Heal, 450);
-    let t = waited(&o, &[(Some(0), heal), walk(turn + 450)], (&magic, &casts), Some(&near));
+    let t = waited(
+        &o,
+        &[(Some(0), heal), walk(turn + 450)],
+        (&magic, &casts),
+        Some(&near),
+    );
     assert_eq!(t.turns[1], (turn + 450, 2));
     assert_eq!(first(&t, turn + 450).map(|s| (s - turn) % 100), Some(0));
 }

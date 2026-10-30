@@ -1220,7 +1220,7 @@ fn the_panel_follows_each_turns_controller() {
         [2, 0, 2]
     );
     // Auto Combat's selection reads the same sides.
-    let auto = panels.with_auto(&o, crate::auto::Auto::default());
+    let auto = panels.with_auto(&o, Auto::default());
     assert_eq!(wait(&auto.at(&o, &started, 250, &layout)), 0);
 }
 
