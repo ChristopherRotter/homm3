@@ -1846,3 +1846,45 @@ and Clients) the starting point.
   as the same frame afresh, 141 of 141 changes the headless loop's.
 - **Measured** (the sandbox, `walk-1`, `--measure 20`): a frame made in a median 0.5 ms, 24.6 %
   uploaded (T5b2's 0.5, 24.8 %).
+
+### M3 T6a2a — the map hint's visit marks (2026-10-30)
+
+On `map-client/e24-m3-t6a2a`, the user present: T6a2 cut by what runs the hint (the agent's
+proposal, taken): T6a2a, the 35 classes whose case is inline and shows what was visited, T6a2b,
+the 20 of the owners and contents (seven sub-functions); the recapture with the hint unmasked moved
+to T7, which records everything again anyway. MCL-Q17 (the original's), MCL-Q18 (fixed, the
+original's under `--bugs original`) and MCL-Q19 (copied in M4's engine query) answered at the
+start. `master` at 819f41d (#595 merged), later 7f46f18 merged in (a conflict in `map.toml`:
+both sides kept). The original data staged from the user's repo folder first; the sandbox
+restarted during the setup, its baseline run again and green (`clients` verified on `master`'s
+code); CI's `master` green.
+
+- **The reading** (design §4.11; map entries `xtrainfo_load` 0x405D80, `crgen_load` 0x405D20,
+  `space_string` 0x660330, `space_format` 0x66034C, `xtra_info` 0x69127C, `dwelling1_names`
+  0x6914FC, `dwelling4_names` 0x691354, `map_hint` 0x40B150's summary; inferred for T6a2b:
+  `creature_bank_hint` 0x40D3F0, `shrine_hint` 0x40D8D0, `tree_of_knowledge_hint` 0x40DB00,
+  `witch_hut_hint` 0x40DCC0, `quest_guard_hint` 0x573040, `seer_hut_hint` 0x5741B0,
+  `resource_names` 0x6A5E64, `keymaster_colour_names` 0x6A7520; structs: the game's
+  `kinds_visited` u8[28] with each kind and `obelisks_visited` +0x4E3E9, the hero's
+  `status_flags` bits, the player's +0xB8 and +0xBC): the 35 cases read whole, each the name, on
+  the entrance the bonus (XtraInfo.txt's row by the viewing player's bit of the kind) and the
+  mark (GENRLTXT 353 or 354) by the selected hero's flags or per-object fields, the screen
+  player's fields, the object's word with the hero's owner, the shown or the current player, or
+  what a Water Wheel or Windmill has left.
+- **Built:** `hover::Visit` and `Facts::visits` (`[hover]`'s `visits`, left out none known),
+  `Hint::Visits`, `VISITS`, `BONUSES`; the keys `map.hint.more` (`EXE:0x66034C`),
+  `map.hint.visited`, `map.hint.not-visited` and the family `map-bonus` (XtraInfo.txt, 28);
+  `Rules::origin` and `column_at` by it unless `Bugs::Original` (MCL-Q18); the situation's
+  `visits` (`VisitSpec`, each of an object given, once); the harness's `h3mem.VISIT_RULES`,
+  `Mem.visit_state`, `Mem.visit` (into `[hover]`), `Mem.write_visit` (the rules inverted, written
+  by `h3map.stage` after the view); the situations `hover-visits-a`, `hover-visited-a`,
+  `hover-visits-b`, `hover-visited-b` and their sequences, in `masks.toml`'s `hinted`.
+- **Checked:** `frames --only` on the four (recorded, then again with the recorded timeline for
+  the selected hero's points): 50, 50, 52 and 52 frames exact with the status bar compared, each
+  timeline as recorded; the original's texts looked at (every mark and bonus as read, the second
+  Water Wheel and Windmill not visited with something left); `drawn`: the 50 situations and 18
+  sequences recorded before all the same, `drawn --record` (846 frames of 22 sequences); unit
+  tests (the visits read, the hints of a visited object, their text, the drawn tile under the
+  mouse, the situation's visits); coverage 100 %; clippy; fmt.
+- **Not recorded:** a class's mark without a selected hero (read as none for the classes a hero
+  keeps; the comparisons select one), the other bits of a flag of several (written as its lowest).
