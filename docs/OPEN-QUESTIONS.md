@@ -77,7 +77,16 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-(no open questions)
+#### AI-Q12 — E25's increment 4 (T8, 2026-10-30)
+
+Increment 3 (the network's architecture) is read (`docs/epics/E25-log.md` T7c, T7d): the hex convolution network, the hex transformer and E06's entity network fit the teacher ten times worse than any MLP at 5 to 25 times its cost; the wide MLP 2 × 1 024 fits it best but, trained from scratch at 20 M, ends at `e25-scale-1` #3's ladder (every point estimate within 0.006; 0.414 against the system actor, the target 0.5) at 0.7 times its samples a second. With T5 (samples flat from 20 M), network size, depth, structure and length all end at one ladder; PPO's own settings (the entropy bonus 0.01, 4 epochs, 8 minibatches, the learning rate 2.5e-4, the rollout of 128 × 256) were never varied in E05, E06 or E25. Options:
+
+- **(a) The policy's sharpness and PPO's settings** (agent's recommendation): first a diagnostic without training: `e25-scale-1` #3's ladder against the system actor with its logits divided by a temperature (1, 0.7, 0.5; a small `evaluate` option): how much of the gap to 0.5 is the sampled policy's spread (the entropy ends at 1.5); then A/Bs on the 2 × 512 MLP at 20 M, about 75 minutes each on the user's machine: the entropy bonus decayed to 0 with the learning rate, and one of fewer epochs or a larger rollout. Cheap, untried, decision 1's rules unchanged (still the sampled policy, only trained sharper).
+- **(b) A more diverse league:** exploiters (a second learner trained only against the main agent's frozen copies, its snapshots joining the league), aimed at self-play's narrowness (the agent plays the same against every opponent, E06 T6a; the league score settles at 0.5). A build in `h3env.train`, a resumable state and tests, then a longer A/B (two learners share the GPU).
+- **(c) Expert iteration** (a search in Rust over determinized worlds, trained on its own choices): the largest build; T1c argues against it on this network's evaluation.
+- **(d) Pause E25** at `e25-scale-1` #3 until the battle lane builds the fair system actor (decision 3: imitation, and a fair target), the lane moving to other work meanwhile; or revise decision 1's target with this evidence (the faithful actor sees the hidden facts) and close E25.
+
+Also for the user: **the current best stays `e25-scale-1` #3** (agent's recommendation: the wide network is as strong at twice the parameters and 1.5 times a decision's cost) or becomes `e25-wide-1` #2. And optionally, on the user's machine (the wide `best.pt` is above the upload limit): `records/inspect/battles.py` on `runs/e25-wide-1/best.pt` (its JSONL lines uploaded: T7d's decisions' mix) and the head-to-head gate against #3 (its one line).
 
 ### Client lane (`CLT-Q<n>`)
 

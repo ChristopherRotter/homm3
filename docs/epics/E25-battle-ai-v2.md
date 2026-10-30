@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 and 2 closed 2026-10-28 and 29, increment 3 refined · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 and 2 closed 2026-10-28 and 29, increment 3 at its checkpoint (AI-Q12) · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -124,9 +124,11 @@ against the current MLP before any RL run.
   the structured networks fit the teacher ten times worse than any MLP (agreement 0.62 to 0.64
   against 0.87 to 0.88) at 5 to 25 times its cost; the wide MLP leads everywhere, its value past
   the teacher's (0.612 against 0.575). The user: the wide MLP alone to RL, from scratch.
-- [ ] **T7d The A/B** (the user's machine, 20 M): the wide MLP (`configs/e25-wide.toml`,
-  `hidden = 1024`) against `e25-scale-1`.
-- [ ] **T8 Increment 3's checkpoint.**
+- [x] **T7d The A/B** (2026-10-30; `E25-log.md` T7d; `records/e25-wide-1.json`): the wide MLP
+  from scratch at 20 M ends at `e25-scale-1` #3's ladder (every point estimate within 0.006;
+  0.414 against the system actor) at 0.7 times its samples a second; its value no better in RL.
+  The decisions' mix not read (its `best.pt`, 49.5 MB, is above the upload limit).
+- [ ] **T8 Increment 3's checkpoint** (AI-Q12): the reads put to the user, increment 4 chosen.
 
 ## Exit criteria
 

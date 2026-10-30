@@ -20,14 +20,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `h3env.train.distill`).
   **Done 2026-10-30:** T7c (the bench on the user's GPU, `records/distill/distill-1.json`: the
   structured networks fit ten times worse at 5 to 25 times the cost; the wide MLP 2 × 1 024 leads,
-  its value past the teacher's; the user: it alone to RL, from scratch). **Next:** T7d,
-  `e25-wide-1` on the user's machine (`configs/e25-wide.toml`, 20 M; the queue's command).
-- **Open pull requests:** none. Merged: #534, #539, #555, #558, #576, #585 (E25 T5 to T7b,
-  2026-10-29).
+  its value past the teacher's; the user: it alone to RL, from scratch), T7d (`e25-wide-1`,
+  20 M: `e25-scale-1` #3's ladder, 0.414 against the system actor, at 0.7 times its speed).
+  **Next:** T8, increment 3's checkpoint: **AI-Q12 waits for the user** (increment 4's options,
+  the current best).
+- **Open pull requests:** the T7d branch's (`claude/bold-archimedes-vivw35`). Merged: #585,
+  #604 (E25 T7b, T7c).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q12, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q13, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -35,6 +37,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-30 — E25 T7d
+
+- #604 merged; the branch started from `master`. The user ran `e25-wide-1` (20 M, 94 minutes)
+  and uploaded its record and metrics: committed and read (`E25-log.md` T7d). Its `best.pt`
+  (49.5 MB) is above the upload limit (`TRAPS.md`, Python), so `battles.py` was not run; T8's
+  question AI-Q12 written. The sandbox's baseline: the light gates (CI verified the code).
 
 ### 2026-10-30 — E25 T7c
 
@@ -51,11 +60,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   network's architecture (AI-Q11). T7a (`hexnet`, the MLP's depth) and T7b (the distillation
   bench) built and tested; a CPU smoke of the bench (PPO's minibatches ran out of memory:
   `TRAPS.md`). The sandbox setup's full verify stopped (CI's record).
-
-### 2026-10-29 — E25 T4b
-
-- #558 (T4a) merged, `master` green. The user ran `e25-bound-1` (20 M) and uploaded its record,
-  metrics and `best.pt`: the record committed and read (`E25-log.md` T4b; `battles.py` on its
-  network in the sandbox, shaping's numbers T2b's: its `best.pt` is gone from the sandbox). The
-  user: `e25-bound-1` the current best; T5 at 60 M with three tactics rounds
-  (`configs/e25-scale.toml`).

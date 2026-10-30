@@ -104,7 +104,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   MLP); `Mlp`'s parameter names stay, so older files load. Time a kind with `python -m
   h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats 30`).
 - A user's run: they upload `record.json`, `metrics.jsonl`, `best.pt`; `evaluate.load` builds
-  a network on the CPU.
+  a network on the CPU. The upload takes at most 30 MB: a network file is 4 bytes a parameter
+  (2 × 512 about 24 MB, 2 × 1 024 49.5 MB), so a larger network's scripts (`battles.py`, a
+  gate, `inspect`) run on the user's machine and their output is uploaded (E25 T7d).
 - The sandbox reaches PyTorch's index only while the environment's network access allows
   `*.pytorch.org` (**Custom**; **Trusted** ignores the Allowed domains). `uv --directory python
   sync --group train`: 3 to 25 minutes.
