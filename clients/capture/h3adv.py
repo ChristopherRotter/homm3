@@ -41,7 +41,10 @@ opening:rows, morale:start, luck:start (the README's "Rewards on the map"). Sinc
 (batch E8a): `key` (a key pressed for the selected hero), `again_if = { marks = <n> }` (the second
 click only after that many marks), `only_if = "aboard"`, and the observations boat, boat[<hero>],
 boat:x,y, boats:used, drawn, opening:field, battlefield:ship, blocked, again, key and a Flotsam's
-object:x,y (the README's "Boats and the sea").
+object:x,y (the README's "Boats and the sea"). Since E08 T79b (batch E9b): `gold = true` (the
+starting bonus Gold), an end-turn step's `record` and `note` (the new turn's messages), a repeated
+row label `<label>#<n>`, and the observations income, gardens, growth:x,y, gain and the weekly
+objects' object:x,y, through a hero on the entrance (the README's "The day's start").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -117,14 +120,19 @@ def click_button(game, name, at):
     game.move(*PARK)
 
 
-def dismiss(game, quiet=1.5, limit=60.0):
+def dismiss(game, quiet=1.5, limit=60.0, mem=None, events=None):
     """Clicks every dialog's OK until none shows for `quiet` seconds on the adventure map;
-    returns how many it clicked."""
+    returns how many it clicked. With `mem` and `events` (E08 T79b, batch E9b's timed events at a
+    turn's start) each message's record and pictures go into events["messages"] and
+    events["message_pictures"] before its OK."""
     clicked, since, end = 0, time.monotonic(), time.monotonic() + limit
     while time.monotonic() < end:
         pix = game.settled()
         found = find_button(game, "ok", pix)
         if found:
+            if events is not None and mem.dialog():
+                events["messages"].append(message_record(mem))
+                events["message_pictures"].append(pictures_text(mem))
             click_button(game, "ok", found[0])
             clicked, since = clicked + 1, time.monotonic()
         elif not game.matches("adventure", pix):
@@ -168,9 +176,10 @@ def to_hot_seat(game, names, difficulty="normal", gold=False):
     dismiss(game)
 
 
-def end_turn(game, mem):
+def end_turn(game, mem, events=None):
     """Ends the current player's turn (key e) and passes the dialogs up to the next human's map;
-    returns the new current player."""
+    returns the new current player. With `events` (E08 T79b) the messages of the new turn's start
+    are recorded there (dismiss)."""
     player = mem.current_player()
     game.key("e", 0.5)
     end = time.monotonic() + 60
@@ -181,7 +190,7 @@ def end_turn(game, mem):
         if found:
             click_button(game, "ok", found[0])
         time.sleep(0.2)
-    dismiss(game)
+    dismiss(game, mem=mem, events=events)
     return mem.current_player()
 
 
@@ -1160,13 +1169,31 @@ def message_record(mem):
     T68b also `RANDSIGN:24`, a sign's or Ocean Bottle's default text), or first, since E08 T68b,
     `the map's text "..."` when it is the text one of the map's message records holds (batch
     E8b's E8-9: the map's own text, never the original's, ADR-0009; identify would name a text
-    with " the " in it GENRLTXT:16, `%s the %s`); `?` for neither."""
+    with " the " in it GENRLTXT:16, `%s the %s`); `?` for neither. Since E08 T79b also a text
+    of the batch's spec (OWN_TEXTS: its timed events' and events' messages, batch E9b's E9-11),
+    which the game keeps in records the harness does not read."""
     text = mem.dialog_text()
     lines = [" ".join(line.split()) for line in [text, *text.split("\n")]]
     for has_text, own in mem.messages():
         if has_text and " ".join(own.split()) in lines:
             return f'the map\'s text "{own}"'
+    for own in OWN_TEXTS:
+        if " ".join(own.split()) in lines:
+            return f'the map\'s text "{own}"'
     return h3lod.identify(text) or "?"
+
+
+# The batch's own message texts (E08 T79b; batch sets them from its spec): message_record names a
+# message with one of them `the map's text "..."`.
+OWN_TEXTS = []
+
+
+def own_texts(spec):
+    """The messages a spec's map shows that are its own (E08 T79b): its timed events' and
+    events' `message`s."""
+    found = tomllib.loads(Path(spec).read_text()).get("map", {})
+    return [e["message"] for kind in ("timed_event", "event") for e in found.get(kind, [])
+            if e.get("message")]
 
 
 def picture_text(mem, picture):
@@ -1697,8 +1724,36 @@ def object_text(mem, x, y, z=0):
     a Sea Chest's (82: `Sea Chest: nothing`, `1500 gold` or `artifact <name>, 1000 gold` by the
     kind in bits 0-2, §8.3), a Survivor's artifact (86, §8.4) and an Ocean Bottle's message (59:
     `the map's text "..."` or `no text`, by its record, §8.5) and `none (class 3: the coast)` for
-    a coastal tile without an object."""
+    a coastal tile without an object. Since E08 T79b (batch E9b; survey E08-economy.md §9) a
+    Windmill's (112: `Windmill: 4 sulfur` or `empty (sulfur)`, bits 13-16 and 0-3), a Water
+    Wheel's (109: `500 gold` or `empty`, bits 0-4 in 500s) and a Mystical Garden's (55: `Garden 0:
+    full, 5 gems` or `empty (500 gold)`, bit 10, bits 6-9, the index bits 0-4), each with its visited
+    marks (bits 5-12, the teams; the Garden's are the players' masks, `gardens`); and an object a
+    hero stands on is read through the hero's record (object_tile: `... (under E9-8)`)."""
+    tile = object_tile(mem, x, y, z)
+    text = object_word_text(mem, tile)
+    return f"{text} (under {tile['hero']})" if "hero" in tile else text
+
+
+def object_tile(mem, x, y, z=0):
+    """mem.object_at, and when a hero stands on the object's entrance the class and word under it
+    from the hero's record (+0xC, +0x14; E08 T79b, batch E9b's E9-8: a hero left on a Windmill's
+    entrance until the week's start), with the hero's name; the subclass is then unknown (-1)."""
     tile = mem.object_at(x, y, z)
+    if tile["class"] == h3mem.HERO_OBJECT:
+        under = mem.tile_word(*tile["tile"])
+        if "hero" in under:
+            tile = {**tile, "class": under["under_class"], "word": under["under_word"],
+                    "subclass": -1, "hero": mem.hero(under["hero"])["name"]}
+    return tile
+
+
+# The weekly objects' classes (E08 T79b; survey E08-economy.md §9).
+WINDMILL, WATER_WHEEL, GARDEN = 112, 109, 55
+
+
+def object_word_text(mem, tile):
+    """What an object holds by its class and word (object_text)."""
     kind, word = tile["class"], tile["word"]
     artifact = held_artifact(tile)
     if kind in (0, -1):
@@ -1733,6 +1788,19 @@ def object_text(mem, x, y, z=0):
         return f"{'guarded' if word & 1 else 'looted'}, {mem.spell_name(word >> 13 & 0xFF)}"
     if kind == 29:
         return "Flotsam: " + FLOTSAM.get(word, f"word {word} (nothing)")
+    if kind in (WINDMILL, WATER_WHEEL, GARDEN):
+        marks = f"marks {word >> 5 & 0xFF:#04x}"
+        if kind == WINDMILL:
+            drawn = signed(word & 0xF, 4)
+            resource = h3mem.RESOURCES[drawn] if 0 <= drawn < 7 else f"resource {drawn}"
+            amount = word >> 13 & 0xF
+            return f"Windmill: {f'{amount} {resource}' if amount else f'empty ({resource})'}; {marks}"
+        if kind == WATER_WHEEL:
+            gold = 500 * (word & 0x1F)
+            return f"Water Wheel: {f'{gold} gold' if gold else 'empty'}; {marks}"
+        resource = word >> 6 & 0xF
+        gain = {5: "5 gems", 6: "500 gold"}.get(resource, f"resource {resource}")
+        return f"Garden {word & 0x1F}: {'full, ' + gain if word >> 10 & 1 else f'empty ({gain})'}"
     if kind == 82:
         chest = word & 7
         if chest == 2:
@@ -1753,7 +1821,7 @@ def object_text(mem, x, y, z=0):
 # `before:` they are read right before the step (E08 T57: `pre_read`), else they would show the
 # state after it.
 LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flees", "boat",
-              "boats", "drawn", "boat_record", "mine", "tile")
+              "boats", "drawn", "boat_record", "mine", "tile", "income", "gardens", "growth")
 
 
 def observations(what):
@@ -1814,7 +1882,7 @@ def value(obs, what, mem):
             # The snapshot holds no tiles: the read would be the state after the step.
             raise ValueError(f"`{what}`: read a tile before a step in a step of its own")
         return value({"before": obs["before"], "after": obs["before"]}, what.split(":", 1)[1], mem)
-    after = obs["after"]
+    after = obs.get("after")  # E08 T79b: an end-turn step has no hero
     if what in ("arrived", "moved"):
         return yes[obs[what]]
     if what == "points" and "points" not in obs:
@@ -1888,7 +1956,9 @@ def value(obs, what, mem):
     if m := re.match(r"(word|object):(\d+),(\d+)(?:,(\d))?$", what):
         x, y, z = int(m.group(2)), int(m.group(3)), int(m.group(4) or 0)
         if m.group(1) == "word":
-            return f"{mem.object_at(x, y, z)['word']:#010x}"
+            # E08 T79b: through a hero on the entrance (object_tile).
+            tile = object_tile(mem, x, y, z)
+            return f"{tile['word']:#010x}" + (f" (under {tile['hero']})" if "hero" in tile else "")
         return object_text(mem, x, y, z)
     if what == "heroes:experience":
         return pool_experience(mem)
@@ -2044,7 +2114,43 @@ def value(obs, what, mem):
         return "; ".join(f"{stop['side']} {stop['count']} "
                          f"{mem.creature_name(stop['creature'], stop['count'])} ({stop['auto']})"
                          for stop in battles[-1]["stops"]) or "none"
+    # E08 T79b (batch E9b): a player's day's income (+0x108: `0 wood, 5 mercury, ...`), its
+    # Mystical Gardens' mask (+0xB8: `0x00000001 (Gardens 0)`), a monster's count with its
+    # sixteenths (bits 27-30: `47 Pikemen and 4/16 (756 sixteenths), grows`) and what the step
+    # changed in its hero's player's treasury (`+4 sulfur, +500 gold`; `none`). The player is
+    # the step hero's owner or, in an end-turn step, the new current player, unless named.
+    if m := re.match(r"(income|gardens)(?::([a-z]+))?$", what):
+        colour = player_colour(obs, m.group(2), mem)
+        found = mem.player(colour)
+        if m.group(1) == "income":
+            return ", ".join(f"{n} {k}" for k, n in found["income"].items())
+        mask = found["gardens"]
+        bits = ", ".join(str(b) for b in range(32) if mask >> b & 1)
+        return f"{mask:#010x} ({f'Gardens {bits}' if bits else 'none'})"
+    if m := re.match(r"growth:(\d+),(\d+)(?:,(\d))?$", what):
+        found = mem.monster(int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
+        if found is None:
+            return "none"
+        count, part = found["count"], found["sixteenths"]
+        return (f"{count} {mem.creature_name(found['creature'], count)} and {part}/16 "
+                f"({16 * count + part} sixteenths), "
+                + ("does not grow" if found["fixed_count"] else "grows"))
+    if m := re.match(r"gain(?::([a-z]+))?$", what):
+        owner = COLOURS[player_colour(obs, m.group(1), mem)]
+        was, now = obs["before"]["resources"][owner], after["resources"][owner]
+        return ", ".join(f"{now[k] - was[k]:+d} {k}" for k in now if now[k] != was[k]) or "none"
     raise ValueError(f"unknown observation `{what}`")
+
+
+def player_colour(obs, named, mem):
+    """The colour index an observation names (`red`, …), else the step's hero's owner, else (an
+    end-turn step) the current player (E08 T79b)."""
+    if named is not None:
+        if named not in COLOURS:
+            raise ValueError(f"unknown colour `{named}`")
+        return COLOURS.index(named)
+    hero = (obs.get("before") or {}).get("hero")
+    return hero["owner"] if hero else mem.current_player()
 
 
 def oddities(obs, expect):
@@ -2079,6 +2185,13 @@ def table_cells(line):
     return line[1:-1].split("|") if len(line) > 1 and line[0] == line[-1] == "|" else None
 
 
+def repeated(seen, label):
+    """A table row's label as its cells' keys name it (E08 T79b): the label itself the first time
+    the table has it, `<label>#<n>` the n-th time (`seen` counts them per table)."""
+    seen[label] = seen.get(label, 0) + 1
+    return label if seen[label] == 1 else f"{label}#{seen[label]}"
+
+
 def cell_key(section, label, columns, j):
     """The record key of a row's j-th cell: its label in a table of one value column, `<label> |
     <column>` in a wider one (E08 T37a: batch E5's probes, walks and heroes by column)."""
@@ -2093,9 +2206,10 @@ def fill(template, values, notes, header):
     T68b a section's `rows:<first column>` fill the table whose first column is named so (a
     section with several tables without labels: batch E8b's E8-8); since E08 T79a the n-th such
     table of a section (n from 2) by `rows:<first column>#<n>` (batch E9a's E9-1: two tables of
-    slots)."""
+    slots); since E08 T79b a row whose label an earlier row of its table has by `<label>#<n>`
+    (n from 2: batch E9b's two rows a day, `1 | wood` and `1#2 | wood`)."""
     lines, section, out, columns, rows = template.splitlines(), None, [], [], []
-    tables = {}
+    tables, seen = {}, {}
     for line in lines:
         m = re.match(r"## (\S+) ", line)
         if m:
@@ -2117,7 +2231,7 @@ def fill(template, values, notes, header):
                 line = f"- anything odd: {'; '.join(notes.pop(section))}"
             cells = table_cells(line)
             if cells is not None and TABLE_RULE.fullmatch(line.strip()) and out:
-                columns = table_cells(out[-1]) or []
+                columns, seen = table_cells(out[-1]) or [], {}
                 first = columns[0].strip() if columns else None
                 tables[first] = tables.get(first, 0) + 1
                 key = (section, f"rows:{first}" + (f"#{tables[first]}" if tables[first] > 1
@@ -2125,7 +2239,7 @@ def fill(template, values, notes, header):
                 if columns and key in values:
                     rows = list(values.pop(key))
             elif cells is not None and len(cells) == len(columns) > 1:
-                label = cells[0].strip()
+                label = repeated(seen, cells[0].strip())
                 for j in range(1, len(cells)):
                     key = cell_key(section, label, columns, j)
                     if not cells[j].strip() and key in values:
@@ -2279,6 +2393,7 @@ def batch(recipe_path, map_path=None, out=None):
         template = out / f"{name}-template.md"
         compile_spec(spec, out, name)  # the template; the given map stays the one played
     values, notes, steps = {}, {}, []
+    OWN_TEXTS[:] = own_texts(spec)  # E08 T79b: the map's own messages by their text
     log = open(out / "steps.jsonl", "w")
     game = Game(out)
     try:
@@ -2286,7 +2401,8 @@ def batch(recipe_path, map_path=None, out=None):
         restarts = []
         while True:
             game.start(map_path)
-            to_hot_seat(game, recipe["players"], difficulty)
+            # E08 T79b: `gold = true` gives each player the starting bonus Gold (E17 M5 T8a).
+            to_hot_seat(game, recipe["players"], difficulty, gold=recipe.get("gold", False))
             mem = h3mem.Mem()
             if mem.difficulty() != difficulty:
                 raise RuntimeError(f"the game's difficulty is {mem.difficulty()}, not {difficulty}")
@@ -2300,7 +2416,12 @@ def batch(recipe_path, map_path=None, out=None):
             game.stop()
         for step in (s for step in recipe["step"] for s in expand(step, mem)):
             if step.get("end_turn"):
-                obs = {"end_turn": True, "player": end_turn(game, mem)}
+                # E08 T79b: the new turn's messages (`messages`, `message_pictures`) and every
+                # player's resources after it, for the step's `record` and `note`.
+                obs = {"end_turn": True, "messages": [], "message_pictures": []}
+                obs["player"] = end_turn(game, mem, obs)
+                obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
+                                              for c in range(8) if mem.player(c)["heroes"]}}
             else:
                 prepared = None
                 if "walk" in step and (step.get("days") or step.get("near")):
@@ -2390,7 +2511,8 @@ def batch(recipe_path, map_path=None, out=None):
               f"(`clients/capture/h3adv.py batch {shown(recipe_path)}`): "
               "the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, "
               f"difficulty {recipe.get('difficulty', 'normal').capitalize()}, the starting bonus "
-              "random, Show Route on; read from the game's memory."
+              f"{'gold' if recipe.get('gold') else 'random'}, Show Route on; read from the game's "
+              "memory."
               + (f" Started again {len(restarts)} time(s) for the recipe's `require` "
                  f"({'; '.join(', '.join(m) for m in restarts)} missing)." if restarts else ""))
     filled = fill(Path(template).read_text(), values, notes, header)
@@ -2402,8 +2524,9 @@ def batch(recipe_path, map_path=None, out=None):
 
 def records(text):
     """A filled template's record lines: {(section, field or row label): value}, a cell of a
-    table of more than one value column under `<label> | <column>` (E08 T37a)."""
-    found, section, recording, columns = {}, None, False, []
+    table of more than one value column under `<label> | <column>` (E08 T37a), a repeated label
+    as fill keys it (`<label>#<n>`, E08 T79b)."""
+    found, section, recording, columns, seen = {}, None, False, [], {}
     lines = text.splitlines()
     for i, line in enumerate(lines):
         m = re.match(r"## (\S+) ", line)
@@ -2416,10 +2539,11 @@ def records(text):
             found[(section, m.group(1))] = m.group(2).strip()
         elif recording and cells is not None:
             if i + 1 < len(lines) and TABLE_RULE.fullmatch(lines[i + 1].strip()):
-                columns = cells  # the header
+                columns, seen = cells, {}  # the header
             elif not TABLE_RULE.fullmatch(line.strip()) and len(cells) == len(columns) > 1:
+                label = repeated(seen, cells[0].strip())  # E08 T79b: as fill keys it
                 for j in range(1, len(cells)):
-                    found[cell_key(section, cells[0].strip(), columns, j)] = cells[j].strip()
+                    found[cell_key(section, label, columns, j)] = cells[j].strip()
     return found
 
 

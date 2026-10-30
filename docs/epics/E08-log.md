@@ -9382,3 +9382,67 @@ boarding tile (31, 50) while E9-5 sails, as T68b saw). **E9-0** Red at day 2's s
 (its sawmill and N, its cavern), nothing on day 1.
 
 T79b (batch E9b) and T80 (the scoring) queued.
+
+### Increment 9, round 3: T79b, batch E9b's harness and runs (2026-10-30, `adventure/e08-t79b`)
+
+**The cut** (decision 208): whole (recommended); T80 the next session. **Baseline:** `master`
+661683d (#607 merged; CI on `master` green, its full verify and the clients; the scoped verify
+with original data passed every step). The installation's files staged from the user's computer
+at the start (as T79a, with every MP3).
+
+**The reads** (`clients/capture/`, common; README "The day's start"): `h3mem.player`'s `income`
+(+0x108, seven i32) and `gardens` (+0xB8; `structs.toml` "player_record" gains +0x108);
+`h3mem.monster`'s `sixteenths` (bits 27 to 30) and `word`. `h3adv`: the observations
+`income[:<colour>]`, `gardens[:<colour>]`, `growth:x,y` (count, sixteenths, the "does not grow"
+flag), `gain[:<colour>]` (the step's change to the treasury); `object:x,y` decodes a Windmill's,
+a Water Wheel's and a Mystical Garden's word (amount, resource, marks, the Garden's index and full
+bit), and `object:` and `word:` read an object a hero stands on through the hero's record (+0xC,
++0x14: `(under E9-8)`); an end-turn step takes `encounter`, `record` and `note` (`end_turn` and
+`dismiss` record the new turn's messages); a message with one of the spec's own texts (its timed
+events' messages) is `the map's text "..."`; `fill` and `compare` key a repeated row label
+`<label>#<n>` (the spec's two rows a day); a recipe's `gold = true` (the starting bonus Gold,
+E17 M5 T8a's). The harness check passed after the last change. The client and map-client lanes'
+inboxes told.
+
+**The recipe** (`clients/capture/batches/E08-batch-9b.toml`, 90 steps, 28 of them end turns):
+the spec's order over fifteen days; Red's reads by E9-7 (who never moves), Blue's by E9-11. A
+throwaway check before the first run: every record key of the recipe is a field or cell of the
+template, each once, and every observation resolves on a stub of the game's memory.
+
+**The runs** (Easy, hot seat, the Gold bonus, under Wine; about 9 minutes each): three, each
+whole. The first played the recipe without the two reads of W1 with E9-7 selected (the hero-record
+path: a read with E9-8 selected shows the Windmill's own word, the selected hero lifted off its
+tile); the second (`experiments/results/E08-batch-9b.md`) and the third (`-run2.md`) the final
+recipe. Every reading the same in all three but the draws and the starting bonus.
+
+**What the runs showed** (for T80; not scored here):
+- **E9-6:** for Red at day 1 (63, 11), (65, 10), (60, 8), (63, 23) explored, (63, 12), (66, 10),
+  (59, 8), (63, 24) not: the radius-3 disk around each mine owned at load (as E9-4's Lighthouses);
+  the records owner Red, resources gold and ore; the income +0x108 all 0 on day 1.
+- **E9-7:** each Red day's start against the turn's end before it **+2 125 gold, +2 ore, +5 mercury,
+  +5 sulfur, +6 crystal, +5 gems**, no wood; day 8 **+9 crystal**; the income vector day 2 `0, 5, 2,
+  5, 6, 5, 2125`, day 8 the crystal 9 (the Cornucopia's 5, not VCMI's 4). The date (1, 1, 1), (1, 2,
+  1), (1, 2, 2) on days 1, 8, 9.
+- **E9-8:** Red day 1: W1 its draw (3 sulfur; 4 mercury; 6 mercury), H1 **500 gold**, M1 its draw
+  (500 gold in all three); Blue day 1 **nothing** at all three (ADVEVENT 169, 165, 93; the
+  Windmill's and Wheel's marks 0x03, Blue's mask bit set); Red day 2 nothing. Day 8: W1 **a new
+  draw** under E9-8, who stood on its entrance at the week's start (read through its record: 6 ore
+  in the second run), H1 **1 000**, M1 full again (5 gems; 500 gold; 500 gold); day 9 Ivor: W2 (5
+  crystal; 5 crystal; 6 mercury), H2 **1 000**, M2 (5 gems; 5 gems; 500 gold). The marks are never
+  cleared. The Gardens' indices: M2 (row 8) 0, M1 (row 40) 1, against the spec's order (M1 first).
+  Messages: the Windmill ADVEVENT 170 (a gain) and 169, the Wheel 164 and 165, the Garden 92 and 93.
+- **E9-9, E9-10:** day 1, 8, 15: 43 → **47 + 4/16 → 51 + 15/16**; 81 → **89 + 1/16 → 97 + 15/16**;
+  15 → **16 + 8/16 → 18 + 2/16**; 43 not growing **43** throughout; 4 095 → **4 000** (A-32's cap) →
+  4 000. The code's sixteenths, against VCMI's 52 and 98 on day 15 (D-49).
+- **E9-11:** Blue's gold at days 1 to 6 **300, 300, 800, 800, 1 300, 1 300** (1 800 on days 7 and
+  8): the list's order, the floor at 0, every two days from day 2 (days 2 to 14), after the day's
+  income. The take's picture shows the gold taken (−30 800, −30 700: Blue's whole treasury), not −99
+  999.
+- **E9-12:** E9-12 **0, 2, 4**; Uland **0, 3, 6**; Melodia **0, 20, 20** (the event's message
+  ADVEVENT 177).
+- **Odd:** W2's and M2's draws were the same in the first two runs (W2 5 sulfur, then 5 crystal; M2
+  gems both weeks), not in the third (5 crystal, then 6 mercury; 500 gold both weeks). The week's
+  announcement is named GENRLTXT 16 (`identify`'s `%s the %s`; its own table is not searched);
+  GENRLTXT 14 is the hot-seat turn's message.
+
+T80 (the scoring) queued.
