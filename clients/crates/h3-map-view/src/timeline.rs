@@ -44,7 +44,8 @@ use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
-    Arrow, Buttons, Chosen, ChosenHero, DateStatus, Kingdom, KingdomStatus, Selected, Status,
+    Arrow, Buttons, Chosen, ChosenHero, ChosenTown, DateStatus, Kingdom, KingdomStatus, Selected,
+    Status,
 };
 use crate::panels;
 use crate::scene::ViewAt;
@@ -1093,6 +1094,9 @@ impl Loop {
         }
         if matches!(action, Action::Release(_)) {
             self.held = None;
+            // The mouse looked at again where the hold left it (recorded: released off a
+            // button, the hint the point's, `press-buttons`; *provisional*, not read).
+            self.moved();
             if inside {
                 self.show_pressed(id, false);
                 self.command(t, id)?;
@@ -1248,11 +1252,11 @@ impl Loop {
         if self.kingdom.selected == Selected::Hero(i) {
             return self.unbuilt(Unplayable::Panel(at));
         }
-        if self.chosen_hero(i).is_none() {
+        let Some(chosen) = self.chosen_hero(i).cloned() else {
             return self.unbuilt(Unplayable::Panel(at));
-        }
+        };
         self.keep_path();
-        self.choose_hero(t, i);
+        self.choose_hero(t, i, chosen);
         Ok(())
     }
 
@@ -1262,10 +1266,10 @@ impl Loop {
     /// screen opened when it is the selected one (M4, M5: refused).
     fn town_slot(&mut self, t: u32, slot: usize, at: [i32; 2]) -> Result<(), Unplayable> {
         let i = self.kingdom.tops[1].saturating_add(slot);
-        let known = self.chosen.towns.get(i).is_some_and(Option::is_some);
-        if self.kingdom.selected == Selected::Town(i) || !known {
+        let chosen = self.chosen.towns.get(i).cloned().flatten();
+        let (Some(chosen), false) = (chosen, self.kingdom.selected == Selected::Town(i)) else {
             return self.unbuilt(Unplayable::Panel(at));
-        }
+        };
         self.buttons.move_hero = false;
         self.keep_path();
         if !self.path.is_empty() {
@@ -1273,7 +1277,7 @@ impl Loop {
             self.draw(t);
             self.step_objects(t);
         }
-        self.choose_town(t, i);
+        self.choose_town(t, i, chosen);
         Ok(())
     }
 
@@ -1294,8 +1298,8 @@ impl Loop {
         let next = (from..heroes.len())
             .chain(0..from.min(heroes.len()))
             .find(|&i| heroes.get(i).is_some_and(|h| h.movable && !h.asleep));
-        if let Some(i) = next.filter(|&i| self.chosen_hero(i).is_some()) {
-            self.choose_hero(t, i);
+        if let Some((i, chosen)) = next.and_then(|i| Some((i, self.chosen_hero(i)?.clone()))) {
+            self.choose_hero(t, i, chosen);
         }
     }
 
@@ -1332,10 +1336,7 @@ impl Loop {
     /// (0x417FE2: the path its choice shows, move hero by its green arrows); the view drawn and
     /// the whole screen shown (0x418082); the mouse's move posted with the view's column
     /// forgotten (0x418146: +0xEC 0, the row kept) and taken at once.
-    fn choose_hero(&mut self, t: u32, i: usize) {
-        let Some(chosen) = self.chosen_hero(i).cloned() else {
-            return;
-        };
+    fn choose_hero(&mut self, t: u32, i: usize, chosen: ChosenHero) {
         self.buttons.move_hero = false;
         self.path.clear();
         self.lifted = false;
@@ -1368,10 +1369,7 @@ impl Loop {
     /// screen updated (`adventure_full_update` 0x417420: the status window built, the minimap and
     /// the view drawn); the music of the terrain at the view's middle and its ambient sounds
     /// (0x417A33, 0x417AF8); the mouse's move posted as after a hero's choice.
-    fn choose_town(&mut self, t: u32, i: usize) {
-        let Some(Some(chosen)) = self.chosen.towns.get(i).cloned() else {
-            return;
-        };
+    fn choose_town(&mut self, t: u32, i: usize, chosen: ChosenTown) {
         self.lifted = false;
         self.hero = None;
         self.index = None;

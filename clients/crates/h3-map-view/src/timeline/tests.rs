@@ -4,7 +4,9 @@ use alloc::string::ToString;
 use alloc::vec;
 
 use crate::layout::AdventureLayout;
-use crate::live::{DateStatus, Facing, Kingdom, KingdomHero, KingdomStatus, LiveHero, Status};
+use crate::live::{
+    Chosen, DateStatus, Facing, Kingdom, KingdomHero, KingdomStatus, LiveHero, Status,
+};
 use crate::sequence::{self, Sequences};
 use crate::situation::Situation;
 use crate::tables;
@@ -1816,4 +1818,250 @@ fn an_edge_cursor_stays_in_its_zone_outside_the_view() {
     let r = rules(Bugs::Original);
     assert!(r.keeps_edge([785, 300]) && !r.keeps_edge([784, 300]) && !r.keeps_edge([-1, 2]));
     assert!(!r.keeps_edge([2, 600]));
+}
+
+/// The recorded sequences of the lists' clicks and the buttons' presses (E24 M3 T6b1): their
+/// situation, timeline and live part at 0 (with the `[chosen]` table).
+const CHOOSING: [(&str, &str, &str); 2] = [
+    (
+        "choose-lists",
+        include_str!("../../../../map/timelines/choose-lists.txt"),
+        include_str!("../../../../map/timelines/choose-lists-live.toml"),
+    ),
+    (
+        "press-buttons",
+        include_str!("../../../../map/timelines/press-buttons.txt"),
+        include_str!("../../../../map/timelines/press-buttons-live.toml"),
+    ),
+];
+
+/// A choices' sequence's start (as the binary's `for_sequence` makes it): the kingdom, the
+/// buttons, what each choice shows, the map's heroes, the selected one and its path at 0.
+fn choosing(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
+    let sequences = Sequences::parse(SEQUENCES).unwrap();
+    let sequence = sequences.get(id).unwrap();
+    let (_, timeline, live) = CHOOSING.iter().find(|(c, _, _)| *c == id).unwrap();
+    let situation = include_str!("../../../../map/situations/seq-lists.toml");
+    let mut start = start(situation, sequence.scroll_speed().unwrap());
+    (start.kingdom, start.buttons) = live_kingdom(live);
+    let table: toml::Table = live.parse().unwrap();
+    start.chosen = Chosen::read(&table["chosen"]).unwrap();
+    let (heroes, _) = live_heroes(live);
+    start.heroes = heroes
+        .iter()
+        .map(|h| Hero {
+            at: h.at,
+            facing: Direction::ALL[usize::from(h.facing.number())],
+        })
+        .collect();
+    let Selected::Hero(i) = start.kingdom.selected else {
+        panic!("{id}: no hero selected at 0");
+    };
+    let index = start.chosen.heroes[i].as_ref().unwrap().hero;
+    (start.index, start.hero) = (Some(index), Some(start.heroes[index]));
+    start.path = start.chosen.heroes[i].as_ref().unwrap().path.clone();
+    start.points = sequence.points(timeline).unwrap();
+    start.paths = sequence.paths(timeline).unwrap();
+    (start, sequence.actions().unwrap(), sequence.ms, timeline)
+}
+
+#[test]
+fn replays_the_recorded_choices() {
+    for (id, _, _) in CHOOSING {
+        let (start, actions, ms, timeline) = choosing(id);
+        let states = play(rules(Bugs::Original), &start, &actions, ms).unwrap();
+        let got = lines(&states, &BTreeMap::new());
+        let want = without_screens(timeline);
+        for (n, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert_eq!(g, w, "{id}: line {n}");
+        }
+        assert_eq!(got.len(), want.len(), "{id}");
+    }
+}
+
+#[test]
+fn a_choice_moves_the_selection_and_its_draws() {
+    let (start, actions, _, _) = choosing("choose-lists");
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=200 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    // The third hero chosen at 200: selected, its index the draw's and the minimap's, the hint
+    // hidden by the dialog's redraw (the item looked at last kept).
+    let d = l.drawn();
+    assert_eq!(l.kingdom.selected, Selected::Hero(2));
+    assert_eq!((d.selected, d.minimap.index), (l.index, l.index));
+    assert_eq!(d.hint, Hint::Empty);
+    assert_eq!(l.last_item, Some(17));
+    // A town chosen: no hero selected, none drawn.
+    for t in 201..=800 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert_eq!(l.kingdom.selected, Selected::Town(1));
+    assert_eq!((l.drawn().selected, l.state(800).hero), (None, None));
+    // A button held: only the tick runs, its press drawn; the release over it its command.
+    for t in 801..=1100 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert_eq!(l.held, Some((14, true)));
+    assert_eq!(l.drawn().pressed, [14]);
+    let steps = l.steps;
+    for t in 1101..1250 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(l.steps, steps);
+    l.run(1250, &actions[&1250]).unwrap();
+    assert_eq!((l.held, l.kingdom.tops[0]), (None, 1));
+    assert!(l.drawn().pressed.is_empty());
+}
+
+#[test]
+fn the_buttons_hotkeys_and_their_skips() {
+    let (start, _, _, _) = choosing("choose-lists");
+    let r = rules(Bugs::Original);
+    let mut l = Loop::start(r.clone(), &start).unwrap();
+    // Q without a quest, U on one level, W with the hero awake, M without a green arrow: none.
+    l.buttons.move_hero = false;
+    for key in [Hotkey::Quests, Hotkey::Underground, Hotkey::Wake, Hotkey::MoveHero] {
+        l.run(1, &[Action::Key(key)]).unwrap();
+    }
+    assert!(l.drawn().pressed.is_empty() && l.keyed.is_empty());
+    // Z presses sleep, twice its key down one press; its release is sleep's command (refused in
+    // a recording, nothing live); a key up that pressed nothing nothing.
+    l.run(2, &[Action::Key(Hotkey::Sleep), Action::Key(Hotkey::Sleep)])
+        .unwrap();
+    assert_eq!((l.drawn().pressed.as_slice(), l.keyed.len()), (&[6][..], 1));
+    assert_eq!(
+        l.run(3, &[Action::KeyUp(Hotkey::Sleep)]),
+        Err(Unplayable::Command(6))
+    );
+    assert!(l.drawn().pressed.is_empty());
+    l.run(4, &[Action::KeyUp(Hotkey::Kingdom)]).unwrap();
+    // The hero asleep: W presses sleep's button, Z none; with a quest Q the quest log.
+    let mut asleep = start.clone();
+    asleep.kingdom.heroes[0].asleep = true;
+    asleep.kingdom.quests = true;
+    asleep.live = true;
+    let mut l = Loop::start(r.clone(), &asleep).unwrap();
+    l.run(1, &[Action::Key(Hotkey::Sleep), Action::Key(Hotkey::Wake)])
+        .unwrap();
+    l.run(2, &[Action::Key(Hotkey::Quests)]).unwrap();
+    assert_eq!(l.drawn().pressed, [5, 6]);
+    // Live, a command not built does nothing.
+    l.run(3, &[Action::KeyUp(Hotkey::Wake)]).unwrap();
+    assert_eq!(l.drawn().pressed, [5]);
+    // The quest log taken by the mouse: pressed with a quest, not without.
+    l.run(4, &[Action::Press([695, 244])]).unwrap();
+    assert_eq!(l.held, Some((5, true)));
+    l.run(5, &[Action::Release([695, 244])]).unwrap();
+    let mut l = Loop::start(r, &start).unwrap();
+    l.run(1, &[Action::Press([695, 244])]).unwrap();
+    assert_eq!(l.held, None);
+}
+
+#[test]
+fn a_hold_and_what_it_drops() {
+    let (start, _, _, _) = choosing("choose-lists");
+    let r = rules(Bugs::Original);
+    let mut l = Loop::start(r.clone(), &start).unwrap();
+    // The kingdom overview held: off it released, back on pressed; keys and presses dropped;
+    // released off it, no command.
+    l.run(1, &[Action::Press([695, 212])]).unwrap();
+    l.run(2, &[Action::Pointer([695, 185])]).unwrap();
+    assert_eq!((l.held, l.drawn().pressed.len()), (Some((3, false)), 0));
+    l.run(3, &[Action::Pointer([695, 212])]).unwrap();
+    assert_eq!(l.drawn().pressed, [3]);
+    l.run(
+        4,
+        &[
+            Action::Key(Hotkey::Sleep),
+            Action::Press([641, 292]),
+            Action::Step(Direction::North),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        (l.drawn().pressed.as_slice(), l.kingdom.selected),
+        (&[3][..], start.kingdom.selected)
+    );
+    l.run(5, &[Action::Release([695, 185])]).unwrap();
+    assert_eq!((l.held, l.drawn().pressed.len()), (None, 0));
+    // Clicked at once on a list's arrow: its command; on the minimap refused, on the status
+    // window and on no item nothing.
+    l.run(6, &[Action::Click([641, 380])]).unwrap();
+    assert_eq!(l.kingdom.tops[0], 1);
+    assert_eq!(
+        l.run(7, &[Action::Click([700, 100])]),
+        Err(Unplayable::Panel([700, 100]))
+    );
+    l.run(8, &[Action::Click([700, 480]), Action::Click([700, 2])])
+        .unwrap();
+    // Each list's arrows held at its ends: the up one at the top, the down one past the end.
+    let mut l = Loop::start(r, &start).unwrap();
+    l.scroll_list(false, true);
+    l.scroll_list(true, true);
+    assert_eq!(l.kingdom.tops, [0, 0]);
+    for _ in 0..5 {
+        l.scroll_list(false, false);
+        l.scroll_list(true, false);
+    }
+    assert_eq!(l.kingdom.tops, [2, 1]);
+}
+
+#[test]
+fn the_lists_slots_and_what_they_refuse() {
+    let (start, _, _, _) = choosing("choose-lists");
+    let r = rules(Bugs::Original);
+    // The selected hero's slot: its screen (M4, M5), refused; live nothing.
+    let mut l = Loop::start(r.clone(), &start).unwrap();
+    assert_eq!(
+        l.run(1, &[Action::Press([641, 228])]),
+        Err(Unplayable::Panel([641, 228]))
+    );
+    let mut live = start.clone();
+    live.live = true;
+    let mut l = Loop::start(r.clone(), &live).unwrap();
+    l.run(1, &[Action::Press([641, 228])]).unwrap();
+    // A town chosen, then its slot again: its screen.
+    l.run(2, &[Action::Press([771, 228])]).unwrap();
+    assert_eq!(l.kingdom.selected, Selected::Town(0));
+    l.run(3, &[Action::Press([771, 228])]).unwrap();
+    assert_eq!(l.kingdom.selected, Selected::Town(0));
+    // A hero or town whose choice the live part lacks: refused.
+    let mut unknown = start.clone();
+    unknown.chosen.heroes[2] = None;
+    unknown.chosen.towns[0] = None;
+    let mut l = Loop::start(r.clone(), &unknown).unwrap();
+    assert_eq!(
+        l.run(1, &[Action::Press([641, 292])]),
+        Err(Unplayable::Panel([641, 292]))
+    );
+    assert_eq!(
+        l.run(2, &[Action::Press([771, 228])]),
+        Err(Unplayable::Panel([771, 228]))
+    );
+    // A hero whose index names no map's hero: unknown too.
+    if let Some(c) = &mut unknown.chosen.heroes[1] {
+        c.hero = 99;
+    }
+    let mut l = Loop::start(r.clone(), &unknown).unwrap();
+    assert!(l.run(1, &[Action::Press([641, 260])]).is_err());
+    // Two heroes: a selection frame past the list takes the click and does nothing.
+    let mut two = start.clone();
+    two.kingdom.heroes.truncate(2);
+    let mut l = Loop::start(r.clone(), &two).unwrap();
+    l.run(1, &[Action::Press([641, 324])]).unwrap();
+    assert_eq!(l.kingdom.selected, start.kingdom.selected);
+    // Next hero with every hero asleep: none chosen, the path cleared.
+    let mut asleep = start.clone();
+    for h in &mut asleep.kingdom.heroes {
+        h.asleep = true;
+    }
+    let mut l = Loop::start(r, &asleep).unwrap();
+    l.next_hero(1);
+    assert_eq!(l.kingdom.selected, start.kingdom.selected);
+    assert!(l.path.is_empty());
 }
