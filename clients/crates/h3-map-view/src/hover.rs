@@ -17,9 +17,9 @@
 //! and boats standing on it); what only the game knows (a monster's count, a town's name, which
 //! towns and garrisons hold an army, which tiles a monster guards, the selected hero's reach and
 //! day points, the players' teams) is the live part's [`Facts`]: a comparison's from the
-//! original's memory, the engine's from M4. The hint's cases of the 58 classes that have one of
-//! their own (visits, owners, contents) are T6a2's: until then such a class shows its plain name
-//! (MCL-STUB-7).
+//! original's memory, the engine's from M4. The hint's cases of the classes that have one of
+//! their own (visits, owners, contents; [`OWN_CASES`]) are T6a2's: until then such a class shows
+//! its plain name.
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -228,7 +228,7 @@ pub const GROUNDS: [u32; 10] = [21, 46, 222, 224, 225, 226, 227, 228, 229, 231];
 /// The classes whose hint is a case of the original's own (0x40B150's switch, table 0x40D314):
 /// every other class below 232 shows its name (`object_names` 0x6A79EC). T6a1 builds those of
 /// 0, 3, 26 and 36 (the special ground), 34 (a hero), 54 (a monster) and 98 (a town); the rest
-/// show their name too until T6a2 (MCL-STUB-7).
+/// show their name too until T6a2.
 pub const OWN_CASES: [u32; 62] = [
     0, 3, 4, 9, 10, 11, 14, 16, 17, 20, 22, 23, 24, 25, 26, 28, 30, 31, 32, 34, 35, 36, 38, 39, 41,
     42, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 61, 63, 64, 79, 83, 84, 85, 88, 89, 90, 92, 94, 96,

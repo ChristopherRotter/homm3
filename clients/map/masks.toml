@@ -16,6 +16,6 @@ panels = []
 
 # The status bar's hint (E24 M3 T6a1, design §4.10: item 200's text): drawn since T6a1, compared in
 # the situations and sequences `hinted` lists (recorded with it), left out of the others until
-# T6a2 draws the classes with a case of their own (MCL-STUB-7) and they are recorded again.
+# T6a2 draws the classes with a case of their own and they are recorded again.
 hint = [[8, 556, 600, 574]]
 hinted = ["hover-panels", "hover-map", "hover-sail"]

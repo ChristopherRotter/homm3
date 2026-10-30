@@ -314,7 +314,8 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// list shows them, T4b); `buttons`
 /// (T2a), move hero's and next hero's states as the original last set them, `[move, next]`, 1
 /// enabled; `pointer`
-/// (T2a), where the parked mouse is, returned. Each key is optional (`defs` and `classes`
+/// (T2a), where the parked mouse is, returned; the table `[hover]` (E24 M3 T6a1, design §4.10),
+/// the mouse-over's facts ([`Facts::read`]). Each key is optional (`defs` and `classes`
 /// together); other keys are left. The file's `cycles`, `frames` and `viewer` override
 /// `--cycles`, `--at` and `--viewer`: the comparisons draw the original's.
 pub fn read_live(
