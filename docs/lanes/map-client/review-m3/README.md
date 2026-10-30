@@ -59,3 +59,29 @@ session consolidates them and fixes (T7b). Nothing here is merged as is.
 
 A file starts with `# F<n> — <area>: findings`, then `Covered:` and `Not covered:` lines, then the
 findings, most severe first.
+
+## Summary for T7b (the runner, 2026-10-30)
+
+42 findings in six files, each reviewer fresh, run beside T7a's recordings (reported tokens: F1
+243k, F2 227k, F3 242k, F4 215k, F5 210k, F6 202k):
+
+| File | Bug | Divergence | Robustness | Test gap | Docs drift | Simplification | Performance |
+|---|---|---|---|---|---|---|---|
+| F1 panels | | | 2 | | 1 | 1 | 1 |
+| F2 redraw | 1 | | 4 | 1 | 1 | | 1 |
+| F3 hover | | 1 | 2 | | 3 | | |
+| F4 input | 3 | 2 | 3 | | | 1 | |
+| F5 harness | | | 7 | | 2 | | |
+| F6 rest | | | 2 | 2 | 1 | | |
+
+- **The bugs first:** F2-1 (a change of the buttons alone never presented), F4-1 (Ctrl during a
+  held hotkey: the button stuck, its command lost), F4-2 (the focus lost during a minimap drag:
+  the view jumps to the corner), F4-3 (a press taken from the queue after a key's step: a stale
+  pointer); then the divergences F3-2, F4-4, F4-5. A fix that changes a drawn frame needs its
+  captures again (the runbook, "Which captures a change needs").
+- **Already done by T7a** (`map-client/e24-m3-t7a`): F5-9 (`h3map.py`'s mask comment, rewritten
+  with the hint's mask gone).
+- **Not covered by any reviewer:** `tables.rs` outside F1's parts; the hint cases beyond the
+  design's readings but the four F6 spot-checked; most of `h3mem.py`'s offsets re-read against the
+  executable (`node_cost`'s underground index among them); `h3adv.py`; the unit tests beyond
+  spot checks.
