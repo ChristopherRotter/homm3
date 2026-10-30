@@ -526,6 +526,10 @@ def stage(situation_path, out):
             mem.write_explored(vz, hidden_test(hidden), mem.current_player())
         set_view(game, mem, vx, vy, vz)
         show_path(game, mem, sit, (vx, vy, vz))
+        # What choosing each hero and town shows (E24 M3 T6b1; design §4.13), when the situation
+        # asks: each chosen in turn, then the staging's selection, lists and view again.
+        if sit.get("choose"):
+            choose_each(game, mem, (vx, vy, vz))
         # After the view moved: the selected hero is back on its tile (hero_on). The redraws
         # after this show the facings and the boats' colours.
         for x, y, facing in turn:
@@ -552,6 +556,74 @@ def stage(situation_path, out):
         game.stop()
         raise
     return game, mem, sit, turn
+
+
+def choose_each(game, mem, view):
+    """What choosing each of Red's heroes and towns shows (E24 M3 T6b1; design §4.13), kept as
+    `mem.chosen` for `live_part`'s `[chosen]`: each one chosen from its list in turn (h3adv's
+    `select` and `select_town`, which scroll the list as they need), its status window read once
+    it is built (`status_toml`), a hero's path shown (its destination's, `make_hero_path`) and its
+    tile; then the staging's selection chosen again, each list's first slot and the view set back
+    as they were, the path checked to be the one shown before. The clock runs."""
+    colour = mem.current_player()
+    before = mem.kingdom(colour)
+    path = mem.path_arrows()
+    heroes = mem.player(colour)["heroes"]
+    towns = mem.town_list(colour)
+    chosen = {"heroes": [], "towns": []}
+    for hero in heroes:
+        record = mem.hero(hero)
+        h3adv.select(game, mem, record["name"])
+        h3adv.wait_for(lambda: mem.status_shown() == 3 and mem.status(colour)["hero"] == hero,
+                       lambda: f"hero {hero}'s status window ({mem.status_shown()} shown)")
+        chosen["heroes"].append({"tile": record["tile"], "status": status_toml(mem, colour),
+                                 "path": mem.path_arrows()})
+    for town in towns:
+        h3adv.select_town(game, mem, town)
+        h3adv.wait_for(lambda: mem.status_shown() == 4,
+                       lambda: f"town {town}'s status window ({mem.status_shown()} shown)")
+        chosen["towns"].append({"at": list(mem.town(town)["place"]),
+                                "status": status_toml(mem, colour)})
+    # The staging's selection again (a hero's makes its path again), then the lists' first slots
+    # by their arrows and the view.
+    kind, place = before["selected"]
+    if kind == 1:
+        h3adv.select(game, mem, mem.hero(heroes[place])["name"])
+    elif kind == 2:
+        h3adv.select_town(game, mem, towns[place])
+    for list_index, (up, down) in enumerate([(h3adv.LIST_UP, h3adv.LIST_DOWN),
+                                             (h3adv.TOWN_UP, h3adv.TOWN_DOWN)]):
+        for _ in range(16):
+            top = mem.kingdom(colour)["tops"][list_index]
+            want = before["tops"][list_index]
+            if top == want:
+                break
+            game.click(*(up if top > want else down), 0.4)
+    game.move(*h3adv.PARK)
+    set_view(game, mem, *view)
+    after = mem.kingdom(colour)
+    if after["selected"] != before["selected"] or after["tops"] != before["tops"]:
+        raise RuntimeError(f"the staging's lists not set back: {after} after {before}")
+    if sorted(mem.path_arrows()) != sorted(path):
+        raise RuntimeError(f"the path {mem.path_arrows()} after choosing each, {path} before")
+    mem.chosen = chosen
+
+
+def chosen_toml(mem, heroes):
+    """`mem.chosen` as `render --live`'s `[chosen]` table's lines (E24 M3 T6b1): each hero's
+    index among the live part's `heroes` (rows [x, y, level, ...]), its status and its path; each
+    town's place and status."""
+    tiles = [h[:3] for h in heroes]
+    rows = []
+    for hero in mem.chosen["heroes"]:
+        if hero["tile"] not in tiles:
+            raise RuntimeError(f"a chosen hero on {hero['tile']} is not among the live part's")
+        rows.append(f"{{ hero = {tiles.index(hero['tile'])}, status = {hero['status']}, "
+                    f"path = {json.dumps(hero['path'])} }}")
+    towns = [f"{{ at = {json.dumps(t['at'])}, status = {t['status']} }}"
+             for t in mem.chosen["towns"]]
+    return ("\n[chosen]\nheroes = [" + ", ".join(rows) + "]\ntowns = [" + ", ".join(towns)
+            + "]\n")
 
 
 def ask_status(mem, kind, end, rebuild=False):
@@ -643,7 +715,10 @@ def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
     # The game's facts the mouse-over reads (E24 M3 T6a1; design §4.10), a table of its own last.
     hover = mem.hover(mem.current_player(), ids_from("HOTRAITS.TXT", 2),
                       ids_from("TownName.txt", 0), sit["view"][2], getattr(mem, "reach", None))
-    return ("".join(f"{key} = {value}\n" for key, value in live.items()) + "\n[hover]\n"
+    # What choosing each hero and town shows (E24 M3 T6b1), a table before the last.
+    chosen = chosen_toml(mem, heroes) if getattr(mem, "chosen", None) else ""
+    return ("".join(f"{key} = {value}\n" for key, value in live.items()) + chosen
+            + "\n[hover]\n"
             + "".join(f"{key} = {json.dumps(value)}\n" for key, value in hover.items()))
 
 
@@ -796,7 +871,8 @@ def map_timeline(states):
                 last[key] = state[key]
         for key in ("hero", "walk"):
             if key in last and last[key] != state[key]:
-                lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
+                # No hero selected (E24 M3 T6b1: a town chosen): the line without numbers.
+                lines.append(f"{t} {key} {' '.join(map(str, state[key]))}".rstrip())
             last[key] = state[key]
         if "arrows" in last and last["arrows"] != state["arrows"]:
             lines.append(f"{t} arrows" + "".join(" " + ",".join(map(str, a))
@@ -822,16 +898,21 @@ OPTIONS = {"scroll_speed": (h3mem.SCROLL_SPEED, range(0, 3)),
 # releases both) and the pointer moved to a point of the screen (800 x 600); since T1b a left
 # click at a point (the pointer moved there, the button pressed and released: a tile clicked
 # shows the selected hero's path to it, clicked again it walks).
-INPUTS = ("keydown", "keyup", "pointer", "click")
+# Since E24 M3 T6b1 the left button pressed and released apart (`press`, `release`: a panel's
+# button held down between them).
+INPUTS = ("keydown", "keyup", "pointer", "click", "press", "release")
 # The keys a sequence may press (M2 T6a, the reviewer's R3-7: xdotool only warns about a name it
 # does not know and exits 0, so a typo recorded a sequence without its input): the eight
-# direction keys, as `h3_map_view::sequence`'s DIRECTION_KEYS, with or without `ctrl+`.
+# direction keys, as `h3_map_view::sequence`'s DIRECTION_KEYS, with or without `ctrl+`; since
+# E24 M3 T6b1 the panels' buttons' hotkeys (`h3_map_view::timeline::Hotkey`'s letters).
 DIRECTION_KEYS = ("Up", "Prior", "Right", "Next", "Down", "End", "Left", "Home")
+HOTKEYS = ("k", "u", "q", "z", "w", "m", "c", "a", "o", "h", "e")
 
 
 def known_key(name):
-    """Whether `name` is a key a sequence may press: a direction key, `ctrl+` before it or not."""
-    return name.removeprefix("ctrl+") in DIRECTION_KEYS
+    """Whether `name` is a key a sequence may press: a direction key, `ctrl+` before it or not,
+    or a hotkey's letter."""
+    return name.removeprefix("ctrl+") in DIRECTION_KEYS or name in HOTKEYS
 
 
 def sequence_inputs(entry):
@@ -862,7 +943,7 @@ def sequence_inputs(entry):
         kind, value, t = kinds[0], i[kinds[0]], i["at"]
         if kind in ("keydown", "keyup") and not known_key(value):
             raise ValueError(f"{entry['id']}: the key `{value}` at {t}: not one of {DIRECTION_KEYS} "
-                             f"(with `ctrl+` or not)")
+                             f"(with `ctrl+` or not) or {HOTKEYS}")
         if not last <= t <= entry["ms"]:
             raise ValueError(f"{entry['id']}: an input at {t}: out of order or outside 1 to "
                              f"{entry['ms']}")
@@ -888,6 +969,10 @@ def give_input(game, kind, value):
     elif kind == "click":
         game.move(*value)
         h3drive.run("xdotool", "click", "1")
+    elif kind in ("press", "release"):
+        # E24 M3 T6b1: the move, then the button's own message.
+        game.move(*value)
+        h3drive.run("xdotool", "mousedown" if kind == "press" else "mouseup", "1")
     else:
         h3drive.run("xdotool", kind, value)
 
@@ -1020,6 +1105,9 @@ def sequence(entry, out):
                 give_input(game, kind, value)
                 if kind in ("keydown", "keyup"):
                     (down.add if kind == "keydown" else down.discard)(value)
+                elif kind in ("press", "release"):
+                    (down.add if kind == "press" else down.discard)("button")
+                    game.clock("step 0", settle_reads=500)
                 elif kind == "click":
                     # The click handled before the next input (T1b): a walk at hero speed 4 ends
                     # in it and reads the pointer (GetCursorPos) at its end, which a pointer
@@ -1036,7 +1124,10 @@ def sequence(entry, out):
         # whatever the release meets (M2 T6a, the reviewer's R3-4).
         try:
             for value in down:
-                h3drive.run("xdotool", "keyup", value)
+                if value == "button":
+                    h3drive.run("xdotool", "mouseup", "1")
+                else:
+                    h3drive.run("xdotool", "keyup", value)
             game.move(*h3adv.PARK)
         finally:
             game.stop()

@@ -237,6 +237,9 @@ fn start(situation: &str, speed: usize) -> Start {
         asked: None,
         hover: None,
         levels: 1,
+        heroes: Vec::new(),
+        index: None,
+        chosen: crate::live::Chosen::default(),
     }
 }
 
@@ -354,6 +357,9 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         asked: None,
         hover: None,
         levels: 1,
+        heroes: Vec::new(),
+        index: None,
+        chosen: crate::live::Chosen::default(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -553,6 +559,9 @@ fn what_it_cannot_play_yet() {
         asked: None,
         hover: None,
         levels: 1,
+        heroes: Vec::new(),
+        index: None,
+        chosen: crate::live::Chosen::default(),
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -676,6 +685,9 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         asked: None,
         hover: None,
         levels: 1,
+        heroes: Vec::new(),
+        index: None,
+        chosen: crate::live::Chosen::default(),
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1079,6 +1091,9 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         asked: None,
         hover: None,
         levels: 1,
+        heroes: Vec::new(),
+        index: None,
+        chosen: crate::live::Chosen::default(),
     }
 }
 
@@ -1241,6 +1256,7 @@ fn the_minimap_drawn_again_by_a_scroll_a_lift_and_each_steps_end() {
     let minimap = |x: i32, y: i32, hx: u8, hy: u8| Minimap {
         view: ViewAt { x, y, z: 0 },
         hero: Some(Pos { x: hx, y: hy, z: 0 }),
+        index: None,
     };
     let run = |l: &mut Loop, from: u32, to: u32| {
         for t in from..=to {
@@ -1669,6 +1685,9 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         asked: None,
         hover: Some(hover),
         levels: 1,
+        heroes: Vec::new(),
+        index: None,
+        chosen: crate::live::Chosen::default(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }

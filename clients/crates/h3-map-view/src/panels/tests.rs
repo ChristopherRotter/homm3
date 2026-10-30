@@ -44,6 +44,8 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         minimap: None,
         hover: None,
         hint: None,
+        chosen: crate::live::Chosen::default(),
+        pressed: Vec::new(),
     }
 }
 

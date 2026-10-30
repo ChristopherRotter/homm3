@@ -1193,6 +1193,15 @@ impl PanelItems {
         Self { items }
     }
 
+    /// Whether the box of item `id` holds `point` (a button held down follows the mouse in and
+    /// out of its own box: `def_button_message` 0x456356).
+    #[must_use]
+    pub fn holds(&self, id: u16, point: [i32; 2]) -> bool {
+        self.items.iter().any(|&(i, [l, t, r, b])| {
+            i == id && (l..r).contains(&point[0]) && (t..b).contains(&point[1])
+        })
+    }
+
     /// The item under the mouse at `point`: the last whose box holds it among those `takes` lets
     /// take the mouse; none over no item.
     #[must_use]

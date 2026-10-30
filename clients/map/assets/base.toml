@@ -251,9 +251,11 @@ sizes = [
 # subclass), a dwelling's by its creature (dwelling_creatures 0x63D570, the switch 0x418809), a
 # mine's by type or abandoned; without an entrance the volcano's, or on a tile of no class the
 # special ground's (tile_special_ground 0x4FCE20). The flying hero's step sound (+0x388); the
-# terrains' music and step sounds are on their [[terrain]] entries.
+# terrains' music and step sounds are on their [[terrain]] entries. A panel's button's press
+# (def_button_message 0x456860: button.wav, loaded at 0x4EDA51; E24 M3 T6b1).
 [map.sound]
 flying = "horse10.wav"
+button = "button.wav"
 loops = ["LoopAnim.wav", "LoopArch.wav", "LoopAren.wav", "LoopBehe.wav", "LoopBird.wav",
          "LoopBuoy.wav", "LoopCamp.wav", "LoopCave.wav", "LoopDead.wav", "LoopDevl.wav",
          "LoopDog.wav", "LoopDrag.wav", "LoopFact.wav", "LoopFall.wav", "LoopFire.wav",

@@ -43,7 +43,10 @@ use h3_render::screen::Screen;
 use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::lists::{SLOTS, top_showing};
-use crate::live::{Arrow, Buttons, DateStatus, Kingdom, KingdomStatus, Selected, Status};
+use crate::live::{
+    Arrow, Buttons, Chosen, ChosenHero, DateStatus, Kingdom, KingdomStatus, Selected, Status,
+};
+use crate::panels;
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
@@ -146,9 +149,105 @@ pub enum Action {
     Step(Direction),
     /// The pointer moved to a point of the frame.
     Pointer([i32; 2]),
-    /// The left button clicked at a point (the pointer moved there): a tile clicked shows the
-    /// selected hero's path to it, its destination clicked again the hero walks it (design §3.5).
+    /// The left button clicked at a point (the pointer moved there): pressed and released at
+    /// once ([`Action::Press`], [`Action::Release`]).
     Click([i32; 2]),
+    /// The left button pressed at a point (the pointer moved there; E24 M3 T6b1, design §4.13):
+    /// on the view a tile clicked shows the selected hero's path to it, its destination clicked
+    /// again the hero walks it (design §3.5); on a panel's button the button held down until the
+    /// release; on a list's slot its hero or town chosen.
+    Press([i32; 2]),
+    /// The left button released at a point (the pointer moved there): a button held clicks when
+    /// the mouse is over it.
+    Release([i32; 2]),
+    /// A panel button's hotkey pressed (E24 M3 T6b1): the button pressed.
+    Key(Hotkey),
+    /// A panel button's hotkey released: the button it pressed clicks.
+    KeyUp(Hotkey),
+}
+
+/// A panel button's hotkey (the dialog's +0x48, scan codes `adventure_dialog_create` 0x401510
+/// gives; E24 M3 T6b1, design §4.1, §4.13): its key down presses the button, its key up clicks it
+/// (`def_button_message` 0x456190). Sleep's button takes Z while the selected hero is awake and W
+/// while it sleeps (`sleep_button_def` 0x403CC0). The adventure map's own keys (0x408C40) take
+/// none of these letters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Hotkey {
+    /// K: the kingdom overview.
+    Kingdom,
+    /// U: the underground.
+    Underground,
+    /// Q: the quest log.
+    Quests,
+    /// Z: sleep.
+    Sleep,
+    /// W: wake (sleep's button while the hero sleeps).
+    Wake,
+    /// M: move hero.
+    MoveHero,
+    /// C: cast a spell.
+    Cast,
+    /// A: the adventure options.
+    Adventure,
+    /// O: the system options.
+    System,
+    /// H: next hero.
+    NextHero,
+    /// E: end turn.
+    EndTurn,
+}
+
+impl Hotkey {
+    /// Every hotkey, in the buttons' order.
+    pub const ALL: [Self; 11] = [
+        Self::Kingdom,
+        Self::Underground,
+        Self::Quests,
+        Self::Sleep,
+        Self::Wake,
+        Self::MoveHero,
+        Self::Cast,
+        Self::Adventure,
+        Self::System,
+        Self::NextHero,
+        Self::EndTurn,
+    ];
+
+    /// The button it presses (its control id).
+    #[must_use]
+    pub const fn button(self) -> u16 {
+        match self {
+            Self::Kingdom => 3,
+            Self::Underground => 4,
+            Self::Quests => 5,
+            Self::Sleep | Self::Wake => 6,
+            Self::MoveHero => 7,
+            Self::Cast => 8,
+            Self::Adventure => 9,
+            Self::System => 10,
+            Self::NextHero => 11,
+            Self::EndTurn => 12,
+        }
+    }
+
+    /// The original's key: the letter of its scan code (0x25, 0x16, 0x10, 0x2C, 0x11, 0x32, 0x2E,
+    /// 0x1E, 0x18, 0x23, 0x12), as the adapter names it.
+    #[must_use]
+    pub const fn letter(self) -> &'static str {
+        match self {
+            Self::Kingdom => "K",
+            Self::Underground => "U",
+            Self::Quests => "Q",
+            Self::Sleep => "Z",
+            Self::Wake => "W",
+            Self::MoveHero => "M",
+            Self::Cast => "C",
+            Self::Adventure => "A",
+            Self::System => "O",
+            Self::NextHero => "H",
+            Self::EndTurn => "E",
+        }
+    }
 }
 
 /// Why the timeline cannot play an action yet.
@@ -156,21 +255,27 @@ pub enum Action {
 pub enum Unplayable {
     /// The pointer over the view: the cursor by the tile under it, M3's.
     OverView([i32; 2]),
-    /// A click off the view: the panels', M3's.
+    /// A click on a panel's item whose action is not built: the minimap's and the status
+    /// window's (T6b2), the selected hero's or town's screen (M4, M5), a hero or town whose
+    /// choice the live part does not give.
     Panel([i32; 2]),
     /// A click on a tile no given path leads to from the selected hero (or with none): M2 walks
     /// the paths recorded, the engine's come with M4.
     NoPath([i32; 3]),
+    /// A button's command that opens a dialog or is the engine's action (M4, M5; the
+    /// underground's: T6b2), by the button's id.
+    Command(u16),
 }
 
 impl fmt::Display for Unplayable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::OverView([x, y]) => write!(f, "the pointer over the view at ({x}, {y}) (M3)"),
-            Self::Panel([x, y]) => write!(f, "a click off the view at ({x}, {y}) (M3)"),
+            Self::Panel([x, y]) => write!(f, "a click on a panel at ({x}, {y}) not built"),
             Self::NoPath([x, y, z]) => {
                 write!(f, "no path given from the selected hero to ({x}, {y}, {z})")
             }
+            Self::Command(id) => write!(f, "button {id}'s command (a dialog or the engine's)"),
         }
     }
 }
@@ -429,6 +534,13 @@ pub struct Start {
     pub hover: Option<Arc<Hover>>,
     /// The map's levels (the underground's button: a panel's item taking the mouse).
     pub levels: usize,
+    /// The map's heroes on their tiles and facings at 0, in the live part's order (E24 M3 T6b1:
+    /// a hero chosen is one of them, [`Chosen`]'s index).
+    pub heroes: Vec<Hero>,
+    /// The selected hero's index among them ([`Start::hero`] its tile and facing).
+    pub index: Option<usize>,
+    /// What choosing each hero and town of the kingdom's shows (E24 M3 T6b1).
+    pub chosen: Chosen,
 }
 
 /// A status window's kind asked for a time (`status_window_set_kind` 0x415D60: the manager's
@@ -478,6 +590,8 @@ pub struct Minimap {
     pub view: ViewAt,
     /// The selected hero's tile.
     pub hero: Option<Pos>,
+    /// The selected hero's index among the map's heroes ([`Start::heroes`]).
+    pub index: Option<usize>,
 }
 
 /// A draw of the view: its corner, the objects' frame steps and the palette steps since the
@@ -510,6 +624,12 @@ pub struct Draw {
     /// The status bar's hint as last shown (E24 M3 T6a1, design §4.10: each change drawn and
     /// shown at once).
     pub hint: Hint,
+    /// The selected hero's index among the map's heroes ([`Start::heroes`]; E24 M3 T6b1: a
+    /// hero chosen is another), none without one.
+    pub selected: Option<usize>,
+    /// The panels' buttons shown pressed, by id in order (E24 M3 T6b1: each press and release
+    /// drawn and shown at once).
+    pub pressed: Vec<u16>,
 }
 
 /// The state after a millisecond.
@@ -632,6 +752,18 @@ pub struct Loop {
     last_item: Option<u16>,
     /// What a click on the view would do (the manager's +0x40; T6b's).
     action: hover::Action,
+    /// The map's heroes on their tiles and facings: the selected one's as it stood when last
+    /// chosen away from (E24 M3 T6b1).
+    heroes: Vec<Hero>,
+    /// The selected hero's index among them.
+    index: Option<usize>,
+    /// What choosing each hero and town shows: a hero's path as it was when chosen away from.
+    chosen: Chosen,
+    /// The button the mouse holds down (`def_button_message`'s loop, 0x45641C: only the tick
+    /// runs, the messages go to the button): its id and whether the mouse is over it.
+    held: Option<(u16, bool)>,
+    /// The buttons a hotkey holds pressed, with the key.
+    keyed: Vec<(Hotkey, u16)>,
 }
 
 impl Loop {
@@ -664,6 +796,7 @@ impl Loop {
         let minimap = Minimap {
             view: start.view,
             hero: start.hero.map(|h| h.at),
+            index: start.index,
         };
         let mut l = Self {
             last: start.size.saturating_sub(1),
@@ -689,6 +822,8 @@ impl Loop {
                 minimap,
                 kingdom: Arc::new(start.kingdom.clone()),
                 hint: Hint::Empty,
+                selected: start.index,
+                pressed: Vec::new(),
             },
             hero: start.hero,
             lifted: false,
@@ -726,6 +861,11 @@ impl Loop {
             column: None,
             last_item: None,
             action: -1,
+            heroes: start.heroes.clone(),
+            index: start.index,
+            chosen: start.chosen.clone(),
+            held: None,
+            keyed: Vec::new(),
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -866,6 +1006,10 @@ impl Loop {
 
     /// The idle message: the edge scroll before it, then the idle step (0x408A88).
     fn idle_message(&mut self, t: u32) {
+        // The mouse holding a button down runs the button's loop: the tick only (0x45641C).
+        if self.held.is_some() {
+            return;
+        }
         self.edge(t);
         // Each redraw steps the objects once (0x408B26); one later than a step leaves the deadline
         // at the clock, so the loop's next turn, in the same millisecond, redraws again: after a
@@ -881,7 +1025,15 @@ impl Loop {
     /// cursor read the mouse's point now, GetCursorPos: the latest given, M2 T6a, the reviewer's
     /// R1-3; a click's tile is its message's).
     fn act(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
-        if fresh && let Action::Pointer(at) | Action::Click(at) = action {
+        if self.held.is_some() {
+            return self.holding(t, action);
+        }
+        if fresh
+            && let Action::Pointer(at)
+            | Action::Click(at)
+            | Action::Press(at)
+            | Action::Release(at) = action
+        {
             // The move's message: GetCursorPos (the edge's) already reads the new point.
             self.pointer = at;
         }
@@ -897,16 +1049,359 @@ impl Loop {
                 self.moved();
             }
             Action::Step(direction) => self.key_step(t, direction),
-            Action::Click(at) => {
+            Action::Click(at) | Action::Press(at) | Action::Release(at) => {
                 // The move's message comes first (E24 M3 T6a1): with the mouse-over, the tile's
-                // cursor and hint.
-                if self.hover.is_some() {
+                // cursor and hint; off the view the panel's hint.
+                if self.hover.is_some() || !self.rules.over_view(at) {
                     self.moved();
                 }
-                self.click(t, at)?;
+                match action {
+                    Action::Release(_) => {}
+                    Action::Press(_) => self.press(t, at)?,
+                    _ => {
+                        self.press(t, at)?;
+                        if self.held.is_some() {
+                            self.holding(t, Action::Release(at))?;
+                        }
+                    }
+                }
+            }
+            Action::Key(key) => self.key(t, key)?,
+            Action::KeyUp(key) => self.key_up(t, key)?,
+        }
+        Ok(())
+    }
+
+    /// An action while the mouse holds a button down (`def_button_message`'s own loop from
+    /// 0x456338: the tick only, every message the button's): a move over it presses it again,
+    /// with its sound (0x4563A2), one off it releases it (0x4563B5), each drawn and shown at once;
+    /// the left button's release ends the hold, a click when the button shows pressed (0x456451:
+    /// its command, `adventure_command` 0x409A70); every other message is taken and dropped.
+    fn holding(&mut self, t: u32, action: Action) -> Result<(), Unplayable> {
+        let (Some((id, over)), Action::Pointer(at) | Action::Release(at)) = (self.held, action)
+        else {
+            return Ok(());
+        };
+        self.pointer = at;
+        let inside = self.rules.panels.holds(id, at);
+        if inside != over {
+            self.held = Some((id, inside));
+            self.show_pressed(id, inside);
+            if inside {
+                self.press_sound(t);
+            }
+        }
+        if matches!(action, Action::Release(_)) {
+            self.held = None;
+            if inside {
+                self.show_pressed(id, false);
+                return self.command(t, id);
             }
         }
         Ok(())
+    }
+
+    /// The left button pressed at `at` (`adventure_click` 0x4097E0 for the item's message, E24
+    /// M3 T6b1, design §4.13): the item under the mouse that takes it ([`hover::takes`]); a
+    /// button held down (`def_button_message` 0x456328; not the quest log without a quest, whose
+    /// state 0x20 the button skips: 0x456287), the view's area and the text over it a tile's
+    /// click, a hero list's slot its hero chosen, a town list's its town; the minimap's click
+    /// T6b2's; every other item nothing (the bars, the status window, the status bar).
+    fn press(&mut self, t: u32, at: [i32; 2]) -> Result<(), Unplayable> {
+        let (kingdom, buttons, levels) = (&self.kingdom, self.buttons, self.levels);
+        let item = self
+            .rules
+            .panels
+            .at(at, |i| hover::takes(i, kingdom, buttons, levels));
+        match item {
+            Some(id) if is_button(id) => {
+                if id != panels::id::QUESTS || self.kingdom.quests {
+                    self.held = Some((id, true));
+                    self.show_pressed(id, true);
+                    self.press_sound(t);
+                }
+                Ok(())
+            }
+            Some(panels::id::VIEW | panels::id::TEXT) => self.click(t, at),
+            Some(panels::id::MINIMAP) => self.unbuilt(Unplayable::Panel(at)),
+            Some(id) => match list_slot(id) {
+                Some((false, slot)) => self.hero_slot(t, slot, at),
+                Some((true, slot)) => self.town_slot(t, slot, at),
+                None => Ok(()),
+            },
+            None => Ok(()),
+        }
+    }
+
+    /// A hotkey's key down (`def_button_message` 0x45659F): the button it names presses when it
+    /// takes the key (shown, not disabled, not skipped as the quest log without a quest; sleep's
+    /// by the selected hero's sleep), with its sound; else the key goes on to the map's keys,
+    /// which take none of the letters (0x408C40).
+    fn key(&mut self, t: u32, key: Hotkey) -> Result<(), Unplayable> {
+        let id = key.button();
+        let asleep = self
+            .selected_hero()
+            .and_then(|i| self.kingdom.heroes.get(i))
+            .is_some_and(|h| h.asleep);
+        let (wake, sleep) = (key == Hotkey::Wake, key == Hotkey::Sleep);
+        let takes = !panels::disabled(&self.kingdom, self.buttons, self.levels)
+            .iter()
+            .any(|&(d, off)| d == id && off)
+            && (id != panels::id::QUESTS || self.kingdom.quests)
+            && !(wake && !asleep)
+            && !(sleep && asleep);
+        if takes {
+            if !self.keyed.contains(&(key, id)) {
+                self.keyed.push((key, id));
+            }
+            self.show_pressed(id, true);
+            self.press_sound(t);
+        }
+        Ok(())
+    }
+
+    /// A hotkey's key up (0x4564D6): the button its key pressed released, drawn and shown, and
+    /// its command; nothing for a key that pressed none.
+    fn key_up(&mut self, t: u32, key: Hotkey) -> Result<(), Unplayable> {
+        let Some(at) = self.keyed.iter().position(|&(k, _)| k == key) else {
+            return Ok(());
+        };
+        let (_, id) = self.keyed.remove(at);
+        self.show_pressed(id, false);
+        self.command(t, id)
+    }
+
+    /// A button pressed or released, drawn and shown at once.
+    fn show_pressed(&mut self, id: u16, pressed: bool) {
+        let shown = &mut self.drawn.pressed;
+        match (shown.binary_search(&id), pressed) {
+            (Err(at), true) => shown.insert(at, id),
+            (Ok(at), false) => {
+                shown.remove(at);
+            }
+            _ => {}
+        }
+    }
+
+    /// A press's sound (`button.wav`, 0x4568B8).
+    fn press_sound(&mut self, t: u32) {
+        if let Some(sound) = &mut self.sound {
+            sound.press(t);
+        }
+    }
+
+    /// A button's command (`adventure_command` 0x409A70, its switch 0x409AB4): next hero's
+    /// (0x409D89), the hero list's arrows (0x403220) and the town list's (0x403280); the rest a
+    /// dialog's or the engine's (M4, M5; the underground's T6b2).
+    fn command(&mut self, t: u32, id: u16) -> Result<(), Unplayable> {
+        match id {
+            panels::id::NEXT_HERO => {
+                self.next_hero(t);
+                Ok(())
+            }
+            id if panels::id::HEROES.contains(&id) || panels::id::TOWNS.contains(&id) => {
+                let towns = panels::id::TOWNS.contains(&id);
+                let up = id == panels::id::HEROES[0] || id == panels::id::TOWNS[0];
+                self.scroll_list(towns, up);
+                Ok(())
+            }
+            id => self.unbuilt(Unplayable::Command(id)),
+        }
+    }
+
+    /// What is not built yet: refused in a recording (its frames would show what M3 does not
+    /// draw), nothing live.
+    fn unbuilt(&self, why: Unplayable) -> Result<(), Unplayable> {
+        if self.live { Ok(()) } else { Err(why) }
+    }
+
+    /// A list's arrow (`hero_list_scroll` 0x403220, `town_list_scroll` 0x403280): its first slot
+    /// one up (not below 0) or one down (while more than its slots lie below it), the list
+    /// updated without a place (its arrows' states by the new first slot), drawn and shown.
+    fn scroll_list(&mut self, towns: bool, up: bool) {
+        let list = usize::from(towns);
+        let len = if towns {
+            self.kingdom.towns.len()
+        } else {
+            self.kingdom.heroes.len()
+        };
+        let top = &mut self.kingdom.tops[list];
+        if up {
+            *top = top.saturating_sub(1);
+        } else if len.saturating_sub(*top) > SLOTS {
+            *top = top.saturating_add(1);
+        }
+        self.draw_lists();
+    }
+
+    /// A hero list's slot clicked (`adventure_click` 0x409829): the hero in it chosen, unless the
+    /// slot lies past the list (the slot, not the top plus it, is tested: 0x409844) or holds the
+    /// selected hero, whose screen it opens (M4, M5: refused).
+    fn hero_slot(&mut self, t: u32, slot: usize, at: [i32; 2]) -> Result<(), Unplayable> {
+        let i = self.kingdom.tops[0].saturating_add(slot);
+        if slot >= self.kingdom.heroes.len() || i >= self.kingdom.heroes.len() {
+            return Ok(());
+        }
+        if self.kingdom.selected == Selected::Hero(i) {
+            return self.unbuilt(Unplayable::Panel(at));
+        }
+        if self.chosen_hero(i).is_none() {
+            return self.unbuilt(Unplayable::Panel(at));
+        }
+        self.keep_path();
+        self.choose_hero(t, i);
+        Ok(())
+    }
+
+    /// A town list's slot clicked (`adventure_click` 0x40987D, a slot holding a town: the empty
+    /// ones take no click): move hero disabled and a path shown cleared, the view drawn and
+    /// shown with the objects' step when due (0x4098BB to 0x40998A); then the town chosen, or its
+    /// screen opened when it is the selected one (M4, M5: refused).
+    fn town_slot(&mut self, t: u32, slot: usize, at: [i32; 2]) -> Result<(), Unplayable> {
+        let i = self.kingdom.tops[1].saturating_add(slot);
+        let known = self.chosen.towns.get(i).is_some_and(Option::is_some);
+        if self.kingdom.selected == Selected::Town(i) || !known {
+            return self.unbuilt(Unplayable::Panel(at));
+        }
+        self.buttons.move_hero = false;
+        self.keep_path();
+        if !self.path.is_empty() {
+            self.path.clear();
+            self.draw(t);
+            self.step_objects(t);
+        }
+        self.choose_town(t, i);
+        Ok(())
+    }
+
+    /// Next hero's command (0x409D89): a path shown cleared, the view drawn and shown with the
+    /// objects' step when due (0x409DF3, 0x409DFE); then the player's next hero chosen
+    /// (`next_hero_find` 0x4BAA40: from the one after the selected, or the first, to the list's
+    /// end, then from the first to the selected, the first awake that can still move), none
+    /// found nothing.
+    fn next_hero(&mut self, t: u32) {
+        self.keep_path();
+        if !self.path.is_empty() {
+            self.path.clear();
+            self.draw(t);
+            self.step_objects(t);
+        }
+        let heroes = &self.kingdom.heroes;
+        let from = self.selected_hero().map_or(0, |i| i.saturating_add(1));
+        let next = (from..heroes.len())
+            .chain(0..from.min(heroes.len()))
+            .find(|&i| heroes.get(i).is_some_and(|h| h.movable && !h.asleep));
+        if let Some(i) = next.filter(|&i| self.chosen_hero(i).is_some()) {
+            self.choose_hero(t, i);
+        }
+    }
+
+    /// What choosing the kingdom's hero `i` shows, when the live part gives it and its index
+    /// names a map's hero.
+    fn chosen_hero(&self, i: usize) -> Option<&ChosenHero> {
+        self.chosen
+            .heroes
+            .get(i)?
+            .as_ref()
+            .filter(|c| c.hero < self.heroes.len())
+    }
+
+    /// The selected hero's path kept as its choice shows it again (its destination stays: the
+    /// original makes the path again from it), and its tile and facing; then none shown.
+    fn keep_path(&mut self) {
+        let arrows = self.arrows();
+        if let (Some(i), Some(index), Some(hero)) = (self.selected_hero(), self.index, self.hero) {
+            if let Some(Some(chosen)) = self.chosen.heroes.get_mut(i) {
+                chosen.path = arrows;
+            }
+            if let Some(h) = self.heroes.get_mut(index) {
+                *h = hero;
+            }
+        }
+    }
+
+    /// The kingdom's hero `i` chosen (`hero_select` 0x417B20 with 0, 0, 1; design §4.13; the
+    /// selected hero's path kept first, [`Loop::keep_path`]): move hero disabled and a path
+    /// shown cleared (0x417B80, 0x417BA0), the selected hero put back
+    /// on its tile (0x417BAC); the hero selected, lifted off its tile and the view centred on it
+    /// (a hero of the viewer's always sees its tile: 0x417DAE), the lists updated, the status
+    /// window built (0x41800B) and the minimap drawn ([`Loop::lift`]); its path made again
+    /// (0x417FE2: the path its choice shows, move hero by its green arrows); the view drawn and
+    /// the whole screen shown (0x418082); the mouse's move posted with the view's column
+    /// forgotten (0x418146: +0xEC 0, the row kept) and taken at once.
+    fn choose_hero(&mut self, t: u32, i: usize) {
+        let Some(chosen) = self.chosen_hero(i).cloned() else {
+            return;
+        };
+        self.buttons.move_hero = false;
+        self.path.clear();
+        self.lifted = false;
+        let hero = self.heroes.get(chosen.hero).copied();
+        self.kingdom.selected = Selected::Hero(i);
+        self.index = Some(chosen.hero);
+        self.hero = hero;
+        self.selected_id = self
+            .hover
+            .as_ref()
+            .and_then(|h| h.facts().hero_list.get(i))
+            .map(|h| h.0);
+        // The facts' reach and the hero's own marks were the staged hero's (design §4.13: the
+        // engine's from M4).
+        self.walked = true;
+        self.kingdom.selection = Some(Status::Hero(chosen.status));
+        self.path = hero
+            .and_then(|h| chain(h.at, &chosen.path))
+            .unwrap_or_default();
+        self.lift(t, true);
+        self.buttons.move_hero = self.green();
+        self.draw(t);
+        self.look_again();
+    }
+
+    /// The kingdom's town `i` chosen (`town_select` 0x417830 with 0, 1; design §4.13): the
+    /// selected hero put back and none selected, the town selected, the view centred on its
+    /// place (never clamped, 0x4178BD), the town list updated to show it and the hero list
+    /// (0x417953, 0x417961), move hero disabled and a path shown cleared (0x4179AF), the whole
+    /// screen updated (`adventure_full_update` 0x417420: the status window built, the minimap and
+    /// the view drawn); the music of the terrain at the view's middle and its ambient sounds
+    /// (0x417A33, 0x417AF8); the mouse's move posted as after a hero's choice.
+    fn choose_town(&mut self, t: u32, i: usize) {
+        let Some(Some(chosen)) = self.chosen.towns.get(i).cloned() else {
+            return;
+        };
+        self.lifted = false;
+        self.hero = None;
+        self.index = None;
+        self.selected_id = None;
+        self.kingdom.selected = Selected::Town(i);
+        let top = &mut self.kingdom.tops[1];
+        *top = top_showing(*top, i, self.kingdom.towns.len());
+        let [mx, my] = self.rules.middle;
+        self.view = ViewAt {
+            x: i32::from(chosen.at.x) - mx,
+            y: i32::from(chosen.at.y) - my,
+            z: chosen.at.z,
+        };
+        self.buttons.move_hero = false;
+        self.path.clear();
+        self.kingdom.selection = Some(Status::Town(chosen.status));
+        self.draw_lists();
+        self.choose(t, true);
+        self.draw_minimap();
+        self.draw(t);
+        let middle = self.middle();
+        if let Some(sound) = &mut self.sound {
+            sound.select(t, middle, chosen.at, true);
+        }
+        self.look_again();
+    }
+
+    /// The mouse's move a choice posts (`input_post_mouse_move` 0x4ECC00) with the view's
+    /// column forgotten (+0xEC 0, its row kept), taken at once.
+    fn look_again(&mut self) {
+        let row = self.column.map_or(-1, |[_, y]| y);
+        self.column = Some([0, row]);
+        self.moved();
     }
 
     /// The mouse's move (`adventure_mouse_move` 0x40E360, on the viewer's turn; design §4.10).
@@ -1474,6 +1969,7 @@ impl Loop {
         self.minimap = Minimap {
             view: self.view,
             hero: self.hero.map(|h| h.at),
+            index: self.index,
         };
         self.drawn.minimap = self.minimap;
     }
@@ -1493,6 +1989,8 @@ impl Loop {
             minimap: self.minimap,
             kingdom: Arc::clone(&self.drawn.kingdom),
             hint: self.drawn.hint.clone(),
+            selected: self.index,
+            pressed: core::mem::take(&mut self.drawn.pressed),
         };
         self.choose(t, false);
     }
@@ -1600,6 +2098,24 @@ impl Loop {
     }
 }
 
+/// Whether the dialog's item `id` is a button (`def_button_message`'s): the buttons 3 to 12 and
+/// the lists' arrows.
+const fn is_button(id: u16) -> bool {
+    matches!(id, 3..=14 | 30 | 31)
+}
+
+/// The list and slot of a list's item (`adventure_click`'s table 0x409A44): a hero list's
+/// portrait or selection frame (false), a town list's picture (true); none for another item (the
+/// bars take no click).
+const fn list_slot(id: u16) -> Option<(bool, usize)> {
+    match id {
+        15..=19 => Some((false, (id - 15) as usize)),
+        39..=43 => Some((false, (id - 39) as usize)),
+        32..=36 => Some((true, (id - 32) as usize)),
+        _ => None,
+    }
+}
+
 /// A path's arrows in its order from the hero's tile, each with the step onto it: each the one
 /// arrow left that neighbours the last on its level; `None` when one has none or several.
 #[must_use]
@@ -1655,6 +2171,9 @@ pub fn play(
 pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String> {
     let mut out = Vec::new();
     let mut last: Option<&State> = None;
+    // The last points written: a state without a selected hero writes none and keeps them (E24
+    // M3 T6b1: a town chosen, then a hero of the same points, writes no line).
+    let mut points_written = None;
     for s in states {
         let changed = |f: fn(&State) -> String| last.is_none_or(|l| f(l) != f(s));
         let view = |s: &State| format!("view {} {} {}", s.view.x, s.view.y, s.view.z);
@@ -1679,17 +2198,20 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
                 out.push(format!("{} {}", s.t, f(s)));
             }
         }
-        if let Some(points) = s
-            .points
-            .filter(|p| last.is_none_or(|l| l.points != Some(*p)))
-        {
+        if let Some(points) = s.points.filter(|p| points_written != Some(*p)) {
             out.push(format!("{} points {points}", s.t));
+            points_written = Some(points);
         }
         if let Some(l) = last {
-            if let Some(h) = s.hero.filter(|_| s.hero != l.hero) {
-                let at = h.at;
-                let facing = h.facing.number();
-                out.push(format!("{} hero {} {} {} {facing}", s.t, at.x, at.y, at.z));
+            if s.hero != l.hero {
+                // None selected (a town chosen): the line without numbers.
+                out.push(s.hero.map_or_else(
+                    || format!("{} hero", s.t),
+                    |h| {
+                        let (at, facing) = (h.at, h.facing.number());
+                        format!("{} hero {} {} {} {facing}", s.t, at.x, at.y, at.z)
+                    },
+                ));
             }
             if s.walk != l.walk {
                 let Walk {

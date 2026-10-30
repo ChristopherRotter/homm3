@@ -94,6 +94,11 @@ pub struct Situation {
     /// marks shows them (the viewer takes them from the live part's `[hover]`, not from here).
     #[serde(default)]
     pub visits: Vec<VisitSpec>,
+    /// The harness chooses each of Red's heroes and towns in turn after the path is shown, and
+    /// then the staging's selection again (E24 M3 T6b1, design §4.13): what each choice shows,
+    /// the live part's `[chosen]` (the viewer takes it from there, not from here).
+    #[serde(default)]
+    pub choose: bool,
 }
 
 /// What the viewer knows of the object anchored on a tile (E24 M3 T6a2a): whether Red knows its

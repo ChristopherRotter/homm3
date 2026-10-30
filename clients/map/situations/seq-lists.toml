@@ -1,0 +1,30 @@
+# The lists' clicks and the buttons' presses (E24 M3 T6b1; clients/map/sequences.toml
+# `choose-lists` and `press-buttons`; E24 design §4.13): Red's seven heroes and six towns, both
+# lists longer than their five slots. The first hero with a path to five tiles south, the second
+# selected with its path five tiles south (shown last: the path's staging selects each hero with
+# one in turn), the fourth near the map's corner (centred on it, the view shows past the map's
+# edge), the fifth without movement points (next hero passes it). The harness chooses each hero
+# and town in turn before the sequence's 0 (`choose`: the live part's `[chosen]`).
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [26, 14], class = 8, path = [26, 19] },
+    { at = [3, 3], class = 0, path = [3, 8] },
+    { at = [20, 18], class = 2 },
+    { at = [33, 33], class = 4 },
+    { at = [12, 20], class = 6, points = 0 },
+    { at = [4, 28], class = 10 },
+    { at = [18, 32], class = 12 },
+    { at = [30, 24], owner = 1 },
+]
+towns = [
+    { at = [8, 6], faction = 0, owner = 0, buildings = "fort" },
+    { at = [16, 6], faction = 1, owner = 0, buildings = "village" },
+    { at = [24, 6], faction = 2, owner = 0, buildings = "citadel", built = true },
+    { at = [32, 6], faction = 3, owner = 0, buildings = "fort" },
+    { at = [8, 12], faction = 4, owner = 0, buildings = "castle" },
+    { at = [16, 12], faction = 5, owner = 0, buildings = "village" },
+]
+select = { hero = [3, 3] }
+choose = true
+view = [0, 0, 0]

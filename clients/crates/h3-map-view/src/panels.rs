@@ -18,8 +18,12 @@ use crate::live::{Buttons, Kingdom, Live, Selected};
 
 /// The dialog's control ids the panels' logic sets (design §4.1).
 pub mod id {
+    /// The map's area (the view; E24 M3 T6b1: a press there a tile's click).
+    pub const VIEW: u16 = 0;
     /// The minimap's area.
     pub const MINIMAP: u16 = 1;
+    /// The text over the view (+0x54: a press there a tile's click, as the view's).
+    pub const TEXT: u16 = 37;
     /// The underground.
     pub const UNDERGROUND: u16 = 4;
     /// The quest log.
@@ -87,16 +91,30 @@ pub fn dialog(
         hidden: true,
         ..State::default()
     };
-    let states = disabled
+    let off: Vec<u16> = disabled
         .into_iter()
         .filter(|&(_, off)| off)
-        .map(|(id, _)| {
+        .map(|(id, _)| id)
+        .collect();
+    // A button pressed shows its click frame (E24 M3 T6b1: `def_button_message` 0x456860); a
+    // disabled one takes no press.
+    let pressed = live.pressed.iter().filter(|id| !off.contains(id)).map(|&id| {
+        let state = State {
+            pressed: true,
+            ..State::default()
+        };
+        (id, state)
+    });
+    let states = off
+        .iter()
+        .map(|&id| {
             let state = State {
                 disabled: true,
                 ..State::default()
             };
             (id, state)
         })
+        .chain(pressed)
         .chain((id::FRAMES..).take(SLOTS).map(|id| (id, hidden)))
         .collect();
     let heroes = lists::hero_slots(lists, kingdom)?;

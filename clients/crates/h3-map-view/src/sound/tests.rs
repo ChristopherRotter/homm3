@@ -329,6 +329,8 @@ pub(crate) fn map_with(
         minimap: None,
         hover: None,
         hint: None,
+        chosen: crate::live::Chosen::default(),
+        pressed: Vec::new(),
     };
     (art, live, shapes)
 }
