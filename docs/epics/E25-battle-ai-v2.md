@@ -120,8 +120,12 @@ against the current MLP before any RL run.
   every student trained on the same rollouts of the teacher (`e25-scale-1` #3) to its heads and
   its λ-returns, scored on held-out rollouts per head and category; `configs/distill/e25.toml`
   (six students); a CPU smoke (minibatches of 512 rows: PPO's do not fit the hex networks).
-- [ ] **T7c The bench run** (the user's machine) and its read: which kinds go to RL.
-- [ ] **T7d The A/B** (the user's machine, 20 M): the best one or two against `e25-scale-1`.
+- [x] **T7c The bench run** (2026-10-30; `E25-log.md` T7c; `records/distill/distill-1.json`):
+  the structured networks fit the teacher ten times worse than any MLP (agreement 0.62 to 0.64
+  against 0.87 to 0.88) at 5 to 25 times its cost; the wide MLP leads everywhere, its value past
+  the teacher's (0.612 against 0.575). The user: the wide MLP alone to RL, from scratch.
+- [ ] **T7d The A/B** (the user's machine, 20 M): the wide MLP (`configs/e25-wide.toml`,
+  `hidden = 1024`) against `e25-scale-1`.
 - [ ] **T8 Increment 3's checkpoint.**
 
 ## Exit criteria

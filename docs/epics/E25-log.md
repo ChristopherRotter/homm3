@@ -461,3 +461,45 @@ an entry only where a task builds on it.
   the categories, a student that is the teacher scores KL 0 and agreement 1 (another one does
   not), a bench end to end (its students learn, its evaluations, report, metrics and files,
   a second run into the same directory refused).
+
+## T7c — The bench run (2026-10-30)
+
+- **The run** (the user's machine, GTX 1070; `python/records/distill/distill-1.json`; commit
+  `62c5bf1`, clean; `configs/distill/e25.toml`: the teacher `e25-scale-1` #3, 4 M samples, two
+  passes in minibatches of 512, the held-out set 16 384 samples, evaluated every 500 k). Training
+  seconds 9 628 in all (the teacher's rollouts and the evaluations beside them). The held-out
+  decisions: 958 of the tactics phase, 3 592 moves, 6 281 melee, 2 846 shots, 2 157 casts. At 4 M
+  (KL from the teacher's entry head and summed over its cast heads; the agreement of the most
+  likely entry, overall and per the teacher's category; the value's explained variance against
+  the λ-returns, the teacher's own 0.575; the GPU's microseconds per sample and pass):
+
+  | Student | Parameters | KL entry | KL casts | Agreement | Moves | Melee | Shots | Tactics | Value | µs |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | MLP 2 × 512 | 5.95 M | 0.039 | 0.039 | 0.868 | 0.760 | 0.889 | 0.906 | 0.793 | 0.567 | 22 |
+  | MLP 2 × 1 024 | 12.4 M | **0.029** | **0.030** | **0.884** | **0.787** | **0.908** | **0.920** | **0.807** | **0.612** | 33 |
+  | MLP 4 × 512 | 6.47 M | 0.039 | 0.040 | 0.868 | 0.761 | 0.890 | 0.908 | 0.772 | 0.588 | 23 |
+  | `hexconv` 64 × 6 | 0.69 M | 0.380 | 0.391 | 0.619 | 0.448 | 0.588 | 0.697 | 0.487 | 0.485 | 466 |
+  | `hexformer` 64 × 4 | 0.34 M | 0.363 | 0.393 | 0.625 | 0.476 | 0.580 | 0.702 | 0.494 | 0.470 | 553 |
+  | `entity` 128 × 2 | 1.19 M | 0.334 | 0.296 | 0.639 | 0.361 | 0.666 | 0.739 | 0.449 | 0.497 | 106 |
+
+  Over the last 2 M samples every KL still falls slowly (the wide MLP 0.039 to 0.029, the
+  structured networks by about a fifth), the order never changes. The values: the wide MLP
+  0.530, 0.566, 0.589, 0.601, 0.612 (past the teacher's from 3 M on), the deep 0.365 to 0.588,
+  the MLP 0.405 to 0.567, the structured networks 0.40 to 0.50, flattening.
+- **The read:** the structured networks fit the teacher about ten times worse than any MLP
+  (agreement 0.62 to 0.64 against 0.87 to 0.88), at 5 to 25 times its cost a sample (`hexconv`'s
+  466 µs would make a 20 M PPO run about ten hours of network time alone). Part of it is the
+  bench's bias: the teacher is an MLP, so its choices hold an MLP's quirks (a slot's own
+  weights), which a network free of the slots' order cannot copy. But the value, scored
+  against the returns rather than the teacher's outputs, keeps the order too (0.47 to 0.50
+  against 0.57 to 0.61): at these sizes and settings they predict the battles worse. Where the
+  entity network fails (T6's question): the moves first (0.361, the lowest of all; the hex
+  networks 0.45 to 0.48 with the stacks on their hexes), its strikes and shots the best of the
+  structured three and still 0.22 and 0.17 below the MLP's; what E06 T5b found (a move logit
+  reads a hex's own features and the context) holds, and drawing the stacks on the hexes
+  repairs only part of it. The width is the one lever: the wide MLP leads on every head and
+  category and its value explains more of the returns than the teacher's own, while depth
+  alone gains little (the value only).
+- **The user's choices** (2026-10-30): T7d runs the wide MLP alone, from scratch: `e25-scale.toml`'s
+  settings at 20 M samples with `[network] hidden = 1024` (`configs/e25-wide.toml`), against
+  `e25-scale-1`.
