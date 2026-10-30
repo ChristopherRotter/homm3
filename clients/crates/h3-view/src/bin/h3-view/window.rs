@@ -541,19 +541,26 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         battle = Battle::new(&ground)?;
         battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
     }
-    let mut cue = battle.timeline().cue_from(options.from);
+    // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
+    // before the window joined is not played again.
+    let start = if ground.online().is_some() {
+        options.from.max(battle.timeline().end)
+    } else {
+        options.from
+    };
+    let mut cue = battle.timeline().cue_from(start);
     // Whether the battle's end's tune started (E17 M3 T8).
     let mut ended = false;
 
     let mut changes = Changes::new(&battle);
-    let mut clock = Clock::new(win.ticks_ns(), options.from);
+    let mut clock = Clock::new(win.ticks_ns(), start);
     // The clock is held under a notice's box (E17 M5 T5a).
     let mut notice_held = false;
     // The opening: the clock waits while the start sound plays (from the battle's start only).
     let mut opening_until = None;
     if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
         let now = win.ticks_ns();
-        let wait = if options.from == 0 { p.start(lib) } else { 0 };
+        let wait = if start == 0 { p.start(lib) } else { 0 };
         if wait > 0 {
             clock.toggle(now);
             opening_until = Some(now + u64::from(wait) * 1_000_000);
@@ -562,7 +569,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
     }
     let mut shown: Option<Frame> = None;
-    let from = changes.latest(&mut battle, options.from)?;
+    let from = changes.latest(&mut battle, start)?;
     let mut next = Some(frame_at(&mut battle, from)?);
     let mut pointer: Option<(i32, i32)> = None;
     // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2).
@@ -632,6 +639,35 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // A seat on a server: what the server sent since (E17 M5 T6b1), never waited on.
         let ticks = win.ticks_ns();
         grew |= battle.poll(clock.ms(ticks), ticks / 1_000_000)?;
+        // A restarted server's record opened afresh (E17 M5 T6b2): the battle and the window's
+        // clock, inputs and presses start again from its new opening, a new timeline.
+        if battle.opened_afresh() {
+            battle = battle.afresh()?;
+            battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
+            lines.push(format!(
+                "a new timeline at {} ms of the one before",
+                clock.ms(win.ticks_ns())
+            ));
+            let start = battle.timeline().end;
+            clock = Clock::new(win.ticks_ns(), start);
+            (notice_held, ended, held, stopped_by) = (false, false, None, None);
+            inputs.clear();
+            scrolls.clear();
+            changes = Changes::new(&battle);
+            cue = battle.timeline().cue_from(start);
+            let from = changes.latest(&mut battle, start)?;
+            next = Some(frame_at(&mut battle, from)?);
+            shown = None;
+            if let Some(p) = presser.as_mut() {
+                *p = Presser {
+                    points: core::mem::take(&mut p.points),
+                    leave: options.leave,
+                    auto: options.auto,
+                    ..Presser::default()
+                };
+            }
+            continue 'run;
+        }
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
         }

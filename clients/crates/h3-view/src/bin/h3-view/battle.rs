@@ -141,8 +141,6 @@ pub struct Ground {
     heroes: Heroes,
     /// What words the log's lines and the mouse's hints (none without the text tables).
     writer: Option<crate::log::Writer>,
-    /// Each stack's frames of the fidget's group, by id.
-    fidget_frames: BTreeMap<u8, u32>,
     /// The viewer's own fidgets' seed and the combat speed.
     seed: u32,
     speed: Speed,
@@ -153,6 +151,21 @@ pub struct Ground {
     /// The samples' lengths once the window plays the battle's sounds (E17 M5 T5b2,
     /// [`Ground::play_sounds`]): the battle waits for them; unset, no sound and no waits.
     lengths: std::cell::OnceCell<Lengths>,
+}
+
+/// The opening of the battle `online`'s seat plays (E17 M5 T6b1): its record's first snapshot,
+/// with the seat's side the one a human plays here (`remote_turn`: the other seat's player is the
+/// network's).
+fn seat_opening(online: &Online) -> Result<Record, String> {
+    let mut record = online.record().cloned().ok_or("no record")?;
+    record.messages.truncate(1);
+    let index = usize::from(online.seat() == Seat::Defender);
+    if let Some(ServerMessage::Snapshot { observation, .. }) = record.messages.first_mut() {
+        for (i, side) in observation.sides.iter_mut().enumerate() {
+            side.human = i == index;
+        }
+    }
+    Ok(record)
 }
 
 impl Ground {
@@ -228,15 +241,9 @@ impl Ground {
                 crate::net::os_roots,
                 OPENING_WAIT,
             )?;
-            let mut record = online.record().cloned().ok_or("no record")?;
-            record.messages.truncate(1);
+            let record = seat_opening(&online)?;
             let index = usize::from(server.seat == Seat::Defender);
             humans = [index == 0, index == 1];
-            if let Some(ServerMessage::Snapshot { observation, .. }) = record.messages.first_mut() {
-                for (i, side) in observation.sides.iter_mut().enumerate() {
-                    side.human = humans[i];
-                }
-            }
             let (content, ruleset) = (online.content(), online.take_rules());
             // The drawing needs the game's packs (the stage's spells and creatures): absent here,
             // the window says so and stops (*provisional*).
@@ -276,7 +283,7 @@ impl Ground {
                 .map_err(|e| format!("{}: {e}", source.input.display()))?;
             (record::parse(&text).map_err(|e| e.to_string())?, None)
         };
-        let snapshot = record
+        record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
         let top = record
@@ -310,15 +317,6 @@ impl Ground {
         let seed = u32::try_from(source.seed & u64::from(u32::MAX)).unwrap_or(1);
         let heroes = motion::heroes(&record, &tables, &parsed, Some(seed))?;
         let writer = crate::log::Writer::new(&tables, &layout, (&parsed, &exe), Bugs::Fixed).ok();
-        let group = tables.battle.groups.mouse_over;
-        let fidget_frames = snapshot
-            .stacks
-            .iter()
-            .filter_map(|s| {
-                let frames = looks.get(&s.creature)?.frames.get(&u32::from(group))?;
-                Some((s.id, *frames))
-            })
-            .collect();
         drop(parsed);
         Ok(Self {
             record,
@@ -333,7 +331,6 @@ impl Ground {
             siege,
             heroes,
             writer,
-            fidget_frames,
             seed,
             speed: source.speed,
             fight,
@@ -452,6 +449,8 @@ pub struct Battle<'g> {
     ground: &'g Ground,
     /// The record so far: the opening, then what each command played sent.
     record: Record,
+    /// The seat's record's timelines when it opened (E17 M5 T6b2: [`Battle::opened_afresh`]).
+    timelines: u32,
     /// The timeline at the original's timing.
     played: Played<'g>,
     /// The commands played.
@@ -566,12 +565,39 @@ pub enum BookDid {
 
 impl<'g> Battle<'g> {
     /// The battle over `ground`: a record file's played whole, a scenario's before its first
-    /// command.
+    /// command, a seat's on a server from its record's opening.
     pub fn new(ground: &'g Ground) -> Result<Self, String> {
-        let snapshot = ground
-            .record
+        Self::open(ground, ground.record.clone())
+    }
+
+    /// The battle a seat on a server plays once its record opened afresh (E17 M5 T6b2: a
+    /// restarted server's restored game): a new timeline from the record's new opening, the one
+    /// before dropped.
+    ///
+    /// # Errors
+    /// No seat on a server, or as [`Battle::new`].
+    pub fn afresh(&self) -> Result<Self, String> {
+        let online = self.ground.online().ok_or("not a seat on a server")?;
+        let opening = seat_opening(&online.borrow())?;
+        Self::open(self.ground, opening)
+    }
+
+    /// Whether the seat's record opened afresh since this battle opened (E17 M5 T6b2): the window
+    /// then plays [`Battle::afresh`].
+    pub fn opened_afresh(&self) -> bool {
+        self.ground
+            .online()
+            .is_some_and(|o| o.borrow().timelines() != self.timelines)
+    }
+
+    /// The battle over `ground` from `record`, its opening (the ground's own, or a seat's record
+    /// opened afresh).
+    fn open(ground: &'g Ground, record: Record) -> Result<Self, String> {
+        let snapshot = record
             .first_snapshot()
-            .ok_or("the record holds no snapshot")?;
+            .ok_or("the record holds no snapshot")?
+            .clone();
+        let snapshot = &snapshot;
         let fight = match &ground.fight {
             Some(Fought::Here(here)) => {
                 let (ruleset, setup, seed) = &**here;
@@ -597,7 +623,7 @@ impl<'g> Battle<'g> {
         let stage = Stage {
             lengths: ground.lengths.get(),
             ..motion::stage(
-                &ground.record,
+                &record,
                 &ground.tables,
                 &ground.layout,
                 (&ground.magic, &ground.casts, ground.siege.as_ref()),
@@ -632,7 +658,7 @@ impl<'g> Battle<'g> {
             }
             None => {
                 // A record's commands, each the computer's when it has no time.
-                let commands = anim::commands(&ground.record.messages);
+                let commands = anim::commands(&record.messages);
                 for (i, command) in commands.iter().enumerate() {
                     let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
                     growing.push(command, computer);
@@ -642,12 +668,14 @@ impl<'g> Battle<'g> {
         };
         let commands = match &played {
             Played::Growing(_) | Played::Waiting(..) => 0,
-            Played::Finished(_) => anim::commands(&ground.record.messages).len(),
+            Played::Finished(_) => anim::commands(&record.messages).len(),
         };
         let head = Playhead::new(played.timeline());
+        let timelines = ground.online().map_or(0, |o| o.borrow().timelines());
         let mut battle = Self {
             ground,
-            record: ground.record.clone(),
+            record,
+            timelines,
             played,
             commands,
             fight,
@@ -937,12 +965,16 @@ impl<'g> Battle<'g> {
     /// mouse and the book. Whether the battle changed (nothing for a battle not on a server).
     ///
     /// # Errors
-    /// The connection's fault, a refusal, a record that does not extend the one before.
+    /// The connection's fault, a refusal, another game's record at a re-join.
     pub fn poll(&mut self, at: u32, now: u64) -> Result<bool, String> {
         let Some(Fight::Server(online)) = &self.fight else {
             return Ok(false);
         };
         let grew = online.borrow_mut().poll(now)?;
+        // A record opened afresh is a new timeline's, not this one's (E17 M5 T6b2).
+        if self.opened_afresh() {
+            return Ok(true);
+        }
         let mut changed = grew && self.take_served(Some(at))?;
         changed |= self.serve_turn();
         if changed {
@@ -1187,7 +1219,14 @@ impl<'g> Battle<'g> {
         (!shown.entered.is_empty()).then(|| {
             let mut timeline = self.played.timeline().clone();
             let group = self.ground.tables.battle.groups.mouse_over;
-            let frames = |id: u8| self.ground.fidget_frames.get(&id).copied().unwrap_or(0);
+            // Each stack's frames of the fidget's group, by the creature its opening shows.
+            let stacks = self.record.first_snapshot().map(|o| o.stacks.as_slice());
+            let frames = |id: u8| {
+                let s = stacks.unwrap_or_default().iter().find(|s| s.id == id);
+                s.and_then(|s| self.ground.looks.get(&s.creature)?.frames.get(&u32::from(group)))
+                    .copied()
+                    .unwrap_or(0)
+            };
             timeline.enter(&shown.entered, u32::from(group), &frames);
             timeline
         })
