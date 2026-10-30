@@ -9318,3 +9318,66 @@ banned in 9a, so a level-up after E9-1's or E9-2r's battles adds no gold; (8) E9
 floor on day 1 only, Blue's visits subtracted; (9) the order names E9-9's day-1 read; (10) the income
 vector recorded. The legs priced again on the rebuilt maps.
 
+
+### Increment 9, round 3: T79a, batch E9a's harness and runs (2026-10-30, `adventure/e08-t79a`)
+
+**The cut** (decision 207): T79 in two by batch, this part E9a (recommended, as decision 175); T79b
+batch E9b. **Baseline:** `master` ef32f96 (#603 merged; the setup's baseline: the engine code
+verified on that commit, light gates only). The installation's files staged from the user's
+computer at the start (as T68a, with every MP3).
+
+**The reads and clicks** (`clients/capture/`, common; README "Mines, Lighthouses and Shipyards"):
+`h3mem`: the mine and Lighthouse records (`mines`, game +0x4E38C), a tile's own word with the word
+and class under a hero (`tile_word`), each battle side's owner, human flag and human-here flag
+(`battle_sides`: manager +0x54A8, read in `battle_side_setup` 0x4639F0; +0x54A4, +0x54A6), auto
+combat's flag (+0x132C4). `h3adv`: the observations `mine:x,y`, `tile:x,y` (a Shipyard's word
+decoded: owner, boat tile), `cursor` (over a walk's target before its first click), `screens`,
+`opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>` (table rows), `stops`; the boat
+dialog as a screen (`shipyard_dialog_create` 0x5D1EF0 read in part: vtable 0x643908, build 0x7802,
+cancel 0x7801; map entries added), played by a walk onto an own Shipyard or a single click from
+afar; the Leave Guards dialog is the army dialog (the mine's guards upper); `battle = "auto
+again"` (auto combat on by its flag, again at each stop; refused three times or a stack waiting
+with it on: the rest played as `attack`, each turn recorded as waiting for an order or not); a
+`row:<column>#2` for a section's second table of the same first column; `h3lod` knows MINEEVNT.TXT
+(the first runs named the mine's message GENRLTXT:4, its picture's caption) and a title's braces
+are optional. The harness check passed after the last change. The client and map-client lanes'
+inboxes told.
+
+**The recipe** (`clients/capture/batches/E08-batch-9a.toml`, 41 steps): the spec's order (day 1
+Red's reads before any hero moves, E9-1, E9-3, E9-4, E9-5, the treasury; Blue's E9-2, E9-3b; day 2
+Red's E9-4, E9-5, E9-2r; Blue's treasury).
+
+**The runs** (Easy, hot seat, under Wine): four. The first stopped at E9-2r's first battle: the key
+`a` left auto combat off (both sides human), and the first `auto again` pressed it without end; the
+second whole (the mine's messages as GENRLTXT:4); the third recorded (`experiments/results/
+E08-batch-9a.md`); the fourth recorded as `-run2.md`. Every reading the same in all four but the
+draws (the Troglodytes' counts) and the starting bonus.
+
+**What the runs showed** (for T80; not scored here): **E9-1** each mine one stack of Troglodytes at
+the start (A 126, 163, 105, …; B 163, 116, 192, …), A's drawn resource gems in every run; the
+question ADVEVENT 84; A fought as **three stacks** of Troglodytes (42 × 3; 55, 54, 54; 35 × 3), B
+as **two**, the second **Infernal Troglodytes** (82 + 81; 58 + 58; 96 + 96): the reading seeded by
+the entrance, not VCMI's single stack; the opening subterranean; ADVEVENT 85 then the drawn mine's
+message (MINEEVNT 5, the Gem Pond's; 6, the Gold Mine's); the records Red's, guards empty. The
+first battle's messages also hold GENRLTXT 7, the townless player's warning. **E9-2** Blue's own
+visit opens the army dialog titled GENRLTXT 710 (Leave Guards), the mine's army upper and empty;
+the moved stacks are the records' slot 0 (C 2 Angels, S 1 Archangel). Red's visit: ADVEVENT 187;
+the battle's defender **Blue, human (here 1)**, the guards **unsplit**; auto combat **refused**
+(the key left it off three times) and **each of Blue's stacks waited for an order**, as Red's did:
+Blue plays its guards. C on the **subterranean** field, S on **grass**; won, the mine's message
+(MINEEVNT 4, 0), the records Red's, guards empty. **E9-3** Red's flag with MINEEVNT 0 (2/day), no
+question; the second visit opens Leave Guards and nothing else; Blue's visit of Red's unguarded
+sawmill asks nothing and flags it for Blue. **E9-4** the records owner Red, resource 100; for Red at
+day 1 (66, 6), (66, 8), (66, 9), (68, 8), (6, 64), (6, 63) **explored**, (66, 10) and (6, 62) not:
+the radius-3 disk around each Lighthouse owned at load, **against A-33's reading**; after boarding
+0 of 2 000 (A-28), day 2 **2 500 of 2 500**. **E9-5** the three tiles' words alike, `0xff321f00`
+(owner Red, boat tile (31, 50)), before and after; the visit opens the boat dialog (GENRLTXT 596);
+the build takes **1 000 gold and 10 wood**, the boat on (31, 50) type 1, facing 2, owner Red, no
+captain; with E9-5 aboard on the boat tile E9-5b's click on (32, 50) shows **cursor 6** and
+**GENRLTXT 52**, nothing paid, no path; on day 2, the tile free, the same click opens **the boat
+dialog**, the second boat as the first, another 1 000 and 10 (the first boat's record keeps its
+boarding tile (31, 50) while E9-5 sails, as T68b saw). **E9-0** Red at day 2's start +1 000 gold and
++1 gems (B and A), nothing else (Estates banned, no level-up gold); Blue +4 wood and +1 crystal
+(its sawmill and N, its cavern), nothing on day 1.
+
+T79b (batch E9b) and T80 (the scoring) queued.

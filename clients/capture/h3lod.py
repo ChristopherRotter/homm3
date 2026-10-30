@@ -11,7 +11,8 @@ the harness names a record by its number, never by its text (ADR-0009).
 Library use: `table(name)` (records of fields, header rows included, from 0), `matches(name,
 text)` (the records whose first field formats to `text`, or two neighbours' together: "89+90"),
 `identify(text)` (the most specific match in ADVEVENT.TXT, GENRLTXT.TXT or, since E08 T68b,
-RANDSIGN.TXT, the signs' and Ocean Bottles' default texts: "ADVEVENT:86", "RANDSIGN:24").
+RANDSIGN.TXT, the signs' and Ocean Bottles' default texts, since E08 T79a MINEEVNT.TXT, the mines'
+flag messages: "ADVEVENT:86", "RANDSIGN:24", "MINEEVNT:0").
 """
 
 import re
@@ -99,7 +100,7 @@ def table(name):
 def pattern(text):
     """A regular expression for what `printf` makes of a record's text: each conversion (`%s`,
     `%d`, ...) any text, `%%` a percent sign, white space any white space, since E08 T68b a
-    doubled quote one or two."""
+    doubled quote one or two, since E08 T79a a brace optional."""
     parts = re.split(r"(%%|%[-+ #0]*\d*(?:\.\d+)?[a-zA-Z]|\s+)", text.strip())
     out = []
     for part in parts:
@@ -111,8 +112,10 @@ def pattern(text):
             out.append(r"\s+")
         elif part:
             # A doubled quote (a quoted field's quote, ADVEVENT 126: the Survivor's "no room";
-            # E08 T68b) shows as one or two.
-            out.append(re.escape(part).replace('""', '"{1,2}'))
+            # E08 T68b) shows as one or two; since E08 T79a a title's braces (MINEEVNT's
+            # `{Sawmill}`) may be gone from the text a dialog holds.
+            out.append(re.escape(part).replace('""', '"{1,2}').replace(r"\{", r"\{?")
+                       .replace(r"\}", r"\}?"))
     return re.compile("".join(out), re.S)
 
 
@@ -135,8 +138,10 @@ def matches(name, text):
 
 
 # Since E08 T68b RANDSIGN.TXT (batch E8b's E8-9: an Ocean Bottle without a text shows the default
-# text of its column mod 25, sign_default_texts 0x696C74; plain texts, no conversions).
-TABLES = ("ADVEVENT.TXT", "GENRLTXT.TXT", "RANDSIGN.TXT")
+# text of its column mod 25, sign_default_texts 0x696C74; plain texts, no conversions). Since E08
+# T79a MINEEVNT.TXT (batch E9a: a mine's flag message, by the record's resource; the first run
+# named it GENRLTXT:4, its picture's caption `%d/day`).
+TABLES = ("ADVEVENT.TXT", "GENRLTXT.TXT", "RANDSIGN.TXT", "MINEEVNT.TXT")
 
 
 def literal(name, record):
