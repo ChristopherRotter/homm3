@@ -19,14 +19,14 @@ use crate::anim::{
 use crate::scene::Moment;
 
 /// The created creatures of these tests (invented handles).
-const FIRE_ELEMENTAL: u16 = 40;
+pub(crate) const FIRE_ELEMENTAL: u16 = 40;
 const DEMON: u16 = 41;
 const PIT_LORD: u16 = 42;
 /// The spells' handles: the base pack's numbers (Teleport 63, Clone 65, Summon Fire Elemental
 /// 66).
 const TELEPORT_SPELL: u16 = 63;
 const CLONE: u16 = 65;
-const SUMMON: u16 = 66;
+pub(crate) const SUMMON: u16 = 66;
 /// A death's dissolve step at speed 0 (trunc(150 F)).
 const REMOVAL: u32 = 150;
 
@@ -97,7 +97,10 @@ fn created_casts() -> Casts {
     }
 }
 
-fn play_created(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timeline {
+pub(crate) fn play_created(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+) -> Timeline {
     play_with(snapshot, commands, &created_casts())
 }
 
@@ -132,7 +135,7 @@ fn play_with(
     .unwrap()
 }
 
-fn spell(spell: u16, target: Target) -> Event {
+pub(crate) fn spell(spell: u16, target: Target) -> Event {
     Event::SpellCast {
         side: Side::Attacker,
         spell,
@@ -141,7 +144,7 @@ fn spell(spell: u16, target: Target) -> Event {
     }
 }
 
-fn summoned(stack: u8, count: u32, hex: u8) -> Event {
+pub(crate) fn summoned(stack: u8, count: u32, hex: u8) -> Event {
     Event::StackCreated {
         stack,
         creature: FIRE_ELEMENTAL,

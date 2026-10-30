@@ -235,6 +235,8 @@ fn start(situation: &str, speed: usize) -> Start {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     }
 }
 
@@ -318,7 +320,9 @@ fn the_walks_frames_are_m2_t3bs() {
             "walk-4",
             "walk-follow",
             "walk-points",
-            "walk-sail"
+            "walk-sail",
+            "hover-map",
+            "hover-sail"
         ]
     );
 }
@@ -340,6 +344,8 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -537,6 +543,8 @@ fn what_it_cannot_play_yet() {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -658,6 +666,8 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1059,6 +1069,8 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     }
 }
 
@@ -1101,7 +1113,13 @@ fn live_a_click_the_loop_cannot_play_only_moves_the_pointer() {
         l.run(1, &[Action::Click([700, 2])]).unwrap();
         l.run(2, &[Action::Click(tile(21, 19))]).unwrap();
         let s = l.state(2);
-        assert_eq!(s.drawn, before, "{hero}");
+        // The status bar's hint follows the pointer (E24 M3 T6a1): (700, 2) lies on no item.
+        assert_eq!(s.drawn.hint, Hint::Empty, "{hero}");
+        let drawn = Draw {
+            hint: before.hint,
+            ..s.drawn.clone()
+        };
+        assert_eq!(drawn, before, "{hero}");
         assert!(s.arrows.is_empty() && s.cursor.shown, "{hero}");
         // The path's destination: shown with a hero, nothing without.
         l.run(3, &[Action::Click(tile(21, 17))]).unwrap();
@@ -1610,4 +1628,142 @@ fn the_day_s_window_plays_its_sound_when_built() {
         l.run(t, &[]).unwrap();
     }
     assert_eq!(effects(&mut l), [(180, Cue::Effect("newday.wav".into()))]);
+}
+
+/// The middle of the tile (x, y) of a view from (0, 0).
+fn on(x: i32, y: i32) -> [i32; 2] {
+    [x * 32 + 16, y * 32 + 16]
+}
+
+/// The mouse-over's loop (E24 M3 T6a1): `hover::tests::fixture`'s 8 × 8 map from (0, 0), Red's
+/// hero A at (4, 3) selected with 100 points, the pointer parked.
+fn hovering(live: bool, bugs: Bugs) -> Loop {
+    let (_, _, hover) = hover::tests::fixture(false);
+    let mut kingdom = hover::tests::kingdom();
+    kingdom.heroes[0].points = 100;
+    let start = Start {
+        view: ViewAt { x: 0, y: 0, z: 0 },
+        size: 8,
+        scroll_speed: 1,
+        hero_speed: 2,
+        pointer: PARK,
+        hero: Some(Hero {
+            at: Pos { x: 4, y: 3, z: 0 },
+            facing: Direction::South,
+        }),
+        paths: Vec::new(),
+        path: Vec::new(),
+        live,
+        sound: None,
+        kingdom,
+        points: Vec::new(),
+        buttons: None,
+        asked: None,
+        hover: Some(hover),
+        levels: 1,
+    };
+    Loop::start(rules(bugs), &start).unwrap()
+}
+
+#[test]
+fn the_mouse_over_the_map_and_the_panels() {
+    use crate::hover::frame;
+    let mut l = hovering(false, Bugs::Original);
+    let r = rules(Bugs::Original);
+    // At 0 the parked pointer's item, the adventure options.
+    assert_eq!(l.state(0).drawn.hint, Hint::Panel(8));
+    let shown = |l: &Loop, t| {
+        let s = l.state(t);
+        (s.cursor.frame, s.drawn.hint)
+    };
+    // A guarded tile: the attack, no hint; the monster: the attack a day away, its hint.
+    l.run(1, &[Action::Pointer(on(4, 4))]).unwrap();
+    assert_eq!(shown(&l, 1), (frame::ATTACK, Hint::Empty));
+    l.run(2, &[Action::Pointer(on(5, 4))]).unwrap();
+    let monster = Hint::Monster {
+        creature: 13,
+        count: 7,
+    };
+    assert_eq!(shown(&l, 2), (frame::ATTACK + frame::DAY, monster));
+    // A tile not explored: the arrow, the hint left.
+    l.run(3, &[Action::Pointer(on(0, 6))]).unwrap();
+    assert_eq!(shown(&l, 3), (r.arrow, monster));
+    // The parking, its item the one looked at last: the hint left (MCL-Q17).
+    l.run(4, &[Action::Pointer(PARK)]).unwrap();
+    assert_eq!(shown(&l, 4), (r.arrow, monster));
+    // Over the hero, then elsewhere in the same tile: the hero once.
+    l.run(5, &[Action::Pointer(on(4, 3))]).unwrap();
+    let a = Hint::Hero {
+        id: 16,
+        class: 2,
+        own_name: false,
+    };
+    assert_eq!(shown(&l, 5), (frame::HERO, a));
+    l.run(6, &[Action::Pointer(PARK)]).unwrap();
+    let [x, y] = on(4, 3);
+    l.run(7, &[Action::Pointer([x + 3, y + 3])]).unwrap();
+    assert_eq!(shown(&l, 7), (r.arrow, a));
+    // A panel's item, then between the panels: the arrow and nothing.
+    l.run(8, &[Action::Pointer([695, 212])]).unwrap();
+    assert_eq!(shown(&l, 8), (r.arrow, Hint::Panel(2)));
+    l.run(9, &[Action::Pointer([604, 180])]).unwrap();
+    assert_eq!(shown(&l, 9), (r.arrow, Hint::Empty));
+    // The hero list's first slot: hero A.
+    l.run(10, &[Action::Pointer([641, 228])]).unwrap();
+    assert_eq!(shown(&l, 10).1, a);
+}
+
+#[test]
+fn the_cursor_without_the_selected_heros_facts() {
+    use crate::hover::frame;
+    // No hero selected: Red's hero B, the no-hero cursor.
+    let mut l = hovering(false, Bugs::Fixed);
+    l.hero = None;
+    l.selected_id = None;
+    l.run(1, &[Action::Pointer(on(7, 3))]).unwrap();
+    assert_eq!(l.state(1).cursor.frame, frame::HERO);
+    // A hero the facts do not hold: none selected either.
+    let mut l = hovering(false, Bugs::Fixed);
+    l.selected_id = None;
+    l.run(1, &[Action::Pointer(on(2, 2))]).unwrap();
+    assert_eq!(l.state(1).cursor.frame, frame::TOWN);
+}
+
+#[test]
+fn a_click_looks_at_its_tile_first() {
+    use crate::hover::frame;
+    let mut l = hovering(true, Bugs::Fixed);
+    // Live, a click on a tile no path leads to only moves the pointer: its tile looked at.
+    l.run(1, &[Action::Click(on(5, 4))]).unwrap();
+    let s = l.state(1);
+    assert_eq!(s.cursor.frame, frame::ATTACK + frame::DAY);
+    assert!(matches!(s.drawn.hint, Hint::Monster { .. }));
+    // After a step the reach is stale: the arrow over a tile it reached.
+    l.run(2, &[Action::Step(Direction::East)]).unwrap();
+    for t in 3..600 {
+        l.run(t, &[]).unwrap();
+    }
+    l.run(600, &[Action::Pointer(on(4, 4))]).unwrap();
+    assert_eq!(l.state(600).cursor.frame, rules(Bugs::Fixed).arrow);
+}
+
+#[test]
+fn an_edge_cursor_stays_in_its_zone_outside_the_view() {
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let r = rules(bugs);
+        let mut l = looped(bugs, 1);
+        l.run(1, &[Action::Pointer([2, 300])]).unwrap();
+        for t in 2..=71 {
+            l.run(t, &[]).unwrap();
+        }
+        assert_eq!(l.state(71).cursor.frame, r.edges + 6, "{bugs:?}");
+        l.run(72, &[Action::Pointer([3, 301])]).unwrap();
+        assert_eq!(l.state(72).cursor.frame, r.edges + 6, "{bugs:?}");
+        // Out of the zone outside the view: the arrow.
+        l.run(73, &[Action::Pointer([604, 180])]).unwrap();
+        assert_eq!(l.state(73).cursor.frame, r.arrow, "{bugs:?}");
+    }
+    let r = rules(Bugs::Original);
+    assert!(r.keeps_edge([785, 300]) && !r.keeps_edge([784, 300]) && !r.keeps_edge([-1, 2]));
+    assert!(!r.keeps_edge([2, 600]));
 }

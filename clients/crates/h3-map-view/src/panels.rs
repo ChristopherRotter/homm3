@@ -14,7 +14,7 @@ use h3_ui::ui::{Draw, Item, Shown, State};
 
 use crate::layout::AdventureLayout;
 use crate::lists::{self, ListArt, SLOTS};
-use crate::live::{Buttons, Live, Selected};
+use crate::live::{Buttons, Kingdom, Live, Selected};
 
 /// The dialog's control ids the panels' logic sets (design §4.1).
 pub mod id {
@@ -50,6 +50,10 @@ pub mod id {
     pub const AMOUNTS: u16 = 1001;
     /// The resource bar's date.
     pub const DATE: u16 = 1008;
+    /// The status bar (E24 M3 T6a1: its text the hint).
+    pub const STATUS_BAR: u16 = 200;
+    /// The chat's edit, over the status bar (0x5541A0; not drawn while not editing).
+    pub const EDIT: u16 = 38;
 }
 
 /// What the dialog's items show for `live` on a map of `levels` levels with the view on level
@@ -78,25 +82,7 @@ pub fn dialog(
         Selected::Hero(i) => Some(kingdom.heroes.get(i).copied().unwrap_or_default()),
         Selected::None | Selected::Town(_) => None,
     };
-    let [heroes_top, towns_top] = kingdom.tops;
-    let disabled = [
-        (id::UNDERGROUND, levels < 2),
-        (id::QUESTS, !kingdom.quests),
-        (id::SLEEP, hero.is_none()),
-        (id::MOVE_HERO, !(hero.is_some() && buttons.move_hero)),
-        (id::CAST, hero.is_none()),
-        (id::NEXT_HERO, !buttons.next_hero),
-        (id::HEROES[0], heroes_top == 0),
-        (
-            id::HEROES[1],
-            kingdom.heroes.len() <= heroes_top.saturating_add(SLOTS),
-        ),
-        (id::TOWNS[0], towns_top == 0),
-        (
-            id::TOWNS[1],
-            kingdom.towns.len() <= towns_top.saturating_add(SLOTS),
-        ),
-    ];
+    let disabled = disabled(kingdom, buttons, levels);
     let hidden = State {
         hidden: true,
         ..State::default()
@@ -144,6 +130,35 @@ pub fn dialog(
         frames,
         pictures,
     })
+}
+
+/// The dialog's items disabled for `kingdom` with `buttons` on a map of `levels` levels (design
+/// §4.1; each with whether it is): the underground on one level, the quest log without a quest,
+/// sleep and cast a spell without a hero selected, move hero and next hero as `buttons` (move hero
+/// with a hero selected only), each list's up arrow at its top and its down arrow when no more than
+/// its slots lie below the top.
+#[must_use]
+pub fn disabled(kingdom: &Kingdom, buttons: Buttons, levels: usize) -> [(u16, bool); 10] {
+    let hero = matches!(kingdom.selected, Selected::Hero(_));
+    let [heroes_top, towns_top] = kingdom.tops;
+    [
+        (id::UNDERGROUND, levels < 2),
+        (id::QUESTS, !kingdom.quests),
+        (id::SLEEP, !hero),
+        (id::MOVE_HERO, !(hero && buttons.move_hero)),
+        (id::CAST, !hero),
+        (id::NEXT_HERO, !buttons.next_hero),
+        (id::HEROES[0], heroes_top == 0),
+        (
+            id::HEROES[1],
+            kingdom.heroes.len() <= heroes_top.saturating_add(SLOTS),
+        ),
+        (id::TOWNS[0], towns_top == 0),
+        (
+            id::TOWNS[1],
+            kingdom.towns.len() <= towns_top.saturating_add(SLOTS),
+        ),
+    ]
 }
 
 /// The lists' selections drawn after the dialog's items (`lists_selection_frames` 0x4038C0,

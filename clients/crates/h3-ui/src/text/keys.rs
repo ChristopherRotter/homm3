@@ -124,6 +124,12 @@ pub struct Family {
     /// otherwise an error.
     #[serde(default)]
     pub optional: bool,
+    /// Its ids' records are the table's records from `first` one by one, blank ones included: id
+    /// `n` is record `first + n` (E24 M3 T6a1: an object class's name, `OBJNAMES.TXT`'s record
+    /// per class, some blank); none: the `n`-th non-blank record ([`Row::Id`]). The count of ids
+    /// a client lists for it.
+    #[serde(default)]
+    pub count: Option<usize>,
 }
 
 /// A family's entry: its key's last part and its original id.
@@ -254,13 +260,17 @@ impl Keys {
             };
             for entry in list {
                 let id = format!("{}.{}", family.id, entry.key);
-                let source = |column: usize| Source {
-                    table: family.table.clone(),
-                    row: Row::Id {
+                let row = match family.count {
+                    Some(_) => Row::Record(family.first.saturating_add(entry.id)),
+                    None => Row::Id {
                         first: family.first,
                         id: entry.id,
                         by: family.by,
                     },
+                };
+                let source = |column: usize| Source {
+                    table: family.table.clone(),
+                    row,
                     column,
                     raw: family.raw,
                 };

@@ -239,11 +239,15 @@ the stacks created mid-battle.
     hello, the welcome's checks, the pins, a join by token or a game created, the record fetched
     and grown, commands, the content check), the I/O thread (`net`), `h3-view connect`; tested
     over loopback (`ws://` and `wss://`, a drop and a re-join) and against `h3-server`.
-  - **T6b, the window over a server:** the window plays its seat through `remote` and `net`
-    (the turn from the server's `YourTurn`, the previews only when the content is `Same`, a
-    visible note otherwise), a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a
-    join and a re-join after a drop or a server restart, the end's `remote_turn`; two windows on
-    a local `h3-server`, a seat each.
+  - **T6b, the window over a server** (cut in two by the user, 2026-10-30):
+    - **T6b1, the window plays a seat** (done 2026-10-30; design §11.2): `h3-view window
+      --server`, the battle growing by what the server sends (polled at each frame), the turn
+      from `YourTurn` with the aims' targets by `Query`, the seat's battle derived
+      (`h3_view::remote::seen`), both content outcomes, a drop's re-join keeping the timeline,
+      `remote_turn` (the seat's player the one human here); two windows on a local `h3-server`
+      played a battle to its end, every frame exact.
+    - **T6b2, the record that opens mid-battle:** R2-8 with M4 T3a's R1-3, a join mid-battle,
+      a server restart's re-join (a new timeline), re-dialing until a restarted server answers.
 - **T7, accounts:** the account's key from the login and the password (argon2id, Ed25519; their
   dependencies the user's decision, at the task), the login with the welcome's check, seats by
   account, `Rekey` after a password change, the new goodbyes.
@@ -505,3 +509,18 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
 51. The plain player (T6a, `connect::plain`): a test's player, not an opponent (ends a tactics
     phase, shoots, strikes, else walks toward the enemy's edge by the column); the window's
     player is the human.
+52. The seat's battle derived on a server (T6b1, `remote::seen`): the panel's turns, the moves,
+    teleports and creations, the timeline's counts and deaths, the heroes' mana by the casts
+    (the enemy hero's casts cost nothing: its book is unknown), the gate; a shooter's shots, the
+    stacks' effects, the walls' hexes and parts stay the opening's (hints only: the commands are
+    the server's).
+53. The other seat's turn (T6b1): outlined from its start as a human's, its command's action
+    from the poll it arrived at; the panel's buttons as on a computer's turn (the seat's player
+    the one human here, so the end's window and tune by the seat: `remote_turn`); the original's
+    network turn not read.
+54. The content note (T6b1): in the window's title (`Different`: the client's own ruleset for
+    the book and the result window, no aim areas); `Absent` stops the loading with a message.
+55. The window on a server (T6b1): the loading waits for the record (30 s between messages);
+    the window's input wait at most 10 ms; Auto Combat off; a dropped connection dialed again
+    after a second; the unattended player the plain one, casting first the first spell the server
+    lets the hero cast at its first target (the book and the aim pressed).

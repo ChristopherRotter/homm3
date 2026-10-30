@@ -51,6 +51,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   gives it (`selection`, which the harness reads before it asks a kind: at the staging when the
   situation asks one, so a sequence asking a kind over it keeps that one). A date's window at a
   sequence's 0 must be the sequence's own `status` (built at 0): the harness refuses another.
+- **The mouse-over's costs are per tile looked at** (M3 T6a1, design §4.10): the original's
+  pathfinder stops at the tile under the pointer, so the live part's `[hover]` `reach` holds only
+  the tiles a sequence's inputs visit (`h3map.look_over_view` reads each before 0): a new or moved
+  pointer input over the view needs a new `frames` run, and a still's `reach` is empty (the window
+  shows the arrow over the tiles it has no cost for, as after a walk). `[hover]` is the live part's
+  last table: a key written after it belongs to it.
+- **The status bar's hint is compared only in `masks.toml`'s `hinted`** (M3 T6a1): a new
+  situation or sequence recorded with the hint goes into that list; the others keep it masked
+  (their digests and recorded screens without it) until T6a2 captures everything again.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain

@@ -32,13 +32,16 @@ use h3_protocol::PROTOCOL_VERSION;
 use h3_protocol::account::{self, CHALLENGE_BYTES, KEY_BYTES, NONCE_BYTES, SIGNATURE_BYTES};
 use h3_protocol::codec;
 use h3_protocol::wire::{
-    ClientMessage, Command, GoodbyeReason, Manifest, Refusal, Seat, ServerMessage,
+    ClientMessage, Command, GoodbyeReason, Manifest, Query, Refusal, Seat, ServerMessage, Target,
 };
 
 use crate::record::{self, Record, RecordError};
 
+mod seen;
 #[cfg(test)]
 mod tests;
+
+pub use seen::seen;
 
 /// Where a connection stands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,6 +81,8 @@ pub struct Client {
     record: Option<Record>,
     /// The number of the record's last message.
     last: u32,
+    /// The answers to this connection's queries, by their sequence numbers (E17 M5 T6b1).
+    answers: Vec<(u32, Vec<Target>)>,
 }
 
 /// What a message from the server did.
@@ -183,6 +188,7 @@ impl Client {
             held: Vec::new(),
             record: None,
             last: 0,
+            answers: Vec::new(),
         }
     }
 
@@ -231,6 +237,25 @@ impl Client {
             seq: self.next_seq(),
             command,
         })
+    }
+
+    /// Asks the server's rules `query` for the seat (E17 M5 T6b1: the targets of a spell it may
+    /// cast), once its record is open; none otherwise. The message, and its sequence number, which
+    /// the answer names ([`Client::answer`]).
+    pub fn query(&mut self, query: Query) -> Option<(u32, ClientMessage)> {
+        (self.phase == Phase::Playing).then(|| {
+            let seq = self.next_seq();
+            (seq, ClientMessage::Query { seq, query })
+        })
+    }
+
+    /// The answer to this connection's query numbered `seq`, once it came: the targets the
+    /// server's rules allow.
+    pub fn answer(&self, seq: u32) -> Option<&[Target]> {
+        self.answers
+            .iter()
+            .find(|(s, _)| *s == seq)
+            .map(|(_, targets)| targets.as_slice())
     }
 
     /// The record, once open.
@@ -432,6 +457,9 @@ impl Client {
                 Ok(Vec::new())
             }
             (Phase::Playing, Some(record)) => {
+                if let ServerMessage::QueryResult { seq, targets, .. } = &message {
+                    self.answers.push((*seq, targets.clone()));
+                }
                 grow(record, &mut self.last, n, message)?;
                 Ok(vec![Note::Grew])
             }

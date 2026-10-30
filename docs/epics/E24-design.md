@@ -2253,3 +2253,99 @@ other kinds (another player's turn, a resource found, a text) are M4's (the user
 - **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each): the
   same: `walk-1` 24.8 % uploaded, a frame made in a median 0.5 ms (0.4–0.6 on `master`); *Tale of
   two lands* 11.2 %, 1.2–1.3 (1.2). The chooser at each draw compares a status or returns.
+
+### 4.10 The mouse over the map and the panels (M3 T6a1)
+
+Read: `adventure_mouse_move` 0x40E360 whole (its human turn's part from 0x40E392), `view_mouse_tile`
+0x40DEB0 (another player's turn: the tile, its hint and three cursors; M4's), `tile_cursor_kind`
+0x40E280, `town_defended` 0x5BDFE0, `map_hint` 0x40B150's frame (0x40B150 to 0x40B215 and its tail
+0x40D0B0 to 0x40D225) and its cases 0 (the classes 0, 3, 26, 36), 17 (34), 29 (54), 46 (98) and the
+default, `hint_tile` 0x40AFB0, `adventure_panel_hint` 0x403010, `panel_hint_index` 0x402C50,
+`dialog_item_at` 0x5FF3E0, the loads of the texts (`help_text_load` 0x5B98B0's groups,
+`arraytxt_load` 0x5B9CC0's, `objnames_load` 0x5B92D0) and `pathfinder_run` 0x56B440's stop. Built in
+`h3_map_view::hover` and the timeline's `Loop::moved` (*provisional*); recorded and compared:
+`hover-panels`, `hover-map`, `hover-sail` (every frame exact, each timeline the recorded one; their
+status bar compared, `masks.toml`'s `hinted`).
+
+- **The tile under the mouse** (0x40E3D2): the view's corner plus the mouse message's point divided
+  by 32, x and y: the point is the screen's, so a drawn row's last 8 pixels give the tile below
+  (§1.2; observed: (336, 196) over the drawn row 5 is row 6; MCL-Q18). The item's bounds compare x
+  with its x and with its y plus its width (both 8: no effect). The tile is looked at only when the
+  view's column or row under the mouse changes (+0xEC, +0xF0; set to -1 after a walk's end, 0x40812F,
+  and a key's step, 0x4090F1): a scroll under a still pointer looks at nothing, nor does a return to
+  the column and row last looked at after the pointer left the view (MCL-Q17).
+- **On a change** (0x40E41A on): the click's action +0x40 to -1; off the map or on a tile the
+  viewer has not explored the arrow and nothing else (the hint left); else the tile's hint
+  (0x40E521), then the cursor (type 1, `cradvntr.def`). Without a hero selected (0x40E570): a town
+  of the player's team (by its entrance's setup, `tile_object_entrance` 0x4FCAA0 and
+  `tile_object_setup` 0x4FCC30; or the manager's +0x3D, a debug flag, not modelled) frame 3 and
+  action 3, a hero of the player's own (its +0x22 the current player, not the team) frame 2 and
+  action 2, a shipyard of the team (its setup's low byte the owner) frame 6 and action 8; else the
+  arrow. With one: another level the arrow; its own tile frame 2, action 2; a blocked tile (+0xD
+  bit 0x01, 0x40E730): a town's of the team frame 3, action 5, a shipyard's frame 6, action 8, else
+  the arrow (the pathfinder's path list emptied, 0x40E836: nothing drawn changes); from land a
+  water tile only with a hero, a boat or a shipwreck (85) on its entrance, from a boat only water or
+  the coast (class 3), else the arrow (0x40E862). Then (0x40E91B) the pathfinder run for the
+  selected hero to the tile (`movement_calculations_mouse` 0x4194A0 → `pathfinder_run` 0x56B440,
+  with the hero's points now), and the tile's node (+0x24 at ((y + 2 z h) w + x), 30 bytes): not
+  reached the arrow; else the action 1 and the days d = 0 within the points (+0x4D), else
+  (cost − points − 1) / day points (+0x49) + 1, at most 3 (0x40E98F). The kind by the tile's class
+  (switch 0x40E9DE, index table 0x40EC18): the coast from a boat 7 (a landing), a boat 6 (from a
+  boat 0 and the action -1), a garrison's or town's entrance not the team's with an army (its
+  record +0x4 / `town_defended`: a garrisoned hero, else a visiting hero's army, else its own) 5, a
+  hero of the team 8, another hero or a monster 5; else `tile_cursor_kind`: a tile a monster guards
+  (the vision word's bit 8) 5 unless an entrance of a class never entered (the object settings'
+  first byte, `object_classes_not_entered` 0x63AA58); from a boat a water entrance 0x1C, else 6;
+  on land an entrance 9 (on water only a shipwreck's), else 4. The frame: kind + 6 d, but 0x1C
+  from a boat 28 + d. Seen: 0 2 3 4 5 6 7 9 10 11 12 13 14 15 16 21 in the three sequences.
+- **The pathfinder stops** (0x56BC7E): after each expansion, once the destination's node is
+  reached (its +4 bit 0 set when found), so its cost is the one it was first found at, not always
+  the cheapest (MCL-Q19). The harness therefore reads each tile's cost after a run to it: before a
+  sequence's 0 it moves the pointer over each tile its inputs visit (`look_over_view`), then over
+  the kingdom overview and back to the parking (the hint as before) and writes +0xEC and +0xF0 -1.
+- **Outside the view** (0x40EB7D): an edge cursor (32 to 39) stays while the mouse now lies on the
+  screen within 16 pixels of a side (x < 16 or x > 784, y < 16 or y > 584, x not rounded), any
+  other cursor becomes the arrow; then the panel's hint.
+- **The panel's hint** (0x403010): with the chat's edit not editing, the item under the point
+  (`dialog_item_at` 0x5FF3E0: the dialog's items from the last back, the first whose box holds it
+  and whose state has 0x2 without 0x8 or 0x1000); the same id as the static 0x65F228 (initially -1)
+  does nothing, so the map's hints leave it (MCL-Q17). -1: the arrow and no text. Read from the
+  running original's items: a disabled button (the underground on one level, move hero without a
+  green arrow, a list's arrow at its end) has 0x8 and takes no mouse, the quest log's 0x20 does; a
+  list's portrait and bars take it only in a slot holding a hero or a town, the hero list's
+  selection frames (39 to 43, added after the portraits) always; the chat's edit 38 lies over the
+  status bar (no text there); the resource bar's and the status window's items are panels of their
+  own: none over the bar, the status window's area 2 over the whole window (observed). The text:
+  a hero's slot (15 to 29 and 39 to 43, by its list's top) GENRLTXT's record 16 ("%s the %s") with
+  its name (+0x23) and class (`hero_class_name` 0x4D8F70: the class record's +0x4, HCTRAITS; a
+  campaign hero's own text, not modelled), a town's slot (32 to 36) "%s, %s" (0x65F3D4) with its
+  name (+0xC8, none an empty text) and type (`town_type_names` 0x6A74F4: ARRAYTXT's records 219 to
+  227), the ids 1001 to 1015 none, else `panel_hint_index`: 1 to 14 the pair id − 1, 15 to 29 and
+  39 to 43 14, 30 15, 31 16, 32 to 36 17, 200 26, the resource bar's 1001 to 1015 18 to 25 (other
+  screens'), else none; the pairs 0x6A56E0 are Help.txt's records 291 to 317. The text set into the
+  status bar (200), the item drawn and its rectangle shown at once (0x4031AA to 0x4031E9).
+- **The map's hint** (0x40B150; nothing while the chat edits): `hint_tile` 0x40AFB0 with the view's
+  column and row: at (9, 8) with a selected hero off its tile (+6 0, the lifted one) the hero shown
+  there for the hint (`hero_show`) and the mouse's tile; else the entrance of the tile's object
+  (`tile_object_entrance`) when another: the same class there that tile, a hero or a boat standing
+  there taken off (`hero_hide`) and that tile, else that tile. By its class (switch 0x40B20E, index
+  table 0x40D314, 59 cases): 0, 3, 26, 36 the special ground's name (`tile_special_ground`
+  0x4FCE20: none gives 0, no text), 34 a hero's text as its slot's, 98 a town's as its slot's, 54 on
+  an entrance "%s %s" (0x660344) with the size word of its count (the word's low 12 bits;
+  `creature_quantity_word` 0x44ADE0 with form 1: ARRAYTXT's records 175 + 3 n) and its creature's
+  plural name (+0x18, none above 150); every class without a case (0x40D0E7) its name
+  (`object_names` 0x6A79EC: OBJNAMES's record per class, 0 to 231); the other 58 cases (visits,
+  owners, contents): T6a2. The message buffer set into the status bar, drawn and shown at once
+  (0x40D178 to 0x40D1D1).
+- **Built:** the live part's `[hover]` (the facts only the game knows: each object's entrance word
+  and army, the towns' names and types, the heroes' indices and own names, the viewer's lists, the
+  teams, the guarded tiles, the selected hero's costs of the tiles looked at and its day points;
+  `h3mem.Mem.hover`); the tiles from the map's objects (`record`, the heroes and boats on them; a
+  water tile is never the coast's class 3, M3 T6a1's fix to `record`); the timeline's
+  `Loop::moved` over the view and outside it, the click's move first; the status bar's text in the
+  scene by the catalogue (the families `map-hint`, `object`, `hero-class`, `town-type`, `creature`,
+  the keys `map.hint.*`, `map.army.*`; h3-ui's families learn `count`: records one by one, blank
+  ones included). A still's hint: the panel's at its parked pointer. After a walk the costs are no
+  longer the hero's: the arrow over the tiles they gave (the engine's from M4).
+- **Not built:** another player's turn (0x40DEB0's), the chat's edit, a debug flag +0x3D, a
+  campaign hero's class text, the hints' 58 cases (T6a2), the clicks (T6b).

@@ -40,6 +40,7 @@ use h3_map::model::Pos;
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 
+use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{Arrow, Buttons, DateStatus, Kingdom, KingdomStatus, Selected, Status};
@@ -215,6 +216,8 @@ pub struct Rules {
     pub date: DateArt,
     /// The original's bugs or the client's fixes.
     pub bugs: Bugs,
+    /// The panels' items the mouse finds (E24 M3 T6a1, design §4.10).
+    pub panels: PanelItems,
 }
 
 impl Rules {
@@ -239,6 +242,28 @@ impl Rules {
             walk: tables.map.walk.clone(),
             date: tables.map.status.date.clone(),
             bugs,
+            panels: PanelItems::new(layout),
+        }
+    }
+
+    /// Whether an edge cursor stays with the mouse at a point outside the view
+    /// (`adventure_mouse_move` 0x40EB7D): on the frame and within the edge zones' width of a side
+    /// (the original's test of the mouse's x as it is, x < 16 or x > 784, y < 16 or y > 584; the
+    /// client's: its zones, [`Rules::edge_at`]).
+    #[must_use]
+    pub fn keeps_edge(&self, point: [i32; 2]) -> bool {
+        let [x, y] = point;
+        let [width, height] = self.frame;
+        match self.bugs {
+            Bugs::Fixed => self.edge_at(point).is_some(),
+            Bugs::Original => {
+                (0..width).contains(&x)
+                    && (0..height).contains(&y)
+                    && (x < self.edge
+                        || x > width - self.edge
+                        || y < self.edge
+                        || y > height - self.edge)
+            }
         }
     }
 
@@ -301,16 +326,24 @@ impl Rules {
 
     /// The tile under a point of the view as the original finds it (`view_mouse_tile` 0x40DEB0,
     /// `adventure_mouse_move` 0x40E3D2): the view's corner plus the point's x and y divided by a
-    /// tile's side. The tiles are drawn 8 pixels lower (§1.2): whether the point is the screen's,
-    /// so that a row's last 8 pixels give the tile below, is M3's open point; the sequences click
-    /// tiles' middles.
+    /// tile's side ([`Rules::column_at`]). The tiles are drawn 8 pixels lower (§1.2) and the point
+    /// is the screen's (E24 M3 T6a1, observed: design §4.10), so a drawn row's last 8 pixels give
+    /// the tile below.
     #[must_use]
-    pub fn tile_at(&self, view: ViewAt, [x, y]: [i32; 2]) -> [i32; 3] {
+    pub fn tile_at(&self, view: ViewAt, point: [i32; 2]) -> [i32; 3] {
+        let [column, row] = self.column_at(point);
         [
-            view.x.saturating_add(x / self.tile.max(1)),
-            view.y.saturating_add(y / self.tile.max(1)),
+            view.x.saturating_add(column),
+            view.y.saturating_add(row),
             i32::from(view.z),
         ]
+    }
+
+    /// The view's column and row under a point (the manager's +0xEC, +0xF0): its x and y divided
+    /// by a tile's side.
+    #[must_use]
+    pub fn column_at(&self, [x, y]: [i32; 2]) -> [i32; 2] {
+        [x / self.tile.max(1), y / self.tile.max(1)]
     }
 }
 
@@ -375,6 +408,12 @@ pub struct Start {
     /// window it built). None: the kingdom's date's or kingdom's window at 0 asked until no end
     /// (a situation's still), another the selection's (kind 0).
     pub asked: Option<Asked>,
+    /// The mouse-over (E24 M3 T6a1, design §4.10): the map's tiles and the game's facts; none
+    /// (a recording without them) refuses the pointer over the view but live, where it keeps the
+    /// arrow.
+    pub hover: Option<Arc<Hover>>,
+    /// The map's levels (the underground's button: a panel's item taking the mouse).
+    pub levels: usize,
 }
 
 /// A status window's kind asked for a time (`status_window_set_kind` 0x415D60: the manager's
@@ -453,6 +492,9 @@ pub struct Draw {
     /// lists' slots as last drawn and shown (a step's end shows its hero's movement bar, a lift
     /// that centres the view and a walk's end that leaves the hero unable to move every slot).
     pub kingdom: Arc<Kingdom>,
+    /// The status bar's hint as last shown (E24 M3 T6a1, design §4.10: each change drawn and
+    /// shown at once).
+    pub hint: Hint,
 }
 
 /// The state after a millisecond.
@@ -561,6 +603,20 @@ pub struct Loop {
     stepped: u32,
     /// The kingdom's window, as the live part at 0 shows it.
     realm: Option<KingdomStatus>,
+    /// The mouse-over ([`Start::hover`]) and the map's levels.
+    hover: Option<Arc<Hover>>,
+    levels: usize,
+    /// The selected hero's record index (the mouse-over's).
+    selected_id: Option<u8>,
+    /// The selected hero walked since 0: the facts' reach is no longer its.
+    walked: bool,
+    /// The view's column and row the mouse was over at the last look (the manager's +0xEC,
+    /// +0xF0); none after a walk's end or a key's step, and at 0.
+    column: Option<[i32; 2]>,
+    /// The panel's item the hint looked at last (0x65F228; none: -1).
+    last_item: Option<u16>,
+    /// What a click on the view would do (the manager's +0x40; T6b's).
+    action: hover::Action,
 }
 
 impl Loop {
@@ -617,6 +673,7 @@ impl Loop {
                 path: Vec::new(),
                 minimap,
                 kingdom: Arc::new(start.kingdom.clone()),
+                hint: Hint::Empty,
             },
             hero: start.hero,
             lifted: false,
@@ -644,6 +701,16 @@ impl Loop {
             end: 0,
             stepped: 0,
             realm: None,
+            selected_id: start
+                .hero
+                .zip(start.hover.as_ref())
+                .and_then(|(h, hover)| hover.hero_at(h.at)),
+            hover: start.hover.clone(),
+            levels: start.levels,
+            walked: false,
+            column: None,
+            last_item: None,
+            action: -1,
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -675,9 +742,12 @@ impl Loop {
                 sound.effect(0, &l.rules.date.sound);
             }
         }
-        if !l.live && l.rules.over_view(start.pointer) {
+        if !l.live && l.hover.is_none() && l.rules.over_view(start.pointer) {
             return Err(Unplayable::OverView(start.pointer));
         }
+        // The status bar at 0 (E24 M3 T6a1): the hint of the pointer's place, as the staging's
+        // parking left it (the panel's item looked at last its item).
+        l.moved();
         l.tick(0);
         l.idle_message(0);
         Ok(l)
@@ -806,27 +876,107 @@ impl Loop {
                 self.scroll(t, direction, false);
             }
             Action::Pointer(at) => {
-                if !self.live && self.rules.over_view(at) {
+                if !self.live && self.hover.is_none() && self.rules.over_view(at) {
                     return Err(Unplayable::OverView(at));
                 }
                 self.moved();
             }
             Action::Step(direction) => self.key_step(t, direction),
-            Action::Click(at) => self.click(t, at)?,
+            Action::Click(at) => {
+                // The move's message comes first (E24 M3 T6a1): with the mouse-over, the tile's
+                // cursor and hint.
+                if self.hover.is_some() {
+                    self.moved();
+                }
+                self.click(t, at)?;
+            }
         }
         Ok(())
     }
 
-    /// The mouse's move (`adventure_mouse_move` 0x40E360): outside the view (0x40EB7D) an edge
-    /// cursor stays while the mouse lies in a zone, the arrow otherwise. Over the view the cursor
-    /// by the tile is M3's: kept (a click's own move, which the sequences follow at once by the
-    /// pointer parked; a walk's end, where `walk-4` recorded the arrow it had); live, as outside.
+    /// The mouse's move (`adventure_mouse_move` 0x40E360, on the viewer's turn; design §4.10).
+    /// Over the view, with the mouse-over, when the view's column or row under the mouse changed:
+    /// off the map or on a tile the viewer has not explored the arrow; else the tile's hint
+    /// ([`Hover::hint`]) and its cursor ([`Hover::cursor`]). Without the mouse-over the cursor is
+    /// kept (a recording's click, which the sequences follow at once by the pointer parked; a
+    /// walk's end, where `walk-4` recorded the arrow it had), live the arrow. Outside the view
+    /// (0x40EB7D) an edge cursor stays while the mouse lies within the edge zones' width of a
+    /// side ([`Rules::keeps_edge`]), any other the arrow; then the panel's hint
+    /// ([`Loop::panel_hint`]).
     fn moved(&mut self) {
-        if (self.live || !self.rules.over_view(self.pointer))
-            && self.rules.edge_at(self.pointer).is_none()
-        {
+        if self.rules.over_view(self.pointer) {
+            match self.hover.clone() {
+                Some(hover) => self.over_map(&hover),
+                None if self.live => self.cursor.frame = self.rules.arrow,
+                None => {}
+            }
+            return;
+        }
+        if !(self.edge_cursor() && self.rules.keeps_edge(self.pointer)) {
             self.cursor.frame = self.rules.arrow;
         }
+        self.panel_hint();
+    }
+
+    /// The mouse over the view's tile under it, when its column or row changed (0x40E3E6).
+    fn over_map(&mut self, hover: &Hover) {
+        let column = self.rules.column_at(self.pointer);
+        if self.column == Some(column) {
+            return;
+        }
+        self.column = Some(column);
+        self.action = -1;
+        let tile = self.rules.tile_at(self.view, self.pointer);
+        if !hover.explored(tile) {
+            self.cursor.frame = self.rules.arrow;
+            return;
+        }
+        let selection = self.selection();
+        let middle = column == self.rules.middle;
+        self.show_hint(hover.hint(tile, middle, selection));
+        let cursor = hover.cursor(tile, selection, !self.walked);
+        self.cursor.frame = cursor.frame;
+        self.action = cursor.action;
+    }
+
+    /// The panel's hint (`adventure_panel_hint` 0x403010): the item under the mouse, when it is
+    /// not the one looked at last: none sets the arrow; its hint shown at once.
+    fn panel_hint(&mut self) {
+        let (kingdom, buttons, levels) = (&self.kingdom, self.buttons, self.levels);
+        let item = self
+            .rules
+            .panels
+            .at(self.pointer, |i| hover::takes(i, kingdom, buttons, levels));
+        if item == self.last_item {
+            return;
+        }
+        self.last_item = item;
+        if item.is_none() {
+            self.cursor.frame = self.rules.arrow;
+        }
+        let facts = self.hover.as_ref().map(|h| h.facts());
+        let hint = hover::panel_hint(item, &self.kingdom, facts);
+        self.show_hint(hint);
+    }
+
+    /// The status bar's text set, drawn and shown at once.
+    fn show_hint(&mut self, hint: Hint) {
+        self.drawn.hint = hint;
+    }
+
+    /// The selected hero as the mouse-over reads it.
+    fn selection(&self) -> Option<Selection> {
+        let (hero, id) = (self.hero?, self.selected_id?);
+        let points = self
+            .selected_hero()
+            .and_then(|i| self.kingdom.heroes.get(i))
+            .map_or(0, |h| h.points);
+        Some(Selection {
+            id,
+            at: hero.at,
+            lifted: self.lifted,
+            points,
+        })
     }
 
     /// The edge scroll (`edge_scroll` 0x419820, before every message): outside the zones the
@@ -992,6 +1142,7 @@ impl Loop {
         rest: VecDeque<(Direction, Pos)>,
     ) {
         self.cursor.shown = false;
+        self.walked = true;
         let moving = Moving {
             key,
             direction,
@@ -1140,6 +1291,8 @@ impl Loop {
         }
         self.cursor.at = self.rules.drawn_at(self.pointer);
         self.cursor.shown = true;
+        // The mouse looked at again (+0xEC -1: 0x40812F, 0x4090F1).
+        self.column = None;
         self.moved();
         if key {
             // The status window built again (0x4090FE, E24 M3 T5b2).
@@ -1324,6 +1477,7 @@ impl Loop {
             path: self.arrows(),
             minimap: self.minimap,
             kingdom: Arc::clone(&self.drawn.kingdom),
+            hint: self.drawn.hint,
         };
         self.choose(t, false);
     }

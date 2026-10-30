@@ -23,6 +23,7 @@ use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::History;
+use h3_map_view::hover::Hover;
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{Buttons, Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::minimap::Shown;
@@ -115,12 +116,17 @@ pub fn for_sequence<'a>(
     );
     let mut painter = Painter::new(assets, &raw, Some(&live_path), view, &[])?;
     // A walk's hero is the live part's selected one, its paths the ones the recording shows.
-    let (hero, paths) = if walks {
+    // The mouse-over's facts (E24 M3 T6a1) select a hero too: the cursor reads it.
+    let (hero, paths) = if walks || painter.live.hover.is_some() {
         let live = &painter.live;
-        let hero = sequence::selected(&live.heroes, live.viewer)
-            .map_err(|e| format!("{}: {e}", live_path.display()))?;
-        painter.selected = sequence::selected_index(&live.heroes, live.viewer).ok();
-        let paths = sequence.paths(recorded.as_deref().unwrap_or_default())?;
+        let hero =
+            sequence::selected_hero(live).map_err(|e| format!("{}: {e}", live_path.display()))?;
+        painter.selected = sequence::selected_in(live).ok();
+        let paths = if walks {
+            sequence.paths(recorded.as_deref().unwrap_or_default())?
+        } else {
+            Vec::new()
+        };
         (Some(hero), paths)
     } else {
         (None, Vec::new())
@@ -143,6 +149,8 @@ pub fn for_sequence<'a>(
         buttons: painter.live.buttons,
         // The status window's kind the recording asked at 0 (E24 M3 T5b2).
         asked: sequence.asked()?,
+        hover: painter.hover()?,
+        levels: painter.art.levels,
     };
     Ok(Setup {
         painter,
@@ -195,9 +203,8 @@ pub fn for_situation<'a>(
     let kept = map.join("situations/kept").join(format!("{id}.toml"));
     let live = kept.exists().then_some(kept);
     let mut painter = Painter::new(assets, &raw, live.as_deref(), view, &hidden)?;
-    let (heroes, viewer) = (&painter.live.heroes, painter.live.viewer);
-    let hero = sequence::selected(heroes, viewer).ok();
-    painter.selected = sequence::selected_index(heroes, viewer).ok();
+    let hero = sequence::selected_hero(&painter.live).ok();
+    painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
     let start = Start {
         view,
@@ -214,6 +221,8 @@ pub fn for_situation<'a>(
         points: Vec::new(),
         buttons: painter.live.buttons,
         asked: None,
+        hover: painter.hover()?,
+        levels: painter.art.levels,
     };
     Ok(Setup {
         painter,
@@ -390,6 +399,26 @@ impl<'a> Painter<'a> {
         )))
     }
 
+    /// The map's mouse-over from 0 (E24 M3 T6a1; design §4.10): its tiles from every level's draw
+    /// lists, the live part's facts; none without them.
+    fn hover(&self) -> Result<Option<Arc<Hover>>, String> {
+        if self.live.hover.is_none() {
+            return Ok(None);
+        }
+        let lists = (0..self.art.levels)
+            .map(|z| {
+                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                DrawLists::build(&self.art, &self.live, &self.shapes, z).map_err(|e| e.to_string())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(Hover::new(
+            &self.art,
+            &self.live,
+            &self.assets.tables.records,
+            &lists,
+        ))
+    }
+
     /// Decodes the named assets not decoded yet.
     fn add(&mut self, names: impl IntoIterator<Item = String>) -> Result<(), String> {
         for name in names {
@@ -461,6 +490,8 @@ impl<'a> Painter<'a> {
             self.live.kingdom.clone_from(&draw.kingdom);
         }
         self.live.buttons = Some(buttons);
+        // The status bar's hint as last shown (E24 M3 T6a1).
+        self.live.hint = Some(draw.hint);
         let assets = self.assets;
         let z = draw.view.z;
         let index = self

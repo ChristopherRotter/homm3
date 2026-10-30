@@ -164,6 +164,46 @@ box (it would run over the next cell's picture). **Recommendation:** (a) for now
 a resource is beyond a normal game; revisit with M4's engine if its amounts can reach it (b).
 **Blocked:** nothing; built as the original's.
 
+#### MCL-Q17 — The status bar keeps a map tile's hint over the panel looked at last (E24 M3 T6a1, a reading and a recording)
+
+The panel's hint (`adventure_panel_hint` 0x403010) writes only when the item under the pointer
+differs from the one it looked at last (the static 0x65F228), and the map's hints (0x40B150) leave
+that static: so after the pointer crossed the map, the item it came from (the parking's adventure
+options in every sequence) shows the last tile's hint, not its own, until the pointer reaches
+another item. The map does the same: a tile is looked at only when the view's column or row under
+the pointer changes (+0xEC, +0xF0), which leaving the view does not reset, so the pointer back on
+the column and row it left keeps the panel's arrow and hint. Both recorded in `hover-map` (E24
+design §4.10). **Options:** (a) the original's; (b) the client looks again (the panel's item
+forgotten by a map's hint, the column forgotten when the pointer leaves the view), the original's
+behind `--bugs original` for the comparisons; (c) an option. **Recommendation:** (a): the stale
+text is short-lived and harmless, and the sequences compare it. **Blocked:** nothing; built as
+the original's.
+
+#### MCL-Q18 — The tile under the mouse is 8 pixels off the drawn tile (E24 M3 T6a1, a reading and a recording)
+
+The view's tiles are drawn 8 pixels below the screen's grid (row j from y = 8 + 32 j, design
+§1.2), but the tile under the mouse is the view's corner plus the screen's point divided by 32
+(0x40E3D2): a drawn row's last 8 pixels give the tile below it (the cursor and the hint of that
+tile, and from T6b a click there walks to it). Observed: (368, 100), in the drawn row 2, gave row 3
+(`hover-map`). **Options:** (a) the original's; (b) the client takes the drawn tile, the original's
+behind `--bugs original` for the comparisons (as MCL-Q6's edge zones); (c) an option.
+**Recommendation:** (b): a hand on the drawn picture expects its tile, and a click on a tile's lowest quarter
+would walk the hero to the tile below. **Blocked:** nothing; built as the
+original's.
+
+#### MCL-Q19 — The cursor's days from the path first found, not always the cheapest (E24 M3 T6a1, a reading)
+
+The cursor's days over a tile come from the pathfinder run to that tile (`pathfinder_run`
+0x56B440), which stops as soon as the tile's node is reached (0x56BC7E), so its cost is the one it
+was first found at; a path found later at a lower cost is not looked for. Where the two differ
+across a day's boundary the cursor shows one day more than the cheapest path needs. The recordings
+give each tile's cost as the original found it, so the comparisons agree; from M4 the engine gives
+the costs. **Options:** (a) the engine's query gives the cost as the original finds it (its search
+order and stop copied); (b) the cheapest cost (the engine's ordinary query), the original's only
+in recordings; (c) an option. **Recommendation:** (a) for the cursor, so that the days shown are
+the original's; the move itself (the path walked) is the engine's either way. **Blocked:** nothing
+now (M4's).
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):

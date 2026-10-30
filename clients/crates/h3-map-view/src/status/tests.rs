@@ -51,6 +51,8 @@ fn live(kingdom: Kingdom) -> Live {
         kingdom,
         buttons: None,
         minimap: None,
+        hover: None,
+        hint: None,
     }
 }
 

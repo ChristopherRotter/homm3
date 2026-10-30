@@ -89,6 +89,8 @@ MONSTER_CLASS = 54
 # 0x4F79B0): a pointer to a u16 per tile at (level x side + y) x side + x, its low byte one
 # explored bit per player (bit n for colour n), its bit 8 the guard flag.
 TILE_VISION_POINTER = 0x6989F8
+# The adventure pathfinder (pathfinder_run 0x56B440; E24 M3 T6a1): its nodes at +0x24.
+PATHFINDER_POINTER = 0x699284
 # The adventure manager's DEFs of the view (E24 design §1.3, §1.6; adventure_tick 0x4ED490): a
 # DEF's pointer at manager +0x60 + 4 x terrain (water +0x80, lava +0x7C) and +0x88 + 4 x river
 # (clear +0x8C, mud +0x94, lava +0x98); a DEF's 16-bit palette (a pointer at +0x20), its 256
@@ -1281,6 +1283,111 @@ class Mem:
                 owner = -1
             out.append(owner)
         return out
+
+    def node_cost(self, x, y, z=0):
+        """The adventure pathfinder's kind-0 node of a tile (0x699284 +0x24, 30 bytes at ((y +
+        2 z h) w + x); E24 M3 T6a1): the movement points the path there costs (+0x18), None when
+        not reached (+4 bit 0)."""
+        side = self.i32(self.game() + MAP_SIDE)
+        nodes = self.u32(self.u32(PATHFINDER_POINTER) + 0x24)
+        if not nodes:
+            # No run yet (the pathfinder allocates its nodes at its first).
+            return None
+        raw = self.read(nodes + 30 * ((y + 2 * z * side) * side + x), 30)
+        return struct.unpack_from("<H", raw, 0x18)[0] if raw[4] & 1 else None
+
+    def hover(self, colour, hotraits, town_names, z=0, reach=None):
+        """The game's facts the mouse-over reads (E24 M3 T6a1; design §4.10), as `render
+        --live`'s `[hover]` takes them, for the viewing player `colour` and the view's level `z`:
+        per map object the word of its entrance tile (with a hero or boat standing there, the word
+        under it: their records' +0x14; -1 without an entrance on the map) and whether it holds
+        an army that defends it (a town 98: `town_defended` 0x5BDFE0, a garrison 33: its army);
+        the game's towns by index [name record of TownName.txt, type]; per hero of `map_heroes(z)`
+        its record index and whether its name is its own (not its type's); the player's heroes in
+        its list's order [index, class, own name] and its towns' indices; the teams; the tiles a
+        monster guards (the vision words' bit 8, rows per level); `reach`, the selected hero's
+        costs of the tiles the pointer looked at ({(x, y): cost}: the pathfinder stops once its
+        destination is reached, so each tile's cost is the run's for it, `h3map.look_over_view`),
+        and its day points (+0x49). `hotraits` and `town_names`:
+        the hero types' names and TownName.txt's, in order (the harness keeps the records'
+        numbers, never the text)."""
+        game = self.game()
+        side = self.i32(game + MAP_SIDE)
+        tiles = self.u32(game + TILES)
+        templates = self.template_bytes()
+        classes = self.map_templates()
+
+        def tile(x, y, level):
+            return self.read(tiles + TILE_SIZE * ((level * side + y) * side + x), TILE_SIZE)
+
+        def has_creatures(address):
+            return any(t != -1 for t in struct.unpack("<7i", self.read(address, 28)))
+
+        def hero_record(index):
+            return game + HEROES + HERO_SIZE * index
+
+        def own_name(index):
+            name = self.read(hero_record(index) + 0x23, 13).split(b"\0")[0].decode("latin-1")
+            return int(index >= len(hotraits) or hotraits[index] != name)
+
+        begin, end = struct.unpack("<II", self.read(game + TOWNS, 8))
+        town_records = [begin + TOWN_SIZE * i for i in range((end - begin) // TOWN_SIZE)]
+        words, armed = [], []
+        for x, y, level, template, _ in self.map_objects():
+            at = entrance_cell(templates, side, x, y, template)
+            if at is None:
+                words.append(-1)
+                armed.append(0)
+                continue
+            raw = tile(at[0], at[1], level)
+            word, = struct.unpack_from("<I", raw, 0)
+            kind, = struct.unpack_from("<i", raw, 0x1E)
+            if kind == HERO_OBJECT:
+                word, = struct.unpack("<I", self.read(hero_record(word) + 0x14, 4))
+            elif kind == BOAT_OBJECT:
+                first = self.u32(game + BOATS)
+                word, = struct.unpack("<I", self.read(first + BOAT_RECORD * word + 0x14, 4))
+            words.append(word if word != 0xFFFFFFFF else -1)
+            cls = classes[template][1]
+            defended = False
+            if cls == 98 and word < len(town_records):
+                town = town_records[word]
+                garrison, visiting = self.i32(town + 0x10), self.i32(town + 0xC)
+                defended = (garrison >= 0 or (has_creatures(hero_record(visiting) + 0x91)
+                                              if visiting >= 0 else has_creatures(town + 0xE0)))
+            elif cls == 33:
+                first = self.u32(game + 0x4E3AC)
+                defended = has_creatures(first + 0x40 * word + 4)
+            armed.append(int(defended))
+        towns = []
+        for record in town_records:
+            name = self.c_string(self.u32(record + TOWN_NAME), 64)
+            if name not in town_names:
+                raise RuntimeError("a town's name is not in TownName.txt")
+            towns.append([town_names.index(name), struct.unpack("<b", self.read(record + TOWN_FACTION, 1))[0]])
+        hero_ids = [[index, own_name(index)]
+                    for (_, _), (kind, index) in sorted(self.standing(z).items(),
+                                                        key=lambda t: t[0][::-1])
+                    if kind == "hero"]
+        player = self.read(game + PLAYERS + PLAYER_SIZE * colour, PLAYER_SIZE)
+        count = struct.unpack_from("<b", player, 0x1)[0]
+        listed = struct.unpack_from(f"<{count}i", player, 0x8)
+        hero_list = [[i, self.i32(hero_record(i) + HERO_CLASS_FIELD), own_name(i)] for i in listed]
+        towns_count = struct.unpack_from("<b", player, PLAYER_TOWNS)[0]
+        town_list = list(struct.unpack_from(f"<{towns_count}b", player, PLAYER_TOWN_LIST))
+        teams = list(struct.unpack("<8b", self.read(game + TEAMS, 8)))
+        levels = 1 + (self.read(game + TWO_LEVELS, 1)[0] != 0)
+        words_all = struct.unpack(f"<{side * side * levels}H",
+                                  self.read(self.u32(TILE_VISION_POINTER), 2 * side * side * levels))
+        guarded = ["".join("1" if words_all[(lv * side + y) * side + x] & 0x100 else "0"
+                           for x in range(side))
+                   for lv in range(levels) for y in range(side)]
+        selected = struct.unpack_from("<i", player, 0x4)[0]
+        day_points = self.i32(hero_record(selected) + 0x49) if selected >= 0 else 0
+        reach = [[x, y, cost] for (x, y), cost in sorted((reach or {}).items())]
+        return {"words": words, "armed": armed, "towns": towns, "hero_ids": hero_ids,
+                "hero_list": hero_list, "town_list": town_list, "teams": teams,
+                "guarded": guarded, "reach": reach, "day_points": day_points}
 
     def write_bytes(self, address, data):
         """Writes `data` into the game (E24 M1 T5a: a hero's or boat's facing before a still)."""

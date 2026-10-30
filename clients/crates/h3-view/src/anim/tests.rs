@@ -68,11 +68,11 @@ const OBSTACLES: &str = include_str!("../../../../situations/timelines/obstacles
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
-const MARKSMAN: u16 = 1;
+pub(crate) const MARKSMAN: u16 = 1;
 const WOLF_RIDER: u16 = 2;
 const GOBLIN: u16 = 3;
 const ANGEL: u16 = 4;
-const PIKEMAN: u16 = 5;
+pub(crate) const PIKEMAN: u16 = 5;
 const GNOLL: u16 = 6;
 const CENTAUR_CAPTAIN: u16 = 7;
 const SILVER_PEGASUS: u16 = 8;
@@ -83,7 +83,7 @@ const BLACK_DRAGON: u16 = 12;
 /// The First Aid Tent (E17 M3 T3b).
 const TENT: u16 = 13;
 /// The casts' creatures (E17 M3 T7b-1).
-const SWORDSMAN: u16 = 14;
+pub(crate) const SWORDSMAN: u16 = 14;
 const ARCHANGEL: u16 = 15;
 const BATTLE_DWARF: u16 = 16;
 const VAMPIRE_LORD: u16 = 17;
@@ -550,25 +550,25 @@ fn beholder() -> Look {
 }
 
 /// A living stack of creature `creature` on `hex`.
-fn at(id: u8, side: Side, creature: u16, hex: u8, two_hex: bool) -> Stack {
+pub(crate) fn at(id: u8, side: Side, creature: u16, hex: u8, two_hex: bool) -> Stack {
     let mut s = stack(id, side, creature, hex, two_hex);
     s.count = 40;
     s
 }
 
 /// The snapshot with `stacks`, the first one active (the human's, as in the sequences).
-fn snapshot(stacks: Vec<Stack>) -> Observation {
+pub(crate) fn snapshot(stacks: Vec<Stack>) -> Observation {
     let mut o = observation();
     o.active = stacks.first().map(|s| s.id);
     o.stacks = stacks;
     o
 }
 
-fn moved(stack: u8, from: u8, to: u8) -> Event {
+pub(crate) fn moved(stack: u8, from: u8, to: u8) -> Event {
     Event::Moved { stack, from, to }
 }
 
-fn flags(ranged: bool, retaliation: bool, secondary: bool) -> Strike {
+pub(crate) fn flags(ranged: bool, retaliation: bool, secondary: bool) -> Strike {
     Strike {
         retaliation,
         ranged,
@@ -579,7 +579,7 @@ fn flags(ranged: bool, retaliation: bool, secondary: bool) -> Strike {
     }
 }
 
-fn struck(attacker: u8, target: u8, kills: u32, flags: Strike) -> Event {
+pub(crate) fn struck(attacker: u8, target: u8, kills: u32, flags: Strike) -> Event {
     Event::Struck {
         attacker,
         target,
@@ -5470,7 +5470,7 @@ fn objects_outside_casts_and_without_their_looks() {
     assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
 }
 
-mod created;
+pub(crate) mod created;
 mod looks;
 pub(crate) mod playhead;
 mod raised;

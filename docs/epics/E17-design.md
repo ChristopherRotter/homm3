@@ -4615,3 +4615,67 @@ over a server, the record that opens mid-battle (R2-8, R1-3) and the end's `remo
   after its first command and re-joining mid-battle (its record holds both snapshots and one
   end, the attacker's the same end); a changed key, a wrong token, a bad address, a bad pins
   file; no packs: `Absent`. Twenty runs in a row passed.
+
+### 11.2 The window plays a seat (M5 T6b1)
+
+T6b cut in two by the user (2026-10-30): T6b1 the window plays a seat joined at the battle's start;
+T6b2 the record that opens mid-battle (R2-8, R1-3) with a restart's re-join.
+
+- **`h3-view window --server <address> (--game <id> | --create <offer>) --seat attacker|defender
+  [--token] [--name] [--pins] [--drop <n>]`** (`connect`'s options; no scenario or record, no
+  `--human`). `Ground::load` opens the seat (`online::Online::open`, the binary): dials, joins or
+  creates, waits for the record to open (each message within 30 s: the window is not open yet),
+  compiles the game's packs here for the content check. The ground's record is the opening (the
+  first snapshot) with its sides' `human` set to the seat's alone: the seat's player is the one
+  human here, so the panel, the cursor, the result window and the end's tune follow the seat
+  (`remote_turn`, 0x691209: set in network play, the other player not "a human here"; its own
+  branches not read).
+- **No engine runs here.** The battle (`Battle`'s `Fight::Server`) idles at its timeline's end
+  (`Played::Waiting`) whenever the server has sent nothing more; the window's loop polls it at
+  every pass (`Battle::poll`, its input wait at most 10 ms), never waiting on the socket. What
+  came joins the record; each `Events` grows the timeline from the poll's time (or the end of the
+  action before), a turn it starts outlined as a human's, the other seat's too (*provisional*);
+  `GameEnded` finishes it. A command pressed is sent and nothing more taken until the server's
+  next turn.
+- **The turn** (`Battle::serve_turn`): once the server's `YourTurn` came and every query it
+  asked for was answered (`Online` asks, at each new turn, the targets of every spell in
+  `castable` and of the active stack's own cast: `Query::CastTargets`, `CreatureCastTargets`),
+  the mouse and the book get the turn: the server's `legal`, the Faerie Dragon's aim from its
+  targets, and the battle as the seat sees it, `h3_view::remote::seen`: the opening with the
+  record's events applied as far as the mouse, the panel and the book read them (the panel's
+  turns' fold for the active stack, round, wait phase, casts and tactics; the moves, teleports
+  and creations in order for the hexes; the timeline's counts and deaths, its created stacks; the
+  mana by the casts' costs, the book's formula, and the mana channelled and drained; the gate).
+  The book's choice is aimed from the server's targets (`aims::served`: the area, level and stack
+  kind by the ruleset only when the content is `Same`; else no area, a stack aim when every
+  target is a stack); a spell whose targets hold `None` is cast at once.
+- **The content check:** `Same` as in hot seat; `Different` plays with a note in the window's
+  title, the client's own ruleset drawing the book and the result window, no aim area;
+  `Absent` stops the loading with a message (the stage's spells and created creatures need the
+  packs, `motion::casts`).
+- **The result window** (`results::served`): the outcome from the record: `GameEnded`'s result (a
+  forfeit the other side's victory, a void game a draw), each stack's creatures at the opening
+  and at the end (the seat's battle at the timeline's end), its origin by its flags.
+- **A drop:** a closed connection is dialed again (at most once a second by the window's clock,
+  which no pause stops) and the seat re-joined by its token; the record fetched must extend the
+  one taken (the same header, every message taken first: the timeline kept; the re-join's own
+  snapshot in it is no event and draws nothing); one that does not ends the run (a restarted
+  server's: T6b2). `--drop <n>` drops after n commands (a test).
+- **Unattended** (`--check`, `--measure`): the presser plays the seat's turns (`Battle::takes`:
+  not the other seat's) with a test's player (*provisional*): the hero casts first the first
+  spell the server lets it cast at its first target, through the book and the aim; else
+  `connect::plain`.
+- **Checked:** `online`'s loopback tests (the seat played as the window plays it against a
+  headless other seat, dropping after its first command and re-joining with its record kept;
+  a refusal, a dead address), ten runs in a row; `remote::seen` and `Client::query` at 100 %.
+  Against `h3-server` (built from `master`) under Xvfb, `--check`: two windows on one game of
+  `scenarios/battle.toml` (one seat each, the defender dropping after 3 commands): 21 commands
+  each, the same timeline from the first command, both result windows, 2 085 and 2 076 frames
+  read back exact; one window against the server's bot dropping after 2 commands and re-joining;
+  two windows on `situations/seq-haste.toml`, each hero's cast pressed through its book and aim
+  (the server's replay: `D cast 54 stack 0`, `A cast 53 stack 0`), every frame exact; a
+  `Different` content (a pack's cost changed) with its note; an `Absent` one stopping; on the
+  final code both seats of a `battle.toml` game dropping (after 2 and 4 commands) and re-joining,
+  24 commands to the end, 1 837 and 1 888 frames exact. Frames
+  after their time: median 6.1 to 9.8 ms with two windows and a server on two cores (hot seat's
+  7.8 ms alone).
