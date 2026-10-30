@@ -43,6 +43,7 @@ use h3_view::scene::{self, Draw, Moment};
 use h3_view::sound::{Lengths, Tune};
 use h3_view::tables::{Sounds, Tables};
 
+use crate::audio::Voices;
 use crate::boxes::{Answered, Asked, Leave};
 use crate::live::Live;
 use crate::online::{Online, Server};
@@ -169,9 +170,14 @@ fn seat_opening(online: &Online) -> Result<Record, String> {
 }
 
 impl Ground {
-    /// The sounds of each stack living at the start, by its id ([`stack_sounds`]).
-    pub fn stack_sounds(&self) -> BTreeMap<u8, Sounds> {
-        stack_sounds(&self.record, &self.tables)
+    /// The sounds of each stack living at the start, by its id, and of each creature the battle
+    /// may create ([`stack_sounds`]; E17 M5 T8b2, R6-1: every creature with a look, as a battle
+    /// fought as it is played may create any, [`motion::add_looks`]).
+    pub fn stack_sounds(&self) -> Voices {
+        let mut voices = stack_sounds(&self.record, &self.tables);
+        let more = creature_sounds(&self.record, &self.tables, self.looks.keys().copied());
+        voices.creatures.extend(more);
+        voices
     }
 
     /// The battle's own sounds a cue may name, by cue ([`battle_sounds`]).
@@ -341,8 +347,41 @@ impl Ground {
 }
 
 /// The sounds of each stack living at the start, by its id (E17 M2 T5b); a siege's turrets
-/// (off the field) the town's shooter's, as their look (E17 M4 T3a, R2-1).
-pub fn stack_sounds(record: &Record, tables: &Tables) -> BTreeMap<u8, Sounds> {
+/// (off the field) the town's shooter's, as their look (E17 M4 T3a, R2-1). And those of each
+/// creature the record's events create, by its handle (E17 M5 T8b2, R6-1: a summoned stack's,
+/// a clone's, a Pit Lord's Demons'; a created stack's cues name its creature).
+pub fn stack_sounds(record: &Record, tables: &Tables) -> Voices {
+    let made = record.messages.iter().flat_map(|m| match m {
+        ServerMessage::Events { events, .. } => events.as_slice(),
+        _ => &[],
+    });
+    let made = made.filter_map(|e| match *e {
+        h3_protocol::wire::Event::StackCreated { creature, .. }
+        | h3_protocol::wire::Event::RoseFromCorpse { creature, .. } => Some(creature),
+        _ => None,
+    });
+    Voices {
+        stacks: first_sounds(record, tables),
+        creatures: creature_sounds(record, tables, made),
+    }
+}
+
+/// The sounds of the creatures `made`, by handle (E17 M5 T8b2, R6-1).
+fn creature_sounds(
+    record: &Record,
+    tables: &Tables,
+    made: impl Iterator<Item = u16>,
+) -> BTreeMap<u16, Sounds> {
+    let keys = &record.header.manifest.keys.creatures;
+    made.filter_map(|creature| {
+        let entry = tables.creatures.get(keys.get(usize::from(creature))?)?;
+        Some((creature, entry.sounds.clone()))
+    })
+    .collect()
+}
+
+/// The sounds of each stack of the record's first snapshot, by its id ([`stack_sounds`]).
+fn first_sounds(record: &Record, tables: &Tables) -> BTreeMap<u8, Sounds> {
     let keys = &record.header.manifest.keys.creatures;
     let field = record.header.manifest.field;
     let cells = u16::from(field.width) * u16::from(field.height);
@@ -2253,8 +2292,9 @@ impl<'g> Battle<'g> {
         self.batch.sprite(name)
     }
 
-    /// The sounds of each stack living at the start, by its id ([`Ground::stack_sounds`]).
-    pub fn stack_sounds(&self) -> BTreeMap<u8, Sounds> {
+    /// The sounds of each stack living at the start, by its id, and of each creature the battle
+    /// may create ([`Ground::stack_sounds`]).
+    pub fn stack_sounds(&self) -> Voices {
         self.ground.stack_sounds()
     }
 

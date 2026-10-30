@@ -154,6 +154,12 @@ impl Playhead {
         self.at
     }
 
+    /// The dissolves whose battle at their start is kept (the tests', E17 M5 T8b2, R6-4).
+    #[cfg(test)]
+    pub(crate) fn dissolves_kept(&self) -> usize {
+        self.dissolved.len()
+    }
+
     /// Moves to `t` of `timeline` (the one it was made for): forward by what showed since, back
     /// by starting over.
     pub fn seek(&mut self, timeline: &Timeline, t: u32) {
@@ -367,6 +373,9 @@ impl Playhead {
         self.shakes.to(t);
         self.bridges.to(t);
         self.dissolves.to(t);
+        // A dissolve's kept battle goes once its span has closed (a seek back starts over).
+        let ends = &self.dissolves.ends;
+        self.dissolved.retain(|&i, _| ends[i] > u64::from(t));
         self.at = t;
     }
 

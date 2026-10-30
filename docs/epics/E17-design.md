@@ -2873,13 +2873,18 @@ BAT-MAG-052, `installation.md` §7.19).
   (0x5A0331).
 - **Teleport** (0x5A1B4D): a redraw shown at once (1, 0, 0, 0, 1, 0), the battlefield saved (0, 0,
   800, 556), the stack's Bind links and its own Bind ended, moved, a redraw unseen and the
-  dissolve with 33 ms steps whatever the speed (0x5A1BEA). No line.
+  dissolve with 33 ms steps whatever the speed (0x5A1BEA). No line. Built (since M5 T8b2, R6-2):
+  the engine's `EffectEnded`s of the cast applied after the first redraw, their boxes' hues
+  shown with the new picture (from the dissolve's start + 1, as the move).
 - **The viewer's timeline** (`anim::created`): a dissolve's changes are drawn at its start and
   shown from 1 ms later (`DissolveKey`: the moment at its start is the saved picture), its steps
   blend from then to its end (`DissolveKey::step_at`), the new picture whole at its end; the
-  record a created stack takes is the engine's id's (a killed created stack's, as 0x47A12B) or the
-  side's next; its numbers come from the event and the ruleset (`Casts::bodies`), the rest left at
-  0 (*provisional*). The log names a created stack from its `Created` entry on (a reused id its
+  record a created stack takes is the engine's id's (a killed created stack's, as 0x47A12B) when
+  it was on the same side, else the side's next (none left past 255, a hostile record's: the
+  stack is not drawn; M5 T8b2, R6-3); its numbers come from the event and the ruleset
+  (`Casts::bodies`), the rest left at 0 (*provisional*). Its cues play its creature's sounds
+  (`Cue::creature`, §8.3), not those of the stack that held its id before. The playhead keeps a
+  dissolve's battle at its start only until the dissolve ends (R6-4). The log names a created stack from its `Created` entry on (a reused id its
   latest). The clone's message is a notice the window opens as a message box at its time, the
   battle standing behind it (`Timeline::notices`, `Battle::open_notice`).
 - **The saved picture is the back buffer** (a slip of the original, not copied: the user's,
@@ -2964,7 +2969,8 @@ Bloodlust and Stone Gaze handlers). Built as `h3_render::recolour` (the effects)
 - **Built** (*provisional* where marked): `h3_render::recolour::Effect` (`Bloodlust(step)`,
   `StoneGlow(step)`, `Petrified`, `Clone`) computes an entry exactly in integers (each x87 result
   rounded to 53 bits, each f32 store to 24; `clients/scripts/palette-reference.py` in IEEE doubles:
-  the tests' digests over every 16-bit value, 24 effects), about 0.9 µs an entry; `anim`'s
+  the tests' digests over every 16-bit value, 24 effects; a mask of 2^31 or more, which no 16-bit
+  format has, scales by 1, not 0: M5 T8b2, R6-5), about 0.9 µs an entry; `anim`'s
   `LookKey` list (a glow's steps, the petrified look from Stone Gaze's effect to its end or the
   stack's death; a reused id's afresh); the scene takes a stack's look, else a clone's colours
   from the stack's `clone`. Not built: an Ogre Magi's Bloodlust (a creature's cast other than an
@@ -3270,7 +3276,14 @@ Death Blow 0x443B46 (73), Ice Bolt's explosion 0x5A0AFB (`IceRayEx`), the Famili
 length or now plus 4 s, whichever comes first (`Player::wait_for`; `wait_last` for a stack's own
 sound by its handle). The lengths (`sound::Lengths`): a sample's `fact` frames at its rate,
 rounded up (*provisional*: on a sound card Miles' mixer ends it, perhaps a few ms later; the
-harness's samples end so). The timeline waits only with them: the window once its sound opened
+harness's samples end so). A stack the battle created (`create_battle_stack` 0x47A100 loads its
+creature's sounds, `stack_load_graphics` 0x43D9F0) plays and is waited for by its creature's
+sounds: its cues carry the creature (`Cue::creature`), the lengths and the window's library hold
+the sounds of every creature the record's events create (`StackCreated`, `RoseFromCorpse`; the
+window's every creature with a look, as a battle fought as it is played may create any) besides
+the first snapshot's stacks by id (M5 T8b2, R6-1: a clone of Marksmen shooting waits at
+0x43FDF9; a stack in a reused id, BAT-QUIRK-7's or the corpse's a Pit Lord raises Demons in,
+no longer plays the old stack's). No sound sequence creates a stack: none changed. The timeline waits only with them: the window once its sound opened
 (not `--mute`, a device: the battle made again with the library's lengths, `Ground::play_sounds`),
 a sequence with `sound`; without, nothing changes (every capture before). A site waits on its own
 sample's handle: a handle another sample took meanwhile (its own done, or every channel of the

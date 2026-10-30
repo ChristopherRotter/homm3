@@ -47,6 +47,34 @@ fn gain(volume: u8) -> f32 {
 /// A decoded MP3: its rate, channels and samples.
 type Music = (u32, u16, Vec<i16>);
 
+/// The creatures' sounds a battle's cues may name (E17 M5 T8b2, R6-1): each stack of the record's
+/// first snapshot by its id, and each creature the battle may create by its handle (a created
+/// stack's cues name its creature, [`Cue::creature`]: an id it reuses keeps no sound of the
+/// stack that held it before).
+#[derive(Debug, Clone, Default)]
+pub struct Voices {
+    /// The first snapshot's stacks' sounds, by id.
+    pub stacks: BTreeMap<u8, Sounds>,
+    /// The sounds of the creatures the battle may create, by handle.
+    pub creatures: BTreeMap<u16, Sounds>,
+}
+
+impl Voices {
+    /// The sounds `cue`'s stack plays: its creature's if the battle created it, else its own.
+    pub fn of(&self, cue: &Cue) -> Option<&Sounds> {
+        match cue.creature {
+            Some(creature) => self.creatures.get(&creature),
+            None => self.stacks.get(&cue.stack),
+        }
+    }
+
+    /// The entry names of every sound.
+    fn names(&self) -> impl Iterator<Item = &String> {
+        let stacks = self.stacks.values().flat_map(Sounds::names);
+        stacks.chain(self.creatures.values().flat_map(Sounds::names))
+    }
+}
+
 /// The sounds a battle plays, decoded.
 #[derive(Debug)]
 pub struct Library {
@@ -61,26 +89,26 @@ pub struct Library {
     start: String,
     /// How long the decoding took, in ms.
     took: u128,
-    /// Each stack's sounds.
-    stacks: BTreeMap<u8, Sounds>,
+    /// The creatures' sounds, by stack and by created creature (E17 M5 T8b2, R6-1).
+    voices: Voices,
     /// The battle's own sounds by cue, upper-cased: the tent's heal (E17 M3 T3b), a resisted
     /// spell's and the cast spells' (E17 M3 T7b-1).
     named: BTreeMap<Sound, String>,
 }
 
 impl Library {
-    /// Decodes the start sound, every sound of `stacks` and the battle's own sounds `named` by cue
+    /// Decodes the start sound, every sound of `voices` and the battle's own sounds `named` by cue
     /// from the sound archives of `install`, and the music and the end's `tunes` from its `MP3`
     /// folder. A missing or undecodable sound costs that sound, noted in `lines`.
     pub fn load(
         install: &Path,
         opening: Opening,
-        (stacks, named): (BTreeMap<u8, Sounds>, BTreeMap<Sound, String>),
+        (voices, named): (Voices, BTreeMap<Sound, String>),
         tunes: &[Tune],
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let (result, took) =
-            crate::gate::timed(|| Self::decode(install, opening, (stacks, named), tunes, lines));
+            crate::gate::timed(|| Self::decode(install, opening, (voices, named), tunes, lines));
         let mut library = result?;
         library.took = took.as_millis();
         Ok(library)
@@ -90,7 +118,7 @@ impl Library {
     fn decode(
         install: &Path,
         opening: Opening,
-        (stacks, named): (BTreeMap<u8, Sounds>, BTreeMap<Sound, String>),
+        (voices, named): (Voices, BTreeMap<Sound, String>),
         tunes: &[Tune],
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
@@ -99,9 +127,8 @@ impl Library {
             .into_iter()
             .map(|(cue, name)| (cue, name.to_ascii_uppercase()))
             .collect();
-        let mut wanted: Vec<String> = stacks
-            .values()
-            .flat_map(Sounds::names)
+        let mut wanted: Vec<String> = voices
+            .names()
             .chain(std::iter::once(&start))
             .chain(named.values())
             .map(|n| n.to_ascii_uppercase())
@@ -122,7 +149,7 @@ impl Library {
             tunes: decoded,
             start: start.to_ascii_uppercase(),
             took: 0,
-            stacks,
+            voices,
             named,
         })
     }
@@ -135,15 +162,17 @@ impl Library {
                 .get(&name.to_ascii_uppercase())
                 .map(|c| length_ms(c.frames() as u64, c.rate))
         };
+        // Each kind of a voice's sounds that has a sample.
+        let kinds = |sounds: &Sounds| -> Vec<(Sound, u32)> {
+            let length = |kind| sounds.name(kind).and_then(ms).map(|l| (kind, l));
+            KINDS.iter().filter_map(|&kind| length(kind)).collect()
+        };
         Lengths {
-            stacks: self
-                .stacks
-                .iter()
-                .flat_map(|(&id, sounds)| {
-                    KINDS.iter().filter_map(move |&kind| {
-                        sounds.name(kind).and_then(ms).map(|l| ((id, kind), l))
-                    })
-                })
+            stacks: (self.voices.stacks.iter())
+                .flat_map(|(&id, sounds)| kinds(sounds).into_iter().map(move |(k, l)| ((id, k), l)))
+                .collect(),
+            creatures: (self.voices.creatures.iter())
+                .flat_map(|(&c, sounds)| kinds(sounds).into_iter().map(move |(k, l)| ((c, k), l)))
                 .collect(),
             named: self
                 .named
@@ -166,21 +195,20 @@ const KINDS: [Sound; 8] = [
     Sound::End,
 ];
 
-/// How long the samples of `stacks` and `named` play (E17 M5 T5b2): [`Library::lengths`] without
+/// How long the samples of `voices` and `named` play (E17 M5 T5b2): [`Library::lengths`] without
 /// the music and the start sound, for a comparison that plays its sounds (`h3-view sequences`'s
 /// `sound` sequences).
 pub fn lengths(
     install: &Path,
-    (stacks, named): (BTreeMap<u8, Sounds>, BTreeMap<Sound, String>),
+    (voices, named): (Voices, BTreeMap<Sound, String>),
     lines: &mut Vec<String>,
 ) -> Result<Lengths, String> {
     let named: BTreeMap<Sound, String> = named
         .into_iter()
         .map(|(cue, name)| (cue, name.to_ascii_uppercase()))
         .collect();
-    let mut wanted: Vec<String> = stacks
-        .values()
-        .flat_map(Sounds::names)
+    let mut wanted: Vec<String> = voices
+        .names()
         .chain(named.values())
         .map(|n| n.to_ascii_uppercase())
         .collect();
@@ -192,7 +220,7 @@ pub fn lengths(
         tunes: Vec::new(),
         start: String::new(),
         took: 0,
-        stacks,
+        voices,
         named,
     };
     Ok(library.lengths())
@@ -245,12 +273,13 @@ impl Library {
         self.tunes.iter().find(|(t, _)| *t == tune).map(|(_, m)| m)
     }
 
-    /// The clip of `stack`'s `sound`, if the creature has it and it was found.
-    fn clip(&self, stack: u8, sound: Sound) -> Option<&Pcm> {
-        if let Some(name) = self.named.get(&sound) {
+    /// The clip `cue` plays, if the creature has it and it was found (a created stack's by its
+    /// creature, [`Voices::of`]).
+    fn clip(&self, cue: &Cue) -> Option<&Pcm> {
+        if let Some(name) = self.named.get(&cue.sound) {
             return self.clips.get(name);
         }
-        let name = self.stacks.get(&stack)?.name(sound)?;
+        let name = self.voices.of(cue)?.name(cue.sound)?;
         self.clips.get(&name.to_ascii_uppercase())
     }
 
@@ -281,8 +310,8 @@ impl Library {
 struct Channel {
     stream: usize,
     format: (u32, u16),
-    /// The stack and its sound that play here.
-    owner: Option<(u8, Sound)>,
+    /// The cue that plays here (its stack, its sound and its voice).
+    owner: Option<Cue>,
     /// Whether that sound loops.
     looping: bool,
 }
@@ -394,7 +423,10 @@ impl Player {
     pub fn cue(&mut self, library: &Library, cue: &Cue) {
         if cue.stop {
             for c in &mut self.channels {
-                if c.owner == Some((cue.stack, cue.sound)) && c.looping {
+                let own = c
+                    .owner
+                    .is_some_and(|o| (o.stack, o.sound) == (cue.stack, cue.sound));
+                if own && c.looping {
                     self.out.clear(c.stream);
                     c.owner = None;
                     c.looping = false;
@@ -405,7 +437,7 @@ impl Player {
         if !self.effects_on {
             return;
         }
-        let Some(clip) = library.clip(cue.stack, cue.sound) else {
+        let Some(clip) = library.clip(cue) else {
             return;
         };
         if matches!(
@@ -465,7 +497,7 @@ impl Player {
             .put(channel.stream, &clip.samples, !looping)
             .is_ok()
         {
-            channel.owner = Some((cue.stack, cue.sound));
+            channel.owner = Some(*cue);
             channel.looping = looping;
         }
     }
@@ -495,10 +527,10 @@ impl Player {
     /// Keeps the loops and the music queued ahead and the music's fade-in going, at `now`.
     pub fn service(&mut self, library: &Library, now: u64) {
         for c in &self.channels {
-            let Some((stack, sound)) = c.owner.filter(|_| c.looping) else {
+            let Some(owner) = c.owner.filter(|_| c.looping) else {
                 continue;
             };
-            let Some(clip) = library.clip(stack, sound) else {
+            let Some(clip) = library.clip(&owner) else {
                 continue;
             };
             let ahead = ahead(clip.rate, clip.channels);
