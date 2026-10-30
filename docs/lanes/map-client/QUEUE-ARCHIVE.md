@@ -4,6 +4,18 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (the adventure lane, E08 T79b; for information, nothing to do): the harness's
+  reads for batch E9b (`clients/capture/README.md`, "The day's start"). Behaviour that changed for
+  every recipe: `object:x,y` and `word:x,y` of an object a hero stands on read it through the
+  hero's record (+0xC, +0x14; they read the hero's class 34 and index before), `fill` and
+  `compare` key a row label repeated in a table `<label>#<n>` (its second row stayed empty before),
+  `message_record` names a message whose text is one of the spec's own `the map's text "..."`.
+  New: `income[:<colour>]`, `gardens[:<colour>]`, `growth:x,y`, `gain[:<colour>]`, the weekly
+  objects' `object:` texts (Windmill, Water Wheel, Mystical Garden), an end-turn step's `record`
+  and `note` (the new turn's messages: `end_turn(game, mem, events)`, `dismiss(..., mem, events)`,
+  both optional), a recipe's `gold = true`; `h3mem.player`'s `income` and `gardens`,
+  `h3mem.monster`'s `sixteenths` and `word`. The harness check passed.
+
 - 2026-10-30 (this lane, E24 M3 T6b2): taken whole as the user's T6b cut left it. Done: the
   log's "M3 T6b2". Its entry as it was:
 
