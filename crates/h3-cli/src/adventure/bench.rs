@@ -7,7 +7,9 @@
 //! * `reach`: the reachable-tiles query of every hero of the acting player at each step of
 //!   random play (the play around it is not counted): the walking heroes' inside
 //!   [`reach_queries`], the flying and water-walking heroes' inside [`lifted_queries`] (E08 T42:
-//!   two `bench-check` workloads of the same games, `reach-xl-144` and `reach-lifted-xl-144`).
+//!   two `bench-check` workloads of the same games, `reach-xl-144` and `reach-lifted-xl-144`),
+//!   the heroes' in boats inside [`sail_queries`] (E08 T75b: `reach-sea-xl-144`, on the sea XL
+//!   map).
 //! * `fork`: forks of the env after `days` days of random play, inside [`fork_workload`]; with
 //!   `--battle 1` (E08 T19b1) the heroes seek each other instead and the play stops at the step
 //!   that opens a battle, so the forks carry an open battle; with `--meeting 1` (E08 T52) a
@@ -101,6 +103,9 @@ pub struct BenchResult {
     /// `fork`: the games whose forks carried the visits block (E08 T64a: a visit wrote a mark,
     /// knowledge or a find's emptying).
     pub visits: u64,
+    /// `fork`: the heroes in boats at the forks, over the games (E08 T75b: the forks carry the
+    /// boats' records with a boat aboard).
+    pub afloat: u64,
 }
 
 /// Runs a workload on a map below `root` with the packs of `packs_dir`.
@@ -122,6 +127,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         battles: 0,
         meetings: 0,
         visits: 0,
+        afloat: 0,
     };
     for g in 0..options.games {
         // The setup built the first game: a reset cannot fail.
@@ -150,6 +156,9 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                 result.battles += u64::from(open);
                 result.meetings += u64::from(meeting(&env).is_some());
                 result.visits += u64::from(env.state().adventure().visits().is_some());
+                let heroes = env.state().adventure().heroes();
+                let afloat = heroes.iter().filter(|h| h.boat.is_some()).count();
+                result.afloat += u64::try_from(afloat).unwrap_or(u64::MAX);
                 let start = Instant::now();
                 black_box(fork_workload(&env, options.forks));
                 (
@@ -363,7 +372,8 @@ pub fn management_queries(
 
 /// Random play with every hero's reachable-tiles query at each step (the counted and timed part):
 /// the walking heroes' ([`reach_queries`]), then the flying and water-walking heroes'
-/// ([`lifted_queries`], E08 T42): queries, steps, seconds.
+/// ([`lifted_queries`], E08 T42), then the heroes' in boats ([`sail_queries`], E08 T75b):
+/// queries, steps, seconds.
 fn reach_rollout(env: &mut AdventureEnv, agent_seed: u64) -> (u64, u64, f64) {
     let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
     let (mut queries, mut steps, mut seconds) = (0, 0, 0.0);
@@ -372,10 +382,12 @@ fn reach_rollout(env: &mut AdventureEnv, agent_seed: u64) -> (u64, u64, f64) {
             break;
         };
         if let Some(player) = seat.player() {
-            // Which heroes fly or walk on water, outside the counted and timed part.
-            let (lifted, walkers) = heroes_by_lift(env, player);
+            // Which heroes sail, fly or walk on water, outside the counted and timed part.
+            let (sailing, lifted, walkers) = heroes_by_lift(env, player);
             let start = Instant::now();
-            queries += reach_queries(env, player, &walkers) + lifted_queries(env, player, &lifted);
+            queries += reach_queries(env, player, &walkers)
+                + lifted_queries(env, player, &lifted)
+                + sail_queries(env, player, &sailing);
             seconds += start.elapsed().as_secs_f64();
         }
         let action = choose(env, seat, &mut rng);
@@ -386,21 +398,30 @@ fn reach_rollout(env: &mut AdventureEnv, agent_seed: u64) -> (u64, u64, f64) {
     (queries, steps, seconds)
 }
 
-/// `player`'s heroes that fly or walk on water (`h3_heroes`' levels, HER-ADV-005), then the
-/// others, in id order.
-pub(crate) fn heroes_by_lift(env: &AdventureEnv, player: PlayerId) -> (Vec<HeroId>, Vec<HeroId>) {
+/// The heroes of a player by how they move: in a boat, flying or walking on water, the others.
+type ByLift = (Vec<HeroId>, Vec<HeroId>, Vec<HeroId>);
+
+/// `player`'s heroes in boats (E08 T75b: a hero in a boat sails, whatever it wears), then those
+/// that fly or walk on water (`h3_heroes`' levels, HER-ADV-005), then the others, in id order.
+pub(crate) fn heroes_by_lift(env: &AdventureEnv, player: PlayerId) -> ByLift {
     let (state, rules) = (env.state(), env.rules());
     let own = state
         .adventure()
         .heroes()
         .iter()
         .filter(|h| h.owner == player);
-    own.map(|hero| hero.id).partition(|&id| {
+    let (sailing, ashore): (Vec<_>, Vec<_>) = own.partition(|hero| hero.boat.is_some());
+    let (lifted, walkers) = ashore.into_iter().map(|hero| hero.id).partition(|&id| {
         state.hero(id).is_some_and(|details| {
             let levels = movement(details, rules.core());
             levels.flying.is_some() || levels.water_walking.is_some()
         })
-    })
+    });
+    (
+        sailing.iter().map(|hero| hero.id).collect(),
+        lifted,
+        walkers,
+    )
 }
 
 /// The reachable-tiles query of each of `heroes`, `player`'s walking heroes (neither flying nor
@@ -408,7 +429,7 @@ pub(crate) fn heroes_by_lift(env: &AdventureEnv, player: PlayerId) -> (Vec<HeroI
 /// `reach` workload counts the instructions inside this function: the walker's search.
 #[inline(never)]
 pub fn reach_queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId]) -> u64 {
-    queries(env, player, heroes, false)
+    queries(env, player, heroes, Lift::Walk)
 }
 
 /// The reachable-tiles query of each of `heroes`, `player`'s flying or water-walking heroes (E08
@@ -416,14 +437,33 @@ pub fn reach_queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId]) ->
 /// the instructions inside this function.
 #[inline(never)]
 pub fn lifted_queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId]) -> u64 {
-    queries(env, player, heroes, true)
+    queries(env, player, heroes, Lift::Lifted)
 }
 
-/// The reachable-tiles query of each of `heroes` for `player`: the number of queries. `lifted`
-/// only keeps the two callers' code apart: with identical bodies the release build folds them
-/// into one symbol, and `bench-check`'s pattern then finds one name only (E08 T42).
-fn queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId], lifted: bool) -> u64 {
-    black_box(lifted);
+/// The reachable-tiles query of each of `heroes`, `player`'s heroes in boats (E08 T75b, the
+/// boat's search over the sea): the number of queries. The `reach-sea` workload counts the
+/// instructions inside this function.
+#[inline(never)]
+pub fn sail_queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId]) -> u64 {
+    queries(env, player, heroes, Lift::Sail)
+}
+
+/// Which caller asks [`queries`].
+#[derive(Debug, Clone, Copy)]
+enum Lift {
+    /// [`reach_queries`].
+    Walk,
+    /// [`lifted_queries`].
+    Lifted,
+    /// [`sail_queries`].
+    Sail,
+}
+
+/// The reachable-tiles query of each of `heroes` for `player`: the number of queries. `lift`
+/// only keeps the callers' code apart: with identical bodies the release build folds them into
+/// one symbol, and `bench-check`'s pattern then finds one name only (E08 T42).
+fn queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId], lift: Lift) -> u64 {
+    black_box(lift);
     let (state, rules) = (env.state(), env.rules());
     for &hero in heroes {
         let reach = legal_moves(state, rules, Actor::Player(player), hero);

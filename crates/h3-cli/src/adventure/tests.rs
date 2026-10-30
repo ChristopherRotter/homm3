@@ -26,6 +26,8 @@ const FULL: [&str; 2] = [
     "fixtures/maps/e08-boxes-144.h3m",
     "fixtures/maps/e08-stones-144.h3m",
 ];
+/// The sea XL map (E08 T75b): 144 × 144 of sea, sixteen islands, fifteen boats.
+const SEA_XL: &str = "fixtures/maps/e08-sea-144.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -763,8 +765,9 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     for (player, lifted, walkers) in both {
         let player = PlayerId::new(player);
         let ids = |ids: &[u16]| ids.iter().map(|&id| HeroId::new(id)).collect::<Vec<_>>();
-        let (up, down) = bench::heroes_by_lift(&env, player);
+        let (sailing, up, down) = bench::heroes_by_lift(&env, player);
         assert_eq!((&up, &down), (&ids(lifted), &ids(walkers)), "{player:?}");
+        assert!(sailing.is_empty());
         assert_eq!(bench::reach_queries(&env, player, &down), down.len() as u64);
         assert_eq!(bench::lifted_queries(&env, player, &up), up.len() as u64);
     }
@@ -823,6 +826,49 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             "{map}: {full:?}"
         );
     }
+    // E08 T75b: on the sea XL map the heroes board (`reach-sea-xl-144`'s queries of heroes in
+    // boats, `sail_queries`), and the forks carry the boats with a hero aboard
+    // (`fork-sea-xl-144`).
+    let sea = |workload, days| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: SEA_XL.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload,
+                games: 1,
+                days,
+                seed: 1,
+                forks: 3,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: false,
+                queries: 0,
+            },
+        )
+        .unwrap()
+    };
+    let fork = sea(bench::Workload::Fork, 7);
+    assert_eq!(fork.operations, 3);
+    assert!(fork.afloat > 0, "{fork:?}");
+    let reach = sea(bench::Workload::Reach, 7);
+    // Each player starts with four heroes: four queries a step at most.
+    assert!(reach.operations <= 4 * reach.steps, "{reach:?}");
+    let ids: Vec<String> = DEFAULT_PACKS.iter().map(|&s| s.to_owned()).collect();
+    let rules = load_rules(&root().join("packs"), &ids, DEFAULT_PROFILE).unwrap();
+    let (_, setup) = load_map(&root(), SEA_XL, &rules).unwrap();
+    let mut env = h3_sim::adventure::AdventureEnv::new(rules, Arc::new(setup), 1, 7).unwrap();
+    let _ = h3_sim::adventure::random_rollout(&mut env, 0, 0);
+    let sailing: Vec<HeroId> = (0..2)
+        .flat_map(|p| bench::heroes_by_lift(&env, PlayerId::new(p)).0)
+        .collect();
+    assert!(!sailing.is_empty());
+    let red = PlayerId::new(0);
+    let own = bench::heroes_by_lift(&env, red).0;
+    assert_eq!(bench::sail_queries(&env, red, &own), own.len() as u64);
     // E08 T19b1: with `battle` the heroes seek each other and the forks carry the open battle.
     let fight = bench::run(
         &root().join("packs"),

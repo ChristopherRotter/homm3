@@ -140,7 +140,9 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 /// it never sees a tile's terrain, road and river, `objects` whether it never sees what objects
 /// cover there and the heroes standing there; a monster it never sees where it never sees the
 /// ground (E08 decision 40: a monster shows on the fringe in either profile). A hero's tile stays
-/// land, and no blocker is added over it.
+/// land, and no blocker is added over it; (E08 T75b) a boat's tile stays water, and no blocker is
+/// added over it (the setup refuses both, ADV-SEA-001), while a boat the viewer never sees may be
+/// removed as a blocker is.
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -157,12 +159,21 @@ fn vary(
         .filter(|o| o.template == HERO_TEMPLATE)
         .map(standing_on)
         .collect();
+    let afloat: Vec<Spot> = m
+        .objects
+        .iter()
+        .filter(|o| o.template != HERO_TEMPLATE)
+        .filter(|o| KINDS[usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()].0 == 8)
+        .map(|o| (o.pos.x, o.pos.y, o.pos.z))
+        .collect();
     let spots =
         (0..levels).flat_map(|z| (0..side).flat_map(move |y| (0..side).map(move |x| (x, y, z))));
     for ((spot, tile), new) in spots.zip(&mut m.terrain.tiles).zip(&unseen.tiles) {
         if let Some((terrain, road, river)) = new.filter(|_| ground(spot)) {
             tile.terrain = if terrain >= 8 && standing.contains(&spot) {
                 2
+            } else if afloat.contains(&spot) {
+                8
             } else {
                 terrain
             };
@@ -205,7 +216,8 @@ fn vary(
     for &((x, y, z), template) in &unseen.added {
         let anchor = (x % side, y % side, z % levels);
         if unseen_blocker(anchor, template)
-            && covers(anchor, template, side).all(|spot| !standing.contains(&spot))
+            && covers(anchor, template, side)
+                .all(|spot| !standing.contains(&spot) && !afloat.contains(&spot))
         {
             let mut o = object(
                 anchor.0,
@@ -377,6 +389,10 @@ fn check_told(
     let mut stepped = Vec::new();
     let mut removed = Vec::new();
     let mut words = Vec::new();
+    // E08 T75b: the empty boats the viewer sees, and the heroes it is told boarded (their boat's
+    // type) or landed or left (none).
+    let mut boats = before.adventure.boats.clone();
+    let mut aboard: Vec<(HeroId, Option<u8>)> = Vec::new();
     let mut treasury = before.treasury.clone();
     let named = |d: &DecisionView| match d {
         DecisionView::Offer(o) => Open::Offer(o.hero, o.object_type, o.anchor),
@@ -459,17 +475,46 @@ fn check_told(
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
             // E08 T73: a boarding and a landing, told where the viewer sees heroes on the boat's
-            // tile (the plans place no boats yet: T75 follows the boats here); E08 T74b: a boat
-            // leaving with its hero likewise (ADV-SEA-006).
+            // tile, as it sees the empty boat there (ADV-FOG-008); E08 T74b: a boat leaving with
+            // its hero likewise (ADV-SEA-006). E08 T75b follows the boats: a boarding takes the
+            // empty boat the viewer saw, a landing leaves one, facing the landing's way.
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::Boarded { hero, boat, at },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let i = boats.iter().position(|b| b.tile == at && b.kind == boat);
+                prop_assert!(i.is_some(), "{:?} boards no boat the viewer saw", event);
+                boats.remove(i.unwrap());
+                aboard.push((hero, Some(boat)));
+            }
             GameEvent::Adventure(AdventureEvent {
                 kind:
-                    AdventureEventKind::Boarded { .. }
-                    | AdventureEventKind::Landed { .. }
-                    | AdventureEventKind::BoatRemoved { .. },
+                    AdventureEventKind::Landed {
+                        hero,
+                        boat,
+                        at,
+                        facing,
+                    },
                 seen_by,
-            }) => prop_assert_eq!(seen_by, alone),
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                boats.push(h3_adventure::BoatView {
+                    tile: at,
+                    kind: boat,
+                    facing,
+                });
+                aboard.push((hero, None));
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::BoatRemoved { hero, .. },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                aboard.push((hero, None));
+            }
             // E08 T62b2: an event's firing, told to its visitor's owner alone (ADV-FOG-007); E08
-            // T74a: a message read likewise (ADV-PIK-017; the plans place no bottles yet: T75).
+            // T74a: a message read likewise (ADV-PIK-017; the plans' bottles since T75b).
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::EventFired { hero, .. }
@@ -735,6 +780,28 @@ fn check_told(
                 hero
             );
             prop_assert!(!sees(before, hero.pos) && sees(after, hero.pos));
+        }
+    }
+    // E08 T75b: the empty boats change only as told, but where the viewer's sight grew; a hero's
+    // boat only by a boarding, a landing or its leaving (ADV-FOG-006, ADV-FOG-008).
+    for boat in &boats {
+        prop_assert!(
+            after.adventure.boats.contains(boat),
+            "{:?} left untold",
+            boat
+        );
+    }
+    for boat in after.adventure.boats.iter().filter(|b| !boats.contains(b)) {
+        let grew = revealing && !sees(before, boat.tile) && sees(after, boat.tile);
+        prop_assert!(grew, "{:?} shows untold", boat);
+    }
+    for hero in &after.adventure.heroes {
+        let told = aboard.iter().rev().find(|&&(id, _)| id == hero.id);
+        let was = before.adventure.hero(hero.id).map(|h| h.boat);
+        if let Some(&(_, boat)) = told {
+            prop_assert_eq!(hero.boat, boat, "{:?}", hero);
+        } else if let Some(was) = was {
+            prop_assert_eq!(hero.boat, was, "{:?} changed boats untold", hero);
         }
     }
     prop_assert_eq!(&after.treasury, &treasury);

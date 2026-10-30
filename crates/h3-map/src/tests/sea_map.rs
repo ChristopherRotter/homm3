@@ -26,8 +26,8 @@ const NAME: &str = "e08-sea-36.h3m";
 /// The original's templates (`Objects.txt`, as `sea.rs`' and `rewards_map.rs`'): one line per
 /// object picture the map places. A boat is visited (and stands) one column left of its position;
 /// every other object here on its position.
-mod lines {
-    pub(super) const BOATS: [&str; 3] = [
+pub(super) mod lines {
+    pub(in crate::tests) const BOATS: [&str; 3] = [
         "AVXboat0.def 101111111111111111111111111111111111111111111111 \
          010000000000000000000000000000000000000000000000 100000000 100000000 8 0 0 0",
         "AVXboat1.def 101111111111111111111111111111111111111111111111 \
@@ -35,41 +35,41 @@ mod lines {
         "AVXboat2.def 101111111111111111111111111111111111111111111111 \
          010000000000000000000000000000000000000000000000 100000000 100000000 8 2 0 0",
     ];
-    pub(super) const FLOTSAM: &str = "AVAflot0.def \
+    pub(in crate::tests) const FLOTSAM: &str = "AVAflot0.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 100000000 100000000 29 0 0 0";
-    pub(super) const SEA_CHEST: &str = "AVXccht0.def \
+    pub(in crate::tests) const SEA_CHEST: &str = "AVXccht0.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 100000000 100000000 82 0 0 0";
-    pub(super) const SURVIVOR: &str = "AVAsurv0.def \
+    pub(in crate::tests) const SURVIVOR: &str = "AVAsurv0.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 100000000 100000000 86 0 0 0";
-    pub(super) const BOTTLE: &str = "AVXbttl0.def \
+    pub(in crate::tests) const BOTTLE: &str = "AVXbttl0.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 100000000 100000000 59 0 0 0";
-    pub(super) const HOLE: &str = "AVLholg0.def \
+    pub(in crate::tests) const HOLE: &str = "AVLholg0.def \
         111111111111111111111111111111111111111111111111 \
         000000000000000000000000000000000000000000000000 111111111 000000100 124 0 0 1";
-    pub(super) const WINDS: &str = "AVXfw5.def \
+    pub(in crate::tests) const WINDS: &str = "AVXfw5.def \
         111111111111111111111111111111111111111111111111 \
         000000000000000000000000000000000000000000000000 100000000 100000000 225 0 0 1";
-    pub(super) const EVENT: &str = "AVZevnt0.def \
+    pub(in crate::tests) const EVENT: &str = "AVZevnt0.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 111111111 111111111 26 0 0 0";
-    pub(super) const PIKEMEN: &str = "AvWPike.def \
+    pub(in crate::tests) const PIKEMEN: &str = "AvWPike.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 111111111 000000100 54 0 2 0";
-    pub(super) const GNOLLS: &str = "AVWgnll0.def \
+    pub(in crate::tests) const GNOLLS: &str = "AVWgnll0.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 111111111 000000001 54 98 2 0";
 }
 
-fn template(line: &str) -> w::ObjectTemplate {
+pub(super) fn template(line: &str) -> w::ObjectTemplate {
     w::ObjectTemplate::from_objects_txt(line).unwrap()
 }
 
 /// An object standing on its position `at`.
-fn plain(line: &str, at: (u8, u8)) -> w::MapObject {
+pub(super) fn plain(line: &str, at: (u8, u8)) -> w::MapObject {
     w::MapObject::Plain(w::Plain {
         tile: at,
         template: template(line),
@@ -77,12 +77,12 @@ fn plain(line: &str, at: (u8, u8)) -> w::MapObject {
 }
 
 /// An empty boat of `kind` on the water tile `at` (its position one column right).
-fn boat(kind: usize, at: (u8, u8)) -> w::MapObject {
+pub(super) fn boat(kind: usize, at: (u8, u8)) -> w::MapObject {
     plain(lines::BOATS[kind], (at.0 + 1, at.1))
 }
 
 /// A hero of `hero_type` (its class's picture) on `at`, its type's own but for what the map sets.
-fn hero(at: (u8, u8), owner: u8, hero_type: u8) -> w::Hero {
+pub(super) fn hero(at: (u8, u8), owner: u8, hero_type: u8) -> w::Hero {
     w::Hero {
         tile: at,
         owner,
@@ -107,7 +107,7 @@ fn first_slot(creature: u16, count: u16) -> [Option<(u16, u16)>; w::ARMY_SLOTS] 
 }
 
 /// A hero wearing `artifact` at `slot` (`ArtSlots.txt` order) and carrying `backpack`.
-fn wearing(hero: &mut w::Hero, slot: usize, artifact: u16, backpack: Vec<u16>) {
+pub(super) fn wearing(hero: &mut w::Hero, slot: usize, artifact: u16, backpack: Vec<u16>) {
     let mut worn = [None; w::ARTIFACT_SLOTS];
     worn[slot] = Some(artifact);
     hero.artifacts = Some(w::HeroArtifacts { worn, backpack });
@@ -149,7 +149,7 @@ fn event(
 }
 
 /// An Ocean Bottle holding `text`.
-fn bottle(at: (u8, u8), text: &str) -> w::MapObject {
+pub(super) fn bottle(at: (u8, u8), text: &str) -> w::MapObject {
     w::MapObject::Reward(w::RewardObject {
         tile: at,
         template: template(lines::BOTTLE),
@@ -158,19 +158,19 @@ fn bottle(at: (u8, u8), text: &str) -> w::MapObject {
 }
 
 /// Skill codes (`SSTRAITS.TXT` order).
-const NAVIGATION: u8 = 5;
+pub(super) const NAVIGATION: u8 = 5;
 /// Artifact codes (`ARTRAITS.TXT` order): Centaur's Axe (the full backpack's), the Necklace of
 /// Ocean Guidance, Angel Wings, Boots of Levitation, the Sea Captain's Hat, the Admiral's Hat.
 const AXE: u16 = 7;
-const NECKLACE: u16 = 71;
+pub(super) const NECKLACE: u16 = 71;
 const WINGS: u16 = 72;
 const LEVITATION: u16 = 90;
-const CAPTAINS_HAT: u16 = 123;
-const ADMIRALS_HAT: u16 = 136;
+pub(super) const CAPTAINS_HAT: u16 = 123;
+pub(super) const ADMIRALS_HAT: u16 = 136;
 /// Artifact slots (`ArtSlots.txt` order).
-const HEAD: usize = 0;
+pub(super) const HEAD: usize = 0;
 const SHOULDERS: usize = 1;
-const NECK: usize = 2;
+pub(super) const NECK: usize = 2;
 const FEET: usize = 8;
 /// A full backpack (`ADV-QUIRK-22`: 64 refuse an artifact under `faithful`).
 const FULL_BACKPACK: usize = 64;

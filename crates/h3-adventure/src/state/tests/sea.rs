@@ -357,6 +357,33 @@ fn a_flight_neither_ends_on_nor_passes_a_water_tile_an_object_is_visited_from() 
     }
 }
 
+// covers: ADV-MOV-009, ADV-OBJ-004, ADV-PIK-018
+#[test]
+fn a_flight_up_off_a_closed_top_never_passes_a_water_tile_an_object_is_visited_from() {
+    // E08 T75b (found by the plans' property, `h3-map`'s `check_sea_move`): a step up off the
+    // visitable tile of an object not visited from above (a chart) is a flight's pass only
+    // (ADV-OBJ-004), and D-46 closes a water tile an object is visited from to a flight: the two
+    // together refuse the step; over plain water the flight passes.
+    let (rules, _, _) = sea_rules(true);
+    let flyer = store(&[(FLYING, 3)]);
+    for (c, open) in [('V', false), ('g', true)] {
+        let top: std::string::String = ['g', '#', c].iter().collect();
+        let mut setup = coasted(
+            &[&top, "gCg", "ggg"],
+            vec![hero_at(1, 0, p(0, 1), &[PEASANT])],
+        );
+        set_terrain(&mut setup, p(2, 0), SEA);
+        let mut s = started(&rules, &setup).unwrap();
+        let flown = sail(&mut s, &rules, &flyer, &[p(1, 1), p(2, 0), p(2, 1)]);
+        let expected = if open {
+            Ok(p(2, 1))
+        } else {
+            Err(blocked(1, StandError::Blocked))
+        };
+        assert_eq!(flown.map(|_| hero(&s).0), expected, "{c}");
+    }
+}
+
 // covers: ADV-SEA-004, ADV-MOV-005, ADV-MOV-006
 #[test]
 fn a_boat_sails_at_the_sea_s_prices_between_two_waters() {

@@ -110,8 +110,9 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// pile type). Then (E08 T21a) the plans' guarded piles ([`GUARDED`]): 500 gold whose guards ask
 /// first and four crystals whose guards fight at once. Then (E08 T64b, design §16) increment 7's
 /// kinds ([`REWARDS`]): one of each of its 31 classes, a guarded box, a guarded event that stays,
-/// a guarded artifact and a monster with a treasure artifact.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 64] = [
+/// a guarded artifact and a monster with a treasure artifact. Then (E08 T75b, design §15) the
+/// sea's kinds ([`SEA`]): the three boats, the four pickups and Favorable Winds.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 72] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -176,6 +177,14 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 64] = [
     (26, 0, None),
     (5, 8, None),
     (54, 98, None),
+    (8, 0, None),
+    (8, 1, None),
+    (8, 2, None),
+    (29, 0, None),
+    (82, 0, None),
+    (86, 0, None),
+    (59, 0, None),
+    (225, 0, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, design §16): the first of them, and how many. In
 /// order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow and four
@@ -206,6 +215,29 @@ pub(super) static REWARD_OBJECTS: LazyLock<Vec<usize>> = LazyLock::new(|| {
         })
         .collect()
 });
+/// The sea's kinds in [`KINDS`] (E08 T75b, design §15): the first of them, and how many. In
+/// order: the boats of the three types (class 8; no objects once imported, the map's empty boats,
+/// ADV-SEA-001), Flotsam, the Sea Chest, the Shipwreck Survivor and the Ocean Bottle (ADV-PIK-014
+/// to -017; each one tile, blocked and visited from a neighbour), and Favorable Winds (ADV-SEA-004;
+/// a ground, the import's one tile for a picture it does not know).
+pub(super) const SEA: (usize, usize) = (64, 8);
+/// The boats' objects, by type (one shape: [`masks`] gives a boat its one tile; the import takes
+/// the template's visitable tile as the boat's).
+pub(super) const BOAT_OBJECTS: [usize; 3] = [
+    BLOCKERS.len() * SEA.0,
+    BLOCKERS.len() * (SEA.0 + 1),
+    BLOCKERS.len() * (SEA.0 + 2),
+];
+/// The sea's four pickups' objects (Flotsam, the Sea Chest, the Shipwreck Survivor, the Ocean
+/// Bottle), each of its one tile.
+pub(super) const PICKUP_OBJECTS: [usize; 4] = [
+    BLOCKERS.len() * (SEA.0 + 3),
+    BLOCKERS.len() * (SEA.0 + 4),
+    BLOCKERS.len() * (SEA.0 + 5),
+    BLOCKERS.len() * (SEA.0 + 6),
+];
+/// Favorable Winds' object (no tile blocked or visited, as a special ground's).
+pub(super) const WINDS_OBJECT: usize = BLOCKERS.len() * (SEA.0 + 7);
 /// The plans' wandering monsters (E08 T20b3b1), by kind: the count, the disposition (0 compliant,
 /// 1 friendly, 2 aggressive, 3 hostile, 4 savage), whether it never flees, and its treasure's
 /// gold. Six compliant goblins join most heroes (aggression −4, ADV-MON-007); fourteen hostile
@@ -277,21 +309,26 @@ pub(super) type Mask = &'static [(u8, u8)];
 /// The blocked and visitable masks of object `object` ([`OBJECTS`]): its shape's
 /// ([`BLOCKERS`]), but a monster's one tile, blocked and visited, and nothing of a special
 /// ground's, which neither blocks nor is visited (E08 T20b3b1); an event's one tile too (E08
-/// T64b: as the shipped maps' events, which the import keeps apart from the movement's masks).
+/// T64b: as the shipped maps' events, which the import keeps apart from the movement's masks);
+/// (E08 T75b) a boat's and a sea pickup's one tile, and nothing of Favorable Winds'.
 pub(super) fn masks(object: usize) -> (Mask, Mask) {
     match KINDS[object / BLOCKERS.len()].0 {
-        54 | 26 => (&[(0, 0)], &[(0, 0)]),
-        21 | 46 => (&[], &[]),
+        54 | 26 | 8 | 29 | 82 | 86 | 59 => (&[(0, 0)], &[(0, 0)]),
+        21 | 46 | 225 => (&[], &[]),
         _ => BLOCKERS[object % BLOCKERS.len()],
     }
 }
 
 /// The body of an object of kind `kind`: a pile's amount (and since E08 T21a its message with
 /// guards, [`GUARDED`]), a monster's data ([`MONSTERS`]; its identifier, which AB and SoD store,
-/// `identifier`), (E08 T64b) increment 7's ([`reward_body`]), else none.
+/// `identifier`), (E08 T64b) increment 7's ([`reward_body`]), (E08 T75b) the Ocean Bottle's
+/// message, else none.
 fn body(kind: usize, v: Version, identifier: u32) -> Body {
     if (REWARDS.0..REWARDS.0 + REWARDS.1).contains(&kind) {
         return reward_body(kind, v, identifier);
+    }
+    if kind == SEA.0 + 6 {
+        return Body::Sign(Text(b"Ahoy".to_vec()));
     }
     if let Some(&(_, count, disposition, never_flees, gold)) = MONSTERS.iter().find(|m| m.0 == kind)
     {
@@ -674,6 +711,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 proptest::option::weighted(0.5, exchange()),
                 // E08 T64b, drawn last for the same reason.
                 rewards(),
+                // E08 T75b, drawn last for the same reason.
+                sea(),
             ),
         ),
     )
@@ -690,7 +729,13 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
-                (backpacks, mut skills, beside, pile, (mut kits, lifts, nomads, exchange, rewards)),
+                (
+                    backpacks,
+                    mut skills,
+                    beside,
+                    pile,
+                    (mut kits, lifts, nomads, exchange, rewards, sea),
+                ),
             )| {
                 // In three plans of four (E08 T42) a flyer and a water walker: the first two
                 // heroes in either order wear Angel Wings and Boots of Levitation (in place of
@@ -778,6 +823,38 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
                     blockers.push(((at(hx, dx), at(hy, dy), hz % levels), object));
                 }
+                // E08 T75b: a strait beside a hero, its boats, pickups, winds and monster, and
+                // the hero's sources of sea points ([`Sea`]).
+                if let Some(sea) = sea {
+                    let index = usize::from(sea.hero) % heroes.len();
+                    let ((hx, hy, hz), _) = heroes[index];
+                    let (hx, hy, z) = (hx % side, hy % side, hz % (1 + u8::from(two_levels)));
+                    let column = |c: u8| (hx + sea.gap + c % sea.width) % side;
+                    let row = |r: u8| (hy + side + r - 2) % side;
+                    for c in 0..sea.width {
+                        for y in 0..side {
+                            let i = (usize::from(z) * usize::from(side) + usize::from(y))
+                                * usize::from(side)
+                                + usize::from(column(c));
+                            tiles[i].0 = 8;
+                        }
+                    }
+                    for &((c, r), object) in sea.boats.iter().chain(&sea.objects) {
+                        blockers.push(((column(c), row(r), z), object));
+                    }
+                    let worn = sea.worn.map(|w| SEAFARERS[w].0);
+                    if let Some(code) =
+                        worn.filter(|&c| c != ADMIRALS_HAT || version == Version::Sod)
+                    {
+                        kits.resize_with(kits.len().max(index + 1), Kit::default);
+                        kits[index].worn.push(code);
+                    }
+                    if sea.navigation > 0 {
+                        skills.resize(skills.len().max(index + 1), None);
+                        let own = skills[index].get_or_insert_with(Vec::new);
+                        own.push((NAVIGATION, sea.navigation));
+                    }
+                }
                 Plan {
                     version,
                     side,
@@ -807,6 +884,73 @@ fn rewards() -> impl Strategy<Value = Vec<((u8, u8), u8, usize)>> {
         1 => Just(Vec::new()),
         7 => vec(((0u8..5, 0u8..5), any::<u8>(), object), 1..=6),
     ]
+}
+
+/// The sea's sources of a hero's points at sea (E08 T75b; HER-ADV-009), as code and position in a
+/// map's worn slots: the Necklace of Ocean Guidance (71) on the neck, the Sea Captain's Hat (123)
+/// and the Admiral's Hat (136, SoD's combination of the two, free boarding) on the head.
+pub(super) const SEAFARERS: [(u16, usize); 3] = [(71, 2), (123, 0), (136, 0)];
+/// The Admiral's Hat's code ([`SEAFARERS`]).
+const ADMIRALS_HAT: u16 = 136;
+/// Navigation's skill code (`SSTRAITS.TXT` order).
+const NAVIGATION: u8 = 5;
+
+/// A strait beside a hero (E08 T75b, design §15): water over the whole height of the hero's level,
+/// with boats on it, mostly on its coast, the sea's pickups, Favorable Winds and monsters on it,
+/// and the hero's sources of sea points; so that random play boards, sails, lands, takes the
+/// pickups and fights at sea.
+#[derive(Debug, Clone)]
+pub(super) struct Sea {
+    /// The hero it runs beside (modulo the plan's heroes).
+    hero: u8,
+    /// Its first column's distance east of the hero's: 1 (the hero on its coast) or 2.
+    gap: u8,
+    /// Its width in columns, 2 to 4.
+    width: u8,
+    /// The boats ([`BOAT_OBJECTS`]), each at a column of the strait (modulo its width: 0, the
+    /// coast's, in two cases of three) and a row from two above the hero's to two below (0 to 4).
+    boats: Vec<((u8, u8), usize)>,
+    /// The pickups ([`PICKUP_OBJECTS`]), Favorable Winds ([`WINDS_OBJECT`]) and monsters
+    /// ([`MONSTER_OBJECTS`]), placed as the boats.
+    objects: Vec<((u8, u8), usize)>,
+    /// The hero's Navigation level (0: none of its own).
+    navigation: u8,
+    /// What it wears of [`SEAFARERS`] (the Admiral's Hat, half the time, on a SoD map only).
+    worn: Option<usize>,
+}
+
+/// A plan's strait (E08 T75b): in three plans of four, one to three boats and up to five objects.
+fn sea() -> impl Strategy<Value = Option<Sea>> {
+    let column = prop_oneof![2 => Just(0u8), 1 => any::<u8>()];
+    let at = (column, 0u8..5);
+    let object = prop_oneof![
+        4 => proptest::sample::select(&PICKUP_OBJECTS[..]),
+        1 => Just(WINDS_OBJECT),
+        1 => proptest::sample::select(&MONSTER_OBJECTS[..]),
+    ];
+    proptest::option::weighted(
+        0.75,
+        (
+            any::<u8>(),
+            1u8..=2,
+            2u8..=4,
+            vec((at.clone(), proptest::sample::select(&BOAT_OBJECTS[..])), 1..=3),
+            vec((at, object), 0..=5),
+            0u8..=3,
+            prop_oneof![1 => Just(None), 1 => Just(Some(0)), 1 => Just(Some(1)), 3 => Just(Some(2))],
+        )
+            .prop_map(
+                |(hero, gap, width, boats, objects, navigation, worn)| Sea {
+                    hero,
+                    gap,
+                    width,
+                    boats,
+                    objects,
+                    navigation,
+                    worn,
+                },
+            ),
+    )
 }
 
 /// The plan as a raw map of its version: the heroes on distinct land tiles, owners round the
@@ -909,8 +1053,16 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     // The typed objects laid out, by class and subclass (a kind's type; two kinds share the gold
     // pile's, E08 T16a; the monsters' kinds the monster's) and anchor.
     let mut typed: Vec<((u32, u32), Spot)> = Vec::new();
+    // E08 T75b: the tiles the objects laid out block or are visited on, and the boats, laid out
+    // after them ([`boats_laid_out`]).
+    let mut covered: Vec<Spot> = Vec::new();
+    let mut boats: Vec<(Spot, usize)> = Vec::new();
     for &((x, y, z), shape) in plan.blockers.iter().chain(&goblins) {
         let (ax, ay, az) = (x % side, y % side, z % levels);
+        if BOAT_OBJECTS.contains(&shape) {
+            boats.push(((ax, ay, az), shape));
+            continue;
+        }
         let (blocked, visitable) = masks(shape);
         let covers = |&((hx, hy, hz), _): &(Spot, _)| {
             hz == az
@@ -942,8 +1094,17 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             let mut o = object(ax, ay, template, body(kind, v, identifier));
             o.pos.z = az;
             m.objects.push(o);
+            covered.extend(
+                blocked
+                    .iter()
+                    .chain(visitable)
+                    .filter_map(|&(column, row)| {
+                        Some((ax.checked_sub(column)?, ay.checked_sub(row)?, az))
+                    }),
+            );
         }
     }
+    boats_laid_out(&mut m, &boats, &mut covered);
     let colours: Vec<u8> = plan.players.iter().map(|&(colour, _)| colour).collect();
     // E08 T42: the hero with Nomads (AB and SoD know the creature).
     let nomads = plan
@@ -998,7 +1159,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
                 worn[17] = Some(0);
             }
             for &artifact in worn_kit {
-                let (_, slot) = MOVERS.iter().find(|&&(a, _)| a == artifact).unwrap();
+                let movers = MOVERS.iter().chain(&SEAFARERS);
+                let (_, slot) = movers.into_iter().find(|&&(a, _)| a == artifact).unwrap();
                 worn[*slot] = Some(artifact);
             }
             for &(artifact, slot) in parts {
@@ -1042,6 +1204,37 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         m.objects.push(o);
     }
     m
+}
+
+/// The plan's boats laid out after its other objects (E08 T75b), each where the setup takes it
+/// (ADV-SEA-001): on water, on no tile an object blocks or is visited on (`covered`), and on no
+/// earlier boat's tile (the heroes stand on land, [`lay_out`]); a boat anywhere else is left out.
+/// A map with boats has its coast marked as the game's maps have (the flag of every tile but
+/// water with water on a neighbour, `h3_map::writer`'s): a boat lands only on the coast
+/// (ADV-SEA-003, D-42). Plans without boats keep their maps (the committed ones, `fixtures.rs`).
+fn boats_laid_out(m: &mut RawMap, boats: &[(Spot, usize)], covered: &mut Vec<Spot>) {
+    let side = m.terrain.size;
+    if !boats.is_empty() {
+        let water: Vec<bool> = m.terrain.tiles.iter().map(|t| t.terrain == 8).collect();
+        for (i, tile) in m.terrain.tiles.iter_mut().enumerate() {
+            let (x, y, z) = (i % side, i / side % side, i / side / side);
+            let near = |c: usize| c.saturating_sub(1)..=(c + 1).min(side - 1);
+            let coast = near(y).any(|ny| near(x).any(|nx| water[(z * side + ny) * side + nx]));
+            if !water[i] && coast {
+                tile.flags |= codes::COAST;
+            }
+        }
+    }
+    for &((x, y, z), shape) in boats {
+        let index = (usize::from(z) * side + usize::from(y)) * side + usize::from(x);
+        if m.terrain.tiles[index].terrain == 8 && !covered.contains(&(x, y, z)) {
+            covered.push((x, y, z));
+            let template = 1 + u32::try_from(shape).unwrap();
+            let mut o = object(x, y, template, Body::None);
+            o.pos.z = z;
+            m.objects.push(o);
+        }
+    }
 }
 
 /// The plan's map written, read back and imported, and a game started on it with `seed`.
@@ -1731,7 +1924,10 @@ fn landing(
         .iter()
         .take_while(|k| matches!(k, AdventureEventKind::HeroStepped { .. }))
         .count();
-    prop_assert!(kinds.len() <= steps + 1, "{:?}", kinds);
+    // (E08 T75b) A sea pickup leaves at its visit (ADV-PIK-014 to -017): its removal follows.
+    let leaves = steps + 2 == kinds.len()
+        && matches!(kinds.last(), Some(AdventureEventKind::ObjectRemoved { .. }));
+    prop_assert!(kinds.len() <= steps + 1 || leaves, "{:?}", kinds);
     // A live event on the last tile stepped onto stopped the move: fired, or held on a tile a
     // monster guards, whose visit comes first (E08 T63b, GAM-DEC-007; the plans' events fire for
     // every colour, computers too).
@@ -1809,6 +2005,67 @@ fn stops_on(before: &GameState, rules: &GameRuleset, pos: TilePos) -> bool {
     let land = tile.and_then(|t| rules.adventure().passage(t.terrain));
     let (blocked, visited) = live_bits(before, pos);
     matches!(land, Some(Passage::Land(_))) && (!blocked || visited)
+}
+
+/// A move's rules at sea (E08 T75b; design §7, §8, §15): a hero not in a boat steps onto no water
+/// tile an object still on the map is visited on, nor visits one from the shore (ADV-PIK-018,
+/// D-46: only a boat visits the sea's objects, and no flight passes one), but where a hero in a
+/// boat stands, who is met there (ADV-SEA-005); a boarding or a landing
+/// converts the hero's points (ADV-SEA-002, -003; D-41): to at most the new maximum with free
+/// boarding (HER-ADV-009, the Admiral's Hat), to 0 without.
+fn check_sea_move(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    hero: HeroId,
+    path: &[TilePos],
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let afloat = before
+        .adventure()
+        .hero(hero)
+        .is_some_and(|h| h.boat.is_some());
+    let heroes = before.adventure().heroes();
+    for &tile in path.iter().filter(|_| !afloat) {
+        // A hero in a boat on the tile is met there, whatever lies under it (ADV-SEA-005: from
+        // the shore too; D-46 leaves such a tile open).
+        let met = heroes.iter().any(|h| h.pos == tile && h.id != hero);
+        let entrance = is_water(before, rules, tile) && live_bits(before, tile).1 && !met;
+        let adventure = before.adventure();
+        let objects: Vec<_> = (adventure.map().objects().iter().enumerate())
+            .filter(|&(i, o)| !adventure.is_removed(i) && o.covers(tile).1)
+            .map(|(_, o)| {
+                o.object_type
+                    .and_then(|ty| rules.adventure().object_type(ty))
+                    .map(|ty| ty.key.to_string())
+            })
+            .collect();
+        let movement = h3_heroes::movement(before.hero(hero).unwrap(), rules.core());
+        prop_assert!(
+            !entrance,
+            "{:?} onto {:?} by {:?}: {:?} {:?}",
+            hero,
+            tile,
+            path,
+            objects,
+            movement
+        );
+    }
+    let converted = events.iter().any(|e| {
+        matches!(e, GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::Boarded { hero: h, .. }
+                | AdventureEventKind::Landed { hero: h, .. },
+            ..
+        }) if *h == hero)
+    });
+    if let Some(on) = after.adventure().hero(hero).filter(|_| converted) {
+        let details = after.hero(hero).unwrap();
+        if h3_heroes::free_boarding(details, rules.core()) {
+            prop_assert!(on.movement <= on.max_movement, "{:?}", on);
+        } else {
+            prop_assert_eq!(on.movement, 0, "{:?}", on);
+        }
+    }
+    Ok(())
 }
 
 /// The player who acts: the one whose turn is running (sequential play: one at a time), or, while
@@ -2569,12 +2826,13 @@ fn check_conservation(
             });
             for (i, o) in left {
                 // E08 T64b: a chest leaves the map with the visit, its gold given only when its
-                // choice takes it ([`visit_gains`]; ADV-PIK-005).
-                let chest = matches!(
+                // choice takes it ([`visit_gains`]; ADV-PIK-005); (E08 T75b) a find that leaves
+                // gives what its artifact and turn say, [`visit_gains`]' too (ADV-PIK-014 to -016).
+                let apart = matches!(
                     rules.adventure().object_type(object_type).map(|t| &t.kind),
-                    Some(ObjectKind::Chest(_))
+                    Some(ObjectKind::Chest(_) | ObjectKind::Find(_))
                 );
-                if !chest {
+                if !apart {
                     contents.extend(o.contents.iter().copied());
                 }
                 // A monster that joins (all of it, of its creature) gives its treasure; one that
@@ -2905,6 +3163,25 @@ fn emptied<'s>(before: &'s GameState, after: &'s GameState) -> impl Iterator<Ite
     (0..before.adventure().map().objects().len()).filter(move |&i| !is(before, i) && is(after, i))
 }
 
+/// The finds that left the map between `before` and `after` (E08 T75b; ADV-PIK-014 to -016): a
+/// sea pickup leaves at its visit instead of being emptied, so its gains come at its removal.
+fn left<'s>(
+    rules: &'s GameRuleset,
+    before: &'s GameState,
+    after: &'s GameState,
+) -> impl Iterator<Item = usize> + 's {
+    let map = before.adventure().map();
+    (0..map.objects().len()).filter(move |&i| {
+        let ty = map.objects()[i].object_type;
+        let kind = ty
+            .and_then(|ty| rules.adventure().object_type(ty))
+            .map(|ty| &ty.kind);
+        !before.adventure().is_removed(i)
+            && after.adventure().is_removed(i)
+            && matches!(kind, Some(ObjectKind::Find(find)) if find.leaves)
+    })
+}
+
 /// Resources and their amounts, in order.
 type Amounts = Vec<(ResourceId, u32)>;
 
@@ -2932,8 +3209,8 @@ fn visit_gains(
     let mut gains: Amounts = chest.filter(|_| gold).into_iter().collect();
     // A find's artifact when its hero receives it, with a fixed entry's resources (E08 T72), else
     // what the artifact turns into (the Corpse's gold, the Wagon's own resources, nothing when it
-    // is lost), or its resources.
-    for i in emptied(before, after) {
+    // is lost), or its resources; (E08 T75b) a find that leaves, at its removal.
+    for i in emptied(before, after).chain(left(rules, before, after)) {
         let o = &map.objects()[i];
         let ty = o
             .object_type
@@ -3330,6 +3607,13 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
         let checked = h3_heroes::validate(details, rules.core());
         prop_assert!(checked.is_ok(), "{:?}: {:?}", hero.id, checked);
     }
+    // E08 T75b: the boats' invariants (design §6; ADV-SEA-001).
+    let adventure = state.adventure();
+    prop_assert!(
+        adventure.check_boats(rules.adventure()),
+        "{:?}",
+        adventure.boats().collect::<Vec<_>>()
+    );
     for player in (0..state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let own = |hero: HeroId| {
             state
@@ -4464,8 +4748,16 @@ proptest! {
                 let (at, _) = landing(&before, start, path, &events)?;
                 prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), Some(at));
                 // E08 T42 (increment 5's exit criterion 3): a flight or a water walk passes over
-                // water and blocked tiles but ends where a hero may stop, as a walk does.
-                prop_assert!(stops_on(&before, rules, at), "{:?} ends on {:?}", hero, at);
+                // water and blocked tiles but ends where a hero may stop, as a walk does; (E08
+                // T75b) a boat's hero at sea.
+                let afloat = state.adventure().hero(hero).is_some_and(|h| h.boat.is_some());
+                prop_assert!(
+                    stops_on(&before, rules, at) || (afloat && is_water(&before, rules, at)),
+                    "{:?} ends on {:?}",
+                    hero,
+                    at
+                );
+                check_sea_move(rules, (&before, &state), hero, path, &events)?;
             }
             let player = player_of(&before, actor);
             check_rewards(rules, (&before, &state), &command, &events)?;
@@ -5166,4 +5458,161 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         changed += usize::from(second(&STRICT, seed, 1) != second(&STRICT, seed, 20_000));
     }
     assert!(changed > 0);
+}
+
+/// What a set of games did at sea (E08 T75b): the boardings, those with free boarding (the
+/// Admiral's Hat's conversion), the landings, the accepted moves of a hero in a boat and those
+/// over Favorable Winds, the sea's pickups taken (Flotsam, the Sea Chest, the Shipwreck Survivor,
+/// the Ocean Bottle), the battles with a hero in a boat (on the deck: against a monster or a
+/// hero; on the two boats) and the boats that left the map with their heroes.
+#[derive(Debug, Default)]
+struct Sailed {
+    boardings: usize,
+    free: usize,
+    landings: usize,
+    sails: usize,
+    winds: usize,
+    pickups: [usize; 4],
+    monsters: usize,
+    deck: usize,
+    two_boats: usize,
+    boats_removed: usize,
+}
+
+impl Sailed {
+    /// Counts a command `apply` accepted on `before`, leaving `after`, and its events.
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        (before, after): (&GameState, &GameState),
+        command: &GameCommand,
+        events: &[GameEvent],
+    ) {
+        let part = rules.adventure();
+        let key = |ty| part.object_type(ty).map(|ty| ty.key.to_string());
+        let afloat = |state: &GameState, hero| {
+            state
+                .adventure()
+                .hero(hero)
+                .is_some_and(|h| h.boat.is_some())
+        };
+        if let Some((hero, path)) = as_move(command).filter(|&(hero, _)| afloat(before, hero)) {
+            self.sails += 1;
+            let objects = before.adventure().map().objects();
+            let winds = |&at: &TilePos| {
+                objects.iter().any(|o| {
+                    o.lies_on(at)
+                        && o.object_type.and_then(key).as_deref() == Some("sod:favorable_winds")
+                })
+            };
+            self.winds += usize::from(path.iter().any(winds));
+            let _ = hero;
+        }
+        for event in events {
+            match event {
+                GameEvent::Adventure(AdventureEvent { kind, .. }) => match *kind {
+                    AdventureEventKind::Boarded { hero, .. } => {
+                        self.boardings += 1;
+                        let details = after.hero(hero).unwrap();
+                        self.free += usize::from(h3_heroes::free_boarding(details, rules.core()));
+                    }
+                    AdventureEventKind::Landed { .. } => self.landings += 1,
+                    AdventureEventKind::BoatRemoved { .. } => self.boats_removed += 1,
+                    AdventureEventKind::ObjectRemoved { object_type, .. } => {
+                        let keys = [
+                            "base:flotsam",
+                            "base:sea_chest",
+                            "base:shipwreck_survivor",
+                            "base:ocean_bottle",
+                        ];
+                        let found = key(object_type);
+                        if let Some(i) = keys.iter().position(|&k| Some(k) == found.as_deref()) {
+                            self.pickups[i] += 1;
+                        }
+                    }
+                    _ => {}
+                },
+                GameEvent::BattleStarted { heroes, tile, .. } => {
+                    let boats = heroes
+                        .iter()
+                        .flatten()
+                        .filter(|&&h| afloat(after, h))
+                        .count();
+                    let monster = heroes[1].is_none() && is_water(after, rules, *tile);
+                    self.monsters += usize::from(boats > 0 && monster);
+                    self.deck += usize::from(boats == 1 && !monster);
+                    self.two_boats += usize::from(boats == 2);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The moves of `legal` that board an empty boat or move a hero in a boat (E08 T75b), or `legal`
+/// if none does: random play's preference at sea ([`the_plans_sail`], the sea XL map's test).
+pub(super) fn at_sea(state: &GameState, legal: Vec<GameCommand>) -> Vec<GameCommand> {
+    let adventure = state.adventure();
+    let afloat = |hero| adventure.hero(hero).is_some_and(|h| h.boat.is_some());
+    let sails = |c: &&GameCommand| {
+        as_move(c).is_some_and(|(hero, path)| {
+            afloat(hero) || path.last().is_some_and(|&t| adventure.is_empty_boat(t))
+        })
+    };
+    let moves: Vec<GameCommand> = legal.iter().filter(sails).cloned().collect();
+    if moves.is_empty() { legal } else { moves }
+}
+
+/// The plans sail (E08 T75b, design §15; increment 8's exit criteria 2 to 6): over a fixed set of
+/// cases (proptest's deterministic runner), with steps that prefer a boarding or a move of a hero
+/// in a boat when one is legal, random play boards with and without free boarding, sails, over
+/// Favorable Winds too, lands, takes each of the sea's four pickups, fights at sea (a monster on
+/// water, a hero on the deck from the shore, the two boats) and loses a boat with its beaten
+/// hero; every command keeps the boats' invariants and the moves the sea's rules
+/// (`every_step_keeps_the_commands_invariants`: `check_invariants`, [`check_sea_move`]).
+// covers: ADV-SEA-001, ADV-SEA-002, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005, ADV-SEA-006
+#[test]
+fn the_plans_sail() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let steps = vec(
+        prop_oneof![
+            3 => any::<u16>().prop_map(|n| (Step::Visit(n), true)),
+            4 => any::<u16>().prop_map(|n| (Step::Legal(n), true)),
+            1 => any::<u16>().prop_map(|n| (Step::Legal(n), false)),
+            2 => any::<u16>().prop_map(|n| (Step::Fight(n), false)),
+            1 => Just((Step::EndTurn, false)),
+        ],
+        0..120,
+    );
+    let strategy = (plan(), any::<bool>(), any::<u64>(), steps);
+    let mut sailed = Sailed::default();
+    for _ in 0..512 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for (step, sea) in &steps {
+            let mut legal = options(&state, rules);
+            if *sea {
+                legal = at_sea(&state, legal);
+            }
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
+                sailed.count(rules, (&before, &state), &command, &events);
+            }
+        }
+    }
+    let s = &sailed;
+    eprintln!("{s:?}");
+    assert!(s.boardings > 0 && s.free > 0 && s.landings > 0, "{s:?}");
+    assert!(
+        s.sails > 0 && s.winds > 0 && s.pickups.iter().all(|&n| n > 0),
+        "{s:?}"
+    );
+    assert!(
+        s.monsters > 0 && s.deck > 0 && s.two_boats > 0 && s.boats_removed > 0,
+        "{s:?}"
+    );
 }

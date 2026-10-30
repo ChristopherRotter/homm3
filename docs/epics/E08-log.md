@@ -8462,3 +8462,91 @@ fingerprint); the original data staged from the user's computer.
   `hsv_to_rgb` 0x5232F0) disagreed with the executable, fixed with `--fix-sizes` in this pull
   request (`docs/exe/map.toml` is common), the check then clean; `clippy -p h3-map -p h3-cli
   --all-targets` clean, the CLI's replay test passed (the scope builds no `h3-cli`).
+
+### Increment 8, round 8: T75b, the properties at sea, the sea XL and its benchmarks, the census (2026-10-30, `adventure/e08-t75b`)
+
+**The cut** (decision 190): whole, the user's "Whole, one PR" (recommended was two: the properties
+and the census, then the sea XL with its workloads). **Baseline:** `master` f33f837 (#586, #587
+merged; CI green on it); the sandbox's light gates passed on its code (CI's fingerprint); the
+original data staged from the user's computer.
+
+- **The plans' sea** (`h3-map`'s `tests/play.rs`; design §15): eight kinds appended to `KINDS`
+  (`SEA`: the three boats, Flotsam, the Sea Chest, the Shipwreck Survivor, the Ocean Bottle with a
+  message, Favorable Winds as a ground of one tile), and a draw appended last to `plan()`
+  (`Sea`, in three plans of four): a strait of two to four columns over the whole height of a
+  hero's level, one or two columns east of it; one to three boats, two of three on its coast
+  beside the hero's rows; up to five pickups, winds and monsters on it; the hero's Navigation (0
+  to 3) and one of the Necklace, the Sea Captain's Hat or (SoD only) the Admiral's Hat, the Hat
+  half the time (`SEAFARERS`). `lay_out` lays the boats out last (`boats_laid_out`: on water, on
+  no tile an object covers, one a tile; any other left out, as the setup would refuse it) and,
+  on a map with boats, marks the coast as the writer does (every tile but water with water on a
+  neighbour: a boat lands only on the coast, D-42); a plan without boats keeps its map, so the
+  committed fixtures (`fixtures.rs`) are unchanged.
+- **The checks after every command** (`every_step_keeps_the_commands_invariants`):
+  `check_invariants` asserts `AdventureState::check_boats` (design §6's invariants); a move ends
+  where a hero may stop or, a hero in a boat, at sea; `check_sea_move`: a hero not in a boat
+  steps onto no water tile an object still on the map is visited on, nor visits one from the
+  shore (ADV-PIK-018, D-46), and a boarding or a landing leaves the hero at most its new maximum
+  with free boarding and 0 without (ADV-SEA-002, -003; D-41); `landing` takes a pickup's removal
+  after its visit; `visit_gains` counts a find that leaves at its removal by the find's own rules
+  (its artifact, its turn) and `check_conservation`'s removal path leaves finds to it, as chests
+  (a first try counted a Flotsam twice; 600 cases found it). A second 600-case run found a walker
+  on the shore attacking a hero in a boat that had entered a Keymaster's tent lying in the strait
+  (an entered object on water, which a boat enters): legal (ADV-SEA-005), so the check skips a
+  tile another hero stands on. `view.rs`: `vary` keeps a boat's tile
+  water and adds no blocker over it (a boat the viewer never sees may go, as a blocker), and
+  `check_told` follows the boats: a boarding takes the empty boat the viewer saw, a landing leaves
+  one facing its way, a hero's boat changes only by a boarding, a landing or its leaving, a boat
+  shows untold only where the viewer's sight grew. The cover test `the_plans_sail` (512 fixed
+  cases, steps that prefer a boarding or a sail, `at_sea`): 406 boardings (34 with free boarding),
+  202 landings, 679 sails (27 over the winds), the pickups 11, 14, 8 and 18, 14 battles with a
+  monster on water, 74 on the deck, 13 on the two boats, 49 boats leaving with their heroes. The
+  appended draw moved every later draw of the fixed-case tests; all kept their counts. Stress: the
+  three properties at 600 cases (the gate runs 48).
+- **The passage's fix** (`h3-adventure`'s `state/passage.rs`; ADV-PIK-018 amended): a flight's
+  step up off the visitable tile of an object not visited from above (ADV-OBJ-004's pass, landing
+  nowhere) returned the pass before D-46's water test, so a flyer leaving a chart upward crossed a
+  water tile a Shipwreck Survivor is visited on (the property's case: hero 1, Angel Wings, from a
+  chart onto the Survivor's water tile and back to land). Now a water tile an object is visited
+  on refuses that flight too (`Blocked`), the reachable-tiles query with it (it calls the
+  passage); the other modes' `FromAbove` unchanged. New test
+  `a_flight_up_off_a_closed_top_never_passes_a_water_tile_an_object_is_visited_from` (fails
+  without the fix). The reading behind D-46 closes the node onto the water entrance itself
+  (`pathfinder_expand`'s flying-only branch 0x4B27FB to 0x4B282D, survey §16's re-read), not by
+  the step's source, so the early return was the engine's own: the fix follows the reading; no
+  batch row covers a flight up off a closed top onto it. No replay changed (determinism).
+- **The sea XL** `fixtures/maps/e08-sea-144.h3m` (1 778 bytes; `tests/sea_xl_map.rs`, written by
+  `h3_map::writer` with `sea_map.rs`' templates and helpers, now `pub(super)`): SoD, 144 × 144, one
+  level of sea with sixteen 5 × 5 grass islands, one in each 36 × 36 cell; red's four heroes and
+  blue's four on their islands' east coasts (types 0, 17, 34, …, 119), each with Navigation 1 to
+  3 in turn and in turn the Admiral's Hat, the Necklace, the Sea Captain's Hat or nothing, each
+  beside its boat; seven more boats beside the other islands (15, Myth and Legend's count; types
+  0, 1, 2 in turn); a pickup in each cell's sea (the four in turn) and Favorable Winds in every
+  other cell's. Its tests: committed as written and importing (8 heroes, 15 boats, 24 typed
+  objects), and `the_sea_xl_map_plays_and_forks` (400 steps preferring the sea: boardings and a
+  landing, the boats' invariants; a fork evolves as its parent). 12 × 12 islands first: random play
+  boarded too seldom (105 queries of heroes in boats in two games of 28 days); 5 × 5 gives 1 832
+  in two games of 56 days.
+- **The benchmarks:** `h3 adventure bench --workload reach` queries the heroes in boats apart
+  (`heroes_by_lift` returns them first; `sail_queries`, the third counted function, `Lift` keeping
+  the three apart); `fork` reports the heroes aboard at the forks (`BenchResult::afloat`). New
+  baselines: `reach-sea-xl-144` (2 games of 56 days, 1 832 queries, 4 193 142 577 Ir, about 2.29 M
+  a query: `Reach::expand_sail` 91 %, `AdventureState::passage` 55 %, `Search::landed` 8.7 %,
+  which computes the land's day points, `day_points`, at every landing tile: once a query would do,
+  the inbox) and `fork-sea-xl-144` (100 000 forks after 7 days, one hero aboard, 3 654 Ir a fork,
+  about `fork-xl-144`'s 3 564 with eight heroes too). The benches README's rows:
+  `shared/e08-t75b-benches`. The CLI's bench test runs both on the sea XL.
+- **The census** (`--with-original-data`, `examples/original_data.rs` as T72 built it): 160 of 160
+  maps read, every static layer imports and validates (no boat refused), the same 8 maps whole;
+  no hero placed on water (`HeroOnWater` among no map's reasons); 118 boats on 41 maps (20, 51,
+  47 by type), 2 019 Flotsam, 826 Sea Chests, 362 Survivors, 29 bottles, 732 holes, 154 winds
+  (none of a picture the import lacks), 9 events on water: T72's counts.
+- *Agent's calls (change freely):* the strait's draw and weights; boats laid out last; the coast
+  marked only on maps with boats; the sea XL's layout (one level, small islands so that random
+  play boards); the reach workload's 56 days.
+- **Versions:** none.
+- **Gates:** the scoped verify with the original data passed every step it runs (coverage,
+  determinism with the 32 replays, `bench-check` with the thirteen workloads, the 160 maps,
+  `exe.py check`); `clippy -p h3-cli -p h3-map -p h3-adventure --all-targets` clean, `cargo test
+  -p h3-cli` passed (the scope builds no `h3-cli`), `cargo check --workspace --all-targets` clean;
+  `every_step_keeps_the_commands_invariants` and `view.rs`' properties at 600 cases passed.
