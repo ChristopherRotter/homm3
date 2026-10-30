@@ -1,0 +1,14 @@
+# The date's status window on a week's first day (E24 M3 T5b2; design §4.9): the first day of the
+# second month's third week written, the date's kind asked after Red's second hero's selection: the week's
+# picture (NewWeek3.def, the week of the month's) and "Week 3", no sound.
+size = 36
+terrain = "dirt"
+heroes = [
+    { at = [4, 6] },
+    { at = [8, 6], class = 3 },
+    { at = [30, 30], owner = 1 },
+]
+select = { hero = [8, 6] }
+date = [2, 3, 1]
+status = 1
+view = [0, 0, 0]

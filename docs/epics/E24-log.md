@@ -1746,3 +1746,46 @@ other kinds, another player's turn, a resource found and a text, M4's); `master`
   (0.4); *Tale of two lands* 11.2 %, 1.2 (1.2); `path-objects` 5.2 %, 0.9–1.0 (1.0). The
   status window is part of the background: no sequence changes it (M4's events and T6's clicks
   will, and a changed text draws only its box again, §4.7).
+
+### M3 T5b2 — the date's and the kingdom's status windows, and when each shows (2026-10-29)
+
+On `map-client/e24-m3-t5b2`, the user present (T5b2 kept whole by the user at its start; MCL-Q16
+answered: the original's income kept); `master` at 23f739b (#584 merged). The original data
+staged from the user's repo folder first; the sandbox restarted during the setup (its background
+baseline stopped): CI's green `master` the starting point.
+
+- **The reading** (design §4.9; map entries `status_date_create` 0x450DD0 and
+  `status_kingdom_create` 0x452B80 read in full, `status_date_update` 0x4511A0,
+  `status_date_vtable` 0x63BB0C, `status_date_destroy` 0x4510F0, `empty_ret` 0x5BC690,
+  `status_panel_update` 0x402B90, `status_date_week_defs` 0x660BA0, `status_date_format`
+  0x660C98, `status_side_format` 0x660D28): the date's window (the day's picture and "Day n", or
+  on a week's first day but the game's first the week's and "Week n", the day's sound), its step
+  (a frame at a view's draw 100 ms or more after the last, up to the picture's last, its
+  rectangle shown at once); the kingdom's (the towns by their halls, the counts where there are
+  towns, "Allies:" and "Enemies:", the flags of the players in the game by team); every view's
+  draw ends with the chooser, so a timed kind's end is met at the first draw at or after it; a
+  centring `hero_select` and a key's step's end build the window again.
+- **Built** (design §4.9): the live part's `Status::Date`, `Status::Kingdom`, `Status::kind`,
+  `Kingdom::selection`; `status::window`'s two windows (`DateArt`, `DateShows`), the layout's
+  `status_date` and `status_kingdom`, the tables' `[map.status.date]`; the catalogue's keys
+  `map.status.date`, `map.status.side`, `word.allies`, `word.enemies`; the gate's checks of the
+  pictures, the halls' and flags' DEFs and the date's pictures' frames (exactly); the timeline's
+  chooser (`Loop::choose`, `Loop::date_window`, `Start::asked`, `Asked`), `Cue::Effect`,
+  `Sound::effect`, `SoundRules::effects`, the window's stream for a sound played once; a map's
+  start without a selection the date's window; the harness's `Mem.status` for the kinds 1 and 2,
+  `Mem.ask_status`, `Mem.status_shown`, `h3map.ask_status`; a situation's `status` and `teams`, a
+  sequence's `status`; `TownBuilt::TownHall` and `CityHall`; the situations `status-date`,
+  `status-week`, `status-kingdom`; the sequences `status-kingdom-end`, `status-date-end`.
+- **Seen:** nothing the reading had not said: the three stills and both sequences exact at their
+  first capture.
+- **Checked:** `h3map.py still` then `set --only` on the three situations, exact; `frames --only`
+  on both sequences, every frame exact (6, 19), the viewer's timeline as recorded; `drawn`: the 47
+  situations and 13 sequences recorded before all the same; `drawn --record` (50 situations, 484
+  frames of 15 sequences); unit tests (the windows, the date's pictures, the chooser over time,
+  its rebuilds, the sound, the situations' and sequences' new keys); coverage 100 %; clippy; the
+  window under Xvfb (`status-date-end`, `status-kingdom-end`, `status-kingdom`, `status-week`,
+  `--check 10`): every frame read back exact, made as the same frame composed afresh, every
+  change the headless loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each): the
+  same: `walk-1` 24.8 % uploaded, a frame made in a median 0.5 ms (0.4–0.6); *Tale of two lands*
+  11.2 %, 1.2–1.3 (1.2).

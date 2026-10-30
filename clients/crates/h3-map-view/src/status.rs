@@ -1,9 +1,18 @@
 //! The adventure screen's status window (E24 M3 T5b1, *provisional*; `docs/epics/E24-design.md`
-//! §4.8): what it shows of the live part's [`Status`], a hero's (`AdStatHr.pcx`, built by
-//! 0x451AB0) or a town's (`AdStatCs.pcx`, 0x4521F0), as the layout's `status_hero` and
-//! `status_town` panels at the dialog's area 2 (`status_window_choose` 0x415DE0 chooses the kind:
-//! the selected hero's, else the selected town's). The date's and the kingdom's windows and when
-//! each shows are T5b2's; the other player's turn and the messages M4's.
+//! §4.8, §4.9): what it shows of the live part's [`Status`], a hero's (`AdStatHr.pcx`, built by
+//! 0x451AB0), a town's (`AdStatCs.pcx`, 0x4521F0), since T5b2 the date's (`AdStatOt.pcx`,
+//! 0x450DD0) or the kingdom's (`AdStatin.pcx`, 0x452B80), as the layout's `status_hero`,
+//! `status_town`, `status_date` and `status_kingdom` panels at the dialog's area 2
+//! (`status_window_choose` 0x415DE0 chooses the kind: a kind asked for a time, else the selected
+//! hero's, else the selected town's, else the date's; when each shows over time is
+//! [`crate::timeline`]'s). The other player's turn and the messages are M4's.
+//!
+//! The date's: the day's picture (`NewDay.def`) and "Day n", or on a week's first day but the
+//! game's first the week's (`NewWeek1.def` to `NewWeek4.def` by the week of the month) and "Week
+//! n" (the executable's "%s %d" with `GENRLTXT`'s words), the picture's frame the window's step.
+//! The kingdom's: the viewer's towns counted by their halls under the four halls' pictures (a count
+//! only where there are towns), "Allies:" and "Enemies:" (the executable's "%s:") and the flags of
+//! the players in the game, the viewer's team's on the first row, the others' on the second.
 //!
 //! A hero's: its large portrait, its name, its four primary skills (each cut to 99 at the top and
 //! to 0, power and knowledge to 1, at the bottom: 0x451CE4), its spell points, its morale and luck
@@ -28,7 +37,9 @@ use serde::Deserialize;
 
 use crate::layout::AdventureLayout;
 use crate::lists::ListArt;
-use crate::live::{HeroStatus, Live, Selected, Stack, Status, TownStatus};
+use crate::live::{
+    Date, DateStatus, HeroStatus, KingdomStatus, Live, Selected, Stack, Status, TownStatus,
+};
 
 /// The status window's control ids (ours, design §4.8; the original numbers its items from 2000
 /// in the order it adds them, the army's a picture and its count per filled slot).
@@ -65,14 +76,44 @@ pub mod id {
     pub const STACKS: u16 = 2011;
     /// The army's counts, the first of seven.
     pub const COUNTS: u16 = 2021;
+    /// The date's picture (E24 M3 T5b2).
+    pub const DATE_PICTURE: u16 = 2001;
+    /// The date's text.
+    pub const DATE_TEXT: u16 = 2002;
+    /// The kingdom's halls, the first of four (the villages, Town Halls, City Halls, Capitols).
+    pub const HALLS: u16 = 2001;
+    /// The kingdom's counts of towns by hall, the first of four (the original's have no id).
+    pub const HALL_COUNTS: u16 = 2021;
+    /// The kingdom's label of the viewer's team (no id in the original).
+    pub const ALLIES: u16 = 2031;
+    /// The kingdom's label of the others.
+    pub const ENEMIES: u16 = 2032;
+    /// The flags of the viewer's team, the first of eight places.
+    pub const ALLY_FLAGS: u16 = 2041;
+    /// The flags of the others, the first of eight places.
+    pub const ENEMY_FLAGS: u16 = 2051;
 }
+
+/// The kingdom's halls.
+pub const HALLS: u16 = 4;
+/// The places of a row of flags.
+pub const FLAGS: u16 = 8;
 
 /// The army's slots.
 pub const SLOTS: u16 = 7;
 
-/// The string catalogue's keys the window shows numbers by (`clients/text/keys.toml`); the names
-/// are the `hero` and `town-name` families' ([`hero_key`], [`town_key`]).
-pub const KEYS: [&str; 2] = ["map.status.number", "map.status.thousands"];
+/// The string catalogue's keys the window shows numbers by (`clients/text/keys.toml`), since T5b2
+/// the date (with the panels' `word.day` and `word.week`, [`crate::panels::KEYS`]) and the
+/// kingdom's labels with their words; the names are the `hero` and `town-name` families'
+/// ([`hero_key`], [`town_key`]).
+pub const KEYS: [&str; 6] = [
+    "map.status.number",
+    "map.status.thousands",
+    "map.status.date",
+    "map.status.side",
+    "word.allies",
+    "word.enemies",
+];
 
 /// The key of the hero type `hero`'s name (the `hero` family over `HOTRAITS.TXT`, keyed by the
 /// type in the map viewer: *provisional*, the battle client keys its asset tables' heroes).
@@ -110,6 +151,62 @@ pub struct StatusArt {
     /// The forts whose standing gives the fort's frames 0 on, in the order tested (the Fort 7,
     /// Citadel 8, Castle 9); none of them the next.
     pub forts: Vec<u32>,
+    /// The date's window (E24 M3 T5b2): its pictures and their timing.
+    pub date: DateArt,
+}
+
+/// The date's window's pictures and timing (the tables' `[map.status.date]`; E24 M3 T5b2, design
+/// §4.9).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DateArt {
+    /// The day's picture (`NewDay.def`).
+    pub day: String,
+    /// The weeks' pictures by the week of the month, 1 to 4 (the table 0x660BA0).
+    pub weeks: Vec<String>,
+    /// The frames of each picture's group 0: the day's, then the weeks'.
+    pub frames: Vec<u32>,
+    /// The least time between two frames' steps, ms (the panel's +0x40).
+    pub step: u32,
+    /// The sound the day's window plays when built (`newday.wav`; the week's plays none).
+    pub sound: String,
+}
+
+/// What the date's window shows for a date (0x450EB4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DateShows<'a> {
+    /// Its picture.
+    pub def: &'a str,
+    /// The picture's frames.
+    pub frames: u32,
+    /// The week's (its text the week's, no sound), not the day's.
+    pub week: bool,
+}
+
+impl DateArt {
+    /// What the window shows for `date`: on a week's first day but the game's first the week's
+    /// picture, else the day's (a week past the table's the day's too).
+    #[must_use]
+    pub fn shows(&self, date: Date) -> DateShows<'_> {
+        let first = date.week == 1 && date.month == 1;
+        let week = usize::from(date.week)
+            .checked_sub(1)
+            .filter(|_| date.day == 1 && !first)
+            .and_then(|i| self.weeks.get(i).map(|def| (i, def)));
+        let frames = |i: usize| self.frames.get(i).copied().unwrap_or(1);
+        match week {
+            Some((i, def)) => DateShows {
+                def,
+                frames: frames(i.saturating_add(1)),
+                week: true,
+            },
+            None => DateShows {
+                def: &self.day,
+                frames: frames(0),
+                week: false,
+            },
+        }
+    }
 }
 
 /// The primary skills' bounds as shown (0x451CE4).
@@ -136,6 +233,10 @@ impl StatusArt {
         }
         if self.thousands < 1 {
             return Err("thousands below 1".into());
+        }
+        let date = &self.date;
+        if date.frames.len() != date.weeks.len().saturating_add(1) || date.frames.contains(&0) {
+            return Err("the date's pictures and their frames do not match".into());
         }
         Ok(())
     }
@@ -181,6 +282,13 @@ pub fn window<'l>(
 ) -> Result<Option<(&'l Dialog, Shown)>, String> {
     let kingdom = &live.kingdom;
     Ok(match (&kingdom.status, kingdom.selected) {
+        (Some(Status::Date(status)), _) => Some((
+            &layout.status_date,
+            date_window(art, *status, kingdom.date, texts),
+        )),
+        (Some(Status::Kingdom(status)), _) => {
+            Some((&layout.status_kingdom, kingdom_window(status, texts)))
+        }
         (Some(Status::Hero(status)), Selected::Hero(at)) => match kingdom.heroes.get(at) {
             Some(hero) => {
                 let portrait = art
@@ -206,6 +314,71 @@ pub fn window<'l>(
         },
         _ => None,
     })
+}
+
+/// The date's window (0x450DD0): its picture and frame, and the day's or the week's text
+/// ("%s %d", 0x660C98, with `GENRLTXT`'s word).
+fn date_window(art: &StatusArt, status: DateStatus, date: Date, texts: &Catalogue) -> Shown {
+    let shows = art.date.shows(date);
+    let (word, number) = if shows.week {
+        ("word.week", date.week)
+    } else {
+        ("word.day", date.day)
+    };
+    let args = Args::new()
+        .text("word", &texts.text(word, &Args::new()))
+        .number("number", i64::from(number));
+    let mut shown = Shown::default();
+    shown.defs.insert(id::DATE_PICTURE, shows.def.into());
+    shown.frames.insert(id::DATE_PICTURE, status.frame);
+    shown
+        .texts
+        .insert(id::DATE_TEXT, texts.text("map.status.date", &args));
+    shown
+}
+
+/// The kingdom's window (0x452B80): the halls' frames, the counts of towns where there are any,
+/// the labels ("%s:", 0x660D28) and each row's flags from its first place, the places left over
+/// hidden.
+fn kingdom_window(status: &KingdomStatus, texts: &Catalogue) -> Shown {
+    let hidden = State {
+        hidden: true,
+        ..State::default()
+    };
+    let mut shown = Shown::default();
+    for ((hall, &count), frame) in (0..HALLS).zip(&status.halls).zip(0u32..) {
+        shown.frames.insert(id::HALLS + hall, frame);
+        let count_id = id::HALL_COUNTS + hall;
+        if count > 0 {
+            shown
+                .texts
+                .insert(count_id, number(texts, i64::from(count)));
+        } else {
+            shown.states.insert(count_id, hidden);
+        }
+    }
+    for (label, word) in [(id::ALLIES, "word.allies"), (id::ENEMIES, "word.enemies")] {
+        let args = Args::new().text("word", &texts.text(word, &Args::new()));
+        shown
+            .texts
+            .insert(label, texts.text("map.status.side", &args));
+    }
+    for (first, colours) in [
+        (id::ALLY_FLAGS, &status.allies),
+        (id::ENEMY_FLAGS, &status.enemies),
+    ] {
+        for place in 0..FLAGS {
+            match colours.get(usize::from(place)) {
+                Some(&colour) => {
+                    shown.frames.insert(first + place, u32::from(colour));
+                }
+                None => {
+                    shown.states.insert(first + place, hidden);
+                }
+            }
+        }
+    }
+    shown
 }
 
 /// A number as the window writes it (`%d`, 0x660A1C).

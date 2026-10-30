@@ -37,6 +37,10 @@ pub struct AdventureLayout {
     pub dialog: Dialog,
     /// The resource bar's panel (`resource_bar_create` 0x558BA0).
     pub resource_bar: Dialog,
+    /// The status window's panel of the date (E24 M3 T5b2, design §4.9: 0x450DD0).
+    pub status_date: Dialog,
+    /// The status window's panel of the kingdom (0x452B80).
+    pub status_kingdom: Dialog,
     /// The status window's panel of a hero (E24 M3 T5b1, design §4.8: 0x451AB0).
     pub status_hero: Dialog,
     /// The status window's panel of a town (0x4521F0).
@@ -145,6 +149,8 @@ impl AdventureLayout {
         let mut layout: Self = toml::from_str(text).map_err(|e| e.to_string())?;
         layout.dialog = layout.dialog.expanded();
         layout.resource_bar = layout.resource_bar.expanded();
+        layout.status_date = layout.status_date.expanded();
+        layout.status_kingdom = layout.status_kingdom.expanded();
         layout.status_hero = layout.status_hero.expanded();
         layout.status_town = layout.status_town.expanded();
         layout.check()?;
@@ -211,6 +217,8 @@ impl AdventureLayout {
             .items
             .iter()
             .chain(&self.resource_bar.items)
+            .chain(&self.status_date.items)
+            .chain(&self.status_kingdom.items)
             .chain(&self.status_hero.items)
             .chain(&self.status_town.items);
         let mut out = Vec::new();

@@ -3,6 +3,7 @@ use super::*;
 use alloc::vec;
 
 use crate::live::Facing;
+use crate::timeline::Asked;
 
 const SEQUENCES: &str = include_str!("../../../../map/sequences.toml");
 
@@ -16,7 +17,16 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 13);
+    assert_eq!(sequences.sequence.len(), 15);
+    // The status window's kind asked at 0 (E24 M3 T5b2).
+    let date = sequences.get("status-date-end").unwrap();
+    assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));
+    assert!(!date.walks());
+    assert_eq!(sequences.get("walk-1").unwrap().asked(), Ok(None));
+    for wrong in ["[3, 100]", "[1, 0]", "[2, 600001]", "[300, 1]"] {
+        let s = one(&format!("status = {wrong}"));
+        assert!(s.asked().unwrap_err().contains("is not [1 or 2"), "{wrong}");
+    }
     let scroll = sequences.get("scroll-2").unwrap();
     assert_eq!((scroll.situation.as_str(), scroll.ms), ("seq-scroll", 3100));
     assert_eq!(scroll.scroll_speed(), Ok(2));

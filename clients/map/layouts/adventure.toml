@@ -473,6 +473,107 @@ repeat = { count = [4, 1], step = [36, 0] }
 # and fort (`itmcls.def`), the garrison hero's mark (`townqkgh.pcx`), the silo's resources
 # (`smalres.def`: two at 75 and 87, one at 81), the gold income in `tiny.fnt`, the army's slots as a
 # hero's (the table 0x660C08, the same places).
+# The date's status window (E24 M3 T5b2; design §4.9, AdStatOt.pcx built by 0x450DD0): the picture,
+# the date's picture over it (its DEF the tables' `[map.status.date]`: the day's or the week's, its
+# frame the window's step; the DEF a column narrower than the panel) and the day's or week's text,
+# medfont centred at the top of its box.
+[status_date]
+place = [614, 400]
+
+[[status_date.items]]
+kind = "picture"
+id = 2000
+picture = "AdStatOt.pcx"
+at = [0, 0]
+size = [176, 166]
+
+[[status_date.items]]
+kind = "def"
+id = 2001
+at = [0, 0]
+size = [175, 166]
+
+[[status_date.items]]
+kind = "label"
+id = 2002
+at = [10, 10]
+size = [148, 146]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+# The kingdom's status window (E24 M3 T5b2; design §4.9, AdStatin.pcx built by 0x452B80): the four
+# halls (itmtl.def's frames 0 to 3: the villages, Town Halls, City Halls and Capitols) each with its
+# count below when it has towns (the original's text items have no id: ours 2021 on), the labels
+# of the viewer's team and of the others (no id: ours 2031, 2032), and the flags of the players in
+# the game (itgflags.def, the frame the colour), the viewer's team's on the first row from 2041
+# and the others' on the second from 2051 (the original numbers them from 2005 by colour).
+[status_kingdom]
+place = [614, 400]
+
+[[status_kingdom.items]]
+kind = "picture"
+id = 2000
+picture = "AdStatin.pcx"
+at = [0, 0]
+size = [176, 166]
+
+[[status_kingdom.items]]
+kind = "def"
+id = 2001
+def = "itmtl.def"
+at = [6, 11]
+size = [38, 38]
+repeat = { count = [4, 1], step = [42, 0] }
+
+[[status_kingdom.items]]
+kind = "label"
+id = 2021
+at = [7, 56]
+size = [37, 17]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+repeat = { count = [4, 1], step = [42, 0] }
+
+[[status_kingdom.items]]
+kind = "label"
+id = 2031
+at = [10, 103]
+size = [57, 20]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[status_kingdom.items]]
+kind = "label"
+id = 2032
+at = [10, 134]
+size = [57, 20]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[status_kingdom.items]]
+kind = "def"
+id = 2041
+def = "itgflags.def"
+at = [67, 102]
+size = [15, 20]
+repeat = { count = [8, 1], step = [15, 0] }
+
+[[status_kingdom.items]]
+kind = "def"
+id = 2051
+def = "itgflags.def"
+at = [67, 133]
+size = [15, 20]
+repeat = { count = [8, 1], step = [15, 0] }
+
 [status_town]
 place = [614, 400]
 

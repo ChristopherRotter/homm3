@@ -78,6 +78,16 @@ pub struct Situation {
     /// a week from 1 to 4 and a day from 1 to 7; as the resources, with a hero's selection.
     #[serde(default)]
     pub date: Option<[u16; 3]>,
+    /// The status window's kind the harness asks for after its selection (E24 M3 T5b2, design
+    /// §4.9): 1 the date's, 2 the kingdom's, until long after the still (the manager's +0x398 and
+    /// +0x39C, as `status_window_set_kind` 0x415D60 sets them); the next view draw builds it.
+    #[serde(default)]
+    pub status: Option<u8>,
+    /// The players' teams by colour, which the harness writes into the game (E24 M3 T5b2, design
+    /// §4.9: the kingdom's window shows the players of Red's team and the others; the writer's
+    /// maps have none, each player its own), each from 0 to 7.
+    #[serde(default)]
+    pub teams: Option<[u8; 8]>,
 }
 
 /// What a situation selects (E24 M3 T4a): Red's hero standing on a tile (after its walk) or Red's
@@ -276,6 +286,11 @@ pub enum TownBuilt {
     Fort,
     /// A Fort and a Citadel.
     Citadel,
+    /// The Town Hall and a Fort (E24 M3 T5b2: the kingdom's window counts the towns by their
+    /// halls).
+    TownHall,
+    /// The Town and City Halls and a Fort (E24 M3 T5b2).
+    CityHall,
     /// A Fort, a Citadel and a Castle.
     Castle,
     /// The Town, City Hall and Capitol, a Fort, a Citadel and a Castle.
@@ -295,6 +310,8 @@ impl TownBuilt {
             Self::Village => TownBuildings::Standard { fort: false },
             Self::Fort => TownBuildings::Standard { fort: true },
             Self::Citadel => custom(0b1_1000),
+            Self::TownHall => custom(0b1001),
+            Self::CityHall => custom(0b1011),
             Self::Castle => custom(0b11_1000),
             Self::Capitol => custom(0b11_1111),
         }
@@ -671,6 +688,17 @@ impl Situation {
         let bar = self.resources.is_some() || self.date.is_some();
         if bar && !matches!(self.select, Some(SelectSpec::Hero(_))) {
             return Err("the resources or the date without a hero's selection".into());
+        }
+        // The status window's kind asked (E24 M3 T5b2): the date's or the kingdom's; the teams.
+        if let Some(kind) = self.status
+            && !(1..=2).contains(&kind)
+        {
+            return Err(format!("the status window's kind {kind}: not 1 or 2"));
+        }
+        if let Some(teams) = self.teams
+            && teams.iter().any(|&t| t > 7)
+        {
+            return Err(format!("the teams {teams:?}: one past 7"));
         }
         // The status window's (E24 M3 T5b1): Red's towns' garrisons and garrison heroes, of
         // Red's; seven slots at most; a silo with chosen buildings.

@@ -156,6 +156,17 @@ towns = { empty = 0, selected = 1, fort = 2, village = 20, faction = 2, built = 
 # `bottom` (0x451CE4: attack and defense 0, power and knowledge 1). The hall's frame: 1 + the place
 # of the first of `halls` standing (the Town Hall, City Hall, Capitol; 0x452414), else 0; the
 # fort's: the place of the first of `forts` standing (the Fort, Citadel, Castle; 0x452537), else 3.
+# The date's window (E24 M3 T5b2; design §4.9, 0x450DD0): on a week's first day but the game's first
+# the week's picture (`weeks`, by the week of the month: the table 0x660BA0), else the day's (`day`,
+# with its sound); `frames` each picture's frames in group 0 (the day's, then the weeks'); a frame
+# stepped at a view's draw `step` ms or more after the last (0x4511A0; the panel's +0x40).
+[map.status.date]
+day = "NewDay.def"
+weeks = ["NewWeek1.def", "NewWeek2.def", "NewWeek3.def", "NewWeek4.def"]
+frames = [10, 4, 8, 12, 16]
+step = 100
+sound = "newday.wav"
+
 [map.status]
 portraits = [
     "HPL000Kn.PCX", "HPL001Kn.PCX", "HPL002Kn.PCX", "HPL003Kn.PCX", "HPL004Kn.PCX", "HPL005Kn.PCX",

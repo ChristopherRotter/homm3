@@ -40,9 +40,12 @@ shipped-tale-of-two-lands 945e138e165cd826
 shipped-too-many-monsters 9574f198cc82a8a5
 start-dwarven-tunnels 0b916e690ea7be36
 start-hoard 3a18695d3a535cfe
+status-date 38dde7ff4de0deba
 status-garrison fd28de19ada8b5c2
 status-hero df728e8ef30bf178
+status-kingdom b739112ca2e1cc4b
 status-town 82979d406711a69b
+status-week f040cff893676e4b
 towns-0 4e56fdf95884496b
 towns-1 5db0a048bb162cbb
 towns-2 5d102d0603154c99

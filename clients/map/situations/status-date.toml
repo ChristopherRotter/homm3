@@ -1,0 +1,16 @@
+# The date's status window (E24 M3 T5b2; design §4.9, AdStatOt.pcx built by 0x450DD0): the third day
+# of the game's second week written, Red's second hero selected (its window built first), then the date's
+# kind asked for long after the still (the manager's +0x398 and +0x39C, as a new day asks it): the
+# next view draw builds it, the day's picture (NewDay.def) at the frame its steps reached and
+# "Day 3".
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [4, 6] },
+    { at = [8, 6], class = 3 },
+    { at = [30, 30], owner = 1 },
+]
+select = { hero = [8, 6] }
+date = [1, 2, 3]
+status = 1
+view = [0, 0, 0]

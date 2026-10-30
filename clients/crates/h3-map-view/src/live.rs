@@ -77,6 +77,10 @@ pub struct Kingdom {
     /// What the status window shows (E24 M3 T5b1, design §4.8): a live part's `status`; none:
     /// nothing drawn there (the frame's picture shows).
     pub status: Option<Status>,
+    /// The selection's window (E24 M3 T5b2, design §4.9): what the status window shows again
+    /// once a kind asked for a time ends (the chooser's kind 0), when it shows another; a live
+    /// part's `selection`. None: the selection's is the one shown, or none is known (a still).
+    pub selection: Option<Status>,
 }
 
 /// What the status window shows (E24 M3 T5b1, design §4.8; *provisional*): the window the
@@ -87,13 +91,52 @@ pub struct Kingdom {
 /// M4 on the engine.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Status {
+    /// The date's (the kind 1, `AdStatOt.pcx`: 0x450DD0; E24 M3 T5b2, design §4.9): the game's
+    /// date ([`Kingdom::date`]) gives its picture and text.
+    Date(DateStatus),
+    /// The kingdom's (the kind 2, `AdStatin.pcx`: 0x452B80; E24 M3 T5b2).
+    Kingdom(KingdomStatus),
     /// The selected hero's (the kind 3, `AdStatHr.pcx`: 0x451AB0).
     Hero(HeroStatus),
     /// The selected town's (the kind 4, `AdStatCs.pcx`: 0x4521F0).
     Town(TownStatus),
-    /// Another kind, not drawn yet: the date's (1) and the kingdom's (2) are T5b2's, the other
-    /// player's turn (5) and a message's (6, 7) M4's.
+    /// Another kind, not drawn yet: the other player's turn (5) and a message's (6, 7) are M4's.
     Other(u8),
+}
+
+impl Status {
+    /// The original's number of the kind (the manager's +0x394).
+    #[must_use]
+    pub fn kind(&self) -> u8 {
+        match self {
+            Self::Date(_) => 1,
+            Self::Kingdom(_) => 2,
+            Self::Hero(_) => 3,
+            Self::Town(_) => 4,
+            Self::Other(kind) => *kind,
+        }
+    }
+}
+
+/// The date's status window (E24 M3 T5b2, design §4.9): built with its picture's first frame, it
+/// steps a frame at a view's draw at least the tables' step after the last, up to the picture's
+/// last (`status_date_update` 0x4511A0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DateStatus {
+    /// The picture's frame shown (the panel's +0x3C).
+    pub frame: u32,
+}
+
+/// The kingdom's status window (E24 M3 T5b2, design §4.9).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KingdomStatus {
+    /// The viewer's towns by their halls: villages, Town Halls, City Halls and Capitols (the
+    /// every-built set's Capitol, City Hall and Town Hall, tested in that order).
+    pub halls: [i32; 4],
+    /// The players in the game of the viewer's team, the viewer among them, by colour in order.
+    pub allies: Vec<u8>,
+    /// The other players in the game, by colour in order.
+    pub enemies: Vec<u8>,
 }
 
 /// A hero's status window: its portrait and spell points are the selected [`KingdomHero`]'s.
@@ -148,8 +191,9 @@ impl Status {
     /// 3, hero = <type>, own_name = <0 or 1>, skills = [a, d, p, k], morale = m, luck = l, army =
     /// [[type, count], ...7] }`, `{ kind = 4, name = <TownName.txt's record>, buildings = [<ids
     /// standing>], garrison = <0 or 1>, army = [[type, count], ...7], silo = [<resources>],
-    /// income = n }` or `{ kind = n }` for another kind (an empty slot's type −1); none for
-    /// anything else.
+    /// income = n }`, since E24 M3 T5b2 `{ kind = 1, frame = n }` and `{ kind = 2, halls = [4
+    /// counts], allies = [colours], enemies = [colours] }`, or `{ kind = n }` for another kind (an
+    /// empty slot's type −1); none for anything else.
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
         let table = value.as_table()?;
@@ -178,8 +222,29 @@ impl Status {
                 .collect::<Option<Vec<_>>>()?;
             slots.try_into().ok()
         };
+        let colours = |v: &toml::Value| -> Option<Vec<u8>> {
+            v.as_array()?
+                .iter()
+                .map(|c| int(c).and_then(|n| u8::try_from(n).ok()).filter(|&c| c < 8))
+                .collect()
+        };
         let kind = u8::try_from(int(get("kind")?)?).ok()?;
         match kind {
+            1 => Some(Self::Date(DateStatus {
+                frame: u32::try_from(int(get("frame")?)?).ok()?,
+            })),
+            2 => {
+                let halls = get("halls")?
+                    .as_array()?
+                    .iter()
+                    .map(|n| int(n).and_then(|n| i32::try_from(n).ok()))
+                    .collect::<Option<Vec<_>>>()?;
+                Some(Self::Kingdom(KingdomStatus {
+                    halls: halls.try_into().ok()?,
+                    allies: colours(get("allies")?)?,
+                    enemies: colours(get("enemies")?)?,
+                }))
+            }
             3 => {
                 let skills = get("skills")?
                     .as_array()?
@@ -384,6 +449,7 @@ impl Kingdom {
             resources: resources.try_into().ok()?,
             date,
             status: None,
+            selection: None,
         })
     }
 }
@@ -749,14 +815,15 @@ impl Live {
         // status window the selection's (E24 M3 T5b1, design §4.8): the hero named by the map or
         // its type, its skills, morale, luck and army the engine's (none known: 0, empty); the
         // town named by its faction's first name (its name is the new game's draw), its buildings
-        // at the start standing, no garrison, silo or income known.
+        // at the start standing, no garrison, silo or income known; without a selection the
+        // date's (the chooser's kind 0, E24 M3 T5b2, design §4.9) at its first frame.
         let selected = match (portraits.len(), towns_kept.len()) {
             (0, 0) => Selected::None,
             (0, _) => Selected::Town(0),
             _ => Selected::Hero(0),
         };
         let status = match selected {
-            Selected::None => None,
+            Selected::None => Some(Status::Date(DateStatus { frame: 0 })),
             Selected::Hero(_) => Some(Status::Hero(HeroStatus {
                 hero: types.first().copied().unwrap_or_default(),
                 own_name: types
@@ -796,6 +863,7 @@ impl Live {
             resources: [0; 7],
             date: Date::default(),
             status,
+            selection: None,
         };
         Self {
             objects,

@@ -1,0 +1,20 @@
+0 view 0 0 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 1560
+180 objects 1
+180 screen 128,176,147,185
+200 cycles 1 1
+360 objects 2
+360 screen 128,177,147,185
+400 cycles 2 2
+540 objects 3
+540 screen 128,177,147,185
+600 cycles 3 3
+720 objects 4
+720 screen 128,176,790,566
+800 cycles 4 4
+900 objects 5
+900 screen 128,176,147,185

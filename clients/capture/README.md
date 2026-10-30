@@ -654,7 +654,11 @@ entrance tile and the owner's record, -1 none; T5b1), the viewer's explored bits
 a hero's or a town's record, the window's own items for the morale, luck, silo and income; a
 town's name as its record of `TownName.txt`, a hero's `own_name` when its record's name is not its
 type's; a window of another kind, or a town's name the table lacks, fails the still), all into
-`live.toml`. Ours:
+`live.toml`; since M3 T5b2 the situation's `teams` written into the game (+0x1F879) and its
+`status`, 1 the date's or 2 the kingdom's, asked last until long after the still (the manager's
++0x398 and +0x39C: the next view's draw builds it, the still waits for it), the selection's window
+read first as the live part's `selection`; `Mem.status` gives the date's picture's frame and the
+kingdom's towns by their halls and players by team. Ours:
 `h3-map-view render --bugs original --live live.toml` with the same view and hidden rectangles;
 it refuses a `live.toml` whose anchors are not its map's (but a random dwelling's, which the
 map's load moves: T5b1, design §2.9) and one whose towns' pictures are not those their buildings
@@ -700,7 +704,11 @@ map, the game, the walks, the explored tiles, the view, the path, the facings), 
 once both the palette tick's and the redraw's next times lie ahead of it; then its 0 is the next
 millisecond: `frames` writes both next times and the mouse poll's there (`Mem.write_u32`, the
 harness's own timers: the phase between them is the map's load's real time) and checks that the
-tick and the redraw ran at 0. Then 1-ms steps (each waits for 500 clock reads, as E17's
+tick and the redraw ran at 0 (since E24 M3 T5b2 a sequence's `status = [kind, end]` asks that
+status window's kind there until `end` ms after 0, the kind shown set to none so that 0's redraw
+builds it afresh: the date's from its first frame; the selection's window read first, or at the
+staging when the situation asked a kind; a date's window at 0 the sequence did not ask is
+refused, its steps' times being unknown). Then 1-ms steps (each waits for 500 clock reads, as E17's
 sequences) to `ms`, each followed by the state memory holds (the view, the frame steps, both
 kinds' palette steps by `cycle_now`, the next times) and the screen (`Game.settled`): each screen
 whose pixels outside the panels' mask changed is kept (`<out>/<id>/frames/t<ms>.npz`, its state in

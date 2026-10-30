@@ -6,8 +6,8 @@
 # picture, the buttons, the status bar's and the resource bar's pictures, the minimap (T3a as a
 # still, T3b over time: design §4.4), the hero and town lists (T4a as stills, T4b over time:
 # §4.5), the resource bar's amounts and the date (T5a, §4.7), the status window (T5b1: a hero's
-# and a town's, §4.8; the harness refuses another kind, the date's and the kingdom's being T5b2's)
-# and the parked cursor are drawn and compared. The situations' and the sequences' mask
+# and a town's, §4.8; T5b2 the date's and the kingdom's, §4.9; the harness refuses another kind,
+# M4's) and the parked cursor are drawn and compared. The situations' and the sequences' mask
 # (`h3map.py`'s and the viewer's `sequences`; T4a's `stills`, the situations' alone while the
 # sequences kept the lists out, one list again since T4b). A task drawing another panel takes its
 # rectangle out.

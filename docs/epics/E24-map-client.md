@@ -181,8 +181,10 @@ viewers share.
   a hero and a town (**done** 2026-10-29: 0x451AB0 and 0x4521F0 read and built, the selection's
   window, the names by the catalogue or the map's own; three new situations and the 47 and the 13
   sequences exact with the window; MCL-Q16; the log), T5b2, the date's and the kingdom's windows
-  and when each shows; T6, the mouse, the keys during a walk, the sound without the focus; T7,
-  M3's closure. A task that grows is cut at a seam agreed with the user.
+  and when each shows (kept whole by the user; **done** 2026-10-29: 0x450DD0, 0x452B80 and the
+  date's step 0x4511A0 read and built, the chooser at every view's draw, a timed kind's end, the
+  rebuilds; three new situations and two new sequences exact; the log); T6, the mouse, the keys
+  during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
   window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand
@@ -354,3 +356,14 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   `map.status.thousands`; a situation's `skills`, `morale`, `luck`, `army`, `garrison`,
   `garrison_hero` and `silo` (the garrison hero a hero of Red's standing elsewhere: only the
   window reads it).
+- **M3 T5b2, the date's and the kingdom's windows** (*provisional*, design §4.9): the layout's
+  `status_date` and `status_kingdom` (our ids for the original's id-less counts and labels, the
+  flags by row and place), the tables' `[map.status.date]` (the pictures' frames given and checked
+  by the gate, the step, the sound); the live part's `status` of the kinds 1 (`frame`) and 2
+  (`halls`, `allies`, `enemies`, the harness computing them from memory: the engine's from M4)
+  and `selection` (the selection's window read before a kind is asked); a sequence's `status =
+  [kind, end]` (`Start::asked`; a date's window at 0 the sequence did not ask refused), a
+  situation's `status` and `teams` (written by the harness: the writer has no teams); the
+  timeline's chooser (every draw, forced at a centring lift and a key's step's end; a window
+  the live part does not give left alone); `Cue::Effect` and an audio stream of its own for a sound
+  played once (the next cuts it off).

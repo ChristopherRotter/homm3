@@ -1,0 +1,58 @@
+0 view 0 0 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 1500
+180 objects 1
+180 screen 128,176,789,548
+200 cycles 1 1
+360 objects 2
+360 screen 128,177,789,549
+400 cycles 2 2
+540 objects 3
+540 screen 128,177,789,549
+600 cycles 3 3
+720 objects 4
+720 screen 128,176,789,550
+800 cycles 4 4
+900 objects 5
+900 screen 128,176,789,556
+1000 cycles 5 5
+1080 objects 6
+1080 screen 128,177,789,563
+1200 cycles 6 6
+1260 objects 7
+1260 screen 128,177,789,566
+1400 cycles 7 7
+1440 objects 8
+1440 screen 129,176,789,566
+1600 cycles 8 8
+1620 objects 9
+1620 screen 128,176,789,566
+1800 objects 10
+1800 cycles 9 9
+1800 screen 128,177,275,185
+1980 objects 11
+1980 screen 128,177,275,185
+2000 cycles 10 10
+2160 objects 12
+2160 screen 128,176,275,185
+2200 cycles 11 11
+2340 objects 13
+2340 screen 128,176,275,185
+2400 cycles 12 12
+2520 objects 14
+2520 screen 128,177,275,185
+2600 cycles 13 13
+2700 objects 15
+2700 screen 128,177,275,185
+2800 cycles 14 14
+2880 objects 16
+2880 screen 129,176,275,185
+3000 cycles 15 15
+3060 objects 17
+3060 screen 128,176,790,566
+3200 cycles 16 16
+3240 objects 18
+3240 screen 128,177,275,185

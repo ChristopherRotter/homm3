@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 use crate::live::{Arrow, LiveHero};
 use crate::tables::{HERO_SPEEDS, SCROLL_SPEEDS};
-use crate::timeline::{Action, Direction, Hero};
+use crate::timeline::{Action, Asked, Direction, Hero};
 
 /// The file.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -47,6 +47,9 @@ pub struct Sequence {
     /// The selected hero's movement points (the harness writes them; the path's arrows the
     /// original shows tell the walk where they end).
     pub points: Option<u32>,
+    /// The status window's kind the harness asks at 0 and its end, [kind, ms] (E24 M3 T5b2,
+    /// design §4.9: 1 the date's, 2 the kingdom's; built afresh by 0's redraw).
+    pub status: Option<[u32; 2]>,
     /// The inputs in time order.
     #[serde(default)]
     pub inputs: Vec<Input>,
@@ -132,6 +135,23 @@ impl Sequence {
             return Err(format!("{}: the hero speed {speed} is not 1 to 4", self.id));
         }
         Ok(speed)
+    }
+
+    /// The status window's kind asked at 0 (E24 M3 T5b2), checked as the harness checks it: 1 or
+    /// 2, its end from 1 to 600 000 ms.
+    ///
+    /// # Errors
+    /// Another kind or end.
+    pub fn asked(&self) -> Result<Option<Asked>, String> {
+        self.status
+            .map(|[kind, end]| match (u8::try_from(kind), end) {
+                (Ok(kind @ (1 | 2)), 1..=600_000) => Ok(Asked { kind, end }),
+                _ => Err(format!(
+                    "{}: `status` [{kind}, {end}] is not [1 or 2, 1 to 600000]",
+                    self.id
+                )),
+            })
+            .transpose()
     }
 
     /// Whether the sequence walks a hero (a click, a direction key without Ctrl, the hero's
