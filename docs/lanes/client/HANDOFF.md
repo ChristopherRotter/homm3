@@ -18,7 +18,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `h3_render::recolour`; the panel by each turn's controller and the sounds' waits, §8.3,
   `Timeline::controllers`, `sound::Lengths`, the harness's `sound` runs: T5 done). **Next: M5 T6**
   (a game on a server: the WebSocket+TLS dependency the user's call; QUEUE). Open PR: T5b2's
-  (#PR, `client/e17-m5-t5b2`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's
+  (#591, `client/e17-m5-t5b2`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's
   float DCT) and the user's Demons note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
@@ -47,7 +47,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T5b2 (done; #PR open: check it first).** Kept whole by the user;
+- **2026-10-30, E17 M5 T5b2 (done; #591 open: check it first).** Kept whole by the user;
   CLT-Q34 answered (a). Read the acting side by the controller and `wait_for_sample`'s 30 battle
   sites (design §8.3). Built `Timeline::controllers`, `Panels::with_controllers`, the timeline's
   waits (`sound::Lengths`, `wait_for`, the grid after a wait), the window's lengths, the
