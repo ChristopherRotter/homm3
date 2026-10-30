@@ -426,7 +426,7 @@ fn next_frame(
     // only an input changes it; the result window's clip plays on, a frame at each of its
     // decodes (E17 M5 T4b2b).
     if battle.book_open() || battle.message_open() {
-        return match battle.clip_times(shown.t)? {
+        return match battle.clip_times(shown.t) {
             Some((_, Some(next))) => frame_at(battle, next).map(Some),
             _ => Ok(None),
         };
@@ -1052,7 +1052,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 let latest = changes.latest(&mut battle, ms)?;
                 // The result window's clip goes on from its frame now (E17 M5 T4b2b).
                 let latest = battle
-                    .clip_times(ms)?
+                    .clip_times(ms)
                     .map_or(latest, |(began, _)| latest.max(began));
                 next = Some(frame_at(&mut battle, latest)?);
                 shown = None;

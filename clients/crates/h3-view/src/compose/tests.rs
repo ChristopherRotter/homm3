@@ -1129,6 +1129,25 @@ fn a_clip_copies_its_frame_on_the_screen_cut_to_it() {
             .pixels()
             .to_vec()
     };
+    // The frames compared differ where the screen shows them, each from the frames next to it
+    // (E17 M5 T8b1, R2b-7): a comparison tells the frame meant from a frame early or late.
+    assert_ne!(expected("s.bik", 0, 10, 20), expected("s.bik", 1, 10, 20));
+    for pair in [[0, 1], [1, 2]] {
+        assert_ne!(
+            expected("s.bik", pair[0], 3, 4),
+            expected("s.bik", pair[1], 3, 4)
+        );
+    }
+    let corner = [("s.bik", 6), ("s.bik", 7), ("l.bik", 0), ("l.bik", 1)];
+    for (i, &(a, fa)) in corner.iter().enumerate() {
+        for &(b, fb) in &corner[i + 1..] {
+            assert_ne!(
+                expected(a, fa, 0, 0),
+                expected(b, fb, 0, 0),
+                "{a} {fa}, {b} {fb}"
+            );
+        }
+    }
     // Its frame 0 at the opening, cut at the screen's top left and right and bottom.
     assert_eq!(at(&[clip(0, -10, -20)]), expected("s.bik", 0, 10, 20));
     // The client's: frame 1 from 66 ms, the start's last (7) from 466, the loop's first from

@@ -485,6 +485,7 @@ dependencies = [
  "h3-sdl",
  "h3-ui",
  "nanomp3",
+ "proptest",
  "rustls",
  "rustls-graviola",
  "rustls-native-certs",

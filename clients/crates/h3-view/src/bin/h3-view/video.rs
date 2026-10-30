@@ -11,6 +11,8 @@ use std::process::ExitCode;
 use h3_assets::vid::VidArchive;
 use h3_bink::{Clip, Decoder, Frame};
 
+use crate::connect::printable;
+
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Options {
@@ -80,10 +82,18 @@ pub fn run(options: &Options) -> ExitCode {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::FAILURE,
         Err(message) => {
-            eprintln!("video: {message}");
+            // An archive's entry name may be in it (E17 M5 T8b1, R2b-6).
+            eprintln!("video: {}", printable(&message));
             ExitCode::FAILURE
         }
     }
+}
+
+/// Whether an archive's entry `name` is a plain file name, which `--out` may take as it is (E17
+/// M5 T8b1, R2b-2): no directory (`../x.bik`, `/tmp/x.bik`) and nothing Windows reads as one
+/// (`\`, a drive's `:`).
+fn plain(name: &str) -> bool {
+    Path::new(name).file_name() == Some(name.as_ref()) && !name.contains(['\\', ':'])
 }
 
 /// A clip's frames as FFmpeg's `rawvideo` writes them: each plane's picture row by row.
@@ -101,6 +111,8 @@ fn raw(frames: &[Frame]) -> Vec<u8> {
 
 /// Decodes one file; prints its line and each failing frame; the frames decoded.
 fn decode(name: &str, bytes: &[u8]) -> Result<(Vec<Frame>, bool), String> {
+    // Printed without its control characters (E17 M5 T8b1, R2b-6).
+    let name = printable(name);
     let clip = Clip::parse(bytes).map_err(|e| format!("{name}: {e:?}"))?;
     let mut decoder = Decoder::new(&clip).map_err(|e| format!("{name}: {e:?}"))?;
     let mut frames = Vec::new();
@@ -132,6 +144,7 @@ fn decode(name: &str, bytes: &[u8]) -> Result<(Vec<Frame>, bool), String> {
 
 /// Compares `ours` with the reference's bytes frame by frame; prints the verdict.
 fn compare(name: &str, frames: &[Frame], ours: &[u8], reference: &[u8]) -> bool {
+    let name = printable(name);
     let size = ours.len() / frames.len().max(1);
     if ours.len() != reference.len() || size == 0 {
         println!(
@@ -166,14 +179,24 @@ fn compare(name: &str, frames: &[Frame], ours: &[u8], reference: &[u8]) -> bool 
 
 fn video(options: &Options) -> Result<bool, String> {
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
+    let mut refused = false;
     if options.samples.is_empty() || !options.names.is_empty() {
         let archive_bytes =
             fs::read(&options.vid).map_err(|e| format!("{}: {e}", options.vid.display()))?;
         let archive = VidArchive::parse(&archive_bytes)
             .map_err(|e| format!("{}: {e:?}", options.vid.display()))?;
         for entry in archive.entries() {
-            if options.wants(&entry.name) {
+            if !options.wants(&entry.name) {
+                continue;
+            }
+            if plain(&entry.name) {
                 files.push((entry.name.clone(), archive.data(entry).to_vec()));
+            } else {
+                eprintln!(
+                    "video: {}: not a plain file name, skipped",
+                    printable(&entry.name)
+                );
+                refused = true;
             }
         }
     }
@@ -184,7 +207,7 @@ fn video(options: &Options) -> Result<bool, String> {
         return Err(String::from("no Bink file asked for is in the archive"));
     }
     fs::create_dir_all(&options.out).map_err(|e| format!("{}: {e}", options.out.display()))?;
-    let mut good = true;
+    let mut good = !refused;
     for (name, bytes) in &files {
         let stem = name.rsplit_once('.').map_or(name.as_str(), |(s, _)| s);
         let write = |path: PathBuf, bytes: &[u8]| {
@@ -272,5 +295,47 @@ mod tests {
         assert!(!compare("x", &frames, &ours, &wrong));
         assert!(!compare("x", &frames, &ours, &wrong[1..]));
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn only_plain_entry_names_are_written() {
+        // E17 M5 T8b1, R2b-2: an entry's name never leads out of `--out`.
+        for name in ["WIN3.BIK", "x.bik", "a b.bik"] {
+            assert!(plain(name), "{name}");
+        }
+        for name in [
+            "../../x.bik",
+            "/tmp/x.bik",
+            "C:\\x.bik",
+            "C:x.bik",
+            "a\\b.bik",
+            "d/x.bik",
+            "x.bik/",
+            "..",
+            ".",
+            "",
+        ] {
+            assert!(!plain(name), "{name}");
+        }
+        // Such an entry is skipped and the run fails; the others are written (E17 M5 T8b1,
+        // R2b-6: its name printed without the escape).
+        let dir = std::env::temp_dir().join(format!("h3-view-names-{}", std::process::id()));
+        let out = dir.join("out");
+        fs::create_dir_all(&dir).unwrap();
+        let sample = h3_bink::build::sample(1);
+        let archive =
+            h3_assets::build::vid(&[("../escaped.bik", &sample), ("\u{1b}[2Jgood.bik", &sample)]);
+        fs::write(dir.join("v.vid"), archive).unwrap();
+        let options = Options {
+            names: Vec::new(),
+            vid: dir.join("v.vid"),
+            out: out.clone(),
+            reference: None,
+            samples: Vec::new(),
+        };
+        assert_eq!(video(&options), Ok(false));
+        assert!(out.join("\u{1b}[2Jgood.bik").exists());
+        assert!(!dir.join("escaped.bik").exists());
+        fs::remove_dir_all(&dir).unwrap();
     }
 }

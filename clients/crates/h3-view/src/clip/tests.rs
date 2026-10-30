@@ -1,4 +1,5 @@
 use super::*;
+use proptest::prelude::*;
 
 const RATE: [u32; 2] = [15, 1];
 const ORIGINAL: Bugs = Bugs::Original;
@@ -159,7 +160,7 @@ fn a_frame_takes_its_blocks_chroma_and_decodes_as_a_clip() {
     };
     assert_eq!(
         Video::decode(&file(&other, &[good])),
-        Err(Error::Revision(b'f'))
+        Err(VideoError::Bink(Error::Revision(b'f')))
     );
     let audio = Header {
         audio_tracks: 1,
@@ -234,4 +235,116 @@ fn the_client_fixes_the_slips_frame_0_one_period_the_last_shown() {
         decodes(2700, start, looped, Bugs::Fixed),
         (2666, Some(2732))
     );
+}
+
+#[test]
+fn a_clip_past_the_budget_is_refused_before_it_is_decoded() {
+    // E17 M5 T8b1, R2b-1: 1 092 frames of 256 x 120 fit 64 MiB, 1 093 do not, nor a product past
+    // 64 bits.
+    assert!(fits(1092, 256, 120));
+    assert!(!fits(1093, 256, 120));
+    assert!(!fits(usize::MAX, u32::MAX, u32::MAX));
+    // 70 frames of 800 x 600 take 67.2 MB: refused before the first, which fails, is decoded.
+    use h3_bink::build::{Block, Header, file, frame as packet};
+    let bad = packet(800, 600, [&[Block::Unknown(9)], &[], &[]]);
+    let frames = |n| {
+        let mut frames = alloc::vec![bad.clone()];
+        frames.resize(n, alloc::vec![0, 0]);
+        file(&Header::new(800, 600), &frames)
+    };
+    assert_eq!(Video::decode(&frames(70)), Err(VideoError::Budget));
+    assert_eq!(
+        Video::decode(&frames(69)),
+        Err(VideoError::Bink(Error::Invalid("block type")))
+    );
+}
+
+#[test]
+fn extreme_rates_neither_overflow_nor_come() {
+    // E17 M5 T8b1, R2b-4: 1000 p den passes 64 bits; a time past them never comes.
+    let extreme = Timing {
+        frames: 5,
+        rate: [u32::MAX, u32::MAX],
+    };
+    assert_eq!(extreme.at(u64::from(u32::MAX)), 4_294_967_295_000);
+    assert_eq!(extreme.at(u64::MAX), u64::MAX);
+    assert_eq!(
+        decodes(u32::MAX, extreme, None, Bugs::Fixed),
+        (4_294_967_000, None)
+    );
+    assert_eq!(
+        decodes(u32::MAX, extreme, Some(extreme), ORIGINAL),
+        (4_294_967_000, None)
+    );
+    assert_eq!(
+        shown(u32::MAX, extreme, Some(extreme), ORIGINAL),
+        Some((Part::Loop, 4_294_961 % 5))
+    );
+}
+
+#[test]
+fn an_odd_frame_takes_its_last_column_and_rows_chroma() {
+    // E17 M5 T8b1, R2b-7: 15 x 9, its last column and row the chroma planes' last (8 x 5).
+    use h3_bink::build::{Block, Header, file, frame as packet};
+    let raw = |seed: u8| {
+        Block::Raw(core::array::from_fn(|i| {
+            seed.wrapping_add((i as u8).wrapping_mul(37))
+        }))
+    };
+    let luma = [raw(0), raw(50), raw(100), raw(150)];
+    let bytes = file(
+        &Header::new(15, 9),
+        &[packet(15, 9, [&luma, &[raw(20)], &[raw(200)]])],
+    );
+    let clip = BinkClip::parse(&bytes).unwrap();
+    let mut decoder = Decoder::new(&clip).unwrap();
+    let frame = decoder.decode(clip.video(0).unwrap()).unwrap();
+    let pixels = rgb565(frame);
+    assert_eq!(pixels.len(), 15 * 9);
+    let [y, u, v] = frame.planes();
+    assert_eq!((u.width(), u.height(), v.width(), v.height()), (8, 5, 8, 5));
+    for row in 0..9 {
+        for col in 0..15 {
+            let expected = pixel(
+                y.row(row)[col],
+                u.row(row / 2)[col / 2],
+                v.row(row / 2)[col / 2],
+            );
+            assert_eq!(pixels[row * 15 + col], expected, "({col}, {row})");
+        }
+    }
+    // The corner's chroma is the planes' last column of their last row, not grey.
+    assert_ne!((u.row(4)[7], v.row(4)[7]), (128, 128));
+    assert_eq!(
+        pixels[8 * 15 + 14],
+        pixel(y.row(8)[14], u.row(4)[7], v.row(4)[7])
+    );
+}
+
+proptest! {
+    /// E17 M5 T8b1, R2b-7: the frame shown stands from a decode to the next and changes there,
+    /// but at the original's first tick, which decodes frame 0 again.
+    #[test]
+    fn the_frame_shown_stands_from_a_decode_to_the_next(
+        since in 0u32..20_000,
+        frames in 2usize..60,
+        looped in proptest::option::of((2usize..60, 1u32..61, 1u32..4)),
+        rate in (1u32..61, 1u32..4),
+        original in any::<bool>(),
+    ) {
+        let start = Timing { frames, rate: [rate.0, rate.1] };
+        let looped = looped.map(|(frames, num, den)| Timing { frames, rate: [num, den] });
+        let bugs = if original { Bugs::Original } else { Bugs::Fixed };
+        let at = |t| shown(t, start, looped, bugs);
+        let (began, next) = decodes(since, start, looped, bugs);
+        prop_assert!(began <= since);
+        prop_assert_eq!(at(began), at(since));
+        if let Some(next) = next {
+            prop_assert!(next > since);
+            prop_assert_eq!(at(next - 1), at(since));
+            if !(original && began == 0) {
+                prop_assert_ne!(at(next), at(since));
+            }
+        }
+    }
 }
