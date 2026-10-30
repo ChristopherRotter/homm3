@@ -189,7 +189,8 @@ impl Ground {
         }
     }
 
-    /// The ruleset of the window's own previews (E17 M5 T6b1: an aim's area): a battle fought
+    /// The ruleset of the window's own previews (E17 M5 T6b1: an aim's area) and of the result
+    /// window's creatures' values (E17 M5 T8b2, R5b-2: hit points, AI values): a battle fought
     /// here's, or a server's game's when the content check finds it the same.
     fn previews(&self) -> Option<&BattleRuleset> {
         match self.fight.as_ref()? {
@@ -511,6 +512,12 @@ pub struct Battle<'g> {
     result_closed: bool,
     /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
     behind: h3_view::result::Behind,
+    /// The battle's end as the record shows it (`Battle::end_seen`), replayed once (E17 M5 T8b2,
+    /// R5b-1).
+    end_seen: std::cell::OnceCell<Observation>,
+    /// Whether each side has army survivors at the battle's end (`Battle::survivors`), read once
+    /// (E17 M5 T8b2, R5b-3).
+    survivors: std::cell::OnceCell<[bool; 2]>,
     /// The result window's clips (E17 M5 T8b1, R2b-3 and R2b-5): decoded into the batch as soon
     /// as the battle's end, and so its tune, is known.
     clips: Clips,
@@ -728,6 +735,8 @@ impl<'g> Battle<'g> {
             message: None,
             result_closed: false,
             behind: h3_view::result::Behind::default(),
+            end_seen: std::cell::OnceCell::new(),
+            survivors: std::cell::OnceCell::new(),
             clips: Clips::Unknown,
             notices: 0,
             opening: false,
@@ -1175,17 +1184,46 @@ impl<'g> Battle<'g> {
     }
 
     /// The outcome of a seat's battle on a server as its record shows it (E17 M5 T6b1): the
-    /// game's end, every stack's count at the start and at the end.
+    /// game's end, every stack's count at the start and at the end ([`Battle::end_seen`]).
     fn served_outcome(&self) -> Option<h3_contracts::BattleOutcome> {
         let result = self.record.messages.iter().find_map(|m| match m {
             ServerMessage::GameEnded { result, .. } => Some(*result),
             _ => None,
         })?;
         let snapshot = self.record.first_snapshot()?;
-        let events = self.events();
+        Some(crate::results::served(snapshot, self.end_seen()?, result))
+    }
+
+    /// The battle's end as the record shows it once the battle is decided (E17 M5 T6b1:
+    /// `h3_view::remote::seen` at the timeline's end): a replay of the whole record, so read once
+    /// and kept (E17 M5 T8b2, R5b-1).
+    fn end_seen(&self) -> Option<&Observation> {
+        if let Some(end) = self.end_seen.get() {
+            return Some(end);
+        }
         let timeline = self.played.timeline();
+        timeline.ended?;
+        let snapshot = self.record.first_snapshot()?;
+        let events = self.events();
         let end = h3_view::remote::seen(snapshot, &events, timeline, timeline.end, |_, _| 0);
-        Some(crate::results::served(snapshot, &end, result))
+        Some(self.end_seen.get_or_init(|| end))
+    }
+
+    /// Whether each side has army survivors at the battle's end (E17 M5 T8b2, R5b-3: a side whose
+    /// opponent gave up wins only with some, BAT-END-001), read once the battle is decided: by the
+    /// engine's outcome of a battle fought here, else by the record's end.
+    fn survivors(&self) -> Option<[bool; 2]> {
+        if let Some(&found) = self.survivors.get() {
+            return Some(found);
+        }
+        let found = match self.fight.as_ref() {
+            Some(Fight::Here(live)) => crate::results::survivors(&live.outcome()?.0.stacks),
+            _ => {
+                let opening = self.record.first_snapshot()?;
+                crate::results::survivors(&crate::results::records(opening, self.end_seen()?))
+            }
+        };
+        Some(*self.survivors.get_or_init(|| found))
     }
 
     /// Follows the mouse's `inputs` and the log's `scrolls` (each at a time, in time order; E17
@@ -1747,6 +1785,8 @@ impl<'g> Battle<'g> {
         self.message = None;
         // The tactics phase's message closed: the first turn starts (E17 M5 T4c2a).
         self.opening = false;
+        // *Not built* (E17 M5 T8b2, R5b-4): what `battle_end` does after the window closes, the
+        // experience given (0x477948) and Eagle Eye's message.
         if asked == Asked::Result {
             self.result_closed = true;
             return MessageDid::Ended;
@@ -1767,7 +1807,8 @@ impl<'g> Battle<'g> {
     /// Opens the battle's result window once `at` reaches the battle's end (E17 M5 T4b1; design
     /// §7.20): as `battle_end` 0x477470 opens it as the battle is decided, over the whole screen
     /// darkened, the battle standing as it ended; from the engine's outcome of the battle fought
-    /// here (none for a record file's). Whether it opened.
+    /// here (none for a record file's). Whether it opened. Built once (E17 M5 T8b2, R5b-1): it
+    /// waits only for the outcome (a server's game's end), then always opens.
     pub fn open_result(&mut self, at: u32) -> bool {
         if self.result_closed || self.message.is_some() {
             return false;
@@ -1784,14 +1825,15 @@ impl<'g> Battle<'g> {
         };
         let (outcome, ruleset) = match fight {
             Fight::Here(live) => match live.outcome() {
-                Some(found) => found,
+                Some((outcome, ruleset)) => (outcome, Some(ruleset)),
                 None => return false,
             },
-            // A seat on a server: the outcome as its record shows it (E17 M5 T6b1), the window
-            // by the ruleset compiled here (none without the packs).
-            Fight::Server(_) => match (self.served_outcome(), self.ground.rules()) {
-                (Some(outcome), Some(ruleset)) => (outcome, ruleset),
-                _ => return false,
+            // A seat on a server: the outcome as its record shows it (E17 M5 T6b1), the
+            // creatures' values by the ruleset compiled here only when the content check finds it
+            // the game's (E17 M5 T8b2, R5b-2; else none, `crate::results::window`).
+            Fight::Server(_) => match self.served_outcome() {
+                Some(outcome) => (outcome, self.ground.previews()),
+                None => return false,
             },
         };
         let sources = crate::results::Sources {
@@ -1802,9 +1844,7 @@ impl<'g> Battle<'g> {
             layout: &self.ground.layout,
         };
         let player = self.viewing_player();
-        let Some((window, _)) = crate::results::window(&sources, opening, &outcome, player) else {
-            return false;
-        };
+        let (window, _) = crate::results::window(&sources, opening, &outcome, player);
         self.message = Some((h3_view::message::Open::new(window), ended, Asked::Result));
         self.behind = h3_view::result::Behind::default();
         true
@@ -2320,15 +2360,24 @@ impl<'g> Battle<'g> {
 
     /// When the battle is decided and the tune its end plays then (E17 M3 T8, design §8.2): the
     /// result's window shows the human side's view by the snapshot's `human`; a battle at a town
-    /// is the record's siege, a fort or not (the manager's +0x53C8; E17 M4 T2c-2, `defended`).
+    /// is the record's siege, a fort or not (the manager's +0x53C8; E17 M4 T2c-2, `defended`); a
+    /// side whose opponent gave up wins only with army survivors (E17 M5 T8b2, R5b-3:
+    /// `Battle::survivors`, read only then; taken as both having some when not known).
     pub fn end_tune(&self) -> Option<(u32, Tune)> {
+        use h3_protocol::wire::Outcome;
         let (at, outcome) = self.timeline().ended?;
         let snapshot = self.record.first_snapshot();
         let human = snapshot.map_or([false; 2], |s| {
             [0, 1].map(|i| s.sides.get(i).is_some_and(|d| d.human))
         });
         let town = snapshot.is_some_and(|s| s.siege.is_some());
-        Some((at, h3_view::sound::end_tune(outcome, human, town)))
+        let gave_up = matches!(outcome, Outcome::Retreat { .. } | Outcome::Surrender { .. });
+        let survivors = if gave_up { self.survivors() } else { None };
+        let survivors = survivors.unwrap_or([true; 2]);
+        Some((
+            at,
+            h3_view::sound::end_tune(outcome, human, town, survivors),
+        ))
     }
 
     /// The frame's size, as the layout gives it.

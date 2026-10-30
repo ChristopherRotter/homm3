@@ -2482,7 +2482,21 @@ without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `bat
   battle's screen), the stills' (a box's OK that gives a command) and the sequences' (from the
   timeline's end). *Provisional:* a hero's portrait its type's (a map's own portrait not known),
   no Learning (the client's heroes have none), a hero-less side's face not captured (the
-  harness's maps give both sides a hero).
+  harness's maps give both sides a hero); a server's game whose content check is not `Same`
+  reads no creature's values (the local ruleset's hit points and AI values may not be the
+  game's): its experience 0, a hero-less side no face (T8b2, R5b-2). *Not built:* what
+  `battle_end` does after the window closes: the experience given (0x477948) and Eagle Eye's
+  message (R5b-4).
+- **Since T8b2 (R5b):** the window is always built, once: what the client lacks is drawn empty
+  (a hero type the manifest does not name: a hero with an empty name, no portrait, its +500
+  kept; a hero type without a portrait in the tables, a creature without an original id: a DEF
+  item without its DEF; a hero-less side with no record but the arrow towers: no face), so a
+  missing entry no longer leaves the window unopened and retried at every pass. **No winner
+  (BAT-END-001, BAT-Q7):** after a retreat or a surrender the opponent wins only with army
+  survivors (an army or raised stack alive at the end, read from the outcome's records, which a
+  served outcome has too); else no winner is named: both "Defeated", the defender's view, no
+  experience, and the end's tune by the same branches (`h3_view::result::winner`,
+  `h3_view::sound::end_tune`'s `survivors`).
 
 ### 7.21 The result window's clip (M5 T4b2b)
 
