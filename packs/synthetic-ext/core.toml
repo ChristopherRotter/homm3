@@ -24,6 +24,8 @@ fight_value = 300
 ai_value = 310
 adventure_count = [8, 16]
 flags = ["alive"]
+# Format v50 (E08 T81b): an ability outside battle, read by the game's day (GAM-RES-005).
+abilities_outside_battle = [{ kind = "weekly_resource", resource = "synthetic:shard", amount = 2 }]
 
 # Changes to creatures of the base pack: only the listed fields change.
 [[creature_override]]
@@ -70,7 +72,9 @@ effects = [
 # artifact: the regalia's list is full). Here, not in `synthetic`, so the battle replays' ruleset
 # hash stays. Format v47 (E08 T45): Scholar's meeting level and Titan's Thunder's book, read by
 # the hero model's increment-6 rules. Format v49 (E08 T70): the Navigation level, the sea points
-# and free boarding, read by the hero model's increment-8 derivations.
+# and free boarding, read by the hero model's increment-8 derivations. Format v50 (E08 T81b): a
+# daily income, the day's spell point regain, the extra regain and full mana, read by the hero
+# model's increment-9 derivations.
 [[artifact]]
 id = "wayfarer_sash"
 name = "Wayfarer Sash"
@@ -88,4 +92,8 @@ effects = [
     { kind = "navigation", level = 2 },
     { kind = "sea_movement_points", points = 250 },
     { kind = "free_boarding" },
+    { kind = "daily_resource", resource = "synthetic:shard", amount = 2 },
+    { kind = "mana_regain", points = 3 },
+    { kind = "extra_mana_regain", points = 1 },
+    { kind = "full_mana" },
 ]

@@ -888,6 +888,8 @@ fn params() -> HeroParamsDef {
         wisdom: key("t:tactics"),
         schools: vec![key("t:archery")],
         mana_ceiling: 999,
+        base_mana_regain: 1,
+        regain_specialist_bonus: 1,
     }
 }
 
@@ -923,8 +925,12 @@ fn hero_params_are_optional_unique_and_checked() {
         vec![with.skill_by_key("t:archery").unwrap()]
     );
     assert_eq!(compiled.mana_ceiling, 999);
+    assert_eq!(
+        (compiled.base_mana_regain, compiled.regain_specialist_bonus),
+        (1, 1)
+    );
     // The hash sees presence and every field.
-    let changes: [fn(&mut HeroParamsDef); 9] = [
+    let changes: [fn(&mut HeroParamsDef); 11] = [
         |d| d.primary_min[3] = 2,
         |d| d.primary_max = 98,
         |d| d.backpack = 0,
@@ -934,6 +940,8 @@ fn hero_params_are_optional_unique_and_checked() {
         |d| d.wisdom = key("t:archery"),
         |d| d.schools.clear(),
         |d| d.mana_ceiling = 998,
+        |d| d.base_mana_regain = 0,
+        |d| d.regain_specialist_bonus = 2,
     ];
     let hash = with.content_hash();
     assert_ne!(without.content_hash(), hash);
@@ -970,6 +978,23 @@ fn hero_params_are_optional_unique_and_checked() {
         ..params()
     });
     assert!(compile(&[q]).is_ok());
+    // The regain parameters: 999 at most each.
+    let regain = CompileError::InvalidHeroParams(
+        "base_mana_regain and regain_specialist_bonus must be at most 999",
+    );
+    for (base, bonus, ok) in [(1000, 1, false), (1, 1000, false), (999, 999, true)] {
+        let mut q = pack();
+        q.hero_params = Some(HeroParamsDef {
+            base_mana_regain: base,
+            regain_specialist_bonus: bonus,
+            ..params()
+        });
+        if ok {
+            assert!(compile(&[q]).is_ok());
+        } else {
+            assert_eq!(fails(q), regain);
+        }
+    }
     // Provided twice in the closure.
     let mut ext = ContentPack::new(manifest("x", &["t"]));
     ext.hero_params = Some(params());

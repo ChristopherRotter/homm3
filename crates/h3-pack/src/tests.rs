@@ -2,6 +2,7 @@
 //! `h3-pack-battle` (R01b3).
 
 use super::*;
+use h3_content::ResourceId;
 
 #[test]
 fn the_core_files_parse_and_compile() {
@@ -226,7 +227,7 @@ fn wisdom_and_the_skill_condition_of_a_share_parse() {
          effects = [{{ kind = \"necromancy\", bp = 3000, unless_skill = \"s\" }}]\n\
          [hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
          learn_level = 2\nexperience = [0, 10]\nmax_level = 1\nwisdom = \"s\"\nschools = []\n\
-         mana_ceiling = 999\n"
+         mana_ceiling = 999\nbase_mana_regain = 1\nregain_specialist_bonus = 1\n"
     ))
     .unwrap();
     assert_eq!(
@@ -501,6 +502,130 @@ fn the_harvested_navigation_and_sea_artifacts() {
     assert_eq!(hat.effects, [HeroEffect::FreeBoarding], "{hat:?}");
 }
 
+/// E08 T81b (pack format v50): the day's income and spell points from the gap-fill in every
+/// expansion (ADR-0013 points 3 and 16; GAM-RES-004, -005, HER-MAN-002).
+#[test]
+fn the_harvested_income_and_mana() {
+    let all = [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ];
+    for (i, packs) in all.into_iter().enumerate() {
+        let r = compile(packs, "base:faithful").unwrap();
+        let resource = |key: &str| {
+            let at = r.resources().iter().position(|x| x.key.as_str() == key);
+            ResourceId::from_index(at.unwrap()).unwrap()
+        };
+        let daily = |key: &str, amount| HeroEffect::DailyResource {
+            resource: resource(key),
+            amount,
+        };
+        let params = r.hero_params().unwrap();
+        assert_eq!(
+            (params.base_mana_regain, params.regain_specialist_bonus),
+            (1, 1)
+        );
+        let levels = |key: &str| {
+            r.skill(r.skill_by_key(key).unwrap())
+                .unwrap()
+                .levels
+                .clone()
+        };
+        assert_eq!(
+            levels("base:estates"),
+            [125, 250, 500].map(|amount| vec![daily("base:gold", amount)])
+        );
+        assert_eq!(
+            levels("base:mysticism"),
+            [2, 3, 4].map(|points| vec![HeroEffect::ManaRegain { points }])
+        );
+        let effects = |key: &str| {
+            r.artifact(r.artifact_by_key(key).unwrap())
+                .unwrap()
+                .effects
+                .clone()
+        };
+        for (key, effect) in [
+            ("base:everflowing_crystal_cloak", daily("base:crystal", 1)),
+            ("base:ring_of_infinite_gems", daily("base:gems", 1)),
+            ("base:everpouring_vial_of_mercury", daily("base:mercury", 1)),
+            ("base:inexhaustible_cart_of_ore", daily("base:ore", 1)),
+            ("base:eversmoking_ring_of_sulfur", daily("base:sulfur", 1)),
+            ("base:inexhaustible_cart_of_lumber", daily("base:wood", 1)),
+            ("base:endless_sack_of_gold", daily("base:gold", 1000)),
+            ("base:endless_bag_of_gold", daily("base:gold", 750)),
+            ("base:endless_purse_of_gold", daily("base:gold", 500)),
+            (
+                "base:charm_of_mana",
+                HeroEffect::ExtraManaRegain { points: 1 },
+            ),
+            (
+                "base:talisman_of_mana",
+                HeroEffect::ExtraManaRegain { points: 2 },
+            ),
+            (
+                "base:mystic_orb_of_mana",
+                HeroEffect::ExtraManaRegain { points: 3 },
+            ),
+        ] {
+            assert_eq!(effects(key), [effect], "{key}");
+        }
+        // The thirteen resource and gold specialists (the wiki's Hero specialty page).
+        let mut specialists = std::vec![
+            ("base:caitlin", "base:gold", 350),
+            ("base:jenova", "base:gold", 350),
+            ("base:rissa", "base:mercury", 1),
+            ("base:aine", "base:gold", 350),
+            ("base:octavia", "base:gold", 350),
+            ("base:calid", "base:sulfur", 1),
+            ("base:clavius", "base:gold", 350),
+            ("base:nagash", "base:gold", 350),
+            ("base:damacon", "base:gold", 350),
+            ("base:sephinroth", "base:crystal", 1),
+            ("base:saurug", "base:gems", 1),
+        ];
+        if i < 2 {
+            specialists.extend([
+                ("ab:gelare", "base:gold", 350),
+                ("ab:grindan", "base:gold", 350),
+            ]);
+        }
+        for (hero, key, amount) in specialists {
+            let t = r.hero_type(r.hero_type_by_key(hero).unwrap()).unwrap();
+            assert_eq!(t.specialty, [daily(key, amount)], "{hero}");
+        }
+        let incomes = r
+            .hero_types()
+            .iter()
+            .filter(|t| matches!(t.specialty[..], [HeroEffect::DailyResource { .. }]))
+            .count();
+        assert_eq!(incomes, if i < 2 { 13 } else { 11 });
+        // The Crystal Dragons' crystal, an ability outside battle (`ab`).
+        if i < 2 {
+            let dragon = r
+                .creature_info(r.creature_by_key("ab:crystal_dragon").unwrap())
+                .unwrap();
+            assert_eq!(
+                dragon.abilities,
+                [CreatureAbility::WeeklyResource {
+                    resource: resource("base:crystal"),
+                    amount: 3
+                }]
+            );
+        }
+        if i == 0 {
+            // SoD's combinations: the Cornucopia's own 4 (its parts' 1 each count through it),
+            // the Wizard's Well's full mana.
+            assert_eq!(
+                effects("sod:cornucopia"),
+                ["base:mercury", "base:sulfur", "base:crystal", "base:gems"].map(|k| daily(k, 4))
+            );
+            assert_eq!(effects("sod:wizards_well"), [HeroEffect::FullMana]);
+        }
+    }
+}
+
 #[test]
 fn the_mana_ceiling_parses_and_is_required() {
     // E08 T59 (pack format v48): the most spell points a reward record leaves a hero.
@@ -508,18 +633,178 @@ fn the_mana_ceiling_parses_and_is_required() {
     let params = "[hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
                   learn_level = 2\nexperience = [0, 10]\nmax_level = 1\nwisdom = \"s\"\n\
                   schools = []\n";
-    let pack = parse_pack(&format!("{manifest}{params}mana_ceiling = 999\n")).unwrap();
+    let regain = "base_mana_regain = 1\nregain_specialist_bonus = 1\n";
+    let pack = parse_pack(&format!("{manifest}{params}{regain}mana_ceiling = 999\n")).unwrap();
     assert_eq!(pack.hero_params.map(|p| p.mana_ceiling), Some(999));
     // Without it, or above a spell point's range, the parameters do not parse.
     for tail in ["", "mana_ceiling = 65536\n"] {
         assert!(matches!(
-            parse_pack(&format!("{manifest}{params}{tail}")),
+            parse_pack(&format!("{manifest}{params}{regain}{tail}")),
             Err(PackError::Syntax(_))
         ));
     }
     // The harvested base pack holds the original's 999.
     let base = compile(&[BASE_CORE], "base:faithful").unwrap();
     assert_eq!(base.hero_params().map(|p| p.mana_ceiling), Some(999));
+}
+
+#[test]
+fn the_regain_parameters_parse_and_are_required() {
+    // E08 T81b (pack format v50): the day's base regain and the specialists' bonus (HER-MAN-002).
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let params = "[hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
+                  learn_level = 2\nexperience = [0, 10]\nmax_level = 1\nwisdom = \"s\"\n\
+                  schools = []\nmana_ceiling = 999\n";
+    let pack = parse_pack(&format!(
+        "{manifest}{params}base_mana_regain = 2\nregain_specialist_bonus = 3\n"
+    ))
+    .unwrap();
+    assert_eq!(
+        pack.hero_params
+            .map(|p| (p.base_mana_regain, p.regain_specialist_bonus)),
+        Some((2, 3))
+    );
+    for tail in [
+        "base_mana_regain = 1\n",
+        "regain_specialist_bonus = 1\n",
+        "base_mana_regain = -1\nregain_specialist_bonus = 1\n",
+    ] {
+        assert!(
+            matches!(
+                parse_pack(&format!("{manifest}{params}{tail}")),
+                Err(PackError::Syntax(_))
+            ),
+            "{tail}"
+        );
+    }
+}
+
+#[test]
+fn the_income_and_mana_kinds_parse() {
+    // E08 T81b (pack format v50, increment 9): a daily income, the day's regain, the extra
+    // regain, full mana (ADR-0013 points 3 and 16).
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let pack = parse_pack(&format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"mana_regain\", points = 2 }}, \
+         {{ kind = \"daily_resource\", resource = \"gold\", amount = 125 }}]\n\
+         [[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
+         effects = [{{ kind = \"daily_resource\", resource = \"y:gems\", amount = 4 }}, \
+         {{ kind = \"extra_mana_regain\", points = 3 }}, {{ kind = \"full_mana\" }}]\n"
+    ))
+    .unwrap();
+    let k = |s: &str| ContentKey::parse(s).unwrap();
+    assert_eq!(
+        pack.skills[0].levels[0],
+        [
+            HeroEffect::ManaRegain { points: 2 },
+            HeroEffect::DailyResource {
+                resource: k("x:gold"),
+                amount: 125
+            }
+        ]
+    );
+    assert_eq!(
+        pack.artifacts[0].effects,
+        [
+            HeroEffect::DailyResource {
+                resource: k("y:gems"),
+                amount: 4
+            },
+            HeroEffect::ExtraManaRegain { points: 3 },
+            HeroEffect::FullMana
+        ]
+    );
+    // An unknown or missing field is a syntax error, also on the kind without parameters.
+    for effect in [
+        "kind = \"daily_resource\", resource = \"gold\"",
+        "kind = \"daily_resource\", amount = 1",
+        "kind = \"mana_regain\", points = 2, bp = 3",
+        "kind = \"full_mana\", points = 1",
+    ] {
+        let unknown =
+            format!("{manifest}[[secondary_skill]]\nid = \"s\"\nbasic = [{{ {effect} }}]\n");
+        assert!(
+            matches!(parse_pack(&unknown), Err(PackError::Syntax(_))),
+            "{effect}"
+        );
+    }
+    for (effect, message) in [
+        (
+            "kind = \"daily_resource\", resource = \"synthetic:coin\", amount = 0",
+            "daily_resource amount must be 1..=2147483647",
+        ),
+        (
+            "kind = \"daily_resource\", resource = \"synthetic:mud\", amount = 1",
+            "synthetic:mud",
+        ),
+        (
+            "kind = \"mana_regain\", points = 0",
+            "mana_regain and extra_mana_regain points must be 1..=999",
+        ),
+        (
+            "kind = \"extra_mana_regain\", points = 1000",
+            "mana_regain and extra_mana_regain points must be 1..=999",
+        ),
+    ] {
+        let bad = format!(
+            "[pack]\nid = \"x\"\nversion = \"1\"\ndepends = [\"synthetic\"]\n\
+             [[secondary_skill]]\nid = \"s\"\nbasic = [{{ {effect} }}]\n"
+        );
+        let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
+        assert!(error.to_string().contains(message), "{error}");
+    }
+}
+
+#[test]
+fn the_creature_abilities_parse() {
+    // E08 T81b (pack format v50, increment 9): a creature's abilities outside battle, in its
+    // definition and an override (ADR-0015 amendment R01 point 1, GAM-RES-005).
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let pack = parse_pack(&format!(
+        "{manifest}[[creature]]\nid = \"c\"\nspeed = 5\n\
+         abilities_outside_battle = [{{ kind = \"weekly_resource\", resource = \"crystal\", amount = 3 }}]\n\
+         [[creature_override]]\ntarget = \"y:d\"\nabilities_outside_battle = []\n"
+    ))
+    .unwrap();
+    assert_eq!(
+        pack.creatures[0].info.abilities,
+        [CreatureAbility::WeeklyResource {
+            resource: ContentKey::parse("x:crystal").unwrap(),
+            amount: 3
+        }]
+    );
+    assert_eq!(pack.creature_overrides[0].patch.abilities, Some(vec![]));
+    for ability in [
+        "kind = \"weekly_resource\", resource = \"crystal\"",
+        "kind = \"weekly_resource\", resource = \"crystal\", amount = 3, bp = 1",
+        "kind = \"daily_resource\", resource = \"crystal\", amount = 3",
+    ] {
+        let bad = format!(
+            "{manifest}[[creature]]\nid = \"c\"\nspeed = 5\nabilities_outside_battle = [{{ {ability} }}]\n"
+        );
+        assert!(
+            matches!(parse_pack(&bad), Err(PackError::Syntax(_))),
+            "{ability}"
+        );
+    }
+    let bad = format!(
+        "{manifest}[[creature]]\nid = \"c\"\nspeed = 5\n\
+         abilities_outside_battle = [{{ kind = \"weekly_resource\", resource = \"a:b:c\", amount = 3 }}]\n"
+    );
+    assert!(parse_pack(&bad).is_err());
+    let bad = format!(
+        "{manifest}[[creature_override]]\ntarget = \"y:d\"\n\
+         abilities_outside_battle = [{{ kind = \"weekly_resource\", resource = \"a:b:c\", amount = 3 }}]\n"
+    );
+    assert!(parse_pack(&bad).is_err());
+    // The synthetic expansion's Lurker carries one (the every-kind check).
+    let r = compile(&[SYNTHETIC_EXT_CORE, SYNTHETIC_CORE], "synthetic:faithful").unwrap();
+    let lurker = r
+        .creature_info(r.creature_by_key("synthetic-ext:lurker").unwrap())
+        .unwrap();
+    let kinds: Vec<&str> = lurker.abilities.iter().map(CreatureAbility::name).collect();
+    assert_eq!(kinds, CreatureAbility::<u8>::NAMES);
 }
 
 #[test]
@@ -552,7 +837,7 @@ fn the_level_data_and_class_overrides_parse() {
                  primary_gain = [[25, 25, 25, 25], [25, 25, 25, 25]]\n";
     let params = "[hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
                   learn_level = 2\nexperience = [0, 1000, 2000]\nmax_level = 74\n\
-                  mana_ceiling = 999\n";
+                  mana_ceiling = 999\nbase_mana_regain = 1\nregain_specialist_bonus = 1\n";
     let pack = parse_pack(&format!(
         "{manifest}{params}wisdom = \"w\"\nschools = [\"base:fire\", \"air\"]\n\
          {class}offer_intervals = [6, 4]\n\

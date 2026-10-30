@@ -21,6 +21,7 @@
 
 extern crate alloc;
 
+mod ability;
 mod artifacts;
 mod effect;
 mod error;
@@ -31,14 +32,17 @@ mod pack;
 mod quirks;
 mod ruleset;
 
+pub use ability::{
+    CompiledCreatureAbility, CreatureAbility, CreatureAbilityDef, MAX_CREATURE_ABILITIES,
+};
 pub use artifacts::{
     ArtifactClass, ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeId, MAX_PARTS,
     MAX_SLOT_COUNT, MAX_SLOT_POSITIONS,
 };
 pub use effect::{
     Affects, CompiledHeroEffect, CreatureSelector, CreatureStat, FULL_BP, HeroEffect,
-    HeroEffectDef, MAX_ALIGNMENT_FACTIONS, MAX_EFFECTS, MAX_SKILL_LEVEL, RAISED_LEVELS,
-    RaisedCreature, SpellGrant, SpellScope,
+    HeroEffectDef, MAX_ALIGNMENT_FACTIONS, MAX_DAILY_AMOUNT, MAX_EFFECTS, MAX_REGAIN,
+    MAX_SKILL_LEVEL, RAISED_LEVELS, RaisedCreature, SpellGrant, SpellScope,
 };
 pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};

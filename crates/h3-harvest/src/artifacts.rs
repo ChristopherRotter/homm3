@@ -15,7 +15,7 @@ use std::fmt::Write as _;
 use h3_formats::text::TextTable;
 
 use crate::gapfill::{AbilitySpec, GapFill};
-use crate::heroes::{Context, HeroPacks, reference};
+use crate::heroes::{Context, HeroPacks, reference, resource_ref};
 use crate::{key_of, quote};
 
 /// `ArtSlots.txt` position names and the slot kind (key, name) each belongs to.
@@ -187,11 +187,12 @@ fn render(
         ));
     }
     let mut parts = vec![format!("kind = {}", quote(&spec.kind))];
-    // Selector and statistic first, as in the pack docs; the rest in key order.
+    // Selector and statistic first, as in the pack docs (a resource before its amount, E08
+    // T81b); the rest in key order.
     let mut params: Vec<(&String, &toml::Value)> = spec.params.iter().collect();
     params.sort_by_key(|(k, _)| {
         (
-            !matches!(k.as_str(), "creatures" | "stat"),
+            !matches!(k.as_str(), "creatures" | "stat" | "resource"),
             k.as_str() != "creatures",
         )
     });
@@ -228,6 +229,10 @@ fn render(
                     .find(|n| *n == name)
                     .ok_or_else(|| format!("gapfill: {what}: unknown skill `{name}`"))?;
                 quote(&reference(&key_of(skill), "base", pack, what)?)
+            }
+            // E08 T81b: a `daily_resource`'s resource, a key of `base`.
+            ("resource", toml::Value::String(id)) => {
+                quote(&resource_ref(id, ctx.resources, pack, what)?)
             }
             ("by_level", toml::Value::Array(list)) => {
                 let keys = list

@@ -327,6 +327,8 @@ fn core_pack(extra: bool) -> ContentPack {
             wisdom: key("t:sense"),
             schools: vec![],
             mana_ceiling: 999,
+            base_mana_regain: 1,
+            regain_specialist_bonus: 1,
         }),
         ..ContentPack::new(manifest())
     }

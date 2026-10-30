@@ -5,6 +5,7 @@ use std::vec;
 use std::vec::Vec;
 
 use super::*;
+use crate::ability::CreatureAbility;
 use crate::flags::CreatureFlag;
 use crate::pack::{
     CreatureDef, CreatureInfoDef, CreatureOverride, FactionDef, PackManifest, ProfileDef,
@@ -177,7 +178,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x55c8_3a96_b21b_f823;
+const GOLDEN_BASE_HASH: u64 = 0x5db3_28ea_c192_3be6;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -425,6 +426,10 @@ fn rich_base() -> ContentPack {
     info.ai_value = 80;
     info.adventure_count = [20, 50];
     info.flags = vec!["flying".into(), "two_hex".into()];
+    info.abilities = vec![CreatureAbility::WeeklyResource {
+        resource: key("base:wood"),
+        amount: 3,
+    }];
     p
 }
 
@@ -451,6 +456,13 @@ fn resources_factions_and_creature_info_compile() {
     assert_eq!((info.growth, info.horde_growth), (14, 4));
     assert_eq!((info.fight_value, info.ai_value), (100, 80));
     assert_eq!((info.speed, info.adventure_count), (5, [20, 50]));
+    assert_eq!(
+        info.abilities,
+        [CreatureAbility::WeeklyResource {
+            resource: ResourceId::from_raw(0),
+            amount: 3
+        }]
+    );
     let stats = r.creature(a).unwrap();
     assert!(stats.flags.contains(CreatureFlag::Flying));
     assert!(stats.flags.contains(CreatureFlag::TwoHex));
@@ -464,6 +476,11 @@ fn resources_factions_and_creature_info_compile() {
     // Info fields are part of the content hash.
     let plain = Ruleset::compile(&[base()], "base:faithful").unwrap();
     assert_ne!(plain.content_hash(), r.content_hash());
+    // The abilities outside battle are too (E08 increment 9).
+    let mut other = rich_base();
+    other.creatures[0].info.abilities.clear();
+    let other = Ruleset::compile(&[other], "base:faithful").unwrap();
+    assert_ne!(other.content_hash(), r.content_hash());
 }
 
 #[test]
@@ -607,6 +624,43 @@ fn info_validation() {
             reason: "adventure_count high must not be below low"
         }
     );
+    // The abilities outside battle: their parameters and one per resource (E08 increment 9).
+    let weekly = |amount| CreatureAbility::WeeklyResource {
+        resource: key("base:wood"),
+        amount,
+    };
+    for (list, reason) in [
+        (
+            vec![weekly(0)],
+            "weekly_resource amount must be 1..=2147483647",
+        ),
+        (
+            vec![weekly(1), weekly(2)],
+            "an ability outside battle is listed twice",
+        ),
+    ] {
+        let mut p = base();
+        p.creatures[0].info.abilities = list;
+        assert_eq!(
+            expect(&[p], "base:faithful"),
+            CompileError::InvalidCreature {
+                key: "base:a".into(),
+                reason
+            }
+        );
+    }
+    let mut p = base();
+    p.creatures[0].info.abilities = vec![CreatureAbility::WeeklyResource {
+        resource: key("base:nothing"),
+        amount: 1,
+    }];
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::UnknownReference {
+            kind: "resource",
+            key: "base:nothing".into()
+        }
+    );
 }
 
 fn full_patch() -> CreaturePatch {
@@ -624,6 +678,10 @@ fn full_patch() -> CreaturePatch {
         adventure_count: Some([4, 10]),
         flags: Some(vec!["undead".into()]),
         upgrades: Some(vec![key("ext:c")]),
+        abilities: Some(vec![CreatureAbility::WeeklyResource {
+            resource: key("ext:gems"),
+            amount: 1,
+        }]),
     }
 }
 
@@ -676,6 +734,13 @@ fn overrides_change_only_the_listed_fields() {
     assert!(info.flags.contains(CreatureFlag::Undead));
     assert!(!info.flags.contains(CreatureFlag::Flying));
     assert_eq!(info.upgrades, [r.creature_by_key("ext:c").unwrap()]);
+    assert_eq!(
+        info.abilities,
+        [CreatureAbility::WeeklyResource {
+            resource: ResourceId::from_raw(2),
+            amount: 1
+        }]
+    );
     // `Some(None)` makes a creature neutral.
     let neutral = CreaturePatch {
         faction: Some(None),
@@ -735,6 +800,23 @@ fn override_errors() {
     };
     assert!(matches!(
         expect(&[base(), overriding("base:a", bad_cost)], "base:faithful"),
+        CompileError::UnknownReference {
+            kind: "resource",
+            ..
+        }
+    ));
+    let bad_ability = CreaturePatch {
+        abilities: Some(vec![CreatureAbility::WeeklyResource {
+            resource: key("ext:nothing"),
+            amount: 1,
+        }]),
+        ..CreaturePatch::default()
+    };
+    assert!(matches!(
+        expect(
+            &[base(), overriding("base:a", bad_ability)],
+            "base:faithful"
+        ),
         CompileError::UnknownReference {
             kind: "resource",
             ..

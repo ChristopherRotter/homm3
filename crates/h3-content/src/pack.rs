@@ -8,6 +8,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use crate::ability::CreatureAbilityDef;
 use crate::artifacts::ArtifactClass;
 use crate::effect::HeroEffectDef;
 use crate::heroes::SpellCategory;
@@ -85,6 +86,9 @@ pub struct CreatureInfoDef {
     /// The creature types this one upgrades into (E04a T3; at most
     /// [`crate::MAX_UPGRADES`]).
     pub upgrades: Vec<ContentKey>,
+    /// Its abilities outside battle (pack format v50, E08 increment 9; at most
+    /// [`crate::MAX_CREATURE_ABILITIES`]).
+    pub abilities: Vec<CreatureAbilityDef>,
 }
 
 impl Default for CreatureInfoDef {
@@ -102,6 +106,7 @@ impl Default for CreatureInfoDef {
             adventure_count: [0, 0],
             flags: Vec::new(),
             upgrades: Vec::new(),
+            abilities: Vec::new(),
         }
     }
 }
@@ -162,6 +167,8 @@ pub struct CreaturePatch {
     pub flags: Option<Vec<String>>,
     /// New upgrades (replaces the whole list).
     pub upgrades: Option<Vec<ContentKey>>,
+    /// New abilities outside battle (replaces the whole list; pack format v50).
+    pub abilities: Option<Vec<CreatureAbilityDef>>,
 }
 
 /// A school of magic (E04a T3): spells belong to schools, school skills raise their mastery.
@@ -381,6 +388,13 @@ pub struct HeroParamsDef {
     /// The most spell points a reward record leaves a hero (pack format v48, E08 T59;
     /// HER-CHG-003).
     pub mana_ceiling: u16,
+    /// The day's spell point regain without a `mana_regain` effect (pack format v50, E08
+    /// increment 9; HER-MAN-002; the original's 1, `skill_mysticism` 0x63E9C8's entry 0), at
+    /// most 999.
+    pub base_mana_regain: u16,
+    /// Added to a regain grown by a skill specialty on its skill (pack format v50, E08
+    /// increment 9; HER-MAN-002; the original's 1, `hero_mana_regained` 0x4E3FA8), at most 999.
+    pub regain_specialist_bonus: u16,
 }
 
 /// A profile: a named selection of quirk flags (ADR-0007).

@@ -2797,7 +2797,10 @@ fn hero_content_syntax() {
         .chain(r.artifacts().iter().flat_map(|a| &a.effects))
         .map(HeroEffect::name)
         .collect();
-    assert_eq!(kinds.len(), HeroEffect::<u8, u8, u8, u8, u8>::NAMES.len());
+    assert_eq!(
+        kinds.len(),
+        HeroEffect::<u8, u8, u8, u8, u8, u8>::NAMES.len()
+    );
 
     // Strict syntax: unknown kinds, parameters, flags and selectors are errors.
     let bad_syntax = [

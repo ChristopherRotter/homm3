@@ -104,10 +104,11 @@ effects = [{ kind = "no_range_penalty", creatures = { flag = "shooter" } }, { ki
 parts = ["base:bow_of_elven_cherrywood", "base:bowstring_of_the_unicorns_mane", "base:angel_feather_arrows"]
 
 [[artifact]]
-id = "wizards_well"  # original id 138; pending: E08-E10
+id = "wizards_well"  # original id 138
 name = "Wizard's Well"
 class = "relic"
 slot = "base:misc"
+effects = [{ kind = "full_mana" }]
 parts = ["base:charm_of_mana", "base:talisman_of_mana", "base:mystic_orb_of_mana"]
 
 [[artifact]]
@@ -119,8 +120,9 @@ effects = [{ kind = "spell_duration", rounds = 50 }]
 parts = ["base:collar_of_conjuring", "base:ring_of_conjuring", "base:cape_of_conjuring"]
 
 [[artifact]]
-id = "cornucopia"  # original id 140; pending: E08-E10
+id = "cornucopia"  # original id 140
 name = "Cornucopia"
 class = "relic"
 slot = "base:misc"
+effects = [{ kind = "daily_resource", resource = "base:mercury", amount = 4 }, { kind = "daily_resource", resource = "base:sulfur", amount = 4 }, { kind = "daily_resource", resource = "base:crystal", amount = 4 }, { kind = "daily_resource", resource = "base:gems", amount = 4 }]
 parts = ["base:everflowing_crystal_cloak", "base:ring_of_infinite_gems", "base:everpouring_vial_of_mercury", "base:eversmoking_ring_of_sulfur"]

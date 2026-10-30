@@ -27,6 +27,10 @@ pub struct GapFill {
     /// Creature abilities (E03 T2; ADR-0012): behaviour the original hard-codes per creature.
     #[serde(default)]
     pub creature_abilities: Vec<CreatureAbilities>,
+    /// Creature abilities outside battle (E08 T81b, pack format v50): the core file's
+    /// `abilities_outside_battle`, whose `resource` the harvester qualifies.
+    #[serde(default)]
+    pub creature_abilities_outside_battle: Vec<CreatureAbilities>,
     /// Native terrains of the factions (E03 T7, BAT-TER-001).
     #[serde(default)]
     pub native_terrain: Vec<NativeTerrain>,
@@ -381,6 +385,8 @@ pub struct Heroes {
     pub specialty_extra: Vec<SpecialtyExtra>,
     /// Limits of a hero's details (E04a T4a).
     pub params: HeroParams,
+    /// The resource specialty's income (specialty kind 2; E08 T81b).
+    pub resource_specialty: ResourceSpecialty,
     /// The level-up's intervals by class (E08 T26b).
     pub offer_intervals: OfferIntervals,
 }
@@ -423,6 +429,23 @@ pub struct HeroParams {
     pub schools: Vec<String>,
     /// The most spell points a reward record leaves a hero (E08 T59).
     pub mana_ceiling: u16,
+    /// The day's spell point regain without a source (E08 T81b).
+    pub base_mana_regain: u16,
+    /// Added to a regain grown by a skill specialty on its skill (E08 T81b).
+    pub regain_specialist_bonus: u16,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// The income of a resource specialty (specialty kind 2, E08 T81b): a `daily_resource` of the
+/// table's resource.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceSpecialty {
+    /// A day's amount of a resource from wood to gems.
+    pub amount: u32,
+    /// A day's gold.
+    pub gold: u32,
     /// Source ids.
     pub sources: Vec<String>,
 }

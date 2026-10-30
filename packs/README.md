@@ -5,7 +5,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 
 | File | Holds | Parsed by, compiled by |
 |---|---|---|
-| `core.toml` | the `[pack]` manifest; resources, factions, terrains, creatures (identity and non-battle data: name, faction, level, speed, cost, growth, values, flags, upgrades), creature overrides' core halves, spell schools, spells (name, category, level, schools, cost, power, effect, `granted_by_name_only`), secondary skills, hero classes, heroes, hero overrides, artifact slots and their overrides, artifacts, `[hero_params]`, profiles | `h3-pack` into a `ContentPack`; `h3-content` into the core `Ruleset` |
+| `core.toml` | the `[pack]` manifest; resources, factions, terrains, creatures (identity and non-battle data: name, faction, level, speed, cost, growth, values, flags, upgrades, abilities outside battle), creature overrides' core halves, spell schools, spells (name, category, level, schools, cost, power, effect, `granted_by_name_only`), secondary skills, hero classes, heroes, hero overrides, artifact slots and their overrides, artifacts, `[hero_params]`, profiles | `h3-pack` into a `ContentPack`; `h3-content` into the core `Ruleset` |
 | `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), sieges (v37), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
 
@@ -257,6 +257,14 @@ which rule reads each kind.
 override, replacing the list) names the creature types it upgrades into: at most 3, not itself,
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
+
+**Abilities outside battle** (pack format v50, E08 T81b; ADR-0015 amendment R01 point 1):
+`abilities_outside_battle = [{ kind = "weekly_resource", resource = "base:crystal", amount = 3 }]`
+on a creature in `core.toml` (or an override, replacing the list): what the creature does outside
+battle, read by the game's day, never by the battle (its battle `abilities` are `battle.toml`'s,
+ADR-0012). At most 4, one per resource. `weekly_resource` (`resource`, `amount` 1 to 2^31 - 1): on
+a week's first day the player of a hero whose army holds the creature gains `amount` of
+`resource`, once a type however many (GAM-RES-005; the `ab` pack's Crystal Dragon, 3 crystal).
 
 ## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a; v29 T7c2b; v30 T8a; v31 T8b)
 
@@ -644,6 +652,10 @@ different creatures or statistics.
 | `gives_spell_book` | — | since v47: equipping the artifact puts a Spell Book into the hero's empty spell book position, on every path (a move, a gain, a combination's build); removing it takes nothing back (Titan's Thunder, 0x4E2A00; HER-ART-007) |
 | `navigation` | `level` (1..=3) | since v49 (E08 T70; read from E08 T71): the hero's Navigation level, the highest of its sources; it indexes the adventure part's sea table for the day's sea points (0 without; the skill: 1/2/3, 0x698AEC). A skill specialty on the skill adds its `bp_per_level` of the table's first entry per hero level while the hero has the skill (Sylvia and Voy: 500, so 75 a level; HER-ADV-009) |
 | `sea_movement_points` | `points` (≥ 1) | since v49: flat points added to the day's sea points after the table's entry; sources add, each artifact type once, worn or a part of a worn combination (the Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500, so the Admiral's Hat 1 500 through its parts: 0x4E4990; HER-ADV-009) |
+| `daily_resource` | `resource`, `amount` (1 to 2^31 - 1) | since v50 (E08 T81b; read from E08 T82): `amount` of `resource` a day to the hero's player; each worn copy counts, a worn combination's parts too; a skill level's grows with a skill specialty on it; one per resource in a list (the resource artifacts 1, the Cornucopia 4 of four, the Endless Sack, Bag and Purse of Gold 1 000, 750, 500; Estates 125, 250, 500 gold; the resource specialists 1, the gold specialists 350; GAM-RES-004) |
+| `mana_regain` | `points` (1..=999) | since v50: the day's spell point regain, the highest of its sources, else `[hero_params]`'s `base_mana_regain` (Mysticism 2, 3, 4; HER-MAN-002) |
+| `extra_mana_regain` | `points` (1..=999) | since v50: spell points regained a day on top, each worn artifact type once (the Charm, the Talisman and the Mystic Orb of Mana 1, 2, 3) |
+| `full_mana` | — | since v50: the day's spell points fill to the hero's maximum when below it (the Wizard's Well) |
 | `free_boarding` | — | since v49: a boarding or a landing converts the hero's points left to the new surface's instead of setting them to 0; only the artifact type that carries it counts, not its parts worn apart (the Admiral's Hat, 0x4A1010, 0x49E670; HER-ADV-009) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
@@ -790,13 +802,16 @@ lists at most `max_level + 1` levels), `wisdom` (the skill a level-up offers whe
 first interval is due) and `schools` (distinct skills, drawn from when the second is due; HER-LVL-004).
 Since v48 (E08 T59): `mana_ceiling` (the most spell points a reward record leaves a hero: its
 mana is added and the total held between 0 and this, so a hero above it falls to it; HER-CHG-003,
-read from E08 T60).
+read from E08 T60). Since v50 (E08 T81b): `base_mana_regain` (the day's spell point regain without
+a `mana_regain` effect) and `regain_specialist_bonus` (added to a regain grown by a skill
+specialty on its skill), each 0..=999 (HER-MAN-002).
 The compiler continues the experience table to level `max_level + 1`, each step the previous
 one + a fifth of it, rounded down (HER-EXP-002), and refuses a table above 32 bits (a
 `max_level` above 78 with the base pack's levels); the last threshold bounds a hero's experience.
 Rules HER-DET-001 and HER-ART-002; the base pack's values come from the gap-fill file
 (`[heroes.params]`: 0/0/1/1, 99, 64, 2; the original's levels 1–12, 74, Wisdom, the four magic
-schools; 999, `grant_rewards` 0x49FA90), the classes' intervals from `[heroes.offer_intervals]` (3 and 3 for the eight classes
+schools; 999, `grant_rewards` 0x49FA90; 1 and 1, `skill_mysticism` 0x63E9C8 and 0x4E3FA8), the
+resource specialists' income from `[heroes.resource_specialty]` (1, gold 350), the classes' intervals from `[heroes.offer_intervals]` (3 and 3 for the eight classes
 the executable lists, 6 and 4 for the others).
 
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
