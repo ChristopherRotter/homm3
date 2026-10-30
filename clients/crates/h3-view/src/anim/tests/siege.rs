@@ -270,6 +270,7 @@ pub(super) fn play_siege(
         casts: &casts,
         bugs,
         siege,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -683,6 +684,7 @@ fn play_quake(
         casts: &casts,
         bugs,
         siege: Some(siege),
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()

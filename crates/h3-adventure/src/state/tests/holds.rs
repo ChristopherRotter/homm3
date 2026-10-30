@@ -1,6 +1,6 @@
-//! Tests of what the map puts in increment 7's objects (E08 T61a; design §7): each kind's shape
-//! checked when the game is built, the guards they take, a monster's treasure artifact, and the
-//! static map's hash.
+//! Tests of what the map puts in increment 7's objects (E08 T61a; increment 7's design note §7):
+//! each kind's shape checked when the game is built, the guards they take, a monster's treasure
+//! artifact, and the static map's hash.
 
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentPack, CreatureDef,

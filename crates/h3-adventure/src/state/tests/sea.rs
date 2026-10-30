@@ -1,11 +1,11 @@
-//! Tests of moving at sea (E08 T73a; design §7, §8 and §10; ADV-SEA-002 to -005): boarding from a
-//! walk, a flight and a water walk, a boat's steps and prices with Favorable Winds, the drop and
-//! D-43's exception, visits from a boat, landing onto a free coastal tile only (D-42), the
-//! conversion of the points with free boarding (D-41) and the day's maximum switched (A-28 not
-//! reproduced), the landing's facing, the events, D-46's water tiles closed to a flight, and the
-//! reachable tiles of a boat and of a walker beside one (E08 T73b). Batch E8's rows as sources:
-//! E8-1 and E8-2 (the conversion after the drop), E8-3 (no landing on a hole or an event), E8-4
-//! (the diagonal at sea on Favorable Winds), E8-15 (a guarded landing, the boat's facing).
+//! Tests of moving at sea (E08 T73a; increment 8's design note §7, §8 and §10; ADV-SEA-002 to
+//! -005): boarding from a walk, a flight and a water walk, a boat's steps and prices with Favorable
+//! Winds, the drop and D-43's exception, visits from a boat, landing onto a free coastal tile only
+//! (D-42), the conversion of the points with free boarding (D-41) and the day's maximum switched
+//! (A-28 not reproduced), the landing's facing, the events, D-46's water tiles closed to a flight,
+//! and the reachable tiles of a boat and of a walker beside one (E08 T73b). Batch E8's rows as
+//! sources: E8-1 and E8-2 (the conversion after the drop), E8-3 (no landing on a hole or an event),
+//! E8-4 (the diagonal at sea on Favorable Winds), E8-15 (a guarded landing, the boat's facing).
 
 use std::sync::Arc;
 

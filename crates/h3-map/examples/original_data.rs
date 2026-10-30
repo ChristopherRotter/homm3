@@ -425,9 +425,9 @@ fn census(
     );
 }
 
-/// Counts the sea's objects (E08 T72, design §4): the boats and the maps with boats, the boats by
-/// type, the sea's pickups by type, the holes, Favorable Winds and those of a picture the import
-/// lacks (they lie on one tile).
+/// Counts the sea's objects (E08 T72, increment 8's design note §4): the boats and the maps with
+/// boats, the boats by type, the sea's pickups by type, the holes, Favorable Winds and those of a
+/// picture the import lacks (they lie on one tile).
 fn sea(setup: &MapSetup, rules: &GameRuleset, add: &mut impl FnMut(&'static str, usize)) {
     add("boats", setup.boats.len());
     add("maps with boats", usize::from(!setup.boats.is_empty()));

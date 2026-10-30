@@ -39,7 +39,25 @@
    5. The clips' clock (E17 M5 T4b2b, *provisional*): BINKW32.DLL reads WINMM's timeGetTime
       itself to pace a clip (`BinkWait`), so its import slot is pointed at the same clock
       (bink_time, which does not count as the game's reads); the ack's eighth field is 1 when
-      it is. Without it a clip ran in real time while the game's clock stood still. */
+      it is. Without it a clip ran in real time while the game's clock stood still.
+   6. Sounds on the virtual clock (E17 M5 T5b2, *provisional*): with H3SOUND set as well (the
+      harness's `sound` runs, which give Wine an audio device and the game an effects volume),
+      Heroes3.exe's Miles imports that start, end and ask after a sample go through the hooks
+      below, so a sample plays for its length on the virtual clock: AIL_sample_status reports it
+      playing (4) from AIL_start_sample until (now - start) x rate reaches its frames x 1000 x its
+      loop count (0: until ended), then done (2); AIL_end_sample and AIL_init_sample end it. A
+      sample's frames are its WAV's `fact` count (every entry of the sound archives has one: the
+      viewer's decoder gives the same, h3-assets' wav.rs), its rate the `fmt ` chunk's. Miles
+      still mixes the real sample (Wine's device is ALSA's null sink, faster than real time), but
+      the game reads only the hooks' answers, so `wait_for_sample` 0x59A4C0 and `sample_wait`
+      0x599EC0 end where the viewer's timeline does. Each start is appended to <H3CLOCK>\sounds as
+      "<time> <channel> <length ms> <loops>" (the channel: the game's sample handle's index in
+      the order first started; the length rounded up); the ack's ninth field counts the hooked
+      imports (9 when all are: AIL_serve's too, whose real time resets the game's reads like
+      every hooked call, so the harness never takes a game inside Miles for idle). With sound the
+      game's other threads read the clock too (its sound service), so only the main thread's
+      reads count: they alone say the battle is idle (`machines`' heal read half done
+      otherwise). */
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -130,10 +148,13 @@ static DWORD now(void)
     return frozen ? stopped_at : real_time() + shift;
 }
 
+static DWORD main_thread;  /* 6.: with sound only the main thread's reads count */
+
 static DWORD WINAPI virtual_time(void)
 {
     DWORD t;
-    InterlockedIncrement(&reads);
+    if (!main_thread || GetCurrentThreadId() == main_thread)
+        InterlockedIncrement(&reads);
     EnterCriticalSection(&lock);
     t = now();
     LeaveCriticalSection(&lock);
@@ -320,6 +341,275 @@ static int redirect(void)
 static int redirected;
 static int bink_clock; /* 5.: BINKW32.DLL's clock redirected */
 
+/* 6. Sounds on the virtual clock. */
+typedef void(WINAPI *ail0_fn)(void);
+typedef int(WINAPI *ail1_fn)(void *);
+typedef int(WINAPI *ail2_fn)(void *, int);
+typedef int(WINAPI *ail3_fn)(void *, const void *, int);
+#define SAMPLES 32
+static struct sample {
+    void *handle;
+    DWORD start;          /* the virtual time it started */
+    unsigned long frames; /* per loop */
+    unsigned long rate;
+    int loops;            /* 0: until ended */
+    int playing;
+} samples[SAMPLES];
+static ail1_fn real_start, real_end, real_init, real_status, real_stop, real_resume;
+static ail2_fn real_loops;
+static ail0_fn real_serve;
+static ail3_fn real_file;
+static int sound_hooks; /* the imports hooked */
+static char sounds_path[MAX_PATH];
+
+static unsigned long le32(const BYTE *p)
+{
+    return p[0] | (unsigned long)p[1] << 8 | (unsigned long)p[2] << 16 | (unsigned long)p[3] << 24;
+}
+
+/* A Miles call under way or just made: the game's reads start again from 0, so the harness
+   does not take the game for idle while Miles works (its calls take real time with a device:
+   `machines`' heal showed a millisecond late). */
+static void busy(void)
+{
+    InterlockedExchange(&reads, 0);
+}
+
+/* The table's entry of `handle`, made on first sight (none when the table is full). */
+static struct sample *sample_of(void *handle)
+{
+    int i;
+    for (i = 0; i < SAMPLES; i++)
+        if (samples[i].handle == handle)
+            return &samples[i];
+    for (i = 0; i < SAMPLES; i++)
+        if (!samples[i].handle) {
+            samples[i].handle = handle;
+            samples[i].loops = 1;
+            return &samples[i];
+        }
+    return NULL;
+}
+
+/* Whether the sample is still playing at the virtual time `t`. */
+static int sounding(const struct sample *s, DWORD t)
+{
+    unsigned long long played, length;
+    if (!s->playing)
+        return 0;
+    if (s->loops == 0)
+        return 1;
+    played = (unsigned long long)(DWORD)(t - s->start) * s->rate;
+    length = (unsigned long long)s->frames * 1000u * (unsigned)s->loops;
+    return played < length;
+}
+
+static int WINAPI hook_file(void *handle, const void *file, int block)
+{
+    busy();
+    const BYTE *p = (const BYTE *)file;
+    struct sample *s;
+    int r = real_file(handle, file, block);
+    busy();
+    EnterCriticalSection(&lock);
+    s = sample_of(handle);
+    if (s && p && !memcmp(p, "RIFF", 4) && !memcmp(p + 8, "WAVE", 4)) {
+        unsigned long size = le32(p + 4) + 8, at = 12;
+        s->frames = 0;
+        s->rate = 22050;
+        while (at + 8 <= size) {
+            unsigned long n = le32(p + at + 4);
+            if (!memcmp(p + at, "fmt ", 4))
+                s->rate = le32(p + at + 12);
+            else if (!memcmp(p + at, "fact", 4))
+                s->frames = le32(p + at + 8);
+            at += 8 + n + (n & 1);
+        }
+        if (!s->rate)
+            s->rate = 22050;
+    }
+    if (s)
+        s->playing = 0;
+    LeaveCriticalSection(&lock);
+    return r;
+}
+
+static int WINAPI hook_loops(void *handle, int loops)
+{
+    struct sample *s;
+    int r;
+    busy();
+    EnterCriticalSection(&lock);
+    s = sample_of(handle);
+    if (s)
+        s->loops = loops;
+    LeaveCriticalSection(&lock);
+    r = real_loops(handle, loops);
+    busy();
+    return r;
+}
+
+static int WINAPI hook_start(void *handle)
+{
+    busy();
+    struct sample *s;
+    EnterCriticalSection(&lock);
+    s = sample_of(handle);
+    if (s) {
+        FILE *f = fopen(sounds_path, "a");
+        s->start = now();
+        s->playing = 1;
+        if (f) {
+            unsigned long ms = s->rate ? (s->frames * 1000u + s->rate - 1) / s->rate : 0;
+            fprintf(f, "%lu %d %lu %d\n", (unsigned long)s->start, (int)(s - samples), ms,
+                    s->loops);
+            fclose(f);
+        }
+    }
+    LeaveCriticalSection(&lock);
+    {
+        int r = real_start(handle);
+        busy();
+        return r;
+    }
+}
+
+static int WINAPI hook_end(void *handle)
+{
+    busy();
+    struct sample *s;
+    EnterCriticalSection(&lock);
+    s = sample_of(handle);
+    if (s)
+        s->playing = 0;
+    LeaveCriticalSection(&lock);
+    {
+        int r = real_end(handle);
+        busy();
+        return r;
+    }
+}
+
+static int WINAPI hook_init(void *handle)
+{
+    busy();
+    struct sample *s;
+    EnterCriticalSection(&lock);
+    s = sample_of(handle);
+    if (s) {
+        s->playing = 0;
+        s->loops = 1;
+    }
+    LeaveCriticalSection(&lock);
+    {
+        int r = real_init(handle);
+        busy();
+        return r;
+    }
+}
+
+/* Paused (the game's focus lost, 0x599C40): the time it stood still is added to its start. */
+static DWORD paused_at[SAMPLES];
+
+static int WINAPI hook_stop(void *handle)
+{
+    busy();
+    struct sample *s;
+    EnterCriticalSection(&lock);
+    s = sample_of(handle);
+    if (s)
+        paused_at[s - samples] = now();
+    LeaveCriticalSection(&lock);
+    {
+        int r = real_stop(handle);
+        busy();
+        return r;
+    }
+}
+
+static int WINAPI hook_resume(void *handle)
+{
+    busy();
+    struct sample *s;
+    EnterCriticalSection(&lock);
+    s = sample_of(handle);
+    if (s && paused_at[s - samples]) {
+        s->start += now() - paused_at[s - samples];
+        paused_at[s - samples] = 0;
+    }
+    LeaveCriticalSection(&lock);
+    {
+        int r = real_resume(handle);
+        busy();
+        return r;
+    }
+}
+
+static int WINAPI hook_status(void *handle)
+{
+    struct sample *s;
+    int r = -1;
+    EnterCriticalSection(&lock);
+    for (s = samples; s < samples + SAMPLES; s++)
+        if (s->handle == handle && (s->playing || s->frames)) {
+            r = sounding(s, now()) ? 4 : 2;
+            break;
+        }
+    LeaveCriticalSection(&lock);
+    return r >= 0 ? r : real_status(handle);
+}
+
+/* Miles' service of its mixer (play_sample's tail, 0x59A3A3): real time, no sample changed. */
+static void WINAPI hook_serve(void)
+{
+    busy();
+    real_serve();
+    busy();
+}
+
+/* Points Heroes3.exe's Miles import `name` at `fn`; returns the import's own address. */
+static FARPROC hook_ail(const char *name, FARPROC fn)
+{
+    BYTE *base = (BYTE *)GetModuleHandleA(NULL);
+    IMAGE_NT_HEADERS32 *nt = (IMAGE_NT_HEADERS32 *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
+    IMAGE_DATA_DIRECTORY dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    IMAGE_IMPORT_DESCRIPTOR *d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir.VirtualAddress);
+    HMODULE mss = GetModuleHandleA("mss32.dll");
+    FARPROC target = mss ? GetProcAddress(mss, name) : NULL;
+    if (!target)
+        return NULL;
+    for (; d->Name; d++) {
+        DWORD *slot = (DWORD *)(base + d->FirstThunk);
+        if (lstrcmpiA((const char *)(base + d->Name), "mss32.dll"))
+            continue;
+        for (; *slot; slot++) {
+            DWORD old;
+            if (*slot != (DWORD)target)
+                continue;
+            if (!VirtualProtect(slot, sizeof *slot, PAGE_READWRITE, &old))
+                return NULL;
+            *slot = (DWORD)fn;
+            VirtualProtect(slot, sizeof *slot, old, &old);
+            sound_hooks++;
+            return target;
+        }
+    }
+    return NULL;
+}
+
+static void hook_sounds(void)
+{
+    real_file = (ail3_fn)hook_ail("_AIL_set_sample_file@12", (FARPROC)hook_file);
+    real_loops = (ail2_fn)hook_ail("_AIL_set_sample_loop_count@8", (FARPROC)hook_loops);
+    real_start = (ail1_fn)hook_ail("_AIL_start_sample@4", (FARPROC)hook_start);
+    real_end = (ail1_fn)hook_ail("_AIL_end_sample@4", (FARPROC)hook_end);
+    real_init = (ail1_fn)hook_ail("_AIL_init_sample@4", (FARPROC)hook_init);
+    real_stop = (ail1_fn)hook_ail("_AIL_stop_sample@4", (FARPROC)hook_stop);
+    real_resume = (ail1_fn)hook_ail("_AIL_resume_sample@4", (FARPROC)hook_resume);
+    real_status = (ail1_fn)hook_ail("_AIL_sample_status@4", (FARPROC)hook_status);
+    real_serve = (ail0_fn)hook_ail("_AIL_serve@0", (FARPROC)hook_serve);
+}
+
 /* Polls the command file and writes the acknowledgement, every 2 ms. */
 static DWORD WINAPI control(LPVOID unused)
 {
@@ -351,9 +641,9 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d\n", applied, (unsigned long)t,
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d\n", applied, (unsigned long)t,
                     (long)reads, (long)forced_draws, waiting, redirected, (long)refused,
-                    bink_clock);
+                    bink_clock, sound_hooks);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -407,8 +697,12 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
     snprintf(ack_path, sizeof ack_path, "%s\\ack", dir);
     snprintf(tmp_path, sizeof tmp_path, "%s\\ack.tmp", dir);
     snprintf(draws_path, sizeof draws_path, "%s\\draws", dir);
+    snprintf(sounds_path, sizeof sounds_path, "%s\\sounds", dir);
     {
         FILE *f = fopen(draws_path, "w");
+        if (f)
+            fclose(f);
+        f = fopen(sounds_path, "w");
         if (f)
             fclose(f);
     }
@@ -417,6 +711,11 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
         redirected = redirect();
         /* Heroes3.exe imports BINKW32.DLL, so it is mapped and bound before this runs. */
         bink_clock = hook(GetModuleHandleA("BINKW32.DLL"), bink_time);
+        if (GetEnvironmentVariableA("H3SOUND", NULL, 0)) {
+            hook_sounds();
+            /* DllMain runs on the process's first thread, the game's main one. */
+            main_thread = GetCurrentThreadId();
+        }
         CreateThread(NULL, 0, control, NULL, 0, NULL);
     }
     return TRUE;

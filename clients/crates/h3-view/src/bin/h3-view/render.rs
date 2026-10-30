@@ -289,7 +289,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
         let panels = crate::log::panels(
             &record,
-            &timeline.log,
+            (&timeline.log, &timeline.controllers),
             &tables,
             &layout,
             (&archives, &exe),
@@ -478,7 +478,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             );
             let panels = crate::log::panels(
                 &record,
-                &shown.log,
+                (&shown.log, &timeline.controllers),
                 &tables,
                 &layout,
                 (&archives, &exe),

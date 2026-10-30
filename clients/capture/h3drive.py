@@ -174,6 +174,31 @@ def run(*args, **kw):
     return subprocess.run(args, env=env(), check=True, **kw)
 
 
+# The settings key (setup.sh's): its name holds the registered sign in Windows-1252 (0xAE).
+SETTINGS_KEY = ("HKEY_LOCAL_MACHINE\\SOFTWARE\\New World Computing\\"
+                "Heroes of Might and Magic\xae III\\1.0")
+# The effects volume of a `sound` run (E17 M5 T5b2): any but 0 (play_sample 0x59A210 plays
+# nothing at 0); the music's stays 0 (play_music 0x59ACB0 then asks for nothing).
+SOUND_VOLUME = 5
+
+
+def sound_settings(on):
+    """The game's effects volume and Wine's audio driver for a run with sound or without (E17 M5
+    T5b2): without, setup.sh's (no driver, volume 0), as every capture before."""
+    volume = SOUND_VOLUME if on else 0
+    reg = GAME_DIR.parent / "sound.reg"
+    reg.write_bytes((
+        "REGEDIT4\r\n\r\n"
+        f"[{SETTINGS_KEY}]\r\n"
+        f'"Sound Volume"=dword:{volume:08x}\r\n"Last Sound Volume"=dword:{volume:08x}\r\n\r\n'
+        "[HKEY_CURRENT_USER\\Software\\Wine\\Drivers]\r\n"
+        f'"Audio"="{"alsa" if on else ""}"\r\n'
+    ).encode("cp1252"))
+    subprocess.run(["wine", "regedit", str(reg)], env=env(), check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["wineserver", "-w"], env=env(), check=False)
+
+
 def view(args):
     """Runs `h3-view` (`args`, the binary first); its own message on a failure (E17 M3 T9b, the
     reviewer: a non-zero exit said no more)."""
@@ -219,13 +244,16 @@ def load_screens():
 class Game:
     """One run of the original under Wine with our clock."""
 
-    def __init__(self, out):
+    def __init__(self, out, sound=False):
         self.out = Path(out)
         self.out.mkdir(parents=True, exist_ok=True)
         self.clock_dir = self.out / "clock"
         self.seq = 0
         self.screens = load_screens()
         self.proc = None
+        # E17 M5 T5b2: the game plays its sounds (an audio device, an effects volume, xdd.dll's
+        # samples on the virtual clock), so it waits for them as on a computer with sound.
+        self.sound = sound
 
     # -- the process ------------------------------------------------------------------------
     def start(self, map_path=None):
@@ -250,6 +278,14 @@ class Game:
         self.clock_dir.mkdir()
         e = env()
         e["H3CLOCK"] = "Z:" + str(self.clock_dir.resolve()).replace("/", "\\")
+        sound_settings(self.sound)
+        if self.sound:
+            # Wine's ALSA driver over ALSA's null sink (no sound card in a sandbox): Miles opens
+            # its digital driver, so the game plays and waits for its samples (xdd.dll's 6.).
+            null = self.clock_dir / "null.conf"
+            null.write_text("pcm.!default { type null }\nctl.!default { type hw card 0 }\n")
+            e["ALSA_CONFIG_PATH"] = f"/usr/share/alsa/alsa.conf:{null.resolve()}"
+            e["H3SOUND"] = "1"
         log = open(self.out / "wine.log", "w")
         self.proc = subprocess.Popen(
             ["wine", "Heroes3.exe"], cwd=GAME_DIR, env=e, stdout=log, stderr=log
@@ -361,16 +397,23 @@ class Game:
 
     def clock(self, command, settle_reads=20, timeout=10.0):
         """Sends a clock command and waits until the game read the clock `settle_reads` times
-        after it (idle at the new time). Returns the clock's time."""
+        after it (idle at the new time). With sound (E17 M5 T5b2) the main thread's reads alone
+        count (xdd.dll's 6.) and they must go on growing over three acknowledgements in a row:
+        the game's sound thread holds the sound manager's lock in real time, and a main thread
+        waiting for it had read the clock 20 times already (`machines`' heal read before its
+        first frame was set). Returns the clock's time."""
         self.seq += 1
         tmp = self.clock_dir / "ctl.tmp"
         tmp.write_text(f"{self.seq} {command}\n")
         tmp.replace(self.clock_dir / "ctl")
         end = time.monotonic() + timeout
+        need, seen, last = (3 if self.sound else 1), 0, -1
         while time.monotonic() < end:
             a = self.ack()
-            if a and a[0] == self.seq and a[2] >= settle_reads:
-                return a[1]
+            if a and a[0] == self.seq and a[2] >= settle_reads and a[2] > last:
+                seen, last = seen + 1, a[2]
+                if seen >= need:
+                    return a[1]
             time.sleep(0.002)
         raise TimeoutError(f"the clock did not settle after `{command}` (ack {self.ack()})")
 
@@ -418,6 +461,47 @@ def hex_point(hex_id):
     even rows, top 86 + 42 r), 22 right and 26 down."""
     row, col = divmod(hex_id, 17)
     return 14 + 44 * col + (22 if row % 2 == 0 else 0) + 22, 86 + 42 * row + 26
+
+
+def sounds(game):
+    """The samples xdd.dll saw start (E17 M5 T5b2): (time, channel, length ms, loops) each."""
+    try:
+        text = (game.clock_dir / "sounds").read_text()
+    except OSError:
+        return []
+    return [tuple(int(v) for v in line.split()) for line in text.splitlines() if line.strip()]
+
+
+def sounds_settled(game, quiet=1.5, limit=60.0):
+    """Waits, the clock running, until every sample started has played out and none started
+    for `quiet` seconds (E17 M5 T5b2): with sound the adventure map's turn start (hot seat's new
+    day) waits for its samples, and a key pressed meanwhile is lost once the clock stops."""
+    end, since, seen = time.monotonic() + limit, time.monotonic(), None
+    while time.monotonic() < end:
+        started = sounds(game)
+        ack = game.ack()
+        playing = ack is not None and any(t + ms > ack[1] for t, _, ms, _ in started)
+        if playing or len(started) != seen:
+            since, seen = time.monotonic(), len(started)
+        elif time.monotonic() - since >= quiet:
+            return
+        time.sleep(0.1)
+    raise TimeoutError("the game's sounds never settled")
+
+
+def after_start_sound(game, shown):
+    """The battle's opening with sound (E17 M5 T5b2): `battle_start` shows the battlefield, then
+    waits while its start sound plays, at most 10 s (`wait_for_sample` 0x46304B), and only then
+    starts its clocks (0x463093); the viewer's time 0 is there, as without sound (no wait). Steps
+    the clock to the start sound's end (the last sample started by the screen `shown`) and
+    returns that time."""
+    if game.ack()[8] != 9:
+        raise RuntimeError(f"xdd.dll hooked {game.ack()[8]} of Miles' 9 sample imports")
+    started = [s for s in sounds(game) if s[0] <= shown]
+    if not started:
+        raise RuntimeError("no start sound played: has the game a sound device?")
+    end = started[-1][0] + started[-1][2]
+    return game.clock(f"step {end - shown}") if end > shown else shown
 
 
 def into_battle(game, key="Right", walls=None):
@@ -856,7 +940,11 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         h3adv.to_hot_seat(game, ["Red", "Blue"])
     else:
         to_scenario(game)
+    if game.sound:
+        sounds_settled(game)
     t0 = into_battle(game, key)
+    if game.sound:
+        t0 = after_start_sound(game, t0)
     mem = h3mem.Mem()
     # xdd.dll redirected every roll's and logged draw's call (M3 T7b-2b-1), each checked against
     # the bytes it replaces: the executable is the one read, before the harness writes into its
@@ -1050,7 +1138,7 @@ def run_sequences(rest):
         here.mkdir(parents=True, exist_ok=True)
         map_path = here / f"{e['id']}.h3m"
         view(situation_args(h3view, set_path, e, map_path))
-        game = Game(here)
+        game = Game(here, e.get("sound", False))
         try:
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                      hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False),
@@ -1151,7 +1239,7 @@ def run_frames(rest):
         if not (reuse and (here / "frames.jsonl").exists()):
             map_path = here / f"{e['id']}.h3m"
             view(situation_args(h3view, set_path, e, map_path))
-            game = Game(here)
+            game = Game(here, e.get("sound", False))
             try:
                 sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                          frames=True, hot_seat=e.get("hot_seat", False), fail=e.get("fail", ()),

@@ -225,14 +225,25 @@ the stacks created mid-battle.
       redraws, Stone Gaze's line), built (`h3_render::recolour`, the timeline's `LookKey`s,
       `Draw::Creature`'s `effect`); `bloodlust` and `stone` recorded, their glows and looks exact;
       `clone`'s colours exact; CLT-Q34.
-    - **T5b2, the panel and the sounds' waits:** the panel's side by each turn's controller
-      (R3-1: Hypnotize, a created stack); the battle waiting for the heal's sound and the other
-      effects'; recorded.
-- **T6, a game on a server:** joined over the server's WebSocket by a seat token: the hello and
-  the welcome's checks, the key pinned per address, the content check (`docs/lanes/client/NOTES.md`,
-  "The live client"); a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a join and
-  a re-join after a drop or a server restart. Its dependency (a WebSocket client with TLS): the
-  user's decision, at the task.
+    - **T5b2, the panel and the sounds' waits** (done 2026-10-29, kept whole by the user;
+      design §8.3, §9.12): read (the acting side by the controller, `wait_for_sample` and
+      `sample_wait` at their 30 battle sites), built (`Timeline::controllers`,
+      `Panels::with_controllers`, `sound::Lengths`, the timeline's waits, the window's lengths;
+      the harness's `sound` runs); `hypnotize`, `summon-turn` and six `*-sound` sequences
+      recorded; CLT-Q34 answered (a).
+- **T6, a game on a server** (cut in two by the user, 2026-10-30: the part that needs no
+  original data first; design §11):
+  - **T6a, the connection, headless** (done 2026-10-30; design §11.1): the user's dependency
+    (the server's stack, blocking on the I/O thread only: `tungstenite`, `rustls` with
+    `rustls-graviola` and the OS roots, `ed25519-dalek`, `getrandom`); `h3_view::remote` (the
+    hello, the welcome's checks, the pins, a join by token or a game created, the record fetched
+    and grown, commands, the content check), the I/O thread (`net`), `h3-view connect`; tested
+    over loopback (`ws://` and `wss://`, a drop and a re-join) and against `h3-server`.
+  - **T6b, the window over a server:** the window plays its seat through `remote` and `net`
+    (the turn from the server's `YourTurn`, the previews only when the content is `Same`, a
+    visible note otherwise), a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a
+    join and a re-join after a drop or a server restart, the end's `remote_turn`; two windows on
+    a local `h3-server`, a seat each.
 - **T7, accounts:** the account's key from the login and the password (argon2id, Ed25519; their
   dependencies the user's decision, at the task), the login with the welcome's check, seats by
   account, `Rekey` after a password change, the new goodbyes.
@@ -467,3 +478,30 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     changes).
 42. Not built (T5b1): an Ogre Magi's Bloodlust (a creature's cast other than an area spell takes
     effect at once, M3 T7c-3): it glows nothing.
+43. A sample's length (T5b2; design §8.3): its `fact` frames at its rate, rounded up; on a sound
+    card Miles' mixer ends it, perhaps a few ms later. The harness's samples end so too, so the
+    recordings confirm where the waits are and how long, not the mixer's slack.
+44. A wait on a handle another sample took meanwhile (T5b2): the original would wait for that
+    sample; the viewer waits for its own (no recorded case: every channel of a category busy, or
+    the cue's sample over and the handle given again before the wait).
+45. Not built (T5b2): the waits of the effects the viewer does not draw yet (the Wraiths' mana
+    drain, regeneration, Poison's round damage, Death Blow, Ice Bolt's explosion, the Familiars'
+    channel; design §8.3's list); the effects' switch (E) does not stop the waits (the original's
+    volume 0 would: a setting, later).
+46. The window makes its battle twice when its sound opens (T5b2, `Ground::play_sounds`): the
+    library loads after the window opened; a live battle's opening plays twice (cheap, seeded).
+47. The harness's sound (T5b2, the runbook's "Sound"): Wine's ALSA driver over the null sink and
+    `xdd.dll`'s Miles hooks (nine imports): an emulation of a sample's end, not Miles' own; only
+    the main thread's clock reads count in a `sound` run (the silent runs as before).
+48. The connection's formats (T6a; design §11.1): the pins file (`address key-hex` a line,
+    sorted; default `pins.txt` in the working directory, as `keys.toml`: a per-user place
+    later), `remote::Client`'s notes and faults, `connect`'s options and its record's default
+    path.
+49. The record fetched at every join (T6a): one path for a join, a re-join after a drop and one
+    after a restart, at the cost of a record's bytes (512 KiB at most by the server's default)
+    per join; opened at its first snapshot.
+50. The I/O thread polls (T6a): its read waits 5 ms, then it looks at the queue (a command waits
+    up to 5 ms to leave); messages up to 64 MiB.
+51. The plain player (T6a, `connect::plain`): a test's player, not an opponent (ends a tactics
+    phase, shoots, strikes, else walks toward the enemy's edge by the column); the window's
+    player is the human.

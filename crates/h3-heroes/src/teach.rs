@@ -3,8 +3,8 @@
 //! condition, the Learning Stone's, a chest's and the Tree of Knowledge's experience; a Shrine's
 //! and the Pyramid's spell is [`crate::can_learn_spell`]). The adventure's visits read them and
 //! return the changes (ADR-0016 point 4); no object is named here. Survey
-//! `docs/rules/surveys/E08-rewards.md` §2.2, §6.2 to §6.8; design §4 (`docs/epics/E08-design.md`,
-//! since T60b in `E08-log.md`).
+//! `docs/rules/surveys/E08-rewards.md` §2.2, §6.2 to §6.8; increment 7's design note §4
+//! (in `docs/epics/E08-log.md` since T65).
 
 use h3_content::{MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId, SpellId};
 

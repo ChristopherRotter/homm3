@@ -1,6 +1,6 @@
-//! Tests of a reward record's hero half and of what a teacher may teach (E08 T60b; design §3, §4):
-//! `grant` in the original's order, whether a hero can receive an artifact under A-25's flag in
-//! both profiles (`ADV-QUIRK-22`), and the teachers' functions.
+//! Tests of a reward record's hero half and of what a teacher may teach (E08 T60b; increment 7's
+//! design note §3, §4): `grant` in the original's order, whether a hero can receive an artifact
+//! under A-25's flag in both profiles (`ADV-QUIRK-22`), and the teachers' functions.
 
 use std::vec;
 use std::vec::Vec;

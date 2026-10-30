@@ -1,9 +1,9 @@
-//! The boats (ADR-0016 point 1, ADV-SEA-001; E08 T72, design §6): no objects of the static map,
-//! because they move, but records in a persistent table by boat index (the setup's order) with the
-//! tiles where an empty boat lies as a persistent grid, which the movement rules and the
-//! reachable-tiles query read (T73). A map without boats has none, so a fork costs nothing more
-//! (`bench-check`); with boats a fork costs two reference counts, and a boarding, a landing or a
-//! boat leaving the map writes one record and one leaf. A boarding and a landing (E08 T73;
+//! The boats (ADR-0016 point 1, ADV-SEA-001; E08 T72, increment 8's design note §6): no objects of
+//! the static map, because they move, but records in a persistent table by boat index (the setup's
+//! order) with the tiles where an empty boat lies as a persistent grid, which the movement rules
+//! and the reachable-tiles query read (T73). A map without boats has none, so a fork costs nothing
+//! more (`bench-check`); with boats a fork costs two reference counts, and a boarding, a landing or
+//! a boat leaving the map writes one record and one leaf. A boarding and a landing (E08 T73;
 //! ADV-SEA-002, ADV-SEA-003) are here: the boat's record, the hero's boat and its points and
 //! maximum on its new surface, and their events; since E08 T74b a boat leaving the map with its
 //! hero after a battle too (ADV-SEA-006).
@@ -339,12 +339,12 @@ impl AdventureState {
         });
     }
 
-    /// The conversion of a boarding or a landing (D-41, ADR-0016 point 3; design §8): the hero at
-    /// `index` keeps [`converted_points`] of its points, after the step's drop, with free boarding
-    /// (`h3_heroes::free_boarding`, ADR-0013 point 13.7: the Admiral's Hat), and its day's maximum
-    /// becomes `maximum`, its new surface's. The original keeps the old maximum without the Hat
-    /// until the next turn start (A-28, confirmed by batch E8's E8-10 and E8-16): not reproduced
-    /// (`ADV-QUIRK-31`, no flag; E08 decision 166).
+    /// The conversion of a boarding or a landing (D-41, ADR-0016 point 3; increment 8's design note
+    /// §8): the hero at `index` keeps [`converted_points`] of its points, after the step's drop,
+    /// with free boarding (`h3_heroes::free_boarding`, ADR-0013 point 13.7: the Admiral's Hat), and
+    /// its day's maximum becomes `maximum`, its new surface's. The original keeps the old maximum
+    /// without the Hat until the next turn start (A-28, confirmed by batch E8's E8-10 and E8-16):
+    /// not reproduced (`ADV-QUIRK-31`, no flag; E08 decision 166).
     // rule: ADV-SEA-002, ADV-SEA-003
     fn change_surface(
         &mut self,
@@ -359,11 +359,11 @@ impl AdventureState {
         hero.max_movement = maximum;
     }
 
-    /// Whether the boats keep the state's invariants (ADR-0016 point 1, design §6; the properties
-    /// check it after every command): every empty boat's tile is in the empty boats' grid and no
-    /// other tile is, no two empty boats share a tile and each lies on water; a boat aboard has
-    /// exactly one hero holding it, its captain, on a water tile, where no empty boat lies, and is
-    /// not gone; a hero's boat is such a boat, and a hero on water is in a boat.
+    /// Whether the boats keep the state's invariants (ADR-0016 point 1, increment 8's design note
+    /// §6; the properties check it after every command): every empty boat's tile is in the empty
+    /// boats' grid and no other tile is, no two empty boats share a tile and each lies on water; a
+    /// boat aboard has exactly one hero holding it, its captain, on a water tile, where no empty
+    /// boat lies, and is not gone; a hero's boat is such a boat, and a hero on water is in a boat.
     pub fn check_boats(&self, part: &AdventureRuleset) -> bool {
         let water = |pos: Pos| {
             self.map

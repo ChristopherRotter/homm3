@@ -844,9 +844,10 @@ folder's `clock/`), it runs in real time until a command arrives in `ctl`, one l
 `<seq> <time> <reads>`, the reads of the clock since the command (then the forced rolls'
 three numbers, below; since E17 M5 T4b2b an eighth, 1 when `BINKW32.DLL`'s own `timeGetTime`
 import points at the same clock: the result window's clip plays on the virtual clock, its reads
-not counted as the game's). A game that keeps reading a stopped clock is idle at that time:
-`Game.clock` waits for 20 reads, `Game.settled` for two equal dumps (Wine may draw a moment
-later).
+not counted as the game's; since E17 M5 T5b2 a ninth, the Miles imports hooked in a `sound`
+run, below). A game that keeps reading a stopped clock is idle at that time: `Game.clock` waits
+for 20 reads (with sound the main thread's, growing over three acknowledgements), `Game.settled`
+for two equal dumps (Wine may draw a moment later).
 
 ## The clips
 
@@ -871,6 +872,37 @@ window), then ticks every millisecond: one line per frame drawn, `<ms> <clip> <f
 every colour (`h3_bink::build` raw blocks, 256 frames of 256 × 256) in an archive of its own gave
 the colour tables. The DLL's frames match `h3-bink`'s converted (`h3_view::clip::rgb565`) but
 where the inverse DCT rounds otherwise (CLT-Q30).
+
+## Sound
+
+E17 M5 T5b2 (`docs/epics/E17-design.md` §8.3): every capture runs the original without sound
+(setup.sh: no Wine audio driver, the effects' and the music's volumes 0), so it never waits for a
+sample (`wait_for_sample` 0x59A4C0 and `sample_wait` 0x599EC0 do nothing without the sound
+manager's driver; `play_sample` plays nothing at the effects' volume 0). A sequence with
+`sound = true` (`h3drive.py`'s `Game(out, sound)`) plays them:
+
+- before the game starts, `sound_settings` writes the effects' volume 5 (the music's stays 0) and
+  Wine's driver `alsa` (a run without sound writes them back: 0 and none); the game's environment
+  points ALSA at its null sink (`ALSA_CONFIG_PATH`: the system's `alsa.conf` and the run's
+  `clock/null.conf`), so Miles opens its digital driver in a sandbox without a sound card, and
+  sets `H3SOUND`;
+- `xdd.dll` (its 6.) hooks the nine Miles imports that load, start, end, pause, resume, serve and
+  ask after a sample: a sample plays its WAV's `fact` frames at its rate on the virtual clock (the
+  null sink mixes faster than real time; the game reads only the hooks' answers), each start
+  appended to `clock/sounds` as `<time> <channel> <length ms> <loops>`; the ack's ninth field
+  counts the imports hooked (9);
+- the adventure map's sounds play out first, the clock running (`sounds_settled`: hot seat's new
+  day waits for its samples, and a key pressed meanwhile is lost once the clock stops);
+- the opening is the start sound's end (`after_start_sound`): the battle shows its battlefield,
+  waits while `BATTLE0n` plays, then starts its clocks (0x463093), the viewer's time 0;
+- the game's sound thread reads the clock and holds the sound manager's lock in real time, so only
+  the main thread's reads count and `Game.clock` takes the game for idle only once they grow over
+  three acknowledgements in a row (with 20 reads of any thread, `machines`' heal was read before
+  its first frame was set: a millisecond late).
+
+`machines` with sound records the silent timeline exactly (the heal's sound ends inside its
+animation). The viewer waits only in a sequence with `sound` (`h3-view sequences`: the samples'
+lengths from the installation's sound archives).
 
 ## Forced rolls
 

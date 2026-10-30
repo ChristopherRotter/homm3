@@ -108,10 +108,11 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// [`GROUND_OBJECTS`]): appended, so the committed maps keep their templates. No random monster
 /// and no drawn count: the drawn creature and its count's word would show (as a random resource's
 /// pile type). Then (E08 T21a) the plans' guarded piles ([`GUARDED`]): 500 gold whose guards ask
-/// first and four crystals whose guards fight at once. Then (E08 T64b, design §16) increment 7's
-/// kinds ([`REWARDS`]): one of each of its 31 classes, a guarded box, a guarded event that stays,
-/// a guarded artifact and a monster with a treasure artifact. Then (E08 T75b, design §15) the
-/// sea's kinds ([`SEA`]): the three boats, the four pickups and Favorable Winds.
+/// first and four crystals whose guards fight at once. Then (E08 T64b, increment 7's design note
+/// §16) increment 7's kinds ([`REWARDS`]): one of each of its 31 classes, a guarded box, a guarded
+/// event that stays, a guarded artifact and a monster with a treasure artifact. Then (E08 T75b,
+/// increment 8's design note §15) the sea's kinds ([`SEA`]): the three boats, the four pickups and
+/// Favorable Winds.
 pub(super) const KINDS: [(u32, u32, Option<u32>); 72] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
@@ -186,11 +187,11 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 72] = [
     (59, 0, None),
     (225, 0, None),
 ];
-/// Increment 7's kinds in [`KINDS`] (E08 T64b, design §16): the first of them, and how many. In
-/// order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow and four
-/// pikemen, which open the army dialog for a full army), a Corpse, Marletto Tower, an event
-/// (experience and gold for every colour, computers too, removed once it fires), the Garden of
-/// Revelation, a Lean To, the Library of Enlightenment, the School of Magic, the Mercenary Camp,
+/// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
+/// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
+/// and four pikemen, which open the army dialog for a full army), a Corpse, Marletto Tower, an
+/// event (experience and gold for every colour, computers too, removed once it fires), the Garden
+/// of Revelation, a Lean To, the Library of Enlightenment, the School of Magic, the Mercenary Camp,
 /// the Star Axis, the Pyramid, the five random artifacts, a Scholar of a drawn gift, the three
 /// Shrines of a drawn spell, a Magic Arrow scroll, a Learning Stone, a treasure chest, a Tree of
 /// Knowledge, a University, a Wagon, the School of War, a Warrior's Tomb and a Witch Hut of every
@@ -215,11 +216,11 @@ pub(super) static REWARD_OBJECTS: LazyLock<Vec<usize>> = LazyLock::new(|| {
         })
         .collect()
 });
-/// The sea's kinds in [`KINDS`] (E08 T75b, design §15): the first of them, and how many. In
-/// order: the boats of the three types (class 8; no objects once imported, the map's empty boats,
-/// ADV-SEA-001), Flotsam, the Sea Chest, the Shipwreck Survivor and the Ocean Bottle (ADV-PIK-014
-/// to -017; each one tile, blocked and visited from a neighbour), and Favorable Winds (ADV-SEA-004;
-/// a ground, the import's one tile for a picture it does not know).
+/// The sea's kinds in [`KINDS`] (E08 T75b, increment 8's design note §15): the first of them, and
+/// how many. In order: the boats of the three types (class 8; no objects once imported, the map's
+/// empty boats, ADV-SEA-001), Flotsam, the Sea Chest, the Shipwreck Survivor and the Ocean Bottle
+/// (ADV-PIK-014 to -017; each one tile, blocked and visited from a neighbour), and Favorable Winds
+/// (ADV-SEA-004; a ground, the import's one tile for a picture it does not know).
 pub(super) const SEA: (usize, usize) = (64, 8);
 /// The boats' objects, by type (one shape: [`masks`] gives a boat its one tile; the import takes
 /// the template's visitable tile as the boat's).
@@ -895,10 +896,10 @@ const ADMIRALS_HAT: u16 = 136;
 /// Navigation's skill code (`SSTRAITS.TXT` order).
 const NAVIGATION: u8 = 5;
 
-/// A strait beside a hero (E08 T75b, design §15): water over the whole height of the hero's level,
-/// with boats on it, mostly on its coast, the sea's pickups, Favorable Winds and monsters on it,
-/// and the hero's sources of sea points; so that random play boards, sails, lands, takes the
-/// pickups and fights at sea.
+/// A strait beside a hero (E08 T75b, increment 8's design note §15): water over the whole height of
+/// the hero's level, with boats on it, mostly on its coast, the sea's pickups, Favorable Winds and
+/// monsters on it, and the hero's sources of sea points; so that random play boards, sails, lands,
+/// takes the pickups and fights at sea.
 #[derive(Debug, Clone)]
 pub(super) struct Sea {
     /// The hero it runs beside (modulo the plan's heroes).
@@ -2007,12 +2008,12 @@ fn stops_on(before: &GameState, rules: &GameRuleset, pos: TilePos) -> bool {
     matches!(land, Some(Passage::Land(_))) && (!blocked || visited)
 }
 
-/// A move's rules at sea (E08 T75b; design §7, §8, §15): a hero not in a boat steps onto no water
-/// tile an object still on the map is visited on, nor visits one from the shore (ADV-PIK-018,
-/// D-46: only a boat visits the sea's objects, and no flight passes one), but where a hero in a
-/// boat stands, who is met there (ADV-SEA-005); a boarding or a landing
-/// converts the hero's points (ADV-SEA-002, -003; D-41): to at most the new maximum with free
-/// boarding (HER-ADV-009, the Admiral's Hat), to 0 without.
+/// A move's rules at sea (E08 T75b; increment 8's design note §7, §8, §15): a hero not in a boat
+/// steps onto no water tile an object still on the map is visited on, nor visits one from the shore
+/// (ADV-PIK-018, D-46: only a boat visits the sea's objects, and no flight passes one), but where a
+/// hero in a boat stands, who is met there (ADV-SEA-005); a boarding or a landing converts the
+/// hero's points (ADV-SEA-002, -003; D-41): to at most the new maximum with free boarding
+/// (HER-ADV-009, the Admiral's Hat), to 0 without.
 fn check_sea_move(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -2616,8 +2617,8 @@ fn check_legal(
         let start = state.adventure().hero(hero).unwrap().pos;
         let (at, visited) = landing(state, start, path, &events)?;
         // E08 T64b: an event on the way stops the move on its tile (fired, or held where a
-        // monster guards it: `Reach` never reads events, design §12), with the points the query
-        // reports there (ADV-MOV-011).
+        // monster guards it: `Reach` never reads events, increment 7's design note §12), with the
+        // points the query reports there (ADV-MOV-011).
         let stopped = !visited && at != to;
         prop_assert!(!stopped || !state.adventure().map().events_at(at).is_empty());
         let end = if stopped { at } else { to };
@@ -3091,10 +3092,11 @@ fn visited(before: &GameState, command: &GameCommand, events: &[GameEvent]) -> O
     }
 }
 
-/// Increment 7's invariants after every command (E08 T64b, design §16): a removed object never
-/// returns, a hero's once-per-hero marks (of a hero still on the map), a player's knowledge and
-/// the emptied objects only grow (ADV-VIS-006, ADV-PIK-009 to -012), and an emptied find, or a
-/// looted Pyramid, gives nothing at a later visit: no resource, artifact or spell.
+/// Increment 7's invariants after every command (E08 T64b, increment 7's design note §16): a
+/// removed object never returns, a hero's once-per-hero marks (of a hero still on the map), a
+/// player's knowledge and the emptied objects only grow (ADV-VIS-006, ADV-PIK-009 to -012), and an
+/// emptied find, or a looted Pyramid, gives nothing at a later visit: no resource, artifact or
+/// spell.
 fn check_rewards(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -3607,7 +3609,7 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
         let checked = h3_heroes::validate(details, rules.core());
         prop_assert!(checked.is_ok(), "{:?}: {:?}", hero.id, checked);
     }
-    // E08 T75b: the boats' invariants (design §6; ADV-SEA-001).
+    // E08 T75b: the boats' invariants (increment 8's design note §6; ADV-SEA-001).
     let adventure = state.adventure();
     prop_assert!(
         adventure.check_boats(rules.adventure()),
@@ -4042,14 +4044,14 @@ fn check_unowned_battle_end(
     Ok(())
 }
 
-/// The heroes' levels by their experience, in every state the plans reach (E08 T31, design §14;
-/// HER-EXP-002, HER-EXP-003, GAM-DEC-002), against an oracle of the ruleset's thresholds (a
-/// level is the number of thresholds at or below the experience, at most the highest level): no
-/// hero's level is above its experience's, nor its experience above the bound (the threshold after
-/// the highest level, less one) or the scenario's level limit's threshold (or its own level's,
-/// if higher); a hero has a pending level only while a level-up of its owner is open for it, of
-/// the level after its own. At most one level-up is open, its hero on the map, and the game waits
-/// for its owner (ADR-0017 point 6) and for no one else.
+/// The heroes' levels by their experience, in every state the plans reach (E08 T31, increment 4's
+/// design note §14; HER-EXP-002, HER-EXP-003, GAM-DEC-002), against an oracle of the ruleset's
+/// thresholds (a level is the number of thresholds at or below the experience, at most the highest
+/// level): no hero's level is above its experience's, nor its experience above the bound (the
+/// threshold after the highest level, less one) or the scenario's level limit's threshold (or its
+/// own level's, if higher); a hero has a pending level only while a level-up of its owner is open
+/// for it, of the level after its own. At most one level-up is open, its hero on the map, and the
+/// game waits for its owner (ADR-0017 point 6) and for no one else.
 fn check_progression(rules: &GameRuleset, state: &GameState) -> Result<(), TestCaseError> {
     let params = rules.core().hero_params().unwrap();
     let thresholds = &params.experience;
@@ -5267,14 +5269,14 @@ impl Rewarded {
     }
 }
 
-/// The plans visit every kind and answer every decision (E08 T64b, design §16; increment 7's
-/// exit criteria): over a fixed set of cases (proptest's deterministic runner), random play
-/// visits an object of each of increment 7's 31 classes ([`super::rewards_map::CLASSES`]) and
-/// answers each of its decisions both ways: a Tree's price, a Warrior's Tomb's, a box's and the
-/// Pyramid's questions and a guarded artifact's accepted and declined, a chest's gold and
-/// experience, the Arena's two skills, a School's two and leaving, a University's purchase and
-/// leaving, and a box's army dialog closed; the properties above check each
-/// (`every_step_keeps_the_commands_invariants`, `check_rewards`).
+/// The plans visit every kind and answer every decision (E08 T64b, increment 7's design note §16;
+/// increment 7's exit criteria): over a fixed set of cases (proptest's deterministic runner),
+/// random play visits an object of each of increment 7's 31 classes
+/// ([`super::rewards_map::CLASSES`]) and answers each of its decisions both ways: a Tree's price, a
+/// Warrior's Tomb's, a box's and the Pyramid's questions and a guarded artifact's accepted and
+/// declined, a chest's gold and experience, the Arena's two skills, a School's two and leaving, a
+/// University's purchase and leaving, and a box's army dialog closed; the properties above check
+/// each (`every_step_keeps_the_commands_invariants`, `check_rewards`).
 // covers: ADV-PIK-005, ADV-PIK-013, ADV-TCH-001, ADV-TCH-002, ADV-TCH-003, ADV-TCH-007
 // covers: ADV-TCH-008, GAM-DEC-005, GAM-DEC-006
 #[test]
@@ -5414,11 +5416,12 @@ fn the_plans_meet_and_manage() {
     assert!(m.refused > 0 && m.undone > 0, "{m:?}");
 }
 
-/// The draws' source by the profile, on the original packs (E08 T31, design §14; GAM-HER-002,
-/// GAM-SET-002, `ADV-QUIRK-9`): in `faithful` a hero's levels at load come from its own level seed
-/// and the level (the original's generator), so the levels another hero gains at load before it
-/// (in hero id order) leave its own as they are; in `strict-fixed` they come from the setup stream,
-/// which the other hero's levels draw from first, so they change with those for some seeds.
+/// The draws' source by the profile, on the original packs (E08 T31, increment 4's design note §14;
+/// GAM-HER-002, GAM-SET-002, `ADV-QUIRK-9`): in `faithful` a hero's levels at load come from its
+/// own level seed and the level (the original's generator), so the levels another hero gains at
+/// load before it (in hero id order) leave its own as they are; in `strict-fixed` they come from
+/// the setup stream, which the other hero's levels draw from first, so they change with those for
+/// some seeds.
 // covers: GAM-HER-002, GAM-SET-002
 #[test]
 fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed() {
@@ -5563,12 +5566,12 @@ pub(super) fn at_sea(state: &GameState, legal: Vec<GameCommand>) -> Vec<GameComm
     if moves.is_empty() { legal } else { moves }
 }
 
-/// The plans sail (E08 T75b, design §15; increment 8's exit criteria 2 to 6): over a fixed set of
-/// cases (proptest's deterministic runner), with steps that prefer a boarding or a move of a hero
-/// in a boat when one is legal, random play boards with and without free boarding, sails, over
-/// Favorable Winds too, lands, takes each of the sea's four pickups, fights at sea (a monster on
-/// water, a hero on the deck from the shore, the two boats) and loses a boat with its beaten
-/// hero; every command keeps the boats' invariants and the moves the sea's rules
+/// The plans sail (E08 T75b, increment 8's design note §15; increment 8's exit criteria 2 to 6):
+/// over a fixed set of cases (proptest's deterministic runner), with steps that prefer a boarding
+/// or a move of a hero in a boat when one is legal, random play boards with and without free
+/// boarding, sails, over Favorable Winds too, lands, takes each of the sea's four pickups, fights
+/// at sea (a monster on water, a hero on the deck from the shore, the two boats) and loses a boat
+/// with its beaten hero; every command keeps the boats' invariants and the moves the sea's rules
 /// (`every_step_keeps_the_commands_invariants`: `check_invariants`, [`check_sea_move`]).
 // covers: ADV-SEA-001, ADV-SEA-002, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005, ADV-SEA-006
 #[test]

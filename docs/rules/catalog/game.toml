@@ -98,7 +98,7 @@ quirks   = ["ADV-QUIRK-9"]
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 points 1, 4 and 5 (increment 4's amendment: the level seed beside each hero, a level's draws by the profile, the seeds server-only); E08 design note §11; the seeds' place in the setup stream (last, so the earlier draws keep their order): E08 T29 (E08-log.md)"
+  ref        = "ADR-0017 points 1, 4 and 5 (increment 4's amendment: the level seed beside each hero, a level's draws by the profile, the seeds server-only); increment 4's design note §11; the seeds' place in the setup stream (last, so the earlier draws keep their order): E08 T29 (E08-log.md)"
   confidence = "high"
 
   [[rule.source]]

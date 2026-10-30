@@ -22,7 +22,7 @@ impl Player<'_> {
     /// creature's own) marked; Fire Shield's sound (category 2) on the striker;
     /// `strike_animation` with [`SHIELD_RETURN`] over the shields and the striker's reaction
     /// (player 2); then the damage's line named by Fire Shield (`battle_log_damage` with a
-    /// number of 1, 0x440B8C); the sound waited for (not built).
+    /// number of 1, 0x440B8C); the sound waited for (0x440BAE, E17 M5 T5b2).
     pub(super) fn shield_return(
         &mut self,
         striker: u8,
@@ -35,9 +35,7 @@ impl Player<'_> {
             .filter_map(|&s| self.live(s).map(|l| (s, l)))
             .filter(|(_, l)| l.shielded || spell.is_some_and(|h| l.spells.contains(&h)))
             .collect();
-        if let Some(h) = spell {
-            self.cue(striker, Sound::SpellFile(h), false);
-        }
+        let cue = spell.map(|h| self.cue(striker, Sound::SpellFile(h), false));
         let riding = self.stage.magic.get(&SHIELD_RETURN).cloned().map(|look| {
             let over = shields
                 .iter()
@@ -63,6 +61,9 @@ impl Player<'_> {
                 hit: (striker, damage, kills),
             };
             self.log.push((self.clock.now, line));
+        }
+        if let Some(cue) = cue {
+            self.wait_for(cue);
         }
     }
 
