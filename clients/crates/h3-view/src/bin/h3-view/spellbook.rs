@@ -265,7 +265,8 @@ pub fn still(
     (layout, catalogue): (&BookLayout, &Catalogue),
     boxes: Option<&Boxes<'_>>,
 ) -> Result<Still, String> {
-    let mut memory = Memory::default();
+    // The stills compare with the original's: its hovered item is never forgotten (CLT-Q26).
+    let mut memory = Memory::new(h3_render::Bugs::Original);
     // The hero made at the first opening, each later one (the book closed) a copy (R4-3).
     let mut make = Some(hero);
     let mut hero: Option<Hero> = None;

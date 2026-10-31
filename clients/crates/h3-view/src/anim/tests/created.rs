@@ -109,6 +109,16 @@ fn play_with(
     commands: &[(Option<u32>, Vec<Event>)],
     casts: &Casts,
 ) -> Timeline {
+    play_in(snapshot, commands, casts, Bugs::Original)
+}
+
+/// [`play_with`] in the profile `bugs`.
+fn play_in(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    casts: &Casts,
+    bugs: Bugs,
+) -> Timeline {
     let layout = layout();
     let magic = magic();
     let stage = Stage {
@@ -117,7 +127,7 @@ fn play_with(
         groups: tables().battle.groups,
         magic: &magic,
         casts,
-        bugs: Bugs::Original,
+        bugs,
         siege: None,
         lengths: None,
     };
@@ -634,7 +644,7 @@ fn demons_in_the_corpses_id_or_of_an_unknown_creature() {
 }
 
 #[test]
-fn no_place_opens_clones_message_and_writes_the_summons_line() {
+fn no_place_opens_clones_message_and_writes_the_summons_line_in_the_original_s() {
     let o = snapshot(vec![
         at(0, Side::Attacker, SWORDSMAN, 86, false),
         at(1, Side::Defender, PIKEMAN, 50, false),
@@ -715,6 +725,11 @@ fn no_place_opens_clones_message_and_writes_the_summons_line() {
     assert!(t.dissolves.is_empty() && t.created.is_empty());
     // The turned original's 16 redraws: its stack stays as it stood.
     assert_eq!(t.at(t.end)[&0].hex, 86);
+    // The client writes no summons line when nothing was made (CLT-Q33), the rest the same.
+    let client = play_in(&o, &commands, &created_casts(), Bugs::Fixed);
+    assert!(!client.log.iter().any(|(_, l)| *l == line));
+    assert_eq!(client.notices, t.notices);
+    assert_eq!(client.end, t.end);
 }
 
 #[test]

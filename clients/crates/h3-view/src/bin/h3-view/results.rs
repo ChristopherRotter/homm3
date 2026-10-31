@@ -11,6 +11,7 @@ use h3_content::{CreatureTypeId, Ruleset};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSide, StackOrigin, StackRecord};
 use h3_protocol::wire::{Manifest, Observation};
+use h3_render::Bugs;
 use h3_ui::text::{Args, Catalogue};
 use h3_view::layout::BattleLayout;
 use h3_view::message::MessageBox;
@@ -33,6 +34,9 @@ pub struct Sources<'a> {
     pub catalogue: &'a Catalogue,
     /// The battle's layout.
     pub layout: &'a BattleLayout,
+    /// The profile: the client's tells only the side that gave up that it fled or surrendered
+    /// (CLT-Q35, [`window`]).
+    pub bugs: Bugs,
 }
 
 /// The result window of the battle that opened as `opening` (the record's first snapshot) and
@@ -75,10 +79,10 @@ fn built(
     outcome: &BattleOutcome,
     player: u8,
 ) -> (MessageBox, Tune) {
-    let gave_up = match outcome.result {
-        BattleResult::Retreat(_) => Some(GaveUp::Retreat),
-        BattleResult::Surrender(_) => Some(GaveUp::Surrender),
-        BattleResult::Victory(_) | BattleResult::Draw => None,
+    let (gave_up, giver) = match outcome.result {
+        BattleResult::Retreat(side) => (Some(GaveUp::Retreat), Some(side.index())),
+        BattleResult::Surrender(side) => (Some(GaveUp::Surrender), Some(side.index())),
+        BattleResult::Victory(_) | BattleResult::Draw => (None, None),
     };
     let winner = result::winner(
         outcome.result.winner().map(BattleSide::index),
@@ -88,6 +92,12 @@ fn built(
     let human = [0, 1].map(|i| opening.sides.get(i).is_some_and(|s| s.human));
     let shown = result::shown_side(winner, human);
     let won = winner == Some(shown);
+    // How the battle was given up as the window tells it: the shown side's enemy when it won, the
+    // shown side itself when it lost. With no winner named (BAT-END-001) the original tells the
+    // defender's hero fled or surrendered whichever side did (the flags are either side's); the
+    // client tells it only of the side that did, else its army fell (CLT-Q35, answered (b) at E17
+    // M5 T8c), its tune and clip by the same branch; the original's for the comparisons.
+    let told = gave_up.filter(|_| won || sources.bugs == Bugs::Original || giver == Some(shown));
     let town = opening.siege.is_some();
     let catalogue = sources.catalogue;
     let heroes = [0, 1].map(|i| hero_key(sources, opening, i));
@@ -116,7 +126,7 @@ fn built(
         }
         _ => 0,
     };
-    let text = result::text(catalogue, won, gave_up, names[shown].as_deref(), experience);
+    let text = result::text(catalogue, won, told, names[shown].as_deref(), experience);
     let original = |c: CreatureTypeId| {
         let key = sources.manifest.keys.creatures.get(usize::from(c.raw()))?;
         sources
@@ -165,7 +175,7 @@ fn built(
     });
     let texts = Texts::of(catalogue, text);
     let window = result::layout(&sources.layout.result, &texts, &sides, player);
-    (window, tune(won, shown, town, gave_up))
+    (window, tune(won, shown, town, told))
 }
 
 /// The window's tune, and so its clip (`h3_view::clip::of`), by the branches that pick its text
@@ -523,12 +533,24 @@ times = [9000, 575, 500, 115]
         }
     }
 
-    /// The window `f` builds of `opening` and `outcome` with the creatures' values or without.
+    /// The window `f` builds of `opening` and `outcome` with the creatures' values or without, as
+    /// the comparisons build it (the original's profile).
     fn shown(
         f: &Fixture,
         opening: &Observation,
         outcome: &BattleOutcome,
         known: bool,
+    ) -> (MessageBox, Tune) {
+        shown_in(f, opening, outcome, known, Bugs::Original)
+    }
+
+    /// [`shown`] in the profile `bugs`.
+    fn shown_in(
+        f: &Fixture,
+        opening: &Observation,
+        outcome: &BattleOutcome,
+        known: bool,
+        bugs: Bugs,
     ) -> (MessageBox, Tune) {
         let sources = Sources {
             manifest: &f.manifest,
@@ -536,6 +558,7 @@ times = [9000, 575, 500, 115]
             ruleset: None,
             catalogue: &f.catalogue,
             layout: &f.layout,
+            bugs,
         };
         let values = known.then_some(values);
         built(&sources, values, opening, outcome, 0)
@@ -714,6 +737,25 @@ times = [9000, 575, 500, 115]
         assert_eq!(words(&window), ["result.defeated", "result.defeated"]);
         assert_eq!(text(&window, TEXT), "result.lost.fled");
         assert_eq!(tune, Tune::Retreat);
+        // The original tells the defender's hero fled though the attacker did; the client tells
+        // it lost (CLT-Q35), with the tune and the clip of that branch.
+        let (window, tune) = shown_in(&f, &human, &fled, true, Bugs::Fixed);
+        assert_eq!(words(&window), ["result.defeated", "result.defeated"]);
+        assert_eq!(text(&window, TEXT), "result.lost");
+        assert_eq!(tune, Tune::Lose);
+        // The defender who fled is told so in both.
+        let left = outcome(
+            BattleResult::Retreat(BattleSide::Defender),
+            [
+                vec![record(StackOrigin::Created, DRAGON, 1, 1)],
+                vec![record(StackOrigin::Army(0), PIKEMAN, 5, 5)],
+            ],
+        );
+        for bugs in [Bugs::Original, Bugs::Fixed] {
+            let (window, tune) = shown_in(&f, &human, &left, true, bugs);
+            assert_eq!(text(&window, TEXT), "result.lost.fled");
+            assert_eq!(tune, Tune::Retreat);
+        }
         // A raised stack is an army survivor.
         let mut raised = created;
         raised[1].origin = StackOrigin::Raised(1);
@@ -895,11 +937,17 @@ times = [9000, 575, 500, 115]
                         let named = result::winner(winner, gave_up.is_some(), survivors);
                         let shown = result::shown_side(named, human);
                         let won = named == Some(shown);
-                        assert_eq!(
-                            tune(won, shown, town, gave_up),
-                            h3_view::sound::end_tune(outcome, human, town, survivors),
-                            "{human:?} {survivors:?} {town} {winner:?} {gave_up:?}"
-                        );
+                        let giver = winner.map(|w| 1 - w);
+                        for bugs in [Bugs::Original, Bugs::Fixed] {
+                            // As `built` tells it (CLT-Q35).
+                            let told = gave_up
+                                .filter(|_| won || bugs == Bugs::Original || giver == Some(shown));
+                            assert_eq!(
+                                tune(won, shown, town, told),
+                                h3_view::sound::end_tune(outcome, (human, town), survivors, bugs),
+                                "{human:?} {survivors:?} {town} {winner:?} {gave_up:?} {bugs:?}"
+                            );
+                        }
                     }
                 }
             }

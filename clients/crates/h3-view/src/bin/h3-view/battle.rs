@@ -792,15 +792,17 @@ impl<'g> Battle<'g> {
         battle.follow()?;
         // The tactics phase's message (E17 M5 T4c2a; `battle_start` 0x4630EE to 0x4631E5): when
         // a human plays the phase's side here, before its first turn.
-        let told = snapshot
+        let phase = snapshot
             .tactics
             .as_ref()
-            .is_some_and(|t| ground.humans[usize::from(t.side == Side::Defender)]);
-        if let Some(writer) = ground.writer.as_ref().filter(|_| told) {
+            .map(|t| t.side)
+            .filter(|&side| ground.humans[usize::from(side == Side::Defender)]);
+        if let (Some(writer), Some(side)) = (ground.writer.as_ref(), phase) {
             let text = writer
                 .catalogue
                 .text("battle.tactics.phase", &h3_ui::text::Args::new());
-            battle.opening = battle.tell(0, &text, (Style::Ok, None), Asked::Told);
+            let shown = (Style::Ok, None);
+            battle.opening = battle.tell_framed((0, Some(side)), &text, shown, Asked::Told);
         }
         Ok(battle)
     }
@@ -1761,34 +1763,62 @@ impl<'g> Battle<'g> {
     /// (*provisional*: the client knows no adventure map's turn, and the executable falls back on
     /// the game's highest human colour, not the battle's).
     fn viewing_player(&self) -> u8 {
-        let colour = |index: usize| {
-            self.record
-                .first_snapshot()
-                .and_then(|s| s.sides.get(index))
-                .and_then(|side| side.colour)
-                .unwrap_or_else(|| u8::try_from(index).unwrap_or(0))
-        };
         match self.ground.humans {
-            [true, _] => colour(0),
-            [false, true] => colour(1),
+            [true, _] => self.side_colour(0),
+            [false, true] => self.side_colour(1),
             [false, false] => 0,
         }
     }
 
+    /// Side `index`'s player colour (the record's first snapshot; none named: red for the
+    /// attacker, blue for the defender, CLT-Q6).
+    fn side_colour(&self, index: usize) -> u8 {
+        self.record
+            .first_snapshot()
+            .and_then(|s| s.sides.get(index))
+            .and_then(|side| side.colour)
+            .unwrap_or_else(|| u8::try_from(index).unwrap_or(0))
+    }
+
+    /// The colours of a box opened at `at` (CLT-Q28 (2), answered (c) at E17 M5 T8c;
+    /// `h3_view::message::framed`): the acting side's player, `side` when given (the tactics
+    /// phase's, before any turn), else the controller of the turn `at` falls in as the panel's
+    /// (`Timeline::controllers`); the viewing player's without either.
+    fn box_player(&self, at: u32, side: Option<Side>) -> u8 {
+        let timeline = self.timeline();
+        let acting = side.or_else(|| {
+            let turn = timeline.turns.iter().rposition(|&(t, _)| t <= at)?;
+            timeline.controllers.get(turn).copied()
+        });
+        let acting = acting.map(|s| self.side_colour(usize::from(s == Side::Defender)));
+        h3_view::message::framed(Bugs::Fixed, self.viewing_player(), acting)
+    }
+
     /// Opens a message box of `style` showing `text` and `picture` (E17 M5 T4a), the battle
     /// standing still behind it from `at`; what its OK does is `asked`. Whether it opened (not
-    /// without the text tables).
+    /// without the text tables). Framed in the acting side's colours ([`Self::box_player`]).
     fn tell(
         &mut self,
         at: u32,
         text: &str,
+        shown: (Style, Option<&Picture>),
+        asked: Asked,
+    ) -> bool {
+        self.tell_framed((at, None), text, shown, asked)
+    }
+
+    /// [`Self::tell`], the acting side `side` when given.
+    fn tell_framed(
+        &mut self,
+        (at, side): (u32, Option<Side>),
+        text: &str,
         (style, picture): (Style, Option<&Picture>),
         asked: Asked,
     ) -> bool {
+        let player = self.box_player(at, side);
         let Some(writer) = self.ground.writer.as_ref() else {
             return false;
         };
-        let player = self.viewing_player();
         let Some(message) = writer.message(&self.ground.layout, text, style, picture, player)
         else {
             return false;
@@ -1931,6 +1961,7 @@ impl<'g> Battle<'g> {
             ruleset,
             catalogue: &writer.catalogue,
             layout: &self.ground.layout,
+            bugs: Bugs::Fixed,
         };
         let player = self.viewing_player();
         let (window, _) = crate::results::window(&sources, opening, &outcome, player);
@@ -2466,7 +2497,7 @@ impl<'g> Battle<'g> {
         let survivors = survivors.unwrap_or([true; 2]);
         Some((
             at,
-            h3_view::sound::end_tune(outcome, human, town, survivors),
+            h3_view::sound::end_tune(outcome, (human, town), survivors, Bugs::Fixed),
         ))
     }
 

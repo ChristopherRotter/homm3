@@ -694,8 +694,8 @@ fn the_spell_cursor_steps_and_starts_again() {
 fn an_area_s_stacks_are_marked_and_an_aim_given_up() {
     // An area spell marks the stacks of its area, over a hex it does not take too; given up, the
     // marks go, the hero's book posts the mouse again (its hint where it rests), the Faerie
-    // Dragon's key leaves the pointer until another hex; a spell the turn does not offer is not
-    // aimed.
+    // Dragon's key leaves the pointer until another hex (the original's; CLT-Q27 (1)); a spell
+    // the turn does not offer is not aimed.
     let o = battle();
     let mut legal = legal();
     legal.aims = vec![fireball(), arrow(true)];
@@ -703,7 +703,7 @@ fn an_area_s_stacks_are_marked_and_an_aim_given_up() {
         observation: &o,
         legal: &legal,
         facing: &Facing::Sides,
-        bugs: Bugs::Fixed,
+        bugs: Bugs::Original,
     };
     let turns = [Turn { field, human: true }];
     let aim = |at, spell, creature| Input::Aim {
@@ -761,6 +761,20 @@ fn an_area_s_stacks_are_marked_and_an_aim_given_up() {
     let mouse = &layout().mouse;
     assert_eq!(shown.look(75, mouse), Some(Look::Combat(6)));
     assert_eq!(shown.look(96, mouse), Some(Look::Combat(1)));
+    // The aim's start does not keep the hex its cursor takes: a click before a move casts nothing.
+    assert_eq!(shown.aimed(15), None);
+    // The client's (CLT-Q27): the key's aim given up posts the mouse as the book's does, its
+    // cursor at once what the original shows after the next move; the aim's start keeps its hex.
+    let field = Field {
+        bugs: Bugs::Fixed,
+        ..field
+    };
+    let turns = [Turn { field, human: true }];
+    let client = run(&[], &[], &turns, &inputs);
+    assert_eq!(texts(&client), texts(&shown));
+    assert_eq!(client.look(75, mouse), shown.look(85, mouse));
+    assert_eq!(client.look(96, mouse), Some(Look::Combat(1)));
+    assert_eq!(client.aimed(15), Some(90));
 }
 
 #[test]

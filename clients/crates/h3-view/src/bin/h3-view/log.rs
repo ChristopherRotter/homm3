@@ -211,7 +211,8 @@ impl Writer {
     }
 
     /// A message box of `style` showing `text` and `picture`, its frame in `player`'s colours, laid
-    /// out in the layout's fonts (E17 M5 T4a; design §7.19); none without them.
+    /// out in the layout's fonts (E17 M5 T4a; design §7.19) in the writer's profile (its text's
+    /// place, CLT-Q28); none without them.
     pub fn message(
         &self,
         layout: &BattleLayout,
@@ -227,7 +228,7 @@ impl Writer {
             text,
             style,
             picture,
-            player,
+            (player, self.bugs),
         ))
     }
 
