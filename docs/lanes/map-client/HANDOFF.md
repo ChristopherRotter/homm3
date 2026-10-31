@@ -4,8 +4,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** and **M2** closed (`E24-archive.md`): the crate `clients/crates/h3-map-view`; 50 situations and 35 sequences exact on the whole screen since M3 T7a (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M3** (the adventure screen; the epic's M3 section): **T1a** (#545) to **T7b2** (#623) merged; T7c cut with the user (2026-10-31): **T7c1 built** (M3's review list accepted; MCL-Q13 to Q15 and Q20 to Q24 answered; the hand test on the user's machine passed, all as described; the Windows build's catalogue read beside `--map`; the log's "M3 T7c1"). **Next: T7c2** (MCL-Q22's and Q24's answers, the client's fixes with the original's behind `--bugs original`; M3 archived), then **M4 T0** (M4 refined with the user: the queue). Open questions: none. Next id **MCL-Q28**.
-- **Open pull requests** (2026-10-31): T7c1's (`map-client/e24-m3-t7c1`; this lane's paths and the common `OPEN-QUESTIONS.md`): check it first (merged, or its mergeability with `master`). A merged branch is the user's to delete: the session's proxy refuses it.
+- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1**, **M2** and **M3** closed (`E24-archive.md`; M3 the adventure screen, closed 2026-10-31 at T7c2): the crate `clients/crates/h3-map-view`; 50 situations and 35 sequences exact on the whole screen (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile, which keeps the original's MCL-Q22, Q24 and Q28 too). **Next: M4 T0** (M4 refined with the user: the queue; the epic's "Later"). Open questions: none. Next id **MCL-Q29**.
+- **Open pull requests** (2026-10-31): T7c2's (`map-client/e24-m3-t7c2`; this lane's paths only): check it first (merged, or its mergeability with `master`). A merged branch is the user's to delete: the session's proxy refuses it.
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -29,6 +29,10 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-10-31, E24 M3 T7c2** (the user present: MCL-Q28 asked and answered, (b)): MCL-Q22's,
+  Q24's and Q28's fixes built, the original's behind `--bugs original`; M3 archived (the log's
+  "M3 T7c2"; its pull request); the original data staged first; the baseline (`check.sh`, all
+  gates) passed before any change. Nothing is waiting on the user's computer.
 - **2026-10-31, E24 M3 T7c1** (the user present and at the machine: T7c cut into T7c1, T7c2 and M4
   T0): the review list accepted, the eight questions answered, the hand test passed (the log's "M3
   T7c1"; its pull request); the original data staged first; the baseline killed by the agent's
@@ -38,7 +42,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   findings in one task): T7b2 built (the log's "M3 T7b2"; its pull request); the original data
   staged first; the baseline spoiled by edits made during it: CI's green `master` the starting
   point. Nothing is waiting on the user's computer.
-- **2026-10-31, E24 M3 T7b1** (the user present: T7b cut into T7b1, F2 and F4, and T7b2, the
-  rest; MCL-Q25, MCL-Q26 answered, MCL-Q27 asked and answered): T7b1 built (the log's "M3
-  T7b1"; its pull request); the original data staged first; the VM restarted during the
-  baseline: CI's green `master` the starting point. Nothing is waiting on the user's computer.

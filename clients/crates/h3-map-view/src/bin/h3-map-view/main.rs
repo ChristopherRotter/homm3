@@ -109,7 +109,8 @@ commands:
           and the music fades out, both coming back with it (T6b3).
           --bugs defaults to fixed; original reproduces the original's bugs (the drawing's as for
           render, the edge zones, MCL-Q8's ambient loops sharing a bit, MCL-Q12's music kept on
-          the wrong terrain).
+          the wrong terrain, MCL-Q22's hint hidden by a redraw, MCL-Q24's and MCL-Q28's
+          hotkey released during a hold but its button left pressed).
           --check <s> and --measure <s> run unattended for <s> seconds (the window's own keys but Esc do
           nothing; the map's input is taken) and report when each frame showed against its time
           and how long the frames took to make;
