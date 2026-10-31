@@ -681,8 +681,20 @@ fn grown_effects<'a>(
     details: &'a HeroDetails,
     ruleset: &'a Ruleset,
 ) -> impl Iterator<Item = (&'a CompiledHeroEffect, Growth)> {
+    let artifacts = worn_types(details, ruleset).flat_map(|(_, artifact)| artifact.effects.iter());
+    let others = artifacts.chain(specialty(details, ruleset));
+    grown_skill_effects(details, ruleset).chain(others.map(|effect| (effect, Growth::NONE)))
+}
+
+/// The secondary skills' effects at their levels, each with the growth the hero's specialties
+/// for that skill give it ([`grown_effects`]' first half; the day's income and spell points too,
+/// E08 T82).
+pub(crate) fn grown_skill_effects<'a>(
+    details: &'a HeroDetails,
+    ruleset: &'a Ruleset,
+) -> impl Iterator<Item = (&'a CompiledHeroEffect, Growth)> {
     let specialty = specialty(details, ruleset);
-    let skills = details.skills.iter().flat_map(move |&(id, level)| {
+    details.skills.iter().flat_map(move |&(id, level)| {
         let per_level_bp: u64 = specialty
             .iter()
             .filter_map(|effect| match *effect {
@@ -703,10 +715,7 @@ fn grown_effects<'a>(
             .unwrap_or_default()
             .iter()
             .map(move |effect| (effect, growth))
-    });
-    let artifacts = worn_types(details, ruleset).flat_map(|(_, artifact)| artifact.effects.iter());
-    let others = artifacts.chain(specialty);
-    skills.chain(others.map(|effect| (effect, Growth::NONE)))
+    })
 }
 
 /// The worn artifact types whose effects count, each once, in type order: every worn artifact
@@ -839,7 +848,7 @@ fn single_precision(ruleset: &Ruleset) -> bool {
 /// A skill specialty's growth of a value (HER-BAT-004): basis points of itself per hero level
 /// (0: none) and the hero's level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Growth {
+pub(crate) struct Growth {
     /// Growth per hero level, basis points.
     per_level_bp: u64,
     /// The hero's level.
@@ -848,13 +857,18 @@ struct Growth {
 
 impl Growth {
     /// No growth.
-    const NONE: Self = Self {
+    pub(crate) const NONE: Self = Self {
         per_level_bp: 0,
         level: 0,
     };
 
-    /// `bp` grown, rounded down.
-    fn grow(self, bp: u64) -> u64 {
+    /// Whether it grows anything (a specialty on the skill; E08 T82).
+    pub(crate) const fn grows(self) -> bool {
+        self.per_level_bp != 0
+    }
+
+    /// `bp` grown, rounded down: ⌊bp × (10 000 + per level × level) ÷ 10 000⌋, saturating.
+    pub(crate) fn grow(self, bp: u64) -> u64 {
         let growth = self.per_level_bp * u64::from(self.level);
         bp.saturating_add(bp.saturating_mul(growth) / u64::from(FULL_BP))
     }
@@ -1007,7 +1021,7 @@ pub(crate) fn effects<'a>(
 /// The effects of the worn artifacts: a combination together with its parts, an artifact that
 /// needs a skill only while the hero has that skill at any level, each artifact once per worn
 /// copy or once per type as `count` says.
-fn artifact_effects<'a>(
+pub(crate) fn artifact_effects<'a>(
     details: &'a HeroDetails,
     ruleset: &'a Ruleset,
     count: Count,

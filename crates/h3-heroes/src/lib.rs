@@ -15,7 +15,9 @@
 //! since E08 T60a the battle bonuses until the next battle's end and the rewards' changes: primary
 //! skills gained, a skill raised to a level, a bonus with its once-mark, the bonuses cleared
 //! (ADR-0013 points 1, 2), and since E08 T60b a reward record's hero half (`grant`), whether a hero
-//! can receive an artifact (A-25) and what a teacher may teach (ADR-0013 point 15). No commands
+//! can receive an artifact (A-25) and what a teacher may teach (ADR-0013 point 15), and since E08
+//! T82 what a hero brings to the day's start: its income and its day's spell points (ADR-0013
+//! point 16) and the Lighthouses' input to its sea points (point 13.6). No commands
 //! and no map or battle state: who levels a hero up, when, and equipping and learning arrive with the
 //! adventure and game epics (E08–E10); the battle never depends on this crate and reads only the
 //! battle hero of the seam (`h3_contracts::BattleHero`).
@@ -43,6 +45,7 @@ extern crate alloc;
 mod change;
 mod choice;
 mod combine;
+mod day;
 mod derive;
 mod details;
 mod error;
@@ -61,6 +64,7 @@ pub use change::{
 };
 pub use choice::{ArmyWorth, TerrainShares, original_choice};
 pub use combine::{assemble_changes, check_assemble, check_disassemble, disassemble_changes};
+pub use day::{daily_income, day_mana};
 pub use derive::{
     MANA_PER_KNOWLEDGE, MAX_JOIN_BONUS, Necromancy, attack_defense, derive_battle_hero,
     gained_experience, join_bonus, max_mana, necromancy,

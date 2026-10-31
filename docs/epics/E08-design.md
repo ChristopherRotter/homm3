@@ -34,33 +34,18 @@ Crystal Dragon's 3 crystal (`ab`). Core ruleset hash v51, pack format v50.
 
 ### 2. The derivations (`h3-heroes`; HER-MAN-002, GAM-RES-004, HER-ADV-009 amended)
 
-- **`daily_income(details, core) -> Resources`** (ADR-0013 point 16.1): the `daily_resource` of
-  every artifact in a worn position and of every part of a worn combination, **each copy
-  counting** (a new walk over the positions, not the "each type once" set the movement and the
-  battle use); of each secondary skill's level, grown when the hero has a skill specialty on
-  that skill by `⌊amount × (10 000 + bp_per_level × level) ÷ 10 000⌋`; of the specialty's
-  effects. Exact integers in every profile: the original keeps the factor in the x87 register
-  (`hero_gold_income` 0x4E43DA to 0x4E43F2; only the 0.05 is a single, 0x63EAE4), so its
-  product's excess (at most about 10⁻⁴) never reaches the next integer (the products are
-  multiples of 0.05). Saturating per resource.
-- **`day_mana(details, core) -> u16`** (point 16.2; HER-MAN-002): `max` = HER-MAN-001's; with
-  `full_mana` worn (or a combination holding it), `max(points, max)`; else
-  `max(points, min(points + regain, max))`, so points above the maximum stay. `regain` = the
-  highest `mana_regain` of the sources, else `base_mana_regain`; with that skill and a skill
-  specialty on it, `⌊regain × (10 000 + bp × level) ÷ 10 000⌋ + regain_specialist_bonus`
-  (`hero_mana_regained` 0x4E3F5F: no growth for a specialist without the skill); then each worn
-  type's `extra_mana_regain` once (worn or a part of a worn combination: the original's two
-  scans of the worn slots and `hero_wears_artifact` 0x4D91F0 for the combination). The Well's
-  parts (the three mana artifacts) do not matter once the Well fills.
-- **`sea_day_points`** gains the Lighthouses' input (point 13.6): `lighthouse_points: u32`,
-  added after the artifacts' points, saturating, never grown by Navigation; the adventure
-  passes its owner's Lighthouses' points (§7).
+Built by T82 (`adventure/e08-t82-t83a`, decision 213; its record in `E08-log.md`):
+`h3_heroes::daily_income(details, core) -> Vec<u32>` (dense by resource in the core's order, each
+worn copy and a worn combination's parts counting, a skill's amount grown by its specialty, exact
+integers, saturating), `day_mana(details, core) -> u16` (the Well, the highest regain or the base,
+a specialist's growth and bonus only with the skill, each type's extra once, never lowered) and
+`sea_points(details, core, table, lighthouse_points)` (added last; `h3_adventure::sea_day_points`
+passes 0 until §7's visits give it the owner's Lighthouses, T84).
 
 ### 3. Rule ids, quirks, shared needs (the hero side)
 
-HER-MAN-002 (the day's spell points), GAM-RES-004 (the heroes' income: its derivation here, its
-payment the game's), HER-ADV-009 amended (the Lighthouses' input). No quirk. Shared: the four
-kinds, the two parameters, the core creature's abilities, the packs and the gap-fill (T81b, done).
+Built by T82: HER-MAN-002 (`verified`, E9-12), GAM-RES-004 (`implemented`: its payment is the
+game's, §14, T85b), HER-ADV-009 amended (`verified`, E9-4). No quirk.
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 

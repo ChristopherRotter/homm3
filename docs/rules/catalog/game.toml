@@ -278,6 +278,41 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "GAM-RES-004"
+title    = "The heroes' income a day"
+context  = "game"
+status   = "implemented"
+summary  = "A hero's income a day, by resource (derived in h3-heroes, ADR-0013 point 16.1; the game pays it to its owner's treasury at the day's start, increment 9's design note §14, T85b): the daily_resource amounts of every artifact in a worn position and of each part of a worn combination, each worn copy counting (two Rings of Infinite Gems give 2 gems; the Cornucopia's 4 of mercury, sulfur, crystal and gems and its parts' 1 each make the original's 5), one that needs a skill only with it; of each secondary skill's level (Estates 125, 250, 500 gold), grown when the hero has a skill specialty on that skill by floor(amount x (10 000 + bp_per_level x level) / 10 000) (an Estates specialist's 5 % of itself a level); and of its specialty (the resource specialists' 1 of mercury, sulfur, crystal or gems, the gold specialists' 350, never grown). The six resource artifacts give 1 a day, the Endless Sack, Bag and Purse of Gold 1 000, 750 and 500. Exact integers in every profile (the original keeps the factor in the x87 register, so its truncation never differs from the exact product's; no Q-0005 term); saturating per resource. Not here: the mines' (GAM-RES-003), the Crystal Dragons' (GAM-RES-005), the towns' (E09), a computer player's bonus and the handicap (E10). E08 T82: `h3_heroes::daily_income` (dense by resource in the core's order)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md §8.1, §8.2; docs/exe/map.toml 0x4B8AF0, 0x4BABD0, 0x4C7930, 0x4E4390, 0x63EA18; the gap-fill's exe-daily-income): player_daily_income adds 1 a day for each worn copy of the six resource artifacts (count_worn_artifact counts each worn slot) and 5 of mercury, sulfur, crystal and gems for each worn Cornucopia, 1 of the specialty's resource for each resource specialist (kind 2, 0x4B8DC2); player_gold_income adds the Endless Sack, Bag and Purse of Gold's 1 000, 750 and 500 and through hero_gold_income each hero's Estates (skill_estates 0, 125, 250, 500; for an Estates specialist times 1 + 0.05 x level, the factor kept in the x87 register, 0x4E43DA to 0x4E43F2, only the 0.05 a single, 0x63EAE4) and a gold specialist's 350 (0x4E4410)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md §8.4 (the gap-fill's vcmi-income): generatePlayerIncome's constant resource bonuses (RESOURCES_CONSTANT_BOOST: the artifacts and the specialists, the gold specialists' 350); config/artifacts.json's Cornucopia +4 of each (the original's 5)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+  note       = "Disagrees on the Cornucopia (4); the engine's data give the original's 5 through its parts (batch E9's E9-7)."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki (the gap-fill's wiki-income, read 2026-10-30): Estates 125, 250, 500 gold a day in SoD; the Endless Purse, Bag and Sack of Gold 500, 750, 1 000 a day; the resource specialties (Rissa mercury, Calid sulfur, Sephinroth crystal, Saurug gems 1 a day; nine heroes 350 gold; none of wood or ore); the Cornucopia 5 a day"
+  url        = "https://heroes.thelazy.net/index.php/Hero_specialty"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-7 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): Basic Estates 125, the Endless Purse of Gold 500, the Cornucopia 5 of mercury, sulfur, crystal and gems, a crystal specialist 1 crystal, at each day's start, days 2 to 9 (with the town's 500 and the mines' 1 000 gold and 2 ore)"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+  note       = "The derivation matches; the payment at the day's start is T85b's."
+
+[[rule]]
 id       = "GAM-DEC-001"
 title    = "A pending decision: its owner's only legal commands are its answers"
 context  = "game"

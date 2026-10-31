@@ -9587,3 +9587,44 @@ the start (the four LODs, the executables, the DLLs, the sound and video archive
 
 T82 (`h3-heroes`: the income, the day's spell points, the Lighthouses' input) and T83 (the import,
 kinds and state) next, round 5.
+
+### Increment 9, round 5: T82, `h3-heroes`'s day's income, spell points and the Lighthouses' input (2026-10-31, `adventure/e08-t82-t83a`)
+
+**The cut** (decision 213; asked at the start, `AskUserQuestion`): T82 with T83a in one session
+and pull request, T83 in two (T83a the kinds, the part and the import; T83b the state and the
+views). **Baseline:** `master` ac0ee66 (#615, T81b, merged; CI's `master` run green; the setup's
+baseline the light gates on CI's verified fingerprint). The installation's files staged from the
+user's repo folder at the start (the four LODs, the executables, the DLLs, the sound and video
+archives, `maps.tar`, `extracted.tar`, the 40 MP3s).
+
+- **`h3-heroes`** (design §2, ADR-0013 points 13.6, 16): a new module `day`:
+  `daily_income(details, core) -> Vec<u32>` (GAM-RES-004): dense by resource in the core's order
+  (a treasury's layout; the design's `Resources` is the adventure's sparse list, the game adds
+  densely), the `daily_resource` of every worn copy and each part of a worn combination
+  (`Count::PerCopy`), each skill level's grown by the hero's skill specialty on it
+  (`Growth::grow`, exact in both profiles), the specialty's; saturating per resource.
+  `day_mana(details, core) -> u16` (HER-MAN-002): `full_mana` from any source (each type once)
+  gives `max(points, max)`; else the highest `mana_regain` (a skill's carries its growth; a skill
+  wins a tie, being first), else `base_mana_regain`; a grown skill's `⌊regain × (10 000 + bp ×
+  level) ÷ 10 000⌋ + regain_specialist_bonus`; then each type's `extra_mana_regain` once;
+  `max(points, min(points + regain + extra, max))`, saturating. `sea_points` gains
+  `lighthouse_points: u32`, added last (HER-ADV-009); `h3_adventure::sea_day_points` passes 0
+  until T84. `derive`'s `grown_effects` split: `grown_skill_effects` (the skills' half) shared;
+  `Growth`, `artifact_effects` `pub(crate)`.
+- *Agent's calls (change freely):* the income dense by resource (`Vec<u32>`), not the adventure's
+  `Resources`; `full_mana` and `extra_mana_regain` from any source, each type once (the packs give
+  them to artifacts alone), as T71's free boarding; a regain tie goes to the skill (its growth
+  applies).
+- **Tests** (`tests/day.rs`, a day pack on the test pack: crystal and gems, `t:estates`,
+  `t:mysticism`, the Purse and the Well on `t:helm`, a gem and the Talisman's 2 on `t:band`, the
+  Charm's 1 on `t:eye`, a crystal needing Luck on `t:loop`, `t:circle`'s 4 gems as the
+  Cornucopia's, an artifact regain of 3 on `t:hook`, the treasury's bound on `t:kit`): each copy
+  and a combination's parts, Estates by level and its specialist's exact growth (131, 187, 250 at
+  levels 1, 10, 20), the specialties' amounts ungrown, the base and the highest regain, the cap
+  and points above it kept, the extras once per type, the Well worn and in a combination, the
+  Mysticism specialist's growth and bonus only with the skill, a tie, batch E9's E9-12 days, the
+  saturation and a ruleset without hero parameters; `tests/movement.rs`: the Lighthouses' points
+  last, never grown, saturating. Coverage 100 % (`h3-heroes`).
+- **Rules:** GAM-RES-004 (`game.toml`, `implemented`: the payment is T85b's), HER-MAN-002
+  (`heroes.toml`, `verified`: E9-12), HER-ADV-009 amended (`verified`; the Lighthouse's reading
+  and E9-4 added). Design §2 and §3 cut to what was built.

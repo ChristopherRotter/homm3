@@ -668,6 +668,40 @@ numeric  = "float"
   note       = "The base only (10 x Knowledge); Intelligence and Q-0005's rate stay the reading's. E08 T80 (survey E08-economy.md §19)."
 
 [[rule]]
+id       = "HER-MAN-002"
+title    = "A hero's day's spell points"
+context  = "heroes"
+status   = "verified"
+summary  = "At the day's start (not day 1; the game's, ADR-0017 point 3, T85b) a hero's spell points from its points and its maximum (HER-MAN-001): with a full_mana effect (the Wizard's Well, worn or inside a worn combination) the maximum when below it; else its points plus the day's regain, at most the maximum; never lowered (points above the maximum stay). The regain: the highest mana_regain of the hero's sources (Mysticism 2, 3, 4), else the hero parameters' base_mana_regain (1); a skill's, when the hero has a skill specialty on that skill, grown by floor(regain x (10 000 + bp_per_level x level) / 10 000) plus the parameters' regain_specialist_bonus (1; nothing for a specialist without the skill, whose regain is the base; a skill wins a tie with another source); then each worn artifact type's extra_mana_regain once (the Charm, the Talisman and the Mystic Orb of Mana 1, 2, 3; worn or a part of a worn combination). Exact integers in every profile (ADR-0013 point 16.2); saturating. Every hero of the store regains (the original's 156 records: on the map, in prisons, the taverns' pool), the game's loop. E08 T82: `h3_heroes::day_mana`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md §12; docs/exe/map.toml 0x4C7FE0, 0x4E3F40, 0x63E9C8; the gap-fill's exe-mana-regain): on every new day but the first, new_day (0x4C8237) gives every hero record hero_mana_regained: the Mysticism level's regain (skill_mysticism 1, 2, 3, 4, entry 0 every hero's), for a Mysticism specialist with the skill trunc(regain x (1 + 0.05 x level)) + 1 (0x4E3F5F, 0x4E3FA8), then 1, 2 and 3 more for the Charm (73), the Talisman (74) and the Mystic Orb of Mana (75), each worn or inside a worn combination (hero_wears_artifact 0x4D91F0); the points rise by it to at most the cap (10 x Knowledge x Intelligence's factor) and are never lowered; a worn Wizard's Well (138) sets them to the cap when below it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md §12 (the gap-fill's vcmi-income): getManaNewTurn and manaRegain: the same cap, never lowering the points; the Wizard's Well a 100 % regeneration; only the players' heroes (its pool's heroes at their hire)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+  note       = "Its specialist's formula was not compared."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki (the gap-fill's wiki-income, read 2026-10-30): every hero regains 1 spell point a day (Spell point); Mysticism 2, 3, 4 a day in SoD, the Charm, Talisman and Mystic Orb of Mana 1, 2, 3 more, the Wizard's Well all (Mysticism)"
+  url        = "https://heroes.thelazy.net/index.php/Mysticism"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-12 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): three heroes of Knowledge 2 at 0 points after an event: Basic Mysticism 0, 2, 4 on days 1 to 3; Basic Mysticism and the Charm of Mana 0, 3, 6; the Wizard's Well 0, 20, 20"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
 id       = "HER-EXP-001"
 title    = "The experience a hero gains, grown by Learning"
 context  = "heroes"
@@ -1581,7 +1615,7 @@ id       = "HER-ADV-009"
 title    = "A hero's day's sea points and free boarding"
 context  = "heroes"
 status   = "verified"
-summary  = "The day's sea points from the sea table the adventure gives (the points by Navigation level 0 to 3; the original's 1 500, 2 250, 3 000, 3 750): the entry at the highest of the hero's navigation levels (the skill's 1, 2, 3, any source; 0 without one); then, for each skill the hero has that gives a Navigation level at its level, the bp_per_level of its skill specialties of the table's first entry per hero level, rounded down once (the original's Navigation specialists Sylvia and Voy: floor(level x 1 500 / 20), 75 a level, nothing without the skill, a share and never a growth of the level); then the sea_movement_points of the effects, each worn artifact type once, worn or as a part of a worn combination, one that needs a skill only with it (the Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500, the Admiral's Hat both through its parts: 1 500); saturating. The army's speeds do not count; exact integers in every profile (no Q-0005 term). Free boarding: whether an effect of the hero is free_boarding (the Admiral's Hat, the combination itself: its two parts worn apart give its points but not free boarding; any source counts, a part of a worn combination with its skill too); the conversion at a boarding or a landing it allows is the adventure's (ADV-SEA-002, ADV-SEA-003). Not here: Lighthouses (+500 each owned) and a computer player's bonus (E10), inputs then; when the day's sea points apply (the turn start in a boat, a boarding, a landing) is the adventure's. E08 T71: `h3_heroes::{sea_points, free_boarding}`."
+summary  = "The day's sea points from the sea table the adventure gives (the points by Navigation level 0 to 3; the original's 1 500, 2 250, 3 000, 3 750): the entry at the highest of the hero's navigation levels (the skill's 1, 2, 3, any source; 0 without one); then, for each skill the hero has that gives a Navigation level at its level, the bp_per_level of its skill specialties of the table's first entry per hero level, rounded down once (the original's Navigation specialists Sylvia and Voy: floor(level x 1 500 / 20), 75 a level, nothing without the skill, a share and never a growth of the level); then the sea_movement_points of the effects, each worn artifact type once, worn or as a part of a worn combination, one that needs a skill only with it (the Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500, the Admiral's Hat both through its parts: 1 500); saturating. The army's speeds do not count; exact integers in every profile (no Q-0005 term). Free boarding: whether an effect of the hero is free_boarding (the Admiral's Hat, the combination itself: its two parts worn apart give its points but not free boarding; any source counts, a part of a worn combination with its skill too); the conversion at a boarding or a landing it allows is the adventure's (ADV-SEA-002, ADV-SEA-003). Then the Lighthouses' points the adventure gives (its owner's Lighthouses, 500 each, ADV-OWN-005; E08 T82, ADR-0013 point 13.6): added last, never grown by Navigation, saturating (the adventure passes 0 until their visits, T84). Not here: a computer player's bonus (E10), an input then; when the day's sea points apply (the turn start in a boat, a boarding, a landing) is the adventure's. E08 T71: `h3_heroes::{sea_points, free_boarding}`; T82: the Lighthouses' input."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1607,4 +1641,15 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E08-batch-8a.md (stamp dbdf491f) and E08-batch-8b.md (stamp 18e9bac9) (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-28 and -29; survey E08-sea.md §15): E8-10, day 2 in boats Advanced Navigation and the Necklace 4 000, the Sea Captain's Hat alone 2 000; E8-6, Expert Navigation, the Necklace and the Sea Captain's Hat 5 250; E8-1, the Admiral's Hat's day's maximum at sea 3 000 and its control's 425 points left converted to 637 (425 x 3 000 / 2 000)"
   retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a1; survey E08-economy.md §4; docs/exe/map.toml 0x4E4990, 0x4BAE70, 0x698B0C): hero_max_land_movement with the sea's argument adds, last (0x4E4A18), the count of the mine records the hero's owner holds with the resource 100 (the Lighthouses, count_owned_records) times movement_bonus_lighthouse (500, movement.txt), not scaled by Navigation"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-4 (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): Red owning two Lighthouses at load, a hero without Navigation in a boat has 2 500 of 2 500 sea points at day 2 (1 500 + 2 x 500)"
+  retrieved  = "2026-10-30"
   confidence = "high"
