@@ -152,9 +152,10 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     let mut cues = String::new();
     for c in &battle.timeline().cues {
         // The heal's sound is the battle's (E17 M3 T3b), as the casts' are (T7b-1).
+        // A created stack's by its creature (E17 M5 T8b2, R6-1).
         let name = match named.get(&c.sound) {
             Some(name) => Some(name.as_str()),
-            None => sounds.get(&c.stack).and_then(|s| s.name(c.sound)),
+            None => sounds.of(c).and_then(|s| s.name(c.sound)),
         };
         let name = name.unwrap_or("-");
         let what = if c.stop { "stop" } else { "start" };

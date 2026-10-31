@@ -263,7 +263,9 @@ the stacks created mid-battle.
   concurrent fractions (QUEUE); **T8a done:** the harness's two instances, the bonus Gold,
   reviewers R1, R3, R4 and their fixes, all stills and sequences 0 to 27 as recorded. T8b cut
   in two by the user; **T8b1 done:** sequences 28 to 64 as recorded, reviewers R7 (the harness)
-  and R2a/R2b (the decoder, the clip) and their fixes.
+  and R2a/R2b (the decoder, the clip) and their fixes; **T8b2 done** (2026-10-31; the user's
+  fractions: three concurrent sub-agents, the runner the leftovers): reviewers R4b, R5a to R5c,
+  R6 and their fixes, R1's, R3-1's, R2b's and R7-8's leftovers; items 78 to 86, CLT-Q35.
 - **Exit:** a battle played to its end in the window, in hot seat and on a server; the new
   screens (the book, the aim, the dialogs, the created stacks) pass against the original, or each
   difference is a listed fix or a classified quirk.
@@ -591,9 +593,10 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     unparsed sample or more than 32 handles; the start sound must be a new sample still playing
     at the opening, loops counted; a paused sample answers 8 (Miles not checked); `wineserver -w`
     waits at most 60 s.
-74. The starting bonus Gold is not verified (T8b1, R7-8): no probe of its picture or memory
-    address of the bonus is known, so `gold_bonus`'s clicks stay blind (a lost click would leave
-    Artifact: a hero's numbers off, the M4 trap).
+74. The starting bonus Gold verified (T8b1, R7-8; since T8b2): `h3mem.starting_bonuses` reads
+    the scenario list's rows (H3API's `H3SelectScenarioDialog` pointer 0x69FBE8, `bonusType`
+    +0x6C: 3 Random, 0 Artifact, 1 Gold, observed) and `gold_bonus` stops a run unless exactly its
+    players read Gold (a lost click would have left Artifact: a hero's numbers off).
 75. The result window's clips (T8b1, R2b-1, R2b-3, R2b-5): at most 64 MiB of decoded frames a
     clip (`clip::BUDGET`, about ten times `defendloop`'s); a clip that cannot be read or decoded
     leaves the slot bare (a warning); the pair decoded when the battle's end is known, never for
@@ -603,3 +606,43 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     `bink.c` as 6.1.1's); the motion bound and a residue cut short checked equal to FFmpeg's.
 77. `h3-view video` (T8b1, R2b-2, R2b-6): an archive entry whose name is not a bare file name is
     skipped and fails the run; names printed through `printable`.
+78. The message box (T8b2, R5a): an unattended run's presser times a box's OK by the window's
+    clock (a notice's box holds the battle's); a pass that opens a box drops its later key-downs
+    and presses (§7.19's queue emptied); the text at most 578 wide and the box at most 768 × 576,
+    client bounds (no frame id wraps); `h3_render::text`'s measures end a second line with no
+    place to break at its first glyph instead of looping (a crafted font; every text that ended
+    before the same). Left: a record file's `--check` (no presser) holds a notice open.
+79. The result window built once (T8b2, R5b-1, R5b-5): what the client lacks (a portrait, a
+    creature's entry) drawn empty, never the window left unopened and retried each pass; a hero
+    type the manifest does not name stays a hero, its +500 kept; Eagle Eye's message and the
+    experience given after the window not built.
+80. A served game's values (T8b2, R5b-2): hit points and AI values only from a ruleset whose
+    content check is `Same`; else experience 0 and no strongest creature (*provisional*).
+81. No winner (T8b2, R5b-3, BAT-END-001): after a retreat or surrender, a side without army
+    survivors (only created stacks) is not named the winner, in the window and the end's tune;
+    the window then shows the defender's view. Its text: CLT-Q35.
+82. Created stacks' sounds (T8b2, R6-1): a created stack's cues carry its creature; the lengths,
+    the window's library and the sequences tool hold the created creatures' sounds by handle, so
+    a clone waits on its own shot (§8.3) and a reused id no longer plays the old stack's sounds.
+83. Teleport, records, dissolves (T8b2, R6-2 to R6-5): Teleport's effect ends (Bind) applied
+    after its first redraw, their hues with the new picture; an id reuses its record only on its
+    side, a side's records checked (none left: not drawn); a dissolve's kept battle dropped when
+    it ends; `recolour`'s scale at least 1.
+84. The aim (T8b2, R4b): a press casts where the pass's moves left the cursor (a move and a
+    press in one batch); a legal target's side-column hex says "Select Spell Target"; Force Field
+    and Fire Wall take the common aim (*provisional*: no wall shape, refusal 24 not 182); Teleport
+    and Sacrifice known by the ruleset; a cast the session refuses leaves the turn waiting; a
+    served aim's targets sorted, deduplicated, on the field; a re-served turn keeps the aim.
+85. Auto Combat and the tactics phase (T8b2, R5c): `Input::Auto` and `Input::Stop` name their
+    turn (a switch the turn waiting, a stop the turn started last, never one the bot played) and
+    the battle keeps them apart from the window's inputs (Restart and seeks keep them); any key
+    down stops it, Ctrl and keys without a name (`h3_sdl::Key::Other`) included (*provisional*:
+    whether the original posts modifier keys as kind 1 is not read); on a server seat the button
+    is disabled; a zone wider than the field covers it; the shade's walker blocked by the walls
+    and the closed gate as the engine's `siege::blocked_for` (*provisional*: the original's reach
+    through the gate not read).
+86. The leftovers (T8b2): the name lookup waits at most the dial's wait (its thread left to end);
+    a record's line error in numbers only; a stack the mouse enters carries the playhead on (no
+    replay from 0; the played timeline still copied); the sequences tool fails naming a clip it
+    cannot decode (a comparison needs it); `bink-reference.py` names a packet or file FFmpeg
+    refuses, goes on, exits 1.

@@ -28,7 +28,7 @@ use alloc::string::String;
 
 use h3_protocol::wire::{Outcome, Side};
 
-use crate::anim::Sound;
+use crate::anim::{Cue, Sound};
 
 /// The longest the battle waits for its start sound, in ms (0x463045).
 pub const START_WAIT: u32 = 10_000;
@@ -38,28 +38,37 @@ pub const START_WAIT: u32 = 10_000;
 pub const SAMPLE_WAIT: u32 = 4_000;
 
 /// How long each sample the battle may wait for plays, in ms (E17 M5 T5b2, design §8.3): the
-/// stacks' own sounds by stack and kind, the battle's other sounds by cue, as the window's sound
-/// library resolves a cue (a named sound first). A sample's length is its frames at its rate,
-/// rounded up (`ceil(frames × 1000 / rate)`; the frames the WAV's `fact` count, as the decoder's).
-/// The battle waits for its samples only when it plays them: a computer with a sound device and
-/// an effects volume above 0 (`play_sample` 0x59A210 plays nothing at 0, so nothing is waited
-/// for); without, the timeline has no lengths, as every capture before T5b2 (the harness's
-/// `sound` runs give the original a device).
+/// stacks' own sounds by stack and kind, the created stacks' by creature and kind (E17 M5 T8b2,
+/// R6-1), the battle's other sounds by cue, as the window's sound library resolves a cue (a named
+/// sound first, then a created stack's creature's, else the stack's). A sample's length is its
+/// frames at its rate, rounded up (`ceil(frames × 1000 / rate)`; the frames the WAV's `fact`
+/// count, as the decoder's). The battle waits for its samples only when it plays them: a computer
+/// with a sound device and an effects volume above 0 (`play_sample` 0x59A210 plays nothing at 0,
+/// so nothing is waited for); without, the timeline has no lengths, as every capture before T5b2
+/// (the harness's `sound` runs give the original a device).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Lengths {
-    /// Each stack's sounds by stack id and kind ([`Sound::Move`] to [`Sound::End`]).
+    /// Each stack's sounds by stack id and kind ([`Sound::Move`] to [`Sound::End`]): the stacks
+    /// of the record's first snapshot.
     pub stacks: BTreeMap<(u8, Sound), u32>,
+    /// The sounds of each creature the battle may create, by its handle and kind.
+    pub creatures: BTreeMap<(u16, Sound), u32>,
     /// The battle's other sounds by cue.
     pub named: BTreeMap<Sound, u32>,
 }
 
 impl Lengths {
-    /// How long `stack`'s cue `sound` plays, if it has a sample.
+    /// How long `cue`'s sample plays, if it has one ([`Cue::creature`]: a created stack's by its
+    /// creature).
     #[must_use]
-    pub fn of(&self, stack: u8, sound: Sound) -> Option<u32> {
+    pub fn of(&self, cue: &Cue) -> Option<u32> {
+        let sound = cue.sound;
         self.named
             .get(&sound)
-            .or_else(|| self.stacks.get(&(stack, sound)))
+            .or_else(|| match cue.creature {
+                Some(creature) => self.creatures.get(&(creature, sound)),
+                None => self.stacks.get(&(cue.stack, sound)),
+            })
             .copied()
     }
 }
@@ -176,12 +185,12 @@ impl Tune {
 /// [`Tune::DefendCastle`] for the town's defender (0x470B68); shown the loser, it plays
 /// [`Tune::LoseCastle`] for the town's defender, else [`Tune::Surrender`] or [`Tune::Retreat`] when
 /// a side gave up so (the flags 0x697744 and 0x6985A3, set by either side), else [`Tune::Lose`]
-/// (0x470BFE to 0x470CFF). Not distinguished: an opponent of a side that retreated or
-/// surrendered left with only stacks created in the battle loses too (BAT-Q7; the window then
-/// shows the defender's side), which the outcome does not say; the viewer takes it as the
-/// winner.
+/// (0x470BFE to 0x470CFF). `survivors`: whether each side has army survivors at the end (an army
+/// stack or one raised from corpses alive): the opponent of a side that retreated or surrendered
+/// left with none, only stacks created in the battle, loses too, no winner named (BAT-END-001,
+/// BAT-Q7; [`crate::result::winner`]), and the window then shows the defender's side.
 #[must_use]
-pub fn end_tune(outcome: Outcome, human: [bool; 2], town: bool) -> Tune {
+pub fn end_tune(outcome: Outcome, human: [bool; 2], town: bool, survivors: [bool; 2]) -> Tune {
     let index = |side: Side| usize::from(side == Side::Defender);
     let other = |side: Side| 1 - index(side);
     let (winner, gave_up) = match outcome {
@@ -192,7 +201,7 @@ pub fn end_tune(outcome: Outcome, human: [bool; 2], town: bool) -> Tune {
         Outcome::Retreat { side } => (Some(other(side)), Some(Tune::Retreat)),
         Outcome::Surrender { side } => (Some(other(side)), Some(Tune::Surrender)),
     };
-    match winner {
+    match crate::result::winner(winner, gave_up.is_some(), survivors) {
         Some(w) if human.get(w).copied().unwrap_or(false) => {
             if town && w == 1 {
                 Tune::DefendCastle
@@ -238,78 +247,75 @@ mod tests {
     #[test]
     fn the_end_plays_the_shown_sides_tune() {
         use Side::{Attacker as A, Defender as D};
+        let tune = |outcome: Outcome, human: [bool; 2], town: bool| {
+            end_tune(outcome, human, town, [true; 2])
+        };
         let both = [true, true];
         let red = [true, false];
         let blue = [false, true];
         let none = [false, false];
         // A human winner is shown: hot seat always so.
-        assert_eq!(
-            end_tune(Outcome::Victory { side: A }, both, false),
-            Tune::Win
-        );
-        assert_eq!(
-            end_tune(Outcome::Victory { side: D }, blue, false),
-            Tune::Win
-        );
-        assert_eq!(
-            end_tune(Outcome::Retreat { side: D }, both, false),
-            Tune::Win
-        );
-        assert_eq!(
-            end_tune(Outcome::Surrender { side: A }, blue, false),
-            Tune::Win
-        );
+        assert_eq!(tune(Outcome::Victory { side: A }, both, false), Tune::Win);
+        assert_eq!(tune(Outcome::Victory { side: D }, blue, false), Tune::Win);
+        assert_eq!(tune(Outcome::Retreat { side: D }, both, false), Tune::Win);
+        assert_eq!(tune(Outcome::Surrender { side: A }, blue, false), Tune::Win);
         // Else the loser is: how it lost.
+        assert_eq!(tune(Outcome::Victory { side: D }, red, false), Tune::Lose);
+        assert_eq!(tune(Outcome::Victory { side: A }, none, false), Tune::Lose);
         assert_eq!(
-            end_tune(Outcome::Victory { side: D }, red, false),
-            Tune::Lose
-        );
-        assert_eq!(
-            end_tune(Outcome::Victory { side: A }, none, false),
-            Tune::Lose
-        );
-        assert_eq!(
-            end_tune(Outcome::Retreat { side: A }, red, false),
+            tune(Outcome::Retreat { side: A }, red, false),
             Tune::Retreat
         );
         assert_eq!(
-            end_tune(Outcome::Surrender { side: A }, red, false),
+            tune(Outcome::Surrender { side: A }, red, false),
             Tune::Surrender
         );
         // A draw shows the defender's side, the loser's.
-        assert_eq!(end_tune(Outcome::Draw {}, both, false), Tune::Lose);
+        assert_eq!(tune(Outcome::Draw {}, both, false), Tune::Lose);
         // The ranked game's ends, which no battle's event carries.
-        assert_eq!(
-            end_tune(Outcome::Forfeit { side: D }, red, false),
-            Tune::Win
-        );
-        assert_eq!(end_tune(Outcome::NoShow {}, both, false), Tune::Lose);
-        assert_eq!(end_tune(Outcome::Unverified {}, both, false), Tune::Lose);
+        assert_eq!(tune(Outcome::Forfeit { side: D }, red, false), Tune::Win);
+        assert_eq!(tune(Outcome::NoShow {}, both, false), Tune::Lose);
+        assert_eq!(tune(Outcome::Unverified {}, both, false), Tune::Lose);
         // At a town: its defender's own tunes.
         assert_eq!(
-            end_tune(Outcome::Victory { side: D }, both, true),
+            tune(Outcome::Victory { side: D }, both, true),
             Tune::DefendCastle
         );
+        assert_eq!(tune(Outcome::Victory { side: A }, both, true), Tune::Win);
         assert_eq!(
-            end_tune(Outcome::Victory { side: A }, both, true),
+            tune(Outcome::Victory { side: A }, blue, true),
+            Tune::LoseCastle
+        );
+        assert_eq!(
+            tune(Outcome::Surrender { side: D }, blue, true),
+            Tune::LoseCastle
+        );
+        assert_eq!(tune(Outcome::Draw {}, none, true), Tune::LoseCastle);
+        assert_eq!(tune(Outcome::Victory { side: D }, red, true), Tune::Lose);
+        assert_eq!(tune(Outcome::Retreat { side: A }, red, true), Tune::Retreat);
+        // BAT-END-001 (E17 M5 T8b2, R5b-3): the opponent of a side that gave up with no army
+        // survivors has lost too: no winner, the defender's side shown.
+        let left = [true, false];
+        assert_eq!(
+            end_tune(Outcome::Retreat { side: A }, both, false, left),
+            Tune::Retreat
+        );
+        assert_eq!(
+            end_tune(Outcome::Surrender { side: D }, red, false, left),
             Tune::Win
         );
         assert_eq!(
-            end_tune(Outcome::Victory { side: A }, blue, true),
+            end_tune(Outcome::Surrender { side: A }, both, false, left),
+            Tune::Surrender
+        );
+        assert_eq!(
+            end_tune(Outcome::Surrender { side: A }, both, true, left),
             Tune::LoseCastle
         );
+        // A victory names its winner whatever survived.
         assert_eq!(
-            end_tune(Outcome::Surrender { side: D }, blue, true),
-            Tune::LoseCastle
-        );
-        assert_eq!(end_tune(Outcome::Draw {}, none, true), Tune::LoseCastle);
-        assert_eq!(
-            end_tune(Outcome::Victory { side: D }, red, true),
-            Tune::Lose
-        );
-        assert_eq!(
-            end_tune(Outcome::Retreat { side: A }, red, true),
-            Tune::Retreat
+            end_tune(Outcome::Victory { side: D }, both, false, [false; 2]),
+            Tune::Win
         );
     }
 

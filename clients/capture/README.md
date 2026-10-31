@@ -1140,8 +1140,9 @@ design §7.1.
   `morale` in `states.jsonl` show it. Since E17 M5 T8a the battle recipes (`capture`,
   `sequence`) set every player's bonus to Gold in the advanced options (`h3drive.gold_bonus`;
   `to_scenario` and `h3adv.to_hot_seat` take `gold`, off for the adventure batches and the map's
-  stills, which keep the random bonus). The choice is not checked afterwards (E17 M5 T8b1,
-  R7-8: no probe of the Gold picture, no address of the bonuses read).
+  stills, which keep the random bonus). Since T8b2 (R7-8) the choice is checked in memory
+  (`h3mem.starting_bonuses`, the scenario list's dialog 0x69FBE8): a run whose rows do not read
+  Gold for its players stops.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).

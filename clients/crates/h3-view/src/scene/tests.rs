@@ -1160,7 +1160,7 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
     o.active = None;
     let none = Panels::new(&o, &[], Vec::new());
     assert_eq!(picture(&none.at(&o, &[], 0, &layout)), Some(1));
-    assert_eq!(picture(&Panels::before(&o, &layout)), Some(1));
+    assert_eq!(picture(&none.before(&o, &layout)), Some(1));
     assert_eq!(none.text(0), "");
     // E17 M3 T9b, the reviewer: the scroll buttons take a click once a human's turn enabled them
     // (the opening's own active stack none: Red's turn at 300 is the first).
@@ -1261,7 +1261,10 @@ fn auto_combat_dims_the_panel_and_keeps_its_button_selected_through_the_computer
     ];
     let started = [(100, 2), (300, 0)];
     let auto = Auto::of(
-        &[Input::Auto { at: 50 }, Input::Stop { at: 120 }],
+        &[
+            Input::Auto { at: 50, turn: 0 },
+            Input::Stop { at: 120, turn: 1 },
+        ],
         &[0, 100, 300],
     );
     let panels = Panels::new(&o, &events, Vec::new()).with_auto(&o, auto);
@@ -1278,6 +1281,16 @@ fn auto_combat_dims_the_panel_and_keeps_its_button_selected_through_the_computer
     assert_eq!(frames(50), [3, 2]);
     assert_eq!(frames(200), [3, 2]);
     assert_eq!(frames(300), [0, 0]);
+    // T8b2, R5c-7: where the window takes no switch (a seat on a server), the button is disabled
+    // on Red's turn and before the first turn.
+    let seat = panels.clone().without_switch();
+    let frame = |list: Vec<Draw>| match &list[4] {
+        Draw::Dialog(ui::Draw::Button { frame, .. }) => *frame,
+        _ => 9,
+    };
+    assert_eq!(frame(seat.at(&o, &started, 0, &layout)), 2);
+    assert_eq!(frame(seat.before(&o, &layout)), 2);
+    assert_eq!(frame(panels.before(&o, &layout)), 0);
 }
 
 /// The count box's hue under spells (E17 M3 T7b-2a, 0x43E6AA): the executable's f64 and f32

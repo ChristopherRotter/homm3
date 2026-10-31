@@ -23,17 +23,32 @@ impl Timeline {
             return;
         }
         let starts: Vec<(u32, bool)> = self.actions.iter().map(|a| (a.start, a.stands)).collect();
+        // Each stack's keys (their places, in the list's order) and each entry's next of the same
+        // stack, found once (E17 M5 T8b2, R3-1's rest): an entry reads its own stack's keys only.
+        let mut own_keys: BTreeMap<u8, Vec<usize>> = BTreeMap::new();
+        for (i, k) in self.keys.iter().enumerate() {
+            own_keys.entry(k.stack).or_default().push(i);
+        }
+        let mut agains: Vec<Option<u32>> = alloc::vec![None; entered.len()];
+        let mut next: BTreeMap<u8, u32> = BTreeMap::new();
+        for (n, &(t, stack)) in entered.iter().enumerate().rev() {
+            agains[n] = next.insert(stack, t);
+        }
         let mut added: BTreeMap<u8, Vec<Key>> = BTreeMap::new();
         for (n, &(t, stack)) in entered.iter().enumerate() {
+            let own_keys = own_keys
+                .get(&stack)
+                .map_or(&[][..], Vec::as_slice)
+                .iter()
+                .map(|&i| &self.keys[i]);
             let Some(member) = self.member(stack) else {
                 continue;
             };
             let standing = member.start.group;
             // The pose then (in memory): the mouse's last key after the timeline's own last.
-            let own = self
-                .keys
-                .iter()
-                .rfind(|k| k.stack == stack && k.drawn <= t)
+            let own = own_keys
+                .clone()
+                .rfind(|k| k.drawn <= t)
                 .map(|k| (k.drawn, k.pose));
             let mine = added
                 .get(&stack)
@@ -80,20 +95,12 @@ impl Timeline {
                 },
             ));
             // Its end: its own next key, the next standing action, the mouse entering it again.
-            let own_next = self
-                .keys
-                .iter()
-                .filter(|k| k.stack == stack && k.drawn > t)
-                .map(|k| k.drawn)
-                .min();
+            let own_next = own_keys.filter(|k| k.drawn > t).map(|k| k.drawn).min();
             let calm = starts
                 .iter()
                 .find(|&&(s, stands)| stands && s >= t)
                 .map(|&(s, _)| s);
-            let again = entered[n + 1..]
-                .iter()
-                .find(|(_, s)| *s == stack)
-                .map(|(at, _)| *at);
+            let again = agains[n];
             let until = [own_next, calm, again].into_iter().flatten().min();
             let mut frame = 0;
             let mut ended = false;

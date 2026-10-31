@@ -23,11 +23,14 @@ fn texts() -> Texts {
 fn hero(name: &str) -> Face {
     Face::Hero {
         name: name.to_string(),
-        portrait: "HPL000Kn.PCX".to_string(),
+        portrait: Some("HPL000Kn.PCX".to_string()),
     }
 }
 
-fn labels(window: &MessageBox) -> Vec<(u16, [i32; 2], u32, u32, &str)> {
+/// A label: its id, place, size, font, colour, alignment and text.
+type Labelled<'w> = (u16, [i32; 2], [i32; 2], &'w str, u32, u32, &'w str);
+
+fn labels(window: &MessageBox) -> Vec<Labelled<'_>> {
     window
         .dialog
         .items
@@ -36,6 +39,8 @@ fn labels(window: &MessageBox) -> Vec<(u16, [i32; 2], u32, u32, &str)> {
             Item::Label(l) => Some((
                 l.id,
                 l.at,
+                l.size,
+                l.font.as_str(),
                 l.colour,
                 l.align,
                 window.shown.texts.get(&l.id).map_or("", String::as_str),
@@ -68,21 +73,46 @@ fn the_window_is_laid_out_as_the_executable_builds_it() {
         Item::Picture(p) if p.picture == "CPResult.pcx" && p.at == [0, 0] && p.size == Some([470, 561])
     ));
     assert_eq!(window.shown.players.get(&BACKGROUND), Some(&0));
+    let (big, small) = ("BigFont.fnt", "smalfont.fnt");
     assert_eq!(
         labels(&window),
         vec![
-            (0x100, [0, 290], 8, 1, "result.title"),
-            (0x101, [0, 320], 4, 1, "result.attacker"),
-            (0x102, [0, 412], 4, 1, "result.defender"),
-            (ATTACKER_NAME, [89, 37], 4, 0, "Orrin"),
-            (0xCB, [83, 112], 4, 2, ""),
-            (DEFENDER_NAME, [266, 37], 4, 2, "Crag Hack"),
-            (0xCE, [266, 38], 4, 0, ""),
-            (0x103, [17, 116], 1, 1, "result.defeated"),
-            (0x104, [367, 116], 1, 1, "result.victorious"),
-            (TEXT, [68, 202], 4, 5, "the result"),
-            (LOSSES, [42, 353], 1, 1, "result.none"),
-            (LOSSES + 0x10, [42, 450], 1, 1, "result.none"),
+            (0x100, [0, 290], [466, 100], big, 8, 1, "result.title"),
+            (0x101, [0, 320], [466, 100], big, 4, 1, "result.attacker"),
+            (0x102, [0, 412], [466, 100], big, 4, 1, "result.defender"),
+            (ATTACKER_NAME, [89, 37], [115, 20], small, 4, 0, "Orrin"),
+            (0xCB, [83, 112], [65, 20], small, 4, 2, ""),
+            (
+                DEFENDER_NAME,
+                [266, 37],
+                [115, 20],
+                small,
+                4,
+                2,
+                "Crag Hack"
+            ),
+            (0xCE, [266, 38], [115, 20], small, 4, 0, ""),
+            (0x103, [17, 116], [84, 20], small, 1, 1, "result.defeated"),
+            (
+                0x104,
+                [367, 116],
+                [84, 20],
+                small,
+                1,
+                1,
+                "result.victorious"
+            ),
+            (TEXT, [68, 202], [332, 70], small, 4, 5, "the result"),
+            (LOSSES, [42, 353], [384, 36], small, 1, 1, "result.none"),
+            (
+                LOSSES + 0x10,
+                [42, 450],
+                [384, 36],
+                small,
+                1,
+                1,
+                "result.none"
+            ),
         ]
     );
     // The heroes' portraits as pictures; the OK with its back, Enter and Escape.
@@ -98,19 +128,21 @@ fn the_window_is_laid_out_as_the_executable_builds_it() {
     let n = window.dialog.items.len();
     assert!(matches!(
         &window.dialog.items[n - 2],
-        Item::Picture(p) if p.picture == "Box64x30.pcx" && p.at == [384, 506]
+        Item::Picture(p) if p.picture == "Box64x30.pcx" && p.at == [384, 506] && p.size == Some([66, 32])
     ));
     assert!(matches!(
         &window.dialog.items[n - 1],
-        Item::Button(b) if b.id == OK && b.at == [385, 507]
+        Item::Button(b) if b.id == OK && b.def == "iOkay.def" && b.at == [385, 507] && b.size == [64, 30]
     ));
+    // The OK is a message box's, which its keys press (R5b-8).
+    assert_eq!(OK, crate::message::OK);
 }
 
 #[test]
 fn a_side_without_a_hero_shows_its_creature_the_defender_s_mirrored() {
     let creature = |original| Face::Creature {
         name: "Pikemen".to_string(),
-        original,
+        original: Some(original),
     };
     let sides = [
         Side {
@@ -142,6 +174,50 @@ fn a_side_without_a_hero_shows_its_creature_the_defender_s_mirrored() {
     assert!(draws.iter().any(|d| matches!(
         d,
         ui::Draw::Button { def, frame: 15, mirrored: true, x: 557, y: 57, .. } if def == "TwCrPort.def"
+    )));
+}
+
+#[test]
+fn a_face_the_client_lacks_is_drawn_empty() {
+    // E17 M5 T8b2 (R5b-1): a hero without its portrait, a side without a creature to show.
+    let sides = [
+        Side {
+            face: Face::Hero {
+                name: String::new(),
+                portrait: None,
+            },
+            victorious: false,
+            losses: Vec::new(),
+        },
+        Side {
+            face: Face::Creature {
+                name: String::new(),
+                original: None,
+            },
+            victorious: false,
+            losses: Vec::new(),
+        },
+    ];
+    let window = layout(&assets(), &texts(), &sides, 0);
+    for (id, at, mirrored) in [
+        (ATTACKER_PORTRAIT, [21, 38], false),
+        (DEFENDER_PORTRAIT, [392, 38], true),
+    ] {
+        assert!(matches!(
+            window.dialog.item(id),
+            Some(Item::Def(d)) if d.def.is_none() && d.at == at && d.size == [58, 64] && d.mirrored == mirrored
+        ));
+    }
+    assert_eq!(
+        window.shown.texts.get(&ATTACKER_NAME).map(String::as_str),
+        Some("")
+    );
+    // Nothing drawn at the portraits' places (the dialog's (165, 19) on).
+    let draws = window.dialog.draws(&window.shown, "PLAYERS.PAL");
+    let at = |x: i32, y: i32| [x, y] == [186, 57] || [x, y] == [557, 57];
+    assert!(!draws.iter().any(|d| matches!(
+        *d,
+        ui::Draw::Button { x, y, .. } | ui::Draw::Picture { x, y, .. } if at(x, y)
     )));
 }
 
@@ -178,8 +254,8 @@ fn losses_are_centred_seven_at_most_their_counts_under_them() {
     let count = labels(&window)
         .into_iter()
         .find(|l| l.0 == LOSSES + 1)
-        .map(|l| (l.1, l.4.to_string()));
-    assert_eq!(count, Some(([219, 381], "10".to_string())));
+        .map(|l| (l.1, l.2, l.6.to_string()));
+    assert_eq!(count, Some(([219, 381], [32, 32], "10".to_string())));
 }
 
 #[test]
@@ -199,6 +275,17 @@ fn the_shown_side_is_a_human_winner_s_else_the_other_one() {
     assert_eq!(shown_side(Some(0), [false, false]), 1);
     assert_eq!(shown_side(Some(1), [true, true]), 1);
     assert_eq!(shown_side(None, [true, true]), 1);
+}
+
+#[test]
+fn a_side_that_gave_up_against_created_stacks_only_leaves_no_winner() {
+    // BAT-END-001 (E17 M5 T8b2, R5b-3): the winner needs army survivors only after a retreat or
+    // a surrender.
+    assert_eq!(winner(Some(0), false, [false, false]), Some(0));
+    assert_eq!(winner(Some(0), true, [true, false]), Some(0));
+    assert_eq!(winner(Some(1), true, [true, false]), None);
+    assert_eq!(winner(Some(2), true, [true, true]), None);
+    assert_eq!(winner(None, true, [true, true]), None);
 }
 
 #[test]

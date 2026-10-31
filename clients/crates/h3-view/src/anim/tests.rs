@@ -2346,7 +2346,8 @@ fn a_first_aid_tent_heals_under_its_magic_animation() {
         at: turn,
         stack: 0,
         sound: Sound::Heal,
-        stop: false
+        stop: false,
+        creature: None,
     }));
     // The frames, each drawn 100 ms before it shows, and the erasure.
     let keys: Vec<(u32, u32, Option<u32>)> = t
@@ -3100,7 +3101,8 @@ fn the_cast_sequence_plays_as_recorded() {
             at: 500,
             stack: 2,
             sound: Sound::Spell(54),
-            stop: false
+            stop: false,
+            creature: None,
         }]
     );
     // Shown a deadline after drawn: the hero's frame 0 from 100, standing at once at 2900; the
@@ -3172,6 +3174,7 @@ fn the_resist_sequence_plays_as_recorded() {
         stack: 1,
         sound: Sound::Resisted,
         stop: false,
+        creature: None,
     };
     assert_eq!(t.cues.last(), Some(&resisted));
     // Slow's red on the Battle Dwarves' box from its animation's first frame to the next turn's

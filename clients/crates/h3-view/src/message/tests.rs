@@ -232,6 +232,89 @@ fn a_picture_and_its_caption_sit_above_the_buttons() {
 }
 
 #[test]
+fn a_caption_wider_than_its_picture_is_centred_on_it() {
+    let medium = font(8, 16);
+    let small = font(5, 10);
+    // A slot 85 wide, a caption of one word 112 wide cut to 110 (one line at 110).
+    let mut picture = Picture {
+        def: "spellScr.def".to_string(),
+        frame: 0,
+        size: [83, 61],
+        caption: "x".repeat(22),
+    };
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        "x",
+        Style::Ok,
+        Some(&picture),
+        0,
+    );
+    // The row (110 + 40) under the least width: 256.
+    assert_eq!(m.dialog.shadow, Some([256, 256]));
+    // The slot at (256 - 85) / 2; the caption (85 - 110) / 2 = -12 from it (C division).
+    let caption = label(&m, PICTURE);
+    assert_eq!((caption.at, caption.size), ([73, 166], [110, 10]));
+    // A picture wider than the text: the row makes the box (252 + 40 rounded up to 320), the
+    // caption still at most 110.
+    picture.size = [250, 61];
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        "x",
+        Style::Ok,
+        Some(&picture),
+        0,
+    );
+    assert_eq!(m.dialog.shadow, Some([320, 256]));
+    assert_eq!(label(&m, PICTURE).at, [34 + 71, 166]);
+}
+
+/// The ids of the frame's items: every item's but the text's, the buttons' and the picture's.
+fn frame_ids(message: &MessageBox) -> Vec<u16> {
+    message
+        .dialog
+        .items
+        .iter()
+        .map(Item::id)
+        .filter(|&id| !matches!(id, TEXT | OK | 0x7866 | PICTURE))
+        .collect()
+}
+
+#[test]
+fn a_box_stays_on_the_screen_whatever_its_text() {
+    let medium = font(8, 16);
+    let small = font(5, 10);
+    // One word of 10 000 glyphs (a server's name): broken at 578 (73 glyphs a line, the long
+    // word's lost glyph; its widest line the last, 72), 200 high.
+    let word = "x".repeat(10_000);
+    let m = layout(&assets(), (&medium, &small), &word, Style::Ok, None, 0);
+    assert_eq!(m.dialog.shadow, Some([640, 320]));
+    assert_eq!(m.dialog.place, [80, 140]);
+    assert_eq!(label(&m, TEXT).size, [590, 200]);
+    assert_eq!(frame_ids(&m), (200..232).collect::<Vec<_>>());
+    // A picture and a caption past the screen: the box at 768 x 576, its frame's ids 200 to 246.
+    let picture = Picture {
+        def: "spellScr.def".to_string(),
+        frame: 0,
+        size: [2_000, 61],
+        caption: ["xxxxx"; 1_000].join(" "),
+    };
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        &word,
+        Style::Ok,
+        Some(&picture),
+        0,
+    );
+    assert_eq!(m.dialog.shadow, Some([768, 576]));
+    assert_eq!(m.dialog.place, [16, 12]);
+    assert_eq!(label(&m, TEXT).size, [718, 200]);
+    assert_eq!(frame_ids(&m), (200..247).collect::<Vec<_>>());
+}
+
+#[test]
 fn a_caption_widens_while_it_is_too_high() {
     let small = font(5, 20);
     let slot = |caption: &str, size| {

@@ -222,6 +222,54 @@ fn teleport_dissolves_the_battlefield_in_33_ms_steps() {
 }
 
 #[test]
+fn a_bound_stack_teleported_loses_binds_hue_with_the_new_picture() {
+    // E17 M5 T8b2 (R6-2): the stack's own Bind ends after the save, before the move (0x5A1B91):
+    // the saved picture holds its hue, the dissolve's new picture and the battle after it not.
+    const BIND: u16 = 71;
+    let mut bound = at(0, Side::Attacker, SWORDSMAN, 86, false);
+    bound.effects.push(h3_protocol::wire::Effect {
+        spell: BIND,
+        rounds: None,
+        mastery: 0,
+        value: 0,
+        attack: 0,
+        defense: 0,
+        speed: 0,
+    });
+    let o = snapshot(vec![bound, at(1, Side::Defender, PIKEMAN, 50, false)]);
+    let commands = [(
+        Some(0),
+        vec![
+            spell(TELEPORT_SPELL, Target::Stack { stack: 0 }),
+            Event::EffectEnded {
+                target: 0,
+                spell: BIND,
+            },
+            Event::Teleported {
+                stack: 0,
+                from: 86,
+                to: 90,
+            },
+        ],
+    )];
+    let t = play_created(&o, &commands);
+    let [(start, step, _)] = dissolves(&t)[..] else {
+        panic!("{:?}", t.dissolves);
+    };
+    assert!(t.hues(start).contains_key(&0));
+    assert!(!t.hues(start + 1).contains_key(&0));
+    let blending = Moment::at(&t, start + 1).dissolve.unwrap();
+    assert!(blending.before.hues.contains_key(&0));
+    assert!(!Moment::at(&t, start + 1).hues.contains_key(&0));
+    assert!(
+        !Moment::at(&t, start + DISSOLVE_STEPS * step)
+            .hues
+            .contains_key(&0)
+    );
+    assert!(!t.hues(t.end).contains_key(&0));
+}
+
+#[test]
 fn a_summoned_stack_dissolves_in_and_away_and_its_record_goes_to_the_next() {
     let o = snapshot(vec![
         at(0, Side::Attacker, SWORDSMAN, 86, false),
@@ -353,6 +401,69 @@ fn a_defenders_summon_takes_its_sides_next_record() {
     assert!(t.member_at(Side::Attacker, 1).is_none());
     assert_eq!(t.created.len(), 1);
     assert!(t.member(3).is_none());
+}
+
+#[test]
+fn an_id_reused_on_the_other_side_takes_that_sides_next_record_until_none_is_left() {
+    // E17 M5 T8b2 (R6-3): the attacker's elementals (id 3, its record 2) die; the defender's
+    // summon reusing id 3 takes the defender's next record (1), not the attacker's 2.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, SWORDSMAN, 86, false),
+        at(2, Side::Attacker, SWORDSMAN, 52, false),
+        at(1, Side::Defender, PIKEMAN, 50, false),
+    ]);
+    let defenders = Event::SpellCast {
+        side: Side::Defender,
+        spell: SUMMON,
+        target: Target::None {},
+        second: Target::None {},
+    };
+    let commands = [
+        (
+            Some(0),
+            vec![spell(SUMMON, Target::None {}), summoned(3, 6, 18)],
+        ),
+        (None, vec![struck(1, 3, 6, flags(false, false, false))]),
+        (None, vec![defenders, summoned(3, 6, 32)]),
+    ];
+    let t = play_created(&o, &commands);
+    let made: Vec<(u8, Side, u8)> = (t.created.iter())
+        .map(|k| (k.member.stack, k.member.side, k.member.record))
+        .collect();
+    assert_eq!(
+        made,
+        [(3, Side::Attacker, 2), (3, Side::Defender, 1)],
+        "{made:?}"
+    );
+    assert_eq!(t.member_at(Side::Defender, 1).map(|m| m.stack), Some(3));
+    // A hostile record: the attacker's records 1 to 253 held by stacks gone, id 255 takes the
+    // last but one; id 1 (the defender's) on the attacker's side finds none left: not drawn, no
+    // overflow.
+    let gone = |id| {
+        let mut s = at(id, Side::Attacker, SWORDSMAN, 0, false);
+        (s.alive, s.corpse) = (false, u16::MAX);
+        s
+    };
+    let mut stacks = vec![
+        at(0, Side::Attacker, SWORDSMAN, 86, false),
+        at(1, Side::Defender, PIKEMAN, 50, false),
+    ];
+    stacks.extend((2..u8::MAX).map(gone));
+    let summon = |id| vec![spell(SUMMON, Target::None {}), summoned(id, 1, 18)];
+    let commands = [(Some(0), summon(u8::MAX)), (None, summon(1))];
+    let t = play_created(&snapshot(stacks), &commands);
+    let made: Vec<(u8, u8)> = (t.created.iter())
+        .map(|k| (k.member.stack, k.member.record))
+        .collect();
+    assert_eq!(made, [(u8::MAX, 254)]);
+    assert_eq!(t.member_at(Side::Attacker, u8::MAX), None);
+    assert_eq!(t.member(1).map(|m| m.side), Some(Side::Defender));
+    // Every record of a side held at the start (256 stacks): the timeline is still made, and a
+    // reused id keeps its record (the setup's order: slots 19, 16, 18 and 17 first).
+    let mut stacks = vec![at(0, Side::Attacker, SWORDSMAN, 86, false)];
+    stacks.extend((1..=u8::MAX).map(gone));
+    let t = play_created(&snapshot(stacks), &[(Some(0), summon(7))]);
+    assert_eq!(t.created[0].member.record, 11);
 }
 
 #[test]

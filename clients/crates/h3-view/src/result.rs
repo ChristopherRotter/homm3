@@ -4,14 +4,15 @@
 //! darkened (`battle_end` 0x47782C). [`layout`] builds its items as `ui` items in the executable's
 //! order from what it shows; [`text`] picks the result's text, [`shown_side`] the side whose view it
 //! shows (the binary's `results` derives the rest from the engine's outcome: the points the text
-//! names, each side's face and row of losses). The
+//! names, each side's face and row of losses), [`winner`] the side it names the winner. The
 //! window takes input as a message box does (`crate::message::Open`): its OK (Enter or Escape)
 //! closes it.
 //!
 //! The clip it plays in its slot at (107, 70), 256 × 120 (`video_play_in_dialog` 0x597570 from
 //! 0x471A24; E17 M5 T4b2b): [`clip`] its draw, `crate::clip` which and when; without the video
 //! archives the slot stays bare, as the original shows it then. *Not built:* a network game's
-//! timeout (0x471BBB).
+//! timeout (0x471BBB); what `battle_end` does after the window closes: the experience given
+//! (0x477948) and Eagle Eye's message (the spells its hero learnt).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -26,8 +27,8 @@ use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{self, Button, Def, Dialog, Frames, Item, Label, Picture, Shown};
 
 /// The OK (`iOkay.def`, 0x4715C3: id 0x7802, Enter and Escape, the battle's table's
-/// `result-ok`: `crate::keys`).
-pub const OK: u16 = 0x7802;
+/// `result-ok`: `crate::keys`): a message box's ([`crate::message::OK`]), which its keys press.
+pub const OK: u16 = crate::message::OK;
 /// The background (`CPResult.pcx`, id 200), in the viewing player's colours (0x4703A0).
 pub const BACKGROUND: u16 = 200;
 /// The attacker's name and portrait (0xC9, 0xCA), the text item beside it the executable leaves
@@ -79,23 +80,25 @@ pub struct ResultLayout {
     pub clip: [i32; 2],
 }
 
-/// What a side's corner shows.
+/// What a side's corner shows. What the client lacks (an entry of the tables or the manifest, a
+/// creature the window could pick) is drawn empty (E17 M5 T8b2, R5b-1): an empty name, no
+/// portrait.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Face {
     /// Its hero: its name and its large portrait (`hero_table`'s +0x34 by the hero's portrait).
     Hero {
         /// The name.
         name: String,
-        /// The portrait (`HPL*.pcx`).
-        portrait: String,
+        /// The portrait (`HPL*.pcx`; none: drawn empty).
+        portrait: Option<String>,
     },
     /// Its strongest creature (the binary's `results::strongest`): its name, the plural when the
-    /// side had more than one stack, and its original id.
+    /// side had more than one stack, and its original id (none: drawn empty).
     Creature {
         /// The name.
         name: String,
         /// The original id.
-        original: u32,
+        original: Option<u32>,
     },
 }
 
@@ -407,25 +410,37 @@ fn face_name(face: &Face) -> &str {
 }
 
 /// A side's portrait at `at`: its hero's picture (0x47054A, 0x4707BB), or its creature's frame of
-/// `TwCrPort.def` (0x470681, 0x4708F2), the defender's mirrored.
+/// `TwCrPort.def` (0x470681, 0x4708F2), the defender's mirrored; one the client lacks an item
+/// that draws nothing (a DEF item without its DEF).
 fn portrait(layout: &ResultLayout, id: u16, at: [i32; 2], face: &Face, defender: bool) -> Item {
+    let size = [58, 64];
+    let def = |def: Option<String>, frame: u32| {
+        Item::Def(Def {
+            id,
+            def,
+            at,
+            size,
+            frame,
+            mirrored: defender,
+            repeat: None,
+        })
+    };
     match face {
-        Face::Hero { portrait, .. } => Item::Picture(Picture {
+        Face::Hero {
+            portrait: Some(portrait),
+            ..
+        } => Item::Picture(Picture {
             id,
             picture: portrait.clone(),
             at,
-            size: Some([58, 64]),
+            size: Some(size),
             hint: None,
         }),
-        Face::Creature { original, .. } => Item::Def(Def {
-            id,
-            def: Some(layout.creatures.clone()),
-            at,
-            size: [58, 64],
-            frame: original + 2,
-            mirrored: defender,
-            repeat: None,
-        }),
+        Face::Creature {
+            original: Some(original),
+            ..
+        } => def(Some(layout.creatures.clone()), original + 2),
+        Face::Hero { portrait: None, .. } | Face::Creature { original: None, .. } => def(None, 0),
     }
 }
 
@@ -448,6 +463,17 @@ pub fn shown_side(winner: Option<usize>, human: [bool; 2]) -> usize {
         Some(w) => 1 - w.min(1),
         None => 1,
     }
+}
+
+/// The side the window names the winner, and so its shown side and its tune
+/// ([`crate::sound::end_tune`]): the result's `winner`, but none when a side gave up (`gave_up`)
+/// and the winner has no army survivors (`survivors`, each side's: an army stack or one raised
+/// from corpses alive at the end), left with only stacks the battle created: the original names
+/// no winner then (BAT-END-001, BAT-Q7; E17 M5 T8b2, R5b-3), so both sides are "Defeated", the
+/// window shows the defender's side and gives no experience.
+#[must_use]
+pub fn winner(winner: Option<usize>, gave_up: bool, survivors: [bool; 2]) -> Option<usize> {
+    winner.filter(|&w| !gave_up || survivors.get(w).copied().unwrap_or(false))
 }
 
 /// The result's text (0x470AB4 to 0x470CFF): the shown side won (`won`): the enemy surrendered,

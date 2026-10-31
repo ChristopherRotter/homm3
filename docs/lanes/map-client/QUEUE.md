@@ -43,6 +43,14 @@ T6b3 (kept whole by the user; all done: the epic's log).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-31 (the client lane, E17 M5 T8b2; for information, nothing to do): three changes in the
+  common crates. `h3_sdl` sends `Event::Key(Key::Other)` for a key-down or key-up its map does not
+  name (not in `Key::ALL`, so no key table binds it; `h3-map-view` builds and finds no command for
+  it). `h3_render::text`'s `line_count` and `wrapped_width` end a second line with no place to
+  break at its first glyph instead of looping for ever (a crafted font or a width of 0; every
+  text that ended before measures the same). `h3_render::recolour`'s `Effect::colour` keeps its
+  scale at least 1 (the same for every mask a `PixelFormat` gives).
+
 - 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
   after it merges, run `clients/capture/setup.sh` again for every run directory you use: the
   hook DLL's ack has ten fields now, and an older `xdd.dll` stops a run with "stale xdd.dll".

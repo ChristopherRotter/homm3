@@ -2232,7 +2232,8 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   record's +0 below 0) at an own stack, "%s can only be cast on hostile creatures" (172); a
   friendly one at an enemy, "... friendly creatures" (178); the creature's factor 0 (0x44A4D0):
   Resurrection, Animate Dead and Sacrifice "%s does not work on %s" (180), any other "%s are
-  immune to %s" (181), both with the plural name; else 24. Force Field and Fire Wall: 182.
+  immune to %s" (181), both with the plural name; else 24 (a target's hex in a side column too:
+  every test passes; E17 M5 T8b2, R4b-2). Force Field and Fire Wall: 182.
 - **The area's marks** (0x59F8A0): the stacks of the area (`area_stacks` 0x5A46F0: radius 2 for
   Inferno, else 1, the centre left out for Frost Ring; Berserk's by the mastery, 0x5A4810), each
   living stack the spell may affect (0x5A8090 above 0) given the mark +0x4F1 (0x43EFE0): newly
@@ -2283,10 +2284,14 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   spell's page) and the aim. *Provisional:* the refusal's immunity (the client takes any refusal
   the engine makes that the other reasons do not explain for it), the area's marks of stacks the
   spell would not affect, Berserk's area in the side columns.
-- **Not modelled:** the aims of Force Field, Fire Wall, Teleport and Sacrifice (the book closes
-  on them and casts nothing); the message boxes (T4); the area's shading (an option off in the
-  harness); the Faerie Dragon's cast by the mouse (its cursor kind 20: once its side's hero has
-  cast, the key does nothing, as the original's, and the window gives no cast then).
+- **Not modelled:** the aims of Teleport and Sacrifice (the book closes on them and casts
+  nothing; a second target is the ruleset's, `aims::second_target`, by the original's number
+  only in a server's game of other content: E17 M5 T8b2, R4b-4); Force Field's and Fire Wall's
+  own aim (0x5A3250, not read): they take the common aim, a click casting at the hex it took
+  (*provisional*: no wall's shape shown, the refusal 24 instead of their 182; R4b-3); the
+  message boxes (T4); the area's shading (an option off in the harness); the Faerie Dragon's
+  cast by the mouse (its cursor kind 20: once its side's hero has cast, the key does nothing, as
+  the original's, and the window gives no cast then).
 
 ### 7.19 The message box, Retreat and Surrender (M5 T4a)
 
@@ -2319,7 +2324,10 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   20 and each picture row's height and its caption's (+ 20 between rows) with pictures; rounded
   up to 64, at least 128; the text's top 30 + (box − that sum) / 2 (C division). The place: when
   x is −1 or x + width ≥ 799, (800 − width) / 2; when y is −1 or y + height ≥ 599,
-  (600 − height) / 2.
+  (600 − height) / 2. *The client's* (T8b2, R5a-3): a word wider than 578 starts the text's
+  width at 578, not at the word's, and the box is at most 768 × 576, so a server's long name
+  cannot make a box past the screen of unbounded frame items (their ids would wrap round into
+  the text's and the buttons'); no text of the game reaches either.
 - **The picture slot** (0x4F4EB0, type 9 a spell): the DEF `spellScr.def`, its frame the spell's
   number, its caption the spell's name; the slot's size the DEF's width and height + 2 (85 × 63);
   the caption's width the widest of 50, the picture's and its words' (each 2 + its glyphs in
@@ -2353,7 +2361,9 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   hidden (a choice's mark). The cursor: the default one's frame 0 (`mouse_set_cursor(0, 0)` at
   0x4F74AC), the one before restored at the end.
 - **Its input** (the modal loop 0x602520 with 0x4F08D0, then 0x4F0FC0): the input queue emptied
-  as it opens; the battle stands still behind it; a button's command (its click: released over
+  as it opens (the client: the presses and key-downs of the window's pass it opens in, after the
+  input that opened it, are dropped; the key-ups, moves and Quit kept); the battle stands still
+  behind it; a button's command (its click: released over
   it, or its hotkey released) of id 0x7800 to 0x7806 closes the box, the window manager's +0x38
   that id (0x7802 the picture chosen in styles 7 and 10). A style-1 box has no hotkey but Enter.
 - **Retreat** (2002, `R`): style 2 with GENRLTXT 29 ("Are you sure you want to retreat?"); OK
@@ -2382,7 +2392,9 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   single quotes. `h3_formats::text` keeps the doubled quotes: the client's catalogue makes each
   run one when it reads a table's field (`text::pack`, not the executable's own strings).
 - **Built:** `h3_render::text`'s `widest_word`, `widest_line`, `wrapped_width` and
-  `blit::draw_image_keyed_in_clipped`; `h3_view::message` (`layout`: the record's layout, the
+  `blit::draw_image_keyed_in_clipped` (T8b2, R5a: in `line_count` and `wrapped_width` a second
+  line with no place to break, a space wider than the width or a width of 0, would send the
+  executable's loop back to the text's start for ever: it ends at its first glyph); `h3_view::message` (`layout`: the record's layout, the
   frame's tiles and pieces, the text, the buttons, one picture and its caption as `ui` items in
   the executable's order, the pieces in the viewing player's colours through `Shown::players`;
   `Open`: a press, a move off and back, a release over the button, a key down and up, as the
@@ -2397,7 +2409,8 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   book, "affects no one" over the battle; the battle and the book standing still behind it, the
   default cursor's frame 0), the window's keys and mouse while it is open (every key but the
   viewer's own goes to it: Escape is Cancel's, never the window's), unattended runs' `--leave
-  retreat|surrender` (the button clicked, the question shown 400 ms, its OK clicked); the stills'
+  retreat|surrender` (the button clicked, the question shown 400 ms, its OK clicked; a notice's
+  box too: the 400 ms by the window's clock, which the box does not hold); the stills'
   actions `key:r`, `key:s`, a box's `key:` and `click:` (`spellbook::still`). *Provisional:* the
   viewing player taken as the attacker's when a human plays it here, else the defender's (the
   client knows no adventure map's turn; the executable falls back on the game's highest human
@@ -2482,7 +2495,21 @@ without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `bat
   battle's screen), the stills' (a box's OK that gives a command) and the sequences' (from the
   timeline's end). *Provisional:* a hero's portrait its type's (a map's own portrait not known),
   no Learning (the client's heroes have none), a hero-less side's face not captured (the
-  harness's maps give both sides a hero).
+  harness's maps give both sides a hero); a server's game whose content check is not `Same`
+  reads no creature's values (the local ruleset's hit points and AI values may not be the
+  game's): its experience 0, a hero-less side no face (T8b2, R5b-2). *Not built:* what
+  `battle_end` does after the window closes: the experience given (0x477948) and Eagle Eye's
+  message (R5b-4).
+- **Since T8b2 (R5b):** the window is always built, once: what the client lacks is drawn empty
+  (a hero type the manifest does not name: a hero with an empty name, no portrait, its +500
+  kept; a hero type without a portrait in the tables, a creature without an original id: a DEF
+  item without its DEF; a hero-less side with no record but the arrow towers: no face), so a
+  missing entry no longer leaves the window unopened and retried at every pass. **No winner
+  (BAT-END-001, BAT-Q7):** after a retreat or a surrender the opponent wins only with army
+  survivors (an army or raised stack alive at the end, read from the outcome's records, which a
+  served outcome has too); else no winner is named: both "Defeated", the defender's view, no
+  experience, and the end's tune by the same branches (`h3_view::result::winner`,
+  `h3_view::sound::end_tune`'s `survivors`).
 
 ### 7.21 The result window's clip (M5 T4b2b)
 
@@ -2560,8 +2587,11 @@ under Wine (`clients/capture/binkprobe.c`) and, where that stalled, read in its 
   record file's window never opens the result window), not at the first frame that shows it; a
   clip that cannot be read or decoded, or whose frames would pass `clip::BUDGET` (64 MiB, about
   ten times `defendloop`'s), leaves the slot bare as a missing one does (a warning on standard
-  error). The sequences tool still fails on such a clip (a comparison wants it). `h3-bink`
-  refuses an empty video packet (`Invalid`), which FFmpeg's `avcodec_send_packet` refuses too.
+  error). The sequences tool still fails on such a clip, kept so at T8b2 and naming the clip (a
+  comparison needs the clip the original showed: a bare slot would only differ in pixels without
+  saying why). `h3-bink` refuses an empty video packet (`Invalid`), which FFmpeg's
+  `avcodec_send_packet` refuses too; `bink-reference.py` names a packet or file FFmpeg refuses,
+  goes on past a packet as the `ffmpeg` command line does and exits 1 (T8b2).
 
 ### 7.22 Auto Combat (M5 T4c1)
 
@@ -2621,7 +2651,18 @@ kinds), `ai_battle_action` 0x477EE0's head, `ai_hero_cast_turn` 0x422DA0's head.
   human's turn it stops at waits, its stack outlined from its start
   (`Growing::outline_waiting`: the command before was pushed as followed by the computer's);
   unattended, `--auto <n>` switches it on at the human's n-th turn and stops it two commands
-  later.
+  later. Since T8b2 (R5c): a switch and a stop name the turn they were made in (`Input::Auto`'s
+  and `Input::Stop`'s `turn`; `Auto::of` takes each in it, not by its time): the switch the turn
+  waiting, as the bot's command for it may take no time (`EndTactics`: round 1's first turn
+  starts in the same millisecond, and plays itself from its start); a stop the turn started last
+  by its time, never one the bot already played (a press while Restart replays the battle stops
+  it at its next turn to come); a sequence's the turn started last by its time (`auto::turn_at`,
+  its `key:a` trusted to come on a human's waiting turn). The battle keeps them apart from the
+  window's inputs (`Battle::switches`): a seek back or Restart keeps them, and the turns' Auto
+  Combat costs the turns only (the mouse's `Follower` too, its mark dropped when a turn before it
+  plays otherwise). Any key down stops it: Control too, and a key no table names (`h3_sdl`'s
+  `Key::Other`). On a server's seat the button is disabled throughout (`Panels::without_switch`,
+  `Autoplay::off`), as when both players are human, while the window takes no switch there.
 - **Recorded** (`auto`, the melee's battle): A at the Angels' turn, the flight at 0 ms; the mouse
   moved to (400, 300); A again at 1 500 ms, the stop at the Wolf Riders' turn; the Pikemen's turn
   at 7 530 waits. The timeline as recorded (101 changes); the 106 frames' panel and cursor exact
@@ -2712,7 +2753,10 @@ cell pictures, the player record's reset 0x4B9E20 (+0x88).
 - **Built** (`h3_view::tactics`, the scene's `Draw::Shade` and `Moment::shade`, the layout's
   `cell_shade` and `[tactics_panel]`, `panel::NEXT_CREATURE` and `START_COMBAT`, `Panels::before`,
   `Moment::before_first_turn`): `tactics::shade` from an observation (*provisional*: a flyer
-  passes over any run of hexes; the phase's turns after the first: T4c2b), `tactics::told` (a
+  passes over any run of hexes; the phase's turns after the first: T4c2b; since T8b2, R5c-6, in a
+  siege the walls block and the closed gate and the drawbridge too, but for the defender, whose
+  step opens the gate unless a stack or corpse lies on a bridge, as the engine's
+  `siege::blocked_for`; a zone wider than the field is the whole field, R5c-2), `tactics::told` (a
   battle in the client is a game of its own, so every battle opening with a human's phase shows
   the message, *provisional*), the panel built for the defender (it was the opening's side,
   *provisional*), the situations' and the window's message at the opening, the pointer the
@@ -2873,13 +2917,18 @@ BAT-MAG-052, `installation.md` §7.19).
   (0x5A0331).
 - **Teleport** (0x5A1B4D): a redraw shown at once (1, 0, 0, 0, 1, 0), the battlefield saved (0, 0,
   800, 556), the stack's Bind links and its own Bind ended, moved, a redraw unseen and the
-  dissolve with 33 ms steps whatever the speed (0x5A1BEA). No line.
+  dissolve with 33 ms steps whatever the speed (0x5A1BEA). No line. Built (since M5 T8b2, R6-2):
+  the engine's `EffectEnded`s of the cast applied after the first redraw, their boxes' hues
+  shown with the new picture (from the dissolve's start + 1, as the move).
 - **The viewer's timeline** (`anim::created`): a dissolve's changes are drawn at its start and
   shown from 1 ms later (`DissolveKey`: the moment at its start is the saved picture), its steps
   blend from then to its end (`DissolveKey::step_at`), the new picture whole at its end; the
-  record a created stack takes is the engine's id's (a killed created stack's, as 0x47A12B) or the
-  side's next; its numbers come from the event and the ruleset (`Casts::bodies`), the rest left at
-  0 (*provisional*). The log names a created stack from its `Created` entry on (a reused id its
+  record a created stack takes is the engine's id's (a killed created stack's, as 0x47A12B) when
+  it was on the same side, else the side's next (none left past 255, a hostile record's: the
+  stack is not drawn; M5 T8b2, R6-3); its numbers come from the event and the ruleset
+  (`Casts::bodies`), the rest left at 0 (*provisional*). Its cues play its creature's sounds
+  (`Cue::creature`, §8.3), not those of the stack that held its id before. The playhead keeps a
+  dissolve's battle at its start only until the dissolve ends (R6-4). The log names a created stack from its `Created` entry on (a reused id its
   latest). The clone's message is a notice the window opens as a message box at its time, the
   battle standing behind it (`Timeline::notices`, `Battle::open_notice`).
 - **The saved picture is the back buffer** (a slip of the original, not copied: the user's,
@@ -2964,7 +3013,8 @@ Bloodlust and Stone Gaze handlers). Built as `h3_render::recolour` (the effects)
 - **Built** (*provisional* where marked): `h3_render::recolour::Effect` (`Bloodlust(step)`,
   `StoneGlow(step)`, `Petrified`, `Clone`) computes an entry exactly in integers (each x87 result
   rounded to 53 bits, each f32 store to 24; `clients/scripts/palette-reference.py` in IEEE doubles:
-  the tests' digests over every 16-bit value, 24 effects), about 0.9 µs an entry; `anim`'s
+  the tests' digests over every 16-bit value, 24 effects; a mask of 2^31 or more, which no 16-bit
+  format has, scales by 1, not 0: M5 T8b2, R6-5), about 0.9 µs an entry; `anim`'s
   `LookKey` list (a glow's steps, the petrified look from Stone Gaze's effect to its end or the
   stack's death; a reused id's afresh); the scene takes a stack's look, else a clone's colours
   from the stack's `clone`. Not built: an Ogre Magi's Bloodlust (a creature's cast other than an
@@ -3270,7 +3320,14 @@ Death Blow 0x443B46 (73), Ice Bolt's explosion 0x5A0AFB (`IceRayEx`), the Famili
 length or now plus 4 s, whichever comes first (`Player::wait_for`; `wait_last` for a stack's own
 sound by its handle). The lengths (`sound::Lengths`): a sample's `fact` frames at its rate,
 rounded up (*provisional*: on a sound card Miles' mixer ends it, perhaps a few ms later; the
-harness's samples end so). The timeline waits only with them: the window once its sound opened
+harness's samples end so). A stack the battle created (`create_battle_stack` 0x47A100 loads its
+creature's sounds, `stack_load_graphics` 0x43D9F0) plays and is waited for by its creature's
+sounds: its cues carry the creature (`Cue::creature`), the lengths and the window's library hold
+the sounds of every creature the record's events create (`StackCreated`, `RoseFromCorpse`; the
+window's every creature with a look, as a battle fought as it is played may create any) besides
+the first snapshot's stacks by id (M5 T8b2, R6-1: a clone of Marksmen shooting waits at
+0x43FDF9; a stack in a reused id, BAT-QUIRK-7's or the corpse's a Pit Lord raises Demons in,
+no longer plays the old stack's). No sound sequence creates a stack: none changed. The timeline waits only with them: the window once its sound opened
 (not `--mute`, a device: the battle made again with the library's lengths, `Ground::play_sounds`),
 a sequence with `sound`; without, nothing changes (every capture before). A site waits on its own
 sample's handle: a handle another sample took meanwhile (its own done, or every channel of the

@@ -51,6 +51,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `Battle::follow`, and every change of `turned` in place (a re-served turn, the book's aim)
   calls `Follower::touch`, or the cached turns go stale; `pointer::shown` (the whole re-follow)
   stays the tests' reference.
+- A change of the mouse's fidgets (a stack entered, or the battle grown with some entered) carries
+  the playhead (`Playhead::carry`, E17 M5 T8b2): it compares the keys shown by now and re-sweeps
+  only the keys; every other list goes through `extend`'s checks. A new way to change the shown
+  timeline in place goes through one of the two, or `Playhead::new` and a seek.
 - The spell book (E17 M5 T3a) is a modal dialog: the battle behind it stands still, so the
   window's `next_frame` returns at once while it is open (scanning the idle steps for a change
   never ends: the window hung). Its hero comes from the side to act's own observation
@@ -65,6 +69,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   (the battle takes none meanwhile), so a sequence's `cast:`/`aim:` start with `Book`. The aims'
   targets are the engine's, computed where the battle is (`scenario::Turned::of`, `Live`): a
   turn's `aims` hold only the spells asked (the window adds the book's choice as it closes).
+  A press reads `Shown::aimed`, which `Battle::mouse` sets: anything that acts on `Shown` in the
+  middle of a pass calls `Battle::mouse` first (a move and a press come in one batch: T8b2,
+  R4b-1). `Aim::targets` stay sorted and without repeats (`target` searches them).
 - Auto Combat (E17 M5 T4c1) is the inputs' (`Input::Auto`, `Input::Stop`; `h3_view::auto`): the
   battle reads them before it decides a turn, so they go through `Battle::switch_auto` and
   `stop_auto` (which update its own inputs at once), never straight into the window's list. The
@@ -72,18 +79,26 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   it is taken: a stop pressed during that command's action makes a human's turn wait, its outline
   put back (`Growing::outline_waiting`). While it is on, every key but the window's own and every
   press is a stop first (the window's event loop).
+  Since T8b2 (R5c) the switches and stops carry their turn's index and live in
+  `Battle::switches`, never in the window's inputs (Restart and seeks keep them); `h3_sdl` sends
+  `Key::Other` for a key without a name (no key table binds it).
 - A message box (E17 M5 T4a) is modal as the book: while `Battle::message_open` the window's
   `next_frame` returns at once (else it hangs scanning idle steps), every key but the viewer's
   own goes to the box (Escape is Cancel's, never the window's quit) and the mouse's moves reach
   neither the book behind it nor the battle; the battle stands as it was when the box (or the
   book under it) opened. In a still the harness's park move after a `click:` that opened a box
   goes to the box: the book keeps its hint (`msg-mana`).
+  An unattended run's presser times a box by the window's clock (`win.ticks_ns`), never the
+  battle's, which a notice's box holds (T8b2, R5a-1); a box that gives way to another keeps
+  `message_open()` true: compare its buttons (`box_shown`).
 - The result window (E17 M5 T4b1) is a message box (`Asked::Result`): modal, its OK (Enter,
   Escape) ends the window's run, unattended runs leave it open (the presser skips it). Behind it
   the battle stands at its end with the heroes' flags of the moment before (`result::behind`):
   frozen 1 ms earlier, the end's last action is lost. Since T4b2b the harness's `VIDEO.VID` is
   the user's `battle-videos.vid` (`setup.sh`; an empty one without it: no clip), so the original
   plays the window's clip.
+  `Battle::end_tune` and the result window's opening run every loop pass: what they read from
+  the record's end is computed once and kept (`Battle::survivors`, `Battle::end_seen`; T8b2).
 - The result window's clip (E17 M5 T4b2b, design §7.21): `BINKW32.DLL` reads `timeGetTime`
   through its own import, which `xdd.dll` redirects too (the ack's eighth field 1): an `xdd.dll`
   without it runs the clip in real time under the frozen clock. The DLL counts every decode, a
@@ -120,6 +135,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   opened (`Ground::play_sounds`): state set on the first `Battle` before that is lost. A `sound`
   capture counts only the main thread's clock reads and settles the adventure map's sounds first
   (runbook, "Sound"); a sequence without `sound` must stay silent (its timeline would change).
+  A creature's sounds keyed by stack id also take the stacks the battle creates, by creature
+  (`audio::Voices`, `sound::Lengths::creatures`, `Cue::creature`; T8b2, R6-1), or their sounds and
+  waits are lost and a reused id plays the old stack's.
 - The panel's and the screen's side is each turn's controller (`Timeline::controllers`, E17 M5
   T5b2): a new list of turns built beside `turns` needs its controller pushed with it.
 - A seat on a server (E17 M5 T6b1, design §11.2): the battle idles `Waiting` on both seats'

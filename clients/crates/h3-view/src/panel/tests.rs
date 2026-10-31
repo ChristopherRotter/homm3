@@ -10,6 +10,7 @@ const RED_BLUE: [u8; 2] = [0, 1];
 const NO_AUTO: Autoplay = Autoplay {
     plays: false,
     selected: false,
+    off: false,
 };
 
 /// What the panel keeps before any human turn: `side`'s colours, the scroll buttons as built.
@@ -414,7 +415,7 @@ fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
     let red = (by(Side::Attacker), NO_AUTO);
     let playing = Autoplay {
         plays: true,
-        selected: false,
+        ..NO_AUTO
     };
     let auto = shown(&o, Some(Side::Attacker), (red.0, playing), "", RED_BLUE);
     assert_eq!(
@@ -428,8 +429,8 @@ fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
     // The computer's turn after it: dimmed, Auto Combat still selected (0x46BF90 sets the
     // disabled state only, the selected frame drawn over it).
     let kept = Autoplay {
-        plays: false,
         selected: true,
+        ..NO_AUTO
     };
     let blue = shown(&o, Some(Side::Defender), (red.0, kept), "", RED_BLUE);
     assert_eq!(disabled(&blue).len(), 9);
@@ -467,5 +468,18 @@ fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
         ))
         .len(),
         9
+    );
+    // T8b2, R5c-7: where the window takes no switch (a seat on a server) the button is disabled
+    // on a human's turn and as built, as when both players are human.
+    let off = Autoplay {
+        off: true,
+        ..NO_AUTO
+    };
+    let seat = shown(&o, Some(Side::Attacker), (red.0, off), "", RED_BLUE);
+    assert_eq!(disabled(&seat), [AUTO_COMBAT]);
+    assert!(
+        shown(&o, None, (red.0, off), "", RED_BLUE)
+            .state(AUTO_COMBAT)
+            .disabled
     );
 }

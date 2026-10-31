@@ -47,6 +47,13 @@ includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-10-31 (the client lane, E17 M5 T8b2, review R7-8; for information, nothing to do): the
+  harness checks the starting bonus Gold it sets. `h3drive.gold_bonus` (a recipe's `gold = true`,
+  `h3adv.to_hot_seat(..., gold=True)`) reads the scenario list's rows in memory
+  (`h3mem.starting_bonuses`: H3API's `H3SelectScenarioDialog` pointer 0x69FBE8, `bonusType` +0x6C,
+  3 Random, 0 Artifact, 1 Gold; observed) and stops the run unless exactly its players read Gold.
+  Recipes without `gold` are unchanged.
+
 - 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
   after it merges, run `clients/capture/setup.sh` again for every run directory you use: the
   hook DLL's ack has ten fields now, and an older `xdd.dll` stops a run with "stale xdd.dll".

@@ -27,7 +27,7 @@ use h3_view::anim::Timeline;
 use h3_view::anim::{
     self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed, Stage,
 };
-use h3_view::auto::Auto;
+use h3_view::auto::{Auto, turn_at};
 use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
@@ -43,6 +43,7 @@ use h3_view::scene::{self, Draw, Moment};
 use h3_view::sound::{Lengths, Tune};
 use h3_view::tables::{Sounds, Tables};
 
+use crate::audio::Voices;
 use crate::boxes::{Answered, Asked, Leave};
 use crate::live::Live;
 use crate::online::{Online, Server};
@@ -169,9 +170,14 @@ fn seat_opening(online: &Online) -> Result<Record, String> {
 }
 
 impl Ground {
-    /// The sounds of each stack living at the start, by its id ([`stack_sounds`]).
-    pub fn stack_sounds(&self) -> BTreeMap<u8, Sounds> {
-        stack_sounds(&self.record, &self.tables)
+    /// The sounds of each stack living at the start, by its id, and of each creature the battle
+    /// may create ([`stack_sounds`]; E17 M5 T8b2, R6-1: every creature with a look, as a battle
+    /// fought as it is played may create any, [`motion::add_looks`]).
+    pub fn stack_sounds(&self) -> Voices {
+        let mut voices = stack_sounds(&self.record, &self.tables);
+        let more = creature_sounds(&self.record, &self.tables, self.looks.keys().copied());
+        voices.creatures.extend(more);
+        voices
     }
 
     /// The battle's own sounds a cue may name, by cue ([`battle_sounds`]).
@@ -189,7 +195,8 @@ impl Ground {
         }
     }
 
-    /// The ruleset of the window's own previews (E17 M5 T6b1: an aim's area): a battle fought
+    /// The ruleset of the window's own previews (E17 M5 T6b1: an aim's area) and of the result
+    /// window's creatures' values (E17 M5 T8b2, R5b-2: hit points, AI values): a battle fought
     /// here's, or a server's game's when the content check finds it the same.
     fn previews(&self) -> Option<&BattleRuleset> {
         match self.fight.as_ref()? {
@@ -341,8 +348,41 @@ impl Ground {
 }
 
 /// The sounds of each stack living at the start, by its id (E17 M2 T5b); a siege's turrets
-/// (off the field) the town's shooter's, as their look (E17 M4 T3a, R2-1).
-pub fn stack_sounds(record: &Record, tables: &Tables) -> BTreeMap<u8, Sounds> {
+/// (off the field) the town's shooter's, as their look (E17 M4 T3a, R2-1). And those of each
+/// creature the record's events create, by its handle (E17 M5 T8b2, R6-1: a summoned stack's,
+/// a clone's, a Pit Lord's Demons'; a created stack's cues name its creature).
+pub fn stack_sounds(record: &Record, tables: &Tables) -> Voices {
+    let made = record.messages.iter().flat_map(|m| match m {
+        ServerMessage::Events { events, .. } => events.as_slice(),
+        _ => &[],
+    });
+    let made = made.filter_map(|e| match *e {
+        h3_protocol::wire::Event::StackCreated { creature, .. }
+        | h3_protocol::wire::Event::RoseFromCorpse { creature, .. } => Some(creature),
+        _ => None,
+    });
+    Voices {
+        stacks: first_sounds(record, tables),
+        creatures: creature_sounds(record, tables, made),
+    }
+}
+
+/// The sounds of the creatures `made`, by handle (E17 M5 T8b2, R6-1).
+fn creature_sounds(
+    record: &Record,
+    tables: &Tables,
+    made: impl Iterator<Item = u16>,
+) -> BTreeMap<u16, Sounds> {
+    let keys = &record.header.manifest.keys.creatures;
+    made.filter_map(|creature| {
+        let entry = tables.creatures.get(keys.get(usize::from(creature))?)?;
+        Some((creature, entry.sounds.clone()))
+    })
+    .collect()
+}
+
+/// The sounds of each stack of the record's first snapshot, by its id ([`stack_sounds`]).
+fn first_sounds(record: &Record, tables: &Tables) -> BTreeMap<u8, Sounds> {
     let keys = &record.header.manifest.keys.creatures;
     let field = record.header.manifest.field;
     let cells = u16::from(field.width) * u16::from(field.height);
@@ -490,6 +530,10 @@ pub struct Battle<'g> {
     /// start of `shown`'s.
     follower: crate::pointer::Follower<'g>,
     inputs: Vec<Input>,
+    /// Auto Combat's switches and stops the battle took (E17 M5 T4c1; T8b2, R5c-3 and R5c-4:
+    /// apart from the window's inputs, so a seek back or Restart keeps them and a turn's Auto
+    /// Combat costs the turns only).
+    switches: Vec<Input>,
     /// The log scrolled (each at a time, by entries).
     scrolls: Vec<(u32, i64)>,
     /// The panel's button pressed (the mouse's or a hotkey's).
@@ -511,6 +555,12 @@ pub struct Battle<'g> {
     result_closed: bool,
     /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
     behind: h3_view::result::Behind,
+    /// The battle's end as the record shows it (`Battle::end_seen`), replayed once (E17 M5 T8b2,
+    /// R5b-1).
+    end_seen: std::cell::OnceCell<Observation>,
+    /// Whether each side has army survivors at the battle's end (`Battle::survivors`), read once
+    /// (E17 M5 T8b2, R5b-3).
+    survivors: std::cell::OnceCell<[bool; 2]>,
     /// The result window's clips (E17 M5 T8b1, R2b-3 and R2b-5): decoded into the batch as soon
     /// as the battle's end, and so its tune, is known.
     clips: Clips,
@@ -566,7 +616,8 @@ pub enum MessageDid {
 }
 
 /// The original's spells aimed at a second target too (Sacrifice, Teleport): their aims are not
-/// built (E17 M5 T3b).
+/// built (E17 M5 T3b). By number only where the battle's ruleset is not known (a server's game
+/// of other content; E17 M5 T8b2, R4b-4: [`crate::aims::second_target`]).
 const SECOND_TARGET: [u16; 2] = [40, 63];
 
 /// A cursor's look (E17 M5 T3a): its DEF, its frame and the frame's hot spot (the combat cursor
@@ -720,6 +771,7 @@ impl<'g> Battle<'g> {
             shown: Shown::default(),
             follower: crate::pointer::Follower::default(),
             inputs: Vec::new(),
+            switches: Vec::new(),
             scrolls: Vec::new(),
             pressed: None,
             book: None,
@@ -728,6 +780,8 @@ impl<'g> Battle<'g> {
             message: None,
             result_closed: false,
             behind: h3_view::result::Behind::default(),
+            end_seen: std::cell::OnceCell::new(),
+            survivors: std::cell::OnceCell::new(),
             clips: Clips::Unknown,
             notices: 0,
             opening: false,
@@ -851,18 +905,12 @@ impl<'g> Battle<'g> {
         if next {
             starts.push(u32::MAX);
         }
-        Auto::of(&self.inputs, &starts).from_start(starts.len() - 1)
+        Auto::of(&self.switches, &starts).from_start(starts.len() - 1)
     }
 
-    /// When the first turn started after `at` starts (E17 M5 T4c1: the one a stop pressed at `at`
-    /// comes at), if the battle grew that far.
-    pub fn turn_after(&self, at: u32) -> Option<u32> {
-        self.played
-            .timeline()
-            .turns
-            .iter()
-            .map(|&(t, _)| t)
-            .find(|&t| t > at)
+    /// Auto Combat over the battle's turns as played so far (E17 M5 T4c1).
+    fn auto(&self) -> Auto {
+        crate::pointer::auto(&self.switches, self.played.timeline())
     }
 
     /// Whether Auto Combat is on for the turns to come (E17 M5 T4c1): a key or a button pressed
@@ -873,40 +921,49 @@ impl<'g> Battle<'g> {
 
     /// Auto Combat's button clicked (or its key released) at `at` (E17 M5 T4c1, design §7.22):
     /// on a human's turn waiting for its command, the button enabled (not both sides human,
-    /// 0x46BB40), it switches on, the bot playing the turn from then; the switch joins `inputs`
-    /// (the window's). Whether it did.
-    pub fn switch_auto(&mut self, at: u32, inputs: &mut Vec<Input>) -> Result<bool, String> {
-        let both = self
-            .turned
-            .last()
-            .is_some_and(|t| t.observation.sides.iter().all(|s| s.human));
-        // Not on a server (E17 M5 T6b1, *provisional*: the M5 review list).
-        if !matches!(self.fight, Some(Fight::Here(_))) || both || !self.takes(at) {
+    /// 0x46BB40), it switches on, the bot playing the turn from then; the switch joins the
+    /// battle's, in the turn waiting (T8b2, R5c-1: the bot's command may take no time, the next
+    /// turn starting at `at` too). Whether it did.
+    pub fn switch_auto(&mut self, at: u32) -> Result<bool, String> {
+        if !self.takes_auto() || !self.takes(at) {
             return Ok(false);
         }
-        inputs.retain(|i| i.at() <= at);
-        inputs.push(Input::Auto { at });
-        self.inputs.clone_from(inputs);
+        let turn = self.played.timeline().turns.len();
+        self.switches.push(Input::Auto { at, turn });
         let choice = self.choice().ok_or("no command for the turn waiting")?;
         self.command(at, choice)
     }
 
+    /// Whether the battle takes Auto Combat's switch at all: fought here (not on a server, E17 M5
+    /// T6b1, *provisional*: the M5 review list), not both sides human (0x46BB40). Its button is
+    /// drawn disabled otherwise (T8b2, R5c-7).
+    fn takes_auto(&self) -> bool {
+        let both = self
+            .turned
+            .last()
+            .is_some_and(|t| t.observation.sides.iter().all(|s| s.human));
+        matches!(self.fight, Some(Fight::Here(_))) && !both
+    }
+
     /// A key or a mouse button pressed at `at` while Auto Combat is on (E17 M5 T4c1): it stops as
-    /// the next turn starts, the press doing nothing else; the stop joins `inputs`. Whether it
-    /// did (nothing while it is off).
-    pub fn stop_auto(&mut self, at: u32, inputs: &mut Vec<Input>) -> bool {
+    /// the next turn starts, the press doing nothing else; the stop joins the battle's. The
+    /// index of the turn it stops at (none while it is off): the one after the turn started last
+    /// by `at`, but never one the bot already played (T8b2, R5c-4: a press while Restart replays
+    /// the battle stops it at its next turn to come).
+    pub fn stop_auto(&mut self, at: u32) -> Option<usize> {
         if !self.auto_on() {
-            return false;
+            return None;
         }
-        inputs.retain(|i| i.at() <= at);
-        inputs.push(Input::Stop { at });
-        self.inputs.clone_from(inputs);
-        true
+        let turns = &self.played.timeline().turns;
+        let turn = turn_at(turns, at).max(turns.len().saturating_sub(1));
+        self.switches.push(Input::Stop { at, turn });
+        Some(turn + 1)
     }
 
     /// A human's `command`, pressed at `at` while the battle waits for it (E17 M5 T2b): sent
     /// from the side to act's seat, the session validating it, its action starting at `at` or at
-    /// the timeline's end if later; whether the battle took it (none waits: nothing).
+    /// the timeline's end if later; whether the battle took it (none waits, or the session
+    /// rejected it: nothing, the turn waits on as a server's does; E17 M5 T8b2, R4b-4).
     pub fn command(&mut self, at: u32, command: Command) -> Result<bool, String> {
         // A seat on a server sends it (E17 M5 T6b1): the battle idles on until the server's
         // answer and events come ([`Battle::poll`]); it takes no other meanwhile.
@@ -922,7 +979,9 @@ impl<'g> Battle<'g> {
         else {
             return Ok(false);
         };
-        let played = live.play(command)?;
+        let Some(played) = live.play(command)? else {
+            return Ok(false);
+        };
         let placeholder = Played::Finished(Box::default());
         if let Played::Waiting(growing, _) = std::mem::replace(&mut self.played, placeholder) {
             let at = at.max(growing.timeline().end);
@@ -1093,25 +1152,34 @@ impl<'g> Battle<'g> {
         };
         let observation = h3_view::remote::seen(snapshot, &events, timeline, timeline.end, cost);
         // The active stack's own cast, its drawn spell's (the Faerie Dragon's key F).
-        let aims = (observation.drawn)
+        let held = observation.stacks.iter().map(|s| s.id);
+        let mut aims: Vec<_> = (observation.drawn)
             .zip(online.targets(None))
             .and_then(|(spell, targets)| {
-                crate::aims::served(self.ground.previews(), (spell, 0, true), targets)
+                crate::aims::served(self.ground.previews(), (spell, 0, true), targets, held)
             })
             .into_iter()
             .collect();
-        let turn = crate::scenario::Turned {
-            observation,
-            commands: legal.to_vec(),
-            aims,
-        };
+        let legal = legal.to_vec();
         drop(online);
         let commands = (self.record.messages.iter())
             .filter(|m| matches!(m, ServerMessage::Events { .. }))
             .count();
         if self.served_events == Some(commands) {
-            self.turned.pop();
+            // The same turn served again (the seat dialed again, E17 M5 T6b2; a command the
+            // server rejected): the hero's aim under way keeps its spell's (E17 M5 T8b2: else a
+            // press cast nothing while the window aims).
+            let again = self.turned.pop();
+            if let (Some(again), Some((spell, false))) = (again, self.aiming) {
+                let aimed = again.aims.into_iter();
+                aims.extend(aimed.filter(|a| a.spell == spell && !a.creature));
+            }
         }
+        let turn = crate::scenario::Turned {
+            observation,
+            commands: legal,
+            aims,
+        };
         self.follower.touch(self.turned.len());
         self.turned.push(turn);
         (self.served, self.served_events) = (index, Some(commands));
@@ -1154,38 +1222,77 @@ impl<'g> Battle<'g> {
         }
     }
 
+    /// Whether `spell` (its original number `original`) is cast at a second target too
+    /// (Teleport, Sacrifice; their aims not built): the battle's ruleset's answer (E17 M5 T8b2,
+    /// R4b-4: a spell the asset tables do not know took the common aim, a cast the session
+    /// rejects); by the number where it is not known (a server's game of other content).
+    fn second_target(&self, spell: u16, original: Option<u16>) -> bool {
+        match self.ground.previews() {
+            Some(ruleset) => crate::aims::second_target(ruleset, spell),
+            None => original.is_some_and(|o| SECOND_TARGET.contains(&o)),
+        }
+    }
+
     /// The side to act's hero's aim of `spell` now (E17 M5 T3b): the engine's; on a server from
     /// the server's targets, at the hero's mastery its own view shows (E17 M5 T6b1).
     fn hero_aim(&self, spell: u16) -> Option<mouse::aim::Aim> {
         match self.fight.as_ref()? {
             Fight::Here(live) => live.hero_aim(spell),
             Fight::Server(online) => {
-                let mastery = self
-                    .own_view()?
-                    .own_hero?
-                    .spell_book
-                    .iter()
+                let own = self.own_view()?;
+                let mastery = (own.own_hero.as_ref()?.spell_book.iter())
                     .find(|b| b.spell == spell)
                     .map_or(0, |b| b.mastery);
                 let online = online.borrow();
                 let targets = online.targets(Some(spell))?;
-                crate::aims::served(self.ground.previews(), (spell, mastery, false), targets)
+                let held = own.stacks.iter().map(|s| s.id);
+                let aimed = (spell, mastery, false);
+                crate::aims::served(self.ground.previews(), aimed, targets, held)
             }
         }
     }
 
     /// The outcome of a seat's battle on a server as its record shows it (E17 M5 T6b1): the
-    /// game's end, every stack's count at the start and at the end.
+    /// game's end, every stack's count at the start and at the end ([`Battle::end_seen`]).
     fn served_outcome(&self) -> Option<h3_contracts::BattleOutcome> {
         let result = self.record.messages.iter().find_map(|m| match m {
             ServerMessage::GameEnded { result, .. } => Some(*result),
             _ => None,
         })?;
         let snapshot = self.record.first_snapshot()?;
-        let events = self.events();
+        Some(crate::results::served(snapshot, self.end_seen()?, result))
+    }
+
+    /// The battle's end as the record shows it once the battle is decided (E17 M5 T6b1:
+    /// `h3_view::remote::seen` at the timeline's end): a replay of the whole record, so read once
+    /// and kept (E17 M5 T8b2, R5b-1).
+    fn end_seen(&self) -> Option<&Observation> {
+        if let Some(end) = self.end_seen.get() {
+            return Some(end);
+        }
         let timeline = self.played.timeline();
+        timeline.ended?;
+        let snapshot = self.record.first_snapshot()?;
+        let events = self.events();
         let end = h3_view::remote::seen(snapshot, &events, timeline, timeline.end, |_, _| 0);
-        Some(crate::results::served(snapshot, &end, result))
+        Some(self.end_seen.get_or_init(|| end))
+    }
+
+    /// Whether each side has army survivors at the battle's end (E17 M5 T8b2, R5b-3: a side whose
+    /// opponent gave up wins only with some, BAT-END-001), read once the battle is decided: by the
+    /// engine's outcome of a battle fought here, else by the record's end.
+    fn survivors(&self) -> Option<[bool; 2]> {
+        if let Some(&found) = self.survivors.get() {
+            return Some(found);
+        }
+        let found = match self.fight.as_ref() {
+            Some(Fight::Here(live)) => crate::results::survivors(&live.outcome()?.0.stacks),
+            _ => {
+                let opening = self.record.first_snapshot()?;
+                crate::results::survivors(&crate::results::records(opening, self.end_seen()?))
+            }
+        };
+        Some(*self.survivors.get_or_init(|| found))
     }
 
     /// Follows the mouse's `inputs` and the log's `scrolls` (each at a time, in time order; E17
@@ -1223,7 +1330,7 @@ impl<'g> Battle<'g> {
         };
         let inputs = inputs.unwrap_or(&self.inputs);
         let words = (&ground.layout, &name as _, Bugs::Fixed);
-        self.follower.shown(timeline, inputs, words)
+        (self.follower).shown(timeline, (inputs, &self.switches), words)
     }
 
     /// The mouse, the timeline shown and the panel after the battle grew (or as it starts): the
@@ -1234,8 +1341,17 @@ impl<'g> Battle<'g> {
         if self.shown.entered.is_empty() && self.entered.is_none() {
             self.head.extend(self.played.timeline());
         } else {
+            // The playhead carried on from the timeline it showed (E17 M5 T8b2, R3-1's rest):
+            // the played one grown, then the mouse's fidgets in it.
+            let old = self.entered.take();
+            if old.is_none() {
+                self.head.extend(self.played.timeline());
+            }
             self.entered = self.entered(&self.shown);
-            self.head = Playhead::new(self.timeline());
+            let played = self.played.timeline();
+            let old = old.as_ref().unwrap_or(played);
+            self.head
+                .carry(old, self.entered.as_ref().unwrap_or(played));
         }
         self.panels = self.panel()?;
         self.load_clips();
@@ -1249,8 +1365,13 @@ impl<'g> Battle<'g> {
         let cut = self.shown.splice(from, tail);
         let entered = &self.shown.entered;
         if cut.entered[..] != entered[entered.len() - added..] {
+            // The playhead carried on, not played again from the start (E17 M5 T8b2, R3-1's rest).
+            let old = self.entered.take();
             self.entered = self.entered(&self.shown);
-            self.head = Playhead::new(self.timeline());
+            let played = self.played.timeline();
+            let old = old.as_ref().unwrap_or(played);
+            self.head
+                .carry(old, self.entered.as_ref().unwrap_or(played));
         }
         self.panels = self.panel()?;
         Ok(())
@@ -1281,8 +1402,22 @@ impl<'g> Battle<'g> {
     }
 
     /// The panel over the record so far, its log through the mouse's hints and the scrolls once
-    /// the mouse moved (else the timeline's own).
+    /// the mouse moved (else the timeline's own), Auto Combat as the window switched it (E17 M5
+    /// T4c1), its button disabled on a server's seat (T8b2, R5c-7: the window takes no switch
+    /// there, review item 55, as the original's when both players are human).
     fn panel(&self) -> Result<Panels, String> {
+        let mut panels = self.logged_panel()?;
+        if let Some(snapshot) = self.record.first_snapshot() {
+            panels = panels.with_auto(snapshot, self.auto());
+        }
+        if matches!(self.fight, Some(Fight::Server(_))) {
+            panels = panels.without_switch();
+        }
+        Ok(panels)
+    }
+
+    /// [`Battle::panel`] but Auto Combat.
+    fn logged_panel(&self) -> Result<Panels, String> {
         let ground = self.ground;
         let Some(writer) = &ground.writer else {
             let parsed = parse(&ground.archives)?;
@@ -1306,15 +1441,7 @@ impl<'g> Battle<'g> {
             let i = logged.partition_point(|(t, _)| *t <= at);
             logged.insert(i, (at, Logged::Scroll(by)));
         }
-        // Auto Combat as the window switched it (E17 M5 T4c1).
-        let snapshot = self
-            .record
-            .first_snapshot()
-            .ok_or("the record holds no snapshot")?;
-        let auto = crate::pointer::auto(&self.inputs, self.played.timeline());
-        Ok(writer
-            .panels(&self.record, (&logged, &self.played.timeline().controllers))?
-            .with_auto(snapshot, auto))
+        writer.panels(&self.record, (&logged, &self.played.timeline().controllers))
     }
 
     /// The cursor at `t`: the spell book's once it set one (E17 M5 T3a), else the combat cursor's
@@ -1462,7 +1589,7 @@ impl<'g> Battle<'g> {
                 let keys = &self.record.header.manifest.keys.spells;
                 let original =
                     motion::spell_entry_in(keys, &self.ground.tables, spell).map(|e| e.original);
-                let second = original.is_some_and(|o| SECOND_TARGET.contains(&o));
+                let second = self.second_target(spell, original);
                 let aim = self.hero_aim(spell);
                 if aim.is_none()
                     && original.is_some_and(|o| crate::boxes::affects_someone_only(u32::from(o)))
@@ -1747,6 +1874,8 @@ impl<'g> Battle<'g> {
         self.message = None;
         // The tactics phase's message closed: the first turn starts (E17 M5 T4c2a).
         self.opening = false;
+        // *Not built* (E17 M5 T8b2, R5b-4): what `battle_end` does after the window closes, the
+        // experience given (0x477948) and Eagle Eye's message.
         if asked == Asked::Result {
             self.result_closed = true;
             return MessageDid::Ended;
@@ -1767,7 +1896,8 @@ impl<'g> Battle<'g> {
     /// Opens the battle's result window once `at` reaches the battle's end (E17 M5 T4b1; design
     /// §7.20): as `battle_end` 0x477470 opens it as the battle is decided, over the whole screen
     /// darkened, the battle standing as it ended; from the engine's outcome of the battle fought
-    /// here (none for a record file's). Whether it opened.
+    /// here (none for a record file's). Whether it opened. Built once (E17 M5 T8b2, R5b-1): it
+    /// waits only for the outcome (a server's game's end), then always opens.
     pub fn open_result(&mut self, at: u32) -> bool {
         if self.result_closed || self.message.is_some() {
             return false;
@@ -1784,14 +1914,15 @@ impl<'g> Battle<'g> {
         };
         let (outcome, ruleset) = match fight {
             Fight::Here(live) => match live.outcome() {
-                Some(found) => found,
+                Some((outcome, ruleset)) => (outcome, Some(ruleset)),
                 None => return false,
             },
-            // A seat on a server: the outcome as its record shows it (E17 M5 T6b1), the window
-            // by the ruleset compiled here (none without the packs).
-            Fight::Server(_) => match (self.served_outcome(), self.ground.rules()) {
-                (Some(outcome), Some(ruleset)) => (outcome, ruleset),
-                _ => return false,
+            // A seat on a server: the outcome as its record shows it (E17 M5 T6b1), the
+            // creatures' values by the ruleset compiled here only when the content check finds it
+            // the game's (E17 M5 T8b2, R5b-2; else none, `crate::results::window`).
+            Fight::Server(_) => match self.served_outcome() {
+                Some(outcome) => (outcome, self.ground.previews()),
+                None => return false,
             },
         };
         let sources = crate::results::Sources {
@@ -1802,9 +1933,7 @@ impl<'g> Battle<'g> {
             layout: &self.ground.layout,
         };
         let player = self.viewing_player();
-        let Some((window, _)) = crate::results::window(&sources, opening, &outcome, player) else {
-            return false;
-        };
+        let (window, _) = crate::results::window(&sources, opening, &outcome, player);
         self.message = Some((h3_view::message::Open::new(window), ended, Asked::Result));
         self.behind = h3_view::result::Behind::default();
         true
@@ -1946,7 +2075,7 @@ impl<'g> Battle<'g> {
         .map_err(|e| format!("{t} ms: {e}"))?;
         let text = self.panels.text(t);
         if self.opening {
-            list.extend(Panels::before(snapshot, layout));
+            list.extend(self.panels.before(snapshot, layout));
         } else {
             list.extend(self.panels.at_pressed(
                 snapshot,
@@ -2026,7 +2155,7 @@ impl<'g> Battle<'g> {
                 let cast = castable.iter().find_map(|&spell| {
                     let original = motion::spell_entry_in(keys, &self.ground.tables, spell)?;
                     let target = *online.targets(Some(spell))?.first()?;
-                    (!SECOND_TARGET.contains(&original.original)).then_some(Command::Cast {
+                    (!self.second_target(spell, Some(original.original))).then_some(Command::Cast {
                         spell,
                         target,
                         second: h3_protocol::wire::Target::None {},
@@ -2239,8 +2368,9 @@ impl<'g> Battle<'g> {
         self.batch.sprite(name)
     }
 
-    /// The sounds of each stack living at the start, by its id ([`Ground::stack_sounds`]).
-    pub fn stack_sounds(&self) -> BTreeMap<u8, Sounds> {
+    /// The sounds of each stack living at the start, by its id, and of each creature the battle
+    /// may create ([`Ground::stack_sounds`]).
+    pub fn stack_sounds(&self) -> Voices {
         self.ground.stack_sounds()
     }
 
@@ -2320,15 +2450,24 @@ impl<'g> Battle<'g> {
 
     /// When the battle is decided and the tune its end plays then (E17 M3 T8, design §8.2): the
     /// result's window shows the human side's view by the snapshot's `human`; a battle at a town
-    /// is the record's siege, a fort or not (the manager's +0x53C8; E17 M4 T2c-2, `defended`).
+    /// is the record's siege, a fort or not (the manager's +0x53C8; E17 M4 T2c-2, `defended`); a
+    /// side whose opponent gave up wins only with army survivors (E17 M5 T8b2, R5b-3:
+    /// `Battle::survivors`, read only then; taken as both having some when not known).
     pub fn end_tune(&self) -> Option<(u32, Tune)> {
+        use h3_protocol::wire::Outcome;
         let (at, outcome) = self.timeline().ended?;
         let snapshot = self.record.first_snapshot();
         let human = snapshot.map_or([false; 2], |s| {
             [0, 1].map(|i| s.sides.get(i).is_some_and(|d| d.human))
         });
         let town = snapshot.is_some_and(|s| s.siege.is_some());
-        Some((at, h3_view::sound::end_tune(outcome, human, town)))
+        let gave_up = matches!(outcome, Outcome::Retreat { .. } | Outcome::Surrender { .. });
+        let survivors = if gave_up { self.survivors() } else { None };
+        let survivors = survivors.unwrap_or([true; 2]);
+        Some((
+            at,
+            h3_view::sound::end_tune(outcome, human, town, survivors),
+        ))
     }
 
     /// The frame's size, as the layout gives it.

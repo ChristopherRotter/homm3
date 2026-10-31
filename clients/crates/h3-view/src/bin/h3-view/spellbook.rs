@@ -516,7 +516,7 @@ pub fn still(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use h3_view::layout::parse_battle;
 
@@ -624,7 +624,7 @@ mod tests {
 
     /// The book situation's battle at its opening (`situations/book.toml`: Orrin's Champions to
     /// act, Red human): its ruleset, the attacker's own observation and its record's manifest.
-    fn opening() -> (BattleRuleset, Observation, Manifest) {
+    pub(crate) fn opening() -> (BattleRuleset, Observation, Manifest) {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let (ruleset, setup) =
             crate::scenario::battle(&dir.join("situations/book.toml"), &dir.join("../packs"), 1)
