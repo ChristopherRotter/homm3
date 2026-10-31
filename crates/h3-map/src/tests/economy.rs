@@ -13,9 +13,9 @@ use h3_game::TimedEventSetup;
 use super::import::SOD;
 use super::limits;
 use crate::model::{Bits, Body, RawMap, Text, TimedEvent};
-use crate::{ImportError, Unsupported, import, import_map};
 use crate::read;
 use crate::writer as w;
+use crate::{ImportError, Unsupported, import, import_map};
 
 /// The game's `Objects.txt` lines of the classes written here: a grass sawmill (53.0), a grass
 /// crystal cavern (53.4), a gold mine (53.6), the abandoned mine (53.7) and SoD's grass one

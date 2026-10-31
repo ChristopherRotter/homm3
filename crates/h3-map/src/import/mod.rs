@@ -153,7 +153,10 @@ impl fmt::Display for ImportError {
                 write!(f, "object {object} belongs to a colour nobody plays")
             }
             Self::MineResources(object) => {
-                write!(f, "abandoned mine {object} may draw no resource of the seven")
+                write!(
+                    f,
+                    "abandoned mine {object} may draw no resource of the seven"
+                )
             }
             Self::Events(n) => write!(f, "{n} timed events are too many"),
         }
@@ -247,7 +250,8 @@ fn timed_events(
         .iter()
         .enumerate()
         .map(|(index, event)| {
-            let message = u16::try_from(index).map_err(|_| ImportError::Events(map.events.len()))?;
+            let message =
+                u16::try_from(index).map_err(|_| ImportError::Events(map.events.len()))?;
             let players = colours
                 .iter()
                 .zip(0u8..)
@@ -334,7 +338,12 @@ fn static_layer(
             boats.push(boat(index, (object, template))?);
             continue;
         }
-        let (setup, what) = typed(rules, map.header.version, (index, colours), (object, template))?;
+        let (setup, what) = typed(
+            rules,
+            map.header.version,
+            (index, colours),
+            (object, template),
+        )?;
         unsupported = unsupported.or(what);
         // rule: ADV-OWN-002
         let ownable = setup

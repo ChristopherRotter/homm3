@@ -971,7 +971,10 @@ fn the_errors_and_reasons_read_well() {
             ImportError::MineResources(3),
             "abandoned mine 3 may draw no resource of the seven",
         ),
-        (ImportError::Events(70_000), "70000 timed events are too many"),
+        (
+            ImportError::Events(70_000),
+            "70000 timed events are too many",
+        ),
     ];
     for (error, text) in cases {
         assert_eq!(error.to_string(), text);
