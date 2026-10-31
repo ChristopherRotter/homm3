@@ -9,8 +9,9 @@ use crate::pack::{
     HeroClassDef, HeroParamsDef, HeroTypeDef, ProfileDef, SecondarySkillDef, SpellDef,
     SpellSchoolDef, StartingStackDef,
 };
+use crate::ruleset::ResourceId;
 use crate::ruleset::Ruleset;
-use crate::ruleset::tests::{creature, faction, key, manifest};
+use crate::ruleset::tests::{creature, faction, key, manifest, resource};
 
 fn school(k: &str) -> SpellSchoolDef {
     SpellSchoolDef {
@@ -888,6 +889,8 @@ fn params() -> HeroParamsDef {
         wisdom: key("t:tactics"),
         schools: vec![key("t:archery")],
         mana_ceiling: 999,
+        base_mana_regain: 1,
+        regain_specialist_bonus: 1,
     }
 }
 
@@ -896,6 +899,44 @@ fn with_params(def: HeroParamsDef) -> ContentPack {
     let mut p = pack();
     p.hero_params = Some(def);
     p
+}
+
+#[test]
+fn a_daily_resource_names_a_resource_of_the_closure() {
+    // E08 T81b: a `daily_resource` effect's resource resolves like a cost's (pack format v50).
+    let mut p = pack();
+    p.resources = vec![resource("t:gold")];
+    p.skills.push(skill(
+        "t:estates",
+        [125, 250, 500].map(|amount| {
+            vec![HeroEffect::DailyResource {
+                resource: key("t:gold"),
+                amount,
+            }]
+        }),
+    ));
+    let r = compile(std::slice::from_ref(&p)).unwrap();
+    let estates = r.skill(r.skill_by_key("t:estates").unwrap()).unwrap();
+    assert_eq!(
+        estates.levels[2],
+        [HeroEffect::DailyResource {
+            resource: ResourceId::from_raw(0),
+            amount: 500
+        }]
+    );
+    if let Some(s) = p.skills.last_mut() {
+        s.levels[0] = vec![HeroEffect::DailyResource {
+            resource: key("t:mud"),
+            amount: 1,
+        }];
+    }
+    assert_eq!(
+        fails(p),
+        CompileError::UnknownReference {
+            kind: "resource",
+            key: "t:mud".into()
+        }
+    );
 }
 
 #[test]
@@ -923,8 +964,12 @@ fn hero_params_are_optional_unique_and_checked() {
         vec![with.skill_by_key("t:archery").unwrap()]
     );
     assert_eq!(compiled.mana_ceiling, 999);
+    assert_eq!(
+        (compiled.base_mana_regain, compiled.regain_specialist_bonus),
+        (1, 1)
+    );
     // The hash sees presence and every field.
-    let changes: [fn(&mut HeroParamsDef); 9] = [
+    let changes: [fn(&mut HeroParamsDef); 11] = [
         |d| d.primary_min[3] = 2,
         |d| d.primary_max = 98,
         |d| d.backpack = 0,
@@ -934,6 +979,8 @@ fn hero_params_are_optional_unique_and_checked() {
         |d| d.wisdom = key("t:archery"),
         |d| d.schools.clear(),
         |d| d.mana_ceiling = 998,
+        |d| d.base_mana_regain = 0,
+        |d| d.regain_specialist_bonus = 2,
     ];
     let hash = with.content_hash();
     assert_ne!(without.content_hash(), hash);
@@ -970,6 +1017,23 @@ fn hero_params_are_optional_unique_and_checked() {
         ..params()
     });
     assert!(compile(&[q]).is_ok());
+    // The regain parameters: 999 at most each.
+    let regain = CompileError::InvalidHeroParams(
+        "base_mana_regain and regain_specialist_bonus must be at most 999",
+    );
+    for (base, bonus, ok) in [(1000, 1, false), (1, 1000, false), (999, 999, true)] {
+        let mut q = pack();
+        q.hero_params = Some(HeroParamsDef {
+            base_mana_regain: base,
+            regain_specialist_bonus: bonus,
+            ..params()
+        });
+        if ok {
+            assert!(compile(&[q]).is_ok());
+        } else {
+            assert_eq!(fails(q), regain);
+        }
+    }
     // Provided twice in the closure.
     let mut ext = ContentPack::new(manifest("x", &["t"]));
     ext.hero_params = Some(params());

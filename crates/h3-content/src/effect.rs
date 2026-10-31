@@ -21,7 +21,7 @@ use h3_kernel::{CanonicalHash, StateHasher};
 use crate::flags::CreatureFlag;
 use crate::heroes::{MAX_SPELL_LEVEL, SchoolId, SkillId, SpellCategory, SpellId};
 use crate::key::ContentKey;
-use crate::ruleset::{CreatureTypeId, FactionId, Ruleset};
+use crate::ruleset::{CreatureTypeId, FactionId, ResourceId, Ruleset};
 
 /// Most effects in one list (a skill level, a specialty, an artifact).
 pub const MAX_EFFECTS: usize = 16;
@@ -314,10 +314,10 @@ impl<L: CanonicalHash, S: CanonicalHash> CanonicalHash for SpellGrant<L, S> {
     }
 }
 
-/// One hero effect. `C`, `K`, `S`, `F` and `L` are how creature types, secondary skills, spells,
-/// factions and spell schools are referenced.
+/// One hero effect. `C`, `K`, `S`, `F`, `L` and `R` are how creature types, secondary skills,
+/// spells, factions, spell schools and resources are referenced.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum HeroEffect<C, K, S, F, L> {
+pub enum HeroEffect<C, K, S, F, L, R> {
     /// Changes the morale of the affected stacks for the whole battle (Leadership).
     Morale {
         /// Morale change (not 0).
@@ -698,16 +698,56 @@ pub enum HeroEffect<C, K, S, F, L> {
     /// (pack format v49, E08 increment 8; ADR-0013 point 13.7, HER-ADV-009; the Admiral's Hat,
     /// tested as `hero_wears_artifact` 0x4D91F0 with 136).
     FreeBoarding,
+    /// A daily income of `amount` of `resource` (pack format v50, E08 increment 9; ADR-0013
+    /// points 3 and 16.1, GAM-RES-004): an artifact's (each worn copy counting, a worn
+    /// combination's parts too), a skill level's (grown by a skill specialty on it) or a
+    /// specialty's. The six resource artifacts 1, the Endless Sack, Bag and Purse of Gold 1 000,
+    /// 750 and 500, Estates 125, 250 and 500 gold, the resource specialists 1, the gold
+    /// specialists 350 (`player_gold_income` 0x4C7930, `hero_gold_income` 0x4E4410). One per
+    /// resource in a list.
+    DailyResource {
+        /// The resource.
+        resource: R,
+        /// Amount a day (1 to [`MAX_DAILY_AMOUNT`]).
+        amount: u32,
+    },
+    /// The day's spell point regain (pack format v50, E08 increment 9; ADR-0013 point 16.2,
+    /// HER-MAN-002): several sources, the highest; without one the hero parameters' base
+    /// (Mysticism 2, 3, 4: `skill_mysticism` 0x63E9C8).
+    ManaRegain {
+        /// Spell points a day (1..=999).
+        points: u16,
+    },
+    /// Spell points regained a day on top of the regain (pack format v50, E08 increment 9;
+    /// ADR-0013 point 16.2, HER-MAN-002): each worn artifact type once (the Charm, the Talisman
+    /// and the Mystic Orb of Mana 1, 2, 3).
+    ExtraManaRegain {
+        /// Spell points a day (1..=999).
+        points: u16,
+    },
+    /// The day's spell points fill to the maximum when below it (pack format v50, E08
+    /// increment 9; ADR-0013 point 16.2, HER-MAN-002; the Wizard's Well).
+    FullMana,
 }
 
-/// An effect as written in a pack (references are keys).
-pub type HeroEffectDef = HeroEffect<ContentKey, ContentKey, ContentKey, ContentKey, ContentKey>;
-/// An effect with resolved references.
-pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, FactionId, SchoolId>;
+/// The highest [`HeroEffect::DailyResource`] amount: a treasury's bound (GAM-RES-001, the
+/// adventure's `MAX_GAIN`), so one source never overflows a sum of a few.
+pub const MAX_DAILY_AMOUNT: u32 = 0x7FFF_FFFF;
 
-impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
+/// The highest [`HeroEffect::ManaRegain`] and [`HeroEffect::ExtraManaRegain`] points (the
+/// original's spell point bound, HER-CHG-003's 999).
+pub const MAX_REGAIN: u16 = 999;
+
+/// An effect as written in a pack (references are keys).
+pub type HeroEffectDef =
+    HeroEffect<ContentKey, ContentKey, ContentKey, ContentKey, ContentKey, ContentKey>;
+/// An effect with resolved references.
+pub type CompiledHeroEffect =
+    HeroEffect<CreatureTypeId, SkillId, SpellId, FactionId, SchoolId, ResourceId>;
+
+impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 56] = [
+    pub const NAMES: [&'static str; 60] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -764,6 +804,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "navigation",
         "sea_movement_points",
         "free_boarding",
+        "daily_resource",
+        "mana_regain",
+        "extra_mana_regain",
+        "full_mana",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -825,6 +869,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::Navigation { .. } => 53,
             Self::SeaMovementPoints { .. } => 54,
             Self::FreeBoarding => 55,
+            Self::DailyResource { .. } => 56,
+            Self::ManaRegain { .. } => 57,
+            Self::ExtraManaRegain { .. } => 58,
+            Self::FullMana => 59,
         }
     }
 
@@ -848,14 +896,15 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     }
 
     /// Maps the references.
-    pub fn try_map<C2, K2, S2, F2, L2, E>(
+    pub fn try_map<C2, K2, S2, F2, L2, R2, E>(
         &self,
         mut creature: impl FnMut(&C) -> Result<C2, E>,
         skill: impl FnOnce(&K) -> Result<K2, E>,
         spell: impl FnOnce(&S) -> Result<S2, E>,
         faction: impl FnMut(&F) -> Result<F2, E>,
         school: impl FnOnce(&L) -> Result<L2, E>,
-    ) -> Result<HeroEffect<C2, K2, S2, F2, L2>, E> {
+        resource: impl FnOnce(&R) -> Result<R2, E>,
+    ) -> Result<HeroEffect<C2, K2, S2, F2, L2, R2>, E> {
         Ok(match self {
             Self::Morale { amount, affects } => HeroEffect::Morale {
                 amount: *amount,
@@ -1024,6 +1073,16 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::Navigation { level } => HeroEffect::Navigation { level: *level },
             Self::SeaMovementPoints { points } => HeroEffect::SeaMovementPoints { points: *points },
             Self::FreeBoarding => HeroEffect::FreeBoarding,
+            Self::DailyResource {
+                resource: r,
+                amount,
+            } => HeroEffect::DailyResource {
+                resource: resource(r)?,
+                amount: *amount,
+            },
+            Self::ManaRegain { points } => HeroEffect::ManaRegain { points: *points },
+            Self::ExtraManaRegain { points } => HeroEffect::ExtraManaRegain { points: *points },
+            Self::FullMana => HeroEffect::FullMana,
         })
     }
 
@@ -1147,17 +1206,25 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SeaMovementPoints { points: 0 } => {
                 Some("sea_movement_points points must be at least 1")
             }
+            Self::DailyResource { amount, .. } if !(1..=MAX_DAILY_AMOUNT).contains(amount) => {
+                Some("daily_resource amount must be 1..=2147483647")
+            }
+            Self::ManaRegain { points } | Self::ExtraManaRegain { points }
+                if !(1..=MAX_REGAIN).contains(points) =>
+            {
+                Some("mana_regain and extra_mana_regain points must be 1..=999")
+            }
             _ => None,
         }
     }
 }
 
-impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
+impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq, R: PartialEq> HeroEffect<C, K, S, F, L, R> {
     /// Whether two effects may not both appear in one list: the same variant, except morale or
     /// luck (and their caps) for different sides, creature-selecting kinds for different
     /// creatures (or statistics), school masteries for different schools, spell-damage
     /// bonuses for different scopes and spell grants, masteries, immunities and opening spells
-    /// for different spells.
+    /// for different spells, daily resources for different resources.
     fn collides(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Morale { affects: a, .. }, Self::Morale { affects: b, .. })
@@ -1202,6 +1269,9 @@ impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
             (Self::SpellMastery { spell: a, .. }, Self::SpellMastery { spell: b, .. })
             | (Self::SpellImmunity { spell: a }, Self::SpellImmunity { spell: b })
             | (Self::OpeningSpell { spell: a, .. }, Self::OpeningSpell { spell: b, .. }) => a == b,
+            (Self::DailyResource { resource: a, .. }, Self::DailyResource { resource: b, .. }) => {
+                a == b
+            }
             _ => self.code() == other.code(),
         }
     }
@@ -1209,8 +1279,8 @@ impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
 
 /// Why an effect list is invalid, if it is: too long, invalid parameters, an effect listed twice,
 /// or a specialty variant where `specialty` is false.
-pub(crate) fn list_error<C: PartialEq, K, S: PartialEq, F, L: PartialEq>(
-    list: &[HeroEffect<C, K, S, F, L>],
+pub(crate) fn list_error<C: PartialEq, K, S: PartialEq, F, L: PartialEq, R: PartialEq>(
+    list: &[HeroEffect<C, K, S, F, L, R>],
     specialty: bool,
 ) -> Option<&'static str> {
     if list.len() > MAX_EFFECTS {
@@ -1233,8 +1303,8 @@ pub(crate) fn list_error<C: PartialEq, K, S: PartialEq, F, L: PartialEq>(
 
 /// Why an effect list of a skill level or a specialty is invalid for its spell effects, if it
 /// is: a `scroll` belongs to an artifact (each copy holds its spell, HER-ART-003).
-pub(crate) fn scroll_error<C, K, S, F, L>(
-    list: &[HeroEffect<C, K, S, F, L>],
+pub(crate) fn scroll_error<C, K, S, F, L, R>(
+    list: &[HeroEffect<C, K, S, F, L, R>],
 ) -> Option<&'static str> {
     list.iter()
         .any(|e| matches!(e, HeroEffect::Scroll))
@@ -1359,7 +1429,8 @@ impl CanonicalHash for CompiledHeroEffect {
             | Self::MindImmunity
             | Self::NegateImmunities
             | Self::GivesSpellBook
-            | Self::FreeBoarding => {}
+            | Self::FreeBoarding
+            | Self::FullMana => {}
             Self::SpellLevelLimit { level } | Self::SpellLevelImmunity { level } => {
                 h.write_u8(*level);
             }
@@ -1410,6 +1481,11 @@ impl CanonicalHash for CompiledHeroEffect {
                 h.write_u16(*points);
             }
             Self::ScoutingRadius { tiles } => h.write_u8(*tiles),
+            Self::DailyResource { resource, amount } => {
+                resource.hash_into(h);
+                h.write_u32(*amount);
+            }
+            Self::ManaRegain { points } | Self::ExtraManaRegain { points } => h.write_u16(*points),
             Self::Raises { priority, creature } => {
                 h.write_u8(*priority);
                 creature.hash_into(h);
@@ -1426,7 +1502,7 @@ mod tests {
 
     use super::*;
 
-    type E = HeroEffect<u8, u8, u8, u8, u8>;
+    type E = HeroEffect<u8, u8, u8, u8, u8, u8>;
 
     fn every() -> Vec<E> {
         std::vec![
@@ -1558,6 +1634,13 @@ mod tests {
             E::Navigation { level: 1 },
             E::SeaMovementPoints { points: 500 },
             E::FreeBoarding,
+            E::DailyResource {
+                resource: 6,
+                amount: 1000,
+            },
+            E::ManaRegain { points: 2 },
+            E::ExtraManaRegain { points: 3 },
+            E::FullMana,
         ]
     }
 
@@ -1598,6 +1681,18 @@ mod tests {
         assert_eq!(list_error(&twice, false), None);
         twice.push(stat(CreatureSelector::All, CreatureStat::Speed));
         assert_eq!(list_error(&twice, false), Some("an effect is listed twice"));
+        // Daily resources collide only for the same resource (the Cornucopia's four).
+        let daily = |resource| E::DailyResource {
+            resource,
+            amount: 4,
+        };
+        let mut incomes = std::vec![daily(2), daily(3), daily(4), daily(5)];
+        assert_eq!(list_error(&incomes, false), None);
+        incomes.push(daily(3));
+        assert_eq!(
+            list_error(&incomes, false),
+            Some("an effect is listed twice")
+        );
         // Morale and luck collide only for the same side.
         let luck = |affects| E::Luck { amount: 1, affects };
         let mut sides = std::vec![luck(Affects::Own), luck(Affects::Enemy)];
@@ -1885,6 +1980,18 @@ mod tests {
             E::Navigation { level: 0 },
             E::Navigation { level: 4 },
             E::SeaMovementPoints { points: 0 },
+            E::DailyResource {
+                resource: 0,
+                amount: 0,
+            },
+            E::DailyResource {
+                resource: 0,
+                amount: MAX_DAILY_AMOUNT + 1,
+            },
+            E::ManaRegain { points: 0 },
+            E::ManaRegain { points: 1000 },
+            E::ExtraManaRegain { points: 0 },
+            E::ExtraManaRegain { points: 1000 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");
@@ -1911,6 +2018,7 @@ mod tests {
             let compiled: CompiledHeroEffect = e
                 .try_map(
                     |v| Ok::<_, ()>(Handle::from_raw(u16::from(*v))),
+                    |v| Ok(Handle::from_raw(u16::from(*v))),
                     |v| Ok(Handle::from_raw(u16::from(*v))),
                     |v| Ok(Handle::from_raw(u16::from(*v))),
                     |v| Ok(Handle::from_raw(u16::from(*v))),
@@ -1946,7 +2054,7 @@ mod tests {
     fn try_map_keeps_parameters_and_maps_references() {
         let plus = |v: &u8| Ok::<u16, ()>(u16::from(*v) + 100);
         for e in every() {
-            let m = e.try_map(plus, plus, plus, plus, plus).unwrap();
+            let m = e.try_map(plus, plus, plus, plus, plus, plus).unwrap();
             assert_eq!(m.code(), e.code());
             assert_eq!(m.parameter_error(), None);
         }
@@ -1955,7 +2063,7 @@ mod tests {
             bp_per_step: 500,
             speed: 1,
         }
-        .try_map(plus, plus, plus, plus, plus)
+        .try_map(plus, plus, plus, plus, plus, plus)
         .unwrap();
         assert_eq!(
             mapped,
@@ -1971,21 +2079,36 @@ mod tests {
                 spell: 1,
                 bp_per_level: 300
             }
-            .try_map(plus, plus, fail, plus, plus),
+            .try_map(plus, plus, fail, plus, plus, plus),
             Err(())
         );
         let in_school = E::SchoolMastery {
             school: 1,
             level: 2,
         };
-        assert_eq!(in_school.try_map(plus, plus, plus, plus, fail), Err(()));
+        assert_eq!(
+            in_school.try_map(plus, plus, plus, plus, fail, plus),
+            Err(())
+        );
+        let income = E::DailyResource {
+            resource: 6,
+            amount: 350,
+        };
+        assert_eq!(income.try_map(plus, plus, plus, plus, plus, fail), Err(()));
+        assert_eq!(
+            income.try_map(plus, plus, plus, plus, plus, plus),
+            Ok(HeroEffect::DailyResource {
+                resource: 106,
+                amount: 350
+            })
+        );
         assert_eq!(
             E::OpeningSpell {
                 spell: 1,
                 mastery: 3,
                 power: 10
             }
-            .try_map(plus, plus, fail, plus, plus),
+            .try_map(plus, plus, fail, plus, plus, plus),
             Err(())
         );
         // A share's skill condition is a skill reference.
@@ -1994,27 +2117,35 @@ mod tests {
             unless_skill,
         };
         assert_eq!(
-            share(Some(2)).try_map(plus, fail, plus, plus, plus),
+            share(Some(2)).try_map(plus, fail, plus, plus, plus, plus),
             Err(())
         );
         assert_eq!(
-            share(Some(2)).try_map(plus, plus, plus, plus, plus),
+            share(Some(2)).try_map(plus, plus, plus, plus, plus, plus),
             Ok(HeroEffect::Necromancy {
                 bp: 3000,
                 unless_skill: Some(102)
             })
         );
-        assert!(share(None).try_map(plus, fail, plus, plus, plus).is_ok());
+        assert!(
+            share(None)
+                .try_map(plus, fail, plus, plus, plus, plus)
+                .is_ok()
+        );
         for scope in [SpellScope::School(1), SpellScope::Spell(1)] {
             let e = E::SpellDamage { scope, bp: 1 };
-            assert_eq!(e.try_map(plus, plus, fail, plus, fail), Err(()), "{e:?}");
+            assert_eq!(
+                e.try_map(plus, plus, fail, plus, fail, plus),
+                Err(()),
+                "{e:?}"
+            );
         }
         assert_eq!(
             E::SpellDamage {
                 scope: SpellScope::Spell(1),
                 bp: 7
             }
-            .try_map(plus, plus, plus, plus, plus),
+            .try_map(plus, plus, plus, plus, plus, plus),
             Ok(HeroEffect::SpellDamage {
                 scope: SpellScope::Spell(101),
                 bp: 7
@@ -2024,7 +2155,7 @@ mod tests {
             E::AlignmentGroup {
                 factions: std::vec![1, 2]
             }
-            .try_map(plus, plus, plus, plus, plus),
+            .try_map(plus, plus, plus, plus, plus, plus),
             Ok(HeroEffect::AlignmentGroup {
                 factions: std::vec![101, 102]
             })
@@ -2033,7 +2164,7 @@ mod tests {
             E::AlignmentGroup {
                 factions: std::vec![1, 2]
             }
-            .try_map(plus, plus, plus, fail, plus),
+            .try_map(plus, plus, plus, fail, plus, plus),
             Err(())
         );
         // Every creature-selecting kind fails with its creature reference.
@@ -2061,7 +2192,11 @@ mod tests {
             },
         ];
         for e in selecting {
-            assert_eq!(e.try_map(fail, plus, plus, plus, plus), Err(()), "{e:?}");
+            assert_eq!(
+                e.try_map(fail, plus, plus, plus, plus, plus),
+                Err(()),
+                "{e:?}"
+            );
         }
         assert_eq!(
             CreatureSelector::<u8>::Flag(CreatureFlag::Dragon).try_map(fail),
@@ -2074,7 +2209,7 @@ mod tests {
             (SpellGrant::Spell(2), SpellGrant::Spell(102)),
         ] {
             assert_eq!(
-                E::Spells { grant }.try_map(plus, plus, plus, plus, plus),
+                E::Spells { grant }.try_map(plus, plus, plus, plus, plus, plus),
                 Ok(HeroEffect::Spells { grant: mapped })
             );
         }
@@ -2082,22 +2217,22 @@ mod tests {
             E::Spells {
                 grant: SpellGrant::School(1)
             }
-            .try_map(plus, plus, plus, plus, fail),
+            .try_map(plus, plus, plus, plus, fail, plus),
             Err(())
         );
         assert_eq!(
             E::Spells {
                 grant: SpellGrant::Spell(1)
             }
-            .try_map(plus, plus, fail, plus, plus),
+            .try_map(plus, plus, fail, plus, plus, plus),
             Err(())
         );
         assert_eq!(
-            E::SpellMastery { spell: 1, level: 3 }.try_map(plus, plus, fail, plus, plus),
+            E::SpellMastery { spell: 1, level: 3 }.try_map(plus, plus, fail, plus, plus, plus),
             Err(())
         );
         assert_eq!(
-            E::SpellImmunity { spell: 1 }.try_map(plus, plus, fail, plus, plus),
+            E::SpellImmunity { spell: 1 }.try_map(plus, plus, fail, plus, plus, plus),
             Err(())
         );
         // `raises` maps its creature, or its skill and every level's creature.
@@ -2106,13 +2241,13 @@ mod tests {
             creature: RaisedCreature::Creature(1),
         };
         assert_eq!(
-            single.try_map(plus, fail, plus, plus, plus),
+            single.try_map(plus, fail, plus, plus, plus, plus),
             Ok(HeroEffect::Raises {
                 priority: 2,
                 creature: RaisedCreature::Creature(101),
             })
         );
-        assert_eq!(single.try_map(fail, plus, plus, plus, plus), Err(()));
+        assert_eq!(single.try_map(fail, plus, plus, plus, plus, plus), Err(()));
         let by_level = E::Raises {
             priority: 1,
             creature: RaisedCreature::ByLevel {
@@ -2121,7 +2256,7 @@ mod tests {
             },
         };
         assert_eq!(
-            by_level.try_map(plus, plus, plus, plus, plus),
+            by_level.try_map(plus, plus, plus, plus, plus, plus),
             Ok(HeroEffect::Raises {
                 priority: 1,
                 creature: RaisedCreature::ByLevel {
@@ -2130,13 +2265,19 @@ mod tests {
                 },
             })
         );
-        assert_eq!(by_level.try_map(fail, plus, plus, plus, plus), Err(()));
-        assert_eq!(by_level.try_map(plus, fail, plus, plus, plus), Err(()));
+        assert_eq!(
+            by_level.try_map(fail, plus, plus, plus, plus, plus),
+            Err(())
+        );
+        assert_eq!(
+            by_level.try_map(plus, fail, plus, plus, plus, plus),
+            Err(())
+        );
         // A failure at any level stops the mapping.
         for bad in 1..=4 {
             let picky = |v: &u8| if *v == bad { Err(()) } else { plus(v) };
             assert_eq!(
-                by_level.try_map(picky, plus, plus, plus, plus),
+                by_level.try_map(picky, plus, plus, plus, plus, plus),
                 Err(()),
                 "{bad}"
             );

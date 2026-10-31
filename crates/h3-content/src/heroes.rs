@@ -13,7 +13,7 @@ use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::artifacts::{ArtifactSlot, ArtifactType};
 use crate::effect::{
-    self, CompiledHeroEffect, HeroEffect, HeroEffectDef, MAX_SKILL_LEVEL, SpellGrant,
+    self, CompiledHeroEffect, HeroEffect, HeroEffectDef, MAX_REGAIN, MAX_SKILL_LEVEL, SpellGrant,
 };
 use crate::error::CompileError;
 use crate::flags::CreatureFlag;
@@ -214,6 +214,12 @@ pub struct HeroParams {
     /// original's 999, HER-CHG-003): its mana is added and the total held between 0 and this, so
     /// a hero above it falls to it (D-38). It bounds no other gain.
     pub mana_ceiling: u16,
+    /// The day's spell point regain without a `mana_regain` effect (E08 increment 9, pack format
+    /// v50; HER-MAN-002; the original's 1), 0..=[`crate::MAX_REGAIN`].
+    pub base_mana_regain: u16,
+    /// Added to a regain grown by a skill specialty on its skill (E08 increment 9, pack format
+    /// v50; HER-MAN-002; the original's 1), 0..=[`crate::MAX_REGAIN`].
+    pub regain_specialist_bonus: u16,
 }
 
 /// The experience of levels 1 to `max_level + 1` from the pack's first levels (E08 T26b): at
@@ -266,6 +272,11 @@ fn compile_params(
             "learn_level must be at most 5",
         ));
     }
+    if def.base_mana_regain > MAX_REGAIN || def.regain_specialist_bonus > MAX_REGAIN {
+        return Err(CompileError::InvalidHeroParams(
+            "base_mana_regain and regain_specialist_bonus must be at most 999",
+        ));
+    }
     Ok(HeroParams {
         primary_min: def.primary_min,
         primary_max: def.primary_max,
@@ -276,6 +287,8 @@ fn compile_params(
         wisdom: refs.resolve(&def.wisdom, skills, "secondary skill")?,
         schools: distinct(refs, &def.schools, skills, "secondary skill")?,
         mana_ceiling: def.mana_ceiling,
+        base_mana_regain: def.base_mana_regain,
+        regain_specialist_bonus: def.regain_specialist_bonus,
     })
 }
 
@@ -439,6 +452,7 @@ impl HeroContent {
                         Ok(id)
                     },
                     |l| refs.resolve(l, &self.schools.index, "spell school"),
+                    |r| refs.resolve(r, refs.resources, "resource"),
                 )
             })
             .collect()
@@ -789,6 +803,8 @@ impl CanonicalHash for HeroContent {
             p.wisdom.hash_into(h);
             p.schools.hash_into(h);
             h.write_u16(p.mana_ceiling);
+            h.write_u16(p.base_mana_regain);
+            h.write_u16(p.regain_specialist_bonus);
         }
     }
 }

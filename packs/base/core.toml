@@ -2066,6 +2066,9 @@ expert = [{ kind = "learn_level", levels = 3 }]
 [[secondary_skill]]
 id = "mysticism"
 name = "Mysticism"
+basic = [{ kind = "mana_regain", points = 2 }]
+advanced = [{ kind = "mana_regain", points = 3 }]
+expert = [{ kind = "mana_regain", points = 4 }]
 
 [[secondary_skill]]
 id = "luck"
@@ -2098,6 +2101,9 @@ expert = [{ kind = "necromancy", bp = 3000 }, { kind = "raises", creature = "ske
 [[secondary_skill]]
 id = "estates"
 name = "Estates"
+basic = [{ kind = "daily_resource", resource = "gold", amount = 125 }]
+advanced = [{ kind = "daily_resource", resource = "gold", amount = 250 }]
+expert = [{ kind = "daily_resource", resource = "gold", amount = 500 }]
 
 [[secondary_skill]]
 id = "fire_magic"
@@ -3294,6 +3300,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "intelligence", level = 1 }
 spell_book = true
 spells = ["cure"]
 army = [{ creature = "pikeman", count = [10, 20] }, { creature = "archer", count = [4, 7] }, { creature = "griffin", count = [2, 3] }]
+specialty = [{ kind = "daily_resource", resource = "gold", amount = 350 }]
 
 [[hero]]
 id = "mephala"  # original id 16
@@ -3317,6 +3324,7 @@ name = "Jenova"
 class = "ranger"
 skills = [{ skill = "archery", level = 2 }]
 army = [{ creature = "centaur", count = [12, 24] }, { creature = "dwarf", count = [3, 5] }, { creature = "wood_elf", count = [3, 6] }]
+specialty = [{ kind = "daily_resource", resource = "gold", amount = 350 }]
 
 [[hero]]
 id = "ryland"  # original id 19
@@ -3508,6 +3516,7 @@ skills = [{ skill = "mysticism", level = 1 }, { skill = "offense", level = 1 }]
 spell_book = true
 spells = ["magic_arrow"]
 army = [{ creature = "gremlin", count = [30, 40] }, { creature = "stone_gargoyle", count = [3, 5] }, { creature = "stone_golem", count = [2, 3] }]
+specialty = [{ kind = "daily_resource", resource = "mercury", amount = 1 }]
 
 [[hero]]
 id = "iona"  # original id 39
@@ -3597,6 +3606,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "scholar", level = 1 }]
 spell_book = true
 spells = ["curse"]
 army = [{ creature = "gremlin", count = [30, 40] }, { creature = "stone_gargoyle", count = [3, 5] }, { creature = "stone_golem", count = [2, 3] }]
+specialty = [{ kind = "daily_resource", resource = "gold", amount = 350 }]
 
 [[hero]]
 id = "fiona"  # original id 48
@@ -3636,6 +3646,7 @@ name = "Octavia"
 class = "demoniac"
 skills = [{ skill = "scholar", level = 1 }, { skill = "offense", level = 1 }]
 army = [{ creature = "imp", count = [15, 25] }, { creature = "gog", count = [4, 7] }, { creature = "hell_hound", count = [3, 4] }]
+specialty = [{ kind = "daily_resource", resource = "gold", amount = 350 }]
 
 [[hero]]
 id = "calh"  # original id 53
@@ -3710,6 +3721,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "learning", level = 1 }]
 spell_book = true
 spells = ["haste"]
 army = [{ creature = "imp", count = [15, 25] }, { creature = "gog", count = [4, 7] }, { creature = "hell_hound", count = [3, 4] }]
+specialty = [{ kind = "daily_resource", resource = "sulfur", amount = 1 }]
 
 [[hero]]
 id = "ash"  # original id 61
@@ -3809,6 +3821,7 @@ skills = [{ skill = "necromancy", level = 1 }, { skill = "offense", level = 1 }]
 spell_book = true
 spells = ["magic_arrow"]
 army = [{ creature = "skeleton", count = [20, 30] }, { creature = "walking_dead", count = [4, 6] }, { creature = "wight", count = [4, 6] }]
+specialty = [{ kind = "daily_resource", resource = "gold", amount = 350 }]
 
 [[hero]]
 id = "galthran"  # original id 71
@@ -3898,6 +3911,7 @@ skills = [{ skill = "necromancy", level = 1 }, { skill = "intelligence", level =
 spell_book = true
 spells = ["protection_from_air"]
 army = [{ creature = "skeleton", count = [20, 30] }, { creature = "walking_dead", count = [4, 6] }, { creature = "wight", count = [4, 6] }]
+specialty = [{ kind = "daily_resource", resource = "gold", amount = 350 }]
 
 [[hero]]
 id = "lorelei"  # original id 80
@@ -3938,6 +3952,7 @@ name = "Damacon"
 class = "overlord"
 skills = [{ skill = "offense", level = 2 }]
 army = [{ creature = "troglodyte", count = [30, 40] }, { creature = "harpy", count = [4, 6] }, { creature = "beholder", count = [3, 4] }]
+specialty = [{ kind = "daily_resource", resource = "gold", amount = 350 }]
 
 [[hero]]
 id = "gunnar"  # original id 85
@@ -4031,6 +4046,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "intelligence", level = 1 }
 spell_book = true
 spells = ["protection_from_air"]
 army = [{ creature = "troglodyte", count = [30, 40] }, { creature = "harpy", count = [4, 6] }, { creature = "beholder", count = [3, 4] }]
+specialty = [{ kind = "daily_resource", resource = "crystal", amount = 1 }]
 
 [[hero]]
 id = "darkstorn"  # original id 95
@@ -4185,6 +4201,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "resistance", level = 1 }]
 spell_book = true
 spells = ["bloodlust"]
 army = [{ creature = "goblin", count = [15, 25] }, { creature = "wolf_rider", count = [5, 7] }, { creature = "orc", count = [4, 6] }]
+specialty = [{ kind = "daily_resource", resource = "gems", amount = 1 }]
 
 [[hero]]
 id = "bron"  # original id 112
@@ -4996,25 +5013,28 @@ slot = "shoulders"
 effects = [{ kind = "flying", level = 3 }]
 
 [[artifact]]
-id = "charm_of_mana"  # original id 73; pending: E08-E10
+id = "charm_of_mana"  # original id 73
 name = "Charm of Mana"
 class = "treasure"
 cost = { "gold" = 500 }
 slot = "misc"
+effects = [{ kind = "extra_mana_regain", points = 1 }]
 
 [[artifact]]
-id = "talisman_of_mana"  # original id 74; pending: E08-E10
+id = "talisman_of_mana"  # original id 74
 name = "Talisman of Mana"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "misc"
+effects = [{ kind = "extra_mana_regain", points = 2 }]
 
 [[artifact]]
-id = "mystic_orb_of_mana"  # original id 75; pending: E08-E10
+id = "mystic_orb_of_mana"  # original id 75
 name = "Mystic Orb of Mana"
 class = "treasure"
 cost = { "gold" = 1500 }
 slot = "misc"
+effects = [{ kind = "extra_mana_regain", points = 3 }]
 
 [[artifact]]
 id = "collar_of_conjuring"  # original id 76
@@ -5281,67 +5301,76 @@ slot = "neck"
 effects = [{ kind = "morale", amount = 3 }, { kind = "luck", amount = 3 }]
 
 [[artifact]]
-id = "everflowing_crystal_cloak"  # original id 109; pending: E08-E10
+id = "everflowing_crystal_cloak"  # original id 109
 name = "Everflowing Crystal Cloak"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "shoulders"
+effects = [{ kind = "daily_resource", resource = "crystal", amount = 1 }]
 
 [[artifact]]
-id = "ring_of_infinite_gems"  # original id 110; pending: E08-E10
+id = "ring_of_infinite_gems"  # original id 110
 name = "Ring of Infinite Gems"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "ring"
+effects = [{ kind = "daily_resource", resource = "gems", amount = 1 }]
 
 [[artifact]]
-id = "everpouring_vial_of_mercury"  # original id 111; pending: E08-E10
+id = "everpouring_vial_of_mercury"  # original id 111
 name = "Everpouring Vial of Mercury"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "daily_resource", resource = "mercury", amount = 1 }]
 
 [[artifact]]
-id = "inexhaustible_cart_of_ore"  # original id 112; pending: E08-E10
+id = "inexhaustible_cart_of_ore"  # original id 112
 name = "Inexhaustible Cart of Ore"
 class = "minor"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "daily_resource", resource = "ore", amount = 1 }]
 
 [[artifact]]
-id = "eversmoking_ring_of_sulfur"  # original id 113; pending: E08-E10
+id = "eversmoking_ring_of_sulfur"  # original id 113
 name = "Eversmoking Ring of Sulfur"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "ring"
+effects = [{ kind = "daily_resource", resource = "sulfur", amount = 1 }]
 
 [[artifact]]
-id = "inexhaustible_cart_of_lumber"  # original id 114; pending: E08-E10
+id = "inexhaustible_cart_of_lumber"  # original id 114
 name = "Inexhaustible Cart of Lumber"
 class = "minor"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "daily_resource", resource = "wood", amount = 1 }]
 
 [[artifact]]
-id = "endless_sack_of_gold"  # original id 115; pending: E08-E10
+id = "endless_sack_of_gold"  # original id 115
 name = "Endless Sack of Gold"
 class = "relic"
 cost = { "gold" = 10000 }
 slot = "misc"
+effects = [{ kind = "daily_resource", resource = "gold", amount = 1000 }]
 
 [[artifact]]
-id = "endless_bag_of_gold"  # original id 116; pending: E08-E10
+id = "endless_bag_of_gold"  # original id 116
 name = "Endless Bag of Gold"
 class = "major"
 cost = { "gold" = 7500 }
 slot = "misc"
+effects = [{ kind = "daily_resource", resource = "gold", amount = 750 }]
 
 [[artifact]]
-id = "endless_purse_of_gold"  # original id 117; pending: E08-E10
+id = "endless_purse_of_gold"  # original id 117
 name = "Endless Purse of Gold"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "daily_resource", resource = "gold", amount = 500 }]
 
 [[artifact]]
 id = "legs_of_legion"  # original id 118; pending: E08-E10
@@ -5422,6 +5451,8 @@ max_level = 74
 wisdom = "wisdom"
 schools = ["fire_magic", "air_magic", "water_magic", "earth_magic"]
 mana_ceiling = 999
+base_mana_regain = 1
+regain_specialist_bonus = 1
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on

@@ -21,42 +21,16 @@ B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E9
 
 ### 1. The data (the core content and packs: shared)
 
-- **Four effect kinds** (ADR-0013 point 3's draft), compiled by `h3-content` and read by
-  `h3-pack` (the shared task): `daily_resource { resource, amount }` (amount 1 to `MAX_GAIN`, a
-  known resource), `mana_regain { points }` and `extra_mana_regain { points }` (1 to 999),
-  `full_mana`. None reaches `BattleEffect`; the battle's derivation skips them as it skips
-  increment 8's.
-- **Two hero parameters:** `base_mana_regain = 1` (the original's `skill_mysticism` 0x63E9C8 entry
-  0, every hero's) and `regain_specialist_bonus = 1` (the `inc ebx` at 0x4E3FA8).
-- **The packs** (`base`, `ab`, `sod` through the harvester's gap-fill, battle-owned: the shared
-  task is `cross-lane`, as T70):
-  - the resource artifacts `daily_resource` 1: Everflowing Crystal Cloak (109) crystal,
-    Ring of Infinite Gems (110) gems, Everpouring Vial of Mercury (111), Inexhaustible Cart of
-    Ore (112), Eversmoking Ring of Sulfur (113), Inexhaustible Cart of Lumber (114) wood; the
-    gold artifacts' gold: Endless Sack (115) 1 000, Endless Bag (116) 750, Endless Purse (117)
-    500 (`player_gold_income` 0x4C7930); the Cornucopia (140, `sod`) 4 each of mercury, sulfur,
-    crystal and gems (*agent's call*: its four parts' 1 each count through the combination, so
-    a worn Cornucopia gives the original's 5, `count_worn_artifact` 0x4BABD0 counting the
-    assembled artifact alone, survey §17);
-  - `extra_mana_regain`: the Charm of Mana (73) 1, the Talisman of Mana (74) 2, the Mystic Orb of
-    Mana (75) 3; `full_mana`: the Wizard's Well (138, `sod`);
-  - Estates' levels `daily_resource` gold 125, 250, 500 (`skill_estates` 0x63EA18); Mysticism's
-    levels `mana_regain` 2, 3, 4 (0x63E9C8);
-  - the **thirteen resource and gold specialists** (specialty kind 2, `hero_specialty_pointer`
-    0x679C80), whose specialty the packs leave empty today: `base`'s Caitlin, Jenova, Rissa,
-    Aine, Octavia, Calid, Clavius, Nagash, Damacon, Sephinroth, Saurug, `ab`'s Gelare and
-    Grindan: a specialty of one `daily_resource`, 1 of the table's resource from wood to gems,
-    350 for gold (0x4E4410). The shared task reads each one's resource from the table and
-    checks it against the wiki's hero pages.
-  The "pending: E08-E10" comments on those artifacts in the packs go with them.
-- **A creature ability of the core** (the user at ADV-Q38, decision 201: the Crystal Dragons'
-  crystal is an innate creature ability, modelled as one): the core creature (`h3-content`'s
-  creature type, beside its growth and flags) gains `abilities`, a closed core kind for what a
-  creature does outside battle, its first `weekly_resource { resource, amount }` (GAM-RES-005;
-  VCMI's `SPECIAL_CRYSTAL_GENERATION`; the original tests creature 133 in `player_daily_income`
-  0x4B8C32). The battle part's abilities (ADR-0012) stay the battle's; the core's are read by the
-  day's income (§14), never by the battle. The `ab` pack's Crystal Dragon: `abilities = [{ kind =
-  "weekly_resource", resource = "crystal", amount = 3 }]` in `core.toml` (the gap-fill).
+Built by T81b (`shared/e08-t81b`; its record in `E08-log.md`): the four kinds `daily_resource {
+resource, amount }`, `mana_regain { points }`, `extra_mana_regain { points }`, `full_mana` (none
+reaches `BattleEffect`); `[hero_params]`' `base_mana_regain` (1) and `regain_specialist_bonus`
+(1); the core creature's abilities outside battle, `CreatureInfo::abilities` (`weekly_resource {
+resource, amount }`), written `abilities_outside_battle` in `core.toml` (decision 212: `abilities`
+is the battle file's field); the packs: the six resource artifacts 1, the gold artifacts 1 000,
+750, 500, the Cornucopia 4 of mercury, sulfur, crystal and gems (its parts' 1 each count through
+it: the original's 5), the Charm, Talisman and Mystic Orb 1, 2, 3, the Wizard's Well, Estates 125,
+250, 500 gold, Mysticism 2, 3, 4, the thirteen resource and gold specialists (1 or 350), the
+Crystal Dragon's 3 crystal (`ab`). Core ruleset hash v51, pack format v50.
 
 ### 2. The derivations (`h3-heroes`; HER-MAN-002, GAM-RES-004, HER-ADV-009 amended)
 
@@ -86,7 +60,7 @@ B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E9
 
 HER-MAN-002 (the day's spell points), GAM-RES-004 (the heroes' income: its derivation here, its
 payment the game's), HER-ADV-009 amended (the Lighthouses' input). No quirk. Shared: the four
-kinds, the two parameters, the core creature's abilities, the packs and the gap-fill (T81b).
+kinds, the two parameters, the core creature's abilities, the packs and the gap-fill (T81b, done).
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
@@ -368,7 +342,7 @@ the map.
 
 | Version | Change | Task |
 |---|---|---|
-| core ruleset hash v51, pack format v50 | the four kinds, the two hero parameters, the core creature's abilities; the packs | T81b (`shared/`) |
+| core ruleset hash v51, pack format v50 | the four kinds, the two hero parameters, the core creature's abilities; the packs | T81b (`shared/`), done |
 | adventure ruleset part v14 | the seven kinds; the calendar, growth, months and income parameters | T83 |
 | map import v15 | classes 42, 53, 55, 87, 109, 112, 220; owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater` | T83 |
 | adventure state hash v17, game state hash v21 | owners, guards, weekly, fractions, added objects; the month, the events, the dialog's holder | T83, T85 |
@@ -413,7 +387,7 @@ applied with batch E9's outcome and `docs/03-domain.md`'s terms (owner, flag, ow
 guards, Leave Guards, weekly object, the day's start with the week's and the month's steps, the
 month's kind, timed event, income), done; T81b the four kinds, the two parameters and the core
 creature's abilities in `h3-content` and `h3-pack` with the packs and the harvester's gap-fill,
-`cross-lane`; batch E9's spec (`h3-experiment`, `cross-lane`, T78); the harness (common,
+`cross-lane`, done (decision 212: whole); batch E9's spec (`h3-experiment`, `cross-lane`, T78); the harness (common,
 T79); the env's action encoding (`h3-sim`, `cross-lane`, T85b). Everything else is the lane's own.
 
 **The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut
@@ -424,7 +398,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 |---|---|---|
 | 2 | **T78** | Batch E9's maps: the writer's seven classes and timed events (§4); the spec's fields (`cross-lane`); the two specs and templates (§17) |
 | 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
-| 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs |
+| 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs (done, decision 212) |
 | 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small). T83: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v15, part v14, adventure state hash v17 |
 | 6 | **T84** | `h3-adventure` and `h3-game`: the owned objects' visits (§7), `BuildBoat` (§8), the weekly visits (§9), the mines' battles (§13), the kept dialog and the boat offer (§14); likely cut in two at its start (flagging and mines with their battles; Lighthouses, Shipyards, `BuildBoat` and the weekly visits) |
 | 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |

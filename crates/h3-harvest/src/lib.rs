@@ -707,6 +707,42 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             base_abilities.insert(id, ability_line(specs, "base")?);
         }
     }
+    // A creature's abilities outside battle (E08 T81b, pack format v50): the core file's
+    // `abilities_outside_battle`, a resource qualified as its pack refers to `base`'s.
+    let mut outside: BTreeMap<usize, String> = BTreeMap::new();
+    for entry in &gap.creature_abilities_outside_battle {
+        let what = format!("gapfill: abilities outside battle of `{}`", entry.creature);
+        let id = by_name(&entry.creature)?;
+        if !harvested.contains_key(&id) {
+            return Err(format!("{what}: not harvested"));
+        }
+        let items = entry
+            .abilities
+            .iter()
+            .map(|spec| {
+                if spec.creature.is_some() {
+                    return Err(format!("{what}: an ability takes no `creature`"));
+                }
+                let mut params: Vec<(&String, &toml::Value)> = spec.params.iter().collect();
+                params.sort_by_key(|(k, _)| k.as_str() != "resource");
+                let mut parts = vec![format!("kind = {}", quote(&spec.kind))];
+                for (k, v) in params {
+                    let value = match (k.as_str(), v) {
+                        ("resource", toml::Value::String(r)) => {
+                            quote(&heroes::resource_ref(r, &resources, owner(id), &what)?)
+                        }
+                        _ => v.to_string(),
+                    };
+                    parts.push(format!("{k} = {value}"));
+                }
+                Ok(format!("{{ {} }}", parts.join(", ")))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let line = format!("abilities_outside_battle = [{}]", items.join(", "));
+        if outside.insert(id, line).is_some() {
+            return Err(format!("{what}: listed twice"));
+        }
+    }
 
     // Hero content (E04a T3) and the creature upgrade relation.
     let pack_of = |id: usize| if ab_ids.contains(&id) { "ab" } else { "base" };
@@ -733,6 +769,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     let ctx = Context {
         creatures: &creature_refs,
         towns: &town_refs,
+        resources: &resources,
     };
     let hero_packs = heroes::harvest_heroes(
         &inputs.hero_tables,
@@ -878,7 +915,10 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             level,
             &resources,
             "base",
-            base_abilities.get(&c.id).map(String::as_str),
+            [
+                base_abilities.get(&c.id).map(String::as_str),
+                outside.get(&c.id).map(String::as_str),
+            ],
             &upgrade_list(c.id, "base", false),
         );
     }
@@ -990,7 +1030,10 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             c.level,
             &resources,
             "ab",
-            ab_abilities.get(&c.id).map(String::as_str),
+            [
+                ab_abilities.get(&c.id).map(String::as_str),
+                outside.get(&c.id).map(String::as_str),
+            ],
             &upgrade_list(c.id, "ab", true),
         );
     }
@@ -1108,7 +1151,8 @@ fn write_creature(
     level: u8,
     resources: &[String],
     pack: &str,
-    abilities: Option<&str>,
+    // The battle's `abilities` line and the core's `abilities_outside_battle` line (E08 T81b).
+    abilities: [Option<&str>; 2],
     upgrades: &[String],
 ) {
     let _ = write!(
@@ -1141,7 +1185,7 @@ fn write_creature(
     );
     let flags: Vec<String> = c.flags.iter().map(|f| format!("\"{f}\"")).collect();
     let _ = writeln!(out, "flags = [{}]", flags.join(", "));
-    if let Some(line) = abilities {
+    for line in abilities.into_iter().flatten() {
         let _ = writeln!(out, "{line}");
     }
     if !upgrades.is_empty() {
@@ -1216,7 +1260,7 @@ fn write_hero_params(
         "\n# Hero parameters (Tier 2): rule ids in docs/rules/catalog/heroes.toml (sources in the\n\
          # gap-fill file).\n[hero_params]\nprimary_min = [{a}, {d}, {s}, {k}]\nprimary_max = {}\n\
          backpack = {}\nlearn_level = {}\nexperience = [{}]\nmax_level = {}\nwisdom = {}\n\
-         schools = [{}]\nmana_ceiling = {}\n",
+         schools = [{}]\nmana_ceiling = {}\nbase_mana_regain = {}\nregain_specialist_bonus = {}\n",
         p.primary_max,
         p.backpack,
         p.learn_level,
@@ -1224,7 +1268,9 @@ fn write_hero_params(
         p.max_level,
         skill(&p.wisdom)?,
         schools.join(", "),
-        p.mana_ceiling
+        p.mana_ceiling,
+        p.base_mana_regain,
+        p.regain_specialist_bonus
     );
     Ok(())
 }

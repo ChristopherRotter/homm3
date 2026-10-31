@@ -1057,6 +1057,8 @@ max_level = 20
 wisdom = "channeling"               # offered when the class's first interval is due
 schools = ["stormcraft"]            # drawn from when the second is due
 mana_ceiling = 450                  # format v48 (E08 T59): a reward record's mana held in 0-450 (HER-CHG-003); above primary_max x 10
+base_mana_regain = 1                # format v50 (E08 T81b): the day's regain without a source (HER-MAN-002)
+regain_specialist_bonus = 1         # format v50: added to a regain grown by a skill specialty on its skill
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on

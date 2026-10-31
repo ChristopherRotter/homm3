@@ -11,6 +11,7 @@ use alloc::vec::Vec;
 
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
+use crate::ability::{self, CompiledCreatureAbility, CreatureAbilityDef};
 use crate::artifacts::{ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeId};
 use crate::error::CompileError;
 use crate::flags::{CreatureFlag, CreatureFlags};
@@ -27,7 +28,7 @@ use crate::quirks::{DATA_QUIRK_PREFIX, QuirkRegistry, Quirks, REGISTRY};
 pub const MAX_ARMY_SLOTS: usize = 16;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 50;
+pub const RULESET_HASH_VERSION: u32 = 51;
 
 /// How an army is arranged at the start of a battle (BAT-SET-001): chosen per army in the
 /// original (hero or garrison setting) and passed in the battle setup.
@@ -124,6 +125,9 @@ pub struct CreatureInfo {
     pub adventure_count: [u16; 2],
     /// The creature types it upgrades into, in pack order (E04a T3).
     pub upgrades: Vec<CreatureTypeId>,
+    /// Its abilities outside battle, in pack order (pack format v50, E08 increment 9): read by
+    /// the game's day, never by the battle.
+    pub abilities: Vec<CompiledCreatureAbility>,
 }
 
 /// Handle of a creature type in a [`Ruleset`] (the battle's part indexes its rows by it too).
@@ -204,6 +208,16 @@ impl Scope<'_> {
             out.push((id, *amount));
         }
         Ok(out)
+    }
+
+    /// Resolves the resources of a creature's abilities outside battle.
+    fn abilities(
+        &self,
+        list: &[CreatureAbilityDef],
+    ) -> Result<Vec<CompiledCreatureAbility>, CompileError> {
+        list.iter()
+            .map(|a| a.try_map(|r| self.resolve(r, self.resources, "resource")))
+            .collect()
     }
 }
 
@@ -366,6 +380,7 @@ impl Ruleset {
                     flags: flags(&info.flags)?,
                     adventure_count: info.adventure_count,
                     upgrades: Vec::new(),
+                    abilities: scope.abilities(&info.abilities)?,
                 });
                 creature_keys.push(def.key.clone());
             }
@@ -733,6 +748,9 @@ fn apply_patch(
     if let Some(keys) = &p.upgrades {
         info.upgrades = upgrades(keys, scope, creatures)?;
     }
+    if let Some(list) = &p.abilities {
+        info.abilities = scope.abilities(list)?;
+    }
     Ok(())
 }
 
@@ -781,6 +799,9 @@ fn validate_creature(
             return invalid("an upgrade is listed twice");
         }
     }
+    if let Some(reason) = ability::list_error(&info.abilities) {
+        return invalid(reason);
+    }
     Ok(())
 }
 
@@ -789,7 +810,8 @@ impl CanonicalHash for Ruleset {
     /// profile key, quirk bits, resources (key, name), terrains (key, name), factions (key, name,
     /// native terrain as an optional handle), creatures (key, name, plural, faction as presence
     /// flag + handle, level, cost as length + pairs, growth, horde growth, fight value, AI value,
-    /// speed, flag bits, adventure count, upgrades as length + handles), then the hero content
+    /// speed, flag bits, adventure count, upgrades as length + handles; since v51 the abilities
+    /// outside battle as length + (code, fields)), then the hero content
     /// (`heroes::HeroContent`'s encoding: spells without their battle fields). What v42 encoded
     /// and v43 no longer does is the battle part's (`h3-content-battle`'s hash, v1): obstacles,
     /// the creatures' attack, defense, damage, hit points, shots, casts and abilities, the battle
@@ -842,6 +864,7 @@ impl CanonicalHash for Ruleset {
             h.write_u16(info.adventure_count[0]);
             h.write_u16(info.adventure_count[1]);
             info.upgrades.hash_into(h);
+            info.abilities.hash_into(h);
         }
         self.hero.hash_into(h);
     }

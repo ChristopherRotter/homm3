@@ -102,6 +102,22 @@ pub struct Context<'a> {
     pub creatures: &'a BTreeMap<usize, CreatureRef>,
     /// Town keys and their packs, by town index.
     pub towns: &'a [(String, &'static str)],
+    /// Resource names in `RESTYPES.TXT` order (keys of `base`; E08 T81b).
+    pub resources: &'a [String],
+}
+
+/// The key of a resource of `base`, as `pack` refers to it (a `daily_resource`'s or a
+/// `weekly_resource`'s; E08 T81b): `id` must be a harvested resource's key.
+pub(crate) fn resource_ref(
+    id: &str,
+    resources: &[String],
+    pack: &str,
+    what: &str,
+) -> Result<String, String> {
+    if !resources.iter().any(|r| key_of(r) == id) {
+        return Err(format!("{what}: unknown resource `{id}`"));
+    }
+    reference(id, "base", pack, what)
 }
 
 /// The text tables of the hero content.
@@ -237,7 +253,14 @@ fn spec_list(
             if let Some(name) = &s.creature {
                 params.push(("creature", quote(&creature(name)?)));
             }
-            params.extend(s.params.iter().map(|(k, v)| (k.as_str(), v.to_string())));
+            // A `daily_resource`'s resource before its amount, as the packs write it (E08 T81b).
+            let mut rest: Vec<(&str, String)> = s
+                .params
+                .iter()
+                .map(|(k, v)| (k.as_str(), v.to_string()))
+                .collect();
+            rest.sort_by_key(|(k, _)| *k != "resource");
+            params.extend(rest);
             Ok(inline(&s.kind, &params))
         })
         .collect()
@@ -1444,6 +1467,30 @@ pub fn harvest_heroes(
                     }
                 }
             }
+            // E08 T81b: a resource specialist's daily income, the table's resource (gold, the
+            // last, its own amount: `hero_gold_income` 0x4E4410, `player_daily_income`
+            // 0x4B8DC2).
+            2 => {
+                let rs = &gap.heroes.resource_specialty;
+                let name = usize::try_from(spec.id)
+                    .ok()
+                    .and_then(|i| ctx.resources.get(i))
+                    .ok_or_else(|| format!("{what}: resource {} out of range", spec.id))?;
+                let gold = ctx.resources.last() == Some(name);
+                effects.push(inline(
+                    "daily_resource",
+                    &[
+                        (
+                            "resource",
+                            quote(&resource_ref(&key_of(name), ctx.resources, pack, &what)?),
+                        ),
+                        (
+                            "amount",
+                            (if gold { rs.gold } else { rs.amount }).to_string(),
+                        ),
+                    ],
+                ));
+            }
             5 => effects.push(stat("", "speed", spec.id)),
             7 => {
                 for (s, amount) in [("attack", spec.attack), ("defense", spec.defense)] {
@@ -1451,10 +1498,10 @@ pub fn harvest_heroes(
                 }
             }
             kind => {
-                let label = match kind {
-                    2 => "resource (adventure)",
-                    6 => "creature upgrade (adventure)",
-                    _ => "none",
+                let label = if kind == 6 {
+                    "creature upgrade (adventure)"
+                } else {
+                    "none"
                 };
                 *unmodelled.entry(label).or_default() += 1;
             }
@@ -1486,7 +1533,12 @@ pub fn harvest_heroes(
         return Err("gapfill: a fixed spell specialty names no spell specialist".into());
     }
     let counts: Vec<String> = unmodelled.iter().map(|(k, n)| format!("{n} {k}")).collect();
-    report.push(format!("specialties not modelled: {}", counts.join(", ")));
+    let counts = if counts.is_empty() {
+        "none".to_owned()
+    } else {
+        counts.join(", ")
+    };
+    report.push(format!("specialties not modelled: {counts}"));
     report.push(
         "heroes: availability (campaign heroes, RoE-only Lord Haart the Knight) not harvested (E08-E10)"
             .into(),

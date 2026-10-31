@@ -13,12 +13,12 @@ use std::fmt;
 
 use h3_content::{
     Affects, ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, CompileError,
-    ContentKey, ContentPack, CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride,
-    CreaturePatch, CreatureSelector, CreatureStat, FactionDef, HeroClassDef, HeroClassOverride,
-    HeroClassPatch, HeroEffect, HeroEffectDef, HeroOverride, HeroParamsDef, HeroPatch, HeroTypeDef,
-    KeyError, PackManifest, ProfileDef, RAISED_LEVELS, RaisedCreature, ResourceDef, Ruleset,
-    SecondarySkillDef, SpellCategory, SpellDef, SpellGrant, SpellSchoolDef, SpellScope,
-    StartingStackDef, TerrainDef,
+    ContentKey, ContentPack, CreatureAbility, CreatureAbilityDef, CreatureDef, CreatureFlag,
+    CreatureInfoDef, CreatureOverride, CreaturePatch, CreatureSelector, CreatureStat, FactionDef,
+    HeroClassDef, HeroClassOverride, HeroClassPatch, HeroEffect, HeroEffectDef, HeroOverride,
+    HeroParamsDef, HeroPatch, HeroTypeDef, KeyError, PackManifest, ProfileDef, RAISED_LEVELS,
+    RaisedCreature, ResourceDef, Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellGrant,
+    SpellSchoolDef, SpellScope, StartingStackDef, TerrainDef,
 };
 use serde::{Deserialize, Serialize};
 
@@ -174,6 +174,10 @@ struct CreatureDto {
     flags: Vec<String>,
     #[serde(default)]
     upgrades: Vec<String>,
+    /// Pack format v50 (E08 T81b): the abilities outside battle (`abilities` is the battle
+    /// file's field, R01).
+    #[serde(default)]
+    abilities_outside_battle: Vec<AbilityDto>,
 }
 
 fn default_level() -> u8 {
@@ -202,6 +206,8 @@ struct OverrideDto {
     adventure_count: Option<[u16; 2]>,
     flags: Option<Vec<String>>,
     upgrades: Option<Vec<String>>,
+    /// Pack format v50 (E08 T81b).
+    abilities_outside_battle: Option<Vec<AbilityDto>>,
 }
 
 /// `[[spell]]` in `core.toml` (pack format v3, E04a T3): a spell's data row (its battle magic is
@@ -361,6 +367,10 @@ struct HeroParamsDto {
     schools: Vec<String>,
     /// Pack format v48 (E08 T59): the most spell points a reward record leaves a hero.
     mana_ceiling: u16,
+    /// Pack format v50 (E08 T81b): the day's base spell point regain.
+    base_mana_regain: u16,
+    /// Pack format v50: the regain specialists' bonus.
+    regain_specialist_bonus: u16,
 }
 
 /// `[[artifact_slot_override]]`: changes to a slot of the closure.
@@ -612,6 +622,44 @@ enum EffectDto {
         points: u16,
     },
     FreeBoarding {},
+    /// Pack format v50 (E08 T81b, increment 9): a daily income, the day's spell point regain,
+    /// the extra regain, full mana.
+    DailyResource {
+        resource: String,
+        amount: u32,
+    },
+    ManaRegain {
+        points: u16,
+    },
+    ExtraManaRegain {
+        points: u16,
+    },
+    FullMana {},
+}
+
+/// A creature's ability outside battle, as files write it (pack format v50, E08 T81b):
+/// `abilities_outside_battle = [{ kind = "weekly_resource", resource = "crystal", amount = 3 }]`
+/// (`abilities` is the battle file's field, R01).
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum AbilityDto {
+    WeeklyResource { resource: String, amount: u32 },
+}
+
+impl AbilityDto {
+    fn into_def(self, pack: &str) -> Result<CreatureAbilityDef, KeyError> {
+        Ok(match self {
+            Self::WeeklyResource { resource, amount } => CreatureAbility::WeeklyResource {
+                resource: reference(pack, &resource)?,
+                amount,
+            },
+        })
+    }
+}
+
+/// Resolves the keys of an ability list.
+fn abilities(pack: &str, list: Vec<AbilityDto>) -> Result<Vec<CreatureAbilityDef>, KeyError> {
+    list.into_iter().map(|a| a.into_def(pack)).collect()
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -867,6 +915,13 @@ impl EffectDto {
             Self::Navigation { level } => HeroEffect::Navigation { level },
             Self::SeaMovementPoints { points } => HeroEffect::SeaMovementPoints { points },
             Self::FreeBoarding {} => HeroEffect::FreeBoarding,
+            Self::DailyResource { resource, amount } => HeroEffect::DailyResource {
+                resource: reference(pack, &resource)?,
+                amount,
+            },
+            Self::ManaRegain { points } => HeroEffect::ManaRegain { points },
+            Self::ExtraManaRegain { points } => HeroEffect::ExtraManaRegain { points },
+            Self::FullMana {} => HeroEffect::FullMana,
         })
     }
 }
@@ -1019,6 +1074,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 adventure_count: c.adventure_count,
                 flags: c.flags,
                 upgrades: references(&pack_id, &c.upgrades)?,
+                abilities: abilities(&pack_id, c.abilities_outside_battle)?,
             },
         });
     }
@@ -1046,6 +1102,10 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                     adventure_count: o.adventure_count,
                     flags: o.flags,
                     upgrades: o.upgrades.map(|u| references(&pack_id, &u)).transpose()?,
+                    abilities: o
+                        .abilities_outside_battle
+                        .map(|a| abilities(&pack_id, a))
+                        .transpose()?,
                 },
             })
         })
@@ -1184,6 +1244,8 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 wisdom: reference(&pack_id, &p.wisdom)?,
                 schools: references(&pack_id, &p.schools)?,
                 mana_ceiling: p.mana_ceiling,
+                base_mana_regain: p.base_mana_regain,
+                regain_specialist_bonus: p.regain_specialist_bonus,
             })
         })
         .transpose()?;

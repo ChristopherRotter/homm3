@@ -11,21 +11,39 @@ battle sides and `auto again`; the recipe `E08-batch-9a` and its runs); T79b don
 end-turn messages; the recipe `E08-batch-9b` and its runs). T80 done (decisions 209, 210: whole
 with A-33's re-read; `adventure/e08-t80`, `cross-lane`: batch E9 scored, survey §19, A-33
 withdrawn). T81 in two, the ADRs first (decision 211): T81a done (`shared/e08-t81a`: the three
-drafts applied, ADR-0015's core row, the index, the glossary). Every entry's acceptance includes
-the Definition of Done (`docs/05-testing.md`).
+drafts applied, ADR-0015's core row, the index, the glossary); T81b done (decision 212: whole;
+`shared/e08-t81b`, `cross-lane`: the four kinds, the two parameters, the creature's abilities
+outside battle, the packs; core ruleset hash v51, pack format v50). Every entry's acceptance
+includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T81b — The `shared/` task's code: the kinds, the creature's abilities and the packs**
+**E08 T82 — `h3-heroes`: the day's income, the day's spell points, the Lighthouses' input**
 
-- **Scope:** design §18's round 4, second half (decision 211), a `shared/e08-t81b` pull request
-  (`cross-lane`: the packs and the harvester's gap-fill are the battle lane's): the four kinds
-  (daily resource, the day's mana regain, the extra regain, full mana), the two hero parameters
-  and the core creature's abilities outside battle (`weekly_resource`, decision 201) in
-  `h3-content` and `h3-pack`, with the packs and the gap-fill (ADR-0013 point 3, ADR-0015's R01
-  point 1, ADR-0017's consequences, as T81a applied them); core ruleset hash v51, pack format v50
-  (design §16); the golden replays' headers and the AI lane's reports, as T70.
-- **Inputs:** design §1, §3, §16; survey `E08-economy.md` §19; T70's record in `E08-log.md`
-  (increment 8's `shared/` task) as the pattern; the original data staged for the re-harvest.
-- **Depends on:** T81a (done). **Status:** ready; its cut confirmed with the user at its start.
+- **Scope:** design §2 and §3 (round 5; small): `daily_income(details, core)` (ADR-0013 point
+  16.1, GAM-RES-004: each worn copy counting, a worn combination's parts too, a skill level's
+  amount grown by a skill specialty on it in exact integers, the specialty's; saturating),
+  `day_mana(details, core)` (point 16.2, HER-MAN-002: `full_mana`, the highest `mana_regain` else
+  `base_mana_regain`, a specialist's growth `+ regain_specialist_bonus` only with the skill, each
+  worn type's `extra_mana_regain` once, points above the maximum kept) and `sea_day_points`'
+  `lighthouse_points` (point 13.6, HER-ADV-009 amended; the adventure passes 0 until T84). The
+  rules in the catalog with T81b's gap-fill sources and batch E9's rows (E9-7, E9-12) as
+  observations.
+- **Inputs:** design §2, §3; ADR-0013 points 3, 13.6, 16; survey `E08-economy.md` §8, §12; T81b's
+  record in `E08-log.md` (the kinds and parameters as built); T71's record (the sea points'
+  pattern).
+- **Depends on:** T81b (`shared/e08-t81b` merged). **Status:** ready after that merge; its cut
+  (alone or with T83, design §18's round 5) confirmed with the user at its start.
+
+**E08 T83 — `h3-map` and `h3-adventure`: the import, the kinds and the part, the state, the views**
+
+- **Scope:** design §4, §5, §6, §12 (round 5): map import v15 (classes 42, 53, 55, 87, 109, 112,
+  220; the owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater`), the seven
+  kinds and the calendar, growth, months and income parameters (adventure ruleset part v14), the
+  owners, guards, weekly marks, fractions and added objects in the state (adventure state hash
+  v17), the views (ADV-OWN-003, ADV-FOG-006 amended); likely cut in two at its start.
+- **Inputs:** design §4 to §6, §12, §16; ADR-0016 points 1, 3 to 6; survey `E08-economy.md`; T72's
+  record in `E08-log.md` (increment 8's import, kinds and state) as the pattern.
+- **Depends on:** T81b (merged). **Status:** ready after that merge; its cut confirmed with the
+  user at its start.
 
 ## Inbox
 

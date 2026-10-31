@@ -517,6 +517,11 @@ creature = "Unit 20"
 abilities = [{ kind = "hate", creature = "Unit 2", percent = 100 }]
 sources = ["s"]
 
+[[creature_abilities_outside_battle]]
+creature = "Unit 22"
+abilities = [{ kind = "weekly_resource", amount = 3, resource = "crystal" }]
+sources = ["s"]
+
 [[native_terrain]]
 faction = "Alpha"
 terrain = "Mud"
@@ -581,6 +586,13 @@ max_level = 74
 wisdom = "Skill 7"
 schools = ["Skill 14", "Skill 15"]
 mana_ceiling = 999
+base_mana_regain = 1
+regain_specialist_bonus = 1
+sources = ["s"]
+
+[heroes.resource_specialty]
+amount = 1
+gold = 350
 sources = ["s"]
 
 [heroes.offer_intervals]
@@ -663,6 +675,7 @@ effects = [
     { kind = "regeneration", creatures = { creature = "Unit 21" }, hit_points = 5 },
     { kind = "necromancy", bp = 3000, unless_skill = "Skill 12" },
     { kind = "raises", priority = 1, skill = "Skill 12", by_level = ["Unit 26", "Unit 21", "Unit 30", "Unit 2"] },
+    { kind = "daily_resource", amount = 4, resource = "gems" },
 ]
 sources = ["s"]
 
@@ -980,6 +993,34 @@ fn inconsistencies_are_errors() {
             "terrain = \"Sand\"",
             "unknown terrain `Sand`",
         ),
+        // E08 T81b: a creature's abilities outside battle and a daily resource's resource.
+        (
+            "creature = \"Unit 22\"\nabilities = [{ kind = \"weekly",
+            "creature = \"Unit 149\"\nabilities = [{ kind = \"weekly",
+            "abilities outside battle of `Unit 149`: not harvested",
+        ),
+        (
+            "{ kind = \"weekly_resource\", amount",
+            "{ kind = \"weekly_resource\", creature = \"Unit 1\", amount",
+            "an ability takes no `creature`",
+        ),
+        (
+            "amount = 3, resource = \"crystal\" }]",
+            "amount = 3, resource = \"mud\" }]",
+            "unknown resource `mud`",
+        ),
+        (
+            "amount = 3, resource = \"crystal\" }]\nsources = [\"s\"]\n",
+            "amount = 3, resource = \"crystal\" }]\nsources = [\"s\"]\n\n\
+             [[creature_abilities_outside_battle]]\ncreature = \"Unit 22\"\nabilities = []\n\
+             sources = [\"s\"]\n",
+            "abilities outside battle of `Unit 22`: listed twice",
+        ),
+        (
+            "amount = 4, resource = \"gems\"",
+            "amount = 4, resource = \"mud\"",
+            "unknown resource `mud`",
+        ),
         (
             "faction = \"Gamma\"\nterrain",
             "faction = \"Alpha\"\nterrain",
@@ -1103,7 +1144,8 @@ fn harvests_hero_content() {
     ));
     assert!(base.contains(
         "backpack = 64\nlearn_level = 2\nexperience = [0, 1000, 2000]\nmax_level = 74\n\
-         wisdom = \"skill_7\"\nschools = [\"skill_14\", \"skill_15\"]\nmana_ceiling = 999\n"
+         wisdom = \"skill_7\"\nschools = [\"skill_14\", \"skill_15\"]\nmana_ceiling = 999\n\
+         base_mana_regain = 1\nregain_specialist_bonus = 1\n"
     ));
     // E08 T26b: the listed classes' intervals and every other's.
     let intervals = |k: &str| {
@@ -1150,8 +1192,17 @@ fn harvests_hero_content() {
     assert!(
         h.report
             .iter()
-            .any(|l| l == "specialties not modelled: 1 resource (adventure)")
+            .any(|l| l == "specialties not modelled: none")
     );
+    // E08 T81b: a resource specialist's income, gold its own amount; another resource 1.
+    let gold = "specialty = [{ kind = \"daily_resource\", resource = \"gold\", amount = 350 }]";
+    assert!(base.contains(gold));
+    let mut i = inputs();
+    i.hero_data.specialties[6].id = 3;
+    let h = harvest(&i, &gap()).unwrap();
+    assert!(pack(&h, "base").core.contains(
+        "specialty = [{ kind = \"daily_resource\", resource = \"sulfur\", amount = 1 }]"
+    ));
     // Upgrades: the pairing rule within a pack, a base creature's ab upgrade as an ab override.
     assert!(base.contains("upgrades = [\"unit_1\"]"));
     assert!(ab.contains("target = \"base:unit_26\"\nupgrades = [\"unit_30\"]"));
@@ -1176,6 +1227,11 @@ fn hero_content_errors() {
     fails(
         &|i| i.hero_data.skill_values.pop().map(drop).unwrap(),
         "no value table for skill 27",
+    );
+    // E08 T81b: a resource specialty past the seven resources.
+    fails(
+        &|i| i.hero_data.specialties[6].id = 7,
+        "resource 7 out of range",
     );
     fails(
         &|i| i.hero_data.skill_values[0].1[0] = SkillValue::Float(0.0),
@@ -1459,7 +1515,8 @@ fn harvests_artifacts() {
         "effects = [{ kind = \"primary_skills\", power = 6, knowledge = 6 }, { kind = \"alignment_group\", factions = [\"base:alpha\", \"ab:gamma\"] }, \
          { kind = \"regeneration\", creatures = { creature = \"ab:unit_21\" }, hit_points = 5 }, \
          { kind = \"necromancy\", bp = 3000, unless_skill = \"base:skill_12\" }, \
-         { kind = \"raises\", by_level = [\"base:unit_26\", \"ab:unit_21\", \"ab:unit_30\", \"base:unit_2\"], priority = 1, skill = \"base:skill_12\" }]\nparts = [\"base:band\", \"base:loop\", \"base:helm\"]",
+         { kind = \"raises\", by_level = [\"base:unit_26\", \"ab:unit_21\", \"ab:unit_30\", \"base:unit_2\"], priority = 1, skill = \"base:skill_12\" }, \
+         { kind = \"daily_resource\", resource = \"base:gems\", amount = 4 }]\nparts = [\"base:band\", \"base:loop\", \"base:helm\"]",
     ] {
         assert!(sod.contains(line), "{line}");
     }
@@ -1468,6 +1525,11 @@ fn harvests_artifacts() {
         .artifact(r.artifact_by_key("sod:circle").unwrap())
         .unwrap();
     assert_eq!(circle.locks.len(), 2);
+    // E08 T81b: a creature's ability outside battle, in the core file only, its resource `base`'s.
+    let outside = "abilities_outside_battle = [{ kind = \"weekly_resource\", resource = \"base:crystal\", amount = 3 }]";
+    assert!(ab.core.contains(outside) && !ab.battle.contains(outside));
+    let u22 = r.creature_by_key("ab:unit_22").unwrap();
+    assert_eq!(r.creature_info(u22).unwrap().abilities.len(), 1);
     assert!(
         h.report
             .iter()

@@ -1734,7 +1734,18 @@ schools = ["Fire Magic", "Air Magic", "Water Magic", "Earth Magic"]
 # E08 T59 (pack format v48; HER-CHG-003, D-38): a reward record's mana is added and the total held
 # between 0 and 999, so a hero above it falls to it (grant_rewards 0x49FA90; batch E7's E7-13).
 mana_ceiling = 999
-sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact", "exe-wisdom", "wiki-wisdom", "vcmi-wisdom", "exe-experience", "wiki-experience", "exe-offers", "exe-mana-ceiling"]
+# E08 T81b (pack format v50; HER-MAN-002): the day's regain without a source (skill_mysticism
+# 0x63E9C8's entry 0) and the regain specialists' bonus (0x4E3FA8).
+base_mana_regain = 1
+regain_specialist_bonus = 1
+sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact", "exe-wisdom", "wiki-wisdom", "vcmi-wisdom", "exe-experience", "wiki-experience", "exe-offers", "exe-mana-ceiling", "exe-mana-regain"]
+
+# A resource specialist's income (specialty kind 2; E08 T81b, pack format v50; GAM-RES-004): 1 a day
+# of the table's resource from wood to gems, 350 of gold (0x4B8DC2, 0x4E4410).
+[heroes.resource_specialty]
+amount = 1
+gold = 350
+sources = ["exe-daily-income", "vcmi-income", "wiki-income"]
 
 # The level-up's intervals (E08 T26b, pack format v44; HER-LVL-004): the levels after which Wisdom
 # and a magic school are offered, `[wisdom, school]`. The executable lists the classes on the short
@@ -1986,6 +1997,36 @@ ref = "Navigation - Heroes 3 wiki: '+50/100/150 %', the base 1500 'fixed and doe
 url = "https://heroes.thelazy.net/index.php/Navigation"
 retrieved = "2026-10-28"
 
+# The day's income and spell points (E08 T81b, pack format v50; survey E08-economy.md §8, §12;
+# batch E9's E9-7 and E9-12, scored in §19).
+[[source]]
+id = "exe-daily-income"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T77a2; docs/exe/map.toml 0x4B8AF0, 0x4BABD0, 0x4C7930, 0x4E4390): player_daily_income adds 1 a day for each worn Everflowing Crystal Cloak (109, crystal), Ring of Infinite Gems (110, gems), Everpouring Vial of Mercury (111), Inexhaustible Cart of Ore (112), Eversmoking Ring of Sulfur (113) and Inexhaustible Cart of Lumber (114), 5 of mercury, sulfur, crystal and gems for each worn Cornucopia (140; count_worn_artifact counts each worn copy, an assembled combination as itself), 1 of the specialty table's resource for each resource specialist (kind 2, wood to gems, 0x4B8DC2) and 3 crystal on a week's first day for a Crystal Dragon (133) in a hero's army, however many (0x4B8C32); player_gold_income adds the Endless Sack, Bag and Purse of Gold's 1000, 750 and 500 and through hero_gold_income each hero's Estates (skill_estates 0x63EA18: 0, 125, 250, 500) and a gold specialist's 350 (0x4E4410); batch E9's E9-7 saw exactly that"
+url = "docs/rules/surveys/E08-economy.md"
+retrieved = "2026-10-30"
+
+[[source]]
+id = "exe-mana-regain"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T77a2; docs/exe/map.toml 0x4C7FE0, 0x4E3F40, 0x63E9C8): on every new day but the first, hero_mana_regained gives the Mysticism level's regain (skill_mysticism: 1, 2, 3, 4, entry 0 every hero's), for a Mysticism specialist the regain grown by 5 % a level, truncated, + 1 (0x4E3FA8), then 1, 2 and 3 more for the Charm (73), the Talisman (74) and the Mystic Orb of Mana (75), each worn or inside a worn combination; the points rise by it to at most the maximum and are never lowered; a worn Wizard's Well (138) fills them to the maximum; batch E9's E9-12 saw 2 and 3 a day and the maximum"
+url = "docs/rules/surveys/E08-economy.md"
+retrieved = "2026-10-30"
+
+[[source]]
+id = "vcmi-income"
+kind = "vcmi"
+ref = "VCMI 1.7.5 as read by survey E08-economy.md §8.4 and §12: generatePlayerIncome's constant resource bonuses (the artifacts, the specialists' 350 gold), the Crystal Dragons' 3 crystal a week (SPECIAL_CRYSTAL_GENERATION), the Cornucopia's 4 of each in config/artifacts.json (the original gives 5); getManaNewTurn's regain, never lowering the points, the Wizard's Well a full regeneration"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+retrieved = "2026-10-30"
+
+[[source]]
+id = "wiki-income"
+kind = "wiki"
+ref = "Heroes 3 wiki, read 2026-10-30: Estates 125, 250, 500 gold a day in SoD, the Endless Purse, Bag and Sack of Gold 500, 750, 1000 a day (Estates); Mysticism 2, 3, 4 spell points a day in SoD, the Charm, Talisman and Mystic Orb of Mana 1, 2, 3 more, the Wizard's Well all (Mysticism); every hero regains 1 a day (Spell point); the resource specialties: Rissa mercury, Calid sulfur, Sephinroth crystal, Saurug gems 1 a day, Aine, Caitlin, Clavius, Damacon, Gelare, Grindan, Jenova, Nagash and Octavia 350 gold, none of wood or ore (Hero specialty); the Cornucopia 5 gems a day (Resource)"
+url = "https://heroes.thelazy.net/index.php/Hero_specialty"
+retrieved = "2026-10-30"
+
 # Skills whose values are not in the executable's skill tables (installation.md §7.4).
 # Wisdom (E08 T19a2b, pack format v40): the code's Wisdom level + 2 over the base of 2.
 [[heroes.skill_effects]]
@@ -2106,6 +2147,23 @@ basic = [{ kind = "navigation", level = 1 }]
 advanced = [{ kind = "navigation", level = 2 }]
 expert = [{ kind = "navigation", level = 3 }]
 sources = ["exe-sea-movement", "vcmi-sea-movement", "wiki-sea-movement"]
+
+# Estates and Mysticism (E08 T81b, pack format v50; ADR-0013 points 3 and 16): the day's gold
+# (skill_estates 0x63EA18) and spell point regain (skill_mysticism 0x63E9C8, entry 0 the hero
+# parameters' base); a skill specialty on either grows its amount (GAM-RES-004, HER-MAN-002).
+[[heroes.skill_effects]]
+skill = "Estates"
+basic = [{ kind = "daily_resource", resource = "gold", amount = 125 }]
+advanced = [{ kind = "daily_resource", resource = "gold", amount = 250 }]
+expert = [{ kind = "daily_resource", resource = "gold", amount = 500 }]
+sources = ["exe-daily-income", "wiki-income"]
+
+[[heroes.skill_effects]]
+skill = "Mysticism"
+basic = [{ kind = "mana_regain", points = 2 }]
+advanced = [{ kind = "mana_regain", points = 3 }]
+expert = [{ kind = "mana_regain", points = 4 }]
+sources = ["exe-mana-regain", "vcmi-income", "wiki-income"]
 
 # Specialty parts the executable's fixed-stat record has no field for (dispute H-2: speed).
 [[heroes.specialty_extra]]
@@ -3069,6 +3127,86 @@ artifacts = ["Admiral's Hat"]
 effects = [{ kind = "free_boarding" }]
 sources = ["exe-free-boarding", "vcmi-sea-movement", "wiki-sea-movement"]
 
+# The day's income and spell points (E08 T81b, pack format v50; ADR-0013 points 3 and 16,
+# GAM-RES-004, HER-MAN-002): each worn copy of an income artifact counts, a worn combination's
+# parts too, so the Cornucopia's own 4 and its four parts' 1 each make the original's 5 (agent's
+# call, design §1); the mana artifacts' extra regain counts each worn type once; the Wizard's Well
+# fills the points.
+[[artifacts.effects]]
+artifacts = ["Everflowing Crystal Cloak"]
+effects = [{ kind = "daily_resource", resource = "crystal", amount = 1 }]
+sources = ["exe-daily-income", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Ring of Infinite Gems"]
+effects = [{ kind = "daily_resource", resource = "gems", amount = 1 }]
+sources = ["exe-daily-income", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Everpouring Vial of Mercury"]
+effects = [{ kind = "daily_resource", resource = "mercury", amount = 1 }]
+sources = ["exe-daily-income"]
+
+[[artifacts.effects]]
+artifacts = ["Inexhaustible Cart of Ore"]
+effects = [{ kind = "daily_resource", resource = "ore", amount = 1 }]
+sources = ["exe-daily-income"]
+
+[[artifacts.effects]]
+artifacts = ["Eversmoking Ring of Sulfur"]
+effects = [{ kind = "daily_resource", resource = "sulfur", amount = 1 }]
+sources = ["exe-daily-income"]
+
+[[artifacts.effects]]
+artifacts = ["Inexhaustible Cart of Lumber"]
+effects = [{ kind = "daily_resource", resource = "wood", amount = 1 }]
+sources = ["exe-daily-income"]
+
+[[artifacts.effects]]
+artifacts = ["Endless Sack of Gold"]
+effects = [{ kind = "daily_resource", resource = "gold", amount = 1000 }]
+sources = ["exe-daily-income", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Endless Bag of Gold"]
+effects = [{ kind = "daily_resource", resource = "gold", amount = 750 }]
+sources = ["exe-daily-income", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Endless Purse of Gold"]
+effects = [{ kind = "daily_resource", resource = "gold", amount = 500 }]
+sources = ["exe-daily-income", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Cornucopia"]
+effects = [
+    { kind = "daily_resource", resource = "mercury", amount = 4 },
+    { kind = "daily_resource", resource = "sulfur", amount = 4 },
+    { kind = "daily_resource", resource = "crystal", amount = 4 },
+    { kind = "daily_resource", resource = "gems", amount = 4 },
+]
+sources = ["exe-daily-income", "vcmi-income", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Charm of Mana"]
+effects = [{ kind = "extra_mana_regain", points = 1 }]
+sources = ["exe-mana-regain", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Talisman of Mana"]
+effects = [{ kind = "extra_mana_regain", points = 2 }]
+sources = ["exe-mana-regain", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Mystic Orb of Mana"]
+effects = [{ kind = "extra_mana_regain", points = 3 }]
+sources = ["exe-mana-regain", "wiki-income"]
+
+[[artifacts.effects]]
+artifacts = ["Wizard's Well"]
+effects = [{ kind = "full_mana" }]
+sources = ["exe-mana-regain", "vcmi-income", "wiki-income"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 # The Catapult has no effect of its own: every hero carries one, and the battle sets one up for
@@ -3081,26 +3219,18 @@ what = "the Catapult every hero carries (the battle's own since E04c T6, BAT-SIE
 artifacts = ["Catapult"]
 
 
-# Mana is derived before the battle (E04b's non-goals): the daily spell points (installation.md
-# §7.22) come with the hero's progression and equipment. Titan's Thunder's book left this list in
-# E08 T45 (`gives_spell_book`).
-[[artifacts.pending]]
-epic = "E08-E10"
-what = "spell points per day"
-artifacts = ["Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana", "Wizard's Well"]
-
 # The sea's movement left this list in E08 T70 (`navigation`, `sea_movement_points`,
-# `free_boarding`): the Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat.
+# `free_boarding`): the Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat. The
+# day's income and spell points left it in E08 T81b (`daily_resource`, `extra_mana_regain`,
+# `full_mana`): the resource and gold artifacts, the Cornucopia, the mana artifacts, the Wizard's
+# Well (Titan's Thunder's book left in E08 T45, `gives_spell_book`).
 [[artifacts.pending]]
 epic = "E08-E10"
-what = "adventure map: resources, growth, the Grail"
+what = "adventure map: growth, the Grail"
 artifacts = [
     "The Grail",
-    "Everflowing Crystal Cloak", "Ring of Infinite Gems", "Everpouring Vial of Mercury",
-    "Inexhaustible Cart of Ore", "Eversmoking Ring of Sulfur", "Inexhaustible Cart of Lumber",
-    "Endless Sack of Gold", "Endless Bag of Gold", "Endless Purse of Gold",
     "Legs of Legion", "Loins of Legion", "Torso of Legion", "Arms of Legion", "Head of Legion",
-    "Statue of Legion", "Cornucopia",
+    "Statue of Legion",
 ]
 
 # What spells do in battle beyond what the executable's flag word gives (E04b T2a; pack format
@@ -3617,6 +3747,14 @@ sources = ["exe-raisers"]
 creature = "Pit Lord"
 abilities = [{ kind = "corpse_raiser", creature = "Demon", hit_points_per_creature = 50 }]
 sources = ["exe-raisers"]
+
+# A creature's abilities outside battle (E08 T81b, pack format v50; ADR-0015 amendment R01 point 1,
+# decision 201; GAM-RES-005): the core file's `abilities_outside_battle`, read by the game's day,
+# never by the battle.
+[[creature_abilities_outside_battle]]
+creature = "Crystal Dragon"
+abilities = [{ kind = "weekly_resource", resource = "crystal", amount = 3 }]
+sources = ["exe-daily-income", "vcmi-income"]
 
 # Data quirks (E04b T8e; ADR-0007, amendment E04b T8e): the packs keep the executable's value and
 # an override gated by the quirk's `quirk.content` flag carries the fix, applied only in profiles

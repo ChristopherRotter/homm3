@@ -194,6 +194,7 @@ fight_value = 30260
 ai_value = 39338
 adventure_count = [1, 3]
 flags = ["two_hex", "alive", "king_1", "dragon"]
+abilities_outside_battle = [{ kind = "weekly_resource", resource = "base:crystal", amount = 3 }]
 
 [[creature]]
 id = "faerie_dragon"  # original id 134
@@ -543,6 +544,7 @@ skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:water_magic", le
 spell_book = true
 spells = ["base:dispel"]
 army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "daily_resource", resource = "base:gold", amount = 350 }]
 
 [[hero]]
 id = "grindan"  # original id 143
@@ -552,6 +554,7 @@ skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:earth_magic", le
 spell_book = true
 spells = ["base:slow"]
 army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "daily_resource", resource = "base:gold", amount = 350 }]
 
 [[hero]]
 id = "sir_mullich"  # original id 144

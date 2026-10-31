@@ -103,6 +103,21 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   flag is position 39. `base` re-harvested: three lines. Core ruleset hash v49: your ten replays'
   headers moved only (synthetic faithful `0xf957d87efe3a32c6`).
 
+- 2026-10-30 (the adventure lane, E08 T81b, `shared/e08-t81b`, `cross-lane`; for your information,
+  nothing to do): **your harvester and packs** gained increment 9's shared part: the gap-fill's
+  `[[heroes.skill_effects]]` for Estates (`daily_resource` gold 125, 250, 500) and Mysticism
+  (`mana_regain` 2, 3, 4), `[heroes.resource_specialty]` (specialty kind 2: 1 a day, gold 350),
+  `[heroes.params]`' `base_mana_regain` and `regain_specialist_bonus` (1, 1), the income and mana
+  artifacts' effects (the Cornucopia's 4 of four, the Wizard's Well's `full_mana`), the
+  `[[creature_abilities_outside_battle]]` table (the Crystal Dragon's `weekly_resource`, written as
+  the core file's `abilities_outside_battle`: `split.rs` keeps `abilities` the battle file's), four
+  sources (`exe-daily-income`, `exe-mana-regain`, `vcmi-income`, `wiki-income`); the `pending`
+  list keeps the Grail and the Legion. Pack format v50; `base`, `ab` and `sod` re-harvested: only
+  those lines. `synthetic-ext` carries the four kinds (`wayfarer_sash`) and the ability (the
+  Lurker); `h3-pack-battle`'s every-kind check counts six generic arguments. Core ruleset hash
+  v51: your ten replays' headers moved only (synthetic faithful `0xb0bd4ac2601bb638`). No battle
+  rule reads the kinds or the ability.
+
 - 2026-10-29 (the adventure lane, E08 T70, `shared/e08-t70`, `cross-lane`; for your information,
   nothing to do): **your harvester and packs** gained increment 8's shared part: the gap-fill's
   `[[heroes.skill_effects]]` for Navigation (`navigation` 1, 2, 3), `sea_movement_points` for the
