@@ -35,24 +35,16 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   (sequences 28 to 64), R7 and R2 (in two: R2a the decoder, R2b the clip) with their fixers;
   **T8b2** R4b, R5a to R5c, R6, the leftovers, then `drawn` and `check.sh`. **T8b1 done** (log,
   "M5 T8b1": sequences 28 to 64 as recorded, R7, R2a and R2b fixed; review items 73 to 77).
-- **T8b2, the rest in fractions** (the order free; one reviewer or fixer at a time, no capture
-  needed unless a fix changes a frame `drawn` then lists):
-  - reviewers, read-only, about 1 400 lines each, then their fixer: R4b the hero's aim
-    (`mouse/aim.rs`, its `battle.rs` calls); R5a the message box (`message.rs`, `boxes.rs`); R5b
-    the result window (`result.rs`, `results.rs`); R5c Auto Combat and the tactics phase
-    (`auto.rs`, `tactics.rs`); R6 the dissolves, the palette effects, the sounds' waits
-    (`anim/created.rs`, `h3_render::recolour`, `anim`'s waits);
-  - leftovers: an entered stack clones the timeline (R3-1's rest); the name lookup's time limit
-    and `RecordError::Line`'s raw text (R1's rest); from T8b1: the sequences tool fails on a clip
-    it cannot decode (keep or bare slot), `bink-reference.py` raises on a failing packet, R7-8
-    (verify the Gold bonus once a probe or address is found);
-  - then: `drawn` with the fixed viewer (`--record` for what a fix changed and a capture
-    confirmed), `check.sh`.
-- **T8c (the user's checkpoint):** the review list (items 1 to 77 and T8b2's), the next
+- **T8b2 done** (2026-10-31, log "M5 T8b2"; the user's fractions: three concurrent sub-agents,
+  the runner the leftovers): reviewers R4b, R5a to R5c, R6 and their fixers; the leftovers (an
+  entered stack carries the playhead, the name lookup's wait, `RecordError::Line` in numbers, the
+  sequences tool naming a bad clip, `bink-reference.py` on a refused packet, R7-8 the Gold bonus
+  read in memory); `drawn` and `check.sh`; review items 78 to 86, CLT-Q35.
+- **T8c (the user's checkpoint):** the review list (items 1 to 86), CLT-Q35, the next
   milestone refined; M5 done.
 - **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
   the next milestone's tasks in this queue; M5 done.
-- **Depends on:** T1 to T7 (done 2026-10-30). **Status:** T8a and T8b1 done; T8b2 ready.
+- **Depends on:** T1 to T7 (done 2026-10-30). **Status:** T8a, T8b1 and T8b2 done; T8c ready (the user).
 
 ## Inbox
 

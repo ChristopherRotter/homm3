@@ -79,6 +79,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   it is taken: a stop pressed during that command's action makes a human's turn wait, its outline
   put back (`Growing::outline_waiting`). While it is on, every key but the window's own and every
   press is a stop first (the window's event loop).
+  Since T8b2 (R5c) the switches and stops carry their turn's index and live in
+  `Battle::switches`, never in the window's inputs (Restart and seeks keep them); `h3_sdl` sends
+  `Key::Other` for a key without a name (no key table binds it).
 - A message box (E17 M5 T4a) is modal as the book: while `Battle::message_open` the window's
   `next_frame` returns at once (else it hangs scanning idle steps), every key but the viewer's
   own goes to the box (Escape is Cancel's, never the window's quit) and the mouse's moves reach

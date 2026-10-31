@@ -3699,6 +3699,114 @@ capture on each instance lost and rerun; files kept); the baseline `check.sh` ha
   274 000, capture agents 84 000 to 103 000 (each given a second and third round by message).
 - **Next (T8b2, QUEUE):** R4b, R5a to R5c, R6 and their fixers; the leftovers; `drawn`, `check.sh`.
 
+### M5 T8b2 — M5's closure, part 3: the five smaller reviewers and the leftovers (2026-10-30/31)
+
+On `client/e17-m5-t8b2`, the user present at the start, the original data staged at once (the
+user's computer went offline about an hour in). **The user's cut:** the five reviewer and fixer
+pairs over three concurrent sub-agents, each a fraction of about half a context, the runner
+doing the leftovers. The reviewers read a worktree of `master`; each fixer worked in a worktree
+of its own off the lane branch, merged by the runner. The VM restarted about 10 minutes in (the
+baseline `check.sh` lost; CI's green `master` stood in).
+
+- **Reviewer R5a, the message box** (`message.rs`, `boxes.rs`): R5a-1 an unattended run's
+  presser timed the box's OK by the battle clock, which a notice's box holds (a `--check` hung
+  silently; medium); R5a-2 the input queue not emptied as a box opens (R then Enter retreated
+  before the question was drawn); R5a-3 a word past 578 px: an unbounded box, its frame ids
+  wrapping into TEXT, OK and YES; R5a-4, R5a-5 test gaps (a caption wider than its slot,
+  `Leave::of`'s sides). Unsure, settled by F5a: `h3_render::text`'s measures looped for ever on a
+  crafted font (a line starting with a space wider than the line). Checked fine: §7.19's layout,
+  buttons, ids, hotkeys and texts, Surrender's price.
+- **Fixed** (F5a): the presser by the window's clock (`asking`: a notice's answer no longer
+  cancels a pending `--leave`); a pass that opens a box, or one giving way to another, drops its
+  later key-downs and presses; the text at most 578 wide, the box at most 768 × 576 (at most 47
+  frame items, ids 200 to 246); the measures end a second line with no place to break at its
+  first glyph; the tests. Left: a record file's unattended `--check` (no presser) holds a notice
+  open until its seconds end.
+- **Reviewer R5b, the result window** (`result.rs`, `results.rs`): R5b-1 a window that could not
+  be built retried every loop pass (a whole-record replay each) and never shown (medium); R5b-2 a
+  served game's hit points and AI values from the local ruleset whatever its content check;
+  R5b-3 BAT-END-001's no winner (a side gave up against created stacks only) shown as the other's
+  victory; R5b-4, R5b-5 docs; R5b-6 to R5b-8 tests; R5b-9 the sequences tool's battle behind the
+  window rebuilt every frame.
+- **Fixed** (F5b): the window always built, what the client lacks drawn empty, once
+  (`Battle::end_seen`); the opening's stacks by (id, creature); a ruleset only for content `Same`
+  (else experience 0, no strongest creature, *provisional*; a server game without packs now
+  opens the window too); `result::winner` for the window and `sound::end_tune` (`survivors`); the
+  docs (Eagle Eye's message and the experience after the window not built); `labels()` with
+  fonts and sizes; six binary tests on a stub table; `result::OK` is `message::OK`;
+  `result::Behind` in the sequences tool. The no-winner text follows the defender's view with
+  either side's flags: CLT-Q35.
+- **Reviewer R6, the dissolves, the palette effects, the sounds' waits:** R6-1 created stacks
+  (elementals, clones, Demons) had no sounds and so no §8.3 waits (a clone's shot), a reused id
+  played the old stack's (medium); R6-2 Teleport's Bind ends never applied (the stack kept Bind's
+  hue; medium); R6-3 a side's record counter overflowed (u8), an id reused on the other side;
+  R6-4 the dissolves' kept battles never dropped; R6-5 `Effect::colour` divided by 0 for a mask of
+  2^31 or more. Checked fine: the dissolve steps and timings, the slide, §7.26's steps and
+  constants, `Num` exact, the lengths' cap, `controllers` against the panel's turns.
+- **Fixed** (F6): `Cue::creature`, `sound::Lengths::creatures`, `audio::Voices` (the created
+  creatures' sounds by handle; the window's for every creature with a look); Teleport's effect
+  ends after its first redraw, their hues from the dissolve's start + 1; a record reused only on
+  its side, `checked_add` (none left: not drawn), the snapshot's counter saturating; a
+  dissolve's kept battle dropped when its span ends; the scale at least 1. The six sound
+  sequences create no stack: no recorded timeline changes.
+- **Reviewer R4b, the hero's aim** (`mouse/aim.rs`, its calls): R4b-1 a move and a press in one
+  event batch cast at the hex of the batch before, and the track's aim then never ended (high);
+  R4b-2 a legal target's side-column hex refused as immune; R4b-3 §7.18 said Force Field and
+  Fire Wall cast nothing (they take the common aim); R4b-4 Teleport and Sacrifice told by the
+  tables' number (a key without one: `Cast` without its second target, the session's rejection
+  ending the window); R4b-5 an area aim's marks per move over 187 hexes, the aim cloned; R4b-6 a
+  served aim's targets unchecked; R4b-7 tests.
+- **Fixed** (F4b): the window follows a pass's moves before the aim's press (an `Act` only when
+  the track's last hex is set); `SelectTarget` over a legal target; §7.18's line; Teleport and
+  Sacrifice by the ruleset (`aims::second_target`), a rejected cast leaving the turn waiting (a
+  bot's still an error); the marks per living stack, `aimed` pushed on a change; the served
+  targets sorted, deduplicated, on the field (`binary_search`); the tests (a two-hex target, two
+  corpses on a hex: the lowest id). Unsure, settled: a turn re-served after a re-dial dropped the
+  hero's aim (`serve_turn`); it keeps it now. No recorded sequence aims at a side column.
+- **Reviewer R5c, Auto Combat and the tactics phase** (`auto.rs`, `tactics.rs`): R5c-1 a switch
+  made at a turn's very start went to the turn its zero-length command started (the bot's
+  `EndTactics`: round 1's human turn shown played and its first click eaten; medium); R5c-2
+  `in_zone`'s u8 subtraction panicked on a server's zone of more than 16 columns (medium); R5c-3
+  `Follower::shown` ran `Auto::of` over every input since the battle's start per mouse batch;
+  R5c-4 Restart dropped the switches; R5c-5 Ctrl and keys without a name did not stop it; R5c-6
+  the shade's walker crossed walls and the closed gate in a siege; R5c-7 the button enabled on a
+  server seat; R5c-8 a doc; R5c-9 tests.
+- **Fixed** (F5c): the switches and stops carry their turn (`Auto::of` by turn, not time) and
+  live in `Battle::switches`, apart from the window's inputs (so Restart and seeks keep them, and
+  `Auto::of` reads a handful of entries; `Follower::shown` takes both and drops its mark when a
+  turn before it changes hands; `Battle::turn_after` gone); `saturating_sub` (a zone wider than
+  the field covers it); `stop_auto` in the Ctrl arms, `h3_sdl::Key::Other` for keys without a
+  name (in no key table; the map viewer ignores it); `Field::of` as the engine's
+  `siege::blocked_for` (`siege::BRIDGES`); `Autoplay::off`, `Panels::without_switch`; the doc;
+  the tests. Not read in the original, so *provisional*: whether modifier keys stop Auto Combat,
+  whether its reach lets the defender through a closed gate. `auto` and `auto-stop` attribute
+  their switches as before.
+- **The leftovers** (the runner): R1's: `net::lookup` (an address as it is, a name looked up on a
+  thread of its own and waited for at most the dial's wait), `RecordError::Line` carries the
+  codec's `DecodeError` (its text never a line's). R3-1's: `Playhead::carry` (the keys shown by
+  now the same: the keys swept afresh, the rest as `extend`; else anew and back) in
+  `Battle::show` and `follow`; `Timeline::enter` reads each entry's own stack's keys and finds
+  each entry's next of the stack once (it scanned every key and every later entry per entry);
+  every replay's `grows` check carries a playhead along entered timelines against `Moment::at`
+  (an entry 1 ms after the playhead, the fast path, and one at it, the start over); the played
+  timeline is still copied (no replay). R2b's: the sequences tool still fails on a clip it
+  cannot decode, now naming it; `bink-reference.py` names a packet or file FFmpeg refuses, goes
+  on past a packet and exits 1, `bink-check.sh` counts it and still compares (checked on a
+  corrupted packet and a bad index, PyAV 19.0.2, FFmpeg 9.0.2). R7-8: `h3mem.starting_bonuses`
+  (H3API's `H3SelectScenarioDialog` pointer 0x69FBE8, `map.toml`; its two arrays of eight rows,
+  +0x1064 and +0x1444, 0x7C each, `bonusType` +0x6C), observed on "Good to Go": 3 Random, 0
+  Artifact, 1 Gold as the arrow steps it, the human's row the first array's 0, the computer's
+  the second's 1; `gold_bonus` stops a run unless exactly its players read Gold (a single
+  scenario and hot seat passed; a dropped click stopped the run).
+- **Checked:** each fixer its crates' fmt, clippy, tests and coverage; the runner each merge's
+  clippy and tests; the release viewer with every fix, `drawn` over all 156 items: all the same
+  (also at two interim merges); `clients/scripts/check.sh` all gates (coverage 100 %);
+  `check-exe-map` and `exe.py check` with the new entry; `verify --scope client
+  --with-original-data` no failing step. No capture needed: no fix changed a compared frame.
+- **The sub-agents' sizes** (reported tokens): reviewers 178 000 to 219 000, fixers 214 000 to
+  266 000 but F5c's 325 000 (nine findings across the window, the follower and `h3-sdl`: a
+  reviewer's findings over three files or more want a fixer of their own each).
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
