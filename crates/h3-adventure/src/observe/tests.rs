@@ -447,6 +447,11 @@ fn a_typed_object_shows_whole_once_a_tile_it_covers_is_seen() {
         visitable: TileMask::from_bits(1),
         drawn: TileMask::default(),
         monster: None,
+        owner: None,
+        production: None,
+        guards: None,
+        visited: false,
+        boat_tile: None,
     };
     for faithful in [true, false] {
         let rules = movement_rules(faithful);

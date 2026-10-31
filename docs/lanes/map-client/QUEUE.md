@@ -112,6 +112,15 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-31 (the adventure lane, E08 T83b2b; **for E24 M4 T3**, the "increment 9's views" it
+  waits on): `ObjectView` carries `owner` (every viewer that sees the object), `production` (a
+  mine's resource and daily amount, its owner's team only), `guards` (`GuardsView`: `creature`
+  when all stacks are of one, none for the original's generic text; `count_word` of the total
+  count, every stack counted; `army`, the stacks, for the owner's team only), `visited` (a weekly
+  object's mark, the viewer's own) and `boat_tile` (a Shipyard's); it is no longer `Copy`. The
+  object identity, the random objects' drawn types and MCL-Q21 (b) of your note stay open in the
+  adventure lane's inbox; the month's kind comes with T85.
+
 - 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
   after it merges, run `clients/capture/setup.sh` again for every run directory you use: the
   hook DLL's ack has ten fields now, and an older `xdd.dll` stops a run with "stale xdd.dll".

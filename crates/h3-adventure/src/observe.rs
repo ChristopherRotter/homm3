@@ -13,10 +13,13 @@
 //! Cartographer types bought show, T14b, and its own keys, T15a). Of a hero it sees its tile,
 //! owner and identity and, since E08 T72, its boat's type; its army, movement points and day's
 //! maximum only if the hero is its own (ADV-FOG-006). An empty boat it sees where it sees heroes
-//! shows its tile, type and facing, never its owner or captain (ADV-FOG-008). Other players'
-//! explored tiles, the seed and the streams never show: an event's projection names the viewer
-//! alone among the players who see it, and a step tells only the tiles the viewer sees the hero
-//! on.
+//! shows its tile, type and facing, never its owner or captain (ADV-FOG-008). Since E08 T83b2b
+//! (ADV-OWN-003) an object shows its owner to every viewer, a mine its production to its owner's
+//! team only and its guards as the original's hint (their stacks to the owner's team), a weekly
+//! object the viewer's own visited mark and never its contents, a Shipyard its boat tile. Other
+//! players' explored tiles, the seed and the streams never show: an event's projection names the
+//! viewer alone among the players who see it, and a step tells only the tiles the viewer sees the
+//! hero on.
 
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
@@ -31,7 +34,7 @@ use crate::command::{AdventureEvent, AdventureEventKind, Viewers};
 use crate::fog::Sight;
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId, RiverId, RoadId};
 use crate::setup::{Pos, TileMask};
-use crate::state::{AdventureState, Resolved, StaticTile};
+use crate::state::{AdventureState, Resolved, StaticTile, allied};
 
 /// What one player may know of the adventure map.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,9 +120,11 @@ impl AdventureObservation {
     }
 }
 
-/// A typed object as a viewer sees it (ADR-0016 point 6): what it is and where, not what it holds.
-/// Not its index in the static map either: that would count the objects before it, seen or not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// A typed object as a viewer sees it (ADR-0016 point 6): what it is and where, not what it holds;
+/// since E08 T83b2b who owns it and what the original's hint shows of a mine, a weekly object and
+/// a Shipyard (ADV-OWN-003). Not its index in the static map either: that would count the objects
+/// before it, seen or not.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjectView {
     /// Its object type (a random resource's drawn pile type).
     pub object_type: ObjectTypeId,
@@ -135,6 +140,40 @@ pub struct ObjectView {
     /// What the viewer sees of a wandering monster (ADV-FOG-006, E08 T20a2a): none for every
     /// other object.
     pub monster: Option<MonsterView>,
+    /// Its owner, for every viewer that sees it (ADV-OWN-003, E08 T83b2b: the original draws its
+    /// flag in the owner's colour); none for a neutral object and for one that is not ownable.
+    pub owner: Option<PlayerId>,
+    /// A mine's production, its resource and its amount a day, for a viewer of its owner's team
+    /// only (ADV-OWN-003; `mine_hint_text` 0x40D670), so an abandoned mine's drawn resource is
+    /// hidden from every other viewer; none for every other viewer and object.
+    pub production: Option<(ResourceId, u32)>,
+    /// A mine's guards as the viewer sees them (ADV-OWN-003); none for a mine without guards and
+    /// for every other object (a guarded pile's guards stay hidden, ADV-PIK-004).
+    pub guards: Option<GuardsView>,
+    /// A weekly object's visited mark, the viewer's own (ADV-OWN-003; survey `E08-economy.md`
+    /// §9.4): set by a visit of its team's (the Garden's, of its own) and kept through the weeks,
+    /// so it says "visited once", never "emptied"; false for every other object. Its contents
+    /// never show.
+    pub visited: bool,
+    /// A Shipyard's boat tile, fixed when the game was built (ADV-SHY-001: static and public);
+    /// none for a Shipyard without one and for every other object.
+    pub boat_tile: Option<Pos>,
+}
+
+/// A mine's guards as a viewer sees them (ADV-OWN-003, E08 T83b2b): what the original's hint shows
+/// every viewer (`mine_hint_text` 0x40D670 with `army_description_text` 0x40ABE0, as the map
+/// client lane read them, E24 design §4.12), the word of their total count and their creature when
+/// they are of one; their stacks only to the owner's team (ADR-0016 point 6).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GuardsView {
+    /// Their creature when all their stacks are of one; none for several (the original's generic
+    /// text), an upgraded stack beside its base creature's too.
+    pub creature: Option<CreatureTypeId>,
+    /// The word of their total count, every stack counted ([`crate::MonsterParams::count_word`]).
+    pub count_word: u8,
+    /// Their stacks by slot with their counts, for a viewer of the owner's team only: none for
+    /// every other viewer and for a neutral mine's.
+    pub army: Option<Vec<ArmyStack>>,
 }
 
 /// An empty boat as a viewer sees it (ADV-FOG-008, E08 T72): where it lies, its type and its
@@ -254,8 +293,10 @@ impl AdventureState {
     /// not a player of the game sees no tile, no hero, no object, no purchase, no key and no boat.
     /// An event is never among the objects, and its tile is no object's in the tile views
     /// (ADV-FOG-007, E08 T62b2). Since E08 T83b2a the objects added in play are among them as the
-    /// static map's, after those, and cover their tiles in the tile views.
-    // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007, ADV-FOG-008
+    /// static map's, after those, and cover their tiles in the tile views. Since E08 T83b2b each
+    /// object shows its owner, a mine its production to its owner's team and its guards, a weekly
+    /// object the viewer's mark and a Shipyard its boat tile (ADV-OWN-003).
+    // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007, ADV-FOG-008, ADV-OWN-003
     pub fn observe(
         &self,
         core: &Ruleset,
@@ -387,24 +428,57 @@ impl AdventureState {
                 (!self.is_removed(index)
                     && object.event().is_none()
                     && object.tiles(map).any(|pos| sees(pos, monster)))
-                .then(|| ObjectView {
-                    object_type,
-                    anchor: object.anchor,
-                    blocked: object.blocked,
-                    visitable: object.visitable,
-                    drawn: object.drawn,
-                    monster: object.monster.as_ref().map(|monster| MonsterView {
-                        creature: monster.creature,
-                        count_word: words.map_or(0, |w| {
-                            w.count_word(self.monster_count(index).unwrap_or(monster.count))
+                .then(|| {
+                    let owner = self.owner(index);
+                    let ours = owner.is_some_and(|owner| allied(owner, viewer));
+                    ObjectView {
+                        object_type,
+                        anchor: object.anchor,
+                        blocked: object.blocked,
+                        visitable: object.visitable,
+                        drawn: object.drawn,
+                        monster: object.monster.as_ref().map(|monster| MonsterView {
+                            creature: monster.creature,
+                            count_word: words.map_or(0, |w| {
+                                w.count_word(self.monster_count(index).unwrap_or(monster.count))
+                            }),
                         }),
-                    }),
+                        owner,
+                        production: ours.then(|| self.production(part, index)).flatten(),
+                        guards: self.guards_view(part, index, ours),
+                        visited: self.visited_by(index, viewer),
+                        boat_tile: object.resolved.boat_tile(),
+                    }
                 })
             })
             .collect();
         observation.objects = objects;
         observation.known = self.known_by(part, viewer);
         observation
+    }
+
+    /// What a viewer sees of the guards of the mine at object index `index` (ADV-OWN-003,
+    /// [`GuardsView`]): the word of their total count, every stack counted, their creature when
+    /// all stacks are of one, their stacks if the viewer is of the owner's team (`ours`); none for
+    /// a mine without guards and for every other object.
+    // rule: ADV-OWN-003
+    fn guards_view(&self, part: &AdventureRuleset, index: usize, ours: bool) -> Option<GuardsView> {
+        let army = self.mine_guards(part, index);
+        let creature = army.first()?.creature;
+        let total = army
+            .iter()
+            .fold(0_u32, |total, stack| total.saturating_add(stack.count));
+        Some(GuardsView {
+            creature: army
+                .iter()
+                .all(|stack| stack.creature == creature)
+                .then_some(creature),
+            count_word: part
+                .params()
+                .monsters()
+                .map_or(0, |words| words.count_word(total)),
+            army: ours.then_some(army),
+        })
     }
 
     /// The objects `hero` holds the once-per-hero mark of, by type and anchor in the map's order

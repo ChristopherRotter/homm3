@@ -9896,3 +9896,58 @@ The design note's §6 as T83b2a found it (the built part moved here; §6 keeps T
   fraction below the unit; an added object a monster on a land tile no other object holds.
 
 T83b2b (design §12's views) next.
+
+### Increment 9, round 5: T83b2b, the views (2026-10-31, `adventure/e08-t83b2b` with `shared/e08-t83b2b`)
+
+**The cut** (decision 219, the user at T83b2b's start): whole, the `shared/` part (docs only) in a
+pull request of its own merged first; a mine's guards as the original's hint, every stack counted
+in the word, an upgraded one too.
+
+- **`ObjectView`** (`observe.rs`; no longer `Copy`, its guards hold a `Vec`): `owner` (every
+  viewer that sees the object: `AdventureState::owner`); `production` (`AdventureState::production`:
+  a mine's resource and daily amount, an abandoned mine's drawn resource with the part's
+  `mine_daily`) only when the owner is `allied` with the viewer (`state/economy.rs`: the player
+  alone until E10); `guards` (`GuardsView`, from `mine_guards`: the creature when every stack is
+  of one, the word of the total count by the monsters' thresholds, the stacks for the owner's team;
+  none for a mine without guards, every other object and a guarded pile); `visited`
+  (`AdventureState::visited_by`: the viewer's bit of the weekly object's marks); `boat_tile` (the
+  Shipyard's `Resolved::BoatTile`). The added objects (T83b2a) get the same fields (none of them
+  ownable, weekly or a Shipyard); a fraction never reaches the view (the word reads the count).
+- **`shared/e08-t83b2b`**: `docs/06-security.md`'s increment 9 paragraph (owners, production,
+  guards, the boat tile, the marks, added monsters and fractions; the visits' and the day's events
+  left to T84 and T85); ADR-0016 point 6's guards corrected to the original's hint, with its
+  revision entry.
+- *Agent's calls (change freely):* the owner's team's stacks inside `GuardsView` (`army`) rather
+  than a list of their own beside `known`; `visited` a plain `bool` on every object (false for the
+  others); `production` with its daily amount (public from the part, the original's hint shows
+  the resource only); the view tests in `state/tests/economy.rs` beside its fixtures (as T83b2a's
+  in `added.rs`); the h3-map test on the economy map with its heroes moved beside the mines and its
+  Shipyard moved one column toward the sea (the economy map's own Shipyard at (28, 16) has no
+  boat tile: its offsets reach column 29, the sea starts at 30; it is T78's writer test map,
+  batch E9's specs have a lake of their own).
+- **Rules:** ADV-OWN-003 new (`implemented`); ADV-FOG-006 amended (added monsters, fractions);
+  ADV-OWN-002's pointer to the views.
+- **Tests:** `state/tests/economy.rs`: the owners, the production by owner over 64 seeds (blue's
+  view unchanged, red's own abandoned mine showing both resources), the guards' word, creature and
+  stacks (a second creature names none, two stacks of one creature their total's word, an army
+  written empty none); the marks by player, contents and a fraction never shown, the boat tile.
+  `h3-map`'s `view.rs`: the imported economy map, both players' views of the owners, production,
+  the abandoned mines' guards and the boat tile, the same over 16 seeds.
+- **Versions:** none moved (the observation is not hashed; no replay or bot report changes).
+
+The design note's §12 as T83b2b found it (built; moved here):
+
+###### 12. Information (as T83b2b found it) (ADV-OWN-003, ADV-FOG-006 amended)
+
+- `ObjectView` gains `owner: Option<PlayerId>` (every viewer who sees the object);
+  `production: Option<(ResourceId, u32)>` for a mine the viewer's team owns (an abandoned mine's
+  drawn resource thus hidden from the others); `guards` as a guarded pile's view (creatures and
+  their words; the counts for the owner's team); `visited: bool` for a weekly object (the
+  viewer's team's mark, the Garden's the viewer's own); a Shipyard's `boat_tile: Option<Pos>`
+  (static, public).
+- The added monsters are objects among the others in the observation where their tile is
+  explored; a fraction is never shown.
+- The events of §7 to §11 carry their viewers as in ADR-0016 point 6's draft. `docs/06-security.md`
+  ("Information hiding") gains the owners, the production, the marks and the month's kind (T85).
+
+T84 (the visits) next.

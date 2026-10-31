@@ -1,7 +1,7 @@
 //! Tests of the owned and weekly objects' state (E08 T83b1; increment 9's design note §6): the
 //! static map's ownable and weekly lists, an abandoned mine's draws and guards, a Shipyard's boat
 //! tile, the owners and their reveal at the start, the first week's contents, their invariants and
-//! the hash.
+//! the hash; what a viewer sees of them (E08 T83b2b, design §12).
 
 use std::collections::BTreeSet;
 
@@ -10,7 +10,8 @@ use h3_kernel::hash::hash_of;
 use super::*;
 use crate::ruleset::{AdventurePack, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::state::economy::fits;
-use crate::testing::{PEASANT, hero_at, key, movement_rules_with, started, world};
+use crate::testing::{PEASANT, PIKEMAN, hero_at, key, movement_rules_with, started, world};
+use crate::{GuardsView, ObjectView};
 
 type Rules = (Ruleset, AdventureRuleset);
 
@@ -502,4 +503,204 @@ fn the_hash_sees_the_owners_and_the_weekly_contents() {
     let fork = state.clone();
     assert_eq!(fork.state_hash(), state.state_hash());
     assert_eq!(fork, state);
+}
+
+/// What `viewer` sees of the typed objects, in map order.
+fn views(state: &AdventureState, rules: &Rules, viewer: PlayerId) -> Vec<ObjectView> {
+    state.observe(&rules.0, &rules.1, viewer).objects
+}
+
+// covers: ADV-OWN-003, ADV-FOG-006
+#[test]
+fn every_viewer_sees_the_owners_and_a_mine_s_production_only_its_owner_s_team() {
+    // Increment 9's design note §12 (E08 T83b2b): blue's sawmill, red's gold mine, a neutral
+    // abandoned mine, red's abandoned mine and a neutral Lighthouse, every tile explored by both.
+    let rules = rules();
+    let objects = vec![
+        owned(&rules, 8, 1, "t:sawmill", 1),
+        owned(&rules, 12, 1, "t:gold_mine", 0),
+        abandoned(&rules, 3, vec![WOOD, GOLD]),
+        ObjectSetup {
+            owner: Some(PlayerId::new(0)),
+            ..abandoned(&rules, 5, vec![WOOD, GOLD])
+        },
+        object(&rules, 1, 3, "t:lighthouse"),
+    ];
+    let setup = setup(&GRASS_ROWS, objects);
+    let seen = |seed: u64| {
+        let mut state =
+            AdventureState::new(&rules.0, &rules.1, &setup, &mut Rng::from_seed(seed)).unwrap();
+        state.explore_all();
+        state
+    };
+    let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+    let state = seen(0);
+    let (reds, blues) = (views(&state, &rules, red), views(&state, &rules, blue));
+    // Every viewer sees every owner.
+    for views in [&reds, &blues] {
+        let owners: Vec<_> = views.iter().map(|o| o.owner).collect();
+        assert_eq!(owners, [Some(blue), Some(red), None, Some(red), None]);
+    }
+    // A mine's production, an abandoned one's drawn resource with its mine's amount, to its
+    // owner alone; a neutral mine's to nobody.
+    let drawn = |index: usize| state.map().objects()[index].resolved.mine().unwrap();
+    let daily = |resource| if resource == WOOD { 2 } else { 1000 };
+    let (resource, count) = drawn(3);
+    let productions = |views: &[ObjectView]| views.iter().map(|o| o.production).collect::<Vec<_>>();
+    assert_eq!(
+        productions(&reds),
+        [
+            None,
+            Some((GOLD, 1000)),
+            None,
+            Some((resource, daily(resource))),
+            None
+        ]
+    );
+    assert_eq!(
+        productions(&blues),
+        [Some((WOOD, 2)), None, None, None, None]
+    );
+    let (neutral, neutral_count) = drawn(2);
+    assert_eq!(
+        state.production(&rules.1, 2),
+        Some((neutral, daily(neutral)))
+    );
+    assert_eq!(state.production(&rules.1, 4), None);
+    assert_eq!(state.production(&rules.1, 99), None);
+    // A mine's guards: the word of their count and their creature to every viewer, their stack
+    // to the owner's team; the seven mines without guards and the Lighthouse show none.
+    let words = rules.1.params().monsters().unwrap();
+    let peasants = |count, army| {
+        Some(GuardsView {
+            creature: Some(PEASANT),
+            count_word: words.count_word(count),
+            army,
+        })
+    };
+    assert_eq!(
+        reds[3].guards,
+        peasants(count, Some(vec![stack(0, PEASANT, count)]))
+    );
+    assert_eq!(blues[3].guards, peasants(count, None));
+    assert_eq!(reds[2].guards, peasants(neutral_count, None));
+    assert_eq!(blues[2].guards, reds[2].guards);
+    for views in [&reds, &blues] {
+        for index in [0, 1, 4] {
+            assert_eq!(views[index].guards, None, "{index}");
+        }
+    }
+    // Every stack counts toward the word (7: the second word, each stack alone the first); a
+    // second creature beside the first, an upgrade too, names none.
+    let mut guarded = state.clone();
+    let mixed = vec![stack(0, PEASANT, 3), stack(2, PIKEMAN, 4)];
+    guarded.set_army_left(1, mixed.clone());
+    assert_eq!((words.count_word(4), words.count_word(7)), (0, 1));
+    let several = |army| {
+        Some(GuardsView {
+            creature: None,
+            count_word: 1,
+            army,
+        })
+    };
+    assert_eq!(views(&guarded, &rules, blue)[1].guards, several(None));
+    assert_eq!(views(&guarded, &rules, red)[1].guards, several(Some(mixed)));
+    guarded.set_army_left(1, vec![stack(0, PEASANT, 3), stack(4, PEASANT, 4)]);
+    assert_eq!(views(&guarded, &rules, blue)[1].guards, peasants(7, None));
+    guarded.set_army_left(1, vec![]);
+    assert_eq!(views(&guarded, &rules, blue)[1].guards, None);
+    // What another player cannot know never changes its view: blue's is the same whatever the
+    // abandoned mines drew, while red sees each resource its mine draws.
+    let mut resources = BTreeSet::new();
+    for seed in 0..64 {
+        let state = seen(seed);
+        assert_eq!(views(&state, &rules, blue), blues);
+        let reds_now = views(&state, &rules, red);
+        assert_eq!(reds_now[2], reds[2]);
+        resources.insert(reds_now[3].production.unwrap().0);
+    }
+    assert_eq!(resources.len(), 2);
+}
+
+// covers: ADV-OWN-003, ADV-SHY-001, ADV-FOG-006
+#[test]
+fn a_viewer_sees_its_own_weekly_marks_and_a_boat_tile_never_contents_or_fractions() {
+    // A monster at (0, 0), a Shipyard entered at (3, 2) (its boat tile (5, 1)), a Windmill and a
+    // Garden, all neutral, every tile explored by both.
+    let rules = rules();
+    let rows = ["Mg~~~~~~", "gg~~~~~~", "gggggggg", "gggggggg"];
+    let objects = vec![
+        object(&rules, 3, 2, "t:shipyard"),
+        object(&rules, 5, 2, "t:windmill"),
+        object(&rules, 7, 2, "t:garden"),
+    ];
+    let mut state = started(&rules, &setup(&rows, objects)).unwrap();
+    state.explore_all();
+    let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+    let reds = views(&state, &rules, red);
+    assert!(reds[0].monster.is_some());
+    // The Shipyard's boat tile is public; nothing else holds one, nor an owner, a production or
+    // guards here.
+    for viewer in [red, blue] {
+        let views = views(&state, &rules, viewer);
+        let tiles: Vec<_> = views.iter().map(|o| o.boat_tile).collect();
+        assert_eq!(tiles, [None, Some(Pos::new(5, 1, 0)), None, None]);
+        assert!(views.iter().all(|o| {
+            !o.visited && o.owner.is_none() && o.production.is_none() && o.guards.is_none()
+        }));
+    }
+    // A mark is the viewer's own: the Windmill's red's, the Garden's blue's.
+    let (windmill, garden) = (*state.weekly(2).unwrap(), *state.weekly(3).unwrap());
+    let mut marked = state.clone();
+    marked.set_weekly(
+        0,
+        Weekly {
+            marks: 0b01,
+            ..windmill
+        },
+    );
+    marked.set_weekly(
+        1,
+        Weekly {
+            marks: 0b10,
+            ..garden
+        },
+    );
+    let visited = |state: &AdventureState, viewer| {
+        views(state, &rules, viewer)
+            .iter()
+            .map(|o| o.visited)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(visited(&marked, red), [false, false, true, false]);
+    assert_eq!(visited(&marked, blue), [false, false, false, true]);
+    assert!(marked.visited_by(2, red) && !marked.visited_by(3, red));
+    assert!(!marked.visited_by(1, red) && !marked.visited_by(99, red));
+    assert!(!marked.visited_by(2, PlayerId::new(9)));
+    // The contents never show: emptied, the views are the same.
+    let mut emptied = marked.clone();
+    emptied.set_weekly(
+        0,
+        Weekly {
+            amount: 0,
+            ..*marked.weekly(2).unwrap()
+        },
+    );
+    emptied.set_weekly(
+        1,
+        Weekly {
+            amount: 0,
+            ..*marked.weekly(3).unwrap()
+        },
+    );
+    // A monster's fraction never shows: its word follows its count.
+    let mut grown = state.clone();
+    grown.set_fraction(0, 15);
+    for viewer in [red, blue] {
+        assert_eq!(
+            views(&emptied, &rules, viewer),
+            views(&marked, &rules, viewer)
+        );
+        assert_eq!(views(&grown, &rules, viewer), views(&state, &rules, viewer));
+    }
 }

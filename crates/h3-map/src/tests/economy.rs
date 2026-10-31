@@ -48,7 +48,7 @@ fn template(line: &str) -> w::ObjectTemplate {
     w::ObjectTemplate::from_objects_txt(line).unwrap()
 }
 
-fn hero(tile: (u8, u8), owner: u8, hero_type: u8) -> w::MapObject {
+pub(super) fn hero(tile: (u8, u8), owner: u8, hero_type: u8) -> w::MapObject {
     w::MapObject::Hero(w::Hero {
         tile,
         owner,
@@ -116,7 +116,7 @@ fn events() -> Vec<w::TimedEvent> {
 /// sawmill, a Blue crystal cavern, a neutral gold mine, the two abandoned mines (wood and gold;
 /// crystal), a Red Lighthouse and a neutral Shipyard on the coast, the three weekly objects, and
 /// three timed events.
-fn economy_map() -> w::Map {
+pub(super) fn economy_map() -> w::Map {
     use w::OwnedBody::{Owner, Resources};
     let [
         sawmill,
@@ -174,7 +174,7 @@ fn economy_map() -> w::Map {
     }
 }
 
-fn read_back(bytes: &[u8]) -> RawMap {
+pub(super) fn read_back(bytes: &[u8]) -> RawMap {
     read(&w::gzip(bytes), &limits()).unwrap()
 }
 

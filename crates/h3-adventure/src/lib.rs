@@ -63,8 +63,8 @@ pub use command::{
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{
-    AdventureObservation, BoatView, HeroView, Known, KnownObject, MonsterView, ObjectView,
-    OwnHeroView, TileView,
+    AdventureObservation, BoatView, GuardsView, HeroView, Known, KnownObject, MonsterView,
+    ObjectView, OwnHeroView, TileView,
 };
 pub use persistent::BitGrid;
 pub use reach::Reach;
