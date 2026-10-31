@@ -74,6 +74,16 @@ Increment 8 (boats and the sea; ADR-0016 points 1 and 6, ADR-0017 point 8; `docs
 - **Events** (E08 T73a, T74a, T74b): a boarding (`Boarded`), a landing (`Landed`, the boat left on its water tile with its facing) and a boat leaving the map with its hero after a battle (`BoatRemoved`, right after `HeroRemoved`) are told to the hero's owner and the players that see heroes on the boat's tile, each naming the boat by its type, never its index, owner or captain; a landing's tile is told by the step's own event to those that see it, so no viewer learns a tile it does not see. A message read (`MessageRead`, the Ocean Bottle) is told to the visitor's owner alone; its text is the client's. The sea's pickups hide their contents as increment 7's finds; their visits and leaving are told as any pickup's.
 - **The fog** is unchanged: a boat adds nothing to the scouting radius. A battle at sea is a battle (its owners only), on the deck or the two boats, which the battle's observation shows them.
 
+Increment 9 (mines, the week and owned objects; ADR-0016 points 5 and 6; `docs/epics/E08-design.md` §12, survey `rules/surveys/E08-economy.md` §2.7, §9.4) adds (E08 T83b2b; teams come with E10: until then a player's team is the player alone):
+
+- **Owners:** every viewer sees an ownable object's owner where it sees the object (ADV-OWN-003: the original draws its flag in the owner's colour).
+- **A mine's production** (its resource and daily amount) is its owner's team's knowledge only, so an abandoned mine's drawn resource is hidden from every other player, before its flagging and after; a neutral abandoned mine's is no player's.
+- **A mine's guards** are seen by every viewer as the original's hint shows them (`mine_hint_text` 0x40D670, `army_description_text` 0x40ABE0): the size word of their total count, every stack counted (an upgraded one too), and their creature only when all stacks are of one; never their stacks, counts or how many stacks. The owner's team sees their stacks and counts. A guarded pile's guards stay hidden from every player (increment 3).
+- **A Shipyard's boat tile** is static and public with the Shipyard.
+- **A weekly object** (Windmill, Water Wheel, Mystical Garden) shows the viewer its own visited mark (a Windmill's and a Water Wheel's set for the visitor's team, the Garden's for the visitor's owner alone), kept through the weeks: it says "visited once", never "emptied". Its resource and amount are never shown, before a visit or after.
+- **Monsters added in play** (a creature month) are seen as placed ones where their tiles are; a monster's fraction (the sixteenths its weekly growth left) is never shown, its word follows its count.
+- The visits' events (a flag, the guards' exchange, a built boat, a weekly gain) and the day's start's (the income, the week's resets, the month's kind) are added with the tasks that build them (E08 T84, T85).
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).
