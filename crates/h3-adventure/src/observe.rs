@@ -253,7 +253,8 @@ impl AdventureState {
     /// the empty boats it sees and every seen hero's boat's type (ADV-FOG-008). A viewer that is
     /// not a player of the game sees no tile, no hero, no object, no purchase, no key and no boat.
     /// An event is never among the objects, and its tile is no object's in the tile views
-    /// (ADV-FOG-007, E08 T62b2).
+    /// (ADV-FOG-007, E08 T62b2). Since E08 T83b2a the objects added in play are among them as the
+    /// static map's, after those, and cover their tiles in the tile views.
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007, ADV-FOG-008
     pub fn observe(
         &self,
@@ -284,13 +285,18 @@ impl AdventureState {
             boats: Vec::new(),
         };
         let row_tiles = usize::from(width);
-        // A tile as it stands now; only a tile an object covered can differ from the static map's.
+        // A tile as it stands now; only a tile an object covered, or one an object added in play
+        // covers (E08 T83b2a), can differ from the static map's.
+        let added = self.added_tiles();
         let live = |row: usize, x: usize, tile: &StaticTile| {
-            if tile.blocked || tile.visitable {
-                let at = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+            let at = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+            let pos = || {
                 let height = usize::from(height);
                 let level = u8::try_from(row / height).unwrap_or(u8::MAX);
-                self.live(Pos::new(at(x), at(row % height), level), *tile)
+                Pos::new(at(x), at(row % height), level)
+            };
+            if tile.blocked || tile.visitable || added.is_some_and(|grid| grid.get(pos())) {
+                self.live(pos(), *tile)
             } else {
                 *tile
             }
@@ -368,9 +374,11 @@ impl AdventureState {
                 || ((objects_on_fringe || monster) && observation.is_fringe(pos))
         };
         let words = part.params().monsters();
+        // The added objects after the static map's, in map order (E08 T83b2a).
         let objects = map
             .objects()
             .iter()
+            .chain(self.added_objects())
             .enumerate()
             .filter_map(|(index, object)| {
                 let object_type = object.object_type?;

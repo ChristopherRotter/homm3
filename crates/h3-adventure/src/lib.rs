@@ -112,8 +112,9 @@ pub use state::{
 /// and whether it counts as human). v16 (E08 T72): the boats, each hero's boat and day's maximum.
 /// v17 (E08 T83a): an abandoned mine's resources in the static map's objects ([`Holds`]' tag 7).
 /// v18 (E08 T83b1): what the build drew for abandoned mines and Shipyards ([`Resolved`]' tags 7
-/// and 8), the ownable objects' owners and the weekly objects' contents and marks.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 18;
+/// and 8), the ownable objects' owners and the weekly objects' contents and marks. v19 (E08
+/// T83b2a): the objects added in play (in the occupancy's encoding) and the monsters' fractions.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 19;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
