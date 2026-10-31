@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-31 (this lane, E24 M3 T7b1): T7b cut with the user into T7b1 (F2 and F4, MCL-Q25) and
+  T7b2 (F1, F3, F5, F6). Done: the log's "M3 T7b1". Its entry as it was:
+
+  ### E24 M3 T7b1 — the redraw's and the input's findings fixed, MCL-Q25 built
+
+  - **Scope:** T7b cut with the user (2026-10-31) into T7b1 and T7b2. T7b1: the findings of F2 (the
+    frame's redraw, F2-1 to F2-8) and F4 (the clicks, keys, the walk's input and the focus, F4-1 to
+    F4-9) on the branch `map-client/e24-m3-t7-review` (`docs/lanes/map-client/review-m3/`), each
+    checked, then fixed, queued for M3's review list, turned into an `MCL-Q<n>` or declined with
+    why; MCL-Q25's answer (a) built (a key's repeat dropped while a step waits, the original's queue
+    behind `--bugs original`). The captures a fix changes recorded again (`drawn` first).
+  - **Acceptance:** every F2 and F4 finding has an outcome in the log; `drawn` all the same; the
+    scoped verify and `check.sh` pass.
+  - **Depends on:** T7a. **Status:** in progress (2026-10-31).
+
 - 2026-10-30 (this lane, E24 M3 T7a): T7 cut with the user into T7a (the hint unmasked and
   everything recorded again, beside six fresh reviewers on fractions of M3, up to three at once,
   their findings on `map-client/e24-m3-t7-review`), T7b (the findings consolidated and fixed) and

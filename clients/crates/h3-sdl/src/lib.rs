@@ -414,6 +414,8 @@ pub struct Window {
     repeats: bool,
     /// Whether the window has the keyboard's focus, by SDL's focus events (E24 M2 T6a).
     focused: bool,
+    /// The focus's changes during the last [`Window::wait`], in order (E24 M3 T7b1).
+    focus_changes: Vec<bool>,
 }
 
 /// The room left for the window's title bar and frame when it is sized to fit, in points.
@@ -503,6 +505,7 @@ impl Window {
                 hardware: None,
                 repeats: false,
                 focused: true,
+                focus_changes: Vec::new(),
             };
             // The window's pixels per point, from its size at one point per frame pixel: the
             // display's usable area in pixels decides the scale (integers only).
@@ -578,6 +581,15 @@ impl Window {
         self.focused
     }
 
+    /// The focus's changes during the last [`Window::wait`], in order (`false` lost, `true`
+    /// gained): a loss and a regain in one batch are both here, though [`Window::focused`] then
+    /// shows no change (E24 M3 T7's review of the map viewer, F4-8: each WM_ACTIVATEAPP holds and
+    /// resumes the original's sound).
+    #[must_use]
+    pub fn focus_changes(&self) -> &[bool] {
+        &self.focus_changes
+    }
+
     /// SDL's clock: nanoseconds since SDL started.
     #[must_use]
     pub fn ticks_ns(&self) -> u64 {
@@ -589,6 +601,7 @@ impl Window {
     /// the viewer answers, in order (empty after a timeout).
     pub fn wait(&mut self, timeout_ms: u32) -> Vec<Event> {
         let mut events = Vec::new();
+        self.focus_changes.clear();
         // SAFETY: SDL_Event is plain data; SDL fills it.
         let mut ev: SDL_Event = unsafe { std::mem::zeroed() };
         // SAFETY: as above.
@@ -646,6 +659,7 @@ impl Window {
                 SDL_EVENT_WINDOW_MOUSE_LEAVE => Some(Event::Pointer(None)),
                 SDL_EVENT_WINDOW_FOCUS_LOST | SDL_EVENT_WINDOW_FOCUS_GAINED => {
                     self.focused = ty == SDL_EVENT_WINDOW_FOCUS_GAINED;
+                    self.focus_changes.push(self.focused);
                     None
                 }
                 SDL_EVENT_WINDOW_EXPOSED

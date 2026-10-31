@@ -149,6 +149,12 @@ pub enum Action {
     Scroll(Direction),
     /// A direction key alone: the selected hero one step that way (design §3.5).
     Step(Direction),
+    /// A direction key's repeat, the system's while the key is held (E24 M3 T7b1, MCL-Q25): a
+    /// step as [`Action::Step`], but dropped while a key's step waits, so that the hero stops at
+    /// most a step after the key's release; with the original's bugs (the comparisons) queued as
+    /// a step, as the original's ring keeps every WM_KEYDOWN (design §4.15). A recording has none
+    /// (the harness turns the display's repeat off).
+    Repeat(Direction),
     /// The pointer moved to a point of the frame.
     Pointer([i32; 2]),
     /// The left button clicked at a point (the pointer moved there): pressed and released at
@@ -172,6 +178,14 @@ pub enum Action {
     /// Another key released (a direction key's, Space's; E24 M3 T6b3): a message in the input
     /// queue (`input_key_message` 0x4EC0E0, kind 2) that does nothing on the map.
     Up,
+    /// The right button pressed (E24 M3 T7b1, the review's F4-5): a message in the input queue
+    /// (kind 0x20) that ends a path's walk (0x407FB1); nothing else on the map in M3 (the
+    /// original's right click shows a help text while held: M4's).
+    RightPress,
+    /// The right button released (kind 0x40): a message in the input queue; a button the mouse
+    /// holds down takes it as the left one's release (`def_button_message` 0x456338: its command
+    /// when it shows pressed, 0x456451).
+    RightRelease,
 }
 
 impl Action {
@@ -194,9 +208,11 @@ impl Action {
         matches!(
             self,
             Self::Step(_)
+                | Self::Repeat(_)
                 | Self::Scroll(_)
                 | Self::Click(_)
                 | Self::Press(_)
+                | Self::RightPress
                 | Self::Key(_)
                 | Self::Visit
         )
@@ -206,6 +222,18 @@ impl Action {
 /// The input manager's ring holds 64 messages, of which 63 wait: the 64th written drops the
 /// oldest (`input_key_message` 0x4EC1D9, `input_mouse_message` 0x4EC3F1; design §3.4, §4.15).
 pub const QUEUED: usize = 63;
+
+/// An action given during a walk, waiting in the ring ([`keep_ring`]); a key's repeat dropped while
+/// a key's step waits, the client's fix (MCL-Q25), else a step as the original's every WM_KEYDOWN.
+fn wait_in(moving: &mut Moving, action: Action, bugs: Bugs) {
+    let action = match action {
+        Action::Repeat(_) if moving.key && bugs == Bugs::Fixed => return,
+        Action::Repeat(d) if bugs == Bugs::Original => Action::Step(d),
+        action => action,
+    };
+    moving.queued.push(action);
+    keep_ring(&mut moving.queued);
+}
 
 /// The actions waiting kept to the ring's [`QUEUED`] messages, the oldest dropped (a click's down
 /// before its up).
@@ -451,7 +479,7 @@ impl Rules {
     #[must_use]
     pub fn edge_at(&self, [x, y]: [i32; 2]) -> Option<Direction> {
         let [width, height] = self.frame;
-        if !(0..width).contains(&x) || !(0..height).contains(&y) {
+        if !self.on_frame([x, y]) {
             return None;
         }
         let (west, east, north, south) = match self.bugs {
@@ -492,6 +520,14 @@ impl Rules {
             Bugs::Fixed => [x, y],
             Bugs::Original => [x & !1, y],
         }
+    }
+
+    /// Whether a point lies on the frame: the window's points always do but the one it gives at
+    /// the focus's loss, which stops the edge scroll ([`Rules::edge_at`]: none off the frame).
+    #[must_use]
+    pub fn on_frame(&self, [x, y]: [i32; 2]) -> bool {
+        let [width, height] = self.frame;
+        (0..width).contains(&x) && (0..height).contains(&y)
     }
 
     /// Whether a point lies over the view.
@@ -834,8 +870,8 @@ pub struct Loop {
     keyed: Vec<(Hotkey, u16)>,
     /// The mouse holds the minimap down (`minimap_click`'s own loop from 0x40A344: the tick by
     /// each message's wait, every message but the mouse's moves and its release dropped; E24 M3
-    /// T6b2).
-    dragging: bool,
+    /// T6b2), with the point of the last message its loop took (the press's, then each move's).
+    dragging: Option<[i32; 2]>,
     /// A click's divisor on this map's minimap (the f32's bits: [`MinimapArt::click`]).
     scale: u32,
     /// An item of the status window holds the press (its state's bit 1, `sub_44FF60` 0x450030):
@@ -944,7 +980,7 @@ impl Loop {
             chosen: start.chosen.clone(),
             held: None,
             keyed: Vec::new(),
-            dragging: false,
+            dragging: None,
             scale: rules
                 .minimap
                 .click(usize::try_from(start.size).unwrap_or(usize::MAX)),
@@ -1067,8 +1103,7 @@ impl Loop {
                     {
                         self.pointer = at;
                     }
-                    moving.queued.push(action);
-                    keep_ring(&mut moving.queued);
+                    wait_in(moving, action, self.rules.bugs);
                 }
                 None => {
                     self.act(t, action, true)?;
@@ -1099,7 +1134,7 @@ impl Loop {
     fn idle_message(&mut self, t: u32) {
         // The mouse holding a button down runs the button's loop: the tick only (0x45641C); so
         // does the minimap's (0x40A344, E24 M3 T6b2).
-        if self.held.is_some() || self.dragging {
+        if self.held.is_some() || self.dragging.is_some() {
             return;
         }
         self.edge(t);
@@ -1117,8 +1152,8 @@ impl Loop {
     /// cursor read the mouse's point now, GetCursorPos: the latest given, M2 T6a, the reviewer's
     /// R1-3; a click's tile is its message's).
     fn act(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
-        if self.held.is_some() || self.dragging {
-            return self.holding(t, action);
+        if self.held.is_some() || self.dragging.is_some() {
+            return self.holding(t, action, fresh);
         }
         if fresh
             && let Action::Pointer(at) | Action::Click(at) | Action::Press(at) | Action::Release(at) =
@@ -1138,7 +1173,7 @@ impl Loop {
                 }
                 self.moved();
             }
-            Action::Step(direction) => self.key_step(t, direction),
+            Action::Step(direction) | Action::Repeat(direction) => self.key_step(t, direction),
             Action::Click(at) | Action::Press(at) | Action::Release(at) => {
                 // The move's message comes first (E24 M3 T6a1): with the mouse-over, the tile's
                 // cursor and hint; off the view the panel's hint.
@@ -1150,8 +1185,8 @@ impl Loop {
                     Action::Press(_) => self.press(t, at)?,
                     _ => {
                         self.press(t, at)?;
-                        if self.held.is_some() || self.dragging {
-                            self.holding(t, Action::Release(at))?;
+                        if self.held.is_some() || self.dragging.is_some() {
+                            self.holding(t, Action::Release(at), fresh)?;
                         } else {
                             self.release(t);
                         }
@@ -1161,7 +1196,7 @@ impl Loop {
             Action::Key(key) => self.key(t, key),
             Action::KeyUp(key) => self.key_up(t, key)?,
             Action::Visit => self.visit(t)?,
-            Action::Up => {}
+            Action::Up | Action::RightPress | Action::RightRelease => {}
         }
         Ok(())
     }
@@ -1169,27 +1204,47 @@ impl Loop {
     /// An action while the mouse holds a button down (`def_button_message`'s own loop from
     /// 0x456338: the tick only, every message the button's): a move over it presses it again,
     /// with its sound (0x4563A2), one off it releases it (0x4563B5), each drawn and shown at once;
-    /// the left button's release ends the hold, a click when the button shows pressed (0x456451:
-    /// its command, `adventure_command` 0x409A70); every other message is taken and dropped.
-    fn holding(&mut self, t: u32, action: Action) -> Result<(), Unplayable> {
-        if self.dragging {
-            self.drag(t, action);
+    /// the left button's release ends the hold (0x10), so does the right one's (0x40, 0x456338),
+    /// a click when the button shows pressed (0x456451: its command, `adventure_command`
+    /// 0x409A70); every other message is taken and dropped. A message's own point decides (0x456359: `[esi + 4]`, `[esi + 8]`); the pointer
+    /// (GetCursorPos) is set only by a `fresh` one, never by one taken from the queue after a
+    /// step, which the mouse has left (E24 M3 T7's review, F4-3). The window's point off the
+    /// frame (its focus lost: no mouse message in the original, WM_ACTIVATEAPP) leaves the hold
+    /// as it is (F4-2).
+    fn holding(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
+        if let Action::Pointer(at) = action
+            && !self.rules.on_frame(at)
+        {
             return Ok(());
         }
-        let (Some((id, over)), Action::Pointer(at) | Action::Release(at)) = (self.held, action)
+        if self.dragging.is_some() {
+            self.drag(t, action, fresh);
+            return Ok(());
+        }
+        let (Some((id, over)), Action::Pointer(_) | Action::Release(_) | Action::RightRelease) =
+            (self.held, action)
         else {
             return Ok(());
         };
-        self.pointer = at;
-        let inside = self.rules.panels.holds(id, at);
-        if inside != over {
-            self.held = Some((id, inside));
-            self.show_pressed(id, inside);
-            if inside {
-                self.press_sound(t);
+        let inside = match action {
+            Action::Pointer(at) | Action::Release(at) => {
+                if fresh {
+                    self.pointer = at;
+                }
+                let inside = self.rules.panels.holds(id, at);
+                if inside != over {
+                    self.held = Some((id, inside));
+                    self.show_pressed(id, inside);
+                    if inside {
+                        self.press_sound(t);
+                    }
+                }
+                inside
             }
-        }
-        if matches!(action, Action::Release(_)) {
+            // The right button's up ends the hold where the last move left it (F4-5).
+            _ => over,
+        };
+        if matches!(action, Action::Release(_) | Action::RightRelease) {
             self.held = None;
             // The mouse looked at again where the hold left it (recorded: released off a
             // button, the hint the point's, `press-buttons`; *provisional*, not read).
@@ -1273,12 +1328,17 @@ impl Loop {
     }
 
     /// A hotkey's key up (0x4564D6): the button its key pressed released, drawn and shown, and
-    /// its command; nothing for a key that pressed none.
+    /// its command; nothing for a key that pressed none, nor when the button no longer shows
+    /// pressed (design §4.15: a mouse's hold released it meanwhile, its click given or not; E24
+    /// M3 T7's review, F4-4).
     fn key_up(&mut self, t: u32, key: Hotkey) -> Result<(), Unplayable> {
         let Some(at) = self.keyed.iter().position(|&(k, _)| k == key) else {
             return Ok(());
         };
         let (_, id) = self.keyed.remove(at);
+        if self.drawn.pressed.binary_search(&id).is_err() {
+            return Ok(());
+        }
         self.show_pressed(id, false);
         self.command(t, id)
     }
@@ -1311,10 +1371,7 @@ impl Loop {
                 self.underground(t);
                 Ok(())
             }
-            panels::id::NEXT_HERO => {
-                self.next_hero(t);
-                Ok(())
-            }
+            panels::id::NEXT_HERO => self.next_hero(t),
             id if panels::id::HEROES.contains(&id) || panels::id::TOWNS.contains(&id) => {
                 let towns = panels::id::TOWNS.contains(&id);
                 let up = id == panels::id::HEROES[0] || id == panels::id::TOWNS[0];
@@ -1368,7 +1425,7 @@ impl Loop {
         self.view.y = tile(at[1], top)
             .saturating_sub(my)
             .clamp(-my, self.last.saturating_sub(my).max(-my));
-        self.dragging = true;
+        self.dragging = Some(at);
         self.minimap_drawn(t);
     }
 
@@ -1381,13 +1438,17 @@ impl Loop {
     /// release (after the move the harness gives it at another point) ends the loop, the
     /// manager's next turn in the same millisecond (the redraw the hold kept from its deadline).
     /// The mouse manager's move (0x40A42A) draws nothing (its message handler 0x4EC560 returns
-    /// at once); no hint, no cursor change, no edge scroll.
-    fn drag(&mut self, t: u32, action: Action) {
+    /// at once); no hint, no cursor change, no edge scroll. The message's own point decides
+    /// (0x40A3C7: `[ebp - 0x28]`, its copy's), the pointer set only by a `fresh` one (F4-3).
+    fn drag(&mut self, t: u32, action: Action, fresh: bool) {
         let (Action::Pointer(at) | Action::Release(at)) = action else {
             return;
         };
-        let moved = at != self.pointer;
-        self.pointer = at;
+        let moved = self.dragging != Some(at);
+        self.dragging = Some(at);
+        if fresh {
+            self.pointer = at;
+        }
         if matches!(action, Action::Pointer(_)) || moved {
             if let Some([left, top, right, _]) = self.rules.panels.area(panels::id::MINIMAP) {
                 let last = right.saturating_sub(1);
@@ -1409,7 +1470,7 @@ impl Loop {
             self.minimap_drawn(t);
         }
         if matches!(action, Action::Release(_)) {
-            self.dragging = false;
+            self.dragging = None;
             self.idle_message(t);
         }
     }
@@ -1517,8 +1578,9 @@ impl Loop {
     /// objects' step when due (0x409DF3, 0x409DFE); then the player's next hero chosen
     /// (`next_hero_find` 0x4BAA40: from the one after the selected, or the first, to the list's
     /// end, then from the first to the selected, the first awake that can still move), none
-    /// found nothing.
-    fn next_hero(&mut self, t: u32) {
+    /// found nothing. A hero found whose choice the live part does not give is refused in a
+    /// recording, as its slot's click (E24 M3 T7's review, F4-6).
+    fn next_hero(&mut self, t: u32) -> Result<(), Unplayable> {
         self.keep_path();
         if !self.path.is_empty() {
             self.path.clear();
@@ -1530,9 +1592,14 @@ impl Loop {
         let next = (from..heroes.len())
             .chain(0..from.min(heroes.len()))
             .find(|&i| heroes.get(i).is_some_and(|h| h.movable && !h.asleep));
-        if let Some((i, chosen)) = next.and_then(|i| Some((i, self.chosen_hero(i)?.clone()))) {
-            self.choose_hero(t, i, chosen);
-        }
+        let Some(i) = next else {
+            return Ok(());
+        };
+        let Some(chosen) = self.chosen_hero(i).cloned() else {
+            return self.unbuilt(Unplayable::Command(panels::id::NEXT_HERO));
+        };
+        self.choose_hero(t, i, chosen);
+        Ok(())
     }
 
     /// Space (`adventure_key_down`'s case of scan code 57, 0x408CC4; design §4.15): nothing
@@ -1841,13 +1908,7 @@ impl Loop {
         if !self.path.is_empty() {
             self.path.clear();
             self.draw(t);
-            if t >= self.frame_at {
-                self.steps = self.steps.saturating_add(1);
-                let late = t - self.frame_at;
-                self.frame_at = self
-                    .frame_at
-                    .saturating_add(self.rules.frame_ms.max(late).max(1));
-            }
+            self.step_objects(t);
         }
         self.walk_off(t, true, direction, next, VecDeque::new());
     }
@@ -2109,7 +2170,9 @@ impl Loop {
                 queued.by_ref().for_each(drop);
             }
             if let Some(moving) = &mut self.moving {
-                moving.queued.extend(queued);
+                for action in queued {
+                    wait_in(moving, action, self.rules.bugs);
+                }
                 return Ok(());
             }
         }

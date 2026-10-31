@@ -36,7 +36,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_map_view::damage::tidy;
+use h3_map_view::damage::{Held, tidy};
 use h3_map_view::keys::{Command, Keys};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
@@ -49,7 +49,7 @@ use h3_ui::keys::Window as Own;
 
 use crate::audio::{Library, Player};
 use crate::files;
-use crate::paint::{self, Assets, Held, Painter, Setup, Widened};
+use crate::paint::{self, Assets, Painter, Setup, Widened};
 
 /// How far past a change the window looks for the next one before it waits for input only.
 const LOOK_AHEAD_MS: u32 = 600_000;
@@ -216,6 +216,42 @@ fn set_up<'a>(assets: &'a Assets<'a>, options: &Options) -> Result<(Setup<'a>, S
     Ok((setup, format!("the situation {}", options.id)))
 }
 
+/// The keys held (a key down again before its release repeats), each with the command its down
+/// gave last, and either Control key: a key's up releases that command whatever Ctrl did since,
+/// as the original matches a key's up by its scan code alone (0x4564D6; E24 M3 T7's review,
+/// F4-1). A repeat that gives nothing (Ctrl pressed meanwhile) keeps the command before it.
+#[derive(Debug, Default)]
+struct HeldKeys {
+    keys: BTreeMap<Key, Option<Command>>,
+    ctrl: [bool; 2],
+}
+
+impl HeldKeys {
+    /// A key's down: whether it repeats and the command the table gives it with Ctrl as held;
+    /// none for a Control key itself.
+    fn down(&mut self, table: &Keys, key: Key) -> Option<(bool, Option<Command>)> {
+        let repeat = self.keys.contains_key(&key);
+        if matches!(key, Key::LeftCtrl | Key::RightCtrl) {
+            self.keys.insert(key, None);
+            self.ctrl[usize::from(key == Key::RightCtrl)] = true;
+            return None;
+        }
+        let command = table.command((), self.ctrl.contains(&true), key.name());
+        if command.is_some() || !repeat {
+            self.keys.insert(key, command);
+        }
+        Some((repeat, command))
+    }
+
+    /// A key's up: the command its down gave (none for a key whose down the window never saw).
+    fn up(&mut self, key: Key) -> Option<Command> {
+        if matches!(key, Key::LeftCtrl | Key::RightCtrl) {
+            self.ctrl[usize::from(key == Key::RightCtrl)] = false;
+        }
+        self.keys.remove(&key).flatten()
+    }
+}
+
 /// A coordinate held on the frame (0 to `size` - 1).
 fn clamp(v: i32, size: u32) -> i32 {
     v.clamp(
@@ -320,7 +356,8 @@ impl Frame {
 
     /// Whether it shows what `change` shows as `look` draws it.
     fn shows(&self, change: &Change, look: Look) -> bool {
-        self.change.drawn == change.drawn && self.cursor == look.cursor(change.cursor)
+        self.change
+            .shows(self.cursor, change, look.cursor(change.cursor))
     }
 }
 
@@ -498,9 +535,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         look,
         (&win, &mut maker),
     )?);
-    // Either Control key held; the keys held (a key down again before its release repeats).
-    let mut ctrl = [false, false];
-    let mut held: BTreeSet<Key> = BTreeSet::new();
+    let mut held = HeldKeys::default();
     // The mouse's last point, and the changes shown (the headless check's).
     let mut mouse: Option<[i32; 2]> = None;
     // Whether the window had the focus at the last look (the edge scroll's `app_active`).
@@ -559,7 +594,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Click { down, at: (x, y) } => {
                     // The button's own move is the press's or the release's (E24 M3 T6b1: a
-                    // panel's button held down until the release).
+                    // panel's button held down until the release); off the frame its nearest, as
+                    // a move's (F4-7).
+                    let (x, y) = (clamp(x, look.frame[0]), clamp(y, look.frame[1]));
                     (mouse, pointer) = (Some([x, y]), None);
                     input.push(if down {
                         Action::Press([x, y])
@@ -568,14 +605,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     });
                     continue;
                 }
+                // The right button, the mouse's on the map before any key table's binding (E24 M3
+                // T7's review, F4-5): its down and up messages.
+                Event::Key(Key::RightButton) | Event::KeyUp(Key::RightButton) => {
+                    input.extend(pointer.take().map(Action::Pointer));
+                    input.push(if matches!(event, Event::Key(_)) {
+                        Action::RightPress
+                    } else {
+                        Action::RightRelease
+                    });
+                    continue;
+                }
                 Event::KeyUp(k) => {
-                    held.remove(&k);
-                    if matches!(k, Key::LeftCtrl | Key::RightCtrl) {
-                        ctrl[usize::from(k == Key::RightCtrl)] = false;
-                    }
                     // A panel's hotkey released clicks its button (E24 M3 T6b1).
-                    let command = keys.command((), ctrl.contains(&true), k.name());
-                    if let Some(action) = command.and_then(Command::release) {
+                    if let Some(action) = held.up(k).and_then(Command::release) {
                         input.extend(pointer.take().map(Action::Pointer));
                         input.push(action);
                     }
@@ -583,16 +626,17 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Key(k) => k,
             };
-            let repeat = !held.insert(key);
-            if matches!(key, Key::LeftCtrl | Key::RightCtrl) {
-                ctrl[usize::from(key == Key::RightCtrl)] = true;
+            let Some((repeat, command)) = held.down(&keys, key) else {
                 continue;
-            }
-            let command = keys.command((), ctrl.contains(&true), key.name());
-            // The map's keys, repeats too; the window's own once a press.
+            };
+            // The map's keys, repeats too (a direction key's as a repeat: MCL-Q25); the window's
+            // own once a press.
             if let Some(action) = command.and_then(Command::action) {
                 input.extend(pointer.take().map(Action::Pointer));
-                input.push(action);
+                input.push(match action {
+                    Action::Step(d) if repeat => Action::Repeat(d),
+                    action => action,
+                });
                 continue;
             }
             match command {
@@ -660,26 +704,36 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             }
         }
         // The original scrolls at the edges only while it is the active application (`app_active`
-        // 0x6783D0, WM_ACTIVATEAPP; design §3.4): without the focus the pointer is given off the
-        // frame, with it again the mouse's point (M2 T6a, the reviewer's R2-7).
-        let has_focus = win.focused();
-        if !has_focus {
-            pointer = focused.then_some(OFF);
-        } else if !focused {
+        // 0x6783D0, WM_ACTIVATEAPP; design §3.4): at the focus's loss the pointer is given off the
+        // frame, the moves without it dropped, with it again the mouse's point (M2 T6a, the
+        // reviewer's R2-7). The sound follows it (E24 M3 T6b3, design §4.15): held and faded out
+        // without it. Each change of the batch in order, a loss and a regain both (E24 M3 T7's
+        // review, F4-8).
+        let mut regained = false;
+        for &has_focus in win.focus_changes() {
+            if has_focus == focused {
+                continue;
+            }
+            if has_focus {
+                regained = true;
+            } else {
+                input.push(Action::Pointer(OFF));
+            }
+            if let Some((library, player)) = &mut audio {
+                player.focus(library, has_focus, &mut lines);
+                lines.push(format!(
+                    "{} the focus: the sound {}",
+                    if has_focus { "regained" } else { "lost" },
+                    if has_focus { "resumed" } else { "held" }
+                ));
+            }
+            focused = has_focus;
+        }
+        if !focused {
+            pointer = None;
+        } else if regained {
             pointer = pointer.or(mouse);
         }
-        // The sound follows it (E24 M3 T6b3, design §4.15): held and faded out without it.
-        if has_focus != focused
-            && let Some((library, player)) = &mut audio
-        {
-            player.focus(library, has_focus, &mut lines);
-            lines.push(format!(
-                "{} the focus: the sound {}",
-                if has_focus { "regained" } else { "lost" },
-                if has_focus { "resumed" } else { "held" }
-            ));
-        }
-        focused = has_focus;
         input.extend(pointer.map(Action::Pointer));
         let ms = clock.ms(win.ticks_ns());
         // The player's input, after the change shown.
@@ -689,9 +743,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             for action in input {
                 given[match action {
                     Action::Scroll(_) => 0,
-                    Action::Step(_) => 1,
+                    Action::Step(_) | Action::Repeat(_) => 1,
                     Action::Pointer(_) => 2,
-                    Action::Click(_) | Action::Press(_) | Action::Release(_) => 3,
+                    Action::Click(_)
+                    | Action::Press(_)
+                    | Action::Release(_)
+                    | Action::RightPress
+                    | Action::RightRelease => 3,
                     Action::Key(_) | Action::KeyUp(_) | Action::Visit | Action::Up => 4,
                 }] += 1;
                 replay.give(t, action);
@@ -757,6 +815,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
             };
         }
+        // A redraw asked for (the window's contents may be lost): whatever this turn presents is
+        // uploaded whole, and the frame shown is presented again when nothing new is (E24 M3 T7's
+        // review, F2-5: a frame due in the same turn took the redraw's place, in part or not at
+        // all).
+        if redraw {
+            texture.held = None;
+        }
+        let mut presented = false;
         // A later change may be due already: the latest is shown instead; if it shows what shows,
         // nothing new is presented (a redraw still is).
         if let Some(d) = next.take_if(|f| f.change.t <= ms) {
@@ -787,6 +853,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         Frame::of(&mut painter, change, look, (&win, &mut maker))?
                     };
                     let back = texture.show(&mut win, &painter, &due, read)?;
+                    presented = true;
                     let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
                     report.late_us.push(late);
                     if given_at.contains(&due.change.t) {
@@ -805,9 +872,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 .map_err(unplayable)?
                 .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
                 .transpose()?;
-        } else if redraw && let Some(f) = &shown {
-            // The window's contents may be lost: the whole frame uploaded again.
-            texture.held = None;
+        }
+        if redraw
+            && !presented
+            && let Some(f) = &shown
+        {
             texture.show(&mut win, &painter, f, false)?;
         }
     }
@@ -1139,6 +1208,29 @@ mod tests {
             }),
             hidden
         );
+    }
+
+    #[test]
+    fn a_keys_up_releases_the_command_its_down_gave() {
+        // H down (next hero), Ctrl down, H up: next hero's release, not Ctrl+H's nothing (E24
+        // M3 T7's review, F4-1); Ctrl alone and an up never seen down give nothing.
+        let table = Keys::original();
+        let mut held = HeldKeys::default();
+        let h = Key::from_name("H").unwrap();
+        let next = Some(Command::Panel(timeline::Hotkey::NextHero));
+        assert_eq!(held.down(&table, h), Some((false, next)));
+        assert_eq!(held.down(&table, Key::LeftCtrl), None);
+        // Its repeat with Ctrl held gives nothing and keeps next hero's.
+        assert_eq!(held.down(&table, h), Some((true, None)));
+        assert_eq!(held.up(h), next);
+        assert_eq!(held.up(Key::LeftCtrl), None);
+        assert_eq!(held.up(h), None);
+        // Ctrl+H down, Ctrl up, H's repeat: next hero's, released at H's up.
+        held.down(&table, Key::RightCtrl);
+        assert_eq!(held.down(&table, h), Some((false, None)));
+        held.up(Key::RightCtrl);
+        assert_eq!(held.down(&table, h), Some((true, next)));
+        assert_eq!(held.up(h), next);
     }
 
     #[test]

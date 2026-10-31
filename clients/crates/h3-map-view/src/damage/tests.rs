@@ -46,4 +46,49 @@ fn rectangles_cut_to_the_frame_and_bounded() {
     let mut none = vec![[4, 4, 4, 5]];
     tidy(&mut none, [10, 6], 1);
     assert!(none.is_empty());
+    // A rectangle another holds goes, cut first (E24 M3 T7's review, F2-7).
+    let mut held = vec![[1, 1, 2, 2], [0, 0, 4, 4], [-1, 2, 3, 3]];
+    tidy(&mut held, [10, 6], 4);
+    assert_eq!(held, [[0, 0, 4, 4]]);
+}
+
+/// E24 M3 T7's review, F2-8: a frame's widening takes the compositions since and its cursor's, a
+/// texture's upload both cursors; nothing once the history lost one.
+#[test]
+fn a_frames_and_a_textures_rectangles() {
+    let mut h = History::new(2);
+    for n in 0..3 {
+        h.push(&[[n, 0, n + 1, 1]]);
+    }
+    let held = |composed, x| Held {
+        composed,
+        cursor: Some([x, 5, x + 1, 6]),
+    };
+    let mut out = Vec::new();
+    assert!(h.since(held(2, 7), 3, &mut out));
+    assert_eq!(out, [[2, 0, 3, 1], [7, 5, 8, 6]]);
+    out.clear();
+    assert!(h.changed(held(2, 7), held(3, 9), &mut out));
+    assert_eq!(out, [[2, 0, 3, 1], [7, 5, 8, 6], [9, 5, 10, 6]]);
+    out.clear();
+    assert!(!h.since(held(0, 7), 3, &mut out));
+    assert!(!h.changed(held(0, 7), held(3, 9), &mut out));
+    assert!(out.is_empty());
+}
+
+#[test]
+fn the_rectangles_another_holds_dropped() {
+    let mut rects = vec![
+        [2, 2, 4, 4],
+        [0, 0, 5, 5],
+        [0, 0, 5, 5],
+        [4, 4, 8, 8],
+        [5, 5, 6, 6],
+        [9, 9, 10, 10],
+    ];
+    drop_held(&mut rects);
+    assert_eq!(rects, [[0, 0, 5, 5], [4, 4, 8, 8], [9, 9, 10, 10]]);
+    let mut none: Vec<[i32; 4]> = Vec::new();
+    drop_held(&mut none);
+    assert!(none.is_empty());
 }
