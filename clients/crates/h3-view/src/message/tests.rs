@@ -76,7 +76,14 @@ fn pieces(message: &MessageBox) -> Vec<([i32; 2], u32)> {
 fn a_short_text_takes_the_least_box() {
     let medium = font(8, 16);
     let small = font(5, 10);
-    let m = layout(&assets(), (&medium, &small), "x", Style::Ok, None, 3);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        "x",
+        Style::Ok,
+        None,
+        (3, Bugs::Original),
+    );
     // 256 x 128 (16 + 60 + 50 = 126, rounded up), centred.
     assert_eq!(m.dialog.place, [272, 236]);
     assert_eq!(m.dialog.shadow, Some([256, 128]));
@@ -98,6 +105,20 @@ fn a_short_text_takes_the_least_box() {
     // The text: 20 in, the box's width less 50, its top shared from 30.
     let text = label(&m, TEXT);
     assert_eq!((text.at, text.size), ([20, 31], [206, 16]));
+    // The client's centred on the box (CLT-Q28 (1)): 25 in, the same size; nothing else moves.
+    let fixed = layout(
+        &assets(),
+        (&medium, &small),
+        "x",
+        Style::Ok,
+        None,
+        (3, Bugs::Fixed),
+    );
+    let centred = label(&fixed, TEXT);
+    assert_eq!((centred.at, centred.size), ([25, 31], [206, 16]));
+    assert_eq!(2 * centred.at[0] + centred.size[0], 256);
+    assert_eq!(tiles(&fixed), tiles(&m));
+    assert_eq!(pieces(&fixed), pieces(&m));
     assert_eq!(
         (text.colour, text.align, text.font.as_str()),
         (1, 1, "medfont.fnt")
@@ -119,7 +140,14 @@ fn a_short_text_takes_the_least_box() {
 fn a_question_has_an_ok_and_a_cancel() {
     let medium = font(8, 16);
     let small = font(5, 10);
-    let m = layout(&assets(), (&medium, &small), "x", Style::OkCancel, None, 0);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        "x",
+        Style::OkCancel,
+        None,
+        (0, Bugs::Original),
+    );
     assert!(matches!(m.dialog.item(0x7869), Some(Item::Picture(p)) if p.at == [54, 66]));
     assert!(matches!(m.dialog.item(YES), Some(Item::Button(b)) if b.at == [55, 67]));
     assert!(matches!(m.dialog.item(0x786A), Some(Item::Picture(p)) if p.at == [136, 66]));
@@ -136,7 +164,14 @@ fn a_long_text_widens_then_wraps() {
     // 100 words of 4 glyphs (32 wide, a space 8). At 256: 6 words a line, 17 lines, 272 high: too
     // high, so 384: 9 words a line (352), 12 lines, 192 high, 576 <= 768: wrapped there.
     let text = vec!["xxxx"; 100].join(" ");
-    let m = layout(&assets(), (&medium, &small), &text, Style::Ok, None, 0);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        &text,
+        Style::Ok,
+        None,
+        (0, Bugs::Original),
+    );
     // 352 + 50 rounded up to 448; 192 + 110 = 302 rounded up to 320.
     assert_eq!(m.dialog.shadow, Some([448, 320]));
     assert_eq!(m.dialog.place, [176, 140]);
@@ -159,7 +194,14 @@ fn a_long_text_widens_then_wraps() {
     assert!(p.contains(&([320, 0], 6)) && p.contains(&([320, 256], 7)));
     // Two full tiles across a box 640 wide.
     let text = vec!["xxxx"; 600].join(" ");
-    let m = layout(&assets(), (&medium, &small), &text, Style::Ok, None, 0);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        &text,
+        Style::Ok,
+        None,
+        (0, Bugs::Original),
+    );
     assert_eq!(
         tiles(&m)[..3],
         [
@@ -176,18 +218,39 @@ fn a_text_at_its_widest_wraps_there_and_its_height_stops_at_200() {
     let small = font(5, 10);
     // 600 words: at 578 still too high, so wrapped at 578 (14 words a line), 200 high at most.
     let text = vec!["xxxx"; 600].join(" ");
-    let m = layout(&assets(), (&medium, &small), &text, Style::Ok, None, 0);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        &text,
+        Style::Ok,
+        None,
+        (0, Bugs::Original),
+    );
     let t = label(&m, TEXT);
     assert_eq!(t.size, [590, 200]);
     assert_eq!(m.dialog.shadow, Some([640, 320]));
     // Wider than high enough: wrapped at the width it reached (3 x height above 2 x width).
     let text = ["xxxxxxxxxxxxxxx"; 5].join(" ");
-    let m = layout(&assets(), (&medium, &small), &text, Style::Ok, None, 0);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        &text,
+        Style::Ok,
+        None,
+        (0, Bugs::Original),
+    );
     // At 256: 2 words a line (248 wide), 3 lines, 48 high: 144 <= 512, wrapped; 298 rounded up
     // to 320.
     assert_eq!(label(&m, TEXT).size, [270, 48]);
     // A text whose lines fit at its widest word: its widest line.
-    let m = layout(&assets(), (&medium, &small), "xxxx\nxx", Style::Ok, None, 0);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        "xxxx\nxx",
+        Style::Ok,
+        None,
+        (0, Bugs::Original),
+    );
     assert_eq!(label(&m, TEXT).size, [206, 32]);
 }
 
@@ -207,7 +270,7 @@ fn a_picture_and_its_caption_sit_above_the_buttons() {
         "x",
         Style::Ok,
         Some(&picture),
-        0,
+        (0, Bugs::Original),
     );
     // 16 + 60 + 20 + 63 + 10 + 50 = 219, rounded up to 256.
     assert_eq!(m.dialog.shadow, Some([256, 256]));
@@ -248,7 +311,7 @@ fn a_caption_wider_than_its_picture_is_centred_on_it() {
         "x",
         Style::Ok,
         Some(&picture),
-        0,
+        (0, Bugs::Original),
     );
     // The row (110 + 40) under the least width: 256.
     assert_eq!(m.dialog.shadow, Some([256, 256]));
@@ -264,7 +327,7 @@ fn a_caption_wider_than_its_picture_is_centred_on_it() {
         "x",
         Style::Ok,
         Some(&picture),
-        0,
+        (0, Bugs::Original),
     );
     assert_eq!(m.dialog.shadow, Some([320, 256]));
     assert_eq!(label(&m, PICTURE).at, [34 + 71, 166]);
@@ -288,7 +351,14 @@ fn a_box_stays_on_the_screen_whatever_its_text() {
     // One word of 10 000 glyphs (a server's name): broken at 578 (73 glyphs a line, the long
     // word's lost glyph; its widest line the last, 72), 200 high.
     let word = "x".repeat(10_000);
-    let m = layout(&assets(), (&medium, &small), &word, Style::Ok, None, 0);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        &word,
+        Style::Ok,
+        None,
+        (0, Bugs::Original),
+    );
     assert_eq!(m.dialog.shadow, Some([640, 320]));
     assert_eq!(m.dialog.place, [80, 140]);
     assert_eq!(label(&m, TEXT).size, [590, 200]);
@@ -306,7 +376,7 @@ fn a_box_stays_on_the_screen_whatever_its_text() {
         &word,
         Style::Ok,
         Some(&picture),
-        0,
+        (0, Bugs::Original),
     );
     assert_eq!(m.dialog.shadow, Some([768, 576]));
     assert_eq!(m.dialog.place, [16, 12]);
@@ -350,7 +420,14 @@ fn a_caption_widens_while_it_is_too_high() {
 fn a_button_clicks_when_released_over_it_or_by_its_key() {
     let medium = font(8, 16);
     let small = font(5, 10);
-    let m = layout(&assets(), (&medium, &small), "x", Style::OkCancel, None, 0);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        "x",
+        Style::OkCancel,
+        None,
+        (0, Bugs::Original),
+    );
     let [x, y] = m.dialog.place;
     let ok = [x + 60, y + 70];
     let cancel = [x + 140, y + 70];
@@ -389,7 +466,14 @@ fn a_button_clicks_when_released_over_it_or_by_its_key() {
     assert_eq!(open.key_up("Return"), Outcome::Nothing);
     assert_eq!(open.key_up("Space"), Outcome::Closed(YES));
     // A box of OK alone: no Cancel; its OK by OK's key.
-    let alone = layout(&assets(), (&medium, &small), "x", Style::Ok, None, 0);
+    let alone = layout(
+        &assets(),
+        (&medium, &small),
+        "x",
+        Style::Ok,
+        None,
+        (0, Bugs::Original),
+    );
     let mut open = Open::new(alone);
     assert_eq!(open.key(Key::Cancel, "Escape"), Outcome::Nothing);
     assert_eq!(open.key(Key::Ok, "Return"), Outcome::Changed);
@@ -415,4 +499,12 @@ fn the_layout_section_reads_from_toml() {
     .unwrap();
     assert_eq!(section, assets());
     assert_eq!(i32_of(i64::MAX), i32::MAX);
+}
+
+#[test]
+fn the_frame_takes_the_acting_players_colours_in_the_clients_profile() {
+    // CLT-Q28 (2): the original's the viewing player's, the client's the acting side's player.
+    assert_eq!(framed(Bugs::Original, 0, Some(1)), 0);
+    assert_eq!(framed(Bugs::Fixed, 0, Some(1)), 1);
+    assert_eq!(framed(Bugs::Fixed, 2, None), 2);
 }

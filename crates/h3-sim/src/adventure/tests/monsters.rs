@@ -48,6 +48,7 @@ pub(super) fn monster_setup(rules: &GameRuleset, difficulty: u8) -> (Arc<GameSet
         }),
         guards: None,
         holds: Default::default(),
+        owner: None,
     });
     (Arc::new(setup), near)
 }

@@ -384,15 +384,190 @@ fn the_base_pack_types_the_objects_of_increment_2() {
         assert_eq!(guard.kind, ObjectKind::KeyGuard { key });
         assert_eq!((guard.visit, guard.from_above), (Visit::Neighbour, true));
     }
-    // E08 T61a: increment 7's 31 types after them; E08 T72: the sea's four pickups and the hole.
+    // E08 T61a: increment 7's 31 types after them; E08 T72: the sea's four pickups and the hole;
+    // E08 T83a: increment 9's thirteen (seven mines, the abandoned mine, the Lighthouse, the
+    // Shipyard and the three weekly objects).
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13
     );
     assert!(part.object_type_by_key("base:border_gate_red").is_none());
 }
 
 // covers: ADV-OBJ-002
+// covers: ADV-OBJ-002
+#[test]
+fn the_base_pack_types_the_economy_of_increment_9() {
+    // E08 T83a (increment 9's design note §5): the thirteen types, the calendar, the growth and
+    // the months as the survey read them; every type entered, none from above (ADV-Q39).
+    let (core, part) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    let ty = |key: &str| {
+        part.object_type(part.object_type_by_key(&format!("base:{key}")).unwrap())
+            .unwrap()
+    };
+    let resource = |key: &str| {
+        let index = core
+            .resources()
+            .iter()
+            .position(|r| r.key.as_str() == format!("base:{key}"))
+            .unwrap();
+        ResourceId::from_index(index).unwrap()
+    };
+    let subterranean = core.terrain_by_key("base:subterranean");
+    let mines = [
+        ("sawmill", "wood", 2, None),
+        ("alchemists_lab", "mercury", 1, None),
+        ("ore_pit", "ore", 2, None),
+        ("sulfur_dune", "sulfur", 1, None),
+        ("crystal_cavern", "crystal", 1, subterranean),
+        ("gem_pond", "gems", 1, None),
+        ("gold_mine", "gold", 1000, subterranean),
+    ];
+    for (key, produced, daily, battle_terrain) in mines {
+        assert_eq!(
+            ty(key).kind,
+            ObjectKind::Mine {
+                resource: resource(produced),
+                daily,
+                battle_terrain,
+            },
+            "{key}"
+        );
+        assert_eq!(part.mine_daily(resource(produced)), Some(daily));
+    }
+    assert_eq!(
+        ty("abandoned_mine").kind,
+        ObjectKind::AbandonedMine {
+            guards: core.creature_by_key("base:troglodyte").unwrap(),
+            count: [100, 200],
+            battle_terrain: subterranean,
+        }
+    );
+    assert_eq!(
+        ty("lighthouse").kind,
+        ObjectKind::Lighthouse { sea_points: 500 }
+    );
+    let ObjectKind::Shipyard {
+        price,
+        boat_type,
+        offsets,
+    } = &ty("shipyard").kind
+    else {
+        panic!("not a Shipyard");
+    };
+    assert_eq!(
+        (price.as_slice(), *boat_type),
+        (
+            [(resource("wood"), 10), (resource("gold"), 1000)].as_slice(),
+            1
+        )
+    );
+    assert_eq!(
+        offsets.as_slice(),
+        [
+            (-2, 0),
+            (2, 0),
+            (-2, 1),
+            (2, 1),
+            (-1, 1),
+            (1, 1),
+            (0, 1),
+            (-2, -1),
+            (2, -1),
+            (-1, -1),
+            (1, -1),
+            (0, -1)
+        ]
+    );
+    let rare = ["mercury", "ore", "sulfur", "crystal", "gems"].map(resource);
+    assert_eq!(
+        ty("windmill").kind,
+        ObjectKind::Windmill {
+            resources: rare.to_vec(),
+            amount: [3, 6],
+        }
+    );
+    assert_eq!(
+        ty("water_wheel").kind,
+        ObjectKind::WaterWheel {
+            resource: resource("gold"),
+            first: 500,
+            later: 1000,
+        }
+    );
+    assert_eq!(
+        ty("mystical_garden").kind,
+        ObjectKind::Garden {
+            gifts: vec![(resource("gems"), 5), (resource("gold"), 500)],
+        }
+    );
+    let keys = mines.map(|(key, ..)| key);
+    let others = [
+        "abandoned_mine",
+        "lighthouse",
+        "shipyard",
+        "windmill",
+        "water_wheel",
+        "mystical_garden",
+    ];
+    for key in keys.iter().chain(&others) {
+        assert_eq!(
+            (ty(key).visit, ty(key).from_above),
+            (Visit::Enter, false),
+            "{key}"
+        );
+        assert_eq!(ty(key).kind.ownable(), !ty(key).kind.weekly(), "{key}");
+    }
+    let params = part.params();
+    assert_eq!(
+        (
+            params.calendar().week_days.get(),
+            params.calendar().month_weeks.get()
+        ),
+        (7, 4)
+    );
+    let monsters = params.monsters().unwrap();
+    assert_eq!(
+        (
+            monsters.growth_bp(),
+            monsters.growth_unit(),
+            monsters.growth_cap()
+        ),
+        (1000, 16, 4000)
+    );
+    let months = params.months().unwrap();
+    let creature = |key: &str| core.creature_by_key(&format!("base:{key}")).unwrap();
+    let twelve = [
+        "serpent_fly",
+        "griffin",
+        "centaur",
+        "gremlin",
+        "hobgoblin",
+        "gog",
+        "troglodyte",
+        "harpy",
+        "lizardman",
+        "pegasus",
+        "wolf_rider",
+        "wight",
+    ]
+    .map(creature);
+    assert_eq!(months.odds, [5, 4, 1]);
+    assert_eq!(months.creatures, twelve);
+    assert_eq!(
+        months.monster,
+        part.object_type_by_key("base:monster").unwrap()
+    );
+    assert_eq!(
+        (
+            months.spawn_one_in.get(),
+            months.spawn_factor.get(),
+            months.spawn_aggression
+        ),
+        (200, 2, [1, 10])
+    );
+}
+
 #[test]
 fn the_base_pack_types_the_rewards_of_increment_7() {
     // E08 T61a (increment 7's design note §8): the classes' kinds and parameters as the survey read
@@ -877,6 +1052,21 @@ fn parses_every_field() {
         aggression = [[-4, -4], [1, 7]]
         count_words = [5, 10]
         price_resource = "coin"
+        growth_bp = 1000
+        growth_unit = 16
+        growth_cap = 4000
+
+        [params.calendar]
+        week_days = 7
+        month_weeks = 4
+
+        [params.months]
+        odds = [5, 4, 1]
+        creatures = ["imp", "other:gog"]
+        monster = "monster"
+        spawn_one_in = 200
+        spawn_factor = 2
+        spawn_aggression = [1, 10]
 
         [[terrain]]
         terrain = "plain"
@@ -1182,11 +1372,26 @@ fn parses_every_field() {
                 aggression: vec![[-4, -4], [1, 7]],
                 count_words: vec![5, 10],
                 price_resource: k("p:coin"),
+                growth_bp: 1000,
+                growth_unit: NonZeroU16::new(16).unwrap(),
+                growth_cap: NonZeroU32::new(4000).unwrap(),
             }),
             fly_cost: [cost(140), cost(140), cost(120), cost(100)],
             water_walk_cost: [cost(150), cost(140), cost(125), cost(110)],
             sea_points: [1500, 2250, 3000, 3750],
             sea_ground: [2, 3],
+            calendar: CalendarParams {
+                week_days: NonZeroU8::new(7).unwrap(),
+                month_weeks: NonZeroU8::new(4).unwrap(),
+            },
+            months: Some(MonthParamsDef {
+                odds: [5, 4, 1],
+                creatures: vec![k("p:imp"), k("other:gog")],
+                monster: k("p:monster"),
+                spawn_one_in: NonZeroU16::new(200).unwrap(),
+                spawn_factor: NonZeroU8::new(2).unwrap(),
+                spawn_aggression: [1, 10],
+            }),
         })
     );
     assert_eq!(
@@ -1208,6 +1413,89 @@ fn parses_every_field() {
         }]
     );
     assert_eq!(parse("").unwrap(), AdventurePack::new(manifest("p")));
+}
+
+// E08 T83a: increment 9's seven kind tables, their references resolved in the pack's namespace.
+#[test]
+fn parses_the_economy_kinds() {
+    let kind = |table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+        );
+        parse(&text).unwrap().object_types.remove(0).kind
+    };
+    let k = key_of;
+    assert_eq!(
+        kind("mine = { resource = \"coin\", daily = 2 }"),
+        ObjectKindDef::Mine {
+            resource: k("p:coin"),
+            daily: 2,
+            battle_terrain: None,
+        }
+    );
+    assert_eq!(
+        kind("mine = { resource = \"other:gem\", daily = 1, battle_terrain = \"cave\" }"),
+        ObjectKindDef::Mine {
+            resource: k("other:gem"),
+            daily: 1,
+            battle_terrain: Some(k("p:cave")),
+        }
+    );
+    assert_eq!(
+        kind(
+            "abandoned_mine = { guards = \"imp\", count = [100, 200], battle_terrain = \"cave\" }"
+        ),
+        ObjectKindDef::AbandonedMine {
+            guards: k("p:imp"),
+            count: [100, 200],
+            battle_terrain: Some(k("p:cave")),
+        }
+    );
+    assert_eq!(
+        kind("abandoned_mine = { guards = \"imp\", count = [1, 2] }"),
+        ObjectKindDef::AbandonedMine {
+            guards: k("p:imp"),
+            count: [1, 2],
+            battle_terrain: None,
+        }
+    );
+    assert_eq!(
+        kind("lighthouse = { sea_points = 500 }"),
+        ObjectKindDef::Lighthouse { sea_points: 500 }
+    );
+    assert_eq!(
+        kind(
+            "shipyard = { price = { coin = 10, \"other:gem\" = 1 }, boat_type = 1, offsets = [[-2, 0], [0, -1]] }"
+        ),
+        ObjectKindDef::Shipyard {
+            price: vec![(k("p:coin"), 10), (k("other:gem"), 1)],
+            boat_type: 1,
+            offsets: vec![(-2, 0), (0, -1)],
+        }
+    );
+    assert_eq!(
+        kind("windmill = { resources = [\"coin\", \"other:gem\"], amount = [3, 6] }"),
+        ObjectKindDef::Windmill {
+            resources: vec![k("p:coin"), k("other:gem")],
+            amount: [3, 6],
+        }
+    );
+    assert_eq!(
+        kind("water_wheel = { resource = \"coin\", first = 500, later = 1000 }"),
+        ObjectKindDef::WaterWheel {
+            resource: k("p:coin"),
+            first: 500,
+            later: 1000,
+        }
+    );
+    assert_eq!(
+        kind(
+            "garden = { gifts = [{ resource = \"other:gem\", amount = 5 }, { resource = \"coin\", amount = 500 }] }"
+        ),
+        ObjectKindDef::Garden {
+            gifts: vec![(k("other:gem"), 5), (k("p:coin"), 500)],
+        }
+    );
 }
 
 // E08 T61a: increment 7's kind tables, their references resolved in the pack's namespace.
@@ -1535,7 +1823,7 @@ fn rejects_malformed_files() {
     assert!(syntax(&object(
         "ground = { battlefield = \"f\", no_native = 1 }"
     )));
-    let prices = "fly_cost = [1, 1, 1, 1]\nwater_walk_cost = [1, 1, 1, 1]\nsea_points = [1, 1, 1, 1]\nsea_ground = [1, 1]";
+    let prices = "fly_cost = [1, 1, 1, 1]\nwater_walk_cost = [1, 1, 1, 1]\nsea_points = [1, 1, 1, 1]\nsea_ground = [1, 1]\ncalendar = { week_days = 7, month_weeks = 4 }";
     assert!(syntax(&format!(
         "[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []\nfly_cost = [1, 1, 1]"
     )));
@@ -1586,6 +1874,75 @@ fn rejects_malformed_files() {
     }
     assert!(syntax("[[difficulty]]\nhuman = {}"));
     assert!(syntax("[[difficulty]]\nhuman = { a = -1 }\ncomputer = {}"));
+    // E08 T83a: the calendar required, its counts above 0; the months' fields and references;
+    // the growth's fields with the monsters'; increment 9's kinds' references and fields.
+    assert!(syntax(
+        &full.replace("\ncalendar = { week_days = 7, month_weeks = 4 }", "")
+    ));
+    assert!(syntax(&full.replace("week_days = 7", "week_days = 0")));
+    assert!(syntax(&full.replace("month_weeks = 4", "month_weeks = 0")));
+    let months = |fields: &str| format!("{full}\n[params.months]\n{fields}");
+    let fine = "odds = [5, 4, 1]\ncreatures = [\"c\"]\nmonster = \"m\"\nspawn_one_in = 200\nspawn_factor = 2\nspawn_aggression = [1, 10]";
+    assert!(
+        parse(&months(fine))
+            .unwrap()
+            .params
+            .unwrap()
+            .months
+            .is_some()
+    );
+    assert!(syntax(&months(
+        &fine.replace("spawn_one_in = 200", "spawn_one_in = 0")
+    )));
+    assert!(syntax(&months(
+        &fine.replace("spawn_factor = 2", "spawn_factor = 0")
+    )));
+    assert!(syntax(&months(
+        &fine.replace("odds = [5, 4, 1]", "odds = [5, 4]")
+    )));
+    assert!(syntax(&months("odds = [5, 4, 1]")));
+    assert!(key(&months(&fine.replace("[\"c\"]", "[\"Bad\"]"))));
+    assert!(key(&months(&fine.replace("\"m\"", "\"Bad\""))));
+    let growth = "aggression = []\ncount_words = []\nprice_resource = \"g\"\ngrowth_bp = 1000\ngrowth_unit = 16\ngrowth_cap = 4000";
+    let monsters = |fields: &str| format!("{full}\n[params.monsters]\n{fields}");
+    assert!(
+        parse(&monsters(growth))
+            .unwrap()
+            .params
+            .unwrap()
+            .monsters
+            .is_some()
+    );
+    assert!(syntax(&monsters(&growth.replace("\ngrowth_bp = 1000", ""))));
+    assert!(syntax(&monsters(
+        &growth.replace("growth_unit = 16", "growth_unit = 0")
+    )));
+    assert!(syntax(&monsters(
+        &growth.replace("growth_cap = 4000", "growth_cap = 0")
+    )));
+    for kind in [
+        "mine = { resource = \"Bad\", daily = 1 }",
+        "mine = { resource = \"a\", daily = 1, battle_terrain = \"Bad\" }",
+        "abandoned_mine = { guards = \"Bad\", count = [1, 2] }",
+        "abandoned_mine = { guards = \"a\", count = [1, 2], battle_terrain = \"Bad\" }",
+        "shipyard = { price = { Bad = 1 }, boat_type = 1, offsets = [] }",
+        "windmill = { resources = [\"Bad\"], amount = [1, 2] }",
+        "water_wheel = { resource = \"Bad\", first = 1, later = 1 }",
+        "garden = { gifts = [{ resource = \"Bad\", amount = 1 }] }",
+    ] {
+        assert!(key(&object(kind)), "{kind}");
+    }
+    for kind in [
+        "mine = { resource = \"a\" }",
+        "lighthouse = { sea_points = -1 }",
+        "shipyard = { price = {}, boat_type = 256, offsets = [] }",
+        "shipyard = { price = {}, boat_type = 1, offsets = [[1]] }",
+        "shipyard = { price = {}, boat_type = 1, offsets = [[128, 0]] }",
+        "windmill = { resources = [], amount = [1] }",
+        "garden = { gifts = [{ resource = \"a\" }] }",
+    ] {
+        assert!(syntax(&object(kind)), "{kind}");
+    }
 }
 
 #[test]

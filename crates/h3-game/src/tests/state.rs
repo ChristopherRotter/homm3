@@ -90,6 +90,7 @@ fn the_setup_stream_draws_the_objects_contents_after_the_armies_and_experience()
         monster: None,
         guards: None,
         holds: Default::default(),
+        owner: None,
     });
     let mut amounts = Vec::new();
     for seed in 0..40 {

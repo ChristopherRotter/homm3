@@ -13,39 +13,44 @@ with A-33's re-read; `adventure/e08-t80`, `cross-lane`: batch E9 scored, survey 
 withdrawn). T81 in two, the ADRs first (decision 211): T81a done (`shared/e08-t81a`: the three
 drafts applied, ADR-0015's core row, the index, the glossary); T81b done (decision 212: whole;
 `shared/e08-t81b`, `cross-lane`: the four kinds, the two parameters, the creature's abilities
-outside battle, the packs; core ruleset hash v51, pack format v50). Every entry's acceptance
-includes the Definition of Done (`docs/05-testing.md`).
+outside battle, the packs; core ruleset hash v51, pack format v50). Round 5: T82 and T83a done
+together (decision 213; `adventure/e08-t82-t83a`, `cross-lane`, decision 214: the day's income,
+spell points and the Lighthouses' input; the seven kinds and parameters, the import), T83b next.
+Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T82 — `h3-heroes`: the day's income, the day's spell points, the Lighthouses' input**
+**E08 T83b — `h3-adventure`: the state and the views**
 
-- **Scope:** design §2 and §3 (round 5; small): `daily_income(details, core)` (ADR-0013 point
-  16.1, GAM-RES-004: each worn copy counting, a worn combination's parts too, a skill level's
-  amount grown by a skill specialty on it in exact integers, the specialty's; saturating),
-  `day_mana(details, core)` (point 16.2, HER-MAN-002: `full_mana`, the highest `mana_regain` else
-  `base_mana_regain`, a specialist's growth `+ regain_specialist_bonus` only with the skill, each
-  worn type's `extra_mana_regain` once, points above the maximum kept) and `sea_day_points`'
-  `lighthouse_points` (point 13.6, HER-ADV-009 amended; the adventure passes 0 until T84). The
-  rules in the catalog with T81b's gap-fill sources and batch E9's rows (E9-7, E9-12) as
-  observations.
-- **Inputs:** design §2, §3; ADR-0013 points 3, 13.6, 16; survey `E08-economy.md` §8, §12; T81b's
-  record in `E08-log.md` (the kinds and parameters as built); T71's record (the sea points'
-  pattern).
-- **Depends on:** T81b (`shared/e08-t81b` merged). **Status:** ready after that merge; its cut
-  (alone or with T83, design §18's round 5) confirmed with the user at its start.
-
-**E08 T83 — `h3-map` and `h3-adventure`: the import, the kinds and the part, the state, the views**
-
-- **Scope:** design §4, §5, §6, §12 (round 5): map import v15 (classes 42, 53, 55, 87, 109, 112,
-  220; the owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater`), the seven
-  kinds and the calendar, growth, months and income parameters (adventure ruleset part v14), the
-  owners, guards, weekly marks, fractions and added objects in the state (adventure state hash
-  v17), the views (ADV-OWN-003, ADV-FOG-006 amended); likely cut in two at its start.
-- **Inputs:** design §4 to §6, §12, §16; ADR-0016 points 1, 3 to 6; survey `E08-economy.md`; T72's
-  record in `E08-log.md` (increment 8's import, kinds and state) as the pattern.
-- **Depends on:** T81b (merged). **Status:** ready after that merge; its cut confirmed with the
-  user at its start.
+- **Scope:** design §6 and §12 (round 5's second half; decision 213): the static map's
+  `ownables` and `weeklies`, `Resolved::{Mine { resource, guards }, BoatTile(Pos)}` (the
+  abandoned mine's draws: its resource among `Holds::Resources`, its Troglodytes' count; the
+  Shipyard's boat tile, ADV-SHY-001), the state's `owners` from `ObjectSetup::owner`
+  (ADV-OWN-002), a mine's guards in `army_left`, `weekly` (each weekly object's contents and
+  marks, the first week's drawn when the game is built), `fractions`, the added objects in
+  `Occupancy` (empty until T85a's month), their invariants (`check_owners`, `check_weekly`,
+  `check_added`) and hash (adventure state hash v18); the views (`ObjectView`'s `owner`,
+  `production`, `guards`, `visited`, `boat_tile`; ADV-OWN-003, ADV-FOG-006 amended); the start's
+  reveal around every owned object (A-33 withdrawn, ADR-0016 point 5). Likely cut in two at its
+  start (the static draws and owners; the weekly, fractions, added objects and the views).
+- **Inputs:** design §6, §12; ADR-0016 points 1, 4 to 6; survey `E08-economy.md` §2, §3.4, §5.1,
+  §9; T83a's record in `E08-log.md` (the kinds, the setup's fields as built); T72's record (the
+  boats' state, the pattern).
+- **Depends on:** T83a (`adventure/e08-t82-t83a` merged). **Status:** ready after that merge; its
+  cut confirmed with the user at its start.
 
 ## Inbox
+
+- 2026-10-31 (T83a's scoped verify; **a failing property case, pre-existing**): the plans'
+  `every_step_keeps_the_commands_invariants` found, under the coverage run's fresh draws, a
+  walker (no flight, no water walk) whose move ends visiting a red border gate (`ab:border_gate_red`,
+  an AB object on an RoE plan) whose visitable tile is water, from the shore: `check_sea_move`'s
+  "no visit of an object on water but from a boat" (ADV-PIK-018, D-46) fails at `play.rs` 2044.
+  The same case fails on `master` (ac0ee66), so T83a did not cause it; its line was kept out of
+  the regression file so CI stays green. To reproduce, add `cc
+  81434edd854163caef5318a576a6c5b31229491f9cd467eafa5dcc68882ccef2` to
+  `crates/h3-map/proptest-regressions/tests/play.txt`. To decide (with the user): whether a key
+  guard's or gate's visit from the shore follows ADV-PIK-018 (no visit; the original's case 9 and
+  212 on water was not read) or the oracle allows it; then the fix in the neighbour visit's path
+  (`check_step`'s `visit_at`) or in the oracle, and the line kept.
 
 - 2026-10-31 (the client lane, E17 M5 T8b2, review R7-8; for information, nothing to do): the
   harness checks the starting bonus Gold it sets. `h3drive.gold_bonus` (a recipe's `gold = true`,

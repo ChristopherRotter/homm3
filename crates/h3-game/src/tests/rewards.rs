@@ -29,6 +29,7 @@ pub(super) fn reward_at(rules: &GameRuleset, k: &str, holds: Holds) -> ObjectSet
         monster: None,
         guards: None,
         holds,
+        owner: None,
     }
 }
 

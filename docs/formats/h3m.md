@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72; `MAP_IMPORT_VERSION` 14)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a; `MAP_IMPORT_VERSION` 15)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -239,6 +239,23 @@ content and draws nothing; it rejects what the current increment cannot represen
   2 × 5 for `AVXfw0` to `AVXfw7`, read by E08 T67). Unsupported: a hero object on water
   (`HeroOnWater`, ADV-SEA-007, D-44). The generated maps' blockers (`h3-map`'s `tests/play.rs`)
   moved from class 124 to 118 (a crater), which stays a blocker.
+- **Increment 9's objects** (v15, E08 T83a, increment 9's design note §4; ADV-OBJ-002): 53 by
+  subclass, 0 to 6 the mines by resource (`base:sawmill`, `alchemists_lab`, `ore_pit`,
+  `sulfur_dune`, `crystal_cavern`, `gem_pond`, `gold_mine`), 7 `base:abandoned_mine` (a subclass
+  past 7 is `Subclass`), 220 (SoD) `base:abandoned_mine` whatever its subclass (the original's
+  53.7), 42 `base:lighthouse`, 87 `base:shipyard`, 112 `base:windmill`, 109 `base:water_wheel`,
+  55 `base:mystical_garden`; 220 is ownable scenery as 53 (GAM-BAT-011). A mine's, Lighthouse's
+  and Shipyard's owner byte (`Body::Mine`, `Body::Owned`): `0xFF` none, else the player of that
+  colour, a colour nobody plays (or past the eight) refused (`ObjectOwner`, ADV-OWN-002); an
+  abandoned mine's set (`Body::AbandonedMine`): the first byte's bits 0 to 6 as the resources it
+  may draw (`Holds::Resources`, in the core's order; the other three bytes dropped, as the
+  original's loader), an empty set or bit 7 refused (`MineResources`, A-31, ADV-MIN-003).
+  Unsupported: an ownable object whose entrance is on water (`OwnedOnWater`). **The map's timed
+  events** (`RawMap::events`) become `GameSetup::events` in the map's order (GAM-CAL-004): the
+  players of their colours that play (a colour nobody plays left out), the human and computer
+  flags as read, the file's first day + 1, the interval, the resources without zeros, the index
+  for the message; none refused (more than a `u16` names is `Events`). The census's static layer
+  is validated in a game of the map's players (an owner is one).
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
@@ -341,7 +358,13 @@ on water. The sea's census: 118 boats on 41 maps (types 0, 1, 2: 20, 51, 47); 2 
 826 Sea Chests, 362 Shipwreck Survivors, 29 Ocean Bottles; 732 holes and 154 Favorable Winds,
 every winds picture in the table; the special grounds' census as T21b's (1 861, every picture in
 the table); 9 typed objects of one type on one anchor in the same 5 maps (grounds, holes and
-winds, which the setup allows).
+winds, which the setup allows). E08 T83a's run (import v15, the 160 shipped maps): every static
+layer imports and validates in a game of its map's players; the same 8 import and validate
+whole, the other outcomes as T61b's; no owner nobody plays, no empty or out-of-range abandoned
+mine set, no ownable object entered from water. Increment 9's census: 5 915 mines (60 owned at
+load), 158 abandoned mines (7 with one resource, 151 with two to six, none with all seven), 83
+Lighthouses (none owned), 331 Shipyards (1 owned), 780 Windmills, 430 Water Wheels, 286 Mystical
+Gardens; 666 timed events, 61 repeating, none for no player that plays.
 
 ## The subset we write (E04a T2)
 

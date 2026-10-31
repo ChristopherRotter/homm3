@@ -1037,6 +1037,19 @@ impl AdventureState {
         if setup.seats.len() != usize::from(setup.players) {
             return Err(SetupError::Seats(setup.seats.len()));
         }
+        // rule: ADV-OWN-002
+        for (index, object) in setup.map.objects.iter().enumerate() {
+            let ownable = object
+                .object_type
+                .and_then(|id| part.object_type(id))
+                .is_some_and(|ty| ty.kind.ownable());
+            if object
+                .owner
+                .is_some_and(|owner| !(ownable && owner.index() < usize::from(setup.players)))
+            {
+                return Err(SetupError::ObjectOwner(index));
+            }
+        }
         let mut seats = [Seat::default(); MAX_PLAYERS as usize];
         seats[..setup.seats.len()].copy_from_slice(&setup.seats);
         let unexplored = BitGrid::new(map.width(), map.height(), map.levels());

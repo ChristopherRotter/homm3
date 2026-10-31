@@ -13,7 +13,9 @@
 //! (checked), since E08 T62b2 the events: their flags and the tiles they lie on, and since E08 T72
 //! the sea: the boats by type, the sea's pickups by type, the holes and Favorable Winds (a hero on
 //! water is counted by its reason, `Unsupported::HeroOnWater`; a boat the setup refuses fails the
-//! static layer's validation).
+//! static layer's validation), and since E08 T83a increment 9's objects (their owners at load, the
+//! abandoned mines' sets) and the timed events; the static layer is validated in a game of the
+//! map's players (an owner must be one).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -198,13 +200,20 @@ fn check(
     }
     note(&map, peaks, name);
     let static_map = import_map(&map, rules).map_err(|e| format!("static layer: {e}"))?;
-    // The static layer alone, in a game of one player without heroes: its objects' contents are
-    // drawn as a game's are (E08 T12b).
+    // The static layer alone, in a game of the map's players without heroes: its objects'
+    // contents are drawn as a game's are (E08 T12b); since E08 T83a its owners are those players.
+    let players = map
+        .players
+        .iter()
+        .zip(0u8..)
+        .filter(|(player, _)| player.human || player.computer)
+        .map(|(player, colour)| PlayerSetup {
+            colour,
+            human: player.human,
+        })
+        .collect();
     let setup = GameSetup {
-        players: vec![PlayerSetup {
-            colour: 0,
-            human: true,
-        }],
+        players,
         difficulty: DEFAULT_DIFFICULTY,
         map: static_map,
         heroes: Vec::new(),
@@ -212,6 +221,7 @@ fn check(
         banned_skills: Vec::new(),
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
+        events: Vec::new(),
     };
     setup
         .validate(rules)
@@ -394,6 +404,7 @@ fn census(
     }
     events(setup, rules, &mut add);
     sea(setup, rules, &mut add);
+    economy(map, setup, rules, &mut add);
     let mut lying = BTreeMap::<(u16, u16, u8), usize>::new();
     let ground = |object: &&h3_adventure::ObjectSetup| {
         matches!(
@@ -460,6 +471,76 @@ fn sea(setup: &MapSetup, rules: &GameRuleset, add: &mut impl FnMut(&'static str,
             _ => {}
         }
     }
+}
+
+/// Counts increment 9's objects and the timed events (E08 T83a): the mines, those owned at
+/// load, the abandoned mines by the size of their set, the Lighthouses and the Shipyards (owned
+/// at load), the weekly objects by kind; the timed events, those for no player that plays and
+/// those that repeat.
+fn economy(
+    map: &RawMap,
+    setup: &MapSetup,
+    rules: &GameRuleset,
+    add: &mut impl FnMut(&'static str, usize),
+) {
+    for object in &setup.objects {
+        let Some(ty) = object
+            .object_type
+            .and_then(|ty| rules.adventure().object_type(ty))
+        else {
+            continue;
+        };
+        let owned = usize::from(object.owner.is_some());
+        match &ty.kind {
+            ObjectKind::Mine { .. } => {
+                add("economy: mines", 1);
+                add("economy: mines owned at load", owned);
+            }
+            ObjectKind::AbandonedMine { .. } => {
+                add("economy: abandoned mines", 1);
+                let size = match &object.holds {
+                    Holds::Resources(set) => set.len(),
+                    _ => 0,
+                };
+                let sizes = [
+                    "economy: abandoned mines of 1 resource",
+                    "economy: abandoned mines of 2 to 6 resources",
+                    "economy: abandoned mines of all 7 resources",
+                ];
+                add(sizes[usize::from(size > 1) + usize::from(size > 6)], 1);
+            }
+            ObjectKind::Lighthouse { .. } => {
+                add("economy: Lighthouses", 1);
+                add("economy: Lighthouses owned at load", owned);
+            }
+            ObjectKind::Shipyard { .. } => {
+                add("economy: Shipyards", 1);
+                add("economy: Shipyards owned at load", owned);
+            }
+            ObjectKind::Windmill { .. } => add("economy: Windmills", 1),
+            ObjectKind::WaterWheel { .. } => add("economy: Water Wheels", 1),
+            ObjectKind::Garden { .. } => add("economy: Mystical Gardens", 1),
+            _ => {}
+        }
+    }
+    let playing = map
+        .players
+        .iter()
+        .zip(0..)
+        .filter(|(player, _)| player.human || player.computer)
+        .fold(0u8, |bits, (_, colour)| bits | 1 << colour);
+    add("timed events", map.events.len());
+    add(
+        "timed events for no player that plays",
+        map.events
+            .iter()
+            .filter(|e| e.players & playing == 0)
+            .count(),
+    );
+    add(
+        "timed events that repeat",
+        map.events.iter().filter(|e| e.interval != 0).count(),
+    );
 }
 
 /// Counts the events (E08 T62b2, ADV-OBJ-007): how many, those that fire for a computer, those

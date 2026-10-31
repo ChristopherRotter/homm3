@@ -436,6 +436,7 @@ fn object(rules: &GameRuleset, key: &str, anchor: Pos, monster: MonsterSetup) ->
         monster: Some(monster),
         guards: None,
         holds: Default::default(),
+        owner: None,
     }
 }
 

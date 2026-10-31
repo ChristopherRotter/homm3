@@ -97,10 +97,46 @@ boats = "boats"
 # offered only when the player can pay: monster_join_for_gold 0x4A7250 (creature record +0x38, the
 # gold of the cost; compared with the owner's gold at 0x4A72A5). VCMI 1.7.5 CGCreature::joinDecision
 # (getRecruitCost(GOLD) * getStackCount()) agrees.
+# ADV-MON-013 (E08 T83a; read by the week's step from T85a): every week a monster's value, its count
+# in sixteenths plus its fraction, grows by a tenth, truncated, the result at most 4 000 creatures.
+# Code reading (survey E08-economy.md section 10.1): new_day_week_events 0x4C8BA5 to 0x4C8C00 adds a
+# tenth of the 16-bit value (count x 16 + bits 27 to 30) and caps it at 0xFA00; batch E9's E9-9
+# (51 and 97 after two weeks: the sixteenths, not VCMI's thousandths, D-49) and E9-10 (4 095
+# capped to 4 000, A-32) confirmed it. The wiki (Wandering creature) gives the same tenth.
 [params.monsters]
 aggression = [[-4, -4], [1, 7], [1, 10], [4, 10], [10, 10]]
 count_words = [5, 10, 20, 50, 100, 250, 500, 1000]
 price_resource = "gold"
+growth_bp = 1000
+growth_unit = 16
+growth_cap = 4000
+
+# GAM-CAL-002 (E08 T83a; read by the game's day advance from T85b): weeks of seven days, months of
+# four weeks. Code reading (survey E08-economy.md section 7.1): the date's three words (game
+# +0x1F63E day of the week 1 to 7, +0x1F640 week of the month 1 to 4, +0x1F642 the month), the
+# day's number ((month - 1) x 4 + week - 1) x 7 + day (map_timed_events 0x4CD91B); batch E9's E9-7
+# read (1, 1, 1), (1, 2, 1) and (1, 2, 2) on days 1, 8 and 9. VCMI and the wiki: the same calendar.
+[params.calendar]
+week_days = 7
+month_weeks = 4
+
+# GAM-CAL-003, ADV-MON-014 (E08 T83a; read by the month's step from T85a): the month's kind by a
+# draw of 1 to 10, 1 to 5 a normal month, 6 to 9 a month of a creature drawn among the twelve of
+# month_creatures 0x63E678 (Serpent Fly, Griffin, Centaur, Gremlin, Hobgoblin, Gog, Troglodyte,
+# Harpy, Lizardman, Pegasus, Wolf Rider, Wight: ids 104, 4, 14, 28, 85, 44, 70, 72, 100, 20, 86,
+# 60), 10 the Plague (new_month 0x4C8F5E; survey E08-economy.md section 7.4). In a creature's
+# month every free land tile gets, with one chance in 200 (random_between(1, 200) == 1), a monster
+# of the month's creature (placed as class 54: `monster`) whose count is twice a draw from the
+# creature's map range (creature +0x6C to +0x70) and whose aggression is drawn 1 to 10 (0x4C90D0
+# to 0x4C9236; survey section 10.2; D-50 as read: VCMI places free tiles / 200 with one draw of the
+# range). The wiki: a 0.5 % chance on any free land tile, a mood of 1 to 10.
+[params.months]
+odds = [5, 4, 1]
+creatures = ["serpent_fly", "griffin", "centaur", "gremlin", "hobgoblin", "gog", "troglodyte", "harpy", "lizardman", "pegasus", "wolf_rider", "wight"]
+monster = "monster"
+spawn_one_in = 200
+spawn_factor = 2
+spawn_aggression = [1, 10]
 
 # GAM-RES-002 (E08 T13a): the starting resources by the game's difficulty, from 0 (easy) to 4
 # (impossible), a human player's and a computer player's; the engine gives every player the human
@@ -886,3 +922,133 @@ name = "Hole"
 visit = "enter"
 from_above = true
 hole = {}
+
+# E08 T83a (increment 9's design note section 5): the mines (53 by subclass 0 to 6), ownable and
+# entered: the class is on neither object_classes_not_entered (0x63AA58) nor
+# object_classes_from_above (0x63AB00; survey E08-objects.md sections 2.1, 2.3). ADV-OWN-001,
+# ADV-MIN-002, GAM-RES-003 (their visits T84, the income T85b): the owner gains the daily amount at
+# each day's start, from the next (mine_daily_income 0x678288: wood 2, mercury 1, ore 2, sulfur 1,
+# crystal 1, gems 1, gold 1 000; mine_income 0x677978 the same for the six, gold a constant of
+# player_gold_income 0x4C7984; survey E08-economy.md sections 3.5, 8.1, 8.2; VCMI's
+# defaultQuantity and the wiki's Mine table agree; batch E9's E9-6 saw 1 000 gold and 2 ore a day).
+# GAM-BAT-001 amended: a battle on a crystal or gold mine's entrance is fought on the subterranean
+# (battle_setup_battlefield 0x46447B; the wiki and VCMI's "battleground": "subterranean" agree;
+# survey section 3.2).
+[[object_type]]
+id = "sawmill"
+name = "Sawmill"
+visit = "enter"
+from_above = false
+mine = { resource = "wood", daily = 2 }
+
+[[object_type]]
+id = "alchemists_lab"
+name = "Alchemist's Lab"
+visit = "enter"
+from_above = false
+mine = { resource = "mercury", daily = 1 }
+
+[[object_type]]
+id = "ore_pit"
+name = "Ore Pit"
+visit = "enter"
+from_above = false
+mine = { resource = "ore", daily = 2 }
+
+[[object_type]]
+id = "sulfur_dune"
+name = "Sulfur Dune"
+visit = "enter"
+from_above = false
+mine = { resource = "sulfur", daily = 1 }
+
+[[object_type]]
+id = "crystal_cavern"
+name = "Crystal Cavern"
+visit = "enter"
+from_above = false
+mine = { resource = "crystal", daily = 1, battle_terrain = "subterranean" }
+
+[[object_type]]
+id = "gem_pond"
+name = "Gem Pond"
+visit = "enter"
+from_above = false
+mine = { resource = "gems", daily = 1 }
+
+[[object_type]]
+id = "gold_mine"
+name = "Gold Mine"
+visit = "enter"
+from_above = false
+mine = { resource = "gold", daily = 1000, battle_terrain = "subterranean" }
+
+# ADV-MIN-003 (E08 T83a): the abandoned mine (53.7, and 220 the import types as it: the original's
+# object_class_values 0x63A6E4): its resource drawn when the game is built among the map's set, its
+# daily amount that resource's mine's; guarded by 100 to 200 Troglodytes (setup_map_objects
+# 0x4C18E6: slot 0 creature 70, random_between(100, 200); D-48 as read, VCMI's 100 to 199); its
+# battle on the subterranean (survey E08-economy.md sections 3.2, 3.4). Ownable and entered as a
+# mine.
+[[object_type]]
+id = "abandoned_mine"
+name = "Abandoned Mine"
+visit = "enter"
+from_above = false
+abandoned_mine = { guards = "troglodyte", count = [100, 200], battle_terrain = "subterranean" }
+
+# ADV-OWN-005, HER-ADV-009 (E08 T83a; the visit T84): the Lighthouse (42), ownable and entered;
+# each one a player owns adds 500 to its heroes' day's sea points (hero_max_land_movement 0x4E4A18:
+# count_owned_records 0x4BAE70 times movement_bonus_lighthouse 0x698B0C, 500 from movement.txt;
+# survey E08-economy.md section 4; the wiki: cumulative, Navigation does not scale it; batch E9's
+# E9-4 saw 2 500 with two).
+[[object_type]]
+id = "lighthouse"
+name = "Lighthouse"
+visit = "enter"
+from_above = false
+lighthouse = { sea_points = 500 }
+
+# ADV-SHY-001 to -003 (E08 T83a; the visit and BuildBoat T84): the Shipyard (87), ownable and
+# entered; a boat of type 1 for 1 000 gold and 10 wood on its boat tile, the first of twelve
+# (column, row) offsets from the entrance that is free water when the game is built
+# (shipyard_boat_offsets 0x67FAA8 in its order, shipyard_boat_tiles 0x500DE0; visit_shipyard
+# 0x49E2E0: the price test, create_boat 0x4BB250 with type 1; survey E08-economy.md sections 5.1,
+# 5.2; VCMI's CGShipyard::getOutOffsets the same twelve, its boat price 10 wood and 1 000 gold; the
+# wiki: 12 tiles, 1 000 and 10; batch E9's E9-5).
+[[object_type]]
+id = "shipyard"
+name = "Shipyard"
+visit = "enter"
+from_above = false
+shipyard = { price = { gold = 1000, wood = 10 }, boat_type = 1, offsets = [[-2, 0], [2, 0], [-2, 1], [2, 1], [-1, 1], [1, 1], [0, 1], [-2, -1], [2, -1], [-1, -1], [1, -1], [0, -1]] }
+
+# ADV-WEK-001 to -003 (E08 T83a; the visits T84, the week's step T85a): the weekly objects, owned by
+# nobody and entered (the user at ADV-Q39, E08 decision 214: the classes are on neither of the
+# original's two lists, 0x63AA58 and 0x63AB00, and batch E9's E9-8 hero stood on the Windmill's
+# entrance from day 2 to day 8). The Windmill (112): one of mercury, ore, sulfur, crystal and gems
+# (never wood or gold) and 3 to 6 of it, drawn at the new game and every week (setup_map_objects
+# 0x4C2040, the week's scan 0x4C8AE0; visit_windmill 0x4A7FC0). The Water Wheel (109): 500 gold the
+# first week, 1 000 every later one (0x4C1F78; visit_water_wheel 0x4A7DE0). The Mystical Garden
+# (55): 5 gems or 500 gold, one in two, drawn at the new game and every week (0x4C1965;
+# visit_garden 0x4A3BC0). Survey E08-economy.md section 9; VCMI's rewardable configs and the wiki's
+# three pages agree; batch E9's E9-8 confirmed the three.
+[[object_type]]
+id = "windmill"
+name = "Windmill"
+visit = "enter"
+from_above = false
+windmill = { resources = ["mercury", "ore", "sulfur", "crystal", "gems"], amount = [3, 6] }
+
+[[object_type]]
+id = "water_wheel"
+name = "Water Wheel"
+visit = "enter"
+from_above = false
+water_wheel = { resource = "gold", first = 500, later = 1000 }
+
+[[object_type]]
+id = "mystical_garden"
+name = "Mystical Garden"
+visit = "enter"
+from_above = false
+garden = { gifts = [{ resource = "gems", amount = 5 }, { resource = "gold", amount = 500 }] }

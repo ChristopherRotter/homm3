@@ -16,6 +16,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 
 use crate::layout::BookLayout;
+use h3_render::Bugs;
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Shown, State};
 
@@ -114,16 +115,32 @@ pub struct Hero {
 }
 
 /// What the book remembers between openings (`spell_book_memory` 0x684B40 and the tab 0x6A34F4):
-/// the hero, its last page, its last bookmark and tab. One per game (the client's session).
+/// the hero, its last page, its last bookmark and tab. One per game (the client's session), made
+/// in its profile ([`Memory::new`]; the default the client's).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Memory {
     hero: Option<u16>,
     page: u16,
     last: Option<Kind>,
     tab: u8,
-    /// The item the mouse was last over in any opening (0x684B4C, never reset: none at first, as
-    /// the executable's -1).
+    /// The item the mouse was last over (0x684B4C: none at first, as the executable's -1). The
+    /// executable never resets it, so a book opened again with the mouse resting on that item
+    /// shows no hint until the mouse reaches another (CLT-Q26, answered (b) at E17 M5 T8c): in
+    /// the client's profile each opening forgets it, [`Bugs::Original`] keeps it for the
+    /// comparisons.
     hovered: Option<u16>,
+    bugs: Bugs,
+}
+
+impl Memory {
+    /// A session's memory, the book drawn with `bugs`.
+    #[must_use]
+    pub fn new(bugs: Bugs) -> Self {
+        Self {
+            bugs,
+            ..Self::default()
+        }
+    }
 }
 
 /// The book open: its tab (school bits), bookmark and page.
@@ -215,14 +232,19 @@ pub enum Outcome {
 impl Book {
     /// Opens the book of `hero` in battle (the constructor 0x59BDF0 with the kind 0): a hero other
     /// than the last forgets the page, bookmark and tab; the combat bookmark shows, at the last
-    /// tab and page if the book closed on combat spells last, else on page 0 of all schools.
+    /// tab and page if the book closed on combat spells last, else on page 0 of all schools; in the
+    /// client's profile no item hovered yet ([`Memory`]'s `hovered`, CLT-Q26).
     pub fn open(memory: &mut Memory, hero: u16) -> Self {
         if memory.hero != Some(hero) {
             *memory = Memory {
                 hero: Some(hero),
                 hovered: memory.hovered,
+                bugs: memory.bugs,
                 ..Memory::default()
             };
+        }
+        if memory.bugs == Bugs::Fixed {
+            memory.hovered = None;
         }
         if memory.last == Some(Kind::Combat) {
             Self {
@@ -577,7 +599,7 @@ impl Open {
     }
 
     /// The mouse moved to `point` (0x59D6C4): when it is over another item than the last (the
-    /// memory's, never reset: [`Memory`]), the cursor's frame and the status line follow it: a
+    /// memory's: [`Memory`]), the cursor's frame and the status line follow it: a
     /// place's spell's hint, another item's own hint, nothing elsewhere. Whether anything changed.
     pub fn hover(
         &mut self,

@@ -13,6 +13,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_protocol::wire::{DamageRoll, Event, Side, Stack};
+use h3_render::Bugs;
 
 use super::{CountKey, GONE, Key, Live, LookKey, Member, Player, Pose, Sound, TintKey};
 use crate::battle_log::Logged;
@@ -390,7 +391,7 @@ impl Player<'_> {
 
     /// The stacks a hero's cast creates among its `effects` (E17 M5 T5a, §7.25): Summon
     /// Elemental's line (GENRLTXT 676, `summon_elemental` 0x5A72A1, written whether a stack is
-    /// made or not: CLT-Q33) and its stack shown in a dissolve of 75 ms steps; a clone set up
+    /// made or not: CLT-Q33, in the client's profile only when one is) and its stack shown in a dissolve of 75 ms steps; a clone set up
     /// without one (0x5A6E4F, its animation argument 0) and slid from its original's place in 16
     /// redraws of trunc(50 F), its offset the anchors' difference times (16 − i) / 16, truncated
     /// (0x5A6FDE to 0x5A7040), then standing in a redraw at once (0x5A7067); an original turned
@@ -484,7 +485,10 @@ impl Player<'_> {
                             self.cue(o, Sound::Spell(spell), false);
                             self.notices.push((self.clock.now, Notice::NoPlace));
                         }
-                        None => {
+                        // Summon Elemental's line, written before the stack is made
+                        // (0x5A72A1): the client writes none when nothing was made (CLT-Q33,
+                        // answered (b) at E17 M5 T8c), the original's for the comparisons.
+                        None if self.stage.bugs == Bugs::Original => {
                             let line = Logged::Summoned {
                                 side: u8::from(owner == Side::Defender),
                                 creature,
@@ -492,6 +496,7 @@ impl Player<'_> {
                             };
                             self.log.push((self.clock.now, line));
                         }
+                        None => {}
                     }
                     return true;
                 }

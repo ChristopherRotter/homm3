@@ -388,6 +388,33 @@ fn the_typed_classes_import_as_their_object_types() {
         let subclass = if class == 5 { 7 } else { 0 };
         cases.push((class, subclass, format!("base:{key}")));
     }
+    // E08 T83a: the mines by subclass, the abandoned mine (53.7; 220 below), the Lighthouse, the
+    // Shipyard and the three weekly objects.
+    for (subclass, key) in [
+        "sawmill",
+        "alchemists_lab",
+        "ore_pit",
+        "sulfur_dune",
+        "crystal_cavern",
+        "gem_pond",
+        "gold_mine",
+        "abandoned_mine",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let subclass = u32::try_from(subclass).unwrap();
+        cases.push((53, subclass, format!("base:{key}")));
+    }
+    for (class, key) in [
+        (42, "lighthouse"),
+        (87, "shipyard"),
+        (112, "windmill"),
+        (109, "water_wheel"),
+        (55, "mystical_garden"),
+    ] {
+        cases.push((class, 0, format!("base:{key}")));
+    }
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
@@ -406,6 +433,9 @@ fn the_typed_classes_import_as_their_object_types() {
                 rewards: Rewards::default(),
             },
             26 => Body::Event(EventBody::default()),
+            53 if *subclass < 7 => Body::Mine { owner: 0xFF },
+            53 => Body::AbandonedMine(Bits(vec![1, 0, 0, 0])),
+            42 | 87 => Body::Owned { owner: 0xFF },
             _ => Body::None,
         };
         let setup = import(&typed_map(*class, *subclass, body), &SOD).unwrap();
@@ -424,9 +454,22 @@ fn the_typed_classes_import_as_their_object_types() {
         fire.map.objects[0].object_type,
         part.object_type_by_key("base:campfire")
     );
-    // A class without a type stays a blocker.
-    let other = import(&typed_map(55, 0, Body::None), &SOD).unwrap();
+    // A class without a type stays a blocker (since E08 T83a the Mystical Garden is typed: a
+    // Magic Spring, 48, a later increment's, here).
+    let other = import(&typed_map(48, 0, Body::None), &SOD).unwrap();
     assert_eq!(other.map.objects[0].object_type, None);
+    // E08 T83a: SoD's abandoned mine (220) whatever its subclass; a mine's subclass past 7 is one
+    // its class does not define.
+    let abandoned = part.object_type_by_key("base:abandoned_mine");
+    let set = || Body::AbandonedMine(Bits(vec![1, 0, 0, 0]));
+    for subclass in [0, 7] {
+        let setup = import(&typed_map(220, subclass, set()), &SOD).unwrap();
+        assert_eq!(setup.map.objects[0].object_type, abandoned);
+    }
+    assert_eq!(
+        import(&typed_map(53, 8, set()), &SOD).unwrap_err(),
+        ImportError::Subclass(0)
+    );
 }
 
 // covers: ADV-OBJ-002, ADV-PIK-004
@@ -920,6 +963,18 @@ fn the_errors_and_reasons_read_well() {
             ImportError::BoatTile(3),
             "boat object 3 does not name one tile to lie on",
         ),
+        (
+            ImportError::ObjectOwner(3),
+            "object 3 belongs to a colour nobody plays",
+        ),
+        (
+            ImportError::MineResources(3),
+            "abandoned mine 3 may draw no resource of the seven",
+        ),
+        (
+            ImportError::Events(70_000),
+            "70000 timed events are too many",
+        ),
     ];
     for (error, text) in cases {
         assert_eq!(error.to_string(), text);
@@ -944,6 +999,10 @@ fn the_errors_and_reasons_read_well() {
             "a reward of more creature stacks than an army's slots",
         ),
         (Unsupported::HeroOnWater(0), "a hero placed on water"),
+        (
+            Unsupported::OwnedOnWater(0),
+            "an ownable object entered from water",
+        ),
     ];
     for (what, text) in reasons {
         assert_eq!(what.reason(), text);

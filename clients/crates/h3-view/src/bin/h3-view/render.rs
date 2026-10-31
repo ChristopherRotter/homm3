@@ -379,6 +379,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     ruleset: Some(&ruleset),
                     catalogue: &catalogue,
                     layout: &layout,
+                    // The comparisons draw the original's (CLT-Q35).
+                    bugs: Bugs::Original,
                 };
                 Some(crate::results::window(
                     &sources,

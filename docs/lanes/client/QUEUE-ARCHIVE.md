@@ -4,6 +4,25 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-31 (E17 M6 T1 done; the entry verbatim):
+
+### E17 M6 T1 — the answered slips (done 2026-10-31)
+
+- **Scope:** the user's answers of 2026-10-31 (the lane's `QUESTIONS-ANSWERED.md`), each fixed in
+  the client's profile with the original's kept for the comparisons only (`h3_render::Bugs`, as
+  the cursor's x): CLT-Q26 (the book's last hovered item forgotten at each opening,
+  `book::Memory`); CLT-Q27 (1) (a Faerie Dragon's aim given up posts the mouse, as the book's
+  does) and (2) (the aim's start keeps the cursor's answer: a click before a move casts there);
+  CLT-Q28 (1) (the box's text centred on the box) and (2) (the box framed in the acting side's
+  player's colours), with the user's directive (the epic's "Decisions"): every text the client
+  draws where the original sets it off its centre is centred (the readings of design §7.17 to
+  §7.24 and §9 checked for such places); CLT-Q33 (no log line when nothing was summoned);
+  CLT-Q35 (the result window says "fled" or "surrendered" only for the side that did).
+- **Acceptance:** each fix tested in the client's profile and the original's kept for the
+  comparisons (`drawn` all the same); `clients/scripts/check.sh` all gates; the design and M6's
+  review list name the fixes.
+- **Depends on:** nothing. **Status:** ready.
+
 - 2026-10-31 (E17 M5 T8c, M5's closure at the user's checkpoint; verbatim): the queue's M5
   header, T8's entry, the inbox entries M6's tasks took (T2 the stack's info, T6 the rest) and
   the informational notices, moved out unchanged.

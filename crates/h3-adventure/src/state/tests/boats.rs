@@ -93,6 +93,7 @@ fn object_on(tile: Pos, (blocked, visitable): (u64, u64)) -> ObjectSetup {
         monster: None,
         guards: None,
         holds: Default::default(),
+        owner: None,
     }
 }
 
@@ -143,6 +144,10 @@ fn the_setup_refuses_a_boat_where_no_boat_may_lie() {
     assert_eq!(
         SetupError::Boat(3).to_string(),
         "boat 3 lies where no boat may"
+    );
+    assert_eq!(
+        SetupError::ObjectOwner(4).to_string(),
+        "object 4 has an owner it may not have"
     );
 }
 

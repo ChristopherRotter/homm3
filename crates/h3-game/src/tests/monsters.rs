@@ -34,6 +34,7 @@ fn object(
         monster,
         guards: None,
         holds: Default::default(),
+        owner: None,
     }
 }
 

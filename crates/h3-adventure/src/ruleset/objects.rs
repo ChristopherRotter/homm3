@@ -188,6 +188,71 @@ pub enum ObjectKind {
     /// A hole (E08 T72, increment 8's design note §5): lies on its picture's tiles, never visited,
     /// blocks nothing; no landing onto a tile it lies on (ADV-SEA-003, T73).
     Hole,
+    /// A mine (E08 T83a, increment 9's design note §5; ADV-OWN-001, ADV-MIN-002): ownable,
+    /// entered; its owner gains `daily` of `resource` a day (GAM-RES-003). Its visit comes with
+    /// T84.
+    Mine {
+        /// The resource it produces.
+        resource: ResourceId,
+        /// Its amount a day.
+        daily: u32,
+        /// The terrain a battle on its entrance is fought on, whatever lies under it (the
+        /// subterranean for the original's crystal and gold mines, GAM-BAT-001); none: the tile's.
+        battle_terrain: Option<TerrainId>,
+    },
+    /// An abandoned mine (E08 T83a; ADV-MIN-003): a mine whose resource is drawn when the game is
+    /// built among the map's set, guarded by `count` of `guards`, drawn then too; its daily amount
+    /// the drawn resource's [`ObjectKind::Mine`]'s (the part holds exactly one for each resource,
+    /// [`super::AdventureRuleset::mine_daily`]).
+    AbandonedMine {
+        /// The guards' creature (the original's Troglodytes).
+        guards: CreatureTypeId,
+        /// The bounds of the guards' count, inclusive (100 to 200).
+        count: [u32; 2],
+        /// As a mine's.
+        battle_terrain: Option<TerrainId>,
+    },
+    /// A Lighthouse (E08 T83a; ADV-OWN-005): ownable, entered; each one a player owns adds its
+    /// points to the day's sea points of that player's heroes (HER-ADV-009).
+    Lighthouse {
+        /// The sea points it adds (500).
+        sea_points: u32,
+    },
+    /// A Shipyard (E08 T83a; ADV-SHY-001 to -003): ownable, entered; it builds a boat of its type
+    /// for the price on its boat tile, the first of its offsets from the entrance that is free
+    /// water when the game is built.
+    Shipyard {
+        /// The boat's price, by resource in the core's order.
+        price: Resources,
+        /// The built boat's type (a boat's kind, appearance only: [`crate::BoatSetup::kind`]).
+        boat_type: u8,
+        /// The (column, row) offsets from the entrance, tried in order, on its level.
+        offsets: Vec<(i8, i8)>,
+    },
+    /// A Windmill (E08 T83a; ADV-WEK-001): a weekly object; each week one of its resources and an
+    /// amount between the bounds, both drawn.
+    Windmill {
+        /// The resources one is drawn from, in the core's order.
+        resources: Vec<ResourceId>,
+        /// The bounds of the drawn amount, inclusive.
+        amount: [u32; 2],
+    },
+    /// A Water Wheel (E08 T83a; ADV-WEK-002): a weekly object; `first` of its resource in the
+    /// first week, `later` in every later one.
+    WaterWheel {
+        /// Its resource (the original's gold).
+        resource: ResourceId,
+        /// The first week's amount (500).
+        first: u32,
+        /// A later week's amount (1 000).
+        later: u32,
+    },
+    /// A Mystical Garden (E08 T83a; ADV-WEK-003): a weekly object; each week one of its gifts,
+    /// drawn with equal chances.
+    Garden {
+        /// The gifts (5 gems, 500 gold), in the pack's order.
+        gifts: Vec<(ResourceId, u32)>,
+    },
 }
 
 /// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
@@ -269,8 +334,16 @@ impl ObjectKind {
             Self::Pyramid(_) => Some(Effect::Pyramid),
             Self::Message { leaves } => Some(Effect::Message(*leaves)),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
-            // grounds of the sea and the holes are never visited.
+            // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
+            // kinds are typed; their visits come with T84.
             Self::Ground { .. } | Self::Event | Self::SeaGround | Self::Hole => None,
+            Self::Mine { .. }
+            | Self::AbandonedMine { .. }
+            | Self::Lighthouse { .. }
+            | Self::Shipyard { .. }
+            | Self::Windmill { .. }
+            | Self::WaterWheel { .. }
+            | Self::Garden { .. } => None,
         }
     }
 
@@ -281,6 +354,27 @@ impl ObjectKind {
             Self::RevealTerrain { terrains, price } => Some((terrains, price)),
             _ => None,
         }
+    }
+
+    /// Whether a player may own an object of this kind (E08 T83a; ADR-0016 point 1): a mine, an
+    /// abandoned mine, a Lighthouse, a Shipyard (the dwellings come with increment 10).
+    pub const fn ownable(&self) -> bool {
+        matches!(
+            self,
+            Self::Mine { .. }
+                | Self::AbandonedMine { .. }
+                | Self::Lighthouse { .. }
+                | Self::Shipyard { .. }
+        )
+    }
+
+    /// Whether an object of this kind is a weekly one (E08 T83a; ADV-WEK-001 to -003): a
+    /// Windmill, a Water Wheel, a Mystical Garden.
+    pub const fn weekly(&self) -> bool {
+        matches!(
+            self,
+            Self::Windmill { .. } | Self::WaterWheel { .. } | Self::Garden { .. }
+        )
     }
 }
 
@@ -439,6 +533,65 @@ pub enum ObjectKindDef {
     SeaGround,
     /// [`ObjectKind::Hole`] (E08 T72).
     Hole,
+    /// [`ObjectKind::Mine`] (E08 T83a): a core resource, a daily amount from 1 to [`MAX_GAIN`],
+    /// a core terrain; its type entered.
+    Mine {
+        /// The resource.
+        resource: ContentKey,
+        /// The amount a day.
+        daily: u32,
+        /// The battle's terrain.
+        battle_terrain: Option<ContentKey>,
+    },
+    /// [`ObjectKind::AbandonedMine`] (E08 T83a): a core creature, not a war machine; the count
+    /// from 1, low to high, at most the parameters' `max_stack_count`; its type entered.
+    AbandonedMine {
+        /// The guards' creature.
+        guards: ContentKey,
+        /// The bounds of the count.
+        count: [u32; 2],
+        /// The battle's terrain.
+        battle_terrain: Option<ContentKey>,
+    },
+    /// [`ObjectKind::Lighthouse`] (E08 T83a): points from 1; its type entered.
+    Lighthouse {
+        /// The sea points.
+        sea_points: u32,
+    },
+    /// [`ObjectKind::Shipyard`] (E08 T83a): a price as a University's, offsets distinct, at
+    /// least one, none (0, 0); its type entered.
+    Shipyard {
+        /// The price.
+        price: Vec<(ContentKey, u32)>,
+        /// The boat's type.
+        boat_type: u8,
+        /// The offsets.
+        offsets: Vec<(i8, i8)>,
+    },
+    /// [`ObjectKind::Windmill`] (E08 T83a): distinct core resources, at least one; the amount
+    /// from 1, low to high, at most [`MAX_GAIN`].
+    Windmill {
+        /// The resources.
+        resources: Vec<ContentKey>,
+        /// The bounds of the amount.
+        amount: [u32; 2],
+    },
+    /// [`ObjectKind::WaterWheel`] (E08 T83a): a core resource, both amounts from 1 to
+    /// [`MAX_GAIN`].
+    WaterWheel {
+        /// The resource.
+        resource: ContentKey,
+        /// The first week's amount.
+        first: u32,
+        /// A later week's amount.
+        later: u32,
+    },
+    /// [`ObjectKind::Garden`] (E08 T83a): at least one gift, each a core resource and an amount
+    /// from 1 to [`MAX_GAIN`].
+    Garden {
+        /// The gifts.
+        gifts: Vec<(ContentKey, u32)>,
+    },
 }
 
 /// An object type as a pack defines it.
@@ -472,7 +625,7 @@ pub(super) struct Scope<'a> {
 
 impl Scope<'_> {
     /// Rejects a key outside the pack's dependency closure.
-    fn reach(&self, key: &ContentKey) -> Result<(), AdventureCompileError> {
+    pub(super) fn reach(&self, key: &ContentKey) -> Result<(), AdventureCompileError> {
         if self.closure.contains(key.pack()) {
             Ok(())
         } else {
@@ -594,6 +747,12 @@ pub(super) fn compile_object_types(
         if matches!(kind, ObjectKind::Monster { .. }) && def.visit != Visit::Neighbour {
             return Err(invalid("a monster is not visited from a neighbour"));
         }
+        // An ownable object is entered (E08 T83a; survey `E08-economy.md` §2.6, §3.2): its
+        // visitor stands on the entrance, where its guards' battle is fought and from which a
+        // Shipyard's offsets count.
+        if kind.ownable() && def.visit != Visit::Enter {
+            return Err(invalid("an ownable object is not entered"));
+        }
         tables.types.push(ObjectType {
             key: def.key.clone(),
             name: def.name.clone(),
@@ -607,13 +766,41 @@ pub(super) fn compile_object_types(
 
 /// Checks, once every pack is in, that each [`Pickup::OneOf`] names resource pickups only, that
 /// each random monster has a creature to draw ([`random_monsters`]) and that a Pyramid's second
-/// creature leaves its first a slot of the army's (E08 T61a).
+/// creature leaves its first a slot of the army's (E08 T61a); since E08 T83a that no two mines
+/// produce one resource, that with an abandoned mine every core resource has its mine (its daily
+/// amount, [`super::AdventureRuleset::mine_daily`]) and that its guards fit a stack.
 pub(super) fn check_object_types(
     core: &Ruleset,
     types: &[ObjectType],
     excluded: &BTreeSet<CreatureTypeId>,
     army_slots: u8,
+    max_stack_count: u32,
 ) -> Result<(), AdventureCompileError> {
+    let invalid = |ty: &ObjectType, reason| AdventureCompileError::InvalidObjectType {
+        key: String::from(ty.key.as_str()),
+        reason,
+    };
+    let mut mines = BTreeSet::new();
+    for ty in types {
+        if let ObjectKind::Mine { resource, .. } = &ty.kind
+            && !mines.insert(*resource)
+        {
+            return Err(invalid(ty, "a second mine produces its resource"));
+        }
+    }
+    for ty in types {
+        if let ObjectKind::AbandonedMine { count, .. } = &ty.kind {
+            if mines.len() != core.resources().len() {
+                return Err(invalid(ty, "a core resource has no mine"));
+            }
+            if count[1] > max_stack_count {
+                return Err(invalid(
+                    ty,
+                    "an abandoned mine's count is above max_stack_count",
+                ));
+            }
+        }
+    }
     for ty in types {
         if let ObjectKind::Pyramid(pyramid) = &ty.kind {
             check_pyramid(pyramid, army_slots).map_err(|reason| {
@@ -817,7 +1004,129 @@ fn compile_kind(
         ObjectKindDef::Message { leaves } => Ok(ObjectKind::Message { leaves: *leaves }),
         ObjectKindDef::SeaGround => Ok(ObjectKind::SeaGround),
         ObjectKindDef::Hole => Ok(ObjectKind::Hole),
+        ObjectKindDef::Mine {
+            resource,
+            daily,
+            battle_terrain,
+        } => {
+            let resource = scope.resource(resource)?;
+            let battle_terrain = battle_terrain
+                .as_ref()
+                .map(|t| scope.terrain(t))
+                .transpose()?;
+            check_gain(*daily, "a mine's daily amount is 0 or above MAX_GAIN").map(|daily| {
+                ObjectKind::Mine {
+                    resource,
+                    daily,
+                    battle_terrain,
+                }
+            })
+        }
+        ObjectKindDef::AbandonedMine {
+            guards,
+            count,
+            battle_terrain,
+        } => {
+            let guards = scope.creature(guards)?;
+            let battle_terrain = battle_terrain
+                .as_ref()
+                .map(|t| scope.terrain(t))
+                .transpose()?;
+            if scope.war_machine(guards) {
+                Err("an abandoned mine's guards are a war machine")
+            } else if !(1 <= count[0] && count[0] <= count[1]) {
+                Err("an abandoned mine's count is not 1 <= low <= high")
+            } else {
+                Ok(ObjectKind::AbandonedMine {
+                    guards,
+                    count: *count,
+                    battle_terrain,
+                })
+            }
+        }
+        ObjectKindDef::Lighthouse { sea_points } => {
+            if *sea_points == 0 {
+                Err("a Lighthouse's sea points are 0")
+            } else {
+                Ok(ObjectKind::Lighthouse {
+                    sea_points: *sea_points,
+                })
+            }
+        }
+        ObjectKindDef::Shipyard {
+            price,
+            boat_type,
+            offsets,
+        } => {
+            let distinct = offsets.iter().collect::<BTreeSet<_>>().len() == offsets.len();
+            match compile_resources(scope, price)? {
+                Err(reason) => Err(reason),
+                Ok(_) if offsets.is_empty() => Err("a Shipyard has no offsets"),
+                Ok(_) if !distinct => Err("a Shipyard names an offset twice"),
+                Ok(_) if offsets.contains(&(0, 0)) => Err("a Shipyard's offset is its entrance"),
+                Ok(price) => Ok(ObjectKind::Shipyard {
+                    price,
+                    boat_type: *boat_type,
+                    offsets: offsets.clone(),
+                }),
+            }
+        }
+        ObjectKindDef::Windmill { resources, amount } => {
+            let list = resources
+                .iter()
+                .map(|r| scope.resource(r))
+                .collect::<Result<BTreeSet<_>, _>>()?;
+            if resources.is_empty() {
+                Err("a Windmill's resources are empty")
+            } else if list.len() != resources.len() {
+                Err("a Windmill names a resource twice")
+            } else if !(1 <= amount[0] && amount[0] <= amount[1] && amount[1] <= MAX_GAIN) {
+                Err("a Windmill's amount is not 1 <= low <= high <= MAX_GAIN")
+            } else {
+                Ok(ObjectKind::Windmill {
+                    resources: list.into_iter().collect(),
+                    amount: *amount,
+                })
+            }
+        }
+        ObjectKindDef::WaterWheel {
+            resource,
+            first,
+            later,
+        } => {
+            let resource = scope.resource(resource)?;
+            let reason = "a Water Wheel's amount is 0 or above MAX_GAIN";
+            check_gain(*first, reason).and_then(|first| {
+                check_gain(*later, reason).map(|later| ObjectKind::WaterWheel {
+                    resource,
+                    first,
+                    later,
+                })
+            })
+        }
+        ObjectKindDef::Garden { gifts } => {
+            let mut list = Vec::with_capacity(gifts.len());
+            for (resource, amount) in gifts {
+                list.push((scope.resource(resource)?, *amount));
+            }
+            if list.is_empty() {
+                Err("a Garden has no gifts")
+            } else if list.iter().any(|&(_, a)| !(1..=MAX_GAIN).contains(&a)) {
+                Err("a Garden's gift is 0 or above MAX_GAIN")
+            } else {
+                Ok(ObjectKind::Garden { gifts: list })
+            }
+        }
     })
+}
+
+/// An amount from 1 to [`MAX_GAIN`] (E08 T83a), else `reason`.
+fn check_gain(amount: u32, reason: &'static str) -> Result<u32, &'static str> {
+    if (1..=MAX_GAIN).contains(&amount) {
+        Ok(amount)
+    } else {
+        Err(reason)
+    }
 }
 
 /// An amount's bounds: from 1 to [`MAX_PICKUP_AMOUNT`], in order; the largest amount times the
@@ -848,11 +1157,15 @@ impl CanonicalHash for ObjectType {
     /// 1 reveal terrain, 2 reveal area, 3 key tent, 4 key guard, 5 key gate; since part v7 6
     /// monster, 7 ground; since part v12 8 chest, 9 artifact, 10 scroll, 11 gift, 12 Shrine,
     /// 13 Witch Hut, 14 Scholar, 15 University, 16 find, 17 Pandora's Box, 18 event, 19 Pyramid;
-    /// since part v13 20 message, 21 ground of the sea, 22 hole) and parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in
+    /// since part v13 20 message, 21 ground of the sea, 22 hole; since part v14 23 mine, 24
+    /// abandoned mine, 25 Lighthouse, 26 Shipyard, 27 Windmill, 28 Water Wheel, 29 Garden) and
+    /// parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in
     /// order; a monster's levels as 0 for none, else 1, low, high; a ground's battlefield key,
     /// since part v10 whether it takes the native price away; an artifact's classes as 0 for
     /// none, else 1 and the classes; a Witch Hut's two skill lists; a University's offers and
-    /// price; a message's whether it leaves; the others' fields in order).
+    /// price; a message's whether it leaves; a mine's and an abandoned mine's battle terrain as 0
+    /// for none, else 1 and the terrain; a Shipyard's price, boat type and offsets as length and
+    /// each column and row; a Garden's gifts as a price; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -960,6 +1273,76 @@ impl CanonicalHash for ObjectType {
             }
             ObjectKind::SeaGround => h.write_u8(21),
             ObjectKind::Hole => h.write_u8(22),
+            ObjectKind::Mine {
+                resource,
+                daily,
+                battle_terrain,
+            } => {
+                h.write_u8(23);
+                resource.hash_into(h);
+                h.write_u32(*daily);
+                hash_terrain(*battle_terrain, h);
+            }
+            ObjectKind::AbandonedMine {
+                guards,
+                count,
+                battle_terrain,
+            } => {
+                h.write_u8(24);
+                guards.hash_into(h);
+                h.write_u32(count[0]);
+                h.write_u32(count[1]);
+                hash_terrain(*battle_terrain, h);
+            }
+            ObjectKind::Lighthouse { sea_points } => {
+                h.write_u8(25);
+                h.write_u32(*sea_points);
+            }
+            ObjectKind::Shipyard {
+                price,
+                boat_type,
+                offsets,
+            } => {
+                h.write_u8(26);
+                hash_resources(price, h);
+                h.write_u8(*boat_type);
+                h.write_len(offsets.len());
+                for &(column, row) in offsets {
+                    h.write_i32(i32::from(column));
+                    h.write_i32(i32::from(row));
+                }
+            }
+            ObjectKind::Windmill { resources, amount } => {
+                h.write_u8(27);
+                resources.hash_into(h);
+                h.write_u32(amount[0]);
+                h.write_u32(amount[1]);
+            }
+            ObjectKind::WaterWheel {
+                resource,
+                first,
+                later,
+            } => {
+                h.write_u8(28);
+                resource.hash_into(h);
+                h.write_u32(*first);
+                h.write_u32(*later);
+            }
+            ObjectKind::Garden { gifts } => {
+                h.write_u8(29);
+                hash_resources(gifts, h);
+            }
+        }
+    }
+}
+
+/// A battle terrain as 0 for none, else 1 and the terrain (E08 T83a).
+fn hash_terrain(terrain: Option<TerrainId>, h: &mut StateHasher) {
+    match terrain {
+        None => h.write_u8(0),
+        Some(terrain) => {
+            h.write_u8(1);
+            terrain.hash_into(h);
         }
     }
 }

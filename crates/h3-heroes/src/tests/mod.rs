@@ -741,6 +741,7 @@ proptest! {
 mod artifacts;
 mod change;
 mod choice;
+mod day;
 mod derive;
 mod grant;
 mod level;

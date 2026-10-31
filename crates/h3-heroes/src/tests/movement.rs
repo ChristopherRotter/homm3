@@ -341,7 +341,7 @@ fn the_sea_points_are_the_tables_entry_at_the_navigation_level() {
     // Exact integers in both profiles (ADR-0013 point 13.6).
     for r in both(sea_pack(vec![], false)) {
         let points = |skills: &[(&str, u8)], worn: &[&str]| {
-            sea_points(&hero(&r, 10, skills, worn), &r, &SEA_TABLE)
+            sea_points(&hero(&r, 10, skills, worn), &r, &SEA_TABLE, 0)
         };
         // Without Navigation 1 500, whatever the army or the land's Logistics.
         assert_eq!(points(&[], &[]), 1500);
@@ -355,7 +355,7 @@ fn the_sea_points_are_the_tables_entry_at_the_navigation_level() {
         assert_eq!(points(&[("t:navigation", 3)], &["t:hook"]), 3750);
         // A table the adventure gives otherwise is read as given.
         let advanced = hero(&r, 1, &[("t:navigation", 2)], &[]);
-        assert_eq!(sea_points(&advanced, &r, &[1, 2, 3, 4]), 3);
+        assert_eq!(sea_points(&advanced, &r, &[1, 2, 3, 4], 0), 3);
     }
 }
 
@@ -364,7 +364,7 @@ fn the_sea_points_are_the_tables_entry_at_the_navigation_level() {
 fn a_navigation_specialist_adds_its_share_of_the_first_entry_with_the_skill() {
     for r in both(sea_pack(navigation_specialist(), false)) {
         let points = |level: u8, skills: &[(&str, u8)], worn: &[&str]| {
-            sea_points(&hero(&r, level, skills, worn), &r, &SEA_TABLE)
+            sea_points(&hero(&r, level, skills, worn), &r, &SEA_TABLE, 0)
         };
         // Sylvia at level 10: Basic Navigation 3 000 (2 250 + 750), none without the skill.
         assert_eq!(points(10, &[("t:navigation", 1)], &[]), 3000);
@@ -383,10 +383,10 @@ fn a_navigation_specialist_adds_its_share_of_the_first_entry_with_the_skill() {
             &[("t:navigation", 1), ("t:logistics", 1)],
             &[],
         );
-        assert_eq!(sea_points(&other, &logistics, &SEA_TABLE), 2250);
+        assert_eq!(sea_points(&other, &logistics, &SEA_TABLE, 0), 2250);
         // The share's ⌊⌋ is taken once, of the exact product.
         let third = hero(&r, 3, &[("t:navigation", 1)], &[]);
-        assert_eq!(sea_points(&third, &r, &[7, 0, 0, 0]), 1);
+        assert_eq!(sea_points(&third, &r, &[7, 0, 0, 0], 0), 1);
     }
 }
 
@@ -398,33 +398,50 @@ fn the_sea_artifacts_add_once_per_type_and_the_admirals_hat_boards_free() {
         // Batch E8's E8-10: Advanced Navigation and the Necklace 4 000; the Sea Captain's Hat
         // alone 2 000.
         assert_eq!(
-            sea_points(&d(&[("t:navigation", 2)], &["t:band"]), &r, &SEA_TABLE),
+            sea_points(&d(&[("t:navigation", 2)], &["t:band"]), &r, &SEA_TABLE, 0),
             4000
         );
-        assert_eq!(sea_points(&d(&[], &["t:helm"]), &r, &SEA_TABLE), 2000);
+        assert_eq!(sea_points(&d(&[], &["t:helm"]), &r, &SEA_TABLE, 0), 2000);
         // Two copies count once; the backpack not (the test hero carries a helm there).
         assert_eq!(
-            sea_points(&d(&[], &["t:band", "t:band"]), &r, &SEA_TABLE),
+            sea_points(&d(&[], &["t:band", "t:band"]), &r, &SEA_TABLE, 0),
             2500
         );
-        assert_eq!(sea_points(&d(&[], &[]), &r, &SEA_TABLE), 1500);
+        assert_eq!(sea_points(&d(&[], &[]), &r, &SEA_TABLE, 0), 1500);
         // The Admiral's Hat: 3 000 through its parts, and free boarding; its parts worn apart
         // give the same points and no free boarding (the original tests the combination).
         let admiral = d(&[], &["t:circle"]);
-        assert_eq!(sea_points(&admiral, &r, &SEA_TABLE), 3000);
+        assert_eq!(sea_points(&admiral, &r, &SEA_TABLE, 0), 3000);
         assert!(free_boarding(&admiral, &r));
         let apart = d(&[], &["t:band", "t:helm"]);
-        assert_eq!(sea_points(&apart, &r, &SEA_TABLE), 3000);
+        assert_eq!(sea_points(&apart, &r, &SEA_TABLE, 0), 3000);
         assert!(!free_boarding(&apart, &r));
         assert!(!free_boarding(&d(&[("t:navigation", 3)], &[]), &r));
         // The sum saturates.
         let table = [u32::MAX - 100, 0, 0, 0];
-        assert_eq!(sea_points(&admiral, &r, &table), u32::MAX);
+        assert_eq!(sea_points(&admiral, &r, &table, 0), u32::MAX);
     }
     // A specialist's share saturates too.
     let r = compile(sea_pack(navigation_specialist(), false)).unwrap();
     let veteran = hero(&r, u8::MAX, &[("t:navigation", 1)], &[]);
-    assert_eq!(sea_points(&veteran, &r, &[u32::MAX, 0, 0, 0]), u32::MAX);
+    assert_eq!(sea_points(&veteran, &r, &[u32::MAX, 0, 0, 0], 0), u32::MAX);
+}
+
+// covers: HER-ADV-009
+#[test]
+fn the_lighthouses_points_come_last_never_grown_by_navigation() {
+    // E08 T82 (ADR-0013 point 13.6): the adventure's input, 500 for each owned Lighthouse.
+    for r in both(sea_pack(navigation_specialist(), false)) {
+        let points = |skills: &[(&str, u8)], worn: &[&str], lighthouses: u32| {
+            sea_points(&hero(&r, 10, skills, worn), &r, &SEA_TABLE, lighthouses)
+        };
+        assert_eq!(points(&[], &[], 500), 2000);
+        assert_eq!(points(&[], &[], 1000), 2500);
+        // After the specialist's share and the artifacts', added as given.
+        assert_eq!(points(&[("t:navigation", 1)], &["t:band"], 1000), 5000);
+        // Saturating.
+        assert_eq!(points(&[("t:navigation", 3)], &[], u32::MAX - 1), u32::MAX);
+    }
 }
 
 // covers: HER-ADV-009

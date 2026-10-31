@@ -2140,7 +2140,8 @@ again; built: `h3_view::book`, `ui`'s new kinds, the layout's `[book]`, the bina
   turns the book (page 0 of a new tab or bookmark); the close closes it. Keys (scan codes):
   Escape and Enter close, A and C take a bookmark, the left and right arrows turn a page where
   its corner shows, up and down take the tab above or below (round to the other end; 0x641DA4,
-  0x641DB8). A move over another item than the last (0x684B4C, never reset) sets the default
+  0x641DB8). A move over another item than the last (0x684B4C, never reset; the client's forgets
+  it at each opening, CLT-Q26, the original's for the comparisons) sets the default
   cursor (`crdeflt.def` frame 1 over an item, 0 elsewhere) and the status line: over a place its
   spell's description at the hero's mastery to its first line break with ` (<level>)`
   (0x59BAA0), over the other items their `Help.txt` hints (records 450 to 460, 0x6A52D0), else
@@ -2245,7 +2246,10 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   there at once; after a cast the post waits in the queue and the next turn drops it. The key F
   (0x475CE8) makes a 1 into 10 and posts nothing: after a given-up aim the cursor stays the
   pointer (frame 6) and the line the aim's until the mouse moves to another hex than the battle
-  last took (CLT-Q27).
+  last took (CLT-Q27). The client posts the mouse after the key's aim too (CLT-Q27 (1)) and keeps
+  the hex the cursor takes at the aim's start (0x59EE56 does not: (2)), so a click before a move
+  casts there; both answered (b) at M5 T8c, the original's for the comparisons
+  (`mouse::track`'s `Input::Cancel` and `Input::Aim`); (3) and (4) copied.
 - **The Faerie Dragon's key F** (0x475C17, key code 33): outside the tactics phase, for an
   active creature 134 with casts left (+0xDC), its drawn spell (+0x4E0) through the same aim as a
   creature's (installation.md §7.21); nothing once the side's hero has cast this round. The
@@ -2348,8 +2352,12 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   current player when human, else the highest human colour; 0x4F6B5D sends each the message
   0x200/0xD, which the DEF item answers with the players' palette's 32 colours over its DEF's
   entries 224–255, 0x4EAA4A); the tiles keep theirs. The base dialog's flag 0x10 casts the
-  shadow (§7.17).
-- **The items** (0x4F6990): the text, a text item at (20, top) of the text's size, medfont,
+  shadow (§7.17). The client's frame takes the acting side's player's colours, the turn's
+  controller as the panel's (CLT-Q28 (2), answered (c) at M5 T8c; `message::framed`, the window's
+  `box_player`), the original's for the comparisons.
+- **The items** (0x4F6990): the text, a text item at (20, top) of the text's size (5 pixels left
+  of the box's centre; the client's centred at ((w − text) / 2, top): CLT-Q28 (1) and the user's
+  directive, a text the original sets off its centre is centred), medfont,
   colour 1, alignment 1 (centred, from the top), id 1 (a scrolling text in its place above 200:
   not needed, not built); the buttons by the style: the button's back `Box64x30.pcx` (66 × 32)
   at (x, h − 62) and the DEF button (64 × 30, frames 0 and 1, one hotkey) at (x + 1, h − 61).
@@ -2469,7 +2477,11 @@ without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `bat
 - **The text** (into the message buffer): the shown side won: 303 (the enemy surrendered), 304
   (fled) or 305, then with the shown side's hero 306 with its name and the experience; it lost:
   with a hero 307, 308 or 309 with the hero's name; without, 310, 311 or 312 (the flags 0x697744
-  and 0x6985A3, set by either side). The clip's index and the tune by the same branches.
+  and 0x6985A3, set by either side). The clip's index and the tune by the same branches. With no
+  winner named (BAT-END-001) the shown side is the defender's, so after the attacker gave up the
+  text says the defender's hero fled or surrendered: the client tells it only of the side that
+  did, else its army fell, the tune and the clip by that branch (CLT-Q35, answered (b) at M5 T8c;
+  `results::built`, `sound::end_tune`), the original's for the comparisons.
 - **The experience** (0x46A350): the loser's first 20 records without the summoned and war
   machine flags, `(start − count) × hit points`; 500 more for the loser's hero, 500 less when a side
   retreated or surrendered, 500 more for the attacker at a town; with a hero, `crt_ftol(Learning
@@ -2900,7 +2912,8 @@ BAT-MAG-052, `installation.md` §7.19).
   the dissolve with 75 ms steps whatever the speed (0x47A2A8). Summon Elemental creates with
   0x400000 and its animation (0x5A72E5) after its line (`summon_elemental` 0x5A72A1: GENRLTXT 676,
   the hero's name, the count and the creature's name by it, written when no hex was found too:
-  then the hex is −1 and the creation reads past the hex records, CLT-Q33); a Pit Lord's Demons
+  then the hex is −1 and the creation reads past the hex records, CLT-Q33: the client writes no
+  line then, answered (b) at M5 T8c, the original's for the comparisons); a Pit Lord's Demons
   (`pit_lord_raise_demons` 0x5A7390) with no flags and its animation, after `Resurect.wav`
   (0x5A73A8) and the corpse's removal (0x5A73DD, both hexes of a two-hex one), then
   `draw_hex_overlays` and a redraw shown at once (0x5A749C), the line (GENRLTXT 117 or 118 by the

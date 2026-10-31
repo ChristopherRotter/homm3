@@ -169,6 +169,61 @@ pub struct AdventureParamsDef {
     /// Favorable Winds' two thirds, `[2, 3]` (survey `E08-sea.md` §4.1). The numerator from 1, at
     /// most the denominator.
     pub sea_ground: [u16; 2],
+    /// The calendar (GAM-CAL-002, E08 T83a; read by the game's day advance from T85b).
+    pub calendar: CalendarParams,
+    /// The months' kinds and their monsters (GAM-CAL-003, ADV-MON-014, E08 T83a; read by the
+    /// month's step from T85a); none: every month is a normal one.
+    pub months: Option<MonthParamsDef>,
+}
+
+/// The calendar (GAM-CAL-002, E08 T83a; increment 9's design note §5): a week's days and a month's
+/// weeks, the original's 7 and 4 (`new_day` 0x4C7FE0; survey `E08-economy.md` §7.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CalendarParams {
+    /// The days of a week.
+    pub week_days: NonZeroU8,
+    /// The weeks of a month.
+    pub month_weeks: NonZeroU8,
+}
+
+/// The months' parameters in a pack (GAM-CAL-003, ADV-MON-014, E08 T83a; survey
+/// `E08-economy.md` §7.4, §10.2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MonthParamsDef {
+    /// The weights of a normal month, a month of a creature and the Plague (the original's draw
+    /// of 1 to 10: 5, 4, 1); their sum from 1.
+    pub odds: [u8; 3],
+    /// The creatures a month of a creature is drawn among, with equal chances (`month_creatures`
+    /// 0x63E678: twelve): distinct core creatures, none a war machine, each with an adventure
+    /// count from 1; at least one when a creature's month has a weight.
+    pub creatures: Vec<ContentKey>,
+    /// The object type a month's monster is: a `monster` kind without levels (the map names the
+    /// creature), of any pack.
+    pub monster: ContentKey,
+    /// A free land tile gets a monster with one chance in this many (200).
+    pub spawn_one_in: NonZeroU16,
+    /// A month's monster's count: this times a draw from its creature's adventure count (2; D-50
+    /// as read), at most [`MAX_MONSTER_COUNT`].
+    pub spawn_factor: NonZeroU8,
+    /// A month's monster's aggression, drawn between these, inclusive (1 to 10), low to high.
+    pub spawn_aggression: [i8; 2],
+}
+
+/// The compiled [`MonthParamsDef`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MonthParams {
+    /// The weights of a normal month, a month of a creature and the Plague.
+    pub odds: [u8; 3],
+    /// The creatures of a month of a creature, in the pack's order.
+    pub creatures: Vec<CreatureTypeId>,
+    /// The object type of a month's monster.
+    pub monster: ObjectTypeId,
+    /// One chance in this many for each free land tile.
+    pub spawn_one_in: NonZeroU16,
+    /// The factor of a month's monster's count.
+    pub spawn_factor: NonZeroU8,
+    /// A month's monster's aggression bounds.
+    pub spawn_aggression: [i8; 2],
 }
 
 /// The wandering monsters' parameters in a pack (E08 T20a2a).
@@ -184,6 +239,15 @@ pub struct MonsterParamsDef {
     /// The resource a group's price to join is counted and paid in: its creature's cost in it
     /// times its count (ADV-MON-008, E08 T20b1; the original's gold, creature record +0x38).
     pub price_resource: ContentKey,
+    /// A monster's weekly growth in basis points of its value (ADV-MON-013, E08 T83a; read by the
+    /// week's step from T85a): 1 000, a tenth, truncated; at most 10 000.
+    pub growth_bp: u16,
+    /// The parts of a creature a monster's value counts in (the original's sixteenths, 16; D-49,
+    /// batch E9's E9-9): from 1 to 256, so that a fraction fits a byte.
+    pub growth_unit: NonZeroU16,
+    /// The most creatures growth gives a monster (4 000; A-32: the result capped, a larger stack
+    /// the map gave becomes it), at most [`MAX_MONSTER_COUNT`].
+    pub growth_cap: NonZeroU32,
 }
 
 /// The compiled [`MonsterParamsDef`].
@@ -192,6 +256,9 @@ pub struct MonsterParams {
     aggression: Vec<[i8; 2]>,
     count_words: Vec<u32>,
     price_resource: ResourceId,
+    growth_bp: u16,
+    growth_unit: NonZeroU16,
+    growth_cap: NonZeroU32,
 }
 
 impl MonsterParams {
@@ -210,6 +277,21 @@ impl MonsterParams {
     /// The resource a group's price to join is paid in (ADV-MON-008).
     pub const fn price_resource(&self) -> ResourceId {
         self.price_resource
+    }
+
+    /// A monster's weekly growth in basis points of its value (ADV-MON-013, E08 T83a).
+    pub const fn growth_bp(&self) -> u16 {
+        self.growth_bp
+    }
+
+    /// The parts of a creature a monster's value counts in (ADV-MON-013, E08 T83a).
+    pub const fn growth_unit(&self) -> u16 {
+        self.growth_unit.get()
+    }
+
+    /// The most creatures growth gives a monster (ADV-MON-013, E08 T83a).
+    pub const fn growth_cap(&self) -> u32 {
+        self.growth_cap.get()
     }
 }
 
@@ -358,6 +440,8 @@ pub struct AdventureParams {
     water_walk_cost: [NonZeroU16; 4],
     sea_points: [u32; 4],
     sea_ground: [u16; 2],
+    calendar: CalendarParams,
+    months: Option<MonthParams>,
 }
 
 /// The compiled [`BattleTerrainsDef`].
@@ -464,6 +548,17 @@ impl AdventureParams {
     /// denominator (ADV-SEA-004, E08 T72).
     pub const fn sea_ground(&self) -> [u16; 2] {
         self.sea_ground
+    }
+
+    /// The calendar (GAM-CAL-002, E08 T83a).
+    pub const fn calendar(&self) -> CalendarParams {
+        self.calendar
+    }
+
+    /// The months' kinds and monsters, if the packs give them (GAM-CAL-003, ADV-MON-014, E08
+    /// T83a); none: every month is a normal one.
+    pub const fn months(&self) -> Option<&MonthParams> {
+        self.months.as_ref()
     }
 }
 
@@ -636,15 +731,20 @@ struct Tables {
     rivers: Vec<RiverKind>,
     river_index: BTreeMap<String, RiverId>,
     objects: ObjectTables,
-    /// The parameters with the battle terrains and the monsters' price resource resolved.
-    params: Option<(
-        AdventureParamsDef,
-        Option<BattleTerrains>,
-        Option<ResourceId>,
-    )>,
+    /// The parameters with their references resolved.
+    params: Option<ResolvedParams>,
     starting_resources: Option<Vec<StartingResources>>,
     not_random_monsters: BTreeSet<CreatureTypeId>,
     terrain_walkers: Vec<TerrainWalker>,
+}
+
+/// The parameters with the battle terrains, the monsters' price resource and (E08 T83a) the
+/// months' creatures resolved; the months' object type is resolved once every type is in.
+struct ResolvedParams {
+    def: AdventureParamsDef,
+    battle: Option<BattleTerrains>,
+    price: Option<ResourceId>,
+    month_creatures: Vec<CreatureTypeId>,
 }
 
 impl AdventureRuleset {
@@ -674,13 +774,20 @@ impl AdventureRuleset {
             })
             .collect::<Result<Vec<_>, _>>()?;
         check_terrain_walkers(core, &terrains, &tables.terrain_walkers)?;
-        let (params, battle, price) = tables.params.ok_or(AdventureCompileError::MissingParams)?;
-        let params = validate_params(params, battle, price)?;
+        let resolved = tables.params.ok_or(AdventureCompileError::MissingParams)?;
+        let month_monster = resolved
+            .def
+            .months
+            .as_ref()
+            .map(|months| month_monster(&tables.objects, &months.monster))
+            .transpose()?;
+        let params = validate_params(resolved, month_monster)?;
         check_object_types(
             core,
             &tables.objects.types,
             &tables.not_random_monsters,
             params.army_slots(),
+            params.max_stack_count(),
         )?;
         let starting_resources = tables
             .starting_resources
@@ -790,6 +897,18 @@ impl AdventureRuleset {
         self.object_type_index.get(key).copied()
     }
 
+    /// The daily amount of the mine that produces `resource` (E08 T83a; ADV-MIN-003: an
+    /// abandoned mine's drawn resource's), if a type's kind is that [`ObjectKind::Mine`]: the
+    /// compile keeps one mine per resource, and with an abandoned mine one for every resource.
+    pub fn mine_daily(&self, resource: ResourceId) -> Option<u32> {
+        self.object_types.iter().find_map(|ty| match ty.kind {
+            ObjectKind::Mine {
+                resource: r, daily, ..
+            } if r == resource => Some(daily),
+            _ => None,
+        })
+    }
+
     /// The adventure parameters.
     pub const fn params(&self) -> &AdventureParams {
         &self.params
@@ -819,8 +938,8 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v13 (E08 T72; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
-    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's, v11 T50's, v12 T61a's): version; the terrains in the
+    /// Encoding v14 (E08 T83a; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
+    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's, v11 T50's, v12 T61a's, v13 T72's): version; the terrains in the
     /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable; since v9 the
     /// costs by Pathfinding level, 0 for none, else 1 and the three costs); the road kinds
     /// (key, name, cost); the river kinds (key, name); the parameters (native cost, the land
@@ -838,8 +957,12 @@ impl CanonicalHash for AdventureRuleset {
     /// [`ObjectType`]'s); since v11 (E08 T50) a stack's most creatures after the army slots; since
     /// v13 (E08 T72) the battle terrains' sea terrain, deck and boats after the coast's
     /// battlefield, and the sea points (four) and the sea ground's share (numerator, denominator)
-    /// after the terrain walkers. The
-    /// core's hash is not part of it: replays record both.
+    /// after the terrain walkers; since v14 (E08 T83a) increment 9's seven kinds in
+    /// [`ObjectType`]'s, the monsters' growth (basis points, unit, cap) after their price
+    /// resource, and last the calendar (a week's days, a month's weeks) and the months (0 for
+    /// none, else 1, the three weights, the creatures as length and handles, the monster's type,
+    /// the spawn's chance, factor and aggression bounds). The core's hash is not part of it:
+    /// replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -905,6 +1028,9 @@ impl CanonicalHash for AdventureRuleset {
                 }
                 monsters.count_words.hash_into(h);
                 monsters.price_resource.hash_into(h);
+                h.write_u16(monsters.growth_bp);
+                h.write_u16(monsters.growth_unit.get());
+                h.write_u32(monsters.growth_cap.get());
             }
         }
         h.write_len(self.not_random_monsters.len());
@@ -930,6 +1056,21 @@ impl CanonicalHash for AdventureRuleset {
         }
         for &part in &self.params.sea_ground {
             h.write_u16(part);
+        }
+        h.write_u8(self.params.calendar.week_days.get());
+        h.write_u8(self.params.calendar.month_weeks.get());
+        match &self.params.months {
+            None => h.write_u8(0),
+            Some(months) => {
+                h.write_u8(1);
+                months.odds.iter().for_each(|&w| h.write_u8(w));
+                months.creatures.hash_into(h);
+                months.monster.hash_into(h);
+                h.write_u16(months.spawn_one_in.get());
+                h.write_u8(months.spawn_factor.get());
+                h.write_i32(i32::from(months.spawn_aggression[0]));
+                h.write_i32(i32::from(months.spawn_aggression[1]));
+            }
         }
     }
 }
@@ -1100,9 +1241,71 @@ fn compile_pack(
             .as_ref()
             .map(|monsters| scope.resource(&monsters.price_resource))
             .transpose()?;
-        tables.params = Some((params.clone(), battle, price));
+        let mut month_creatures = Vec::new();
+        if let Some(months) = &params.months {
+            scope.reach(&months.monster)?;
+            for key in &months.creatures {
+                let creature = scope.creature(key)?;
+                check_month_creature(core, &scope, creature, months.spawn_factor)?;
+                month_creatures.push(creature);
+            }
+        }
+        tables.params = Some(ResolvedParams {
+            def: params.clone(),
+            battle,
+            price,
+            month_creatures,
+        });
     }
     Ok(())
+}
+
+/// Whether a month's creature may be a month's monster (E08 T83a): no war machine, an adventure
+/// count from 1, and the count's highest times the spawn's factor within [`MAX_MONSTER_COUNT`].
+fn check_month_creature(
+    core: &Ruleset,
+    scope: &Scope<'_>,
+    creature: CreatureTypeId,
+    factor: NonZeroU8,
+) -> Result<(), AdventureCompileError> {
+    let [low, high] = core
+        .creature(creature)
+        .map_or([0, 0], |info| info.adventure_count);
+    let reason = if scope.war_machine(creature) {
+        Some("a months.creatures entry is a war machine")
+    } else if low == 0 {
+        Some("a months.creatures entry has no adventure count")
+    } else if u32::from(high) * u32::from(factor.get()) > MAX_MONSTER_COUNT {
+        Some("a months.creatures entry's count times spawn_factor is above MAX_MONSTER_COUNT")
+    } else {
+        None
+    };
+    reason.map_or(Ok(()), |reason| {
+        Err(AdventureCompileError::InvalidParams(reason))
+    })
+}
+
+/// The months' object type (E08 T83a): a monster whose creature the map names.
+fn month_monster(
+    objects: &ObjectTables,
+    key: &ContentKey,
+) -> Result<ObjectTypeId, AdventureCompileError> {
+    let id = objects
+        .index
+        .get(key.as_str())
+        .copied()
+        .ok_or_else(|| AdventureCompileError::UnknownObjectType(String::from(key.as_str())))?;
+    let named = objects
+        .types
+        .get(usize::from(id.raw()))
+        .is_some_and(|ty| matches!(ty.kind, ObjectKind::Monster { levels: None }));
+    if named {
+        Ok(id)
+    } else {
+        Err(AdventureCompileError::InvalidParams(
+            "months.monster is not a monster whose creature the map names",
+        ))
+    }
 }
 
 /// Checks the terrain walkers once every pack's terrains are known (E08 T40): each walker's
@@ -1162,10 +1365,15 @@ fn core_terrain(
 }
 
 fn validate_params(
-    def: AdventureParamsDef,
-    battle: Option<BattleTerrains>,
-    price: Option<ResourceId>,
+    resolved: ResolvedParams,
+    month_monster: Option<ObjectTypeId>,
 ) -> Result<AdventureParams, AdventureCompileError> {
+    let ResolvedParams {
+        def,
+        battle,
+        price,
+        month_creatures,
+    } = resolved;
     let reason = if def.land_points.is_empty() {
         Some("land_points is empty")
     } else if def.land_points.len() > MAX_LAND_POINTS {
@@ -1182,8 +1390,10 @@ fn validate_params(
         Some("a sea_points entry is 0")
     } else if !(1 <= def.sea_ground[0] && def.sea_ground[0] <= def.sea_ground[1]) {
         Some("sea_ground is not 1 <= numerator <= denominator")
-    } else if let Some(monsters) = &def.monsters {
-        check_monster_params(monsters)
+    } else if let Some(reason) = def.monsters.as_ref().and_then(check_monster_params) {
+        Some(reason)
+    } else if let Some(months) = &def.months {
+        check_month_params(months, def.monsters.is_some())
     } else {
         None
     };
@@ -1204,12 +1414,47 @@ fn validate_params(
                 aggression: m.aggression,
                 count_words: m.count_words,
                 price_resource: price,
+                growth_bp: m.growth_bp,
+                growth_unit: m.growth_unit,
+                growth_cap: m.growth_cap,
             }),
             fly_cost: def.fly_cost,
             water_walk_cost: def.water_walk_cost,
             sea_points: def.sea_points,
             sea_ground: def.sea_ground,
+            calendar: def.calendar,
+            months: def
+                .months
+                .zip(month_monster)
+                .map(|(m, monster)| MonthParams {
+                    odds: m.odds,
+                    creatures: month_creatures,
+                    monster,
+                    spawn_one_in: m.spawn_one_in,
+                    spawn_factor: m.spawn_factor,
+                    spawn_aggression: m.spawn_aggression,
+                }),
         }),
+    }
+}
+
+/// Why the months' parameters are invalid, if they are (E08 T83a): odds summing to 0, creatures
+/// named twice or none for a creature's month with a weight, an aggression whose low bound is
+/// above its high one, or months without the monsters' parameters (their monsters are monsters).
+fn check_month_params(def: &MonthParamsDef, monsters: bool) -> Option<&'static str> {
+    let distinct = def.creatures.iter().collect::<BTreeSet<_>>().len() == def.creatures.len();
+    if def.odds.iter().all(|&w| w == 0) {
+        Some("months.odds sum to 0")
+    } else if !distinct {
+        Some("months.creatures names a creature twice")
+    } else if def.odds[1] != 0 && def.creatures.is_empty() {
+        Some("months.creatures is empty with a creature's month's weight")
+    } else if def.spawn_aggression[0] > def.spawn_aggression[1] {
+        Some("months.spawn_aggression's low bound is above its high one")
+    } else if !monsters {
+        Some("months without the monsters' parameters")
+    } else {
+        None
     }
 }
 
@@ -1228,6 +1473,12 @@ fn check_monster_params(def: &MonsterParamsDef) -> Option<&'static str> {
         .is_none()
     {
         Some("monsters.count_words do not rise from 2")
+    } else if def.growth_bp > 10_000 {
+        Some("monsters.growth_bp is above 10 000")
+    } else if def.growth_unit.get() > 256 {
+        Some("monsters.growth_unit is above 256")
+    } else if def.growth_cap.get() > MAX_MONSTER_COUNT {
+        Some("monsters.growth_cap is above MAX_MONSTER_COUNT")
     } else {
         None
     }

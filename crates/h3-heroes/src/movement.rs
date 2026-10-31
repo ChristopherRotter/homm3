@@ -11,7 +11,7 @@
 //! 0x4D91F0 is a test per type). Since E08 T71 the day's sea points and free boarding
 //! (HER-ADV-009; ADR-0013 points 13.6, 13.7; survey `docs/rules/surveys/E08-sea.md` §3.1, §4.2):
 //! the kinds `navigation`, `sea_movement_points` and `free_boarding`, Navigation's skill
-//! specialty.
+//! specialty; since E08 T82 the Lighthouses' points the adventure gives (ADR-0013 point 13.6).
 
 use h3_content::{CreatureTypeId, FULL_BP, HeroEffect, Ruleset};
 use h3_kernel::arith::mul_div_floor;
@@ -56,8 +56,16 @@ pub fn land_points(details: &HeroDetails, core: &Ruleset, base: u32) -> u32 {
 /// 1 000, the Sea Captain's Hat 500, the Admiral's Hat both through its parts); saturating. The
 /// army's speeds do not count. Exact integers in every profile (ADR-0013 point 13.6: the
 /// original's `hero_max_land_movement` 0x4E4990 with its sea argument adds `level × table[0] ÷
-/// 20` in integers). Lighthouses and a computer player's bonus are the caller's.
-pub fn sea_points(details: &HeroDetails, core: &Ruleset, table: &[u32; 4]) -> u32 {
+/// 20` in integers). Then `lighthouse_points`, the adventure's input (its owner's Lighthouses'
+/// points, ADV-OWN-005; E08 T82, ADR-0013 point 13.6): added last, never grown by Navigation
+/// (the original adds the count × 500 last, 0x4E4A18), saturating. A computer player's bonus is
+/// the caller's.
+pub fn sea_points(
+    details: &HeroDetails,
+    core: &Ruleset,
+    table: &[u32; 4],
+    lighthouse_points: u32,
+) -> u32 {
     // rule: HER-ADV-009
     let mut level = 0;
     let mut flat = 0_u32;
@@ -98,6 +106,7 @@ pub fn sea_points(details: &HeroDetails, core: &Ruleset, table: &[u32; 4]) -> u3
     u32::try_from(entry.saturating_add(specialist))
         .unwrap_or(u32::MAX)
         .saturating_add(flat)
+        .saturating_add(lighthouse_points)
 }
 
 /// Whether a boarding or a landing converts the hero's points left (HER-ADV-009, E08 T71;
