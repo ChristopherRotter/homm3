@@ -2308,3 +2308,44 @@ change, the work meanwhile in a `git worktree` with nothing built there.
   empty and the button pressed (screenshots looked at); 179 and 176 frames read back exact, every
   frame as composed afresh, every change as the headless loop's; `verify --scope map-client
   --with-original-data` no failing step; `check-docs`, `check-lane`, `check-exe-map`.
+
+### M4 T0 — M4 refined with the user (2026-10-31)
+
+On `map-client/e24-m4-t0`, the user present in the chat; `master` at #626 (T7c2 merged, CI's
+`Clients` run green). Docs only; no original data staged (nothing built or captured).
+
+- **Read before proposing:** the viewer's live input (`h3_map_view::live::Live`: per object
+  `standing`, `drawn`, `owner`, `phase`; the heroes, boats, explored tiles, the kingdom, the
+  hover's facts); ADR-0020 point 8 (the viewer plays only `h3-protocol` messages; an engine replay
+  becomes a record by the session in-process) and how `h3-view` follows it (`render` runs a
+  scenario in `h3-protocol`'s session as a spectator, its record a `.jsonl` of wire messages);
+  `h3-protocol` (no `h3-game` dependency: no whole game on the wire; E16 M5 "the whole game" not
+  refined, the server lane idle); `h3_game::GameObservation`, `h3_adventure::ObjectView` (no
+  identity: the adventure lane's T12b note, its archive's note (3) of 2026-10-23 leaving it to
+  M4) and `GameEvent`'s variants; E08 design §12, §14 (increment 9's views, no identity among
+  them); the golden adventure replays (`fixtures/replays/adventure/`, 32: commands with the
+  engine's paths and the battles' commands); the import's census (`docs/formats/h3m.md`: 8 of
+  160 shipped maps whole, 128 stop at a hero generated at a main town; the user was first told "a
+  hero in a town", which is the reason of 3 others); `h3-game` sets a battle's background and
+  colours (CLT-Q4, CLT-Q6); the treasury's cap `MAX_GAIN` 2³¹ − 1; design §4.8's kinds 5 to 7.
+- **Reported to the user first:** M4's input does not exist yet (the protocol carries no whole
+  game, the observation no object identity), and the engine plays 8 of the 160 shipped maps
+  whole.
+- **The proposal** (Part A, the original's reactions to a game's events from its memory, needing
+  no engine; Part B, the engine's records; Part C, the battles; the tasks T1 to T6; the exit) and
+  four questions; **the user took every recommendation:** the input through the protocol with the
+  server lane first (the start of E16 M5, refined with the user there), not the engine read
+  directly (ADR-0020 amended) nor this lane writing the protocol; one player's view (the other
+  players' turns as the original shows a computer player's), a spectator's later; the message
+  boxes only, the screens M5's; the battles in the same window by the battle client's viewer (a
+  library entry from the client lane). From M3's answers: MCL-Q15 (b) (the treasury passes the
+  bar's seven digits), MCL-Q21 (b) (the adventure lane's import and the viewer's load), MCL-Q14 (a
+  cast recorded in T2).
+- **Docs:** M4's section in the epic (scope, decisions, exit; "Later" keeps M5, the spectator's
+  view, a saved game's draw lists, towns), the risks (the engine's lag; the engine's games against
+  the original); the queue's T1 to T6, its inbox's increment 9 note (now T3's scope) and the
+  client lane's informational note moved to `QUEUE-ARCHIVE.md`; MCL-Q15's answered entry notes
+  the cap; inbox notes for the server lane (the whole game's wire, session and record, with what
+  the viewer reads), the adventure lane (the object identity, random objects' drawn types,
+  MCL-Q21's refusals) and the client lane (the battle as a library entry).
+- **Checked:** `cargo xtask check-docs`, `check-lane --lane map-client`; nothing else changed.

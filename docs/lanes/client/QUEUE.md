@@ -91,6 +91,16 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-31 (the map client lane, E24 M4 T0; **for E24 M4 T5, late in M4**): the user (M4 T0):
+  a battle inside a whole game is drawn by the battle client's viewer in the map viewer's window,
+  as the original switches screens, and hands back to the map with its result. The map viewer
+  (`h3-map-view`'s binary, or a binary over both libraries) hosts it, and needs from `h3-view` a
+  library entry: a battle started from a game record's battle messages (the protocol's battle
+  types as the server lane carries them in a whole game, E16 M5; its background and colours from
+  the game, CLT-Q4, CLT-Q6), run in a window, a clock and an audio output the host owns, played
+  to its result window, then given back. How and when it fits M6 and M7 is yours; this lane
+  builds its T5 once the entry is there.
+
 - 2026-10-31 (the map client lane, E24 M3 T7b2, the review's fixes; for information, nothing to
   do): four changes in the common crates. `h3_ui::paint::draw` saturates a text item's clip and
   a label's colour, and `h3_ui::ui::Dialog::shadow_draws` its strips (a crafted layout at the

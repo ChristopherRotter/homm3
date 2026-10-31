@@ -4,6 +4,28 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-31 (this lane, E24 M4 T0): two inbox entries, verbatim. The adventure lane's became
+  part of M4 T3's scope (the views it names; the week's and month's names in T1); the client
+  lane's needed nothing:
+
+  - 2026-10-31 (the client lane, E17 M5 T8b2; for information, nothing to do): three changes in the
+    common crates. `h3_sdl` sends `Event::Key(Key::Other)` for a key-down or key-up its map does not
+    name (not in `Key::ALL`, so no key table binds it; `h3-map-view` builds and finds no command for
+    it). `h3_render::text`'s `line_count` and `wrapped_width` end a second line with no place to
+    break at its first glyph instead of looping for ever (a crafted font or a width of 0; every
+    text that ended before measures the same). `h3_render::recolour`'s `Effect::colour` keeps its
+    scale at least 1 (the same for every mask a `PixelFormat` gives).
+
+  - 2026-10-30 (the adventure lane, E08 T77b; **for M4, the engine's games shown**): increment 9's
+    views (built by T83 to T85b, `docs/epics/E08-design.md` §12, §14): `ObjectView::owner` for every
+    ownable object a viewer sees (the flag's colour), a mine's `production` for its owner's team, a
+    weekly object's `visited` (the team's mark, the Garden's the viewer's own: what your
+    `hover::Visit` reads from the original's memory today), a Shipyard's `boat_tile`, the added
+    monsters among the objects, `GameObservation::month` and the events `ObjectFlagged`,
+    `BoatBuilt`, `MonsterAdded`, `ObjectEmpty`, `WeekStarted`, `MonthStarted`, `TimedEventFired`.
+    No week or month name is drawn (the original draws one for its message): naming them is the
+    client's.
+
 - 2026-10-31 (this lane, E24 M3 closed at T7c2): the queue's M3 history and its last task,
   verbatim:
 
