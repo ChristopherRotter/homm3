@@ -290,6 +290,11 @@ fn a_cycling_palette_rotates_its_ranges() {
     }];
     let screen = compose(&s, &batch(), [2, 2]).unwrap();
     assert_eq!(screen.pixels(), [4, 1, 2, 3]);
+    // A kept frame given the same steps over other ranges rotates the new ones (E24 M3 T7's
+    // review, F2-6).
+    let mut other = s.clone();
+    other.cycles[0].ranges = vec![[1, 3]];
+    as_fresh(&[s.clone(), other], &batch(), [2, 2]);
     // Another DEF's cycles leave it.
     s.cycles[0].def = "water.def".to_string();
     let screen = compose(&s, &batch(), [2, 2]).unwrap();
@@ -599,6 +604,76 @@ fn as_fresh(scenes: &[Scene], b: &Batch, frame: [u32; 2]) {
     }
 }
 
+/// The window's frames from `scenes` (E24 M3 T7's review, F2-8: the painter's and the texture's
+/// partial paths, which need the original's files in the binary): three buffers widened in turn
+/// out of order, each only where the history says changed since it was widened and where its
+/// cursor was (a stand-in cursor, a box moving each scene); a texture holding one of them updated
+/// to the next only in `History::changed`'s rectangles. Each is the fresh frame widened, the box
+/// over it.
+fn widened_as_fresh(scenes: &[Scene], b: &Batch, frame: [u32; 2]) {
+    use crate::damage::{Held, History, drop_held, tidy};
+    let widening = h3_render::screen::Widening::new(FORMAT);
+    let width = i32::try_from(frame[0]).unwrap();
+    let mut composer = Composer::new(frame).unwrap();
+    let mut history = History::new(4);
+    let mut buffers: [(Vec<u32>, Option<Held>); 3] = Default::default();
+    let mut texture: Option<(Vec<u32>, Held)> = None;
+    let mut rects = Vec::new();
+    for (n, s) in scenes.iter().enumerate() {
+        let screen = composer.compose(s, b).unwrap().clone();
+        let now = history.push(composer.damage());
+        let (xrgb, held) = &mut buffers[[0, 2, 1, 1, 0][n % 5]];
+        rects.clear();
+        if held.is_some_and(|h| history.since(h, now, &mut rects)) {
+            drop_held(&mut rects);
+            for r in &rects {
+                widening.widen_rect(&screen, r.map(i64::from), xrgb);
+            }
+        } else {
+            widening.widen(&screen, xrgb);
+        }
+        let i = i32::try_from(n).unwrap();
+        let cursor = [i % width, 1, i % width + 2, 3];
+        for y in cursor[1]..cursor[3] {
+            for x in cursor[0]..cursor[2].min(width) {
+                xrgb[usize::try_from(y * width + x).unwrap()] = 0x00FF_00FF;
+            }
+        }
+        *held = Some(Held {
+            composed: now,
+            cursor: Some(cursor),
+        });
+        let mut expected = Vec::new();
+        widening.widen(&compose(s, b, frame).unwrap(), &mut expected);
+        for y in cursor[1]..cursor[3] {
+            for x in cursor[0]..cursor[2].min(width) {
+                expected[usize::try_from(y * width + x).unwrap()] = 0x00FF_00FF;
+            }
+        }
+        assert_eq!(*xrgb, expected, "scene {n}: widened");
+        let shown = held.unwrap();
+        texture = Some(match texture.take() {
+            Some((mut pixels, was)) if history.changed(was, shown, &mut rects) => {
+                tidy(&mut rects, frame, 64);
+                for r in &rects {
+                    for y in r[1]..r[3] {
+                        let row = usize::try_from(y * width).unwrap();
+                        let (l, r) = (
+                            usize::try_from(r[0]).unwrap(),
+                            usize::try_from(r[2]).unwrap(),
+                        );
+                        pixels[row + l..row + r].copy_from_slice(&xrgb[row + l..row + r]);
+                    }
+                }
+                (pixels, shown)
+            }
+            _ => (xrgb.clone(), shown),
+        });
+        assert_eq!(texture.as_ref().unwrap().0, expected, "scene {n}: uploaded");
+        rects.clear();
+    }
+}
+
 #[test]
 fn a_view_draws_only_what_changed_and_keeps_what_a_move_keeps() {
     // E24 M3 T2b2: the clip below the frame's picture, on black (the background one colour
@@ -626,6 +701,7 @@ fn a_view_draws_only_what_changed_and_keeps_what_a_move_keeps() {
     ];
     let scenes: Vec<Scene> = moves.iter().map(|&(o, t)| view_at(o, t, clip)).collect();
     as_fresh(&scenes, &view_batch(), [14, 12]);
+    widened_as_fresh(&scenes, &view_batch(), [14, 12]);
     // The same over the frame's picture: the background not one colour across the clip, so no
     // pixel moves; a view moved draws again what moved.
     let scenes: Vec<Scene> = moves
@@ -651,6 +727,24 @@ fn a_view_draws_only_what_changed_and_keeps_what_a_move_keeps() {
         })
         .collect();
     as_fresh(&scenes, &view_batch(), [14, 12]);
+    // A minimap meeting the clip (a layout the committed one does not build): a cell the move kept
+    // draws it again where its pixels moved with the clip's, one clear of the clip leaves it (E24
+    // M3 T7's review, F2-3).
+    let scenes: Vec<Scene> = moves
+        .iter()
+        .map(|&(o, t)| {
+            let mut s = view_at(o, t, clip);
+            let mut map = minimap([Colour::Open(0); 4]);
+            if let Draw::Minimap(tiles) = &mut map {
+                let mut look = (*tiles.look).clone();
+                look.at = [5, 5];
+                tiles.look = alloc::sync::Arc::new(look);
+            }
+            s.draws.push(map);
+            s
+        })
+        .collect();
+    as_fresh(&scenes, &minimap_batch(), [14, 12]);
 }
 
 #[test]
@@ -714,9 +808,10 @@ fn the_cells_comparisons() {
         &[],
         [&[], &[cycle("terrain.def", vec![[1, 8]])]]
     ));
-    // It stays where it is when the view moves.
-    assert!(same_moved(&map, &map, [2, -1]));
-    assert!(stays_put(&map) && !stays_put(&gem));
+    // It stays where it is when the view moves: the same only unmoved (a cell whose pixels the
+    // move kept, where it meets the clip, draws it again; E24 M3 T7's review, F2-3).
+    assert!(same_moved(&map, &map, [0, 0]));
+    assert!(!same_moved(&map, &map, [2, -1]));
     // A gem the batch lacks does not draw.
     let b = batch();
     let lacking = scene(vec![]);
@@ -948,6 +1043,25 @@ fn the_minimap_its_tiles_rectangles_and_its_box_cut_to_its_area() {
         [screen.pixel(13, 10), screen.pixel(13, 11)],
         [Some(8), Some(8)]
     );
+    // A pattern wider and taller than the area (3 and 2 pixels a tile on its 4 × 3): cut to the
+    // area (E24 M3 T7's review, F2-2).
+    let mut over = minimap([Open(0); 4]);
+    if let Draw::Minimap(tiles) = &mut over {
+        let mut look = (*tiles.look).clone();
+        look.pattern = Some(crate::minimap::Pattern {
+            columns: vec![3],
+            rows: vec![2],
+        });
+        tiles.look = alloc::sync::Arc::new(look);
+    }
+    let screen = compose(&scene(vec![over]), &b, [14, 12]).unwrap();
+    let plain = compose(&scene(Vec::new()), &b, [14, 12]).unwrap();
+    assert_eq!(screen.pixel(12, 2), Some(8));
+    assert_eq!(
+        [screen.pixel(13, 0), screen.pixel(9, 3)],
+        [plain.pixel(13, 0), plain.pixel(9, 3)]
+    );
+    assert_ne!(plain.pixel(13, 0), Some(8));
     // A tile of a code the tables lack, a missing box: not in the batch.
     let mut odd = minimap([Open(3), Black, Black, Black]);
     assert_eq!(

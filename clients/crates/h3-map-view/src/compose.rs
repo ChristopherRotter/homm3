@@ -77,23 +77,28 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
 /// cell whose draws (each draw whose rectangle meets it, in order, with its DEF's palette steps)
 /// are the last scene's is left, the others restored from the background and drawn again, each
 /// draw cut to them. A background whose items changed in some alone (a bar, a button's state) is
-/// drawn again only in those items' rectangles, and the screen there over it (E24 M3 T4c). A view moved by some pixels (a scroll, a walk) moves the clip's pixels by as
-/// many first and compares each cell with the last scene's draws moved, so only what it brings in
-/// and what changed is drawn; a jump draws the whole view. What it draws is [`compose`]'s, pixel
-/// for pixel: every drawer puts a pixel from the screen's pixel there and the draws over it.
+/// drawn again only in those items' rectangles, and the screen there over it (E24 M3 T4c). A view
+/// moved by some pixels (a scroll, a walk) moves the clip's pixels by as many first and compares
+/// each cell it kept with the last scene's draws moved (one clear of the clip with them unmoved),
+/// so only what it brings in and what changed is drawn; a jump as far as the clip or farther draws
+/// the whole view, a nearer one is a move (E24 M3 T7's review, F2-4). What it draws is
+/// [`compose`]'s, pixel for pixel: every drawer puts a pixel from the screen's pixel there and the
+/// draws over it.
 #[derive(Debug, Clone)]
 pub struct Composer {
     screen: Screen,
     background: Option<Background>,
-    /// Each DEF's palette (by its name as the scenes spell it) for its cycles' steps.
-    palettes: BTreeMap<String, (Vec<u32>, ScreenPalette)>,
+    /// Each DEF's palette (by its name as the scenes spell it) for its cycles' ranges and steps.
+    palettes: Palettes,
     /// The last scene's draws over the background.
     last: Option<Last>,
     /// The rectangles the last scene changed.
     damage: Vec<[i32; 4]>,
-    /// The cells' draws, this scene's and the last's moved (kept for their space).
+    /// The cells' draws, this scene's, the last's moved and the last's where they were (kept for
+    /// their space).
     now: Buckets,
     was: Buckets,
+    still: Buckets,
     /// Where the background's draws are drawn again before the rectangles their changed items
     /// reach are copied into it (E24 M3 T4c; kept for its space).
     scratch: Option<Screen>,
@@ -138,6 +143,7 @@ impl Composer {
             damage: Vec::new(),
             now: Buckets::default(),
             was: Buckets::default(),
+            still: Buckets::default(),
             scratch: None,
         })
     }
@@ -215,6 +221,7 @@ impl Composer {
             damage,
             now,
             was,
+            still: unmoved,
             scratch,
             ..
         } = self;
@@ -249,7 +256,7 @@ impl Composer {
                         view: scene.view,
                         cycles: &scene.cycles,
                     };
-                    view.draw(screen, b, last, &mut pen, [now, was], damage)?;
+                    view.draw(screen, b, last, &mut pen, [now, was, unmoved], damage)?;
                 } else {
                     let covered = rects
                         .iter()
@@ -441,7 +448,7 @@ impl<'s> Changed<'s> {
         background: &Background,
         last: &Last,
         pen: &mut Pen<'s, '_>,
-        [now, was]: [&mut Buckets; 2],
+        [now, was, still]: [&mut Buckets; 3],
         damage: &mut Vec<[i32; 4]>,
     ) -> Result<(), ComposeError> {
         let all = whole(screen);
@@ -473,14 +480,11 @@ impl<'s> Changed<'s> {
         let changed = changed_defs(&last.cycles, self.cycles);
         let cycles = [last.cycles.as_slice(), self.cycles];
         let before = last.moving();
-        // The last scene's rectangles where its draws now compare: moved with the view but the
-        // minimap's, which stays where it is (E24 M3 T3a).
-        let was_at: Vec<[i32; 4]> = last
-            .rects
-            .iter()
-            .zip(before)
-            .map(|(&r, d)| if stays_put(d) { r } else { moved_by(r, shift) })
-            .collect();
+        // The last scene's rectangles moved with the view: a cell the move kept compares with them
+        // (all its pixels moved, the minimap's too where it meets the clip), a cell clear of the
+        // clip with the last's where they were (none of its pixels moved: E24 M3 T7's review,
+        // F2-3; the minimap stays where it is, E24 M3 T3a).
+        let was_at: Vec<[i32; 4]> = last.rects.iter().map(|&r| moved_by(r, shift)).collect();
         // The cells: every draw's rectangle now, the last's where they were and moved, the clip
         // when it moved, where the background changed.
         let rects = self
@@ -503,30 +507,44 @@ impl<'s> Changed<'s> {
         let grid = Grid::new(extent, align, tile);
         grid.bucket(self.rects.iter().copied(), now);
         grid.bucket(was_at.iter().copied(), was);
-        // A minimap's draw meets many cells: its comparison made once a scene (E24 M3 T3a).
-        let compared: RefCell<BTreeMap<(u32, u32), bool>> = RefCell::new(BTreeMap::new());
-        let pair = |i: u32, j: u32| {
+        if moved.is_some() {
+            grid.bucket(last.rects.iter().copied(), still);
+        }
+        // A minimap's draw meets many cells: its comparison made once a scene (E24 M3 T3a), moved
+        // or not.
+        let compared: RefCell<BTreeMap<(u32, u32, bool), bool>> = RefCell::new(BTreeMap::new());
+        let pair = |i: u32, j: u32, by: [i32; 2]| {
             let (d, e) = (&self.moving[to_index(i)], &before[to_index(j)]);
-            let fresh = || same_moved(d, e, shift) && !uses(d, &changed, cycles);
+            let fresh = || same_moved(d, e, by) && !uses(d, &changed, cycles);
             if matches!(d, Draw::Minimap(_)) {
-                *compared.borrow_mut().entry((i, j)).or_insert_with(fresh)
+                *compared
+                    .borrow_mut()
+                    .entry((i, j, by == [0, 0]))
+                    .or_insert_with(fresh)
             } else {
                 fresh()
             }
         };
-        let same = |cell: usize| {
-            let (a, b) = (now.of(cell), was.of(cell));
-            a.len() == b.len() && a.iter().zip(b).all(|(&i, &j)| pair(i, j))
+        let same = |cell: usize, (lists, by): (&Buckets, [i32; 2])| {
+            let (a, b) = (now.of(cell), lists.of(cell));
+            a.len() == b.len() && a.iter().zip(b).all(|(&i, &j)| pair(i, j, by))
         };
         let dirty: Vec<bool> = (0..grid.cells())
             .map(|cell| {
                 let rect = grid.rect(cell, extent);
-                // A move changes only the clip's pixels: a cell clear of it keeps its own; where the
-                // background changed, none does.
-                let stays = kept.is_none_or(|k| contains(k, rect))
-                    || moved.is_some_and(|(clip, _)| meet(rect, clip).is_none());
+                // A move changes only the clip's pixels: a cell it kept compares with the last's
+                // draws moved, a cell clear of the clip with them where they were; a cell partly
+                // kept, or where the background changed, is drawn again.
                 let under = self.areas.iter().any(|&a| meet(rect, a).is_some());
-                under || !(stays && same(cell))
+                let compared_with = match (kept, moved) {
+                    (None, _) => Some((&*was, shift)),
+                    (Some(k), _) if contains(k, rect) => Some((&*was, shift)),
+                    (Some(_), Some((clip, _))) if meet(rect, clip).is_none() => {
+                        Some((&*still, [0, 0]))
+                    }
+                    _ => None,
+                };
+                under || !compared_with.is_some_and(|with| same(cell, with))
             })
             .collect();
         let mut indices = Vec::new();
@@ -775,9 +793,10 @@ fn same_moved(now: &Draw, was: &Draw, shift: [i32; 2]) -> bool {
                 && at(*y, *y_was, shift[1])
                 && def == def_was
         }
-        // The minimap stays where it is, whatever the view does.
+        // The minimap stays where it is, whatever the view does: the same only where its pixels
+        // did not move (E24 M3 T7's review, F2-3).
         (Draw::Minimap(_), Draw::Minimap(_)) | (Draw::Radar { .. }, Draw::Radar { .. }) => {
-            now == was
+            now == was && shift == [0, 0]
         }
         _ => false,
     }
@@ -807,11 +826,6 @@ fn uses(draw: &Draw, defs: &[String], cycles: [&[Cycle]; 2]) -> bool {
         }
         Draw::Frame { .. } | Draw::Dialog(_) => true,
     }
-}
-
-/// Whether `draw` stays where it is when the view moves: the minimap's (E24 M3 T3a).
-fn stays_put(draw: &Draw) -> bool {
-    matches!(draw, Draw::Minimap(_) | Draw::Radar { .. })
 }
 
 /// The DEFs whose palettes cycle otherwise in `now` than in `was` (their ranges or steps).
@@ -1003,17 +1017,13 @@ fn moved_by(rect: [i32; 4], [sx, sy]: [i32; 2]) -> [i32; 4] {
 struct Pen<'s, 'k> {
     scene: &'s Scene,
     batch: &'s Batch,
-    kept: &'k mut BTreeMap<String, (Vec<u32>, ScreenPalette)>,
+    kept: &'k mut Palettes,
     defs: BTreeMap<&'s str, (Drawable<'s>, ScreenPalette)>,
     flag_colours: Option<ScreenPalette>,
 }
 
 impl<'s, 'k> Pen<'s, 'k> {
-    fn new(
-        scene: &'s Scene,
-        batch: &'s Batch,
-        kept: &'k mut BTreeMap<String, (Vec<u32>, ScreenPalette)>,
-    ) -> Self {
+    fn new(scene: &'s Scene, batch: &'s Batch, kept: &'k mut Palettes) -> Self {
         Self {
             scene,
             batch,
@@ -1134,18 +1144,28 @@ impl<'s, 'k> Pen<'s, 'k> {
     }
 
     /// The minimap's tiles (`minimap_draw` 0x412C40, design §4.4): each tile's rectangle of its
-    /// colour, cut to `cut` and the screen; a terrain's colours from its DEF's palette as the
-    /// scene cycles it, an owner's from the flag palette, each looked up once a draw.
+    /// colour, cut to `cut`, the screen and the minimap's own area (its [`rect_of`]: a pattern
+    /// whose widths pass the area draws nothing past it, as every kept frame's path assumes; E24
+    /// M3 T7's review, F2-2); a terrain's colours from its DEF's palette as the scene cycles it,
+    /// an owner's from the flag palette, each looked up once a draw.
     fn minimap(
         &mut self,
         screen: &mut Screen,
         tiles: &'s Tiles,
         cut: Option<[i32; 4]>,
     ) -> Result<(), ComposeError> {
-        let Some(clip) = meet(cut.unwrap_or_else(|| whole(screen)), whole(screen)) else {
+        let look = &tiles.look;
+        let area = [
+            look.at[0],
+            look.at[1],
+            look.at[0].saturating_add(look.size[0]),
+            look.at[1].saturating_add(look.size[1]),
+        ];
+        let Some(clip) = meet(cut.unwrap_or_else(|| whole(screen)), whole(screen))
+            .and_then(|clip| meet(clip, area))
+        else {
             return Ok(());
         };
-        let look = &tiles.look;
         let mut terrains: BTreeMap<u8, [u16; 2]> = BTreeMap::new();
         let mut owners: BTreeMap<u8, u16> = BTreeMap::new();
         let (columns, rows) = (tiles.columns(), tiles.rows());
@@ -1217,7 +1237,7 @@ impl<'s, 'k> Pen<'s, 'k> {
 /// the scene spells it (in `defs`).
 fn frame_in<'s, 'd>(
     defs: &'d mut BTreeMap<&'s str, (Drawable<'s>, ScreenPalette)>,
-    kept: &mut BTreeMap<String, (Vec<u32>, ScreenPalette)>,
+    kept: &mut Palettes,
     batch: &'s Batch,
     scene: &Scene,
     def: &'s str,
@@ -1235,7 +1255,7 @@ fn frame_in<'s, 'd>(
 /// `defs`).
 fn def_in<'s, 'd>(
     defs: &'d mut BTreeMap<&'s str, (Drawable<'s>, ScreenPalette)>,
-    kept: &mut BTreeMap<String, (Vec<u32>, ScreenPalette)>,
+    kept: &mut Palettes,
     batch: &'s Batch,
     scene: &Scene,
     def: &'s str,
@@ -1268,27 +1288,27 @@ fn gem_frame<'b>(
     Ok((f, drawable.sprite))
 }
 
-/// [`cycled`], kept by the DEF's name for the steps of its cycles: made again only when they
-/// change (E24 M3 T2b1).
-fn cycled_kept(
-    kept: &mut BTreeMap<String, (Vec<u32>, ScreenPalette)>,
-    sprite: &Sprite,
-    def: &str,
-    cycles: &[Cycle],
-) -> ScreenPalette {
-    let steps = || {
+/// Each DEF's palette (by its name as the scenes spell it) for its cycles' ranges and steps.
+type Palettes = BTreeMap<String, (Vec<(Vec<[u8; 2]>, u32)>, ScreenPalette)>;
+
+/// [`cycled`], kept by the DEF's name for the ranges and steps of its cycles: made again only when
+/// they change (E24 M3 T2b1; the ranges too since E24 M3 T7's review, F2-6, as `changed_defs`
+/// compares them).
+fn cycled_kept(kept: &mut Palettes, sprite: &Sprite, def: &str, cycles: &[Cycle]) -> ScreenPalette {
+    let own = || {
         cycles
             .iter()
             .filter(|c| c.def.eq_ignore_ascii_case(def))
-            .map(|c| c.steps)
+            .map(|c| (c.ranges.as_slice(), c.steps))
     };
     if let Some((was, palette)) = kept.get(def)
-        && was.iter().copied().eq(steps())
+        && was.iter().map(|(r, s)| (r.as_slice(), *s)).eq(own())
     {
         return palette.clone();
     }
     let palette = cycled(sprite, def, cycles);
-    kept.insert(def.into(), (steps().collect(), palette.clone()));
+    let key = own().map(|(r, s)| (r.to_vec(), s)).collect();
+    kept.insert(def.into(), (key, palette.clone()));
     palette
 }
 

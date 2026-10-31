@@ -46,4 +46,25 @@ fn rectangles_cut_to_the_frame_and_bounded() {
     let mut none = vec![[4, 4, 4, 5]];
     tidy(&mut none, [10, 6], 1);
     assert!(none.is_empty());
+    // A rectangle another holds goes, cut first (E24 M3 T7's review, F2-7).
+    let mut held = vec![[1, 1, 2, 2], [0, 0, 4, 4], [-1, 2, 3, 3]];
+    tidy(&mut held, [10, 6], 4);
+    assert_eq!(held, [[0, 0, 4, 4]]);
+}
+
+#[test]
+fn the_rectangles_another_holds_dropped() {
+    let mut rects = vec![
+        [2, 2, 4, 4],
+        [0, 0, 5, 5],
+        [0, 0, 5, 5],
+        [4, 4, 8, 8],
+        [5, 5, 6, 6],
+        [9, 9, 10, 10],
+    ];
+    drop_held(&mut rects);
+    assert_eq!(rects, [[0, 0, 5, 5], [4, 4, 8, 8], [9, 9, 10, 10]]);
+    let mut none: Vec<[i32; 4]> = Vec::new();
+    drop_held(&mut none);
+    assert!(none.is_empty());
 }

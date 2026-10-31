@@ -1666,9 +1666,12 @@ kept whole ("no cut", 2026-10-28).
 - **The move:** when the view's origin moved (a scroll, a walk's slide; the same clip and tile, a
   move smaller than the clip) and the background is one colour across the clip (the black of
   `AdvMap.pcx` there; only then is a moved pixel of the background the background), the clip's
-  pixels move by as much first, and each cell is compared with the last scene's draws moved; a cell
-  not wholly inside what the move keeps (the strip it brings in, the gems' corners) is drawn
-  again. A jump moves nothing: every cell differs.
+  pixels move by as much first, and each cell wholly inside what the move keeps is compared with
+  the last scene's draws moved (the minimap's too: where it met the clip its pixels moved), each
+  cell clear of the clip with them where they were (E24 M3 T7's review, F2-3); a cell partly kept
+  (the strip it brings in, the gems' corners) is drawn again. A jump nearer than the clip's size
+  (a minimap's click, next hero, a town chosen: up to 18 columns and 16 rows) is such a move; one
+  as far as the clip or farther, or onto another level's background, draws the whole view (F2-4).
 - **What changed, widened and uploaded:** the composer reports the rectangles a scene changed
   (`Composer::damage`); the painter numbers each composition and keeps the last 64's
   (`damage::History`). A frame widened (the painter's `Widened`) knows the composition it holds

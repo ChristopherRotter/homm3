@@ -36,7 +36,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_map_view::damage::tidy;
+use h3_map_view::damage::{Held, tidy};
 use h3_map_view::keys::{Command, Keys};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
@@ -49,7 +49,7 @@ use h3_ui::keys::Window as Own;
 
 use crate::audio::{Library, Player};
 use crate::files;
-use crate::paint::{self, Assets, Held, Painter, Setup, Widened};
+use crate::paint::{self, Assets, Painter, Setup, Widened};
 
 /// How far past a change the window looks for the next one before it waits for input only.
 const LOOK_AHEAD_MS: u32 = 600_000;
@@ -356,7 +356,8 @@ impl Frame {
 
     /// Whether it shows what `change` shows as `look` draws it.
     fn shows(&self, change: &Change, look: Look) -> bool {
-        self.change.drawn == change.drawn && self.cursor == look.cursor(change.cursor)
+        self.change
+            .shows(self.cursor, change, look.cursor(change.cursor))
     }
 }
 
@@ -814,6 +815,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
             };
         }
+        // A redraw asked for (the window's contents may be lost): whatever this turn presents is
+        // uploaded whole, and the frame shown is presented again when nothing new is (E24 M3 T7's
+        // review, F2-5: a frame due in the same turn took the redraw's place, in part or not at
+        // all).
+        if redraw {
+            texture.held = None;
+        }
+        let mut presented = false;
         // A later change may be due already: the latest is shown instead; if it shows what shows,
         // nothing new is presented (a redraw still is).
         if let Some(d) = next.take_if(|f| f.change.t <= ms) {
@@ -844,6 +853,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         Frame::of(&mut painter, change, look, (&win, &mut maker))?
                     };
                     let back = texture.show(&mut win, &painter, &due, read)?;
+                    presented = true;
                     let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
                     report.late_us.push(late);
                     if given_at.contains(&due.change.t) {
@@ -862,9 +872,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 .map_err(unplayable)?
                 .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
                 .transpose()?;
-        } else if redraw && let Some(f) = &shown {
-            // The window's contents may be lost: the whole frame uploaded again.
-            texture.held = None;
+        }
+        if redraw
+            && !presented
+            && let Some(f) = &shown
+        {
             texture.show(&mut win, &painter, f, false)?;
         }
     }

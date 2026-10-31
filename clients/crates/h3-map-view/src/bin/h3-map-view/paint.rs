@@ -22,7 +22,7 @@ use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
-use h3_map_view::damage::History;
+use h3_map_view::damage::{Held, History, drop_held};
 use h3_map_view::hover::Hover;
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{Buttons, Facing, Lifted, Live, Moment, Walking};
@@ -56,14 +56,6 @@ const MOST_DECODED: usize = 64;
 pub struct Widened {
     pub xrgb: Vec<u32>,
     pub held: Option<Held>,
-}
-
-/// What a frame widened holds: the composition it was widened from (its number in the
-/// painter's history) and the cursor's rectangle drawn over it, if any.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Held {
-    pub composed: u64,
-    pub cursor: Option<[i32; 4]>,
 }
 
 /// What every map drawn shares: the committed tables and layout, the installation copy's archives
@@ -624,19 +616,20 @@ impl<'a> Painter<'a> {
         let screen = self.composer.screen();
         let now = self.history.now();
         self.rects.clear();
-        let since = out.held.filter(|held| {
+        let since = out.held.is_some_and(|held| {
             out.xrgb.len() == screen.pixels().len()
-                && self.history.between(held.composed, now, &mut self.rects)
+                && self.history.since(held, now, &mut self.rects)
         });
-        match since {
-            Some(held) => {
-                self.rects.extend(held.cursor);
-                for rect in &self.rects {
-                    self.widening
-                        .widen_rect(screen, rect.map(i64::from), &mut out.xrgb);
-                }
+        if since {
+            // Each pixel widened once: the compositions since repeat their strips (E24 M3 T7's
+            // review, F2-7).
+            drop_held(&mut self.rects);
+            for rect in &self.rects {
+                self.widening
+                    .widen_rect(screen, rect.map(i64::from), &mut out.xrgb);
             }
-            None => self.widening.widen(screen, &mut out.xrgb),
+        } else {
+            self.widening.widen(screen, &mut out.xrgb);
         }
         out.held = Some(Held {
             composed: now,
@@ -672,12 +665,7 @@ impl<'a> Painter<'a> {
     /// Pushes to `out` what differs between two frames widened (E24 M3 T2b2): the rectangles
     /// composed between theirs and both cursors'; `false` when the history no longer has them.
     pub fn changed(&self, a: Held, b: Held, out: &mut Vec<[i32; 4]>) -> bool {
-        let known = self.history.between(a.composed, b.composed, out);
-        if known {
-            out.extend(a.cursor);
-            out.extend(b.cursor);
-        }
-        known
+        self.history.changed(a, b, out)
     }
 
     /// The cursor's frame as an image (the hardware cursor's, E24 M2 T4b).
