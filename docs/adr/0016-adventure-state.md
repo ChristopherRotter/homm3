@@ -476,14 +476,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    with its hero are seen where their tiles are; a bottle's message is told to its visitor's
    owner alone. From increment 9 every viewer sees an **owned object's owner** where it sees the
    object. A mine's daily production, and so an abandoned mine's drawn resource, is its owner's
-   team's knowledge, never another's; a mine's guards are seen as a guarded pile's (their
-   creatures and words), their counts by the owner's team. A Shipyard's boat tile is static and
-   public with it. A weekly object's **visited mark** is its visitor's team's (the Garden's its
-   visitor's owner's), kept through the weeks (the original's hint reads "visited" from it,
-   never "emptied"); its contents are never shown, before a visit or after. A month's monster is
-   seen as any monster where its tile is; a monster's fraction is never shown (its word follows
-   its count). A flag, a built boat and an added monster are seen where their tiles are; a
-   mine's income, a weekly object's gain and the guards' exchange are told to their owner alone.
+   team's knowledge, never another's; a mine's guards are seen as the original's hint shows them
+   (the size word of their total count, every stack counted, an upgraded one too, and their
+   creature only when all are of one), their stacks and counts by the owner's team. A Shipyard's
+   boat tile is static and public with it. A weekly object's **visited mark** is its visitor's
+   team's (the Garden's its visitor's owner's), kept through the weeks (the original's hint reads
+   "visited" from it, never "emptied"); its contents are never shown, before a visit or after. A
+   month's monster is seen as any monster where its tile is; a monster's fraction is never shown
+   (its word follows its count). A flag, a built boat and an added monster are seen where their
+   tiles are; a mine's income, a weekly object's gain and the guards' exchange are told to their
+   owner alone.
 
 ## Consequences
 
@@ -641,3 +643,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 - 2026-10-31 (E08 T83a; the user at ADV-Q39, E08 decision 214): point 4's weekly objects are
   entered, not visited from the neighbouring tile (the original's class lists and batch E9's
   E9-8); a wording correction, no rule changed elsewhere.
+- 2026-10-31 (E08 T83b2b's `shared/` part; the user at T83b2b's start): point 6's mine guards
+  corrected to what the original's hint shows (`mine_hint_text` 0x40D670 with
+  `army_description_text` 0x40ABE0, as the map client lane read them, E24 design §4.12): every
+  viewer sees the size word of the guards' total count, every stack counted (an upgraded one
+  too), and their creature only when all stacks are of one; the owner's team their stacks and
+  counts; not each stack's creature and word.
