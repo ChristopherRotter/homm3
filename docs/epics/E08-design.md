@@ -167,18 +167,12 @@ original refreshes them after the walk, `refresh_guard_flags` 0x4CA410: no test 
 reads them, so the two agree). Not built: the original's Plague and normal months add nothing on
 the map.
 
-### 12. Information (ADV-OWN-003, ADV-FOG-006 amended)
+### 12. Information (ADV-OWN-003, ADV-FOG-006 amended; built)
 
-- `ObjectView` gains `owner: Option<PlayerId>` (every viewer who sees the object);
-  `production: Option<(ResourceId, u32)>` for a mine the viewer's team owns (an abandoned mine's
-  drawn resource thus hidden from the others); `guards` as a guarded pile's view (creatures and
-  their words; the counts for the owner's team); `visited: bool` for a weekly object (the
-  viewer's team's mark, the Garden's the viewer's own); a Shipyard's `boat_tile: Option<Pos>`
-  (static, public).
-- The added monsters are objects among the others in the observation where their tile is
-  explored; a fraction is never shown.
-- The events of §7 to §11 carry their viewers as in ADR-0016 point 6's draft. `docs/06-security.md`
-  ("Information hiding") gains the owners, the production, the marks and the month's kind (T85).
+T83b2b built the views (decision 219: a mine's guards as the original's hint, not "creatures and
+their words"); its record and this section's text are in `E08-log.md` ("T83b2b"). Left: the
+events of §7 to §11 carry their viewers as ADR-0016 point 6 says (T84, T85), and
+`docs/06-security.md` gains their lines and the month's kind with them.
 
 ## Part C — the game, the env, batch E9 and the cut
 
@@ -212,8 +206,8 @@ the map.
      (`1..=10` against the odds; a creature month then draws its creature among the twelve),
      `MonthStarted { month, kind }`, then in a creature month the adventure's `start_month`;
   4. **the income** (GAM-RES-003 to -005): for each player in id order, the adventure's
-     `production(player, week_start)` (its mines' daily amounts by resource, through the
-     abandoned mines' drawn resource; on a week's first day, for each creature type with a
+     `income(player, week_start)` (its mines' daily amounts by resource, each mine's
+     `production` as T83b2b reads it, an abandoned mine's through its drawn resource; on a week's first day, for each creature type with a
      `weekly_resource` ability (§1) in one of the player's heroes' armies, its amount once,
      however many: the Crystal Dragons' 3 crystal) plus `h3_heroes::daily_income` of each of its heroes
      on the map, gained (saturating), one `ResourceGained` per resource with a non-zero amount;
@@ -338,7 +332,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 | 2 | **T78** | Batch E9's maps: the writer's seven classes and timed events (§4); the spec's fields (`cross-lane`); the two specs and templates (§17) |
 | 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
 | 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs (done, decision 212) |
-| 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b in two (decision 215): T83b1 the state the visits read (§6; adventure state hash v18, part v15; done), T83b2 in two (decision 218): T83b2a the fractions and the added objects (§6; adventure state hash v19; done), T83b2b the views (§12) |
+| 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b in two (decision 215): T83b1 the state the visits read (§6; adventure state hash v18, part v15; done), T83b2 in two (decision 218): T83b2a the fractions and the added objects (§6; adventure state hash v19; done), T83b2b the views (§12; done) |
 | 6 | **T84** | `h3-adventure` and `h3-game`: the owned objects' visits (§7), `BuildBoat` (§8), the weekly visits (§9), the mines' battles (§13), the kept dialog and the boat offer (§14); likely cut in two at its start (flagging and mines with their battles; Lighthouses, Shipyards, `BuildBoat` and the weekly visits) |
 | 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |
 | 8 | **T86** + **T87** | T86: the economy maps, their replays and properties, the benchmarks, `--with-original-data` (§15). T87: the audit against the exit criteria, increment 9 closed, increment 10 refined |

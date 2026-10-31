@@ -19,25 +19,26 @@ spell points and the Lighthouses' input; the seven kinds and parameters, the imp
 (`adventure/e08-t83b1`, `cross-lane`, decision 217: the owners, guards, weekly contents, draws,
 the start's reveal, the flag radius), T83b2 in two, the state first (decision 218): T83b2a done
 (`adventure/e08-t83b2a`: the fractions, the added objects, `check_added`, adventure state hash
-v19), T83b2b next.
+v19), T83b2b done (decision 219: whole, the `shared/` part first, a mine's guards as the
+original's hint; `adventure/e08-t83b2b` with `shared/e08-t83b2b`: the views). Round 6: T84 next.
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T83b2b — `h3-adventure`: the views**
+**E08 T84 — `h3-adventure` and `h3-game`: the visits**
 
-- **Scope:** design §12 (decision 218: T83b2's second half): `ObjectView`'s `owner` (every viewer
-  who sees the object), `production` (a mine its viewer's team owns: an abandoned mine's drawn
-  resource hidden from the others), `guards` (a guarded pile's view: creatures and their words,
-  the counts for the owner's team), `visited` (a weekly object's mark: the viewer's team's, the
-  Garden's its own), a Shipyard's `boat_tile` (static, public); the added monsters among the
-  objects as T83b2a built them, a fraction never shown; ADV-OWN-003 and ADV-FOG-006 amended; the
-  h3-map view tests (`crates/h3-map/src/tests/view.rs`); `docs/06-security.md`'s owners,
-  production and marks (shared: its own `shared/` pull request, merged first, or the user's
-  consent for `cross-lane`).
-- **Inputs:** design §12; ADR-0016 points 5, 6; survey `E08-economy.md` §2.7, §9.4; T83b1's
-  record in `E08-log.md` (the owners, `mine_guards`, `Weekly`, `Resolved`'s draws); T83b2a's
-  (the added objects in the observation); T72's record (the boats' view, the pattern).
-- **Depends on:** T83b2a (`adventure/e08-t83b2a` merged). **Status:** ready after that merge;
-  its cut confirmed with the user at its start.
+- **Scope:** design §7 (the owned objects' visits: a flag and its reveal, ADV-OWN-001; a mine's
+  visit, Leave Guards, the guards asked then fought, ADV-MIN-002; a Lighthouse's, ADV-OWN-005; a
+  Shipyard's offer, ADV-SHY-002), §8 (`BuildBoat`, ADV-SHY-003), §9 (the weekly visits,
+  ADV-WEK-001 to -003, ADV-VIS-006 amended), §13 (the mines' battles, GAM-BAT-001 amended) and
+  §14's kept dialog and boat offer; their events with their viewers (ADR-0016 point 6) and
+  `docs/06-security.md`'s lines for them (a `shared/` pull request merged first, or `cross-lane`
+  with the user's consent); the replays the visits change re-recorded, the bot reports if they
+  move.
+- **Inputs:** design §7, §8, §9, §13, §14, §18; ADR-0016 points 3, 4, 6, ADR-0017 points 1, 3, 4,
+  6, 8, 10, 11; survey `E08-economy.md` §2 to §6, §9, §19 (batch E9); T83b1's and T83b2b's records
+  in `E08-log.md` (the owners, `mine_guards`, `Weekly`, `allied`, `production`, the views).
+- **Depends on:** T83b2b (`adventure/e08-t83b2b` merged). **Status:** ready after that merge;
+  likely in two (design §18: a flag and the mines with their battles; the Lighthouses, Shipyards,
+  `BuildBoat` and the weekly visits), its cut confirmed with the user at its start.
 
 ## Inbox
 
