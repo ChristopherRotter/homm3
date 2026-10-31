@@ -451,7 +451,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 catalogue: &catalogue,
                 layout: &layout,
                 // The comparisons draw the original's (CLT-Q35).
-                bugs: h3_render::Bugs::Original,
+                bugs: Bugs::Original,
             };
             let result = outcome.map(|o| {
                 crate::results::window(

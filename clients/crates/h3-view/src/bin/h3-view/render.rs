@@ -380,7 +380,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     catalogue: &catalogue,
                     layout: &layout,
                     // The comparisons draw the original's (CLT-Q35).
-                    bugs: h3_render::Bugs::Original,
+                    bugs: Bugs::Original,
                 };
                 Some(crate::results::window(
                     &sources,
