@@ -39,6 +39,19 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-10-31 (T83a's scoped verify; **a failing property case, pre-existing**): the plans'
+  `every_step_keeps_the_commands_invariants` found, under the coverage run's fresh draws, a
+  walker (no flight, no water walk) whose move ends visiting a red border gate (`ab:border_gate_red`,
+  an AB object on an RoE plan) whose visitable tile is water, from the shore: `check_sea_move`'s
+  "no visit of an object on water but from a boat" (ADV-PIK-018, D-46) fails at `play.rs` 2044.
+  The same case fails on `master` (ac0ee66), so T83a did not cause it; its line was kept out of
+  the regression file so CI stays green. To reproduce, add `cc
+  81434edd854163caef5318a576a6c5b31229491f9cd467eafa5dcc68882ccef2` to
+  `crates/h3-map/proptest-regressions/tests/play.txt`. To decide (with the user): whether a key
+  guard's or gate's visit from the shore follows ADV-PIK-018 (no visit; the original's case 9 and
+  212 on water was not read) or the oracle allows it; then the fix in the neighbour visit's path
+  (`check_step`'s `visit_at`) or in the oracle, and the line kept.
+
 - 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
   after it merges, run `clients/capture/setup.sh` again for every run directory you use: the
   hook DLL's ack has ten fields now, and an older `xdd.dll` stops a run with "stale xdd.dll".
