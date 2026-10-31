@@ -603,30 +603,30 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x8cad9fefa6a10e35",
-    "0xe036a3359fc611ce",
-    "0xa901c2a342f0ca45",
-    "0x987d4f2af0a432f3",
-    "0xa0eadcc16b4af718",
-    "0x68c9de3fd420e4e7",
-    "0x161aef1db0b51bcd",
-    "0x519db26de3ee78b0",
-    "0x032f11e1f5d7e9cd",
-    "0x9a6e65df68401c10",
-    "0x7de721349c97a445",
-    "0xfb0f1e61bb22dcf8",
-    "0x95119c1f0d96f2dc",
-    "0x2bddf6490fa7b9d4",
-    "0x779a46496eb4ff88",
-    "0xe982559344a67b55",
-    "0x0de04b3dc98d1453",
-    "0x8dcfbcac9d017ba3",
-    "0x5d77012300dde6fc",
-    "0x7a065c9b9bbb13b4",
-    "0x6708f26569a3a7f8",
-    "0x2d578163b5cbf9c0",
-    "0x366af8170d2cca36",
-    "0xe472c771c1aafc2b",
+    "0x0d3b001e2e2356aa",
+    "0x4e4a62e31aaa8be9",
+    "0x24ecd68d7b7e415a",
+    "0x1c9b3a7d920eaf1c",
+    "0x4393c8518ab2b14f",
+    "0x2c41eb8181bf90c0",
+    "0xfcb4d789a8ff9432",
+    "0xb73c4430825f7f17",
+    "0xe9c8fa4dee226232",
+    "0x572322ab24cdb637",
+    "0x9282ec034b20719f",
+    "0x03b9f0ec0b6e9f18",
+    "0x1b68fdf494ce2ca4",
+    "0x2d7cccde8e97513c",
+    "0xec2accf274ca2368",
+    "0x2850682b1ed3e4d9",
+    "0xb73cbcd3cc9c9da3",
+    "0x1d6434cacbda19f3",
+    "0xad3ae14408cf1387",
+    "0x55175302a7176f54",
+    "0x4bbbdaceaf509cde",
+    "0x91ed428343cdc58f",
+    "0x78450c5a6687972a",
+    "0x212fbdd9828e3f9c",
 ]
 
 [replay]
@@ -666,4 +666,4 @@ import_version = 15
 
 [result]
 day = 29
-final_hash = "0xb04f5d6240616cf4"
+final_hash = "0xe71e4f8c50134415"

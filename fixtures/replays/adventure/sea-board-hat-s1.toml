@@ -7,7 +7,7 @@ commands = [
     "0 end-turn",
     "1 end-turn",
 ]
-checkpoints = ["0xe8adaeb96fdd4c86"]
+checkpoints = ["0xdfb7244e3e40aef2"]
 
 [replay]
 format = 7
@@ -46,4 +46,4 @@ import_version = 15
 
 [result]
 day = 2
-final_hash = "0xe74344dafdcc8cbc"
+final_hash = "0x70693fb3105bc7b8"
