@@ -2028,8 +2028,12 @@ fn check_sea_move(
     let heroes = before.adventure().heroes();
     for &tile in path.iter().filter(|_| !afloat) {
         // A hero in a boat on the tile is met there, whatever lies under it (ADV-SEA-005: from
-        // the shore too; D-46 leaves such a tile open).
-        let met = heroes.iter().any(|h| h.pos == tile && h.id != hero);
+        // the shore too; D-46 leaves such a tile open), and an empty boat on it is boarded
+        // (ADV-SEA-002; D-46 leaves a boat's tile open too): a key holder's boat may lie on its
+        // border gate's water tile, which the gate lets it end on (ADV-VIS-005), and a walker
+        // boards it there from the shore (E08 decision 216).
+        let met = heroes.iter().any(|h| h.pos == tile && h.id != hero)
+            || before.adventure().is_empty_boat(tile);
         let entrance = is_water(before, rules, tile) && live_bits(before, tile).1 && !met;
         let adventure = before.adventure();
         let objects: Vec<_> = (adventure.map().objects().iter().enumerate())
