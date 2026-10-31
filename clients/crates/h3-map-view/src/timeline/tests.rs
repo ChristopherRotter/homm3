@@ -1698,8 +1698,14 @@ fn the_status_window_over_time() {
     let shown = statuses(&play(rules(Bugs::Original), &unknown, &actions, ms).unwrap());
     assert!(matches!(shown[900], Some(Status::Kingdom(_))));
     let (date, _, _) = recorded("status-date-end");
+    // The kingdom's window unknown (a live part without its `realm`; the recordings since M3
+    // T7a hold one).
     let realmless = Start {
         asked: Some(Asked { kind: 2, end: 500 }),
+        kingdom: Kingdom {
+            realm: None,
+            ..date.kingdom.clone()
+        },
         ..date.clone()
     };
     let shown = statuses(&play(rules(Bugs::Original), &realmless, &actions, 400).unwrap());
