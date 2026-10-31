@@ -4,6 +4,30 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-31 (this lane, E24 M3 T7c1): T7c cut with the user into T7c1 (the review list, the
+  questions, the hand test: done, the log's "M3 T7c1") and T7c2; M4's refinement its own task
+  (M4 T0). Its entry as it was:
+
+  ### E24 M3 T7c — M3's review list, the hand test, M3 archived, M4 refined
+
+  - **Scope:** the review list with the user (the epic's "M3's review list", T7b's additions); the
+    window cross-built for the user's machine and a hand test (`clients/out/win/`, a `.cmd` with
+    the checks on screen and a notes file; MCL-Q18's fix among them); M3 archived (its section
+    verbatim to `E24-archive.md`); M4 refined with the user.
+  - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
+  - **Depends on:** T7b2 (done). **Status:** the user's checkpoint.
+
+- 2026-10-31 (the client lane, E17 M5 T8c; **the user's directive, for you to apply too**; recorded in
+  the epic's "Decisions" at M3 T7c1): the
+  user answered CLT-Q28 (the message box's text centred 5 pixels left of the box's centre) with
+  a general rule: **wherever the original sets a text off its centre, the client centres it**
+  in its own profile, the original's place kept for the comparisons only (`h3_render::Bugs`, as
+  the cursor's x); a reading or a recording that finds such a slip fixes it so, with no question
+  needed (`docs/epics/E17-clients.md`, "Decisions"; the lane's `QUESTIONS-ANSWERED.md`,
+  CLT-Q28). The battle client builds it in E17 M6 T1; the text's drawing in the common crates
+  (`h3_render::text`, `h3_ui::paint`) is unchanged until then, and a change there in behaviour
+  will be noted here.
+
 - 2026-10-31 (this lane, E24 M3 T7b2): the agent's cut by area declined by the user, all 24
   findings in one task. Done: the log's "M3 T7b2". Its entry as it was:
 

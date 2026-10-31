@@ -20,7 +20,8 @@ usage: h3-map-view <command> [options]
 commands:
   gate [--install <dir>] [--map <dir>] [--maps <dir>]
           the map's real-asset gate: loads the map's asset tables (<map>/assets, default
-          clients/map) and the adventure screen's layout (<map>/layouts/adventure.toml), finds
+          clients/map) and the adventure screen's layout (<map>/layouts/adventure.toml), the
+          string catalogue beside it (<map>/../text/keys.toml, as every command reads it), finds
           every name they hold where the game searches it in the installation copy's four LOD
           archives and decodes it, and checks that each DEF's group 0 holds the frames the view
           draws: the edge's 36, the unexplored tiles' pieces', the corner gems' 8, and for the

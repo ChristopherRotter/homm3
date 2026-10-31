@@ -122,7 +122,7 @@ fn gate(options: &Options) -> Result<usize, String> {
     let layout = files::load_layout(&options.map)?;
     let bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&bytes)?;
-    tables.texts = crate::texts::catalogue(&options.install, &archives)?;
+    tables.texts = crate::texts::catalogue(&options.install, &options.map, &archives)?;
     let find = |name: &str| files::find(&archives, name);
     let mut problems = Vec::new();
 

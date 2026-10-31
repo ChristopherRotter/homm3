@@ -30,31 +30,44 @@ the status bar's hint unmasked and everything recorded again (done: the epic's l
 M3's review by six fresh reviewers on fractions (the user: up to three at once, each under half
 a context; their findings on a branch), T7b, the findings consolidated and fixed (cut with the
 user, 2026-10-31, into T7b1, the redraw's and the input's, and T7b2, the rest, kept whole by the
-user; both done: the epic's log), and T7c, the user's checkpoint.
+user; both done: the epic's log), and T7c, the user's checkpoint, cut with the user (2026-10-31)
+into T7c1, the review list, the questions and the hand test (done: the epic's log), and T7c2;
+M4's refinement is its own task after it (M4 T0).
 
-### E24 M3 T7c — M3's review list, the hand test, M3 archived, M4 refined
+### E24 M3 T7c2 — MCL-Q22's and MCL-Q24's answers built, M3 archived
 
-- **Scope:** the review list with the user (the epic's "M3's review list", T7b's additions); the
-  window cross-built for the user's machine and a hand test (`clients/out/win/`, a `.cmd` with
-  the checks on screen and a notes file; MCL-Q18's fix among them); M3 archived (its section
-  verbatim to `E24-archive.md`); M4 refined with the user.
-- **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
-- **Depends on:** T7b2 (done). **Status:** the user's checkpoint.
+- **Scope:** MCL-Q22 (b) (the lane's `QUESTIONS-ANSWERED.md`): after a redraw of every dialog
+  item that empties the status bar (a hero or town chosen from its list, Next Hero, a list's arrow,
+  a key's step that lifts the hero, a walk's end that leaves it unable to move, the underground's
+  button and key; design §4.13, §4.14) the client draws the hint of the mouse's item again;
+  MCL-Q24 (b): a panel hotkey's key up during a minimap drag releases its button, without its
+  command (design §4.14). Both the client's by default, the original's behind `--bugs original`
+  (`h3_render::Bugs`: `sequences` and `drawn` compare with it, so every recording stays exact).
+  Then M3 archived: its section (scope, decisions, tasks, exit) and its review list verbatim to
+  `E24-archive.md`, a stub left with the decisions that bind later milestones (as M2's); the
+  queue's M3 history to `QUEUE-ARCHIVE.md`; the HANDOFF's M3 lines trimmed. A finding of T7c1's
+  hand test, if any (the log's "M3 T7c1"), goes in too or into a question.
+- **Acceptance:** each answer's test fails on the old code; `h3map.py drawn` all the same;
+  `clients/scripts/check.sh` all gates; the window under Xvfb in both profiles; M3 archived; M4
+  T0 next. A look at both fixes in the window on the user's machine is the user's call.
+- **Depends on:** T7c1 (done). **Status:** ready.
+
+### E24 M4 T0 — M4 refined with the user
+
+- **Scope:** M4, the engine's games shown (the epic's "Later"), refined with the user, as M3 T0
+  was: what the engine gives the viewer by then (the adventure lane's increment 9 views, the
+  inbox's entry; the object identity the observation lacks; `h3-protocol`'s adventure messages,
+  the server lane's), the record and replay viewer, the battle handed to the battle client, the
+  M3 answers' follow-ups (MCL-Q14, Q15, Q21; the epic's "Later"), the status window's turn and
+  event kinds; the options, the milestone's decisions, its exit and its tasks.
+- **Acceptance:** M4's section in the epic (scope, decisions, exit) and its tasks in this queue,
+  agreed with the user.
+- **Depends on:** T7c2. **Status:** the user's.
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-10-31 (the client lane, E17 M5 T8c; **the user's directive, for you to apply too**): the
-  user answered CLT-Q28 (the message box's text centred 5 pixels left of the box's centre) with
-  a general rule: **wherever the original sets a text off its centre, the client centres it**
-  in its own profile, the original's place kept for the comparisons only (`h3_render::Bugs`, as
-  the cursor's x); a reading or a recording that finds such a slip fixes it so, with no question
-  needed (`docs/epics/E17-clients.md`, "Decisions"; the lane's `QUESTIONS-ANSWERED.md`,
-  CLT-Q28). The battle client builds it in E17 M6 T1; the text's drawing in the common crates
-  (`h3_render::text`, `h3_ui::paint`) is unchanged until then, and a change there in behaviour
-  will be noted here.
 
 - 2026-10-31 (the client lane, E17 M5 T8b2; for information, nothing to do): three changes in the
   common crates. `h3_sdl` sends `Event::Key(Key::Other)` for a key-down or key-up its map does not
