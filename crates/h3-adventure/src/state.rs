@@ -82,6 +82,7 @@ impl StaticTile {
 
 mod boats;
 mod draws;
+mod economy;
 mod events;
 mod flags;
 mod holds;
@@ -97,6 +98,7 @@ mod visits;
 pub use boats::Boat;
 use boats::Boats;
 pub use draws::Resolved;
+pub use economy::Weekly;
 use flags::Flags;
 pub(crate) use occupancy::Occupancy;
 pub(crate) use passage::{Mode, Node};
@@ -203,6 +205,13 @@ impl MapObject {
             .is_some_and(|(column, row)| self.drawn.contains(column, row))
     }
 
+    /// Its entrance: the first tile of `map` it is visited from, in [`Self::tiles`]' order (E08
+    /// T83b1: an ownable object's, whose reveal and boat tile start there); none for an object
+    /// visited from no tile of the map.
+    pub fn entrance(&self, map: &StaticMap) -> Option<Pos> {
+        self.tiles(map).find(|&pos| self.covers(pos).1)
+    }
+
     /// The tiles of `map` it covers: its blocked, visitable and drawn tiles, row by row (a tile
     /// in several masks once).
     pub fn tiles<'a>(&self, map: &'a StaticMap) -> impl Iterator<Item = Pos> + use<'a> {
@@ -267,6 +276,14 @@ pub struct StaticMap {
     /// objects placed on them and the part's costs: they follow from those, so the hash leaves
     /// them out.
     shares: TerrainShares,
+    /// The ownable objects' indices, in object order (E08 T83b1; increment 9's design note §6): a
+    /// mine, an abandoned mine, a Lighthouse, a Shipyard ([`ObjectKind::ownable`]); the state's
+    /// owners are by their place here. Follows from the objects, so the hash leaves it out.
+    ownables: Vec<usize>,
+    /// The weekly objects' indices, in object order (E08 T83b1): a Windmill, a Water Wheel, a
+    /// Mystical Garden ([`ObjectKind::weekly`]); the state's weekly contents are by their place
+    /// here. Follows from the objects too.
+    weeklies: Vec<usize>,
     hash: u64,
 }
 
@@ -339,6 +356,8 @@ impl StaticMap {
             near_monsters: vec![0; setup.tiles.len().div_ceil(64)],
             any_monster: false,
             shares: TerrainShares::default(),
+            ownables: Vec::new(),
+            weeklies: Vec::new(),
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -418,12 +437,72 @@ impl StaticMap {
         }
         map.resolve(core, part, &setup.objects, draws);
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
+        draws::resolve_mines(part, &mut map.objects, draws);
+        map.fix_boat_tiles(part);
+        map.list_economy(part);
         map.mark_near_monsters();
         map.mark_grounds(part);
         // After the objects, as the original counts after placing its map's objects.
         map.shares = terrain_shares(part, &map.tiles);
         map.hash = hash_of(&map);
         Ok(map)
+    }
+
+    /// Fixes each Shipyard's boat tile (ADV-SHY-001, E08 T83b1; increment 9's design note §6), after
+    /// every object is placed: from its entrance, the first of its kind's offsets (column, row) on
+    /// the entrance's level that is a tile of the map on water that no object blocks or is visited
+    /// from, as the original's `shipyard_boat_tiles` 0x500DE0 tests (map item +0xD 0x01 clear, no
+    /// object's entrance; it also takes a boat's entrance, and the state's boats are no objects,
+    /// ADV-SEA-001; survey `E08-economy.md` §5.1). None found: the Shipyard keeps
+    /// [`Resolved::Nothing`] and never builds. Computed once: an object that leaves an earlier
+    /// offset later does not move it.
+    // rule: ADV-SHY-001
+    fn fix_boat_tiles(&mut self, part: &AdventureRuleset) {
+        for index in 0..self.objects.len() {
+            let object = &self.objects[index];
+            let Some(ObjectKind::Shipyard { offsets, .. }) = object
+                .object_type
+                .and_then(|id| part.object_type(id))
+                .map(|ty| &ty.kind)
+            else {
+                continue;
+            };
+            let free = |pos: &Pos| {
+                self.tile(*pos).is_some_and(|tile| {
+                    matches!(part.passage(tile.terrain), Some(Passage::Water(_)))
+                        && !tile.blocked
+                        && !tile.visitable
+                })
+            };
+            let tile = object.entrance(self).and_then(|entrance| {
+                offsets.iter().find_map(|&(column, row)| {
+                    let x = entrance.x.checked_add_signed(i16::from(column));
+                    let y = entrance.y.checked_add_signed(i16::from(row));
+                    x.zip(y)
+                        .map(|(x, y)| Pos::new(x, y, entrance.level))
+                        .filter(free)
+                })
+            });
+            if let Some(tile) = tile {
+                self.objects[index].resolved = Resolved::BoatTile(tile);
+            }
+        }
+    }
+
+    /// Lists the ownable and the weekly objects ([`Self::ownables`], [`Self::weeklies`]).
+    fn list_economy(&mut self, part: &AdventureRuleset) {
+        for (index, object) in self.objects.iter().enumerate() {
+            let kind = object
+                .object_type
+                .and_then(|id| part.object_type(id))
+                .map(|ty| &ty.kind);
+            if kind.is_some_and(ObjectKind::ownable) {
+                self.ownables.push(index);
+            }
+            if kind.is_some_and(ObjectKind::weekly) {
+                self.weeklies.push(index);
+            }
+        }
     }
 
     /// Marks the tiles within one step of a monster's visitable tile, on its level
@@ -782,6 +861,28 @@ impl StaticMap {
         &self.objects
     }
 
+    /// The ownable objects' indices, in object order (E08 T83b1): the state's owners are by their
+    /// place here ([`AdventureState::owner`]).
+    pub fn ownables(&self) -> &[usize] {
+        &self.ownables
+    }
+
+    /// The place of the object at `index` among the ownable ones, if it is one.
+    pub fn ownable_index(&self, index: usize) -> Option<usize> {
+        self.ownables.binary_search(&index).ok()
+    }
+
+    /// The weekly objects' indices, in object order (E08 T83b1): the state's weekly contents are
+    /// by their place here ([`AdventureState::weekly`]).
+    pub fn weeklies(&self) -> &[usize] {
+        &self.weeklies
+    }
+
+    /// The place of the object at `index` among the weekly ones, if it is one.
+    pub fn weekly_index(&self, index: usize) -> Option<usize> {
+        self.weeklies.binary_search(&index).ok()
+    }
+
     /// The objects visited from `pos`, by index in map order, if a typed one is among them (none
     /// for a tile only blockers are visited from, or one off the map). A visit concerns the last
     /// of them still on the map ([`AdventureState::visit_at`], E08 T14a).
@@ -1009,6 +1110,14 @@ pub struct AdventureState {
     /// The boats (ADR-0016 point 1, ADV-SEA-001; E08 T72): none for a map without boats, so a
     /// fork costs nothing more (`bench-check`).
     boats: Option<Boats>,
+    /// The ownable objects' owners by their place among the static map's ownable objects
+    /// (ADV-OWN-002, E08 T83b1; increment 9's design note §6; `economy.rs`): one block the forks
+    /// share, which a flag copies (T84).
+    owners: Arc<[Option<PlayerId>]>,
+    /// The weekly objects' contents and marks by their place among the static map's weekly
+    /// objects (ADV-WEK-001 to -003, E08 T83b1): none for a map without weekly objects, else one
+    /// block the forks share, which a visit or the week's step copies (T84, T85a).
+    weekly: Option<Arc<[Weekly]>>,
 }
 
 impl AdventureState {
@@ -1052,6 +1161,8 @@ impl AdventureState {
         }
         let mut seats = [Seat::default(); MAX_PLAYERS as usize];
         seats[..setup.seats.len()].copy_from_slice(&setup.seats);
+        let owners = economy::owners_at_start(&map, &setup.map.objects);
+        let weekly = economy::first_week(part, &map, draws);
         let unexplored = BitGrid::new(map.width(), map.height(), map.levels());
         let mut state = Self {
             map: Arc::new(map),
@@ -1065,6 +1176,8 @@ impl AdventureState {
             army_left: Table::new(),
             visits: None,
             boats: None,
+            owners,
+            weekly,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero)?;
@@ -1079,8 +1192,9 @@ impl AdventureState {
     /// reveals the tiles around it to its owner with its radius (ADV-FOG-003), both from its
     /// details in `heroes`, the game's store. The original's order: `placed_hero_setup` 0x4D8B30
     /// sets the points after the levels (survey `E08-progression.md` §3.2), `placed_heroes_setup`
-    /// 0x4CAE10 reveals after it (0x4CAF74, §3.1). Increment 1 has no owned objects: a game opens
-    /// with only its heroes' surroundings explored. The game calls it once, before day 1's
+    /// 0x4CAE10 reveals after it (0x4CAF74, §3.1). Since E08 T83b1 every object owned at load then
+    /// reveals the tiles within the part's flag radius of its entrance to its owner
+    /// (`reveal_owned`, ADV-OWN-002; ADR-0016 point 5). The game calls it once, before day 1's
     /// start-of-day step.
     // rule: ADV-MOV-002, ADV-FOG-001, ADV-FOG-003
     pub fn start_game(
@@ -1095,6 +1209,7 @@ impl AdventureState {
             hero.movement = hero.max_movement;
         }
         self.reveal_around_heroes(core, part, heroes);
+        self.reveal_owned(part);
     }
 
     /// The adventure's start-of-day step (ADR-0017 point 3, E08 T40), after the calendar and
@@ -2356,9 +2471,9 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v16 (E08 T72; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
-    /// v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's, v11 T50's, v14 T61b's, v15 T62b2's; v12
-    /// and v13 changed the static map's):
+    /// Encoding v18 (E08 T83b1; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6
+    /// T15a's, v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's, v11 T50's, v14 T61b's, v15 T62b2's,
+    /// v16 T72's; v12, v13 and v17 changed the static map's):
     /// version; the static map's content hash (since v4 with the objects' types and contents); the
     /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
     /// creature, count; since v7 the formation, 0 loose, 1 tight; since v11 the tactics flag;
@@ -2373,7 +2488,8 @@ impl CanonicalHash for AdventureState {
     /// left on objects as their number and, by object index, the index and the army's stacks as
     /// length and entries (slot, creature, count); since v14 the visits' block (0 for none, else
     /// 1 and [`Visits`]' encoding; there is one only once a visit wrote it); since v16 the boats
-    /// (their number, 0 for a map without boats, then each: [`Boat`]'s fields in order).
+    /// (their number, 0 for a map without boats, then each: [`Boat`]'s fields in order); since
+    /// v18 the owners and the weekly contents (`economy.rs`' `hash_economy`).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -2439,6 +2555,7 @@ impl CanonicalHash for AdventureState {
             None => h.write_len(0),
             Some(boats) => boats.hash_into(h),
         }
+        self.hash_economy(h);
     }
 }
 
@@ -2484,6 +2601,22 @@ impl AdventureState {
             .iter_mut()
             .filter(|h| h.id == hero)
             .for_each(|h| h.movement = points);
+    }
+
+    /// Writes an army on the object at `index` (tests of a mine's guards, E08 T83b1, until T84's
+    /// battles and Leave Guards write them).
+    pub(crate) fn set_army_left(&mut self, index: usize, army: Vec<ArmyStack>) {
+        self.army_left.set(index, Some(army));
+    }
+
+    /// Writes the weekly contents at weekly place `place` (tests of the weekly invariants and
+    /// hash, E08 T83b1, until T84's visits and T85a's week write them).
+    pub(crate) fn set_weekly(&mut self, place: usize, weekly: Weekly) {
+        self.weekly = self.weekly.as_deref().map(|block| {
+            let mut entries = block.to_vec();
+            entries[place] = weekly;
+            entries.into()
+        });
     }
 
     /// Gives `player` the key of `colour` (tests of the border gates, E08 T15b).

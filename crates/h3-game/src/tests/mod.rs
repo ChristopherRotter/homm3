@@ -602,6 +602,7 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             water_walk_cost: [cost; 4],
             sea_points: [1500, 2250, 3000, 3750],
             sea_ground: [2, 3],
+            flag_radius: 3,
             calendar: CalendarParams {
                 week_days: NonZeroU8::new(7).unwrap(),
                 month_weeks: NonZeroU8::new(4).unwrap(),

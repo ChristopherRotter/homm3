@@ -28,6 +28,8 @@
 //!                                  # 0 to 3 (HER-ADV-009), none 0
 //! sea_ground = [2, 3]              # a boat's step price from a tile a ground of the sea tops,
 //!                                  # times 2 / 3 truncated (ADV-SEA-004); 1 <= first <= second
+//! flag_radius = 3                  # E08 T83b1: the tiles within it of an owned object's
+//!                                  # entrance revealed to its owner (ADR-0016 point 5)
 //!
 //! [params.battle]                  # optional (E08 T19a, GAM-BAT-001): a battle on the map is
 //! underground = "subterranean"     # fought on this terrain underground, else on a coast tile
@@ -289,6 +291,7 @@ struct ParamsDto {
     water_walk_cost: [NonZeroU16; 4],
     sea_points: [u32; 4],
     sea_ground: [u16; 2],
+    flag_radius: u8,
     calendar: CalendarDto,
     #[serde(default)]
     months: Option<MonthsDto>,
@@ -1107,6 +1110,7 @@ pub fn parse_adventure(
                     water_walk_cost: p.water_walk_cost,
                     sea_points: p.sea_points,
                     sea_ground: p.sea_ground,
+                    flag_radius: p.flag_radius,
                     calendar: CalendarParams {
                         week_days: p.calendar.week_days,
                         month_weeks: p.calendar.month_weeks,
