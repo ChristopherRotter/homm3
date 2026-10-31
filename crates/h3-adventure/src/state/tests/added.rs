@@ -36,22 +36,23 @@ fn rows(placed: bool, boat: bool) -> [&'static str; 3] {
 }
 
 /// The started state of [`rows`] under the faithful [`hero_rules`], red's hero 1 (peasants) on
-/// (0, 1).
-fn twin(rules: &Rules, placed: bool, boat: bool) -> AdventureState {
-    let heroes = vec![hero_at(1, 0, p(0, 1), &[PEASANT])];
+/// (0, 1), or with `beside` on (3, 2), beside the monster's tile.
+fn twin(rules: &Rules, placed: bool, (boat, beside): (bool, bool)) -> AdventureState {
+    let at = if beside { p(3, 2) } else { p(0, 1) };
+    let heroes = vec![hero_at(1, 0, at, &[PEASANT])];
     started(rules, &world(&rows(placed, boat), 1, heroes)).unwrap()
 }
 
 /// The placed twin and the other with the placed monster added in play: the same objects in the
 /// same order, the monster at index 1 in both.
 fn twins(rules: &Rules) -> (AdventureState, AdventureState) {
-    twins_with(rules, false)
+    twins_with(rules, (false, false))
 }
 
-/// [`twins`] with or without the boat.
-fn twins_with(rules: &Rules, boat: bool) -> (AdventureState, AdventureState) {
-    let placed = twin(rules, true, boat);
-    let mut added = twin(rules, false, boat);
+/// [`twins`] with or without the boat, the hero beside the monster or not ([`twin`]).
+fn twins_with(rules: &Rules, variant: (bool, bool)) -> (AdventureState, AdventureState) {
+    let placed = twin(rules, true, variant);
+    let mut added = twin(rules, false, variant);
     let monster = placed.map().objects()[1].clone();
     assert_eq!(added.add_object(monster), 1);
     (placed, added)
@@ -133,10 +134,18 @@ fn an_added_monster_reads_as_a_placed_one() {
             reach(&rules, &placed, &heroes)
         );
     }
-    let (afloat, beside) = twins_with(&rules, true);
-    assert_eq!(read(&rules, &beside), read(&rules, &afloat));
-    assert_eq!(reach(&rules, &beside, &[]), reach(&rules, &afloat, &[]));
-    assert!(!reach(&rules, &afloat, &[]).is_empty());
+    // With a boat in the window, and with the hero starting beside the monster (whose tile its
+    // first steps then reach: every other way to it crosses a tile it guards).
+    for variant in [(true, false), (true, true), (false, true)] {
+        let (placed, added) = twins_with(&rules, variant);
+        assert_eq!(read(&rules, &added), read(&rules, &placed));
+        let walked = reach(&rules, &placed, &[]);
+        assert_eq!(reach(&rules, &added, &[]), walked);
+        assert!(!walked.is_empty());
+    }
+    let (_, beside) = twins_with(&rules, (false, true));
+    let walk = beside.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+    assert!(walk.points_left(p(4, 2)).is_some());
     for viewer in [RED, BLUE] {
         assert_eq!(
             added.observe(&rules.0, &rules.1, viewer),
