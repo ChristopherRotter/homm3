@@ -81,7 +81,10 @@ impl Occupancy {
     }
 
     /// `tile`, the static map's tile at `pos`, blocked and visitable only where an object still
-    /// on the map covers it so. The grids are read only where the static tile is marked.
+    /// on the map covers it so. The grids are read only where the static tile is marked. Out of
+    /// line, as before E08 T83b2a: inlined into the walking search's loop it cost the random
+    /// plays up to 2 % (`bench-check`).
+    #[inline(never)]
     pub(crate) fn live(&self, pos: Pos, mut tile: StaticTile) -> StaticTile {
         tile.blocked = tile.blocked && !self.unblocked.get(pos);
         tile.visitable = tile.visitable && !self.unvisitable.get(pos);

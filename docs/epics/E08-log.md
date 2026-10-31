@@ -9816,10 +9816,11 @@ T83b2b design §12's views the next session.
   removals and additions does not change the grid).
 - **The readers:** `tile_object` asks the added objects first (they come last in map order),
   then the static map's; `guard_at`'s early test is `may_guard` (the static map's
-  `near_monster` or the added `near`); `Reach`'s walking search takes a const flag `ADDED` (as
-  `AFLOAT`): with it a step asks the live tile where the static map marks nothing but the added
-  `tiles` is set, without it the loop reads `live_placed` (the occupancy only), the one before;
-  its `guards` flag counts an added monster, `guarded` asks `may_guard`; the observation's tile
+  `near_monster` or the added `near`); `Reach`'s walking search serves an added object in its
+  rare case (`AFLOAT`, as a boat in the window): there a step asks the live tile where the
+  static map marks nothing but the added `tiles` is set; the plain loop reads `live_placed`
+  (the occupancy only), the one before; its `guards` flag counts an added monster, `guarded`
+  asks `may_guard`; the observation's tile
   views ask the live tile there too, and its objects list chains the added objects after the
   static map's (an added monster seen as a placed one, its count word from `monster_count`); the
   passage and `check_tile` read `live`, so a flight and a stand see them unchanged.
@@ -9847,11 +9848,19 @@ T83b2b design §12's views the next session.
   grids) cost reach-xl-144 +9.1 %, reach-lifted-xl-144 +16.5 % and random play +6 to +12 %
   (`callgrind_annotate --inclusive=no` against `master` in a worktree: the occupancy's `live`,
   the guard's near test and the visit's lookup asking a grid on every map with a removal, and
-  the walking loop's added test). Their own block, the const flag and `live_placed` brought
-  every workload within its threshold, none re-baselined: reach-xl-144 +1.89 % against its
-  baseline (`master` measured +0.73 %), the forks +0.6 to +1.5 %, random play +1.0 to +1.7 %.
+  the walking loop's added test). Their own block, the rare case, `live_placed` and the
+  occupancy's `live` kept out of line (as `master`'s compiler left it) brought every workload
+  but one within its threshold: reach-xl-144 +1.55 % against its baseline (`master` +0.73 %),
+  reach-lifted-xl-144 +0.93 %, reach-sea-xl-144 +1.54 %, the forks +0.6 to +1.5 %, random play
+  duel +1.60 %, rewards +0.76 %; **random-play-sea-36 re-baselined** at +2.02 % (+2.47 %
+  against `master`'s count of the same games, 2 613.9 M; the reason in its description). Tried
+  and dropped: a variant of the walking search of its own for the added objects (with three or
+  four instantiations the compiler inlined the plain loop differently: reach-xl-144 +2.34 %),
+  the variants out of line (+3.84 %), the visit's lookup with the static map first or a fast
+  path without added objects (no gain).
 - *Agent's calls (change freely):* the added objects a block of their own rather than in the
-  occupancy (one null test where none were added; `bench-check`); their grids never cleared (a
+  occupancy (one null test where none were added; `bench-check`); the walking search's rare case
+  serving them; random-play-sea-36's re-baseline; their grids never cleared (a
   removed one's tiles stay marked; `live` and `added_visited_from` read the objects still on
   the map there); `Added::new`, `Added::push`, `Occupancy::make_room`,
   `AdventureState::add_object` and `set_fraction` test-only until T85a.
@@ -9864,7 +9873,7 @@ T83b2b design §12's views the next session.
 - **Tests:** `state/tests/added.rs`: an added monster read as a placed one (every tile's guard,
   stand, live tile and visit; the reach walking and flying; both players' observations), its
   guard's battle, survivors and removal as the placed one's, with and without a boat in the
-  walker's window (the search's four flag pairs); the removed grid's growth past a row with
+  walker's window; the removed grid's growth past a row with
   removals of static and added objects, a fork's sharing; `check_added`'s refusals
   (water, a static object's tile, two on one tile, untyped, of another kind, without monster
   data, covering no tile); the fractions' bounds and their removal; the hash.
