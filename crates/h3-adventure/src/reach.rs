@@ -61,6 +61,7 @@ use h3_heroes::{HeroDetails, free_boarding};
 use crate::movement::{
     DIRECTIONS, Pricing, converted_points, day_points, details_of, hero_movement, sea_day_points,
 };
+use crate::persistent::BitGrid;
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
 use crate::state::{
@@ -79,9 +80,13 @@ struct Search<'s> {
     /// Whether another hero stands on the slot's tile (on land, or on water in a boat) or an
     /// empty boat lies there (E08 T73b: on water only, so a land tile's flag is a hero's).
     occupied: Vec<bool>,
-    /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b): the search
-    /// asks [`Search::guarded`] only then (`bench-check`).
+    /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b; since E08
+    /// T83b2a a monster added in play counts): the search asks [`Search::guarded`] only then
+    /// (`bench-check`).
     guards: bool,
+    /// The tiles an object added in play covers, if one was added (E08 T83b2a): a walker's step
+    /// asks the live tile there too, where the static map marks nothing (`bench-check`).
+    added: Option<&'s BitGrid>,
     /// What a boarding's and a landing's conversion reads (E08 T73; ADV-SEA-002, ADV-SEA-003):
     /// the core, the hero's details, its day's maximum and its army; derived only at a boarding
     /// or a landing met (`bench-check`).
@@ -123,7 +128,7 @@ impl Search<'_> {
     #[cold]
     #[inline(never)]
     fn guarded(&self, pos: Pos) -> bool {
-        self.map.near_monster(pos) && self.state.guard_of(self.part, pos).is_some()
+        self.state.may_guard(pos) && self.state.guard_of(self.part, pos).is_some()
     }
 }
 
@@ -218,7 +223,8 @@ impl Reach {
             hero: hero.id,
             owner: hero.owner,
             occupied,
-            guards: map.any_monster(),
+            guards: map.any_monster() || state.added_tiles().is_some(),
+            added: state.added_tiles(),
             surface: (core, details, hero.max_movement, &hero.army),
         };
         reach.points[reach.start] = Some(hero.movement);
@@ -308,7 +314,8 @@ impl Reach {
                     continue;
                 }
                 visit = true;
-            } else if to.blocked || to.visitable {
+            } else if to.blocked || to.visitable || search.added.is_some_and(|added| added.get(pos))
+            {
                 let live = state.live(pos, to);
                 if live.visitable {
                     match state.visit_at(part, search.owner, pos) {

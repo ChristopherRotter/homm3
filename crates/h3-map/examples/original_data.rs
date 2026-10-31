@@ -525,6 +525,10 @@ fn built_economy(
         "economy: maps whose owners do not check",
         usize::from(!adventure.check_owners(rules.adventure())),
     );
+    add(
+        "economy: maps whose fractions and added objects do not check",
+        usize::from(!adventure.check_added(rules.adventure())),
+    );
     without
 }
 
