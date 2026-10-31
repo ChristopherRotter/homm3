@@ -41,7 +41,8 @@ impl AdventureState {
     /// original's `set_mine_owner` 0x4C66E0 and `set_shipyard_owner` 0x4C6A30): its owner
     /// written, told to the players that see the object and to its new owner
     /// ([`AdventureEventKind::ObjectFlagged`]), then the tiles within the part's flag radius of
-    /// its entrance (E08 decision 217) explored for the new owner (its team from E10; ADV-FOG-002's
+    /// its entrance (its anchor for an object without one, which no visit reaches; E08 decision
+    /// 217) explored for the new owner (its team from E10; ADV-FOG-002's
     /// disk), told to it alone with the number it had not explored, as an observatory's
     /// ([`AdventureEventKind::TilesRevealed`]). The caller has checked that the object is ownable
     /// and not of `player`'s team; nothing is paid.
@@ -54,11 +55,12 @@ impl AdventureState {
         sink: &mut S,
     ) {
         let place = self.map.ownable_index(index);
-        if let Some((owners, place)) = self.owners.as_mut().zip(place) {
+        for (owners, place) in self.owners.as_mut().zip(place) {
             alloc::sync::Arc::make_mut(owners)[place] = Some(player);
         }
         let object = self.object_at(index);
-        let (anchor, entrance) = (object.anchor, object.entrance(&self.map));
+        let anchor = object.anchor;
+        let entrance = object.entrance(&self.map).unwrap_or(anchor);
         sink.emit(AdventureEvent {
             kind: AdventureEventKind::ObjectFlagged {
                 object_type,
@@ -67,18 +69,16 @@ impl AdventureState {
             },
             seen_by: self.object_viewers(core, object).with(player),
         });
-        if let Some(entrance) = entrance {
-            let grid = &mut self.explored[usize::from(player.raw())];
-            let before = grid.count();
-            reveal(grid, entrance, part.params().flag_radius());
-            sink.emit(AdventureEvent {
-                kind: AdventureEventKind::TilesRevealed {
-                    object_type,
-                    count: grid.count() - before,
-                },
-                seen_by: Viewers::NONE.with(player),
-            });
-        }
+        let grid = &mut self.explored[usize::from(player.raw())];
+        let before = grid.count();
+        reveal(grid, entrance, part.params().flag_radius());
+        sink.emit(AdventureEvent {
+            kind: AdventureEventKind::TilesRevealed {
+                object_type,
+                count: grid.count() - before,
+            },
+            seen_by: Viewers::NONE.with(player),
+        });
     }
 
     /// The visit of the mine at object index `index`, of type `object_type`, by `player`'s hero

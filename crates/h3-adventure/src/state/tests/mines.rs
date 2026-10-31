@@ -325,8 +325,10 @@ fn another_s_guards_are_asked_then_fought_as_a_monster_guards_or_their_owner_s_s
             .iter()
             .any(|e| matches!(e.kind, AdventureEventKind::ObjectFlagged { owner: RED, .. }))
     );
-    // A defender's owner: none for unowned guards.
+    // A defender's owner: a hero's, none for unowned guards.
     assert_eq!(Defender::Guards { army: vec![] }.owner(), None);
+    let hero = Defender::Hero(blue.hero(HERO).unwrap().combatant());
+    assert_eq!(hero.owner(), Some(RED));
 }
 
 // covers: ADV-MIN-002

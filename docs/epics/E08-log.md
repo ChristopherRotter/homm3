@@ -9951,3 +9951,124 @@ The design note's §12 as T83b2b found it (built; moved here):
   ("Information hiding") gains the owners, the production, the marks and the month's kind (T85).
 
 T84 (the visits) next.
+
+### Increment 9, round 6: T84a, flagging and the mines' visits (2026-10-31, `adventure/e08-t84a` with `shared/e08-t84a`)
+
+**The cut** (decision 220, the user at T84's start): T84 in two halves, design §18's: T84a the
+flags, the mines and abandoned mines with Leave Guards, the guards' question and their battles;
+T84b the Lighthouses, the Shipyards with their offer and `BuildBoat`, the weekly visits. The
+`shared/` part (docs only, `docs/06-security.md`) in a pull request of its own merged first.
+
+- **The visit** (`h3-adventure`, `state/mines.rs`; design §7): `Effect::Mine` for the mines and
+  abandoned mines (`ObjectKind::effect`; the other five kinds still `None`, so their entrances
+  stay unvisitable until T84b). `visit_mine`: a mine of the visitor's team opens, the visitor's
+  own, the Leave Guards dialog (`AdventureOutcome::garrison`: `Garrison { hero, mine, object_type,
+  anchor, guards }`; an ally's would do nothing, unreachable until E10's teams); another's or a
+  neutral one with guards standing asks `OfferKind::Fight` (the guarded pile's); without guards
+  `fight_for_mine` flags it at once. `accept_offer`'s `Fight` sends a mine to `fight_for_mine`
+  (the battle, or the flag when the guards are gone).
+- **The flag** (`AdventureState::flag`, ADV-OWN-001): the owner written in the owners' block
+  (`Arc::make_mut`), `ObjectFlagged { object_type, anchor, owner }` to the object's viewers and
+  the new owner, then the disk of the part's `flag_radius` around the entrance explored for the
+  new owner, `TilesRevealed` to it alone with the count (0 told too, as an observatory's).
+- **The battle** (design §13): `mine_battle` builds the defender from the owner and the guards:
+  a neutral single stack `Defender::Monster` (the game splits it from the entrance tile under
+  `ADV-QUIRK-6`), other neutral guards `Defender::Guards`, an owned mine's the new
+  `Defender::Garrison { owner, army }` (`Defender::owner`); fought at the visitor's tile (the
+  entrance), the kind's `battle_terrain` (`ObjectKind::battle_terrain`) replacing `battle_at`'s
+  terrain with the special ground as the battlefield (the original tests the mines after a boat
+  and the underground, before the coast, 0x4643B0). `h3-game`'s `start_battle` takes the sides'
+  owners from `Defender::owner`: a garrison's side gets its owner's funds, human flag and colour,
+  no hero; its owner plays it through `GameCommand::Battle` as a hero battle's defender. The end
+  goes the unowned way (`heroes[1]` none): `end_unowned_battle` sends a mine to
+  `end_mine_battle`: won, the guards gone and `reward_after` (the flag after the winner's levels,
+  GAM-DEC-007: `give_won` → `flag_won`); else the survivors, a neutral single stack's summed into
+  its slot as its creature (A-29, A-6 fixed), others by slot.
+- **Leave Guards** (`h3-game`, design §14): `Decision::ArmyDialog` gains `holder: Holder { Join,
+  Mine(usize) }`; `open_leave_guards` emits `LeaveGuardsOpened { player, hero, object_type,
+  anchor }`, then one `ArmyDialogOpened` per guard stack (none for an empty mine); the management
+  keeps the holder; `close_exchange` (now given the rules) loses a join's group as before and
+  writes a mine's back (`AdventureState::set_guards`, nothing for an object that is no mine).
+  `DecisionView::ArmyDialog::mine` and `GameState::leave_guards` name the mine to its owner.
+- **The guards' hint** (`write_guards`): a battle's survivors and a dialog's close write the
+  guards through it, which emits `GuardsChanged { object_type, anchor, creature, count_word }`
+  (the `GuardsView`'s public part after; `count_word` none when no guards are left) to the
+  mine's viewers when that hint changed, as `MonsterChanged`; the owner's team's stacks follow
+  from the dialog's and the battle's own events. `guards_view` is `pub(crate)` for it.
+- *Agent's calls (change freely):* `GuardsChanged` (the design had no event for the guards'
+  change; ADR-0016 point 6's "the observation changes only as told", which `h3-map`'s view
+  property asserts, needs one once the plans have mines, T86); the flag's `TilesRevealed` told
+  even with 0; the flag after the levels through `reward_after` (the original's `visit_mine` flags
+  once `adventure_battle` returns, levels included); the guards written at the dialog's close,
+  not at each army command (the original's dialog edits the record's army live; no other player
+  acts in between); the mine's battle at the hero's tile (its entrance); `Garrison`'s guards in
+  the outcome so the game needs no second read; `LeaveGuardsOpened` before the stacks' events.
+- **`shared/e08-t84a`** (#632): `docs/06-security.md`'s lines for the flag, the guards' question,
+  the Leave Guards dialog, `GuardsChanged` and the mines' battles.
+- **Rules:** ADV-OWN-001 new (`implemented`: the mines; the Lighthouses' and Shipyards' flags with
+  T84b), ADV-MIN-002 new (`verified`: batch E9's E9-1 to E9-3); GAM-BAT-001 (the mines' terrain,
+  a side with an owner and no hero) and GAM-DEC-004 (Leave Guards, E9-2's source) amended;
+  ADV-OWN-003's and ADV-MIN-003's pointers.
+- **Tests:** `h3-adventure`'s `state/tests/mines.rs` (five: the flag and its reveal and viewers;
+  another's mine flagged, an own one's dialog with and without guards; `set_guards` and its
+  `GuardsChanged`; the question and the three defenders on their terrains, the guards gone while
+  asked; the battle's ends: summed into the slot, the word kept untold, a draw, a win flagged
+  after the levels, a garrison's survivors), `ruleset/tests/economy.rs`'s effects and battle
+  terrains; `h3-game`'s `tests/mines.rs` (three: Leave Guards opened, split into and closed,
+  kept; a neutral abandoned mine's question, the system's side, the flag after the battle's end;
+  blue leaving guards, red asked and fighting blue's side, which blue plays, the mine flagged for
+  red and told to both). The game test part gained a gold mine and an abandoned mine of gogs on
+  rock. `h3-map`'s `view.rs` knows the new events.
+- **Bench** (`bench-check` against `target/wt-master`): reach-xl-144 +1.82 % (`master` +1.55 %:
+  this change +0.27 %), random-play-duel-36 +1.70 % (`master` +1.62 %), random-play-sea-36
+  +0.00 %, random-play-rewards-36 +1.11 %; no map of the workloads has a mine, the code alone
+  (the effect's new arm); none re-baselined.
+- **Versions:** game state hash v21 (the army dialog's holder); the 32 adventure replays
+  re-recorded, only their hashes and that version moved (no replay's map has a mine); the bot
+  reports unmoved (no part change).
+
+The design note's §7 and §13 as T84a found them (§13 built; §7's flag and mines built, its
+Lighthouse and Shipyard items left in the note for T84b):
+
+###### 7. The owned objects' visits (as T84a found it) (ADV-OWN-001, ADV-MIN-002, ADV-OWN-005, ADV-SHY-002)
+
+`visit_at`'s `Effect` gains `Mine`, `AbandonedMine`, `Lighthouse`, `Shipyard`. The team test is
+`allied(a, b)` = `a == b` (E10's teams change only it).
+
+- **Flagging** (`AdventureState::flag(index, player)`): the owner written, `ObjectFlagged {
+  object_type, anchor, owner }` emitted to the players who see the object and the new owner, the
+  disk of the part's flag radius (3, decision 217) around the entrance revealed to the new owner (ADV-FOG-002's `reveal`; its
+  `TilesRevealed`). No flag for an own or allied object.
+- **A mine** (own: the outcome's `garrison: Some(index)`, which the game opens as the Leave Guards
+  dialog, §14; ally: nothing; else): with guards (`guards_of(index)` not empty) the outcome's
+  offer `OfferKind::Fight` (the guarded pile's question), answered by the game: accepted, the
+  battle (§13), whose win the game reports back as `AdventureState::end_mine_battle(index, won,
+  survivors)`: won, the guards cleared and the mine flagged; else the survivors written and no
+  flag. Without guards: flagged at once.
+- **A Lighthouse:** flagged unless own or allied; nothing else. Its effect is read by
+  `day_maximum` in a boat: `lighthouse_points(owner)` = Σ over the owner's Lighthouses of their
+  kind's `sea_points`, passed to `sea_day_points` (§2).
+- **A Shipyard:** flagged unless own or allied, then the boat offer: no tile, `ShipyardBlocked {
+  object_type, anchor, reason: NoTile }` to the visitor's owner; a boat or a hero on the tile,
+  `reason: Taken`; else the outcome's offer `OfferKind::Boat { price }`, which the game makes only
+  when the treasury can pay (`OfferRefused` else). Accepted: `AdventureState::build_boat(index,
+  player)` (the offer re-checked by `offer_stands`: the tile still free) puts an empty boat of the
+  kind's type on the tile (ADV-SEA-001's record: facing 2, the builder as owner, no captain; the
+  empty boats' grid set), `BoatBuilt { tile, boat_type }` to the players who see the tile.
+- **A hero on an owned entrance** stays a hero on its tile: the step meets or fights it before
+  any object (today's rule); nothing new.
+
+###### 13. The mines' battles (as T84a found it) (GAM-BAT-001 amended; ADV-MIN-002)
+
+- **The defender:** a neutral mine whose guards are one stack, `Defender::Monster { creature,
+  count }` (split by the game as a monster's, `ADV-QUIRK-6`'s draws; D-47, confirmed by E9-1); a neutral mine with
+  more, `Defender::Guards { army }` (unsplit, the neutral seat); an owned mine's,
+  **`Defender::Garrison { owner, army }`** (new): the side's owner the mine's, its human flag the
+  setup's (GAM-BAT-010), played by that player through `GameCommand::Battle` outside its turn as a
+  hero battle's defender (*agent's call*, confirmed by E9-2: the original hands its human owner
+  the side, each stack waiting for its order; survey §19).
+- **The terrain:** the mine type's `battle_terrain` when set (`battle_at`: crystal, gold and
+  abandoned mines on the subterranean), else the entrance tile's; special grounds as before.
+- **After:** the survivors go back to the mine (`end_mine_battle`); a win flags it for the
+  attacker's owner; a lost hero leaves the map as in any battle. The abandoned mine's win message
+  (ADVEVENT 85) and the owned mine's question text are the client's (the events carry the owner).
