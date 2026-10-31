@@ -113,9 +113,11 @@ impl AdventureState {
             .find_map(|(column, row)| self.map.offset_pos(object.anchor, column, row))
     }
 
-    /// Applies the end of a battle no player's side defended, fought by the visitor's hero `hero`
+    /// Applies the end of a battle no player's hero defended, fought by the visitor's hero `hero`
     /// at `tile` (ADR-0017 point 11), by the object visited there: a wandering monster's
-    /// ([`Self::end_monster_battle`], ADV-MON-010), a guarded object's (ADV-PIK-004, E08 T21a; an
+    /// ([`Self::end_monster_battle`], ADV-MON-010), a mine's guards' (ADV-MIN-002, E08 T84a: a
+    /// neutral one's or its owner's side, [`Self::end_mine_battle`]), a guarded object's
+    /// (ADV-PIK-004, E08 T21a; an
     /// artifact's or a scroll's since T62a, ADV-PIK-007, ADV-PIK-008; Pandora's Box's since
     /// T62b1, ADV-PIK-013) or the Pyramid's (ADV-TCH-008, E08 T62b1). After the visitor's side
     /// `won` against an object's guards they are beaten for good, and what the object gives comes
@@ -127,6 +129,7 @@ impl AdventureState {
     /// guards' battle at its tile, where its visitor stands ([`Self::end_event_battle`],
     /// ADV-OBJ-007). Infallible: nothing when none of them is at `tile`.
     // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, GAM-DEC-007
+    // rule: ADV-MIN-002
     pub fn end_unowned_battle<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -135,7 +138,7 @@ impl AdventureState {
         sink: &mut S,
     ) -> AdventureOutcome {
         let part = rules.1;
-        let Some((index, _, ty)) = self.tile_object(part, tile) else {
+        let Some((index, object_type, ty)) = self.tile_object(part, tile) else {
             return self.end_event_battle((hero, tile), (survivors, won));
         };
         let reward = AdventureOutcome {
@@ -146,6 +149,13 @@ impl AdventureState {
             ObjectKind::Monster { .. } => {
                 self.end_monster_battle(rules, (hero, tile), (survivors, won), sink)
             }
+            ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. } => self.end_mine_battle(
+                (rules.0, part),
+                (index, object_type),
+                (hero, tile),
+                (survivors, won),
+                sink,
+            ),
             ObjectKind::Pyramid(_) => reward,
             _ if self.map.objects()[index].guards.is_some() => {
                 let left = if won { Vec::new() } else { survivors.to_vec() };
@@ -157,7 +167,8 @@ impl AdventureState {
     }
 
     /// What a won battle against the guards of the object at `tile` gives the hero `hero` after
-    /// the winner's levels (GAM-DEC-007, E08 T63b; [`AdventureOutcome::reward_after`]): a guarded
+    /// the winner's levels (GAM-DEC-007, E08 T63b; [`AdventureOutcome::reward_after`]): a mine is
+    /// flagged for the hero's owner (ADV-MIN-002, E08 T84a: [`Self::flag_won`]); a guarded
     /// pile, artifact or scroll is picked up ([`Self::pick_up`]: a pile's contents are the
     /// outcome's gains, an artifact or a scroll goes to the hero) or a box gives its record
     /// ([`Self::give_box`]), and it leaves the map, told to the players that see it there; a
@@ -165,7 +176,7 @@ impl AdventureState {
     /// guards are beaten gives its record ([`Self::give_event`]). Read when it is given: the
     /// levels' skills decide what the hero can receive or learn (the Pyramid's spell, E7-22).
     /// Nothing when none of them is at `tile` any more.
-    // rule: GAM-DEC-007, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007
+    // rule: GAM-DEC-007, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, ADV-MIN-002
     pub fn give_won<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -176,6 +187,10 @@ impl AdventureState {
         let beaten = |s: &Self, index: usize| {
             s.map.objects()[index].guards.is_some() && s.guards_left(index).is_empty()
         };
+        if let Some(mine) = self.mine_at(part, tile) {
+            self.flag_won((core, part), hero, mine, sink);
+            return AdventureOutcome::default();
+        }
         match self.tile_object(part, tile) {
             Some((index, _, ty)) if matches!(ty.kind, ObjectKind::Pyramid(_)) => {
                 if self.is_emptied(index) {

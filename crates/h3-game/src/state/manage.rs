@@ -141,15 +141,21 @@ impl GameState {
     ) -> Result<(), ManageError> {
         // The open army dialog, its player's first decision (`check_managing`): its index and
         // hero, and a copy of its group the adventure changes.
-        let dialog = self.first(player).zip(self.army_dialog(player));
-        let held = dialog.map(|(at, (hero, _))| (at, hero));
-        let mut group = dialog.map(|(_, (_, group))| group.to_vec());
+        let dialog = self.first(player).zip(self.army_dialog_holder(player));
+        let held = dialog.map(|(at, (hero, _, holder))| (at, hero, holder));
+        let mut group = dialog.map(|(_, (_, group, _))| group.to_vec());
         self.adventure
             .manage_army(rules.adventure(), player, command, group.as_mut())
             .map_err(ManageError::of_army)?;
-        if let Some(((at, hero), group)) = held.zip(group) {
+        if let Some(((at, hero, holder), group)) = held.zip(group) {
             let owner = player;
-            self.replace(at, Decision::ArmyDialog { owner, hero, group });
+            let dialog = Decision::ArmyDialog {
+                owner,
+                hero,
+                group,
+                holder,
+            };
+            self.replace(at, dialog);
         }
         let (from, to) = command.slots();
         for at in core::iter::once(from).chain(to) {

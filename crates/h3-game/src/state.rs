@@ -11,8 +11,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureOutcome, AdventureState, Choice, ChoiceKind, HeroGains, Meeting, NoRoom, Offer,
-    OfferKind, Pick, UniversityVisit,
+    AdventureOutcome, AdventureState, Choice, ChoiceKind, Garrison, HeroGains, Meeting,
+    ObjectTypeId, Offer, OfferKind, Pick, Pos, UniversityVisit,
 };
 use h3_content::{ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
@@ -92,14 +92,18 @@ enum Decision {
     },
     /// An army dialog (GAM-DEC-004, E08 T51b): the group of an accepted join its hero's army had
     /// no room for, held as a small army without a hero (the original's local army) until its
-    /// owner's `Close`, which loses what is left in it.
+    /// owner's `Close`, which loses what is left in it; since E08 T84a an own mine's Leave Guards
+    /// dialog (GAM-DEC-004 amended, ADV-MIN-002), its group the mine's guards, which the `Close`
+    /// keeps on the mine.
     ArmyDialog {
         /// The hero's owner, who closes it.
         owner: PlayerId,
-        /// The hero the group joined.
+        /// The hero the group joined, or the visiting hero on the mine's entrance.
         hero: HeroId,
-        /// The group: at its opening one stack in slot 0, by slot.
+        /// The group by slot: at a join's opening one stack in slot 0; a mine's guards.
         group: Vec<ArmyStack>,
+        /// What holds the group: a join's, lost at the close, or a mine's guards.
+        holder: Holder,
     },
     /// A visit's choice (GAM-DEC-005, E08 T63a): a treasure chest's, the Arena's or a School's,
     /// answered by its owner with the kind's answer.
@@ -117,6 +121,17 @@ enum Decision {
         /// The University: the hero, the object, its skills and their price.
         visit: UniversityVisit,
     },
+}
+
+/// What holds an army dialog's group (GAM-DEC-004 amended; E08 T84a): a join's (or a reward
+/// record's) group without room, lost at the close, or the guards of the mine at an object index,
+/// kept on it at the close (the Leave Guards dialog, ADV-MIN-002).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Holder {
+    /// A group without room in its hero's army (ADV-ARM-007).
+    Join,
+    /// The mine at this object index.
+    Mine(usize),
 }
 
 /// The drawn level of a level-up decision: `view`'s level with its two offers and `offered`.
@@ -451,7 +466,11 @@ impl GameState {
                 self.meet(rules, player, meeting, sink);
             }
             if let Some(group) = outcome.no_room {
-                self.open_army_dialog(player, group, sink);
+                let dialog = (group.hero, group.group, Holder::Join);
+                self.open_army_dialog(player, dialog, sink);
+            }
+            if let Some(garrison) = outcome.garrison {
+                self.open_leave_guards(player, garrison, sink);
             }
             if let Some(choice) = outcome.choice {
                 self.open_choice(player, choice, sink);
@@ -596,9 +615,13 @@ impl GameState {
     /// army without a hero, the original's local army (0x5D11D0, 0x5D12B0), as `player`'s
     /// decision, told to it alone (`ArmyDialogOpened`, one event per stack in slot order).
     // rule: GAM-DEC-004
-    fn open_army_dialog<S: Sink>(&mut self, player: PlayerId, group: NoRoom, sink: &mut S) {
-        let hero = group.hero;
-        for &stack in &group.group {
+    fn open_army_dialog<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        (hero, group, holder): (HeroId, Vec<ArmyStack>, Holder),
+        sink: &mut S,
+    ) {
+        for &stack in &group {
             sink.emit(GameEvent::ArmyDialogOpened {
                 player,
                 hero,
@@ -608,8 +631,26 @@ impl GameState {
         self.push_decision(Decision::ArmyDialog {
             owner: player,
             hero,
-            group: group.group,
+            group,
+            holder,
         });
+    }
+
+    /// Opens an own mine's Leave Guards dialog (GAM-DEC-004 amended, ADV-MIN-002; E08 T84a; survey
+    /// `E08-economy.md` §3.3): the army dialog between the visiting hero's army and the mine's
+    /// guards as its group, as `player`'s decision, told to it alone: the mine by type and anchor
+    /// (`LeaveGuardsOpened`), then each guard stack as an army dialog's (`ArmyDialogOpened`, in slot
+    /// order). A mine without guards opens one too, its group empty.
+    // rule: GAM-DEC-004, ADV-MIN-002
+    fn open_leave_guards<S: Sink>(&mut self, player: PlayerId, garrison: Garrison, sink: &mut S) {
+        sink.emit(GameEvent::LeaveGuardsOpened {
+            player,
+            hero: garrison.hero,
+            object_type: garrison.object_type,
+            anchor: garrison.anchor,
+        });
+        let holder = Holder::Mine(garrison.mine);
+        self.open_army_dialog(player, (garrison.hero, garrison.guards, holder), sink);
     }
 
     /// Opens the offer a command of `player` made (ADR-0017 point 10): as a pending decision of
@@ -704,7 +745,7 @@ impl GameState {
                 decision @ (Decision::Meeting { .. } | Decision::ArmyDialog { .. }),
                 Answer::Close,
             ) => {
-                self.close_exchange(player, at, decision, sink);
+                self.close_exchange(rules, (player, at), decision, sink);
                 Ok(())
             }
             (Decision::Choice { choice, .. }, answer) => {
@@ -800,27 +841,46 @@ impl GameState {
     }
 
     /// Closes `player`'s meeting or army dialog `decision` at `at` (GAM-DEC-003, GAM-DEC-004; E08
-    /// T51b), told to it (`DecisionClosed`): what is left in an army dialog's group is lost, each
-    /// stack told after it (`GroupLost`; the original destroys its local army when the dialog
-    /// returns, 0x5D11D0).
-    // rule: GAM-DEC-003, GAM-DEC-004
+    /// T51b), told to it (`DecisionClosed`): what is left in a join's army dialog's group is lost,
+    /// each stack told after it (`GroupLost`; the original destroys its local army when the dialog
+    /// returns, 0x5D11D0); a Leave Guards dialog's group stays on its mine as its guards (E08
+    /// T84a, ADV-MIN-002: `AdventureState::set_guards`; the original's dialog edits the mine
+    /// record's army itself), which every viewer then sees as the guards' hint.
+    // rule: GAM-DEC-003, GAM-DEC-004, ADV-MIN-002
     fn close_exchange<S: Sink>(
         &mut self,
-        player: PlayerId,
-        at: usize,
+        rules: &GameRuleset,
+        (player, at): (PlayerId, usize),
         decision: Decision,
         sink: &mut S,
     ) {
         self.close(at);
         sink.emit(GameEvent::DecisionClosed { player });
-        if let Decision::ArmyDialog { hero, group, .. } = decision {
-            for stack in group {
-                sink.emit(GameEvent::GroupLost {
-                    player,
-                    hero,
-                    stack,
-                });
+        match decision {
+            Decision::ArmyDialog {
+                hero,
+                group,
+                holder: Holder::Join,
+                ..
+            } => {
+                for stack in group {
+                    sink.emit(GameEvent::GroupLost {
+                        player,
+                        hero,
+                        stack,
+                    });
+                }
             }
+            Decision::ArmyDialog {
+                group,
+                holder: Holder::Mine(mine),
+                ..
+            } => {
+                let rules = (rules.core(), rules.adventure());
+                let sink = &mut AdventureSink(&mut *sink);
+                self.adventure.set_guards(rules, mine, group, sink);
+            }
+            _ => {}
         }
     }
 
@@ -893,9 +953,37 @@ impl GameState {
     /// (GAM-DEC-004, E08 T51b): the group's stacks by slot. While it is open the player manages
     /// the hero and the group (GAM-MAN-001) and closes it with `Close`, losing the group's rest.
     pub fn army_dialog(&self, player: PlayerId) -> Option<(HeroId, &[ArmyStack])> {
+        self.army_dialog_holder(player)
+            .map(|(hero, group, _)| (hero, group))
+    }
+
+    /// The hero, the group and its holder of `player`'s first open decision, if it is an army
+    /// dialog (GAM-DEC-004; the holder since E08 T84a).
+    pub(crate) fn army_dialog_holder(
+        &self,
+        player: PlayerId,
+    ) -> Option<(HeroId, &[ArmyStack], Holder)> {
         match self.first_decision(player)? {
-            Decision::ArmyDialog { hero, group, .. } => Some((*hero, group)),
+            Decision::ArmyDialog {
+                hero,
+                group,
+                holder,
+                ..
+            } => Some((*hero, group, *holder)),
             _ => None,
+        }
+    }
+
+    /// The mine of `player`'s first open decision, by type and anchor, if it is a Leave Guards
+    /// dialog (GAM-DEC-004 amended, ADV-MIN-002; E08 T84a): its group is the mine's guards, which
+    /// its `Close` keeps there.
+    pub fn leave_guards(&self, player: PlayerId) -> Option<(ObjectTypeId, Pos)> {
+        match self.army_dialog_holder(player)? {
+            (_, _, Holder::Mine(mine)) => self
+                .adventure
+                .object(mine)
+                .and_then(|object| object.object_type.map(|ty| (ty, object.anchor))),
+            (_, _, Holder::Join) => None,
         }
     }
 
@@ -1144,9 +1232,9 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v19 (E08 T63b; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
+    /// Encoding v21 (E08 T84a; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
     /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's, v14
-    /// T54's, v15 T60a's, v16 T62a's, v17 T62b1's, v18 T63a's):
+    /// T54's, v15 T60a's, v16 T62a's, v17 T62b1's, v18 T63a's, v19 T63b's, v20 T72's):
     /// version; the master seed; the day; the running group's index; the schedule (groups as
     /// length + player ids); the players (colour, since v14 whether it counts as human, acting,
     /// stream state); since v2 the treasuries (the
@@ -1163,7 +1251,8 @@ impl CanonicalHash for GameState {
     /// (0 attack to 3 knowledge), its two offers, the offers' levels after it (Wisdom's, a
     /// school's); since v13 (E08 T51b) 3 a meeting: its owner, the visitor, the visited hero; 4 an
     /// army dialog: its owner, its hero, the group (length, then each stack's slot, creature and
-    /// count); since v18 (E08 T63a) 5 a choice: its owner, hero, object type, anchor, 0 a chest
+    /// count), since v21 (E08 T84a) its holder (0 a join's, 1 a mine's and its object index);
+    /// since v18 (E08 T63a) 5 a choice: its owner, hero, object type, anchor, 0 a chest
     /// (its gold's resource and amount, its experience) or 1 two primary skills (each, the amount,
     /// the price, whether it may be left), in v18 whether a guard's visit waits; 6 a University:
     /// its owner, hero, object type, anchor, its skills (length, then each), its price, in v18
@@ -1247,7 +1336,12 @@ impl CanonicalHash for GameState {
                         h.write_u16(hero.raw());
                     }
                 }
-                Decision::ArmyDialog { owner, hero, group } => {
+                Decision::ArmyDialog {
+                    owner,
+                    hero,
+                    group,
+                    holder,
+                } => {
                     h.write_u8(4);
                     h.write_u8(owner.raw());
                     h.write_u16(hero.raw());
@@ -1256,6 +1350,13 @@ impl CanonicalHash for GameState {
                         h.write_u8(stack.slot);
                         stack.creature.hash_into(h);
                         h.write_u32(stack.count);
+                    }
+                    match holder {
+                        Holder::Join => h.write_u8(0),
+                        Holder::Mine(mine) => {
+                            h.write_u8(1);
+                            h.write_len(*mine);
+                        }
                     }
                 }
                 Decision::Choice { owner, choice } => {

@@ -900,6 +900,7 @@ mod economy;
 mod events;
 mod flight;
 mod holds;
+mod mines;
 mod monsters;
 mod piles;
 mod records;

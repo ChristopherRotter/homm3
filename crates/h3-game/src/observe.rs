@@ -10,7 +10,9 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureObservation, Choice, Offer, UniversityVisit, Viewers};
+use h3_adventure::{
+    AdventureObservation, Choice, ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
+};
 use h3_content::{HeroTypeId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
@@ -73,12 +75,16 @@ pub enum DecisionView {
         heroes: [HeroId; 2],
     },
     /// An army dialog (GAM-DEC-004, E08 T51b), closed with `Close`, which loses the group's
-    /// rest; meanwhile the viewer manages the hero and the group, also between them.
+    /// rest; meanwhile the viewer manages the hero and the group, also between them. Since E08
+    /// T84a an own mine's Leave Guards dialog (ADV-MIN-002): its group the mine's guards, which
+    /// the `Close` keeps there.
     ArmyDialog {
-        /// The hero the group joined.
+        /// The hero the group joined, or the visiting hero on the mine's entrance.
         hero: HeroId,
         /// The group's stacks, by slot.
         group: Vec<ArmyStack>,
+        /// A Leave Guards dialog's mine, by type and anchor (E08 T84a); none for a join's group.
+        mine: Option<(ObjectTypeId, Pos)>,
     },
     /// A visit's choice (GAM-DEC-005, E08 T63a): a treasure chest's gold and experience
     /// (answered `Chest`), the Arena's two skills and their gain (`Arena`), or a School's two
@@ -185,6 +191,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                 Some(DecisionView::ArmyDialog {
                     hero,
                     group: group.to_vec(),
+                    mine: state.leave_guards(player),
                 })
             })
             .or_else(|| state.choice(player).cloned().map(DecisionView::Choice))
@@ -272,6 +279,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::TacticsSet { player: owner, .. }
         | GameEvent::MeetingOpened { player: owner, .. }
         | GameEvent::ArmyDialogOpened { player: owner, .. }
+        | GameEvent::LeaveGuardsOpened { player: owner, .. }
         | GameEvent::ChoiceOpened { player: owner, .. }
         | GameEvent::UniversityOpened { player: owner, .. }
         | GameEvent::DecisionClosed { player: owner }

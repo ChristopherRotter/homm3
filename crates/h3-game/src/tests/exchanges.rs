@@ -556,7 +556,8 @@ fn a_join_without_room_is_offered_and_opens_the_army_dialog() {
         observe(&game, &rules, Viewer::Player(RED)).decision,
         Some(DecisionView::ArmyDialog {
             hero: HERO,
-            group: vec![stack]
+            group: vec![stack],
+            mine: None,
         })
     );
     assert_eq!(observe(&game, &rules, Viewer::Player(BLUE)).decision, None);

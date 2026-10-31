@@ -103,5 +103,6 @@ pub use state::{GameState, OpenBattle};
 /// v18 (E08 T63a): the choices (a chest's, the Arena's, a School's) and the Universities among
 /// the decisions. v19 (E08 T63b): the rests (GAM-DEC-007), the guard's wait no longer in a
 /// decision. v20 (E08 T72): the adventure's boats, each hero's boat and day's maximum (the
-/// adventure state hash v16).
-pub const GAME_STATE_HASH_VERSION: u32 = 20;
+/// adventure state hash v16). v21 (E08 T84a): an army dialog's holder (a join's group or a
+/// mine's guards, the Leave Guards dialog).
+pub const GAME_STATE_HASH_VERSION: u32 = 21;

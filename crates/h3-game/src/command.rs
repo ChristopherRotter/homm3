@@ -483,6 +483,20 @@ pub enum GameEvent {
         /// A stack of the group, at its slot.
         stack: ArmyStack,
     },
+    /// An own mine's Leave Guards dialog opened (GAM-DEC-004 amended, ADV-MIN-002; E08 T84a): the
+    /// army dialog between the visiting hero's army and the mine's guards, which its `Close` keeps
+    /// on the mine; the guards follow as [`Self::ArmyDialogOpened`], one event per stack in slot
+    /// order (none for a mine without guards). Seen by the owner.
+    LeaveGuardsOpened {
+        /// The mine's owner.
+        player: PlayerId,
+        /// The visiting hero, on the mine's entrance.
+        hero: HeroId,
+        /// The mine's type.
+        object_type: ObjectTypeId,
+        /// The mine's anchor.
+        anchor: Pos,
+    },
     /// A visit's choice opened as a pending decision of its player (GAM-DEC-005, E08 T63a): a
     /// treasure chest's, the Arena's, or a School's when the treasury can pay its price; what it
     /// chooses between is its view ([`crate::DecisionView::Choice`]). Seen by the owner.

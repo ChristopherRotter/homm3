@@ -1747,8 +1747,9 @@ fn a_battles_end_sets_the_armies_and_takes_heroes_off_the_map() {
 fn defender_hero(battle: &BattleStart) -> HeroId {
     match &battle.defender {
         Defender::Hero(side) => side.hero,
-        Defender::Monster { .. } | Defender::Guards { .. } | Defender::Monsters { .. } => {
-            panic!("no hero defends")
-        }
+        Defender::Monster { .. }
+        | Defender::Guards { .. }
+        | Defender::Monsters { .. }
+        | Defender::Garrison { .. } => panic!("no hero defends"),
     }
 }
