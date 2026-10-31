@@ -83,7 +83,7 @@ pub use observe::{
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameSetup, GameSetupError, HeroArmy, HeroArtifactsSetup,
-    HeroDetailsSetup, PlayerSetup,
+    HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, OpenBattle};
 

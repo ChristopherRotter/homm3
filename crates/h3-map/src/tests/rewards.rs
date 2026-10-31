@@ -138,6 +138,7 @@ fn static_layer_validates(m: &RawMap, rules: &GameRuleset) {
         banned_skills: Vec::new(),
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
+        events: Vec::new(),
     };
     setup.validate(rules).unwrap();
 }

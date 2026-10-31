@@ -683,6 +683,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                     }),
                     guards: None,
                     holds: Default::default(),
+                    owner: None,
                 });
             }
         }
@@ -766,6 +767,7 @@ pub(crate) fn lying(ty: ObjectTypeId, pos: Pos, drawn: u64) -> ObjectSetup {
         monster: None,
         guards: None,
         holds: Default::default(),
+        owner: None,
     }
 }
 

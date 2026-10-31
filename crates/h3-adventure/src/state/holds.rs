@@ -16,7 +16,8 @@ use crate::setup::{EventSetup, Holds, RewardRecord};
 /// a placed artifact holds an artifact without a spell, a scroll the Spell Scroll with one, each
 /// one a hero may hold; a Shrine a hero spell or none; a Witch Hut distinct skills or none; a
 /// Scholar a gift of the ruleset or none; Pandora's Box and an event a valid record
-/// ([`check_record`]); every other kind nothing.
+/// ([`check_record`]); since E08 T83a an abandoned mine at least one resource of the ruleset, in
+/// the core's order without repeats; every other kind nothing.
 pub(super) fn check_holds(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -46,6 +47,14 @@ pub(super) fn check_holds(
         }),
         (Some(ObjectKind::PandoraBox), Holds::Record(record)) => check_record(core, part, record),
         (Some(ObjectKind::Event), Holds::Event(event)) => check_record(core, part, &event.record),
+        // rule: ADV-MIN-003
+        (Some(ObjectKind::AbandonedMine { .. }), Holds::Resources(resources)) => {
+            !resources.is_empty()
+                && resources.windows(2).all(|pair| pair[0] < pair[1])
+                && resources
+                    .iter()
+                    .all(|&r| usize::from(r.raw()) < core.resources().len())
+        }
         (
             Some(
                 ObjectKind::Artifact { classes: None }
@@ -54,7 +63,8 @@ pub(super) fn check_holds(
                 | ObjectKind::WitchHut { .. }
                 | ObjectKind::Scholar
                 | ObjectKind::PandoraBox
-                | ObjectKind::Event,
+                | ObjectKind::Event
+                | ObjectKind::AbandonedMine { .. },
             ),
             _,
         ) => false,
@@ -109,7 +119,8 @@ fn check_record(core: &Ruleset, part: &AdventureRuleset, record: &RewardRecord) 
 impl CanonicalHash for Holds {
     /// Its tag (0 nothing, 1 an artifact: the artifact and its spell; 2 a spell, 3 skills, 4 a
     /// Scholar's gift, each 0 for none or 1 and it; 5 a record; 6 an event: the record, the
-    /// colours, the computer and removal flags).
+    /// colours, the computer and removal flags; since adventure state hash v17, E08 T83a, 7 an
+    /// abandoned mine's resources as length and handles).
     fn hash_into(&self, h: &mut StateHasher) {
         match self {
             Self::Nothing => h.write_u8(0),
@@ -157,6 +168,10 @@ impl CanonicalHash for Holds {
             Self::Event(event) => {
                 h.write_u8(6);
                 event.hash_into(h);
+            }
+            Self::Resources(resources) => {
+                h.write_u8(7);
+                resources.hash_into(h);
             }
         }
     }

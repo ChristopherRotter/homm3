@@ -212,6 +212,7 @@ fn check(
         banned_skills: Vec::new(),
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
+        events: Vec::new(),
     };
     setup
         .validate(rules)

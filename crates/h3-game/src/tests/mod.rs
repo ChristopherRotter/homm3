@@ -814,6 +814,7 @@ fn setup() -> GameSetup {
         banned_skills: vec![],
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
+        events: Vec::new(),
     }
 }
 
@@ -830,6 +831,73 @@ fn a_setup_with_custom_and_starting_armies_validates() {
     let mut setup = setup();
     setup.players[1].colour = 2;
     assert_eq!(setup.validate(&rules()), Ok(()));
+}
+
+// covers: GAM-CAL-004
+#[test]
+fn the_timed_events_are_checked() {
+    // E08 T83a: two players, one resource (gold).
+    let gold = h3_content::ResourceId::from_raw(0);
+    let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+    let event = TimedEventSetup {
+        players: vec![red, blue],
+        human: true,
+        computer: false,
+        first_day: 1,
+        interval: 7,
+        resources: vec![(gold, -500)],
+        message: 0,
+    };
+    let fine = |edit: fn(&mut TimedEventSetup)| {
+        let mut setup = setup();
+        let mut e = event.clone();
+        edit(&mut e);
+        setup.events = vec![event.clone(), e];
+        setup.validate(&rules())
+    };
+    assert_eq!(fine(|_| {}), Ok(()));
+    // For nobody, and without resources: kept, never firing or giving nothing.
+    assert_eq!(fine(|e| e.players.clear()), Ok(()));
+    assert_eq!(fine(|e| e.resources.clear()), Ok(()));
+    let edits: [fn(&mut TimedEventSetup); 7] = [
+        |e| e.players.reverse(),
+        |e| e.players[1] = e.players[0],
+        |e| e.players = vec![PlayerId::new(2)],
+        |e| e.resources = vec![e.resources[0], e.resources[0]],
+        |e| e.resources[0].1 = 0,
+        |e| e.resources[0].0 = h3_content::ResourceId::from_raw(1),
+        |e| e.first_day = 0,
+    ];
+    for edit in edits {
+        assert_eq!(fine(edit), Err(GameSetupError::Event(1)));
+    }
+    let many = usize::from(u16::MAX) + 2;
+    assert_eq!(
+        error(|s| s.events = vec![event.clone(); many]),
+        GameSetupError::Events(many)
+    );
+    // After the banned sets, before the heroes.
+    let artifact = ArtifactTypeId::from_raw(u16::MAX);
+    assert_eq!(
+        error(|s| {
+            s.banned_artifacts = vec![artifact];
+            s.events = vec![TimedEventSetup {
+                first_day: 0,
+                ..event.clone()
+            }];
+        }),
+        GameSetupError::BannedArtifact(artifact)
+    );
+    assert_eq!(
+        error(|s| {
+            s.events = vec![TimedEventSetup {
+                first_day: 0,
+                ..event.clone()
+            }];
+            s.heroes[0].hero_type = HeroTypeId::from_raw(u16::MAX);
+        }),
+        GameSetupError::Event(0)
+    );
 }
 
 // covers: GAM-SET-003
@@ -1058,6 +1126,11 @@ fn the_errors_read_well() {
             GameSetupError::BannedArtifact(ArtifactTypeId::from_raw(7)),
             "banned artifact 7 is not the ruleset's",
         ),
+        (
+            GameSetupError::Events(70_000),
+            "70000 timed events are too many",
+        ),
+        (GameSetupError::Event(2), "timed event 2 is invalid"),
         (
             GameSetupError::Adventure(SetupError::Players(0)),
             "adventure: 0 players are outside the bounds",

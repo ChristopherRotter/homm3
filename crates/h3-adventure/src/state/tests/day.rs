@@ -193,6 +193,7 @@ fn ground(ty: ObjectTypeId, anchor: Pos) -> ObjectSetup {
         monster: None,
         guards: None,
         holds: Default::default(),
+        owner: None,
     }
 }
 

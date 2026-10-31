@@ -19,7 +19,7 @@ use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, HeroSex, PlayerId};
 use h3_game::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, HeroArtifactsSetup,
-    HeroDetailsSetup, PlayerSetup,
+    HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 
 use crate::model::{
@@ -62,6 +62,10 @@ pub enum Unsupported {
     /// and 178: batch E8's E8-5 showed the original keeping such a hero on foot without a boat,
     /// VCMI gives it one; none of the shipped maps has one).
     HeroOnWater(usize),
+    /// The ownable object at this index has its entrance on water (E08 T83a; increment 9's design
+    /// note §4: how a hero reaches an entered object on water was not read, survey
+    /// `E08-economy.md` §4; none of the shipped maps has one).
+    OwnedOnWater(usize),
 }
 
 impl Unsupported {
@@ -77,6 +81,7 @@ impl Unsupported {
             Self::HeroInTown(_) => "a hero standing in a town",
             Self::RewardArmy(_) => "a reward of more creature stacks than an army's slots",
             Self::HeroOnWater(_) => "a hero placed on water",
+            Self::OwnedOnWater(_) => "an ownable object entered from water",
         }
     }
 }
@@ -110,6 +115,13 @@ pub enum ImportError {
     /// The boat object at this index has a template without exactly one visitable tile on the
     /// map, the tile the boat lies on (E08 T72).
     BoatTile(usize),
+    /// The ownable object at this index belongs to a colour nobody plays (ADV-OWN-002, E08 T83a).
+    ObjectOwner(usize),
+    /// The abandoned mine at this index may draw no resource, or a resource past the seven (A-31's
+    /// input bound, `ADV-QUIRK-33`; ADV-MIN-003, E08 T83a).
+    MineResources(usize),
+    /// The map holds more timed events than a setup names (E08 T83a); the number.
+    Events(usize),
 }
 
 impl fmt::Display for ImportError {
@@ -137,6 +149,13 @@ impl fmt::Display for ImportError {
             Self::BoatTile(object) => {
                 write!(f, "boat object {object} does not name one tile to lie on")
             }
+            Self::ObjectOwner(object) => {
+                write!(f, "object {object} belongs to a colour nobody plays")
+            }
+            Self::MineResources(object) => {
+                write!(f, "abandoned mine {object} may draw no resource of the seven")
+            }
+            Self::Events(n) => write!(f, "{n} timed events are too many"),
         }
     }
 }
@@ -155,11 +174,12 @@ impl From<Unsupported> for ImportError {
 /// # Errors
 ///
 /// The first [`ImportError`] found: the players (a hero generated at a main town), the static
-/// map, its first object with guards or reward creatures it cannot represent, then the hero
-/// objects in the map's order.
+/// map, its first object with guards or reward creatures it cannot represent (or, since E08
+/// T83a, an ownable object entered from water), then the hero objects in the map's order, the
+/// banned sets and the timed events.
 pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportError> {
     let (players, colours) = players(map)?;
-    let (static_map, unsupported) = static_layer(map, rules)?;
+    let (static_map, unsupported) = static_layer(map, rules, &colours)?;
     if let Some(what) = unsupported {
         return Err(what.into());
     }
@@ -208,7 +228,49 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
         banned_skills: banned_skills(map, rules)?,
         banned_spells: spell_set(rules, &map.banned_spells)?,
         banned_artifacts: banned_artifacts(map, rules)?,
+        events: timed_events(map, rules, &colours)?,
     })
+}
+
+/// The map's timed events in the map's order (GAM-CAL-004, E08 T83a; increment 9's design note
+/// §4; survey `E08-economy.md` §11): each with the players of its colours that play (a colour
+/// nobody plays left out: such an event never fires), its flags as the reader gives them (before
+/// SoD it fires for humans), the file's first day + 1 (the loader's, 0x4FC2E0), its interval, its
+/// resources but the zeros and its index for its message. None is refused.
+// rule: GAM-CAL-004
+fn timed_events(
+    map: &RawMap,
+    rules: &GameRuleset,
+    colours: &[Option<PlayerId>; 8],
+) -> Result<Vec<TimedEventSetup>, ImportError> {
+    map.events
+        .iter()
+        .enumerate()
+        .map(|(index, event)| {
+            let message = u16::try_from(index).map_err(|_| ImportError::Events(map.events.len()))?;
+            let players = colours
+                .iter()
+                .zip(0u8..)
+                .filter(|&(_, colour)| event.players >> colour & 1 == 1)
+                .filter_map(|(id, _)| *id)
+                .collect();
+            let resources = codes::RESOURCES
+                .iter()
+                .zip(event.resources)
+                .filter(|&(_, amount)| amount != 0)
+                .map(|(&key, amount)| Ok((resource(rules, key)?, amount)))
+                .collect::<Result<_, ImportError>>()?;
+            Ok(TimedEventSetup {
+                players,
+                human: event.human,
+                computer: event.computer,
+                first_day: event.first_day.saturating_add(1),
+                interval: event.interval,
+                resources,
+                message,
+            })
+        })
+        .collect()
 }
 
 /// The secondary skills the map bans (SoD's set, `docs/formats/h3m.md`; E08 T29): the skill of
@@ -235,14 +297,17 @@ fn skill_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SkillId>, ImportErr
 /// [`import`] refuses guards or reward creatures with a random stack and reward creatures beyond
 /// an army's slots, which this leaves out). Since E08 T72 the boats (class 8) are no objects but
 /// the map's boats, each on its template's visitable tile with its subclass as its type
-/// (ADV-SEA-001), and a ground of the sea and a hole lie on their pictures' tiles.
+/// (ADV-SEA-001), and a ground of the sea and a hole lie on their pictures' tiles. Since E08 T83a
+/// the mines, abandoned mines, Lighthouses, Shipyards and weekly objects are typed, an ownable
+/// object with its owner (the player of its colour; the whole [`import`] refuses one entered from
+/// water) and an abandoned mine with its set of resources.
 ///
 /// # Errors
 ///
-/// The first [`ImportError`] found: the map's size, the tiles, then the objects' templates and
-/// types and the boats' tiles and types in the map's order.
+/// The first [`ImportError`] found: the map's size, the tiles, then the objects' templates,
+/// types, owners and sets and the boats' tiles and types in the map's order.
 pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportError> {
-    static_layer(map, rules).map(|(setup, _)| setup)
+    static_layer(map, rules, &colours(map)).map(|(setup, _)| setup)
 }
 
 /// [`import_map`] with what the first object's guards or reward creatures with a random stack, or
@@ -250,6 +315,7 @@ pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportE
 fn static_layer(
     map: &RawMap,
     rules: &GameRuleset,
+    colours: &[Option<PlayerId>; 8],
 ) -> Result<(MapSetup, Option<Unsupported>), ImportError> {
     let side = u16::try_from(map.terrain.size);
     let levels = u8::try_from(map.terrain.levels);
@@ -268,8 +334,16 @@ fn static_layer(
             boats.push(boat(index, (object, template))?);
             continue;
         }
-        let (setup, what) = typed(rules, map.header.version, index, (object, template))?;
+        let (setup, what) = typed(rules, map.header.version, (index, colours), (object, template))?;
         unsupported = unsupported.or(what);
+        // rule: ADV-OWN-002
+        let ownable = setup
+            .object_type
+            .and_then(|id| rules.adventure().object_type(id))
+            .is_some_and(|ty| ty.kind.ownable());
+        if ownable && entrances(&setup).any(|pos| water_at(rules, (side, &tiles), pos)) {
+            unsupported = unsupported.or(Some(Unsupported::OwnedOnWater(index)));
+        }
         placed.push(setup);
     }
     let setup = MapSetup {
@@ -293,7 +367,7 @@ fn static_layer(
 fn typed(
     rules: &GameRuleset,
     version: Version,
-    index: usize,
+    (index, colours): (usize, &[Option<PlayerId>; 8]),
     (object, template): (&Object, &Template),
 ) -> Result<(ObjectSetup, Option<Unsupported>), ImportError> {
     let mut setup = footprint(object, template);
@@ -363,6 +437,14 @@ fn typed(
             (setup.guards, unsupported) = guarded(event.message.as_ref(), &|_| false)?;
             unsupported = unsupported.or(what);
         }
+        // E08 T83a (increment 9's design note §4): a mine's, a Lighthouse's and a Shipyard's
+        // owner; an abandoned mine's set.
+        Body::Mine { owner } | Body::Owned { owner } => {
+            setup.owner = object_owner(colours, index, *owner)?;
+        }
+        Body::AbandonedMine(set) => {
+            setup.holds = Holds::Resources(mine_resources(rules, index, set)?);
+        }
         _ => {}
     }
     // E08 T72: a ground of the sea and a hole lie on their pictures' tiles too.
@@ -394,16 +476,73 @@ fn boat(index: usize, (object, template): (&Object, &Template)) -> Result<BoatSe
 
 /// Whether `pos` lies on water in the imported static map (a tile off it: no).
 fn on_water(rules: &GameRuleset, map: &MapSetup, pos: Pos) -> bool {
-    let index = (usize::from(pos.level) * usize::from(map.height) + usize::from(pos.y))
-        * usize::from(map.width)
+    water_at(rules, (map.width, &map.tiles), pos)
+}
+
+/// Whether `pos` lies on water among the tiles of a square map of this side (a tile off it: no).
+fn water_at(rules: &GameRuleset, (side, tiles): (u16, &[TileSetup]), pos: Pos) -> bool {
+    let index = (usize::from(pos.level) * usize::from(side) + usize::from(pos.y))
+        * usize::from(side)
         + usize::from(pos.x);
-    (pos.x < map.width && pos.y < map.height)
-        && map.tiles.get(index).is_some_and(|tile| {
+    (pos.x < side && pos.y < side)
+        && tiles.get(index).is_some_and(|tile| {
             matches!(
                 rules.adventure().passage(tile.terrain),
                 Some(Passage::Water(_))
             )
         })
+}
+
+/// The tiles an object is visited from (its entrances), on the map's side of its anchor.
+fn entrances(object: &ObjectSetup) -> impl Iterator<Item = Pos> + '_ {
+    object.visitable.offsets().filter_map(|(column, row)| {
+        Some(Pos::new(
+            object.anchor.x.checked_sub(u16::from(column))?,
+            object.anchor.y.checked_sub(u16::from(row))?,
+            object.anchor.level,
+        ))
+    })
+}
+
+/// An ownable object's owner (ADV-OWN-002, E08 T83a): [`codes::NEUTRAL`] none, else the player of
+/// that colour; a colour nobody plays, or past the eight, is refused.
+fn object_owner(
+    colours: &[Option<PlayerId>; 8],
+    index: usize,
+    owner: u32,
+) -> Result<Option<PlayerId>, ImportError> {
+    if owner == codes::NEUTRAL {
+        return Ok(None);
+    }
+    usize::try_from(owner)
+        .ok()
+        .and_then(|colour| colours.get(colour).copied().flatten())
+        .map(Some)
+        .ok_or(ImportError::ObjectOwner(index))
+}
+
+/// An abandoned mine's resources (ADV-MIN-003, E08 T83a; survey `E08-economy.md` §3.4): the set's
+/// first byte, a bit by resource code (`load_abandoned_mine_body` drops the other three bytes),
+/// in the core's order; no bit, or bit 7 (resource 7, past the seven: A-31's input bound,
+/// `ADV-QUIRK-33`, not reproduced), is refused.
+// rule: ADV-MIN-003
+fn mine_resources(
+    rules: &GameRuleset,
+    index: usize,
+    set: &Bits,
+) -> Result<Vec<ResourceId>, ImportError> {
+    let byte = set.bytes().first().copied().unwrap_or(0);
+    if byte == 0 || byte >> codes::RESOURCES.len() != 0 {
+        return Err(ImportError::MineResources(index));
+    }
+    let mut resources = codes::RESOURCES
+        .iter()
+        .zip(0..)
+        .filter(|&(_, code)| byte >> code & 1 == 1)
+        .map(|(&key, _)| resource(rules, key))
+        .collect::<Result<Vec<_>, _>>()?;
+    resources.sort();
+    Ok(resources)
 }
 
 /// A wandering monster's data (ADV-MON-001, E08 T20a2a; `docs/formats/h3m.md`, "Import"): the
@@ -636,6 +775,20 @@ fn objects(map: &RawMap) -> Result<Vec<(usize, &Object, &Template)>, ImportError
         .collect()
 }
 
+/// The player each colour that plays is (a colour a human or a computer may play), in colour
+/// order: [`players`]' map without its refusals (E08 T83a: the static layer's owners).
+fn colours(map: &RawMap) -> [Option<PlayerId>; 8] {
+    let mut colours = [None; 8];
+    let mut next = 0u8;
+    for (player, id) in map.players.iter().zip(&mut colours) {
+        if player.human || player.computer {
+            *id = Some(PlayerId::new(next));
+            next = next.saturating_add(1);
+        }
+    }
+    colours
+}
+
 /// The colours that play, in colour order, and the player each colour is; a colour a human may
 /// play counts as human (GAM-BAT-010, E08 T54: the map's player kinds; ADV-Q27).
 fn players(map: &RawMap) -> Result<(Vec<PlayerSetup>, [Option<PlayerId>; 8]), ImportError> {
@@ -739,6 +892,7 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
         monster: None,
         guards: None,
         holds: Holds::Nothing,
+        owner: None,
     }
 }
 

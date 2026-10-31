@@ -95,6 +95,7 @@ fn beside(rules: &GameRuleset, difficulty: u8, key: &str) -> Arc<GameSetup> {
             monster: None,
             guards: None,
             holds: Default::default(),
+            owner: None,
         });
     }
     Arc::new(setup)

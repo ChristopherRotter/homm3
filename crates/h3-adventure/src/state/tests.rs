@@ -92,6 +92,7 @@ fn setup() -> AdventureSetup {
                     monster: None,
                     guards: None,
                     holds: Default::default(),
+                    owner: None,
                 },
                 ObjectSetup {
                     scenery: Default::default(),
@@ -104,6 +105,7 @@ fn setup() -> AdventureSetup {
                     monster: None,
                     guards: None,
                     holds: Default::default(),
+                    owner: None,
                 },
             ],
             boats: vec![],
@@ -216,6 +218,7 @@ fn the_terrain_shares_count_the_tiles_no_object_blocks() {
         monster: None,
         guards: None,
         holds: Default::default(),
+        owner: None,
     });
     let blocked = TerrainShares {
         tiles: 8,
@@ -243,6 +246,7 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             monster: None,
             guards: None,
             holds: Default::default(),
+            owner: None,
         },
         // Covering no tile of the map at all.
         ObjectSetup {
@@ -256,6 +260,7 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             monster: None,
             guards: None,
             holds: Default::default(),
+            owner: None,
         },
     ];
     let state = build(&setup).unwrap();
@@ -332,6 +337,7 @@ fn with_objects(objects: &[(ObjectTypeId, Option<u32>)]) -> AdventureSetup {
             monster: None,
             guards: None,
             holds: Default::default(),
+            owner: None,
         });
     }
     setup
@@ -448,6 +454,7 @@ fn a_removed_object_frees_the_tiles_no_other_object_covers() {
         monster: None,
         guards: None,
         holds: Default::default(),
+        owner: None,
     });
     let base = build(&setup).unwrap();
     let map = base.map();

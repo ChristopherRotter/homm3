@@ -443,7 +443,10 @@ fn the_base_pack_types_the_economy_of_increment_9() {
             battle_terrain: subterranean,
         }
     );
-    assert_eq!(ty("lighthouse").kind, ObjectKind::Lighthouse { sea_points: 500 });
+    assert_eq!(
+        ty("lighthouse").kind,
+        ObjectKind::Lighthouse { sea_points: 500 }
+    );
     let ObjectKind::Shipyard {
         price,
         boat_type,
@@ -454,7 +457,10 @@ fn the_base_pack_types_the_economy_of_increment_9() {
     };
     assert_eq!(
         (price.as_slice(), *boat_type),
-        ([(resource("wood"), 10), (resource("gold"), 1000)].as_slice(), 1)
+        (
+            [(resource("wood"), 10), (resource("gold"), 1000)].as_slice(),
+            1
+        )
     );
     assert_eq!(
         offsets.as_slice(),
@@ -505,7 +511,11 @@ fn the_base_pack_types_the_economy_of_increment_9() {
         "mystical_garden",
     ];
     for key in keys.iter().chain(&others) {
-        assert_eq!((ty(key).visit, ty(key).from_above), (Visit::Enter, false), "{key}");
+        assert_eq!(
+            (ty(key).visit, ty(key).from_above),
+            (Visit::Enter, false),
+            "{key}"
+        );
         assert_eq!(ty(key).kind.ownable(), !ty(key).kind.weekly(), "{key}");
     }
     let params = part.params();
@@ -544,7 +554,10 @@ fn the_base_pack_types_the_economy_of_increment_9() {
     .map(creature);
     assert_eq!(months.odds, [5, 4, 1]);
     assert_eq!(months.creatures, twelve);
-    assert_eq!(months.monster, part.object_type_by_key("base:monster").unwrap());
+    assert_eq!(
+        months.monster,
+        part.object_type_by_key("base:monster").unwrap()
+    );
     assert_eq!(
         (
             months.spawn_one_in.get(),
@@ -1429,7 +1442,9 @@ fn parses_the_economy_kinds() {
         }
     );
     assert_eq!(
-        kind("abandoned_mine = { guards = \"imp\", count = [100, 200], battle_terrain = \"cave\" }"),
+        kind(
+            "abandoned_mine = { guards = \"imp\", count = [100, 200], battle_terrain = \"cave\" }"
+        ),
         ObjectKindDef::AbandonedMine {
             guards: k("p:imp"),
             count: [100, 200],
@@ -1861,27 +1876,50 @@ fn rejects_malformed_files() {
     assert!(syntax("[[difficulty]]\nhuman = { a = -1 }\ncomputer = {}"));
     // E08 T83a: the calendar required, its counts above 0; the months' fields and references;
     // the growth's fields with the monsters'; increment 9's kinds' references and fields.
-    assert!(syntax(&full.replace(
-        "\ncalendar = { week_days = 7, month_weeks = 4 }",
-        ""
-    )));
+    assert!(syntax(
+        &full.replace("\ncalendar = { week_days = 7, month_weeks = 4 }", "")
+    ));
     assert!(syntax(&full.replace("week_days = 7", "week_days = 0")));
     assert!(syntax(&full.replace("month_weeks = 4", "month_weeks = 0")));
     let months = |fields: &str| format!("{full}\n[params.months]\n{fields}");
     let fine = "odds = [5, 4, 1]\ncreatures = [\"c\"]\nmonster = \"m\"\nspawn_one_in = 200\nspawn_factor = 2\nspawn_aggression = [1, 10]";
-    assert!(parse(&months(fine)).unwrap().params.unwrap().months.is_some());
-    assert!(syntax(&months(&fine.replace("spawn_one_in = 200", "spawn_one_in = 0"))));
-    assert!(syntax(&months(&fine.replace("spawn_factor = 2", "spawn_factor = 0"))));
-    assert!(syntax(&months(&fine.replace("odds = [5, 4, 1]", "odds = [5, 4]"))));
+    assert!(
+        parse(&months(fine))
+            .unwrap()
+            .params
+            .unwrap()
+            .months
+            .is_some()
+    );
+    assert!(syntax(&months(
+        &fine.replace("spawn_one_in = 200", "spawn_one_in = 0")
+    )));
+    assert!(syntax(&months(
+        &fine.replace("spawn_factor = 2", "spawn_factor = 0")
+    )));
+    assert!(syntax(&months(
+        &fine.replace("odds = [5, 4, 1]", "odds = [5, 4]")
+    )));
     assert!(syntax(&months("odds = [5, 4, 1]")));
     assert!(key(&months(&fine.replace("[\"c\"]", "[\"Bad\"]"))));
     assert!(key(&months(&fine.replace("\"m\"", "\"Bad\""))));
     let growth = "aggression = []\ncount_words = []\nprice_resource = \"g\"\ngrowth_bp = 1000\ngrowth_unit = 16\ngrowth_cap = 4000";
     let monsters = |fields: &str| format!("{full}\n[params.monsters]\n{fields}");
-    assert!(parse(&monsters(growth)).unwrap().params.unwrap().monsters.is_some());
+    assert!(
+        parse(&monsters(growth))
+            .unwrap()
+            .params
+            .unwrap()
+            .monsters
+            .is_some()
+    );
     assert!(syntax(&monsters(&growth.replace("\ngrowth_bp = 1000", ""))));
-    assert!(syntax(&monsters(&growth.replace("growth_unit = 16", "growth_unit = 0"))));
-    assert!(syntax(&monsters(&growth.replace("growth_cap = 4000", "growth_cap = 0"))));
+    assert!(syntax(&monsters(
+        &growth.replace("growth_unit = 16", "growth_unit = 0")
+    )));
+    assert!(syntax(&monsters(
+        &growth.replace("growth_cap = 4000", "growth_cap = 0")
+    )));
     for kind in [
         "mine = { resource = \"Bad\", daily = 1 }",
         "mine = { resource = \"a\", daily = 1, battle_terrain = \"Bad\" }",

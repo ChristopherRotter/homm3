@@ -284,6 +284,7 @@ pub(super) fn object(rules: &Rules, x: u16, k: &str, holds: Holds) -> ObjectSetu
         monster: None,
         guards: None,
         holds,
+        owner: None,
     }
 }
 

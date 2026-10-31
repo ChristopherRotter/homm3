@@ -91,6 +91,26 @@ const BORDER_GATES: [&str; 8] = [
     "ab:border_gate_black",
 ];
 
+/// Class 53 by subclass (E08 T83a; increment 9's design note §4): the seven mines by their
+/// resource's code, then the abandoned mine (7); class 220 is the abandoned mine too (the
+/// original's `object_class_values` 0x63A6E4 makes it 53.7).
+const MINES: [&str; 8] = [
+    "base:sawmill",
+    "base:alchemists_lab",
+    "base:ore_pit",
+    "base:sulfur_dune",
+    "base:crystal_cavern",
+    "base:gem_pond",
+    "base:gold_mine",
+    "base:abandoned_mine",
+];
+
+/// The abandoned mine's own class (E08 T83a): 53.7 in the original.
+pub(crate) const ABANDONED_MINE: u32 = 220;
+
+/// An object's owner byte for none (ADV-OWN-002, E08 T83a; `docs/formats/h3m.md`).
+pub(crate) const NEUTRAL: u32 = 0xFF;
+
 /// Resources by `.h3m` code (0 wood to 6 gold), as a monster's treasure lists them.
 pub(crate) const RESOURCES: [&str; 7] = [
     "base:wood",
@@ -125,12 +145,12 @@ pub(crate) const SPELL_SCROLL: u16 = 1;
 /// What an object of `class` is among a battle's surroundings (GAM-BAT-011, E08 T54; survey
 /// `E08-objects.md` §2.5): ownable by the original's `class_is_ownable` (0x40FCA0: the creature
 /// generators 17 and 20, a garrison 33, a lighthouse 42, a mine 53, a random town 77, a shipyard
-/// 87, a town 98), and the decorations 0x41ADB0 counts by its table over classes 114 to 160:
-/// trees 114, 115, 135, 137, 155, 159 and 160, mountains 123, 133, 134, 136, 157 and 158, dead
-/// vegetation 119.
+/// 87, a town 98; since E08 T83a the abandoned mine 220, which the original makes 53), and the
+/// decorations 0x41ADB0 counts by its table over classes 114 to 160: trees 114, 115, 135, 137,
+/// 155, 159 and 160, mountains 123, 133, 134, 136, 157 and 158, dead vegetation 119.
 pub(crate) const fn scenery(class: u32) -> Scenery {
     match class {
-        17 | 20 | 33 | 42 | 53 | 77 | 87 | 98 => Scenery::Ownable,
+        17 | 20 | 33 | 42 | 53 | 77 | 87 | 98 | ABANDONED_MINE => Scenery::Ownable,
         114 | 115 | 135 | 137 | 155 | 159 | 160 => Scenery::Tree,
         123 | 133 | 134 | 136 | 157 | 158 => Scenery::Mountain,
         119 => Scenery::DeadVegetation,
@@ -323,6 +343,15 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         229 => Some("sod:magic_clouds"),
         230 => Some("sod:magic_plains"),
         231 => Some("sod:rocklands"),
+        // E08 T83a (increment 9's design note §4): the mines and the abandoned mines, the
+        // Lighthouse, the Shipyard and the three weekly objects.
+        53 => by_subclass(&MINES),
+        ABANDONED_MINE => Some("base:abandoned_mine"),
+        42 => Some("base:lighthouse"),
+        87 => Some("base:shipyard"),
+        55 => Some("base:mystical_garden"),
+        109 => Some("base:water_wheel"),
+        112 => Some("base:windmill"),
         // E08 T72 (increment 8's design note §4): the sea's four pickups, a hole and Favorable
         // Winds; a boat (class 8) is no object ([`BOAT`]).
         29 => Some("base:flotsam"),

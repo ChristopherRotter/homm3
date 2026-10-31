@@ -52,8 +52,13 @@ pub use parse::parse;
 /// (E08 T61b): the map's banned spells and artifacts into the game's setup (GAM-SET-003). v14
 /// (E08 T72): the boats (class 8) as the map's boats, the sea's four pickups (29, 59, 82, 86), the
 /// holes (124) and Favorable Winds (225) typed, the holes and the winds on their pictures' tiles;
-/// a hero placed on water unsupported (D-44).
-pub const MAP_IMPORT_VERSION: u32 = 14;
+/// a hero placed on water unsupported (D-44). v15 (E08 T83a): the mines (53), the abandoned mines
+/// (53.7 and 220), the Lighthouses (42), the Shipyards (87), the Windmills (112), the Water Wheels
+/// (109) and the Mystical Gardens (55) typed; an ownable object's owner, an abandoned mine's set
+/// of resources; the map's timed events into the game's setup; an owner nobody plays, an
+/// abandoned mine without a resource of the seven refused, an ownable object entered from water
+/// unsupported.
+pub const MAP_IMPORT_VERSION: u32 = 15;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

@@ -110,7 +110,8 @@ pub use state::{
 /// the build drew for each object, and the visits' block (none, or the heroes' marks, the
 /// players' knowledge and the emptied objects). v15 (E08 T62b2): each player's seat (its colour
 /// and whether it counts as human). v16 (E08 T72): the boats, each hero's boat and day's maximum.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 16;
+/// v17 (E08 T83a): an abandoned mine's resources in the static map's objects ([`Holds`]' tag 7).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 17;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

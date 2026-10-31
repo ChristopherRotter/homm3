@@ -158,9 +158,9 @@ use std::num::NonZeroU32;
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
     CalendarParams, ChestDef, FindContentDef, FindDef, GiftDef, Gives, MonsterParamsDef,
-    MonthParamsDef, ObjectKindDef,
-    ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill, PyramidDef, RiverDef, RoadDef,
-    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, TurnDef, Visit,
+    MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill,
+    PyramidDef, RiverDef, RoadDef, StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef,
+    TurnDef, Visit,
 };
 use h3_content::{ArtifactClass, ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;

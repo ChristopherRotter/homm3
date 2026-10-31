@@ -9,8 +9,8 @@ use core::fmt;
 
 use h3_adventure::{AdventureSetup, Bans, HeroSetup, MapSetup, Pos, Seat, SetupError};
 use h3_content::{
-    ArtifactTypeId, CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, Ruleset, SkillId,
-    SpellId, StartingStack,
+    ArtifactTypeId, CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, ResourceId,
+    Ruleset, SkillId, SpellId, StartingStack,
 };
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
 use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, OfferLevels};
@@ -124,6 +124,32 @@ pub struct GameSetup {
     /// game is built gives them (a random artifact's, a chest's, a find's). Each must be the
     /// ruleset's; their order and repeats do not matter. E08 T61b.
     pub banned_artifacts: Vec<ArtifactTypeId>,
+    /// The map's timed events in the map's order (GAM-CAL-004, E08 T83a; increment 9's design
+    /// note §4): checked when the game is built, fired at their players' turn start from T85b.
+    /// At most 65 536 (an event's [`TimedEventSetup::message`] is a `u16`).
+    pub events: Vec<TimedEventSetup>,
+}
+
+/// A timed event as the map gives it (GAM-CAL-004, E08 T83a; survey `E08-economy.md` §11): on its
+/// days, at the turn start of each of its players that is human or computer as it says, its
+/// resources to that player's treasury, never below 0 (T85b).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TimedEventSetup {
+    /// The players it fires for: players of the game, in id order, each once (the map's colours
+    /// that play; a colour nobody plays is left out, so an event may fire for none).
+    pub players: Vec<PlayerId>,
+    /// Whether it fires for a human player (the map's flag; before SoD always).
+    pub human: bool,
+    /// Whether it fires for a player that is not human.
+    pub computer: bool,
+    /// The first day it fires, from 1 (the file's day + 1, `map_timed_events` 0x4FC2E0).
+    pub first_day: u16,
+    /// It fires again every this many days; 0 once.
+    pub interval: u16,
+    /// What it gives (a negative amount takes): distinct resources of the ruleset, none 0.
+    pub resources: Vec<(ResourceId, i32)>,
+    /// Its index in the map's list, which names its message (the text is the client's).
+    pub message: u16,
 }
 
 /// Why a [`GameSetup`] cannot start a game.
@@ -151,6 +177,11 @@ pub enum GameSetupError {
     BannedSpell(SpellId),
     /// A banned artifact is not the ruleset's (E08 T61b).
     BannedArtifact(ArtifactTypeId),
+    /// More timed events than a `u16` names; the number (E08 T83a).
+    Events(usize),
+    /// The timed event at this index names a player twice, out of order or not of the game,
+    /// a resource twice, not the ruleset's or of 0, or a first day of 0 (GAM-CAL-004, E08 T83a).
+    Event(usize),
     /// The adventure context rejects its part.
     Adventure(SetupError),
 }
@@ -182,6 +213,8 @@ impl fmt::Display for GameSetupError {
             Self::BannedArtifact(artifact) => {
                 write!(f, "banned artifact {} is not the ruleset's", artifact.raw())
             }
+            Self::Events(n) => write!(f, "{n} timed events are too many"),
+            Self::Event(event) => write!(f, "timed event {event} is invalid"),
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
     }
@@ -192,7 +225,7 @@ impl core::error::Error for GameSetupError {}
 impl GameSetup {
     /// Checks the setup: the game's part (a difficulty the ruleset has, players in colour order
     /// within the ruleset's players, banned skills, then spells and artifacts of the ruleset (E08
-    /// T29, T61b), known hero types,
+    /// T29, T61b), the timed events (E08 T83a), known hero types,
     /// starting armies that can be drawn, the heroes' details by the hero model, E08 T18b), then
     /// the adventure context's part with its own checks. It builds the game as
     /// [`GameState::new`] does: whether a setup is valid does not depend on the seed, since every
@@ -251,6 +284,17 @@ impl GameSetup {
             .find(|&&artifact| rules.core().artifact(artifact).is_none())
         {
             return Err(GameSetupError::BannedArtifact(artifact));
+        }
+        if self.events.len() > usize::from(u16::MAX) + 1 {
+            return Err(GameSetupError::Events(self.events.len()));
+        }
+        // rule: GAM-CAL-004
+        if let Some(index) = self
+            .events
+            .iter()
+            .position(|event| !check_event(rules.core(), count, event))
+        {
+            return Err(GameSetupError::Event(index));
         }
         if self.heroes.len() > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(self.heroes.len()));
@@ -314,6 +358,20 @@ impl GameSetup {
         };
         Ok((setup, details))
     }
+}
+
+/// Whether a timed event fits the game (GAM-CAL-004, E08 T83a): its players those of the game in
+/// id order, each once; its resources distinct and the ruleset's, none 0; its first day from 1.
+fn check_event(core: &Ruleset, players: usize, event: &TimedEventSetup) -> bool {
+    let players_fit = event.players.windows(2).all(|pair| pair[0] < pair[1])
+        && event.players.iter().all(|player| player.index() < players);
+    let mut seen = Vec::with_capacity(event.resources.len());
+    let resources_fit = event.resources.iter().all(|&(resource, amount)| {
+        let fresh = !seen.contains(&resource);
+        seen.push(resource);
+        fresh && amount != 0 && usize::from(resource.raw()) < core.resources().len()
+    });
+    players_fit && resources_fit && event.first_day >= 1
 }
 
 /// The lowest default experience, and the width of its draw (GAM-HER-001: 40 to 90).
