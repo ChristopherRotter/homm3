@@ -28,22 +28,32 @@ T6a2b (all done: the epic's log), and T6b, cut with the user (2026-10-30) into T
 T6b3 (kept whole by the user; all done: the epic's log). T7 cut with the user (2026-10-30): T7a,
 the status bar's hint unmasked and everything recorded again (done: the epic's log), beside it
 M3's review by six fresh reviewers on fractions (the user: up to three at once, each under half
-a context; their findings on a branch), T7b, the findings consolidated and fixed, and T7c, the
+a context; their findings on a branch), T7b, the findings consolidated and fixed (cut with the
+user, 2026-10-31, into T7b1, the redraw's and the input's, and T7b2, the rest), and T7c, the
 user's checkpoint.
 
-### E24 M3 T7b — the review's findings consolidated and fixed
+### E24 M3 T7b1 — the redraw's and the input's findings fixed, MCL-Q25 built
 
-- **Scope:** the 42 findings of T7's six fresh reviewers (the branch
-  `map-client/e24-m3-t7-review`, `docs/lanes/map-client/review-m3/`: its README's summary first,
-  then each file), each one checked and then fixed, queued for M3's review list, turned into an
-  `MCL-Q<n>` or declined with why, the bugs and divergences first (F2-1, F4-1 to F4-5, F3-2); the
-  captures a fix changes recorded again (`drawn` first: the runbook, "Which captures a change
-  needs"); MCL-Q25's and MCL-Q26's answers if the user gave them. The findings' folder is not
-  merged: the log keeps each finding's outcome. Cut with the user at its start if it outgrows half
-  a context (by area: the bugs and divergences, then the robustness and the rest).
-- **Acceptance:** every finding has an outcome in the log; `drawn` all the same after the fixes'
-  captures; the scoped verify and `check.sh` pass.
-- **Depends on:** T7a. **Status:** ready.
+- **Scope:** T7b cut with the user (2026-10-31) into T7b1 and T7b2. T7b1: the findings of F2 (the
+  frame's redraw, F2-1 to F2-8) and F4 (the clicks, keys, the walk's input and the focus, F4-1 to
+  F4-9) on the branch `map-client/e24-m3-t7-review` (`docs/lanes/map-client/review-m3/`), each
+  checked, then fixed, queued for M3's review list, turned into an `MCL-Q<n>` or declined with
+  why; MCL-Q25's answer (a) built (a key's repeat dropped while a step waits, the original's queue
+  behind `--bugs original`). The captures a fix changes recorded again (`drawn` first).
+- **Acceptance:** every F2 and F4 finding has an outcome in the log; `drawn` all the same; the
+  scoped verify and `check.sh` pass.
+- **Depends on:** T7a. **Status:** in progress (2026-10-31).
+
+### E24 M3 T7b2 — the panels', the mouse-over's, the harness's and the rest's findings fixed
+
+- **Scope:** the findings of F1 (the panels), F3 (the mouse-over; F3-2 answered as MCL-Q27, the
+  empty bar kept: noted in `hover.rs`, its test and design §4.10), F5 (the harness; F5-9 done by
+  T7a) and F6 (the rest), as T7b1's; the harness's fixes checked against the original under Wine;
+  the captures a fix changes recorded again (`drawn` first). Cut with the user at its start if it
+  outgrows half a context (by area: F1 and F6, then F3 and F5).
+- **Acceptance:** every finding has an outcome in the log (the review's folder is not merged);
+  `drawn` all the same; the scoped verify and `check.sh` pass.
+- **Depends on:** T7b1. **Status:** ready after T7b1.
 
 ### E24 M3 T7c — M3's review list, the hand test, M3 archived, M4 refined
 
@@ -52,7 +62,7 @@ user's checkpoint.
   the checks on screen and a notes file; MCL-Q18's fix among them); M3 archived (its section
   verbatim to `E24-archive.md`); M4 refined with the user.
 - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
-- **Depends on:** T7b. **Status:** the user's checkpoint.
+- **Depends on:** T7b2. **Status:** the user's checkpoint.
 
 ## Inbox
 
