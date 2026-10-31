@@ -13,7 +13,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   popups, T4 the combat options dialog, T5 M5's gaps, T6 the inbox's waiting items (the deck and
   boats, CLT-Q30's exact Bink, the Demons' dissolve, `h3_ui::paint`, the purity holes, R4-2,
   R4-9), T7 the closure; then M7 ranked play and the server browser. **T1 done** (the answered
-  slips, PR from `client/e17-m6-t1`, stacked on T8c's #618: check both first). **Next: M6 T2**
+  slips, #620 from `client/e17-m6-t1`: check it first; T8c's #618 merged). **Next: M6 T2**
   (a stack's info; likely cut at its start). M5's record:
   `E17-archive.md`, `E17-log.md` ("M5 T1a" to "M5 T8c", "M5 review list").
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -43,7 +43,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-31, E17 M5 T8c and M6 T1 (done; #618 and T1's PR open: check them first).** The
+- **2026-10-31, E17 M5 T8c and M6 T1 (done; #618 merged, #620 open: check it first).** The
   original data staged (57 files, before anything else); #616 and #617 merged that morning, CI
   green on `master`; the VM restarted ~20 minutes in (the baseline lost). T8c, the user's
   checkpoint: the review list accepted as built, CLT-Q35 and the five older questions answered
