@@ -55,9 +55,10 @@ impl AdventureState {
         sink: &mut S,
     ) {
         let place = self.map.ownable_index(index);
-        for (owners, place) in self.owners.as_mut().zip(place) {
-            alloc::sync::Arc::make_mut(owners)[place] = Some(player);
-        }
+        self.owners
+            .iter_mut()
+            .zip(place)
+            .for_each(|(owners, place)| alloc::sync::Arc::make_mut(owners)[place] = Some(player));
         let object = self.object_at(index);
         let anchor = object.anchor;
         let entrance = object.entrance(&self.map).unwrap_or(anchor);
