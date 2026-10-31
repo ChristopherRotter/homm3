@@ -229,16 +229,17 @@ pub fn draw_image_clipped(screen: &mut Screen, image: &Pcx, x: i32, y: i32, clip
 /// `DrawShadow`; E17 M5 T3a: a dialog's shadow, `vShow` 0x5FEAE0).
 pub fn darken(screen: &mut Screen, [x, y, width, height]: [i32; 4]) {
     let format = screen.format();
-    // Cut to the screen first: what lies outside is left alone either way, and a crafted
-    // rectangle (a dialog's shadow of `i32::MAX`) then costs no more than the screen.
-    let (top, left) = (i64::from(y).max(0), i64::from(x).max(0));
-    let bottom = (i64::from(y) + i64::from(height)).min(i64::from(screen.height()));
-    let right = (i64::from(x) + i64::from(width)).min(i64::from(screen.width()));
-    for py in top..bottom {
-        for px in left..right {
-            if let Some(p) = screen.pixel_mut(px, py) {
-                *p = format.shadow_body(*p);
-            }
+    let (w, h) = (i64::from(screen.width()), i64::from(screen.height()));
+    // Cut to the screen first (E24 M3 T7b2, F6-1): what lies outside is left alone either way,
+    // and a crafted rectangle (a dialog's shadow of `i32::MAX`) costs no more than the screen.
+    let (left, top) = (i64::from(x).clamp(0, w), i64::from(y).clamp(0, h));
+    let right = (i64::from(x) + i64::from(width)).clamp(left, w);
+    let bottom = (i64::from(y) + i64::from(height)).clamp(top, h);
+    let at = |v: i64| usize::try_from(v).unwrap_or(0);
+    let pixels = screen.pixels_mut();
+    for row in top..bottom {
+        for p in &mut pixels[at(row * w + left)..at(row * w + right)] {
+            *p = format.shadow_body(*p);
         }
     }
 }

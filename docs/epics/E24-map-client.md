@@ -212,7 +212,8 @@ viewers share.
   the findings consolidated and fixed, cut with the user (2026-10-31) into T7b1, the redraw's
   and the input's (**done** 2026-10-31: F2-1 to F2-8 and F4-1 to F4-9 fixed, MCL-Q25's answer
   built; `drawn` all the same; the log), and T7b2, the panels', the mouse-over's, the harness's
-  and the rest's; T7c, the review list, the hand test, M3 archived, M4 refined. A task that grows
+  and the rest's (kept whole by the user; **done** 2026-10-31: the 24 findings fixed, noted or
+  declined; `drawn` all the same, two sequences exact under Wine; the log); T7c, the review list, the hand test, M3 archived, M4 refined. A task that grows
   is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
@@ -421,10 +422,21 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   which loses the textures themselves) is not mapped: a rebuild in `h3_sdl` for both viewers, not
   a redraw. The rectangles another holds are dropped before widening and uploading; overlapping
   ones are not joined (a joined box can widen more pixels than the two).
+- **M3 T7b2, a crafted layout or live part** (*provisional*, the review's F1-1, F3-1, F3-3,
+  F6-1): a text box, a label's colour or a dialog's shadow at the integers' end saturates
+  instead of being refused at the load (`h3_render::blit::darken` cut to the screen, the same
+  pixels); a family's entry the data names past the catalogue (a hero, a creature, a spell …)
+  and a quest's hero -1 show the empty text (`h3_ui::text::Catalogue::known`, additive), as
+  MCL-Q21 (a). The gate asks `cprsmall.def` for 149 creatures' portraits
+  (`status::ARMY_CREATURES`: the installation's DEF, 0 to 148).
+- **M3 T7b2, the harness's staging** (*provisional*, F5-1, F5-4, F5-5, F5-7): a run's start
+  releases the hotkeys and the button before its staging; `choose_each` waits for the window's
+  name item; a pointer in a scroll zone is left out of the look; the button paired as the keys
+  in a sequence's inputs.
 - **M3 T7a, a map-named town in the hover facts** (*provisional*, the harness): `Mem.hover`'s
   `towns` give a town whose name is not a record of `TownName.txt` (a shipped map's own) as 65535,
-  so a still of such a map is compared; a hint over that town would show the catalogue's key
-  (T7b's F3-3) until M4 reads the map's town names.
+  so a still of such a map is compared; a hint over that town shows an empty name (T7b2's F3-3)
+  until M4 reads the map's town names.
 - **M3 T6a2b, the owners and contents** (*provisional*, design §4.12): the live part's `[hover]`
   contents (sparse rows by object: `mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`,
   each holding what the hint reads already decided for its player: the viewing, the shown or the

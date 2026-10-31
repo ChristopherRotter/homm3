@@ -2368,26 +2368,21 @@ impl Loop {
         // The kind asked compared first, its window cloned only when it is built (T7b2, F1-5:
         // an unforced draw of the kind shown builds nothing).
         let builds = |kind: u8| force || shown != Some(kind);
-        let window = match (self.asked, self.kingdom.selected) {
-            (1, _) | (0, Selected::None) => None,
-            (2, _) => match &self.realm {
+        let selection = self.kingdom.selection.as_ref().or_else(|| {
+            self.kingdom
+                .status
+                .as_ref()
+                .filter(|s| matches!(s, Status::Hero(_) | Status::Town(_)))
+        });
+        let window = match (self.asked, self.kingdom.selected, selection) {
+            (1, _, _) | (0, Selected::None, _) => None,
+            (2, _, _) => match &self.realm {
                 Some(realm) => Some(builds(2).then(|| Status::Kingdom(realm.clone()))),
                 None => return,
             },
-            (0, selected) => {
-                let selection = self.kingdom.selection.as_ref().or_else(|| {
-                    self.kingdom
-                        .status
-                        .as_ref()
-                        .filter(|s| matches!(s, Status::Hero(_) | Status::Town(_)))
-                });
-                match (selected, selection) {
-                    (Selected::Hero(_), Some(s @ Status::Hero(_)))
-                    | (Selected::Town(_), Some(s @ Status::Town(_))) => {
-                        Some(builds(s.kind()).then(|| s.clone()))
-                    }
-                    _ => return,
-                }
+            (0, Selected::Hero(_), Some(s @ Status::Hero(_)))
+            | (0, Selected::Town(_), Some(s @ Status::Town(_))) => {
+                Some(builds(s.kind()).then(|| s.clone()))
             }
             _ => return,
         };
