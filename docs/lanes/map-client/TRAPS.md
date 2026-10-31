@@ -119,3 +119,5 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   while the archives load: wait for `xdotool search --onlyvisible --name h3-map-view` before
   sending anything, and keep the run's output out of the repository.
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.
+
+- **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.

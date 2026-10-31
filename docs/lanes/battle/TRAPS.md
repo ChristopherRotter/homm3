@@ -41,3 +41,5 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 **Process**
 - Edit the long docs (`installation.md`, the catalog) by targeted replacements, never by rewriting from memory.
 - The user merges with merge commits or squashes: rebase a stacked branch with `git rebase --onto origin/master <old base head>`; fetch `master` again before a pull request that bumps a shared version.
+
+- **Procedures as skills:** for a speed or replay question use the skills `homm3-bench-regression` and `homm3-rerecord-replays`; measure right after the first build (`AGENTS.md`, "Measure before you polish").

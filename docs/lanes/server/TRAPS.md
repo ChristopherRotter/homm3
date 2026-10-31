@@ -38,3 +38,5 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - Windows refuses `set_len` through an `append(true)` handle (logs open `write(true)`, `journal::open_log`) and a connect to `0.0.0.0` (`crate::reachable`). Check with clippy `--target x86_64-pc-windows-gnu`; Wine is no test.
 - A `wss://` dial passes `Connector::Rustls` (`Client::dial`), or tokio-tungstenite panics (no process-wide provider). Graviola panics on a processor without its extensions: each fetch is a task of its own.
 - `ListPeers` serves `peers::relay`'s rebuild (peers, listed servers, chains), chains checked against served cards. A fetch below `depth` pages `ListPeers`: a fake peer must answer it (`tests/peers.rs`). A fetch dials through `Tls::to` (the roots at the first `wss://`); a listed card must name its list's address.
+
+- **Procedures as skills:** for a speed or replay question use the skills `homm3-bench-regression`; measure right after the first build (`AGENTS.md`, "Measure before you polish").
