@@ -236,10 +236,11 @@ impl Reach {
             reach.search_layered(&search, mode, hero.movement);
             return reach;
         }
-        if afloat {
-            reach.search_walking::<true>(&search, hero.movement);
-        } else {
-            reach.search_walking::<false>(&search, hero.movement);
+        match (afloat, search.added.is_some()) {
+            (false, false) => reach.search_walking::<false, false>(&search, hero.movement),
+            (false, true) => reach.search_walking::<false, true>(&search, hero.movement),
+            (true, false) => reach.search_walking::<true, false>(&search, hero.movement),
+            (true, true) => reach.search_walking::<true, true>(&search, hero.movement),
         }
         reach
     }
@@ -247,29 +248,35 @@ impl Reach {
     /// A walking hero's search: Dijkstra's over one node per tile, the most points first (ties by
     /// slot), from the hero's tile with `points`. `AFLOAT`: the window holds an empty boat or
     /// another hero in a boat, whose water tiles the search then looks at (E08 T73b); without, its
-    /// loop is the one before boats (`bench-check`).
-    fn search_walking<const AFLOAT: bool>(&mut self, search: &Search<'_>, points: u32) {
+    /// loop is the one before boats (`bench-check`). `ADDED`: an object was added in play (E08
+    /// T83b2a), whose tiles the search then asks the live tile of where the static map marks
+    /// nothing; without, its loop is the one before them.
+    fn search_walking<const AFLOAT: bool, const ADDED: bool>(
+        &mut self,
+        search: &Search<'_>,
+        points: u32,
+    ) {
         let mut queue = BinaryHeap::new();
         // ADV-OBJ-004: a hero standing on the tile of an object not visited from above leaves it
         // toward none of the three tiles above (E08 T14a); the start's own expansion only, so the
         // search's hot loop has no test for it.
         let closed = search.state.closed_above(search.part, self.origin);
-        self.expand::<true, AFLOAT>(search, &mut queue, self.start, points, closed);
+        self.expand::<true, AFLOAT, ADDED>(search, &mut queue, self.start, points, closed);
         while let Some((points, Reverse(slot))) = queue.pop() {
             if self.points[slot] != Some(points) {
                 continue;
             }
-            self.expand::<false, AFLOAT>(search, &mut queue, slot, points, false);
+            self.expand::<false, AFLOAT, ADDED>(search, &mut queue, slot, points, false);
         }
     }
 
     /// Relaxes the steps from `slot`, reached with `points` left, in the eight directions; a
     /// tile reached with more points than before goes on the queue unless a visit or a guard ends
     /// the path there. `START` is the hero's own tile, whose steps up are skipped when `closed`;
-    /// `AFLOAT` as [`Self::search_walking`]'s.
+    /// `AFLOAT` and `ADDED` as [`Self::search_walking`]'s.
     // rule: ADV-OBJ-003, ADV-OBJ-004, ADV-VIS-005, GAM-BAT-004, ADV-MON-006
     #[inline(always)]
-    fn expand<const START: bool, const AFLOAT: bool>(
+    fn expand<const START: bool, const AFLOAT: bool, const ADDED: bool>(
         &mut self,
         search: &Search<'_>,
         queue: &mut BinaryHeap<(u32, Reverse<usize>)>,
@@ -314,9 +321,15 @@ impl Reach {
                     continue;
                 }
                 visit = true;
-            } else if to.blocked || to.visitable || search.added.is_some_and(|added| added.get(pos))
+            } else if to.blocked
+                || to.visitable
+                || (ADDED && search.added.is_some_and(|added| added.get(pos)))
             {
-                let live = state.live(pos, to);
+                let live = if ADDED {
+                    state.live(pos, to)
+                } else {
+                    state.live_placed(pos, to)
+                };
                 if live.visitable {
                     match state.visit_at(part, search.owner, pos) {
                         Some(v) if v.from_above || !(3..=5).contains(&dir) => visit = !v.pass,

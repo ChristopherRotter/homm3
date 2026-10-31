@@ -253,7 +253,8 @@ impl AdventureState {
     /// the empty boats it sees and every seen hero's boat's type (ADV-FOG-008). A viewer that is
     /// not a player of the game sees no tile, no hero, no object, no purchase, no key and no boat.
     /// An event is never among the objects, and its tile is no object's in the tile views
-    /// (ADV-FOG-007, E08 T62b2).
+    /// (ADV-FOG-007, E08 T62b2). Since E08 T83b2a the objects added in play are among them as the
+    /// static map's, after those, and cover their tiles in the tile views.
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007, ADV-FOG-008
     pub fn observe(
         &self,

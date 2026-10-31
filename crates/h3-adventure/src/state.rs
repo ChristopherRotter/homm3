@@ -100,7 +100,7 @@ use boats::Boats;
 pub use draws::Resolved;
 pub use economy::Weekly;
 use flags::Flags;
-pub(crate) use occupancy::Occupancy;
+pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Mode, Node};
 pub use visits::Visits;
 
@@ -1096,6 +1096,11 @@ pub struct AdventureState {
     /// The objects that left the map and the tiles they freed (ADR-0016 point 1); none until an
     /// object leaves, so a fork and a tile's read cost nothing more before (`bench-check`).
     occupancy: Option<Arc<Occupancy>>,
+    /// The objects added in play, after the static map's in map order, with the grids of their
+    /// tiles (E08 T83b2a; increment 9's design note §6): none until one is added (T85a's creature
+    /// month), so a read that asks for them costs one test and a fork nothing more before
+    /// (`bench-check`), then one block the forks share.
+    added: Option<Arc<Added>>,
     /// The per-player state of object types (ADR-0016 point 1): the Cartographer types bought
     /// (ADV-VIS-001, E08 T14b) and the keys held (ADV-VIS-003, T15a), as the original's flags.
     /// None until a first purchase or key, then one block the forks share (a write copies it), so
@@ -1185,6 +1190,7 @@ impl AdventureState {
             heroes: Vec::with_capacity(setup.heroes.len()),
             explored: vec![unexplored; usize::from(setup.players)],
             occupancy: None,
+            added: None,
             flags: None,
             difficulty: setup.difficulty,
             seats,
@@ -2251,11 +2257,7 @@ impl AdventureState {
         part: &'p AdventureRuleset,
         pos: Pos,
     ) -> Option<(usize, ObjectTypeId, &'p ObjectType)> {
-        let added = self
-            .occupancy
-            .as_deref()
-            .and_then(|occupancy| occupancy.added_visited_from(pos));
-        let index = added.or_else(|| {
+        let index = self.added_visited_from(pos).or_else(|| {
             self.map
                 .visited_from(pos)
                 .iter()
@@ -2414,6 +2416,17 @@ impl AdventureState {
     /// in play's included (E08 T83b2a).
     #[inline]
     pub(crate) fn live(&self, pos: Pos, tile: StaticTile) -> StaticTile {
+        let tile = self.live_placed(pos, tile);
+        match &self.added {
+            Some(added) if added.tiles.get(pos) => self.added_live(pos, tile),
+            _ => tile,
+        }
+    }
+
+    /// [`Self::live`] but for the objects added in play: the static map's objects still on it
+    /// only, for a search that knows none was added (E08 T83b2a, `bench-check`).
+    #[inline]
+    pub(crate) fn live_placed(&self, pos: Pos, tile: StaticTile) -> StaticTile {
         match &self.occupancy {
             Some(occupancy) => occupancy.live(pos, tile),
             None => tile,
@@ -2438,10 +2451,11 @@ impl AdventureState {
         }
         self.fractions.set(index, None);
         let map = &self.map;
-        let occupancy = self
-            .occupancy
-            .get_or_insert_with(|| Arc::new(Occupancy::new(map)));
-        Arc::make_mut(occupancy).remove(map, index);
+        let added = self.added.as_deref().map_or(&[][..], |a| &a.objects);
+        let occupancy = self.occupancy.get_or_insert_with(|| {
+            Arc::new(Occupancy::new(map, map.objects().len() + added.len()))
+        });
+        Arc::make_mut(occupancy).remove(map, added, index);
     }
 
     /// The object at `index`: the static map's, or one added in play after them (E08 T83b2a;
@@ -2465,27 +2479,25 @@ impl AdventureState {
     /// `map().objects().len() + n` (E08 T83b2a: none until T85a's creature month; tests add
     /// them), on the map or not.
     pub fn added_objects(&self) -> &[MapObject] {
-        self.occupancy.as_deref().map_or(&[], Occupancy::added)
+        self.added.as_deref().map_or(&[], |added| &added.objects)
     }
 
     /// Whether a monster's visitable tile, of the static map or added in play, lies within one
     /// step of `pos` on its level (ADV-MON-005: a tile without one is guarded by none).
+    #[inline]
     pub(crate) fn may_guard(&self, pos: Pos) -> bool {
         self.map.near_monster(pos)
             || self
-                .occupancy
+                .added
                 .as_deref()
-                .is_some_and(|occupancy| occupancy.near_added(pos))
+                .is_some_and(|added| added.near.get(pos))
     }
 
     /// The tiles an object added in play blocks or is visited from, if one was added (E08
     /// T83b2a): where a search that reads the static map's marks first must also ask
     /// [`Self::live`].
     pub(crate) fn added_tiles(&self) -> Option<&BitGrid> {
-        self.occupancy
-            .as_deref()
-            .filter(|occupancy| occupancy.any_added())
-            .map(Occupancy::added_tiles)
+        self.added.as_deref().map(|added| &added.tiles)
     }
 
     /// A wandering monster's fraction of a creature at object index `index`, in the monsters'
@@ -2556,8 +2568,8 @@ impl CanonicalHash for AdventureState {
     /// since v2 the movement points left; since v16 the day's maximum and the boat, 0 for none,
     /// else 1 and its index); since v3 each player's explored tiles, by player id
     /// ([`BitGrid`]'s encoding); since v4 the objects that left the map (0 for none, else 1 and
-    /// [`Occupancy`]'s encoding, since v19 with the objects added in play; there is an occupancy
-    /// only once an object has left or was added); since v5 the
+    /// [`Occupancy`]'s encoding; there is an occupancy only once an object has left); since v19
+    /// the objects added in play (0 for none, else 1 and [`Added`]'s encoding); since v5 the
     /// Cartographer types bought, as length and entries in type order (the type, then its byte of
     /// player bits); since v6 then the keys, a byte of player bits per colour (none bought and no
     /// key before the first purchase or key); since v9 the difficulty, (since v15) each player's
@@ -2604,6 +2616,13 @@ impl CanonicalHash for AdventureState {
             Some(occupancy) => {
                 h.write_u8(1);
                 occupancy.hash_into(h);
+            }
+        }
+        match &self.added {
+            None => h.write_u8(0),
+            Some(added) => {
+                h.write_u8(1);
+                added.hash_into(h);
             }
         }
         self.flags.as_deref().unwrap_or(&Flags::NONE).hash_into(h);
@@ -2705,11 +2724,14 @@ impl AdventureState {
     /// Adds `object` to the map after every object before it (E08 T83b2a: tests of the objects
     /// added in play, until T85a's creature month adds them) and returns its index.
     pub(crate) fn add_object(&mut self, object: MapObject) -> usize {
+        let index = self.map.objects().len() + self.added_objects().len();
+        if let Some(occupancy) = &mut self.occupancy {
+            Arc::make_mut(occupancy).make_room(index + 1);
+        }
         let map = &self.map;
-        let occupancy = self
-            .occupancy
-            .get_or_insert_with(|| Arc::new(Occupancy::new(map)));
-        Arc::make_mut(occupancy).add(map, object)
+        let added = self.added.get_or_insert_with(|| Arc::new(Added::new(map)));
+        Arc::make_mut(added).push(map, object);
+        index
     }
 
     /// Writes the fraction of the monster at `index` (tests of the fractions' invariants and

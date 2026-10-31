@@ -24,10 +24,12 @@ fn p(x: u16, y: u16) -> Pos {
     Pos::new(x, y, 0)
 }
 
-/// A guard at (1, 1), index 0; with `placed` five pikemen at (4, 2), index 1, else grass there.
-fn rows(placed: bool) -> [&'static str; 3] {
+/// A guard at (1, 1), index 0; with `placed` five pikemen at (4, 2), index 1, else grass there;
+/// with `boat` an empty boat at (6, 0) beside water at (5, 0) (a walker's search then looks at
+/// the water tiles too).
+fn rows(placed: bool, boat: bool) -> [&'static str; 3] {
     [
-        "ggggggg",
+        if boat { "ggggg~b" } else { "ggggggg" },
         "gKggggg",
         if placed { "ggggMgg" } else { "ggggggg" },
     ]
@@ -35,16 +37,21 @@ fn rows(placed: bool) -> [&'static str; 3] {
 
 /// The started state of [`rows`] under the faithful [`hero_rules`], red's hero 1 (peasants) on
 /// (0, 1).
-fn twin(rules: &Rules, placed: bool) -> AdventureState {
+fn twin(rules: &Rules, placed: bool, boat: bool) -> AdventureState {
     let heroes = vec![hero_at(1, 0, p(0, 1), &[PEASANT])];
-    started(rules, &world(&rows(placed), 1, heroes)).unwrap()
+    started(rules, &world(&rows(placed, boat), 1, heroes)).unwrap()
 }
 
 /// The placed twin and the other with the placed monster added in play: the same objects in the
 /// same order, the monster at index 1 in both.
 fn twins(rules: &Rules) -> (AdventureState, AdventureState) {
-    let placed = twin(rules, true);
-    let mut added = twin(rules, false);
+    twins_with(rules, false)
+}
+
+/// [`twins`] with or without the boat.
+fn twins_with(rules: &Rules, boat: bool) -> (AdventureState, AdventureState) {
+    let placed = twin(rules, true, boat);
+    let mut added = twin(rules, false, boat);
     let monster = placed.map().objects()[1].clone();
     assert_eq!(added.add_object(monster), 1);
     (placed, added)
@@ -126,6 +133,10 @@ fn an_added_monster_reads_as_a_placed_one() {
             reach(&rules, &placed, &heroes)
         );
     }
+    let (afloat, beside) = twins_with(&rules, true);
+    assert_eq!(read(&rules, &beside), read(&rules, &afloat));
+    assert_eq!(reach(&rules, &beside, &[]), reach(&rules, &afloat, &[]));
+    assert!(!reach(&rules, &afloat, &[]).is_empty());
     for viewer in [RED, BLUE] {
         assert_eq!(
             added.observe(&rules.0, &rules.1, viewer),
