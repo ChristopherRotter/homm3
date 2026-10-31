@@ -16,7 +16,8 @@
 # (`h3-content-battle`, `h3-pack-battle`) are battle's. The formats/tools crates (`h3-formats`,
 # `h3-harvest`, `h3-experiment`) are battle's until a formats/tools lane opens. The AI lane took
 # `h3-sim` and `h3-ffi` at E05 (the user, 2026-10-18, AI-Q1). The battle lane leads E11 (the
-# user, 2026-10-24, Q58). The epics E15 and E18–E20 have no lane yet: their files get a pattern
+# user, 2026-10-24, Q58). The town lane builds E09 in parallel with the adventure lane (the user,
+# 2026-10-31, TWN-Q1). The epics E15 and E18–E20 have no lane yet: their files get a pattern
 # here when they start.
 
 [shared]
@@ -119,6 +120,7 @@ paths = [
     "docs/lanes/client/QUEUE.md",
     "docs/lanes/map-client/QUEUE.md",
     "docs/lanes/server/QUEUE.md",
+    "docs/lanes/town/QUEUE.md",
 ]
 
 [[lane]]
@@ -187,11 +189,9 @@ paths = [
     "docs/rules/catalog/game.toml",
     "benches/adventure/",
     "docs/rules/catalog/adventure.toml",
-    "docs/rules/catalog/town.toml",
     "docs/rules/quirks-adventure.md",
     "docs/rules/surveys/E07*",
     "docs/rules/surveys/E08*",
-    "docs/rules/surveys/E09*",
     "docs/rules/surveys/E10*",
     "docs/rules/surveys/E12*",
     "docs/rules/surveys/E13*",
@@ -199,26 +199,50 @@ paths = [
     # Experiments in the original game follow the epic prefix (`experiments/specs/E07-batch-1.toml`).
     "experiments/specs/E07*",
     "experiments/specs/E08*",
-    "experiments/specs/E09*",
     "experiments/specs/E10*",
     "experiments/specs/E12*",
     "experiments/specs/E13*",
     "experiments/specs/E14*",
     "experiments/results/E07*",
     "experiments/results/E08*",
-    "experiments/results/E09*",
     "experiments/results/E10*",
     "experiments/results/E12*",
     "experiments/results/E13*",
     "experiments/results/E14*",
     "docs/epics/E07*",
     "docs/epics/E08*",
-    "docs/epics/E09*",
     "docs/epics/E10*",
     "docs/epics/E12*",
     "docs/epics/E13*",
     "docs/epics/E14*",
     "docs/lanes/adventure/",
+]
+
+# Towns (E09; the user, 2026-10-31, TWN-Q1, opening the lane beside the adventure lane's E08):
+# the town context's crate `h3-towns` (buildings, construction, growth, the available creatures,
+# the mage guild, the market), the town modules inside the adventure lane's crates by the longest
+# match (the town as a map object, its visit and capture, the import of towns, the writer's towns,
+# h3-game's composition), the town rules and quirks, E09's epic, surveys and experiments. The
+# adventure lane's crates' common parts (`lib.rs`, the state structs and hashes, the versions, the
+# replays) stay the adventure lane's: the town lane changes them `cross-lane`, merged in order.
+# `verify_with`: the scoped verify also runs the adventure lane's crates, replays and workloads.
+[[lane]]
+name = "town"
+code = "TWN"
+verify_with = ["adventure"]
+paths = [
+    "crates/h3-towns/",
+    "crates/h3-adventure/src/town*",
+    "crates/h3-game/src/town*",
+    "crates/h3-map/src/import/town*",
+    "crates/h3-map/src/writer/town*",
+    "docs/rules/catalog/town.toml",
+    "docs/rules/quirks-town.md",
+    "docs/rules/surveys/E09*",
+    "experiments/specs/E09*",
+    "experiments/results/E09*",
+    "docs/epics/E09*",
+    "docs/lanes/town/",
 ]
 
 [[lane]]

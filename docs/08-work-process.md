@@ -77,11 +77,21 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   and `docs/formats/` (until a formats/tools lane opens), packs, fixtures, experiments,
   `benches/battle/`, the BAT rules, the quirks ledger, the surveys, the epics E01–E04c and E23.
   `h3-heroes` moved to adventure when E04c closed (ADV-Q13).
-- **adventure:** `h3-adventure`, `h3-game`, `h3-map` and `h3-pack-adventure` (E08; later the
-  town), adventure-owned sub-paths of the battle lane's crates and folders (`h3-sim`'s and
+- **adventure:** `h3-adventure`, `h3-game`, `h3-map` and `h3-pack-adventure` (E08) but for the
+  town lane's modules in them, adventure-owned sub-paths of the battle lane's crates and folders (`h3-sim`'s and
   `h3-cli`'s `src/adventure/`, `fixtures/replays/adventure/`, the packs' `adventure.toml`; the
-  longest match decides), `docs/formats/h3m.md`, the ADV, GAM and town rules, its own quirks
-  ledger `docs/rules/quirks-adventure.md`, `benches/adventure/`, the epics E07–E10 and E12–E14.
+  longest match decides), `docs/formats/h3m.md`, the ADV and GAM rules, its own quirks
+  ledger `docs/rules/quirks-adventure.md`, `benches/adventure/`, the epics E07, E08, E10 and
+  E12–E14.
+- **town** (since 2026-10-31; the user opened it beside the adventure lane's E08 at E09's
+  refinement, TWN-Q1): towns, E09: the town context's crate `h3-towns`, the town modules inside the
+  adventure lane's crates by the longest match (`h3-adventure`'s and `h3-game`'s `src/town*`,
+  `h3-map`'s `src/import/town*` and `src/writer/town*`), the town rules and its quirks ledger
+  `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Those crates' common parts
+  (`lib.rs`, the state structs and hashes, the versions, the replays) stay the adventure lane's:
+  the town lane changes them in a `cross-lane` pull request, merged in order with the adventure
+  lane's (the second rebases). Its scoped verify also runs the adventure lane's crates, replays
+  and workloads (`verify_with` in `lanes.toml`).
 - **ai** (since E05; the user, 2026-10-18, AI-Q1): `h3-sim` (its `src/adventure/` stays the
   adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, the Python side `python/`,
   `benches/ai/`, the epics E05 and E06. The battle lane still changes rules that the encodings
@@ -132,7 +142,7 @@ the label `cross-lane`. When a lane needs a shared change, it opens the `shared/
 first, waits for its merge and rebases; a seam change (`h3-contracts`) stops the line in every lane
 it touches.
 
-**Ids.** New questions, quirks and stubs carry the lane code from `lanes.toml` (BAT, ADV, SRV,
+**Ids.** New questions, quirks and stubs carry the lane code from `lanes.toml` (BAT, ADV, TWN, SRV,
 CLT, MCL, AI) and count per lane: questions `ADV-Q1`, quirks `ADV-QUIRK-1` (in the lane's ledger), stubs
 `ADV-STUB-1`. Existing ids (`Q55`, `Q-0012`, `STUB-0001`) stay. `check-rules` and `check-stubs`
 accept both forms. **ADRs** are written as drafts in `docs/lanes/<lane>/adr-drafts/<slug>.md`
@@ -151,7 +161,7 @@ conflict on rebase and bumps again.
 | replay format, action and observation encodings | `h3-sim` | ai (battle until E05) |
 | C ABI | `H3_ABI_VERSION`, `h3-ffi` | ai (battle until E05) |
 | kernel RNG and hash | `RNG_VERSION`, `HASH_VERSION`, `h3-kernel` | shared |
-| game state hash | `GAME_STATE_HASH_VERSION`, `h3-game` | adventure |
+| game state hash | `GAME_STATE_HASH_VERSION`, `h3-game` | adventure (the town lane bumps it, the adventure state hash, the map import and the replay format in `cross-lane` pull requests) |
 | adventure state hash, adventure ruleset-part hash | `ADVENTURE_STATE_HASH_VERSION`, `ADVENTURE_RULESET_HASH_VERSION`, `h3-adventure` | adventure |
 | map import | `MAP_IMPORT_VERSION`, `h3-map` (a replay names its map by content hash, path and this version; ADR-0015) | adventure |
 | adventure replay format | `h3-sim/src/adventure/replay.rs`: `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-cli`'s `src/adventure/`) | adventure |

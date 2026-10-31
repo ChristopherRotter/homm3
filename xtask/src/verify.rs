@@ -31,7 +31,10 @@ pub enum Status {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaneScope {
     pub lane: String,
-    /// Workspace packages the lane owns.
+    /// The lanes the scope covers: the lane, then its `verify_with` lanes (`lanes.toml`), whose
+    /// crates, replays and workloads it runs too.
+    pub lanes: Vec<String>,
+    /// Workspace packages the covered lanes own.
     pub packages: Vec<String>,
     /// Whether the lane owns golden replays of its own under `fixtures/replays/` (a sub-path of
     /// the replay crate's owner, such as the adventure's `fixtures/replays/adventure/`).
@@ -124,7 +127,7 @@ const STEPS: &[Step] = &[
         crate::bench::check(
             false,
             s.map_or(crate::bench::Selection::All, |s| {
-                crate::bench::Selection::Lane(&s.lane)
+                crate::bench::Selection::Lanes(&s.lanes)
             }),
         )
     }),
@@ -417,18 +420,20 @@ pub fn lane_scope(lane: &str) -> Result<LaneScope, String> {
         .into_iter()
         .map(|p| (p.name, rel(&root, &p.dir)))
         .collect();
-    let owned = config
-        .lane_packages(lane, &packages)
-        .into_iter()
+    let lanes = config.verified_lanes(lane);
+    let owned = lanes
+        .iter()
+        .flat_map(|l| config.lane_packages(l, &packages))
         .map(str::to_owned)
         .collect();
-    let replays = config.lane(lane).is_some_and(|l| {
+    let replays = lanes.iter().filter_map(|l| config.lane(l)).any(|l| {
         l.paths
             .iter()
             .any(|p| p.starts_with(REPLAY_FIXTURES) && has_files(&root.join(p)))
     });
     Ok(LaneScope {
         lane: lane.to_owned(),
+        lanes,
         packages: owned,
         replays,
     })
@@ -459,7 +464,7 @@ fn out_of_scope(step: &Step, scope: Option<&LaneScope>) -> Option<String> {
         InScope::Replays => Some(format!("lane `{}` has no golden replays yet", s.lane)),
         InScope::Workloads => {
             let has = crate::bench::load(&workspace_root())
-                .is_ok_and(|entries| entries.iter().any(|e| e.lane == s.lane));
+                .is_ok_and(|entries| entries.iter().any(|e| s.lanes.contains(&e.lane)));
             (!has).then(|| format!("lane `{}` has no benchmark workload", s.lane))
         }
         InScope::Shared => Some("shared paths only; CI runs it".to_owned()),
@@ -876,16 +881,19 @@ mod tests {
         let step = |name| STEPS.iter().find(|s| s.name == name).unwrap();
         let battle = LaneScope {
             lane: "battle".to_owned(),
+            lanes: vec!["battle".to_owned()],
             packages: vec!["h3-cli".to_owned(), "h3-battle".to_owned()],
             replays: false,
         };
         let client = LaneScope {
             lane: "client".to_owned(),
+            lanes: vec!["client".to_owned()],
             packages: Vec::new(),
             replays: false,
         };
         let adventure = |replays| LaneScope {
             lane: "adventure".to_owned(),
+            lanes: vec!["adventure".to_owned()],
             packages: vec!["h3-adventure".to_owned()],
             replays,
         };
@@ -908,6 +916,14 @@ mod tests {
         assert_eq!(out_of_scope(step("check-lane"), Some(&client)), None);
         assert_eq!(out_of_scope(step("bench-check"), Some(&battle)), None);
         assert!(out_of_scope(step("bench-check"), Some(&client)).is_some());
+        // A lane without workloads of its own measures its `verify_with` lanes'.
+        let town = LaneScope {
+            lane: "town".to_owned(),
+            lanes: vec!["town".to_owned(), "battle".to_owned()],
+            packages: Vec::new(),
+            replays: false,
+        };
+        assert_eq!(out_of_scope(step("bench-check"), Some(&town)), None);
         assert_eq!(
             package_args(Some(&battle)),
             strings(&["-p", "h3-cli", "-p", "h3-battle"])
@@ -927,6 +943,11 @@ mod tests {
         );
         assert!(lane_scope("client").unwrap().packages.is_empty());
         assert!(lane_scope("map-client").unwrap().packages.is_empty());
+        // The town lane's scope covers the adventure lane's crates and replays (`verify_with`).
+        let town = lane_scope("town").unwrap();
+        assert_eq!(town.lanes, vec!["town", "adventure"]);
+        assert!(town.packages.iter().any(|p| p == "h3-adventure"));
+        assert!(town.replays);
         let adventure = lane_scope("adventure").unwrap();
         assert!(adventure.packages.iter().any(|p| p == "h3-game"));
         assert!(!adventure.packages.iter().any(|p| p == "h3-sim"));
