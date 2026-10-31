@@ -3702,7 +3702,7 @@ capture on each instance lost and rerun; files kept); the baseline `check.sh` ha
 ### M5 T8b2 — M5's closure, part 3: the five smaller reviewers and the leftovers (2026-10-30/31)
 
 On `client/e17-m5-t8b2`, the user present at the start, the original data staged at once (the
-user's computer went offline about an hour in). **The user's cut:** the five reviewer and fixer
+user's computer went offline about half an hour in). **The user's cut:** the five reviewer and fixer
 pairs over three concurrent sub-agents, each a fraction of about half a context, the runner
 doing the leftovers. The reviewers read a worktree of `master`; each fixer worked in a worktree
 of its own off the lane branch, merged by the runner. The VM restarted about 10 minutes in (the
