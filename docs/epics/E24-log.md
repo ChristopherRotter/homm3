@@ -2264,3 +2264,47 @@ the starting point.
 - **Checked:** `cargo clippy -p h3-map-view --all-targets -D warnings`, `cargo fmt --check`, the
   binary's `texts` tests. No change to anything drawn or played: the catalogue read is the same
   file at the default `--map`.
+
+### M3 T7c2 — MCL-Q22's, Q24's and Q28's fixes built, M3 archived (2026-10-31)
+
+On `map-client/e24-m3-t7c2`, the user present. `master` at e6dbcbc (#625 merged; CI's Clients
+green on it). The original data staged from the user's repo folder first (six calls, 57 files);
+the setup's baseline (`verify-once.sh clients`, the full `check.sh`) passed every gate before any
+change, the work meanwhile in a `git worktree` with nothing built there.
+
+- **MCL-Q22 (b)** (*provisional*): `Loop::draw_lists` (every dialog item drawn: a list's choice,
+  arrow, Next Hero, a lift that centres, a walk's end unable to move, the underground's button and
+  key, a town's full update) empties the status bar in the original's profile only; in the
+  client's it marks the hint to draw again, and `Loop::hint_again`, at the end of each turn of
+  `Loop::run` (after its actions: what the screen shows then), shows off the view the hint of the
+  panel's item under the mouse now (a slot names the hero or town it holds now), that item the one
+  looked at last; over the view the tile's hint memory holds (the mouse-over gives a new one only
+  when the mouse's column or row changes, as after a scroll). A hint shown meanwhile clears the
+  mark.
+- **MCL-Q28, asked and answered in this task** (the user: (b), as recommended): reading the
+  button's loop for MCL-Q24's fix (`def_button_message` 0x45641C: every message but the buttons'
+  up handed to the mouse manager, 0x456341, and dropped unless a move, 0x45634D) showed the same
+  defect while the mouse holds a panel button: another button's hotkey released then leaves that
+  button pressed, its command lost. The entry in the lane's `QUESTIONS-ANSWERED.md`, design §4.13.
+- **MCL-Q24 (b) and MCL-Q28 (b)** (*provisional*): `Loop::holding` takes a hotkey's key up first,
+  for the minimap's drag and a button's hold alike: dropped in the original's profile; in the
+  client's `Loop::key_released` releases the button its key pressed, drawn and shown, without its
+  command or a sound; the button the mouse holds is left to its hold (its own key's up does not
+  release it under the mouse). The window's usage names the three under `--bugs`.
+- **M3 archived:** the epic's M3 section (scope, decisions, tasks T0 to T7c2, exit) and its
+  review list moved verbatim to `E24-archive.md` (a script; the two files together hold every
+  line of the old one but the edited ones), a stub left with the decisions that bind later
+  milestones; the queue's M3 history and T7c2's entry to `QUEUE-ARCHIVE.md`; the HANDOFF's M3
+  lines trimmed. T7c1's hand test left no finding.
+- **Checked:** the two new tests (`the_client_draws_the_hint_a_redraw_hid_again`,
+  `a_hotkeys_up_during_a_hold_releases_its_button_in_the_client`) fail on the old code and pass;
+  every earlier test unchanged (the recorded choices, holds and the underground in the original's
+  profile); `h3map.py drawn`: the 50 situations and the 35 sequences the same, every timeline as
+  recorded; `check.sh`: every gate (coverage 100 % once a key up of a key that pressed nothing
+  during a hold was tested); the window under Xvfb in both profiles (`underground` replayed, then
+  live: the underground's button clicked, K held through a minimap drag and through the button's
+  hold, `--check 30`): the client's status bar shows the button's hint again after the click and
+  releases the kingdom overview's button at K's up in both holds, the original's leaves the bar
+  empty and the button pressed (screenshots looked at); 179 and 176 frames read back exact, every
+  frame as composed afresh, every change as the headless loop's; `verify --scope map-client
+  --with-original-data` no failing step; `check-docs`, `check-lane`, `check-exe-map`.

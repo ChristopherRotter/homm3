@@ -2915,6 +2915,12 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
         .unwrap();
         assert!(l.dragging.is_some());
         assert_eq!(l.drawn().pressed, [11]);
+        // A key that pressed nothing: nothing.
+        l.run(2, &[Action::KeyUp(Hotkey::Sleep)]).unwrap();
+        assert_eq!(
+            (l.drawn().pressed.as_slice(), l.keyed.len()),
+            (&[11][..], 1)
+        );
         l.run(2, &[Action::KeyUp(Hotkey::NextHero)]).unwrap();
         assert_eq!(l.drawn().pressed, kept, "{bugs:?}");
         l.run(3, &[Action::Release([650, 50])]).unwrap();
