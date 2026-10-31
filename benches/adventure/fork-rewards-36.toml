@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "100 000 forks of the env after 7 days of random play on the rewards map (E08 T64a, decision 133: the forks carry the visits block the game's 49 steps wrote, one reference count more; 2 576 Ir a fork, fork-xl-144's 3 564); counts only inside h3_cli::adventure::bench::fork_workload"
+description = "100 000 forks of the env after 7 days of random play on the rewards map (E08 T64a, decision 133: the forks carry the visits block the game's 49 steps wrote, one reference count more; 2 576 Ir a fork, fork-xl-144's 3 564); counts only inside h3_cli::adventure::bench::fork_workload; E08 T83b1 re-set it (+2.21 % against the old count: this change's part, the rest the earlier creep under the threshold): the state's two new blocks, the owners and the weekly contents, none on this map, add about 30 Ir to a fork's clone and drop"
 args = [
     "adventure",
     "bench",
@@ -26,5 +26,5 @@ args = [
     "1",
 ]
 collect = "*fork_workload*"
-instructions = 257600397
+instructions = 263200397
 threshold_percent = 2

@@ -9707,3 +9707,91 @@ ADR-0016 point 4's line and design §5, §9 corrected; the bot reports in this p
   `an_ownable_object_entered_from_water_is_unsupported` and the typed classes' list.
 
 T83b (the state and the views) next.
+
+### Increment 9, round 5: T83b1, the state the visits read (2026-10-31, `adventure/e08-t83b1`, `cross-lane`)
+
+**The cut** (decision 215, the user at T83b's start): T83b in two by what reads it, T83b1 the state
+T84's visits read, T83b2 the monsters' fractions, the added objects and design §12's views.
+**Decision 217** (asked while the start's reveal was built): the flag's reveal radius is the part's
+`flag_radius` (data, part v15), with the AI lane's bot reports in this pull request (`cross-lane`).
+Decision 216 (the shore's border gate: the property's oracle, `adventure/e08-shore-boat`) was taken
+in the same session.
+
+- **The part** (adventure ruleset part v15): `AdventureParamsDef::flag_radius` (`[params]`
+  `flag_radius`, required, a byte), hashed last; the base pack's 3 with its sources (survey §2.2,
+  §2.3; batch E9's E9-4, E9-6; VCMI's `initFogOfWar`), the synthetic pack's 2.
+- **The static map** (adventure state hash v18): `ownables`, `weeklies` (object order, left out of
+  the hash: they follow from the objects; `ownable_index`, `weekly_index`); `MapObject::entrance`
+  (the first visited tile in the tiles' order); `Resolved::Mine { resource, guards }` (tag 7):
+  `draws::resolve_mines`, a walk in object order after the rewards', the resource by `pick` among
+  the set, then the count between the kind's bounds (ADV-MIN-003; the engine's order, decision
+  17); `Resolved::BoatTile(Pos)` (tag 8): `fix_boat_tiles` after the objects are placed, the
+  kind's offsets from the entrance on its level, the first tile on water neither blocked nor
+  visited from (ADV-SHY-001; a boat lying there counts as free, the original's boat entrance).
+- **The state** (`state/economy.rs`): `owners: Arc<[Option<PlayerId>]>` by ownable place from the
+  setup (`AdventureState::owner`); `weekly: Option<Arc<[Weekly]>>` (`Weekly { resource, amount,
+  marks }`, `AdventureState::weekly`), the first week drawn from the setup stream after the static
+  map's draws in object order (a Windmill's resource by `pick` then its amount, a Water Wheel's
+  `first`, a Garden's gift by `pick`); `mine_guards` (the army written on the mine, else an
+  abandoned mine's drawn count of its kind's creature in slot 0; none for the seven mines and an
+  army written empty); `reveal_owned` from `start_game` after the heroes' reveal (the part's flag
+  radius around each owned object's entrance, for its owner); `check_owners` (an owner a player of
+  the game, a mine's guards' slots and counts), `check_weekly` (`fits` each kind, the marks of the
+  game's players), both in the plans' `check_invariants`; `hash_economy` last in the state's hash.
+  Test helpers `set_army_left`, `set_weekly` (cfg(test)).
+- *Agent's calls (change freely):* the first week's draws walk every object and keep the weekly
+  ones (one walk, no unreachable branch); an owner of an object with no entrance on the map
+  reveals nothing; `entrance` is the first visited tile in row order (a Shipyard has one).
+- **The census** (`examples/original_data.rs`'s `built_economy`, the static layer built as a game
+  builds it): 61 objects owned at the start (60 mines, a Shipyard), every abandoned mine drawn in
+  its set and 100 to 200, every Shipyard with a boat tile but Hoard's at (62, 38, 0) in both Hoard
+  maps (as survey §1 found), every weekly object's first week its kind's, every owner checked.
+- **Replays:** the 32 adventure goldens re-recorded from their commands, the 16 random ones also
+  played again with their options to the same commands (a scratch script, not committed); every
+  hash moved, nothing else. **The AI lane's** two bots tables: only `engine.adventure` moved
+  (`cross-lane`, decision 217).
+- **Rules:** ADV-SHY-001, ADV-WEK-001 to -003 new (`implemented`: the boat tile; the first week's
+  contents, the visits T84, the week's step T85a); ADV-MIN-003 (the draws, the guards) and
+  ADV-OWN-002 (the owners, the start's reveal; the views T83b2) amended.
+- **Tests:** `state/tests/economy.rs` (the draws over 64 seeds, the guards and their invariants,
+  the boat tile's order, blockers, visited tiles, boats, the map's edges and Hoard's case, the
+  owners and the reveal by the part's radius, the first week over 64 seeds, `fits`, the hash);
+  the part's and the pack's `flag_radius`.
+
+The design note's §6 as T83b1 found it (the built part moved here; §6 keeps T83b2's):
+
+###### 6. The state (as T83b1 found it) (`h3-adventure`; adventure state hash v18, T83b)
+
+- **The static map** lists the ownable objects (`ownables: Vec<usize>`, object order) and the
+  weekly ones (`weeklies: Vec<usize>`); `Resolved` gains `Mine { resource, guards: u32 }` (an
+  abandoned mine's drawn resource and Troglodytes' count; for the seven mines `Nothing`) and
+  `BoatTile(Pos)` (a Shipyard's tile found at the build, ADV-SHY-001; `Nothing` when none: Hoard's
+  Shipyard at (62, 38, 0)).
+- **`owners: Arc<[Option<PlayerId>]>`** by ownable index, built from the setup's owners
+  (ADV-OWN-002); a flag copies it (a few hundred bytes on the largest shipped map).
+- **A mine's guards** live in `army_left` (renamed in the code's comments "the armies on objects";
+  the type stays): the Leave Guards dialog's group written at its close, a battle's survivors;
+  until written, an abandoned mine's guards are `Resolved::Mine`'s count of the kind's creature in
+  slot 0, the seven mines' none. An empty army written means no guards (the entry stays, so the
+  drawn Troglodytes do not come back).
+- **`weekly: Option<Arc<[Weekly]>>`** by weekly index: each `{ resource, amount, marks: u8 }`
+  (the Windmill's resource and amount, the Water Wheel's gold as `(gold, n)`, the Garden's gift
+  and `amount` 0 when emptied; `marks` the players that visited, bit by player id, never cleared:
+  *agent's call*, the marks with the contents rather than in the visits' block, one write a
+  visit). None for a map without weekly objects.
+- **`fractions: Table<u8>`** by object index (the persistent two-level table of `army_left`): a
+  monster's sixteenths, none for 0.
+- **The live presence** (`Occupancy`, renamed in its comments): beside `removed`, `unblocked` and
+  `unvisitable`, the **added objects** (`added: Vec<MapObject>`, index `objects().len() + n`), a
+  grid of the tiles they block and are visited from, and a grid of the tiles near an added
+  monster (its 3 × 3, for `guard_at`'s early test that the static map's `near_monster` gives the
+  placed ones). `tile_object`, `guard_at`, `live`, the observation and the passage read the
+  added objects only where their grid's bit is set, so a map without a spawn pays one test a
+  tile and a fork nothing more. **Every read of `map.objects()[index]` goes through a state
+  method that knows the added objects** (43 sites in `h3-adventure` today; T85a's audit, §19).
+- **Invariants** (`check_owners`, `check_weekly`, `check_added`, run after every command in the
+  properties): an owner only on an ownable, a player of the game; a mine's guards within seven
+  slots and the stack bound; a weekly amount within its kind's range or 0; a fraction below the
+  unit; an added object a monster on a land tile no other object holds.
+
+T83b2 (the fractions, the added objects and the views) next.

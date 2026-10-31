@@ -213,7 +213,8 @@ fn an_abandoned_mine_draws_its_resource_and_its_guards() {
     let mut resources = BTreeSet::new();
     let mut counts = BTreeSet::new();
     for seed in 0..64 {
-        let drawn = AdventureState::new(&rules.0, &rules.1, &setup, &mut Rng::from_seed(seed)).unwrap();
+        let drawn =
+            AdventureState::new(&rules.0, &rules.1, &setup, &mut Rng::from_seed(seed)).unwrap();
         let (resource, guards) = drawn.map().objects()[1].resolved.mine().unwrap();
         assert!((100..=200).contains(&guards));
         resources.insert(resource);
@@ -388,7 +389,8 @@ fn the_weekly_objects_start_with_their_first_week() {
     // Every resource, every amount and every gift come.
     let (mut mills, mut gardens) = (BTreeSet::new(), BTreeSet::new());
     for seed in 0..64 {
-        let drawn = AdventureState::new(&rules.0, &rules.1, &setup, &mut Rng::from_seed(seed)).unwrap();
+        let drawn =
+            AdventureState::new(&rules.0, &rules.1, &setup, &mut Rng::from_seed(seed)).unwrap();
         let mill = drawn.weekly(0).unwrap();
         mills.insert((mill.resource, mill.amount));
         let garden = drawn.weekly(3).unwrap();

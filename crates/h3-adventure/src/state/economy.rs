@@ -4,8 +4,8 @@
 //! object's contents and visited marks by its place among the weekly ones, with the first week's
 //! drawn when the game is built, and the start's reveal around every owned object. The owners are
 //! one block the forks share (a write copies it: a few hundred bytes on the largest shipped map),
-//! the weekly contents one too, none for a map without weekly objects, so a fork costs a reference
-//! count or two.
+//! the weekly contents one too, each none for a map without such objects, so a fork of one costs
+//! nothing more and of another a reference count or two (`bench-check`).
 
 use alloc::sync::Arc;
 use alloc::vec;
@@ -100,13 +100,19 @@ pub(super) fn fits(kind: Option<&ObjectKind>, weekly: &Weekly) -> bool {
 }
 
 /// The owners at the start, by ownable place (ADV-OWN-002): each ownable object's setup owner
-/// (the setup checked it, [`crate::SetupError::ObjectOwner`]).
+/// (the setup checked it, [`crate::SetupError::ObjectOwner`]); none for a map without ownable
+/// objects.
 // rule: ADV-OWN-002
-pub(super) fn owners_at_start(map: &StaticMap, setup: &[ObjectSetup]) -> Arc<[Option<PlayerId>]> {
-    map.ownables()
-        .iter()
-        .map(|&index| setup.get(index).and_then(|object| object.owner))
-        .collect()
+pub(super) fn owners_at_start(
+    map: &StaticMap,
+    setup: &[ObjectSetup],
+) -> Option<Arc<[Option<PlayerId>]>> {
+    (!map.ownables().is_empty()).then(|| {
+        map.ownables()
+            .iter()
+            .map(|&index| setup.get(index).and_then(|object| object.owner))
+            .collect()
+    })
 }
 
 /// The first week's weekly contents (ADV-WEK-001 to -003; increment 9's design note §6, §10), drawn
@@ -132,8 +138,10 @@ impl AdventureState {
     /// The owner of the object at object index `index` (ADV-OWN-002, E08 T83b1): none for a
     /// neutral object and for an object that is not ownable.
     pub fn owner(&self, index: usize) -> Option<PlayerId> {
-        let place = self.map.ownable_index(index)?;
-        self.owners.get(place).copied().flatten()
+        self.owners
+            .as_deref()
+            .zip(self.map.ownable_index(index))
+            .and_then(|(owners, place)| owners.get(place).copied().flatten())
     }
 
     /// The contents and marks of the weekly object at object index `index` (E08 T83b1), if it is
@@ -182,7 +190,8 @@ impl AdventureState {
     // rule: ADV-OWN-002
     pub(super) fn reveal_owned(&mut self, part: &AdventureRuleset) {
         let radius = part.params().flag_radius();
-        for (owner, &index) in self.owners.iter().zip(self.map.ownables()) {
+        let owners = self.owners.as_deref().unwrap_or(&[]);
+        for (owner, &index) in owners.iter().zip(self.map.ownables()) {
             let entrance = self.map.objects()[index].entrance(&self.map);
             if let (Some(owner), Some(entrance)) = (owner, entrance) {
                 reveal(
@@ -209,12 +218,9 @@ impl AdventureState {
                         && (1..=params.max_stack_count()).contains(&stack.count)
                 })
         };
-        self.owners.len() == self.map.ownables().len()
-            && self
-                .owners
-                .iter()
-                .flatten()
-                .all(|owner| owner.index() < players)
+        let owners = self.owners.as_deref().unwrap_or(&[]);
+        owners.len() == self.map.ownables().len()
+            && owners.iter().flatten().all(|owner| owner.index() < players)
             && self.map.ownables().iter().all(|&index| guards(index))
     }
 
@@ -238,8 +244,9 @@ impl AdventureState {
     /// E08 T83b1): the owners as their number and each, 0 for none, else 1 and the player id; the
     /// weekly contents as 0 for none, else 1, their number and each one's encoding.
     pub(super) fn hash_economy(&self, h: &mut StateHasher) {
-        h.write_len(self.owners.len());
-        for owner in self.owners.iter() {
+        let owners = self.owners.as_deref().unwrap_or(&[]);
+        h.write_len(owners.len());
+        for owner in owners {
             match owner {
                 None => h.write_u8(0),
                 Some(player) => {

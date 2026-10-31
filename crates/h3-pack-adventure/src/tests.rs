@@ -1849,7 +1849,9 @@ fn rejects_malformed_files() {
     assert!(syntax(&full.replace("\nsea_ground = [1, 1]", "")));
     // E08 T83b1: the flag radius is needed and fits a byte.
     assert!(syntax(&full.replace("\nflag_radius = 1", "")));
-    assert!(syntax(&full.replace("flag_radius = 1", "flag_radius = 256")));
+    assert!(syntax(
+        &full.replace("flag_radius = 1", "flag_radius = 256")
+    ));
     let battle = |fields: &str| format!("{full}\n[params.battle]\n{fields}");
     let fine = "underground = \"u\"\ncoast = \"c\"\ncoast_battlefield = \"f\"\nsea = \"w\"\ndeck = \"d\"\nboats = \"b\"";
     let parsed = parse(&battle(fine))

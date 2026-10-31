@@ -1111,9 +1111,10 @@ pub struct AdventureState {
     /// fork costs nothing more (`bench-check`).
     boats: Option<Boats>,
     /// The ownable objects' owners by their place among the static map's ownable objects
-    /// (ADV-OWN-002, E08 T83b1; increment 9's design note §6; `economy.rs`): one block the forks
-    /// share, which a flag copies (T84).
-    owners: Arc<[Option<PlayerId>]>,
+    /// (ADV-OWN-002, E08 T83b1; increment 9's design note §6; `economy.rs`): none for a map
+    /// without ownable objects, so a fork of one costs nothing more (`bench-check`), else one
+    /// block the forks share, which a flag copies (T84).
+    owners: Option<Arc<[Option<PlayerId>]>>,
     /// The weekly objects' contents and marks by their place among the static map's weekly
     /// objects (ADV-WEK-001 to -003, E08 T83b1): none for a map without weekly objects, else one
     /// block the forks share, which a visit or the week's step copies (T84, T85a).
