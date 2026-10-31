@@ -4,8 +4,8 @@
 //! it cannot see) and the observation's consistency with the events it is told.
 
 use h3_adventure::{
-    AdventureCommand, AdventureEvent, AdventureEventKind, ObjectKind, ObjectView, OfferKind,
-    Pos as TilePos, TileMask, TileView, Viewers,
+    AdventureCommand, AdventureEvent, AdventureEventKind, GuardsView, ObjectKind, ObjectView,
+    OfferKind, Pos as TilePos, TileMask, TileView, Viewers,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_game::{
@@ -821,7 +821,7 @@ fn check_told(
             .rev()
             .find(|(name, _)| *name == named(object))
             .map(|&(_, word)| {
-                let mut now = *object;
+                let mut now = object.clone();
                 if let Some(monster) = &mut now.monster {
                     monster.count_word = word;
                 }
@@ -1449,4 +1449,88 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         }
         assert!(differ > 0, "{profile}");
     }
+}
+
+/// Increment 9's objects on an imported map (E08 T83b2b, ADR-0016 point 6, `docs/06-security.md`):
+/// the economy map with Red's hero between the mines, a second Red hero by the Shipyard (moved one
+/// column toward the sea, so that it has a boat tile) and Blue's hero below the mines. Every
+/// viewer sees the owners, the abandoned mines' guards as the original's hint shows them and the
+/// boat tile; a mine's production only its owner; nothing of what the build drew for the
+/// abandoned mines, whatever the seed.
+// covers: ADV-OWN-003, ADV-FOG-006
+#[test]
+fn increment_9_s_objects_show_their_owners_never_their_draws() {
+    use super::economy::{economy_map, hero, read_back};
+    let mut map = economy_map();
+    map.objects[0] = hero((9, 7), 0, 0);
+    map.objects[1] = hero((9, 13), 1, 1);
+    map.objects.push(hero((26, 19), 0, 2));
+    let crate::writer::MapObject::Owned(shipyard) = &mut map.objects[8] else {
+        panic!("the Shipyard is the economy map's ninth object");
+    };
+    shipyard.tile = (29, 16);
+    let m = read_back(&crate::writer::write(&map).unwrap());
+    let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+    let part = FAITHFUL.adventure();
+    let view = |game: &GameState, player| {
+        observe(game, &FAITHFUL, Viewer::Player(player))
+            .adventure
+            .objects
+    };
+    let at = |views: &[ObjectView], x, y| {
+        views
+            .iter()
+            .find(|o| o.anchor == TilePos::new(x, y, 0))
+            .cloned()
+            .unwrap()
+    };
+    let game = start_on(&m, &FAITHFUL, 0);
+    let state = game.adventure();
+    let (reds, blues) = (view(&game, red), view(&game, blue));
+    // The owners, to every viewer that sees the object: Red's sawmill and Lighthouse, Blue's
+    // crystal cavern, the neutral abandoned mines and Shipyard.
+    for (views, x, y, owner) in [
+        (&reds, 6, 4, Some(red)),
+        (&reds, 12, 4, Some(blue)),
+        (&blues, 12, 4, Some(blue)),
+        (&reds, 29, 10, Some(red)),
+        (&reds, 6, 10, None),
+        (&blues, 6, 10, None),
+        (&reds, 29, 16, None),
+    ] {
+        assert_eq!(at(views, x, y).owner, owner, "({x}, {y})");
+    }
+    // A mine's production to its owner alone.
+    assert!(state.production(part, 0).is_some() && state.production(part, 1).is_some());
+    assert_eq!(at(&reds, 6, 4).production, state.production(part, 0));
+    assert_eq!(at(&reds, 12, 4).production, None);
+    assert_eq!(at(&blues, 12, 4).production, state.production(part, 1));
+    // The abandoned mines' guards: their creature and the word of their count, never the count;
+    // no production, the mines being neutral.
+    let words = part.params().monsters().unwrap();
+    for (index, x) in [(3, 6), (4, 12)] {
+        let guards = state.mine_guards(part, index);
+        let expected = Some(GuardsView {
+            creature: Some(guards[0].creature),
+            count_word: words.count_word(guards[0].count),
+            army: None,
+        });
+        for views in [&reds, &blues] {
+            let mine = at(views, x, 10);
+            assert_eq!((mine.guards, mine.production), (expected.clone(), None));
+        }
+    }
+    // The Shipyard's boat tile, on the sea.
+    let tile = state.map().objects()[6].resolved.boat_tile();
+    assert_eq!(tile, Some(TilePos::new(30, 16, 0)));
+    assert_eq!(at(&reds, 29, 16).boat_tile, tile);
+    // Other seeds draw other resources and guards; neither player's view changes.
+    let mut drawn = std::collections::BTreeSet::new();
+    for seed in 0..16 {
+        let game = start_on(&m, &FAITHFUL, seed);
+        drawn.insert(game.adventure().map().objects()[3].resolved.mine());
+        assert_eq!(view(&game, red), reds, "seed {seed}");
+        assert_eq!(view(&game, blue), blues, "seed {seed}");
+    }
+    assert!(drawn.len() > 1);
 }

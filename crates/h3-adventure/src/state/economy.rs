@@ -43,6 +43,12 @@ impl CanonicalHash for Weekly {
     }
 }
 
+/// Whether `a` and `b` are of one team: the player alone until E10's teams (increment 9's design
+/// note §19, "Teams"; an allied map plays its allies as enemies, as before).
+pub(crate) fn allied(a: PlayerId, b: PlayerId) -> bool {
+    a == b
+}
+
 /// The kind of the object at `index` of `map`, if it has a type.
 fn kind_at<'p>(
     part: &'p AdventureRuleset,
@@ -180,6 +186,34 @@ impl AdventureState {
             }
             _ => Vec::new(),
         }
+    }
+
+    /// The production of the mine at object index `index`, its resource and its amount a day
+    /// (GAM-RES-003, E08 T83b2b): a mine's own; an abandoned mine's drawn resource with the part's
+    /// mine of that resource's amount; none for every other object.
+    pub fn production(&self, part: &AdventureRuleset, index: usize) -> Option<(ResourceId, u32)> {
+        match kind_at(part, &self.map, index)? {
+            &ObjectKind::Mine {
+                resource, daily, ..
+            } => Some((resource, daily)),
+            ObjectKind::AbandonedMine { .. } => self.map.objects()[index]
+                .resolved
+                .mine()
+                .and_then(|(resource, _)| part.mine_daily(resource).map(|daily| (resource, daily))),
+            _ => None,
+        }
+    }
+
+    /// Whether `player` holds the visited mark of the weekly object at object index `index` (E08
+    /// T83b2b; survey `E08-economy.md` §9.4): a visit of its team's set it (the Garden's: of its
+    /// own); never cleared. False for every other object.
+    pub fn visited_by(&self, index: usize, player: PlayerId) -> bool {
+        self.weekly(index).is_some_and(|weekly| {
+            weekly
+                .marks
+                .checked_shr(u32::from(player.raw()))
+                .is_some_and(|marks| marks & 1 == 1)
+        })
     }
 
     /// The start's reveal around every owned object (ADR-0016 point 5, ADV-OWN-002, E08 T83b1):

@@ -552,7 +552,7 @@ id       = "ADV-FOG-006"
 title    = "What a player sees of the heroes and the monsters"
 context  = "adventure"
 status   = "implemented"
-summary  = "A player sees its own heroes in full (tile, army, movement points left) and another player's hero only on a tile where it sees heroes (explored, or the fringe under ADV-QUIRK-1, ADV-FOG-005): its tile, owner and identity, not its army or its movement points. What the original's right-click view shows of another player's hero is surveyed with the battle seam (increment 3). E08 T8b1. Of a hero in a boat (E08 T72) every viewer that sees it sees its boat's type (`HeroView::boat`: the original draws the hero's flag on it), never the boat's index, owner or captain; its owner also sees its day's maximum (`OwnHeroView::max_movement`). A wandering monster it sees (one of its tiles explored, or the fringe) shows its creature and the word of its count (as it stands: a battle's survivors once one leaves them), never the count, aggression, flags or treasure: the word is the number of the monsters' parameters' thresholds the count reaches, the original's few (1-4), several (5-9), pack (10-19), lots (20-49), horde (50-99), throng (100-249), swarm (250-499), zounds (500-999) and legion (1 000 and more). E08 T20a2a: `MonsterView`, the base pack's count_words. A change of the word after a battle it survived is told to the players that see it (`MonsterChanged`, E08 T20b3b1), as a removal is."
+summary  = "A player sees its own heroes in full (tile, army, movement points left) and another player's hero only on a tile where it sees heroes (explored, or the fringe under ADV-QUIRK-1, ADV-FOG-005): its tile, owner and identity, not its army or its movement points. What the original's right-click view shows of another player's hero is surveyed with the battle seam (increment 3). E08 T8b1. Of a hero in a boat (E08 T72) every viewer that sees it sees its boat's type (`HeroView::boat`: the original draws the hero's flag on it), never the boat's index, owner or captain; its owner also sees its day's maximum (`OwnHeroView::max_movement`). A wandering monster it sees (one of its tiles explored, or the fringe) shows its creature and the word of its count (as it stands: a battle's survivors once one leaves them), never the count, aggression, flags or treasure: the word is the number of the monsters' parameters' thresholds the count reaches, the original's few (1-4), several (5-9), pack (10-19), lots (20-49), horde (50-99), throng (100-249), swarm (250-499), zounds (500-999) and legion (1 000 and more). E08 T20a2a: `MonsterView`, the base pack's count_words. A change of the word after a battle it survived is told to the players that see it (`MonsterChanged`, E08 T20b3b1), as a removal is. A monster added in play shows as a placed one (E08 T83b2a), and a monster's fraction, the sixteenths its weekly growth left (increment 9's design note §10), never shows: its word follows its count (E08 T83b2b)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2466,7 +2466,7 @@ id       = "ADV-OWN-002"
 title    = "An ownable object's owner at the start"
 context  = "adventure"
 status   = "implemented"
-summary  = "A mine, a Lighthouse and a Shipyard start with the map's owner: 0xFF none (neutral), else the player of that colour; an abandoned mine starts neutral (its body has no owner). The import refuses an owner of a colour nobody plays, or past the eight (`ImportError::ObjectOwner`), and an ownable object whose entrance lies on water (`Unsupported::OwnedOnWater`; none of the shipped maps has one, and how a hero reaches an entered object on water was not read). The setup refuses an owner on an object that is not ownable (a mine, an abandoned mine, a Lighthouse, a Shipyard; the dwellings come with increment 10) or that is not a player of the game (`SetupError::ObjectOwner`). E08 T83a: `ObjectSetup::owner`, `h3_map`'s `object_owner` (map import v15), `AdventureState::new`. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the state keeps each ownable object's owner by its place among the static map's ownable objects (`StaticMap::ownables`, `AdventureState::owner`, checked by `check_owners`), and the game's start reveals the tiles within the part's flag radius (3, `flag_radius`, adventure ruleset part v15; E08 decision 217) of every owned object's entrance to its owner, a Lighthouse's and a Shipyard's too, as the original's `reveal_owned` from `adventure_manager_start` (batch E9's E9-4 and E9-6; A-33 withdrawn). On the 160 shipped maps 61 objects are owned at the start (60 mines, 1 Shipyard). The views come with T83b2."
+summary  = "A mine, a Lighthouse and a Shipyard start with the map's owner: 0xFF none (neutral), else the player of that colour; an abandoned mine starts neutral (its body has no owner). The import refuses an owner of a colour nobody plays, or past the eight (`ImportError::ObjectOwner`), and an ownable object whose entrance lies on water (`Unsupported::OwnedOnWater`; none of the shipped maps has one, and how a hero reaches an entered object on water was not read). The setup refuses an owner on an object that is not ownable (a mine, an abandoned mine, a Lighthouse, a Shipyard; the dwellings come with increment 10) or that is not a player of the game (`SetupError::ObjectOwner`). E08 T83a: `ObjectSetup::owner`, `h3_map`'s `object_owner` (map import v15), `AdventureState::new`. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the state keeps each ownable object's owner by its place among the static map's ownable objects (`StaticMap::ownables`, `AdventureState::owner`, checked by `check_owners`), and the game's start reveals the tiles within the part's flag radius (3, `flag_radius`, adventure ruleset part v15; E08 decision 217) of every owned object's entrance to its owner, a Lighthouse's and a Shipyard's too, as the original's `reveal_owned` from `adventure_manager_start` (batch E9's E9-4 and E9-6; A-33 withdrawn). On the 160 shipped maps 61 objects are owned at the start (60 mines, 1 Shipyard). What a viewer sees of the owners: ADV-OWN-003 (T83b2b)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2486,6 +2486,31 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-9b.md E9-6 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30): Red's two mines owned at load (their records' owner red on day 1)"
   retrieved  = "2026-10-30"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-OWN-003"
+title    = "What a viewer sees of owned, guarded and weekly objects"
+context  = "adventure"
+status   = "implemented"
+summary  = "Every viewer that sees an ownable object (ADV-FOG-004) sees its owner, as the original draws its flag in the owner's colour. A mine's production, its resource and its amount a day, shows only to a viewer of its owner's team (the player alone until E10's teams), so an abandoned mine's drawn resource is hidden from every other viewer, and a neutral abandoned mine's from all. A mine's guards show to every viewer as the original's hint shows them: the word of their total count, every stack counted, an upgraded one too (ADV-FOG-006's words), and their creature only when all stacks are of one (else the original's generic text); never their stacks or counts, which the owner's team sees (the user at T83b2b's start, 2026-10-31; ADR-0016 point 6 corrected by `shared/e08-t83b2b`). A guarded pile's guards stay hidden (ADV-PIK-004). A Shipyard's boat tile (ADV-SHY-001) is public with it. A weekly object shows a viewer its own visited mark (set for the visitor's team by a Windmill or a Water Wheel, for the visitor alone by a Mystical Garden, never cleared: it says visited, not emptied); its resource and amount never show. E08 T83b2b (increment 9's design note §12): `ObjectView::owner`, `production`, `guards` (`GuardsView`), `visited` and `boat_tile`, `AdventureState::production` and `visited_by`; the views on the imported economy map hide the abandoned mines' draws whatever the seed. The visits that set the owners, guards and marks come with T84."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-economy.md sections 2.7, 9.4; the map client lane's reading, E24 design section 4.12): def_draw_flagged (0x47BE10) draws the flagged classes in their owner's colour for every viewer; mine_hint_text (0x40D670) gives the mine's name, its owner, its resource only where the owner is of the viewing player's team, and with guards army_description_text (0x40ABE0) without its details: the size word of the total count and the only creature's name, or a generic text for several creatures (the stacks merged by creature, army_add_stack 0x44ACE0); tile_mark_visited_by_team (0x4FBF90) marks a Windmill's and a Water Wheel's visitor's team, the Garden its visitor, and the week clears neither"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0016 point 6 (owners public, a mine's production its owner's team's, a Shipyard's boat tile public, a weekly object's mark its visitor's team's, its contents never shown); the user at E08 T83b2b's start (2026-10-31): a mine's guards as the original's hint, the word of every stack's total, an upgraded one too"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md section 2.7: the hover shows an owned mine's resource to every viewer and the guards' army words ('Guarded by a few ...'); the original's team-only production and single word kept"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
 
 [[rule]]
 id       = "ADV-MIN-003"

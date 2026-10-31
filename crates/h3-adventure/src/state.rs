@@ -99,6 +99,7 @@ pub use boats::Boat;
 use boats::Boats;
 pub use draws::Resolved;
 pub use economy::Weekly;
+pub(crate) use economy::allied;
 use flags::Flags;
 pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Mode, Node};
