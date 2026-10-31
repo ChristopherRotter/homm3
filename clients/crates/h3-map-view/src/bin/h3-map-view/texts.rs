@@ -53,8 +53,17 @@ pub const FAMILIES: [&str; 22] = [
 ];
 
 /// The committed key catalogue (`clients/text/keys.toml`).
+#[cfg(test)]
 pub fn default_keys() -> PathBuf {
-    files::default_map().join("../text/keys.toml")
+    keys_beside(&files::default_map())
+}
+
+/// The key catalogue beside the map client's data folder `map` (`<map>/../text/keys.toml`, as
+/// `clients/map` and `clients/text` lie in a checkout): a build run elsewhere, such as a Windows
+/// build on the user's machine with `--map out\win\map`, reads the catalogue copied beside it
+/// (E24 M3 T7c1, *provisional*; the build's own folder is not on that machine).
+pub fn keys_beside(map: &Path) -> PathBuf {
+    map.join("../text/keys.toml")
 }
 
 /// The viewer's keys of the catalogue `text`: the panels' and the status window's
@@ -183,9 +192,14 @@ fn exe_string(exe: &[u8], at: Option<usize>) -> Option<String> {
 }
 
 /// The panels' texts for the installation copy `install` (its `Heroes3.exe`) and its `archives`:
-/// the original's pack of the viewer's [`keys`]; a form that cannot be read is an error.
-pub fn catalogue(install: &Path, archives: &[LodArchive<'_>]) -> Result<Catalogue, String> {
-    let path = default_keys();
+/// the original's pack of the viewer's [`keys`] of the catalogue beside the data folder `map`
+/// ([`keys_beside`]); a form that cannot be read is an error.
+pub fn catalogue(
+    install: &Path,
+    map: &Path,
+    archives: &[LodArchive<'_>],
+) -> Result<Catalogue, String> {
+    let path = keys_beside(map);
     let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let ids = family_ids(&text, archives).map_err(|e| format!("{}: {e}", path.display()))?;
     let keys = keys(&text, &ids).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -241,5 +255,13 @@ mod tests {
         assert_eq!(exe_string(exe, None), None);
         assert_eq!(exe_string(exe, Some(99)), None);
         assert_eq!(exe_string(b"no end", Some(0)), None);
+    }
+
+    #[test]
+    fn the_catalogue_beside_the_data_folder_given() {
+        // A Windows build run in the user's checkout reads its copy beside `--map` (T7c1).
+        let path = keys_beside(Path::new("out/win/map"));
+        assert_eq!(path, Path::new("out/win/map/../text/keys.toml"));
+        assert!(default_keys().is_file());
     }
 }

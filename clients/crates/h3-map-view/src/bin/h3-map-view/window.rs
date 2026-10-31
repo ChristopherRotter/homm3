@@ -457,7 +457,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let layout = files::load_layout(&options.map)?;
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
-    tables.texts = crate::texts::catalogue(&options.install, &archives)?;
+    tables.texts = crate::texts::catalogue(&options.install, &options.map, &archives)?;
     let templates = files::templates(&archives)?;
     let assets = Assets {
         tables: &tables,

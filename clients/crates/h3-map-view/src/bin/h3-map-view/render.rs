@@ -194,7 +194,7 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     }
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
-    tables.texts = crate::texts::catalogue(&options.install, &archives)?;
+    tables.texts = crate::texts::catalogue(&options.install, &options.map, &archives)?;
     let mut pointer = None;
     if let Some(path) = &options.live {
         pointer = read_live(

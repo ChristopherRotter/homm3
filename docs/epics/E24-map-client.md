@@ -3,8 +3,9 @@
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
 user); **M2 closed** (2026-10-28, T6b2c: the user's hand test, the review list accepted at
-T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); M3 T1a to T6b3 built (2026-10-28 to
-2026-10-30); next M3 T7, M3's closure (`docs/lanes/map-client/QUEUE.md`).
+T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); M3 T1a to T7c1 built (2026-10-28 to
+2026-10-31; M3's review list accepted at T7c1); next M3 T7c2, then M4 T0
+(`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -42,6 +43,11 @@ inside a game are the battle client's (E17); this epic hands them over.
   nothing the writer writes today changes.
 - **The string catalogue stays common** (T0; `clients/text/`, as T9c made it): both client
   lanes add keys.
+- **A text the original sets off its centre is centred** (the user, 2026-10-31, CLT-Q28 at E17
+  M5 T8c, for both client lanes: `docs/epics/E17-clients.md`, "Decisions"): in the client's
+  profile the text is centred, the original's place kept for the comparisons only
+  (`h3_render::Bugs`, as the cursor's x); a reading or a recording that finds such a slip fixes it
+  so, with no question needed (recorded here at M3 T7c1; none found in the map client yet).
 
 ## How the viewer sees a map (T0's finding; the types since T2: `h3_map_view::art`, `live`, *provisional*)
 
@@ -213,7 +219,11 @@ viewers share.
   and the input's (**done** 2026-10-31: F2-1 to F2-8 and F4-1 to F4-9 fixed, MCL-Q25's answer
   built; `drawn` all the same; the log), and T7b2, the panels', the mouse-over's, the harness's
   and the rest's (kept whole by the user; **done** 2026-10-31: the 24 findings fixed, noted or
-  declined; `drawn` all the same, two sequences exact under Wine; the log); T7c, the review list, the hand test, M3 archived, M4 refined. A task that grows
+  declined; `drawn` all the same, two sequences exact under Wine; the log); T7c cut with the user
+  (2026-10-31): T7c1, the review list, the questions and the hand test (**done** 2026-10-31: the
+  list accepted; MCL-Q13 to Q15 and Q20 to Q24 answered, Q22's and Q24's fixes for T7c2; the
+  Windows build's catalogue read beside `--map`; the hand test passed, all as described; the log), T7c2, MCL-Q22's and Q24's
+  answers built and M3 archived; M4's refinement its own task after it (M4 T0). A task that grows
   is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
@@ -234,7 +244,10 @@ viewers share.
   window's kinds the engine's turns and events set off (the user, 2026-10-29, at M3 T5b's cut):
   another player's turn (5: `AdStatNx.pcx`, the hourglass, 0x453250), a resource found (6:
   0x451220, 5 seconds) and a text (7: 0x451820; E24 design §4.8); a town's own name from the map
-  (the harness refuses one until then).
+  (the harness refuses one until then); from M3's answers (T7c1): a spell cast on the map recorded
+  first, then MCL-Q14's stale mana bar shown whole by the client if the original leaves it; the
+  engine's resource amounts against the bar's seven digits (MCL-Q15, (b) if they can pass them);
+  a map whose hints would name nothing refused at the import (MCL-Q21 (b)).
 - **M5, hot seat:** whole games played in-process: the handover screen when the player who must
   act changes, the level-up dialog (the inbox), the hero and town screens as play needs them;
   then live play against the server.
@@ -272,7 +285,9 @@ viewers share.
 M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted at T6b2a):
 `E24-archive.md`. Later milestones add theirs here.
 
-**M3's review list** (the autonomy contract's "queue for the milestone review"; open):
+**M3's review list** (the autonomy contract's "queue for the milestone review"; **accepted** by
+the user at T7c1, 2026-10-31, as built; the two schemes of the `hero` family's keys, by type here
+and by the asset tables' name in the battle client, stand until a translation needs one):
 
 - **M3 T1b, the key file's tables** (*provisional*): one `keys.toml` for both windows, a TOML
   table per viewer (`[map]`, `[battle]`; anything else refused, M2's top-level commands too),

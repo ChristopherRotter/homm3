@@ -107,6 +107,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - **The harness's writes run none of the game's updates** (M3 T6a2b): a quest's visitors written
   left the Quest Log as the map's start set it, so the live part reads the shown item's state
   (`Mem.item_states`), never one recomputed from what the harness wrote.
+- **A Windows build finds nothing by the build's paths** (M3 T7c1): `env!("CARGO_MANIFEST_DIR")`
+  is the sandbox's folder, absent on the user's machine, so every file a command reads comes from
+  `--map` (the catalogue beside it, `<map>/../text/keys.toml`) and `--install`; a hand test's
+  `.cmd` passes both, master's `clients/map` and `clients/text` copied into `out/win/<task>/` when
+  the user's checkout is behind. A new file a command reads goes beside `--map` too.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain
