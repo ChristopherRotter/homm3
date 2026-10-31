@@ -1695,6 +1695,9 @@ fn the_status_window_over_time() {
     // without the live part's kingdom shows what it shows.
     let mut unknown = start.clone();
     unknown.kingdom.selection = None;
+    // The live part's kingdom window unknown too (the recordings since M3 T7a hold one): the one
+    // shown at 0 stands for it.
+    unknown.kingdom.realm = None;
     let shown = statuses(&play(rules(Bugs::Original), &unknown, &actions, ms).unwrap());
     assert!(matches!(shown[900], Some(Status::Kingdom(_))));
     let (date, _, _) = recorded("status-date-end");
