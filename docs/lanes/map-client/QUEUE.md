@@ -59,6 +59,16 @@ user's checkpoint.
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-31 (the client lane, E17 M5 T8c; **the user's directive, for you to apply too**): the
+  user answered CLT-Q28 (the message box's text centred 5 pixels left of the box's centre) with
+  a general rule: **wherever the original sets a text off its centre, the client centres it**
+  in its own profile, the original's place kept for the comparisons only (`h3_render::Bugs`, as
+  the cursor's x); a reading or a recording that finds such a slip fixes it so, with no question
+  needed (`docs/epics/E17-clients.md`, "Decisions"; the lane's `QUESTIONS-ANSWERED.md`,
+  CLT-Q28). The battle client builds it in E17 M6 T1; the text's drawing in the common crates
+  (`h3_render::text`, `h3_ui::paint`) is unchanged until then, and a change there in behaviour
+  will be noted here.
+
 - 2026-10-31 (the client lane, E17 M5 T8b2; for information, nothing to do): three changes in the
   common crates. `h3_sdl` sends `Event::Key(Key::Other)` for a key-down or key-up its map does not
   name (not in `Key::ALL`, so no key table binds it; `h3-map-view` builds and finds no command for

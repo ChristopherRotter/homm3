@@ -1,6 +1,6 @@
-# E17 — archive: milestones M0 to M3
+# E17 — archive: the closed milestones
 
-Moved out of `E17-clients.md` on 2026-10-24, verbatim: the task lists and exit records of the closed milestones M0 to M3. M4 (sieges) and M5 (live play) stay in the epic.
+Moved out of `E17-clients.md` on 2026-10-24, verbatim: the task lists and exit records of the closed milestones M0 to M3; M4 (sieges) added at its closure (2026-10-27), M5 (live play) at its closure (2026-10-31, T8c).
 
 ### M0 — the workspace
 
@@ -535,6 +535,150 @@ states; the Tower 26, without the moat).
   closure, T8); CLT-Q22 to Q24 answered (a): the client draws them fixed, the original's for
   the comparisons only (Q24's switch in M5 T2); M5 (live play) refined: T1 to T8 (the epic's
   M5, QUEUE). **M4 done.**
+
+### M5 — live play
+
+Refined at M4's closure (T3c, 2026-10-27) with the user; the tasks in
+`docs/lanes/client/QUEUE.md`. A battle played in the window: hot seat in-process first (each seat
+a human or the viewer's Greedy bot), then a game on a server (by a seat token, then accounts).
+The viewer plays records whose commands are all known before the first frame; live play adds
+commands as they come, takes them from the mouse and the keys, and draws what a played battle
+shows that the recordings did not need: the spell book, the hero's aim, the battle's dialogs,
+the stacks created mid-battle.
+
+- **T1a, a frame without the rescan** (R2-7; done 2026-10-27): `anim::Playhead` reads the
+  timeline forward, a frame costing what changed since the one before (0.3 to 1 µs, against
+  `Moment::at`'s 1.6 to 7 µs over `play`'s 82 seconds and 306 µs half an hour after its end; the
+  2.3 ms a frame was the composing); `play`, `window` and `sequences` draw through it.
+- **T1b, the timeline that grows** (T1 cut in two, the user; done 2026-10-27): `anim::Growing`
+  takes the commands as they arrive (its lists only appended to); `play` and the window fight a
+  scenario as they play it (`live.rs`: the session in-process, both seats held, the bot's
+  command asked for when a frame reaches the timeline's end), the record, the panel, the mouse
+  and the batch growing with it; `play`'s output byte for byte as fought at once.
+- **T2, hot seat: the player's commands** (cut in two by the user, 2026-10-27; the Faerie
+  Dragon's cast moved to T3, its key entering the hero's aim):
+  - **T2a, the click's command** (done 2026-10-27): `mouse::click` and `button` (a walk, a
+    strike from the slot's from-hex, a shot, a heal, a wall shot, Wait and Defend), read (design
+    §9.11: the input queue emptied at every turn's start); CLT-Q24's switch; scripted presses
+    over every scenario's turns give the engine's legal commands but a two-hex stack's step one
+    hex back (CLT-Q25: the original's copied).
+  - **T2b, hot seat in the window** (done 2026-10-27; whole, the user): `--human` (the sides a
+    human plays here, the battle's human players); the battle waiting at its timeline's end
+    (`Growing::waiting`), a press's or a button's command through the session, input made while
+    the battle takes none dropped; the screen showing the side to act's hidden objects (every
+    side's events, `Timeline::screen`); unattended runs pressing the bot's choices (design
+    §9.12).
+- **T3, the spell book and the hero's aim** (cut in two by the user, 2026-10-27):
+  - **T3a, the spell book** (done 2026-10-27): read (design §7.17: the dialog's items, the page,
+    the keys, the move's hint and cursor, the shadow), drawn (`h3_view::book`, `ui`'s DEF items,
+    texts alone and areas) and used in the window (its button or C, a spell without a target
+    cast at once); its stills (`book`, `book-page`, `book-fire`, `book-hint`) exact; CLT-Q26.
+  - **T3b, the hero's aim** (done 2026-10-28; whole, the user): read (design §7.18: the aim's
+    loop and cursor, the cast's line and the refusals, the area's marks, the spell cursor's
+    frames, the callers' ends, the cast's start), built (`mouse::aim`, the aim in `track`, the
+    window's aim by the book or a Faerie Dragon's F, Escape or the right button giving it up,
+    unattended casts pressed through the book and the aim); `spell-aim` recorded; `cast`'s 71
+    pixels found to be the book's closing, a redraw artifact (listed); CLT-Q27.
+- **T4, the battle's dialogs** (cut in three by the user, 2026-10-28): read, drawn, recorded.
+  - **T4a, the message box, Retreat and Surrender** (done 2026-10-28): read (design §7.19: the
+    box's layout, frame, items and input, the text tables' quotes), built (`h3_view::message`,
+    the window's and the stills' boxes: Retreat's and Surrender's questions and refusal, the
+    book's refusal and description, "affects no one"); six stills exact; CLT-Q28.
+  - **T4b, the result window** (cut in two by the user, 2026-10-28):
+    - **T4b1, the window without its clip** (done 2026-10-28): read (design §7.20: the items, a
+      hero-less side's face, the losses, the text, the experience, the handler), built
+      (`h3_view::result`, a DEF item's mirror, the heroes' portraits; the window's result opened
+      as the battle is decided, its OK closing the battle's screen); `result-retreat`,
+      `result-surrender` and `end`'s last frame exact, `defended`'s but 122 artifacts.
+    - **T4b2, the clip** (cut in two by the user, 2026-10-28; a port of FFmpeg's decoder, the
+      user's choice, CLT-Q29):
+      - **T4b2a, the decoder** (done 2026-10-28): `h3-bink` (the Bink file, the video of revision
+        `b`), `h3_assets::vid`, `h3-view video` and `bink-check.sh`; the ten clips and eight
+        synthetic samples as FFmpeg decodes them, byte for byte.
+      - **T4b2b, the clip in the window** (done 2026-10-28; design §7.21): the playback read
+        (0x597570 to 0x44DAA0, the archives' lookup), the timing and the colours found by
+        running `BINKW32.DLL` as a black box (`binkprobe.exe`) and in its tables (the user's
+        leave), drawn in the window, the stills and the sequences (`h3_view::clip`,
+        `Draw::Video`); the harness given the clips and the DLL's clock; CLT-Q30 (the DLL's float
+        DCT: listed, exact later), CLT-Q31 (two timing slips: fixed, the original's for the
+        comparisons); `result-*` and `end` exact but the DCT's pixels, `defended` as before plus
+        them.
+  - **T4c, Auto Combat and the tactics phase** (cut in two by the user, 2026-10-28):
+    - **T4c1, Auto Combat** (done 2026-10-28; design §7.22): read (the switch, the stop by the
+      input queue's read at a turn's start, the panel dimmed with its button selected, the
+      mouse), built (`h3_view::auto`, the panel's `Autoplay`, the window's switch and stop, the
+      bot playing the human's side, `--auto`); `auto` and `auto-stop` recorded, their panels and
+      cursors exact.
+    - **T4c2, the tactics phase** (cut in two by the user, 2026-10-29):
+      - **T4c2a, the phase drawn** (done 2026-10-29; design §7.23): read (the message at the
+        phase's start, its panel 0x46C050, the panel built for the defender, the movement
+        shade's overlay and search, the cursor), built (`h3_view::tactics`, `Draw::Shade`, the
+        layout's `[tactics_panel]`, the message before the first turn in the stills and the
+        window); seven stills exact; CLT-Q32.
+      - **T4c2b, the phase played** (done 2026-10-29, kept whole by the user; design §7.24):
+        read (the placement as the walk, Next Creature, Start Combat and the panels' swap, the
+        shade over the turns, the computer's phase, Auto Combat in it, the keys), built (the
+        engine's placement steps, `cross-lane`; the buttons' commands, `Context::Tactics`, the
+        window's panel shown, `tactics::shade_at`); `tactics-play` recorded.
+- **T5, what a played battle shows** (cut in two by the user, 2026-10-29):
+  - **T5a, the dissolves and the created stacks** (done 2026-10-29; design §7.25): read (the
+    blend, its rectangle, the stacks removed without a corpse, the created stacks, Clone's
+    place and slide, Teleport's), built (`Screen::dissolve_rect`, `anim::created`, the window's
+    notices, the engine's `NotCreated`, `cross-lane`); `teleport`, `clone`, `summon`, `demons`
+    recorded, `sacrifice` exact; the Demons' back buffer a slip not copied; CLT-Q33.
+  - **T5b, the palette effects, the panel by the turn's controller, the sounds' waits** (cut in
+    two by the user, 2026-10-29):
+    - **T5b1, the palette effects** (done 2026-10-29; design §7.26): read (`draw_battle_stack`'s
+      chain, the recolour, Stone Gaze's glow, the petrified look, the HSV round trip, the glows'
+      redraws, Stone Gaze's line), built (`h3_render::recolour`, the timeline's `LookKey`s,
+      `Draw::Creature`'s `effect`); `bloodlust` and `stone` recorded, their glows and looks exact;
+      `clone`'s colours exact; CLT-Q34.
+    - **T5b2, the panel and the sounds' waits** (done 2026-10-29, kept whole by the user;
+      design §8.3, §9.12): read (the acting side by the controller, `wait_for_sample` and
+      `sample_wait` at their 30 battle sites), built (`Timeline::controllers`,
+      `Panels::with_controllers`, `sound::Lengths`, the timeline's waits, the window's lengths;
+      the harness's `sound` runs); `hypnotize`, `summon-turn` and six `*-sound` sequences
+      recorded; CLT-Q34 answered (a).
+- **T6, a game on a server** (cut in two by the user, 2026-10-30: the part that needs no
+  original data first; design §11):
+  - **T6a, the connection, headless** (done 2026-10-30; design §11.1): the user's dependency
+    (the server's stack, blocking on the I/O thread only: `tungstenite`, `rustls` with
+    `rustls-graviola` and the OS roots, `ed25519-dalek`, `getrandom`); `h3_view::remote` (the
+    hello, the welcome's checks, the pins, a join by token or a game created, the record fetched
+    and grown, commands, the content check), the I/O thread (`net`), `h3-view connect`; tested
+    over loopback (`ws://` and `wss://`, a drop and a re-join) and against `h3-server`.
+  - **T6b, the window over a server** (cut in two by the user, 2026-10-30):
+    - **T6b1, the window plays a seat** (done 2026-10-30; design §11.2): `h3-view window
+      --server`, the battle growing by what the server sends (polled at each frame), the turn
+      from `YourTurn` with the aims' targets by `Query`, the seat's battle derived
+      (`h3_view::remote::seen`), both content outcomes, a drop's re-join keeping the timeline,
+      `remote_turn` (the seat's player the one human here); two windows on a local `h3-server`
+      played a battle to its end, every frame exact.
+    - **T6b2, the record that opens mid-battle** (done 2026-10-30, kept whole by the user;
+      design §11.3): the snapshot's dead among the corpses (R2-8: raised as recorded), the box
+      by the timeline's living set, the moat's strip by the fixed rows (R1-3); a re-join's
+      record extends the one taken or opens afresh (`remote::rejoined`): a new timeline; a join
+      mid-battle and a restart of a local `h3-server` played, every frame exact.
+- **T7, accounts** (done 2026-10-30, kept whole by the user; design §11.4): `argon2` the
+  engine's (the user's choice), the password from standard input shown as typed (the user's
+  choice); `h3-view account` derives and keeps the key (`remote::Accounts`), the test vector
+  reproduced; `Client::login` with the re-key from an earlier key due at the server after a
+  password change; seats by account; `remote::farewell`; played logged in on a local
+  `h3-server`, headless and in two windows to the result window, seats re-taken by account
+  after drops, every frame exact.
+- **T8, M5's closure:** a fresh reviewer, the recipes' starting bonus set to Gold (M4's item 15),
+  every capture afresh, the review list, the next milestone refined. Cut by the user into
+  concurrent fractions (QUEUE); **T8a done:** the harness's two instances, the bonus Gold,
+  reviewers R1, R3, R4 and their fixes, all stills and sequences 0 to 27 as recorded. T8b cut
+  in two by the user; **T8b1 done:** sequences 28 to 64 as recorded, reviewers R7 (the harness)
+  and R2a/R2b (the decoder, the clip) and their fixes; **T8b2 done** (2026-10-31; the user's
+  fractions: three concurrent sub-agents, the runner the leftovers): reviewers R4b, R5a to R5c,
+  R6 and their fixes, R1's, R3-1's, R2b's and R7-8's leftovers; items 78 to 86, CLT-Q35. **T8c
+  done** (2026-10-31, the user's checkpoint): the review list accepted as built; CLT-Q26 to
+  Q28, Q32, Q33 and Q35 answered; M6 refined. **M5 done.**
+- **Exit:** a battle played to its end in the window, in hot seat and on a server; the new
+  screens (the book, the aim, the dialogs, the created stacks) pass against the original, or each
+  difference is a listed fix or a classified quirk.
 
 ## clients/README.md's state history
 
