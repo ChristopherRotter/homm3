@@ -19,9 +19,9 @@ use h3_heroes::{HeroDetails, OfferLevels};
 use h3_kernel::{Rng, StreamId};
 
 use crate::ruleset::{
-    AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef, MonsterParamsDef,
-    ObjectKindDef, ObjectTypeDef, ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId,
-    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, Visit,
+    AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef, CalendarParams,
+    MonsterParamsDef, ObjectKindDef, ObjectTypeDef, ObjectTypeId, Passage, PickupDef, RiverDef,
+    RoadDef, RoadId, StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, Visit,
 };
 use crate::setup::{
     AdventureSetup, BoatSetup, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask,
@@ -203,6 +203,9 @@ pub(crate) fn monster_params() -> MonsterParamsDef {
         aggression: vec![[-4, -4], [1, 7], [1, 10], [4, 10], [10, 10]],
         count_words: vec![5, 10, 20, 50, 100, 250, 500, 1000],
         price_resource: key("t:gold"),
+        growth_bp: 1000,
+        growth_unit: NonZeroU16::new(16).unwrap(),
+        growth_cap: NonZeroU32::new(4000).unwrap(),
     }
 }
 
@@ -275,6 +278,11 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             water_walk_cost: [cost(140), cost(140), cost(120), cost(100)],
             sea_points: [1500, 2250, 3000, 3750],
             sea_ground: [2, 3],
+            calendar: CalendarParams {
+                week_days: NonZeroU8::new(7).unwrap(),
+                month_weeks: NonZeroU8::new(4).unwrap(),
+            },
+            months: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -549,6 +557,11 @@ pub(crate) fn movement_rules_with(
             water_walk_cost: [cost(140), cost(140), cost(120), cost(100)],
             sea_points: [1500, 2250, 3000, 3750],
             sea_ground: [2, 3],
+            calendar: CalendarParams {
+                week_days: NonZeroU8::new(7).unwrap(),
+                month_weeks: NonZeroU8::new(4).unwrap(),
+            },
+            months: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))

@@ -70,13 +70,14 @@ pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    BattleTerrains, BattleTerrainsDef, Chest, ChestDef, Find, FindContent, FindContentDef, FindDef,
-    Gift, GiftDef, Gives, KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS,
-    MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS, MonsterParams, MonsterParamsDef, ObjectKind,
-    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef,
-    Pyramid, PyramidDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind,
-    StartingResources, StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker,
-    TerrainWalkerDef, Turn, TurnDef, Visit,
+    BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef, Find, FindContent,
+    FindContentDef, FindDef, Gift, GiftDef, Gives, KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN,
+    MAX_LAND_POINTS, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS, MonsterParams,
+    MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind, ObjectKindDef, ObjectType,
+    ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid, PyramidDef,
+    RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
+    StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef,
+    Turn, TurnDef, Visit,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
@@ -121,5 +122,7 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 16;
 /// ground's loss of the native price (Cursed Ground's `no_native`). v11 (E08 T50): a stack's most
 /// creatures. v12 (E08 T61a): increment 7's kinds and their parameters. v13 (E08 T72): the sea's
 /// kinds (the find's fixed entries, its lost turn and its leaving, a message, a ground of the sea,
-/// a hole), the sea points, the sea ground's share and the battle terrains at sea.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 13;
+/// a hole), the sea points, the sea ground's share and the battle terrains at sea. v14 (E08 T83a):
+/// increment 9's seven kinds (mines, abandoned mines, Lighthouses, Shipyards, Windmills, Water
+/// Wheels, Gardens), the monsters' growth, the calendar and the months.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 14;

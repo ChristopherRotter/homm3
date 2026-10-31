@@ -33,10 +33,10 @@ use alloc::sync::Arc;
 use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_adventure::{
-    AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, BattleTerrainsDef, ChestDef,
-    FindContentDef, FindDef, GiftDef, Gives, MapSetup, MonsterParamsDef, ObjectKindDef,
-    ObjectTypeDef, OnceBonus, Passage, PickupDef, Pos, PrimarySkill, PyramidDef, SetupError,
-    StandError, StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
+    AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, BattleTerrainsDef,
+    CalendarParams, ChestDef, FindContentDef, FindDef, GiftDef, Gives, MapSetup, MonsterParamsDef,
+    ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, Pos, PrimarySkill, PyramidDef,
+    SetupError, StandError, StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentKey, ContentPack,
@@ -594,11 +594,19 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 aggression: vec![[-4, -4], [1, 7], [1, 10], [4, 10], [10, 10], [3, 3]],
                 count_words: vec![5, 10],
                 price_resource: key("t:gold"),
+                growth_bp: 1000,
+                growth_unit: NonZeroU16::new(16).unwrap(),
+                growth_cap: NonZeroU32::new(4000).unwrap(),
             }),
             fly_cost: [cost; 4],
             water_walk_cost: [cost; 4],
             sea_points: [1500, 2250, 3000, 3750],
             sea_ground: [2, 3],
+            calendar: CalendarParams {
+                week_days: NonZeroU8::new(7).unwrap(),
+                month_weeks: NonZeroU8::new(4).unwrap(),
+            },
+            months: None,
         }),
         // Difficulty 0 starts with 3 000 gold for a human, 1 with 2 000 (E08 T13a).
         starting_resources: [3000, 2000]

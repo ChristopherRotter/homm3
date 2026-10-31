@@ -100,6 +100,11 @@ fn params() -> AdventureParamsDef {
         water_walk_cost: [cost(150), cost(140), cost(120), cost(110)],
         sea_points: [1500, 2250, 3000, 3750],
         sea_ground: [2, 3],
+        calendar: CalendarParams {
+            week_days: NonZeroU8::new(7).unwrap(),
+            month_weeks: NonZeroU8::new(4).unwrap(),
+        },
+        months: None,
     }
 }
 
@@ -1434,6 +1439,9 @@ fn monster_packs() -> Vec<AdventurePack> {
             aggression: vec![[-4, -4], [1, 7]],
             count_words: vec![5, 10],
             price_resource: key("t:gold"),
+            growth_bp: 1000,
+            growth_unit: NonZeroU16::new(16).unwrap(),
+            growth_cap: NonZeroU32::new(4000).unwrap(),
         });
         pack(p, "u").not_random_monsters = vec![key("t:gog")];
     })
@@ -1701,4 +1709,5 @@ fn the_hash_sees_the_monsters_and_the_grounds() {
     }
 }
 
+mod economy;
 mod rewards;

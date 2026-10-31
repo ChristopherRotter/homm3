@@ -43,6 +43,23 @@
 //!                                  # (ADV-FOG-006)
 //! price_resource = "gold"          # a group's price to join: its creature's cost in this
 //!                                  # resource times its count (ADV-MON-008, E08 T20b1)
+//! growth_bp = 1000                 # E08 T83a (ADV-MON-013): a week adds this share of a
+//! growth_unit = 16                 # monster's value in these parts of a creature (1 to 256),
+//! growth_cap = 4000                # truncated, the result at most this count (<= 4095)
+//!
+//! [params.calendar]                # E08 T83a (GAM-CAL-002): required
+//! week_days = 7
+//! month_weeks = 4
+//!
+//! [params.months]                  # optional (E08 T83a; GAM-CAL-003, ADV-MON-014): without it
+//! odds = [5, 4, 1]                 # every month is normal; the weights of a normal month, a
+//!                                  # creature's and the Plague, their sum from 1
+//! creatures = ["griffin"]          # a creature's month's, drawn with equal chances
+//! monster = "monster"              # the object type of its monsters (a `monster = {}` kind)
+//! spawn_one_in = 200               # a free land tile's chance of a monster, one in this many
+//! spawn_factor = 2                 # its count: this times a draw of its creature's
+//!                                  # adventure count
+//! spawn_aggression = [1, 10]       # its aggression's bounds
 //!
 //! not_random_monsters = ["azure_dragon"] # top-level, before any table (E08 T20a2a): creatures
 //!                                  # no random monster becomes (ADV-MON-003)
@@ -109,6 +126,16 @@
 //! #                                # bonus = { morale = -3, luck = 0, mark = 0 }; leaves = true
 //! # message = { leaves = true }    # E08 T72: the Ocean Bottle (leaves: false if left out)
 //! # sea_ground = {}                # E08 T72: also hole = {}, no parameters
+//! # E08 T83a, increment 9's kinds; the ownable four need visit = "enter":
+//! # mine = { resource = "gold", daily = 1000, battle_terrain = "subterranean" } # terrain
+//! #                                # optional: a battle on the entrance is fought on it
+//! # abandoned_mine = { guards = "troglodyte", count = [100, 200], battle_terrain = "dirt" }
+//! # lighthouse = { sea_points = 500 }
+//! # shipyard = { price = { gold = 1000 }, boat_type = 1, offsets = [[-2, 0], [2, 0]] }
+//! #                                # (column, row) from the entrance, tried in order
+//! # windmill = { resources = ["mercury", "gems"], amount = [3, 6] }
+//! # water_wheel = { resource = "gold", first = 500, later = 1000 }
+//! # garden = { gifts = [{ resource = "gems", amount = 5 }, { resource = "gold", amount = 500 }] }
 //! # pyramid = { split = { creature = "gold_golem", count = 40 }, fixed = { creature =
 //! #             "diamond_golem", stacks = [10, 10] }, level = 5, looted = { luck = -2, mark = 1 } }
 //!
@@ -130,7 +157,8 @@ use std::num::NonZeroU32;
 
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
-    ChestDef, FindContentDef, FindDef, GiftDef, Gives, MonsterParamsDef, ObjectKindDef,
+    CalendarParams, ChestDef, FindContentDef, FindDef, GiftDef, Gives, MonsterParamsDef,
+    MonthParamsDef, ObjectKindDef,
     ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill, PyramidDef, RiverDef, RoadDef,
     StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, TurnDef, Visit,
 };
@@ -261,6 +289,9 @@ struct ParamsDto {
     water_walk_cost: [NonZeroU16; 4],
     sea_points: [u32; 4],
     sea_ground: [u16; 2],
+    calendar: CalendarDto,
+    #[serde(default)]
+    months: Option<MonthsDto>,
 }
 
 #[derive(Deserialize)]
@@ -269,6 +300,27 @@ struct MonstersDto {
     aggression: Vec<[i8; 2]>,
     count_words: Vec<u32>,
     price_resource: String,
+    growth_bp: u16,
+    growth_unit: NonZeroU16,
+    growth_cap: NonZeroU32,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CalendarDto {
+    week_days: NonZeroU8,
+    month_weeks: NonZeroU8,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MonthsDto {
+    odds: [u8; 3],
+    creatures: Vec<String>,
+    monster: String,
+    spawn_one_in: NonZeroU16,
+    spawn_factor: NonZeroU8,
+    spawn_aggression: [i8; 2],
 }
 
 #[derive(Deserialize)]
@@ -355,6 +407,71 @@ struct ObjectTypeDto {
     message: Option<MessageDto>,
     sea_ground: Option<EmptyDto>,
     hole: Option<EmptyDto>,
+    mine: Option<MineDto>,
+    abandoned_mine: Option<AbandonedMineDto>,
+    lighthouse: Option<LighthouseDto>,
+    shipyard: Option<ShipyardDto>,
+    windmill: Option<WindmillDto>,
+    water_wheel: Option<WaterWheelDto>,
+    garden: Option<GardenDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MineDto {
+    resource: String,
+    daily: u32,
+    battle_terrain: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AbandonedMineDto {
+    guards: String,
+    count: [u32; 2],
+    battle_terrain: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LighthouseDto {
+    sea_points: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ShipyardDto {
+    price: BTreeMap<String, u32>,
+    boat_type: u8,
+    offsets: Vec<[i8; 2]>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WindmillDto {
+    resources: Vec<String>,
+    amount: [u32; 2],
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WaterWheelDto {
+    resource: String,
+    first: u32,
+    later: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GardenDto {
+    gifts: Vec<GiftAmountDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GiftAmountDto {
+    resource: String,
+    amount: u32,
 }
 
 #[derive(Deserialize)]
@@ -767,6 +884,53 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
     );
     kinds.extend(t.sea_ground.map(|_| ObjectKindDef::SeaGround));
     kinds.extend(t.hole.map(|_| ObjectKindDef::Hole));
+    let terrain = |t: Option<String>| t.map(|t| reference(pack, &t)).transpose();
+    if let Some(m) = t.mine {
+        kinds.push(ObjectKindDef::Mine {
+            resource: reference(pack, &m.resource)?,
+            daily: m.daily,
+            battle_terrain: terrain(m.battle_terrain)?,
+        });
+    }
+    if let Some(m) = t.abandoned_mine {
+        kinds.push(ObjectKindDef::AbandonedMine {
+            guards: reference(pack, &m.guards)?,
+            count: m.count,
+            battle_terrain: terrain(m.battle_terrain)?,
+        });
+    }
+    kinds.extend(t.lighthouse.map(|l| ObjectKindDef::Lighthouse {
+        sea_points: l.sea_points,
+    }));
+    if let Some(y) = t.shipyard {
+        kinds.push(ObjectKindDef::Shipyard {
+            price: amounts(y.price)?,
+            boat_type: y.boat_type,
+            offsets: y.offsets.iter().map(|&[c, r]| (c, r)).collect(),
+        });
+    }
+    if let Some(w) = t.windmill {
+        kinds.push(ObjectKindDef::Windmill {
+            resources: refs(w.resources)?,
+            amount: w.amount,
+        });
+    }
+    if let Some(w) = t.water_wheel {
+        kinds.push(ObjectKindDef::WaterWheel {
+            resource: reference(pack, &w.resource)?,
+            first: w.first,
+            later: w.later,
+        });
+    }
+    if let Some(g) = t.garden {
+        kinds.push(ObjectKindDef::Garden {
+            gifts: g
+                .gifts
+                .iter()
+                .map(|gift| Ok((reference(pack, &gift.resource)?, gift.amount)))
+                .collect::<Result<_, KeyError>>()?,
+        });
+    }
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {
@@ -904,6 +1068,26 @@ pub fn parse_adventure(
                             aggression: m.aggression,
                             count_words: m.count_words,
                             price_resource: reference(pack, &m.price_resource)?,
+                            growth_bp: m.growth_bp,
+                            growth_unit: m.growth_unit,
+                            growth_cap: m.growth_cap,
+                        })
+                    })
+                    .transpose()?;
+                let months = p
+                    .months
+                    .map(|m| {
+                        Ok::<_, KeyError>(MonthParamsDef {
+                            odds: m.odds,
+                            creatures: m
+                                .creatures
+                                .iter()
+                                .map(|c| reference(pack, c))
+                                .collect::<Result<_, _>>()?,
+                            monster: reference(pack, &m.monster)?,
+                            spawn_one_in: m.spawn_one_in,
+                            spawn_factor: m.spawn_factor,
+                            spawn_aggression: m.spawn_aggression,
                         })
                     })
                     .transpose()?;
@@ -923,6 +1107,11 @@ pub fn parse_adventure(
                     water_walk_cost: p.water_walk_cost,
                     sea_points: p.sea_points,
                     sea_ground: p.sea_ground,
+                    calendar: CalendarParams {
+                        week_days: p.calendar.week_days,
+                        month_weeks: p.calendar.month_weeks,
+                    },
+                    months,
                 })
             })
             .transpose()?,
