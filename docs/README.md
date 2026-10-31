@@ -16,7 +16,7 @@ Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structur
 | [08-work-process.md](08-work-process.md) | How agents work in increments, handoff protocol, when to ask |
 | [BACKLOG.md](BACKLOG.md) | Coarse-grained epics, ordered; only the next ones are refined |
 | [HANDOFF.md](HANDOFF.md) | The lane index, the traps that cross lanes and where the other traps live (size budget, `08-work-process.md`) |
-| [lanes/](lanes/) | One folder per work lane (battle, adventure, ai, server, client, map-client): `HANDOFF.md` (state, next step, the last three sessions), `TRAPS.md` (standing traps by area), `QUEUE.md` (open tasks and inbox) with `QUEUE-ARCHIVE.md`, `QUESTIONS-ANSWERED.md`, ADR drafts; adventure also `OVERVIEW.md` (what is built), client `ASSET-NOTES.md`; ownership in `../lanes.toml` |
+| [lanes/](lanes/) | One folder per work lane (battle, adventure, town, ai, server, client, map-client): `HANDOFF.md` (state, next step, the last three sessions), `TRAPS.md` (standing traps by area), `QUEUE.md` (open tasks and inbox) with `QUEUE-ARCHIVE.md`, `QUESTIONS-ANSWERED.md`, ADR drafts; adventure also `OVERVIEW.md` (what is built), client `ASSET-NOTES.md`; ownership in `../lanes.toml` |
 | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) | Decisions waiting for the user (answered ones: the lane's `QUESTIONS-ANSWERED.md`, `adr/answered-questions.md`) |
 | [epics/](epics/) | Refined epics (only those about to be worked on), their design notes (`<epic>-design.md`, pruned as tasks implement them and deleted when the epic closes) and logs (`<epic>-log.md`, the full record of done tasks) and archives (`<epic>-archive.md`, closed increments and milestones) |
 | [adr/](adr/) | Architecture Decision Records (binding) |

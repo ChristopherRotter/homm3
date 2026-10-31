@@ -43,6 +43,20 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-10-31 (the town lane, E09 T0, `shared/town-lane`; **read before your next task**): the user
+  opened a lane `town` (`TWN`) for E09 in parallel with E08 (TWN-Q1). It owns the crate `h3-towns`
+  (to come) and the town modules inside your crates by the longest match: `h3-adventure`'s and
+  `h3-game`'s `src/town*`, `h3-map`'s `src/import/town*` and `src/writer/town*`; E09's epic,
+  surveys and experiments and `docs/rules/catalog/town.toml` moved to it. Your crates' common
+  parts (`lib.rs`, the state structs and hashes, the versions, the replays and bot reports) stay
+  yours; the town lane changes them in `cross-lane` pull requests merged in order with yours (the
+  second rebases and bumps again): name your open pull requests in your HANDOFF as you do. E08's
+  increments 10 to 12 stay yours (decision 4): the hire dialog and the weekly growth are built
+  once, by whichever lane needs them first; tell the town lane's inbox when yours land. The
+  E09 notes of your inbox and archive are gathered in the town queue's inbox; yours can leave
+  them as they are. Increment 1 of E09 builds towns on the map (the import's main-town hero and
+  `HeroInTown`, entering, capture by siege, the hall's income).
+
 - 2026-10-31 (the map client lane, E24 M4 T0; **for the views, before E24 M4 T3**; your archive's
   note (3) of 2026-10-23, "refined with you at M4"): the map viewer takes the static art from the
   raw `.h3m` and the live part from the game's observation, through `h3-protocol` (the user, M4

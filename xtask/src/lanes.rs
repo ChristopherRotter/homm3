@@ -53,6 +53,11 @@ pub struct Lane {
     /// `ADV-STUB-1`).
     pub code: String,
     pub paths: Vec<String>,
+    /// Lanes whose crates, golden replays and benchmark workloads the lane's scoped verify runs
+    /// too: a lane that owns sub-paths of their crates (the town lane's modules in the adventure
+    /// lane's crates).
+    #[serde(default)]
+    pub verify_with: Vec<String>,
 }
 
 /// Who owns a path.
@@ -168,6 +173,14 @@ impl Config {
             if lane.paths.is_empty() {
                 v.push(format!("lane `{}` owns no paths", lane.name));
             }
+            for with in &lane.verify_with {
+                if *with == lane.name || self.lane(with).is_none() {
+                    v.push(format!(
+                        "lane `{}`: `verify_with` names `{with}`, not another lane",
+                        lane.name
+                    ));
+                }
+            }
         }
         v
     }
@@ -197,6 +210,15 @@ impl Config {
     pub fn declared_by_branch(&self, branch: &str) -> Option<String> {
         let prefix = branch.split_once('/')?.0;
         (prefix == SHARED || self.lane(prefix).is_some()).then(|| prefix.to_owned())
+    }
+
+    /// The lanes a scoped verify of `lane` covers: `lane`, then its `verify_with` lanes.
+    pub fn verified_lanes(&self, lane: &str) -> Vec<String> {
+        let mut lanes = vec![lane.to_owned()];
+        if let Some(l) = self.lane(lane) {
+            lanes.extend(l.verify_with.iter().cloned());
+        }
+        lanes
     }
 
     /// Workspace packages (name, workspace-relative directory) owned by `lane`.
@@ -437,6 +459,11 @@ paths = ["crates/h3-battle/", "docs/epics/E04*", "docs/lanes/battle/"]
 name = "adventure"
 code = "ADV"
 paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
+[[lane]]
+name = "town"
+code = "TWN"
+verify_with = ["adventure"]
+paths = ["crates/h3-towns/", "crates/h3-adventure/src/town*"]
 "#;
 
     fn config() -> Config {
@@ -486,6 +513,26 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
                 && err.contains("relative")
         );
         assert!(Config::parse("nonsense").is_err());
+        let with = "[shared]\npaths = []\n[common]\npaths = []\n\
+                    [[lane]]\nname = \"a\"\ncode = \"AA\"\npaths = [\"a/\"]\n\
+                    verify_with = [\"a\", \"b\"]\n";
+        let err = Config::parse(with).unwrap_err();
+        assert!(err.contains("`verify_with` names `a`") && err.contains("names `b`"));
+    }
+
+    #[test]
+    fn verify_with_widens_the_scope() {
+        let c = config();
+        assert_eq!(c.verified_lanes("town"), vec!["town", "adventure"]);
+        assert_eq!(c.verified_lanes("battle"), vec!["battle"]);
+        assert_eq!(
+            c.owner("crates/h3-adventure/src/town/visit.rs"),
+            Owner::Lane("town".to_owned())
+        );
+        assert_eq!(
+            c.owner("crates/h3-adventure/src/lib.rs"),
+            Owner::Lane("adventure".to_owned())
+        );
     }
 
     #[test]
@@ -627,6 +674,7 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
             "server",
             "client",
             "map-client",
+            "town",
         ] {
             assert!(c.lane(lane).is_some(), "{lane}");
             assert_eq!(
@@ -660,6 +708,23 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
             c.owner("clients/map/layouts/adventure.toml"),
             Owner::Lane("map-client".to_owned())
         );
+        // The town lane (2026-10-31, TWN-Q1): its crate and the town modules of the adventure
+        // lane's crates; the crates' common parts stay the adventure lane's.
+        for (path, lane) in [
+            ("crates/h3-towns/src/lib.rs", "town"),
+            ("crates/h3-adventure/src/town/mod.rs", "town"),
+            ("crates/h3-game/src/town.rs", "town"),
+            ("crates/h3-map/src/import/town.rs", "town"),
+            ("crates/h3-map/src/writer/town.rs", "town"),
+            ("docs/epics/E09-towns.md", "town"),
+            ("docs/rules/catalog/town.toml", "town"),
+            ("crates/h3-adventure/src/lib.rs", "adventure"),
+            ("crates/h3-game/src/state.rs", "adventure"),
+            ("docs/epics/E10-orchestration.md", "adventure"),
+        ] {
+            assert_eq!(c.owner(path), Owner::Lane(lane.to_owned()), "{path}");
+        }
+        assert_eq!(c.verified_lanes("town"), vec!["town", "adventure"]);
         assert_eq!(c.owner("lanes.toml"), Owner::Shared);
         assert_eq!(c.owner("Cargo.lock"), Owner::Common);
         assert_eq!(c.owner("crates/h3-kernel/src/lib.rs"), Owner::Shared);

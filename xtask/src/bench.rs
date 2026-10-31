@@ -84,6 +84,8 @@ pub struct Entry {
 pub enum Selection<'a> {
     All,
     Lane(&'a str),
+    /// A scoped verify's lanes (`verify::LaneScope::lanes`).
+    Lanes(&'a [String]),
     Workload(&'a str),
 }
 
@@ -92,6 +94,7 @@ impl Selection<'_> {
         match self {
             Selection::All => !e.baseline.workload.lane_only,
             Selection::Lane(lane) => e.lane == *lane,
+            Selection::Lanes(lanes) => lanes.contains(&e.lane),
             Selection::Workload(name) => e.name == *name,
         }
     }
@@ -397,6 +400,9 @@ mod tests {
         assert!(Selection::Lane(&first.lane).selects(first));
         assert!(Selection::Workload(&first.name).selects(first));
         assert!(!Selection::Lane("no-such-lane").selects(first));
+        let lanes = ["no-such-lane".to_owned(), first.lane.clone()];
+        assert!(Selection::Lanes(&lanes).selects(first));
+        assert!(!Selection::Lanes(&lanes[..1]).selects(first));
     }
 
     fn workload(extra: &str) -> Baseline {
