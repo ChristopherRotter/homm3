@@ -405,7 +405,8 @@ struct Report {
     /// The same for the frames at a millisecond the player's input was given at (composed once it
     /// came, not ahead).
     input_late_us: Vec<u64>,
-    /// Frames passed over because a later one was due already.
+    /// Times the frame due was passed over because a later change was due already: one each
+    /// time, however many changes lay between the two (T7b2, F6-5).
     skipped: usize,
     /// Frames read back, and those that matched.
     read: usize,
@@ -903,7 +904,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         .map(|f| f.change.drawn.view)
         .unwrap_or(start.view);
     lines.push(format!(
-        "{what}, keys: {keys_from}; {} frames shown in {seconds} ms, {} passed over, the map run \
+        "{what}, keys: {keys_from}; {} frames shown in {seconds} ms, {} times a later one shown instead, the map run \
          to {} ms; given: {scrolls} scrolls, {steps} steps, {moves} moves, {clicks} presses and \
          releases, {hotkeys} hotkeys; the view at ({}, {}, {})",
         report.late_us.len(),

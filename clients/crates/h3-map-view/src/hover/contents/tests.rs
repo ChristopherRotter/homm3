@@ -48,6 +48,23 @@ quests = [
 "#;
 
 #[test]
+fn a_quest_without_its_hero_reads_as_none() {
+    // T7b2 (F3-1): the harness writes a quest's hero -1 as it is; the live part is read, the
+    // quest names none (MCL-Q21 (a)); another own flag than 0 or 1 is refused.
+    for (kind, none) in [(3, Mission::DefeatHero(None)), (8, Mission::BeHero(None))] {
+        let f = facts(
+            &alloc::format!("quests = [[0, 1, 4, {kind}, 0, [-1, 0], []]]"),
+            20,
+        );
+        match &f.unwrap().contents[&0] {
+            Content::Quest { quest: Some(q), .. } => assert_eq!(q.mission, none),
+            other => panic!("{other:?}"),
+        }
+    }
+    assert!(facts("quests = [[0, 1, 4, 3, 0, [-1, 2], []]]", 20).is_none());
+}
+
+#[test]
 fn the_contents_read_from_the_live_parts_table() {
     let f = facts(LINES, 20).unwrap();
     let c = |o: usize| f.contents[&o].clone();
@@ -105,7 +122,7 @@ fn the_contents_read_from_the_live_parts_table() {
         other => panic!("{other:?}"),
     };
     assert_eq!(mission(11), Mission::Skills([1, 0, -2, 3]));
-    assert_eq!(mission(12), Mission::DefeatHero(16, true));
+    assert_eq!(mission(12), Mission::DefeatHero(Some((16, true))));
     assert_eq!(mission(15), Mission::Creatures(vec![(0, 1), (13, 2)]));
     assert_eq!(
         c(19),
@@ -321,6 +338,15 @@ fn a_contents_hints_text() {
         text(teaches(113, None, Some(Teach::Skill(2, false)), None)),
         "Witch Hut (Teach Logistics)"
     );
+    // T7b2 (F3-3): a spell or skill past the catalogue's family is empty, not its key.
+    assert_eq!(
+        text(teaches(88, None, Some(Teach::Spell(700, false)), None)),
+        "Shrine (Learn )"
+    );
+    assert_eq!(
+        text(teaches(113, None, Some(Teach::Skill(90, false)), None)),
+        "Witch Hut (Teach )"
+    );
     let quest = |variant, mission| Some(Arc::new(Quest { variant, mission }));
     let seer = |mission| Hint::Quest {
         class: 83,
@@ -329,16 +355,21 @@ fn a_contents_hints_text() {
     };
     assert_eq!(text(seer(Mission::Level(10))), "Engle the Seer (reach 10)");
     assert_eq!(
-        text(seer(Mission::DefeatHero(16, false))),
+        text(seer(Mission::DefeatHero(Some((16, false))))),
         "Engle the Seer (defeat Mephala)"
     );
     assert_eq!(
-        text(seer(Mission::DefeatHero(20, true))),
+        text(seer(Mission::DefeatHero(Some((20, true))))),
         "Engle the Seer (defeat Own)"
     );
     assert_eq!(
         text(seer(Mission::DefeatMonster(13))),
         "Engle the Seer (kill Archangels)"
+    );
+    // T7b2 (F3-1): a quest without its hero names none (MCL-Q21 (a)).
+    assert_eq!(
+        text(seer(Mission::DefeatHero(None))),
+        "Engle the Seer (defeat )"
     );
     assert_eq!(
         text(seer(Mission::Artifacts(vec![7, 8, 9]))),
@@ -367,9 +398,10 @@ fn a_contents_hints_text() {
         "Quest Guard ( requires Attack 1 and Knowledge 3 )"
     );
     assert_eq!(
-        text(guard(0, Mission::BeHero(16, false))),
+        text(guard(0, Mission::BeHero(Some((16, false))))),
         "Quest Guard (be Mephala)"
     );
+    assert_eq!(text(guard(0, Mission::BeHero(None))), "Quest Guard (be )");
     assert_eq!(
         text(Hint::Quest {
             class: 83,

@@ -365,14 +365,16 @@ def lists(game, mem, sit):
                 mem.write_skills(index, hero["skills"])
             if "morale" in hero or "luck" in hero:
                 mem.write_bonuses(index, hero.get("morale", 0), hero.get("luck", 0))
-            if "army" in hero:
+            # An empty army or garrison writes nothing, as the parser counts it (E24 M3 T7b2,
+            # F5-6: seven empty slots were written while the parser saw nothing written).
+            if hero.get("army"):
                 mem.write_army(mem.hero_record(index) + h3mem.ARMY, hero["army"])
     for town in sit.get("towns", []):
         if town.get("built"):
             mem.write_town_built(town_index(mem, town["at"]))
-        if "garrison" in town or "garrison_hero" in town:
+        if town.get("garrison") or "garrison_hero" in town:
             record = mem.town(town_index(mem, town["at"]))["at"]
-            if "garrison" in town:
+            if town.get("garrison"):
                 mem.write_army(record + h3mem.TOWN_ARMY, town["garrison"])
             if "garrison_hero" in town:
                 hero = hero_at(mem, *town["garrison_hero"])["index"]
@@ -591,14 +593,20 @@ def choose_each(game, mem, view):
     for hero in heroes:
         record = mem.hero(hero)
         h3adv.select(game, mem, record["name"])
-        h3adv.wait_for(lambda: mem.status_shown() == 3 and mem.status(colour)["hero"] == hero,
-                       lambda: f"hero {hero}'s status window ({mem.status_shown()} shown)")
+        # The window's own name item, not the selection (E24 M3 T7b2, F5-4: the selected hero
+        # is set before the window is built, so a slow rebuild mixed two heroes' facts).
+        h3adv.wait_for(lambda: mem.status_shown() == 3 and mem.status_name() == record["name"],
+                       lambda: f"hero {hero}'s status window ({mem.status_shown()} shown, "
+                               f"named {mem.status_name()!r})")
         chosen["heroes"].append({"tile": record["tile"], "status": status_toml(mem, colour),
                                  "path": mem.path_arrows()})
     for town in towns:
         h3adv.select_town(game, mem, town)
-        h3adv.wait_for(lambda: mem.status_shown() == 4,
-                       lambda: f"town {town}'s status window ({mem.status_shown()} shown)")
+        name = mem.town_name(town)
+        # As a hero's (F5-4): the town before showed kind 4 already.
+        h3adv.wait_for(lambda: mem.status_shown() == 4 and mem.status_name() == name,
+                       lambda: f"town {town}'s status window ({mem.status_shown()} shown, "
+                               f"named {mem.status_name()!r})")
         chosen["towns"].append({"at": list(mem.town(town)["place"]),
                                 "status": status_toml(mem, colour)})
     # The staging's selection again (a hero's makes its path again), then the lists' first slots
@@ -656,6 +664,12 @@ def ask_status(mem, kind, end, rebuild=False):
 def over_view(point):
     """Whether a point of the screen lies over the view's item (8, 8, 592 x 544)."""
     return 8 <= point[0] < 600 and 8 <= point[1] < 552
+
+
+def in_scroll_zone(point):
+    """Whether a point over the view lies in a scroll zone, within 16 pixels of the screen's
+    left or top side (edge_scroll 0x419820; the right and bottom zones lie outside the view)."""
+    return point[0] < 16 or point[1] < 16
 
 
 def status_bar_text(mem):
@@ -943,8 +957,8 @@ def known_key(name):
 def sequence_inputs(entry):
     """A sequence's options and inputs, checked (T1a2): the options among `OPTIONS` in their
     ranges; each input one of `INPUTS` at a millisecond from 1 to `ms` (0 is the still the frame
-    check compares), in order of time, a key released only once pressed, a pointer inside the
-    screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
+    check compares), in order of time, a key released only once pressed, the button likewise (no
+    press or click while it is held: E24 M3 T7b2, F5-7), a pointer inside the screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", *OPTIONS}
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
@@ -960,7 +974,7 @@ def sequence_inputs(entry):
             if entry[name] not in values:
                 raise ValueError(f"{entry['id']}: `{name}` {entry[name]} not in {values}")
             options.append((address, entry[name]))
-    inputs, down, last = {}, set(), 1
+    inputs, down, held, last = {}, set(), False, 1
     for i in entry.get("inputs", []):
         kinds = [k for k in INPUTS if k in i]
         if len(kinds) != 1 or set(i) != {"at", kinds[0]}:
@@ -972,6 +986,12 @@ def sequence_inputs(entry):
         if not last <= t <= entry["ms"]:
             raise ValueError(f"{entry['id']}: an input at {t}: out of order or outside 1 to "
                              f"{entry['ms']}")
+        if kind == "release" and not held:
+            raise ValueError(f"{entry['id']}: the button released at {t}, never pressed")
+        if kind in ("press", "click") and held:
+            raise ValueError(f"{entry['id']}: the button pressed at {t} while it is held")
+        if kind in ("press", "release"):
+            held = kind == "press"
         if kind == "keydown":
             down.add(value)
         elif kind == "keyup":
@@ -1029,13 +1049,18 @@ def sequence(entry, out):
     for name in ("frames.jsonl", "states.jsonl", "live.toml", "timeline.txt", "ours.png",
                  "diff.png"):
         (out / name).unlink(missing_ok=True)
+    # Keys and the button a killed run left down stay down on the display (M2 T6a, the
+    # reviewer's R3-4: Control would turn the walks' keys into scrolls), released before the
+    # staging's own clicks (E24 M3 T7b2, F5-1: the hotkeys and the button too). With no display
+    # yet (its Xvfb starts with the game) nothing is held, and xdotool's failure is harmless.
+    subprocess.run(["xdotool", "keyup", "ctrl", *DIRECTION_KEYS, *OTHER_KEYS, *HOTKEYS],
+                   env=h3drive.env(), check=False, capture_output=True)
+    subprocess.run(["xdotool", "mouseup", "1"], env=h3drive.env(), check=False,
+                   capture_output=True)
     game, mem, sit, turn = stage(situation_path, out)
     down = set()
     try:
         kept.mkdir(parents=True)
-        # Keys a killed run left down stay down on the display (M2 T6a, the reviewer's R3-4):
-        # Control would turn the walks' keys into scrolls.
-        h3drive.run("xdotool", "keyup", "ctrl", *DIRECTION_KEYS, *OTHER_KEYS)
         # The objects' phases fixed (T1b): the load gives each a random one (design §1.6), and
         # where an object's frames repeat a picture the screen's changed box at a redraw moved
         # with it from run to run (the frame steps too: below). The live part at 0 reads them.
@@ -1054,8 +1079,11 @@ def sequence(entry, out):
             else:
                 mem.write_u32(address, value)
         # The reach of the tiles the pointer visits, for the points written (E24 M3 T6a1).
+        # A point in a scroll zone left out (E24 M3 T7b2, F5-5): the view scrolls there while the
+        # clock runs, and its tile is looked at only after the scroll anyway.
         look_over_view(game, mem, sit, [v for t in sorted(inputs) for k, v in inputs[t]
-                                        if k in ("pointer", "click") and over_view(v)])
+                                        if k in ("pointer", "click") and over_view(v)
+                                        and not in_scroll_zone(v)])
         # The display's own key repeat is off (T1a2): it repeats a held key in real time, which
         # a step of the virtual clock spans many times over; the original repeats nothing itself
         # (a key held is one press, design §3.4).

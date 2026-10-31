@@ -446,8 +446,13 @@ impl<'a> Painter<'a> {
     /// The view as a draw shows it, with the buttons a walk sets, drawn into the composer's
     /// frame unless it holds that view already; what it changed recorded (E24 M3 T2b2).
     fn view(&mut self, draw: &Draw, buttons: Buttons) -> Result<&Screen, String> {
-        let key = (draw.clone(), buttons);
-        if self.shown.as_ref() == Some(&key) {
+        // Compared by reference, the draw cloned only on a miss (T7b2, F1-5: a walk's path at
+        // every frame).
+        if self
+            .shown
+            .as_ref()
+            .is_some_and(|(d, b)| d == draw && *b == buttons)
+        {
             return Ok(self.composer.screen());
         }
         self.shown = None;
@@ -469,7 +474,7 @@ impl<'a> Painter<'a> {
                 Err(e) => return Err(e.to_string()),
             }
         }
-        self.shown = Some(key);
+        self.shown = Some((draw.clone(), buttons));
         Ok(self.composer.screen())
     }
 

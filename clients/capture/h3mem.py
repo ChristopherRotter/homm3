@@ -270,7 +270,11 @@ FORT_BIT = 1 << 7
 # replaces, unlike the every-built set +0x158).
 STATUS_SHOWN, STATUS_ITEMS = 0x394, range(2000, 2100)
 STATUS_MORALE, STATUS_LUCK, STATUS_SILO, STATUS_INCOME = 2008, 2009, 2007, 2006
+# The status window's name item (a hero's or a town's window; E24 M3 T7b2, F5-4).
+STATUS_NAME = 2002
 TOWN_GARRISON_HERO, TOWN_ARMY, TOWN_NAME, TOWN_STANDING = 0xC, 0xE0, 0xC8, 0x150
+# The hero visiting a town (town_defended 0x5BDFE0's +0x10; E24 M3 T7b2, F5-8).
+TOWN_VISITING_HERO = 0x10
 # E24 M3 T5b2 (design §4.9): the kind asked (the manager's +0x398) and a timed kind's end (+0x39C,
 # a clock time; status_window_set_kind 0x415D60), the kind none (8); the date's window's picture
 # (DEF item 2001, its frame the window's step); the kingdom's: the viewer's towns by their halls
@@ -1136,6 +1140,17 @@ class Mem:
         if rebuild:
             self.write_bytes(manager + STATUS_SHOWN, struct.pack("<i", STATUS_NONE))
 
+    def status_name(self):
+        """The text of the status window's name item, None without one (E24 M3 T7b2, F5-4: a
+        fact of the window itself, which names the hero or town it was built for)."""
+        shown = self.status_items().get(STATUS_NAME)
+        return shown[0][1] if shown else None
+
+    def town_name(self, index):
+        """The name of the town `index` of the game's towns (its record's text)."""
+        record = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
+        return self.c_string(self.u32(record + TOWN_NAME), 64)
+
     def status_shown(self):
         """The status window's kind shown (the manager's +0x394; E24 M3 T5b2)."""
         return self.i32(self.u32(ADVENTURE_MANAGER_POINTER) + STATUS_SHOWN)
@@ -1462,9 +1477,13 @@ class Mem:
             defended = False
             if cls == 98 and word < len(town_records):
                 town = town_records[word]
-                garrison, visiting = self.i32(town + 0x10), self.i32(town + 0xC)
-                defended = (garrison >= 0 or (has_creatures(hero_record(visiting) + 0x91)
-                                              if visiting >= 0 else has_creatures(town + 0xE0)))
+                # town_defended 0x5BDFE0: a visiting hero defends it, else the garrison hero's
+                # army, else the town's own (F5-8: the names were swapped).
+                visiting = self.i32(town + TOWN_VISITING_HERO)
+                garrison = self.i32(town + TOWN_GARRISON_HERO)
+                defended = (visiting >= 0 or (has_creatures(hero_record(garrison) + ARMY)
+                                              if garrison >= 0
+                                              else has_creatures(town + TOWN_ARMY)))
             elif cls == 33:
                 first = self.u32(game + 0x4E3AC)
                 defended = has_creatures(first + 0x40 * word + 4)
@@ -1669,7 +1688,8 @@ class Mem:
 
     def write_content(self, cls, tile, word, subclass, colour, known, visited, hero, guards):
         """Writes a situation's visit of an object of the owners' and contents' hints (E24 M3
-        T6a2b; design §4.12) whose entrance tile is at `tile` with `word` and `subclass`, for the
+        T6a2b; design §4.12) whose entrance word `word` lies at `tile` (the tile's, or the record's
+        of a hero or boat standing there: `write_visit`) with `subclass`, for the
         viewing player `colour`, by what `contents` reads inverted: its kind known (a Shrine's, a
         Tree's, a Witch Hut's), visited or not (a Tent's colour bit, a bank's or a Shrine's, Tree's
         or Witch Hut's word bit, a Seer's Hut's or Quest Guard's visitor bit), the selected
@@ -1714,8 +1734,12 @@ class Mem:
             if hero is not None and cls == 102:
                 set_bit(hero_at + HERO_TREES, word & 0x1F, hero)
             elif hero is not None:
-                at = (HERO_SPELLS + signed(word, 13, 10) if cls != 113
-                      else SECONDARY + signed(word, 13, 7))
+                # In the range `contents` reads (E24 M3 T7b2, F5-3): a Witch Hut's word without
+                # its skill (-1) would land on the byte before the hero's skills.
+                field = signed(word, 13, 10) if cls != 113 else signed(word, 13, 7)
+                if not 0 <= field < (70 if cls != 113 else 28):
+                    raise RuntimeError(f"class {cls}: the word names no spell or skill ({field})")
+                at = HERO_SPELLS + field if cls != 113 else SECONDARY + field
                 self.write_bytes(hero_at + at, bytes([int(hero)]))
         elif cls in (83, 215) and visited is not None:
             vector, size = QUEST_VECTORS[0 if cls == 83 else 1]
@@ -1744,6 +1768,13 @@ class Mem:
         cls = classes[template][1]
         at = entrance_cell(templates, side, x, y, template)
         tile = self.u32(game + TILES) + TILE_SIZE * ((level * side + at[1]) * side + at[0])
+        # A hero or boat on the entrance keeps the object's word in its record (+0x14), which
+        # `hover` reads; the tile's own word is its index (E24 M3 T7b2, F5-2).
+        kind, = struct.unpack("<i", self.read(tile + 0x1E, 4))
+        if kind == HERO_OBJECT:
+            tile = self.hero_record(self.u32(tile)) + HERO_UNDER_WORD
+        elif kind == BOAT_OBJECT:
+            tile = self.u32(game + BOATS) + BOAT_RECORD * self.u32(tile) + 0x14
         word = self.u32(tile)
         if cls in CONTENT_CLASSES:
             return self.write_content(cls, tile, word, classes[template][2], colour, known,

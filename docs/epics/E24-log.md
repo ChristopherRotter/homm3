@@ -2155,3 +2155,69 @@ The outcome of each finding (the review's files on `map-client/e24-m3-t7-review`
   MCL-Q25); clippy (`h3-map-view`, `h3-sdl`, all targets); `drawn` all the same (50 situations,
   every sequence; no capture needed: every change is live-only or reaches no recorded frame);
   `check.sh` all gates; the scoped verify with original data.
+
+### M3 T7b2 — the panels', the mouse-over's, the harness's and the rest's findings fixed (2026-10-31)
+
+On `map-client/e24-m3-t7b2`, the user present: the agent's cut by area (F1 and F6, then F3 and
+F5) declined, all 24 findings in one task. The original data staged from the user's repo folder
+first; the setup's baseline ran while the first fixes were made in the same tree (its coverage
+step built a mix, so its failure says nothing): CI's green run on `master`'s client code (#619)
+the starting point.
+
+The outcome of each finding (the review's files on `map-client/e24-m3-t7-review`):
+
+- **F1-1** fixed: a text item's clip and a label's colour saturate (`h3_ui::paint::draw`), as the
+  picture's arm and `reach`; a test draws both at the integers' end.
+- **F1-2** done by T7b1 (F2-2: `Pen::minimap` cuts the tiles to the area).
+- **F1-3** fixed as docs: `finish`'s comment says the points drawn are the recording's (the
+  original's refused step zeroes them in the step's own call chain, 0x480864); nothing sets them,
+  since a message ending the walk before the red step would leave the original's points.
+- **F1-4** fixed: `Loop::minimap` dropped; `draw` keeps `drawn.minimap`, which only
+  `draw_minimap` writes.
+- **F1-5** fixed: `choose` compares the kind asked first and clones only the window built;
+  `Painter::view` compares the draw and buttons by reference, cloning only on a miss.
+- **F3-1** fixed: a quest's hero -1 reads as none (`Mission::DefeatHero(Option<(u8, bool)>)`,
+  `BeHero` likewise), its text empty there (MCL-Q21 (a)); an own flag other than 0 or 1 refused.
+- **F3-2** noted (MCL-Q27 (a)): `hover.rs`'s case 54 off its entrance, its test, design §4.10.
+- **F3-3** fixed: `h3_ui::text::Catalogue::known` (additive: none for a key no pack has); the
+  data-named lookups (a hero, a class, a town's name and type, a creature, an artifact, a spell,
+  a skill) give the empty text past the catalogue's family, as MCL-Q21 (a).
+- **F3-4**, **F3-5**, **F3-6** fixed: §4.10's 55 cases; the Arena test's comment; `cursor.rs`'s
+  module doc (only `Cursor::new`'s default is provisional).
+- **F5-1** fixed: a run's start releases the hotkeys and the button too, before its staging
+  (xdotool's failure harmless with no display yet); the runbook's line.
+- **F5-2** fixed: `write_visit` reads and writes the word of a hero or boat on the entrance in
+  its record (+0x14), as `hover` reads it. No situation puts one there (not exercised).
+- **F5-3** fixed: `write_content`'s hero write refused outside the spell's 0..70 or the skill's
+  0..28, as `contents` reads them.
+- **F5-4** fixed: `choose_each` waits for the status window's name item (2002,
+  `Mem.status_name`; `Mem.town_name`) to name the hero or town chosen.
+- **F5-5** fixed: a pointer in a scroll zone (within 16 pixels of the screen's left or top side)
+  is left out of `look_over_view`.
+- **F5-6** fixed: the parser's owner check takes `HeroSpec::written` (the status window's facts
+  are Red's alone); `lists` writes an army or garrison only when not empty, as the parser counts
+  it. No committed situation had either.
+- **F5-7** fixed: the button paired as the keys in both parsers (`sequence_inputs`,
+  `Sequence::actions`): no release without a press, no press or click while it is held.
+- **F5-8** fixed: `town_defended`'s summary (+0x10 the visiting hero, +0xC the garrison hero, read
+  again in the executable), the harness's `hover` (the constants, `TOWN_VISITING_HERO`) and
+  design §4.10's cursor line; the behaviour unchanged.
+- **F5-9** done by T7a.
+- **F6-1** fixed: `Dialog::shadow_draws` saturates; `h3_render::blit::darken` cuts its rectangle
+  to the screen before the loop (the same pixels; a crafted `i32::MAX` shadow no longer loops).
+- **F6-2** declined: the tables' load refuses a `frames` that is not one a picture already
+  (`StatusArt::check`, tested); the gate's zip noted so.
+- **F6-3** fixed: `every_pixel_a_drawer_changes_lies_inside_its_reach` draws each kind (texts with
+  negative spaces first, inside and last, lines wider than the box, every alignment, both
+  profiles; a mirrored button whose frame fills part of its canvas; pictures; a darkening) on a
+  sentinel screen; it fails with the overhangs left out of `text_reach`.
+- **F6-4** fixed: the gate asks `cprsmall.def` for `stack + status::ARMY_CREATURES` frames (149:
+  creatures 0 to 148; the installation's DEF holds a blank, an unknown and those 149, 151 frames).
+- **F6-5** fixed as docs: `Report::skipped` and the summary's "times a later one shown instead".
+
+- **Checked:** the new reach test fails with the overhangs undone; `drawn` all the same (50
+  situations, every sequence); under Wine `hover-teach` (the visits with a hero's own, F5-3) and
+  `choose-lists` (F5-4, F5-1) every frame exact (45, 54), only the new game's draws in `screen`
+  and `points` lines changed (TRAPS: no regression, the committed recordings kept); the first
+  `choose-lists` run timed out once in the look's last wait (the bar read "Adventure Options"),
+  the second passed; `check.sh` all gates; the scoped verify with original data.

@@ -91,6 +91,14 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-31 (the map client lane, E24 M3 T7b2, the review's fixes; for information, nothing to
+  do): four changes in the common crates. `h3_ui::paint::draw` saturates a text item's clip and
+  a label's colour, and `h3_ui::ui::Dialog::shadow_draws` its strips (a crafted layout at the
+  integers' end panicked: the release build checks overflow); `h3_render::blit::darken` cuts its
+  rectangle to the screen before its loop (the same pixels); `h3_ui::text::Catalogue::known` is
+  new (additive: none for a key no pack has; `text` calls it). Every drawn frame is the same.
+  A test now checks that every pixel a drawer changes lies inside `paint::reach`.
+
 - 2026-10-30 (the map client lane, E24 M3 T6b3; for the battle window's sound when next touched):
   the common crates gained the original's sound without the focus (`docs/epics/E24-design.md`
   §4.15: `sound_focus_lost` 0x599C40 and `sound_focus_regained` 0x599B90, the same sound manager

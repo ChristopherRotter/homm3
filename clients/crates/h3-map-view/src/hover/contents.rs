@@ -95,8 +95,9 @@ pub enum Mission {
     Level(u32),
     /// 2: the primary skills (+0x40, four signed bytes): those above 0 named.
     Skills([i8; 4]),
-    /// 3: defeat a hero (+0x44): its record's index and whether its name is the map's own.
-    DefeatHero(u8, bool),
+    /// 3: defeat a hero (+0x44): its record's index and whether its name is the map's own; none
+    /// for the index -1, a quest without its hero (MCL-Q21 (a): nothing shown; T7b2, F3-1).
+    DefeatHero(Option<(u8, bool)>),
     /// 4: defeat a monster (+0x48): its creature.
     DefeatMonster(u32),
     /// 5: bring artifacts (+0x44's vector).
@@ -105,8 +106,8 @@ pub enum Mission {
     Creatures(Vec<(u32, u32)>),
     /// 7: bring resources (+0x40, seven): those above 0 named.
     Resources([i32; 7]),
-    /// 8: be a hero (+0x40): its index and own name.
-    BeHero(u8, bool),
+    /// 8: be a hero (+0x40): its index and own name; none for -1, as [`Mission::DefeatHero`].
+    BeHero(Option<(u8, bool)>),
     /// 9: belong to a colour (+0x40).
     BePlayer(u8),
 }
@@ -240,7 +241,10 @@ fn mission(kind: u8, values: &[i64], pairs: Vec<(u32, u32)>) -> Option<Mission> 
     };
     let byte = |v: i64| u8::try_from(v).ok();
     let hero = |values: &[i64]| match values {
-        &[id, own] => Some((byte(id)?, (0..2).contains(&own).then_some(own == 1)?)),
+        &[id, own] if (0..2).contains(&own) => match id {
+            -1 => Some(None),
+            _ => Some(Some((byte(id)?, own == 1))),
+        },
         _ => None,
     };
     Some(match kind {
@@ -253,10 +257,7 @@ fn mission(kind: u8, values: &[i64], pairs: Vec<(u32, u32)>) -> Option<Mission> 
                 .try_into()
                 .ok()?,
         ),
-        3 => {
-            let (id, own) = hero(values)?;
-            Mission::DefeatHero(id, own)
-        }
+        3 => Mission::DefeatHero(hero(values)?),
         4 => Mission::DefeatMonster(u32::try_from(one(values)?).ok()?),
         5 => Mission::Artifacts(
             values
@@ -273,10 +274,7 @@ fn mission(kind: u8, values: &[i64], pairs: Vec<(u32, u32)>) -> Option<Mission> 
                 .try_into()
                 .ok()?,
         ),
-        8 => {
-            let (id, own) = hero(values)?;
-            Mission::BeHero(id, own)
-        }
+        8 => Mission::BeHero(hero(values)?),
         9 => Mission::BePlayer(byte(one(values)?)?),
         _ => return None,
     })
@@ -388,21 +386,30 @@ fn more(texts: &Catalogue, text: &str) -> String {
     texts.text("map.hint.more", &Args::new().text("text", text))
 }
 
-/// A creature's name: its plural, or its singular for one (`count`); empty past the last named.
+/// A creature's name: its plural, or its singular for one (`count`); empty past the last named
+/// or past the catalogue's family (T7b2, F3-3).
 fn creature(texts: &Catalogue, id: u32, count: u32) -> String {
     if id <= LAST_CREATURE {
         let args = Args::new().count(i64::from(count));
-        texts.text(&alloc::format!("creature.{id}"), &args)
+        texts
+            .known(&alloc::format!("creature.{id}"), &args)
+            .unwrap_or_default()
     } else {
         String::new()
     }
+}
+
+/// A family's entry named by data (a hero, an artifact, a spell, a skill): empty when the
+/// catalogue has none (MCL-Q21 (a); T7b2, F3-3).
+fn named(texts: &Catalogue, key: &str) -> String {
+    texts.known(key, &Args::new()).unwrap_or_default()
 }
 
 /// A hero's name: the map's own when it has one, else its type's.
 fn hero_name(names: &BTreeMap<u8, String>, texts: &Catalogue, id: u8, own: bool) -> String {
     match names.get(&id) {
         Some(name) if own => name.clone(),
-        _ => texts.text(&hero_key(id), &Args::new()),
+        _ => named(texts, &hero_key(id)),
     }
 }
 
@@ -472,14 +479,15 @@ pub fn quest_text(
                 .collect();
             joined(texts, &items)
         }
-        Mission::DefeatHero(id, own) | Mission::BeHero(id, own) => {
+        Mission::DefeatHero(Some((id, own))) | Mission::BeHero(Some((id, own))) => {
             hero_name(names, texts, *id, *own)
         }
+        Mission::DefeatHero(None) | Mission::BeHero(None) => String::new(),
         Mission::DefeatMonster(c) => creature(texts, *c, 2),
         Mission::Artifacts(a) => {
             let items: Vec<String> = a
                 .iter()
-                .map(|&id| texts.text(&alloc::format!("artifact.{id}"), &Args::new()))
+                .map(|&id| named(texts, &alloc::format!("artifact.{id}")))
                 .collect();
             joined(texts, &items)
         }
@@ -609,7 +617,7 @@ pub fn text(hint: &Hint, names: &BTreeMap<u8, String>, texts: &Catalogue) -> Str
             let mut text = object(*class);
             match teach {
                 Some(Teach::Spell(spell, known)) => {
-                    let name = plain(&alloc::format!("spell.{spell}"));
+                    let name = named(texts, &alloc::format!("spell.{spell}"));
                     let args = Args::new().text("name", &name);
                     text.push_str(&more(texts, &texts.text("map.hint.learn-spell", &args)));
                     if *known {
@@ -617,7 +625,7 @@ pub fn text(hint: &Hint, names: &BTreeMap<u8, String>, texts: &Catalogue) -> Str
                     }
                 }
                 Some(Teach::Skill(skill, known)) => {
-                    let name = plain(&alloc::format!("secondary-skill.{skill}"));
+                    let name = named(texts, &alloc::format!("secondary-skill.{skill}"));
                     let args = Args::new().text("name", &name);
                     text.push_str(&more(texts, &texts.text("map.hint.learn-skill", &args)));
                     if *known {

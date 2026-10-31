@@ -205,7 +205,7 @@ fn gate(options: &Options) -> Result<usize, String> {
             "creature",
             &layout.status_hero,
             status::id::STACKS,
-            usize::try_from(status.stack).unwrap_or(0) + 1,
+            usize::try_from(status.stack.saturating_add(status::ARMY_CREATURES)).unwrap_or(0),
         ),
         (
             "town picture",
@@ -248,7 +248,8 @@ fn gate(options: &Options) -> Result<usize, String> {
         }
     }
     // The date's pictures (E24 M3 T5b2): the window steps up to the tables' last frame, so each
-    // holds exactly the tables' frames in group 0.
+    // holds exactly the tables' frames in group 0. The zip leaves none out: the tables' load
+    // refuses a `frames` that is not one a picture (`StatusArt::check`; T7b2, F6-2).
     let date = &status.date;
     for (name, &frames) in std::iter::once(&date.day)
         .chain(&date.weeks)

@@ -2,11 +2,12 @@
 //! cursors since E24 M2 T2): a DEF frame drawn into the frame at the pointer (the drawn cursor) or
 //! handed to the window as an image (the hardware cursor, ADR-0024 point 4).
 //!
-//! Which frame, its hot spot and its drawer are *provisional*: the executable's cursor code is not
-//! read yet (E17 M3, the battle interface's cursors). As E17 M2 T2's spikes showed it:
+//! Both viewers' cursors are [`Cursor::read`]'s: the mouse manager's drawer as read (0x50D8B0,
+//! E17 M3 T6c-1), the frames and hot spots from each viewer's tables (the map's from its layout's
+//! `[cursor]`). Only [`Cursor::new`]'s default is *provisional*, as E17 M2 T2's spikes showed it:
 //! [`DEFAULT`]'s first frame, its hot spot at the canvas's top-left corner, index 0 and the keyed
-//! indices not drawn (here: the battle's drawer without an outline, so a shadow would darken what
-//! is under it).
+//! indices not drawn (the battle's drawer without an outline, so a shadow would darken what is
+//! under it).
 
 use alloc::vec::Vec;
 

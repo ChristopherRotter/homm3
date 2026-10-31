@@ -4,6 +4,24 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-31 (this lane, E24 M3 T7b2): the agent's cut by area declined by the user, all 24
+  findings in one task. Done: the log's "M3 T7b2". Its entry as it was:
+
+  ### E24 M3 T7b2 — the panels', the mouse-over's, the harness's and the rest's findings fixed
+
+  - **Scope:** the findings of F1 (the panels), F3 (the mouse-over; F3-2 answered as MCL-Q27, the
+    empty bar kept: noted in `hover.rs`, its test and design §4.10), F5 (the harness; F5-9 done by
+    T7a) and F6 (the rest) on the branch `map-client/e24-m3-t7-review`
+    (`docs/lanes/map-client/review-m3/`: its README's summary first), each checked, then fixed,
+    queued for M3's review list, turned into an `MCL-Q<n>` or declined with why (T7b1's log entry
+    the model); the harness's fixes checked against the original under Wine
+    (`clients/capture/setup.sh` first); the captures a fix changes recorded again (`drawn` first).
+    Cut with the user at its start if it outgrows half a context (by area: F1 and F6, then F3 and
+    F5).
+  - **Acceptance:** every finding has an outcome in the log (the review's folder is not merged);
+    `drawn` all the same; the scoped verify and `check.sh` pass.
+  - **Depends on:** T7b1 (done). **Status:** ready.
+
 - 2026-10-31 (this lane, E24 M3 T7b1): T7b cut with the user into T7b1 (F2 and F4, MCL-Q25) and
   T7b2 (F1, F3, F5, F6). Done: the log's "M3 T7b1". Its entry as it was:
 

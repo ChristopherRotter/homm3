@@ -584,8 +584,14 @@ fn the_catalogue_looks_up_by_priority_and_form() {
     assert_eq!(c.text("pronoun", &Args::new()), "pronoun");
     // A family's names.
     assert_eq!(c.text("creature.base:imp", &Args::new().count(2)), "Imps");
-    // An unknown key shows itself.
+    // An unknown key shows itself; `known` gives none for it (T7b2, F3-3).
     assert_eq!(c.text("no.such.key", &Args::new()), "no.such.key");
+    assert_eq!(c.known("no.such.key", &Args::new()), None);
+    assert_eq!(
+        c.known("creature.base:imp", &Args::new().count(2))
+            .as_deref(),
+        Some("Imps")
+    );
 }
 
 #[test]

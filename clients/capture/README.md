@@ -806,7 +806,8 @@ scroll's 70 ms run from its own last time, which `edge_scroll` sets to the clock
 while the pointer lies outside the zones (0x419978): the parked pointer aligns it, `frames`
 writes nothing there (M2 T6a: it did, to no effect). A key name is one of the eight above, with
 `ctrl+` or not, checked before the run (xdotool only warns about a name it does not know); a key
-a killed run left down is released at the next run's start.
+(the hotkeys too) or the button a killed run left down is released at the next run's start,
+before its staging.
 The display's key repeat is off (`xset r off`, which `setup.sh` installs): it repeats a held key
 in real time, which a step spans many times over; a key a sequence leaves down is released when
 it ends. The timeline has the cursor since T1a2 (`<ms> cursor <type> <frame> <x> <y>`,

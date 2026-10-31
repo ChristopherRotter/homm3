@@ -652,7 +652,7 @@ fn refuses_heroes_and_boats_it_cannot_write() {
         (
             "{ at = [1, 1], owner = 1, path = [2, 2] }, { at = [3, 3] }",
             "",
-            "hero at [1, 1]: only Red's heroes walk, show a path or have points or mana written",
+            "hero at [1, 1]: only Red's heroes walk, show a path or have anything written",
         ),
         (
             "{ at = [1, 1], path = [2, 2] }, { at = [3, 3], path = [4, 4] }",
@@ -692,7 +692,7 @@ fn refuses_heroes_and_boats_it_cannot_write() {
         (
             "{ at = [1, 1], owner = 1, walk = [[2, 2]] }",
             "",
-            "hero at [1, 1]: only Red's heroes walk, show a path or have points or mana written",
+            "hero at [1, 1]: only Red's heroes walk, show a path or have anything written",
         ),
         (
             two,
@@ -702,12 +702,23 @@ fn refuses_heroes_and_boats_it_cannot_write() {
         (
             "{ at = [1, 1] }, { at = [3, 3], owner = 1, points = 5 }",
             "",
-            "hero at [3, 3]: only Red's heroes walk, show a path or have points or mana written",
+            "hero at [3, 3]: only Red's heroes walk, show a path or have anything written",
         ),
         (
             "{ at = [1, 1] }, { at = [3, 3], owner = 1, mana = 5 }",
             "",
-            "hero at [3, 3]: only Red's heroes walk, show a path or have points or mana written",
+            "hero at [3, 3]: only Red's heroes walk, show a path or have anything written",
+        ),
+        // T7b2 (F5-6): the status window's facts are Red's alone too.
+        (
+            "{ at = [1, 1] }, { at = [3, 3], owner = 1, morale = 1 }",
+            "",
+            "hero at [3, 3]: only Red's heroes walk, show a path or have anything written",
+        ),
+        (
+            "{ at = [1, 1] }, { at = [3, 3], owner = 1, army = [[0, 1]] }",
+            "",
+            "hero at [3, 3]: only Red's heroes walk, show a path or have anything written",
         ),
         (
             two,

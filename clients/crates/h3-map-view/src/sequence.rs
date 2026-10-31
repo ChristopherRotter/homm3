@@ -177,13 +177,15 @@ impl Sequence {
 
     /// The actions at their milliseconds, checked as the harness checks them (`h3map.py`'s
     /// `sequence_inputs`): each input one kind at 1 to `ms`, in time order, a key released only
-    /// once pressed; here also a key the map takes (a direction key, with or without Ctrl).
+    /// once pressed, the button likewise (no press or click while it is held: E24 M3 T7b2,
+    /// F5-7); here also a key the map takes (a direction key, with or without Ctrl).
     ///
     /// # Errors
     /// What breaks a rule.
     pub fn actions(&self) -> Result<BTreeMap<u32, Vec<Action>>, String> {
         let mut actions: BTreeMap<u32, Vec<Action>> = BTreeMap::new();
         let mut down: Vec<&str> = Vec::new();
+        let mut held = false;
         let mut last = 1;
         for input in &self.inputs {
             let failed = |why: &str| format!("{}: the input at {}: {why}", self.id, input.at);
@@ -202,6 +204,15 @@ impl Sequence {
                 return Err(failed(&format!("out of order or outside 1 to {}", self.ms)));
             }
             last = input.at;
+            if input.release.is_some() && !held {
+                return Err(failed("the button released, never pressed"));
+            }
+            if (input.press.is_some() || input.click.is_some()) && held {
+                return Err(failed("the button pressed while it is held"));
+            }
+            if input.press.is_some() || input.release.is_some() {
+                held = input.press.is_some();
+            }
             let action = if let Some(name) = &input.keydown {
                 down.push(name);
                 match (key(name), hotkey(name)) {
