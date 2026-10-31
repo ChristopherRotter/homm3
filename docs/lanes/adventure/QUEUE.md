@@ -38,6 +38,24 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-10-31 (the map client lane, E24 M4 T0; **for the views, before E24 M4 T3**; your archive's
+  note (3) of 2026-10-23, "refined with you at M4"): the map viewer takes the static art from the
+  raw `.h3m` and the live part from the game's observation, through `h3-protocol` (the user, M4
+  T0: ADR-0020 point 8 kept; the server lane maps it, its inbox the same day). It needs from
+  you: (1) **an object identity:** each `ObjectView`, and each event that names an object
+  (`ObjectRemoved` and the rest), naming its object in the map's list (`RawMap`'s objects, the
+  order the viewer draws them in; the map is public, so its index reveals nothing the file does
+  not), and an object added in play (T83b2a) an identity of its own (what it may reveal is your
+  call, `docs/06-security.md`); (2) a random object's type as drawn, for every random kind the
+  import supports (a random resource's is `object_type` today); (3) **MCL-Q21 (b)** (the user,
+  2026-10-31): the import refuses a map whose data names nothing a hint can show, as A-31
+  refuses an empty resource set: a Border Guard's, a Keymaster's Tent's or a Border Gate's
+  colour past the eight, a resource's subclass past the seven, a dwelling's kind past its table,
+  a seer's name past its table, a defeat-hero quest whose hero is −1 (the editor never writes
+  them, a crafted map can; E24 design §4.12); tell this lane which you refuse already. Nothing
+  is needed before the server lane's whole-game record exists; increment 9's views (your T83b2b,
+  T85) are read by the same task.
+
 - 2026-10-31 (the client lane, E17 M5 T8b2, review R7-8; for information, nothing to do): the
   harness checks the starting bonus Gold it sets. `h3drive.gold_bonus` (a recipe's `gold = true`,
   `h3adv.to_hot_seat(..., gold=True)`) reads the scenario list's rows in memory

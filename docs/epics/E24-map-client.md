@@ -3,8 +3,8 @@
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
 user); **M2 closed** (2026-10-28, T6b2c: the user's hand test, the review list accepted at
-T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); M3 T1a to T7c1 built (2026-10-28 to
-2026-10-31; M3's review list accepted at T7c1); next M3 T7c2, then M4 T0
+T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); **M3 closed** (2026-10-31, T7c2: the
+review list accepted at T7c1); **M4 refined** (2026-10-31, M4 T0, with the user); next M4 T1
 (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
@@ -107,30 +107,90 @@ memory in a recording and from the engine from M4; only the clicks that change t
 every other button showing its press (its dialog or the engine's action: M4, M5); the cursor
 over the map from given inputs (the tile's contents, the path's reach), never computed by the
 client; MCL-Q22's, Q24's and Q28's fixes the client's, the original's behind `--bugs original`
-(MCL-Q14, Q15 and Q21's follow-ups: "Later"). The 50 situations and the 35 sequences are exact
+(MCL-Q14, Q15 and Q21's follow-ups: M4's). The 50 situations and the 35 sequences are exact
 on the whole screen; a change to the viewer runs `h3map.py drawn` first.
+
+### M4 — the engine's games shown (refined 2026-10-31, M4 T0, with the user)
+
+A whole game the engine played, shown in the window as the original shows it to one player: the
+original's own reactions to a game's events read and recorded first (its memory the live part,
+as in M1 to M3), then the engine's records as the input, through `h3-protocol` (ADR-0020 point
+8); its battles handed to the battle client's viewer in the same window.
+
+- **Scope:** **Part A, the original's reactions, no engine needed:** the turn's change (T1: End
+  Turn's action and its question when a hero can still move; the turn's end and the next
+  player's start; the new day's, week's and month's steps and messages; another player's turn,
+  the status window's kind 5, `AdStatNx.pcx`, the hourglass, 0x453250, with its tile, hint and
+  cursors, 0x40DEB0; a computer player's moves where the viewer sees them); a visit's results
+  (T2: the adventure's message box, its text, pictures, buttons and sounds, for the finds and
+  questions the engine's visits make, the level-up's choice among them; a resource found, kind
+  6, 0x451220, 5 seconds; a text, kind 7, 0x451820, design §4.8; an object taken or a monster
+  beaten, the map, the minimap and the panels redrawn; a flag raised; a boat boarded and left; a
+  spell cast on the map recorded, MCL-Q14). **Part B, the engine's games through the protocol's
+  whole-game record:** a record's start (T3: the static art from the map it names, the live part
+  from its first observation: each object by its identity, a random object's type, the owners,
+  the heroes, the boats, the explored tiles, the kingdom, a hero's status, the hover's facts; a
+  town's own name from the map); a record played over time (T4: each event as Part A built it,
+  the walks along the engine's paths as M2's, the record's answers in its boxes, the viewer's
+  controls). **Part C:** the battles handed over and back (T5). The closure (T6). **Not in M4:**
+  the hero, town, meeting and kingdom-overview screens, the quest log and every dialog but the
+  message boxes (M5); play (M5); a spectator's view; shipped maps with towns (E09: of the 160,
+  the engine plays 8 whole, 128 stop at a hero generated at a main town; M4's games are on those
+  8 and the writer's maps); a loaded saved game's draw lists (the objects gone before the save:
+  not read, M1 T6b).
+- **Decisions (the user, M4 T0, 2026-10-31; every recommendation taken):**
+  - **The input through the protocol, the server lane first** (ADR-0020 point 8 kept): the
+    viewer plays `h3-protocol`'s whole-game messages, and an engine replay becomes a record by
+    running the protocol's session in-process, as `h3-view render` does for a battle. The
+    protocol has none yet (it does not depend on `h3-game`): the server lane builds the whole
+    game's wire messages, a session hosting one game in-process and its per-viewer record first,
+    as the start of E16 M5, refined with the user there (its inbox lists this lane's needs);
+    Part A, which needs no engine, runs meanwhile. Rejected: the engine read directly with
+    ADR-0020 amended (two input paths until the protocol's), this lane writing the protocol's
+    adventure part (the server lane's crate).
+  - **One player's view:** a record shows the game as the original shows it to that record's
+    player: its fog, its own turns as played (the walks along the engine's paths, its message
+    boxes with the answers the record holds), the other players' turns as the original shows a
+    computer player's (the status window's kind 5, their moves where the player sees them). A
+    spectator's view later (`h3_game::Viewer`'s spectator, the server lane's).
+  - **The message boxes only:** the adventure's message boxes and questions (a find, a guard's
+    question, the week's and month's messages, a level-up's choice), each with the answer the
+    record holds, as the original shows them to that player; the hero's, a town's, a meeting's
+    and the kingdom overview's screens stay M5's.
+  - **The battles in the same window:** the battle client's viewer draws a battle of the game in
+    the map viewer's window, as the original switches screens, and hands back with the result
+    applied on the map. The client lane turns its battle window into a library entry the map
+    viewer hosts (its inbox); built late in M4 (T5).
+  - **From M3's answers:** MCL-Q15 (b), since the engine's treasury reaches 2³¹ − 1
+    (`h3_adventure::MAX_GAIN`), past the bar's seven digits: the client writes a wider amount so
+    that it fits, its form a review item, the original's behind `--bugs original` (T3); MCL-Q21
+    (b): a map whose hints would name nothing is refused at the engine's import (the adventure
+    lane's inbox has the cases) and at the viewer's load (T3); MCL-Q14: a cast recorded in the
+    original first (T2), the fix if the stale bar shows.
+- **Recorded and compared as M1 to M3:** Part A's new situations and sequences exact on the whole
+  screen (`drawn` with them); Part B: the engine's start drawn as the original's on the maps both
+  play, and scripted games (the same commands, no random draw between them) played in the engine
+  and in the original compared frame by frame, the original's visual moment (the objects'
+  phases, the clock) taken from its recording.
+- **Tasks** (the queue has each in full): T0, M4 refined (**done** 2026-10-31); T1, the turn's
+  change; T2, a visit's results; T3, a record's start (after the server lane's whole-game record
+  and the adventure lane's object identity); T4, a record played; T5, the battles handed over
+  (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
+  with the user.
+- **Exit:** Part A's situations and sequences exact on the whole screen (or each difference an
+  `MCL-Q<n>`); the engine's starts and scripted games equal to the original's frames; a golden
+  adventure replay, as the protocol's record, viewable from start to end in the window with its
+  message boxes and its battles; M4's review list accepted; a hand test on the user's machine
+  (the map's sound by ear on a whole map, the user at M2 T4b2: the transitions sounded unclean;
+  MCL-Q11's `HORSE20` to `HORSE29` listened to for its (c)).
 
 ### Later (refined when they come)
 
-- **M4, the engine's games shown:** a whole game's record and replay viewer; the live part from
-  the engine (`h3_game`'s observation needs an object identity matching the map's object list:
-  the adventure lane's inbox), the protocol's adventure messages (the server lane, E16); a battle
-  handed to the battle client's viewer (CLT-Q4's background variant and CLT-Q6's colours then
-  come from the map); a loaded saved game's draw lists (the objects gone before the save: not
-  read, M1 T6b); the map's sound compared by ear with the original's on a whole map (the user,
-  at M2 T4b2: the transitions sounded unclean, perhaps the lag's doing; the harness's recordings
-  have no sound); the nine step sounds the original ships but never plays (`HORSE20` to `HORSE29`,
-  perhaps the roads') as a sound option once their purpose is known (MCL-Q11); the status
-  window's kinds the engine's turns and events set off (the user, 2026-10-29, at M3 T5b's cut):
-  another player's turn (5: `AdStatNx.pcx`, the hourglass, 0x453250), a resource found (6:
-  0x451220, 5 seconds) and a text (7: 0x451820; E24 design §4.8); a town's own name from the map
-  (the harness refuses one until then); from M3's answers (T7c1): a spell cast on the map recorded
-  first, then MCL-Q14's stale mana bar shown whole by the client if the original leaves it; the
-  engine's resource amounts against the bar's seven digits (MCL-Q15, (b) if they can pass them);
-  a map whose hints would name nothing refused at the import (MCL-Q21 (b)).
 - **M5, hot seat:** whole games played in-process: the handover screen when the player who must
   act changes, the level-up dialog (the inbox), the hero and town screens as play needs them;
   then live play against the server.
+- A spectator's view of a game (M4 T0); a loaded saved game's draw lists, if a comparison needs
+  one (M1 T6b); shipped maps with towns once E09 builds them.
 - HD layouts, graphics options beyond `faithful`, video.
 
 ## Research items from the asset notes
@@ -149,8 +209,13 @@ on the whole screen; a change to the viewer runs `h3map.py drawn` first.
   the battle's (T3b2: it does); the palette step is read from memory, the menus run in real time.
 - **Random objects drawn in real time** (above): the comparisons depend on reading them from the
   original's memory.
-- **The engine lags the viewer:** 5 of 160 shipped maps import whole, and the observation has no
-  object identity; nothing before M4 needs either.
+- **The engine lags the viewer:** 8 of 160 shipped maps import whole (128 wait for towns, E09),
+  the observation has no object identity, and the protocol has no whole game: M4's Part B waits
+  for the last two (the adventure and server lanes' inboxes), Part A needs none.
+- **The engine's games against the original** (M4): only what no random draw separates compares
+  frame by frame (scripted commands on maps without random objects between them); a computer
+  player's moves cannot be scripted in the original, so its turn is compared by what the viewer
+  sees of it, not by its choices.
 - **The writer belongs to another lane:** each addition is a `cross-lane` pull request; a
   situation waits for its merge.
 - **Wine is not Windows** (E17's risk): a difference only Wine could cause needs a check on

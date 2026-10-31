@@ -10,6 +10,26 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 
 ## Inbox
 
+- 2026-10-31 (the map client lane, E24 M4 T0; **for E16 M5, the whole game: the user's order**):
+  the map viewer shows the engine's whole games through `h3-protocol`, as ADR-0020 point 8 says
+  (a record file and a live connection through the same code; an engine replay becomes a record
+  by running the session in-process). The user (M4 T0) chose that the server lane builds this
+  first, as the start of E16 M5, refined with the user there: the whole game's wire messages
+  (the observation projected per viewer, its adventure part, players, kingdom and decisions; the
+  events; the commands and answers), a session hosting one game in-process, and its per-viewer
+  record, so that a golden adventure replay (`fixtures/replays/adventure/`) becomes a record as
+  `h3-view render` makes one of a battle scenario. Seats over the network, timers and the rest of
+  M5 can follow. What the viewer reads (E24 M4 T3, T4; `h3_map_view::live` is its model): each
+  object by an identity matching the map's object list (the adventure lane's inbox, the same
+  day), its type (a random object's as drawn), its owner, a monster's view, increment 9's views;
+  the heroes (class, owner, tile, boat), the empty boats, the explored tiles; the viewer's
+  kingdom (its heroes with their movement and mana and whether each can move, its towns, the
+  resources, the date and the month); a hero's status (primary skills, morale, luck, army); the
+  events as the viewer sees them (each step, the reveals, the removals, the gains, the turns,
+  days, weeks and months, the decisions opened and answered, the battles with their own battle
+  messages, which the battle client's viewer draws). Until then the map client lane works on what
+  needs no engine (M4 T1, T2).
+
 - 2026-10-29 (the client lane, E17 M5 T5a, `cross-lane` with the user's consent; **done in your
   crate, for you to review**): the event `NotCreated { side, creature, count, original }` (a
   clone or summoned stack without a place, BAT-MAG-037) mapped onto the wire; `PROTOCOL_VERSION`
