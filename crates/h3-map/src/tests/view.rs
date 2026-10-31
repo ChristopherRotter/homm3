@@ -398,7 +398,7 @@ fn check_told(
         DecisionView::Offer(o) => Open::Offer(o.hero, o.object_type, o.anchor),
         DecisionView::LevelUp(view) => Open::LevelUp(*view),
         DecisionView::Meeting { heroes } => Open::Meeting(*heroes),
-        DecisionView::ArmyDialog { hero, group } => Open::Dialog(*hero, group.clone()),
+        DecisionView::ArmyDialog { hero, group, .. } => Open::Dialog(*hero, group.clone()),
         DecisionView::Choice(c) => Open::Choice(c.hero, c.object_type, c.anchor),
         DecisionView::University { visit: v, .. } => {
             Open::University(v.hero, v.object_type, v.anchor)
@@ -406,6 +406,8 @@ fn check_told(
     };
     // E08 T51b: the group of the army dialog the viewer is told closed, whose stacks are lost.
     let mut lost: Vec<ArmyStack> = Vec::new();
+    // E08 T84a: the objects the viewer is told were flagged or whose guards' hint changed.
+    let mut flagged = Vec::new();
     let mut decision = before.decision.as_ref().map(named);
     let mut bought = before.adventure.bought.clone();
     let mut keys = before.adventure.keys;
@@ -528,6 +530,25 @@ fn check_told(
                     .any(|h| h.id == hero && h.details.is_some());
                 prop_assert!(own, "{:?} of a hero not the viewer's", event);
             }
+            // E08 T84a: a flag and a mine's guards' hint, told to the players that see the object
+            // (and the flag to its new owner): its owner, production and guards may change.
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::ObjectFlagged {
+                        object_type,
+                        anchor,
+                        ..
+                    }
+                    | AdventureEventKind::GuardsChanged {
+                        object_type,
+                        anchor,
+                        ..
+                    },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                flagged.push((object_type, anchor));
+            }
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::MonsterChanged {
@@ -610,7 +631,7 @@ fn check_told(
                 prop_assert_eq!(player, viewer);
                 match &mut decision {
                     Some(Open::Dialog(open, group))
-                        if *open == hero && group.last().is_some_and(|s| s.slot < stack.slot) =>
+                        if *open == hero && group.last().is_none_or(|s| s.slot < stack.slot) =>
                     {
                         group.push(stack);
                     }
@@ -619,6 +640,13 @@ fn check_told(
                         decision = Some(Open::Dialog(hero, vec![stack]));
                     }
                 }
+            }
+            // E08 T84a: an own mine's Leave Guards dialog opens as the viewer's army dialog, its
+            // guards following as its stacks (none for a mine without guards).
+            GameEvent::LeaveGuardsOpened { player, hero, .. } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some(Open::Dialog(hero, Vec::new()));
             }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, viewer);
@@ -831,7 +859,8 @@ fn check_told(
             told.as_ref().map_or_else(
                 || after.adventure.objects.contains(object),
                 |now| after.adventure.objects.contains(now)
-            ) || removed.contains(&named(object)),
+            ) || removed.contains(&named(object))
+                || flagged.contains(&named(object)),
             "{:?} left untold",
             object
         );

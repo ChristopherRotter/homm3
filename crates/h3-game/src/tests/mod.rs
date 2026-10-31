@@ -15,6 +15,7 @@ mod legal;
 mod level_ups;
 mod levels;
 mod manage;
+mod mines;
 mod monsters;
 mod moves;
 mod observe;
@@ -568,6 +569,23 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 },
             ),
             entered("t:in_stone", gift(Gives::Experience(1000), vec![], false)),
+            // E08 T84a: a gold mine, and an abandoned mine of 3 to 5 gogs fought on rock.
+            entered(
+                "t:mine",
+                ObjectKindDef::Mine {
+                    resource: key("t:gold"),
+                    daily: 1000,
+                    battle_terrain: None,
+                },
+            ),
+            entered(
+                "t:abandoned",
+                ObjectKindDef::AbandonedMine {
+                    guards: key("t:gog"),
+                    count: [3, 5],
+                    battle_terrain: Some(key("t:rock")),
+                },
+            ),
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,

@@ -462,7 +462,12 @@ impl AdventureState {
     /// all stacks are of one, their stacks if the viewer is of the owner's team (`ours`); none for
     /// a mine without guards and for every other object.
     // rule: ADV-OWN-003
-    fn guards_view(&self, part: &AdventureRuleset, index: usize, ours: bool) -> Option<GuardsView> {
+    pub(crate) fn guards_view(
+        &self,
+        part: &AdventureRuleset,
+        index: usize,
+        ours: bool,
+    ) -> Option<GuardsView> {
         let army = self.mine_guards(part, index);
         let creature = army.first()?.creature;
         let total = army
@@ -571,7 +576,9 @@ impl AdventureEvent {
                 | AdventureEventKind::Boarded { .. }
                 | AdventureEventKind::Landed { .. }
                 | AdventureEventKind::MessageRead { .. }
-                | AdventureEventKind::BoatRemoved { .. } => self.kind,
+                | AdventureEventKind::BoatRemoved { .. }
+                | AdventureEventKind::ObjectFlagged { .. }
+                | AdventureEventKind::GuardsChanged { .. } => self.kind,
             },
             seen_by: alone,
         })

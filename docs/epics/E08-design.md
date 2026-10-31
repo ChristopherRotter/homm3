@@ -86,21 +86,13 @@ section's built text are in `E08-log.md` ("T83b1", "T83b2a"). Left: T85a's audit
 reads that never meet an added monster's index before its month (§19; the list in T83b2a's
 record).
 
-### 7. The owned objects' visits (ADV-OWN-001, ADV-MIN-002, ADV-OWN-005, ADV-SHY-002)
+### 7. The owned objects' visits (ADV-OWN-001, ADV-OWN-005, ADV-SHY-002)
 
-`visit_at`'s `Effect` gains `Mine`, `AbandonedMine`, `Lighthouse`, `Shipyard`. The team test is
-`allied(a, b)` = `a == b` (E10's teams change only it).
+T84a built flagging, the mines' visits and `allied` (decision 220; its record and this section's
+text as T84a found it are in `E08-log.md`, "T84a"): `Effect::Mine`, `AdventureState::flag`
+(`ObjectFlagged`, the flag radius's reveal), the Leave Guards dialog's `garrison`, the guards'
+`Fight` and `end_mine_battle`. Left for T84b, through the same `flag`:
 
-- **Flagging** (`AdventureState::flag(index, player)`): the owner written, `ObjectFlagged {
-  object_type, anchor, owner }` emitted to the players who see the object and the new owner, the
-  disk of the part's flag radius (3, decision 217) around the entrance revealed to the new owner (ADV-FOG-002's `reveal`; its
-  `TilesRevealed`). No flag for an own or allied object.
-- **A mine** (own: the outcome's `garrison: Some(index)`, which the game opens as the Leave Guards
-  dialog, §14; ally: nothing; else): with guards (`guards_of(index)` not empty) the outcome's
-  offer `OfferKind::Fight` (the guarded pile's question), answered by the game: accepted, the
-  battle (§13), whose win the game reports back as `AdventureState::end_mine_battle(index, won,
-  survivors)`: won, the guards cleared and the mine flagged; else the survivors written and no
-  flag. Without guards: flagged at once.
 - **A Lighthouse:** flagged unless own or allied; nothing else. Its effect is read by
   `day_maximum` in a boat: `lighthouse_points(owner)` = Σ over the owner's Lighthouses of their
   kind's `sea_points`, passed to `sea_day_points` (§2).
@@ -111,8 +103,6 @@ record).
   player)` (the offer re-checked by `offer_stands`: the tile still free) puts an empty boat of the
   kind's type on the tile (ADV-SEA-001's record: facing 2, the builder as owner, no captain; the
   empty boats' grid set), `BoatBuilt { tile, boat_type }` to the players who see the tile.
-- **A hero on an owned entrance** stays a hero on its tile: the step meets or fights it before
-  any object (today's rule); nothing new.
 
 ### 8. `BuildBoat` (ADV-SHY-003)
 
@@ -176,22 +166,12 @@ events of §7 to §11 carry their viewers as ADR-0016 point 6 says (T84, T85), a
 
 ## Part C — the game, the env, batch E9 and the cut
 
-### 13. The mines' battles (GAM-BAT-001 amended; ADV-MIN-002)
+### 13. The mines' battles (GAM-BAT-001 amended; ADV-MIN-002; built)
 
-- **The defender:** a neutral mine whose guards are one stack, `Defender::Monster { creature,
-  count }` (split by the game as a monster's, `ADV-QUIRK-6`'s draws; D-47, confirmed by E9-1); a neutral mine with
-  more, `Defender::Guards { army }` (unsplit, the neutral seat); an owned mine's,
-  **`Defender::Garrison { owner, army }`** (new): the side's owner the mine's, its human flag the
-  setup's (GAM-BAT-010), played by that player through `GameCommand::Battle` outside its turn as a
-  hero battle's defender (*agent's call*, confirmed by E9-2: the original hands its human owner
-  the side, each stack waiting for its order; survey §19).
-- **The terrain:** the mine type's `battle_terrain` when set (`battle_at`: crystal, gold and
-  abandoned mines on the subterranean), else the entrance tile's; special grounds as before.
-- **After:** the survivors go back to the mine (`end_mine_battle`); a win flags it for the
-  attacker's owner; a lost hero leaves the map as in any battle. The abandoned mine's win message
-  (ADVEVENT 85) and the owned mine's question text are the client's (the events carry the owner).
+T84a built it (decision 220): its record and this section's text as T84a found it are in
+`E08-log.md` ("T84a").
 
-### 14. The game (`h3-game`; game state hash v21)
+### 14. The game (`h3-game`; game state hash v21 the dialog's holder, T84a; v22 the month and events, T85)
 
 - **The setup:** `GameSetup::events: Vec<TimedEventSetup>` (§4), validated (players in range,
   known resources); the adventure setup's owners (§4).
@@ -223,11 +203,10 @@ events of §7 to §11 carry their viewers as ADR-0016 point 6 says (T84, T85), a
   `TimedEventFired { player, event }` (the owner's). Day 1's fire inside the build (no sink):
   *agent's call*, `PlayerView::events_today` (the owner's) names the events that fired at its
   turn start today, derived from the day and the setup, so a client shows day 1's too.
-- **Decisions** (ADR-0017 point 6's draft): `Decision::ArmyDialog` gains `holder: Holder { Join,
-  Mine(usize) }` (GAM-DEC-004 amended): `Close` loses a join's group as today and writes a mine's
-  back (`AdventureState::set_guards`); the hero's last stack rule holds. The mine's question and
-  the boat offer are `Decision::Offer`s; an accepted boat offer pays the price, then
-  `build_boat`. The battle with an owned mine's guards is a two-owner `Decision::Battle`.
+- **Decisions** (ADR-0017 point 6's draft): the army dialog's holder, the mine's question and
+  the two-owner battle with an owned mine's guards are built (T84a, game state hash v21; its
+  record in `E08-log.md`). Left: the boat offer is a `Decision::Offer`; an accepted boat offer
+  pays the price, then `build_boat` (T84b).
 - **`BuildBoat`** (§8): the game's `check_ready`, then `AdventureState::boat_price(player,
   object_type, anchor)` (the adventure's validation, read-only), the treasury test, then the
   command applied and the price paid.
@@ -278,8 +257,9 @@ events of §7 to §11 carry their viewers as ADR-0016 point 6 says (T84, T85), a
 | adventure state hash v17 | the static map's abandoned mines' sets (`Holds::Resources`) | T83a, done |
 | adventure ruleset part v15, adventure state hash v18 | the flag radius (decision 217); owners, guards, weekly, the draws of abandoned mines and Shipyards | T83b1, done |
 | adventure state hash v19 | the objects added in play, the monsters' fractions (decision 218) | T83b2a, done |
-| game state hash v21 | the month, the events, the dialog's holder | T85 |
-| adventure replay format v8 | `BuildBoat` | T84 |
+| game state hash v21 | the army dialog's holder (a join's or a mine's) | T84a, done |
+| game state hash v22 | the month, the events | T85 |
+| adventure replay format v8 | `BuildBoat` | T84b |
 | env action encoding v6 (the AI lane's) | `BuildBoat` | T85b (`cross-lane`) |
 
 Rule ids: survey §16 (ADV-OWN-001 to -005, ADV-MIN-001 to -003, ADV-SHY-001 to -003, ADV-WEK-001
@@ -333,7 +313,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 | 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
 | 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs (done, decision 212) |
 | 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b in two (decision 215): T83b1 the state the visits read (§6; adventure state hash v18, part v15; done), T83b2 in two (decision 218): T83b2a the fractions and the added objects (§6; adventure state hash v19; done), T83b2b the views (§12; done) |
-| 6 | **T84** | `h3-adventure` and `h3-game`: the owned objects' visits (§7), `BuildBoat` (§8), the weekly visits (§9), the mines' battles (§13), the kept dialog and the boat offer (§14); likely cut in two at its start (flagging and mines with their battles; Lighthouses, Shipyards, `BuildBoat` and the weekly visits) |
+| 6 | **T84** | `h3-adventure` and `h3-game`, in two (decision 220): T84a flagging, the mines and their battles, the kept dialog (§7, §13, §14; done); T84b the Lighthouses, Shipyards and their boat offer, `BuildBoat` and the weekly visits (§7, §8, §9, §14) |
 | 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |
 | 8 | **T86** + **T87** | T86: the economy maps, their replays and properties, the benchmarks, `--with-original-data` (§15). T87: the audit against the exit criteria, increment 9 closed, increment 10 refined |
 

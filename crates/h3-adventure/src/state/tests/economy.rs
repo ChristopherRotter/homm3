@@ -13,13 +13,13 @@ use crate::state::economy::fits;
 use crate::testing::{PEASANT, PIKEMAN, hero_at, key, movement_rules_with, started, world};
 use crate::{GuardsView, ObjectView};
 
-type Rules = (Ruleset, AdventureRuleset);
+pub(super) type Rules = (Ruleset, AdventureRuleset);
 
 const WOOD: ResourceId = ResourceId::from_raw(0);
 const GOLD: ResourceId = ResourceId::from_raw(1);
 
 /// The original's twelve offsets from a Shipyard's entrance (`shipyard_boat_offsets` 0x67FAA8).
-const OFFSETS: [(i8, i8); 12] = [
+pub(super) const OFFSETS: [(i8, i8); 12] = [
     (-2, 0),
     (2, 0),
     (-2, 1),
@@ -35,9 +35,9 @@ const OFFSETS: [(i8, i8); 12] = [
 ];
 
 /// [`crate::testing::movement_rules`] (faithful) with one object type of each of increment 9's
-/// kinds, entered and not from above, the Shipyard trying `offsets`, the part's flag radius
-/// `radius`.
-fn rules_with(offsets: &[(i8, i8)], radius: u8) -> Rules {
+/// kinds, entered and not from above, the gold and abandoned mines fought on the swamp (E08
+/// T84a), the Shipyard trying `offsets`, the part's flag radius `radius`.
+pub(super) fn rules_with(offsets: &[(i8, i8)], radius: u8) -> Rules {
     movement_rules_with(
         true,
         16,
@@ -65,7 +65,7 @@ fn rules_with(offsets: &[(i8, i8)], radius: u8) -> Rules {
                     ObjectKindDef::Mine {
                         resource: key("t:gold"),
                         daily: 1000,
-                        battle_terrain: None,
+                        battle_terrain: Some(key("t:swamp")),
                     },
                 ),
                 ty(
@@ -73,7 +73,7 @@ fn rules_with(offsets: &[(i8, i8)], radius: u8) -> Rules {
                     ObjectKindDef::AbandonedMine {
                         guards: key("t:peasant"),
                         count: [100, 200],
-                        battle_terrain: None,
+                        battle_terrain: Some(key("t:swamp")),
                     },
                 ),
                 ty(
@@ -114,12 +114,12 @@ fn rules_with(offsets: &[(i8, i8)], radius: u8) -> Rules {
     )
 }
 
-fn rules() -> Rules {
+pub(super) fn rules() -> Rules {
     rules_with(&OFFSETS, 3)
 }
 
 /// An object of type `k` on `(x, y)`, blocking and visited there.
-fn object(rules: &Rules, x: u16, y: u16, k: &str) -> ObjectSetup {
+pub(super) fn object(rules: &Rules, x: u16, y: u16, k: &str) -> ObjectSetup {
     ObjectSetup {
         scenery: Default::default(),
         anchor: Pos::new(x, y, 0),
@@ -136,7 +136,7 @@ fn object(rules: &Rules, x: u16, y: u16, k: &str) -> ObjectSetup {
 }
 
 /// An abandoned mine on `(x, 0)` that may draw `set`.
-fn abandoned(rules: &Rules, x: u16, set: Vec<ResourceId>) -> ObjectSetup {
+pub(super) fn abandoned(rules: &Rules, x: u16, set: Vec<ResourceId>) -> ObjectSetup {
     ObjectSetup {
         holds: Holds::Resources(set),
         ..object(rules, x, 0, "t:abandoned")
@@ -144,7 +144,7 @@ fn abandoned(rules: &Rules, x: u16, set: Vec<ResourceId>) -> ObjectSetup {
 }
 
 /// An object of type `k` on `(x, y)` owned by `owner`.
-fn owned(rules: &Rules, x: u16, y: u16, k: &str, owner: u8) -> ObjectSetup {
+pub(super) fn owned(rules: &Rules, x: u16, y: u16, k: &str, owner: u8) -> ObjectSetup {
     ObjectSetup {
         owner: Some(PlayerId::new(owner)),
         ..object(rules, x, y, k)
@@ -153,7 +153,7 @@ fn owned(rules: &Rules, x: u16, y: u16, k: &str, owner: u8) -> ObjectSetup {
 
 /// A grass map of `rows` with red's hero 1 on the bottom left tile and blue's hero 2 on the bottom
 /// right one, and these objects after [`world`]'s.
-fn setup(rows: &[&str], objects: Vec<ObjectSetup>) -> AdventureSetup {
+pub(super) fn setup(rows: &[&str], objects: Vec<ObjectSetup>) -> AdventureSetup {
     let (width, height) = (rows[0].len(), rows.len());
     let corner = |x: usize| {
         Pos::new(
@@ -174,7 +174,7 @@ fn setup(rows: &[&str], objects: Vec<ObjectSetup>) -> AdventureSetup {
     setup
 }
 
-const GRASS_ROWS: [&str; 8] = ["gggggggggggggggg"; 8];
+pub(super) const GRASS_ROWS: [&str; 8] = ["gggggggggggggggg"; 8];
 
 // covers: ADV-MIN-003
 #[test]

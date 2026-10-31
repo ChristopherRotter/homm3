@@ -189,8 +189,8 @@ pub enum ObjectKind {
     /// blocks nothing; no landing onto a tile it lies on (ADV-SEA-003, T73).
     Hole,
     /// A mine (E08 T83a, increment 9's design note §5; ADV-OWN-001, ADV-MIN-002): ownable,
-    /// entered; its owner gains `daily` of `resource` a day (GAM-RES-003). Its visit comes with
-    /// T84.
+    /// entered; its owner gains `daily` of `resource` a day (GAM-RES-003). Its visit since E08
+    /// T84a ([`Effect::Mine`]).
     Mine {
         /// The resource it produces.
         resource: ResourceId,
@@ -301,6 +301,9 @@ pub(crate) enum Effect<'k> {
     /// Its question at every visit, then its guards or a looted one's luck (the Pyramid,
     /// ADV-TCH-008, E08 T62b1).
     Pyramid,
+    /// Its owner's Leave Guards dialog, nothing for an ally's, else its guards asked then fought,
+    /// then its flag (a mine or an abandoned mine, ADV-OWN-001, ADV-MIN-002, E08 T84a).
+    Mine,
 }
 
 impl ObjectKind {
@@ -311,8 +314,8 @@ impl ObjectKind {
     /// guards with their offer; T15b: the gates, which are not visited by their key's holders;
     /// T20b1: the wandering monsters, whose visit is their answer; T62a: the chests, artifacts,
     /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds; T62b1: Pandora's
-    /// Box and the Pyramid; T74a: the sea's finds, which leave, and the message. Who reaches a
-    /// kind's visit is the passage's: on water only a boat (ADV-PIK-018, D-46).
+    /// Box and the Pyramid; T74a: the sea's finds, which leave, and the message; T84a: the mines
+    /// and the abandoned mines. Who reaches a kind's visit is the passage's: on water only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -333,13 +336,12 @@ impl ObjectKind {
             Self::PandoraBox => Some(Effect::PandoraBox),
             Self::Pyramid(_) => Some(Effect::Pyramid),
             Self::Message { leaves } => Some(Effect::Message(*leaves)),
+            Self::Mine { .. } | Self::AbandonedMine { .. } => Some(Effect::Mine),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
-            // kinds are typed; their visits come with T84.
+            // kinds are typed; the mines' visits came with T84a, the others' come with T84b.
             Self::Ground { .. } | Self::Event | Self::SeaGround | Self::Hole => None,
-            Self::Mine { .. }
-            | Self::AbandonedMine { .. }
-            | Self::Lighthouse { .. }
+            Self::Lighthouse { .. }
             | Self::Shipyard { .. }
             | Self::Windmill { .. }
             | Self::WaterWheel { .. }
@@ -375,6 +377,17 @@ impl ObjectKind {
             self,
             Self::Windmill { .. } | Self::WaterWheel { .. } | Self::Garden { .. }
         )
+    }
+    /// The terrain a battle on the entrance of a mine of this kind is fought on, whatever lies
+    /// under it (GAM-BAT-001 amended, E08 T84a: the original's crystal, gold and abandoned mines'
+    /// subterranean); none for a mine without one and for every other kind.
+    pub(crate) const fn battle_terrain(&self) -> Option<TerrainId> {
+        match self {
+            Self::Mine { battle_terrain, .. } | Self::AbandonedMine { battle_terrain, .. } => {
+                *battle_terrain
+            }
+            _ => None,
+        }
     }
 }
 

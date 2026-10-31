@@ -183,12 +183,16 @@ impl GameState {
     /// monster's tile's generator under `ADV-QUIRK-6` (`faithful`), else from the stream after the
     /// battle's seed and before the obstacles'. Against a guarded pile's guards (ADV-PIK-004, E08
     /// T21a) the defending side has no hero and no owner either, its army the guards' stacks as
-    /// they stand, unsplit. The battle opens as a decision of its owners (the visitor's alone
-    /// against a monster or guards), told to them with its start's events, unless it is
+    /// they stand, unsplit; since E08 T84a a mine's (ADV-MIN-002: a neutral one's single stack as a
+    /// monster's, its other guards as a pile's), and an owned mine's guards (GAM-BAT-001 amended)
+    /// defend as their owner's side without a hero, unsplit: its funds, human flag and colour the
+    /// owner's, who plays it as a hero battle's defender. The battle opens as a decision of its
+    /// owners (the visitor's alone against a monster or unowned guards), told to them with its
+    /// start's events, unless it is
     /// already over (then its outcome applies at once). A setup the battle refuses cannot come
     /// from a valid game (the armies, the heroes and the parts were checked when they were built);
     /// it would start no battle.
-    // rule: GAM-BAT-001, GAM-BAT-004, ADV-MON-009, ADV-PIK-004
+    // rule: GAM-BAT-001, GAM-BAT-004, ADV-MON-009, ADV-PIK-004, ADV-MIN-002
     pub(crate) fn start_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -199,9 +203,15 @@ impl GameState {
         let core = rules.core();
         let defending = match &start.defender {
             Defender::Hero(hero) => Some(hero),
-            Defender::Monster { .. } | Defender::Guards { .. } | Defender::Monsters { .. } => None,
+            Defender::Monster { .. }
+            | Defender::Guards { .. }
+            | Defender::Monsters { .. }
+            | Defender::Garrison { .. } => None,
         };
         let sides: [Option<&Combatant>; 2] = [Some(&start.attacker), defending];
+        // rule: ADV-MIN-002
+        // A side's owner: a hero's, or an owned mine's guards' without a hero (E08 T84a).
+        let owners = [Some(start.attacker.owner), start.defender.owner()];
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
         let funds = |owner: PlayerId| {
             resource
@@ -227,11 +237,11 @@ impl GameState {
                 .map(|details| war_machines(details, core))
                 .unwrap_or_default()
         });
-        let funds = sides.map(|side| side.map_or(0, |side| funds(side.owner)));
+        let funds = owners.map(|owner| owner.map_or(0, funds));
         // rule: GAM-BAT-010
-        let human = sides.map(|side| side.and_then(|side| self.human(side.owner)) == Some(true));
+        let human = owners.map(|owner| owner.and_then(|owner| self.human(owner)) == Some(true));
         // rule: GAM-BAT-012
-        let colours = sides.map(|side| side.and_then(|side| self.colour(side.owner)));
+        let colours = owners.map(|owner| owner.and_then(|owner| self.colour(owner)));
         // ADV-QUIRK-5 (`faithful`): the obstacles from the tile; else the stream's draw after the
         // battle's seed (and a monster's split).
         let stream = &mut self.players[player.index()].rng;
@@ -250,8 +260,8 @@ impl GameState {
                     }
                 })
             }
-            // rule: ADV-PIK-004
-            Defender::Guards { army } => army.clone(),
+            // rule: ADV-PIK-004, ADV-MIN-002
+            Defender::Guards { army } | Defender::Garrison { army, .. } => army.clone(),
             // rule: ADV-MON-012
             Defender::Monsters {
                 split: first,
@@ -299,7 +309,6 @@ impl GameState {
         };
         setup.obstacles =
             generate_setup_obstacles(rules.battle(), &setup, &mut Rng::from_seed(obstacles));
-        let owners = sides.map(|side| side.map(|side| side.owner));
         let heroes = sides.map(|side| side.map(|side| side.hero));
         let mut events = Vec::new();
         let Ok(state) = BattleState::start(rules.battle(), &setup, seed, &mut events) else {

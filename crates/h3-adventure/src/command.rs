@@ -193,6 +193,10 @@ pub struct AdventureOutcome {
     /// the monster gone as for any join; since E08 T62b1 a reward record's stacks that found none
     /// (ADV-RWD-001).
     pub no_room: Option<NoRoom>,
+    /// The Leave Guards dialog an own mine's visit opens (ADV-MIN-002, GAM-DEC-004 amended; E08
+    /// T84a): the game opens the army dialog between the hero's army and the mine's guards, whose
+    /// group its owner's `Close` keeps on the mine ([`crate::AdventureState::set_guards`]).
+    pub garrison: Option<Garrison>,
     /// What the visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): the artifacts,
     /// spells, skills, primary skills, spell points, bonuses and experience of a pickup, a
     /// teacher or a find, checked against the details the visit read; the game applies them.
@@ -378,6 +382,25 @@ pub struct NoRoom {
     pub group: Vec<ArmyStack>,
 }
 
+/// An own mine's Leave Guards dialog (ADV-MIN-002, GAM-DEC-004 amended; E08 T84a; survey
+/// `E08-economy.md` §3.3, the original's `army_dialog_with` 0x5D12B0 over the mine record's
+/// army): the visiting hero and the mine, named by its object index for the game's decision and
+/// by type and anchor for its owner's view, with its guards as they stand, by slot (none at
+/// all is a dialog too: the owner may leave guards there).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Garrison {
+    /// The visiting hero, on the mine's entrance.
+    pub hero: HeroId,
+    /// The mine's object index.
+    pub mine: usize,
+    /// The mine's type.
+    pub object_type: ObjectTypeId,
+    /// The mine's anchor.
+    pub anchor: Pos,
+    /// Its guards as they stand, by slot ([`crate::AdventureState::mine_guards`]).
+    pub guards: Vec<ArmyStack>,
+}
+
 /// A battle a visit starts (ADR-0017 points 10 and 11; GAM-BAT-001, E08 T19a): its two sides as
 /// the adventure map has them and where it is fought, from which the game builds the battle's
 /// setup.
@@ -439,6 +462,28 @@ pub enum Defender {
         /// The second creature and its stacks' counts, in order.
         fixed: (CreatureTypeId, Vec<u32>),
     },
+    /// An owned mine's guards (GAM-BAT-001 amended, ADV-MIN-002; E08 T84a): an army without a
+    /// hero, its side the mine's owner's, who plays it as a hero battle's defender, outside its
+    /// turn (the original hands its human owner the guards' side, each stack waiting for its
+    /// order: batch E9's E9-2); their stacks by slot as they stand, unsplit.
+    Garrison {
+        /// The mine's owner.
+        owner: PlayerId,
+        /// The stacks by slot.
+        army: Vec<ArmyStack>,
+    },
+}
+
+impl Defender {
+    /// The player owning the defending side: a hero's owner, an owned mine's (E08 T84a); none for
+    /// a monster's or guards' side.
+    pub const fn owner(&self) -> Option<PlayerId> {
+        match self {
+            Self::Hero(combatant) => Some(combatant.owner),
+            Self::Garrison { owner, .. } => Some(*owner),
+            Self::Monster { .. } | Self::Guards { .. } | Self::Monsters { .. } => None,
+        }
+    }
 }
 
 /// A side of a battle on the map as the adventure has it: a hero on the map, its owner, its army
@@ -523,7 +568,9 @@ pub enum OfferKind {
     Pursue,
     /// A guarded pile's question (ADV-PIK-004, E08 T21a): accepted, the hero fights its guards;
     /// declined, nothing happens. Since E08 T62a a guarded artifact's (ADV-PIK-007) and a guarded
-    /// scroll's with a text (ADV-PIK-008) too.
+    /// scroll's with a text (ADV-PIK-008) too; since E08 T84a a guarded mine's, neutral or another
+    /// player's (ADV-MIN-002: the original's ADVEVENT 84 or 187): accepted, its guards' battle, or
+    /// the flag when none stand any more.
     Fight,
     /// A once-per-hero gift's price (ADV-TCH-003, E08 T62a: the Tree of Knowledge's drawn one),
     /// each amount at least 1: accepted, the gift is given and marks the hero; declined, nothing
@@ -743,6 +790,36 @@ pub enum AdventureEventKind {
         boat: u8,
         /// The water tile it left the map from, its hero's.
         at: Pos,
+    },
+    /// An ownable object got a new owner (ADV-OWN-001, E08 T84a; increment 9's design note §7): a
+    /// visit flagged it, at once or after its guards' battle. Seen by the players that see the
+    /// object, as its removal would be ([`Self::ObjectRemoved`]), and by its new owner; named by
+    /// type and anchor, never by index (ADR-0016 point 6). Its reveal follows, told to the owner
+    /// alone ([`Self::TilesRevealed`]).
+    ObjectFlagged {
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// Its new owner.
+        owner: PlayerId,
+    },
+    /// A mine's guards' hint as every viewer sees it changed (ADV-OWN-003, ADV-MIN-002; E08 T84a):
+    /// a battle left fewer or beat them, or its owner's Leave Guards dialog changed them, and the
+    /// creature it names or the word of their total count changed, or they are gone
+    /// ([`crate::GuardsView`]'s public part). Seen by the players that see the mine, as its flag
+    /// would be ([`Self::ObjectFlagged`]); not told when the hint stays (as a monster's word,
+    /// [`Self::MonsterChanged`]). Their stacks, the owner's team's knowledge, are told to it by
+    /// the dialog's or the battle's own events.
+    GuardsChanged {
+        /// The mine's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// Their creature when all their stacks are of one; none for several or none at all.
+        creature: Option<CreatureTypeId>,
+        /// The word of their total count; none when no guards are left.
+        count_word: Option<u8>,
     },
 }
 
