@@ -3623,6 +3623,8 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
     // E08 T83b1: the owners' and the weekly objects' invariants (increment 9's design note §6).
     prop_assert!(adventure.check_owners(rules.adventure()));
     prop_assert!(adventure.check_weekly(rules.adventure()));
+    // E08 T83b2a: the monsters' fractions' and the objects added in play's invariants.
+    prop_assert!(adventure.check_added(rules.adventure()));
     for player in (0..state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let own = |hero: HeroId| {
             state

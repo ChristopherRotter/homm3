@@ -891,6 +891,7 @@ fn the_hash_sees_content_not_sharing() {
     assert_ne!(seen_by_blue.state_hash(), seen.state_hash());
 }
 
+mod added;
 mod answers;
 mod boats;
 mod day;

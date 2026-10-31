@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 28 days on the sea map (E08 T75a, increment 8: 4 boardings, 3 landings, Favorable Winds sailed, both events on water, the guarded one's battle on the deck, a hero battle on the shore; 1 532 steps, about 1 714 000 Ir a step, the rewards map's about 862 000: 52 % inside the flyer's and the water walker's layered search over the open sea, `Reach::expand_layered`, the boats' own search 4 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
+description = "5 random-vs-random games of 28 days on the sea map (E08 T75a, increment 8: 4 boardings, 3 landings, Favorable Winds sailed, both events on water, the guarded one's battle on the deck, a hero battle on the shore; 1 532 steps, about 1 714 000 Ir a step, the rewards map's about 862 000: 52 % inside the flyer's and the water walker's layered search over the open sea, `Reach::expand_layered`, the boats' own search 4 %); since E08 T83b2a +2.47 % against master's count of the same games (2 613.9 M): the objects added in play, asked for by the walking search's rare case (boats in the window), the passage's live read and the visit's lookup, none added on this map; counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 2625483594
+instructions = 2678551764
 threshold_percent = 2

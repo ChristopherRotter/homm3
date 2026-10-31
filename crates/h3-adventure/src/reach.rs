@@ -61,6 +61,7 @@ use h3_heroes::{HeroDetails, free_boarding};
 use crate::movement::{
     DIRECTIONS, Pricing, converted_points, day_points, details_of, hero_movement, sea_day_points,
 };
+use crate::persistent::BitGrid;
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
 use crate::state::{
@@ -79,9 +80,13 @@ struct Search<'s> {
     /// Whether another hero stands on the slot's tile (on land, or on water in a boat) or an
     /// empty boat lies there (E08 T73b: on water only, so a land tile's flag is a hero's).
     occupied: Vec<bool>,
-    /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b): the search
-    /// asks [`Search::guarded`] only then (`bench-check`).
+    /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b; since E08
+    /// T83b2a a monster added in play counts): the search asks [`Search::guarded`] only then
+    /// (`bench-check`).
     guards: bool,
+    /// The tiles an object added in play covers, if one was added (E08 T83b2a): a walker's step
+    /// asks the live tile there too, where the static map marks nothing (`bench-check`).
+    added: Option<&'s BitGrid>,
     /// What a boarding's and a landing's conversion reads (E08 T73; ADV-SEA-002, ADV-SEA-003):
     /// the core, the hero's details, its day's maximum and its army; derived only at a boarding
     /// or a landing met (`bench-check`).
@@ -123,7 +128,7 @@ impl Search<'_> {
     #[cold]
     #[inline(never)]
     fn guarded(&self, pos: Pos) -> bool {
-        self.map.near_monster(pos) && self.state.guard_of(self.part, pos).is_some()
+        self.state.may_guard(pos) && self.state.guard_of(self.part, pos).is_some()
     }
 }
 
@@ -218,7 +223,8 @@ impl Reach {
             hero: hero.id,
             owner: hero.owner,
             occupied,
-            guards: map.any_monster(),
+            guards: map.any_monster() || state.added_tiles().is_some(),
+            added: state.added_tiles(),
             surface: (core, details, hero.max_movement, &hero.army),
         };
         reach.points[reach.start] = Some(hero.movement);
@@ -230,7 +236,7 @@ impl Reach {
             reach.search_layered(&search, mode, hero.movement);
             return reach;
         }
-        if afloat {
+        if afloat || search.added.is_some() {
             reach.search_walking::<true>(&search, hero.movement);
         } else {
             reach.search_walking::<false>(&search, hero.movement);
@@ -241,7 +247,10 @@ impl Reach {
     /// A walking hero's search: Dijkstra's over one node per tile, the most points first (ties by
     /// slot), from the hero's tile with `points`. `AFLOAT`: the window holds an empty boat or
     /// another hero in a boat, whose water tiles the search then looks at (E08 T73b); without, its
-    /// loop is the one before boats (`bench-check`).
+    /// loop is the one before boats (`bench-check`). The rare case also serves a map where an
+    /// object was added in play (E08 T83b2a): its tiles the search then asks the live tile of
+    /// where the static map marks nothing. A variant of its own for them changed the compiler's
+    /// inlining of the plain loop and cost more than it saved (`bench-check`).
     fn search_walking<const AFLOAT: bool>(&mut self, search: &Search<'_>, points: u32) {
         let mut queue = BinaryHeap::new();
         // ADV-OBJ-004: a hero standing on the tile of an object not visited from above leaves it
@@ -308,8 +317,15 @@ impl Reach {
                     continue;
                 }
                 visit = true;
-            } else if to.blocked || to.visitable {
-                let live = state.live(pos, to);
+            } else if to.blocked
+                || to.visitable
+                || (AFLOAT && search.added.is_some_and(|added| added.get(pos)))
+            {
+                let live = state.live_placed(pos, to);
+                let live = match search.added {
+                    Some(added) if AFLOAT && added.get(pos) => state.added_live(pos, live),
+                    _ => live,
+                };
                 if live.visitable {
                     match state.visit_at(part, search.owner, pos) {
                         Some(v) if v.from_above || !(3..=5).contains(&dir) => visit = !v.pass,

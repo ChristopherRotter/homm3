@@ -156,7 +156,7 @@ impl AdventureState {
     /// answer reads it if it is a monster: its creature, its count as it stands
     /// ([`Self::monster_count`]), its aggression and whether it never flees.
     fn wanderer(&self, index: usize) -> Option<Wanderer> {
-        let monster = self.map.objects()[index].monster.as_ref()?;
+        let monster = self.object_at(index).monster.as_ref()?;
         Some(Wanderer {
             creature: monster.creature,
             count: self.count_of(index, monster),
@@ -174,7 +174,7 @@ impl AdventureState {
         (index, object_type): (usize, ObjectTypeId),
         (answer, monster): (Answer, Wanderer),
     ) -> AdventureOutcome {
-        let anchor = self.map.objects()[index].anchor;
+        let anchor = self.object_at(index).anchor;
         let offer = |kind| AdventureOutcome {
             offer: Some(Offer {
                 hero,
@@ -207,7 +207,7 @@ impl AdventureState {
         index: usize,
         monster: Wanderer,
     ) -> AdventureOutcome {
-        let tile = self.map.objects()[index].anchor;
+        let tile = self.object_at(index).anchor;
         let battle = self.hero(hero).map(|attacker| {
             self.battle_at(
                 part,
@@ -249,7 +249,7 @@ impl AdventureState {
             .tile_object(part, tile)
             .filter(|(_, _, ty)| matches!(ty.kind, ObjectKind::Monster { .. }))
             .and_then(|(index, id, _)| {
-                let monster = self.map.objects()[index].monster.as_ref();
+                let monster = self.object_at(index).monster.as_ref();
                 monster.map(|m| (index, id, m.creature, (m.treasure.clone(), m.artifact)))
             });
         let Some((index, object_type, creature, (treasure, artifact))) = found else {
@@ -272,7 +272,7 @@ impl AdventureState {
         if left > 0 {
             let word = |count| part.params().monsters().map_or(0, |w| w.count_word(count));
             if word(left) != word(had) {
-                let object = &self.map.objects()[index];
+                let object = self.object_at(index);
                 sink.emit(AdventureEvent {
                     kind: AdventureEventKind::MonsterChanged {
                         object_type,
@@ -367,7 +367,8 @@ impl AdventureState {
                 seen_by: Viewers::NONE.with(player),
             });
         }
-        let (gains, artifact) = self.map.objects()[index]
+        let (gains, artifact) = self
+            .object_at(index)
             .monster
             .as_ref()
             .map(|m| (m.treasure.clone(), m.artifact))
