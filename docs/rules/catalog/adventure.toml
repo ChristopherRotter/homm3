@@ -2462,6 +2462,39 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "ADV-OWN-001"
+title    = "Flagging an ownable object"
+context  = "adventure"
+status   = "implemented"
+summary  = "A visit flags a neutral ownable object, or another team's (the player alone until E10's teams), for its visitor's owner; never an own or allied one; nothing is paid. The new owner is told with every player that sees the object (`ObjectFlagged`, by type and anchor), then the tiles within the part's flag radius (3, `flag_radius`, E08 decision 217) of its entrance are explored for the new owner (ADV-FOG-002's disk), told to it alone with the number it had not explored (`TilesRevealed`). A hero standing on an owned entrance is met or fought there instead, as any hero (ADR-0016 point 3); a hero does not revisit the object it stands on. E08 T84a (increment 9's design note §7): the mines and abandoned mines (`AdventureState::flag`; ADV-MIN-002 says when a mine's visit flags it); the Lighthouses and the Shipyards come with T84b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a1; survey E08-economy.md sections 2.3, 2.4): set_mine_owner (0x4C66E0) writes the record's owner and for an owner reveals the disk of radius 3 around the entrance to the owner's team (reveal_disk); set_shipyard_owner (0x4C6A30) likewise; visit_mine (0x4A39A0) tests the owner's team against the current player's: own or allied, no flag"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md section 2.8: CGMine::onHeroVisit and FlaggableMapObject::onHeroVisit flag a neutral or enemy object by player relations; setOwner reveals nothing (the visitor's own scouting covers radius 3)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Mines (survey E08-economy.md section 2.8): mines 'can be flagged after which they will start to produce' for their owner"
+  url        = "https://heroes.thelazy.net/index.php/Mine"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-3 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30): Red's visit of a mine without guards flags it with no question (MINEEVNT 0), Blue's visit of Red's mine flags it for Blue with no question"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-OWN-002"
 title    = "An ownable object's owner at the start"
 context  = "adventure"
@@ -2492,7 +2525,7 @@ id       = "ADV-OWN-003"
 title    = "What a viewer sees of owned, guarded and weekly objects"
 context  = "adventure"
 status   = "implemented"
-summary  = "Every viewer that sees an ownable object (ADV-FOG-004) sees its owner, as the original draws its flag in the owner's colour. A mine's production, its resource and its amount a day, shows only to a viewer of its owner's team (the player alone until E10's teams), so an abandoned mine's drawn resource is hidden from every other viewer, and a neutral abandoned mine's from all. A mine's guards show to every viewer as the original's hint shows them: the word of their total count, every stack counted, an upgraded one too (ADV-FOG-006's words), and their creature only when all stacks are of one (else the original's generic text); never their stacks or counts, which the owner's team sees (the user at T83b2b's start, 2026-10-31; ADR-0016 point 6 corrected by `shared/e08-t83b2b`). A guarded pile's guards stay hidden (ADV-PIK-004). A Shipyard's boat tile (ADV-SHY-001) is public with it. A weekly object shows a viewer its own visited mark (set for the visitor's team by a Windmill or a Water Wheel, for the visitor alone by a Mystical Garden, never cleared: it says visited, not emptied); its resource and amount never show. E08 T83b2b (increment 9's design note §12): `ObjectView::owner`, `production`, `guards` (`GuardsView`), `visited` and `boat_tile`, `AdventureState::production` and `visited_by`; the views on the imported economy map hide the abandoned mines' draws whatever the seed. The visits that set the owners, guards and marks come with T84."
+summary  = "Every viewer that sees an ownable object (ADV-FOG-004) sees its owner, as the original draws its flag in the owner's colour. A mine's production, its resource and its amount a day, shows only to a viewer of its owner's team (the player alone until E10's teams), so an abandoned mine's drawn resource is hidden from every other viewer, and a neutral abandoned mine's from all. A mine's guards show to every viewer as the original's hint shows them: the word of their total count, every stack counted, an upgraded one too (ADV-FOG-006's words), and their creature only when all stacks are of one (else the original's generic text); never their stacks or counts, which the owner's team sees (the user at T83b2b's start, 2026-10-31; ADR-0016 point 6 corrected by `shared/e08-t83b2b`). A guarded pile's guards stay hidden (ADV-PIK-004). A Shipyard's boat tile (ADV-SHY-001) is public with it. A weekly object shows a viewer its own visited mark (set for the visitor's team by a Windmill or a Water Wheel, for the visitor alone by a Mystical Garden, never cleared: it says visited, not emptied); its resource and amount never show. E08 T83b2b (increment 9's design note §12): `ObjectView::owner`, `production`, `guards` (`GuardsView`), `visited` and `boat_tile`, `AdventureState::production` and `visited_by`; the views on the imported economy map hide the abandoned mines' draws whatever the seed. The visits that set the owners and guards: E08 T84a (the mines, ADV-OWN-001, ADV-MIN-002, which tell a change of the guards' hint as `GuardsChanged`); the marks: T84b."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2513,11 +2546,37 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "ADV-MIN-002"
+title    = "A mine's visit: Leave Guards, the guards' question and their battle"
+context  = "adventure"
+status   = "verified"
+summary  = "A mine or an abandoned mine is entered. Its owner's visit opens the Leave Guards dialog (GAM-DEC-004 amended: the army dialog between the hero's army and the mine's guards, whose group its `Close` keeps on the mine, never lost; every player's hero, E08 decision 204); an ally's does nothing. Another's or a neutral mine's guards, while any stand, are asked first (`OfferKind::Fight`, the original's ADVEVENT 84 for a neutral mine, 187 for an owned one); declined, nothing; accepted, they are fought on the mine's entrance: a neutral mine's single stack as a wandering monster (split by the army ratio table, `ADV-QUIRK-6`'s draws from the entrance tile; D-47, E9-1), a neutral mine's other guards unsplit and unowned, an owned mine's as its owner's side without a hero (`Defender::Garrison`, played by that player outside its turn; E9-2); on the mine type's battle terrain when it has one (GAM-BAT-001 amended). Lost, retreated, surrendered or drawn: the guards' survivors stay (a neutral single stack's summed into its own slot as its creature, A-29 and A-6 fixed; others by slot), the owner unchanged; won: the guards are gone and after the winner's levels the mine is flagged for the attacker's owner (ADV-OWN-001; GAM-DEC-007). A mine without guards is flagged at once. A change of the guards' public hint (ADV-OWN-003) is told to the players that see the mine (`GuardsChanged`). E08 T84a (increment 9's design note §7, §13, §14): `AdventureState::visit_mine`, `fight_for_mine`, `end_mine_battle`, `set_guards`; the game's `Holder::Mine`, `LeaveGuardsOpened`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a1; survey E08-economy.md sections 3.1 to 3.3): visit_mine (0x4A39A0): own and human, army_dialog_with (0x5D12B0) over the record's army; guards: the two-button question (ADVEVENT 84 or 187), then a neutral single stack's monster_battle with slot 0's creature and count, any other guards' adventure_battle with the record's army and owner; lost, slot 0's count the count left; won, the guards cleared and set_mine_owner"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md sections 3.1 to 3.3: CGMine::onHeroVisit (own: showGarrisonDialog; guards: a question, then startBattle with the army as its stacks are, never split: D-47's VCMI side, refuted by E9-1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-1 (D-47: a neutral abandoned mine's Troglodytes split in three or two stacks in five runs, the second Infernal; ADVEVENT 84 then 85; the subterranean field) and E9-2 (Blue's own visit opens Leave Guards, its group the mine's guards; Red asked ADVEVENT 187; the guards unsplit, Blue, human, playing each stack; a win flags the mine for Red, its guards empty); E9-3 (a second visit of an own mine: Leave Guards and nothing else); the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-MIN-003"
 title    = "The abandoned mine: its resources and its guards"
 context  = "adventure"
 status   = "implemented"
-summary  = "An abandoned mine (53.7, and SoD's 220 the original makes 53.7) takes from the map the set of resources it may draw: the body's first byte, a bit per resource code (0 wood to 6 gold; the other three bytes dropped, as the original reads them). When the game is built its resource is drawn among them with equal chances and its guards are drawn: the kind's creature (the Troglodytes), 100 to 200 inclusive (D-48 as read); its daily amount is its drawn resource's mine's (the part keeps one mine for each resource when it has an abandoned mine). The import refuses an empty set or bit 7 (resource 7, past the seven: A-31's input bound, `ADV-QUIRK-33`, not reproduced: the original's empty set finds no bit and gives resource 8, which produces nothing). E08 T83a: the import (`h3_map`'s `mine_resources`, map import v15) as `Holds::Resources`, checked when the game is built (distinct resources of the ruleset in the core's order, at least one) and hashed with the static map (adventure state hash v17); the kind `AbandonedMine` and `AdventureRuleset::mine_daily` (part v14). E08 T83b1 (adventure state hash v18): the draws when the game is built, from the setup stream in a walk in object order after the rewards' (the engine's order, E08 decision 17: the original draws the resource at the map's load and the count at its new game), the resource with equal chances among the set and then the count between the kind's bounds (`Resolved::Mine`); the mine's guards are the army written on it once one is (a battle's survivors, the Leave Guards group: T84; written empty, none), else the drawn count of the kind's creature in slot 0 (`AdventureState::mine_guards`). On the 160 shipped maps every abandoned mine draws within its set and 100 to 200 (the census)."
+summary  = "An abandoned mine (53.7, and SoD's 220 the original makes 53.7) takes from the map the set of resources it may draw: the body's first byte, a bit per resource code (0 wood to 6 gold; the other three bytes dropped, as the original reads them). When the game is built its resource is drawn among them with equal chances and its guards are drawn: the kind's creature (the Troglodytes), 100 to 200 inclusive (D-48 as read); its daily amount is its drawn resource's mine's (the part keeps one mine for each resource when it has an abandoned mine). The import refuses an empty set or bit 7 (resource 7, past the seven: A-31's input bound, `ADV-QUIRK-33`, not reproduced: the original's empty set finds no bit and gives resource 8, which produces nothing). E08 T83a: the import (`h3_map`'s `mine_resources`, map import v15) as `Holds::Resources`, checked when the game is built (distinct resources of the ruleset in the core's order, at least one) and hashed with the static map (adventure state hash v17); the kind `AbandonedMine` and `AdventureRuleset::mine_daily` (part v14). E08 T83b1 (adventure state hash v18): the draws when the game is built, from the setup stream in a walk in object order after the rewards' (the engine's order, E08 decision 17: the original draws the resource at the map's load and the count at its new game), the resource with equal chances among the set and then the count between the kind's bounds (`Resolved::Mine`); the mine's guards are the army written on it once one is (a battle's survivors, the Leave Guards group: E08 T84a, ADV-MIN-002; written empty, none), else the drawn count of the kind's creature in slot 0 (`AdventureState::mine_guards`). On the 160 shipped maps every abandoned mine draws within its set and 100 to 200 (the census)."
 numeric  = "integer"
 
   [[rule.source]]
