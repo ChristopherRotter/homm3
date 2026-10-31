@@ -957,8 +957,8 @@ def known_key(name):
 def sequence_inputs(entry):
     """A sequence's options and inputs, checked (T1a2): the options among `OPTIONS` in their
     ranges; each input one of `INPUTS` at a millisecond from 1 to `ms` (0 is the still the frame
-    check compares), in order of time, a key released only once pressed, a pointer inside the
-    screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
+    check compares), in order of time, a key released only once pressed, the button likewise (no
+    press or click while it is held: E24 M3 T7b2, F5-7), a pointer inside the screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", *OPTIONS}
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
@@ -974,7 +974,7 @@ def sequence_inputs(entry):
             if entry[name] not in values:
                 raise ValueError(f"{entry['id']}: `{name}` {entry[name]} not in {values}")
             options.append((address, entry[name]))
-    inputs, down, last = {}, set(), 1
+    inputs, down, held, last = {}, set(), False, 1
     for i in entry.get("inputs", []):
         kinds = [k for k in INPUTS if k in i]
         if len(kinds) != 1 or set(i) != {"at", kinds[0]}:
@@ -986,6 +986,12 @@ def sequence_inputs(entry):
         if not last <= t <= entry["ms"]:
             raise ValueError(f"{entry['id']}: an input at {t}: out of order or outside 1 to "
                              f"{entry['ms']}")
+        if kind == "release" and not held:
+            raise ValueError(f"{entry['id']}: the button released at {t}, never pressed")
+        if kind in ("press", "click") and held:
+            raise ValueError(f"{entry['id']}: the button pressed at {t} while it is held")
+        if kind in ("press", "release"):
+            held = kind == "press"
         if kind == "keydown":
             down.add(value)
         elif kind == "keyup":

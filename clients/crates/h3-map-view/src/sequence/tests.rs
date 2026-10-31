@@ -113,6 +113,23 @@ fn refuses_what_breaks_a_rule() {
             "{ at = 5, keydown = \"ctrl+a\" }",
             "s: the input at 5: `ctrl+a`: no key of the map's",
         ),
+        // T7b2 (F5-7): the button paired as the keys.
+        (
+            "{ at = 5, release = [1, 1] }",
+            "s: the input at 5: the button released, never pressed",
+        ),
+        (
+            "{ at = 5, press = [1, 1] }, { at = 6, press = [1, 1] }",
+            "s: the input at 6: the button pressed while it is held",
+        ),
+        (
+            "{ at = 5, press = [1, 1] }, { at = 6, click = [1, 1] }",
+            "s: the input at 6: the button pressed while it is held",
+        ),
+        (
+            "{ at = 5, press = [1, 1] }, { at = 6, release = [1, 1] }, { at = 7, release = [1, 1] }",
+            "s: the input at 7: the button released, never pressed",
+        ),
         (
             "{ at = 5, keydown = \"K\" }",
             "s: the input at 5: `K`: no key of the map's",

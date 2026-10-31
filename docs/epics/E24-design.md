@@ -2295,7 +2295,7 @@ status bar compared, `masks.toml`'s `hinted`).
   (cost − points − 1) / day points (+0x49) + 1, at most 3 (0x40E98F). The kind by the tile's class
   (switch 0x40E9DE, index table 0x40EC18): the coast from a boat 7 (a landing), a boat 6 (from a
   boat 0 and the action -1), a garrison's or town's entrance not the team's with an army (its
-  record +0x4 / `town_defended`: a garrisoned hero, else a visiting hero's army, else its own) 5, a
+  record +0x4 / `town_defended`: a visiting hero, else a garrison hero's army, else its own) 5, a
   hero of the team 8, another hero or a monster 5; else `tile_cursor_kind`: a tile a monster guards
   (the vision word's bit 8) 5 unless an entrance of a class never entered (the object settings'
   first byte, `object_classes_not_entered` 0x63AA58); from a boat a water entrance 0x1C, else 6;

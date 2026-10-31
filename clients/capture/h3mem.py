@@ -273,6 +273,8 @@ STATUS_MORALE, STATUS_LUCK, STATUS_SILO, STATUS_INCOME = 2008, 2009, 2007, 2006
 # The status window's name item (a hero's or a town's window; E24 M3 T7b2, F5-4).
 STATUS_NAME = 2002
 TOWN_GARRISON_HERO, TOWN_ARMY, TOWN_NAME, TOWN_STANDING = 0xC, 0xE0, 0xC8, 0x150
+# The hero visiting a town (town_defended 0x5BDFE0's +0x10; E24 M3 T7b2, F5-8).
+TOWN_VISITING_HERO = 0x10
 # E24 M3 T5b2 (design §4.9): the kind asked (the manager's +0x398) and a timed kind's end (+0x39C,
 # a clock time; status_window_set_kind 0x415D60), the kind none (8); the date's window's picture
 # (DEF item 2001, its frame the window's step); the kingdom's: the viewer's towns by their halls
@@ -1475,9 +1477,13 @@ class Mem:
             defended = False
             if cls == 98 and word < len(town_records):
                 town = town_records[word]
-                garrison, visiting = self.i32(town + 0x10), self.i32(town + 0xC)
-                defended = (garrison >= 0 or (has_creatures(hero_record(visiting) + 0x91)
-                                              if visiting >= 0 else has_creatures(town + 0xE0)))
+                # town_defended 0x5BDFE0: a visiting hero defends it, else the garrison hero's
+                # army, else the town's own (F5-8: the names were swapped).
+                visiting = self.i32(town + TOWN_VISITING_HERO)
+                garrison = self.i32(town + TOWN_GARRISON_HERO)
+                defended = (visiting >= 0 or (has_creatures(hero_record(garrison) + ARMY)
+                                              if garrison >= 0
+                                              else has_creatures(town + TOWN_ARMY)))
             elif cls == 33:
                 first = self.u32(game + 0x4E3AC)
                 defended = has_creatures(first + 0x40 * word + 4)
