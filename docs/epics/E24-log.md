@@ -2221,3 +2221,46 @@ The outcome of each finding (the review's files on `map-client/e24-m3-t7-review`
   and `points` lines changed (TRAPS: no regression, the committed recordings kept); the first
   `choose-lists` run timed out once in the look's last wait (the bar read "Adventure Options"),
   the second passed; `check.sh` all gates; the scoped verify with original data.
+
+### M3 T7c1 — the review list, the questions, the hand test (2026-10-31)
+
+On `map-client/e24-m3-t7c1`, the user at the machine. `master` at a0bed50 (#623 merged; CI's
+Clients green on it). The original data staged from the user's repo folder first. T7c cut with the
+user at the start: T7c1 (this), T7c2 (the answers built, M3 archived), M4's refinement its own task
+(M4 T0). The setup's baseline (`verify-once.sh clients`) died in its coverage step when the agent
+paused it to free the CPUs for the Windows build (a `kill -STOP` by pattern): CI's green `master`
+the starting point.
+
+- **The review list** (M3's 27 items, summarised in the chat) **accepted** as built, the two
+  schemes of the `hero` family's keys (by type here, by the asset tables' name in the battle
+  client) kept until a translation needs one.
+- **The questions:** MCL-Q13, Q20 kept as the original's; MCL-Q14 (a cast recorded in M4 first),
+  Q15 (looked at again with M4's amounts), Q21 ((a) now, the import's refusal M4's) as
+  recommended; MCL-Q23 kept as the original's (the agent had recommended the fix); MCL-Q22 and
+  Q24 the client's fixes, the original's behind `--bugs original`, built in T7c2. The entries in
+  the lane's `QUESTIONS-ANSWERED.md`; M4's follow-ups in the epic's "Later".
+- **The client lane's directive** (CLT-Q28 at E17 M5 T8c: a text the original sets off its centre
+  is centred in the client's profile) recorded in the epic's "Decisions"; none found in the map
+  client yet.
+- **Found preparing the hand test:** every command of `h3-map-view` read the key catalogue at
+  `clients/text/keys.toml` by the build's own path (`env!("CARGO_MANIFEST_DIR")`), which a
+  Windows build on the user's machine never has (none had run there since T5a brought the
+  catalogue): the window would have stopped at its start. Fixed (*provisional*): `texts::catalogue`
+  reads `keys_beside(--map)`, `<map>/../text/keys.toml`, as `clients/map` and `clients/text` lie
+  in a checkout; the gate's usage says so; a test of the place; `default_keys` the tests' alone.
+- **The hand test** (`clients/out/win/map-m3.cmd`, the `h3-map-view.exe` of this branch,
+  `x86_64-pc-windows-gnu`; master's map data and catalogue in `out/win/m3/`, the user's checkout
+  being behind): four runs, each a recording replayed and then the user's: `hover-map` (the panels,
+  the cursor and the hints over the map and the panels, MCL-Q18's fix at a tile's edge),
+  `choose-lists` (the lists' choices and arrows, Next Hero, the other buttons and their hotkeys,
+  the status window's click), `underground` (the level's button and U, the minimap's click and
+  drag), `walk-queue` (a held key stopping at most a step after its release, MCL-Q25's answer;
+  four taps four steps; Alt+Tab away and back). The user: **all as described**. Every run exit 0;
+  the focus's loss and return held and resumed the sound (runs 1 and 4). The window on Windows
+  (direct3d11, WASAPI 48 kHz): a frame made in a median 0.0 ms (p95 0.6 to 0.9, max 7.6), shown a
+  median 0.5 to 1.8 ms after its time (p95 2.2 to 3.1; max 61.2 in run 1, its focus lost once);
+  19 to 54 % of the frames' pixels uploaded. Run 4's cues: one step sound in 50 steps, a path's
+  walk (0x407D03 starts it; a key's step plays none, as built in M2 T5).
+- **Checked:** `cargo clippy -p h3-map-view --all-targets -D warnings`, `cargo fmt --check`, the
+  binary's `texts` tests. No change to anything drawn or played: the catalogue read is the same
+  file at the default `--map`.

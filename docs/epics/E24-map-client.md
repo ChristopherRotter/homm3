@@ -222,7 +222,7 @@ viewers share.
   declined; `drawn` all the same, two sequences exact under Wine; the log); T7c cut with the user
   (2026-10-31): T7c1, the review list, the questions and the hand test (**done** 2026-10-31: the
   list accepted; MCL-Q13 to Q15 and Q20 to Q24 answered, Q22's and Q24's fixes for T7c2; the
-  Windows build's catalogue read beside `--map`; HANDTEST; the log), T7c2, MCL-Q22's and Q24's
+  Windows build's catalogue read beside `--map`; the hand test passed, all as described; the log), T7c2, MCL-Q22's and Q24's
   answers built and M3 archived; M4's refinement its own task after it (M4 T0). A task that grows
   is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
