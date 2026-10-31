@@ -2330,7 +2330,7 @@ fn a_hotkeys_up_after_the_mouse_and_a_click_taken_after_a_step() {
     assert_eq!(l.kingdom.selected, chosen);
     // During a key's step a click on the hero list's arrow, then a move: after the step the click
     // scrolls, the pointer stays the move's.
-    let mut l = Loop::start(r, &start).unwrap();
+    let mut l = Loop::start(r.clone(), &start).unwrap();
     l.run(1, &[Action::Step(Direction::South)]).unwrap();
     assert!(l.moving.is_some());
     l.run(
@@ -2349,6 +2349,27 @@ fn a_hotkeys_up_after_the_mouse_and_a_click_taken_after_a_step() {
     }
     assert_eq!((l.pointer, l.held), ([700, 100], None));
     assert_eq!(l.kingdom.tops[0], 1);
+    // A minimap's press, move and release, then a move, during a key's step: after it the drag's
+    // moves decide its corner, the pointer stays the last move's.
+    let mut l = Loop::start(r, &start).unwrap();
+    l.run(1, &[Action::Step(Direction::South)]).unwrap();
+    l.run(
+        2,
+        &[
+            Action::Press([650, 50]),
+            Action::Pointer([700, 100]),
+            Action::Release([700, 100]),
+            Action::Pointer([700, 480]),
+        ],
+    )
+    .unwrap();
+    let mut t = 3;
+    while l.moving.is_some() {
+        l.run(t, &[]).unwrap();
+        t += 1;
+    }
+    assert_eq!((l.pointer, l.dragging), ([700, 480], None));
+    assert_eq!(l.drawn().minimap.view, l.view);
 }
 
 #[test]

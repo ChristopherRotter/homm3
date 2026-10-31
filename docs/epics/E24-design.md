@@ -2691,6 +2691,12 @@ frame as recorded, the status bar compared) and by the hero's tile read in the r
   `visit` (Space), every map key's release an `Up`; `h3_ui::music`'s focus (`Music::focus`,
   `Queue::focus`: the stub's fade once the lock is free, a stream opened without the focus held
   silent, `music_resume`'s request); the window's sound following `Window::focused()` (the effects'
-  streams held where they are, `h3_sdl::Audio::hold`; a cue meanwhile plays). Not built: the
-  window's procedure waiting for a fade (MCL-Q26), the cursor without the focus (the system's
-  arrow, the game's hidden: the window keeps its own), the videos.
+  streams held where they are, `h3_sdl::Audio::hold`; a cue meanwhile plays). Since T7b1 (the
+  review's F4-5, F4-8, MCL-Q25): `Action::Repeat`, a direction key's repeat, dropped while a key's
+  step waits (the client's fix; with `--bugs original` a step, as the ring keeps every
+  WM_KEYDOWN); `Action::RightPress` and `RightRelease`, the right button's messages (0x20, 0x40):
+  the down ends a path's walk, the up ends a button's hold as the left's (`def_button_message`
+  0x456338); each focus change of a batch in order (`h3_sdl::Window::focus_changes`). Not built:
+  the window's procedure waiting for a fade (MCL-Q26: the client's fix), the cursor without the
+  focus (the system's arrow, the game's hidden: the window keeps its own), the videos, the right
+  click's help texts (M4).

@@ -1221,7 +1221,9 @@ impl Loop {
             self.drag(t, action, fresh);
             return Ok(());
         }
-        let Some((id, over)) = self.held else {
+        let (Some((id, over)), Action::Pointer(_) | Action::Release(_) | Action::RightRelease) =
+            (self.held, action)
+        else {
             return Ok(());
         };
         let inside = match action {
@@ -1240,8 +1242,7 @@ impl Loop {
                 inside
             }
             // The right button's up ends the hold where the last move left it (F4-5).
-            Action::RightRelease => over,
-            _ => return Ok(()),
+            _ => over,
         };
         if matches!(action, Action::Release(_) | Action::RightRelease) {
             self.held = None;

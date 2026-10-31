@@ -2097,3 +2097,61 @@ gone): CI's green run on `master` the starting point, the sequences resumed one 
   `status-date-end`'s and `status-kingdom-end`'s kept live parts cleared the kingdom's window
   (`realm`) the new recordings hold (the cases mean a live part without one; coverage had lost
   `timeline.rs`'s line for the window shown standing in for it).
+
+### M3 T7b1 — the redraw's and the input's findings fixed, MCL-Q25 built (2026-10-31)
+
+On `map-client/e24-m3-t7b1`, the user present: T7b cut with the user into T7b1 (F2 and F4, the
+agent's three-way cut declined for two parts) and T7b2 (F1, F3, F5, F6); MCL-Q25 answered (a),
+MCL-Q26 (a), F3-2 asked as MCL-Q27 and answered (the empty bar kept: T7b2 notes it). The original
+data staged from the user's repo folder first; the VM restarted during the baseline (files kept,
+jobs gone): CI's green run on `master` the starting point, the scoped verify with original data
+run again before any change.
+
+The outcome of each finding (the review's files on `map-client/e24-m3-t7-review`):
+
+- **F2-1** (bug) fixed: `replay::Change::shows` compares the draw, the buttons and the cursor
+  drawn; the window's `Frame::shows` calls it (a change of the buttons alone was taken as shown).
+- **F2-2** fixed: the minimap's tiles cut to its own area (`Pen::minimap`), a pattern wider than
+  it drawing nothing past it.
+- **F2-3** fixed (the finding's first way): after a move a cell wholly kept compares with the last
+  scene's draws all moved, a cell clear of the clip with them unmoved (a third `Buckets`), a cell
+  partly kept drawn again; the minimap and its box are the same only unmoved (`same_moved`),
+  `stays_put` gone. Its test: a minimap inside the clip through every move, as fresh.
+- **F2-4** fixed: the composer's comment and design §4.3 say a jump nearer than the clip is a move.
+- **F2-5** fixed in part: a redraw asked for uploads whatever the turn presents whole, and
+  presents the frame shown again when nothing new is. Not mapped: the render device's reset (it
+  loses the textures: a rebuild in `h3_sdl` for both viewers; M3's review list).
+- **F2-6** fixed: a DEF's kept palette keyed by its cycles' ranges and steps.
+- **F2-7** fixed in part: `damage::drop_held` drops the rectangles another holds (repeats too)
+  before widening and in `tidy`; overlapping ones are not joined (M3's review list).
+- **F2-8** fixed another way: a `Painter` needs the original's archives, so `damage::Held`,
+  `History::since` (a frame's widening: the compositions since and its cursor's) and
+  `History::changed` (a texture's upload: both cursors) moved to the library, which the painter
+  and the window call; `compose::tests::widened_as_fresh` drives the composer, the history and
+  `Widening` over three buffers reused out of order with a moving stand-in cursor and a texture
+  updated by `changed`, each frame the fresh one widened (dropping the old cursor's rectangle
+  fails it).
+- **F4-1** (bug) fixed: the window's `HeldKeys` keeps each key's command from its down (a repeat
+  that gives none keeps the one before); its up releases that one, whatever Ctrl did since.
+- **F4-2** (bug) fixed: a point off the frame (the window's at the focus's loss) leaves a
+  button's hold or the minimap's drag as it is (`Rules::on_frame`).
+- **F4-3** (bug) fixed: `holding` and `drag` decide by the message's own point and set the pointer
+  only for a fresh one; the drag's last point is its own (`dragging: Option<[i32; 2]>`).
+- **F4-4** fixed: a hotkey's up acts only on a button still shown pressed.
+- **F4-5** fixed: `Action::RightPress` and `RightRelease` (the window's for the right button, before
+  the key table), a message each; the down ends a path's walk, the up ends a button's hold (a
+  click when pressed); nothing else on the map in M3 (the help texts: M4).
+- **F4-6** fixed: next hero to a hero whose choice the live part lacks is refused in a recording.
+- **F4-7** fixed: a click's point clamped to the frame as a move's.
+- **F4-8** fixed: `h3_sdl::Window::focus_changes` (additive) gives a batch's focus changes in
+  order; the window handles each, a loss and a regain in one batch both.
+- **F4-9** fixed: `key_step` calls `step_objects`.
+- **MCL-Q25** built: `Action::Repeat` (the window's for a direction key's repeat) is a step, but
+  while a key's step waits it is dropped, with `--bugs original` queued as a step (`wait_in`, also
+  for the actions a walk's end queues again). No recording has a repeat (the harness turns the
+  display's off), so no capture changes.
+
+- **Checked:** each new test fails with its fix undone (F2-2, F2-3, F2-6, F2-8, F4-3, F4-4,
+  MCL-Q25); clippy (`h3-map-view`, `h3-sdl`, all targets); `drawn` all the same (50 situations,
+  every sequence; no capture needed: every change is live-only or reaches no recorded frame);
+  `check.sh` all gates; the scoped verify with original data.

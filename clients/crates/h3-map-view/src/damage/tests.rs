@@ -52,6 +52,30 @@ fn rectangles_cut_to_the_frame_and_bounded() {
     assert_eq!(held, [[0, 0, 4, 4]]);
 }
 
+/// E24 M3 T7's review, F2-8: a frame's widening takes the compositions since and its cursor's, a
+/// texture's upload both cursors; nothing once the history lost one.
+#[test]
+fn a_frames_and_a_textures_rectangles() {
+    let mut h = History::new(2);
+    for n in 0..3 {
+        h.push(&[[n, 0, n + 1, 1]]);
+    }
+    let held = |composed, x| Held {
+        composed,
+        cursor: Some([x, 5, x + 1, 6]),
+    };
+    let mut out = Vec::new();
+    assert!(h.since(held(2, 7), 3, &mut out));
+    assert_eq!(out, [[2, 0, 3, 1], [7, 5, 8, 6]]);
+    out.clear();
+    assert!(h.changed(held(2, 7), held(3, 9), &mut out));
+    assert_eq!(out, [[2, 0, 3, 1], [7, 5, 8, 6], [9, 5, 10, 6]]);
+    out.clear();
+    assert!(!h.since(held(0, 7), 3, &mut out));
+    assert!(!h.changed(held(0, 7), held(3, 9), &mut out));
+    assert!(out.is_empty());
+}
+
 #[test]
 fn the_rectangles_another_holds_dropped() {
     let mut rects = vec![
