@@ -17,24 +17,27 @@ outside battle, the packs; core ruleset hash v51, pack format v50). Round 5: T82
 together (decision 213; `adventure/e08-t82-t83a`, `cross-lane`, decision 214: the day's income,
 spell points and the Lighthouses' input; the seven kinds and parameters, the import), T83b in two by what reads it (decision 215): T83b1 done
 (`adventure/e08-t83b1`, `cross-lane`, decision 217: the owners, guards, weekly contents, draws,
-the start's reveal, the flag radius), T83b2 next.
+the start's reveal, the flag radius), T83b2 in two, the state first (decision 218): T83b2a done
+(`adventure/e08-t83b2a`: the fractions, the added objects, `check_added`, adventure state hash
+v19), T83b2b next.
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T83b2 — `h3-adventure`: the fractions, the added objects and the views**
+**E08 T83b2b — `h3-adventure`: the views**
 
-- **Scope:** design §6 (what is left) and §12 (decision 215: T83b's second half): `fractions`
-  (`Table<u8>` by object index), the added objects in `Occupancy` (`added`, the grids of their
-  tiles and of the tiles near an added monster; `tile_object`, `guard_at`, `live`, the
-  observation and the passage read them; empty until T85a's month, so tests add them through a
-  test helper), `check_added`, adventure state hash v19; the views (`ObjectView`'s `owner`,
-  `production`, `guards`, `visited`, `boat_tile`; ADV-OWN-003, ADV-FOG-006 amended), the h3-map
-  view tests, `docs/06-security.md`'s owners, production and marks.
-- **Inputs:** design §6, §12; ADR-0016 points 1, 5, 6; survey `E08-economy.md` §2.7, §9.4;
-  T83b1's record in `E08-log.md` (the owners, `mine_guards`, `Weekly`, `Resolved`'s draws); T72's
-  record (the boats' state and view, the pattern).
-- **Depends on:** T83b1 (`adventure/e08-t83b1` merged). **Status:** ready after that merge; its
-  cut confirmed with the user at its start (the views alone are a natural second half if it is
-  over half a context).
+- **Scope:** design §12 (decision 218: T83b2's second half): `ObjectView`'s `owner` (every viewer
+  who sees the object), `production` (a mine its viewer's team owns: an abandoned mine's drawn
+  resource hidden from the others), `guards` (a guarded pile's view: creatures and their words,
+  the counts for the owner's team), `visited` (a weekly object's mark: the viewer's team's, the
+  Garden's its own), a Shipyard's `boat_tile` (static, public); the added monsters among the
+  objects as T83b2a built them, a fraction never shown; ADV-OWN-003 and ADV-FOG-006 amended; the
+  h3-map view tests (`crates/h3-map/src/tests/view.rs`); `docs/06-security.md`'s owners,
+  production and marks (shared: its own `shared/` pull request, merged first, or the user's
+  consent for `cross-lane`).
+- **Inputs:** design §12; ADR-0016 points 5, 6; survey `E08-economy.md` §2.7, §9.4; T83b1's
+  record in `E08-log.md` (the owners, `mine_guards`, `Weekly`, `Resolved`'s draws); T83b2a's
+  (the added objects in the observation); T72's record (the boats' view, the pattern).
+- **Depends on:** T83b2a (`adventure/e08-t83b2a` merged). **Status:** ready after that merge;
+  its cut confirmed with the user at its start.
 
 ## Inbox
 

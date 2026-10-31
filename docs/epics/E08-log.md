@@ -9795,3 +9795,83 @@ The design note's §6 as T83b1 found it (the built part moved here; §6 keeps T8
   unit; an added object a monster on a land tile no other object holds.
 
 T83b2 (the fractions, the added objects and the views) next.
+
+### Increment 9, round 5: T83b2a, the monsters' fractions and the objects added in play (2026-10-31, `adventure/e08-t83b2a`)
+
+**The cut** (decision 218, the user at T83b2's start): T83b2 in two, the state first: T83b2a the
+monsters' fractions, the objects added in play, `check_added` and adventure state hash v19;
+T83b2b design §12's views the next session.
+
+- **The live presence** (`state/occupancy.rs`): `Occupancy` holds, beside `removed`, `unblocked`
+  and `unvisitable`, the static map's object count (`base`), the added objects (`added:
+  Arc<Vec<MapObject>>`, index `base + n`, after the static map's in map order), the grid of the
+  tiles they block or are visited from (`added_tiles`) and of the tiles within one step of an
+  added monster's visitable tile (`added_near`, its 3 × 3 as `StaticMap::near_monster`'s).
+  `live` adds an added object's cover where `added_tiles` is set; `added_visited_from` gives
+  the last added object still on the map visited from a tile; `remove` takes a static or an
+  added object off, its "others" the static and the added objects still on the map; the removed
+  grid grows a row when an added index needs it (`Occupancy::ROW` objects a row), keeping every
+  removal. There is an occupancy once an object has left or one was added.
+- **The readers:** `tile_object` asks the added objects first (they come last in map order),
+  then the static map's; `guard_at`'s early test is `may_guard` (the static map's
+  `near_monster` or `added_near`); `Reach`'s walking step asks the live tile where the static
+  map marks nothing but `added_tiles` is set (`Search::added`, none until an object is added),
+  its `guards` flag counts an added monster, `guarded` asks `may_guard`; the observation's tile
+  views ask the live tile there too, and its objects list chains the added objects after the
+  static map's (an added monster seen as a placed one, its count word from `monster_count`); the
+  passage and `check_tile` read `live`, so a flight and a stand see them unchanged.
+- **The accessors:** `AdventureState::object(index)` (static or added, none past the last),
+  `object_at` (an index the caller found), `added_objects()`, `fraction(index)`, `may_guard`,
+  `added_tiles()`. Routed through them: `tile_object`, the visit's anchor, `take_object`,
+  `remove_object`'s bound, `monster_count` and the six reads in `state/monsters.rs` (the
+  answer, the fight, `end_monster_battle`, the treasure). **Left for T85a's audit** (design
+  §19; they never meet an added monster's index before its month): the rewards', piles',
+  records', events' and economy's reads, `special_ground`, `background` (an added monster's
+  scenery among a battle's surroundings), the observation's marks and knowledge.
+- **The fractions:** `fractions: Table<u8>` by object index (the persistent two-level table of
+  `army_left`), none for 0; `remove_object` clears a monster's (*agent's call*: the table holds
+  only monsters on the map). Written by T85a's week; tests by `set_fraction`.
+- **Invariants:** `check_added` (in the plans' `check_invariants` and the census): a fraction
+  above 0 and below the monsters' `growth_unit`, on a monster still on the map; each added
+  object still on the map a typed monster of a monster kind covering at least one tile, each a
+  land tile marked in `added_tiles` (a visitable one in `added_near`) that no other object
+  still on the map blocks or is visited from.
+- **Adventure state hash v19:** `MapObject`'s own `CanonicalHash` (the static map's encoding of
+  an object, moved, the same bytes); the occupancy's encoding after the removed objects gains
+  the added objects (their number, each object's encoding); after the owners and the weekly
+  contents the fractions (their number, each index and fraction).
+- *Agent's calls (change freely):* the added list shared by the forks inside the occupancy (a
+  removal's copy copies none of it); the added objects' grids never cleared (a removed one's
+  tiles stay marked; `live` and `added_visited_from` read the objects still on the map there);
+  `Occupancy::add` and `AdventureState::add_object`, `set_fraction` test-only until T85a.
+- **Replays:** the 32 adventure goldens re-recorded from their own commands (a scratch script,
+  not committed): commands unchanged, only the hashes and the version line moved. The AI lane's
+  bots tables do not move (the part is unchanged).
+- **Rules:** none new (ADV-MON-013 and -014 enter the catalog with T85a, which writes the
+  fractions and adds the month's monsters); ADV-MON-005, ADV-MON-006, ADV-OBJ-003 and ADV-FOG-006
+  read the added objects.
+- **Tests:** `state/tests/added.rs`: an added monster read as a placed one (every tile's guard,
+  stand, live tile and visit; the reach walking and flying; both players' observations), its
+  guard's battle, survivors and removal as the placed one's; the removed grid's growth past a
+  row with removals of static and added objects, a fork's sharing; `check_added`'s refusals
+  (water, a static object's tile, two on one tile, untyped, of another kind, without monster
+  data, covering no tile); the fractions' bounds and their removal; the hash.
+
+The design note's §6 as T83b2a found it (the built part moved here; §6 keeps T83b2b's pointer):
+
+###### 6. The state (as T83b2a found it) (`h3-adventure`; adventure state hash v19, T83b2)
+
+- **`fractions: Table<u8>`** by object index (the persistent two-level table of `army_left`): a
+  monster's sixteenths, none for 0.
+- **The live presence** (`Occupancy`, renamed in its comments): beside `removed`, `unblocked` and
+  `unvisitable`, the **added objects** (`added: Vec<MapObject>`, index `objects().len() + n`), a
+  grid of the tiles they block and are visited from, and a grid of the tiles near an added
+  monster (its 3 × 3, for `guard_at`'s early test that the static map's `near_monster` gives the
+  placed ones). `tile_object`, `guard_at`, `live`, the observation and the passage read the
+  added objects only where their grid's bit is set, so a map without a spawn pays one test a
+  tile and a fork nothing more. **Every read of `map.objects()[index]` goes through a state
+  method that knows the added objects** (43 sites in `h3-adventure` today; T85a's audit, §19).
+- **Invariants** (`check_added`, run after every command in the properties, beside T83b1's): a
+  fraction below the unit; an added object a monster on a land tile no other object holds.
+
+T83b2b (design §12's views) next.
