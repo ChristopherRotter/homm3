@@ -2056,3 +2056,40 @@ repo folder first; the VM restarted during the baseline (files kept, jobs gone):
 - **Questions:** MCL-Q25 (nothing stops a held key's queued steps, Space included: MCL-Q10's
   premise; recorded), MCL-Q26 (the original's window waits for a music fade at the focus's loss;
   read, not reproduced).
+
+### M3 T7a — the status bar's hint compared everywhere, everything recorded again (2026-10-30)
+
+On `map-client/e24-m3-t7a`, the user present (T7 cut into T7a, T7b and T7c, the agent's
+proposal; the user added the review beside the recordings: up to three concurrent reviewer
+sub-agents, each given a fraction under about half a context, their findings left on a branch for
+T7b). `master` at e456dd6 (#613 merged). The original data staged from the user's repo folder
+first; the VM restarted twice (during the baseline, and during the sequences: files kept, jobs
+gone): CI's green run on `master` the starting point, the sequences resumed one by one.
+
+- **Built:** `masks.toml`'s `hint` and `hinted` gone (`panels` alone, empty); `h3map.py`'s
+  `panel_rects()`, `masked_for(shape)` and `view_changed` without the item's id; the viewer's
+  `files::load_masks(map)` (another key refused). The harness: `show_path` ends with the pointer
+  over the minimap and parked again (`MINIMAP_POINT`): the staging's redraws (the selection's
+  lists, MCL-Q22's; the path's) left the status bar empty with the parked button the item looked
+  at last, so the parking alone showed no text in `path-objects` and `path-edge` (432 pixels each);
+  over another item and back, the button's hint shows, as in every other still. `Mem.hover`'s
+  towns: a town named by its map (`shipped-good-witch`'s, failing since T6a1's facts) is 65535, no
+  record of `TownName.txt` (*provisional*: the viewer reads no map's town names before M4; only a
+  hint over that town needs one).
+- **Recorded:** `clients/capture/setup.sh` again (#614's harness, R7); the whole `set`: the 50
+  situations exact with the status bar (0 differing of 480 000 pixels each; the three above after
+  their fixes); every sequence (`frames --only` per id, a driver keeping a mark per id, after the
+  VM's restart): the 35 exact in all 1 368 frames with the status bar, 14 timelines as recorded,
+  21 changed only in `screen` boxes (the status bar's now inside them; a hint's box following the
+  run's random draws: a hero's name, a Witch Hut's skill, a Shrine's spell, a quest, a bank's
+  guards, an army in the status window) or a start's `points` (`scroll-limits`, `status-click`,
+  `status-date-end`), each one's viewer giving the run's lines: their timelines copied in,
+  `--reuse` ok; the four scrolls' `frames.txt` with the status bar's new screen (`scroll-*` at
+  2 300, `scroll-limits` at 100) copied in, `--reuse` ok; `drawn --record`, then `drawn` all the
+  same (50 situations, 1 368 frames).
+- **Reviewed** (beside the recordings; `map-client/e24-m3-t7-review`,
+  `docs/lanes/map-client/review-m3/`, not merged): six fresh reviewers on fractions (F1 the
+  panels, F2 the redraw, F3 the mouse-over, F4 the input, F5 the harness, F6 what the others
+  left; at most three at once, 202k to 243k reported tokens each): 42 findings, the bugs F2-1,
+  F4-1, F4-2, F4-3; its README's summary is T7b's start. F5-9 (the mask comment) done here.
+- **Checked:** clippy (`h3-map-view`, all targets); the scoped verify with original data.
