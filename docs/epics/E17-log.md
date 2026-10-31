@@ -3834,6 +3834,44 @@ staged first (the four LODs, both executables, the five DLLs, both sound archive
   `QUEUE-ARCHIVE.md` (verbatim).
 - **M5 done.** M5's scope and tasks moved to `E17-archive.md`, its review list below.
 
+### M6 T1 — the answered slips (2026-10-31)
+
+On `client/e17-m6-t1` (stacked on #618's branch, M5 T8c), the same session; the user present.
+The VM restarted ~20 minutes into the session (the baseline's `check.sh` lost in its coverage
+step: CI's green `master` at `12a3d01` stands as the baseline).
+
+- **Built** (each fix in the client's profile, the original's kept for the comparisons,
+  `h3_render::Bugs`):
+  - CLT-Q26: `book::Memory` carries the profile (`Memory::new`); `Book::open` forgets the
+    hovered item in the client's, so a book opened again over the item last hovered shows its
+    hint at the first move. The stills (`spellbook.rs`) keep the original's memory.
+  - CLT-Q27 (1): `mouse::track`'s `Input::Cancel` posts the mouse after a Faerie Dragon's aim too
+    (the book's end, 0x47519A); (2): `Input::Aim` keeps the hex the cursor takes at the start
+    (`Aiming::last`, `Shown::aimed` at the start's time), so a click before a move casts there.
+  - CLT-Q28 (1): `message::layout` takes `(player, bugs)`, the text at ((w − text) / 2, top) in
+    the client's (x 25 for every box: its width less 50) and at x 20 in the original's; (2):
+    `message::framed` (the acting side's player in the client's, the viewing player's in the
+    original's); the window's `box_player` takes the controller of the turn the box's time falls
+    in (`Timeline::turns`, `controllers`), the tactics phase's side for its message
+    (`tell_framed`).
+  - CLT-Q33: `anim::created`'s `NotCreated` without an original writes Summon Elemental's line
+    in the original's profile only.
+  - CLT-Q35: `results::built` tells the gave-up way (`GaveUp`) only of the side that gave up
+    when the shown side lost (`BattleResult::Retreat(side)`'s side), the tune and so the clip by
+    the same branch; `sound::end_tune` takes the profile (its two arguments `human` and `town` as
+    a pair) and plays the way a side gave up with no winner named only when the defender did.
+- **The directive's survey:** the battle's readings (§7.17 the book, §7.18 the aim, §7.19 the
+  box, §7.20 the result window, §7.23 and §7.24 the tactics phase, §9 the panel and the log) set
+  one text off its centre, the box's; the result window's texts and names are placed
+  symmetrically (the result's text at 68 + 332 / 2 = 234, the names at 17 and 367, 84 wide), the
+  book's status line at 8 + 605 / 2 against 310, the text drawer's centring truncates halves.
+- **Tests:** each fix in both profiles (the book's reopening, the aim's cancel and start in
+  `mouse::track`'s `an_area_s_stacks_are_marked_and_an_aim_given_up`, the box's text place and
+  `framed`, the summons line, the result window's text and tune and the window's tune against
+  `end_tune` over every case in both profiles).
+- **Checked:** `cargo test -p h3-view` (408 + 91 + 5), fmt; the release viewer, `drawn` over all
+  156 items: all the same (the comparisons draw the original's); `clients/scripts/check.sh`.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

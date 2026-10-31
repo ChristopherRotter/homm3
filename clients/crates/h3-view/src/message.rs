@@ -114,7 +114,8 @@ const TEXT_WIDTH_MOST: i64 = 578;
 const TEXT_WIDTH_LEAST: i64 = 256;
 /// The highest text; above it the executable scrolls it (not built).
 const TEXT_HEIGHT_MOST: i64 = 200;
-/// The box's width beyond its text's (50) and the text's left edge (20).
+/// The box's width beyond its text's (50) and the text's left edge (20): the executable's text
+/// sits 5 pixels left of the box's centre, the client's centred (CLT-Q28 (1), [`layout`]).
 const TEXT_MARGIN: i64 = 50;
 const TEXT_LEFT: i64 = 20;
 /// The text's top before the box's spare height is shared (30).
@@ -143,10 +144,25 @@ const BACK_BOTTOM: i32 = 62;
 /// A caption's least and most width (50, 110).
 const CAPTION_WIDTH: [i64; 2] = [50, 110];
 
+/// The player whose colours a box's frame takes (CLT-Q28 (2), answered (c) at E17 M5 T8c): the
+/// executable's the player whose view the screen shows (`viewing_player` 0x4CEA20: in hot seat
+/// the adventure map's current player), so a hot-seat defender's questions come framed in the
+/// attacker's colours while the panel and the book take the defender's; the client's the acting
+/// side's player (`acting`, when there is one), the original's for the comparisons only.
+#[must_use]
+pub fn framed(bugs: Bugs, viewing: u8, acting: Option<u8>) -> u8 {
+    match (bugs, acting) {
+        (Bugs::Fixed, Some(player)) => player,
+        _ => viewing,
+    }
+}
+
 /// Lays out a box of `style` showing `text` (in the medium font `medium`) and `picture` (its
 /// caption in the small font `small`) as the executable does (0x4F5D80, 0x4F4EB0's tail,
-/// 0x48FF00, 0x4F6990), its frame in the colours of `player` (the viewing player's,
-/// `viewing_player` 0x4CEA20), centred on the screen.
+/// 0x48FF00, 0x4F6990), its frame in the colours of `player` ([`framed`]), centred on the
+/// screen, in the profile `bugs`: the executable's text at x 20, 5 pixels left of the box's
+/// centre, the client's centred on the box (CLT-Q28 (1), answered (c) at E17 M5 T8c with the
+/// user's directive: a text the original sets off its centre is centred).
 #[must_use]
 pub fn layout(
     layout: &MessageLayout,
@@ -154,7 +170,7 @@ pub fn layout(
     text: &str,
     style: Style,
     picture: Option<&Picture>,
-    player: u8,
+    (player, bugs): (u8, Bugs),
 ) -> MessageBox {
     let bytes = encode_1252(text).0;
     let slot = picture.map(|p| Slot::of(small, p));
@@ -194,9 +210,13 @@ pub fn layout(
     let place = [(SCREEN[0] - width) / 2, (SCREEN[1] - height) / 2];
     let mut items = frame(layout, [width, height]);
     let last_piece = items.iter().map(Item::id).max().unwrap_or(BACKGROUND);
+    let text_left = match bugs {
+        Bugs::Original => TEXT_LEFT,
+        Bugs::Fixed => (width - text_width) / 2,
+    };
     items.push(Item::Label(Label {
         id: TEXT,
-        at: [i32_of(TEXT_LEFT), i32_of(text_top)],
+        at: [i32_of(text_left), i32_of(text_top)],
         size: [i32_of(text_width), i32_of(text_height)],
         font: layout.font.clone(),
         font_palette: layout.font_palette.clone(),

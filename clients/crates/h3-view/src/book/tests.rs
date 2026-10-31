@@ -413,11 +413,19 @@ fn the_open_book_takes_presses_keys_and_the_mouse() {
     let mut open = Open::new(&mut memory, many(), &catalogue);
     open.key(&mut memory, Key::TabDown, &catalogue);
     assert!(open.hover(&mut memory, (&layout, &catalogue), [246, 123]));
-    // Reopened, the mouse resting on the item it was over last: no hint (0x684B4C is never
-    // reset; CLT-Q26).
-    let mut again = Open::new(&mut memory, many(), &catalogue);
-    assert!(!again.hover(&mut memory, (&layout, &catalogue), [246, 123]));
+    // Reopened, the mouse resting on the item it was over last: the original's shows no hint
+    // (0x684B4C is never reset; CLT-Q26), the client's forgets the item at each opening.
+    let mut fixed = memory;
+    let mut original = Memory {
+        bugs: Bugs::Original,
+        ..memory
+    };
+    let mut again = Open::new(&mut original, many(), &catalogue);
+    assert!(!again.hover(&mut original, (&layout, &catalogue), [246, 123]));
     assert_eq!(again.status, "");
+    let mut client = Open::new(&mut fixed, many(), &catalogue);
+    assert!(client.hover(&mut fixed, (&layout, &catalogue), [246, 123]));
+    assert_eq!(client.cursor, Some(1));
     // The cursor it set, at the mouse: none yet in the reopened book; over an item frame 1.
     assert_eq!(again.cursor_draw(&layout, [1, 2]), None);
     assert!(matches!(

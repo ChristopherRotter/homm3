@@ -18,23 +18,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T1 — the answered slips
-
-- **Scope:** the user's answers of 2026-10-31 (the lane's `QUESTIONS-ANSWERED.md`), each fixed in
-  the client's profile with the original's kept for the comparisons only (`h3_render::Bugs`, as
-  the cursor's x): CLT-Q26 (the book's last hovered item forgotten at each opening,
-  `book::Memory`); CLT-Q27 (1) (a Faerie Dragon's aim given up posts the mouse, as the book's
-  does) and (2) (the aim's start keeps the cursor's answer: a click before a move casts there);
-  CLT-Q28 (1) (the box's text centred on the box) and (2) (the box framed in the acting side's
-  player's colours), with the user's directive (the epic's "Decisions"): every text the client
-  draws where the original sets it off its centre is centred (the readings of design §7.17 to
-  §7.24 and §9 checked for such places); CLT-Q33 (no log line when nothing was summoned);
-  CLT-Q35 (the result window says "fled" or "surrendered" only for the side that did).
-- **Acceptance:** each fix tested in the client's profile and the original's kept for the
-  comparisons (`drawn` all the same); `clients/scripts/check.sh` all gates; the design and M6's
-  review list name the fixes.
-- **Depends on:** nothing. **Status:** ready.
-
 ### E17 M6 T2 — a stack's info
 
 - **Scope:** what a press on a stack gives besides a command (`QUEUE-ARCHIVE.md`, the 2026-10-27
@@ -46,8 +29,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   enemy stack); stills and a sequence recorded against the original.
 - **Acceptance:** each dialog exact against its recordings or each difference listed; review
   items; `check.sh`.
-- **Depends on:** T1 (the text's centring). **Status:** ready; likely cut at its start (the
-  dialog, then the popup and the turret).
+- **Depends on:** T1 (done). **Status:** ready; likely cut at its start (the dialog, then the
+  popup and the turret).
 
 ### E17 M6 T3 — the right button's other popups
 
@@ -64,8 +47,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   the Auto Combat options restricting the window's bot; the others as read), kept in the
   client's settings file (beside `keys.toml`, *provisional*); recorded with settings on.
 - **Acceptance:** the dialog and each setting's drawing exact against recordings or listed;
-  `check.sh`. **Depends on:** T1. **Status:** ready; likely cut at its start (the dialog, then
-  the shadows and the grid).
+  `check.sh`. **Depends on:** T1 (done). **Status:** ready; likely cut at its start (the dialog,
+  then the shadows and the grid).
 
 ### E17 M6 T5 — M5's gaps
 

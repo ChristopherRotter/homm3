@@ -450,6 +450,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 ruleset: Some(&ruleset),
                 catalogue: &catalogue,
                 layout: &layout,
+                // The comparisons draw the original's (CLT-Q35).
+                bugs: Bugs::Original,
             };
             let result = outcome.map(|o| {
                 crate::results::window(

@@ -670,16 +670,22 @@ pub fn follow_on<'l>(
                         .find(|a| a.spell == spell && a.creature == creature)
                 });
                 if let (Some(turn), Some(aim)) = (turn, aim) {
-                    h.aiming = Some(Aiming {
-                        aim: aim.clone(),
-                        last: None,
-                    });
                     // The cursor where the mouse is now (0x59EE2E), the hex it takes not kept
-                    // (0x59EE56): a click before the next move casts nothing.
+                    // (0x59EE56): a click before the next move casts nothing. The client keeps
+                    // it, so such a click casts there (CLT-Q27 (2), answered (b) at E17 M5 T8c);
+                    // the original's for the comparisons.
                     let hex = h
                         .point
                         .map_or(-1, |p| screen_hex(spot(layout, p, turn.field.rects())));
-                    h.aim_at(now, (aim, hex), &turn.field, name);
+                    let taken = h.aim_at(now, (aim, hex), &turn.field, name);
+                    let last = taken.filter(|_| h.bugs == Bugs::Fixed);
+                    if last.is_some() {
+                        h.shown.aimed.push((now, last));
+                    }
+                    h.aiming = Some(Aiming {
+                        aim: aim.clone(),
+                        last,
+                    });
                 }
             }
             Input::Book { at: now } => {
@@ -700,9 +706,12 @@ pub fn follow_on<'l>(
                     // `enter_player_cast`'s end (0x59F65C).
                     h.set_frame(now, layout.mouse.panel_frame);
                 }
-                if aimed != Some(true) {
+                if aimed != Some(true) || h.bugs == Bugs::Fixed {
                     // The book's button's end (0x47519A): the mouse's hex forgotten and the
-                    // mouse posted where it rests (0x4ECC00); the key F's posts nothing.
+                    // mouse posted where it rests (0x4ECC00); the key F's posts nothing, so the
+                    // aim's pointer and line stay until the mouse takes another hex: the client
+                    // posts it there too (CLT-Q27 (1), answered (b) at E17 M5 T8c), the
+                    // original's for the comparisons.
                     h.hex = None;
                     if let (Some(point), Some(turn)) = (h.point, turns.get(at.turn)) {
                         h.take(now, point, Some(&turn.field), name);

@@ -27,6 +27,7 @@ use alloc::format;
 use alloc::string::String;
 
 use h3_protocol::wire::{Outcome, Side};
+use h3_render::Bugs;
 
 use crate::anim::{Cue, Sound};
 
@@ -188,9 +189,17 @@ impl Tune {
 /// (0x470BFE to 0x470CFF). `survivors`: whether each side has army survivors at the end (an army
 /// stack or one raised from corpses alive): the opponent of a side that retreated or surrendered
 /// left with none, only stacks created in the battle, loses too, no winner named (BAT-END-001,
-/// BAT-Q7; [`crate::result::winner`]), and the window then shows the defender's side.
+/// BAT-Q7; [`crate::result::winner`]), and the window then shows the defender's side: the original
+/// plays the way a side gave up whichever side did, the client's profile (`bugs`) only when the
+/// defender did, else [`Tune::Lose`] (CLT-Q35, answered (b) at E17 M5 T8c: the window's text and
+/// clip by the same branch).
 #[must_use]
-pub fn end_tune(outcome: Outcome, human: [bool; 2], town: bool, survivors: [bool; 2]) -> Tune {
+pub fn end_tune(
+    outcome: Outcome,
+    (human, town): ([bool; 2], bool),
+    survivors: [bool; 2],
+    bugs: Bugs,
+) -> Tune {
     let index = |side: Side| usize::from(side == Side::Defender);
     let other = |side: Side| 1 - index(side);
     let (winner, gave_up) = match outcome {
@@ -198,10 +207,15 @@ pub fn end_tune(outcome: Outcome, human: [bool; 2], town: bool, survivors: [bool
         // A ranked game's ends (only in `GameEnded`, never a battle's event): its winner, or none.
         Outcome::Forfeit { side } => (Some(other(side)), None),
         Outcome::Draw {} | Outcome::NoShow {} | Outcome::Unverified {} => (None, None),
-        Outcome::Retreat { side } => (Some(other(side)), Some(Tune::Retreat)),
-        Outcome::Surrender { side } => (Some(other(side)), Some(Tune::Surrender)),
+        Outcome::Retreat { side } => (Some(other(side)), Some((Tune::Retreat, index(side)))),
+        Outcome::Surrender { side } => (Some(other(side)), Some((Tune::Surrender, index(side)))),
     };
-    match crate::result::winner(winner, gave_up.is_some(), survivors) {
+    let named = crate::result::winner(winner, gave_up.is_some(), survivors);
+    // No winner named: the defender's side shown, which may not be the side that gave up.
+    let gave_up = gave_up
+        .filter(|&(_, giver)| named.is_some() || bugs == Bugs::Original || giver == 1)
+        .map(|(tune, _)| tune);
+    match named {
         Some(w) if human.get(w).copied().unwrap_or(false) => {
             if town && w == 1 {
                 Tune::DefendCastle
@@ -248,7 +262,12 @@ mod tests {
     fn the_end_plays_the_shown_sides_tune() {
         use Side::{Attacker as A, Defender as D};
         let tune = |outcome: Outcome, human: [bool; 2], town: bool| {
-            end_tune(outcome, human, town, [true; 2])
+            let original = end_tune(outcome, (human, town), [true; 2], Bugs::Original);
+            assert_eq!(
+                end_tune(outcome, (human, town), [true; 2], Bugs::Fixed),
+                original
+            );
+            original
         };
         let both = [true, true];
         let red = [true, false];
@@ -295,26 +314,58 @@ mod tests {
         assert_eq!(tune(Outcome::Retreat { side: A }, red, true), Tune::Retreat);
         // BAT-END-001 (E17 M5 T8b2, R5b-3): the opponent of a side that gave up with no army
         // survivors has lost too: no winner, the defender's side shown.
+        // The original plays the way a side gave up whichever side did; the client only when the
+        // defender shown did (CLT-Q35).
         let left = [true, false];
+        let end = |outcome, human, town, survivors, bugs| {
+            end_tune(outcome, (human, town), survivors, bugs)
+        };
+        let o = Bugs::Original;
+        let f = Bugs::Fixed;
         assert_eq!(
-            end_tune(Outcome::Retreat { side: A }, both, false, left),
+            end(Outcome::Retreat { side: A }, both, false, left, o),
             Tune::Retreat
         );
         assert_eq!(
-            end_tune(Outcome::Surrender { side: D }, red, false, left),
+            end(Outcome::Retreat { side: A }, both, false, left, f),
+            Tune::Lose
+        );
+        assert_eq!(
+            end(Outcome::Surrender { side: D }, red, false, left, o),
             Tune::Win
         );
         assert_eq!(
-            end_tune(Outcome::Surrender { side: A }, both, false, left),
+            end(Outcome::Surrender { side: D }, red, false, left, f),
+            Tune::Win
+        );
+        assert_eq!(
+            end(Outcome::Surrender { side: A }, both, false, left, o),
             Tune::Surrender
         );
         assert_eq!(
-            end_tune(Outcome::Surrender { side: A }, both, true, left),
+            end(Outcome::Surrender { side: A }, both, false, left, f),
+            Tune::Lose
+        );
+        assert_eq!(
+            end(Outcome::Surrender { side: A }, both, true, left, o),
             Tune::LoseCastle
+        );
+        assert_eq!(
+            end(Outcome::Surrender { side: A }, both, true, left, f),
+            Tune::LoseCastle
+        );
+        let right = [false, true];
+        assert_eq!(
+            end(Outcome::Retreat { side: D }, both, false, right, o),
+            Tune::Retreat
+        );
+        assert_eq!(
+            end(Outcome::Retreat { side: D }, both, false, right, f),
+            Tune::Retreat
         );
         // A victory names its winner whatever survived.
         assert_eq!(
-            end_tune(Outcome::Victory { side: D }, both, false, [false; 2]),
+            end(Outcome::Victory { side: D }, both, false, [false; 2], f),
             Tune::Win
         );
     }
