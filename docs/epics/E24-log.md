@@ -2092,4 +2092,8 @@ gone): CI's green run on `master` the starting point, the sequences resumed one 
   panels, F2 the redraw, F3 the mouse-over, F4 the input, F5 the harness, F6 what the others
   left; at most three at once, 202k to 243k reported tokens each): 42 findings, the bugs F2-1,
   F4-1, F4-2, F4-3; its README's summary is T7b's start. F5-9 (the mask comment) done here.
-- **Checked:** clippy (`h3-map-view`, all targets); the scoped verify with original data.
+- **Checked:** clippy (`h3-map-view`, all targets); the scoped verify with original data (no
+  failing step); `check.sh` all gates, after `the_status_window_over_time`'s two cases built from
+  `status-date-end`'s and `status-kingdom-end`'s kept live parts cleared the kingdom's window
+  (`realm`) the new recordings hold (the cases mean a live part without one; coverage had lost
+  `timeline.rs`'s line for the window shown standing in for it).
