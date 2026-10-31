@@ -2531,6 +2531,16 @@ sequences (`choose-lists`, `press-buttons`: every frame exact, the status bar co
   empty text (`edit_draw` 0x5BB400): the status bar shows no text while its item keeps the hint
   and 0x65F228 the item looked at last, so only another item's or the map's next hint shows a
   text again (observed live: the item's text kept; MCL-Q22).
+- **The client's fixes** (T7c2, *provisional*; the original's behind `--bugs original`, which
+  the comparisons use): after such a redraw the status bar shows the hint of the mouse's item
+  again at the turn's end (MCL-Q22 (b): off the view the panel's item under the mouse now and its
+  hint now, looked at as the last; over the view the tile's hint memory holds, which the
+  mouse-over changes only with the mouse's column or row). A hotkey's key up while the mouse
+  holds a button down is dropped by the button's loop (its message to the mouse manager,
+  0x456341, then the next unless a move, 0x45634D), so the button the key pressed stays drawn
+  pressed with its command lost (MCL-Q28, read in T7c2; the minimap's loop alike, MCL-Q24,
+  §4.14): the client releases it, drawn and shown, without its command or a sound; the button
+  the mouse holds is left to its hold (`Loop::key_released`).
 - **The choices' facts** (the harness): `h3map.py`'s `choose_each` chooses each of Red's heroes and
   towns from their lists before the sequence's 0 (a situation's `choose`), reading each one's
   status window, a hero's path and tile, a town's place, then the staging's selection, the lists'
@@ -2590,7 +2600,9 @@ sequences on the new situation `seq-underground` (a writer's map of two levels):
   hint, no cursor change (an arrow over the view stays). The release (a move to another point
   before it, the harness's, is drawn first) ends the loop; the manager's next turn, in the same
   millisecond, redraws when the hold passed the deadline (`minimap-drag`'s 2 400: two objects'
-  steps in one millisecond). The release is the loop's: the area's state keeps the press's bit 1
+  steps in one millisecond). A hotkey's key up among the dropped messages leaves the button its
+  key pressed drawn pressed (MCL-Q24; the client's fix releases it, §4.13). The release is the
+  loop's: the area's state keeps the press's bit 1
   (observed in memory: the staging's own minimap click leaves item 1 at state 7), harmlessly
   (below).
 - **An item's press and release** (`dialog_area_message` 0x44FF60, the areas' and the pictures'

@@ -372,7 +372,8 @@ impl fmt::Display for Unplayable {
 /// The numbers the loop runs by: the tables' (`[map]`, its heroes' standing groups, `[map.walk]`),
 /// the layout's (the frame, the view's rectangle, origin and tile, `[scroll]`, `[cursor]`) and
 /// whether the original's bugs are reproduced (the edge zones of MCL-Q6, the cursor's even x: E17
-/// design §9.9; the mouse's tile 8 pixels off, MCL-Q18; for the comparisons only).
+/// design §9.9; the mouse's tile 8 pixels off, MCL-Q18; the hint a redraw hides, MCL-Q22; a
+/// hotkey's key up a hold drops, MCL-Q24 and MCL-Q28; for the comparisons only).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rules {
     /// A palette step's time (200 ms).
@@ -852,6 +853,9 @@ pub struct Loop {
     column: Option<[i32; 2]>,
     /// The panel's item the hint looked at last (0x65F228; none: -1).
     last_item: Option<u16>,
+    /// A redraw of every dialog item hid the status bar's hint this turn: the client's fix draws
+    /// the hint of the mouse's item again at the turn's end (MCL-Q22, [`Loop::hint_again`]).
+    rehint: bool,
     /// What a click on the view would do (the manager's +0x40; T6b's).
     action: hover::Action,
     /// The map's heroes on their tiles and facings: the selected one's as it stood when last
@@ -971,6 +975,7 @@ impl Loop {
             walked: false,
             column: None,
             last_item: None,
+            rehint: false,
             action: -1,
             heroes: start.heroes.clone(),
             index: start.index,
@@ -1109,7 +1114,29 @@ impl Loop {
                 }
             }
         }
+        self.hint_again();
         Ok(())
+    }
+
+    /// The client's fix of MCL-Q22 (the user, 2026-10-31; [`Bugs::Fixed`]): after a redraw of
+    /// every dialog item ([`Loop::draw_lists`]) the status bar shows the hint of the mouse's item
+    /// again, where the original's chat edit leaves it empty until another item's hint. Off the
+    /// view the panel's item under the mouse now and its hint now (a list's slot names the hero or
+    /// town it holds now), looked at as the last; over the view the tile's hint memory holds (the
+    /// mouse-over gives a new one only when the mouse's column or row changes, as after a
+    /// scroll). Once per turn, after its actions: what the screen shows then (*provisional*).
+    fn hint_again(&mut self) {
+        if !core::mem::take(&mut self.rehint) || self.rules.over_view(self.pointer) {
+            return;
+        }
+        let (kingdom, buttons, levels) = (&self.kingdom, self.buttons, self.levels);
+        let item = self
+            .rules
+            .panels
+            .at(self.pointer, |i| hover::takes(i, kingdom, buttons, levels));
+        self.last_item = item;
+        let facts = self.hover.as_ref().map(|h| h.facts());
+        self.drawn.hint = hover::panel_hint(item, &self.kingdom, facts);
     }
 
     /// The tick (0x4ED490), each turn of the loop and of a walk's wait: the mouse poll when due
@@ -1207,11 +1234,20 @@ impl Loop {
     /// (GetCursorPos) is set only by a `fresh` one, never by one taken from the queue after a
     /// step, which the mouse has left (E24 M3 T7's review, F4-3). The window's point off the
     /// frame (its focus lost: no mouse message in the original, WM_ACTIVATEAPP) leaves the hold
-    /// as it is (F4-2).
+    /// as it is (F4-2). A hotkey's key up is dropped by both loops (a button's: its message to
+    /// the mouse manager, 0x456341, then the next, 0x456350; the minimap's, design §4.14), so
+    /// the button its key pressed stays drawn pressed with its command lost; the client's fix
+    /// releases it without its command ([`Loop::key_released`]; MCL-Q24, MCL-Q28).
     fn holding(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
         if let Action::Pointer(at) = action
             && !self.rules.on_frame(at)
         {
+            return Ok(());
+        }
+        if let Action::KeyUp(key) = action {
+            if self.rules.bugs == Bugs::Fixed {
+                self.key_released(key);
+            }
             return Ok(());
         }
         if self.dragging.is_some() {
@@ -1338,6 +1374,21 @@ impl Loop {
         }
         self.show_pressed(id, false);
         self.command(t, id)
+    }
+
+    /// The client's fix of MCL-Q24 and MCL-Q28 (the user, 2026-10-31; [`Bugs::Fixed`]): a
+    /// hotkey's key up while the mouse holds the minimap or a button down releases the button its
+    /// key pressed, drawn and shown, without its command and without a sound (as a release off a
+    /// button); the button the mouse holds stays pressed, its hold deciding (its key's later up
+    /// would find it released: F4-4).
+    fn key_released(&mut self, key: Hotkey) {
+        let Some(at) = self.keyed.iter().position(|&(k, _)| k == key) else {
+            return;
+        };
+        let (_, id) = self.keyed.remove(at);
+        if self.held.is_none_or(|(held, _)| held != id) {
+            self.show_pressed(id, false);
+        }
     }
 
     /// A button pressed or released, drawn and shown at once.
@@ -1821,6 +1872,7 @@ impl Loop {
     /// The status bar's text set, drawn and shown at once.
     fn show_hint(&mut self, hint: Hint) {
         self.drawn.hint = hint;
+        self.rehint = false;
     }
 
     /// The selected hero as the mouse-over reads it.
@@ -2315,7 +2367,11 @@ impl Loop {
         // drawn after the status bar over its box, paints its picture with no text over the
         // hint (`edit_draw` 0x5BB400; E24 M3 T6b1, design §4.13). Memory keeps the hint and the
         // item looked at last: only another item's or the map's next hint shows a text again.
-        self.drawn.hint = Hint::Empty;
+        // The client draws the mouse's item's hint again at the turn's end (MCL-Q22).
+        match self.rules.bugs {
+            Bugs::Original => self.drawn.hint = Hint::Empty,
+            Bugs::Fixed => self.rehint = true,
+        }
     }
 
     /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner and the selected

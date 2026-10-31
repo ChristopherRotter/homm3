@@ -2843,3 +2843,123 @@ fn replays_the_recorded_keys_during_walks() {
         assert_eq!(got.len(), want.len(), "{id}");
     }
 }
+
+/// MCL-Q22 (the user, 2026-10-31): a redraw of every dialog item (a list's arrow, the
+/// underground's button and key) leaves the status bar empty in the original's profile, the
+/// item looked at last kept; the client's draws the hint of the mouse's item again at the turn's
+/// end: a panel's item's now, over the view the tile's memory holds.
+#[test]
+fn the_client_draws_the_hint_a_redraw_hid_again() {
+    let (start, _, _, _) = choosing("choose-lists");
+    for (bugs, hint) in [
+        (Bugs::Original, Hint::Empty),
+        (Bugs::Fixed, Hint::Panel(13)),
+    ] {
+        let mut l = Loop::start(rules(bugs), &start).unwrap();
+        l.run(1, &[Action::Click([641, 380])]).unwrap();
+        assert_eq!(l.kingdom.tops[0], 1);
+        assert_eq!((l.drawn().hint.clone(), l.last_item), (hint, Some(14)));
+    }
+    let start = underground_start();
+    for (bugs, hint) in [(Bugs::Original, Hint::Empty), (Bugs::Fixed, Hint::Panel(3))] {
+        let mut l = Loop::start(rules(bugs), &start).unwrap();
+        l.run(1, &[Action::Click([727, 212])]).unwrap();
+        assert_eq!(l.view.z, 1);
+        assert_eq!(l.drawn().hint, hint, "{bugs:?}");
+        // The next move inside the same item shows nothing new in either.
+        l.run(2, &[Action::Pointer([728, 213])]).unwrap();
+        assert_eq!(l.drawn().hint, hint, "{bugs:?}");
+    }
+    // Over the view, the underground's key: the monster's hint as memory holds it.
+    let monster = Hint::Monster {
+        creature: 13,
+        count: 7,
+    };
+    for (bugs, hint) in [
+        (Bugs::Original, Hint::Empty),
+        (Bugs::Fixed, monster.clone()),
+    ] {
+        let mut l = hovering(false, bugs);
+        l.levels = 2;
+        l.run(1, &[Action::Pointer(on(5, 4))]).unwrap();
+        assert_eq!(l.drawn().hint, monster);
+        l.run(
+            2,
+            &[
+                Action::Key(Hotkey::Underground),
+                Action::KeyUp(Hotkey::Underground),
+            ],
+        )
+        .unwrap();
+        assert_eq!((l.view.z, l.drawn().hint.clone()), (1, hint), "{bugs:?}");
+    }
+}
+
+/// MCL-Q24 and MCL-Q28 (the user, 2026-10-31): a hotkey's key up while the mouse holds the
+/// minimap or a button down is dropped by the original's loops, its button left pressed and its
+/// command given at the key's next up; the client releases the button without its command, the
+/// button the mouse holds left to its hold.
+#[test]
+fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
+    let (start, _, _, _) = choosing("choose-lists");
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let fixed = bugs == Bugs::Fixed;
+        let (kept, none): (&[u16], &[u16]) = (if fixed { &[] } else { &[11] }, &[]);
+        // The minimap's drag (MCL-Q24).
+        let mut l = Loop::start(rules(bugs), &start).unwrap();
+        l.buttons.next_hero = true;
+        l.run(
+            1,
+            &[Action::Key(Hotkey::NextHero), Action::Press([650, 50])],
+        )
+        .unwrap();
+        assert!(l.dragging.is_some());
+        assert_eq!(l.drawn().pressed, [11]);
+        l.run(2, &[Action::KeyUp(Hotkey::NextHero)]).unwrap();
+        assert_eq!(l.drawn().pressed, kept, "{bugs:?}");
+        l.run(3, &[Action::Release([650, 50])]).unwrap();
+        assert_eq!((l.dragging, l.drawn().pressed.as_slice()), (None, kept));
+        // The key's next up: the original's command (the next hero chosen), the client's nothing.
+        let selected = l.kingdom.selected;
+        l.run(4, &[Action::KeyUp(Hotkey::NextHero)]).unwrap();
+        assert_eq!(l.kingdom.selected != selected, !fixed, "{bugs:?}");
+        assert_eq!(l.drawn().pressed, none);
+        // A button's hold (MCL-Q28): the hero list's arrow held as the key goes up.
+        let mut l = Loop::start(rules(bugs), &start).unwrap();
+        l.buttons.next_hero = true;
+        l.run(
+            1,
+            &[Action::Key(Hotkey::NextHero), Action::Press([641, 380])],
+        )
+        .unwrap();
+        assert_eq!(
+            (l.held, l.drawn().pressed.as_slice()),
+            (Some((14, true)), &[11, 14][..])
+        );
+        l.run(2, &[Action::KeyUp(Hotkey::NextHero)]).unwrap();
+        let held: &[u16] = if fixed { &[14] } else { &[11, 14] };
+        assert_eq!(l.drawn().pressed, held, "{bugs:?}");
+        l.run(3, &[Action::Release([641, 380])]).unwrap();
+        assert_eq!((l.kingdom.tops[0], l.drawn().pressed.as_slice()), (1, kept));
+        // The button the mouse holds keeps its press though its own key goes up: the hold
+        // decides, released off it nothing.
+        let mut l = Loop::start(rules(bugs), &start).unwrap();
+        l.run(
+            1,
+            &[Action::Key(Hotkey::Kingdom), Action::Press([695, 212])],
+        )
+        .unwrap();
+        l.run(2, &[Action::KeyUp(Hotkey::Kingdom)]).unwrap();
+        assert_eq!(
+            (l.held, l.drawn().pressed.as_slice()),
+            (Some((3, true)), &[3][..])
+        );
+        l.run(
+            3,
+            &[Action::Pointer([695, 185]), Action::Release([695, 185])],
+        )
+        .unwrap();
+        assert_eq!((l.held, l.drawn().pressed.as_slice()), (None, none));
+        assert_eq!(l.keyed.is_empty(), fixed, "{bugs:?}");
+    }
+}
