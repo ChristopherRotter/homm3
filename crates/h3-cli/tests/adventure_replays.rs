@@ -120,7 +120,11 @@
 //! T83a (adventure ruleset part v14, adventure state hash v17, map import v15: increment 9's
 //! kinds and parameters, an abandoned mine's set; none of the four maps has an increment 9
 //! object) re-recorded all thirty-two with their options (the scripted ones from their commands),
-//! their commands and days unchanged: every hash moved.
+//! their commands and days unchanged: every hash moved. E08 T83b1 (adventure ruleset part v15:
+//! the flag radius; adventure state hash v18: owners, weekly contents, an abandoned mine's draws,
+//! a Shipyard's boat tile; none of the four maps has an increment 9 object) re-recorded all
+//! thirty-two from their commands, the random ones also played again with their options to the
+//! same commands: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

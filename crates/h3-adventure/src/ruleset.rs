@@ -169,6 +169,11 @@ pub struct AdventureParamsDef {
     /// Favorable Winds' two thirds, `[2, 3]` (survey `E08-sea.md` §4.1). The numerator from 1, at
     /// most the denominator.
     pub sea_ground: [u16; 2],
+    /// The radius of the tiles around an owned object's entrance revealed to its owner (ADR-0016
+    /// point 5, ADV-OWN-001, ADV-OWN-002; E08 T83b1, decision 217): at the game's start for every
+    /// object owned at load, and from T84 at a flag. The original's 3 (`set_mine_owner` 0x4C66E0,
+    /// `set_shipyard_owner` 0x4C6A30, `reveal_owned` 0x4C7C50; survey `E08-economy.md` §2.3).
+    pub flag_radius: u8,
     /// The calendar (GAM-CAL-002, E08 T83a; read by the game's day advance from T85b).
     pub calendar: CalendarParams,
     /// The months' kinds and their monsters (GAM-CAL-003, ADV-MON-014, E08 T83a; read by the
@@ -440,6 +445,7 @@ pub struct AdventureParams {
     water_walk_cost: [NonZeroU16; 4],
     sea_points: [u32; 4],
     sea_ground: [u16; 2],
+    flag_radius: u8,
     calendar: CalendarParams,
     months: Option<MonthParams>,
 }
@@ -483,6 +489,12 @@ impl AdventureParams {
     /// A hero's scouting radius without bonuses (ADV-FOG-001).
     pub const fn scouting_radius(&self) -> u8 {
         self.scouting_radius
+    }
+
+    /// The radius of the tiles around an owned object's entrance revealed to its owner (ADR-0016
+    /// point 5; E08 T83b1).
+    pub const fn flag_radius(&self) -> u8 {
+        self.flag_radius
     }
 
     /// The widest and highest map in tiles.
@@ -938,8 +950,9 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v14 (E08 T83a; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
-    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's, v11 T50's, v12 T61a's, v13 T72's): version; the terrains in the
+    /// Encoding v15 (E08 T83b1; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
+    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's, v11 T50's, v12 T61a's, v13 T72's, v14 T83a's):
+    /// version; the terrains in the
     /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable; since v9 the
     /// costs by Pathfinding level, 0 for none, else 1 and the three costs); the road kinds
     /// (key, name, cost); the river kinds (key, name); the parameters (native cost, the land
@@ -961,8 +974,8 @@ impl CanonicalHash for AdventureRuleset {
     /// [`ObjectType`]'s, the monsters' growth (basis points, unit, cap) after their price
     /// resource, and last the calendar (a week's days, a month's weeks) and the months (0 for
     /// none, else 1, the three weights, the creatures as length and handles, the monster's type,
-    /// the spawn's chance, factor and aggression bounds). The core's hash is not part of it:
-    /// replays record both.
+    /// the spawn's chance, factor and aggression bounds); since v15 (E08 T83b1) last the flag
+    /// radius. The core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -1072,6 +1085,7 @@ impl CanonicalHash for AdventureRuleset {
                 h.write_i32(i32::from(months.spawn_aggression[1]));
             }
         }
+        h.write_u8(self.params.flag_radius);
     }
 }
 
@@ -1422,6 +1436,7 @@ fn validate_params(
             water_walk_cost: def.water_walk_cost,
             sea_points: def.sea_points,
             sea_ground: def.sea_ground,
+            flag_radius: def.flag_radius,
             calendar: def.calendar,
             months: def
                 .months

@@ -2466,7 +2466,7 @@ id       = "ADV-OWN-002"
 title    = "An ownable object's owner at the start"
 context  = "adventure"
 status   = "implemented"
-summary  = "A mine, a Lighthouse and a Shipyard start with the map's owner: 0xFF none (neutral), else the player of that colour; an abandoned mine starts neutral (its body has no owner). The import refuses an owner of a colour nobody plays, or past the eight (`ImportError::ObjectOwner`), and an ownable object whose entrance lies on water (`Unsupported::OwnedOnWater`; none of the shipped maps has one, and how a hero reaches an entered object on water was not read). The setup refuses an owner on an object that is not ownable (a mine, an abandoned mine, a Lighthouse, a Shipyard; the dwellings come with increment 10) or that is not a player of the game (`SetupError::ObjectOwner`). E08 T83a: `ObjectSetup::owner`, `h3_map`'s `object_owner` (map import v15), `AdventureState::new`; the state's owners, their reveal at the start and their views come with T83b."
+summary  = "A mine, a Lighthouse and a Shipyard start with the map's owner: 0xFF none (neutral), else the player of that colour; an abandoned mine starts neutral (its body has no owner). The import refuses an owner of a colour nobody plays, or past the eight (`ImportError::ObjectOwner`), and an ownable object whose entrance lies on water (`Unsupported::OwnedOnWater`; none of the shipped maps has one, and how a hero reaches an entered object on water was not read). The setup refuses an owner on an object that is not ownable (a mine, an abandoned mine, a Lighthouse, a Shipyard; the dwellings come with increment 10) or that is not a player of the game (`SetupError::ObjectOwner`). E08 T83a: `ObjectSetup::owner`, `h3_map`'s `object_owner` (map import v15), `AdventureState::new`. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the state keeps each ownable object's owner by its place among the static map's ownable objects (`StaticMap::ownables`, `AdventureState::owner`, checked by `check_owners`), and the game's start reveals the tiles within the part's flag radius (3, `flag_radius`, adventure ruleset part v15; E08 decision 217) of every owned object's entrance to its owner, a Lighthouse's and a Shipyard's too, as the original's `reveal_owned` from `adventure_manager_start` (batch E9's E9-4 and E9-6; A-33 withdrawn). On the 160 shipped maps 61 objects are owned at the start (60 mines, 1 Shipyard). The views come with T83b2."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2492,7 +2492,7 @@ id       = "ADV-MIN-003"
 title    = "The abandoned mine: its resources and its guards"
 context  = "adventure"
 status   = "implemented"
-summary  = "An abandoned mine (53.7, and SoD's 220 the original makes 53.7) takes from the map the set of resources it may draw: the body's first byte, a bit per resource code (0 wood to 6 gold; the other three bytes dropped, as the original reads them). When the game is built its resource is drawn among them with equal chances and its guards are drawn: the kind's creature (the Troglodytes), 100 to 200 inclusive (D-48 as read); its daily amount is its drawn resource's mine's (the part keeps one mine for each resource when it has an abandoned mine). The import refuses an empty set or bit 7 (resource 7, past the seven: A-31's input bound, `ADV-QUIRK-33`, not reproduced: the original's empty set finds no bit and gives resource 8, which produces nothing). E08 T83a: the import (`h3_map`'s `mine_resources`, map import v15) as `Holds::Resources`, checked when the game is built (distinct resources of the ruleset in the core's order, at least one) and hashed with the static map (adventure state hash v17); the kind `AbandonedMine` and `AdventureRuleset::mine_daily` (part v14); the draws come with T83b."
+summary  = "An abandoned mine (53.7, and SoD's 220 the original makes 53.7) takes from the map the set of resources it may draw: the body's first byte, a bit per resource code (0 wood to 6 gold; the other three bytes dropped, as the original reads them). When the game is built its resource is drawn among them with equal chances and its guards are drawn: the kind's creature (the Troglodytes), 100 to 200 inclusive (D-48 as read); its daily amount is its drawn resource's mine's (the part keeps one mine for each resource when it has an abandoned mine). The import refuses an empty set or bit 7 (resource 7, past the seven: A-31's input bound, `ADV-QUIRK-33`, not reproduced: the original's empty set finds no bit and gives resource 8, which produces nothing). E08 T83a: the import (`h3_map`'s `mine_resources`, map import v15) as `Holds::Resources`, checked when the game is built (distinct resources of the ruleset in the core's order, at least one) and hashed with the static map (adventure state hash v17); the kind `AbandonedMine` and `AdventureRuleset::mine_daily` (part v14). E08 T83b1 (adventure state hash v18): the draws when the game is built, from the setup stream in a walk in object order after the rewards' (the engine's order, E08 decision 17: the original draws the resource at the map's load and the count at its new game), the resource with equal chances among the set and then the count between the kind's bounds (`Resolved::Mine`); the mine's guards are the army written on it once one is (a battle's survivors, the Leave Guards group: T84; written empty, none), else the drawn count of the kind's creature in slot 0 (`AdventureState::mine_guards`). On the 160 shipped maps every abandoned mine draws within its set and 100 to 200 (the census)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2513,3 +2513,135 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Abandoned_Mine"
   retrieved  = "2026-10-30"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-SHY-001"
+title    = "A Shipyard's boat tile, fixed when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "When the game is built, after every object is placed, each Shipyard's boat tile is the first of its kind's offsets (the original's twelve, column and row from the entrance: (-2, 0), (2, 0), (-2, 1), (2, 1), (-1, 1), (1, 1), (0, 1), (-2, -1), (2, -1), (-1, -1), (1, -1), (0, -1)), on the entrance's level, that is a tile of the map on water that no object blocks or is visited from; a boat lying there does not count (the state's boats are no objects; the original takes a boat's entrance too). None found: the Shipyard never builds. Computed once: an object that later leaves an earlier offset does not move it. E08 T83b1 (increment 9's design note §6; adventure state hash v18): `Resolved::BoatTile` in the static map (`StaticMap::fix_boat_tiles`); the boat's building comes with T84 (ADV-SHY-002, -003). On the 160 shipped maps every Shipyard but Hoard's at (62, 38, 0), in both Hoard maps, finds a tile (the census), as the survey found."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a1; survey E08-economy.md section 5.1): shipyard_boat_tiles 0x500DE0, from map_objects_place_all after the objects are placed, tries the twelve offsets of shipyard_boat_offsets 0x67FAA8 in order from each class-87 entrance and keeps the first tile on water, not blocked (map item +0xD 0x01 clear), that is no object's entrance or a boat's; none: 0xFFFF, the Shipyard never builds; computed once"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md section 5.1: CGShipyard::getOutOffsets holds the same twelve offsets in the same order and IBoatGenerator::bestLocation the same test, evaluated at every visit (the engine fixes it at load, as the original)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Shipyard (survey E08-economy.md section 5.1): an adventure map shipyard has 12 active tiles; if none of them are on clear water, a boat cannot be built"
+  url        = "https://heroes.thelazy.net/index.php/Shipyard"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-5 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30; survey E08-economy.md section 19): Red's Shipyard's tiles' words hold the boat tile (31, 50), the first offset tile, unchanged throughout; the built boat lies there"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-WEK-001"
+title    = "The Windmill"
+context  = "adventure"
+status   = "implemented"
+summary  = "A Windmill is a weekly object (entered, owned by nobody): each week one of its kind's resources (the original's mercury, ore, sulfur, crystal or gems, never wood or gold) and an amount of 3 to 6, both drawn, the first week's when the game is built; its visit gives them to the visitor's owner once and empties it until the week's step, which draws again whether it was visited or not; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents drawn from the setup stream after the static map's draws, in object order, the resource with equal chances among the kind's and then the amount between its bounds (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); the visit comes with T84, the week's step with T85a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md section 9.1): setup_map_objects 0x4C2040 and the week's scan draw a resource 1 to 5 and an amount 3 to 6 into the tile's word (bits 0 to 3, 13 to 16); visit_windmill 0x4A7FC0 marks the team (bits 5 to 12), gives the amount and clears it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md section 9.5: the Windmill's rewardable config, 3 to 6 of mercury to gems, visited once a week, reset at the week's start"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOncePerWeek.json"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Windmill (survey E08-economy.md section 9.5): 3 to 6 of a random resource each week; it will never produce wood or gold"
+  url        = "https://heroes.thelazy.net/index.php/Windmill"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-8 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30; survey E08-economy.md section 19): W1 gave 3 sulfur, 4 mercury and 6 mercury in three runs; nothing again on day 2; again after the week's reset on day 8; the marks kept"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-WEK-002"
+title    = "The Water Wheel"
+context  = "adventure"
+status   = "implemented"
+summary  = "A Water Wheel is a weekly object (entered, owned by nobody): its resource (gold), 500 in the first week and 1 000 in every later one, whether it was visited or not; its visit gives it to the visitor's owner once and empties it until the week's step; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents when the game is built, the kind's first amount (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); the visit comes with T84, the week's step with T85a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md section 9.2): setup_map_objects 0x4C1F78 sets the word's gold units (bits 0 to 4, 500 each) to 1, the week's scan to 2; visit_water_wheel 0x4A7DE0 marks the team, gives the gold and clears the units"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md section 9.5: the Water Wheel's rewardable config, 500 gold in the first week, then 1 000, reset at the week's start"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOncePerWeek.json"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Water Wheel (survey E08-economy.md section 9.5): 1 000 gold a week, 500 in the first"
+  url        = "https://heroes.thelazy.net/index.php/Water_Wheel"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-8 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30; survey E08-economy.md section 19): H1 gave 500 gold on day 1, nothing on day 2, 1 000 on day 8; the never-visited H2 1 000 on day 9"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-WEK-003"
+title    = "The Mystical Garden"
+context  = "adventure"
+status   = "implemented"
+summary  = "A Mystical Garden is a weekly object (entered, owned by nobody): each week one of its gifts (5 gems or 500 gold), drawn with equal chances, the first week's when the game is built; its visit gives it to the visitor's owner once and empties it until the week's step, which draws again; its visited mark is the visitor's own, never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's gift drawn from the setup stream after the static map's draws, in object order (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); the visit comes with T84, the week's step with T85a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md section 9.3): setup_map_objects 0x4C1965 and the week's scan set the word full with gems or gold one in two; visit_garden 0x4A3BC0 sets the current player's bit, gives 500 gold or 5 gems when full and clears full"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md section 9.5: the Mystical Garden's rewardable config, 500 gold or 5 gems, visited once a week, reset at the week's start"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOncePerWeek.json"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Mystical Garden (survey E08-economy.md section 9.5): 5 gems or 500 gold, once a week"
+  url        = "https://heroes.thelazy.net/index.php/Mystical_Garden"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-8 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30; survey E08-economy.md section 19): M1 gave 500 gold; each visitor's own Garden bit; full again after the week's reset"
+  retrieved  = "2026-10-30"
+  confidence = "high"

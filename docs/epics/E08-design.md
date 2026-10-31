@@ -76,25 +76,14 @@ machine, with an adventure count, the count times `spawn_factor` at most `MAX_MO
 needs `[params.monsters]`). The base pack's thirteen types and parameters with their sources; the
 synthetic pack's calendar.
 
-### 6. The state (`h3-adventure`; adventure state hash v18, T83b)
+### 6. The state (`h3-adventure`; adventure state hash v19, T83b2)
 
-- **The static map** lists the ownable objects (`ownables: Vec<usize>`, object order) and the
-  weekly ones (`weeklies: Vec<usize>`); `Resolved` gains `Mine { resource, guards: u32 }` (an
-  abandoned mine's drawn resource and Troglodytes' count; for the seven mines `Nothing`) and
-  `BoatTile(Pos)` (a Shipyard's tile found at the build, ADV-SHY-001; `Nothing` when none: Hoard's
-  Shipyard at (62, 38, 0)).
-- **`owners: Arc<[Option<PlayerId>]>`** by ownable index, built from the setup's owners
-  (ADV-OWN-002); a flag copies it (a few hundred bytes on the largest shipped map).
-- **A mine's guards** live in `army_left` (renamed in the code's comments "the armies on objects";
-  the type stays): the Leave Guards dialog's group written at its close, a battle's survivors;
-  until written, an abandoned mine's guards are `Resolved::Mine`'s count of the kind's creature in
-  slot 0, the seven mines' none. An empty army written means no guards (the entry stays, so the
-  drawn Troglodytes do not come back).
-- **`weekly: Option<Arc<[Weekly]>>`** by weekly index: each `{ resource, amount, marks: u8 }`
-  (the Windmill's resource and amount, the Water Wheel's gold as `(gold, n)`, the Garden's gift
-  and `amount` 0 when emptied; `marks` the players that visited, bit by player id, never cleared:
-  *agent's call*, the marks with the contents rather than in the visits' block, one write a
-  visit). None for a map without weekly objects.
+T83b1 built the static map's ownable and weekly lists, `Resolved::{Mine, BoatTile}`, the owners,
+a mine's guards in `army_left`, the weekly contents with the first week's draws, `check_owners`,
+`check_weekly` and the start's reveal (adventure state hash v18; decisions 215, 217: the flag
+radius is the part's `flag_radius`, v15); its record and this section's built text are in
+`E08-log.md` ("T83b1"). Left for T83b2 (decision 215):
+
 - **`fractions: Table<u8>`** by object index (the persistent two-level table of `army_left`): a
   monster's sixteenths, none for 0.
 - **The live presence** (`Occupancy`, renamed in its comments): beside `removed`, `unblocked` and
@@ -105,10 +94,8 @@ synthetic pack's calendar.
   added objects only where their grid's bit is set, so a map without a spawn pays one test a
   tile and a fork nothing more. **Every read of `map.objects()[index]` goes through a state
   method that knows the added objects** (43 sites in `h3-adventure` today; T85a's audit, §19).
-- **Invariants** (`check_owners`, `check_weekly`, `check_added`, run after every command in the
-  properties): an owner only on an ownable, a player of the game; a mine's guards within seven
-  slots and the stack bound; a weekly amount within its kind's range or 0; a fraction below the
-  unit; an added object a monster on a land tile no other object holds.
+- **Invariants** (`check_added`, run after every command in the properties, beside T83b1's): a
+  fraction below the unit; an added object a monster on a land tile no other object holds.
 
 ### 7. The owned objects' visits (ADV-OWN-001, ADV-MIN-002, ADV-OWN-005, ADV-SHY-002)
 
@@ -117,7 +104,7 @@ synthetic pack's calendar.
 
 - **Flagging** (`AdventureState::flag(index, player)`): the owner written, `ObjectFlagged {
   object_type, anchor, owner }` emitted to the players who see the object and the new owner, the
-  disk of radius 3 around the entrance revealed to the new owner (ADV-FOG-002's `reveal`; its
+  disk of the part's flag radius (3, decision 217) around the entrance revealed to the new owner (ADV-FOG-002's `reveal`; its
   `TilesRevealed`). No flag for an own or allied object.
 - **A mine** (own: the outcome's `garrison: Some(index)`, which the game opens as the Leave Guards
   dialog, §14; ally: nothing; else): with guards (`guards_of(index)` not empty) the outcome's
@@ -306,7 +293,8 @@ the map.
 | adventure ruleset part v14 | the seven kinds; the calendar, growth and months parameters | T83a, done |
 | map import v15 | classes 42, 53, 55, 87, 109, 112, 220; owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater` | T83a, done |
 | adventure state hash v17 | the static map's abandoned mines' sets (`Holds::Resources`) | T83a, done |
-| adventure state hash v18, game state hash v21 | owners, guards, weekly, fractions, added objects; the month, the events, the dialog's holder | T83b, T85 |
+| adventure ruleset part v15, adventure state hash v18 | the flag radius (decision 217); owners, guards, weekly, the draws of abandoned mines and Shipyards | T83b1, done |
+| adventure state hash v19, game state hash v21 | fractions, added objects; the month, the events, the dialog's holder | T83b2, T85 |
 | adventure replay format v8 | `BuildBoat` | T84 |
 | env action encoding v6 (the AI lane's) | `BuildBoat` | T85b (`cross-lane`) |
 
@@ -360,7 +348,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 | 2 | **T78** | Batch E9's maps: the writer's seven classes and timed events (§4); the spec's fields (`cross-lane`); the two specs and templates (§17) |
 | 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
 | 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs (done, decision 212) |
-| 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b the state (§6), the views (§12); adventure state hash v18 |
+| 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b in two (decision 215): T83b1 the state the visits read (§6; adventure state hash v18, part v15; done), T83b2 the fractions, the added objects (§6) and the views (§12); adventure state hash v19 |
 | 6 | **T84** | `h3-adventure` and `h3-game`: the owned objects' visits (§7), `BuildBoat` (§8), the weekly visits (§9), the mines' battles (§13), the kept dialog and the boat offer (§14); likely cut in two at its start (flagging and mines with their battles; Lighthouses, Shipyards, `BuildBoat` and the weekly visits) |
 | 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |
 | 8 | **T86** + **T87** | T86: the economy maps, their replays and properties, the benchmarks, `--with-original-data` (§15). T87: the audit against the exit criteria, increment 9 closed, increment 10 refined |
