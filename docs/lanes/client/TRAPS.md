@@ -181,3 +181,5 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   uncovered when the index is always inside (route such writes through one helper whose outside
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is
   uncovered until a test calls it at run time.
+
+- **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.

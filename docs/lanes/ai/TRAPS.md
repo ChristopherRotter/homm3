@@ -110,3 +110,5 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The sandbox reaches PyTorch's index only while the environment's network access allows
   `*.pytorch.org` (**Custom**; **Trusted** ignores the Allowed domains). `uv --directory python
   sync --group train`: 3 to 25 minutes.
+
+- **Procedures as skills:** for a speed or replay question use the skills `homm3-bench-regression`; measure right after the first build (`AGENTS.md`, "Measure before you polish").
