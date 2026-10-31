@@ -22,7 +22,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-31 — increment 9, round 5: T83b2a, the fractions and the objects added in play
 
-Baseline d98f792 (#622 and #624 merged; CI on `master` green; the VM restarted early, the setup's baseline lost, CI's run stands in). Original data staged at the start. The user: T83b2 in two, the state first (decision 218). T83b2a: `Occupancy`'s added objects and grids, the readers, `object`/`object_at`, `fractions`, `check_added` (the plans and the census), `MapObject`'s own hash, adventure state hash v19; 32 replays re-recorded, commands unchanged; the bot reports unmoved. Pull request: `adventure/e08-t83b2a`.
+Baseline d98f792 (#622 and #624 merged; CI on `master` green; the VM restarted early, the setup's baseline lost, CI's run stands in). Original data staged at the start. The user: T83b2 in two, the state first (decision 218). T83b2a: the added objects' own block (`Added`) and the readers, `object`/`object_at`, `fractions`, `check_added` (the plans and the census), `MapObject`'s own hash, adventure state hash v19; the first cut cost the searches +9 to +16 % (fixed: the block, the walking search's const flag, `live_placed`; no re-baseline); 32 replays re-recorded, commands unchanged; the bot reports unmoved. Pull request: `adventure/e08-t83b2a`.
 
 ### 2026-10-31 — increment 9, round 5: T83b1, the state the visits read; the shore's boat
 

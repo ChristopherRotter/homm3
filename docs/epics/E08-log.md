@@ -9802,20 +9802,23 @@ T83b2 (the fractions, the added objects and the views) next.
 monsters' fractions, the objects added in play, `check_added` and adventure state hash v19;
 T83b2b design §12's views the next session.
 
-- **The live presence** (`state/occupancy.rs`): `Occupancy` holds, beside `removed`, `unblocked`
-  and `unvisitable`, the static map's object count (`base`), the added objects (`added:
-  Arc<Vec<MapObject>>`, index `base + n`, after the static map's in map order), the grid of the
-  tiles they block or are visited from (`added_tiles`) and of the tiles within one step of an
-  added monster's visitable tile (`added_near`, its 3 × 3 as `StaticMap::near_monster`'s).
-  `live` adds an added object's cover where `added_tiles` is set; `added_visited_from` gives
-  the last added object still on the map visited from a tile; `remove` takes a static or an
+- **The live presence** (`state/occupancy.rs`): the added objects are their own block on the
+  state, `added: Option<Arc<Added>>` beside `occupancy` (none until one is added, as the boats):
+  `Added { objects, tiles, near }`, the objects in the order they came (index
+  `map.objects().len() + n`, after the static map's in map order), the grid of the tiles they
+  block or are visited from and of the tiles within one step of an added monster's visitable
+  tile (its 3 × 3, as `StaticMap::near_monster`'s). `AdventureState::live` adds an added
+  object's cover where `tiles` is set (`added_live`, cold); `added_visited_from` gives the last
+  added object still on the map visited from a tile; `Occupancy::remove` takes a static or an
   added object off, its "others" the static and the added objects still on the map; the removed
-  grid grows a row when an added index needs it (`Occupancy::ROW` objects a row), keeping every
-  removal. There is an occupancy once an object has left or one was added.
+  grid holds a row for every `Occupancy::ROW` objects, added ones included (`Occupancy::new`
+  with the count, `make_room` at an addition: the rows follow from the objects, so the order of
+  removals and additions does not change the grid).
 - **The readers:** `tile_object` asks the added objects first (they come last in map order),
   then the static map's; `guard_at`'s early test is `may_guard` (the static map's
-  `near_monster` or `added_near`); `Reach`'s walking step asks the live tile where the static
-  map marks nothing but `added_tiles` is set (`Search::added`, none until an object is added),
+  `near_monster` or the added `near`); `Reach`'s walking search takes a const flag `ADDED` (as
+  `AFLOAT`): with it a step asks the live tile where the static map marks nothing but the added
+  `tiles` is set, without it the loop reads `live_placed` (the occupancy only), the one before;
   its `guards` flag counts an added monster, `guarded` asks `may_guard`; the observation's tile
   views ask the live tile there too, and its objects list chains the added objects after the
   static map's (an added monster seen as a placed one, its count word from `monster_count`); the
@@ -9837,13 +9840,21 @@ T83b2b design §12's views the next session.
   land tile marked in `added_tiles` (a visitable one in `added_near`) that no other object
   still on the map blocks or is visited from.
 - **Adventure state hash v19:** `MapObject`'s own `CanonicalHash` (the static map's encoding of
-  an object, moved, the same bytes); the occupancy's encoding after the removed objects gains
-  the added objects (their number, each object's encoding); after the owners and the weekly
-  contents the fractions (their number, each index and fraction).
-- *Agent's calls (change freely):* the added list shared by the forks inside the occupancy (a
-  removal's copy copies none of it); the added objects' grids never cleared (a removed one's
-  tiles stay marked; `live` and `added_visited_from` read the objects still on the map there);
-  `Occupancy::add` and `AdventureState::add_object`, `set_fraction` test-only until T85a.
+  an object, moved, the same bytes); after the occupancy the added objects (0 for none, else 1,
+  their number and each object's encoding); after the owners and the weekly contents the
+  fractions (their number, each index and fraction).
+- **Benchmarks:** the first cut (the added objects inside the occupancy, every read asking its
+  grids) cost reach-xl-144 +9.1 %, reach-lifted-xl-144 +16.5 % and random play +6 to +12 %
+  (`callgrind_annotate --inclusive=no` against `master` in a worktree: the occupancy's `live`,
+  the guard's near test and the visit's lookup asking a grid on every map with a removal, and
+  the walking loop's added test). Their own block, the const flag and `live_placed` brought
+  every workload within its threshold, none re-baselined: reach-xl-144 +1.89 % against its
+  baseline (`master` measured +0.73 %), the forks +0.6 to +1.5 %, random play +1.0 to +1.7 %.
+- *Agent's calls (change freely):* the added objects a block of their own rather than in the
+  occupancy (one null test where none were added; `bench-check`); their grids never cleared (a
+  removed one's tiles stay marked; `live` and `added_visited_from` read the objects still on
+  the map there); `Added::new`, `Added::push`, `Occupancy::make_room`,
+  `AdventureState::add_object` and `set_fraction` test-only until T85a.
 - **Replays:** the 32 adventure goldens re-recorded from their own commands (a scratch script,
   not committed): commands unchanged, only the hashes and the version line moved. The AI lane's
   bots tables do not move (the part is unchanged).
@@ -9852,8 +9863,9 @@ T83b2b design §12's views the next session.
   read the added objects.
 - **Tests:** `state/tests/added.rs`: an added monster read as a placed one (every tile's guard,
   stand, live tile and visit; the reach walking and flying; both players' observations), its
-  guard's battle, survivors and removal as the placed one's; the removed grid's growth past a
-  row with removals of static and added objects, a fork's sharing; `check_added`'s refusals
+  guard's battle, survivors and removal as the placed one's, with and without a boat in the
+  walker's window (the search's four flag pairs); the removed grid's growth past a row with
+  removals of static and added objects, a fork's sharing; `check_added`'s refusals
   (water, a static object's tile, two on one tile, untyped, of another kind, without monster
   data, covering no tile); the fractions' bounds and their removal; the hash.
 
