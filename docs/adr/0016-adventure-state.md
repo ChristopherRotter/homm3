@@ -398,7 +398,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        the tile, owned by the builder (ADV-SEA-001's record). An own or allied Shipyard also
        builds without a visit (`BuildBoat`, ADR-0017 point 1), under the same refusals.
      - **The weekly objects** (`windmill`, `water_wheel`, `garden`; ADV-WEK-001 to -003):
-       visited from the neighbouring tile, owned by nobody, never asking. **Their contents are
+       entered, as the mines (the user at ADV-Q39, E08 decision 214: the original's classes 55,
+       109 and 112 are on neither its "never entered" nor its "from above" list, and batch E9's
+       hero stood on a Windmill's entrance), owned by nobody, never asking. **Their contents are
        the object's, one a week:** the week's first visit, by any player's hero, takes them and
        empties the object for every player; every later visit that week, by any player, finds it
        empty and is told so (the user at ADV-Q38, E08 decision 201: never once per player;
@@ -636,3 +638,6 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   start's reveal; owners public, a mine's production its owner's. Drafted in E08 T77b (survey
   `E08-economy.md`); batch E9's outcome (T80, §19: D-47, D-49 and A-32 confirmed, A-33
   withdrawn) folded in.
+- 2026-10-31 (E08 T83a; the user at ADV-Q39, E08 decision 214): point 4's weekly objects are
+  entered, not visited from the neighbouring tile (the original's class lists and batch E9's
+  E9-8); a wording correction, no rule changed elsewhere.

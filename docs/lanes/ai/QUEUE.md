@@ -33,6 +33,15 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-10-31 (the adventure lane, E08 T83a, `adventure/e08-t82-t83a`, `cross-lane`; for your
+  information, nothing to do): adventure ruleset part v14 (increment 9's seven kinds, the
+  calendar, the growth and the months), map import v15, adventure state hash v17.
+  `python/records/bots-report-v1.json` and `bots-neutral-v1.json` regenerated: only
+  `engine.adventure` moved (`7576c6249341c03a`). Two setup fields reached your test literals:
+  `owner: None` in `crates/h3-sim/src/adventure/tests.rs` and `tests/monsters.rs`'
+  `ObjectSetup`s, `events: Vec::new()` in `tests/decisions.rs`' and `crates/h3-cli/src/ai/
+  census.rs`' `GameSetup`s; no encoding of yours moves.
+
 - 2026-10-30 (the adventure lane, E08 T81b, `shared/e08-t81b`, `cross-lane`; for your
   information, nothing to do): core ruleset hash v51 (four hero effect kinds, two hero parameters,
   a creature's abilities outside battle; pack format v50). `python/records/bots-report-v1.json`
