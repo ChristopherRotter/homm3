@@ -100,6 +100,7 @@ fn params() -> AdventureParamsDef {
         water_walk_cost: [cost(150), cost(140), cost(120), cost(110)],
         sea_points: [1500, 2250, 3000, 3750],
         sea_ground: [2, 3],
+        flag_radius: 3,
         calendar: CalendarParams {
             week_days: NonZeroU8::new(7).unwrap(),
             month_weeks: NonZeroU8::new(4).unwrap(),
@@ -305,6 +306,7 @@ fn compiles_terrains_roads_rivers_and_parameters() {
     let params = part.params();
     assert_eq!(params.native_cost(), cost(100));
     assert_eq!(params.scouting_radius(), 5);
+    assert_eq!(params.flag_radius(), 3);
     assert_eq!(
         (
             params.max_map_size(),
@@ -399,6 +401,8 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| pack(p, "t").params.as_mut().unwrap().sea_points[3] = 3751),
         edit(|p| pack(p, "t").params.as_mut().unwrap().sea_ground = [1, 3]),
         edit(|p| pack(p, "t").params.as_mut().unwrap().sea_ground = [2, 4]),
+        // E08 T83b1: the flag radius.
+        edit(|p| pack(p, "t").params.as_mut().unwrap().flag_radius = 4),
         edit(|p| pack(p, "u").terrain_walkers = vec![walker("t:imp", "u:swamp", "t:grass")]),
         edit(|p| {
             pack(p, "u").terrain_walkers = vec![walker("t:gog", "u:swamp", "t:grass")];

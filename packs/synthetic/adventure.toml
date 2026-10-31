@@ -15,6 +15,7 @@ fly_cost = [160, 150, 130, 110]
 water_walk_cost = [170, 150, 140, 120]
 sea_points = [1600, 2400, 3200, 4000]
 sea_ground = [1, 2]
+flag_radius = 2
 
 # E08 T83a: a five-day week, three weeks a month (invented).
 [params.calendar]

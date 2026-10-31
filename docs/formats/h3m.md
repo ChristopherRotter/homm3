@@ -364,7 +364,11 @@ whole, the other outcomes as T61b's; no owner nobody plays, no empty or out-of-r
 mine set, no ownable object entered from water. Increment 9's census: 5 915 mines (60 owned at
 load), 158 abandoned mines (7 with one resource, 151 with two to six, none with all seven), 83
 Lighthouses (none owned), 331 Shipyards (1 owned), 780 Windmills, 430 Water Wheels, 286 Mystical
-Gardens; 666 timed events, 61 repeating, none for no player that plays.
+Gardens; 666 timed events, 61 repeating, none for no player that plays. E08 T83b1's run (the
+static layer built as a game builds it, adventure state hash v18): 61 objects owned at the start,
+every abandoned mine drawn within its set and 100 to 200, every Shipyard with a boat tile but
+Hoard's at (62, 38, 0) in both Hoard maps (survey `E08-economy.md` §1), every weekly object's
+first week its kind's, every owner checked.
 
 ## The subset we write (E04a T2)
 

@@ -93,7 +93,7 @@ pub use split::{TileRand, split, split_with_second};
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
     AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, MapObject, Monster, Resolved, StaticMap,
-    StaticTile, Visits,
+    StaticTile, Visits, Weekly,
 };
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
@@ -111,7 +111,9 @@ pub use state::{
 /// players' knowledge and the emptied objects). v15 (E08 T62b2): each player's seat (its colour
 /// and whether it counts as human). v16 (E08 T72): the boats, each hero's boat and day's maximum.
 /// v17 (E08 T83a): an abandoned mine's resources in the static map's objects ([`Holds`]' tag 7).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 17;
+/// v18 (E08 T83b1): what the build drew for abandoned mines and Shipyards ([`Resolved`]' tags 7
+/// and 8), the ownable objects' owners and the weekly objects' contents and marks.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 18;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
@@ -125,5 +127,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 17;
 /// kinds (the find's fixed entries, its lost turn and its leaving, a message, a ground of the sea,
 /// a hole), the sea points, the sea ground's share and the battle terrains at sea. v14 (E08 T83a):
 /// increment 9's seven kinds (mines, abandoned mines, Lighthouses, Shipyards, Windmills, Water
-/// Wheels, Gardens), the monsters' growth, the calendar and the months.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 14;
+/// Wheels, Gardens), the monsters' growth, the calendar and the months. v15 (E08 T83b1): the flag
+/// radius.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 15;

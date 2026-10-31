@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "100 000 forks of the env with a battle open on the generated 144 x 144 two-level map (E08 decision 6 and 11: a fork must barely grow with the map; E08 T19b1: the heroes seek each other until a battle opens; since E08 T20b3b2 a monster or a guarded pile on the way opens one after 18 steps; since E08 T42 the map's flyers and water walkers: +0.17 %, the code alone on the old map the same); counts only inside h3_cli::adventure::bench::fork_workload"
+description = "100 000 forks of the env with a battle open on the generated 144 x 144 two-level map (E08 decision 6 and 11: a fork must barely grow with the map; E08 T19b1: the heroes seek each other until a battle opens; since E08 T20b3b2 a monster or a guarded pile on the way opens one after 18 steps; since E08 T42 the map's flyers and water walkers: +0.17 %, the code alone on the old map the same); counts only inside h3_cli::adventure::bench::fork_workload; E08 T83b1 re-set it (+2.92 % against the old count: this change's part, the rest the earlier creep under the threshold): the state's two new blocks, the owners and the weekly contents, none on this map, add about 30 Ir to a fork's clone and drop"
 args = [
     "adventure",
     "bench",
@@ -28,5 +28,5 @@ args = [
     "1",
 ]
 collect = "*fork_workload*"
-instructions = 356400024
+instructions = 366800024
 threshold_percent = 2

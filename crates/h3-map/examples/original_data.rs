@@ -223,9 +223,11 @@ fn check(
         banned_artifacts: Vec::new(),
         events: Vec::new(),
     };
-    setup
-        .validate(rules)
-        .map_err(|e| format!("static layer: {e}"))?;
+    let built = GameState::new(rules, &setup, 0).map_err(|e| format!("static layer: {e}"))?;
+    // E08 T83b1: the state the game builds (ADV-SHY-001, ADV-MIN-003, ADV-OWN-002).
+    for shipyard in built_economy(&built, rules, name, &mut peaks.5) {
+        println!("h3-map: a Shipyard without a boat tile: {shipyard}");
+    }
     let (visitable, stacked) = stacked(&map, &setup.map);
     peaks.2 += visitable;
     if !stacked.is_empty() {
@@ -471,6 +473,59 @@ fn sea(setup: &MapSetup, rules: &GameRuleset, add: &mut impl FnMut(&'static str,
             _ => {}
         }
     }
+}
+
+/// Counts what the game's build gives increment 9's objects (E08 T83b1): the owned objects (each
+/// reveals around its entrance at the start), the abandoned mines whose drawn resource is outside
+/// their set or whose guards' count is outside 100 to 200 (none), the Shipyards without a boat
+/// tile among the offsets, by name and entrance (survey `E08-economy.md` §1: Hoard's at (62, 38,
+/// 0)), and the weekly objects whose first week does not fit their kind (none).
+fn built_economy(
+    game: &GameState,
+    rules: &GameRuleset,
+    name: &str,
+    counts: &mut BTreeMap<&'static str, usize>,
+) -> Vec<String> {
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    let adventure = game.adventure();
+    let map = adventure.map();
+    let mut without = Vec::new();
+    for &index in map.ownables() {
+        let object = &map.objects()[index];
+        add(
+            "economy: objects owned at the start",
+            usize::from(adventure.owner(index).is_some()),
+        );
+        let kind = object
+            .object_type
+            .and_then(|ty| rules.adventure().object_type(ty))
+            .map(|ty| &ty.kind);
+        match (kind, &object.holds, &object.resolved) {
+            (_, Holds::Resources(set), resolved) => {
+                let fits = resolved.mine().is_some_and(|(resource, guards)| {
+                    set.contains(&resource) && (100..=200).contains(&guards)
+                });
+                add(
+                    "economy: abandoned mines drawn outside their set or 100 to 200",
+                    usize::from(!fits),
+                );
+            }
+            (Some(ObjectKind::Shipyard { .. }), _, resolved) if resolved.boat_tile().is_none() => {
+                add("economy: Shipyards without a boat tile", 1);
+                without.push(format!("{name} {:?}", object.entrance(map)));
+            }
+            _ => {}
+        }
+    }
+    add(
+        "economy: weekly objects whose first week does not fit",
+        usize::from(!adventure.check_weekly(rules.adventure())),
+    );
+    add(
+        "economy: maps whose owners do not check",
+        usize::from(!adventure.check_owners(rules.adventure())),
+    );
+    without
 }
 
 /// Counts increment 9's objects and the timed events (E08 T83a): the mines, those owned at

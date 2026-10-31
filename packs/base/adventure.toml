@@ -64,6 +64,14 @@ sea_points = [1500, 2250, 3000, 3750]
 # E08-sea.md section 4.1 point 1: step_cost 0x4B1740 at 0x4B17B3, for a water source tile; the
 # wiki and VCMI 1.7.5 getMovementCost the same, boats only).
 sea_ground = [2, 3]
+# ADR-0016 point 5, ADV-OWN-001, ADV-OWN-002 (E08 T83b1, decision 217): the tiles within 3 of an
+# owned object's entrance revealed to its owner, at the game's start for every object owned at
+# load (from T84 at a flag too). Code reading (survey E08-economy.md sections 2.2, 2.3):
+# set_mine_owner 0x4C66E0 and set_shipyard_owner 0x4C6A30 call reveal_disk with radius 3, and
+# reveal_owned 0x4C7C50 from adventure_manager_start reveals the same around every owned object;
+# batch E9's E9-4 and E9-6 observed both; VCMI 1.7.5 initFogOfWar reveals radius 3 around each
+# owned object at the start.
+flag_radius = 3
 
 # GAM-BAT-001 (E08 T19a): where a battle on the map is fought, by the defender's tile, in the
 # original's order (survey E04c-battlefields.md section 4, code 0x4FCE20, installation.md

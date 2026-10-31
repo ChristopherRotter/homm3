@@ -15,27 +15,26 @@ drafts applied, ADR-0015's core row, the index, the glossary); T81b done (decisi
 `shared/e08-t81b`, `cross-lane`: the four kinds, the two parameters, the creature's abilities
 outside battle, the packs; core ruleset hash v51, pack format v50). Round 5: T82 and T83a done
 together (decision 213; `adventure/e08-t82-t83a`, `cross-lane`, decision 214: the day's income,
-spell points and the Lighthouses' input; the seven kinds and parameters, the import), T83b next.
+spell points and the Lighthouses' input; the seven kinds and parameters, the import), T83b in two by what reads it (decision 215): T83b1 done
+(`adventure/e08-t83b1`, `cross-lane`, decision 217: the owners, guards, weekly contents, draws,
+the start's reveal, the flag radius), T83b2 next.
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T83b — `h3-adventure`: the state and the views**
+**E08 T83b2 — `h3-adventure`: the fractions, the added objects and the views**
 
-- **Scope:** design §6 and §12 (round 5's second half; decision 213): the static map's
-  `ownables` and `weeklies`, `Resolved::{Mine { resource, guards }, BoatTile(Pos)}` (the
-  abandoned mine's draws: its resource among `Holds::Resources`, its Troglodytes' count; the
-  Shipyard's boat tile, ADV-SHY-001), the state's `owners` from `ObjectSetup::owner`
-  (ADV-OWN-002), a mine's guards in `army_left`, `weekly` (each weekly object's contents and
-  marks, the first week's drawn when the game is built), `fractions`, the added objects in
-  `Occupancy` (empty until T85a's month), their invariants (`check_owners`, `check_weekly`,
-  `check_added`) and hash (adventure state hash v18); the views (`ObjectView`'s `owner`,
-  `production`, `guards`, `visited`, `boat_tile`; ADV-OWN-003, ADV-FOG-006 amended); the start's
-  reveal around every owned object (A-33 withdrawn, ADR-0016 point 5). Likely cut in two at its
-  start (the static draws and owners; the weekly, fractions, added objects and the views).
-- **Inputs:** design §6, §12; ADR-0016 points 1, 4 to 6; survey `E08-economy.md` §2, §3.4, §5.1,
-  §9; T83a's record in `E08-log.md` (the kinds, the setup's fields as built); T72's record (the
-  boats' state, the pattern).
-- **Depends on:** T83a (`adventure/e08-t82-t83a` merged). **Status:** ready after that merge; its
-  cut confirmed with the user at its start.
+- **Scope:** design §6 (what is left) and §12 (decision 215: T83b's second half): `fractions`
+  (`Table<u8>` by object index), the added objects in `Occupancy` (`added`, the grids of their
+  tiles and of the tiles near an added monster; `tile_object`, `guard_at`, `live`, the
+  observation and the passage read them; empty until T85a's month, so tests add them through a
+  test helper), `check_added`, adventure state hash v19; the views (`ObjectView`'s `owner`,
+  `production`, `guards`, `visited`, `boat_tile`; ADV-OWN-003, ADV-FOG-006 amended), the h3-map
+  view tests, `docs/06-security.md`'s owners, production and marks.
+- **Inputs:** design §6, §12; ADR-0016 points 1, 5, 6; survey `E08-economy.md` §2.7, §9.4;
+  T83b1's record in `E08-log.md` (the owners, `mine_guards`, `Weekly`, `Resolved`'s draws); T72's
+  record (the boats' state and view, the pattern).
+- **Depends on:** T83b1 (`adventure/e08-t83b1` merged). **Status:** ready after that merge; its
+  cut confirmed with the user at its start (the views alone are a natural second half if it is
+  over half a context).
 
 ## Inbox
 

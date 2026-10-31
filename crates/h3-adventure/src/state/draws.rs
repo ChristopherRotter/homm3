@@ -20,7 +20,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::{MapObject, pick};
 use crate::ruleset::{AdventureRuleset, Chest, Find, FindContent, ObjectKind, Turn};
-use crate::setup::{Bans, Holds};
+use crate::setup::{Bans, Holds, Pos};
 
 /// What the build drew for an object of increment 7's kinds (E08 T61b; increment 7's design note
 /// §9), beside what the map put in it ([`MapObject::holds`]); a chest's gold and a find's resources
@@ -49,6 +49,18 @@ pub enum Resolved {
     Scholar(ScholarGift, PrimarySkill),
     /// A University's skills, in the draw's order (ADV-TCH-007).
     Skills(Vec<SkillId>),
+    /// An abandoned mine's draws (ADV-MIN-003, E08 T83b1; increment 9's design note §6): the
+    /// resource it produces, drawn among the map's set, and the count of its kind's guards it
+    /// starts with. A mine of the seven draws nothing.
+    Mine {
+        /// The drawn resource.
+        resource: ResourceId,
+        /// The guards' drawn count.
+        guards: u32,
+    },
+    /// A Shipyard's boat tile, fixed when the game is built (ADV-SHY-001, E08 T83b1); a Shipyard
+    /// with none is [`Self::Nothing`] and never builds.
+    BoatTile(Pos),
 }
 
 impl Resolved {
@@ -67,12 +79,29 @@ impl Resolved {
             _ => &[],
         }
     }
+
+    /// An abandoned mine's drawn resource and guards' count ([`Self::Mine`]), if these are.
+    pub const fn mine(&self) -> Option<(ResourceId, u32)> {
+        match self {
+            Self::Mine { resource, guards } => Some((*resource, *guards)),
+            _ => None,
+        }
+    }
+
+    /// A Shipyard's boat tile ([`Self::BoatTile`]), if it has one.
+    pub const fn boat_tile(&self) -> Option<Pos> {
+        match self {
+            Self::BoatTile(tile) => Some(*tile),
+            _ => None,
+        }
+    }
 }
 
 impl CanonicalHash for Resolved {
     /// Its tag (0 nothing, 1 an artifact, 2 a price's index, 3 a spell, 4 a skill, 5 a Scholar's
     /// gift with its tag (0 a primary skill, 1 a skill, 2 a spell), its value and the fallback, 6
-    /// skills as length and entries), then its values.
+    /// skills as length and entries; since adventure state hash v18, E08 T83b1, 7 a mine's
+    /// resource and guards' count, 8 a boat tile), then its values.
     fn hash_into(&self, h: &mut StateHasher) {
         match self {
             Self::Nothing => h.write_u8(0),
@@ -113,6 +142,15 @@ impl CanonicalHash for Resolved {
             Self::Skills(skills) => {
                 h.write_u8(6);
                 skills.hash_into(h);
+            }
+            Self::Mine { resource, guards } => {
+                h.write_u8(7);
+                resource.hash_into(h);
+                h.write_u32(*guards);
+            }
+            Self::BoatTile(tile) => {
+                h.write_u8(8);
+                tile.hash_into(h);
             }
         }
     }
@@ -360,6 +398,27 @@ pub(super) fn resolve_rewards(
             }
             _ => continue,
         };
+    }
+}
+
+/// Draws each abandoned mine's resource among the map's set, with equal chances, then its guards'
+/// count between its kind's bounds (ADV-MIN-003, E08 T83b1; increment 9's design note §6), in a
+/// walk in object order after the rewards' walks. The order is the engine's (E08 decision 17):
+/// the original draws the resource when it loads the map, in the file's order
+/// (`load_abandoned_mine_body` 0x501130), and the count at its new game, in its walk over the
+/// entrances (`setup_map_objects` 0x4C18E6; survey `E08-economy.md` §3.4).
+// rule: ADV-MIN-003
+pub(super) fn resolve_mines(part: &AdventureRuleset, objects: &mut [MapObject], draws: &mut Rng) {
+    for object in objects.iter_mut() {
+        // The setup gives an abandoned mine a set of at least one resource (`check_holds`).
+        if let (Some(&ObjectKind::AbandonedMine { count, .. }), Holds::Resources(set)) =
+            (kind_of(part, object), &object.holds)
+        {
+            object.resolved = pick(set, draws).map_or(Resolved::Nothing, |&resource| {
+                let guards = draws.range_inclusive(count[0], count[1]);
+                Resolved::Mine { resource, guards }
+            });
+        }
     }
 }
 

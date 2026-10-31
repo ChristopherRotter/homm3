@@ -40,6 +40,8 @@ fn the_packs_type_the_sea_s_objects() {
     let params = part.params();
     assert_eq!(params.sea_points(), &[1500, 2250, 3000, 3750]);
     assert_eq!(params.sea_ground(), [2, 3]);
+    // E08 T83b1: the flag's reveal radius.
+    assert_eq!(params.flag_radius(), 3);
     let battle = params.battle_terrains().unwrap();
     assert_eq!(
         (battle.sea, battle.deck.as_str(), battle.boats.as_str()),
@@ -1047,6 +1049,7 @@ fn parses_every_field() {
         water_walk_cost = [150, 140, 125, 110]
         sea_points = [1500, 2250, 3000, 3750]
         sea_ground = [2, 3]
+        flag_radius = 3
 
         [params.monsters]
         aggression = [[-4, -4], [1, 7]]
@@ -1380,6 +1383,7 @@ fn parses_every_field() {
             water_walk_cost: [cost(150), cost(140), cost(125), cost(110)],
             sea_points: [1500, 2250, 3000, 3750],
             sea_ground: [2, 3],
+            flag_radius: 3,
             calendar: CalendarParams {
                 week_days: NonZeroU8::new(7).unwrap(),
                 month_weeks: NonZeroU8::new(4).unwrap(),
@@ -1823,7 +1827,7 @@ fn rejects_malformed_files() {
     assert!(syntax(&object(
         "ground = { battlefield = \"f\", no_native = 1 }"
     )));
-    let prices = "fly_cost = [1, 1, 1, 1]\nwater_walk_cost = [1, 1, 1, 1]\nsea_points = [1, 1, 1, 1]\nsea_ground = [1, 1]\ncalendar = { week_days = 7, month_weeks = 4 }";
+    let prices = "fly_cost = [1, 1, 1, 1]\nwater_walk_cost = [1, 1, 1, 1]\nsea_points = [1, 1, 1, 1]\nsea_ground = [1, 1]\nflag_radius = 1\ncalendar = { week_days = 7, month_weeks = 4 }";
     assert!(syntax(&format!(
         "[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []\nfly_cost = [1, 1, 1]"
     )));
@@ -1843,6 +1847,11 @@ fn rejects_malformed_files() {
         &full.replace("sea_ground = [1, 1]", "sea_ground = [1]")
     ));
     assert!(syntax(&full.replace("\nsea_ground = [1, 1]", "")));
+    // E08 T83b1: the flag radius is needed and fits a byte.
+    assert!(syntax(&full.replace("\nflag_radius = 1", "")));
+    assert!(syntax(
+        &full.replace("flag_radius = 1", "flag_radius = 256")
+    ));
     let battle = |fields: &str| format!("{full}\n[params.battle]\n{fields}");
     let fine = "underground = \"u\"\ncoast = \"c\"\ncoast_battlefield = \"f\"\nsea = \"w\"\ndeck = \"d\"\nboats = \"b\"";
     let parsed = parse(&battle(fine))

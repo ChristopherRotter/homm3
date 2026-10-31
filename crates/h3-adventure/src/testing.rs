@@ -278,6 +278,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             water_walk_cost: [cost(140), cost(140), cost(120), cost(100)],
             sea_points: [1500, 2250, 3000, 3750],
             sea_ground: [2, 3],
+            flag_radius: 3,
             calendar: CalendarParams {
                 week_days: NonZeroU8::new(7).unwrap(),
                 month_weeks: NonZeroU8::new(4).unwrap(),
@@ -557,6 +558,7 @@ pub(crate) fn movement_rules_with(
             water_walk_cost: [cost(140), cost(140), cost(120), cost(100)],
             sea_points: [1500, 2250, 3000, 3750],
             sea_ground: [2, 3],
+            flag_radius: 3,
             calendar: CalendarParams {
                 week_days: NonZeroU8::new(7).unwrap(),
                 month_weeks: NonZeroU8::new(4).unwrap(),
