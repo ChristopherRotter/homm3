@@ -279,7 +279,6 @@ fn the_added_objects_invariants_refuse_a_misplaced_or_untyped_one() {
     assert!(state.check_added(&rules.1));
 }
 
-// covers: ADV-MON-013
 #[test]
 fn a_fraction_lies_below_the_unit_on_a_monster_on_the_map() {
     // Design §6: a monster's fraction of a creature, in the growth unit's parts, none for 0; on
