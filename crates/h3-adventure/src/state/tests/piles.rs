@@ -62,6 +62,7 @@ fn pile_at(x: u16, object_type: ObjectTypeId, guards: Option<Guards>) -> ObjectS
         monster: None,
         guards,
         holds: Default::default(),
+        owner: None,
     }
 }
 

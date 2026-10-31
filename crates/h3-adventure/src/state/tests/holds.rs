@@ -115,6 +115,47 @@ fn rules() -> Rules {
                 ty("t:scholar", ObjectKindDef::Scholar),
                 ty("t:box", ObjectKindDef::PandoraBox),
                 ty("t:event", ObjectKindDef::Event),
+                // E08 T83a: increment 9's ownable kinds, entered.
+                ObjectTypeDef {
+                    visit: Visit::Enter,
+                    ..ty(
+                        "t:sawmill",
+                        ObjectKindDef::Mine {
+                            resource: key("t:wood"),
+                            daily: 2,
+                            battle_terrain: None,
+                        },
+                    )
+                },
+                ObjectTypeDef {
+                    visit: Visit::Enter,
+                    ..ty(
+                        "t:gold_mine",
+                        ObjectKindDef::Mine {
+                            resource: key("t:gold"),
+                            daily: 1000,
+                            battle_terrain: None,
+                        },
+                    )
+                },
+                ObjectTypeDef {
+                    visit: Visit::Enter,
+                    ..ty(
+                        "t:abandoned",
+                        ObjectKindDef::AbandonedMine {
+                            guards: key("t:peasant"),
+                            count: [100, 200],
+                            battle_terrain: None,
+                        },
+                    )
+                },
+                ObjectTypeDef {
+                    visit: Visit::Enter,
+                    ..ty(
+                        "t:lighthouse",
+                        ObjectKindDef::Lighthouse { sea_points: 500 },
+                    )
+                },
                 ty(
                     "t:chest",
                     ObjectKindDef::Chest(ChestDef {
@@ -147,6 +188,7 @@ fn object(rules: &Rules, x: u16, k: &str, holds: Holds) -> ObjectSetup {
         monster: None,
         guards: None,
         holds,
+        owner: None,
     }
 }
 
@@ -423,6 +465,80 @@ fn a_monster_s_treasure_holds_an_artifact_a_hero_may_hold() {
     // The hash sees it.
     let none = built(&rules, vec![monster(None)]).unwrap();
     assert_ne!(hash_of(&state), hash_of(&none));
+}
+
+// covers: ADV-MIN-003, ADV-OWN-002
+#[test]
+fn an_abandoned_mine_holds_its_resources_and_an_ownable_its_owner() {
+    // E08 T83a: checked when the game is built; the owners kept by the state from T83b.
+    let rules = rules();
+    let (wood, gold) = (ResourceId::from_raw(0), ResourceId::from_raw(1));
+    let abandoned = |holds| object(&rules, 3, "t:abandoned", holds);
+    let state = built(&rules, vec![abandoned(Holds::Resources(vec![wood, gold]))]).unwrap();
+    assert_eq!(
+        state.map().objects()[0].holds,
+        Holds::Resources(vec![wood, gold])
+    );
+    for holds in [
+        Holds::Resources(vec![]),
+        Holds::Resources(vec![gold, wood]),
+        Holds::Resources(vec![wood, wood]),
+        Holds::Resources(vec![ResourceId::from_raw(2)]),
+        Holds::Nothing,
+    ] {
+        assert_eq!(
+            built(&rules, vec![abandoned(holds.clone())]).err(),
+            Some(SetupError::Holds(0)),
+            "{holds:?}"
+        );
+    }
+    assert_eq!(
+        built(
+            &rules,
+            vec![object(
+                &rules,
+                3,
+                "t:lighthouse",
+                Holds::Resources(vec![wood])
+            )]
+        )
+        .err(),
+        Some(SetupError::Holds(0))
+    );
+    // The hash sees the set.
+    let hash = |set| hash_of(&built(&rules, vec![abandoned(Holds::Resources(set))]).unwrap());
+    assert_ne!(hash(vec![wood]), hash(vec![gold]));
+    // An owner only on an ownable object, a player of the game (two here).
+    let owned = |k: &str, owner: u8, holds| ObjectSetup {
+        owner: Some(PlayerId::new(owner)),
+        ..object(&rules, 5, k, holds)
+    };
+    for k in ["t:sawmill", "t:lighthouse"] {
+        assert!(built(&rules, vec![owned(k, 1, Holds::Nothing)]).is_ok());
+        assert_eq!(
+            built(&rules, vec![owned(k, 2, Holds::Nothing)]).err(),
+            Some(SetupError::ObjectOwner(0))
+        );
+    }
+    assert!(
+        built(
+            &rules,
+            vec![owned("t:abandoned", 0, Holds::Resources(vec![gold]))]
+        )
+        .is_ok()
+    );
+    assert_eq!(
+        built(&rules, vec![owned("t:chest", 0, Holds::Nothing)]).err(),
+        Some(SetupError::ObjectOwner(0))
+    );
+    let blocker = ObjectSetup {
+        object_type: None,
+        ..owned("t:chest", 0, Holds::Nothing)
+    };
+    assert_eq!(
+        built(&rules, vec![blocker]).err(),
+        Some(SetupError::ObjectOwner(0))
+    );
 }
 
 // covers: ADV-OBJ-002

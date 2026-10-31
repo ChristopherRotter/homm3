@@ -43,6 +43,7 @@ fn game(rules: &GameRuleset, difficulty: u8) -> GameState {
             monster: None,
             guards: None,
             holds: Default::default(),
+            owner: None,
         });
     }
     GameState::new(rules, &setup, 7).unwrap()
@@ -346,6 +347,7 @@ fn keys_game(rules: &GameRuleset) -> GameState {
             monster: None,
             guards: None,
             holds: Default::default(),
+            owner: None,
         });
     }
     GameState::new(rules, &setup, 7).unwrap()

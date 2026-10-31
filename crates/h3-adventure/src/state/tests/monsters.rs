@@ -74,6 +74,7 @@ fn object_at(x: u16, object_type: ObjectTypeId, monster: Option<MonsterSetup>) -
         monster,
         guards: None,
         holds: Default::default(),
+        owner: None,
     }
 }
 
@@ -336,6 +337,7 @@ fn ground(
         monster: None,
         guards: None,
         holds: Default::default(),
+        owner: None,
     }
 }
 
@@ -715,6 +717,7 @@ fn scenery_at(x: u16, y: u16, (blocked, visitable): (u64, u64), scenery: Scenery
         guards: None,
         scenery,
         holds: Default::default(),
+        owner: None,
     }
 }
 

@@ -230,6 +230,33 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "GAM-CAL-004"
+title    = "The map's timed events"
+context  = "game"
+status   = "implemented"
+summary  = "The map's timed events, in the map's order: each names its players (the map's colours that play; a colour nobody plays is left out, so an event may fire for none), whether it fires for a human and for a computer player (before SoD for humans always), its first day (the file's day + 1: the file's 0 is day 1), its interval in days (0 once) and the seven resources it gives (a negative amount takes; zeros left out), and its message by its index (the text is the client's). On each of its days, at the turn start of each of its players that is human or computer as it says, its resources go to that player's treasury, never below 0 (T85b). The setup refuses an event naming a player twice, out of order or not of the game, a resource twice, not the ruleset's or of 0, or a first day of 0, and more events than a u16 names. E08 T83a: the import (`h3_map`'s `timed_events`, map import v15) and `h3_game::TimedEventSetup`, `GameSetup::events`, checked by `GameSetup::validate`; their firing comes with T85b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md section 11; docs/exe/map.toml 0x4CD910, 0x4CD710, 0x4FC2E0): the game's list of 52-byte records (+0x1FBF4, the map's order) holds the message, seven i32 resources, the players' bits, the human and computer flags (before SoD the human flag always 1), the first day and the interval; the loader adds 1 to the file's first day; map_timed_events fires each, at a player's turn start, for that player when its bit is set and its kind matches, on its first day and every interval after; apply_timed_event adds the resources, floored at 0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md section 11: CMapLoaderH3M::readEvents (firstOccurrence from the file's day, the players, humanAffected and computerAffected, the resources); CGameHandler's events applied at a new day for the affected players"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-11 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md section 19): the three events fired at their players' turn starts on their days, in the map's order, the taking one floored at 0"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+  note       = "The import's part is built (E08 T83a); the firing and the floor are T85b's."
+
+[[rule]]
 id       = "GAM-RES-001"
 title    = "A player's treasury: never negative, gains saturate"
 context  = "game"
@@ -276,6 +303,41 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Difficulty_level"
   retrieved  = "2026-10-12"
   confidence = "medium"
+
+[[rule]]
+id       = "GAM-RES-004"
+title    = "The heroes' income a day"
+context  = "game"
+status   = "implemented"
+summary  = "A hero's income a day, by resource (derived in h3-heroes, ADR-0013 point 16.1; the game pays it to its owner's treasury at the day's start, increment 9's design note §14, T85b): the daily_resource amounts of every artifact in a worn position and of each part of a worn combination, each worn copy counting (two Rings of Infinite Gems give 2 gems; the Cornucopia's 4 of mercury, sulfur, crystal and gems and its parts' 1 each make the original's 5), one that needs a skill only with it; of each secondary skill's level (Estates 125, 250, 500 gold), grown when the hero has a skill specialty on that skill by floor(amount x (10 000 + bp_per_level x level) / 10 000) (an Estates specialist's 5 % of itself a level); and of its specialty (the resource specialists' 1 of mercury, sulfur, crystal or gems, the gold specialists' 350, never grown). The six resource artifacts give 1 a day, the Endless Sack, Bag and Purse of Gold 1 000, 750 and 500. Exact integers in every profile (the original keeps the factor in the x87 register, so its truncation never differs from the exact product's; no Q-0005 term); saturating per resource. Not here: the mines' (GAM-RES-003), the Crystal Dragons' (GAM-RES-005), the towns' (E09), a computer player's bonus and the handicap (E10). E08 T82: `h3_heroes::daily_income` (dense by resource in the core's order)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md §8.1, §8.2; docs/exe/map.toml 0x4B8AF0, 0x4BABD0, 0x4C7930, 0x4E4390, 0x63EA18; the gap-fill's exe-daily-income): player_daily_income adds 1 a day for each worn copy of the six resource artifacts (count_worn_artifact counts each worn slot) and 5 of mercury, sulfur, crystal and gems for each worn Cornucopia, 1 of the specialty's resource for each resource specialist (kind 2, 0x4B8DC2); player_gold_income adds the Endless Sack, Bag and Purse of Gold's 1 000, 750 and 500 and through hero_gold_income each hero's Estates (skill_estates 0, 125, 250, 500; for an Estates specialist times 1 + 0.05 x level, the factor kept in the x87 register, 0x4E43DA to 0x4E43F2, only the 0.05 a single, 0x63EAE4) and a gold specialist's 350 (0x4E4410)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md §8.4 (the gap-fill's vcmi-income): generatePlayerIncome's constant resource bonuses (RESOURCES_CONSTANT_BOOST: the artifacts and the specialists, the gold specialists' 350); config/artifacts.json's Cornucopia +4 of each (the original's 5)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+  note       = "Disagrees on the Cornucopia (4); the engine's data give the original's 5 through its parts (batch E9's E9-7)."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki (the gap-fill's wiki-income, read 2026-10-30): Estates 125, 250, 500 gold a day in SoD; the Endless Purse, Bag and Sack of Gold 500, 750, 1 000 a day; the resource specialties (Rissa mercury, Calid sulfur, Sephinroth crystal, Saurug gems 1 a day; nine heroes 350 gold; none of wood or ore); the Cornucopia 5 a day"
+  url        = "https://heroes.thelazy.net/index.php/Hero_specialty"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-7 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): Basic Estates 125, the Endless Purse of Gold 500, the Cornucopia 5 of mercury, sulfur, crystal and gems, a crystal specialist 1 crystal, at each day's start, days 2 to 9 (with the town's 500 and the mines' 1 000 gold and 2 ore)"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+  note       = "The derivation matches; the payment at the day's start is T85b's."
 
 [[rule]]
 id       = "GAM-DEC-001"
@@ -876,7 +938,7 @@ id       = "GAM-BAT-011"
 title    = "A battle on the map: the battlefield picture's variant from the scenery around its tile"
 context  = "game"
 status   = "implemented"
-summary  = "A battle from the map carries the battlefield picture's variant (`BattleSetup.background`, for viewers: no rule reads it; the original draws dirt, grass and snow by it): over the tiles within 3 of the battle's tile along each axis, on its level and clipped to the map, the scenery each tile records, 0 when dead vegetation outnumbers both the trees and the mountains, 1 when the mountains outnumber both the trees and the dead vegetation, else 2 (an empty surrounding too). A tile records, of the objects still on the map, the topmost visited from it, else the topmost ownable one blocking it, else the topmost one blocking it, else none; heroes take no tile. The topmost is the last in map order, as for visits (ADV-OBJ-003): the original's draw order by layer, where an object higher on the tile wins whatever the map's order, is not modelled (it needs the pictures' sizes). An object's scenery comes from its class at the import: trees 114, 115, 135, 137, 155, 159, 160; mountains 123, 133, 134, 136, 157, 158; dead vegetation 119; ownable 17, 20, 33, 42, 53, 77, 87, 98. E08 T54: `AdventureState::background`, `tile_sceneries`, `Scenery`, `h3_map`'s `codes::scenery`."
+summary  = "A battle from the map carries the battlefield picture's variant (`BattleSetup.background`, for viewers: no rule reads it; the original draws dirt, grass and snow by it): over the tiles within 3 of the battle's tile along each axis, on its level and clipped to the map, the scenery each tile records, 0 when dead vegetation outnumbers both the trees and the mountains, 1 when the mountains outnumber both the trees and the dead vegetation, else 2 (an empty surrounding too). A tile records, of the objects still on the map, the topmost visited from it, else the topmost ownable one blocking it, else the topmost one blocking it, else none; heroes take no tile. The topmost is the last in map order, as for visits (ADV-OBJ-003): the original's draw order by layer, where an object higher on the tile wins whatever the map's order, is not modelled (it needs the pictures' sizes). An object's scenery comes from its class at the import: trees 114, 115, 135, 137, 155, 159, 160; mountains 123, 133, 134, 136, 157, 158; dead vegetation 119; ownable 17, 20, 33, 42, 53, 77, 87, 98 and since E08 T83a 220 (the abandoned mine the original makes 53, `object_class_values` 0x63A6E4). E08 T54: `AdventureState::background`, `tile_sceneries`, `Scenery`, `h3_map`'s `codes::scenery`."
 numeric  = "integer"
 
   [[rule.source]]

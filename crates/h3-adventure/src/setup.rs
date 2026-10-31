@@ -126,6 +126,10 @@ pub struct ObjectSetup {
     /// What the map puts in an object of increment 7's kinds (E08 T61a; increment 7's design note
     /// §7): exactly the shape its type's kind takes ([`Holds`]), nothing for every other object.
     pub holds: Holds,
+    /// Its owner at the start (ADV-OWN-002, E08 T83a; increment 9's design note §4): only on an
+    /// ownable object ([`crate::ObjectKind::ownable`]), a player of the game; none is neutral.
+    /// The state's owners come with T83b.
+    pub owner: Option<PlayerId>,
 }
 
 /// What the map puts in an object of increment 7's kinds (E08 T61a; increment 7's design note §7 in
@@ -154,6 +158,10 @@ pub enum Holds {
     Record(Box<RewardRecord>),
     /// An event (ADV-OBJ-007).
     Event(Box<EventSetup>),
+    /// An abandoned mine's resources, the map's set it draws its resource among when the game is
+    /// built (ADV-MIN-003, E08 T83a): distinct resources of the ruleset, at least one, in the
+    /// core's order.
+    Resources(Vec<ResourceId>),
 }
 
 /// A reward record (ADV-RWD-001, E08 T61a; survey `E08-rewards.md` §7.1, increment 7's design note
@@ -448,6 +456,9 @@ pub enum SetupError {
     /// What the object at this index holds does not fit its type's kind, or is invalid (E08
     /// T61a; [`Holds`]).
     Holds(usize),
+    /// The object at this index has an owner but is not ownable, or its owner is not a player of
+    /// the game (ADV-OWN-002, E08 T83a).
+    ObjectOwner(usize),
     /// More objects than the state tracks (32 × 65 535); the number.
     Objects(usize),
     /// Two heroes share this id.
@@ -510,6 +521,9 @@ impl fmt::Display for SetupError {
             Self::Guards(object) => write!(f, "object {object} has invalid guards"),
             Self::Holds(object) => {
                 write!(f, "object {object} holds what its type does not take")
+            }
+            Self::ObjectOwner(object) => {
+                write!(f, "object {object} has an owner it may not have")
             }
             Self::Objects(n) => write!(f, "{n} objects are too many"),
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),

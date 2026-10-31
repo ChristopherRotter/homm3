@@ -9587,3 +9587,123 @@ the start (the four LODs, the executables, the DLLs, the sound and video archive
 
 T82 (`h3-heroes`: the income, the day's spell points, the Lighthouses' input) and T83 (the import,
 kinds and state) next, round 5.
+
+### Increment 9, round 5: T82, `h3-heroes`'s day's income, spell points and the Lighthouses' input (2026-10-31, `adventure/e08-t82-t83a`)
+
+**The cut** (decision 213; asked at the start, `AskUserQuestion`): T82 with T83a in one session
+and pull request, T83 in two (T83a the kinds, the part and the import; T83b the state and the
+views). **Baseline:** `master` ac0ee66 (#615, T81b, merged; CI's `master` run green; the setup's
+baseline the light gates on CI's verified fingerprint). The installation's files staged from the
+user's repo folder at the start (the four LODs, the executables, the DLLs, the sound and video
+archives, `maps.tar`, `extracted.tar`, the 40 MP3s).
+
+- **`h3-heroes`** (design §2, ADR-0013 points 13.6, 16): a new module `day`:
+  `daily_income(details, core) -> Vec<u32>` (GAM-RES-004): dense by resource in the core's order
+  (a treasury's layout; the design's `Resources` is the adventure's sparse list, the game adds
+  densely), the `daily_resource` of every worn copy and each part of a worn combination
+  (`Count::PerCopy`), each skill level's grown by the hero's skill specialty on it
+  (`Growth::grow`, exact in both profiles), the specialty's; saturating per resource.
+  `day_mana(details, core) -> u16` (HER-MAN-002): `full_mana` from any source (each type once)
+  gives `max(points, max)`; else the highest `mana_regain` (a skill's carries its growth; a skill
+  wins a tie, being first), else `base_mana_regain`; a grown skill's `⌊regain × (10 000 + bp ×
+  level) ÷ 10 000⌋ + regain_specialist_bonus`; then each type's `extra_mana_regain` once;
+  `max(points, min(points + regain + extra, max))`, saturating. `sea_points` gains
+  `lighthouse_points: u32`, added last (HER-ADV-009); `h3_adventure::sea_day_points` passes 0
+  until T84. `derive`'s `grown_effects` split: `grown_skill_effects` (the skills' half) shared;
+  `Growth`, `artifact_effects` `pub(crate)`.
+- *Agent's calls (change freely):* the income dense by resource (`Vec<u32>`), not the adventure's
+  `Resources`; `full_mana` and `extra_mana_regain` from any source, each type once (the packs give
+  them to artifacts alone), as T71's free boarding; a regain tie goes to the skill (its growth
+  applies).
+- **Tests** (`tests/day.rs`, a day pack on the test pack: crystal and gems, `t:estates`,
+  `t:mysticism`, the Purse and the Well on `t:helm`, a gem and the Talisman's 2 on `t:band`, the
+  Charm's 1 on `t:eye`, a crystal needing Luck on `t:loop`, `t:circle`'s 4 gems as the
+  Cornucopia's, an artifact regain of 3 on `t:hook`, the treasury's bound on `t:kit`): each copy
+  and a combination's parts, Estates by level and its specialist's exact growth (131, 187, 250 at
+  levels 1, 10, 20), the specialties' amounts ungrown, the base and the highest regain, the cap
+  and points above it kept, the extras once per type, the Well worn and in a combination, the
+  Mysticism specialist's growth and bonus only with the skill, a tie, batch E9's E9-12 days, the
+  saturation and a ruleset without hero parameters; `tests/movement.rs`: the Lighthouses' points
+  last, never grown, saturating. Coverage 100 % (`h3-heroes`).
+- **Rules:** GAM-RES-004 (`game.toml`, `implemented`: the payment is T85b's), HER-MAN-002
+  (`heroes.toml`, `verified`: E9-12), HER-ADV-009 amended (`verified`; the Lighthouse's reading
+  and E9-4 added). Design §2 and §3 cut to what was built.
+
+### Increment 9, round 5: T83a, the kinds and the part, the import (2026-10-31, `adventure/e08-t82-t83a`, `cross-lane`)
+
+**The cut** (decision 213): T83 in two, T83a the kinds and the part, then the import (they build in
+that order: the import types by the part's keys); T83b the state and the views. **ADV-Q39**
+(decision 214, asked while the base pack's types were written): the weekly objects are entered,
+not visited from a neighbour (the original's class lists 0x63AA58 and 0x63AB00; batch E9's E9-8),
+ADR-0016 point 4's line and design §5, §9 corrected; the bot reports in this pull request,
+`cross-lane`.
+
+- **The part** (`h3-adventure`'s `ruleset/`, adventure ruleset part v14; design §5):
+  `ObjectKind::{Mine { resource, daily, battle_terrain }, AbandonedMine { guards, count,
+  battle_terrain }, Lighthouse { sea_points }, Shipyard { price, boat_type, offsets }, Windmill {
+  resources, amount }, WaterWheel { resource, first, later }, Garden { gifts }}`, their `Def`s and
+  checks (amounts 1 to `MAX_GAIN`, an abandoned mine's guards no war machine and its count 1 ≤ low
+  ≤ high ≤ `max_stack_count`, a Shipyard's offsets distinct, at least one, none (0, 0), a
+  Windmill's resources distinct, a Garden's gifts at least one), hash tags 23 to 29;
+  `ObjectKind::{ownable, weekly}`; the four ownable kinds must be entered; one mine a resource and,
+  with an abandoned mine, one for every core resource (`AdventureRuleset::mine_daily`). No visit
+  yet (`effect` none: a step onto them is refused as any unbuilt visit's, T84). `CalendarParams`
+  (`week_days`, `month_weeks`; required), `MonsterParamsDef`'s `growth_bp` (≤ 10 000),
+  `growth_unit` (1 to 256: a fraction fits a byte), `growth_cap` (≤ `MAX_MONSTER_COUNT`),
+  `MonthParamsDef` (`odds` normal, creature, Plague with a sum from 1; `creatures` distinct, no
+  war machine, an adventure count from 1, its high × `spawn_factor` ≤ `MAX_MONSTER_COUNT`, at
+  least one with a creature's weight; `monster`, a type of kind `monster` without levels;
+  `spawn_one_in`, `spawn_factor`, `spawn_aggression`; it needs `[params.monsters]`).
+- **The pack format** (`h3-pack-adventure`): `mine`, `abandoned_mine`, `lighthouse`, `shipyard`
+  (`offsets = [[c, r], …]`), `windmill`, `water_wheel`, `garden` (`gifts = [{ resource, amount
+  }]`); `[params.calendar]`, the growth's three fields, `[params.months]`. **The packs:** `base`'s
+  thirteen types (the seven mines by resource, the abandoned mine, the Lighthouse, the Shipyard,
+  the Windmill, the Water Wheel, the Mystical Garden; every one entered, not from above) and its
+  calendar, growth and months, each with its sources; `synthetic`'s calendar (5, 3).
+- *Agent's calls (change freely):* the Water Wheel names its resource and the Garden takes a list
+  of gifts (data, where design §5 fixed gold and two); the months name their monster's object type
+  (`monster = "monster"`, for §11's added monsters: one part version now rather than a second);
+  `growth_unit` bounded at 256 (the state's fractions a byte, design §6; VCMI's thousandths would
+  not fit, D-49 decided against them).
+- **The import** (`h3-map`, map import v15; design §4): `codes::MINES` (53 by subclass 0 to 7),
+  220 → `base:abandoned_mine` whatever its subclass, 42, 87, 112, 109, 55 typed; 220 ownable
+  scenery (GAM-BAT-011); `object_owner` (`0xFF` none, else the colour's player, `ObjectOwner`
+  for a colour nobody plays or past eight); `mine_resources` (the set's first byte's bits 0 to 6,
+  sorted; `MineResources` for none or bit 7); `Unsupported::OwnedOnWater` (an ownable type's
+  entrance on water, the static layer keeping it); `timed_events` → `GameSetup::events`
+  (`Events` past a `u16`); `colours(map)` gives `import_map` the owners' players without
+  `players`' refusals.
+- **The setup** (adventure state hash v17): `ObjectSetup::owner` (checked in
+  `AdventureState::new`: an ownable object, a player of the game, `SetupError::ObjectOwner`; not
+  kept yet: T83b's owners), `Holds::Resources` (checked by `check_holds`: at least one, strictly
+  in the core's order, the ruleset's; hashed as `Holds`' tag 7). `h3_game::TimedEventSetup`,
+  `GameSetup::events` (checked after the banned sets: players of the game in id order, resources
+  distinct, the ruleset's and not 0, a first day from 1; `GameSetupError::{Events, Event}`; not
+  kept by the game yet: T85b). The 78 `ObjectSetup` and 14 `GameSetup` literals in the tests
+  gained the fields, four of them the AI lane's (`h3-sim`'s adventure tests, `h3-cli`'s
+  `ai/census.rs`).
+- *Agent's call:* the static map's set moves the adventure state hash to v17 now; design §6's
+  state takes v18 in T83b (§16's table updated).
+- **The census** (`examples/original_data.rs`): each static layer validated in a game of its
+  map's players (an owner must be one; the one-player game refused 10 maps' owners); increment 9's
+  counts. The 160 maps: every static layer imports and validates, the same 8 whole, no owner
+  nobody plays, no empty or out-of-range set, no ownable object on water; 5 915 mines (60 owned),
+  158 abandoned mines (7 of one resource, 151 of two to six), 83 Lighthouses, 331 Shipyards (1
+  owned), 780 Windmills, 430 Water Wheels, 286 Mystical Gardens, 666 timed events (61 repeating,
+  none for no player). `h3m.md`'s "Import" updated.
+- **Replays:** the 32 adventure goldens re-recorded (the random ones with their options, the
+  scripted ones from their commands): every command and day unchanged, every hash moved (part,
+  state hash version, import version in the headers). **The AI lane's** two bots tables: only
+  `engine.adventure` moved (`cross-lane`, decision 214).
+- **Rules:** GAM-CAL-004 (`implemented`: the import and the setup's check; the firing T85b),
+  ADV-OWN-002 (`implemented`: the import and the setup's check; the state's owners T83b),
+  ADV-MIN-003 (`implemented`: the set; the draws T83b) new; ADV-OBJ-002, ADV-MAP-002 (the newly
+  typed objects' entrances count in the terrain shares), GAM-BAT-011 (220) amended.
+- **Tests:** `ruleset/tests/economy.rs` (the kinds compiled, every check and reference, the
+  calendar, growth and months checked, the hash), `h3-pack-adventure`'s `parses_the_economy_kinds`,
+  `the_base_pack_types_the_economy_of_increment_9` and the malformed files, `state/tests/holds.rs`
+  (the set and the owner at the build, the hash), `h3-game`'s `the_timed_events_are_checked`,
+  `h3-map`'s `the_economy_map_imports`, `the_import_refuses_an_owner_nobody_plays_and_an_empty_mine`,
+  `an_ownable_object_entered_from_water_is_unsupported` and the typed classes' list.
+
+T83b (the state and the views) next.

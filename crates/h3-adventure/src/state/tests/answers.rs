@@ -76,6 +76,7 @@ fn monster_at(x: u16, y: u16, creature: CreatureTypeId, count: u32) -> ObjectSet
         }),
         guards: None,
         holds: Default::default(),
+        owner: None,
     }
 }
 

@@ -16,6 +16,37 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-31 (T82 and T83a done together: decision 213, T83 cut in two; ADV-Q39 answered, decision 214; T83b queued): the T82 and T83 entries as they stood in the "Tasks" text:
+
+  **E08 T82 — `h3-heroes`: the day's income, the day's spell points, the Lighthouses' input**
+
+  - **Scope:** design §2 and §3 (round 5; small): `daily_income(details, core)` (ADR-0013 point
+    16.1, GAM-RES-004: each worn copy counting, a worn combination's parts too, a skill level's
+    amount grown by a skill specialty on it in exact integers, the specialty's; saturating),
+    `day_mana(details, core)` (point 16.2, HER-MAN-002: `full_mana`, the highest `mana_regain` else
+    `base_mana_regain`, a specialist's growth `+ regain_specialist_bonus` only with the skill, each
+    worn type's `extra_mana_regain` once, points above the maximum kept) and `sea_day_points`'
+    `lighthouse_points` (point 13.6, HER-ADV-009 amended; the adventure passes 0 until T84). The
+    rules in the catalog with T81b's gap-fill sources and batch E9's rows (E9-7, E9-12) as
+    observations.
+  - **Inputs:** design §2, §3; ADR-0013 points 3, 13.6, 16; survey `E08-economy.md` §8, §12; T81b's
+    record in `E08-log.md` (the kinds and parameters as built); T71's record (the sea points'
+    pattern).
+  - **Depends on:** T81b (`shared/e08-t81b` merged). **Status:** ready after that merge; its cut
+    (alone or with T83, design §18's round 5) confirmed with the user at its start.
+
+  **E08 T83 — `h3-map` and `h3-adventure`: the import, the kinds and the part, the state, the views**
+
+  - **Scope:** design §4, §5, §6, §12 (round 5): map import v15 (classes 42, 53, 55, 87, 109, 112,
+    220; the owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater`), the seven
+    kinds and the calendar, growth, months and income parameters (adventure ruleset part v14), the
+    owners, guards, weekly marks, fractions and added objects in the state (adventure state hash
+    v17), the views (ADV-OWN-003, ADV-FOG-006 amended); likely cut in two at its start.
+  - **Inputs:** design §4 to §6, §12, §16; ADR-0016 points 1, 3 to 6; survey `E08-economy.md`; T72's
+    record in `E08-log.md` (increment 8's import, kinds and state) as the pattern.
+  - **Depends on:** T81b (merged). **Status:** ready after that merge; its cut confirmed with the
+    user at its start.
+
 - 2026-10-30 (T80 done, whole with A-33's re-read: decisions 209, 210; T81 queued): the T80 entry as it stood in the "Tasks" text:
 
   **E08 T80 — Batch E9 scored**

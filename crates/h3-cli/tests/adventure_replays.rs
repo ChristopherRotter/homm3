@@ -116,7 +116,11 @@
 //! options (the scripted two from their commands in v7's words), their commands unchanged but for
 //! their words: every hash moved. E08 T63b (game state hash v19: the rests, GAM-DEC-007, the
 //! guard's wait no longer in a decision; a won guards' battle's pickup after the winner's levels)
-//! re-recorded all twelve with their options, their commands unchanged: every hash moved.
+//! re-recorded all twelve with their options, their commands unchanged: every hash moved. E08
+//! T83a (adventure ruleset part v14, adventure state hash v17, map import v15: increment 9's
+//! kinds and parameters, an abandoned mine's set; none of the four maps has an increment 9
+//! object) re-recorded all thirty-two with their options (the scripted ones from their commands),
+//! their commands and days unchanged: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

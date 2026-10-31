@@ -34,90 +34,49 @@ Crystal Dragon's 3 crystal (`ab`). Core ruleset hash v51, pack format v50.
 
 ### 2. The derivations (`h3-heroes`; HER-MAN-002, GAM-RES-004, HER-ADV-009 amended)
 
-- **`daily_income(details, core) -> Resources`** (ADR-0013 point 16.1): the `daily_resource` of
-  every artifact in a worn position and of every part of a worn combination, **each copy
-  counting** (a new walk over the positions, not the "each type once" set the movement and the
-  battle use); of each secondary skill's level, grown when the hero has a skill specialty on
-  that skill by `⌊amount × (10 000 + bp_per_level × level) ÷ 10 000⌋`; of the specialty's
-  effects. Exact integers in every profile: the original keeps the factor in the x87 register
-  (`hero_gold_income` 0x4E43DA to 0x4E43F2; only the 0.05 is a single, 0x63EAE4), so its
-  product's excess (at most about 10⁻⁴) never reaches the next integer (the products are
-  multiples of 0.05). Saturating per resource.
-- **`day_mana(details, core) -> u16`** (point 16.2; HER-MAN-002): `max` = HER-MAN-001's; with
-  `full_mana` worn (or a combination holding it), `max(points, max)`; else
-  `max(points, min(points + regain, max))`, so points above the maximum stay. `regain` = the
-  highest `mana_regain` of the sources, else `base_mana_regain`; with that skill and a skill
-  specialty on it, `⌊regain × (10 000 + bp × level) ÷ 10 000⌋ + regain_specialist_bonus`
-  (`hero_mana_regained` 0x4E3F5F: no growth for a specialist without the skill); then each worn
-  type's `extra_mana_regain` once (worn or a part of a worn combination: the original's two
-  scans of the worn slots and `hero_wears_artifact` 0x4D91F0 for the combination). The Well's
-  parts (the three mana artifacts) do not matter once the Well fills.
-- **`sea_day_points`** gains the Lighthouses' input (point 13.6): `lighthouse_points: u32`,
-  added after the artifacts' points, saturating, never grown by Navigation; the adventure
-  passes its owner's Lighthouses' points (§7).
+Built by T82 (`adventure/e08-t82-t83a`, decision 213; its record in `E08-log.md`):
+`h3_heroes::daily_income(details, core) -> Vec<u32>` (dense by resource in the core's order, each
+worn copy and a worn combination's parts counting, a skill's amount grown by its specialty, exact
+integers, saturating), `day_mana(details, core) -> u16` (the Well, the highest regain or the base,
+a specialist's growth and bonus only with the skill, each type's extra once, never lowered) and
+`sea_points(details, core, table, lighthouse_points)` (added last; `h3_adventure::sea_day_points`
+passes 0 until §7's visits give it the owner's Lighthouses, T84).
 
 ### 3. Rule ids, quirks, shared needs (the hero side)
 
-HER-MAN-002 (the day's spell points), GAM-RES-004 (the heroes' income: its derivation here, its
-payment the game's), HER-ADV-009 amended (the Lighthouses' input). No quirk. Shared: the four
-kinds, the two parameters, the core creature's abilities, the packs and the gap-fill (T81b, done).
+Built by T82: HER-MAN-002 (`verified`, E9-12), GAM-RES-004 (`implemented`: its payment is the
+game's, §14, T85b), HER-ADV-009 amended (`verified`, E9-4). No quirk.
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
 ### 4. The import (`h3-map`; map import v15)
 
-- **Classes typed** (`codes::object_type`): 53 by subclass (0 to 6 the seven mines, 7 the
-  abandoned mine), 220 as 53.7 (the original's `object_class_values` 0x63A6E4; its pictures
-  stay the template's), 42 the Lighthouse, 87 the Shipyard, 112 the Windmill, 109 the Water Wheel,
-  55 the Mystical Garden. Classes 42, 53 and 87 are `Scenery::Ownable` already (GAM-BAT-011), and
-  220 becomes one as 53.
-- **The bodies** (the reader's `Body::Mine`, `Body::AbandonedMine`, `Body::Owned` exist): an
-  owner `0xFF` is none; another colour is the player that colour is (`players`' map), and a
-  colour no player of the scenario plays is refused (`ImportError::ObjectOwner(index)`, as
-  `HeroOwner`; ADV-OWN-002). The abandoned mine's set (the body's first byte, bits 0 to 6) goes
-  to `ObjectSetup` as the resources it may draw; an empty set or a bit past the core's
-  resources is refused (`ImportError::MineResources(index)`, A-31's bound, `ADV-QUIRK-33`).
-- **An ownable object whose entrance is on water** is refused as `Unsupported::OwnedOnWater(index)`
-  (none on the shipped maps; how a hero reaches an entered object on water was not read, survey
-  §4).
-- **The timed events** (`RawMap::events`) become `GameSetup::events` in the map's order
-  (GAM-CAL-004): each `TimedEventSetup` with its players as player ids (the colours that play; a
-  colour nobody plays dropped), `human` (the reader gives `true` before SoD, as the original's
-  0x4FC1A0), `computer`, `first_day` = the file's day + 1 (0x4FC2E0), `interval` (0 once), the
-  seven resources as `(ResourceId, i32)` pairs without zeros, and `message: u16`, the event's
-  index in the list (the text is the client's). None is refused; an event for no player that
-  plays is kept and never fires.
-- **The writer:** built by T78 (`E08-log.md`, T78).
+Built by T83a (`adventure/e08-t82-t83a`, decision 213; its record in `E08-log.md`): the classes
+typed (53 by subclass, 220 as 53.7, 42, 87, 112, 109, 55; 220 ownable scenery), an ownable
+object's owner as `ObjectSetup::owner` (`ObjectOwner` for a colour nobody plays), an abandoned
+mine's set as `Holds::Resources` (`MineResources`), `Unsupported::OwnedOnWater`, the timed events
+as `GameSetup::events` (`h3_game::TimedEventSetup`; `Events` past a `u16`). The setup checks an
+owner (an ownable object, a player of the game: `SetupError::ObjectOwner`), the set
+(`check_holds`), the events (`GameSetupError::Event`); the static map hashes the set (adventure
+state hash v17, *agent's call*: the bump this note gave §6's state moves to T83b's v18); the
+owners and the events are not kept by the state yet (§6, §14).
 
 ### 5. The kinds and the part (`h3-adventure`, `h3-pack-adventure`; adventure ruleset part v14)
 
-New `ObjectKind`s (ADR-0016 point 4's draft), each with a visit (`Effect`):
+Built by T83a: the seven kinds as the table had them, with two *agent's calls*: the Water Wheel
+names its `resource`, the Garden takes a list of gifts (`gifts = [{ resource, amount }]`), both
+data where the table fixed gold and two; every kind entered and not from above (ADV-Q39, decision
+214, the weekly ones too), the four ownable ones refused otherwise; hash tags 23 to 29. One mine a
+resource, and with an abandoned mine one for every resource (`AdventureRuleset::mine_daily`); an
+abandoned mine's count at most `max_stack_count`. `[params.calendar]` (required), the monsters'
+growth (`growth_bp` at most 10 000, `growth_unit` 1 to 256, `growth_cap` at most
+`MAX_MONSTER_COUNT`), `[params.months]` (optional; its `monster`, an object type of kind `monster`
+without levels, *agent's call*: the type the month's monsters are, §11; its creatures no war
+machine, with an adventure count, the count times `spawn_factor` at most `MAX_MONSTER_COUNT`; it
+needs `[params.monsters]`). The base pack's thirteen types and parameters with their sources; the
+synthetic pack's calendar.
 
-| Kind | Parameters | Base pack types |
-|---|---|---|
-| `Mine` | `resource`, `daily` (its amount a day), `battle_terrain: Option<TerrainId>` | `base:sawmill` (wood 2), `alchemists_lab` (mercury 1), `ore_pit` (ore 2), `sulfur_dune` (1), `crystal_cavern` (1, subterranean), `gem_pond` (1), `gold_mine` (gold 1 000, subterranean) |
-| `AbandonedMine` | `guards: CreatureTypeId`, `count: [u32; 2]`, `battle_terrain` | `base:abandoned_mine` (Troglodytes, 100 to 200, subterranean); its daily amount the drawn resource's `Mine` type's |
-| `Lighthouse` | `sea_points` | `base:lighthouse` (500, `movement_bonus_lighthouse` 0x698B0C) |
-| `Shipyard` | `price: Resources`, `boat_type: u8`, `offsets: Vec<(i8, i8)>` | `base:shipyard` (1 000 gold and 10 wood; type 1; the twelve of 0x67FAA8 in order) |
-| `Windmill` | `resources: Vec<ResourceId>`, `amount: [u32; 2]` | `base:windmill` (mercury to gems, 3 to 6) |
-| `WaterWheel` | `first`, `later` (gold) | `base:water_wheel` (500, 1 000) |
-| `Garden` | `gifts: [(ResourceId, u32); 2]` | `base:mystical_garden` (5 gems, 500 gold) |
-
-The ownable kinds (`Mine`, `AbandonedMine`, `Lighthouse`, `Shipyard`) are entered (`Visit::Enter`);
-the weekly kinds are visited from the neighbouring tile (`Visit::Neighbour`, survey §9). The
-abandoned mine's daily amount is looked up by its drawn resource among the part's `Mine` types
-(the compile checks that each resource has exactly one). **Parameters** (`[params]`):
-
-- `[params.calendar]`: `week_days = 7`, `month_weeks = 4` (GAM-CAL-002; the game reads them
-  through the part, as the starting resources).
-- `[params.monsters]` gains the growth: `growth_bp = 1000` (a tenth), `growth_unit = 16` (the
-  sixteenths), `growth_cap = 4000` (ADV-MON-013; D-49: VCMI's thousandths are `growth_unit =
-  1000` by data, should batch E9 revert it).
-- `[params.months]`: the odds of a normal month, a creature's and the Plague (5, 4, 1 of 10), the
-  twelve creatures (`month_creatures` 0x63E678 by key), `spawn_one_in = 200`, `spawn_factor = 2`,
-  `spawn_aggression = [1, 10]` (ADV-MON-014, GAM-CAL-003).
-
-### 6. The state (`h3-adventure`; adventure state hash v17)
+### 6. The state (`h3-adventure`; adventure state hash v18, T83b)
 
 - **The static map** lists the ownable objects (`ownables: Vec<usize>`, object order) and the
   weekly ones (`weeklies: Vec<usize>`); `Resolved` gains `Mine { resource, guards: u32 }` (an
@@ -191,14 +150,15 @@ free (`BoatTileTaken`). The game checks the treasury against the kind's price fi
 
 ### 9. The weekly objects' visits (ADV-WEK-001 to -003, ADV-VIS-006 amended)
 
-From the neighbouring tile, any hero, no question. **The contents are the object's, one a week,
+Entered (ADV-Q39, decision 214: the original's class lists and batch E9's E9-8, against this
+note's first wording), any hero, no question. **The contents are the object's, one a week,
 for whoever comes first** (decision 201): the week's first visit by any player's hero takes them
 and empties the object for every player until the next week's step; no per-player contents, no
 per-player test. The mark first (the Windmill's and the Water Wheel's for the visitor's team, the
 Garden's for the visitor's owner: hint data only, never read by the gain), then: contents left,
 the outcome's gain (as a pickup's, `ResourceGained` by the game) and the amount set to 0; none,
 `ObjectEmpty { object_type, anchor }` to the visitor's owner (the original's "nothing" message).
-The visit never ends the walk early beyond a neighbour visit's usual stop.
+The visit ends the walk on the entrance, as any entered visit.
 
 ### 10. The week's step (`AdventureState::start_week`; ADV-WEK-001 to -003, ADV-MON-013)
 
@@ -343,9 +303,10 @@ the map.
 | Version | Change | Task |
 |---|---|---|
 | core ruleset hash v51, pack format v50 | the four kinds, the two hero parameters, the core creature's abilities; the packs | T81b (`shared/`), done |
-| adventure ruleset part v14 | the seven kinds; the calendar, growth, months and income parameters | T83 |
-| map import v15 | classes 42, 53, 55, 87, 109, 112, 220; owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater` | T83 |
-| adventure state hash v17, game state hash v21 | owners, guards, weekly, fractions, added objects; the month, the events, the dialog's holder | T83, T85 |
+| adventure ruleset part v14 | the seven kinds; the calendar, growth and months parameters | T83a, done |
+| map import v15 | classes 42, 53, 55, 87, 109, 112, 220; owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater` | T83a, done |
+| adventure state hash v17 | the static map's abandoned mines' sets (`Holds::Resources`) | T83a, done |
+| adventure state hash v18, game state hash v21 | owners, guards, weekly, fractions, added objects; the month, the events, the dialog's holder | T83b, T85 |
 | adventure replay format v8 | `BuildBoat` | T84 |
 | env action encoding v6 (the AI lane's) | `BuildBoat` | T85b (`cross-lane`) |
 
@@ -399,7 +360,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 | 2 | **T78** | Batch E9's maps: the writer's seven classes and timed events (§4); the spec's fields (`cross-lane`); the two specs and templates (§17) |
 | 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
 | 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs (done, decision 212) |
-| 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small). T83: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v15, part v14, adventure state hash v17 |
+| 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b the state (§6), the views (§12); adventure state hash v18 |
 | 6 | **T84** | `h3-adventure` and `h3-game`: the owned objects' visits (§7), `BuildBoat` (§8), the weekly visits (§9), the mines' battles (§13), the kept dialog and the boat offer (§14); likely cut in two at its start (flagging and mines with their battles; Lighthouses, Shipyards, `BuildBoat` and the weekly visits) |
 | 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |
 | 8 | **T86** + **T87** | T86: the economy maps, their replays and properties, the benchmarks, `--with-original-data` (§15). T87: the audit against the exit criteria, increment 9 closed, increment 10 refined |

@@ -54,6 +54,7 @@ fn event_at(
             computer,
             remove,
         })),
+        owner: None,
     }
 }
 
