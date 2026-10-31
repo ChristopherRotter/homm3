@@ -4,6 +4,219 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-31 (E17 M5 T8c, M5's closure at the user's checkpoint; verbatim): the queue's M5
+  header, T8's entry, the inbox entries M6's tasks took (T2 the stack's info, T6 the rest) and
+  the informational notices, moved out unchanged.
+
+### E17 M5 — the queue's header at M5's end
+
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14, M3
+2026-10-23, M4 2026-10-27; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23,
+the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
+closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
+its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
+the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T4a done
+2026-10-28, T4b cut in two, T4b1 done 2026-10-28, T4b2 and T4c1 done 2026-10-28, T4c2a and
+T4c2b 2026-10-29: T4 done; T5 cut in two, T5a done 2026-10-29, T5b cut in two, T5b1 and T5b2
+done 2026-10-29: T5 done; T6 cut in two by the user, T6a done 2026-10-30, T6b cut in two by
+the user, T6b1 and T6b2 done 2026-10-30; T7 kept whole by the user, done 2026-10-30). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
+user's computer must be online); never from the installation. The captures need the five DLLs,
+`Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
+`clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local
+check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from
+`clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
+`faithful`/`fixed` profile) with the first one a task finds.
+
+### E17 M5 T8 — M5's closure (done 2026-10-31, T8c)
+
+- **Scope:** a fresh reviewer, the battle recipes' starting bonus set to Gold (M4's review item
+  15), every capture afresh, the review list, the next milestone refined with the user (the
+  ladders, the pause, the server browser; HD; graphics options).
+- **The user's cut (2026-10-30):** concurrent sub-agents, two capturing (one per harness
+  instance: the runbook's "Two instances") and one reviewing or fixing, each given a fraction
+  of about half a context; the runner keeps only their reports. **T8a done** (log, "M5 T8a"):
+  the two instances, the bonus Gold, reviewers R1 (network, accounts), R3 (the play core), R4
+  (the spell book) and their fixes; all 91 stills and sequences 0 to 27 as recorded.
+- **T8b cut in two by the user (2026-10-30, the agent's proposal):** **T8b1** the captures
+  (sequences 28 to 64), R7 and R2 (in two: R2a the decoder, R2b the clip) with their fixers;
+  **T8b2** R4b, R5a to R5c, R6, the leftovers, then `drawn` and `check.sh`. **T8b1 done** (log,
+  "M5 T8b1": sequences 28 to 64 as recorded, R7, R2a and R2b fixed; review items 73 to 77).
+- **T8b2 done** (2026-10-31, log "M5 T8b2"; the user's fractions: three concurrent sub-agents,
+  the runner the leftovers): reviewers R4b, R5a to R5c, R6 and their fixers; the leftovers (an
+  entered stack carries the playhead, the name lookup's wait, `RecordError::Line` in numbers, the
+  sequences tool naming a bad clip, `bink-reference.py` on a refused packet, R7-8 the Gold bonus
+  read in memory); `drawn` and `check.sh`; review items 78 to 86, CLT-Q35.
+- **T8c (the user's checkpoint):** the review list (items 1 to 86), CLT-Q35, the next
+  milestone refined; M5 done.
+- **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
+  the next milestone's tasks in this queue; M5 done.
+- **Depends on:** T1 to T7 (done 2026-10-30). **Status:** T8a, T8b1 and T8b2 done; T8c ready (the user).
+
+### Inbox entries taken by M6 (2026-10-31)
+
+- 2026-10-29 (the user, at E17 M5 T5b1's start; for a free slot or M5's closure): **the
+  Demons' dissolve, re-investigated.** The slip of T5a (the saved picture is the back buffer)
+  is the rock clipped out; the Imps' corpse gone before the fade-out's end is not part of it in
+  the user's view. Find where the corpse leaves the original's picture and model it if it is not
+  the slip (design §7.25, "To re-investigate"; `seq-demons.toml`'s 8 dissolve frames).
+
+- 2026-10-28 (the adventure lane, E08 T67; CLT-Q5's answer, decision 158): **boats in
+  `h3_map::writer`.** An empty boat is a `Plain` object of class 8 (`PLAIN_OBJECTS`, the
+  `Objects.txt` templates `AVXboat0` to `AVXboat2`, the type as subclass): as a hero's template
+  it stands one column west of its position, on water, blocked and visited there. A map cannot
+  put a hero in a boat (the original makes no boat for a hero placed on water, survey
+  `docs/rules/surveys/E08-sea.md` §2, §5; batch E8's E8-5 tests it): a situation with a hero in a
+  boat places the hero on the coast beside an empty boat and boards it in the game (a click on
+  the boat), then the deck (a hero on land attacks it from the shore) or the two boats (both
+  boarded, side by side). Batch E8b's E8-11 and E8-12 (`experiments/specs/E08-batch-8b.toml`) are
+  the two setups. Also new: Flotsam, the Sea Chest, the Survivor and holes as `Plain` objects, an
+  Ocean Bottle or sign with its text (`RewardBody::Sign`), the spec's `[[map.bottle]]` and an
+  opponent monster's own `at` (any terrain).
+
+- 2026-10-28 (E17 M5 T4b2b, CLT-Q30, the user: listed now, exact later): **`h3-bink` to decode
+  as the game's `BINKW32.DLL` (Bink 0.5b).** Its inverse DCT is x87 single-precision floating
+  point (`ExpandPlane`'s 8 × 8 transform: √2, 1.848, 2.613 and 1.082 as floats, float
+  quantizers), FFmpeg's integer, so five clips differ by one level on a few pixels (`rtstart`,
+  `rtloop`, `Surrender`, `defendloop`; `Defendall` up to 388 a frame; design §7.21). The task:
+  the DLL's transform and quantization in integer arithmetic (no floats in the client: exact
+  binary32 emulation or a proof that a fixed-point form rounds alike on every input the
+  bundles allow), checked against the DLL's own planes (`binkprobe frames <vid> <clip> 7`:
+  YUY2) on the ten clips and the synthetic samples; FFmpeg's check (`bink-check.sh`) then
+  becomes the DLL's. Then the captures' listed DCT pixels (`result-retreat` 2 700 and 3 000,
+  `defended`) go.
+
+- 2026-10-28 (the map client lane, E24 M3 T2a; additive, nothing of yours drawn changed): **the
+  dialog items' drawers in the common crate.** `h3_ui::paint::draw` draws each `h3_ui::ui::Draw`
+  (picture, button, text, label, darken) as `h3_view::compose` does (ported from it, the same
+  pixels) from any batch implementing `h3_ui::paint::Assets` (`sprite`, `picture`, `palette`,
+  `font`), and `h3_ui::paint::names` gives the assets a draw needs; the map viewer draws its
+  adventure dialog with it. M3's exit wants `h3-ui` the only copy of what both viewers share:
+  your compositor's `Draw::Dialog` arms and `batch.rs`'s names switched to it (your `Batch`
+  implementing `Assets`) remove your copy. Also additive: `Dialog::draws` gives a button the
+  player's colours (`Shown::players`) and a DEF (`Shown::defs`) by its id, which no battle
+  dialog sets (`h3drive.py drawn` all the same).
+
+- 2026-10-27 (E17 M5 T2a, the click read; for M5 T4 or later): **the stack's and the turret's
+  info by the mouse** are not built: a left press on a stack to look at (kind 5) opens its stats
+  dialog (`stack_stats_dialog` 0x468860, modal), on a turret (22) its info (0x47A380); the right
+  button pressed over the battlefield shows a popup while held (0x4769C0, not read), over a
+  control its help (0x472A50). `mouse::click` gives no command there (design §9.11).
+
+- 2026-10-24 (the map-client lane, E24 M1 T6b's reviewer, R2-15; for you to take or leave):
+  **`h3-view`'s `tests/purity.rs` has three holes** its copy in `h3-map-view` had: `sources` skips
+  every folder named `bin` at any depth (only `src/bin/` is the adapter), a denied lint relaxed
+  through its group (`#[allow(clippy::restriction)]`) or by an attribute over several lines is not
+  seen, and the required header is matched as a substring (a commented-out `// #![no_std]`
+  passes). `clients/crates/h3-map-view/tests/purity.rs` (E24 M1 T6b) has the fixes:
+  `walk` from `src` leaving out `src/bin` only, `attributes` joining an attribute's lines, the
+  `GROUPS` list, the header as a line of its own.
+
+- 2026-10-23 (T9b, the reviewers; the epic log's "M3 T9b", the accepted review list): queued
+  findings. R4-2: `drawn`'s digest of what the masks depend on besides the pixels (`ours.txt`'s
+  boxes, the log's text: digests recorded again from `master`'s viewer first, the runbook's
+  rule). R4-9: a stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an
+  artifact over almost anything; the counts stay exact). (R2-7, R2-8 with R1-3 and R3-1 went into
+  M5 T1, T6 and T5 at M4 T3c; the entry's full text in `QUEUE-ARCHIVE.md`.)
+
+### Informational notices (moved 2026-10-31)
+
+- 2026-10-30 (the adventure lane, E08 T79a; for information, nothing to do): the harness's
+  reads and steps for batch E9a (`clients/capture/README.md`, "Mines, Lighthouses and Shipyards").
+  Behaviour that changed for every recipe: `h3lod.identify` also knows `MINEEVNT.TXT` (a mine's
+  flag message, `MINEEVNT:<n>`; it was named GENRLTXT:4, its picture's caption) and lets a
+  record's title braces be missing; a walk records the cursor before its first click (`cursor`);
+  a battle's record keeps each side's owner and controllers (`sides`); the boat dialog (vtable
+  0x643908) is a screen a step's `actions` play, cancelled when left open. New: `mine:x,y`,
+  `tile:x,y`, `screens`, `opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>`, `stops`,
+  `battle = "auto again"`, `row:<column>#2`; `h3mem.mines`, `tile_word`, `battle_sides`,
+  `auto_combat_on`. The harness check passed.
+
+- 2026-10-30 (the adventure lane, E08 T79b; for information, nothing to do): the harness's
+  reads for batch E9b (`clients/capture/README.md`, "The day's start"). Behaviour that changed for
+  every recipe: `object:x,y` and `word:x,y` of an object a hero stands on read it through the
+  hero's record (+0xC, +0x14; they read the hero's class 34 and index before), `fill` and
+  `compare` key a row label repeated in a table `<label>#<n>` (its second row stayed empty before),
+  `message_record` names a message whose text is one of the spec's own `the map's text "..."`.
+  New: `income[:<colour>]`, `gardens[:<colour>]`, `growth:x,y`, `gain[:<colour>]`, the weekly
+  objects' `object:` texts (Windmill, Water Wheel, Mystical Garden), an end-turn step's `record`
+  and `note` (the new turn's messages: `end_turn(game, mem, events)`, `dismiss(..., mem, events)`,
+  both optional), a recipe's `gold = true`; `h3mem.player`'s `income` and `gardens`,
+  `h3mem.monster`'s `sixteenths` and `word`. The harness check passed.
+
+- 2026-10-30 (the map client lane, E24 M3 T6a2b, the user's consent; for your information,
+  nothing to do): `h3-view`'s test `the_committed_catalogue_parses` lists SEERHUT among the
+  tables the catalogue's keys read: the map hint's quest texts (`map.quest.<type>`, a form per
+  SeerHut.txt column) are keys, which every client reads. The catalogue also has 33 more `map.`
+  keys and 13 optional families only the map viewer lists (`clients/text/keys.toml`).
+
+- 2026-10-29 (the adventure lane, E08 T68b; for information, nothing to do): the harness's
+  reads and steps for batch E8b (`clients/capture/README.md`, "Boats and the sea", since T68b).
+  Behaviour that changed for every recipe: `h3lod.identify` also knows `RANDSIGN.TXT` (a sign's
+  or Ocean Bottle's default text, `RANDSIGN:<n>`) and lets a record's doubled quote match one or
+  two (ADVEVENT 126 was not identified); a message one of the map's message records holds reads
+  `the map's text "..."` before any table is tried (GENRLTXT 16, `%s the %s`, took it);
+  `object:x,y` reads `none (class 3: the coast)` for a coastal tile without an object; `select`'s
+  `controls` count only tiles that hold an object. New: `object:x,y` for the Sea Chest, the Survivor and the Ocean
+  Bottle (an artifact chest and a Survivor hold an artifact for `require` and `select`), `select`
+  by `is`, `count` and `then`, `h3mem.open_tiles(…, water=True)` (a hero in a boat approaches over
+  water), `h3mem.messages`, table rows filled step by step (`row:<first column>`), a grid step's
+  `note` at every tile, and the reads `battle:tile`, `boat_record:x,y`, `treasury_changed`,
+  `text:<literal>`. The harness check passed.
+
+- 2026-10-28 (the adventure lane, E08 T68a; for information, nothing to do): the harness's
+  reads and steps for batch E8a (`clients/capture/README.md`, "Boats and the sea"). Behaviour that
+  changed for every recipe: `h3mem.path` (the `marks`, `mark` and `path_tiles` reads) is empty
+  while the map shows no path (adventure manager +0x4C, as `path_arrows`): a click that found no
+  path left the last path's arrows, which it read before. New: the battle's ship flag in
+  `battlefield`, `h3mem.obstacle_hexes`; `h3adv`'s `boat`, `boat[<hero>]`, `boat:x,y`,
+  `boats:used`, `drawn`, `opening:field`, `battlefield:ship`, `blocked`, a Flotsam's `object:x,y`,
+  and the steps `key`, `again_if`, `only_if = "aboard"` and `dump`. The harness check passed.
+
+- 2026-10-28 (the map client lane, E24 M3 T1b; **your window's keys changed**; the user: every
+  key through the table, no cut): **the battle window's keys go through `h3_ui::keys`** (#548,
+  `cross-lane`, `map-client/e24-m3-t1b`, named in the map client lane's HANDOFF until it merges). The new `h3_view::keys` holds the battle's commands with their names and the
+  original's keys by **context** (`Context::of`: your M5 T4b1's result window, else a message box,
+  else the book, else an aim, else the battle): the window's own (`h3_ui::keys::Window`, the map's: F2 music, F3 the creatures'
+  sounds, F5 pause, F6 a frame on, F7 restart, F8 vsync, F9 the cursor, F11 fullscreen, Esc
+  quit; P, →, Home, M, E, V and H gone), `log-up`/`log-down` (↑ ↓), `dragon-spell` (F),
+  the panel's seven buttons (`BUTTONS`: S, R, O, A, C, W, D and Space), the book's
+  (`book::Key`: Esc and Enter close, A, C, ← → ↑ ↓) and the box's (`message::Key`: Enter OK,
+  Esc Cancel), `aim-cancel` (Esc, the right button), `result-ok` (Enter and Escape, 0x4715C3;
+  merged with #547: `result::window`'s OK and the stills' `one_button` lost their `keys`). The user's `keys.toml` (`--keys`, else the
+  working directory) has a `[battle]` table (the map's `[map]`). API changes: `Book::key` and
+  `book::Open::key` take a `book::Key`; `message::Open::key` a `message::Key` and the key's name
+  (its release still by name); `h3_ui::ui::Button` lost `keys` and `Dialog::button_for_key`
+  (the layout's panel `keys` gone: the table's defaults are their only copy); the stills' `key:`
+  actions go through `Keys::original()` by context; `h3_sdl::Key::ALL` gained the missing
+  `Return`. Behaviour changed: the book takes every key while open (the panel's letters and F
+  reached the battle under it); unattended, Esc quits whatever is open and the right button no
+  longer gives an aim up; a chord with Ctrl held gives nothing unless bound. `viewer_key` and
+  `book_key` are gone. The 2026-10-26 entry below (custom key bindings) is done by it; your
+  M5 T3b's F is the table's `dragon-spell`. A branch of yours merges `master` in after it merges.
+
+- 2026-10-28 (the map client lane, E24 M3 T0; **decided by the user for both lanes**; the
+  proposal of 2026-10-27 as it stood: `docs/lanes/map-client/QUEUE-ARCHIVE.md`): **the common crate
+  `h3-ui`** (`clients/crates/h3-ui`, common to both client lanes as the foundation is: a
+  `shared/` pull request for `lanes.toml` first) takes `h3-view`'s `clock`, `cursor` with
+  `batch::Sprite`, `ui` (with draw items of its own instead of `scene::Draw`'s) and `text`, and
+  `h3-map-view`'s `keys` (generic over a viewer's commands) and `music`; `layout` and `mouse`
+  stay in `h3-view` (battle-only). The map client lane moves it as **E24 M3 T1a** in a
+  `cross-lane` pull request (the user's consent): `h3-view`'s imports change, nothing it draws
+  or plays. Then **E24 M3 T1b** takes `h3-view window`'s keys through the table (the 2026-10-26
+  entry below), **both windows' own keys the map's** (the user: F2 music, F3 effects, F5 pause,
+  F6 the next frame, F7 restart, F8 vsync, F9 the cursor's kind, F11 fullscreen, Esc quit; P,
+  →, Home, M, E, F, V and H gone), so M5 T3b's F key is free. Starting M5 T3b before T1a and
+  T1b merge means merging `master` in after them (the imports); the map client lane tells you
+  here when each merges.
+
+- 2026-10-26 (the map client lane, E24 M2 T1b; **for you, at M3 T0**): **custom key bindings**
+  (the user, 2026-10-26: keys hard-coded so far are to be phased into bindings the player can
+  change). The map client's window (E24 M2 T4) takes every key through a table of actions with
+  the original's keys as defaults and a user file overriding them; at E24 M3 T0 that table moves
+  into the common crate both lanes share (with `clock`, `cursor`, `ui`, …), and `h3-view
+  window`'s keys (now matched in its event loop, `window.rs`) go through it too. Nothing to do
+  before M3 T0's proposal; `h3-sdl`'s `Key` grows additively meanwhile (a common path).
+
 - 2026-10-30 (E17 M5 T7 done, kept whole by the user; the entry verbatim):
 
 ### E17 M5 T7 — accounts
