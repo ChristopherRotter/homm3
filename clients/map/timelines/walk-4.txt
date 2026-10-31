@@ -9,7 +9,7 @@
 100 points 1900
 100 hero 17 16 0 0
 100 walk 0 0 0 0
-100 screen 8,8,738,552
+100 screen 8,8,738,572
 180 objects 1
 180 screen 276,241,314,296
 200 cycles 1 1
