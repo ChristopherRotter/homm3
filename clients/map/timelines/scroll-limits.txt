@@ -3,7 +3,8 @@
 0 cycles 0 0
 0 cursor 1 0 700 300
 0 buttons 0 1
-0 points 1700
+0 points 1500
+100 screen 248,559,358,572
 132 cursor 1 0 798 598
 132 screen 700,300,800,600
 170 view 12 13 0
@@ -87,7 +88,7 @@
 2200 view 6 -8 0
 2200 cycles 11 11
 2200 cursor 1 0 798 0
-2200 screen 8,0,800,552
+2200 screen 8,0,800,572
 2211 cursor 1 0 700 300
 2211 screen 700,0,800,318
 2340 objects 13

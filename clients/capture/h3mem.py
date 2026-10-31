@@ -1472,9 +1472,11 @@ class Mem:
         towns = []
         for record in town_records:
             name = self.c_string(self.u32(record + TOWN_NAME), 64)
-            if name not in town_names:
-                raise RuntimeError("a town's name is not in TownName.txt")
-            towns.append([town_names.index(name), struct.unpack("<b", self.read(record + TOWN_FACTION, 1))[0]])
+            # A town named by its map (`shipped-good-witch`'s) has no record of TownName.txt: 65535,
+            # no record (E24 M3 T7a, *provisional*: the viewer reads no map's town names before M4,
+            # and only a hint over that town needs one; a still's pointer is parked).
+            towns.append([town_names.index(name) if name in town_names else 0xFFFF,
+                          struct.unpack("<b", self.read(record + TOWN_FACTION, 1))[0]])
         hero_ids = [[index, own_name(index)]
                     for (_, _), (kind, index) in sorted(self.standing(z).items(),
                                                         key=lambda t: t[0][::-1])

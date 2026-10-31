@@ -204,7 +204,13 @@ viewers share.
   the log), and T6b3, the keys during a walk and the sound without the focus (kept whole by the
   user; **done** 2026-10-30: Space, the input ring and the walk's end, the focus's loss and return
   read whole and built; four new sequences exact with the status bar; MCL-Q25, MCL-Q26; the log);
-  T7, M3's closure. A task that grows is cut at a seam agreed with the user.
+  T7, M3's closure, cut with the user (2026-10-30): T7a, the status bar's hint compared
+  everywhere and everything recorded again (**done** 2026-10-30: `masks.toml`'s `hint` and
+  `hinted` gone, the 50 situations and the 35 sequences exact on the whole screen, 1 368 frames; a
+  path's staging and a map-named town's hover facts fixed in the harness; the log), beside it M3's
+  review by six fresh reviewers on fractions (42 findings on `map-client/e24-m3-t7-review`), T7b,
+  the findings consolidated and fixed, T7c, the review list, the hand test, M3 archived, M4
+  refined. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
   window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand
@@ -398,6 +404,10 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   selected only: the marks a class keeps by a hero read as needing one, not recorded without.
   MCL-Q18's fix (the mouse's tile by the view's origin; the original's under `--bugs original`)
   changes the window's clicks and hints: T7's hand test.
+- **M3 T7a, a map-named town in the hover facts** (*provisional*, the harness): `Mem.hover`'s
+  `towns` give a town whose name is not a record of `TownName.txt` (a shipped map's own) as 65535,
+  so a still of such a map is compared; a hint over that town would show the catalogue's key
+  (T7b's F3-3) until M4 reads the map's town names.
 - **M3 T6a2b, the owners and contents** (*provisional*, design §4.12): the live part's `[hover]`
   contents (sparse rows by object: `mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`,
   each holding what the hint reads already decided for its player: the viewing, the shown or the

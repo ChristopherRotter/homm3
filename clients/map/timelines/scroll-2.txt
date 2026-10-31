@@ -47,6 +47,7 @@
 2000 cycles 10 10
 2160 objects 12
 2200 cycles 11 11
+2300 screen 248,559,358,572
 2310 cursor 1 0 2 300
 2310 screen 2,300,710,318
 2340 objects 13
@@ -81,7 +82,7 @@
 3000 view 12 -5 0
 3000 cycles 15 15
 3000 cursor 1 0 798 1
-3000 screen 8,1,800,552
+3000 screen 8,1,800,572
 3003 cursor 1 0 700 300
 3003 screen 700,1,800,318
 3060 objects 17
