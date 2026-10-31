@@ -39,6 +39,17 @@ pub struct Change {
     pub buttons: Buttons,
 }
 
+impl Change {
+    /// Whether a frame made for this change, its cursor drawn as `cursor`, shows `other` too, whose
+    /// cursor would be drawn as `drawn`: the same draw, the same buttons (the panels' pictures:
+    /// E24 M3 T7's review, F2-1, a change of the buttons alone was never presented) and the same
+    /// cursor drawn; their milliseconds aside.
+    #[must_use]
+    pub fn shows(&self, cursor: Cursor, other: &Self, drawn: Cursor) -> bool {
+        self.drawn == other.drawn && self.buttons == other.buttons && cursor == drawn
+    }
+}
+
 /// The loop run forward on demand, the changes kept from the one shown on, each with the loop as
 /// of its millisecond.
 #[derive(Debug, Clone)]

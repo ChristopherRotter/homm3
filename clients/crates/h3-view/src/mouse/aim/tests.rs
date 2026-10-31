@@ -97,7 +97,7 @@ fn the_cast_s_line_names_the_stack_by_the_spell() {
         // Resurrection names the stack it raises, none over a hex target.
         let raise = Aim {
             original: 38,
-            targets: vec![Target::Hex(40), Target::Stack(4)],
+            targets: vec![Target::Stack(4), Target::Hex(40)],
             ..arrow()
         };
         assert_eq!(raise.line(field, 50), Hint::Cast(7, Some(4)));
@@ -119,7 +119,11 @@ fn a_refusal_says_why() {
         speed: 0,
     }];
     with(&o, |field| {
-        let a = arrow();
+        // The engine lets the spell be cast at no stack: each is refused.
+        let a = Aim {
+            targets: vec![],
+            ..arrow()
+        };
         let side = Side::Attacker;
         // No stack there, off the field, not aimed at a stack.
         assert_eq!(a.refusal(field, 91, side), Hint::SelectTarget);
@@ -127,32 +131,36 @@ fn a_refusal_says_why() {
         assert_eq!(a.refusal(field, 187, side), Hint::SelectTarget);
         let hexes = Aim {
             stacks: false,
-            ..arrow()
+            ..a.clone()
         };
         assert_eq!(hexes.refusal(field, 86, side), Hint::SelectTarget);
         // Anti-Magic, a hostile spell at an own stack, a friendly one at an enemy.
         assert_eq!(a.refusal(field, 100, side), Hint::Protects(9, 3));
         let high = Aim {
             level: 4,
-            ..arrow()
+            ..a.clone()
         };
         assert_eq!(high.refusal(field, 100, side), Hint::Immune(3, 7));
         let none = Aim {
             anti_magic: None,
-            ..arrow()
+            ..a.clone()
         };
         assert_eq!(none.refusal(field, 100, side), Hint::Immune(3, 7));
         assert_eq!(a.refusal(field, 86, side), Hint::HostileOnly(7));
         let bless = Aim {
             polarity: 1,
-            ..arrow()
+            ..a.clone()
         };
         assert_eq!(bless.refusal(field, 90, side), Hint::FriendlyOnly(7));
         assert_eq!(bless.refusal(field, 86, side), Hint::Immune(0, 7));
+        // E17 M5 T8b2 (R4b-2): a stack the engine lets it be cast at passes every test, its
+        // client's own readings (here Anti-Magic on stack 3) too.
+        assert_eq!(arrow().refusal(field, 90, side), Hint::SelectTarget);
+        assert_eq!(arrow().refusal(field, 100, side), Hint::SelectTarget);
         // Neither: the immunity, a raising spell's "does not work on".
         let neutral = Aim {
             polarity: 0,
-            ..arrow()
+            ..a.clone()
         };
         assert_eq!(neutral.refusal(field, 90, side), Hint::Immune(1, 7));
         for original in [38, 39, 40] {
@@ -214,5 +222,74 @@ fn an_area_marks_its_living_stacks() {
         assert_eq!(fireball.marks(field, 85), BTreeSet::from([0]));
         // No area, no marks.
         assert_eq!(arrow().marks(field, 90), BTreeSet::new());
+    });
+}
+
+#[test]
+fn a_two_hex_stack_is_taken_at_both_hexes_off_the_side_columns() {
+    // E17 M5 T8b2 (R4b-7): the defender's stack 1 two hexes wide on 90 (its other hex 89, the
+    // defender facing left), its stack 3 on 103 with its other hex 102 in the side column 0.
+    let mut o = battle();
+    o.stacks[1].two_hex = true;
+    o.stacks[3].two_hex = true;
+    o.stacks[3].hex = 103;
+    with(&o, |field| {
+        let a = arrow();
+        let side = Side::Attacker;
+        for hex in [89, 90] {
+            assert_eq!(a.takes(field, i32::from(hex)), Some(hex));
+            assert_eq!(a.target(field, hex), Some(Target::Stack(1)));
+            assert_eq!(a.line(field, hex), Hint::Cast(7, Some(1)));
+        }
+        assert_eq!(a.takes(field, 103), Some(103));
+        // The side column's hex: refused, "Select Spell Target" (R4b-2: every test passes there),
+        // its target and line the stack's still.
+        assert_eq!(a.takes(field, 102), None);
+        assert_eq!(a.target(field, 102), Some(Target::Stack(3)));
+        assert_eq!(a.line(field, 102), Hint::Cast(7, Some(3)));
+        assert_eq!(a.refusal(field, 102, side), Hint::SelectTarget);
+        // A stack it may not be cast at there gets its reason.
+        let only = Aim {
+            targets: vec![Target::Stack(1)],
+            ..arrow()
+        };
+        assert_eq!(only.refusal(field, 102, side), Hint::Immune(3, 7));
+    });
+}
+
+#[test]
+fn of_two_corpses_on_a_hex_the_lowest_number_is_raised() {
+    // E17 M5 T8b2 (R4b-7): two dead stacks on hex 53 (5 listed first), both raisable: the cast
+    // and its line take stack 4; with 5 alone listed, 5.
+    let mut o = battle();
+    for id in [5, 4] {
+        let mut dead = o.stacks[1].clone();
+        dead.id = id;
+        dead.hex = 53;
+        dead.alive = false;
+        o.stacks.push(dead);
+    }
+    with(&o, |field| {
+        let raise = Aim {
+            original: 38,
+            polarity: 1,
+            targets: vec![Target::Stack(4), Target::Stack(5)],
+            ..arrow()
+        };
+        assert_eq!(raise.target(field, 53), Some(Target::Stack(4)));
+        assert_eq!(raise.takes(field, 53), Some(53));
+        assert_eq!(raise.line(field, 53), Hint::Cast(7, Some(4)));
+        let five = Aim {
+            targets: vec![Target::Stack(5)],
+            ..raise.clone()
+        };
+        assert_eq!(five.target(field, 53), Some(Target::Stack(5)));
+        assert_eq!(five.line(field, 53), Hint::Cast(7, Some(5)));
+        // No living stack there: the default refusal.
+        let none = Aim {
+            targets: vec![],
+            ..raise
+        };
+        assert_eq!(none.refusal(field, 53, Side::Attacker), Hint::SelectTarget);
     });
 }

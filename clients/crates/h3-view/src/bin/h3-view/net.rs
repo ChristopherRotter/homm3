@@ -7,8 +7,8 @@
 //! ([`Connection::poll`]). The protocol's own checks are `h3_view::remote`'s; this module adds
 //! the cryptography they take ([`verify`], [`nonce`]). An adapter.
 
-use std::io::ErrorKind;
-use std::net::{TcpStream, ToSocketAddrs};
+use std::io::{self, ErrorKind};
+use std::net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs};
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::time::Duration;
@@ -122,9 +122,9 @@ fn ended() -> Incoming {
     Incoming::Closed("the connection ended".to_owned())
 }
 
-/// The WebSocket at `address`: TCP, then TLS for `wss://`, then the handshake, each step waiting
-/// at most `wait` for the connection or for a read (E17 M5 review R1-3); the socket's reads wait
-/// at most [`POLL`] from then on. (The name's lookup has no deadline: the system's.)
+/// The WebSocket at `address`: the name's lookup, TCP, then TLS for `wss://`, then the handshake,
+/// each step waiting at most `wait` for the connection or for a read (E17 M5 review R1-3; the
+/// lookup's since T8b2: [`lookup`]); the socket's reads wait at most [`POLL`] from then on.
 fn dial(address: &str, roots: fn() -> RootCertStore, wait: Duration) -> Result<Socket, String> {
     let failed = |e: &dyn std::fmt::Display| format!("{address}: {e}");
     let uri: Uri = address.parse().map_err(|e| failed(&e))?;
@@ -139,7 +139,7 @@ fn dial(address: &str, roots: fn() -> RootCertStore, wait: Duration) -> Result<S
     // Each of the name's addresses in turn, as `TcpStream::connect` tries them.
     let mut why = "the name has no address".to_owned();
     let mut connected = None;
-    for at in (host, port).to_socket_addrs().map_err(|e| failed(&e))? {
+    for at in lookup(host, port, wait).map_err(|e| failed(&e))? {
         match TcpStream::connect_timeout(&at, wait) {
             Ok(stream) => {
                 connected = Some(stream);
@@ -176,6 +176,43 @@ fn dial(address: &str, roots: fn() -> RootCertStore, wait: Duration) -> Result<S
         .set_read_timeout(Some(POLL))
         .map_err(|e| failed(&e))?;
     Ok(socket)
+}
+
+/// The addresses of `host` at `port` (E17 M5 T8b2, review R1's rest): an address as it is, a
+/// name looked up by the system on a thread of its own and waited for at most `wait` (the
+/// system's lookup has no deadline the caller sets; one past `wait` is left to end by itself).
+fn lookup(host: &str, port: u16, wait: Duration) -> Result<Vec<SocketAddr>, String> {
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        return Ok(vec![SocketAddr::new(ip, port)]);
+    }
+    let name = host.to_owned();
+    lookup_by(
+        move || {
+            (name.as_str(), port)
+                .to_socket_addrs()
+                .map(Iterator::collect)
+        },
+        wait,
+    )
+}
+
+/// What `resolve` gives on a thread of its own, waited for at most `wait`.
+fn lookup_by(
+    resolve: impl FnOnce() -> io::Result<Vec<SocketAddr>> + Send + 'static,
+    wait: Duration,
+) -> Result<Vec<SocketAddr>, String> {
+    let (found, take) = mpsc::channel();
+    std::thread::Builder::new()
+        .name("h3-view lookup".to_owned())
+        .spawn(move || {
+            // The caller may have stopped waiting: nothing to tell then.
+            let _ = found.send(resolve());
+        })
+        .map_err(|e| e.to_string())?;
+    match take.recv_timeout(wait) {
+        Ok(addresses) => addresses.map_err(|e| e.to_string()),
+        Err(_) => Err(format!("the name's lookup took longer than {wait:?}")),
+    }
 }
 
 /// The TLS client's configuration (ADR-0021 point 4): graviola's cryptography, the certificates

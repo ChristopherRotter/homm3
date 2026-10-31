@@ -332,7 +332,7 @@ pub fn line_count(font: &Font, text: &[u8], width: i64, bugs: Bugs) -> i64 {
     let len = to_i64(text.len());
     let at = |i: i64| byte(text, i);
     let advance = |c: u8| i64::from(font.glyph(c).advance());
-    let (mut count, mut i) = (0, 0);
+    let (mut count, mut i, mut back) = (0, 0, false);
     while i < len && at(i) != 0 {
         let start = i;
         let mut used = 0;
@@ -367,7 +367,7 @@ pub fn line_count(font: &Font, text: &[u8], width: i64, bugs: Bugs) -> i64 {
             }
             if i <= start {
                 i = match bugs {
-                    Bugs::Original => fits.unwrap_or(0),
+                    Bugs::Original => went_on(fits, start, &mut back),
                     // The next line starts at the glyph cut off (the `+ 1` below).
                     Bugs::Fixed => fits.filter(|&f| f > start).unwrap_or(start + 1) - 1,
                 };
@@ -425,7 +425,7 @@ pub fn widest_line(font: &Font, text: &[u8]) -> i64 {
 #[must_use]
 pub fn wrapped_width(font: &Font, text: &[u8], width: i64) -> i64 {
     let at = |i: i64| byte(text, i);
-    let (mut widest, mut i) = (0, 0);
+    let (mut widest, mut i, mut back) = (0, 0, false);
     while at(i) != 0 {
         let start = i;
         let mut used = 0;
@@ -452,7 +452,7 @@ pub fn wrapped_width(font: &Font, text: &[u8], width: i64) -> i64 {
                 }
             }
             if i <= start {
-                i = fits.unwrap_or(0);
+                i = went_on(fits, start, &mut back);
             }
             if at(i) == b' ' {
                 used -= advance(font, b' ');
@@ -462,6 +462,24 @@ pub fn wrapped_width(font: &Font, text: &[u8], width: i64) -> i64 {
         i += 1;
     }
     widest
+}
+
+/// Where a measure's line at `start` that broke with no space before it ends, the next line
+/// starting after it (0x4B5820's and 0x4B5A80's long word): at the glyph `fits` marks (the place
+/// where the line fits, that glyph lost), else, as the executable, before the text's start. From
+/// there a second line with no such place (one starting with a space wider than the width, a
+/// width of 0) would come back for ever (the executable's hang, with no font of the game): it
+/// ends at its first glyph instead (`back` set by the first), so every measure ends, with the
+/// executable's result wherever that ends (E17 M5 T8b2, R5a's).
+fn went_on(fits: Option<i64>, start: i64, back: &mut bool) -> i64 {
+    match fits {
+        Some(at) => at,
+        None if *back => start,
+        None => {
+            *back = true;
+            0
+        }
+    }
 }
 
 /// A glyph's advance as the measures add it: none for `{` and `}`.

@@ -501,6 +501,8 @@ pub struct Panels {
     /// When Auto Combat plays the turns (E17 M5 T4c1), and before each turn (from none: the
     /// opening's) whether its button is selected from the human players' last turn.
     auto: (Auto, Vec<bool>),
+    /// The window takes no switch of Auto Combat ([`Panels::without_switch`]).
+    auto_off: bool,
 }
 
 impl Panels {
@@ -529,6 +531,7 @@ impl Panels {
             kept,
             by_time,
             auto: (Auto::default(), Vec::new()),
+            auto_off: false,
         }
     }
 
@@ -566,6 +569,17 @@ impl Panels {
         }
         Self {
             auto: (auto, selected),
+            ..self
+        }
+    }
+
+    /// The panel where the window takes no switch of Auto Combat (E17 M5 T8b2, R5c-7: a seat on
+    /// a server, *provisional*: the M5 review list): its button disabled throughout, as the
+    /// original's when both players are human (0x46BB40).
+    #[must_use]
+    pub fn without_switch(self) -> Self {
+        Self {
+            auto_off: true,
             ..self
         }
     }
@@ -727,20 +741,25 @@ impl Panels {
         let autoplay = Autoplay {
             plays: auto.plays(k, t),
             selected: selected.get(k).copied().unwrap_or_default(),
+            off: self.auto_off,
         };
         (now, kept, autoplay)
     }
 
     /// What the panel draws before the battle's first turn (E17 M5 T4c2a: behind the tactics
-    /// phase's message): as built, for the defender's side (0x462D24), no button selected.
+    /// phase's message): as built, for the defender's side (0x462D24), no button selected (Auto
+    /// Combat's disabled where the window takes no switch, [`Panels::without_switch`]).
     #[must_use]
-    pub fn before(snapshot: &Observation, layout: &BattleLayout) -> Vec<Draw> {
+    pub fn before(&self, snapshot: &Observation, layout: &BattleLayout) -> Vec<Draw> {
         pressed_panel(
             snapshot,
             None,
             (
                 crate::panel::Kept::built(Side::Defender),
-                Autoplay::default(),
+                Autoplay {
+                    off: self.auto_off,
+                    ..Autoplay::default()
+                },
             ),
             "",
             layout,

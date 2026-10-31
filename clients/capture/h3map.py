@@ -90,13 +90,12 @@ SPRITES = "H3sprite.lod"
 TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 # What the viewer does not draw yet (E24 M1; since E24 M3 T2a `clients/map/masks.toml`, which the
 # viewer's `sequences` reads too): its rectangles (x0, y0, x1, y1), the last two excluded.
-# `panels`: what T5 and T6 draw of the adventure screen's panels (the status window, the amounts
-# and the date, the status bar's hint), the situations' and the sequences' (since E24 M3 T4b one
-# list again: T4a's `stills` left the lists out for the situations alone).
-# `hint` (E24 M3 T6a1): the status bar's hint, left out but of the items `hinted` lists.
-_MASKS = tomllib.loads((CLIENTS / "map/masks.toml").read_text())
-HINTED = set(_MASKS.pop("hinted", []))
-MASKS = {name: [tuple(r) for r in rects] for name, rects in _MASKS.items()}
+# `panels`: what M3's tasks have not drawn of the adventure screen's panels (none since T6a1), the
+# situations' and the sequences' (since E24 M3 T4b one list again: T4a's `stills` left the lists
+# out for the situations alone). The status bar's hint is compared everywhere since M3 T7a (its
+# `hint` mask and `hinted` list, T6a1's, gone).
+MASKS = {name: [tuple(r) for r in rects]
+         for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
 # What `lists` writes into a situation's hero's record (E24 M3 T4a, T5b1).
 HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army"}
 # The status window's kinds the viewer draws (E24 M3 T5b1: a hero's and a town's, design §4.8;
@@ -207,18 +206,15 @@ def masked(names, shape=(600, 800)):
     return m
 
 
-def panel_rects(ident):
-    """The panels' mask of the situation or sequence `ident` (E24 M3 T6a1): `panels`, and the
-    status bar's hint (`hint`) unless `hinted` lists it."""
-    return MASKS["panels"] + ([] if ident in HINTED else MASKS["hint"])
+def panel_rects():
+    """The panels' mask of every situation and sequence: `panels` (E24 M3 T6a1 to T6b3 added the
+    status bar's hint but for the items `hinted` listed; T7a compares it everywhere)."""
+    return MASKS["panels"]
 
 
-def masked_for(ident, shape=(600, 800)):
-    """`panel_rects(ident)` as a mask of `shape`."""
-    m = np.zeros(shape, dtype=bool)
-    for x0, y0, x1, y1 in panel_rects(ident):
-        m[y0:y1, x0:x1] = True
-    return m
+def masked_for(shape=(600, 800)):
+    """`panel_rects()` as a mask of `shape`."""
+    return masked(["panels"], shape)
 
 
 def to_shipped(game, timeout=120.0):
@@ -455,10 +451,16 @@ def set_view(game, mem, vx, vy, vz):
     game.move(*h3adv.PARK)
 
 
+# A point over the minimap (E24 M3 T7a): another item than the parked button.
+MINIMAP_POINT = (700, 80)
+
+
 def show_path(game, mem, sit, view):
     """The path a situation's hero shows (E24 M1 T5b2; design §2.10): the hero selected (the hero
     list centres the view on it), the view set again, the path's tile clicked once (as
-    `h3adv.walk`'s first click), the mouse parked; checked to show an arrow on that tile."""
+    `h3adv.walk`'s first click), the mouse parked; checked to show an arrow on that tile; since M3
+    T7a the mouse over the minimap and parked again, so that the status bar shows the parked
+    button's hint."""
     for hero in sit.get("heroes", []):
         if "path" not in hero:
             continue
@@ -470,6 +472,14 @@ def show_path(game, mem, sit, view):
         game.move(*h3adv.PARK)
         h3adv.wait_for(lambda: [tx, ty, view[2]] in [a[:3] for a in mem.path_arrows()],
                        lambda: f"the path to {(tx, ty)} shown ({mem.path_arrows()})")
+        # The status bar (E24 M3 T7a, the hint compared): the staging's redraws (the selection's
+        # lists, MCL-Q22; the path's) leave it empty with the parked button the item looked at
+        # last, so a move back to the parking alone shows no text (`path-objects`, `path-edge`).
+        # Over the minimap and back, the parked button's hint shows, as in every other still.
+        game.move(*MINIMAP_POINT)
+        time.sleep(0.5)
+        game.move(*h3adv.PARK)
+        time.sleep(0.5)
 
 
 def write_map(situation_path, sit, map_path):
@@ -823,7 +833,7 @@ def compare(situation_path, out, cap):
     except RuntimeError as err:
         raise Refused(last_lines(err)) from err
     ours = h3cap.png565(out / "ours.png")
-    mask = masked_for(situation_path.stem, cap.shape)
+    mask = masked_for(cap.shape)
     n, where = h3cap.compare(cap, ours, mask, out / "diff.png")
     return n, int((~mask).sum()), where
 
@@ -847,11 +857,11 @@ def cycle_now(mem, tries=10):
     raise RuntimeError(f"the palettes in memory are no steady rotation of the files' ({fits})")
 
 
-def view_changed(before, after, ident):
+def view_changed(before, after):
     """The box `[x0, y0, x1, y1]` (x1, y1 exclusive) of the pixels that differ between two
-    screens outside the panels' mask of sequence `ident` (since E24 M3 T2a the whole screen but
-    the panels' mask; since T6a1 `panel_rects`; None: none)."""
-    keep = ~masked_for(ident, before.shape)
+    screens outside the panels' mask (since E24 M3 T2a the whole screen but the panels' mask,
+    `panel_rects`; None: none)."""
+    keep = ~masked_for(before.shape)
     return h3drive.changed_box(np.where(keep, before, 0), np.where(keep, after, 0))
 
 
@@ -1101,7 +1111,7 @@ def sequence(entry, out):
                  "buttons": mem.buttons()}
             if index >= 0:
                 s["points"] = [mem.points(index)]
-            box = None if before is None else view_changed(before, pix, entry["id"])
+            box = None if before is None else view_changed(before, pix)
             if before is None or box:
                 s["changed"] = box
                 s["frame"] = f"t{t - t0:05d}.npz"
@@ -1156,7 +1166,7 @@ def sequence(entry, out):
     (out / "timeline.txt").write_text("\n".join(map_timeline(states)) + "\n")
     draw_ours(out / "map.h3m", sit, out / "live.toml", out / "ours.png")
     n, _ = h3cap.compare(first, h3cap.png565(out / "ours.png"),
-                         masked_for(entry["id"], first.shape), out / "diff.png")
+                         masked_for(first.shape), out / "diff.png")
     return states, n
 
 
@@ -1192,7 +1202,7 @@ def frame_check(entry, here):
         if not png.exists():
             raise RuntimeError(f"the viewer drew no frame at {npz.stem}")
         ours = h3cap.png565(png)
-        mask = masked_for(entry["id"], cap.shape)
+        mask = masked_for(cap.shape)
         n, _ = h3cap.compare(cap, ours, mask)
         if n:
             diffs.mkdir(exist_ok=True)
@@ -1224,7 +1234,7 @@ def reused(entry, here):
     first = np.load(here / "frames" / "t00000.npz")["screen"]
     draw_ours(here / "map.h3m", sit, here / "live.toml", here / "ours.png")
     n, _ = h3cap.compare(first, h3cap.png565(here / "ours.png"),
-                         masked_for(entry["id"], first.shape), here / "diff.png")
+                         masked_for(first.shape), here / "diff.png")
     return states, n
 
 
@@ -1408,7 +1418,7 @@ def run_drawn(rest):
             failed += 1
             broken += 1
             continue
-        got[ident] = h3drive.png_digest(here / "ours.png", panel_rects(ident))
+        got[ident] = h3drive.png_digest(here / "ours.png", panel_rects())
         before = recorded.get(ident)
         verdict = "new" if before is None else ("same" if before == got[ident] else "CHANGED")
         failed += verdict != "same"
@@ -1473,7 +1483,7 @@ def drawn_sequences(rest, base, record):
             failed += 1
             broken += 1
             continue
-        mine = {(ident, png.stem): h3drive.png_digest(png, panel_rects(ident))
+        mine = {(ident, png.stem): h3drive.png_digest(png, panel_rects())
                 for png in sorted((here / "ours").glob("t*.png"))}
         before = {k: v for k, v in recorded.items() if k[0] == ident}
         verdict = ("new" if not before else "same" if before == mine else "CHANGED")

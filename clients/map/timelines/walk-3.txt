@@ -8,7 +8,7 @@
 100 buttons 1 1
 100 hero 17 16 0 0
 100 walk 5 1 0 -16
-100 screen 8,8,710,552
+100 screen 8,8,710,572
 150 walk 5 2 0 0
 150 screen 8,8,600,552
 200 objects 1

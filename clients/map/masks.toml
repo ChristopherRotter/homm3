@@ -11,16 +11,7 @@
 # M4's) and the parked cursor are drawn and compared. The situations' and the sequences' mask
 # (`h3map.py`'s and the viewer's `sequences`; T4a's `stills`, the situations' alone while the
 # sequences kept the lists out, one list again since T4b). A task drawing another panel takes its
-# rectangle out.
+# rectangle out. The status bar's hint (T6a1, §4.10: item 200's text) is compared everywhere since
+# M3 T7a (its `hint` mask and the `hinted` list, the items recorded with it, gone: every situation
+# and sequence recorded again with it).
 panels = []
-
-# The status bar's hint (E24 M3 T6a1, design §4.10: item 200's text): drawn since T6a1, compared in
-# the situations and sequences `hinted` lists (recorded with it), left out of the others until
-# T6a2 draws the classes with a case of their own and they are recorded again.
-hint = [[8, 556, 600, 574]]
-hinted = [
-    "hover-panels", "hover-map", "hover-sail", "hover-visits-a", "hover-visited-a",
-    "hover-visits-b", "hover-visited-b", "hover-owners", "hover-banks", "hover-teach",
-    "hover-quests", "choose-lists", "press-buttons", "underground", "minimap-drag",
-    "status-click", "walk-queue", "walk-stop-key", "walk-stop-press", "walk-stop-space",
-]

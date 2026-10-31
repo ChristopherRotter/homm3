@@ -18,7 +18,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::{Blast, Dissolve, Fidgets, Idle, Pose, Timeline, sees};
+use super::{Blast, Dissolve, Fidgets, Idle, Key, Pose, Timeline, sees};
 use crate::hero::Posing;
 use crate::scene::Moment;
 
@@ -154,6 +154,12 @@ impl Playhead {
         self.at
     }
 
+    /// The dissolves whose battle at their start is kept (the tests', E17 M5 T8b2, R6-4).
+    #[cfg(test)]
+    pub(crate) fn dissolves_kept(&self) -> usize {
+        self.dissolved.len()
+    }
+
     /// Moves to `t` of `timeline` (the one it was made for): forward by what showed since, back
     /// by starting over.
     pub fn seek(&mut self, timeline: &Timeline, t: u32) {
@@ -223,6 +229,34 @@ impl Playhead {
             *self = Self::new(timeline);
             self.reach(timeline, at);
         }
+    }
+
+    /// Moves on from `old`, the timeline it was made for, to `timeline`, the same battle with
+    /// other keys of the stacks (the mouse's fidgets, [`Timeline::enter`]) and perhaps grown
+    /// (E17 M5 T8b2, R3-1's rest): when the keys shown by now are the same, in the same order,
+    /// the keys are swept afresh from here and the rest goes on as [`Playhead::extend`] does;
+    /// else it starts over and comes back here. Either way it shows what a playhead made for
+    /// `timeline` shows; the battle is not played again from its start for a stack the mouse
+    /// enters.
+    pub fn carry(&mut self, old: &Timeline, timeline: &Timeline) {
+        let at = self.at;
+        let by_now = |k: &&Key| k.shown <= at;
+        if !old
+            .keys
+            .iter()
+            .filter(by_now)
+            .eq(timeline.keys.iter().filter(by_now))
+        {
+            *self = Self::new(timeline);
+            self.reach(timeline, at);
+            return;
+        }
+        self.keys = Sweep::new(timeline.keys.iter().map(|k| k.shown));
+        self.posed.clear();
+        for i in self.keys.to(at) {
+            latest_of(&mut self.posed, timeline.keys[i].stack, i);
+        }
+        self.extend(timeline);
     }
 
     /// Whether `timeline` is the one read (E17 M5 T8a, R3-3): no list it reads forward longer,
@@ -339,6 +373,9 @@ impl Playhead {
         self.shakes.to(t);
         self.bridges.to(t);
         self.dissolves.to(t);
+        // A dissolve's kept battle goes once its span has closed (a seek back starts over).
+        let ends = &self.dissolves.ends;
+        self.dissolved.retain(|&i, _| ends[i] > u64::from(t));
         self.at = t;
     }
 

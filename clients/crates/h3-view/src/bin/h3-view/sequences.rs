@@ -447,11 +447,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
             let sources = crate::results::Sources {
                 manifest: &record.header.manifest,
                 tables: &tables,
-                ruleset: &ruleset,
+                ruleset: Some(&ruleset),
                 catalogue: &catalogue,
                 layout: &layout,
             };
-            let result = outcome.and_then(|o| {
+            let result = outcome.map(|o| {
                 crate::results::window(
                     &sources,
                     snapshot,
@@ -612,6 +612,9 @@ pub(crate) fn draw_frames(
     };
     // The frames' times are read forward (E17 M5 T1a; one earlier than the last starts over).
     let mut head = Playhead::new(timeline);
+    // The battle behind the result window, its moment before the end read once (E17 M5 T8b2,
+    // R5b-9), as the window's (`h3_view::result::Behind`).
+    let mut behind = h3_view::result::Behind::default();
     for frame in &kept.frame {
         // While the spell book is open the battle behind it stands as it was when the book opened
         // (E17 M5 T3a: the dialog's modal loop runs no idle step; the original's frames are the
@@ -630,8 +633,7 @@ pub(crate) fn draw_frames(
         head.seek(timeline, at);
         let mut moment = head.moment(timeline);
         if let Some(end) = ended {
-            let before = scene::Moment::at(timeline, end.saturating_sub(1));
-            h3_view::result::behind(&mut moment, &before);
+            behind.show(&mut moment, end, |t| scene::Moment::at(timeline, t));
         }
         moment.walls = interface.walls.or(moment.walls);
         moment.marked = match interface.shown {
@@ -737,7 +739,7 @@ pub(crate) fn draw_frames(
         // *provisional*, the situations' battles write no lines; T6c-2 times it).
         let text = status.as_deref().unwrap_or_else(|| panels.text(at));
         if opening {
-            list.extend(Panels::before(snapshot, layout));
+            list.extend(panels.before(snapshot, layout));
         } else {
             list.extend(panels.at_showing(snapshot, &timeline.turns, at, layout, text));
         }
@@ -858,11 +860,22 @@ pub(crate) fn draw_frames(
     let mut batch = Batch::default();
     for name in &names {
         // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs.
+        let clip = name.ends_with(".BIK");
         let bytes = match interface.videos {
-            Some(videos) if name.ends_with(".BIK") => videos.read(name)?,
+            Some(videos) if clip => videos.read(name)?,
             _ => lookup(archives, name)?,
         };
-        batch.add(name, &bytes).map_err(|e| e.to_string())?;
+        // A clip that does not decode fails the comparison (E17 M5 T8b2, R2b's leftover): the
+        // original showed it, so a bare slot would only differ in pixels without saying why
+        // (the window leaves the slot bare, T8b1).
+        batch.add(name, &bytes).map_err(|e| {
+            let e = crate::connect::printable(&e.to_string());
+            if clip {
+                format!("the result window's clip, which a comparison needs: {e}")
+            } else {
+                e
+            }
+        })?;
     }
     for (frame, list) in &lists {
         // Compared with the original's captures: its drawing bugs reproduced (E17 M3 T4a).

@@ -376,11 +376,16 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 let sources = crate::results::Sources {
                     manifest,
                     tables: &tables,
-                    ruleset: &ruleset,
+                    ruleset: Some(&ruleset),
                     catalogue: &catalogue,
                     layout: &layout,
                 };
-                crate::results::window(&sources, observation, &outcome?, viewing)
+                Some(crate::results::window(
+                    &sources,
+                    observation,
+                    &outcome?,
+                    viewing,
+                ))
             };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,

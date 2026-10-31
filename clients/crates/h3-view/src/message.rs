@@ -9,6 +9,10 @@
 //! scrolling text), two to eight pictures, the styles other than 1 and 2 (3 and 10's OK and Cancel
 //! of other ids, 4's right-button popup, 5 to 9), the hidden frame around a picture (a choice's
 //! mark), the network game's timeout.
+//!
+//! *The client's* (E17 M5 T8b2): the text's width stops at 578 when a word is wider (the
+//! executable's box takes the word whole, past the screen) and the box at 768 × 576, so a
+//! server's long name cannot make a box of unbounded items; none of the game's texts reaches either.
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -121,6 +125,10 @@ const BUTTONS: i64 = 50;
 const CAPTION_BOTTOM: i64 = 30;
 /// A box's least width and height (256, 128).
 const BOX_LEAST: [i64; 2] = [256, 128];
+/// The client's largest box (E17 M5 T8b2, R5a's): the screen's multiples of 64. The executable's
+/// grows past the screen with a word wider than [`TEXT_WIDTH_MOST`] or a caption too high, which
+/// none of the game's texts has; a server's name can (its frame's ids would wrap round).
+const BOX_MOST: [i64; 2] = [768, 576];
 /// The screen the box is centred on (800 × 600).
 const SCREEN: [i64; 2] = [800, 600];
 /// A frame piece's and a size step's side (64).
@@ -152,8 +160,9 @@ pub fn layout(
     let slot = picture.map(|p| Slot::of(small, p));
     let font_height = i64::from(medium.height);
     // The text's width: its widest word, widened while it wraps too high, then its widest line.
+    // A word wider than 578 is broken there (the client's: the executable's box takes it whole).
     let widest = widest_line(medium, &bytes);
-    let mut text_width = widest_word(medium, &bytes).max(TEXT_WIDTH_LEAST);
+    let mut text_width = widest_word(medium, &bytes).clamp(TEXT_WIDTH_LEAST, TEXT_WIDTH_MOST);
     let mut text_height;
     loop {
         text_height = font_height * line_count(medium, &bytes, text_width, Bugs::Original);
@@ -172,7 +181,7 @@ pub fn layout(
     let text_height = text_height.min(TEXT_HEIGHT_MOST);
     // The box's width: the text's, or the picture's row's.
     let row = slot.map_or(40, |s| s.size[0].max(s.caption[0]) + 40);
-    let width = up64(row.max(text_width + TEXT_MARGIN)).max(BOX_LEAST[0]);
+    let width = up64(row.max(text_width + TEXT_MARGIN)).clamp(BOX_LEAST[0], BOX_MOST[0]);
     let text_width = width - TEXT_MARGIN;
     // The box's height: the text's and the picture's, the buttons'.
     let mut used = text_height + 60;
@@ -180,7 +189,7 @@ pub fn layout(
         used += 20 + s.size[1] + s.caption[1];
     }
     used += BUTTONS;
-    let height = up64(used).max(BOX_LEAST[1]);
+    let height = up64(used).clamp(BOX_LEAST[1], BOX_MOST[1]);
     let text_top = TEXT_TOP + (height - used) / 2;
     let place = [(SCREEN[0] - width) / 2, (SCREEN[1] - height) / 2];
     let mut items = frame(layout, [width, height]);
@@ -318,7 +327,8 @@ impl Slot {
 
 /// The frame's items (0x48FF00) of a box `size` (multiples of 64): the background's tiles from
 /// [`BACKGROUND`] on, each cut to the box, then the frame's pieces: the four corners, the top
-/// and bottom edges, the left and right edges.
+/// and bottom edges, the left and right edges. A box of at most [`BOX_MOST`] has at most 47 (ids
+/// 200 to 246: none reaches the buttons' or the picture's).
 fn frame(layout: &MessageLayout, [width, height]: [i64; 2]) -> Vec<Item> {
     let mut items = Vec::new();
     let mut next = BACKGROUND;

@@ -3,12 +3,10 @@
 //! server message, each a JSON document as the wire carries it. A live game is the same messages
 //! arriving over a socket.
 
-use alloc::format;
-use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_protocol::codec;
+use h3_protocol::codec::{self, DecodeError};
 use h3_protocol::wire::{Observation, RecordHeader, ServerMessage};
 use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION};
 
@@ -40,8 +38,10 @@ impl Record {
 pub enum RecordError {
     /// The text has no header line.
     Empty,
-    /// A line (counting from 1) is not a header or a message of this protocol version.
-    Line(usize, String),
+    /// A line (counting from 1) is not a header or a message of this protocol version: why, in
+    /// numbers only, never the line's own text (E17 M5 T8b2, review R1's rest: a record may come
+    /// from a server).
+    Line(usize, DecodeError),
     /// The record's format is not [`RECORD_FORMAT_VERSION`].
     Format(u32),
     /// The game's protocol version is not [`PROTOCOL_VERSION`]: before 1.0 a client reads only its
@@ -53,7 +53,12 @@ impl fmt::Display for RecordError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Empty => write!(f, "the record is empty"),
-            Self::Line(n, why) => write!(f, "line {n}: {why}"),
+            Self::Line(n, DecodeError::Malformed) => {
+                write!(f, "line {n}: not a message of this protocol version")
+            }
+            Self::Line(n, DecodeError::TooLarge { len, max }) => {
+                write!(f, "line {n}: {len} bytes, at most {max}")
+            }
             Self::Format(v) => write!(
                 f,
                 "record format {v}, this client reads {RECORD_FORMAT_VERSION}"
@@ -87,13 +92,13 @@ pub fn parse(text: &str) -> Result<Record, RecordError> {
 }
 
 fn decode<T: serde::de::DeserializeOwned>(n: usize, line: &str) -> Result<T, RecordError> {
-    codec::decode(line.as_bytes(), MAX_LINE).map_err(|e| RecordError::Line(n, format!("{e:?}")))
+    codec::decode(line.as_bytes(), MAX_LINE).map_err(|e| RecordError::Line(n, e))
 }
 
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use alloc::string::ToString;
+    use alloc::string::{String, ToString};
     use alloc::vec;
     use h3_protocol::wire::{
         Algorithm, Field, KeyTables, Manifest, Observation, Seat, Side, SideView, WireU64,
@@ -218,7 +223,14 @@ pub(crate) mod tests {
         assert_eq!(parse(&text(&other, &[])), Err(RecordError::Protocol(1)));
         for (e, shown) in [
             (RecordError::Empty, "the record is empty"),
-            (RecordError::Line(2, "x".to_string()), "line 2: x"),
+            (
+                RecordError::Line(2, DecodeError::Malformed),
+                "line 2: not a message of this protocol version",
+            ),
+            (
+                RecordError::Line(3, DecodeError::TooLarge { len: 9, max: 8 }),
+                "line 3: 9 bytes, at most 8",
+            ),
         ] {
             assert_eq!(e.to_string(), shown);
         }

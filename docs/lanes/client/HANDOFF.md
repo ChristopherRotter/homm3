@@ -4,43 +4,25 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E17 M0–M4 done** (M4, sieges, closed at T3c on 2026-10-27 with the user: the review list
-  accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
-  here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
-  epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 to T7 done** (the playhead; the timeline that grows,
-  `live.rs`; the click's command; hot seat in the window; the spell book, design §7.17; the
-  hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result window, §7.20, its
-  Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21; Auto Combat, §7.22, `h3_view::auto`; the
-  tactics phase drawn, §7.23, `h3_view::tactics`, and played, §7.24: the engine's placement
-  steps, `cross-lane`; the dissolves and the created stacks, §7.25, `anim::created`, the engine's
-  `NotCreated`, `cross-lane`; T5b cut in two, the palette effects done, §7.26,
-  `h3_render::recolour`; the panel by each turn's controller and the sounds' waits, §8.3,
-  `Timeline::controllers`, `sound::Lengths`, the harness's `sound` runs: T5 done; T6 cut in two
-  by the user, T6a done: the connection headless, design §11.1, `h3_view::remote`, the binary's
-  `net` and `connect`, the server's TLS stack the user's choice; T6b cut in two by the user,
-  T6b1 done: the window plays a seat on a server, design §11.2, `remote::seen`, the binary's
-  `online`, `Battle`'s `Fight`; T6b2 done, kept whole by the user: the record that opens
-  mid-battle, design §11.3, `anim::lies`, `scene::living`, the moat by fixed rows,
-  `remote::rejoined`, `Battle::afresh`: T6 done; T7 done, kept whole by the user: accounts,
-  design §11.4, `argon2` the engine's and the password from standard input (the user's
-  choices), `h3-view account`, `remote::Accounts`, `Client::login` with the re-key,
-  `remote::farewell`). **M5 T8** (M5's closure) cut by the user into concurrent fractions (two
-  capture agents on the harness's two instances, one reviewer or fixer; QUEUE): **T8a done**
-  (#606 merged): reviewers R1, R3, R4 fixed, all stills and sequences 0 to 27 as recorded; T8b
-  cut in two by the user, **T8b1 done** (PR from `client/e17-m5-t8b1`; check it first):
-  sequences 28 to 64 as recorded, R7 (the harness) and R2a/R2b (the decoder, the clip) fixed.
-  **Next: T8b2** (QUEUE: R4b, R5a–c, R6 and their fixers, the leftovers, `drawn`, `check.sh`),
-  then T8c at the user's checkpoint (review items 1 to 77+). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
-  note (T5a's dissolve, to re-investigate) wait for a free slot.
+- **E17 M0–M5 done** (M5, live play, closed at T8c on 2026-10-31 with the user: the review
+  list accepted as built; CLT-Q26 to Q28, Q32, Q33 and Q35 answered, with a general directive:
+  a text the original sets off its centre is centred in the client's profile, the epic's
+  "Decisions"; the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure map
+  client the map-client lane's E24). **M6 (the battle screen complete)** refined at T8c
+  (QUEUE, the epic's M6): T1 the answered slips, T2 a stack's info, T3 the right button's other
+  popups, T4 the combat options dialog, T5 M5's gaps, T6 the inbox's waiting items (the deck and
+  boats, CLT-Q30's exact Bink, the Demons' dissolve, `h3_ui::paint`, the purity holes, R4-2,
+  R4-9), T7 the closure; then M7 ranked play and the server browser. **T8c's PR** from
+  `client/e17-m5-t8c` (docs only; check it first). **Next: M6 T1** (small; ready). M5's record:
+  `E17-archive.md`, `E17-log.md` ("M5 T1a" to "M5 T8c", "M5 review list").
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
   `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
-  CLT-Q26, CLT-Q27, CLT-Q28, CLT-Q32, CLT-Q33. Next id: CLT-Q35.
+- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5 (its
+  situations M6 T6). Next id: CLT-Q36.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -60,24 +42,22 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T8b1 (done; its PR open: check it first).** The original data staged
+- **2026-10-31, E17 M5 T8c (done; its PR open: check it first).** The original data staged
+  (57 files, before anything else); #616 and #617 merged that morning, CI green on `master`.
+  The user's checkpoint: the review list accepted as built, CLT-Q35 and the five older questions
+  answered one by one (Q28 with the centring directive), M6 refined (draft (A), the battle
+  screen first). Docs only: M5 archived, the queue's M6 tasks, informational notices archived.
+
+- **2026-10-30/31, E17 M5 T8b2 (done; #616 merged).** The original data staged
+  (the user's computer offline half an hour in); the user's cut: three concurrent sub-agents, the
+  runner the leftovers; the VM restarted ~10 minutes in (CI's green `master` the baseline).
+  Reviewers R5a, R5b, R6, R4b, R5c and their fixers in worktrees, merged; the leftovers; the
+  harness set up for a live probe of the Gold bonus (0x69FBE8, observed); `drawn` all 156 the
+  same; `check.sh`. Items 78–86, CLT-Q35.
+
+- **2026-10-30, E17 M5 T8b1 (done; #614 merged).** The original data staged
   (the user's computer offline an hour in); the user's cut of T8b in two; the VM restarted ~40
   minutes in (two captures rerun). R7 (the harness) and R2a/R2b (the decoder, the clip) and
   their fixers (F7 in a worktree, merged with both instances idle and set up again); sequences
   28 to 64 as recorded (`auto`'s 7 530 now exact, recorded); the harness check passed at its
   rerun; `drawn` and `check.sh` with the fixes. Items 73–77.
-
-- **2026-10-30, E17 M5 T8a (done; its PR open: check it first).** The original data staged;
-  the VM restarted ~10 minutes in. The user's cut: three concurrent sub-agents, each a fraction
-  of about half a context. Built the harness's two instances (one fault found by a capture
-  agent: `h3mem.game_pid` read the other instance's game; fixed, the void ids redone) and the
-  recipes' bonus Gold; reviewers R1, R3, R4 and their fixers (log); 91 stills and sequences 0
-  to 27 as recorded; `drawn` all 156 the same with the fixes; `check.sh` green. Items 65–72.
-
-- **2026-10-30, E17 M5 T7 (done; #600 merged).** The original data staged; the
-  user chose `argon2` (the engine's), the password from standard input shown as typed, and kept
-  T7 whole (the agent proposed a cut); the VM restarted ~10 minutes in (CI's green `master` the
-  baseline). Built the accounts (design §11.4): the key derived and kept, the login and the
-  re-key, seats by account, the final goodbyes; the test vector reproduced; live on a local
-  `h3-server`, headless and in two windows to the result window, seats re-taken by account
-  after drops and by new processes, every frame exact. Items 61 to 65; T8 next.

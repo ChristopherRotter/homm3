@@ -94,37 +94,6 @@ Also for the user: **the current best stays `e25-scale-1` #3** (agent's recommen
 
 **Context.** The capture set shows the original every battlefield the harness can set up through `h3-map`'s writer (`h3-view situation`, `clients/situations/set.toml`); since E17 M3 T2 the shore and the nine special grounds, all exact (`docs/epics/E17-design.md` §5, §6.2). Two special battlefields need boats on the map (survey `E04c-battlefields.md` §1): a ship's deck (`base:deck`, `CmBkDeck.pcx`: a hero in a boat against one on land, or the guards of a Derelict Ship, class 24, or a Shipwreck, class 85) and two boats (`base:boats`, `CmBkBoat.pcx`: both heroes in boats). The writer has neither a boat (class 8, `AVXboat0`–`2`), a hero placed in one, nor those two locations (its objects: heroes, monsters, piles, grounds, towns). The client draws both from a scenario (`h3-view render`: the deck's water obstacles, the boats' fixed hexes), but cannot compare them with the original. **Options:** (a) the writer gains boats (an empty boat and a hero standing in one on water) when the adventure lane builds boats (GAM-BAT-001: "Boats … come with the increments that build them"); (b) a Derelict Ship or Shipwreck only (the deck alone); (c) leave both unchecked. **Recommendation:** (a), whenever boats come; the client lane then adds the two situations (`set.toml` entries) without further reading. Not urgent: both pictures are whole PCX files, drawn as every other background is. **2026-10-28 (the adventure lane, E08 T65, decision 158):** increment 8 builds boats, so (a): the writer gains an empty boat and a hero standing in one; the adventure lane tells the client lane's inbox when they land. **2026-10-28 (E08 T67):** the empty boat landed (`writer::PLAIN_OBJECTS`, class 8); a hero standing in one cannot be written (the original gives a hero placed on water no boat, survey `E08-sea.md` §2): a hero beside an empty boat boards it in the game (the client lane's inbox has the setups).
 
-#### CLT-Q26 — The spell book's last hovered item is never reset (E17 M5 T3a)
-
-**Context.** The book's handler changes the status line and the cursor only when the mouse moves over another item than the last one it was over (`spell_book_proc` 0x59D6DA against the global 0x684B4C, `docs/epics/E17-design.md` §7.17). The global starts at -1 and nothing resets it: when the book opens again with the mouse resting on the item it was last over (in any earlier opening), moving the mouse within that item shows no hint and leaves the cursor as the battle's until the mouse reaches another item. **Options:** (a) copy it; (b) fix it (a new opening starts with no item: the first move shows the hint), the original's for the comparisons only (`Bugs::Original`, as the cursor's x); (c) an option. **Recommendation:** (b): a drawing bug with no rule behind it, like the cursor's rounding. **Built:** as the original's (`book::Memory`). **Blocked:** nothing.
-
-#### CLT-Q27 — The spell aim's slips (E17 M5 T3b)
-
-**Context.** The aim's loop (`enter_player_cast` 0x59EC50, its handler 0x5A3070; `docs/epics/E17-design.md` §7.18) has four slips with no rule behind them. (1) A Faerie Dragon's aim given up (Escape, the right button) posts no mouse move, unlike the hero's book: the pointer (the combat cursor's frame 6) and the aim's status line stay until the mouse moves onto another hex than the one the battle last took (0x475CE8). (2) The cursor's answer at the aim's start (at the book's place or where F was pressed) is not kept (0x59EE56): over a hex it takes, the spell cursor shows, yet a click before the mouse moves casts nothing. (3) The spell cursor starts its frames again at each hex it takes, unless the frame shown then is the spell's number + 1 (0x50CD37: type 3 always draws its frame 0). (4) An area spell over a side column's hex is refused (frame 0, "Select Spell Target") yet marks its area's stacks (0x59F87E). **Options:** (a) copy them all; (b) fix (1) and (2) in the client (the key's cancel posts the mouse as the book's does; the start's hex kept, so a click casts there), the original's for the comparisons only (`Bugs::Original`, as the cursor's x), and copy (3) and (4) (cosmetic, harmless); (c) fix all four, the original's for the comparisons. **Recommendation:** (b). **Built:** as the original's (all four). **Blocked:** nothing.
-
-#### CLT-Q28 — The message box's slips (E17 M5 T4a)
-
-**Context.** The message box (`message_box_build` 0x4F6990, its layout 0x4F5D80; `docs/epics/E17-design.md` §7.19) has two slips with no rule behind them. (1) Its text sits at x 20 with the box's width less 50, so every text is centred 5 pixels left of the box's centre (the buttons and the picture are centred on the box). (2) Its frame takes the colours of the player whose view the screen shows (`viewing_player` 0x4CEA20: in hot seat the adventure map's current player), not the side's whose turn it is: in a hot-seat battle the defender's questions (Retreat, Surrender) and the book's boxes come framed in the attacker's colours, while the panel and the book take the defender's. **Options:** (a) copy both; (b) copy (1) (the original's look, cosmetic) and fix (2) in the client (the acting side's player's colours), the original's for the comparisons only (`Bugs::Original`, as the cursor's x); (c) fix both, the original's for the comparisons. **Recommendation:** (b). **Built:** as the original's (both; (2) as the client takes the viewing player, the attacker's when a human plays it here: design §7.19). **Blocked:** nothing.
-
-#### CLT-Q32 — The battle's cursor after the tactics phase's message (E17 M5 T4c2a)
-
-**Context.** The tactics phase's message (GENRLTXT 373, `battle_start` 0x4631E5; `docs/epics/E17-design.md` §7.23) opens before the battle's first turn. When its OK closes it, the first turn's start sets the combat cursor's pointer (0x478321) and posts a mouse move (0x478857), as every turn's start does, but that move does not reach the battle here: recorded (`tactics-rest`), the mouse moved over the message and left over a hex of the zone keeps the pointer and marks no stack at 100 and 1 000 ms, until it moves again (then the move cursor at once). Where the posted move is lost is not read. **Options:** (a) copy it (the first move after the message gives the cursor; harmless); (b) fix it in the client (the turn's start shows the cursor and the mark for where the mouse rests), the original's for the comparisons only (`Bugs::Original`, as the cursor's x). **Recommendation:** (a): the window shows what its last input left anyway, and a move is all it takes. **Built:** as the original's (the stills keep the pointer; the window's battle takes no move made over a box, E17 M5 T4a). **Blocked:** nothing.
-
-#### CLT-Q33 — Summon Elemental's line without a stack (E17 M5 T5a)
-
-**Context.** `summon_elemental` (0x5A7080; `docs/epics/E17-design.md` §7.25) writes its line
-("%s summons %d %s", GENRLTXT 676) before it creates the stack, whether or not a column had a
-place: without one the hex stays −1, the line is written all the same and `create_battle_stack`
-0x47A100 is called with hex −1, whose test reads a byte before the hex records (the battle
-manager's +0x16C, not read): nothing is created unless that byte is negative. The engine creates
-nothing and reports `NotCreated` (BAT-MAG-037). Rare: every one of fifteen columns must be full.
-**Options:** (a) copy the line (the original's log, a line about elementals that never appear);
-(b) fix it in the client (no line when nothing is created), the original's for the comparisons
-only (`Bugs::Original`, as the cursor's x); the read past the hex records is the engine's to
-leave out either way (nothing created). **Recommendation:** (b): the log should not report a
-summon that did not happen. **Built:** as the original's (the line written). **Blocked:**
-nothing.
-
 ### Map client lane (`MCL-Q<n>`)
 
 #### MCL-Q13 — A monster's head under the Dragon Utopia (E24 M3 T2b1; the user, 2026-10-28)
@@ -236,32 +205,6 @@ both); (b) the client releases a hotkey's button when its key up comes during th
 its command, as a release off a button), the original's behind `--bugs original`; (c) an option.
 **Recommendation:** (b): a button stuck in its pressed picture is a visible defect. **Blocked:**
 nothing; built as the original's.
-
-#### MCL-Q25 — Nothing stops the steps a held key queued: Space does not (E24 M3 T6b3, a reading and a recording)
-
-MCL-Q10 (answered: keep the original's for now) rested on "Space cancels the queued steps". It
-does not (E24 design §4.15): Space is a message like the others, handled after the steps queued
-before it (it then chooses a standing hero again, or visits what the hero stands on); during a
-path's walk any key ends the walk, but a key's steps are no walk. Nothing else empties the queue
-between a key's steps. With the input ring's bound now built (63 messages, as the original's,
-recorded in `walk-queue`), a direction key held walks the hero on after its release for up to 63
-steps (the system's repeats are key downs only; about 9 s at hero speed 2), its points
-permitting. **Options:** (a) the client drops a key's repeat while a step waits (the hero stops
-at most a step after the release), the original's queue behind `--bugs original` for the
-comparisons; (b) keep the original's (built); (c) an option. **Recommendation:** (a): the user
-saw the walk-on as an inconvenience, and the original offers no way out of it. **Blocked:**
-nothing; built as the original's.
-
-#### MCL-Q26 — Losing the focus during a music change freezes the original's window (E24 M3 T6b3, a reading)
-
-On losing the focus the window's procedure takes the music thread's lock before it starts the
-fade-out (E24 design §4.15), and a thread holds that lock through its fade-out and fade-in: a
-switch away during a terrain music change waits up to about 1.8 s, the game's window not
-answering meanwhile. The sound's order is built as the original's (the fade-out once the lock is
-free); the wait is not: the client's window cannot block its loop on the music. **Options:** (a)
-the client's: no wait (built); (b) reproduce the wait (the window's input held for the lock's
-time). **Recommendation:** (a): an unanswering window is a defect, and the sound is the same.
-**Blocked:** nothing.
 
 ## Answered
 

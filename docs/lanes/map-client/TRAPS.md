@@ -25,7 +25,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   compares with the same run's screens): copy the run's `timeline.txt` into `map/timelines/` and
   `frames --only <id> --reuse` keeps its live part. The start's army and resources differ the
   same way (M3 T5b1: `scroll-0`'s gems 15 in T5a's run, 10 in T5b1's): the kept live part's
-  `kingdom` and `status` are the run's.
+  `kingdom` and `status` are the run's. So do the status bar's hints (M3 T7a): a hero's name, a
+  Witch Hut's skill, a Shrine's spell, a quest, a bank's guards, an army are the new game's draws,
+  so a recorded hint's `screen` box moves between runs (21 of 35 timelines in T7a's): a `CHANGED`
+  in `screen` or `0 points` lines alone, every frame exact and the viewer giving the run's lines,
+  is no regression: copy the run's `timeline.txt` in and `--reuse` (its `frames.txt` too when it
+  kept another screen).
 - **A sequence's options left out are the original's settings** (M2 T3a): the harness writes
   only the options a sequence gives, so one that scrolls without its `scroll_speed` ran at what
   the game held (`walk-follow`'s Ctrl and Down moved one tile, speed 0, in T1b's run) while the
@@ -57,17 +62,21 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   pointer input over the view needs a new `frames` run, and a still's `reach` is empty (the window
   shows the arrow over the tiles it has no cost for, as after a walk). `[hover]` is the live part's
   last table: a key written after it belongs to it.
-- **The status bar's hint is compared only in `masks.toml`'s `hinted`** (M3 T6a1): a new
-  situation or sequence recorded with the hint goes into that list; the others keep it masked
-  (their digests and recorded screens without it) until T7 captures everything again (moved from
-  T6a2 at its cut).
 - **The visit marks' facts check themselves** (M3 T6a2a, design §4.11): a situation's `visits`
   are written by `h3mem.VISIT_RULES` inverted and the live part's `[hover]` `visits` read back by
-  the same rules, so a wrong rule agrees with itself; only the original's status bar (a sequence
-  in `hinted`) tells. They are the selected hero's as staged, as are the contents' (M3 T6a2b,
+  the same rules, so a wrong rule agrees with itself; only the original's status bar (in a
+  recording, compared everywhere since M3 T7a) tells. They are the selected hero's as staged, as are the contents' (M3 T6a2b,
   §4.12: a Shrine's spell known, a Tree's mark, a Witch Hut's skill) and the reach: after a hero's
   choice (M3 T6b1) the viewer keeps them, so a sequence moves the pointer over the map only before
   its first choice. A kind known is a kind's bit: every object of the kind shows its bonus.
+- **A staging's redraws empty the status bar** (M3 T7a): a list's redraw (MCL-Q22) or a path's
+  click leaves the bar empty with the item looked at last kept, so a pointer parked on that same
+  item shows no text (`show_path`'s stills differed by the parked button's hint): a staging step
+  that redraws moves the pointer over another item (`MINIMAP_POINT`) before parking again.
+- **The VM restarts mid-run** (M3 T7a: twice in one session; files kept, jobs gone): a whole
+  `frames` run loses every sequence after the one in progress. Run `frames --only <id>` per
+  sequence from a loop that marks each id done, so a restart costs one sequence; `set` is short
+  (about 10 s a situation) and is simply run again.
 - **A button held stops the map** (M3 T6b1, design §4.13): from the press to the release only the
   tick runs (the palettes step in memory, no redraw, no edge scroll, no hint); the release's
   millisecond redraws. A list's redraw (a choice, an arrow, Next Hero, a lift that centres, a walk

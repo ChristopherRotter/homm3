@@ -578,9 +578,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut inputs: Vec<Input> = Vec::new();
     let mut scrolls: Vec<(u32, i64)> = Vec::new();
     let mut held: Option<Held> = None;
-    // A battle's own key that stopped Auto Combat, and when (E17 M5 T4c1): it acts on the turn
-    // the stop comes at if a human's (0x474625).
-    let mut stopped_by: Option<(Do, u32)> = None;
+    // A battle's own key that stopped Auto Combat, and the turn the stop comes at (E17 M5 T4c1;
+    // its index, T8b2 R5c-4): it acts on that turn if a human's (0x474625).
+    let mut stopped_by: Option<(Do, usize)> = None;
     // Either Control key held (E24 M3 T1b: a chord's Ctrl+).
     let mut ctrl = [false; 2];
     let mut report = Report::default();
@@ -614,9 +614,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             .min(if battle.online() { POLL_MS } else { WAIT_MS });
         let mut redraw = false;
         let mut mouse_changed = false;
+        // The mouse followed in the pass already (an aim's press, E17 M5 T8b2: R4b-1), whether
+        // what it shows changed then.
+        let mut followed = false;
         let mut grew = false;
         // The spell book opened, closed or changed (E17 M5 T3a).
         let mut book_changed = false;
+        // The box open as the pass starts, to tell one that opens in it (E17 M5 T8b2).
+        let box_before = box_shown(&battle);
         // The result window opens at the battle's end (E17 M5 T4b1).
         let ms = clock.ms(win.ticks_ns());
         if battle.open_result(ms) {
@@ -671,15 +676,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             continue 'run;
         }
         if let Some(p) = presser.as_mut() {
-            grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
+            let ticks = win.ticks_ns();
+            grew |= p.press(&mut battle, &mut inputs, clock.ms(ticks), ticks / 1_000_000)?;
         }
         // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
         // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it.
-        if let Some((command, pressed)) = stopped_by
-            && let Some(start) = battle.turn_after(pressed)
+        if let Some((command, turn)) = stopped_by
+            && let Some(&(start, _)) = battle.timeline().turns.get(turn - 1)
         {
-            let last = battle.timeline().turns.last().map(|&(t, _)| t);
-            if battle.waiting() && last == Some(start) {
+            let last = battle.timeline().turns.len();
+            if battle.waiting() && last == turn {
                 stopped_by = None;
                 match command {
                     Do::LogUp | Do::LogDown => {
@@ -697,18 +703,42 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 mouse_changed = true;
-            } else if last > Some(start) {
+            } else if last > turn {
                 stopped_by = None;
             }
         }
+        // The input queue is emptied as a box opens (the modal loop 0x602520; design §7.19): the
+        // presses and key-downs that come with the input that opened it, or after the box opened
+        // in this pass, are dropped; the key-ups (no key stays held), the moves and Quit go on.
+        let mut last_box = box_before;
+        let mut emptied = false;
         for event in win.wait(timeout) {
+            let shown_box = box_shown(&battle);
+            emptied |= shown_box.is_some() && shown_box != last_box;
+            last_box = shown_box;
+            if emptied && matches!(event, Event::Key(_) | Event::Click { down: true, .. }) {
+                continue;
+            }
             let now = win.ticks_ns();
             let at = clock.ms(now);
             match event {
                 Event::Quit => break 'run,
-                // Control held with a key makes another chord (E24 M3 T1b).
+                // Control held with a key makes another chord (E24 M3 T1b). Itself a key down, it
+                // stops Auto Combat as any key does (T8b2, R5c-5; design §7.22).
                 Event::Key(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
                     ctrl[usize::from(k == Key::RightCtrl)] = true;
+                    let context = Context::of(
+                        battle.result_open(),
+                        battle.message_open(),
+                        battle.book_open(),
+                        battle.aiming(),
+                    );
+                    if options.run.is_none()
+                        && context == Context::Battle
+                        && battle.stop_auto(at).is_some()
+                    {
+                        mouse_changed = true;
+                    }
                 }
                 Event::KeyUp(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
                     ctrl[usize::from(k == Key::RightCtrl)] = false;
@@ -743,11 +773,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     // nothing else (E17 M5 T4c1, 0x4741F9); the window's own keys stay its own.
                     if context == Context::Battle
                         && !matches!(command, Some(Do::Window(_)))
-                        && battle.stop_auto(at, &mut inputs)
+                        && let Some(turn) = battle.stop_auto(at)
                     {
                         stopped_by = command
                             .filter(|c| matches!(c, Do::LogUp | Do::LogDown | Do::DragonSpell))
-                            .map(|c| (c, at));
+                            .map(|c| (c, turn));
                         mouse_changed = true;
                         continue;
                     }
@@ -795,7 +825,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                                     clock.seek(now, options.from);
                                     // The inputs and scrolls after it are gone (design
                                     // §9.10; E17 M3 T9b, the reviewer: they played again at
-                                    // their times).
+                                    // their times); Auto Combat's switches and stops stay the
+                                    // battle's, and a key that stopped it still acts on the
+                                    // turn it stops at (T8b2, R5c-4).
                                     inputs.retain(|i| i.at() <= options.from);
                                     scrolls.retain(|&(t, _)| t <= options.from);
                                     mouse_changed = true;
@@ -916,7 +948,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         }
                         // A switches Auto Combat on (E17 M5 T4c1).
                         if h.id == h3_view::panel::AUTO_COMBAT {
-                            grew |= battle.switch_auto(at, &mut inputs)?;
+                            grew |= battle.switch_auto(at)?;
                         }
                         // C opens the spell book (E17 M5 T3a).
                         if h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
@@ -965,9 +997,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Click { down: false, .. } if battle.book_open() => {}
                 Event::Click { down: true, .. } if battle.aiming() => {
+                    // The press casts at the hex the cursor took as it went down: the pass's
+                    // moves before it followed first (E17 M5 T8b2, R4b-1: `wait` gives every
+                    // pending event at once, a move and the press among them).
+                    followed |= battle.mouse(&inputs, &scrolls)?;
                     if let Some(command) = battle.aim_press(at) {
                         grew |= give(&mut battle, &mut inputs, at, command)?;
                     }
+                    mouse_changed = true;
                 }
                 Event::Click { down: false, .. } if battle.aiming() => {}
                 Event::Pointer(p) => {
@@ -986,7 +1023,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 // A press while Auto Combat plays stops it as the next turn starts and does
                 // nothing else (E17 M5 T4c1).
-                Event::Click { down: true, .. } if battle.stop_auto(at, &mut inputs) => {
+                Event::Click { down: true, .. } if battle.stop_auto(at).is_some() => {
                     mouse_changed = true;
                 }
                 // A press made while a battle fought here takes no input is dropped, its release
@@ -1021,7 +1058,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         }
                         // Auto Combat switches on (E17 M5 T4c1).
                         if h.over && h.id == h3_view::panel::AUTO_COMBAT {
-                            grew |= battle.switch_auto(at, &mut inputs)?;
+                            grew |= battle.switch_auto(at)?;
                         }
                         // The spell book opens as its button is released over it (E17 M5 T3a).
                         if h.over && h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
@@ -1044,7 +1081,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // T2b): the battle follows them and the frame now is made again.
         if mouse_changed || grew || book_changed {
             let pressed = held.filter(|h| h.over).map(|h| h.id);
-            let changed = battle.mouse(&inputs, &scrolls)? || battle.pressed != pressed;
+            let changed = battle.mouse(&inputs, &scrolls)? || followed || battle.pressed != pressed;
             battle.pressed = pressed;
             if changed || grew || book_changed {
                 let ms = clock.ms(win.ticks_ns());
@@ -1288,6 +1325,15 @@ fn book_did(
     }
 }
 
+/// The open box as the window tells one from another (E17 M5 T8b2): its buttons' places, none
+/// while no box is open. A box that gives way to another (the surrender refused) has others.
+fn box_shown(battle: &Battle<'_>) -> Option<[Option<[i32; 2]>; 3]> {
+    use h3_view::message::{NO, OK, YES};
+    battle
+        .message_open()
+        .then(|| [OK, YES, NO].map(|id| battle.message_button(id)))
+}
+
 /// What a message box `did` at `at` (E17 M5 T4a): a change to draw, or the command its OK gave
 /// (Retreat, Surrender); whether the battle took a command.
 fn message_did(
@@ -1329,8 +1375,12 @@ struct Presser {
     /// The panel button the human side leaves by (E17 M5 T4a: `--leave`), until it left or was
     /// told it cannot pay.
     leave: Option<u16>,
-    /// When the message box it opened showed.
-    asked: Option<u32>,
+    /// When the open message box showed, in the window's milliseconds (`win.ticks_ns`): a
+    /// notice's box holds the battle's clock (E17 M5 T8b2, R5a-1).
+    asked: Option<u64>,
+    /// Whether the open box is the leaving's (its question, or the refusal after it), not a
+    /// notice's.
+    asking: bool,
     /// Whether the battle was the bot's at once when the side asked to leave, and the command
     /// it left by.
     before_leaving: Option<bool>,
@@ -1345,24 +1395,26 @@ struct Presser {
 
 impl Presser {
     /// At `now`, [`PRESS_AFTER_MS`] after a human's turn started, presses the bot's choice: the
-    /// mouse moved where it gives it, then its press; whether a command was given.
+    /// mouse moved where it gives it, then its press; whether a command was given. `wall` is the
+    /// window's milliseconds, which an open box's OK is timed by.
     fn press(
         &mut self,
         battle: &mut Battle<'_>,
         inputs: &mut Vec<Input>,
         now: u32,
+        wall: u64,
     ) -> Result<bool, String> {
         // The result window stays until the run's end (E17 M5 T4b1: its frames read back too).
         if battle.result_open() {
             return Ok(false);
         }
         if battle.message_open() {
-            return self.answer(battle, inputs, now);
+            return self.answer(battle, inputs, now, wall);
         }
         // Auto Combat stopped by a press two commands after it was switched on (E17 M5 T4c1).
         if let Some((on, None)) = self.switched
             && battle.commands() >= on + 2
-            && battle.stop_auto(now, inputs)
+            && battle.stop_auto(now).is_some()
         {
             self.switched = Some((on, Some(battle.commands())));
             return Ok(true);
@@ -1386,7 +1438,7 @@ impl Presser {
                 inputs.retain(|i| i.at() <= now);
                 inputs.push(Input::Move { at: now, to });
             }
-            if battle.switch_auto(now, inputs)? {
+            if battle.switch_auto(now)? {
                 self.switched = Some((commands, None));
                 self.buttons += 1;
                 return Ok(true);
@@ -1400,7 +1452,7 @@ impl Presser {
             }
             let before = battle.as_the_bot_fights();
             if battle.ask_leave(now, id) {
-                self.asked = Some(now);
+                (self.asked, self.asking) = (Some(wall), true);
                 self.before_leaving = Some(before.unwrap_or(Ok(false))?);
                 return Ok(true);
             }
@@ -1433,17 +1485,19 @@ impl Presser {
 }
 
 impl Presser {
-    /// The open message box's OK clicked [`PRESS_AFTER_MS`] after it showed (E17 M5 T4a): the
-    /// command it gives, or the box it gives way to (a surrender the side cannot pay, which
-    /// ends the leaving); whether a command was given or the screen changed.
+    /// The open message box's OK clicked [`PRESS_AFTER_MS`] after it showed (E17 M5 T4a), timed
+    /// by the window's clock `wall` (a notice's box holds the battle's at `now`): the command it
+    /// gives, or the box it gives way to (a surrender the side cannot pay, which ends the
+    /// leaving); whether a command was given or the screen changed.
     fn answer(
         &mut self,
         battle: &mut Battle<'_>,
         inputs: &mut Vec<Input>,
         now: u32,
+        wall: u64,
     ) -> Result<bool, String> {
-        let asked = *self.asked.get_or_insert(now);
-        if now < asked.saturating_add(PRESS_AFTER_MS) {
+        let asked = *self.asked.get_or_insert(wall);
+        if wall < asked.saturating_add(u64::from(PRESS_AFTER_MS)) {
             return Ok(false);
         }
         let ok = battle
@@ -1452,10 +1506,12 @@ impl Presser {
             .ok_or("the message box has no OK")?;
         let _ = battle.message_press(ok);
         let did = battle.message_release();
-        self.asked = battle.message_open().then_some(now);
-        if !battle.message_open() && did != MessageDid::Give(Command::Retreat {}) {
+        self.asked = battle.message_open().then_some(wall);
+        // A notice's box closed leaves the leaving to come (E17 M5 T8b2).
+        if self.asking && !battle.message_open() && did != MessageDid::Give(Command::Retreat {}) {
             self.leave = None;
         }
+        self.asking &= battle.message_open();
         match did {
             MessageDid::Give(command) => {
                 self.left = Some(command);

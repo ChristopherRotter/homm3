@@ -1043,6 +1043,10 @@ pub struct Cue {
     pub sound: Sound,
     /// Stops the sound instead of starting it.
     pub stop: bool,
+    /// A stack the battle created: its creature, whose sounds it plays (E17 M5 T8b2, R6-1:
+    /// `create_battle_stack` 0x47A100 loads them, `stack_load_graphics` 0x43D9F0); none for a
+    /// stack of the first snapshot, which plays its own by its id.
+    pub creature: Option<u16>,
 }
 
 /// The poses of a record's stacks over time.
@@ -1961,7 +1965,9 @@ impl<'a> Growing<'a> {
         for s in all {
             let side = usize::from(s.side == Side::Defender);
             let record = records[side];
-            records[side] += 1;
+            // A hostile record's 256 stacks on a side: no overflow; none is created after them
+            // (E17 M5 T8b2, R6-3).
+            records[side] = record.saturating_add(1);
             if !s.alive && !lies(s) {
                 gone.push((s.id, (s.side, record)));
                 continue;
@@ -2076,6 +2082,7 @@ impl<'a> Growing<'a> {
                 .chain(gone)
                 .collect(),
             next_record: records,
+            voices: BTreeMap::new(),
             looks: looks.clone(),
             notices: Vec::new(),
         };
@@ -2740,6 +2747,9 @@ struct Player<'a> {
     records: BTreeMap<u8, (Side, u8)>,
     /// Each side's next record.
     next_record: [u8; 2],
+    /// The creature of each stack the battle created, by id, whose sounds its cues play (E17 M5
+    /// T8b2, R6-1: a reused id's the latest).
+    voices: BTreeMap<u8, u16>,
     /// Each creature's numbers by handle (E17 M5 T5a: a created stack's).
     looks: BTreeMap<u16, Look>,
     /// The message boxes the battle opens (E17 M5 T5a).
@@ -2802,6 +2812,7 @@ impl Player<'_> {
             stack,
             sound,
             stop,
+            creature: self.voices.get(&stack).copied(),
         };
         self.cues.push(cue);
         cue
@@ -2813,7 +2824,7 @@ impl Player<'_> {
     /// nothing (the screen stands still, the idle steps too). Nothing without the samples'
     /// lengths (no sound), for a cue without a sample or one already over.
     fn wait_for(&mut self, cue: Cue) {
-        let Some(ms) = self.stage.lengths.and_then(|l| l.of(cue.stack, cue.sound)) else {
+        let Some(ms) = self.stage.lengths.and_then(|l| l.of(&cue)) else {
             return;
         };
         let now = self.clock.now;

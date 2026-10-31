@@ -3699,10 +3699,145 @@ capture on each instance lost and rerun; files kept); the baseline `check.sh` ha
   274 000, capture agents 84 000 to 103 000 (each given a second and third round by message).
 - **Next (T8b2, QUEUE):** R4b, R5a to R5c, R6 and their fixers; the leftovers; `drawn`, `check.sh`.
 
-## Accepted review lists (M1 to M4)
+### M5 T8b2 — M5's closure, part 3: the five smaller reviewers and the leftovers (2026-10-30/31)
+
+On `client/e17-m5-t8b2`, the user present at the start, the original data staged at once (the
+user's computer went offline about half an hour in). **The user's cut:** the five reviewer and fixer
+pairs over three concurrent sub-agents, each a fraction of about half a context, the runner
+doing the leftovers. The reviewers read a worktree of `master`; each fixer worked in a worktree
+of its own off the lane branch, merged by the runner. The VM restarted about 10 minutes in (the
+baseline `check.sh` lost; CI's green `master` stood in).
+
+- **Reviewer R5a, the message box** (`message.rs`, `boxes.rs`): R5a-1 an unattended run's
+  presser timed the box's OK by the battle clock, which a notice's box holds (a `--check` hung
+  silently; medium); R5a-2 the input queue not emptied as a box opens (R then Enter retreated
+  before the question was drawn); R5a-3 a word past 578 px: an unbounded box, its frame ids
+  wrapping into TEXT, OK and YES; R5a-4, R5a-5 test gaps (a caption wider than its slot,
+  `Leave::of`'s sides). Unsure, settled by F5a: `h3_render::text`'s measures looped for ever on a
+  crafted font (a line starting with a space wider than the line). Checked fine: §7.19's layout,
+  buttons, ids, hotkeys and texts, Surrender's price.
+- **Fixed** (F5a): the presser by the window's clock (`asking`: a notice's answer no longer
+  cancels a pending `--leave`); a pass that opens a box, or one giving way to another, drops its
+  later key-downs and presses; the text at most 578 wide, the box at most 768 × 576 (at most 47
+  frame items, ids 200 to 246); the measures end a second line with no place to break at its
+  first glyph; the tests. Left: a record file's unattended `--check` (no presser) holds a notice
+  open until its seconds end.
+- **Reviewer R5b, the result window** (`result.rs`, `results.rs`): R5b-1 a window that could not
+  be built retried every loop pass (a whole-record replay each) and never shown (medium); R5b-2 a
+  served game's hit points and AI values from the local ruleset whatever its content check;
+  R5b-3 BAT-END-001's no winner (a side gave up against created stacks only) shown as the other's
+  victory; R5b-4, R5b-5 docs; R5b-6 to R5b-8 tests; R5b-9 the sequences tool's battle behind the
+  window rebuilt every frame.
+- **Fixed** (F5b): the window always built, what the client lacks drawn empty, once
+  (`Battle::end_seen`); the opening's stacks by (id, creature); a ruleset only for content `Same`
+  (else experience 0, no strongest creature, *provisional*; a server game without packs now
+  opens the window too); `result::winner` for the window and `sound::end_tune` (`survivors`); the
+  docs (Eagle Eye's message and the experience after the window not built); `labels()` with
+  fonts and sizes; six binary tests on a stub table; `result::OK` is `message::OK`;
+  `result::Behind` in the sequences tool. The no-winner text follows the defender's view with
+  either side's flags: CLT-Q35.
+- **Reviewer R6, the dissolves, the palette effects, the sounds' waits:** R6-1 created stacks
+  (elementals, clones, Demons) had no sounds and so no §8.3 waits (a clone's shot), a reused id
+  played the old stack's (medium); R6-2 Teleport's Bind ends never applied (the stack kept Bind's
+  hue; medium); R6-3 a side's record counter overflowed (u8), an id reused on the other side;
+  R6-4 the dissolves' kept battles never dropped; R6-5 `Effect::colour` divided by 0 for a mask of
+  2^31 or more. Checked fine: the dissolve steps and timings, the slide, §7.26's steps and
+  constants, `Num` exact, the lengths' cap, `controllers` against the panel's turns.
+- **Fixed** (F6): `Cue::creature`, `sound::Lengths::creatures`, `audio::Voices` (the created
+  creatures' sounds by handle; the window's for every creature with a look); Teleport's effect
+  ends after its first redraw, their hues from the dissolve's start + 1; a record reused only on
+  its side, `checked_add` (none left: not drawn), the snapshot's counter saturating; a
+  dissolve's kept battle dropped when its span ends; the scale at least 1. The six sound
+  sequences create no stack: no recorded timeline changes.
+- **Reviewer R4b, the hero's aim** (`mouse/aim.rs`, its calls): R4b-1 a move and a press in one
+  event batch cast at the hex of the batch before, and the track's aim then never ended (high);
+  R4b-2 a legal target's side-column hex refused as immune; R4b-3 §7.18 said Force Field and
+  Fire Wall cast nothing (they take the common aim); R4b-4 Teleport and Sacrifice told by the
+  tables' number (a key without one: `Cast` without its second target, the session's rejection
+  ending the window); R4b-5 an area aim's marks per move over 187 hexes, the aim cloned; R4b-6 a
+  served aim's targets unchecked; R4b-7 tests.
+- **Fixed** (F4b): the window follows a pass's moves before the aim's press (an `Act` only when
+  the track's last hex is set); `SelectTarget` over a legal target; §7.18's line; Teleport and
+  Sacrifice by the ruleset (`aims::second_target`), a rejected cast leaving the turn waiting (a
+  bot's still an error); the marks per living stack, `aimed` pushed on a change; the served
+  targets sorted, deduplicated, on the field (`binary_search`); the tests (a two-hex target, two
+  corpses on a hex: the lowest id). Unsure, settled: a turn re-served after a re-dial dropped the
+  hero's aim (`serve_turn`); it keeps it now. No recorded sequence aims at a side column.
+- **Reviewer R5c, Auto Combat and the tactics phase** (`auto.rs`, `tactics.rs`): R5c-1 a switch
+  made at a turn's very start went to the turn its zero-length command started (the bot's
+  `EndTactics`: round 1's human turn shown played and its first click eaten; medium); R5c-2
+  `in_zone`'s u8 subtraction panicked on a server's zone of more than 16 columns (medium); R5c-3
+  `Follower::shown` ran `Auto::of` over every input since the battle's start per mouse batch;
+  R5c-4 Restart dropped the switches; R5c-5 Ctrl and keys without a name did not stop it; R5c-6
+  the shade's walker crossed walls and the closed gate in a siege; R5c-7 the button enabled on a
+  server seat; R5c-8 a doc; R5c-9 tests.
+- **Fixed** (F5c): the switches and stops carry their turn (`Auto::of` by turn, not time) and
+  live in `Battle::switches`, apart from the window's inputs (so Restart and seeks keep them, and
+  `Auto::of` reads a handful of entries; `Follower::shown` takes both and drops its mark when a
+  turn before it changes hands; `Battle::turn_after` gone); `saturating_sub` (a zone wider than
+  the field covers it); `stop_auto` in the Ctrl arms, `h3_sdl::Key::Other` for keys without a
+  name (in no key table; the map viewer ignores it); `Field::of` as the engine's
+  `siege::blocked_for` (`siege::BRIDGES`); `Autoplay::off`, `Panels::without_switch`; the doc;
+  the tests. Not read in the original, so *provisional*: whether modifier keys stop Auto Combat,
+  whether its reach lets the defender through a closed gate. `auto` and `auto-stop` attribute
+  their switches as before.
+- **The leftovers** (the runner): R1's: `net::lookup` (an address as it is, a name looked up on a
+  thread of its own and waited for at most the dial's wait), `RecordError::Line` carries the
+  codec's `DecodeError` (its text never a line's). R3-1's: `Playhead::carry` (the keys shown by
+  now the same: the keys swept afresh, the rest as `extend`; else anew and back) in
+  `Battle::show` and `follow`; `Timeline::enter` reads each entry's own stack's keys and finds
+  each entry's next of the stack once (it scanned every key and every later entry per entry);
+  every replay's `grows` check carries a playhead along entered timelines against `Moment::at`
+  (an entry 1 ms after the playhead, the fast path, and one at it, the start over); the played
+  timeline is still copied (no replay). R2b's: the sequences tool still fails on a clip it
+  cannot decode, now naming it; `bink-reference.py` names a packet or file FFmpeg refuses, goes
+  on past a packet and exits 1, `bink-check.sh` counts it and still compares (checked on a
+  corrupted packet and a bad index, PyAV 19.0.2, FFmpeg 9.0.2). R7-8: `h3mem.starting_bonuses`
+  (H3API's `H3SelectScenarioDialog` pointer 0x69FBE8, `map.toml`; its two arrays of eight rows,
+  +0x1064 and +0x1444, 0x7C each, `bonusType` +0x6C), observed on "Good to Go": 3 Random, 0
+  Artifact, 1 Gold as the arrow steps it, the human's row the first array's 0, the computer's
+  the second's 1; `gold_bonus` stops a run unless exactly its players read Gold (a single
+  scenario and hot seat passed; a dropped click stopped the run).
+- **Checked:** each fixer its crates' fmt, clippy, tests and coverage; the runner each merge's
+  clippy and tests; the release viewer with every fix, `drawn` over all 156 items: all the same
+  (also at two interim merges); `clients/scripts/check.sh` all gates (coverage 100 %);
+  `check-exe-map` and `exe.py check` with the new entry; `verify --scope client
+  --with-original-data` no failing step. No capture needed: no fix changed a compared frame.
+- **The sub-agents' sizes** (reported tokens): reviewers 178 000 to 219 000, fixers 214 000 to
+  266 000 but F5c's 325 000 (nine findings across the window, the follower and `h3-sdl`: a
+  reviewer's findings over three files or more want a fixer of their own each).
+
+### M5 T8c — M5's review list, M6 refined (2026-10-31)
+
+On `client/e17-m5-t8c`, the user present (the M5 checkpoint). Docs only. The original files
+staged first (the four LODs, both executables, the five DLLs, both sound archives,
+`H3ab_ahd.vid`, `battle-videos.vid`, `maps.tar`, `extracted.tar` and the 40 non-campaign MP3s:
+57 files) for M6.
+
+- **Starting point:** `master` at `12a3d01` (#616, #617 merged that morning; CI's Clients run
+  green on it); no client pull request open.
+- **The review list** (the session summarised its real choices: the client's copies of the
+  spell cost and the experience, the gaps, the tactics message in every battle, the accounts
+  file, the two unchecked guesses of item 85): **items 1 to 86 accepted as built**.
+- **CLT-Q35 answered (b):** the result window's text names a hero fled or surrendered only for
+  the side that did. **CLT-Q26 to Q28, Q32 and Q33** put to the user one by one, each slip in
+  plain words: Q26 (b) fixed, Q27 (b) (1) and (2) fixed, (3) and (4) copied, **Q28 (c)** both
+  fixed, **and a general directive**: wherever the original sets a text off its centre, the
+  client centres it (the epic's "Decisions"), Q32 (a) copied, Q33 (b) fixed. Every fix in the
+  client's profile, the original's for the comparisons only; built in M6 T1.
+- **M6 refined** (the agent's draft (A) over (B), ranked play first, which the user had put
+  after M5 at M4 T3c; the agent's reason: the original's own screen first, and a ranked player
+  needs a stack's info): the battle screen complete, T1 the answered slips, T2 a stack's info,
+  T3 the right button's other popups, T4 the combat options dialog, T5 M5's gaps, T6 the inbox's
+  waiting items, T7 the closure; M7 ranked play and the server browser, then HD and graphics
+  options. The inbox entries the tasks take and the informational notices moved to
+  `QUEUE-ARCHIVE.md` (verbatim).
+- **M5 done.** M5's scope and tasks moved to `E17-archive.md`, its review list below.
+
+## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
-review (T9b, 2026-10-23); M4 at its review (T3c, 2026-10-27).
+review (T9b, 2026-10-23); M4 at its review (T3c, 2026-10-27); M5 at its review (T8c, 2026-10-31).
 
 ### M1 review list
 
@@ -4252,3 +4387,318 @@ closure (T8).** CLT-Q22 to Q24 answered (a) at the same review (the lane's
     (T3b-2: luck 0 and 4, spell power 2, each gone at a rerun). Choosing Gold (no battle effect)
     in the recipes would remove that variation; it changes the original's side, so every capture
     afresh after it (about 4 hours): at M5's closure, or as its own task.
+
+### M5 review list
+
+**Accepted by the user, 2026-10-31 (T8c), every item as built.** CLT-Q26 to Q28, Q32, Q33 and
+Q35 answered at the same review (the lane's `QUESTIONS-ANSWERED.md`); the fixes they ask for
+are M6 T1.
+
+
+1. The sides a human plays in the window are the battle's human players, the bot's the
+   computer's (T2b, `--human`; design §9.12): the engine's computer-only rules (BAT-QUIRK-27's
+   let-off) apply to the bot's side; without `--human` the scenario's `human` stays.
+2. The spell book's costs and school levels in the client (T3a, `spellbook::hero`; design
+   §7.17): the cost the ruleset's at the mastery plus the observation's `cost_change` (a copy of
+   the engine's BAT-MAG-054 formula; a public engine function or an observation field would
+   replace it), the hero's school levels from the book's spells of one school (the observation
+   gives masteries by spell: a school none of them names counts as none, which can put Magic
+   Arrow under another school than the original on the tab of all schools).
+3. The capture set's situations take actions (T3a, `actions`: `key:`, `click:`, `move:` after the
+   mouse's move, at the frozen clock) and the harness sets "Animate SpellBook" off (the page
+   turn's videos, which the client does not play): the stills of a dialog.
+4. The layout format's new kinds (T3a: `def`, `label`, `area`, an entry's `repeat`, a dialog's
+   `shadow`; the `[book]` section) and the catalogue's (a family's `list`, `contexts`, `raw`).
+5. The aim's derivations in the client (T3b, design §7.18): a refusal's reason by elimination
+   (any refusal of the engine's that Anti-Magic and the polarity do not explain reads as the
+   immunity: the engine's tests are not public), an area's marks on every living stack of it (the
+   original's only on those the spell may affect), Berserk's area cut at the side columns as the
+   other areas'; the aims of Force Field, Fire Wall, Teleport and Sacrifice not built (the book
+   closes on them).
+6. The window's keys and the adapter (T3b): F aims a Faerie Dragon's spell, full screen moved to
+   F11; the right button comes as a key, `h3_sdl::Key::RightButton` (a common path, additive).
+7. The harness (T3b): the action `aim:<k>:<n>`, and the spell cursor's 100 ms grid (0x69CA1C)
+   set at a sequence's opening with the poll's: it changes only frames that show a type-3 cursor
+   for a grid point, which no capture before `spell-aim` did, so the captures were not all taken
+   again (M5's closure takes them).
+8. The message box's formats (T4a, design §7.19): the layout's `[message]` (the box's assets,
+   fonts and cursor by name; the box itself laid out in code from its text, `h3_view::message`),
+   a picture item drawn at most its size (`ui::Picture::size`, the mouse's area until then) and a
+   DEF item in a player's colours (`Draw::Button`'s `player`).
+9. The box's derivations in the client (T4a): the viewing player as the attacker's when a human
+   plays it here, else the defender's (CLT-Q28 (2)); Surrender enabled when the side's own view
+   prices it (the engine's terms), Retreat when the engine lists it; not built, as the engine
+   refuses those casts without telling why: `hero_book_button`'s refusals (an anti-magic
+   garrison, the Orb of Inhibition, Cursed Ground, Recanter's Cloak) and the aim's entry's other
+   messages (Sacrifice, Remove Obstacle, Clone's and the Summons' limits, Earthquake outside a
+   siege, Land Mine against natives).
+10. The catalogue makes each run of quotes in a table's field one, as the executable reads its
+    tables (T4a; `text::pack`): `h3_formats::text` keeps them (the battle lane's inbox).
+11. The window while a box is open (T4a): every key but the viewer's own goes to the box (Escape
+    is its Cancel's, never the window's quit); unattended runs' `--leave retreat|surrender`.
+12. The result window's formats (T4b1, design §7.20): the layout's `[result]` (its assets by
+    name; the window laid out in code, `h3_view::result`), the asset tables' heroes' `portrait`
+    (harvested), a DEF item's `mirrored` (and `Draw::Button`'s), the items the executable gives
+    the id 200 given ids of their own.
+13. The window's derivations in the client (T4b1): the experience a copy of `battle_experience`
+    0x46A350 over the engine's `BattleOutcome`, without Learning (the client's heroes have none;
+    `h3-game`'s is private: a public one would replace it), a hero's portrait its type's (a
+    map's own portrait not known), a hero-less side's face from the reading only (the harness's
+    maps give both sides a hero, so no capture shows one).
+14. The window's battle ends with the result's OK (T4b1): the window's run ends there, as the
+    original leaves the battle's screen.
+15. `h3-bink` (T4b2a): a new pure crate, a port of FFmpeg 6.1.1's revision-`b` decoder (CLT-Q29)
+    under the GPL-2.0-or-later with FFmpeg's copyright lines; it indexes its fixed tables and
+    blocks directly where the index is bounded by construction (no `clippy::indexing_slicing`
+    denial, which `h3-assets` has), the planes and bundles only through checked reads and
+    writes; frames above 800 × 600 refused.
+16. The decoder's buffers (T4b2a): the block grid's rows below the picture keep the frame
+    before's, as FFmpeg's decoder when each frame is released (its command line, holding the
+    frame before, loses them: three clips differ there in a few pixels; RAD's decoder's
+    behaviour is T4b2b's captures' to show).
+17. The decoder's check (T4b2a): `clients/scripts/bink-check.sh` takes its reference from PyAV
+    (`pip install av`: BSD-3-Clause, FFmpeg's libraries), a tool of the sandbox's, no crate's
+    dependency; the synthetic samples 256 pixels wide, as the clips (FFmpeg pads narrower rows).
+18. `VIDEO.VID`'s entries sized by the next larger offset (T4b2a, `h3_assets::vid`): no size is
+    stored, so entries sharing an offset read the same bytes.
+19. The harness's clip tools (T4b2b): `binkprobe.exe` (our code, built by `setup.sh` with
+    mingw-w64) runs the game's `BINKW32.DLL` outside the game under Wine as a black box, its
+    clock import ours; `xdd.dll` points the DLL's `timeGetTime` import at the virtual clock
+    (its reads not the game's); the run directory's `VIDEO.VID` is the user's
+    `battle-videos.vid`.
+20. The clip's draw (T4b2b): `Draw::Video` names the start and the loop and carries the time
+    since the window opened, the compositor picking the frame from the batch's decoded clips
+    (`clip::shown`); the batch holds a clip decoded whole, 5-6-5 (`LoseCstl` 10.7 MB); the
+    window draws at the clip's decodes (`clip::decodes`, `Battle::clip_times`), the draw list
+    changing every millisecond.
+21. The video archives in the binary (T4b2b, `videos.rs`): only the directories read
+    (`h3_assets::vid::directory`, `directory_bytes`), an entry when a batch takes it; an
+    installation copy without `VIDEO.VID` takes `original-data/battle-videos.vid` (a cloud
+    sandbox's), one without either shows the slot bare.
+22. The result window's clip in the formats (T4b2b): the layout's `[result]` `clip` (the slot's
+    corner), `results::window` returning its tune (the clip by the same branches; a test keeps
+    it equal to `sound::end_tune`'s).
+23. Not modelled (T4b2b): in the original a redraw of the window while its clip stands at its
+    first frame (a press over the window in its first 133 ms) delays the clip a frame more; the
+    client's own timing (CLT-Q31) has no such delay, the comparisons' none either.
+24. Auto Combat's settings (T4c1): the client's bot plays every stack of the human's side, as the
+    original with all its Auto Combat settings on (`Combat Auto Creatures`, the spells, the
+    Catapult, the Ballista, the tent); no options dialog yet. The bot casts nothing and never
+    leaves, so the computer's casts for the human's hero and its retreat question (design §7.22)
+    are not built.
+25. The window's stop (T4c1): every key but the window's own (the table's `Window` commands: Esc
+    quits even while Auto Combat plays) and every press; the turn after a stop is decided as it
+    starts (`Battle::play_next`), the outline of a human's turn it stops at put back
+    (`Growing::outline_waiting`).
+26. The formats (T4c1): `Input::Auto` and `Input::Stop` in `h3_view::mouse::track`, the
+    sequences' `key:a` read by the original's key table, a sequence's end after its last `at:`
+    action (`hover` compared to 1 500 ms, as the harness records it).
+27. `--auto <n>` (T4c1): an unattended run switches Auto Combat on at the human's n-th turn and
+    stops it by a press two commands later; the battle checked against the bot's at once.
+28. The tactics phase's message in every battle (T4c2a; design §7.23): the original shows it once
+    a game to each player (its record's +0x88); a battle in the client is a game of its own, so
+    every battle opening with a human's phase shows it (`tactics::told`).
+29. The shade's search in the client (T4c2a, `tactics::shade`): the engine's legal placements
+    are not used; the client searches the observation (obstacles, stacks, two-hex fronts) as
+    `battle_pathfinder` does, a flyer over any run of hexes it does not fit (the original's:
+    fewer than its speed in a row, 0x4B39E7); a test holds the engine's placements in it
+    (`tactics.toml`).
+30. The formats (T4c2a): the layout's `cell_shade` and `[tactics_panel]` (the base's seven
+    buttons listed again), `scene::Draw::Shade` (a picture's indices halving the screen,
+    `h3_render::blit::darken_under`), `Moment::shade` (set by its viewers, not the timeline:
+    the phase's later turns T4c2b), `Panels::before`, `Moment::before_first_turn`, the
+    stills' `Still::opening`, `arrow` and `over`.
+31. The panel built for the defender (T4c2a; 0x462D24): before, *provisional*, for the opening's
+    acting side; the two differ on a computer attacker's opening against a human defender (the
+    picture's colours until the human's first turn), which no capture shows.
+32. The phase's keys (T4c2b; design §7.24): Next Creature's Space and Start Combat's Enter in a
+    context of their own (`keys::Context::Tactics`), which the window asks before the battle's
+    while the phase's panel shows (the original's disabled Defend passes Space on); a user's
+    file binds `next-creature` and `start-combat` apart from the battle's.
+33. The window's bot in the tactics phase (T4c2b): it ends any phase at once, a computer's and a
+    human's under Auto Combat, where the original's computer places the stacks and ends its
+    phase by its bound (BAT-AI-023); *provisional* with the bot (M2's review list: not the
+    original's computer).
+34. The formats (T4c2b): `tactics::shade_at` (a record's turns by its log's actions and turns),
+    `Panels::turns`, `now`, `enabled`, `panel::turns`' moves, `Battle::panel_at` and
+    `in_tactics`, `pointer::inputs`' `told` (a sequence's opening `key:Return`).
+35. `EndTactics` in the viewer's timeline (T4c2b): a command without frames, its action's start
+    (the pointer, the log settled) where the original's Start Combat runs no action; round 1's
+    first turn starts in the same millisecond and does the same, so nothing shows it.
+36. A created stack's numbers (T5a; design §7.25): a record holds the first snapshot only, so
+    `created_stack` takes the creature, count and hex from the event, the body from the ruleset
+    (`Casts::bodies`; a clone its original's) and leaves the rest at 0 (attack, defense, damage,
+    speed: no drawing reads them; the mouse's status line over one in a record's playback names
+    nothing).
+37. A dissolve's moments (T5a): its changes drawn at its start and shown 1 ms later
+    (`DissolveKey`), the moment at the start the saved picture; the battlefield objects with more
+    than one frame left out of the rectangle (the original's `battle_refresh_creatures` widens it
+    by them: no recorded dissolve has one).
+38. The formats (T5a): `Timeline::dissolves`, `created`, `notices`, `Moment::created` and
+    `dissolve`, `Draw::Dissolve` (its `measured` items), `Logged::Created` and `Summoned`,
+    `Name::Creature`, `Casts::bodies`, the keys `battle.log.summoned` and
+    `battle.clone.no-place`; `h3_render::Screen::dissolve_rect` in the foundation.
+39. The clone's message in the window (T5a): a notice opens its box at its time and holds the
+    window's clock there until it closes (the original's modal box inside the cast); not recorded
+    (a Clone without a place needs every ring around a crowded original blocked).
+40. The palette effects' cost (T5b1; design §7.26): each stack with one has its creature's
+    palette recoloured at every frame drawn (246 entries, about 220 µs in a release build), not
+    cached (*provisional*: a cache by DEF and effect would compute each once).
+41. The formats (T5b1): `h3_render::recolour` (`Effect`, `apply`, `FIRST`) in the foundation
+    (additive), `Timeline::looks` and `LookKey`, `Moment::looks`, `Draw::Creature`'s `effect`,
+    `Logged::Petrified`, the key `battle.log.petrified`; the harness's roll `stone_gaze` (`xdd.c`'s
+    sites, `h3drive.py`'s `ROLLS`: a redirected call draws as the original's, so no other capture
+    changes).
+42. Not built (T5b1): an Ogre Magi's Bloodlust (a creature's cast other than an area spell takes
+    effect at once, M3 T7c-3): it glows nothing.
+43. A sample's length (T5b2; design §8.3): its `fact` frames at its rate, rounded up; on a sound
+    card Miles' mixer ends it, perhaps a few ms later. The harness's samples end so too, so the
+    recordings confirm where the waits are and how long, not the mixer's slack.
+44. A wait on a handle another sample took meanwhile (T5b2): the original would wait for that
+    sample; the viewer waits for its own (no recorded case: every channel of a category busy, or
+    the cue's sample over and the handle given again before the wait).
+45. Not built (T5b2): the waits of the effects the viewer does not draw yet (the Wraiths' mana
+    drain, regeneration, Poison's round damage, Death Blow, Ice Bolt's explosion, the Familiars'
+    channel; design §8.3's list); the effects' switch (E) does not stop the waits (the original's
+    volume 0 would: a setting, later).
+46. The window makes its battle twice when its sound opens (T5b2, `Ground::play_sounds`): the
+    library loads after the window opened; a live battle's opening plays twice (cheap, seeded).
+47. The harness's sound (T5b2, the runbook's "Sound"): Wine's ALSA driver over the null sink and
+    `xdd.dll`'s Miles hooks (nine imports): an emulation of a sample's end, not Miles' own; only
+    the main thread's clock reads count in a `sound` run (the silent runs as before).
+48. The connection's formats (T6a; design §11.1): the pins file (`address key-hex` a line,
+    sorted; default `pins.txt` in the working directory, as `keys.toml`: a per-user place
+    later), `remote::Client`'s notes and faults, `connect`'s options and its record's default
+    path.
+49. The record fetched at every join (T6a): one path for a join, a re-join after a drop and one
+    after a restart, at the cost of a record's bytes (512 KiB at most by the server's default)
+    per join; opened at its first snapshot.
+50. The I/O thread polls (T6a): its read waits 5 ms, then it looks at the queue (a command waits
+    up to 5 ms to leave); messages up to 64 MiB.
+51. The plain player (T6a, `connect::plain`): a test's player, not an opponent (ends a tactics
+    phase, shoots, strikes, else walks toward the enemy's edge by the column); the window's
+    player is the human.
+52. The seat's battle derived on a server (T6b1, `remote::seen`): the panel's turns, the moves,
+    teleports and creations, the timeline's counts and deaths, the heroes' mana by the casts
+    (the enemy hero's casts cost nothing: its book is unknown), the gate; a shooter's shots, the
+    stacks' effects, the walls' hexes and parts stay the opening's (hints only: the commands are
+    the server's).
+53. The other seat's turn (T6b1): outlined from its start as a human's, its command's action
+    from the poll it arrived at; the panel's buttons as on a computer's turn (the seat's player
+    the one human here, so the end's window and tune by the seat: `remote_turn`); the original's
+    network turn not read.
+54. The content note (T6b1): in the window's title (`Different`: the client's own ruleset for
+    the book and the result window, no aim areas); `Absent` stops the loading with a message.
+55. The window on a server (T6b1): the loading waits for the record (30 s between messages);
+    the window's input wait at most 10 ms; Auto Combat off; a dropped connection dialed again
+    after a second; the unattended player the plain one, casting first the first spell the server
+    lets the hero cast at its first target (the book and the aim pressed).
+56. A corpse at a record's opening (T6b2, R2-8): its death group's last frame facing its side's
+    way (the snapshot holds no facing), its record kept; a stack the battle made after the
+    war machines by id. The corpses on a hex by the snapshot's order of death, then the
+    timeline's by id (a stack raised and killed again keeps its first place).
+57. The moat's strip (T6b2, R1-3): by the fixed rows 0x63BCE8, the Fortress's second row
+    0x63BCF4 found by the record's moat holding one of its hexes (no Fortress flag on the wire).
+58. A seat's window starts where its record stands (T6b2): a join mid-battle does not play the
+    history again (the log still lists it); the start sound only from the battle's start.
+59. A new timeline (T6b2): a record fetched at a re-join whose numbers do not go on from the
+    one taken (a restart; a gap past the server's bound) opens the battle again from its
+    snapshot, the window's clock, inputs and presses reset; the sounds stay keyed by the first
+    opening's stacks.
+60. Re-dialing (T6b2): once a second until a server answers, however long; the drop said once
+    until a welcome.
+61. The accounts file (T7): `accounts.txt` in the working directory by default (as `pins.txt`),
+    a line per key (`<login> key|old <seed> [<address>...]`), the seed in the clear, the file
+    made owner-only on Unix (Windows: the folder's permissions); no system keychain.
+62. The password (T7, the user's choice): from standard input, a line shown as typed, its prompt
+    only on a terminal; derived once per device by `h3-view account`; no dialog in the window
+    (the original has none to copy; the server browser's milestone may want one).
+63. A password change (T7): the key so far due at every server pinned then (an older key's
+    servers left to it), re-keyed at the next login there; an earlier key due nowhere is
+    forgotten; a server never dialed again keeps it in the file (its line edited by hand).
+64. The final goodbyes (T7, `remote::farewell`): `Rekeyed`, `CommandLimit`, `Abandoned`,
+    `Replaced` and `Protocol` end a seat's run with their reason (the window closes, the reason
+    on standard error); `Replaced` re-dialed before T7, which made two connections of a seat take
+    it from each other in turn. Other goodbyes re-dial as a drop.
+65. A login refused ends the run (no second attempt, no prompt); `--register`'s display is sent
+    until the run's first `LoggedIn`, not at its re-dials (T8a, R1-2: the server counts each as
+    an account change, 20 an hour).
+66. The harness's two instances (T8a): `H3_RUN`, `H3_DISPLAY`, `WINEPREFIX` (instance 2
+    `original-data/wine2`, `:96`, `~/.wine-h3b`), `h3mem.game_pid` by the prefix; the battle
+    recipes' starting bonus Gold for every player (`gold_bonus`, M4's item 15), the adventure
+    batches and the map's stills left random.
+67. The client's pace (T8a, R1-1): at most 10 messages in any second of the client's clock
+    (`remote::Pace`; the server's limit, 20 by default, is not on the wire), and `RateLimited` a
+    final goodbye.
+68. Silence and waits (T8a, R1-3): the dial and each handshake read at most 10 s (`DIAL_WAIT`),
+    any frame (pings too) heard, 60 s of silence a drop (`SILENT`; the server's ping interval is
+    not on the wire); the name lookup has no limit of its own.
+69. The record on a server (T8a, R1-5): compared whole only when it opens, a `Grew` appended;
+    at most 256 frames handled a poll (`POLL_MOST`).
+70. The files written whole (T8a, R1-4): beside the target, synced, renamed over; the accounts
+    file 0600 at every write; a new pin merged into the pins file as it is then.
+71. The mouse followed on from the last turn start (T8a, R3-1: `pointer::Follower`,
+    `track::follow_on`), its equivalence with the whole re-follow a test's; an entered stack
+    still clones the timeline; Auto Combat's check and the inputs' comparison still whole passes.
+72. The bot's command bound (T8a, R3-4): `FOUGHT_LIMIT` counts the bot's commands since a
+    human's last; a layout's `book.schools` must be the four the book draws (R4-4).
+73. The harness's own checks (T8b1, R7; the runbook): `xdd.dll`'s ack has ten fields (an older
+    one stops a run: `setup.sh` again for every run directory), `H3_RUN` refused without
+    `WINEPREFIX`, the prefix's `d:` checked against the run directory; a run fails on the clip
+    clock's field not 1, on an empty `VIDEO.VID` at a result window, and in a sound run on an
+    unparsed sample or more than 32 handles; the start sound must be a new sample still playing
+    at the opening, loops counted; a paused sample answers 8 (Miles not checked); `wineserver -w`
+    waits at most 60 s.
+74. The starting bonus Gold verified (T8b1, R7-8; since T8b2): `h3mem.starting_bonuses` reads
+    the scenario list's rows (H3API's `H3SelectScenarioDialog` pointer 0x69FBE8, `bonusType`
+    +0x6C: 3 Random, 0 Artifact, 1 Gold, observed) and `gold_bonus` stops a run unless exactly its
+    players read Gold (a lost click would have left Artifact: a hero's numbers off).
+75. The result window's clips (T8b1, R2b-1, R2b-3, R2b-5): at most 64 MiB of decoded frames a
+    clip (`clip::BUDGET`, about ten times `defendloop`'s); a clip that cannot be read or decoded
+    leaves the slot bare (a warning); the pair decoded when the battle's end is known, never for
+    a record file's window.
+76. `h3-bink` (T8b1, R2a): an empty video packet refused as `Invalid` (FFmpeg refuses it too; an
+    existing variant reused); a 256 × 120 sample's hashes from FFmpeg 9.0.2 (PyAV 19.0.2, its
+    `bink.c` as 6.1.1's); the motion bound and a residue cut short checked equal to FFmpeg's.
+77. `h3-view video` (T8b1, R2b-2, R2b-6): an archive entry whose name is not a bare file name is
+    skipped and fails the run; names printed through `printable`.
+78. The message box (T8b2, R5a): an unattended run's presser times a box's OK by the window's
+    clock (a notice's box holds the battle's); a pass that opens a box drops its later key-downs
+    and presses (§7.19's queue emptied); the text at most 578 wide and the box at most 768 × 576,
+    client bounds (no frame id wraps); `h3_render::text`'s measures end a second line with no
+    place to break at its first glyph instead of looping (a crafted font; every text that ended
+    before the same). Left: a record file's `--check` (no presser) holds a notice open.
+79. The result window built once (T8b2, R5b-1, R5b-5): what the client lacks (a portrait, a
+    creature's entry) drawn empty, never the window left unopened and retried each pass; a hero
+    type the manifest does not name stays a hero, its +500 kept; Eagle Eye's message and the
+    experience given after the window not built.
+80. A served game's values (T8b2, R5b-2): hit points and AI values only from a ruleset whose
+    content check is `Same`; else experience 0 and no strongest creature (*provisional*).
+81. No winner (T8b2, R5b-3, BAT-END-001): after a retreat or surrender, a side without army
+    survivors (only created stacks) is not named the winner, in the window and the end's tune;
+    the window then shows the defender's view. Its text: CLT-Q35.
+82. Created stacks' sounds (T8b2, R6-1): a created stack's cues carry its creature; the lengths,
+    the window's library and the sequences tool hold the created creatures' sounds by handle, so
+    a clone waits on its own shot (§8.3) and a reused id no longer plays the old stack's sounds.
+83. Teleport, records, dissolves (T8b2, R6-2 to R6-5): Teleport's effect ends (Bind) applied
+    after its first redraw, their hues with the new picture; an id reuses its record only on its
+    side, a side's records checked (none left: not drawn); a dissolve's kept battle dropped when
+    it ends; `recolour`'s scale at least 1.
+84. The aim (T8b2, R4b): a press casts where the pass's moves left the cursor (a move and a
+    press in one batch); a legal target's side-column hex says "Select Spell Target"; Force Field
+    and Fire Wall take the common aim (*provisional*: no wall shape, refusal 24 not 182); Teleport
+    and Sacrifice known by the ruleset; a cast the session refuses leaves the turn waiting; a
+    served aim's targets sorted, deduplicated, on the field; a re-served turn keeps the aim.
+85. Auto Combat and the tactics phase (T8b2, R5c): `Input::Auto` and `Input::Stop` name their
+    turn (a switch the turn waiting, a stop the turn started last, never one the bot played) and
+    the battle keeps them apart from the window's inputs (Restart and seeks keep them); any key
+    down stops it, Ctrl and keys without a name (`h3_sdl::Key::Other`) included (*provisional*:
+    whether the original posts modifier keys as kind 1 is not read); on a server seat the button
+    is disabled; a zone wider than the field covers it; the shade's walker blocked by the walls
+    and the closed gate as the engine's `siege::blocked_for` (*provisional*: the original's reach
+    through the gate not read).
+86. The leftovers (T8b2): the name lookup waits at most the dial's wait (its thread left to end);
+    a record's line error in numbers only; a stack the mouse enters carries the playhead on (no
+    replay from 0; the played timeline still copied); the sequences tool fails naming a clip it
+    cannot decode (a comparison needs it); `bink-reference.py` names a packet or file FFmpeg
+    refuses, goes on, exits 1.

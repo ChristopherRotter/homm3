@@ -14,7 +14,8 @@ use h3_content_battle::BattleRuleset;
 use h3_protocol::session::Bot as _;
 use h3_protocol::session::Session;
 use h3_protocol::wire::{
-    ClientMessage, Command, Event, Observation, Seat, ServerMessage, Side, SpellObstacle,
+    ClientMessage, Command, Event, Observation, RejectCode, Seat, ServerMessage, Side,
+    SpellObstacle,
 };
 use h3_protocol::{codec, map};
 
@@ -176,7 +177,10 @@ impl<'r> Live<'r> {
         let choice = self
             .bot
             .command(&self.state, self.ruleset, side, &self.legal);
-        let played = self.send(side, map::command(choice))?;
+        let command = map::command(choice);
+        let played = self
+            .send(side, command)?
+            .map_err(|code| format!("the bot's command {command:?}: rejected, {code:?}"))?;
         self.bot_run += 1;
         Ok(Some(played))
     }
@@ -194,20 +198,27 @@ impl<'r> Live<'r> {
 
     /// Plays a human's `command` for the side to act (E17 M5 T2b), sent from its seat, however
     /// many came before (E17 M5 T8a, R3-4: a long hot-seat battle): the session validates it as
-    /// a server; one it rejects is an error and changes nothing. Any other error comes after the
-    /// session took the command: the session and the copy here no longer agree, the battle
-    /// cannot go on (the window quits on it).
-    pub fn play(&mut self, command: Command) -> Result<Played, String> {
+    /// a server; one it rejects changes nothing and is none (E17 M5 T8b2, R4b-4: the turn waits
+    /// on, as a server's rejection leaves it). An error comes after the session took the
+    /// command: the session and the copy here no longer agree, the battle cannot go on (the
+    /// window quits on it); or the battle is over.
+    pub fn play(&mut self, command: Command) -> Result<Option<Played>, String> {
         let side = self.state.side_to_act().ok_or("the battle is over")?;
-        let played = self.send(side, command)?;
+        let Ok(played) = self.send(side, command)? else {
+            return Ok(None);
+        };
         self.bot_run = 0;
-        Ok(played)
+        Ok(Some(played))
     }
 
     /// Sends `command` from `side`'s seat; the copy here plays it after the session took it. A
-    /// rejection changes nothing; a frame not read or the copy's failure to play it come after
-    /// the session took it (fatal to the battle, [`Live::play`]).
-    fn send(&mut self, side: BattleSide, command: Command) -> Result<Played, String> {
+    /// rejection changes nothing (its code); a frame not read or the copy's failure to play it
+    /// come after the session took it (fatal to the battle, [`Live::play`]).
+    fn send(
+        &mut self,
+        side: BattleSide,
+        command: Command,
+    ) -> Result<Result<Played, RejectCode>, String> {
         let seq = self.sent + 1;
         let seat = match side {
             BattleSide::Attacker => Seat::Attacker,
@@ -221,7 +232,7 @@ impl<'r> Live<'r> {
             let message = codec::decode_server(frame.frame.as_bytes(), usize::MAX)
                 .map_err(|e| format!("command {seq}: the session's frame: {e:?}"))?;
             if let ServerMessage::Rejected { code, .. } = message {
-                return Err(format!("command {seq} ({command:?}): rejected, {code:?}"));
+                return Ok(Err(code));
             }
             if frame.to == VIEWER {
                 messages.push(message);
@@ -241,7 +252,7 @@ impl<'r> Live<'r> {
             let mapped = map::events(core::slice::from_ref(e), viewer);
             events.extend(mapped.into_iter().map(|event| (event, seen)));
         }
-        Ok(Played { messages, events })
+        Ok(Ok(Played { messages, events }))
     }
 }
 
@@ -361,7 +372,7 @@ mod tests {
                 waits += 1;
                 assert_eq!(live.next().unwrap(), None);
                 let before = live.record().unwrap();
-                assert!(live.play(Command::Move { to: 255 }).is_err());
+                assert_eq!(live.play(Command::Move { to: 255 }), Ok(None));
                 assert_eq!(live.record().unwrap(), before);
                 let choice = live.choice().unwrap();
                 live.play(choice).unwrap();

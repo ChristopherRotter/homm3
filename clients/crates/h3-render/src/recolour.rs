@@ -42,10 +42,10 @@ pub enum Effect {
 
 impl Effect {
     /// `value` (a 16-bit colour in a format whose channels' masks are `masks`, red, green, blue)
-    /// as the effect makes it.
+    /// as the effect makes it. A mask of 2^31 or more (no 16-bit format's) scales by 1, not 0.
     #[must_use]
     pub fn colour(self, value: u16, masks: [u32; 3]) -> u16 {
-        let scales = masks.map(|m| 0x7FFF_FFFF / m.max(1));
+        let scales = masks.map(|m| (0x7FFF_FFFF / m.max(1)).max(1));
         let scaled = [0, 1, 2].map(|c| (u32::from(value) & masks[c]) * scales[c]);
         let out = match self {
             Self::Petrified => {

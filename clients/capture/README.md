@@ -785,8 +785,8 @@ costs and day points; numbers only). The costs: the original's pathfinder stops 
 the pointer, so before a sequence's 0 `look_over_view` moves the pointer over each tile its
 inputs visit and reads that tile's node (`Mem.node_cost`), then over the kingdom overview's button
 and back to the parking (the status bar's hint as before) and writes the manager's +0xEC and
-+0xF0 -1; a still reads none. The status bar's hint is compared only for the items
-`map/masks.toml`'s `hinted` lists (`panel_rects`): add a new item recorded with it there. Since
++0xF0 -1; a still reads none. The status bar's hint is compared in every situation and sequence
+since M3 T7a (from T6a1 only in the items `map/masks.toml`'s `hinted` listed). Since
 M3 T6a2a (design §4.11) `[hover]` holds `visits` too, per object what the viewer knows of it
 (`Mem.visit` by `h3mem.VISIT_RULES`, the reading's rules; for the hero selected as read), and a
 situation's `visits` (per object anchored on `at`: `known`, `visited`) are written after the view
@@ -1140,8 +1140,9 @@ design §7.1.
   `morale` in `states.jsonl` show it. Since E17 M5 T8a the battle recipes (`capture`,
   `sequence`) set every player's bonus to Gold in the advanced options (`h3drive.gold_bonus`;
   `to_scenario` and `h3adv.to_hot_seat` take `gold`, off for the adventure batches and the map's
-  stills, which keep the random bonus). The choice is not checked afterwards (E17 M5 T8b1,
-  R7-8: no probe of the Gold picture, no address of the bonuses read).
+  stills, which keep the random bonus). Since T8b2 (R7-8) the choice is checked in memory
+  (`h3mem.starting_bonuses`, the scenario list's dialog 0x69FBE8): a run whose rows do not read
+  Gold for its players stops.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).

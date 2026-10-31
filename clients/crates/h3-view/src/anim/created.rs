@@ -270,9 +270,10 @@ impl Player<'_> {
 
     /// The created stack `id` (`creature`, `count` on `hex`, made as `kind`; a clone copies its
     /// original's body): its record, the first that is free (a killed created stack's, which the
-    /// engine's id reuses, else the side's next: 0x47A12B), set up now and drawn from the next
-    /// millisecond, its first pose standing `offset` from its hex (E17 M5 T5a). Returns its
-    /// numbers as the timeline follows it (none: a creature without a look).
+    /// engine's id reuses on the same side, else the side's next: 0x47A12B), set up now and drawn
+    /// from the next millisecond, its first pose standing `offset` from its hex (E17 M5 T5a).
+    /// Returns its numbers as the timeline follows it (none: a creature without a look, or no
+    /// record left).
     fn set_up(
         &mut self,
         (id, side): (u8, Side),
@@ -317,15 +318,19 @@ impl Player<'_> {
             shielded: self.stage.casts.shielded.contains(&creature),
             turret: None,
         };
+        // A reused id keeps its record on its own side alone; past the side's last record (a
+        // hostile record's 255th creation) the stack is not drawn (E17 M5 T8b2, R6-3).
         let record = match self.records.get(&id) {
-            Some(&(_, record)) => record,
-            None => {
+            Some(&(owner, record)) if owner == side => record,
+            _ => {
                 let record = self.next_record[s];
-                self.next_record[s] += 1;
+                self.next_record[s] = record.checked_add(1)?;
                 record
             }
         };
         self.records.insert(id, (side, record));
+        // Its cues play its creature's sounds, not those of a stack that held the id before.
+        self.voices.insert(id, creature);
         let pose = Pose {
             offset,
             ..self.standing(&live, hex)
@@ -511,8 +516,10 @@ impl Player<'_> {
     }
 
     /// Teleport's move among a cast's `effects` (0x5A1B4D to 0x5A1BFA; E17 M5 T5a, §7.25): a
-    /// redraw shown at once, the battlefield saved, the stack moved and the battle redrawn unseen,
-    /// then a dissolve over the battlefield of 33 ms steps. Returns whether it moved one.
+    /// redraw shown at once, the battlefield saved, the stack's Bind links and its own Bind ended
+    /// (0x5A1B88, 0x5A1B91: the engine's `EffectEnded`s, their hues with the new picture; E17 M5
+    /// T8b2, R6-2), the stack moved and the battle redrawn unseen, then a dissolve over the
+    /// battlefield of 33 ms steps. Returns whether it moved one.
     pub(super) fn teleporting(&mut self, spell: u16, effects: &[Event]) -> bool {
         let Some((stack, to)) = effects.iter().find_map(|e| match *e {
             Event::Teleported { stack, to, .. } => Some((stack, to)),
@@ -522,6 +529,7 @@ impl Player<'_> {
         };
         self.cue(stack, Sound::Spell(spell), false);
         self.redraw();
+        self.effects(effects);
         let Some(live) = self.stacks.get_mut(&stack) else {
             return true;
         };
@@ -529,6 +537,7 @@ impl Player<'_> {
         let live = live.clone();
         let pose = self.standing(&live, to);
         self.key_now(stack, pose);
+        self.show_tints(self.clock.now + 1);
         self.dissolve(DissolveArea::Battlefield, TELEPORT_STEP);
         true
     }

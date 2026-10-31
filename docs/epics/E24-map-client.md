@@ -204,7 +204,16 @@ viewers share.
   the log), and T6b3, the keys during a walk and the sound without the focus (kept whole by the
   user; **done** 2026-10-30: Space, the input ring and the walk's end, the focus's loss and return
   read whole and built; four new sequences exact with the status bar; MCL-Q25, MCL-Q26; the log);
-  T7, M3's closure. A task that grows is cut at a seam agreed with the user.
+  T7, M3's closure, cut with the user (2026-10-30): T7a, the status bar's hint compared
+  everywhere and everything recorded again (**done** 2026-10-30: `masks.toml`'s `hint` and
+  `hinted` gone, the 50 situations and the 35 sequences exact on the whole screen, 1 368 frames; a
+  path's staging and a map-named town's hover facts fixed in the harness; the log), beside it M3's
+  review by six fresh reviewers on fractions (42 findings on `map-client/e24-m3-t7-review`), T7b,
+  the findings consolidated and fixed, cut with the user (2026-10-31) into T7b1, the redraw's
+  and the input's (**done** 2026-10-31: F2-1 to F2-8 and F4-1 to F4-9 fixed, MCL-Q25's answer
+  built; `drawn` all the same; the log), and T7b2, the panels', the mouse-over's, the harness's
+  and the rest's; T7c, the review list, the hand test, M3 archived, M4 refined. A task that grows
+  is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
   window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand
@@ -398,6 +407,24 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   selected only: the marks a class keeps by a hero read as needing one, not recorded without.
   MCL-Q18's fix (the mouse's tile by the view's origin; the original's under `--bugs original`)
   changes the window's clicks and hints: T7's hand test.
+- **M3 T7b1, a key's repeat** (*provisional*, MCL-Q25's answer, design §4.15): only a direction
+  key's repeat (`Action::Repeat`, the window's by its key table's step) is dropped while a key's
+  step waits; a scroll's, a hotkey's and Space's repeats wait in the ring as the original's.
+  During a path's walk a repeat ends the walk as any key down; those behind it, taken after the
+  walk, step once, the rest dropped behind that step.
+- **M3 T7b1, the right button** (*provisional*, the review's F4-5): the window takes it as the
+  mouse's on the map before any key table's binding (`RightButton` in a user's `[map]` table
+  then does nothing); its down and up are messages in the ring, its down ends a path's walk, its
+  up ends a button's hold; the original's help texts while it is held are not built (M4's).
+- **M3 T7b1, the window's redraw and upload** (*provisional*, F2-5, F2-7): a redraw asked for
+  uploads whatever the turn presents whole; a render device's reset (`SDL_EVENT_RENDER_DEVICE_RESET`,
+  which loses the textures themselves) is not mapped: a rebuild in `h3_sdl` for both viewers, not
+  a redraw. The rectangles another holds are dropped before widening and uploading; overlapping
+  ones are not joined (a joined box can widen more pixels than the two).
+- **M3 T7a, a map-named town in the hover facts** (*provisional*, the harness): `Mem.hover`'s
+  `towns` give a town whose name is not a record of `TownName.txt` (a shipped map's own) as 65535,
+  so a still of such a map is compared; a hint over that town would show the catalogue's key
+  (T7b's F3-3) until M4 reads the map's town names.
 - **M3 T6a2b, the owners and contents** (*provisional*, design §4.12): the live part's `[hover]`
   contents (sparse rows by object: `mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`,
   each holding what the hint reads already decided for its player: the viewing, the shown or the

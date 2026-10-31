@@ -25,23 +25,59 @@ and a town's, and T5b2, the date's and the kingdom's (kept whole by the user; bo
 epic's log); the other kinds (another player's turn, a resource found, a text) are M4's (the
 epic's "Later"). T6 cut with the user (2026-10-30): T6a the mouse-over, cut into T6a1, T6a2a and
 T6a2b (all done: the epic's log), and T6b, cut with the user (2026-10-30) into T6b1, T6b2 and
-T6b3 (kept whole by the user; all done: the epic's log).
+T6b3 (kept whole by the user; all done: the epic's log). T7 cut with the user (2026-10-30): T7a,
+the status bar's hint unmasked and everything recorded again (done: the epic's log), beside it
+M3's review by six fresh reviewers on fractions (the user: up to three at once, each under half
+a context; their findings on a branch), T7b, the findings consolidated and fixed (cut with the
+user, 2026-10-31, into T7b1, the redraw's and the input's (done: the epic's log), and T7b2, the
+rest), and T7c, the user's checkpoint.
 
-### E24 M3 T7 — M3's closure
+### E24 M3 T7b2 — the panels', the mouse-over's, the harness's and the rest's findings fixed
 
-- **Scope:** fresh reviewers (one per area), their fixes; the status bar's hint unmasked everywhere
-  (`masks.toml`'s `hint` into `panels`, `hinted` gone; moved here from T6a2 at its cut) and every
-  situation and sequence recorded again; the review list with the user; the window cross-built for the user's machine and a
-  hand test (`clients/out/win/`, a `.cmd` with the checks on screen and a notes file); M3
-  archived; M4 refined with the user.
+- **Scope:** the findings of F1 (the panels), F3 (the mouse-over; F3-2 answered as MCL-Q27, the
+  empty bar kept: noted in `hover.rs`, its test and design §4.10), F5 (the harness; F5-9 done by
+  T7a) and F6 (the rest) on the branch `map-client/e24-m3-t7-review`
+  (`docs/lanes/map-client/review-m3/`: its README's summary first), each checked, then fixed,
+  queued for M3's review list, turned into an `MCL-Q<n>` or declined with why (T7b1's log entry
+  the model); the harness's fixes checked against the original under Wine
+  (`clients/capture/setup.sh` first); the captures a fix changes recorded again (`drawn` first).
+  Cut with the user at its start if it outgrows half a context (by area: F1 and F6, then F3 and
+  F5).
+- **Acceptance:** every finding has an outcome in the log (the review's folder is not merged);
+  `drawn` all the same; the scoped verify and `check.sh` pass.
+- **Depends on:** T7b1 (done). **Status:** ready.
+
+### E24 M3 T7c — M3's review list, the hand test, M3 archived, M4 refined
+
+- **Scope:** the review list with the user (the epic's "M3's review list", T7b's additions); the
+  window cross-built for the user's machine and a hand test (`clients/out/win/`, a `.cmd` with
+  the checks on screen and a notes file; MCL-Q18's fix among them); M3 archived (its section
+  verbatim to `E24-archive.md`); M4 refined with the user.
 - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
-- **Depends on:** T1a to T6b3 (all done). **Status:** ready (the user, at its checkpoint; its
-  reviewers also take MCL-Q25's and MCL-Q26's answers if given).
+- **Depends on:** T7b2. **Status:** the user's checkpoint.
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
+
+- 2026-10-31 (the client lane, E17 M5 T8c; **the user's directive, for you to apply too**): the
+  user answered CLT-Q28 (the message box's text centred 5 pixels left of the box's centre) with
+  a general rule: **wherever the original sets a text off its centre, the client centres it**
+  in its own profile, the original's place kept for the comparisons only (`h3_render::Bugs`, as
+  the cursor's x); a reading or a recording that finds such a slip fixes it so, with no question
+  needed (`docs/epics/E17-clients.md`, "Decisions"; the lane's `QUESTIONS-ANSWERED.md`,
+  CLT-Q28). The battle client builds it in E17 M6 T1; the text's drawing in the common crates
+  (`h3_render::text`, `h3_ui::paint`) is unchanged until then, and a change there in behaviour
+  will be noted here.
+
+- 2026-10-31 (the client lane, E17 M5 T8b2; for information, nothing to do): three changes in the
+  common crates. `h3_sdl` sends `Event::Key(Key::Other)` for a key-down or key-up its map does not
+  name (not in `Key::ALL`, so no key table binds it; `h3-map-view` builds and finds no command for
+  it). `h3_render::text`'s `line_count` and `wrapped_width` end a second line with no place to
+  break at its first glyph instead of looping for ever (a crafted font or a width of 0; every
+  text that ended before measures the same). `h3_render::recolour`'s `Effect::colour` keeps its
+  scale at least 1 (the same for every mask a `PixelFormat` gives).
 
 - 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
   after it merges, run `clients/capture/setup.sh` again for every run directory you use: the

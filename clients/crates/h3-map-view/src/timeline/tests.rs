@@ -937,6 +937,8 @@ fn a_press_a_hotkey_or_space_stops_the_paths_walk_too() {
         Action::Press([700, 400]),
         Action::Key(Hotkey::NextHero),
         Action::Visit,
+        Action::RightPress,
+        Action::Repeat(Direction::South),
     ] {
         let mut l = walking(2, vec![east()]);
         l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
@@ -993,21 +995,26 @@ fn the_input_ring_keeps_the_last_63_messages() {
     );
     for a in [
         Action::Step(Direction::East),
+        Action::Repeat(Direction::East),
         Action::Scroll(Direction::East),
         Action::Click([0, 0]),
         Action::Press([0, 0]),
+        Action::RightPress,
         Action::Key(Hotkey::NextHero),
         Action::Visit,
     ] {
         assert!(a.ends_walk(), "{a:?}");
+        assert_eq!(a.messages(), if a == Action::Click([0, 0]) { 2 } else { 1 });
     }
     for a in [
         Action::Pointer([0, 0]),
         Action::Release([0, 0]),
+        Action::RightRelease,
         Action::KeyUp(Hotkey::NextHero),
         Action::Up,
     ] {
         assert!(!a.ends_walk(), "{a:?}");
+        assert_eq!(a.messages(), 1);
     }
 }
 
@@ -1040,6 +1047,43 @@ fn the_steps_queued_during_a_step_are_the_rings() {
     assert_eq!(facings[0], (17, Direction::West));
     assert_eq!(facings[30], (17, Direction::West));
     assert!(l.state(1 + 32 * 150 + 10).cursor.shown);
+}
+
+/// MCL-Q25 (E24 M3 T7b1): a direction key's repeats given during its step are dropped by the
+/// client, so the hero stops a step after the release; with the original's bugs each waits and
+/// steps, as the original's ring keeps every key down. A repeat with no step waiting steps.
+#[test]
+fn a_keys_repeats_during_its_step_are_dropped_but_by_the_original() {
+    for (bugs, steps) in [(Bugs::Fixed, 1), (Bugs::Original, 5)] {
+        let mut l = walking(2, Vec::new());
+        l.rules.bugs = bugs;
+        l.run(1, &[Action::Step(Direction::East)]).unwrap();
+        for t in 2..=1_200 {
+            let given: &[Action] = match t {
+                20 | 30 | 40 | 50 => &[Action::Repeat(Direction::East)],
+                60 => &[Action::Up],
+                _ => &[],
+            };
+            l.run(t, given).unwrap();
+        }
+        assert_eq!(l.state(1_200).hero.unwrap().at.x, 17 + steps, "{bugs:?}");
+    }
+    let mut l = walking(2, Vec::new());
+    l.run(1, &[Action::Repeat(Direction::East)]).unwrap();
+    for t in 2..=200 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(l.state(200).hero.unwrap().at.x, 18);
+    // Taken after a path's walk that a repeat ended, the repeats behind it: the first steps, the
+    // rest wait behind its step and are dropped.
+    let mut l = walking(2, vec![east()]);
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(3, &[Action::Repeat(Direction::South); 4]).unwrap();
+    for t in 4..=800 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(l.state(800).hero.unwrap().at, Pos { x: 18, y: 18, z: 0 });
 }
 
 /// Space (E24 M3 T6b3, design §4.15): a hero standing on its tile (after a scroll) chosen again,
@@ -1695,11 +1739,20 @@ fn the_status_window_over_time() {
     // without the live part's kingdom shows what it shows.
     let mut unknown = start.clone();
     unknown.kingdom.selection = None;
+    // The live part's kingdom window unknown too (the recordings since M3 T7a hold one): the one
+    // shown at 0 stands for it.
+    unknown.kingdom.realm = None;
     let shown = statuses(&play(rules(Bugs::Original), &unknown, &actions, ms).unwrap());
     assert!(matches!(shown[900], Some(Status::Kingdom(_))));
     let (date, _, _) = recorded("status-date-end");
+    // The kingdom's window unknown (a live part without its `realm`; the recordings since M3
+    // T7a hold one).
     let realmless = Start {
         asked: Some(Asked { kind: 2, end: 500 }),
+        kingdom: Kingdom {
+            realm: None,
+            ..date.kingdom.clone()
+        },
         ..date.clone()
     };
     let shown = statuses(&play(rules(Bugs::Original), &realmless, &actions, 400).unwrap());
@@ -2182,8 +2235,13 @@ fn a_hold_and_what_it_drops() {
     l.run(1, &[Action::Press([695, 212])]).unwrap();
     l.run(2, &[Action::Pointer([695, 185])]).unwrap();
     assert_eq!((l.held, l.drawn().pressed.len()), (Some((3, false)), 0));
-    l.run(3, &[Action::Pointer([695, 212])]).unwrap();
-    assert_eq!(l.drawn().pressed, [3]);
+    // The window's point off the frame (its focus lost) leaves the hold as it is (F4-2).
+    l.run(3, &[Action::Pointer([695, 212]), Action::Pointer([-1, -1])])
+        .unwrap();
+    assert_eq!(
+        (l.held, l.drawn().pressed.as_slice()),
+        (Some((3, true)), &[3][..])
+    );
     l.run(
         4,
         &[
@@ -2199,14 +2257,33 @@ fn a_hold_and_what_it_drops() {
     );
     l.run(5, &[Action::Release([695, 185])]).unwrap();
     assert_eq!((l.held, l.drawn().pressed.len()), (None, 0));
+    // The right button's up ends a hold too, a click when the button shows pressed (F4-5): the
+    // hero list's arrow scrolls once, off it nothing.
+    l.run(6, &[Action::Press([641, 380]), Action::RightRelease])
+        .unwrap();
+    assert_eq!((l.held, l.kingdom.tops[0]), (None, 1));
+    l.run(7, &[Action::Release([641, 380])]).unwrap();
+    l.run(
+        8,
+        &[
+            Action::Press([641, 380]),
+            Action::Pointer([641, 300]),
+            Action::RightPress,
+            Action::RightRelease,
+        ],
+    )
+    .unwrap();
+    assert_eq!((l.held, l.kingdom.tops[0]), (None, 1));
+    l.run(9, &[Action::Release([641, 300])]).unwrap();
+    l.kingdom.tops[0] = 0;
     // Clicked at once on a list's arrow: its command; on the minimap its loop at once over
     // (E24 M3 T6b2), on the status window its click (no kingdom's window known: nothing built),
     // on no item nothing.
-    l.run(6, &[Action::Click([641, 380])]).unwrap();
+    l.run(16, &[Action::Click([641, 380])]).unwrap();
     assert_eq!(l.kingdom.tops[0], 1);
-    l.run(7, &[Action::Click([700, 100])]).unwrap();
-    assert!(!l.dragging);
-    l.run(8, &[Action::Click([700, 480]), Action::Click([700, 2])])
+    l.run(17, &[Action::Click([700, 100])]).unwrap();
+    assert!(l.dragging.is_none());
+    l.run(18, &[Action::Click([700, 480]), Action::Click([700, 2])])
         .unwrap();
     assert_eq!((l.asked, l.status_held), (2, false));
     // Each list's arrows held at its ends: the up one at the top, the down one past the end.
@@ -2219,6 +2296,80 @@ fn a_hold_and_what_it_drops() {
         l.scroll_list(true, false);
     }
     assert_eq!(l.kingdom.tops, [2, 1]);
+}
+
+/// E24 M3 T7's review, F4-4: a hotkey's button released by the mouse meanwhile, its key's up does
+/// nothing (0x4564D6: the button found released); F4-3: a click taken from the queue after a key's
+/// step leaves the pointer where the mouse is now, its own point deciding.
+#[test]
+fn a_hotkeys_up_after_the_mouse_and_a_click_taken_after_a_step() {
+    let (start, _, _, _) = choosing("choose-lists");
+    let r = rules(Bugs::Original);
+    let mut l = Loop::start(r.clone(), &start).unwrap();
+    l.buttons.next_hero = true;
+    l.run(1, &[Action::Key(Hotkey::NextHero)]).unwrap();
+    assert_eq!(l.drawn().pressed, [11]);
+    l.run(2, &[Action::Press([711, 340]), Action::Release([711, 340])])
+        .unwrap();
+    let chosen = l.kingdom.selected;
+    assert_ne!(chosen, start.kingdom.selected);
+    l.run(3, &[Action::KeyUp(Hotkey::NextHero)]).unwrap();
+    assert_eq!((l.kingdom.selected, l.keyed.len()), (chosen, 0));
+    // Held by the key, slid off by the mouse's hold and let go there: no command either.
+    l.run(
+        4,
+        &[Action::Key(Hotkey::NextHero), Action::Press([711, 340])],
+    )
+    .unwrap();
+    l.run(
+        5,
+        &[Action::Pointer([711, 300]), Action::Release([711, 300])],
+    )
+    .unwrap();
+    l.run(6, &[Action::KeyUp(Hotkey::NextHero)]).unwrap();
+    assert_eq!(l.kingdom.selected, chosen);
+    // During a key's step a click on the hero list's arrow, then a move: after the step the click
+    // scrolls, the pointer stays the move's.
+    let mut l = Loop::start(r.clone(), &start).unwrap();
+    l.run(1, &[Action::Step(Direction::South)]).unwrap();
+    assert!(l.moving.is_some());
+    l.run(
+        2,
+        &[
+            Action::Press([641, 380]),
+            Action::Release([641, 380]),
+            Action::Pointer([700, 100]),
+        ],
+    )
+    .unwrap();
+    let mut t = 3;
+    while l.moving.is_some() {
+        l.run(t, &[]).unwrap();
+        t += 1;
+    }
+    assert_eq!((l.pointer, l.held), ([700, 100], None));
+    assert_eq!(l.kingdom.tops[0], 1);
+    // A minimap's press, move and release, then a move, during a key's step: after it the drag's
+    // moves decide its corner, the pointer stays the last move's.
+    let mut l = Loop::start(r, &start).unwrap();
+    l.run(1, &[Action::Step(Direction::South)]).unwrap();
+    l.run(
+        2,
+        &[
+            Action::Press([650, 50]),
+            Action::Pointer([700, 100]),
+            Action::Release([700, 100]),
+            Action::Pointer([700, 480]),
+        ],
+    )
+    .unwrap();
+    let mut t = 3;
+    while l.moving.is_some() {
+        l.run(t, &[]).unwrap();
+        t += 1;
+    }
+    assert_eq!((l.pointer, l.dragging), ([700, 480], None));
+    assert_eq!(l.drawn().minimap.view, l.view);
 }
 
 #[test]
@@ -2271,7 +2422,7 @@ fn the_lists_slots_and_what_they_refuse() {
         h.asleep = true;
     }
     let mut l = Loop::start(r, &asleep).unwrap();
-    l.next_hero(1);
+    l.next_hero(1).unwrap();
     assert_eq!(l.kingdom.selected, start.kingdom.selected);
     assert!(l.path.is_empty());
 }
@@ -2318,11 +2469,16 @@ fn a_choice_with_the_facts_and_the_sound() {
     for h in &mut l.kingdom.heroes {
         h.movable = true;
     }
-    l.next_hero(2);
+    l.next_hero(2).unwrap();
     assert_eq!(l.kingdom.selected, Selected::Hero(1));
     l.kingdom.selected = Selected::Hero(0);
-    l.next_hero(3);
+    l.next_hero(3).unwrap();
     assert_eq!(l.kingdom.selected, Selected::Hero(0));
+    // In a recording that hero's choice missing refuses next hero's command (E24 M3 T7's review,
+    // F4-6): its frames would show the hero chosen.
+    l.live = false;
+    assert_eq!(l.next_hero(4), Err(Unplayable::Command(11)));
+    l.live = true;
     // A town chosen and a button pressed with the sound: its cues.
     let (start, _, _, _) = choosing("choose-lists");
     let tiles = crate::sound::tests::tiles(36, |x, _| u8::from(x > 10), |_, _| None);
@@ -2421,14 +2577,19 @@ fn the_minimap_s_click_and_its_loop() {
     // the minimap and the objects' step when due; the hero put back.
     l.run(200, &[Action::Press([650, 50])]).unwrap();
     assert_eq!(corner(&l), [5 - 9, 6 - 8]);
-    assert!(l.dragging && !l.lifted);
+    assert!(l.dragging.is_some() && !l.lifted);
     assert_eq!((l.drawn().view, l.drawn().minimap.view), (l.view, l.view));
     let stepped = l.steps;
     // Moves: inside, past the right and bottom edges (held at the edge: the last tile), past the
     // top-left corner (the first).
     l.run(201, &[Action::Pointer([700, 100])]).unwrap();
     assert_eq!(corner(&l), [17 - 9, 18 - 8]);
-    l.run(202, &[Action::Pointer([790, 200])]).unwrap();
+    // The window's point off the frame (its focus lost) is no move (E24 M3 T7's review, F4-2).
+    l.run(
+        202,
+        &[Action::Pointer([790, 200]), Action::Pointer([-1, -1])],
+    )
+    .unwrap();
     assert_eq!(corner(&l), [35 - 9, 35 - 8]);
     l.run(203, &[Action::Pointer([600, 20])]).unwrap();
     assert_eq!(corner(&l), [-9, -8]);
@@ -2447,15 +2608,15 @@ fn the_minimap_s_click_and_its_loop() {
     assert_eq!((l.drawn(), l.steps, l.keyed.len()), (&drawn, stepped, 0));
     // Released where it was: no move, no redraw, then the loop's next turn redraws as due.
     l.run(601, &[Action::Release([600, 20])]).unwrap();
-    assert!(!l.dragging);
+    assert!(l.dragging.is_none());
     assert!(l.steps > stepped);
     // Released at another point: its move drawn first.
     l.run(700, &[Action::Press([650, 50])]).unwrap();
     l.run(701, &[Action::Release([740, 90])]).unwrap();
-    assert_eq!((corner(&l), l.dragging), ([27 - 9, 16 - 8], false));
+    assert_eq!((corner(&l), l.dragging), ([27 - 9, 16 - 8], None));
     // A click: pressed and released at once.
     l.run(800, &[Action::Click([773, 169])]).unwrap();
-    assert_eq!((corner(&l), l.dragging), ([26, 27], false));
+    assert_eq!((corner(&l), l.dragging), ([26, 27], None));
     // On the underground the minimap's level follows the view.
     l.underground(900);
     l.run(901, &[Action::Click([630, 26])]).unwrap();
@@ -2473,9 +2634,9 @@ fn the_minimap_s_click_and_its_loop() {
     bare.panels = PanelItems::default();
     let mut l = Loop::start(bare, &start).unwrap();
     l.minimap_press(1, [650, 50]);
-    assert!(!l.dragging);
-    l.dragging = true;
-    l.drag(2, Action::Pointer([660, 60]));
+    assert!(l.dragging.is_none());
+    l.dragging = Some([650, 50]);
+    l.drag(2, Action::Pointer([660, 60]), true);
     assert_eq!(corner(&l), [0, 0]);
 }
 

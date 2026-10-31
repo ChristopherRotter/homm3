@@ -86,6 +86,29 @@ fn idle() -> Replay {
     Replay::new(rules(Bugs::Fixed), &start, actions).unwrap()
 }
 
+/// E24 M3 T7's review, F2-1: a frame shows another change only with the same draw, buttons and
+/// cursor drawn, whatever their milliseconds.
+#[test]
+fn a_change_shows_another_with_its_draw_buttons_and_cursor() {
+    let change = headless("walk-1").remove(0);
+    let later = Change {
+        t: change.t + 5,
+        ..change.clone()
+    };
+    assert!(change.shows(change.cursor, &later, later.cursor));
+    let mut buttons = later.clone();
+    buttons.buttons.move_hero = !buttons.buttons.move_hero;
+    assert!(!change.shows(change.cursor, &buttons, buttons.cursor));
+    let mut drawn = later.clone();
+    drawn.drawn.frames += 1;
+    assert!(!change.shows(change.cursor, &drawn, drawn.cursor));
+    let moved = Cursor {
+        at: [1, 2],
+        ..change.cursor
+    };
+    assert!(!change.shows(change.cursor, &later, moved));
+}
+
 #[test]
 fn the_change_shown_at_a_time_and_the_next() {
     let mut r = idle();

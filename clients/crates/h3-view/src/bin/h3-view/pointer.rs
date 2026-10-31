@@ -8,7 +8,7 @@ use h3_protocol::wire::{Command, Manifest, Observation, Side, Stack};
 use h3_render::Bugs;
 use h3_ui::text::Catalogue;
 use h3_view::anim::Timeline;
-use h3_view::auto::Auto;
+use h3_view::auto::{Auto, turn_at};
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::aim::Aim;
 use h3_view::mouse::track::{self, Input, Lens, Shown, Start, Turn};
@@ -100,7 +100,9 @@ const BOOK_PLACES: u8 = 12;
 /// (`handle` gives its handle) takes a target: the aim starts with the mouse there; `key:Escape`
 /// gives an aim up. E17 M5 T4c1 (design §7.22): Auto Combat's key (`key:a`, the original's
 /// table) switches it on ([`Input::Auto`]); while it plays, a `key:`, `hex:` or `click:` stops it
-/// ([`Input::Stop`]: the click moves the mouse and gives nothing). E17 M5 T4c2b: a battle that
+/// ([`Input::Stop`]: the click moves the mouse and gives nothing); each in the turn started last
+/// by its time ([`turn_at`]; the switch trusted to come on a human's waiting turn, as the
+/// harness pressed it, T8b2 R5c-8). E17 M5 T4c2b: a battle that
 /// opens with the tactics phase's message (`told`) takes its first `key:Return` as the box's OK,
 /// which gives nothing (the first turn starts); the phase's `key:space` and `key:Return` are its
 /// panel's Next Creature and Start Combat. *Not modelled:* the book over the battlefield, the
@@ -140,7 +142,10 @@ pub fn inputs(
                 };
                 out.push(Input::Move { at: now, to });
                 out.push(if core::mem::take(&mut auto) {
-                    Input::Stop { at: now }
+                    Input::Stop {
+                        at: now,
+                        turn: turn_at(&timeline.turns, now),
+                    }
                 } else {
                     Input::Act { at: now }
                 });
@@ -149,10 +154,16 @@ pub fn inputs(
             // The tactics phase's message closed by its OK (E17 M5 T4c2b).
             "key" if arg == "Return" && core::mem::take(&mut told) => {}
             // A key while Auto Combat plays stops it (E17 M5 T4c1).
-            "key" if core::mem::take(&mut auto) => out.push(Input::Stop { at: now }),
+            "key" if core::mem::take(&mut auto) => out.push(Input::Stop {
+                at: now,
+                turn: turn_at(&timeline.turns, now),
+            }),
             "key" if auto_combat(arg) => {
                 auto = true;
-                out.push(Input::Auto { at: now });
+                out.push(Input::Auto {
+                    at: now,
+                    turn: turn_at(&timeline.turns, now),
+                });
             }
             "move" => out.push(Input::Move {
                 at: now,
@@ -460,7 +471,9 @@ fn actions(timeline: &Timeline) -> Vec<Start> {
 /// (again only when its engine's battle changed in place, or, its start not final yet, when the
 /// timeline grew: a turn's facing at its start never changes after), and the mouse followed on
 /// from its last mark ([`track::follow_on`]): a move pays for the inputs since the last turn's
-/// start, not for the battle so far.
+/// start, not for the battle so far. Auto Combat comes from the battle's own switches and stops
+/// (T8b2, R5c-3: a handful, kept apart from the mouse's inputs, so [`Auto::of`] runs over the
+/// turns only).
 #[derive(Debug, Default)]
 pub struct Follower<'l> {
     /// Each turn read, and whether the timeline was final at its start then.
@@ -472,6 +485,9 @@ pub struct Follower<'l> {
     /// The lowest index of the engine's battles changed in place since the turns were read.
     touched: Option<usize>,
     mark: Option<track::Mark<'l>>,
+    /// Auto Combat as the last call had it: a turn before the mark it plays otherwise now drops
+    /// the mark.
+    auto: Auto,
 }
 
 /// A turn as [`Follower`] read it.
@@ -553,16 +569,22 @@ impl<'l> Follower<'l> {
         }
     }
 
-    /// What the mouse shows through `timeline` by `inputs` (as [`shown`]'s, the hints in `name`'s
-    /// words, the turns as last read): where in what the last call showed (cut there,
-    /// [`Shown::splice`]) the lists returned go.
+    /// What the mouse shows through `timeline` by `inputs` and Auto Combat's `switches` (the
+    /// battle's [`Input::Auto`] and [`Input::Stop`]; the inputs' own do nothing here): as
+    /// [`shown`]'s by the inputs with the switches among them (the hints in `name`'s words, the
+    /// turns as last read): where in what the last call showed (cut there, [`Shown::splice`])
+    /// the lists returned go.
     pub fn shown(
         &mut self,
         timeline: &Timeline,
-        inputs: &[Input],
+        (inputs, switches): (&[Input], &[Input]),
         (layout, name, bugs): (&'l BattleLayout, Name<'_>, Bugs),
     ) -> (Lens, Shown) {
-        let auto = Auto::of(inputs, &self.starts);
+        let auto = Auto::of(switches, &self.starts);
+        let before = self.mark.as_ref().map_or(0, track::Mark::turn);
+        if (0..before).any(|k| auto.from_start(k) != self.auto.from_start(k)) {
+            self.mark = None;
+        }
         let turns: Vec<Turn<'_>> = (self.turns.iter().enumerate())
             .map(|(k, (r, _))| Turn {
                 field: Field {
@@ -577,6 +599,7 @@ impl<'l> Follower<'l> {
         let log = (&timeline.log[..], &self.actions[..], &turns[..]);
         let (from, shown, mark) = track::follow_on(self.mark.take(), log, inputs, layout, name);
         self.mark = mark;
+        self.auto = auto;
         (from, shown)
     }
 }
@@ -691,15 +714,21 @@ mod tests {
             &mut self,
             (timeline, settled, grew): (&Timeline, u32, bool),
             turned: &[Turned],
-            inputs: &[Input],
+            (inputs, switches): (&[Input], &[Input]),
         ) {
             let name = |hint: &Hint, _: &Observation| format!("{hint:?}");
             let read = (timeline, turned);
             (self.follower).read(self.record, read, self.tables, (settled, grew));
             let words = (self.layout, &name as _, Bugs::Fixed);
-            let (from, tail) = self.follower.shown(timeline, inputs, words);
+            let (from, tail) = self.follower.shown(timeline, (inputs, switches), words);
             let words = (self.layout, &name as _);
-            let whole = followed(self.record, read, inputs, words, (self.tables, Bugs::Fixed));
+            // The whole follow's inputs: the switches among the mouse's by time.
+            let mut all = inputs.to_vec();
+            for &switch in switches {
+                let i = all.partition_point(|i| i.at() <= switch.at());
+                all.insert(i, switch);
+            }
+            let whole = followed(self.record, read, &all, words, (self.tables, Bugs::Fixed));
             let same = self.shown.ends_with(from, &tail);
             assert_eq!(same, self.shown == whole, "step {}", self.checked);
             self.shown.splice(from, tail);
@@ -748,7 +777,11 @@ mod tests {
             shown: Shown::default(),
             checked: 0,
         };
-        steps.check((&timeline, growing.timeline().end, true), &turned, &[]);
+        steps.check(
+            (&timeline, growing.timeline().end, true),
+            &turned,
+            (&[], &[]),
+        );
         let hexes = [40, 57, 75, 90, 110, 128, 150].map(|h| hex_point(&layout, h));
         let points: Vec<[i32; 2]> = hexes
             .into_iter()
@@ -756,6 +789,8 @@ mod tests {
             .collect();
         let mut point = points.iter().copied().cycle();
         let mut inputs: Vec<Input> = Vec::new();
+        // Auto Combat's switches and stops, the battle's own (T8b2, R5c-3).
+        let mut switches: Vec<Input> = Vec::new();
         let mut press = 0;
         for c in 0.. {
             let start = growing.timeline().turns.last().map_or(0, |&(t, _)| t);
@@ -771,7 +806,7 @@ mod tests {
             for at in times {
                 let to = point.next().unwrap();
                 inputs.push(Input::Move { at, to });
-                steps.check(waits, &turned, &inputs);
+                steps.check(waits, &turned, (&inputs, &switches));
             }
             let mut now = end + 33 * 4;
             if c % 3 == 1 {
@@ -785,17 +820,33 @@ mod tests {
                 ];
                 for input in book {
                     inputs.push(input);
-                    steps.check(waits, &turned, &inputs);
+                    steps.check(waits, &turned, (&inputs, &switches));
                 }
                 now += 30;
+            }
+            // Auto Combat switched on in the turn waiting, stopped in a later one (R5c-3); once a
+            // switch naming the opening's turn: every turn before the mark plays otherwise.
+            let turn = growing.timeline().turns.len();
+            let switch = match c % 6 {
+                1 => Some(Input::Auto { at: now, turn }),
+                4 => Some(Input::Stop { at: now, turn }),
+                _ => None,
+            };
+            if let Some(switch) = switch {
+                switches.push(switch);
+                steps.check(waits, &turned, (&inputs, &switches));
+            }
+            if c == 30 {
+                switches.insert(0, Input::Auto { at: 0, turn: 0 });
+                steps.check(waits, &turned, (&inputs, &switches));
             }
             if c % 5 == 2 {
                 // A seek back to the turn's start, then a move from there.
                 inputs.retain(|i| i.at() <= start);
-                steps.check(waits, &turned, &inputs);
+                steps.check(waits, &turned, (&inputs, &switches));
                 let to = point.next().unwrap();
                 inputs.push(Input::Move { at: start, to });
-                steps.check(waits, &turned, &inputs);
+                steps.check(waits, &turned, (&inputs, &switches));
             }
             if c % 4 == 3
                 && let Some(turn) = turned.last_mut()
@@ -803,14 +854,14 @@ mod tests {
                 // The turn's battle changed in place (as the book's aim changes it).
                 turn.commands.pop();
                 steps.follower.touch(turned.len() - 1);
-                steps.check(waits, &turned, &inputs);
+                steps.check(waits, &turned, (&inputs, &switches));
             }
             press = now;
             inputs.push(Input::Act { at: press });
             // The first commands defend: a longer battle, its rounds' starts among its turns.
             let choice = live.choice().unwrap();
             let choice = if c < 48 { Command::Defend {} } else { choice };
-            let played = live.play(choice).unwrap();
+            let played = live.play(choice).unwrap().unwrap();
             let (events, seen): (Vec<_>, Vec<_>) = played.events.into_iter().unzip();
             let given = Given {
                 at: Some(press.max(end)),
@@ -820,11 +871,15 @@ mod tests {
             turned.extend(live.turn());
             if live.over() {
                 let end = growing.finish();
-                steps.check((&end, u32::MAX, true), &turned, &inputs);
+                steps.check((&end, u32::MAX, true), &turned, (&inputs, &switches));
                 break;
             }
             timeline = growing.waiting();
-            steps.check((&timeline, growing.timeline().end, true), &turned, &inputs);
+            steps.check(
+                (&timeline, growing.timeline().end, true),
+                &turned,
+                (&inputs, &switches),
+            );
         }
         assert!(steps.checked > 600, "{}", steps.checked);
     }
@@ -843,15 +898,15 @@ mod tests {
             got,
             vec![
                 Input::Move { at: 0, to: PARK },
-                Input::Auto { at: 0 },
+                Input::Auto { at: 0, turn: 0 },
                 Input::Move {
                     at: 10,
                     to: hex_point(&layout, 40)
                 },
-                Input::Stop { at: 10 },
+                Input::Stop { at: 10, turn: 0 },
                 Input::Move { at: 10, to: PARK },
-                Input::Auto { at: 10 },
-                Input::Stop { at: 10 },
+                Input::Auto { at: 10, turn: 0 },
+                Input::Stop { at: 10, turn: 0 },
                 Input::Act { at: 10 },
             ]
         );
