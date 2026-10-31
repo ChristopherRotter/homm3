@@ -145,8 +145,10 @@ stack's and a turret's info, the right button's popups, the combat options dialo
 settings in effect; with them M5's gaps (its review list's "not built") and the items that
 waited in the inbox for a free slot. Ranked play and the server browser follow as M7.
 
-- **T1, the answered slips:** CLT-Q26, Q27 (1) and (2), Q28 with the text's centring
-  everywhere, Q33 and Q35 fixed in the client's profile, the original's for the comparisons only.
+- **T1, the answered slips** (done 2026-10-31): CLT-Q26, Q27 (1) and (2), Q28 with the text's
+  centring everywhere (the box's text the readings' only one off its centre), Q33 and Q35 (its
+  tune and clip with its text) fixed in the client's profile, the original's for the comparisons
+  only; `drawn` all the same.
 - **T2, a stack's info:** the left press on a stack opens its stats dialog (0x468860), the right
   button held over it shows it as a popup (0x4769C0), a turret's info (0x47A380); recorded.
 - **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
@@ -235,4 +237,18 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14, M3 2026-10-23, M4 2026-10-27
 moved there on 2026-10-20, M3 at its review, T9b, M4 at its review, T3c, M5 at its review, T8c).
 The next milestone's list starts here.
 
-**M6** (for its closure, T7): none yet.
+**M6** (for its closure, T7):
+
+1. The profile's switches of the answered slips (T1): `book::Memory::new` (a session's memory
+   in its profile, the default the client's), `message::layout`'s `(player, bugs)` and
+   `message::framed`, `results::Sources::bugs`, `sound::end_tune`'s `bugs`; the comparisons
+   (`render`, `sequences`, the book's stills) build the original's.
+2. The window's boxes framed by the acting side (T1, CLT-Q28 (2)): the controller of the turn the
+   box's time falls in (`Timeline::controllers`, as the panel's), the tactics phase's side for its
+   message; the result window keeps the viewing player's colours (no side's question).
+3. CLT-Q35's tune and clip (T1): the user answered for the text; the agent took the tune and the
+   clip of the same branch with it, so the window that says the defender's army fell plays
+   `LoseCombat` and its clip, not the fleeing ones.
+4. The centring directive's survey (T1): the battle's readings (design §7.17 to §7.24, §9) set
+   one text off its centre, the message box's; the text drawer's halves truncated (an odd
+   difference a pixel left) are the integer centre, not a slip.

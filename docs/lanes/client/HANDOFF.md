@@ -12,8 +12,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (QUEUE, the epic's M6): T1 the answered slips, T2 a stack's info, T3 the right button's other
   popups, T4 the combat options dialog, T5 M5's gaps, T6 the inbox's waiting items (the deck and
   boats, CLT-Q30's exact Bink, the Demons' dissolve, `h3_ui::paint`, the purity holes, R4-2,
-  R4-9), T7 the closure; then M7 ranked play and the server browser. **T8c's PR** from
-  `client/e17-m5-t8c` (docs only; check it first). **Next: M6 T1** (small; ready). M5's record:
+  R4-9), T7 the closure; then M7 ranked play and the server browser. **T1 done** (the answered
+  slips, PR from `client/e17-m6-t1`, stacked on T8c's #618: check both first). **Next: M6 T2**
+  (a stack's info; likely cut at its start). M5's record:
   `E17-archive.md`, `E17-log.md` ("M5 T1a" to "M5 T8c", "M5 review list").
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
@@ -42,11 +43,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-31, E17 M5 T8c (done; its PR open: check it first).** The original data staged
-  (57 files, before anything else); #616 and #617 merged that morning, CI green on `master`.
-  The user's checkpoint: the review list accepted as built, CLT-Q35 and the five older questions
-  answered one by one (Q28 with the centring directive), M6 refined (draft (A), the battle
-  screen first). Docs only: M5 archived, the queue's M6 tasks, informational notices archived.
+- **2026-10-31, E17 M5 T8c and M6 T1 (done; #618 and T1's PR open: check them first).** The
+  original data staged (57 files, before anything else); #616 and #617 merged that morning, CI
+  green on `master`; the VM restarted ~20 minutes in (the baseline lost). T8c, the user's
+  checkpoint: the review list accepted as built, CLT-Q35 and the five older questions answered
+  one by one (Q28 with the centring directive), M6 refined (draft (A)); docs only. M6 T1: the
+  answered slips fixed in the client's profile; `drawn` all the same; `check.sh`.
 
 - **2026-10-30/31, E17 M5 T8b2 (done; #616 merged).** The original data staged
   (the user's computer offline half an hour in); the user's cut: three concurrent sub-agents, the
