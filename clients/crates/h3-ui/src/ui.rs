@@ -564,11 +564,14 @@ impl Dialog {
             return Vec::new();
         };
         let [x, y] = self.place;
+        // Saturating, as `draws` places the items: a crafted layout's shadow refuses nothing
+        // but must not overflow (the release build checks overflow).
+        let (xw, yh) = (x.saturating_add(w), y.saturating_add(h));
         [
-            [x + w, y + 9, 7, h - 9],
-            [x + w, y + 8, 8, h - 8],
-            [x + 9, y + h, w - 2, 7],
-            [x + 8, y + h, w, 8],
+            [xw, y.saturating_add(9), 7, h.saturating_sub(9)],
+            [xw, y.saturating_add(8), 8, h.saturating_sub(8)],
+            [x.saturating_add(9), yh, w.saturating_sub(2), 7],
+            [x.saturating_add(8), yh, w, 8],
         ]
         .into_iter()
         .map(|rect| Draw::Darken { rect })

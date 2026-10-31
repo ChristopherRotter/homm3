@@ -2336,9 +2336,10 @@ status bar compared, `masks.toml`'s `hinted`).
   0x4FCE20: none gives 0, no text), 34 a hero's text as its slot's, 98 a town's as its slot's, 54 on
   an entrance "%s %s" (0x660344) with the size word of its count (the word's low 12 bits;
   `creature_quantity_word` 0x44ADE0 with form 1: ARRAYTXT's records 175 + 3 n) and its creature's
-  plural name (+0x18, none above 150); every class without a case (0x40D0E7) its name
-  (`object_names` 0x6A79EC: OBJNAMES's record per class, 0 to 231); the other 58 cases (visits,
-  owners, contents): T6a2. The message buffer set into the status bar, drawn and shown at once
+  plural name (+0x18, none above 150), off an entrance nothing (the original writes nothing there,
+  0x40C342, its bar keeping the buffer's last text: the client's fix, MCL-Q27); every class without
+  a case (0x40D0E7) its name (`object_names` 0x6A79EC: OBJNAMES's record per class, 0 to 231); the
+  other 55 cases (visits, owners, contents): T6a2. The message buffer set into the status bar, drawn and shown at once
   (0x40D178 to 0x40D1D1).
 - **Built:** the live part's `[hover]` (the facts only the game knows: each object's entrance word
   and army, the towns' names and types, the heroes' indices and own names, the viewer's lists, the

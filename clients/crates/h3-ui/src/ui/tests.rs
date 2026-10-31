@@ -417,6 +417,27 @@ fn a_dialog_with_a_shadow_darkens_two_strips_twice_inside() {
 }
 
 #[test]
+fn a_crafted_shadow_at_the_integers_end_saturates() {
+    // T7b2 (F6-1): a layout's shadow is not bounded when it loads; its strips saturate.
+    let mut d = book();
+    d.place = [8, 0];
+    d.shadow = Some([i32::MAX, 600]);
+    let rects: Vec<[i32; 4]> = d
+        .shadow_draws()
+        .into_iter()
+        .map(|draw| match draw {
+            Draw::Darken { rect } => rect,
+            other => panic!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(rects[0], [i32::MAX, 9, 7, 591]);
+    assert_eq!(rects[2], [17, 600, i32::MAX - 2, 7]);
+    d.place = [i32::MIN, i32::MIN];
+    d.shadow = Some([i32::MIN, i32::MIN]);
+    assert_eq!(d.shadow_draws().len(), 4);
+}
+
+#[test]
 fn a_button_takes_a_players_colours_and_a_def_by_its_id() {
     // The adventure screen's buttons in the viewer's colours (0x4569E0) and its underground's
     // DEF by the level (0x403C40; E24 M3 T2a).

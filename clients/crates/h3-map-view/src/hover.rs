@@ -465,6 +465,8 @@ impl Hint {
     #[must_use]
     pub fn text(&self, names: &BTreeMap<u8, String>, texts: &Catalogue) -> String {
         let plain = |key: &str| texts.text(key, &Args::new());
+        // A family's entry named by data: empty past the family (MCL-Q21 (a); T7b2, F3-3).
+        let named = |key: &str| texts.known(key, &Args::new()).unwrap_or_default();
         match *self {
             Self::Empty => String::new(),
             Self::Panel(n) => plain(&alloc::format!("map-hint.{n}")),
@@ -475,16 +477,16 @@ impl Hint {
             } => {
                 let name = match names.get(&id) {
                     Some(own) if own_name => own.clone(),
-                    _ => plain(&hero_key(id)),
+                    _ => named(&hero_key(id)),
                 };
-                let class = plain(&alloc::format!("hero-class.{class}"));
+                let class = named(&alloc::format!("hero-class.{class}"));
                 let args = Args::new().text("name", &name).text("class", &class);
                 texts.text("map.hint.hero", &args)
             }
             Self::Town { name, kind } => {
                 let args = Args::new()
-                    .text("name", &plain(&town_key(name)))
-                    .text("type", &plain(&alloc::format!("town-type.{kind}")));
+                    .text("name", &named(&town_key(name)))
+                    .text("type", &named(&alloc::format!("town-type.{kind}")));
                 texts.text("map.hint.town", &args)
             }
             Self::Object(class) if class < CLASSES => plain(&alloc::format!("object.{class}")),
@@ -493,7 +495,9 @@ impl Hint {
                 let size = SIZES.iter().take_while(|&&s| count >= s).count();
                 let creature = if creature <= LAST_CREATURE {
                     let args = Args::new().count(2);
-                    texts.text(&alloc::format!("creature.{creature}"), &args)
+                    texts
+                        .known(&alloc::format!("creature.{creature}"), &args)
+                        .unwrap_or_default()
                 } else {
                     String::new()
                 };
@@ -809,6 +813,9 @@ impl Hover {
                 creature: tile.subclass,
                 count: tile.word.unwrap_or(0) & COUNT,
             },
+            // Off its entrance the original's case 54 jumps to the tail without writing the
+            // message buffer (0x40C33E, 0x40C342), so its bar shows the buffer's last text; the
+            // client's fix shows nothing (MCL-Q27 (a), as MCL-Q21's family; T7b2, F3-2).
             MONSTER => Hint::Empty,
             class if tile.entrance && VISITS.contains(&class) => self.visits(class, &tile),
             class => self.contents(class, &tile),

@@ -408,6 +408,119 @@ fn reach_is_the_rectangle_each_drawer_can_change() {
 }
 
 #[test]
+fn every_pixel_a_drawer_changes_lies_inside_its_reach() {
+    // T7b2 (F6-3): the partial redraw is exact only if `draw` changes nothing outside `reach`
+    // (design §4.6): each kind drawn on a screen of a colour no draw uses, every changed pixel
+    // inside its rectangle. The texts take glyphs with negative spaces first, inside and last,
+    // lines wider than their box, every alignment and both profiles; a mirrored button's frame
+    // fills only part of its canvas.
+    let mut s = store();
+    let mut f = font();
+    f.height = 2;
+    let mut glyph = |c: u8, left, width, right| {
+        let g = &mut f.glyphs[usize::from(c)];
+        (g.left, g.width, g.right) = (left, width, right);
+        g.pixels = vec![0xFF; usize::try_from(width * 2).unwrap()];
+    };
+    glyph(b'a', -2, 2, 0);
+    glyph(b'b', 0, 3, -2);
+    glyph(b'c', 1, 1, 1);
+    glyph(b'd', -1, 2, -1);
+    glyph(b' ', 0, 0, 2);
+    s.fonts.insert("o.fnt".into(), f);
+    let mut part = sprite();
+    let frame = part.frames.get_mut(&1).unwrap();
+    (frame.full_width, frame.left) = (5, 1);
+    s.sprites.insert("m.def".into(), part);
+    let sentinel = FORMAT.pack(Rgb {
+        r: 200,
+        g: 100,
+        b: 48,
+    });
+    let check = |d: &Draw| -> usize {
+        let mut out = Screen::new(40, 12, FORMAT).unwrap();
+        out.fill(sentinel);
+        let [l, t, r, b] = reach(d, &s).unwrap();
+        let mut changed = 0;
+        for bugs in [Bugs::Original, Bugs::Fixed] {
+            draw(&mut out, d, &s, bugs).unwrap();
+            for y in 0..12 {
+                for x in 0..40 {
+                    if out.pixel(x, y) != Some(sentinel) {
+                        changed += 1;
+                        let inside = (l..r).contains(&(x as i32)) && (t..b).contains(&(y as i32));
+                        assert!(
+                            inside,
+                            "{d:?} changed ({x}, {y}) outside {:?}",
+                            [l, t, r, b]
+                        );
+                    }
+                }
+            }
+        }
+        changed
+    };
+    for text in [
+        "abc",
+        "cab",
+        "bcd",
+        "dddd",
+        "ab ab ab",
+        "cccccccccc",
+        "a",
+        "b",
+    ] {
+        for align in [0, 1, 2, 3, 1 | 4, 2 | 8] {
+            let mut item = label_item("o.fnt", "game.pal");
+            (item.size, item.align) = ([6, 4], align);
+            let label = Draw::Label {
+                item: item.clone(),
+                x: 10,
+                y: 3,
+                text: text.into(),
+                disabled: false,
+            };
+            assert!(check(&label) > 0, "{text} {align}");
+            let mut item = text_item("q.pcx", "o.fnt", "game.pal");
+            (item.size, item.align) = ([6, 4], align);
+            let text = Draw::Text {
+                item,
+                x: 10,
+                y: 3,
+                text: text.into(),
+            };
+            assert!(check(&text) > 0);
+        }
+    }
+    for mirrored in [false, true] {
+        let button = Draw::Button {
+            def: "m.def".into(),
+            frame: 0,
+            x: 7,
+            y: 2,
+            mirrored,
+            player: None,
+        };
+        assert!(check(&button) > 0);
+    }
+    for size in [None, Some([1, 1])] {
+        let picture = Draw::Picture {
+            picture: "q.pcx".into(),
+            x: 3,
+            y: 5,
+            player: None,
+            size,
+        };
+        assert!(check(&picture) > 0);
+    }
+    assert!(
+        check(&Draw::Darken {
+            rect: [38, 10, 5, 5]
+        }) > 0
+    );
+}
+
+#[test]
 fn a_texts_reach_takes_the_fonts_widest_overhangs() {
     // E24 M3 T5a: a negative left space may put a glyph's pixels left of the box, a negative
     // right one past its right edge; positive spaces widen nothing; the rows stay the box's.
@@ -466,6 +579,32 @@ fn a_text_is_its_picture_opaque_then_the_text() {
         failing(text_item("q.pcx", "f.fnt", "no.pal")),
         Err("no.pal".to_string())
     );
+}
+
+#[test]
+fn a_crafted_box_or_colour_at_the_integers_end_draws_without_overflowing() {
+    // T7b2 (F1-1): the release build checks overflow; a layout's text box or label colour at
+    // the end of its type is drawn as far as the screen goes, never a panic.
+    let s = store();
+    let mut item = text_item("q.pcx", "f.fnt", "game.pal");
+    item.size = [i32::MAX, i32::MAX];
+    let text = Draw::Text {
+        item,
+        x: 1,
+        y: 1,
+        text: "1".into(),
+    };
+    let _ = draw(&mut screen(2), &text, &s, Bugs::Fixed);
+    let mut item = label_item("f.fnt", "game.pal");
+    item.colour = u32::MAX;
+    let label = Draw::Label {
+        item,
+        x: 0,
+        y: 0,
+        text: "1".into(),
+        disabled: true,
+    };
+    let _ = draw(&mut screen(2), &label, &s, Bugs::Fixed);
 }
 
 #[test]

@@ -98,6 +98,10 @@ pub mod id {
 pub const HALLS: u16 = 4;
 /// The places of a row of flags.
 pub const FLAGS: u16 = 8;
+/// The creatures an army can hold, 0 to 148 (the Ammo Cart; no army holds the Arrow Tower,
+/// 149): `cprsmall.def`'s frames 2 to 150 after its blank and its unknown (the installation's
+/// DEF, 151 frames; T7b2, F6-4). The gate asks the status window's DEF for all of them.
+pub const ARMY_CREATURES: u32 = 149;
 
 /// The army's slots.
 pub const SLOTS: u16 = 7;

@@ -709,11 +709,11 @@ impl Situation {
                     h.at, h.owner
                 ));
             };
-            let written = h.points.is_some() || h.mana.is_some();
-            if h.owner != 0 && (!h.walk.is_empty() || h.path.is_some() || written) {
+            // Everything the harness writes into a record is Red's alone (E24 M3 T7b2, F5-6: the
+            // status window's facts too, as `HeroSpec`'s docs give them).
+            if h.owner != 0 && (!h.walk.is_empty() || h.path.is_some() || h.written()) {
                 return Err(format!(
-                    "hero at {:?}: only Red's heroes walk, show a path or have points or mana \
-                     written",
+                    "hero at {:?}: only Red's heroes walk, show a path or have anything written",
                     h.at
                 ));
             }

@@ -115,6 +115,14 @@ impl Catalogue {
     /// has is shown as itself.
     #[must_use]
     pub fn text(&self, key: &str, args: &Args) -> String {
+        self.known(key, args).unwrap_or_else(|| key.to_string())
+    }
+
+    /// The text of `key` with `args` as [`Catalogue::text`] gives it, or none when no pack has
+    /// the key: for a family's entry named by data (a creature, a hero, a spell), which a
+    /// crafted file may name past its family.
+    #[must_use]
+    pub fn known(&self, key: &str, args: &Args) -> Option<String> {
         let count = args.count_value();
         for pack in &self.packs {
             let category = count.map(|n| pack.rule.category(n));
@@ -122,10 +130,10 @@ impl Catalogue {
                 .iter()
                 .find_map(|name| pack.messages.get(name));
             if let Some(message) = found {
-                return message.write(|name| args.written(name));
+                return Some(message.write(|name| args.written(name)));
             }
         }
-        key.to_string()
+        None
     }
 }
 

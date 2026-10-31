@@ -139,7 +139,12 @@ pub fn draw(
             // 0x5BC7F0: the item's picture, opaque (0x44FDB0), at most the item's size of it
             // (E17 M5 T3a: `spelroll.pcx` is a column wider), then its text (0x5BC5F0 →
             // 0x4B5490) in the item's box, the colour and alignment it was made with.
-            let clip = [*x, *y, x + item.size[0], y + item.size[1]];
+            let clip = [
+                *x,
+                *y,
+                x.saturating_add(item.size[0]),
+                y.saturating_add(item.size[1]),
+            ];
             draw_image_clipped(screen, picture_of(assets, &item.picture)?, *x, *y, clip);
             let area = TextBox {
                 x: *x,
@@ -174,7 +179,7 @@ pub fn draw(
                 width: item.size[0],
                 height: item.size[1],
             };
-            let colour = item.colour + if *disabled { 2 } else { 0 };
+            let colour = item.colour.saturating_add(if *disabled { 2 } else { 0 });
             let font = (&item.font, &item.font_palette);
             text_in(screen, assets, font, (colour, item.align), area, text, bugs)?;
         }

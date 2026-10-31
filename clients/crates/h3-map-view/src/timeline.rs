@@ -812,8 +812,6 @@ pub struct Loop {
     hero: Option<Hero>,
     /// The selected hero lifted off its tile (the manager's +0x1EC, +0x20C).
     lifted: bool,
-    /// The minimap's last draw.
-    minimap: Minimap,
     walk: Walk,
     /// The path shown, in its order from the hero (its last arrow the destination), each arrow with
     /// the step onto it.
@@ -941,7 +939,6 @@ impl Loop {
             },
             hero: start.hero,
             lifted: false,
-            minimap,
             walk: Walk {
                 group: 0,
                 frame: 0,
@@ -2131,9 +2128,12 @@ impl Loop {
         if !key && !self.path.is_empty() {
             self.draw(t);
             // The rest's path made again with its third argument (0x4080C9): move hero by its
-            // green arrows. With none left the points did not pay the next step, which set them
-            // to 0 (0x480864): the hero cannot move on (*provisional*: the engine's from M4), and
-            // next hero follows the kingdom (0x408193 to 0x4081C4; design §4.1).
+            // green arrows. With none left the points did not pay the next step: the hero cannot
+            // move on (*provisional*: the engine's from M4), and next hero follows the kingdom
+            // (0x408193 to 0x4081C4; design §4.1). The points drawn are the recording's, as the
+            // last step's `spend` took them: the original's refused step set them to 0
+            // (0x480864) in the step's own call chain, so its line there reads 0 (M3 T4b's
+            // checks; T7b2, F1-3); nothing here sets them.
             self.buttons.move_hero = self.green();
             if !self.buttons.move_hero {
                 if let Selected::Hero(i) = self.kingdom.selected
@@ -2321,16 +2321,16 @@ impl Loop {
     /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner and the selected
     /// hero's tile now.
     fn draw_minimap(&mut self) {
-        self.minimap = Minimap {
+        self.drawn.minimap = Minimap {
             view: self.view,
             hero: self.hero.map(|h| h.at),
             index: self.index,
         };
-        self.drawn.minimap = self.minimap;
     }
 
     /// The view drawn and shown: at the objects' step and the palettes now, the walk's offset, the
-    /// hero and the arrows; the minimap as last drawn; then the status window chosen (0x40F861,
+    /// hero and the arrows; the minimap as last drawn (`drawn.minimap`, which only
+    /// [`Loop::draw_minimap`] writes); then the status window chosen (0x40F861,
     /// E24 M3 T5b2).
     fn draw(&mut self, t: u32) {
         self.drawn = Draw {
@@ -2341,7 +2341,7 @@ impl Loop {
             hero: self.hero,
             lifted: self.lifted.then_some([self.walk.group, self.walk.frame]),
             path: self.arrows(),
-            minimap: self.minimap,
+            minimap: self.drawn.minimap,
             kingdom: Arc::clone(&self.drawn.kingdom),
             hint: self.drawn.hint.clone(),
             selected: self.index,
@@ -2365,20 +2365,30 @@ impl Loop {
             self.asked = 0;
         }
         let shown = self.kingdom.status.as_ref().map(Status::kind);
-        let selection = self.kingdom.selection.clone().or_else(|| {
-            self.kingdom
-                .status
-                .clone()
-                .filter(|s| matches!(s, Status::Hero(_) | Status::Town(_)))
-        });
-        let window = match (self.asked, self.kingdom.selected, selection) {
-            (1, _, _) | (0, Selected::None, _) => None,
-            (2, _, _) => match &self.realm {
-                Some(realm) => Some(Status::Kingdom(realm.clone())),
+        // The kind asked compared first, its window cloned only when it is built (T7b2, F1-5:
+        // an unforced draw of the kind shown builds nothing).
+        let builds = |kind: u8| force || shown != Some(kind);
+        let window = match (self.asked, self.kingdom.selected) {
+            (1, _) | (0, Selected::None) => None,
+            (2, _) => match &self.realm {
+                Some(realm) => Some(builds(2).then(|| Status::Kingdom(realm.clone()))),
                 None => return,
             },
-            (0, Selected::Hero(_), Some(s @ Status::Hero(_)))
-            | (0, Selected::Town(_), Some(s @ Status::Town(_))) => Some(s),
+            (0, selected) => {
+                let selection = self.kingdom.selection.as_ref().or_else(|| {
+                    self.kingdom
+                        .status
+                        .as_ref()
+                        .filter(|s| matches!(s, Status::Hero(_) | Status::Town(_)))
+                });
+                match (selected, selection) {
+                    (Selected::Hero(_), Some(s @ Status::Hero(_)))
+                    | (Selected::Town(_), Some(s @ Status::Town(_))) => {
+                        Some(builds(s.kind()).then(|| s.clone()))
+                    }
+                    _ => return,
+                }
+            }
             _ => return,
         };
         let (next, built) = match window {
@@ -2389,9 +2399,9 @@ impl Loop {
                 };
                 (self.date_window(t, date), date.is_none())
             }
-            Some(s) => {
-                let built = force || shown != Some(s.kind());
-                (built.then_some(s), built)
+            Some(next) => {
+                let built = next.is_some();
+                (next, built)
             }
         };
         // A window built anew drops the old one's items, a press they held with them (E24 M3

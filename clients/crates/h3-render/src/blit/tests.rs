@@ -420,6 +420,19 @@ fn a_darkened_rectangle_halves_each_channel_inside_the_screen() {
 }
 
 #[test]
+fn a_darkened_rectangle_past_the_screen_costs_only_the_screen() {
+    // T7b2 (F6-1): a crafted shadow of `i32::MAX` is cut to the screen before the loop.
+    let mut s = screen(3, 2);
+    darken(&mut s, [i32::MIN, i32::MIN, i32::MAX, i32::MAX]);
+    assert_eq!(row(&s, 0), [WHITE; 3]);
+    darken(&mut s, [2, 1, i32::MAX, i32::MAX]);
+    let half = s.format().shadow_body(WHITE);
+    assert_eq!(row(&s, 1), [WHITE, WHITE, half]);
+    darken(&mut s, [-1, -1, i32::MAX, 1]);
+    assert_eq!(row(&s, 0), [WHITE; 3]);
+}
+
+#[test]
 fn an_images_non_zero_indices_darken_what_lies_under_them() {
     // E17 M5 T4c2a: the movement shade (0x44E6A0); twice a quarter, off the screen nothing.
     let mask = Pcx::Indexed(Box::new(IndexedImage {

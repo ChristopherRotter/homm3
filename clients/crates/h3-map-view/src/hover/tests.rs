@@ -341,7 +341,8 @@ fn the_hint_by_the_tile_its_object_records() {
     assert_eq!(hint(2, 4), Hint::Object(33));
     assert_eq!(hint(5, 2), Hint::Object(87));
     assert_eq!(hint(6, 6), Hint::Object(101));
-    // A class without a case of its own, one with a case T6a2 builds (its name meanwhile).
+    // A class without a case of its own, and an Arena of which the viewer knows nothing (no
+    // visits in these facts): its name alone (T7b2, F3-5).
     assert_eq!(hint(6, 4), Hint::Object(101));
     assert_eq!(hint(5, 6), Hint::Object(4));
     // Off the map, nothing.
@@ -421,6 +422,8 @@ fn shapes_of(art: &MapArt) -> objects::Shapes {
 
 #[test]
 fn a_monsters_body_without_its_entrance_has_no_hint() {
+    // The client's fix (MCL-Q27 (a)): the original's case 54 writes nothing there, its bar
+    // keeping the buffer's last text (0x40C342).
     let objects = [(template(0, 54, 1, &[(0, 0)], &[]), (2, 2))];
     let (art, mut live, shapes) = map_with(&objects, &[]);
     let mut f = facts();
@@ -592,6 +595,16 @@ fn a_hints_text() {
     assert_eq!(text(monster(13, 5)), "Several Archangels");
     assert_eq!(text(monster(13, 1000)), "A Legion of Archangels");
     assert_eq!(text(monster(151, 1)), "A few ");
+    // T7b2 (F3-3): an entry past the catalogue's family is empty, not its key.
+    assert_eq!(text(monster(150, 1)), "A few ");
+    assert_eq!(text(hero(200, false)), " the Ranger");
+    assert_eq!(
+        text(Hint::Town {
+            name: 999,
+            kind: 12
+        }),
+        ", "
+    );
     let visits = |bonus, visited| Hint::Visits {
         class: 46,
         bonus,
