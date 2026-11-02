@@ -17,7 +17,7 @@ use h3_contracts::{ArmyStack, BattleResult, HeroId, PlayerId};
 use h3_heroes::{Choice, HeroChange, PrimarySkill};
 
 use crate::manage::{Manage, ManageError};
-use crate::{GameRuleset, GameState};
+use crate::{GameRuleset, GameState, MonthKind};
 
 /// Who issues a command (ADR-0017 point 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -278,6 +278,21 @@ pub enum GameEvent {
     DayStarted {
         /// The day, from 1.
         day: u32,
+    },
+    /// A new week started (GAM-CAL-002, E08 T85b): on its first day after the first week's, after
+    /// [`Self::DayStarted`] and before the adventure's week step's events. Public.
+    WeekStarted {
+        /// The week, from 1 (the first one starts with the game, without an event).
+        week: u32,
+    },
+    /// A new month started (GAM-CAL-002, GAM-CAL-003, E08 T85b): on its first day after the first
+    /// month's, after the week's events, with the kind it drew, before a creature's month's
+    /// monsters' events. Public, as the original's month's message.
+    MonthStarted {
+        /// The month, from 1.
+        month: u32,
+        /// Its kind.
+        kind: MonthKind,
     },
     /// A player's turn started.
     TurnStarted {

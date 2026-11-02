@@ -1958,7 +1958,8 @@ fn landing(
             .adventure()
             .map()
             .tile(to)
-            .is_some_and(|tile| tile.visitable);
+            .is_some_and(|tile| tile.visitable)
+            || added_at(before, to);
         // Another hero is visited from the tile before: a battle or, an own one, a meeting
         // (GAM-MET-001, E08 T50).
         let heroes = before.adventure().heroes();
@@ -2702,6 +2703,89 @@ fn check_unlisted(
     Ok(())
 }
 
+/// Whether a monster added in play (a creature month's, E08 T85b) still stands at `pos`: visited
+/// from its neighbours there, as a placed one.
+fn added_at(state: &GameState, pos: TilePos) -> bool {
+    let adventure = state.adventure();
+    let placed = adventure.map().objects().len();
+    adventure
+        .added_objects()
+        .iter()
+        .enumerate()
+        .any(|(i, o)| o.anchor == pos && !adventure.is_removed(placed + i))
+}
+
+/// A new day's income (GAM-RES-003 to -005, E08 T85b; increment 9's design note §14), from the
+/// day's events (its `DayStarted` on): every player in id order is told, as one gain per resource
+/// with an amount in the core's order, exactly what an independent sum of its parts gives on the
+/// state before the day: the production of the mines it owns, its heroes' `daily_income`, and on
+/// a week's first day each creature type with a weekly resource in its heroes' armies once.
+fn check_income(
+    rules: &GameRuleset,
+    before: &GameState,
+    day: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let gains: Vec<(PlayerId, ResourceId, u32)> = day
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::ResourceGained {
+                player,
+                resource,
+                amount,
+            } => Some((player, resource, amount)),
+            _ => None,
+        })
+        .collect();
+    if day.is_empty() {
+        prop_assert!(gains.is_empty());
+        return Ok(());
+    }
+    let week = day
+        .iter()
+        .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
+    let (core, part, adventure) = (rules.core(), rules.adventure(), before.adventure());
+    let mut expected = Vec::new();
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        let mut income = vec![0_u32; core.resources().len()];
+        for i in 0..adventure.map().objects().len() {
+            if adventure.owner(i) == Some(player)
+                && let Some((resource, amount)) = adventure.production(part, i)
+            {
+                income[resource.index()] += amount;
+            }
+        }
+        let heroes: Vec<_> = adventure
+            .heroes()
+            .iter()
+            .filter(|h| h.owner == player)
+            .collect();
+        for hero in &heroes {
+            let daily = h3_heroes::daily_income(before.hero(hero.id).unwrap(), core);
+            for (entry, amount) in income.iter_mut().zip(daily) {
+                *entry += amount;
+            }
+        }
+        let mut seen = Vec::new();
+        for stack in heroes.iter().flat_map(|h| &h.army).filter(|_| week) {
+            if !seen.contains(&stack.creature) {
+                seen.push(stack.creature);
+                for ability in &core.creature(stack.creature).unwrap().abilities {
+                    let h3_content::CreatureAbility::WeeklyResource { resource, amount } = *ability;
+                    income[resource.index()] += amount;
+                }
+            }
+        }
+        let owed = income
+            .into_iter()
+            .enumerate()
+            .filter(|&(_, amount)| amount > 0);
+        expected
+            .extend(owed.map(|(r, amount)| (player, ResourceId::from_index(r).unwrap(), amount)));
+    }
+    prop_assert_eq!(gains, expected);
+    Ok(())
+}
+
 /// Conservation (`docs/05-testing.md`): increments 1 and 2 have no source or sink of creatures
 /// (no recruitment; E08 T10b's audit), so an accepted command leaves every hero's army as it was,
 /// the actor's own included, but (E08 T19a) by a battle's end: only the battle's heroes change,
@@ -2776,6 +2860,10 @@ fn check_conservation(
                     let checked = h3_heroes::check_change(&told, rules.core(), change);
                     prop_assert!(checked.is_ok(), "{:?}: {:?}", change, checked);
                     h3_heroes::apply_change(&mut told, rules.core(), change);
+                }
+                // E08 T85b: a new day's regain (HER-MAN-002), which no event tells.
+                GameEvent::DayStarted { .. } => {
+                    told.mana = h3_heroes::day_mana(&told, rules.core());
                 }
                 _ => {}
             }
@@ -2853,7 +2941,12 @@ fn check_conservation(
             }
         }
     }
-    let gains: Vec<(ResourceId, u32)> = events
+    // E08 T85b: a new day's income comes after its `DayStarted`, apart from the visits' gains.
+    let day_at = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::DayStarted { .. }))
+        .unwrap_or(events.len());
+    let gains: Vec<(ResourceId, u32)> = events[..day_at]
         .iter()
         .filter_map(|e| match *e {
             GameEvent::ResourceGained {
@@ -2863,6 +2956,7 @@ fn check_conservation(
         })
         .collect();
     prop_assert_eq!(&gains, &contents, "{:?} {:?}", command, events);
+    check_income(rules, before, &events[day_at..])?;
     let lost: Vec<(ResourceId, u32)> = events
         .iter()
         .filter_map(|e| match *e {
@@ -2909,14 +3003,14 @@ fn check_conservation(
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let mut treasury = before.treasury(player).unwrap().to_vec();
         let mut paid = Vec::new();
-        for event in events {
+        for (at, event) in events.iter().enumerate() {
             match *event {
                 GameEvent::ResourceGained {
                     player: owner,
                     resource,
                     amount,
                 } => {
-                    prop_assert!(removed, "{:?} without a visit", event);
+                    prop_assert!(removed || at > day_at, "{:?} without a visit", event);
                     if owner == player {
                         treasury[usize::from(resource.raw())] += amount;
                     }
@@ -4629,7 +4723,8 @@ fn gift_price(
 
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
 /// player's army, explored tiles (but for a new day's reveal in strict-fixed, which only adds,
-/// E08 T40), treasury, purchases, open decision (E08 T14b) or keys (T15a),
+/// E08 T40), treasury (but for a new day's income, E08 T85b), purchases, open decision (E08 T14b)
+/// or keys (T15a),
 /// and changes another player's heroes' points only when that player's turn starts
 /// (ADV-MOV-002); but a battle (E08 T19a) the actor owns with another player: its commands play
 /// the battle both own, and the one that ends it changes the other's hero (its army, or its
@@ -4700,7 +4795,8 @@ fn check_isolation(
             if !partners.contains(&player) {
                 prop_assert_eq!(before.battle(player), after.battle(player));
             }
-            if !(surrendered && partners.contains(&player)) {
+            // E08 T85b: a new day pays every player its income ([`check_income`]).
+            if !(surrendered && partners.contains(&player)) && !new_day {
                 prop_assert_eq!(before.treasury(player), after.treasury(player));
             }
             prop_assert!(

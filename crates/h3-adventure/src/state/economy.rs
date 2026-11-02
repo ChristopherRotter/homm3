@@ -7,11 +7,12 @@
 //! the weekly contents one too, each none for a map without such objects, so a fork of one costs
 //! nothing more and of another a reference count or two (`bench-check`).
 
+use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::ResourceId;
+use h3_content::{CreatureAbility, CreatureTypeId, ResourceId, Ruleset};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
@@ -234,6 +235,56 @@ impl AdventureState {
                 .and_then(|(resource, _)| part.mine_daily(resource).map(|daily| (resource, daily))),
             _ => None,
         }
+    }
+
+    /// The day's income of `player`'s objects and armies on the map (ADR-0017 point 10; E08 T85b,
+    /// increment 9's design note §14; survey `E08-economy.md` §8.1, the original's
+    /// `player_daily_income` 0x4B8AF0): by resource, dense in the core's order (a treasury's
+    /// layout), the production of every mine it owns ([`Self::production`]: a mine's own, an
+    /// abandoned mine's drawn resource at that resource's mine's amount), and on a week's first
+    /// day (`week_start`) each creature type with a `weekly_resource` ability in the army of one
+    /// of its heroes on the map, that amount once however many stacks and heroes hold it (the
+    /// Crystal Dragons' 3 crystal, `player_daily_income` 0x4B8C32). Saturating per resource; an
+    /// ally's do not count, nor a mine's guards. The heroes' own income is
+    /// `h3_heroes::daily_income`, the game's to add, as the towns' (E09).
+    // rule: GAM-RES-003, GAM-RES-005
+    pub fn income(
+        &self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        week_start: bool,
+    ) -> Vec<u32> {
+        let mut income = vec![0_u32; core.resources().len()];
+        let mut add = |resource: ResourceId, amount: u32| {
+            if let Some(entry) = income.get_mut(resource.index()) {
+                *entry = entry.saturating_add(amount);
+            }
+        };
+        if let Some(owners) = self.owners.as_deref() {
+            let owned = self.map.ownables().iter().zip(owners);
+            for (&index, _) in owned.filter(|&(_, &owner)| owner == Some(player)) {
+                if let Some((resource, daily)) = self.production(part, index) {
+                    add(resource, daily);
+                }
+            }
+        }
+        if week_start {
+            let creatures: BTreeSet<CreatureTypeId> = self
+                .heroes
+                .iter()
+                .filter(|hero| hero.owner == player)
+                .flat_map(|hero| &hero.army)
+                .map(|stack| stack.creature)
+                .collect();
+            for info in creatures.into_iter().filter_map(|c| core.creature(c)) {
+                for ability in &info.abilities {
+                    let CreatureAbility::WeeklyResource { resource, amount } = *ability;
+                    add(resource, amount);
+                }
+            }
+        }
+        income
     }
 
     /// Whether `player` holds the visited mark of the weekly object at object index `index` (E08

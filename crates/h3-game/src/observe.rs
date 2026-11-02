@@ -1,6 +1,6 @@
 //! What a viewer may know of the whole game (ADR-0017 points 1 and 2, E08 T8b1;
-//! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, the players'
-//! colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
+//! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, since E08 T85b the
+//! month's kind, the players' colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
 //! show) and open decision (T14b; since T30 an offer or a level-up, since T51b a meeting or an
 //! army dialog, since T63a a choice or a University), the heroes it sees with their types and its own heroes'
 //! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
@@ -18,7 +18,7 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
-use crate::{GameRuleset, GameState};
+use crate::{GameRuleset, GameState, MonthKind};
 
 /// Who an observation or an event's projection is for (ADR-0017 point 2). The spectator, who
 /// sees public facts only, comes with the server lane as an additive variant.
@@ -35,6 +35,8 @@ pub struct GameObservation {
     pub viewer: PlayerId,
     /// The day, from 1.
     pub day: u32,
+    /// The month's kind (GAM-CAL-003, E08 T85b): public, as the original's month's message.
+    pub month: MonthKind,
     /// The players, by id.
     pub players: Vec<PlayerView>,
     /// The players of the group whose turn is running.
@@ -165,6 +167,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
     GameObservation {
         viewer: player,
         day: state.day(),
+        month: state.month(),
         players: (0..=u8::MAX)
             .take(state.players())
             .map(PlayerId::new)
@@ -286,6 +289,8 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::GroupLost { player: owner, .. } => (owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }
         | GameEvent::DayStarted { .. }
+        | GameEvent::WeekStarted { .. }
+        | GameEvent::MonthStarted { .. }
         | GameEvent::TurnStarted { .. } => Some(*event),
     }
 }

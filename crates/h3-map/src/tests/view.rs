@@ -10,8 +10,9 @@ use h3_adventure::{
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_game::{
     Actor, ArmyRef, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
-    LevelUpView, Viewer, apply, legal_commands, legal_moves, observe, project,
+    HeroInfo, LevelUpView, Viewer, apply, legal_commands, legal_moves, observe, project,
 };
+use h3_heroes::HeroDetails;
 use proptest::collection::vec;
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
@@ -376,6 +377,8 @@ fn check_told(
     own: bool,
 ) -> Result<(), TestCaseError> {
     let mut day = before.day;
+    // E08 T85b: the month's kind, public, told by its start.
+    let mut month = before.month;
     let mut acting: Vec<bool> = before.players.iter().map(|p| p.acting).collect();
     // The turn group: the players whose turns start after the last turn that ended, if any did.
     let mut group = before.turn_group.clone();
@@ -779,6 +782,12 @@ fn check_told(
                 treasury[usize::from(resource.raw())] += amount;
             }
             GameEvent::DayStarted { day: started } => day = started,
+            // E08 T85b: a week and a month start only on a new day, told to every viewer.
+            GameEvent::WeekStarted { .. } => prop_assert!(day != before.day),
+            GameEvent::MonthStarted { kind, .. } => {
+                prop_assert!(day != before.day);
+                month = kind;
+            }
             GameEvent::TurnEnded { player } => {
                 acting[usize::from(player.raw())] = false;
                 started = false;
@@ -826,13 +835,23 @@ fn check_told(
         }
     }
     prop_assert_eq!(after.battle.is_some(), fighting);
-    // Its heroes' details change only as it is told (E08 T19a2a).
+    // Its heroes' details change only as it is told (E08 T19a2a), but their spell points at a
+    // new day's regain, which no event tells (HER-MAN-002, E08 T85b).
+    let regained = |details: Option<&HeroDetails>| {
+        details.map(|d| HeroDetails {
+            mana: if after.day == before.day { d.mana } else { 0 },
+            ..d.clone()
+        })
+    };
     for hero in &after.heroes {
         let was = before.heroes.iter().find(|h| h.id == hero.id);
-        if let Some(was) = was.filter(|was| was.details != hero.details) {
+        let differ =
+            |was: &&HeroInfo| regained(was.details.as_deref()) != regained(hero.details.as_deref());
+        if let Some(was) = was.filter(differ) {
             prop_assert!(changed.contains(&hero.id), "{:?} changed untold", was);
         }
     }
+    prop_assert_eq!(after.month, month);
     prop_assert_eq!(after.day, day);
     let now: Vec<bool> = after.players.iter().map(|p| p.acting).collect();
     prop_assert_eq!(now, acting);
