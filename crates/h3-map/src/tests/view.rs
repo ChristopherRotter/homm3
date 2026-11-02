@@ -397,6 +397,9 @@ fn check_told(
     let mut boats = before.adventure.boats.clone();
     let mut aboard: Vec<(HeroId, Option<u8>)> = Vec::new();
     let mut treasury = before.treasury.clone();
+    // E08 T85b: the timed events that fired at the viewer's turn start today, told by their
+    // firing; a new day starts with none.
+    let mut today = before.events_today.clone();
     let named = |d: &DecisionView| match d {
         DecisionView::Offer(o) => Open::Offer(o.hero, o.object_type, o.anchor),
         DecisionView::LevelUp(view) => Open::LevelUp(*view),
@@ -781,7 +784,16 @@ fn check_told(
                 prop_assert_eq!(player, viewer);
                 treasury[usize::from(resource.raw())] += amount;
             }
-            GameEvent::DayStarted { day: started } => day = started,
+            GameEvent::DayStarted { day: started } => {
+                day = started;
+                today.clear();
+            }
+            // E08 T85b: a timed event is told to its player alone, at its turn's start.
+            GameEvent::TimedEventFired { player, event } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(group.contains(&viewer) && started, "{:?}", event);
+                today.push(event);
+            }
             // E08 T85b: a week and a month start only on a new day, told to every viewer.
             GameEvent::WeekStarted { .. } => prop_assert!(day != before.day),
             GameEvent::MonthStarted { kind, .. } => {
@@ -896,6 +908,7 @@ fn check_told(
         }
     }
     prop_assert_eq!(&after.treasury, &treasury);
+    prop_assert_eq!(&after.events_today, &today);
     prop_assert_eq!(after.decision.as_ref().map(named), decision);
     prop_assert_eq!(&after.adventure.bought, &bought);
     prop_assert_eq!(after.adventure.keys, keys);
@@ -1134,7 +1147,8 @@ proptest! {
     /// waits for a player's level-up does show, so the game must wait alike ([`outcome`]). Random
     /// play seldom gets another player's battle out of sight to its end with the comparison still
     /// running: [`another_players_level_up_shows_nothing_of_its_offers`] plays one whose offers
-    /// differ.
+    /// differ. Since E08 T85b a month's start ends the comparison: its kind and a creature
+    /// month's monsters are public draws of the game's stream, which the hidden differences move.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in plan(),
@@ -1236,6 +1250,18 @@ proptest! {
                 })
             };
             if answered(&ta) || answered(&tb) {
+                break;
+            }
+            // E08 T85b: a month's kind and a creature month's monsters are public draws of the
+            // game's stream (GAM-CAL-003, ADV-MON-014), whose seed and position the differences
+            // hidden from the viewer change (the seed, the weekly objects' draws on its unseen
+            // tiles): the comparison ends at a month's start, as at a battle.
+            let month = |events: &[GameEvent]| {
+                events
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::MonthStarted { .. }))
+            };
+            if month(&ta) || month(&tb) {
                 break;
             }
             let bought = ta
@@ -1351,6 +1377,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         blockers: vec![((4, 1, 0), 0), ((1, 5, 0), 1)],
         difficulty: 1,
         exchange: None,
+        events: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -1446,6 +1473,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         blockers: vec![((3, 1, 0), 3), ((1, 3, 0), 9)],
         difficulty: 1,
         exchange: None,
+        events: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -1514,6 +1542,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         blockers: vec![((3, 2, 0), MONSTER_OBJECTS[3])],
         difficulty: 1,
         exchange: None,
+        events: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {

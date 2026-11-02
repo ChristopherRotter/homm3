@@ -56,7 +56,7 @@ use super::strategy::version;
 use crate::import::codes;
 use crate::model::{
     Artifacts, Bits, Body, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure, RawMap,
-    Rewards, Stack, Template, Text, Tile, Version,
+    Rewards, Stack, Template, Text, Tile, TimedEvent, Version,
 };
 use crate::{Limits, import, parse};
 
@@ -504,6 +504,9 @@ pub(super) struct Plan {
     /// (E08 T52) The first hero's exchanges: a mate of its owner beside it, and its full army;
     /// none: neither.
     pub(super) exchange: Option<Exchange>,
+    /// (E08 T85b) The map's timed events ([`timed`]); before SoD the map writes no human flag, so
+    /// [`lay_out`] sets it.
+    pub(super) events: Vec<TimedEvent>,
 }
 
 /// Elixir of Life's three parts (E08 T52; HER-ART-006: a SoD combination of artifacts every map
@@ -714,6 +717,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 rewards(),
                 // E08 T75b, drawn last for the same reason.
                 sea(),
+                // E08 T85b, drawn last for the same reason.
+                timed(),
             ),
         ),
     )
@@ -735,7 +740,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     mut skills,
                     beside,
                     pile,
-                    (mut kits, lifts, nomads, exchange, rewards, sea),
+                    (mut kits, lifts, nomads, exchange, rewards, sea, events),
                 ),
             )| {
                 // In three plans of four (E08 T42) a flyer and a water walker: the first two
@@ -871,9 +876,37 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     blockers,
                     difficulty,
                     exchange,
+                    events,
                 }
             },
         )
+}
+
+/// A plan's timed events (E08 T85b; GAM-CAL-004): none to three, each for some colours (those
+/// nobody plays left out by the import), humans and computers as drawn, from the file's day 0 to
+/// 6 (the game's 1 to 7) once or every one to three days, each resource in four given or taken
+/// (up to 3 000), so that takes meet empty treasuries (an impossible game's).
+fn timed() -> impl Strategy<Value = Vec<TimedEvent>> {
+    let amount = prop_oneof![3 => Just(0i32), 1 => -3000i32..=3000];
+    let event = (
+        any::<u8>(),
+        any::<(bool, bool)>(),
+        0u16..=6,
+        prop_oneof![2 => Just(0u16), 1 => 1u16..=3],
+        vec(amount, 7),
+    )
+        .prop_map(
+            |(players, (human, computer), first_day, interval, amounts)| TimedEvent {
+                resources: amounts.try_into().unwrap(),
+                players,
+                human,
+                computer,
+                first_day,
+                interval,
+                ..TimedEvent::default()
+            },
+        );
+    vec(event, 0..=3)
 }
 
 /// Increment 7's objects of a plan (E08 T64b): each one's offset from a hero's tile (two
@@ -965,6 +998,15 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     m.header.difficulty = plan.difficulty;
     m.header.size = u32::from(side);
     m.header.two_levels = plan.two_levels;
+    // E08 T85b: before SoD an event fires for humans (the reader's, `docs/formats/h3m.md`).
+    m.events = plan
+        .events
+        .iter()
+        .map(|e| TimedEvent {
+            human: e.human || v != Version::Sod,
+            ..e.clone()
+        })
+        .collect();
     m.terrain.size = usize::from(side);
     m.terrain.levels = usize::from(levels);
     let count = usize::from(side) * usize::from(side) * usize::from(levels);
@@ -2787,6 +2829,85 @@ fn check_income(
     Ok(())
 }
 
+/// The map's timed events at the turn starts among a command's events (GAM-CAL-004, E08 T85b),
+/// from the first `TurnStarted` on (`turn`): after each player's `TurnStarted`, exactly what each
+/// event that fires for it on `day` does, in the map's order: its gains, its losses down to 0 at
+/// most from the treasury as it stands then (the state's before the command, then the changes told
+/// before), then `TimedEventFired` with its message. The days read on their own: the first day,
+/// or every interval after it.
+fn check_timed(
+    before: &GameState,
+    (events, turn): (&[GameEvent], usize),
+    day: u32,
+) -> Result<(), TestCaseError> {
+    let players = (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap()));
+    let mut treasuries: Vec<Vec<u32>> = players
+        .map(|p| before.treasury(p).unwrap().to_vec())
+        .collect();
+    for event in &events[..turn] {
+        match *event {
+            GameEvent::ResourceGained {
+                player,
+                resource,
+                amount,
+            } => treasuries[player.index()][resource.index()] += amount,
+            GameEvent::ResourceLost {
+                player,
+                resource,
+                amount,
+            }
+            | GameEvent::ResourcePaid {
+                player,
+                resource,
+                amount,
+            } => treasuries[player.index()][resource.index()] -= amount,
+            _ => {}
+        }
+    }
+    let mut expected = Vec::new();
+    for event in &events[turn..] {
+        let GameEvent::TurnStarted { player } = *event else {
+            continue;
+        };
+        expected.push(*event);
+        let human = before.human(player).unwrap();
+        let treasury = &mut treasuries[player.index()];
+        for timed in before.events() {
+            let (first, every) = (u32::from(timed.first_day), u32::from(timed.interval));
+            let today =
+                day == first || every > 0 && day > first && (day - first).is_multiple_of(every);
+            let kind = if human { timed.human } else { timed.computer };
+            if !(today && kind && timed.players.contains(&player)) {
+                continue;
+            }
+            for &(resource, amount) in timed.resources.iter().filter(|&&(_, a)| a > 0) {
+                let amount = amount.unsigned_abs();
+                treasury[resource.index()] += amount;
+                expected.push(GameEvent::ResourceGained {
+                    player,
+                    resource,
+                    amount,
+                });
+            }
+            for &(resource, amount) in timed.resources.iter().filter(|&&(_, a)| a < 0) {
+                let amount = amount.unsigned_abs().min(treasury[resource.index()]);
+                treasury[resource.index()] -= amount;
+                expected.push(GameEvent::ResourceLost {
+                    player,
+                    resource,
+                    amount,
+                });
+            }
+            expected.push(GameEvent::TimedEventFired {
+                player,
+                event: timed.message,
+            });
+        }
+    }
+    prop_assert_eq!(&events[turn..], &expected[..]);
+    Ok(())
+}
+
 /// Conservation (`docs/05-testing.md`): increments 1 and 2 have no source or sink of creatures
 /// (no recruitment; E08 T10b's audit), so an accepted command leaves every hero's army as it was,
 /// the actor's own included, but (E08 T19a) by a battle's end: only the battle's heroes change,
@@ -2942,11 +3063,16 @@ fn check_conservation(
             }
         }
     }
-    // E08 T85b: a new day's income comes after its `DayStarted`, apart from the visits' gains.
+    // E08 T85b: a new day's income comes after its `DayStarted`, apart from the visits' gains,
+    // and the turn starts' timed events after the first `TurnStarted` ([`check_timed`]).
+    let turn_at = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::TurnStarted { .. }))
+        .unwrap_or(events.len());
     let day_at = events
         .iter()
         .position(|e| matches!(e, GameEvent::DayStarted { .. }))
-        .unwrap_or(events.len());
+        .unwrap_or(turn_at);
     let gains: Vec<(ResourceId, u32)> = events[..day_at]
         .iter()
         .filter_map(|e| match *e {
@@ -2957,8 +3083,9 @@ fn check_conservation(
         })
         .collect();
     prop_assert_eq!(&gains, &contents, "{:?} {:?}", command, events);
-    check_income(rules, before, &events[day_at..])?;
-    let lost: Vec<(ResourceId, u32)> = events
+    check_income(rules, before, &events[day_at..turn_at])?;
+    check_timed(before, (events, turn_at), after.day())?;
+    let lost: Vec<(ResourceId, u32)> = events[..day_at]
         .iter()
         .filter_map(|e| match *e {
             GameEvent::ResourceLost {
@@ -4724,7 +4851,8 @@ fn gift_price(
 
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
 /// player's army, explored tiles (but for a new day's reveal in strict-fixed, which only adds,
-/// E08 T40), treasury (but for a new day's income, E08 T85b), purchases, open decision (E08 T14b)
+/// E08 T40), treasury (but for a new day's income and the timed events at its turn's start, E08
+/// T85b), purchases, open decision (E08 T14b)
 /// or keys (T15a),
 /// and changes another player's heroes' points only when that player's turn starts
 /// (ADV-MOV-002); but a battle (E08 T19a) the actor owns with another player: its commands play
@@ -4796,8 +4924,10 @@ fn check_isolation(
             if !partners.contains(&player) {
                 prop_assert_eq!(before.battle(player), after.battle(player));
             }
-            // E08 T85b: a new day pays every player its income ([`check_income`]).
-            if !(surrendered && partners.contains(&player)) && !new_day {
+            // E08 T85b: a new day pays every player its income ([`check_income`]), and a turn's
+            // start fires its player's timed events ([`check_timed`]).
+            let started = events.contains(&GameEvent::TurnStarted { player });
+            if !(surrendered && partners.contains(&player)) && !new_day && !started {
                 prop_assert_eq!(before.treasury(player), after.treasury(player));
             }
             prop_assert!(
@@ -5397,9 +5527,10 @@ impl Rewarded {
 /// Warrior's Tomb's, a box's and the Pyramid's questions and a guarded artifact's accepted and
 /// declined, a chest's gold and experience, the Arena's two skills, a School's two and leaving, a
 /// University's purchase and leaving, and a box's army dialog closed; the properties above check
-/// each (`every_step_keeps_the_commands_invariants`, `check_rewards`).
+/// each (`every_step_keeps_the_commands_invariants`, `check_rewards`). Since E08 T85b the plans'
+/// timed events fire, give, and take less than they would at the floor ([`check_timed`]).
 // covers: ADV-PIK-005, ADV-PIK-013, ADV-TCH-001, ADV-TCH-002, ADV-TCH-003, ADV-TCH-007
-// covers: ADV-TCH-008, GAM-DEC-005, GAM-DEC-006
+// covers: ADV-TCH-008, GAM-DEC-005, GAM-DEC-006, GAM-CAL-004
 #[test]
 fn the_plans_visit_every_kind_and_answer_every_decision() {
     use proptest::strategy::ValueTree;
@@ -5417,6 +5548,7 @@ fn the_plans_visit_every_kind_and_answer_every_decision() {
     );
     let strategy = (plan(), any::<bool>(), any::<u64>(), steps);
     let mut rewarded = Rewarded::default();
+    let mut timed = [0; 3];
     for _ in 0..512 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
@@ -5444,9 +5576,12 @@ fn the_plans_visit_every_kind_and_answer_every_decision() {
             let mut events = Vec::new();
             if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
                 rewarded.count(rules, &before, &command, &events);
+                count_timed(&before, &events, &mut timed);
             }
         }
     }
+    // E08 T85b: the plans' timed events fire, give and take less than they would (the floor).
+    assert!(timed.iter().all(|&n| n > 0), "timed events {timed:?}");
     let r = &rewarded;
     let missed: Vec<_> = super::rewards_map::CLASSES
         .iter()
@@ -5493,6 +5628,38 @@ fn the_plans_visit_every_kind_and_answer_every_decision() {
         *d == "university" && matches!(a, Answer::University(UniversityAnswer::Buy(_)))
     });
     assert!(bought, "no University purchase: {:?}", r.answered);
+}
+
+/// Counts the timed events among a command's events (E08 T85b, [`check_timed`]): those that fired,
+/// their gains, and their losses that took less than the event's amount (the floor at 0).
+fn count_timed(before: &GameState, events: &[GameEvent], timed: &mut [usize; 3]) {
+    for (at, event) in events.iter().enumerate() {
+        match *event {
+            GameEvent::TimedEventFired { .. } => timed[0] += 1,
+            GameEvent::ResourceGained { .. } | GameEvent::ResourceLost { .. }
+                if !events[..at]
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::TurnStarted { .. })) => {}
+            GameEvent::ResourceGained { .. } => timed[1] += 1,
+            GameEvent::ResourceLost {
+                resource, amount, ..
+            } => {
+                let fired = events[at..].iter().find_map(|e| match *e {
+                    GameEvent::TimedEventFired { event, .. } => Some(event),
+                    _ => None,
+                });
+                let take = before
+                    .events()
+                    .iter()
+                    .filter(|e| Some(e.message) == fired)
+                    .flat_map(|e| &e.resources)
+                    .find(|&&(r, _)| r == resource)
+                    .map_or(0, |&(_, amount)| amount.unsigned_abs());
+                timed[2] += usize::from(amount < take);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// The plans meet and manage (E08 T52, increment 6's exit criteria 1 to 4): over a fixed set of
@@ -5561,6 +5728,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         blockers: vec![],
         difficulty: 1,
         exchange: None,
+        events: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.

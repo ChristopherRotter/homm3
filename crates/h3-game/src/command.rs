@@ -299,11 +299,23 @@ pub enum GameEvent {
         /// The player.
         player: PlayerId,
     },
+    /// A map's timed event fired at a player's turn start (GAM-CAL-004, E08 T85b): after
+    /// [`Self::TurnStarted`] and the changes of its treasury (its gains as
+    /// [`Self::ResourceGained`], then its losses as [`Self::ResourceLost`]), so a client shows
+    /// its message. Seen by the player.
+    TimedEventFired {
+        /// The player.
+        player: PlayerId,
+        /// The event, by its message (`crate::TimedEventSetup::message`: its index in the map's
+        /// list).
+        event: u16,
+    },
     /// Something happened on the adventure map.
     Adventure(AdventureEvent),
     /// A player's treasury gained a resource (GAM-RES-001): one event per resource of a gain,
     /// in the gain's order, after the context's events; or a surrender's price, which the other
-    /// side's owner receives (GAM-BAT-005, E08 T19a).
+    /// side's owner receives (GAM-BAT-005, E08 T19a); since E08 T85b a new day's income
+    /// (GAM-RES-003) and a timed event's gains (GAM-CAL-004).
     ResourceGained {
         /// The player.
         player: PlayerId,
@@ -430,8 +442,9 @@ pub enum GameEvent {
         skill: Option<SkillId>,
     },
     /// A player's treasury lost a resource a reward record takes (GAM-RES-001, ADV-RWD-001; E08
-    /// T62b1): one event per resource of the loss, in the record's order, after the gains; never
-    /// below 0, so the amount actually taken. Seen by the owner.
+    /// T62b1), or since E08 T85b a timed event (GAM-CAL-004): one event per resource of the loss,
+    /// in the record's order, after the gains; never below 0, so the amount actually taken. Seen
+    /// by the owner.
     ResourceLost {
         /// The player.
         player: PlayerId,

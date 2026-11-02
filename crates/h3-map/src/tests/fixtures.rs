@@ -461,6 +461,7 @@ fn duel() -> Plan {
         blockers,
         difficulty: 1,
         exchange: None,
+        events: Vec::new(),
     }
 }
 
@@ -501,6 +502,7 @@ fn xl() -> Plan {
         blockers,
         difficulty: 1,
         exchange: None,
+        events: Vec::new(),
     }
 }
 
@@ -535,6 +537,7 @@ fn army() -> Plan {
             parts: true,
             full: Some(ARMY_FULL.to_vec()),
         }),
+        events: Vec::new(),
     }
 }
 

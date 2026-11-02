@@ -3,7 +3,8 @@
 //! week's and the month's steps on their first days, the month's kind, the players' income and
 //! the heroes' spell points, then the adventure's start-of-day step. Day 1 runs none of it: the
 //! build calls the adventure's start-of-day step only (the original's start runs no new day,
-//! survey §7.1).
+//! survey §7.1). At each player's turn start, the map's timed events (GAM-CAL-004; survey §7.5,
+//! §11), day 1's too.
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -159,6 +160,60 @@ impl GameState {
                 .collect();
             self.gain(player, &gains, sink);
         }
+    }
+
+    /// The map's timed events at `player`'s turn start (GAM-CAL-004; survey `E08-economy.md` §11,
+    /// `map_timed_events` 0x4CD910, `apply_timed_event` 0x4CD710; ADR-0017 point 3), after the
+    /// contexts' start-of-turn steps and [`GameEvent::TurnStarted`]: each event in the map's order
+    /// that fires for it today ([`crate::TimedEventSetup::fires`], its kind the setup's `human`), its
+    /// gains added saturating ([`GameState::gain`]), then its losses taken down to 0
+    /// ([`GameState::lose`], the amount actually taken), each told to the player alone, then
+    /// [`GameEvent::TimedEventFired`] to it. Day 1's fire as the build starts the first group's
+    /// turn, with no sink: [`Self::events_today`] names them. The original floors each resource's
+    /// sum at 0 in resource order; the gains first, then the losses, end in the same treasury.
+    // rule: GAM-CAL-004
+    pub(super) fn fire_events<S: Sink>(&mut self, player: PlayerId, sink: &mut S) {
+        let Some(events) = self.events.clone() else {
+            return;
+        };
+        let (human, day) = (self.players[player.index()].human, self.day);
+        for event in events.iter().filter(|e| e.fires(player, human, day)) {
+            let changes = |gain: bool| -> Vec<(ResourceId, u32)> {
+                event
+                    .resources
+                    .iter()
+                    .filter(|&&(_, amount)| (amount > 0) == gain)
+                    .map(|&(resource, amount)| (resource, amount.unsigned_abs()))
+                    .collect()
+            };
+            self.gain(player, &changes(true), sink);
+            self.lose(player, &changes(false), sink);
+            sink.emit(GameEvent::TimedEventFired {
+                player,
+                event: event.message,
+            });
+        }
+    }
+
+    /// The timed events that fired at `player`'s turn start today (GAM-CAL-004, E08 T85b;
+    /// increment 9's design note §14, decision 204), by their messages in the map's order; none
+    /// before its turn starts today (its group after the running one) and for a player of no
+    /// group. Derived from the day and the setup, so a client shows day 1's, which fire inside the
+    /// build. The player's own (`docs/06-security.md`).
+    pub fn events_today(&self, player: PlayerId) -> Vec<u16> {
+        let started = self
+            .groups
+            .iter()
+            .position(|group| group.contains(&player))
+            .is_some_and(|at| at <= self.group);
+        let (Some(state), true) = (self.players.get(player.index()), started) else {
+            return Vec::new();
+        };
+        self.events()
+            .iter()
+            .filter(|e| e.fires(player, state.human, self.day))
+            .map(|e| e.message)
+            .collect()
     }
 
     /// Every hero's spell points after the day's regain (HER-MAN-002; survey `E08-economy.md` §12,

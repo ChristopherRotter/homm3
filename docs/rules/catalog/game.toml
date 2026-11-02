@@ -287,7 +287,7 @@ id       = "GAM-CAL-004"
 title    = "The map's timed events"
 context  = "game"
 status   = "implemented"
-summary  = "The map's timed events, in the map's order: each names its players (the map's colours that play; a colour nobody plays is left out, so an event may fire for none), whether it fires for a human and for a computer player (before SoD for humans always), its first day (the file's day + 1: the file's 0 is day 1), its interval in days (0 once) and the seven resources it gives (a negative amount takes; zeros left out), and its message by its index (the text is the client's). On each of its days, at the turn start of each of its players that is human or computer as it says, its resources go to that player's treasury, never below 0 (T85b). The setup refuses an event naming a player twice, out of order or not of the game, a resource twice, not the ruleset's or of 0, or a first day of 0, and more events than a u16 names. E08 T83a: the import (`h3_map`'s `timed_events`, map import v15) and `h3_game::TimedEventSetup`, `GameSetup::events`, checked by `GameSetup::validate`; their firing comes with T85b."
+summary  = "The map's timed events, in the map's order: each names its players (the map's colours that play; a colour nobody plays is left out, so an event may fire for none), whether it fires for a human and for a computer player (before SoD for humans always), its first day (the file's day + 1: the file's 0 is day 1), its interval in days (0 once) and the seven resources it gives (a negative amount takes; zeros left out), and its message by its index (the text is the client's). On each of its days, at the turn start of each of its players that is human or computer as it says (after the contexts' start-of-turn steps and TurnStarted), in the map's order, its gains go to that player's treasury, then its losses are taken down to 0 at most (ResourceLost the amount taken), then TimedEventFired names it by its message, all to that player alone; day 1's fire as the game is built, so the observation's events_today (the player's own) names those that fired at its turn start today. The setup refuses an event naming a player twice, out of order or not of the game, a resource twice, not the ruleset's or of 0, or a first day of 0, and more events than a u16 names. E08 T83a: the import (`h3_map`'s `timed_events`, map import v15) and `h3_game::TimedEventSetup`, `GameSetup::events`, checked by `GameSetup::validate`; T85b: `TimedEventSetup::fires`, `GameState::fire_events` (at each turn start), `GameState::events_today`, `GameObservation::events_today`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -307,7 +307,7 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-9b.md E9-11 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md section 19): the three events fired at their players' turn starts on their days, in the map's order, the taking one floored at 0"
   retrieved  = "2026-10-30"
   confidence = "high"
-  note       = "The import's part is built (E08 T83a); the firing and the floor are T85b's."
+  note       = "E08 T85b: h3-map's test the_economy_maps_events_fire_as_batch_e9_11_saw_them plays the batch map's three events (red's gold 300 on day 1, 0 on day 2, the take again on days 4 and 6)."
 
 [[rule]]
 id       = "GAM-RES-001"

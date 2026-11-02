@@ -2,7 +2,8 @@
 //! `E08-economy.md` §7, §8, §12): day 1 runs no new day; each later day pays every player its
 //! mines' and heroes' income, a week's first day its armies' weekly resources too, after the week's
 //! step; a month's first day draws the month's kind, and a creature's month adds its monsters;
-//! every hero regains its spell points.
+//! every hero regains its spell points. The map's timed events fire at their players' turn starts
+//! (GAM-CAL-004; batch E9's row E9-11), day 1's inside the build.
 
 use h3_adventure::{
     AdventureEvent, AdventureEventKind, Holds, MonsterSetup, MonthParamsDef, ObjectSetup, TileMask,
@@ -82,6 +83,11 @@ fn object(rules: &GameRuleset, k: &str, anchor: Pos) -> ObjectSetup {
 /// stacks; red owns a gold mine at (3, 0) and an abandoned mine of gold at (0, 3), blue a gold
 /// mine at (2, 0); 10 gogs wander at (1, 3).
 fn game(rules: &GameRuleset) -> GameState {
+    game_with(rules, Vec::new())
+}
+
+/// [`game`] with these timed events.
+fn game_with(rules: &GameRuleset, events: Vec<TimedEventSetup>) -> GameState {
     let core = rules.core();
     let purse: ArtifactInstance = core.artifact_by_key("t:purse").unwrap().into();
     let gogs = |slot, count| ArmyStack {
@@ -119,6 +125,7 @@ fn game(rules: &GameRuleset) -> GameState {
             ..object(rules, "t:monster", Pos::new(1, 3, 0))
         },
     ];
+    setup.events = events;
     GameState::new(rules, &setup, 7).unwrap()
 }
 
@@ -325,4 +332,165 @@ fn the_maps_timed_events_are_in_the_state_hash() {
     let without = GameState::new(&rules, &setup, 7).unwrap();
     assert_ne!(with.state_hash(), without.state_hash());
     assert_ne!(plain.state_hash(), without.state_hash());
+}
+
+/// A timed event of these players and kinds (human, computer), from `first_day` every `interval`
+/// days, giving (or taking) `gold`, named by `message`.
+fn event(
+    players: &[PlayerId],
+    (human, computer): (bool, bool),
+    (first_day, interval): (u16, u16),
+    gold: i32,
+    message: u16,
+) -> TimedEventSetup {
+    TimedEventSetup {
+        players: players.to_vec(),
+        human,
+        computer,
+        first_day,
+        interval,
+        resources: vec![(GOLD, gold)],
+        message,
+    }
+}
+
+/// Whether a timed event fired among `events`.
+fn fired(events: &[GameEvent]) -> bool {
+    events
+        .iter()
+        .any(|e| matches!(e, GameEvent::TimedEventFired { .. }))
+}
+
+// covers: GAM-CAL-004, GAM-RES-001
+#[test]
+fn timed_events_fire_at_their_players_turn_start_in_the_maps_order_floored_at_0() {
+    let rules = rules(None);
+    // Batch E9-11's three for red (two on day 1, the first taking 99 999, the second giving 300;
+    // one from day 2 every two days taking 500), one for blue on day 1 and one taking all red
+    // holds on day 3.
+    let mut state = game_with(
+        &rules,
+        vec![
+            event(&[RED], (true, false), (1, 0), -99_999, 0),
+            event(&[RED], (true, false), (1, 0), 300, 1),
+            event(&[RED], (true, true), (2, 2), -500, 2),
+            event(&[BLUE], (true, false), (1, 0), 40, 3),
+            event(&[RED], (true, false), (3, 0), -99_999, 4),
+        ],
+    );
+    // Day 1's fire inside the build at red's turn start, in the map's order: its 2 000 taken (not
+    // 99 999), then 300 given (E9-11's 300).
+    assert_eq!(state.treasury(RED), Some(&[300][..]));
+    assert_eq!(state.events_today(RED), [0, 1]);
+    // Blue's at its own turn start, after red's turn.
+    assert_eq!(state.treasury(BLUE), Some(&[2000][..]));
+    assert!(state.events_today(BLUE).is_empty());
+    let mut told = Vec::new();
+    state.end_turn(&rules, RED, &mut told).unwrap();
+    assert_eq!(
+        told,
+        [
+            GameEvent::TurnEnded { player: RED },
+            GameEvent::TurnStarted { player: BLUE },
+            GameEvent::ResourceGained {
+                player: BLUE,
+                resource: GOLD,
+                amount: 40,
+            },
+            GameEvent::TimedEventFired {
+                player: BLUE,
+                event: 3,
+            },
+        ]
+    );
+    assert_eq!(state.events_today(BLUE), [3]);
+    assert_eq!(state.events_today(RED), [0, 1]);
+    // Day 2: the income (red's 2 500) before red's turn, then its repeating event at its turn
+    // start; blue's are not today's before its own turn starts.
+    let mut day = Vec::new();
+    state.end_turn(&rules, BLUE, &mut day).unwrap();
+    assert_eq!(
+        day[day.len() - 3..],
+        [
+            GameEvent::TurnStarted { player: RED },
+            GameEvent::ResourceLost {
+                player: RED,
+                resource: GOLD,
+                amount: 500,
+            },
+            GameEvent::TimedEventFired {
+                player: RED,
+                event: 2,
+            },
+        ]
+    );
+    assert_eq!(state.treasury(RED), Some(&[2300][..]));
+    assert_eq!(state.events_today(RED), [2]);
+    assert!(state.events_today(BLUE).is_empty());
+    // Day 3: not the repeating one's, a take of all red holds (4 800 after the income).
+    let day = until(&mut state, &rules, 3);
+    assert_eq!(
+        day[day.len() - 2..],
+        [
+            GameEvent::ResourceLost {
+                player: RED,
+                resource: GOLD,
+                amount: 4800,
+            },
+            GameEvent::TimedEventFired {
+                player: RED,
+                event: 4,
+            },
+        ]
+    );
+    assert_eq!(state.treasury(RED), Some(&[0][..]));
+    assert_eq!(state.events_today(RED), [4]);
+    // Day 4 the repeating one again (2 500 − 500), day 5 none.
+    assert!(fired(&until(&mut state, &rules, 4)));
+    assert_eq!(state.treasury(RED), Some(&[2000][..]));
+    assert!(!fired(&until(&mut state, &rules, 5)));
+    assert!(state.events_today(RED).is_empty());
+    // A player of no game has none.
+    assert!(state.events_today(PlayerId::new(9)).is_empty());
+}
+
+// covers: GAM-CAL-004
+#[test]
+fn a_timed_event_fires_for_the_kinds_of_player_it_names() {
+    let rules = rules(None);
+    let mut setup = setup();
+    setup.players[1].human = false;
+    setup.events = vec![
+        event(&[RED, BLUE], (true, false), (1, 0), 10, 0),
+        event(&[RED, BLUE], (false, true), (1, 0), 20, 1),
+        event(&[BLUE], (true, true), (1, 0), 30, 2),
+    ];
+    let mut state = GameState::new(&rules, &setup, 7).unwrap();
+    state.end_turn(&rules, RED, &mut Vec::new()).unwrap();
+    assert_eq!(state.events_today(RED), [0]);
+    assert_eq!(state.events_today(BLUE), [1, 2]);
+    assert_eq!(state.treasury(RED), Some(&[2010][..]));
+    assert_eq!(state.treasury(BLUE), Some(&[2050][..]));
+}
+
+// covers: GAM-CAL-004
+#[test]
+fn a_timed_event_and_the_days_list_are_its_players_alone() {
+    let rules = rules(None);
+    let mut state = game_with(&rules, vec![event(&[BLUE], (true, false), (1, 0), 40, 3)]);
+    let mut told = Vec::new();
+    state.end_turn(&rules, RED, &mut told).unwrap();
+    let fired = told.last().unwrap();
+    assert!(matches!(fired, GameEvent::TimedEventFired { .. }));
+    assert_eq!(project(fired, Viewer::Player(BLUE)), Some(*fired));
+    assert_eq!(project(fired, Viewer::Player(RED)), None);
+    assert_eq!(
+        observe(&state, &rules, Viewer::Player(BLUE)).events_today,
+        [3]
+    );
+    assert!(
+        observe(&state, &rules, Viewer::Player(RED))
+            .events_today
+            .is_empty()
+    );
 }

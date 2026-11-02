@@ -1100,8 +1100,9 @@ impl GameState {
         self.decisions = (!rest.is_empty()).then(|| rest.into());
     }
 
-    /// Starts the turn of the current group: each of its players acts, and each context runs its
-    /// start-of-turn step for it (the adventure's movement points, ADV-MOV-002).
+    /// Starts the turn of the current group: each of its players acts, each context runs its
+    /// start-of-turn step for it (the adventure's movement points, ADV-MOV-002), and then the
+    /// map's timed events fire for it (GAM-CAL-004, E08 T85b: [`Self::fire_events`]).
     fn start_group<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let group = self.groups[self.group].clone();
         for player in group {
@@ -1109,6 +1110,7 @@ impl GameState {
             self.adventure
                 .start_turn(rules.core(), rules.adventure(), &self.heroes, player);
             sink.emit(GameEvent::TurnStarted { player });
+            self.fire_events(player, sink);
         }
     }
 
@@ -1120,6 +1122,11 @@ impl GameState {
     /// The month's kind (GAM-CAL-003, E08 T85b): public, as the original's month's message.
     pub const fn month(&self) -> MonthKind {
         self.month
+    }
+
+    /// The map's timed events in the map's order (GAM-CAL-004, E08 T85b): the setup's, static.
+    pub fn events(&self) -> &[TimedEventSetup] {
+        self.events.as_deref().unwrap_or_default()
     }
 
     /// How many players the game has.
@@ -1308,7 +1315,7 @@ impl CanonicalHash for GameState {
         h.write_u64(self.seed);
         h.write_u32(self.day);
         self.month.hash_into(h);
-        let events = self.events.as_deref().unwrap_or_default();
+        let events = self.events();
         h.write_len(events.len());
         for event in events {
             hash_event(event, h);
@@ -1567,7 +1574,7 @@ impl GameState {
     }
 
     /// Replaces the schedule (tests of turn groups larger than sequential play) and restarts the
-    /// first group's turn.
+    /// first group's turn (its players' timed events fire again: such tests have none).
     pub(crate) fn set_schedule(&mut self, rules: &GameRuleset, groups: Vec<Vec<PlayerId>>) {
         for player in &mut self.players {
             player.acting = false;
