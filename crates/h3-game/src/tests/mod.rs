@@ -22,6 +22,7 @@ mod observe;
 mod records;
 mod rests;
 mod rewards;
+mod shipyards;
 mod state;
 
 extern crate std;
@@ -105,7 +106,7 @@ fn hero_type(k: &str, army: &[(&str, [u16; 2])], war_machines: &[&str]) -> HeroT
     }
 }
 
-/// A core ruleset: the terrains `t:grass` and `t:rock`, the creatures `t:imp` (speed 5, 50
+/// A core ruleset: the terrains `t:grass`, `t:rock` and (E08 T84b2) `t:water`, the creatures `t:imp` (speed 5, 50
 /// gold), `t:gog` (speed 2, 100 gold) and the war machine `t:cart`, and the hero types `t:orrin` (imp 2-5, gog
 /// 1-3), `t:loner` (no army), `t:crowd` (three stacks) and `t:gunner` (imp 1-1, the cart, gog
 /// 2-2), in that order; `extra` adds a creature. The profile `t:faithful` enables no quirk,
@@ -138,7 +139,7 @@ fn core_pack(extra: bool) -> ContentPack {
         creatures.push(creature("t:elf", 5));
     }
     ContentPack {
-        terrains: ["t:grass", "t:rock"]
+        terrains: ["t:grass", "t:rock", "t:water"]
             .iter()
             .map(|k| TerrainDef {
                 key: key(k),
@@ -409,6 +410,12 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 passage: Passage::Impassable,
                 pathfinding: None,
             },
+            // E08 T84b2: the sea a Shipyard's boat tile needs (`shipyards.rs`).
+            TerrainMovementDef {
+                terrain: key("t:water"),
+                passage: Passage::Water(cost),
+                pathfinding: None,
+            },
         ],
         // A gold pile, and a Cartographer of grass for 2 500 gold (E08 T14b).
         object_types: vec![
@@ -593,6 +600,29 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                     resource: key("t:gold"),
                     first: 500,
                     later: 1000,
+                },
+            ),
+            // E08 T84b2: a Shipyard building boats of type 1 for 1 500 gold, the original's twelve
+            // offsets.
+            entered(
+                "t:shipyard",
+                ObjectKindDef::Shipyard {
+                    price: vec![(key("t:gold"), 1500)],
+                    boat_type: 1,
+                    offsets: vec![
+                        (-2, 0),
+                        (2, 0),
+                        (-2, 1),
+                        (2, 1),
+                        (-1, 1),
+                        (1, 1),
+                        (0, 1),
+                        (-2, -1),
+                        (2, -1),
+                        (-1, -1),
+                        (1, -1),
+                        (0, -1),
+                    ],
                 },
             ),
         ],

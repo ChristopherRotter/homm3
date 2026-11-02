@@ -10152,3 +10152,98 @@ Garden's for the visitor's owner: hint data only, never read by the gain), then:
 the outcome's gain (as a pickup's, `ResourceGained` by the game) and the amount set to 0; none,
 `ObjectEmpty { object_type, anchor }` to the visitor's owner (the original's "nothing" message).
 The visit ends the walk on the entrance, as any entered visit.
+
+### Increment 9, round 6: T84b2, the Shipyards, their boat offer and `BuildBoat` (2026-11-02, `adventure/e08-t84b2` with `shared/e08-t84b2`)
+
+**The cut** (decision 221, the user at T84b's start): T84b2 whole, the Shipyards, their boat
+offer and `BuildBoat` (adventure replay format v8). The `shared/` part (docs only:
+`docs/06-security.md`, ADR-0016 point 6's Garden lines) in a pull request of its own merged first
+(#637). **Decision 222** (the user at T84b2's start, on T84b1's report): a Mystical Garden's
+visited mark is the visitor's team's, as the Windmill's and the Water Wheel's (`ADV-QUIRK-35`,
+the original's own mask not reproduced, no flag).
+
+- **The Garden's mark** (`state/weekly.rs`, `ruleset/objects.rs`): `Effect::Weekly` loses its
+  `own_mark`; every weekly object marks the players `allied` with the visitor (the visitor alone
+  until E10, so nothing changes in play yet). ADV-VIS-006, ADV-WEK-003 and ADV-OWN-003 amended,
+  `ADV-QUIRK-35` recorded, design exit criterion 8 corrected.
+- **The visit** (`state/shipyards.rs`; design §7): `Effect::Shipyard(price)`; `visit_shipyard`
+  flags a neutral or another team's Shipyard through T84a's `flag`, then, whoever owns it, makes
+  the outcome's `OfferKind::Boat { price }` while `boat_site` finds its boat tile free (no empty
+  boat on it, no hero standing there), else tells the visitor's owner `ShipyardBlocked {
+  object_type, anchor, reason }` (`ShipyardBlock::NoTile` or `Taken`). The game opens the offer
+  through its existing `open` (the treasury test, `OfferRefused` else); `offer_stands` also needs
+  a boat offer's tile still free; `accept_offer` builds it (`build_boat`: `boats.rs`' `launch`, an
+  empty boat of the kind's type at the next index, facing 2, the builder its owner, no captain;
+  a map without boats gets its block with its first boat), `BoatBuilt { tile, boat_type }` to the
+  builder and the players that see heroes on the tile (`viewers`, as the boats' views).
+- **`BuildBoat`** (design §8, §14): `AdventureCommand::BuildBoat { object_type, anchor }`;
+  `AdventureState::boat_price` (read-only: `UnknownObject` for no Shipyard of that type at that
+  anchor among the ownable objects or one with no tile the player explored, then `NotOwner`,
+  `NoBoatTile`, `BoatTileTaken`), `buildable_shipyards` (the ownable list, each Shipyard checked
+  once); the game's `run` asks `GameState::boat_price` (the adventure's checks, then
+  `CannotPay`) before anything changes, applies the command, then pays (`pay_price`, now
+  crate-visible). `legal_commands` lists after `EndTurn` a `BuildBoat` per Shipyard the player can
+  build at and pay for, in object order. The env does not encode it yet (`tileless_entry` gives
+  none: decision 203, T85b).
+- **The replay format v8** (`h3-sim`'s `REPLAY_FORMAT_VERSION`, `h3-cli`'s text): `<player>
+  build-boat <type> <x>,<y>,<level>`, the type its index in the adventure part; `parse_pos`
+  shared with `move`.
+- **The game state hash**: an open boat offer hashes as offer tag 10 with its price; no version
+  moved (no earlier state holds one).
+- *Agent's calls (change freely):* `legal_commands` lists the `BuildBoat`s now (the design left
+  it to the env's T85b; the command exists, so its legality is the game's to list);
+  `BoatBuilt` told to the builder even where it sees no heroes on the tile (it built and paid;
+  the flag's reveal covers the tile with the base pack's radius 3); a boat offered to a computer
+  player's hero as a human's (the original's computer builds through its own code, E10).
+- **`shared/e08-t84b2`** (#637): `docs/06-security.md`'s lines for a Shipyard's flag, offer,
+  `ShipyardBlocked`, `BoatBuilt` and `BuildBoat`'s checks; decision 222's lines there and in
+  ADR-0016 point 6.
+- **Rules:** ADV-SHY-002 and ADV-SHY-003 new (`verified`: batch E9's E9-5), ADV-OWN-001 completed
+  (the Shipyards), ADV-VIS-006, ADV-WEK-003, ADV-OWN-003 amended (decision 222).
+- **Tests:** `h3-adventure`'s `state/tests/shipyards.rs` (four: the visit's flag, offer and boat,
+  the record and its viewers, then `Taken`; no tile and a hero in a boat on the tile; the offer
+  standing only while the tile is free; `BuildBoat`'s checks in order, `buildable_shipyards`, a
+  second build rejected whole), the ruleset's effects, the weekly tests' Garden; `h3-game`'s
+  `tests/shipyards.rs` (two: the visit's offer opened, accepted, paid and built, seen by both,
+  then no `BuildBoat` and `ShipyardBlocked`; two own Shipyards listed, one built and paid, the
+  other `CannotPay` and its visit's `OfferRefused`, blue's `NotOwner`; the game test part gained
+  water and a Shipyard); `h3-cli`'s round trip and malformed `build-boat` lines; `h3-map`'s play
+  and view properties know the boat offer, `ShipyardBlocked` and `BoatBuilt` (the plans place
+  Shipyards from T86).
+- **Bench** (`bench-check` against `target/wt-master`): random-play-duel-36 −0.01 % (1 012 201 588
+  Ir against 1 012 318 130), random-play-sea-36 −0.00 %, random-play-rewards-36 +0.00 %,
+  reach-xl-144 +0.00 %; none re-baselined.
+- **Versions:** adventure replay format v8; the 32 adventure replays re-recorded from their own
+  commands (only the format line moved), the bot reports unmoved (no part changed).
+
+The design note's §7 Shipyard item, §8 and §14's two items as T84b2 found them:
+
+###### 7. The owned objects' visits: the Shipyard (as T84b2 found it) (ADV-OWN-001, ADV-SHY-002)
+
+- **A Shipyard:** flagged unless own or allied, then the boat offer: no tile, `ShipyardBlocked {
+  object_type, anchor, reason: NoTile }` to the visitor's owner; a boat or a hero on the tile,
+  `reason: Taken`; else the outcome's offer `OfferKind::Boat { price }`, which the game makes only
+  when the treasury can pay (`OfferRefused` else). Accepted: `AdventureState::build_boat(index,
+  player)` (the offer re-checked by `offer_stands`: the tile still free) puts an empty boat of the
+  kind's type on the tile (ADV-SEA-001's record: facing 2, the builder as owner, no captain; the
+  empty boats' grid set), `BoatBuilt { tile, boat_type }` to the players who see the tile.
+
+###### 8. `BuildBoat` (as T84b2 found it) (ADV-SHY-003)
+
+`AdventureCommand::BuildBoat { object_type, anchor }`. Validation in this order, rejected whole:
+the object exists at the anchor with that type, a `Shipyard` (`UnknownObject`); the player has
+explored one of its tiles (`UnknownObject`, so a hidden Shipyard is not revealed by the error);
+its owner is the player or an ally (`NotOwner`); its boat tile exists (`NoBoatTile`); the tile is
+free (`BoatTileTaken`). The game checks the treasury against the kind's price first
+(`GameCommandError::CannotPay`, the state unchanged), then the adventure applies: the boat as
+§7's, the outcome's price paid by the game. No hero, no movement points, no visit.
+
+###### 14. The game: the boat offer and `BuildBoat` (as T84b2 found them)
+
+- **Decisions** (ADR-0017 point 6's draft): the army dialog's holder, the mine's question and
+  the two-owner battle with an owned mine's guards are built (T84a, game state hash v21; its
+  record in `E08-log.md`). Left: the boat offer is a `Decision::Offer`; an accepted boat offer
+  pays the price, then `build_boat` (T84b2).
+- **`BuildBoat`** (§8): the game's `check_ready`, then `AdventureState::boat_price(player,
+  object_type, anchor)` (the adventure's validation, read-only), the treasury test, then the
+  command applied and the price paid.

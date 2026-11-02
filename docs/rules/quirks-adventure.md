@@ -402,3 +402,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/boats.rs`, `a_map_holds_more_boats_than_the_original_s_64`
 - Decided by / date: the user 2026-10-28 (ADV-Q32; decisions 164, 166: not reproduced, no flag); recorded by E08 T72
+
+### ADV-QUIRK-35 — A Mystical Garden marks its visitor alone, not the visitor's team
+- Class: not reproduced (no flag; the user, E08 decision 222: "always fix")
+- Context / rules affected: adventure, ADV-VIS-006 (the weekly objects' visited marks), ADV-WEK-003 (the Mystical Garden), ADV-OWN-003 (the views)
+- Original behavior: the Windmill and the Water Wheel mark every player of the visitor's team in their tile word (`tile_mark_visited_by_team` 0x4FBF90), but `visit_garden` (0x4A3BC0) sets the Garden's bit in the current player's own mask (player +0xB8) only, so a Garden an ally visited still shows to the player as not visited, where an ally's Windmill shows as visited (survey `E08-economy.md` §9.3, §9.4).
+- Intended/expected behavior: the three weekly objects mark alike: a Garden's visit marks every player of the visitor's team (increment 9's design note §9 as amended by E08 T84b2). The contents stay the object's, one a week for whoever comes first (E08 decision 201); the marks are hint data no gain reads.
+- Impact: information only (the hint's "visited" for an ally's Garden); unreachable until E10's teams, since a team is its player alone until then.
+- Community status: not documented (VCMI's rewardable config and the wiki speak only of the weekly gift, survey §9.5).
+- Sources: code reading (survey §9.3, §9.4; E08 T77a2's second reading); batch E9's E9-8 (each visitor's own Garden bit, the Windmill's and the Water Wheel's marks in the tile word; survey §19).
+- Flag: none (not reproduced)
+- Defaults: the engine's rule in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/weekly.rs`, `a_water_wheel_and_a_garden_give_their_week_s_amounts` (the Garden's mark through the same team test as the Windmill's)
+- Decided by / date: the user 2026-11-02 (at E08 T84b2's start, decision 222: "always fix"); recorded by E08 T84b2

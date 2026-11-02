@@ -1872,7 +1872,8 @@ fn move_hero(hero: HeroId, path: Vec<TilePos>) -> GameCommand {
 fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
     match command {
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => Some((*hero, path)),
-        GameCommand::EndTurn
+        GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
+        | GameCommand::EndTurn
         | GameCommand::Answer(_)
         | GameCommand::Battle(_)
         | GameCommand::Manage(_) => None,
@@ -4515,6 +4516,20 @@ fn check_decisions(
                         | OfferKind::OpenBox
                         | OfferKind::SearchPyramid,
                     ) => {}
+                    // E08 T84b2: an accepted boat offer builds its boat (the offer stood: its
+                    // tile was free; the plans place Shipyards from T86).
+                    (true, OfferKind::Boat { .. }) => {
+                        let built = events.iter().any(|e| {
+                            matches!(
+                                e,
+                                GameEvent::Adventure(AdventureEvent {
+                                    kind: AdventureEventKind::BoatBuilt { .. },
+                                    ..
+                                })
+                            )
+                        });
+                        prop_assert!(built, "{:?} without its boat", event);
+                    }
                     (false, _) => {}
                 }
             }

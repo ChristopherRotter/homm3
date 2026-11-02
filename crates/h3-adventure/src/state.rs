@@ -94,6 +94,7 @@ mod passage;
 mod piles;
 mod records;
 mod rewards;
+mod shipyards;
 mod visits;
 mod weekly;
 
@@ -1410,6 +1411,10 @@ impl AdventureState {
             AdventureCommand::MoveHero { hero, path } => {
                 self.move_hero(core, part, heroes, (player, *hero), path, sink)
             }
+            AdventureCommand::BuildBoat {
+                object_type,
+                anchor,
+            } => self.build_boat_command((core, part), player, (*object_type, *anchor), sink),
         }
     }
 
@@ -1987,7 +1992,8 @@ impl AdventureState {
     /// §8.5): read by the visitor's owner alone ([`AdventureEventKind::MessageRead`]; a computer's
     /// hero as a human's, `ADV-QUIRK-30` not reproduced), then, when it leaves, taken off the map;
     /// nothing given, no question. Since E08 T84a a mine ([`Self::visit_mine`]), since T84b1 a
-    /// Lighthouse ([`Self::visit_lighthouse`]) and a weekly object ([`Self::visit_weekly`]).
+    /// Lighthouse ([`Self::visit_lighthouse`]) and a weekly object ([`Self::visit_weekly`]), since
+    /// T84b2 a Shipyard ([`Self::visit_shipyard`]).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017
     fn visit<S: Sink>(
@@ -2059,8 +2065,9 @@ impl AdventureState {
                 outcome = self.visit_mine((core, rules.1), (player, hero), object, sink);
             }
             Effect::Lighthouse => self.visit_lighthouse((core, rules.1), player, object, sink),
-            Effect::Weekly { own_mark } => {
-                outcome = self.visit_weekly(player, object, own_mark, sink);
+            Effect::Weekly => outcome = self.visit_weekly(player, object, sink),
+            Effect::Shipyard(price) => {
+                outcome = self.visit_shipyard((core, rules.1), (player, hero), object, price, sink);
             }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
@@ -2104,9 +2111,14 @@ impl AdventureState {
     /// Whether `offer` still stands (ADR-0017 point 10): its object is still on the map. A border
     /// guard may have left it since the offer opened, passed by another player of the same turn
     /// group (E08 T15a); a Cartographer never leaves it, and nothing of its owner's but its answer
-    /// runs while an offer is open (ADR-0017 point 6).
+    /// runs while an offer is open (ADR-0017 point 6). A Shipyard's boat offer (ADV-SHY-002, E08
+    /// T84b2) also needs its boat tile still free: another player's boat may end on it meanwhile.
     pub fn offer_stands(&self, offer: &Offer) -> bool {
-        self.offer_object(offer).is_some()
+        self.offer_object(offer)
+            .is_some_and(|index| match offer.kind {
+                OfferKind::Boat { .. } => self.boat_site(index).is_ok(),
+                _ => true,
+            })
     }
 
     /// The object `offer` names, if it is still on the map: the last in map order still on the
@@ -2135,10 +2147,11 @@ impl AdventureState {
     /// ([`Self::fight_for_mine`]). A gift's price (ADV-TCH-003, E08 T62a): the gift given, the hero marked. A find's question
     /// (ADV-PIK-011): the find searched. Pandora's Box's (ADV-PIK-013, E08 T62b1): its guards'
     /// battle or its record ([`Self::open_box`]). The Pyramid's (ADV-TCH-008, E08 T62b1): a
-    /// looted one's luck or its guards' battle ([`Self::search_pyramid`]). Infallible; the outcome
-    /// is what the game applies after.
+    /// looted one's luck or its guards' battle ([`Self::search_pyramid`]). A Shipyard's boat
+    /// (ADV-SHY-002, E08 T84b2): the boat built on its tile ([`Self::build_boat`]). Infallible;
+    /// the outcome is what the game applies after.
     // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008, ADV-PIK-004, ADV-TCH-003, ADV-PIK-011
-    // rule: ADV-PIK-013, ADV-TCH-008, ADV-MIN-002
+    // rule: ADV-PIK-013, ADV-TCH-008, ADV-MIN-002, ADV-SHY-002
     pub fn accept_offer<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -2177,6 +2190,12 @@ impl AdventureState {
             OfferKind::Search => self.accept_search(rules, player, offer, sink),
             OfferKind::OpenBox => self.open_box(rules, offer, sink),
             OfferKind::SearchPyramid => self.search_pyramid(part, player, offer),
+            OfferKind::Boat { .. } => {
+                if let Some(index) = self.offer_object(offer) {
+                    self.build_boat((core, part), index, player, sink);
+                }
+                AdventureOutcome::default()
+            }
         }
     }
 

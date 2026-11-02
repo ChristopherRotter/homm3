@@ -16,7 +16,7 @@ checkpoints = [
 ]
 
 [replay]
-format = 7
+format = 8
 engine = "0.1.0"
 seed = "1"
 difficulty = 1

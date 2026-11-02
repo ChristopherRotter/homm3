@@ -2,7 +2,7 @@
 //! with their adventure files and `.h3m` maps from disk, recording random games and the adventure
 //! replay file format (TOML). The commands themselves are in [`cli`].
 //!
-//! Replay file format v7 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v8 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -14,7 +14,9 @@
 //! `assemble` and `disassemble <hero> <position>`; v7 the answers typed by the decision's kind,
 //! E08 T63a: `answer <kind> <answer>`, the kinds `offer accept|decline`, `level-up
 //! first|second`, `chest gold|experience`, `arena attack|defense`, `school first|second|leave`,
-//! `university buy <slot>|leave`, and `answer close` for a meeting or an army dialog):
+//! `university buy <slot>|leave`, and `answer close` for a meeting or an army dialog; v8
+//! `build-boat <type> <x>,<y>,<level>`, a Shipyard's boat without a visit, E08 T84b2: the
+//! Shipyard by its object type's index in the adventure part and its anchor):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -27,11 +29,13 @@
 //!                                     #   `system battle …`: the unowned side's
 //!     "0 army split 1:0 1:3 5",       #   `<player> army …`, `formation …`, `tactics …`,
 //!     "0 artifact 1:b0 1:w2",         #   `artifact …`, `assemble …`, `disassemble …`: a
-//! ]                                   #   management command
+//!                                     #   management command
+//!     "0 build-boat 41 9,16,1",       #   `<player> build-boat <type> <x>,<y>,<level>`
+//! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 7
+//! format = 8
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -66,7 +70,7 @@ use std::fmt;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
-use h3_adventure::{AdventureCommand, Pos};
+use h3_adventure::{AdventureCommand, ObjectTypeId, Pos};
 use h3_content::Formation;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
@@ -260,10 +264,11 @@ fn parse_hex64(s: &str) -> Result<u64> {
         .ok_or_else(|| AdventureCliError::Format(format!("bad hash `{s}`")))
 }
 
-/// A command as a replay file writes it (format v7, the module's docs): its actor, then the
+/// A command as a replay file writes it (format v8, the module's docs): its actor, then the
 /// command; a battle command (E08 T19b1) as the battle replays write it ([`crate::format_command`])
 /// without the side, which is the actor's in its battle; a management command (E08 T51a) by its
-/// own words ([`format_manage`]); an answer (E08 T63a) by its kind and words ([`format_answer`]).
+/// own words ([`format_manage`]); an answer (E08 T63a) by its kind and words ([`format_answer`]);
+/// a `BuildBoat` (E08 T84b2) by its Shipyard's type index and anchor.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -286,6 +291,17 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
             }
             text
         }
+        // Format v8 (E08 T84b2).
+        GameCommand::Adventure(AdventureCommand::BuildBoat {
+            object_type,
+            anchor,
+        }) => format!(
+            "{player} build-boat {} {},{},{}",
+            object_type.raw(),
+            anchor.x,
+            anchor.y,
+            anchor.level
+        ),
         GameCommand::Manage(command) => format!("{player} {}", format_manage(command)),
     }
 }
@@ -465,6 +481,20 @@ fn parse_manage<'a>(kind: &str, words: &mut impl Iterator<Item = &'a str>) -> Op
     Some(command)
 }
 
+/// A tile as a replay file writes it: `<x>,<y>,<level>`.
+fn parse_pos(word: &str) -> Option<Pos> {
+    let mut n = word.split(',');
+    let (x, y, level) = (n.next()?, n.next()?, n.next()?);
+    if n.next().is_some() {
+        return None;
+    }
+    Some(Pos::new(
+        x.parse().ok()?,
+        y.parse().ok()?,
+        level.parse().ok()?,
+    ))
+}
+
 /// Parses a command written by [`format_command`].
 ///
 /// # Errors
@@ -497,21 +527,23 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 .ok_or_else(bad)?;
             let path = words
                 .by_ref()
-                .map(|w| {
-                    let mut n = w.split(',');
-                    let (x, y, level) = (n.next()?, n.next()?, n.next()?);
-                    if n.next().is_some() {
-                        return None;
-                    }
-                    Some(Pos::new(
-                        x.parse().ok()?,
-                        y.parse().ok()?,
-                        level.parse().ok()?,
-                    ))
-                })
+                .map(parse_pos)
                 .collect::<Option<Vec<_>>>()
                 .ok_or_else(bad)?;
             GameCommand::Adventure(AdventureCommand::MoveHero { hero, path })
+        }
+        // Format v8 (E08 T84b2): a Shipyard's boat without a visit.
+        Some("build-boat") => {
+            let object_type = words
+                .next()
+                .and_then(|w| w.parse().ok())
+                .map(ObjectTypeId::from_raw)
+                .ok_or_else(bad)?;
+            let anchor = words.next().and_then(parse_pos).ok_or_else(bad)?;
+            GameCommand::Adventure(AdventureCommand::BuildBoat {
+                object_type,
+                anchor,
+            })
         }
         // Format v6 (E08 T51a): the management commands.
         Some(

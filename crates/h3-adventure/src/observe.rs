@@ -151,9 +151,9 @@ pub struct ObjectView {
     /// for every other object (a guarded pile's guards stay hidden, ADV-PIK-004).
     pub guards: Option<GuardsView>,
     /// A weekly object's visited mark, the viewer's own (ADV-OWN-003; survey `E08-economy.md`
-    /// §9.4): set by a visit of its team's (the Garden's, of its own) and kept through the weeks,
-    /// so it says "visited once", never "emptied"; false for every other object. Its contents
-    /// never show.
+    /// §9.4): set by a visit of its team's (a Garden's too, `ADV-QUIRK-35`) and kept through the
+    /// weeks, so it says "visited once", never "emptied"; false for every other object. Its
+    /// contents never show.
     pub visited: bool,
     /// A Shipyard's boat tile, fixed when the game was built (ADV-SHY-001: static and public);
     /// none for a Shipyard without one and for every other object.
@@ -580,7 +580,9 @@ impl AdventureEvent {
                 | AdventureEventKind::ObjectFlagged { .. }
                 | AdventureEventKind::GuardsChanged { .. }
                 | AdventureEventKind::ObjectMarked { .. }
-                | AdventureEventKind::ObjectEmpty { .. } => self.kind,
+                | AdventureEventKind::ObjectEmpty { .. }
+                | AdventureEventKind::ShipyardBlocked { .. }
+                | AdventureEventKind::BoatBuilt { .. } => self.kind,
             },
             seen_by: alone,
         })

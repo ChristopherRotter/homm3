@@ -908,5 +908,6 @@ mod rewards;
 mod sea;
 mod sea_battles;
 mod sea_pickups;
+mod shipyards;
 mod visits;
 mod weekly;

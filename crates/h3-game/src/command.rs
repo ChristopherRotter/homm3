@@ -229,7 +229,8 @@ pub enum GameCommandError {
     /// the hero knows its skill, knows eight skills, or its class weighs the skill 0
     /// (`h3_heroes::university_slot`), or the University has no such slot.
     SlotClosed,
-    /// A University's purchase the treasury cannot pay (GAM-DEC-006, E08 T63a).
+    /// A University's purchase the treasury cannot pay (GAM-DEC-006, E08 T63a); since E08 T84b2
+    /// also a `BuildBoat` (ADV-SHY-003), checked after the adventure's own checks.
     CannotPay,
 }
 
@@ -624,6 +625,15 @@ fn run<S: Sink>(
         GameCommand::Manage(command) => state.manage(rules, player, command, sink),
         GameCommand::Adventure(command) => {
             state.check_ready(player)?;
+            // E08 T84b2 (ADV-SHY-003; increment 9's design note §14): `BuildBoat`'s checks and the
+            // treasury's before anything changes; its price is taken after the boat is built.
+            let price = match &command {
+                AdventureCommand::BuildBoat {
+                    object_type,
+                    anchor,
+                } => Some(state.boat_price(rules, player, *object_type, *anchor)?),
+                AdventureCommand::MoveHero { .. } => None,
+            };
             let (adventure, heroes) = state.adventure_with_heroes();
             let outcome = adventure
                 .apply(
@@ -635,6 +645,9 @@ fn run<S: Sink>(
                     &mut AdventureSink(sink),
                 )
                 .map_err(GameCommandError::Adventure)?;
+            if let Some(price) = price {
+                state.pay_price(player, price, sink);
+            }
             state.settle_outcome(rules, player, outcome, sink);
             Ok(())
         }

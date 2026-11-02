@@ -341,6 +341,32 @@ impl AdventureState {
         });
     }
 
+    /// A boat built (ADV-SHY-002, ADV-SHY-003; E08 T84b2; survey `E08-economy.md` §5.2, the
+    /// original's `create_boat` 0x4BB250 from the boat dialog): an empty boat of type `kind` on
+    /// `tile`, facing [`SETUP_FACING`], its owner `owner` and no captain, at the next boat index;
+    /// the first boat of a map without boats makes its records and grid. No bound on their
+    /// number (`ADV-QUIRK-32`). The caller has checked that the tile is free water.
+    pub(super) fn launch(&mut self, tile: Pos, kind: u8, owner: PlayerId) {
+        let map = &self.map;
+        let boats = self.boats.get_or_insert_with(|| Boats {
+            records: Table::new(),
+            empty: BitGrid::new(map.width(), map.height(), map.levels()),
+        });
+        boats.empty.set(tile, true);
+        boats.records.set(
+            boats.records.len(),
+            Some(Boat {
+                tile,
+                kind,
+                facing: SETUP_FACING,
+                owner: Some(owner),
+                captain: None,
+                aboard: false,
+                gone: false,
+            }),
+        );
+    }
+
     /// The conversion of a boarding or a landing (D-41, ADR-0016 point 3; increment 8's design note
     /// §8): the hero at `index` keeps [`converted_points`] of its points, after the step's drop,
     /// with free boarding (`h3_heroes::free_boarding`, ADR-0013 point 13.7: the Admiral's Hat), and

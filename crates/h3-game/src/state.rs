@@ -562,7 +562,12 @@ impl GameState {
 
     /// Pays `price` from `player`'s treasury (GAM-RES-001), each resource told to it alone
     /// (`ResourcePaid`), in the price's order. Its callers checked that the treasury can pay.
-    fn pay_price<S: Sink>(&mut self, player: PlayerId, price: &[(ResourceId, u32)], sink: &mut S) {
+    pub(crate) fn pay_price<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        price: &[(ResourceId, u32)],
+        sink: &mut S,
+    ) {
         for &(resource, amount) in price {
             let amount = self.treasuries.pay(player, resource, amount);
             sink.emit(GameEvent::ResourcePaid {
@@ -1174,6 +1179,32 @@ impl GameState {
         }
     }
 
+    /// `BuildBoat`'s price (ADV-SHY-003, E08 T84b2; increment 9's design note §14): the
+    /// adventure's checks ([`AdventureState::boat_price`]: the Shipyard known to `player`, its or
+    /// an ally's, with a free boat tile), then the treasury's (GAM-RES-001), so a rejected command
+    /// changes nothing.
+    ///
+    /// # Errors
+    ///
+    /// The adventure's error, then [`GameCommandError::CannotPay`].
+    // rule: ADV-SHY-003
+    pub(crate) fn boat_price<'r>(
+        &self,
+        rules: &'r GameRuleset,
+        player: PlayerId,
+        object_type: ObjectTypeId,
+        anchor: Pos,
+    ) -> Result<&'r [(ResourceId, u32)], GameCommandError> {
+        let price = self
+            .adventure
+            .boat_price(rules.adventure(), player, object_type, anchor)
+            .map_err(GameCommandError::Adventure)?;
+        if !self.can_pay(player, price) {
+            return Err(GameCommandError::CannotPay);
+        }
+        Ok(price)
+    }
+
     /// Whether `player`'s treasury can pay `price` (GAM-RES-001): it holds each resource's
     /// amount (a player not in the game holds none).
     pub(crate) fn can_pay(&self, player: PlayerId, price: &[(ResourceId, u32)]) -> bool {
@@ -1243,7 +1274,8 @@ impl CanonicalHash for GameState {
     /// an offer, 1 a battle; an offer's owner, hero, object type, anchor, since v4 the offer's
     /// kind, 0 a reveal, 1 a passage, since v7 2 a join, 3 a join for gold, 4 a flight, since v8
     /// 5 a guarded pile's fight, since v16 6 a gift's price, 7 a find's question, since v17 8
-    /// Pandora's Box's question, 9 the Pyramid's, then a reveal's, a join for gold's or a gift's
+    /// Pandora's Box's question, 9 the Pyramid's, since E08 T84b2 10 a Shipyard's boat (no version
+    /// moved: no earlier state holds one), then a reveal's, a join for gold's, a gift's or a boat's
     /// price as length and resource–amount pairs, from v7 to v18 whether a guard's visit waits for
     /// the answer;
     /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
@@ -1303,6 +1335,7 @@ impl CanonicalHash for GameState {
                         OfferKind::Search => (7, None),
                         OfferKind::OpenBox => (8, None),
                         OfferKind::SearchPyramid => (9, None),
+                        OfferKind::Boat { price } => (10, Some(price)),
                     };
                     h.write_u8(tag);
                     if let Some(price) = price {

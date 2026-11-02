@@ -361,7 +361,9 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     | AdventureEventKind::ObjectFlagged { .. }
                     | AdventureEventKind::GuardsChanged { .. }
                     | AdventureEventKind::ObjectMarked { .. }
-                    | AdventureEventKind::ObjectEmpty { .. } => (None, None),
+                    | AdventureEventKind::ObjectEmpty { .. }
+                    | AdventureEventKind::ShipyardBlocked { .. }
+                    | AdventureEventKind::BoatBuilt { .. } => (None, None),
                 })
             })
             .collect();
