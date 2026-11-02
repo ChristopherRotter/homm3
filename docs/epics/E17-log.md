@@ -3872,6 +3872,43 @@ step: CI's green `master` at `12a3d01` stands as the baseline).
 - **Checked:** `cargo test -p h3-view` (408 + 91 + 5), fmt; the release viewer, `drawn` over all
   156 items: all the same (the comparisons draw the original's); `clients/scripts/check.sh`.
 
+### M6 T2a1 — the stats dialog read and recorded (2026-11-02)
+
+On `client/e17-m6-t2a1`, the user present. T2 cut in three by the user at its start (T2a1 the
+dialog read and drawn as recorded stills; T2a2 the dialog in the window; T2b the right button's
+popup and the turret's info). The sandbox new, the original files staged first (57 files);
+the baseline's `check.sh` passed (`verify-once`, code `313e253`); #620 had merged.
+
+- **Read** (design §12.1, 24 map entries): `stack_stats_dialog`'s place and modes, the
+  constructor 0x5F3360 and its parts (the picture 0x5F5060, the seven lines 0x5F5340 to 0x5F62F0,
+  the effects 0x5F65B0, the OK 0x5F6870), the modal run 0x5F47F0 (the first step 100 ms after the
+  opening), the procedure 0x5F4850 (the mouse's move and hints, the idle tick; its presses for
+  T2a2), the item-to-hint map 0x5F46C0 and the hint table (Help.txt 433 to 447), the creature DEF
+  item's draw (0x4EAB40 with the flags 0x12) and steps (0x4EB060, 0x4EB250).
+- **The common crates** (additive): `h3_render::blit::draw_frame_clipped`; `ui::Def`'s `group`,
+  `creature` and `frames_of`, `ui::Draw::Creature` and `Shared`, drawn by
+  `h3_ui::paint` (`creature_frame`), which `h3-view`'s compositor calls for both (the batch is the
+  painter's `Assets`).
+- **The library:** `stats` (`StatsLayout`, the layout's `[stats]`; `Stats`, `Pair`, `Texts`;
+  `place`, `layout`, `Steps` with the viewer's own generator), `mouse::looked_at`; the
+  catalogue's `stats.*` keys and the family `creature-ability`.
+- **The binary:** `stats` (a stack's numbers from a seat's observation, the rules and the
+  tables, *provisional*: review item 5; `open`, `Open::at`); a situation's `click:` on a stack to
+  look at opens the dialog (`spellbook::Boxes::look`, `Still::stats`), drawn by `sequences` with
+  its creature stepped, the combat pointer at the park point and the press's hint in the panel;
+  any later action is refused (T2a2).
+- **Recorded** (`set.toml`): `stats` (the Marksmen, at 0, 100, 400 and 700 ms), `stats-acting`,
+  `stats-machine` (the Ammo Cart) and `stats-dragon` (the cast button, at 0 and 1 100 ms) exact,
+  but `stats-dragon`'s panel line (1 276 pixels: the draw's line, not built). Found by them: the
+  morale and luck boxes show the B DEFs' frames (the original's memory, h3mem: the frames kept
+  by name; CLT-Q36, built as the original's), the first step 100 ms after the opening, the
+  cursor and the status line after the park.
+- **Asked:** CLT-Q36 (the shared frames), CLT-Q37 (the damage value a row up), CLT-Q38 (the
+  hints and the cast button, for T2a2). Review items 5 to 8.
+- **Checked:** `drawn` all 160 the same on the tree merged with `master` (the four new recorded);
+  the real-asset gate (859 keys, 11 tables); `clients/scripts/check.sh` all gates, coverage 100 %;
+  the scoped verify with the original data, no failing step.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

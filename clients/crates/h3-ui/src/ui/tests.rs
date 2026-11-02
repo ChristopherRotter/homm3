@@ -482,3 +482,83 @@ fn a_picture_takes_the_picture_the_screen_gives_it() {
     };
     assert_eq!(pictures(&shown), ["hps000kn.pcx"]);
 }
+
+#[test]
+fn a_creature_def_item_draws_its_group_and_frame_as_shown() {
+    // E17 M6 T2a1: a DEF item with the flags 0x12 (`creature`) draws as a creature in its box,
+    // its group its own, its frame its own until the screen gives it another; one without a DEF
+    // draws nothing.
+    let d: Dialog = toml::from_str(
+        r#"
+place = [10, 20]
+
+[[items]]
+kind = "def"
+id = 201
+def = "CPKMAN.def"
+at = [21, 48]
+size = [100, 130]
+group = 2
+creature = true
+
+[[items]]
+kind = "def"
+id = 202
+at = [21, 48]
+size = [100, 130]
+creature = true
+"#,
+    )
+    .unwrap();
+    let mut shown = Shown::default();
+    let creature = |group, frame| Draw::Creature {
+        def: "CPKMAN.def".to_string(),
+        group,
+        frame,
+        x: 31,
+        y: 68,
+        size: [100, 130],
+    };
+    assert_eq!(d.draws(&shown, "P.pal"), [creature(2, 0)]);
+    shown.frames.insert(201, 3);
+    assert_eq!(d.draws(&shown, "P.pal"), [creature(2, 3)]);
+}
+
+#[test]
+fn a_def_item_with_anothers_frames_draws_them_in_its_colours() {
+    // E17 M6 T2a1, CLT-Q36: `frames_of` names the DEF whose frame it draws; its frame the
+    // screen's when given; without its own DEF it draws nothing.
+    let d: Dialog = toml::from_str(
+        r#"
+place = [10, 20]
+
+[[items]]
+kind = "def"
+id = 219
+def = "imrl42.def"
+frames_of = "imrlB.def"
+at = [23, 189]
+size = [42, 38]
+frame = 4
+
+[[items]]
+kind = "def"
+id = 220
+frames_of = "ilckB.def"
+at = [77, 189]
+size = [42, 38]
+"#,
+    )
+    .unwrap();
+    let mut shown = Shown::default();
+    let shared = |frame| Draw::Shared {
+        def: "imrl42.def".to_string(),
+        frames: "imrlB.def".to_string(),
+        frame,
+        x: 33,
+        y: 209,
+    };
+    assert_eq!(d.draws(&shown, "P.pal"), [shared(4)]);
+    shown.frames.insert(219, 6);
+    assert_eq!(d.draws(&shown, "P.pal"), [shared(6)]);
+}

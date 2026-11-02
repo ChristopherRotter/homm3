@@ -70,6 +70,9 @@ pub struct BattleLayout {
     /// The result window's assets and fonts (E17 M5 T4b1; design §7.20; `crate::result` lays it
     /// out).
     pub result: crate::result::ResultLayout,
+    /// A stack's stats dialog's assets and fonts (E17 M6 T2a1; design §12.1; `crate::stats` lays
+    /// it out).
+    pub stats: crate::stats::StatsLayout,
 }
 
 /// The hero's spell book (`spell_book_dialog` 0x59BDF0; E17 M5 T3a, design §7.17): its dialog and

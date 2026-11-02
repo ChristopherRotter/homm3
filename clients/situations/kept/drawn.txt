@@ -6369,6 +6369,15 @@ set/siege-tower t00000 87032c73b68b91e2
 set/smoke t00000 7faed407b4b78fc3
 set/smoke t00400 7187e56ddb60e280
 set/snow t00000 aa57d4036712229b
+set/stats t00000 7f38d162d874e423
+set/stats t00100 10c5d1ef8c9e7f3c
+set/stats t00400 ebd680ff27c94b7b
+set/stats t00700 10c5d1ef8c9e7f3c
+set/stats-acting t00000 67b4c8469d6e51b8
+set/stats-acting t00300 c8bc2d1b953adf95
+set/stats-dragon t00000 4b565a13bb0e7adf
+set/stats-dragon t01100 4b565a13bb0e7adf
+set/stats-machine t00000 4c91ac1ae4a197d9
 set/subterranean t00000 05c527ed84667866
 set/swamp t00000 1cf494c9abed787b
 set/tactics t00100 0729c9cbd6f8e1a1

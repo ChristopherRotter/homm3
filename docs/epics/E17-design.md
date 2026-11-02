@@ -4881,3 +4881,119 @@ Kept whole by the user (2026-10-30); the server lane's asks: `NOTES.md`, "The li
   `seq-raise.toml` at speed 2, the attacker dropping after 2 commands, both to the result window
   (494 and 465 frames exact); a window whose seat another connection of the account took closed
   with "another connection took the seat".
+
+## 12. The battle screen complete (M6)
+
+### 12.1 A stack's stats dialog (M6 T2a1)
+
+Read: `stack_stats_dialog` 0x468860 (its place and its two modes), the dialog's constructor
+0x5F3360 and its lines (0x5F5060 the picture, 0x5F5340 to 0x5F62F0 the numbers, 0x5F65B0 the
+effects, 0x5F6870 the OK), its procedure `creature_dialog_proc` 0x5F4850 (the mouse's move and the
+idle tick; its presses for M6 T2a2), the item-to-hint map 0x5F46C0, the creature DEF item's draw
+(`dialog_def_draw` 0x4EAB40 with the flags 0x12) and its steps (0x4EB060, war machines 0x4EB250).
+The adventure map's creature dialog shares the procedure and the line builders; only the battle's
+constructor was read.
+
+- **Its place.** Next to the stack's hex: the hex record's anchor (+0x1C4, +0x1C6: left + 22,
+  top + 42) less (149, 140), clamped to x 0..502 and y 0..275; 298 × 311, the base dialog's flags
+  0x12 (0x10: it casts the shadow, §7.17). A left press (`battle_click_action`, kind 5) runs it
+  modally (0x5F47F0); the right button shows it while held (0x530D30, M6 T2b). The modal one
+  ending with 301 (its cast button) starts the creature's cast (0x468954, M6 T2a2).
+- **Its items, in order** (ids, place and size from the dialog's corner; the fonts' colours and
+  alignments as the text items take them, §9.5):
+  1. 200 `CrStkPU.pcx` (0, 0, 298 × 311), in the colours of the owner of the hero who controls the
+     stack (`stack_controlling_hero` 0x442690, its +0x22), else the viewing player's;
+  2. 203 the creature's name (20, 21, 258 × 19), `smalfont.fnt` colour 7, alignment 5: the
+     singular for exactly one creature, else the plural (an id outside 0..150: empty);
+  3. 202 the town's background (21, 48, 100 × 130): `CrBkg*.pcx` by the creature's town +0x74, from
+     the table 0x682910 indexed by the town (the neutral one at index −1, 0x68290C);
+  4. 201 the creature's DEF (21, 48, 100 × 130), group 2 frame 0, the flags 0x12 (below; kept at
+     +0xB4 for the idle tick);
+  5. 204 the count, when above 0 (21, 160, 100 × 20), "%d" in `Verd10B.fnt` colour 4, alignment
+     10;
+  6. the lines, each a label and its value at the same box, x 154, 122 × 17, `smalfont.fnt` colour
+     1, the label alignment 4, the value 6: Attack (205, 206, y 48; PRISKILL 0), Defense (207, 208,
+     y 66; PRISKILL 1), Shots for a shooter (the creature's flag 4: 209, 210, y 85; GENRLTXT 199),
+     Damage (211 at y 104, its value 212 at **y 103**; GENRLTXT 200), Health (213, 214, y 123;
+     GENRLTXT 389), Health Left (215, 216, y 142; GENRLTXT 201), Speed (217, 218, y 161; GENRLTXT
+     194). A value is "%d" when the creature's own number equals the stack's, else "%d(%d)" (its
+     own, the stack's): attack, defense, shots (the record's, the stack's shots left), health
+     (the record's, the stack's +0xC0 with its bonuses), speed (each below 0 shown as 0); damage
+     "%d" or "%d - %d" (the stack's range; a Ballista's, under a hero, each end times its
+     controlling hero's attack +0x476 clamped to 0..99, plus 1); health left the top creature's.
+     The attack is the higher of its ranged and its melee attack when the stack can shoot now
+     (`stack_can_shoot_now` 0x4428F0), else its melee one (`stack_attack_against` with no target:
+     +0xC8, Precision or Bloodlust, Frenzy's share last); the defense `stack_defense_against` with
+     no striker and the flag 1 (0 while frenzied); the speed `stack_speed` (0 for a war machine);
+  7. 219 morale (23, 189, 42 × 38), `imrl42.def` frame clamp(+0x4E8, −3, 3) + 3, flags 0x10; 220
+     luck (77, 189), `ilck42.def` frame clamp(+0x4EC, −3, 3) + 3: the stack's own values, which
+     hold Mirth, Sorrow, Fortune, Misfortune and the grounds (`installation.md` §7.26); their
+     descriptions (0x44B960, 0x44C1C0) are kept for the right button;
+  8. the effects (0x5F65B0): the last three of the stack's spell list (the deque +0x420, its size
+     +0x44C), from index max(size − 3, 0), each a `spellint.def` item at (127 + 52k, 186, 48 × 36),
+     id 221 + k, frame the spell + 1, its rounds left (+0x198 by spell) kept for its hint;
+  9. the modal dialog's OK (0x5F6870): 225 `Box64x30.pcx` (215, 237, 66 × 32), then 0x7802
+     `iOKAY.def` (216, 238, 64 × 30; frames 0 and 1; Escape and Enter);
+  10. 224 the status line (7, 285, 284 × 19): `VARBack.pcx` under `smalfont.fnt` colour 1,
+      alignment 1, empty;
+  11. the modal dialog of a Faerie Dragon (134) of the side acting now (+0x132C0; the other side
+      while it is hypnotized), with casts left and outside the tactics phase: `Box46x32.pcx` (74,
+      236, 48 × 34) and the cast button 301 `icm005.def` (75, 237, 48 × 36; frames 0 and 1; its
+      callback 0x5F5030); otherwise the creature's ability text (the record's +0x1C, CRTRAITS'
+      column 23), when it has one, at (20, 232, 192 × 41) in `smalfont.fnt` colour 4, alignment 0.
+- **The creature** (`dialog_def_draw` with the flags 0x12): frame f of group g by the shadowed
+  drawer 0x47C9E0 through 0x47BD60, no outline, the DEF's own palette; its canvas placed so that
+  group 2's **first** frame's drawn part is centred across the item (x: w / 2 − its width / 2 − its
+  left margin, each halved toward 0) and its canvas row 275 on the item's bottom (y: h − 275), cut
+  to the item's box.
+- **The idle tick** (the procedure's tail, at every message, idle ones included): once the clock
+  reaches `frame_deadline` 0x698998 the creature steps (0x4EB060; a war machine, 145 to 148,
+  0x4EB250) and the dialog redraws; the deadline then moves on by 100 ms, or to now when that is
+  later. A step shows the group's next frame; after its last: group 20 goes to 0, group 21 to the
+  group kept at +0x40, any other draws its next group from the rules' generator (`random_between`
+  0x50B230, 1 to 100) by the weights (0, 65), (2, 15), (4, 5), (1, 5), (3, 4), (11, 1) to (16, 1)
+  (a war machine's (2, 94), (14, 2), (15, 2), (16, 2)), drawing again while the DEF lacks the group;
+  a walk drawn from another group starts with group 20 and one ended to another with 21 when the
+  DEF has them. As the fidgets' (§7.2) the draws come from the generator the battle's rolls use:
+  how long the dialog stays open changes the later rolls in the original; the viewer draws from a
+  generator of its own, so after the first group the poses cannot match frame for frame. The
+  battle behind stands still (its own idle step does not run).
+- **The mouse** (the procedure's type 4): the item under it (0x5FF3B0) compared with the last one
+  seen, a global (0x68C660, −1 at the start, never reset): on a change, over nothing the default
+  cursor's frame 0, over an item its frame 1, and the status line's text: the item's hint from
+  `Help.txt` records 433 to 447 (the hint table 0x6A7458, loaded by `help_text_load`) by
+  0x5F46C0 (203 0, 204 1, 205–206 2, 207–208 3, 209–210 4, 211–212 5, 213–214 6, **215 to 217** 7,
+  218 8, 219 9, 220 10, 221 to 223 11, 0x7803 12, 300 13, 0x7802 14, **301 15**; the others none);
+  over an effect "%s, duration: %d rounds." (GENRLTXT 611) with the spell's name and rounds, Bind
+  (72) "until binder moves or dies" (681), Berserk (59) "until next attack" (682), Disrupting Ray
+  (47) "until end of combat" (683) through "%s, duration: %s." (680). Index 15 lies past the
+  table's 15 pairs: the cast button's hint is the first mine name (`mine_names` 0x6A74D0).
+- **Its run** (`creature_dialog_run` 0x5F47F0, the modal one's): the frame deadline set 100 ms
+  after the opening (0x5F4801), so the creature's first step comes then and one each 100 ms after
+  (recorded: group 2's frames at 100 to 700 ms, `stats`); then `dialog_run_modal`.
+- **Recorded** (E17 M6 T2a1, `clients/situations/set.toml`, `stats` to `stats-dragon`: a press on
+  a stack to look at at the opening, the clock frozen; the Marksmen at the screen's bottom, the
+  acting Champions, the Ammo Cart, the acting Faerie Dragons with the cast button), every pixel
+  of the dialogs as built but two findings:
+  - *Morale and luck show the B DEFs' frames* (CLT-Q36): the original's memory holds
+    `imrlB.def`'s pixels in `imrl42.def`'s frames (and `ilckB.def`'s in `ilck42.def`'s), in the
+    42s' palettes: the executable keeps a DEF's frames by name, and the B DEFs, loaded before,
+    have frames of the same names (`imrl42g1.pcx`, …). The layout names them (`morale_frames`,
+    `luck_frames`; `ui::Draw::Shared`).
+  - *After the press* the harness's park move leaves the combat cursor's pointer at the park
+    point and the panel's status line with the press's hint ("View Marksman info."; read from
+    the recordings, the modal loop's routing of a move over none of the dialog's items not read).
+  - Over the acting Faerie Dragons the panel keeps their draw's line ("The Faerie Dragons ready
+    Fireball (press F to cast)", not built: §7.16) where the viewer writes the press's hint.
+- **Not recorded yet:** the effects (no situation casts before its opening), a clamp at the top
+  or the right, morale or luck from a ground; the window's dialog (M6 T2a2), the right button's
+  (M6 T2b). Oddities for T2a2: CLT-Q38.
+- **The viewer** (`h3_view::stats`: `place`, `layout`, `Steps`; the binary's `stats` derives a
+  stack's numbers from a seat's observation, the rules and the tables, *provisional*: the attack
+  the observation's with the melee or ranged bonus as `stack_can_shoot_now` decides (computed
+  here: shots, an enemy beside, Forgetfulness at Advanced), morale and luck with Mirth's,
+  Sorrow's, Fortune's and Misfortune's values, the effects in the observation's order, the
+  town the creature's faction's index; `mouse::looked_at` the stack a press looks at). The
+  common items: `ui::Def`'s `group`, `creature` and `frames_of`, `ui::Draw::Creature` and
+  `Shared` (`h3_ui::paint`; `h3_render::blit::draw_frame_clipped`). The creature's groups after
+  group 2 are drawn from the viewer's own generator (as the fidgets', §7.2).
