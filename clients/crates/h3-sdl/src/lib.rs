@@ -94,6 +94,8 @@ pub enum Key {
     R,
     /// S.
     S,
+    /// T (E17 M6 T2a2a: the battle's key for the acting stack's stats dialog).
+    T,
     /// U (E24 M3 T6b1).
     U,
     /// V.
@@ -187,6 +189,7 @@ impl Key {
             SDLK_Q => Self::Q,
             SDLK_R => Self::R,
             SDLK_S => Self::S,
+            SDLK_T => Self::T,
             SDLK_U => Self::U,
             SDLK_V => Self::V,
             SDLK_W => Self::W,
@@ -245,6 +248,7 @@ impl Key {
             Self::Q => "Q",
             Self::R => "R",
             Self::S => "S",
+            Self::T => "T",
             Self::U => "U",
             Self::V => "V",
             Self::W => "W",
@@ -282,7 +286,7 @@ impl Key {
     }
 
     /// Every key a table may name, in the enum's order: all but [`Key::Other`].
-    pub const ALL: [Self; 51] = [
+    pub const ALL: [Self; 52] = [
         Self::Escape,
         Self::Space,
         Self::Right,
@@ -302,6 +306,7 @@ impl Key {
         Self::Q,
         Self::R,
         Self::S,
+        Self::T,
         Self::U,
         Self::V,
         Self::W,

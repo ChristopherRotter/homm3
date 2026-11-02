@@ -1275,3 +1275,80 @@ why = "the panel's line only: the draw's line not built; the dialog exact, its c
 at = 1100
 differing = 1276
 why = "as at 0: group 2's last frame of twelve (E17 M6 T2a1)"
+
+# E17 M6 T2a2a: the stats dialog's input (design §12.2), on `stats`' and `stats-acting`'s dialogs.
+# `stats-hint`: the mouse over the Marksmen's attack line: its value's hint (the value, added after
+# its label in the same box, takes the mouse), the default cursor's frame 1; compared from 100 ms
+# (the cursor's redraw waits for the frozen clock, the status line's does not). `stats-off`: then
+# off the dialog over the battle: the cursor's frame 0, the line empty, the battle taking nothing.
+# `stats-ok`: the OK clicked: the dialog closed, the battle takes the mouse posted at the press's
+# point, then the park's move. `stats-escape`: the acting Champions' dialog closed by Escape.
+# `stats-key`: the acting stack's dialog by the key T (key code 20, 0x475D07), the mouse resting
+# over it: no move, no hint, the combat cursor's pointer the key set. `stats-again`: moved over the
+# defense line, closed by Enter, opened again by T and moved within the same item: the original
+# keeps the item last hovered (CLT-Q38 (3), the client's profile forgets it), so no hint.
+[[situation]]
+id = "stats-hint"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "move:200,330"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the attack line's hint, the default cursor's frame 1 (E17 M6 T2a2a)"
+
+[[situation]]
+id = "stats-off"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "move:200,330", "move:400,250"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: off the dialog the cursor's frame 0, an empty line, the battle behind still (E17 M6 T2a2a)"
+
+[[situation]]
+id = "stats-ok"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "click:248,528"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the OK clicked, the dialog closed, the battle's mouse at the park point (E17 M6 T2a2a)"
+
+[[situation]]
+id = "stats-escape"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,196", "key:Escape"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: closed by Escape, the battle's mouse at the park point (E17 M6 T2a2a)"
+
+[[situation]]
+id = "stats-key"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["move:200,140", "key:t"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the acting Champions' dialog by T, the combat cursor's pointer, no hint (E17 M6 T2a2a)"
+
+[[situation]]
+id = "stats-again"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["move:200,140", "key:t", "move:201,140", "key:Return", "key:t", "move:202,140"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: opened again over the item last hovered: no hint, the pointer (CLT-Q38 (3), the original's; E17 M6 T2a2a)"

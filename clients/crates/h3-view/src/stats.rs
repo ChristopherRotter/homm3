@@ -5,10 +5,12 @@
 //! a Faerie Dragon's cast button or the creature's ability text. [`place`] puts it next to the
 //! stack's hex, [`layout`] builds its items as `ui` items in the executable's order from what it
 //! shows ([`Stats`], the binary's `stats` derives it from a seat's observation and the rules),
-//! [`Steps`] plays its creature over time as the procedure's idle tick does.
+//! [`Steps`] plays its creature over time as the procedure's idle tick does. The modal dialog's
+//! input (E17 M6 T2a2a, design §12.2): [`Modal`], its OK by a click or its keys, the status
+//! line's hints and the cursor over its items ([`Hints`], [`Memory`]).
 //!
-//! *Not built yet* (M6 T2a2): the modal dialog's input (the OK, the cast button, the mouse's
-//! hints, the right button's descriptions); the right button's dialog held over a stack (M6 T2b).
+//! *Not built yet:* the right button's descriptions and the cast button's press (M6 T2a2b: the
+//! button takes no press); the right button's dialog held over a stack (M6 T2b).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -16,7 +18,9 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use serde::Deserialize;
 
-use crate::message::MessageBox;
+use crate::message::{self, MessageBox, Outcome};
+use h3_render::Bugs;
+use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Button, Def, Dialog, Frames, Item, Label, Picture, Shown, Text};
 
 /// The background (`CrStkPU.pcx`), in the colours of the stack's controlling hero's owner.
@@ -44,7 +48,7 @@ pub const STATUS: u16 = 224;
 /// The OK's back (`Box64x30.pcx`, the modal dialog's).
 pub const OK_BACK: u16 = 225;
 /// The OK (`iOKAY.def`): a message box's ([`crate::message::OK`]), Escape and Enter.
-pub const OK: u16 = crate::message::OK;
+pub const OK: u16 = message::OK;
 /// A Faerie Dragon's cast button (`icm005.def`; its click ends the dialog with 301).
 pub const CAST: u16 = 301;
 /// The items the executable gives the id −1 take ids of their own here, so that their texts can
@@ -173,8 +177,8 @@ pub struct Stats {
     pub morale: i32,
     /// The stack's luck (its frame clamped to ±3).
     pub luck: i32,
-    /// The spells on the stack in its list's order, by original id (the last three shown).
-    pub effects: Vec<u32>,
+    /// The spells on the stack in its list's order (the last three shown).
+    pub effects: Vec<Effect>,
     /// The creature's ability text (none: no text).
     pub ability: Option<String>,
     /// The cast button instead of the ability text (a Faerie Dragon of the side acting, with
@@ -182,6 +186,17 @@ pub struct Stats {
     pub cast: bool,
     /// The modal dialog (a left press): with its OK.
     pub modal: bool,
+}
+
+/// A spell on the stack (the stack's spell list +0x420): its picture and its hint's words.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Effect {
+    /// The spell's original id (its picture is `spellint.def`'s frame the id + 1).
+    pub spell: u32,
+    /// Its name.
+    pub name: String,
+    /// The rounds it has left (+0x198 by spell; none for the rest of the battle).
+    pub rounds: Option<u16>,
 }
 
 /// The lines' labels (`PRISKILL.TXT`'s two, `GENRLTXT.TXT`'s five).
@@ -206,8 +221,8 @@ pub struct Texts {
 impl Texts {
     /// The labels from `catalogue` (the keys `stats.*`).
     #[must_use]
-    pub fn of(catalogue: &h3_ui::text::Catalogue) -> Self {
-        let text = |key: &str| catalogue.text(key, &h3_ui::text::Args::new());
+    pub fn of(catalogue: &Catalogue) -> Self {
+        let text = |key: &str| catalogue.text(key, &Args::new());
         Self {
             attack: text("stats.attack"),
             defense: text("stats.defense"),
@@ -228,14 +243,17 @@ pub fn place(anchor: [i32; 2]) -> [i32; 2] {
 }
 
 /// The dialog at `place` laid out as the executable builds it (0x5F3360, the items in its
-/// order), its background in the colours of `player`.
+/// order), its background in the colours of `player`, drawn with `bugs`: the executable makes
+/// the damage's value a row above its label (0x5F59A2; CLT-Q37, answered (b) at E17 M6 T2a2a's
+/// start): at its label's row in the client's profile, a row up in [`Bugs::Original`] for the
+/// comparisons.
 #[must_use]
 pub fn layout(
     layout: &StatsLayout,
     texts: &Texts,
     stats: &Stats,
-    place: [i32; 2],
-    player: u8,
+    (place, player): ([i32; 2], u8),
+    bugs: Bugs,
 ) -> MessageBox {
     let mut items = Vec::new();
     let mut shown_texts = BTreeMap::new();
@@ -330,7 +348,7 @@ pub fn layout(
     for (k, ((name, value), top)) in lines.into_iter().zip(LINE_TOPS).enumerate() {
         let Some(name) = name else { continue };
         let id = LINES + 2 * u16::try_from(k).unwrap_or(0);
-        let value_top = if k == DAMAGE_LINE {
+        let value_top = if k == DAMAGE_LINE && bugs == Bugs::Original {
             DAMAGE_VALUE_TOP
         } else {
             top
@@ -368,7 +386,7 @@ pub fn layout(
     ));
     // The effects (0x5F65B0): the list's last three.
     let first = stats.effects.len().saturating_sub(EFFECTS_SHOWN);
-    for (k, &spell) in stats.effects.iter().skip(first).enumerate() {
+    for (k, effect) in stats.effects.iter().skip(first).enumerate() {
         let k16 = u16::try_from(k).unwrap_or(0);
         let x = 127 + 52 * i32::from(k16);
         items.push(def(
@@ -376,7 +394,7 @@ pub fn layout(
             (&layout.effects, None),
             [x, 186],
             [48, 36],
-            spell + 1,
+            effect.spell + 1,
         ));
     }
     // The modal dialog's OK (0x5F6870).
@@ -436,6 +454,267 @@ pub fn layout(
             players,
             ..Shown::default()
         },
+    }
+}
+
+/// The hint table's length (`creature_dialog_hints` 0x6A7458: `Help.txt`'s records 433 to 447,
+/// their first texts, as `help_text_load` 0x5B98B0 copies them).
+pub const HINTS: usize = 15;
+
+/// The spells whose effect's hint names how long they last instead of the rounds (0x5F4EB4 to
+/// 0x5F4F09, by original id): Bind, Berserk, Disrupting Ray.
+const UNTIL: [(u32, &str); 3] = [
+    (72, "stats.until.bind"),
+    (59, "stats.until.berserk"),
+    (47, "stats.until.disrupting-ray"),
+];
+
+/// The hint table's index of item `id` (`creature_dialog_hint_index` 0x5F46C0), none for an item
+/// without one: the name 0, the count 1, each line's label and value its line's (2 to 8), morale
+/// 9, luck 10, the effects 11, the dismiss 12, the upgrade 13, the OK 14 and the cast button 15,
+/// past the table's end (CLT-Q38 (2): [`Hints::cast`]). The executable groups the speed's label
+/// with the health left (215 to 217 give 7; CLT-Q38 (1), answered (b) at E17 M6 T2a2a's start):
+/// the speed's own in the client's profile, the health left's in [`Bugs::Original`].
+#[must_use]
+pub fn hint_index(id: u16, bugs: Bugs) -> Option<usize> {
+    let index = match id {
+        NAME => 0,
+        COUNT => 1,
+        217 if bugs == Bugs::Original => 7,
+        LINES..=217 => usize::from((id - LINES) / 2) + 2,
+        218 => 8,
+        MORALE => 9,
+        LUCK => 10,
+        EFFECTS..=223 => 11,
+        DISMISS => 12,
+        UPGRADE => 13,
+        OK => 14,
+        CAST => 15,
+        _ => return None,
+    };
+    Some(index)
+}
+
+/// The dismiss button's id (the adventure map's creature dialog; the battle's has none).
+const DISMISS: u16 = 0x7803;
+/// The upgrade button's id (a town's creature dialog).
+const UPGRADE: u16 = 300;
+
+/// What the dialog's status line shows over its items (`creature_dialog_proc` 0x5F4E7A to
+/// 0x5F4F77; design §12.2).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Hints {
+    /// The hint table's texts in its order ([`HINTS`] of them).
+    pub table: Vec<String>,
+    /// The cast button's: past the table's end the executable reads the first mine's name
+    /// (`mine_names` 0x6A74D0; CLT-Q38 (2), answered (b) at E17 M6 T2a2a's start): the panel's
+    /// spell book's hint in the client's profile (*provisional*: the original has none of its
+    /// own), the mine's in [`Bugs::Original`].
+    pub cast: String,
+    /// Each effect item's (221 on), in order: "%s, duration: %d rounds." with the spell's name
+    /// and rounds (GENRLTXT 611), Bind's, Berserk's and Disrupting Ray's "%s, duration: %s." with
+    /// how long they last (680; 681 to 683).
+    pub effects: Vec<String>,
+}
+
+impl Hints {
+    /// The hints of a dialog showing `stats`, from `catalogue` (the keys `stats.hint.*`, the
+    /// effects' `stats.hint.effect` and `stats.hint.effect-until`), the cast button's by `bugs`.
+    #[must_use]
+    pub fn of(catalogue: &Catalogue, stats: &Stats, bugs: Bugs) -> Self {
+        let text = |key: &str| catalogue.text(key, &Args::new());
+        let table = HINT_KEYS
+            .iter()
+            .map(|key| text(&format!("stats.hint.{key}")))
+            .collect();
+        let cast = match bugs {
+            Bugs::Fixed => text("battle.control.spell-book"),
+            Bugs::Original => text("stats.hint.cast-original"),
+        };
+        let first = stats.effects.len().saturating_sub(EFFECTS_SHOWN);
+        let effects = stats
+            .effects
+            .iter()
+            .skip(first)
+            .map(
+                |e| match UNTIL.iter().find(|&&(spell, _)| spell == e.spell) {
+                    Some(&(_, until)) => catalogue.text(
+                        "stats.hint.effect-until",
+                        &Args::new()
+                            .text("spell", &e.name)
+                            .text("until", &text(until)),
+                    ),
+                    None => catalogue.text(
+                        "stats.hint.effect",
+                        &Args::new()
+                            .text("spell", &e.name)
+                            .number("rounds", e.rounds.map_or(0, i64::from)),
+                    ),
+                },
+            )
+            .collect();
+        Self {
+            table,
+            cast,
+            effects,
+        }
+    }
+
+    /// The status line's text over item `id` (none: an item without a hint, its line empty).
+    #[must_use]
+    pub fn over(&self, id: u16, bugs: Bugs) -> String {
+        if (EFFECTS..EFFECTS + 3).contains(&id) {
+            let k = usize::from(id - EFFECTS);
+            return self.effects.get(k).cloned().unwrap_or_default();
+        }
+        match hint_index(id, bugs) {
+            Some(i) if i < HINTS => self.table.get(i).cloned().unwrap_or_default(),
+            Some(_) => self.cast.clone(),
+            None => String::new(),
+        }
+    }
+}
+
+/// The hint table's entries' keys, `stats.hint.<key>`, in its order.
+const HINT_KEYS: [&str; HINTS] = [
+    "name",
+    "count",
+    "attack",
+    "defense",
+    "shots",
+    "damage",
+    "health",
+    "health-left",
+    "speed",
+    "morale",
+    "luck",
+    "effects",
+    "dismiss",
+    "upgrade",
+    "ok",
+];
+
+/// What the dialog remembers between openings: the item the mouse was last over
+/// (`creature_dialog_hovered` 0x68C660: none at first, as the executable's -1). The executable
+/// never resets it, so a dialog opened where the mouse last left that item shows no hint until
+/// the mouse reaches another (CLT-Q38 (3), answered (b) at E17 M6 T2a2a's start, as the book's
+/// CLT-Q26): in the client's profile each opening forgets it, [`Bugs::Original`] keeps it for the
+/// comparisons. One per game (the client's session).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Memory {
+    hovered: Option<u16>,
+    bugs: Bugs,
+}
+
+impl Memory {
+    /// A session's memory, the dialog shown with `bugs`.
+    #[must_use]
+    pub fn new(bugs: Bugs) -> Self {
+        Self {
+            hovered: None,
+            bugs,
+        }
+    }
+
+    /// The profile the dialog is shown in.
+    #[must_use]
+    pub const fn bugs(&self) -> Bugs {
+        self.bugs
+    }
+}
+
+/// The modal dialog open over the battle (E17 M6 T2a2a; `creature_dialog_run` 0x5F47F0): its
+/// window with its OK's state (a [`message::Open`]: its iOKAY.def takes Enter and Escape, its
+/// press and release as every DEF button's), the hints, the status line's text and the cursor its
+/// mouse moves set.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Modal {
+    /// The window and its OK's state.
+    pub open: message::Open,
+    /// The status line's hints.
+    pub hints: Hints,
+    /// The default cursor's frame the dialog set (`crdeflt.def`, `mouse_set_cursor(frame, 0)` at
+    /// 0x5F4E75 and 0x5F4F81): 1 over an item (the background's too), 0 elsewhere; none until the
+    /// mouse enters another item than the last (the battle's pointer, which the press or the key
+    /// set as the dialog opened: 0x476E97, 0x475D72).
+    pub cursor: Option<u32>,
+    bugs: Bugs,
+}
+
+impl Modal {
+    /// The dialog `window` opened with its `hints`; in the client's profile the item last
+    /// hovered is forgotten ([`Memory`]).
+    #[must_use]
+    pub fn new(window: MessageBox, hints: Hints, memory: &mut Memory) -> Self {
+        if memory.bugs == Bugs::Fixed {
+            memory.hovered = None;
+        }
+        Self {
+            open: message::Open::new(window),
+            hints,
+            cursor: None,
+            bugs: memory.bugs,
+        }
+    }
+
+    /// The status line's text.
+    #[must_use]
+    pub fn status(&self) -> &str {
+        self.open
+            .message
+            .shown
+            .texts
+            .get(&STATUS)
+            .map_or("", String::as_str)
+    }
+
+    /// The mouse moved to `point` (0x5F4E30): over another item than the last ([`Memory`]), or
+    /// off the dialog from one, the cursor's frame and the status line follow it (its item's
+    /// hint, none over an item without one or off the dialog). Whether anything changed.
+    pub fn hover(&mut self, memory: &mut Memory, point: [i32; 2]) -> bool {
+        let message = &self.open.message;
+        let item = message
+            .dialog
+            .item_taking(point, &message.shown)
+            .map(Item::id);
+        if item == memory.hovered {
+            return false;
+        }
+        memory.hovered = item;
+        self.cursor = Some(u32::from(item.is_some()));
+        let text = item.map_or_else(String::new, |id| self.hints.over(id, self.bugs));
+        self.open.message.shown.texts.insert(STATUS, text);
+        true
+    }
+
+    /// The left button pressed at `point`: the OK goes down (the cast button takes no press yet:
+    /// M6 T2a2b).
+    pub fn press(&mut self, point: [i32; 2]) -> Outcome {
+        if self.open.message.dialog.button_at(point) != Some(OK) {
+            return Outcome::Nothing;
+        }
+        self.open.press(point)
+    }
+
+    /// The mouse moved to `point`: the OK held follows it on or off.
+    pub fn moved(&mut self, point: [i32; 2]) -> Outcome {
+        self.open.moved(point)
+    }
+
+    /// The left button released: the OK held clicks when the mouse is still over it, closing
+    /// the dialog (0x5F4DFB: its result 0x7802).
+    pub fn release(&mut self) -> Outcome {
+        self.open.release()
+    }
+
+    /// The OK's key down (Enter or Escape; `by` the key whose release clicks).
+    pub fn key(&mut self, by: &str) -> Outcome {
+        self.open.key(message::Key::Ok, by)
+    }
+
+    /// A key up: the OK its key held clicks.
+    pub fn key_up(&mut self, by: &str) -> Outcome {
+        self.open.key_up(by)
     }
 }
 

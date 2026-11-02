@@ -60,6 +60,20 @@ pub enum Input {
         /// When.
         at: u32,
     },
+    /// A stack's stats dialog opened over the battle (E17 M6 T2a2a, design §12.2): by a press on a
+    /// stack to look at or the key T, which set the combat cursor's pointer first (0x476E97,
+    /// 0x475D72); the dialog takes the mouse, the status line keeps its hint, and the battle takes
+    /// no move until it closes.
+    Look {
+        /// When.
+        at: u32,
+    },
+    /// The stats dialog closed (0x476EE1): on a human's turn here the mouse's hex is forgotten,
+    /// the log's new entries settle and the mouse is posted where it rests (0x476F21 to 0x476F3A).
+    Looked {
+        /// When.
+        at: u32,
+    },
     /// Auto Combat switched on (E17 M5 T4c1, design §7.22): its button clicked (or its key's
     /// release) on a human's turn; the computer plays the turn from now ([`crate::auto`]). The
     /// mouse sees the computer's action that starts then.
@@ -90,6 +104,8 @@ impl Input {
             | Self::Aim { at, .. }
             | Self::Book { at }
             | Self::Cancel { at }
+            | Self::Look { at }
+            | Self::Looked { at }
             | Self::Auto { at, .. }
             | Self::Stop { at, .. } => at,
         }
@@ -295,8 +311,9 @@ struct Handler<'l> {
     busy: bool,
     /// The spell being aimed (E17 M3 T7b-1; M5 T3b).
     aiming: Option<Aiming>,
-    /// The hero's spell book is open: the battle takes no move (E17 M5 T3b).
-    book: bool,
+    /// A dialog is open over the battle, the hero's spell book (E17 M5 T3b) or a stack's stats
+    /// dialog (E17 M6 T2a2a): the battle takes no move.
+    dialog: bool,
     /// The spell cursor's start (none: the combat cursor; E17 M5 T3b).
     spell_since: Option<u32>,
     /// The stacks an area spell's aim marks (+0x4F1; E17 M5 T3b).
@@ -660,7 +677,7 @@ pub fn follow_on<'l>(
                 spell,
                 creature,
             } => {
-                h.book = false;
+                h.dialog = false;
                 let turn = turns.get(at.turn);
                 let aim = turn.and_then(|t| {
                     t.field
@@ -689,7 +706,7 @@ pub fn follow_on<'l>(
                 }
             }
             Input::Book { at: now } => {
-                h.book = true;
+                h.dialog = true;
                 h.write(now, &Hint::Empty, None, name);
                 h.hex = None;
                 h.written = None;
@@ -701,7 +718,7 @@ pub fn follow_on<'l>(
             Input::Cancel { at: now } => {
                 let aimed = h.aiming.as_ref().map(|a| a.aim.creature);
                 h.end_aim(now);
-                h.book = false;
+                h.dialog = false;
                 if aimed.is_some() {
                     // `enter_player_cast`'s end (0x59F65C).
                     h.set_frame(now, layout.mouse.panel_frame);
@@ -718,6 +735,23 @@ pub fn follow_on<'l>(
                     }
                 }
             }
+            Input::Look { at: now } => {
+                h.set_frame(now, layout.mouse.panel_frame);
+                h.dialog = true;
+                // The dialog's items take the mouse, the hovered one forgotten with them as it
+                // closes (as the book's, 0x5FE442).
+                h.hovered = None;
+            }
+            Input::Looked { at: now } => {
+                h.dialog = false;
+                if let (Some(turn), Some(point)) = (turns.get(at.turn), h.point)
+                    && turn.human
+                {
+                    h.hex = None;
+                    h.shown.log.push((now, Logged::Settle));
+                    h.take(now, point, Some(&turn.field), name);
+                }
+            }
             // Auto Combat's turns are the computer's (`Turn::human`); its switch shows with the
             // action it starts, its stop with the turn it stops at.
             Input::Auto { .. } | Input::Stop { .. } => {}
@@ -727,7 +761,7 @@ pub fn follow_on<'l>(
                     continue;
                 }
                 h.end_aim(now);
-                h.book = false;
+                h.dialog = false;
                 // The action it gives starts now (none: a key that gives nothing).
                 if let Some((t, entry @ Logged::Action)) = log.get(i)
                     && *t == now
@@ -744,7 +778,7 @@ pub fn follow_on<'l>(
                 // Else it waits in the input queue, to be dropped as the next turn starts; the
                 // spell book open takes it (E17 M5 T3b).
                 match turns.get(at.turn) {
-                    _ if h.book => {}
+                    _ if h.dialog => {}
                     Some(turn) if turn.human && !h.busy => h.take(now, to, Some(&turn.field), name),
                     None if !h.busy => h.take(now, to, None, name),
                     _ => {}
@@ -781,7 +815,7 @@ impl<'l> Handler<'l> {
             aims: BTreeMap::new(),
             busy: false,
             aiming: None,
-            book: false,
+            dialog: false,
             spell_since: None,
             area: BTreeSet::new(),
             hovered: None,

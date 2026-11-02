@@ -12,6 +12,7 @@ use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::layout::BookLayout;
 use h3_view::message::{MessageBox, Picture, Style};
 use h3_view::sound::Tune;
+use h3_view::stats::Memory as StatsMemory;
 use h3_view::tables::Tables;
 
 use crate::boxes::{Answered, Asked, Leave};
@@ -203,7 +204,8 @@ pub struct Still {
     /// Where a `move:` left the mouse over the battle, every dialog closed (none: the situation's
     /// `mouse`).
     pub over: Option<[i32; 2]>,
-    /// The stats dialog a press on a stack to look at opened (E17 M6 T2a1), over the battle.
+    /// The stats dialog a press on a stack to look at or the key T opened (E17 M6 T2a1, T2a2a),
+    /// over the battle, with what the actions did to it.
     pub stats: Option<crate::stats::Open>,
 }
 
@@ -238,9 +240,12 @@ pub struct Boxes<'a> {
     pub result: &'a dyn Fn(Command) -> Option<(MessageBox, Tune)>,
     /// The tactics phase's message the battle opens with (E17 M5 T4c2a; none: it opens without).
     pub opening: Option<String>,
-    /// The stats dialog a press at a point over the battle opens (E17 M6 T2a1; none: the point
-    /// shows no stack to look at).
-    pub look: &'a dyn Fn([i32; 2]) -> Option<crate::stats::Open>,
+    /// The stats dialog a press at a point over the battle opens in a memory's profile (E17 M6
+    /// T2a1; none: the point shows no stack to look at).
+    pub look: &'a dyn Fn([i32; 2], &mut StatsMemory) -> Option<crate::stats::Open>,
+    /// The acting stack's stats dialog the key T opens, the mouse at a point (E17 M6 T2a2a; none
+    /// in the tactics phase).
+    pub acting: &'a dyn Fn([i32; 2], &mut StatsMemory) -> Option<crate::stats::Open>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -273,8 +278,10 @@ pub fn still(
     (layout, catalogue): (&BookLayout, &Catalogue),
     boxes: Option<&Boxes<'_>>,
 ) -> Result<Still, String> {
-    // The stills compare with the original's: its hovered item is never forgotten (CLT-Q26).
+    // The stills compare with the original's: its hovered item is never forgotten (CLT-Q26),
+    // nor the stats dialog's (CLT-Q38 (3)).
     let mut memory = Memory::new(h3_render::Bugs::Original);
+    let mut stats_memory = StatsMemory::new(h3_render::Bugs::Original);
     // The hero made at the first opening, each later one (the book closed) a copy (R4-3).
     let mut make = Some(hero);
     let mut hero: Option<Hero> = None;
@@ -365,11 +372,17 @@ pub fn still(
         }
     }
     for action in actions {
-        // The stats dialog takes no input yet (M6 T2a2): a still ends with it open.
-        if still.stats.is_some() {
-            return Err(format!(
-                "`{action}`: the stats dialog takes no input in a situation yet"
-            ));
+        // The stats dialog open (E17 M6 T2a2a): its moves, its OK's click and keys.
+        if let Some(open) = still.stats.as_mut() {
+            let closed = stats_action(open, &mut stats_memory, (action, &keys), &mut still.mouse)
+                .map_err(|e| format!("`{action}`: {e}"))?;
+            if let Some(rest) = closed {
+                // Closed: the battle takes the mouse posted where it rests (0x476F3A).
+                still.stats = None;
+                still.over = Some(rest);
+                still.arrow = false;
+            }
+            continue;
         }
         // Its OK closed it: the first turn starts, the box's cursor left (CLT-Q32).
         if still.opening && asking.is_none() {
@@ -389,6 +402,7 @@ pub fn still(
                 let context = Context::of(
                     result.is_some(),
                     asking.is_some(),
+                    false,
                     still.open.is_some(),
                     false,
                 );
@@ -423,6 +437,13 @@ pub fn still(
                         asking = booked(&mut still, outcome);
                     }
                     _ if context != Context::Battle => {}
+                    // The acting stack's stats dialog (E17 M6 T2a2a), the mouse where it is.
+                    (Some(Do::Stats), _) => {
+                        let opened = boxes.and_then(|b| (b.acting)(still.mouse, &mut stats_memory));
+                        if let Some(open) = opened {
+                            still.stats = Some(open);
+                        }
+                    }
                     (Some(Do::Button(h3_view::panel::SPELL_BOOK)), _) => {
                         if let Some(f) = make.take() {
                             hero = f();
@@ -467,11 +488,13 @@ pub fn still(
                 } else if let Some(open) = still.open.as_mut() {
                     let outcome = open.press(&mut memory, (layout, catalogue), to);
                     asking = booked(&mut still, outcome);
-                } else if let Some(stats) = boxes.and_then(|b| (b.look)(to)) {
+                } else if let Some(mut stats) = boxes.and_then(|b| (b.look)(to, &mut stats_memory))
+                {
                     // A stack to look at: its stats dialog, modal; the park's move reaches it
-                    // over none of its items, the last one seen (none), so it changes nothing.
-                    still.stats = Some(stats);
+                    // over none of its items (below the dialog at its lowest).
                     still.mouse = crate::pointer::PARK;
+                    stats.modal.hover(&mut stats_memory, crate::pointer::PARK);
+                    still.stats = Some(stats);
                     continue;
                 }
                 // The tactics phase's message closed: the first turn starts (CLT-Q32).
@@ -535,6 +558,67 @@ pub fn still(
     still.message = asking.map(|a| a.open.message);
     still.result = result.map(|(r, tune)| (r.message, tune));
     Ok(still)
+}
+
+/// One of a situation's actions over an open stats dialog `open` (E17 M6 T2a2a): `move:<x>,<y>`
+/// moves the mouse there (its hint, the OK held following); `click:<x>,<y>` moves it, presses,
+/// releases and parks it; `key:<k>` presses the dialog's key (its OK's) and releases it. Where the
+/// mouse rests once the OK closed the dialog (none: still open; the `mouse` kept).
+fn stats_action(
+    open: &mut crate::stats::Open,
+    memory: &mut StatsMemory,
+    (action, keys): (&str, &Keys),
+    mouse: &mut [i32; 2],
+) -> Result<Option<[i32; 2]>, String> {
+    use h3_view::message::Outcome;
+    let modal = &mut open.modal;
+    let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
+    let point = |arg: &str| -> Result<[i32; 2], String> {
+        let (x, y) = arg.split_once(',').ok_or("not x,y")?;
+        let parse = |v: &str| v.trim().parse::<i32>().map_err(|e| e.to_string());
+        Ok([parse(x)?, parse(y)?])
+    };
+    let mut to = |modal: &mut h3_view::stats::Modal, at: [i32; 2]| {
+        *mouse = at;
+        modal.hover(memory, at);
+        modal.moved(at);
+    };
+    match kind {
+        "move" => {
+            to(modal, point(arg)?);
+            Ok(None)
+        }
+        "click" => {
+            let at = point(arg)?;
+            to(modal, at);
+            modal.press(at);
+            if modal.release() == Outcome::Closed(h3_view::stats::OK) {
+                // The battle takes the press's point posted, then the park's move.
+                *mouse = crate::pointer::PARK;
+                return Ok(Some(crate::pointer::PARK));
+            }
+            to(modal, crate::pointer::PARK);
+            Ok(None)
+        }
+        "key" => {
+            let key = if arg.len() == 1 {
+                arg.to_ascii_uppercase()
+            } else {
+                arg.to_owned()
+            };
+            match keys.command(Context::Stats, false, &key) {
+                Some(Do::StatsOk) => {
+                    modal.key(&key);
+                    Ok((modal.key_up(&key) == Outcome::Closed(h3_view::stats::OK))
+                        .then_some(*mouse))
+                }
+                _ => Err(String::from("not a key of the stats dialog")),
+            }
+        }
+        _ => Err(String::from(
+            "over the stats dialog only key:, click: and move:",
+        )),
+    }
 }
 
 #[cfg(test)]
@@ -804,7 +888,8 @@ pub(crate) mod tests {
             pictures: (String::new(), [0, 0]),
             result: &result,
             opening: None,
-            look: &|_| None,
+            look: &|_, _| None,
+            acting: &|_, _| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -847,7 +932,8 @@ pub(crate) mod tests {
             pictures: (String::new(), [0, 0]),
             result: &|_| None,
             opening: Some("{Tactics Phase}".into()),
-            look: &|_| None,
+            look: &|_, _| None,
+            acting: &|_, _| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
