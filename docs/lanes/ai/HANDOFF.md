@@ -23,7 +23,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   cloning it. **T14 done** (the switch, C ABI v36: the fair actor 0.500 against the all-seeing
   one, the neutral target stays +0.285). **Next:** T15 (needs `e25-sharp-1` #2's `best.pt`
   uploaded again) and T16 (the cloning bench, sandbox); T17's A/B on the user's machine.
-- **Open pull requests:** T13 and T14's (the branch `claude/relaxed-ptolemy-eyjild`). Merged:
+- **Open pull requests:** #651 (`claude/relaxed-ptolemy-eyjild`: T13, T14). Merged:
   #640 (T8, T9a, T10a), #646 (T9b to T12).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v36 (E25 T14: the fair
