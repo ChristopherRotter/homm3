@@ -39,6 +39,7 @@ from h3env.train.run import (
     atomic_write_text,
     by_table,
     check_record,
+    entropy_bonus,
     key_path,
     learning_rate,
     load_config,
@@ -122,6 +123,7 @@ lr_schedule = "constant"
         ("", ["env.kinds=[1, 2]"], "six weights"),
         ("", ['network.kind="entity"', "network.preview=true"], "`preview` is the MLP's"),
         ("", ["league.system_share=1.5"], "`system_share` lies in"),
+        ("", ["ppo.entropy_floor=1.5"], "`entropy_floor` and `self_play` lie in"),
         ("", ["league.system_share=0.25"], "needs `\\[env\\] kinds`"),
         ("", ["league.system_share=0.25", "env.kinds=[1, 0, 0, 0, 0, 1]"], "needs a player kind"),
         ("", ["ppo.shaping=true", "ppo.truncation_penalty=0"], "`shaping` needs"),
@@ -197,6 +199,20 @@ def test_the_learning_rate_follows_samples() -> None:
     c = load_config("samples = 1000\n[ppo]\nlr = 1.0\nlr_horizon = 4000\n")
     assert learning_rate(c, 1000) == 0.75
     assert learning_rate(load_config("[ppo]\nlr_schedule = 'constant'\n"), 10**9) == Config().lr
+
+
+def test_the_entropy_bonus_falls_with_the_learning_rate_to_its_floor() -> None:
+    # E25 T10a: constant at the floor 1 (the default, every run before), else linear over the
+    # learning rate's horizon to its floor.
+    assert {entropy_bonus(Config(), s) for s in (0, 10**9)} == {Config().entropy_coef}
+    c = load_config("samples = 1000\n[ppo]\nentropy_coef = 1.0\nentropy_floor = 0.0\n")
+    assert [entropy_bonus(c, s) for s in (0, 500, 1000, 5000)] == [1.0, 0.5, 0.0, 0.0]
+    c = load_config("samples = 1000\n[ppo]\nentropy_coef = 1.0\nentropy_floor = 0.25\n")
+    assert [entropy_bonus(c, s) for s in (0, 500, 900)] == [1.0, 0.5, 0.25]
+    c = load_config(
+        "samples = 1000\n[ppo]\nentropy_coef = 1.0\nentropy_floor = 0\nlr_horizon = 4000\n"
+    )
+    assert entropy_bonus(c, 1000) == 0.75
 
 
 def test_a_cadence_is_due_once_per_multiple() -> None:
@@ -682,6 +698,15 @@ def test_increment_2s_configs_are_shaping_with_the_tactics_bound() -> None:
     assert dataclasses.replace(wide, hidden=512, samples=60_000_000, lr_horizon=0) == (
         dataclasses.replace(scale, lr_horizon=0)
     )
+    # T10b's first A/B (the user at T8): the scale run's settings at 20 M, the entropy bonus
+    # falling to 0 with the learning rate (T10a; 1, constant, by default).
+    sharp = load_config((configs / "e25-sharp.toml").read_text())
+    trainable(sharp)
+    assert (Config().entropy_floor, sharp.entropy_floor, sharp.samples) == (1.0, 0.0, 20_000_000)
+    assert dataclasses.replace(sharp, entropy_floor=1.0, samples=60_000_000, lr_horizon=0) == (
+        dataclasses.replace(scale, lr_horizon=0)
+    )
+    assert key_path("entropy_floor") == "ppo.entropy_floor"
 
 
 def test_the_league_draws_scores_and_retires() -> None:

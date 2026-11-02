@@ -46,7 +46,8 @@ Towns as the original plays them, on the adventure map of E08: the town context 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, the cut confirmed at each checkpoint)
 
 - **T0 E09 refined, the town lane opened.** Done (2026-10-31, `shared/town-lane`; decisions 1–7; TWN-Q1).
-- **T1a The towns survey, part 1:** the census of towns on the 160 shipped maps (classes 77 and 98, owners, random towns, main towns and their generated heroes, preset buildings, garrisons, visiting heroes, town events) and the reading of the start: the faction choice, random towns, the main town's hero and the pool.
+- **T1a1 The towns survey, part 1a: the census and the factions.** Done (2026-11-02, `town/e09-t1a1`; T1a cut in two at its start, the user): survey `E09-towns.md` §0 to §3; every map imports once the main town's hero, a hero in a town and the random hero exist; TD-1, TD-2, T-1.
+- **T1a2 The towns survey, part 1b:** the main town's generated hero and the pool, the random hero's draw, a hero on a town's blocked tile, the town's buildings at the start, the garrison's random stacks.
 - **T1b The towns survey, part 2:** the visit, capture and the siege's derivation, the hall's income, the views; the disputes and quirk candidates; the checkpoint's questions.
 - **T2 The ADR drafts, the design note and the cut:** a new ADR for `h3-towns` (the crate, the town's state and its home, the ruleset part and pack file, the seams, the pool), the amendments to ADR-0015 to -0017 and ADR-0023; `E09-design.md`; the build's rounds; the checkpoint.
 - **T3 Batch TWN-1:** the maps and specs, the harness's town reads, the runs, the scoring (as E08 T78 to T80).

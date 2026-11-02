@@ -210,10 +210,14 @@ weighed by the census's shares), or E05's v0 (`--set v0`). The episodes are `h3 
 (`cargo run --release -p h3-cli -- ai eval [--set neutral-v1|v0]`); on a whole stratified set
 each line ends with the bots' rates against the same opponent from their table
 (`records/bots-report-v1.json`, `records/bots-neutral-v1.json`). `--json <file>` keeps the
-results.
+results. `--temperature 1,0.7,0.5,0` (E25 T9a, a diagnostic) plays the ladder once per
+temperature, the network's logits divided by it (1 its own policy, the one the targets judge; 0
+its most likely choices), on the same episodes and draws: each line starts with its temperature,
+the JSON holds a table per temperature.
 
 ```sh
 uv run --group train python -m h3env.train.ladder --checkpoint runs/t4-1/best.pt [--episodes 250]
+uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-scale-1/best.pt --opponents system --temperature 1,0.7,0.5,0
 uv run --group train python -m h3env.train.inspect --checkpoint runs/t7-1/best.pt [--set neutral-v1]
 ```
 
