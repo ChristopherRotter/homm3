@@ -10,7 +10,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#620 merged); T2 cut in three by the user (2026-11-02): T2a1 done (#645), T2a2a done (#650);
   T2a2b cut in two by the user (2026-11-02): **T2a2b1 done** (the right button's descriptions
   held in a popup but morale's and luck's, the cast button into the dragon's aim, design §12.3;
-  CLT-Q39 answered; four stills and the sequence `dragon-button` exact; the PR from
+  CLT-Q39 answered; four stills and the sequence `dragon-button` exact; #658 from
   `client/e17-m6-t2a2b`: check it first); **next: T2a2b2** (morale's and luck's descriptions:
   their sources against the observation, likely a `CLT-Q<n>`), then T2b (the right button's
   popup over a stack, the turret's info), T3 to T7; then M7 ranked play and the server browser.
@@ -42,7 +42,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-02, E17 M6 T2a2b1 (done; its PR open: check it first).** The original data staged
+- **2026-11-02, E17 M6 T2a2b1 (done; #658 open: check it first).** The original data staged
   (57 files) first; the baseline's `check.sh` passed; #650 had merged. The user cut T2a2b in two
   and answered CLT-Q39. Read the right button's descriptions, the held popup's loop and the cast
   button's path (design §12.3); built them; four stills and `dragon-button` exact at their first
