@@ -12,11 +12,11 @@ from h3env import _ffi
 
 
 def test_the_library_speaks_the_bindings_abi() -> None:
-    assert _ffi.lib().h3_abi_version() == h3env.ABI_VERSION == 36
+    assert _ffi.lib().h3_abi_version() == h3env.ABI_VERSION == 37
 
 
 def test_a_library_of_another_version_is_refused() -> None:
-    with pytest.raises(ImportError, match="C ABI v36, this binding v31"):
+    with pytest.raises(ImportError, match="C ABI v37, this binding v31"):
         _ffi.check_version(_ffi.lib(), expected=31)
 
 
@@ -24,12 +24,13 @@ def test_the_versions_a_record_names() -> None:
     # v31 (E06 T2c): observation encoding v21, action encoding v13, the encounter distribution v1;
     # v32 (E06 T7): the system actor's policy's behaviour version (`h3_battle_ai::POLICY_VERSION`);
     # v34: observation encoding v22 (the turn order); v35 (E25 T1a): a world's reward v1; v36
-    # (E25 T14): the fair system actor in seat 4, the all-seeing one in seat 5.
+    # (E25 T14): the fair system actor in seat 4, the all-seeing one in seat 5; v37 (E25 T16): a
+    # seat's choice as an external seat's action.
     versions = _ffi.versions()
     assert versions["system_policy"] > 0
     del versions["system_policy"]
     assert versions == {
-        "abi": 36,
+        "abi": 37,
         "observation_encoding": 22,
         "action_encoding": 13,
         "encounters": 1,

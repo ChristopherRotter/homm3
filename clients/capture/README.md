@@ -193,7 +193,9 @@ same (`h3-view render --walls`, *provisional*); the states are checked before th
 it, a `click:` presses there and parks the mouse, a `move:` rests it). The book needs the hero's
 spells, so its stills render the attacker's record (`seat = "attacker"`). After a `move:` the
 original's cursor stays where it was until the clock steps (its status line follows at once):
-take such frames from 100 ms. The setup turns "Animate SpellBook" off (the page turn's videos,
+take such frames from 100 ms. Since E17 M6 T2a2b1 (design §12.3) `right:x,y` moves the mouse
+there and holds the right button down through the frames (released after the last; the stats
+dialog's descriptions): it is an entry's last action. The setup turns "Animate SpellBook" off (the page turn's videos,
 Smacker clips of `battle-videos.vid` the client does not play); nothing recorded before it turned
 a page. Since E17 M5 T4a (design §7.19) `key:r` and `key:s` open Retreat's and
 Surrender's questions, and an open message box takes the `key:` (`key:Return`, `key:Escape`: down
@@ -239,7 +241,9 @@ python3 capture/h3drive.py sequences [--only walk]
 `sequence` opens the battle, steps the clock `--pre` ms, performs the actions at the frozen clock
 (`hex:<n>` clicks a hex at `hex_point`, `key:d` defends, `click:x,y`, `move:x,y`, `step:<ms>`,
 `cast:<k>[:<hex>]` casts a spell from the hero's book, below; `aim:<k>:<n>` aims one, E17 M5
-T3b) and
+T3b; `look:x,y` presses a stack to look at, its stats dialog, and `cast-button:x,y:<n>` clicks the
+dialog's cast button, the spell numbered n aimed, each a click that parks the mouse, E17 M6
+T2a2b1) and
 then steps 1 ms at a time, reading the game's state after each step: `<out>/states.jsonl` (every
 state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline.txt` (one line per
 change of a stack's group, frame or hex, by the original's records: each side's army, then its

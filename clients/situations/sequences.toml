@@ -612,6 +612,33 @@ command = [
     { seat = "Attacker", at = 8264, command = { CreatureCast = { target = { Hex = { hex = 117 } } } } },
 ]
 
+# E17 M6 T2a2b1 (design §12.3): `dragon`'s first round, then at round 2 the Faerie Dragon's cast
+# entered from its stats dialog: a press on the dragon (its dialog, at the screen's right edge), its
+# cast button (`icm005.def`; 0x468943 into `enter_player_cast` 0x59EC50 with its drawn spell,
+# Fireball, as the key F), the aim's click on the Swordsmen beside it (hex 83, an area spell's hex)
+# and the cast; the dialog's close (0x476EE1) after the aim, its posted move behind the action.
+[[sequence]]
+id = "dragon-button"
+scenario = "seq-dragon.toml"
+hot_seat = true
+seed = 174
+actions = [
+    "hex:82", "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "look:674,280", "cast-button:601,411:21", "hex:83",
+]
+ms = 2500
+timeline = "timelines/dragon-button.txt"
+frames = "timelines/dragon-button-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Move = { to = 81 } } },
+    { seat = "Defender", at = 1880, command = { Defend = {} } },
+    { seat = "Defender", at = 1880, command = { Defend = {} } },
+    { seat = "Defender", at = 1880, command = { Defend = {} } },
+    { seat = "Defender", at = 1880, command = { Defend = {} } },
+    { seat = "Attacker", at = 2080, command = { CreatureCast = { target = { Hex = { hex = 83 } } } } },
+]
+
 # E17 M3 T7c-2 (recorded at T7a-2b in `casts.toml`): the spell objects and Armageddon (design
 # §7.16, players 5 and 6): a Fire Wall at hex 146 (round 1), Quicksand (round 2), a Force Field at
 # hex 63 (round 3), Armageddon (round 4); the Fire Wall's vanish at round 3's start. The

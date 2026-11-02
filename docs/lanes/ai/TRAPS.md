@@ -14,6 +14,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - `legal_commands` lists no casts: the cast heads come from `cast_targets` × `second_targets` (the battle lane's trap; `h3_sim::action`).
 - The batch (`h3_sim::batch`) skips an episode that ends before an external seat could act and gives up after 64 in a row (no side to move until a reset): a scenario whose internal seat always acts first and ends it (a step limit of one) does that. Its per-env values come back as `EnvReport`s, which `h3-ffi` converts for the C arrays.
 - `batch::pool` holds this lane's only `unsafe` outside `h3-ffi`: `Pool::run` erases a job's lifetime and is sound only because it blocks until every worker is done (a worker's panic too). Keep any new call through `run`, never a stored job.
+- `BattleBatch::choice` (`h3_batch_choice`, C ABI v37, E25 T16) draws from the acting side's seat
+  stream, as that seat inside the call would: one call per decision, then the step; a second
+  call before it draws again (a random policy's choice changes, and the replay of the seat's
+  episodes is lost). The all-seeing seat's choice reads the whole state: a teacher's labels for
+  trusted tooling, never an agent's input.
 - `batch-system-neutral-v1` moves with `h3_battle_ai` (lane-only): re-baseline it at a `POLICY_VERSION` bump, or a change of `h3-battle`'s `world.rs` or `observe_as`'s list (its defender is the fair system actor since E25 T14).
 - **Two system actors** (E25 T14, AI-Q14, C ABI v36): `system` (`Policy::System`, seat 4) is the fair one (`h3_battle_ai::choose_fair`), the neutral kinds' defender, and may train; `system-all-seeing` (`Policy::SystemAllSeeing`, seat 5) is `choose`, E25's target, never in training. A record's or a bots' table's `system` before C ABI v36 (bots' table schema 2) is the all-seeing one.
 - The batch workloads count inside `*BattleBatch>::step` (v0 symbol names; `BattleBatch::step` is `#[inline(never)]`) with `--threads 0`: callgrind toggles per thread, and a pattern ending in `*` also matches the closures nested in `step` and turns the count off inside them.

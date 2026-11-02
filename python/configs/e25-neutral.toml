@@ -1,0 +1,37 @@
+# E25 increment 5's training mix (AI-Q14, the user's choice 2026-11-02): `e25-sharp.toml`'s
+# settings with the neutral kinds back at E06 T7's third (`e06-t7.toml`'s weights), the fair
+# system actor defending them (C ABI v36). T16's cloning bench plays this distribution with the
+# fair actor in every external seat and clones it into this network
+# (`configs/distill/e25-clone.toml`); T17's A/B on the user's machine runs it from scratch
+# (`e25-neutral-1`, the control) and from T16's student (`e25-clone-1`), lengths agreed when
+# prepared (20 M as `e25-sharp-1` unless agreed otherwise):
+#
+#   uv run --group train python -m h3env.train --config configs/e25-neutral.toml --out runs/e25-neutral-1
+#   uv run --group train python -m h3env.train --config configs/e25-neutral.toml --init-from runs/clone-1/students/mlp.pt --out runs/e25-clone-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+tactics_rounds = 3
+
+[ppo]
+shaping = true
+entropy_floor = 0.0
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

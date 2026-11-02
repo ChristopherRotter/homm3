@@ -772,3 +772,61 @@ an entry only where a task builds on it.
   as before the switch.
 - **The read:** increment 5's starting point is the old one under the new names; the A/B's
   (T17) control is `e25-neutral-1`, the same config with the neutral kinds back.
+
+## T16 — The cloning bench (2026-11-02)
+
+- **Built** (C ABI v37): `BattleBatch::choice` (`h3_batch_choice`, `h3env.BattleBatch.choice`):
+  an internal seat's choice for each env's side to move, encoded as the action an external seat
+  plays (`action::encode`, the entry and the cast heads), drawn from that side's seat stream as
+  the seat inside the call would; it returns the choices no batch action plays (the encoding
+  cannot express them, or an escape). Tests: `external_seats_playing_a_policys_choices_play_its_
+  episodes` (h3-sim: every policy's choices, played by both external seats, replay the episodes
+  it plays from its seat streams bit for bit, on every encounter kind), the ABI's against the
+  Rust batch's, `smoke.c`, and Python's (a seat's choice played outside gives the episodes it
+  plays inside). The clone mode of the distillation bench (`h3env.train.clone`, `distill
+  --teacher system`, `configs/distill/e25-clone.toml`; `python/README.md`): the fair actor plays
+  every external seat of a run config's distribution, kept by whole episodes; a student learns
+  the teacher's entry and cast heads by cross-entropy and its value on the returns by Monte Carlo
+  at the run's settings (reward v1, the truncation penalty, shaping: PPO's targets at λ 1);
+  held-out cross-entropy, agreement per category and of the cast heads, the value; the student
+  saved as a run's network file (`--init-from`), its ladder on the report and neutral sets.
+  `configs/e25-neutral.toml`: T17's mix (`e25-sharp.toml` with `e06-t7.toml`'s kinds), the
+  bench's distribution. Tests: `tests/test_clone.py`.
+- **Agent decisions** (change freely): the call takes any internal seat, not only the system
+  actors (the same code; the all-seeing one is refused as a teacher, decision 3); the seat stream
+  rather than a caller's seed, so the clone's episodes are the fair actor's own and the Rust
+  test can compare them with it. The samples are whole episodes (no value bootstrap), the
+  student's file carries the bench's seed (the ladder's held-out check), the run config's
+  `system_share` is set to 0 (the teacher plays every seat anyway). The tactics bound is not
+  applied to the teacher's rows; none of its decisions fell past it (`past_bound` 0).
+- **The run** (the user's choice: 4 M samples on the sandbox's CPU; `python/records/distill/
+  clone-1.json`; commit `c04ad91`, clean): 40 minutes (the teacher 9, the student's 2 passes
+  22, the ladder 5, the held-out set and the evaluations the rest). The teacher: 4.03 M decisions, **none lost**,
+  77 439 episodes, 13 truncated; its attacker won 0.708 of the hero kind, 0.591 siege_hero,
+  0.946 siege_garrison, 0.993 wandering, 0.988 guards, 0.889 siege_neutral. The held-out set
+  (25 600 decisions of 446 episodes, seed 8): its value targets' variance 0.030.
+
+  | Samples | CE entry | CE casts | Agreement | Tactics | Moves | Melee | Shots | Casts | Value |
+  |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | 0.53 M | 1.783 | 2.313 | 0.467 | | 0.225 | 0.287 | 0.546 | | 0.315 |
+  | 2.0 M | 1.600 | 2.087 | 0.506 | | 0.273 | 0.325 | 0.588 | | 0.554 |
+  | 4.0 M | 1.514 | 1.973 | 0.531 | 0.788 | 0.298 | 0.360 | 0.608 | 0.841 | 0.594 |
+
+  (Cross-entropy in nats per decision, the casts' summed per cast; the value's explained
+  variance against the returns.) The cast heads' agreement along the teacher's: spell 0.679,
+  target 0.609, second 0.997. Still falling slowly at 4 M (the entry's cross-entropy −0.016 over
+  the last 0.5 M).
+- **Its ladder** (the sampled policy): against the fair system actor **0.396 ± 0.018, value
+  −0.084** (hero 0.386, siege_hero 0.376, siege_garrison 0.476); against the all-seeing one 0.392
+  ± 0.018, −0.085; the neutral set **+0.244** (0.974; wandering 0.978, guards 0.974,
+  siege_neutral 0.850; the target +0.285).
+- **The read:** the clone plays between `t7-1` (0.372, −0.103) and the current best
+  `e25-sharp-1` #2 (0.424, −0.055, +0.245, T15) without any RL, and meets #2 on the neutral set:
+  a warm start well above a scratch network. It copies the fair actor only loosely: about half
+  its entries, the moves (0.30) and the melee positions (0.36) least, where the original's
+  computer picks one of many near-equal hexes by rules (and draws) an MLP over observation v22
+  does not see; the tactics phase (0.79) and the casts (0.84) best. A clone that plays the fair
+  actor exactly would score 0.5 against it. How much of the gap is the teacher's own draws is
+  not measured (a diagnostic for T18: the fair actor's agreement with itself on the same
+  states). T17 starts `e25-clone-1` from this student (`runs/clone-1/students/mlp.pt`, sent to
+  the user).

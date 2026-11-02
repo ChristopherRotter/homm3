@@ -69,7 +69,8 @@ pub enum Input {
         at: u32,
     },
     /// The stats dialog closed (0x476EE1): on a human's turn here the mouse's hex is forgotten,
-    /// the log's new entries settle and the mouse is posted where it rests (0x476F21 to 0x476F3A).
+    /// the log's new entries settle and the mouse is posted where it rests (0x476F21 to 0x476F3A);
+    /// after its cast button's aim (E17 M6 T2a2b1) it comes as the aim ends.
     Looked {
         /// When.
         at: u32,
@@ -749,7 +750,11 @@ pub fn follow_on<'l>(
                 {
                     h.hex = None;
                     h.shown.log.push((now, Logged::Settle));
-                    h.take(now, point, Some(&turn.field), name);
+                    // After the cast button's aim gave an action (E17 M6 T2a2b1) the posted move
+                    // waits behind it, dropped as the next turn starts.
+                    if !h.busy {
+                        h.take(now, point, Some(&turn.field), name);
+                    }
                 }
             }
             // Auto Combat's turns are the computer's (`Turn::human`); its switch shows with the

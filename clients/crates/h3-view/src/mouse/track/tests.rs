@@ -1179,3 +1179,40 @@ fn the_stats_dialog_holds_the_mouse_and_hands_it_back() {
     let shown = run(&[], &[], &computers, &inputs[..4]);
     assert!(shown.log.iter().all(|(_, l)| *l != Logged::Settle));
 }
+
+#[test]
+fn the_dialogs_close_after_an_action_settles_the_log_and_posts_no_move() {
+    // E17 M6 T2a2b1: the stats dialog's cast button's aim gave an action; the dialog's close
+    // after it settles the log, and its posted move waits behind the action: no hint written.
+    let (o, legal) = (battle(), legal());
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let inputs = [
+        Input::Move {
+            at: 0,
+            to: centre(120),
+        },
+        Input::Look { at: 1 },
+        Input::Move {
+            at: 1,
+            to: centre(87),
+        },
+        Input::Act { at: 2 },
+        Input::Looked { at: 2 },
+    ];
+    let log = [(2, Logged::Action)];
+    let shown = run(&log, &[Start::default()], &turns, &inputs);
+    let at_two: Vec<&Logged> = shown
+        .log
+        .iter()
+        .filter(|(t, _)| *t == 2)
+        .map(|(_, l)| l)
+        .collect();
+    assert!(at_two.contains(&&Logged::Settle));
+    assert!(!at_two.iter().any(|l| matches!(l, Logged::Status { .. })));
+}

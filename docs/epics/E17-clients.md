@@ -154,9 +154,12 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   but the panel's line over a Faerie Dragon (CLT-Q36 to Q38 asked, answered 2026-11-02); T2a2
   cut in two by the user (2026-11-02): **T2a2a** (done 2026-11-02) the dialog in the window
   (design §12.2: its OK, keys, hints and cursor, the key T, the battle's mouse at its close; hot
-  seat and a server; CLT-Q37 and Q38 (1) to (3) fixed; six stills exact), **T2a2b** its right
-  button's descriptions and its cast button; **T2b** the right button's popup (0x4769C0) and a
-  turret's info (0x47A380); recorded.
+  seat and a server; CLT-Q37 and Q38 (1) to (3) fixed; six stills exact); T2a2b cut in two by
+  the user (2026-11-02): **T2a2b1** (done 2026-11-02) the right button's descriptions held in a
+  popup but morale's and luck's (design §12.3), the cast button into the dragon's aim (CLT-Q38
+  (4)), CLT-Q39 asked and answered; four stills and a sequence exact; **T2a2b2** morale's and
+  luck's descriptions; **T2b** the right button's popup (0x4769C0) and a turret's info
+  (0x47A380); recorded.
 - **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
   battlefield's other items; recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
@@ -278,3 +281,16 @@ The next milestone's list starts here.
 11. Not modelled (T2a2a): the input queue emptied as the dialog's modal loop starts (a key down or
     press in the batch of the opening press reaches it); the recorded sequences take no look, the
     dialog's opening, hover and close recorded as six stills' action sequences instead.
+12. The cast button's description in the client's profile (T2a2b1, CLT-Q38 (2), *provisional*):
+    its hint again, the panel's spell book's ("Cast Spell"; the book's own description, `Help.txt`
+    385's second column, tells of the hero's book); the original's the second mine's name.
+13. The right button's popup in the window (T2a2b1, *provisional*): framed in the acting side's
+    colours as every box (CLT-Q28 (2)); held until the right button's release or a left press or
+    release, the rest dropped, the cursor hidden; the creature's steps around it as read
+    (`Steps::made_around`: two at its end after a hold past the deadline by 100 ms or more).
+14. CLT-Q39's fix (T2a2b1): a held OK's release the popup took lets it go without its click in
+    the client's profile (`Modal::held_input`, `message::Open::let_go`).
+15. Not modelled (T2a2b1): what pausing the dialogs shown does (each one's vtable +0x20, 0x5FF5B0;
+    nothing visible in the recordings); the original's cast button for a Faerie Dragon that is
+    not the acting stack (its cast the pressed stack's drawn spell, CLT-Q38 (4)): the client's
+    profile has no such button, the original's shows it but its click casts the acting stack's.

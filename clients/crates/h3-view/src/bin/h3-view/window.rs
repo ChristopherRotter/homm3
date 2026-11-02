@@ -431,9 +431,13 @@ fn next_frame(
             _ => Ok(None),
         };
     }
-    // Behind a stack's stats dialog too; its creature steps each 100 ms (E17 M6 T2a2a).
-    if let Some(next) = battle.stats_step_after(shown.t) {
-        return frame_at(battle, next).map(Some);
+    // Behind a stack's stats dialog too; its creature steps each 100 ms (E17 M6 T2a2a), none
+    // while its right button's popup is held (E17 M6 T2a2b1: only an input changes it then).
+    if battle.stats_open() {
+        return match battle.stats_step_after(shown.t) {
+            Some(next) => frame_at(battle, next).map(Some),
+            None => Ok(None),
+        };
     }
     let mut t = shown.t;
     while let Some(next) = changes.after(battle, t)? {
@@ -757,6 +761,32 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 Event::KeyUp(_) if options.run.is_some() => {}
+                // The stats dialog's right button's description (E17 M6 T2a2b1, design §12.3),
+                // held while the button is: the popup's loop (0x602A40) takes only its ends (the
+                // right button's release, a left press or release) and drops every other input
+                // (a key's release lets the OK it holds go in the client's profile, CLT-Q39); the
+                // battle keeps where the mouse is.
+                Event::KeyUp(Key::RightButton) if battle.stats_popup() => {
+                    book_changed |= battle.stats_held(at, true, None, false);
+                }
+                Event::Click { down, .. } if battle.stats_popup() => {
+                    book_changed |= battle.stats_held(at, true, None, !down);
+                }
+                Event::KeyUp(key) if battle.stats_popup() => {
+                    book_changed |= battle.stats_held(at, false, Some(key.name()), false);
+                }
+                Event::Key(_) if battle.stats_popup() => {}
+                Event::Pointer(p) if battle.stats_popup() => {
+                    pointer = p;
+                    if let Some((x, y)) = p {
+                        inputs.push(Input::Move { at, to: [x, y] });
+                        mouse_changed = true;
+                    }
+                }
+                Event::Key(Key::RightButton) if battle.stats_open() => {
+                    let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
+                    book_changed |= battle.stats_right(at, point);
+                }
                 // What a key does where the battle takes it now (E24 M3 T1b, `h3_view::keys`): a
                 // dialog or an aim over the battle takes its own keys and the window's that work
                 // whatever is open; its Esc is its close, Cancel or give-up, never the window's
@@ -921,6 +951,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         Do::AimCancel => {
                             battle.cancel_aim();
                             inputs.push(Input::Cancel { at });
+                            // The stats dialog's close after its cast button's aim (E17 M6
+                            // T2a2b1).
+                            if battle.looked_after_aim() {
+                                inputs.push(Input::Looked { at });
+                            }
                             mouse_changed = true;
                         }
                         // One of the battle's keys made while a battle fought here takes no
@@ -960,7 +995,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::KeyUp(key) if battle.stats_open() => {
                     let did = battle.stats_key_up(key.name());
-                    book_changed |= stats_did(&mut inputs, at, did);
+                    let changed = stats_did(&mut battle, &mut inputs, at, did);
+                    (book_changed, mouse_changed) =
+                        (book_changed | changed, mouse_changed | changed);
                 }
                 Event::KeyUp(_) if battle.book_open() || battle.aiming() => {}
                 Event::KeyUp(key) => {
@@ -1020,7 +1057,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Click { down: false, .. } if battle.stats_open() => {
                     let did = battle.stats_release();
-                    book_changed |= stats_did(&mut inputs, at, did);
+                    let changed = stats_did(&mut battle, &mut inputs, at, did);
+                    (book_changed, mouse_changed) =
+                        (book_changed | changed, mouse_changed | changed);
                 }
                 Event::Pointer(p) if battle.book_open() => {
                     pointer = p;
@@ -1047,6 +1086,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     followed |= battle.mouse(&inputs, &scrolls)?;
                     if let Some(command) = battle.aim_press(at) {
                         grew |= give(&mut battle, &mut inputs, at, command)?;
+                        // The stats dialog's close after its cast button's aim, the action
+                        // given (E17 M6 T2a2b1: its posted move waits behind the action).
+                        if battle.looked_after_aim() {
+                            inputs.push(Input::Looked { at });
+                        }
                     }
                     mouse_changed = true;
                 }
@@ -1147,7 +1191,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // it changes.
         let ms = clock.ms(win.ticks_ns());
         let frame = battle.cursor(ms);
-        let visible = !battle.timeline().cursor_hidden(ms);
+        // The stats dialog's popup hides it too (`mouse_hide` 0x602A6C; E17 M6 T2a2b1).
+        let visible = !battle.timeline().cursor_hidden(ms) && !battle.stats_popup();
         if (&frame, visible) != (&frame_now, cursor_visible) {
             let image = if visible && !drawn_cursor {
                 Some(cursors.get(&battle, &frame)?.1)
@@ -1376,10 +1421,21 @@ fn book_did(
 /// The open box as the window tells one from another (E17 M5 T8b2): its buttons' places, none
 /// while no box is open. A box that gives way to another (the surrender refused) has others.
 /// What a stats dialog's input did (E17 M6 T2a2a): its close hands the mouse back to the battle
-/// (`Input::Looked`). Whether the screen changed.
-fn stats_did(inputs: &mut Vec<Input>, at: u32, did: StatsDid) -> bool {
-    if did == StatsDid::Closed {
-        inputs.push(Input::Looked { at });
+/// (`Input::Looked`); its cast button's (E17 M6 T2a2b1) starts the acting Faerie Dragon's aim
+/// first, the close coming as the aim ends (at once when no aim starts). Whether the screen
+/// changed.
+fn stats_did(battle: &mut Battle<'_>, inputs: &mut Vec<Input>, at: u32, did: StatsDid) -> bool {
+    match did {
+        StatsDid::Closed => inputs.push(Input::Looked { at }),
+        StatsDid::Cast => match battle.look_cast(at) {
+            Some(spell) => inputs.push(Input::Aim {
+                at,
+                spell,
+                creature: true,
+            }),
+            None => inputs.push(Input::Looked { at }),
+        },
+        StatsDid::Nothing | StatsDid::Changed => {}
     }
     did != StatsDid::Nothing
 }

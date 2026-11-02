@@ -1352,3 +1352,61 @@ actions = ["move:200,140", "key:t", "move:201,140", "key:Return", "key:t", "move
 at = 100
 differing = 0
 why = "exact: opened again over the item last hovered: no hint, the pointer (CLT-Q38 (3), the original's; E17 M6 T2a2a)"
+
+# E17 M6 T2a2b1: the stats dialog's right button (design §12.3): the mouse moved over an item (its
+# hint and cursor as a move's), then the right button held there through the frames: the item's
+# description (`Help.txt`'s second column) in a popup of style 4 centred on the screen, the cursor
+# hidden (`popup_run_held` 0x602A40). `stats-describe`: the Marksmen's attack line (its value's,
+# which takes the mouse); `stats-describe-ok`: their OK; `stats-describe-none`: their creature's
+# picture, which has no description: no popup, the cursor shown; `stats-describe-cast`: the acting
+# Faerie Dragons' cast button: past the hint table, the second mine's name (CLT-Q38 (2), the
+# original's; the panel's line listed as `stats-dragon`'s).
+[[situation]]
+id = "stats-describe"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "right:200,330"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the attack line's description in its popup, the cursor hidden, the hint under the dialog (E17 M6 T2a2b1)"
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: held, the creature not stepping (E17 M6 T2a2b1)"
+
+[[situation]]
+id = "stats-describe-ok"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "right:248,528"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the OK's description (E17 M6 T2a2b1)"
+
+[[situation]]
+id = "stats-describe-none"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "right:70,400"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: over the creature no description, no popup, the cursor's frame 1 (E17 M6 T2a2b1)"
+
+[[situation]]
+id = "stats-describe-cast"
+scenario = "stats-dragon.toml"
+seat = "attacker"
+actions = ["click:102,196", "right:99,327"]
+
+[[situation.frame]]
+at = 0
+differing = 1276
+why = "the panel's line only (as stats-dragon's): the cast button's description, the second mine's name in the original (CLT-Q38 (2); E17 M6 T2a2b1)"
+

@@ -18,15 +18,19 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T2a2b — the dialog's right button and its cast button
+### E17 M6 T2a2b2 — morale's and luck's descriptions
 
-- **Scope:** the right button's descriptions over the dialog's items (0x5F48AD: the hint table's
-  second texts, morale's and luck's descriptions 0x44B960, 0x44C1C0 read, an effect's; the first
-  popup held while the right button is, which T2b and T3 then use), a Faerie Dragon's cast
-  button entering its cast (0x468943; CLT-Q38 (4): the button only for the acting stack, its
-  own drawn spell); recorded (the descriptions; a Faerie Dragon cast from the dialog).
-- **Acceptance:** each behaviour exact against its recordings or listed; `drawn`; `check.sh`.
-- **Depends on:** T2a2a (done 2026-11-02). **Status:** ready.
+- **Scope:** T2a2b cut in two by the user (2026-11-02; T2a2b1 done: design §12.3). The right
+  button's descriptions over the stats dialog's morale and luck (`creature_dialog_proc` 0x5F4B86
+  and 0x5F4937: their texts `stack_morale_description` 0x44B960 and `stack_luck_description`
+  0x44C1C0, kept at the dialog's +0x6C and +0x80, with a picture by the value, 0xB or 0xC and
+  their kin), read; their sources against what a seat's observation carries (the hero's
+  Leadership and Luck, artifacts, specialties, the army's alignments and undead, the field, the
+  spells): a `CLT-Q<n>` (or a request to the battle or server lane) for those it lacks; built
+  as far as the observation allows; recorded.
+- **Acceptance:** as T2a2b1's (each behaviour exact against its recordings or listed; `drawn`;
+  `check.sh`).
+- **Depends on:** T2a2b1 (done 2026-11-02: the popup). **Status:** ready.
 
 ### E17 M6 T2b — the right button's stack popup and a turret's info
 
@@ -35,7 +39,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   0x530D30), an enemy's too (what the seat's observation shows of it), the dialog's clamps at the
   right and the top recorded; a turret's info by either button (`turret_info` 0x47A380, a message
   box); recorded.
-- **Acceptance:** as T2a2b's. **Depends on:** T2a2b (the held popup). **Status:** ready.
+- **Acceptance:** as T2a2b1's. **Depends on:** T2a2b1 (done: the popup held, design §12.3).
+  **Status:** ready.
 
 ### E17 M6 T3 — the right button's other popups
 

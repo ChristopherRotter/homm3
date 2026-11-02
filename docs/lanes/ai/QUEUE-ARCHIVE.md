@@ -4,6 +4,19 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 5, T16** (moved 2026-11-02, done: `E25-log.md` T16):
+
+- **T16 The cloning bench.** *Scope:* a C ABI call giving the system actor's choice (either
+  sight) for an env's side to move as an encoded action (`h3_sim::action::encode`; the entry and
+  the cast heads), its count of choices the encoding cannot express; a clone mode of the
+  distillation bench (`h3env.train.distill`, T7b) whose teacher is the fair actor playing both
+  sides through external seats on T17's training distribution (the player kinds plus the neutral
+  kinds at E06 T7's third): the student (`e25-sharp-1`'s network) learns its heads by
+  cross-entropy and its value on the returns (reward v1, γ 1); held-out agreement per category;
+  the student saved as a run's network file for `--init-from`; its ladder (how near the clone
+  plays to the fair actor). The sandbox's CPU for the checks, the bench's length agreed with the
+  user. *Depends on:* T14 (done). *Status:* next (needs no upload).
+
 **E25 increment 5, T15** (moved 2026-11-02, done: `E25-log.md` T15):
 
 - **T15 The ladder at the switch.** *Scope:* `e25-sharp-1` #2 (its `best.pt` uploaded by the
