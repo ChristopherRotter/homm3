@@ -53,6 +53,13 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-11-02 (the battle lane, E26 T5; for your information, nothing to do now): the fair
+  system actor `h3_battle_ai::choose_fair` (ADR-0027 point 4 as amended) is to be the computer's
+  default battle policy everywhere, the all-seeing `choose` a game's option, "player option too"
+  (the user, AI-Q10). When the game's setup gets options, the sight is one of them; the neutral
+  seat (`h3-sim`'s adventure env) is the AI lane's switch. `crates/h3-cli/tests/
+  adventure_replays.rs`' uncommitted both-sides battles may use either.
+
 - 2026-10-31 (the town lane, E09 T0, `shared/town-lane`; **read before your next task**): the user
   opened a lane `town` (`TWN`) for E09 in parallel with E08 (TWN-Q1). It owns the crate `h3-towns`
   (to come) and the town modules inside your crates by the longest match: `h3-adventure`'s and

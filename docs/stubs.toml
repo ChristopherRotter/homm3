@@ -49,6 +49,12 @@ where  = "crates/h3-battle-ai/src/tactics.rs::turn"
 reason = "The original's Defend in the tactics phase ends the stack's turn (0x479706); the engine's phase has no Defend and its Wait makes the stack wait first (BAT-TAC-002). The policy gives Wait, and a walker below Hard that has waited Wait again at once, but on Hard and above a walker that defended is asked again among the waited stacks, where the original's turn had ended (BAT-AI-023)"
 epic   = "E23"
 
+[[stub]]
+id     = "BAT-STUB-18"
+where  = "crates/h3-battle/src/aim.rs::pick"
+reason = "The computer's shooter (0x41EB80; BAT-AI-002, BAT-WAR-008) takes the living stacks of the side its controller fights, whoever controls them: a hypnotized shooter (BAT-MAG-026) is among them and may pick itself, a shot the engine refuses (NotAnEnemy), so choose and choose_fair both fall back to Defend (ADR-0027 point 3). Found by E26 T3's property (h3-battle-ai's the_fair_choice_is_legal_and_reads_nothing_hidden_in_random_battles, game 40: the attacker's hero hypnotized the defender's Lich, whose area shot in round 3 aims at its own hex); the properties tolerate this case only (their marker). The shooter's side of BAT-STUB-10 (BAT-Q58, where the walker leaves itself out): the same cut, or the original's outcome once a batch row shows it"
+epic   = "E26"
+
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]

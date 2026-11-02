@@ -6,27 +6,15 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
-- **T1a2 The towns survey, part 1b: the main town's hero and the start's town setup** (the
-  epic's increment 1; T1a1 did the census and the factions, survey `docs/rules/surveys/E09-towns.md`
-  §0 to §3, its §3 lists what is open). Append §4 on to the survey: the code reading of
-  `Heroes3.exe` (`docs/exe/README.md`; each function in `docs/exe/map.toml`) of the main town's
-  generated hero and the pool it draws from (the hero classes' tavern weights, the map's allowed
-  heroes and SoD's disposed heroes, the faction, the player's starting-hero choice, the map's
-  random-hero flag and customised main hero; the wiki says the generated hero comes after the
-  map's random heroes), **the random hero's draw** (class 70, 166 on 36 maps: the same pool;
-  whether increment 1 takes it is `TWN-Q2`'s), a hero placed on a town's blocked tile (always the
-  tile right of the entrance on the shipped maps), the town's buildings at the start (the standard
-  set and the has-fort flag, `setup_towns`' 0x5C0670 and 0x5C08C0), a garrison's random stacks
-  (12 in 7 maps); VCMI 1.7.5 and the wiki on each; disputes `TD-<n>` (next 3) and quirk candidates
-  `T-<n>` (next 2); the content named for the harvest (the tavern weights). About half a context;
-  if the reading runs long, cut at the buildings (the user confirms the cut).
-- **T1b The towns survey, part 2: the town on the map** (after T1a2). The visit and the entrance
-  (the town classes' tiles, the gate's leaving), the visiting hero, capture of an unguarded town,
-  the siege: ADR-0023's facts from the town (fort level, moat by edition, faction), the defender
-  (garrison, visiting hero, both), the outcome; the hall's income (`town_gold_income` 0x5BF600)
-  and the Capitol; what a viewer sees of a town; batch TWN-1's rows for the readings at risk;
-  the checkpoint's questions to the user (`TWN-Q2`, interactive, with options and a
-  recommendation each).
+- **T1b2 The towns survey, part 2b: income, views and the checkpoint** (next; T1b1, the visit,
+  capture and the battle at a town, done: survey §7 to §10). The hall's income
+  (`town_gold_income` 0x5BF600, `player_gold_income` 0x4C7930) and what the Capitol pays (one
+  per player after a capture: `capitol_limit`, §8.4; the wiki's word on it not found at T1b1);
+  what a viewer sees of a town (the map client's readings, E24 M3 T5b1 and T6a1: the status
+  window, the hint); batch TWN-1's rows gathered (T1a2's TD-3 and TD-5, survey §6; T1b1's four,
+  §10); the checkpoint's questions to the user (`TWN-Q2`, interactive, with options and a
+  recommendation each: the random hero in increment 1 (§4.4), T-2 to T-5's classifications,
+  TD-1 to TD-7 where a choice is the user's, the scope's other open points of §6 and §10).
 - **T2 The ADR drafts, the design note and the cut** (after T1b's checkpoint): a new ADR draft
   for `h3-towns` in `docs/lanes/town/adr-drafts/` and the amendments of ADR-0015 to -0017 and
   ADR-0023 the survey calls for; `docs/epics/E09-design.md`; the build's rounds as queue entries;
@@ -44,7 +32,8 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   a town's gate leaves upward: type the town classes. Increment 1.
 - (adventure archive, 2026-10-03, E04a T3a) Not harvested: the spells' town chances and the hero
   classes' tavern weights (RoE lacks the Conflux column: an override kind or a per-faction table).
-  Increment 1 (weights), increment 4 (chances).
+  Increment 3 (weights: only the tavern's draw reads them, survey `E09-towns.md` §4.4), increment
+  4 (chances).
 - (adventure archive, 2026-10-30, T77a) `town_gold_income` 0x5BF600 is a town's income. Increment 1.
 - (ADR-0023, Consequences) The town context's derivation of `Siege` gets a rule list from survey
   `E04c-sieges` §1; the game's version (the moat) is probably the map's format (an experiment

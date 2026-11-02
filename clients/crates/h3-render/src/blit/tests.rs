@@ -473,6 +473,21 @@ fn a_frame_cut_to_its_canvas_s_top_rows() {
     assert_eq!(s.pixels(), [grey(10), grey(20), WHITE]);
 }
 
+#[test]
+fn a_clipped_frame_draws_only_inside_its_rectangle() {
+    // E17 M6 T2a1: the creature dialog's creature, cut to its item's box (0x4EAB40, flags 0x12).
+    let f = frame(3, 0, 0, (3, 2), vec![10, 20, 30, 40, 50, 60], vec![]);
+    let at = Placement {
+        x: 1,
+        y: 0,
+        mirrored: false,
+    };
+    let mut s = screen(5, 2);
+    draw_frame_clipped(&mut s, &f, &palette(), at, SHADOWED, [2, 1, 5, 9]);
+    assert_eq!(row(&s, 0), [WHITE; 5]);
+    assert_eq!(row(&s, 1), [WHITE, WHITE, grey(50), grey(60), WHITE]);
+}
+
 /// [`palette`]'s greys as an image's palette.
 fn palette_of_greys() -> Palette {
     let mut p = Palette::default();

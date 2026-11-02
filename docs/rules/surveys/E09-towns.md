@@ -5,8 +5,10 @@ T2's ADR drafts, the design note and the cut. In three parts, T1a cut in two at 
 user, 2026-11-02): **T1a1** the census of the shipped maps and the players' faction choice with
 the random towns (§0 to §3); **T1a2** the main town's generated hero and the pool it draws from,
 the random hero, a hero placed on a town's blocked tile, the town's buildings at the start (§4 on,
-appended); **T1b** the town on the map (the visit, capture and the siege's facts, the hall's
-income, the views, batch TWN-1's rows, the checkpoint's `TWN-Q2`).
+appended); **T1b** the town on the map, cut in two at its start (the user, 2026-11-02): **T1b1**
+the visit, the visiting hero, capture and the battle at a town with ADR-0023's facts (§7 to §10);
+**T1b2** the hall's income and the Capitol, the views, batch TWN-1's rows, the checkpoint's
+`TWN-Q2`.
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -30,8 +32,65 @@ its sources and tests.
   ("Random Towns"), [Map Editor](https://heroes.thelazy.net/index.php/Map_Editor) ("Player
   Specs"), [Horn of the Abyss (Changelog)](https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog))
   (1.6.0, 1.3.0), through the search's summaries.
+- **T1a2** (retrieved 2026-11-02): a census of the same maps (a throwaway crate over
+  `h3_map::read`, not committed); the code reading, every address in `docs/exe/map.toml`.
+  **Read whole:** `hero_pool_init` 0x4C4E30, `hero_draw_of_faction` 0x4BB400, `main_town_heroes`
+  0x4CA040, `town_hero_place` 0x5C13B0, `hero_place` 0x4D7900, `hero_show` 0x4D75D0,
+  `placed_heroes_setup` 0x4CAE10, `scenario_hero_lists` 0x583890, `game_reset` 0x4BF1A0,
+  `town_setup` 0x5C0670, `town_buildings_setup` 0x5C08C0, `tavern_hero_draw` 0x4BB5E0 (for the
+  weights' role only; increment 3's). **Read in part:** `new_game_heroes` 0x4BFE70 (its steps'
+  order and the chosen heroes, 0x4BFF4A to 0x4C012F), `new_game_bans` 0x4C2450 (its start),
+  `map_header_read` 0x4C4390 (the allowed heroes, 0x4C47E4 to 0x4C498C), `load_hero_body`
+  0x5021C0 (the type, the random hero's draw and the owner byte, 0x5021FA to 0x502374 and
+  0x50294D to 0x50298F), `new_game_start` 0x58C570 (the choices, 0x58C680 to 0x58C6CE),
+  `town_build` 0x5BE930 (its first lines). **Not followed:** the scenario dialog's drawing (what
+  it shows in the hero column), network play's copy of the choices (0x4EF611), the campaign's
+  paths (carried heroes, 0x4CA1A7's experience), the tavern's weekly heroes
+  (`tavern_new_heroes` 0x4C8450), the horde part of `town_build`, the building tables' start-up
+  (0x4EB730), a town's change of owner (0x4C61E0, T1b's), the guild's spells (0x5BE030, 0x5BE600)
+  and the Shipyard's spot (0x5C0C90), increment 4's.
+- VCMI 1.7.5 for T1a2: `lib/gameState/CGameState.cpp` (`pickNextHeroType`,
+  `pickUnusedHeroTypeRandomly`, `getUnusedAllowedHeroes`, `placeStartingHeroes`,
+  `placeHeroesInTowns`, `initVisitingAndGarrisonedHeroes`, `initTowns`),
+  `lib/mapObjects/CGHeroInstance.cpp` (`pickRandomObject`), `lib/mapObjects/CGTownInstance.cpp`
+  (`initializeNeutralTownGarrison`), `lib/mapping/MapFormatH3M.cpp` (the town's buildings),
+  `config/gameConfig.json` (`startingDwellingChances`).
+- The wiki and others for T1a2: [Town](https://heroes.thelazy.net/index.php/Town) ("Neutral Town
+  Garrison"); the HotA team's [documentation](https://h3hota.com/en/documentation) (its own towns'
+  default buildings); a GOG forum thread on the starting hero
+  ([link](https://www.gog.com/forum/heroes_of_might_and_magic_series/homm3_is_there_a_way_to_pick_your_initial_hero_in_the_very_beginning_of_sp_play))
+  and a Celestial Heavens thread on "Generate hero at main town"
+  ([link](https://www.celestialheavens.com/forum/7/14260)), through the search's summaries.
+- **T1b1** (retrieved 2026-11-02): the code reading, every address in `docs/exe/map.toml`.
+  **Read whole:** `town_visit` 0x4AAFD0 (named `hero_battle_on_map` before), `town_change_owner`
+  0x4C61E0, `garrison_merge` 0x44B820, `capitol_limit` 0x5BEC60, `town_at_entrance` 0x4BB870,
+  `town_remove_from_owner` 0x5BE2D0, `army_reset` 0x44AB00, `hero_loss_effect` 0x4ACBB0 (named
+  `hero_off_map` before), `dwelling_creature_faction` 0x4C6690, `town_dwelling_count_add`
+  0x5BFE50. **Read in part:** `hero_move_step` 0x4805E0 (its case 98, 0x480E3B to 0x480EDF),
+  `visit_object` 0x4A84F0 (its case 98), `visit_hero` 0x4A2800 (a hero in a town),
+  `adventure_battle` 0x4AD470 (the side setup's call, 0x4AE238 to 0x4AE27C, and the outcome,
+  0x4AE431 to 0x4AE898), `hero_hide` 0x4D76E0 (the town's visitor, 0x4D776F to 0x4D77A5),
+  `new_game_heroes` 0x4BFE70 (the game's version, 0x4BFEE9 to 0x4BFF4A), `new_game_start`
+  0x58C570 (its version, 0x58C593 to 0x58C5B7), `scenario_version_from_slots` 0x58E700 and
+  `scenario_version_highest` 0x58EA00 (their last loops). **Not followed:** the town screen
+  (0x5BE210) and the computer's town visit (0x5253D0); the scenario's tests (0x5F2860, 0x5F2E40,
+  0x5F2260, 0x5F22A0: E10's); network play (`town_owner_message` 0x49C190); the battle's own
+  reading of the town (E04c's, `installation.md` §7.27 to §7.33); what reads the external
+  dwellings' counts (increment 3); the masks the scenario dialog's version is taken from.
+- VCMI 1.7.5 for T1b1: `lib/mapObjects/CGTownInstance.cpp` (`onHeroVisit`,
+  `mergeGarrisonOnSiege`, `battleFinished`, `onTownCaptured`, `setOwner`, `removeCapitols`,
+  `armedGarrison`, `getSightRadius`), `lib/mapObjects/CGTownInstance.h` (`isBattleOutsideTown`),
+  `server/CGameHandler.cpp` (`visitObjectOnTile`'s `startVisit`).
+- Others for T1b1 (through the search's summaries): the wiki's
+  [Tutorial](https://heroes.thelazy.net/index.php/Tutorial) (a garrison hero defends from within
+  the fortifications); coyot's [HOMM3 guide](http://home.pinknet.cz/~coyot/homm3/gameplay.php)
+  (a visitor beside a garrison hero is fought on free terrain; the garrison merged into a lone
+  visitor's army, "what cannot be merged is unused"); a reader's comment on heroes3wog.net's
+  [Did you know?](https://heroes3wog.net/did-you-know-second-edition/) (a garrisoned hero left
+  without units by dismissing them in the town screen). The wiki's Town page was not reachable
+  (not on the session's fetch list).
 
-## 0. Findings in short (T1a1)
+## 0. Findings in short (T1a1, T1a2, T1b1)
 
 1. **Every shipped map has towns:** 1 468 on the 160 maps, 876 random towns (class 77, on 127
    maps) and 592 of a fixed faction (98); **no Conflux town is placed on any map** (98's subclass 8
@@ -39,7 +98,7 @@ its sources and tests.
    twenty town templates share one footprint (§1.1).
 2. **All 160 maps import once three things exist:** the hero generated at a main town (128 maps
    refused for it today), a hero standing in a town (3 maps) and **the random hero** (class 70: 21
-   maps refused for it alone, 15 more behind a town refusal; 166 random heroes on 36 maps). The
+   maps refused for it alone, 15 more behind a town refusal; 176 random heroes on 36 maps). The
    random hero is drawn from the same pool as the main town's hero, so it is a scope candidate for
    increment 1 (the checkpoint's `TWN-Q2`; T1a2 reads its draw beside the main town's).
 3. **The header's main town is its entrance tile** (the town's anchor less two columns), as VCMI's
@@ -64,6 +123,73 @@ its sources and tests.
    RoE maps). **Quirk candidate:** T-1 (an alignment byte from 8 to 254 reads past the eight
    colours' records; none on the shipped maps). Content for the harvest: none from T1a1 (factions
    are core content; the towns' name lists are text).
+
+**T1a2 (§4 to §6):**
+
+9. **The pool** (`hero_pool_init` 0x4C4E30, right after the map's header): a hero type is free
+   when the map allows it, else out of the game; SoD's disposed heroes narrow who may take one (a
+   colour mask per hero). An RoE map allows its 128 bits and **the 16 Conflux heroes besides**,
+   never the 12 campaign heroes. On the shipped maps **no placed hero or prisoner is in its map's
+   allowed set** (108 heroes, 89 prisoners).
+10. **One draw for both starting heroes** (`hero_draw_of_faction` 0x4BB400): uniform over the free
+    heroes of the colour's faction's two classes that the colour may take; with none, uniform over
+    every free hero it may take. **No tavern weights:** they are the tavern's draw's (0x4BB5E0,
+    increment 3), so increment 1 harvests none (the epic named them).
+11. **The random hero** (class 70: 176 on 36 maps) is drawn while the map's objects are read, in
+    the file's order, from its owner's faction; **a colour's starting-hero choice goes to its first
+    random hero**. Every owner of one has the map's random-hero flag (140 players) and no other
+    player has it.
+12. **The main town's hero** (`main_town_heroes` 0x4CA040, after the placed heroes): per colour in
+    colour order, with the generate flag: a human's chosen hero, else the same draw; it stands on
+    the town's entrance as the **visiting hero** (`hero_show` 0x4D75D0 makes every hero on a
+    town's entrance its visitor) and learns the guild's spells at once (increment 4).
+13. **A hero in a town** (`placed_heroes_setup` 0x4CAE10): a hero (not a prisoner) whose tile is
+    right of a town's entrance moves onto the entrance. All 23 on the shipped maps are such, in
+    towns of their own owners, none in a main town that generates a hero.
+14. **The buildings at the start** (§5.3): every town a Village Hall. The standard set: a Fort
+    with the map's flag; **an owned town a Tavern, and only with a Fort a level-1 dwelling and 30
+    times in 100 a level-2 one; a neutral town both dwellings**, fort or not. A custom set: the
+    map's built buildings with the ones they supersede, less the forbidden ones.
+15. **The garrison** (§5.2): a custom one as the map gives it, its random stacks by the town's
+    faction (level and upgrade); without one, an owned town's is empty and **a neutral town's is
+    drawn**: four rolls for levels 1 to 4 (33, 33, 20, 13 in 100); the wiki agrees.
+16. **Disputes** TD-3 (the standard buildings: VCMI gives every one a level-1 dwelling and half
+    the time a level-2), TD-4 (level 4's chance, VCMI 14), TD-5 (a neutral town's explicitly empty
+    garrison: VCMI draws one), TD-6 (a hero on a town's other blocked tiles). **Quirk candidates**
+    T-2 (the starting-hero choice is not reserved: one hero can stand twice on the map), T-3 (a
+    random hero can take the type of a hero placed later in the file), T-4 (the draws' empty
+    cases). **Content:** none new (the creatures by faction and level are in the packs; the
+    neutral garrison's table and the 30 are constants of the executable).
+
+**T1b1 (§7 to §10):**
+
+17. **A town is entered, never from above** (§7.1): a step onto the gate of an own or allied town,
+    or of an undefended one, enters it; a town of another team or none that holds a visiting hero
+    or any creature in its garrison is visited from the tile before (the step paid, the hero stays,
+    as a monster). A hero standing on the gate is met first: its own team's hero meets it, another
+    team's hero attacks the town.
+18. **The visiting hero is the hero on the gate** (§7.3): `hero_show` sets it, `hero_hide` clears
+    it. No map sets a garrison hero (the town screen's swap, increment 3), so increment 1's towns
+    hold at most a visitor and the town's own army.
+19. **Capture** (§8): an undefended town is entered, changes owner, and opens its screen; after a
+    siege won the owner changes but **the attacker stays outside** and enters by a later step. A
+    defender's win or a battle with no winner changes no owner.
+20. **The change of owner** (§8.3): the garrison emptied, the town moved between the players'
+    lists, the external dwellings' counts moved (increment 3's), radius 5 revealed around the
+    gate (20 for a Tower with its Lookout Tower, every level for a Tower with the Grail), the
+    scenario's tests; then **one Capitol per player** (§8.4): a captured Capitol becomes a City
+    Hall when the captor holds another.
+21. **Who defends** (§9.1): a visitor beside a garrison hero fights alone in the open (no siege;
+    the town is not taken); a lone visitor defends a siege with **the garrison merged into its
+    army** by AI value (§9.2; the rest stays out of the battle and is lost with the town); a
+    garrison hero defends a siege; else the town's army. The defending side is the town's owner.
+22. **ADR-0023's facts** come from the town's faction, its two building sets and the game's
+    version (§9.4); the version's new-game source is read: the scenario dialog's version (1 AB,
+    2 or 3 SoD, any other RoE), a campaign's by its index. Whether an RoE map's game plays under RoE rules
+    in the Complete edition is batch TWN-1's row.
+23. **Disputes** TD-7 (the merge's order and ties, VCMI's other); **quirk candidate** T-5 (a
+    garrison hero without creatures: the town falls without a battle, the hero back in the
+    pool); **content:** none new (the AI values are in the packs).
 
 ## 1. The census
 
@@ -144,7 +270,8 @@ players / maps. 744 colours play (human or computer).
   each in a town of its own owner and **each on the tile right of the entrance** (the entrance's
   column plus one, the same row). The import refuses 3 maps for it today (the 5 others stop
   earlier at a main town's hero). No hero stands on a town's entrance.
-- **Random heroes (70):** 166 on 36 maps (1 to 9 a map).
+- **Random heroes (70):** 176 on 36 maps (1 to 8 a map, 14 on two; T1a1 wrote 166 and 1 to 9,
+  recounted at T1a2).
 
 ### 1.5 The import (`MAP_IMPORT_VERSION` 15)
 
@@ -261,3 +388,465 @@ presentation only (the names are text, not harvested). Then the town's setup and
   tile right of the entrance), the standard buildings and the has-fort flag at the start
   (`setup_towns`' setup 0x5C0670, its buildings 0x5C08C0), the garrison's random stacks
   (finding 6).
+
+## 4. The heroes at the start (T1a2)
+
+### 4.1 The order at the start
+
+1. `game_reset` 0x4BF1A0: every hero type free (`game.hero_owner` +0x4DF18, −1) and takeable by
+   every colour (`game.hero_masks` +0x4DFB4, 0xFF); the choices (`chosen_heroes` 0x69FB24) −1.
+2. The scenario dialog's start (`new_game_start` 0x58C570, 0x58C680 to 0x58C6CE): each colour's
+   chosen hero (its record's list at +0x2C, the index at +0x20; −1 Random) into
+   `chosen_heroes` by colour; network play fills it at 0x4EF611 (not followed).
+3. `new_game_heroes` 0x4BFE70 (with the choices, 0x4C05E5): every hero type's starting army,
+   experience and movement first (E08's readings); then for each human colour whose main town
+   generates a hero, its chosen hero marked as the colour's (0x4BFF83) and stored as the colour's
+   first hero (`game.first_heroes` +0x1F844, when still −1). **This mark does not last:** the map
+   read that follows starts the pool again (step 4; T-2).
+4. The map read (`new_game_bans` 0x4C2450): the header (`map_header_read` 0x4C4390, the allowed
+   heroes), **the pool** (`hero_pool_init` 0x4C4E30, §4.2), the bans, then the objects
+   (0x4FD690) in the file's order: a placed hero's or prisoner's body marks its type
+   (`load_hero_body` 0x5021C0, 0x502973: a prisoner 0x41, a hero its owner), **a random hero is
+   drawn there** (§4.4).
+5. Then: the random objects (0x4C9DD0), `setup_towns` 0x4CAA70 (§5), the placed heroes
+   (`placed_heroes_setup` 0x4CAE10: a hero in a town moved, §4.6; each hero put on its tile),
+   a campaign's carried heroes, **the main towns' heroes** (`main_town_heroes` 0x4CA040, §4.5),
+   the players with neither a hero nor a town out of the game (0x4C007A), the taverns' heroes
+   (`tavern_new_heroes` 0x4C8450, increment 3).
+
+So the wiki's order holds: the random heroes are drawn before the main towns' heroes, and both
+after every hero placed earlier in the file.
+
+### 4.2 The pool (`hero_pool_init` 0x4C4E30)
+
+- Per hero type 0 to 155: free (−1) when the map's allowed set (`game.allowed_heroes` +0x1FB5C)
+  has its bit, else 0x40, out of the game for every draw. Then each SoD disposed hero whose mask is
+  not 0xFF sets the type's colour mask to it (0x4C4EC4): only those colours may take it. Last, a
+  victory "acquire an artifact" (0, or 10) marks its artifact (artifacts, not heroes).
+- **The allowed set by version** (`map_header_read`, 0x4C47E4 to 0x4C498C): an RoE map's 16
+  bytes give types 0 to 127 and, **outside a campaign, types 128 to 143 (the Conflux heroes) are
+  set besides** (0x4C48EF), 144 to 155 never; AB and SoD read 20 bytes, types 0 to 155.
+- **The census:** no placed hero (108) or prisoner (89) has its type allowed on its map; RoE
+  maps 49 (their Conflux heroes allowed so); AB/SoD maps: all 16
+  Conflux heroes allowed on 94, none on 13, 8 on 3, 15 on 1; some of the 12 campaign heroes
+  allowed on 99 (151 in all); SoD's disposed heroes: 832 on 9 maps, each with a mask other than
+  0xFF.
+- **What takes a hero out of the pool:** its owner's colour when it is placed, drawn or
+  generated (`hero_place` 0x4D7900, `load_hero_body`), 0x41 for a prisoner; −1 again when a
+  tavern slot's hero is released at the start (0x4C00F7) or a player is defeated (0x4F13F3).
+
+### 4.3 The player's starting-hero choice
+
+- **The offer** (`scenario_hero_lists` 0x583890, read whole; the dialog's other tests of the
+  flags not followed in full): for a colour that plays with a faction (not Random), up to
+  **16 heroes in type order**: free in the dialog's pool (the header and `hero_pool_init`
+  only, so placed heroes are not marked, but none is allowed on the shipped maps), of the
+  faction's two classes (the hero table's class, `hero_table` +0x8), takeable by the colour (a
+  disposed hero's mask). The column offers the choice when the colour's main town generates a
+  hero or the colour has the random-hero flag; with neither it shows the map's customised main
+  hero (`player_attributes` +0x1C), which nothing outside the dialog reads.
+- **Where it goes:** the colour's **first random hero in the file's order** takes it
+  (`load_hero_body` 0x5022ED: then the choice is cleared, so a second random hero draws); else
+  **a human colour's** main-town hero (`main_town_heroes` 0x4CA146 tests the human flag +0xE2; a
+  computer colour's choice is honoured only by a random hero). Neither checks that the hero is
+  still free (T-2).
+- **The census:** the generate flag with no customised main hero on 533 players (16 with the
+  random-hero flag too), the random-hero flag without the generate flag on 124 (3 with a
+  customised main hero), a customised main hero on 62 (5 with a generating main town).
+
+### 4.4 The draw and the random hero
+
+- **`hero_draw_of_faction` 0x4BB400** (faction, colour; read whole): the faction's two classes
+  (0 and 1 for Castle, then 3 and 2, 5 and 4, 6 and 7, …, 16 and 17 for Conflux; a faction
+  outside 0 to 8 takes Castle's, T-4); the list of every type that is free, takeable by the colour
+  and of one of the two classes (the game's hero record +0x30), in type order; when empty, every
+  free type takeable by the colour; one of them by `random_between(1, n)`. **No weights:** the
+  hero classes' tavern weights (HCTRAITS, `hero_class` +0x34, one byte per faction) are read only
+  by the tavern's draw (`tavern_hero_draw` 0x4BB5E0, read for this: a class drawn by those
+  weights, then a hero of it uniformly; on an SoD map a non-Conflux colour's tavern skips the
+  Conflux classes while other heroes are free). That draw is increment 3's.
+- **The random hero** (class 70, `load_hero_body`): with the owner's choice (§4.3), else
+  `hero_draw_of_faction(chosen_factions[owner], owner)` at once (0x502352); the type is the
+  owner's from then (0x502988), so the next draw excludes it. The rest of its body applies as a
+  placed hero's (`placed_hero_setup`, E08's). A type placed later
+  in the file is still free at this draw (T-3).
+- **The census:** 176 random heroes on 36 maps (T1a1's 166 was wrong); their owners allow one
+  faction on 10, three to six on 8, eight on 28, nine on 130; 2 stand in a town (§4.6); no hero's
+  army on the shipped maps holds a random stack (the import refuses one; not read).
+
+### 4.5 The main town's hero (`main_town_heroes` 0x4CA040, read whole)
+
+- Per colour 0 to 7, when `player_attributes` +0xB (generate a hero at the main town; RoE: always
+  with a main town) is set: the town whose record's position (its entrance, §2.4) equals the
+  main town's (+0x14); the hero: a human colour's choice, else
+  `hero_draw_of_faction(chosen_factions[colour], colour)`; the colour's first hero if none yet;
+  the type the colour's; `town_hero_place` 0x5C13B0 puts it on the town's entrance
+  (`hero_place` 0x4D7900: added to the player's heroes, the type's mask gains the colour, shown
+  on its tile); then the town's guild spells are learned (0x5BE030, increment 4); one campaign
+  scenario adds experience (not followed).
+- **The faction is the colour's, not the town's:** on the 5 players whose fixed main town allows
+  other factions too (`Unexpected Inheritance`, `Warmongers`, §1.2), a hero of another faction can
+  stand in it; VCMI does the same.
+- **The visiting hero:** `hero_show` 0x4D75D0 (read whole) remembers the tile's object and makes
+  the hero the tile's; on a town's entrance it sets the town's visiting hero (+0x10, 0x4D76A9).
+  So the generated hero, and every hero shown on an entrance, is its town's visitor.
+
+### 4.6 A hero on a town's blocked tile (`placed_heroes_setup` 0x4CAE10)
+
+- For each placed record with a position: when the tile one column left of the hero's is an
+  entrance (+0xD bit 0x10) of a town (class 98; random towns are 98 by then) and the hero is not a
+  prisoner, the hero's column is decreased by one (0x4CAE95 to 0x4CAEC2); the hero is then shown
+  on its tile (the visitor, §4.5). Any owner's town; no other blocked tile.
+- **The census:** 23 such heroes (21 placed, 2 random), all on the tile right of the entrance, in
+  towns of their own owners, none in a main town that generates a hero (so no town starts with
+  two visitors).
+
+### 4.7 VCMI 1.7.5 and the wiki
+
+- **VCMI:** `pickNextHeroType` takes the player's chosen hero while no hero of that type exists
+  on the map, else `pickUnusedHeroTypeRandomly`: uniform over the allowed heroes of the player's
+  faction that the player may take, **without the other players' choices and every hero on the
+  map**, else over the other factions' (then any not allowed, then an error). A random hero
+  draws so at the objects' randomisation (before the starting heroes), every object first read;
+  `placeStartingHeroes` for each player with the generate flag and a main town, at the town's
+  entrance, for computer players' choices too. `placeHeroesInTowns`: a hero on **any blocked tile
+  of a town of its own owner** moves to its entrance (TD-6); `initVisitingAndGarrisonedHeroes`
+  makes a hero on its own town's entrance the visitor. So VCMI reserves the choices (T-2) and the
+  map's heroes (T-3).
+- **The wiki and others:** "generate hero at main town" makes no difference against a random
+  hero placed in the town, the player choosing among the town's heroes (Celestial Heavens); the
+  starting hero is one of the chosen town's, unless the map sets the hero (GOG forum). Both
+  agree with the reading.
+
+## 5. The towns at the start (T1a2)
+
+### 5.1 The town's setup (`town_setup` 0x5C0670, read whole)
+
+From `setup_towns` 0x4CAA70, per town record (`town_setup`, §2.4): the faction (+0x68), owner −1
+then the record's (`town_change_owner` 0x4C61E0, T1b's), the second army cleared, the garrison
+(§5.2), the buildings (`town_buildings_setup`, §5.3), the "every built" set (+0x158: the built
+set with each built building's superseded ones, 0x6A8BB8), the spells' bytes (+0x70 to the
+town's +0xD4), then 0x5BE600 with the record (not read; the guild's spells, increment 4,
+presumably).
+
+### 5.2 The garrison
+
+- **A custom garrison** (+0x19): the seven slots as the map gives them; a stack with a count above
+  0 and a code from −2 down (**the random stacks**) becomes the town's faction's creature of level
+  (−2 − code) / 2, upgraded when the code is odd (`town_creatures` 0x6747B4); a count of 0 leaves
+  the slot empty, so a custom empty garrison stays empty.
+- **No custom garrison:** empty; then **a neutral town** draws: for levels 1 to 4,
+  `random_between(1, 100)` at most 33, 33, 20, 13 (0x688E84) adds the faction's unupgraded
+  creature of that level, `random_between` of 8–15, 5–7, 3–5, 1–3 (0x688E94, 0x688EA4) of them
+  (`army_add_stack` with slot −1). An owned town's stays empty.
+- **The census:** neutral towns: 497 without a garrison (drawn), 41 custom, 41 custom and empty;
+  owned towns: 858 without (empty), 19 custom, 12 custom and empty. The 12 random stacks (7
+  maps, T1a1) are in custom garrisons of random towns.
+- **VCMI** (`initializeNeutralTownGarrison`): the same four rows with level 4 at 14 in 100
+  (TD-4), and only when the town has no stack, so it also fills an explicitly empty one (its own
+  FIXME; TD-5). **The wiki** ("Neutral Town Garrison"): the four rows as read, 13 in 100, and
+  only when the map defines no garrison.
+
+### 5.3 The buildings (`town_buildings_setup` 0x5C08C0, read whole)
+
+1. The recruits, the built and the every-built sets cleared; **the Village Hall** (10) built.
+2. **Forbidden** from the start: the Grail building (26) on a map whose victory is to build the
+   Grail, in a town that condition does not name (0x5F2160, not read); the Shipyard (6) when the
+   faction has none or neither (column − 1, row + 2) nor (column + 1, row + 2) from the entrance
+   is a boat's spot (0x5C0C90, not read).
+3. **A custom set** (+0x5): the map's forbidden bits (+0x10) through `map_building_ids` 0x6888C0
+   added to the forbidden; a forbidden horde (18, 24) forbids its upgrade (19, 25). The buildable
+   set (+0x160) is the faction's (0x6976F0) less the forbidden. The built: each of the map's
+   built bits (+0x8) with **the buildings it supersedes** (0x6A8BB8, computed at start-up by
+   0x4EB730; named from its use, as `town_build` removes them from the built set: so presumably a
+   Capitol brings the lower halls and a Castle the Citadel and Fort), less what is not buildable;
+   each built in id order (`town_build` 0x5BE930).
+4. **The standard set** (+0x5 clear): the buildable set as above; **a Fort** when the map's flag
+   (+0x18) is set; **an owned town** a Tavern (5), and **only with a Fort** the level-1 dwelling
+   (30) and, at `random_between(1, 100)` at most 30, the level-2 one (31); **a neutral town** both
+   dwellings (30, 31), with a Fort or without.
+- **The census:** standard sets: owned with a Fort 495, owned without 51, neutral with 205,
+  neutral without 143; custom sets: none builds a forbidden building; the Shipyard built in 9
+  towns, the Grail in 10; 7 maps' victory is to build the Grail.
+- **VCMI** (`initTowns`, `startingDwellingChances` [100, 50]): the Village Hall; a Tavern when
+  owned; **the level-1 dwelling always and the level-2 one half the time, for every standard
+  town**, owned or neutral, Fort or not (TD-3); a built Shipyard without water removed.
+- **Others:** the HotA team's documentation of its own towns: the first two dwellings are built in
+  a neutral town or one with a Fort, a Tavern in a town owned at the start, and "towns with Fort
+  always have level 2 dwelling" (HotA's own rule; the reading's 30 in 100 is SoD's); a fandom page
+  on random maps: player towns with a Tavern, the level-1 dwelling and sometimes the level-2,
+  neutral ones without a Tavern. The Lazy wiki's Town page says nothing on the buildings.
+
+## 6. Disputes, quirk candidates and open points (T1a2)
+
+| Id | What | Reading | VCMI | Wiki, others | Shipped maps |
+|---|---|---|---|---|---|
+| TD-3 | A standard town's dwellings | owned: none without a Fort; with one level 1, level 2 at 30 in 100; neutral: levels 1 and 2 | levels 1 always, 2 at 50 in 100, every town | HotA: levels 1 and 2 in a neutral town or one with a Fort (level 2 always, HotA's); fandom: level 1, sometimes 2 | 894 standard towns, 51 owned without a Fort |
+| TD-4 | A neutral town's level-4 roll | 13 in 100 | 14 | 13 (Lazy wiki) | 497 towns draw |
+| TD-5 | A neutral town's explicitly empty custom garrison | stays empty | drawn (VCMI's FIXME) | only an undefined garrison is drawn | 41 towns |
+| TD-6 | A hero on a town's blocked tile | only right of any town's entrance, onto it | any blocked tile of its own owner's town, onto the entrance | — | 23, all right of their own town's entrance |
+
+- **T-2 (quirk candidate): the starting-hero choice is not reserved.** `new_game_heroes` marks a
+  human's chosen hero (0x4BFF83), the map read's `hero_pool_init` frees it again (0x4C4E6B), and
+  neither `load_hero_body` nor `main_town_heroes` checks a choice before placing it. So another
+  colour's random hero, or an earlier colour's main-town draw, can take the chosen hero, which is
+  then placed a second time for its chooser: one hero type on two tiles and in two players' lists
+  (state-corrupting). Exposure: any start where a colour chooses and another colour can draw its
+  faction's heroes. Proposal: fixed (a state-corrupting bug, `AGENTS.md`): the choices are
+  reserved before any draw, as VCMI's; a batch TWN-1 row only if a cheap way to force the draw
+  exists.
+- **T-3 (quirk candidate): a random hero can take a later hero's type.** A placed hero or
+  prisoner marks its type only when its body is read, so a random hero earlier in the file can
+  draw it (when allowed); the later body then overwrites the type's record (`hero_setup` by type).
+  None on the shipped maps (no placed hero is allowed). Proposal: fixed: every placed hero's and
+  prisoner's type leaves the pool before the random heroes are drawn (VCMI's order).
+- **T-4 (quirk candidate): the draws' empty cases.** A generating main town whose position names
+  no town (the town pointer stays null and is used); a draw with no free hero at all
+  (`random_between(1, 0)`, then a read below the list); a faction outside 0 to 8 drawing
+  Castle's classes. None on the shipped maps (all 553 main towns match; 156 heroes). Proposal:
+  the import refuses an unmatched main town (typed), a draw with nothing free fails typed (VCMI
+  throws), the faction is always one of the nine.
+- **Open, for T1b's checkpoint and T2:** the random hero in increment 1 (`TWN-Q2`; it shares
+  §4.4's draw, so it costs little more than the main town's hero); who may choose a starting
+  hero and from which list (E10's setup seam; the original's offer is §4.3, a computer colour's
+  choice honoured only by a random hero); the generated hero's spells from the guild at once and
+  the Shipyard's spot (increment 4); the superseded buildings (0x6A8BB8) and the factions' sets
+  are increment 2's content, increment 1 needing the halls' and forts' chains and the first two
+  dwellings; the neutral garrison's table and the 30 are constants of the executable (ADR-0006
+  tier 2, with this reading as their source). TD-3 and TD-5 are batch TWN-1 rows (an owned
+  standard town without a Fort; a neutral town with an empty custom garrison).
+
+## 7. The visit and the visiting hero (T1b1)
+
+### 7.1 The step onto a town's gate (`hero_move_step` 0x4805E0, case 98 at 0x480E3B)
+
+- **Entered, not from above.** Class 98 (a random town is one from the new game on, §2.4) is on
+  neither of E08's lists, `object_classes_not_entered` (0x63AA58) or
+  `object_classes_from_above` (0x63AB00): the hero stands on the gate (ADV-OBJ-003's entered
+  mode) and no step crosses the gate's top (ADV-OBJ-004). With the one footprint (§1.1) a
+  walker cannot reach the gate from the row above or the sides anyway (the town's own blocked
+  cells): it enters from below or the lower diagonals and leaves the same way. The setting
+  matters for a flyer (ADV-MOV-009): it never comes down onto the gate from the three tiles
+  above, and passes up off it over the town, as off every entered object not visited from above
+  (the queue's T14a note asks for this typing: an untyped blocker closes nothing).
+- **The step** (0x480E3B): the town by the tile's word (+0x0). Its owner on the current
+  player's team (game +0x1F879): the ordinary step (0x480CB5), the hero enters. Else
+  `town_defended` 0x5BDFE0 (a visiting hero, or any creature in the army
+  `town_garrison_army` shows: the garrison hero's, else the town's +0xE0): the visit from the
+  neighbouring tile (`visit_from_neighbour` 0x480240, ADV-OBJ-003's neighbour mode: the step
+  paid, ADV-MOV-006's drop, the hero stays). Else (an undefended town of another team or none):
+  the hero enters.
+- **A hero on the gate** is what the step meets (class 34, the tile's object while it stands
+  there): its own team's hero meets it (GAM-MET-001), an own or allied town's visitor included;
+  another team's hero visits it, and `visit_hero` 0x4A2800 sends a hero standing on a town's gate
+  (`town_at_entrance` 0x4BB870: the town whose +0x5 to +0x7 is the tile) to the town's visit
+  (0x4A2904) instead of the field battle. Such a town is defended, so this too is a visit from
+  the neighbouring tile.
+
+### 7.2 The town's visit (`town_visit` 0x4AAFD0, read whole)
+
+From `visit_object`'s case 98 (0x4AA2B6, after an entering step or a neighbour visit) and from
+`visit_hero` (0x4A2904); the visiting hero is the current player's selected one (player +0x4).
+
+1. The town at the tile (`town_at_entrance`); the hero stopped (`adventure_hero_stop`).
+2. **The town's owner on the hero's team:** for an own town a victory condition's test
+   (0x5F2860 with the hero and the tile, E10's) ends the visit when met; then a human's town
+   screen (0x5BE210), a computer's town logic (0x5253D0, E10's). An ally's town the same without
+   the test. No owner changes.
+3. **Another team or none:** with a defender (the army `town_garrison_army` shows has a creature,
+   or a visiting hero other than the visitor itself, which `hero_show` made the visitor as it
+   entered) the battle (§9); else the capture (§8.1).
+4. Where the path does not end early: the town's heroes learn the guild's spells
+   (`town_heroes_learn_spells` with 0: the garrison hero and the visitor; increment 4), the
+   visitor's level-up (`hero_level_up`), the scenario's tests (0x5F1B10, 0x5F1C80; E10's).
+
+### 7.3 The visiting hero
+
+- `hero_show` (T1a2) makes a hero put on a town's gate its visitor (+0x10); `hero_hide`
+  0x4D76E0 clears it (0x4D77A5) when that hero leaves the gate or is taken off the map. So the
+  visitor is exactly the hero standing on the gate: an entering hero (an own or allied town, an
+  undefended town it captures), the main town's hero (§4.5), a hero moved into a town (§4.6).
+- A garrison hero (+0xC) comes only from the town screen's swap (increment 3); the map format has
+  none. In increment 1 a town holds at most a visitor and its own army (the garrison, §5.2).
+
+## 8. Capture (T1b1)
+
+### 8.1 An undefended town (`town_visit` 0x4AB0EE to 0x4AB255)
+
+The hero has entered and is the visitor. In order:
+
+1. A garrison hero whose army is empty (the town screen lets a garrisoned hero dismiss its last
+   stack, a reader's comment) goes back into the heroes' pool (0x4D9EC0 with 1, 0, as a hero that
+   lost a battle), the loss condition's hero test runs (0x5F2E10; E10's), and the town's garrison
+   hero is −1: no battle, no experience, nothing taken (quirk candidate T-5).
+2. `town_change_owner` 0x4C61E0 (the town, the current player, quiet 0, test 1): §8.3.
+3. The Capitol's limit (`capitol_limit` 0x5BEC60): §8.4.
+4. A loss condition's test (0x5F2E40 with the old owner and the town; E10's "lose a town").
+5. The own town's victory test (as §7.2 step 2, 0x4AB22A); a human's town screen, a computer's
+   town logic; then §7.2's step 4.
+
+### 8.2 After a siege won (`town_visit` 0x4AB33D to 0x4AB3BA)
+
+When the battle returns 0 (the attacker won; battle manager +0x13D48): the town's garrison hero
+−1 (the battle took it off, §9.3), `town_change_owner` with the same arguments, the Capitol's
+limit, the loss condition's test, then §7.2's step 4. **No town screen: the attacker stays on the
+tile it attacked from** (§7.1's neighbour visit) and enters the town by a later step, which finds
+it own. A defender's win (1) or no winner (−1, both sides destroyed) changes no owner.
+
+### 8.3 A town's change of owner (`town_change_owner` 0x4C61E0, read whole)
+
+Arguments: the town, the colour, quiet, test. Nothing when the colour already owns it. Else:
+
+1. Unless the new game's setup runs (0x698400) or quiet: a map message and a record of the change
+   (`town_owner_message` 0x49C190: network play's, and the replay of others' moves; not followed).
+2. Town +0x32 cleared (not read).
+3. Unless quiet, **the external dwellings' counts** (town +0x118, i32[14] by the faction's
+   creature index: unupgraded 0 to 6, upgraded 7 to 13): for every creature dwelling (game
+   +0x4E39C, 0x5C bytes, owner +0x57) of the old or the new owner whose creature has a faction
+   (`dwelling_creature_faction` 0x4C6690: under RoE rules none for the four elementals 112 to
+   115), every town of that owner of that faction loses 1 (`town_dwelling_count_add` 0x5BFE50: an
+   unupgraded creature counts at its index and at the index + 7); after the owner's write the same
+   dwellings add 1 again (0x4C6568's loop). So a town's counts follow its owner's dwellings.
+   What reads them is increment 3's (growth).
+4. An owned town leaves its old owner's list (`town_remove_from_owner` 0x5BE2D0: player +0x40,
+   +0x3E; the town list redrawn); town +0x2 is cleared when the old owner's team has no human
+   and the new owner's team has one (not read; probably the computer's).
+5. **The owner** +0x1 is the colour (0x4C63DF). With quiet set the function ends here.
+6. **The garrison emptied** (`army_reset` 0x44AB00 on `town_garrison_army`'s army; after §8.1 and
+   §8.2 the garrison hero is −1, so the town's own +0xE0). So the stacks a visitor's merge left in
+   the garrison (§9.2) are lost with the town.
+7. A new owner (not −1) appends the town to its list; with test, the victory condition's tests
+   (0x5F2260, 0x5F22A0; E10's "capture a town").
+8. **The reveal** for the new owner (`reveal_disk` 0x49D160): radius 5 around the gate; a Tower
+   (faction 2) with the Lookout Tower (building 21) radius 20; a Tower with the Grail (26) every
+   tile of the surface (the map's middle, radius the map's width) and of the underground when the
+   map has one (game +0x1FC48). The same radii as `reveal_owned` at the game's start (E08 T80).
+9. Unless quiet, the counts' second half (step 3).
+
+`town_setup` calls it for every town with the record's owner, quiet 0 and test 0 (§5.1; the town
+was set to −1 just before), so the start's owned towns are listed, revealed and counted the same
+way; the garrison it empties is set right after.
+
+### 8.4 The Capitol's limit (`capitol_limit` 0x5BEC60, read whole)
+
+After the change: a town with the Capitol (building 13) in its built set, whose owner has another
+town with the Capitol, loses it: 13 leaves the built (+0x150) and every-built (+0x158) sets, the
+City Hall (12) enters the built one, and the map picture is redrawn (`object_template_redraw`
+0x4C9990: no Capitol's picture). A neutral owner skips it. So a player holds at most one Capitol
+after a capture (VCMI's `removeCapitols` razes it the same way); T1b2 reads what a hall pays.
+
+## 9. The battle at a town (T1b1)
+
+### 9.1 Who defends (`town_visit` 0x4AB25A to 0x4AB338)
+
+| The town holds | Battle | Defender | Its army |
+|---|---|---|---|
+| a visitor and a garrison hero | **not at the town** (town argument 0: no siege, the battlefield the gate tile's, ADR-0022) | the visitor, its owner's side | its own |
+| a visitor, no garrison hero | a siege | the visitor | its own, the garrison merged in first (§9.2) |
+| a garrison hero | a siege | the garrison hero | its own |
+| neither (creatures in the garrison) | a siege | no hero | the town's (+0xE0) |
+
+In a siege the defending side's player is the town's owner (+0x1; −1 neutral), the hero's owner
+in the first row. After the first row's battle the town is not taken: the attacker's next visit
+fights the garrison hero (coyot's guide: "another click"; VCMI's `isBattleOutsideTown`). In
+increment 1 (no garrison hero, §7.3) only the second and fourth rows occur.
+
+### 9.2 The garrison's merge into the visitor's army (`garrison_merge` 0x44B820, read whole)
+
+Before a siege a lone visitor defends, the town's army joins it, by each stack's value (the
+creature's AI value, its record's +0x40, times the count), round after round:
+
+1. the visitor's weakest stack (the least value; of equal ones the last slot);
+2. each garrison stack's gain: its value when the visitor has a stack of its creature or an empty
+   slot, else its value less the weakest stack's; the stack of the greatest positive gain (of
+   equal ones the first slot);
+3. it joins the visitor's stack of its creature, else its first empty slot (`army_add_stack`
+   0x44ACE0), and leaves the garrison; with no room it changes places with the weakest stack
+   (creature and count swapped), which stays in the garrison.
+
+It ends when no stack gains (every round empties a garrison slot or raises the army's value, so
+it ends). What stays in the garrison does not fight and is lost if the town falls (§8.3 step 6);
+after the defender's win the visitor keeps the merged army.
+
+### 9.3 The battle and its outcome (`adventure_battle` 0x4AD470, its town paths)
+
+- `battle_side_setup` 0x4639F0 (0x4AE27C) receives the town and stores it (+0x53C8): every
+  battle at a town reads it from there (E04c; §9.4).
+- After it (0x4AE431 to 0x4AE898): a defender's win (1) sends the attacking hero back into the
+  pool (0x4D9EC0) with the loss's effect (`hero_loss_effect` 0x4ACBB0: only a sound and the view's
+  dissolve); an attacker's win (0) the defending hero, the garrison hero without the effect
+  (argument −1: it stands on no tile); with no winner (−1) both heroes go to `battle_aftermath`
+  0x4AC930 (not read; the garrison hero again with −1). The
+  survivors stay in the armies the battle was given: the visitor's, the garrison hero's or the
+  town's own (as E08 T84a's `Defender::Garrison` for a mine's guards). The +500 experience of a
+  battle at a town is the battle's (`installation.md` §7.27).
+
+### 9.4 ADR-0023's facts from the town
+
+Every fact was read by E04c (`installation.md` §7.27 to §7.33); in increment 1 a custom building
+set (§5.3) can hold any building from the start, so the derivation needs all of them:
+
+| `Siege` field | From the town |
+|---|---|
+| `faction` | +0x4 |
+| `fort` | the built set +0x150: Castle (9), else Citadel (8), else Fort (7), else none (tested 7, 8, 9 in order, the last found wins) |
+| `moat` | with a Citadel or Castle: absent for a Tower (its land mines instead) and, under RoE or AB rules, a Stronghold; else damaging under SoD rules, harmless under RoE or AB rules |
+| `structures` | the building ids 0 to 43 in the built set among the buildable mask +0x160 (`town_turret_count` 0x5BF4F0 adds its 4) |
+| `escape_tunnel` | a Stronghold (6) with building 17 in the every-built set +0x158 |
+| `morale` | +2 for a Castle (0) with the Brotherhood of the Sword (22, which replaces the Tavern in the built set), else +1 with the Tavern (5) in the built set |
+| `luck` | +2 for a Rampart (1) with the Fountain of Fortune (21, every-built set) |
+| the defending hero's bonuses (point 3) | Tower Grail (26) +150 mana; Inferno 21 +2 power; Dungeon Grail +12 power; Stronghold Grail +20 attack; Fortress 21 +2 attack, 22 +2 defense, Grail +10 attack and defense |
+
+**The game's version** (game +0x1F698, `map_kind`; ADR-0023's "probably the map's format"):
+`new_game_heroes` writes its fourth argument (0x4BFF09); `new_game_start` passes the scenario
+dialog's version (+0x1898: 1 AB, 2 or 3 SoD, any other RoE; 0x58C593); a campaign takes its
+index instead (below 7 RoE, below 13 AB, else SoD; 0x4BFF24), a missing version SoD. The dialog
+starts at the edition number (`edition_pointer`) and, as a scenario is chosen, takes the highest
+of 3 down to 0 set in a mask (`scenario_version_from_slots` 0x58E700,
+`scenario_version_highest` 0x58EA00: a mask per colour slot in use and the chosen scenario's;
+which bits a map's format sets not followed). So an RoE map in the Complete edition
+may play under SoD rules (a damaging moat, a Stronghold's moat): batch TWN-1's row (§10).
+
+### 9.5 VCMI 1.7.5 and others
+
+- `CGTownInstance::onHeroVisit`: an enemy facing a garrison with stacks or a garrison hero, or a
+  visitor: the defender is the visitor, else the garrison hero, else the town;
+  `isBattleOutsideTown` (a visitor defending while a garrison hero exists) passes no town;
+  `mergeGarrisonOnSiege` before a siege the visitor defends; an undefended town `onTownCaptured`
+  and the town's visit. `battleFinished`: an attacker's win clears the garrison (`clearArmy`) and
+  captures. `onTownCaptured`: `setOwner` (`removeCapitols`) and the fog revealed at
+  `getSightRadius` (a base setting and sight bonuses). `CGameHandler`'s `startVisit` sends a visit
+  of an enemy hero in a town to the town unless the battle is outside (by owner, not team).
+  **Agrees** on the defender, the battle outside, the merge's existence, the garrison cleared,
+  the Capitol; **differs** on the merge's order (TD-7).
+- VCMI's merge: as many rounds as the garrison had stacks, each taking the stack of most power
+  (count times AI value, plus the visitor's stack of its creature), moved into the slot for its
+  creature, else swapped with the visitor's weakest stack weaker than it (the first of equal
+  ones).
+- coyot's guide: with both heroes the visitor is fought on free terrain, "another click" fights
+  the one inside; a lone visitor gets the garrison merged in, "what cannot be merged is unused",
+  the author not knowing the order. The wiki's Tutorial: a garrison hero defends from within the
+  fortifications.
+
+## 10. Disputes, quirk candidates, open points and batch TWN-1's rows (T1b1)
+
+| Id | What | Reading | VCMI | Others | Increment 1 |
+|---|---|---|---|---|---|
+| TD-7 | The garrison's merge into a lone visitor's army | greatest gain first (a stack's value, less the weakest stack's when it does not fit), until nothing gains; ties: the first garrison stack, the last weakest slot | most power first (plus the visitor's same-creature stack), one round per garrison stack, a swap only with a weaker stack, ties the first | the guide: merged, order unknown | every siege a visitor defends (the main town's hero, a placed hero in a town) |
+
+- **T-5 (quirk candidate): a garrison hero without creatures.** The town falls to the first
+  visitor without a battle (§8.1 step 1): the hero goes back into the pool (its artifacts with
+  it, not followed), the attacker gains no experience and takes nothing. No state corruption; it
+  needs the swap and the dismissal (increment 3). Proposal: the original's (faithful), recorded
+  now, built with increment 3; no batch row until then.
+- **Open, for T1b2's checkpoint and T2:** the town screen's own effects at a visit (the guild's
+  spells: increment 4); allied towns (teams, E10: an ally's town entered and its screen opened, no
+  capture; a visitor of an ally defending under the town's owner); the computer's town visit
+  (E10, E13); the scenario's tests (E10); town +0x2 and +0x32 (not read); what reads the external
+  dwellings' counts (increment 3, with E08's dwellings: E09 decision 4).
+- **Batch TWN-1's rows from T1b1** (beside T1a2's TD-3 and TD-5): (1) a siege defended by a
+  visitor with seven stacks and a garrison of mixed values (TD-7: the defending stacks and the
+  garrison after); (2) after a siege won, the attacker's tile and points, no town screen, the
+  flag; (3) the stacks left in the garrison gone after the capture; (4) the moat's damage in a
+  game of an RoE-format map and of an SoD-format map in the Complete edition (the game's version,
+  §9.4). Increment 3's, not now: the battle in the open beside a garrison hero, T-5.

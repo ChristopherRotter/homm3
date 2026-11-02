@@ -2,7 +2,7 @@
 
 - Status: Accepted (E23 T1b, BAT-Q55; point 9 the user's own: one flag for all the slips); point 14
   added 2026-10-23 (the user, BAT-Q61 and BAT-Q56; E23 T6); point 4's fair variant announced
-  2026-10-27 (the user, AI-Q10; not yet designed)
+  2026-10-27 (the user, AI-Q10) and designed 2026-11-02 (the user, BAT-Q63; E26)
 - Date: 2026-10-20
 - Deciders: the user; drafted by the battle lane's agent (E23 T1b)
 
@@ -32,14 +32,25 @@ computer's numbers its rules use (BAT-Q52). Layers forbid a domain crate to depe
 4. **It reads the whole state, never an observation, and writes nothing** (ADR-0017 point 4: the
    trusted host). It predicts with the original's estimates, never by applying commands to a copy.
    **A fair variant is to follow** (the user, 2026-10-27, AI-Q10, at E25's refinement): an actor
-   that decides only on what its side may know, which the battle lane designs and builds later by
-   an amendment of this point; then fair by default everywhere, this all-seeing one kept as a
-   game's option. Until then, and in E25, this one is the battle agent's target and trains no
-   agent (ADR-0026 point 8). What it reads that a player may not (found at the refinement, not
-   exhaustive): the enemy hero's spell book, masteries, spell bonuses and cost changes (the area
-   threat, BAT-AI-007; the protection, BAT-AI-016; the odds' hero value, BAT-AI-008), the enemy
-   hero's damage skills and its stacks' magic resistance in the estimates, the enemy side's hidden
-   pits in its reach maps (BAT-AI-007). The battle lane's inbox holds the request.
+   that decides only on what its side may know; then fair by default everywhere, this all-seeing
+   one kept as a game's option. Until then, and in E25, this one is the battle agent's target and
+   trains no agent (ADR-0026 point 8). What it reads that a player may not (found at the
+   refinement, not exhaustive): the enemy hero's spell book, masteries, spell bonuses and cost
+   changes (the area threat, BAT-AI-007; the protection, BAT-AI-016; the odds' hero value,
+   BAT-AI-008), the enemy hero's damage skills and its stacks' magic resistance in the
+   estimates, the enemy side's hidden pits in its reach maps (BAT-AI-007).
+   **Amended 2026-11-02** (the user, BAT-Q63; E26): **the fair actor is this port, unchanged,
+   on its side's world.** `h3_battle_ai::choose_fair` runs `unchecked` on
+   `BattleState::determinized` for its side (ADR-0025 point 12a: a copy of the battle with
+   everything the side may not know replaced) and validates the choice on the battle. It reads
+   nothing hidden because the world does not, and a change of what a side may not know changes
+   both the search agent's worlds and this actor. Its first version assumes nothing of the other
+   side's hero's private part (a hero of its type with the public part the battle shows); a
+   prior sampled per decision and updated by what the side has seen (the spells cast) follows
+   in E26's increment 2. The world's seed is drawn from a copy of the caller's stream, so the
+   policy's own draws keep the original's order; where the side may know everything, the fair
+   choice is the all-seeing one's. `choose` stays the all-seeing original; each caller's lane
+   switches its default.
 5. **Its draws come from the caller's stream**, never the battle's (ADR-0003 streams). They keep
    the original's order and distributions (`random(a, b)` as `range_inclusive`), but are not
    draw-exact with its `rand()` (a non-goal).
@@ -109,6 +120,8 @@ computer's numbers its rules use (BAT-Q52). Layers forbid a domain crate to depe
   replays' headers, `cross-lane`).
 - In `strict-fixed` the `System` seat is not the original's computer but its corrected estimate:
   a training run that wants the original's opponent uses `faithful`.
+- The fair actor (point 4's amendment) costs a copy of the battle per call; `world.rs` and
+  `observe_as` decide its choices too, so a change there bumps `POLICY_VERSION`.
 
 ## Alternatives considered
 
@@ -116,6 +129,9 @@ computer's numbers its rules use (BAT-Q52). Layers forbid a domain crate to depe
 - **A domain-layer crate**: domain crates never depend on each other (ADR-0005).
 - **The policy on observations**: the original reads everything. An observation-only policy would
   not be the original's.
+- **The fair actor's reads rewritten one by one** (point 4's amendment, BAT-Q63): many touch
+  points in `h3-battle-ai` and `computer`, a fair branch in functions the rules share, and only
+  as fair as the list of reads. The world is fair by construction.
 - **Predicting by applying commands to a forked state**: costlier, and not what the original does.
   Its estimates are not the rules' outcomes, slips included (point 9).
 - **The slips ported as read without a flag** (the draft's first proposal), **a flag per slip**, or

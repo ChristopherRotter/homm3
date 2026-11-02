@@ -1048,6 +1048,23 @@ pub fn click(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Optio
     }
 }
 
+/// The stack whose stats dialog a left press at `point` opens (`battle_click_action` 0x476BD0's
+/// kind 5, `stack_stats_dialog` 0x468860; E17 M6 T2a1, design §12.1): the stack under the
+/// cursor of a stack to look at (the acting one, another of its side it does not heal, or any
+/// in the tactics phase), none elsewhere.
+#[must_use]
+pub fn looked_at(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Option<u8> {
+    let [width, height] = layout.mouse.field;
+    if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
+        return None;
+    }
+    let spot = spot(layout, point, field.rects());
+    match kind(field, spot, &mut None) {
+        (Kind::Query, id) => id,
+        _ => None,
+    }
+}
+
 /// The command the panel's button `id` gives when it is clicked (its hotkey's release too:
 /// `def_button_message` 0x456190) for the acting stack's commands `legal` (E17 M5 T2a): Wait and
 /// Defend when listed (a disabled button gives none); in the tactics phase (E17 M5 T4c2b, design

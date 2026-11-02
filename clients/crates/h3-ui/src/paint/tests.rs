@@ -432,6 +432,7 @@ fn every_pixel_a_drawer_changes_lies_inside_its_reach() {
     let frame = part.frames.get_mut(&1).unwrap();
     (frame.full_width, frame.left) = (5, 1);
     s.sprites.insert("m.def".into(), part);
+    s.sprites.insert("c.def".into(), creature());
     let sentinel = FORMAT.pack(Rgb {
         r: 200,
         g: 100,
@@ -518,6 +519,18 @@ fn every_pixel_a_drawer_changes_lies_inside_its_reach() {
             rect: [38, 10, 5, 5]
         }) > 0
     );
+    // E17 M6 T2a1: a creature cut to boxes narrower and wider than its frame.
+    for size in [[1, 2], [6, 2], [20, 3]] {
+        let creature = Draw::Creature {
+            def: "c.def".into(),
+            group: 2,
+            frame: 0,
+            x: 4,
+            y: 6,
+            size,
+        };
+        assert!(check(&creature) > 0, "{size:?}");
+    }
 }
 
 #[test]
@@ -633,4 +646,143 @@ fn a_label_takes_its_colour_two_more_when_disabled() {
         draw(&mut out, &no_font, &s, Bugs::Fixed),
         Err("no.fnt".to_string())
     );
+}
+
+/// A creature DEF: group 2's frame 0, 2 × 1 at column 3 of a 9 × 280 canvas, row 274 (one row
+/// above the row the item's bottom takes), [3, 224]; group 1's frame 0 the same at row 270.
+fn creature() -> Sprite {
+    let frame = |top: i32| Frame {
+        encoding: Encoding::Rows,
+        full_width: 9,
+        full_height: 280,
+        left: 3,
+        top,
+        width: 2,
+        height: 1,
+        pixels: vec![3, 224],
+        runs: vec![false, false],
+        short_header: false,
+    };
+    let group = |id: u32, offset: u32| Group {
+        id,
+        frames: vec![FrameRef {
+            name: "f".into(),
+            offset,
+        }],
+    };
+    Sprite {
+        def: Def {
+            kind: 0x42,
+            width: 9,
+            height: 280,
+            palette: palette(&[(3, RED), (224, WHITE)]),
+            groups: vec![group(1, 2), group(2, 1)],
+        },
+        frames: BTreeMap::from([(1, frame(274)), (2, frame(270))]),
+    }
+}
+
+#[test]
+fn a_creature_is_centred_by_group_2_and_cut_to_its_box() {
+    // E17 M6 T2a1 (0x4EAB40 with the flags 0x12): the canvas at w / 2 − fw / 2 − m across
+    // (6 / 2 − 2 / 2 − 3 = −1) and h − 275 down; its frame drawn by the shadowed drawer, cut to
+    // the box.
+    let mut s = store();
+    s.sprites.insert("c.def".into(), creature());
+    let draw_at = |group: u32, size: [i32; 2]| Draw::Creature {
+        def: "c.def".into(),
+        group,
+        frame: 0,
+        x: 1,
+        y: 0,
+        size,
+    };
+    assert_eq!(names(&draw_at(2, [6, 2])), ["c.def"]);
+    let (_, _, at) = creature_frame(&s, "c.def", (2, 0), [1, 0], [6, 2]).unwrap();
+    assert_eq!((at.x, at.y), (0, -273));
+    let mut out = Screen::new(8, 2, FORMAT).unwrap();
+    draw(&mut out, &draw_at(2, [6, 2]), &s, Bugs::Fixed).unwrap();
+    let red = FORMAT.pack(RED);
+    let white = FORMAT.pack(WHITE);
+    assert_eq!(out.pixels()[..8], [0; 8]);
+    assert_eq!(out.pixels()[8..], [0, 0, 0, red, white, 0, 0, 0]);
+    assert_eq!(reach(&draw_at(2, [6, 2]), &s), Some([1, 0, 7, 2]));
+    // Group 1's frame lies four rows higher, outside the two-row box: nothing drawn.
+    let mut out = Screen::new(8, 2, FORMAT).unwrap();
+    draw(&mut out, &draw_at(1, [6, 2]), &s, Bugs::Fixed).unwrap();
+    assert_eq!(out.pixels(), [0; 16]);
+    // A narrower box moves the canvas (3 / 2 − 1 − 3: at −2, the frame at columns 1 and 2) and
+    // one of width 1 (0 − 1 − 3: at −3, the frame at 0 and 1) cuts the frame's first pixel.
+    let mut out = Screen::new(8, 2, FORMAT).unwrap();
+    draw(&mut out, &draw_at(2, [3, 2]), &s, Bugs::Fixed).unwrap();
+    assert_eq!(out.pixels()[8..], [0, red, white, 0, 0, 0, 0, 0]);
+    let mut out = Screen::new(8, 2, FORMAT).unwrap();
+    draw(&mut out, &draw_at(2, [1, 2]), &s, Bugs::Fixed).unwrap();
+    assert_eq!(out.pixels()[8..], [0, white, 0, 0, 0, 0, 0, 0]);
+    // A missing DEF, group 2 or frame.
+    let missing = Draw::Creature {
+        def: "no.def".into(),
+        group: 2,
+        frame: 0,
+        x: 1,
+        y: 0,
+        size: [6, 2],
+    };
+    assert_eq!(
+        draw(&mut out, &missing, &s, Bugs::Fixed),
+        Err("no.def".to_string())
+    );
+    assert_eq!(reach(&missing, &s), None);
+    assert!(draw(&mut out, &draw_at(5, [6, 2]), &s, Bugs::Fixed).is_err());
+    let mut lone = creature();
+    lone.def.groups.retain(|g| g.id != 2);
+    s.sprites.insert("c.def".into(), lone);
+    assert!(draw(&mut out, &draw_at(1, [6, 2]), &s, Bugs::Fixed).is_err());
+}
+
+#[test]
+fn a_shared_frame_is_the_other_defs_in_the_items_colours() {
+    // E17 M6 T2a1, CLT-Q36: frame 1 of `b.def` (its pixels [224, 0-run]) in `p.def`'s colours
+    // (224 green): the run skipped, as a button's; a frame past the group draws its first.
+    let mut s = store();
+    let mut colours = sprite();
+    colours.def.palette = palette(&[(3, BLUE), (224, GREEN)]);
+    s.sprites.insert("p.def".into(), colours);
+    let shared = |frame| Draw::Shared {
+        def: "p.def".into(),
+        frames: "b.def".into(),
+        frame,
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(names(&shared(0)), ["p.def", "b.def"]);
+    let mut out = screen(2);
+    draw(&mut out, &shared(1), &s, Bugs::Fixed).unwrap();
+    assert_eq!(out.pixels(), [FORMAT.pack(GREEN), 0]);
+    let mut out = screen(2);
+    draw(&mut out, &shared(9), &s, Bugs::Fixed).unwrap();
+    assert_eq!(out.pixels(), [FORMAT.pack(BLUE), FORMAT.pack(GREEN)]);
+    assert_eq!(reach(&shared(1), &s), Some([0, 0, 2, 1]));
+    // A missing DEF of either kind.
+    let lacking = Draw::Shared {
+        def: "no.def".into(),
+        frames: "b.def".into(),
+        frame: 0,
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(
+        draw(&mut out, &lacking, &s, Bugs::Fixed),
+        Err("no.def".to_string())
+    );
+    assert_eq!(reach(&lacking, &s), None);
+    let no_frames = Draw::Shared {
+        def: "p.def".into(),
+        frames: "no.def".into(),
+        frame: 0,
+        x: 0,
+        y: 0,
+    };
+    assert!(draw(&mut out, &no_frames, &s, Bugs::Fixed).is_err());
+    assert_eq!(reach(&no_frames, &s), None);
 }
