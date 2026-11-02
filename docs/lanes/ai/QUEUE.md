@@ -4,43 +4,62 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 ## Tasks
 
-**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
+**E05** closed 2026-10-20, **E06** closed 2026-10-27 (`t7-1` the battle AI v1 and the baseline); their tasks' history and E06's closing numbers in `QUEUE-ARCHIVE.md`.
 
-**E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
-2026-10-27; increments 1 to 4 closed 2026-10-28, 29 and 11-02 (`E25-archive.md`; the records in
-`E25-log.md`). **`e25-sharp-1` #2 is the lineage's current best** (the user at T11, AI-Q13;
-T12's head-to-head against `e25-scale-1` #3: 0.523, promoted, done 2026-11-02).
-**Increment 5, the fair system actor** (the user at T11): the battle lane's fair system actor v1
-landed 2026-11-02 (E26, #647; its notice in the inbox below: `choose_fair`, 0.500 against the
-all-seeing one); increment 5 is refined around it (decisions 2 and 3: it may train, its
-imitation, the fair target).
+**E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`): increments 1 to 4
+closed (`E25-archive.md`); **`e25-sharp-1` #2 the current best** (AI-Q13, T12). **Increment 5,
+the fair system actor** (refined at T13, 2026-11-02, AI-Q14; its decisions in the epic file):
 
-- **T13 Increment 5's refinement.** *Scope:* when the fair system actor v1 has landed (the
-  battle lane): its seat in the env and the ladder (C ABI, `h3 ai eval`'s table), decision 2's
-  training share, decision 3's imitation, the fair target; the tasks into the epic and this
-  queue with the user. *Depends on:* the battle lane's fair system actor v1 (landed, #647).
+- **T14 The switch.** *Scope:* `Policy::System` plays `h3_battle_ai::choose_fair`, a new
+  `Policy::SystemAllSeeing` plays `choose` (the neutral kinds' defender stays `Policy::System`,
+  so it becomes the fair one); `H3_SEAT_SYSTEM` (4) the fair actor, a new
+  `H3_SEAT_SYSTEM_ALL_SEEING` (5), C ABI v36 (`h3.h`, `_ffi.py`, `batch.py`'s seat names
+  `system`, `system-all-seeing`); `h3 ai eval`'s `POLICIES` and its default both,
+  `NEUTRAL_DEFENDER` the fair one; records tell the two apart (the engine's identity in
+  `_ffi.py` and `h3 ai eval --json` names the system seat's sight; a record without it read as
+  all-seeing, `test_evaluate.py` checks it); `run.trainable` refuses only the all-seeing actor (no
+  config reaches it today) and `ppo.resume` refuses a run started before the switch whose mix
+  had a system seat (its opponent would change under it); the bots' tables regenerated
+  (`python/records/README.md`: both columns in `bots-report-v1.json`, the fair defender in
+  `bots-neutral-v1.json`: the neutral target re-measured); `batch-system-neutral-v1` re-baselined
+  (its description names `choose_fair`) and an all-seeing twin if the gate should keep
+  measuring `choose` (agent's choice); the docs (`TRAPS.md`'s Environment group,
+  `docs/07-simulation-and-ai.md` §1.2's lines go into the inbox's E25-closure note). Check
+  `h3-sim`'s replays and the golden ones for a system seat first (`TRAPS.md`: `verify --scope ai`
+  skips them; run `cargo xtask determinism`). *Acceptance:* the seats play the named actor (a
+  test where they differ: a hero battle); the scoped verify; CI. *Depends on:* T13 (done).
   *Status:* next.
+- **T15 The ladder at the switch.** *Scope:* `e25-sharp-1` #2 (its `best.pt` uploaded by the
+  user, as at T12) on the report set against both system actors and on the neutral set with the
+  fair defender, beside the bots' regenerated tables: increment 5's starting point and the new
+  neutral target (the fair actor's own value in the player's seat). In the sandbox's CPU.
+  *Depends on:* T14. *Status:* waiting.
+- **T16 The cloning bench.** *Scope:* a C ABI call giving the system actor's choice (either
+  sight) for an env's side to move as an encoded action (`h3_sim::action::encode`; the entry and
+  the cast heads), its count of choices the encoding cannot express; a clone mode of the
+  distillation bench (`h3env.train.distill`, T7b) whose teacher is the fair actor playing both
+  sides through external seats on T17's training distribution (the player kinds plus the neutral
+  kinds at E06 T7's third): the student (`e25-sharp-1`'s network) learns its heads by
+  cross-entropy and its value on the returns (reward v1, γ 1); held-out agreement per category;
+  the student saved as a run's network file for `--init-from`; its ladder (how near the clone
+  plays to the fair actor). The sandbox's CPU for the checks, the bench's length agreed with the
+  user. *Depends on:* T14. *Status:* waiting.
+- **T17 The A/B.** *Scope:* on the user's machine, two runs on `e25-sharp-1`'s config with the
+  neutral kinds back at a third (the fair defender): `e25-neutral-1` from scratch and
+  `e25-clone-1` from T16's student (`--init-from`); lengths agreed when prepared (20 M as
+  `e25-sharp-1` unless agreed otherwise). The records committed and read, both system columns.
+  *Depends on:* T15, T16. *Status:* waiting.
+- **T18 The checkpoint.** *Scope:* T17 read with the user: the current best (a head-to-head
+  against `e25-sharp-1` #2), increment 6 among the epic's candidates. *Depends on:* T17.
+  *Status:* waiting.
 
 ## Inbox
 
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle
-lane's turret preview (its open point below), the baselines and AI-Q7.
-
-- 2026-11-02 (the battle lane, E26 T5; **for you: the fair system actor exists**):
-  `h3_battle_ai::choose_fair(state, ruleset, side, rng)` (ADR-0027 point 4 as amended, BAT-AI-025)
-  is the original's computer on its side's world (`BattleState::determinized` without a guess):
-  it reads nothing its side may not know (E26 T3's properties), so it may train agents and be
-  imitated (E25 decisions 2 and 3, ADR-0026 point 8). The user wants it the default everywhere
-  (AI-Q10): `h3-sim`'s `Policy::System`, the adventure env's neutral seat, `h3-ffi`'s batch and
-  `h3 ai eval` switch to it, the all-seeing `choose` kept as an option (E25's target stays the
-  all-seeing one, decision 1). It equals `choose` only where the other side has no hero and no
-  hidden obstacle, so the neutral battles (the player's hero against the System seat) move:
-  records naming the opponent by `POLICY_VERSION` (19, unchanged) need its sight too, and
-  `benches/ai/batch-system-neutral-v1.toml` moves with the switch. Its cost: +0.8 % Ir per
-  decision; its strength: 0.500 against the all-seeing one on random armies with heroes
-  (`docs/epics/E26-log.md` T4, `h3 bench-computer --duel 1`).
+lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
+(folded into T14).
 
 **The adventure env** (yours since E08 T45):
 

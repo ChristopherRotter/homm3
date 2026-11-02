@@ -4,6 +4,10 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**The closed epics' summary** (moved 2026-11-02 from the queue's head, verbatim):
+
+**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
+
 **E25 increment 2, T4b** (moved 2026-10-29, done: `E25-log.md` T4b):
 
 - **T4b The A/B.** *Scope:* on the user's machine, `e25-bound-1` (`configs/e25-bound.toml`, T4a:
@@ -176,6 +180,22 @@ and defends (1 %) less than the system actor (7 %, 3 %), loses mostly defending;
 leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
+
+**Moved 2026-11-02** (E25 T13's session; verbatim, folded into E25 T14 to T16, AI-Q14):
+
+- 2026-11-02 (the battle lane, E26 T5; **for you: the fair system actor exists**):
+  `h3_battle_ai::choose_fair(state, ruleset, side, rng)` (ADR-0027 point 4 as amended, BAT-AI-025)
+  is the original's computer on its side's world (`BattleState::determinized` without a guess):
+  it reads nothing its side may not know (E26 T3's properties), so it may train agents and be
+  imitated (E25 decisions 2 and 3, ADR-0026 point 8). The user wants it the default everywhere
+  (AI-Q10): `h3-sim`'s `Policy::System`, the adventure env's neutral seat, `h3-ffi`'s batch and
+  `h3 ai eval` switch to it, the all-seeing `choose` kept as an option (E25's target stays the
+  all-seeing one, decision 1). It equals `choose` only where the other side has no hero and no
+  hidden obstacle, so the neutral battles (the player's hero against the System seat) move:
+  records naming the opponent by `POLICY_VERSION` (19, unchanged) need its sight too, and
+  `benches/ai/batch-system-neutral-v1.toml` moves with the switch. Its cost: +0.8 % Ir per
+  decision; its strength: 0.500 against the all-seeing one on random armies with heroes
+  (`docs/epics/E26-log.md` T4, `h3 bench-computer --duel 1`).
 
 **Moved 2026-10-29** (E25 T4b's session; verbatim, informational):
 

@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 4 closed 2026-10-28, 29 and 11-02, increment 5 waits for the fair system actor (AI-Q13) · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 4 closed 2026-10-28, 29 and 11-02, increment 5 (the fair system actor) refined 2026-11-02 (AI-Q14) · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -80,7 +80,7 @@ it reads only its side's observation, and its search too (ADR-0025 point 12a).
   With it `[network] order` and `preview` again.
 - **A more diverse league:** exploiters (a second learner trained only against the main agent's
   frozen copies, its snapshots joining the league), aimed at self-play's narrowness (AI-Q12 (b)).
-- **Imitation** of the fair system actor (decision 3), once the battle lane has built it.
+- **Imitation** of the fair system actor (decision 3): chosen for increment 5 (a warm start, AI-Q14).
 - **Scale:** the 60 M run at T7's mix (`configs/e06-t7.toml --set samples=60_000_000`, about 4
   hours; without the faithful actor now); the mana-price run (`configs/e06-mana.toml`).
 - **Throughput** (E06 T5's open parts, the AI queue's inbox): the batch size and threads, the
@@ -116,23 +116,46 @@ settings. **At increment 4's checkpoint** (the user, 2026-11-02,
 T11): **`e25-sharp-1` #2** (20 M, the entropy bonus to 0) the current best, its head-to-head
 against #3 0.523 (T12).
 
-**Increment 5: the fair system actor** (the user at T11, 2026-11-02, AI-Q13; refined when it
-lands). The battle lane pushes the fair system actor v1 soon (the user); increment 5 is refined
-around it then: decision 2 lets it train (a league member, the neutral kinds' defender), decision
-3 makes its imitation a candidate (a warm start, or an auxiliary loss decaying to 0), and it is
-a fair target beside the faithful one (decision 1, revisable with evidence). Until then E25
-waits at the current best (`e25-sharp-1` #2, T12).
+**Increment 5: the fair system actor** (the user at T11, AI-Q13; refined at T13, 2026-11-02,
+AI-Q14). The battle lane's fair system actor v1 (E26, #647: `h3_battle_ai::choose_fair`, the
+original's computer on its side's world; 0.500 against the all-seeing one on random armies with
+heroes, +0.8 % Ir per decision) becomes the AI lane's system actor, may train and is imitated.
 
-- [x] **T12 The head-to-head** (2026-11-02; `E25-log.md` T12): `e25-sharp-1` #2 against
-  `e25-scale-1` #3 promoted by the gate, 0.523 over 332 pairs (+16 Elo): #2 the current best.
-- [ ] **T13 Increment 5's refinement** (the fair system actor v1 landed 2026-11-02, E26, #647).
+*Decisions* (the user, 2026-11-02, AI-Q14):
+
+1. **`system` is the fair actor everywhere:** `Policy::System` (`choose_fair`), `H3_SEAT_SYSTEM`,
+   `h3 ai eval`'s `system`, the neutral kinds' defender. The all-seeing one stays as
+   `system-all-seeing` (`Policy::SystemAllSeeing`, a new seat, C ABI v36). Records tell the two
+   apart; a record before the switch read as all-seeing. The adventure env has no system actor
+   to switch (its neutral seat is the caller's): a computer there is E13's.
+2. **The target** (decision 1 stands): exit criterion 1 against the all-seeing actor on the
+   report set; the fair one a reported column beside it. **The neutral set's defender is the
+   fair actor**, its target the fair actor's own value in the player's seat (the bots' table
+   regenerated).
+3. **Training** (decision 2): the neutral kinds back at E06 T7's third, the fair actor their
+   defender; no `system_share`. `run.trainable` refuses the all-seeing actor only.
+4. **Imitation** (decision 3): a warm start by behaviour cloning on the fair actor's choices,
+   then PPO from it, an A/B against the same mix from scratch (decision 5: the user's machine).
+
+| Task | Scope | Status |
+|---|---|---|
+| T12 | The head-to-head: `e25-sharp-1` #2 against `e25-scale-1` #3 promoted by the gate, 0.523 over 332 pairs (+16 Elo): #2 the current best | done 2026-11-02 (`E25-log.md` T12) |
+| T13 | Increment 5's refinement (AI-Q14) | done 2026-11-02 (`E25-log.md` T13) |
+| T14 | The switch: `system` the fair actor, `system-all-seeing` beside it (C ABI v36), records, the bots' tables, the neutral bench, `run.trainable` | next (sandbox) |
+| T15 | The ladder at the switch: `e25-sharp-1` #2 against both system actors and on the neutral set with the fair defender | after T14 (its `best.pt` uploaded) |
+| T16 | The cloning bench: the system actor's choice as an encoded action (C ABI), the fair actor's choices cloned into a run's network, its agreement and ladder | after T14 (sandbox) |
+| T17 | The A/B: the neutral kinds back from scratch against the same from T16's clone | after T16 (the user's machine) |
+| T18 | The checkpoint: T17 read, the current best, increment 6 | after T17 |
+
+Scope and acceptance: the AI queue's entries.
 
 ## Exit criteria
 
 1. The promoted agent meets decision 1's target: against the faithful system actor on the report
    set a win rate above 0.5 and a positive value efficiency; on the neutral set a value above the
    system actor's own in the player's seat; against Random, Aggressor and Greedy a win rate above
-   0.5 and a positive value.
+   0.5 and a positive value. Since increment 5 the fair system actor is reported beside it
+   and defends the neutral set (AI-Q14).
 2. It plays legitimately: it reads only its side's observation (a search through ADR-0025 point
    12a's worlds), and no faithful system actor took part in its training (its run records show
    the mix).

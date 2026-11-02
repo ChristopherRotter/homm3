@@ -693,3 +693,31 @@ an entry only where a task builds on it.
 - **The read:** the network trained sharper beats the scale run's best head to head, beside its
   ladder at or above #3's on all five sets (T10b). **`e25-sharp-1` #2 is the current best**
   (the user at T11: its head-to-head not clearly below 0.5), at 20 M samples against #3's 30 M.
+
+## T13 — Increment 5's refinement (2026-11-02)
+
+- **The starting point:** the battle lane's fair system actor v1 (E26 increment 1, #647;
+  `E26-log.md` T4): `h3_battle_ai::choose_fair` runs the original's computer on its side's world
+  (`BattleState::determinized` without a guess), 0.500 against the all-seeing `choose` on 2 000
+  battles of random armies with heroes, +0.8 % Ir per decision without heroes. Where the other
+  side has no hero and no hidden pit it is `choose`. In the AI lane `Policy::System` is the
+  all-seeing one: the neutral kinds' defender (`encounter.rs`), seat 4 of the batch
+  (`H3_SEAT_SYSTEM`), `h3 ai eval`'s `system` and the neutral set's fixed defender, a bot of
+  both bots' tables, `batch-system-neutral-v1`'s defender; `run.trainable` refuses any mix with
+  it.
+- **Found:** the adventure env has no system actor: its neutral seat is played by the caller
+  (`Seat::Neutral`; the random rollout plays it), so the battle lane's "the adventure env's
+  neutral seat switches" has nothing to switch here; a computer playing it is new work, E13's.
+  `e25-sharp-1` #2's `best.pt` is not in this sandbox (a fresh container): T15 needs it uploaded
+  again.
+- **The user's choices** (AI-Q14, the agent's recommendation on all four): `system` the fair
+  actor everywhere and `system-all-seeing` beside it (C ABI v36); exit criterion 1 stays the
+  all-seeing actor, the fair one reported; the neutral set's defender the fair actor; the
+  neutral kinds back in training at E06 T7's third with the fair defender, no `system_share`;
+  a warm start by behaviour cloning on the fair actor's choices, then PPO from it against the
+  same mix from scratch. Increment 5's decisions and tasks T14 to T18 in the epic file, their
+  scope in the AI queue.
+- **Expectation** (the agent's): the fair actor is as strong as the all-seeing one on random
+  armies, so `e25-sharp-1` #2 should score about 0.42 against it too (T15 measures). The clone
+  starts from an actor that beats the lineage at about 0.58; whether PPO keeps its strength
+  from there is T17's question.
