@@ -9,8 +9,8 @@
 //! input (E17 M6 T2a2a, design §12.2): [`Modal`], its OK by a click or its keys, the status
 //! line's hints and the cursor over its items ([`Hints`], [`Memory`]).
 //!
-//! *Not built yet:* the right button's descriptions and the cast button's press (M6 T2a2b,
-//! CLT-STUB-6: the button takes no press); the right button's dialog held over a stack (M6 T2b).
+//! *Not built yet:* the right button's descriptions and the cast button's press (M6 T2a2b: the
+//! button takes no press); the right button's dialog held over a stack (M6 T2b).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -688,7 +688,7 @@ impl Modal {
     }
 
     /// The left button pressed at `point`: the OK goes down (the cast button takes no press yet:
-    /// M6 T2a2b, CLT-STUB-6).
+    /// M6 T2a2b).
     pub fn press(&mut self, point: [i32; 2]) -> Outcome {
         if self.open.message.dialog.button_at(point) != Some(OK) {
             return Outcome::Nothing;

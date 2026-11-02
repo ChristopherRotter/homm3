@@ -18,20 +18,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T2a2a — the stats dialog in the window
-
-- **Scope:** T2 cut in three by the user (2026-11-02: T2a1 the dialog read and recorded as
-  stills, done; T2a2; T2b the right button's popup and the turret's info); T2a2 cut in two by
-  the user (2026-11-02: this; T2a2b). The stats dialog (design §12.1) in the window: the left
-  press on a stack to look at opens it modally (the battle behind stands still, its creature
-  stepping each 100 ms), its OK by a click, Enter or Escape, the mouse's hints and cursor over
-  its items (0x5F4E30; CLT-Q38 (1) to (3) fixed in the client's profile), what the battle does
-  as it closes (0x476EE1); CLT-Q37 fixed; in hot seat and on a server (the seat's own stacks);
-  the situations' actions over an open dialog (`spellbook::still`); recorded (the dialog opened,
-  hovered, closed).
-- **Acceptance:** each behaviour exact against its recordings or listed; `drawn`; `check.sh`.
-- **Depends on:** T2a1 (done). **Status:** in progress (2026-11-02).
-
 ### E17 M6 T2a2b — the dialog's right button and its cast button
 
 - **Scope:** the right button's descriptions over the dialog's items (0x5F48AD: the hint table's
@@ -39,7 +25,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   popup held while the right button is, which T2b and T3 then use), a Faerie Dragon's cast
   button entering its cast (0x468943; CLT-Q38 (4): the button only for the acting stack, its
   own drawn spell); recorded (the descriptions; a Faerie Dragon cast from the dialog).
-- **Acceptance:** as T2a2a's. **Depends on:** T2a2a. **Status:** ready.
+- **Acceptance:** each behaviour exact against its recordings or listed; `drawn`; `check.sh`.
+- **Depends on:** T2a2a (done 2026-11-02). **Status:** ready.
 
 ### E17 M6 T2b — the right button's stack popup and a turret's info
 
@@ -48,7 +35,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   0x530D30), an enemy's too (what the seat's observation shows of it), the dialog's clamps at the
   right and the top recorded; a turret's info by either button (`turret_info` 0x47A380, a message
   box); recorded.
-- **Acceptance:** as T2a2a's. **Depends on:** T2a2b (the held popup). **Status:** ready.
+- **Acceptance:** as T2a2b's. **Depends on:** T2a2b (the held popup). **Status:** ready.
 
 ### E17 M6 T3 — the right button's other popups
 
