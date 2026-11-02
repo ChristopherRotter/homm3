@@ -5049,3 +5049,72 @@ take the mouse; map entries `creature_dialog_proc`, `battle_click_action`, `batt
   modal loop starts (as a box's, §7.19: a key down or a press in the same batch as the opening
   press reaches the dialog); the recorded sequences' look (`pointer::inputs` takes no `Look`:
   the dialog is recorded as stills).
+
+### 12.3 The dialog's right button and its cast button (M6 T2a2b1)
+
+T2a2b cut in two by the user (2026-11-02): T2a2b1 here, morale's and luck's descriptions T2a2b2.
+Read: the procedure's right button (0x5F4890 to 0x5F4B86), the items' right press
+(`def_button_message` 0x4567AD to 0x456830; `dialog_def_message` 0x4EA8E1, `text_item_message`
+0x5BC4F0, `dialog_area_message` 0x45001B), the raw mouse messages (`input_mouse_message`
+0x4EC2E0 to 0x4EC3AD), `message_box_build`'s style 4 (0x4F74DE) and its layout (0x4F5FCA to
+0x4F60DF), the held popup's loop (`popup_run_held` 0x602A40 whole), the counters it sets
+(0x5FF5B0), the procedure's tail (0x5F4CFF, 0x5F4FD9 to 0x5F500A), `stack_stats_dialog` whole
+(0x468930 to 0x468966) against the key F's (0x475C17 to 0x475CF3).
+
+- **The right press.** Every item of the dialog (state 6) turns a right button down inside its
+  box into the message 0x200, subtype 14 (0xE), its id, with the right button's flag 0x200 in
+  +0xC (the raw input messages carry only Ctrl 4, Alt 0x20 and Shift 1 there); the items are
+  asked newest first, so the item a move enters takes it (a line's value, the creature's picture
+  over its town's frame, the background elsewhere). A DEF button (the OK, the cast button) does
+  not go down for it. The procedure takes the subtypes 12 and 14 with that flag (12, a left
+  press, never carries it): the hint table's index of the item (0x5F46C0, as the hover's);
+  morale (9) and luck (10) their own descriptions (0x5F4B86, 0x5F4937: M6 T2a2b2); any other
+  index its pair's second text (`creature_dialog_hints` +4: `Help.txt`'s second column of
+  records 433 to 447; the effects their pair's, 444, not the spell's); the cast button's index 15
+  past the table reads the second mine's name (MineName.txt's second record; CLT-Q38 (2): the
+  client's profile shows its hint again, the panel's spell book's, *provisional*: the book's own
+  description tells of the hero's book); an item without an index, or an empty text, shows nothing (0x5F4AAB).
+- **The popup** (`message_box` with style 4, x = y = −1, no picture): laid out as every box
+  (§7.19) but at least 128 wide, with no buttons nor their 50 of height (0x4F5FDA, 0x4F603B),
+  centred on the screen; framed in the viewing player's colours (the client's: the acting side's,
+  CLT-Q28 (2)); the default cursor's frame 0 set, then `popup_run_held` 0x602A40: the cursor
+  hidden (`mouse_hide`, erased at once), each dialog shown counted paused (0x5FF5B0), the box
+  added and shown, then a loop of the tick, the messages pumped and the next input message until
+  one is the right button's release (0x40), a left press (8) or a left release (0x10); every
+  other message is taken and dropped (the moves, keys, their releases, another right press), no
+  procedure runs meanwhile; the box removed (the dialog under it drawn again), the counters
+  undone, the cursor shown and set back to the one before. So the dialog's hint and cursor stay
+  as the move before the press left them, and the creature does not step while held.
+- **After it** the procedure's tail runs (0x5F4CFF): once the clock reaches the frame deadline the
+  creature steps and the deadline becomes the later of now and itself plus 100 ms (0x5F4FF1); after
+  a hold past the deadline by 100 ms or more the deadline is now, which the next message reaches at
+  once: two steps (`Steps::made_around`).
+- **CLT-Q39** (asked and answered the same day, the user: the client's fix, as the map's
+  MCL-Q24): the loop's dropped messages take a key's release, so the OK its key (Enter, Escape)
+  holds stays drawn pressed and its click is lost; and the left release that ends it, so the OK
+  the mouse holds stays pressed until a later release. The client's profile lets the OK go without
+  its click (`Modal::held_input`, `message::Open::let_go`), the original's for the comparisons.
+- **The cast button** (301, `icm005.def`, frames 0 and 1): pressed and released as a DEF button
+  (§12.2's OK), its command (0x5F5030) ends the modal loop with 301; `stack_stats_dialog` then
+  enters the creature's cast of the pressed stack's drawn spell (+0x4E0) through
+  `enter_player_cast` (0x468954, the second argument 1) and makes the action 1 into 10 (0x46895F),
+  as the key F (§7.18: the aim, its cursor called at the mouse's point first), before the dialog is
+  destroyed; the close (0x476EE1, 0x475DBB) comes after the aim: the mouse's hex forgotten, the
+  log's entries settle and the mouse posted, which waits in the input queue behind the cast the
+  aim gave (dropped as the next turn starts). The F key's own path posts nothing. The client's
+  profile shows the button for the acting stack only (CLT-Q38 (4)), its cast the acting stack's
+  own drawn spell; the original's shows it for any Faerie Dragon of the side acting.
+- **Recorded:** `stats-describe` (the attack line's description, the hint and the cursor hidden
+  under it; held to 100 ms), `stats-describe-ok`, `stats-describe-none` (the creature's picture:
+  no popup), `stats-describe-cast` (the original's mine's name; the panel's line listed as
+  `stats-dragon`'s); the sequence `dragon-button` (`dragon`'s first round, then the cast entered
+  from the dialog at round 2 and aimed at the Swordsmen beside it).
+- **The viewer** (`h3_view::stats`: `Hints::described`, `Modal::describe`, `popup`,
+  `held_input`, `Steps::made_around` and `next_around`; `message::Style::Popup`,
+  `message::Open::let_go`; the tracker's `Looked` after an action takes no move). The window
+  (`Battle::stats_right`, `stats_popup`, `stats_held`, `look_cast`, `looked_after_aim`): the right
+  button over the open dialog, its popup held, the cursor hidden, the input dropped but its ends;
+  the cast button's click into the aim as the key F's, the dialog's close as it ends. The stills'
+  `right:<x>,<y>` (the harness holds the button down through the frames); the sequences' `look:` and
+  `cast-button:<x>,<y>:<spell>`. *Not built:* morale's and luck's descriptions (M6 T2a2b2), an
+  effect's own; the right button over the battle (M6 T2b, T3).

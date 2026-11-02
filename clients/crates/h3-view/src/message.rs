@@ -5,10 +5,13 @@
 //! `ui` items; [`Open`] is the box on the screen, taking presses, moves and keys until a button's
 //! click closes it.
 //!
+//! Style 4, the right button's popup (E17 M6 T2a2b1, design §12.3), is a box without buttons
+//! shown while the right button is held (`popup_run_held` 0x602A40).
+//!
 //! *Not built* (no battle caller needs them): a text above 200 pixels high (the executable's
-//! scrolling text), two to eight pictures, the styles other than 1 and 2 (3 and 10's OK and Cancel
-//! of other ids, 4's right-button popup, 5 to 9), the hidden frame around a picture (a choice's
-//! mark), the network game's timeout.
+//! scrolling text), two to eight pictures, the styles 3 and 10 (their OK and Cancel of other
+//! ids) and 5 to 9, the hidden frame around a picture (a choice's mark), the network game's
+//! timeout.
 //!
 //! *The client's* (E17 M5 T8b2): the text's width stops at 578 when a word is wider (the
 //! executable's box takes the word whole, past the screen) and the box at 768 × 576, so a
@@ -74,6 +77,9 @@ pub enum Style {
     Ok,
     /// Style 2: an OK ([`YES`], Enter) and a Cancel ([`NO`], Escape).
     OkCancel,
+    /// Style 4: no button, the right button's popup (E17 M6 T2a2b1): at least 128 wide, no room
+    /// for buttons (0x4F5FDA, 0x4F603B, 0x4F60D4).
+    Popup,
 }
 
 /// What a key does in an open box (E24 M3 T1b; its keys the battle's table's, `crate::keys`: the
@@ -124,8 +130,9 @@ const TEXT_TOP: i64 = 30;
 /// before them (30).
 const BUTTONS: i64 = 50;
 const CAPTION_BOTTOM: i64 = 30;
-/// A box's least width and height (256, 128).
+/// A box's least width and height (256, 128); a popup's least width (128, 0x4F5FE2).
 const BOX_LEAST: [i64; 2] = [256, 128];
+const POPUP_LEAST_WIDTH: i64 = 128;
 /// The client's largest box (E17 M5 T8b2, R5a's): the screen's multiples of 64. The executable's
 /// grows past the screen with a word wider than [`TEXT_WIDTH_MOST`] or a caption too high, which
 /// none of the game's texts has; a server's name can (its frame's ids would wrap round).
@@ -197,14 +204,21 @@ pub fn layout(
     let text_height = text_height.min(TEXT_HEIGHT_MOST);
     // The box's width: the text's, or the picture's row's.
     let row = slot.map_or(40, |s| s.size[0].max(s.caption[0]) + 40);
-    let width = up64(row.max(text_width + TEXT_MARGIN)).clamp(BOX_LEAST[0], BOX_MOST[0]);
+    let least = if style == Style::Popup {
+        POPUP_LEAST_WIDTH
+    } else {
+        BOX_LEAST[0]
+    };
+    let width = up64(row.max(text_width + TEXT_MARGIN)).clamp(least, BOX_MOST[0]);
     let text_width = width - TEXT_MARGIN;
     // The box's height: the text's and the picture's, the buttons'.
     let mut used = text_height + 60;
     if let Some(s) = slot {
         used += 20 + s.size[1] + s.caption[1];
     }
-    used += BUTTONS;
+    // A popup has no buttons, nor their room.
+    let buttons = if style == Style::Popup { 0 } else { BUTTONS };
+    used += buttons;
     let height = up64(used).clamp(BOX_LEAST[1], BOX_MOST[1]);
     let text_top = TEXT_TOP + (height - used) / 2;
     let place = [(SCREEN[0] - width) / 2, (SCREEN[1] - height) / 2];
@@ -232,6 +246,7 @@ pub fn layout(
             let x = (i32_of(width) - BACK[0]) / 2;
             items.extend(button(layout, (0x7866, OK), &layout.ok, [x, back_y]));
         }
+        Style::Popup => {}
         Style::OkCancel => {
             let left = (half - 74).max(1);
             let right = (half + 8).min(i32_of(width) - BACK[0]);
@@ -248,7 +263,7 @@ pub fn layout(
     texts.insert(TEXT, String::from(text));
     if let (Some(p), Some(s)) = (picture, slot) {
         // One picture: centred, its caption's top 30 above the buttons' room.
-        let caption_top = height - s.caption[1] - CAPTION_BOTTOM - BUTTONS;
+        let caption_top = height - s.caption[1] - CAPTION_BOTTOM - buttons;
         let x = (width - s.size[0]) / 2;
         items.push(Item::Def(Def {
             id: PICTURE,
@@ -574,6 +589,18 @@ impl Open {
     pub fn key_up(&mut self, key: &str) -> Outcome {
         match self.held.take_if(|h| h.key.as_deref() == Some(key)) {
             Some(h) => Outcome::Closed(h.id),
+            None => Outcome::Nothing,
+        }
+    }
+
+    /// Lets the button held by key `by` (none: by the mouse) go without its click, drawn up again
+    /// (a release a loop of its own took: CLT-Q39, E17 M6 T2a2b1, as the map's MCL-Q24).
+    pub fn let_go(&mut self, by: Option<&str>) -> Outcome {
+        match self.held.take_if(|h| h.key.as_deref() == by) {
+            Some(h) => {
+                self.set_pressed(h.id, false);
+                Outcome::Changed
+            }
             None => Outcome::Nothing,
         }
     }

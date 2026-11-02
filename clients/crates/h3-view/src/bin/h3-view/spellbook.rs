@@ -374,8 +374,14 @@ pub fn still(
     for action in actions {
         // The stats dialog open (E17 M6 T2a2a): its moves, its OK's click and keys.
         if let Some(open) = still.stats.as_mut() {
-            let closed = stats_action(open, &mut stats_memory, (action, &keys), &mut still.mouse)
-                .map_err(|e| format!("`{action}`: {e}"))?;
+            let tell = boxes.map(|b| b.tell);
+            let closed = stats_action(
+                open,
+                &mut stats_memory,
+                (action, &keys, tell),
+                &mut still.mouse,
+            )
+            .map_err(|e| format!("`{action}`: {e}"))?;
             if let Some(rest) = closed {
                 // Closed: the battle takes the mouse posted where it rests (0x476F3A).
                 still.stats = None;
@@ -562,16 +568,24 @@ pub fn still(
 
 /// One of a situation's actions over an open stats dialog `open` (E17 M6 T2a2a): `move:<x>,<y>`
 /// moves the mouse there (its hint, the OK held following); `click:<x>,<y>` moves it, presses,
-/// releases and parks it; `key:<k>` presses the dialog's key (its OK's) and releases it. Where the
-/// mouse rests once the OK closed the dialog (none: still open; the `mouse` kept).
+/// releases and parks it; `key:<k>` presses the dialog's key (its OK's) and releases it;
+/// `right:<x>,<y>` (E17 M6 T2a2b1) moves it there and holds the right button down: the item's
+/// description in its popup (laid out by `tell`), held through the frames, so nothing may come
+/// after it. Where the mouse rests once the OK closed the dialog (none: still open; the `mouse`
+/// kept).
 fn stats_action(
     open: &mut crate::stats::Open,
     memory: &mut StatsMemory,
-    (action, keys): (&str, &Keys),
+    (action, keys, tell): (&str, &Keys, Option<&Tell<'_>>),
     mouse: &mut [i32; 2],
 ) -> Result<Option<[i32; 2]>, String> {
     use h3_view::message::Outcome;
     let modal = &mut open.modal;
+    if modal.popup.is_some() {
+        return Err(String::from(
+            "the right button is held: nothing comes after `right:`",
+        ));
+    }
     let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
     let point = |arg: &str| -> Result<[i32; 2], String> {
         let (x, y) = arg.split_once(',').ok_or("not x,y")?;
@@ -600,6 +614,16 @@ fn stats_action(
             to(modal, crate::pointer::PARK);
             Ok(None)
         }
+        "right" => {
+            let at = point(arg)?;
+            to(modal, at);
+            if let Some(text) = modal.describe(at) {
+                modal.popup = tell.and_then(|tell| tell(&text, Style::Popup, None));
+                // Held from the opening's frozen time through the frames.
+                open.holds.push([0, u32::MAX]);
+            }
+            Ok(None)
+        }
         "key" => {
             let key = if arg.len() == 1 {
                 arg.to_ascii_uppercase()
@@ -616,7 +640,7 @@ fn stats_action(
             }
         }
         _ => Err(String::from(
-            "over the stats dialog only key:, click: and move:",
+            "over the stats dialog only key:, click:, move: and right:",
         )),
     }
 }

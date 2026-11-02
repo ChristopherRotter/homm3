@@ -117,6 +117,9 @@ pub fn inputs(
     let mut told = told;
     let mut spells = spells.iter().copied();
     let (mut cast_pending, mut auto) = (false, false);
+    // The stats dialog's cast button's aim under way (E17 M6 T2a2b1): the dialog's close comes as
+    // it ends.
+    let mut look_aim = false;
     let mut out = vec![Input::Move { at: 0, to: PARK }];
     let (mut now, mut turns) = (pre, 0);
     // The stack whose turn the battle opens with (E17 M3 T7b-1): a first `turn:` naming it acts
@@ -149,7 +152,45 @@ pub fn inputs(
                 } else {
                     Input::Act { at: now }
                 });
+                if core::mem::take(&mut look_aim) {
+                    out.push(Input::Looked { at: now });
+                }
                 out.push(Input::Move { at: now, to: PARK });
+            }
+            // A press on a stack to look at: its stats dialog, modal, the park's move its own
+            // (E17 M6 T2a2b1).
+            "look" => out.extend([
+                Input::Move {
+                    at: now,
+                    to: point(arg)?,
+                },
+                Input::Look { at: now },
+                Input::Move { at: now, to: PARK },
+            ]),
+            // The dialog's cast button: the acting Faerie Dragon's aim of its drawn spell (its
+            // number given), the mouse parked after the click; the dialog's close as it ends.
+            "cast-button" => {
+                let (at, original) = arg
+                    .split_once(':')
+                    .ok_or_else(|| format!("`{action}`: not cast-button:<x>,<y>:<spell>"))?;
+                let original = original
+                    .parse::<u16>()
+                    .map_err(|e| format!("`{action}`: {e}"))?;
+                let spell = handle(original)
+                    .ok_or_else(|| format!("`{action}`: no spell numbered {original}"))?;
+                look_aim = true;
+                out.extend([
+                    Input::Move {
+                        at: now,
+                        to: point(at)?,
+                    },
+                    Input::Aim {
+                        at: now,
+                        spell,
+                        creature: true,
+                    },
+                    Input::Move { at: now, to: PARK },
+                ]);
             }
             // The tactics phase's message closed by its OK (E17 M5 T4c2b).
             "key" if arg == "Return" && core::mem::take(&mut told) => {}
@@ -169,8 +210,14 @@ pub fn inputs(
                 at: now,
                 to: point(arg)?,
             }),
-            // Escape gives an aim up (E17 M5 T3b, 0x5A317A).
-            "key" if arg == "Escape" => out.push(Input::Cancel { at: now }),
+            // Escape gives an aim up (E17 M5 T3b, 0x5A317A); the cast button's aim closes the
+            // stats dialog after it (E17 M6 T2a2b1).
+            "key" if arg == "Escape" => {
+                out.push(Input::Cancel { at: now });
+                if core::mem::take(&mut look_aim) {
+                    out.push(Input::Looked { at: now });
+                }
+            }
             "aim" => {
                 let (place, original) = arg
                     .split_once(':')
@@ -914,6 +961,58 @@ mod tests {
         // When it plays the timeline's turns: the opening's from 0.
         let auto = auto(&got, &timeline);
         assert!(auto.plays(0, 0) && !auto.from_start(0));
+    }
+
+    #[test]
+    fn the_stats_dialogs_cast_button_aims_and_closes_the_dialog_as_the_aim_ends() {
+        // E17 M6 T2a2b1: a look, the cast button's aim (its spell by number), the aim's click: the
+        // dialog's close after the action; given up by Escape, after the cancel.
+        let layout = layout();
+        let timeline = Timeline::default();
+        let handle = |n: u16| (n == 21).then_some(7);
+        let run = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| String::from(*a)).collect();
+            inputs(&actions, 0, &layout, (&timeline, &[], &handle), false)
+        };
+        let got = run(&["look:10,20", "cast-button:30,40:21", "hex:83"]).unwrap();
+        let aim = Input::Aim {
+            at: 0,
+            spell: 7,
+            creature: true,
+        };
+        assert_eq!(
+            got,
+            vec![
+                Input::Move { at: 0, to: PARK },
+                Input::Move {
+                    at: 0,
+                    to: [10, 20]
+                },
+                Input::Look { at: 0 },
+                Input::Move { at: 0, to: PARK },
+                Input::Move {
+                    at: 0,
+                    to: [30, 40]
+                },
+                aim,
+                Input::Move { at: 0, to: PARK },
+                Input::Move {
+                    at: 0,
+                    to: hex_point(&layout, 83)
+                },
+                Input::Act { at: 0 },
+                Input::Looked { at: 0 },
+                Input::Move { at: 0, to: PARK },
+            ]
+        );
+        let cancelled = run(&["look:10,20", "cast-button:30,40:21", "key:Escape"]).unwrap();
+        assert_eq!(
+            cancelled[cancelled.len() - 2..],
+            [Input::Cancel { at: 0 }, Input::Looked { at: 0 }]
+        );
+        // A spell without a handle, or no spell, is an error.
+        assert!(run(&["cast-button:30,40:22"]).is_err());
+        assert!(run(&["cast-button:30,40"]).is_err());
     }
 
     #[test]
