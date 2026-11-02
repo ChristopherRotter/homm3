@@ -101,6 +101,10 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-03 (this lane, E17 M6 T2a2b2, CLT-Q40): once the battle lane's carry lands (its inbox),
+  the morale and luck descriptions' hero lists, the two artifacts' lines, the Angelic Alliance's join and a
+  siege town's buildings, and the header and picture by the unclamped value (design §12.4).
+
 - 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
   call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
   amended; the user, AI-Q10), the all-seeing `choose` only as a game's option.
