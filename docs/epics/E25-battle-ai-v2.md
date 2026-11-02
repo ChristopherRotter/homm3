@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 3 closed 2026-10-28, 29 and 11-02, increment 4 in progress (AI-Q12) · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 4 closed 2026-10-28, 29 and 11-02, increment 5 waits for the fair system actor (AI-Q13) · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -104,6 +104,7 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 | 1 | 2026-10-28 | T1a–T1c, T2a, T2b, T3 | the search's terminal by reward v1 and the true world (no gain: the evaluation limits it), shaping (+0.04, a tactics-phase loop), the faithful actor out of training; C ABI v35 |
 | 2 | 2026-10-29 | T4a, T4b, T5, T6 | the tactics bound (the loop gone, no cost), the scale run (flat from 20 M; `e25-scale-1` #3 the current best) |
 | 3 | 2026-11-02 | T7a–T7d, T8 | the network's architecture: a distillation bench (the wide MLP leads, the structured networks as configured fit ten times worse), the wide MLP in RL at #3's ladder (AI-Q12) |
+| 4 | 2026-11-02 | T9a, T9b, T10a, T10b, T11 | the policy's sharpness: a temperature diagnostic (sharpening gains about 0.01) and the entropy bonus to 0 in training (`e25-sharp-1`: the same 0.01, no more) (AI-Q13) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
@@ -111,31 +112,20 @@ AI v1 and the baseline. **Since T4b** (the user, 2026-10-29) **`e25-bound-1`** (
 current best; **since T6** (the user, 2026-10-29) **`e25-scale-1` #3** (30 M, three tactics
 rounds), the network the exit criteria are judged on. **At increment 3's checkpoint** (the user,
 2026-11-02, T8): #3 stays the current best; increment 4 is the policy's sharpness and PPO's
-settings.
+settings. **At increment 4's checkpoint** (the user, 2026-11-02,
+T11): **`e25-sharp-1` #2** (20 M, the entropy bonus to 0) the current best, its head-to-head
+against #3 0.523 (T12).
 
-**Increment 4: the policy's sharpness and PPO's settings** (refined 2026-11-02, AI-Q12; the AI
-queue's tasks). Every run since E05 used PPO's settings as E05 T8 set them (the entropy bonus
-0.01 throughout, 4 epochs, 8 minibatches, the learning rate 2.5e-4 falling linearly, rollouts of
-128 steps × 256 envs); the entropy ends at 1.5 (`e25-scale-1`), the sampled policy's spread. A
-diagnostic without training first, then 20 M A/Bs on the 2 × 512 MLP at `e25-scale.toml`'s
-settings. Decision 1's rules unchanged: the sampled policy is judged, only trained sharper.
+**Increment 5: the fair system actor** (the user at T11, 2026-11-02, AI-Q13; refined when it
+lands). The battle lane pushes the fair system actor v1 soon (the user); increment 5 is refined
+around it then: decision 2 lets it train (a league member, the neutral kinds' defender), decision
+3 makes its imitation a candidate (a warm start, or an auxiliary loss decaying to 0), and it is
+a fair target beside the faithful one (decision 1, revisable with evidence). Until then E25
+waits at the current best (`e25-sharp-1` #2, T12).
 
-- [x] **T9a The temperature** (2026-11-02; `E25-log.md` T9a): `Policy.act`'s logits of every head
-  divided by a temperature (1 the default, bit-identical; 0 the most likely choice), through
-  `evaluate.ladder` and `h3env.train.ladder --temperature 1,0.7,0.5,0` (a line per temperature
-  and opponent, the same episodes and draws); training untouched.
-- [ ] **T9b The diagnostic** (the user's machine, or the sandbox's CPU from an uploaded
-  `best.pt`): `e25-scale-1` #3 on the report set v1 at 1, 0.7, 0.5 and 0 against the system
-  actor, the other seats and the neutral set at the best one. How much of the gap to 0.5 is the
-  spread.
-- [ ] **T10a The entropy's schedule and the second lever** (the sandbox): `[ppo] entropy_floor`
-  (the bonus falling with the learning rate's progress to that fraction of `entropy_coef`; 1 the
-  default, every run before) and `configs/e25-sharp.toml` (the bonus to 0 at 20 M) done
-  2026-11-02 (`E25-log.md` T10a); open: the second A/B's config (fewer epochs or a larger
-  rollout, proposed from T9b and the runs' KL and clip fraction, agreed with the user).
-- [ ] **T10b The A/Bs** (the user's machine, about 75 minutes each at 20 M): against `e25-scale-1`
-  #3's ladder (and `e25-bound-1`'s, `e25-wide-1`'s), the head-to-head gate against #3.
-- [ ] **T11 Increment 4's checkpoint**: the reads put to the user, increment 5 chosen.
+- [x] **T12 The head-to-head** (2026-11-02; `E25-log.md` T12): `e25-sharp-1` #2 against
+  `e25-scale-1` #3 promoted by the gate, 0.523 over 332 pairs (+16 Elo): #2 the current best.
+- [ ] **T13 Increment 5's refinement** (the fair system actor v1 landed 2026-11-02, E26, #647).
 
 ## Exit criteria
 
