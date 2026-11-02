@@ -19,7 +19,7 @@ In `TRAPS.md`.
 
 ### 2026-11-02 — T1a1: the census and the factions
 
-Baseline f949c899 (CI green, no open pull requests). The user cut T1a in two (T1a1, T1a2). Survey `E09-towns.md` §0 to §3: the census of the 160 maps (all import once the main town's hero, a hero in a town and the random hero exist), the players' factions and a random town's faction read (`load_town_body` 0x5019F0), VCMI and the wiki (TD-1, TD-2, T-1); the exe map's entries; the adventure lane's inbox note (random dwellings tied to random towns). Pull request: see the current state.
+Baseline f949c899 (CI green, no open pull requests). The user cut T1a in two (T1a1, T1a2). Survey `E09-towns.md` §0 to §3: the census of the 160 maps (all import once the main town's hero, a hero in a town and the random hero exist), the players' factions and a random town's faction read (`load_town_body` 0x5019F0), VCMI and the wiki (TD-1, TD-2, T-1); the exe map's entries; the adventure lane's inbox note (random dwellings tied to random towns). Pull request: #641 (`town/e09-t1a1`, open).
 
 ### 2026-10-31 — T0: E09 refined, the town lane opened
 
