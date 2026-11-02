@@ -1194,3 +1194,84 @@ actions = ["key:Return", "move:518,578"]
 at = 100
 differing = 0
 why = "exact: over Start Combat the pointer, its hint shown nowhere (E17 M5 T4c2a)"
+
+# E17 M6 T2a1: a stack's stats dialog (design §12.1), opened by a press on a stack to look at (the
+# kind 5) at the opening, the clock frozen: the park's move reaches the dialog over none of its
+# items, so the battle's cursor of the stack's kind stays (at the park point) and its status line
+# stays empty; the battle behind stands still. `stats`: book.toml's Marksmen (a shooter's shots,
+# the ability text, the dialog at the screen's bottom), their creature through group 2's eight
+# frames (a step each 100 ms from the battle's next idle step); `stats-acting`: the acting
+# Champions themselves; `stats-machine`: war-machines.toml's Ammo Cart (a war machine: speed 0,
+# the cart's own steps; the Ballista and the Tent stand in the first column, which no press
+# reaches); `stats-dragon`: a Faerie Dragon's cast button, the neutral frame.
+[[situation]]
+id = "stats"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Marksmen's dialog at the screen's bottom, morale and luck in imrlB's and ilckB's frames (CLT-Q36), the combat cursor's pointer at the park point (E17 M6 T2a1)"
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the creature's first step, 100 ms after the opening (E17 M6 T2a1)"
+
+[[situation.frame]]
+at = 400
+differing = 0
+why = "exact: group 2's fifth frame (E17 M6 T2a1)"
+
+[[situation.frame]]
+at = 700
+differing = 0
+why = "exact: group 2's last frame, the battle behind still (E17 M6 T2a1)"
+
+[[situation]]
+id = "stats-acting"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,196"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the acting Champions' own dialog, no shots line (E17 M6 T2a1)"
+
+[[situation.frame]]
+at = 300
+differing = 0
+why = "exact: their group 2's last frame (E17 M6 T2a1)"
+
+[[situation]]
+id = "stats-machine"
+scenario = "war-machines.toml"
+seat = "attacker"
+actions = ["click:80,154"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Ammo Cart's dialog: speed 0, no morale (E17 M6 T2a1)"
+
+[[situation]]
+id = "stats-dragon"
+scenario = "stats-dragon.toml"
+seat = "attacker"
+actions = ["click:102,196"]
+
+# The panel's line: over the acting Faerie Dragons the original keeps their draw's line ("The
+# Faerie Dragons ready Fireball (press F to cast)", not built: design §7.16, the draw private to
+# its controller) where the viewer writes the press's hint; the dialog itself is exact.
+[[situation.frame]]
+at = 0
+differing = 1276
+why = "the panel's line only: the draw's line not built; the dialog exact, its cast button, the neutral frame (E17 M6 T2a1)"
+
+[[situation.frame]]
+at = 1100
+differing = 1276
+why = "as at 0: group 2's last frame of twelve (E17 M6 T2a1)"

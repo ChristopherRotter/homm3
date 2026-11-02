@@ -257,6 +257,9 @@ pub fn layout(
             size: [i32_of(s.size[0]), i32_of(s.size[1])],
             frame: p.frame,
             mirrored: false,
+            group: 0,
+            creature: false,
+            frames_of: None,
             repeat: None,
         }));
         items.push(Item::Label(Label {
@@ -394,6 +397,9 @@ fn frame(layout: &MessageLayout, [width, height]: [i64; 2]) -> Vec<Item> {
             size: [i32_of(PIECE), i32_of(PIECE)],
             frame,
             mirrored: false,
+            group: 0,
+            creature: false,
+            frames_of: None,
             repeat: None,
         })
     };

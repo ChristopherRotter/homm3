@@ -701,6 +701,37 @@ original = [{ at = "GENRLTXT:311" }]
 id = "result.lost-army"
 original = [{ at = "GENRLTXT:312" }]
 
+# A stack's stats dialog's lines (E17 M6 T2a1; design §12.1; 0x5F5340 to 0x5F62F0): the attack's
+# and the defense's labels are the primary skills' names (PRISKILL.TXT's first two records,
+# `primary_skill_names` 0x6A5390), the others GENRLTXT's records 199, 200, 389, 201 and 194.
+[[key]]
+id = "stats.attack"
+original = [{ at = "PRISKILL:0" }]
+
+[[key]]
+id = "stats.defense"
+original = [{ at = "PRISKILL:1" }]
+
+[[key]]
+id = "stats.shots"
+original = [{ at = "GENRLTXT:199" }]
+
+[[key]]
+id = "stats.damage"
+original = [{ at = "GENRLTXT:200" }]
+
+[[key]]
+id = "stats.health"
+original = [{ at = "GENRLTXT:389" }]
+
+[[key]]
+id = "stats.health-left"
+original = [{ at = "GENRLTXT:201" }]
+
+[[key]]
+id = "stats.speed"
+original = [{ at = "GENRLTXT:194" }]
+
 # A creature's names, singular and plural (CRTRAITS.TXT's first two columns; its non-blank records
 # from record 2 are the original ids in order, as the harvesters read them).
 [[family]]
@@ -708,6 +739,17 @@ id = "creature"
 table = "CRTRAITS"
 first = 2
 forms = { one = 0, other = 1 }
+
+# A creature's ability text (CRTRAITS.TXT's column 23, the creature record's +0x1C; E17 M6 T2a1):
+# the battle's stats dialog shows it as it is (0x5F3AB4, a text item), a key per creature,
+# `creature-ability.<table>:<key>`.
+[[family]]
+id = "creature-ability"
+list = "creature"
+table = "CRTRAITS"
+first = 2
+column = 23
+raw = true
 
 # A spell's name (SPTRAITS.TXT's first column; E17 M3 T7b-1): its records from record 2 whose
 # second column is filled are the original ids in order (the group rows fill only their first, as

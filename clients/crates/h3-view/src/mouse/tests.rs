@@ -11,8 +11,8 @@ use h3_render::Bugs;
 use super::track::Look;
 use super::{
     DEFEND, Facing, Field, Hint, Kind, Legal, NEXT_CREATURE, Pointer, START_COMBAT, Slot, Spot,
-    WAIT, attack_slots, button, click, cursor, distance, look_cursor, neighbour, pointer,
-    pointer_in, slot, slots, spot, walls_halve,
+    WAIT, attack_slots, button, click, cursor, distance, look_cursor, looked_at, neighbour,
+    pointer, pointer_in, slot, slots, spot, walls_halve,
 };
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
@@ -893,4 +893,40 @@ fn the_tactics_phase_s_next_creature_waits_and_start_combat_ends_it() {
     // The battle's Wait is disabled in the phase (0x472428), Defend never listed there.
     assert_eq!(button(&phase, WAIT), None);
     assert_eq!(button(&phase, DEFEND), None);
+}
+
+#[test]
+fn a_press_on_a_stack_to_look_at_opens_its_stats() {
+    // E17 M6 T2a1 (the kind 5, `stack_stats_dialog` 0x468860): the acting stack itself and
+    // another of its side; not an enemy, a stack its side heals, an empty hex, the panel, or with
+    // no stack acting; any stack in the tactics phase.
+    let o = battle();
+    let looked = |o: &Observation, commands: &[Command], point| {
+        let legal = Legal::new(commands);
+        let field = Field {
+            observation: o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        };
+        looked_at(&field, &layout(), point)
+    };
+    assert_eq!(looked(&o, &[], centre(86)), Some(0));
+    assert_eq!(looked(&o, &[], centre(120)), Some(2));
+    assert_eq!(
+        looked(&o, &[Command::Heal { target: 2 }], centre(120)),
+        None
+    );
+    assert_eq!(looked(&o, &[], centre(90)), None);
+    assert_eq!(looked(&o, &[], centre(87)), None);
+    assert_eq!(looked(&o, &[], [700, 570]), None);
+    let mut idle = o.clone();
+    idle.active = None;
+    assert_eq!(looked(&idle, &[], centre(86)), None);
+    let mut tactics = o;
+    tactics.tactics = Some(Tactics {
+        side: Side::Attacker,
+        columns: 2,
+    });
+    assert_eq!(looked(&tactics, &[], centre(90)), Some(1));
 }
