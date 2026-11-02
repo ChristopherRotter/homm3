@@ -903,3 +903,80 @@ fn a_true_world_through_the_abi_is_the_rust_batchs() {
     }
     unsafe { h3_batch_destroy(b) };
 }
+
+/// `h3_batch_choice` of `seat` into `actions` and `encoded`.
+fn choice(b: *mut H3Batch, seat: i32, actions: &mut [H3Action], encoded: &mut [u8]) -> i32 {
+    unsafe { h3_batch_choice(b, seat, actions.as_mut_ptr(), encoded.as_mut_ptr()) }
+}
+
+/// E25 T16 (v37): `h3_batch_choice` writes the Rust batch's choices of both system seats
+/// (`BattleBatch::choice`) as actions, which, played, step a batch as its twin; its refusals.
+#[test]
+fn a_seats_choice_through_the_abi_is_the_rust_batchs() {
+    let n = 4;
+    let make = || {
+        let b = create(&config(n as u32, 2, 8, 300)).unwrap();
+        assert_eq!(add_encounters(b, 1, Some([1, 1, 2, 1, 1, 1])).0, H3_OK);
+        b
+    };
+    let (b, twin) = (make(), make());
+    let mut actions = vec![H3Action::default(); n];
+    let mut encoded = vec![0u8; n];
+    assert_eq!(
+        choice(b, H3_SEAT_SYSTEM, &mut actions, &mut encoded),
+        H3_ERR_NOT_READY
+    );
+    let (mut arrays, mut twin_arrays) = (Arrays::new(n), Arrays::new(n));
+    for (batch, arrays) in [(b, &mut arrays), (twin, &mut twin_arrays)] {
+        let buffers = arrays.buffers();
+        assert_eq!(unsafe { h3_batch_reset(batch, &buffers) }, H3_OK);
+    }
+    let mut ended = 0;
+    for call in 0..80 {
+        let (seat, policy) = if call % 2 == 0 {
+            (H3_SEAT_SYSTEM, Policy::System)
+        } else {
+            (H3_SEAT_SYSTEM_ALL_SEEING, Policy::SystemAllSeeing)
+        };
+        assert_eq!(choice(b, seat, &mut actions, &mut encoded), 0, "{call}");
+        let (mut rust, mut rust_encoded) = (vec![Action::default(); n], vec![0u8; n]);
+        let h = unsafe { &mut *twin };
+        let lost = h.batch.choice(policy, &mut rust, &mut rust_encoded);
+        assert_eq!(lost, Ok(0));
+        assert_eq!(encoded, rust_encoded);
+        assert_eq!(encoded, vec![1; n]);
+        let rust: Vec<H3Action> = rust.into_iter().map(H3Action::from).collect();
+        assert_eq!(actions, rust);
+        for (batch, arrays) in [(b, &mut arrays), (twin, &mut twin_arrays)] {
+            let buffers = arrays.buffers();
+            let stepped = unsafe { h3_batch_step(batch, actions.as_ptr(), &buffers) };
+            assert_eq!(stepped, H3_OK, "{call}");
+        }
+        assert_eq!(bits(&arrays.obs), bits(&twin_arrays.obs));
+        assert_eq!(bits(&arrays.reward), bits(&twin_arrays.reward));
+        assert_eq!(arrays.seed, twin_arrays.seed);
+        ended += arrays.done.iter().map(|d| u32::from(*d)).sum::<u32>();
+    }
+    assert!(ended > 0);
+    for seat in [H3_SEAT_EXTERNAL, 99] {
+        assert_eq!(choice(b, seat, &mut actions, &mut encoded), H3_ERR_ARGUMENT);
+    }
+    let null = std::ptr::null_mut();
+    let calls = [
+        unsafe {
+            h3_batch_choice(
+                null,
+                H3_SEAT_SYSTEM,
+                actions.as_mut_ptr(),
+                encoded.as_mut_ptr(),
+            )
+        },
+        unsafe { h3_batch_choice(b, H3_SEAT_SYSTEM, null.cast(), encoded.as_mut_ptr()) },
+        unsafe { h3_batch_choice(b, H3_SEAT_SYSTEM, actions.as_mut_ptr(), null.cast()) },
+    ];
+    assert_eq!(calls, [H3_ERR_NULL; 3]);
+    unsafe {
+        h3_batch_destroy(b);
+        h3_batch_destroy(twin);
+    }
+}

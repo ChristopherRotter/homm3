@@ -204,6 +204,7 @@ class BattleBatch:
         self._tactics_round = np.zeros(n, np.uint16)
         #: The episode each env's turns belong to.
         self._tactics_episode = np.zeros(n, np.uint32)
+        self._encoded = np.zeros(n, np.uint8)
         self._spell_mask = np.zeros((n, self.spell_count), np.uint8)
         self._target_mask = np.zeros((n, self.target_count), np.uint8)
         self._second_mask = np.zeros((n, self.target_count), np.uint8)
@@ -366,6 +367,28 @@ class BattleBatch:
         if not handle:
             raise H3Error(_ffi.ERR_ARGUMENT, f"no true world of env {env}")
         return Env(handle)
+
+    def choice(self, seat: int | str = "system") -> tuple[np.ndarray, int]:
+        """Each env's choice of the internal seat `seat` (C ABI v37, E25 T16: the cloning bench's
+        teacher, `system` or `system-all-seeing`; any seat but `external`) for its side to move,
+        written into `actions` as the action an external seat plays (the entry and the cast's
+        heads; `step()` plays it). Returns `encoded` [N] uint8 (1: the env's row holds its choice;
+        0: no side to move, or a choice no batch action plays, its row all 0; rewritten by the
+        next call) and the number of the latter, the choices lost.
+
+        The choice draws from the side's seat stream as that seat inside the call would, which an
+        external side never uses otherwise: one call per decision, each played, replays the
+        seat's episodes bit for bit. Trusted tooling, a teacher's labels: the all-seeing seat
+        reads the whole state, never an agent's input."""
+        a = self.actions
+        if a.dtype != _ffi.ACTION_DTYPE or a.shape != (self.envs,) or not a.flags.c_contiguous:
+            raise ValueError("actions must stay a contiguous [N] array of ACTION_DTYPE")
+        code = self._lib.h3_batch_choice(
+            self._live(), _seat(seat), a.ctypes.data, _ffi.ptr(self._encoded, c_uint8)
+        )
+        if code < 0:
+            self._check(code)
+        return self._encoded, code
 
     def spell_mask(self, entries: np.ndarray) -> np.ndarray:
         """[N, `spell_count`]: each env's legal spells after choosing `entries` ("0 only" for an

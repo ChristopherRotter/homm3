@@ -779,6 +779,51 @@ impl BattleBatch {
         Ok(())
     }
 
+    /// Each env's choice of `policy` for its side to move as the action an external seat plays
+    /// (E25 T16, the cloning bench's teacher: [`crate::action::encode`], the entry and the cast
+    /// heads) into `actions[i]`, with `encoded[i]` 1; `encoded[i]` 0 and the default action for
+    /// an env without a side to move, or whose choice no batch action plays (the encoding cannot
+    /// express it, or an escape, never legal in a batch: [`playable`]). Returns the number of the
+    /// latter, the choices lost.
+    ///
+    /// The choice draws from the side's seat stream (`StreamId::seat`), as an internal seat of
+    /// `policy` does, and no external seat otherwise uses it: called once per decision and
+    /// played, the choices replay the episodes `policy` plays in that seat bit for bit. The envs
+    /// are unchanged. Trusted tooling (a teacher's labels): `policy` may read the whole state
+    /// ([`Policy::SystemAllSeeing`]); an agent never acts on it.
+    ///
+    /// # Errors
+    /// [`BatchError::NotReset`], or [`BatchError::Buffer`] for a short array.
+    pub fn choice(
+        &mut self,
+        policy: Policy,
+        actions: &mut [Action],
+        encoded: &mut [u8],
+    ) -> Result<u32, BatchError> {
+        self.check_ready()?;
+        check("actions", actions.len(), self.len())?;
+        check("encoded", encoded.len(), self.len())?;
+        let mut lost = vec![0u32; self.ranges.len()];
+        let parts: Vec<_> = split(&mut self.slots, 1, &self.ranges)
+            .into_iter()
+            .zip(split(actions, 1, &self.ranges))
+            .zip(split(encoded, 1, &self.ranges))
+            .zip(lost.iter_mut())
+            .collect();
+        self.pool.run(parts, |(((slots, actions), encoded), lost)| {
+            for ((slot, action), encoded) in slots.iter_mut().zip(actions).zip(encoded) {
+                let chosen = acting(slot.env.as_ref()).map(|(env, side)| {
+                    let rng = &mut slot.seat_rngs[side.index()];
+                    playable(env, policy.choose(env, side, rng, &mut slot.legal))
+                });
+                *encoded = u8::from(chosen.is_some_and(|a| a.is_some()));
+                *lost += u32::from(chosen.is_some_and(|a| a.is_none()));
+                *action = chosen.flatten().unwrap_or_default();
+            }
+        });
+        Ok(lost.iter().sum())
+    }
+
     /// Runs `f(slot, i, row)` for every env i with its row of `out` (`width` values per env, the
     /// array checked to hold every env), shard by shard on the pool.
     fn each_row(
@@ -912,6 +957,14 @@ fn rows<'a>(out: &'a mut Outputs<'_>) -> impl Iterator<Item = Rows<'a>> {
 /// The env and its side to move, if it has one.
 fn acting(env: Option<&BattleEnv>) -> Option<(&BattleEnv, BattleSide)> {
     env.and_then(|e| e.to_move().map(|side| (e, side)))
+}
+
+/// The action an external seat plays for `command`, a choice for `env`'s side to move: its
+/// encoding ([`crate::action::encode`]), none for a command the encoding cannot express or an
+/// escape (never legal in a batch, ADR-0025 point 7).
+fn playable(env: &BattleEnv, command: Command) -> Option<Action> {
+    crate::action::encode(env.state(), env.ruleset(), command)
+        .filter(|a| a.entry as usize != RETREAT && a.entry as usize != SURRENDER)
 }
 
 /// Whether `entry` is a cast, whose later heads the env computes.

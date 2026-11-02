@@ -270,6 +270,17 @@ static int play_batch(Batched *out) {
     }
     CHECK(h3_batch_true_world(batch, BATCH, 5) == NULL);
     CHECK(h3_batch_true_world(NULL, 0, 5) == NULL);
+    /* v37 (E25 T16): the system actor's choices for the sides to move, played as theirs. */
+    uint8_t encoded[BATCH];
+    for (int call = 0; call < 20; call++) {
+        CHECK(h3_batch_choice(batch, H3_SEAT_SYSTEM, actions, encoded) == 0);
+        for (int i = 0; i < BATCH; i++)
+            CHECK(encoded[i] == (to_move[i] >= 0));
+        CHECK(h3_batch_step(batch, actions, &buffers) == H3_OK);
+    }
+    CHECK(h3_batch_choice(batch, H3_SEAT_EXTERNAL, actions, encoded) == H3_ERR_ARGUMENT);
+    CHECK(h3_batch_choice(batch, H3_SEAT_SYSTEM, NULL, encoded) == H3_ERR_NULL);
+    CHECK(h3_batch_choice(NULL, H3_SEAT_SYSTEM, actions, encoded) == H3_ERR_NULL);
     free(obs);
     free(final_obs);
     free(preview);
@@ -280,7 +291,7 @@ static int play_batch(Batched *out) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 36);
+    CHECK(h3_abi_version() == 37);
     CHECK(h3_observation_encoding_version() == 22 && h3_action_encoding_version() == 13);
     CHECK(h3_encounters_version() == 1);
     CHECK(h3_system_policy_version() > 0); /* v32 */

@@ -252,6 +252,24 @@ another seed scores them: the KL per head, the agreement of the most likely entr
 changes a top-level setting (`samples`, `device`, …). It does not resume; Ctrl-C scores and
 saves what it has. Bench configs live in `configs/distill/`.
 
+**The clone mode** (E25 T16, `h3env.train.clone`): `--teacher system` clones the fair system
+actor into a run's network, a warm start for PPO (`--init-from`):
+
+```sh
+uv run --group train python -m h3env.train.distill --teacher system \
+    --config configs/distill/e25-clone.toml --out runs/clone-1
+```
+
+The bench's `run` names the run config whose network the students take and whose training
+distribution the fair actor plays in every external seat (`BattleBatch.choice`, C ABI v37: its
+choice as the action an external seat plays, drawn from that side's seat stream, so the episodes
+are the ones it plays inside the call). The samples are whole episodes; each student learns the
+teacher's choices by cross-entropy (the entry, a cast's heads) and its value on the returns by
+Monte Carlo at the run's settings (reward v1, the truncation penalty, shaping). The held-out
+scores are the cross-entropy per head, the agreement per category and of the cast heads, and
+the value's explained variance; `ladder` (the report set's opponents) plays each student on the
+report and neutral sets at the end. The all-seeing system actor is never imitated.
+
 ## Search (E06 T8, design §14)
 
 `h3env.search` searches each decision over W determinized *worlds* of the battle
