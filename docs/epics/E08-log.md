@@ -10247,3 +10247,109 @@ free (`BoatTileTaken`). The game checks the treasury against the kind's price fi
 - **`BuildBoat`** (§8): the game's `check_ready`, then `AdventureState::boat_price(player,
   object_type, anchor)` (the adventure's validation, read-only), the treasury test, then the
   command applied and the price paid.
+
+### Increment 9, round 7: T85a, the week's step and a creature month's step (2026-11-02, `adventure/e08-t85a` with `shared/e08-t85a`)
+
+**The cut** (decision 223, the user at T85's start): T85 in two halves as the design cuts it;
+T85a whole, `h3-adventure` only: the week's step, a creature month's step and design §19's audit
+of the static reads. T85b (the game's day advance, the income, the spell points, the timed
+events, the observation's month and the env's `BuildBoat`) the next session. The game calls
+neither step until T85b, so no replay, report or version moves. The `shared/` part (docs only:
+`docs/06-security.md`) in a pull request of its own merged first (#639).
+
+- **The week's step** (`state/calendar.rs`; design §10): `AdventureState::start_week(core, part,
+  draws, sink)`. First the weekly objects in their order (`refill_weekly`, one write of the
+  block): `economy.rs`' `first_contents` became `contents(kind, first_week, draws)`, the Water
+  Wheel's `later` amount for every week after the first, the Windmill's and the Garden's draws as
+  at the build; the marks kept. Then the growth (`grow_monsters`) in object index order over the
+  monsters still on the map that grow, the static map's then the added: `v = count × unit +
+  fraction`, `v += v × growth_bp ÷ 10 000`, `min(v, growth_cap × unit)`; the count written to
+  `army_left` as one stack of the creature where it changed, the fraction where it changed;
+  `MonsterChanged` to the players that see the monster where the count word changed.
+- **A creature month's step** (`state/calendar.rs`; design §11): `AdventureState::start_month(core,
+  part, creature, draws, sink)`: the tiles in level, row and column order; land by the part's
+  passage, `live` neither blocked nor visitable (a removed object's tiles free, an object added
+  earlier in the walk holding its own), no `event_at`, no hero (their tiles' indices in a set built once);
+  then `1..=spawn_one_in`, and on a 1 the count (`spawn_factor` × a draw from the creature's
+  `adventure_count`, at least 1, at most `MAX_MONSTER_COUNT`) and the aggression
+  (`aggression_between`, the build's draw factored out of `resolve_monsters`); the object
+  (`month_monster`: the months' monster type, one tile blocked and visitable, as a placed
+  monster's template) through `add_object`, now built code (`Added::new`, `Added::push`,
+  `Occupancy::make_room` no longer test-only). `AdventureEventKind::MonsterAdded { object_type,
+  anchor, creature, count_word }` to the players that see it (`object_viewers`, as a placed
+  monster), passed whole by `project`.
+- **The audit of the static reads** (design §19; T83b2a's list): **one real gap found and
+  fixed**: `object_named` (every offer's and choice's object: `offer_stands`, `decline_offer`,
+  `join`, `pursue`, the gifts', finds' and records' answers) searched the static map's objects
+  only, so an added monster's offers to join and to flee would never have stood; it now walks
+  the objects added in play too, the last in map order first. The reads by a visit's index in
+  `rewards.rs`, `piles.rs`, `records.rs` and `events.rs` go through `object_at` (`give_won`'s
+  `beaten` would have indexed past the static map for an added monster's tile). Left on the
+  static map, each with its reason in its doc: `special_ground` (no added object is a ground),
+  `tile_sceneries` (an added monster's tile, which no other object covers, records `Other` with
+  or without it), `marks_of` and `known_by` (a monster takes no mark and teaches nothing),
+  `kind_at` and the owned and weekly objects' reads (an added object is never ownable or weekly),
+  `give_box`'s and `give_event`'s records (kind-gated). `guard_of`'s and `StepVisit`'s docs name
+  the added objects.
+- *Agent's calls (change freely):* `MonsterChanged` told only where the count word changed, not
+  where the count changed within its word (design §10 said "word or count"): that change would
+  tell the hidden count's and fraction's change (`docs/06-security.md`, exit criterion 8);
+  `MonsterAdded` names the tile `anchor` as the other object events and carries the count word
+  (design §11: `tile`, without it), so a client draws it as the observation shows it; the count
+  and the fraction written only where they changed (no write for a monster whose count stays);
+  the month's draws in the order chance, count, aggression (the reading names no order inside
+  `place_object`); `start_month` takes any creature (a known one's range, else 1), its caller the
+  game drawing among the part's twelve (T85b).
+- **`shared/e08-t85a`** (#639): `docs/06-security.md`'s lines for the two steps' events.
+- **Rules:** ADV-MON-013 new (`verified`: batch E9's E9-9 and E9-10, their numbers the unit
+  test's), ADV-MON-014 new (`implemented`; no observation of a creature month), ADV-WEK-001 to
+  -003 `verified` (E9-8's resets).
+- **Tests:** `state/tests/calendar.rs` (seven: the week's refills and marks over two weeks with
+  the draws replayed apart from the code; E9-9's and E9-10's counts and fractions over two weeks,
+  the events by viewer, a fork's own week, a battle's survivors keeping the fraction, a removed
+  monster's; no weekly objects, no growth parameters; a creature month at one chance in one on
+  two levels (water, rock, a blocked and a visited tile, a placed monster's neighbours, a removed
+  pile's tile, an event, two heroes), each added monster the placed one's object with the month's
+  data, its event's viewers as the observations', its guard and its growth; the month's draws
+  replayed at one chance in three and a second month; a part without months); `added.rs`' new
+  test of an added monster's offers to join and to flee, declined and accepted as the placed
+  twin's (it fails without the `object_named` fix).
+- **Bench** (`bench-check`, every adventure workload inside its gate, none re-baselined; against
+  `master` built in `target/wt-master`): reach-xl-144 464 566 511 Ir against 464 569 660
+  (−0.00 %), random-play-rewards-36 1 158 040 781 against 1 158 038 107 (+0.00 %),
+  random-play-duel-36 1 012 253 546 against T84b2's 1 012 318 130 on `master` (−0.01 %); no hot
+  path changed (the reach and passage loops untouched; `object_named` and the `object_at` reads
+  run per visit and offer).
+
+The design note's §10 and §11 as T85a found them:
+
+###### 10. The week's step (as T85a found it) (`AdventureState::start_week`; ADV-WEK-001 to -003, ADV-MON-013)
+
+Called by the game on a week's first day (§14) with the game's stream:
+
+1. **The weekly objects**, in weekly index order: the Windmill draws its resource then its amount;
+   the Water Wheel takes `later`; the Garden draws its gift and is full. Marks kept.
+2. **The growth**, in object index order over the monsters on the map (the static ones not
+   removed, then the added): skipped when `no_growth`; `v = count × unit + fraction`, `v += ⌊v ×
+   growth_bp ÷ 10 000⌋`, `v = min(v, cap × unit)`; the count `v ÷ unit` written to `army_left` as
+   one stack of the creature (the monster's survivors' shape), the fraction to `fractions`;
+   `MonsterChanged` emitted where its word or count changed, to the players who see it (as a
+   battle's survivors). A count from the map above the cap falls to it (A-32, no flag).
+
+No hero is lifted (the original lifts one standing on an entrance only to read the object under
+it). The draws: §14's stream order.
+
+###### 11. The month's step (as T85a found it) (`AdventureState::start_month`; ADV-MON-014)
+
+Called in a creature month with the creature and the game's stream: every tile in level, row and
+column order that is land (not water or rock, by the part's passage), that no object blocks or is
+visited from (live: removed objects free their tiles, added ones hold theirs), with no event and
+no hero, draws `1..=spawn_one_in`; a 1 adds a monster: the part's monster type for a placed
+monster (class 54), the creature, a count `spawn_factor × ` a draw from the creature's
+adventure-map range (ADV-MON-004), an aggression drawn from `spawn_aggression`, `never_flees`
+false, growing, no treasure, its template the creature's (the original's `place_object` 0x4C9890:
+one tile, blocked and visited from neighbours and from above). `MonsterAdded { object_type, tile,
+creature }` to the players who see the tile. The guard zones read the added objects at once (the
+original refreshes them after the walk, `refresh_guard_flags` 0x4CA410: no test inside the walk
+reads them, so the two agree). Not built: the original's Plague and normal months add nothing on
+the map.

@@ -4,7 +4,10 @@
 //! Observed syntax: Windows-1252 bytes; records end with CRLF (a bare LF outside quotes is
 //! accepted as well); fields are separated by TAB; a field that *starts* with `"` runs to the next
 //! `"` that is followed by TAB, CR, LF or the end of input, and may contain line breaks (bare LF in
-//! the observed files). A quote anywhere else is an ordinary character.
+//! the observed files). Inside a quoted field every run of quotes reads as one, as the
+//! executable's readers make it (`text_table_records` 0x5BBBA0 at 0x5BBD29 to 0x5BBD6A, the
+//! columns' reader 0x5BBE70; `docs/epics/E17-design.md` §7.19): GENRLTXT's `""I will…""` reads
+//! `"I will…"`. A quote anywhere else is an ordinary character.
 
 use crate::FormatError;
 
@@ -46,6 +49,8 @@ impl TextTable {
                         {
                             break;
                         }
+                        // A run of quotes reads as one (0x5BBD29).
+                        Some('"') if j > i + 1 && chars.get(j - 1) == Some(&'"') => {}
                         Some(&ch) => field.push(ch),
                     }
                     j += 1;
@@ -135,6 +140,22 @@ mod tests {
         assert_eq!(parse("5\" gun\tx\r\n"), vec![vec!["5\" gun", "x"]]);
         // A closed quoted field at end of input.
         assert_eq!(parse("\"q\""), vec![vec!["q"]]);
+    }
+
+    #[test]
+    fn a_run_of_quotes_in_a_quoted_field_reads_as_one() {
+        // GENRLTXT's record 33 as the game shows it (0x5BBD29 to 0x5BBD6A).
+        assert_eq!(
+            parse("\"%s states:\n\n\"\"I will pay.\"\"\"\r\n"),
+            vec![vec!["%s states:\n\n\"I will pay.\""]]
+        );
+        // At the field's start, and three in a row; an empty quoted field stays empty.
+        assert_eq!(
+            parse("\"\"\"a\"\"\"b\"\t\"\"\r\n"),
+            vec![vec!["\"a\"b", ""]]
+        );
+        // Outside a quoted field quotes stay as they are.
+        assert_eq!(parse("a\"\"b\r\n"), vec![vec!["a\"\"b"]]);
     }
 
     #[test]

@@ -82,9 +82,8 @@ T83b1 built the static map's ownable and weekly lists, the draws, the owners, a 
 the weekly contents, `check_owners`, `check_weekly` and the start's reveal (adventure state hash
 v18; decisions 215, 217); T83b2a the monsters' fractions, the objects added in play in the live
 presence and `check_added` (adventure state hash v19; decision 218). Their records and this
-section's built text are in `E08-log.md` ("T83b1", "T83b2a"). Left: T85a's audit of the static
-reads that never meet an added monster's index before its month (§19; the list in T83b2a's
-record).
+section's built text are in `E08-log.md` ("T83b1", "T83b2a"); T85a's audit of the static reads
+too (§19).
 
 ### 7. The owned objects' visits (ADV-OWN-001, ADV-OWN-005, ADV-SHY-002; built)
 
@@ -102,36 +101,15 @@ T84b2 built it (decision 221): its record and this section's text as T84b2 found
 T84b1 built it (decision 221): its record and this section's text as T84b1 found it are in
 `E08-log.md` ("T84b1").
 
-### 10. The week's step (`AdventureState::start_week`; ADV-WEK-001 to -003, ADV-MON-013)
+### 10. The week's step (`AdventureState::start_week`; ADV-WEK-001 to -003, ADV-MON-013; built)
 
-Called by the game on a week's first day (§14) with the game's stream:
+T85a built it (decision 223): its record and this section's text as T85a found it are in
+`E08-log.md` ("T85a").
 
-1. **The weekly objects**, in weekly index order: the Windmill draws its resource then its amount;
-   the Water Wheel takes `later`; the Garden draws its gift and is full. Marks kept.
-2. **The growth**, in object index order over the monsters on the map (the static ones not
-   removed, then the added): skipped when `no_growth`; `v = count × unit + fraction`, `v += ⌊v ×
-   growth_bp ÷ 10 000⌋`, `v = min(v, cap × unit)`; the count `v ÷ unit` written to `army_left` as
-   one stack of the creature (the monster's survivors' shape), the fraction to `fractions`;
-   `MonsterChanged` emitted where its word or count changed, to the players who see it (as a
-   battle's survivors). A count from the map above the cap falls to it (A-32, no flag).
+### 11. The month's step (`AdventureState::start_month`; ADV-MON-014; built)
 
-No hero is lifted (the original lifts one standing on an entrance only to read the object under
-it). The draws: §14's stream order.
-
-### 11. The month's step (`AdventureState::start_month`; ADV-MON-014)
-
-Called in a creature month with the creature and the game's stream: every tile in level, row and
-column order that is land (not water or rock, by the part's passage), that no object blocks or is
-visited from (live: removed objects free their tiles, added ones hold theirs), with no event and
-no hero, draws `1..=spawn_one_in`; a 1 adds a monster: the part's monster type for a placed
-monster (class 54), the creature, a count `spawn_factor × ` a draw from the creature's
-adventure-map range (ADV-MON-004), an aggression drawn from `spawn_aggression`, `never_flees`
-false, growing, no treasure, its template the creature's (the original's `place_object` 0x4C9890:
-one tile, blocked and visited from neighbours and from above). `MonsterAdded { object_type, tile,
-creature }` to the players who see the tile. The guard zones read the added objects at once (the
-original refreshes them after the walk, `refresh_guard_flags` 0x4CA410: no test inside the walk
-reads them, so the two agree). Not built: the original's Plague and normal months add nothing on
-the map.
+T85a built it (decision 223): its record and this section's text as T85a found it are in
+`E08-log.md` ("T85a").
 
 ### 12. Information (ADV-OWN-003, ADV-FOG-006 amended; built)
 
@@ -286,7 +264,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 | 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs (done, decision 212) |
 | 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b in two (decision 215): T83b1 the state the visits read (§6; adventure state hash v18, part v15; done), T83b2 in two (decision 218): T83b2a the fractions and the added objects (§6; adventure state hash v19; done), T83b2b the views (§12; done) |
 | 6 | **T84** | `h3-adventure` and `h3-game`, in two (decision 220): T84a flagging, the mines and their battles, the kept dialog (§7, §13, §14; done); T84b in two (decision 221): T84b1 the Lighthouses and the weekly visits (§7, §9; done), T84b2 the Shipyards and their boat offer, `BuildBoat` (§7, §8, §14; done) |
-| 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |
+| 7 | **T85** | The day's start, in two (decision 223): T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads; done); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |
 | 8 | **T86** + **T87** | T86: the economy maps, their replays and properties, the benchmarks, `--with-original-data` (§15). T87: the audit against the exit criteria, increment 9 closed, increment 10 refined |
 
 **Increment 9's exit criteria:**
@@ -323,11 +301,11 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 
 ### 19. Risks and open points
 
-- **Objects added in play are a first.** Every path that reads the static objects by index (43
-  sites of `map.objects()` in `h3-adventure` today) must read the live presence: T85a starts
-  with that audit, behind one accessor, and the property that an added monster is visited,
-  guards, fights and is seen as a placed one. `Reach` and the passage read added objects only
-  where their grid's bit is set (`bench-check` on `reach-xl-144`).
+- **Objects added in play are a first.** T85a's audit (its record in `E08-log.md`) routed the
+  visit-found reads through `object_at`, fixed `object_named` (an added monster's offers) and
+  wrote why each read left on the static map stays there; the unit tests show an added monster
+  visited, guarding, fighting, offering, growing and seen as a placed one. Left for T86: the
+  plans' property of the same, on games that reach a creature month.
 - **The day's start's cost.** A month's walk draws once per free land tile (about 20 000 on an
   XL map); a week writes every growing monster and every weekly object (a fork after it copies
   those tables on its next write). `month-start-xl-144` and `day-start-xl-144` measure both;

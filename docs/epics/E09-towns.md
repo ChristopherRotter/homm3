@@ -40,14 +40,14 @@ Towns as the original plays them, on the adventure map of E08: the town context 
 - **The town on the map:** its entrance entered (the town classes typed: a visit from the entrance tile, the gate's leaving); the visiting hero; a player's own town visited (no service yet); **capture**: an unguarded town of another player or of none flagged by its visitor, a garrisoned or visited one taken by a **siege** with ADR-0023's facts derived from the town (faction, fort level, the moat by edition) against the garrison or the visiting hero (`Defender::Garrison`), the outcome applied (the survivors, the flag); the flag's reveal (E08's flag radius).
 - **The day's income** of a town's hall (and the Capitol's limit, if the survey finds one in play in increment 1), read by the day's start (E08 increment 9's path).
 - **What a viewer sees** of a town (owner, faction, the fort level, the garrison as the original shows another's), written into `docs/06-security.md`.
-- **Content** for what it reads: the buildings' identities per faction, the hall and fort levels, the hero classes' tavern weights; the harvest `cross-lane` (`h3-harvest` is the battle lane's) or a `shared/` task (E08 T81b's way).
+- **Content** for what it reads: the buildings' identities per faction, the hall and fort levels (T1a2: the starting heroes' draw uses no tavern weights, which move to increment 3); the harvest `cross-lane` (`h3-harvest` is the battle lane's) or a `shared/` task (E08 T81b's way).
 - **Not in it:** construction, growth and recruitment, the Tavern's hire, the mage guild and every other service (increments 2 to 4); a player's defeat for losing all towns (E10); a computer player's town play (E10, E13).
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, the cut confirmed at each checkpoint)
 
 - **T0 E09 refined, the town lane opened.** Done (2026-10-31, `shared/town-lane`; decisions 1–7; TWN-Q1).
 - **T1a1 The towns survey, part 1a: the census and the factions.** Done (2026-11-02, `town/e09-t1a1`; T1a cut in two at its start, the user): survey `E09-towns.md` §0 to §3; every map imports once the main town's hero, a hero in a town and the random hero exist; TD-1, TD-2, T-1.
-- **T1a2 The towns survey, part 1b:** the main town's generated hero and the pool, the random hero's draw, a hero on a town's blocked tile, the town's buildings at the start, the garrison's random stacks.
+- **T1a2 The towns survey, part 1b.** Done (2026-11-02, `town/e09-t1a2`; the user kept it whole): survey `E09-towns.md` §4 to §6; one uniform draw for the main town's and the random hero (no tavern weights); TD-3 to TD-6, T-2 to T-4.
 - **T1b The towns survey, part 2:** the visit, capture and the siege's derivation, the hall's income, the views; the disputes and quirk candidates; the checkpoint's questions.
 - **T2 The ADR drafts, the design note and the cut:** a new ADR for `h3-towns` (the crate, the town's state and its home, the ruleset part and pack file, the seams, the pool), the amendments to ADR-0015 to -0017 and ADR-0023; `E09-design.md`; the build's rounds; the checkpoint.
 - **T3 Batch TWN-1:** the maps and specs, the harness's town reads, the runs, the scoring (as E08 T78 to T80).

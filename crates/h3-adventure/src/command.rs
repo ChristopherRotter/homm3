@@ -908,6 +908,21 @@ pub enum AdventureEventKind {
         /// The boat's type (appearance only).
         boat_type: u8,
     },
+    /// A month of a creature added a wandering monster on a free land tile (ADV-MON-014; E08
+    /// T85a; increment 9's design note §11): an object added in play, one tile blocked and visited
+    /// from it, seen and visited as a placed monster from then on. Seen by the players that see
+    /// it, as a placed monster (ADV-FOG-004: its tile explored, or on the fringe), with what they
+    /// see of it ([`crate::MonsterView`]); never its index, exact count or aggression.
+    MonsterAdded {
+        /// The monster's type (the months' parameters' `monster`).
+        object_type: ObjectTypeId,
+        /// Its anchor, its one tile.
+        anchor: Pos,
+        /// The month's creature.
+        creature: CreatureTypeId,
+        /// The word of its count ([`crate::MonsterParams::count_word`]).
+        count_word: u8,
+    },
 }
 
 /// Receiver of the adventure context's events.
