@@ -683,3 +683,13 @@ an entry only where a task builds on it.
 - **Increment 4 in one line:** the sampled policy's spread costs about 0.01 against every
   opponent (T9b), and training with the entropy bonus falling to 0 buys exactly that (T10b); with
   increments 1 to 3, every lever tried ends at 0.41 to 0.43 against the faithful system actor.
+
+## T12 — The head-to-head: `e25-sharp-1` #2 against `e25-scale-1` #3 (2026-11-02)
+
+- **The gate** (`h3env.train.gate --candidate runs/e25-sharp-1/best.pt --best
+  runs/e25-scale-1/best.pt`, the sandbox's CPU, both `best.pt` uploaded by the user; the gate
+  set v1, both seats external, common random numbers): **promoted after 332 pairs**, score
+  0.523 (+16 Elo), LLR +2.97 against the bound 2.94 (elo0 0, elo1 20), 61 seconds.
+- **The read:** the network trained sharper beats the scale run's best head to head, beside its
+  ladder at or above #3's on all five sets (T10b). **`e25-sharp-1` #2 is the current best**
+  (the user at T11: its head-to-head not clearly below 0.5), at 20 M samples against #3's 30 M.

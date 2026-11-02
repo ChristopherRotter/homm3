@@ -8,18 +8,12 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
 2026-10-27; increments 1 to 4 closed 2026-10-28, 29 and 11-02 (`E25-archive.md`; the records in
-`E25-log.md`). **`e25-sharp-1` #2 is the lineage's current best** once T12's head-to-head
-against `e25-scale-1` #3 is not clearly below 0.5 (the user at T11, AI-Q13; #3 until then).
+`E25-log.md`). **`e25-sharp-1` #2 is the lineage's current best** (the user at T11, AI-Q13;
+T12's head-to-head against `e25-scale-1` #3: 0.523, promoted, done 2026-11-02).
 **Increment 5, the fair system actor** (the user at T11): the battle lane pushes the fair system
 actor v1 soon; increment 5 is refined around it when it lands (decisions 2 and 3: it may train,
 its imitation, the fair target). E25 waits at the current best until then.
 
-- **T12 The head-to-head.** *Scope:* when the user uploads `runs/e25-sharp-1/best.pt` (24 MB):
-  `uv --directory python run --group train python -m h3env.train.gate --candidate
-  runs/e25-sharp-1/best.pt --best runs/e25-scale-1/best.pt` on the sandbox's CPU (#3's
-  `best.pt` is the user's upload too: `runs/` is outside git); its line read into `E25-log.md`
-  T12; clearly below 0.5 keeps #3 the current best (the epic, this queue, the HANDOFF, the
-  records' README). *Depends on:* the user's upload. *Status:* next.
 - **T13 Increment 5's refinement.** *Scope:* when the fair system actor v1 has landed (the
   battle lane): its seat in the env and the ladder (C ABI, `h3 ai eval`'s table), decision 2's
   training share, decision 3's imitation, the fair target; the tasks into the epic and this

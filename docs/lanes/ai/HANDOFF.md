@@ -16,12 +16,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **Done:** increments 1 to 4 (the search's diagnostics and shaping; the tactics bound and
   scale; the network's architecture; the policy's sharpness), in `E25-archive.md`; every lever
   ends at 0.41 to 0.43 against the system actor. **`e25-sharp-1` #2 the current best** (T11,
-  AI-Q13; 0.422 against the system actor) once T12's head-to-head against `e25-scale-1` #3 is
-  not clearly below 0.5. **Increment 5** waits for the battle lane's fair system actor v1 (the
-  user: soon; T13 refines it then). **Next:** T12 when the user uploads `e25-sharp-1`'s
-  `best.pt`.
-- **Open pull requests:** this session's (`claude/quirky-dirac-h5xdj2`: T9b to T11), opened
-  with this state. Merged: #640 (T8, T9a, T10a).
+  AI-Q13; 0.422 against the system actor; T12: 0.523 head to head against `e25-scale-1` #3).
+  **Increment 5** waits for the battle lane's fair system actor v1 (the user: soon). **Next:**
+  T13, increment 5's refinement, when it lands.
+- **Open pull requests:** #646 (`claude/quirky-dirac-h5xdj2`: T9b to T12). Merged: #640 (T8,
+  T9a, T10a).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -34,14 +33,15 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-11-02 — E25 T8 to T11
+### 2026-11-02 — E25 T8 to T12
 
 - #610 merged; the branch started from `master`. T8: the user chose increment 4 and kept #3
   (AI-Q12; the user's caveat on T7c's structured networks in `E25-log.md` T8). T9a and T10a's
   schedule built, #640 merged; the branch restarted from `master`. T9b on the sandbox's CPU from
   #3's uploaded `best.pt` while the user ran `e25-sharp-1` (T10b, its record committed). T11
-  (AI-Q13): increment 4 closed, `e25-sharp-1` #2 the current best after T12, increment 5 waits
-  for the fair system actor. A VM restart cost nothing (all committed or in `runs/`).
+  (AI-Q13): increment 4 closed, increment 5 waits for the fair system actor. T12 on both uploaded
+  `best.pt`: `e25-sharp-1` #2 promoted against #3, the current best. A VM restart cost nothing
+  (all committed or in `runs/`).
 
 ### 2026-10-30 — E25 T7d
 

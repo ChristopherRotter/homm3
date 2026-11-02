@@ -113,19 +113,18 @@ current best; **since T6** (the user, 2026-10-29) **`e25-scale-1` #3** (30 M, th
 rounds), the network the exit criteria are judged on. **At increment 3's checkpoint** (the user,
 2026-11-02, T8): #3 stays the current best; increment 4 is the policy's sharpness and PPO's
 settings. **At increment 4's checkpoint** (the user, 2026-11-02,
-T11): **`e25-sharp-1` #2** (20 M, the entropy bonus to 0) the current best, once its head-to-head
-against #3 (T12) is not clearly below 0.5.
+T11): **`e25-sharp-1` #2** (20 M, the entropy bonus to 0) the current best, its head-to-head
+against #3 0.523 (T12).
 
 **Increment 5: the fair system actor** (the user at T11, 2026-11-02, AI-Q13; refined when it
 lands). The battle lane pushes the fair system actor v1 soon (the user); increment 5 is refined
 around it then: decision 2 lets it train (a league member, the neutral kinds' defender), decision
 3 makes its imitation a candidate (a warm start, or an auxiliary loss decaying to 0), and it is
 a fair target beside the faithful one (decision 1, revisable with evidence). Until then E25
-waits at the current best; the open task is T12 (the AI queue).
+waits at the current best (`e25-sharp-1` #2, T12).
 
-- [ ] **T12 The head-to-head** (the sandbox, on `e25-sharp-1`'s uploaded `best.pt`): the gate's
-  head-to-head of `e25-sharp-1` #2 against `e25-scale-1` #3; clearly below 0.5 keeps #3 the
-  current best (the user at T11).
+- [x] **T12 The head-to-head** (2026-11-02; `E25-log.md` T12): `e25-sharp-1` #2 against
+  `e25-scale-1` #3 promoted by the gate, 0.523 over 332 pairs (+16 Elo): #2 the current best.
 - [ ] **T13 Increment 5's refinement**, when the fair system actor v1 has landed.
 
 ## Exit criteria
