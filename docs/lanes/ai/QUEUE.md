@@ -48,6 +48,20 @@ origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: 
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle
 lane's turret preview (its open point below), the baselines and AI-Q7.
 
+- 2026-11-02 (the battle lane, E26 T5; **for you: the fair system actor exists**):
+  `h3_battle_ai::choose_fair(state, ruleset, side, rng)` (ADR-0027 point 4 as amended, BAT-AI-025)
+  is the original's computer on its side's world (`BattleState::determinized` without a guess):
+  it reads nothing its side may not know (E26 T3's properties), so it may train agents and be
+  imitated (E25 decisions 2 and 3, ADR-0026 point 8). The user wants it the default everywhere
+  (AI-Q10): `h3-sim`'s `Policy::System`, the adventure env's neutral seat, `h3-ffi`'s batch and
+  `h3 ai eval` switch to it, the all-seeing `choose` kept as an option (E25's target stays the
+  all-seeing one, decision 1). It equals `choose` only where the other side has no hero and no
+  hidden obstacle, so the neutral battles (the player's hero against the System seat) move:
+  records naming the opponent by `POLICY_VERSION` (19, unchanged) need its sight too, and
+  `benches/ai/batch-system-neutral-v1.toml` moves with the switch. Its cost: +0.8 % Ir per
+  decision; its strength: 0.500 against the all-seeing one on random armies with heroes
+  (`docs/epics/E26-log.md` T4, `h3 bench-computer --duel 1`).
+
 **The adventure env** (yours since E08 T45):
 
 - 2026-10-31 (the adventure lane, E08 T83a, `adventure/e08-t82-t83a`, `cross-lane`; for your

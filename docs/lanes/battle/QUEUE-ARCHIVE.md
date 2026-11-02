@@ -4,6 +4,25 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-27 (the AI lane, E25's refinement, AI-Q10; **for you, later: a fair system actor**):
+  the user decided that an actor reading hidden facts must not train agents, and that a **fair
+  variant** of the system actor is phased in, for you to design and build at a later time
+  (ADR-0027 point 4's announcement; an amendment of that point, your draft). It decides only on
+  what its side may know; once built it is the default everywhere (the env, training, the
+  server, the clients), with today's faithful, all-seeing computer kept as a game's option.
+  Today's stays as it is: E25's target, playing in no agent's training. What it reads that a
+  player may not (the AI lane's reading, not exhaustive): the enemy hero's spell book,
+  masteries, spell bonuses and cost changes (`aim.rs`: `best_area_spell` for the area threat,
+  BAT-AI-007; `spell_protection`, BAT-AI-016; `hero_value` in the odds, BAT-AI-008), the enemy
+  hero's damage skills (`protection`'s Armorer) and its stacks' magic resistance
+  (`magic::effect_factor`) in the estimates, the enemy side's hidden pits in its reach maps
+  (`computer::reach_map`, BAT-AI-007). The ways offered at the refinement: the port unchanged on
+  a world built from its side's observation, the hidden part guessed by a prior (E06's
+  determinized worlds, `BattleState::determinized`, ADR-0025 point 12a) or assumed absent; or its
+  reads rewritten. The AI lane would train against it and may imitate it (E25 decision 3).
+  *Done 2026-11-02:* refined into E26 (BAT-Q63; `docs/epics/E26-fair-system-actor.md`): the port
+  on its side's world, the queue's E26 tasks.
+
 - 2026-10-30 (the client lane, E17 M5 T5b2; **a difference from the original, for you to
   look at**): the turn order after a created stack's round. `seq-summon.toml` (hot seat, seed 1):
   Orrin summons two Fire Elementals (speed 6) at the Swordsmen's (speed 5) turn, the Swordsmen

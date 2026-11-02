@@ -48,6 +48,11 @@
 //! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
 //! `strict-fixed`.
 //!
+//! The fair system actor ([`choose_fair`], E26; ADR-0027 point 4 as amended) is the same
+//! computer on its side's world of the battle ([`BattleState::determinized`]): it decides only
+//! on what its side may know, so that it may train agents and be the default seat; [`choose`]
+//! stays the all-seeing original, a game's option.
+//!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
 #![no_std]
@@ -100,10 +105,11 @@ pub const POLICY_VERSION: u32 = 19;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):
-/// [`unchecked`]'s choice when the engine accepts it, else Defend (ADR-0027 point 3; no such
-/// choice is known, the property tests assert none). Its draws come from `rng`, the caller's
-/// stream, never the battle's (point 5); the same state and stream give the same command. For a
-/// side not to act, or a battle that is over, it gives Defend, which the engine refuses.
+/// [`unchecked`]'s choice when the engine accepts it, else Defend (ADR-0027 point 3; one such
+/// choice is known, a hypnotized shooter's shot at itself, BAT-STUB-18; the property tests assert
+/// no other). Its draws come from `rng`, the caller's stream, never the battle's (point 5); the
+/// same state and stream give the same command. For a side not to act, or a battle that is over,
+/// it gives Defend, which the engine refuses.
 // rule: BAT-AI-001
 // Never inlined: the gated benchmark counts the instructions inside it (ADR-0027 point 11).
 #[inline(never)]
@@ -114,6 +120,32 @@ pub fn choose(
     rng: &mut Rng,
 ) -> Command {
     checked(state, ruleset, side, unchecked(state, ruleset, side, rng))
+}
+
+/// The fair system actor's command for `side` (ADR-0027 point 4 as amended, E26; BAT-AI-025):
+/// the original's computer ([`unchecked`]) on `side`'s world of the battle
+/// ([`BattleState::determinized`] without a guess: everything `side` may not know replaced, the
+/// other side's hero a hero of its type with the public part the battle shows, its hidden spell
+/// obstacles placed again by their rule), its choice checked on the battle as [`choose`]'s.
+/// The world's seed is drawn from a copy of `rng`, so the policy's own draws keep the original's
+/// order and leave `rng` where [`choose`] leaves it: where `side` may know everything (no other
+/// hero, no hidden obstacle of the other side) the command is [`choose`]'s. Defend for a world
+/// the battle refuses (none is known: a hero of its type alone always passes).
+// rule: BAT-AI-025
+// Never inlined, as `choose`: the world's cost is part of a decision's (ADR-0027 point 11).
+#[inline(never)]
+pub fn choose_fair(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    rng: &mut Rng,
+) -> Command {
+    let seed = rng.clone().next_u64();
+    state
+        .determinized(ruleset, side, None, seed)
+        .map_or(Command::Defend, |world| {
+            checked(state, ruleset, side, unchecked(&world, ruleset, side, rng))
+        })
 }
 
 /// The original's computer's choice for `side` before validation (the property tests assert the
