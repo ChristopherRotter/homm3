@@ -404,9 +404,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        the object's, one a week:** the week's first visit, by any player's hero, takes them and
        empties the object for every player; every later visit that week, by any player, finds it
        empty and is told so (the user at ADV-Q38, E08 decision 201: never once per player;
-       batch E9 confirmed it). A visit also marks the visitor's team (the Garden's mark the
-       visitor's owner alone), a mark no week clears and that never gates the gain: the original
-       keeps it for its hint only (ADV-VIS-006). The contents when the game is built and at every
+       batch E9 confirmed it). A visit also marks the visitor's team (the Garden's too, where
+       the original marks its visitor alone: `ADV-QUIRK-35`, not reproduced, E08 decision 222),
+       a mark no week clears and that never gates the gain: the original keeps it for its hint
+       only (ADV-VIS-006). The contents when the game is built and at every
        new week, visited or not, drawn in object order: the Windmill one of its resources
        (mercury to gems) and an amount of 3 to 6, both drawn; the Water Wheel its first week's
        gold (500) at the build, its later gold (1 000) every week; the Garden full with one of
@@ -480,7 +481,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    (the size word of their total count, every stack counted, an upgraded one too, and their
    creature only when all are of one), their stacks and counts by the owner's team. A Shipyard's
    boat tile is static and public with it. A weekly object's **visited mark** is its visitor's
-   team's (the Garden's its visitor's owner's), kept through the weeks (the original's hint reads
+   team's (a Garden's too, E08 decision 222), kept through the weeks (the original's hint reads
    "visited" from it, never "emptied"); its contents are never shown, before a visit or after. A
    month's monster is seen as any monster where its tile is; a monster's fraction is never shown
    (its word follows its count). A flag, a built boat and an added monster are seen where their
