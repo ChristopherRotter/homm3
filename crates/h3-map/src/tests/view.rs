@@ -408,6 +408,9 @@ fn check_told(
     let mut lost: Vec<ArmyStack> = Vec::new();
     // E08 T84a: the objects the viewer is told were flagged or whose guards' hint changed.
     let mut flagged = Vec::new();
+    // E08 T85a: the monsters a creature month added that the viewer is told of (the game emits
+    // them from T85b).
+    let mut added = Vec::new();
     let mut decision = before.decision.as_ref().map(named);
     let mut bought = before.adventure.bought.clone();
     let mut keys = before.adventure.keys;
@@ -586,6 +589,21 @@ fn check_told(
             }) => {
                 prop_assert_eq!(seen_by, alone);
                 words.push(((object_type, anchor), count_word));
+            }
+            // E08 T85a: a creature month's monster, told to the players that see it as a placed
+            // one: it shows with its creature and word, its one tile blocked and visited from.
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::MonsterAdded {
+                        object_type,
+                        anchor,
+                        creature,
+                        count_word,
+                    },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                added.push(((object_type, anchor), creature, count_word));
             }
             GameEvent::Adventure(AdventureEvent {
                 kind: AdventureEventKind::HeroRemoved { hero, pos },
@@ -891,12 +909,31 @@ fn check_told(
             object
         );
     }
+    for &(name, creature, count_word) in &added {
+        let shown = after.adventure.objects.iter().any(|o| {
+            named(o) == name
+                && o.monster
+                    == Some(h3_adventure::MonsterView {
+                        creature,
+                        count_word,
+                    })
+        });
+        // A later event of the same batch may have changed its word or taken it off the map.
+        let later = removed.contains(&name) || words.iter().any(|(n, _)| *n == name);
+        prop_assert!(shown || later, "{:?} added untold", name);
+    }
     // The tiles a removed object the viewer saw covered: what covers there may thin out.
     let (width, height) = (
         usize::from(before.adventure.width),
         usize::from(before.adventure.height),
     );
     let mut freed = vec![false; before.adventure.tiles.len()];
+    // An added monster's tile, which it now blocks and is visited from (E08 T85a).
+    let mut covered = vec![false; before.adventure.tiles.len()];
+    for &((_, a), _, _) in &added {
+        covered[(usize::from(a.level) * height + usize::from(a.y)) * width + usize::from(a.x)] =
+            true;
+    }
     for object in before
         .adventure
         .objects
@@ -914,15 +951,23 @@ fn check_told(
             }
         }
     }
-    for ((was, is), freed) in before
+    for (((was, is), freed), covered) in before
         .adventure
         .tiles
         .iter()
         .zip(&after.adventure.tiles)
         .zip(freed)
+        .zip(covered)
     {
         prop_assert!(depth(was) <= depth(is));
         match (was, is) {
+            (TileView::Seen(was), TileView::Seen(is)) if covered => {
+                prop_assert_eq!(
+                    (was.terrain, was.road, was.river),
+                    (is.terrain, is.road, is.river)
+                );
+                prop_assert!(is.blocked && is.visitable);
+            }
             (TileView::Seen(was), TileView::Seen(is)) if freed => {
                 prop_assert_eq!(
                     (was.terrain, was.road, was.river),

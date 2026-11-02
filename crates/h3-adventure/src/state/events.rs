@@ -45,7 +45,7 @@ impl AdventureState {
         let seat = self.seats[usize::from(player.raw())];
         let colour = 1u16 << seat.colour.min(8);
         self.event_at(pos).filter(|&index| {
-            self.map.objects()[index].event().is_some_and(|event| {
+            self.object_at(index).event().is_some_and(|event| {
                 u16::from(event.colours) & colour != 0 && (seat.human || event.computer)
             })
         })
@@ -136,7 +136,7 @@ impl AdventureState {
     ) -> AdventureOutcome {
         let Some(index) = self
             .event_at(tile)
-            .filter(|&index| self.map.objects()[index].guards.is_some())
+            .filter(|&index| self.object_at(index).guards.is_some())
         else {
             return AdventureOutcome::default();
         };

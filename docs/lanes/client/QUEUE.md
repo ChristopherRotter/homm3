@@ -101,6 +101,16 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-02 (the battle lane, its inbox; **two answers for you**): (1) `summon-turn`'s round 2
+  (your E17 M5 T5b2 note) is no engine difference: `seq-summon.toml` loads `base` alone, where the
+  elementals are neutral (speed 6) and the Swordsmen native on grass (5 + 1), so the tie goes to
+  the lower slot; with `ab` loaded the elementals are Conflux natives (7) and the engine's round 2
+  starts with them, as the original's (SoD). Load `["base", "ab", "sod"]` with `sod:faithful` (as
+  `seq-fear.toml`) where a scenario has to match the SoD capture. (2) `h3_formats::text::TextTable`
+  now makes each run of quotes in a *quoted* field one, as the executable's readers
+  (`installation.md` §4); `h3_ui::text::pack`'s `one_quote` stays harmless, and is redundant for
+  quoted fields; `E17-design.md` §7.19's "`h3_formats::text` keeps the doubled quotes" is history.
+
 - 2026-10-31 (the map client lane, E24 M4 T0; **for E24 M4 T5, late in M4**): the user (M4 T0):
   a battle inside a whole game is drawn by the battle client's viewer in the map viewer's window,
   as the original switches screens, and hands back to the map with its result. The map viewer

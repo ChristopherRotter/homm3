@@ -1979,6 +1979,66 @@ quirks   = ["ADV-QUIRK-6"]
   confidence = "low"
 
 [[rule]]
+id       = "ADV-MON-013"
+title    = "The wandering monsters' weekly growth"
+context  = "adventure"
+status   = "verified"
+summary  = "On each week's first day after the first (the week's step), every wandering monster still on the map grows unless the map says it does not, in object order (the static map's, then those added in play, ADV-MON-014): its value is its count times the growth unit plus its fraction (the original's sixteenths: unit 16; the fraction kept apart from the count and never shown, ADV-FOG-006), plus a tenth of it truncated (growth 1 000 basis points), capped at 4 000 times the unit (a larger count from the map falls to 4 000 at its first week, A-32, no flag); the new count is the value divided by the unit, the rest the fraction. A battle's survivors take its count and keep the fraction (D-49, as read). A change of the word of its count is told to the players that see it (`MonsterChanged`); a change within the word is not, as the count and the fraction stay hidden. E08 T83a: the part's growth_bp, growth_unit and growth_cap; T83b2a: the fractions; T85a (increment 9's design note §10): `AdventureState::start_week`, the count written where it changed as one stack of the creature (a battle's survivors' shape), the fraction where it changed. The game calls it from T85b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md sections 7.3 and 10.1): new_day_week_events 0x4C8780, the map's scan 0x4C8AE0 to 0x4C8D19 by entrance class; class 54: the 16-bit value count x 16 plus bits 27 to 30, a tenth added truncated, capped at 0xFA00, both parts written back (0x4C8BA5 to 0x4C8C00); a battle's survivors written to bits 0 to 11 only (0x4A6C9C)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 CGCreature::newTurn as read by survey E08-economy.md section 10.1 (D-49): the count kept in thousandths (temppower), +10 % a week, no growth at 4 000 or more; refuted by batch E9's E9-9 and E9-10"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Growth and Wandering creature as read by survey E08-economy.md sections 7.6 and 10.1: a wandering stack grows on the first day of each week beyond the first, by a tenth"
+  url        = "https://heroes.thelazy.net/index.php/Growth"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-9 and E9-10 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30; survey E08-economy.md section 19): 43, 81 and 15 became 47 + 4/16, 89 + 1/16 and 16 + 8/16 on day 8, then 51 + 15/16, 97 + 15/16 and 18 + 2/16 on day 15; one that does not grow stayed 43; 4 095 became 4 000 + 0/16 on day 8"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MON-014"
+title    = "A creature month's wandering monsters"
+context  = "adventure"
+status   = "implemented"
+summary  = "In a month of a creature (the month's step, on its first day after day 1), every tile of the map in level, row and column order that is land (no water, no rock), that no object still on the map blocks or is visited from (one added earlier in the walk too), with no event still on the map and no hero, gets a wandering monster with one chance in 200 (a draw of 1 to 200 that is 1): the month's creature, a count of twice a draw from the creature's adventure-map range (ADV-MON-004; D-50 as read), then an aggression drawn from 1 to 10; growing, fleeing as any, without treasure; one tile blocked and visited from its neighbours, of the months' monster type. It is an object added in play, after the static map's objects in map order, and answers, guards, fights, grows and is seen as a placed monster from then on (ADV-MON-005 to -010, ADV-MON-013, ADV-FOG-004). Nothing tests a guard zone, a hero beside the tile or a viewer. Told to the players that see it as a placed monster (`MonsterAdded`: its type, tile, creature and count word; never its index, count or aggression). E08 T83a: the part's months (spawn_one_in, spawn_factor, spawn_aggression, monster); T83b2a: the objects added in play; T85a (increment 9's design note §11): `AdventureState::start_month`, the draws in the order chance, count, aggression. The game draws the month and calls it from T85b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md sections 7.4 and 10.2): new_month 0x4C90D0 to 0x4C9236 tests each tile of both levels for +0xC bit 6 (no object blocks it), +0xD bit 4 clear (no entrance), terrain not water or rock, no event (class 26), then random_between(1, 200) == 1; place_object 0x4C9890 places class 71 as 54, subtype the creature, a count of twice a draw from the creature's range (+0x6C to +0x70), an aggression drawn 1 to 10; refresh_guard_flags 0x4CA410 after the walk"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 CGameHandler::spawnWanderingMonsters as read by survey E08-economy.md section 10.2 (D-50): exactly the free tiles over 200 monsters on shuffled tiles, skipping guarded ones, with one draw of the creature's range; the mood 1 to 10"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Growth as read by survey E08-economy.md sections 7.6 and 10.2: in a special month any free tile except water has a 0.5 % chance of a wandering stack; special months' monsters have a mood of 1 to 10"
+  url        = "https://heroes.thelazy.net/index.php/Growth"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+[[rule]]
 id       = "ADV-TCH-001"
 title    = "The once-per-hero gifts of primary skills: Marletto Tower, Garden, Mercenary Camp, Star Axis, Arena, Library"
 context  = "adventure"
@@ -2745,8 +2805,8 @@ numeric  = "integer"
 id       = "ADV-WEK-001"
 title    = "The Windmill"
 context  = "adventure"
-status   = "implemented"
-summary  = "A Windmill is a weekly object (entered, owned by nobody): each week one of its kind's resources (the original's mercury, ore, sulfur, crystal or gems, never wood or gold) and an amount of 3 to 6, both drawn, the first week's when the game is built; its visit gives them to the visitor's owner once and empties it until the week's step, which draws again whether it was visited or not; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents drawn from the setup stream after the static map's draws, in object order, the resource with equal chances among the kind's and then the amount between its bounds (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; the week's step with T85a."
+status   = "verified"
+summary  = "A Windmill is a weekly object (entered, owned by nobody): each week one of its kind's resources (the original's mercury, ore, sulfur, crystal or gems, never wood or gold) and an amount of 3 to 6, both drawn, the first week's when the game is built; its visit gives them to the visitor's owner once and empties it until the week's step, which draws again whether it was visited or not; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents drawn from the setup stream after the static map's draws, in object order, the resource with equal chances among the kind's and then the amount between its bounds (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; E08 T85a (increment 9's design note §10): the week's step (`AdventureState::start_week`) draws its contents again in the weekly objects' order, visited or not, its marks kept; the game calls it from T85b."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2778,8 +2838,8 @@ numeric  = "integer"
 id       = "ADV-WEK-002"
 title    = "The Water Wheel"
 context  = "adventure"
-status   = "implemented"
-summary  = "A Water Wheel is a weekly object (entered, owned by nobody): its resource (gold), 500 in the first week and 1 000 in every later one, whether it was visited or not; its visit gives it to the visitor's owner once and empties it until the week's step; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents when the game is built, the kind's first amount (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; the week's step with T85a."
+status   = "verified"
+summary  = "A Water Wheel is a weekly object (entered, owned by nobody): its resource (gold), 500 in the first week and 1 000 in every later one, whether it was visited or not; its visit gives it to the visitor's owner once and empties it until the week's step; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents when the game is built, the kind's first amount (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; E08 T85a (increment 9's design note §10): the week's step (`AdventureState::start_week`), every Water Wheel's later amount, visited or not, its marks kept; the game calls it from T85b."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2811,8 +2871,8 @@ numeric  = "integer"
 id       = "ADV-WEK-003"
 title    = "The Mystical Garden"
 context  = "adventure"
-status   = "implemented"
-summary  = "A Mystical Garden is a weekly object (entered, owned by nobody): each week one of its gifts (5 gems or 500 gold), drawn with equal chances, the first week's when the game is built; its visit gives it to the visitor's owner once and empties it until the week's step, which draws again; its visited mark is the visitor's team's (the original's the visitor's alone, `ADV-QUIRK-35` not reproduced, E08 decision 222), never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's gift drawn from the setup stream after the static map's draws, in object order (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; the week's step with T85a."
+status   = "verified"
+summary  = "A Mystical Garden is a weekly object (entered, owned by nobody): each week one of its gifts (5 gems or 500 gold), drawn with equal chances, the first week's when the game is built; its visit gives it to the visitor's owner once and empties it until the week's step, which draws again; its visited mark is the visitor's team's (the original's the visitor's alone, `ADV-QUIRK-35` not reproduced, E08 decision 222), never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's gift drawn from the setup stream after the static map's draws, in object order (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; E08 T85a (increment 9's design note §10): the week's step (`AdventureState::start_week`) draws its contents again in the weekly objects' order, visited or not, its marks kept; the game calls it from T85b."
 numeric  = "integer"
 
   [[rule.source]]

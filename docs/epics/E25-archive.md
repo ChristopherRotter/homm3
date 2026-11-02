@@ -1,7 +1,7 @@
 # E25 — archive: closed increments
 
 Moved out of `E25-battle-ai-v2.md` verbatim when an increment closes (increment 1 on
-2026-10-28, increment 2 on 2026-10-29, at their checkpoints), so that the epic file holds what
+2026-10-28, increment 2 on 2026-10-29, increment 3 on 2026-11-02, at their checkpoints), so that the epic file holds what
 is open and the decisions that apply to the whole epic. Each task's full record is in `E25-log.md` (grep its id).
 
 ## Increment 1 (closed 2026-10-28)
@@ -50,3 +50,33 @@ is open and the decisions that apply to the whole epic. Each task's full record 
 - [x] **T6 Increment 2's checkpoint** (2026-10-29; `E25-log.md` T6, AI-Q11): the current best
   `e25-scale-1` #3; the head-to-heads skipped; increment 3 is the network's architecture, a
   distillation bench first (the user).
+
+## Increment 3 (closed 2026-11-02)
+
+**Increment 3: the network's architecture** (refined 2026-10-29, AI-Q11; the AI queue's tasks).
+Every run since E05 is the 2 × 512 MLP over the flat observation; the search (T1c) and scale
+(T5) stopped at its limit. Candidates, all on observation v22 (no encoding change): a deeper and
+a wider MLP; a **hex convolution** network (the field in axial coordinates, a 3 × 3 kernel
+without two opposite corners: a hex's six neighbours); a **hex transformer** (the hexes as
+tokens, a bias per axial offset); E06's entity network as it is. A distillation bench ranks them
+against the current MLP before any RL run.
+
+- [x] **T7a The network kinds** (2026-10-29; `E25-log.md` T7a): `[network] layers` for the MLP,
+  `kind = "hexconv"` and `"hexformer"` (`h3env.train.hexnet`: the stacks drawn on their hexes,
+  the entity network's heads, `entity.Pointed`), `field_width`, `field_height`; tests; the costs
+  on the sandbox's CPU (`hexconv` 64 × 6 15 times the MLP's operations).
+- [x] **T7b The distillation bench** (2026-10-29; `E25-log.md` T7b): `h3env.train.distill`,
+  every student trained on the same rollouts of the teacher (`e25-scale-1` #3) to its heads and
+  its λ-returns, scored on held-out rollouts per head and category; `configs/distill/e25.toml`
+  (six students); a CPU smoke (minibatches of 512 rows: PPO's do not fit the hex networks).
+- [x] **T7c The bench run** (2026-10-30; `E25-log.md` T7c; `records/distill/distill-1.json`):
+  the structured networks fit the teacher ten times worse than any MLP (agreement 0.62 to 0.64
+  against 0.87 to 0.88) at 5 to 25 times its cost; the wide MLP leads everywhere, its value past
+  the teacher's (0.612 against 0.575). The user: the wide MLP alone to RL, from scratch.
+- [x] **T7d The A/B** (2026-10-30; `E25-log.md` T7d; `records/e25-wide-1.json`): the wide MLP
+  from scratch at 20 M ends at `e25-scale-1` #3's ladder (every point estimate within 0.006;
+  0.414 against the system actor) at 0.7 times its samples a second; its value no better in RL.
+  The decisions' mix not read (its `best.pt`, 49.5 MB, is above the upload limit).
+- [x] **T8 Increment 3's checkpoint** (2026-11-02; `E25-log.md` T8, AI-Q12): `e25-scale-1` #3 stays
+  the current best; increment 4 is the policy's sharpness and PPO's settings (the user); T7c's
+  verdict on the structured networks holds for those configurations only (the user's caveat).

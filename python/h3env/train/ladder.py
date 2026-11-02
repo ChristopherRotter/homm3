@@ -8,12 +8,16 @@ held-out set: the report set v1 by default (`--episodes`: the first n of its 500
 neutral set v1 (`--set neutral-v1`: attacking the system actor, E06 T7c), or E05's v0 (`--set v0`).
 The episodes are `h3 ai eval --set …`'s: on a whole stratified set each line ends with the bots'
 rates against the same opponent from their table (`python/records/bots-<set>.json`).
+`--temperature 1,0.7,0.5,0` (E25 T9a) plays the ladder once per temperature, the network's logits
+divided by it (1 its own policy, the one the targets judge; 0 its most likely choices): each line
+then starts with its temperature, and `--json` holds one table per temperature, keyed by it.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 
@@ -46,8 +50,20 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--threads", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--max-steps", type=int, default=2000)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--temperature",
+        default="1",
+        help="the network's temperatures, comma-separated: a ladder each (1: its own policy)",
+    )
     parser.add_argument("--json", help="also write the results to this file")
     args = parser.parse_args(argv)
+    try:
+        temperatures = [float(t) for t in args.temperature.split(",")]
+    except ValueError:
+        parser.error(f"--temperature: numbers, comma-separated, not {args.temperature!r}")
+    keys = [f"{t:g}" for t in temperatures]  # the lines' and the JSON's names
+    if not all(0.0 <= t < math.inf for t in temperatures) or len(set(keys)) < len(keys):
+        parser.error(f"--temperature: distinct, finite and not negative, not {args.temperature!r}")
     trained = trained_seed(args.checkpoint)
     if trained in HELD_OUT_BATCH_SEEDS:
         # The same batch seed gives the same episodes: the ladder's would be the run's own.
@@ -59,21 +75,28 @@ def main(argv: list[str] | None = None) -> None:
     else:
         settings = {"per_kind": args.episodes or REPORT_V1_ENVS}
     policy = load(args.checkpoint, args.device)
-    rows = ladder(
-        policy,
-        opponents=args.opponents.split(","),
-        held_out=args.held_out,
-        threads=args.threads,
-        max_steps=args.max_steps,
-        **settings,
-    )
     whole = settings.get("per_kind") == REPORT_V1_ENVS and args.max_steps == 2000
     table = BOTS_TABLES.get(args.held_out)
     bots = bots_table(args.held_out) if whole and table and table.exists() else None
-    for opponent, r in rows.items():
-        print(_line(opponent, r, bots), flush=True)
+    plain = temperatures == [1.0]  # the network's own policy: the lines and table as before T9a
+    tables = {}
+    for temperature, key in zip(temperatures, keys, strict=True):
+        rows = ladder(
+            policy,
+            opponents=args.opponents.split(","),
+            held_out=args.held_out,
+            threads=args.threads,
+            max_steps=args.max_steps,
+            temperature=temperature,
+            **settings,
+        )
+        for opponent, r in rows.items():
+            line = _line(opponent, r, bots)
+            print(line if plain else f"at {key}: {line}", flush=True)
+        tables[key] = rows
     if args.json:
-        Path(args.json).write_text(json.dumps(rows, indent=1) + "\n", encoding="utf-8")
+        out = tables["1"] if plain else tables
+        Path(args.json).write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
 
 
 def _line(opponent: str, r: dict, bots: dict | None) -> str:

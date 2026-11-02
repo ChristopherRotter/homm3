@@ -43,7 +43,7 @@ impl AdventureState {
             offer: Some(Offer {
                 hero,
                 object_type,
-                anchor: self.map.objects()[index].anchor,
+                anchor: self.object_at(index).anchor,
                 kind,
             }),
             ..AdventureOutcome::default()
@@ -221,7 +221,7 @@ impl AdventureState {
         index: usize,
     ) -> AdventureOutcome {
         self.visits_mut().empty(index);
-        let spell = match self.map.objects()[index].resolved {
+        let spell = match self.object_at(index).resolved {
             Resolved::Spell(spell) => Some(spell),
             _ => None,
         };

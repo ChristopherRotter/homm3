@@ -97,19 +97,17 @@ impl AdventureState {
     }
 
     /// The object of the type and anchor an offer or a choice names, if it is still on the map:
-    /// the last in map order with them ([`Self::tile_object`]'s order).
+    /// the last in map order with them ([`Self::tile_object`]'s order), an object added in play
+    /// among them (E08 T85a's audit, increment 9's design note §19: a creature month's monster
+    /// makes its offers to join and to flee as a placed one).
     pub(super) fn object_named(&self, object_type: ObjectTypeId, anchor: Pos) -> Option<usize> {
-        self.map
-            .objects()
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|&(index, object)| {
-                object.object_type == Some(object_type)
-                    && object.anchor == anchor
-                    && !self.is_removed(index)
-            })
-            .map(|(index, _)| index)
+        let objects = self.map.objects().len() + self.added_objects().len();
+        (0..objects).rev().find(|&index| {
+            let object = self.object_at(index);
+            object.object_type == Some(object_type)
+                && object.anchor == anchor
+                && !self.is_removed(index)
+        })
     }
 
     /// A treasure chest's visit (ADV-PIK-005; the original's `visit_treasure_chest`, 0x4A6520,
@@ -129,7 +127,7 @@ impl AdventureState {
         chest: &Chest,
         sink: &mut S,
     ) -> AdventureOutcome {
-        let object = &self.map.objects()[index];
+        let object = self.object_at(index);
         let details = details_of(heroes, hero);
         let artifact = object.resolved.artifact().map(ArtifactInstance::from);
         let outcome = match (artifact, object.contents.first()) {
@@ -175,7 +173,7 @@ impl AdventureState {
         object: (usize, ObjectTypeId),
         sink: &mut S,
     ) -> AdventureOutcome {
-        match carried(&self.map.objects()[object.0]) {
+        match carried(self.object_at(object.0)) {
             None => {
                 self.take_object(core, object, sink);
                 AdventureOutcome::default()
@@ -200,7 +198,7 @@ impl AdventureState {
         (index, object_type): (usize, ObjectTypeId),
         sink: &mut S,
     ) -> AdventureOutcome {
-        let object = &self.map.objects()[index];
+        let object = self.object_at(index);
         let outcome = match carried(object) {
             Some(item) => changes(hero, Vec::from([HeroChange::AddArtifact(item)])),
             None => AdventureOutcome {
@@ -257,7 +255,7 @@ impl AdventureState {
             self.learn(player, index);
         }
         let price = self.gift_price(index, gift).to_vec();
-        let anchor = self.map.objects()[index].anchor;
+        let anchor = self.object_at(index).anchor;
         match gift.gives {
             Gives::Choice { skills, amount } => AdventureOutcome {
                 choice: Some(Choice {
@@ -290,7 +288,7 @@ impl AdventureState {
     /// the build drew among its prices (ADV-TCH-003: the Tree of Knowledge's, `Resolved::Price`).
     pub(crate) fn gift_price<'g>(&self, index: usize, gift: &'g Gift) -> &'g Resources {
         const FREE: &Resources = &Vec::new();
-        let drawn = match self.map.objects()[index].resolved {
+        let drawn = match self.object_at(index).resolved {
             Resolved::Price(drawn) => usize::from(drawn),
             _ => 0,
         };
@@ -405,7 +403,7 @@ impl AdventureState {
     ) -> AdventureOutcome {
         self.learn(player, index);
         let details = details_of(heroes, hero);
-        match self.map.objects()[index].resolved {
+        match self.object_at(index).resolved {
             Resolved::Spell(spell)
                 if details.is_some_and(|d| can_learn_spell(d, core, spell, true)) =>
             {
@@ -429,7 +427,7 @@ impl AdventureState {
     ) -> AdventureOutcome {
         self.learn(player, index);
         let details = details_of(heroes, hero);
-        match self.map.objects()[index].resolved {
+        match self.object_at(index).resolved {
             Resolved::Skill(skill) if details.is_some_and(|d| hut_teaches(d, core, skill)) => {
                 changes(
                     hero,
@@ -452,10 +450,7 @@ impl AdventureState {
         object: (usize, ObjectTypeId),
         sink: &mut S,
     ) -> AdventureOutcome {
-        let taught = match (
-            &self.map.objects()[object.0].resolved,
-            details_of(heroes, hero),
-        ) {
+        let taught = match (&self.object_at(object.0).resolved, details_of(heroes, hero)) {
             (&Resolved::Scholar(gift, fallback), Some(details)) => {
                 Vec::from([scholar_reward(details, core, gift, fallback)])
             }
@@ -476,7 +471,7 @@ impl AdventureState {
         price: &Resources,
     ) -> AdventureOutcome {
         self.learn(player, index);
-        let object = &self.map.objects()[index];
+        let object = self.object_at(index);
         AdventureOutcome {
             university: Some(UniversityVisit {
                 hero,
@@ -508,7 +503,7 @@ impl AdventureState {
             offer: Some(Offer {
                 hero,
                 object_type,
-                anchor: self.map.objects()[index].anchor,
+                anchor: self.object_at(index).anchor,
                 kind: OfferKind::Search,
             }),
             ..AdventureOutcome::default()
@@ -569,7 +564,7 @@ impl AdventureState {
         let mut taken = Vec::new();
         let mut outcome = AdventureOutcome::default();
         if !self.is_emptied(index) {
-            let object = &self.map.objects()[index];
+            let object = self.object_at(index);
             let artifact = object.resolved.artifact().map(ArtifactInstance::from);
             let empties = match (artifact, &find.full_backpack) {
                 (Some(item), turn) if receives(core, details_of(heroes, hero), item) => {

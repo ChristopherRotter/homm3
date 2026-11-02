@@ -543,3 +543,63 @@ an entry only where a task builds on it.
   training's length all end at one ladder, 0.41 to 0.42 against the system actor: the limit is
   not the network's capacity, but what PPO's self-play at these settings drives it to (or what
   the agent may see, the risk the epic names).
+
+## T8 — Increment 3's checkpoint (2026-11-02)
+
+- **The user's choices** (AI-Q12): increment 4 is (a), the policy's sharpness and PPO's settings
+  (the agent's recommendation): a temperature diagnostic without training, then 20 M A/Bs on the
+  2 × 512 MLP (the entropy bonus decayed to 0; fewer epochs or a larger rollout).
+  **`e25-scale-1` #3 stays the current best** (the wide MLP is as strong at twice the parameters
+  and 1.5 times a decision's cost). T7d's decisions' mix on the wide network is not read (it is
+  not the current best).
+- **The user's caveat on T7c:** the convolution's and the transformer's results are to be taken
+  with a large grain of salt; they fitted the teacher far worse, and modern convolutional and
+  transformer networks rely on size and on training aids (skip connections, normalisation,
+  dropout) to train properly. What T7a built: `hexconv` had residual blocks (the branch at 0) and
+  a global-pooling bias but no normalisation, 64 channels; `hexformer` pre-norm residual blocks,
+  64 wide, 4 heads; 0.69 and 0.34 M parameters against the MLP's 5.95 M. Every student shared one
+  optimiser setting (Adam 3e-4 falling to a tenth, no warm-up, minibatches of 512) and 4 M
+  samples, and the teacher is an MLP (T7c's bias). So T7c ranks those configurations at those
+  settings, not the architectures: a structured network wider, normalised, warmed up and tuned on
+  its own learning rate stays a candidate (the epic's candidates), with the GTX 1070's cost (21
+  times the MLP's a sample for `hexconv` 64 × 6) the constraint.
+- **Why (a) first:** the runs' entropy ends at 1.5 (`e25-scale-1`, 40 M; about four and a half
+  equally likely choices) while its KL per update falls from 0.013 to 0.007 and the clip fraction
+  from 0.17 to 0.09: the policy keeps much of its spread under the fixed entropy bonus 0.01, and
+  the temperature diagnostic measures what that spread costs before any run.
+
+## T9a — The temperature (2026-11-02)
+
+- **Built:** `Policy.act(temperature=…)` divides every head's logits (the entry's, after the kill
+  preview's bias, and a cast's spell, target and second heads) before the mask and the draw; 1
+  skips the division (the network's own policy, bit-identical: training and every caller
+  unchanged), 0 is `greedy`, a negative, infinite or NaN temperature is refused. The
+  log-probabilities are then the tempered policy's (an evaluation's only). `evaluate.sampled`,
+  `duel` (the learner's side; the opponent network at its own policy) and `ladder` take it;
+  `h3env.train.ladder --temperature 1,0.7,0.5,0` plays the ladder once per temperature on the same
+  episodes from the same generators (common random numbers), each line prefixed `at <t>:`,
+  `--json` a table per temperature keyed by it; `--temperature 1` (the default) prints and writes
+  as before. `python/README.md`.
+- **Tests** (`tests/test_train.py`): a network whose four heads' weights and biases are doubled
+  plays at temperature 2 exactly as the network at 1 from the same generator (a power of two
+  scales exactly), every head and the log-probabilities over 30 steps with casts, 1 as the plain
+  call, 0 as `greedy`, the refusals; the CLI's lines and tables per temperature, its table at 1
+  the plain ladder's, its refusals (a non-number, a negative, a duplicate, infinity, NaN).
+
+## T10a — The entropy's schedule (2026-11-02; the second lever open)
+
+- **Built:** `[ppo] entropy_floor` (1 the default: the bonus constant at `entropy_coef`, every run
+  before; a saved config without it reads as 1): `run.entropy_bonus` falls linearly over
+  `lr_horizon` as the learning rate does, `entropy_coef × max(1 − progress, entropy_floor)`;
+  `Trainer.update(lr, entropy_coef)` takes it (the config's when not given) and each update
+  record carries `entropy_coef` beside `lr`. A function of the samples, so no resumable state.
+  `configs/e25-sharp.toml`: `e25-scale.toml`'s settings at 20 M samples with `entropy_floor = 0`
+  (0.01 at the start, 0 at 20 M), the 2 × 512 MLP from scratch: T10b's first A/B, ready for the
+  user's machine before T9b's read (both A/Bs were agreed at T8).
+- **Tests:** `test_run.py` (the schedule at floors 1, 0 and 0.25 and on a horizon of its own; a
+  floor above 1 refused; `e25-sharp.toml` is `e25-scale.toml` at 20 M with the floor 0);
+  `test_train.py` (the same rollout from the same weights: no bonus given is the config's, a
+  bonus of its own changes the step; a run's update records carry the constant bonus). 177
+  Python tests pass (the GPU's skipped).
+- **Open:** the second A/B's config (fewer epochs or a larger rollout), proposed from T9b's read
+  and the runs' KL and clip fraction (T8), agreed with the user.
