@@ -721,3 +721,35 @@ an entry only where a task builds on it.
   armies, so `e25-sharp-1` #2 should score about 0.42 against it too (T15 measures). The clone
   starts from an actor that beats the lineage at about 0.58; whether PPO keeps its strength
   from there is T17's question.
+
+## T14 — The switch (2026-11-02)
+
+- **Built** (C ABI v36): `Policy::System` plays `h3_battle_ai::choose_fair` (the neutral kinds'
+  defender with it), the new `Policy::SystemAllSeeing` plays `choose`; `H3_SEAT_SYSTEM` (4) the
+  fair actor, the new `H3_SEAT_SYSTEM_ALL_SEEING` (5); `batch.py`'s seats `system` and
+  `system-all-seeing`; `h3 ai eval`'s policies and default both, the neutral set's defender the
+  fair one, the bots' tables' schema 3 (`BOTS_TABLE_SCHEMA`, Rust and Python); the ladder's
+  opponents (`evaluate.OPPONENTS`, a run's default `ladder_opponents`) both system actors.
+  Tests: `the_system_seats_play_their_named_actor` (h3-sim: each seat plays its actor decision
+  by decision on hero encounters, where they differ), the all-seeing seat in the batch's
+  determinism property and the C seats' test.
+- **Agent decisions** (change freely): a record tells the two apart by what it already names, the
+  C ABI version in a run's identity (`system` before v36 the all-seeing one) and the bots'
+  table's schema (2 before), rather than a new identity field. `run.trainable(config,
+  started_abi)` refuses only `ppo.resume` of a run started before v36 whose mix had a system
+  seat (its opponent would change under it); `ppo.train` no longer calls it. No all-seeing twin
+  of `batch-system-neutral-v1` (the all-seeing computer's cost is the battle lane's
+  `computer-decisions` workload). The adventure env's neutral seat unchanged (T13).
+- **The bots' tables regenerated** (release, the sandbox: neutral 26 s, report 241 s against
+  about 15 s and 85 s before: 25 ordered pairs, two system actors). Report set: the fair actor
+  against the all-seeing one 0.500 ± 0.019, value −0.001; Glicko-2 1658.0 and 1657.2 (± 9.5);
+  each bot's rate against either within 0.002 of the other (Random 0.123 and 0.121, Aggressor
+  0.320 and 0.318, Greedy 0.347 and 0.345). Neutral set with the fair defender (old, all-seeing
+  defender, in brackets): the system actor attacking 0.991 at +0.285 (0.991, +0.285: **the
+  neutral target stays +0.285**), Aggressor 0.963 (0.967), Greedy 0.957 (0.956), Random 0.741
+  (0.751); the all-seeing actor attacking the fair defender 0.991, +0.285.
+- **The neutral bench** (`batch-system-neutral-v1`, callgrind): 6 755 060 962 Ir against
+  6 808 294 645, −0.78 %, re-baselined (its defender is the fair actor). `random-rollouts-full`
+  +0.01 %, `cargo xtask determinism` passes.
+- **For T17's runs:** a run's ladder plays one more opponent, the slowest kind: about a fifth
+  more evaluation time (T2b's shaping run: 25 of its 90 minutes).

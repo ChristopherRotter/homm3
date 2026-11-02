@@ -6,7 +6,8 @@
 //!             [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
 //!             [--preview false|true]
 //! h3 ai census <maps folder or file>... [--out <file>]
-//! h3 ai eval [--set report-v1|neutral-v1|v0] [--policies random,aggressor,greedy,system]
+//! h3 ai eval [--set report-v1|neutral-v1|v0]
+//!            [--policies random,aggressor,greedy,system,system-all-seeing]
 //!            [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
 //!            v0 only: [--envs 100] [--seed <s>] [--encounters default|<six weights, a,b,c,d,e,f>]
 //! ```
@@ -30,7 +31,8 @@ pub const USAGE: &str = "usage:
               [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
               [--preview false|true]
   h3 ai census <maps folder or file>... [--out <file>]
-  h3 ai eval [--set report-v1|neutral-v1|v0] [--policies random,aggressor,greedy,system]
+  h3 ai eval [--set report-v1|neutral-v1|v0]
+             [--policies random,aggressor,greedy,system,system-all-seeing]
              [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
              v0 only: [--envs 100] [--seed <s>] [--encounters default|<six weights, a,b,c,d,e,f>]";
 

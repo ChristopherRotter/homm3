@@ -10,30 +10,11 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 closed (`E25-archive.md`); **`e25-sharp-1` #2 the current best** (AI-Q13, T12). **Increment 5,
 the fair system actor** (refined at T13, 2026-11-02, AI-Q14; its decisions in the epic file):
 
-- **T14 The switch.** *Scope:* `Policy::System` plays `h3_battle_ai::choose_fair`, a new
-  `Policy::SystemAllSeeing` plays `choose` (the neutral kinds' defender stays `Policy::System`,
-  so it becomes the fair one); `H3_SEAT_SYSTEM` (4) the fair actor, a new
-  `H3_SEAT_SYSTEM_ALL_SEEING` (5), C ABI v36 (`h3.h`, `_ffi.py`, `batch.py`'s seat names
-  `system`, `system-all-seeing`); `h3 ai eval`'s `POLICIES` and its default both,
-  `NEUTRAL_DEFENDER` the fair one; records tell the two apart (the engine's identity in
-  `_ffi.py` and `h3 ai eval --json` names the system seat's sight; a record without it read as
-  all-seeing, `test_evaluate.py` checks it); `run.trainable` refuses only the all-seeing actor (no
-  config reaches it today) and `ppo.resume` refuses a run started before the switch whose mix
-  had a system seat (its opponent would change under it); the bots' tables regenerated
-  (`python/records/README.md`: both columns in `bots-report-v1.json`, the fair defender in
-  `bots-neutral-v1.json`: the neutral target re-measured); `batch-system-neutral-v1` re-baselined
-  (its description names `choose_fair`) and an all-seeing twin if the gate should keep
-  measuring `choose` (agent's choice); the docs (`TRAPS.md`'s Environment group,
-  `docs/07-simulation-and-ai.md` §1.2's lines go into the inbox's E25-closure note). Check
-  `h3-sim`'s replays and the golden ones for a system seat first (`TRAPS.md`: `verify --scope ai`
-  skips them; run `cargo xtask determinism`). *Acceptance:* the seats play the named actor (a
-  test where they differ: a hero battle); the scoped verify; CI. *Depends on:* T13 (done).
-  *Status:* next.
 - **T15 The ladder at the switch.** *Scope:* `e25-sharp-1` #2 (its `best.pt` uploaded by the
   user, as at T12) on the report set against both system actors and on the neutral set with the
   fair defender, beside the bots' regenerated tables: increment 5's starting point and the new
-  neutral target (the fair actor's own value in the player's seat). In the sandbox's CPU.
-  *Depends on:* T14. *Status:* waiting.
+  neutral target (the fair actor's own value in the player's seat: +0.285, T14). In the
+  sandbox's CPU. *Depends on:* T14 (done). *Status:* next, when the user uploads the `best.pt`.
 - **T16 The cloning bench.** *Scope:* a C ABI call giving the system actor's choice (either
   sight) for an env's side to move as an encoded action (`h3_sim::action::encode`; the entry and
   the cast heads), its count of choices the encoding cannot express; a clone mode of the
@@ -43,7 +24,7 @@ the fair system actor** (refined at T13, 2026-11-02, AI-Q14; its decisions in th
   cross-entropy and its value on the returns (reward v1, γ 1); held-out agreement per category;
   the student saved as a run's network file for `--init-from`; its ladder (how near the clone
   plays to the fair actor). The sandbox's CPU for the checks, the bench's length agreed with the
-  user. *Depends on:* T14. *Status:* waiting.
+  user. *Depends on:* T14 (done). *Status:* next (needs no upload).
 - **T17 The A/B.** *Scope:* on the user's machine, two runs on `e25-sharp-1`'s config with the
   neutral kinds back at a third (the fair defender): `e25-neutral-1` from scratch and
   `e25-clone-1` from T16's student (`--init-from`); lengths agreed when prepared (20 M as
@@ -124,7 +105,8 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 
 **For E25's closure** (a `shared/` pull request): `docs/07-simulation-and-ai.md` §1.2, the
 pipeline as built, gains E25's training levers: shaping (T2a), the tactics bound (T4a), the
-hex networks and the MLP's depth (T7a), the distillation bench (T7b).
+hex networks and the MLP's depth (T7a), the distillation bench (T7b); the two system actors (T14:
+`system` the fair one, `system-all-seeing`, C ABI v36).
 
 **For E25's later increments** (the epic's candidates; E06's leftovers, T9a; increment 1's
 parts are its tasks above):

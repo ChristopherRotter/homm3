@@ -4,6 +4,28 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 5, T14** (moved 2026-11-02, done: `E25-log.md` T14):
+
+- **T14 The switch.** *Scope:* `Policy::System` plays `h3_battle_ai::choose_fair`, a new
+  `Policy::SystemAllSeeing` plays `choose` (the neutral kinds' defender stays `Policy::System`,
+  so it becomes the fair one); `H3_SEAT_SYSTEM` (4) the fair actor, a new
+  `H3_SEAT_SYSTEM_ALL_SEEING` (5), C ABI v36 (`h3.h`, `_ffi.py`, `batch.py`'s seat names
+  `system`, `system-all-seeing`); `h3 ai eval`'s `POLICIES` and its default both,
+  `NEUTRAL_DEFENDER` the fair one; records tell the two apart (the engine's identity in
+  `_ffi.py` and `h3 ai eval --json` names the system seat's sight; a record without it read as
+  all-seeing, `test_evaluate.py` checks it); `run.trainable` refuses only the all-seeing actor (no
+  config reaches it today) and `ppo.resume` refuses a run started before the switch whose mix
+  had a system seat (its opponent would change under it); the bots' tables regenerated
+  (`python/records/README.md`: both columns in `bots-report-v1.json`, the fair defender in
+  `bots-neutral-v1.json`: the neutral target re-measured); `batch-system-neutral-v1` re-baselined
+  (its description names `choose_fair`) and an all-seeing twin if the gate should keep
+  measuring `choose` (agent's choice); the docs (`TRAPS.md`'s Environment group,
+  `docs/07-simulation-and-ai.md` §1.2's lines go into the inbox's E25-closure note). Check
+  `h3-sim`'s replays and the golden ones for a system seat first (`TRAPS.md`: `verify --scope ai`
+  skips them; run `cargo xtask determinism`). *Acceptance:* the seats play the named actor (a
+  test where they differ: a hero battle); the scoped verify; CI. *Depends on:* T13 (done).
+  *Status:* next.
+
 **The closed epics' summary** (moved 2026-11-02 from the queue's head, verbatim):
 
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.

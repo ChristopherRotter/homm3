@@ -1208,7 +1208,7 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     train(Config(**SMALL, samples=1), tmp_path)
     policy = load(tmp_path / "checkpoint.pt")
     rows = ladder(policy, held_out="v0", episodes=4, envs=2, max_steps=300)
-    assert list(rows) == ["random", "aggressor", "greedy", "system"]
+    assert list(rows) == ["random", "aggressor", "greedy", "system", "system-all-seeing"]
     for row in rows.values():
         assert row["attacker"]["episodes"] == row["defender"]["episodes"] == 4
         assert row["attacker"]["skipped"] == row["defender"]["skipped"] == 0
@@ -1234,12 +1234,12 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     out = tmp_path / "ladder.json"
     main([*checkpoint, "--episodes", "1", "--max-steps", "300", "--json", str(out)])
     lines = capsys.readouterr().out.splitlines()
-    opponents = ["random", "aggressor", "greedy", "system"]
+    opponents = ["random", "aggressor", "greedy", "system", "system-all-seeing"]
     assert [line.split(":")[0].split()[-1] for line in lines] == opponents
     assert all("±" in line and "siege_garrison" in line for line in lines)
     assert set(json.loads(out.read_text())) == set(opponents)
     main([*checkpoint, "--set", "v0", "--episodes", "2", "--envs", "2"])
-    assert len(capsys.readouterr().out.splitlines()) == 4
+    assert len(capsys.readouterr().out.splitlines()) == len(opponents)
     main([*checkpoint, "--set", "neutral-v1", "--episodes", "1", "--max-steps", "300"])
     (line,) = capsys.readouterr().out.splitlines()
     assert line.startswith("against system") and "wandering" in line
