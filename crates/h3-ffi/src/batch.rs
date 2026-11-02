@@ -665,6 +665,57 @@ pub unsafe extern "C" fn h3_batch_second_mask(
     })
 }
 
+/// Writes each env's choice of the internal seat `seat` (an `H3_SEAT_*` but `H3_SEAT_EXTERNAL`;
+/// v37, E25 T16: the cloning bench's teacher, the system actors) for its side to move into
+/// `actions[i]` (N of them), the action an external seat plays (the entry and the cast's heads),
+/// with `encoded[i]` 1; `encoded[i]` 0 and an all-zero action for an env without a side to move,
+/// or whose choice no batch action plays (the action encoding cannot express it, or an escape).
+/// Returns the number of the latter, the choices lost (0 or more), or a negative error code:
+/// `H3_ERR_NULL`, `H3_ERR_ARGUMENT` for an unknown or external seat, `H3_ERR_NOT_READY`.
+///
+/// The choice draws from the side's seat stream, as that seat inside the call would, which an
+/// external side never uses otherwise: called once per decision and played (`h3_batch_step`),
+/// the choices replay the episodes the seat plays bit for bit; the envs are unchanged
+/// (`h3_sim::BattleBatch::choice`). Trusted tooling, a teacher's labels: the all-seeing seat
+/// reads the whole state, never an agent's input.
+///
+/// # Safety
+/// `batch` must be null or a live handle not used concurrently; `actions` and `encoded` must be
+/// null or valid for N writes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_batch_choice(
+    batch: *mut H3Batch,
+    seat: i32,
+    actions: *mut H3Action,
+    encoded: *mut u8,
+) -> i32 {
+    // SAFETY: per the contract.
+    let Some(h) = (unsafe { batch.as_mut() }) else {
+        return H3_ERR_NULL;
+    };
+    let Some(Seat::Internal(policy)) = self::seat(seat) else {
+        return H3_ERR_ARGUMENT;
+    };
+    let n = h.batch.len();
+    // SAFETY: both are valid for N writes, or null, per the contract.
+    let (Some(actions), Some(encoded)) = (unsafe { rows(actions, n) }, unsafe { rows(encoded, n) })
+    else {
+        return H3_ERR_NULL;
+    };
+    let chosen = catch_unwind(AssertUnwindSafe(|| {
+        let lost = h.batch.choice(policy, &mut h.actions, encoded)?;
+        for (out, action) in actions.iter_mut().zip(&h.actions) {
+            *out = H3Action::from(*action);
+        }
+        Ok(lost)
+    }));
+    match chosen {
+        Ok(Ok(lost)) => i32::try_from(lost).unwrap_or(i32::MAX),
+        Ok(Err(e)) => error_code(&e),
+        Err(_) => H3_ERR_PANIC,
+    }
+}
+
 /// The seed of episode `episode` (0 the first) of env `env` in a batch with seed `batch_seed`, as
 /// [`H3BatchBuffers::episode_seed`] (trusted tooling).
 #[unsafe(no_mangle)]

@@ -816,6 +816,12 @@ fn an_episode_without_a_decision_is_skipped() {
                 .all(|m| *m == 0)
         );
     }
+    // No side to move: no choice, and none lost (E25 T16).
+    let mut chosen = [Action::entry(5); 3];
+    let mut encoded = [1u8; 3];
+    let lost = batch.choice(Policy::System, &mut chosen, &mut encoded);
+    assert_eq!(lost, Ok(0));
+    assert_eq!((chosen, encoded), ([Action::default(); 3], [0; 3]));
 }
 
 #[test]
@@ -896,6 +902,10 @@ fn errors() {
     );
     assert_eq!(
         batch.second_mask(&[], &[], &[], &mut []),
+        Err(BatchError::NotReset)
+    );
+    assert_eq!(
+        batch.choice(Policy::System, &mut [], &mut []),
         Err(BatchError::NotReset)
     );
     batch.reset(&mut none()).unwrap();
@@ -982,6 +992,17 @@ fn errors() {
     assert_eq!(
         batch.second_mask(&[0, 0], &[0, 0], &[0, 0], &mut bytes),
         buffer("out", 1, 2 * TARGET_COUNT)
+    );
+    let mut chosen = [Action::default(); 2];
+    assert_eq!(
+        batch
+            .choice(Policy::System, &mut chosen[..1], &mut [0; 2])
+            .err(),
+        buffer("actions", 1, 2).err()
+    );
+    assert_eq!(
+        batch.choice(Policy::System, &mut chosen, &mut [0; 1]).err(),
+        buffer("encoded", 1, 2).err()
     );
     let messages = [
         BatchError::NoEnvs,
@@ -1370,4 +1391,94 @@ fn the_batch_writes_each_envs_potential() {
         }
     }
     assert!(moved);
+}
+
+/// The episode of `seed` of `scenario` played by `policy` in both seats from their seat streams,
+/// as a batch's internal seats would: its decisions, how it ended and its reward v1.
+fn played_by(
+    scenario: &Scenario,
+    policy: Policy,
+    seed: u64,
+    max_steps: u32,
+) -> (u32, Option<crate::StepResult>, [f32; 2]) {
+    let mut env = scenario.episode(seed, max_steps).unwrap().env;
+    let mut rngs = [0, 1].map(|s| Rng::for_stream(seed, StreamId::seat(s)));
+    let mut legal = LegalCommands::new();
+    let (mut decisions, mut last) = (0, None);
+    while let Some(side) = env.to_move() {
+        let command = policy.choose(&env, side, &mut rngs[side.index()], &mut legal);
+        last = Some(rollout::step_command(&mut env, side, command).unwrap());
+        decisions += 1;
+    }
+    let reward = env.state().outcome().map_or([0.0; 2], |outcome| {
+        reward::rewards(
+            RewardConfig::default(),
+            env.ruleset(),
+            env.setup(),
+            &outcome,
+        )
+    });
+    (decisions, last, reward)
+}
+
+/// E25 T16 (the cloning bench's teacher): each policy's choice for an env's side to move, played
+/// by external seats, replays the episodes the policy plays in both seats from their seat
+/// streams bit for bit (the decisions, how they end, the rewards), on the encounters of every
+/// kind, a neutral defender included; no choice is lost and none refused.
+#[test]
+fn external_seats_playing_a_policys_choices_play_its_episodes() {
+    let sampler = Arc::new(crate::encounter::tests::SAMPLER.clone().with_shares());
+    let encounters = Scenario::encounters(sampler, 1, Some(EXTERNAL)).unwrap();
+    let policies = [
+        Policy::Random,
+        Policy::Aggressor,
+        Policy::Greedy,
+        Policy::System,
+        Policy::SystemAllSeeing,
+    ];
+    for (k, policy) in policies.into_iter().enumerate() {
+        let max_steps = 80;
+        let config = BatchConfig {
+            envs: 4,
+            threads: 2,
+            seed: 3 + k as u64,
+            max_steps,
+            reward: RewardConfig::default(),
+        };
+        let mut batch = BattleBatch::new(config).unwrap();
+        batch.add_scenario(encounters.clone()).unwrap();
+        let mut arrays = Arrays::new(4);
+        batch.reset(&mut arrays.outputs()).unwrap();
+        let (mut chosen, mut encoded) = ([Action::default(); 4], [0u8; 4]);
+        let mut decisions = [0u32; 4];
+        let mut ended = 0;
+        for _ in 0..120 {
+            let seeds: Vec<u64> = arrays.reports.iter().map(|r| r.episode_seed).collect();
+            assert_eq!(batch.choice(policy, &mut chosen, &mut encoded), Ok(0));
+            assert_eq!(encoded, [1; 4], "{policy:?}");
+            batch.step(&chosen, &mut arrays.outputs()).unwrap();
+            for (i, report) in arrays.reports.iter().enumerate() {
+                assert_eq!(report.error, None, "{policy:?}");
+                decisions[i] += 1;
+                if report.done {
+                    let (steps, last, reward) = played_by(&encounters, policy, seeds[i], max_steps);
+                    let last = last.unwrap();
+                    assert_eq!(steps, decisions[i], "{policy:?}, seed {}", seeds[i]);
+                    assert_eq!(
+                        (report.result, report.truncated),
+                        (last.result, last.truncated)
+                    );
+                    assert_eq!(bits(&report.reward), bits(&reward));
+                    decisions[i] = 0;
+                    ended += 1;
+                }
+            }
+        }
+        assert!(ended >= 4, "{policy:?}: {ended} episodes");
+    }
+    // A choice no batch action plays: an escape (never legal in a batch).
+    let env = encounters.episode(1, 0).unwrap().env;
+    assert_eq!(playable(&env, Command::Retreat), None);
+    assert_eq!(playable(&env, Command::Surrender), None);
+    assert_eq!(playable(&env, Command::Defend), Some(Action::entry(1)));
 }
