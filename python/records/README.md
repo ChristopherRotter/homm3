@@ -75,6 +75,12 @@ the battles' groups (`h3env.train.inspect`; the findings in `docs/epics/E06-log.
 are the device's: a CPU's differ from the GPU ladder's in a few battles. `t7-1`'s on both
 stratified sets (the sandbox's CPU, 4 threads).
 
+`inspect/e25-scale-1-temperature.json` (E25 T9b): `e25-scale-1` #3's ladder at temperatures
+(`python -m h3env.train.ladder --temperature …`, T9a; the sandbox's CPU, 4 threads): the
+report set against the system actor at 1, 0.7, 0.5 and 0, against the other seats at 0.7, the
+neutral set at 1 and 0.7, each row as a run record's ladder keeps it (`evaluate.compact`); the
+read in `docs/epics/E25-log.md` T9b.
+
 `inspect/battles.py` (E25 T2b, a one-off script like `probe_order.py`): every battle of the
 report set as `inspect` records it, one JSON line each, and the tactics phase's decisions per
 battle (`--summary`); its files stay outside git (7 MB a run), the findings in
@@ -155,5 +161,15 @@ its `parent`.
 - `e25-scale-1` (E25 T5, 2026-10-29; `configs/e25-scale.toml`: `e25-bound.toml` with three
   tactics rounds, 60 M samples; stopped by the user at 41.3 M, 137 minutes, the curve flat):
   promoted #0 to #3, best #3 at 30 M, at `e25-bound-1`'s level (`docs/epics/E25-log.md` T5).
-  **#3 is the current best** (E25 T6, the user, 2026-10-29). Its networks are on the user's
-  machine.
+  **#3 the current best** from E25 T6 (the user, 2026-10-29) to T12 (2026-11-02). Its networks
+  are on the user's machine.
+- `e25-wide-1` (E25 T7d, 2026-10-30; `configs/e25-wide.toml`: `e25-scale.toml`'s settings at 20 M
+  samples with the MLP 2 × 1 024, 94 minutes): best #2 at `e25-scale-1` #3's ladder (0.414
+  against the system actor) at 0.7 times its samples a second (`docs/epics/E25-log.md` T7d). Its
+  networks are on the user's machine.
+- `e25-sharp-1` (E25 T10b, 2026-11-02; `configs/e25-sharp.toml`: `e25-scale.toml`'s settings at
+  20 M samples, the entropy bonus falling to 0, 72 minutes): best #2, on the full report set
+  0.849, 0.602, 0.581 against Random, Aggressor, Greedy, 0.422 against the system actor, the
+  neutral set +0.243: `e25-scale-1` #3's ladder at temperature 0.7 (`docs/epics/E25-log.md`
+  T10b). **#2 is the current best** (E25 T11, the user, 2026-11-02; T12: 0.523 head to head
+  against `e25-scale-1` #3, promoted by the gate). Its networks are on the user's machine.
