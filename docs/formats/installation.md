@@ -89,7 +89,9 @@ installation and have to come from other sources (wiki/VCMI, labelled).
 
 Common syntax (observed in `CRTRAITS.TXT`; to be confirmed per table as each is harvested):
 Windows-1252 bytes, CRLF line ends, TAB-separated fields, fields may be wrapped in double quotes and
-then contain CRLF (multi-line ability texts). Header rows are part of the file.
+then contain CRLF (multi-line ability texts); inside such a field every run of quotes reads as one,
+as the executable's readers make it (0x5BBBA0 at 0x5BBD29 to 0x5BBD6A, 0x5BBE70;
+`docs/epics/E17-design.md` §7.19; `h3_formats::text`). Header rows are part of the file.
 
 ### `CRTRAITS.TXT` (creatures)
 

@@ -1,4 +1,5 @@
-//! A search agent's worlds (E06 T8, ADR-0025 point 12a, `docs/epics/E06-design.md` §14): copies of
+//! A search agent's worlds (E06 T8, ADR-0025 point 12a; the design: `docs/epics/E06-log.md`, "The
+//! design note at closure", §14): copies of
 //! a battle in which everything a side may not know ([`observe_as`](crate::observe_as)'s list) is
 //! replaced from a seed and a guess of the other side's hero, the rest as it is. Trusted tooling
 //! beside `observe`: a change of what a side may not know changes this file in the same change.
