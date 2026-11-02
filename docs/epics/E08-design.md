@@ -155,12 +155,12 @@ T84a built it (decision 220): its record and this section's text as T84a found i
   `interval > 0`, `day > first_day` and `(day − first_day) % interval == 0`): positive amounts
   gained, negative ones lost down to 0 (`ResourceLost` the amount taken), then
   `TimedEventFired { player, event }` (the owner's). Day 1's fire inside the build (no sink):
-  *agent's call*, `PlayerView::events_today` (the owner's) names the events that fired at its
+  *agent's call*, `GameObservation::events_today` (the owner's; T85b2a, not `PlayerView`) names the events that fired at its
   turn start today, derived from the day and the setup, so a client shows day 1's too.
 - **Decisions** (ADR-0017 point 6's draft): the army dialog's holder, the mine's question and
   the two-owner battle with an owned mine's guards are built (T84a, game state hash v21), the
   boat offer and `BuildBoat` too (T84b2); their records in `E08-log.md`.
-- **The observation:** `GameObservation::month` (public), `PlayerView::events_today` (the
+- **The observation:** `GameObservation::month` (public), `GameObservation::events_today` (the
   owner's); the adventure's views (§12). `project` passes `WeekStarted`, `MonthStarted` to every
   viewer, `TimedEventFired` to its player.
 

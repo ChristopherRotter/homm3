@@ -29,11 +29,12 @@ use crate::command::{
 };
 use crate::observe::LevelUpView;
 use crate::treasury::Treasuries;
-use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError};
+use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError, TimedEventSetup};
 use levels::Progression;
 use rests::{Held, Rest};
 
 mod battle;
+mod day;
 mod levels;
 mod manage;
 mod rests;
@@ -41,6 +42,7 @@ mod rests;
 pub use battle::OpenBattle;
 #[cfg(test)]
 pub(crate) use battle::{raised_count, seen_by};
+pub use day::MonthKind;
 
 /// A player of a running game.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -240,6 +242,14 @@ pub struct GameState {
     group: usize,
     /// The day, from 1.
     day: u32,
+    /// The month's kind (GAM-CAL-003, E08 T85b): drawn on each month's first day after the
+    /// first; a normal one until then.
+    month: MonthKind,
+    /// The map's timed events in the map's order (GAM-CAL-004, E08 T85b; the setup's): static,
+    /// shared by forks; none for a map without them, so a fork of one counts no reference
+    /// (`bench-check`, fork-sea-xl-144: the month and this block cost a fork 15 Ir, +0.4 %; an
+    /// `Arc` always, 19 Ir).
+    events: Option<Arc<[TimedEventSetup]>>,
     /// The game's own stream (the day advance; ADR-0017 point 4).
     rng: Rng,
     /// The store of heroes (GAM-HER-001, E08 T18b): every hero's details by id, each shared
@@ -325,6 +335,8 @@ impl GameState {
             groups,
             group: 0,
             day: 1,
+            month: MonthKind::Normal,
+            events: (!setup.events.is_empty()).then(|| setup.events.clone().into()),
             rng: Rng::for_stream(seed, StreamId::GAME),
             heroes,
             progression: Arc::new(progression),
@@ -1088,18 +1100,9 @@ impl GameState {
         self.decisions = (!rest.is_empty()).then(|| rest.into());
     }
 
-    /// The day advance (ADR-0017 point 3): the calendar, then each context's start-of-day step:
-    /// the adventure's (E08 T40: in `strict-fixed` each hero's reveal, ADV-FOG-003).
-    // rule: GAM-TRN-002, GAM-CAL-001
-    fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
-        self.day = self.day.saturating_add(1);
-        sink.emit(GameEvent::DayStarted { day: self.day });
-        self.adventure
-            .start_day(rules.core(), rules.adventure(), &self.heroes);
-    }
-
-    /// Starts the turn of the current group: each of its players acts, and each context runs its
-    /// start-of-turn step for it (the adventure's movement points, ADV-MOV-002).
+    /// Starts the turn of the current group: each of its players acts, each context runs its
+    /// start-of-turn step for it (the adventure's movement points, ADV-MOV-002), and then the
+    /// map's timed events fire for it (GAM-CAL-004, E08 T85b: [`Self::fire_events`]).
     fn start_group<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let group = self.groups[self.group].clone();
         for player in group {
@@ -1107,12 +1110,23 @@ impl GameState {
             self.adventure
                 .start_turn(rules.core(), rules.adventure(), &self.heroes, player);
             sink.emit(GameEvent::TurnStarted { player });
+            self.fire_events(player, sink);
         }
     }
 
     /// The day, from 1.
     pub const fn day(&self) -> u32 {
         self.day
+    }
+
+    /// The month's kind (GAM-CAL-003, E08 T85b): public, as the original's month's message.
+    pub const fn month(&self) -> MonthKind {
+        self.month
+    }
+
+    /// The map's timed events in the map's order (GAM-CAL-004, E08 T85b): the setup's, static.
+    pub fn events(&self) -> &[TimedEventSetup] {
+        self.events.as_deref().unwrap_or_default()
     }
 
     /// How many players the game has.
@@ -1263,10 +1277,12 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v21 (E08 T84a; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
+    /// Encoding v22 (E08 T85b; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
     /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's, v14
-    /// T54's, v15 T60a's, v16 T62a's, v17 T62b1's, v18 T63a's, v19 T63b's, v20 T72's):
-    /// version; the master seed; the day; the running group's index; the schedule (groups as
+    /// T54's, v15 T60a's, v16 T62a's, v17 T62b1's, v18 T63a's, v19 T63b's, v20 T72's, v21
+    /// T84a's): version; the master seed; the day; since v22 the month's kind ([`MonthKind`]'s
+    /// encoding) and the map's timed events (length, then each: [`hash_event`]); the running
+    /// group's index; the schedule (groups as
     /// length + player ids); the players (colour, since v14 whether it counts as human, acting,
     /// stream state); since v2 the treasuries (the
     /// resource kinds, then every player's amounts as length and entries); since v3 the open
@@ -1298,6 +1314,12 @@ impl CanonicalHash for GameState {
         h.write_u32(GAME_STATE_HASH_VERSION);
         h.write_u64(self.seed);
         h.write_u32(self.day);
+        self.month.hash_into(h);
+        let events = self.events();
+        h.write_len(events.len());
+        for event in events {
+            hash_event(event, h);
+        }
         h.write_len(self.group);
         h.write_len(self.groups.len());
         for group in &self.groups {
@@ -1450,6 +1472,26 @@ impl CanonicalHash for GameState {
 }
 
 /// A price in the game state's hash (v18): its length, then each resource and amount.
+/// A timed event (game state hash v22, E08 T85b): its players (length, then each id), whether it
+/// fires for a human and for a computer player, its first day, its interval, its resources
+/// (length, then each resource and amount), its message's index.
+fn hash_event(event: &TimedEventSetup, h: &mut StateHasher) {
+    h.write_len(event.players.len());
+    for player in &event.players {
+        h.write_u8(player.raw());
+    }
+    h.write_bool(event.human);
+    h.write_bool(event.computer);
+    h.write_u16(event.first_day);
+    h.write_u16(event.interval);
+    h.write_len(event.resources.len());
+    for &(resource, amount) in &event.resources {
+        resource.hash_into(h);
+        h.write_i32(amount);
+    }
+    h.write_u16(event.message);
+}
+
 fn hash_price(price: &[(ResourceId, u32)], h: &mut StateHasher) {
     h.write_len(price.len());
     for (resource, amount) in price {
@@ -1525,8 +1567,14 @@ impl GameState {
         self.treasuries.gain(player, resource, amount);
     }
 
+    /// Sets `hero`'s spell points (tests of the day's regain, E08 T85b).
+    pub(crate) fn set_mana(&mut self, hero: HeroId, mana: u16) {
+        let store = Arc::make_mut(&mut self.heroes);
+        Arc::make_mut(&mut store[usize::from(hero.raw())]).mana = mana;
+    }
+
     /// Replaces the schedule (tests of turn groups larger than sequential play) and restarts the
-    /// first group's turn.
+    /// first group's turn (its players' timed events fire again: such tests have none).
     pub(crate) fn set_schedule(&mut self, rules: &GameRuleset, groups: Vec<Vec<PlayerId>>) {
         for player in &mut self.players {
             player.acting = false;

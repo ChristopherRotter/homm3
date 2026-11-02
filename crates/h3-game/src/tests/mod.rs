@@ -6,6 +6,7 @@
 
 mod aftermath;
 mod battles;
+mod calendar;
 mod day;
 mod decisions;
 mod events;
@@ -397,8 +398,13 @@ fn part(core: &Ruleset) -> AdventureRuleset {
 
 /// [`part`] with other starting stack chances and army slots.
 fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
+    AdventureRuleset::compile(core, &[adventure_pack(chances, slots)]).unwrap()
+}
+
+/// [`part_with`]'s pack (E08 T85b: the calendar's tests edit its parameters).
+fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
     let cost = NonZeroU16::new(100).unwrap();
-    let pack = AdventurePack {
+    AdventurePack {
         terrains: vec![
             TerrainMovementDef {
                 terrain: key("t:grass"),
@@ -674,8 +680,7 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             })
             .to_vec(),
         ..AdventurePack::new(manifest())
-    };
-    AdventureRuleset::compile(core, &[pack]).unwrap()
+    }
 }
 
 /// The battle part for `core` (E08 T19a): the imp (2/3, 1-2, 4 hit points), the gog (4/4, 2-3,
