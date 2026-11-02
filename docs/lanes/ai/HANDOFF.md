@@ -30,7 +30,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Open pull requests:** the T16 one (`claude/quirky-cori-hjtoat`). Merged: #646 (T9b to
   T12), #651 (T13 to T15).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
-  (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v37 (E25 T16:
+  (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
   (`docs/08-work-process.md`, "Versions"). Next
   ids: AI-Q15, AI-QUIRK-1, AI-STUB-2.
