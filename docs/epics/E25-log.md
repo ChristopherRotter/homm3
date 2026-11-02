@@ -543,3 +543,27 @@ an entry only where a task builds on it.
   training's length all end at one ladder, 0.41 to 0.42 against the system actor: the limit is
   not the network's capacity, but what PPO's self-play at these settings drives it to (or what
   the agent may see, the risk the epic names).
+
+## T8 — Increment 3's checkpoint (2026-11-02)
+
+- **The user's choices** (AI-Q12): increment 4 is (a), the policy's sharpness and PPO's settings
+  (the agent's recommendation): a temperature diagnostic without training, then 20 M A/Bs on the
+  2 × 512 MLP (the entropy bonus decayed to 0; fewer epochs or a larger rollout).
+  **`e25-scale-1` #3 stays the current best** (the wide MLP is as strong at twice the parameters
+  and 1.5 times a decision's cost). T7d's decisions' mix on the wide network is not read (it is
+  not the current best).
+- **The user's caveat on T7c:** the convolution's and the transformer's results are to be taken
+  with a large grain of salt; they fitted the teacher far worse, and modern convolutional and
+  transformer networks rely on size and on training aids (skip connections, normalisation,
+  dropout) to train properly. What T7a built: `hexconv` had residual blocks (the branch at 0) and
+  a global-pooling bias but no normalisation, 64 channels; `hexformer` pre-norm residual blocks,
+  64 wide, 4 heads; 0.69 and 0.34 M parameters against the MLP's 5.95 M. Every student shared one
+  optimiser setting (Adam 3e-4 falling to a tenth, no warm-up, minibatches of 512) and 4 M
+  samples, and the teacher is an MLP (T7c's bias). So T7c ranks those configurations at those
+  settings, not the architectures: a structured network wider, normalised, warmed up and tuned on
+  its own learning rate stays a candidate (the epic's candidates), with the GTX 1070's cost (21
+  times the MLP's a sample for `hexconv` 64 × 6) the constraint.
+- **Why (a) first:** the runs' entropy ends at 1.5 (`e25-scale-1`, 40 M; about four and a half
+  equally likely choices) while its KL per update falls from 0.013 to 0.007 and the clip fraction
+  from 0.17 to 0.09: the policy keeps much of its spread under the fixed entropy bonus 0.01, and
+  the temperature diagnostic measures what that spread costs before any run.

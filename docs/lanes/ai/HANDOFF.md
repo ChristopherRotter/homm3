@@ -13,19 +13,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E25 refined 2026-10-27** (AI-Q10; `docs/epics/E25-battle-ai-v2.md`, record `E25-log.md`):
   the target is beating the faithful system actor (`t7-1`: 0.372); it **trains no agent any
   more** (ADR-0026 point 8 as amended; no neutral battles in training for now, the user at T2a).
-  **Done 2026-10-28/29:** increments 1 (the search's diagnostics, shaping: +0.04; C ABI v35) and
-  2 (the tactics bound; the scale run flat from 20 M), in `E25-archive.md`; **`e25-scale-1` #3
-  the current best** (T6, the user; 0.418 against the system actor). Increment 3, the network's
-  architecture (AI-Q11): T7a (`hexconv`, `hexformer`, the MLP's `layers`), T7b (the bench,
-  `h3env.train.distill`).
-  **Done 2026-10-30:** T7c (the bench on the user's GPU, `records/distill/distill-1.json`: the
-  structured networks fit ten times worse at 5 to 25 times the cost; the wide MLP 2 × 1 024 leads,
-  its value past the teacher's; the user: it alone to RL, from scratch), T7d (`e25-wide-1`,
-  20 M: `e25-scale-1` #3's ladder, 0.414 against the system actor, at 0.7 times its speed).
-  **Next:** T8, increment 3's checkpoint: **AI-Q12 waits for the user** (increment 4's options,
-  the current best).
-- **Open pull requests:** the T7d branch's (`claude/bold-archimedes-vivw35`). Merged: #585,
-  #604 (E25 T7b, T7c).
+  **Done:** increments 1 (the search's diagnostics, shaping; C ABI v35), 2 (the tactics bound;
+  the scale run flat from 20 M) and 3 (the network's architecture: the wide MLP leads the
+  distillation bench, in RL it ends at #3's ladder; the structured networks, as configured, fit
+  ten times worse: the user's caveat at T8), in `E25-archive.md`. **`e25-scale-1` #3 the
+  current best** (T6, kept at T8; 0.418 against the system actor).
+  **Increment 4** (T8, AI-Q12, the user, 2026-11-02): the policy's sharpness and PPO's settings,
+  T9a to T11 in `QUEUE.md`. **Next:** T9a (the temperature in `Policy.act` and the ladder).
+- **Open pull requests:** none of E25's (#610, T7d, merged); this session's branch
+  `claude/quirky-dirac-h5xdj2` gets one when T9a is done.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -37,6 +33,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-02 — E25 T8, T9a
+
+- #610 merged; the branch started from `master`. T8: the user chose increment 4 (a) and kept #3
+  (AI-Q12 answered; increment 3 archived; T9a to T11 queued; the user's caveat on T7c's
+  structured networks in `E25-log.md` T8 and the epic's candidates). The sandbox's baseline: the
+  light gates (CI verified `master`'s code). **In progress:** T9a.
 
 ### 2026-10-30 — E25 T7d
 
@@ -51,12 +54,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   samples, GTX 1070) and uploaded its report and metrics: committed and read (`E25-log.md` T7c).
   The user: T7d is the wide MLP alone, from scratch at 20 M (`configs/e25-wide.toml`, its test in
   `test_run.py`). The bench's students stay on the user's machine (`runs/distill-1/students/`).
-
-### 2026-10-29 — E25 T5, T6, T7a, T7b
-
-- #576 (T4b) merged. The user ran `e25-scale-1`, stopped it at 41.3 M (flat), uploaded its
-  record, metrics and `best.pt`: read (`E25-log.md` T5; no final ladder, so its best replayed on
-  the sandbox's CPU). T6 (the user): `e25-scale-1` #3 the current best, increment 3 the
-  network's architecture (AI-Q11). T7a (`hexnet`, the MLP's depth) and T7b (the distillation
-  bench) built and tested; a CPU smoke of the bench (PPO's minibatches ran out of memory:
-  `TRAPS.md`). The sandbox setup's full verify stopped (CI's record).

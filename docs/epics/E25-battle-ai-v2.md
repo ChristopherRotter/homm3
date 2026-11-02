@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 and 2 closed 2026-10-28 and 29, increment 3 at its checkpoint (AI-Q12) · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 3 closed 2026-10-28, 29 and 11-02, increment 4 in progress (AI-Q12) · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -72,8 +72,14 @@ it reads only its side's observation, and its search too (ADR-0025 point 12a).
 - **Expert iteration:** a search in Rust over determinized worlds, trained on its own choices
   (E06 design §14's T8d). Needs AI-STUB-1's gaps, the cast heads perturbed at the root, and a rule
   for the most visited action's repetitions (greedy play repeats itself, E05 T8b).
-- **A network that reads the battle's structure:** E06's entity network revived from the move
-  head's view of the stacks; with it `[network] order` and `preview` again.
+- **A network that reads the battle's structure, built and tuned properly** (the user at T8):
+  T7c's verdict holds for its configurations only (`hexconv` 64 × 6 without normalisation,
+  `hexformer` 64 × 4, E06's entity network; 0.3 to 1.2 M parameters, one optimiser setting, no
+  warm-up). Wider ones with normalisation, warm-up and a learning rate of their own, on the bench
+  first; the GTX 1070's cost is the constraint (`hexconv` 64 × 6: 21 times the MLP's a sample).
+  With it `[network] order` and `preview` again.
+- **A more diverse league:** exploiters (a second learner trained only against the main agent's
+  frozen copies, its snapshots joining the league), aimed at self-play's narrowness (AI-Q12 (b)).
 - **Imitation** of the fair system actor (decision 3), once the battle lane has built it.
 - **Scale:** the 60 M run at T7's mix (`configs/e06-t7.toml --set samples=60_000_000`, about 4
   hours; without the faithful actor now); the mana-price run (`configs/e06-mana.toml`).
@@ -97,38 +103,39 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 |---|---|---|---|
 | 1 | 2026-10-28 | T1a–T1c, T2a, T2b, T3 | the search's terminal by reward v1 and the true world (no gain: the evaluation limits it), shaping (+0.04, a tactics-phase loop), the faithful actor out of training; C ABI v35 |
 | 2 | 2026-10-29 | T4a, T4b, T5, T6 | the tactics bound (the loop gone, no cost), the scale run (flat from 20 M; `e25-scale-1` #3 the current best) |
+| 3 | 2026-11-02 | T7a–T7d, T8 | the network's architecture: a distillation bench (the wide MLP leads, the structured networks as configured fit ten times worse), the wide MLP in RL at #3's ladder (AI-Q12) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
 AI v1 and the baseline. **Since T4b** (the user, 2026-10-29) **`e25-bound-1`** (#2, 20 M) is the
 current best; **since T6** (the user, 2026-10-29) **`e25-scale-1` #3** (30 M, three tactics
-rounds), the network the exit criteria are judged on.
+rounds), the network the exit criteria are judged on. **At increment 3's checkpoint** (the user,
+2026-11-02, T8): #3 stays the current best; increment 4 is the policy's sharpness and PPO's
+settings.
 
-**Increment 3: the network's architecture** (refined 2026-10-29, AI-Q11; the AI queue's tasks).
-Every run since E05 is the 2 × 512 MLP over the flat observation; the search (T1c) and scale
-(T5) stopped at its limit. Candidates, all on observation v22 (no encoding change): a deeper and
-a wider MLP; a **hex convolution** network (the field in axial coordinates, a 3 × 3 kernel
-without two opposite corners: a hex's six neighbours); a **hex transformer** (the hexes as
-tokens, a bias per axial offset); E06's entity network as it is. A distillation bench ranks them
-against the current MLP before any RL run.
+**Increment 4: the policy's sharpness and PPO's settings** (refined 2026-11-02, AI-Q12; the AI
+queue's tasks). Every run since E05 used PPO's settings as E05 T8 set them (the entropy bonus
+0.01 throughout, 4 epochs, 8 minibatches, the learning rate 2.5e-4 falling linearly, rollouts of
+128 steps × 256 envs); the entropy ends at 1.5 (`e25-scale-1`), the sampled policy's spread. A
+diagnostic without training first, then 20 M A/Bs on the 2 × 512 MLP at `e25-scale.toml`'s
+settings. Decision 1's rules unchanged: the sampled policy is judged, only trained sharper.
 
-- [x] **T7a The network kinds** (2026-10-29; `E25-log.md` T7a): `[network] layers` for the MLP,
-  `kind = "hexconv"` and `"hexformer"` (`h3env.train.hexnet`: the stacks drawn on their hexes,
-  the entity network's heads, `entity.Pointed`), `field_width`, `field_height`; tests; the costs
-  on the sandbox's CPU (`hexconv` 64 × 6 15 times the MLP's operations).
-- [x] **T7b The distillation bench** (2026-10-29; `E25-log.md` T7b): `h3env.train.distill`,
-  every student trained on the same rollouts of the teacher (`e25-scale-1` #3) to its heads and
-  its λ-returns, scored on held-out rollouts per head and category; `configs/distill/e25.toml`
-  (six students); a CPU smoke (minibatches of 512 rows: PPO's do not fit the hex networks).
-- [x] **T7c The bench run** (2026-10-30; `E25-log.md` T7c; `records/distill/distill-1.json`):
-  the structured networks fit the teacher ten times worse than any MLP (agreement 0.62 to 0.64
-  against 0.87 to 0.88) at 5 to 25 times its cost; the wide MLP leads everywhere, its value past
-  the teacher's (0.612 against 0.575). The user: the wide MLP alone to RL, from scratch.
-- [x] **T7d The A/B** (2026-10-30; `E25-log.md` T7d; `records/e25-wide-1.json`): the wide MLP
-  from scratch at 20 M ends at `e25-scale-1` #3's ladder (every point estimate within 0.006;
-  0.414 against the system actor) at 0.7 times its samples a second; its value no better in RL.
-  The decisions' mix not read (its `best.pt`, 49.5 MB, is above the upload limit).
-- [ ] **T8 Increment 3's checkpoint** (AI-Q12): the reads put to the user, increment 4 chosen.
+- [ ] **T9a The temperature** (the sandbox): `Policy.act`'s logits of every head divided by a
+  temperature (1 the default, bit-identical; 0 the most likely choice), through
+  `evaluate.ladder` and `h3env.train.ladder --temperature 1,0.7,0.5` (a line per temperature and
+  opponent); training untouched. Tests.
+- [ ] **T9b The diagnostic** (the user's machine, or the sandbox's CPU from an uploaded
+  `best.pt`): `e25-scale-1` #3 on the report set v1 at 1, 0.7, 0.5 and 0 against the system
+  actor, the other seats and the neutral set at the best one. How much of the gap to 0.5 is the
+  spread.
+- [ ] **T10a The entropy's schedule and the second lever** (the sandbox): `[ppo] entropy_floor`
+  (the bonus falling with the learning rate's progress to that fraction of `entropy_coef`; 1 the
+  default, every run before); `configs/e25-sharp.toml` (the bonus to 0 at 20 M) and the second
+  A/B's config (fewer epochs or a larger rollout, proposed from T9b and the runs' KL and clip
+  fraction, agreed with the user). Tests.
+- [ ] **T10b The A/Bs** (the user's machine, about 75 minutes each at 20 M): against `e25-scale-1`
+  #3's ladder (and `e25-bound-1`'s, `e25-wide-1`'s), the head-to-head gate against #3.
+- [ ] **T11 Increment 4's checkpoint**: the reads put to the user, increment 5 chosen.
 
 ## Exit criteria
 
