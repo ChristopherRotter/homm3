@@ -105,10 +105,11 @@ pub const POLICY_VERSION: u32 = 19;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):
-/// [`unchecked`]'s choice when the engine accepts it, else Defend (ADR-0027 point 3; no such
-/// choice is known, the property tests assert none). Its draws come from `rng`, the caller's
-/// stream, never the battle's (point 5); the same state and stream give the same command. For a
-/// side not to act, or a battle that is over, it gives Defend, which the engine refuses.
+/// [`unchecked`]'s choice when the engine accepts it, else Defend (ADR-0027 point 3; one such
+/// choice is known, a hypnotized shooter's shot at itself, BAT-STUB-18; the property tests assert
+/// no other). Its draws come from `rng`, the caller's stream, never the battle's (point 5); the
+/// same state and stream give the same command. For a side not to act, or a battle that is over,
+/// it gives Defend, which the engine refuses.
 // rule: BAT-AI-001
 // Never inlined: the gated benchmark counts the instructions inside it (ADR-0027 point 11).
 #[inline(never)]

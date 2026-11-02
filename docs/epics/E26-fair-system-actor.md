@@ -61,7 +61,7 @@ all-seeing computer kept as a game's option. The AI lane may train against it an
 |---|---|---|
 | T1 | The design: ADR-0027 point 4 amended, this file, `BACKLOG.md`, `lanes.toml`, BAT-Q63, the queue's tasks | done 2026-11-02 |
 | T2 | `choose_fair` (BAT-AI-025) and its unit tests: the other hero's private part, nothing hidden | done 2026-11-02 (`E26-log.md` T2) |
-| T3 | The properties: reads nothing hidden, no fallback, the original where nothing is hidden, determinism (test ruleset and harvested packs) | ready |
+| T3 | The properties: reads nothing hidden, no fallback, the original where nothing is hidden, determinism (test ruleset and harvested packs) | done 2026-11-02 (`E26-log.md` T3) |
 | T4 | `h3 ai --sight fair`: its cost per decision against `choose` and its strength against the all-seeing one, recorded | ready |
 | T5 | The hand-over and the checkpoint: the other lanes' inbox notes, docs, TRAPS, the closure | after T3, T4 |
 
