@@ -14,33 +14,29 @@ never varied since E05 T8 (the entropy bonus 0.01 throughout, 4 epochs, 8 miniba
 of 128 × 256); the entropy ends at 1.5. A temperature diagnostic without training first, then
 20 M A/Bs on the 2 × 512 MLP at `e25-scale.toml`'s settings. The faithful system actor still
 trains no agent and no neutral battles train (decision 2); each run's length is agreed with the
-user (decision 5). All on observation v22 and action v13: no encoding or ABI change.
+user (decision 5). All on observation v22 and action v13: no encoding or ABI change. T9a (the
+temperature in `Policy.act` and `h3env.train.ladder --temperature`) done 2026-11-02 (`E25-log.md`
+T9a).
 
-- **T9a The temperature.** *Scope:* `Policy.act(temperature=…)`: every head's logits divided by
-  it before the mask (1 the default and bit-identical, 0 the most likely choice, as `greedy`);
-  `evaluate.sampled` and `ladder` pass it; `h3env.train.ladder --temperature 1,0.7,0.5` plays
-  one ladder per temperature (each line names it; `--json` keyed by it). Training untouched.
-  Tests in `tests/test_train.py` or a new file (1 draws as before from the same generator; a
-  small temperature picks the most likely entry and cast heads; the CLI's list and its
-  refusals). *Depends on:* T8. *Status:* next.
 - **T9b The diagnostic.** *Scope:* `e25-scale-1` #3 on the report set v1 against the system actor
   at 1, 0.7, 0.5 and 0; at the best one also Random, Aggressor, Greedy and the neutral set. On
   the user's machine (`uv run --group train python -m h3env.train.ladder --checkpoint
   runs/e25-scale-1/best.pt --opponents system --temperature 1,0.7,0.5,0 --device cuda --json
   …`), or on the sandbox's CPU if the user uploads its `best.pt` (23.8 MB). Read into
   `E25-log.md` T9b: how much of the gap to 0.5 the spread is, per kind and side. *Depends on:*
-  T9a. *Status:* open.
-- **T10a The entropy's schedule and the second lever.** *Scope:* `[ppo] entropy_floor` (the bonus
-  falls with the learning rate's progress, `lr_horizon`, to `entropy_coef × entropy_floor`; 1 the
-  default: every run before, older records read as 1); `configs/e25-sharp.toml`
-  (`e25-scale.toml` at 20 M, the floor 0); the second A/B's config, fewer epochs or a larger
-  rollout, proposed from T9b's read and the records' KL and clip fraction, agreed with the user.
-  Tests. *Depends on:* T9b. *Status:* open.
-- **T10b The A/Bs.** *Scope:* both runs on the user's machine, about 75 minutes each at 20 M;
-  their records and metrics read into `E25-log.md` beside `e25-scale-1` #3's, `e25-bound-1`'s
-  and `e25-wide-1`'s ladders; the head-to-head gate against #3 (`h3env.train.gate --candidate
-  … --best runs/e25-scale-1/best.pt --device cuda`). *Depends on:* T10a; the user. *Status:*
-  open.
+  T9a (done); the user (the run or the upload). *Status:* next.
+- **T10a The second lever.** *Scope:* the second A/B's config, fewer epochs or a larger rollout,
+  proposed from T9b's read and the records' KL and clip fraction (`E25-log.md` T8), agreed with
+  the user; its test beside `e25-sharp.toml`'s in `test_run.py`. (The entropy's schedule,
+  `[ppo] entropy_floor`, and `configs/e25-sharp.toml` done 2026-11-02, `E25-log.md` T10a.)
+  *Depends on:* T9b. *Status:* open.
+- **T10b The A/Bs.** *Scope:* both runs on the user's machine, about 75 minutes each at 20 M
+  (`e25-sharp-1` ready: `uv run --group train python -m h3env.train --config
+  configs/e25-sharp.toml --out runs/e25-sharp-1`; the user may start it with T9b); their
+  records and metrics read into `E25-log.md` beside `e25-scale-1` #3's, `e25-bound-1`'s and
+  `e25-wide-1`'s ladders; the head-to-head gate against #3 (`h3env.train.gate --candidate
+  … --best runs/e25-scale-1/best.pt --device cuda`). *Depends on:* T10a (the second run); the
+  user. *Status:* open (the first run ready).
 - **T11 Increment 4's checkpoint.** *Scope:* the reads put to the user (a question in
   `docs/OPEN-QUESTIONS.md`), increment 5 chosen and refined, increment 4 moved to
   `E25-archive.md`. *Depends on:* T10b. *Status:* open.

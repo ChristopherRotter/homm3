@@ -5,7 +5,9 @@ train`) and are skipped without it; `test_run.py` covers the run's lifecycle wit
 
 from __future__ import annotations
 
+import copy
 import json
+import math
 import signal
 import subprocess
 import sys
@@ -157,6 +159,46 @@ def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities(kind) -
     np.testing.assert_allclose(logp.numpy(), flat(rollout.logprob).numpy(), atol=1e-4)
     np.testing.assert_allclose(value.numpy(), flat(rollout.value).numpy(), atol=1e-5)
     assert torch.isfinite(ent).all() and (ent >= -1e-5).all()
+
+
+def test_a_temperature_divides_every_heads_logits() -> None:
+    # E25 T9a: a network with every head's logits doubled plays at temperature 2 as the network
+    # plays at 1 from the same generator (a power of two scales exactly), the casts' heads and the
+    # log-probabilities included; 1 is the network's own policy, 0 its most likely choices.
+    batch = mixed_batch()
+    policy = casting_policy(batch)
+    doubled = copy.deepcopy(policy)
+    with torch.no_grad():
+        for head in (
+            doubled.entry_head,
+            doubled.spell_head,
+            doubled.target_head,
+            doubled.second_head,
+        ):
+            head.weight.mul_(2.0)
+            head.bias.mul_(2.0)
+    names = ("entry", "spell", "target", "second", "cast", "logprob")
+    casts = 0
+    for t in range(30):
+        own = policy.act(batch, torch.Generator().manual_seed(t))
+        for twin, temperature in ((policy, 1.0), (doubled, 2.0)):
+            other = twin.act(batch, torch.Generator().manual_seed(t), temperature=temperature)
+            for name in names:
+                np.testing.assert_array_equal(getattr(other, name), getattr(own, name))
+        greedy = policy.act(batch, greedy=True)
+        cold = policy.act(batch, torch.Generator().manual_seed(t), temperature=0.0)
+        for name in names:
+            np.testing.assert_array_equal(getattr(cold, name), getattr(greedy, name))
+        live = batch.to_move >= 0
+        casts += int((own.cast & live).sum())
+        a = batch.actions
+        a["entry"], a["spell"] = own.entry, own.spell
+        a["target"], a["second"] = own.target, own.second
+        batch.step()
+    assert casts > 0
+    for bad in (-1.0, math.nan, math.inf):
+        with pytest.raises(ValueError, match="temperature"):
+            policy.act(batch, temperature=bad)
 
 
 def placing_policy(batch: BattleBatch, tactics_rounds: int = 0) -> Policy:
@@ -374,8 +416,10 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
         assert all(np.isfinite(r[k]) for k in ("policy_loss", "value_loss", "entropy", "kl"))
         assert r["update_samples"] > 0
     assert updates[1]["samples"] == updates[0]["samples"] + updates[1]["update_samples"]
-    # The learning rate decays over the samples (the horizon: the budget).
+    # The learning rate decays over the samples (the horizon: the budget); the entropy bonus stays
+    # (`entropy_floor` 1, E25 T10a).
     assert updates[0]["lr"] == config.lr > updates[1]["lr"]
+    assert {r["entropy_coef"] for r in updates} == {config.entropy_coef}
     # The league: best #0 from the start, a snapshot after each update (every sample is a
     # multiple of 1), so each rollout drew from #0 and the snapshots before it; a promotion at
     # the end joins too. Each snapshot's network is in its file.
@@ -575,6 +619,24 @@ def test_an_update_of_fewer_samples_than_minibatches_stays_finite() -> None:
     assert 2 <= stats["update_samples"] < 2 * trainer.config.minibatches
     assert all(torch.isfinite(p).all() for p in trainer.policy.parameters())
     trainer.batch.close()
+
+
+def test_the_update_takes_the_entropy_bonus_it_is_given() -> None:
+    # E25 T10a: the same rollout updated from the same weights: without a bonus given, the
+    # config's; a bonus of its own changes the step.
+    def stepped(bonus):
+        trainer = Trainer(Config(**{**SMALL, "envs": 2, "rollout": 8, "minibatches": 2}))
+        trainer.collect()
+        if bonus == "config":
+            trainer.update(trainer.config.lr)
+        else:
+            trainer.update(trainer.config.lr, bonus)
+        trainer.batch.close()
+        return torch.cat([p.detach().reshape(-1) for p in trainer.policy.parameters()])
+
+    plain = stepped("config")
+    assert torch.equal(stepped(Config().entropy_coef), plain)
+    assert not torch.equal(stepped(1.0), plain)
 
 
 #: A run that dies hard (SIGKILL; TerminateProcess on Windows) while it writes its fifth
@@ -1181,6 +1243,18 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     main([*checkpoint, "--set", "neutral-v1", "--episodes", "1", "--max-steps", "300"])
     (line,) = capsys.readouterr().out.splitlines()
     assert line.startswith("against system") and "wandering" in line
+    # E25 T9a: a ladder per temperature, each line and table named by it; at 1 the plain ladder's.
+    few = ["--opponents", "greedy", "--episodes", "1", "--max-steps", "300"]
+    main([*checkpoint, *few, "--temperature", "1,0.5,0", "--json", str(out)])
+    lines = capsys.readouterr().out.splitlines()
+    assert [line.split(":")[0] for line in lines] == ["at 1", "at 0.5", "at 0"]
+    tables = json.loads(out.read_text())
+    assert list(tables) == ["1", "0.5", "0"] and all(list(t) == ["greedy"] for t in tables.values())
+    plain = ladder(policy, opponents=["greedy"], per_kind=1, max_steps=300)["greedy"]
+    assert tables["1"]["greedy"]["by_kind"] == json.loads(json.dumps(plain["by_kind"]))
+    for bad in ("0.5,x", "-1", "1,1.0", "inf", "nan"):
+        with pytest.raises(SystemExit):
+            main([*checkpoint, "--temperature", bad])
     with pytest.raises(SystemExit):
         main([*checkpoint, "--envs", "2"])
     with pytest.raises(ValueError, match="unknown opponent"):

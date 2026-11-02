@@ -1,0 +1,34 @@
+# E25 T10b's first A/B (increment 4, AI-Q12, the user's choice 2026-11-02): `e25-scale.toml`'s
+# settings at 20 M samples, its entropy bonus falling with the learning rate from 0.01 to 0 at
+# the end (`[ppo] entropy_floor = 0`, T10a; every run before kept 0.01), the 2 × 512 MLP from
+# scratch. Against `e25-scale-1` #3's ladder. On the user's machine (about 75 minutes):
+#
+#   uv run --group train python -m h3env.train --config configs/e25-sharp.toml --out runs/e25-sharp-1
+#   uv run --group train python -m h3env.train --resume runs/e25-sharp-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [0, 0, 100, 50, 25, 0]
+
+[network]
+tactics_rounds = 3
+
+[ppo]
+shaping = true
+entropy_floor = 0.0
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

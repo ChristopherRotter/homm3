@@ -120,19 +120,19 @@ queue's tasks). Every run since E05 used PPO's settings as E05 T8 set them (the 
 diagnostic without training first, then 20 M A/Bs on the 2 × 512 MLP at `e25-scale.toml`'s
 settings. Decision 1's rules unchanged: the sampled policy is judged, only trained sharper.
 
-- [ ] **T9a The temperature** (the sandbox): `Policy.act`'s logits of every head divided by a
-  temperature (1 the default, bit-identical; 0 the most likely choice), through
-  `evaluate.ladder` and `h3env.train.ladder --temperature 1,0.7,0.5` (a line per temperature and
-  opponent); training untouched. Tests.
+- [x] **T9a The temperature** (2026-11-02; `E25-log.md` T9a): `Policy.act`'s logits of every head
+  divided by a temperature (1 the default, bit-identical; 0 the most likely choice), through
+  `evaluate.ladder` and `h3env.train.ladder --temperature 1,0.7,0.5,0` (a line per temperature
+  and opponent, the same episodes and draws); training untouched.
 - [ ] **T9b The diagnostic** (the user's machine, or the sandbox's CPU from an uploaded
   `best.pt`): `e25-scale-1` #3 on the report set v1 at 1, 0.7, 0.5 and 0 against the system
   actor, the other seats and the neutral set at the best one. How much of the gap to 0.5 is the
   spread.
 - [ ] **T10a The entropy's schedule and the second lever** (the sandbox): `[ppo] entropy_floor`
   (the bonus falling with the learning rate's progress to that fraction of `entropy_coef`; 1 the
-  default, every run before); `configs/e25-sharp.toml` (the bonus to 0 at 20 M) and the second
-  A/B's config (fewer epochs or a larger rollout, proposed from T9b and the runs' KL and clip
-  fraction, agreed with the user). Tests.
+  default, every run before) and `configs/e25-sharp.toml` (the bonus to 0 at 20 M) done
+  2026-11-02 (`E25-log.md` T10a); open: the second A/B's config (fewer epochs or a larger
+  rollout, proposed from T9b and the runs' KL and clip fraction, agreed with the user).
 - [ ] **T10b The A/Bs** (the user's machine, about 75 minutes each at 20 M): against `e25-scale-1`
   #3's ladder (and `e25-bound-1`'s, `e25-wide-1`'s), the head-to-head gate against #3.
 - [ ] **T11 Increment 4's checkpoint**: the reads put to the user, increment 5 chosen.

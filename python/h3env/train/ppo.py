@@ -88,6 +88,7 @@ from .run import (
     Run,
     Stop,
     atomic_write,
+    entropy_bonus,
     learning_rate,
     machine,
     resolve,
@@ -701,9 +702,12 @@ class Trainer:
         self.phi[b.done.astype(bool)] = 0.0
         return shaped
 
-    def update(self, lr: float) -> dict:
-        """PPO's update over the rollout's samples."""
+    def update(self, lr: float, entropy_coef: float | None = None) -> dict:
+        """PPO's update over the rollout's samples at the learning rate `lr` and the entropy
+        bonus `entropy_coef` (`[ppo] entropy_coef` when None; the run's schedule,
+        `entropy_bonus`)."""
         c, r = self.config, self.rollout
+        bonus = c.entropy_coef if entropy_coef is None else entropy_coef
         adv, used = gae(
             r.side,
             r.value,
@@ -749,7 +753,7 @@ class Trainer:
                 ratio = torch.exp(logp - old)
                 pg = torch.max(-a * ratio, -a * ratio.clamp(1 - c.clip, 1 + c.clip)).mean()
                 v_loss = 0.5 * ((value - m["returns"]) ** 2).mean()
-                loss = pg - c.entropy_coef * ent.mean() + c.value_coef * v_loss
+                loss = pg - bonus * ent.mean() + c.value_coef * v_loss
                 self.optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), c.max_grad_norm)
@@ -988,15 +992,17 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
             settle()
             while trainer.samples < config.samples and not stop.requested:
                 lr = learning_rate(config, trainer.samples)
+                bonus = entropy_bonus(config, trainer.samples)
                 roll = trainer.collect(stop)
                 if roll is None:
                     break
-                stats = trainer.update(lr)
+                stats = trainer.update(lr, bonus)
                 run.emit(
                     {
                         "type": "update",
                         **counters(),
                         "lr": lr,
+                        "entropy_coef": bonus,
                         "samples_per_s": stats["update_samples"]
                         / (roll["rollout_s"] + stats["update_s"]),
                         **roll,

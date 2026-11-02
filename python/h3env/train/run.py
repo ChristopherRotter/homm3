@@ -138,6 +138,10 @@ class Config:
     clip: float = field(default=0.2, metadata=_in("ppo"))
     value_coef: float = field(default=0.5, metadata=_in("ppo"))
     entropy_coef: float = field(default=0.01, metadata=_in("ppo"))
+    #: The entropy bonus's schedule (E25 T10a, `entropy_bonus`): `entropy_coef` falls with the
+    #: samples over `lr_horizon`, as the learning rate, to `entropy_coef * entropy_floor`, then
+    #: stays; 1 keeps it constant (every run before T10a).
+    entropy_floor: float = field(default=1.0, metadata=_in("ppo"))
     max_grad_norm: float = field(default=0.5, metadata=_in("ppo"))
     #: What a battle cut at `max_steps` costs each learning side (E06 T5c, the user's amendment
     #: of decision 10): its last transition gets `-truncation_penalty` and ends there, instead of
@@ -386,8 +390,12 @@ def resolve(config: Config) -> Config:
         )
     if c.lr_schedule not in ("linear", "constant"):
         problems.append("`lr_schedule` is linear or constant")
-    if not 0.0 <= c.lr_floor <= 1.0 or not 0.0 <= c.self_play <= 1.0 or not 0.0 < c.decay <= 1.0:
-        problems.append("`lr_floor` and `self_play` lie in [0, 1], `decay` in (0, 1]")
+    if not all(0.0 <= x <= 1.0 for x in (c.lr_floor, c.entropy_floor, c.self_play)) or not (
+        0.0 < c.decay <= 1.0
+    ):
+        problems.append(
+            "`lr_floor`, `entropy_floor` and `self_play` lie in [0, 1], `decay` in (0, 1]"
+        )
     if not 0.0 <= c.system_share <= 1.0:
         problems.append("`system_share` lies in [0, 1]")
     elif c.system_share and c.kinds is None:
@@ -447,6 +455,15 @@ def learning_rate(config: Config, samples: int) -> float:
         return config.lr
     progress = samples / max(config.lr_horizon, 1)
     return config.lr * max(1.0 - progress, config.lr_floor)
+
+
+def entropy_bonus(config: Config, samples: int) -> float:
+    """The entropy bonus's coefficient after `samples` (E25 T10a): `entropy_coef` falling linearly
+    over `lr_horizon` to `entropy_coef * entropy_floor`, then flat; constant at the floor 1."""
+    if config.entropy_floor == 1.0:
+        return config.entropy_coef
+    progress = samples / max(config.lr_horizon, 1)
+    return config.entropy_coef * max(1.0 - progress, config.entropy_floor)
 
 
 class Cadence:

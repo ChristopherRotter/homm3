@@ -33,6 +33,7 @@ config; a file without the key plays unbounded, as before.
 from __future__ import annotations
 
 import copy
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -194,11 +195,22 @@ class Policy(nn.Module):
         generator: torch.Generator | None = None,
         greedy: bool = False,
         rows: np.ndarray | None = None,
+        temperature: float = 1.0,
     ) -> Choice:
         """Chooses an action for every row of `batch` (or only `rows`, the `Choice` then holding
         theirs in that order) from its current observation and masks (the entry mask with the
         network's tactics bound): the entry, then for the rows that chose a cast its heads
-        through the batch's head calls."""
+        through the batch's head calls. `temperature` divides every head's logits before the
+        draw (E25 T9a, an evaluation's diagnostic; the log-probabilities are then the tempered
+        policy's): 1 the network's own policy (no division), 0 the most likely choice
+        (`greedy`)."""
+        if not 0.0 <= temperature < math.inf:
+            raise ValueError(f"a temperature is finite and not negative, not {temperature}")
+        greedy = greedy or temperature == 0.0
+
+        def tempered(logits: torch.Tensor) -> torch.Tensor:
+            return logits if temperature in (0.0, 1.0) else logits / temperature
+
         device = next(self.parameters()).device
         n = batch.envs
         if rows is None:
@@ -219,7 +231,8 @@ class Policy(nn.Module):
             if preview is None:
                 raise ValueError("this network reads the kill preview: BattleBatch(preview=True)")
             preview = torch.from_numpy(preview).to(device)
-        logits = masked(self.with_preview(self.entry_logits(h), h, x, preview, legal), legal)
+        logits = self.with_preview(self.entry_logits(h), h, x, preview, legal)
+        logits = masked(tempered(logits), legal)
         entry = pick(logits, generator, greedy)
         logprob = chosen(logits, entry)
         entries = entry.cpu().numpy().astype(np.uint32)
@@ -242,7 +255,7 @@ class Policy(nn.Module):
             def head(mask_np: np.ndarray, out_mask: np.ndarray, logits_of) -> torch.Tensor:
                 out_mask[at] = mask_np[envs]
                 legal = torch.from_numpy(out_mask[at]).to(device).bool()
-                head_logits = masked(logits_of(), legal)
+                head_logits = masked(tempered(logits_of()), legal)
                 choice = pick(head_logits, generator, greedy)
                 logprob[index] += chosen(head_logits, choice)
                 return choice
