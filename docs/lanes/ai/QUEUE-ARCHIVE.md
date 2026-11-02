@@ -4,6 +4,14 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 5, T15** (moved 2026-11-02, done: `E25-log.md` T15):
+
+- **T15 The ladder at the switch.** *Scope:* `e25-sharp-1` #2 (its `best.pt` uploaded by the
+  user, as at T12) on the report set against both system actors and on the neutral set with the
+  fair defender, beside the bots' regenerated tables: increment 5's starting point and the new
+  neutral target (the fair actor's own value in the player's seat: +0.285, T14). In the
+  sandbox's CPU. *Depends on:* T14 (done). *Status:* next, when the user uploads the `best.pt`.
+
 **E25 increment 5, T14** (moved 2026-11-02, done: `E25-log.md` T14):
 
 - **T14 The switch.** *Scope:* `Policy::System` plays `h3_battle_ai::choose_fair`, a new

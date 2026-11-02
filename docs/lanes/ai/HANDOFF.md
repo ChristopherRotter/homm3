@@ -21,9 +21,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   becomes `system` everywhere, the all-seeing one `system-all-seeing` beside it (the target stays
   the all-seeing one); the neutral kinds back in training with the fair defender; a warm start by
   cloning it. **T14 done** (the switch, C ABI v36: the fair actor 0.500 against the all-seeing
-  one, the neutral target stays +0.285). **Next:** T15 (needs `e25-sharp-1` #2's `best.pt`
-  uploaded again) and T16 (the cloning bench, sandbox); T17's A/B on the user's machine.
-- **Open pull requests:** #651 (`claude/relaxed-ptolemy-eyjild`: T13, T14). Merged:
+  one, the neutral target stays +0.285). **T15 done:** `e25-sharp-1` #2 0.424 against the fair
+  actor, 0.425 against the all-seeing one, the neutral set +0.245 (target +0.285). **Next:** T16
+  (the cloning bench, sandbox; its length agreed with the user), then T17's A/B on the user's
+  machine.
+- **Open pull requests:** #651 (`claude/relaxed-ptolemy-eyjild`: T13 to T15). Merged:
   #640 (T8, T9a, T10a), #646 (T9b to T12).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v36 (E25 T14: the fair
@@ -44,6 +46,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   adventure env has no system actor to switch (its neutral seat is the caller's; E13's). T14
   built in the sandbox (the bots' tables regenerated, the neutral bench re-baselined); the
   setup's full baseline verify was stopped (CI is the record), the scoped verify ran instead.
+  T15 on the uploaded `best.pt` (sandbox CPU, 3 minutes).
 
 ### 2026-11-02 — E25 T8 to T12
 

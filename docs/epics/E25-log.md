@@ -753,3 +753,22 @@ an entry only where a task builds on it.
   +0.01 %, `cargo xtask determinism` passes.
 - **For T17's runs:** a run's ladder plays one more opponent, the slowest kind: about a fifth
   more evaluation time (T2b's shaping run: 25 of its 90 minutes).
+
+## T15 — The ladder at the switch (2026-11-02)
+
+- **The run** (the sandbox's CPU, C ABI v36, `e25-sharp-1` #2's `best.pt` uploaded again by the
+  user; `python -m h3env.train.ladder --checkpoint runs/e25-sharp-1/best.pt --set report-v1
+  --opponents system,system-all-seeing`, then `--set neutral-v1`; the sampled policy;
+  `python/records/inspect/e25-sharp-1-fair-report-v1.json`, `-fair-neutral-v1.json`): 157 s
+  and 22 s.
+- **Report set:** against the fair system actor **0.424 ± 0.018, value −0.055** (hero 0.417,
+  siege_hero 0.408, siege_garrison 0.486); against the all-seeing one 0.425 ± 0.018, −0.055
+  (its record's final ladder on the user's GPU: 0.422, −0.055). Two episodes skipped of 3 000
+  in each (as `h3 ai eval` does not). **The fair actor is no easier for the lineage:** E25's
+  gap stays about 0.075 win rate and 0.055 value whichever system actor is the target.
+- **Neutral set with the fair defender:** 0.969 ± 0.014, **value +0.245** (wandering 0.972,
+  guards 0.960, siege_neutral 0.878); its record against the all-seeing defender 0.976, +0.243.
+  **The target is +0.285** (the fair system actor in the player's seat, T14): a gap of 0.040,
+  as before the switch.
+- **The read:** increment 5's starting point is the old one under the new names; the A/B's
+  (T17) control is `e25-neutral-1`, the same config with the neutral kinds back.

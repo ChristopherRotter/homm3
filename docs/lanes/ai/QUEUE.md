@@ -10,11 +10,6 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 closed (`E25-archive.md`); **`e25-sharp-1` #2 the current best** (AI-Q13, T12). **Increment 5,
 the fair system actor** (refined at T13, 2026-11-02, AI-Q14; its decisions in the epic file):
 
-- **T15 The ladder at the switch.** *Scope:* `e25-sharp-1` #2 (its `best.pt` uploaded by the
-  user, as at T12) on the report set against both system actors and on the neutral set with the
-  fair defender, beside the bots' regenerated tables: increment 5's starting point and the new
-  neutral target (the fair actor's own value in the player's seat: +0.285, T14). In the
-  sandbox's CPU. *Depends on:* T14 (done). *Status:* next, when the user uploads the `best.pt`.
 - **T16 The cloning bench.** *Scope:* a C ABI call giving the system actor's choice (either
   sight) for an env's side to move as an encoded action (`h3_sim::action::encode`; the entry and
   the cast heads), its count of choices the encoding cannot express; a clone mode of the
@@ -29,7 +24,7 @@ the fair system actor** (refined at T13, 2026-11-02, AI-Q14; its decisions in th
   neutral kinds back at a third (the fair defender): `e25-neutral-1` from scratch and
   `e25-clone-1` from T16's student (`--init-from`); lengths agreed when prepared (20 M as
   `e25-sharp-1` unless agreed otherwise). The records committed and read, both system columns.
-  *Depends on:* T15, T16. *Status:* waiting.
+  *Depends on:* T15 (done), T16. *Status:* waiting.
 - **T18 The checkpoint.** *Scope:* T17 read with the user: the current best (a head-to-head
   against `e25-sharp-1` #2), increment 6 among the epic's candidates. *Depends on:* T17.
   *Status:* waiting.
