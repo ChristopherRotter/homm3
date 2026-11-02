@@ -184,3 +184,39 @@ rounds of `AskUserQuestion`, a recommendation each); the record is `QUESTIONS-AN
   queue's T2 entry rewritten with them (a seam to offer: the ADR drafts first).
 - **The adventure lane's inbox:** the random hero and the starting-hero pick are built by the
   town lane in increment 1, `cross-lane` in its import and setup.
+
+### T2a — the ADR drafts (2026-11-02)
+
+One session, the user present; branch `town/e09-t2a`, docs only. Starting point: `master` at
+4f457aaf (#652 merged). T2 was cut in two at its start (`AskUserQuestion`: the ADR drafts first,
+`h3-towns`' draft alone, or T2 whole): the user chose **T2a the ADR drafts**, T2b the design note,
+the cut and the checkpoint. The ADR-level choices asked before writing (`TWN-Q3`, one round of
+four, each as recommended): decisions 17 to 20.
+
+- **The draft ADR-0028** `docs/lanes/town/adr-drafts/0028-town-context.md` (the number checked
+  when it moves into `docs/adr/`): the crates `h3-towns` (domain) and `h3-pack-towns` (adapter);
+  a town split once between `h3-towns` (faction, buildings built and forbidden, events, name; the
+  derivations: hall, income, fort, siege, reveal radius, Tavern, Capitol's limit) and the
+  adventure (owner, garrison, visiting hero), composed by `h3-game`; `TownId` in `h3-contracts`;
+  the store of towns in `GameState` (the store of heroes' shape, its own hash and version); the
+  town part `TownRuleset` and `packs/*/towns.toml`; no other seam; the moat and the siege's
+  natural obstacles per faction by the packs (a Tower's kind keeps deciding its land mines'
+  damage, as `h3-battle` reads it); the pool the game's; the lane's versions.
+- **The amendments** beside it: ADR-0015 (the crates, the third part, the import's towns, players'
+  choices, the random and the main town's hero as placeholders, a hero right of a town's
+  entrance moved, the allowed heroes with Conflux by the packs, T-1 an invalid map, `TownId`);
+  ADR-0016 (the town object: `TownId`, owners with the ownable objects, the garrison as the armies
+  on objects, the visitor as the hero on the entrance; the kind `Town` entered and not from above;
+  the step's three cases with decision 16's ally stub; capture never a flag, the attacker outside
+  after a siege; the reveal by the town's radius; the views by the levels); ADR-0017 (the store
+  and the pool in `GameState`, the pool's life with the picks reserved and T-2/T-3 fixed; the
+  setup's per-player fields and their checks, the original's offer; the expansions' line closed;
+  the setup stream's new draws before every existing one, in four steps; the draw with T-4 a typed
+  failure; the towns' income from day 2; the versions; no new command or decision kind; capture's
+  application in both contexts; sieges' setup and outcome; the viewer's level); ADR-0023 (the
+  derivation by survey §9.4; the moat and the natural obstacles by the packs; the version line
+  withdrawn).
+- **Agent's calls** (change freely at the checkpoint): the setup stream's order of the new draws
+  (ADR-0017's amendment point 4); the faction choice's default from the map (the one allowed
+  faction, else Random); a stored visiting hero rejected (the hero on the entrance is it); the
+  pool as one block by hero type.

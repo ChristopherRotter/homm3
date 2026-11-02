@@ -6,19 +6,9 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
-T2 was cut in two at its start (the user, 2026-11-02): T2a the ADR drafts, T2b the design note,
-the cut and the checkpoint.
-
-- **T2a The ADR drafts** (in progress (`town/e09-t2a`, 2026-11-02 21:20 UTC); T1's survey and
-  checkpoint done: `E09-towns.md` §0 to §14, the epic's decisions 8 to 16, `TWN-Q2`). A new ADR
-  draft for `h3-towns` in `docs/lanes/town/adr-drafts/` (the crate, the town's state and its home
-  in the game state, its fork and hash, the ruleset part and pack file, the seams, the hero
-  pool's home) and the amendments of ADR-0015 to -0017 and ADR-0023 the survey calls for: the
-  setup's faction and starting-hero pick per colour (decisions 6 and 9), the pool's draws for the
-  main town's and the random hero (decision 8; T-2 to T-4 by decision 12), the moat and Conflux
-  by the enabled packs (decision 14; ADR-0023's version line). The ADR-level choices asked as
-  they come up (`TWN-Q3`).
-- **T2b The design note, the cut and the checkpoint** (after T2a). `docs/epics/E09-design.md`:
+- **T2b The design note, the cut and the checkpoint** (next; T2a's ADR drafts done:
+  `docs/lanes/town/adr-drafts/`, the draft ADR-0028 and the amendments to ADR-0015, -0016,
+  -0017, -0023, decisions 17 to 20, `TWN-Q3`). `docs/epics/E09-design.md`:
   the import (random towns, the main town's and the random hero, the random hero's body as a
   placed hero's with the 18 custom experiences, the adventure queue's 2026-10-20 note), the
   state, the visit and capture with the team test and the ally's stub (decision 16), the income

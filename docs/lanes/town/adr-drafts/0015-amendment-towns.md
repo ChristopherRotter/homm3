@@ -35,7 +35,9 @@ players' faction choice and the starting-hero pick in E09's increment 1 (decisio
      the town's `TownId`. A random stack in a garrison stays a placeholder of its level and
      upgrade. An alignment byte from 8 to 254 is an invalid map, a typed error (T-1, decision 12),
      as an owner colour nobody plays.
-   - **Players:** each player's setup gains its **allowed factions** (the map's set), its
+   - **Players:** each player's setup gains its **allowed factions** (the map's set; an
+     RoE-format map's player whose eight are all allowed also Conflux when the ruleset has it,
+     decision 14), its
      **faction choice** (the map's default: the one allowed faction, else Random), its
      **starting-hero pick** (none from the map), its **main town** (the header's, as the town's
      entrance tile, finding 3) with whether it **generates a hero**, and its **random-hero flag**.
