@@ -1113,3 +1113,69 @@ fn a_mark_holds_only_where_the_follow_went_the_same() {
         assert_eq!(tail, follow(log, inputs, None).1);
     }
 }
+
+#[test]
+fn the_stats_dialog_holds_the_mouse_and_hands_it_back() {
+    // E17 M6 T2a2a: a press on a stack to look at (hex 120, the attacker's own) opens it: the
+    // combat cursor's pointer, the status line kept, the moves over the dialog not the battle's;
+    // as it closes the mouse's hex is forgotten, the log's new entries settle and the mouse is
+    // posted where it rests: its hex's hint written (again after the second).
+    let (o, legal) = (battle(), legal());
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let inputs = [
+        Input::Move {
+            at: 0,
+            to: centre(120),
+        },
+        Input::Look { at: 1 },
+        Input::Move {
+            at: 2,
+            to: centre(87),
+        },
+        Input::Looked { at: 3 },
+        Input::Look { at: 4 },
+        Input::Looked { at: 5 },
+    ];
+    let shown = run(&[], &[], &turns, &inputs);
+    let texts: Vec<(u32, String)> = shown
+        .log
+        .iter()
+        .filter_map(|(t, l)| match l {
+            Logged::Status { text, .. } => Some((*t, text.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(texts.len(), 3);
+    assert_eq!(texts[0].0, 0);
+    assert_eq!(texts[1], (3, String::from("Move(0)")));
+    assert_eq!(texts[2], (5, String::from("Move(0)")));
+    let settles: Vec<u32> = shown
+        .log
+        .iter()
+        .filter(|(_, l)| *l == Logged::Settle)
+        .map(|&(t, _)| t)
+        .collect();
+    assert_eq!(settles, [3, 5]);
+    // The pointer as it opens, the walk's cursor at the posted move, the pointer again.
+    assert_eq!(shown.frame(1), Some(6));
+    assert_eq!(shown.frame(2), Some(6));
+    assert_eq!(shown.frame(3), Some(1));
+    assert_eq!(shown.frame(4), Some(6));
+    assert_eq!(
+        (Input::Look { at: 7 }.at(), Input::Looked { at: 8 }.at()),
+        (7, 8)
+    );
+    // On a computer's turn nothing is posted.
+    let computers = [Turn {
+        field,
+        human: false,
+    }];
+    let shown = run(&[], &[], &computers, &inputs[..4]);
+    assert!(shown.log.iter().all(|(_, l)| *l != Logged::Settle));
+}

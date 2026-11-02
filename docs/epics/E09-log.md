@@ -134,3 +134,33 @@ TWN-1's rows and the checkpoint.
   `adventure_battle`, `hero_hide`, `new_game_heroes`, `new_game_start` amended; `structs.toml`:
   the town's +0x2, +0x32, `dwelling_counts` (was `second_army`), the game's `map_kind` setter.
 - **Content:** none new (the creatures' AI values are in the packs).
+
+### T1b2a — the towns survey, part 2b1: income, views and batch TWN-1's rows (2026-11-02)
+
+One session, the user present; branch `town/e09-t1b2a`. Starting point: `master` at 43b1c3ad
+(#648 merged; CI green on it). The views needed a reading the queue had not foreseen (the
+right-click popup: E24's readings cover the own town's status window, the hint and the cursor
+only), so T1b2 was cut at its start (`AskUserQuestion`: after the readings, after the income, or
+whole): the user chose **after the readings**, T1b2a the income, the views and the rows, T1b2b
+the checkpoint (`TWN-Q2`).
+
+- **Survey** `docs/rules/surveys/E09-towns.md` §11 to §13 and §0's findings 24 to 27: a town's
+  gold (`town_gold_income` read whole: 500 to 4 000 by the highest hall, the Grail +5 000, the
+  silo no gold), who is paid (the owner, from day 2, E08's path; a neutral town nobody), one
+  Capitol per player only after a capture (the start keeps every one the map gives); the census
+  (23 Capitols, 10 owned, none twice for a player; the Grail in 10 towns, 2 owned; the silo in
+  26, 7 owned); what another player sees (the picture, the hint, the cursor, and the right-click
+  read whole: the fort level for all, the army by the viewer's taverns 0/1/2, the counts with the
+  hall, income, silo and garrison hero for the owner's team or expert Visions or a Rogue within
+  reach); the census of the levels at the start (63, 600, 78 players); batch TWN-1's seven rows
+  with the harness's and the spec's gaps; the points open for T1b2b. VCMI 1.7.5 (the income, the
+  town info's two levels, Visions and the Rogue), the wiki (Halls, Grail, Tavern, Thieves' Guild,
+  Visions), the RoE manual.
+- **Disputes and candidates:** none new. VCMI's two-level town info against the tavern levels is
+  recorded in §12.4 (the wiki agrees with the reading), no batch row.
+- **The exe map:** 10 new entries (`town_popup`, `town_popup_level`, `town_quick_view_create`,
+  `quick_view_army`, `quick_view_army_places`, `player_tavern_count`, `hero_visions_level`,
+  `hero_visions_reach`, `visions_cast`, `town_silo_resources`);
+  `town_gold_income` and `town_silo_income` read whole; `tile_click_path` amended (its right
+  button).
+- **Content:** none new; the silo's table is a constant of the executable (increment 4).

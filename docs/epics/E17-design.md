@@ -4986,8 +4986,8 @@ constructor was read.
   - Over the acting Faerie Dragons the panel keeps their draw's line ("The Faerie Dragons ready
     Fireball (press F to cast)", not built: §7.16) where the viewer writes the press's hint.
 - **Not recorded yet:** the effects (no situation casts before its opening), a clamp at the top
-  or the right, morale or luck from a ground; the window's dialog (M6 T2a2), the right button's
-  (M6 T2b). Oddities for T2a2: CLT-Q38.
+  or the right, morale or luck from a ground; the window's dialog (M6 T2a2a, §12.2), the right
+  button's (M6 T2a2b, T2b). Oddities for T2a2: CLT-Q38.
 - **The viewer** (`h3_view::stats`: `place`, `layout`, `Steps`; the binary's `stats` derives a
   stack's numbers from a seat's observation, the rules and the tables, *provisional*: the attack
   the observation's with the melee or ranged bonus as `stack_can_shoot_now` decides (computed
@@ -4997,3 +4997,55 @@ constructor was read.
   common items: `ui::Def`'s `group`, `creature` and `frames_of`, `ui::Draw::Creature` and
   `Shared` (`h3_ui::paint`; `h3_render::blit::draw_frame_clipped`). The creature's groups after
   group 2 are drawn from the viewer's own generator (as the fidgets', §7.2).
+
+### 12.2 The stats dialog in the window (M6 T2a2a)
+
+Read: the procedure's command (0x5F4D32 to 0x5F4E2D), the look's branch of `battle_click_action`
+around its call (0x476E97 to 0x476F3A), the key code 20's case of `battle_buttons` (0x475D07 to
+0x475E21), the item's base constructor (0x5FE480), `dialog_item_at` (0x5FF3E0) for which items
+take the mouse; map entries `creature_dialog_proc`, `battle_click_action`, `battle_buttons`,
+`army_info_hide`, `army_info_stack_hide`, `dialog_item_init`.
+
+- **Its opening.** A left press over a stack to look at (the kind 5: the side to act's own stacks,
+  any in the tactics phase) sets the combat cursor's frame 6 and runs the dialog modally
+  (0x476E97, 0x476EDC). So does the **key T** (the battle's key code 20, 0x475D07) for the acting
+  stack, outside the tactics phase (+0x13D68), the army info windows hidden first (0x46CE70,
+  0x46DF80; not shown at the default "Combat Army Info Level", which the harness keeps); recorded
+  (`stats-key`). The status line keeps what it showed (the press's hint, or the hex's under the
+  mouse); the battle behind stands still.
+- **Its input** (`creature_dialog_proc`): every item is made with the state 6 (0x5FE4BA: shown
+  and enabled), so every item takes the mouse, the dialog's background too: over the dialog the
+  default cursor's frame 1 (an empty line over an item without a hint), off it frame 0 (§12.1,
+  "The mouse"), each only as the item under the mouse changes. A line's label and value share one
+  box and the value, added after it, takes the mouse: the speed's label (217) never does, so
+  CLT-Q38 (1) never shows; the damage's label alone on its box's last row in the original (its
+  value a row up, CLT-Q37). The OK (`iOKAY.def`, its hotkeys Enter and Escape) goes down and up as
+  every DEF button; its command (the message 0x200, subtype 13) sets the window manager's result
+  +0x38 to 0x7802 and ends the modal loop (0x5F4DFB). The cast button (301) is its callback's
+  (0x5F5030) and the right button's descriptions the types 12 and 14 (0x5F48AD): M6 T2a2b.
+- **Its close** (0x476EE1, 0x475DBB): unless the battle is hidden, while the side to act is played
+  here (+0x132B4) by a human, the mouse's hex is forgotten (+0x132D4 = -1), the log's entries new
+  for 3 000 ms or more settle (`battle_log_settle` 0x472BF0) and the mouse is posted where it rests
+  (0x4ECC00): the battle's cursor, mark and hint for that point (`stats-ok`, `stats-escape`).
+- **The profiles** (the user, 2026-11-02): CLT-Q36 copied (both profiles show the B frames);
+  CLT-Q37 the value at its label's row in the client's, a row up in the original's; CLT-Q38 (1)
+  the speed's label its own hint in the client's; (2) the cast button's hint the panel's spell
+  book's in the client's (*provisional*: the original has none of its own), the first mine's name
+  in the original's; (3) each opening forgets the item last hovered in the client's, the
+  original's keeps it (`stats-again`: opened again over the defense line, no hint and the
+  pointer until the mouse reaches another item).
+- **Recorded** (`clients/situations/set.toml`): `stats-hint` (the attack line's hint and the
+  cursor's frame 1), `stats-off` (off the dialog: frame 0, an empty line), `stats-ok` (the OK
+  clicked, the battle after), `stats-escape`, `stats-key`, `stats-again`; all exact, compared
+  from 100 ms (the cursor's redraw waits for the frozen clock).
+- **The viewer** (`h3_view::stats`: `Modal`, `Hints`, `Memory`, `hint_index`; `layout`'s
+  profile; the tracker's `Input::Look` and `Input::Looked`, `battle_log::Logged::Settle`; the
+  keys `stats` (T) and `stats-ok` (Enter, Escape) in the context `Stats`; `h3_sdl::Key::T`). The
+  window (`Battle::look`, `stats_*`): the dialog from the side to act's own view (on a server the
+  seat's served turn; not in a server's game of other content), its creature stepping each 100 ms
+  from 100 ms after the opening, the battle at the opening behind it, the cursor the dialog set;
+  in hot seat and on a server. The stills' actions over an open dialog (`spellbook::still`:
+  `move:`, `click:`, the OK's keys; the key T). *Not modelled:* the input queue emptied as the
+  modal loop starts (as a box's, §7.19: a key down or a press in the same batch as the opening
+  press reaches the dialog); the recorded sequences' look (`pointer::inputs` takes no `Look`:
+  the dialog is recorded as stills).
