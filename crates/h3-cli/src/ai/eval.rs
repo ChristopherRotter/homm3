@@ -68,19 +68,28 @@ pub const NEUTRAL_V1_KINDS: [usize; 3] = [0, 1, 5];
 /// The two-sided 95 % quantile of the normal distribution.
 const Z95: f64 = 1.96;
 
-/// The policies `--policies` names: the bots and the system actor (E06 T7).
-pub const POLICIES: [(&str, Policy); 4] = [
+/// The policies `--policies` names: the bots and the system actors (E06 T7; E25 T14, AI-Q14:
+/// `system` the fair one, `system-all-seeing` the original that reads the whole state).
+pub const POLICIES: [(&str, Policy); 5] = [
     ("random", Policy::Random),
     ("aggressor", Policy::Aggressor),
     ("greedy", Policy::Greedy),
     ("system", Policy::System),
+    ("system-all-seeing", Policy::SystemAllSeeing),
 ];
 
-/// `--policies`' default: every policy (the system actor since E06 T7c, decision 12).
-pub const DEFAULT_POLICIES: &str = "random,aggressor,greedy,system";
+/// `--policies`' default: every policy (the system actor since E06 T7c, decision 12; both system
+/// actors since E25 T14).
+pub const DEFAULT_POLICIES: &str = "random,aggressor,greedy,system,system-all-seeing";
 
-/// The neutral set's fixed defender (E06 T7c): the system actor, as the batch seats it.
+/// The neutral set's fixed defender (E06 T7c): the system actor, as the batch seats it (the fair
+/// one since E25 T14, AI-Q14).
 pub const NEUTRAL_DEFENDER: (&str, Policy) = ("system", Policy::System);
+
+/// The bots' tables' schema (`to_json`; `h3env.train.evaluate.BOTS_TABLE_SCHEMA`): 2 since E06
+/// T7c, 3 since E25 T14 (`system` the fair system actor, `system-all-seeing` beside it; a table
+/// of schema 2 names the all-seeing one `system`).
+pub const BOTS_TABLE_SCHEMA: u32 = 3;
 
 /// One stratum of a held-out set: a batch of episodes, weighed in the overall rates.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -486,8 +495,9 @@ impl EvalReport {
     }
 
     /// The report as JSON (`--json`; the bots' tables `python/records/bots-report-v1.json` and
-    /// `bots-neutral-v1.json`, read by `h3env.train.evaluate.bots_table`): schema 2 (E06 T7c: the
-    /// fixed `defender`, else null, and the engine's `system_policy`), one line per stratum, pair,
+    /// `bots-neutral-v1.json`, read by `h3env.train.evaluate.bots_table`): schema
+    /// [`BOTS_TABLE_SCHEMA`] (2, E06 T7c: the fixed `defender`, else null, and the engine's
+    /// `system_policy`; 3, E25 T14: `system` the fair system actor), one line per stratum, pair,
     /// rate and rating; against a fixed defender a rate's strata name the attacker's side alone
     /// and there are no ratings.
     pub fn to_json(&self) -> String {
@@ -579,11 +589,12 @@ impl EvalReport {
             .map_or("null".to_owned(), |d| format!("\"{}\"", self.names[d]));
         let id = self.identity;
         format!(
-            "{{\n  \"schema\": 2,\n  \"set\": \"{}\",\n  \"max_steps\": {},\n  \"engine\": \
+            "{{\n  \"schema\": {},\n  \"set\": \"{}\",\n  \"max_steps\": {},\n  \"engine\": \
              {{\"encounters\": {}, \"core\": \"{:016x}\", \"battle\": \"{:016x}\", \
              \"adventure\": \"{:016x}\", \"system_policy\": {}}},\n  \"policies\": [{names}],\n  \
              \"defender\": {defender},\n  \"strata\": {},\n  \"pairs\": {},\n  \"rates\": {},\n  \
              \"ratings\": {}\n}}\n",
+            BOTS_TABLE_SCHEMA,
             self.set,
             self.max_steps,
             id.encounters,

@@ -43,9 +43,10 @@ batch (`episode_entries`: the player kinds' own entry beside one per side), so t
 the other and the league draws no member; the update record's `system` gives the learner's score
 there by its side.
 
-Since E25 (decision 2, ADR-0026 point 8 as amended) the faithful system actor trains no agent:
-`train` and `resume` refuse a `system_share` or a neutral kind's weight (`run.trainable`); the
-two mechanisms above stay for E06's records and a fair system actor later.
+Since E25 (decision 2, ADR-0026 point 8 as amended) the all-seeing system actor trains no agent.
+Since C ABI v36 (E25 T14, AI-Q14) the batch's `system` seat is the fair system actor, which may:
+both mechanisms above train against it; `resume` refuses a run started before v36 with either
+(`run.trainable`: its opponent was the all-seeing one).
 
 Shaping (E25 T2a, `[ppo] shaping`): each learning side's transition gains Φ(s′) − Φ(s), Φ the
 batch's potential (reward v1 as if the battle ended now) at the side's decisions, 0 at its
@@ -55,6 +56,7 @@ a cut's `-truncation_penalty`).
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import asdict
@@ -833,7 +835,6 @@ def train(
     Ctrl+C (or `stop`'s request) stops the run at the next batch call (of a rollout, a gate or a
     ladder) or update boundary, saved (`run.Stop`): `resume` continues it."""
     config = resolve(config)
-    trainable(config)
     trainer = Trainer(config)
     parent = None if init_from is None else trainer.init_from(Path(init_from))
     ident = identity(trainer)
@@ -870,7 +871,9 @@ def resume(
             "league, E06 T4a: start a new run, --init-from its best.pt)"
         )
     config, changed = resumed(Config(**state["config"]), sets)
-    trainable(config)
+    record = out / "record.json"
+    started = json.loads(record.read_text())["identity"].get("abi") if record.exists() else None
+    trainable(config, started)
     if state["finished"] and state["samples"] >= config.samples:
         raise ResumeError(
             f"the run in {out} reached its budget ({config.samples} samples): extend it with "

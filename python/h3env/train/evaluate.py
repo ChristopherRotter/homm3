@@ -96,7 +96,8 @@ STRATIFIED = {
     "neutral-v1": (NEUTRAL_V1_SEED, NEUTRAL_V1_ENVS, NEUTRAL_V1_WEIGHTS, ("attacker",)),
 }
 
-#: The neutral set's one opponent, the system actor (`h3 ai eval --set neutral-v1`'s defender).
+#: The neutral set's one opponent, the system actor (`h3 ai eval --set neutral-v1`'s defender; the
+#: fair one since C ABI v36, E25 T14).
 NEUTRAL_OPPONENT = "system"
 
 #: Every held-out set's batch seeds: a run training on one of them is refused (`run.resolve`), and
@@ -123,15 +124,17 @@ BOTS_TABLES = {
 BOTS_TABLE = BOTS_TABLES["report-v1"]
 
 #: The schema of `h3 ai eval --json` the tables are written in (2: the fixed defender and the
-#: system actor's policy version, E06 T7c).
-BOTS_TABLE_SCHEMA = 2
+#: system actor's policy version, E06 T7c; 3: `system` the fair system actor, `system-all-seeing`
+#: beside it, E25 T14).
+BOTS_TABLE_SCHEMA = 3
 
 #: The agent's side and the winning result per side.
 SIDES = (("attacker", _ffi.RESULT_ATTACKER), ("defender", _ffi.RESULT_DEFENDER))
 
 #: The engine's seats an agent can be evaluated against (C ABI v30's bots, E05 T7; the system
-#: actor, v32, E06 T7c).
-OPPONENTS = ("random", "aggressor", "greedy", "system")
+#: actor, v32, E06 T7c; since v36, E25 T14, `system` the fair one and `system-all-seeing`, E25's
+#: target).
+OPPONENTS = ("random", "aggressor", "greedy", "system", "system-all-seeing")
 
 #: An agent: fills `batch.actions` for every row from the batch's current outputs.
 Agent = Callable[[BattleBatch], None]

@@ -417,23 +417,35 @@ def resolve(config: Config) -> Config:
     return c
 
 
-def trainable(config: Config) -> None:
-    """Refuses a training mix with the faithful system actor (E25 decision 2, ADR-0026 point 8 as
-    amended): it reads the whole state, so it trains no agent: no `system_share`, and no neutral
-    kind (wandering, guards, a neutral town), whose defender it is (the user, E25 T2a: no neutral
-    battles for now). A config may still name them: E06's runs did, and their configs and
-    records stay valid; the trainer starts or resumes none of them (`ppo.train`, `ppo.resume`)."""
+#: The C ABI version from which the batch's `system` seat is the fair system actor (E25 T14,
+#: AI-Q14); below it, the all-seeing one.
+FAIR_SYSTEM_ABI = 36
+
+
+def trainable(config: Config, started_abi: int | None = None) -> None:
+    """Refuses a mix that would go on training against the all-seeing system actor (E25 decision
+    2, ADR-0026 point 8 as amended: it reads the whole state, so it trains no agent). Since C ABI
+    v36 (E25 T14, AI-Q14) the batch's `system` seat, `system_share`'s opponent and the neutral
+    kinds' defender, is the fair system actor, which may train: a new run's mix is always
+    trainable. A run started on an older library (`started_abi`, its record's `abi`, below
+    `FAIR_SYSTEM_ABI`) with a system seat in its mix trained against the all-seeing one, and its
+    opponent would change under it: `ppo.resume` refuses it (a new run, `--init-from` its
+    `best.pt`)."""
+    if started_abi is None or started_abi >= FAIR_SYSTEM_ABI:
+        return
     problems = []
     if config.system_share:
-        problems.append("`system_share` above 0 trains against the faithful system actor")
+        problems.append("`system_share` above 0")
     neutral = [k for k in sorted(NEUTRAL_KINDS) if config.kinds and config.kinds[k]]
     if neutral:
         names = ", ".join(_ffi.ENCOUNTER_KINDS[k] for k in neutral)
-        problems.append(f"`[env] kinds` weighs {names}, whose defender is the system actor")
+        problems.append(f"`[env] kinds` weighs {names}")
     if problems:
         raise ConfigError(
             "; ".join(problems)
-            + " (E25: the faithful system actor trains no agent, ADR-0026 point 8 as amended)"
+            + f": the run started on C ABI v{started_abi}, whose system seat was the all-seeing "
+            "system actor, which trains no agent (E25 T14: start a new run, --init-from its "
+            "best.pt)"
         )
 
 
