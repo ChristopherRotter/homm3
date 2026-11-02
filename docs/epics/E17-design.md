@@ -4968,6 +4968,32 @@ constructor was read.
   (72) "until binder moves or dies" (681), Berserk (59) "until next attack" (682), Disrupting Ray
   (47) "until end of combat" (683) through "%s, duration: %s." (680). Index 15 lies past the
   table's 15 pairs: the cast button's hint is the first mine name (`mine_names` 0x6A74D0).
-  The click that opened the dialog parks the mouse in the panel (the harness's park point is below
-  any place the dialog takes): no item, the same as the global's −1, so nothing changes: the
-  battle's cursor of the stack's kind stays, at the park point, and the status line stays empty.
+- **Its run** (`creature_dialog_run` 0x5F47F0, the modal one's): the frame deadline set 100 ms
+  after the opening (0x5F4801), so the creature's first step comes then and one each 100 ms after
+  (recorded: group 2's frames at 100 to 700 ms, `stats`); then `dialog_run_modal`.
+- **Recorded** (E17 M6 T2a1, `clients/situations/set.toml`, `stats` to `stats-dragon`: a press on
+  a stack to look at at the opening, the clock frozen; the Marksmen at the screen's bottom, the
+  acting Champions, the Ammo Cart, the acting Faerie Dragons with the cast button), every pixel
+  of the dialogs as built but two findings:
+  - *Morale and luck show the B DEFs' frames* (CLT-Q36): the original's memory holds
+    `imrlB.def`'s pixels in `imrl42.def`'s frames (and `ilckB.def`'s in `ilck42.def`'s), in the
+    42s' palettes: the executable keeps a DEF's frames by name, and the B DEFs, loaded before,
+    have frames of the same names (`imrl42g1.pcx`, …). The layout names them (`morale_frames`,
+    `luck_frames`; `ui::Draw::Shared`).
+  - *After the press* the harness's park move leaves the combat cursor's pointer at the park
+    point and the panel's status line with the press's hint ("View Marksman info."; read from
+    the recordings, the modal loop's routing of a move over none of the dialog's items not read).
+  - Over the acting Faerie Dragons the panel keeps their draw's line ("The Faerie Dragons ready
+    Fireball (press F to cast)", not built: §7.16) where the viewer writes the press's hint.
+- **Not recorded yet:** the effects (no situation casts before its opening), a clamp at the top
+  or the right, morale or luck from a ground; the window's dialog (M6 T2a2), the right button's
+  (M6 T2b). Oddities for T2a2: CLT-Q38.
+- **The viewer** (`h3_view::stats`: `place`, `layout`, `Steps`; the binary's `stats` derives a
+  stack's numbers from a seat's observation, the rules and the tables, *provisional*: the attack
+  the observation's with the melee or ranged bonus as `stack_can_shoot_now` decides (computed
+  here: shots, an enemy beside, Forgetfulness at Advanced), morale and luck with Mirth's,
+  Sorrow's, Fortune's and Misfortune's values, the effects in the observation's order, the
+  town the creature's faction's index; `mouse::looked_at` the stack a press looks at). The
+  common items: `ui::Def`'s `group`, `creature` and `frames_of`, `ui::Draw::Creature` and
+  `Shared` (`h3_ui::paint`; `h3_render::blit::draw_frame_clipped`). The creature's groups after
+  group 2 are drawn from the viewer's own generator (as the fidgets', §7.2).

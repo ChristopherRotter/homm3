@@ -32,6 +32,10 @@ use serde::Deserialize;
 use crate::render::{lookup, read_archives, write};
 use crate::{assets, log, motion, pointer, scenario};
 
+/// When a stats dialog's creature first steps after the dialog opened (E17 M6 T2a1: its modal run
+/// sets the frame deadline 100 ms after the opening, 0x5F4801).
+const STATS_FIRST_STEP: u32 = 100;
+
 /// The sequences file.
 #[derive(Debug, Deserialize)]
 struct File {
@@ -598,7 +602,11 @@ pub(crate) fn draw_frames(
     // actions moved it over the battle (E17 M5 T4c2a), none while the tactics phase's message
     // left the box's cursor (CLT-Q32); a sequence's over time (T6c-2: `interface.shown`).
     let arrow = interface.book.is_some_and(|b| b.arrow);
-    let rest = interface.book.and_then(|b| b.over).or(kept.mouse);
+    // A stats dialog's press (E17 M6 T2a1): the battle's mouse stays where the press was made.
+    let rest = interface
+        .book
+        .and_then(|b| b.stats.as_ref().map(|s| s.looked).or(b.over))
+        .or(kept.mouse);
     let pointer = rest.filter(|_| !arrow).map(|point| {
         (
             point,
@@ -823,6 +831,23 @@ pub(crate) fn draw_frames(
                 y: mouse[1],
                 hot: layout.book.hot.first().copied().unwrap_or_default(),
             });
+        } else if let Some((open, mouse, opened)) = interface
+            .book
+            .and_then(|b| Some((b.stats.as_ref()?, b.mouse, b.at)))
+        {
+            // A stack's stats dialog (E17 M6 T2a1, design §12.1): its creature stepped since it
+            // opened; at the park point the combat cursor's pointer, the panel's status line
+            // keeping the press's hint (as recorded: the modal loop's routing of the park's move
+            // over none of the dialog's items is not read).
+            let window = open.at(STATS_FIRST_STEP, frame.t.saturating_sub(opened));
+            list.extend(
+                window
+                    .dialog
+                    .draws(&window.shown, &layout.player_palette)
+                    .into_iter()
+                    .map(scene::Draw::Dialog),
+            );
+            list.push(mouse::cursor(layout, layout.mouse.panel_frame, mouse));
         } else if let Some((open, mouse)) = book {
             // The cursor the book set, else the battle's where the actions left the mouse.
             match open.cursor_draw(&layout.book, mouse) {

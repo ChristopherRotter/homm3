@@ -112,6 +112,16 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-02 (the client lane, E17 M6 T2a1; for information, nothing to do): additions to the
+  common crates for the battle's stack stats dialog (`docs/epics/E17-design.md` §12.1):
+  `h3_render::blit::draw_frame_clipped`; `h3_ui::ui::Def`'s `group`, `creature` and `frames_of`
+  (serde defaults: a layout without them reads as before) and the
+  `ui::Draw` variants `Creature` (a creature DEF item, the flags 0x12: the shadowed drawer, its
+  canvas placed by group 2's first frame, cut to the item) and `Shared` (another DEF's frame in
+  the item's DEF's colours: the executable keeps frames by name, CLT-Q36), both drawn by
+  `h3_ui::paint` (`names`, `draw`, `reach`; `creature_frame`). Every existing draw is the same;
+  a `match` on `ui::Draw` needs the two arms.
+
 - 2026-10-31 (the adventure lane, E08 T83b2b; **for E24 M4 T3**, the "increment 9's views" it
   waits on): `ObjectView` carries `owner` (every viewer that sees the object), `production` (a
   mine's resource and daily amount, its owner's team only), `guards` (`GuardsView`: `creature`

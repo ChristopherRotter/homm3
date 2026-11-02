@@ -203,12 +203,17 @@ pub struct Still {
     /// Where a `move:` left the mouse over the battle, every dialog closed (none: the situation's
     /// `mouse`).
     pub over: Option<[i32; 2]>,
+    /// The stats dialog a press on a stack to look at opened (E17 M6 T2a1), over the battle.
+    pub stats: Option<crate::stats::Open>,
 }
 
 impl Still {
     /// Whether a dialog (the book, a box) is open over the battle.
     pub const fn dialog(&self) -> bool {
-        self.open.is_some() || self.message.is_some() || self.result.is_some()
+        self.open.is_some()
+            || self.message.is_some()
+            || self.result.is_some()
+            || self.stats.is_some()
     }
 }
 
@@ -233,6 +238,9 @@ pub struct Boxes<'a> {
     pub result: &'a dyn Fn(Command) -> Option<(MessageBox, Tune)>,
     /// The tactics phase's message the battle opens with (E17 M5 T4c2a; none: it opens without).
     pub opening: Option<String>,
+    /// The stats dialog a press at a point over the battle opens (E17 M6 T2a1; none: the point
+    /// shows no stack to look at).
+    pub look: &'a dyn Fn([i32; 2]) -> Option<crate::stats::Open>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -279,6 +287,7 @@ pub fn still(
         opening: false,
         arrow: false,
         over: None,
+        stats: None,
     };
     let mut result: Option<(h3_view::message::Open, Tune)> = None;
     let mut asking: Option<Asking> = None;
@@ -356,6 +365,12 @@ pub fn still(
         }
     }
     for action in actions {
+        // The stats dialog takes no input yet (M6 T2a2): a still ends with it open.
+        if still.stats.is_some() {
+            return Err(format!(
+                "`{action}`: the stats dialog takes no input in a situation yet"
+            ));
+        }
         // Its OK closed it: the first turn starts, the box's cursor left (CLT-Q32).
         if still.opening && asking.is_none() {
             still.opening = false;
@@ -452,6 +467,12 @@ pub fn still(
                 } else if let Some(open) = still.open.as_mut() {
                     let outcome = open.press(&mut memory, (layout, catalogue), to);
                     asking = booked(&mut still, outcome);
+                } else if let Some(stats) = boxes.and_then(|b| (b.look)(to)) {
+                    // A stack to look at: its stats dialog, modal; the park's move reaches it
+                    // over none of its items, the last one seen (none), so it changes nothing.
+                    still.stats = Some(stats);
+                    still.mouse = crate::pointer::PARK;
+                    continue;
                 }
                 // The tactics phase's message closed: the first turn starts (CLT-Q32).
                 if still.opening && asking.is_none() {
@@ -783,6 +804,7 @@ pub(crate) mod tests {
             pictures: (String::new(), [0, 0]),
             result: &result,
             opening: None,
+            look: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -825,6 +847,7 @@ pub(crate) mod tests {
             pictures: (String::new(), [0, 0]),
             result: &|_| None,
             opening: Some("{Tactics Phase}".into()),
+            look: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {

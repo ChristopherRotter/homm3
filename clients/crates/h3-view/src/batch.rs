@@ -150,6 +150,8 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
             vec![&item.picture, &item.font, &item.font_palette]
         }
         Draw::Dialog(ui::Draw::Label { item, .. }) => vec![&item.font, &item.font_palette],
+        Draw::Dialog(ui::Draw::Creature { def, .. }) => vec![def],
+        Draw::Dialog(ui::Draw::Shared { def, frames, .. }) => vec![def, frames],
         Draw::Video { start, looped, .. } => {
             let mut names = vec![start];
             names.extend(looped.as_ref());
@@ -180,6 +182,23 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         }
     }
     all
+}
+
+/// The common dialog drawers' view of the batch (`h3_ui::paint`; E17 M6 T2a1: the stats dialog's
+/// creature, drawn by the common drawer).
+impl h3_ui::paint::Assets for Batch {
+    fn sprite(&self, name: &str) -> Option<&Sprite> {
+        Self::sprite(self, name)
+    }
+    fn picture(&self, name: &str) -> Option<&Pcx> {
+        Self::picture(self, name)
+    }
+    fn palette(&self, name: &str) -> Option<&Palette> {
+        Self::palette(self, name)
+    }
+    fn font(&self, name: &str) -> Option<&Font> {
+        Self::font(self, name)
+    }
 }
 
 #[cfg(test)]

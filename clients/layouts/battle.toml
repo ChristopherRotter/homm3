@@ -524,3 +524,37 @@ button_back = "Box64x30.pcx"
 ok = "iOkay.def"
 # The clip's corner on the screen (E17 M5 T4b2b: 0x471A1D).
 clip = [272, 89]
+
+# A stack's stats dialog (E17 M6 T2a1; design §12.1; `stack_stats_dialog_create` 0x5F3360): its
+# assets and fonts, the executable's literals (`h3_view::stats` lays it out from them); the
+# creature's frames by town as the table 0x68290C holds them, the neutral one first.
+[stats]
+picture = "CrStkPU.pcx"
+towns = [
+    "CrBkgNeu.pcx",
+    "CrBkgCas.pcx",
+    "CrBkgRam.pcx",
+    "CrBkgTow.pcx",
+    "CrBkgInf.pcx",
+    "CrBkgNec.pcx",
+    "CrBkgDun.pcx",
+    "CrBkgStr.pcx",
+    "CrBkgFor.pcx",
+    "CrBkgEle.pcx",
+]
+font = "smalfont.fnt"
+count_font = "Verd10B.fnt"
+font_palette = "game.pal"
+morale = "imrl42.def"
+luck = "ilck42.def"
+# CLT-Q36: the executable keeps a DEF's frames by name; `imrlB.def` and `ilckB.def`, loaded before,
+# hold frames of the same names, so the dialog shows theirs in the 42s' colours (the original's
+# memory, E17 M6 T2a1).
+morale_frames = "imrlB.def"
+luck_frames = "ilckB.def"
+effects = "spellint.def"
+status = "VARBack.pcx"
+button_back = "Box64x30.pcx"
+ok = "iOKAY.def"
+cast_back = "Box46x32.pcx"
+cast = "icm005.def"

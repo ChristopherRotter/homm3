@@ -1,0 +1,51 @@
+# E17 M6 T2a1: a stack's stats dialog with a Faerie Dragon's cast button (design §12.1). The
+# ground and obstacles of `book` (book.toml): at the opening the Faerie Dragons' turn (speed 15),
+# Red human, Orrin's; a press on them opens their dialog with the cast button (a Faerie Dragon of
+# the side acting, with casts left, outside the tactics phase). Neutral creatures beside Castle's:
+# the dragons' frame is the neutral one, their morale the mixed army's.
+
+[scenario]
+id = "stats-dragon"
+human = ["attacker"]
+packs = ["base", "ab"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "ab:faerie_dragon"
+count = 3
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

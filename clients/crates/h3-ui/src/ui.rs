@@ -90,6 +90,40 @@ pub enum Draw {
         /// The item is disabled (its state's bit 8).
         disabled: bool,
     },
+    /// An interface DEF item drawn with another DEF's frame (E17 M6 T2a1, CLT-Q36): frame `frame`
+    /// of `frames`' group 0 (frame 0 when the group has no such frame) in `def`'s colours, by the
+    /// plain drawer with runs skipped, as [`Draw::Button`] draws its own.
+    Shared {
+        /// The DEF whose colours it takes.
+        def: String,
+        /// The DEF whose frame it draws.
+        frames: String,
+        /// The frame in group 0.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+    },
+    /// A creature DEF item (`H3DlgDef` with the flags 0x12; E17 M6 T2a1: the battle's stack
+    /// stats dialog's creature, `dialog_def_draw` 0x4EAB40): frame `frame` of group `group` by
+    /// the shadowed drawer without an outline (0x47BD60 → 0x47C9E0), in the DEF's own colours,
+    /// its canvas placed so that the group 2's first frame's drawn part is centred across the
+    /// item's box and its canvas's row 275 lies on the box's bottom, cut to the box.
+    Creature {
+        /// The DEF.
+        def: String,
+        /// Its group.
+        group: u32,
+        /// Its frame in the group.
+        frame: u32,
+        /// The item's left edge.
+        x: i32,
+        /// The item's top edge.
+        y: i32,
+        /// The item's width and height, which the frame is cut to.
+        size: [i32; 2],
+    },
 }
 
 /// A picture's or a DEF item's player colours (0x450520, 0x4EAA4A): the players' palette and the
@@ -373,6 +407,19 @@ pub struct Def {
     /// result window's defending creature, 0x4708F6).
     #[serde(default)]
     pub mirrored: bool,
+    /// The group its frame is of (+0x38; 0 for an interface DEF, which draws group 0 whatever it
+    /// holds).
+    #[serde(default)]
+    pub group: u32,
+    /// Drawn as a creature (the flags 0x12, [`Draw::Creature`]; E17 M6 T2a1), not as an
+    /// interface DEF (0x10).
+    #[serde(default)]
+    pub creature: bool,
+    /// The DEF whose frame at the same place the original draws in this one's colours (E17 M6
+    /// T2a1, CLT-Q36: the executable keeps a DEF's frames by name, so a DEF loaded after another
+    /// with frames of the same names shows the other's; [`Draw::Shared`]); none: its own.
+    #[serde(default)]
+    pub frames_of: Option<String>,
     /// The constructor's loop, if the entry stands for several.
     #[serde(default)]
     pub repeat: Option<Repeat>,
@@ -625,6 +672,28 @@ impl Dialog {
                         x,
                         y,
                         text: shown.texts.get(&t.id).cloned().unwrap_or_default(),
+                    })
+                }
+                Item::Def(d) if d.creature => {
+                    let [x, y] = place(d.at);
+                    let def = shown.defs.get(&d.id).or(d.def.as_ref())?;
+                    Some(Draw::Creature {
+                        def: def.clone(),
+                        group: d.group,
+                        frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
+                        x,
+                        y,
+                        size: d.size,
+                    })
+                }
+                Item::Def(d) if d.frames_of.is_some() => {
+                    let [x, y] = place(d.at);
+                    Some(Draw::Shared {
+                        def: d.def.clone()?,
+                        frames: d.frames_of.clone()?,
+                        frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
+                        x,
+                        y,
                     })
                 }
                 Item::Def(d) => {

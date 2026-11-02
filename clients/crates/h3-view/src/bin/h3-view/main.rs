@@ -28,6 +28,7 @@ mod situation;
 mod sounds;
 mod spellbook;
 mod sprite;
+mod stats;
 mod text;
 mod video;
 mod videos;
