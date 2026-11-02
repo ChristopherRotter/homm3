@@ -2031,7 +2031,7 @@ id       = "ADV-VIS-006"
 title    = "What a player knows of a visited object, and of its heroes' marks"
 context  = "adventure"
 status   = "implemented"
-summary  = "A visit tells its hero's owner, where the original sets the visitor's team's mark (the team's marks are the owner's knowledge until E10's teams), what the build drew for the object: a Shrine's spell and a Witch Hut's skill before their tests, a gift's drawn price (the Tree of Knowledge's) before its test, a University's skills when it opens, whether a Corpse, Wagon or Lean To is emptied at its visit and a Warrior's Tomb after its question; the owner keeps it (`AdventureObservation::known`: the object by type and anchor, while it is on the map; a find's emptying as it stands now). No other player learns it. The owner also sees each of its heroes' once-per-hero marks (`OwnHeroView::marks`, by type and anchor: a marked object stood on a tile the hero explored). E08 T62a: the state's visits' block (`Visits`), `AdventureState::observe`."
+summary  = "A visit tells its hero's owner, where the original sets the visitor's team's mark (the team's marks are the owner's knowledge until E10's teams), what the build drew for the object: a Shrine's spell and a Witch Hut's skill before their tests, a gift's drawn price (the Tree of Knowledge's) before its test, a University's skills when it opens, whether a Corpse, Wagon or Lean To is emptied at its visit and a Warrior's Tomb after its question; the owner keeps it (`AdventureObservation::known`: the object by type and anchor, while it is on the map; a find's emptying as it stands now). No other player learns it. The owner also sees each of its heroes' once-per-hero marks (`OwnHeroView::marks`, by type and anchor: a marked object stood on a tile the hero explored). E08 T62a: the state's visits' block (`Visits`), `AdventureState::observe`. Amended by E08 T84b1 (survey E08-economy.md §9.4; increment 9's design note §9): a weekly object's visit sets its visited marks first, before its gain or its empty message: a Windmill's and a Water Wheel's for every player of the visitor's team, a Mystical Garden's for the visitor's owner alone; each mark set anew is told to its player (`ObjectMarked`), a held one is not; never cleared, hint data the gain never reads (ADV-OWN-003 shows them; `Weekly::marks`)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2042,6 +2042,17 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "E08 decision 135 (ADV-Q28): the team's marks as the visitor's owner's knowledge until E10; increment 7's design note §13 in docs/epics/E08-log.md"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md section 9.4): visit_windmill (0x4A7FC0) and visit_water_wheel (0x4A7DE0) mark every player of the visitor's team in the tile word's bits 5 to 12 (tile_mark_visited_by_team 0x4FBF90) before their gain or message; visit_garden (0x4A3BC0) sets the Garden's bit in the current player's mask +0xB8; the week's scan clears neither"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-8 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30; survey E08-economy.md section 19): the Windmill's and the Water Wheel's marks Red's, then Red's and Blue's (0x01, 0x03), kept through the week's reset; each visitor's own Garden bit"
+  retrieved  = "2026-10-30"
   confidence = "high"
 
 [[rule]]
@@ -2466,7 +2477,7 @@ id       = "ADV-OWN-001"
 title    = "Flagging an ownable object"
 context  = "adventure"
 status   = "implemented"
-summary  = "A visit flags a neutral ownable object, or another team's (the player alone until E10's teams), for its visitor's owner; never an own or allied one; nothing is paid. The new owner is told with every player that sees the object (`ObjectFlagged`, by type and anchor), then the tiles within the part's flag radius (3, `flag_radius`, E08 decision 217) of its entrance are explored for the new owner (ADV-FOG-002's disk), told to it alone with the number it had not explored (`TilesRevealed`). A hero standing on an owned entrance is met or fought there instead, as any hero (ADR-0016 point 3); a hero does not revisit the object it stands on. E08 T84a (increment 9's design note §7): the mines and abandoned mines (`AdventureState::flag`; ADV-MIN-002 says when a mine's visit flags it); the Lighthouses and the Shipyards come with T84b."
+summary  = "A visit flags a neutral ownable object, or another team's (the player alone until E10's teams), for its visitor's owner; never an own or allied one; nothing is paid. The new owner is told with every player that sees the object (`ObjectFlagged`, by type and anchor), then the tiles within the part's flag radius (3, `flag_radius`, E08 decision 217) of its entrance are explored for the new owner (ADV-FOG-002's disk), told to it alone with the number it had not explored (`TilesRevealed`). A hero standing on an owned entrance is met or fought there instead, as any hero (ADR-0016 point 3); a hero does not revisit the object it stands on. E08 T84a (increment 9's design note §7): the mines and abandoned mines (`AdventureState::flag`; ADV-MIN-002 says when a mine's visit flags it); E08 T84b1: the Lighthouses (`AdventureState::visit_lighthouse`: no guards, no question; ADV-OWN-005); the Shipyards come with T84b2."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2525,7 +2536,7 @@ id       = "ADV-OWN-003"
 title    = "What a viewer sees of owned, guarded and weekly objects"
 context  = "adventure"
 status   = "implemented"
-summary  = "Every viewer that sees an ownable object (ADV-FOG-004) sees its owner, as the original draws its flag in the owner's colour. A mine's production, its resource and its amount a day, shows only to a viewer of its owner's team (the player alone until E10's teams), so an abandoned mine's drawn resource is hidden from every other viewer, and a neutral abandoned mine's from all. A mine's guards show to every viewer as the original's hint shows them: the word of their total count, every stack counted, an upgraded one too (ADV-FOG-006's words), and their creature only when all stacks are of one (else the original's generic text); never their stacks or counts, which the owner's team sees (the user at T83b2b's start, 2026-10-31; ADR-0016 point 6 corrected by `shared/e08-t83b2b`). A guarded pile's guards stay hidden (ADV-PIK-004). A Shipyard's boat tile (ADV-SHY-001) is public with it. A weekly object shows a viewer its own visited mark (set for the visitor's team by a Windmill or a Water Wheel, for the visitor alone by a Mystical Garden, never cleared: it says visited, not emptied); its resource and amount never show. E08 T83b2b (increment 9's design note §12): `ObjectView::owner`, `production`, `guards` (`GuardsView`), `visited` and `boat_tile`, `AdventureState::production` and `visited_by`; the views on the imported economy map hide the abandoned mines' draws whatever the seed. The visits that set the owners and guards: E08 T84a (the mines, ADV-OWN-001, ADV-MIN-002, which tell a change of the guards' hint as `GuardsChanged`); the marks: T84b."
+summary  = "Every viewer that sees an ownable object (ADV-FOG-004) sees its owner, as the original draws its flag in the owner's colour. A mine's production, its resource and its amount a day, shows only to a viewer of its owner's team (the player alone until E10's teams), so an abandoned mine's drawn resource is hidden from every other viewer, and a neutral abandoned mine's from all. A mine's guards show to every viewer as the original's hint shows them: the word of their total count, every stack counted, an upgraded one too (ADV-FOG-006's words), and their creature only when all stacks are of one (else the original's generic text); never their stacks or counts, which the owner's team sees (the user at T83b2b's start, 2026-10-31; ADR-0016 point 6 corrected by `shared/e08-t83b2b`). A guarded pile's guards stay hidden (ADV-PIK-004). A Shipyard's boat tile (ADV-SHY-001) is public with it. A weekly object shows a viewer its own visited mark (set for the visitor's team by a Windmill or a Water Wheel, for the visitor alone by a Mystical Garden, never cleared: it says visited, not emptied); its resource and amount never show. E08 T83b2b (increment 9's design note §12): `ObjectView::owner`, `production`, `guards` (`GuardsView`), `visited` and `boat_tile`, `AdventureState::production` and `visited_by`; the views on the imported economy map hide the abandoned mines' draws whatever the seed. The visits that set the owners and guards: E08 T84a (the mines, ADV-OWN-001, ADV-MIN-002, which tell a change of the guards' hint as `GuardsChanged`); the marks: E08 T84b1 (the weekly objects' visits, ADV-VIS-006, a mark set anew told to its player as `ObjectMarked`)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2544,6 +2555,39 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
   retrieved  = "2026-10-30"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-OWN-005"
+title    = "Lighthouses: flagged, and their points at sea"
+context  = "adventure"
+status   = "verified"
+summary  = "A Lighthouse is ownable and entered, with no guards and no question: a visit flags a neutral one or another team's for the visitor's owner (ADV-OWN-001), one of the visitor's team does nothing. Each Lighthouse a player owns adds its kind's sea points (500) to the day's sea points of every one of that player's heroes (HER-ADV-009's input, added last and never grown by Navigation; an ally's do not count), wherever the day's sea maximum is taken: a turn start in a boat, a boarding (and so the conversion of a hero's points with free boarding, ADV-SEA-002); a Lighthouse flagged today changes a hero already at sea from its next turn start. E08 T84b1 (increment 9's design note §7): `AdventureState::visit_lighthouse` and `lighthouse_points` (the sum of the kind's `sea_points` over the owner's Lighthouses, saturating), passed to `sea_day_points` by the turn start, the game's start, a boarding and the reachable-tiles query's boarding. Not here: the Castle's Lighthouse building (A-30, E09)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a1; survey E08-economy.md section 4; docs/exe/map.toml 0x4A9479, 0x4E4990, 0x4BAE70, 0x698B0C): visit_object's case 42 (0x4A9479) does nothing for the current player's team and else flags the record (set_mine_owner) after ADVEVENT 69; hero_max_land_movement with the sea's argument adds, last (0x4E4A18), the count of the records the hero's owner holds with the resource 100 (count_owned_records) times movement_bonus_lighthouse (500, movement.txt)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md section 4: FlaggableMapObject flags a Lighthouse ('H3 behavior - revisiting owned Lighthouse is a no-op'); its bonus is the owner's heroes' (the PLAYER propagator), so an ally's does not count"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/FlaggableMapObject.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Lighthouse (survey E08-economy.md section 4): +500 movement points at sea for its owner's heroes, cumulative; the Navigation secondary skill does not affect this bonus"
+  url        = "https://heroes.thelazy.net/index.php/Lighthouse"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-4 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md section 19): Red owning two Lighthouses at load, a hero without Navigation in a boat has 2 500 of 2 500 sea points at day 2 (1 500 + 2 x 500)"
+  retrieved  = "2026-10-30"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-MIN-002"
@@ -2636,7 +2680,7 @@ id       = "ADV-WEK-001"
 title    = "The Windmill"
 context  = "adventure"
 status   = "implemented"
-summary  = "A Windmill is a weekly object (entered, owned by nobody): each week one of its kind's resources (the original's mercury, ore, sulfur, crystal or gems, never wood or gold) and an amount of 3 to 6, both drawn, the first week's when the game is built; its visit gives them to the visitor's owner once and empties it until the week's step, which draws again whether it was visited or not; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents drawn from the setup stream after the static map's draws, in object order, the resource with equal chances among the kind's and then the amount between its bounds (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); the visit comes with T84, the week's step with T85a."
+summary  = "A Windmill is a weekly object (entered, owned by nobody): each week one of its kind's resources (the original's mercury, ore, sulfur, crystal or gems, never wood or gold) and an amount of 3 to 6, both drawn, the first week's when the game is built; its visit gives them to the visitor's owner once and empties it until the week's step, which draws again whether it was visited or not; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents drawn from the setup stream after the static map's draws, in object order, the resource with equal chances among the kind's and then the amount between its bounds (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; the week's step with T85a."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2669,7 +2713,7 @@ id       = "ADV-WEK-002"
 title    = "The Water Wheel"
 context  = "adventure"
 status   = "implemented"
-summary  = "A Water Wheel is a weekly object (entered, owned by nobody): its resource (gold), 500 in the first week and 1 000 in every later one, whether it was visited or not; its visit gives it to the visitor's owner once and empties it until the week's step; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents when the game is built, the kind's first amount (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); the visit comes with T84, the week's step with T85a."
+summary  = "A Water Wheel is a weekly object (entered, owned by nobody): its resource (gold), 500 in the first week and 1 000 in every later one, whether it was visited or not; its visit gives it to the visitor's owner once and empties it until the week's step; its visited marks (the visitor's team's) are never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's contents when the game is built, the kind's first amount (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; the week's step with T85a."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2702,7 +2746,7 @@ id       = "ADV-WEK-003"
 title    = "The Mystical Garden"
 context  = "adventure"
 status   = "implemented"
-summary  = "A Mystical Garden is a weekly object (entered, owned by nobody): each week one of its gifts (5 gems or 500 gold), drawn with equal chances, the first week's when the game is built; its visit gives it to the visitor's owner once and empties it until the week's step, which draws again; its visited mark is the visitor's own, never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's gift drawn from the setup stream after the static map's draws, in object order (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); the visit comes with T84, the week's step with T85a."
+summary  = "A Mystical Garden is a weekly object (entered, owned by nobody): each week one of its gifts (5 gems or 500 gold), drawn with equal chances, the first week's when the game is built; its visit gives it to the visitor's owner once and empties it until the week's step, which draws again; its visited mark is the visitor's own, never cleared. E08 T83b1 (increment 9's design note §6; adventure state hash v18): the first week's gift drawn from the setup stream after the static map's draws, in object order (`Weekly`, `AdventureState::weekly`, checked by `check_weekly`); E08 T84b1 (increment 9's design note §9): the visit (`AdventureState::visit_weekly`), entered, no question: the marks first (ADV-VIS-006), then the contents left as the outcome's gain to the visitor's owner and the amount set to 0, or, emptied, `ObjectEmpty` to the visitor's owner; the week's step with T85a."
 numeric  = "integer"
 
   [[rule.source]]

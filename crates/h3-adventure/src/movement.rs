@@ -69,28 +69,34 @@ pub fn day_points(
 /// A hero's day's movement points at sea (ADV-MOV-001, HER-ADV-009; E08 T72):
 /// `h3_heroes::sea_points` on the part's sea table (Navigation's level, its specialists' growth,
 /// the Necklace of Ocean Guidance and the two Hats; the army's speeds do not count, survey
-/// `E08-sea.md` §4.2); without `details` the table's first entry. The Lighthouses' input
-/// (ADR-0013 point 13.6, E08 T82) is 0 until their visits (increment 9's design note §7, T84).
-// rule: ADV-MOV-001
+/// `E08-sea.md` §4.2); without `details` the table's first entry. Then `lighthouses`, the
+/// Lighthouses' input (ADR-0013 point 13.6, E08 T82; the hero's owner's,
+/// [`crate::AdventureState::lighthouse_points`], ADV-OWN-005, E08 T84b1), added last, saturating.
+// rule: ADV-MOV-001, ADV-OWN-005
 pub fn sea_day_points(
     core: &Ruleset,
     part: &AdventureRuleset,
     details: Option<&HeroDetails>,
+    lighthouses: u32,
 ) -> u32 {
     let table = part.params().sea_points();
-    details.map_or(table[0], |details| sea_points(details, core, table, 0))
+    details.map_or(table[0].saturating_add(lighthouses), |details| {
+        sea_points(details, core, table, lighthouses)
+    })
 }
 
 /// A hero's day's maximum on its surface (ADV-MOV-002, E08 T72; ADR-0016 point 3): its
-/// [`sea_day_points`] in a boat, else its [`day_points`] for its army.
+/// [`sea_day_points`] with its owner's `lighthouses` in a boat, else its [`day_points`] for its
+/// army.
 pub(crate) fn day_maximum(
     core: &Ruleset,
     part: &AdventureRuleset,
     details: Option<&HeroDetails>,
     hero: &HeroOnMap,
+    lighthouses: u32,
 ) -> u32 {
     if hero.boat.is_some() {
-        sea_day_points(core, part, details)
+        sea_day_points(core, part, details, lighthouses)
     } else {
         day_points(core, part, details, &hero.army)
     }

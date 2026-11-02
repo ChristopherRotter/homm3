@@ -909,3 +909,4 @@ mod sea;
 mod sea_battles;
 mod sea_pickups;
 mod visits;
+mod weekly;

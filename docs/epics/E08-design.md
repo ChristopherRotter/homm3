@@ -91,11 +91,11 @@ record).
 T84a built flagging, the mines' visits and `allied` (decision 220; its record and this section's
 text as T84a found it are in `E08-log.md`, "T84a"): `Effect::Mine`, `AdventureState::flag`
 (`ObjectFlagged`, the flag radius's reveal), the Leave Guards dialog's `garrison`, the guards'
-`Fight` and `end_mine_battle`. Left for T84b, through the same `flag`:
+`Fight` and `end_mine_battle`. T84b1 built the Lighthouses (decision 221; its record and this
+section's text as T84b1 found it are in `E08-log.md`, "T84b1"): `Effect::Lighthouse`,
+`visit_lighthouse`, `lighthouse_points` passed to `sea_day_points`. Left for T84b2, through the
+same `flag`:
 
-- **A Lighthouse:** flagged unless own or allied; nothing else. Its effect is read by
-  `day_maximum` in a boat: `lighthouse_points(owner)` = Σ over the owner's Lighthouses of their
-  kind's `sea_points`, passed to `sea_day_points` (§2).
 - **A Shipyard:** flagged unless own or allied, then the boat offer: no tile, `ShipyardBlocked {
   object_type, anchor, reason: NoTile }` to the visitor's owner; a boat or a hero on the tile,
   `reason: Taken`; else the outcome's offer `OfferKind::Boat { price }`, which the game makes only
@@ -114,17 +114,10 @@ free (`BoatTileTaken`). The game checks the treasury against the kind's price fi
 (`GameCommandError::CannotPay`, the state unchanged), then the adventure applies: the boat as
 §7's, the outcome's price paid by the game. No hero, no movement points, no visit.
 
-### 9. The weekly objects' visits (ADV-WEK-001 to -003, ADV-VIS-006 amended)
+### 9. The weekly objects' visits (ADV-WEK-001 to -003, ADV-VIS-006 amended; built)
 
-Entered (ADV-Q39, decision 214: the original's class lists and batch E9's E9-8, against this
-note's first wording), any hero, no question. **The contents are the object's, one a week,
-for whoever comes first** (decision 201): the week's first visit by any player's hero takes them
-and empties the object for every player until the next week's step; no per-player contents, no
-per-player test. The mark first (the Windmill's and the Water Wheel's for the visitor's team, the
-Garden's for the visitor's owner: hint data only, never read by the gain), then: contents left,
-the outcome's gain (as a pickup's, `ResourceGained` by the game) and the amount set to 0; none,
-`ObjectEmpty { object_type, anchor }` to the visitor's owner (the original's "nothing" message).
-The visit ends the walk on the entrance, as any entered visit.
+T84b1 built it (decision 221): its record and this section's text as T84b1 found it are in
+`E08-log.md` ("T84b1").
 
 ### 10. The week's step (`AdventureState::start_week`; ADV-WEK-001 to -003, ADV-MON-013)
 
@@ -206,7 +199,7 @@ T84a built it (decision 220): its record and this section's text as T84a found i
 - **Decisions** (ADR-0017 point 6's draft): the army dialog's holder, the mine's question and
   the two-owner battle with an owned mine's guards are built (T84a, game state hash v21; its
   record in `E08-log.md`). Left: the boat offer is a `Decision::Offer`; an accepted boat offer
-  pays the price, then `build_boat` (T84b).
+  pays the price, then `build_boat` (T84b2).
 - **`BuildBoat`** (§8): the game's `check_ready`, then `AdventureState::boat_price(player,
   object_type, anchor)` (the adventure's validation, read-only), the treasury test, then the
   command applied and the price paid.
@@ -259,7 +252,7 @@ T84a built it (decision 220): its record and this section's text as T84a found i
 | adventure state hash v19 | the objects added in play, the monsters' fractions (decision 218) | T83b2a, done |
 | game state hash v21 | the army dialog's holder (a join's or a mine's) | T84a, done |
 | game state hash v22 | the month, the events | T85 |
-| adventure replay format v8 | `BuildBoat` | T84b |
+| adventure replay format v8 | `BuildBoat` | T84b2 |
 | env action encoding v6 (the AI lane's) | `BuildBoat` | T85b (`cross-lane`) |
 
 Rule ids: survey §16 (ADV-OWN-001 to -005, ADV-MIN-001 to -003, ADV-SHY-001 to -003, ADV-WEK-001
@@ -313,7 +306,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 | 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
 | 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs (done, decision 212) |
 | 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b in two (decision 215): T83b1 the state the visits read (§6; adventure state hash v18, part v15; done), T83b2 in two (decision 218): T83b2a the fractions and the added objects (§6; adventure state hash v19; done), T83b2b the views (§12; done) |
-| 6 | **T84** | `h3-adventure` and `h3-game`, in two (decision 220): T84a flagging, the mines and their battles, the kept dialog (§7, §13, §14; done); T84b the Lighthouses, Shipyards and their boat offer, `BuildBoat` and the weekly visits (§7, §8, §9, §14) |
+| 6 | **T84** | `h3-adventure` and `h3-game`, in two (decision 220): T84a flagging, the mines and their battles, the kept dialog (§7, §13, §14; done); T84b in two (decision 221): T84b1 the Lighthouses and the weekly visits (§7, §9; done), T84b2 the Shipyards and their boat offer, `BuildBoat` (§7, §8, §14) |
 | 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |
 | 8 | **T86** + **T87** | T86: the economy maps, their replays and properties, the benchmarks, `--with-original-data` (§15). T87: the audit against the exit criteria, increment 9 closed, increment 10 refined |
 

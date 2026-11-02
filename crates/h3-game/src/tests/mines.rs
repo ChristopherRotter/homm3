@@ -2,7 +2,8 @@
 //! an own mine's visit opens the Leave Guards dialog, whose close keeps its group on the mine; a
 //! neutral abandoned mine's guards are asked, then fought as a monster the system plays, a win
 //! flagging it after the winner's levels; an owned mine's guards are their owner's side, played by
-//! that player outside its turn.
+//! that player outside its turn. E08 T84b1: a weekly object's contents go to its week's first
+//! visitor's treasury (design §9).
 
 use h3_adventure::{AdventureEvent, AdventureEventKind, Holds, ObjectSetup, TileMask, Viewers};
 
@@ -293,4 +294,64 @@ fn an_owned_mine_s_guards_are_their_owner_s_side_played_outside_its_turn() {
     let adventure = state.adventure();
     assert_eq!(adventure.owner(0), Some(RED));
     assert!(adventure.mine_guards(rules.adventure(), 0).is_empty());
+}
+
+// covers: ADV-WEK-002, ADV-VIS-006
+#[test]
+fn a_weekly_object_s_contents_go_to_its_week_s_first_visitor() {
+    let rules = rules();
+    let anchor = Pos::new(1, 1, 0);
+    let ty = rules.adventure().object_type_by_key("t:wheel").unwrap();
+    let mut state = game(&rules, 1, vec![mine(&rules, "t:wheel", anchor, None)]);
+    let gold = |state: &GameState, player| state.treasury(player).unwrap()[usize::from(GOLD.raw())];
+    let (red, blue) = (gold(&state, RED), gold(&state, BLUE));
+    let marked = |player| {
+        GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::ObjectMarked {
+                object_type: ty,
+                anchor,
+            },
+            seen_by: Viewers::NONE.with(player),
+        })
+    };
+    // Red first: its mark, then the first week's 500 gold, no question.
+    let events = play(&mut state, &rules, RED, move_hero(0, &[anchor])).unwrap();
+    assert_eq!(
+        after_steps(events),
+        [
+            marked(RED),
+            GameEvent::ResourceGained {
+                player: RED,
+                resource: GOLD,
+                amount: 500,
+            },
+        ]
+    );
+    assert_eq!(gold(&state, RED), red + 500);
+    assert!(!state.has_decision(RED));
+    let seen = |state: &GameState, player| {
+        observe(state, &rules, Viewer::Player(player))
+            .adventure
+            .objects
+            .iter()
+            .find(|o| o.anchor == anchor)
+            .map(|o| o.visited)
+    };
+    assert_eq!(seen(&state, RED), Some(true));
+    // Blue the same week, red's hero gone back: its mark, then nothing but the empty object told
+    // to it alone.
+    play(&mut state, &rules, RED, move_hero(0, &[Pos::new(0, 0, 0)])).unwrap();
+    play(&mut state, &rules, RED, GameCommand::EndTurn).unwrap();
+    let events = play(&mut state, &rules, BLUE, move_hero(1, &[anchor])).unwrap();
+    let empty = GameEvent::Adventure(AdventureEvent {
+        kind: AdventureEventKind::ObjectEmpty {
+            object_type: ty,
+            anchor,
+        },
+        seen_by: Viewers::NONE.with(BLUE),
+    });
+    assert_eq!(after_steps(events), [marked(BLUE), empty]);
+    assert_eq!(project(&empty, Viewer::Player(RED)), None);
+    assert_eq!(gold(&state, BLUE), blue);
+    assert_eq!(seen(&state, BLUE), Some(true));
 }

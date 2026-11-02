@@ -586,6 +586,15 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                     battle_terrain: Some(key("t:rock")),
                 },
             ),
+            // E08 T84b1: a Water Wheel.
+            entered(
+                "t:wheel",
+                ObjectKindDef::WaterWheel {
+                    resource: key("t:gold"),
+                    first: 500,
+                    later: 1000,
+                },
+            ),
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,

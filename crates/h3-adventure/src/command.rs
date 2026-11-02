@@ -821,6 +821,26 @@ pub enum AdventureEventKind {
         /// The word of their total count; none when no guards are left.
         count_word: Option<u8>,
     },
+    /// A weekly object's visit set visited marks (ADV-VIS-006 amended, E08 T84b1; increment 9's
+    /// design note §9): a Windmill's or a Water Wheel's for the visitor's team, a Garden's for the
+    /// visitor's owner, kept through the weeks ([`crate::ObjectView::visited`]). Seen by the
+    /// players whose mark it set, whose view of the object it changes; not told to a player that
+    /// held its mark already. Its gain or [`Self::ObjectEmpty`] follows.
+    ObjectMarked {
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+    },
+    /// A weekly object's visit found it emptied this week (ADV-WEK-001 to -003, E08 T84b1;
+    /// increment 9's design note §9: the original's "nothing" message, the Garden's "already"):
+    /// nothing given. Seen by the visitor's owner alone, as the gain its contents would have been.
+    ObjectEmpty {
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+    },
 }
 
 /// Receiver of the adventure context's events.

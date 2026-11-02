@@ -531,7 +531,9 @@ fn check_told(
                 prop_assert!(own, "{:?} of a hero not the viewer's", event);
             }
             // E08 T84a: a flag and a mine's guards' hint, told to the players that see the object
-            // (and the flag to its new owner): its owner, production and guards may change.
+            // (and the flag to its new owner): its owner, production and guards may change. E08
+            // T84b1: a weekly object's mark, told to the players whose mark it set: its visited
+            // mark changes.
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::ObjectFlagged {
@@ -543,12 +545,22 @@ fn check_told(
                         object_type,
                         anchor,
                         ..
+                    }
+                    | AdventureEventKind::ObjectMarked {
+                        object_type,
+                        anchor,
                     },
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
                 flagged.push((object_type, anchor));
             }
+            // E08 T84b1: a weekly object found empty, told to its visitor's owner alone; nothing
+            // it sees changes.
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectEmpty { .. },
+                seen_by,
+            }) => prop_assert_eq!(seen_by, alone),
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::MonsterChanged {

@@ -150,6 +150,29 @@ impl AdventureState {
             .and_then(|(owners, place)| owners.get(place).copied().flatten())
     }
 
+    /// The sea points `player`'s Lighthouses add to each of its heroes' day's sea points
+    /// (ADV-OWN-005, HER-ADV-009's input; E08 T84b1, increment 9's design note §7; survey
+    /// `E08-economy.md` §4, the original's `hero_max_land_movement` 0x4E4A18: the count of the
+    /// records the hero's owner holds times 500): the sum of the kind's `sea_points` over the
+    /// Lighthouses it owns, saturating; an ally's do not count. 0 on a map without ownable
+    /// objects.
+    // rule: ADV-OWN-005
+    pub fn lighthouse_points(&self, part: &AdventureRuleset, player: PlayerId) -> u32 {
+        let Some(owners) = self.owners.as_deref() else {
+            return 0;
+        };
+        self.map
+            .ownables()
+            .iter()
+            .zip(owners)
+            .filter(|&(_, &owner)| owner == Some(player))
+            .filter_map(|(&index, _)| match kind_at(part, &self.map, index) {
+                Some(&ObjectKind::Lighthouse { sea_points }) => Some(sea_points),
+                _ => None,
+            })
+            .fold(0, u32::saturating_add)
+    }
+
     /// The contents and marks of the weekly object at object index `index` (E08 T83b1), if it is
     /// one.
     pub fn weekly(&self, index: usize) -> Option<&Weekly> {

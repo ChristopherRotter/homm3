@@ -223,15 +223,23 @@ fn compiles_the_economy_kinds() {
             gifts: vec![(gem, 5), (gold, 500)],
         }
     );
-    // Typed: the mines' visits built (T84a), the others' not yet (T84b); four ownable, three
-    // weekly; a mine's battle terrain its own.
+    // Typed: the mines' visits built (T84a), the Lighthouses' and the weekly objects' (T84b1),
+    // the Shipyards' not yet (T84b2); four ownable, three weekly; a mine's battle terrain its own.
     for (k, _) in economy_kinds() {
         let kind = kind(k);
         let mine = matches!(
             kind,
             ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. }
         );
-        let effect = mine.then_some(Effect::Mine);
+        let effect = match kind {
+            ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. } => Some(Effect::Mine),
+            ObjectKind::Lighthouse { .. } => Some(Effect::Lighthouse),
+            ObjectKind::Windmill { .. } | ObjectKind::WaterWheel { .. } => {
+                Some(Effect::Weekly { own_mark: false })
+            }
+            ObjectKind::Garden { .. } => Some(Effect::Weekly { own_mark: true }),
+            _ => None,
+        };
         assert_eq!(kind.effect(), effect, "{k}");
         if !mine {
             assert_eq!(kind.battle_terrain(), None, "{k}");

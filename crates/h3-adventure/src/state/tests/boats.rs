@@ -219,7 +219,7 @@ fn a_hero_in_a_boat_takes_the_sea_points_at_its_turn_start() {
     state.start_turn(&rules.0, &rules.1, &navigator, RED);
     let hero = state.hero(HeroId::new(1)).unwrap();
     assert_eq!((hero.movement, hero.max_movement), (3000, 3000));
-    assert_eq!(crate::sea_day_points(&rules.0, &rules.1, None), 1500);
+    assert_eq!(crate::sea_day_points(&rules.0, &rules.1, None, 0), 1500);
     // Blue's turn leaves red's hero as it is; blue's on land gets the land's.
     state.set_movement(HeroId::new(1), 7);
     state.start_turn(&rules.0, &rules.1, &navigator, BLUE);

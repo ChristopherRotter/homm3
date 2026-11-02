@@ -10072,3 +10072,83 @@ Lighthouse and Shipyard items left in the note for T84b):
 - **After:** the survivors go back to the mine (`end_mine_battle`); a win flags it for the
   attacker's owner; a lost hero leaves the map as in any battle. The abandoned mine's win message
   (ADVEVENT 85) and the owned mine's question text are the client's (the events carry the owner).
+
+### Increment 9, round 6: T84b1, the Lighthouses and the weekly objects' visits (2026-11-02, `adventure/e08-t84b1` with `shared/e08-t84b1`)
+
+**The cut** (decision 221, the user at T84b's start): T84b in two halves, the queue's
+alternative: T84b1 the Lighthouses (their flag and their points at sea) and the weekly objects'
+visits, no new command and no version; T84b2 the Shipyards, their boat offer and `BuildBoat`
+(adventure replay format v8). The `shared/` part (docs only, `docs/06-security.md`) in a pull
+request of its own merged first.
+
+- **The Lighthouse** (`h3-adventure`, `state/mines.rs`; design §7): `Effect::Lighthouse`;
+  `visit_lighthouse` flags a neutral one or another team's through T84a's `flag` (`ObjectFlagged`,
+  the flag radius's reveal), one of the visitor's team does nothing; no guards, no question.
+- **Its points** (ADV-OWN-005, HER-ADV-009's input; `state/economy.rs`):
+  `AdventureState::lighthouse_points(part, player)`, the sum of the kind's `sea_points` over the
+  Lighthouses the player owns (the owners' block zipped with the static map's ownable list;
+  saturating; 0 without the block), passed to `sea_day_points` (a new argument, added last after
+  the table's entry without details too) by `day_maximum` at the game's start and every turn start,
+  by a boarding (`board`) and by the reachable-tiles query's boarding (`Search::boarded`, cold).
+  The original's count of owned records × 500 (0x4E4A18) is read where the day's sea maximum is
+  taken: a Lighthouse flagged today counts for a hero already at sea from its next turn start.
+- **The weekly visits** (`state/weekly.rs`; design §9): `Effect::Weekly { own_mark }` for the
+  Windmill, the Water Wheel (the team's mark) and the Garden (`own_mark`, the visitor's own);
+  `visit_weekly`: the marks first, every player of the visitor's team (the visitor alone until
+  E10) or the visitor's owner, a mark set anew told to its player (`ObjectMarked`); then the
+  contents left as the outcome's gain (the game's `ResourceGained`, as a pickup's) and the amount
+  set to 0, or, emptied, `ObjectEmpty` to the visitor's owner. The weekly block is copied
+  (`Arc::make_mut`) only when the visit changes it: an emptied object whose mark the visitor holds
+  writes nothing. Entered: the walk ends on the entrance.
+- **The game** needs nothing new: an outcome's gains already reach the treasury; the projection
+  passes the two events by their viewers. `h3-map`'s view property knows them: `ObjectMarked`
+  lets the object's view change (its visited mark), `ObjectEmpty` changes nothing.
+- *Agent's calls (change freely):* `ObjectMarked` (the design had no event for the mark; the
+  view property's "the observation changes only as told" needs one once the plans place weekly
+  objects, T86, as T84a's `GuardsChanged`), told only when the mark is new; the Lighthouses'
+  points also without details (the table's first entry plus them); an ally's Lighthouses not
+  counted (the original's owner test, VCMI's `PLAYER` propagator).
+- **`shared/e08-t84b1`** (#635): `docs/06-security.md`'s lines for a Lighthouse's flag and a weekly
+  object's mark, gain and emptiness.
+- **Rules:** ADV-OWN-005 new (`verified`: batch E9's E9-4, 2 500 sea points with two Lighthouses);
+  ADV-OWN-001 (the Lighthouses; the Shipyards with T84b2), ADV-WEK-001 to -003 (the visit; the
+  week's step with T85a, `verified` then), ADV-VIS-006 amended (the weekly marks, E9-8's source),
+  ADV-OWN-003's and HER-ADV-009's pointers.
+- **Tests:** `h3-adventure`'s `state/tests/mines.rs` (two: a Lighthouse flagged, an own one
+  untouched, another's flagged and told to both; the points of two owned and one of blue's, on
+  land nothing, a boarding's and a turn start's sea maximum 2 500, none on a map without
+  ownables), `state/tests/weekly.rs` (two: a Windmill's first visit marks and gives, blue's the
+  same week marks and finds it empty, red's again only empty and nothing written, refilled it
+  gives without a new mark, a non-weekly index nothing; the Water Wheel's 500 and the Garden's
+  gift with its own mark), `ruleset/tests/economy.rs`'s effects; `h3-game`'s `tests/mines.rs`
+  (one: a Water Wheel's 500 gold to red with its mark, blue the same week its mark and the empty
+  object, red told nothing). The game test part gained a Water Wheel.
+- **Bench** (`bench-check` against `target/wt-master`, the same code but this change):
+  reach-xl-144 +0.00 % (464 565 030 Ir against 464 561 695), reach-sea-xl-144 +0.00 %,
+  random-play-duel-36 −0.01 %, random-play-sea-36 +0.00 % (+47 757 Ir: the turn starts' and
+  boardings' `lighthouse_points` on a map without ownables), random-play-rewards-36 +0.00 %; no
+  workload's map has a Lighthouse or a weekly object; none re-baselined.
+- **Versions:** none moved (the state's weekly block and owners were hashed already; no part, map
+  import or replay change); the 32 adventure replays pass as recorded (no replay's map has a
+  Lighthouse or a weekly object), the bot reports unmoved.
+
+The design note's §7 Lighthouse item and §9 as T84b1 found them (§9 built; §7's Shipyard item left
+in the note for T84b2):
+
+###### 7. The owned objects' visits: the Lighthouse (as T84b1 found it) (ADV-OWN-001, ADV-OWN-005)
+
+- **A Lighthouse:** flagged unless own or allied; nothing else. Its effect is read by
+  `day_maximum` in a boat: `lighthouse_points(owner)` = Σ over the owner's Lighthouses of their
+  kind's `sea_points`, passed to `sea_day_points` (§2).
+
+###### 9. The weekly objects' visits (as T84b1 found it) (ADV-WEK-001 to -003, ADV-VIS-006 amended)
+
+Entered (ADV-Q39, decision 214: the original's class lists and batch E9's E9-8, against this
+note's first wording), any hero, no question. **The contents are the object's, one a week,
+for whoever comes first** (decision 201): the week's first visit by any player's hero takes them
+and empties the object for every player until the next week's step; no per-player contents, no
+per-player test. The mark first (the Windmill's and the Water Wheel's for the visitor's team, the
+Garden's for the visitor's owner: hint data only, never read by the gain), then: contents left,
+the outcome's gain (as a pickup's, `ResourceGained` by the game) and the amount set to 0; none,
+`ObjectEmpty { object_type, anchor }` to the visitor's owner (the original's "nothing" message).
+The visit ends the walk on the entrance, as any entered visit.
