@@ -91,21 +91,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Town lane (`TWN-Q<n>`)
 
-#### TWN-Q4 — E09 increment 1's checkpoint: the drafts, the design and the cut (E09 T2b)
-
-Context: T2a wrote the draft ADR-0028 and the amendments of ADR-0015, -0016, -0017, -0023
-(`docs/lanes/town/adr-drafts/`); T2b wrote the design note `docs/epics/E09-design.md` (§1 to
-§22) with the cut (§21). Asked interactively. (1) **The drafts:** accepted as written
-(recommended), or with changes. (2) **The cut:** fourteen tasks in rounds 2 to 10, batch TWN-1
-first (T3a to T3c), then the `shared/` task (T4), the part and its content (T5a, T5b), `h3-towns`
-(T6), the import and the build (T7a, T7b), the map side (T8a to T8c), the gates (T9), the audit
-(T10) (recommended); or the shared task before the batch; or fewer, larger tasks. (3) **The
-content's route** (§3): the buildings read from the executable and harvested through
-`h3-harvest`'s gap-fill, `cross-lane` (recommended); or a hand-written `towns.toml` with each
-value's source; or only the roles increment 1 reads, the full lists in increment 2 (a custom set
-and the turret count would then miss buildings). (4) **The agent's calls** marked in the note
-(e.g. the ever-built set as the record, a siege on the faction's native terrain, no event for
-entering an own town, an unused pick freed after the draws): kept (recommended), or changed.
+(no open questions)
 
 ## Answered
 

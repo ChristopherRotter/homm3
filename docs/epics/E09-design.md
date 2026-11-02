@@ -9,9 +9,10 @@ deletes it; the file goes when the epic closes. The code cites it as "E09 increm
 §M".
 
 Three parts: **A**, the town context (`h3-towns`, `h3-pack-towns`, the content); **B**, the map
-(`h3-map`, `h3-adventure`); **C**, the game, the env, batch TWN-1 and the cut. *Agent's call (change
-freely)* marks a choice of this note, not of the user's; the checkpoint (`TWN-Q4`) accepts or
-changes them.
+(`h3-map`, `h3-adventure`); **C**, the game, the env, batch TWN-1 and the cut. Accepted at the
+checkpoint (`TWN-Q4`, the epic's decisions 21 to 24): the drafts as written, the cut of §21, the
+content's route of §3. *Agent's call (change freely)* marks a choice of this note the user kept
+(decision 24) and the task that builds it may still change.
 
 ## Part A — the town context (`h3-towns`, `h3-pack-towns`, the content)
 
@@ -110,8 +111,7 @@ or `TownRuleset::empty(core)` (an encounter has no towns) in the same pull reque
   it: harmless, the Stronghold `absent` with `siege_obstacles = true`, the Tower `harmless`),
   `packs/ab/towns.toml` (Conflux) and `packs/sod/towns.toml` (overrides: `damaging`, the Stronghold
   `damaging` without obstacles, the Tower `damaging`; decision 20). The synthetic packs get a
-  small hand-written record for their test factions. *Agent's call:* the harvest route (the
-  checkpoint's question).
+  small hand-written record for their test factions. The route is the user's (decision 23).
 - **Not harvested now:** requirements and costs (increment 2), the hordes' growth (core), the
   guild's levels and spells, the services (increments 3, 4), the tavern weights (increment 3).
 
@@ -196,7 +196,7 @@ ADR-0015's amendment point 3, in the import's order:
   else `ImportError::MainTown(colour)` (T-4 typed, `TWN-QUIRK-4`); `random_hero` the flag.
 - **Towns** (classes 77 and 98, in object order; their index is the `TownId`): the adventure's
   object (§8: the `town` type, the owner as an ownable's, `Holds::Town { formation }`) and
-  `GameSetup::towns[id]` (§5): class 98's faction by subclass (`codes.rs`' faction order), class
+  `GameSetup::towns[id]` (§5): class 98's faction by subclass (`TOWNTYPE.TXT`'s order, a new table in `codes.rs`), class
   77 `Random` with the SoD alignment (`0xFF` none; 0 to 7 a colour; 8 to 254
   `ImportError::Alignment(index)`, T-1, `TWN-QUIRK-1`); the buildings' slots as stored; the
   garrison's stacks (a random stack's code, the 14 below "none", a `Random { level, upgraded }`
@@ -450,11 +450,12 @@ Grail and Shipyard (increments 2, 4).
 Rows 1 to 4 (§13, decision 15) in one run on the harness (`clients/capture/`, common) in SoD on
 Easy, hot seat, from maps `h3-experiment` writes; several new games for row 1's 30 in 100.
 
-- **The spec** (`h3-experiment`, the battle lane's, `cross-lane`): `[[map.town]]` gains what the
-  rows lack: a standard set with or without a Fort beside `buildings`, an explicitly empty custom
-  garrison apart from the map's default; row 3's town with a visitor and a garrison is an
-  encounter's opponent town (E04c T5b's `TownSpec` with its hero), checked by T3a. The writer's
-  `Town` already writes either set and either garrison.
+- **The spec** (`h3-experiment`, the battle lane's, `cross-lane`): `[[map.town]]` and `TownSpec`
+  gain what the rows lack (today an absent `buildings` is the standard set without a Fort, an
+  empty `garrison` the map's default): the standard set with a Fort, an explicitly empty custom
+  garrison; row 3's town with a visitor and a garrison is an encounter's opponent town (E04c
+  T5b's `TownSpec` with its hero and garrison). The writer's `Town` already writes either set and
+  either garrison.
 - **The harness** (common; this lane builds it with its check and notes the client and map-client
   lanes' inboxes): reads of a town's record (owner +0x1, built +0x150 and every-built +0x158,
   garrison +0xE0, the visitor +0x10), the battle's opening stacks at a siege (E04c's), a hero's tile

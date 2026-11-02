@@ -220,3 +220,47 @@ four, each as recommended): decisions 17 to 20.
   (ADR-0017's amendment point 4); the faction choice's default from the map (the one allowed
   faction, else Random); a stored visiting hero rejected (the hero on the entrance is it); the
   pool as one block by hero type.
+
+### T2b — the design note, the cut and the checkpoint (2026-11-02)
+
+One session, the user present; branch `town/e09-t2b`, docs only. Starting point: `master` at
+c1a6f68 (#653 merged; CI on `master` green at 9b8b7c6, the docs-only merge's push run under way).
+The user kept T2b whole (`AskUserQuestion`: two parts by side recommended, the note then the cut
+with the checkpoint, or whole). The sandbox's VM restarted once after the checkpoint (nothing
+lost: the work-in-progress commit was pushed before it).
+
+- **The design note** `docs/epics/E09-design.md`, from the code the build touches (the import's
+  object loop and `Unsupported`, `GameSetup`, `PlayerSetup`, `GameState::new`'s stream, the
+  adventure's ownables, `army_left` and `mine_guards`, `Defender`, `BattleStart`, `Siege`,
+  `generate_setup_obstacles`, `GameRuleset::new` and its callers, the fixtures, the spec's towns,
+  the versions): part A §1 the crates and T4's list, §2 the town part and `towns.toml`'s shape
+  (the parameters, the faction record, the buildings' roles, the compiler's checks,
+  `GameRuleset`'s fourth part), §3 the content (the readings, the names, VCMI, the gap-fill), §4
+  the record (the ever-built set, the standing set derived) and the store, §5 the build's town
+  setup (buildings, garrison), §6 the derivations; part B §7 the import (players' starts, towns,
+  the random hero, the moved hero, the pool's inputs, the census), §8 the kind `Town` and the
+  static map's town list, §9 the step's three cases, §10 the merge and the defender, §11 capture
+  in both contexts, §12 the views' words for `docs/06-security.md`; part C §13 the setup's
+  fields and checks, §14 the pool and the four steps of draws, §15 the siege's battle (the
+  faction's native terrain, the Stronghold's obstacles from a Citadel, the defender's bonuses and
+  mana), §16 the income in T85b's day advance, §17 the observation, §18 the gates, §19 versions,
+  rule ids (TWN-SET-001 to -010, TWN-VIS, -CAP, -SIE, -INC, -VEW), quirks `TWN-QUIRK-1` to `-4`
+  (T-1 to T-4), stubs `TWN-STUB-1` (an ally's visitor, E10) and `-2` (the start's forbidden Grail
+  and Shipyard), §20 batch TWN-1, §21 the cut, §22 risks.
+- **Read for it, not new:** the E04c survey's S-29 (the Stronghold's natural obstacles under RoE
+  and AB come with a Citadel or Castle, so the town part's flag applies from a Citadel) and its
+  "the town's native terrain" for a battle at a town; ADR-0023 point 6 (the battle gives the
+  attacker its Catapult) settles the queue's inbox note on VCMI's catapult.
+- **The checkpoint** (`TWN-Q4`, one round of four, the note sent to the user first; decisions
+  21–24): the drafts accepted as written; the cut as proposed; the content read and harvested
+  through `h3-harvest`'s gap-fill; the agent's calls kept.
+- **The queue:** T3a, T3b and T3c written (round 2 and 3); six inbox notes the note now carries
+  moved to the new `QUEUE-ARCHIVE.md`; a note in the adventure lane's inbox on the planned
+  `cross-lane` bumps and their order.
+- **Agent's calls** (kept at the checkpoint, decision 24): `towns.toml`'s shape; the record's
+  ever-built set; the static map's town list instead of a stored id; `Holds::Town { formation }`;
+  the garrison written into `army_left` by the build; no event for entering an own town; the
+  merge told as the army dialog's changes; a neutral garrison as `Defender::Guards`; the siege's
+  terrain and no special battlefield; an unused pick freed after the draws; the resolved choices
+  not kept; `GameRuleset::new`'s fourth argument with `TownRuleset::empty` for encounters; the
+  Visions factor a part parameter until Visions is placed.
