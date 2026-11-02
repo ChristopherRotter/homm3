@@ -300,3 +300,8 @@ open pull request touched `h3-experiment` (#654, #655 the adventure lane's).
 - **For T3b** (the harness): the town record's reads (game +0x21614, 0x168 bytes each: owner +0x1,
   visitor +0x10, garrison +0xE0, built +0x150, every-built +0x158) are not in
   `docs/exe/structs.toml` yet; three new games for rows 1 and 2, rows 3 and 4 in the first.
+- **Fixed on the way:** T2b's design note cited 0x63EC80, which no map entry covers (#656 was
+  docs only, so CI's full verify never ran its `check-exe-map`); §3 now names the lists through
+  `building_tables_init`'s entry. Locally: `check-lane --cross-lane`, `cargo check --workspace
+  --all-targets`, `h3-experiment`'s tests and clippy, the town scoped verify with the original data
+  (every step but `check-lane`, by design, after the fix).
