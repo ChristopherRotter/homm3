@@ -81,6 +81,7 @@ impl StaticTile {
 }
 
 mod boats;
+mod calendar;
 mod draws;
 mod economy;
 mod events;
@@ -723,16 +724,10 @@ impl StaticMap {
             let (Some(monster), Some(creature)) = (&placed.monster, creature) else {
                 continue;
             };
-            let [low, high] = bounds
+            let bounds = bounds
                 .and_then(|b| b.aggression(monster.disposition))
                 .unwrap_or_default();
-            let aggression = if low == high {
-                low
-            } else {
-                let span = u32::from(high.abs_diff(low));
-                let offset = u8::try_from(draws.range_inclusive(0, span)).unwrap_or(u8::MAX);
-                low.saturating_add_unsigned(offset)
-            };
+            let aggression = aggression_between(bounds, draws);
             object.monster = Some(Monster {
                 creature,
                 count,
@@ -1101,8 +1096,8 @@ pub struct AdventureState {
     /// object leaves, so a fork and a tile's read cost nothing more before (`bench-check`).
     occupancy: Option<Arc<Occupancy>>,
     /// The objects added in play, after the static map's in map order, with the grids of their
-    /// tiles (E08 T83b2a; increment 9's design note §6): none until one is added (T85a's creature
-    /// month), so a read that asks for them costs one test and a fork nothing more before
+    /// tiles (E08 T83b2a; increment 9's design note §6): none until one is added (a creature
+    /// month's, [`Self::start_month`], T85a), so a read that asks for them costs one test and a fork nothing more before
     /// (`bench-check`), then one block the forks share.
     added: Option<Arc<Added>>,
     /// The per-player state of object types (ADR-0016 point 1): the Cartographer types bought
@@ -1135,11 +1130,11 @@ pub struct AdventureState {
     owners: Option<Arc<[Option<PlayerId>]>>,
     /// The weekly objects' contents and marks by their place among the static map's weekly
     /// objects (ADV-WEK-001 to -003, E08 T83b1): none for a map without weekly objects, else one
-    /// block the forks share, which a visit or the week's step copies (T84, T85a).
+    /// block the forks share, which a visit or the week's step copies (T84b1, [`Self::start_week`]).
     weekly: Option<Arc<[Weekly]>>,
     /// Each wandering monster's fraction of a creature (its sixteenths, the monsters' growth unit;
     /// ADV-MON-013, E08 T83b2a; increment 9's design note §6), by object index, none for 0: what
-    /// the week's growth leaves below a whole creature (T85a writes it). A persistent table, as
+    /// the week's growth leaves below a whole creature ([`Self::start_week`], T85a). A persistent table, as
     /// [`Self::army_left`]: empty, a fork copies nothing.
     fractions: Table<u8>,
 }
@@ -2519,8 +2514,8 @@ impl AdventureState {
     }
 
     /// The objects added in play, in the order they came, each at index
-    /// `map().objects().len() + n` (E08 T83b2a: none until T85a's creature month; tests add
-    /// them), on the map or not.
+    /// `map().objects().len() + n` (E08 T83b2a; a creature month's, [`Self::start_month`], T85a),
+    /// on the map or not.
     pub fn added_objects(&self) -> &[MapObject] {
         self.added.as_deref().map_or(&[], |added| &added.objects)
     }
@@ -2755,7 +2750,7 @@ impl AdventureState {
     }
 
     /// Writes the weekly contents at weekly place `place` (tests of the weekly invariants and
-    /// hash, E08 T83b1, until T84's visits and T85a's week write them).
+    /// hash, E08 T83b1; the visits and the week's step write them since T84b1 and T85a).
     pub(crate) fn set_weekly(&mut self, place: usize, weekly: Weekly) {
         self.weekly = self.weekly.as_deref().map(|block| {
             let mut entries = block.to_vec();
@@ -2764,21 +2759,8 @@ impl AdventureState {
         });
     }
 
-    /// Adds `object` to the map after every object before it (E08 T83b2a: tests of the objects
-    /// added in play, until T85a's creature month adds them) and returns its index.
-    pub(crate) fn add_object(&mut self, object: MapObject) -> usize {
-        let index = self.map.objects().len() + self.added_objects().len();
-        if let Some(occupancy) = &mut self.occupancy {
-            Arc::make_mut(occupancy).make_room(index + 1);
-        }
-        let map = &self.map;
-        let added = self.added.get_or_insert_with(|| Arc::new(Added::new(map)));
-        Arc::make_mut(added).push(map, object);
-        index
-    }
-
     /// Writes the fraction of the monster at `index` (tests of the fractions' invariants and
-    /// hash, E08 T83b2a, until T85a's week writes them); 0 removes it.
+    /// hash, E08 T83b2a; the week's step writes them since T85a); 0 removes it.
     pub(crate) fn set_fraction(&mut self, index: usize, fraction: u8) {
         self.fractions
             .set(index, (fraction > 0).then_some(fraction));
@@ -2912,4 +2894,16 @@ fn check_guards(
 fn pick<'a, T>(choices: &'a [T], draws: &mut Rng) -> Option<&'a T> {
     let n = u32::try_from(choices.len()).unwrap_or(u32::MAX);
     choices.get(usize::try_from(draws.below(n)).unwrap_or(usize::MAX))
+}
+
+/// A monster's aggression drawn between `low` and `high` (ADV-MON-002, ADV-MON-014), inclusive,
+/// low to high: without a draw when they are equal (the original's compliant and savage
+/// monsters).
+fn aggression_between([low, high]: [i8; 2], draws: &mut Rng) -> i8 {
+    if low == high {
+        return low;
+    }
+    let span = u32::from(high.abs_diff(low));
+    let offset = u8::try_from(draws.range_inclusive(0, span)).unwrap_or(u8::MAX);
+    low.saturating_add_unsigned(offset)
 }

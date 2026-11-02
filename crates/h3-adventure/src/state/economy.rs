@@ -50,7 +50,7 @@ pub(crate) fn allied(a: PlayerId, b: PlayerId) -> bool {
 }
 
 /// The kind of the object at `index` of `map`, if it has a type.
-fn kind_at<'p>(
+pub(super) fn kind_at<'p>(
     part: &'p AdventureRuleset,
     map: &StaticMap,
     index: usize,
@@ -62,18 +62,25 @@ fn kind_at<'p>(
         .map(|ty| &ty.kind)
 }
 
-/// A weekly object's first week's contents by its kind (ADV-WEK-001 to -003): a Windmill draws its
+/// A weekly object's contents for a week by its kind (ADV-WEK-001 to -003): a Windmill draws its
 /// resource among its kind's, then its amount between the bounds; a Water Wheel takes its first
-/// week's amount; a Garden draws one of its gifts, with equal chances. None for every other kind
-/// (the part keeps a Windmill's resources and a Garden's gifts from being empty).
+/// week's amount in the `first` week, its later one in every other (E08 T85a, the week's step); a
+/// Garden draws one of its gifts, with equal chances. None for every other kind (the part keeps a
+/// Windmill's resources and a Garden's gifts from being empty).
 // rule: ADV-WEK-001, ADV-WEK-002, ADV-WEK-003
-fn first_contents(kind: Option<&ObjectKind>, draws: &mut Rng) -> Option<(ResourceId, u32)> {
+pub(super) fn contents(
+    kind: Option<&ObjectKind>,
+    first_week: bool,
+    draws: &mut Rng,
+) -> Option<(ResourceId, u32)> {
     match kind {
         Some(ObjectKind::Windmill { resources, amount }) => pick(resources, draws)
             .map(|&resource| (resource, draws.range_inclusive(amount[0], amount[1]))),
         Some(&ObjectKind::WaterWheel {
-            resource, first, ..
-        }) => Some((resource, first)),
+            resource,
+            first,
+            later,
+        }) => Some((resource, if first_week { first } else { later })),
         Some(ObjectKind::Garden { gifts }) => pick(gifts, draws).copied(),
         _ => None,
     }
@@ -123,14 +130,14 @@ pub(super) fn owners_at_start(
 
 /// The first week's weekly contents (ADV-WEK-001 to -003; increment 9's design note §6, §10), drawn
 /// from the setup stream after the static map's draws, in object order (the weekly objects'
-/// order): each one's [`first_contents`], no marks. None for a map without weekly objects.
+/// order): each one's first week's [`contents`], no marks. None for a map without weekly objects.
 pub(super) fn first_week(
     part: &AdventureRuleset,
     map: &StaticMap,
     draws: &mut Rng,
 ) -> Option<Arc<[Weekly]>> {
     let weekly: Vec<Weekly> = (0..map.objects().len())
-        .filter_map(|index| first_contents(kind_at(part, map, index), draws))
+        .filter_map(|index| contents(kind_at(part, map, index), true, draws))
         .map(|(resource, amount)| Weekly {
             resource,
             amount,
