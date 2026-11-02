@@ -9,8 +9,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 done
   (#620 merged); T2 cut in three by the user (2026-11-02): T2a1 done (#645 merged); T2a2 cut in
   two by the user (2026-11-02): **T2a2a done** (the stats dialog in the window, design §12.2;
-  CLT-Q36 to Q38 answered; six stills exact; `client/e17-m6-t2a2`, its pull request: check it
-  first); **next: T2a2b** (the dialog's right button's descriptions, its cast button), then T2b
+  CLT-Q36 to Q38 answered; six stills exact; #650 from `client/e17-m6-t2a2`: check it first); **next: T2a2b** (the dialog's right button's descriptions, its cast button), then T2b
   (the right button's popup, the turret's info), T3 to T7; then M7 ranked play and the server
   browser. M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -40,7 +39,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-02, E17 M6 T2a2a (done; its pull request open: check it first).** The original data
+- **2026-11-02, E17 M6 T2a2a (done; #650 open: check it first).** The original data
   staged (57 files) first; the VM restarted ~20 minutes in (the baseline lost: CI's green
   `Clients` run on `master` the baseline). The user cut T2a2 in two and answered CLT-Q36 to Q38.
   Read the dialog's command, close and the key T (design §12.2); built the modal dialog (library,
