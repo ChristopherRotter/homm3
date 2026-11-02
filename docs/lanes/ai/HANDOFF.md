@@ -27,7 +27,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   sandbox, agreement 0.531, the clone 0.396 against the fair actor and +0.244 on the neutral set
   with no RL; its `students/mlp.pt` sent to the user. **Next:** T17's A/B on the user's machine
   (`configs/e25-neutral.toml`, from scratch and `--init-from` the clone; lengths agreed then).
-- **Open pull requests:** the T16 one (`claude/quirky-cori-hjtoat`). Merged: #646 (T9b to
+- **Open pull requests:** #657 (`claude/quirky-cori-hjtoat`: T16). Merged: #646 (T9b to
   T12), #651 (T13 to T15).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
