@@ -19,7 +19,7 @@ In `TRAPS.md`.
 
 ### 2026-11-02 — T1b1: the town on the map
 
-Baseline ad0c9805 (#644 merged; CI green on 34fc55ef). The user cut T1b in two (T1b1, T1b2). Survey `E09-towns.md` §7 to §10 and findings 17 to 23: the step onto a gate (a defended town from the neighbouring tile), `town_visit` and `town_change_owner` read whole, the attacker outside after a siege, one Capitol per player, the garrison merged into a lone visitor's army, ADR-0023's facts from the town, the game's version at a new game; TD-7, T-5; 15 exe map entries. Pull request: `town/e09-t1b1` (see the PR list).
+Baseline ad0c9805 (#644 merged; CI green on 34fc55ef). The user cut T1b in two (T1b1, T1b2). Survey `E09-towns.md` §7 to §10 and findings 17 to 23: the step onto a gate (a defended town from the neighbouring tile), `town_visit` and `town_change_owner` read whole, the attacker outside after a siege, one Capitol per player, the garrison merged into a lone visitor's army, ADR-0023's facts from the town, the game's version at a new game; TD-7, T-5; 15 exe map entries. Pull request: #648 (`town/e09-t1b1`, open).
 
 ### 2026-11-02 — T1a2: the heroes and the towns at the start
 
