@@ -116,6 +116,16 @@ while the work waits.
   call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
   amended; the user, AI-Q10), the all-seeing `choose` only as a game's option.
 
+- 2026-11-02 (the client lane, E17 M6 T2a1; for information, nothing to do): additions to the
+  common crates for the battle's stack stats dialog (`docs/epics/E17-design.md` §12.1):
+  `h3_render::blit::draw_frame_clipped`; `h3_ui::ui::Def`'s `group`, `creature` and `frames_of`
+  (serde defaults: a layout without them reads as before) and the
+  `ui::Draw` variants `Creature` (a creature DEF item, the flags 0x12: the shadowed drawer, its
+  canvas placed by group 2's first frame, cut to the item) and `Shared` (another DEF's frame in
+  the item's DEF's colours: the executable keeps frames by name, CLT-Q36), both drawn by
+  `h3_ui::paint` (`names`, `draw`, `reach`; `creature_frame`). Every existing draw is the same;
+  a `match` on `ui::Draw` needs the two arms.
+
 - 2026-11-02 (the battle lane; for your information): `h3_formats::text::TextTable` now makes
   each run of quotes in a quoted field one, as the executable's text-table readers do
   (`installation.md` §4): a text `h3-map-view` reads from a table shows single quotes where the

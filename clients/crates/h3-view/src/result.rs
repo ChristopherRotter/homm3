@@ -303,6 +303,9 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
                 size: [LOSS_SIZE, LOSS_SIZE],
                 frame: original + 2,
                 mirrored: false,
+                group: 0,
+                creature: false,
+                frames_of: None,
                 repeat: None,
             }));
             items.push(label(
@@ -422,6 +425,9 @@ fn portrait(layout: &ResultLayout, id: u16, at: [i32; 2], face: &Face, defender:
             size,
             frame,
             mirrored: defender,
+            group: 0,
+            creature: false,
+            frames_of: None,
             repeat: None,
         })
     };

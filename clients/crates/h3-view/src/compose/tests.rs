@@ -1313,3 +1313,63 @@ fn a_dissolve_blends_the_new_picture_over_what_it_measures() {
     let unknown = vec![background("none.pcx")];
     assert!(fails(&b, Some([0, 0, 6, 2]), Vec::new(), unknown));
 }
+
+/// The stats dialog's creature and its morale's shared frame (E17 M6 T2a1, CLT-Q36): both drawn by
+/// the common drawers through the batch (`h3_ui::paint`), whose names list both DEFs.
+#[test]
+fn a_creature_and_a_shared_frame_are_the_common_drawers() {
+    let mut batch = batch();
+    let p = palette(&[(10, RED), (11, WHITE)]);
+    let frames = [row(&[10, 11], &[false, false])];
+    let def = build::def(
+        0x47,
+        (2, 1),
+        &p,
+        &[(0, &[("a", 0)]), (2, &[("a", 0)])],
+        &frames,
+    );
+    batch.add("c.def", &def).unwrap();
+    let other = palette(&[(10, WHITE), (11, RED)]);
+    let def = build::def(0x47, (2, 1), &other, &[(0, &[("a", 0)])], &frames);
+    batch.add("o.def", &def).unwrap();
+    let creature = Draw::Dialog(ui::Draw::Creature {
+        def: "c.def".to_string(),
+        group: 2,
+        frame: 0,
+        x: 0,
+        y: 0,
+        size: [2, 275],
+    });
+    let shared = Draw::Dialog(ui::Draw::Shared {
+        def: "o.def".to_string(),
+        frames: "c.def".to_string(),
+        frame: 0,
+        x: 2,
+        y: 0,
+    });
+    let [r, w] = [RED, WHITE].map(|c| FORMAT.pack(c));
+    let drawn = compose(&[creature.clone(), shared.clone()], &batch, &small()).unwrap();
+    assert_eq!(drawn.pixels()[..6], [r, w, w, r, 0, 0]);
+    let names = crate::batch::names(&[creature, shared], &small());
+    assert!(names.contains("C.DEF") && names.contains("O.DEF"));
+    let missing = Draw::Dialog(ui::Draw::Shared {
+        def: "no.def".to_string(),
+        frames: "c.def".to_string(),
+        frame: 0,
+        x: 0,
+        y: 0,
+    });
+    assert_eq!(
+        compose(&[missing], &batch, &small()),
+        Err(ComposeError::Missing("no.def".to_string()))
+    );
+    // The batch as the painter's assets.
+    let assets: &dyn Fn(&Batch) -> bool = &|b| {
+        use h3_ui::paint::Assets;
+        Assets::sprite(b, "c.def").is_some()
+            && Assets::picture(b, "x.pcx").is_none()
+            && Assets::palette(b, "x.pal").is_none()
+            && Assets::font(b, "x.fnt").is_none()
+    };
+    assert!(assets(&batch));
+}

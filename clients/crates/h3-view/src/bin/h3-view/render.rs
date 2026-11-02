@@ -389,6 +389,46 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     viewing,
                 ))
             };
+            // A press on a stack to look at opens its stats dialog (E17 M6 T2a1): the stack
+            // under the battle's cursor of kind 5, its creature's DEF's groups for its steps.
+            let looking = crate::pointer::legal(manifest, &tables, observation, (&legal, &[]));
+            let stats_sources = crate::stats::Sources {
+                manifest,
+                ruleset: &ruleset,
+                tables: &tables,
+                catalogue: &catalogue,
+            };
+            let seed = u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1);
+            let look = |point: [i32; 2]| {
+                let field = h3_view::mouse::Field {
+                    observation,
+                    legal: &looking,
+                    facing: &h3_view::mouse::Facing::Sides,
+                    bugs: Bugs::Original,
+                };
+                let id = h3_view::mouse::looked_at(&field, &layout, point)?;
+                let stack = observation.stacks.iter().find(|s| s.id == id)?;
+                let key = manifest.keys.creatures.get(usize::from(stack.creature))?;
+                let def = &tables.creatures.get(key)?.def;
+                let frames = lookup(&archives, def)
+                    .ok()
+                    .and_then(|b| h3_assets::def::parse_def(&b).ok())
+                    .map(|d| {
+                        d.groups
+                            .iter()
+                            .map(|g| (g.id, u32::try_from(g.frames.len()).unwrap_or(0)))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let anchor = layout.anchor(stack.hex / 17, stack.hex % 17);
+                crate::stats::open(
+                    &stats_sources,
+                    observation,
+                    (id, point),
+                    (&layout.stats, anchor),
+                    (frames, viewing, seed),
+                )
+            };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
                 leave,
@@ -397,6 +437,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 result: &result,
                 opening: told
                     .then(|| catalogue.text("battle.tactics.phase", &h3_ui::text::Args::new())),
+                look: &look,
             };
             Some(crate::spellbook::still(
                 &actions,

@@ -85,6 +85,44 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Context.** The capture set shows the original every battlefield the harness can set up through `h3-map`'s writer (`h3-view situation`, `clients/situations/set.toml`); since E17 M3 T2 the shore and the nine special grounds, all exact (`docs/epics/E17-design.md` §5, §6.2). Two special battlefields need boats on the map (survey `E04c-battlefields.md` §1): a ship's deck (`base:deck`, `CmBkDeck.pcx`: a hero in a boat against one on land, or the guards of a Derelict Ship, class 24, or a Shipwreck, class 85) and two boats (`base:boats`, `CmBkBoat.pcx`: both heroes in boats). The writer has neither a boat (class 8, `AVXboat0`–`2`), a hero placed in one, nor those two locations (its objects: heroes, monsters, piles, grounds, towns). The client draws both from a scenario (`h3-view render`: the deck's water obstacles, the boats' fixed hexes), but cannot compare them with the original. **Options:** (a) the writer gains boats (an empty boat and a hero standing in one on water) when the adventure lane builds boats (GAM-BAT-001: "Boats … come with the increments that build them"); (b) a Derelict Ship or Shipwreck only (the deck alone); (c) leave both unchecked. **Recommendation:** (a), whenever boats come; the client lane then adds the two situations (`set.toml` entries) without further reading. Not urgent: both pictures are whole PCX files, drawn as every other background is. **2026-10-28 (the adventure lane, E08 T65, decision 158):** increment 8 builds boats, so (a): the writer gains an empty boat and a hero standing in one; the adventure lane tells the client lane's inbox when they land. **2026-10-28 (E08 T67):** the empty boat landed (`writer::PLAIN_OBJECTS`, class 8); a hero standing in one cannot be written (the original gives a hero placed on water no boat, survey `E08-sea.md` §2): a hero beside an empty boat boards it in the game (the client lane's inbox has the setups).
 
+#### CLT-Q36 — The stats dialog's morale and luck show another DEF's frames (E17 M6 T2a1)
+
+**Context.** The battle's stack stats dialog (design §12.1) draws morale and luck as `imrl42.def`
+and `ilck42.def` items. The original's memory shows their frames holding `imrlB.def`'s and
+`ilckB.def`'s pixels: the executable keeps a DEF's frames by name, and the B DEFs, loaded before,
+hold frames of the same names (`imrl42g1.pcx`, …); the 42s keep their own palettes. So the boxes
+show the B frames in the 42s' colours: the same icons on a speckled background where the 42s'
+own frames have a smooth one (about 1 500 pixels a box). **Options:** (a) copy the original
+(as built: the layout's `morale_frames`, `luck_frames`); (b) fix: each DEF's own frames in the
+client's profile, the original's for the comparisons; (c) an option. **Recommendation:** (b), as
+the other drawing slips (the user's requirement: drawing bugs fixed). Built as the original's
+meanwhile.
+
+#### CLT-Q37 — The stats dialog's damage value sits a row above its label (E17 M6 T2a1)
+
+**Context.** Each line of the dialog is a label and its value in the same box (x 154, 122 × 17);
+the damage's value is made at y 103 where its label is at 104 (0x5F59A2; every other line's two
+share their row), so its number stands a pixel higher than the label beside it. **Options:** (a)
+copy; (b) fix: at its label's row in the client's profile, the original's for the comparisons;
+(c) an option. **Recommendation:** (b), in the spirit of CLT-Q28's directive. Built as the
+original's meanwhile.
+
+#### CLT-Q38 — The stats dialog's hints (E17 M6 T2a1, for T2a2)
+
+**Context.** The reading of the dialog's procedure (design §12.1, "The mouse") found three
+slips in what its status line and right button show, to build at M6 T2a2: (1) the speed's label
+(217) gives the health left's hint and description (the item map 0x5F46C0 groups 215 to 217); (2)
+the Faerie Dragon's cast button (301, index 15) reads past the 15 pairs of its hint table: its
+hint is the first mine's name ("Sawmill") and its right-click text the second's; (3) the item
+the mouse was last over is a global never reset (0x68C660), so a dialog opened where the mouse
+last left one shows no hint until the mouse moves to another item (as the spell book's, CLT-Q26);
+(4) the cast button shows for any Faerie Dragon of the side acting, not only the acting one: the
+cast it starts takes the pressed stack's last drawn spell (+0x4E0, never reset between battles)
+as the acting stack's (0x468954). **Options per item:** copy, fix in the client's profile (the
+original's for the comparisons), or an option. **Recommendation:** fix (1) to (3) as CLT-Q26;
+(4): the button only for the acting stack, its own drawn spell (the engine takes the command
+anyway, so the original's would only offer a cast the engine refuses or reads otherwise).
+
 ### Map client lane (`MCL-Q<n>`)
 
 (no open questions)

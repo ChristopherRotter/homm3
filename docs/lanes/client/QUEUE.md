@@ -18,26 +18,36 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T2 — a stack's info
+### E17 M6 T2a2 — the stats dialog in the window
 
-- **Scope:** what a press on a stack gives besides a command (`QUEUE-ARCHIVE.md`, the 2026-10-27
-  entry; design §9.11), read and built: the left press on a stack to look at (cursor kind 5)
-  opens its stats dialog (`stack_stats_dialog` 0x468860, modal: the creature's picture, its
-  numbers, its effects, morale and luck; a creature's cast button, 0x59EC50), the right button
-  held over a stack shows it as a popup (0x4769C0, not read yet), a turret's info (kind 22,
-  0x47A380); in the window in hot seat and on a server (what the seat's observation shows of an
-  enemy stack); stills and a sequence recorded against the original.
-- **Acceptance:** each dialog exact against its recordings or each difference listed; review
-  items; `check.sh`.
-- **Depends on:** T1 (done). **Status:** ready; likely cut at its start (the dialog, then the
-  popup and the turret).
+- **Scope:** T2 cut in three by the user (2026-11-02: T2a1 the dialog read and recorded as
+  stills, done; this; T2b the right button's popup and the turret's info). The stats dialog
+  (design §12.1) in the window: the left press on a stack to look at opens it modally (the battle
+  behind stands still, its creature stepping each 100 ms), its OK by a click, Enter or Escape,
+  the mouse's hints and cursor over its items (0x5F4E30; CLT-Q38 (1) to (3)), the right button's
+  descriptions over its items (0x5F48AD: the hint table's second texts, morale's and luck's
+  descriptions 0x44B960, 0x44C1C0, an effect's), a Faerie Dragon's cast button entering its cast
+  (0x468943, CLT-Q38 (4)); in hot seat and on a server (the seat's own stacks); the situations'
+  actions over an open dialog (`spellbook::still`); a sequence recorded (the dialog opened,
+  hovered, closed; a Faerie Dragon cast from it). CLT-Q36 to Q38 as answered.
+- **Acceptance:** each behaviour exact against its recordings or listed; `drawn`; `check.sh`.
+- **Depends on:** T2a1 (done). **Status:** ready.
+
+### E17 M6 T2b — the right button's stack popup and a turret's info
+
+- **Scope:** the right button held over a stack shows its stats dialog without the OK
+  (`battle_right_click` 0x4769C0 read; `stack_stats_dialog`'s held mode, `dialog_show_held`
+  0x530D30), an enemy's too (what the seat's observation shows of it), the dialog's clamps at the
+  right and the top recorded; a turret's info by either button (`turret_info` 0x47A380, a message
+  box); recorded.
+- **Acceptance:** as T2a2's. **Depends on:** T2a2. **Status:** ready.
 
 ### E17 M6 T3 — the right button's other popups
 
 - **Scope:** the right button's popups besides a stack's, read and built: over the battlefield
   (0x4769C0: a hero of either side, the other items the reading finds) and over a control
   (0x472A50: the panel's buttons, the log); recorded.
-- **Acceptance:** as T2's. **Depends on:** T2 (the popup). **Status:** ready.
+- **Acceptance:** as T2b's. **Depends on:** T2b (the popup). **Status:** ready.
 
 ### E17 M6 T4 — the combat options dialog
 

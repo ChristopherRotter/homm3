@@ -13,8 +13,8 @@ use h3_assets::palette::{Palette, Rgb};
 use h3_assets::pcx::Pcx;
 use h3_render::Bugs;
 use h3_render::blit::{
-    Drawer, Placement, darken, draw_frame, draw_image_clipped, draw_image_keyed_clipped,
-    draw_image_keyed_in_clipped,
+    Drawer, Placement, darken, draw_frame, draw_frame_clipped, draw_image_clipped,
+    draw_image_keyed_clipped, draw_image_keyed_in_clipped,
 };
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::Screen;
@@ -64,6 +64,8 @@ pub fn names(draw: &Draw) -> Vec<&str> {
         ],
         Draw::Label { item, .. } => alloc::vec![item.font.as_str(), item.font_palette.as_str()],
         Draw::Darken { .. } => Vec::new(),
+        Draw::Creature { def, .. } => alloc::vec![def.as_str()],
+        Draw::Shared { def, frames, .. } => alloc::vec![def.as_str(), frames.as_str()],
     }
 }
 
@@ -183,9 +185,92 @@ pub fn draw(
             let font = (&item.font, &item.font_palette);
             text_in(screen, assets, font, (colour, item.align), area, text, bugs)?;
         }
+        Draw::Shared {
+            def,
+            frames,
+            frame,
+            x,
+            y,
+        } => {
+            // CLT-Q36 (E17 M6 T2a1): the frame of the DEF that holds it under its name, in the
+            // colours of the DEF the item names (0x47BF00 passes the item's DEF's palette +0x20).
+            let (_, shown) = button_frame(assets, frames, *frame)?;
+            let colours = assets.sprite(def).ok_or_else(|| def.clone())?;
+            let at = Placement {
+                x: *x,
+                y: *y,
+                mirrored: false,
+            };
+            let format = screen.format();
+            draw_frame(
+                screen,
+                shown,
+                &ScreenPalette::new(&colours.def.palette, format),
+                at,
+                PLAIN,
+            );
+        }
+        Draw::Creature {
+            def,
+            group,
+            frame,
+            x,
+            y,
+            size,
+        } => {
+            let (sprite, shown, at) =
+                creature_frame(assets, def, (*group, *frame), [*x, *y], *size)?;
+            let format = screen.format();
+            draw_frame_clipped(
+                screen,
+                shown,
+                &ScreenPalette::new(&sprite.def.palette, format),
+                at,
+                Drawer::Shadowed { colour: None },
+                [*x, *y, size[0], size[1]],
+            );
+        }
     }
     Ok(())
 }
+
+/// A creature DEF item's frame and where its canvas goes (`dialog_def_draw` 0x4EAB40 with the
+/// flags 0x12; E17 M6 T2a1): the canvas's left edge w / 2 − fw / 2 − m from the box's (fw the
+/// width of group 2's first frame's drawn part, m its left margin, each half truncated), its top
+/// h − 275 from the box's.
+///
+/// # Errors
+/// The DEF's name when `assets` lacks it, its group 2's first frame or the frame shown.
+pub fn creature_frame<'a>(
+    assets: &'a impl Assets,
+    def: &str,
+    (group, frame): (u32, u32),
+    [x, y]: [i32; 2],
+    [w, h]: [i32; 2],
+) -> Result<(&'a Sprite, &'a Frame, Placement), String> {
+    let sprite = assets.sprite(def).ok_or_else(|| String::from(def))?;
+    let missing = |what: &str| alloc::format!("{def}: {what}");
+    let first = sprite.frame(2, 0).ok_or_else(|| missing("group 2"))?;
+    let shown = sprite
+        .frame(group, frame)
+        .ok_or_else(|| missing(&alloc::format!("group {group} frame {frame}")))?;
+    let width = i32::try_from(first.width).unwrap_or(i32::MAX);
+    let left = x
+        .saturating_add(w / 2)
+        .saturating_sub(width / 2)
+        .saturating_sub(first.left);
+    let top = y.saturating_add(h).saturating_sub(CREATURE_ROW);
+    let at = Placement {
+        x: left,
+        y: top,
+        mirrored: false,
+    };
+    Ok((sprite, shown, at))
+}
+
+/// The creature's canvas row that lies on its item's bottom (0x4EABCE: the item's height less
+/// 0x113).
+pub const CREATURE_ROW: i32 = 275;
 
 /// The rectangle of the screen `draw` can change (left, top, right, bottom; the last two
 /// excluded), as its drawer reaches (E24 M3 T4c, *provisional*): a picture's at most its item's
@@ -229,6 +314,33 @@ pub fn reach(draw: &Draw, assets: &impl Assets) -> Option<[i32; 4]> {
         Draw::Label { item, x, y, .. } => {
             assets.palette(&item.font_palette)?;
             Some(text_reach(assets.font(&item.font)?, *x, *y, item.size))
+        }
+        Draw::Shared {
+            def,
+            frames,
+            frame,
+            x,
+            y,
+        } => {
+            assets.sprite(def)?;
+            let (_, frame) = button_frame(assets, frames, *frame).ok()?;
+            Some(rect(
+                *x,
+                *y,
+                [side(frame.full_width), side(frame.full_height)],
+            ))
+        }
+        Draw::Creature {
+            def,
+            group,
+            frame,
+            x,
+            y,
+            size,
+        } => {
+            // Cut to its item's box.
+            creature_frame(assets, def, (*group, *frame), [*x, *y], *size).ok()?;
+            Some(rect(*x, *y, *size))
         }
     }
 }
