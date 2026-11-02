@@ -628,7 +628,58 @@ an entry only where a task builds on it.
   sign everywhere, each inside its interval; a cell of 500 battles is ±0.04): a sharper policy
   reaches 0.428 of the 0.5 target, its value still negative. The gap (0.08) is not the spread:
   the policy's most likely choices are about as good as its draws, and they lose where the
-  samples lose, defending (the hero battles 0.22 to 0.23, the garrison 0.04 to 0.05, at every
-  temperature). For increment 4: the entropy A/B (`e25-sharp-1`, the user's machine, running)
+  samples lose. The low defending rates are the distribution's base rate, not a defending
+  weakness: against itself (`e25-scale-1`'s training at 30 M, `attacker_won` per kind) the
+  attacker wins 0.695 of the hero battles, 0.581 of the sieges with a hero, 0.942 of the
+  garrisons; against the system actor #3 falls short of those on both sides alike (attacking
+  and defending: −0.10 and −0.08 in the hero battles, −0.10 and −0.10 in the sieges with a hero,
+  −0.02 and −0.01 at a garrison). For increment 4: the entropy A/B (`e25-sharp-1`, the user's machine, running)
   can gain only if a smaller bonus changes what PPO learns, not by sharpening alone; the
   diagnostic bounds sharpening's share at about +0.01.
+
+## T10b — The first A/B: the entropy bonus to 0 (2026-11-02)
+
+- **The run** (the user's machine; `python/records/e25-sharp-1.json`; commit `d5c7079`, #640's
+  merge, clean, C ABI v35; seed 1, `configs/e25-sharp.toml`: `e25-scale.toml`'s settings, three
+  tactics rounds, 20 M samples, the 2 × 512 MLP from scratch, `[ppo] entropy_floor = 0`): 72
+  minutes, 7.8 of them the gates and ladders. Promoted at both gates (10 M: 0.827 in 26 pairs;
+  20 M: 0.528 in 197, +19 Elo), best #2 at 20 M. The final ladder (the GPU, 500 per kind; the
+  intervals ±0.012 against Random, ±0.018 otherwise, ±0.012 on the neutral set) beside #3's
+  (T5, the sandbox's CPU) and #3's at temperature 0.7 (T9b):
+
+  | Network | Random | Aggressor | Greedy | System actor | Neutral set |
+  |---|---|---|---|---|---|
+  | `e25-scale-1` #3 (30 M) | 0.840, +0.284 | 0.593, +0.073 | 0.580, +0.057 | 0.418, −0.061 | 0.969, +0.241 |
+  | #3 at temperature 0.7 | 0.848, +0.290 | 0.597, +0.077 | 0.584, +0.061 | 0.428, −0.053 | 0.971, +0.243 |
+  | `e25-sharp-1` #2 (20 M) | 0.849, +0.287 | 0.602, +0.076 | 0.581, +0.061 | 0.422, −0.055 | 0.976, +0.243 |
+
+  Against the system actor per kind: the hero battles 0.409, the sieges with a hero 0.414, the
+  garrison 0.489 (#3: 0.409, 0.404, 0.485). Against `promoted-1` (its own 10 M network) 0.521.
+  The head-to-head against #3 was not played (`e25-sharp-1`'s `best.pt` is on the user's
+  machine; 24 MB, uploadable).
+- **Training** (`metrics.jsonl`, uploaded, outside git): the bonus 0.0095 at 1 M, 0.005 at 10 M,
+  0 at 20 M; the entropy 3.40, 1.93, 1.37, 1.07, 0.84 at 1, 5, 10, 15, 20 M (per gate interval
+  2.15 and 1.08; `e25-scale-1` 2.39 and 1.71, `e25-wide-1` 2.39 and 1.52); the KL per update
+  0.0135 to 0.0012 and the clip fraction 0.187 to 0.009 (the learning rate falls with it); the
+  value's explained variance 0.47 and 0.53 per interval (`e25-scale-1` 0.48 and 0.54); 5 430 and
+  5 050 samples a second (`e25-scale-1` 5 700 and 5 290); the league score 0.566 and 0.527; 0.005 %
+  of the training battles cut in the second interval. The attacker's share per kind in training
+  as `e25-scale-1`'s (0.692, 0.590, 0.946 at 20 M).
+- **The read:** the entropy ends at half `e25-scale-1`'s, and the ladder moves by what T9b's
+  temperature predicted, no more: every point estimate 0.001 to 0.009 above #3's, five of five
+  (each inside its interval), against the system actor 0.422 (#3 at 0.7: 0.428). Training
+  sharper puts evaluation's sharpening into the sampled policy; the bonus did not hold back what
+  PPO learns. The value head is unchanged.
+
+## T11 — Increment 4's checkpoint (2026-11-02)
+
+- **The user's choices** (AI-Q13): no second A/B (fewer epochs or a larger rollout): increment 4
+  closes. **`e25-sharp-1` #2 is the current best** once its head-to-head against `e25-scale-1`
+  #3 (T12, the sandbox on its uploaded `best.pt`) is not clearly below 0.5; else #3 stays.
+  Increment 5: "the battle lane will push the fair system actor v1 soon"; the agent's reading:
+  increment 5 is refined around it when it lands (decision 2: it may train; decision 3: its
+  imitation; a fair target beside the faithful one), and E25 waits at the current best until
+  then.
+- **Increment 4 in one line:** the sampled policy's spread costs about 0.01 against every
+  opponent (T9b), and training with the entropy bonus falling to 0 buys exactly that (T10b); with
+  increments 1 to 3, every lever tried ends at 0.41 to 0.43 against the faithful system actor.

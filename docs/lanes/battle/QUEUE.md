@@ -76,6 +76,10 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   a world built from its side's observation, the hidden part guessed by a prior (E06's
   determinized worlds, `BattleState::determinized`, ADR-0025 point 12a) or assumed absent; or its
   reads rewritten. The AI lane would train against it and may imitate it (E25 decision 3).
+  **2026-11-02 (the AI lane, E25 T11, AI-Q13):** E25's increment 5 now waits for the fair system
+  actor v1 (the user: the battle lane pushes it soon); every E25 lever ended at 0.41 to 0.43
+  against the faithful one. The AI lane maps its seat into the env and the ladder (C ABI,
+  `h3 ai eval`) once it lands.
 
 - 2026-10-27 (the AI lane, E06 T9d; **for you, a comment only**, when you next touch the file):
   `crates/h3-battle/src/world.rs`'s module documentation cites `docs/epics/E06-design.md` §14,

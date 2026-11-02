@@ -1,7 +1,7 @@
 # E25 — archive: closed increments
 
 Moved out of `E25-battle-ai-v2.md` verbatim when an increment closes (increment 1 on
-2026-10-28, increment 2 on 2026-10-29, increment 3 on 2026-11-02, at their checkpoints), so that the epic file holds what
+2026-10-28, increment 2 on 2026-10-29, increments 3 and 4 on 2026-11-02, at their checkpoints), so that the epic file holds what
 is open and the decisions that apply to the whole epic. Each task's full record is in `E25-log.md` (grep its id).
 
 ## Increment 1 (closed 2026-10-28)
@@ -80,3 +80,32 @@ against the current MLP before any RL run.
 - [x] **T8 Increment 3's checkpoint** (2026-11-02; `E25-log.md` T8, AI-Q12): `e25-scale-1` #3 stays
   the current best; increment 4 is the policy's sharpness and PPO's settings (the user); T7c's
   verdict on the structured networks holds for those configurations only (the user's caveat).
+
+## Increment 4 (closed 2026-11-02)
+
+**Increment 4: the policy's sharpness and PPO's settings** (refined 2026-11-02, AI-Q12; the AI
+queue's tasks). Every run since E05 used PPO's settings as E05 T8 set them (the entropy bonus
+0.01 throughout, 4 epochs, 8 minibatches, the learning rate 2.5e-4 falling linearly, rollouts of
+128 steps × 256 envs); the entropy ends at 1.5 (`e25-scale-1`), the sampled policy's spread. A
+diagnostic without training first, then 20 M A/Bs on the 2 × 512 MLP at `e25-scale.toml`'s
+settings. Decision 1's rules unchanged: the sampled policy is judged, only trained sharper.
+
+- [x] **T9a The temperature** (2026-11-02; `E25-log.md` T9a): `Policy.act`'s logits of every head
+  divided by a temperature (1 the default, bit-identical; 0 the most likely choice), through
+  `evaluate.ladder` and `h3env.train.ladder --temperature 1,0.7,0.5,0` (a line per temperature
+  and opponent, the same episodes and draws); training untouched.
+- [x] **T9b The diagnostic** (2026-11-02; `E25-log.md` T9b): `e25-scale-1` #3 at temperatures 1,
+  0.7, 0.5, 0: 0.418, 0.428, 0.428, 0.425 against the system actor, +0.002 to +0.010 against
+  every other seat at 0.7, all inside the intervals. The spread costs about 0.01 of the 0.08 gap;
+  against its own base rates #3 falls short on both sides alike (about 0.09 in the hero kinds).
+- [x] **T10a The entropy's schedule** (2026-11-02; `E25-log.md` T10a): `[ppo] entropy_floor` (the
+  bonus falling with the learning rate's progress to that fraction of `entropy_coef`; 1 the
+  default, every run before) and `configs/e25-sharp.toml` (the bonus to 0 at 20 M); the second
+  lever (fewer epochs or a larger rollout) not run (the user at T11).
+- [x] **T10b The A/B** (2026-11-02; `E25-log.md` T10b; `records/e25-sharp-1.json`): the bonus to
+  0 over 20 M ends at #3's ladder at temperature 0.7 (0.422 against the system actor; every
+  point estimate 0.001 to 0.009 above #3's, inside the intervals): training sharper buys the
+  sharpening, no more.
+- [x] **T11 Increment 4's checkpoint** (2026-11-02; `E25-log.md` T11, AI-Q13): no second A/B;
+  `e25-sharp-1` #2 the current best after the head-to-head against #3; increment 5 waits for
+  the fair system actor v1 (the user: the battle lane pushes it soon).
