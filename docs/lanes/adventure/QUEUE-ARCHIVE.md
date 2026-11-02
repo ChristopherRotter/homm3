@@ -16,6 +16,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-19 (T21b's audit): since E04c T10b's re-recording no golden replay declines a guarded pile's question or a Cartographer's offer (the battle lane's note of 2026-10-16 below, (5)); both stay covered by `h3-game`'s unit tests and the property plans. A wider seed search or a fixture of its own would restore them, with the next re-recording. *Done by E08 T86a (2026-11-03): `duel-s4749-d28` and `duel-s5249-d28` decline a pile's question, `duel-s3560-d28` and `duel-s645-d28` a Cartographer's offer.*
+
 - 2026-10-31 (T82 and T83a done together: decision 213, T83 cut in two; ADV-Q39 answered, decision 214; T83b queued): the T82 and T83 entries as they stood in the "Tasks" text:
 
   **E08 T82 — `h3-heroes`: the day's income, the day's spell points, the Lighthouses' input**

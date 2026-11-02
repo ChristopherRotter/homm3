@@ -10499,3 +10499,63 @@ on the merged state (every step, the original-data step's 160 shipped maps among
   fails by design; `check-lane --cross-lane` and `cargo check --workspace --all-targets` clean.
 - **Versions:** the env's action encoding v6 (the AI lane's, its inbox told); T85b as a whole
   brings game state hash v22 to `master` once (decision 224).
+
+### Increment 9, round 8: T86a, the economy map, its replays and the duel replays' lists (2026-11-03, `adventure/e08-t86a`)
+
+**The cut** (decision 226, the user at T86's start): T86 in two, the map and the replays first,
+the properties and the benchmarks with the economy XL second; the original data's counts were
+built by T83a and T83b1 and passed in T85b2b's verify, so nothing staged. **Baseline:** `master`
+65b5465 (#654, #655 merged; CI green on it); the sandbox's light gates failed at `check-exe-map`
+on `master` (the town lane's #656 cites 0x63EC80, which no entry covered): an entry
+`faction_building_lists` (from the bytes: nine lists of building ids with their requirements,
+each ended by -100; size 0xF44) added in this pull request (`docs/exe/map.toml` is common).
+
+- **The economy map** (`fixtures/maps/e08-economy-36.h3m`; `h3-map`'s `tests/economy_map.rs`,
+  `the_economy_map_is_committed_as_written`): SoD, 36 × 36 of grass, the sea on columns 30 to
+  35, written by `h3_map::writer` with the original's templates (the four mines batch E9 lacked,
+  the Alchemist's Lab, the Ore Pit, the Sulfur Dune and the Gem Pond, read from
+  `Objects.txt` in the user's `original-data/` through the computer's shell); red's Lord Haart (Estates, the Endless Sack of Gold, two
+  Crystal Dragons, ten archangels, twenty pikemen), Rissa (Mysticism, mercury, the Charm of Mana)
+  and Orrin below the Shipyard; blue's Sephinroth (crystal, the Mystic Orb of Mana) and Caitlin
+  (gold, the Endless Purse of Gold); the seven mines (blue's Crystal Cavern owned at load, the
+  Alchemist's Lab and the Sulfur Dune each guarded by a monster beside its entrance), an abandoned
+  mine of crystal or gold, two Lighthouses on the coast, a Shipyard whose boat tile is its second
+  offset (30, 20), two of each weekly object, three growing monsters and two fixed, three timed
+  events (once, repeating, taking). The test reads it back, imports it (every class in order,
+  the one owner at load, the abandoned mine's set, the events) and builds it (the boat tile, the
+  abandoned mine's draw).
+- **The golden replays** (`adventure_replays.rs` lists what each meets; the test expects 39):
+  random play `economy-s792-d60`, `-s935-d60`, `-s1451-d60` (`--seed N --agent-seed N --days
+  60`, two month starts), the union of three in a scratch search over the seeds 1 to 3 000 that
+  meets all 28 features counted (months of each kind, monsters added and fought, mines flagged
+  and taken, the abandoned mine fought and won, Leave Guards opened, a Lighthouse, boats bought,
+  built by `BuildBoat` and refused, boarding and landing, weekly objects marked and emptied, a
+  hero battle, a tax floored); of the 3 000 games 1 916 have a creature month, 313 fight the
+  abandoned mine, 145 use `BuildBoat`, none leaves guards or fights an owned mine's guards (the
+  random agent closes the dialog). Scripted (`--seed 1 --checkpoint-every 5 --script`):
+  `economy-guards-s1` (a flag, Leave Guards with twenty pikemen, the owned mine's guards fought
+  by blue and played by red, the mine flagged for blue), `economy-abandoned-s1` (the question,
+  the battle won, the flag after the level-up), `economy-shipyard-s1` (the flag and the boat offer
+  at the visit, boarding, a second boat by `BuildBoat`, the tax floored), `economy-windmill-s1`
+  (a Windmill visited, visited again the same week twice, again after the week's reset, the
+  Crystal Dragons' weekly crystals). The moves came from a scratch probe walking each hero toward
+  its tile through the explored reachable ones, the battles' commands from E23's
+  `h3_battle_ai::choose` for both sides. *Found on the way:* a hero that stands on a mine's
+  entrance after its visit is what a visitor meets there (a hero battle): the script walks Haart
+  off before blue's visit.
+- **The duel replays' lists** (T85b1's README loop, design §19): the seven of 28 days replayed
+  by a scratch probe noting their offers, answers, battles, captures, flights and water walks.
+  `duel-s1-d28`, `-s4893-d28`, `-s1308-strict-d28` keep their rows (a few more found); four had
+  lost what they were chosen for: `duel-s692-d28` its hero battle, `-s2517-d28` its pile's
+  question declined, `-s3127-d28` its monster's battle lost, `-s2931-d28` its offer to join for
+  gold. A search over 6 000 seeds in each profile replaced them with the game closest to each row:
+  `duel-s3560-d28` (a hero battle won by its attacker, which captures the flyer's Angel Wings and
+  flies with them), `duel-s4749-d28`, `duel-s645-d28`, `duel-s5249-d28` (one of two faithful
+  games of 6 000 with an offer to join for gold accepted). The rows and the search's counts in
+  `adventure_replays.rs`.
+- *Agent's calls (change freely):* the map's heroes and objects; the seeds; the four replacements.
+- **Versions:** none.
+- **Gates:** the scoped verify (no original data) passed every step after `cargo fmt` (its first
+  run failed only rustfmt's layout of the map test): coverage, determinism with the 39 replays,
+  `bench-check` with the thirteen workloads, `check-exe-map` with the new entry; the CLI's replay
+  test passed (the scope builds no `h3-cli`).
