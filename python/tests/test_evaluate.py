@@ -174,7 +174,7 @@ def test_the_bots_tables_are_the_sets_and_the_engines(held_out: str) -> None:
         entry["adventure_ruleset_hash"],
     )
     assert table["max_steps"] == 2000
-    assert table["policies"] == ["random", "aggressor", "greedy", "system"]
+    assert table["policies"] == ["random", "aggressor", "greedy", "system", "system-all-seeing"]
     assert table["defender"] == (None if len(sides) == 2 else "system")
     games = {(p["attacker"], p["defender"], p["stratum"]): p for p in table["pairs"]}
     for (policy, opponent), rates in table["by_pair"].items():

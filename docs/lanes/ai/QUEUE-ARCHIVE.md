@@ -4,6 +4,40 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 5, T15** (moved 2026-11-02, done: `E25-log.md` T15):
+
+- **T15 The ladder at the switch.** *Scope:* `e25-sharp-1` #2 (its `best.pt` uploaded by the
+  user, as at T12) on the report set against both system actors and on the neutral set with the
+  fair defender, beside the bots' regenerated tables: increment 5's starting point and the new
+  neutral target (the fair actor's own value in the player's seat: +0.285, T14). In the
+  sandbox's CPU. *Depends on:* T14 (done). *Status:* next, when the user uploads the `best.pt`.
+
+**E25 increment 5, T14** (moved 2026-11-02, done: `E25-log.md` T14):
+
+- **T14 The switch.** *Scope:* `Policy::System` plays `h3_battle_ai::choose_fair`, a new
+  `Policy::SystemAllSeeing` plays `choose` (the neutral kinds' defender stays `Policy::System`,
+  so it becomes the fair one); `H3_SEAT_SYSTEM` (4) the fair actor, a new
+  `H3_SEAT_SYSTEM_ALL_SEEING` (5), C ABI v36 (`h3.h`, `_ffi.py`, `batch.py`'s seat names
+  `system`, `system-all-seeing`); `h3 ai eval`'s `POLICIES` and its default both,
+  `NEUTRAL_DEFENDER` the fair one; records tell the two apart (the engine's identity in
+  `_ffi.py` and `h3 ai eval --json` names the system seat's sight; a record without it read as
+  all-seeing, `test_evaluate.py` checks it); `run.trainable` refuses only the all-seeing actor (no
+  config reaches it today) and `ppo.resume` refuses a run started before the switch whose mix
+  had a system seat (its opponent would change under it); the bots' tables regenerated
+  (`python/records/README.md`: both columns in `bots-report-v1.json`, the fair defender in
+  `bots-neutral-v1.json`: the neutral target re-measured); `batch-system-neutral-v1` re-baselined
+  (its description names `choose_fair`) and an all-seeing twin if the gate should keep
+  measuring `choose` (agent's choice); the docs (`TRAPS.md`'s Environment group,
+  `docs/07-simulation-and-ai.md` §1.2's lines go into the inbox's E25-closure note). Check
+  `h3-sim`'s replays and the golden ones for a system seat first (`TRAPS.md`: `verify --scope ai`
+  skips them; run `cargo xtask determinism`). *Acceptance:* the seats play the named actor (a
+  test where they differ: a hero battle); the scoped verify; CI. *Depends on:* T13 (done).
+  *Status:* next.
+
+**The closed epics' summary** (moved 2026-11-02 from the queue's head, verbatim):
+
+**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
+
 **E25 increment 2, T4b** (moved 2026-10-29, done: `E25-log.md` T4b):
 
 - **T4b The A/B.** *Scope:* on the user's machine, `e25-bound-1` (`configs/e25-bound.toml`, T4a:
@@ -176,6 +210,22 @@ and defends (1 %) less than the system actor (7 %, 3 %), loses mostly defending;
 leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
+
+**Moved 2026-11-02** (E25 T13's session; verbatim, folded into E25 T14 to T16, AI-Q14):
+
+- 2026-11-02 (the battle lane, E26 T5; **for you: the fair system actor exists**):
+  `h3_battle_ai::choose_fair(state, ruleset, side, rng)` (ADR-0027 point 4 as amended, BAT-AI-025)
+  is the original's computer on its side's world (`BattleState::determinized` without a guess):
+  it reads nothing its side may not know (E26 T3's properties), so it may train agents and be
+  imitated (E25 decisions 2 and 3, ADR-0026 point 8). The user wants it the default everywhere
+  (AI-Q10): `h3-sim`'s `Policy::System`, the adventure env's neutral seat, `h3-ffi`'s batch and
+  `h3 ai eval` switch to it, the all-seeing `choose` kept as an option (E25's target stays the
+  all-seeing one, decision 1). It equals `choose` only where the other side has no hero and no
+  hidden obstacle, so the neutral battles (the player's hero against the System seat) move:
+  records naming the opponent by `POLICY_VERSION` (19, unchanged) need its sight too, and
+  `benches/ai/batch-system-neutral-v1.toml` moves with the switch. Its cost: +0.8 % Ir per
+  decision; its strength: 0.500 against the all-seeing one on random armies with heroes
+  (`docs/epics/E26-log.md` T4, `h3 bench-computer --duel 1`).
 
 **Moved 2026-10-29** (E25 T4b's session; verbatim, informational):
 
