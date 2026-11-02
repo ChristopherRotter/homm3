@@ -9,7 +9,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 done
   (#620 merged); **T2 cut in three by the user (2026-11-02): T2a1 done** (the stats dialog read,
   design §12.1, and drawn; four stills exact but a listed panel line; CLT-Q36 to Q38 asked;
-  #PR_T2A1 from `client/e17-m6-t2a1`: check it first); **next: T2a2** (the dialog in the window),
+  #645 from `client/e17-m6-t2a1`: check it first); **next: T2a2** (the dialog in the window),
   then T2b (the right button's popup, the turret's info), T3 to T7; then M7 ranked play and the
   server browser. M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -40,7 +40,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-02, E17 M6 T2a1 (done; #PR_T2A1 open: check it first).** The original data staged
+- **2026-11-02, E17 M6 T2a1 (done; #645 open: check it first).** The original data staged
   (57 files) before anything else; the baseline's `check.sh` passed; #620 had merged. The user
   cut T2 in three. Read the stats dialog (24 map entries), built it in the common crates
   (additive) and the library, its stills (`click:` on a stack); four situations captured, exact

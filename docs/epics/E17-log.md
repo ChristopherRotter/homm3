@@ -3905,7 +3905,9 @@ the baseline's `check.sh` passed (`verify-once`, code `313e253`); #620 had merge
   cursor and the status line after the park.
 - **Asked:** CLT-Q36 (the shared frames), CLT-Q37 (the damage value a row up), CLT-Q38 (the
   hints and the cast button, for T2a2). Review items 5 to 8.
-- **Checked:** `drawn` CHECKED_DRAWN; `clients/scripts/check.sh` CHECKED_CHECK.
+- **Checked:** `drawn` all 160 the same on the tree merged with `master` (the four new recorded);
+  the real-asset gate (859 keys, 11 tables); `clients/scripts/check.sh` all gates, coverage 100 %;
+  the scoped verify with the original data, no failing step.
 
 ## Accepted review lists (M1 to M5)
 
