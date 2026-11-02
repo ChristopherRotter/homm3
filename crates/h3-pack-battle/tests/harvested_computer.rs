@@ -6,18 +6,25 @@
 //! accepts at every step (no fallback fires), and the same state and stream give the same
 //! command. Most steps play it; the others play a random legal command or a hero's cast, so the
 //! games reach effects and stand-ins (`h3_battle_ai`'s stubs) the policy alone would not. The
-//! Cyclops's wall shot (E23 T2b, BAT-AI-004) at a town's walls, below.
+//! fair system actor's property on the same battles (E26 T3, BAT-AI-025: no fallback but
+//! BAT-STUB-18, twins that differ in what the side may not know, the other side's hidden pits
+//! among it). The Cyclops's wall shot (E23 T2b, BAT-AI-004) at a town's walls, below.
 
+use std::cell::OnceCell;
 use std::collections::BTreeSet;
 
 use h3_battle::{
-    BattleState, CastTargets, Command, LegalCommands, NoopSink, apply, cast_targets,
-    castable_spells, computer, legal_commands, second_targets, validate,
+    BattleState, CastTargets, Command, LegalCommands, NoopSink, SpellObstacle, Status, apply,
+    cast_targets, castable_spells, computer, legal_commands, observe, second_targets, validate,
 };
-use h3_content::{CreatureFlag, CreatureTypeId, Formation, HeroTypeId, SpellCategory, SpellId};
+use h3_content::{
+    ContentKey, CreatureFlag, CreatureTypeId, FactionId, Formation, HeroTypeId, SpellCategory,
+    SpellId,
+};
 use h3_content_battle::{BattleRuleset, WallKind};
 use h3_contracts::{
-    Army, ArmyStack, BattleHero, BattleSetup, BattleSide, CatapultControl, FortLevel, Moat, Siege,
+    Army, ArmyStack, BattleHero, BattleSetup, BattleSide, CatapultControl, DamageBonuses,
+    FortLevel, Moat, Rate, RetreatFacts, Siege,
 };
 use h3_heroes::{ArtifactInstance, HeroDetails, derive_battle_hero, war_machines};
 use h3_kernel::Rng;
@@ -109,16 +116,114 @@ fn cast(
         return None;
     }
     let spell = spells[pick(rng, spells.len())];
+    Some(cast_of(state, r, (side, spell), rng))
+}
+
+/// A cast of `spell`, which the hero of `side` may cast, at random targets.
+fn cast_of(
+    state: &BattleState,
+    r: &BattleRuleset,
+    (side, spell): (BattleSide, SpellId),
+    rng: &mut Rng,
+) -> Command {
     let (mut targets, mut seconds) = (CastTargets::new(), CastTargets::new());
     cast_targets(state, r, side, spell, &mut targets);
     let target = targets.as_slice()[pick(rng, targets.len())];
     second_targets(state, r, side, (spell, target), &mut seconds);
     let second = seconds.as_slice()[pick(rng, seconds.len())];
-    Some(Command::Cast {
+    Command::Cast {
         spell,
         target,
         second,
-    })
+    }
+}
+
+/// What random battles draw from: the creatures but the war machines, the factions of the siege
+/// records, the special battlefields.
+struct Pools {
+    creatures: Vec<CreatureTypeId>,
+    factions: Vec<FactionId>,
+    battlefields: Vec<ContentKey>,
+}
+
+impl Pools {
+    /// The pools of the ruleset `sod`.
+    fn of(sod: &BattleRuleset) -> Self {
+        Self {
+            creatures: (0..sod.creature_count())
+                .filter_map(CreatureTypeId::from_index)
+                .filter(|&c| {
+                    sod.creature(c)
+                        .is_some_and(|t| !t.flags.contains(CreatureFlag::WarMachine))
+                })
+                .collect(),
+            factions: sod.sieges().iter().map(|s| s.faction).collect(),
+            battlefields: sod.battlefields().iter().map(|b| b.key.clone()).collect(),
+        }
+    }
+}
+
+/// Game `game`'s random battle, drawn from `rng`: each side's hero (two in three, [`details`])
+/// with its war machines; half the games at a town of the factions in turn (a random fort level,
+/// moat, structures and Escape Tunnel), a quarter on a random special battlefield; random armies,
+/// funds and `human`, the difficulty `game` mod 5.
+fn random_setup(sod: &BattleRuleset, pools: &Pools, game: u64, rng: &mut Rng) -> BattleSetup {
+    let details = [details(sod, rng), details(sod, rng)];
+    let heroes = details
+        .clone()
+        .map(|d| (rng.below(3) != 0).then(|| derive_battle_hero(&d, sod).unwrap()));
+    // Half the games at a town, a quarter on a special battlefield.
+    let (siege, battlefield) = match game % 4 {
+        0 | 1 => {
+            let fort = [
+                FortLevel::None,
+                FortLevel::Fort,
+                FortLevel::Citadel,
+                FortLevel::Castle,
+            ][pick(rng, 4)];
+            let moat = if fort >= FortLevel::Citadel {
+                [Moat::Absent, Moat::Harmless, Moat::Damaging][pick(rng, 3)]
+            } else {
+                Moat::Absent
+            };
+            let factions = &pools.factions;
+            let town = Siege {
+                faction: factions[usize::try_from(game).unwrap() % factions.len()],
+                fort,
+                moat,
+                structures: u8::try_from(rng.below(256)).unwrap(),
+                escape_tunnel: rng.below(2) == 0,
+                morale: 0,
+                luck: 0,
+            };
+            (Some(town), None)
+        }
+        2 => (
+            None,
+            Some(pools.battlefields[pick(rng, pools.battlefields.len())].clone()),
+        ),
+        _ => (None, None),
+    };
+    let machines = [0, 1].map(|i| {
+        if heroes[i].is_some() {
+            war_machines(&details[i], sod)
+        } else {
+            vec![]
+        }
+    });
+    BattleSetup {
+        attacker: army(rng, &pools.creatures),
+        defender: army(rng, &pools.creatures),
+        battlefield,
+        siege,
+        war_machines: machines,
+        heroes,
+        formations: [Formation::Loose, Formation::Loose],
+        funds: [rng.next_u32(), rng.next_u32()],
+        difficulty: u8::try_from(game % 5).unwrap(),
+        human: [rng.below(2) == 0, rng.below(2) == 0],
+        ..BattleSetup::default()
+    }
 }
 
 // covers: BAT-AI-001, BAT-AI-002
@@ -126,83 +231,13 @@ fn cast(
 fn the_computers_choice_is_legal_in_random_battles_of_the_harvested_creatures() {
     let mut reach = Reach::default();
     for profile in ["base:faithful", "base:strict-fixed"] {
-        let sod = h3_pack_battle::compile(
-            &[
-                h3_pack_battle::SOD_PACK,
-                h3_pack_battle::AB_PACK,
-                h3_pack_battle::BASE_PACK,
-            ],
-            profile,
-        )
-        .unwrap();
-        let pool: Vec<CreatureTypeId> = (0..sod.creature_count())
-            .filter_map(CreatureTypeId::from_index)
-            .filter(|&c| {
-                sod.creature(c)
-                    .is_some_and(|t| !t.flags.contains(CreatureFlag::WarMachine))
-            })
-            .collect();
-        let factions: Vec<_> = sod.sieges().iter().map(|s| s.faction).collect();
-        let battlefields: Vec<_> = sod.battlefields().iter().map(|b| b.key.clone()).collect();
+        let sod = sod(profile);
+        let pools = Pools::of(&sod);
         let mut rng = Rng::from_seed(23);
         let mut seat = Rng::from_seed(2023);
         let mut legal = LegalCommands::new();
         for game in 0..48u64 {
-            let details = [details(&sod, &mut rng), details(&sod, &mut rng)];
-            let heroes = details
-                .clone()
-                .map(|d| (rng.below(3) != 0).then(|| derive_battle_hero(&d, &sod).unwrap()));
-            // Half the games at a town, a quarter on a special battlefield.
-            let (siege, battlefield) = match game % 4 {
-                0 | 1 => {
-                    let fort = [
-                        FortLevel::None,
-                        FortLevel::Fort,
-                        FortLevel::Citadel,
-                        FortLevel::Castle,
-                    ][pick(&mut rng, 4)];
-                    let moat = if fort >= FortLevel::Citadel {
-                        [Moat::Absent, Moat::Harmless, Moat::Damaging][pick(&mut rng, 3)]
-                    } else {
-                        Moat::Absent
-                    };
-                    let town = Siege {
-                        faction: factions[usize::try_from(game).unwrap() % factions.len()],
-                        fort,
-                        moat,
-                        structures: u8::try_from(rng.below(256)).unwrap(),
-                        escape_tunnel: rng.below(2) == 0,
-                        morale: 0,
-                        luck: 0,
-                    };
-                    (Some(town), None)
-                }
-                2 => (
-                    None,
-                    Some(battlefields[pick(&mut rng, battlefields.len())].clone()),
-                ),
-                _ => (None, None),
-            };
-            let machines = [0, 1].map(|i| {
-                if heroes[i].is_some() {
-                    war_machines(&details[i], &sod)
-                } else {
-                    vec![]
-                }
-            });
-            let setup = BattleSetup {
-                attacker: army(&mut rng, &pool),
-                defender: army(&mut rng, &pool),
-                battlefield,
-                siege,
-                war_machines: machines,
-                heroes,
-                formations: [Formation::Loose, Formation::Loose],
-                funds: [rng.next_u32(), rng.next_u32()],
-                difficulty: u8::try_from(game % 5).unwrap(),
-                human: [rng.below(2) == 0, rng.below(2) == 0],
-                ..BattleSetup::default()
-            };
+            let setup = random_setup(&sod, &pools, game, &mut rng);
             let mut state = BattleState::new(&sod, &setup, game)
                 .unwrap_or_else(|e| panic!("{profile} game {game}: the setup is refused: {e:?}"));
             for _ in 0..300u32 {
@@ -256,6 +291,316 @@ fn the_computers_choice_is_legal_in_random_battles_of_the_harvested_creatures() 
             && reach.defends > 1000
             && reach.over > 30,
         "{reach:?}"
+    );
+}
+
+/// What [`the_fair_choice_reads_nothing_hidden_on_the_harvested_packs`] compared: the decisions
+/// (each checked for a fallback and made twice) and the fallbacks known (BAT-STUB-18), those where
+/// the side may know everything (the original's); the worlds of the battle with the other hero as
+/// it is (another stream, the other side's hidden pits placed again), `pits` of them with such a
+/// pit, the all-seeing command differing there `pit_differed` times; the twins of another setup
+/// compared while the side's observations agreed, `with_hero` of them with another hero, the
+/// all-seeing command differing there `differed` times, `pit_twins` with the other side's hidden
+/// pits on other hexes; and the twins dropped when they parted.
+#[derive(Debug, Default)]
+struct Fair {
+    decisions: u32,
+    fallbacks: u32,
+    original: u32,
+    worlds: u32,
+    pits: u32,
+    pit_differed: u32,
+    twins: u32,
+    with_hero: u32,
+    differed: u32,
+    pit_twins: u32,
+    parted: u32,
+}
+
+/// The spell obstacles of `side` its opponent does not see (BAT-MAG-031): its hidden pits.
+fn hidden(state: &BattleState, side: BattleSide) -> Vec<SpellObstacle> {
+    state
+        .spell_obstacles()
+        .iter()
+        .filter(|o| o.side == side && !o.revealed)
+        .copied()
+        .collect()
+}
+
+/// Random retreat facts.
+fn retreat(rng: &mut Rng) -> RetreatFacts {
+    RetreatFacts {
+        experience: rng.below(4000),
+        artifacts: rng.below(2000),
+        tavern: rng.below(4) != 0,
+        wanted: rng.below(8) == 0,
+    }
+}
+
+/// `hero` with another private part, what its opponent may not know: every spell but the
+/// abilities in its book if it carries one (a superset, so that it accepts the hero's casts),
+/// each at a random mastery but the `pits`' (the number and value of their hidden obstacles
+/// follow it, which a side's world keeps: AI-STUB-1), half the time other damage bonuses, another
+/// surrender discount. Its public part stays.
+fn other_private(
+    r: &BattleRuleset,
+    hero: &BattleHero,
+    pits: [SpellId; 2],
+    rng: &mut Rng,
+) -> BattleHero {
+    let mut twin = hero.clone();
+    if twin.magic.spell_book.is_some() {
+        let book: Vec<SpellId> = (0..r.spells().len())
+            .filter_map(SpellId::from_index)
+            .filter(|&s| r.spell(s).unwrap().category != SpellCategory::Ability)
+            .collect();
+        let own = |s: SpellId| hero.magic.masteries.iter().find(|m| m.0 == s).map(|m| m.1);
+        twin.magic.masteries = book
+            .iter()
+            .filter_map(|&s| {
+                let drawn = u8::try_from(rng.below(4)).unwrap();
+                let mastery = if pits.contains(&s) {
+                    own(s)
+                } else {
+                    Some(drawn)
+                };
+                mastery.filter(|&m| m > 0).map(|m| (s, m))
+            })
+            .collect();
+        twin.magic.spell_book = Some(book);
+    }
+    if rng.below(2) == 0 {
+        twin.damage = DamageBonuses {
+            ranged: Rate::bp(rng.below(5001)),
+            melee: Rate::bp(rng.below(5001)),
+            reduction: Rate::bp(rng.below(3001)),
+        };
+    }
+    twin.surrender_discount_bp = u16::try_from(rng.below(5001)).unwrap();
+    twin
+}
+
+/// A hero's cast for `side`: one of the `pits` half the time it may cast one, else a random cast
+/// ([`cast`]).
+fn pit_or_cast(
+    state: &BattleState,
+    r: &BattleRuleset,
+    (side, pits): (BattleSide, [SpellId; 2]),
+    rng: &mut Rng,
+) -> Option<Command> {
+    let castable = castable_spells(state, r, side);
+    let pit = pits[pick(rng, 2)];
+    if castable.contains(pit) && rng.below(2) == 0 {
+        return Some(cast_of(state, r, (side, pit), rng));
+    }
+    cast(state, r, side, rng)
+}
+
+/// Whether `command` is the active stack's shot at itself, a hypnotized shooter's: the computer
+/// takes every stack of the other side as a target, whoever controls it, which the engine refuses
+/// (BAT-STUB-18).
+fn shoots_itself(state: &BattleState, command: Command) -> bool {
+    let active = state.active();
+    matches!(command, Command::Shoot { target, .. } if Some(target) == active)
+        && active
+            .and_then(|id| state.stack(id))
+            .is_some_and(|s| s.spells.status.contains(Status::HYPNOTIZED))
+}
+
+/// Asserts that the fair command for `side` on `twin`, which `side` observes as the battle, from
+/// `seat` is `fair` and leaves the stream at `after`, as on the battle.
+fn fair_on_twin(
+    r: &BattleRuleset,
+    twin: &BattleState,
+    (side, seat): (BattleSide, &Rng),
+    (fair, after): (Command, &Rng),
+    game: &str,
+) {
+    let mut on = seat.clone();
+    assert_eq!(
+        h3_battle_ai::choose_fair(twin, r, side, &mut on),
+        fair,
+        "{game}"
+    );
+    assert_eq!(&on, after, "{game}");
+}
+
+/// E26 T3, exit criteria 1 and 2 on the harvested packs (beside the property above): random
+/// battles of the SoD creatures ([`random_setup`]: the field, the special battlefields, sieges of
+/// every faction), both profiles, every difficulty, with random heroes and retreat facts. At every
+/// step the original's choice on the side to act's world is a command the engine accepts on the
+/// battle (no fallback; the one known, BAT-STUB-18, gives Defend) and is the fair command, made
+/// twice from the same stream; where the side may know everything (no other hero, no hidden pit
+/// of the other side) both are the original's. Twins that differ only in what the side may not
+/// know give the same fair command and leave the stream the same: at every step the battle's
+/// world for the side with the other hero as it is (another stream, the other side's hidden
+/// Quicksand and Land Mines placed again, their observations asserted equal first), and the twin
+/// battle of another setup (the other side's hero's private part, funds and retreat facts, the
+/// defender's Escape Tunnel), played on with the same commands while the side's observations of
+/// the two agree; a cast of Quicksand or Land Mine draws its hexes from another stream in the
+/// twin of the caster's side. Six steps in ten play the fair command, the others a hero's cast
+/// (Quicksand or Land Mine half the time it may) or a random legal command.
+// covers: BAT-AI-025
+#[test]
+fn the_fair_choice_reads_nothing_hidden_on_the_harvested_packs() {
+    let mut fair = Fair::default();
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let sod = sod(profile);
+        let pools = Pools::of(&sod);
+        let pits = ["base:quicksand", "base:land_mine"].map(|k| sod.spell_by_key(k).unwrap());
+        let mut rng = Rng::from_seed(26);
+        let mut seat = Rng::from_seed(2026);
+        let mut legal = LegalCommands::new();
+        for game in 0..20u64 {
+            let at = |game| format!("{profile} game {game}");
+            let mut setup = random_setup(&sod, &pools, game, &mut rng);
+            setup.retreat = [retreat(&mut rng), retreat(&mut rng)];
+            let twin_setups = [0, 1].map(|i| {
+                let mut twin = setup.clone();
+                twin.heroes[i] = setup.heroes[i]
+                    .as_ref()
+                    .map(|h| other_private(&sod, h, pits, &mut rng));
+                twin.funds[i] = rng.next_u32();
+                twin.retreat[i] = retreat(&mut rng);
+                if let Some(town) = twin.siege.as_mut().filter(|_| i == 1) {
+                    town.escape_tunnel = !town.escape_tunnel;
+                }
+                twin
+            });
+            let mut state = BattleState::new(&sod, &setup, game).unwrap();
+            let mut twins = twin_setups.map(|s| Some(BattleState::new(&sod, &s, game).unwrap()));
+            for _ in 0..200u32 {
+                let Some(side) = state.side_to_act() else {
+                    break;
+                };
+                let other = side.opponent();
+                let world = state
+                    .determinized(&sod, side, None, seat.clone().next_u64())
+                    .unwrap();
+                let mut again = seat.clone();
+                let proposed = h3_battle_ai::unchecked(&world, &sod, side, &mut again);
+                let refused = validate(&state, &sod, side, proposed).is_err();
+                // stub: BAT-STUB-18
+                assert!(
+                    !refused || shoots_itself(&state, proposed),
+                    "{}: the fair {proposed:?} is refused",
+                    at(game)
+                );
+                fair.fallbacks += u32::from(refused);
+                let mut after = seat.clone();
+                let command = h3_battle_ai::choose_fair(&state, &sod, side, &mut after);
+                let expected = if refused { Command::Defend } else { proposed };
+                assert_eq!(command, expected, "{}", at(game));
+                assert_eq!(after, again, "{}", at(game));
+                fair.decisions += 1;
+                let unseen = hidden(&state, other);
+                let real = setup.heroes[other.index()].as_ref();
+                // The all-seeing command, once.
+                let original = OnceCell::new();
+                let all_seeing = || {
+                    *original
+                        .get_or_init(|| h3_battle_ai::choose(&state, &sod, side, &mut seat.clone()))
+                };
+                if real.is_none() && unseen.is_empty() {
+                    let mut stream = seat.clone();
+                    let _ = original.set(h3_battle_ai::choose(&state, &sod, side, &mut stream));
+                    assert_eq!(command, all_seeing(), "{}", at(game));
+                    assert_eq!(after, stream, "{}", at(game));
+                    fair.original += 1;
+                }
+                let seen = observe(&state, &sod, side);
+                let decision = (command, &after);
+                let twin = state
+                    .determinized(&sod, side, real, rng.next_u64())
+                    .unwrap();
+                assert_eq!(observe(&twin, &sod, side), seen, "{}", at(game));
+                fair_on_twin(&sod, &twin, (side, &seat), decision, &at(game));
+                fair.worlds += 1;
+                if !unseen.is_empty() {
+                    fair.pits += 1;
+                    fair.pit_differed += u32::from(
+                        h3_battle_ai::choose(&twin, &sod, side, &mut seat.clone()) != all_seeing(),
+                    );
+                }
+                match twins[other.index()]
+                    .as_ref()
+                    .map(|t| (observe(t, &sod, side) == seen, t))
+                {
+                    Some((true, twin)) => {
+                        fair_on_twin(&sod, twin, (side, &seat), decision, &at(game));
+                        fair.twins += 1;
+                        fair.pit_twins += u32::from(hidden(twin, other) != unseen);
+                        if real.is_some() {
+                            fair.with_hero += 1;
+                            fair.differed += u32::from(
+                                h3_battle_ai::choose(twin, &sod, side, &mut seat.clone())
+                                    != all_seeing(),
+                            );
+                        }
+                    }
+                    Some((false, _)) => {
+                        twins[other.index()] = None;
+                        fair.parted += 1;
+                    }
+                    None => {}
+                }
+                seat = after;
+                let roll = rng.below(10);
+                let played = if roll < 6 {
+                    command
+                } else if let Some(cast) =
+                    pit_or_cast(&state, &sod, (side, pits), &mut rng).filter(|_| roll < 9)
+                {
+                    cast
+                } else {
+                    legal_commands(&state, &sod, side, &mut legal);
+                    let staying: Vec<Command> = legal
+                        .iter()
+                        .copied()
+                        .filter(|c| !c.leaves_battle())
+                        .collect();
+                    staying[pick(&mut rng, staying.len())]
+                };
+                // The caster's twin draws a pit's hexes from another stream, then all go on alike.
+                let pit = matches!(played, Command::Cast { spell, .. } if pits.contains(&spell));
+                if pit {
+                    let k = rng.next_u64();
+                    state.reseed(k);
+                    for (i, twin) in twins.iter_mut().enumerate() {
+                        if let Some(t) = twin {
+                            t.reseed(if i == side.index() { k ^ 1 } else { k });
+                        }
+                    }
+                }
+                apply(&mut state, &sod, side, played, &mut NoopSink)
+                    .unwrap_or_else(|e| panic!("{}: {played:?} is rejected: {e:?}", at(game)));
+                for twin in &mut twins {
+                    if twin
+                        .as_mut()
+                        .is_some_and(|t| apply(t, &sod, side, played, &mut NoopSink).is_err())
+                    {
+                        *twin = None;
+                        fair.parted += 1;
+                    }
+                }
+                if pit {
+                    let k = rng.next_u64();
+                    state.reseed(k);
+                    twins.iter_mut().flatten().for_each(|t| t.reseed(k));
+                }
+            }
+        }
+    }
+    // 1728 decisions, the all-seeing command differing on 8 twins of 833 with another hero
+    // (E26-log.md T3).
+    assert!(
+        fair.decisions > 1500
+            && fair.original > 500
+            && fair.pits > 80
+            && fair.with_hero > 600
+            && fair.pit_twins > 20
+            && fair.differed > 4,
+        "{fair:?}"
     );
 }
 

@@ -17,8 +17,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   scale; the network's architecture; the policy's sharpness), in `E25-archive.md`; every lever
   ends at 0.41 to 0.43 against the system actor. **`e25-sharp-1` #2 the current best** (T11,
   AI-Q13; 0.422 against the system actor; T12: 0.523 head to head against `e25-scale-1` #3).
-  **Increment 5** waits for the battle lane's fair system actor v1 (the user: soon). **Next:**
-  T13, increment 5's refinement, when it lands.
+  **Increment 5** is built around the battle lane's fair system actor v1 (landed 2026-11-02,
+  E26, #647; the AI queue's inbox). **Next:** T13, increment 5's refinement, with the user.
 - **Open pull requests:** #646 (`claude/quirky-dirac-h5xdj2`: T9b to T12). Merged: #640 (T8,
   T9a, T10a).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31

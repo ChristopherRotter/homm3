@@ -5545,3 +5545,16 @@ summary  = "Whether a computer side's hero leaves the battle (0x41E570; h3_battl
   ref        = "experiments/results/E23-batch-4b.md R1a, R1b (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): a computer hero defending on Hard retreats at its first activation at a share of 3312 / 23220 = 0.143 (R1a); at 4140 / 24048 = 0.172 it fights, and at its second stack's activation, the first having acted (no longer x 1.2), 3726 / 23634 = 0.158 below 0.16, it retreats (R1b): steps 7 to 9 as read"
   retrieved  = "2026-10-23"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-AI-025"
+title    = "The fair system actor: the original's computer on its side's world"
+context  = "battle"
+status   = "implemented"
+summary  = "The fair system actor (E26; ADR-0027 point 4 as amended; h3_battle_ai::choose_fair) decides only on what its side may know: it runs the original's computer (BAT-AI-001's choice before validation, every rule BAT-AI-002 to BAT-AI-024 unchanged) on its side's world of the battle (BattleState::determinized without a guess, ADR-0025 point 12a: everything the side may not know replaced, observe_as's list; the other side's hero a hero of its type with the public part the battle shows: primary skills, mana, sex, whether it carries a book, the war machines it commands, its spell-cost change and what it forbids every caster; no spell, mastery, secondary skill or bonus; its hidden spell obstacles placed again by their rule; a spell a random caster the side does not control drew drawn again) and checks the choice on the battle as BAT-AI-001 does (a choice the battle refuses becomes Defend, or Wait in the tactics phase). The world's seed is drawn from a copy of the caller's stream, so the policy's own draws keep the original's order and leave the stream where the original's choice does: where the side may know everything (no other hero, no hidden obstacle of the other side) the command is BAT-AI-001's. A world the battle refuses gives Defend (none is known). Twins that differ only in what the side may not know (the other hero's private part, the other side's funds and retreat facts, the defender's Escape Tunnel, the other side's hidden pits' hexes, the battle's stream) give the same command and leave the stream the same while the side's observations of them agree, where the all-seeing choice differs in some of them; the engine accepts every choice made on the world but the one BAT-AI-001 itself falls back from (BAT-STUB-18) (E26 T2, T3: the test ruleset and the harvested packs)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0027 point 4 as amended 2026-11-02 (the user, BAT-Q63; E26 decisions 1 and 2): the port unchanged on its side's world, nothing assumed of the other hero's private part in increment 1; the request: AI-Q10 (the user, 2026-10-27, E25's refinement: an actor reading hidden facts must not train agents)"
+  confidence = "high"

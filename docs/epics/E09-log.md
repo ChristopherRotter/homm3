@@ -97,3 +97,40 @@ the user chose **the whole of T1a2 at once**.
   weights, `town_setup`'s buildings and garrison, a new `town`.
 - **Content:** none for increment 1 from T1a2 (the epic's "tavern weights" move to increment 3;
   the neutral garrison's table and the 30 are executable constants).
+
+### T1b1 — the towns survey, part 2a: the town on the map (2026-11-02)
+
+One session, the user present; branch `town/e09-t1b1`. Starting point: `master` at ad0c9805
+(#644 merged; CI green on 34fc55ef, the last code run). Asked at the start how to cut T1b
+(`AskUserQuestion`: two halves, three parts, or whole): the user chose **two halves**, T1b1 the
+visit, capture and the battle at a town, T1b2 the income and the Capitol, the views, batch
+TWN-1's rows and the checkpoint.
+
+- **Survey** `docs/rules/surveys/E09-towns.md` §7 to §10 and §0's findings 17 to 23: the step
+  onto a town's gate (`hero_move_step`'s case 98: an own or allied town or an undefended one
+  entered, a defended one visited from the neighbouring tile; a hero on the gate met first); the
+  town's visit (`town_visit` 0x4AAFD0, read whole); the visitor as the hero on the gate
+  (`hero_show`, `hero_hide`), no garrison hero before increment 3's swap; capture of an undefended
+  town (the screen opens) and after a siege won (the attacker stays outside); the change of owner
+  (`town_change_owner` read whole: the garrison emptied, the lists, the external dwellings'
+  counts, the reveal 5/20/the Tower's Grail, the scenario's tests); one Capitol per player
+  (`capitol_limit`); who defends (a visitor beside a garrison hero in the open, a lone visitor
+  with the garrison merged in by AI value, `garrison_merge` read whole; the town's owner as the
+  side); the battle's outcome paths; ADR-0023's facts from the town as one table, and the game's
+  version at a new game (the scenario dialog's version, a campaign's index; whether an RoE map
+  plays under RoE rules in the Complete edition left to batch TWN-1). VCMI 1.7.5
+  (`CGTownInstance`'s visit, merge, capture, Capitols), coyot's guide, the wiki's Tutorial, a
+  reader's comment (a garrisoned hero without units).
+- **Disputes and candidates:** TD-7 (the merge's order and ties against VCMI's), T-5 (a garrison
+  hero without creatures: the town falls without a battle; the original's proposed, increment 3).
+  Batch TWN-1 rows proposed: the merge with a full army, the siege winner's tile, the leftover
+  garrison lost, the moat on an RoE-format map.
+- **The exe map:** 15 new entries (`garrison_merge`, `town_owner_message`, `town_at_entrance`,
+  `dwelling_creature_faction`, `ai_town_visit`, `scenario_version_from_slots`,
+  `scenario_version_highest`, `town_screen_open`, `town_remove_from_owner`, `capitol_limit`,
+  `town_dwelling_count_add`, `victory_capture_town_is`, `victory_capture_town_met`,
+  `victory_town_visit_test`, `loss_town_test`); `town_visit` (was `hero_battle_on_map`),
+  `town_change_owner`, `army_reset`, `hero_loss_effect` (was `hero_off_map`) read whole;
+  `adventure_battle`, `hero_hide`, `new_game_heroes`, `new_game_start` amended; `structs.toml`:
+  the town's +0x2, +0x32, `dwelling_counts` (was `second_army`), the game's `map_kind` setter.
+- **Content:** none new (the creatures' AI values are in the packs).

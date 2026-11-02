@@ -6,32 +6,20 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-original-battle-ai.md`, its log's "T7 — the closure"; the cuts of its tasks: OPEN-QUESTIONS BAT-Q52 to BAT-Q61 and the epic file). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-**Next (the user, 2026-10-24):** the inbox session's leftovers are done (#458, #464; CLT-Q4/Q6's seam and carry, the 112th session); next **E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
+**Now: E26, the fair system actor** (the user, 2026-11-02, BAT-Q63; `docs/epics/E26-fair-system-actor.md`, record `E26-log.md`): the original's computer, unchanged, on its side's world (`BattleState::determinized`; ADR-0027 point 4 amended). Increment 1 assumes nothing of the other side's hero's private part; increment 2 (a sampled prior, updated by what the side has seen) is refined at the checkpoint. T1 to T5 done 2026-11-02 (the design, `choose_fair`, its properties with one fallback that the all-seeing computer shares, BAT-STUB-18, its cost of +0.8 % per decision and its strength of 0.500 against the all-seeing one, the hand-over); the checkpoint below is next. **Then E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
+
+- **E26 increment 1's checkpoint.** *Scope:* with the user: (1) BAT-STUB-18 (a hypnotized
+  shooter aims at itself, `aim.rs::pick`; `choose` and `choose_fair` both give Defend): the
+  walker's cut (BAT-Q58's) for the shooter too, a `POLICY_VERSION` bump with the AI lane's
+  records, or kept until a batch row shows the original's outcome; exit criterion 2 rests on it;
+  (2) increment 2 (the guess's prior and memory) from T4's numbers (`E26-log.md` T4: the fair
+  actor wins 0.500 against the all-seeing one, so the guess gains little win rate on random
+  armies); (3) the closure of increment 1 (move it to `E26-archive.md`). *Depends on:* the
+  user. *Status:* waiting (the user).
 
 ## Inbox
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
-
-- 2026-10-27 (the AI lane, E25's refinement, AI-Q10; **for you, later: a fair system actor**):
-  the user decided that an actor reading hidden facts must not train agents, and that a **fair
-  variant** of the system actor is phased in, for you to design and build at a later time
-  (ADR-0027 point 4's announcement; an amendment of that point, your draft). It decides only on
-  what its side may know; once built it is the default everywhere (the env, training, the
-  server, the clients), with today's faithful, all-seeing computer kept as a game's option.
-  Today's stays as it is: E25's target, playing in no agent's training. What it reads that a
-  player may not (the AI lane's reading, not exhaustive): the enemy hero's spell book,
-  masteries, spell bonuses and cost changes (`aim.rs`: `best_area_spell` for the area threat,
-  BAT-AI-007; `spell_protection`, BAT-AI-016; `hero_value` in the odds, BAT-AI-008), the enemy
-  hero's damage skills (`protection`'s Armorer) and its stacks' magic resistance
-  (`magic::effect_factor`) in the estimates, the enemy side's hidden pits in its reach maps
-  (`computer::reach_map`, BAT-AI-007). The ways offered at the refinement: the port unchanged on
-  a world built from its side's observation, the hidden part guessed by a prior (E06's
-  determinized worlds, `BattleState::determinized`, ADR-0025 point 12a) or assumed absent; or its
-  reads rewritten. The AI lane would train against it and may imitate it (E25 decision 3).
-  **2026-11-02 (the AI lane, E25 T11, AI-Q13):** E25's increment 5 now waits for the fair system
-  actor v1 (the user: the battle lane pushes it soon); every E25 lever ended at 0.41 to 0.43
-  against the faithful one. The AI lane maps its seat into the env and the ladder (C ABI,
-  `h3 ai eval`) once it lands.
 
 - 2026-10-22 (E23 T4c's blind check; a rule to confirm): the original's end routine 0x444510 returns early only for Disrupting Ray (47), so a dispel or Cure that reaches Acid Breath (80) may end it; BAT-MAG-010 keeps every permanent effect. Read the dispels' callers or play a batch row (Cure on a stack under Acid Breath) and align BAT-MAG-010 or record why not.
 

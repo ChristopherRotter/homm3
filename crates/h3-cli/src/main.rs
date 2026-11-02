@@ -5,7 +5,8 @@
 //!        [--checkpoint-every N] [--record <out.toml>]
 //! h3 verify [--packs-dir packs] <replay.toml>...
 //! h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]
-//! h3 bench-computer [--games N] [--seed N] [--max-steps N]
+//! h3 bench-computer [--games N] [--seed N] [--max-steps N] [--heroes 0|1]
+//!        [--sight all-seeing|fair] [--duel 0|1]
 //! h3 adventure run|verify|bench …   (h3_cli::adventure::cli)
 //! h3 ai bench …                      (h3_cli::ai, the AI lane's)
 //! ```
@@ -32,6 +33,7 @@ const USAGE: &str = "usage:
   h3 verify [--packs-dir packs] <replay.toml>...
   h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]
   h3 bench-computer [--games N] [--seed N] [--max-steps N] [--heroes 0|1]
+                    [--sight all-seeing|fair] [--duel 0|1]
   h3 adventure run|verify|bench …   (`h3 adventure` lists them)
   h3 ai bench …                      (`h3 ai` lists them)";
 
@@ -200,13 +202,29 @@ fn bench(args: &Args) -> Result<(), String> {
 /// Fort, where both sides are the computer (the Cyclops's wall shot). Each battle stops after
 /// `--max-steps`. With `--heroes 1` (the hero's budget, E23 T7) each side has a hero with every
 /// combat spell at a mastery drawn per school (Basic to Expert), 500 mana, power and knowledge 10,
-/// and the towns are Citadels with a damaging moat.
+/// and the towns are Citadels with a damaging moat. With `--sight fair` the computer is the fair
+/// system actor, `h3_battle_ai::choose_fair` (E26 T4: its cost per decision). With `--duel 1`
+/// (E26 T4: its strength) each battle is played twice, both sides the computer, the fair actor
+/// on the attacker's side and then on the defender's, the all-seeing one on the other; it
+/// prints the fair side's wins, losses, draws and unfinished battles by its side.
 fn bench_computer(args: &Args) -> Result<(), String> {
-    args.check_known(&["games", "seed", "max-steps", "heroes"])?;
+    args.check_known(&["games", "seed", "max-steps", "heroes", "sight", "duel"])?;
     let games: u64 = args.num("games", 40)?;
     let seed: u64 = args.num("seed", 1)?;
     let max_steps: u32 = args.num("max-steps", 300)?;
     let heroes = args.num::<u8>("heroes", 0)? == 1;
+    let fair = match args.get("sight").unwrap_or("all-seeing") {
+        "all-seeing" => false,
+        "fair" => true,
+        other => {
+            return Err(format!(
+                "--sight: `{other}` is neither `all-seeing` nor `fair`"
+            ));
+        }
+    };
+    let duel = args.num::<u8>("duel", 0)? == 1;
+    // The fair side's battles by its side (attacker, defender): won, lost, drawn, unfinished.
+    let mut tally = [[0u32; 4]; 2];
     let r = h3_pack_battle::compile(
         &[
             h3_pack_battle::SOD_PACK,
@@ -294,6 +312,34 @@ fn bench_computer(args: &Args) -> Result<(), String> {
             },
             ..BattleSetup::default()
         };
+        if duel {
+            for fair_side in BattleSide::BOTH {
+                let mut state = BattleState::new(&r, &setup, seed.wrapping_add(game))
+                    .map_err(|e| format!("game {game}: {e:?}"))?;
+                let mut seat = Rng::from_seed(seed ^ game);
+                for _ in 0..max_steps {
+                    let Some(side) = state.side_to_act() else {
+                        break;
+                    };
+                    let command = if side == fair_side {
+                        h3_battle_ai::choose_fair(&state, &r, side, &mut seat)
+                    } else {
+                        h3_battle_ai::choose(&state, &r, side, &mut seat)
+                    };
+                    apply(&mut state, &r, side, command, &mut NoopSink)
+                        .map_err(|e| format!("game {game}: {command:?}: {e:?}"))?;
+                    steps += 1;
+                }
+                let outcome = match state.winner() {
+                    Some(w) if w == fair_side => 0,
+                    Some(_) => 1,
+                    None if state.is_over() => 2,
+                    None => 3,
+                };
+                tally[fair_side.index()][outcome] += 1;
+            }
+            continue;
+        }
         let mut state = BattleState::new(&r, &setup, seed.wrapping_add(game))
             .map_err(|e| format!("game {game}: {e:?}"))?;
         let mut seat = Rng::from_seed(seed ^ game);
@@ -303,7 +349,11 @@ fn bench_computer(args: &Args) -> Result<(), String> {
             };
             let command = if walled || side == BattleSide::Defender {
                 let start = Instant::now();
-                let command = h3_battle_ai::choose(&state, &r, side, &mut seat);
+                let command = if fair {
+                    h3_battle_ai::choose_fair(&state, &r, side, &mut seat)
+                } else {
+                    h3_battle_ai::choose(&state, &r, side, &mut seat)
+                };
                 let took = start.elapsed();
                 time += took;
                 slowest = slowest.max(took);
@@ -322,6 +372,24 @@ fn bench_computer(args: &Args) -> Result<(), String> {
                 .map_err(|e| format!("game {game}: {command:?}: {e:?}"))?;
             steps += 1;
         }
+    }
+    if duel {
+        let [att, def] = tally;
+        let won = att[0] + def[0];
+        let finished = won + att[1] + def[1] + att[2] + def[2];
+        println!(
+            "games: {games}, steps: {steps}; the fair side as attacker won {}, lost {}, drew {}, unfinished {}; as defender won {}, lost {}, drew {}, unfinished {}; its win rate over the finished battles: {:.3}",
+            att[0],
+            att[1],
+            att[2],
+            att[3],
+            def[0],
+            def[1],
+            def[2],
+            def[3],
+            f64::from(won) / f64::from(finished.max(1))
+        );
+        return Ok(());
     }
     let per = time.as_secs_f64() * 1e6 / decisions.max(1) as f64;
     println!(

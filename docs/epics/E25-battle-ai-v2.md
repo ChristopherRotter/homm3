@@ -125,7 +125,7 @@ waits at the current best (`e25-sharp-1` #2, T12).
 
 - [x] **T12 The head-to-head** (2026-11-02; `E25-log.md` T12): `e25-sharp-1` #2 against
   `e25-scale-1` #3 promoted by the gate, 0.523 over 332 pairs (+16 Elo): #2 the current best.
-- [ ] **T13 Increment 5's refinement**, when the fair system actor v1 has landed.
+- [ ] **T13 Increment 5's refinement** (the fair system actor v1 landed 2026-11-02, E26, #647).
 
 ## Exit criteria
 

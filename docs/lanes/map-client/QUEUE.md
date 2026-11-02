@@ -112,6 +112,10 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
+  call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
+  amended; the user, AI-Q10), the all-seeing `choose` only as a game's option.
+
 - 2026-11-02 (the client lane, E17 M6 T2a1; for information, nothing to do): additions to the
   common crates for the battle's stack stats dialog (`docs/epics/E17-design.md` §12.1):
   `h3_render::blit::draw_frame_clipped`; `h3_ui::ui::Def`'s `group`, `creature` and `frames_of`
