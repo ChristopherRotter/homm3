@@ -10391,7 +10391,9 @@ session on the same branch, then the pull requests.
   `DayStarted`; its conservation splits a command's events at `DayStarted` and checks the day's
   gains against an independent sum (`check_income`: the owned mines' production, the heroes'
   `daily_income`, the weekly abilities once on a week's first day); the others' treasuries may
-  change at a new day; a move stopping before a monster added in play (`added_at`). The view
+  change at a new day; a move stopping before a monster added in play (`added_at`); a guard's
+  index read through `AdventureState::object` (an added monster guarding a visit's tile: the
+  coverage run's seed, kept in `play.txt`). The view
   property: `WeekStarted` and `MonthStarted` only on a new day, the month followed, the points'
   regain allowed untold at a new day.
 - **Versions:** game state hash v22 (the month's kind, the timed events). Replays: 25 of 32
