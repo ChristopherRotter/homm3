@@ -6,36 +6,26 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-original-battle-ai.md`, its log's "T7 — the closure"; the cuts of its tasks: OPEN-QUESTIONS BAT-Q52 to BAT-Q61 and the epic file). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-**Now: E26, the fair system actor** (the user, 2026-11-02, BAT-Q63; `docs/epics/E26-fair-system-actor.md`, record `E26-log.md`): the original's computer, unchanged, on its side's world (`BattleState::determinized`; ADR-0027 point 4 amended). Increment 1 assumes nothing of the other side's hero's private part; increment 2 (a sampled prior, updated by what the side has seen) is refined after T4. T1, the design, done 2026-11-02. **Then E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
+**Now: E26, the fair system actor** (the user, 2026-11-02, BAT-Q63; `docs/epics/E26-fair-system-actor.md`, record `E26-log.md`): the original's computer, unchanged, on its side's world (`BattleState::determinized`; ADR-0027 point 4 amended). Increment 1 assumes nothing of the other side's hero's private part; increment 2 (a sampled prior, updated by what the side has seen) is refined after T4. T1, the design, and T2, `choose_fair`, done 2026-11-02. **Then E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
 
-- **E26 T2 `choose_fair`.** *Scope:* `h3_battle_ai::choose_fair(state, ruleset, side, rng) ->
-  Command` beside `choose` (E26 decisions 1, 2 and the agent decisions): the world
-  `state.determinized(ruleset, side, None, seed)` with `seed` drawn from `rng.clone()`, so the
-  policy's own draws keep their order; `unchecked` on the world; `checked` on the battle;
-  Defend for a world the battle refuses. Rule BAT-AI-025 in `battle.toml` (source `design`:
-  ADR-0027 point 4, BAT-Q63), `rule:` markers, the crate's docs. Unit tests (`src/tests/fair.rs`):
-  twins that differ only in what the side may not know give the same fair command, at least the
-  other hero's book and skills where they change `choose`'s command, and the other side's hidden
-  pit; with nothing hidden the fair command is `choose`'s. No caller changes; no
-  `POLICY_VERSION` bump (`choose`'s choices stay). *Acceptance:* the Definition of Done; the
-  scoped verify; `h3-battle-ai` at 100 %. *Depends on:* T1 (done). *Status:* ready.
 - **E26 T3 The properties.** *Scope:* beside `the_choice_is_legal_and_the_same_for_the_same_stream`
   (`h3-battle-ai`'s `src/tests.rs`: random battles, both sides, every difficulty, heroes, the
   town) and in `h3-pack-battle/tests/harvested_computer.rs` (sieges, special battlefields, the
   harvested packs): (1) twins that differ only in what the side may not know (the other hero's
-  private part, its hidden obstacles' hexes, the battle's stream, a drawn spell of the other
-  side) give the same fair command for the same stream; (2) the engine accepts every fair
-  choice (no fallback; one found becomes stub BAT-STUB-18 with its case); (3) without another
-  hero, hidden obstacle or drawn spell of the other side the fair command is `choose`'s; (4) the
-  same state and stream give the same fair command. Exit criteria 1 and 2. *Acceptance:* as T2.
-  *Depends on:* T2. *Status:* ready after T2.
+  private part, its hidden obstacles' hexes: Quicksand, Land Mine, which the test ruleset lacks;
+  the battle's stream) give the same fair command for the same stream; (2) the engine accepts
+  every fair choice (no fallback; one found becomes stub BAT-STUB-18 with its case); (3) without
+  another hero or hidden obstacle of the other side the fair command is `choose`'s; (4) the same
+  state and stream give the same fair command. Exit criteria 1 and 2. *Acceptance:* the
+  Definition of Done; the scoped verify; `h3-battle-ai` at 100 %. *Depends on:* T2 (done).
+  *Status:* ready.
 - **E26 T4 Cost and strength.** *Scope:* `h3 ai` (`h3-cli`'s battle AI games) plays a side's
   computer fair or all-seeing (a `--sight` option); measure `choose_fair` against `choose`:
   instructions per decision (callgrind, skill `homm3-bench-regression`) and the fair side's
   wins and value against the all-seeing one over the same random armies, both seats, both
   profiles. Recorded in `E26-log.md` T4 with the commands. Over ADR-0027 point 11's budget: a
-  task for a cheaper world before T5. Exit criterion 3. *Acceptance:* as T2; the numbers in the
-  log. *Depends on:* T2. *Status:* ready after T2.
+  task for a cheaper world before T5. Exit criterion 3. *Acceptance:* as T3; the numbers in the
+  log. *Depends on:* T2 (done). *Status:* ready.
 - **E26 T5 The hand-over and the checkpoint.** *Scope:* inbox notes for the AI lane (`h3-sim`'s
   `Policy::System` fair by default with an all-seeing option; E25 decision 2: it may train,
   imitation a candidate; its records and `benches/ai/` where the default's choices move), the

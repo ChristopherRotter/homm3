@@ -60,9 +60,9 @@ all-seeing computer kept as a game's option. The AI lane may train against it an
 | Task | Scope | Status |
 |---|---|---|
 | T1 | The design: ADR-0027 point 4 amended, this file, `BACKLOG.md`, `lanes.toml`, BAT-Q63, the queue's tasks | done 2026-11-02 |
-| T2 | `choose_fair` (BAT-AI-025) and its unit tests: one per leak ADR-0027 point 4 lists | ready |
-| T3 | The properties: reads nothing hidden, no fallback, the original where nothing is hidden, determinism (test ruleset and harvested packs) | ready after T2 |
-| T4 | `h3 ai --sight fair`: its cost per decision against `choose` and its strength against the all-seeing one, recorded | ready after T2 |
+| T2 | `choose_fair` (BAT-AI-025) and its unit tests: the other hero's private part, nothing hidden | done 2026-11-02 (`E26-log.md` T2) |
+| T3 | The properties: reads nothing hidden, no fallback, the original where nothing is hidden, determinism (test ruleset and harvested packs) | ready |
+| T4 | `h3 ai --sight fair`: its cost per decision against `choose` and its strength against the all-seeing one, recorded | ready |
 | T5 | The hand-over and the checkpoint: the other lanes' inbox notes, docs, TRAPS, the closure | after T3, T4 |
 
 The tasks' scope and acceptance: the battle lane's `QUEUE.md`; their record: `E26-log.md`.
