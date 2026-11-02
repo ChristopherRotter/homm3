@@ -715,6 +715,19 @@ def test_increment_2s_configs_are_shaping_with_the_tactics_bound() -> None:
     assert key_path("entropy_floor") == "ppo.entropy_floor"
 
 
+def test_increment_5s_mix_is_the_sharp_runs_with_the_neutral_kinds_back() -> None:
+    # E25 T16 (AI-Q14 decision 3): T17's mix, which T16's cloning bench plays, is `e25-sharp.toml`
+    # with E06 T7's kinds (the neutral ones a third, the fair system actor defending them).
+    configs = PYTHON / "configs"
+    neutral, sharp, t7 = (
+        load_config((configs / f"{n}.toml").read_text())
+        for n in ("e25-neutral", "e25-sharp", "e06-t7")
+    )
+    trainable(neutral)
+    assert neutral.kinds == t7.kinds == [78, 2, 100, 50, 25, 3]
+    assert dataclasses.replace(neutral, kinds=sharp.kinds) == sharp
+
+
 def test_the_league_draws_scores_and_retires() -> None:
     # Design §8: PFSP's weights from the decayed scores, the live set and when it is drawn again,
     # the episodes' opponents, the most beaten member retired, the state round-tripped.

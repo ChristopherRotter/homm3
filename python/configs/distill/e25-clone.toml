@@ -1,0 +1,30 @@
+# E25 T16's cloning bench (increment 5, AI-Q14; `h3env.train.clone`, the distillation bench's
+# clone mode): the fair system actor plays every external seat of `e25-neutral.toml`'s training
+# distribution (T17's) and its choices are cloned into that run's network (the 2 x 512 MLP of
+# `e25-sharp-1` with its tactics bound), from scratch; the student is `e25-clone-1`'s start
+# (`--init-from`). Its length agreed with the user. From python/:
+#
+#   uv run --group train python -m h3env.train.distill --teacher system --config configs/distill/e25-clone.toml --out runs/clone-1
+
+run = "configs/e25-neutral.toml"
+seed = 7
+samples = 4_000_000
+heldout = 16_384
+eval_every = 500_000
+envs = 256
+rollout = 128
+epochs = 2
+minibatch = 512
+lr = 3e-4
+lr_floor = 0.1
+value_coef = 0.5
+max_grad_norm = 0.5
+device = "auto"
+# How near the clone plays to the fair actor (0.5 against itself) and the target (the all-seeing
+# one), with the neutral set v1 beside them.
+ladder = ["system", "system-all-seeing"]
+ladder_per_kind = 500
+
+# `e25-neutral.toml`'s own network, from scratch.
+[students.mlp]
+kind = "mlp"
