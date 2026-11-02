@@ -6,6 +6,7 @@
 //! T85b); they read the static map's flags and the live presence, never a hero's tile but to keep
 //! a monster off it.
 
+use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -190,12 +191,11 @@ impl AdventureState {
         let one_in = u32::from(months.spawn_one_in.get());
         let factor = u32::from(months.spawn_factor.get());
         let map = Arc::clone(&self.map);
-        let mut heroes: Vec<usize> = self
+        let heroes: BTreeSet<usize> = self
             .heroes
             .iter()
             .filter_map(|h| map.index(h.pos))
             .collect();
-        heroes.sort_unstable();
         for level in 0..map.levels() {
             for y in 0..map.height() {
                 for x in 0..map.width() {
@@ -207,9 +207,7 @@ impl AdventureState {
                             !live.blocked && !live.visitable
                         }
                         && self.event_at(pos).is_none()
-                        && map
-                            .index(pos)
-                            .is_some_and(|index| heroes.binary_search(&index).is_err());
+                        && map.index(pos).is_some_and(|index| !heroes.contains(&index));
                     if !free || draws.range_inclusive(1, one_in) != 1 {
                         continue;
                     }

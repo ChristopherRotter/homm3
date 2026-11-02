@@ -182,7 +182,7 @@ fn an_added_monsters_offers_stand_as_a_placed_ones() {
     for kind in [OfferKind::Join, OfferKind::Pursue] {
         let (mut placed, mut added) = twins(&rules);
         assert!(added.offer_stands(&offer(kind.clone())));
-        let mut declined = |s: &mut AdventureState| {
+        let declined = |s: &mut AdventureState| {
             let mut events = Vec::new();
             let outcome = s.decline_offer(rules3, &offer(kind.clone()), &mut events);
             (outcome, events, s.observe(&rules.0, &rules.1, RED))

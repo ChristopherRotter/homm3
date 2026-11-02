@@ -10269,7 +10269,7 @@ neither step until T85b, so no replay, report or version moves. The `shared/` pa
 - **A creature month's step** (`state/calendar.rs`; design §11): `AdventureState::start_month(core,
   part, creature, draws, sink)`: the tiles in level, row and column order; land by the part's
   passage, `live` neither blocked nor visitable (a removed object's tiles free, an object added
-  earlier in the walk holding its own), no `event_at`, no hero (their tiles' indices sorted once);
+  earlier in the walk holding its own), no `event_at`, no hero (their tiles' indices in a set built once);
   then `1..=spawn_one_in`, and on a 1 the count (`spawn_factor` × a draw from the creature's
   `adventure_count`, at least 1, at most `MAX_MONSTER_COUNT`) and the aggression
   (`aggression_between`, the build's draw factored out of `resolve_monsters`); the object
