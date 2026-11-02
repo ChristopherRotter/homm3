@@ -123,6 +123,13 @@ numeric  = "integer"
   confidence = "medium"
   note       = "The packs harvest the original's tables from the executable since E04c T2 (0x63C7C8, 0x63BEC0; h3_formats::exe::obstacle_data); this file equals them in every record (installation.md §7.26)."
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md and -run2.md (the adventure lane's batch E8b, E08 T69; docs/rules/surveys/E08-sea.md §15; SoD 4.0 Complete, values read from memory at the battle's opening, 2026-10-29): with one hero in a boat (E8-11, E8-13, E8-14) the battle is on water with no special field and the ship flag set, and blocks one obstacle of type 55's three hexes (98, 114, 115; 79, 96, 97; 90, 106, 107), as the content's deck; with both heroes in boats (E8-12) exactly the 32 hexes of 0x63D368 (6 to 9, 24 to 26, 58 to 60, 75 to 77, 92 to 94, 109 to 111, 126 to 128, 159 to 163, 176 to 180) and nothing else"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+
 [[rule]]
 id       = "BAT-SET-001"
 title    = "Initial placement of armies"
@@ -385,6 +392,13 @@ numeric  = "integer"
   ref        = "experiments/results/E04c-batch-3a.md and 3b.md (SoD 4.0 Complete under Wine without HD, run by an agent on the capture harness, values read from memory at the battle's start, 2026-10-13): a battle on Cursed Ground, Magic Plains, Clover Field, Holy Ground and Lucid Pools is fought on the fields 2, 1, 5, 3 and 6 (the battle manager's +0x53C0), the SoD pictures of Cursed Ground (object 223) and Magic Plains (230) too (D-4); a Peasant next to water is attacked on the shore (field 0, sand); the defender's map tile decides both (3b TM, TH, SH, SHH, SHM)"
   retrieved  = "2026-10-13"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md and -run2.md (the adventure lane's batch E8b, E08 T69; docs/rules/surveys/E08-sea.md §15; SoD 4.0 Complete, values read from memory at the battle's opening, 2026-10-29): a hero on the shore attacking a hero in a boat (E8-11), and a hero in a boat attacking monsters (E8-13, E8-14), fight on water with no special field (+0x53C0 -1) and the ship flag (+0x53C6) 1, the deck's one obstacle (BAT-GEO-004); two heroes in boats (E8-12) fight on water with the ship flag and the two boats' 32 blocked hexes"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
 
 [[rule]]
 id       = "BAT-TER-003"
