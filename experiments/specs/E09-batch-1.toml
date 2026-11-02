@@ -1,0 +1,434 @@
+# Experiment batch TWN-1 (E09 T3a; decisions 13, 15): rows TWN-1-1 to TWN-1-4 of increment 1's
+# plan (survey docs/rules/surveys/E09-towns.md §13; docs/epics/E09-design.md §20), the town's
+# setup and the siege's aftermath, in SoD on Easy, hot seat. Build: docs/experiments/README.md.
+# Predictions are for the agent who evaluates the results (T3c, survey §15); the template never
+# shows them. "The reading" is the survey's code reading of Heroes3.exe (the engine follows it,
+# faithful); VCMI's is VCMI 1.7.5 as the survey summarises it.
+#
+# | row     | settles                  | the reading                         | otherwise                   |
+# | TWN-1-1 | TD-3 (§5.3): a standard  | owned without a Fort: a Tavern, no  | VCMI: dwelling 1 always, 2  |
+# |         | set's dwellings          | dwelling; with one: dwelling 1, 2   | at 50 in 100, every town;   |
+# |         |                          | at 30 in 100; neutral: both, no     | HotA: 2 always with a Fort  |
+# |         |                          | Tavern                              | (its own rule)              |
+# | TWN-1-2 | TD-5 (§5.2): an          | stays empty; the controls drawn by  | VCMI draws one (its FIXME); |
+# |         | explicitly empty custom  | the four rolls                      | the wiki: only an undefined |
+# |         | garrison                 |                                     | garrison is drawn           |
+# | TWN-1-3 | TD-7 (§9.2): the merge   | greatest gain first until nothing   | VCMI: most power first, one |
+# |         | into a lone visitor's    | gains; ties the first garrison      | round per garrison stack, a |
+# |         | army                     | stack, the last weakest slot        | swap only with a weaker one |
+# | TWN-1-4 | §8.2, §8.3: after a      | the owner changes, the attacker     | VCMI: the garrison cleared, |
+# |         | siege won                | stays with its points, no screen;   | captured (§9.5); the tile   |
+# |         |                          | the garrison emptied; the screen at | not read there              |
+# |         |                          | a later step                        |                             |
+#
+# **The towns of rows 1 and 2** (`[[map.town]]`, the editor's standard sets, `fort = true` its
+# has-fort flag; E09 T3a's fields): five rows of towns, eight a row, the entrances 8 columns apart
+# from column 7, the factions in turn (castle, rampart, …, conflux, castle, …). On map row 7: Red's
+# eight with a Fort (RF1 to RF8); 15: Blue's eight with a Fort (BF1 to BF8); 23: Red's four without
+# (R1 to R4), Blue's four without (B1 to B4); 31: four neutral with a Fort (NF1 to NF4), four
+# without (N1 to N4), their garrisons the map's default (row 2's controls); 39: two neutral towns with an explicitly empty custom garrison (`garrison = []`), NEF with a Fort, NE
+# without. No hero ever comes near them. Sixteen owned towns with a Fort a game: three new games
+# give 48 draws of the level-2 dwelling (the reading's 30 in 100: about 14; VCMI's 50: about 24).
+#
+# **The building ids** (the game's, `docs/rules/surveys/E09-towns.md` §5.3; a town's built set
+# +0x150 and every-built set +0x158 hold a bit per id): 5 Tavern, 7 Fort, 10 Village Hall, 30 the
+# level-1 dwelling, 31 the level-2 dwelling. The standard sets build nothing that supersedes
+# another, so the two sets are equal.
+#
+# **The merge's values** (row 3; survey §9.2: a stack's value is its creature's AI value, the
+# record's +0x40 from `CRTRAITS.TXT`, times its count): Swordsman 445, Centaur 100, Archer 126,
+# Griffin 351, Pikeman 80, Monk 485, Cavalier 1 946, Halberdier 115, Marksman 184. The visitor:
+# 1 780, 400, 630, 1 755, 400, 1 455, 800 (two weakest of 400, slots 1 and 4; two Pikeman stacks,
+# slots 4 and 6); the garrison: 1 946, 1 840, 1 840 (two equal, slots 1 and 2). Each of the
+# reading's three points moves a stack: the last of the equal weakest takes the first swap, the
+# first of the equal garrison stacks the second, and a fourth round brings the swapped-out
+# Pikemen back into the visitor's other Pikeman stack (VCMI stops after three rounds).
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus (gold, an artifact or
+# a resource) changes none of the records.
+
+[map]
+name = "E09 batch TWN-1"
+description = "Engine-generated experiment map (E09, batch TWN-1): the standard sets' dwellings, an empty custom garrison, the garrison's merge into a lone visitor's army before a siege, a siege's aftermath. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E09-batch-1.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "The records are the game's memory: a town's record (game +0x21614, 0x168 bytes each, `docs/exe/structs.toml`; its fields from docs/rules/surveys/E09-towns.md §5, §8, §9): its owner +0x1 (−1 neutral), its visiting hero +0x10, its garrison +0xE0 (seven creature ids, then seven counts), its built set +0x150 and every-built set +0x158 (a bit per building id); the battle's stacks at a siege's opening (E04c's reads); a hero's tile and movement points (E08's). The capture harness reads them (`clients/capture/batches/E09-batch-1.toml`, E09 T3b). Played by hand, only rows 3 and 4 can be read from the screens.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Order: game 1, day 1, Red's turn, before any hero moves: TWN-1-1's and TWN-1-2's reads; save 1. TWN-1-3 twice from save 1 (3a, then load save 1 and 3b); TWN-1-4 after 3b, in the same turn. Then start the map anew (a new game, not a load) twice more, games 2 and 3: TWN-1-1's and TWN-1-2's reads at day 1, nothing else.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- TWN-1-1, TWN-1-2: the towns' setup at day 1 ------------------------------------------------
+
+[[map.town]]  # RF1
+entrance = [7, 7]
+faction = "castle"
+owner = "red"
+fort = true
+
+[[map.town]]  # RF2
+entrance = [15, 7]
+faction = "rampart"
+owner = "red"
+fort = true
+
+[[map.town]]  # RF3
+entrance = [23, 7]
+faction = "tower"
+owner = "red"
+fort = true
+
+[[map.town]]  # RF4
+entrance = [31, 7]
+faction = "inferno"
+owner = "red"
+fort = true
+
+[[map.town]]  # RF5
+entrance = [39, 7]
+faction = "necropolis"
+owner = "red"
+fort = true
+
+[[map.town]]  # RF6
+entrance = [47, 7]
+faction = "dungeon"
+owner = "red"
+fort = true
+
+[[map.town]]  # RF7
+entrance = [55, 7]
+faction = "stronghold"
+owner = "red"
+fort = true
+
+[[map.town]]  # RF8
+entrance = [63, 7]
+faction = "fortress"
+owner = "red"
+fort = true
+
+[[map.town]]  # BF1
+entrance = [7, 15]
+faction = "conflux"
+owner = "blue"
+fort = true
+
+[[map.town]]  # BF2
+entrance = [15, 15]
+faction = "castle"
+owner = "blue"
+fort = true
+
+[[map.town]]  # BF3
+entrance = [23, 15]
+faction = "rampart"
+owner = "blue"
+fort = true
+
+[[map.town]]  # BF4
+entrance = [31, 15]
+faction = "tower"
+owner = "blue"
+fort = true
+
+[[map.town]]  # BF5
+entrance = [39, 15]
+faction = "inferno"
+owner = "blue"
+fort = true
+
+[[map.town]]  # BF6
+entrance = [47, 15]
+faction = "necropolis"
+owner = "blue"
+fort = true
+
+[[map.town]]  # BF7
+entrance = [55, 15]
+faction = "dungeon"
+owner = "blue"
+fort = true
+
+[[map.town]]  # BF8
+entrance = [63, 15]
+faction = "stronghold"
+owner = "blue"
+fort = true
+
+[[map.town]]  # R1
+entrance = [7, 23]
+faction = "fortress"
+owner = "red"
+
+[[map.town]]  # R2
+entrance = [15, 23]
+faction = "conflux"
+owner = "red"
+
+[[map.town]]  # R3
+entrance = [23, 23]
+faction = "castle"
+owner = "red"
+
+[[map.town]]  # R4
+entrance = [31, 23]
+faction = "rampart"
+owner = "red"
+
+[[map.town]]  # B1
+entrance = [39, 23]
+faction = "tower"
+owner = "blue"
+
+[[map.town]]  # B2
+entrance = [47, 23]
+faction = "inferno"
+owner = "blue"
+
+[[map.town]]  # B3
+entrance = [55, 23]
+faction = "necropolis"
+owner = "blue"
+
+[[map.town]]  # B4
+entrance = [63, 23]
+faction = "dungeon"
+owner = "blue"
+
+[[map.town]]  # NF1
+entrance = [7, 31]
+faction = "stronghold"
+owner = "neutral"
+fort = true
+
+[[map.town]]  # NF2
+entrance = [15, 31]
+faction = "fortress"
+owner = "neutral"
+fort = true
+
+[[map.town]]  # NF3
+entrance = [23, 31]
+faction = "conflux"
+owner = "neutral"
+fort = true
+
+[[map.town]]  # NF4
+entrance = [31, 31]
+faction = "castle"
+owner = "neutral"
+fort = true
+
+[[map.town]]  # N1
+entrance = [39, 31]
+faction = "rampart"
+owner = "neutral"
+
+[[map.town]]  # N2
+entrance = [47, 31]
+faction = "tower"
+owner = "neutral"
+
+[[map.town]]  # N3
+entrance = [55, 31]
+faction = "inferno"
+owner = "neutral"
+
+[[map.town]]  # N4
+entrance = [63, 31]
+faction = "necropolis"
+owner = "neutral"
+
+[[map.town]]  # NEF
+entrance = [7, 39]
+faction = "dungeon"
+owner = "neutral"
+fort = true
+garrison = []
+
+[[map.town]]  # NE
+entrance = [15, 39]
+faction = "stronghold"
+owner = "neutral"
+garrison = []
+
+# --- TWN-1-1: the standard sets' buildings ------------------------------------------------------
+
+[[encounter]]
+id = "TWN-1-1"
+title = "The buildings of the editor's standard sets at day 1, owned and neutral, with and without a Fort"
+questions = ["TD-3", "TWN-SET-003"]
+procedure = [
+    "Day 1, Red's turn, before any hero moves, in each of the three games: read every town's built set (+0x150) and every-built set (+0x158) as building ids. The towns are listed below with their entrances; this row's Red hero stands at (60, 66) and never moves.",
+]
+record = [
+    { table = ["town", "game 1: built (ids)", "game 2: built", "game 3: built"], labels = ["RF1 castle (7, 7)", "RF2 rampart (15, 7)", "RF3 tower (23, 7)", "RF4 inferno (31, 7)", "RF5 necropolis (39, 7)", "RF6 dungeon (47, 7)", "RF7 stronghold (55, 7)", "RF8 fortress (63, 7)", "BF1 conflux (7, 15)", "BF2 castle (15, 15)", "BF3 rampart (23, 15)", "BF4 tower (31, 15)", "BF5 inferno (39, 15)", "BF6 necropolis (47, 15)", "BF7 dungeon (55, 15)", "BF8 stronghold (63, 15)", "R1 fortress (7, 23)", "R2 conflux (15, 23)", "R3 castle (23, 23)", "R4 rampart (31, 23)", "B1 tower (39, 23)", "B2 inferno (47, 23)", "B3 necropolis (55, 23)", "B4 dungeon (63, 23)", "NF1 stronghold (7, 31)", "NF2 fortress (15, 31)", "NF3 conflux (23, 31)", "NF4 castle (31, 31)", "N1 rampart (39, 31)", "N2 tower (47, 31)", "N3 inferno (55, 31)", "N4 necropolis (63, 31)", "NEF dungeon (7, 39)", "NE stronghold (15, 39)"] },
+    { field = "every-built (+0x158) different from built anywhere (which town, which ids)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (`town_buildings_setup` 0x5C08C0, survey §5.3): every town the Village Hall
+  (10). **Owned without a Fort** (R1 to R4, B1 to B4): **{5, 10}**, the Tavern and no dwelling.
+  **Owned with a Fort** (RF1 to RF8, BF1 to BF8): **{5, 7, 10, 30}**, and 31 at
+  `random_between(1, 100)` at most 30: about 14 of the 48 (a 95 % range of about 8 to 20).
+  **Neutral** (NF1 to NF4, N1 to N4, NEF, NE): **{10, 30, 31}** without a Fort, **{7, 10, 30, 31}**
+  with one, no Tavern. The every-built sets equal the built ones (none of these supersedes
+  another). The draws differ between the games; the sets without a draw do not.
+- **VCMI** (`initTowns`, `startingDwellingChances` [100, 50]): every standard town 10 and 30, 31
+  half the time (about 24 of the 48 owned with a Fort, 15 of the 30 neutral), a Tavern when owned,
+  7 with the flag: R1 to B4 would show 30 too, and the neutral towns 31 only half the time.
+- **HotA's documentation** (its own rule): 31 always in a town with a Fort; neutral towns without a
+  Tavern, as the reading.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [60, 66]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-1-2: an explicitly empty custom garrison ----------------------------------------------
+
+[[encounter]]
+id = "TWN-1-2"
+title = "A neutral town's explicitly empty custom garrison at day 1, and the drawn garrisons beside it"
+questions = ["TD-5", "TD-4", "TWN-SET-004"]
+procedure = [
+    "Day 1, Red's turn, before any hero moves, in each of the three games: read the garrison (+0xE0: slot, creature, count) of the ten neutral towns, and whether every owned town's garrison is empty. This row's Red hero stands at (64, 66) and never moves.",
+]
+record = [
+    { table = ["town", "game 1: garrison (slot: creature × count)", "game 2", "game 3"], labels = ["NF1 stronghold (7, 31)", "NF2 fortress (15, 31)", "NF3 conflux (23, 31)", "NF4 castle (31, 31)", "N1 rampart (39, 31)", "N2 tower (47, 31)", "N3 inferno (55, 31)", "N4 necropolis (63, 31)", "NEF dungeon (7, 39)", "NE stronghold (15, 39)"] },
+    { field = "the owned towns' garrisons (all 24 empty? which not)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (`town_setup` 0x5C0670, survey §5.2): **NEF and NE stay empty** in every game
+  (a custom garrison, its seven counts 0). The eight others (no custom garrison) are drawn: for
+  levels 1 to 4 in turn, `random_between(1, 100)` at most 33, 33, 20, 13 adds the faction's
+  unupgraded creature of that level in the first empty slot, 8–15, 5–7, 3–5, 1–3 of them; so
+  slots in level order, none or up to four (a town with no stack about 31 in 100). Every owned
+  town's garrison empty.
+- **VCMI** (`initializeNeutralTownGarrison`, survey §5.2): NEF and NE drawn as the others (its
+  FIXME: only a town with no stack is checked); level 4 at 14 in 100 (TD-4, decided by the
+  reading: a single point). **The wiki** ("Neutral Town Garrison"): as the reading.
+"""
+[encounter.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+at = [64, 66]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-1-3: the garrison's merge into a lone visitor's army ----------------------------------
+
+[[encounter]]
+id = "TWN-1-3"
+title = "The garrison's merge: Blue's town with a lone visitor of seven stacks and a garrison of three; Red besieges"
+questions = ["TD-7", "TWN-SIE-001", "TWN-SIE-002", "TWN-CAP-003"]
+procedure = [
+    "Blue's Castle (a Fort only: no towers) has its entrance at (20, 61); Blue's hero Visitor visits it (it stands on the entrance) with seven stacks, and the town's garrison holds three. Red's hero TWN-1-3 (twenty Archangels) stands south of it at (20, 62). Before the step, read Red's hero's movement points, the town's garrison and Blue's hero's army (slot, creature, count).",
+    "3a: step north onto the entrance (a siege). At the battle's opening read Blue's stacks (each one's army slot or hex, creature, count). Every Blue stack defends; Red retreats at its first stack's turn. After the battle read the town's garrison and Blue's hero's army.",
+    "3b: load save 1 and step north again. At the opening read Blue's stacks again; then Red wins (auto combat, or the Archangels strike stack after stack while Blue's stacks defend; take any level-up's first offer). Right after the battle read: Red's hero's tile and movement points, the town's owner, whether a town screen opened, the town's garrison.",
+]
+record = [
+    { table = ["slot", "before: garrison", "before: Blue's army", "3a opening: Blue's stacks", "3a after: garrison", "3a after: Blue's army", "3b opening: Blue's stacks"], labels = ["0", "1", "2", "3", "4", "5", "6"] },
+    { field = "Red's hero before the step: tile, movement points" },
+    { field = "3b after the battle: Red's hero's tile, movement points; the town's owner; a town screen (yes/no); the garrison" },
+    { field = "anything odd" },
+]
+predictions = """
+Values (the header): the visitor [Swordsman 4: 1 780, Centaur 4: 400, Archer 5: 630, Griffin 5:
+1 755, Pikeman 5: 400, Monk 3: 1 455, Pikeman 10: 800], the garrison [Cavalier 1: 1 946,
+Halberdier 16: 1 840, Marksman 10: 1 840].
+- **The reading** (`garrison_merge` 0x44B820, survey §9.2), round by round: (1) the weakest is
+  slot 4's Pikemen (400, the last of the two of 400); gains Cavalier 1 546, Halberdier and
+  Marksman 1 440: the Cavalier swaps with slot 4, the 5 Pikemen go to garrison slot 0. (2) The
+  weakest is slot 1's Centaurs (400); gains: the Pikemen 400 (the visitor has Pikemen), the
+  Halberdiers and Marksmen 1 440 each: the Halberdiers (the first) swap with slot 1, the Centaurs
+  go to garrison slot 1. (3) The weakest is slot 2's Archers (630): the Marksmen gain 1 210, the
+  Pikemen 400: the Marksmen swap with slot 2, the Archers go to garrison slot 2. (4) The weakest is
+  slot 6's Pikemen (800): the garrison's Pikemen gain 400 (their creature), the Centaurs and
+  Archers nothing: **the 5 Pikemen join slot 6 (15)**. (5) The weakest is 1 200: no gain; the end.
+  **Blue's stacks at the opening: 0 Swordsman 4, 1 Halberdier 16, 2 Marksman 10, 3 Griffin 5,
+  4 Cavalier 1, 5 Monk 3, 6 Pikeman 15.** **3a after:** the garrison **1 Centaur 4, 2 Archer 5**
+  (slots 0, 3 to 6 empty), Blue's army as at the opening (Red retreats before any blow). The merge
+  is the same in 3b. **3b after** (§8.2, §8.3): Red's hero on **(20, 62)** with its points before
+  the step **less 100** (the step paid, a visit from the neighbouring tile), the owner **Red**, **no
+  town screen**, the garrison **empty** (the merge's leftovers lost with the town; the step onto
+  the gate later is row 4's).
+- **VCMI** (`mergeGarrisonOnSiege`, survey §9.5: three rounds, the stack of most power, its
+  creature's slot else a swap with the weakest weaker one, the first of equal): (1) the Cavalier
+  swaps with slot 1's Centaurs; (2) the Halberdiers (1 840 against the Pikemen's 400 + 800) with
+  slot 4's Pikemen; (3) the Marksmen with slot 2's Archers: **0 Swordsman 4, 1 Cavalier 1,
+  2 Marksman 10, 3 Griffin 5, 4 Halberdier 16, 5 Monk 3, 6 Pikeman 10**, the garrison **0 Centaur
+  4, 1 Pikeman 5, 2 Archer 5**. With the last of the equal weakest (VCMI's `max_element` of the
+  slots, if the survey's "first" is wrong): 1 Halberdier, 4 Cavalier, 6 Pikeman 10, the garrison
+  0 Pikeman 5, 1 Centaur 4, 2 Archer 5. Either way **Pikeman 10** and the 5 Pikemen left in the
+  garrison: the reading's fourth round is not VCMI's.
+- **The reading with one tie the other way** (to tell the points apart): the first of the equal
+  weakest: 1 Cavalier, 4 Halberdier, 2 Marksman, Pikeman 15, the garrison 0 Centaur 4, 2 Archer 5;
+  the last of the equal garrison stacks: 1 Marksman, 2 Halberdier, 4 Cavalier, Pikeman 15, the
+  garrison 1 Archer 5, 2 Centaur 4.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [20, 62]
+primary = [1, 1, 1, 1]
+army = [["Archangel", 20]]
+[encounter.opponent.town]
+faction = "castle"
+buildings = ["fort"]
+garrison = [["Cavalier", 1], ["Halberdier", 16], ["Marksman", 10]]
+[encounter.opponent.hero]
+type = "Octavia"
+specialty = "resource gold"
+name = "Visitor"
+primary = [0, 0, 1, 1]
+army = [["Swordsman", 4], ["Centaur", 4], ["Archer", 5], ["Griffin", 5], ["Pikeman", 5], ["Monk", 3], ["Pikeman", 10]]
+
+# --- TWN-1-4: after a siege won -----------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-1-4"
+title = "After a siege won: a defended neutral town, then a later step onto the gate"
+questions = ["TWN-CAP-001", "TWN-CAP-003", "TWN-VIS-001"]
+procedure = [
+    "After 3b, in the same turn. A neutral Rampart (the editor's standard set with a Fort; a custom garrison of 5 Centaurs) has its entrance at (40, 61); Red's hero TWN-1-4 (five Archangels) stands south of it at (40, 62). Read its movement points, then step north onto the entrance (a siege). Red wins (auto combat, or the Archangels strike).",
+    "Right after the battle read: Red's hero's tile and movement points, the town's owner, whether a town screen opened, the town's garrison.",
+    "Then step north onto the entrance again. Read the hero's tile and movement points, whether a town screen opened (close it), the town's visiting hero (+0x10).",
+]
+record = [
+    { field = "Red's hero before the step: tile, movement points" },
+    { field = "after the battle: Red's hero's tile and movement points; the owner; a town screen (yes/no); the garrison" },
+    { field = "after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (`town_visit` 0x4AB33D to 0x4AB3BA, `town_change_owner` 0x4C61E0; survey §7.1,
+  §8.2, §8.3): the step onto a defended town is a visit from the neighbouring tile: the step paid
+  (100, a straight step on grass), the hero stays. After the win: the hero on **(40, 62)** with
+  its points before the step **less 100**, the owner **Red** (0), **no town screen**, the garrison
+  **empty**. The later step: Red's own town, entered: the hero on **(40, 61)**, **100 less again**,
+  **the town screen opens**, the town's visitor this hero. The +500 experience of a battle at a town
+  and the 5 Centaurs' bring no level-up.
+- **VCMI** (survey §9.5): captured and the garrison cleared after the battle; where the hero
+  stands and whether the town's visit follows was not read there.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+at = [40, 62]
+primary = [1, 1, 1, 1]
+army = [["Archangel", 5]]
+[encounter.opponent.town]
+faction = "rampart"
+owner = "neutral"
+fort = true
+garrison = [["Centaur", 5]]

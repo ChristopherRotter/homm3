@@ -54,6 +54,17 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-11-03 (the town lane, E09 T3a, PR #659; **a failing property case on `master`'s code**):
+  CI's full verify on #659 (run 41541601650, the merge with `master` at 65b5465b; #659 does not
+  touch `h3-map`) found a case of `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants`
+  that fails: "no monster or guards fought at Pos { x: 1, y: 5, level: 1 }" (play.rs, the battle
+  check's `visited_from` / `events_at` search). Reproduced locally in 15 s by appending
+  `cc 687f80afb754de647c8cf145b1e0fbbdbb492e3c0aa8b2cb8c6fdbf49d90ad42` to
+  `crates/h3-map/proptest-regressions/tests/play.txt` (not committed: it would fail every run until
+  fixed). The shrunk plan: RoE, side 7, two levels, nomads `(222, 11)`, one timed event (players
+  3, from day 4, every day), 461 `Fight` steps; the full input is in that run's job log. Master's
+  own runs passed (random cases). Commit the seed with the fix.
+
 - 2026-11-02 (the town lane, E09 T2b, `TWN-Q4`; **for your merge order, nothing to build**):
   E09's build bumps your versions `cross-lane` (`docs/epics/E09-design.md` §19, §21): adventure
   replay format v9 (T5a: the town part's hash in the header; `GameRuleset::new` gains the town

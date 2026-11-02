@@ -604,9 +604,13 @@ pub struct MapTownSpec {
     /// Built buildings by name, as a [`TownSpec`]'s.
     #[serde(default)]
     pub buildings: Option<Vec<String>>,
-    /// Garrison as (creature, count), at most seven stacks.
+    /// The editor's standard set with a Fort, as a [`TownSpec`]'s (E09 T3a).
     #[serde(default)]
-    pub garrison: Vec<(String, u16)>,
+    pub fort: bool,
+    /// Garrison as (creature, count), at most seven stacks, as a [`TownSpec`]'s: absent the
+    /// map's default, `[]` an explicitly empty custom one (E09 T3a).
+    #[serde(default)]
+    pub garrison: Option<Vec<(String, u16)>>,
 }
 
 /// The underground level: its own terrain and rectangles; encounters and piles with `level = 1`
@@ -869,12 +873,18 @@ pub struct TownSpec {
     #[serde(default = "blue")]
     pub owner: String,
     /// Built buildings by name ([`BUILDINGS`], the faction's special buildings); the Village Hall
-    /// is always built. Absent: the editor's standard set without a fort.
+    /// is always built. Absent: the editor's standard set, without a Fort unless [`Self::fort`].
     #[serde(default)]
     pub buildings: Option<Vec<String>>,
-    /// Garrison as (creature, count), at most seven stacks; empty: the editor's default.
+    /// The editor's standard set with a Fort (E09 T3a, batch TWN-1's row 1: the map's has-fort
+    /// flag); only without `buildings`, which name a Fort themselves.
     #[serde(default)]
-    pub garrison: Vec<(String, u16)>,
+    pub fort: bool,
+    /// Garrison as (creature, count), at most seven stacks. Absent: the map's default (an owned
+    /// town's empty, a neutral town's drawn at the start); `[]` (E09 T3a, batch TWN-1's row 2):
+    /// a custom garrison with no stack.
+    #[serde(default)]
+    pub garrison: Option<Vec<(String, u16)>>,
     /// The garrison's tight formation.
     #[serde(default)]
     pub tight: bool,
@@ -1250,6 +1260,7 @@ pub fn build_only(
             faction: t.faction.clone(),
             owner: t.owner.clone(),
             buildings: t.buildings.clone(),
+            fort: t.fort,
             garrison: t.garrison.clone(),
             tight: false,
         };
@@ -1551,7 +1562,13 @@ fn town_object(
         ));
     }
     let buildings = match &t.buildings {
-        None => TownBuildings::Standard { fort: false },
+        None => TownBuildings::Standard { fort: t.fort },
+        Some(_) if t.fort => {
+            return Err(
+                "`fort = true` is the standard set's Fort: name \"fort\" in `buildings` instead"
+                    .into(),
+            );
+        }
         Some(names) => {
             let mut built = [0u8; 6];
             for name in names {
@@ -1564,11 +1581,12 @@ fn town_object(
             }
         }
     };
-    if t.garrison.len() > ARMY_SLOTS {
-        return Err(format!("a garrison of {} stacks", t.garrison.len()));
+    let stacks = t.garrison.as_deref().unwrap_or_default();
+    if stacks.len() > ARMY_SLOTS {
+        return Err(format!("a garrison of {} stacks", stacks.len()));
     }
     let mut garrison = [None; ARMY_SLOTS];
-    for (slot, (name, count)) in t.garrison.iter().enumerate() {
+    for (slot, (name, count)) in stacks.iter().enumerate() {
         let creature = lookup(&tables.creatures, name, "creature")?;
         if *count == 0 {
             return Err(format!("an empty garrison stack of {name}"));
@@ -1584,21 +1602,26 @@ fn town_object(
     let mut faction_name = FACTIONS[faction].to_owned();
     faction_name[..1].make_ascii_uppercase();
     let built = t.buildings.as_ref().map_or_else(
-        || "the standard buildings without a fort".to_owned(),
+        || {
+            let fort = if t.fort { "with" } else { "without" };
+            format!("the standard buildings {fort} a fort")
+        },
         |names| format!("Village Hall, {}", names.join(", ")),
     );
-    let defenders = if t.garrison.is_empty() {
-        "the default garrison".to_owned()
-    } else {
-        let stacks: Vec<String> = t.garrison.iter().map(|(c, n)| format!("{n} {c}")).collect();
-        format!("garrison {}", stacks.join(", "))
+    let defenders = match &t.garrison {
+        None => "the default garrison".to_owned(),
+        Some(stacks) if stacks.is_empty() => "an empty custom garrison".to_owned(),
+        Some(stacks) => {
+            let stacks: Vec<String> = stacks.iter().map(|(c, n)| format!("{n} {c}")).collect();
+            format!("garrison {}", stacks.join(", "))
+        }
     };
     let summary = format!("{owner_name} {faction_name} town ({built}); {defenders}");
     let town = Town {
         tile,
         template,
         owner,
-        garrison: (!t.garrison.is_empty()).then_some(garrison),
+        garrison: t.garrison.is_some().then_some(garrison),
         tight_formation: t.tight,
         buildings,
     };
@@ -2673,6 +2696,85 @@ mod tests {
         assert!(
             error.contains("red, blue, tan or neutral, not `pink`"),
             "{error}"
+        );
+    }
+
+    /// E09 T3a (batch TWN-1's rows 1 and 2): the standard set with a Fort and an explicitly
+    /// empty custom garrison, for a map town and an encounter's town, read back from the bytes.
+    #[test]
+    fn a_town_may_have_the_standard_set_with_a_fort_and_an_empty_custom_garrison() {
+        let spec = SIEGE
+            .replace(
+                "[[encounter]]",
+                "[[map.town]]\n        entrance = [24, 20]\n        faction = \"stronghold\"\n        \
+                 owner = \"neutral\"\n        fort = true\n        garrison = []\n\n        \
+                 [[map.town]]\n        entrance = [24, 28]\n        faction = \"stronghold\"\n        \
+                 owner = \"red\"\n\n        [[encounter]]",
+            )
+            .replace(
+                "buildings = [\"fort\", \"citadel\", \"tavern\", \"Escape Tunnel\"]\n",
+                "fort = true\n",
+            )
+            .replace(
+                "garrison = [[\"Pikeman\", 10], [\"Archangel\", 1]]",
+                "garrison = []",
+            );
+        let (map, text) = build(&parse(&spec).expect("spec"), &tables(), "t.h3m").expect("build");
+        let towns: Vec<&Town> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Town(t) => Some(t),
+                _ => None,
+            })
+            .collect();
+        let empty = Some([None; ARMY_SLOTS]);
+        let fort = TownBuildings::Standard { fort: true };
+        let standard = TownBuildings::Standard { fort: false };
+        assert_eq!(
+            towns
+                .iter()
+                .map(|t| (t.tile, t.owner, t.garrison, t.buildings))
+                .collect::<Vec<_>>(),
+            [
+                ((12, 9), Some(1), empty, fort),
+                ((26, 20), None, empty, fort),
+                ((26, 28), Some(0), None, standard),
+            ]
+        );
+        assert!(text.contains(
+            "- Opponent: Blue Stronghold town (the standard buildings with a fort); an empty \
+             custom garrison; visiting hero"
+        ));
+        // Through the map's bytes: a custom garrison of seven empty slots, the has-fort flag.
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        let read: Vec<(u8, Option<h3_map::model::Army>, h3_map::model::Buildings)> = raw
+            .objects
+            .iter()
+            .filter_map(|o| match &o.body {
+                h3_map::model::Body::Town(t) => {
+                    Some((t.owner, t.garrison.clone(), t.buildings.clone()))
+                }
+                _ => None,
+            })
+            .collect();
+        let none = Some(vec![None; ARMY_SLOTS]);
+        let fort = h3_map::model::Buildings::Standard { fort: true };
+        assert_eq!(
+            read,
+            [
+                (1, none.clone(), fort.clone()),
+                (0xFF, none, fort),
+                (0, None, h3_map::model::Buildings::Standard { fort: false }),
+            ]
+        );
+        // The Fort of a custom set is a building's name.
+        let both = SIEGE.replace("tight = true", "tight = true\nfort = true");
+        let err = build(&parse(&both).expect("spec"), &tables(), "t.h3m").unwrap_err();
+        assert!(
+            err.contains("name \"fort\" in `buildings` instead"),
+            "{err}"
         );
     }
 
