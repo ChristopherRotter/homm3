@@ -52,10 +52,13 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 /// The agent's choice for `seat`. In the map phase: a uniform legal entry, then for a move a
 /// uniform tile of the hero's tile mask (its reachable tiles, other players' heroes' included:
 /// such a move starts a battle, E08 T19b1), as an agent samples the factorized action head by
-/// head. The entries without a tile are the commands [`legal_commands`] lists: `EndTurn`, or with
-/// an open decision its answers alone (`Decline`, and `Accept` while the offer stands; a level-up's
-/// `First` and `Second`, E08 T30), each at even odds (GAM-DEC-001, GAM-DEC-002; E08 T14b, T15a). `EndTurn` when the seat has no legal entry (the
-/// neutral seat while no battle waits for it). In the battle phase: the battle's random agent for
+/// head. The other choices are the commands [`legal_commands`] lists: `EndTurn` and each
+/// Shipyard's `BuildBoat` (by its anchor, E08 T85b2b; before encoding v6 a drawn `BuildBoat` had
+/// no action and ended the turn), or with an open decision its answers alone (`Decline`, and
+/// `Accept` while the offer stands; a level-up's `First` and `Second`, E08 T30), each at even odds
+/// with each hero's move (GAM-DEC-001, GAM-DEC-002; E08 T14b, T15a). `EndTurn` when the seat has
+/// no legal entry (the neutral seat while no battle waits for it). In the battle phase: the
+/// battle's random agent for
 /// the seat's side (`crate::rollout::choose`: a uniform entry among the commands that stay in the
 /// battle and the casts, never a retreat or a surrender, so a battle ends by a victory or a draw;
 /// the neutral seat's stand-in for the original's battle AI, decision 27).

@@ -28,7 +28,7 @@ fn entered(env: &mut AdventureEnv, tile: u32) -> Vec<GameEvent> {
     events
 }
 
-fn legal_entries(env: &AdventureEnv, player: PlayerId) -> Vec<usize> {
+pub(super) fn legal_entries(env: &AdventureEnv, player: PlayerId) -> Vec<usize> {
     let mut mask = [false; ENTRY_COUNT];
     env.legal_mask(player, &mut mask);
     (0..ENTRY_COUNT).filter(|&e| mask[e]).collect()
@@ -406,7 +406,7 @@ fn increment_7s_decisions_are_answered_through_the_env() {
     assert_eq!(entries[0], DECLINE);
     assert!(!buys.is_empty(), "{visit:?}");
     // An entry of a slot that is not open is the purchase, which the game refuses.
-    let closed = (BUY_BASE..ENTRY_COUNT).find(|e| !buys.contains(e));
+    let closed = (BUY_BASE..BUILD_BOAT).find(|e| !buys.contains(e));
     if let Some(entry) = closed {
         let (state, rules) = (env.state(), env.rules());
         let command = action::decode(state, rules, RED, Action::map(entry, 0)).unwrap();

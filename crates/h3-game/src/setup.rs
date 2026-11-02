@@ -152,6 +152,22 @@ pub struct TimedEventSetup {
     pub message: u16,
 }
 
+impl TimedEventSetup {
+    /// Whether it fires on `day` at the turn start of `player`, human or not (GAM-CAL-004; survey
+    /// `E08-economy.md` §11, `map_timed_events` 0x4CD910): `player` is one of its players, its
+    /// flag for the player's kind is set, and `day` is its first day or, with an interval, a
+    /// multiple of it after the first day.
+    // rule: GAM-CAL-004
+    pub fn fires(&self, player: PlayerId, human: bool, day: u32) -> bool {
+        let first = u32::from(self.first_day);
+        // An interval of 0 makes only the first day a multiple (`is_multiple_of(0)` is `== 0`).
+        (if human { self.human } else { self.computer })
+            && self.players.contains(&player)
+            && day >= first
+            && (day - first).is_multiple_of(u32::from(self.interval))
+    }
+}
+
 /// Why a [`GameSetup`] cannot start a game.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameSetupError {

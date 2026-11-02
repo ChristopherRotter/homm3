@@ -196,7 +196,7 @@ id       = "GAM-TRN-002"
 title    = "A group's turn ends when each of its players has ended its turn"
 context  = "game"
 status   = "implemented"
-summary  = "`EndTurn` ends the turn of a player whose turn is running (anything else is rejected and changes nothing). When every player of the running group has ended its turn the next group's turn starts; after the last group the day advances (GAM-CAL-001), then each context's start-of-day step runs (none has a rule there in increment 1), then the first group's turn starts. Building the game starts the first group's turn on day 1. E08 T6b."
+summary  = "`EndTurn` ends the turn of a player whose turn is running (anything else is rejected and changes nothing). When every player of the running group has ended its turn the next group's turn starts; after the last group the day advances (GAM-CAL-001), then the new day's steps run (GAM-CAL-002, E08 T85b), then the first group's turn starts. Building the game starts the first group's turn on day 1. E08 T6b."
 numeric  = "integer"
 
   [[rule.source]]
@@ -230,11 +230,64 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "GAM-CAL-002"
+title    = "The new day: its order, the week's and the month's first days"
+context  = "game"
+status   = "verified"
+summary  = "Once a day for the whole game, after the last group's turn and before the first group's next (never on day 1: the game's start runs no new day, so day 1 gives no income, grows and resets nothing): the day + 1 (DayStarted); on a week's first day (days 8, 15, …: (day − 1) mod the part's week_days is 0) WeekStarted with the week from 1, then the adventure's week step with the game's stream (ADV-WEK-001 to -003, ADV-MON-013); on a month's first day (days 29, 57, …: every month_weeks-th week's first day) the month's kind drawn (GAM-CAL-003), MonthStarted with the month from 1 and the kind, then in a creature's month the adventure's month step with the game's stream (ADV-MON-014); every player's income (GAM-RES-003 to -005); every hero's spell points (HER-MAN-002); the adventure's start-of-day step (ADV-FOG-003). The week's kind (the towns' growth) is E09's, drawn then from a stream of its own (E08 decision 197). E08 T85b: GameState::advance_day (state/day.rs)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md §7.1 to §7.4; docs/exe/map.toml 0x4C6FE0, 0x4C7FE0, 0x4C8780, 0x4C8F40): next_player_turn calls new_day only when its pass over the colours ends, never at the game's start; new_day raises the day of the week, past 7 runs new_day_week_events (which raises the week of the month), past the fourth week new_month; then computes and adds every player's income, then restores every hero record's spell points"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md §7.6: NewTurnProcessor::onNewTurn (no income on the first turn; the income, the week's kind, the heroes' mana and points)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-6 and E9-7 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): the income word all 0 on day 1; the mines', the heroes' and the town's income at each day's start, days 2 to 9; the date's words (1, 1, 1), (1, 2, 1), (1, 2, 2) on days 1, 8, 9; the 3 crystal more on day 8, the week's first day"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-CAL-003"
+title    = "The month's kind"
+context  = "game"
+status   = "implemented"
+summary  = "On each month's first day after the first (GAM-CAL-002) the month's kind is drawn from the game's stream: 1 to the sum of the part's month odds (the original's 1 to 10), up to the first weight a normal month (5), then a creature's (4), then the Plague (1); a creature's month then draws its creature among the part's months' creatures with equal chances (the original's twelve: Serpent Fly, Griffin, Centaur, Gremlin, Hobgoblin, Gog, Troglodyte, Harpy, Lizardman, Pegasus, Wolf Rider, Wight). The first month is a normal one; a part without the months' parameters makes every month normal without a draw. The kind is public (the original's month's message: GameObservation::month, MonthStarted to every viewer). A creature's month adds its monsters (ADV-MON-014); what the kinds do to the towns' dwellings (doubled, the Plague's halving), the tutorial's normal months and the week of the Imp's month are E09's. The week's kind is not drawn (E09, decision 197). E08 T85b: GameState::draw_month."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md §7.4; docs/exe/map.toml 0x4C8F40, 0x63E678): new_month draws 1 to 10 (0x4C8F5E): 1 to 5 a normal month, 6 to 9 a month of a creature from month_creatures' twelve, 10 the Plague; the kind and the creature are globals the towns and the spawn read"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Growth and Plague: a special month 40 %, the Plague 10 %, at the first day of each month after the first"
+  url        = "https://heroes.thelazy.net/index.php/Growth"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md §7.6: pickWeekType (a month 40 % double growth, then 10 % plague); its twelve hasDoubleWeek creatures are the original's twelve"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+[[rule]]
 id       = "GAM-CAL-004"
 title    = "The map's timed events"
 context  = "game"
 status   = "implemented"
-summary  = "The map's timed events, in the map's order: each names its players (the map's colours that play; a colour nobody plays is left out, so an event may fire for none), whether it fires for a human and for a computer player (before SoD for humans always), its first day (the file's day + 1: the file's 0 is day 1), its interval in days (0 once) and the seven resources it gives (a negative amount takes; zeros left out), and its message by its index (the text is the client's). On each of its days, at the turn start of each of its players that is human or computer as it says, its resources go to that player's treasury, never below 0 (T85b). The setup refuses an event naming a player twice, out of order or not of the game, a resource twice, not the ruleset's or of 0, or a first day of 0, and more events than a u16 names. E08 T83a: the import (`h3_map`'s `timed_events`, map import v15) and `h3_game::TimedEventSetup`, `GameSetup::events`, checked by `GameSetup::validate`; their firing comes with T85b."
+summary  = "The map's timed events, in the map's order: each names its players (the map's colours that play; a colour nobody plays is left out, so an event may fire for none), whether it fires for a human and for a computer player (before SoD for humans always), its first day (the file's day + 1: the file's 0 is day 1), its interval in days (0 once) and the seven resources it gives (a negative amount takes; zeros left out), and its message by its index (the text is the client's). On each of its days, at the turn start of each of its players that is human or computer as it says (after the contexts' start-of-turn steps and TurnStarted), in the map's order, its gains go to that player's treasury, then its losses are taken down to 0 at most (ResourceLost the amount taken), then TimedEventFired names it by its message, all to that player alone; day 1's fire as the game is built, so the observation's events_today (the player's own) names those that fired at its turn start today. The setup refuses an event naming a player twice, out of order or not of the game, a resource twice, not the ruleset's or of 0, or a first day of 0, and more events than a u16 names. E08 T83a: the import (`h3_map`'s `timed_events`, map import v15) and `h3_game::TimedEventSetup`, `GameSetup::events`, checked by `GameSetup::validate`; T85b: `TimedEventSetup::fires`, `GameState::fire_events` (at each turn start), `GameState::events_today`, `GameObservation::events_today`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -254,7 +307,7 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-9b.md E9-11 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md section 19): the three events fired at their players' turn starts on their days, in the map's order, the taking one floored at 0"
   retrieved  = "2026-10-30"
   confidence = "high"
-  note       = "The import's part is built (E08 T83a); the firing and the floor are T85b's."
+  note       = "E08 T85b: h3-map's test the_economy_maps_events_fire_as_batch_e9_11_saw_them plays the batch map's three events (red's gold 300 on day 1, 0 on day 2, the take again on days 4 and 6)."
 
 [[rule]]
 id       = "GAM-RES-001"
@@ -305,11 +358,37 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "GAM-RES-003"
+title    = "The mines' income a day"
+context  = "game"
+status   = "verified"
+summary  = "At each new day's start (GAM-CAL-002; never day 1), for every player in id order (none is defeated before E10), before the day's first turn: each mine it owns gives its kind's daily amount of its resource (the base pack's 2 wood and ore, 1 of the others, 1 000 gold), an abandoned mine its drawn resource at that resource's mine's amount; an ally's do not count, and a mine flagged during a day pays from the next day's start. Added with the heroes' income (GAM-RES-004) and on a week's first day the armies' weekly resources (GAM-RES-005), saturating (GAM-RES-001), one ResourceGained per resource with a non-zero amount, to the player alone. Not here: the towns' (E09), a computer player's bonus and the handicap (E10). E08 T85b: AdventureState::income, GameState::pay_income."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md §8.1 to §8.3; docs/exe/map.toml 0x4B8AF0, 0x4C7930, 0x677978): player_daily_income adds each owned mine record's mine_income by resource (gold's 1 000 in player_gold_income), new_day adds every player's income before the next day's first turn"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Mine: production at the beginning of each day"
+  url        = "https://heroes.thelazy.net/index.php/Mine"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-6 and E9-7 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): nothing on day 1; the gold mine's 1 000 and the ore mine's 2 at each day's start, days 2 to 9"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-RES-004"
 title    = "The heroes' income a day"
 context  = "game"
-status   = "implemented"
-summary  = "A hero's income a day, by resource (derived in h3-heroes, ADR-0013 point 16.1; the game pays it to its owner's treasury at the day's start, increment 9's design note §14, T85b): the daily_resource amounts of every artifact in a worn position and of each part of a worn combination, each worn copy counting (two Rings of Infinite Gems give 2 gems; the Cornucopia's 4 of mercury, sulfur, crystal and gems and its parts' 1 each make the original's 5), one that needs a skill only with it; of each secondary skill's level (Estates 125, 250, 500 gold), grown when the hero has a skill specialty on that skill by floor(amount x (10 000 + bp_per_level x level) / 10 000) (an Estates specialist's 5 % of itself a level); and of its specialty (the resource specialists' 1 of mercury, sulfur, crystal or gems, the gold specialists' 350, never grown). The six resource artifacts give 1 a day, the Endless Sack, Bag and Purse of Gold 1 000, 750 and 500. Exact integers in every profile (the original keeps the factor in the x87 register, so its truncation never differs from the exact product's; no Q-0005 term); saturating per resource. Not here: the mines' (GAM-RES-003), the Crystal Dragons' (GAM-RES-005), the towns' (E09), a computer player's bonus and the handicap (E10). E08 T82: `h3_heroes::daily_income` (dense by resource in the core's order)."
+status   = "verified"
+summary  = "A hero's income a day, by resource (derived in h3-heroes, ADR-0013 point 16.1; the game pays it to its owner's treasury at the day's start with the mines' and the armies', GAM-RES-003, E08 T85b): the daily_resource amounts of every artifact in a worn position and of each part of a worn combination, each worn copy counting (two Rings of Infinite Gems give 2 gems; the Cornucopia's 4 of mercury, sulfur, crystal and gems and its parts' 1 each make the original's 5), one that needs a skill only with it; of each secondary skill's level (Estates 125, 250, 500 gold), grown when the hero has a skill specialty on that skill by floor(amount x (10 000 + bp_per_level x level) / 10 000) (an Estates specialist's 5 % of itself a level); and of its specialty (the resource specialists' 1 of mercury, sulfur, crystal or gems, the gold specialists' 350, never grown). The six resource artifacts give 1 a day, the Endless Sack, Bag and Purse of Gold 1 000, 750 and 500. Exact integers in every profile (the original keeps the factor in the x87 register, so its truncation never differs from the exact product's; no Q-0005 term); saturating per resource. Not here: the mines' (GAM-RES-003), the Crystal Dragons' (GAM-RES-005), the towns' (E09), a computer player's bonus and the handicap (E10). E08 T82: `h3_heroes::daily_income` (dense by resource in the core's order)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -337,7 +416,33 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-9b.md E9-7 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): Basic Estates 125, the Endless Purse of Gold 500, the Cornucopia 5 of mercury, sulfur, crystal and gems, a crystal specialist 1 crystal, at each day's start, days 2 to 9 (with the town's 500 and the mines' 1 000 gold and 2 ore)"
   retrieved  = "2026-10-30"
   confidence = "high"
-  note       = "The derivation matches; the payment at the day's start is T85b's."
+  note       = "The derivation matches; the game pays it at the day's start since T85b."
+
+[[rule]]
+id       = "GAM-RES-005"
+title    = "The armies' weekly resources"
+context  = "game"
+status   = "verified"
+summary  = "On a week's first day (GAM-CAL-002), with the income (GAM-RES-003): each creature type with a weekly_resource ability (a core creature's ability outside battle, E08 decision 201) in the army of one of the player's heroes on the map gives its amount once, however many stacks and heroes hold it: the Crystal Dragons' 3 crystal. A mine's guards do not count; a town's garrison is E09's. E08 T85b: AdventureState::income."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2; survey E08-economy.md §8.1; docs/exe/map.toml 0x4B8AF0): player_daily_income tests creature 133 in the player's heroes' armies and its towns' garrisons (0x4B8C32, 0x4B8DCF, 0x4B8E26) and adds 3 crystal on the week's first day, once"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-economy.md §8.4: generatePlayerIncome's SPECIAL_CRYSTAL_GENERATION, 3 crystal a week"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-10-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9b.md E9-7 (stamp c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): a hero with a Crystal Dragon, 3 crystal more on day 8, the week's first day, and not on days 2 to 7 or 9"
+  retrieved  = "2026-10-30"
+  confidence = "high"
 
 [[rule]]
 id       = "GAM-DEC-001"

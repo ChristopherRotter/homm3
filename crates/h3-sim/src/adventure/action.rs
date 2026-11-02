@@ -15,6 +15,7 @@
 //! | 11 | The open decision's first answer (E08 T30: a level-up's left offer; T63a) |
 //! | 12 | Its second answer (E08 T30: a level-up's right offer; T63a) |
 //! | 13 + s, s < 4 | Buy the skill in slot `s` of the player's open University (E08 T63a) |
+//! | 17 | Build a boat at the player's or an ally's Shipyard anchored on the tile in the tile head (E08 T85b2b) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -23,7 +24,11 @@
 //! order; its size is the map's tile count ([`crate::adventure::AdventureEnv::tile_count`]). After
 //! an entry that takes no tile (`EndTurn`, the answers) the tile head allows exactly 0, as the
 //! battle's heads after a non-cast entry (a policy that always samples the head never meets an
-//! empty mask on a legal entry). A move's destination is a tile the hero's reachable-tiles query
+//! empty mask on a legal entry). After [`BUILD_BOAT`] it allows the anchors of the Shipyards
+//! whose `BuildBoat` [`legal_commands`] lists (ADV-SHY-003: the player's or an ally's, its boat
+//! tile free, the price in the treasury; the Shipyard as the observation names it, by its
+//! anchor; the setup refuses two typed objects of one type on one anchor, and the original's
+//! packs have one Shipyard type). A move's destination is a tile the hero's reachable-tiles query
 //! lists, not its own; a tile another player's hero stands on is one (the visit is a battle,
 //! GAM-BAT-004). The action carries no path: the command takes the path the query chose
 //! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
@@ -57,7 +62,9 @@
 //! it left such tiles out of the masks and the decoder (`ADV-STUB-4`, closed). Version 4 (E08
 //! T30) appended a level-up's two answers. Version 5 (E08 T63a, the adventure lane's `cross-lane`
 //! change with the user's consent) moved the answers onto the typed ones by role and appended a
-//! University's purchases.
+//! University's purchases. Version 6 (E08 T85b2b, the adventure lane's `cross-lane` change with
+//! the user's consent, decision 203; ADR-0017 point 8) appended `BuildBoat` (ADV-SHY-003), whose
+//! tile head names the Shipyard by its anchor's tile: one action per Shipyard the player may use.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -70,7 +77,7 @@ use h3_game::{
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 5;
+pub const ACTION_ENCODING_VERSION: u32 = 6;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -104,8 +111,12 @@ pub const UNIVERSITY_SLOTS: usize = 4;
 /// `BUY_BASE + s` (E08 T63a).
 pub const BUY_BASE: usize = SECOND + 1;
 
+/// The entry that builds a boat at the player's or an ally's Shipyard anchored on the tile in the
+/// tile head (E08 T85b2b; ADV-SHY-003).
+pub const BUILD_BOAT: usize = BUY_BASE + UNIVERSITY_SLOTS;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = BUY_BASE + UNIVERSITY_SLOTS;
+pub const ENTRY_COUNT: usize = BUILD_BOAT + 1;
 
 /// Which entries are legal.
 pub type EntryMask = [bool; ENTRY_COUNT];
@@ -208,6 +219,11 @@ impl Action {
         Self::map(BUY_BASE + slot, 0)
     }
 
+    /// Builds a boat at the Shipyard anchored on `tile` (E08 T85b2b).
+    pub const fn build_boat(tile: u32) -> Self {
+        Self::map(BUILD_BOAT, tile)
+    }
+
     /// The map phase's action of `entry` with `tile`.
     pub const fn map(entry: usize, tile: u32) -> Self {
         Self::Adventure(MapAction { entry, tile })
@@ -293,9 +309,10 @@ pub fn moves(
 }
 
 /// Fills `mask` with the legal map entries of `seat`: the commands [`legal_commands`] lists
-/// (`EndTurn` while its turn runs, or with an open decision its answers alone: `Decline`, and
-/// `Accept` while the offer stands, E08 T15a; a level-up's `First` and `Second`, E08 T30), and each hero slot with a tile to move to
-/// ([`legal_moves`]: none with a decision open); none in the battle phase, where the listed
+/// (`EndTurn` while its turn runs, and [`BUILD_BOAT`] when it lists a `BuildBoat`, E08 T85b2b;
+/// or with an open decision its answers alone: `Decline`, and `Accept` while the offer stands,
+/// E08 T15a; a level-up's `First` and `Second`, E08 T30), and each hero slot with a tile to move
+/// to ([`legal_moves`]: none with a decision open); none in the battle phase, where the listed
 /// commands are the battle's and no hero moves, so none for the neutral seat.
 pub fn legal_mask(
     state: &GameState,
@@ -306,7 +323,7 @@ pub fn legal_mask(
     let seat = seat.into();
     mask.fill(false);
     for command in legal_commands(state, rules, seat.actor()) {
-        if let Some(entry) = tileless_entry(&command) {
+        if let Some(entry) = command_entry(&command) {
             mask[entry] = true;
         }
     }
@@ -317,8 +334,9 @@ pub fn legal_mask(
 
 /// Fills `mask` (resized to the tile count) with the legal tiles of `seat` after choosing
 /// `entry`: 0 alone after a legal entry that takes no tile (`EndTurn`, an answer), the reachable
-/// tiles of a hero's legal move but its own; none after an illegal entry or in the battle phase
-/// (none for the neutral seat).
+/// tiles of a hero's legal move but its own, the anchors of the Shipyards of the listed
+/// `BuildBoat`s after [`BUILD_BOAT`] (E08 T85b2b); none after an illegal entry or in the battle
+/// phase (none for the neutral seat).
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -333,6 +351,14 @@ pub fn tile_mask(
         mask[0] = legal_commands(state, rules, seat.actor())
             .iter()
             .any(|command| tileless_entry(command) == Some(entry));
+    } else if entry == BUILD_BOAT {
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Adventure(AdventureCommand::BuildBoat { anchor, .. }) = command
+                && let Some(index) = tile_index(state, anchor)
+            {
+                mask[index as usize] = true;
+            }
+        }
     } else if let Some(reach) = entry
         .checked_sub(MOVE_BASE)
         .and_then(|slot| moves(state, rules, seat, slot))
@@ -411,7 +437,7 @@ pub fn second_mask(
 
 /// Whether `entry` takes no tile: `EndTurn` or an answer.
 const fn tileless(entry: usize) -> bool {
-    entry == END_TURN || (entry >= ACCEPT && entry < ENTRY_COUNT)
+    entry == END_TURN || (entry >= ACCEPT && entry < BUILD_BOAT)
 }
 
 /// The entry of `answer` by its role (E08 T63a; the module's table): an offer's acceptance; a
@@ -476,12 +502,44 @@ const fn tileless_entry(command: &GameCommand) -> Option<usize> {
     }
 }
 
+/// The entry of a command [`legal_commands`] lists outside a battle: [`tileless_entry`]'s, or
+/// [`BUILD_BOAT`] for a `BuildBoat` (E08 T85b2b).
+const fn command_entry(command: &GameCommand) -> Option<usize> {
+    match command {
+        GameCommand::Adventure(AdventureCommand::BuildBoat { .. }) => Some(BUILD_BOAT),
+        other => tileless_entry(other),
+    }
+}
+
+/// The `BuildBoat` of `player` at the Shipyard anchored on `anchor` (E08 T85b2b): one the
+/// adventure lets it use now (`AdventureState::buildable_shipyards`: its own or an ally's, the
+/// boat tile free), the first in object order; the game's own checks (the turn, an open
+/// decision, the price) are `apply`'s.
+fn build_boat(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    anchor: Pos,
+) -> Option<GameCommand> {
+    state
+        .adventure()
+        .buildable_shipyards(rules.adventure(), player)
+        .find(|&(_, at, _)| at == anchor)
+        .map(|(object_type, anchor, _)| {
+            GameCommand::Adventure(AdventureCommand::BuildBoat {
+                object_type,
+                anchor,
+            })
+        })
+}
+
 /// The command `seat` issues with `action`, if the action names one. In the map phase:
-/// `EndTurn` or an answer with tile 0, or a move of one of its player's heroes to a tile its
-/// reachable-tiles query lists (not its own) along the query's path; none for the neutral seat.
-/// In the battle phase: the battle command the battle's encoding decodes the action to
-/// ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may be issued
-/// now (whose turn it is, an open decision, the side to act) is `apply`'s.
+/// `EndTurn` or an answer with tile 0, a move of one of its player's heroes to a tile its
+/// reachable-tiles query lists (not its own) along the query's path, or a `BuildBoat` at a
+/// Shipyard its player may use, anchored on the tile ([`build_boat`], E08 T85b2b); none for the
+/// neutral seat. In the battle phase: the battle command the battle's encoding decodes the action
+/// to ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may be
+/// issued now (whose turn it is, an open decision, the price, the side to act) is `apply`'s.
 pub fn decode(
     state: &GameState,
     rules: &GameRuleset,
@@ -506,6 +564,9 @@ pub fn decode(
         }
         return answer_of(state, rules, seat, action.entry).map(GameCommand::Answer);
     }
+    if action.entry == BUILD_BOAT {
+        return build_boat(state, rules, player, tile_pos(state, action.tile)?);
+    }
     let hero = hero_in_slot(state, player, action.entry.checked_sub(MOVE_BASE)?)?;
     let to = tile_pos(state, action.tile)?;
     let reach = state
@@ -520,10 +581,11 @@ pub fn decode(
 
 /// The action that names `command` of `seat`, if one does: `EndTurn` and the answers by their
 /// entries (tile 0), a move of one of its player's heroes by the hero's slot and the path's last
-/// tile (none of these for the neutral seat), a battle command by the battle's encoding for the
-/// seat's battle ([`battle::encode`]). [`decode`] gives the command back when a move's path is
-/// the one the hero's query chose; a move along another path decodes to the query's path to the
-/// same tile.
+/// tile, a `BuildBoat` by its Shipyard's anchor (E08 T85b2b; none of these for the neutral seat),
+/// a battle command by the battle's encoding for the seat's battle ([`battle::encode`]).
+/// [`decode`] gives the command back when a move's path is the one the hero's query chose (a move
+/// along another path decodes to the query's path to the same tile) and a `BuildBoat`'s Shipyard
+/// is one the player may use.
 pub fn encode(
     state: &GameState,
     rules: &GameRuleset,
@@ -538,6 +600,9 @@ pub fn encode(
     let player = seat.player()?;
     let (hero, path) = match command {
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => (*hero, path),
+        GameCommand::Adventure(AdventureCommand::BuildBoat { anchor, .. }) => {
+            return tile_index(state, *anchor).map(Action::build_boat);
+        }
         other => return tileless_entry(other).map(|entry| Action::map(entry, 0)),
     };
     let slot = (0..HERO_SLOTS).find(|&slot| hero_in_slot(state, player, slot) == Some(hero))?;

@@ -85,7 +85,7 @@ pub use setup::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameSetup, GameSetupError, HeroArmy, HeroArtifactsSetup,
     HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
-pub use state::{GameState, OpenBattle};
+pub use state::{GameState, MonthKind, OpenBattle};
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):
@@ -104,5 +104,6 @@ pub use state::{GameState, OpenBattle};
 /// the decisions. v19 (E08 T63b): the rests (GAM-DEC-007), the guard's wait no longer in a
 /// decision. v20 (E08 T72): the adventure's boats, each hero's boat and day's maximum (the
 /// adventure state hash v16). v21 (E08 T84a): an army dialog's holder (a join's group or a
-/// mine's guards, the Leave Guards dialog).
-pub const GAME_STATE_HASH_VERSION: u32 = 21;
+/// mine's guards, the Leave Guards dialog). v22 (E08 T85b): the month's kind and the map's
+/// timed events.
+pub const GAME_STATE_HASH_VERSION: u32 = 22;
