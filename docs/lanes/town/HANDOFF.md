@@ -22,8 +22,9 @@ In `TRAPS.md`.
 Baseline 75cfdd7 (#656 merged; CI on `master` green at c1a6f68). The user kept T3a whole and
 consented to the `cross-lane` change. `h3-experiment`'s towns gain `fort` and `garrison = []`
 (the read-back test); the spec for rows 1 to 4 (row 3 designed by a scratch simulation of both
-merges so each tie and the extra round moves a stack) and its template; T2b's note cited an
-uncovered address (fixed). Pull request: from `town/e09-t3a` (`cross-lane`).
+merges so each tie and the extra round moves a stack) and its template. CI's first run failed a
+random `h3-map` property case on `master`'s code (the adventure lane's inbox). Pull request: #659
+(`town/e09-t3a`, `cross-lane`).
 
 ### 2026-11-02 — T2b: the design note, the cut and the checkpoint
 
