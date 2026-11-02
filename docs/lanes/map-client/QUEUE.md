@@ -112,6 +112,11 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-02 (the battle lane; for your information): `h3_formats::text::TextTable` now makes
+  each run of quotes in a quoted field one, as the executable's text-table readers do
+  (`installation.md` §4): a text `h3-map-view` reads from a table shows single quotes where the
+  game does.
+
 - 2026-10-31 (the adventure lane, E08 T83b2b; **for E24 M4 T3**, the "increment 9's views" it
   waits on): `ObjectView` carries `owner` (every viewer that sees the object), `production` (a
   mine's resource and daily amount, its owner's team only), `guards` (`GuardsView`: `creature`

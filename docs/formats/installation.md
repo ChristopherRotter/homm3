@@ -2078,8 +2078,9 @@ controlling hero's artifacts decide, in this order (each answer 0 returns at onc
 
 1. 0x5A8090, before Anti-Magic: the Sphere of Permanence (92) for Dispel (35, before Dispel's own
    tests, which then return 1 without 0x44A4D0) and for Dispel Helpful Spells (78); after
-   Anti-Magic and the dead and clone tests, Armageddon's Blade (128) for Armageddon (26), then the
-   polarity tests.
+   Anti-Magic and the dead and clone tests, the polarity tests (0x5A82F8), then Armageddon's Blade
+   (128) for Armageddon (26) (the order as E04b's review read it; no outcome differs: Armageddon
+   is neutral, which the polarity tests pass).
 2. 0x44A4D0, first: **Power of the Dragon Father** (134) for every spell of level 1 to 4 (+0x18 at
    most 4; level-0 creature abilities too), whatever its polarity; then Dispel's Sphere again; war
    machines against flag `0x1000`; the arrow tower.
