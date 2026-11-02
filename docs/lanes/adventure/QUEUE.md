@@ -51,6 +51,14 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-11-02 (the town lane, E09 T2b, `TWN-Q4`; **for your merge order, nothing to build**):
+  E09's build bumps your versions `cross-lane` (`docs/epics/E09-design.md` §19, §21): adventure
+  replay format v9 (T5a: the town part's hash in the header; `GameRuleset::new` gains the town
+  part), map import v16 (T7a), game state hash v23 after your T85b's v22 (T7b), adventure ruleset
+  part v16 and state hash v20 (T8a: the kind `Town`, towns ownable); the towns' income joins your
+  T85b's day advance (§16). None starts before your T85b's pull requests merge; the second to
+  merge rebases and bumps again.
+
 - 2026-11-02 (the town lane, E09 T1b2b, `TWN-Q2`; **nothing to build, for your import and
   setup**): E09's increment 1 builds **the random hero** (class 70, drawn as the main town's hero;
   E09 decision 8) and **the starting-hero pick per colour in the setup** beside the faction

@@ -62,6 +62,13 @@ Towns as the original plays them, on the adventure map of E08: the town context 
 19. **A town ruleset part of its own:** `TownRuleset` compiled on the core, `packs/*/towns.toml`, an adapter crate `h3-pack-towns` (the town lane's). Not chosen: a section of `adventure.toml`; the core content.
 20. **The moat in the town part, the SoD pack overriding** (decision 14's data): per faction the moat's kind and the siege's natural obstacles, the base pack as RoE and AB play them, the SoD pack's overrides as SoD plays them. Not chosen: the battle part's siege record; an edition input derived from the packs.
 
+### Decisions at the design's checkpoint (2026-11-02, the user, TWN-Q4)
+
+21. **The five ADR drafts accepted as written** (the draft ADR-0028 and the amendments of ADR-0015, -0016, -0017, -0023 in `docs/lanes/town/adr-drafts/`): T4 moves them into `docs/adr/` after batch TWN-1, with its verdicts (ADR-0028's number checked then). Not chosen: accepted with changes.
+22. **The cut as proposed** (`E09-design.md` §21): fourteen tasks in rounds 2 to 10, batch TWN-1 first (T3a, T3b, T3c), then the `shared/` task (T4), the part and its content (T5a, T5b), `h3-towns` (T6), the import and the build (T7a, T7b), the map side (T8a, T8b, T8c), the gates (T9), the audit (T10); each task's cut confirmed at its start. Not chosen: the shared task before the batch; fewer, larger tasks.
+23. **The buildings' content read and harvested** (design §3): a code reading of `building_tables_init` 0x4EB730 and the tables it fills, the names from the text files, VCMI's lists compared, written by `h3-harvest`'s gap-fill (`cross-lane`, as E08 T81b). Not chosen: a hand-written `towns.toml` with each value's source; only the roles increment 1 reads, the full lists in increment 2.
+24. **The design note's agent's calls kept** (marked *agent's call* in `E09-design.md`; each stays changeable by the task that builds it). Not chosen: changes now.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, the cut confirmed at each checkpoint)
 
 - **T0 E09 refined, the town lane opened.** Done (2026-10-31, `shared/town-lane`; decisions 1–7; TWN-Q1).
@@ -71,9 +78,17 @@ Towns as the original plays them, on the adventure map of E08: the town context 
 - **T1b2a The towns survey, part 2b1: income, views and batch TWN-1's rows.** Done (2026-11-02, `town/e09-t1b2a`; T1b2 cut in two at its start, the user): survey `E09-towns.md` §11 to §13; a town's gold by its highest hall and the Grail, one Capitol per player only after a capture; another player sees the fort level and the army by its taverns (none, creatures, size words), the counts and the hall only as the owner's team or with expert Visions or a Rogue; seven rows.
 - **T1b2b The checkpoint.** Done (2026-11-02, `town/e09-t1b2b`; `TWN-Q2`, three rounds): decisions 8–16: the random hero and the starting-hero pick in increment 1, the silo paid, the views by the original's levels, the quirk candidates as proposed, the disputes by the reading but TD-2 (the enabled expansions), batch TWN-1's rows 1 to 4, the allied town entered.
 - **T2a The ADR drafts.** Done (2026-11-02, `town/e09-t2a`; T2 cut in two at its start, the user; `TWN-Q3`, decisions 17–20): `docs/lanes/town/adr-drafts/`: the draft ADR-0028 (`h3-towns` and `h3-pack-towns`, the split of a town, `TownId`, the store of towns, the town part, the seams, the moat by the packs, the pool the game's) and the amendments to ADR-0015 (crates, part, the import's towns and starting heroes), -0016 (the town as a map object: entered, capture, reveal, views), -0017 (setup, pool, the build's draws, income, capture and sieges), -0023 (the derivation, the moat by the packs).
-- **T2b The design note, the cut and the checkpoint:** `E09-design.md`; the build's rounds; the checkpoint with the drafts' acceptance (`TWN-Q4`).
-- **T3 Batch TWN-1** (rows 1 to 4, decision 15): the maps and specs, the harness's town reads, the runs, the scoring (as E08 T78 to T80).
-- **Later rounds** (cut at T2's checkpoint): the shared task (the ADRs accepted, the crate created, the core content), the content and harvest, the import, the state, the visit and capture, the income, the views, the env (`cross-lane`), the replays and gates, the audit with increment 2's refinement.
+- **T2b The design note, the cut and the checkpoint.** Done (2026-11-02, `town/e09-t2b`; the user kept it whole; `TWN-Q4`, decisions 21–24): `E09-design.md` §1 to §22 (the town part, the record and store, the setup and derivations; the import, the kind `Town`, the step, the siege, capture, the views; the setup's checks, the pool and the draws, the siege's battle, the income, the observation, the gates, versions and ids, batch TWN-1, the cut); the drafts accepted, the cut as proposed, the content harvested, the agent's calls kept.
+- **The build** (decision 22; design §21; the queue holds the next round's entries):
+  - Round 2: **T3a** batch TWN-1's maps and spec (§20; `cross-lane` in `h3-experiment`).
+  - Round 3: **T3b** the harness's town reads, the recipe, the run; **T3c** scored (TD-3, TD-5, TD-7, row 4).
+  - Round 4: **T4** `shared/`: the ADRs with T3c's verdicts, the glossary, the crate skeletons, `TownId`, the gates (§1).
+  - Round 5: **T5a** the town part, its compiler and adapter, `GameRuleset`, replay format v9 (§2); **T5b** the content read and harvested (§3, decision 23; original data).
+  - Round 6: **T6** `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml` (§4–§6).
+  - Round 7: **T7a** the import and the setup's checks (§7, §13; map import v16; the census); **T7b** the pool and the build's draws (§14; game state hash v23).
+  - Round 8: **T8a** the kind, the step, entering and an undefended capture (§8, §9, §11; adventure part v16, state hash v20); **T8b** the siege (§10, §15).
+  - Round 9: **T8c** the income, the views, the observation, `docs/06-security.md` (§12, §16, §17); **T9** the fixtures, replays, properties, benchmarks, the env (§18).
+  - Round 10: **T10** the audit against the exit criteria; increment 1 closed; increment 2 refined.
 
 ### Exit criteria
 
