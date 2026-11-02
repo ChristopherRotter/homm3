@@ -850,3 +850,63 @@ may play under SoD rules (a damaging moat, a Stronghold's moat): batch TWN-1's r
   flag; (3) the stacks left in the garrison gone after the capture; (4) the moat's damage in a
   game of an RoE-format map and of an SoD-format map in the Complete edition (the game's version,
   §9.4). Increment 3's, not now: the battle in the open beside a garrison hero, T-5.
+
+## 11. The town's income (T1b2a)
+
+### 11.1 A town's gold (`town_gold_income` 0x5BF600, read whole)
+
+Arguments: the town, whether to count the Resource Silo. From the built set +0x150 (by
+`building_bits` 0x66CD98): **500**; the Town Hall (11) **1 000**; the City Hall (12) **2 000**; the
+Capitol (13) **4 000**, tested in that order, the last one found kept, so the highest hall pays (the
+Village Hall, 10, is not tested: every town has it, §5.3). With the silo flag and the Resource Silo
+(15) built, the gold of the silo's table (`town_silo_resources` 0x688EB4, seven i32 per faction,
+read as an i16 at +24) is added: **0 for every faction** (the table gives wood and ore to Castle,
+Necropolis, Stronghold and Fortress, crystal to Rampart, gems to Tower, mercury to Inferno and
+Conflux, sulfur to Dungeon; `town_silo_income` 0x5C1280 returns its row). With the Grail building
+(26) in the every-built set +0x158, **+5 000**. The faction plays no other part: halls and Grail
+pay the same in every town. At most 9 000.
+
+### 11.2 Who is paid, and when
+
+`player_gold_income` 0x4C7930 (E08 T77a2, `E08-economy.md` §8.2) adds, for every town of the
+game's list (+0x21614, 0x168 bytes each) whose owner (+0x1) is the player, the town's gold as its
+low 16 bits sign-extended (0x4C79ED; never wrapped below 32 768) and its garrison hero's own gold
+(`hero_gold_income` 0x4E4390; garrison heroes are increment 3's). The day's income
+(`player_daily_income` 0x4B8AF0) calls it with the silo flag 0 (0x4B8D92), so the silo's gold
+would not count there anyway. Paid at each day's start from day 2 on to every player not defeated
+(E08 §8.3): **a neutral town pays nobody, and a town captured during a day pays its new owner at
+the next day's start.** The day's income pays the town's other incomes beside it (`E08-economy.md`
+§8.1 point 2, not read): the silo's resources, Rampart's Treasury and Mystic Pond (increment 4).
+Not followed: `town_gold_income`'s four other callers (the status window 0x4521F0 passes 1) and
+`player_gold_income`'s two others (views and the computer's, probably).
+
+### 11.3 The Capitol
+
+It pays 4 000 as the highest hall. **One per player only after a capture**: `capitol_limit`
+0x5BEC60 (§8.4) has two callers, `town_visit`'s capture paths (0x4AB1BA after an undefended
+town's change, 0x4AB363 after a siege won). The start never applies it (`town_setup` calls
+`town_change_owner` alone, §8.3), so a map may give a player several Capitols, each paying 4 000
+(the wiki says so too); building a second one is increment 2's rule.
+
+### 11.4 The census (the 160 maps; a throwaway crate over `h3_map::read`, not committed)
+
+The 574 custom building sets (the map's bits through `map_building_ids` 0x6888C0: bits 0 to 2 the
+halls, 9 the silo, 17 the Grail for every faction): the highest hall a Village Hall in 204 towns
+(120 owned), a Town Hall in 258 (166), a City Hall in 89 (47), **a Capitol in 23 (10 owned)**; the
+894 standard sets have the Village Hall only (§5.3). **No player holds two Capitols at the
+start.** The Grail building in 10 towns, **2 owned** (`Good to Go`, colours 0 and 1). The
+Resource Silo in 26 towns, **7 owned**: they would give their resources from day 2. Rampart's
+special buildings (98, faction 1: bits 18, 19, 20 are its 17, 21, 22) only in neutral towns.
+
+### 11.5 VCMI 1.7.5 and the wiki
+
+- VCMI (`CGTownInstance::dailyIncome`, `config/buildingsLibrary.json`, `config/factions/*.json`):
+  each built building that no built upgrade supersedes produces its resources: the halls 500,
+  1 000, 2 000, 4 000, the Grail 5 000, the silo its faction's resources; then the owner's
+  handicap (E10's). The same values; `removeCapitols` only from `setOwner`, a change in play.
+- The wiki ([Halls](https://heroes.thelazy.net/index.php/Halls),
+  [Grail](https://heroes.thelazy.net/index.php/Grail)): the same values; a captured Capitol
+  becomes a City Hall when the captor already holds one, the only downgrade of a building; a map
+  may give a player two or more Capitols; the Grail building's 5 000 in every town. Also (§12): a
+  Capitol's town looks like a Fort with an extra flag on the map, even without a fort, and the hall
+  level in the right-click town window is shown to allies only.
