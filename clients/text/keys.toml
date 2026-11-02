@@ -732,6 +732,102 @@ original = [{ at = "GENRLTXT:201" }]
 id = "stats.speed"
 original = [{ at = "GENRLTXT:194" }]
 
+# The stats dialog's hints (E17 M6 T2a2a; design §12.2; `creature_dialog_proc` 0x5F4E30): the hint
+# table `creature_dialog_hints` 0x6A7458, `Help.txt`'s first column, records 433 to 447 (its loader
+# 0x5B98B0 copies them there in order), by `creature_dialog_hint_index` 0x5F46C0: the name, the
+# count, the seven lines, morale, luck, the effects, the dismiss, the upgrade and the OK.
+[[key]]
+id = "stats.hint.name"
+original = [{ at = "HELP:433" }]
+
+[[key]]
+id = "stats.hint.count"
+original = [{ at = "HELP:434" }]
+
+[[key]]
+id = "stats.hint.attack"
+original = [{ at = "HELP:435" }]
+
+[[key]]
+id = "stats.hint.defense"
+original = [{ at = "HELP:436" }]
+
+[[key]]
+id = "stats.hint.shots"
+original = [{ at = "HELP:437" }]
+
+[[key]]
+id = "stats.hint.damage"
+original = [{ at = "HELP:438" }]
+
+[[key]]
+id = "stats.hint.health"
+original = [{ at = "HELP:439" }]
+
+[[key]]
+id = "stats.hint.health-left"
+original = [{ at = "HELP:440" }]
+
+[[key]]
+id = "stats.hint.speed"
+original = [{ at = "HELP:441" }]
+
+[[key]]
+id = "stats.hint.morale"
+original = [{ at = "HELP:442" }]
+
+[[key]]
+id = "stats.hint.luck"
+original = [{ at = "HELP:443" }]
+
+[[key]]
+id = "stats.hint.effects"
+original = [{ at = "HELP:444" }]
+
+[[key]]
+id = "stats.hint.dismiss"
+original = [{ at = "HELP:445" }]
+
+[[key]]
+id = "stats.hint.upgrade"
+original = [{ at = "HELP:446" }]
+
+[[key]]
+id = "stats.hint.ok"
+original = [{ at = "HELP:447" }]
+
+# The cast button's hint in the original (CLT-Q38 (2)): its index 15 lies past the table's 15
+# pairs, on `mine_names` 0x6A74D0, so it shows the first mine's name (MineName.txt's first record);
+# the client's profile shows the panel's spell book's (`battle.control.spell-book`).
+[[key]]
+id = "stats.hint.cast-original"
+original = [{ at = "MINENAME:0" }]
+
+# An effect's hint (0x5F4F33): GENRLTXT's record 611 with the spell's name and its rounds left;
+# Bind's, Berserk's and Disrupting Ray's (0x5F4EB4 to 0x5F4F31) record 680 with how long they last,
+# records 681 to 683.
+[[key]]
+id = "stats.hint.effect"
+args = { spell = "text", rounds = "number" }
+original = [{ at = "GENRLTXT:611", printf = ["spell", "rounds"] }]
+
+[[key]]
+id = "stats.hint.effect-until"
+args = { spell = "text", until = "text" }
+original = [{ at = "GENRLTXT:680", printf = ["spell", "until"] }]
+
+[[key]]
+id = "stats.until.bind"
+original = [{ at = "GENRLTXT:681" }]
+
+[[key]]
+id = "stats.until.berserk"
+original = [{ at = "GENRLTXT:682" }]
+
+[[key]]
+id = "stats.until.disrupting-ray"
+original = [{ at = "GENRLTXT:683" }]
+
 # A creature's names, singular and plural (CRTRAITS.TXT's first two columns; its non-blank records
 # from record 2 are the original ids in order, as the harvesters read them).
 [[family]]

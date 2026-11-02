@@ -547,6 +547,13 @@ pub struct Battle<'g> {
     /// The spell aimed (E17 M5 T3b): its handle and whether a creature casts it (the Faerie
     /// Dragon's key F), from the book's or the key's choice to the click's cast or a cancel.
     aiming: Option<(u16, bool)>,
+    /// A stack's stats dialog open over the battle and when it opened (E17 M6 T2a2a; design
+    /// §12.2): the battle stands as it was then (the dialog's modal loop runs no idle step), its
+    /// creature stepping each 100 ms from 100 ms after the opening.
+    stats: Option<(crate::stats::Open, u32)>,
+    /// What the stats dialog remembers between openings (the original's global: one per game),
+    /// in the client's profile.
+    stats_memory: h3_view::stats::Memory,
     /// A message box open over the battle (E17 M5 T4a; design §7.19): the box, when it opened
     /// and what its OK does. The battle (and the book, when the box is the book's) stands still
     /// behind it (its modal loop runs no idle step).
@@ -630,6 +637,21 @@ pub struct CursorLook {
     pub frame: u32,
     /// The hot spot in the frame's canvas.
     pub hot: [i32; 2],
+}
+
+/// When a stats dialog's creature first steps after the dialog opened (its modal run sets the
+/// frame deadline 100 ms after the opening, 0x5F4801).
+const STATS_FIRST_STEP: u32 = 100;
+
+/// What the stats dialog did with an input (E17 M6 T2a2a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatsDid {
+    /// Nothing the screen shows.
+    Nothing,
+    /// The dialog, its status line or its cursor changed: draw again.
+    Changed,
+    /// Its OK closed it: the battle takes the mouse again (`Input::Looked`).
+    Closed,
 }
 
 /// What the spell book did with an input (E17 M5 T3a).
@@ -777,6 +799,8 @@ impl<'g> Battle<'g> {
             book: None,
             book_memory: h3_view::book::Memory::default(),
             aiming: None,
+            stats: None,
+            stats_memory: h3_view::stats::Memory::new(Bugs::Fixed),
             message: None,
             result_closed: false,
             behind: h3_view::result::Behind::default(),
@@ -1446,8 +1470,8 @@ impl<'g> Battle<'g> {
         writer.panels(&self.record, (&logged, &self.played.timeline().controllers))
     }
 
-    /// The cursor at `t`: the spell book's once it set one (E17 M5 T3a), else the combat cursor's
-    /// frame (the panel's pointer before the mouse is anywhere).
+    /// The cursor at `t`: the stats dialog's or the spell book's once it set one (E17 M5 T3a, M6
+    /// T2a2a), else the combat cursor's frame (the panel's pointer before the mouse is anywhere).
     pub fn cursor(&self, t: u32) -> CursorLook {
         let hot_of = |hot: &[[i32; 2]], frame: u32| {
             usize::try_from(frame)
@@ -1476,6 +1500,15 @@ impl<'g> Battle<'g> {
                 def: self.ground.layout.message.cursor.clone(),
                 frame: 0,
                 hot: hot_of(&book.hot, 0),
+            };
+        }
+        // The stats dialog's once its moves set one (E17 M6 T2a2a).
+        if let Some(frame) = self.stats.as_ref().and_then(|(open, _)| open.modal.cursor) {
+            let book = &self.ground.layout.book;
+            return CursorLook {
+                def: book.cursor.clone(),
+                frame,
+                hot: hot_of(&book.hot, frame),
             };
         }
         if let Some(frame) = self.book.as_ref().and_then(|(open, _, _)| open.cursor) {
@@ -1750,6 +1783,150 @@ impl<'g> Battle<'g> {
             (&ground.layout.book, &writer.catalogue),
             point,
         )
+    }
+
+    /// Whether a stack's stats dialog is open over the battle (E17 M6 T2a2a).
+    pub fn stats_open(&self) -> bool {
+        self.stats.is_some()
+    }
+
+    /// Opens a stack's stats dialog at `at` with the mouse at `point` (E17 M6 T2a2a;
+    /// `stack_stats_dialog` 0x468860, modal; design §12.2): of the stack a left press there looks
+    /// at (`battle_click_action`'s kind 5, 0x476EDC: one of the side to act's own, any in the
+    /// tactics phase), or, `acting`, of the acting stack (the key T, 0x475DB6; not in the tactics
+    /// phase); while the battle waits for a human here, from the side to act's own view. Whether
+    /// it opened (not without the text tables, nor in a server's game of other content).
+    pub fn look(&mut self, at: u32, point: [i32; 2], acting: bool) -> bool {
+        if self.stats.is_some() || !self.takes(at) {
+            return false;
+        }
+        let ground = self.ground;
+        let id = if acting {
+            self.turned
+                .last()
+                .map(|t| &t.observation)
+                .filter(|o| o.tactics.is_none())
+                .and_then(|o| o.active)
+        } else {
+            self.taken(at, |field| mouse::looked_at(field, &ground.layout, point))
+        };
+        let (Some(id), Some(observation)) = (id, self.own_view()) else {
+            return false;
+        };
+        let manifest = &self.record.header.manifest;
+        let tables = &ground.tables;
+        let def = observation
+            .stacks
+            .iter()
+            .find(|s| s.id == id)
+            .and_then(|s| manifest.keys.creatures.get(usize::from(s.creature)))
+            .and_then(|key| tables.creatures.get(key))
+            .map(|e| e.def.to_ascii_uppercase());
+        // The creature's DEF's groups, for its steps: the battle drew it, so the batch holds it.
+        if let Some(def) = def.as_ref().filter(|d| !held(&self.batch, d))
+            && self.load_names(vec![def.clone()]).is_err()
+        {
+            return false;
+        }
+        let frames = def
+            .and_then(|d| self.batch.sprite(&d))
+            .map(|s| {
+                s.def
+                    .groups
+                    .iter()
+                    .map(|g| (g.id, u32::try_from(g.frames.len()).unwrap_or(0)))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let (Some(ruleset), Some(writer)) = (ground.previews(), ground.writer.as_ref()) else {
+            return false;
+        };
+        let Some(stack) = observation.stacks.iter().find(|s| s.id == id) else {
+            return false;
+        };
+        let anchor = ground.layout.anchor(stack.hex / 17, stack.hex % 17);
+        let sources = crate::stats::Sources {
+            manifest: &self.record.header.manifest,
+            ruleset,
+            tables: &ground.tables,
+            catalogue: &writer.catalogue,
+        };
+        // The viewer's own generator for the creature's later groups (§7.2), seeded by the time.
+        let seed = at.wrapping_mul(2_654_435_761) | 1;
+        let viewing = self.viewing_player();
+        let open = crate::stats::open(
+            &sources,
+            &observation,
+            (id, point),
+            (&ground.layout.stats, anchor),
+            (frames, viewing, seed),
+            &mut self.stats_memory,
+        );
+        let Some(open) = open else {
+            return false;
+        };
+        self.stats = Some((open, at));
+        true
+    }
+
+    /// The mouse moved to `point` while the stats dialog is open: whether its status line,
+    /// cursor or OK changed.
+    pub fn stats_moved(&mut self, point: [i32; 2]) -> bool {
+        let Some((open, _)) = self.stats.as_mut() else {
+            return false;
+        };
+        let hovered = open.modal.hover(&mut self.stats_memory, point);
+        let moved = open.modal.moved(point) != h3_view::message::Outcome::Nothing;
+        hovered || moved
+    }
+
+    /// A left press at `point` while the stats dialog is open: its OK goes down.
+    pub fn stats_press(&mut self, point: [i32; 2]) -> StatsDid {
+        self.stats_did(|m| m.press(point))
+    }
+
+    /// The left button released while the stats dialog is open: the OK held clicks.
+    pub fn stats_release(&mut self) -> StatsDid {
+        self.stats_did(h3_view::stats::Modal::release)
+    }
+
+    /// The OK's key down while the stats dialog is open (`by` the key, whose release clicks).
+    pub fn stats_key(&mut self, by: &str) -> StatsDid {
+        self.stats_did(|m| m.key(by))
+    }
+
+    /// A key up while the stats dialog is open.
+    pub fn stats_key_up(&mut self, by: &str) -> StatsDid {
+        self.stats_did(|m| m.key_up(by))
+    }
+
+    fn stats_did(
+        &mut self,
+        input: impl FnOnce(&mut h3_view::stats::Modal) -> h3_view::message::Outcome,
+    ) -> StatsDid {
+        use h3_view::message::Outcome;
+        let Some((open, _)) = self.stats.as_mut() else {
+            return StatsDid::Nothing;
+        };
+        match input(&mut open.modal) {
+            Outcome::Nothing => StatsDid::Nothing,
+            Outcome::Changed => StatsDid::Changed,
+            Outcome::Closed(_) => {
+                self.stats = None;
+                StatsDid::Closed
+            }
+        }
+    }
+
+    /// When the open stats dialog's creature next steps after `t` (none: no dialog open).
+    pub fn stats_step_after(&self, t: u32) -> Option<u32> {
+        let &(_, opened) = self.stats.as_ref()?;
+        let first = opened.saturating_add(STATS_FIRST_STEP);
+        if t < first {
+            return Some(first);
+        }
+        let steps = (t - first) / h3_view::stats::STEP_MS + 1;
+        Some(first.saturating_add(steps.saturating_mul(h3_view::stats::STEP_MS)))
     }
 
     /// Whether a message box is open over the battle (E17 M5 T4a).
@@ -2266,7 +2443,9 @@ impl<'g> Battle<'g> {
         // behind a message box as it was when the box opened (E17 M5 T4a).
         let book = self.book.as_ref().map(|&(_, opened, _)| opened);
         let message = self.message.as_ref().map(|&(_, opened, _)| opened);
-        let at = [Some(t), book, message]
+        // Behind a stack's stats dialog as it was when the dialog opened (E17 M6 T2a2a).
+        let stats = self.stats.as_ref().map(|&(_, opened)| opened);
+        let at = [Some(t), book, message, stats]
             .into_iter()
             .flatten()
             .min()
@@ -2288,6 +2467,17 @@ impl<'g> Battle<'g> {
         if let Some((open, _, player)) = &self.book {
             let layout = &self.ground.layout;
             list.extend(open.draws(&layout.book, &layout.player_palette, *player));
+        }
+        if let Some((open, opened)) = &self.stats {
+            // Its creature stepped since it opened.
+            let window = open.at(STATS_FIRST_STEP, t.saturating_sub(*opened));
+            list.extend(
+                window
+                    .dialog
+                    .draws(&window.shown, &self.ground.layout.player_palette)
+                    .into_iter()
+                    .map(Draw::Dialog),
+            );
         }
         if let Some((open, opened, asked)) = &self.message {
             // The result window over the whole screen darkened (E17 M5 T4b1).

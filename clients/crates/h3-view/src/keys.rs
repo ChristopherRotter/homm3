@@ -3,10 +3,11 @@
 //! file's `[battle]` table, the lookup). The window's own are both viewers' (`h3_ui::keys::Window`:
 //! the function keys and Esc, the user at E24 M3 T0); the battle's defaults are the original's
 //! hotkeys, by where the battle takes them ([`Context`]): with nothing over it the log's arrows, the
-//! Faerie Dragon's F and the panel's buttons' letters; the spell book's (`book::Key`), a message
-//! box's (`message::Key`), an aim's and the result window's while one is open. Esc quits only
-//! with nothing over the battle: over it, it is the book's close, the box's Cancel, the aim's
-//! give-up and the result window's OK.
+//! Faerie Dragon's F, the stats dialog's T and the panel's buttons' letters; the spell book's
+//! (`book::Key`), a message box's (`message::Key`), the stats dialog's, an aim's and the result
+//! window's while one is open. Esc quits only with nothing over the battle: over it, it is the
+//! book's close, the box's Cancel, the stats dialog's OK, the aim's give-up and the result
+//! window's OK.
 
 use alloc::format;
 use alloc::string::String;
@@ -32,6 +33,8 @@ pub enum Context {
     Book,
     /// A message box (E17 M5 T4a), over the book too.
     Message,
+    /// A stack's stats dialog (E17 M6 T2a2a).
+    Stats,
     /// A spell aimed (E17 M5 T3b).
     Aim,
     /// The battle's result window (E17 M5 T4b1), the battle over.
@@ -39,14 +42,16 @@ pub enum Context {
 }
 
 impl Context {
-    /// What takes the keys: the result window when it is open, else a message box, else the book,
-    /// else an aim, else the battle.
+    /// What takes the keys: the result window when it is open, else a message box, else a
+    /// stack's stats dialog, else the book, else an aim, else the battle.
     #[must_use]
-    pub const fn of(result: bool, message: bool, book: bool, aim: bool) -> Self {
+    pub const fn of(result: bool, message: bool, stats: bool, book: bool, aim: bool) -> Self {
         if result {
             Self::Result
         } else if message {
             Self::Message
+        } else if stats {
+            Self::Stats
         } else if book {
             Self::Book
         } else if aim {
@@ -68,6 +73,8 @@ pub enum Command {
     LogDown,
     /// The Faerie Dragon's drawn spell aimed (E17 M5 T3b).
     DragonSpell,
+    /// The acting stack's stats dialog opened (E17 M6 T2a2a).
+    Stats,
     /// A panel button pressed while the key is down and clicked as it comes up (its id,
     /// `panel`'s: one of [`BUTTONS`]).
     Button(u16),
@@ -75,6 +82,8 @@ pub enum Command {
     Book(book::Key),
     /// A message box's.
     Message(message::Key),
+    /// The stats dialog's OK pressed, the dialog closed as it is released.
+    StatsOk,
     /// The aim given up.
     AimCancel,
     /// The result window's OK pressed (its id `result::OK`), the battle's screen left as it is
@@ -129,6 +138,8 @@ impl Command {
             Self::LogDown => ("log-down".into(), plain(&["Down"])),
             // 0x475C17.
             Self::DragonSpell => ("dragon-spell".into(), plain(&["F"])),
+            // The key code 20 (0x475D07): the acting stack's dialog, outside the tactics phase.
+            Self::Stats => ("stats".into(), plain(&["T"])),
             Self::Button(id) => BUTTONS.iter().find(|&&(b, _, _)| b == id).map_or_else(
                 || (format!("button-{id}"), Vec::new()),
                 |&(_, name, keys)| (name.into(), plain(keys)),
@@ -143,6 +154,8 @@ impl Command {
                 .find(|&&(m, _, _)| m == k)
                 .map(|&(_, name, keys)| (name.into(), plain(keys)))
                 .unwrap_or_default(),
+            // Its iOKAY.def's hotkeys (0x5F6870).
+            Self::StatsOk => ("stats-ok".into(), plain(&["Return", "Escape"])),
             // Escape (0x5A317A) or the right button (0x5A3184) in the aim's loop 0x5A3070.
             Self::AimCancel => ("aim-cancel".into(), plain(&["Escape", "RightButton"])),
             // Enter and Escape, its OK's hotkeys (0x4715C3).
@@ -156,15 +169,16 @@ impl keys::Command for Command {
     type Context = Context;
     const TABLE: &'static str = "battle";
 
-    /// Every command, in the table's order: the window's own, the log's, the dragon's, the panel's
-    /// buttons, the book's, the box's, the aim's, the result window's.
+    /// Every command, in the table's order: the window's own, the log's, the dragon's, the stats
+    /// dialog's, the panel's buttons, the book's, the box's, the stats dialog's OK, the aim's,
+    /// the result window's.
     fn all() -> Vec<Self> {
         let mut all: Vec<Self> = Window::ALL.map(Self::Window).into();
-        all.extend([Self::LogUp, Self::LogDown, Self::DragonSpell]);
+        all.extend([Self::LogUp, Self::LogDown, Self::DragonSpell, Self::Stats]);
         all.extend(BUTTONS.map(|(id, _, _)| Self::Button(id)));
         all.extend(BOOK.map(|(k, _, _)| Self::Book(k)));
         all.extend(MESSAGE.map(|(k, _, _)| Self::Message(k)));
-        all.extend([Self::AimCancel, Self::ResultOk]);
+        all.extend([Self::StatsOk, Self::AimCancel, Self::ResultOk]);
         all
     }
 
@@ -179,18 +193,22 @@ impl keys::Command for Command {
     }
 
     /// Everywhere the window's own that work whatever is open; with nothing over the battle quit,
-    /// a frame on, restart, the log's, the dragon's and the buttons' (the tactics phase's panel's
-    /// two in its own context); the book's, the box's, the aim's and the result window's in
-    /// theirs.
+    /// a frame on, restart, the log's, the dragon's, the stats dialog's and the buttons' (the
+    /// tactics phase's panel's two in its own context); the book's, the box's, the stats
+    /// dialog's OK, the aim's and the result window's in theirs.
     fn context(self) -> Option<Context> {
         match self {
             Self::Window(w) if w.everywhere() => None,
             Self::Button(panel::NEXT_CREATURE | panel::START_COMBAT) => Some(Context::Tactics),
-            Self::Window(_) | Self::LogUp | Self::LogDown | Self::DragonSpell | Self::Button(_) => {
-                Some(Context::Battle)
-            }
+            Self::Window(_)
+            | Self::LogUp
+            | Self::LogDown
+            | Self::DragonSpell
+            | Self::Stats
+            | Self::Button(_) => Some(Context::Battle),
             Self::Book(_) => Some(Context::Book),
             Self::Message(_) => Some(Context::Message),
+            Self::StatsOk => Some(Context::Stats),
             Self::AimCancel => Some(Context::Aim),
             Self::ResultOk => Some(Context::Result),
         }

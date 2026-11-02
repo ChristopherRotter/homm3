@@ -31,6 +31,10 @@ pub enum Logged {
     /// new for 3 000 ms or more are new no longer (0x47884C), and the mouse is posted again
     /// (0x4ECC00), which sets the status line to its hint where it rests.
     Turn(u8),
+    /// A dialog over the battle closed on a human's turn (a stack's stats dialog, E17 M6 T2a2a:
+    /// `battle_click_action` 0x476F2F): entries new for 3 000 ms or more are new no longer
+    /// (0x472BF0).
+    Settle,
     /// A strike's or a shot's line (`battle_log_damage` 0x469A90): the striker and its number,
     /// how the hits add up, each hit's stack, damage and kills.
     Strike {
@@ -335,6 +339,7 @@ pub fn word(
     match logged {
         Logged::Action
         | Logged::Turn(_)
+        | Logged::Settle
         | Logged::Status { .. }
         | Logged::Scroll(_)
         | Logged::Unmark
@@ -738,7 +743,7 @@ pub fn texts(
     for (now, happened) in logged {
         let now = *now;
         match happened {
-            Logged::Action => log.settle(now),
+            Logged::Action | Logged::Settle => log.settle(now),
             Logged::Turn(stack) if human(*stack) => log.settle(now),
             Logged::Turn(_) => {}
             Logged::Status { text, forced } => log.status(text, now, *forced),
