@@ -486,7 +486,8 @@ fn a_picture_takes_the_picture_the_screen_gives_it() {
 #[test]
 fn a_creature_def_item_draws_its_group_and_frame_as_shown() {
     // E17 M6 T2a1: a DEF item with the flags 0x12 (`creature`) draws as a creature in its box,
-    // its group its own, its frame its own until the screen gives it another.
+    // its group its own, its frame its own until the screen gives it another; one without a DEF
+    // draws nothing.
     let d: Dialog = toml::from_str(
         r#"
 place = [10, 20]
@@ -498,6 +499,13 @@ def = "CPKMAN.def"
 at = [21, 48]
 size = [100, 130]
 group = 2
+creature = true
+
+[[items]]
+kind = "def"
+id = 202
+at = [21, 48]
+size = [100, 130]
 creature = true
 "#,
     )
