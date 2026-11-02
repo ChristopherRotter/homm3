@@ -603,3 +603,32 @@ an entry only where a task builds on it.
   Python tests pass (the GPU's skipped).
 - **Open:** the second A/B's config (fewer epochs or a larger rollout), proposed from T9b's read
   and the runs' KL and clip fraction (T8), agreed with the user.
+
+## T9b — The temperature diagnostic (2026-11-02)
+
+- **The run** (the sandbox's CPU, 4 threads; `e25-scale-1` #3's `best.pt`, 30.0 M samples, uploaded
+  by the user; `python/records/inspect/e25-scale-1-temperature.json`): `h3env.train.ladder
+  --temperature` on the report set v1 (500 per kind, both sides), the same episodes and
+  generators at every temperature. At 1 it replays T5's CPU ladder exactly (0.418, −0.061). Two
+  minutes a temperature against the system actor (217 s greedy).
+
+  | Temperature | System actor | Hero att. / def. | Siege att. / def. | Garrison att. / def. |
+  |---|---|---|---|---|
+  | 1 (the policy) | 0.418 ± 0.018, −0.061 | 0.593 / 0.224 | 0.486 / 0.322 | 0.918 / 0.052 |
+  | 0.7 | **0.428**, −0.053 | 0.621 / 0.226 | 0.460 / 0.352 | 0.920 / 0.052 |
+  | 0.5 | **0.428**, −0.053 | 0.613 / 0.234 | 0.488 / 0.332 | 0.920 / 0.048 |
+  | 0 (most likely) | 0.425, −0.052 | 0.611 / 0.226 | 0.484 / 0.342 | 0.912 / 0.042 |
+
+  At 0.7 against the other seats (beside #3's T5 ladder at 1): Random 0.848, +0.290 (0.840,
+  +0.284); Aggressor 0.597, +0.077 (0.593, +0.073); Greedy 0.584, +0.061 (0.580, +0.057). The
+  neutral set at 1 and 0.7: 0.969, +0.241 and 0.971, +0.243 (the system actor's own +0.285).
+  Greedy play cut 1 battle of 2 998 at the step limit (E05 T8b's repetitions gone); no other
+  temperature cut one.
+- **The read:** the sampled policy's spread costs about 0.01 against every opponent (the same
+  sign everywhere, each inside its interval; a cell of 500 battles is ±0.04): a sharper policy
+  reaches 0.428 of the 0.5 target, its value still negative. The gap (0.08) is not the spread:
+  the policy's most likely choices are about as good as its draws, and they lose where the
+  samples lose, defending (the hero battles 0.22 to 0.23, the garrison 0.04 to 0.05, at every
+  temperature). For increment 4: the entropy A/B (`e25-sharp-1`, the user's machine, running)
+  can gain only if a smaller bonus changes what PPO learns, not by sharpening alone; the
+  diagnostic bounds sharpening's share at about +0.01.

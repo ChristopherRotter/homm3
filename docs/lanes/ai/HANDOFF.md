@@ -19,12 +19,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   ten times worse: the user's caveat at T8), in `E25-archive.md`. **`e25-scale-1` #3 the
   current best** (T6, kept at T8; 0.418 against the system actor).
   **Increment 4** (T8, AI-Q12, the user, 2026-11-02): the policy's sharpness and PPO's settings,
-  T9a to T11 in `QUEUE.md`. T9a (`ladder --temperature`) and T10a's entropy schedule
-  (`[ppo] entropy_floor`, `configs/e25-sharp.toml`) built. **Next:** the user's machine: T9b
-  (#3's ladder at temperatures 1, 0.7, 0.5, 0) and `e25-sharp-1` (20 M); then T10a's second
-  lever.
-- **Open pull requests:** this session's (`claude/quirky-dirac-h5xdj2`: T8, T9a, T10a's
-  schedule). Merged: #610 (T7d).
+  T9a to T11 in `QUEUE.md`. T9a (`ladder --temperature`), T10a's entropy schedule
+  (`[ppo] entropy_floor`, `configs/e25-sharp.toml`) and T9b (sharpening gains about 0.01: 0.428
+  at best against the system actor) done. **Next:** `e25-sharp-1` (20 M, running on the user's
+  machine) read into T10b; T10a's second lever waits for the user (the agent: none unless
+  `e25-sharp-1` gains).
+- **Open pull requests:** none; the branch `claude/quirky-dirac-h5xdj2` restarted from `master`
+  after #640 (T8, T9a, T10a's schedule) merged, holds T9b, its pull request opened with
+  `e25-sharp-1`'s read.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -37,13 +39,14 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-11-02 — E25 T8, T9a, T10a (the schedule)
+### 2026-11-02 — E25 T8, T9a, T10a (the schedule), T9b
 
 - #610 merged; the branch started from `master`. T8: the user chose increment 4 (a) and kept #3
   (AI-Q12 answered; increment 3 archived; T9a to T11 queued; the user's caveat on T7c's
   structured networks in `E25-log.md` T8 and the epic's candidates). The sandbox's baseline: the
   light gates (CI verified `master`'s code). T9a and T10a's schedule built (177 Python tests
-  pass); T9b and `e25-sharp-1` wait for the user's machine (or #3's `best.pt` uploaded).
+  pass); #640 merged. T9b on the sandbox's CPU from #3's uploaded `best.pt` (the user runs
+  `e25-sharp-1` meanwhile). **In progress:** waiting for `e25-sharp-1`'s record and metrics.
 
 ### 2026-10-30 — E25 T7d
 

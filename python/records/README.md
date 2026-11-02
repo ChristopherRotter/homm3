@@ -75,6 +75,12 @@ the battles' groups (`h3env.train.inspect`; the findings in `docs/epics/E06-log.
 are the device's: a CPU's differ from the GPU ladder's in a few battles. `t7-1`'s on both
 stratified sets (the sandbox's CPU, 4 threads).
 
+`inspect/e25-scale-1-temperature.json` (E25 T9b): `e25-scale-1` #3's ladder at temperatures
+(`python -m h3env.train.ladder --temperature …`, T9a; the sandbox's CPU, 4 threads): the
+report set against the system actor at 1, 0.7, 0.5 and 0, against the other seats at 0.7, the
+neutral set at 1 and 0.7, each row as a run record's ladder keeps it (`evaluate.compact`); the
+read in `docs/epics/E25-log.md` T9b.
+
 `inspect/battles.py` (E25 T2b, a one-off script like `probe_order.py`): every battle of the
 report set as `inspect` records it, one JSON line each, and the tactics phase's decisions per
 battle (`--summary`); its files stay outside git (7 MB a run), the findings in

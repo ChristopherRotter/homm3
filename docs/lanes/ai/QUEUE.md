@@ -15,24 +15,22 @@ of 128 × 256); the entropy ends at 1.5. A temperature diagnostic without traini
 20 M A/Bs on the 2 × 512 MLP at `e25-scale.toml`'s settings. The faithful system actor still
 trains no agent and no neutral battles train (decision 2); each run's length is agreed with the
 user (decision 5). All on observation v22 and action v13: no encoding or ABI change. T9a (the
-temperature in `Policy.act` and `h3env.train.ladder --temperature`) done 2026-11-02 (`E25-log.md`
-T9a).
+temperature in `Policy.act` and `h3env.train.ladder --temperature`) and T9b (the diagnostic:
+sharpening gains about 0.01, 0.428 at best against the system actor; the defending sides lose at
+every temperature) done 2026-11-02 (`E25-log.md` T9a, T9b).
 
-- **T9b The diagnostic.** *Scope:* `e25-scale-1` #3 on the report set v1 against the system actor
-  at 1, 0.7, 0.5 and 0; at the best one also Random, Aggressor, Greedy and the neutral set. On
-  the user's machine (`uv run --group train python -m h3env.train.ladder --checkpoint
-  runs/e25-scale-1/best.pt --opponents system --temperature 1,0.7,0.5,0 --device cuda --json
-  …`), or on the sandbox's CPU if the user uploads its `best.pt` (23.8 MB). Read into
-  `E25-log.md` T9b: how much of the gap to 0.5 the spread is, per kind and side. *Depends on:*
-  T9a (done); the user (the run or the upload). *Status:* next.
 - **T10a The second lever.** *Scope:* the second A/B's config, fewer epochs or a larger rollout,
-  proposed from T9b's read and the records' KL and clip fraction (`E25-log.md` T8), agreed with
-  the user; its test beside `e25-sharp.toml`'s in `test_run.py`. (The entropy's schedule,
-  `[ppo] entropy_floor`, and `configs/e25-sharp.toml` done 2026-11-02, `E25-log.md` T10a.)
-  *Depends on:* T9b. *Status:* open.
+  agreed with the user; its test beside `e25-sharp.toml`'s in `test_run.py`. (The entropy's
+  schedule, `[ppo] entropy_floor`, and `configs/e25-sharp.toml` done 2026-11-02, `E25-log.md`
+  T10a.) **The agent's proposal** (T9b, put to the user 2026-11-02): no second A/B unless
+  `e25-sharp-1` gains, since T9b bounds sharpening at about +0.01 and the runs' KL (0.013 to
+  0.007 an update) and clip fraction (0.17 to 0.09) show no unstable update; else the larger
+  rollout (256 steps). *Depends on:* T9b (done), `e25-sharp-1`'s read; the user. *Status:*
+  waits for the user.
 - **T10b The A/Bs.** *Scope:* both runs on the user's machine, about 75 minutes each at 20 M
   (`e25-sharp-1` ready: `uv run --group train python -m h3env.train --config
-  configs/e25-sharp.toml --out runs/e25-sharp-1`; the user may start it with T9b); their
+  configs/e25-sharp.toml --out runs/e25-sharp-1`; running on the user's machine since
+  2026-11-02); their
   records and metrics read into `E25-log.md` beside `e25-scale-1` #3's, `e25-bound-1`'s and
   `e25-wide-1`'s ladders; the head-to-head gate against #3 (`h3env.train.gate --candidate
   … --best runs/e25-scale-1/best.pt --device cuda`). *Depends on:* T10a (the second run); the

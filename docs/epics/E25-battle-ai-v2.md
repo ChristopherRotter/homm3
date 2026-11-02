@@ -124,10 +124,10 @@ settings. Decision 1's rules unchanged: the sampled policy is judged, only train
   divided by a temperature (1 the default, bit-identical; 0 the most likely choice), through
   `evaluate.ladder` and `h3env.train.ladder --temperature 1,0.7,0.5,0` (a line per temperature
   and opponent, the same episodes and draws); training untouched.
-- [ ] **T9b The diagnostic** (the user's machine, or the sandbox's CPU from an uploaded
-  `best.pt`): `e25-scale-1` #3 on the report set v1 at 1, 0.7, 0.5 and 0 against the system
-  actor, the other seats and the neutral set at the best one. How much of the gap to 0.5 is the
-  spread.
+- [x] **T9b The diagnostic** (2026-11-02; `E25-log.md` T9b): `e25-scale-1` #3 at temperatures 1,
+  0.7, 0.5, 0: 0.418, 0.428, 0.428, 0.425 against the system actor, +0.002 to +0.010 against
+  every other seat at 0.7, all inside the intervals. The spread costs about 0.01 of the 0.08 gap;
+  the defending sides lose at every temperature.
 - [ ] **T10a The entropy's schedule and the second lever** (the sandbox): `[ppo] entropy_floor`
   (the bonus falling with the learning rate's progress to that fraction of `entropy_coef`; 1 the
   default, every run before) and `configs/e25-sharp.toml` (the bonus to 0 at 20 M) done
