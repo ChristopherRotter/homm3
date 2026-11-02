@@ -164,3 +164,23 @@ the checkpoint (`TWN-Q2`).
   `town_gold_income` and `town_silo_income` read whole; `tile_click_path` amended (its right
   button).
 - **Content:** none new; the silo's table is a constant of the executable (increment 4).
+
+### T1b2b — the checkpoint of increment 1's survey (2026-11-02)
+
+One session, the user present; branch `town/e09-t1b2b`, docs only. Starting point: `master` at
+b6c6020c (#649 merged). The queue's list and survey §13's asked interactively (`TWN-Q2`, three
+rounds of `AskUserQuestion`, a recommendation each); the record is `QUESTIONS-ANSWERED.md`.
+
+- **Decisions 8 to 16** (the epic): the random hero in increment 1 (8); the starting-hero pick in
+  the setup as the original's offer and use, reserved before any draw (9); the Resource Silo paid
+  from increment 1 (10); the views by the original's levels (11); T-1 to T-5 as proposed (12);
+  TD-1, TD-4, TD-6 by the reading, TD-3, TD-5, TD-7 by the reading with the batch (13); TD-2 by
+  the enabled expansions (14: the user's own answer, E08 decision 104 applied; a third round asked
+  the player's side, Conflux only with all eight allowed, and dropped row 5); batch TWN-1's rows 1
+  to 4 (15: rows 6 and 7 dropped by the user over the recommendation, row 5 by decision 14);
+  the allied town entered, never captured, the ally's defence a stub until E10 (16).
+- **Survey** `E09-towns.md`: §14 (each open point and its decision), finding 28, rows 5 to 7
+  struck in §13's table. The epic's scope bullets and T2's and T3's lines follow the answers; the
+  queue's T2 entry rewritten with them (a seam to offer: the ADR drafts first).
+- **The adventure lane's inbox:** the random hero and the starting-hero pick are built by the
+  town lane in increment 1, `cross-lane` in its import and setup.
