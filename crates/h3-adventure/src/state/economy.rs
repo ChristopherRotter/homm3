@@ -49,7 +49,9 @@ pub(crate) fn allied(a: PlayerId, b: PlayerId) -> bool {
     a == b
 }
 
-/// The kind of the object at `index` of `map`, if it has a type.
+/// The kind of the object at `index` of `map`, if it has a type: none for an object added in
+/// play, a monster and never an ownable or weekly object (E08 T85a's audit), so the owned and
+/// weekly objects' reads by index stay the static map's.
 pub(super) fn kind_at<'p>(
     part: &'p AdventureRuleset,
     map: &StaticMap,

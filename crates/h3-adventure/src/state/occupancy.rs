@@ -1,8 +1,8 @@
 //! Per-object state and the live presence (ADR-0016 point 1, E08 T12b; E08 T83b2a, increment 9's
 //! design note §6): which objects have left the map, which tiles the static map marks blocked or
 //! visitable that no object still on the map covers so any more ([`Occupancy`]), and the objects
-//! added in play (a creature month's monsters, T85a's `start_month`), after the static map's in map order
-//! ([`Added`]). Persistent grids ([`BitGrid`]), so a fork shares them and a removal copies a leaf
+//! added in play (a creature month's monsters, T85a's `start_month`), after the static map's in
+//! map order ([`Added`]). Persistent grids ([`BitGrid`]), so a fork shares them and a removal copies a leaf
 //! or two; the static map keeps every footprint. The state holds an occupancy only once an
 //! object has left the map, and the added objects only once one was added, so a map without
 //! either pays one test where it reads them (`bench-check`). Objects leave the map by T13's

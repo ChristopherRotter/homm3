@@ -1003,10 +1003,10 @@ impl CanonicalHash for Pos {
 }
 
 /// What a player's step onto an object's visitable tile meets (ADV-OBJ-003): the object, by index
-/// in the static map, its type, the tile it is visited from, how it is visited, whether the player
-/// passes it instead (a border gate whose key it holds, ADV-VIS-005: the step does not visit, the
-/// tile is crossed like any other), whether it may be from above (ADV-OBJ-004) and what the visit
-/// does.
+/// (the static map's or, after them, one added in play), its type, the tile it is visited from,
+/// how it is visited, whether the player passes it instead (a border gate whose key it holds,
+/// ADV-VIS-005: the step does not visit, the tile is crossed like any other), whether it may be
+/// from above (ADV-OBJ-004) and what the visit does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct StepVisit<'p> {
     pub(crate) object: usize,
@@ -1097,8 +1097,8 @@ pub struct AdventureState {
     occupancy: Option<Arc<Occupancy>>,
     /// The objects added in play, after the static map's in map order, with the grids of their
     /// tiles (E08 T83b2a; increment 9's design note §6): none until one is added (a creature
-    /// month's, [`Self::start_month`], T85a), so a read that asks for them costs one test and a fork nothing more before
-    /// (`bench-check`), then one block the forks share.
+    /// month's, [`Self::start_month`], T85a), so a read that asks for them costs one test and a
+    /// fork nothing more before (`bench-check`), then one block the forks share.
     added: Option<Arc<Added>>,
     /// The per-player state of object types (ADR-0016 point 1): the Cartographer types bought
     /// (ADV-VIS-001, E08 T14b) and the keys held (ADV-VIS-003, T15a), as the original's flags.
@@ -1130,12 +1130,13 @@ pub struct AdventureState {
     owners: Option<Arc<[Option<PlayerId>]>>,
     /// The weekly objects' contents and marks by their place among the static map's weekly
     /// objects (ADV-WEK-001 to -003, E08 T83b1): none for a map without weekly objects, else one
-    /// block the forks share, which a visit or the week's step copies (T84b1, [`Self::start_week`]).
+    /// block the forks share, which a visit or the week's step copies (T84b1,
+    /// [`Self::start_week`]).
     weekly: Option<Arc<[Weekly]>>,
     /// Each wandering monster's fraction of a creature (its sixteenths, the monsters' growth unit;
     /// ADV-MON-013, E08 T83b2a; increment 9's design note §6), by object index, none for 0: what
-    /// the week's growth leaves below a whole creature ([`Self::start_week`], T85a). A persistent table, as
-    /// [`Self::army_left`]: empty, a fork copies nothing.
+    /// the week's growth leaves below a whole creature ([`Self::start_week`], T85a). A persistent
+    /// table, as [`Self::army_left`]: empty, a fork copies nothing.
     fractions: Table<u8>,
 }
 
@@ -1623,13 +1624,13 @@ impl AdventureState {
         })
     }
 
-    /// The monster that guards `pos`, by index in the static map, if one does (ADV-MON-005, E08
-    /// T20a2b; survey `E08-battles.md` §2.1, the original's 0x41A460): the 3 × 3 block around
-    /// `pos` on its level, clipped to the map, column by column from the left and each column
-    /// from the top, leaving out the row above when `pos`'s object is not visited from above
-    /// (ADV-OBJ-004); the first tile whose object (the last still on the map visited from it,
-    /// ADV-OBJ-003) is a monster, on water if and only if `pos` is. Computed from the static map
-    /// and the objects that left it, so a removed monster guards nothing.
+    /// The monster that guards `pos`, by object index (an added one's too), if one does
+    /// (ADV-MON-005, E08 T20a2b; survey `E08-battles.md` §2.1, the original's 0x41A460): the 3 × 3
+    /// block around `pos` on its level, clipped to the map, column by column from the left and
+    /// each column from the top, leaving out the row above when `pos`'s object is not visited
+    /// from above (ADV-OBJ-004); the first tile whose object (the last still on the map visited
+    /// from it, ADV-OBJ-003) is a monster, on water if and only if `pos` is. Computed from the
+    /// live presence, so a removed monster guards nothing and an added one guards as a placed one.
     // rule: ADV-MON-005
     pub fn guard_of(&self, part: &AdventureRuleset, pos: Pos) -> Option<usize> {
         self.guard_at(part, pos).map(|(index, _)| index)
@@ -1784,7 +1785,8 @@ impl AdventureState {
     /// draw list from the top, 0x4FCE20). Since E08 T54 also the attacking hero's own tile's
     /// (GAM-BAT-013: the original's computer values a hero's spells at its own tile's mastery,
     /// `tile_spell_field` 0x4FCF40, which names only the grounds that raise masteries; the others
-    /// raise none, so the battle values them alike).
+    /// raise none, so the battle values them alike). The static map's objects only: no object
+    /// added in play is a ground (E08 T85a's audit).
     // rule: ADV-GRD-001, GAM-BAT-013
     pub fn special_ground(&self, part: &AdventureRuleset, pos: Pos) -> Option<ContentKey> {
         self.map.objects().iter().rev().find_map(|object| {
@@ -1831,7 +1833,9 @@ impl AdventureState {
     /// blocking it; a tile without any records [`Scenery::Other`]. Heroes are no objects here, as
     /// they take no tile in the original. One pass over the objects, whose masks reach at most
     /// [`TileMask::COLUMNS`] − 1 columns left of and [`TileMask::ROWS`] − 1 rows above their
-    /// anchors.
+    /// anchors. The static map's objects only (E08 T85a's audit, increment 9's design note §19):
+    /// an object added in play is a monster on a tile no other object still on the map covers
+    /// (ADV-MON-014) and records [`Scenery::Other`], as the tile records without it.
     fn tile_sceneries(&self, pos: Pos) -> impl Iterator<Item = Scenery> {
         const SIDE: usize = 2 * BACKGROUND_RADIUS as usize + 1;
         // Per tile of the square, the walk that took it (1 visited from, 2 an ownable object

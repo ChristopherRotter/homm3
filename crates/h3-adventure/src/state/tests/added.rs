@@ -10,8 +10,9 @@ use h3_kernel::hash::hash_of;
 
 use super::*;
 use crate::command::{AdventureCommand, AdventureEvent};
+use crate::command::{Offer, OfferKind};
 use crate::testing::{
-    FLYING, GUARD, PEASANT, army, hero_at, hero_details, hero_rules, started, world,
+    FLYING, GUARD, MONSTER, PEASANT, army, hero_at, hero_details, hero_rules, started, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -160,6 +161,44 @@ fn an_added_monster_reads_as_a_placed_one() {
     );
     assert!(added.check_added(&rules.1));
     assert!(placed.check_added(&rules.1));
+}
+
+// covers: ADV-MON-007, ADV-MON-008
+#[test]
+fn an_added_monsters_offers_stand_as_a_placed_ones() {
+    // E08 T85a's audit (design §19): an offer names its monster by type and anchor, found among
+    // the objects added in play too, so a creature month's monster's offers stand, are declined
+    // and accepted as the placed one's.
+    let rules = hero_rules(true);
+    let offer = |kind| Offer {
+        hero: HERO,
+        object_type: MONSTER,
+        anchor: p(4, 2),
+        kind,
+    };
+    let rules3 = (&rules.0, &rules.1, &[][..]);
+    // Declined: a join's decline asks the monster again (a fight or its offer to flee), a
+    // flight's lets it leave the map.
+    for kind in [OfferKind::Join, OfferKind::Pursue] {
+        let (mut placed, mut added) = twins(&rules);
+        assert!(added.offer_stands(&offer(kind.clone())));
+        let mut declined = |s: &mut AdventureState| {
+            let mut events = Vec::new();
+            let outcome = s.decline_offer(rules3, &offer(kind.clone()), &mut events);
+            (outcome, events, s.observe(&rules.0, &rules.1, RED))
+        };
+        assert_eq!(declined(&mut added), declined(&mut placed));
+    }
+    // Accepted: the group joins the hero and leaves the map.
+    let (mut placed, mut added) = twins(&rules);
+    let accepted = |s: &mut AdventureState| {
+        let mut events = Vec::new();
+        let outcome = s.accept_offer(rules3, RED, &offer(OfferKind::Join), &mut events);
+        (outcome, events, s.observe(&rules.0, &rules.1, RED))
+    };
+    assert_eq!(accepted(&mut added), accepted(&mut placed));
+    assert!(added.is_removed(1));
+    assert!(!added.offer_stands(&offer(OfferKind::Join)));
 }
 
 // covers: ADV-MON-006, ADV-MON-009, ADV-MON-010

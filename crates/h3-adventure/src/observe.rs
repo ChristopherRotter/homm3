@@ -487,7 +487,8 @@ impl AdventureState {
     }
 
     /// The objects `hero` holds the once-per-hero mark of, by type and anchor in the map's order
-    /// ([`OwnHeroView::marks`]); none without the visits' block.
+    /// ([`OwnHeroView::marks`]); none without the visits' block. The static map's objects only: a
+    /// monster, the only object added in play, takes no mark (E08 T85a's audit).
     fn marks_of(&self, hero: HeroId) -> Vec<(ObjectTypeId, Pos)> {
         let Some(visits) = self.visits() else {
             return Vec::new();
@@ -504,6 +505,7 @@ impl AdventureState {
     /// What `viewer` learned of the objects still on the map by its own visits (ADV-VIS-006,
     /// [`AdventureObservation::known`]): a Shrine's spell, a Witch Hut's skill, a gift's drawn
     /// price, a University's skills, whether a find is emptied; none without the visits' block.
+    /// The static map's objects only: a visit teaches nothing of a monster (E08 T85a's audit).
     // rule: ADV-VIS-006
     fn known_by(&self, part: &AdventureRuleset, viewer: PlayerId) -> Vec<KnownObject> {
         if self.visits().is_none() {
