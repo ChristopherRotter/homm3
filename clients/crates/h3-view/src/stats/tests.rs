@@ -586,6 +586,8 @@ fn the_popup_takes_its_ends_and_lets_a_held_ok_go_in_the_clients_profile() {
     m.popup = Some(popup());
     assert!(m.held_input(false, Some("Return"), false));
     assert!(m.popup.is_some());
+    // Another key's release, nothing held: nothing changes.
+    assert!(!m.held_input(false, Some("Escape"), false));
     assert_eq!(m.key_up("Return"), Outcome::Nothing);
     // The left release that ends it lets the OK the mouse holds go.
     assert_eq!(m.press(ok), Outcome::Changed);

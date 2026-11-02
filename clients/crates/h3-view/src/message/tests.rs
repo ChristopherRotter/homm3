@@ -525,12 +525,7 @@ fn a_popup_has_no_buttons_and_a_narrower_least_box() {
     // 128 x 128 (16 + 60 = 76, rounded up to 128), centred.
     assert_eq!(m.dialog.shadow, Some([128, 128]));
     assert_eq!(m.dialog.place, [336, 236]);
-    assert!(
-        !m.dialog
-            .items
-            .iter()
-            .any(|i| matches!(i, h3_ui::ui::Item::Button(_)))
-    );
+    assert!(!m.dialog.items.iter().any(|i| matches!(i, Item::Button(_))));
     // The text centred in the height left by no buttons: 30 + (128 - 76) / 2.
     assert_eq!(label(&m, TEXT).at[1], 56);
 }
