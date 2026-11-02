@@ -24,6 +24,7 @@ SEATS = {
     "aggressor": _ffi.SEAT_AGGRESSOR,
     "greedy": _ffi.SEAT_GREEDY,
     "system": _ffi.SEAT_SYSTEM,
+    "system-all-seeing": _ffi.SEAT_SYSTEM_ALL_SEEING,
 }
 
 
@@ -254,8 +255,9 @@ class BattleBatch:
         """Adds a scenario's text (the format of `packs/synthetic/scenarios/`) with its seats.
 
         Seats: `"external"` (the caller acts), `"aggressor"` or `"greedy"` (the baseline bots inside
-        the call, v30), `"system"` (the system actor, the original's computer, v32) or `"random"`
-        (uniformly random legal commands inside the call; tests); at least one external. Every side
+        the call, v30), `"system"` (the system actor, the original's computer, v32; the fair one
+        since v36), `"system-all-seeing"` (the all-seeing one, v36) or `"random"` (uniformly random
+        legal commands inside the call; tests); at least one external. Every side
         plays as a human player's whatever the scenario says (ADR-0025 point 6).
         """
         text = toml.encode("utf-8") if isinstance(toml, str) else toml

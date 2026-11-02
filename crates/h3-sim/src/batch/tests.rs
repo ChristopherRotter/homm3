@@ -35,6 +35,7 @@ fn scenario(text: &str, weight: u32, seats: [Seat; 2]) -> Scenario {
 const EXTERNAL: [Seat; 2] = [Seat::External, Seat::External];
 const RANDOM: Seat = Seat::Internal(Policy::Random);
 const SYSTEM: Seat = Seat::Internal(Policy::System);
+const ALL_SEEING: Seat = Seat::Internal(Policy::SystemAllSeeing);
 
 /// The output arrays of a batch of `n` envs.
 struct Arrays {
@@ -1033,16 +1034,19 @@ proptest! {
         max_steps in prop::sample::select(vec![0u32, 3, 40]),
         currency in prop::sample::select(vec![Currency::AiValue, Currency::Gold]),
         mana_price in 0u32..30,
-        picks in prop::collection::vec((0usize..4, 1u32..4, 0usize..5), 1..4),
+        picks in prop::collection::vec((0usize..4, 1u32..4, 0usize..7), 1..4),
         play in any::<u64>(),
     ) {
-        // The system actor (E06 T7) on either side, a hero's included: its commands always apply.
+        // The system actors (E06 T7; E25 T14: the fair one and the all-seeing one) on either
+        // side, a hero's included: their commands always apply.
         let seats = [
             EXTERNAL,
             [Seat::External, RANDOM],
             [RANDOM, Seat::External],
             [Seat::External, SYSTEM],
             [SYSTEM, Seat::External],
+            [Seat::External, ALL_SEEING],
+            [ALL_SEEING, Seat::External],
         ];
         let scenarios = picks
             .iter()
@@ -1052,6 +1056,42 @@ proptest! {
         let config = BatchConfig { envs, threads, seed, max_steps, reward };
         same_as_single_envs(config, scenarios, 40, play);
     }
+}
+
+/// E25 T14 (AI-Q14): [`Policy::System`] plays the fair system actor
+/// ([`h3_battle_ai::choose_fair`]) and [`Policy::SystemAllSeeing`] the all-seeing one
+/// ([`h3_battle_ai::choose`]), decision by decision, on the hero kind's encounters, where the two
+/// differ (the other side's hero's private part is hidden from the fair one).
+#[test]
+fn the_system_seats_play_their_named_actor() {
+    let sampler = crate::encounter::tests::SAMPLER
+        .clone()
+        .with_weights([0, 0, 1, 0, 0, 0]);
+    let encounters = Scenario::encounters(Arc::new(sampler.unwrap()), 1, None).unwrap();
+    let mut legal = LegalCommands::new();
+    let (mut decisions, mut differ) = (0, 0);
+    for seed in 0..40 {
+        let mut env = encounters.episode(seed, 0).unwrap().env;
+        let mut rng = Rng::for_stream(seed, StreamId::AGENT);
+        for _ in 0..60 {
+            let Some(side) = env.to_move() else { break };
+            let fair =
+                h3_battle_ai::choose_fair(env.state(), env.ruleset(), side, &mut rng.clone());
+            let all = h3_battle_ai::choose(env.state(), env.ruleset(), side, &mut rng.clone());
+            let system = Policy::System.choose(&env, side, &mut rng.clone(), &mut legal);
+            let all_seeing =
+                Policy::SystemAllSeeing.choose(&env, side, &mut rng.clone(), &mut legal);
+            assert_eq!((system, all_seeing), (fair, all), "seed {seed}");
+            decisions += 1;
+            differ += usize::from(fair != all);
+            let command = Policy::System.choose(&env, side, &mut rng, &mut legal);
+            rollout::step_command(&mut env, side, command).unwrap();
+        }
+        if differ > 0 && seed >= 3 {
+            break;
+        }
+    }
+    assert!(differ > 0, "{decisions} decisions, none differ");
 }
 
 /// E05 T5b2: the encounter distribution as an episode source, mixed with a fixed scenario: the

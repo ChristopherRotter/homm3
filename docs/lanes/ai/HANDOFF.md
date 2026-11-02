@@ -17,14 +17,20 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   scale; the network's architecture; the policy's sharpness), in `E25-archive.md`; every lever
   ends at 0.41 to 0.43 against the system actor. **`e25-sharp-1` #2 the current best** (T11,
   AI-Q13; 0.422 against the system actor; T12: 0.523 head to head against `e25-scale-1` #3).
-  **Increment 5** is built around the battle lane's fair system actor v1 (landed 2026-11-02,
-  E26, #647; the AI queue's inbox). **Next:** T13, increment 5's refinement, with the user.
-- **Open pull requests:** #646 (`claude/quirky-dirac-h5xdj2`: T9b to T12). Merged: #640 (T8,
-  T9a, T10a).
+  **Increment 5** (refined at T13, AI-Q14): the battle lane's fair system actor (E26, #647)
+  becomes `system` everywhere, the all-seeing one `system-all-seeing` beside it (the target stays
+  the all-seeing one); the neutral kinds back in training with the fair defender; a warm start by
+  cloning it. **T14 done** (the switch, C ABI v36: the fair actor 0.500 against the all-seeing
+  one, the neutral target stays +0.285). **T15 done:** `e25-sharp-1` #2 0.424 against the fair
+  actor, 0.425 against the all-seeing one, the neutral set +0.245 (target +0.285). **Next:** T16
+  (the cloning bench, sandbox; its length agreed with the user), then T17's A/B on the user's
+  machine.
+- **Open pull requests:** #651 (`claude/relaxed-ptolemy-eyjild`: T13 to T15). Merged:
+  #640 (T8, T9a, T10a), #646 (T9b to T12).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
-  (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
-  a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q14, AI-QUIRK-1, AI-STUB-2.
+  (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v36 (E25 T14: the fair
+  system actor in seat 4, the all-seeing one in seat 5) (`docs/08-work-process.md`, "Versions"). Next
+  ids: AI-Q15, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -32,6 +38,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-02 — E25 T13
+
+- #646 merged; the branch started from `master`. T13 with the user (AI-Q14): increment 5's
+  decisions and tasks T14 to T18 in the epic and the queue (`E25-log.md` T13). Found: the
+  adventure env has no system actor to switch (its neutral seat is the caller's; E13's). T14
+  built in the sandbox (the bots' tables regenerated, the neutral bench re-baselined); the
+  setup's full baseline verify was stopped (CI is the record), the scoped verify ran instead.
+  T15 on the uploaded `best.pt` (sandbox CPU, 3 minutes).
 
 ### 2026-11-02 — E25 T8 to T12
 
@@ -49,10 +64,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   and uploaded its record and metrics: committed and read (`E25-log.md` T7d). Its `best.pt`
   (49.5 MB) is above the upload limit (`TRAPS.md`, Python), so `battles.py` was not run; T8's
   question AI-Q12 written. The sandbox's baseline: the light gates (CI verified the code).
-
-### 2026-10-30 — E25 T7c
-
-- #585 merged; the branch restarted from `master`. The user ran the distillation bench (4 M
-  samples, GTX 1070) and uploaded its report and metrics: committed and read (`E25-log.md` T7c).
-  The user: T7d is the wide MLP alone, from scratch at 20 M (`configs/e25-wide.toml`, its test in
-  `test_run.py`). The bench's students stay on the user's machine (`runs/distill-1/students/`).

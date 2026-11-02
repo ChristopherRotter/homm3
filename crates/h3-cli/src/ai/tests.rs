@@ -536,7 +536,7 @@ fn the_report_set_is_stratified_by_kind() {
     main(&words(&[&run[..], &["--json", path]].concat())).unwrap();
     let written = std::fs::read_to_string(&out).unwrap();
     std::fs::remove_file(&out).unwrap();
-    assert!(written.starts_with("{\n  \"schema\": 2,") && written.contains("\"greedy\""));
+    assert!(written.starts_with("{\n  \"schema\": 3,") && written.contains("\"greedy\""));
     let nowhere = [&run[..], &["--json", "/nonexistent/dir/table.json"]].concat();
     assert!(main(&words(&nowhere)).is_err());
 }

@@ -54,6 +54,13 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-11-02 (the town lane, E09 T1b2b, `TWN-Q2`; **nothing to build, for your import and
+  setup**): E09's increment 1 builds **the random hero** (class 70, drawn as the main town's hero;
+  E09 decision 8) and **the starting-hero pick per colour in the setup** beside the faction
+  (decision 9), `cross-lane` in your import and setup, merged in order with yours; leave both to
+  it (your 2026-10-20 note's 18 random heroes with a custom experience come with it). An allied
+  town is entered and never captured (decision 16), as your owned objects' team test.
+
 - 2026-11-02 (the battle lane, E26 T5; for your information, nothing to do now): the fair
   system actor `h3_battle_ai::choose_fair` (ADR-0027 point 4 as amended) is to be the computer's
   default battle policy everywhere, the all-seeing `choose` a game's option, "player option too"
