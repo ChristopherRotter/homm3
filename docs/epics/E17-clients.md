@@ -151,9 +151,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   only; `drawn` all the same.
 - **T2, a stack's info** (cut in three by the user, 2026-11-02): **T2a1** (done 2026-11-02) the
   stats dialog read (0x5F3360, design §12.1) and drawn, four stills exact against the original
-  but the panel's line over a Faerie Dragon (CLT-Q36 to Q38 asked); **T2a2** the dialog in the
-  window (its input, hints, cast button; hot seat and a server); **T2b** the right button's popup
-  (0x4769C0) and a turret's info (0x47A380); recorded.
+  but the panel's line over a Faerie Dragon (CLT-Q36 to Q38 asked, answered 2026-11-02); T2a2
+  cut in two by the user (2026-11-02): **T2a2a** the dialog in the window (its OK, keys, hints
+  and cursor; hot seat and a server), **T2a2b** its right button's descriptions and its cast
+  button; **T2b** the right button's popup (0x4769C0) and a turret's info (0x47A380); recorded.
 - **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
   battlefield's other items; recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
