@@ -55,12 +55,15 @@ actor against each other on the report set v1, every ordered pair on its 1 500 b
 and side the games, wins, truncations and mean rewards, per pair the overall win rate with its
 95 % interval and the value efficiency, the Glicko-2 ratings, and the engine's identity (the
 encounter distribution's version, the rulesets' content hashes, the system actor's policy
-version). `bots-neutral-v1.json` (E06 T7c; design §12): the same four, each attacking the system
-actor on the neutral set v1's 1 500 battles (the attacker's rates alone, no ratings; `defender`
-names the fixed seat). Both are `h3 ai eval --json`'s schema 2 and a function of the engine;
-`tests/test_evaluate.py` checks their strata, their identity against the engine's and their
-rates. Regenerate both when the bots, the system actor's policy (`POLICY_VERSION`) or the rules
-move (from the repository's root, in release about 85 s and 15 s):
+version). Since E25 T14 (AI-Q14, schema 3) `system` is the fair system actor and
+`system-all-seeing` the original that reads the whole state; a table of schema 2 names the
+all-seeing one `system`. `bots-neutral-v1.json` (E06 T7c; design §12): the same policies, each
+attacking the system actor (the fair one since E25 T14) on the neutral set v1's 1 500 battles
+(the attacker's rates alone, no ratings; `defender` names the fixed seat). Both are `h3 ai eval
+--json`'s schema 3 and a function of the engine; `tests/test_evaluate.py` checks their strata,
+their identity against the engine's and their rates. Regenerate both when the bots, the system
+actor's policy (`POLICY_VERSION`, or the fair one's world: `h3-battle`'s `world.rs`) or the rules
+move (from the repository's root, in release about 85 s and 15 s before E25 T14):
 
 ```sh
 cargo run --release -p h3-cli -- ai eval --set report-v1 --json python/records/bots-report-v1.json

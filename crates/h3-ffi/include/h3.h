@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 35 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 36 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -13,7 +13,8 @@
  * env's battle with everything one side may not know replaced (a guess, a fresh stream); a world's
  * forks, steps and h3_env_reseed are that agent's to use. v35 (E25 T1a): a world scores a decided
  * battle by its batch's reward v1, the scale of a value trained on the batch; h3_batch_true_world
- * (E25 T1b) is trusted tooling, a diagnostic's world with nothing guessed.
+ * (E25 T1b) is trusted tooling, a diagnostic's world with nothing guessed. v36 (E25 T14):
+ * H3_SEAT_SYSTEM is the fair system actor, H3_SEAT_SYSTEM_ALL_SEEING the all-seeing one.
  */
 #ifndef H3_H
 #define H3_H
@@ -112,7 +113,10 @@ uint64_t h3_env_state_hash(const H3Env *env); /* trusted tooling: the full state
 #define H3_SEAT_AGGRESSOR 2 /* v30: the baseline bot Aggressor inside the call (E05 T7) */
 #define H3_SEAT_GREEDY 3    /* v30: the baseline bot Greedy inside the call (E05 T7) */
 #define H3_SEAT_SYSTEM 4    /* v32: the system actor, the original's computer, inside the call
-                              (E06 T7); a neutral kind's defender in the encounter distribution */
+                              (E06 T7); a neutral kind's defender in the encounter distribution;
+                              since v36 (E25 T14) the fair one, on its side's world (E26) */
+#define H3_SEAT_SYSTEM_ALL_SEEING 5 /* v36: the all-seeing system actor (seat 4 until v35), the
+                                       original's computer on the battle: E25's target */
 /* The encounter distribution's kinds (v28): H3BatchBuffers.encounter and the weights of
  * h3_batch_add_encounters, in this order. */
 #define H3_ENCOUNTER_NONE (-1)          /* the episode's scenario is no encounter distribution */

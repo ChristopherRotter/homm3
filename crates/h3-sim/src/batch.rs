@@ -65,10 +65,16 @@ pub enum Policy {
     Aggressor,
     /// The baseline bot [`bots::greedy`] (E05 T7): the most valuable previewed kills first.
     Greedy,
-    /// The system actor (E06 T7): the original's computer, [`h3_battle_ai::choose`] (ADR-0027),
-    /// which reads the whole state as a trusted host does and plays its side as the computer's
-    /// whatever `human` says. The neutral kinds' defender (A12).
+    /// The system actor (E06 T7; fair since E25 T14, AI-Q14): the original's computer on its
+    /// side's world, [`h3_battle_ai::choose_fair`] (ADR-0027 point 4 as amended, E26), which
+    /// reads nothing its side may not know, so it may train an agent (E25 decision 2). It plays
+    /// its side as the computer's whatever `human` says. The neutral kinds' defender (A12).
     System,
+    /// The all-seeing system actor (E25 T14): the original's computer on the battle,
+    /// [`h3_battle_ai::choose`] (ADR-0027), which reads the whole state as a trusted host does.
+    /// E25's target (decision 1) and a ladder opponent; it trains no agent (ADR-0026 point 8 as
+    /// amended).
+    SystemAllSeeing,
 }
 
 impl Policy {
@@ -84,7 +90,8 @@ impl Policy {
             Self::Random => rollout::pick(env, side, rng, legal),
             Self::Aggressor => bots::aggressor(env.state(), env.ruleset(), side, legal),
             Self::Greedy => bots::greedy(env.state(), env.ruleset(), side, legal),
-            Self::System => h3_battle_ai::choose(env.state(), env.ruleset(), side, rng),
+            Self::System => h3_battle_ai::choose_fair(env.state(), env.ruleset(), side, rng),
+            Self::SystemAllSeeing => h3_battle_ai::choose(env.state(), env.ruleset(), side, rng),
         }
     }
 }

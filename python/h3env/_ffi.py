@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 
 #: The C ABI version this binding speaks (`h3_abi_version()`).
-ABI_VERSION = 35
+ABI_VERSION = 36
 
 #: The most envs a batch holds (`H3_BATCH_MAX_ENVS`, v31): the engine refuses more.
 BATCH_MAX_ENVS = 1 << 16
@@ -68,8 +68,12 @@ SEAT_RANDOM = 1
 SEAT_AGGRESSOR = 2
 SEAT_GREEDY = 3
 #: The system actor inside the call, the original's computer (v32, E06 T7); a neutral kind's
-#: defender in the encounter distribution.
+#: defender in the encounter distribution. Since v36 (E25 T14, AI-Q14) the fair one, on its side's
+#: world (`h3_battle_ai::choose_fair`, E26).
 SEAT_SYSTEM = 4
+#: The all-seeing system actor inside the call (v36; seat 4 until v35): the original's computer on
+#: the battle, reading the whole state. E25's target; it trains no agent.
+SEAT_SYSTEM_ALL_SEEING = 5
 
 ENCOUNTER_NONE = -1
 ENCOUNTER_WANDERING = 0

@@ -33,9 +33,14 @@ pub const H3_SEAT_RANDOM: i32 = 1;
 pub const H3_SEAT_AGGRESSOR: i32 = 2;
 /// `H3Seats`: the baseline bot Greedy inside the call (v30, E05 T7; `h3_sim::bots`).
 pub const H3_SEAT_GREEDY: i32 = 3;
-/// `H3Seats`: the system actor inside the call, the original's computer (v32, E06 T7;
-/// `h3_battle_ai::choose`); an encounter of a neutral kind has it as its defender.
+/// `H3Seats`: the system actor inside the call, the original's computer (v32, E06 T7); since v36
+/// (E25 T14) the fair one on its side's world (`h3_battle_ai::choose_fair`); an encounter of a
+/// neutral kind has it as its defender.
 pub const H3_SEAT_SYSTEM: i32 = 4;
+/// `H3Seats`: the all-seeing system actor inside the call, the original's computer on the battle
+/// (v36, E25 T14; `h3_battle_ai::choose`, `H3_SEAT_SYSTEM` until v35): E25's target, it trains no
+/// agent.
+pub const H3_SEAT_SYSTEM_ALL_SEEING: i32 = 5;
 
 /// `H3BatchBuffers.encounter`: the env's scenario is no encounter distribution.
 pub const H3_ENCOUNTER_NONE: i32 = -1;
@@ -189,6 +194,7 @@ fn seat(code: i32) -> Option<Seat> {
         H3_SEAT_AGGRESSOR => Some(Seat::Internal(Policy::Aggressor)),
         H3_SEAT_GREEDY => Some(Seat::Internal(Policy::Greedy)),
         H3_SEAT_SYSTEM => Some(Seat::Internal(Policy::System)),
+        H3_SEAT_SYSTEM_ALL_SEEING => Some(Seat::Internal(Policy::SystemAllSeeing)),
         _ => None,
     }
 }
@@ -787,8 +793,9 @@ pub extern "C" fn h3_encounters_version() -> u32 {
     ENCOUNTERS_VERSION
 }
 
-/// The behaviour version of the system actor's policy, `H3_SEAT_SYSTEM`
-/// (`h3_sim::SYSTEM_POLICY_VERSION`, ADR-0027 point 12; v32): a training run's record names it.
+/// The behaviour version of the system actor's policy, `H3_SEAT_SYSTEM` and (v36)
+/// `H3_SEAT_SYSTEM_ALL_SEEING` (`h3_sim::SYSTEM_POLICY_VERSION`, ADR-0027 point 12; v32): a
+/// training run's record names it.
 #[unsafe(no_mangle)]
 pub extern "C" fn h3_system_policy_version() -> u32 {
     SYSTEM_POLICY_VERSION

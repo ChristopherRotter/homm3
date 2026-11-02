@@ -14,7 +14,8 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - `legal_commands` lists no casts: the cast heads come from `cast_targets` × `second_targets` (the battle lane's trap; `h3_sim::action`).
 - The batch (`h3_sim::batch`) skips an episode that ends before an external seat could act and gives up after 64 in a row (no side to move until a reset): a scenario whose internal seat always acts first and ends it (a step limit of one) does that. Its per-env values come back as `EnvReport`s, which `h3-ffi` converts for the C arrays.
 - `batch::pool` holds this lane's only `unsafe` outside `h3-ffi`: `Pool::run` erases a job's lifetime and is sound only because it blocks until every worker is done (a worker's panic too). Keep any new call through `run`, never a stored job.
-- `batch-system-neutral-v1` moves with `h3_battle_ai` (lane-only): re-baseline it at a `POLICY_VERSION` bump.
+- `batch-system-neutral-v1` moves with `h3_battle_ai` (lane-only): re-baseline it at a `POLICY_VERSION` bump, or a change of `h3-battle`'s `world.rs` or `observe_as`'s list (its defender is the fair system actor since E25 T14).
+- **Two system actors** (E25 T14, AI-Q14, C ABI v36): `system` (`Policy::System`, seat 4) is the fair one (`h3_battle_ai::choose_fair`), the neutral kinds' defender, and may train; `system-all-seeing` (`Policy::SystemAllSeeing`, seat 5) is `choose`, E25's target, never in training. A record's or a bots' table's `system` before C ABI v36 (bots' table schema 2) is the all-seeing one.
 - The batch workloads count inside `*BattleBatch>::step` (v0 symbol names; `BattleBatch::step` is `#[inline(never)]`) with `--threads 0`: callgrind toggles per thread, and a pattern ending in `*` also matches the closures nested in `step` and turns the count off inside them.
 - The census counts through `h3_map::import_map`, a `GameState` and `battle_ground`: a change to
   them changes it; rerun `h3 ai census original-data/install/Maps --out
@@ -29,9 +30,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The encounter sampler (`h3_sim::encounter`) uses the engine's rules (ADV-MON-003, -004, -009,
   `derive_battle_hero`): a change to them changes the encounters (`encounter::tests`: 5 σ). The
   neutral kinds weigh 0 by default (the held-out sets; a run's `[env] kinds` draws them, T7);
-  tests use `with_shares`. Their defender is the system actor (`Policy::System`): a
+  tests use `with_shares`. Their defender is the (fair) system actor (`Policy::System`): a
   `POLICY_VERSION` bump moves their battles (records name `system_policy`; design §12), and the
-  trainer gives their episodes no league member (`evaluate.NEUTRAL_KINDS`).
+  trainer gives their episodes no league member (`evaluate.NEUTRAL_KINDS`). The fair actor reads
+  the attacker's hero through its world: a change of `h3-battle`'s `world.rs` moves them too.
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 - The bots (`h3_sim::bots`) read the engine's preview (`h3_battle::preview`, BAT-DMG-011): a
@@ -53,9 +55,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The batch's `potential` (C ABI v35, E25 T2a; `reward::potential`) mirrors reward v1's
   accounting from the stacks' current counts: a change to reward v1 (what K counts, the war
   machines, the mana) changes `Balance::standing` too, or shaping no longer sums to reward v1
-  (`reward::tests::the_potential_is_the_balance_so_far_and_reward_v1s_at_the_end`). Since E25
-  `ppo.train` and `ppo.resume` refuse the faithful system actor's mixes (`run.trainable`): a test
-  run needs the player kinds alone, or `kinds` None.
+  (`reward::tests::the_potential_is_the_balance_so_far_and_reward_v1s_at_the_end`).
+  `ppo.resume` refuses a run started before C ABI v36 whose mix had a system seat (`run.trainable`,
+  E25 T14: its opponent was the all-seeing one); a new run trains against the fair one.
 - Observation v22 appends the turn order after v21's layout (`layout.ORDER`, v21's length): a
   network reads it only with `[network] order` (else the prefix, as every network saved before
   v22); slices of the stack slots end at `ORDER` (`entity.py`, `inspect.py`), never at the end.

@@ -12,7 +12,7 @@
 //!   the assumptions, approximations and not rules: a hero's level-ups, its spells and artifacts,
 //!   the armies, the towns.
 //! * The neutral kinds (wandering monsters, guards, a neutral town) have the system actor as their
-//!   defender ([`Policy::System`], A12; E06 T7). They are drawn at A1's shares by
+//!   defender ([`Policy::System`], A12; E06 T7; the fair one since E25 T14). They are drawn at A1's shares by
 //!   [`Sampler::with_shares`] or by a caller's weights; by default they weigh 0, so the held-out
 //!   sets keep their episodes (E06 T7, the user).
 //!
