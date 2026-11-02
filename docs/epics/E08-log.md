@@ -10314,8 +10314,12 @@ neither step until T85b, so no replay, report or version moves. The `shared/` pa
   replayed at one chance in three and a second month; a part without months); `added.rs`' new
   test of an added monster's offers to join and to flee, declined and accepted as the placed
   twin's (it fails without the `object_named` fix).
-- **Bench:** see the session's verify (no hot path changed: the reach and passage loops are
-  untouched; `object_named` and the `object_at` reads run per visit and offer).
+- **Bench** (`bench-check`, every adventure workload inside its gate, none re-baselined; against
+  `master` built in `target/wt-master`): reach-xl-144 464 566 511 Ir against 464 569 660
+  (−0.00 %), random-play-rewards-36 1 158 040 781 against 1 158 038 107 (+0.00 %),
+  random-play-duel-36 1 012 253 546 against T84b2's 1 012 318 130 on `master` (−0.01 %); no hot
+  path changed (the reach and passage loops untouched; `object_named` and the `object_at` reads
+  run per visit and offer).
 
 The design note's §10 and §11 as T85a found them:
 
