@@ -19,7 +19,7 @@ impl AdventureState {
     /// stacks a battle they survived left ([`Self::army_left`]: none after a draw), else the map's;
     /// empty for a pile without guards (and every other object).
     pub fn guards_left(&self, index: usize) -> &[ArmyStack] {
-        let guards = self.map.objects()[index].guards.as_ref();
+        let guards = self.object_at(index).guards.as_ref();
         match (guards, self.army_left(index)) {
             (Some(_), Some(left)) => left,
             (Some(guards), None) => &guards.army,
@@ -41,7 +41,7 @@ impl AdventureState {
         (index, object_type): (usize, ObjectTypeId),
         sink: &mut S,
     ) -> AdventureOutcome {
-        let object = &self.map.objects()[index];
+        let object = self.object_at(index);
         let asks = object.guards.as_ref().is_some_and(|guards| guards.question);
         if asks && !self.guards_left(index).is_empty() {
             return AdventureOutcome {
@@ -106,7 +106,7 @@ impl AdventureState {
     /// map, in its mask's order (a pile's template has one; Pandora's Box's and the Pyramid's
     /// too).
     pub(super) fn pile_tile(&self, index: usize) -> Option<Pos> {
-        let object = &self.map.objects()[index];
+        let object = self.object_at(index);
         object
             .visitable
             .offsets()
@@ -157,7 +157,7 @@ impl AdventureState {
                 sink,
             ),
             ObjectKind::Pyramid(_) => reward,
-            _ if self.map.objects()[index].guards.is_some() => {
+            _ if self.object_at(index).guards.is_some() => {
                 let left = if won { Vec::new() } else { survivors.to_vec() };
                 self.army_left.set(index, Some(left));
                 reward
@@ -185,7 +185,7 @@ impl AdventureState {
     ) -> AdventureOutcome {
         let (core, part, _) = rules;
         let beaten = |s: &Self, index: usize| {
-            s.map.objects()[index].guards.is_some() && s.guards_left(index).is_empty()
+            s.object_at(index).guards.is_some() && s.guards_left(index).is_empty()
         };
         if let Some(mine) = self.mine_at(part, tile) {
             self.flag_won((core, part), hero, mine, sink);

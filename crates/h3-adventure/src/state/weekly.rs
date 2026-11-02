@@ -2,7 +2,7 @@
 //! design note §9; survey `E08-economy.md` §9): a Windmill, a Water Wheel or a Mystical Garden is
 //! entered by any hero and asks nothing; its visit sets the visited marks, then gives this week's
 //! contents once, to whoever comes first, or tells the visitor's owner it is empty. The week's
-//! step that fills them again is T85a's.
+//! step fills them again (`calendar.rs`, E08 T85a).
 
 use alloc::sync::Arc;
 use alloc::vec;

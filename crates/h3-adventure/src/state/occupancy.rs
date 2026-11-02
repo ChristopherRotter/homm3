@@ -1,8 +1,8 @@
 //! Per-object state and the live presence (ADR-0016 point 1, E08 T12b; E08 T83b2a, increment 9's
 //! design note §6): which objects have left the map, which tiles the static map marks blocked or
 //! visitable that no object still on the map covers so any more ([`Occupancy`]), and the objects
-//! added in play (a creature month's monsters, T85a), after the static map's in map order
-//! ([`Added`]). Persistent grids ([`BitGrid`]), so a fork shares them and a removal copies a leaf
+//! added in play (a creature month's monsters, T85a's `start_month`), after the static map's in
+//! map order ([`Added`]). Persistent grids ([`BitGrid`]), so a fork shares them and a removal copies a leaf
 //! or two; the static map keeps every footprint. The state holds an occupancy only once an
 //! object has left the map, and the added objects only once one was added, so a map without
 //! either pays one test where it reads them (`bench-check`). Objects leave the map by T13's
@@ -68,7 +68,6 @@ impl Occupancy {
     /// Room in [`Self::removed`] for `objects` objects (E08 T83b2a: an added object's index), a
     /// row more when they need it, every removal kept: the rows follow from the objects, so the
     /// order of removals and additions does not change the grid.
-    #[cfg(test)]
     pub(crate) fn make_room(&mut self, objects: usize) {
         let rows = Self::rows(objects);
         if rows > self.removed.height() {
@@ -152,7 +151,6 @@ pub(crate) struct Added {
 
 impl Added {
     /// No object added yet, on `map`'s tiles.
-    #[cfg(test)]
     pub(crate) fn new(map: &StaticMap) -> Self {
         Self {
             objects: Vec::new(),
@@ -164,7 +162,6 @@ impl Added {
     /// Adds `object`, its tiles marked in [`Self::tiles`] and a monster's 3 × 3 around each
     /// visitable tile in [`Self::near`]. The caller has checked that it is a monster on land
     /// tiles no other object still on the map covers.
-    #[cfg(test)]
     pub(crate) fn push(&mut self, map: &StaticMap, object: MapObject) {
         let anchor = object.anchor;
         let on_map = |mask: crate::setup::TileMask| {

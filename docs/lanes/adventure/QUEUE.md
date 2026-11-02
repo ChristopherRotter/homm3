@@ -26,27 +26,28 @@ the flags, the mines' visits, Leave Guards, their battles; game state hash v21);
 the Lighthouses and the weekly visits first (decision 221): T84b1 done (`adventure/e08-t84b1`
 with `shared/e08-t84b1`: the Lighthouses' flag and points, the weekly visits); T84b2 done
 (`adventure/e08-t84b2` with `shared/e08-t84b2`: the Shipyards, their boat offer and `BuildBoat`,
-adventure replay format v8; the user's decision 222: a Garden marks the team). T85 next.
+adventure replay format v8; the user's decision 222: a Garden marks the team). Round 7: T85 in
+two halves, T85a whole (decision 223): T85a done (`adventure/e08-t85a` with `shared/e08-t85a`:
+the week's step, a creature month's step, the audit of the static reads). T85b next.
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T85 — the day's start: the week's and the month's steps, the day advance, the income**
+**E08 T85b — the day's start in the game: the day advance, the income, the env's `BuildBoat`**
 
-- **Scope:** round 7 (design §18): **T85a** `h3-adventure`'s week step (§10: the weekly objects
-  refilled in weekly index order, the monsters' growth in sixteenths to the cap, `MonsterChanged`;
-  ADV-WEK-001 to -003 `verified`, ADV-MON-013) and month step (§11: the creature month's monsters
-  added in play, `MonsterAdded`; ADV-MON-014), with design §19's audit of the static reads that
-  never meet an added monster's index (the list in T83b2a's record); **T85b** `h3-game`'s day
-  advance (§14: `WeekStarted`, `MonthStarted` with the month's kind, the income of mines, heroes
-  and Crystal Dragons, the spell points, the timed events at the turn start, `events_today`; game
-  state hash v22), the observation's month, `docs/06-security.md`'s lines (a `shared/` pull
-  request first), and the env's `BuildBoat` (action encoding v6, `cross-lane` with the user's
-  consent, decision 203); the replays of eight days or more re-recorded (the growth), the bot
-  reports.
-- **Inputs:** design §10, §11, §14, §15, §19; ADR-0016 points 1, 4, 6, ADR-0017 points 3, 4, 8, 10;
-  survey `E08-economy.md` §7, §8, §10 to §12, §19 (E9-6 to E9-12); T83b2a's, T84b1's and
-  T84b2's records in `E08-log.md`.
-- **Depends on:** T84b2 (`adventure/e08-t84b2` merged). **Status:** ready after that merge; cut
-  with the user at its start (the design's two halves, T85a then T85b, recommended).
+- **Scope:** round 7's second half (design §14, §15; decision 223): `h3-game`'s day advance
+  (§14: `WeekStarted`, then the adventure's `start_week` with the game's stream; on a month's
+  first day the month's kind drawn, `MonthStarted` with it, in a creature month the adventure's
+  `start_month` with a creature drawn among the part's; the income of mines, heroes and Crystal
+  Dragons, the spell points, the timed events at the turn start, `events_today`; game state hash
+  v22), the observation's month, `docs/06-security.md`'s lines for the game's events (a
+  `shared/` pull request first), and the env's `BuildBoat` (action encoding v6, `cross-lane`
+  with the user's consent, decision 203); the replays of eight days or more re-recorded (the
+  growth), the bot reports. T85a built the adventure's two steps (`AdventureState::start_week`,
+  `start_month`; their record in `E08-log.md`, "T85a"): the game only calls them.
+- **Inputs:** design §14, §15, §19; ADR-0017 points 3, 4, 8, 10; survey `E08-economy.md` §7,
+  §8, §11, §12, §19 (E9-6, E9-7, E9-11, E9-12); T84b2's and T85a's records in `E08-log.md`.
+- **Depends on:** T85a (`adventure/e08-t85a` merged). **Status:** ready after that merge; cut
+  with the user at its start (T85b whole recommended, or the env's `BuildBoat` apart if the
+  re-recording runs long).
 
 ## Inbox
 
