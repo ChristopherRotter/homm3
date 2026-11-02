@@ -7,22 +7,39 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
-2026-10-27; increments 1 and 2 closed 2026-10-28 and 29 (`E25-archive.md`).
-**`e25-scale-1` #3 is the lineage's current best** (the user at T6, 2026-10-29). **Increment 3, the network's architecture** (AI-Q11, the user):
-a distillation bench ranked a deeper and a wider MLP, a hex convolution network, a hex
-transformer and E06's entity network against the current MLP (T7c: the wide MLP leads); in RL
-the wide MLP ends at `e25-scale-1` #3's ladder (T7d, done 2026-10-30: `E25-log.md` T7d). The
-faithful system actor still trains no agent and no neutral battles train (decision 2); each
-run's length is agreed with the user (decision 5). All on observation v22 and action v13: no
-encoding or ABI change.
+2026-10-27; increments 1 to 3 closed 2026-10-28, 29 and 11-02 (`E25-archive.md`).
+**`e25-scale-1` #3 is the lineage's current best** (the user at T6, kept at T8). **Increment 4,
+the policy's sharpness and PPO's settings** (AI-Q12, the user, 2026-11-02): PPO's settings were
+never varied since E05 T8 (the entropy bonus 0.01 throughout, 4 epochs, 8 minibatches, rollouts
+of 128 × 256); the entropy ends at 1.5. A temperature diagnostic without training first, then
+20 M A/Bs on the 2 × 512 MLP at `e25-scale.toml`'s settings. The faithful system actor still
+trains no agent and no neutral battles train (decision 2); each run's length is agreed with the
+user (decision 5). All on observation v22 and action v13: no encoding or ABI change. T9a (the
+temperature in `Policy.act` and `h3env.train.ladder --temperature`) done 2026-11-02 (`E25-log.md`
+T9a).
 
-- **T8 Increment 3's checkpoint.** *Scope:* T7c's and T7d's reads put to the user (AI-Q12 in
-  `docs/OPEN-QUESTIONS.md`: increment 4's options, the current best); increment 4 chosen and
-  refined (the epic's task list, this queue); increment 3 moved to `E25-archive.md`. If the
-  user uploads `battles.py`'s lines on `runs/e25-wide-1/best.pt` (`uv run --group train python
-  records/inspect/battles.py runs/e25-wide-1/best.pt runs/e25-wide-1/battles.jsonl
-  system,greedy,aggressor`), T7d's decisions' mix read with `--summary` into `E25-log.md` T7d.
-  *Depends on:* T7d (done); the user. *Status:* next (the user's answer).
+- **T9b The diagnostic.** *Scope:* `e25-scale-1` #3 on the report set v1 against the system actor
+  at 1, 0.7, 0.5 and 0; at the best one also Random, Aggressor, Greedy and the neutral set. On
+  the user's machine (`uv run --group train python -m h3env.train.ladder --checkpoint
+  runs/e25-scale-1/best.pt --opponents system --temperature 1,0.7,0.5,0 --device cuda --json
+  …`), or on the sandbox's CPU if the user uploads its `best.pt` (23.8 MB). Read into
+  `E25-log.md` T9b: how much of the gap to 0.5 the spread is, per kind and side. *Depends on:*
+  T9a (done); the user (the run or the upload). *Status:* next.
+- **T10a The second lever.** *Scope:* the second A/B's config, fewer epochs or a larger rollout,
+  proposed from T9b's read and the records' KL and clip fraction (`E25-log.md` T8), agreed with
+  the user; its test beside `e25-sharp.toml`'s in `test_run.py`. (The entropy's schedule,
+  `[ppo] entropy_floor`, and `configs/e25-sharp.toml` done 2026-11-02, `E25-log.md` T10a.)
+  *Depends on:* T9b. *Status:* open.
+- **T10b The A/Bs.** *Scope:* both runs on the user's machine, about 75 minutes each at 20 M
+  (`e25-sharp-1` ready: `uv run --group train python -m h3env.train --config
+  configs/e25-sharp.toml --out runs/e25-sharp-1`; the user may start it with T9b); their
+  records and metrics read into `E25-log.md` beside `e25-scale-1` #3's, `e25-bound-1`'s and
+  `e25-wide-1`'s ladders; the head-to-head gate against #3 (`h3env.train.gate --candidate
+  … --best runs/e25-scale-1/best.pt --device cuda`). *Depends on:* T10a (the second run); the
+  user. *Status:* open (the first run ready).
+- **T11 Increment 4's checkpoint.** *Scope:* the reads put to the user (a question in
+  `docs/OPEN-QUESTIONS.md`), increment 5 chosen and refined, increment 4 moved to
+  `E25-archive.md`. *Depends on:* T10b. *Status:* open.
 
 ## Inbox
 

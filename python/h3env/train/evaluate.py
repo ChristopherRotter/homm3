@@ -185,10 +185,11 @@ def random_agent(rng: np.random.Generator) -> Agent:
     return agent
 
 
-def duel(learner, opponent, side: str, seed: int) -> Agent:
+def duel(learner, opponent, side: str, seed: int, temperature: float = 1.0) -> Agent:
     """Two networks in one batch whose seats are both external: `learner` acts on the rows where
     `side` is to move, `opponent` on the others, each sampling from its own generator (seeded
-    `seed` and `seed + 1`, alike for every network: common random numbers)."""
+    `seed` and `seed + 1`, alike for every network: common random numbers); the learner at
+    `temperature` (`Policy.act`), the opponent at its own policy."""
     import torch
 
     mine = 0 if side == "attacker" else 1
@@ -199,10 +200,12 @@ def duel(learner, opponent, side: str, seed: int) -> Agent:
 
     def agent(batch: BattleBatch) -> None:
         to_move = batch.to_move
-        for k, (net, who) in enumerate(((learner, mine), (opponent, 1 - mine))):
+        for k, (net, who, t) in enumerate(
+            ((learner, mine, temperature), (opponent, 1 - mine, 1.0))
+        ):
             rows = np.nonzero(to_move == who)[0]
             if len(rows):
-                _fill(batch, net.act(batch, generators[k], rows=rows), rows)
+                _fill(batch, net.act(batch, generators[k], rows=rows, temperature=t), rows)
 
     return agent
 
@@ -405,9 +408,10 @@ def bots_table(held_out: str = "report-v1", path: Path | None = None) -> dict:
     return table
 
 
-def sampled(policy) -> Callable[[int, str], Agent]:
+def sampled(policy, temperature: float = 1.0) -> Callable[[int, str], Agent]:
     """The sampled policy as `report`'s agents (`make_agent(seed, side)`): each draws from its own
-    generator seeded `seed` on the network's device (the ladder's; `inspect` replays its draws)."""
+    generator seeded `seed` on the network's device (the ladder's; `inspect` replays its draws),
+    at `temperature` (`Policy.act`; 1 the network's own policy)."""
     import torch
 
     device = next(policy.parameters()).device
@@ -416,7 +420,7 @@ def sampled(policy) -> Callable[[int, str], Agent]:
         generator = torch.Generator(device=device).manual_seed(seed)
 
         def agent(batch: BattleBatch) -> None:
-            _fill(batch, policy.act(batch, generator=generator))
+            _fill(batch, policy.act(batch, generator=generator, temperature=temperature))
 
         return agent
 
@@ -442,6 +446,7 @@ def ladder(
     per_kind: int = REPORT_V1_ENVS,
     rng_seed: int = 0,
     stop=None,
+    temperature: float = 1.0,
     **settings,
 ) -> dict[str, dict]:
     """The sampled policy against each engine seat in `opponents` (E05 T7) and each network of
@@ -451,7 +456,8 @@ def ladder(
     its one opponent, the system actor (E06 T7c; the row `system`, whatever `opponents` names, no
     networks): the network's row beside `h3 ai eval`'s table on the same episodes. Each network's
     mode is restored after. The batches write the kill preview when one of the networks reads it
-    (E06 T6d)."""
+    (E06 T6d). `temperature` divides `policy`'s logits (E25 T9a, a diagnostic: 1 its own policy,
+    the one every target is judged on; 0 its most likely choices); `networks` play their own."""
     if held_out not in SETS:
         raise ValueError(f"unknown held-out set {held_out!r} (one of {SETS})")
     networks = dict(networks or {})
@@ -465,7 +471,7 @@ def ladder(
     modes = [net.training for net in nets]
     for net in nets:
         net.eval()
-    agents = sampled(policy)
+    agents = sampled(policy, temperature)
     out = {}
     try:
         for opponent in opponents:
@@ -483,7 +489,7 @@ def ladder(
                 )
         for name, net in networks.items():
             out[name] = report(
-                lambda seed, side, net=net: duel(policy, net, side, seed),
+                lambda seed, side, net=net: duel(policy, net, side, seed, temperature),
                 opponent="external",
                 per_kind=per_kind,
                 rng_seed=rng_seed,
