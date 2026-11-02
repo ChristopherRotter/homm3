@@ -910,3 +910,102 @@ special buildings (98, faction 1: bits 18, 19, 20 are its 17, 21, 22) only in ne
   may give a player two or more Capitols; the Grail building's 5 000 in every town. Also (§12): a
   Capitol's town looks like a Fort with an extra flag on the map, even without a fort, and the hall
   level in the right-click town window is shown to allies only.
+
+## 12. What a viewer sees of a town (T1b2a)
+
+The town screen opens to its owner only (§7.2), and the status window shows the viewer's own
+selected town only (`status_town_create` 0x4521F0, E24 `E24-design.md` §4.8). Another player
+sees a town in four places.
+
+### 12.1 The picture and the flag on the map
+
+`object_template_redraw` 0x4C9990 (E24 §2.9): one of the faction's three pictures, the Capitol's,
+else (a Fort, Citadel or Castle built) the fort's, else the bare one; the flag in the owner's colour,
+grey for none. So whoever sees the town's tiles sees **its faction, its owner, whether it has a
+Capitol and whether it has any fort** (the wiki: a Capitol's town looks fortified, fort or not).
+The picture changes with the buildings (increment 2) and a captured Capitol's razing (§8.4).
+
+### 12.2 The mouse-over and the cursor
+
+`map_hint` 0x40B150's case 98 (E24 §4.10): the town's **name and faction**, for every viewer. The
+cursor of a selected hero over a town of another team (`town_defended` 0x5BDFE0, E24 §4.10), once
+the pathfinder reaches the tile: the attack cursor when it holds a visiting hero or any creature in
+the army shown (the garrison hero's, else the town's), else the enter cursor; an unreached town the
+arrow. So **whether a reachable town is defended is public**, as the step itself tells it (§7.1: a
+defended town is visited from the tile before; the RoE manual: the sword shows a town its garrison
+will defend).
+
+### 12.3 The right-click (`town_popup` 0x4167A0, read but its debug branch; `town_quick_view_create` 0x530120 and `quick_view_army` 0x530990, read whole)
+
+The right button on a map tile (`tile_click_path` 0x40A5D0, its branch 0x40A703 to 0x40A85C): on
+a tile the viewer has not explored `object_popup_text` 0x4137C0 (not read); on an explored one by
+the tile's class (the switch 0x40A796): 33 a garrison, 34 a hero, 54 a monster, 98 a town
+(0x40A802), every other class `object_popup_text`. The town's popup shows while the button is held,
+beside the pointer:
+
+1. **The level** (0x416E63): **3** when the town's owner and the viewer are of one team (game
+   +0x1F879), or when one of the viewer's heroes has **Visions at level 3 within reach** of the
+   town: `hero_visions_level` 0x4E5DE0, the level of the Visions it cast that day (hero +0x129,
+   set by the cast 0x41C490), raised to 3 by a **Rogue** (creature 143) in its army;
+   `hero_visions_reach` 0x4E5E10, on the town's level with the squared distance below the
+   radius's square, the radius Visions' factor for the level (spell 2's record +0x34) times the
+   hero's power (1 to 99), at least 3. Else **the number of the viewer's towns with a Tavern**
+   (`player_tavern_count` 0x4CCE30: the Tavern, 5, built, or for Castle the Brotherhood of the
+   Sword, 22, that replaces it), **at most 2**. A neutral town is nobody's team.
+2. **At every level** (`town_quick_view_create` 0x530120): the background `townqvbk.pcx`
+   (194 × 186) in the owner's colour, a neutral town's in the viewer's; the portrait (`itpt.def`,
+   `town_list_frame` 0x5BD700: the faction, a Fort ever built or not, one frame up when the town's
+   +0x2 is set, E24's "built today"); the name; **the fort level** (`itmcls.def`: Fort, Citadel,
+   Castle or none).
+3. **At level 3 only:** **the hall** (`itmtls.def`, Village Hall to Capitol), the garrison hero's
+   mark (`townqkgh.pcx`), the silo's resources (as the status window shows them) and **the gold
+   income** (`town_gold_income` with the silo flag 1).
+4. **The army shown** (`quick_view_army` 0x530990, of `town_garrison_army` 0x5C1460: the
+   garrison hero's army with one, else the town's own): **level 0 nothing**; **level 1 each
+   stack's creature** (at the places of 0x6823B8, packed: so how many stacks and of which
+   creatures); **level 2 also each stack's size word** (`creature_quantity_word` 0x44ADE0, form
+   0); **level 3 each stack's count** (below 10 000 itself, else the thousands and `k`). The
+   visiting hero is not in it: it stands on the gate and is right-clicked as a hero.
+
+The debug branch (the adventure manager's +0x3D, E24's debug flag) writes the garrison's names and
+counts as a text for a town not the current player's; not a rule. Not followed: the town list's
+right click (the popup's other caller) and the garrison's popup (class 33, E08's garrisons).
+
+### 12.4 VCMI 1.7.5 and the wiki
+
+- VCMI (`CGameInfoCallback::getTownInfo`, `InfoAboutTown::initFromTown`, `ArmyDescriptor`,
+  `CGHeroInstance::hasVisions`, `config/creatures/neutral.json`, `config/spells/adventure.json`):
+  **two levels**. Detailed for an own or allied town (`hasAccess`) or when **the selected hero**
+  has Visions on towns within reach (expert Visions, or a Rogue: the factor 3 times the power, at
+  least 3): the counts, the hall, the gold income, the silo, the garrison hero. Otherwise the
+  stacks' creatures with their size words, the built set (the picture), the fort level, the name
+  and faction, **whatever the viewer's taverns** (the original: nothing without a Tavern, the
+  creatures with one, the words with two). The original asks every hero of the viewer, VCMI the
+  selected one.
+- The wiki ([Tavern](https://heroes.thelazy.net/index.php/Tavern),
+  [Thieves' Guild](https://heroes.thelazy.net/index.php/Thieves'_Guild),
+  [Visions](https://heroes.thelazy.net/index.php/Visions),
+  [Halls](https://heroes.thelazy.net/index.php/Halls)): no Tavern, an opponent's town looks empty
+  (the attack cursor still shows); one, the stacks without numbers; two or more, the stacks and
+  their approximate numbers; expert Visions shows an enemy town's statistics and garrison within
+  power × 3 or 3 tiles; the hall level in the right-click window for allies only, the fort level
+  for all. The reading agrees on every point.
+- **The census** (the 160 maps; the players owning a town at the start; a standard set gives an
+  owned town a Tavern, §5.3; a custom set its bit 6, Castle's bit 19 the Brotherhood): **63
+  players start at level 0, 600 at level 1, 78 at level 2.** So increment 1's views differ by
+  player from the first day.
+
+### 12.5 For the views (input for T2's design and `docs/06-security.md`)
+
+- **Public** where the viewer sees a town's tile: its faction, owner, name, fort level (the
+  right-click's, a finer fact than the picture's fort mark), whether it has a Capitol; whether it
+  is defended, for a town the viewer's hero reaches (the cursor; a step tells it in any case).
+- **The army** by the viewer's level: none, the creatures, the creatures and size words (the size
+  words of E08's monsters, `docs/06-security.md`'s increment 3); the counts at level 3. The level
+  comes from the viewer's teams, its taverns (increment 1 builds no Tavern, but the start gives
+  them) and Visions or a Rogue in reach (Visions is not placed yet, E08's "Not placed yet"; a Rogue
+  can join an army). A choice for the checkpoint: the original's levels, VCMI's two, or the
+  owner's team only until increment 3 (the Tavern's information is increment 3's, decision 6).
+- **The owner's team only** (and level 3): the hall, the gold income, the garrison hero, the silo.
+- **Increment 2's:** the portrait's "built today" frame (town +0x2) shows another player's
+  construction of the day.
