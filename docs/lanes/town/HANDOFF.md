@@ -4,11 +4,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E09** (towns) refined with the user on 2026-10-31 (TWN-Q1; the epic's decisions 1–7); the lane opened the same day beside the adventure lane's E08. **Increment 1: towns on the map** (the epic's scope). T1a was cut in two (the user, 2026-11-02); **T1a1 done** (survey `E09-towns.md` §0 to §3). Next: **T1a2**, the main town's hero, the pool and the rest of the start (the queue's entry).
+- **E09** (towns) refined with the user on 2026-10-31 (TWN-Q1; the epic's decisions 1–7); the lane opened the same day beside the adventure lane's E08. **Increment 1: towns on the map** (the epic's scope). T1a was cut in two (the user, 2026-11-02); **T1a1 and T1a2 done** (survey `E09-towns.md` §0 to §6). Next: **T1b**, the town on the map and the checkpoint's questions (the queue's entry).
 - **Open pull requests:** see the newest session entry.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns` (not created yet; the crate is a `shared/` change after the ADR draft is accepted), the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and `src/writer/town*` of `h3-map`, `docs/rules/catalog/town.toml`, `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Everything else in the adventure lane's crates is the adventure lane's: a change there is `cross-lane`, merged in order with the adventure lane's pull requests.
 - **Versions:** the lane owns none yet (`h3-towns`' come with the crate). It bumps the adventure lane's (game state hash, adventure state and ruleset-part hashes, map import, adventure replay format) in `cross-lane` pull requests; their current values are in the adventure lane's HANDOFF.
-- **Ids:** questions `TWN-Q<n>` (next 2), quirks `TWN-QUIRK-<n>` (next 1), stubs `TWN-STUB-<n>` (next 1), rules `TWN-*` (none yet), decisions next 8, experiment batches `TWN-<n>` (next 1), the survey's disputes `TD-<n>` (next 3) and quirk candidates `T-<n>` (next 2).
+- **Ids:** questions `TWN-Q<n>` (next 2), quirks `TWN-QUIRK-<n>` (next 1), stubs `TWN-STUB-<n>` (next 1), rules `TWN-*` (none yet), decisions next 8, experiment batches `TWN-<n>` (next 1), the survey's disputes `TD-<n>` (next 7) and quirk candidates `T-<n>` (next 5).
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at each round; the user confirms seams and ADRs; tokens first.
 
 ## Standing traps
@@ -16,6 +16,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-02 — T1a2: the heroes and the towns at the start
+
+Baseline d5c70795 (#641 merged). The user kept T1a2 whole (asked at its start). Survey `E09-towns.md` §4 to §6 and findings 9 to 16: the pool, the starting-hero choice, one uniform draw for the random hero and the main town's hero (no tavern weights: increment 3's), the visitor, a hero in a town, the towns' garrisons and buildings at the start; TD-3 to TD-6, T-2 to T-4; 29 exe map entries, `structs.toml`'s `town`. Pull request: `town/e09-t1a2` (open).
 
 ### 2026-11-02 — T1a1: the census and the factions
 

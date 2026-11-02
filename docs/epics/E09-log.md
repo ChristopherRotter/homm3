@@ -57,3 +57,43 @@ with the random towns, **T1a2** the main town's hero, the pool and the rest of t
 - **Notes:** the adventure lane's inbox (random dwellings tied to random towns wait for E09's
   resolution). For `TWN-Q2`: the random hero (class 70, 36 maps) shares the pool; with it
   increment 1 lets every shipped map import.
+
+### T1a2 — the towns survey, part 1b: the heroes and the towns at the start (2026-11-02)
+
+One session, the user present; branch `town/e09-t1a2`. Starting point: `master` at d5c70795
+(#641 merged). Asked at the start whether to cut T1a2 again at the buildings (`AskUserQuestion`):
+the user chose **the whole of T1a2 at once**.
+
+- **Survey** `docs/rules/surveys/E09-towns.md` §4 to §6 and §0's findings 9 to 16: the order of
+  a new game's hero steps (`game_reset`, the dialog's choices, `new_game_heroes`, the map read with
+  `hero_pool_init`, the random heroes at the objects' read, the placed heroes, `main_town_heroes`);
+  the pool (RoE maps allow the Conflux heroes besides; SoD's disposed heroes' masks); the
+  starting-hero choice (the dialog's list of up to 16, the colour's first random hero or a human's
+  main town takes it); one draw for the random hero and the main town's hero
+  (`hero_draw_of_faction` 0x4BB400, uniform, no tavern weights: those are the tavern's,
+  `tavern_hero_draw` 0x4BB5E0, increment 3); the generated hero on the entrance as the visitor
+  (`hero_show` sets a town's visiting hero); a hero right of a town's entrance moved onto it
+  (`placed_heroes_setup`); the town's setup (`town_setup`): a custom garrison's random stacks, a
+  neutral town's drawn garrison (33/33/20/13 in 100); the buildings (`town_buildings_setup`, its
+  earlier summary corrected: an owned standard town gets dwellings only with a Fort). A census
+  (a throwaway crate outside the workspace over `h3_map::read`, not committed): no placed hero or
+  prisoner is in its map's allowed set; 176 random heroes on 36 maps (T1a1's 166 corrected);
+  every owner of one has the random-hero flag; 23 heroes in towns, none in a generating main town;
+  garrisons and standard sets by owner and fort.
+- **Disputes and candidates:** TD-3 (standard dwellings, VCMI 100/50 for every town), TD-4 (level
+  4's 13 against VCMI's 14), TD-5 (an explicitly empty neutral garrison), TD-6 (a hero on a town's
+  other blocked tiles); T-2 (the starting-hero choice not reserved: a hero twice; fixed as
+  state-corrupting), T-3 (a random hero before a placed one of its type; none on the shipped
+  maps), T-4 (the draws' empty cases). For T1b's checkpoint: TD-3 and TD-5 as batch TWN-1 rows.
+- **The exe map:** 26 new entries (`hero_draw_of_faction`, `tavern_hero_draw`, `game_reset`,
+  `new_game_load`, `map_header_read`, `hero_pool_init`, `town_change_owner`, `main_town_heroes`,
+  `hero_place`, `new_game_start_other`, `building_tables_init`, `load_hero_body`,
+  `scenario_hero_lists`, `new_game_start`, `town_heroes_learn_spells`, `town_setup_spells`,
+  `town_build`, `town_boat_spot`, `town_hero_place`, `grail_victory_town`, the neutral garrison's
+  three tables, `faction_buildings`, `chosen_heroes`, `superseded_buildings`) and three sites;
+  `hero_show`, `town_setup` read; `new_game_heroes`, `new_game_bans`, `placed_heroes_setup`,
+  `town_buildings_setup` amended; `structs.toml`: the game's `first_heroes`, `allowed_heroes`,
+  `hero_owner`, `hero_masks`, `player_attributes`' hero fields, `hero_class`' faction and tavern
+  weights, `town_setup`'s buildings and garrison, a new `town`.
+- **Content:** none for increment 1 from T1a2 (the epic's "tavern weights" move to increment 3;
+  the neutral garrison's table and the 30 are executable constants).
