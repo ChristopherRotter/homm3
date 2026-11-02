@@ -353,6 +353,8 @@ fn hints() -> Hints {
         table: (0..HINTS).map(|i| format!("hint {i}")).collect(),
         cast: "cast".into(),
         effects: vec!["e0".into(), "e1".into()],
+        descriptions: (0..HINTS).map(|i| format!("help {i}")).collect(),
+        cast_description: "cast help".into(),
     }
 }
 
@@ -384,8 +386,10 @@ fn the_hints_come_from_the_catalogue() {
         "en",
         r#"{ "stats": { "hint": { "name": "N", "ok": "O", "cast-original": "Mine",
             "effect": "{{spell}} {{rounds}}", "effect-until": "{{spell}}: {{until}}" },
-            "until": { "bind": "B", "berserk": "Z", "disrupting-ray": "R" } },
-            "battle": { "control": { "spell-book": "Cast" } } }"#,
+            "until": { "bind": "B", "berserk": "Z", "disrupting-ray": "R" },
+            "help": { "name": "HN", "ok": "HO", "cast-original": "Lab" } },
+            "battle": { "control": { "spell-book": "Cast" },
+                "control-help": { "spell-book": "Cast help" } } }"#,
     )
     .unwrap();
     let catalogue = Catalogue { packs: vec![pack] };
@@ -409,10 +413,17 @@ fn the_hints_come_from_the_catalogue() {
         ("N", "O")
     );
     assert_eq!(fixed.cast, "Cast");
+    // The right button's descriptions, the table's second texts (E17 M6 T2a2b1).
+    assert_eq!(
+        (fixed.descriptions[0].as_str(), fixed.descriptions[14].as_str()),
+        ("HN", "HO")
+    );
+    assert_eq!(fixed.cast_description, "Cast help");
     // The last three: Bind, Berserk and Disrupting Ray name how long they last.
     assert_eq!(fixed.effects, ["spell 72: B", "spell 59: Z", "spell 47: R"]);
     let original = Hints::of(&catalogue, &marksmen(), Bugs::Original);
     assert_eq!(original.cast, "Mine");
+    assert_eq!(original.cast_description, "Lab");
     assert_eq!(original.effects, ["spell 43 3", "spell 53 3", "spell 46 3"]);
     // An effect for the rest of the battle shows 0 rounds.
     let rest = Stats {
@@ -527,16 +538,103 @@ fn the_ok_closes_the_dialog_by_a_click_or_its_keys() {
 }
 
 #[test]
-fn the_cast_button_takes_no_press_yet() {
+fn the_right_button_describes_an_item() {
+    // E17 M6 T2a2b1: an item's pair's second text; the effects their pair's; the cast button's
+    // its own; none for morale and luck (M6 T2a2b2), an item without a pair or an empty text.
+    let h = hints();
+    assert_eq!(h.described(NAME, Bugs::Fixed).as_deref(), Some("help 0"));
+    assert_eq!(h.described(206, Bugs::Fixed).as_deref(), Some("help 2"));
+    assert_eq!(h.described(EFFECTS + 1, Bugs::Fixed).as_deref(), Some("help 11"));
+    assert_eq!(h.described(OK, Bugs::Fixed).as_deref(), Some("help 14"));
+    assert_eq!(h.described(CAST, Bugs::Original).as_deref(), Some("cast help"));
+    assert_eq!(h.described(MORALE, Bugs::Fixed), None);
+    assert_eq!(h.described(LUCK, Bugs::Fixed), None);
+    assert_eq!(h.described(BACKGROUND, Bugs::Fixed), None);
+    assert_eq!(h.described(CREATURE, Bugs::Fixed), None);
+    // The speed's label: the health left's in the original (CLT-Q38 (1)), its own in the client's.
+    assert_eq!(h.described(217, Bugs::Original).as_deref(), Some("help 7"));
+    assert_eq!(h.described(217, Bugs::Fixed).as_deref(), Some("help 8"));
+    let empty = Hints {
+        descriptions: vec![String::new(); HINTS],
+        ..hints()
+    };
+    assert_eq!(empty.described(NAME, Bugs::Fixed), None);
+    // Over the dialog: the item a move would enter; off it nothing.
+    let mut memory = Memory::new(Bugs::Fixed);
+    let m = modal(&mut memory);
+    assert_eq!(m.describe([100 + 160, 50 + 50]).as_deref(), Some("help 2"));
+    assert_eq!(m.describe([100 + 5, 50 + 5]), None);
+    assert_eq!(m.describe([0, 0]), None);
+}
+
+#[test]
+fn the_popup_takes_its_ends_and_lets_a_held_ok_go_in_the_clients_profile() {
+    let ok = [100 + 220, 50 + 250];
+    let popup = || modal(&mut Memory::new(Bugs::Fixed)).open.message;
+    // A key's release while it is held: the client's lets the OK its key holds go, unclicked.
+    let mut memory = Memory::new(Bugs::Fixed);
+    let mut m = modal(&mut memory);
+    assert_eq!(m.key("Return"), Outcome::Changed);
+    m.popup = Some(popup());
+    assert!(m.held_input(false, Some("Return"), false));
+    assert!(m.popup.is_some());
+    assert_eq!(m.key_up("Return"), Outcome::Nothing);
+    // The left release that ends it lets the OK the mouse holds go.
+    assert_eq!(m.press(ok), Outcome::Changed);
+    assert!(m.held_input(true, None, true));
+    assert!(m.popup.is_none());
+    assert_eq!(m.release(), Outcome::Nothing);
+    // The original keeps it held: its next release clicks.
+    let mut memory = Memory::new(Bugs::Original);
+    let mut m = modal(&mut memory);
+    assert_eq!(m.press(ok), Outcome::Changed);
+    m.popup = Some(popup());
+    assert!(!m.held_input(false, Some("Return"), false));
+    assert!(m.held_input(true, None, true));
+    assert_eq!(m.release(), Outcome::Closed(OK));
+    // Nothing held, nothing shown: no change.
+    assert!(!m.held_input(true, None, false));
+}
+
+#[test]
+fn the_cast_button_closes_the_dialog_with_its_id() {
     let mut memory = Memory::new(Bugs::Fixed);
     let stats = Stats {
         cast: true,
+        ability: None,
         ..marksmen()
     };
     let window = layout(&stats_layout(), &texts(), &stats, ([0, 0], 0), Bugs::Fixed);
     let mut m = Modal::new(window, hints(), &mut memory);
-    assert_eq!(m.press([80, 240]), Outcome::Nothing);
     // Its hint: past the table's end.
     assert!(m.hover(&mut memory, [80, 240]));
     assert_eq!(m.status(), "cast");
+    // Pressed and released over it: the dialog closes with its id (301).
+    assert_eq!(m.press([80, 240]), Outcome::Changed);
+    assert_eq!(m.release(), Outcome::Closed(CAST));
+}
+
+#[test]
+fn the_creature_stands_while_a_popup_is_held() {
+    // Before any popup: the grid from the first step.
+    assert_eq!(Steps::made_around(100, &[], 350), Steps::made(100, 350));
+    assert_eq!(Steps::next_around(100, &[], 350), Some(400));
+    // Held from 150 to 180: a step at 100, none while held, the next on the grid (200).
+    let short = [[150, 180]];
+    assert_eq!(Steps::made_around(100, &short, 170), 1);
+    assert_eq!(Steps::next_around(100, &short, 170), None);
+    assert_eq!(Steps::made_around(100, &short, 199), 1);
+    assert_eq!(Steps::next_around(100, &short, 199), Some(200));
+    // Held from 150 to 260: one step at its end (200 was due), the deadline then 300.
+    let late = [[150, 260]];
+    assert_eq!(Steps::made_around(100, &late, 260), 2);
+    assert_eq!(Steps::next_around(100, &late, 260), Some(300));
+    // Held from 150 to 450: two steps at its end (the deadline moved to now is reached at once).
+    let long = [[150, 450]];
+    assert_eq!(Steps::made_around(100, &long, 450), 3);
+    assert_eq!(Steps::next_around(100, &long, 450), Some(550));
+    // Still held at the end of the list.
+    assert_eq!(Steps::made_around(100, &[[150, u32::MAX]], 900), 1);
+    // A popup after the time asked changes nothing.
+    assert_eq!(Steps::made_around(100, &[[500, 600]], 300), 3);
 }

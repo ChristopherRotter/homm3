@@ -7,10 +7,14 @@
 //! shows ([`Stats`], the binary's `stats` derives it from a seat's observation and the rules),
 //! [`Steps`] plays its creature over time as the procedure's idle tick does. The modal dialog's
 //! input (E17 M6 T2a2a, design §12.2): [`Modal`], its OK by a click or its keys, the status
-//! line's hints and the cursor over its items ([`Hints`], [`Memory`]).
+//! line's hints and the cursor over its items ([`Hints`], [`Memory`]). The right button's
+//! descriptions and the cast button (E17 M6 T2a2b1, design §12.3): [`Modal::describe`] the text
+//! a right press over an item shows in a popup held while the button is (style 4), the popup's
+//! hold ([`Modal::popup`]), the cast button pressed and clicked as the OK, its click the cast's
+//! start ([`CAST`]), [`Steps::made_around`] the creature's steps around the holds.
 //!
-//! *Not built yet:* the right button's descriptions and the cast button's press (M6 T2a2b: the
-//! button takes no press); the right button's dialog held over a stack (M6 T2b).
+//! *Not built yet:* morale's and luck's descriptions (M6 T2a2b2); the right button's dialog held
+//! over a stack (M6 T2b).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -515,6 +519,13 @@ pub struct Hints {
     /// and rounds (GENRLTXT 611), Bind's, Berserk's and Disrupting Ray's "%s, duration: %s." with
     /// how long they last (680; 681 to 683).
     pub effects: Vec<String>,
+    /// The hint table's second texts in its order, the right button's descriptions
+    /// (`creature_dialog_hints` +4, 0x5F48E9; E17 M6 T2a2b1).
+    pub descriptions: Vec<String>,
+    /// The cast button's description: past the table's end the executable reads the second
+    /// mine's name (CLT-Q38 (2)): the panel's spell book's description in the client's profile
+    /// (*provisional*, as its hint), the mine's in [`Bugs::Original`].
+    pub cast_description: String,
 }
 
 impl Hints {
@@ -553,11 +564,36 @@ impl Hints {
                 },
             )
             .collect();
+        let descriptions = HINT_KEYS
+            .iter()
+            .map(|key| text(&format!("stats.help.{key}")))
+            .collect();
+        let cast_description = match bugs {
+            Bugs::Fixed => text("battle.control-help.spell-book"),
+            Bugs::Original => text("stats.help.cast-original"),
+        };
         Self {
             table,
             cast,
             effects,
+            descriptions,
+            cast_description,
         }
+    }
+
+    /// The right button's description of item `id` (`creature_dialog_proc` 0x5F48AD, E17 M6
+    /// T2a2b1): its pair's second text by the hint table's index (an effect's the effects' pair's,
+    /// not the spell's), the cast button's [`Hints::cast_description`]; none for an item without a
+    /// pair or an empty text (0x5F4AAB: no popup), and for morale and luck, whose descriptions
+    /// (0x5F4B86, 0x5F4937) are M6 T2a2b2's.
+    #[must_use]
+    pub fn described(&self, id: u16, bugs: Bugs) -> Option<String> {
+        let text = match hint_index(id, bugs)? {
+            MORALE_INDEX | LUCK_INDEX => return None,
+            i if i < HINTS => self.descriptions.get(i).cloned().unwrap_or_default(),
+            _ => self.cast_description.clone(),
+        };
+        Some(text).filter(|t| !t.is_empty())
     }
 
     /// The status line's text over item `id` (none: an item without a hint, its line empty).
@@ -575,7 +611,13 @@ impl Hints {
     }
 }
 
-/// The hint table's entries' keys, `stats.hint.<key>`, in its order.
+/// Morale's and luck's indices in the hint table: their right button's description is built by
+/// its own procedure (0x5F4B86, 0x5F4937; M6 T2a2b2).
+const MORALE_INDEX: usize = 9;
+const LUCK_INDEX: usize = 10;
+
+/// The hint table's entries' keys, `stats.hint.<key>` (their first texts) and `stats.help.<key>`
+/// (their second), in its order.
 const HINT_KEYS: [&str; HINTS] = [
     "name",
     "count",
@@ -638,6 +680,10 @@ pub struct Modal {
     /// mouse enters another item than the last (the battle's pointer, which the press or the key
     /// set as the dialog opened: 0x476E97, 0x475D72).
     pub cursor: Option<u32>,
+    /// The right button's description held over the dialog (E17 M6 T2a2b1; style 4,
+    /// `popup_run_held` 0x602A40): the cursor hidden, the dialog's input dropped until the right
+    /// button's release or a left press or release ends it.
+    pub popup: Option<MessageBox>,
     bugs: Bugs,
 }
 
@@ -653,6 +699,7 @@ impl Modal {
             open: message::Open::new(window),
             hints,
             cursor: None,
+            popup: None,
             bugs: memory.bugs,
         }
     }
@@ -687,13 +734,49 @@ impl Modal {
         true
     }
 
-    /// The left button pressed at `point`: the OK goes down (the cast button takes no press yet:
-    /// M6 T2a2b).
+    /// The left button pressed at `point`: the OK or the cast button goes down (the DEF button's
+    /// press, E17 M6 T2a2b1 for the cast button); its release over it closes the dialog with its
+    /// id ([`OK`]: 0x7802; [`CAST`]: 301, `creature_cast_button_proc` 0x5F5030, after which
+    /// `stack_stats_dialog` enters the creature's cast, 0x468954).
     pub fn press(&mut self, point: [i32; 2]) -> Outcome {
-        if self.open.message.dialog.button_at(point) != Some(OK) {
-            return Outcome::Nothing;
+        match self.open.message.dialog.button_at(point) {
+            Some(OK | CAST) => self.open.press(point),
+            _ => Outcome::Nothing,
         }
-        self.open.press(point)
+    }
+
+    /// The description a right press at `point` shows (`creature_dialog_proc` 0x5F48AD: the item
+    /// under the mouse that takes it, as a move's, `dialog_area_message` 0x44FF60 and its kin
+    /// turning the press into 0x200/0xE with the right button's flag): none off the dialog or over
+    /// an item without one ([`Hints::described`]).
+    #[must_use]
+    pub fn describe(&self, point: [i32; 2]) -> Option<String> {
+        let message = &self.open.message;
+        let id = message.dialog.item_taking(point, &message.shown)?.id();
+        self.hints.described(id, self.bugs)
+    }
+
+    /// An input while the popup is held (`popup_run_held` 0x602A40's loop, E17 M6 T2a2b1): the
+    /// right button's release (`right`), a left press or a left release ends it (`ends`) and is
+    /// taken; every other one is dropped. A left release that ends it while the mouse holds the
+    /// OK, or a key up (`key_up`) of the key holding it, leaves the OK held down in the
+    /// original; the client's profile lets it go without its click (CLT-Q39, answered (b) at E17
+    /// M6 T2a2b1's start, as the map's MCL-Q24), [`Bugs::Original`] for the comparisons. Whether
+    /// anything shown changed.
+    pub fn held_input(&mut self, ends: bool, key_up: Option<&str>, left_release: bool) -> bool {
+        let mut changed = false;
+        if self.bugs == Bugs::Fixed {
+            if let Some(key) = key_up {
+                changed |= self.open.let_go(Some(key)) != Outcome::Nothing;
+            }
+            if left_release {
+                changed |= self.open.let_go(None) != Outcome::Nothing;
+            }
+        }
+        if ends && self.popup.take().is_some() {
+            changed = true;
+        }
+        changed
     }
 
     /// The mouse moved to `point`: the OK held follows it on or off.
@@ -849,6 +932,51 @@ impl Steps {
         } else {
             (since - first) / STEP_MS + 1
         }
+    }
+
+    /// The steps made `since` ms after the dialog opened around the right button's popups held
+    /// over it (E17 M6 T2a2b1), each `[start, end]` in order (`u32::MAX` while still held): the
+    /// procedure's tail steps once the clock reaches the deadline, which then moves to the later
+    /// of now and the deadline plus [`STEP_MS`] (0x5F4FF1); the popup's loop calls no procedure,
+    /// so none comes while one is held, and at its end the tail steps when due, twice when the
+    /// deadline was passed by [`STEP_MS`] or more (the deadline moved to now is reached at once).
+    #[must_use]
+    pub fn made_around(first: u32, holds: &[[u32; 2]], since: u32) -> u32 {
+        Self::around(first, holds, since).0
+    }
+
+    /// When the creature next steps after `since` ms around the popups `holds` ([`Self::made_around`];
+    /// none while one is held).
+    #[must_use]
+    pub fn next_around(first: u32, holds: &[[u32; 2]], since: u32) -> Option<u32> {
+        let (_, deadline, held) = Self::around(first, holds, since);
+        (!held).then_some(deadline)
+    }
+
+    /// The steps made by `since`, the deadline then and whether a popup is held then.
+    fn around(first: u32, holds: &[[u32; 2]], since: u32) -> (u32, u32, bool) {
+        let (mut deadline, mut made) = (first, 0_u32);
+        for &[start, end] in holds {
+            if start > since {
+                break;
+            }
+            while deadline <= start {
+                made += 1;
+                deadline = deadline.saturating_add(STEP_MS);
+            }
+            if end > since {
+                return (made, deadline, true);
+            }
+            while deadline <= end {
+                made += 1;
+                deadline = end.max(deadline.saturating_add(STEP_MS));
+            }
+        }
+        while deadline <= since {
+            made += 1;
+            deadline = deadline.saturating_add(STEP_MS);
+        }
+        (made, deadline, false)
     }
 }
 

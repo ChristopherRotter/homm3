@@ -815,6 +815,10 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
         paths.append(path)
         if mem is not None:
             stacks.append(mem.stacks())
+    # The right button an action held (E17 M6 T2a2b1) let go.
+    if getattr(game, "right_held", False):
+        run("xdotool", "mouseup", "3")
+        game.right_held = False
     # A result window reached played its clip (E17 M5 T8b1, R7-2; read with the stacks: every
     # `set` run).
     if mem is not None and at_result(mem):
@@ -924,6 +928,8 @@ def book_place(k):
 
 def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
+    right:x,y (E17 M6 T2a2b1: the right button held down there through the frames), look:x,y and
+    cast-button:x,y:<n> (clicks: a stack's stats dialog, its cast button),
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
     hex if the spell takes one), aim:<k>:<n> (E17 M5 T3b: the book's place k, the aim of its
     spell, numbered n in the original, left under way), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
@@ -978,13 +984,25 @@ def act(game, action):
         game.click(*hex_point(int(arg)))
         game.move(*PARK)
         time.sleep(0.3)
-    elif kind in ("click", "move"):
-        x, y = map(int, arg.split(","))
-        (game.click if kind == "click" else game.move)(x, y)
+    elif kind in ("click", "move", "look", "cast-button"):
+        # E17 M6 T2a2b1: `look:x,y` a press on a stack to look at (its stats dialog) and
+        # `cast-button:x,y:<n>` the dialog's cast button (n the spell's number, the viewer's) are
+        # clicks too.
+        x, y = map(int, arg.split(":")[0].split(","))
+        (game.move if kind == "move" else game.click)(x, y)
         time.sleep(0.3)
-        if kind == "click":
+        if kind != "move":
             game.move(*PARK)
             time.sleep(0.3)
+    elif kind == "right":
+        # E17 M6 T2a2b1: the mouse moved there, then the right button held down through the frames
+        # (a popup shows while it is held); `capture` releases it after the last.
+        x, y = map(int, arg.split(","))
+        game.move(x, y)
+        time.sleep(0.3)
+        run("xdotool", "mousedown", "3")
+        game.right_held = True
+        time.sleep(0.5)
     elif kind == "key":
         game.key(arg, 0.3)
     elif kind == "step":

@@ -52,15 +52,19 @@ pub struct Open {
     pub steps: Steps,
     /// Where the mouse was as it opened.
     pub looked: [i32; 2],
+    /// The right button's popups held over it (E17 M6 T2a2b1), each `[start, end]` in ms since
+    /// it opened (`u32::MAX` while held): its creature does not step meanwhile
+    /// ([`Steps::made_around`]).
+    pub holds: Vec<[u32; 2]>,
 }
 
 impl Open {
     /// The dialog `since` ms after it opened, its creature's first step `first` ms after it
     /// (`creature_dialog_proc` 0x5F4CFF: once the clock reaches the frame deadline, then every
-    /// 100 ms).
+    /// 100 ms; none while a popup is held, E17 M6 T2a2b1).
     pub fn at(&self, first: u32, since: u32) -> MessageBox {
         let mut steps = self.steps.clone();
-        for _ in 0..Steps::made(first, since) {
+        for _ in 0..Steps::made_around(first, &self.holds, since) {
             steps.step();
         }
         let mut window = self.modal.open.message.clone();
@@ -311,7 +315,13 @@ pub fn open(
     (frames, viewing, seed): (BTreeMap<u32, u32>, u8, u32),
     memory: &mut Memory,
 ) -> Option<Open> {
-    let stats = of(sources, observation, id, true)?;
+    let mut stats = of(sources, observation, id, true)?;
+    // The cast button only for the acting stack in the client's profile (CLT-Q38 (4), answered
+    // at E17 M6 T2a2a's start: its cast is the acting stack's own drawn spell); the original's
+    // shows it for any Faerie Dragon of the side acting, for the comparisons.
+    if memory.bugs() == h3_render::Bugs::Fixed && observation.active != Some(id) {
+        stats.cast = false;
+    }
     let stack = observation.stacks.iter().find(|s| s.id == id)?;
     let key = sources
         .manifest
@@ -341,5 +351,6 @@ pub fn open(
         modal: Modal::new(window, hints, memory),
         steps: Steps::new(frames, war_machine, seed),
         looked,
+        holds: Vec::new(),
     })
 }

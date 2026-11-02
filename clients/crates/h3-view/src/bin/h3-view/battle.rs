@@ -554,6 +554,9 @@ pub struct Battle<'g> {
     /// What the stats dialog remembers between openings (the original's global: one per game),
     /// in the client's profile.
     stats_memory: h3_view::stats::Memory,
+    /// The aim the stats dialog's cast button started (E17 M6 T2a2b1; 0x468954): the dialog's
+    /// close (`Input::Looked`) comes as the aim ends.
+    look_aim: bool,
     /// A message box open over the battle (E17 M5 T4a; design §7.19): the box, when it opened
     /// and what its OK does. The battle (and the book, when the box is the book's) stands still
     /// behind it (its modal loop runs no idle step).
@@ -652,6 +655,9 @@ pub enum StatsDid {
     Changed,
     /// Its OK closed it: the battle takes the mouse again (`Input::Looked`).
     Closed,
+    /// Its cast button closed it (E17 M6 T2a2b1; 0x468943): the acting Faerie Dragon's cast
+    /// starts ([`Battle::look_cast`]), the battle taking the mouse as the aim ends.
+    Cast,
 }
 
 /// What the spell book did with an input (E17 M5 T3a).
@@ -801,6 +807,7 @@ impl<'g> Battle<'g> {
             aiming: None,
             stats: None,
             stats_memory: h3_view::stats::Memory::new(Bugs::Fixed),
+            look_aim: false,
             message: None,
             result_closed: false,
             behind: h3_view::result::Behind::default(),
@@ -1911,22 +1918,101 @@ impl<'g> Battle<'g> {
         match input(&mut open.modal) {
             Outcome::Nothing => StatsDid::Nothing,
             Outcome::Changed => StatsDid::Changed,
-            Outcome::Closed(_) => {
+            Outcome::Closed(id) => {
                 self.stats = None;
-                StatsDid::Closed
+                if id == h3_view::stats::CAST {
+                    StatsDid::Cast
+                } else {
+                    StatsDid::Closed
+                }
             }
         }
     }
 
-    /// When the open stats dialog's creature next steps after `t` (none: no dialog open).
-    pub fn stats_step_after(&self, t: u32) -> Option<u32> {
-        let &(_, opened) = self.stats.as_ref()?;
-        let first = opened.saturating_add(STATS_FIRST_STEP);
-        if t < first {
-            return Some(first);
+    /// The right button pressed at `at` with the mouse at `point` while the stats dialog is open
+    /// (E17 M6 T2a2b1; `creature_dialog_proc` 0x5F48AD, design §12.3): the description of the
+    /// item there in a popup (style 4) held while the button is, framed as a box ([`Self::box_player`]).
+    /// Whether it opened (none over an item without one, nor without the text tables).
+    pub fn stats_right(&mut self, at: u32, point: [i32; 2]) -> bool {
+        let player = self.box_player(at, None);
+        let Some((open, _)) = self.stats.as_ref() else {
+            return false;
+        };
+        if open.modal.popup.is_some() {
+            return false;
         }
-        let steps = (t - first) / h3_view::stats::STEP_MS + 1;
-        Some(first.saturating_add(steps.saturating_mul(h3_view::stats::STEP_MS)))
+        let (Some(text), Some(writer)) = (open.modal.describe(point), self.ground.writer.as_ref())
+        else {
+            return false;
+        };
+        let Some(window) = writer.message(&self.ground.layout, &text, Style::Popup, None, player)
+        else {
+            return false;
+        };
+        let Some((open, opened)) = self.stats.as_mut() else {
+            return false;
+        };
+        open.modal.popup = Some(window);
+        open.holds.push([at.saturating_sub(*opened), u32::MAX]);
+        true
+    }
+
+    /// Whether the stats dialog's popup is held (E17 M6 T2a2b1): the cursor hidden
+    /// (`popup_run_held` 0x602A40, `mouse_hide`), every input but its ends dropped.
+    pub fn stats_popup(&self) -> bool {
+        self.stats
+            .as_ref()
+            .is_some_and(|(open, _)| open.modal.popup.is_some())
+    }
+
+    /// An input at `at` while the popup is held ([`h3_view::stats::Modal::held_input`]): `ends`
+    /// it (the right button's release, a left press or release), a key's release `key_up`, a left
+    /// release `left_release`. Whether the screen changed.
+    pub fn stats_held(
+        &mut self,
+        at: u32,
+        ends: bool,
+        key_up: Option<&str>,
+        left_release: bool,
+    ) -> bool {
+        let Some((open, opened)) = self.stats.as_mut() else {
+            return false;
+        };
+        let held = open.modal.popup.is_some();
+        let changed = open.modal.held_input(ends, key_up, left_release);
+        if held
+            && open.modal.popup.is_none()
+            && let Some(hold) = open.holds.last_mut()
+        {
+            hold[1] = at.saturating_sub(*opened);
+        }
+        changed
+    }
+
+    /// The stats dialog's cast button clicked at `at` (E17 M6 T2a2b1; `stack_stats_dialog`
+    /// 0x468943): the acting Faerie Dragon's drawn spell aimed as by its key F (0x468954 into
+    /// `enter_player_cast`, the action 10), the dialog's close coming as the aim ends
+    /// ([`Self::looked_after_aim`]). The spell aimed, if any (none: its side's hero cast this
+    /// round, and the dialog's close comes at once).
+    pub fn look_cast(&mut self, at: u32) -> Option<u16> {
+        let spell = self.dragon_aim(at)?;
+        self.look_aim = true;
+        Some(spell)
+    }
+
+    /// Whether the aim that just ended was the cast button's (E17 M6 T2a2b1): the stats dialog's
+    /// close follows it (0x476EE1 after `stack_stats_dialog` returns).
+    pub fn looked_after_aim(&mut self) -> bool {
+        core::mem::take(&mut self.look_aim)
+    }
+
+    /// When the open stats dialog's creature next steps after `t` (none: no dialog open, or its
+    /// popup held).
+    pub fn stats_step_after(&self, t: u32) -> Option<u32> {
+        let (open, opened) = self.stats.as_ref()?;
+        let since = t.saturating_sub(*opened);
+        let next = h3_view::stats::Steps::next_around(STATS_FIRST_STEP, &open.holds, since)?;
+        Some(opened.saturating_add(next))
     }
 
     /// Whether a message box is open over the battle (E17 M5 T4a).
@@ -2478,6 +2564,16 @@ impl<'g> Battle<'g> {
                     .into_iter()
                     .map(Draw::Dialog),
             );
+            // The right button's description held over it (E17 M6 T2a2b1).
+            if let Some(popup) = &open.modal.popup {
+                list.extend(
+                    popup
+                        .dialog
+                        .draws(&popup.shown, &self.ground.layout.player_palette)
+                        .into_iter()
+                        .map(Draw::Dialog),
+                );
+            }
         }
         if let Some((open, opened, asked)) = &self.message {
             // The result window over the whole screen darkened (E17 M5 T4b1).

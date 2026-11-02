@@ -117,6 +117,9 @@ pub fn inputs(
     let mut told = told;
     let mut spells = spells.iter().copied();
     let (mut cast_pending, mut auto) = (false, false);
+    // The stats dialog's cast button's aim under way (E17 M6 T2a2b1): the dialog's close comes as
+    // it ends.
+    let mut look_aim = false;
     let mut out = vec![Input::Move { at: 0, to: PARK }];
     let (mut now, mut turns) = (pre, 0);
     // The stack whose turn the battle opens with (E17 M3 T7b-1): a first `turn:` naming it acts
@@ -149,7 +152,45 @@ pub fn inputs(
                 } else {
                     Input::Act { at: now }
                 });
+                if core::mem::take(&mut look_aim) {
+                    out.push(Input::Looked { at: now });
+                }
                 out.push(Input::Move { at: now, to: PARK });
+            }
+            // A press on a stack to look at: its stats dialog, modal, the park's move its own
+            // (E17 M6 T2a2b1).
+            "look" => out.extend([
+                Input::Move {
+                    at: now,
+                    to: point(arg)?,
+                },
+                Input::Look { at: now },
+                Input::Move { at: now, to: PARK },
+            ]),
+            // The dialog's cast button: the acting Faerie Dragon's aim of its drawn spell (its
+            // number given), the mouse parked after the click; the dialog's close as it ends.
+            "cast-button" => {
+                let (at, original) = arg
+                    .split_once(':')
+                    .ok_or_else(|| format!("`{action}`: not cast-button:<x>,<y>:<spell>"))?;
+                let original = original
+                    .parse::<u16>()
+                    .map_err(|e| format!("`{action}`: {e}"))?;
+                let spell = handle(original)
+                    .ok_or_else(|| format!("`{action}`: no spell numbered {original}"))?;
+                look_aim = true;
+                out.extend([
+                    Input::Move {
+                        at: now,
+                        to: point(at)?,
+                    },
+                    Input::Aim {
+                        at: now,
+                        spell,
+                        creature: true,
+                    },
+                    Input::Move { at: now, to: PARK },
+                ]);
             }
             // The tactics phase's message closed by its OK (E17 M5 T4c2b).
             "key" if arg == "Return" && core::mem::take(&mut told) => {}
@@ -169,8 +210,14 @@ pub fn inputs(
                 at: now,
                 to: point(arg)?,
             }),
-            // Escape gives an aim up (E17 M5 T3b, 0x5A317A).
-            "key" if arg == "Escape" => out.push(Input::Cancel { at: now }),
+            // Escape gives an aim up (E17 M5 T3b, 0x5A317A); the cast button's aim closes the
+            // stats dialog after it (E17 M6 T2a2b1).
+            "key" if arg == "Escape" => {
+                out.push(Input::Cancel { at: now });
+                if core::mem::take(&mut look_aim) {
+                    out.push(Input::Looked { at: now });
+                }
+            }
             "aim" => {
                 let (place, original) = arg
                     .split_once(':')

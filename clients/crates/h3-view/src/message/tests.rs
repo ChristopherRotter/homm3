@@ -508,3 +508,29 @@ fn the_frame_takes_the_acting_players_colours_in_the_clients_profile() {
     assert_eq!(framed(Bugs::Fixed, 0, Some(1)), 1);
     assert_eq!(framed(Bugs::Fixed, 2, None), 2);
 }
+
+#[test]
+fn a_popup_has_no_buttons_and_a_narrower_least_box() {
+    // Style 4 (E17 M6 T2a2b1): at least 128 wide, no buttons nor their room.
+    let medium = font(8, 16);
+    let small = font(5, 10);
+    let m = layout(
+        &assets(),
+        (&medium, &small),
+        "x",
+        Style::Popup,
+        None,
+        (3, Bugs::Original),
+    );
+    // 128 x 128 (16 + 60 = 76, rounded up to 128), centred.
+    assert_eq!(m.dialog.shadow, Some([128, 128]));
+    assert_eq!(m.dialog.place, [336, 236]);
+    assert!(
+        !m.dialog
+            .items
+            .iter()
+            .any(|i| matches!(i, h3_ui::ui::Item::Button(_)))
+    );
+    // The text centred in the height left by no buttons: 30 + (128 - 76) / 2.
+    assert_eq!(label(&m, TEXT).at[1], 56);
+}
