@@ -97,8 +97,8 @@ or `TownRuleset::empty(core)` (an encounter has no towns) in the same pull reque
 ### 3. The content and its harvest (T5b)
 
 - **Read from `Heroes3.exe`** (a code reading, every address into `docs/exe/map.toml`):
-  `building_tables_init` 0x4EB730 (each faction's buildings, its lists from 0x63EC80, and the
-  supersede table 0x6A8BB8), `map_building_ids` 0x6888C0 (read by E24: a slot's building id per
+  `building_tables_init` 0x4EB730 (each faction's buildings from the lists its map entry names,
+  and the supersede table 0x6A8BB8), `map_building_ids` 0x6888C0 (read by E24: a slot's building id per
   faction), `town_creatures` 0x6747B4 (levels and upgrades), the silo's table 0x688EB4 (§11.1),
   the neutral garrison's table 0x688E84, 0x688E94, 0x688EA4 (§5.2), the 30 at 0x5C0C5B (§5.3); the
   roles from the readings of §9.4 (the siege's buildings) and §8.3 (the reveal).
