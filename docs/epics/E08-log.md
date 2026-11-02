@@ -10508,7 +10508,8 @@ built by T83a and T83b1 and passed in T85b2b's verify, so nothing staged. **Base
 65b5465 (#654, #655 merged; CI green on it); the sandbox's light gates failed at `check-exe-map`
 on `master` (the town lane's #656 cites 0x63EC80, which no entry covered): an entry
 `faction_building_lists` (from the bytes: nine lists of building ids with their requirements,
-each ended by -100; size 0xF44) added in this pull request (`docs/exe/map.toml` is common).
+each ended by -100; size 0xF44) added on this branch, cherry-picked into `master` by the client
+lane's #658 (`docs/exe/map.toml` is common).
 
 - **The economy map** (`fixtures/maps/e08-economy-36.h3m`; `h3-map`'s `tests/economy_map.rs`,
   `the_economy_map_is_committed_as_written`): SoD, 36 × 36 of grass, the sea on columns 30 to
