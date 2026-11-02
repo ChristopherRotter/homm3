@@ -1,7 +1,7 @@
 //! What a viewer may know of the whole game (ADR-0017 points 1 and 2, E08 T8b1;
-//! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, the players'
-//! colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
-//! show) and open decision (T14b; since T30 an offer or a level-up, since T51b a meeting or an
+//! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, since E08 T85b the
+//! month's kind, the players' colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
+//! show), since E08 T85b the timed events that fired at its turn start today, and open decision (T14b; since T30 an offer or a level-up, since T51b a meeting or an
 //! army dialog, since T63a a choice or a University), the heroes it sees with their types and its own heroes'
 //! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
 //! battle's, as its side sees it), and the projection of the game's events. The seed, the streams and the state hash never show
@@ -18,7 +18,7 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
-use crate::{GameRuleset, GameState};
+use crate::{GameRuleset, GameState, MonthKind};
 
 /// Who an observation or an event's projection is for (ADR-0017 point 2). The spectator, who
 /// sees public facts only, comes with the server lane as an additive variant.
@@ -35,6 +35,8 @@ pub struct GameObservation {
     pub viewer: PlayerId,
     /// The day, from 1.
     pub day: u32,
+    /// The month's kind (GAM-CAL-003, E08 T85b): public, as the original's month's message.
+    pub month: MonthKind,
     /// The players, by id.
     pub players: Vec<PlayerView>,
     /// The players of the group whose turn is running.
@@ -42,6 +44,11 @@ pub struct GameObservation {
     /// The viewer's treasury, by resource in the core's order (GAM-RES-001); empty for a viewer
     /// that is not a player of the game.
     pub treasury: Vec<u32>,
+    /// The map's timed events that fired at the viewer's turn start today, by their messages in
+    /// the map's order (GAM-CAL-004, E08 T85b: [`GameState::events_today`]); empty before its
+    /// turn starts. Day 1's fire inside the build, so this is how a client learns of them. Other
+    /// players' never show.
+    pub events_today: Vec<u16>,
     /// The viewer's first open decision but a battle (GAM-DEC-001, E08 T14b; GAM-DEC-002, T30;
     /// GAM-DEC-003, GAM-DEC-004, T51b; GAM-DEC-005, GAM-DEC-006, T63a): an offer, its object
     /// named by type and anchor, with its price, a level-up with its offers, a meeting's two
@@ -165,6 +172,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
     GameObservation {
         viewer: player,
         day: state.day(),
+        month: state.month(),
         players: (0..=u8::MAX)
             .take(state.players())
             .map(PlayerId::new)
@@ -177,6 +185,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
         treasury: state
             .treasury(player)
             .map_or_else(Vec::new, <[u32]>::to_vec),
+        events_today: state.events_today(player),
         decision: state
             .decision(player)
             .cloned()
@@ -228,7 +237,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 }
 
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
-/// public but a treasury's change, an offer's, a hero's change and its level-ups, which show to
+/// public but a treasury's change, a timed event's firing (E08 T85b), an offer's, a hero's change and its level-ups, which show to
 /// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a, a meeting's
 /// and an army dialog's since T51b, a choice's and a University's since T63a), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
 /// battle event shows to the players who see it, naming the viewer alone among them
@@ -283,9 +292,12 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::ChoiceOpened { player: owner, .. }
         | GameEvent::UniversityOpened { player: owner, .. }
         | GameEvent::DecisionClosed { player: owner }
-        | GameEvent::GroupLost { player: owner, .. } => (owner == player).then_some(*event),
+        | GameEvent::GroupLost { player: owner, .. }
+        | GameEvent::TimedEventFired { player: owner, .. } => (owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }
         | GameEvent::DayStarted { .. }
+        | GameEvent::WeekStarted { .. }
+        | GameEvent::MonthStarted { .. }
         | GameEvent::TurnStarted { .. } => Some(*event),
     }
 }

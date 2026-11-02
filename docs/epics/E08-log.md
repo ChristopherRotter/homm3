@@ -10353,3 +10353,149 @@ creature }` to the players who see the tile. The guard zones read the added obje
 original refreshes them after the walk, `refresh_guard_flags` 0x4CA410: no test inside the walk
 reads them, so the two agree). Not built: the original's Plague and normal months add nothing on
 the map.
+
+### Increment 9, round 7: T85b1, the game's day advance (2026-11-02, `adventure/e08-t85b`, no pull request)
+
+**The cut** (decision 224, the user at T85b's start): T85b on one branch over two sessions so
+game state hash v22 reaches `master` once: T85b1 the day advance, pushed without a pull request;
+T85b2 (the timed events fired, `events_today`, the security lines, the env's `BuildBoat`) the next
+session on the same branch, then the pull requests.
+
+- **The adventure's income** (`state/economy.rs`; design §14 point 4): `AdventureState::income(core,
+  part, player, week_start)`, dense by resource: each owned mine's `production` (an abandoned
+  mine's drawn resource at its mine's amount), and on a week's first day each creature type with
+  a `weekly_resource` ability in the player's heroes' armies once (a `BTreeSet` of the types).
+- **The day advance** (`h3-game`'s new `state/day.rs`, moved out of `state.rs`; design §14):
+  `advance_day`: the day, `DayStarted`; on `(day − 1) % week_days == 0` `WeekStarted { week }`
+  and `start_week` with the game's stream; on `(day − 1) % (week_days × month_weeks) == 0`
+  `draw_month` (`1..=` the odds' sum, normal, creature, Plague in order; the creature by
+  `below(len)`), `MonthStarted { month, kind }`, `start_month` in a creature's month; then
+  `pay_income` (each player in id order: the adventure's income plus each of its heroes' on the
+  map `daily_income`, one `ResourceGained` per non-zero resource through `gain`), `regain_mana`
+  (every hero of the store, `day_mana`, written only where it changes: a fork shares the store
+  until then), `start_day`. `MonthKind { Normal, Creature, Plague }` (public, `GameState::month`,
+  `GameObservation::month`); `project` passes both new events to every viewer.
+- **Agent's calls:** no event for the regain (the design lists none; the owner's observation
+  shows the points; the view property masks the points at a new day); the timed events stored now
+  (`events: Option<Arc<[TimedEventSetup]>>`, none without events, hashed as a list) though fired only by T85b2, so T85b2 moves no hash;
+  the month drawn after the week's step's draws, from the game's stream (the week's kind waits for
+  E09 with a stream of its own, decision 197).
+- **Rules:** GAM-CAL-002 (`verified`: E9-6, E9-7), GAM-CAL-003 (`implemented`: no row observed
+  the month), GAM-RES-003 and -005 (`verified`: E9-6, E9-7) new; GAM-RES-004 `verified`;
+  GAM-TRN-002's summary points to GAM-CAL-002. Tests: `h3-game`'s `tests/calendar.rs` (day 1 pays
+  nothing; the mines, the abandoned mine and the purse at each day; the week on day 8 with the
+  growth and the weekly resource once for two stacks; the months: none, the Plague, a creature's
+  adding its monsters on the nine free tiles; the regain, the fork, points above the maximum;
+  the events in the hash).
+- **Properties** (`h3-map`): the play property's store check regains the points at
+  `DayStarted`; its conservation splits a command's events at `DayStarted` and checks the day's
+  gains against an independent sum (`check_income`: the owned mines' production, the heroes'
+  `daily_income`, the weekly abilities once on a week's first day); the others' treasuries may
+  change at a new day; a move stopping before a monster added in play (`added_at`); a guard's
+  index read through `AdventureState::object` (an added monster guarding a visit's tile: the
+  coverage run's seed, kept in `play.txt`). The view
+  property: `WeekStarted` and `MonthStarted` only on a new day, the month followed, the points'
+  regain allowed untold at a new day.
+- **Versions:** game state hash v22 (the month's kind, the timed events). Replays: 25 of 32
+  re-recorded from their commands (hash lines and the version only); the seven duel replays of 28
+  days rejected a command (their battles changed: the monsters grow, the heroes regain points)
+  and were recorded again from their seeds (`--seed N --agent-seed N --days 28`, s1308 in
+  strict-fixed); their feature lists in `adventure_replays.rs` are T42's until T86's README loop.
+- **Bench** (callgrind, against `master`'s full verify in the sandbox): random-play-duel-36
+  1 016 884 805 against 1 012 253 546 (+0.46 %; the committed count +2.16 %, `master` itself
+  +1.70 %): `command_battle` +12 M (the regain and the growth change the battles), the reach and
+  passage loops −7 M (other games), the day's own steps about +5 M; re-baselined with that
+  reason. random-play-rewards-36 +0.37 %, random-play-sea-36 +0.22 % against `master` (within
+  the gate, not re-baselined). The reach workloads play fewer steps (2 291 for 2 698; 4 940
+  walkers' queries for 5 759), every function in proportion: reach-lifted-xl-144 −4.1 % against
+  `master`, re-baselined, reach-xl-144 −3.0 % (−1.22 % against its count, kept). The forks: the
+  month and the events' block cost 15 Ir a fork (fork-sea-xl-144 +0.40 % against `master`; an
+  `Arc` always present cost 19 Ir, hence the `Option`).
+
+### Increment 9, round 7: T85b2a, the timed events (2026-11-02, `adventure/e08-t85b`, no pull request)
+
+**The cut** (decision 225, the user at T85b2's start): T85b2 in two, the pull requests at the end:
+T85b2a the game's part on the branch, T85b2b the env's `BuildBoat`, the verify with the original
+data, the bench and the pull requests the next session. The baseline: `master` 1c68dca merged into
+the branch (no conflict; the town lane's #648 was docs only), the sandbox's full verify green.
+
+- **The firing** (`h3-game`'s `state/day.rs`; design §14 "The turn start", ADR-0017 point 3):
+  `TimedEventSetup::fires(player, human, day)` (its players, its flag for the player's kind, its
+  first day or a multiple of its interval after it: `is_multiple_of(0)` is the first day alone);
+  `GameState::fire_events` at `start_group` after each player's `start_turn` and `TurnStarted`:
+  each firing event in the map's order, its gains through `gain` (saturating), then its losses
+  through `lose` (down to 0, `ResourceLost` the amount taken), then `TimedEventFired { player,
+  event }` (the event's `message`, its index in the map's list). Day 1's fire inside the build
+  (the build's `start_group`, no sink). `set_schedule` (tests) fires its group's again.
+- **The observation:** `GameState::events_today(player)`: the events that fire for the player
+  today, once its turn has started today (its group at or before the running one), none for a
+  player of no group; `GameObservation::events_today`; `project` passes `TimedEventFired` to its
+  player alone. `GameState::events()` (the setup's list) public.
+- **Agent's calls:** `events_today` on `GameObservation` (the viewer's, beside its treasury), not
+  `PlayerView::events_today` as the design's sketch and decision 204 named it: `PlayerView` is
+  every viewer's public, `Copy` view of each player; the gains before the losses within an event
+  (the original floors each resource's sum in resource order: the same treasury, the resources
+  being distinct); the event named by its message (the map's index), which the client needs.
+- **Rules:** GAM-CAL-004's summary (the firing, `events_today`) and its observation's note (E9-11
+  played). Tests: `h3-game`'s `tests/calendar.rs` (E9-11's three for red with a take of all it
+  holds on day 3 and one for blue at its own turn start: the order, the floor, the repeat, the
+  days without; the kinds of player; the projection and the observation); `h3-map`'s
+  `economy.rs` plays the batch map's events (red's gold 300, 0, 0, 0, 0, 0 on days 1 to 6, the
+  takes of 300 and 0 on days 2, 4 and 6).
+- **Properties** (`h3-map`): the plans draw up to three timed events (last, `timed()`; before SoD
+  the human flag set as the reader does); `check_timed` reads the days on its own and checks the
+  events after the first `TurnStarted` against the treasury as it stands; the conservation's
+  visit gains and income stop at the first `TurnStarted` or `DayStarted`; the isolation lets a
+  player's treasury change at its turn's start; the view property follows `events_today` (cleared
+  at `DayStarted`, extended by its own `TimedEventFired`). `the_plans_visit_every_kind_and_answer_every_decision`
+  counts events fired, their gains and floored takes. **Found:** the hygiene property
+  (`a_viewer_learns_nothing_it_cannot_see`) failed at a month's start: the month's kind is public
+  and drawn from the game's stream, whose seed and position the hidden differences change (the
+  other seed, the weekly objects' draws on unseen tiles), so its comparison now ends at a
+  `MonthStarted`, as at a battle (the case kept in `view.txt`); no leak beyond the draw, as the
+  original's single generator.
+- **Versions:** none moved (the events were hashed by T85b1); no replay's map has timed events.
+
+### Increment 9, round 7: T85b2b, the env's `BuildBoat`; T85b's verify, bench and pull requests (2026-11-02, `adventure/e08-t85b`, `cross-lane`, with `shared/e08-t85b`)
+
+**The start:** `master` 3ec41c6 (#649, #650: the town lane's survey, the client's stats dialog; no
+engine code) merged into both branches; the sandbox's full verify with the original data green
+on the merged state (every step, the original-data step's 160 shipped maps among them).
+
+- **The env** (`h3-sim`'s `adventure/action.rs`; design §15, ADR-0017 point 8, decision 203,
+  `cross-lane`): action encoding v6 appends `BUILD_BOAT` (entry 17, `ENTRY_COUNT` 18,
+  `Action::build_boat(tile)`); its tile head is the anchors of the Shipyards whose `BuildBoat`
+  `h3_game::legal_commands` lists (ADV-SHY-003: the player's or an ally's, the boat tile free,
+  the price in the treasury), so one action per Shipyard; `legal_mask` sets it from the listed
+  commands (`command_entry`), `tile_mask` from their anchors; `decode` builds at the Shipyard on
+  the tile that `AdventureState::buildable_shipyards` lists for the player (the adventure's checks
+  only), `encode` names a `BuildBoat` by its anchor. The random agent (`rollout::choose`) already
+  drew among the listed commands: a drawn `BuildBoat`, which had no action and ended the turn, now
+  builds (no committed map has a Shipyard, so no replay, workload or bots record moves).
+- **Agent's calls (change freely):** `decode` by the adventure's checks rather than the listed
+  commands, so the game's own (its turn, an open decision, the price) are refused by `apply` with
+  their reasons, as a move or an answer out of turn; a tile no usable Shipyard anchors decodes to
+  nothing, as a move's tile the query does not list. Entry 17 appended, not placed before the
+  answers, so the earlier entries keep their indices.
+- **Tests** (`h3-sim`): `tests/shipyards.rs`' setup, a Shipyard of each player's beside its first
+  hero on the duel (the nearest free tile reached on day 1 with a free one two columns left made
+  water: the reach also lists objects' entrances, which a first cut took); the entry and its tile,
+  decode and encode, blue's out of its turn refused, red's for blue, a tile without one, one past
+  the map and the neutral seat decoding to nothing, a built boat masking it; the random agent
+  building in a week. `check_masks` checks the entry's tiles against the listed commands; the play
+  property draws the setup as its fourth kind (kind 3, so the saved cases keep theirs; passed at
+  256 cases once).
+- **Bench** (callgrind, against `master` 3ec41c6 in a worktree, the same games): random-play-duel-36
+  1 016 746 196 against 1 012 383 930 (+0.43 %), random-play-rewards-36 1 162 290 419 against
+  1 158 100 214 (+0.36 %), random-play-sea-36 2 684 673 295 against 2 678 931 532 (+0.21 %),
+  fork-sea-xl-144 372 500 055 against 371 000 055 (+0.40 %): T85b1's numbers, so T85b2a's firing
+  costs nothing measurable (no fixture map has timed events; `fire_events` absent from the
+  profile). The duel per function as T85b1 found it: the battles +10 M (`reachable_within`,
+  `neighbors`, `legal_commands`: the regain and the growth), the reach and passage loops −7 M.
+  `fork-sea-xl-144` re-baselined (+1.94 % against its count, `master` itself +1.53 %); the others
+  within their gate, left to T86's re-baselines (design §15).
+- **Verify:** the scoped verifies, `adventure` with the original data and `ai` (`h3-sim`; an
+  adapter, no coverage gate), with no failing step but `check-lane`, which a `cross-lane` branch
+  fails by design; `check-lane --cross-lane` and `cargo check --workspace --all-targets` clean.
+- **Versions:** the env's action encoding v6 (the AI lane's, its inbox told); T85b as a whole
+  brings game state hash v22 to `master` once (decision 224).

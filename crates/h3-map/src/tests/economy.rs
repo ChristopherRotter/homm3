@@ -3,12 +3,13 @@
 //! the seven mines, the abandoned mine (53.7 and SoD's 220.7) with its resource set, a Lighthouse
 //! and a Shipyard with their owners, the three weekly objects and the map's timed events read back
 //! as written, in SoD and RoE; what the writer refuses; and the map imports (E08 T83a: its
-//! classes typed, the owners and sets, its events).
+//! classes typed, the owners and sets, its events) and plays its events as batch E9-11 saw them
+//! (E08 T85b).
 
 use h3_adventure::{Holds, Scenery};
 use h3_content::ResourceId;
 use h3_contracts::PlayerId;
-use h3_game::TimedEventSetup;
+use h3_game::{Actor, GameCommand, GameEvent, GameState, TimedEventSetup, apply};
 
 use super::import::SOD;
 use super::limits;
@@ -361,6 +362,60 @@ fn the_economy_map_imports() {
             event(-99_999, false, 1, 0, 0),
             event(300, false, 1, 0, 1),
             event(-500, true, 2, 2, 2),
+        ]
+    );
+}
+
+// covers: GAM-CAL-004
+#[test]
+fn the_economy_maps_events_fire_as_batch_e9_11_saw_them() {
+    // Batch E9-11 (survey `E08-economy.md` §19; the original's run had a town, ours has no gold
+    // income): red's gold after each turn start, days 1 to 6: 300 on day 1 (the list's order: the
+    // take, then the gift), 0 on day 2 (300 taken of the 500, floored), nothing on days 3 and 5,
+    // the take again on days 4 and 6 (0 taken).
+    let setup = import(&read_back(&w::write(&economy_map()).unwrap()), &SOD).unwrap();
+    let mut state = GameState::new(&SOD, &setup, 1).unwrap();
+    let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+    let resources = SOD.core().resources();
+    let gold = resources.iter().position(|r| r.key.as_str() == "base:gold");
+    let gold = gold.unwrap();
+    let mut seen = vec![(
+        state.treasury(red).unwrap()[gold],
+        state.events_today(red),
+        0,
+    )];
+    for _ in 2..=6 {
+        let mut events = Vec::new();
+        for player in [red, blue] {
+            apply(
+                &mut state,
+                &SOD,
+                Actor::Player(player),
+                GameCommand::EndTurn,
+                &mut events,
+            )
+            .unwrap();
+        }
+        let taken = events.iter().find_map(|e| match *e {
+            GameEvent::ResourceLost { player, amount, .. } if player == red => Some(amount),
+            _ => None,
+        });
+        seen.push((
+            state.treasury(red).unwrap()[gold],
+            state.events_today(red),
+            taken.unwrap_or(0),
+        ));
+    }
+    let take = |taken| (0, vec![2], taken);
+    assert_eq!(
+        seen,
+        [
+            (300, vec![0, 1], 0),
+            take(300),
+            (0, vec![], 0),
+            take(0),
+            (0, vec![], 0),
+            take(0)
         ]
     );
 }

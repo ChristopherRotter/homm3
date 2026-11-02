@@ -11,7 +11,9 @@
 //! surface hero flies (Angel Wings) and its underground hero walks on water (Boots of Levitation),
 //! with the three skills and the other artifacts among the four (`fixtures/maps/README.md`); what
 //! each replay meets (from the E08 T42 recording; a flight's or a water walk's pass is a step over
-//! a tile its hero may only pass, before the path's last):
+//! a tile its hero may only pass, before the path's last; since E08 T85b the seven duel replays of
+//! 28 days are recorded again from their seeds, the day advance having changed their games, so
+//! their lists are T42's until E08 T86 checks them again, increment 9's design note §19):
 //!
 //! - `duel-s1-d28` (`--seed 1 --agent-seed 1 --days 28`): a key, a monster's battle won and its
 //!   level-up answered with the second offer; flights over tiles objects block, a visit at a
