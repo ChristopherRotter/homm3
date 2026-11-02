@@ -307,13 +307,13 @@ pub(crate) enum Effect<'k> {
     /// Its flag, nothing for an own or an ally's (a Lighthouse, ADV-OWN-001, ADV-OWN-005, E08
     /// T84b1).
     Lighthouse,
-    /// Its visited marks, then this week's contents once for whoever comes first (a Windmill, a
-    /// Water Wheel, a Mystical Garden: ADV-WEK-001 to -003, ADV-VIS-006 amended, E08 T84b1). A
-    /// Garden marks its visitor's owner, the others the visitor's team.
-    Weekly {
-        /// Whether its mark is the visitor's owner's alone (the Garden's).
-        own_mark: bool,
-    },
+    /// Its visited marks for the visitor's team, then this week's contents once for whoever comes
+    /// first (a Windmill, a Water Wheel, a Mystical Garden: ADV-WEK-001 to -003, ADV-VIS-006
+    /// amended, E08 T84b1; the Garden's the team's too since T84b2, `ADV-QUIRK-35`).
+    Weekly,
+    /// Its flag, nothing for an own or an ally's, then its boat offer for this price, or why it
+    /// makes none (a Shipyard, ADV-OWN-001, ADV-SHY-002, E08 T84b2).
+    Shipyard(&'k Resources),
 }
 
 impl ObjectKind {
@@ -325,8 +325,9 @@ impl ObjectKind {
     /// T20b1: the wandering monsters, whose visit is their answer; T62a: the chests, artifacts,
     /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds; T62b1: Pandora's
     /// Box and the Pyramid; T74a: the sea's finds, which leave, and the message; T84a: the mines
-    /// and the abandoned mines; T84b1: the Lighthouses and the weekly objects. Who reaches a
-    /// kind's visit is the passage's: on water only a boat (ADV-PIK-018, D-46).
+    /// and the abandoned mines; T84b1: the Lighthouses and the weekly objects; T84b2: the
+    /// Shipyards. Who reaches a kind's visit is the passage's: on water only a boat (ADV-PIK-018,
+    /// D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -349,16 +350,15 @@ impl ObjectKind {
             Self::Message { leaves } => Some(Effect::Message(*leaves)),
             Self::Mine { .. } | Self::AbandonedMine { .. } => Some(Effect::Mine),
             Self::Lighthouse { .. } => Some(Effect::Lighthouse),
-            Self::Windmill { .. } | Self::WaterWheel { .. } => {
-                Some(Effect::Weekly { own_mark: false })
+            Self::Windmill { .. } | Self::WaterWheel { .. } | Self::Garden { .. } => {
+                Some(Effect::Weekly)
             }
-            Self::Garden { .. } => Some(Effect::Weekly { own_mark: true }),
+            Self::Shipyard { price, .. } => Some(Effect::Shipyard(price)),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
-            // objects' with T84b1, the Shipyards' come with T84b2.
+            // objects' with T84b1, the Shipyards' with T84b2.
             Self::Ground { .. } | Self::Event | Self::SeaGround | Self::Hole => None,
-            Self::Shipyard { .. } => None,
         }
     }
 

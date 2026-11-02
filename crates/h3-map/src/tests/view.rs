@@ -556,11 +556,25 @@ fn check_told(
                 flagged.push((object_type, anchor));
             }
             // E08 T84b1: a weekly object found empty, told to its visitor's owner alone; nothing
-            // it sees changes.
+            // it sees changes. E08 T84b2: a Shipyard that makes no boat offer likewise.
             GameEvent::Adventure(AdventureEvent {
-                kind: AdventureEventKind::ObjectEmpty { .. },
+                kind:
+                    AdventureEventKind::ObjectEmpty { .. } | AdventureEventKind::ShipyardBlocked { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            // E08 T84b2: a boat built, told where the viewer sees heroes on its tile and to its
+            // builder (ADV-SHY-002, ADV-FOG-008): an empty boat facing 2, as the map's.
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::BoatBuilt { tile, boat_type },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                boats.push(h3_adventure::BoatView {
+                    tile,
+                    kind: boat_type,
+                    facing: 2,
+                });
+            }
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::MonsterChanged {

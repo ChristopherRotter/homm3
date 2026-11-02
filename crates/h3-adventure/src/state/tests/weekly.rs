@@ -1,5 +1,5 @@
 //! Tests of the weekly objects' visits (E08 T84b1; increment 9's design note §9): entered by any
-//! hero, no question; the marks first (the team's, the Garden's the visitor's own), then this
+//! hero, no question; the marks first (the team's, a Garden's too: `ADV-QUIRK-35`), then this
 //! week's contents once for whoever comes first, or the visitor's owner told it is empty.
 
 use super::economy::{GRASS_ROWS, Rules, object, rules, setup};
@@ -84,14 +84,14 @@ fn a_windmill_gives_its_contents_once_to_whoever_comes_first() {
     assert_ne!(s.state_hash(), before);
     // Blue's visit this week: its mark set and told, then nothing for it, told it is empty.
     let mut events = Vec::new();
-    let outcome = s.visit_weekly(BLUE, (0, windmill), false, &mut events);
+    let outcome = s.visit_weekly(BLUE, (0, windmill), &mut events);
     assert_eq!(outcome, AdventureOutcome::default());
     assert_eq!(events, [told(marked, BLUE), told(empty, BLUE)]);
     assert_eq!(s.weekly(0).map(|w| (w.amount, w.marks)), Some((0, 0b11)));
     // Red again: its mark held, so only the empty object told; nothing written.
     let again = s.clone();
     let mut events = Vec::new();
-    let outcome = s.visit_weekly(RED, (0, windmill), false, &mut events);
+    let outcome = s.visit_weekly(RED, (0, windmill), &mut events);
     assert_eq!(outcome, AdventureOutcome::default());
     assert_eq!(events, [told(empty, RED)]);
     assert_eq!(s.state_hash(), again.state_hash());
@@ -104,13 +104,13 @@ fn a_windmill_gives_its_contents_once_to_whoever_comes_first() {
         },
     );
     let mut events = Vec::new();
-    let outcome = s.visit_weekly(RED, (0, windmill), false, &mut events);
+    let outcome = s.visit_weekly(RED, (0, windmill), &mut events);
     assert_eq!(outcome.gains, [(week.resource, 4)]);
     assert_eq!(events, []);
     assert_eq!(s.weekly(0).map(|w| (w.amount, w.marks)), Some((0, 0b11)));
     // An object that is no weekly one gives nothing and tells nothing.
     let mut events = Vec::new();
-    let outcome = s.visit_weekly(RED, (1, windmill), false, &mut events);
+    let outcome = s.visit_weekly(RED, (1, windmill), &mut events);
     assert_eq!((outcome, events), (AdventureOutcome::default(), vec![]));
 }
 
@@ -131,7 +131,8 @@ fn a_water_wheel_and_a_garden_give_their_week_s_amounts() {
         wheel.weekly(0).map(|w| (w.amount, w.marks)),
         Some((0, 0b01))
     );
-    // The Garden's drawn gift; its mark the visitor's own.
+    // The Garden's drawn gift; its mark the visitor's team's (`ADV-QUIRK-35` not reproduced: the
+    // original's marks the visitor alone), until E10's teams the visitor's own.
     let mut garden = game(&rules, "t:garden");
     let gift = *garden.weekly(0).unwrap();
     let (outcome, _) = visit(&rules, &mut garden);

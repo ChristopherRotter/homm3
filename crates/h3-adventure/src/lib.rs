@@ -59,7 +59,7 @@ pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Garrison, HeroGains, Meeting, NoRoom,
-    Offer, OfferKind, Pick, Sink, UniversityVisit, Viewers,
+    Offer, OfferKind, Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{

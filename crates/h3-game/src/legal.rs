@@ -14,7 +14,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::ops::RangeInclusive;
 
-use h3_adventure::{ArmyRef, ArmySlot, ChoiceKind, Reach};
+use h3_adventure::{AdventureCommand, ArmyRef, ArmySlot, ChoiceKind, Reach};
 use h3_battle::LegalCommands;
 use h3_content::Formation;
 use h3_contracts::{HeroId, PlayerId};
@@ -35,11 +35,14 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// commands for its side while that side is to act, and none while the other side is
 /// (`h3_battle::legal_commands`; GAM-BAT-001, E08 T19a); otherwise with an open decision its
 /// answers alone, in its turn or not ([`answers`]: GAM-DEC-001 to GAM-DEC-006), and none for any
-/// other actor while the game waits for a level-up (GAM-DEC-002, E08 T30); otherwise `EndTurn`.
-/// Empty for a player whose turn is not running or who is not in the game, by `apply`'s own
-/// checks (ADR-0017's consequence). The moves are [`legal_moves`]; a meeting's and an army
-/// dialog's management commands [`legal_management`]'s.
+/// other actor while the game waits for a level-up (GAM-DEC-002, E08 T30); otherwise `EndTurn`,
+/// then since E08 T84b2 a `BuildBoat` for each Shipyard of the player's or an ally's whose boat
+/// tile is free while the treasury can pay its price, in object order (ADV-SHY-003:
+/// `AdventureState::buildable_shipyards`). Empty for a player whose turn is not running or who
+/// is not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves are
+/// [`legal_moves`]; a meeting's and an army dialog's management commands [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
+// rule: ADV-SHY-003
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -66,7 +69,19 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
     if state.check_acting(player).is_err() {
         return Vec::new();
     }
-    vec![GameCommand::EndTurn]
+    let boats = state
+        .adventure()
+        .buildable_shipyards(rules.adventure(), player)
+        .filter(|&(_, _, price)| state.can_pay(player, price))
+        .map(|(object_type, anchor, _)| {
+            GameCommand::Adventure(AdventureCommand::BuildBoat {
+                object_type,
+                anchor,
+            })
+        });
+    core::iter::once(GameCommand::EndTurn)
+        .chain(boats)
+        .collect()
 }
 
 /// The answers to `player`'s first open decision but a battle (ADR-0017 point 6; E08 T63a: typed

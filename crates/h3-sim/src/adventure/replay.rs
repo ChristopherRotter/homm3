@@ -31,8 +31,9 @@ use super::rollout::choose;
 /// battle's unowned side; version 5 (E08 T30): a level-up's answers; version 6 (E08 T51a): the
 /// management commands; version 7 (E08 T63a): the answers typed by the decision's kind
 /// (`h3_game::Answer`: a meeting or an army dialog closed by `Close`, increment 7's choices and
-/// University). A replay of another version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 7;
+/// University); version 8 (E08 T84b2): a Shipyard's boat without a visit (`BuildBoat`). A replay
+/// of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 8;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

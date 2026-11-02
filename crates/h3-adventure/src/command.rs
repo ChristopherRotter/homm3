@@ -36,6 +36,17 @@ pub enum AdventureCommand {
         /// The tiles it steps onto, in order, without the one it stands on.
         path: Vec<Pos>,
     },
+    /// Builds a boat at one of the player's or an ally's Shipyards without a visit (ADV-SHY-003,
+    /// E08 T84b2; increment 9's design note §8; survey `E08-economy.md` §5.3: the original's
+    /// click on an own Shipyard): an empty boat of the Shipyard's type on its boat tile, for the
+    /// kind's price, which the game takes (it checks the treasury first). No hero, no movement
+    /// points, no visit. The Shipyard is named as the observation names it, by type and anchor.
+    BuildBoat {
+        /// The Shipyard's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+    },
 }
 
 /// Why an adventure command was rejected; the state is unchanged. `step` counts a path's steps
@@ -118,6 +129,17 @@ pub enum AdventureCommandError {
         /// The step.
         step: usize,
     },
+    /// `BuildBoat` names no Shipyard at that anchor with that type, or one with no tile the player
+    /// has explored (ADV-SHY-003, E08 T84b2): one error for both, so a command reveals no hidden
+    /// Shipyard.
+    UnknownObject,
+    /// `BuildBoat`'s Shipyard is neither the player's nor an ally's (ADV-SHY-003).
+    NotOwner,
+    /// `BuildBoat`'s Shipyard has no boat tile (ADV-SHY-001: none was free water when the game was
+    /// built), so it never builds (ADV-SHY-003).
+    NoBoatTile,
+    /// `BuildBoat`'s boat tile holds a boat or a hero (ADV-SHY-003).
+    BoatTileTaken,
 }
 
 impl fmt::Display for AdventureCommandError {
@@ -144,6 +166,10 @@ impl fmt::Display for AdventureCommandError {
             Self::Landing { step } => {
                 write!(f, "step {step} goes ashore where no boat may land")
             }
+            Self::UnknownObject => f.write_str("no Shipyard the player knows of is there"),
+            Self::NotOwner => f.write_str("the Shipyard is neither the player's nor an ally's"),
+            Self::NoBoatTile => f.write_str("the Shipyard has no boat tile"),
+            Self::BoatTileTaken => f.write_str("a boat or a hero is on the Shipyard's boat tile"),
             Self::Coast { step } => {
                 write!(f, "step {step} sails diagonally past the coast")
             }
@@ -526,7 +552,8 @@ impl Offer {
         match &self.kind {
             OfferKind::Reveal { price }
             | OfferKind::JoinForGold { price }
-            | OfferKind::Gift { price } => price,
+            | OfferKind::Gift { price }
+            | OfferKind::Boat { price } => price,
             OfferKind::Pass
             | OfferKind::Join
             | OfferKind::Pursue
@@ -589,6 +616,25 @@ pub enum OfferKind {
     /// its owner learns whether it is looted, a looted one costs the hero luck once, else its
     /// guards fight; declined, nothing.
     SearchPyramid,
+    /// A Shipyard's boat for its kind's price (ADV-SHY-002, E08 T84b2; the original's boat
+    /// dialog): made when its boat tile is free, opened by the game only when the treasury can
+    /// pay, standing while the tile stays free; accepted, an empty boat on the tile
+    /// ([`crate::AdventureState::accept_offer`]); declined, nothing.
+    Boat {
+        /// The price, by resource in the core's order.
+        price: Vec<(ResourceId, u32)>,
+    },
+}
+
+/// Why a Shipyard's visit makes no boat offer (ADV-SHY-002, E08 T84b2; survey `E08-economy.md`
+/// §5.2, the original's messages).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ShipyardBlock {
+    /// It has no boat tile (ADV-SHY-001: the original's "the Ways are blocked", GENRLTXT 135).
+    NoTile,
+    /// A boat or a hero is on its boat tile (the original's "Cannot build another boat",
+    /// GENRLTXT 52).
+    Taken,
 }
 
 /// The players who may see an event (ADR-0016 point 6): a set of players, resolved when the event
@@ -822,8 +868,8 @@ pub enum AdventureEventKind {
         count_word: Option<u8>,
     },
     /// A weekly object's visit set visited marks (ADV-VIS-006 amended, E08 T84b1; increment 9's
-    /// design note §9): a Windmill's or a Water Wheel's for the visitor's team, a Garden's for the
-    /// visitor's owner, kept through the weeks ([`crate::ObjectView::visited`]). Seen by the
+    /// design note §9): for the visitor's team (a Garden's too since T84b2, `ADV-QUIRK-35`), kept
+    /// through the weeks ([`crate::ObjectView::visited`]). Seen by the
     /// players whose mark it set, whose view of the object it changes; not told to a player that
     /// held its mark already. Its gain or [`Self::ObjectEmpty`] follows.
     ObjectMarked {
@@ -840,6 +886,27 @@ pub enum AdventureEventKind {
         object_type: ObjectTypeId,
         /// Its anchor.
         anchor: Pos,
+    },
+    /// A Shipyard's visit made no boat offer (ADV-SHY-002, E08 T84b2; increment 9's design note
+    /// §7: the original's message): it has no boat tile, or a boat or a hero is on it. Seen by the
+    /// visitor's owner alone (the tile's content is what the owner sees there, or the static map's).
+    ShipyardBlocked {
+        /// The Shipyard's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// Why.
+        reason: ShipyardBlock,
+    },
+    /// A Shipyard built a boat (ADV-SHY-002, ADV-SHY-003; E08 T84b2; increment 9's design note §7):
+    /// an empty boat of its type now lies on its boat tile, facing 2 as the map's boats. Seen by
+    /// its builder and by the players that see heroes on the tile, as they see empty boats there
+    /// (ADV-FOG-008); never the boat's index or owner.
+    BoatBuilt {
+        /// The boat tile.
+        tile: Pos,
+        /// The boat's type (appearance only).
+        boat_type: u8,
     },
 }
 

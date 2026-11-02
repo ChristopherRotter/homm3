@@ -28,9 +28,9 @@ pub struct Weekly {
     pub resource: ResourceId,
     /// The amount its next visit gives; 0 once a visit emptied it, until the week's step.
     pub amount: u32,
-    /// The players that visited it, a bit by player id: a Windmill's and a Water Wheel's the
-    /// visitor's team's (the visitor's own until E10), a Garden's the visitor's own; never cleared
-    /// (the original's week keeps them, §9.4), so they say "visited once", not "emptied".
+    /// The players that visited it, a bit by player id: the visitor's team's (the visitor's own
+    /// until E10), a Garden's too (`ADV-QUIRK-35`, not reproduced); never cleared (the original's
+    /// week keeps them, §9.4), so they say "visited once", not "emptied".
     pub marks: u8,
 }
 
@@ -228,8 +228,8 @@ impl AdventureState {
     }
 
     /// Whether `player` holds the visited mark of the weekly object at object index `index` (E08
-    /// T83b2b; survey `E08-economy.md` §9.4): a visit of its team's set it (the Garden's: of its
-    /// own); never cleared. False for every other object.
+    /// T83b2b; survey `E08-economy.md` §9.4): a visit of its team's set it (a Garden's too since
+    /// T84b2, `ADV-QUIRK-35`); never cleared. False for every other object.
     pub fn visited_by(&self, index: usize, player: PlayerId) -> bool {
         self.weekly(index).is_some_and(|weekly| {
             weekly

@@ -351,6 +351,17 @@ fn errors_display() {
             },
             "step 4 costs 141 with 100 points left",
         ),
+        // E08 T84b2: `BuildBoat`'s.
+        (E::UnknownObject, "no Shipyard the player knows of is there"),
+        (
+            E::NotOwner,
+            "the Shipyard is neither the player's nor an ally's",
+        ),
+        (E::NoBoatTile, "the Shipyard has no boat tile"),
+        (
+            E::BoatTileTaken,
+            "a boat or a hero is on the Shipyard's boat tile",
+        ),
     ];
     for (error, text) in shown {
         assert_eq!(error.to_string(), text);

@@ -137,6 +137,15 @@ fn commands_round_trip_through_their_text() {
             }),
             "1 move 12",
         ),
+        // Format v8 (E08 T84b2): a Shipyard's boat without a visit, by its type and anchor.
+        (
+            PlayerId::new(2),
+            GameCommand::Adventure(AdventureCommand::BuildBoat {
+                object_type: ObjectTypeId::from_raw(41),
+                anchor: Pos::new(9, 16, 1),
+            }),
+            "2 build-boat 41 9,16,1",
+        ),
         // Format v3 (E08 T19b1): a battle command, the battle replays' text without the side.
         (
             PlayerId::new(1),
@@ -280,6 +289,12 @@ fn commands_round_trip_through_their_text() {
         "0 move 1 3,4,0,1",
         "0 move 1 3,4,x",
         "0 move 1 70000,4,0",
+        "0 build-boat",
+        "0 build-boat 41",
+        "0 build-boat x 9,16,1",
+        "0 build-boat 70000 9,16,1",
+        "0 build-boat 41 9,16",
+        "0 build-boat 41 9,16,1 now",
         "0 battle",
         "0 battle fly 3",
         "0 battle A wait",
@@ -408,7 +423,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     };
     let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
     assert_eq!(replay.difficulty, 0);
-    assert!(text.contains("format = 7\n"), "{text}");
+    assert!(text.contains("format = 8\n"), "{text}");
     assert!(text.contains("difficulty = 0\n"), "{text}");
     let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
     assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
@@ -437,7 +452,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     // A v1 file: no difficulty, refused by its version before its map is read.
     let v1 = text
-        .replacen("format = 7", "format = 1", 1)
+        .replacen("format = 8", "format = 1", 1)
         .replacen("difficulty = 0\n", "", 1);
     assert_eq!(
         parse_replay(&v1).unwrap().difficulty,
@@ -454,7 +469,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     // A later file without its difficulty is malformed, not a game at normal difficulty.
     let e = verify(&text.replacen("difficulty = 0\n", "", 1)).unwrap_err();
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
-    assert!(e.to_string().contains("format 7 needs a difficulty"), "{e}");
+    assert!(e.to_string().contains("format 8 needs a difficulty"), "{e}");
     std::fs::remove_dir_all(&tmp).unwrap();
     // Answers round-trip through the file.
     let mut answered = replay.clone();
