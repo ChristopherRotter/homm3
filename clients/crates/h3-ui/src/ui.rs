@@ -686,11 +686,16 @@ impl Dialog {
                         size: d.size,
                     })
                 }
-                Item::Def(d) if d.frames_of.is_some() => {
+                Item::Def(
+                    d @ Def {
+                        frames_of: Some(frames),
+                        ..
+                    },
+                ) => {
                     let [x, y] = place(d.at);
                     Some(Draw::Shared {
                         def: d.def.clone()?,
-                        frames: d.frames_of.clone()?,
+                        frames: frames.clone(),
                         frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
                         x,
                         y,
