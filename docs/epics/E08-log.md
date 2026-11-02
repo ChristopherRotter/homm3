@@ -10411,3 +10411,47 @@ session on the same branch, then the pull requests.
   `master`, re-baselined, reach-xl-144 −3.0 % (−1.22 % against its count, kept). The forks: the
   month and the events' block cost 15 Ir a fork (fork-sea-xl-144 +0.40 % against `master`; an
   `Arc` always present cost 19 Ir, hence the `Option`).
+
+### Increment 9, round 7: T85b2a, the timed events (2026-11-02, `adventure/e08-t85b`, no pull request)
+
+**The cut** (decision 225, the user at T85b2's start): T85b2 in two, the pull requests at the end:
+T85b2a the game's part on the branch, T85b2b the env's `BuildBoat`, the verify with the original
+data, the bench and the pull requests the next session. The baseline: `master` 1c68dca merged into
+the branch (no conflict; the town lane's #648 was docs only), the sandbox's full verify green.
+
+- **The firing** (`h3-game`'s `state/day.rs`; design §14 "The turn start", ADR-0017 point 3):
+  `TimedEventSetup::fires(player, human, day)` (its players, its flag for the player's kind, its
+  first day or a multiple of its interval after it: `is_multiple_of(0)` is the first day alone);
+  `GameState::fire_events` at `start_group` after each player's `start_turn` and `TurnStarted`:
+  each firing event in the map's order, its gains through `gain` (saturating), then its losses
+  through `lose` (down to 0, `ResourceLost` the amount taken), then `TimedEventFired { player,
+  event }` (the event's `message`, its index in the map's list). Day 1's fire inside the build
+  (the build's `start_group`, no sink). `set_schedule` (tests) fires its group's again.
+- **The observation:** `GameState::events_today(player)`: the events that fire for the player
+  today, once its turn has started today (its group at or before the running one), none for a
+  player of no group; `GameObservation::events_today`; `project` passes `TimedEventFired` to its
+  player alone. `GameState::events()` (the setup's list) public.
+- **Agent's calls:** `events_today` on `GameObservation` (the viewer's, beside its treasury), not
+  `PlayerView::events_today` as the design's sketch and decision 204 named it: `PlayerView` is
+  every viewer's public, `Copy` view of each player; the gains before the losses within an event
+  (the original floors each resource's sum in resource order: the same treasury, the resources
+  being distinct); the event named by its message (the map's index), which the client needs.
+- **Rules:** GAM-CAL-004's summary (the firing, `events_today`) and its observation's note (E9-11
+  played). Tests: `h3-game`'s `tests/calendar.rs` (E9-11's three for red with a take of all it
+  holds on day 3 and one for blue at its own turn start: the order, the floor, the repeat, the
+  days without; the kinds of player; the projection and the observation); `h3-map`'s
+  `economy.rs` plays the batch map's events (red's gold 300, 0, 0, 0, 0, 0 on days 1 to 6, the
+  takes of 300 and 0 on days 2, 4 and 6).
+- **Properties** (`h3-map`): the plans draw up to three timed events (last, `timed()`; before SoD
+  the human flag set as the reader does); `check_timed` reads the days on its own and checks the
+  events after the first `TurnStarted` against the treasury as it stands; the conservation's
+  visit gains and income stop at the first `TurnStarted` or `DayStarted`; the isolation lets a
+  player's treasury change at its turn's start; the view property follows `events_today` (cleared
+  at `DayStarted`, extended by its own `TimedEventFired`). `the_plans_visit_every_kind_and_answer_every_decision`
+  counts events fired, their gains and floored takes. **Found:** the hygiene property
+  (`a_viewer_learns_nothing_it_cannot_see`) failed at a month's start: the month's kind is public
+  and drawn from the game's stream, whose seed and position the hidden differences change (the
+  other seed, the weekly objects' draws on unseen tiles), so its comparison now ends at a
+  `MonthStarted`, as at a battle (the case kept in `view.txt`); no leak beyond the draw, as the
+  original's single generator.
+- **Versions:** none moved (the events were hashed by T85b1); no replay's map has timed events.

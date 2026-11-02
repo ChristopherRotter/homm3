@@ -29,27 +29,24 @@ with `shared/e08-t84b1`: the Lighthouses' flag and points, the weekly visits); T
 adventure replay format v8; the user's decision 222: a Garden marks the team). Round 7: T85 in
 two halves, T85a whole (decision 223): T85a done (`adventure/e08-t85a` with `shared/e08-t85a`:
 the week's step, a creature month's step, the audit of the static reads). T85b on one branch
-over two sessions (decision 224): T85b1 done on `adventure/e08-t85b` (pushed, no pull request).
+over two sessions (decision 224): T85b1 done on `adventure/e08-t85b` (pushed, no pull request);
+T85b2 in two (decision 225): T85b2a done on the same branch (the timed events, `events_today`;
+the security lines on `shared/e08-t85b`; both pushed, no pull request).
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T85b2 — the timed events, `events_today` and the env's `BuildBoat`; T85b's pull requests**
+**E08 T85b2b — the env's `BuildBoat`; T85b's verify, bench and pull requests**
 
-- **Scope:** T85b's second half on the same branch `adventure/e08-t85b` (decision 224; T85b1's
-  state in the lane HANDOFF's newest session): the timed events fired at each player's turn
-  start (design §14 "The turn start", GAM-CAL-004: in list order, its players, its `human` or
-  `computer` flag, its days; positive amounts gained, negative ones lost down to 0 as
-  `ResourceLost`, then `TimedEventFired { player, event }` to its player; day 1's inside the
-  build; the events are already in the state and its hash, the field `events`),
-  `PlayerView::events_today` (the owner's), `project`'s `TimedEventFired`; `docs/06-security.md`'s
-  lines for `WeekStarted`, `MonthStarted`, `TimedEventFired`, the month and `events_today` (a
-  `shared/` pull request first); the env's `BuildBoat` (`h3-sim`, the action encoding v6, one
-  entry per Shipyard the viewer may use by its anchor's tile, masked by `legal_commands`;
-  `cross-lane`, decision 203); the view and play properties' timed events; then the scoped verify
-  (with the original data), the bench against `master` (`random-play-*` moved by the growth, see
-  the HANDOFF), the epic's log record of T85b whole, and the pull requests (`shared/` first).
-- **Inputs:** design §14, §15; ADR-0017 points 3, 4, 8, 10; survey `E08-economy.md` §11, §19
-  (E9-11); T84b2's record in `E08-log.md` (`BuildBoat`); the branch's T85b1 commits.
-- **Depends on:** nothing new. **Status:** ready; cut with the user at its start if large.
+- **Scope:** T85b's last part on the same branch `adventure/e08-t85b` (decisions 224, 225; T85b1's
+  and T85b2a's state in the lane HANDOFF's newest sessions): merge `master` in; the env's
+  `BuildBoat` (`h3-sim`, the adventure action encoding v6: one entry per Shipyard the viewer may
+  use by its anchor's tile, masked by `legal_commands`; `cross-lane`, decision 203; the AI lane's
+  inbox told); then the scoped verify with the original data staged, the bench against `master`
+  (`random-play-*` moved by the growth: T85b1's record in `E08-log.md`), the epic's log record of
+  T85b2b, and the pull requests: `shared/e08-t85b` (pushed, the security lines) first, then
+  `adventure/e08-t85b` (`cross-lane`).
+- **Inputs:** design §15; ADR-0017 point 8; T84b2's record in `E08-log.md` (`BuildBoat`);
+  `crates/h3-sim/src/adventure/action.rs` (encoding v5's layout and masks).
+- **Depends on:** nothing new. **Status:** ready.
 
 ## Inbox
 
