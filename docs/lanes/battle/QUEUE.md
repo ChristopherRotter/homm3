@@ -6,28 +6,48 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-original-battle-ai.md`, its log's "T7 — the closure"; the cuts of its tasks: OPEN-QUESTIONS BAT-Q52 to BAT-Q61 and the epic file). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-**Next (the user, 2026-10-24):** the inbox session's leftovers are done (#458, #464; CLT-Q4/Q6's seam and carry, the 112th session); next **E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
+**Now: E26, the fair system actor** (the user, 2026-11-02, BAT-Q63; `docs/epics/E26-fair-system-actor.md`, record `E26-log.md`): the original's computer, unchanged, on its side's world (`BattleState::determinized`; ADR-0027 point 4 amended). Increment 1 assumes nothing of the other side's hero's private part; increment 2 (a sampled prior, updated by what the side has seen) is refined after T4. T1, the design, done 2026-11-02. **Then E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
+
+- **E26 T2 `choose_fair`.** *Scope:* `h3_battle_ai::choose_fair(state, ruleset, side, rng) ->
+  Command` beside `choose` (E26 decisions 1, 2 and the agent decisions): the world
+  `state.determinized(ruleset, side, None, seed)` with `seed` drawn from `rng.clone()`, so the
+  policy's own draws keep their order; `unchecked` on the world; `checked` on the battle;
+  Defend for a world the battle refuses. Rule BAT-AI-025 in `battle.toml` (source `design`:
+  ADR-0027 point 4, BAT-Q63), `rule:` markers, the crate's docs. Unit tests (`src/tests/fair.rs`):
+  twins that differ only in what the side may not know give the same fair command, at least the
+  other hero's book and skills where they change `choose`'s command, and the other side's hidden
+  pit; with nothing hidden the fair command is `choose`'s. No caller changes; no
+  `POLICY_VERSION` bump (`choose`'s choices stay). *Acceptance:* the Definition of Done; the
+  scoped verify; `h3-battle-ai` at 100 %. *Depends on:* T1 (done). *Status:* ready.
+- **E26 T3 The properties.** *Scope:* beside `the_choice_is_legal_and_the_same_for_the_same_stream`
+  (`h3-battle-ai`'s `src/tests.rs`: random battles, both sides, every difficulty, heroes, the
+  town) and in `h3-pack-battle/tests/harvested_computer.rs` (sieges, special battlefields, the
+  harvested packs): (1) twins that differ only in what the side may not know (the other hero's
+  private part, its hidden obstacles' hexes, the battle's stream, a drawn spell of the other
+  side) give the same fair command for the same stream; (2) the engine accepts every fair
+  choice (no fallback; one found becomes stub BAT-STUB-18 with its case); (3) without another
+  hero, hidden obstacle or drawn spell of the other side the fair command is `choose`'s; (4) the
+  same state and stream give the same fair command. Exit criteria 1 and 2. *Acceptance:* as T2.
+  *Depends on:* T2. *Status:* ready after T2.
+- **E26 T4 Cost and strength.** *Scope:* `h3 ai` (`h3-cli`'s battle AI games) plays a side's
+  computer fair or all-seeing (a `--sight` option); measure `choose_fair` against `choose`:
+  instructions per decision (callgrind, skill `homm3-bench-regression`) and the fair side's
+  wins and value against the all-seeing one over the same random armies, both seats, both
+  profiles. Recorded in `E26-log.md` T4 with the commands. Over ADR-0027 point 11's budget: a
+  task for a cheaper world before T5. Exit criterion 3. *Acceptance:* as T2; the numbers in the
+  log. *Depends on:* T2. *Status:* ready after T2.
+- **E26 T5 The hand-over and the checkpoint.** *Scope:* inbox notes for the AI lane (`h3-sim`'s
+  `Policy::System` fair by default with an all-seeing option; E25 decision 2: it may train,
+  imitation a candidate; its records and `benches/ai/` where the default's choices move), the
+  adventure lane (the neutral seat; the game's option, "player option too"), the server lane
+  (the unowned sides; the option on the wire) and the client lanes (their seats); `TRAPS.md`
+  (a change of `world.rs` or `observe_as`'s list changes the fair actor's choices: bump
+  `POLICY_VERSION`); the epic's increment 1 closed at a checkpoint with the user, increment 2
+  refined from T4's numbers. Exit criterion 4. *Depends on:* T3, T4. *Status:* waiting.
 
 ## Inbox
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
-
-- 2026-10-27 (the AI lane, E25's refinement, AI-Q10; **for you, later: a fair system actor**):
-  the user decided that an actor reading hidden facts must not train agents, and that a **fair
-  variant** of the system actor is phased in, for you to design and build at a later time
-  (ADR-0027 point 4's announcement; an amendment of that point, your draft). It decides only on
-  what its side may know; once built it is the default everywhere (the env, training, the
-  server, the clients), with today's faithful, all-seeing computer kept as a game's option.
-  Today's stays as it is: E25's target, playing in no agent's training. What it reads that a
-  player may not (the AI lane's reading, not exhaustive): the enemy hero's spell book,
-  masteries, spell bonuses and cost changes (`aim.rs`: `best_area_spell` for the area threat,
-  BAT-AI-007; `spell_protection`, BAT-AI-016; `hero_value` in the odds, BAT-AI-008), the enemy
-  hero's damage skills (`protection`'s Armorer) and its stacks' magic resistance
-  (`magic::effect_factor`) in the estimates, the enemy side's hidden pits in its reach maps
-  (`computer::reach_map`, BAT-AI-007). The ways offered at the refinement: the port unchanged on
-  a world built from its side's observation, the hidden part guessed by a prior (E06's
-  determinized worlds, `BattleState::determinized`, ADR-0025 point 12a) or assumed absent; or its
-  reads rewritten. The AI lane would train against it and may imitate it (E25 decision 3).
 
 - 2026-10-22 (E23 T4c's blind check; a rule to confirm): the original's end routine 0x444510 returns early only for Disrupting Ray (47), so a dispel or Cure that reaches Acid Breath (80) may end it; BAT-MAG-010 keeps every permanent effect. Read the dispels' callers or play a batch row (Cure on a stack under Acid Breath) and align BAT-MAG-010 or record why not.
 
