@@ -8,7 +8,7 @@ the random hero, a hero placed on a town's blocked tile, the town's buildings at
 appended); **T1b** the town on the map, cut in two at its start (the user, 2026-11-02): **T1b1**
 the visit, the visiting hero, capture and the battle at a town with ADR-0023's facts (§7 to §10);
 **T1b2**, cut in two at its start (the user, 2026-11-02): **T1b2a** the hall's income and the
-Capitol, the views, batch TWN-1's rows (§11 to §13); **T1b2b** the checkpoint's `TWN-Q2`.
+Capitol, the views, batch TWN-1's rows (§11 to §13); **T1b2b** the checkpoint's `TWN-Q2` (§14).
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -111,7 +111,7 @@ its sources and tests.
   without units by dismissing them in the town screen). The wiki's Town page was not reachable
   (not on the session's fetch list).
 
-## 0. Findings in short (T1a1, T1a2, T1b1, T1b2a)
+## 0. Findings in short (T1a1, T1a2, T1b1, T1b2a, T1b2b)
 
 1. **Every shipped map has towns:** 1 468 on the 160 maps, 876 random towns (class 77, on 127
    maps) and 592 of a fixed faction (98); **no Conflux town is placed on any map** (98's subclass 8
@@ -233,6 +233,14 @@ its sources and tests.
 27. **Batch TWN-1** (§13): seven rows, TD-3, TD-5, TD-7, the capture's aftermath, the game's
     version, the income and the Capitol after a capture. No new dispute or quirk candidate;
     content: the silo's table (a constant of the executable) for increment 4.
+
+**T1b2b (§14):**
+
+28. **The checkpoint** (`TWN-Q2`; the epic's decisions 8 to 16): the random hero and the
+    starting-hero pick are increment 1's, the silo pays from increment 1 (its table moves there),
+    the views follow the original's levels, T-1 to T-5 as proposed, TD-1, TD-4 and TD-6 by the
+    reading, **TD-2 by the enabled expansions** (E08 decision 104), batch TWN-1 keeps rows 1 to 4,
+    an allied town is entered and never captured.
 
 ## 1. The census
 
@@ -1066,9 +1074,9 @@ with the point it settles.
 | TWN-1-2 | TD-5 (§5.2) | a neutral town with an explicitly empty custom garrison; a neutral town without one (a control) | each garrison at day 1 | the first stays empty (VCMI draws one); the control drawn by the four rolls |
 | TWN-1-3 | TD-7 (§9.2) | a lone visitor of seven stacks of mixed values in Blue's town with a garrison of mixed values; Red besieges | the defending stacks in the battle's opening; the garrison right after the battle | the merge by greatest gain, ties the first garrison stack and the last weakest slot (VCMI: most power first, one round per garrison stack) |
 | TWN-1-4 | §8.2, §8.3 | Red besieges and wins against a defended neutral town; then a later step onto the gate | after the battle: the attacker's tile and points, the owner, a town screen or none; the garrison | the owner changes, the attacker stays on the tile before with its points, no screen; the garrison emptied (the merge's leftovers lost, T1b1's rows 2 and 3); the screen at the later step |
-| TWN-1-5 | §9.4 | the same siege on an RoE-format map and on an SoD-format map, played in the Complete edition | the moat's damage to a stack ending in it | the scenario dialog's version: the highest set (an RoE map may play under SoD rules, a damaging moat) |
-| TWN-1-6 | §11.1, §11.2 | Red owns at load a town with a City Hall, one with the Grail building and a Village Hall, a Castle with a Resource Silo, and two with a Capitol each; a neutral Capitol | Red's treasury at days 1, 2 and 3 | no change on day 1; +2 000, +5 500, +500 gold and +1 wood and +1 ore (the silo), +8 000 from day 2; the neutral one pays nobody |
-| TWN-1-7 | §8.4, §11.3 | Red (holding the two Capitols of row 6) enters the undefended neutral Capitol town | its hall after the capture; Red's treasury the next day | Red keeps both of its Capitols; the captured one becomes a City Hall (+2 000 from the next day) |
+| ~~TWN-1-5~~ (dropped, §14) | §9.4 | the same siege on an RoE-format map and on an SoD-format map, played in the Complete edition | the moat's damage to a stack ending in it | the scenario dialog's version: the highest set (an RoE map may play under SoD rules, a damaging moat) |
+| ~~TWN-1-6~~ (dropped, §14) | §11.1, §11.2 | Red owns at load a town with a City Hall, one with the Grail building and a Village Hall, a Castle with a Resource Silo, and two with a Capitol each; a neutral Capitol | Red's treasury at days 1, 2 and 3 | no change on day 1; +2 000, +5 500, +500 gold and +1 wood and +1 ore (the silo), +8 000 from day 2; the neutral one pays nobody |
+| ~~TWN-1-7~~ (dropped, §14) | §8.4, §11.3 | Red (holding the two Capitols of row 6) enters the undefended neutral Capitol town | its hall after the capture; Red's treasury the next day | Red keeps both of its Capitols; the captured one becomes a City Hall (+2 000 from the next day) |
 
 **Not rows:** the views (§12: the reading and the wiki agree on the tavern levels, the hall for
 allies and expert Visions; VCMI is the one that differs); T-2 to T-4 (state-corrupting or empty
@@ -1082,10 +1090,32 @@ writer's towns (`h3_map::writer::Town`) have an owner, a garrison and either bui
 name, events or spells, and the map's format for row 5 (the writer writes SoD's; an RoE-format
 map is new).
 
-**Open for T1b2b's checkpoint (`TWN-Q2`)**, beside the queue's list (the random hero in increment
+**Open for T1b2b's checkpoint (`TWN-Q2`; answered in §14)**, beside the queue's list (the random hero in increment
 1, §4.4; T-2 to T-5; TD-1 to TD-7 where the choice is the user's; §6's and §10's open points):
 (a) **the views' army levels** (§12.5: the original's tavern levels, VCMI's two, or the owner's
 team only until increment 3); (b) **the Resource Silo's resources in increment 1** (7 owned towns
 start with one: paid from increment 1, with Rampart's Treasury and Mystic Pond left to increment
 4, or all of it in increment 4 with the 7 towns' resources missing until then); (c) the batch's
 rows (§13), any the user would rather record as disputes.
+
+## 14. The checkpoint's answers (T1b2b, `TWN-Q2`)
+
+Asked interactively on 2026-11-02 (three rounds); the decisions are the epic's 8 to 16, the
+record `docs/lanes/town/QUESTIONS-ANSWERED.md`. What each settles here:
+
+| Point | Answer | Decision |
+|---|---|---|
+| The random hero (§4.4, finding 2) | increment 1's, by the main town's draw | 8 |
+| The starting-hero pick (§4.3, §6's open point) | in the setup beside the faction, as the original's offer and use (the human test kept), reserved before any draw | 9 |
+| The Resource Silo (§11.1, §13 (b)) | paid from increment 1; its table is increment 1's content | 10 |
+| The views' army levels (§12.5, §13 (a)) | the original's: by the viewer's taverns, team, expert Visions or a Rogue | 11 |
+| T-1 to T-5 (§3, §6, §10) | as proposed: T-1 and T-4 typed, T-2 and T-3 fixed, T-5 faithful in increment 3 | 12 |
+| TD-1, TD-4, TD-6 (§3, §6) | the reading | 13 |
+| TD-3, TD-5, TD-7 (§6, §10) | the reading, confirmed by rows 1 to 3 | 13, 15 |
+| TD-2 (§3) | **the enabled expansions, not the map's version** (E08 decision 104): with AB or SoD enabled a neutral random town draws from nine on any map; an RoE-format map's player with all eight allowed may be Conflux; with RoE alone, eight. The original's map-format test is a deviation | 14 |
+| Batch TWN-1's rows (§13 (c)) | rows 1 to 4; 6 and 7 dropped (the sources agree), 5 dropped (decision 104 decides the moat; §9.4's reading is the original's source) | 15 |
+| Allied towns (§7.1, §10's open point) | the step's team test: an own or allied town entered, never captured; a siege of a town held by an ally's visitor a typed refusal (a stub) until E10 | 16 |
+
+Still open for later increments, unchanged: §6's guild spells and Shipyard spot (increment 4),
+§10's town screen effects, the computer's visit and the scenario's tests (E10, E13), town +0x2
+and +0x32 (not read), the external dwellings' counts (increment 3).
