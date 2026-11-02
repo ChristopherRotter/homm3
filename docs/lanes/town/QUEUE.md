@@ -6,20 +6,21 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
-- **T1a The towns survey, part 1: the census and the start** (the epic's increment 1). A survey
-  `docs/rules/surveys/E09-towns.md` (§0 findings in short, then numbered sections; the format of
-  `E08-economy.md`): (1) the census of the 160 shipped maps through `h3-map` (towns by class 77 and
-  98 and faction, owners, random towns, main towns and whether each generates its hero, preset
-  buildings or the has-fort flag, garrisons, heroes standing in towns, town events, required and
-  banned spells, alignment), with the maps the import refuses only for towns; (2) the code reading
-  of the start in `Heroes3.exe` (`docs/exe/README.md`; record each function in `docs/exe/map.toml`):
-  the players' faction choice and the random town's resolution (an owned one, a neutral one), the
-  main town's generated hero and the pool it draws from (the hero classes' tavern weights, the
-  map's allowed heroes, the faction), a hero placed on a town's blocked tile; (3) VCMI 1.7.5 and
-  the wiki on each, the disputes (`D-<n>`) and quirk candidates (`T-<n>`). Content it names for
-  the harvest (tavern weights, the buildings' identities). About half a context; cut it in two at
-  the start if the reading runs long (the user confirms the cut).
-- **T1b The towns survey, part 2: the town on the map** (after T1a). The visit and the entrance
+- **T1a2 The towns survey, part 1b: the main town's hero and the start's town setup** (the
+  epic's increment 1; T1a1 did the census and the factions, survey `docs/rules/surveys/E09-towns.md`
+  §0 to §3, its §3 lists what is open). Append §4 on to the survey: the code reading of
+  `Heroes3.exe` (`docs/exe/README.md`; each function in `docs/exe/map.toml`) of the main town's
+  generated hero and the pool it draws from (the hero classes' tavern weights, the map's allowed
+  heroes and SoD's disposed heroes, the faction, the player's starting-hero choice, the map's
+  random-hero flag and customised main hero; the wiki says the generated hero comes after the
+  map's random heroes), **the random hero's draw** (class 70, 166 on 36 maps: the same pool;
+  whether increment 1 takes it is `TWN-Q2`'s), a hero placed on a town's blocked tile (always the
+  tile right of the entrance on the shipped maps), the town's buildings at the start (the standard
+  set and the has-fort flag, `setup_towns`' 0x5C0670 and 0x5C08C0), a garrison's random stacks
+  (12 in 7 maps); VCMI 1.7.5 and the wiki on each; disputes `TD-<n>` (next 3) and quirk candidates
+  `T-<n>` (next 2); the content named for the harvest (the tavern weights). About half a context;
+  if the reading runs long, cut at the buildings (the user confirms the cut).
+- **T1b The towns survey, part 2: the town on the map** (after T1a2). The visit and the entrance
   (the town classes' tiles, the gate's leaving), the visiting hero, capture of an unguarded town,
   the siege: ADR-0023's facts from the town (fort level, moat by edition, faction), the defender
   (garrison, visiting hero, both), the outcome; the hall's income (`town_gold_income` 0x5BF600)

@@ -393,18 +393,21 @@ h3api = "H3Main"
 fields = [
   { offset = 0x4, name = "shrine_spell_marks", type = "u8[70]", summary = "per spell set when a random Shrine drew it or when it is banned: start as a copy of the bans (0x4C2965), random_shrine_spell 0x4C95A0 skips and sets them (H3API disabledShrines)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.5"] },
   { offset = 0x4A, name = "banned_spells", type = "u8[70]", summary = "per spell set when the game bans it (H3API disabledSpells): the shrines' refill, the Scholar's and the Pyramid's draws skip it; the map's bans and every spell with flag 0x2000 (new_game_bans 0x4C286C)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.5", "rules/surveys/E08-rewards.md §7.5"] },
+  { offset = 0x98, name = "town_setups", type = "town_setup*", summary = "the map's town records (H3API townSetups, its vector at +0x94; this the begin, the end at +0x9C), 0x88 bytes each, appended by load_town_body 0x5019F0 in object order; setup_towns 0x4CAA70 reads each by the object's word", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.1"] },
   { offset = 0xA4, name = "hero_setup", type = "hero_setup[156]", summary = "per hero type the map file's placed hero (H3API heroSetup, H3SetupHero[156]): placed_heroes_setup (0x4CAE10) sets each hero up from it", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.1"] },
   { offset = 0x1F458, name = "campaign_info", type = "bytes[0x7C]", summary = "H3API's campaignInfo (H3CmpInfo): +0x2 the scenario's index (campaignMapIndex), +0x4 the campaign (bigCampaignIndex), +0x3C the carried-over heroes (crossoverHeroes, walked by carried_heroes_setup 0x487290)", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §3.1"] },
   { offset = 0x1F45C, name = "campaign_index", type = "i32", summary = "H3API's campaignInfo.bigCampaignIndex, the campaign's number (E08 T24a2a; T24a1 guessed a scenario): compared with 14 (with 0x69774C and hero 45) by the level-up's campaign branch and with 8 by a campaign case of the new game (called at 0x4C004D) and of placed_hero_setup", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §2.3"] },
   { offset = 0x1F636, name = "defeated", type = "u8[8]", summary = "per colour a flag set when the player is defeated (player_defeated 0x4F11A0)", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.5"] },
   { offset = 0x1F698, name = "map_kind", type = "i32", summary = "H3API's mapKind, 0 RoE, 1 AB, 2 SoD: the game's version for the rules that test it (the siege's moat and its damage, the Tower's mines, the elementals' faction); restored by the saved-game loader (0x4BCDA0), the new game's setter not read", confidence = "inferred", refs = ["installation.md §7.27"] },
   { offset = 0x1F69D, name = "flagged_start", type = "u8", summary = "read by the end-turn button and the battle start; set, a human starts with 0x6779C8's resources (probably the tutorial)", confidence = "inferred", refs = ["rules/surveys/E08-objects.md §7.2"] },
+  { offset = 0x1F6B0, name = "chosen_factions", type = "i32[8]", summary = "per colour the faction it plays (H3API playersInfo.townType, playersInfo at +0x1F6A0): written when the game begins (scenario_dialog_begin 0x588330, a Random choice drawn there), read by load_town_body for a random town of that owner or alignment", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.2"] },
   { offset = 0x1F6D8, name = "difficulty", type = "i8", summary = "the game's difficulty, 0 easy to 4 impossible: the starting resources' row", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0x1F877, name = "level_limit", type = "u8", summary = "the scenario's hero level limit, 0 none; the one instruction naming it is hero_gain_experience's read (0x4E33DD); inside H3API's mapInfo (+0x1F86C), whose port names +0xB hasTeams; its setter not found (E08 T24a1)", confidence = "read", refs = ["rules/surveys/E08-progression.md §1.3"] },
   { offset = 0x1F879, name = "teams", type = "i8[8]", summary = "team per colour: a reveal sets the bits of every player of the revealer's team", confidence = "read", refs = ["rules/surveys/E08-adventure-core.md §2"] },
   { offset = 0x1F89C, name = "victory_condition", type = "u8", summary = "the scenario's victory condition (H3API's H3VictoryCondition laid out from here, its mapInfo port names it the loss): 0 an artifact, 5 defeat a hero, 7 defeat a monster, 10 transport an artifact; the retreat test, the adventure AI's artifact value and the monster victory test read it", confidence = "inferred", refs = ["installation.md §7.55"] },
   { offset = 0x1F8A0, name = "victory_artifact", type = "i32", summary = "the victory condition's artifact (kinds 0 and 10): the adventure AI values it 5 000 000 (0x4336C0)", confidence = "inferred", refs = ["installation.md §7.55"] },
   { offset = 0x1F8D0, name = "victory_hero", type = "i32", summary = "the victory condition's hero (kind 5), against a hero's id +0x1A: that hero never retreats (0x41E60A)", confidence = "inferred", refs = ["installation.md §7.55"] },
+  { offset = 0x1F90C, name = "player_attributes", type = "bytes[0x44][8]", summary = "per colour the map's player record (H3API's H3PlayerAttributes): +0x0 a human may play, +0x1 a computer may play, +0x8 the allowed factions (u16, bits 0 to 8), +0xA the map's random-town flag (read only by the scenario dialog); the other fields not read", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.2"] },
   { offset = 0x1FC40, name = "tiles", type = "map_item*", summary = "the map's tiles, level by level, row by row", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x1FC44, name = "side", type = "i32", summary = "the map's side in tiles", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x1FC48, name = "two_levels", type = "u8", summary = "1 with an underground level", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
@@ -783,4 +786,17 @@ fields = [
   { offset = 0x8C, name = "artifacts", type = "vector", summary = "artifact ids (u32), begin +0x90, end +0x94: each given while the backpack holds fewer than 64", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
   { offset = 0x9C, name = "spells", type = "vector", summary = "spell ids (u32), begin +0xA0, end +0xA4: learned with a Spell Book at level 2 + Wisdom or less", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
   { offset = 0xAC, name = "creatures", type = "army", summary = "the creatures given, slot by slot (army_add_stack; no room: army_dialog_with)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+]
+
+[[struct]]
+name = "town_setup"
+size = 0x88
+summary = "A town's record as the map file gives it (game +0x94 vector; H3API's H3SetupTown), appended by load_town_body 0x5019F0; setup_towns 0x4CAA70 builds the town from it (E09 T1a1)."
+refs = ["rules/surveys/E09-towns.md §2.3"]
+h3api = "H3SetupTown"
+fields = [
+  { offset = 0x0, name = "identifier", type = "u32", summary = "the file's identifier, 0 on an RoE map", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.3"] },
+  { offset = 0x4, name = "owner", type = "i8", summary = "the owner colour, -1 none: a random town's faction source after its alignment", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.3"] },
+  { offset = 0x54, name = "custom_name", type = "u8", summary = "set when the map names the town (its name at +0x58); else setup_towns draws one from the faction's list", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.4"] },
+  { offset = 0x68, name = "faction", type = "i32", summary = "the town's faction: the template's subclass, a random town's resolved one", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.3"] },
 ]

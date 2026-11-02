@@ -65,6 +65,13 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
   them as they are. Increment 1 of E09 builds towns on the map (the import's main-town hero and
   `HeroInTown`, entering, capture by siege, the hall's income).
 
+- 2026-11-02 (the town lane, E09 T1a1; **for increment 10's random dwellings**): of the shipped
+  maps' random dwellings tied to a town by its identifier (classes 216 and 217), all 1 397 (87
+  maps) are tied to a random town (class 77), none to a fixed one; the original resolves the
+  random towns' factions as the map's objects are read and the dwellings after them
+  (`random_dwellings_resolve` 0x502B60). So these dwellings wait for E09's random towns (increment
+  1, survey `docs/rules/surveys/E09-towns.md` §1.6, §2.1, §2.3); 205 take a faction set instead.
+
 - 2026-10-31 (the map client lane, E24 M4 T0; **for the views, before E24 M4 T3**; your archive's
   note (3) of 2026-10-23, "refined with you at M4"): the map viewer takes the static art from the
   raw `.h3m` and the live part from the game's observation, through `h3-protocol` (the user, M4
