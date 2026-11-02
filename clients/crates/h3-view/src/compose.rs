@@ -425,6 +425,12 @@ pub fn compose(
                 copy_pixels(&mut screen, pixels, shown.width, (*x, *y));
             }
             Draw::Dialog(ui::Draw::Darken { rect }) => darken(&mut screen, *rect),
+            Draw::Dialog(creature @ (ui::Draw::Creature { .. } | ui::Draw::Shared { .. })) => {
+                // The stats dialog's creature (E17 M6 T2a1, `dialog_def_draw` 0x4EAB40 with the
+                // flags 0x12) and its morale and luck (CLT-Q36): the common drawers'.
+                h3_ui::paint::draw(&mut screen, creature, batch, bugs)
+                    .map_err(ComposeError::Missing)?;
+            }
             Draw::Dialog(ui::Draw::Text { item, x, y, text }) => {
                 // 0x5BC7F0: the item's picture, opaque (0x44FDB0), at most the item's size of it
                 // (E17 M5 T3a: `spelroll.pcx` is a column wider), then its text (0x5BC5F0 →

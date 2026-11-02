@@ -152,6 +152,39 @@ pub fn draw_frame_rows(
     drawer: Drawer,
     rows: u32,
 ) {
+    draw_frame_in(screen, frame, palette, at, drawer, rows, None);
+}
+
+/// Draws `frame` as [`draw_frame`] does, but only its pixels inside `clip` on the screen (its
+/// left edge, top edge, width and height): the source rectangle the creature dialog's creature
+/// is drawn with (`dialog_def_draw` 0x4EAB40 with the flags 0x12, through 0x47BD60: the item's
+/// box; E17 M6 T2a1).
+pub fn draw_frame_clipped(
+    screen: &mut Screen,
+    frame: &Frame,
+    palette: &ScreenPalette,
+    at: Placement,
+    drawer: Drawer,
+    clip: [i32; 4],
+) {
+    draw_frame_in(screen, frame, palette, at, drawer, u32::MAX, Some(clip));
+}
+
+fn draw_frame_in(
+    screen: &mut Screen,
+    frame: &Frame,
+    palette: &ScreenPalette,
+    at: Placement,
+    drawer: Drawer,
+    rows: u32,
+    clip: Option<[i32; 4]>,
+) {
+    let inside = |x: i64, y: i64| {
+        clip.is_none_or(|[cx, cy, w, h]| {
+            let (cx, cy) = (i64::from(cx), i64::from(cy));
+            (cx..cx + i64::from(w)).contains(&x) && (cy..cy + i64::from(h)).contains(&y)
+        })
+    };
     let format = screen.format();
     let width = index(frame.width).max(1);
     let canvas_w = i64::from(frame.full_width);
@@ -164,7 +197,11 @@ pub fn draw_frame_rows(
             continue;
         }
         let sx = if at.mirrored { canvas_w - 1 - cx } else { cx };
-        if let Some(pixel) = screen.pixel_mut(i64::from(at.x) + sx, i64::from(at.y) + cy) {
+        let (px, py) = (i64::from(at.x) + sx, i64::from(at.y) + cy);
+        if !inside(px, py) {
+            continue;
+        }
+        if let Some(pixel) = screen.pixel_mut(px, py) {
             apply(
                 op(drawer, frame.encoding, pixel_index, run),
                 pixel,

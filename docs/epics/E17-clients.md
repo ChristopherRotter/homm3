@@ -149,8 +149,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   centring everywhere (the box's text the readings' only one off its centre), Q33 and Q35 (its
   tune and clip with its text) fixed in the client's profile, the original's for the comparisons
   only; `drawn` all the same.
-- **T2, a stack's info:** the left press on a stack opens its stats dialog (0x468860), the right
-  button held over it shows it as a popup (0x4769C0), a turret's info (0x47A380); recorded.
+- **T2, a stack's info** (cut in three by the user, 2026-11-02): **T2a1** (done 2026-11-02) the
+  stats dialog read (0x5F3360, design §12.1) and drawn, four stills exact against the original
+  but the panel's line over a Faerie Dragon (CLT-Q36 to Q38 asked); **T2a2** the dialog in the
+  window (its input, hints, cast button; hot seat and a server); **T2b** the right button's popup
+  (0x4769C0) and a turret's info (0x47A380); recorded.
 - **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
   battlefield's other items; recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
@@ -252,3 +255,15 @@ The next milestone's list starts here.
 4. The centring directive's survey (T1): the battle's readings (design §7.17 to §7.24, §9) set
    one text off its centre, the message box's; the text drawer's halves truncated (an odd
    difference a pixel left) are the integer centre, not a slip.
+5. The stats dialog's numbers (T2a1, *provisional*): the binary's `stats` derives them from the
+   seat's observation (the melee or ranged bonus by its own `stack_can_shoot_now`; morale and
+   luck with Mirth's to Misfortune's values; the effects in the observation's order; the town the
+   faction's index); the four stills hold no effect, no bonus, no Frenzy, no ground.
+6. The stats dialog's creature after group 2 (T2a1): drawn from the viewer's own generator (the
+   original's are the battle's rolls, §7.2); the stills stay inside group 2.
+7. After the press (T2a1): the combat cursor's pointer at the park point and the press's hint in
+   the panel, as recorded, the routing of the park's move not read; the `stats-dragon` still
+   lists the panel's line (the Faerie Dragon's draw line, not built: 1 276 pixels).
+8. The common crates' additions (T2a1): `ui::Def`'s `group`, `creature`, `frames_of`;
+   `ui::Draw::Creature` and `Shared` (drawn by `h3_ui::paint`, which `h3-view`'s compositor calls
+   for them); `h3_render::blit::draw_frame_clipped`; the layout's `[stats]`.
