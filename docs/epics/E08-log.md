@@ -10353,3 +10353,55 @@ creature }` to the players who see the tile. The guard zones read the added obje
 original refreshes them after the walk, `refresh_guard_flags` 0x4CA410: no test inside the walk
 reads them, so the two agree). Not built: the original's Plague and normal months add nothing on
 the map.
+
+### Increment 9, round 7: T85b1, the game's day advance (2026-11-02, `adventure/e08-t85b`, no pull request)
+
+**The cut** (decision 224, the user at T85b's start): T85b on one branch over two sessions so
+game state hash v22 reaches `master` once: T85b1 the day advance, pushed without a pull request;
+T85b2 (the timed events fired, `events_today`, the security lines, the env's `BuildBoat`) the next
+session on the same branch, then the pull requests.
+
+- **The adventure's income** (`state/economy.rs`; design §14 point 4): `AdventureState::income(core,
+  part, player, week_start)`, dense by resource: each owned mine's `production` (an abandoned
+  mine's drawn resource at its mine's amount), and on a week's first day each creature type with
+  a `weekly_resource` ability in the player's heroes' armies once (a `BTreeSet` of the types).
+- **The day advance** (`h3-game`'s new `state/day.rs`, moved out of `state.rs`; design §14):
+  `advance_day`: the day, `DayStarted`; on `(day − 1) % week_days == 0` `WeekStarted { week }`
+  and `start_week` with the game's stream; on `(day − 1) % (week_days × month_weeks) == 0`
+  `draw_month` (`1..=` the odds' sum, normal, creature, Plague in order; the creature by
+  `below(len)`), `MonthStarted { month, kind }`, `start_month` in a creature's month; then
+  `pay_income` (each player in id order: the adventure's income plus each of its heroes' on the
+  map `daily_income`, one `ResourceGained` per non-zero resource through `gain`), `regain_mana`
+  (every hero of the store, `day_mana`, written only where it changes: a fork shares the store
+  until then), `start_day`. `MonthKind { Normal, Creature, Plague }` (public, `GameState::month`,
+  `GameObservation::month`); `project` passes both new events to every viewer.
+- **Agent's calls:** no event for the regain (the design lists none; the owner's observation
+  shows the points; the view property masks the points at a new day); the timed events stored now
+  (`events: Arc<[TimedEventSetup]>`, hashed) though fired only by T85b2, so T85b2 moves no hash;
+  the month drawn after the week's step's draws, from the game's stream (the week's kind waits for
+  E09 with a stream of its own, decision 197).
+- **Rules:** GAM-CAL-002 (`verified`: E9-6, E9-7), GAM-CAL-003 (`implemented`: no row observed
+  the month), GAM-RES-003 and -005 (`verified`: E9-6, E9-7) new; GAM-RES-004 `verified`;
+  GAM-TRN-002's summary points to GAM-CAL-002. Tests: `h3-game`'s `tests/calendar.rs` (day 1 pays
+  nothing; the mines, the abandoned mine and the purse at each day; the week on day 8 with the
+  growth and the weekly resource once for two stacks; the months: none, the Plague, a creature's
+  adding its monsters on the nine free tiles; the regain, the fork, points above the maximum;
+  the events in the hash).
+- **Properties** (`h3-map`): the play property's store check regains the points at
+  `DayStarted`; its conservation splits a command's events at `DayStarted` and checks the day's
+  gains against an independent sum (`check_income`: the owned mines' production, the heroes'
+  `daily_income`, the weekly abilities once on a week's first day); the others' treasuries may
+  change at a new day; a move stopping before a monster added in play (`added_at`). The view
+  property: `WeekStarted` and `MonthStarted` only on a new day, the month followed, the points'
+  regain allowed untold at a new day.
+- **Versions:** game state hash v22 (the month's kind, the timed events). Replays: 25 of 32
+  re-recorded from their commands (hash lines and the version only); the seven duel replays of 28
+  days rejected a command (their battles changed: the monsters grow, the heroes regain points)
+  and were recorded again from their seeds (`--seed N --agent-seed N --days 28`, s1308 in
+  strict-fixed); their feature lists in `adventure_replays.rs` are T42's until T86's README loop.
+- **Bench** (callgrind, against `master`'s full verify in the sandbox): random-play-duel-36
+  1 016 884 805 against 1 012 253 546 (+0.46 %; the committed count +2.16 %, `master` itself
+  +1.70 %): `command_battle` +12 M (the regain and the growth change the battles), the reach and
+  passage loops −7 M (other games), the day's own steps about +5 M; re-baselined with that
+  reason. random-play-rewards-36 +0.37 %, random-play-sea-36 +0.22 % against `master` (within
+  the gate, not re-baselined).
