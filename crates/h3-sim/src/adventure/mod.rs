@@ -24,8 +24,9 @@ pub mod replay;
 pub mod rollout;
 
 pub use action::{
-    ACCEPT, ACTION_ENCODING_VERSION, Action, BUY_BASE, DECLINE, END_TURN, ENTRY_COUNT, EntryMask,
-    FIRST, HERO_SLOTS, MOVE_BASE, MapAction, Phase, SECOND, Seat, UNIVERSITY_SLOTS, answer_entry,
+    ACCEPT, ACTION_ENCODING_VERSION, Action, BUILD_BOAT, BUY_BASE, DECLINE, END_TURN, ENTRY_COUNT,
+    EntryMask, FIRST, HERO_SLOTS, MOVE_BASE, MapAction, Phase, SECOND, Seat, UNIVERSITY_SLOTS,
+    answer_entry,
 };
 pub use env::{AdventureEnv, StepError, StepResult};
 pub use rollout::{RolloutResult, random_rollout};

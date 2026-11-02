@@ -44,6 +44,17 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-11-02 (the adventure lane, E08 T85b2b, `adventure/e08-t85b`, `cross-lane`, decision 203;
+  for your information, nothing to do): the adventure env's **action encoding v6** appends
+  `BUILD_BOAT` (entry 17; `ENTRY_COUNT` 18): its tile head names a Shipyard by its anchor's tile,
+  masked by the `BuildBoat`s `h3_game::legal_commands` lists (ADV-SHY-003: the player's or an
+  ally's Shipyard, its boat tile free, the price in the treasury); `decode` builds the command at a
+  Shipyard the adventure lets the player use (`AdventureState::buildable_shipyards`), the game
+  refusing it out of its turn or without the price. The random agent's draw of a listed
+  `BuildBoat` now builds (it ended the turn before); no committed map has a Shipyard, so no
+  replay, bench or bots record moves. The same branch brings game state hash v22 (T85b1: the
+  month's kind, the timed events) and `GameObservation::month` and `events_today`.
+
 - 2026-10-31 (the adventure lane, E08 T83a, `adventure/e08-t82-t83a`, `cross-lane`; for your
   information, nothing to do): adventure ruleset part v14 (increment 9's seven kinds, the
   calendar, the growth and the months), map import v15, adventure state hash v17.

@@ -4,7 +4,8 @@
 //! T16a on the duel's typed objects too); with a land Cartographer beside each hero (built here on
 //! the nearest tile, also for the underground heroes: the duel's own two are farther), the open decisions ([`decisions`]);
 //! with blue's hero two steps from red's, the battles (E08 T19b1, [`battles`]); with a monster
-//! beside red's hero, its battle and the neutral seat (E08 T20b3a, [`monsters`]).
+//! beside red's hero, its battle and the neutral seat (E08 T20b3a, [`monsters`]); with a
+//! Shipyard of each player's beside its hero, `BuildBoat` (E08 T85b2b, [`shipyards`]).
 
 use std::sync::{Arc, LazyLock};
 
@@ -27,6 +28,7 @@ use crate::action as battle;
 mod battles;
 mod decisions;
 mod monsters;
+mod shipyards;
 
 const DUEL: &[u8] = include_bytes!("../../../../fixtures/maps/e08-duel-36.h3m");
 
@@ -131,7 +133,7 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
         mask,
         [
             true, true, true, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false
+            false, false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -165,8 +167,8 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 5);
-    assert_eq!((ACCEPT, DECLINE, ENTRY_COUNT), (9, 10, 17));
+    assert_eq!(ACTION_ENCODING_VERSION, 6);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 18));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!(Action::end_turn(), Action::Adventure(MapAction::default()));
     let map = |entry, tile| Action::Adventure(MapAction { entry, tile });
@@ -177,6 +179,7 @@ fn tiles_and_actions_encode_as_documented() {
         (Action::first(), Action::second(), Action::buy(3)),
         (map(11, 0), map(12, 0), map(16, 0))
     );
+    assert_eq!(Action::build_boat(40), map(17, 40));
     assert_eq!(hero_in_slot(state, PlayerId::new(0), HERO_SLOTS), None);
     assert_eq!(hero_in_slot(state, PlayerId::new(1), 2), None);
     assert!(hero_in_slot(state, PlayerId::new(1), 1).is_some());
@@ -242,8 +245,9 @@ fn is_move(entry: usize) -> bool {
 /// level-up's `First` and `Second`, E08 T30), tile
 /// 0 alone their tile mask and the only tile they decode with; a move's tiles are the hero's legal
 /// moves but its own tile (since encoding v3 other players' heroes' too, E08 T19b1), each decoding
-/// to the query's path. In the battle phase (the neutral seat's only phase) every map mask is
-/// empty. The battle masks: [`check_battle_masks`].
+/// to the query's path; [`BUILD_BOAT`]'s tiles are the anchors of the listed `BuildBoat`s'
+/// Shipyards ([`check_build_boat`], E08 T85b2b). In the battle phase (the neutral seat's only
+/// phase) every map mask is empty. The battle masks: [`check_battle_masks`].
 fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCaseError> {
     let seat = seat.into();
     let (state, rules) = (env.state(), env.rules());
@@ -278,6 +282,10 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
         env.tile_mask(player, entry, &mut tiles);
         prop_assert_eq!(tiles.len(), env.tile_count());
         prop_assert_eq!(legal, tiles.iter().any(|&t| t), "entry {}", entry);
+        if entry == BUILD_BOAT {
+            check_build_boat(env, player, &commands, &tiles)?;
+            continue;
+        }
         if !is_move(entry) {
             prop_assert_eq!(tiles.iter().filter(|&&t| t).count(), usize::from(legal));
             let command = action::decode(state, rules, player, Action::map(entry, 0));
@@ -321,6 +329,41 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
                 Some(action)
             );
         }
+    }
+    Ok(())
+}
+
+/// [`BUILD_BOAT`]'s `tiles` for `player` agree with the listed `commands` (E08 T85b2b): the
+/// anchors of their `BuildBoat`s' Shipyards, each decoding to its command, which encodes back to
+/// the action.
+fn check_build_boat(
+    env: &AdventureEnv,
+    player: PlayerId,
+    commands: &[GameCommand],
+    tiles: &[bool],
+) -> Result<(), TestCaseError> {
+    let (state, rules) = (env.state(), env.rules());
+    let mut listed: Vec<(u32, &GameCommand)> = commands
+        .iter()
+        .filter_map(|command| match command {
+            GameCommand::Adventure(AdventureCommand::BuildBoat { anchor, .. }) => {
+                Some((tile_index(state, *anchor).unwrap(), command))
+            }
+            _ => None,
+        })
+        .collect();
+    listed.sort_by_key(|&(tile, _)| tile);
+    let masked: Vec<u32> = (0u32..)
+        .zip(tiles)
+        .filter(|&(_, &t)| t)
+        .map(|(i, _)| i)
+        .collect();
+    prop_assert_eq!(&masked, &listed.iter().map(|&(t, _)| t).collect::<Vec<_>>());
+    for (tile, command) in listed {
+        let action = Action::build_boat(tile);
+        let decoded = action::decode(state, rules, player, action);
+        prop_assert_eq!(decoded.as_ref(), Some(command));
+        prop_assert_eq!(action::encode(state, rules, player, command), Some(action));
     }
     Ok(())
 }
@@ -457,7 +500,9 @@ proptest! {
     /// Random play of legal and arbitrary actions on the duel with a Cartographer beside each
     /// hero, or (E08 T19b1) with blue's hero two steps from red's ([`battles::battle_setup`]), or
     /// (E08 T20b3a) with a monster beside red's hero ([`monsters::monster_setup`], aimed at by
-    /// `Chart`), at any difficulty (4, impossible, cannot pay an offer): the masks of both phases
+    /// `Chart`), or (E08 T85b2b) with a Shipyard of each player's beside its hero
+    /// ([`shipyards::shipyard_setup`], aimed at by `Chart`), at any difficulty (4, impossible,
+    /// cannot pay an offer): the masks of both phases
     /// agree with the game for every seat, the neutral one included; a legal action is accepted
     /// and does what `apply` does with its command under the seat's actor; an action outside the
     /// masks is refused and leaves the environment as it was.
@@ -465,7 +510,7 @@ proptest! {
     fn steps_agree_with_the_masks_and_the_game(
         seed in any::<u64>(),
         strict in any::<bool>(),
-        kind in 0u8..3,
+        kind in 0u8..4,
         difficulty in 0u8..5,
         picks in proptest::collection::vec(pick(), 1..60),
     ) {
@@ -477,6 +522,11 @@ proptest! {
                 (setup, charts)
             }
             1 => (battles::battle_setup(rules, difficulty).0, Vec::new()),
+            3 => {
+                let setup = shipyards::shipyard_setup(rules, difficulty);
+                let anchors = shipyards::shipyards(&setup);
+                (setup, anchors)
+            }
             _ => {
                 let (setup, monster) = monsters::monster_setup(rules, difficulty);
                 (setup, vec![monster])
