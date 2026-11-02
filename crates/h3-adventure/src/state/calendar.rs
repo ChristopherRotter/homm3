@@ -152,10 +152,12 @@ impl AdventureState {
     /// the map that may grow, with its type, creature and count as it stands.
     fn growing(&self, index: usize) -> Option<(ObjectTypeId, CreatureTypeId, u32)> {
         let object = self.object_at(index);
-        let monster = object.monster.as_ref().filter(|m| !m.no_growth)?;
-        let object_type = object.object_type?;
-        (!self.is_removed(index))
-            .then(|| (object_type, monster.creature, self.count_of(index, monster)))
+        match (object.object_type, &object.monster) {
+            (Some(object_type), Some(monster)) if !monster.no_growth && !self.is_removed(index) => {
+                Some((object_type, monster.creature, self.count_of(index, monster)))
+            }
+            _ => None,
+        }
     }
 
     /// A creature month's step (ADR-0017 point 3; ADV-MON-014, E08 T85a, increment 9's design
