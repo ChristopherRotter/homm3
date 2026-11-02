@@ -153,6 +153,7 @@ paths = [
     "docs/epics/E04*",
     "docs/epics/E11*",
     "docs/epics/E23*",
+    "docs/epics/E26*",
     "docs/lanes/battle/",
 ]
 

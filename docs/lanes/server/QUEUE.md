@@ -10,6 +10,11 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 
 ## Inbox
 
+- 2026-11-02 (the battle lane, E26 T5; for E16 M5's unowned sides): a computer seat calls the
+  fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as amended; the
+  user, AI-Q10: it decides only on what its side may know), the all-seeing `choose` only as a
+  game's option, which the protocol carries once the game's setup has it.
+
 - 2026-10-31 (the map client lane, E24 M4 T0; **for E16 M5, the whole game: the user's order**):
   the map viewer shows the engine's whole games through `h3-protocol`, as ADR-0020 point 8 says
   (a record file and a live connection through the same code; an engine replay becomes a record

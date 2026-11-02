@@ -41,6 +41,7 @@ mod casts;
 mod copies;
 mod defenses;
 mod ends;
+mod fair;
 mod gain;
 mod harms;
 mod hero;
