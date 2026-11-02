@@ -4,10 +4,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E26, the fair system actor** (refined 2026-11-02, BAT-Q63; `docs/epics/E26-fair-system-actor.md`, record `E26-log.md`): the original's computer unchanged on its side's world (`BattleState::determinized`; ADR-0027 point 4 amended). T1 (the design) and T2 (`h3_battle_ai::choose_fair`, BAT-AI-025) done on `claude/vibrant-dirac-udew18` (cross-lane by the user's choice: ADR, `BACKLOG.md`, `lanes.toml`; no pull request yet). **Next:** T3 (the properties), T4 (cost and strength), T5 (the hand-over, the checkpoint), in the queue. Then **E11** (`docs/epics/E11-historical-rules.md`, Q58): T1 with the user's RoE and AB media. E23 closed 2026-10-24 (`POLICY_VERSION` 19).
+- **E26, the fair system actor** (refined 2026-11-02, BAT-Q63; `docs/epics/E26-fair-system-actor.md`, record `E26-log.md`): the original's computer unchanged on its side's world (`BattleState::determinized`; ADR-0027 point 4 amended). **Increment 1 built** (T1 to T5): `h3_battle_ai::choose_fair` (BAT-AI-025), its twin properties (no leak), `h3 bench-computer --sight fair` and `--duel 1` (+0.8 % Ir per decision, 0.500 against the all-seeing one), the other lanes' inbox notes. Branch `claude/vibrant-dirac-udew18`, its pull request (label `cross-lane`: ADR, `BACKLOG.md`, `lanes.toml`) open: watch it until it merges. **Next:** increment 1's checkpoint with the user (the queue: BAT-STUB-18, increment 2's refinement, the closure). Then **E11** (`docs/epics/E11-historical-rules.md`, Q58): T1 with the user's RoE and AB media. E23 closed 2026-10-24 (`POLICY_VERSION` 19).
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
-- **Open:** BAT-Q28 (rows 1, 3, 5, 6, 11, 12), BAT-Q32, BAT-Q35, BAT-Q58, BAT-STUB-1, the inbox (by kind since 2026-10-19; what is left: BAT-MAG-010's Acid Breath reading, which needs the executable, and the consolidated readings), Q43.
-- **Versions:** battle state hash v54 (CLT-Q4/Q6), battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v51, pack format v50 (E08 T81b), protocol v35, quirk flags 39. Next ids: BAT-Q64, BAT-QUIRK-31, BAT-STUB-18, BAT-AI-026, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Open:** BAT-Q28 (rows 1, 3, 5, 6, 11, 12), BAT-Q32, BAT-Q35, BAT-Q58, BAT-STUB-1, BAT-STUB-18 (E26's checkpoint), the inbox (by kind since 2026-10-19; what is left: BAT-MAG-010's Acid Breath reading, which needs the executable, and the consolidated readings), Q43.
+- **Versions:** battle state hash v54 (CLT-Q4/Q6), battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v51, pack format v50 (E08 T81b), protocol v35, quirk flags 39. Next ids: BAT-Q64, BAT-QUIRK-31, BAT-STUB-19, BAT-AI-026, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (2026-10-19).
 
 ## Standing traps
@@ -16,12 +16,12 @@ Moved to `TRAPS.md`, in four groups: **Battle code** (paths, stack ids, two-hex 
 
 ## Recent sessions
 
-### 2026-11-02 (114th) — E26 refined, T1 and T2
+### 2026-11-02 (114th) — E26 refined and increment 1 built
 
-The user chose the port on its side's world (BAT-Q63) and one cross-lane branch. E26's epic,
-log, the queue's T3 to T5. `choose_fair` built: its twins (the other hero's book, masteries and
-damage skills) never change its command where they change `choose`'s 12 times in 70; with no
-other hero it is `choose`. No version moved. **In progress:** nothing half-done; T3 next.
+The user chose the port on its side's world (BAT-Q63) and one cross-lane branch. T2
+`choose_fair`; T3 (a worker) the twin properties on both rulesets: no leak, one fallback the
+all-seeing computer shares (BAT-STUB-18: a hypnotized shooter aims at itself); T4 the cost and
+the duel; T5 the inbox notes. No version moved. Pull request opened; nothing half-done.
 
 ### 2026-11-02 (113th) — the inbox
 

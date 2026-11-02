@@ -76,3 +76,45 @@ The record of E26's tasks: what each built and decided, beyond the one line in t
   validate `unchecked`, but their games never reached the case (the test ruleset's heroes there
   carry no book). No policy change (`choose`'s documentation names the fallback);
   `POLICY_VERSION` stays 19.
+
+## T4 — cost and strength (2026-11-02, increment 1)
+
+- **Built:** `h3 bench-computer` takes `--sight all-seeing|fair` (default all-seeing: the gated
+  workload `benches/battle/computer-decisions.toml` is unchanged) and `--duel 1`: each battle
+  twice, both sides the computer, the fair actor on the attacker's side and then the
+  defender's, the all-seeing one on the other, the same armies and seeds. Not a rule (the CLI).
+- **Cost** (callgrind, `Ir` inside the decision function; the binary linked with
+  `-z norelro` as `bench-check` does; 40 battles, seed 1):
+
+  | Workload | All-seeing (`choose`) | Fair (`choose_fair`) |
+  |---|---|---|
+  | `--heroes 0` (the gated workload's battles) | 540 586 991 Ir, 1 404 decisions: 385 k each | 545 002 333 Ir, the same 1 404 decisions: 388 k each (+0.8 %) |
+  | `--heroes 1` (both heroes with every combat spell) | 3 401 233 460 Ir, 1 289 decisions: 2 639 k each | 4 926 974 667 Ir, 2 029 decisions: 2 428 k each |
+
+  The world itself (the copy, the hero check, the templates, the hidden obstacles placed again)
+  is about 3 k Ir per decision without heroes and 0.6 % of the fair decision's with them
+  (`unchecked` 99.41 % inclusive). With heroes the fair battles differ and run longer (2 626
+  steps against 1 610), each decision cheaper: it weighs no enemy spells. Inside ADR-0027 point
+  11's budget; no cheaper world is needed. Wall time (release): about 50 µs and 290 to 390 µs
+  per decision, as noisy as the earlier sessions'.
+- **Strength** (`--duel 1`, release): without heroes 200 battles (seed 7) give 0.500 exactly,
+  as they must (nothing is hidden: the fair actor is the original, the two seats mirror). With
+  both heroes carrying every combat spell: 200 battles (seed 7) 0.518 of the finished battles
+  won by the fair side, 1 000 battles (seed 11) 0.500 (as attacker 488 won, 503 lost, 2 drawn,
+  7 unfinished; as defender 503, 483, 3, 11). **Assuming nothing of the other hero costs the
+  computer no measurable strength on random armies** (a standard error of about 0.011 on
+  2 000 battles). Value efficiency is not measured here (the AI lane's ladder measures it).
+- For increment 2's refinement: the guess's prior and memory cannot gain much win rate on this
+  workload; a scenario where the hidden magic decides (a weak army behind a strong caster)
+  would be its measurement, or the increment's value is fidelity to how a player plays.
+
+## T5 — the hand-over (2026-11-02, increment 1)
+
+- Inbox notes: the AI lane (`Policy::System` fair by default with an all-seeing option, it may
+  train, imitation a candidate, records and benchmarks), the adventure lane (the neutral seat,
+  the game's option), the server lane (the unowned sides, the option on the wire), the client
+  and map-client lanes (their computer seats).
+- `TRAPS.md`: a change of `world.rs` or of `observe_as`'s list changes the fair actor's choices.
+- Left for the checkpoint with the user: BAT-STUB-18 (exit criterion 2), increment 2's
+  refinement from T4's numbers, the closure of increment 1.
+

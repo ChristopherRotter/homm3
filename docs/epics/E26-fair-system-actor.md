@@ -1,6 +1,6 @@
 # E26 — The fair system actor
 
-Status: **in progress**, refined 2026-11-02 (BAT-Q63); increment 1 open · Lane: **battle**
+Status: **in progress**, refined 2026-11-02 (BAT-Q63); increment 1 built, its checkpoint with the user next · Lane: **battle**
 (the callers' switch to it: the AI, adventure, server and client lanes, by their inboxes) ·
 Follows E23 (the original's battle AI, ADR-0027) and E25's refinement (AI-Q10)
 
@@ -62,8 +62,8 @@ all-seeing computer kept as a game's option. The AI lane may train against it an
 | T1 | The design: ADR-0027 point 4 amended, this file, `BACKLOG.md`, `lanes.toml`, BAT-Q63, the queue's tasks | done 2026-11-02 |
 | T2 | `choose_fair` (BAT-AI-025) and its unit tests: the other hero's private part, nothing hidden | done 2026-11-02 (`E26-log.md` T2) |
 | T3 | The properties: reads nothing hidden, no fallback, the original where nothing is hidden, determinism (test ruleset and harvested packs) | done 2026-11-02 (`E26-log.md` T3) |
-| T4 | `h3 ai --sight fair`: its cost per decision against `choose` and its strength against the all-seeing one, recorded | ready |
-| T5 | The hand-over and the checkpoint: the other lanes' inbox notes, docs, TRAPS, the closure | after T3, T4 |
+| T4 | `h3 bench-computer --sight fair`, `--duel 1`: its cost per decision against `choose` and its strength against the all-seeing one, recorded | done 2026-11-02 (`E26-log.md` T4: +0.8 % Ir per decision; 0.500 against the all-seeing one) |
+| T5 | The hand-over and the checkpoint: the other lanes' inbox notes, docs, TRAPS, the closure | done 2026-11-02 but the checkpoint (`E26-log.md` T5) |
 
 The tasks' scope and acceptance: the battle lane's `QUEUE.md`; their record: `E26-log.md`.
 

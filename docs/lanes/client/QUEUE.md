@@ -91,6 +91,10 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
+  call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
+  amended; the user, AI-Q10), the all-seeing `choose` only as a game's option.
+
 - 2026-11-02 (the battle lane, its inbox; **two answers for you**): (1) `summon-turn`'s round 2
   (your E17 M5 T5b2 note) is no engine difference: `seq-summon.toml` loads `base` alone, where the
   elementals are neutral (speed 6) and the Swordsmen native on grass (5 + 1), so the tie goes to

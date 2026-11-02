@@ -6,23 +6,16 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-original-battle-ai.md`, its log's "T7 — the closure"; the cuts of its tasks: OPEN-QUESTIONS BAT-Q52 to BAT-Q61 and the epic file). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-**Now: E26, the fair system actor** (the user, 2026-11-02, BAT-Q63; `docs/epics/E26-fair-system-actor.md`, record `E26-log.md`): the original's computer, unchanged, on its side's world (`BattleState::determinized`; ADR-0027 point 4 amended). Increment 1 assumes nothing of the other side's hero's private part; increment 2 (a sampled prior, updated by what the side has seen) is refined after T4. T1, the design, T2, `choose_fair`, and T3, the properties (one fallback found, the all-seeing computer's too: BAT-STUB-18), done 2026-11-02. **Then E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
+**Now: E26, the fair system actor** (the user, 2026-11-02, BAT-Q63; `docs/epics/E26-fair-system-actor.md`, record `E26-log.md`): the original's computer, unchanged, on its side's world (`BattleState::determinized`; ADR-0027 point 4 amended). Increment 1 assumes nothing of the other side's hero's private part; increment 2 (a sampled prior, updated by what the side has seen) is refined at the checkpoint. T1 to T5 done 2026-11-02 (the design, `choose_fair`, its properties with one fallback that the all-seeing computer shares, BAT-STUB-18, its cost of +0.8 % per decision and its strength of 0.500 against the all-seeing one, the hand-over); the checkpoint below is next. **Then E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
 
-- **E26 T4 Cost and strength.** *Scope:* `h3 ai` (`h3-cli`'s battle AI games) plays a side's
-  computer fair or all-seeing (a `--sight` option); measure `choose_fair` against `choose`:
-  instructions per decision (callgrind, skill `homm3-bench-regression`) and the fair side's
-  wins and value against the all-seeing one over the same random armies, both seats, both
-  profiles. Recorded in `E26-log.md` T4 with the commands. Over ADR-0027 point 11's budget: a
-  task for a cheaper world before T5. Exit criterion 3. *Acceptance:* as T3; the numbers in the
-  log. *Depends on:* T2 (done). *Status:* ready.
-- **E26 T5 The hand-over and the checkpoint.** *Scope:* inbox notes for the AI lane (`h3-sim`'s
-  `Policy::System` fair by default with an all-seeing option; E25 decision 2: it may train,
-  imitation a candidate; its records and `benches/ai/` where the default's choices move), the
-  adventure lane (the neutral seat; the game's option, "player option too"), the server lane
-  (the unowned sides; the option on the wire) and the client lanes (their seats); `TRAPS.md`
-  (a change of `world.rs` or `observe_as`'s list changes the fair actor's choices: bump
-  `POLICY_VERSION`); the epic's increment 1 closed at a checkpoint with the user, increment 2
-  refined from T4's numbers. Exit criterion 4. *Depends on:* T3, T4. *Status:* waiting.
+- **E26 increment 1's checkpoint.** *Scope:* with the user: (1) BAT-STUB-18 (a hypnotized
+  shooter aims at itself, `aim.rs::pick`; `choose` and `choose_fair` both give Defend): the
+  walker's cut (BAT-Q58's) for the shooter too, a `POLICY_VERSION` bump with the AI lane's
+  records, or kept until a batch row shows the original's outcome; exit criterion 2 rests on it;
+  (2) increment 2 (the guess's prior and memory) from T4's numbers (`E26-log.md` T4: the fair
+  actor wins 0.500 against the all-seeing one, so the guess gains little win rate on random
+  armies); (3) the closure of increment 1 (move it to `E26-archive.md`). *Depends on:* the
+  user. *Status:* waiting (the user).
 
 ## Inbox
 
