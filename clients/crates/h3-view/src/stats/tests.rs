@@ -36,6 +36,14 @@ fn texts() -> Texts {
     }
 }
 
+fn effect(spell: u32) -> Effect {
+    Effect {
+        spell,
+        name: format!("spell {spell}"),
+        rounds: Some(3),
+    }
+}
+
 fn marksmen() -> Stats {
     Stats {
         name: "Marksmen".into(),
@@ -51,7 +59,7 @@ fn marksmen() -> Stats {
         speed: Pair { own: 6, now: -1 },
         morale: 5,
         luck: -1,
-        effects: vec![41, 43, 53, 46],
+        effects: [41, 43, 53, 46].map(effect).into(),
         ability: Some("Shoots twice".into()),
         cast: false,
         modal: true,
@@ -75,7 +83,13 @@ fn a_pair_shows_its_own_number_and_the_stacks_when_they_differ() {
 
 #[test]
 fn the_items_come_in_the_executables_order() {
-    let m = layout(&stats_layout(), &texts(), &marksmen(), [151, 160], 2);
+    let m = layout(
+        &stats_layout(),
+        &texts(),
+        &marksmen(),
+        ([151, 160], 2),
+        Bugs::Original,
+    );
     assert_eq!(m.dialog.place, [151, 160]);
     assert_eq!(m.dialog.shadow, Some([298, 311]));
     let ids: Vec<u16> = m.dialog.items.iter().map(Item::id).collect();
@@ -98,11 +112,21 @@ fn the_items_come_in_the_executables_order() {
     assert_eq!(text(218), Some("6(0)"));
     assert_eq!(text(ABILITY), Some("Shoots twice"));
     assert_eq!(m.shown.players.get(&BACKGROUND), Some(&2));
-    // The damage's value a row above its label (0x5F59A2).
-    let at = |id| m.dialog.item(id).and_then(Item::area).map(|(at, _)| at);
-    assert_eq!(at(211), Some([154, 104]));
-    assert_eq!(at(212), Some([154, 103]));
-    assert_eq!(at(217), Some([154, 161]));
+    // The damage's value a row above its label (0x5F59A2), at its row in the client's profile
+    // (CLT-Q37).
+    let at = |m: &MessageBox, id| m.dialog.item(id).and_then(Item::area).map(|(at, _)| at);
+    assert_eq!(at(&m, 211), Some([154, 104]));
+    assert_eq!(at(&m, 212), Some([154, 103]));
+    assert_eq!(at(&m, 217), Some([154, 161]));
+    let fixed = layout(
+        &stats_layout(),
+        &texts(),
+        &marksmen(),
+        ([151, 160], 2),
+        Bugs::Fixed,
+    );
+    assert_eq!(at(&fixed, 212), Some([154, 104]));
+    assert_eq!(at(&fixed, 210), at(&m, 210));
     // The town's frame by the town + 1, the creature's group 2 drawn as a creature.
     let Some(Item::Picture(town)) = m.dialog.item(TOWN) else {
         panic!("the town's frame");
@@ -146,13 +170,19 @@ fn what_a_stack_lacks_is_left_out() {
         count: 0,
         shots: None,
         damage: [4, 4],
-        effects: vec![15],
+        effects: vec![effect(15)],
         ability: None,
         modal: false,
         town: None,
         ..marksmen()
     };
-    let m = layout(&stats_layout(), &texts(), &stats, [0, 0], 0);
+    let m = layout(
+        &stats_layout(),
+        &texts(),
+        &stats,
+        ([0, 0], 0),
+        Bugs::Original,
+    );
     let ids: Vec<u16> = m.dialog.items.iter().map(Item::id).collect();
     assert_eq!(
         ids,
@@ -171,7 +201,7 @@ fn what_a_stack_lacks_is_left_out() {
         town: Some(8),
         ..stats
     };
-    let m = layout(&stats_layout(), &texts(), &far, [0, 0], 0);
+    let m = layout(&stats_layout(), &texts(), &far, ([0, 0], 0), Bugs::Original);
     let Some(Item::Picture(town)) = m.dialog.item(TOWN) else {
         panic!("the town's frame");
     };
@@ -184,7 +214,13 @@ fn a_faerie_dragons_cast_button_takes_the_abilitys_place() {
         cast: true,
         ..marksmen()
     };
-    let m = layout(&stats_layout(), &texts(), &stats, [0, 0], 0);
+    let m = layout(
+        &stats_layout(),
+        &texts(),
+        &stats,
+        ([0, 0], 0),
+        Bugs::Original,
+    );
     let ids: Vec<u16> = m.dialog.items.iter().map(Item::id).collect();
     assert_eq!(ids[ids.len() - 3..], [224, CAST_BACK, CAST]);
     assert!(!m.shown.texts.contains_key(&ABILITY));
@@ -196,7 +232,7 @@ fn a_faerie_dragons_cast_button_takes_the_abilitys_place() {
 
 #[test]
 fn the_labels_come_from_the_catalogue() {
-    let texts = Texts::of(&h3_ui::text::Catalogue::default());
+    let texts = Texts::of(&Catalogue::default());
     // Without a pack every key shows itself.
     assert_eq!(texts.attack, "stats.attack");
     assert_eq!(texts.health_left, "stats.health-left");
@@ -282,4 +318,225 @@ fn a_seed_gives_the_same_steps() {
     };
     assert_eq!(run(9), run(9));
     assert_ne!(run(9), run(10));
+}
+
+#[test]
+fn each_item_has_its_hint_tables_index() {
+    // 0x5F46C0: the lines' labels and values share their line's.
+    let index = |id| hint_index(id, Bugs::Original);
+    assert_eq!(index(NAME), Some(0));
+    assert_eq!(index(COUNT), Some(1));
+    assert_eq!(
+        [205, 206, 211, 212, 216, 218].map(index),
+        [2, 2, 5, 5, 7, 8].map(Some)
+    );
+    assert_eq!(
+        [MORALE, LUCK, 221, 223].map(index),
+        [9, 10, 11, 11].map(Some)
+    );
+    assert_eq!(
+        [0x7803, 300, OK, CAST].map(index),
+        [12, 13, 14, 15].map(Some)
+    );
+    assert_eq!(
+        [BACKGROUND, TOWN, CREATURE, STATUS, OK_BACK, 224, 9].map(index),
+        [None; 7]
+    );
+    // The speed's label: the health left's in the original, its own in the client's (CLT-Q38).
+    assert_eq!(index(217), Some(7));
+    assert_eq!(hint_index(217, Bugs::Fixed), Some(8));
+    assert_eq!(hint_index(215, Bugs::Fixed), Some(7));
+}
+
+fn hints() -> Hints {
+    Hints {
+        table: (0..HINTS).map(|i| format!("hint {i}")).collect(),
+        cast: "cast".into(),
+        effects: vec!["e0".into(), "e1".into()],
+    }
+}
+
+#[test]
+fn the_hint_over_an_item() {
+    let h = hints();
+    assert_eq!(h.over(NAME, Bugs::Fixed), "hint 0");
+    assert_eq!(h.over(217, Bugs::Original), "hint 7");
+    assert_eq!(h.over(217, Bugs::Fixed), "hint 8");
+    assert_eq!(h.over(OK, Bugs::Fixed), "hint 14");
+    // Past the table's end the cast button's; an effect's its own; none elsewhere.
+    assert_eq!(h.over(CAST, Bugs::Original), "cast");
+    assert_eq!(h.over(221, Bugs::Fixed), "e0");
+    assert_eq!(h.over(222, Bugs::Fixed), "e1");
+    assert_eq!(h.over(223, Bugs::Fixed), "");
+    assert_eq!(h.over(BACKGROUND, Bugs::Fixed), "");
+    // A table too short (no pack): the missing entry's is empty.
+    let short = Hints {
+        table: Vec::new(),
+        ..hints()
+    };
+    assert_eq!(short.over(NAME, Bugs::Fixed), "");
+}
+
+#[test]
+fn the_hints_come_from_the_catalogue() {
+    use h3_ui::text::pack::Pack;
+    let pack = Pack::from_json(
+        "en",
+        r#"{ "stats": { "hint": { "name": "N", "ok": "O", "cast-original": "Mine",
+            "effect": "{{spell}} {{rounds}}", "effect-until": "{{spell}}: {{until}}" },
+            "until": { "bind": "B", "berserk": "Z", "disrupting-ray": "R" } },
+            "battle": { "control": { "spell-book": "Cast" } } }"#,
+    )
+    .unwrap();
+    let catalogue = Catalogue { packs: vec![pack] };
+    let stats = Stats {
+        effects: vec![
+            effect(41),
+            Effect {
+                rounds: None,
+                ..effect(53)
+            },
+            effect(72),
+            effect(59),
+            effect(47),
+        ],
+        ..marksmen()
+    };
+    let fixed = Hints::of(&catalogue, &stats, Bugs::Fixed);
+    assert_eq!(fixed.table.len(), HINTS);
+    assert_eq!(
+        (fixed.table[0].as_str(), fixed.table[14].as_str()),
+        ("N", "O")
+    );
+    assert_eq!(fixed.cast, "Cast");
+    // The last three: Bind, Berserk and Disrupting Ray name how long they last.
+    assert_eq!(fixed.effects, ["spell 72: B", "spell 59: Z", "spell 47: R"]);
+    let original = Hints::of(&catalogue, &marksmen(), Bugs::Original);
+    assert_eq!(original.cast, "Mine");
+    assert_eq!(original.effects, ["spell 43 3", "spell 53 3", "spell 46 3"]);
+    // An effect for the rest of the battle shows 0 rounds.
+    let rest = Stats {
+        effects: vec![Effect {
+            rounds: None,
+            ..effect(53)
+        }],
+        ..marksmen()
+    };
+    assert_eq!(
+        Hints::of(&catalogue, &rest, Bugs::Fixed).effects,
+        ["spell 53 0"]
+    );
+}
+
+fn modal(memory: &mut Memory) -> Modal {
+    let window = layout(
+        &stats_layout(),
+        &texts(),
+        &marksmen(),
+        ([100, 50], 0),
+        Bugs::Fixed,
+    );
+    Modal::new(window, hints(), memory)
+}
+
+#[test]
+fn the_mouse_over_the_dialog_sets_its_cursor_and_hint() {
+    let mut memory = Memory::new(Bugs::Fixed);
+    let mut m = modal(&mut memory);
+    assert_eq!((m.cursor, m.status()), (None, ""));
+    // Over nothing of the dialog (outside it): the last one seen, nothing changes.
+    assert!(!m.hover(&mut memory, [0, 0]));
+    assert_eq!(m.cursor, None);
+    // The attack's line (205 and 206 in one box at 154, 48): the value, added after its label,
+    // takes the mouse; its line's hint, the cursor's frame 1.
+    assert!(m.hover(&mut memory, [100 + 160, 50 + 50]));
+    assert_eq!((m.cursor, m.status()), (Some(1), "hint 2"));
+    assert!(!m.hover(&mut memory, [100 + 270, 50 + 50]));
+    // The background: an item without a hint, the cursor's frame 1 still.
+    assert!(m.hover(&mut memory, [100 + 5, 50 + 5]));
+    assert_eq!((m.cursor, m.status()), (Some(1), ""));
+    // Off the dialog: the cursor's frame 0, an empty line.
+    assert!(m.hover(&mut memory, [0, 0]));
+    assert_eq!((m.cursor, m.status()), (Some(0), ""));
+    // The speed's line: its value's hint (the label under it never takes the mouse).
+    assert!(m.hover(&mut memory, [100 + 160, 50 + 165]));
+    assert_eq!(m.status(), "hint 8");
+}
+
+#[test]
+fn the_damages_label_takes_the_mouse_below_its_value_in_the_original() {
+    // A row above its label, the value leaves the label's last row to it (CLT-Q37).
+    let mut memory = Memory::new(Bugs::Original);
+    let window = layout(
+        &stats_layout(),
+        &texts(),
+        &marksmen(),
+        ([0, 0], 0),
+        Bugs::Original,
+    );
+    let mut m = Modal::new(window, hints(), &mut memory);
+    assert!(m.hover(&mut memory, [160, 119]));
+    assert_eq!(m.status(), "hint 5");
+    assert!(m.hover(&mut memory, [160, 120]));
+    assert_eq!(m.status(), "hint 5");
+}
+
+#[test]
+fn the_item_last_hovered_is_kept_by_the_original_only() {
+    // The original's: a dialog opened over the item last seen shows nothing until another.
+    let mut memory = Memory::new(Bugs::Original);
+    assert_eq!(memory.bugs(), Bugs::Original);
+    let mut m = modal(&mut memory);
+    assert!(m.hover(&mut memory, [100 + 160, 50 + 50]));
+    let mut again = modal(&mut memory);
+    assert!(!again.hover(&mut memory, [100 + 161, 50 + 50]));
+    assert_eq!((again.cursor, again.status()), (None, ""));
+    assert!(again.hover(&mut memory, [100 + 160, 50 + 165]));
+    assert_eq!(again.status(), "hint 8");
+    // The client's forgets it at each opening.
+    let mut memory = Memory::new(Bugs::Fixed);
+    let mut m = modal(&mut memory);
+    assert!(m.hover(&mut memory, [100 + 160, 50 + 50]));
+    let mut again = modal(&mut memory);
+    assert!(again.hover(&mut memory, [100 + 161, 50 + 50]));
+    assert_eq!(again.status(), "hint 2");
+}
+
+#[test]
+fn the_ok_closes_the_dialog_by_a_click_or_its_keys() {
+    let mut memory = Memory::new(Bugs::Fixed);
+    let ok = [100 + 220, 50 + 250];
+    let mut m = modal(&mut memory);
+    // A press elsewhere does nothing; on the OK it goes down, off and on again it follows.
+    assert_eq!(m.press([100 + 160, 50 + 50]), Outcome::Nothing);
+    assert_eq!(m.release(), Outcome::Nothing);
+    assert_eq!(m.press(ok), Outcome::Changed);
+    assert_eq!(m.moved([0, 0]), Outcome::Changed);
+    assert_eq!(m.moved(ok), Outcome::Changed);
+    assert_eq!(m.release(), Outcome::Closed(OK));
+    // Released off it: nothing clicked.
+    let mut m = modal(&mut memory);
+    assert_eq!(m.press(ok), Outcome::Changed);
+    assert_eq!(m.moved([0, 0]), Outcome::Changed);
+    assert_eq!(m.release(), Outcome::Changed);
+    // Its key down, then up.
+    let mut m = modal(&mut memory);
+    assert_eq!(m.key("Escape"), Outcome::Changed);
+    assert_eq!(m.key_up("Return"), Outcome::Nothing);
+    assert_eq!(m.key_up("Escape"), Outcome::Closed(OK));
+}
+
+#[test]
+fn the_cast_button_takes_no_press_yet() {
+    let mut memory = Memory::new(Bugs::Fixed);
+    let stats = Stats {
+        cast: true,
+        ..marksmen()
+    };
+    let window = layout(&stats_layout(), &texts(), &stats, ([0, 0], 0), Bugs::Fixed);
+    let mut m = Modal::new(window, hints(), &mut memory);
+    assert_eq!(m.press([80, 240]), Outcome::Nothing);
+    // Its hint: past the table's end.
+    assert!(m.hover(&mut memory, [80, 240]));
+    assert_eq!(m.status(), "cast");
 }

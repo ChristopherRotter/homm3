@@ -836,9 +836,8 @@ pub(crate) fn draw_frames(
             .and_then(|b| Some((b.stats.as_ref()?, b.mouse, b.at)))
         {
             // A stack's stats dialog (E17 M6 T2a1, design §12.1): its creature stepped since it
-            // opened; at the park point the combat cursor's pointer, the panel's status line
-            // keeping the press's hint (as recorded: the modal loop's routing of the park's move
-            // over none of the dialog's items is not read).
+            // opened; the cursor its moves set (T2a2a), until then the combat cursor's pointer
+            // the press set, the panel's status line keeping the press's hint.
             let window = open.at(STATS_FIRST_STEP, frame.t.saturating_sub(opened));
             list.extend(
                 window
@@ -847,7 +846,7 @@ pub(crate) fn draw_frames(
                     .into_iter()
                     .map(scene::Draw::Dialog),
             );
-            list.push(mouse::cursor(layout, layout.mouse.panel_frame, mouse));
+            list.push(crate::stats::cursor(layout, &open.modal, mouse));
         } else if let Some((open, mouse)) = book {
             // The cursor the book set, else the battle's where the actions left the mouse.
             match open.cursor_draw(&layout.book, mouse) {

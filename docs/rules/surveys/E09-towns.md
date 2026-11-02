@@ -7,8 +7,8 @@ the random towns (§0 to §3); **T1a2** the main town's generated hero and the p
 the random hero, a hero placed on a town's blocked tile, the town's buildings at the start (§4 on,
 appended); **T1b** the town on the map, cut in two at its start (the user, 2026-11-02): **T1b1**
 the visit, the visiting hero, capture and the battle at a town with ADR-0023's facts (§7 to §10);
-**T1b2** the hall's income and the Capitol, the views, batch TWN-1's rows, the checkpoint's
-`TWN-Q2`.
+**T1b2**, cut in two at its start (the user, 2026-11-02): **T1b2a** the hall's income and the
+Capitol, the views, batch TWN-1's rows (§11 to §13); **T1b2b** the checkpoint's `TWN-Q2`.
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -77,6 +77,27 @@ its sources and tests.
   0x5F2260, 0x5F22A0: E10's); network play (`town_owner_message` 0x49C190); the battle's own
   reading of the town (E04c's, `installation.md` §7.27 to §7.33); what reads the external
   dwellings' counts (increment 3); the masks the scenario dialog's version is taken from.
+- **T1b2a** (retrieved 2026-11-02): the code reading, every address in `docs/exe/map.toml`.
+  **Read whole:** `town_gold_income` 0x5BF600, `town_silo_income` 0x5C1280,
+  `town_quick_view_create` 0x530120, `quick_view_army` 0x530990, `player_tavern_count`
+  0x4CCE30, `hero_visions_level` 0x4E5DE0, `hero_visions_reach` 0x4E5E10. **Read in part:**
+  `town_popup` 0x4167A0 (all but its debug branch, 0x4168D7 to 0x416E62), `tile_click_path`
+  0x40A5D0 (its right-button branch), `player_gold_income` 0x4C7930 (its towns, again) and
+  `player_daily_income` 0x4B8AF0 (its gold call). **Not followed:** `object_popup_text` 0x4137C0,
+  the hero's, monster's and garrison's popups, the town list's right click, the Visions cast
+  0x41C490 beyond its level, the silo's, Treasury's and Mystic Pond's payment (increment 4). The
+  census of §11.4 and §12.4 (a throwaway crate over `h3_map::read`, not committed).
+- VCMI 1.7.5 for T1b2a: `lib/mapObjects/CGTownInstance.cpp` (`dailyIncome`, `setOwner`),
+  `config/buildingsLibrary.json`, `config/factions/*.json`, `lib/callback/CGameInfoCallback.cpp`
+  (`getTownInfo`, `hasAccess`), `lib/gameState/InfoAboutArmy.cpp`,
+  `lib/mapObjects/CGHeroInstance.cpp` (`hasVisions`), `config/creatures/neutral.json` (the
+  Rogue), `config/spells/adventure.json` (Visions).
+- The wiki for T1b2a: [Halls](https://heroes.thelazy.net/index.php/Halls),
+  [Grail](https://heroes.thelazy.net/index.php/Grail),
+  [Tavern](https://heroes.thelazy.net/index.php/Tavern),
+  [Thieves' Guild](https://heroes.thelazy.net/index.php/Thieves'_Guild),
+  [Visions](https://heroes.thelazy.net/index.php/Visions); the RoE manual on heroes3wog.net
+  (the sword over a defended town), through the search's summaries.
 - VCMI 1.7.5 for T1b1: `lib/mapObjects/CGTownInstance.cpp` (`onHeroVisit`,
   `mergeGarrisonOnSiege`, `battleFinished`, `onTownCaptured`, `setOwner`, `removeCapitols`,
   `armedGarrison`, `getSightRadius`), `lib/mapObjects/CGTownInstance.h` (`isBattleOutsideTown`),
@@ -90,7 +111,7 @@ its sources and tests.
   without units by dismissing them in the town screen). The wiki's Town page was not reachable
   (not on the session's fetch list).
 
-## 0. Findings in short (T1a1, T1a2, T1b1)
+## 0. Findings in short (T1a1, T1a2, T1b1, T1b2a)
 
 1. **Every shipped map has towns:** 1 468 on the 160 maps, 876 random towns (class 77, on 127
    maps) and 592 of a fixed faction (98); **no Conflux town is placed on any map** (98's subclass 8
@@ -190,6 +211,28 @@ its sources and tests.
 23. **Disputes** TD-7 (the merge's order and ties, VCMI's other); **quirk candidate** T-5 (a
     garrison hero without creatures: the town falls without a battle, the hero back in the
     pool); **content:** none new (the AI values are in the packs).
+
+**T1b2a (§11 to §13):**
+
+24. **A town's gold a day** (§11.1): 500, the Town Hall 1 000, the City Hall 2 000, the Capitol
+    4 000 (the highest hall), **+5 000 with the Grail building**, the same in every faction; the
+    Resource Silo adds no gold (its resources are paid beside, increment 4). Paid to the town's
+    owner at each day's start from day 2 with E08's income; a neutral town pays nobody. VCMI and
+    the wiki agree.
+25. **One Capitol per player only after a capture** (§11.3): the start keeps every Capitol the map
+    gives (none of the shipped maps gives a player two). The census (§11.4): 23 Capitols (10
+    owned), the Grail building in 10 towns (2 owned), the silo in 26 (7 owned).
+26. **What another player sees** (§12): the picture (faction, owner, a Capitol, any fort), the
+    name and faction (the hint), whether a reachable town is defended (the cursor, as the step
+    tells it); the right-click adds the fort level at every level and the army by the viewer's
+    level: **none without a Tavern, the stacks' creatures with one, their size words with two or
+    more**, the counts with the hall, the income, the silo and the garrison hero's mark only for
+    the owner's team or a hero with expert Visions or a Rogue within reach. The wiki agrees; VCMI
+    has two levels (no taverns' levels). At the start 63 players have level 0, 600 level 1, 78
+    level 2 (§12.4).
+27. **Batch TWN-1** (§13): seven rows, TD-3, TD-5, TD-7, the capture's aftermath, the game's
+    version, the income and the Capitol after a capture. No new dispute or quirk candidate;
+    content: the silo's table (a constant of the executable) for increment 4.
 
 ## 1. The census
 
@@ -850,3 +893,199 @@ may play under SoD rules (a damaging moat, a Stronghold's moat): batch TWN-1's r
   flag; (3) the stacks left in the garrison gone after the capture; (4) the moat's damage in a
   game of an RoE-format map and of an SoD-format map in the Complete edition (the game's version,
   §9.4). Increment 3's, not now: the battle in the open beside a garrison hero, T-5.
+
+## 11. The town's income (T1b2a)
+
+### 11.1 A town's gold (`town_gold_income` 0x5BF600, read whole)
+
+Arguments: the town, whether to count the Resource Silo. From the built set +0x150 (by
+`building_bits` 0x66CD98): **500**; the Town Hall (11) **1 000**; the City Hall (12) **2 000**; the
+Capitol (13) **4 000**, tested in that order, the last one found kept, so the highest hall pays (the
+Village Hall, 10, is not tested: every town has it, §5.3). With the silo flag and the Resource Silo
+(15) built, the gold of the silo's table (`town_silo_resources` 0x688EB4, seven i32 per faction,
+read as an i16 at +24) is added: **0 for every faction** (the table gives wood and ore to Castle,
+Necropolis, Stronghold and Fortress, crystal to Rampart, gems to Tower, mercury to Inferno and
+Conflux, sulfur to Dungeon; `town_silo_income` 0x5C1280 returns its row). With the Grail building
+(26) in the every-built set +0x158, **+5 000**. The faction plays no other part: halls and Grail
+pay the same in every town. At most 9 000.
+
+### 11.2 Who is paid, and when
+
+`player_gold_income` 0x4C7930 (E08 T77a2, `E08-economy.md` §8.2) adds, for every town of the
+game's list (+0x21614, 0x168 bytes each) whose owner (+0x1) is the player, the town's gold as its
+low 16 bits sign-extended (0x4C79ED; never wrapped below 32 768) and its garrison hero's own gold
+(`hero_gold_income` 0x4E4390; garrison heroes are increment 3's). The day's income
+(`player_daily_income` 0x4B8AF0) calls it with the silo flag 0 (0x4B8D92), so the silo's gold
+would not count there anyway. Paid at each day's start from day 2 on to every player not defeated
+(E08 §8.3): **a neutral town pays nobody, and a town captured during a day pays its new owner at
+the next day's start.** The day's income pays the town's other incomes beside it (`E08-economy.md`
+§8.1 point 2, not read): the silo's resources, Rampart's Treasury and Mystic Pond (increment 4).
+Not followed: `town_gold_income`'s four other callers (the status window 0x4521F0 passes 1) and
+`player_gold_income`'s two others (views and the computer's, probably).
+
+### 11.3 The Capitol
+
+It pays 4 000 as the highest hall. **One per player only after a capture**: `capitol_limit`
+0x5BEC60 (§8.4) has two callers, `town_visit`'s capture paths (0x4AB1BA after an undefended
+town's change, 0x4AB363 after a siege won). The start never applies it (`town_setup` calls
+`town_change_owner` alone, §8.3), so a map may give a player several Capitols, each paying 4 000
+(the wiki says so too); building a second one is increment 2's rule.
+
+### 11.4 The census (the 160 maps; a throwaway crate over `h3_map::read`, not committed)
+
+The 574 custom building sets (the map's bits through `map_building_ids` 0x6888C0: bits 0 to 2 the
+halls, 9 the silo, 17 the Grail for every faction): the highest hall a Village Hall in 204 towns
+(120 owned), a Town Hall in 258 (166), a City Hall in 89 (47), **a Capitol in 23 (10 owned)**; the
+894 standard sets have the Village Hall only (§5.3). **No player holds two Capitols at the
+start.** The Grail building in 10 towns, **2 owned** (`Good to Go`, colours 0 and 1). The
+Resource Silo in 26 towns, **7 owned**: they would give their resources from day 2. Rampart's
+special buildings (98, faction 1: bits 18, 19, 20 are its 17, 21, 22) only in neutral towns.
+
+### 11.5 VCMI 1.7.5 and the wiki
+
+- VCMI (`CGTownInstance::dailyIncome`, `config/buildingsLibrary.json`, `config/factions/*.json`):
+  each built building that no built upgrade supersedes produces its resources: the halls 500,
+  1 000, 2 000, 4 000, the Grail 5 000, the silo its faction's resources; then the owner's
+  handicap (E10's). The same values; `removeCapitols` only from `setOwner`, a change in play.
+- The wiki ([Halls](https://heroes.thelazy.net/index.php/Halls),
+  [Grail](https://heroes.thelazy.net/index.php/Grail)): the same values; a captured Capitol
+  becomes a City Hall when the captor already holds one, the only downgrade of a building; a map
+  may give a player two or more Capitols; the Grail building's 5 000 in every town. Also (§12): a
+  Capitol's town looks like a Fort with an extra flag on the map, even without a fort, and the hall
+  level in the right-click town window is shown to allies only.
+
+## 12. What a viewer sees of a town (T1b2a)
+
+The town screen opens to its owner only (§7.2), and the status window shows the viewer's own
+selected town only (`status_town_create` 0x4521F0, E24 `E24-design.md` §4.8). Another player
+sees a town in four places.
+
+### 12.1 The picture and the flag on the map
+
+`object_template_redraw` 0x4C9990 (E24 §2.9): one of the faction's three pictures, the Capitol's,
+else (a Fort, Citadel or Castle built) the fort's, else the bare one; the flag in the owner's colour,
+grey for none. So whoever sees the town's tiles sees **its faction, its owner, whether it has a
+Capitol and whether it has any fort** (the wiki: a Capitol's town looks fortified, fort or not).
+The picture changes with the buildings (increment 2) and a captured Capitol's razing (§8.4).
+
+### 12.2 The mouse-over and the cursor
+
+`map_hint` 0x40B150's case 98 (E24 §4.10): the town's **name and faction**, for every viewer. The
+cursor of a selected hero over a town of another team (`town_defended` 0x5BDFE0, E24 §4.10), once
+the pathfinder reaches the tile: the attack cursor when it holds a visiting hero or any creature in
+the army shown (the garrison hero's, else the town's), else the enter cursor; an unreached town the
+arrow. So **whether a reachable town is defended is public**, as the step itself tells it (§7.1: a
+defended town is visited from the tile before; the RoE manual: the sword shows a town its garrison
+will defend).
+
+### 12.3 The right-click (`town_popup` 0x4167A0, read but its debug branch; `town_quick_view_create` 0x530120 and `quick_view_army` 0x530990, read whole)
+
+The right button on a map tile (`tile_click_path` 0x40A5D0, its branch 0x40A703 to 0x40A85C): on
+a tile the viewer has not explored `object_popup_text` 0x4137C0 (not read); on an explored one by
+the tile's class (the switch 0x40A796): 33 a garrison, 34 a hero, 54 a monster, 98 a town
+(0x40A802), every other class `object_popup_text`. The town's popup shows while the button is held,
+beside the pointer:
+
+1. **The level** (0x416E63): **3** when the town's owner and the viewer are of one team (game
+   +0x1F879), or when one of the viewer's heroes has **Visions at level 3 within reach** of the
+   town: `hero_visions_level` 0x4E5DE0, the level of the Visions it cast that day (hero +0x129,
+   set by the cast 0x41C490), raised to 3 by a **Rogue** (creature 143) in its army;
+   `hero_visions_reach` 0x4E5E10, on the town's level with the squared distance below the
+   radius's square, the radius Visions' factor for the level (spell 2's record +0x34) times the
+   hero's power (1 to 99), at least 3. Else **the number of the viewer's towns with a Tavern**
+   (`player_tavern_count` 0x4CCE30: the Tavern, 5, built, or for Castle the Brotherhood of the
+   Sword, 22, that replaces it), **at most 2**. A neutral town is nobody's team.
+2. **At every level** (`town_quick_view_create` 0x530120): the background `townqvbk.pcx`
+   (194 × 186) in the owner's colour, a neutral town's in the viewer's; the portrait (`itpt.def`,
+   `town_list_frame` 0x5BD700: the faction, a Fort ever built or not, one frame up when the town's
+   +0x2 is set, E24's "built today"); the name; **the fort level** (`itmcls.def`: Fort, Citadel,
+   Castle or none).
+3. **At level 3 only:** **the hall** (`itmtls.def`, Village Hall to Capitol), the garrison hero's
+   mark (`townqkgh.pcx`), the silo's resources (as the status window shows them) and **the gold
+   income** (`town_gold_income` with the silo flag 1).
+4. **The army shown** (`quick_view_army` 0x530990, of `town_garrison_army` 0x5C1460: the
+   garrison hero's army with one, else the town's own): **level 0 nothing**; **level 1 each
+   stack's creature** (at the places of 0x6823B8, packed: so how many stacks and of which
+   creatures); **level 2 also each stack's size word** (`creature_quantity_word` 0x44ADE0, form
+   0); **level 3 each stack's count** (below 10 000 itself, else the thousands and `k`). The
+   visiting hero is not in it: it stands on the gate and is right-clicked as a hero.
+
+The debug branch (the adventure manager's +0x3D, E24's debug flag) writes the garrison's names and
+counts as a text for a town not the current player's; not a rule. Not followed: the town list's
+right click (the popup's other caller) and the garrison's popup (class 33, E08's garrisons).
+
+### 12.4 VCMI 1.7.5 and the wiki
+
+- VCMI (`CGameInfoCallback::getTownInfo`, `InfoAboutTown::initFromTown`, `ArmyDescriptor`,
+  `CGHeroInstance::hasVisions`, `config/creatures/neutral.json`, `config/spells/adventure.json`):
+  **two levels**. Detailed for an own or allied town (`hasAccess`) or when **the selected hero**
+  has Visions on towns within reach (expert Visions, or a Rogue: the factor 3 times the power, at
+  least 3): the counts, the hall, the gold income, the silo, the garrison hero. Otherwise the
+  stacks' creatures with their size words, the built set (the picture), the fort level, the name
+  and faction, **whatever the viewer's taverns** (the original: nothing without a Tavern, the
+  creatures with one, the words with two). The original asks every hero of the viewer, VCMI the
+  selected one.
+- The wiki ([Tavern](https://heroes.thelazy.net/index.php/Tavern),
+  [Thieves' Guild](https://heroes.thelazy.net/index.php/Thieves'_Guild),
+  [Visions](https://heroes.thelazy.net/index.php/Visions),
+  [Halls](https://heroes.thelazy.net/index.php/Halls)): no Tavern, an opponent's town looks empty
+  (the attack cursor still shows); one, the stacks without numbers; two or more, the stacks and
+  their approximate numbers; expert Visions shows an enemy town's statistics and garrison within
+  power × 3 or 3 tiles; the hall level in the right-click window for allies only, the fort level
+  for all. The reading agrees on every point.
+- **The census** (the 160 maps; the players owning a town at the start; a standard set gives an
+  owned town a Tavern, §5.3; a custom set its bit 6, Castle's bit 19 the Brotherhood): **63
+  players start at level 0, 600 at level 1, 78 at level 2.** So increment 1's views differ by
+  player from the first day.
+
+### 12.5 For the views (input for T2's design and `docs/06-security.md`)
+
+- **Public** where the viewer sees a town's tile: its faction, owner, name, fort level (the
+  right-click's, a finer fact than the picture's fort mark), whether it has a Capitol; whether it
+  is defended, for a town the viewer's hero reaches (the cursor; a step tells it in any case).
+- **The army** by the viewer's level: none, the creatures, the creatures and size words (the size
+  words of E08's monsters, `docs/06-security.md`'s increment 3); the counts at level 3. The level
+  comes from the viewer's teams, its taverns (increment 1 builds no Tavern, but the start gives
+  them) and Visions or a Rogue in reach (Visions is not placed yet, E08's "Not placed yet"; a Rogue
+  can join an army). A choice for the checkpoint: the original's levels, VCMI's two, or the
+  owner's team only until increment 3 (the Tavern's information is increment 3's, decision 6).
+- **The owner's team only** (and level 3): the hall, the gold income, the garrison hero, the silo.
+- **Increment 2's:** the portrait's "built today" frame (town +0x2) shows another player's
+  construction of the day.
+
+## 13. Batch TWN-1's rows (T1b2a)
+
+Gathered for T2's cut and T3's specs (the rows of §6 and §10 and the income's); run as E08's
+batches, on the client lane's harness in SoD from maps `h3-experiment` writes
+(`docs/experiments/README.md`). T2 settles the runs and the order; the checkpoint may drop a row
+with the point it settles.
+
+| Row | Settles | Setup | Record | The reading predicts |
+|---|---|---|---|---|
+| TWN-1-1 | TD-3 (§5.3) | standard sets: owned towns without a Fort, owned ones with a Fort, neutral ones with and without (several of each, or several new games) | each town's built set at day 1 | owned without a Fort: a Tavern, no dwelling; with a Fort: the level-1 dwelling, the level-2 one about 30 in 100; neutral: both dwellings (VCMI: level 1 always, level 2 at 50 in 100, every town) |
+| TWN-1-2 | TD-5 (§5.2) | a neutral town with an explicitly empty custom garrison; a neutral town without one (a control) | each garrison at day 1 | the first stays empty (VCMI draws one); the control drawn by the four rolls |
+| TWN-1-3 | TD-7 (§9.2) | a lone visitor of seven stacks of mixed values in Blue's town with a garrison of mixed values; Red besieges | the defending stacks in the battle's opening; the garrison right after the battle | the merge by greatest gain, ties the first garrison stack and the last weakest slot (VCMI: most power first, one round per garrison stack) |
+| TWN-1-4 | §8.2, §8.3 | Red besieges and wins against a defended neutral town; then a later step onto the gate | after the battle: the attacker's tile and points, the owner, a town screen or none; the garrison | the owner changes, the attacker stays on the tile before with its points, no screen; the garrison emptied (the merge's leftovers lost, T1b1's rows 2 and 3); the screen at the later step |
+| TWN-1-5 | §9.4 | the same siege on an RoE-format map and on an SoD-format map, played in the Complete edition | the moat's damage to a stack ending in it | the scenario dialog's version: the highest set (an RoE map may play under SoD rules, a damaging moat) |
+| TWN-1-6 | §11.1, §11.2 | Red owns at load a town with a City Hall, one with the Grail building and a Village Hall, a Castle with a Resource Silo, and two with a Capitol each; a neutral Capitol | Red's treasury at days 1, 2 and 3 | no change on day 1; +2 000, +5 500, +500 gold and +1 wood and +1 ore (the silo), +8 000 from day 2; the neutral one pays nobody |
+| TWN-1-7 | §8.4, §11.3 | Red (holding the two Capitols of row 6) enters the undefended neutral Capitol town | its hall after the capture; Red's treasury the next day | Red keeps both of its Capitols; the captured one becomes a City Hall (+2 000 from the next day) |
+
+**Not rows:** the views (§12: the reading and the wiki agree on the tavern levels, the hall for
+allies and expert Visions; VCMI is the one that differs); T-2 to T-4 (state-corrupting or empty
+cases, fixed by proposal); T-5 and the battle in the open beside a garrison hero (increment 3);
+TD-1, TD-2, TD-4, TD-6 (no shipped map affected or a one-point chance; the checkpoint decides).
+
+**What the harness and the spec lack** (to confirm at T2 against `docs/experiments/README.md`):
+reads of a town's record (owner, built set, garrison, the garrison hero) and of a player's
+treasury between turns; the battle's opening stacks at a siege (E04c's siege runs read them); the
+writer's towns (`h3_map::writer::Town`) have an owner, a garrison and either building set, but no
+name, events or spells, and the map's format for row 5 (the writer writes SoD's; an RoE-format
+map is new).
+
+**Open for T1b2b's checkpoint (`TWN-Q2`)**, beside the queue's list (the random hero in increment
+1, §4.4; T-2 to T-5; TD-1 to TD-7 where the choice is the user's; §6's and §10's open points):
+(a) **the views' army levels** (§12.5: the original's tavern levels, VCMI's two, or the owner's
+team only until increment 3); (b) **the Resource Silo's resources in increment 1** (7 owned towns
+start with one: paid from increment 1, with Rampart's Treasury and Mystic Pond left to increment
+4, or all of it in increment 4 with the 7 towns' resources missing until then); (c) the batch's
+rows (§13), any the user would rather record as disputes.
