@@ -74,7 +74,7 @@ impl GameState {
         let week_days = u32::from(calendar.week_days.get());
         let month_days = week_days.saturating_mul(u32::from(calendar.month_weeks.get()));
         let since = self.day - 1;
-        let week_start = since % week_days == 0;
+        let week_start = since.is_multiple_of(week_days);
         if week_start {
             sink.emit(GameEvent::WeekStarted {
                 week: since / week_days + 1,
@@ -82,7 +82,7 @@ impl GameState {
             self.adventure
                 .start_week(core, part, &mut self.rng, &mut AdventureSink(sink));
         }
-        if since % month_days == 0 {
+        if since.is_multiple_of(month_days) {
             self.month = self.draw_month(rules);
             sink.emit(GameEvent::MonthStarted {
                 month: since / month_days + 1,

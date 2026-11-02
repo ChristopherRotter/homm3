@@ -10377,7 +10377,7 @@ session on the same branch, then the pull requests.
   `GameObservation::month`); `project` passes both new events to every viewer.
 - **Agent's calls:** no event for the regain (the design lists none; the owner's observation
   shows the points; the view property masks the points at a new day); the timed events stored now
-  (`events: Arc<[TimedEventSetup]>`, hashed) though fired only by T85b2, so T85b2 moves no hash;
+  (`events: Option<Arc<[TimedEventSetup]>>`, none without events, hashed as a list) though fired only by T85b2, so T85b2 moves no hash;
   the month drawn after the week's step's draws, from the game's stream (the week's kind waits for
   E09 with a stream of its own, decision 197).
 - **Rules:** GAM-CAL-002 (`verified`: E9-6, E9-7), GAM-CAL-003 (`implemented`: no row observed
@@ -10404,4 +10404,8 @@ session on the same branch, then the pull requests.
   +1.70 %): `command_battle` +12 M (the regain and the growth change the battles), the reach and
   passage loops −7 M (other games), the day's own steps about +5 M; re-baselined with that
   reason. random-play-rewards-36 +0.37 %, random-play-sea-36 +0.22 % against `master` (within
-  the gate, not re-baselined).
+  the gate, not re-baselined). The reach workloads play fewer steps (2 291 for 2 698; 4 940
+  walkers' queries for 5 759), every function in proportion: reach-lifted-xl-144 −4.1 % against
+  `master`, re-baselined, reach-xl-144 −3.0 % (−1.22 % against its count, kept). The forks: the
+  month and the events' block cost 15 Ir a fork (fork-sea-xl-144 +0.40 % against `master`; an
+  `Arc` always present cost 19 Ir, hence the `Option`).

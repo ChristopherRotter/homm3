@@ -256,17 +256,18 @@ impl AdventureState {
         week_start: bool,
     ) -> Vec<u32> {
         let mut income = vec![0_u32; core.resources().len()];
+        // A mine's and an ability's resources are the core's (their compiles' checks).
         let mut add = |resource: ResourceId, amount: u32| {
-            if let Some(entry) = income.get_mut(resource.index()) {
-                *entry = entry.saturating_add(amount);
-            }
+            let entry = &mut income[resource.index()];
+            *entry = entry.saturating_add(amount);
         };
         if let Some(owners) = self.owners.as_deref() {
             let owned = self.map.ownables().iter().zip(owners);
-            for (&index, _) in owned.filter(|&(_, &owner)| owner == Some(player)) {
-                if let Some((resource, daily)) = self.production(part, index) {
-                    add(resource, daily);
-                }
+            let mines = owned
+                .filter(|&(_, &owner)| owner == Some(player))
+                .filter_map(|(&index, _)| self.production(part, index));
+            for (resource, daily) in mines {
+                add(resource, daily);
             }
         }
         if week_start {

@@ -2535,7 +2535,8 @@ fn check_legal(
                 });
             let guard = state.adventure().hero(open.hero).and_then(|hero| {
                 let index = state.adventure().guard_of(rules.adventure(), hero.pos)?;
-                let o = &state.adventure().map().objects()[index];
+                // E08 T85b: a monster added in play guards too.
+                let o = state.adventure().object(index)?;
                 Some((o.object_type, o.anchor))
             });
             let guarded = !monster(&open.kind)
@@ -3235,8 +3236,8 @@ fn check_rewards(
         return Ok(());
     };
     let finds = matches!(
-        b.map().objects()[index]
-            .object_type
+        b.object(index)
+            .and_then(|o| o.object_type)
             .and_then(|ty| rules.adventure().object_type(ty))
             .map(|ty| &ty.kind),
         Some(ObjectKind::Find(_) | ObjectKind::Pyramid(_))
@@ -5352,7 +5353,7 @@ impl Rewarded {
         events: &[GameEvent],
     ) {
         if let Some(index) = visited(before, command, events) {
-            let ty = before.adventure().map().objects()[index].object_type;
+            let ty = before.adventure().object(index).and_then(|o| o.object_type);
             let ty = ty.and_then(|ty| rules.adventure().object_type(ty));
             if let Some(key) = ty.map(|ty| ty.key.as_str().to_owned()) {
                 match self.visited.iter_mut().find(|(k, _)| *k == key) {

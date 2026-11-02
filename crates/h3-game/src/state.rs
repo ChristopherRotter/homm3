@@ -246,8 +246,10 @@ pub struct GameState {
     /// first; a normal one until then.
     month: MonthKind,
     /// The map's timed events in the map's order (GAM-CAL-004, E08 T85b; the setup's): static,
-    /// shared by forks.
-    events: Arc<[TimedEventSetup]>,
+    /// shared by forks; none for a map without them, so a fork of one counts no reference
+    /// (`bench-check`, fork-sea-xl-144: the month and this block cost a fork 15 Ir, +0.4 %; an
+    /// `Arc` always, 19 Ir).
+    events: Option<Arc<[TimedEventSetup]>>,
     /// The game's own stream (the day advance; ADR-0017 point 4).
     rng: Rng,
     /// The store of heroes (GAM-HER-001, E08 T18b): every hero's details by id, each shared
@@ -334,7 +336,7 @@ impl GameState {
             group: 0,
             day: 1,
             month: MonthKind::Normal,
-            events: setup.events.clone().into(),
+            events: (!setup.events.is_empty()).then(|| setup.events.clone().into()),
             rng: Rng::for_stream(seed, StreamId::GAME),
             heroes,
             progression: Arc::new(progression),
@@ -1306,8 +1308,9 @@ impl CanonicalHash for GameState {
         h.write_u64(self.seed);
         h.write_u32(self.day);
         self.month.hash_into(h);
-        h.write_len(self.events.len());
-        for event in self.events.iter() {
+        let events = self.events.as_deref().unwrap_or_default();
+        h.write_len(events.len());
+        for event in events {
             hash_event(event, h);
         }
         h.write_len(self.group);
