@@ -3947,6 +3947,45 @@ the VM restarted about 20 minutes in (the baseline lost: CI's green `Clients` ru
   (430) and the binary's (91); `clients/scripts/check.sh`; the scoped verify with the original
   data.
 
+### M6 T2a2b1 — the stats dialog's right button and its cast button (2026-11-02)
+
+On `client/e17-m6-t2a2b`, the user present. T2a2b cut in two by the user at its start (T2a2b1 the
+cast button and the right button's descriptions but morale's and luck's; T2a2b2 those two, whose
+sources a seat's observation lacks); CLT-Q39 asked and answered (the client's fix, as MCL-Q24).
+The sandbox new, the original files staged first (57 files); #650 had merged; the baseline's
+`check.sh` passed.
+
+- **Read** (design §12.3; map entries `creature_dialog_proc`, `def_button_message`,
+  `dialog_show_held`, new `popup_run_held` and `dialog_pause_count`): the procedure's right button
+  (the items' right press into 0x200/0xE with the flag 0x200; the pair's second text by the hint
+  index; morale's and luck's own, T2a2b2; the cast button's the second mine's name), the
+  message box's style 4 (128 wide at least, no buttons), the held popup's loop (the cursor hidden,
+  every input dropped but the right release and a left press or release), the procedure's tail
+  after it (two steps after a long hold), `stack_stats_dialog`'s cast (301 into
+  `enter_player_cast` with the stack's drawn spell, the action 10, the close after the aim).
+- **The library:** `message::Style::Popup`, `message::Open::let_go`; `stats::Hints`'
+  `descriptions`, `cast_description` and `described`, `Modal::describe`, `popup`, `held_input`
+  (CLT-Q39), `press` taking the cast button, `Steps::made_around` and `next_around`; the
+  tracker's `Looked` after an action posts no move; the catalogue's `stats.help.*` (`Help.txt`'s
+  second column of 433 to 447, MineName.txt's second record).
+- **The binary:** the window's `Battle::stats_right` (the popup over the open dialog, framed as a
+  box), `stats_popup`, `stats_held`, `look_cast`, `looked_after_aim`; the window's events while
+  it is held (its ends, the rest dropped, the cursor hidden; `next_frame` draws nothing new
+  meanwhile: found by the window's check, the battle's endless idle changes behind a dialog that
+  never changes); the cast button's click into the dragon's aim as the key F's, the dialog's close
+  as the aim ends; CLT-Q38 (4) (the button for the acting stack only in the client's profile); the
+  stills' `right:x,y`; the sequences' `look:` and `cast-button:`; the harness's `right:` (the
+  button held through the frames), `look:` and `cast-button:` (clicks).
+- **Recorded:** `stats-describe`, `stats-describe-ok`, `stats-describe-none`,
+  `stats-describe-cast` (its panel line as `stats-dragon`'s), all as built at their first capture;
+  the sequence `dragon-button` (79 frames, the three of `dragon`'s first round that differ by
+  redraw artifacts the same; its timeline the original's).
+- **Checked:** `drawn` all earlier sequences and stills the same; the window under Xvfb with
+  `xdotool` on `stats-dragon.toml` in hot seat: the right button over the attack line its popup
+  and no cursor, a key and a move meanwhile dropped, the release closing it, the cast button's
+  description, its click into the aim ("Select Spell Target"); the library's tests (434) and the
+  binary's (92); `clients/scripts/check.sh`; the scoped verify with the original data.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

@@ -388,8 +388,7 @@ fn the_hints_come_from_the_catalogue() {
             "effect": "{{spell}} {{rounds}}", "effect-until": "{{spell}}: {{until}}" },
             "until": { "bind": "B", "berserk": "Z", "disrupting-ray": "R" },
             "help": { "name": "HN", "ok": "HO", "cast-original": "Lab" } },
-            "battle": { "control": { "spell-book": "Cast" },
-                "control-help": { "spell-book": "Cast help" } } }"#,
+            "battle": { "control": { "spell-book": "Cast" } } }"#,
     )
     .unwrap();
     let catalogue = Catalogue { packs: vec![pack] };
@@ -415,10 +414,13 @@ fn the_hints_come_from_the_catalogue() {
     assert_eq!(fixed.cast, "Cast");
     // The right button's descriptions, the table's second texts (E17 M6 T2a2b1).
     assert_eq!(
-        (fixed.descriptions[0].as_str(), fixed.descriptions[14].as_str()),
+        (
+            fixed.descriptions[0].as_str(),
+            fixed.descriptions[14].as_str()
+        ),
         ("HN", "HO")
     );
-    assert_eq!(fixed.cast_description, "Cast help");
+    assert_eq!(fixed.cast_description, "Cast");
     // The last three: Bind, Berserk and Disrupting Ray name how long they last.
     assert_eq!(fixed.effects, ["spell 72: B", "spell 59: Z", "spell 47: R"]);
     let original = Hints::of(&catalogue, &marksmen(), Bugs::Original);
@@ -544,9 +546,15 @@ fn the_right_button_describes_an_item() {
     let h = hints();
     assert_eq!(h.described(NAME, Bugs::Fixed).as_deref(), Some("help 0"));
     assert_eq!(h.described(206, Bugs::Fixed).as_deref(), Some("help 2"));
-    assert_eq!(h.described(EFFECTS + 1, Bugs::Fixed).as_deref(), Some("help 11"));
+    assert_eq!(
+        h.described(EFFECTS + 1, Bugs::Fixed).as_deref(),
+        Some("help 11")
+    );
     assert_eq!(h.described(OK, Bugs::Fixed).as_deref(), Some("help 14"));
-    assert_eq!(h.described(CAST, Bugs::Original).as_deref(), Some("cast help"));
+    assert_eq!(
+        h.described(CAST, Bugs::Original).as_deref(),
+        Some("cast help")
+    );
     assert_eq!(h.described(MORALE, Bugs::Fixed), None);
     assert_eq!(h.described(LUCK, Bugs::Fixed), None);
     assert_eq!(h.described(BACKGROUND, Bugs::Fixed), None);

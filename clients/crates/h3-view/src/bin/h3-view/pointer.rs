@@ -964,6 +964,58 @@ mod tests {
     }
 
     #[test]
+    fn the_stats_dialogs_cast_button_aims_and_closes_the_dialog_as_the_aim_ends() {
+        // E17 M6 T2a2b1: a look, the cast button's aim (its spell by number), the aim's click: the
+        // dialog's close after the action; given up by Escape, after the cancel.
+        let layout = layout();
+        let timeline = Timeline::default();
+        let handle = |n: u16| (n == 21).then_some(7);
+        let run = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| String::from(*a)).collect();
+            inputs(&actions, 0, &layout, (&timeline, &[], &handle), false)
+        };
+        let got = run(&["look:10,20", "cast-button:30,40:21", "hex:83"]).unwrap();
+        let aim = Input::Aim {
+            at: 0,
+            spell: 7,
+            creature: true,
+        };
+        assert_eq!(
+            got,
+            vec![
+                Input::Move { at: 0, to: PARK },
+                Input::Move {
+                    at: 0,
+                    to: [10, 20]
+                },
+                Input::Look { at: 0 },
+                Input::Move { at: 0, to: PARK },
+                Input::Move {
+                    at: 0,
+                    to: [30, 40]
+                },
+                aim,
+                Input::Move { at: 0, to: PARK },
+                Input::Move {
+                    at: 0,
+                    to: hex_point(&layout, 83)
+                },
+                Input::Act { at: 0 },
+                Input::Looked { at: 0 },
+                Input::Move { at: 0, to: PARK },
+            ]
+        );
+        let cancelled = run(&["look:10,20", "cast-button:30,40:21", "key:Escape"]).unwrap();
+        assert_eq!(
+            cancelled[cancelled.len() - 2..],
+            [Input::Cancel { at: 0 }, Input::Looked { at: 0 }]
+        );
+        // A spell without a handle, or no spell, is an error.
+        assert!(run(&["cast-button:30,40:22"]).is_err());
+        assert!(run(&["cast-button:30,40"]).is_err());
+    }
+
+    #[test]
     fn a_cast_moves_through_the_book_to_its_target() {
         // E17 M3 T7a-2a: the places' centres, the left page first (design §7.16).
         assert_eq!(book_place(0), [246, 123]);

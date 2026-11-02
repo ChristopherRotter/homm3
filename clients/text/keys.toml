@@ -382,12 +382,6 @@ original = [{ at = "HELP:382" }]
 id = "battle.control.spell-book"
 original = [{ at = "HELP:385" }]
 
-# Its description, the second column (E17 M6 T2a2b1: the stats dialog's cast button's in the
-# client's profile; the panel's own right button, `battle_control_help` 0x472A50, is M6 T3's).
-[[key]]
-id = "battle.control-help.spell-book"
-original = [{ at = "HELP:385:1" }]
-
 [[key]]
 id = "battle.control.wait"
 original = [{ at = "HELP:386" }]
@@ -875,7 +869,7 @@ original = [{ at = "HELP:447:1" }]
 
 # The cast button's description in the original (CLT-Q38 (2)): past the table, the second word of
 # its pair is `mine_names`' second entry (MineName.txt's second record); the client's profile shows
-# the panel's spell book's description (`battle.control-help.spell-book`, *provisional*).
+# its hint again (`battle.control.spell-book`, *provisional*).
 [[key]]
 id = "stats.help.cast-original"
 original = [{ at = "MINENAME:1" }]

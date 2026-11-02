@@ -523,8 +523,9 @@ pub struct Hints {
     /// (`creature_dialog_hints` +4, 0x5F48E9; E17 M6 T2a2b1).
     pub descriptions: Vec<String>,
     /// The cast button's description: past the table's end the executable reads the second
-    /// mine's name (CLT-Q38 (2)): the panel's spell book's description in the client's profile
-    /// (*provisional*, as its hint), the mine's in [`Bugs::Original`].
+    /// mine's name (CLT-Q38 (2)): in the client's profile its hint again, the panel's spell
+    /// book's (*provisional*: the book's own description tells of the hero's book), the mine's
+    /// in [`Bugs::Original`].
     pub cast_description: String,
 }
 
@@ -569,7 +570,7 @@ impl Hints {
             .map(|key| text(&format!("stats.help.{key}")))
             .collect();
         let cast_description = match bugs {
-            Bugs::Fixed => text("battle.control-help.spell-book"),
+            Bugs::Fixed => text("battle.control.spell-book"),
             Bugs::Original => text("stats.help.cast-original"),
         };
         Self {

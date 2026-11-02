@@ -431,9 +431,13 @@ fn next_frame(
             _ => Ok(None),
         };
     }
-    // Behind a stack's stats dialog too; its creature steps each 100 ms (E17 M6 T2a2a).
-    if let Some(next) = battle.stats_step_after(shown.t) {
-        return frame_at(battle, next).map(Some);
+    // Behind a stack's stats dialog too; its creature steps each 100 ms (E17 M6 T2a2a), none
+    // while its right button's popup is held (E17 M6 T2a2b1: only an input changes it then).
+    if battle.stats_open() {
+        return match battle.stats_step_after(shown.t) {
+            Some(next) => frame_at(battle, next).map(Some),
+            None => Ok(None),
+        };
     }
     let mut t = shown.t;
     while let Some(next) = changes.after(battle, t)? {
@@ -992,7 +996,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::KeyUp(key) if battle.stats_open() => {
                     let did = battle.stats_key_up(key.name());
                     let changed = stats_did(&mut battle, &mut inputs, at, did);
-                    (book_changed, mouse_changed) = (book_changed | changed, mouse_changed | changed);
+                    (book_changed, mouse_changed) =
+                        (book_changed | changed, mouse_changed | changed);
                 }
                 Event::KeyUp(_) if battle.book_open() || battle.aiming() => {}
                 Event::KeyUp(key) => {
@@ -1053,7 +1058,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::Click { down: false, .. } if battle.stats_open() => {
                     let did = battle.stats_release();
                     let changed = stats_did(&mut battle, &mut inputs, at, did);
-                    (book_changed, mouse_changed) = (book_changed | changed, mouse_changed | changed);
+                    (book_changed, mouse_changed) =
+                        (book_changed | changed, mouse_changed | changed);
                 }
                 Event::Pointer(p) if battle.book_open() => {
                     pointer = p;

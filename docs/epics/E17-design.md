@@ -5072,8 +5072,8 @@ Read: the procedure's right button (0x5F4890 to 0x5F4B86), the items' right pres
   index its pair's second text (`creature_dialog_hints` +4: `Help.txt`'s second column of
   records 433 to 447; the effects their pair's, 444, not the spell's); the cast button's index 15
   past the table reads the second mine's name (MineName.txt's second record; CLT-Q38 (2): the
-  client's profile shows the panel's spell book's description, `Help.txt` 385's second column,
-  *provisional*); an item without an index, or an empty text, shows nothing (0x5F4AAB).
+  client's profile shows its hint again, the panel's spell book's, *provisional*: the book's own
+  description tells of the hero's book); an item without an index, or an empty text, shows nothing (0x5F4AAB).
 - **The popup** (`message_box` with style 4, x = y = −1, no picture): laid out as every box
   (§7.19) but at least 128 wide, with no buttons nor their 50 of height (0x4F5FDA, 0x4F603B),
   centred on the screen; framed in the viewing player's colours (the client's: the acting side's,
