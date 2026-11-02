@@ -28,28 +28,46 @@ with `shared/e08-t84b1`: the Lighthouses' flag and points, the weekly visits); T
 (`adventure/e08-t84b2` with `shared/e08-t84b2`: the Shipyards, their boat offer and `BuildBoat`,
 adventure replay format v8; the user's decision 222: a Garden marks the team). Round 7: T85 in
 two halves, T85a whole (decision 223): T85a done (`adventure/e08-t85a` with `shared/e08-t85a`:
-the week's step, a creature month's step, the audit of the static reads). T85b next.
+the week's step, a creature month's step, the audit of the static reads). T85b on one branch
+over two sessions (decision 224): T85b1 done on `adventure/e08-t85b` (pushed, no pull request);
+T85b2 in two (decision 225): T85b2a done on the same branch (the timed events, `events_today`;
+the security lines on `shared/e08-t85b`); T85b2b done on it (the env's `BuildBoat`, action
+encoding v6, `cross-lane`; the verify with the original data, the bench; the pull requests,
+`shared/` first: the lane HANDOFF names them).
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T85b — the day's start in the game: the day advance, the income, the env's `BuildBoat`**
+**E08 T86 — the economy maps, their replays, properties and benchmarks**
 
-- **Scope:** round 7's second half (design §14, §15; decision 223): `h3-game`'s day advance
-  (§14: `WeekStarted`, then the adventure's `start_week` with the game's stream; on a month's
-  first day the month's kind drawn, `MonthStarted` with it, in a creature month the adventure's
-  `start_month` with a creature drawn among the part's; the income of mines, heroes and Crystal
-  Dragons, the spell points, the timed events at the turn start, `events_today`; game state hash
-  v22), the observation's month, `docs/06-security.md`'s lines for the game's events (a
-  `shared/` pull request first), and the env's `BuildBoat` (action encoding v6, `cross-lane`
-  with the user's consent, decision 203); the replays of eight days or more re-recorded (the
-  growth), the bot reports. T85a built the adventure's two steps (`AdventureState::start_week`,
-  `start_month`; their record in `E08-log.md`, "T85a"): the game only calls them.
-- **Inputs:** design §14, §15, §19; ADR-0017 points 3, 4, 8, 10; survey `E08-economy.md` §7,
-  §8, §11, §12, §19 (E9-6, E9-7, E9-11, E9-12); T84b2's and T85a's records in `E08-log.md`.
-- **Depends on:** T85a (`adventure/e08-t85a` merged). **Status:** ready after that merge; cut
-  with the user at its start (T85b whole recommended, or the env's `BuildBoat` apart if the
-  re-recording runs long).
+- **Scope:** round 8's first task (design §15, §18; decision 202), its cut confirmed with the user
+  at its start: `e08-economy-36.h3m` and `e08-economy-144.h3m` (`h3_map::writer`, design §15's
+  objects); the golden replays on them (random play over 60 days with a creature month by a seed
+  search; scripted: a flag and Leave Guards, a neutral and an owned mine fought, a boat built at a
+  visit and by `BuildBoat`, a weekly object visited twice in a week); the plans' `ECONOMY` classes
+  and `Step::{Garrison, BuildBoat}` with design §15's checks; the workloads `day-start-xl-144`,
+  `month-start-xl-144`, `random-play-economy-36`, `fork-economy-xl-144`, the existing ones
+  re-baselined where the growth moved them (T85b1's and T85b2b's records in `E08-log.md`); the
+  `--with-original-data` counts (60 owned mines, one Shipyard, the boat tiles, the abandoned
+  mines' sets, 666 timed events); the seven duel replays' feature lists (T85b1).
+- **Inputs:** design §15, §18; `E08-log.md` T85b1, T85b2b; `docs/lanes/adventure/TRAPS.md` (the
+  plans, `lay_out`, objects added in play).
+- **Depends on:** T85b's pull requests merged. **Status:** ready after them.
 
 ## Inbox
+
+- 2026-11-02 (the town lane, E09 T2b, `TWN-Q4`; **for your merge order, nothing to build**):
+  E09's build bumps your versions `cross-lane` (`docs/epics/E09-design.md` §19, §21): adventure
+  replay format v9 (T5a: the town part's hash in the header; `GameRuleset::new` gains the town
+  part), map import v16 (T7a), game state hash v23 after your T85b's v22 (T7b), adventure ruleset
+  part v16 and state hash v20 (T8a: the kind `Town`, towns ownable); the towns' income joins your
+  T85b's day advance (§16). None starts before your T85b's pull requests merge; the second to
+  merge rebases and bumps again.
+
+- 2026-11-02 (the town lane, E09 T1b2b, `TWN-Q2`; **nothing to build, for your import and
+  setup**): E09's increment 1 builds **the random hero** (class 70, drawn as the main town's hero;
+  E09 decision 8) and **the starting-hero pick per colour in the setup** beside the faction
+  (decision 9), `cross-lane` in your import and setup, merged in order with yours; leave both to
+  it (your 2026-10-20 note's 18 random heroes with a custom experience come with it). An allied
+  town is entered and never captured (decision 16), as your owned objects' team test.
 
 - 2026-11-02 (the battle lane, E26 T5; for your information, nothing to do now): the fair
   system actor `h3_battle_ai::choose_fair` (ADR-0027 point 4 as amended) is to be the computer's

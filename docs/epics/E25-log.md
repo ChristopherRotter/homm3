@@ -693,3 +693,82 @@ an entry only where a task builds on it.
 - **The read:** the network trained sharper beats the scale run's best head to head, beside its
   ladder at or above #3's on all five sets (T10b). **`e25-sharp-1` #2 is the current best**
   (the user at T11: its head-to-head not clearly below 0.5), at 20 M samples against #3's 30 M.
+
+## T13 — Increment 5's refinement (2026-11-02)
+
+- **The starting point:** the battle lane's fair system actor v1 (E26 increment 1, #647;
+  `E26-log.md` T4): `h3_battle_ai::choose_fair` runs the original's computer on its side's world
+  (`BattleState::determinized` without a guess), 0.500 against the all-seeing `choose` on 2 000
+  battles of random armies with heroes, +0.8 % Ir per decision without heroes. Where the other
+  side has no hero and no hidden pit it is `choose`. In the AI lane `Policy::System` is the
+  all-seeing one: the neutral kinds' defender (`encounter.rs`), seat 4 of the batch
+  (`H3_SEAT_SYSTEM`), `h3 ai eval`'s `system` and the neutral set's fixed defender, a bot of
+  both bots' tables, `batch-system-neutral-v1`'s defender; `run.trainable` refuses any mix with
+  it.
+- **Found:** the adventure env has no system actor: its neutral seat is played by the caller
+  (`Seat::Neutral`; the random rollout plays it), so the battle lane's "the adventure env's
+  neutral seat switches" has nothing to switch here; a computer playing it is new work, E13's.
+  `e25-sharp-1` #2's `best.pt` is not in this sandbox (a fresh container): T15 needs it uploaded
+  again.
+- **The user's choices** (AI-Q14, the agent's recommendation on all four): `system` the fair
+  actor everywhere and `system-all-seeing` beside it (C ABI v36); exit criterion 1 stays the
+  all-seeing actor, the fair one reported; the neutral set's defender the fair actor; the
+  neutral kinds back in training at E06 T7's third with the fair defender, no `system_share`;
+  a warm start by behaviour cloning on the fair actor's choices, then PPO from it against the
+  same mix from scratch. Increment 5's decisions and tasks T14 to T18 in the epic file, their
+  scope in the AI queue.
+- **Expectation** (the agent's): the fair actor is as strong as the all-seeing one on random
+  armies, so `e25-sharp-1` #2 should score about 0.42 against it too (T15 measures). The clone
+  starts from an actor that beats the lineage at about 0.58; whether PPO keeps its strength
+  from there is T17's question.
+
+## T14 — The switch (2026-11-02)
+
+- **Built** (C ABI v36): `Policy::System` plays `h3_battle_ai::choose_fair` (the neutral kinds'
+  defender with it), the new `Policy::SystemAllSeeing` plays `choose`; `H3_SEAT_SYSTEM` (4) the
+  fair actor, the new `H3_SEAT_SYSTEM_ALL_SEEING` (5); `batch.py`'s seats `system` and
+  `system-all-seeing`; `h3 ai eval`'s policies and default both, the neutral set's defender the
+  fair one, the bots' tables' schema 3 (`BOTS_TABLE_SCHEMA`, Rust and Python); the ladder's
+  opponents (`evaluate.OPPONENTS`, a run's default `ladder_opponents`) both system actors.
+  Tests: `the_system_seats_play_their_named_actor` (h3-sim: each seat plays its actor decision
+  by decision on hero encounters, where they differ), the all-seeing seat in the batch's
+  determinism property and the C seats' test.
+- **Agent decisions** (change freely): a record tells the two apart by what it already names, the
+  C ABI version in a run's identity (`system` before v36 the all-seeing one) and the bots'
+  table's schema (2 before), rather than a new identity field. `run.trainable(config,
+  started_abi)` refuses only `ppo.resume` of a run started before v36 whose mix had a system
+  seat (its opponent would change under it); `ppo.train` no longer calls it. No all-seeing twin
+  of `batch-system-neutral-v1` (the all-seeing computer's cost is the battle lane's
+  `computer-decisions` workload). The adventure env's neutral seat unchanged (T13).
+- **The bots' tables regenerated** (release, the sandbox: neutral 26 s, report 241 s against
+  about 15 s and 85 s before: 25 ordered pairs, two system actors). Report set: the fair actor
+  against the all-seeing one 0.500 ± 0.019, value −0.001; Glicko-2 1658.0 and 1657.2 (± 9.5);
+  each bot's rate against either within 0.002 of the other (Random 0.123 and 0.121, Aggressor
+  0.320 and 0.318, Greedy 0.347 and 0.345). Neutral set with the fair defender (old, all-seeing
+  defender, in brackets): the system actor attacking 0.991 at +0.285 (0.991, +0.285: **the
+  neutral target stays +0.285**), Aggressor 0.963 (0.967), Greedy 0.957 (0.956), Random 0.741
+  (0.751); the all-seeing actor attacking the fair defender 0.991, +0.285.
+- **The neutral bench** (`batch-system-neutral-v1`, callgrind): 6 755 060 962 Ir against
+  6 808 294 645, −0.78 %, re-baselined (its defender is the fair actor). `random-rollouts-full`
+  +0.01 %, `cargo xtask determinism` passes.
+- **For T17's runs:** a run's ladder plays one more opponent, the slowest kind: about a fifth
+  more evaluation time (T2b's shaping run: 25 of its 90 minutes).
+
+## T15 — The ladder at the switch (2026-11-02)
+
+- **The run** (the sandbox's CPU, C ABI v36, `e25-sharp-1` #2's `best.pt` uploaded again by the
+  user; `python -m h3env.train.ladder --checkpoint runs/e25-sharp-1/best.pt --set report-v1
+  --opponents system,system-all-seeing`, then `--set neutral-v1`; the sampled policy;
+  `python/records/inspect/e25-sharp-1-fair-report-v1.json`, `-fair-neutral-v1.json`): 157 s
+  and 22 s.
+- **Report set:** against the fair system actor **0.424 ± 0.018, value −0.055** (hero 0.417,
+  siege_hero 0.408, siege_garrison 0.486); against the all-seeing one 0.425 ± 0.018, −0.055
+  (its record's final ladder on the user's GPU: 0.422, −0.055). Two episodes skipped of 3 000
+  in each (as `h3 ai eval` does not). **The fair actor is no easier for the lineage:** E25's
+  gap stays about 0.075 win rate and 0.055 value whichever system actor is the target.
+- **Neutral set with the fair defender:** 0.969 ± 0.014, **value +0.245** (wandering 0.972,
+  guards 0.960, siege_neutral 0.878); its record against the all-seeing defender 0.976, +0.243.
+  **The target is +0.285** (the fair system actor in the player's seat, T14): a gap of 0.040,
+  as before the switch.
+- **The read:** increment 5's starting point is the old one under the new names; the A/B's
+  (T17) control is `e25-neutral-1`, the same config with the neutral kinds back.

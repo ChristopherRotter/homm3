@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "100 000 forks of the env after 7 days of random play on the sea XL map (E08 T75b, increment 8: the forks carry the boats' records and the empty boats' grid, one hero aboard after the game's 92 steps; 3 654 Ir a fork, about fork-xl-144's 3 564 with eight heroes too: the boats add two reference counts); counts only inside h3_cli::adventure::bench::fork_workload"
+description = "100 000 forks of the env after 7 days of random play on the sea XL map (E08 T75b, increment 8: the forks carry the boats' records and the empty boats' grid, one hero aboard after the game's 92 steps; 3 654 Ir a fork, about fork-xl-144's 3 564 with eight heroes too: the boats add two reference counts); since E08 T85b +0.40 % against master's count of the same forks (371.0 M, itself +1.53 % above the count before): the month's kind and the timed events' block, 15 Ir a fork; counts only inside h3_cli::adventure::bench::fork_workload"
 args = [
     "adventure",
     "bench",
@@ -26,5 +26,5 @@ args = [
     "1",
 ]
 collect = "*fork_workload*"
-instructions = 365400055
+instructions = 372500055
 threshold_percent = 2

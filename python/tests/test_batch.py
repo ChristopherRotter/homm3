@@ -278,11 +278,12 @@ def test_encounters_are_an_episode_source() -> None:
     }
 
 
-def test_the_system_actor_plays_inside_the_call() -> None:
-    # E06 T7 (v32): the system actor, the original's computer, as a scenario's seat on either side.
+def test_the_system_actors_play_inside_the_call() -> None:
+    # E06 T7 (v32): the system actor, the original's computer, as a scenario's seat on either side;
+    # v36 (E25 T14): `system` the fair one, `system-all-seeing` the one that reads the whole state.
     batch = BattleBatch(4, seed=7, max_steps=300)
     batch.add_scenario(scenario("full"), defender="system")
-    batch.add_scenario(scenario("siege"), attacker="system")
+    batch.add_scenario(scenario("siege"), attacker="system-all-seeing")
     batch.reset()
     rng = np.random.default_rng(5)
     ended = 0
