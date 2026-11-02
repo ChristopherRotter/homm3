@@ -31,22 +31,26 @@ two halves, T85a whole (decision 223): T85a done (`adventure/e08-t85a` with `sha
 the week's step, a creature month's step, the audit of the static reads). T85b on one branch
 over two sessions (decision 224): T85b1 done on `adventure/e08-t85b` (pushed, no pull request);
 T85b2 in two (decision 225): T85b2a done on the same branch (the timed events, `events_today`;
-the security lines on `shared/e08-t85b`; both pushed, no pull request).
+the security lines on `shared/e08-t85b`); T85b2b done on it (the env's `BuildBoat`, action
+encoding v6, `cross-lane`; the verify with the original data, the bench; the pull requests,
+`shared/` first: the lane HANDOFF names them).
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T85b2b — the env's `BuildBoat`; T85b's verify, bench and pull requests**
+**E08 T86 — the economy maps, their replays, properties and benchmarks**
 
-- **Scope:** T85b's last part on the same branch `adventure/e08-t85b` (decisions 224, 225; T85b1's
-  and T85b2a's state in the lane HANDOFF's newest sessions): merge `master` in; the env's
-  `BuildBoat` (`h3-sim`, the adventure action encoding v6: one entry per Shipyard the viewer may
-  use by its anchor's tile, masked by `legal_commands`; `cross-lane`, decision 203; the AI lane's
-  inbox told); then the scoped verify with the original data staged, the bench against `master`
-  (`random-play-*` moved by the growth: T85b1's record in `E08-log.md`), the epic's log record of
-  T85b2b, and the pull requests: `shared/e08-t85b` (pushed, the security lines) first, then
-  `adventure/e08-t85b` (`cross-lane`).
-- **Inputs:** design §15; ADR-0017 point 8; T84b2's record in `E08-log.md` (`BuildBoat`);
-  `crates/h3-sim/src/adventure/action.rs` (encoding v5's layout and masks).
-- **Depends on:** nothing new. **Status:** ready.
+- **Scope:** round 8's first task (design §15, §18; decision 202), its cut confirmed with the user
+  at its start: `e08-economy-36.h3m` and `e08-economy-144.h3m` (`h3_map::writer`, design §15's
+  objects); the golden replays on them (random play over 60 days with a creature month by a seed
+  search; scripted: a flag and Leave Guards, a neutral and an owned mine fought, a boat built at a
+  visit and by `BuildBoat`, a weekly object visited twice in a week); the plans' `ECONOMY` classes
+  and `Step::{Garrison, BuildBoat}` with design §15's checks; the workloads `day-start-xl-144`,
+  `month-start-xl-144`, `random-play-economy-36`, `fork-economy-xl-144`, the existing ones
+  re-baselined where the growth moved them (T85b1's and T85b2b's records in `E08-log.md`); the
+  `--with-original-data` counts (60 owned mines, one Shipyard, the boat tiles, the abandoned
+  mines' sets, 666 timed events); the seven duel replays' feature lists (T85b1).
+- **Inputs:** design §15, §18; `E08-log.md` T85b1, T85b2b; `docs/lanes/adventure/TRAPS.md` (the
+  plans, `lay_out`, objects added in play).
+- **Depends on:** T85b's pull requests merged. **Status:** ready after them.
 
 ## Inbox
 

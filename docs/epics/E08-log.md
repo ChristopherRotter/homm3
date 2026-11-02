@@ -10455,3 +10455,47 @@ the branch (no conflict; the town lane's #648 was docs only), the sandbox's full
   `MonthStarted`, as at a battle (the case kept in `view.txt`); no leak beyond the draw, as the
   original's single generator.
 - **Versions:** none moved (the events were hashed by T85b1); no replay's map has timed events.
+
+### Increment 9, round 7: T85b2b, the env's `BuildBoat`; T85b's verify, bench and pull requests (2026-11-02, `adventure/e08-t85b`, `cross-lane`, with `shared/e08-t85b`)
+
+**The start:** `master` 3ec41c6 (#649, #650: the town lane's survey, the client's stats dialog; no
+engine code) merged into both branches; the sandbox's full verify with the original data green
+on the merged state (every step, the original-data step's 160 shipped maps among them).
+
+- **The env** (`h3-sim`'s `adventure/action.rs`; design §15, ADR-0017 point 8, decision 203,
+  `cross-lane`): action encoding v6 appends `BUILD_BOAT` (entry 17, `ENTRY_COUNT` 18,
+  `Action::build_boat(tile)`); its tile head is the anchors of the Shipyards whose `BuildBoat`
+  `h3_game::legal_commands` lists (ADV-SHY-003: the player's or an ally's, the boat tile free,
+  the price in the treasury), so one action per Shipyard; `legal_mask` sets it from the listed
+  commands (`command_entry`), `tile_mask` from their anchors; `decode` builds at the Shipyard on
+  the tile that `AdventureState::buildable_shipyards` lists for the player (the adventure's checks
+  only), `encode` names a `BuildBoat` by its anchor. The random agent (`rollout::choose`) already
+  drew among the listed commands: a drawn `BuildBoat`, which had no action and ended the turn, now
+  builds (no committed map has a Shipyard, so no replay, workload or bots record moves).
+- **Agent's calls (change freely):** `decode` by the adventure's checks rather than the listed
+  commands, so the game's own (its turn, an open decision, the price) are refused by `apply` with
+  their reasons, as a move or an answer out of turn; a tile no usable Shipyard anchors decodes to
+  nothing, as a move's tile the query does not list. Entry 17 appended, not placed before the
+  answers, so the earlier entries keep their indices.
+- **Tests** (`h3-sim`): `tests/shipyards.rs`' setup, a Shipyard of each player's beside its first
+  hero on the duel (the nearest free tile reached on day 1 with a free one two columns left made
+  water: the reach also lists objects' entrances, which a first cut took); the entry and its tile,
+  decode and encode, blue's out of its turn refused, red's for blue, a tile without one, one past
+  the map and the neutral seat decoding to nothing, a built boat masking it; the random agent
+  building in a week. `check_masks` checks the entry's tiles against the listed commands; the play
+  property draws the setup as its fourth kind (kind 3, so the saved cases keep theirs; passed at
+  256 cases once).
+- **Bench** (callgrind, against `master` 3ec41c6 in a worktree, the same games): random-play-duel-36
+  1 016 746 196 against 1 012 383 930 (+0.43 %), random-play-rewards-36 1 162 290 419 against
+  1 158 100 214 (+0.36 %), random-play-sea-36 2 684 673 295 against 2 678 931 532 (+0.21 %),
+  fork-sea-xl-144 372 500 055 against 371 000 055 (+0.40 %): T85b1's numbers, so T85b2a's firing
+  costs nothing measurable (no fixture map has timed events; `fire_events` absent from the
+  profile). The duel per function as T85b1 found it: the battles +10 M (`reachable_within`,
+  `neighbors`, `legal_commands`: the regain and the growth), the reach and passage loops −7 M.
+  `fork-sea-xl-144` re-baselined (+1.94 % against its count, `master` itself +1.53 %); the others
+  within their gate, left to T86's re-baselines (design §15).
+- **Verify:** the scoped verifies, `adventure` with the original data and `ai` (`h3-sim`; an
+  adapter, no coverage gate), with no failing step but `check-lane`, which a `cross-lane` branch
+  fails by design; `check-lane --cross-lane` and `cargo check --workspace --all-targets` clean.
+- **Versions:** the env's action encoding v6 (the AI lane's, its inbox told); T85b as a whole
+  brings game state hash v22 to `master` once (decision 224).
