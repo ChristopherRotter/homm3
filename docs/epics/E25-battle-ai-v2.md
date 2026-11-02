@@ -143,8 +143,8 @@ heroes, +0.8 % Ir per decision) becomes the AI lane's system actor, may train an
 | T13 | Increment 5's refinement (AI-Q14) | done 2026-11-02 (`E25-log.md` T13) |
 | T14 | The switch: `system` the fair actor, `system-all-seeing` beside it (C ABI v36), records, the bots' tables, the neutral bench, `run.trainable` | done 2026-11-02 (`E25-log.md` T14: the fair actor 0.500 against the all-seeing one, the neutral target stays +0.285) |
 | T15 | The ladder at the switch: `e25-sharp-1` #2 against both system actors and on the neutral set with the fair defender | done 2026-11-02 (`E25-log.md` T15: 0.424 against the fair actor, 0.425 against the all-seeing one; the neutral set +0.245 against the target +0.285) |
-| T16 | The cloning bench: the system actor's choice as an encoded action (C ABI), the fair actor's choices cloned into a run's network, its agreement and ladder | next (sandbox) |
-| T17 | The A/B: the neutral kinds back from scratch against the same from T16's clone | after T16 (the user's machine) |
+| T16 | The cloning bench: the system actor's choice as an encoded action (C ABI v37), the fair actor's choices cloned into a run's network, its agreement and ladder | done 2026-11-02 (`E25-log.md` T16: 4 M samples, agreement 0.531; the clone 0.396 against the fair actor, the neutral set +0.244) |
+| T17 | The A/B: the neutral kinds back from scratch against the same from T16's clone | next (the user's machine) |
 | T18 | The checkpoint: T17 read, the current best, increment 6 | after T17 |
 
 Scope and acceptance: the AI queue's entries.

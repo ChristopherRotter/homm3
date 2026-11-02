@@ -22,14 +22,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the all-seeing one); the neutral kinds back in training with the fair defender; a warm start by
   cloning it. **T14 done** (the switch, C ABI v36: the fair actor 0.500 against the all-seeing
   one, the neutral target stays +0.285). **T15 done:** `e25-sharp-1` #2 0.424 against the fair
-  actor, 0.425 against the all-seeing one, the neutral set +0.245 (target +0.285). **Next:** T16
-  (the cloning bench, sandbox; its length agreed with the user), then T17's A/B on the user's
-  machine.
-- **Open pull requests:** #651 (`claude/relaxed-ptolemy-eyjild`: T13 to T15). Merged:
-  #640 (T8, T9a, T10a), #646 (T9b to T12).
+  actor, 0.425 against the all-seeing one, the neutral set +0.245 (target +0.285). **T16 done**
+  (C ABI v37, `h3_batch_choice`; the clone mode `distill --teacher system`): 4 M samples on the
+  sandbox, agreement 0.531, the clone 0.396 against the fair actor and +0.244 on the neutral set
+  with no RL; its `students/mlp.pt` sent to the user. **Next:** T17's A/B on the user's machine
+  (`configs/e25-neutral.toml`, from scratch and `--init-from` the clone; lengths agreed then).
+- **Open pull requests:** #657 (`claude/quirky-cori-hjtoat`: T16). Merged: #646 (T9b to
+  T12), #651 (T13 to T15).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
-  (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v36 (E25 T14: the fair
-  system actor in seat 4, the all-seeing one in seat 5) (`docs/08-work-process.md`, "Versions"). Next
+  (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
+  `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
+  (`docs/08-work-process.md`, "Versions"). Next
   ids: AI-Q15, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -38,6 +41,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-02 — E25 T16
+
+- #651 merged; the branch started from `master`. T16 built (C ABI v37's `h3_batch_choice`, the
+  clone mode, `configs/e25-neutral.toml`) and run on the sandbox's CPU at the user's 4 M
+  (40 minutes; `E25-log.md` T16). The setup's baseline ran only the light gates (`master`'s
+  code verified by CI); `uv sync --group train` took about 3 minutes.
 
 ### 2026-11-02 — E25 T13
 
@@ -57,10 +67,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   (AI-Q13): increment 4 closed, increment 5 waits for the fair system actor. T12 on both uploaded
   `best.pt`: `e25-sharp-1` #2 promoted against #3, the current best. A VM restart cost nothing
   (all committed or in `runs/`).
-
-### 2026-10-30 — E25 T7d
-
-- #604 merged; the branch started from `master`. The user ran `e25-wide-1` (20 M, 94 minutes)
-  and uploaded its record and metrics: committed and read (`E25-log.md` T7d). Its `best.pt`
-  (49.5 MB) is above the upload limit (`TRAPS.md`, Python), so `battles.py` was not run; T8's
-  question AI-Q12 written. The sandbox's baseline: the light gates (CI verified the code).

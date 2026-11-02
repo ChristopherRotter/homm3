@@ -43,6 +43,7 @@ import numpy as np
 import torch
 
 from . import layout as L
+from .evaluate import OPPONENTS, REPORT_V1_ENVS
 from .policy import Policy, build, masked, rows_of
 from .ppo import CHECKPOINT_FORMAT, FIELDS, Staging, Trainer, device_of, gae, save
 from .run import Config, ConfigError, atomic_write_text, machine, resolve, source
@@ -78,6 +79,13 @@ class Bench:
     value_coef: float = 0.5
     max_grad_norm: float = 0.5
     device: str = "auto"
+    #: The clone mode's run config (`h3env.train.clone`, E25 T16): its network the students'
+    #: and its training distribution the fair system actor's; empty for a teacher's network file.
+    run: str = ""
+    #: The clone mode's ladder of each student at the end: its opponents on the report set v1
+    #: (none: no ladder), the neutral set v1 beside it, `ladder_per_kind` episodes of each kind.
+    ladder: list[str] = field(default_factory=list)
+    ladder_per_kind: int = REPORT_V1_ENVS
     #: Each student's `[network]` keys (and `lr`) over the teacher's, by name, in order.
     students: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -100,11 +108,23 @@ def load_bench(text: str, sets: list[str] | tuple[str, ...] = ()) -> Bench:
         raise ConfigError(f"unknown bench keys {', '.join(unknown)}")
     bench = Bench(**data)
     problems = []
-    for key in ("samples", "heldout", "eval_every", "envs", "rollout", "epochs", "minibatch"):
+    for key in (
+        "samples",
+        "heldout",
+        "eval_every",
+        "envs",
+        "rollout",
+        "epochs",
+        "minibatch",
+        "ladder_per_kind",
+    ):
         if getattr(bench, key) <= 0:
             problems.append(f"`{key}` must be positive")
     if not bench.students:
         problems.append("no `[students.<name>]` table")
+    unknown = [o for o in bench.ladder if o not in OPPONENTS]
+    if unknown:
+        problems.append(f"`ladder`: {', '.join(unknown)} are no opponents ({', '.join(OPPONENTS)})")
     for name, keys in bench.students.items():
         bad = sorted(set(keys) - NETWORK_KEYS - {"lr"})
         if bad:
@@ -317,6 +337,8 @@ def run(
 ) -> dict[str, Any]:
     """Runs `bench` with the teacher of `teacher_path` into `out` (the module's documentation);
     returns the report."""
+    if bench.run or bench.ladder:
+        raise ConfigError("`run` and `ladder` are the clone mode's (--teacher system)")
     if out.exists() and any(out.iterdir()):
         raise ConfigError(f"{out} is not empty: a bench does not resume")
     (out / "students").mkdir(parents=True, exist_ok=True)
@@ -467,13 +489,24 @@ def run(
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m h3env.train.distill", description=__doc__)
-    parser.add_argument("--teacher", type=Path, required=True, help="a run's network file")
+    parser.add_argument(
+        "--teacher",
+        required=True,
+        help="a run's network file, or `system`: the fair system actor (the clone mode, E25 T16)",
+    )
     parser.add_argument("--config", type=Path, required=True, help="the bench's TOML file")
     parser.add_argument("--out", type=Path, required=True, help="a new directory")
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     args = parser.parse_args(argv)
+    if args.teacher == "system-all-seeing":
+        parser.error("the all-seeing system actor is never imitated (E25 decision 3)")
     bench = load_bench(args.config.read_text(encoding="utf-8"), args.set)
-    run(args.teacher, bench, args.out)
+    if args.teacher == "system":
+        from . import clone
+
+        clone.run(bench, args.out)
+    else:
+        run(Path(args.teacher), bench, args.out)
 
 
 if __name__ == "__main__":

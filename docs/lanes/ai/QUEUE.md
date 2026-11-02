@@ -10,21 +10,12 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 closed (`E25-archive.md`); **`e25-sharp-1` #2 the current best** (AI-Q13, T12). **Increment 5,
 the fair system actor** (refined at T13, 2026-11-02, AI-Q14; its decisions in the epic file):
 
-- **T16 The cloning bench.** *Scope:* a C ABI call giving the system actor's choice (either
-  sight) for an env's side to move as an encoded action (`h3_sim::action::encode`; the entry and
-  the cast heads), its count of choices the encoding cannot express; a clone mode of the
-  distillation bench (`h3env.train.distill`, T7b) whose teacher is the fair actor playing both
-  sides through external seats on T17's training distribution (the player kinds plus the neutral
-  kinds at E06 T7's third): the student (`e25-sharp-1`'s network) learns its heads by
-  cross-entropy and its value on the returns (reward v1, γ 1); held-out agreement per category;
-  the student saved as a run's network file for `--init-from`; its ladder (how near the clone
-  plays to the fair actor). The sandbox's CPU for the checks, the bench's length agreed with the
-  user. *Depends on:* T14 (done). *Status:* next (needs no upload).
 - **T17 The A/B.** *Scope:* on the user's machine, two runs on `e25-sharp-1`'s config with the
   neutral kinds back at a third (the fair defender): `e25-neutral-1` from scratch and
   `e25-clone-1` from T16's student (`--init-from`); lengths agreed when prepared (20 M as
   `e25-sharp-1` unless agreed otherwise). The records committed and read, both system columns.
-  *Depends on:* T15 (done), T16. *Status:* waiting.
+  The mix is `configs/e25-neutral.toml`, the student `runs/clone-1/students/mlp.pt` (T16; sent
+  to the user). *Depends on:* T15 (done), T16 (done). *Status:* next.
 - **T18 The checkpoint.** *Scope:* T17 read with the user: the current best (a head-to-head
   against `e25-sharp-1` #2), increment 6 among the epic's candidates. *Depends on:* T17.
   *Status:* waiting.

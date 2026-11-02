@@ -105,6 +105,15 @@ variance, the training seconds; the teacher's value beside them); how it ended (
 `stop`). The students' files stay on the machine that ran it. The findings in
 `docs/epics/E25-log.md`.
 
+`distill/clone-<n>.json` (E25 T16): the clone mode's (`--teacher system`, `h3env.train.clone`):
+the teacher is the fair system actor (its policy version, the run config whose distribution it
+played, that config's network settings, kinds, shaping, truncation penalty and step limit, its
+statistics on the training and the held-out episodes: decisions, lost choices, decisions past
+the tactics bound, episodes, truncations, the attacker's wins per kind); every evaluation holds
+per student the cross-entropy per head, the agreement overall, per category and of the cast
+heads, the value's scores and the training seconds (the returns' mean and variance beside
+them); `ladders` each student's rows on the report set v1 and the neutral set v1.
+
 ## The search's measurements
 
 `search/<run>-<set>-<N>[-<per kind>].json` (E06 T8c): `python -m h3env.search --report --best

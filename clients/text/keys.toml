@@ -803,6 +803,77 @@ original = [{ at = "HELP:447" }]
 id = "stats.hint.cast-original"
 original = [{ at = "MINENAME:0" }]
 
+# The stats dialog's right button's descriptions (E17 M6 T2a2b1; design §12.3;
+# `creature_dialog_proc` 0x5F48AD): the hint table's second texts, `Help.txt`'s second column of the
+# same records 433 to 447, shown in a popup while the button is held. Morale's and luck's are built
+# by their own procedures (M6 T2a2b2); the effects take their pair's text.
+[[key]]
+id = "stats.help.name"
+original = [{ at = "HELP:433:1" }]
+
+[[key]]
+id = "stats.help.count"
+original = [{ at = "HELP:434:1" }]
+
+[[key]]
+id = "stats.help.attack"
+original = [{ at = "HELP:435:1" }]
+
+[[key]]
+id = "stats.help.defense"
+original = [{ at = "HELP:436:1" }]
+
+[[key]]
+id = "stats.help.shots"
+original = [{ at = "HELP:437:1" }]
+
+[[key]]
+id = "stats.help.damage"
+original = [{ at = "HELP:438:1" }]
+
+[[key]]
+id = "stats.help.health"
+original = [{ at = "HELP:439:1" }]
+
+[[key]]
+id = "stats.help.health-left"
+original = [{ at = "HELP:440:1" }]
+
+[[key]]
+id = "stats.help.speed"
+original = [{ at = "HELP:441:1" }]
+
+[[key]]
+id = "stats.help.morale"
+original = [{ at = "HELP:442:1" }]
+
+[[key]]
+id = "stats.help.luck"
+original = [{ at = "HELP:443:1" }]
+
+[[key]]
+id = "stats.help.effects"
+original = [{ at = "HELP:444:1" }]
+
+[[key]]
+id = "stats.help.dismiss"
+original = [{ at = "HELP:445:1" }]
+
+[[key]]
+id = "stats.help.upgrade"
+original = [{ at = "HELP:446:1" }]
+
+[[key]]
+id = "stats.help.ok"
+original = [{ at = "HELP:447:1" }]
+
+# The cast button's description in the original (CLT-Q38 (2)): past the table, the second word of
+# its pair is `mine_names`' second entry (MineName.txt's second record); the client's profile shows
+# its hint again (`battle.control.spell-book`, *provisional*).
+[[key]]
+id = "stats.help.cast-original"
+original = [{ at = "MINENAME:1" }]
+
 # An effect's hint (0x5F4F33): GENRLTXT's record 611 with the spell's name and its rounds left;
 # Bind's, Berserk's and Disrupting Ray's (0x5F4EB4 to 0x5F4F31) record 680 with how long they last,
 # records 681 to 683.

@@ -33,10 +33,10 @@ pub use batch::{
     H3_ENCOUNTER_SIEGE_NEUTRAL, H3_ENCOUNTER_WANDERING, H3_ERR_NOT_READY, H3_SEAT_AGGRESSOR,
     H3_SEAT_EXTERNAL, H3_SEAT_GREEDY, H3_SEAT_RANDOM, H3_SEAT_SYSTEM, H3_SEAT_SYSTEM_ALL_SEEING,
     H3Batch, H3BatchBuffers, H3BatchConfig, H3RewardConfig, H3ScenarioInfo, H3Seats,
-    h3_batch_add_encounters, h3_batch_add_scenario, h3_batch_create, h3_batch_destroy,
-    h3_batch_episode_seed, h3_batch_reset, h3_batch_scenario_count, h3_batch_scenario_info,
-    h3_batch_second_mask, h3_batch_spell_mask, h3_batch_step, h3_batch_target_mask,
-    h3_encounters_version, h3_system_policy_version,
+    h3_batch_add_encounters, h3_batch_add_scenario, h3_batch_choice, h3_batch_create,
+    h3_batch_destroy, h3_batch_episode_seed, h3_batch_reset, h3_batch_scenario_count,
+    h3_batch_scenario_info, h3_batch_second_mask, h3_batch_spell_mask, h3_batch_step,
+    h3_batch_target_mask, h3_encounters_version, h3_system_policy_version,
 };
 
 /// Version of this ABI (functions, structs, error codes, and the action/observation encodings).
@@ -119,8 +119,11 @@ pub use batch::{
 /// training's shaping; the struct grows by one pointer at its end); the encodings unchanged. v36
 /// (E25 T14, AI-Q14): `H3_SEAT_SYSTEM` plays the fair system actor (`h3_battle_ai::choose_fair`,
 /// E26), the neutral kinds' defender with it; the all-seeing one (`choose`, seat 4 until v35) is
-/// the new seat `H3_SEAT_SYSTEM_ALL_SEEING`; the encodings unchanged.
-pub const H3_ABI_VERSION: u32 = 36;
+/// the new seat `H3_SEAT_SYSTEM_ALL_SEEING`; the encodings unchanged. v37 (E25 T16, the cloning
+/// bench): `h3_batch_choice`, an internal seat's choice for each env's side to move as the action
+/// an external seat plays (the system actors' labels), drawn from that side's seat stream; the
+/// encodings unchanged.
+pub const H3_ABI_VERSION: u32 = 37;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -193,6 +196,17 @@ pub struct H3Action {
 
 impl From<H3Action> for Action {
     fn from(a: H3Action) -> Self {
+        Self {
+            entry: a.entry,
+            spell: a.spell,
+            target: a.target,
+            second: a.second,
+        }
+    }
+}
+
+impl From<Action> for H3Action {
+    fn from(a: Action) -> Self {
         Self {
             entry: a.entry,
             spell: a.spell,
@@ -702,7 +716,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 36);
+        assert_eq!(h3_abi_version(), 37);
         assert_eq!(
             h3_observation_encoding_version(),
             OBSERVATION_ENCODING_VERSION

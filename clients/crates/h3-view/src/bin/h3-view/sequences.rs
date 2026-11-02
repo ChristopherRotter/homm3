@@ -846,7 +846,17 @@ pub(crate) fn draw_frames(
                     .into_iter()
                     .map(scene::Draw::Dialog),
             );
-            list.push(crate::stats::cursor(layout, &open.modal, mouse));
+            // The right button's description held over it, the cursor hidden (E17 M6 T2a2b1).
+            match &open.modal.popup {
+                Some(popup) => list.extend(
+                    popup
+                        .dialog
+                        .draws(&popup.shown, &layout.player_palette)
+                        .into_iter()
+                        .map(scene::Draw::Dialog),
+                ),
+                None => list.push(crate::stats::cursor(layout, &open.modal, mouse)),
+            }
         } else if let Some((open, mouse)) = book {
             // The cursor the book set, else the battle's where the actions left the mouse.
             match open.cursor_draw(&layout.book, mouse) {

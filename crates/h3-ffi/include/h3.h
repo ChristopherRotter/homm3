@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 36 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 37 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -14,7 +14,9 @@
  * forks, steps and h3_env_reseed are that agent's to use. v35 (E25 T1a): a world scores a decided
  * battle by its batch's reward v1, the scale of a value trained on the batch; h3_batch_true_world
  * (E25 T1b) is trusted tooling, a diagnostic's world with nothing guessed. v36 (E25 T14):
- * H3_SEAT_SYSTEM is the fair system actor, H3_SEAT_SYSTEM_ALL_SEEING the all-seeing one.
+ * H3_SEAT_SYSTEM is the fair system actor, H3_SEAT_SYSTEM_ALL_SEEING the all-seeing one. v37
+ * (E25 T16): h3_batch_choice, a seat's choice as an external seat's action, is trusted tooling
+ * (a teacher's labels; the all-seeing seat reads the whole state).
  */
 #ifndef H3_H
 #define H3_H
@@ -236,6 +238,14 @@ H3Env *h3_batch_determinize(const H3Batch *batch, uint32_t env, int32_t viewer, 
  * (it reads the whole state): never an agent's input. NULL for a null or not reset batch, or an
  * env past it or not playing. */
 H3Env *h3_batch_true_world(const H3Batch *batch, uint32_t env, uint64_t seed);
+/* v37 (E25 T16): each env's choice of the internal seat `seat` (H3_SEAT_* but
+ * H3_SEAT_EXTERNAL) for its side to move into actions[i] (N), the action an external seat plays,
+ * with encoded[i] 1; encoded[i] 0 and an all-zero action for an env without a side to move or
+ * whose choice no batch action plays (the encoding cannot express it, or an escape). Returns the
+ * number of the latter (>= 0), or H3_ERR_NULL, H3_ERR_ARGUMENT (an unknown or external seat),
+ * H3_ERR_NOT_READY. The choice draws from the side's seat stream as that seat inside the call
+ * would: one call per decision, played by h3_batch_step, replays its episodes bit for bit. */
+int32_t h3_batch_choice(H3Batch *batch, int32_t seat, H3Action *actions, uint8_t *encoded);
 
 #ifdef __cplusplus
 }
