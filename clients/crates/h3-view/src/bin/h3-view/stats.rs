@@ -11,7 +11,7 @@ use h3_kernel::Handle;
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 use h3_ui::text::{Args, Catalogue};
 use h3_view::message::MessageBox;
-use h3_view::stats::{Pair, Stats, StatsLayout, Steps, Texts};
+use h3_view::stats::{Effect, Hints, Memory, Modal, Pair, Stats, StatsLayout, Steps, Texts};
 use h3_view::tables::Tables;
 
 /// The creatures the dialog tells by number (their original ids): the Ballista's damage, the war
@@ -41,15 +41,16 @@ pub struct Sources<'a> {
     pub catalogue: &'a Catalogue,
 }
 
-/// The dialog a left press opened on a stack: its window, its creature's first steps, and the
-/// point the press was made at (the battle's cursor and status line keep it: §12.1).
+/// The dialog a left press (or the key T) opened on a stack: the modal dialog with its OK's
+/// state, status line and cursor (E17 M6 T2a2a), its creature's first steps, and the point the
+/// mouse was at (the battle's cursor and status line keep it: §12.1).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Open {
-    /// The dialog.
-    pub window: MessageBox,
+    /// The dialog and what its input did to it.
+    pub modal: Modal,
     /// Its creature as the dialog opened.
     pub steps: Steps,
-    /// Where the press was made.
+    /// Where the mouse was as it opened.
     pub looked: [i32; 2],
 }
 
@@ -62,7 +63,7 @@ impl Open {
         for _ in 0..Steps::made(first, since) {
             steps.step();
         }
-        let mut window = self.window.clone();
+        let mut window = self.modal.open.message.clone();
         for item in &mut window.dialog.items {
             if let h3_ui::ui::Item::Def(d) = item
                 && d.id == h3_view::stats::CREATURE
@@ -71,6 +72,29 @@ impl Open {
             }
         }
         window
+    }
+}
+
+/// The cursor over the open dialog at the mouse's `point` (E17 M6 T2a2a): the default cursor's
+/// frame its moves set (the spell book's cursor DEF, `crdeflt.def`), until then the combat
+/// cursor's pointer the press or the key set as it opened (0x476E97, 0x475D72).
+pub fn cursor(
+    layout: &h3_view::layout::BattleLayout,
+    modal: &Modal,
+    point: [i32; 2],
+) -> h3_view::scene::Draw {
+    match modal.cursor {
+        Some(frame) => h3_view::scene::Draw::Cursor {
+            def: layout.book.cursor.clone(),
+            frame,
+            x: point[0],
+            y: point[1],
+            hot: usize::try_from(frame)
+                .ok()
+                .and_then(|f| layout.book.hot.get(f).copied())
+                .unwrap_or_default(),
+        },
+        None => h3_view::mouse::cursor(layout, layout.mouse.panel_frame, point),
     }
 }
 
@@ -198,7 +222,16 @@ pub fn of(sources: &Sources<'_>, observation: &Observation, id: u8, modal: bool)
     let effects = stack
         .effects
         .iter()
-        .filter_map(|e| spell_original(sources, e.spell))
+        .filter_map(|e| {
+            let key = sources.manifest.keys.spells.get(usize::from(e.spell))?;
+            Some(Effect {
+                spell: spell_original(sources, e.spell)?,
+                name: sources
+                    .catalogue
+                    .text(&format!("spell.{key}"), &Args::new()),
+                rounds: e.rounds,
+            })
+        })
         .collect();
     // The cast button (0x5F3974): a Faerie Dragon of the side acting now, with casts left,
     // outside the tactics phase, in the modal dialog.
@@ -266,15 +299,17 @@ pub fn player(observation: &Observation, stack: &Stack, viewing: u8) -> u8 {
     }
 }
 
-/// The dialog a left press opens on stack `id` (its place next to the stack's hex, its creature's
-/// steps from the frame counts `frames` of its DEF's groups; `seed` the viewer's generator's), the
-/// press made at `looked`.
+/// The dialog a left press (or the key T) opens on stack `id` (its place next to the stack's hex,
+/// its creature's steps from the frame counts `frames` of its DEF's groups; `seed` the viewer's
+/// generator's), the mouse at `looked`; drawn and hinted in `memory`'s profile, which its opening
+/// may make forget the item last hovered.
 pub fn open(
     sources: &Sources<'_>,
     observation: &Observation,
     (id, looked): (u8, [i32; 2]),
     (layout, anchor): (&StatsLayout, [i32; 2]),
     (frames, viewing, seed): (BTreeMap<u32, u32>, u8, u32),
+    memory: &mut Memory,
 ) -> Option<Open> {
     let stats = of(sources, observation, id, true)?;
     let stack = observation.stacks.iter().find(|s| s.id == id)?;
@@ -290,15 +325,20 @@ pub fn open(
         .map(|e| u32::from(e.original));
     let war_machine = original.is_some_and(|o| WAR_MACHINES.contains(&o));
     let texts = Texts::of(sources.catalogue);
+    let bugs = memory.bugs();
     let window = h3_view::stats::layout(
         layout,
         &texts,
         &stats,
-        h3_view::stats::place(anchor),
-        player(observation, stack, viewing),
+        (
+            h3_view::stats::place(anchor),
+            player(observation, stack, viewing),
+        ),
+        bugs,
     );
+    let hints = Hints::of(sources.catalogue, &stats, bugs);
     Some(Open {
-        window,
+        modal: Modal::new(window, hints, memory),
         steps: Steps::new(frames, war_machine, seed),
         looked,
     })

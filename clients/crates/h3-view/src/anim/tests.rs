@@ -2639,6 +2639,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
         .map(|(_, l)| match l {
             Logged::Action => "action",
             Logged::Turn(_) => "turn",
+            Logged::Settle => "settle",
             Logged::Strike {
                 spread: Spread::Target,
                 ..

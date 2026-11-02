@@ -399,14 +399,19 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 catalogue: &catalogue,
             };
             let seed = u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1);
-            let look = |point: [i32; 2]| {
+            // The stack's dialog with the mouse at `point`: the press's stack there, or the
+            // acting stack's by the key T (E17 M6 T2a2a; none in the tactics phase).
+            let dialog = |id: Option<u8>, point: [i32; 2], memory: &mut h3_view::stats::Memory| {
                 let field = h3_view::mouse::Field {
                     observation,
                     legal: &looking,
                     facing: &h3_view::mouse::Facing::Sides,
                     bugs: Bugs::Original,
                 };
-                let id = h3_view::mouse::looked_at(&field, &layout, point)?;
+                let id = match id {
+                    Some(id) => id,
+                    None => h3_view::mouse::looked_at(&field, &layout, point)?,
+                };
                 let stack = observation.stacks.iter().find(|s| s.id == id)?;
                 let key = manifest.keys.creatures.get(usize::from(stack.creature))?;
                 let def = &tables.creatures.get(key)?.def;
@@ -427,7 +432,16 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     (id, point),
                     (&layout.stats, anchor),
                     (frames, viewing, seed),
+                    memory,
                 )
+            };
+            let look =
+                |point: [i32; 2], memory: &mut h3_view::stats::Memory| dialog(None, point, memory);
+            let acting = |point: [i32; 2], memory: &mut h3_view::stats::Memory| {
+                let id = observation
+                    .active
+                    .filter(|_| observation.tactics.is_none())?;
+                dialog(Some(id), point, memory)
             };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
@@ -438,6 +452,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 opening: told
                     .then(|| catalogue.text("battle.tactics.phase", &h3_ui::text::Args::new())),
                 look: &look,
+                acting: &acting,
             };
             Some(crate::spellbook::still(
                 &actions,

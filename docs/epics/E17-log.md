@@ -3909,6 +3909,44 @@ the baseline's `check.sh` passed (`verify-once`, code `313e253`); #620 had merge
   the real-asset gate (859 keys, 11 tables); `clients/scripts/check.sh` all gates, coverage 100 %;
   the scoped verify with the original data, no failing step.
 
+### M6 T2a2a — the stats dialog in the window (2026-11-02)
+
+On `client/e17-m6-t2a2`, the user present. T2a2 cut in two by the user at its start (T2a2a the
+dialog in the window; T2a2b its right button's descriptions and its cast button); CLT-Q36 to Q38
+answered then (Q36 copied, Q37 fixed, Q38 (1) to (3) fixed and (4) the button only for the acting
+stack, for T2a2b). The sandbox new, the original files staged first (57 files); #645 had merged;
+the VM restarted about 20 minutes in (the baseline lost: CI's green `Clients` run on `master`
+`7407020` the baseline).
+
+- **Read** (design §12.2; map entries `creature_dialog_proc`, `battle_click_action`,
+  `battle_buttons`, new `army_info_hide`, `army_info_stack_hide`, `dialog_item_init`): the
+  procedure's command (the OK ends the modal loop with 0x7802), the look's branch of the press
+  (the combat cursor's frame 6 before; after, the mouse's hex forgotten, the log settled, the
+  mouse posted), the battle's key code 20 (T: the acting stack's dialog outside the tactics
+  phase), the items' state 6 (every item takes the mouse: the background too; a line's value over
+  its label, so CLT-Q38 (1) never shows).
+- **The library:** `stats::Modal` (the OK by a click or Enter or Escape through `message::Open`,
+  the hover's hint and cursor), `Hints` (the table, the cast button's by profile, the effects'
+  with their rounds or how long they last), `Memory` (the item last hovered, CLT-Q38 (3)),
+  `hint_index` (CLT-Q38 (1)), `Effect`; `layout`'s profile (CLT-Q37); the tracker's
+  `Input::Look` and `Looked`, `battle_log::Logged::Settle`; the keys `stats` (T) and `stats-ok`
+  in the context `Stats`; the catalogue's `stats.hint.*` (Help.txt 433 to 447, MineName.txt's
+  first, GENRLTXT 611 and 680 to 683); `h3_sdl::Key::T` (the adapter, additive).
+- **The binary:** the window's `Battle::look` (a press on a stack to look at, the key T; from
+  the side to act's own view, on a server the seat's), `stats_moved`, `stats_press`,
+  `stats_release`, `stats_key`, `stats_key_up`, `stats_step_after` (the creature's steps as
+  frames), the battle behind standing at the opening, the cursor the dialog set; the stills'
+  actions over an open dialog (`spellbook::stats_action`) and the key T (`Boxes::acting`).
+- **Recorded** (`set.toml`): `stats-hint`, `stats-off`, `stats-ok`, `stats-escape`, `stats-key`,
+  `stats-again`, all exact at their first capture.
+- **Checked:** `drawn` all 159 earlier sequences and stills the same, the six new recorded; the
+  window under Xvfb with `xdotool`, in hot seat (`book.toml --human both`) and as a seat of a
+  local `h3-server` game (an offer of `book.toml` against its bot): the press opens the
+  Marksmen's dialog, its hint over the attack line, the OK (or Enter) closes it and the battle's
+  cursor and line come back for the mouse's point, T opens the Champions'; the library's tests
+  (430) and the binary's (91); `clients/scripts/check.sh`; the scoped verify with the original
+  data.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

@@ -6375,9 +6375,15 @@ set/stats t00400 ebd680ff27c94b7b
 set/stats t00700 10c5d1ef8c9e7f3c
 set/stats-acting t00000 67b4c8469d6e51b8
 set/stats-acting t00300 c8bc2d1b953adf95
+set/stats-again t00100 f0d1dc85da9b265a
 set/stats-dragon t00000 4b565a13bb0e7adf
 set/stats-dragon t01100 4b565a13bb0e7adf
+set/stats-escape t00100 af65fc538375264b
+set/stats-hint t00100 bd790074f26ac437
+set/stats-key t00100 b0d0cdcdd86090f0
 set/stats-machine t00000 4c91ac1ae4a197d9
+set/stats-off t00100 4d7fd1abfe29574f
+set/stats-ok t00100 01b7f0958607dd14
 set/subterranean t00000 05c527ed84667866
 set/swamp t00000 1cf494c9abed787b
 set/tactics t00100 0729c9cbd6f8e1a1

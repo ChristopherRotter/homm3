@@ -71,7 +71,7 @@ use h3_view::sound::Tune;
 
 use crate::assets;
 use crate::audio::{Library, Player};
-use crate::battle::{Battle, BookDid, CursorLook, Ground, MessageDid, Press, Source};
+use crate::battle::{Battle, BookDid, CursorLook, Ground, MessageDid, Press, Source, StatsDid};
 
 /// How far past the last change the window looks for the next one before it waits for input
 /// only (a battle that no longer changes).
@@ -431,6 +431,10 @@ fn next_frame(
             _ => Ok(None),
         };
     }
+    // Behind a stack's stats dialog too; its creature steps each 100 ms (E17 M6 T2a2a).
+    if let Some(next) = battle.stats_step_after(shown.t) {
+        return frame_at(battle, next).map(Some);
+    }
     let mut t = shown.t;
     while let Some(next) = changes.after(battle, t)? {
         // Past the end of a still battle only the idle steps come, each drawing the same.
@@ -730,6 +734,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let context = Context::of(
                         battle.result_open(),
                         battle.message_open(),
+                        battle.stats_open(),
                         battle.book_open(),
                         battle.aiming(),
                     );
@@ -760,6 +765,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let context = Context::of(
                         battle.result_open(),
                         battle.message_open(),
+                        battle.stats_open(),
                         battle.book_open(),
                         battle.aiming(),
                     );
@@ -893,6 +899,19 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             grew |=
                                 message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
                         }
+                        // A stack's stats dialog's OK down, its key's release closing it (E17
+                        // M6 T2a2a).
+                        Do::StatsOk => {
+                            book_changed |= battle.stats_key(key.name()) != StatsDid::Nothing;
+                        }
+                        // The acting stack's stats dialog (E17 M6 T2a2a), the mouse where it is.
+                        Do::Stats => {
+                            let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
+                            if battle.look(at, point, true) {
+                                inputs.push(Input::Look { at });
+                                book_changed = true;
+                            }
+                        }
                         // The spell book open over the battle (E17 M5 T3a).
                         Do::Book(k) => {
                             let did = battle.book_key(k);
@@ -939,6 +958,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let did = battle.message_key_up(key.name());
                     grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
                 }
+                Event::KeyUp(key) if battle.stats_open() => {
+                    let did = battle.stats_key_up(key.name());
+                    book_changed |= stats_did(&mut inputs, at, did);
+                }
                 Event::KeyUp(_) if battle.book_open() || battle.aiming() => {}
                 Event::KeyUp(key) => {
                     if let Some(h) = held.take_if(|h| h.key == Some(key)) {
@@ -977,6 +1000,27 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::Click { down: false, .. } if battle.message_open() => {
                     let did = battle.message_release();
                     grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                }
+                // A stack's stats dialog over the battle (E17 M6 T2a2a): its moves, its OK.
+                Event::Pointer(p) if battle.stats_open() => {
+                    pointer = p;
+                    redraw |= drawn_cursor;
+                    if let Some((x, y)) = p {
+                        book_changed |= battle.stats_moved([x, y]);
+                        // The battle keeps where the mouse is, to take it as the dialog closes.
+                        inputs.push(Input::Move { at, to: [x, y] });
+                        mouse_changed = true;
+                    }
+                }
+                Event::Click {
+                    down: true,
+                    at: (x, y),
+                } if battle.stats_open() => {
+                    book_changed |= battle.stats_press([x, y]) != StatsDid::Nothing;
+                }
+                Event::Click { down: false, .. } if battle.stats_open() => {
+                    let did = battle.stats_release();
+                    book_changed |= stats_did(&mut inputs, at, did);
                 }
                 Event::Pointer(p) if battle.book_open() => {
                     pointer = p;
@@ -1044,6 +1088,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         // A press over the battlefield acts as the button goes down (design
                         // §9.11; E17 M5 T2b).
                         grew |= give(&mut battle, &mut inputs, at, command)?;
+                    } else if battle.look(at, [x, y], false) {
+                        // A stack to look at: its stats dialog (E17 M6 T2a2a).
+                        inputs.push(Input::Look { at });
+                        book_changed = true;
                     }
                 }
                 Event::Click { down: false, .. } => {
@@ -1327,6 +1375,15 @@ fn book_did(
 
 /// The open box as the window tells one from another (E17 M5 T8b2): its buttons' places, none
 /// while no box is open. A box that gives way to another (the surrender refused) has others.
+/// What a stats dialog's input did (E17 M6 T2a2a): its close hands the mouse back to the battle
+/// (`Input::Looked`). Whether the screen changed.
+fn stats_did(inputs: &mut Vec<Input>, at: u32, did: StatsDid) -> bool {
+    if did == StatsDid::Closed {
+        inputs.push(Input::Looked { at });
+    }
+    did != StatsDid::Nothing
+}
+
 fn box_shown(battle: &Battle<'_>) -> Option<[Option<[i32; 2]>; 3]> {
     use h3_view::message::{NO, OK, YES};
     battle

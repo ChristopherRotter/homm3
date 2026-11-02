@@ -151,9 +151,12 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   only; `drawn` all the same.
 - **T2, a stack's info** (cut in three by the user, 2026-11-02): **T2a1** (done 2026-11-02) the
   stats dialog read (0x5F3360, design §12.1) and drawn, four stills exact against the original
-  but the panel's line over a Faerie Dragon (CLT-Q36 to Q38 asked); **T2a2** the dialog in the
-  window (its input, hints, cast button; hot seat and a server); **T2b** the right button's popup
-  (0x4769C0) and a turret's info (0x47A380); recorded.
+  but the panel's line over a Faerie Dragon (CLT-Q36 to Q38 asked, answered 2026-11-02); T2a2
+  cut in two by the user (2026-11-02): **T2a2a** (done 2026-11-02) the dialog in the window
+  (design §12.2: its OK, keys, hints and cursor, the key T, the battle's mouse at its close; hot
+  seat and a server; CLT-Q37 and Q38 (1) to (3) fixed; six stills exact), **T2a2b** its right
+  button's descriptions and its cast button; **T2b** the right button's popup (0x4769C0) and a
+  turret's info (0x47A380); recorded.
 - **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
   battlefield's other items; recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
@@ -267,3 +270,11 @@ The next milestone's list starts here.
 8. The common crates' additions (T2a1): `ui::Def`'s `group`, `creature`, `frames_of`;
    `ui::Draw::Creature` and `Shared` (drawn by `h3_ui::paint`, which `h3-view`'s compositor calls
    for them); `h3_render::blit::draw_frame_clipped`; the layout's `[stats]`.
+9. The cast button's hint in the client's profile (T2a2a, CLT-Q38 (2), *provisional*): the
+   panel's spell book's (`battle.control.spell-book`; the original has none of its own).
+10. The stats dialog in the window (T2a2a, *provisional*): its cursor the book's layout's
+    `crdeflt.def`; its creature's later groups from a generator seeded by the opening's time; the
+    key T bound by default (`stats`; `stats-ok` Enter and Escape), `h3_sdl::Key::T` added.
+11. Not modelled (T2a2a): the input queue emptied as the dialog's modal loop starts (a key down or
+    press in the batch of the opening press reaches it); the recorded sequences take no look, the
+    dialog's opening, hover and close recorded as six stills' action sequences instead.
