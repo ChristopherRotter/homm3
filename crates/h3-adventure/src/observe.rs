@@ -578,7 +578,9 @@ impl AdventureEvent {
                 | AdventureEventKind::MessageRead { .. }
                 | AdventureEventKind::BoatRemoved { .. }
                 | AdventureEventKind::ObjectFlagged { .. }
-                | AdventureEventKind::GuardsChanged { .. } => self.kind,
+                | AdventureEventKind::GuardsChanged { .. }
+                | AdventureEventKind::ObjectMarked { .. }
+                | AdventureEventKind::ObjectEmpty { .. } => self.kind,
             },
             seen_by: alone,
         })

@@ -100,9 +100,10 @@ impl Search<'_> {
     #[cold]
     fn boarded(&self, tile: &StaticTile, left: u32) -> u32 {
         let (core, details, _, _) = self.surface;
+        let lighthouses = self.state.lighthouse_points(self.part, self.owner);
         self.converted(
             self.pricing.sail_left_after(tile, left),
-            sea_day_points(core, self.part, details),
+            sea_day_points(core, self.part, details, lighthouses),
         )
     }
 

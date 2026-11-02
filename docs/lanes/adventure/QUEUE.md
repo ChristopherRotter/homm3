@@ -22,24 +22,24 @@ the start's reveal, the flag radius), T83b2 in two, the state first (decision 21
 v19), T83b2b done (decision 219: whole, the `shared/` part first, a mine's guards as the
 original's hint; `adventure/e08-t83b2b` with `shared/e08-t83b2b`: the views). Round 6: T84 in two
 halves, the mines first (decision 220): T84a done (`adventure/e08-t84a` with `shared/e08-t84a`:
-the flags, the mines' visits, Leave Guards, their battles; game state hash v21); T84b next.
+the flags, the mines' visits, Leave Guards, their battles; game state hash v21); T84b in two,
+the Lighthouses and the weekly visits first (decision 221): T84b1 done (`adventure/e08-t84b1`
+with `shared/e08-t84b1`: the Lighthouses' flag and points, the weekly visits); T84b2 next.
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T84b — `h3-adventure` and `h3-game`: the Lighthouses, the Shipyards, `BuildBoat`, the weekly visits**
+**E08 T84b2 — `h3-adventure` and `h3-game`: the Shipyards, their boat offer and `BuildBoat`**
 
-- **Scope:** design §7's left items (a Lighthouse's flag, ADV-OWN-005, its `lighthouse_points` in
-  `day_maximum`; a Shipyard's flag and boat offer, ADV-SHY-002: `ShipyardBlocked`,
-  `OfferKind::Boat`, `build_boat`, `BoatBuilt`), §8 (`BuildBoat`, ADV-SHY-003; adventure replay
-  format v8), §9 (the weekly visits, ADV-WEK-001 to -003, ADV-VIS-006 amended: the marks, the gain,
-  `ObjectEmpty`) and §14's boat offer; their events with their viewers and `docs/06-security.md`'s
-  lines (a `shared/` pull request merged first, as T84a's); ADV-OWN-001 completed (the
-  Lighthouses' and Shipyards' flags through T84a's `AdventureState::flag`); the replays the visits
-  change re-recorded, the bot reports if they move.
-- **Inputs:** design §7, §8, §9, §14, §18; ADR-0016 points 3, 4, 6, ADR-0017 points 1, 3, 6, 10;
-  survey `E08-economy.md` §4, §5, §9, §19 (batch E9's E9-4, E9-5, E9-8); T84a's record in
-  `E08-log.md` (`flag`, the outcome's offers, the view property's new events).
-- **Depends on:** T84a (`adventure/e08-t84a` merged). **Status:** ready after that merge; its cut
-  confirmed with the user at its start (whole, or the Shipyards and `BuildBoat` apart).
+- **Scope:** design §7's left item (a Shipyard's flag through T84a's `AdventureState::flag`, then
+  its boat offer, ADV-SHY-002: `ShipyardBlocked`, `OfferKind::Boat`, `build_boat`, `BoatBuilt`),
+  §8 (`BuildBoat`, ADV-SHY-003; adventure replay format v8) and §14's boat offer; their events
+  with their viewers and `docs/06-security.md`'s lines (a `shared/` pull request merged first, as
+  T84a's and T84b1's); ADV-OWN-001 completed (the Shipyards' flags); the 32 replays re-recorded
+  for the format, the bot reports if they move.
+- **Inputs:** design §7, §8, §14, §18; ADR-0016 points 3, 6, ADR-0017 points 1, 6, 10; survey
+  `E08-economy.md` §5, §19 (batch E9's E9-5); T84a's and T84b1's records in `E08-log.md` (`flag`,
+  the outcome's offers, the view property's new events).
+- **Depends on:** T84b1 (`adventure/e08-t84b1` merged). **Status:** ready after that merge; whole
+  (decision 221).
 
 ## Inbox
 

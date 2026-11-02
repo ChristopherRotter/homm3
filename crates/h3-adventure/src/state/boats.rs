@@ -247,7 +247,9 @@ impl AdventureState {
         sink: &mut S,
     ) {
         let details = details_of(heroes, self.heroes[index].id);
-        self.change_surface(core, details, index, sea_day_points(core, part, details));
+        let lighthouses = self.lighthouse_points(part, player);
+        let points = sea_day_points(core, part, details, lighthouses);
+        self.change_surface(core, details, index, points);
         let hero = &mut self.heroes[index];
         hero.boat = Some(boat);
         let (id, at) = (hero.id, hero.pos);

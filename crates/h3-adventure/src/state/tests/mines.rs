@@ -423,3 +423,86 @@ fn a_mine_battle_s_end_keeps_the_survivors_or_flags_the_mine_after_the_levels() 
     assert_eq!(blue.owner(0), Some(BLUE));
     assert!(blue.check_owners(&rules.1));
 }
+
+// covers: ADV-OWN-001, ADV-OWN-005
+#[test]
+fn a_lighthouse_is_flagged_unless_its_team_s_and_asks_nothing() {
+    let rules = rules();
+    let lighthouse = rules.1.object_type_by_key("t:lighthouse").unwrap();
+    // A neutral one: flagged for red at once and revealed around, no question; entered, so the
+    // walk ends on it.
+    let mut s = game(&rules, mine(&rules, "t:lighthouse", None));
+    let (outcome, events) = visit(&rules, &mut s);
+    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(s.hero(HERO).unwrap().pos, ENTRANCE);
+    assert_eq!(s.owner(0), Some(RED));
+    let told = after_steps(&events);
+    assert_eq!(
+        told[0],
+        AdventureEventKind::ObjectFlagged {
+            object_type: lighthouse,
+            anchor: ENTRANCE,
+            owner: RED,
+        }
+    );
+    assert!(matches!(
+        told[1],
+        AdventureEventKind::TilesRevealed { object_type, .. } if object_type == lighthouse
+    ));
+    assert_eq!(told.len(), 2);
+    assert!(s.check_owners(&rules.1));
+    // Red's own: nothing done, nothing told.
+    let mut own = game(&rules, mine(&rules, "t:lighthouse", Some(0)));
+    let (outcome, events) = visit(&rules, &mut own);
+    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(after_steps(&events), []);
+    assert_eq!(own.owner(0), Some(RED));
+    // Blue's: flagged for red, blue told as it sees its own Lighthouse.
+    let mut blue = game(&rules, mine(&rules, "t:lighthouse", Some(1)));
+    let (_, events) = visit(&rules, &mut blue);
+    assert_eq!(blue.owner(0), Some(RED));
+    let flagged = events
+        .iter()
+        .find(|e| matches!(e.kind, AdventureEventKind::ObjectFlagged { .. }))
+        .unwrap();
+    assert_eq!(flagged.seen_by, Viewers::NONE.with(RED).with(BLUE));
+}
+
+// covers: ADV-OWN-005, HER-ADV-009
+#[test]
+fn each_lighthouse_its_owner_holds_adds_its_points_to_the_sea_s_maximum() {
+    let rules = rules();
+    // Red's hero at (0, 7) beside an empty boat at (1, 7); red holds two Lighthouses, blue one.
+    let mut rows = GRASS_ROWS.to_vec();
+    rows[7] = "gb~~~~~~~~~~~~~g";
+    let objects = vec![
+        owned(&rules, 5, 0, "t:lighthouse", 0),
+        owned(&rules, 7, 0, "t:lighthouse", 0),
+        owned(&rules, 9, 0, "t:lighthouse", 1),
+        owned(&rules, 11, 0, "t:sawmill", 0),
+    ];
+    let mut s = started(&rules, &setup(&rows, objects)).unwrap();
+    assert_eq!(s.lighthouse_points(&rules.1, RED), 1000);
+    assert_eq!(s.lighthouse_points(&rules.1, BLUE), 500);
+    assert_eq!(s.lighthouse_points(&rules.1, PlayerId::new(2)), 0);
+    // On land they count for nothing.
+    let land = s.hero(HERO).unwrap().max_movement;
+    assert!(land < 1500, "{land}");
+    // A boarding takes the sea's maximum with them; so does every turn start in the boat.
+    let board = AdventureCommand::MoveHero {
+        hero: HERO,
+        path: vec![Pos::new(1, 7, 0)],
+    };
+    s.apply(&rules.0, &rules.1, &[], RED, &board, &mut Vec::new())
+        .unwrap();
+    assert_eq!(s.hero(HERO).unwrap().boat, Some(0));
+    assert_eq!(s.hero(HERO).unwrap().max_movement, 1500 + 1000);
+    s.start_turn(&rules.0, &rules.1, &[], RED);
+    let hero = s.hero(HERO).unwrap();
+    assert_eq!((hero.movement, hero.max_movement), (2500, 2500));
+    // Without details the table's first entry and the Lighthouses' points.
+    assert_eq!(crate::sea_day_points(&rules.0, &rules.1, None, 700), 2200);
+    // A map without ownable objects: none.
+    let plain = started(&rules, &setup(&rows, vec![])).unwrap();
+    assert_eq!(plain.lighthouse_points(&rules.1, RED), 0);
+}

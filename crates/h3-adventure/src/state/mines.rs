@@ -1,8 +1,9 @@
-//! The flags and the mines' visits (ADV-OWN-001, ADV-MIN-002; E08 T84a; increment 9's design note
-//! §7, §13; survey `E08-economy.md` §2.3, §2.4, §3): a visit flags a neutral object or another
-//! team's for its visitor's owner, revealing around its entrance; an own mine opens its Leave
-//! Guards dialog, an ally's does nothing, another's guards are asked, then fought, and a win
-//! flags it. The Lighthouses', Shipyards' and the weekly objects' visits come with T84b.
+//! The flags and the mines' and Lighthouses' visits (ADV-OWN-001, ADV-MIN-002, ADV-OWN-005; E08
+//! T84a, T84b1; increment 9's design note §7, §13; survey `E08-economy.md` §2.3, §2.4, §3, §4): a
+//! visit flags a neutral object or another team's for its visitor's owner, revealing around its
+//! entrance; an own mine opens its Leave Guards dialog, an ally's does nothing, another's guards
+//! are asked, then fought, and a win flags it; a Lighthouse is flagged unless its team's. The
+//! Shipyards' visits come with T84b2.
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -123,6 +124,30 @@ impl AdventureState {
                 ..AdventureOutcome::default()
             },
             _ => self.fight_for_mine(rules, (player, hero), (index, object_type), sink),
+        }
+    }
+
+    /// The visit of the Lighthouse at object index `index`, of type `object_type`, by `player`'s
+    /// hero (ADV-OWN-001, ADV-OWN-005; E08 T84b1; increment 9's design note §7; survey
+    /// `E08-economy.md` §4, the original's `visit_object` case 42, 0x4A9479): one of the visitor's
+    /// team does nothing (VCMI: "revisiting owned Lighthouse is a no-op"); a neutral one or
+    /// another team's is flagged for the visitor's owner ([`Self::flag`]), no guards, no question.
+    /// Its points count from the next sea maximum one of its owner's heroes takes
+    /// ([`Self::lighthouse_points`]: a turn start in a boat, a boarding), not for a hero already
+    /// at sea today.
+    // rule: ADV-OWN-001, ADV-OWN-005
+    pub(super) fn visit_lighthouse<S: Sink>(
+        &mut self,
+        rules: (&Ruleset, &AdventureRuleset),
+        player: PlayerId,
+        object: (usize, ObjectTypeId),
+        sink: &mut S,
+    ) {
+        if !self
+            .owner(object.0)
+            .is_some_and(|owner| allied(owner, player))
+        {
+            self.flag(rules, object, player, sink);
         }
     }
 

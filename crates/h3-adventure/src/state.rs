@@ -95,6 +95,7 @@ mod piles;
 mod records;
 mod rewards;
 mod visits;
+mod weekly;
 
 pub use boats::Boat;
 use boats::Boats;
@@ -1227,9 +1228,16 @@ impl AdventureState {
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
     ) {
+        let lighthouses: Vec<u32> = (0..self.players)
+            .map(|p| self.lighthouse_points(part, PlayerId::new(p)))
+            .collect();
         for hero in &mut self.heroes {
             let details = details_of(heroes, hero.id);
-            hero.max_movement = day_maximum(core, part, details, hero);
+            let lights = lighthouses
+                .get(usize::from(hero.owner.raw()))
+                .copied()
+                .unwrap_or(0);
+            hero.max_movement = day_maximum(core, part, details, hero, lights);
             hero.movement = hero.max_movement;
         }
         self.reveal_around_heroes(core, part, heroes);
@@ -1326,9 +1334,10 @@ impl AdventureState {
         heroes: &[Arc<HeroDetails>],
         player: PlayerId,
     ) {
+        let lighthouses = self.lighthouse_points(part, player);
         for hero in self.heroes.iter_mut().filter(|h| h.owner == player) {
             let details = details_of(heroes, hero.id);
-            hero.max_movement = day_maximum(core, part, details, hero);
+            hero.max_movement = day_maximum(core, part, details, hero, lighthouses);
             hero.movement = hero.max_movement;
         }
     }
@@ -1977,7 +1986,8 @@ impl AdventureState {
     /// message (the Ocean Bottle, ADV-PIK-017; the original's 0x4A9AFA, survey `E08-sea.md`
     /// §8.5): read by the visitor's owner alone ([`AdventureEventKind::MessageRead`]; a computer's
     /// hero as a human's, `ADV-QUIRK-30` not reproduced), then, when it leaves, taken off the map;
-    /// nothing given, no question.
+    /// nothing given, no question. Since E08 T84a a mine ([`Self::visit_mine`]), since T84b1 a
+    /// Lighthouse ([`Self::visit_lighthouse`]) and a weekly object ([`Self::visit_weekly`]).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017
     fn visit<S: Sink>(
@@ -2047,6 +2057,10 @@ impl AdventureState {
             }
             Effect::Mine => {
                 outcome = self.visit_mine((core, rules.1), (player, hero), object, sink);
+            }
+            Effect::Lighthouse => self.visit_lighthouse((core, rules.1), player, object, sink),
+            Effect::Weekly { own_mark } => {
+                outcome = self.visit_weekly(player, object, own_mark, sink);
             }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
