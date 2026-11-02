@@ -224,6 +224,7 @@ fn a_boat_offer_stands_while_its_tile_is_free() {
         ..offer.clone()
     };
     assert!(!s.offer_stands(&elsewhere));
+    assert_eq!(accept(&rules, &mut s, &elsewhere), []);
 }
 
 // covers: ADV-SHY-003
@@ -233,8 +234,9 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     let (core, part) = (&rules.0, &rules.1);
     let ty = shipyard(&rules);
     let windmill = part.object_type_by_key("t:windmill").unwrap();
+    let sawmill = part.object_type_by_key("t:sawmill").unwrap();
     // Red's at the entrance with its tile; a neutral one red sees; blue's beyond red's sight,
-    // without a tile; red's at (8, 1) without a tile.
+    // without a tile; red's at (8, 1) without a tile; red's sawmill, ownable but no Shipyard.
     let (neutral, blues, landlocked) = (Pos::new(2, 4, 0), Pos::new(13, 7, 0), Pos::new(8, 1, 0));
     let objects = vec![
         owned(&rules, 2, 7, "t:shipyard", 0),
@@ -242,6 +244,7 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
         owned(&rules, 13, 7, "t:shipyard", 1),
         owned(&rules, 8, 1, "t:shipyard", 0),
         object(&rules, 6, 4, "t:windmill"),
+        owned(&rules, 4, 4, "t:sawmill", 0),
     ];
     let mut s = started(&rules, &setup(&rows(false), objects)).unwrap();
     let price = |player, object_type, anchor| s.boat_price(part, player, object_type, anchor);
@@ -251,6 +254,7 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     for (object_type, anchor) in [
         (ty, Pos::new(3, 7, 0)),
         (windmill, Pos::new(6, 4, 0)),
+        (sawmill, Pos::new(4, 4, 0)),
         (ty, blues),
     ] {
         assert_eq!(

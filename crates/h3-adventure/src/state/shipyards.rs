@@ -17,10 +17,10 @@ use crate::setup::Pos;
 
 /// The price and boat type of a Shipyard's type, if `object_type` is one.
 fn shipyard(part: &AdventureRuleset, object_type: ObjectTypeId) -> Option<(&Resources, u8)> {
-    match &part.object_type(object_type)?.kind {
-        ObjectKind::Shipyard {
+    match part.object_type(object_type).map(|ty| &ty.kind) {
+        Some(ObjectKind::Shipyard {
             price, boat_type, ..
-        } => Some((price, *boat_type)),
+        }) => Some((price, *boat_type)),
         _ => None,
     }
 }
@@ -173,10 +173,11 @@ impl AdventureState {
     ) -> impl Iterator<Item = (ObjectTypeId, Pos, &'p Resources)> {
         self.map.ownables().iter().filter_map(move |&index| {
             let object = self.object_at(index);
-            let object_type = object.object_type?;
-            self.check_shipyard(part, player, (index, object_type))
-                .ok()
-                .map(|price| (object_type, object.anchor, price))
+            object.object_type.and_then(|object_type| {
+                self.check_shipyard(part, player, (index, object_type))
+                    .ok()
+                    .map(|price| (object_type, object.anchor, price))
+            })
         })
     }
 

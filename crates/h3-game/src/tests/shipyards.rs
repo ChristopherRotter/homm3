@@ -112,6 +112,10 @@ fn a_shipyard_s_visit_offers_its_boat_which_the_game_builds_for_its_price() {
         legal_commands(&state, &rules, Actor::Player(RED)),
         [ACCEPT, DECLINE]
     );
+    // The open offer is hashed with its price: declined, the state hashes otherwise.
+    let mut declined = state.clone();
+    play(&mut declined, &rules, RED, DECLINE).unwrap();
+    assert_ne!(state.state_hash(), declined.state_hash());
     // Accepted: the price paid, then the boat built, seen by both players (each sees the tile).
     let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
     assert_eq!(
