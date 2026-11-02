@@ -1,0 +1,68 @@
+commands = [
+    "0 move 1 4,9,0 5,8,0 6,7,0 7,6,0 8,5,0",
+    "0 move 1 7,6,0 8,6,0",
+    "0 move 1 8,7,0 8,6,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 1 8,7,0 8,6,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 1 8,7,0 8,6,0",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x8f3bbe44539ff380",
+    "0x7823e59af56fb058",
+    "0xaaaaa3cf1cd72a1a",
+    "0x5c54444faad93136",
+]
+
+[replay]
+format = 8
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x962e87e7a01056f6"
+adventure_ruleset_hash = "0x67e6f0786f22d8f8"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 22
+adventure_state_hash_version = 19
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-economy-36.h3m"
+hash = "0x0d7ea287c88b7469"
+import_version = 15
+
+[result]
+day = 9
+final_hash = "0xb2b9cdadf032ce7a"
