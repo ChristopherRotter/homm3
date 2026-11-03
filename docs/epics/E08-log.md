@@ -11283,3 +11283,8 @@ ready.
 
 **Docs:** decisions 240 to 243 in the epic; ADV-Q43 in `QUESTIONS-ANSWERED.md`; both drafts'
 status accepted; T88b2's entry to `QUEUE-ARCHIVE.md`, T89 queued.
+
+**Verify:** no code changed. The scoped `cargo xtask verify --scope adventure --summary
+--with-original-data` passed every step it runs (deny and ffi-smoke skipped by the scope; the VM
+restarted during the setup's baseline, so the scoped run stands in). CI's full verify on the pull
+request is the record.
