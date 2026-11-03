@@ -26,12 +26,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   0.972 of the time (0.044 nats); T16's student reached 0.531, `e25-clone-1` #2 0.270 (PPO
   leaves the teacher): the gap is the network's. **T20 done** (the user's GPU, 16 M): agreement
   0.576 (+0.045 for four times the samples), the student alone 0.411 against both system actors
-  and +0.251 on the neutral set; its `students/mlp.pt` on the user's machine for T22. **Next:**
-  T21, the imitation loss (a sandbox build, a fresh session), then T22's A/B on the user's
-  machine.
-- **Open pull requests:** #687 (`claude/quirky-cerf-26fspy`: T20; restarted from `master` once
-  #682, T17 to T19, merged).
-  Merged: #651 (T13 to T15), #657 (T16).
+  and +0.251 on the neutral set; its `students/mlp.pt` on the user's machine for T22. **T21
+  done:** `[ppo] imitation_coef` and `imitation_horizon` (0 the default, `master`'s training bit
+  for bit); the teacher's calls change no episode; the CPU check held agreement (−0.015 over
+  0.4 M of PPO, −0.044 without) and kept the entropy up, the teacher 14 % of the sandbox's
+  time. **Next:** T22's A/B on the user's machine (`e25-neutral.toml` and `e25-imitate.toml`
+  from T20's student; the weight 0.5 and horizon 10 M a proposal, fixed when prepared).
+- **Open pull requests:** the T21 one (`claude/fervent-lamport-le7amv`).
+  Merged: #682 (T17 to T19), #687 (T20).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -44,6 +46,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-03 — E25 T21
+
+- #687 merged; the branch started from `master`. The setup's full baseline was stopped (CI is the
+  record), the scoped verify ran instead. `uv sync --group train`'s cuDNN download stalled at
+  about 70 KB/s for over an hour; killed and restarted, it finished in 9 s from uv's cache (the
+  trap in `TRAPS.md`). T21 built and its CPU check run in the sandbox (the clone 5 minutes, each
+  PPO run 5 to 6, T19's tool 38 s); the VM restarted once, nothing lost.
 
 ### 2026-11-03 — E25 T17 to T20
 
@@ -61,12 +71,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   clone mode, `configs/e25-neutral.toml`) and run on the sandbox's CPU at the user's 4 M
   (40 minutes; `E25-log.md` T16). The setup's baseline ran only the light gates (`master`'s
   code verified by CI); `uv sync --group train` took about 3 minutes.
-
-### 2026-11-02 — E25 T13
-
-- #646 merged; the branch started from `master`. T13 with the user (AI-Q14): increment 5's
-  decisions and tasks T14 to T18 in the epic and the queue (`E25-log.md` T13). Found: the
-  adventure env has no system actor to switch (its neutral seat is the caller's; E13's). T14
-  built in the sandbox (the bots' tables regenerated, the neutral bench re-baselined); the
-  setup's full baseline verify was stopped (CI is the record), the scoped verify ran instead.
-  T15 on the uploaded `best.pt` (sandbox CPU, 3 minutes).
