@@ -1902,6 +1902,46 @@ impl<'g> Battle<'g> {
         self.tell(at, &text, (Style::Popup, None), Asked::Held)
     }
 
+    /// Shows a side's hero's info window while the right button pressed at `at` over the hero's
+    /// rectangle at `point` is held (E17 M6 T3b1, design §12.8; `battle_right_click` 0x4769C0's
+    /// "hexes" 0xFC and 0xFD): at the side's place, the hero as the turn's observation shows it
+    /// ([`h3_view::hero_info`]), held as the right button's popups ([`Asked::Held`]: the cursor
+    /// hidden, every input but its ends dropped, nothing posted after); nothing over a side
+    /// without a hero. Whether it opened (not without the text tables).
+    pub fn hero_info(&mut self, at: u32, point: [i32; 2]) -> bool {
+        if self.stats.is_some()
+            || self.message.is_some()
+            || self.book.is_some()
+            || self.aiming.is_some()
+            || !self.takes(at)
+        {
+            return false;
+        }
+        let ground = self.ground;
+        let Some(writer) = ground.writer.as_ref() else {
+            return false;
+        };
+        let keys = &self.record.header.manifest.keys.hero_types;
+        let portrait = |hero_type: u16| crate::results::portrait(keys, &ground.tables, hero_type);
+        let window = self.taken(at, |field| {
+            let observation = field.observation;
+            let side = h3_view::hero_info::at(&ground.layout, observation, point)?;
+            let info = h3_view::hero_info::Info::of(observation, side, &portrait)?;
+            let layout = &ground.layout.hero_info;
+            Some(h3_view::hero_info::window(
+                layout,
+                &writer.catalogue,
+                side,
+                &info,
+            ))
+        });
+        let Some(window) = window else {
+            return false;
+        };
+        self.message = Some((h3_view::message::Open::new(window), at, Asked::Held));
+        true
+    }
+
     /// Whether the right button's popup over the battle is held (E17 M6 T2b2: a turret's info; T3a:
     /// a control's help; `popup_run_held` 0x602A40: the cursor hidden, every input but its ends
     /// dropped).

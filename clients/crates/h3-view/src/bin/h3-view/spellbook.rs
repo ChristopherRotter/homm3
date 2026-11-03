@@ -258,6 +258,9 @@ pub struct Boxes<'a> {
     /// The help of the panel's control the right button held at a point shows (E17 M6 T3a; none:
     /// no control there).
     pub help: &'a dyn Fn([i32; 2]) -> Option<String>,
+    /// The hero's info window the right button held at a point shows (E17 M6 T3b1; none: no
+    /// side's hero there).
+    pub hero_info: &'a dyn Fn([i32; 2]) -> Option<MessageBox>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -558,7 +561,8 @@ pub fn still(
             }
             // The right button held over the battle (E17 M6 T2b1, design §12.5): the stack on
             // the hex there shows its stats dialog while held, through the frames; a turret its
-            // info (T2b2), a panel's control its help (T3a, §12.7).
+            // info (T2b2), a panel's control its help (T3a, §12.7), a hero its info window
+            // (T3b1, §12.8).
             "right" if asking.is_none() && result.is_none() && still.open.is_none() => {
                 let to = point(arg)?;
                 moved(&mut still, &mut memory, to);
@@ -566,6 +570,12 @@ pub fn still(
                 still.arrow = false;
                 if let Some(open) = boxes.and_then(|b| (b.held)(to, &mut stats_memory)) {
                     still.stats = Some(open);
+                } else if let Some(window) = boxes.and_then(|b| (b.hero_info)(to)) {
+                    asking = Some(Asking {
+                        open: h3_view::message::Open::new(window),
+                        asked: Asked::Held,
+                    });
+                    still.held = true;
                 } else if let Some(text) =
                     boxes.and_then(|b| (b.turret)(to, true).or_else(|| (b.help)(to)))
                 {
@@ -963,6 +973,7 @@ pub(crate) mod tests {
             held: &|_, _| None,
             turret: &|_, _| None,
             help: &|_| None,
+            hero_info: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -1021,6 +1032,7 @@ pub(crate) mod tests {
             held: &|_, _| None,
             turret: &turret,
             help: &help,
+            hero_info: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -1075,6 +1087,7 @@ pub(crate) mod tests {
             held: &|_, _| None,
             turret: &|_, _| None,
             help: &|_| None,
+            hero_info: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {

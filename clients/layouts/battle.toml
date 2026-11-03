@@ -562,3 +562,162 @@ button_back = "Box64x30.pcx"
 ok = "iOKAY.def"
 cast_back = "Box46x32.pcx"
 cast = "icm005.def"
+
+# A hero's info window (E17 M6 T3b1, design §12.8; `crate::hero_info` fills it):
+# `army_info_hero_create` 0x46C370 builds one per side, 78 x 202 (`combat_dialog_create`: the
+# attacker's at (1, 135) into the battle dialog's +0x74, 0x4724A9; the defender's at (721, 135),
+# +0x78, 0x4724E2), its items hidden until `army_info_show` 0x46CDF0; `army_info_hero_set`
+# 0x46CC10 fills it. No shadow. The ids are the executable's (0x834 to 0x842).
+[hero_info]
+places = [[1, 135], [721, 135]]
+
+[hero_info.dialog]
+place = [0, 0]
+
+# The background (0x46C454), in the hero's player's colours (0x46CC10).
+[[hero_info.dialog.items]]
+kind = "picture"
+id = 2100
+picture = "CHrPop.pcx"
+at = [0, 0]
+size = [78, 202]
+
+# The portrait (0x46C4A6): no picture until the fill gives the hero's.
+[[hero_info.dialog.items]]
+kind = "picture"
+id = 2101
+picture = ""
+at = [10, 6]
+size = [58, 64]
+
+# The four skills (0x46C4DE to 0x46C7DF), a row each 12 below the last from y 75: the label
+# ("%s:" of GENRLTXT 381 to 384), alignment 0, and in the same 60 x 12 box the value, alignment 2,
+# both `tiny.fnt` colour 4.
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2102
+at = [9, 75]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2103
+at = [9, 75]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 2
+
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2104
+at = [9, 87]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2105
+at = [9, 87]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 2
+
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2106
+at = [9, 99]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2107
+at = [9, 99]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 2
+
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2108
+at = [9, 111]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2109
+at = [9, 111]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 2
+
+# Morale (0x46C7E5, 0x46C86B): the label ("%s:" of GENRLTXT 385) in colour 1, its picture
+# `imrls.def` (22 x 12, flags 0x10) right of it, its frame the morale + 3.
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2110
+at = [9, 131]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 0
+
+[[hero_info.dialog.items]]
+kind = "def"
+id = 2111
+def = "imrls.def"
+at = [47, 131]
+size = [22, 12]
+
+# Luck (0x46C8AF, 0x46C935): as morale's a row lower, GENRLTXT 386 and `ilcks.def`.
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2112
+at = [9, 143]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 0
+
+[[hero_info.dialog.items]]
+kind = "def"
+id = 2113
+def = "ilcks.def"
+at = [47, 143]
+size = [22, 12]
+
+# The spell points (0x46C98A): "%s\n%d/%d" (GENRLTXT 388, the points, the most), `tiny.fnt` colour
+# 4, alignment 5 (centred both ways) in 64 x 30.
+[[hero_info.dialog.items]]
+kind = "label"
+id = 2114
+at = [7, 165]
+size = [64, 30]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 5

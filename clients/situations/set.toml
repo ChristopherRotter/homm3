@@ -1703,3 +1703,35 @@ actions = ["key:Return", "right:300,578"]
 at = 100
 differing = 0
 why = "exact: \"Phase Wait\", the narrowest popup (E17 M6 T3a)"
+
+# E17 M6 T3b1: the right button held over a hero (`battle_right_click` 0x4769C0's "hexes" 0xFC and
+# 0xFD; design §12.8): its info window at its side's place (`army_info_show` 0x46CDF0), held by
+# `popup_run_held` with no popup (the cursor hidden), the status line the move's hint. `hero-info`:
+# the attacker's Orrin in Red's colours; `hero-info-enemy`: the defender's Crag Hack in Blue's,
+# defense 0. Both heroes' morale and luck 0 (hero-info.toml; T3b2 the others).
+[[situation]]
+id = "hero-info"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["right:30,70"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Orrin's window at (1, 135), the cursor hidden (E17 M6 T3b1)"
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: held, the battle behind still (E17 M6 T3b1)"
+
+[[situation]]
+id = "hero-info-enemy"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["right:770,70"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Crag Hack's window at (721, 135) in Blue's colours (E17 M6 T3b1)"

@@ -18,21 +18,21 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T3b — the heroes' info windows
+### E17 M6 T3b2 — the heroes' info windows' morale and luck
 
-- **Scope:** the right button over either hero (`battle_right_click`'s 0xFD and 0xFC, the
-  defender's and the attacker's: 0x46CC10 then the window's show 0x46CDF0 on the battle dialog's
-  +0x78 or +0x74, `popup_run_held` with none, then hidden again unless "Combat Army Info Level"
-  is set): the 78 × 202 window (constructor 0x46C370, 734 instructions, at (1, 135) and
-  (721, 135); `CHrPop.pcx` in the hero's player's colours, the portrait (the hero table's +0x34),
-  attack and defense (0 to 99), power and knowledge (1 to 99) under "%s:" labels in `tiny.fnt`,
-  morale and luck by `imrls.def` and `ilcks.def` (`hero_morale`, `hero_luck` with the call's
-  other two arguments, +0x53CC and +0x53C0 = 2 for 0xFD, and 1; + 3), the spell points "%s\n%d/%d" (a GENRLTXT label, the current, knowledge × 10 ×
-  the intelligence factor)), read and drawn; the counts from the observation's `HeroView` (its
-  `max_mana` the maximum), the hero's morale and luck as far as it tells (CLT-Q40's requests);
-  recorded (either side's hero, one with morale or luck not 0). T4's army info option reuses
-  the window.
-- **Acceptance:** as T2a2b1's. **Depends on:** T3a (done 2026-11-03, design §12.7).
+- **Scope:** T3b cut in two by the user (2026-11-03; T3b1 done, design §12.8: the window, its
+  counts, both stills at morale and luck 0). The window's two pictures: `imrls.def` and
+  `ilcks.def`, frame `hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 + 3, called with the
+  hero, the other side's hero (+0x53CC for the defender's, +0x53D0 for the attacker's) and
+  +0x53C0 = 2, then 1 (`army_info_hero_set` 0x46CC10); both read (not yet: 0x2A9 and 0x2E8
+  bytes), the value derived from what the observation tells (the stats dialog's `Account`:
+  the army's alignments, undead, the other army's creatures, the spells; CLT-Q40), the hero's
+  lists (Leadership, Luck, the artifacts, the visits, the grail) once the battle lane's carry
+  lands (this lane's inbox), each line not derivable listed; `h3_view::hero_info::Info`'s
+  `morale` and `luck` filled (0 until then); recorded: a hero whose morale or luck is not 0
+  (an army of one town, three towns, undead; a scenario's `effects` for Leadership or Luck).
+  T4's army info option reuses the window.
+- **Acceptance:** as T2a2b1's. **Depends on:** T3b1 (done 2026-11-03, design §12.8).
   **Status:** ready.
 
 ### E17 M6 T4 — the combat options dialog
