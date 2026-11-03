@@ -87,6 +87,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 244. **T89 in two at the code's seam** (the user; recommended): **T89a** the writer's classes 17, 20, 78 and 216 to 218 and the map's teams, the spec's fields (`h3-experiment`, `cross-lane` with the user's consent, as T78's), their tests and `docs/experiments/README.md`; **T89b** the specs `E08-batch-10a`, `-10b` and their templates, each walk priced, a fresh review against survey §13. Not chosen: T89 whole (as T78).
 245. **The teams as a field of the writer's `Map`** (`teams: Option<Teams>`, the model's type; as decision 206's `events`): one line in each literal `Map` of the client, map-client and AI lanes (`h3-view`'s situation, `h3-map-view`'s situation and art test, `h3-cli`'s AI tests). Not chosen: the teams in `Extras` (the map client's) with `write_with`; no teams, E10-6 scored from the reading.
 
+### Decisions at T89b's start (2026-11-03, user)
+
+246. **T89b whole** (the user; recommended, measured against T78's record: about 800 lines of TOML for 9 rows against batch E9's 1 000 for 13): both specs, one review over both, one pull request, with the batch's row in `docs/experiments/README.md`'s table (a battle-owned path), `cross-lane` with the user's consent (as T78 and T89a). Not chosen: T89b by batch (10a, then 10b); the row through the battle lane's inbox.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -96,7 +100,7 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
   - **T88b2 The game side and the cut.** Done (2026-11-03, whole, decision 240; `adventure/e08-t88b2`): `E08-design.md` part C (the guards' battle, the hire dialog GAM-DEC-008, the env, replays, fixtures, properties, benchmarks, versions, batch E10, the cut and the exit criteria, risks); the draft `adr-drafts/0017-increment-10.md`; its checkpoint ADV-Q43 (decisions 241–243).
 - **T89 Batch E10's maps and specs** (round 2; design §16), in two at the code's seam (decision 244):
   - **T89a The writer's classes and the spec's fields.** Done (2026-11-03, `adventure/e08-t89a`, `cross-lane`; decision 245): `h3_map::writer` writes the dwellings 17 and 20 with their owners, the random dwellings 216 to 218 with their sets and levels (`OwnedBody::RandomDwelling`), the Refugee Camp 78 as a plain object and `Map::teams`; `h3-experiment`'s `[[map.ownable]]` takes them (`factions`, `levels`), `[[map.object]]` the camp, `[map] teams`; no version moved.
-  - **T89b The specs.** Queued: `E08-batch-10a`, `-10b`, their templates, the walks priced, the review.
+  - **T89b The specs.** Done (2026-11-03, whole, decision 246; `adventure/e08-t89b`, `cross-lane`: the README's row): `experiments/specs/E08-batch-10a.toml` (E10-1, E10-3 to E10-7, two days; Red and Blue allied, Tan a walled-in computer enemy) and `-10b.toml` (E10-8 to E10-10, eight days, a town each), their templates, every walk priced, a fresh review (seven findings, all taken); no version moved.
 - Rounds 3 to 8 (T90 to T97) as design §17 lists them, each queued when the one before is done.
 
 ## Later increments (sketch)

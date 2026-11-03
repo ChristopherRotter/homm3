@@ -1,0 +1,216 @@
+# Experiment batch E10b (E08 T89b; decisions 237, 242, 244): rows E10-8 to E10-10 of increment
+# 10's plan (survey docs/rules/surveys/E08-dwellings.md §13; docs/epics/E08-design.md §16), the
+# week's refill, a Refugee Camp and what a player sees of dwellings, in SoD on Easy, hot seat, eight
+# days. Batch E10a (`E08-batch-10a`) is the visits. Build: docs/experiments/README.md. Predictions
+# are for the agent who evaluates the results; the template never shows them.
+#
+# | row    | settles                                     | the reading (faithful)                       | the other source(s)                   |
+# | E10-8  | §6.1: the week's refill                      | every count set to the growth (not added),   | consensus (VCMI's `accumulate` false; |
+# |        |                                             | owned or not; the guards back, the owner's   | the wiki)                             |
+# |        |                                             | too; no week's kind                          |                                       |
+# | E10-9  | §7: a Refugee Camp                           | a creature of levels 1–7 with its growth;    | consensus                             |
+# |        |                                             | the rest on day 2, then deserted; a new draw |                                       |
+# |        |                                             | on day 8; no flag, no free creatures         |                                       |
+# | E10-10 | §9: the hint and the popup                   | a dwelling's name, and its owner when owned; | VCMI: the camp's creature to the      |
+# |        |                                             | a camp's name only                           | player who visited it                 |
+#
+# **A town each** (the lane's TRAPS.md): a player without a town is defeated seven days after (the
+# original's countdown, player +0x3D), and the run reaches day 8. Red has a Castle at (8, 64), Blue
+# a Stronghold at (30, 66), each with the editor's standard buildings, far from every tile read; no
+# hero enters them. Owning the Barracks raises the Castle's Swordsmen growth (E09's), which is not
+# read here.
+#
+# **The treasuries** are Easy's (30 000 gold, 30 wood and ore, 15 of each other resource) and the
+# towns' income: every purchase below fits them (a Refugee Camp's dearest creatures, level 7, cost
+# at most 5 000 gold and 3 of a resource, with a growth of 1).
+#
+# **The pictures** (`Objects.txt`; docs/experiments/README.md, "Increment 10's objects"): the Dragon
+# Cliffs, the Golem Factory, the Barracks and the Refugee Camp block `at` and the tile west of it
+# and are entered at `at`, from a tile beside it or below it, never from above: every visit below
+# steps up from the tile under the entrance.
+#
+# **The points.** Angels and Archangels 2 000 a day (packs/base/adventure.toml `land_points`); a
+# step 100 on grass, 141 diagonally; each day's walk below is within its points with a margin (each
+# leg priced by a throwaway search over the written map; a target is within the explored tiles at
+# its click).
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or a resource. Nothing below depends on the exact treasury; anything the spec does not
+# give goes under "anything odd".
+
+[map]
+name = "E08 batch E10b"
+description = "Engine-generated experiment map (E08, batch E10b): dwellings through a week: the week's refill of counts and guards, a Refugee Camp, what a player sees of dwellings. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-10b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of Red's turn on days 2, 7 and 8 (saves 2 to 4).",
+    "A hero standing on an object's entrance hides the object's word: every visit below ends with a step off the entrance before the reads.",
+    "Most records are the game's memory: the date (game +0x1F63E day of the week, +0x1F640 week, +0x1F642 month), the dwelling records (game +0x4E39C, 0x5C bytes each: four creature types +0x4 and counts +0x14, the guards' seven types +0x1C and counts +0x38, the entrance +0x54, the owner +0x57; survey §2.1), a Refugee Camp's tile words (the creature +0x22, the count +0x0 of its entrance tile), the hire dialog (the most +0xAC, the amount +0xB8, whether it is open), the players' treasuries, a hero's army, the status bar's hint and the right-click popup's text. The capture harness reads them (`clients/capture/batches/E08-batch-10b.toml`, E08 T90). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). A visit: walk to the tile named, then click the object's entrance from there (twice).",
+    "Each battle by auto combat; a tactics phase is ended at once (its Start button). A level-up's dialog after a battle: take the left skill.",
+    "The hire dialog: **Max** sets the most, the slider sets an amount, **Recruit** buys the amount set, **Close** (the dialog's exit) ends it. The most (+0xAC) is memory-only; by hand note the dialog's Available and the amount Max sets.",
+    "Order: day 1, Red's turn: the first reads (E10-8, E10-9); E10-8; E10-9; E10-10's Red reads; end the turn. Blue's turn: E10-10; end the turn. Day 2, Red's turn: E10-8's reads, E10-9; end the turn; Blue: end the turn. Days 3 to 6: end the turns. Day 7, Red's turn: E10-8's and E10-9's reads; end the turns. Day 8, Red's turn: the week's message, E10-8's reads, E10-9. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- E10-8: a neutral Dragon Cliffs Red flags on day 1, a neutral Golem Factory nobody visits, Red's
+# Barracks; E10-9: a Refugee Camp -------------------------------------------------------------------
+
+[[map.ownable]]
+picture = "AVGgdrg0"
+at = [10, 10]
+
+[[map.ownable]]
+picture = "AVGgolm0"
+at = [13, 10]
+
+[[map.ownable]]
+picture = "AVGswor0"
+at = [16, 10]
+owner = "red"
+
+[[map.object]]
+picture = "AVGrefg0"
+at = [19, 10]
+
+# --- The players' towns (past the seventh day), far from every tile read ----------------------------
+
+[[map.town]]
+entrance = [8, 64]
+faction = "castle"
+owner = "red"
+
+[[map.town]]
+entrance = [30, 66]
+faction = "stronghold"
+owner = "blue"
+
+[[encounter]]
+id = "E10-8"
+title = "The week's refill: a dwelling Red flagged, one nobody visited, Red's Barracks bought from"
+questions = ["ADV-DWL-003", "GAM-CAL-002", "ADV-DWL-002"]
+procedure = [
+    "Three dwellings stand on row 10: the neutral Dragon Cliffs D (entrance (10, 10); it covers (9, 10) and (10, 10)), the neutral Golem Factory F (entrance (13, 10); (12, 10) and (13, 10)), which no hero visits, and Red's Barracks S (entrance (16, 10); (15, 10) and (16, 10)). Day 1, Red's turn, before any move: read the three records (owner, creatures and counts, guards) and the date.",
+    "E10-8 stands at (11, 13) with ten Archangels. Walk to (10, 11), then click D's entrance (10, 10). Note the question; answer yes. Auto combat. The next question (to recruit): answer **no**. Walk to (10, 13). Read D's record.",
+    "E10-8b stands at (16, 13) with one Angel. Walk to (16, 11), then click S's entrance (16, 10). The question: yes. In the dialog set the amount to **2** (not Max) and click Recruit. Walk to (16, 13). Read E10-8b's army, Red's gold and S's record.",
+    "Day 2, day 7 and day 8, Red's turn, before any move: read the date and the three records. On day 8 note the week's message (its name) first.",
+]
+record = [
+    { table = ["dwelling", "owner", "creatures and counts", "guards (creature and count by slot)"], labels = ["D day 1 before", "F day 1 before", "S day 1 before", "D day 1 after its battle", "S day 1 after the purchase", "D day 2", "F day 2", "S day 2", "D day 7", "F day 7", "S day 7", "D day 8", "F day 8", "S day 8"] },
+    { field = "D's battle: the question's text; the defending stacks; the result" },
+    { field = "S's purchase: the most; E10-8b's army; Red's gold before and after" },
+    { field = "the date's words on days 1, 2, 7 and 8" },
+    { field = "day 8: the week's message (its name)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **Day 1** (survey §2.2, §4): D holds 1 Green Dragon with guards **3 Green Dragons**; F Stone 6,
+  Iron 6, Gold 3, Diamond 2 Golems with guards **9 Gold** and **6 Diamond Golems**; S (Red's) 4
+  Swordsmen, no guards (level 4). E10-8 beats D's guards (unsplit, the side unowned), D is flagged
+  for Red, the recruit question answered no: D Red's, 1 Green Dragon, **no guards**. S: the most 4
+  (min(4, Red's gold ÷ 300)); 2 bought for 600 gold: S's count **2**, E10-8b's army Angel 1 and
+  Swordsmen 2.
+- **Days 2 to 7**: nothing changes (the refill runs at a new week only, never on day 1 or the other
+  days): D 1 and no guards, F as on day 1, S 2. The date on day 7 (7, 1, 1).
+- **Day 8** (survey §6.1, `dwelling_week_refill` for **every** record, owned or not, before the
+  map's scan; the date (1, 2, 1)): each count **set** to its growth: **D 1** (not 2), **F 6, 6, 3,
+  2** (not 12, 12, 6, 4), **S 4** (not 6: the 2 left on day 1 are lost); the guards **replaced** by 3
+  × growth of each level-5+ creature: **D 3 Green Dragons again**, though Red owns it, **F 9 Gold
+  and 6 Diamond Golems** (not 18 and 12), S none. Whatever the week's creature (the message), it
+  reaches no external dwelling: S stays 4 in a Week of the Swordsman, D 1 in a Week of the Green
+  Dragon. The owners stay (D and S Red's, F neutral).
+- **VCMI** (`newTurn` on a week's first day: `accumulateWhenNeutral` and `accumulateWhenOwned`
+  false, then `updateGuards`) and **the wiki** ("the number of creatures cannot exceed the weekly
+  growth"; "the guards are renewed at the beginning of each week"): the same.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [11, 13]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+[[encounter.also]]
+type = "Ingham"
+specialty = "creature Monk"
+name = "E10-8b"
+at = [16, 13]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter]]
+id = "E10-9"
+title = "A Refugee Camp: its creature and count through a week"
+questions = ["ADV-RFG-001", "ADV-HIR-002", "ADV-MON-003"]
+procedure = [
+    "The Refugee Camp K stands on row 10 (entrance (19, 10); it covers (18, 10) and (19, 10)). Day 1, Red's turn, before any move: read K's tile words (the creature +0x22 and the count +0x0 of (19, 10)) and the map object's owner, if any.",
+    "E10-9 stands at (19, 13) with one Angel. Walk to (19, 11), then click K's entrance (19, 10). Note the question; answer yes. Note the dialog's most. If the count is 2 or more, set the amount to **1** and click Recruit; if it is 1, buy nothing. Close the dialog if it is still open. Walk to (19, 12). Read K's words, E10-9's army and Red's treasury; then right-click K (E10-10's Red line).",
+    "Day 2, Red's turn: read K's words. Click K's entrance (19, 10) from (19, 12) (a walk to (19, 11), then the click). The question: yes. Note the most; click Max, then Recruit; close the dialog if it is still open. Click (19, 11) (off the entrance), then K's entrance (19, 10) again: note the message. Walk to (19, 12); read K's words and E10-9's army.",
+    "Day 7, Red's turn: read K's words.",
+    "Day 8, Red's turn, after the week's message and before any move: read K's words. Walk to (19, 11), then click K's entrance (19, 10). Note the question; answer yes. Note the dialog's most; close it without buying. Walk to (19, 12).",
+]
+record = [
+    { table = ["when", "creature (+0x22)", "count (+0x0)"], labels = ["day 1 before", "day 1 after the purchase", "day 2 before", "day 2 after the purchases", "day 7", "day 8 before the visit"] },
+    { field = "day 1: K's owner (none?); the question's text; the dialog's most; what was bought; E10-9's army; Red's treasury" },
+    { field = "day 2: the question's text; the dialog's most; what Max and Recruit bought; the message of the second visit; E10-9's army" },
+    { field = "day 8: the question's text; the dialog's most" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §7, §6.2): no record, no owner, no guards. **Day 1:** the creature c drawn at
+  the new game as a random monster of levels 1 to 7 (`random_creature_by_level(0, 6)`: ids 0 to
+  144 of those levels, AB's and SoD's 132 to 137 left out, 122, 124, 126 and 128 of level −1 never),
+  the count **c's growth**. The visit asks ADVEVENT 112 "{Refugee Camp} Would you like to recruit
+  {c's plural}?"; yes: the hire dialog (§5) with c and its count, its most **the count** (Easy's
+  treasury pays for any c's whole growth); **no free creatures** even when c is of level 1, **no
+  flag**. One bought: the count **growth − 1**, written back to the tile's word at the close.
+- **Day 2:** the count still growth − 1 (the camp is drawn again only at a week); Max buys all of
+  it, the count **0**; the second visit says ADVEVENT 44 "{Refugee Camp} The camp is deserted.
+  Perhaps you should try next week." and opens nothing. Day 7: 0.
+- **Day 8:** a **new draw** at the week's scan: a creature c' of levels 1 to 7 (it may be c again,
+  about one in a hundred) and its growth; the question names c', the most its growth.
+- **VCMI** (`rollCreature`, the count = growth each week) and **the wiki**: the same rule; the wiki
+  also: no free first-level units, never Sharpshooters, Enchanters or the four AB dragons.
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+at = [19, 13]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter]]
+id = "E10-10"
+title = "What a player sees of dwellings and a Refugee Camp: the hint and the popup"
+questions = ["ADV-OWN-003"]
+procedure = [
+    "Day 1, Red's turn, after E10-9's purchase: right-click K's entrance (19, 10) and note the popup's text (Red has visited K this week).",
+    "Day 1, Blue's turn: E10-10 stands at (14, 12) with one Pikeman and never moves; it sees row 10 from (9, 10) to (19, 10). D is Red's now (E10-8), F neutral, S Red's, K a Refugee Camp. Hover the mouse over D's (10, 10), F's (13, 10), S's (16, 10) and K's (19, 10) tiles in turn and note the status bar's hint at each; then right-click each and note the popup's text.",
+]
+record = [
+    { field = "Red, day 1: K's popup" },
+    { table = ["object", "the hint (hover)", "the popup (right-click)"], labels = ["D (Red's, flagged on day 1)", "F (neutral)", "S (Red's at load)", "K (the camp)"] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §9; `map_hint` and `object_popup_text` cases 17 and 20): a dwelling shows its
+  name (`CrGen1`, `CrGen4` by subclass) and, owned, "Owned by red player" (ARRAYTXT 23): D
+  "**Dragon Cliffs**" with "**Owned by red player**", F "**Golem Factory**" alone, S "**Barracks**"
+  with "**Owned by red player**"; never a count or the guards. The camp has no case in either
+  switch: "**Refugee Camp**" only, for Blue and for Red alike, though Red visited it this week (its
+  creature only in the visit's question).
+- **VCMI** (`getPopupComponents`): a dwelling's creature types to everyone and its count to its
+  owner; a camp's creature and count to the player who visited it this week (Red's popup). The
+  engine follows the original (ADR-0016 point 6).
+"""
+[encounter.hero]
+type = "Loynis"
+specialty = "spell Prayer"
+owner = "blue"
+at = [14, 12]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
