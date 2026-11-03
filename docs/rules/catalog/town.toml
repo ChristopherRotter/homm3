@@ -115,3 +115,77 @@ numeric  = "integer"
   kind       = "design"
   ref        = "E09 decision 14 (the packs' records decide, the original's game version from its scenario dialog the recorded deviation); docs/epics/E09-design.md sections 6 and 15"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-CAP-001"
+title    = "A town's capture: the reveal for its new owner"
+context  = "town"
+status   = "implemented"
+summary  = "When a town changes owner (a capture, and each owned town at the start) its new owner sees the tiles within the part's `reveal_radius` (the base pack's 5) of the town, or within the largest `reveal` of a building ever built when larger (the Tower's Lookout Tower, 20); a building that reveals `all` (the Tower's Grail) shows every tile of every level, over any radius; a part without parameters reveals a radius of 0. The capture itself, the owner change and its reveal on the map, are E09 T8a's (design §11). E09 T6b (design §6): the reveal's radius, `h3_towns::reveal`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1; survey E09-towns.md section 8.3 step 8): town_change_owner (0x4C61E0) reveals for the new owner with reveal_disk (0x49D160) radius 5 around the gate, radius 20 for a Tower (faction 2) with the Lookout Tower (building 21), every tile of the surface and of the underground for a Tower with the Grail (26); town_setup calls it for every town at the start (the same radii as reveal_owned)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 9.5: CGTownInstance::onTownCaptured reveals the fog for the new owner at getSightRadius (a base setting and sight bonuses)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-CAP-002"
+title    = "The Capitol's limit: one per player after a capture"
+context  = "town"
+status   = "implemented"
+summary  = "After a capture, a town with a standing building of role `hall` 4 (the Capitol) whose new owner holds another town with a standing Capitol loses it: the Capitol leaves the ever-built set and the record's `capitol_demoted_to` (its hall-3 building, the City Hall) enters it, so that the City Hall stands; a neutral owner never loses it. The start never applies it, so a map may give a player several Capitols (survey §11.3). E09 T6b (design §6, §11): `h3_towns::capitol_limit`, written by the store's `Towns::apply_capitol_limit` (its caller the game's capture after the adventure's, E09 T8a)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1; survey E09-towns.md sections 8.1, 8.2, 8.4 and 11.3): capitol_limit (0x5BEC60, read whole), after town_change_owner: a town with the Capitol (13) in its built set whose owner has another town with the Capitol loses it, 13 leaving the built (+0x150) and every-built (+0x158) sets and the City Hall (12) entering the built one; a neutral owner skips it; its only callers are town_visit's capture paths (0x4AB1BA, 0x4AB363), town_setup never calls it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md sections 8.4, 9.5 and 11.5: CGTownInstance::setOwner calls removeCapitols, which razes a captured Capitol the same way, only for a change in play"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Halls (survey E09-towns.md section 11.5): a captured Capitol becomes a City Hall when the captor already holds one, the only downgrade of a building; a map may give a player two or more Capitols"
+  url        = "https://heroes.thelazy.net/index.php/Halls"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-VEW-002"
+title    = "The garrison's levels a viewer sees"
+context  = "town"
+status   = "implemented"
+summary  = "Another team's viewer sees a town's garrison by its level, the number of the viewer's towns with a standing building of role `tavern` (the Tavern, or Castle's Brotherhood of the Sword that supersedes it), at most 2: 0 nothing (not even whether it is empty), 1 each stack's creature by slot, 2 also each stack's size word (E08's monster words); the counts are the owner's team's and Visions' (TWN-VEW-003). E09 T6b (design §6): what a town counts, `h3_towns::has_tavern`; the level and the views are E09 T8c's (design §12)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a; survey E09-towns.md section 12.3): town_popup (0x4167A0) sets the level at 0x416E63: 3 for the owner's team or Visions at level 3 in reach (hero_visions_level 0x4E5DE0, hero_visions_reach 0x4E5E10), else player_tavern_count (0x4CCE30: the viewer's towns with the Tavern, 5, built, or for Castle the Brotherhood of the Sword, 22, that replaces it), at most 2; quick_view_army (0x530990) shows nothing at level 0, each stack's creature at 1, also its size word (creature_quantity_word 0x44ADE0) at 2"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 12.4: CGameInfoCallback::getTownInfo and InfoAboutTown::initFromTown give two levels, the details for an own or allied town or Visions in reach, else the stacks' creatures with their size words whatever the viewer's taverns (differs from the original's tavern levels)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/CGameInfoCallback.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Tavern (survey E09-towns.md section 12.4): no Tavern, an opponent's town looks empty; one, the stacks without numbers; two or more, the stacks and their approximate numbers"
+  url        = "https://heroes.thelazy.net/index.php/Tavern"
+  retrieved  = "2026-11-02"
+  confidence = "medium"

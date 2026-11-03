@@ -167,6 +167,9 @@ mod tests {
             structures(&town(&[VILLAGE_HALL, FORT, TAVERN, DWELLING_1])),
             3
         );
+        // A neutral town's: the Fort and both dwellings.
+        let neutral = [VILLAGE_HALL, FORT, DWELLING_1, DWELLING_2];
+        assert_eq!(structures(&town(&neutral)), 3);
         // A chain counts once while its top stands; a Town Hall counts.
         let built = [
             VILLAGE_HALL,
