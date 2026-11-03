@@ -116,7 +116,9 @@ T85a built it (decision 223): its record and this section's text as T85a found i
 T83b2b built the views (decision 219: a mine's guards as the original's hint, not "creatures and
 their words"); its record and this section's text are in `E08-log.md` ("T83b2b"). Left: the
 events of §7 to §11 carry their viewers as ADR-0016 point 6 says (T84, T85), and
-`docs/06-security.md` gains their lines and the month's kind with them.
+`docs/06-security.md` gains their lines and the month's kind with them. T87a (decision 229, the
+user at ADV-Q40): a Shipyard's boat tile only to its owner's team, the view property's exception
+for a seen Shipyard's offsets removed.
 
 ## Part C — the game, the env, batch E9 and the cut
 
@@ -292,8 +294,8 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
    monsters, which behave as placed ones (ADV-WEK-001 to -003, ADV-VIS-006, ADV-MON-013, -014).
 7. Timed events fire at their players' turn start on their days, in the map's order, floored at
    0 (GAM-CAL-004).
-8. A viewer sees every owner, its own team's mines' production, its team's weekly marks (the
-   Garden's too, decision 222), the month's kind; never a weekly object's contents, another team's
+8. A viewer sees every owner, its own team's mines' production and Shipyards' boat tiles
+   (decision 229), its team's weekly marks (the Garden's too, decision 222), the month's kind; never a weekly object's contents, another team's
    production nor a monster's fraction (ADV-OWN-003, ADV-FOG-006).
 9. Every new rule has its id, source and tests; `ADV-QUIRK-33` recorded as not reproduced; the gates pass (coverage, determinism with the re-recorded and new replays, the
    benchmarks at their baselines and the new ones baselined); the env plays `BuildBoat`.

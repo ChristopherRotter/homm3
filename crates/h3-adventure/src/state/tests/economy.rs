@@ -639,15 +639,31 @@ fn a_viewer_sees_its_own_weekly_marks_and_a_boat_tile_never_contents_or_fraction
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let reds = views(&state, &rules, red);
     assert!(reds[0].monster.is_some());
-    // The Shipyard's boat tile is public; nothing else holds one, nor an owner, a production or
-    // guards here.
+    // A neutral Shipyard's boat tile shows to nobody (E08 decision 229); nothing holds an owner, a
+    // production or guards here.
     for viewer in [red, blue] {
         let views = views(&state, &rules, viewer);
-        let tiles: Vec<_> = views.iter().map(|o| o.boat_tile).collect();
-        assert_eq!(tiles, [None, Some(Pos::new(5, 1, 0)), None, None]);
         assert!(views.iter().all(|o| {
-            !o.visited && o.owner.is_none() && o.production.is_none() && o.guards.is_none()
+            !o.visited
+                && o.owner.is_none()
+                && o.production.is_none()
+                && o.guards.is_none()
+                && o.boat_tile.is_none()
         }));
+    }
+    // Red's Shipyard shows its boat tile to red alone, blue seeing its owner.
+    let objects = vec![
+        owned(&rules, 3, 2, "t:shipyard", 0),
+        object(&rules, 5, 2, "t:windmill"),
+        object(&rules, 7, 2, "t:garden"),
+    ];
+    let mut reds_yard = started(&rules, &setup(&rows, objects)).unwrap();
+    reds_yard.explore_all();
+    for (viewer, tile) in [(red, Some(Pos::new(5, 1, 0))), (blue, None)] {
+        let views = views(&reds_yard, &rules, viewer);
+        let tiles: Vec<_> = views.iter().map(|o| o.boat_tile).collect();
+        assert_eq!(tiles, [None, tile, None, None]);
+        assert_eq!(views[1].owner, Some(red));
     }
     // A mark is the viewer's own: the Windmill's red's, the Garden's blue's.
     let (windmill, garden) = (*state.weekly(2).unwrap(), *state.weekly(3).unwrap());

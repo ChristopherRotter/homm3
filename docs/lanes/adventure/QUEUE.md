@@ -4,24 +4,22 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T86b1 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed. **Increment 9, mines, the week and owned objects** (ADV-Q36; decisions 192, 193): rounds 1 to 7 done, and round 8's T86 (decision 226): T86a (the economy map and its replays), T86b1 (the plans' properties) and T86b2 (decision 228: the economy XL, the day start's workloads, the re-baselines; `adventure/e08-t86b2` with `shared/e08-t86b2`); T87 left. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T86b1 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed. **Increment 9, mines, the week and owned objects** (ADV-Q36; decisions 192, 193): rounds 1 to 7 done, and round 8's T86 (decision 226): T86a (the economy map and its replays), T86b1 (the plans' properties) and T86b2 (decision 228: the economy XL, the day start's workloads, the re-baselines; `adventure/e08-t86b2` with `shared/e08-t86b2`); T87 in three (decision 230): T87a done, T87b and T87c left. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T87 — the audit; increment 9 closed; increment 10 refined**
+**E08 T87 — the audit; increment 9 closed; increment 10 refined** (decision 230: in three, each
+branch based on the one before without waiting for its merge; **T87a** done, decision 229's boat
+tile, `adventure/e08-t87a` with `shared/e08-t87a`)
 
-- **Scope:** design §18's exit criteria 1 to 10 audited against the code, the tests and the catalog (a rule still
-  `implemented` that batch E9 observed, a criterion without its test); **decision 229**: `ObjectView::boat_tile`
-  only to the viewers of the Shipyard's owner's team (`h3-adventure`'s views, ADV-OWN-003, the line in
-  `docs/06-security.md` in a `shared/` pull request first, `h3-map`'s `view.rs` exception for a seen Shipyard's
-  offsets removed; no version moves); increment 9 closed (its scope, decisions and task list to `E08-archive.md`,
-  its design note to `E08-log.md`, a row in the closed increments' table); increment 10 refined with the user
-  (the sketch's item 10: dwellings and hiring, the Refugee Camp, garrisons; the town lane's inbox notes on the
-  hire dialog and the random dwellings). Optional, if the audit has room: the month's walk's tile test from the
-  static map's flags and without a lookup of the events per tile (design §19; `month-start-xl-144`, 12.7 M Ir a
-  creature month's start, `E08-log.md` T86b2).
-- **Inputs:** `E08-design.md` §18, §19; `E08-log.md` T86a, T86b1, T86b2; the epic's decisions 192 to 229;
-  `docs/lanes/adventure/QUESTIONS-ANSWERED.md` ADV-Q40; the inbox below (the town lane's and the map client's notes).
-- **Depends on:** T86b2's pull requests merged. **Status:** ready after them; its cut confirmed with the user at
-  its start.
+- **T87b, the audit:** design §18's exit criteria 1 to 10 audited against the code, the tests and
+  the catalog (a rule still `implemented` that batch E9 observed, a criterion without its test),
+  by scoped sub-agents; the gaps fixed. Branch `adventure/e08-t87b` on `adventure/e08-t87a`.
+- **T87c, the closure and the refinement:** increment 9 closed (its scope, decisions and task
+  list to `E08-archive.md`, its design note to `E08-log.md`, a row in the closed increments'
+  table); increment 10 refined with the user (the sketch's item 10: dwellings and hiring, the
+  Refugee Camp, garrisons; the town lane's inbox notes on the hire dialog and the random
+  dwellings). Branch `adventure/e08-t87c` on `adventure/e08-t87b`.
+- **Inputs:** `E08-design.md` §18, §19; `E08-log.md` T86a, T86b1, T86b2, T87a; the epic's
+  decisions 192 to 230; the inbox below (the town lane's and the map client's notes).
 
 ## Inbox
 
@@ -128,6 +126,11 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `model::Mission`, written in the SoD layout with no deadline, no texts and a seer's reward
   nothing (`writer::extras::write_quest`; refused on another class or with a list past 255).
   A literal `Extras { tiles, objects }` now needs `..Extras::default()`.
+
+- 2026-11-03 (E08 T87, decision 230; **a performance task**): the month's walk's tile test
+  from the static map's flags, without a lookup of the events per tile (increment 9's design
+  note §19): `month-start-xl-144` costs 12.7 M Ir a creature month's start, mostly the walk
+  (`E08-log.md` T86b2). Measure against `master` (`homm3-bench-regression`).
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
