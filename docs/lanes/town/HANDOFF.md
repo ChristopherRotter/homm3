@@ -4,11 +4,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E09** (towns) refined with the user on 2026-10-31 (TWN-Q1; the epic's decisions 1–7); the lane opened the same day beside the adventure lane's E08. **Increment 1: towns on the map** (the epic's scope). **T1 done** (the survey `E09-towns.md` §0 to §14; `TWN-Q2`, decisions 8–16). **T2 done**: T2a the ADR drafts in `adr-drafts/` (`TWN-Q3`, decisions 17–20); T2b the design note `E09-design.md` §1 to §22 and the cut (`TWN-Q4`, decisions 21–24: the drafts accepted as written, the cut as proposed, the content read and harvested, the agent's calls kept). **T3a done** (round 2): `fort` and an explicitly empty `garrison` for a spec's towns (`h3-experiment`, `cross-lane`), the spec `experiments/specs/E09-batch-1.toml` and its template. **T3b done** (round 3): the capture harness's town reads, a new-game step and the town screen; batch TWN-1 played twice under Wine (`experiments/results/E09-batch-1.md`, `-run2.md`). Next: **T3c**, batch TWN-1 scored (docs only; the queue's notes: building 23 unpredicted), then round 4's T4 (`shared/`); rounds 4 to 10 in the epic's list.
+- **E09** (towns) refined with the user on 2026-10-31 (TWN-Q1; the epic's decisions 1–7); the lane opened the same day beside the adventure lane's E08. **Increment 1: towns on the map** (the epic's scope). **T1 done** (the survey `E09-towns.md` §0 to §14; `TWN-Q2`, decisions 8–16). **T2 done**: T2a the ADR drafts in `adr-drafts/` (`TWN-Q3`, decisions 17–20); T2b the design note `E09-design.md` §1 to §22 and the cut (`TWN-Q4`, decisions 21–24: the drafts accepted as written, the cut as proposed, the content read and harvested, the agent's calls kept). **T3a done** (round 2): `fort` and an explicitly empty `garrison` for a spec's towns (`h3-experiment`, `cross-lane`), the spec `experiments/specs/E09-batch-1.toml` and its template. **T3b done** (round 3): the capture harness's town reads, a new-game step and the town screen; batch TWN-1 played twice under Wine (`experiments/results/E09-batch-1.md`, `-run2.md`). **T3c done** (survey §15): TD-3, TD-5, TD-7 and the siege's aftermath as the reading; building 23 in every Rampart, Necropolis and Conflux town of the standard set, not predicted, re-read in T5b (`TWN-Q5`, decisions 25, 26). Next: round 4's **T4** (`shared/`: the ADRs, the skeletons, `TownId`; the queue); rounds 5 to 10 in the epic's list.
 - **Open pull requests:** see the newest session entry.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns` (not created yet; it, the adapter `h3-pack-towns` and `packs/*/towns.toml` come with the `shared/` task T4, after batch TWN-1), the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and `src/writer/town*` of `h3-map`, `docs/rules/catalog/town.toml`, `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Everything else in the adventure lane's crates is the adventure lane's: a change there is `cross-lane`, merged in order with the adventure lane's pull requests.
 - **Versions:** the lane owns none yet (`h3-towns`' come with the crate). It bumps the adventure lane's (game state hash, adventure state and ruleset-part hashes, map import, adventure replay format) in `cross-lane` pull requests; their current values are in the adventure lane's HANDOFF.
-- **Ids:** questions `TWN-Q<n>` (next 5), quirks `TWN-QUIRK-<n>` (next 1; 1 to 4 reserved by the design §19 for T-1 to T-4), stubs `TWN-STUB-<n>` (next 1; 1 and 2 reserved by the design §19), rules `TWN-*` (none yet; the design §19 names them), decisions next 25, ADR numbers 0028 (the draft's, checked when it moves), experiment batches `TWN-<n>` (next 1; TWN-1's rows 1 to 4, survey §13, decision 15), the survey's disputes `TD-<n>` (next 8) and quirk candidates `T-<n>` (next 6).
+- **Ids:** questions `TWN-Q<n>` (next 6), quirks `TWN-QUIRK-<n>` (next 1; 1 to 4 reserved by the design §19 for T-1 to T-4), stubs `TWN-STUB-<n>` (next 1; 1 and 2 reserved by the design §19), rules `TWN-*` (none yet; the design §19 names them), decisions next 27, ADR numbers 0028 (the draft's, checked when it moves), experiment batches `TWN-<n>` (next 1; TWN-1's rows 1 to 4, survey §13, decision 15), the survey's disputes `TD-<n>` (next 8) and quirk candidates `T-<n>` (next 6).
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at each round; the user confirms seams and ADRs; tokens first.
 
 ## Standing traps
@@ -17,6 +17,15 @@ In `TRAPS.md`.
 
 ## Recent sessions
 
+### 2026-11-03 — T3c: batch TWN-1 scored
+
+Baseline dd99747 (#662 merged). Docs only, no game files (VCMI 1.7.5 cloned to scratch). Survey
+§15: rows 2 to 4 and row 1's dwellings as the reading, VCMI refuted in each (21 of 96 level-2
+dwellings). Building 23 in Rampart's, Necropolis' and Conflux's standard sets: not the reading's,
+not VCMI's; the keep may count it. `TWN-Q5`: re-read in T5b; the experiments README's row
+`cross-lane` (decisions 25, 26). The queue: T4 written. Pull request: the one of branch
+`claude/peaceful-curie-q7wjex` (`cross-lane`).
+
 ### 2026-11-03 — T3b: batch TWN-1's harness and runs
 
 Baseline e02c8e5 (#659 merged; CI on `master` green; the sandbox's full engine run green). The
@@ -24,8 +33,8 @@ user kept T3b whole with narrow sub-agents; 3b in a new game instead of a save. 
 town reads, `new_game` steps, the town screen (vtable 0x64372C) and two fixes (`clients/capture/`,
 common; three lanes' inboxes told); a town's visitor reads −1 while its hero is selected (a probe).
 Two whole runs recorded; the merge exactly as the reading; building 23 in every Rampart,
-Necropolis and Conflux town (for T3c). The VM restarted once. Pull request: the one of branch
-`town/e09-t3b` (open).
+Necropolis and Conflux town (for T3c). The VM restarted once. Pull request: #662
+(`town/e09-t3b`, merged).
 
 ### 2026-11-02 — T3a: batch TWN-1's maps and spec
 
@@ -35,7 +44,3 @@ consented to the `cross-lane` change. `h3-experiment`'s towns gain `fort` and `g
 merges so each tie and the extra round moves a stack) and its template. CI's first run failed a
 random `h3-map` property case on `master`'s code (the adventure lane's inbox). Pull request: #659
 (`town/e09-t3a`, `cross-lane`).
-
-### 2026-11-02 — T2b: the design note, the cut and the checkpoint
-
-Baseline c1a6f68 (#653 merged; CI on `master` green). The user kept T2b whole. `E09-design.md` §1 to §22 from the code the build touches; the cut: fourteen tasks in rounds 2 to 10, batch TWN-1 first (§21). `TWN-Q4` in one round of four, each as recommended (decisions 21–24). The queue: T3a to T3c written, six inbox notes the note carries moved to `QUEUE-ARCHIVE.md`; a note in the adventure lane's inbox on the planned bumps. The VM restarted once (nothing lost). Docs only. Pull request: #656 (`town/e09-t2b`, merged).

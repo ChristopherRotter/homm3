@@ -8,7 +8,8 @@ the random hero, a hero placed on a town's blocked tile, the town's buildings at
 appended); **T1b** the town on the map, cut in two at its start (the user, 2026-11-02): **T1b1**
 the visit, the visiting hero, capture and the battle at a town with ADR-0023's facts (§7 to §10);
 **T1b2**, cut in two at its start (the user, 2026-11-02): **T1b2a** the hall's income and the
-Capitol, the views, batch TWN-1's rows (§11 to §13); **T1b2b** the checkpoint's `TWN-Q2` (§14).
+Capitol, the views, batch TWN-1's rows (§11 to §13); **T1b2b** the checkpoint's `TWN-Q2` (§14);
+later **T3c** batch TWN-1 scored (§15, 2026-11-03).
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -241,6 +242,14 @@ its sources and tests.
     the views follow the original's levels, T-1 to T-5 as proposed, TD-1, TD-4 and TD-6 by the
     reading, **TD-2 by the enabled expansions** (E08 decision 104), batch TWN-1 keeps rows 1 to 4,
     an allied town is entered and never captured.
+
+**T3c (§15):**
+
+29. **Batch TWN-1 scored:** TD-3, TD-5 and TD-7 and the siege's aftermath as the reading (the
+    level-2 dwelling 21 of 96, VCMI's 50 in 100 refuted; the empty garrisons 12 of 12 empty;
+    VCMI's merge refuted). **Not predicted:** building 23 in every Rampart, Necropolis and
+    Conflux town of the standard set, from a part of the setup the reading did not follow; VCMI
+    has no such building; the keep may count it. Re-read in T5b (`TWN-Q5`, decision 25).
 
 ## 1. The census
 
@@ -1119,3 +1128,68 @@ record `docs/lanes/town/QUESTIONS-ANSWERED.md`. What each settles here:
 Still open for later increments, unchanged: §6's guild spells and Shipyard spot (increment 4),
 §10's town screen effects, the computer's visit and the scenario's tests (E10, E13), town +0x2
 and +0x32 (not read), the external dwellings' counts (increment 3).
+
+## 15. Batch TWN-1 scored (T3c, 2026-11-03)
+
+Both whole runs of T3b (the capture harness under Wine, the Complete 4.0 executable in SoD on
+Easy, hot seat; `experiments/results/E09-batch-1.md`, the main record, and `-run2.md`): six new
+games for rows 1 and 2, rows 3 and 4 played twice. Counted over both records by a throwaway script
+(not committed). **Rows 2 to 4 as the reading in every point; row 1's dwellings as the reading,
+and building 23, which the reading does not build, in three factions' towns.**
+
+- **TWN-1-1 (TD-3, §5.3).** 34 towns, six games each. Owned without a Fort (8): {5, 10} each time,
+  no dwelling in 48 readings (VCMI's level 1 always: refuted). Owned with a Fort (16): {5, 7, 10,
+  30} each time, the level-2 dwelling (31) in 3, 4, 4 and 4, 4, 2 a game, **21 of 96** (95 %
+  interval 0.14 to 0.32; against the reading's 30 in 100 two-sided p = 0.09, low but inside;
+  VCMI's 50: p ≈ 10⁻⁸; HotA's "always": refuted). Neutral (10): {10, 30, 31} without a Fort,
+  {7, 10, 30, 31} with one, in all 60 readings (VCMI's level 2 at 50 in 100: refuted).
+  Every-built equal to built in every town. **TD-3: the reading, confirmed.**
+- **Building 23 (not predicted).** Built in every Rampart, Necropolis and Conflux town of the
+  standard set (11 towns, owned and neutral, with and without a Fort: 66 readings of 66), in none
+  of the other six factions' 23 towns. §5.3's reading of `town_buildings_setup` (read whole)
+  builds no 23, so it comes from a part of the setup's path not read: `town_build`'s hordes
+  (by faction; `town_build` 0x5BE930 read in part), `town_setup_spells` 0x5BE600 (§5.1),
+  or the faction tables of `building_tables_init` 0x4EB730. **VCMI 1.7.5** has no building 23 in
+  these factions (`config/factions/rampart.json`, `necropolis.json`, `conflux.json`:
+  `"special4" : null`, as Castle's and Fortress's; 23 is the Tower's Wall of Knowledge, the
+  Inferno's Order of Fire, the Dungeon's Academy of Battle Scholars, the Stronghold's Hall of
+  Valhalla) and drops every built id its faction does not define (`CGameState::initTowns`, the
+  comment "#1444"); its town screens of the three draw an extra animation without a building
+  (`TBRMEXT2`, `TBNCEXT2`, `TBELEXT1`), but so do Castle's and Fortress's, so that alone does not
+  explain it. The wiki and §5.3's other sources say nothing. **Its weight:** the keep's count
+  (`town_turret_count` 0x5BF4F0: 4 + the built buildings among the town's mask +0x160,
+  `docs/formats/installation.md` §7.27; design §6's `structures`) counts 23 if the town's
+  buildable set holds it: the keep's count one higher (a Castle's two towers take half of it,
+  rounded up) in every siege of such a town from day 1. Whether a custom set gets it too is open (the batch's only
+  custom set is a Castle). **The observation stands** (`docs/04-rules-and-sources.md` §1: a
+  reading of behaviour ranks with an observation, and one that contradicts it is read again);
+  the re-read needs the executable: in T5b (`TWN-Q5`, the epic's decision 25).
+- **TWN-1-2 (TD-5, §5.2).** The two explicitly empty custom garrisons (NEF, NE) empty in all six
+  games, 12 of 12 (VCMI's draw leaves a town empty 0.312 of the time, all twelve 9 × 10⁻⁷).
+  **TD-5: the reading, confirmed.** The eight controls: 48 draws, 15 empty (31 %; the reading's
+  0.67² × 0.80 × 0.87 = 31.2 %), 46 stacks, each the faction's base creature of its level with a
+  count inside its row's bounds, in level order from slot 0; levels 1 to 4 drawn 12, 18, 8 and 8
+  times (15.8, 15.8, 9.6, 6.2 expected; TD-4's 13 or 14 in 100 not separable, as §13 planned).
+  Every owned standard town's garrison empty (24 of 24; the 25th owned town is row 3's custom
+  garrison).
+- **TWN-1-3 (TD-7, §9.2).** Both runs alike: the opening [Swordsman 4, Halberdier 16, Marksman 10,
+  Griffin 5, Cavalier 1, Monk 3, Pikeman 15], the garrison left [—, Centaur 4, Archer 5]: T3a's
+  prediction of the reading exactly, each of its three points moving a stack: the last of the two
+  equal weakest (the Cavalier into slot 4 and the 5 Pikemen out, not the Centaurs of slot 1), the
+  first of the two equal gains (the Halberdiers before the Marksmen in round 2), the rounds until
+  nothing gains (the 5 Pikemen back in round 4: Pikeman 15). VCMI's merge (Pikeman 10, the 5
+  Pikemen left in the garrison) refuted. 3a, the defender's win: the visitor keeps the merged army,
+  the leftovers stay in the garrison. **TD-7: the reading, confirmed.**
+- **The siege's aftermath (§7.1, §8.2, §8.3; 3b and TWN-1-4).** After each siege won: the attacker
+  on the tile it attacked from with 1 900 of its 2 000 points (the grass step paid, the neighbour
+  visit's), the owner Red, no town screen, the garrison empty (3b's leftovers [Centaur 4, Archer
+  5] lost), Blue's visitor off the map, the built set unchanged. Row 4's later step: onto the
+  gate with 1 800 left, the town screen, the hero the town's visitor (the main record, read with
+  another hero selected; run 2 read it while selected: −1, the harness's note, T3b). **As the
+  reading.**
+
+**For the design and the ADRs:** design §5 (TWN-SET-003, -004) and §10 (TWN-SIE-001, -002) stand
+for the dwellings, the garrisons and the merge, and ADR-0017's amendment step 4 (the town draws)
+is unchanged: building 23 involves no draw (built in every game alike). It reopens only §5's
+standard set and §2's content (whether the three factions list 23, with what role, and whether
+the keep counts it), no ADR step: T5b reads it again (`TWN-Q5`, decision 25).
