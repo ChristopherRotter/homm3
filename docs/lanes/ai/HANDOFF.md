@@ -29,8 +29,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   and +0.251 on the neutral set; its `students/mlp.pt` on the user's machine for T22. **Next:**
   T21, the imitation loss (a sandbox build, a fresh session), then T22's A/B on the user's
   machine.
-- **Open pull requests:** T20's (`claude/quirky-cerf-26fspy`, restarted from `master` once #682,
-  T17 to T19, merged).
+- **Open pull requests:** #687 (`claude/quirky-cerf-26fspy`: T20; restarted from `master` once
+  #682, T17 to T19, merged).
   Merged: #651 (T13 to T15), #657 (T16).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
