@@ -4051,7 +4051,8 @@ written for it).
   over the Wolf Riders shows their dialog at the right clamp in Blue's colours, no cursor; a move
   and the key T meanwhile dropped; the release closes it, the battle's cursor at the mouse's point;
   over the Marksmen their dialog with "Shoots twice.", a left press ends it without acting; over an
-  empty hex nothing.
+  empty hex nothing. `drawn`: all 178 earlier sequences and stills the same, the five new
+  recorded; `clients/scripts/check.sh`; the scoped verify with the original data.
 
 ## Accepted review lists (M1 to M5)
 
