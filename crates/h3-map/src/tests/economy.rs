@@ -296,7 +296,7 @@ fn the_writer_refuses_what_the_game_cannot_load() {
     w::write(&map).unwrap();
 }
 
-// covers: ADV-OBJ-002, ADV-OWN-002, ADV-MIN-003, GAM-CAL-004
+// covers: ADV-OBJ-002, ADV-OWN-002, ADV-MIN-001, ADV-MIN-003, GAM-CAL-004
 #[test]
 fn the_economy_map_imports() {
     // E08 T83a (increment 9's design note §4): every class typed, the owners as players, the

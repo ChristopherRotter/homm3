@@ -176,7 +176,7 @@ pub(super) fn setup(rows: &[&str], objects: Vec<ObjectSetup>) -> AdventureSetup 
 
 pub(super) const GRASS_ROWS: [&str; 8] = ["gggggggggggggggg"; 8];
 
-// covers: ADV-MIN-003
+// covers: ADV-MIN-001, ADV-MIN-003
 #[test]
 fn an_abandoned_mine_draws_its_resource_and_its_guards() {
     let rules = rules();
@@ -355,6 +355,27 @@ fn the_owners_come_from_the_setup_and_reveal_around_their_objects() {
     )
     .unwrap();
     assert!(explored(&state, blue, 9, 1) && !explored(&state, blue, 10, 1));
+    // A Lighthouse and a Shipyard owned at the start reveal around their entrances too (the
+    // original's `reveal_owned`, A-33 withdrawn): red's Lighthouse at (3, 1), blue's Shipyard at
+    // (12, 1), both beyond their heroes' sight.
+    let objects = vec![
+        owned(&rules, 3, 1, "t:lighthouse", 0),
+        owned(&rules, 12, 1, "t:shipyard", 1),
+    ];
+    let state = started(&rules, &setup(&GRASS_ROWS, objects)).unwrap();
+    assert!(state.check_owners(&rules.1));
+    let red_disk = [(3, 1), (0, 1), (6, 1), (3, 0), (4, 2), (5, 0)];
+    let blue_disk = [(12, 1), (9, 1), (15, 1), (12, 0), (10, 3), (14, 0)];
+    for (player, other, disk, beyond) in [
+        (red, blue, red_disk, (7, 1)),
+        (blue, red, blue_disk, (8, 1)),
+    ] {
+        for (x, y) in disk {
+            assert!(explored(&state, player, x, y), "({x}, {y})");
+            assert!(!explored(&state, other, x, y), "({x}, {y})");
+        }
+        assert!(!explored(&state, player, beyond.0, beyond.1));
+    }
 }
 
 // covers: ADV-WEK-001, ADV-WEK-002, ADV-WEK-003
