@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-03 (E17 M6 T3b2; the inbox entry turned into the task T3c, verbatim; T3b2 took the
+  hero's own lists for the hero info window from it):
+
+- 2026-11-03 (this lane, E17 M6 T2a2b2, CLT-Q40; carried by the battle lane, BAT-Q64,
+  `cross-lane`): the carry is on the wire (protocol v37, public to seats and spectators):
+  `Observation.morale_and_luck` (each side's hero's `MoraleLuck` changes, caps and alignment groups
+  with a `Source`: a skill and its level, an artifact, the specialty, a visit's once-mark, a
+  building, temporary), `Siege.bonuses` (the buildings by index with their changes) and
+  `Stack.unclamped_morale`, `unclamped_luck`. Fill the descriptions' hero lists, the two
+  artifacts' lines, the Angelic Alliance's join and a siege town's buildings, and the header and
+  picture by the unclamped value (design §12.4). Until the adventure lane splits the battle
+  bonuses by visit, they come as one temporary line each, as the original's rest. Your workspace's
+  call sites were adapted to the new fields (the source on `BattleEffect`, defaults in the tests'
+  wire literals).
+
 - 2026-10-31 (E17 M6 T1 done; the entry verbatim):
 
 ### E17 M6 T1 — the answered slips (done 2026-10-31)

@@ -5364,10 +5364,10 @@ the log (`text_pcx_create`, vtable 0x642DE8) and its scroll buttons (`custom_but
   modelled:* a right press while the battle does not take the input (§12.5's note: the original's
   handler tests no turn, so its help may show on a computer's turn too).
 
-### 12.8 The right button over a hero: its info window (M6 T3b1)
+### 12.8 The right button over a hero: its info window (M6 T3b1, T3b2)
 
 T3b cut in two by the user (2026-11-03): T3b1 here (the window and its counts), its morale and
-luck T3b2 (`hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 not read; CLT-Q40's carry). Read:
+luck T3b2 (`hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 read whole at T3b2, below). Read:
 `army_info_hero_create` 0x46C370 whole, `battle_right_click`'s branches 0xFD and 0xFC again
 (0x4769C0 to 0x476AB3); the fill `army_info_hero_set` 0x46CC10 and `army_info_show` 0x46CDF0 at
 T3a (their map entries).
@@ -5397,11 +5397,32 @@ T3a (their map entries).
   0..=99, power and knowledge to 1..=99, by "%d"; morale's and luck's frames the value + 3
   (T3b2); the spell points "%s\n%d/%d" (0x670088) with GENRLTXT 388's word, the hero's points
   (+0x18) and knowledge × 10 × the intelligence factor (floats, truncated).
+- **Morale and luck** (T3b2: `hero_morale` 0x4E39B0, `hero_luck` 0x4E36C0 read whole, and the
+  clamp 0x4E6750; the fill passes the other side's hero, `+0x53C0 == 2` and 1, 0x46CD3B): the
+  hero's **own** values, as the adventure map's status window shows them (0x451E18), not its
+  army's: no alignments, undead, Angels, dragons or field changes, which the stacks' values add
+  (§12.4). Morale: 0 on Cursed Ground; else Leadership's value by level (`skill_leadership`
+  0x63E9A8; a Leadership specialist's times 1 + 0.05 × the hero's level, f32 truncated), +3 for
+  the Pendant of Courage (108), +1 for each of 45, 49, 50, 51 worn or in a worn combination, +2
+  for a Castle of the owner with the Grail's building (26), the visits' morale (+0x11A), +500
+  for the cheat (+0x105 bit 23); held to −3..=3. The other hero is not read: neither hero's
+  Spirit of Oppression changes it (CLT-Q42). Luck: unless the cheat's bit 22 is set, 0 on Cursed
+  Ground and 0 when this hero or the other wears the Hourglass of the Evil Hour (85); else Luck's
+  value as Leadership's (`skill_luck` 0x63E998, a Luck specialist), +3 for the Pendant, +1 for
+  each of 45 to 48, +2 for a Rampart of the owner with the Grail's building, the visits' luck
+  (+0x11B), +500 for the cheat; held to −3..=3. The frames are the values + 3 (`imrls.def`,
+  `ilcks.def`: 0 to 6).
 - **Recorded** (`clients/situations/set.toml`, the right button held through the frames, the
   clock frozen; `hero-info.toml`: each army two towns' creatures and no skills or artifacts
   behind morale or luck, so both heroes' are 0 in the original): `hero-info` (Orrin in Red's
   colours, 4, 3, 2, 2 and 20/20; at 0 and 100 ms, the battle behind still), `hero-info-enemy`
   (Crag Hack in Blue's at (721, 135), 12, 0, 1, 1 and 10/10). Both exact at their first capture.
+  T3b2 (`hero-info-skills.toml`: the same battle, Orrin with Advanced Leadership and Expert Luck,
+  Crag Hack with Basic Leadership and Basic Luck, by the scenario's `effects`;
+  `hero-info-cursed.toml`: `cursed-ground`'s battle with Orrin's skills): `hero-info-skills`
+  (frames 5 and 6), `hero-info-skills-enemy` (4 and 4), `hero-info-cursed` (3 and 3). Not
+  recorded: a negative value (only a visit gives one: the battle's map cannot), the artifacts, the
+  Grail's buildings and the Hourglass (the map writes no worn artifacts but war machines).
 - **The viewer** (`h3_view::hero_info`: the layout's `[hero_info]`, each side's place and the
   constructor's items; `Info::of` the side's hero as the observation shows it, its `max_mana` the
   most, its portrait the hero type's (*provisional*, as the result window's: a map's own portrait
@@ -5409,7 +5430,12 @@ T3a (their map entries).
   hero; `window` the filled box at the side's place). The window (`Battle::hero_info`): the right
   button down over a hero's rectangle while the battle takes the input opens it as `Asked::Held`
   (§12.6's popup: the cursor hidden, every input but its ends dropped, nothing posted at its end).
-  The stills' `right:` over a hero (`Boxes::hero_info`). *Not built:* morale and luck (T3b2: both
-  shown 0's frame); "Combat Army Info Level" (T4: the window stays shown after the release and the
-  battle's mouse move fills it, 0x47561C and 0x475676). *Not modelled:* a right press while the
+  The stills' `right:` over a hero (`Boxes::hero_info`). Morale and luck (T3b2,
+  `hero_info::values`) from the observation's `morale_and_luck` (CLT-Q40's carry, protocol v37):
+  the side's hero's morale and luck changes that reach its own stacks, summed and held; 0 on
+  Cursed Ground (the binary's `stats::field`, shared with §12.4's account); a luck cap reaching
+  the side (the Hourglass: either hero's, `Affects` both) gives its value whatever the changes, as
+  the original's 0; the morale caps and the other hero's changes are not read. The cheats have no
+  source. *Not built:* "Combat Army Info Level" (T4: the window stays shown after the release and
+  the battle's mouse move fills it, 0x47561C and 0x475676). *Not modelled:* a right press while the
   battle does not take the input (§12.5's note).

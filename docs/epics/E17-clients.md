@@ -171,8 +171,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   help (0x472A50, design §12.7), a disabled control's too, five stills exact; **T3b** the heroes'
   info windows (`battle_right_click`'s 0xFC and 0xFD: 0x46C370, 0x46CC10, 0x46CDF0), cut in two by
   the user (2026-11-03): **T3b1** (done 2026-11-03) the window read and drawn, held by the right
-  button, its counts (design §12.8), two stills exact at their first capture; **T3b2** its morale
-  and luck (`hero_morale`, `hero_luck`; CLT-Q40's carry); recorded.
+  button, its counts (design §12.8), two stills exact at their first capture; **T3b2** (done
+  2026-11-03) its morale and luck (`hero_morale`, `hero_luck` read whole: the hero's own, 0 on
+  Cursed Ground; from CLT-Q40's carry), CLT-Q42 asked, three stills exact.
+  **T3c** (from the inbox, 2026-11-03): morale's and luck's descriptions' carried lines (§12.4's
+  *not built*).
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
   movement and cursor shadows, the combat speed, the Auto Combat options, the rest as read), kept
   in the client's settings; recorded.

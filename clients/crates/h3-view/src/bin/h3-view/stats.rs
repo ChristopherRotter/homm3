@@ -338,16 +338,7 @@ fn account(
                 .text(&format!("creature.{k}"), &Args::new().count(2))
         })
     };
-    let field = observation
-        .battlefield
-        .and_then(|h| sources.manifest.keys.battlefields.get(usize::from(h)))
-        .map_or(Field::Other, |key| match key.rsplit(':').next() {
-            Some("cursed_ground") => Field::Cursed,
-            Some("holy_ground") => Field::Holy,
-            Some("evil_fog") => Field::EvilFog,
-            Some("clover_field") => Field::Clover,
-            _ => Field::Other,
-        });
+    let field = field(sources.manifest, observation);
     let listed = match bugs {
         h3_render::Bugs::Fixed => stack.controller,
         h3_render::Bugs::Original => stack.side,
@@ -407,6 +398,22 @@ fn account(
         morale_spells: by(MIRTH) - by(SORROW),
         luck_spells: by(FORTUNE) - by(MISFORTUNE),
     })
+}
+
+/// The special field `observation`'s battle is fought on, by its battlefield's key in
+/// `manifest` (the original's +0x53C0: 2 Cursed Ground, 3 Holy Ground, 4 Evil Fog, 5 Clover
+/// Field; E17 M6 T2a2b2): morale's and luck's descriptions, the heroes' info windows (T3b2).
+pub fn field(manifest: &Manifest, observation: &Observation) -> Field {
+    observation
+        .battlefield
+        .and_then(|h| manifest.keys.battlefields.get(usize::from(h)))
+        .map_or(Field::Other, |key| match key.rsplit(':').next() {
+            Some("cursed_ground") => Field::Cursed,
+            Some("holy_ground") => Field::Holy,
+            Some("evil_fog") => Field::EvilFog,
+            Some("clover_field") => Field::Clover,
+            _ => Field::Other,
+        })
 }
 
 /// The player whose colours the dialog's background takes (0x5F3550): the owner of the hero who

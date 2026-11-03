@@ -1,0 +1,58 @@
+# E17 M6 T3b2: the heroes' info windows' morale and luck (design §12.8): `hero-info`'s battle
+# with each hero's skills behind its own morale and luck (`h3-view situation`: Leadership and
+# Luck at the level of the change asked). Orrin with Advanced Leadership and Expert Luck (2 and
+# 3: the pictures' frames 5 and 6), Crag Hack with Basic Leadership and Basic Luck (1 and 1:
+# frames 4). The armies' two alignments each add nothing to the stacks' morale (and the window
+# reads the hero's own list alone). Red human.
+
+[scenario]
+id = "hero-info-skills"
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:marksman"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "base:wood_elf"
+count = 8
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+[[defender]]
+slot = 2
+creature = "base:gnoll"
+count = 10
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 4
+defense = 3
+power = 2
+knowledge = 2
+mana = 20
+max_mana = 20
+effects = [{ kind = "morale", amount = 2 }, { kind = "luck", amount = 3 }]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 12
+defense = 0
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
