@@ -145,7 +145,9 @@ fn lattice(underground: bool, mines_before: &mut usize) -> Vec<Placing> {
                 .map(|_| {
                     let m = *mines_before;
                     *mines_before += 1;
-                    let owner = (m % 4 == 0).then(|| u8::try_from(m / 4 % 2).unwrap());
+                    let owner = m
+                        .is_multiple_of(4)
+                        .then(|| u8::try_from(m / 4 % 2).unwrap());
                     Box::new(move |at| owned(line, at, w::OwnedBody::Owner(owner))) as Placing
                 })
                 .collect(),
@@ -202,14 +204,14 @@ fn ring((x, y): (u8, u8)) -> impl Iterator<Item = (u8, u8)> {
 fn wandering(n: usize, at: (u8, u8)) -> w::MapObject {
     w::MapObject::Monster(w::Monster {
         tile: at,
-        template: template(if n % 2 == 0 {
+        template: template(if n.is_multiple_of(2) {
             lines::GNOLLS
         } else {
             lines::PIKEMEN
         }),
         count: u16::try_from(5 + n * 13 % 41).unwrap(),
         disposition: u8::try_from(n % 5).unwrap(),
-        never_flees: n % 7 == 0,
+        never_flees: n.is_multiple_of(7),
         fixed_count: n % 25 == 24,
         treasure: None,
     })
@@ -273,14 +275,14 @@ fn level(underground: bool, mines_before: &mut usize, monsters: &mut usize) -> V
         }
     }
     let land = if underground { SIDE } else { COAST + 1 };
-    let mut free = 0;
+    let mut free: usize = 0;
     for y in 0..SIDE {
         for x in 0..land {
             if covered[index((x, y))] {
                 continue;
             }
             free += 1;
-            if free % MONSTER_EVERY == 0 {
+            if free.is_multiple_of(MONSTER_EVERY) {
                 objects.push(wandering(*monsters, (x, y)));
                 *monsters += 1;
             }
