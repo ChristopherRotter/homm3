@@ -32,7 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   0.4 M of PPO, −0.044 without) and kept the entropy up, the teacher 14 % of the sandbox's
   time. **Next:** T22's A/B on the user's machine (`e25-neutral.toml` and `e25-imitate.toml`
   from T20's student; the weight 0.5 and horizon 10 M a proposal, fixed when prepared).
-- **Open pull requests:** the T21 one (`claude/fervent-lamport-le7amv`).
+- **Open pull requests:** #696 (`claude/fervent-lamport-le7amv`: T21).
   Merged: #682 (T17 to T19), #687 (T20).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
