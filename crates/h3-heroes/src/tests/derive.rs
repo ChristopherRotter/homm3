@@ -1256,8 +1256,24 @@ proptest! {
             }
             prop_assert!(hero.tactics <= 3);
             prop_assert!(hero.damage.reduction.bp <= 10_000);
-            // At most one effect per morale/luck kind and affected sides (HER-BAT-003).
-            prop_assert!(hero.effects.len() <= 12);
+            // Within the seam's limit (HER-BAT-008), and at most one morale or luck effect per
+            // kind, affected sides and source (HER-BAT-003): since CLT-Q40 each source keeps its
+            // own effect, so the sum is no longer one per kind and sides (CI on 2030ef5: 13).
+            prop_assert!(hero.effects.len() <= h3_contracts::MAX_BATTLE_EFFECTS);
+            let keys: Vec<_> = hero
+                .effects
+                .iter()
+                .filter_map(|e| match *e {
+                    BattleEffect::Morale { affects, source, .. } => Some((0, affects, source)),
+                    BattleEffect::Luck { affects, source, .. } => Some((1, affects, source)),
+                    BattleEffect::MoraleAtMost { affects, source, .. } => Some((2, affects, source)),
+                    BattleEffect::LuckAtMost { affects, source, .. } => Some((3, affects, source)),
+                    _ => None,
+                })
+                .collect();
+            for (i, key) in keys.iter().enumerate() {
+                prop_assert!(!keys[..i].contains(key), "{:?} twice", key);
+            }
         }
     }
 }
