@@ -728,6 +728,7 @@ fn the_seat_sees_the_moves_deaths_creations_and_mana() {
         walls: Vec::new(),
         moat_hexes: Vec::new(),
         parts: Vec::new(),
+        bonuses: Default::default(),
     });
     siege.sides[1].hero = None;
     let gate = [

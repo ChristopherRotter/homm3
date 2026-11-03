@@ -608,10 +608,16 @@ pub struct Stack {
     pub damage_max: u16,
     /// Speed now, with the timed effects.
     pub speed: u8,
-    /// Morale, before what its timed effects change (Mirth, Sorrow: in `effects`).
+    /// Morale now, with its timed effects (Mirth, Sorrow), clamped to the roll levels.
     pub morale: i8,
-    /// Luck, before what its timed effects change (Fortune, Misfortune: in `effects`).
+    /// Luck now, with its timed effects (Fortune, Misfortune), clamped to the roll levels (0 and
+    /// up).
     pub luck: i8,
+    /// Morale before the roll levels' clamp, the stats dialog's value (v37, CLT-Q40), saturated to
+    /// `i8`.
+    pub unclamped_morale: i8,
+    /// Luck before the roll levels' clamp, below 0 too (v37, CLT-Q40), saturated to `i8`.
+    pub unclamped_luck: i8,
     /// Shots left.
     pub shots: u16,
     /// Retaliations per round (255: unlimited).
@@ -941,6 +947,9 @@ pub struct Observation {
     pub siege: Option<Siege>,
     /// The attacker's and the defender's public state.
     pub sides: [SideView; 2],
+    /// The attacker's and the defender's hero's morale and luck effects with their sources, in
+    /// the setup's order; empty without a hero (v37, CLT-Q40: public, for viewers).
+    pub morale_and_luck: [Vec<MoraleLuck>; 2],
     /// The private part of the viewer's own hero.
     pub own_hero: Option<OwnHero>,
     /// Every stack, by id.
@@ -979,6 +988,114 @@ pub struct Siege {
     pub moat_hexes: Vec<u8>,
     /// Each wall part's hit points by index (v31; 0 destroyed or not set up).
     pub parts: Vec<u8>,
+    /// The town's buildings that change its defender's morale and luck (v37, CLT-Q40).
+    pub bonuses: Vec<TownBonus>,
+}
+
+/// A siege town's building that changes its defender's morale and luck (v37, CLT-Q40).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownBonus {
+    /// The building's index in the town's faction's town record.
+    pub building: u8,
+    /// Its morale change.
+    pub morale: i8,
+    /// Its luck change.
+    pub luck: i8,
+}
+
+/// Whose stacks a hero's effect reaches (v37).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Affects {
+    /// The hero's own side's.
+    Own,
+    /// The other side's.
+    Enemy,
+    /// Both sides'.
+    Both,
+}
+
+/// Where a hero's morale or luck effect comes from (v37, CLT-Q40; `h3_contracts::EffectSource`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Source {
+    /// A secondary skill at its level, 1 (Basic) to 3 (Expert).
+    Skill {
+        /// The skill's handle ([`KeyTables::skills`]).
+        skill: u16,
+        /// Its level.
+        level: u8,
+    },
+    /// A worn artifact or a part of a worn combination, by handle ([`KeyTables::artifacts`]).
+    Artifact {
+        /// The artifact type's handle.
+        artifact: u16,
+    },
+    /// The hero type's specialty.
+    Specialty,
+    /// An adventure-map object visited since the hero's last battle, by its once-mark.
+    Visit {
+        /// The once-mark.
+        mark: u8,
+    },
+    /// A town building of the hero's owner (its Grail building).
+    Building {
+        /// The town's faction handle.
+        faction: u16,
+        /// The building's index in the faction's town record.
+        index: u8,
+    },
+    /// What no other source names (the original's temporary lines).
+    Temporary,
+}
+
+/// A hero's morale or luck effect with its source (v37, CLT-Q40; `h3_contracts::BattleEffect`'s
+/// morale and luck kinds): public, for viewers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MoraleLuck {
+    /// A morale change.
+    Morale {
+        /// The change.
+        amount: i8,
+        /// Whose stacks.
+        affects: Affects,
+        /// Where it comes from.
+        source: Source,
+    },
+    /// A luck change.
+    Luck {
+        /// The change.
+        amount: i8,
+        /// Whose stacks.
+        affects: Affects,
+        /// Where it comes from.
+        source: Source,
+    },
+    /// A morale cap (the Spirit of Oppression).
+    MoraleAtMost {
+        /// The highest morale.
+        value: i8,
+        /// Whose stacks.
+        affects: Affects,
+        /// Where it comes from.
+        source: Source,
+    },
+    /// A luck cap (the Hourglass of the Evil Hour).
+    LuckAtMost {
+        /// The highest luck.
+        value: i8,
+        /// Whose stacks.
+        affects: Affects,
+        /// Where it comes from.
+        source: Source,
+    },
+    /// Factions that count as one alignment for the side's army-alignment morale (the Angelic
+    /// Alliance).
+    AlignmentGroup {
+        /// The factions' handles.
+        factions: Vec<u16>,
+        /// Where it comes from.
+        source: Source,
+    },
 }
 
 /// A content pack the game is made of.
@@ -1535,6 +1652,11 @@ pub enum GoodbyeReason {
 /// shows a lost message and nothing about other viewers (ADR-0018 point 7).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "a message is built once per send; boxing `Snapshot`'s observation and `Joined`'s \
+              manifest would change every match on them across the lanes for no measured gain (v37)"
+)]
 pub enum ServerMessage {
     /// The answer to a hello in the server's protocol version.
     Welcome {

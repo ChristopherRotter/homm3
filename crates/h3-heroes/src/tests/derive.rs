@@ -60,6 +60,11 @@ fn effect_ruleset() -> Ruleset {
 /// `t:helm` morale at most 1 for both sides; `t:eye` luck +1; `t:hook` enemy morale −1 and
 /// morale at most 2 for both sides; the specialty enemy luck −1 and enemy morale +1.
 fn morale_ruleset() -> Ruleset {
+    compile(morale_pack()).unwrap()
+}
+
+/// The pack of [`morale_ruleset`].
+fn morale_pack() -> ContentPack {
     use Affects::{Both, Enemy, Own};
     let morale = |amount, affects| HeroEffectDef::Morale { amount, affects };
     let luck = |amount, affects| HeroEffectDef::Luck { amount, affects };
@@ -100,7 +105,7 @@ fn morale_ruleset() -> Ruleset {
     p.heroes[0]
         .specialty
         .extend([luck(-1, Enemy), morale(1, Enemy)]);
-    compile(p).unwrap()
+    p
 }
 
 /// The effect pack plus damage bonuses: Offense +10/20/30 % melee and Armorer 5/10/15 %
@@ -240,93 +245,95 @@ fn derivation_leaves_later_fields_neutral_and_validates_first() {
 
 // covers: HER-BAT-003
 #[test]
-fn morale_and_luck_effects_are_combined_and_count_each_artifact_once() {
+fn morale_and_luck_effects_are_kept_per_source_and_count_each_artifact_once() {
     use Affects::{Both, Enemy, Own};
+    use h3_contracts::EffectSource::{self, Artifact, Skill, Specialty};
+    let morale = |amount, affects, source| BattleEffect::Morale {
+        amount,
+        affects,
+        source,
+    };
+    let luck = |amount, affects, source| BattleEffect::Luck {
+        amount,
+        affects,
+        source,
+    };
+    let morale_cap = |value, affects, source| BattleEffect::MoraleAtMost {
+        value,
+        affects,
+        source,
+    };
     let r = morale_ruleset();
+    let a = |k| Artifact(art(&r, k).artifact);
     let d = details(&r);
-    // Own morale: the circle and its part band, +1 each; enemy morale: the hook's −1 and the
-    // specialty's +1 cancel and are left out; own luck: the eye once although two are worn;
-    // enemy luck: the specialty's −1; the caps: the smaller of the hook's 2 and the helm's 1
-    // for both sides, the band's 0 for the enemy.
-    let caps = [
-        BattleEffect::MoraleAtMost {
-            value: 1,
-            affects: Both,
-        },
+    // Each effect with its source (CLT-Q40), the worn artifacts in their order: the circle and its
+    // parts band and helm; the eye once although two are worn; the hook; the specialty, in its
+    // content's order. The battle sums the changes (the hook's −1 and the specialty's +1 for the
+    // enemy) and takes the smallest cap.
+    let artifacts = [
+        morale(1, Own, a("t:circle")),
+        morale(1, Own, a("t:band")),
         BattleEffect::LuckAtMost {
             value: 0,
             affects: Enemy,
+            source: a("t:band"),
         },
+        morale_cap(1, Both, a("t:helm")),
+        luck(1, Own, a("t:eye")),
     ];
+    let specialty = [luck(-1, Enemy, Specialty), morale(1, Enemy, Specialty)];
     let hero = derive_battle_hero(&d, &r).unwrap();
-    assert_eq!(
-        hero.effects,
-        [
-            &[
-                BattleEffect::Morale {
-                    amount: 2,
-                    affects: Own,
-                },
-                BattleEffect::Luck {
-                    amount: 1,
-                    affects: Own,
-                },
-                BattleEffect::Luck {
-                    amount: -1,
-                    affects: Enemy,
-                },
-            ][..],
-            &caps,
-        ]
-        .concat()
-    );
-    // Advanced Leadership and Basic Luck add to the own morale and luck; without the hook the
-    // specialty's enemy morale +1 remains, and the helm's cap.
+    let hook = [
+        morale(-1, Enemy, a("t:hook")),
+        morale_cap(2, Both, a("t:hook")),
+    ];
+    assert_eq!(hero.effects, [&artifacts[..], &hook, &specialty].concat());
+    // Advanced Leadership and Basic Luck come first, each its own source; without the hook.
     let mut d = d;
     d.skills
         .extend([(skill(&r, "t:leadership"), 2), (skill(&r, "t:luck"), 1)]);
     take_off(&mut d.worn, art(&r, "t:hook"));
+    let level = |key, level| -> EffectSource {
+        Skill {
+            skill: skill(&r, key),
+            level,
+        }
+    };
+    let skills = [
+        morale(2, Own, level("t:leadership", 2)),
+        luck(1, Own, level("t:luck", 1)),
+    ];
     let hero = derive_battle_hero(&d, &r).unwrap();
-    assert_eq!(
-        hero.effects,
-        [
-            &[
-                BattleEffect::Morale {
-                    amount: 4,
-                    affects: Own,
-                },
-                BattleEffect::Morale {
-                    amount: 1,
-                    affects: Enemy,
-                },
-                BattleEffect::Luck {
-                    amount: 2,
-                    affects: Own,
-                },
-                BattleEffect::Luck {
-                    amount: -1,
-                    affects: Enemy,
-                },
-            ][..],
-            &caps,
-        ]
-        .concat()
-    );
+    assert_eq!(hero.effects, [&skills[..], &artifacts, &specialty].concat());
 }
 
 // covers: HER-ADV-008
 #[test]
-fn the_battle_bonuses_join_the_own_sides_morale_and_luck() {
+fn the_battle_bonuses_are_the_own_sides_temporary_morale_and_luck() {
     use Affects::{Enemy, Own};
-    let morale = |amount, affects| BattleEffect::Morale { amount, affects };
-    let luck = |amount, affects| BattleEffect::Luck { amount, affects };
+    use h3_contracts::EffectSource::{Artifact, Skill, Specialty, Temporary};
+    let morale = |amount, affects, source| BattleEffect::Morale {
+        amount,
+        affects,
+        source,
+    };
+    let luck = |amount, affects, source| BattleEffect::Luck {
+        amount,
+        affects,
+        source,
+    };
     let r = morale_ruleset();
+    let a = |k| Artifact(art(&r, k).artifact);
+    let leadership = Skill {
+        skill: skill(&r, "t:leadership"),
+        level: 1,
+    };
     let mut d = details(&r);
     take_off(&mut d.worn, art(&r, "t:hook"));
     d.skills = vec![(skill(&r, "t:leadership"), 1)];
-    // The Tomb's −3 and Basic Leadership's +1 beside the circle's and band's +2: 0, left out;
-    // the Pyramid's −2 luck beside the eye's +1: −1; the enemy's morale and luck (the
-    // specialty's) stay their own.
+    // The Tomb's −3 and the Pyramid's −2 (their marks set) are the temporary source's, last
+    // (which visit gave them is the adventure's content); the battle sums them with Basic
+    // Leadership's +1 and the circle's and band's +2 (0), and with the eye's +1 luck (−1).
     d.bonuses = BattleBonuses {
         morale: -3,
         luck: -2,
@@ -339,29 +346,27 @@ fn the_battle_bonuses_join_the_own_sides_morale_and_luck() {
             .filter(|e| matches!(e, BattleEffect::Morale { .. } | BattleEffect::Luck { .. }))
             .collect()
     };
+    let specialty = [luck(-1, Enemy, Specialty), morale(1, Enemy, Specialty)];
+    let bonuses = [morale(-3, Own, Temporary), luck(-2, Own, Temporary)];
     let hero = derive_battle_hero(&d, &r).unwrap();
-    assert_eq!(
-        sums(&hero),
-        [morale(1, Enemy), luck(-1, Own), luck(-1, Enemy)]
-    );
-    // Without the circle and the band: Leadership's +1 and −3 make −2 (design §5's case).
+    let worn = [
+        morale(1, Own, leadership),
+        morale(1, Own, a("t:circle")),
+        morale(1, Own, a("t:band")),
+        luck(1, Own, a("t:eye")),
+    ];
+    assert_eq!(sums(&hero), [&worn[..], &specialty, &bonuses].concat());
+    // Without the circle and the band.
     take_off(&mut d.worn, art(&r, "t:circle"));
     let hero = derive_battle_hero(&d, &r).unwrap();
-    assert_eq!(
-        sums(&hero),
-        [
-            morale(-2, Own),
-            morale(1, Enemy),
-            luck(-1, Own),
-            luck(-1, Enemy)
-        ]
-    );
-    // A hero with no other source gets the bonuses alone, held to `i8` as every sum.
+    let worn = [morale(1, Own, leadership), luck(1, Own, a("t:eye"))];
+    assert_eq!(sums(&hero), [&worn[..], &specialty, &bonuses].concat());
+    // A hero with no other source gets the bonuses alone.
     let plain = ruleset();
     let mut bare = details(&plain);
     bare.bonuses.morale = -3;
     let hero = derive_battle_hero(&bare, &plain).unwrap();
-    assert_eq!(sums(&hero), [morale(-3, Own)]);
+    assert_eq!(sums(&hero), [morale(-3, Own, Temporary)]);
     // After the battle's end (cleared), none.
     apply_change(&mut bare, &plain, HeroChange::ClearBonuses);
     assert_eq!(sums(&derive_battle_hero(&bare, &plain).unwrap()), []);
@@ -928,11 +933,14 @@ fn alignment_groups_are_kept_once_each() {
     }
     let r = compile(p).unwrap();
     let id = |i| h3_content::FactionId::from_index(i).unwrap();
-    // The circle's and its part's equal groups once, then the eye's.
+    // The circle's and its part's equal groups once, with the circle as their source, then the
+    // eye's (CLT-Q40).
+    let source = |k| h3_contracts::EffectSource::Artifact(art(&r, k).artifact);
     assert_eq!(
         derive_battle_hero(&details(&r), &r).unwrap().effects,
-        [[0, 1], [1, 2]].map(|ids| BattleEffect::AlignmentGroup {
-            factions: FactionGroup::new(&ids.map(id)).unwrap()
+        [([0, 1], "t:circle"), ([1, 2], "t:eye")].map(|(ids, k)| BattleEffect::AlignmentGroup {
+            factions: FactionGroup::new(&ids.map(id)).unwrap(),
+            source: source(k),
         })
     );
     // At most 16 factions in a group.

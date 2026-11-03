@@ -28,10 +28,11 @@ Re-running its spec is no substitute: since E04c T10b's obstacle draw (17a0489b)
 `field-s5` get other obstacles than the ones they store (E23 T1c).
 
 **Only the state hash moved** (`BATTLE_STATE_HASH_VERSION`, E23 T5b2b's v52, E23 T6's v53,
-CLT-Q4/Q6's v54; E23 T6 also the replay format v30, the setup's retreat facts and the attacker's
-ground; CLT-Q4/Q6 the format v31, the viewers' facts): the commands stay. The loop below
-re-records the eight others with the same commands; `duel-s1` and `field-s5` (E23 T6 and
-CLT-Q4/Q6: all ten) are rehashed from their stored setup and commands by a throwaway test in
+CLT-Q4/Q6's v54, BAT-Q64's v55; E23 T6 also the replay format v30, the setup's retreat facts and
+the attacker's ground; CLT-Q4/Q6 the format v31, the viewers' facts; BAT-Q64 the format v32, the
+effects' sources and the siege's bonuses by building): the commands stay. The loop below
+re-records the eight others with the same commands; `duel-s1` and `field-s5` (E23 T6, CLT-Q4/Q6
+and BAT-Q64: all ten) are rehashed from their stored setup and commands by a throwaway test in
 `crates/h3-cli/tests` (`ReplayDoc::parse`, `into_replay`, the header `ReplayHeader::current`,
 each command applied with the checkpoints taken, `replay_to_toml`), then `h3 verify`. Check that
 only hash lines and the version moved. The adventure lane's replays hold battles too: re-record

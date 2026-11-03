@@ -632,8 +632,7 @@ fn before_the_gate(r: &BattleRuleset, count: u32, human: [bool; 2], open: bool) 
                 moat: Moat::Damaging,
                 structures: 0,
                 escape_tunnel: false,
-                morale: 0,
-                luck: 0,
+                bonuses: h3_contracts::TownBonuses::NONE,
             });
         },
     );
@@ -1168,10 +1167,12 @@ fn a_hypnotized_stack_takes_its_controller_s_morale_and_luck() {
         BattleEffect::Morale {
             amount: 2,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::Luck {
             amount: 1,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
     ];
     let setup = h3_contracts::BattleSetup {

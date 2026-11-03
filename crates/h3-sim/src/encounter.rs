@@ -26,7 +26,7 @@ use h3_content::{
     TerrainId,
 };
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{ArmyStack, BattleSetup, FortLevel, Moat, Siege};
+use h3_contracts::{ArmyStack, BattleSetup, FortLevel, Moat, Siege, TownBonus, TownBonuses};
 use h3_game::GameRuleset;
 use h3_kernel::{Rng, StreamId};
 
@@ -700,12 +700,17 @@ impl Sampler {
             },
             structures,
             escape_tunnel: false,
-            morale: if kind == Kind::SiegeNeutral {
-                0
+            // The table's morale as one building's (building 0 stands in: no rule reads it).
+            bonuses: if kind == Kind::SiegeNeutral || self.table.town_morale == 0 {
+                TownBonuses::NONE
             } else {
-                self.table.town_morale
+                TownBonuses::new(&[TownBonus {
+                    building: 0,
+                    morale: self.table.town_morale,
+                    luck: 0,
+                }])
+                .unwrap_or_default()
             },
-            luck: 0,
         });
         draft.setup.terrain = Some(data.terrain);
         let attacker = self.faction(rng);

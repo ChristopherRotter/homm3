@@ -32,10 +32,12 @@ fn with_hero(stacks: &[(usize, u32)], king: usize, (luck, morale): (i8, i8)) -> 
     h.effects.push(BattleEffect::Luck {
         amount: luck,
         affects: Affects::Own,
+        source: h3_contracts::EffectSource::Temporary,
     });
     h.effects.push(BattleEffect::Morale {
         amount: morale,
         affects: Affects::Own,
+        source: h3_contracts::EffectSource::Temporary,
     });
     setup.heroes[0] = Some(h);
     setup

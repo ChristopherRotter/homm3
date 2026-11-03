@@ -3002,7 +3002,7 @@ any other town with a Tavern +1 (`vcmi`: the Brotherhood `upgrades` the Tavern w
 (0x44B2D0) is 0 when either hero wears the Hourglass of the Evil Hour (85); else the controller's
 hero's luck, −1 if the other army holds Devils or Arch Devils (54, 55), then +2 in a Rampart
 (type 1) with building 21 (the Fountain of Fortune, +0x158). The town context derives these as
-`Siege.morale` and `Siege.luck` (ADR-0023 point 2); the battle adds them to the defender's stacks
+`Siege.bonuses`, one per building (ADR-0023 point 2); the battle adds them to the defender's stacks
 as side terms. A stack another side controls takes that side's terms, the town's included, from
 the next action on: **observed** (batch 2g HM, 2026-10-24: Blue's hypnotized Swordsman at Red's
 morale 4 and luck 3 after the cast, 0 and 0 when Hypnotize ended), and the engine follows it

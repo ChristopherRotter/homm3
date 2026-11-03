@@ -243,8 +243,12 @@ pub fn effect_skills(
     let mut skills: Vec<(u8, u8)> = Vec::new();
     for effect in effects {
         let wanted: CompiledHeroEffect = match *effect {
-            BattleEffect::Morale { amount, affects } => HeroEffect::Morale { amount, affects },
-            BattleEffect::Luck { amount, affects } => HeroEffect::Luck { amount, affects },
+            BattleEffect::Morale {
+                amount, affects, ..
+            } => HeroEffect::Morale { amount, affects },
+            BattleEffect::Luck {
+                amount, affects, ..
+            } => HeroEffect::Luck { amount, affects },
             ref other => {
                 return Err(format!(
                     "{other:?}: no skill gives it on the original's map"
@@ -869,10 +873,15 @@ mod tests {
         let packs = repo().join("packs");
         let (ruleset, _) =
             battle(&repo().join("clients/situations/seq-walk.toml"), &packs, 1).unwrap();
-        let luck = |amount, affects| BattleEffect::Luck { amount, affects };
+        let luck = |amount, affects| BattleEffect::Luck {
+            amount,
+            affects,
+            source: h3_contracts::EffectSource::Temporary,
+        };
         let morale = BattleEffect::Morale {
             amount: 2,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         };
         assert_eq!(
             effect_skills(&ruleset, &[luck(3, Affects::Own), morale]),
@@ -883,6 +892,7 @@ mod tests {
         let capped = BattleEffect::LuckAtMost {
             value: 0,
             affects: Affects::Enemy,
+            source: h3_contracts::EffectSource::Temporary,
         };
         for bad in [
             vec![luck(4, Affects::Own)],

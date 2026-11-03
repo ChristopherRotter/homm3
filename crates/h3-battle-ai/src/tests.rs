@@ -1448,8 +1448,7 @@ fn at_town(
             moat,
             structures,
             escape_tunnel: false,
-            morale: 0,
-            luck: 0,
+            bonuses: h3_contracts::TownBonuses::NONE,
         }),
         ..setup(attacker, defender)
     }

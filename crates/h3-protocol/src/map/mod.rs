@@ -19,7 +19,10 @@ use h3_battle::{
 };
 use h3_content::{CreatureTypeId, SpellId};
 use h3_content_battle::{BattleRuleset, ObstacleTypeId};
-use h3_contracts::{BallistaControl, CatapultControl, DamageBonuses, HeroSex, Rate, TentControl};
+use h3_contracts::{
+    BallistaControl, BattleEffect, CatapultControl, DamageBonuses, EffectSource, HeroSex, Rate,
+    TentControl,
+};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 
@@ -27,10 +30,10 @@ pub use from_engine::{command, reject, target};
 
 use crate::PROTOCOL_VERSION;
 use crate::wire::{
-    Algorithm, Ballista, BookSpell, Command, Defences, Effect, Event, Field, Hero, KeyTables,
-    Manifest, Observation, Offer, OpeningSpell, Outcome, OwnHero, PackRef, Query,
-    RemovableObstacle, Seat, Sex, Side, SideView, Siege, SpellBonus, SpellObstacle, Stack, Strike,
-    Tactics, Target, WireU64,
+    Affects, Algorithm, Ballista, BookSpell, Command, Defences, Effect, Event, Field, Hero,
+    KeyTables, Manifest, MoraleLuck, Observation, Offer, OpeningSpell, Outcome, OwnHero, PackRef,
+    Query, RemovableObstacle, Seat, Sex, Side, SideView, Siege, Source, SpellBonus, SpellObstacle,
+    Stack, Strike, Tactics, Target, TownBonus, WireU64,
 };
 
 /// A battle side on the wire.
@@ -316,6 +319,9 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         heroes,
         cost_change,
         own_hero: own,
+        morale_and_luck,
+        unclamped_morale,
+        unclamped_luck,
         terrain,
         battlefield,
         anti_magic,
@@ -350,6 +356,8 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         start_hp: start_hp[i],
         casts_left: casts_left[i],
         cast_candidates: cast_candidates[i],
+        unclamped_morale: unclamped_morale[i],
+        unclamped_luck: unclamped_luck[i],
     };
     Observation {
         viewer: side(*viewer),
@@ -380,11 +388,23 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
             walls: hexes(s.walls()),
             moat_hexes: hexes(s.moat()),
             parts: s.parts[..usize::from(s.targets)].to_vec(),
+            bonuses: s
+                .bonuses
+                .iter()
+                .map(|b| TownBonus {
+                    building: b.building,
+                    morale: b.morale,
+                    luck: b.luck,
+                })
+                .collect(),
         }),
         sides: [
             side_view(BattleSide::Attacker),
             side_view(BattleSide::Defender),
         ],
+        morale_and_luck: morale_and_luck
+            .each_ref()
+            .map(|effects| effects.iter().filter_map(morale_luck).collect()),
         own_hero: own.as_ref().map(own_hero),
         stacks: stacks
             .iter()
@@ -641,6 +661,78 @@ struct PerStack {
     start_hp: u32,
     casts_left: u8,
     cast_candidates: u8,
+    unclamped_morale: i8,
+    unclamped_luck: i8,
+}
+
+/// A hero's morale or luck effect with its source on the wire (CLT-Q40); `None` for another kind
+/// (the observation's list holds none).
+fn morale_luck(e: &BattleEffect) -> Option<MoraleLuck> {
+    let affects = |a: h3_content::Affects| match a {
+        h3_content::Affects::Own => Affects::Own,
+        h3_content::Affects::Enemy => Affects::Enemy,
+        h3_content::Affects::Both => Affects::Both,
+    };
+    let source = |s: EffectSource| match s {
+        EffectSource::Skill { skill, level } => Source::Skill {
+            skill: skill.raw(),
+            level,
+        },
+        EffectSource::Artifact(a) => Source::Artifact { artifact: a.raw() },
+        EffectSource::Specialty => Source::Specialty,
+        EffectSource::Visit { mark } => Source::Visit { mark },
+        EffectSource::Building { faction, index } => Source::Building {
+            faction: faction.raw(),
+            index,
+        },
+        EffectSource::Temporary => Source::Temporary,
+    };
+    Some(match *e {
+        BattleEffect::Morale {
+            amount,
+            affects: a,
+            source: s,
+        } => MoraleLuck::Morale {
+            amount,
+            affects: affects(a),
+            source: source(s),
+        },
+        BattleEffect::Luck {
+            amount,
+            affects: a,
+            source: s,
+        } => MoraleLuck::Luck {
+            amount,
+            affects: affects(a),
+            source: source(s),
+        },
+        BattleEffect::MoraleAtMost {
+            value,
+            affects: a,
+            source: s,
+        } => MoraleLuck::MoraleAtMost {
+            value,
+            affects: affects(a),
+            source: source(s),
+        },
+        BattleEffect::LuckAtMost {
+            value,
+            affects: a,
+            source: s,
+        } => MoraleLuck::LuckAtMost {
+            value,
+            affects: affects(a),
+            source: source(s),
+        },
+        BattleEffect::AlignmentGroup {
+            factions,
+            source: s,
+        } => MoraleLuck::AlignmentGroup {
+            factions: factions.factions().iter().map(|f| f.raw()).collect(),
+            source: source(s),
+        },
+        _ => return None,
+    })
 }
 
 /// Stack `id` of an observation on the wire, with what the observation keeps of it beside it and
@@ -704,6 +796,8 @@ fn stack(id: usize, s: &h3_battle::Stack, per: PerStack, effects: &[ActiveEffect
         start_hp,
         casts_left,
         cast_candidates,
+        unclamped_morale,
+        unclamped_luck,
     } = per;
     Stack {
         id: u8::try_from(id).unwrap_or(u8::MAX),
@@ -724,6 +818,8 @@ fn stack(id: usize, s: &h3_battle::Stack, per: PerStack, effects: &[ActiveEffect
         speed: s.speed_now(),
         morale,
         luck,
+        unclamped_morale,
+        unclamped_luck,
         shots,
         retaliations,
         retaliations_left,

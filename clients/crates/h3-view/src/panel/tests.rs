@@ -139,6 +139,7 @@ fn at_a_town_the_defender_neither_surrenders_nor_retreats_without_its_tunnel() {
         walls: Vec::new(),
         moat_hexes: Vec::new(),
         parts: Vec::new(),
+        bonuses: Default::default(),
     });
     o.sides[1].human = true;
     o.sides[1].may_retreat = false;

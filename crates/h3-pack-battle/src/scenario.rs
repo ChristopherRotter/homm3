@@ -5,13 +5,14 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
 use h3_content::{
-    CompileError, ContentKey, CreatureFlag, CreatureSelector, CreatureTypeId, Formation,
+    CompileError, ContentKey, CreatureFlag, CreatureSelector, CreatureTypeId, FactionId, Formation,
     MAX_ALIGNMENT_FACTIONS, Ruleset, SchoolId, SpellId, SpellScope,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    CatapultControl, DamageBonuses, EagleEye, FactionGroup, FortLevel, HeroSex, Moat, Obstacle,
-    Rate, RetreatFacts, Siege, StatOp, TentControl,
+    CatapultControl, DamageBonuses, EagleEye, EffectSource, FactionGroup, FortLevel, HeroSex,
+    MAX_TOWN_BONUSES, Moat, Obstacle, Rate, RetreatFacts, Siege, StatOp, TentControl, TownBonus,
+    TownBonuses,
 };
 use h3_pack::{AffectsEntry, StatEntry};
 use serde::{Deserialize, Serialize};
@@ -328,6 +329,9 @@ pub enum EffectEntry {
         /// Whose stacks (default `own`).
         #[serde(default)]
         affects: AffectsEntry,
+        /// Where it comes from (CLT-Q40; default and omitted: temporary).
+        #[serde(default, skip_serializing_if = "SourceEntry::is_temporary")]
+        source: SourceEntry,
     },
     /// [`BattleEffect::Luck`].
     Luck {
@@ -336,6 +340,9 @@ pub enum EffectEntry {
         /// Whose stacks (default `own`).
         #[serde(default)]
         affects: AffectsEntry,
+        /// Where it comes from (CLT-Q40; default and omitted: temporary).
+        #[serde(default, skip_serializing_if = "SourceEntry::is_temporary")]
+        source: SourceEntry,
     },
     /// [`BattleEffect::MoraleAtMost`].
     MoraleAtMost {
@@ -344,6 +351,9 @@ pub enum EffectEntry {
         /// Whose stacks (default `own`).
         #[serde(default)]
         affects: AffectsEntry,
+        /// Where it comes from (CLT-Q40; default and omitted: temporary).
+        #[serde(default, skip_serializing_if = "SourceEntry::is_temporary")]
+        source: SourceEntry,
     },
     /// [`BattleEffect::LuckAtMost`].
     LuckAtMost {
@@ -352,6 +362,9 @@ pub enum EffectEntry {
         /// Whose stacks (default `own`).
         #[serde(default)]
         affects: AffectsEntry,
+        /// Where it comes from (CLT-Q40; default and omitted: temporary).
+        #[serde(default, skip_serializing_if = "SourceEntry::is_temporary")]
+        source: SourceEntry,
     },
     /// [`BattleEffect::NoRetreat`] (a struct variant, so that unknown keys are rejected).
     NoRetreat {},
@@ -391,6 +404,9 @@ pub enum EffectEntry {
     AlignmentGroup {
         /// The factions by key (at most [`MAX_ALIGNMENT_FACTIONS`]).
         factions: Vec<String>,
+        /// Where it comes from (CLT-Q40; default and omitted: temporary).
+        #[serde(default, skip_serializing_if = "SourceEntry::is_temporary")]
+        source: SourceEntry,
     },
     /// [`BattleEffect::SpellDamage`]: `school` or `spell` by key (neither: every spell).
     SpellDamage {
@@ -507,21 +523,41 @@ impl EffectEntry {
     /// [`MAX_ALIGNMENT_FACTIONS`] factions.
     pub fn effect(&self, ruleset: &Ruleset) -> Result<BattleEffect, BattlePackError> {
         Ok(match self.clone() {
-            Self::Morale { amount, affects } => BattleEffect::Morale {
+            Self::Morale {
+                amount,
+                affects,
+                source,
+            } => BattleEffect::Morale {
                 amount,
                 affects: affects.into(),
+                source: source.resolve(ruleset)?,
             },
-            Self::Luck { amount, affects } => BattleEffect::Luck {
+            Self::Luck {
+                amount,
+                affects,
+                source,
+            } => BattleEffect::Luck {
                 amount,
                 affects: affects.into(),
+                source: source.resolve(ruleset)?,
             },
-            Self::MoraleAtMost { value, affects } => BattleEffect::MoraleAtMost {
+            Self::MoraleAtMost {
+                value,
+                affects,
+                source,
+            } => BattleEffect::MoraleAtMost {
                 value,
                 affects: affects.into(),
+                source: source.resolve(ruleset)?,
             },
-            Self::LuckAtMost { value, affects } => BattleEffect::LuckAtMost {
+            Self::LuckAtMost {
+                value,
+                affects,
+                source,
+            } => BattleEffect::LuckAtMost {
                 value,
                 affects: affects.into(),
+                source: source.resolve(ruleset)?,
             },
             Self::NoRetreat {} => BattleEffect::NoRetreat,
             Self::StackStat {
@@ -548,7 +584,7 @@ impl EffectEntry {
             Self::ShootWhenAdjacent { creatures } => BattleEffect::ShootWhenAdjacent {
                 creatures: SelectorEntry::resolve(creatures, ruleset)?,
             },
-            Self::AlignmentGroup { factions } => {
+            Self::AlignmentGroup { factions, source } => {
                 let ids = factions
                     .into_iter()
                     .map(|k| {
@@ -563,6 +599,7 @@ impl EffectEntry {
                             "alignment_group: more than {MAX_ALIGNMENT_FACTIONS} factions"
                         ))
                     })?,
+                    source: source.resolve(ruleset)?,
                 }
             }
             Self::SpellDamage {
@@ -626,21 +663,41 @@ impl EffectEntry {
     pub fn of(effect: &BattleEffect, ruleset: &Ruleset) -> Result<Self, BattlePackError> {
         let selector = |creatures| SelectorEntry::of(creatures, ruleset);
         Ok(match *effect {
-            BattleEffect::Morale { amount, affects } => Self::Morale {
+            BattleEffect::Morale {
+                amount,
+                affects,
+                source,
+            } => Self::Morale {
                 amount,
                 affects: affects.into(),
+                source: SourceEntry::of(source, ruleset)?,
             },
-            BattleEffect::Luck { amount, affects } => Self::Luck {
+            BattleEffect::Luck {
+                amount,
+                affects,
+                source,
+            } => Self::Luck {
                 amount,
                 affects: affects.into(),
+                source: SourceEntry::of(source, ruleset)?,
             },
-            BattleEffect::MoraleAtMost { value, affects } => Self::MoraleAtMost {
+            BattleEffect::MoraleAtMost {
+                value,
+                affects,
+                source,
+            } => Self::MoraleAtMost {
                 value,
                 affects: affects.into(),
+                source: SourceEntry::of(source, ruleset)?,
             },
-            BattleEffect::LuckAtMost { value, affects } => Self::LuckAtMost {
+            BattleEffect::LuckAtMost {
+                value,
+                affects,
+                source,
+            } => Self::LuckAtMost {
                 value,
                 affects: affects.into(),
+                source: SourceEntry::of(source, ruleset)?,
             },
             BattleEffect::NoRetreat => Self::NoRetreat {},
             BattleEffect::StackStat {
@@ -713,21 +770,148 @@ impl EffectEntry {
                 mastery,
                 power,
             },
-            BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
+            BattleEffect::AlignmentGroup { factions, source } => Self::AlignmentGroup {
                 factions: factions
                     .factions()
                     .iter()
-                    .map(|&f| {
-                        ruleset
-                            .factions()
-                            .get(f.index())
-                            .map(|i| i.key.as_str().to_owned())
-                            .ok_or_else(|| BattlePackError::UnknownFaction(format!("#{}", f.raw())))
-                    })
+                    .map(|&f| faction_key(ruleset, f))
                     .collect::<Result<_, _>>()?,
+                source: SourceEntry::of(source, ruleset)?,
             },
         })
     }
+}
+
+/// The key of faction `id` in `ruleset`.
+fn faction_key(ruleset: &Ruleset, id: FactionId) -> Result<String, BattlePackError> {
+    ruleset
+        .factions()
+        .get(id.index())
+        .map(|i| i.key.as_str().to_owned())
+        .ok_or_else(|| BattlePackError::UnknownFaction(format!("#{}", id.raw())))
+}
+
+/// Where a hero's morale or luck effect comes from, as scenario and replay files write it
+/// (`h3_contracts::EffectSource`, CLT-Q40): `kind` and the kind's parameters, the skill, the
+/// artifact and the faction by key; omitted for `temporary`, the default.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum SourceEntry {
+    /// A secondary skill at its level.
+    Skill {
+        /// The skill's key.
+        skill: String,
+        /// Its level, 1 (Basic) to 3 (Expert).
+        level: u8,
+    },
+    /// A worn artifact or a part of a worn combination.
+    Artifact {
+        /// The artifact's key.
+        artifact: String,
+    },
+    /// The hero type's specialty.
+    Specialty,
+    /// An adventure-map object visited since the hero's last battle, by its once-mark.
+    Visit {
+        /// The once-mark.
+        mark: u8,
+    },
+    /// A town building of the hero's owner (its Grail building).
+    Building {
+        /// The town's faction key.
+        faction: String,
+        /// The building's index in the faction's town record.
+        index: u8,
+    },
+    /// What no other source names.
+    #[default]
+    Temporary,
+}
+
+impl SourceEntry {
+    /// Whether the entry is the default, `temporary` (not written).
+    fn is_temporary(&self) -> bool {
+        *self == Self::Temporary
+    }
+
+    /// The source, its keys resolved against `ruleset`.
+    ///
+    /// # Errors
+    /// [`BattlePackError::Syntax`] for an unknown skill or artifact,
+    /// [`BattlePackError::UnknownFaction`].
+    fn resolve(self, ruleset: &Ruleset) -> Result<EffectSource, BattlePackError> {
+        Ok(match self {
+            Self::Skill { skill, level } => EffectSource::Skill {
+                skill: ruleset
+                    .skill_by_key(&skill)
+                    .ok_or_else(|| BattlePackError::Syntax(format!("unknown skill `{skill}`")))?,
+                level,
+            },
+            Self::Artifact { artifact } => {
+                EffectSource::Artifact(ruleset.artifact_by_key(&artifact).ok_or_else(|| {
+                    BattlePackError::Syntax(format!("unknown artifact `{artifact}`"))
+                })?)
+            }
+            Self::Specialty => EffectSource::Specialty,
+            Self::Visit { mark } => EffectSource::Visit { mark },
+            Self::Building { faction, index } => EffectSource::Building {
+                faction: ruleset
+                    .faction_by_key(&faction)
+                    .ok_or(BattlePackError::UnknownFaction(faction))?,
+                index,
+            },
+            Self::Temporary => EffectSource::Temporary,
+        })
+    }
+
+    /// The entry of `source` (inverse of [`SourceEntry::resolve`]).
+    ///
+    /// # Errors
+    /// [`BattlePackError::Syntax`] for a skill or artifact outside `ruleset`,
+    /// [`BattlePackError::UnknownFaction`].
+    fn of(source: EffectSource, ruleset: &Ruleset) -> Result<Self, BattlePackError> {
+        Ok(match source {
+            EffectSource::Skill { skill, level } => Self::Skill {
+                skill: ruleset
+                    .skill(skill)
+                    .map(|s| s.key.as_str().to_owned())
+                    .ok_or_else(|| {
+                        BattlePackError::Syntax(format!("unknown skill #{}", skill.raw()))
+                    })?,
+                level,
+            },
+            EffectSource::Artifact(artifact) => Self::Artifact {
+                artifact: ruleset
+                    .artifact(artifact)
+                    .map(|a| a.key.as_str().to_owned())
+                    .ok_or_else(|| {
+                        BattlePackError::Syntax(format!("unknown artifact #{}", artifact.raw()))
+                    })?,
+            },
+            EffectSource::Specialty => Self::Specialty,
+            EffectSource::Visit { mark } => Self::Visit { mark },
+            EffectSource::Building { faction, index } => Self::Building {
+                faction: faction_key(ruleset, faction)?,
+                index,
+            },
+            EffectSource::Temporary => Self::Temporary,
+        })
+    }
+}
+
+/// A siege town's building that changes its defender's morale or luck, as scenario and replay
+/// files write it (`h3_contracts::TownBonus`, CLT-Q40): each change omitted when 0.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownBonusEntry {
+    /// The building's index in the town's faction's town record.
+    pub building: u8,
+    /// Its morale change.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub morale: i8,
+    /// Its luck change.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub luck: i8,
 }
 
 impl HeroEntry {
@@ -974,12 +1158,10 @@ pub struct SiegeEntry {
     /// The town has an Escape Tunnel.
     #[serde(default)]
     pub escape_tunnel: bool,
-    /// The town's morale bonus to the defender's stacks.
-    #[serde(default)]
-    pub morale: i8,
-    /// The town's luck bonus to the defender's stacks.
-    #[serde(default)]
-    pub luck: i8,
+    /// The town's buildings that change its defender's morale and luck (at most
+    /// [`MAX_TOWN_BONUSES`]; written only when some).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bonuses: Vec<TownBonusEntry>,
 }
 
 /// What a side's hero would lose by a retreat and whether it could be hired again
@@ -1058,15 +1240,22 @@ impl SiegeEntry {
             moat: MOATS[siege.moat as usize].0.to_owned(),
             structures: siege.structures,
             escape_tunnel: siege.escape_tunnel,
-            morale: siege.morale,
-            luck: siege.luck,
+            bonuses: siege
+                .bonuses
+                .iter()
+                .map(|b| TownBonusEntry {
+                    building: b.building,
+                    morale: b.morale,
+                    luck: b.luck,
+                })
+                .collect(),
         })
     }
 
     /// The siege of the entry, its faction resolved against `ruleset`.
     ///
     /// # Errors
-    /// An unknown faction, fort level or moat.
+    /// An unknown faction, fort level or moat; more than [`MAX_TOWN_BONUSES`] bonuses.
     pub fn to_siege(&self, ruleset: &Ruleset) -> Result<Siege, BattlePackError> {
         let faction = ruleset.faction_by_key(&self.faction).ok_or_else(|| {
             BattlePackError::Syntax(format!("unknown faction `{}`", self.faction))
@@ -1077,8 +1266,20 @@ impl SiegeEntry {
             moat: pick(&MOATS, &self.moat, "moat")?,
             structures: self.structures,
             escape_tunnel: self.escape_tunnel,
-            morale: self.morale,
-            luck: self.luck,
+            bonuses: TownBonuses::new(
+                &self
+                    .bonuses
+                    .iter()
+                    .map(|b| TownBonus {
+                        building: b.building,
+                        morale: b.morale,
+                        luck: b.luck,
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .ok_or_else(|| {
+                BattlePackError::Syntax(format!("siege: more than {MAX_TOWN_BONUSES} bonuses"))
+            })?,
         })
     }
 }

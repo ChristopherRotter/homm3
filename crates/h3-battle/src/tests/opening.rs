@@ -301,6 +301,7 @@ fn a_side_whose_first_stack_freezes_casts_at_the_first_stack_that_takes_its_turn
     sad[1].as_mut().unwrap().effects.push(BattleEffect::Morale {
         amount: -3,
         affects: h3_content::Affects::Own,
+        source: h3_contracts::EffectSource::Temporary,
     });
     assert!(waited(&r, &armies(&r, sad), (2, 3)) > 0);
     // Fear: a spook of the attacker's (stack 2, speed 4) frightens half of the picks of the

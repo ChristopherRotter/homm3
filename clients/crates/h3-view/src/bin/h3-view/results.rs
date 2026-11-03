@@ -700,6 +700,7 @@ times = [9000, 575, 500, 115]
             walls: Vec::new(),
             moat_hexes: Vec::new(),
             parts: Vec::new(),
+            bonuses: Default::default(),
         });
         // 6 × 10 + the hero's 500, 500 more for the attacker at a town.
         let field = opening(&f, heroes, [true, true]);

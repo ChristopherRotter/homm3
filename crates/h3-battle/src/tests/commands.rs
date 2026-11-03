@@ -296,6 +296,20 @@ fn state_hash_is_pinned() {
             mastery: 3,
             power: 10,
         },
+        // Morale and luck effects with their sources (v55, CLT-Q40).
+        h3_contracts::BattleEffect::Morale {
+            amount: 1,
+            affects: h3_content::Affects::Own,
+            source: h3_contracts::EffectSource::Visit { mark: 2 },
+        },
+        h3_contracts::BattleEffect::LuckAtMost {
+            value: 2,
+            affects: h3_content::Affects::Enemy,
+            source: h3_contracts::EffectSource::Building {
+                faction: r.faction_by_key("t:castle").unwrap(),
+                index: 21,
+            },
+        },
     ];
     led.magic.spell_book = Some(vec![bolt]);
     // Eagle Eye (v41): 44 %, the bolt.
@@ -339,8 +353,13 @@ fn state_hash_is_pinned() {
             moat: h3_contracts::Moat::Damaging,
             structures: 2,
             escape_tunnel: true,
-            morale: 1,
-            luck: 0,
+            // The buildings behind the town's morale and luck (v55, CLT-Q40).
+            bonuses: h3_contracts::TownBonuses::new(&[h3_contracts::TownBonus {
+                building: 5,
+                morale: 1,
+                luck: 0,
+            }])
+            .unwrap_or_default(),
         }),
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
@@ -354,12 +373,14 @@ fn state_hash_is_pinned() {
     // (E04c T8). v51: the Ballista's Artillery level (E04c T7e). v52: each stack's last drawn
     // spell (E23 T5b2b). v53: the tactics phase's rounds the computer counts, the retreat
     // facts and the attacking hero's own ground (E23 T6). v54: the viewers' facts, the
-    // battlefield picture's variant, each side's colour and a hero's sex (CLT-Q4, CLT-Q6).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 54);
+    // battlefield picture's variant, each side's colour and a hero's sex (CLT-Q4, CLT-Q6). v55:
+    // the heroes' morale and luck effects with their sources, a town's morale and luck buildings
+    // and each stack's unclamped morale and luck (CLT-Q40).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 55);
     assert_eq!(
         s.siege.unwrap().turret(7),
         Some(StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
     );
 }
 
-const GOLDEN: u64 = 0xa42e_086f_ad3a_8421;
+const GOLDEN: u64 = 0xd9e9_f060_4b78_58d1;

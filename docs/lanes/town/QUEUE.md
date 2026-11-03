@@ -70,6 +70,13 @@ T5a1, T5b (cut in two: T5b1, T5b2), T5a2 (the user, 2026-11-03: the content befo
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-03 (the battle lane, CLT-Q40, BAT-Q64; ADR-0023 point 2 amended; **for your siege
+  derivation**): `Siege.morale` and `luck` became `Siege.bonuses` (`h3_contracts::TownBonuses`, at
+  most 8): one `TownBonus { building, morale, luck }` per standing building with a morale or luck
+  role (`BuildingRoles.morale`, `luck`), `building` its `BuildingId` index; the battle sums them and
+  shows them to everyone for the stats dialog. And the owner's Grail building that adds a hero's
+  morale or luck (the Colossus, the Spirit Guardian) names itself as
+  `EffectSource::Building { faction, index }` on that hero's `BattleEffect`, when the game gives it.
 - 2026-11-03 (the adventure lane, E08 T87c, ADV-Q41; **for your increment 3's recruitment, nothing
   to build now**): E08's increment 10 is dwellings and hiring (decision 231): the map's creature
   dwellings (17, 20), the random dwellings with a faction set and the Refugee Camp, their weekly

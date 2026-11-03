@@ -184,6 +184,8 @@ pub fn created_stack(
         damage_roll: DamageRoll::Random {},
         speed_percent: 100,
         effects: Vec::new(),
+        unclamped_luck: 0,
+        unclamped_morale: 0,
     }
 }
 

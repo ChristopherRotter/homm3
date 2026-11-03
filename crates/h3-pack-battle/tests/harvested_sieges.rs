@@ -265,8 +265,12 @@ fn random_legal_sod_heroes_besiege_every_town() {
                     moat,
                     structures: u8::try_from(rng.below(256)).unwrap(),
                     escape_tunnel: rng.below(2) == 0,
-                    morale: i8::try_from(rng.below(4)).unwrap() - 1,
-                    luck: i8::try_from(rng.below(3)).unwrap(),
+                    bonuses: h3_contracts::TownBonuses::new(&[h3_contracts::TownBonus {
+                        building: 0,
+                        morale: i8::try_from(rng.below(4)).unwrap() - 1,
+                        luck: i8::try_from(rng.below(3)).unwrap(),
+                    }])
+                    .unwrap_or_default(),
                 };
                 (Some(town), None)
             } else {

@@ -31,10 +31,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   --map` fills the template beside the map when its stamp matches (no cargo build). A town's
   visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
   after. `clients/capture/README.md`, "Towns (E09 T3b)".
-- 2026-11-03 (the client lane, E17 M6 T2a2b2, CLT-Q40; with the battle lane's carry, its inbox): when the
-  setup carries each morale and luck effect's source, fill them as battles start from the adventure map (the
-  hero's skills, artifacts, visits until the next battle, the owner's grail; a siege town's buildings), as
-  `h3-heroes` resolves the effects today.
+- 2026-11-03 (the client lane's CLT-Q40, carried by the battle lane, BAT-Q64; `cross-lane`): the
+  morale and luck sources ride on the effects (`h3_contracts::EffectSource`). `derive_battle_hero`
+  now names the skill and level, the artifact and the specialty (HER-BAT-003) and gives the battle
+  bonuses as the temporary source (HER-ADV-008), so battles from the map carry them already. Left
+  for you: the visits by once-mark (`EffectSource::Visit { mark }`, the original's +0x105 lines)
+  once the derivation knows each mark's amounts (your content), the rest staying temporary; the
+  owner's Grail building is the town lane's (its inbox).
 
 - 2026-11-02 (the town lane, E09 T2b, `TWN-Q4`; **for your merge order, nothing to build**):
   E09's build bumps your versions `cross-lane` (`docs/epics/E09-design.md` §19, §21): adventure

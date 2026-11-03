@@ -147,15 +147,15 @@ commands = [
     "A move 111",
 ]
 checkpoints = [
-    "0x6f06cf88a3da75da",
-    "0x799fb9e9081a61f1",
-    "0xcf24b91ee72b95e7",
-    "0xebd561326024d186",
-    "0x659a67680db55809",
+    "0xc51ded50d0361207",
+    "0xdab83c8de6ae0bfc",
+    "0xf498014ac727a1a6",
+    "0x1713afbc68ae5d3f",
+    "0xbf5f72ff7bb547a8",
 ]
 
 [replay]
-format = 31
+format = 32
 engine = "0.1.0"
 scenario = "siege"
 seed = "7"
@@ -170,7 +170,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 54
+battle_state_hash_version = 55
 checkpoint_every = 25
 
 [setup]
@@ -183,7 +183,13 @@ fort = "citadel"
 moat = "damaging"
 structures = 3
 escape_tunnel = false
+
+[[setup.siege.bonuses]]
+building = 5
 morale = 1
+
+[[setup.siege.bonuses]]
+building = 21
 luck = 1
 
 [setup.attacker_hero]
@@ -238,4 +244,4 @@ count = 15
 
 [result]
 winner = "defender"
-final_hash = "0x4f266807242b5aa5"
+final_hash = "0xc77784ba7c1afb00"

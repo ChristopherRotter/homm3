@@ -134,6 +134,9 @@ pub enum HeroError {
     /// Eagle Eye's chance is above 1 (10 000 basis points, or a single-precision value above 1.0)
     /// or one of its spells a creature ability (BAT-MAG-069).
     EagleEye,
+    /// A morale or luck effect's source names a skill, an artifact or a faction that is not part
+    /// of the ruleset, or a skill level that is not Basic (1) to Expert (3) (CLT-Q40).
+    EffectSource,
 }
 
 impl fmt::Display for HeroError {
@@ -158,6 +161,10 @@ impl fmt::Display for HeroError {
             Self::NotAHeroSpell => "a creature ability in the spell book",
             Self::OpeningSpell => "an opening spell the battle cannot cast",
             Self::EagleEye => "Eagle Eye's chance above 1 or an ability among its spells",
+            Self::EffectSource => {
+                "a morale or luck effect's source names an unknown skill, artifact or faction, or \
+                 a skill level outside 1..=3"
+            }
         })
     }
 }
@@ -450,6 +457,11 @@ mod tests {
             "Defender hero: Tactics level above 3"
         );
         let heroes = [
+            (
+                HeroError::EffectSource,
+                "a morale or luck effect's source names an unknown skill, artifact or faction, or a \
+                 skill level outside 1..=3",
+            ),
             (HeroError::UnknownHeroType, "unknown hero type"),
             (HeroError::TacticsLevel, "Tactics level above 3"),
             (

@@ -99,9 +99,17 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   --map` fills the template beside the map when its stamp matches (no cargo build). A town's
   visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
   after. `clients/capture/README.md`, "Towns (E09 T3b)".
-- 2026-11-03 (this lane, E17 M6 T2a2b2, CLT-Q40): once the battle lane's carry lands (its inbox),
-  the morale and luck descriptions' hero lists, the two artifacts' lines, the Angelic Alliance's join and a
-  siege town's buildings, and the header and picture by the unclamped value (design §12.4).
+- 2026-11-03 (this lane, E17 M6 T2a2b2, CLT-Q40; carried by the battle lane, BAT-Q64,
+  `cross-lane`): the carry is on the wire (protocol v37, public to seats and spectators):
+  `Observation.morale_and_luck` (each side's hero's `MoraleLuck` changes, caps and alignment groups
+  with a `Source`: a skill and its level, an artifact, the specialty, a visit's once-mark, a
+  building, temporary), `Siege.bonuses` (the buildings by index with their changes) and
+  `Stack.unclamped_morale`, `unclamped_luck`. Fill the descriptions' hero lists, the two
+  artifacts' lines, the Angelic Alliance's join and a siege town's buildings, and the header and
+  picture by the unclamped value (design §12.4). Until the adventure lane splits the battle
+  bonuses by visit, they come as one temporary line each, as the original's rest. Your workspace's
+  call sites were adapted to the new fields (the source on `BattleEffect`, defaults in the tests'
+  wire literals).
 
 - 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
   call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
