@@ -97,7 +97,25 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Town lane (`TWN-Q<n>`)
 
-(no open questions)
+#### TWN-Q5 — Building 23 in the standard set of Rampart, Necropolis and Conflux (E09 T3c)
+
+**Context.** Batch TWN-1's row 1 (survey `docs/rules/surveys/E09-towns.md` §15): every Rampart,
+Necropolis and Conflux town of the editor's standard set has building 23 at day 1 (66 readings of
+66, owned and neutral, Fort or not), no town of the other six factions has it. The reading of the
+setup (§5.3) builds no 23; VCMI 1.7.5 has no building 23 in these factions and drops such ids. The
+observation stands; its source is a part of the setup not read (`town_build`'s hordes 0x6887A6,
+`town_setup_spells` 0x5BE600, the faction tables of `building_tables_init` 0x4EB730). **Weight:**
+if the faction's buildable set holds 23, the keep's count (4 + the built buildings, 0x5BF4F0) is
+one higher in every siege of such a town; a custom set may or may not get it. No ADR step changes
+(no draw); design §5 (the standard set) and §2 (the content) wait for the re-read. Nothing before
+T5b depends on it.
+
+**Options.** (a) The re-read in T5b, which stages the executable and reads 0x4EB730's lists
+anyway: where 23 comes from, whether a custom set gets it, whether the faction's list and so the
+keep count it; the content and TWN-SET-003 then build it as found, a batch row only if a point
+stays open. (b) A short re-read task now (T3d, the executable staged) before T4. (c) VCMI's way:
+no building 23, recorded as a difference. **Recommendation:** (a): the cut keeps its rounds and
+T5b reads the same tables.
 
 ## Answered
 
