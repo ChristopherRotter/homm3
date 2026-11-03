@@ -44,7 +44,11 @@ boat:x,y, boats:used, drawn, opening:field, battlefield:ship, blocked, again, ke
 object:x,y (the README's "Boats and the sea"). Since E08 T79b (batch E9b): `gold = true` (the
 starting bonus Gold), an end-turn step's `record` and `note` (the new turn's messages), a repeated
 row label `<label>#<n>`, and the observations income, gardens, growth:x,y, gain and the weekly
-objects' object:x,y, through a hero on the entrance (the README's "The day's start").
+objects' object:x,y, through a hero on the entrance (the README's "The day's start"). Since E09
+T3b (batch TWN-1): `new_game = true` (the map started anew), a battle table's list of creatures,
+a literal ending in `: ` labelling the value after it, the town screen (its vtable to be learned
+live), and the observations town:x,y:<part>, towns:every_vs_built, towns:owned_garrisons,
+hero:slot:<n>, opening:slot:<n>:<side>, town_screen and unknown_screens (the README's "Towns").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -376,10 +380,16 @@ def auto_combat(game, mem, end, stall=10.0):
 # The war machines (145 Catapult to 149 Arrow Tower): they act by themselves (no Artillery, no
 # Ballistics, no First Aid: the computer aims them), so the plans never give them orders.
 MACHINES = range(145, 150)
+CATAPULT = 145  # E09 T3b: a siege's; without Ballistics it acts by itself
 # Where an attack on a hex is clicked: right of its centre (h3drive.hex_point), so the attacker
 # comes from the right (E4-9: the Ballista stands on the attacker's first two columns).
 ATTACK_FROM_RIGHT = 14
 TURN_SETTLE = 0.5  # seconds between a stack's turn showing in memory and its order
+
+
+def active_creature(mem, active):
+    """E09 T3b: the creature of the active stack (`[side, record]`), None when none stands so."""
+    return next((s["creature"] for s in mem.stacks() if [s["side"], s["record"]] == active), None)
 
 
 def hex_distance(a, b):
@@ -658,12 +668,17 @@ def fight(game, mem, plan, limit=300.0):
     other stack defends, then `then` plays the rest; the war machines act by themselves. Since
     E08 T79a "auto again" (auto combat turned on again at each stop: auto_again, its `stops`
     recorded). The record holds the battlefield at the start (`field`: h3mem.battlefield) and
-    since E08 T79a each side's owner and controllers (`sides`: h3mem.battle_sides)."""
+    since E08 T79a each side's owner and controllers (`sides`: h3mem.battle_sides). Since E09
+    T3b (batch TWN-1's siege won) the table's `attack` may be a list of creatures, attacked in
+    turn while every other stack defends (one not standing when its turn comes passed over), and
+    in a retreat or surrender the side's Catapult (a siege's; it acts by itself without
+    Ballistics) is waited out: the side's first stack that is not a machine retreats."""
     if plan is None:
         raise RuntimeError("a battle the step does not plan (`battle`)")
     if isinstance(plan, dict):
         if set(plan) != {"attack", "by", "then"} or plan["by"] not in SIDES \
-                or plan["then"] not in ("auto", "attack"):
+                or plan["then"] not in ("auto", "attack") \
+                or not isinstance(plan["attack"], (str, list)) or plan["attack"] == []:
             raise ValueError(f"unknown battle plan `{plan}`")
         action, side = "first", SIDES.index(plan["by"])
     else:
@@ -691,7 +706,12 @@ def fight(game, mem, plan, limit=300.0):
     if record["tactics"]:
         end_tactics_phase(game, mem, end)
     if action == "first":
-        attack_until_gone(game, mem, side, plan["attack"], end)
+        if isinstance(plan["attack"], str):
+            attack_until_gone(game, mem, side, plan["attack"], end)
+        for creature in plan["attack"] if isinstance(plan["attack"], list) else []:
+            # E09 T3b: the creatures in turn, one gone (or never there) passed over.
+            if living(mem, 1 - side, creature) and not find_button(game, "battle_ok"):
+                attack_until_gone(game, mem, side, creature, end)
         if find_button(game, "battle_ok"):
             pass
         elif plan["then"] == "auto":
@@ -713,6 +733,10 @@ def fight(game, mem, plan, limit=300.0):
                 time.sleep(0.1)
                 if find_button(game, "battle_ok"):
                     break  # over before that side acted
+                continue
+            if active[0] == side and active_creature(mem, active) == CATAPULT:
+                # E09 T3b (batch TWN-1's 3a): a siege's Catapult acts by itself; its turn passes.
+                time.sleep(0.1)
                 continue
             if active[0] == side:
                 game.key(BATTLE_KEYS[action], 1.0)
@@ -778,7 +802,7 @@ def side_of(choice, shown):
 
 
 def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=None,
-           choice=None):
+           choice=None, town_gate=False):
     """Waits until the hero, its points and the players' resources stay the same for QUIET
     seconds on the adventure map (the walk and any visit over), on the way answering each question
     as `answer` says, playing each battle as `battle` says and clicking any other dialog's OK;
@@ -794,10 +818,15 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
     its pictures (a Treasure Chest's gold or experience) takes the side `choice` says (`left`,
     `right`, or a list of them, one per such box in order, the last one repeated), then its OK
     (`choices`: what each side showed and the side taken), and a message closed with its OK
-    keeps its pictures with their captions (`message_pictures`, parallel to `messages`)."""
+    keeps its pictures with their captions (`message_pictures`, parallel to `messages`). Since
+    E09 T3b the town screen (kind `town`, TOWN_SCREEN_VTABLE) is noted (`town_screen`) and
+    closed, every unknown screen's vtable noted (`unknown_screens`), and after a walk onto a
+    town's gate (`town_gate`) one that stays without an OK is taken for the town screen and
+    closed (`taken_for_town`: its vtable and how it closed; *to be confirmed live*)."""
     events = {"dialogs": 0, "questions": [], "battles": [], "level_ups": [],
               "level_up_dialogs": [], "messages": [], "screens": [], "actions": [],
-              "choices": [], "message_pictures": []}
+              "choices": [], "message_pictures": [], "town_screen": False,
+              "unknown_screens": []}
     choices = [level_up] if isinstance(level_up, str) else list(level_up)
     picks = [] if choice is None else [choice] if isinstance(choice, str) else list(choice)
     last, since, known = None, time.monotonic(), time.monotonic()
@@ -814,19 +843,47 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
                 close_screen(game, mem, now, screen_heroes(mem, now, index))
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
+        # E09 T3b (batch TWN-1): the town screen, once its vtable is known, noted and closed;
+        # an unknown screen's vtable noted for the live run to learn.
+        if kind == "town":
+            events["town_screen"] = True
+            events["screens"].append(kind)
+            events["town_screen_closed"] = close_town_screen(game, mem)
+            if events["town_screen_closed"] == "open":
+                game.dump(game.out / "town-screen.xwd")
+                raise RuntimeError("the town screen does not close (TOWN_SCREEN_CLOSE, "
+                                   f"TOWN_SCREEN_KEY; the display: {game.out / 'town-screen.xwd'})")
+            last, since, known = None, time.monotonic(), time.monotonic()
+            continue
+        if (vtable := unknown_vtable(mem)) and vtable not in events["unknown_screens"]:
+            events["unknown_screens"].append(vtable)
         pix = game.pixels()
         if game.matches("adventure", pix) or in_battle(game, pix):
             known = time.monotonic()
+        elif town_gate and kind != "battle" and "taken_for_town" not in events \
+                and time.monotonic() - known > TOWN_SCREEN_WAIT:
+            # E09 T3b, *to be confirmed live*: after a walk onto a town's gate, a screen that is
+            # neither the map nor a battle and shows no OK is taken for the town screen (its
+            # vtable not known yet) and closed.
+            game.dump(game.out / "town-screen.xwd")
+            events["taken_for_town"] = {"vtable": unknown_vtable(mem) or kind or "none",
+                                        "closed": close_town_screen(game, mem)}
+            last, since, known = None, time.monotonic(), time.monotonic()
+            continue
         elif time.monotonic() - known > STRANGE:
             bad = game.out / "not-adventure.xwd"
             game.dump(bad)
+            # E09 T3b: the topmost dialog's vtable named, for a screen to be learned.
             raise TimeoutError(f"neither the adventure map, a battle nor a dialog for {STRANGE} s "
-                               f"(the game over?; the display: {bad})")
+                               f"(the game over?; the display: {bad}; the topmost dialog: "
+                               f"{unknown_vtable(mem) or kind})")
         if in_battle(game, pix):
             # E08 T68b (batch E8b's E8-13, E8-14): the hero's tile as the battle opens.
             at = mem.hero(index)["tile"]
             events["battles"].append({**fight(game, mem, battle), "hero_tile": at})
-            last, since = None, time.monotonic()
+            # E09 T3b: the screen known up to the battle's end (a long battle left `known` stale
+            # for the screen checks above).
+            last, since, known = None, time.monotonic(), time.monotonic()
             continue
         waiting = find_button(game, "ok_disabled", pix)
         oks = find_button(game, "ok", pix)
@@ -1017,7 +1074,9 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
     if not first_walked and again:
         game.click(*hover(game, mem, x, y, z), 0.3)
         game.move(*PARK)
-    after, events = settle(game, mem, index, answer, battle, level_up, actions, choice)
+    # E09 T3b: a walk onto a town's gate may open the town screen (settle's `town_gate`).
+    after, events = settle(game, mem, index, answer, battle, level_up, actions, choice,
+                           town_gate=mem.town_at(x, y, z) is not None)
     colours = sorted(set(path.values()))
     return {
         "hero": name, "index": index, "from": before["tile"], "target": list(target),
@@ -1112,6 +1171,19 @@ def equip(game, mem, name, moves):
 SCREEN_KINDS = {0x63A5E4: "map", 0x63D528: "battle", 0x63EAE8: "hero", 0x642428: "exchange",
                 0x643854: "army", 0x643C14: "creature", 0x63B8F8: "split", 0x63DB40: "message",
                 0x643908: "boat"}
+# E09 T3b (batch TWN-1), *to be learned live*: the town screen's vtable is not known yet. A walk
+# onto a town's gate notes every unknown screen's vtable (`unknown_screens`) and takes one that
+# stays TOWN_SCREEN_WAIT seconds, neither the map, a battle nor a dialog with an OK, for the town
+# screen (`town_screen` reads `yes?` then); set the vtable here once a run has read it (kind
+# `town`: noted, `town_screen`, and closed). The close is a click on the screen's exit button
+# (TOWN_SCREEN_CLOSE, a placeholder) and, while the screen stays, the key TOWN_SCREEN_KEY: both
+# to be confirmed live.
+TOWN_SCREEN_VTABLE = None  # learned live (E09 T3b)
+TOWN_SCREEN_CLOSE = (744, 544)  # the exit button: to be confirmed live (E09 T3b)
+TOWN_SCREEN_KEY = "Return"  # to be confirmed live (E09 T3b)
+TOWN_SCREEN_WAIT = 5.0
+if TOWN_SCREEN_VTABLE is not None:
+    SCREEN_KINDS[TOWN_SCREEN_VTABLE] = "town"
 # Each screen's items by name (survey E08-army §1.1, §2.3, §3.1-§3.4, §4, §5.1: the procedures'
 # item ids; checked under Wine, E08 T47a). A name `<part>:<n>` is the part's n-th (an army slot
 # from 0 at the left, a worn position by its number 0-18, a backpack place from 0 at the left of
@@ -1461,6 +1533,25 @@ def close_screen(game, mem, kind, heroes):
         click_item(game, mem, {"army": "ok", "boat": "cancel"}.get(kind, "close"), heroes)
 
 
+def close_town_screen(game, mem):
+    """E09 T3b (batch TWN-1), *to be confirmed live*: closes the town screen (or the unknown
+    screen taken for it): a click on TOWN_SCREEN_CLOSE, then, while the same dialog stays on top,
+    the key TOWN_SCREEN_KEY. Returns how it closed: `click`, `key` or `open` (neither did)."""
+    shown = (mem.dialog() or {}).get("at")
+    game.click(*TOWN_SCREEN_CLOSE, 1.0)
+    game.move(*PARK)
+    if (mem.dialog() or {}).get("at") != shown:
+        return "click"
+    game.key(TOWN_SCREEN_KEY, 1.0)
+    return "key" if (mem.dialog() or {}).get("at") != shown else "open"
+
+
+def unknown_vtable(mem):
+    """E09 T3b: the topmost dialog's vtable in hex when SCREEN_KINDS does not know it, else None."""
+    shown = mem.dialog()
+    return f"{shown['vtable']:#x}" if shown and shown["vtable"] not in SCREEN_KINDS else None
+
+
 def hero_screen(game, mem, name, actions):
     """A step's `screen = "hero"` (E08 T47a): the hero's screen opened (a click on it on the map),
     the actions played, the screen closed (if an action did not) and the map back."""
@@ -1491,13 +1582,29 @@ def army_text(mem, army):
                      if count) or "none"
 
 
+def slot_text(mem, creature, count):
+    """E09 T3b: an army slot as memory holds it: `5 Pikemen`, `empty` (creature -1, count 0), a
+    count without a creature `5 (no creature)`."""
+    if creature < 0:
+        return f"{count} (no creature)" if count else "empty"
+    return f"{count} {mem.creature_name(creature, count)}"
+
+
+def slots_text(mem, slots):
+    """E09 T3b: an army's slots that hold something (`slot 0: 12 Goblins, slot 2: 5 Wolf
+    Riders`), `empty` for none."""
+    return ", ".join(f"slot {k}: {slot_text(mem, t, c)}" for k, (t, c) in enumerate(slots)
+                     if t >= 0 or c) or "empty"
+
+
 def hero_value(mem, hero, field):
     """A hero's detail (`hero:<field>`): experience, level, primary (attack/defense/power/
     knowledge), army, skill:<name> (none, basic, advanced, expert), on_map (yes/no), tile; since
     E08 T32b1 skills (`Leadership expert, Wisdom basic` in the hero's order, `none`), seed,
     wisdom_offer, school_offer (hero +0x8F, +0x90, +0x3F), artifacts (worn: `Ballista (war
     machine 1), …` in slot order, `none`) and backpack (in its order, `none`); since E08 T32b2
-    equipment (the worn artifacts but the war machines and the spell book)."""
+    equipment (the worn artifacts but the war machines and the spell book); since E09 T3b
+    slot:<n> (one army slot)."""
     if field == "experience":
         return str(hero["experience"])
     if field == "level":
@@ -1542,6 +1649,9 @@ def hero_value(mem, hero, field):
     if field == "slots":
         return ", ".join(f"{k}: {c} " + (mem.creature_name(t, c) if t >= 0 else "(no creature)")
                          for k, (t, c) in enumerate(hero["slots"]) if t >= 0 or c) or "none"
+    # E09 T3b (batch TWN-1): one army slot (`slot:<n>`, 0 to 6: `4 Swordsmen`, `empty`).
+    if m := re.match(r"slot:([0-6])$", field):
+        return slot_text(mem, *hero["slots"][int(m.group(1))])
     if field == "positions":
         return ", ".join(f"{p}: {mem.artifact_name(a)}" for p, a in hero["positions"].items()) \
             or "none"
@@ -1680,6 +1790,49 @@ def mine_text(mem, x, y, z=0):
                        for k, (t, c) in enumerate(mine["guards"]) if t >= 0 or c) or "none"
     return (f"record {mine['index']}; owner {colour_name(mine['owner'])}; resource {resource}; "
             f"abandoned {mine['abandoned']}; guards {guards}")
+
+
+def town_text(mem, x, y, z, part):
+    """E09 T3b (batch TWN-1): a part of the record of the town whose entrance is (x, y, z)
+    (h3mem.town_at; docs/exe/structs.toml "town"): `owner` (+0x1: `red`, …, `neutral`),
+    `visitor` (+0x10: the hero's name, `none`), `built` and `every` (+0x150, +0x158: the building
+    ids ascending, `5, 7, 10, 30`, `none`), `garrison` (+0xE0: `slot 0: 12 Goblins, slot 2: 5
+    Wolf Riders`, `empty`) or `slot:<n>` (`5 Pikemen`, `empty`); `no town` without one there."""
+    town = mem.town_at(x, y, z)
+    if town is None:
+        return "no town"
+    if part == "owner":
+        return "neutral" if town["owner"] < 0 else colour_name(town["owner"])
+    if part == "visitor":
+        hero = town["visiting_hero"]
+        return mem.hero(hero)["name"] if hero >= 0 else "none"
+    if part in ("built", "every"):
+        return ", ".join(map(str, town["built" if part == "built" else "every_built"])) or "none"
+    if part == "garrison":
+        return slots_text(mem, town["army"])
+    return slot_text(mem, *town["army"][int(part.split(":")[1])])
+
+
+def towns_text(mem, what):
+    """E09 T3b (batch TWN-1): over every town (h3mem.towns), by entrance: `every_vs_built` the
+    towns whose every-built set (+0x158) is not their built one (+0x150), `(7, 7): every {5, 7,
+    10, 30} built {5, 10, 30}; …` (`none`); `owned_garrisons` the owned towns' garrisons (+0xE0):
+    `all 25 empty`, or `1 of 25 with a stack: (20, 61): slot 0: 1 Cavalier, …; …`."""
+    def at(town):
+        x, y, z = town["place"]
+        return f"({x}, {y}" + (f", {z})" if z else ")")
+
+    found = mem.towns()
+    if what == "every_vs_built":
+        return "; ".join(f"{at(t)}: every {{{', '.join(map(str, t['every_built']))}}} built "
+                         f"{{{', '.join(map(str, t['built']))}}}" for t in found
+                         if t["every_built"] != t["built"]) or "none"
+    owned = [t for t in found if t["owner"] >= 0]
+    held = [t for t in owned if any(c >= 0 or n for c, n in t["army"])]
+    if not held:
+        return f"all {len(owned)} empty"
+    return (f"{len(held)} of {len(owned)} with a stack: "
+            + "; ".join(f"{at(t)}: {slots_text(mem, t['army'])}" for t in held))
 
 
 SHIPYARD_CLASS = 87
@@ -1821,7 +1974,8 @@ def object_word_text(mem, tile):
 # `before:` they are read right before the step (E08 T57: `pre_read`), else they would show the
 # state after it.
 LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flees", "boat",
-              "boats", "drawn", "boat_record", "mine", "tile", "income", "gardens", "growth")
+              "boats", "drawn", "boat_record", "mine", "tile", "income", "gardens", "growth",
+              "town", "towns")  # E09 T3b: the towns' records
 
 
 def observations(what):
@@ -1873,12 +2027,20 @@ def value(obs, what, mem):
     if isinstance(what, str) and what.startswith("text:"):
         return what[5:]  # E08 T68b: a literal (a row's tile)
     if isinstance(what, list):
-        # E08 T57: several observations in one field, joined by `; `.
-        return "; ".join(value(obs, w, mem) for w in what)
+        # E08 T57: several observations in one field, joined by `; `; since E09 T3b a literal
+        # ending in `: ` labels the value after it (`["text:game 1: ", "towns:every_vs_built"]`:
+        # `game 1: none`).
+        out = ""
+        for k, w in enumerate(what):
+            label = k > 0 and isinstance(what[k - 1], str) and what[k - 1].startswith("text:") \
+                and what[k - 1].endswith(": ")
+            out += ("" if k == 0 or label else "; ") + value(obs, w, mem)
+        return out
     if what in obs.get("pre", {}):
         return obs["pre"][what]  # E08 T57: read right before the step (`pre_read`)
     if what.startswith("before:"):
-        if what.split(":")[1] in LIVE_READS:
+        # E09 T3b: another hero's details (`hero[<name>]:`) are read live too.
+        if what.split(":")[1] in LIVE_READS or what.split(":")[1].startswith("hero["):
             # The snapshot holds no tiles: the read would be the state after the step.
             raise ValueError(f"`{what}`: read a tile before a step in a step of its own")
         return value({"before": obs["before"], "after": obs["before"]}, what.split(":", 1)[1], mem)
@@ -2022,6 +2184,15 @@ def value(obs, what, mem):
         return ", ".join(f"slot {s['army_slot']}: {s['count']} "
                          f"{mem.creature_name(s['creature'], s['count'])}" for s in found) \
             or ("no battle" if not battles else "none")
+    # E09 T3b (batch TWN-1's merge): the last battle's opening stack of a side whose army slot is
+    # n (`opening:slot:<n>:<side>`: `4 Swordsmen`, `none`).
+    if m := re.match(r"opening:slot:(\d+):(attacker|defender)$", what):
+        if not battles:
+            return "no battle"
+        side, slot = SIDES.index(m.group(2)), int(m.group(1))
+        found = [s for s in battles[-1]["opening"] if s["side"] == side and s["army_slot"] == slot]
+        return ", ".join(f"{s['count']} {mem.creature_name(s['creature'], s['count'])}"
+                         for s in found) or "none"
     if m := re.match(r"(morale|luck):start(?::(attacker|defender))?$", what):
         if not battles:
             return "no battle"
@@ -2139,6 +2310,27 @@ def value(obs, what, mem):
         owner = COLOURS[player_colour(obs, m.group(1), mem)]
         was, now = obs["before"]["resources"][owner], after["resources"][owner]
         return ", ".join(f"{now[k] - was[k]:+d} {k}" for k in now if now[k] != was[k]) or "none"
+    # E09 T3b (batch TWN-1): a town's record by its entrance (`town:x,y[,level]:<part>`: owner,
+    # visitor, built, every, garrison, slot:<n>; town_text), read live (`before:` right before
+    # the step); over every town the every-built sets that differ from the built ones and the
+    # owned towns' garrisons (towns_text).
+    if m := re.match(r"town:(\d+),(\d+)(?:,(\d))?:(owner|visitor|built|every|garrison|slot:[0-6])$",
+                     what):
+        return town_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0), m.group(4))
+    if what in ("towns:every_vs_built", "towns:owned_garrisons"):
+        return towns_text(mem, what.split(":")[1])
+    # E09 T3b (batch TWN-1's TWN-1-3b, TWN-1-4): whether the town screen opened during the step
+    # (settle; `yes?` for an unknown screen taken for it, *to be confirmed live*), and the
+    # unknown screens' vtables the step met (to learn the town screen's).
+    if what == "town_screen":
+        if obs.get("town_screen"):
+            return "yes"
+        if taken := obs.get("taken_for_town"):
+            return (f"yes? (an unknown screen, vtable {taken['vtable']}, taken for the town "
+                    f"screen; closed: {taken['closed']})")
+        return "no"
+    if what == "unknown_screens":
+        return ", ".join(obs.get("unknown_screens", [])) or "none"
     raise ValueError(f"unknown observation `{what}`")
 
 
@@ -2375,6 +2567,30 @@ def unmet(recipe, mem):
 RESTARTS = 20  # new games at most until the `require` entries are met
 
 
+def start_game(game, map_path, recipe, restarts):
+    """Starts the map in hot seat as the recipe says (its `players`, `difficulty`, `gold`; the
+    difficulty checked in memory) and returns the game's memory (a fresh h3mem.Mem); since E08
+    T57 again, up to RESTARTS times in all, until its draws meet the recipe's `require` (each
+    new game that misses added to `restarts`). The batch's first start and, since E09 T3b, each
+    `new_game` step."""
+    difficulty = recipe.get("difficulty", "normal")
+    while True:
+        game.start(map_path)
+        # E08 T79b: `gold = true` gives each player the starting bonus Gold (E17 M5 T8a).
+        to_hot_seat(game, recipe["players"], difficulty, gold=recipe.get("gold", False))
+        mem = h3mem.Mem()
+        if mem.difficulty() != difficulty:
+            raise RuntimeError(f"the game's difficulty is {mem.difficulty()}, not {difficulty}")
+        # E08 T57: a new game whose draws miss what the recipe requires is started again.
+        missing = unmet(recipe, mem)
+        if not missing:
+            return mem
+        restarts.append(missing)
+        if len(restarts) >= RESTARTS:
+            raise RuntimeError(f"{RESTARTS} new games, none met the recipe's `require`")
+        game.stop()
+
+
 def batch(recipe_path, map_path=None, out=None):
     recipe_path = Path(recipe_path).resolve()
     recipe = tomllib.loads(recipe_path.read_text())
@@ -2397,25 +2613,23 @@ def batch(recipe_path, map_path=None, out=None):
     log = open(out / "steps.jsonl", "w")
     game = Game(out)
     try:
-        difficulty = recipe.get("difficulty", "normal")
         restarts = []
-        while True:
-            game.start(map_path)
-            # E08 T79b: `gold = true` gives each player the starting bonus Gold (E17 M5 T8a).
-            to_hot_seat(game, recipe["players"], difficulty, gold=recipe.get("gold", False))
-            mem = h3mem.Mem()
-            if mem.difficulty() != difficulty:
-                raise RuntimeError(f"the game's difficulty is {mem.difficulty()}, not {difficulty}")
-            # E08 T57: a new game whose draws miss what the recipe requires is started again.
-            missing = unmet(recipe, mem)
-            if not missing:
-                break
-            restarts.append(missing)
-            if len(restarts) >= RESTARTS:
-                raise RuntimeError(f"{RESTARTS} new games, none met the recipe's `require`")
-            game.stop()
+        mem = start_game(game, map_path, recipe, restarts)
+        # The generator reads `mem` at each step's expansion (a closure over this function's
+        # variable, not its value at the start): after a `new_game` step the next steps expand
+        # with the new game's memory (E09 T3b).
         for step in (s for step in recipe["step"] for s in expand(step, mem)):
-            if step.get("end_turn"):
+            if step.get("new_game"):
+                # E09 T3b (batch TWN-1's games 2 and 3): the game stopped and the map started
+                # anew as at the batch's start (a new game, not a load: its draws made again);
+                # `record` and `note` as an end-turn step's.
+                game.stop()
+                mem.file.close()
+                mem = start_game(game, map_path, recipe, restarts)
+                obs = {"new_game": True, "player": mem.current_player()}
+                obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
+                                              for c in range(8) if mem.player(c)["heroes"]}}
+            elif step.get("end_turn"):
                 # E08 T79b: the new turn's messages (`messages`, `message_pictures`) and every
                 # player's resources after it, for the step's `record` and `note`.
                 obs = {"end_turn": True, "messages": [], "message_pictures": []}
@@ -2514,7 +2728,11 @@ def batch(recipe_path, map_path=None, out=None):
               f"{'gold' if recipe.get('gold') else 'random'}, Show Route on; read from the game's "
               "memory."
               + (f" Started again {len(restarts)} time(s) for the recipe's `require` "
-                 f"({'; '.join(', '.join(m) for m in restarts)} missing)." if restarts else ""))
+                 f"({'; '.join(', '.join(m) for m in restarts)} missing)." if restarts else "")
+              # E09 T3b: the new games the recipe's steps started (batch TWN-1's games 2, 3).
+              + (f" The map started anew {games} more time(s) by the recipe's `new_game` steps "
+                 "(new games, no save loaded)."
+                 if (games := sum(1 for s in steps if s.get("new_game"))) else ""))
     filled = fill(Path(template).read_text(), values, notes, header)
     result = out / f"{name}.md"
     result.write_text(filled)

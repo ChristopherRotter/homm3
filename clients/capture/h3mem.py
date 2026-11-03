@@ -22,8 +22,8 @@ monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialo
 dialog, item_text, spell_name, held_artifact, tactics_phase; since E08 T57 object_at,
 universities, dialog_pictures, map_kind, template_bytes; since E17 M4 T3b hovered_item; the map's
 stills: write_explored, def_palette, map_due, frame_steps; since E24 M1 T5a boats, standing,
-map_heroes, hero_on, write_facing, write_bytes). Needs a running game
-(h3drive.py) and the rights to read its memory (root in a sandbox).
+map_heroes, hero_on, write_facing, write_bytes; since E09 T3b towns, town_record, town_at). Needs
+a running game (h3drive.py) and the rights to read its memory (root in a sandbox).
 """
 
 import json
@@ -275,6 +275,10 @@ STATUS_NAME = 2002
 TOWN_GARRISON_HERO, TOWN_ARMY, TOWN_NAME, TOWN_STANDING = 0xC, 0xE0, 0xC8, 0x150
 # The hero visiting a town (town_defended 0x5BDFE0's +0x10; E24 M3 T7b2, F5-8).
 TOWN_VISITING_HERO = 0x10
+# E09 T3b (batch TWN-1): a town's owner (i8 +0x1, -1 neutral; town_change_owner 0x4C63DF, survey
+# E09-towns §8.3) and the towns' vector's end (game +0x21618, after its begin +0x21614: the
+# game's own loops over its towns run from one to the other, cover_of_darkness_hide 0x4C7BA0).
+TOWN_OWNER, TOWNS_END = 0x1, 0x21618
 # E24 M3 T5b2 (design §4.9): the kind asked (the manager's +0x398) and a timed kind's end (+0x39C,
 # a clock time; status_window_set_kind 0x415D60), the kind none (8); the date's window's picture
 # (DEF item 2001, its frame the window's step); the kingdom's: the viewer's towns by their halls
@@ -1172,6 +1176,29 @@ class Mem:
         towns = struct.unpack_from("<b", raw, PLAYER_TOWNS)[0]
         return list(struct.unpack_from(f"<{towns}b", raw, PLAYER_TOWN_LIST))
 
+    def town_record(self, index):
+        """E09 T3b (batch TWN-1): the town `index` of the game's towns as its record holds it
+        (docs/exe/structs.toml "town"; town_fields): owner, faction, place (its entrance), the
+        garrison and visiting heroes, its army, the buildings standing and every built."""
+        at = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
+        return town_fields(index, at, self.read(at, TOWN_SIZE))
+
+    def towns(self):
+        """E09 T3b (batch TWN-1): every town's record (town_fields) in the game's order: the
+        vector from its begin (game +0x21614) to its end (+0x21618), as the game's own loops over
+        its towns run (cover_of_darkness_hide 0x4C7BA0) and `hover` reads them."""
+        begin, end = self.u32(self.game() + TOWNS), self.u32(self.game() + TOWNS_END)
+        if not 0 <= end - begin <= TOWN_SIZE * 256 or (end - begin) % TOWN_SIZE:
+            raise RuntimeError(f"the towns' vector {begin:#x} to {end:#x} is no array of towns")
+        raw = self.read(begin, end - begin) if end > begin else b""
+        return [town_fields(i, begin + TOWN_SIZE * i, raw[TOWN_SIZE * i:TOWN_SIZE * (i + 1)])
+                for i in range(len(raw) // TOWN_SIZE)]
+
+    def town_at(self, x, y, z=0):
+        """E09 T3b (batch TWN-1): the record of the town whose entrance is (x, y, z) (towns), None
+        for none."""
+        return next((t for t in self.towns() if t["place"] == [x, y, z]), None)
+
     def write_resources(self, colour, amounts):
         """A player's seven resources in the original's order (E24 M3 T5a: a situation's
         `resources`; i32[7] at the player's +0x9C)."""
@@ -2015,6 +2042,27 @@ def unpack(packed):
     level). The bits between belong to something else."""
     x, y = packed & 0x3FF, (packed >> 16) & 0x3FF
     return x - 1024 * (x >= 512), y - 1024 * (y >= 512), (packed >> 26) & 1
+
+
+def town_fields(index, at, raw):
+    """E09 T3b (batch TWN-1): a town's record (0x168 bytes `raw` read at `at`, docs/exe/
+    structs.toml "town") as a dict: index, at, owner (i8 +0x1, -1 neutral), faction (i8 +0x4),
+    place ([x, y, level] of its entrance, u8 +0x5 to +0x7), garrison_hero (i32 +0xC) and
+    visiting_hero (i32 +0x10; -1 none), army (+0xE0: [creature, count] for the seven slots, an
+    empty one [-1, 0]), built (the buildings standing, u64 +0x150) and every_built (u64 +0x158;
+    with what each built one supersedes), each as the building ids ascending."""
+    types = struct.unpack_from("<7i", raw, TOWN_ARMY)
+    counts = struct.unpack_from("<7i", raw, TOWN_ARMY + 28)
+    built = struct.unpack_from("<Q", raw, TOWN_STANDING)[0]
+    every = struct.unpack_from("<Q", raw, TOWN_EVERY_BUILT)[0]
+    return {"index": index, "at": at, "owner": struct.unpack_from("<b", raw, TOWN_OWNER)[0],
+            "faction": struct.unpack_from("<b", raw, TOWN_FACTION)[0],
+            "place": list(raw[TOWN_PLACE:TOWN_PLACE + 3]),
+            "garrison_hero": struct.unpack_from("<i", raw, TOWN_GARRISON_HERO)[0],
+            "visiting_hero": struct.unpack_from("<i", raw, TOWN_VISITING_HERO)[0],
+            "army": [[t, c] for t, c in zip(types, counts)],
+            "built": [b for b in range(64) if built >> b & 1],
+            "every_built": [b for b in range(64) if every >> b & 1]}
 
 
 def adventure_state(mem):
