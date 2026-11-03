@@ -7,10 +7,10 @@
 //!                  [--checkpoint-every N] [--script <commands.txt|replay.toml>]
 //!                  [--record <out.toml>]
 //! h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
-//! h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage] [--packs-dir packs]
-//!                    [--root .] [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
-//!                    [--seed N] [--forks N] [--observe 0|1] [--masks 0|1] [--battle 0|1]
-//!                    [--meeting 0|1] [--queries N]
+//! h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage|day-start]
+//!                    [--packs-dir packs] [--root .] [--profile base:faithful] [--difficulty 1]
+//!                    [--games N] [--days N] [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]
+//!                    [--battle 0|1] [--meeting 0|1] [--queries N]
 //! ```
 //!
 //! `--root` is the directory map paths are relative to (the repository's root for the fixtures);
@@ -39,10 +39,10 @@ pub const USAGE: &str = "usage:
                    [--checkpoint-every N] [--script <commands.txt|replay.toml>]
                    [--record <out.toml>]
   h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
-  h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage] [--packs-dir packs]
-                     [--root .] [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
-                     [--seed N] [--forks N] [--observe 0|1] [--masks 0|1] [--battle 0|1]
-                     [--meeting 0|1] [--queries N]";
+  h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage|day-start]
+                     [--packs-dir packs] [--root .] [--profile base:faithful] [--difficulty 1]
+                     [--games N] [--days N] [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]
+                     [--battle 0|1] [--meeting 0|1] [--queries N]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -246,9 +246,10 @@ fn bench(args: &Args) -> Result<(), String> {
         "reach" => Workload::Reach,
         "fork" => Workload::Fork,
         "manage" => Workload::Manage,
+        "day-start" => Workload::DayStart,
         other => {
             return Err(format!(
-                "--workload: `{other}` is not play, reach, fork or manage"
+                "--workload: `{other}` is not play, reach, fork, manage or day-start"
             ));
         }
     };
@@ -281,6 +282,7 @@ fn bench(args: &Args) -> Result<(), String> {
         Workload::Reach => "queries",
         Workload::Fork => "forks",
         Workload::Manage => "listings",
+        Workload::DayStart => "day starts",
     };
     let counted = if workload == Workload::Play {
         String::new()
@@ -301,6 +303,12 @@ fn bench(args: &Args) -> Result<(), String> {
             r.visits, options.games
         );
         println!("heroes in boats at the forks: {}", r.afloat);
+    }
+    if workload == Workload::DayStart {
+        println!(
+            "creature months started: {} of {} games, monsters added: {}",
+            r.creature_months, options.games, r.added
+        );
     }
     if workload == Workload::Manage || options.meeting {
         println!("a meeting open: {} of {} games", r.meetings, options.games);

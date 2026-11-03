@@ -20,6 +20,11 @@
 //! * `manage` (E08 T52): a player's heroes seek each other until a meeting opens, then both
 //!   heroes' management listing `--queries` times, inside [`management_queries`]
 //!   (`h3_game::legal_management` and every split range between the two armies).
+//! * `day-start` (E08 T86b2, increment 9's design note §15): random play until the step that
+//!   starts day `days + 1`, the episode's last, which runs inside [`day_start_step`]: the day
+//!   advance (the week's step on day 8, 15, …; the month's on day 29, 57, …, with a creature
+//!   month's walk over the map's free land tiles), the income, the spell points
+//!   (`day-start-xl-144`, `month-start-xl-144` on the economy XL map).
 //!
 //! Two variants measure what an agent adds (wall time only, for the docs): `--observe 1`, the
 //! acting player's observation before each step; `--masks 1`, the entry mask and the chosen
@@ -33,7 +38,9 @@ use std::time::Instant;
 use h3_adventure::Pos;
 use h3_battle::LegalCommands;
 use h3_contracts::{HeroId, PlayerId};
-use h3_game::{Actor, ArmyRef, ArmySlot, legal_management, legal_moves, movement, split_range};
+use h3_game::{
+    Actor, ArmyRef, ArmySlot, MonthKind, legal_management, legal_moves, movement, split_range,
+};
 use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
 use h3_sim::adventure::action::{self, hero_in_slot, tile_index};
@@ -54,6 +61,8 @@ pub enum Workload {
     Fork,
     /// The management listing during a meeting (E08 T52).
     Manage,
+    /// The step that starts the day after the day limit (E08 T86b2).
+    DayStart,
 }
 
 /// What [`run`] plays.
@@ -90,7 +99,8 @@ pub struct BenchOptions {
 /// What [`run`] measured.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BenchResult {
-    /// Counted operations: steps (`play`), queries (`reach`) or forks (`fork`).
+    /// Counted operations: steps (`play`), queries (`reach`), forks (`fork`), listings
+    /// (`manage`) or day starts (`day-start`).
     pub operations: u64,
     /// Steps played in all.
     pub steps: u64,
@@ -106,6 +116,11 @@ pub struct BenchResult {
     /// `fork`: the heroes in boats at the forks, over the games (E08 T75b: the forks carry the
     /// boats' records with a boat aboard).
     pub afloat: u64,
+    /// `day-start`: the counted day starts that started a creature's month (a month's first day,
+    /// E08 T86b2).
+    pub creature_months: u64,
+    /// `day-start`: the monsters the counted day starts added (a creature month's; E08 T86b2).
+    pub added: u64,
 }
 
 /// Runs a workload on a map below `root` with the packs of `packs_dir`.
@@ -128,6 +143,8 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         meetings: 0,
         visits: 0,
         afloat: 0,
+        creature_months: 0,
+        added: 0,
     };
     for g in 0..options.games {
         // The setup built the first game: a reset cannot fail.
@@ -176,6 +193,12 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                     management_queries(&env, player, heroes, options.queries)
                 });
                 (queries, steps, start.elapsed().as_secs_f64())
+            }
+            Workload::DayStart => {
+                let started = play_to_day_start(&mut env, g, options.days);
+                result.creature_months += u64::from(started.creature_month);
+                result.added += started.added;
+                (started.counted, started.steps, started.seconds)
             }
         };
         result.operations += operations;
@@ -470,6 +493,81 @@ fn queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId], lift: Lift) 
         black_box(reach.as_ref().map(|r| r.tiles().count()));
     }
     u64::try_from(heroes.len()).unwrap_or(u64::MAX)
+}
+
+/// What [`play_to_day_start`] played and measured.
+struct DayStarted {
+    /// The day starts counted: 1, or 0 when the episode ended before (none does: the day limit
+    /// ends it).
+    counted: u64,
+    /// The steps played, the counted one's included.
+    steps: u64,
+    /// Seconds spent in the counted step.
+    seconds: f64,
+    /// The counted step started a creature's month.
+    creature_month: bool,
+    /// The monsters the counted step added.
+    added: u64,
+}
+
+/// Random play with the env's random agent (agent seed `agent_seed`) until the step that starts
+/// day `days + 1` (the env's day limit is `days`: that step is the episode's last), played inside
+/// [`day_start_step`] (the counted and timed part). Only an `EndTurn` on day `days` can start it:
+/// such a step is first tried on a fork, outside the count.
+fn play_to_day_start(env: &mut AdventureEnv, agent_seed: u64, days: u32) -> DayStarted {
+    let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
+    let mut steps = 0;
+    loop {
+        let Some(seat) = env.to_move().next() else {
+            break;
+        };
+        let action = choose(env, seat, &mut rng);
+        steps += 1;
+        if env.state().day() == days && action == Action::end_turn() {
+            let mut probe = env.fork();
+            let _ = probe.step(seat, action);
+            if probe.state().day() > days {
+                let before = env.state().adventure().added_objects().len();
+                let start = Instant::now();
+                black_box(day_start_step(env, seat, action));
+                let seconds = start.elapsed().as_secs_f64();
+                let after = env.state().adventure().added_objects().len();
+                return DayStarted {
+                    counted: 1,
+                    steps,
+                    seconds,
+                    creature_month: month_start(env)
+                        && matches!(env.state().month(), MonthKind::Creature(_)),
+                    added: u64::try_from(after - before).unwrap_or(u64::MAX),
+                };
+            }
+        }
+        // A legal action is always accepted (h3-sim's tests).
+        let _ = env.step(seat, action);
+    }
+    DayStarted {
+        counted: 0,
+        steps,
+        seconds: 0.0,
+        creature_month: false,
+        added: 0,
+    }
+}
+
+/// Whether `env`'s day is a month's first day (days 29, 57, … in the base pack's calendar).
+fn month_start(env: &AdventureEnv) -> bool {
+    let calendar = env.rules().adventure().params().calendar();
+    let month = u32::from(calendar.week_days.get()) * u32::from(calendar.month_weeks.get());
+    env.state().day() > 1 && (env.state().day() - 1).is_multiple_of(month)
+}
+
+/// The step `action` of `seat` that starts a day (an `EndTurn`, the last of its day): the
+/// `day-start` workload counts the instructions inside this function (the env's step: the game's
+/// day advance, the turn's start). Returns the new day.
+#[inline(never)]
+pub fn day_start_step(env: &mut AdventureEnv, seat: Seat, action: Action) -> u32 {
+    let _ = env.step(seat, action);
+    env.state().day()
 }
 
 /// `forks` forks of `env`, each dropped at once: the `fork` workload counts the instructions

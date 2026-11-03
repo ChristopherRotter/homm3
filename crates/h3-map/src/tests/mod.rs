@@ -6,6 +6,7 @@
 
 mod economy;
 mod economy_map;
+mod economy_xl_map;
 mod encode;
 mod fixtures;
 mod full_maps;
