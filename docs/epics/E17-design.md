@@ -5317,3 +5317,49 @@ to 0x476BC4).
   `Still::held`: no cursor). Found and fixed with it: a box opened before the first turn the
   timeline holds was framed in the viewing player's colours in the client's profile (CLT-Q28
   (2): the opening's active stack's side now, as the panel's).
+
+### 12.7 The right button over the panel: a control's help (M6 T3a)
+
+T3 cut in two by the user (2026-11-03): T3a here, the heroes' info windows T3b. Read:
+`battle_buttons`' right press again (0x474DB8 to 0x474E0F), `battle_control_help` 0x472A50 whole,
+`message_box_size` 0x4F62A0 whole, the right press in the panel's items' handlers
+(`def_button_message` 0x456190 at 0x45625F and 0x4567AD, `custom_button_message` 0x456E50 whole,
+`text_item_message` 0x5BC440 to 0x5BC51C), `battle_log_up` 0x472DF0's test, the item classes of
+the log (`text_pcx_create`, vtable 0x642DE8) and its scroll buttons (`custom_button_create`,
+0x63BBBC), `Help.txt`'s records 379 to 389.
+
+- **Where.** A right press inside a panel item that is shown (state bits 2 and 4) and not busy
+  becomes 0x200/0xE with its id and the right button's flag: the seven buttons and the tactics
+  phase's two (DEF buttons), the log's scroll buttons (their callbacks act only on a left click,
+  so the message goes on) and the log's text item. **The disabled bit 8 is not tested** on that
+  path (the presses and keys test it): a disabled control gives its help too (the spell book
+  without a book, the tactics phase's dimmed buttons, a computer's turn's). The battle's handler
+  sends every id but the battlefield's 0 and 1 to `battle_control_help`, with no test of the turn
+  or of +0x132B4; the panel's picture (2000) and the gaps give nothing.
+- **What.** By the id (the table 0x472B4C), the right-click text of `battle_panel_hints`' pair
+  (`Help.txt`'s second column): 2001 to 2005 the records 379 to 383 (Surrender, Retreat, Combat
+  Options, Auto Combat, the log's "Combat text appears in this window"), 2006 and 2007 both 384
+  (the scroll buttons'), 2008 to 2010 385 to 387 (Cast Spell, Wait, Defend), 2300 388 ("Phase
+  Wait", the record's two columns alike), 30722 389 (End Tactics Phase). The texts with a title
+  start with it in braces (the box's second colour) and an empty line.
+- **The popup.** `message_box_size` lays the text out as `message_box` does for style 4 (§7.19:
+  at least 128 wide, no buttons) and gives the box's size; the help passes ((800 − width) / 2,
+  (600 − height) / 2), so the box stands where x = y = −1 puts it: centred on the screen. Style 4,
+  no picture: the held popup of §12.3 (`popup_run_held`: the cursor hidden, every input but the
+  right button's release, a left press or a left release dropped), framed as every battle box
+  (CLT-Q28 (2)). Nothing after it: no cursor set, nothing posted, the status line the control's
+  hint as the move to it left it.
+- **Recorded** (`clients/situations/set.toml`, the right button held through the frames, the
+  clock frozen): `help-wait` (`book.toml`, the attacker's turn: Wait's help, its title in the
+  second colour), `help-log` (the log's text item: one plain line), `help-scroll` (the log's
+  scroll button up), `help-tactics` (`tactics.toml`'s phase: its Wait, disabled there, gives its
+  help all the same), `help-phase` (Next Creature's "Phase Wait": the narrowest popup). All exact
+  at their first capture. *Not recorded:* the right press on a computer's turn (below).
+- **The viewer** (`h3_view::panel::help`, the table's keys `battle.help.*`, and `help_at`: the
+  panel's item at the point by `Dialog::item_at`, whatever its state, the panel the moment shows,
+  the tactics phase's own in the phase). The window (`Battle::control_help`): the right button down
+  over the panel while the battle takes the input, where no stack's dialog or turret's info opens,
+  opens the help as `Asked::Held` (§12.6's popup: the cursor hidden, every input but its ends
+  dropped, nothing posted at its end). The stills' `right:` over the panel (`Boxes::help`). *Not
+  modelled:* a right press while the battle does not take the input (§12.5's note: the original's
+  handler tests no turn, so its help may show on a computer's turn too).

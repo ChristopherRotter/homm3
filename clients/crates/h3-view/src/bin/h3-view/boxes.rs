@@ -30,9 +30,10 @@ pub enum Asked {
     /// 0x476E2F): its OK closes it, then the battle takes the mouse again as after a stack's
     /// stats dialog (0x476E34, `Input::Looked`).
     Turret,
-    /// A turret's info by the right button (E17 M6 T2b2, 0x476BBA): a popup without buttons held
-    /// while the button is (`popup_run_held` 0x602A40): its ends close it, the input meanwhile
-    /// dropped, the cursor hidden.
+    /// A turret's info by the right button (E17 M6 T2b2, 0x476BBA), or a panel control's help
+    /// (E17 M6 T3a, `battle_control_help` 0x472A50): a popup without buttons held while the
+    /// button is (`popup_run_held` 0x602A40): its ends close it, the input meanwhile dropped, the
+    /// cursor hidden.
     Held,
 }
 

@@ -479,6 +479,12 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 };
                 h3_view::turret::text(observation, &catalogue, &part)
             };
+            // A panel control's help where the right button shows it (E17 M6 T3a): the panel
+            // the opening shows, the tactics phase's own in the phase.
+            let help = |point: [i32; 2]| {
+                let key = h3_view::panel::help_at(layout.panel_in(observation), point)?;
+                Some(catalogue.text(key, &h3_ui::text::Args::new()))
+            };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
                 leave,
@@ -491,6 +497,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 acting: &acting,
                 held: &held,
                 turret: &turret,
+                help: &help,
             };
             Some(crate::spellbook::still(
                 &actions,

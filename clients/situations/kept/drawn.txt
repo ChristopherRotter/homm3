@@ -6377,6 +6377,12 @@ set/held-dragon t00000 1ebb9c884d7f7c55
 set/held-enemy t00000 8228c3b5c938f3e2
 set/held-machine t00000 925963d819495382
 set/held-top t00000 00a042c62c6e58b0
+set/help-log t00000 321361178f7af821
+set/help-phase t00100 98bf19cc974a6c83
+set/help-scroll t00000 bb6a0a1117d35a96
+set/help-tactics t00100 964655febf9a22eb
+set/help-wait t00000 2534978347258a68
+set/help-wait t00100 2534978347258a68
 set/heroes-castle-rampart t00000 b5d23b63281ef544
 set/heroes-conflux t00000 8382d0cab14bf928
 set/heroes-dungeon-stronghold t00000 29195b1a3bfac8c5

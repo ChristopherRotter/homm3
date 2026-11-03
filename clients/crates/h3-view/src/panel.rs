@@ -65,6 +65,38 @@ pub const BUTTONS: [u16; 7] = [
     DEFEND,
 ];
 
+/// The key of a control's help, the right button's text over it (E17 M6 T3a, design §12.7;
+/// `battle_control_help` 0x472A50 by its table 0x472B4C): the second text of the control's pair
+/// in `battle_panel_hints` 0x6A6968 (`Help.txt`'s records 379 to 389), the log's two scroll
+/// buttons sharing one; none for the picture or any other id.
+#[must_use]
+pub const fn help(id: u16) -> Option<&'static str> {
+    Some(match id {
+        SURRENDER => "battle.help.surrender",
+        RETREAT => "battle.help.retreat",
+        OPTIONS => "battle.help.options",
+        AUTO_COMBAT => "battle.help.auto",
+        LOG => "battle.help.log",
+        LOG_UP | LOG_DOWN => "battle.help.scroll",
+        SPELL_BOOK => "battle.help.spell-book",
+        WAIT => "battle.help.wait",
+        DEFEND => "battle.help.defend",
+        NEXT_CREATURE => "battle.help.next-creature",
+        START_COMBAT => "battle.help.end-tactics",
+        _ => return None,
+    })
+}
+
+/// The key of the help the right button pressed at `point` (on the screen) shows over `panel`
+/// (E17 M6 T3a, design §12.7): the control there by [`h3_ui::ui::Dialog::item_at`], the newest
+/// item holding the point, a disabled one too (the items' right press tests only that they are
+/// shown, which the panel's always are: `def_button_message` 0x4567AD, `text_item_message`
+/// 0x5BC4A6); none over the picture, a gap or the battlefield.
+#[must_use]
+pub fn help_at(panel: &h3_ui::ui::Dialog, point: [i32; 2]) -> Option<&'static str> {
+    help(panel.item_at(point)?.id())
+}
+
 /// The battle as each turn's start finds it (E17 M3 T6b): for each `TurnStarted` of `events` (a
 /// record's, in order) but a frozen stack's, the opening's `observation` with the events before
 /// it applied as far as the panel and the tactics phase's shade read them: the active stack, the

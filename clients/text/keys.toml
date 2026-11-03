@@ -415,6 +415,54 @@ original = [{ at = "HELP:388" }]
 id = "battle.control.end-tactics"
 original = [{ at = "HELP:389" }]
 
+# The panel's controls' help (E17 M6 T3a, design §12.7; `battle_control_help` 0x472A50): the right
+# button pressed over a control shows its pair's second text, `Help.txt`'s second column of the
+# same records 379 to 389, in a popup while the button is held; the log's two scroll buttons share
+# 384's.
+[[key]]
+id = "battle.help.surrender"
+original = [{ at = "HELP:379:1" }]
+
+[[key]]
+id = "battle.help.retreat"
+original = [{ at = "HELP:380:1" }]
+
+[[key]]
+id = "battle.help.options"
+original = [{ at = "HELP:381:1" }]
+
+[[key]]
+id = "battle.help.auto"
+original = [{ at = "HELP:382:1" }]
+
+[[key]]
+id = "battle.help.log"
+original = [{ at = "HELP:383:1" }]
+
+[[key]]
+id = "battle.help.scroll"
+original = [{ at = "HELP:384:1" }]
+
+[[key]]
+id = "battle.help.spell-book"
+original = [{ at = "HELP:385:1" }]
+
+[[key]]
+id = "battle.help.wait"
+original = [{ at = "HELP:386:1" }]
+
+[[key]]
+id = "battle.help.defend"
+original = [{ at = "HELP:387:1" }]
+
+[[key]]
+id = "battle.help.next-creature"
+original = [{ at = "HELP:388:1" }]
+
+[[key]]
+id = "battle.help.end-tactics"
+original = [{ at = "HELP:389:1" }]
+
 # The word for a creature, by `count`: a strike's perish row names it when the strike killed
 # several kinds.
 [[key]]
