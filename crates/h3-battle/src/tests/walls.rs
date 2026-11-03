@@ -30,8 +30,7 @@ fn town(r: &BattleRuleset, fort: FortLevel) -> Siege {
         moat: Moat::Absent,
         structures: 0,
         escape_tunnel: false,
-        morale: 0,
-        luck: 0,
+        bonuses: h3_contracts::TownBonuses::NONE,
     }
 }
 

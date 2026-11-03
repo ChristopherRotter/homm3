@@ -120,6 +120,7 @@ fn a_sieges_walls_and_closed_gate_block_the_phase() {
         walls: WALL_HEXES.to_vec(),
         moat_hexes: Vec::new(),
         parts: Vec::new(),
+        bonuses: Default::default(),
     };
     let mut o = phase(
         12,

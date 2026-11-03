@@ -585,10 +585,12 @@ fn scenario_heroes() {
         BattleEffect::Morale {
             amount: 1,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::Luck {
             amount: 1,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::SpellSpecialty {
             spell: ruleset.spell_by_key("synthetic:hasten").unwrap(),
@@ -721,10 +723,23 @@ fn scenario_heroes() {
                 BattleEffect::Morale {
                     amount: -2,
                     affects,
+                    source: h3_contracts::EffectSource::Temporary,
                 },
-                BattleEffect::Luck { amount: 3, affects },
-                BattleEffect::MoraleAtMost { value: 0, affects },
-                BattleEffect::LuckAtMost { value: 1, affects },
+                BattleEffect::Luck {
+                    amount: 3,
+                    affects,
+                    source: h3_contracts::EffectSource::Temporary,
+                },
+                BattleEffect::MoraleAtMost {
+                    value: 0,
+                    affects,
+                    source: h3_contracts::EffectSource::Temporary,
+                },
+                BattleEffect::LuckAtMost {
+                    value: 1,
+                    affects,
+                    source: h3_contracts::EffectSource::Temporary,
+                },
             ]
         })
         .chain([BattleEffect::NoRetreat])
@@ -768,6 +783,7 @@ fn scenario_heroes() {
             BattleEffect::AlignmentGroup {
                 factions: FactionGroup::new(&[ruleset.faction_by_key("synthetic:vale").unwrap()])
                     .unwrap(),
+                source: h3_contracts::EffectSource::Temporary,
             },
         ])
         .chain([
@@ -949,6 +965,7 @@ fn scenario_heroes() {
     let mut stranger_faction = expected.clone();
     stranger_faction.effects = vec![BattleEffect::AlignmentGroup {
         factions: FactionGroup::new(&[h3_content::FactionId::from_raw(99)]).unwrap(),
+        source: h3_contracts::EffectSource::Temporary,
     }];
     assert_eq!(
         HeroEntry::of(&stranger_faction, &ruleset),
@@ -1810,9 +1827,12 @@ fn hero_details_fit_the_harvested_slots() {
     // Five Clovers of Fortune give luck +1: identical artifacts do not stack (wiki Artifact).
     // Angelic Alliance lets the five SoD towns mix (HER-BAT-010) and casts Expert Prayer
     // with power 10 at the side's first activation (HER-BAT-017).
+    // Each names its artifact (CLT-Q40), by the original's ids 46 and 129.
+    let artifact = |key| h3_contracts::EffectSource::Artifact(sod.artifact_by_key(key).unwrap());
     let luck = |amount| BattleEffect::Luck {
         amount,
         affects: Affects::Own,
+        source: artifact("base:clover_of_fortune"),
     };
     let towns = ["castle", "rampart", "tower", "fortress", "stronghold"]
         .map(|t| sod.faction_by_key(&format!("base:{t}")).unwrap());
@@ -1821,7 +1841,8 @@ fn hero_details_fit_the_harvested_slots() {
         [
             luck(1),
             BattleEffect::AlignmentGroup {
-                factions: FactionGroup::new(&towns).unwrap()
+                factions: FactionGroup::new(&towns).unwrap(),
+                source: artifact("sod:angelic_alliance"),
             },
             BattleEffect::OpeningSpell {
                 spell: sod.spell_by_key("base:prayer").unwrap(),
@@ -1831,8 +1852,9 @@ fn hero_details_fit_the_harvested_slots() {
         ]
     );
     // Expert Leadership (+3), Pendant of Courage (+3 each), Badge of Courage and two Clovers
-    // (+1 each, once); Spirit of Oppression caps both sides' morale at 0 (the battle clamps
-    // the sums to +3); the Badge's mind immunity (E04b T8b2).
+    // (+1 each, once); Spirit of Oppression caps both sides' morale at 0 (the battle sums them
+    // and clamps the sums to +3); the Badge's mind immunity (E04b T8b2). Each with its source
+    // (CLT-Q40), the artifacts in the order worn.
     let mut leader = details(
         &sod,
         &[
@@ -1847,18 +1869,35 @@ fn hero_details_fit_the_harvested_slots() {
     leader
         .skills
         .push((sod.skill_by_key("base:leadership").unwrap(), 3));
+    let morale = |amount, source| BattleEffect::Morale {
+        amount,
+        affects: Affects::Own,
+        source,
+    };
+    let pendant = artifact("base:pendant_of_courage");
     assert_eq!(
         derive_battle_hero(&leader, &sod).unwrap().effects,
         [
-            BattleEffect::Morale {
-                amount: 7,
-                affects: Affects::Own
+            morale(
+                3,
+                h3_contracts::EffectSource::Skill {
+                    skill: sod.skill_by_key("base:leadership").unwrap(),
+                    level: 3,
+                },
+            ),
+            morale(3, pendant),
+            BattleEffect::Luck {
+                amount: 3,
+                affects: Affects::Own,
+                source: pendant,
             },
-            luck(4),
             BattleEffect::MoraleAtMost {
                 value: 0,
-                affects: Affects::Both
+                affects: Affects::Both,
+                source: artifact("base:spirit_of_oppression"),
             },
+            morale(1, artifact("base:badge_of_courage")),
+            luck(1),
             BattleEffect::MindImmunity,
         ]
     );

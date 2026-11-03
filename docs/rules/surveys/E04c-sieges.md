@@ -229,7 +229,7 @@ follows the result (the adventure lane).
   +0x150 the Brotherhood replaces the Tavern, its predecessor, so a Castle with it gives +2 in
   all; `vcmi`: the Brotherhood upgrades the Tavern and replaces its bonus, +2; the `wiki` (Morale):
   "+2 (in addition to Tavern)"). The code, VCMI and the batch agree: +2. A fact for whoever derives
-  `Siege.morale` (the town context; the adventure lane's inbox); the battle adds what it is given.
+  `Siege.bonuses` (the town context; the town lane's inbox); the battle adds what it is given.
 - **D-22 The defender's Ballista at a town** (T9, BAT-SIE-029; `code` §7.27: 0x463600 sets up no
   Ballista for the defender in a battle with a fort level above 0; `vcmi`: `BattleInfo::setupBattle`
   gives a defending hero none at any town, "(bug #551)"). They agree with a fort, which the faithful

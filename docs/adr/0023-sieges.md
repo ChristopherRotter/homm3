@@ -5,7 +5,8 @@
   1, 2 and 7 amended 2026-10-15 (user, BAT-Q50; E04c T10b); point 7 widened 2026-10-23 (user,
   BAT-Q33; E23 T7); points 2 and 5 and the Consequences amended 2026-11-03 (user, TWN-Q2 to
   TWN-Q4, E09 decisions 14, 15, 20, 21; E09 T4a: the town context derives the facts, the packs
-  decide the moat)
+  decide the moat); point 2 amended 2026-11-03 (user, CLT-Q40, BAT-Q64: the morale and luck by
+  building, public)
 - Date: 2026-10-13
 - Deciders: user; battle lane session (E04c T4, T5)
 - Working detail: the survey [`docs/rules/surveys/E04c-sieges.md`](../rules/surveys/E04c-sieges.md),
@@ -58,8 +59,11 @@ the adventure lane derives the battlefield (ADR-0022).
      control for the acting side only (0x478573) and a town's buildings are no public fact, so the
      attacker and a spectator see the defender's option to retreat as `false` (unknown) and the
      observed siege without the tunnel;
-   - `morale: i8`, `luck: i8`: the town's bonuses to the defender's stacks (the Tavern, the
-     Brotherhood of the Sword, the Fountain of Fortune), side modifiers like a hero's.
+   - `bonuses: TownBonuses`: the town's buildings that change the defender's morale and luck (the
+     Tavern, the Brotherhood of the Sword, the Fountain of Fortune), each with its building (its
+     index in the faction's town record) and its changes; summed, side modifiers like a hero's.
+     The buildings are named for viewers and public (amendment, CLT-Q40, BAT-Q64: as VCMI's
+     descriptions list them), unlike the Escape Tunnel.
 3. **The defending hero's town bonuses** (the Grails, Blood Obelisk, Glyphs of Fear, Brimstone
    Stormclouds) are applied to its `BattleHero` before the seam, like its other bonuses (ADR-0013
    point 6). The battle never restores them; the orchestrator keeps the hero's own skills and, as

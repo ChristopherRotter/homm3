@@ -12,8 +12,8 @@ use h3_content_battle::{
 };
 
 use h3_contracts::{
-    Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome,
-    RetreatFacts, StackOrigin, StackRecord,
+    Army, ArmyStack, BattleEffect, BattleHero, BattleOutcome, BattleResult, BattleSetup,
+    BattleSide, HeroOutcome, RetreatFacts, StackOrigin, StackRecord,
 };
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
@@ -86,7 +86,7 @@ const MAX_BACKGROUND: u8 = 2;
 const MAX_COLOUR: u8 = 7;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 54;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 55;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -1066,6 +1066,16 @@ pub struct BattleState {
     pub(crate) background: Option<u8>,
     /// See `background`.
     pub(crate) colours: [Option<u8>; 2],
+    /// Each side's hero's morale and luck effects with their sources, in the setup's order
+    /// (`hero::morale_and_luck`; CLT-Q40): for viewers only, public and observed; the rules read
+    /// the modifiers set up from them. Indexed by [`BattleSide::index`], empty without a hero.
+    pub(crate) morale_and_luck: [Vec<BattleEffect>; 2],
+    /// Each stack's morale and luck before the roll levels' clamp, by stack id, saturated to `i8`
+    /// (CLT-Q40): what `morale::materialize` computes beside the clamped values, kept for viewers
+    /// (public and observed); no rule reads them.
+    pub(crate) unclamped_morale: [i8; STACK_CAPACITY],
+    /// See `unclamped_morale`.
+    pub(crate) unclamped_luck: [i8; STACK_CAPACITY],
     /// The town the battle is fought at, if any (BAT-SIE-001; public).
     pub(crate) siege: Option<SiegeState>,
     /// The timed effects on stacks (ADR-0014 point 5).
@@ -1283,6 +1293,14 @@ impl BattleState {
             attacker_ground,
             background: setup.background,
             colours: setup.colours,
+            morale_and_luck: setup.heroes.each_ref().map(|hero| {
+                hero.iter()
+                    .flat_map(hero::morale_and_luck)
+                    .copied()
+                    .collect()
+            }),
+            unclamped_morale: [0; STACK_CAPACITY],
+            unclamped_luck: [0; STACK_CAPACITY],
             siege,
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
@@ -1723,6 +1741,16 @@ impl CanonicalHash for BattleState {
         self.attacker_ground.hash_into(h);
         self.background.hash_into(h);
         self.colours.iter().for_each(|c| c.hash_into(h));
+        // State hash v55 (CLT-Q40): the heroes' morale and luck effects with their sources.
+        for effects in &self.morale_and_luck {
+            h.write_len(effects.len());
+            effects
+                .iter()
+                .for_each(|e| hero::hash_morale_and_luck(h, e));
+        }
+        for values in [&self.unclamped_morale, &self.unclamped_luck] {
+            values.iter().for_each(|&v| h.write_i32(i32::from(v)));
+        }
         self.siege.hash_into(h);
         self.effects.hash_into(h);
         self.spell_obstacles.hash_into(h);

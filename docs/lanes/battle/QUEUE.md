@@ -28,28 +28,11 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   E09 TD-8, decision 30). The same section's "which buildings that mask holds is not read" (the keep, 0x5BF4F0)
   is now read: the faction's building list less the forbidden, never the Village Hall (survey
   `E09-towns.md` §16.4).
-- 2026-11-03 (the town lane, E09 T4a; ADR-0023 point 2 amended, E09 decision 14; **a comment to change**, no
-  rule): `siege::setup`'s doc comment (`crates/h3-battle/src/siege.rs`, BAT-SIE-001) has the moat "by the setup's
-  moat (the game's version)". No game version exists any more: the enabled packs decide it (the faction's town
-  record in `packs/*/towns.toml`, from which `h3-towns` derives `Siege.moat`; ADR-0028 point 7). Reword it at the
-  lane's next change of the file (e.g. "by the setup's moat, the packs' (ADR-0023 point 2)"); the battle's rules do
-  not change. `Moat`'s own doc comment in `h3-contracts` follows in the town lane's E09 T4b (`shared/`).
-
-- 2026-11-03 (the client lane, E17 M6 T2a2b2, CLT-Q40; **a request**, `cross-lane` with the server and adventure
-  lanes, as CLT-Q3 and CLT-Q4 were): the stats dialog's morale and luck descriptions (`docs/epics/E17-design.md`
-  §12.4) list each source; a seat's observation carries only each stack's clamped values, the setup only
-  unlabelled sums (`BattleHero.effects`). Carry, setup to wire: (1) each morale and luck effect's source: the
-  Leadership and Luck levels, the morale and luck artifacts worn or in a worn combination (45 to 51, 108), the
-  adventure map's visits until the next battle (the original's hero +0x105 bits), the owner's grail, the
-  temporary rest; the Hourglass of the Evil Hour and the Spirit of Oppression behind the caps; the Angelic
-  Alliance behind `AlignmentGroup`; a siege town's buildings behind `Siege.morale` and `luck` (the Tavern, the
-  Brotherhood of the Sword, the Fountain of Fortune); (2) each stack's unclamped morale and luck (the original's
-  +0x4E8 and +0x4EC; `unclamped_luck` has the luck). **Public to both seats and spectators** (the user: as VCMI,
-  which shows the enemy's), so ADR-0013 point 9 needs its amendment with it. The client fills the lines when it
-  lands (its inbox). **A rule to check meanwhile** (a code reading; compare with the wiki and VCMI): the original's
-  Angelic Alliance joins the alignments when *any* hero of the side's player wears it, on the map or in a town
-  (+0x54B2 from `player_hero_wears_artifact` 0x4BACB0, read at 0x463AE2; the stacks' update reads it at 0x4697F2),
-  where BAT-HER-007 takes the battle's hero's.
+- 2026-11-03 (CLT-Q40's request, carried by BAT-Q64; **a rule to check**, a code reading: compare
+  with the wiki and VCMI): the original's Angelic Alliance joins the alignments when *any* hero of
+  the side's player wears it, on the map or in a town (+0x54B2 from `player_hero_wears_artifact`
+  0x4BACB0, read at 0x463AE2; the stacks' update reads it at 0x4697F2), where BAT-HER-007 takes the
+  battle's hero's.
 
 - 2026-10-22 (E23 T4c's blind check; a rule to confirm): the original's end routine 0x444510 returns early only for Disrupting Ray (47), so a dispel or Cure that reaches Acid Breath (80) may end it; BAT-MAG-010 keeps every permanent effect. Read the dispels' callers or play a batch row (Cure on a stack under Acid Breath) and align BAT-MAG-010 or record why not.
 

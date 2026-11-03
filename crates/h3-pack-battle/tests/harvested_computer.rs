@@ -193,8 +193,7 @@ fn random_setup(sod: &BattleRuleset, pools: &Pools, game: u64, rng: &mut Rng) ->
                 moat,
                 structures: u8::try_from(rng.below(256)).unwrap(),
                 escape_tunnel: rng.below(2) == 0,
-                morale: 0,
-                luck: 0,
+                bonuses: h3_contracts::TownBonuses::NONE,
             };
             (Some(town), None)
         }
@@ -648,8 +647,7 @@ fn walled(
             moat: Moat::Absent,
             structures: 0,
             escape_tunnel: false,
-            morale: 0,
-            luck: 0,
+            bonuses: h3_contracts::TownBonuses::NONE,
         }),
         formations: [Formation::Loose, Formation::Loose],
         difficulty: 1,
@@ -757,8 +755,7 @@ fn a_commanded_catapult_aims_at_the_gate_then_the_weakest_wall_while_all_stand()
                 moat: Moat::Absent,
                 structures: 0,
                 escape_tunnel: false,
-                morale: 0,
-                luck: 0,
+                bonuses: h3_contracts::TownBonuses::NONE,
             }),
             formations: [Formation::Loose, Formation::Loose],
             difficulty: 1,

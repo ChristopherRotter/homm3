@@ -141,8 +141,8 @@ by cloning the fair actor was the first lever past 0.41 to 0.43 against the syst
 | Task | Scope | Status |
 |---|---|---|
 | T19 | The teacher's ceiling: the fair actor's agreement with its own draws, per category | done 2026-11-03 (`E25-log.md` T19: the fair actor repeats itself 0.972, 0.044 nats; T16's student 0.531, `e25-clone-1` #2 0.270: the gap is the network's) |
-| T20 | The longer clone: the clone bench at a larger budget, read against T19's ceiling | next (`configs/distill/e25-clone-2.toml`; where it runs the user's choice) |
-| T21 | The imitation loss: PPO's auxiliary cross-entropy to the fair actor's choice, decaying to 0 | next (the sandbox) |
+| T20 | The longer clone: the clone bench at a larger budget, read against T19's ceiling | done 2026-11-03 (`E25-log.md` T20: 16 M samples, agreement 0.576 (T16 0.531, the ceiling 0.972); the student 0.411 against both system actors, the neutral set +0.251) |
+| T21 | The imitation loss: PPO's auxiliary cross-entropy to the fair actor's choice, decaying to 0 | next (the sandbox; a fresh session, the user) |
 | T22 | The A/B: PPO from T20's student, with and without T21's loss, against `e25-clone-1` | after T20, T21 (the user's machine) |
 | T23 | The checkpoint: T22 read, the current best, increment 7 | after T22 |
 

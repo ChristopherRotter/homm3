@@ -54,6 +54,7 @@ fn siege(fort: u8) -> Observation {
         walls: Vec::new(),
         moat_hexes: Vec::new(),
         parts: vec![2; 8],
+        bonuses: Default::default(),
     });
     o
 }

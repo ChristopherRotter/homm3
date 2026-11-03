@@ -550,6 +550,22 @@ fn the_observation_names_the_town() {
         vec![12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182]
     );
     assert_eq!(town.moat_hexes.len(), 22);
+    // The buildings behind its morale and luck (v37, CLT-Q40).
+    assert_eq!(
+        town.bonuses,
+        vec![
+            TownBonus {
+                building: 5,
+                morale: 1,
+                luck: 0,
+            },
+            TownBonus {
+                building: 21,
+                morale: 0,
+                luck: 1,
+            }
+        ]
+    );
     let (ruleset, state) = battle();
     assert!(
         map::observe(&state, &ruleset, BattleSide::Attacker)
@@ -651,7 +667,21 @@ fn every_part_of_an_observation_is_mapped() {
     own.eagle_chance = 40;
     own.eagle_spells = set;
     own.learned = set;
+    // The morale and luck sources and the unclamped values (v37, CLT-Q40): every kind, source
+    // and side; another effect kind is never in the list, and would be left out.
+    let (morale_and_luck, sources) = morale_and_luck();
+    o.morale_and_luck[0].clear();
+    o.morale_and_luck[1] = morale_and_luck.clone();
+    o.morale_and_luck[1].push(h3_contracts::BattleEffect::NoRetreat);
+    o.unclamped_morale[0] = -4;
+    o.unclamped_luck[1] = -2;
     let w = map::observation(&o);
+    assert!(w.morale_and_luck[0].is_empty());
+    assert_eq!(w.morale_and_luck[1], sources);
+    assert_eq!(
+        (w.stacks[0].unclamped_morale, w.stacks[1].unclamped_luck),
+        (-4, -2)
+    );
     assert!(w.wait_phase);
     assert_eq!(w.obstacles_cleared, vec![40]);
     assert_eq!(
@@ -752,6 +782,99 @@ fn every_part_of_an_observation_is_mapped() {
     );
     assert_eq!(own.eagle_chance, 40);
     assert_eq!((own.eagle_spells, own.learned), (vec![4], vec![4]));
+}
+
+/// Every morale and luck effect kind with every source kind and side, in the engine's terms and
+/// on the wire (CLT-Q40).
+fn morale_and_luck() -> (Vec<h3_contracts::BattleEffect>, Vec<MoraleLuck>) {
+    use h3_content::Affects as A;
+    use h3_contracts::{BattleEffect as E, EffectSource as S};
+    let faction = h3_content::FactionId::from_raw(2);
+    let sources = [
+        (
+            S::Skill {
+                skill: h3_content::SkillId::from_raw(3),
+                level: 2,
+            },
+            Source::Skill { skill: 3, level: 2 },
+        ),
+        (
+            S::Artifact(h3_content::ArtifactTypeId::from_raw(9)),
+            Source::Artifact { artifact: 9 },
+        ),
+        (S::Specialty, Source::Specialty),
+        (S::Visit { mark: 1 }, Source::Visit { mark: 1 }),
+        (
+            S::Building { faction, index: 21 },
+            Source::Building {
+                faction: 2,
+                index: 21,
+            },
+        ),
+        (S::Temporary, Source::Temporary),
+    ];
+    let sides = [
+        (A::Own, Affects::Own),
+        (A::Enemy, Affects::Enemy),
+        (A::Both, Affects::Both),
+    ];
+    let (mut engine, mut wire) = (Vec::new(), Vec::new());
+    for (i, &(source, ws)) in sources.iter().enumerate() {
+        let (affects, wa) = sides[i % 3];
+        engine.extend([
+            E::Morale {
+                amount: 1,
+                affects,
+                source,
+            },
+            E::Luck {
+                amount: -1,
+                affects,
+                source,
+            },
+            E::MoraleAtMost {
+                value: 2,
+                affects,
+                source,
+            },
+            E::LuckAtMost {
+                value: 0,
+                affects,
+                source,
+            },
+            E::AlignmentGroup {
+                factions: h3_contracts::FactionGroup::new(&[faction]).unwrap(),
+                source,
+            },
+        ]);
+        wire.extend([
+            MoraleLuck::Morale {
+                amount: 1,
+                affects: wa,
+                source: ws,
+            },
+            MoraleLuck::Luck {
+                amount: -1,
+                affects: wa,
+                source: ws,
+            },
+            MoraleLuck::MoraleAtMost {
+                value: 2,
+                affects: wa,
+                source: ws,
+            },
+            MoraleLuck::LuckAtMost {
+                value: 0,
+                affects: wa,
+                source: ws,
+            },
+            MoraleLuck::AlignmentGroup {
+                factions: vec![2],
+                source: ws,
+            },
+        ]);
+    }
+    (engine, wire)
 }
 
 #[test]

@@ -204,8 +204,7 @@ fn a_towns_mines_and_escape_tunnel_show_to_its_defender_only() {
             moat: Moat::Damaging,
             structures: 0,
             escape_tunnel,
-            morale: 0,
-            luck: 0,
+            bonuses: h3_contracts::TownBonuses::NONE,
         };
         arena_on(
             &r,

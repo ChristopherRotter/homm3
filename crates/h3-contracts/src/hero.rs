@@ -11,8 +11,8 @@ use alloc::vec::Vec;
 use core::num::NonZeroU32;
 
 use h3_content::{
-    Affects, CreatureSelector, CreatureStat, CreatureTypeId, FactionId, HeroTypeId,
-    MAX_ALIGNMENT_FACTIONS, SchoolId, SpellId, SpellScope,
+    Affects, ArtifactTypeId, CreatureSelector, CreatureStat, CreatureTypeId, FactionId, HeroTypeId,
+    MAX_ALIGNMENT_FACTIONS, SchoolId, SkillId, SpellId, SpellScope,
 };
 
 /// Most entries in [`BattleHero::effects`].
@@ -246,37 +246,86 @@ impl FactionGroup {
     }
 }
 
+/// Where a hero's morale or luck effect comes from (CLT-Q40, BAT-Q64): the original's
+/// descriptions of a stack's morale and luck list each (`docs/epics/E17-design.md` §12.4). For
+/// viewers only, no battle rule reads it; public with the effect (ADR-0013 point 9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EffectSource {
+    /// A secondary skill at its level, 1 (Basic) to 3 (Expert): Leadership, Luck.
+    Skill {
+        /// The skill.
+        skill: SkillId,
+        /// Its level.
+        level: u8,
+    },
+    /// A worn artifact, or a part of a worn combination: the morale and luck artifacts, the
+    /// Spirit of Oppression's and the Hourglass of the Evil Hour's caps, the Angelic Alliance's
+    /// alignment group.
+    Artifact(ArtifactTypeId),
+    /// The hero type's specialty.
+    Specialty,
+    /// An adventure-map object the hero visited since its last battle, by the once-mark the visit
+    /// set (`h3_heroes::BattleBonuses::marks`; the adventure's content names the object type).
+    Visit {
+        /// The once-mark.
+        mark: u8,
+    },
+    /// A town building of the hero's owner (its Grail building), by its index in the town's
+    /// faction's town record (`h3_towns::BuildingId`).
+    Building {
+        /// The town's faction.
+        faction: FactionId,
+        /// The building's index in the faction's town record.
+        index: u8,
+    },
+    /// What no other source names: the original's "temporary" lines (the hero's battle bonuses
+    /// no visit names; a scenario's effect without a source).
+    Temporary,
+}
+
 /// One resolved effect of a hero in battle (ADR-0013 point 3). Later tasks add variants (T10,
 /// E04b); the battle checks them like the rest of the setup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BattleEffect {
-    /// Changes the morale of the affected stacks for the whole battle (Leadership).
+    /// Changes the morale of the affected stacks for the whole battle (Leadership). One per
+    /// source: the battle sums them.
     Morale {
         /// Morale change.
         amount: i8,
         /// Whose stacks.
         affects: Affects,
+        /// Where it comes from (for viewers, CLT-Q40).
+        source: EffectSource,
     },
-    /// Changes the luck of the affected stacks for the whole battle (Luck).
+    /// Changes the luck of the affected stacks for the whole battle (Luck). One per source: the
+    /// battle sums them.
     Luck {
         /// Luck change.
         amount: i8,
         /// Whose stacks.
         affects: Affects,
+        /// Where it comes from (for viewers, CLT-Q40).
+        source: EffectSource,
     },
-    /// Caps the morale of the affected stacks for the whole battle (Spirit of Oppression).
+    /// Caps the morale of the affected stacks for the whole battle (Spirit of Oppression). The
+    /// battle takes the smallest cap.
     MoraleAtMost {
         /// Highest morale.
         value: i8,
         /// Whose stacks.
         affects: Affects,
+        /// Where it comes from (for viewers, CLT-Q40).
+        source: EffectSource,
     },
     /// Caps the luck of the affected stacks for the whole battle (Hourglass of the Evil Hour).
+    /// The battle takes the smallest cap.
     LuckAtMost {
         /// Highest luck.
         value: i8,
         /// Whose stacks.
         affects: Affects,
+        /// Where it comes from (for viewers, CLT-Q40).
+        source: EffectSource,
     },
     /// Changes a statistic of the hero's selected stacks for the whole battle (creature
     /// specialties, stat artifacts).
@@ -316,6 +365,8 @@ pub enum BattleEffect {
     AlignmentGroup {
         /// The factions.
         factions: FactionGroup,
+        /// Where it comes from (for viewers, CLT-Q40).
+        source: EffectSource,
     },
     /// More damage from the hero's spells of a scope (Sorcery, the Orbs, Ciele's specialty;
     /// E04b): one factor per kind of scope (HER-BAT-012).

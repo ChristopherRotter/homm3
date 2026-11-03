@@ -38,6 +38,7 @@ fn town(faction: u16, fort: u8, moat: u8, moat_hexes: Vec<u8>) -> Siege {
         walls: vec![12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182],
         moat_hexes,
         parts: vec![2; 8],
+        bonuses: Default::default(),
     }
 }
 

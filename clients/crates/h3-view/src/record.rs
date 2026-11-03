@@ -167,6 +167,7 @@ pub(crate) mod tests {
             absolute_obstacle: None,
             obstacles_cleared: Vec::new(),
             spell_obstacles: Vec::new(),
+            morale_and_luck: Default::default(),
         }
     }
 

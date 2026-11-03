@@ -525,10 +525,12 @@ fn morale_and_luck_spells_join_the_sum_before_the_minimums() {
         BattleEffect::Morale {
             amount: 4,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::Luck {
             amount: -2,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
     ];
     let mut defender = adept(&r, &["sorrow", "misfortune"], 0);
@@ -573,10 +575,12 @@ fn morale_and_luck_beyond_the_range_absorb_the_spells_and_are_clamped_once() {
             BattleEffect::Morale {
                 amount: morale,
                 affects: Affects::Own,
+                source: h3_contracts::EffectSource::Temporary,
             },
             BattleEffect::Luck {
                 amount: 5,
                 affects: Affects::Own,
+                source: h3_contracts::EffectSource::Temporary,
             },
         ];
         let mut foe = adept(&r, &["sorrow", "misfortune"], 3);

@@ -37,7 +37,8 @@ pub enum Moat {
 }
 
 /// The town of a battle fought at a town ([`crate::BattleSetup::siege`]): derived facts, not the
-/// town's buildings (ADR-0023 point 2). Public.
+/// town's buildings, but those that change its defender's morale and luck, named for viewers
+/// (ADR-0023 point 2). Public.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Siege {
     /// The town's faction, a handle of the battle's ruleset: the battle part's siege record for
@@ -53,10 +54,80 @@ pub struct Siege {
     pub structures: u8,
     /// The town has an Escape Tunnel: its defender may retreat.
     pub escape_tunnel: bool,
-    /// The town's morale bonus to the defender's stacks (the Tavern, the Brotherhood of the
-    /// Sword), a side modifier like a hero's.
+    /// The town's buildings that change the defender's morale and luck (the Tavern, the
+    /// Brotherhood of the Sword, the Fountain of Fortune), each with its change: summed, a side
+    /// modifier like a hero's (BAT-SIE-025). Each names its building for viewers (CLT-Q40,
+    /// BAT-Q64; public, as the original's and VCMI's descriptions list them).
+    pub bonuses: TownBonuses,
+}
+
+impl Siege {
+    /// The town's morale for its defender: its buildings' changes summed.
+    pub fn morale(&self) -> i32 {
+        self.bonuses.iter().map(|b| i32::from(b.morale)).sum()
+    }
+
+    /// The town's luck for its defender: its buildings' changes summed.
+    pub fn luck(&self) -> i32 {
+        self.bonuses.iter().map(|b| i32::from(b.luck)).sum()
+    }
+}
+
+/// Most entries in [`Siege::bonuses`].
+pub const MAX_TOWN_BONUSES: usize = 8;
+
+/// A siege town's building that changes its defender's morale or luck (BAT-SIE-025).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct TownBonus {
+    /// The building: its index in the town's faction's town record (`h3_towns::BuildingId`),
+    /// for viewers (CLT-Q40): no battle rule reads it.
+    pub building: u8,
+    /// Its morale change.
     pub morale: i8,
-    /// The town's luck bonus to the defender's stacks (the Fountain of Fortune), a side modifier
-    /// like a hero's.
+    /// Its luck change.
     pub luck: i8,
+}
+
+/// Up to [`MAX_TOWN_BONUSES`] town bonuses in a fixed array, so that [`Siege`] stays `Copy` (as
+/// [`crate::FactionGroup`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct TownBonuses {
+    /// Number of bonuses in use.
+    len: u8,
+    /// The bonuses, then default ones.
+    items: [TownBonus; MAX_TOWN_BONUSES],
+}
+
+impl TownBonuses {
+    /// No bonus.
+    pub const NONE: Self = Self {
+        len: 0,
+        items: [TownBonus {
+            building: 0,
+            morale: 0,
+            luck: 0,
+        }; MAX_TOWN_BONUSES],
+    };
+
+    /// The bonuses `bonuses`, in the order given, or `None` if they are more than
+    /// [`MAX_TOWN_BONUSES`].
+    pub fn new(bonuses: &[TownBonus]) -> Option<Self> {
+        let mut items = [TownBonus::default(); MAX_TOWN_BONUSES];
+        items.get_mut(..bonuses.len())?.copy_from_slice(bonuses);
+        Some(Self {
+            // At most `MAX_TOWN_BONUSES`, which fits.
+            len: u8::try_from(bonuses.len()).unwrap_or(u8::MAX),
+            items,
+        })
+    }
+
+    /// The bonuses, in the order given.
+    pub fn as_slice(&self) -> &[TownBonus] {
+        self.items.get(..usize::from(self.len)).unwrap_or_default()
+    }
+
+    /// The bonuses, in the order given.
+    pub fn iter(&self) -> core::slice::Iter<'_, TownBonus> {
+        self.as_slice().iter()
+    }
 }

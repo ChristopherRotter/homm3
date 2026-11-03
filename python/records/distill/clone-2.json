@@ -1,0 +1,717 @@
+{
+ "teacher": {
+  "system": "system",
+  "system_policy": 19,
+  "run": "configs/e25-neutral.toml",
+  "config": {
+   "kind": "mlp",
+   "hidden": 512,
+   "embed": 32,
+   "width": 128,
+   "layers": 2,
+   "heads": 4,
+   "field_width": 17,
+   "field_height": 11,
+   "preview": false,
+   "order": false,
+   "tactics_rounds": 3
+  },
+  "kinds": [
+   78,
+   2,
+   100,
+   50,
+   25,
+   3
+  ],
+  "shaping": true,
+  "truncation_penalty": 1.0,
+  "max_steps": 2000,
+  "heldout": {
+   "decisions": 25600,
+   "lost": 0,
+   "past_bound": 0,
+   "episodes": 446,
+   "truncated": 0,
+   "by_kind": {
+    "siege_garrison": [
+     47,
+     0,
+     50
+    ],
+    "wandering": [
+     189,
+     0,
+     190
+    ],
+    "guards": [
+     8,
+     0,
+     9
+    ],
+    "hero": [
+     102,
+     0,
+     131
+    ],
+    "siege_neutral": [
+     11,
+     0,
+     11
+    ],
+    "siege_hero": [
+     40,
+     0,
+     55
+    ]
+   }
+  },
+  "stats": {
+   "decisions": 16023040,
+   "lost": 0,
+   "past_bound": 0,
+   "episodes": 307852,
+   "truncated": 66,
+   "by_kind": {
+    "guards": {
+     "episodes": 2329,
+     "attacker_won": 0.9901245169600686,
+     "truncated": 0.0
+    },
+    "hero": {
+     "episodes": 119385,
+     "attacker_won": 0.7059345813963228,
+     "truncated": 0.00040206056037190603
+    },
+    "siege_garrison": {
+     "episodes": 29686,
+     "attacker_won": 0.9437445260392104,
+     "truncated": 0.0
+    },
+    "siege_hero": {
+     "episodes": 59870,
+     "attacker_won": 0.5850175379989978,
+     "truncated": 0.00030065141139134794
+    },
+    "siege_neutral": {
+     "episodes": 3594,
+     "attacker_won": 0.8850862548692265,
+     "truncated": 0.0
+    },
+    "wandering": {
+     "episodes": 92988,
+     "attacker_won": 0.993794898266443,
+     "truncated": 0.0
+    }
+   },
+   "seconds": 813.7257762019872
+  }
+ },
+ "bench": {
+  "seed": 7,
+  "samples": 16000000,
+  "heldout": 16384,
+  "eval_every": 2000000,
+  "envs": 256,
+  "threads": 24,
+  "rollout": 128,
+  "epochs": 2,
+  "minibatch": 512,
+  "lr": 0.0003,
+  "lr_floor": 0.1,
+  "value_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "device": "auto",
+  "run": "configs/e25-neutral.toml",
+  "ladder": [
+   "system",
+   "system-all-seeing"
+  ],
+  "ladder_per_kind": 500,
+  "students": {
+   "mlp": {
+    "kind": "mlp"
+   }
+  }
+ },
+ "identity": {
+  "started": "2026-11-03T17:10:35Z",
+  "commit": "b163d206e4f09ccb7af445b49c85bae8c193ab9f",
+  "dirty": false,
+  "abi": 37,
+  "observation_encoding": 22,
+  "action_encoding": 13,
+  "encounters": 1,
+  "system_policy": 19,
+  "torch": "2.14.1+cu126",
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce GTX 1070",
+  "os": "Windows-10-10.0.19045-SP0",
+  "cpu": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+  "cores": 24,
+  "python": "3.12.15",
+  "numpy": "2.5.4"
+ },
+ "students": {
+  "mlp": {
+   "network": {
+    "kind": "mlp",
+    "hidden": 512,
+    "embed": 32,
+    "width": 128,
+    "layers": 2,
+    "heads": 4,
+    "field_width": 17,
+    "field_height": 11,
+    "preview": false,
+    "order": false,
+    "tactics_rounds": 3
+   },
+   "lr": 0.0003,
+   "parameters": 5946617
+  }
+ },
+ "evaluations": [
+  {
+   "samples": 0,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 3.918455183506012,
+      "spell": 2.0039291888699235,
+      "target": 1.6541102898045126,
+      "second": 0.019465228576043107
+     },
+     "agreement": 0.02374267578125,
+     "agreement_by_category": {
+      "tactics": 0.024343369634849454,
+      "wait_defend": 0.004026845637583893,
+      "move": 0.048901782014090345,
+      "melee": 0.01388650780044574,
+      "shot": 0.02475685234305924,
+      "heal": 0.2602739726027397,
+      "cast": 0.0,
+      "other": 0.12878787878787878
+     },
+     "cast_agreement": {
+      "spell": 0.2004621606008088,
+      "target": 0.28942807625649913,
+      "second": 0.9959560947429231
+     },
+     "value": {
+      "mse": 2.724431037902832,
+      "explained_variance": -1.6965681373221462
+     },
+     "seconds": 0.0
+    }
+   }
+  },
+  {
+   "samples": 2008955,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.6025827676057816,
+      "spell": 0.9043206446849839,
+      "target": 1.1802729249069417,
+      "second": 0.013871979878721453
+     },
+     "agreement": 0.50616455078125,
+     "agreement_by_category": {
+      "tactics": 0.7732222934016656,
+      "wait_defend": 0.4791946308724832,
+      "move": 0.2797347699958558,
+      "melee": 0.33584776272929884,
+      "shot": 0.5817860300618921,
+      "heal": 0.7328767123287672,
+      "cast": 0.7758521086077412,
+      "other": 0.9242424242424242
+     },
+     "cast_agreement": {
+      "spell": 0.6481802426343154,
+      "target": 0.5748122472559214,
+      "second": 0.9965337954939342
+     },
+     "value": {
+      "mse": 0.013800276443362236,
+      "explained_variance": 0.5429267465186995
+     },
+     "seconds": 88.95932400523452
+    }
+   }
+  },
+  {
+   "samples": 4017738,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.5215156115591526,
+      "spell": 0.8664962938243705,
+      "target": 1.1130623004809754,
+      "second": 0.012978279886736062
+     },
+     "agreement": 0.5274658203125,
+     "agreement_by_category": {
+      "tactics": 0.7937219730941704,
+      "wait_defend": 0.47516778523489933,
+      "move": 0.3050145047658516,
+      "melee": 0.361220641179496,
+      "shot": 0.5928381962864722,
+      "heal": 0.6917808219178082,
+      "cast": 0.8105141536683997,
+      "other": 0.9242424242424242
+     },
+     "cast_agreement": {
+      "spell": 0.6718659734257655,
+      "target": 0.5834777585210861,
+      "second": 0.9959560947429231
+     },
+     "value": {
+      "mse": 0.013124929741024971,
+      "explained_variance": 0.565354021971805
+     },
+     "seconds": 177.72169930313248
+    }
+   }
+  },
+  {
+   "samples": 6026179,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.4589344188570976,
+      "spell": 0.8633123394521518,
+      "target": 1.0937917291739303,
+      "second": 0.013202268012612628
+     },
+     "agreement": 0.5426025390625,
+     "agreement_by_category": {
+      "tactics": 0.8087764253683536,
+      "wait_defend": 0.45503355704697984,
+      "move": 0.3443845835060091,
+      "melee": 0.3667066689525116,
+      "shot": 0.621131741821397,
+      "heal": 0.7328767123287672,
+      "cast": 0.8220681686886193,
+      "other": 0.9166666666666666
+     },
+     "cast_agreement": {
+      "spell": 0.6759098786828422,
+      "target": 0.6025418833044482,
+      "second": 0.9965337954939342
+     },
+     "value": {
+      "mse": 0.013501442037522793,
+      "explained_variance": 0.5556367845107717
+     },
+     "seconds": 266.06176820467226
+    }
+   }
+  },
+  {
+   "samples": 8004658,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.4311779364943504,
+      "spell": 0.830755915826349,
+      "target": 1.0616034778262204,
+      "second": 0.014416006037019568
+     },
+     "agreement": 0.552001953125,
+     "agreement_by_category": {
+      "tactics": 0.8155028827674567,
+      "wait_defend": 0.4993288590604027,
+      "move": 0.37463738085370907,
+      "melee": 0.3809360534887708,
+      "shot": 0.6295313881520778,
+      "heal": 0.7328767123287672,
+      "cast": 0.7770075101097631,
+      "other": 0.9393939393939394
+     },
+     "cast_agreement": {
+      "spell": 0.6747544771808204,
+      "target": 0.6013864818024264,
+      "second": 0.9965337954939342
+     },
+     "value": {
+      "mse": 0.012472870759665966,
+      "explained_variance": 0.587646402644382
+     },
+     "seconds": 352.112731304951
+    }
+   }
+  },
+  {
+   "samples": 10013828,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.4061208926141262,
+      "spell": 0.8256624542447888,
+      "target": 1.044968493201015,
+      "second": 0.014641259874931173
+     },
+     "agreement": 0.55548095703125,
+     "agreement_by_category": {
+      "tactics": 0.8196668802049968,
+      "wait_defend": 0.538255033557047,
+      "move": 0.35640281806879404,
+      "melee": 0.3860792045259729,
+      "shot": 0.6357206012378426,
+      "heal": 0.7534246575342466,
+      "cast": 0.7856730213749278,
+      "other": 0.9166666666666666
+     },
+     "cast_agreement": {
+      "spell": 0.6747544771808204,
+      "target": 0.6256499133448874,
+      "second": 0.9965337954939342
+     },
+     "value": {
+      "mse": 0.011685341596603394,
+      "explained_variance": 0.6145542705583256
+     },
+     "seconds": 442.0893984082504
+    }
+   }
+  },
+  {
+   "samples": 12022413,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.3791589960455894,
+      "spell": 0.8182163183431553,
+      "target": 1.0356903803410522,
+      "second": 0.012625927872770719
+     },
+     "agreement": 0.5648193359375,
+     "agreement_by_category": {
+      "tactics": 0.8289557975656631,
+      "wait_defend": 0.5194630872483221,
+      "move": 0.38002486531288854,
+      "melee": 0.387965026572947,
+      "shot": 0.6458885941644562,
+      "heal": 0.7876712328767124,
+      "cast": 0.8070479491623339,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6915077989601387,
+      "target": 0.6285384170999422,
+      "second": 0.9965337954939342
+     },
+     "value": {
+      "mse": 0.010916636325418949,
+      "explained_variance": 0.6385988640822777
+     },
+     "seconds": 531.569799707795
+    }
+   }
+  },
+  {
+   "samples": 14000554,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.360312920063734,
+      "spell": 0.7991297946094709,
+      "target": 1.0176852417432938,
+      "second": 0.013504413150763112
+     },
+     "agreement": 0.568359375,
+     "agreement_by_category": {
+      "tactics": 0.8302370275464446,
+      "wait_defend": 0.5248322147651007,
+      "move": 0.36220472440944884,
+      "melee": 0.3956797531287502,
+      "shot": 0.6573828470380194,
+      "heal": 0.7328767123287672,
+      "cast": 0.8243789716926632,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6972848064702484,
+      "target": 0.6296938186019642,
+      "second": 0.9959560947429231
+     },
+     "value": {
+      "mse": 0.010934421792626381,
+      "explained_variance": 0.6380055368568516
+     },
+     "seconds": 620.5134071133216
+    }
+   }
+  },
+  {
+   "samples": 16012159,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.3435661643743515,
+      "spell": 0.7898357893813214,
+      "target": 1.005816800686612,
+      "second": 0.013650237997441812
+     },
+     "agreement": 0.57574462890625,
+     "agreement_by_category": {
+      "tactics": 0.8363228699551569,
+      "wait_defend": 0.5422818791946309,
+      "move": 0.37836717778698714,
+      "melee": 0.40133721926967253,
+      "shot": 0.6600353669319187,
+      "heal": 0.7328767123287672,
+      "cast": 0.8307336799537839,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6943963027151935,
+      "target": 0.6395147313691508,
+      "second": 0.9959560947429231
+     },
+     "value": {
+      "mse": 0.011087620630860329,
+      "explained_variance": 0.6327182600325834
+     },
+     "seconds": 710.4995140183019
+    }
+   }
+  }
+ ],
+ "ended": "budget",
+ "samples": 16012159,
+ "ladders": {
+  "mlp": {
+   "report-v1": {
+    "system": {
+     "win_rate": 0.4113498425422273,
+     "interval": 0.01820874431598646,
+     "value": -0.06928892510475503,
+     "kinds": {
+      "hero": 0.4036012024048096,
+      "siege_hero": 0.392,
+      "siege_garrison": 0.48104408817635275
+     },
+     "sides": {
+      "hero": [
+       0.6012024048096193,
+       0.206
+      ],
+      "siege_hero": [
+       0.45,
+       0.334
+      ],
+      "siege_garrison": [
+       0.918,
+       0.04408817635270541
+      ]
+     },
+     "games": 2998,
+     "skipped": 2,
+     "truncated": 0.000333555703802535,
+     "seconds": 72.375
+    },
+    "system-all-seeing": {
+     "win_rate": 0.41091669052390495,
+     "interval": 0.01829819523044342,
+     "value": -0.07100781941188472,
+     "kinds": {
+      "hero": 0.4025931863727455,
+      "siege_hero": 0.393,
+      "siege_garrison": 0.48004408817635275
+     },
+     "sides": {
+      "hero": [
+       0.593186372745491,
+       0.212
+      ],
+      "siege_hero": [
+       0.452,
+       0.334
+      ],
+      "siege_garrison": [
+       0.916,
+       0.04408817635270541
+      ]
+     },
+     "games": 2998,
+     "skipped": 2,
+     "truncated": 0.0,
+     "seconds": 15.844000000040978
+    }
+   },
+   "neutral-v1": {
+    "system": {
+     "win_rate": 0.9819636363636364,
+     "interval": 0.009785514451355434,
+     "value": 0.25088636043381624,
+     "kinds": {
+      "wandering": 0.986,
+      "guards": 0.972,
+      "siege_neutral": 0.864
+     },
+     "sides": {
+      "wandering": [
+       0.986
+      ],
+      "guards": [
+       0.972
+      ],
+      "siege_neutral": [
+       0.864
+      ]
+     },
+     "games": 1500,
+     "skipped": 0,
+     "truncated": 0.0,
+     "seconds": 3.375
+    }
+   }
+  }
+ }
+}

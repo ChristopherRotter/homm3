@@ -89,6 +89,7 @@ fn siege(fort: u8) -> Siege {
         walls: vec![12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182],
         moat_hexes: vec![11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181],
         parts: vec![2, 3, 3, 2, 3, 3, 2, 2],
+        bonuses: Default::default(),
     }
 }
 

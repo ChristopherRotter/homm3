@@ -296,8 +296,7 @@ fn bench_computer(args: &Args) -> Result<(), String> {
             moat: if heroes { Moat::Damaging } else { Moat::Absent },
             structures: 0,
             escape_tunnel: false,
-            morale: 0,
-            luck: 0,
+            bonuses: h3_contracts::TownBonuses::NONE,
         });
         let setup = BattleSetup {
             attacker: army(&mut rng),

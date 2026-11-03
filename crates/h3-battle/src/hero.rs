@@ -9,13 +9,13 @@
 use core::num::NonZeroU32;
 
 use h3_content::{
-    CreatureFlag, CreatureSelector, CreatureStat, CreatureTypeId, FULL_BP, HeroTypeId,
+    Affects, CreatureFlag, CreatureSelector, CreatureStat, CreatureTypeId, FULL_BP, HeroTypeId,
     MAX_SKILL_LEVEL, SINGLE_PRECISION_RATES, SpellCategory, SpellScope,
 };
 use h3_content_battle::{BattleRuleset, CreatureType};
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, BattleSide, CatapultControl, DamageBonuses, HeroSex,
-    MAX_BATTLE_EFFECTS, Rate, StatOp, TentControl,
+    BallistaControl, BattleEffect, BattleHero, BattleSide, CatapultControl, DamageBonuses,
+    EffectSource, HeroSex, MAX_BATTLE_EFFECTS, Rate, StatOp, TentControl,
 };
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -309,6 +309,80 @@ impl CanonicalHash for HeroRecord {
     }
 }
 
+/// The morale and luck effects among `hero`'s, in their order: its morale and luck changes and
+/// caps and its alignment groups, which the battle keeps with their sources for viewers
+/// (`BattleState.morale_and_luck`; public, CLT-Q40, ADR-0013 point 9).
+pub(crate) fn morale_and_luck(hero: &BattleHero) -> impl Iterator<Item = &BattleEffect> {
+    hero.effects.iter().filter(|e| source(e).is_some())
+}
+
+/// The source of a morale or luck effect (a change, a cap, an alignment group); `None` for
+/// another kind.
+pub(crate) const fn source(effect: &BattleEffect) -> Option<EffectSource> {
+    match *effect {
+        BattleEffect::Morale { source, .. }
+        | BattleEffect::Luck { source, .. }
+        | BattleEffect::MoraleAtMost { source, .. }
+        | BattleEffect::LuckAtMost { source, .. }
+        | BattleEffect::AlignmentGroup { source, .. } => Some(source),
+        _ => None,
+    }
+}
+
+/// Hashes one of [`morale_and_luck`]'s effects (state hash v55, CLT-Q40): its kind (0 to 3 the
+/// morale change, the luck change, the morale cap, the luck cap, each then its value and whose
+/// stacks: 0 own, 1 enemy, 2 both; 4 an alignment group, then its factions), then its source:
+/// 0 a skill and its level, 1 an artifact, 2 the specialty, 3 a visit's mark, 4 a building's
+/// faction and index, 5 temporary.
+pub(crate) fn hash_morale_and_luck(h: &mut StateHasher, effect: &BattleEffect) {
+    let (kind, value, affects) = match *effect {
+        BattleEffect::Morale {
+            amount, affects, ..
+        } => (0, amount, affects),
+        BattleEffect::Luck {
+            amount, affects, ..
+        } => (1, amount, affects),
+        BattleEffect::MoraleAtMost { value, affects, .. } => (2, value, affects),
+        BattleEffect::LuckAtMost { value, affects, .. } => (3, value, affects),
+        // An alignment group (the list holds no other kind).
+        _ => (4, 0, Affects::Own),
+    };
+    h.write_u8(kind);
+    if let BattleEffect::AlignmentGroup { factions, .. } = effect {
+        h.write_len(factions.factions().len());
+        factions.factions().iter().for_each(|f| f.hash_into(h));
+    } else {
+        h.write_i32(i32::from(value));
+        h.write_u8(match affects {
+            Affects::Own => 0,
+            Affects::Enemy => 1,
+            Affects::Both => 2,
+        });
+    }
+    match source(effect).unwrap_or(EffectSource::Temporary) {
+        EffectSource::Skill { skill, level } => {
+            h.write_u8(0);
+            skill.hash_into(h);
+            h.write_u8(level);
+        }
+        EffectSource::Artifact(artifact) => {
+            h.write_u8(1);
+            artifact.hash_into(h);
+        }
+        EffectSource::Specialty => h.write_u8(2),
+        EffectSource::Visit { mark } => {
+            h.write_u8(3);
+            h.write_u8(mark);
+        }
+        EffectSource::Building { faction, index } => {
+            h.write_u8(4);
+            faction.hash_into(h);
+            h.write_u8(index);
+        }
+        EffectSource::Temporary => h.write_u8(5),
+    }
+}
+
 /// Hashes one of a hero's rates: its basis points, then its single-precision value's bits (0
 /// without; state hash v23).
 pub(crate) fn hash_rate(h: &mut StateHasher, r: Rate) {
@@ -370,13 +444,25 @@ pub(crate) fn check(
         .effects
         .iter()
         .filter_map(|e| match e {
-            BattleEffect::AlignmentGroup { factions } => Some(factions.factions()),
+            BattleEffect::AlignmentGroup { factions, .. } => Some(factions.factions()),
             _ => None,
         })
         .flatten()
         .any(|f| f.index() >= faction_count)
     {
         return Err(invalid(HeroError::UnknownFaction));
+    }
+    // CLT-Q40: the sources name what the ruleset knows; no rule reads them.
+    let unknown_source = hero.effects.iter().filter_map(source).any(|s| match s {
+        EffectSource::Skill { skill, level } => {
+            ruleset.skill(skill).is_none() || !(1..=MAX_SKILL_LEVEL).contains(&level)
+        }
+        EffectSource::Artifact(artifact) => ruleset.artifact(artifact).is_none(),
+        EffectSource::Building { faction, .. } => faction.index() >= faction_count,
+        EffectSource::Specialty | EffectSource::Visit { .. } | EffectSource::Temporary => false,
+    });
+    if unknown_source {
+        return Err(invalid(HeroError::EffectSource));
     }
     let magic = &hero.magic;
     let school_count = ruleset.spell_schools().len();

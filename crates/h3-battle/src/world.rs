@@ -7,7 +7,8 @@
 //! The other side's hero keeps its public part ([`HeroView`]: type, primary skills, mana, the
 //! round's casts, the war machines it commands, whether it carries a book) and whatever the battle
 //! shows of it (no retreat, its spell-cost change, what it forbids every caster: no cast, no spell
-//! above a level, which the viewer meets in its own casts); its private part comes from the guess.
+//! above a level, which the viewer meets in its own casts; its morale and luck effects with their
+//! sources, public since CLT-Q40); its private part comes from the guess.
 //! Its stream is re-seeded, its hidden spell obstacles are placed again by their rule, a spell a
 //! random caster the viewer does not control drew is drawn again, its Escape Tunnel and its retreat
 //! facts are what the viewer may know of them (none). The templates of the stacks its spells would

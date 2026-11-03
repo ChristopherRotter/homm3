@@ -372,24 +372,24 @@ commands = [
     "A attack 1 23",
 ]
 checkpoints = [
-    "0xa96d573b8a9b2904",
-    "0x2ad4ec78a51d41b6",
-    "0x3f194f1e098d5d99",
-    "0x0f79a7cf23ac5f12",
-    "0x6ab9cefe21455b62",
-    "0x7ce93c0a71f72c26",
-    "0xd408a27c84d5350f",
-    "0xc230aacd9c0569fa",
-    "0xaaf0717e5e9e90fa",
-    "0xf20b6ca66987fe33",
-    "0x0488c64cf850dc43",
-    "0xb19a6b33c5d87a2f",
-    "0x046429e3ff97e182",
-    "0xdadd8f7a3d77a8e3",
+    "0x2bbe8abc2a117459",
+    "0x8f259da59a2fa85f",
+    "0x0b2dc37ffe503d44",
+    "0x660ce717fdf6eb73",
+    "0x3a3bd254ad4c007b",
+    "0x62e9269c252d953f",
+    "0x5d85d43d841ff636",
+    "0x3d99586a7968e60f",
+    "0xcea47d5d4a4683db",
+    "0xd4f52b608aaba9d2",
+    "0x2c07438d7fa41dba",
+    "0xd95ca8e549e43bd6",
+    "0x1a1c9bab9ce6d60f",
+    "0x77029a798a24dd6a",
 ]
 
 [replay]
-format = 31
+format = 32
 engine = "0.1.0"
 scenario = "duel"
 seed = "1"
@@ -404,7 +404,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 54
+battle_state_hash_version = 55
 checkpoint_every = 25
 
 [setup]
@@ -448,4 +448,4 @@ count = 20
 
 [result]
 winner = "attacker"
-final_hash = "0xeb388e0b3c475d0d"
+final_hash = "0x61b982784bae2448"

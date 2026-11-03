@@ -18,7 +18,7 @@ use h3_content::SpellId;
 use h3_content_battle::{
     Ability, BattleRuleset, BattlefieldId, MAX_WALL_TARGETS, SiegeField, WallKind,
 };
-use h3_contracts::{BattleSetup, BattleSide, FortLevel, Moat};
+use h3_contracts::{BattleSetup, BattleSide, FortLevel, Moat, TownBonuses};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, SINGLE_FRAC_BITS, X87, round_single};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
@@ -42,6 +42,10 @@ pub struct SiegeState {
     /// The town has an Escape Tunnel: its defender may retreat (BAT-SIE-024; private to the
     /// defender, [`seen_by`](Self::seen_by)).
     escape_tunnel: bool,
+    /// The town's buildings that change its defender's morale and luck, as the setup names them
+    /// (`Siege.bonuses`, BAT-SIE-025): for viewers, public (CLT-Q40); the rules read their sums
+    /// from the battle's modifiers.
+    pub bonuses: TownBonuses,
     /// The gate is open (BAT-SIE-003); a town without a fort has no gate.
     pub gate_open: bool,
     /// The battlefield.
@@ -194,13 +198,21 @@ impl SiegeState {
 impl CanonicalHash for SiegeState {
     /// Faction, fort level, moat kind, the gate, the wall line, the gate's, drawbridge's and outer
     /// bridge's hexes, the moat, its second row, its damage, the defense penalty (state hash v46);
-    /// the Escape Tunnel after the moat kind (v50).
+    /// the Escape Tunnel after the moat kind (v50); the morale and luck buildings after it (v55).
     fn hash_into(&self, h: &mut StateHasher) {
         self.faction.hash_into(h);
         h.write_u8(self.fort as u8);
         h.write_u8(self.moat_kind as u8);
         // State hash v50 (E04c T8): the Escape Tunnel.
         h.write_bool(self.escape_tunnel);
+        // State hash v55 (CLT-Q40): the buildings that change morale and luck, each its index and
+        // changes.
+        h.write_len(self.bonuses.as_slice().len());
+        for b in self.bonuses.iter() {
+            h.write_u8(b.building);
+            h.write_i32(i32::from(b.morale));
+            h.write_i32(i32::from(b.luck));
+        }
         h.write_bool(self.gate_open);
         self.line.hash_into(h);
         for hex in [self.gate, self.bridge, self.outer_bridge] {
@@ -228,8 +240,8 @@ impl CanonicalHash for SiegeState {
 
 /// The siege of `setup`, if the battle is at a town (BAT-SIE-001), and the land mines its town
 /// lays: its faction's record and the siege's field from the ruleset; the walls and the closed
-/// gate from a Fort; the moat from a Citadel, by the setup's moat (the game's version), or a
-/// record's mines instead (BAT-SIE-007). `heroes` are the sides' heroes, `battlefield` the
+/// gate from a Fort; the moat from a Citadel, by the setup's moat, the packs' (ADR-0023 point 2),
+/// or a record's mines instead (BAT-SIE-007). `heroes` are the sides' heroes, `battlefield` the
 /// special battlefield (the mines' mastery). The natural obstacles (`obstacles`) must keep off
 /// the walls, the moat and the mines.
 ///
@@ -342,6 +354,7 @@ pub(crate) fn setup(
         fort: town.fort,
         moat_kind: town.moat,
         escape_tunnel: town.escape_tunnel,
+        bonuses: town.bonuses,
         gate_open: !walled,
         field,
         line,

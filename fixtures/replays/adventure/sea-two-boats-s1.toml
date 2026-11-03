@@ -16,7 +16,7 @@ commands = [
 ]
 checkpoints = [
     "0x54143fbc19a7487f",
-    "0xd8d6cd10575e36df",
+    "0x95797991c7ef2f8f",
 ]
 
 [replay]

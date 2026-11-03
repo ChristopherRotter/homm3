@@ -59,7 +59,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    withdrawn).
 3. **Effects are data.** Artifacts, skill levels and specialties carry a closed `HeroEffect` enum in
    content (Tier 3, like `Ability`, ADR-0012); the translation resolves them into a closed
-   `BattleEffect` enum in contracts. Percentages are **basis points** in content and seam.
+   `BattleEffect` enum in contracts. Its morale and luck kinds and alignment groups carry their
+   **source** (`EffectSource`, CLT-Q40, BAT-Q64: a skill and its level, an artifact type, the
+   specialty, a visit's once-mark, a town building, temporary), one effect per source: the battle
+   sums them and reads no source, which is for viewers. Percentages are **basis points** in
+   content and seam.
    Progression is data too (Tier 2, ADR-0006): the hero parameters hold the experience of levels
    1 to 12, the highest level and the skills a level-up forces (Wisdom, the magic schools); a
    hero class holds its primary chances, skill weights and two forcing intervals. E08 increment
@@ -124,7 +128,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 9. **Visibility.** What the original shows in battle (hero identity, primary skills, mana, war
    machines and which of them the hero commands, tactics zone, retreat/surrender options) is
    public (but at a town the defender's option to retreat, which only the defender sees: ADR-0023
-   point 2); skill levels, bonuses, effects, spell book, funds and the surrender price are private
+   point 2), and so are the hero's morale and luck effects with their sources and each stack's
+   unclamped morale and luck (CLT-Q40, BAT-Q64: as VCMI's descriptions of any stack list the enemy
+   hero's); other skill levels, bonuses, effects, spell book, funds and the surrender price are private
    to the hero's side, which sees them in its own observation (`observe` reads the ruleset, Q37).
    Hidden battlefield objects (E04b) use the same owner-side projection (ADR-0004).
 10. **Encodings.** E04a extends the dense action encoding (v8: heals, `EndTactics`, Retreat,
@@ -448,3 +454,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   the Lighthouses' input to the sea points; the heroes' income (each copy counting) and the day's
   spell points. Drafted in E08 T77b (survey `E08-economy.md`), batch E9's outcome (T80, §19)
   folded in.
+- 2026-11-03 (CLT-Q40, BAT-Q64; the user): points 3 and 9 amended. The morale and luck kinds and
+  the alignment groups of `BattleEffect` carry their source, one effect per source (`h3-heroes`
+  derives them so; the battle sums them as before); the hero's morale and luck effects with their
+  sources and the stacks' unclamped morale and luck are public, as VCMI shows them, for the stats
+  dialog's descriptions (`docs/epics/E17-design.md` §12.4).

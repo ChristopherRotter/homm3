@@ -496,6 +496,7 @@ fn a_wraith_the_battle_does_not_activate_drains_nothing() {
     gloomy.effects.push(h3_contracts::BattleEffect::Morale {
         amount: -3,
         affects: h3_content::Affects::Own,
+        source: h3_contracts::EffectSource::Temporary,
     });
     let (mut s, _) = led(
         &r,
