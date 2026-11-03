@@ -27,7 +27,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   leaves the teacher): the gap is the network's. **Next:** T20, the longer clone
   (`configs/distill/e25-clone-2.toml`, 16 M; the user's machine or the sandbox, the user's
   choice), and T21, the imitation loss (a sandbox build).
-- **Open pull requests:** none yet for this branch (`claude/quirky-cerf-26fspy`: T17 to T19).
+- **Open pull requests:** #682 (`claude/quirky-cerf-26fspy`: T17 to T19).
   Merged: #651 (T13 to T15), #657 (T16).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
