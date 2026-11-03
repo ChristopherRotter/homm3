@@ -109,7 +109,13 @@ fn scholar_rules() -> GameRuleset {
     let core = Arc::new(Ruleset::compile(&[pack], "t:faithful").unwrap());
     let part = part_with(&core, vec![88, 25], 7);
     let battle = battle_part(&core, 7);
-    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+    GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap()
 }
 
 // covers: HER-SPL-007, GAM-DEC-003

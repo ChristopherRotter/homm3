@@ -291,7 +291,13 @@ pub(super) fn valued(profile: &str) -> GameRuleset {
     let core = Arc::new(Ruleset::compile(&[pack], profile).unwrap());
     let part = part(&core);
     let battle = battle_part(&core, 7);
-    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+    GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap()
 }
 
 /// Plays red's battle to its end: the system actor for the monster's side, red for its own, each

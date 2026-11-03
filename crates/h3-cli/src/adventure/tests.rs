@@ -426,7 +426,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     };
     let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
     assert_eq!(replay.difficulty, 0);
-    assert!(text.contains("format = 8\n"), "{text}");
+    assert!(text.contains("format = 9\n"), "{text}");
     assert!(text.contains("difficulty = 0\n"), "{text}");
     let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
     assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
@@ -455,7 +455,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     // A v1 file: no difficulty, refused by its version before its map is read.
     let v1 = text
-        .replacen("format = 8", "format = 1", 1)
+        .replacen("format = 9", "format = 1", 1)
         .replacen("difficulty = 0\n", "", 1);
     assert_eq!(
         parse_replay(&v1).unwrap().difficulty,
@@ -472,7 +472,31 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     // A later file without its difficulty is malformed, not a game at normal difficulty.
     let e = verify(&text.replacen("difficulty = 0\n", "", 1)).unwrap_err();
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
-    assert!(e.to_string().contains("format 8 needs a difficulty"), "{e}");
+    assert!(e.to_string().contains("format 9 needs a difficulty"), "{e}");
+    // A v8 file has no town part's hash (format v9, E09 T5a2): it reads, and its version refuses
+    // it; a v9 file without it is refused by the hash.
+    let line = text
+        .lines()
+        .find(|l| l.starts_with("town_ruleset_hash = \"0x"))
+        .unwrap();
+    let townless = text.replacen(&format!("{line}\n"), "", 1);
+    assert_eq!(parse_replay(&townless).unwrap().header.town_ruleset_hash, 0);
+    let e = verify(&townless.replacen("format = 9", "format = 8", 1)).unwrap_err();
+    assert!(
+        matches!(
+            e,
+            AdventureCliError::Replay(ReplayError::Incompatible("format_version"))
+        ),
+        "{e}"
+    );
+    let e = verify(&townless).unwrap_err();
+    assert!(
+        matches!(
+            e,
+            AdventureCliError::Replay(ReplayError::Incompatible("town_ruleset_hash"))
+        ),
+        "{e}"
+    );
     std::fs::remove_dir_all(&tmp).unwrap();
     // Answers round-trip through the file.
     let mut answered = replay.clone();
@@ -514,6 +538,10 @@ fn rules_load_from_the_pack_folders_as_the_embedded_packs_compile() {
         h3_pack_adventure::compile(&h3_pack_adventure::ORIGINAL_PACKS, DEFAULT_PROFILE).unwrap();
     assert_eq!(rules.core().content_hash(), core.content_hash());
     assert_eq!(rules.adventure().content_hash(), part.content_hash());
+    // The town part from each folder's `towns.toml` (E09 T5a2): the nine factions' records.
+    let towns = h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS, DEFAULT_PROFILE).unwrap();
+    assert_eq!(rules.towns().content_hash(), towns.content_hash());
+    assert_eq!(rules.towns().towns().len(), 9);
     // Pack ids are not paths; a missing pack or profile is refused.
     let e = load_rules(
         &root().join("packs"),

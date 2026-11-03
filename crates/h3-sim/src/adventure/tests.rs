@@ -44,7 +44,14 @@ fn rules(profile: &str) -> GameRuleset {
         profile,
     )
     .unwrap();
-    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)).unwrap()
+    let towns = h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS, profile).unwrap();
+    GameRuleset::new(
+        Arc::new(core),
+        Arc::new(part),
+        Arc::new(battle),
+        Arc::new(towns),
+    )
+    .unwrap()
 }
 
 static FAITHFUL: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));
@@ -854,6 +861,8 @@ fn a_tampered_replay_is_refused_with_its_reason() {
         ("adventure_ruleset_hash", |r| {
             r.header.adventure_ruleset_hash ^= 1
         }),
+        // Format v9 (E09 T5a2).
+        ("town_ruleset_hash", |r| r.header.town_ruleset_hash ^= 1),
         ("rng", |r| r.header.rng_version += 1),
         ("hash", |r| r.header.hash_algorithm.push('x')),
         ("state_hash_versions", |r| {

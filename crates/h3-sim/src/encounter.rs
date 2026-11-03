@@ -29,6 +29,7 @@ use h3_content_battle::BattleRuleset;
 use h3_contracts::{ArmyStack, BattleSetup, FortLevel, Moat, Siege, TownBonus, TownBonuses};
 use h3_game::GameRuleset;
 use h3_kernel::{Rng, StreamId};
+use h3_towns::TownRuleset;
 
 use crate::batch::{Policy, Seat};
 
@@ -275,10 +276,13 @@ impl Sampler {
         table: &EncounterTable,
     ) -> Result<Self, EncounterError> {
         let core = Arc::clone(battle.core());
+        // An encounter's game has no towns (E09 T5a2).
+        let towns = Arc::new(TownRuleset::empty(&core));
         let rules = GameRuleset::new(
             Arc::clone(&core),
             Arc::clone(&adventure),
             Arc::clone(&battle),
+            towns,
         )
         .map_err(|_| EncounterError::Rules("the battle and adventure parts differ"))?;
         let unknown = |what: &'static str, key: &str| EncounterError::Unknown {

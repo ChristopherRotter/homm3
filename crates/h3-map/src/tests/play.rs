@@ -74,7 +74,14 @@ fn rules(profile: &str) -> GameRuleset {
         profile,
     )
     .unwrap();
-    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)).unwrap()
+    let towns = h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS, profile).unwrap();
+    GameRuleset::new(
+        Arc::new(core),
+        Arc::new(part),
+        Arc::new(battle),
+        Arc::new(towns),
+    )
+    .unwrap()
 }
 
 pub(super) static FAITHFUL: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));

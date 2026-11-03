@@ -360,6 +360,7 @@ dependencies = [
  "h3-contracts",
  "h3-heroes",
  "h3-kernel",
+ "h3-towns",
 ]
 
 [[package]]
@@ -450,6 +451,15 @@ name = "h3-sdl"
 version = "0.1.0"
 dependencies = [
  "sdl3-sys",
+]
+
+[[package]]
+name = "h3-towns"
+version = "0.1.0"
+dependencies = [
+ "h3-content",
+ "h3-contracts",
+ "h3-kernel",
 ]
 
 [[package]]
