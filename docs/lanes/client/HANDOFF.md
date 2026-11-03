@@ -8,7 +8,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   at M3 T9c, CLT-Q18: the battle client here, the adventure map client the map-client lane's
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 and T2
   done (#620 to #672, T2's cuts in the epic). T3 cut in two by the user (2026-11-03): **T3a done** (the panel's controls' help by the right button, design §12.7, a
-  disabled control's too; five stills exact at their first capture; the PR from
+  disabled control's too; five stills exact at their first capture; #676 from
   `client/e17-m6-t3a`: check it first); **next: T3b** (the heroes' info windows, its scope in
   QUEUE: the window's constructor 0x46C370 to read), T4 to T7; this lane's inbox: the
   descriptions' other lines once the battle lane's carry lands; then M7 ranked play and the
@@ -41,7 +41,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T3a (done; its PR open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T3a (done; #676 open: check it first).** The original data staged
   (57 files) first; #672 had merged; the VM restarted during the baseline's coverage, CI's green
   run on `master` stood for it. The user cut T3 in two (T3a the controls' help, T3b the heroes'
   windows). Read `battle_control_help`, `message_box_size` and the items' right press (design
