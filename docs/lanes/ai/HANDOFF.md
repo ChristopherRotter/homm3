@@ -25,10 +25,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   actor, 0.425 against the all-seeing one, the neutral set +0.245 (target +0.285). **T16 done**
   (C ABI v37, `h3_batch_choice`; the clone mode `distill --teacher system`): 4 M samples on the
   sandbox, agreement 0.531, the clone 0.396 against the fair actor and +0.244 on the neutral set
-  with no RL; its `students/mlp.pt` sent to the user. **Next:** T17's A/B on the user's machine
-  (`configs/e25-neutral.toml`, from scratch and `--init-from` the clone; lengths agreed then).
-- **Open pull requests:** #657 (`claude/quirky-cori-hjtoat`: T16). Merged: #646 (T9b to
-  T12), #651 (T13 to T15).
+  with no RL. **T17 done** (the user's machine, 20 M each): `e25-clone-1` #2 (PPO from the
+  clone) **0.454 against both system actors, value −0.030, the neutral set +0.282** (target
+  +0.285), the first past E25's 0.41 to 0.43; the control `e25-neutral-1` #2 0.411, +0.269.
+  Head to head (the sandbox): the clone run 0.564 against `e25-sharp-1` #2, 0.541 against the
+  control. **Next:** T18, the checkpoint with the user (the current best, increment 6).
+- **Open pull requests:** none. Merged: #651 (T13 to T15), #657 (T16).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -41,6 +43,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-03 — E25 T17
+
+- #657 merged; the branch started from `master`. T17's records and `metrics.jsonl` uploaded by
+  the user with the three `best.pt` (`e25-neutral-1`, `e25-clone-1`, `e25-sharp-1` #2); the
+  head-to-heads on the sandbox's CPU (25 to 53 s each, `cargo build --release -p h3-ffi` and
+  `uv sync --group train` first, about 1 and 7 minutes). The setup's baseline verify passed.
 
 ### 2026-11-02 — E25 T16
 
@@ -57,13 +66,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   built in the sandbox (the bots' tables regenerated, the neutral bench re-baselined); the
   setup's full baseline verify was stopped (CI is the record), the scoped verify ran instead.
   T15 on the uploaded `best.pt` (sandbox CPU, 3 minutes).
-
-### 2026-11-02 — E25 T8 to T12
-
-- #610 merged; the branch started from `master`. T8: the user chose increment 4 and kept #3
-  (AI-Q12; the user's caveat on T7c's structured networks in `E25-log.md` T8). T9a and T10a's
-  schedule built, #640 merged; the branch restarted from `master`. T9b on the sandbox's CPU from
-  #3's uploaded `best.pt` while the user ran `e25-sharp-1` (T10b, its record committed). T11
-  (AI-Q13): increment 4 closed, increment 5 waits for the fair system actor. T12 on both uploaded
-  `best.pt`: `e25-sharp-1` #2 promoted against #3, the current best. A VM restart cost nothing
-  (all committed or in `runs/`).

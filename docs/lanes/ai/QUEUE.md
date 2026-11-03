@@ -10,15 +10,10 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 closed (`E25-archive.md`); **`e25-sharp-1` #2 the current best** (AI-Q13, T12). **Increment 5,
 the fair system actor** (refined at T13, 2026-11-02, AI-Q14; its decisions in the epic file):
 
-- **T17 The A/B.** *Scope:* on the user's machine, two runs on `e25-sharp-1`'s config with the
-  neutral kinds back at a third (the fair defender): `e25-neutral-1` from scratch and
-  `e25-clone-1` from T16's student (`--init-from`); lengths agreed when prepared (20 M as
-  `e25-sharp-1` unless agreed otherwise). The records committed and read, both system columns.
-  The mix is `configs/e25-neutral.toml`, the student `runs/clone-1/students/mlp.pt` (T16; sent
-  to the user). *Depends on:* T15 (done), T16 (done). *Status:* next.
 - **T18 The checkpoint.** *Scope:* T17 read with the user: the current best (a head-to-head
-  against `e25-sharp-1` #2), increment 6 among the epic's candidates. *Depends on:* T17.
-  *Status:* waiting.
+  against `e25-sharp-1` #2), increment 6 among the epic's candidates. *Depends on:* T17 (done
+  2026-11-03, `E25-log.md` T17: `e25-clone-1` #2 0.454 against both system actors, the neutral
+  set +0.282; the head-to-heads played, 0.564 against `e25-sharp-1` #2). *Status:* next.
 
 ## Inbox
 
