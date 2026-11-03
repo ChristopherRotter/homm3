@@ -21,8 +21,11 @@
 //! effects and a move's inverse (`the_plans_meet_and_manage`); since T64b with increment 7's
 //! objects, one of each class and guarded ones ([`REWARDS`]): their decisions answered, their
 //! gains conserved, and the invariants of the visits' state ([`check_rewards`],
-//! `the_plans_visit_every_kind_and_answer_every_decision`). What a viewer may learn is T8b2b's
-//! ([`super::view`]), on the same maps and driver.
+//! `the_plans_visit_every_kind_and_answer_every_decision`); since T86b1 with increment 9's objects
+//! ([`ECONOMY`]) and weeks and months of play: the flags, the mines' questions, battles and Leave
+//! Guards, the boats bought and built, the weekly visits, the week's step and a creature month's
+//! monsters met as placed ones (`the_plans_flag_guard_build_and_grow`). What a viewer may learn is
+//! T8b2b's ([`super::view`]), on the same maps and driver.
 
 use std::ops::RangeInclusive;
 use std::sync::{Arc, LazyLock};

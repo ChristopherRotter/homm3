@@ -35,38 +35,27 @@ the security lines on `shared/e08-t85b`); T85b2b done on it (the env's `BuildBoa
 encoding v6, `cross-lane`; the verify with the original data, the bench; the pull requests,
 `shared/` first: the lane HANDOFF names them). Round 8: T86 in two (decision 226): T86a done
 (`adventure/e08-t86a`: the economy map, its seven replays, the duel replays' lists, four
-replaced).
+replaced); T86b in two, the properties first (decision 227): T86b1 done (`adventure/e08-t86b1`:
+the plans' economy classes and steps, design §15's checks, the town lane's failing case).
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T86b — the economy plans' properties, the economy XL and its benchmarks**
+**E08 T86b2 — the economy XL and its benchmarks**
 
-- **Scope:** round 8's first task's second part (design §15, §18; decision 226): the plans'
-  `ECONOMY` classes and `Step::{Garrison, BuildBoat}` with design §15's checks (§6's invariants
-  after every command; the income conserved; a week's step leaving every weekly object full and
-  every growing monster at its growth; an added monster as a placed one, design §19's open
-  point; every legal `BuildBoat` accepted, every other rejected with the state unchanged; the
-  views to the right viewers); `e08-economy-144.h3m` (`h3_map::writer`: the XL map with as many
-  mines and weekly objects as the largest shipped map and a monster on every hundredth free
-  tile); the workloads `day-start-xl-144`, `month-start-xl-144`, `random-play-economy-36` (on
-  T86a's `e08-economy-36.h3m`), `fork-economy-xl-144`; the existing ones re-baselined where the
-  growth moved them (T85b1's and T85b2b's records in `E08-log.md`); the benches README's rows in
-  one `shared/` pull request.
-- **Inputs:** design §15, §18, §19; `E08-log.md` T85b1, T85b2b, T86a; `docs/lanes/adventure/
-  TRAPS.md` (the plans, `lay_out`, objects added in play); the skill `homm3-bench-regression`.
-- **Depends on:** T86a's pull request merged. **Status:** ready after it.
+- **Scope:** round 8's first task's last part (design §15, §18; decisions 226, 227):
+  `e08-economy-144.h3m` (`h3_map::writer`: the XL map with as many mines and weekly objects as
+  the largest shipped map, a class's most on one map in survey `E08-economy.md` §1's table and the
+  weekly objects' 18, 24 and 11, and a monster on every hundredth free tile); the workloads
+  `day-start-xl-144` (the `EndTurn` that starts day 8), `month-start-xl-144` (the one that starts
+  day 29 in a creature month: the spawn's walk), `random-play-economy-36` (on T86a's
+  `e08-economy-36.h3m`), `fork-economy-xl-144` (forks after a week's writes); the existing ones
+  re-baselined where the growth moved them (T85b1's and T85b2b's records in `E08-log.md`); the
+  benches README's rows in one `shared/` pull request.
+- **Inputs:** design §15, §18, §19 (the day start's cost); `E08-log.md` T85b1, T85b2b, T86a,
+  T86b1; `docs/lanes/adventure/TRAPS.md` (objects added in play, the reach's loops); the skill
+  `homm3-bench-regression`.
+- **Depends on:** T86b1's pull request merged. **Status:** ready after it.
 
 ## Inbox
-
-- 2026-11-03 (the town lane, E09 T3a, PR #659; **a failing property case on `master`'s code**):
-  CI's full verify on #659 (run 41541601650, the merge with `master` at 65b5465b; #659 does not
-  touch `h3-map`) found a case of `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants`
-  that fails: "no monster or guards fought at Pos { x: 1, y: 5, level: 1 }" (play.rs, the battle
-  check's `visited_from` / `events_at` search). Reproduced locally in 15 s by appending
-  `cc 687f80afb754de647c8cf145b1e0fbbdbb492e3c0aa8b2cb8c6fdbf49d90ad42` to
-  `crates/h3-map/proptest-regressions/tests/play.txt` (not committed: it would fail every run until
-  fixed). The shrunk plan: RoE, side 7, two levels, nomads `(222, 11)`, one timed event (players
-  3, from day 4, every day), 461 `Fight` steps; the full input is in that run's job log. Master's
-  own runs passed (random cases). Commit the seed with the fix.
 
 - 2026-11-02 (the town lane, E09 T2b, `TWN-Q4`; **for your merge order, nothing to build**):
   E09's build bumps your versions `cross-lane` (`docs/epics/E09-design.md` §19, §21): adventure
