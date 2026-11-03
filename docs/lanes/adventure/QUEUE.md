@@ -25,6 +25,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
+  unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
+  `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
+  `towns:owned_garrisons`), `hero[NAME]:slot:N`, `opening:slot:N:<side>`, `town_screen`,
+  `unknown_screens`, a `new_game = true` step, the town screen (vtable 0x64372C, closed by item
+  30720) and the level-up dialog (0x63FE60, `level_up`) as known screens, and a list of creatures
+  in the table battle plan's `attack`. Behaviour changes: `play_turns` reads the turn again after
+  its 0.5 s wait (an order went into the next stack's turn), a retreat waits out the retreating
+  side's Catapult, a `text:` literal ending in `: ` joins the next value without `; `, and `batch
+  --map` fills the template beside the map when its stamp matches (no cargo build). A town's
+  visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
+  after. `clients/capture/README.md`, "Towns (E09 T3b)".
 - 2026-11-03 (the client lane, E17 M6 T2a2b2, CLT-Q40; with the battle lane's carry, its inbox): when the
   setup carries each morale and luck effect's source, fill them as battles start from the adventure map (the
   hero's skills, artifacts, visits until the next battle, the owner's grail; a siege town's buildings), as
