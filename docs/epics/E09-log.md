@@ -593,3 +593,90 @@ test, `packs/README.md`'s row).
   packs; otherwise `h3-pack-towns`' test of the original packs is the compile check (the queue's
   acceptance).
 
+
+### T5b2b2 — the content harvested (2026-11-03)
+
+One session, the user present; branch `town/e09-t5b2b2` (`cross-lane`: the battle lane's
+`h3-harvest`, its gap-fill and `packs/README.md`, as T5b2b1), stacked on
+`shared/e09-harvest-towns-edge`. Starting point: `master` at 3fd3665 (#684 T5b2b1 merged; CI on
+`master` green there; the sandbox's baseline the light gates); the original data staged
+(`Heroes3.exe`, both LODs, `extracted.tar`, `maps.tar`). **At its start** (the user, asked): the
+task whole, one pull request (not base's eight factions first, then AB and SoD); **the harvester
+compiles the town files itself**, so a `shared/` pull request first adds `arch.toml`'s edge
+`h3-harvest` → `h3-pack-towns` (not `h3-pack-towns`' test as the only compile check).
+
+- **`h3-harvest`'s `towns` module** (`harvest_towns`, run by `main.rs` after the core harvest on
+  its core files; separate from `harvest` so the crate's fixture keeps its one-level creatures):
+  per faction of `TownType.txt` (base's or, by the gap-fill's `[ab]`, ab's) a record of the
+  faction's listed buildings and the Village Hall; the names from `BldgNeut.txt` (ids 0 to 14,
+  the Blacksmith's row 17), `BldgSpec.txt` (11 rows a faction: 17 to 26, then the silo 15) and
+  `Dwelling.txt` (14 rows a faction), keys `key_of` the names, an upgraded horde `upg_` its
+  horde's (*agent's call*, as the upgraded dwellings' "Upg." names); `slot` from
+  `map_building_ids` (a slot naming a building the faction lacks, a Castle's fifth guild level,
+  gives none); `supersedes` the common list's entries of its buildings and the faction's, direct,
+  in the file's order; an upgraded horde `forbidden_with` its horde and `auto_with` its horde and
+  its level's upgraded dwelling (the level the horde creature's index among the seven, checked
+  against the dwelling the horde supersedes); the dwellings' roles from their ids, the others
+  from the gap-fill; the seven levels with their upgrades from `town_creatures` (a creature of
+  another pack written `pack:key`, `base` refusing one outside its closure); the silo's nonzero
+  amounts; the moat. `[town_params]` in `base`; `sod` the overrides where SoD's siege differs.
+  Refused: a count, a name or a horde that does not fit, a key or a slot twice, a supersede of a
+  building the faction lacks, a role twice or on a building the faction lacks. The three files
+  compile with `h3-pack-towns` on the harvested core files in every allowed combination and
+  both profiles before they are returned. A report line: requirements, costs and the hordes'
+  growth not harvested.
+- **The gap-fill's `[towns]`** (`gapfill.rs`' `Towns`, optional elsewhere, three sources
+  `exe-town-income`, `exe-town-siege`, `exe-town-roles` citing the survey's §8.3, §8.4, §9.4,
+  §11.1, §16.6): `params` (gold, the halls' 500/1 000/2 000/4 000, the Grail's 5 000, the reveal's
+  5, the demoted Capitol building 12); `moat` (RoE and AB harmless, SoD damaging, the Stronghold
+  absent with natural obstacles under RoE and AB, damaging without under SoD; design §3); `role`
+  (21 entries: the halls, forts, Tavern with morale +1, silo and Grail of every faction; the
+  Castle's Brotherhood, the Rampart's Fountain, the Tower's Lookout and Grail, the Inferno's
+  Stormclouds, the Dungeon's, Stronghold's and Fortress' Grails, the escape tunnel, the Fortress'
+  21 and 22 by TD-8's code).
+- **The packs:** `base` 1 958 lines (the parameters, eight records), `ab` Conflux's (its
+  elementals `base:` and their upgrades `ab`'s, the silo `"base:mercury"`), `sod` nine overrides;
+  each record the survey's count + 1 (36, 38, 37, 38, 37, 37, 35, 35, 36). `core.toml` and
+  `battle.toml` unchanged.
+- **`h3-pack-towns`:** `BASE_TOWNS`, `AB_TOWNS`, `SOD_TOWNS`, `ORIGINAL_PACKS`; the test
+  `the_original_packs_compile_with_every_faction` (RoE, AB and SoD; both profiles; the nine
+  records' levels, upgrades and counts, the Village Hall, the demoted Capitol, the moats by
+  edition, the parameters, a role of each kind, the Castle's upgraded horde).
+- **Tests of the harvest:** three synthetic factions (two in `base`, one in `ab` with its creatures
+  in `ab`) with seven levels each: the files' shape and determinism; every refusal above; the
+  gap-fill's errors; a file that does not compile.
+- **Docs:** `packs/README.md` (the file's row, the harvest writes three files).
+
+### T5a2 — `GameRuleset` takes the town part, replay format v9 (2026-11-03)
+
+One session, the user present; branch `town/e09-t5a2` (`cross-lane`: `h3-game`'s `ruleset.rs`
+and tests, `h3-sim`'s encounter and adventure replay, `h3-cli`'s adventure loader, census and
+file format, `h3-map`'s tests and examples, the adventure replays, `clients/Cargo.lock`).
+Starting point: `master` at 2030ef5 (#689 T5b2b2 merged; the sandbox's baseline the full engine
+verify, green; CI's full run there failed one `h3-heroes` property case, fixed on `master` by
+1981203, merged in); the original data staged (`Heroes3.exe`, both LODs, `extracted.tar`,
+`maps.tar`). **At its start** (the user, asked): the task whole, one pull request (not
+`GameRuleset` and its callers first, then the replay format).
+
+- **`GameRuleset::new(core, adventure, battle, towns)`** and `towns()`; `RulesetMismatch` also
+  when the town part was compiled on another core or a faction with a town record has no
+  `[[siege]]` record in the battle part (every town can be besieged). `h3-game` depends on
+  `h3-towns` (`arch.toml` allowed it since T4b).
+- **The callers:** `h3-sim`'s encounter passes `TownRuleset::empty` (an encounter's game has no
+  towns); `h3-sim`'s adventure tests, `h3-cli`'s census and `h3-map`'s tests and both examples
+  the original part (`h3_pack_towns::ORIGINAL_PACKS`; RoE alone for `h3-map`'s one-pack case);
+  `h3-cli`'s `load_rules` reads each folder's `towns.toml` beside `adventure.toml` and
+  `battle.toml` (an absent file an empty text). `h3-game`'s own tests take the empty part
+  (`no_towns`).
+- **Adventure replay format v9:** `ReplayHeader::town_ruleset_hash`, checked after the adventure
+  part's; the file's `town_ruleset_hash` line (*agent's call*: optional when read, so a v8 file
+  reads with 0 and is refused by its version, as a v1 file without a difficulty; a v9 file
+  without it is refused by the hash). The 39 replays re-recorded from their own commands with
+  `h3 adventure run --script` (a scratch script asserting that only `format` and the new line
+  moved); their checkpoints unchanged: the state hash does not read the parts.
+- **Tests:** `h3-game`'s `the_parts_must_belong_to_the_core` (the town part on another core) and
+  `a_town_needs_its_siege` (a town record built in code: the imp and the gog `t:town`'s levels 1
+  and 2, the roles every record needs; no siege record); `h3-sim`'s tampered-header case
+  `town_ruleset_hash`; `h3-cli`'s loader test (the part from the folders is the embedded one, nine
+  records) and its format test (a v8 file without the line, a v9 file without it).
+- **Docs:** the queue's T6 entry (round 6), the adventure lane's versions line (replay format v9).

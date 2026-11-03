@@ -49,6 +49,119 @@ pub struct GapFill {
     /// Data quirks and their fixes (E04b T8e).
     #[serde(default)]
     pub data_quirks: DataQuirks,
+    /// The town part's facts the executable's tables do not hold (E09 T5b2b2): required by the
+    /// town harvest ([`crate::towns`]), optional for the rest.
+    #[serde(default)]
+    pub towns: Option<Towns>,
+}
+
+/// The town part's facts beside the executable's tables (E09 T5b2b2; `h3-pack-towns`' format).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Towns {
+    /// The `[town_params]` the code reading gives.
+    pub params: TownParams,
+    /// The moat and the siege's natural obstacles by edition.
+    pub moat: TownMoats,
+    /// The buildings' roles (the dwellings' come from their ids).
+    pub role: Vec<TownRole>,
+}
+
+/// The `[town_params]` fields the tables do not hold (the level-2 dwelling's chance and the
+/// neutral garrison are the executable's tables').
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownParams {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// The resource the halls and the Grail pay, as in `RESTYPES.TXT`.
+    pub gold: String,
+    /// The gold a day by the highest standing hall, 1 to 4.
+    pub hall_gold: [u32; 4],
+    /// The gold a day more with a Grail building ever built.
+    pub grail_gold: u32,
+    /// The start's and a capture's reveal radius.
+    pub reveal_radius: u8,
+    /// The building id a demoted Capitol becomes (the City Hall).
+    pub capitol_demoted_to: u8,
+}
+
+/// The moat and the natural obstacles as RoE and AB play them (the `base` and `ab` records) and
+/// as SoD does (the `sod` overrides).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownMoats {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// Every faction's under RoE and AB rules, but those of `faction`.
+    pub roe_ab: TownSiege,
+    /// Every faction's under SoD rules, but those of `faction`.
+    pub sod: TownSiege,
+    /// The factions of other values.
+    #[serde(default)]
+    pub faction: Vec<FactionSiege>,
+}
+
+/// A town record's siege fields.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownSiege {
+    /// `absent`, `harmless` or `damaging`.
+    pub moat: TownMoat,
+    /// Natural obstacles in a walled siege.
+    #[serde(default)]
+    pub siege_obstacles: bool,
+}
+
+/// A moat's kind (`h3-pack-towns`' `moat`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TownMoat {
+    /// None (a Stronghold under RoE and AB rules).
+    Absent,
+    /// Slows, does not damage.
+    Harmless,
+    /// Damages.
+    Damaging,
+}
+
+impl TownMoat {
+    /// The format's word.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Absent => "absent",
+            Self::Harmless => "harmless",
+            Self::Damaging => "damaging",
+        }
+    }
+}
+
+/// A faction's siege fields by edition.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FactionSiege {
+    /// Town name (as in `TownType.txt`).
+    pub faction: String,
+    /// Under RoE and AB rules.
+    pub roe_ab: TownSiege,
+    /// Under SoD rules.
+    pub sod: TownSiege,
+}
+
+/// Roles of a building of every faction or of one (`h3-pack-towns`' role fields but `dwelling`,
+/// written as given; the entries of one building merge, each role once).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownRole {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// Town name (as in `TownType.txt`), or every faction when absent.
+    pub faction: Option<String>,
+    /// The building id (`docs/formats/installation.md` §7.61).
+    pub building: u8,
+    /// The role fields and their values.
+    pub roles: BTreeMap<String, toml::Value>,
 }
 
 /// Data quirks (E04b T8e; ADR-0007, amendment E04b T8e): the packs keep the executable's value,
@@ -890,7 +1003,14 @@ impl GapFill {
                         .class_intervals
                         .iter()
                         .flat_map(|f| &f.sources),
-                );
+                )
+                .chain(g.towns.iter().flat_map(|t| {
+                    t.params
+                        .sources
+                        .iter()
+                        .chain(&t.moat.sources)
+                        .chain(t.role.iter().flat_map(|r| &r.sources))
+                }));
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));

@@ -31,9 +31,10 @@ use super::rollout::choose;
 /// battle's unowned side; version 5 (E08 T30): a level-up's answers; version 6 (E08 T51a): the
 /// management commands; version 7 (E08 T63a): the answers typed by the decision's kind
 /// (`h3_game::Answer`: a meeting or an army dialog closed by `Close`, increment 7's choices and
-/// University); version 8 (E08 T84b2): a Shipyard's boat without a visit (`BuildBoat`). A replay
-/// of another version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 8;
+/// University); version 8 (E08 T84b2): a Shipyard's boat without a visit (`BuildBoat`); version 9
+/// (E09 T5a2): the town part's hash. A replay of another version is refused
+/// ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 9;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,6 +51,8 @@ pub struct ReplayHeader {
     pub ruleset_hash: u64,
     /// The adventure part's content hash (ADR-0015 point 2: every part's hash).
     pub adventure_ruleset_hash: u64,
+    /// The town part's content hash (format v9, E09 T5a2).
+    pub town_ruleset_hash: u64,
     /// PRNG algorithm id.
     pub rng_algorithm: String,
     /// PRNG version.
@@ -74,6 +77,7 @@ impl ReplayHeader {
             profile: rules.core().profile().as_str().to_owned(),
             ruleset_hash: rules.core().content_hash(),
             adventure_ruleset_hash: rules.adventure().content_hash(),
+            town_ruleset_hash: rules.towns().content_hash(),
             rng_algorithm: RNG_ALGORITHM.to_owned(),
             rng_version: RNG_VERSION,
             hash_algorithm: HASH_ALGORITHM.to_owned(),
@@ -90,7 +94,7 @@ impl ReplayHeader {
     /// [`ReplayError::Incompatible`] naming the first field that differs.
     pub fn check(&self, rules: &GameRuleset) -> Result<(), ReplayError> {
         let now = Self::current(rules);
-        let fields: [(&'static str, bool); 8] = [
+        let fields: [(&'static str, bool); 9] = [
             ("format_version", self.format_version == now.format_version),
             ("packs", self.packs == now.packs),
             ("profile", self.profile == now.profile),
@@ -98,6 +102,10 @@ impl ReplayHeader {
             (
                 "adventure_ruleset_hash",
                 self.adventure_ruleset_hash == now.adventure_ruleset_hash,
+            ),
+            (
+                "town_ruleset_hash",
+                self.town_ruleset_hash == now.town_ruleset_hash,
             ),
             (
                 "rng",

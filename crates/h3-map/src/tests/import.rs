@@ -36,7 +36,15 @@ fn rules(packs: usize) -> GameRuleset {
         "base:faithful",
     )
     .unwrap();
-    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)).unwrap()
+    let towns =
+        h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS[..packs], "base:faithful").unwrap();
+    GameRuleset::new(
+        Arc::new(core),
+        Arc::new(part),
+        Arc::new(battle),
+        Arc::new(towns),
+    )
+    .unwrap()
 }
 
 pub(super) static SOD: LazyLock<GameRuleset> = LazyLock::new(|| rules(3));

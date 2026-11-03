@@ -22,6 +22,7 @@ h3-kernel.workspace = true
 h3-pack.workspace = true
 h3-pack-adventure.workspace = true
 h3-pack-battle.workspace = true
+h3-pack-towns.workspace = true
 proptest.workspace = true
 
 # Batch E4's scorer (E08 T32a): its tests check its draws against the engine's.

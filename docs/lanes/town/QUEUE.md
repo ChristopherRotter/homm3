@@ -7,65 +7,24 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are round 5's (rounds 2 to 4, T5a1, T5b1, T5b2a and T5b2b1 are done,
-`E09-log.md`); each later round's entries are written when it comes (the epic's list), each task's
-cut confirmed at its start. Every entry's acceptance includes the Definition of Done
-(`docs/05-testing.md`). Round 5's order is T5a1, T5b (cut in two: T5b1, T5b2; T5b2 again: T5b2a,
-T5b2b; T5b2b again: T5b2b1, T5b2b2), T5a2 (the user, 2026-11-03: the content before
-`GameRuleset`, so the golden replays' header moves once).
+entries below are round 6's (rounds 2 to 5 are done, `E09-log.md`); each later round's entries are
+written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
+acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T5b2b2 — the content harvested**
+**E09 T6 — `h3-towns`: the record, the store, the setup's functions, the derivations**
 
-- **Scope:** round 5's third part's second half (T5b2b cut in two at its start, the user: T5b2b1
-  the reader, done; design §3, decisions 23, 27 to 30; survey §16): `h3-harvest`'s module that
-  turns `Inputs::town_tables` (T5b2b1's `h3_formats::exe::towns::TownData`, layouts in
-  `docs/formats/installation.md` §7.61) and the names (`BldgNeut.txt`, `BldgSpec.txt`,
-  `Dwelling.txt`; names only, Q13; survey §16.7) into `packs/base/towns.toml` (the eight
-  factions; the moat as RoE and AB play it), `packs/ab/towns.toml` (Conflux), `packs/sod/towns.toml`
-  (the overrides; decision 20), its `--check` covering them (`main.rs` writes and checks the
-  three files). Each record: the faction's listed buildings plus the Village Hall (`hall = 1`),
-  not 23 or 27 to 29 (decision 27) nor the ship 20; `slot` from `map_building_ids`; `supersedes`
-  the common and the faction's lists (direct); `forbidden_with` each upgraded horde's horde;
-  **`auto_with`** each upgraded horde's horde and level's upgraded dwelling (T5b2a, decision 29;
-  the hordes' levels from `town_creatures` as `horde_table_init` derives them); the roles of
-  survey §16.6 (TD-8 by the code: the Fortress' 21 `defender.attack = 2`, 22 `defense = 2`,
-  decision 30); `creatures` seven levels with upgrades from `town_creatures`; `silo`;
-  `[town_params]` (the gold, the halls, the Grail, the reveal, the 30, the garrison rows,
-  `capitol_demoted_to`). The keep's derivation (decision 28) is T6's. `h3-pack-towns`'
-  `BASE_TOWNS`, `AB_TOWNS`, `SOD_TOWNS`, `ORIGINAL_PACKS` (as `h3-pack-adventure`'s) and its test
-  of the original core packs without the file replaced; `packs/README.md`'s row (the battle lane's
-  file: the synthetic packs have the file since T5b2a, the original ones with this task).
-- **Acceptance:** the original packs compile with the town compiler, each of the nine factions
-  with seven levels and their upgrades and its listed buildings (a test); `cargo xtask verify
-  --with-original-data` (the harvest reproduces the files); `check-lane --cross-lane`; CI green.
-- **Notes:** the hordes and their upgrades share a name in every faction (keys need a suffix);
-  Conflux's Grail is spelled "Aurora Borealias" in the texts; the format and each role's set are
-  in `h3-pack-towns`' `lib.rs`. TD-9 (a requirement) and every requirement wait for increment 2
-  (the reader keeps them). The moats by edition are not in the executable (SoD's): survey §9.4
-  and design §3 give them. `arch.toml` has no edge `h3-harvest` → `h3-pack-towns`: the harvester
-  compiling the town files itself (as it does the battle packs) needs a `shared/` change first;
-  without it, `h3-pack-towns`' test of the original packs is the compile check (T5b2b1's log).
-- **Depends on:** T5b2b1 (its pull request merged). **Status:** ready once it merges; needs the
-  original data staged (`Heroes3.exe`, both LODs or `extracted.tar`).
-
-**E09 T5a2 — `GameRuleset`, its callers, adventure replay format v9**
-
-- **Scope:** round 5's last part (design §2's `GameRuleset` paragraph; `cross-lane`):
-  `GameRuleset::new(core, adventure, battle, towns)` with the extended mismatch check (the town
-  part on the same core; every faction with a town record has the battle part's `[[siege]]`
-  record) and its callers (h3-sim's encounter and tests, h3-cli's adventure loader and census,
-  h3-map's tests and examples: the compiled part, or `TownRuleset::empty(core)` for an
-  encounter); the CLI's loader reads `towns.toml` beside `adventure.toml` and `battle.toml`; the
-  adventure replay's header records the part's hash (adventure replay format v9; the golden
-  replays re-recorded, skill `homm3-rerecord-replays`).
-- **Acceptance:** the mismatch check's new cases each refused by a test; the adventure replays at
-  v9 with only header and hash lines moved; `check-lane --cross-lane`; CI green.
-- **Notes:** `arch.toml` already allows the callers' edges (`h3-sim` → `h3-towns`, dev
-  `h3-pack-towns`; `h3-cli` → both; `h3-map`'s dev → both) and `clients.yml` watches
-  `crates/h3-towns/`; once `h3-game` depends on `h3-towns`, `clients/Cargo.lock` (common) changes
-  and `clients/scripts/check.sh` runs. The adventure lane's open pull requests first
-  (`TRAPS.md`, "Merge in order"; it bumps the replay format too).
-- **Depends on:** T5b2b2. **Status:** after T5b2b2.
+- **Scope:** round 6 (design §4 to §6; the lane's own crate): the record `Town` (`built`,
+  `forbidden`; the standing set derived) and `TownStatic`, the store `Towns` and its canonical
+  hash (town state hash v1's first encoding), the build's setup functions
+  (`town_buildings_setup` TWN-SET-003, the garrison TWN-SET-004, drawn from the setup stream),
+  the derivations of §6's table, and `docs/rules/catalog/town.toml` with the rules §19 names for
+  them; the quirks T-4 and T-6 where §19 places them (`docs/rules/quirks-town.md`).
+- **Acceptance:** every rule with its id, source and test; 100 % coverage of `h3-towns`; the
+  scoped verify.
+- **Notes:** probably cut in two at its start (the record, store and derivations; the setup's
+  functions). §6's `siege(town)` gives `Siege.bonuses` (the inbox's CLT-Q40 note), not one morale
+  and luck. No `cross-lane` path: `h3-game` calls these from T7.
+- **Depends on:** T5a2 (its pull request merged). **Status:** ready once it merges.
 
 ## Inbox
 

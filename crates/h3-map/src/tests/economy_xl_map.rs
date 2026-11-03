@@ -334,6 +334,7 @@ fn map() -> (w::Map, usize) {
         level_limit: 0,
         banned_skills: Vec::new(),
         events: Vec::new(),
+        teams: None,
     };
     (map, monsters)
 }

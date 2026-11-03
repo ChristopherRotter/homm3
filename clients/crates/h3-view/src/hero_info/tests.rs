@@ -5,15 +5,17 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_protocol::wire::{Hero, Observation, Side};
+use h3_protocol::wire::{Affects, Hero, MoraleLuck, Observation, Side, Source};
 use h3_ui::text::Catalogue;
 use h3_ui::text::pack::Pack;
 use h3_ui::ui::Item;
 
 use super::{
-    BACKGROUND, Info, LUCK, LUCK_LABEL, MORALE, MORALE_LABEL, POINTS, PORTRAIT, SKILLS, at, window,
+    BACKGROUND, Info, LUCK, LUCK_LABEL, MORALE, MORALE_LABEL, POINTS, PORTRAIT, SKILLS, at, values,
+    window,
 };
 use crate::record::tests::observation;
+use crate::stats::Field;
 
 const PACK: &str = r#"{
     "battle": {
@@ -102,10 +104,10 @@ fn the_layout_is_the_constructors() {
 #[test]
 fn the_window_shows_the_side_s_hero() {
     // 0x46CC10: the background in the hero's colours, the portrait, the rows' words and values,
-    // the spell points; morale and luck 0 (frame 3) until T3b2.
+    // the spell points; morale and luck 0 (frame 3) without a source.
     let layout = crate::scene::tests::layout().hero_info;
     let o = battle();
-    let info = Info::of(&o, Side::Attacker, &portrait).unwrap();
+    let info = Info::of(&o, Side::Attacker, Field::Other, &portrait).unwrap();
     let w = window(&layout, &catalogue(), Side::Attacker, &info);
     assert_eq!(w.dialog.place, [1, 135]);
     assert_eq!(w.shown.players.get(&BACKGROUND), Some(&2));
@@ -130,7 +132,7 @@ fn the_values_are_held_and_a_hero_without_portrait_shows_none() {
     // to 0..=99, power and knowledge to 1..=99 (0x46CC10); no portrait: the item hidden.
     let layout = crate::scene::tests::layout().hero_info;
     let o = battle();
-    let mut info = Info::of(&o, Side::Defender, &portrait).unwrap();
+    let mut info = Info::of(&o, Side::Defender, Field::Other, &portrait).unwrap();
     assert_eq!((info.player, info.portrait.as_ref()), (1, None));
     info.morale = 5;
     info.luck = -2;
@@ -159,5 +161,97 @@ fn the_right_button_finds_a_hero_s_rectangle_with_a_hero() {
     assert_eq!(at(&layout, &o, [400, 300]), None);
     o.sides[1].hero = None;
     assert_eq!(at(&layout, &o, inside(defender)), None);
-    assert_eq!(Info::of(&o, Side::Defender, &portrait), None);
+    assert_eq!(Info::of(&o, Side::Defender, Field::Other, &portrait), None);
+}
+
+fn morale(amount: i8, affects: Affects, source: Source) -> MoraleLuck {
+    MoraleLuck::Morale {
+        amount,
+        affects,
+        source,
+    }
+}
+
+fn luck(amount: i8, affects: Affects, source: Source) -> MoraleLuck {
+    MoraleLuck::Luck {
+        amount,
+        affects,
+        source,
+    }
+}
+
+const LEADERSHIP: Source = Source::Skill { skill: 6, level: 2 };
+const PENDANT: Source = Source::Artifact { artifact: 108 };
+
+#[test]
+fn the_hero_s_own_changes_make_its_morale_and_luck() {
+    // hero_morale 0x4E39B0, hero_luck 0x4E36C0 (E17 M6 T3b2): the hero's own list, its changes
+    // to its own stacks summed and held to -3..=3; its changes to the enemy's and the other
+    // hero's changes are not read; the window's frames the values + 3.
+    let layout = crate::scene::tests::layout().hero_info;
+    let mut o = battle();
+    o.morale_and_luck[0] = vec![
+        morale(2, Affects::Own, LEADERSHIP),
+        morale(3, Affects::Own, PENDANT),
+        luck(3, Affects::Own, PENDANT),
+        luck(-1, Affects::Own, Source::Temporary),
+        luck(-2, Affects::Enemy, Source::Specialty),
+    ];
+    o.morale_and_luck[1] = vec![
+        morale(-1, Affects::Both, Source::Visit { mark: 3 }),
+        luck(1, Affects::Enemy, Source::Specialty),
+    ];
+    assert_eq!(values(&o, Side::Attacker, Field::Other), (3, 2));
+    assert_eq!(values(&o, Side::Defender, Field::Other), (-1, 0));
+    let info = Info::of(&o, Side::Attacker, Field::Holy, &portrait).unwrap();
+    assert_eq!((info.morale, info.luck), (3, 2));
+    let w = window(&layout, &catalogue(), Side::Attacker, &info);
+    assert_eq!(w.shown.frames.get(&MORALE), Some(&6));
+    assert_eq!(w.shown.frames.get(&LUCK), Some(&5));
+    // Below -3: held.
+    o.morale_and_luck[1] = vec![morale(-4, Affects::Own, Source::Temporary)];
+    assert_eq!(values(&o, Side::Defender, Field::Other), (-3, 0));
+}
+
+#[test]
+fn cursed_ground_and_the_hourglass_make_them_0() {
+    // On Cursed Ground both are 0 (the flag +0x53C0 = 2 passed, 0x4769EE); the Hourglass of the
+    // Evil Hour (a luck cap reaching the side, worn by either hero) makes luck the cap's value
+    // whatever the changes, a negative one too; the Spirit of Oppression (a morale cap) is not
+    // read (CLT-Q42).
+    let mut o = battle();
+    o.morale_and_luck[0] = vec![
+        morale(2, Affects::Own, LEADERSHIP),
+        luck(-1, Affects::Own, Source::Visit { mark: 1 }),
+    ];
+    assert_eq!(values(&o, Side::Attacker, Field::Cursed), (0, 0));
+    assert_eq!(values(&o, Side::Attacker, Field::Other), (2, -1));
+    let hourglass = Source::Artifact { artifact: 85 };
+    let spirit = Source::Artifact { artifact: 84 };
+    o.morale_and_luck[1] = vec![
+        MoraleLuck::LuckAtMost {
+            value: 0,
+            affects: Affects::Both,
+            source: hourglass,
+        },
+        MoraleLuck::MoraleAtMost {
+            value: 0,
+            affects: Affects::Both,
+            source: spirit,
+        },
+    ];
+    assert_eq!(values(&o, Side::Attacker, Field::Other), (2, 0));
+    // The cap reaches its wearer's side too; one to its own side only does not reach the other.
+    o.morale_and_luck[1].push(luck(2, Affects::Own, Source::Temporary));
+    assert_eq!(values(&o, Side::Defender, Field::Other), (0, 0));
+    o.morale_and_luck[1][0] = MoraleLuck::LuckAtMost {
+        value: 1,
+        affects: Affects::Own,
+        source: hourglass,
+    };
+    assert_eq!(values(&o, Side::Defender, Field::Other), (0, 1));
+    assert_eq!(values(&o, Side::Attacker, Field::Other), (2, -1));
+    // An empty list (a side without a hero has one): 0.
+    o.morale_and_luck[0].clear();
+    assert_eq!(values(&o, Side::Attacker, Field::Other), (0, 0));
 }

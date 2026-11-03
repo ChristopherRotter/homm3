@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 836eb40fea5eca1b6da3dcc31c1169b1a374dd1a0ace86117b710335210c34ca # shrinks to worn = [3, 6, 4], swap = None, skills = [(3, 1), (4, 1)], primary = [0, 0, 0, 0], (morale, luck, marks) = (-1, -1, 0)

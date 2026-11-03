@@ -5177,7 +5177,8 @@ file: H3ab_bmp.lod's older one lacks a field's lines, so its records after 82 ar
   creatures but war machines (flag 0x40), each by its town (the four elementals neutral in a map of
   kind 0); the number of the ten (neutral, the nine towns) that count one or more.
 - **The hero's lists** (0x4DCAC0 luck, 0x4DC320 morale, which the hero screen shares; read for
-  their sources): the cheat's mark (+0x105 bit 22, GENRLTXT 438); the morale or luck artifacts
+  their sources, then whole at T3c1: §12.9): the cheat's mark (+0x105 bit 22 luck's, 23
+  morale's, GENRLTXT 438); the morale or luck artifacts
   worn, alone or in a worn combination (artifacts 45 to 51 and 108; luck's lines 63 to 66, 80,
   morale's 89 to 92, 111); the adventure map's visits until the next battle (+0x105's bits); the
   Luck or Leadership level (+0xD2, +0xCF; 74 to 76, 105 to 107); the owner's grail building (+0x22);
@@ -5207,8 +5208,10 @@ file: H3ab_bmp.lod's older one lacks a field's lines, so its records after 82 ar
   stack's effects. The spells' line is the value the client's lines and the spells make, less the
   field's change and the base, so it shows what the executable shows when the hero adds nothing.
   The dialog's own morale and luck no longer add the timed effects a second time (T2a1's slip:
-  the wire's values hold them). *Not built:* the lines CLT-Q40 requested; the header and picture
-  by the unclamped value.
+  the wire's values hold them). *Not built:* the lines CLT-Q40 requested (carried since; the
+  hero's lists and the header and picture by the unclamped value built at T3c1, §12.9; the
+  Hourglass's and the Spirit of Oppression's lines, the Angelic Alliance's join and a siege town's
+  buildings T3c2).
 
 ### 12.5 The right button over the battle: a stack's held dialog (M6 T2b1)
 
@@ -5364,10 +5367,10 @@ the log (`text_pcx_create`, vtable 0x642DE8) and its scroll buttons (`custom_but
   modelled:* a right press while the battle does not take the input (§12.5's note: the original's
   handler tests no turn, so its help may show on a computer's turn too).
 
-### 12.8 The right button over a hero: its info window (M6 T3b1)
+### 12.8 The right button over a hero: its info window (M6 T3b1, T3b2)
 
 T3b cut in two by the user (2026-11-03): T3b1 here (the window and its counts), its morale and
-luck T3b2 (`hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 not read; CLT-Q40's carry). Read:
+luck T3b2 (`hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 read whole at T3b2, below). Read:
 `army_info_hero_create` 0x46C370 whole, `battle_right_click`'s branches 0xFD and 0xFC again
 (0x4769C0 to 0x476AB3); the fill `army_info_hero_set` 0x46CC10 and `army_info_show` 0x46CDF0 at
 T3a (their map entries).
@@ -5397,11 +5400,32 @@ T3a (their map entries).
   0..=99, power and knowledge to 1..=99, by "%d"; morale's and luck's frames the value + 3
   (T3b2); the spell points "%s\n%d/%d" (0x670088) with GENRLTXT 388's word, the hero's points
   (+0x18) and knowledge × 10 × the intelligence factor (floats, truncated).
+- **Morale and luck** (T3b2: `hero_morale` 0x4E39B0, `hero_luck` 0x4E36C0 read whole, and the
+  clamp 0x4E6750; the fill passes the other side's hero, `+0x53C0 == 2` and 1, 0x46CD3B): the
+  hero's **own** values, as the adventure map's status window shows them (0x451E18), not its
+  army's: no alignments, undead, Angels, dragons or field changes, which the stacks' values add
+  (§12.4). Morale: 0 on Cursed Ground; else Leadership's value by level (`skill_leadership`
+  0x63E9A8; a Leadership specialist's times 1 + 0.05 × the hero's level, f32 truncated), +3 for
+  the Pendant of Courage (108), +1 for each of 45, 49, 50, 51 worn or in a worn combination, +2
+  for a Castle of the owner with the Grail's building (26), the visits' morale (+0x11A), +500
+  for the cheat (+0x105 bit 23); held to −3..=3. The other hero is not read: neither hero's
+  Spirit of Oppression changes it (CLT-Q42). Luck: unless the cheat's bit 22 is set, 0 on Cursed
+  Ground and 0 when this hero or the other wears the Hourglass of the Evil Hour (85); else Luck's
+  value as Leadership's (`skill_luck` 0x63E998, a Luck specialist), +3 for the Pendant, +1 for
+  each of 45 to 48, +2 for a Rampart of the owner with the Grail's building, the visits' luck
+  (+0x11B), +500 for the cheat; held to −3..=3. The frames are the values + 3 (`imrls.def`,
+  `ilcks.def`: 0 to 6).
 - **Recorded** (`clients/situations/set.toml`, the right button held through the frames, the
   clock frozen; `hero-info.toml`: each army two towns' creatures and no skills or artifacts
   behind morale or luck, so both heroes' are 0 in the original): `hero-info` (Orrin in Red's
   colours, 4, 3, 2, 2 and 20/20; at 0 and 100 ms, the battle behind still), `hero-info-enemy`
   (Crag Hack in Blue's at (721, 135), 12, 0, 1, 1 and 10/10). Both exact at their first capture.
+  T3b2 (`hero-info-skills.toml`: the same battle, Orrin with Advanced Leadership and Expert Luck,
+  Crag Hack with Basic Leadership and Basic Luck, by the scenario's `effects`;
+  `hero-info-cursed.toml`: `cursed-ground`'s battle with Orrin's skills): `hero-info-skills`
+  (frames 5 and 6), `hero-info-skills-enemy` (4 and 4), `hero-info-cursed` (3 and 3). Not
+  recorded: a negative value (only a visit gives one: the battle's map cannot), the artifacts, the
+  Grail's buildings and the Hourglass (the map writes no worn artifacts but war machines).
 - **The viewer** (`h3_view::hero_info`: the layout's `[hero_info]`, each side's place and the
   constructor's items; `Info::of` the side's hero as the observation shows it, its `max_mana` the
   most, its portrait the hero type's (*provisional*, as the result window's: a map's own portrait
@@ -5409,7 +5433,75 @@ T3a (their map entries).
   hero; `window` the filled box at the side's place). The window (`Battle::hero_info`): the right
   button down over a hero's rectangle while the battle takes the input opens it as `Asked::Held`
   (§12.6's popup: the cursor hidden, every input but its ends dropped, nothing posted at its end).
-  The stills' `right:` over a hero (`Boxes::hero_info`). *Not built:* morale and luck (T3b2: both
-  shown 0's frame); "Combat Army Info Level" (T4: the window stays shown after the release and the
-  battle's mouse move fills it, 0x47561C and 0x475676). *Not modelled:* a right press while the
+  The stills' `right:` over a hero (`Boxes::hero_info`). Morale and luck (T3b2,
+  `hero_info::values`) from the observation's `morale_and_luck` (CLT-Q40's carry, protocol v37):
+  the side's hero's morale and luck changes that reach its own stacks, summed and held; 0 on
+  Cursed Ground (the binary's `stats::field`, shared with §12.4's account); a luck cap reaching
+  the side (the Hourglass: either hero's, `Affects` both) gives its value whatever the changes, as
+  the original's 0; the morale caps and the other hero's changes are not read. The cheats have no
+  source. *Not built:* "Combat Army Info Level" (T4: the window stays shown after the release and
+  the battle's mouse move fills it, 0x47561C and 0x475676). *Not modelled:* a right press while the
   battle does not take the input (§12.5's note).
+
+### 12.9 The hero's lists in morale's and luck's descriptions (M6 T3c1)
+
+Read whole: `hero_morale_description` 0x4DC320 and `hero_luck_description` 0x4DCAC0 (the stack's
+descriptions call them first, after the base, when the side has a hero: 0x44BA58, 0x44C2A5; the
+hero screen shares them), and `town_building_name` 0x4610E0. Each appends lines (every text
+starts with its line break) and sums their changes, which are the texts' own numbers:
+
+- **The cheat's mark** (luck +0x105 bit 22, morale bit 23): GENRLTXT 438, and the sum set to 500.
+- **The artifacts**, each when worn at one of the 19 body positions or inside a worn combination
+  (`hero_wears_artifact` 0x4D91F0 with the artifact's combination), each once however many are
+  worn: morale the Pendant of Courage (108, ARRAYTXT 111, +3), the Still Eye of the Dragon (45, 89),
+  the Badge of Courage (49, 90), the Crest of Valor (50, 91), the Glyph of Gallantry (51, 92), +1
+  each; luck the Pendant (80, +3), the Still Eye (63), the Clover of Fortune (64), the Cards of
+  Prophecy (65), the Ladybird of Luck (66), +1 each. The Pendant first in both.
+- **The visits** by the status bits +0x105: morale bit 25 the Idol of Fortune (93, +1), bit 2 the
+  Buoy (94, +1), bit 7 the Oasis (95, +1), bit 8 the Temple (96, +1), bit 26 the Temple on Sunday
+  (97, +2), bit 10 the Sepulcher (98, −1), bit 9 the Shipwreck (99, −1), bit 6 the Watering Hole
+  (100, +1), bit 11 the Derelict Ship (101, −1), bit 16 the Rally Flag (102, +1), bit 14 the
+  Fountain of Youth (103, +1), bit 21 the Warrior's Tomb (104, −3); luck bit 3 the Swan Pond (67,
+  +2), bit 4 the Idol of Fortune (68, +1), the Fountain of Fortune's line (69, "%s") with "-1" for
+  bit 5, "+1" bit 27, "+2" bit 28, "+3" bit 29 (the executable's 0x679D08 to 0x679D17), bit 12 the
+  Pyramid (70, −2), bit 13 the Faerie Ring (71, +1), bit 15 the Mermaid (72, +1), bit 16 the Rally
+  Flag (73, +1). In this order.
+- **The skill**: Leadership's level +0xCF (105 to 107) or Luck's +0xD2 (74 to 76), the level its
+  change.
+- **The owner's Grail building** (the hero's owner +0x22, that player's towns: the first with the
+  Grail's building 26 standing whose type is Castle, 0, for morale or Rampart, 1, for luck): the
+  building's name (`town_building_name` with 26: BLDGSPEC's record type × 11 + 9, Colossus or
+  Spirit Guardian) in "\n%s +2" (0x660B40), +2.
+- **The rest**: the hero's own value (`hero_morale` 0x4E39B0, `hero_luck` 0x4E36C0 with no other
+  hero, no field and no clamp: §12.8) less the sum, as temporary: below 0 its size in 109 (luck
+  78) "-%d", above 0 in 110 (79) "+%d"; nothing at 0.
+
+The stack's description adds the list's changes to its base: the minimums (the Minotaurs', the
+Halflings') test the base with them, and the spells' line is the value less that base.
+
+- **What the observation gives** (CLT-Q40's carry, protocol v37: `Observation.morale_and_luck`,
+  each change with its `Source`): the skill (`Skill` with its level), the artifacts (`Artifact`),
+  the rest. The visits come as one temporary change of each kind until the adventure lane splits
+  them (a `Visit`'s once-mark names no object type on the wire, the adventure's content does), and
+  the Grail's building as a town record's index (`Building`, T3c2 with the siege's buildings), so
+  both fall into the rest as the original's own rest holds what its lines do not name; the
+  specialty too (the original has no line for it). The cheats have no source.
+- **The header and the pictures by the unclamped value** (T2a2b2's *not built*): the dialog's
+  values are the stack's +0x4E8 and +0x4EC, which `stack_morale` and `stack_luck` do not clamp
+  (the roll levels' clamp comes later): the wire's `Stack.unclamped_morale` and `unclamped_luck`.
+  The dialog's own pictures take them clamped to −3..=3 (§12.1 item 7), the descriptions' header
+  and picture by their sign: a luck of −1 (the other army's Devils) shows bad, frame 2.
+- **The viewer** (`h3_view::stats::describe::HeroList`, `Account::hero_morale` and `hero_luck`:
+  the hero's changes to its own stacks summed, the listed artifacts and the skill's level; the
+  lines in the list's order, the rest the total less the lines' own changes; the keys
+  `stats.<morale|luck>.artifact` by the artifact as context, `.skill` by the level, `.temporary`
+  less or more). The binary's `stats::hero_list` from the observation's `morale_and_luck` of the
+  side whose lines the description lists (§12.4), the skill and the artifacts by their handles'
+  keys (`leadership`, `luck`; the eight artifacts' keys); `stats::of` takes the unclamped values.
+- **Recorded** (`stats-skills.toml`: the holy-ground situation's armies on grass, Orrin with
+  Advanced Leadership and Expert Luck, the effects naming them as their sources;
+  `stats-devils.toml`: mouse-angels' armies with the defender's Arch Devils): `stats-morale-skill`
+  (Advanced Leadership's line, one alignment), `stats-luck-skill` (Expert Luck's), and
+  `stats-luck-devils` (the Archangels' luck −1: bad, frame 2, the dialog's picture frame 2).
+  Not recorded: the artifacts' lines (the battle's map writes no worn artifacts but war machines),
+  a temporary line (the map gives no battle bonuses), the visits and the Grail (not built).

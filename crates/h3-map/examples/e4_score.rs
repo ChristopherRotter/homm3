@@ -84,7 +84,15 @@ fn original_rules() -> Result<GameRuleset, String> {
         h3_pack_battle::SOD_PACK,
     ];
     let battle = h3_pack_battle::compile(&packs, "base:faithful").map_err(|e| format!("{e:?}"))?;
-    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)).map_err(|e| format!("{e:?}"))
+    let towns = h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS, "base:faithful")
+        .map_err(|e| format!("{e:?}"))?;
+    GameRuleset::new(
+        Arc::new(core),
+        Arc::new(part),
+        Arc::new(battle),
+        Arc::new(towns),
+    )
+    .map_err(|e| format!("{e:?}"))
 }
 
 // -- The draws under each rule -----------------------------------------------------------------
@@ -1141,6 +1149,7 @@ mod tests {
                 level_limit: limit,
                 banned_skills: Vec::new(),
                 events: Vec::new(),
+                teams: None,
             };
             let file = w::gzip(&w::write(&map).expect("map"));
             let raw = h3_map::read(&file, &Limits::default()).expect("read");
@@ -1474,6 +1483,7 @@ mod tests {
             level_limit: 0,
             banned_skills: (0..w::SKILL_COUNT).filter(|&c| c != 2 && c != 3).collect(),
             events: Vec::new(),
+            teams: None,
         };
         let file = w::gzip(&w::write(&map).expect("map"));
         let raw = h3_map::read(&file, &Limits::default()).expect("read");

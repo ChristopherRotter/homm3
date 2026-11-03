@@ -4,6 +4,42 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-03 (E17 M6 T3c cut in two by the user, T3c1 done; the entry verbatim; T3c2 in the
+  queue):
+
+### E17 M6 T3c — morale's and luck's descriptions' carried lines
+
+- **Scope:** the inbox's item of 2026-11-03 (CLT-Q40 carried by the battle lane, BAT-Q64,
+  protocol v37; the entry in `QUEUE-ARCHIVE.md`): the stats dialog's morale and luck
+  descriptions (design §12.4, its *not built*) from `Observation.morale_and_luck`,
+  `Siege.bonuses` and `Stack.unclamped_morale`, `unclamped_luck`: the hero's lists
+  (`hero_morale_description` 0x4DC320 and `hero_luck_description` 0x4DCAC0 read whole for their
+  lines' texts: the Leadership or Luck level, the artifacts worn or in a combination, the visits
+  by their once-marks, the owner's Grail building, the temporary rest), the Hourglass's and the
+  Spirit of Oppression's suppression lines, the Angelic Alliance's join of the alignments, a
+  siege town's buildings, and the header and picture by the unclamped value; each line not
+  derivable listed. Until the adventure lane splits the battle bonuses by visit, they come as
+  one temporary line each, as the original's rest. Recorded: the lines the battle's map can give
+  (Leadership, Luck, a siege town's buildings).
+- **Acceptance:** as T2a2b2's. **Depends on:** T2a2b2 (done), the carry (#685, merged).
+  **Status:** ready; cut at its start with the user (likely: the hero's lists read and drawn,
+  then the rest).
+
+- 2026-11-03 (E17 M6 T3b2; the inbox entry turned into the task T3c, verbatim; T3b2 took the
+  hero's own lists for the hero info window from it):
+
+- 2026-11-03 (this lane, E17 M6 T2a2b2, CLT-Q40; carried by the battle lane, BAT-Q64,
+  `cross-lane`): the carry is on the wire (protocol v37, public to seats and spectators):
+  `Observation.morale_and_luck` (each side's hero's `MoraleLuck` changes, caps and alignment groups
+  with a `Source`: a skill and its level, an artifact, the specialty, a visit's once-mark, a
+  building, temporary), `Siege.bonuses` (the buildings by index with their changes) and
+  `Stack.unclamped_morale`, `unclamped_luck`. Fill the descriptions' hero lists, the two
+  artifacts' lines, the Angelic Alliance's join and a siege town's buildings, and the header and
+  picture by the unclamped value (design §12.4). Until the adventure lane splits the battle
+  bonuses by visit, they come as one temporary line each, as the original's rest. Your workspace's
+  call sites were adapted to the new fields (the source on `BattleEffect`, defaults in the tests'
+  wire literals).
+
 - 2026-10-31 (E17 M6 T1 done; the entry verbatim):
 
 ### E17 M6 T1 — the answered slips (done 2026-10-31)

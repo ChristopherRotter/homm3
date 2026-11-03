@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-03, E08 T89a: the entry as it stood before T89 was cut in two at the code's seam, decision 244; T89a's record in `E08-log.md`, T89b queued.)* **E08 T89 — batch E10's maps and specs** (decisions 237, 242; as T78 for batch E9)
+
+- **Scope:** `h3_map::writer` writes classes 17 and 20 (by subclass, with an owner), 78 and 216
+  to 218 (a faction set, levels, a town identifier of 0) as the import reads them (a round trip),
+  for the batch and for T96's fixtures; the spec's fields in `h3-experiment` (`cross-lane`, the
+  user's consent as T78's): dwellings with an owner, random dwellings, Refugee Camps, a hero's full
+  army of named stacks, teams in a hot-seat map (E10-6), a town for each player in E10b; the specs
+  `experiments/specs/E08-batch-10a.toml` and `-10b.toml` with their templates and predictions
+  (survey §13's rows without E10-2, design §16's two added); each walk priced (`TRAPS.md`).
+- **Inputs:** `E08-design.md` §16 (and §1, §4 for the classes); the survey
+  `docs/rules/surveys/E08-dwellings.md` §13 (the rows, what the spec lacks), §2–§7; T78's record
+  in `E08-log.md` (batch E9's writer and spec); `docs/experiments/README.md`.
+- **Depends on:** T88b2 and its checkpoint ADV-Q43 (done). **Status:** ready; its cut confirmed
+  with the user at its start.
+
 *(Moved 2026-11-03, E08 T88b2: its entry as it stood before it was done whole, decision 240; the record in `E08-log.md`, T89 queued.)* **E08 T88b2 — the game side, ADR-0017's draft and the cut** (decisions 232, 239; as T77b)
 
 - **Scope:** `E08-design.md` part C (its §12 to §18 as part B's end lists them: the guards' battle,

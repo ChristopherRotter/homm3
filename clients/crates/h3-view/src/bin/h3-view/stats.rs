@@ -12,7 +12,8 @@ use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 use h3_ui::text::{Args, Catalogue};
 use h3_view::message::MessageBox;
 use h3_view::stats::{
-    Account, Described, Effect, Field, Hints, Memory, Modal, Pair, Stats, StatsLayout, Steps, Texts,
+    Account, Described, Effect, Field, HeroList, Hints, Memory, Modal, Pair, Stats, StatsLayout,
+    Steps, Texts,
 };
 use h3_view::tables::Tables;
 
@@ -240,9 +241,10 @@ pub fn of(sources: &Sources<'_>, observation: &Observation, id: u8, modal: bool)
     let damage = [stack.damage_min, stack.damage_max].map(|d| i32::from(d / factor) * times);
     // Morale and luck: the stack's own, Mirth's to Misfortune's changes in them (the engine's
     // materialised values, as the executable's +0x4E8 and +0x4EC; E17 M6 T2a2b2: T2a1 added the
-    // timed effects a second time). The engine's are clamped: its luck to 0 and up (CLT-Q40).
-    let morale = i32::from(stack.morale);
-    let luck = i32::from(stack.luck);
+    // timed effects a second time), before the roll levels' clamp as the executable's (CLT-Q40's
+    // carry, E17 M6 T3c1: the clamped luck, 0 and up, showed the Devils' -1 as neutral).
+    let morale = i32::from(stack.unclamped_morale);
+    let luck = i32::from(stack.unclamped_luck);
     let effects = stack
         .effects
         .iter()
@@ -338,16 +340,7 @@ fn account(
                 .text(&format!("creature.{k}"), &Args::new().count(2))
         })
     };
-    let field = observation
-        .battlefield
-        .and_then(|h| sources.manifest.keys.battlefields.get(usize::from(h)))
-        .map_or(Field::Other, |key| match key.rsplit(':').next() {
-            Some("cursed_ground") => Field::Cursed,
-            Some("holy_ground") => Field::Holy,
-            Some("evil_fog") => Field::EvilFog,
-            Some("clover_field") => Field::Clover,
-            _ => Field::Other,
-        });
+    let field = field(sources.manifest, observation);
     let listed = match bugs {
         h3_render::Bugs::Fixed => stack.controller,
         h3_render::Bugs::Original => stack.side,
@@ -406,7 +399,109 @@ fn account(
             .and_then(|_| plural(stack)),
         morale_spells: by(MIRTH) - by(SORROW),
         luck_spells: by(FORTUNE) - by(MISFORTUNE),
+        hero_morale: hero_list(sources.manifest, observation, listed, Kind::Morale),
+        hero_luck: hero_list(sources.manifest, observation, listed, Kind::Luck),
     })
+}
+
+/// Which of a hero's lists.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Kind {
+    Morale,
+    Luck,
+}
+
+/// The artifacts the hero's lists name (design §12.9), by their keys' names in the packs, with
+/// their original ids.
+const LISTED_ARTIFACTS: [(&str, u32); 8] = [
+    ("still_eye_of_the_dragon", 45),
+    ("clover_of_fortune", 46),
+    ("cards_of_prophecy", 47),
+    ("ladybird_of_luck", 48),
+    ("badge_of_courage", 49),
+    ("crest_of_valor", 50),
+    ("glyph_of_gallantry", 51),
+    ("pendant_of_courage", 108),
+];
+
+/// Side `side`'s hero's morale or luck list (`kind`; E17 M6 T3c1, design §12.9) from
+/// `observation`'s `morale_and_luck` (CLT-Q40's carry): its changes that reach its own stacks
+/// summed, the listed artifacts and the skill (Leadership, Luck) they name by their handles' keys
+/// in `manifest`; empty without a hero.
+fn hero_list(manifest: &Manifest, observation: &Observation, side: Side, kind: Kind) -> HeroList {
+    use h3_protocol::wire::{Affects, MoraleLuck, Source};
+    let name = |keys: &[String], handle: u16| {
+        keys.get(usize::from(handle))
+            .and_then(|k| k.rsplit(':').next())
+            .map(str::to_owned)
+    };
+    let skill_name = match kind {
+        Kind::Morale => "leadership",
+        Kind::Luck => "luck",
+    };
+    let mut list = HeroList::default();
+    let effects = &observation.morale_and_luck[usize::from(side == Side::Defender)];
+    for effect in effects {
+        let (amount, affects, source) = match (effect, kind) {
+            (
+                &MoraleLuck::Morale {
+                    amount,
+                    affects,
+                    source,
+                },
+                Kind::Morale,
+            )
+            | (
+                &MoraleLuck::Luck {
+                    amount,
+                    affects,
+                    source,
+                },
+                Kind::Luck,
+            ) => (amount, affects, source),
+            _ => continue,
+        };
+        if !matches!(affects, Affects::Own | Affects::Both) {
+            continue;
+        }
+        list.total += i32::from(amount);
+        match source {
+            Source::Skill { skill, level } => {
+                if name(&manifest.keys.skills, skill).as_deref() == Some(skill_name) {
+                    list.skill = level;
+                }
+            }
+            Source::Artifact { artifact } => {
+                let original = name(&manifest.keys.artifacts, artifact).and_then(|n| {
+                    LISTED_ARTIFACTS
+                        .iter()
+                        .find(|(key, _)| *key == n)
+                        .map(|&(_, id)| id)
+                });
+                if let Some(id) = original.filter(|id| !list.artifacts.contains(id)) {
+                    list.artifacts.push(id);
+                }
+            }
+            _ => {}
+        }
+    }
+    list
+}
+
+/// The special field `observation`'s battle is fought on, by its battlefield's key in
+/// `manifest` (the original's +0x53C0: 2 Cursed Ground, 3 Holy Ground, 4 Evil Fog, 5 Clover
+/// Field; E17 M6 T2a2b2): morale's and luck's descriptions, the heroes' info windows (T3b2).
+pub fn field(manifest: &Manifest, observation: &Observation) -> Field {
+    observation
+        .battlefield
+        .and_then(|h| manifest.keys.battlefields.get(usize::from(h)))
+        .map_or(Field::Other, |key| match key.rsplit(':').next() {
+            Some("cursed_ground") => Field::Cursed,
+            Some("holy_ground") => Field::Holy,
+            Some("evil_fog") => Field::EvilFog,
+            Some("clover_field") => Field::Clover,
+            _ => Field::Other,
+        })
 }
 
 /// The player whose colours the dialog's background takes (0x5F3550): the owner of the hero who

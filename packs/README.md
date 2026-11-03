@@ -8,7 +8,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 | `core.toml` | the `[pack]` manifest; resources, factions, terrains, creatures (identity and non-battle data: name, faction, level, speed, cost, growth, values, flags, upgrades, abilities outside battle), creature overrides' core halves, spell schools, spells (name, category, level, schools, cost, power, effect, `granted_by_name_only`), secondary skills, hero classes, heroes, hero overrides, artifact slots and their overrides, artifacts, `[hero_params]`, profiles | `h3-pack` into a `ContentPack`; `h3-content` into the core `Ruleset` |
 | `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), sieges (v37), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
-| `towns.toml` | the town part's data: per faction a town record, the part's parameters (owned by the town lane, ADR-0028 point 5; format: `crates/h3-pack-towns/src/lib.rs`, from E09 T5a; no pack has one yet) | `h3-pack-towns`; `h3-towns` into the `TownRuleset` on the core |
+| `towns.toml` | the town part's data: per faction a town record, the part's parameters (owned by the town lane, ADR-0028 point 5; format: `crates/h3-pack-towns/src/lib.rs`, from E09 T5a). The synthetic packs' are hand-written (E09 T5b2a), the original packs' harvested (E09 T5b2b2: `base` the eight RoE factions and the parameters, `ab` Conflux, `sod` the moats as SoD plays them) | `h3-pack-towns`; `h3-towns` into the `TownRuleset` on the core |
 
 The TOML keys are the same in either file; the sections below show each table with all its
 fields, whichever file a field lives in. Every creature and every spell of a pack has a row in
@@ -27,9 +27,9 @@ A pack folder without `battle.toml` (or `adventure.toml`) reads as an empty one.
 The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's installation by
 `crates/h3-harvest` and committed (E02 T4; OPEN-QUESTIONS Q13: gameplay data and names only, no
 flavor text). Do not edit them by hand: change the harvester or its gap-fill file and re-run
-`cargo run -p h3-harvest -- --install original-data/install --out packs` (it writes `core.toml`
-and `battle.toml`); `cargo xtask verify --with-original-data` checks that both match the
-installation. Original files stay in the gitignored `original-data/`; the installation itself is
+`cargo run -p h3-harvest -- --install original-data/install --out packs` (it writes `core.toml`,
+`battle.toml` and `towns.toml`); `cargo xtask verify --with-original-data` checks that they match
+the installation. Original files stay in the gitignored `original-data/`; the installation itself is
 never written to. A pack folder's `adventure.toml` is the adventure context's file (ADR-0006, E08
 amendment): hand-written source owned by the adventure lane, which the harvester never writes and
 `--with-original-data` does not check; its format is in `crates/h3-pack-adventure/src/lib.rs`.

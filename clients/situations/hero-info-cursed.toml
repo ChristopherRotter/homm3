@@ -1,0 +1,62 @@
+# E17 M6 T3b2: the heroes' info windows on Cursed Ground (design §12.8): `cursed-ground`'s
+# battle (special field 2, its obstacles the original's) with `hero-info-skills`' heroes' skills
+# behind their morale and luck: Orrin with Advanced Leadership and Expert Luck. On Cursed Ground
+# `hero_morale` and `hero_luck` give 0 whatever the hero has (the flag +0x53C0 = 2 passed,
+# 0x4769EE): the pictures' frames 3. Red human.
+
+[scenario]
+id = "hero-info-cursed"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): the panel's buttons
+# lit on the human's turn (E17 M3 T6a).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+battlefield = "base:cursed_ground"
+obstacles = [
+    { hexes = [94, 76, 60], anchor = 93, kind = "base:obstacle_15" },
+    { hexes = [46, 45, 44, 29, 28], anchor = 61, kind = "base:obstacle_41" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, and Crag Hack, a Barbarian, each with 1 in every primary skill and 10 spell points;
+# their skills behind morale and luck as `hero-info-skills`'.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+effects = [{ kind = "morale", amount = 2 }, { kind = "luck", amount = 3 }]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]

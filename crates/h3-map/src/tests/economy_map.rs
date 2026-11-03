@@ -274,6 +274,7 @@ fn map() -> w::Map {
         level_limit: 0,
         banned_skills: Vec::new(),
         events: events(),
+        teams: None,
     }
 }
 

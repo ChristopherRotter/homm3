@@ -34,7 +34,7 @@ fn row(name: &str, growth: u16, attack: u16) -> Vec<String> {
 
 /// 150 creatures: ids 0-9 town 0, 10-19 town 1, 20-24 town 2 (an AB town), the rest neutral;
 /// id 3 is an unused slot.
-fn inputs() -> Inputs {
+pub(crate) fn inputs() -> Inputs {
     let header = vec![vec!["Name".to_owned()], vec!["Singular".to_owned()]];
     let mut sod = header.clone();
     let mut exe = Vec::new();
@@ -108,6 +108,11 @@ fn inputs() -> Inputs {
             horde_buildings: Vec::new(),
             garrison: Vec::new(),
             dwelling_2_chance: 30,
+        },
+        town_names: towns::Tables {
+            neutral: single(&[]),
+            special: single(&[]),
+            dwellings: single(&[]),
         },
         hero_tables: hero_tables(),
         artifact_tables: artifact_tables(),
@@ -437,7 +442,7 @@ fn hero_tables() -> heroes::Tables {
     }
 }
 
-const GAP: &str = r#"
+pub(crate) const GAP: &str = r#"
 [[source]]
 id = "s"
 kind = "wiki"

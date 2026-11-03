@@ -413,13 +413,11 @@ Two predictions added to the survey's rows: **E10-4** records whether the Barrac
 closed after its purchase (§5.3: a single creature's closes; §13 follows it); **E10-1** records the
 question's size word against the guards' total and the first stack (§12).
 
-- **The writer and the specs** (T89): `h3_map::writer` writes classes 17, 20 (by subclass, with an
-  owner), 78 and 216 to 218 (a set, levels, a town identifier of 0) — the fixtures of §14 reuse it;
-  the spec's fields (`h3-experiment`, `cross-lane`): dwellings with an owner, random dwellings,
-  camps, a hero's full army of named stacks, teams in a hot-seat map (E10-6; if the original's
-  hot seat refuses teams, E10-6 is scored from the reading and says so), a town for each player
-  in E10b (past day 7: the lane's `TRAPS.md`); the specs `E08-batch-10a.toml`, `-10b.toml` and
-  their templates.
+- **The writer and the spec's fields:** built by T89a (`E08-log.md`, T89a; decisions 244, 245) —
+  the fixtures of §14 reuse the writer. **The specs** (T89b): `E08-batch-10a.toml`, `-10b.toml`
+  and their templates, with teams in the hot-seat map (E10-6; if the original's hot seat refuses
+  teams, E10-6 is scored from the reading and says so) and a town for each player in E10b (past
+  day 7: the lane's `TRAPS.md`).
 - **The harness** (T90; common, CLT-Q18: built with the harness check, the client and map-client
   lanes' inboxes told): the dwelling records (game +0x4E39C: creatures, counts, guards; the owner
   +0x57 is read), a camp's tile words (+0x22, +0x0), the hire dialog (the most +0xAC, the amount
@@ -447,7 +445,7 @@ confirmed at its start). **Batch E10 runs before the build and before the shared
 
 | Round | Tasks | Content |
 |---|---|---|
-| 2 | **T89** | Batch E10's maps: the writer's classes, the spec's fields (`cross-lane`), the two specs and templates (§16) |
+| 2 | **T89** | Batch E10's maps: T89a the writer's classes, the spec's fields (`cross-lane`); T89b the two specs and templates (§16; decision 244) |
 | 3 | **T90** + **T91** | T90: the harness's reads and clicks, the recipes, the runs E10a and E10b. T91: scored (survey §16) |
 | 4 | **T92** | `shared/`: the two ADRs with T91's outcome, the glossary, `docs/06-security.md` |
 | 5 | **T93** | T93a: the kinds, the parameters, the table, the derivations, the packs, the harvest's check (§1–§3; part v16). T93b: the import, its refusals and quirk entries, ADV-STUB-13 (§4; map import v16) |

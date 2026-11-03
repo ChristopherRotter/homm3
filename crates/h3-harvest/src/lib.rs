@@ -7,7 +7,8 @@
 //! (`data/gapfill.toml`). Output: the pack texts, each split into `core.toml` and `battle.toml`
 //! ([`split`]), deterministic byte for byte, and a report of
 //! everything that was not harvested or looked suspicious. The harvester checks that the packs
-//! compile in every allowed expansion combination before returning them.
+//! compile in every allowed expansion combination before returning them. The town part's files
+//! (`towns.toml`) come from [`towns::harvest_towns`] on the core files (E09 T5b2b2).
 //!
 //! Layouts: `docs/formats/installation.md`; pack format: `packs/README.md`.
 
@@ -17,6 +18,7 @@ pub mod gapfill;
 pub mod heroes;
 pub mod sieges;
 pub mod split;
+pub mod towns;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
@@ -66,6 +68,8 @@ pub struct Inputs {
     pub wall_tables: (TextTable, TextTable),
     /// The executable's town tables (E09 T5b2b1; the town packs' harvest, T5b2b2, reads them).
     pub town_tables: TownData,
+    /// The buildings' name tables (E09 T5b2b2).
+    pub town_names: towns::Tables,
     /// Hero content text tables (E04a T3).
     pub hero_tables: heroes::Tables,
     /// Artifact text tables (E04a T3b).
@@ -122,6 +126,11 @@ impl Inputs {
                 table(&sod, "H3bitmap.lod", "BALLIST.TXT")?,
             ),
             town_tables,
+            town_names: towns::Tables {
+                neutral: table(&sod, "H3bitmap.lod", "BldgNeut.txt")?,
+                special: table(&sod, "H3bitmap.lod", "BldgSpec.txt")?,
+                dwellings: table(&sod, "H3bitmap.lod", "Dwelling.txt")?,
+            },
             hero_tables: heroes::Tables {
                 classes: table(&sod, "H3bitmap.lod", "HCTRAITS.TXT")?,
                 heroes: table(&sod, "H3bitmap.lod", "HOTRAITS.TXT")?,

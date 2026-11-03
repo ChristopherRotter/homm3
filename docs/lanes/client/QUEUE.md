@@ -18,22 +18,20 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T3b2 — the heroes' info windows' morale and luck
+### E17 M6 T3c2 — the descriptions' overrides, the Alliance and a siege town's buildings
 
-- **Scope:** T3b cut in two by the user (2026-11-03; T3b1 done, design §12.8: the window, its
-  counts, both stills at morale and luck 0). The window's two pictures: `imrls.def` and
-  `ilcks.def`, frame `hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 + 3, called with the
-  hero, the other side's hero (+0x53CC for the defender's, +0x53D0 for the attacker's) and
-  +0x53C0 = 2, then 1 (`army_info_hero_set` 0x46CC10); both read (not yet: 0x2A9 and 0x2E8
-  bytes), the value derived from what the observation tells (the stats dialog's `Account`:
-  the army's alignments, undead, the other army's creatures, the spells; CLT-Q40), the hero's
-  lists (Leadership, Luck, the artifacts, the visits, the grail) once the battle lane's carry
-  lands (this lane's inbox), each line not derivable listed; `h3_view::hero_info::Info`'s
-  `morale` and `luck` filled (0 until then); recorded: a hero whose morale or luck is not 0
-  (an army of one town, three towns, undead; a scenario's `effects` for Leadership or Luck).
-  T4's army info option reuses the window.
-- **Acceptance:** as T2a2b1's. **Depends on:** T3b1 (done 2026-11-03, design §12.8).
-  **Status:** ready.
+- **Scope:** T3c's rest (T3c1 done 2026-11-03: the hero's lists and the unclamped value, design
+  §12.9; T3c's entry in `QUEUE-ARCHIVE.md`), from `Observation.morale_and_luck` and
+  `Siege.bonuses` (design §12.4): the Hourglass of the Evil Hour's line (82, alone; a
+  `LuckAtMost` reaching the side, either hero's), the Spirit of Oppression's (119, replacing the
+  lines before it while the base is above 0; a `MoraleAtMost`), the Angelic Alliance's join of
+  the alignments (an `AlignmentGroup`: its factions count as one), a siege town's buildings
+  (morale's building 5 +1, 0x660B48, and a Castle's 22 +2; luck's Rampart building 21 +2,
+  0x660B40) and the owner's Grail line (§12.9; a `Building` source), both by a town record's
+  index (the town lane's records, `packs/*/towns.toml`: the index to the building's original
+  id); CLT-Q42 if answered by then; each line not derivable listed.
+- **Acceptance:** as T2a2b2's; recorded: a siege town's buildings (the battle's map writes the
+  town). **Depends on:** T3c1 (done). **Status:** ready.
 
 ### E17 M6 T4 — the combat options dialog
 
@@ -99,18 +97,6 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   --map` fills the template beside the map when its stamp matches (no cargo build). A town's
   visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
   after. `clients/capture/README.md`, "Towns (E09 T3b)".
-- 2026-11-03 (this lane, E17 M6 T2a2b2, CLT-Q40; carried by the battle lane, BAT-Q64,
-  `cross-lane`): the carry is on the wire (protocol v37, public to seats and spectators):
-  `Observation.morale_and_luck` (each side's hero's `MoraleLuck` changes, caps and alignment groups
-  with a `Source`: a skill and its level, an artifact, the specialty, a visit's once-mark, a
-  building, temporary), `Siege.bonuses` (the buildings by index with their changes) and
-  `Stack.unclamped_morale`, `unclamped_luck`. Fill the descriptions' hero lists, the two
-  artifacts' lines, the Angelic Alliance's join and a siege town's buildings, and the header and
-  picture by the unclamped value (design §12.4). Until the adventure lane splits the battle
-  bonuses by visit, they come as one temporary line each, as the original's rest. Your workspace's
-  call sites were adapted to the new fields (the source on `BattleEffect`, defaults in the tests'
-  wire literals).
-
 - 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
   call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
   amended; the user, AI-Q10), the all-seeing `choose` only as a game's option.

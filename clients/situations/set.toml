@@ -1494,6 +1494,45 @@ at = 0
 differing = 0
 why = "exact: on Cursed Ground its luck line alone (E17 M6 T2a2b2)"
 
+# E17 M6 T3c1: the hero's list first (`hero_morale_description` 0x4DC320, `hero_luck_description`
+# 0x4DCAC0; design §12.9), and the header and pictures by the stack's unclamped value.
+# `stats-morale-skill`: the Royal Griffins' morale with Orrin's Advanced Leadership and one
+# alignment; `stats-luck-skill`: their luck with his Expert Luck; `stats-luck-devils`: the
+# Archangels' luck facing the defender's Arch Devils, -1 (bad: frame 2, the dialog's too).
+
+[[situation]]
+id = "stats-morale-skill"
+scenario = "stats-skills.toml"
+seat = "attacker"
+actions = ["key:t", "right:44,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Royal Griffins' morale, good: Advanced Leadership's line first, then one alignment (E17 M6 T3c1)"
+
+[[situation]]
+id = "stats-luck-skill"
+scenario = "stats-skills.toml"
+seat = "attacker"
+actions = ["key:t", "right:98,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: their luck, good: Expert Luck's line (E17 M6 T3c1)"
+
+[[situation]]
+id = "stats-luck-devils"
+scenario = "stats-devils.toml"
+seat = "attacker"
+actions = ["key:t", "right:98,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Archangels' luck -1, bad: facing the Arch Devils, frame 2 here and in the dialog (E17 M6 T3c1)"
+
 
 # E17 M6 T2b1: the right button held over the battle (`battle_right_click` 0x4769C0; design
 # §12.5): the stack on the hex there, either side's, shows its stats dialog without the OK and the
@@ -1708,7 +1747,7 @@ why = "exact: \"Phase Wait\", the narrowest popup (E17 M6 T3a)"
 # 0xFD; design §12.8): its info window at its side's place (`army_info_show` 0x46CDF0), held by
 # `popup_run_held` with no popup (the cursor hidden), the status line the move's hint. `hero-info`:
 # the attacker's Orrin in Red's colours; `hero-info-enemy`: the defender's Crag Hack in Blue's,
-# defense 0. Both heroes' morale and luck 0 (hero-info.toml; T3b2 the others).
+# defense 0. Both heroes' morale and luck 0 (hero-info.toml; T3b2's below).
 [[situation]]
 id = "hero-info"
 scenario = "hero-info.toml"
@@ -1735,3 +1774,40 @@ actions = ["right:770,70"]
 at = 0
 differing = 0
 why = "exact: Crag Hack's window at (721, 135) in Blue's colours (E17 M6 T3b1)"
+
+# E17 M6 T3b2: the windows' morale and luck (`hero_morale` 0x4E39B0, `hero_luck` 0x4E36C0: the
+# hero's own list, held to -3..=3, 0 on Cursed Ground; design §12.8). `hero-info-skills`: Orrin
+# with Advanced Leadership and Expert Luck (2 and 3), Crag Hack with Basic Leadership and Basic
+# Luck (1 and 1); `hero-info-cursed`: Orrin's skills on Cursed Ground (0 and 0).
+[[situation]]
+id = "hero-info-skills"
+scenario = "hero-info-skills.toml"
+seat = "attacker"
+actions = ["right:30,70"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Orrin's morale 2 and luck 3, the pictures' frames 5 and 6 (E17 M6 T3b2)"
+
+[[situation]]
+id = "hero-info-skills-enemy"
+scenario = "hero-info-skills.toml"
+seat = "attacker"
+actions = ["right:770,70"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Crag Hack's morale 1 and luck 1, frames 4 (E17 M6 T3b2)"
+
+[[situation]]
+id = "hero-info-cursed"
+scenario = "hero-info-cursed.toml"
+seat = "attacker"
+actions = ["right:30,70"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: on Cursed Ground Orrin's morale and luck 0 whatever his skills, frames 3 (E17 M6 T3b2)"

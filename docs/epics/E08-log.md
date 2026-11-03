@@ -11288,3 +11288,118 @@ status accepted; T88b2's entry to `QUEUE-ARCHIVE.md`, T89 queued.
 --with-original-data` passed every step it runs (deny and ffi-smoke skipped by the scope; the VM
 restarted during the setup's baseline, so the scoped run stands in). CI's full verify on the pull
 request is the record.
+
+### Increment 10, round 2: T89a, the writer's classes and teams, the spec's fields (2026-11-03, `adventure/e08-t89a`, `cross-lane`)
+
+Baseline: `master` at 0224865c (#683, T88b2, merged; CI's verify of the engine code on b163d206,
+the sandbox's light gates). The executables, the DLLs, the four LODs, the sound and video
+archives, `maps.tar`, `extracted.tar` and the MP3s staged at the start (the user's computer was to
+go offline soon). **The cut** (decision 244): measured at the start against T78's record (the
+writer about 300 lines with tests, the fields about 300, the specs about 1 000 lines of TOML), T89
+in two at the code's seam, T89a this; the teams a field of the writer's `Map` (decision 245).
+
+**The writer** (`h3_map::writer`, module `economy`): `OwnedBody::Owner` also on a dwelling of one
+creature (17, subclass below 80) or of several (20, below 2); `OwnedBody::RandomDwelling { owner,
+factions, levels }` for 216 to 218 not tied to a town (the body's town identifier 0, the set's two
+bytes; `factions` exactly for 216 and 217, at least one of bits 0–8, A-34; `levels` exactly for
+216 and 218, codes 0 to 6, the lowest not above the highest, A-36; 217's subclass a level code,
+218's a faction; refused in an RoE map, which holds none: the census); the owners checked by one
+helper. The Refugee Camp (78) joins `PLAIN_OBJECTS` (21 classes; no body). `Map::teams:
+Option<Teams>` (the model's type, re-exported): the count and each colour's team, 1 to 8 teams,
+every colour's below the count; `None` writes a count of 0. The constants `DWELLING_OBJECT`,
+`MULTI_DWELLING_OBJECT`, `REFUGEE_CAMP_OBJECT`, `RANDOM_DWELLING_OBJECT`,
+`RANDOM_DWELLING_BY_LEVEL_OBJECT`, `RANDOM_DWELLING_BY_FACTION_OBJECT`, `HIGHEST_LEVEL_CODE`.
+Tests (`tests/dwellings.rs`): the eight objects and the teams read back in SoD (the Conflux's
+bit in the set's second byte, no teams a count of 0), an RoE map's dwellings, camp and teams, the
+refusals (classes 18 and 19, the subclasses past the types, an owner nobody plays, a body on the
+wrong class, a set or levels where the class has none, an empty or out-of-range set, levels out
+of order or past 7, the team counts and a team past the count, a random dwelling in RoE), and
+the import as it reads them today (each an untyped object, unowned, until T93). The literal
+writer `Map`s of every lane gain `teams: None` (decision 245): `h3-view`'s situation,
+`h3-map-view`'s situation and art test, `h3-cli`'s AI tests, the lane's own tests and examples.
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane` by decision 244 as T78's):
+`[[map.ownable]]` takes the dwellings (17, 20) with an owner and the random dwellings (216 to 218)
+with `factions` (by `FACTIONS` name, at least one; 216 and 217) and `levels = [lowest, highest]`
+(the game's 1 to 7, written as codes 0 to 6; 216 and 218), refusing either on another class and
+on the class whose picture fixes it; an owned random dwelling makes its colour play, as a mine.
+`[[map.object]]` takes the Refugee Camp (`Tables::plains` follows `PLAIN_OBJECTS`). `[map] teams =
+[["red", "blue"]]`: each team's colours in order, a colour that plays (a hero, a town or an owned
+object), on one team at most; a playing colour in none on a team of its own after them, the
+colours nobody plays on the first; the template's top names the teams. A hero's full army of
+seven named stacks with a creature in several needed nothing new (`army`); a town for each player
+neither (`[[map.town]]`, any owner since T78). `docs/experiments/README.md`, "Increment 10's
+objects": the fields and the pictures' footprints from `Objects.txt` (most dwellings two tiles on
+`at`'s row entered at `at`, the Guardhouse also north-west, the Conflux two rows of three entered
+west of `at`, the Dwarf Cottage entered west of `at`, the Angel Portal the two tiles west of `at`;
+the random dwellings 2 × 2 entered from either bottom tile; the camp two tiles entered at `at`).
+Checked with the staged tables: a spec of the Dragon Cliffs, both 20s, the three random dwellings,
+a camp and the teams compiles, the template naming the teams.
+
+**Versions:** none moved (the writer and the spec only; the import reads the classes as before).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data`
+passed every step it runs but `check-lane` (by design on a `cross-lane` branch; `cargo xtask
+check-lane --cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo check --workspace
+--all-targets`, the clients' `cargo check -p h3-view -p h3-map-view --all-targets` (SDL's apt
+packages installed first) and clippy with `-D warnings` on `h3-experiment`, `h3-cli`, `h3-view`
+and `h3-map-view` clean. CI's full verify on the pull request is the record: its first run failed
+one random case of `tests::view::a_viewer_learns_nothing_it_cannot_see` on `master`'s code (a
+viewer's own income moved by an unseen change; the test lays out a `RawMap`, no writer), reproduced
+locally with its seed and left to a task of its own (the lane's inbox, the seed uncommitted).
+
+### Increment 10, round 2: T89b, batch E10's specs (2026-11-03, `adventure/e08-t89b`, `cross-lane`)
+
+Baseline: `master` at 91e36f20 (#690). The executables, the DLLs, the four LODs, the sound and
+video archives, `maps.tar`, `extracted.tar` and the MP3s staged at the start; the VM restarted
+during the setup's baseline, so CI stands in. CI's full verify on 2030ef5 (#689) had failed a
+random case of `h3-heroes`' `derivation_succeeds_exactly_for_valid_details_and_stays_in_limits`:
+13 morale and luck effects against the property's bound of 12, since CLT-Q40 (#685) gives each
+source its own effect; fixed in its own pull request (#691, `adventure/e08-heroes-effects-bound`:
+the seam's limit and at most one effect per kind, affected sides and source; the seed committed).
+**The cut** (decision 246): measured at the start against T78's record (about 800 lines of TOML
+for nine rows), the user took T89b whole, with the batch's row in `docs/experiments/README.md`
+`cross-lane`.
+
+**The specs** (compiled with the staged tables; the stamps in the templates):
+`E08-batch-10a` (72 × 72, two days; E10-1, E10-3 to E10-7; Red 7 heroes, Blue 1, Tan 1) and
+`-10b` (72 × 72, eight days; E10-8 to E10-10; Red 3, Blue 1; Red's Castle and Blue's Stronghold
+far from every read, TRAPS.md's day-7 defeat). Agent's calls (change freely):
+- **The teams** (E10-6): Red and Blue one team; a third player, **Tan**, a computer with one hero
+  walled in by rock at (66, 66), so the hot-seat map holds an enemy of the team (whether the
+  original ends a game whose every player is on one team at once was not read).
+- **The treasuries by timed events** (Red's, as batch E9-11 saw them fire after the income and the
+  starting bonus, floored at 0): day 1 takes all gold and crystal and gives 1 000 gold (E10-6 and
+  E10-4), day 2 takes the gold and gives 10 000 (E10-5); one crystal from a pile on day 2. E10-6
+  runs before E10-4 while Red still holds 1 000, so its most (3) is above 0 and only the ally's
+  flag disables the buttons; its Recruit is never clicked while enabled (the review's finding 1).
+- **Additions to survey §13's rows:** E10-1's hire questions answered no (the flag before the
+  question, the counts kept); E10-3's first visit, then the second's "no Pikemen"; E10-5 buys the
+  dragon (2 400 gold and 1 crystal paid); E10-6 also visits Blue's guarded Dragon Cliffs (no guards'
+  question for an ally, finding 3); E10-8 reads days 2 and 7 (no refill before the week) and the
+  week's name (no kind reaches a dwelling), buys 2 of the Barracks' 4 (set, not added: 4, not 6);
+  E10-9 buys the rest on day 2 and visits again (ADVEVENT 44, deserted); E10-10 adds Red's own
+  popup of the camp it visited (VCMI shows the creature to the visitor).
+- **The predictions beyond the rows:** E10-1's size words (GENRLTXT 422 with ARRAYTXT 182: "a few"
+  Green Dragons, "a pack of" Gold Golems for the Golem Factory's 15 where VCMI's first stack's 9 says
+  "several", "a pack of" Earth Elementals); E10-7's Portal of Glory (17.8) anchored at (13, 30),
+  its entrance (12, 30); the Golem Factory (20.1) at (16, 30); the Dwarf Cottage (17.12) entered at
+  (20, 30), one left of its anchor (21, 30).
+
+**The walks** (each leg priced by a throwaway test in `h3-map`'s tests on the written maps, as
+T78's, not committed; the import reads the dwellings as untyped objects, so a visit's step onto the
+entrance and the next leg's start from it were added by hand): E10-1's day about 1 525 of 2 000
+(the three visits); every other leg under 1 050.
+
+**The review** (a fresh agent against survey §13, the sections the rows cite, design §16 and the
+tables; seven findings, all taken): (1) E10-6's Recruit would spend Red's gold if the hot seat drops
+the teams, spoiling E10-4: never clicked while enabled; (2) Red's treasury recorded before E10-6;
+(3) E10-6 never met an ally's guards (a Barracks has none): Blue's Dragon Cliffs added; (4) E10-7's
+random dwellings were out of the hero's sight: R1 moved to (12, 30), R3 to (21, 30), the hero to
+(16, 31); (5) the dialog's most is memory-only (by hand its Available and what Max sets); (6) the
+records are found by their entrance (+0x54), so a hero on it hides nothing of them (said in 10a's
+instructions; E10-6 steps off); (7) Blue's Barracks renamed U, 10b's date read on day 2 too. The
+legs priced again on the rebuilt maps. The numbers, texts, footprints, subclasses, collisions,
+entries from below, army room, the order, the early ends and the rows' coverage found right.
+
+**Versions:** none moved (specs and templates only).
