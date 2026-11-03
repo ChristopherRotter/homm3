@@ -6485,12 +6485,15 @@ set/stats-hint t00100 bd790074f26ac437
 set/stats-key t00100 b0d0cdcdd86090f0
 set/stats-luck t00000 b3feab18ba872294
 set/stats-luck-cursed t00000 a9d550cc2c0f5954
+set/stats-luck-devils t00000 d0dd3a3e8f6bb1b2
+set/stats-luck-skill t00000 6bf763618ea71bf3
 set/stats-machine t00000 4c91ac1ae4a197d9
 set/stats-morale t00000 899f81c84f1a3e03
 set/stats-morale-angels t00000 ba2c6236ed91da5a
 set/stats-morale-cursed t00000 8772f51f9da3686d
 set/stats-morale-fog t00000 aaa50d8aeef76cb5
 set/stats-morale-holy t00000 b47043803d9fd47a
+set/stats-morale-skill t00000 d539feb8a5d01dd2
 set/stats-off t00100 4d7fd1abfe29574f
 set/stats-ok t00100 01b7f0958607dd14
 set/subterranean t00000 05c527ed84667866

@@ -8,11 +8,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   at M3 T9c, CLT-Q18: the battle client here, the adventure map client the map-client lane's
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 and T2
   done (#620 to #672, T2's cuts in the epic). T3 cut in two by the user (2026-11-03): T3a done
-  (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679, the
-  hero's info window, design §12.8); **T3b2 done** (its morale and luck: the hero's own, from
-  CLT-Q40's carry; CLT-Q42 asked; three stills exact; #690 from `client/e17-m6-t3b2`: check it
-  first); **next: T3c** (morale's and luck's descriptions' carried lines, from the inbox; cut it
-  with the user at its start), then T4 to T7; then M7 ranked play and the server browser.
+  (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679), T3b2
+  done (#690; CLT-Q42 asked); T3c cut in two by the user (2026-11-03): **T3c1 done** (the hero's
+  lists in morale's and luck's descriptions and the unclamped value, design §12.9; three stills
+  exact; its pull request from `client/e17-m6-t3c1`: check it first); **next: T3c2** (the
+  Hourglass's and the Spirit of Oppression's lines, the Angelic Alliance, a siege town's
+  buildings and the Grail's line: QUEUE), then T4 to T7; then M7 ranked play and the server
+  browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -41,23 +43,25 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T3b2 (done; #690 open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T3c1 (done; its pull request open: check it first).** The original data
+  staged (57 files) first; #690 had merged; the baseline's `check.sh` passed. The user cut T3c
+  in two (T3c1 the hero's lists and the unclamped value, T3c2 the rest). Read
+  `hero_morale_description` 0x4DC320, `hero_luck_description` 0x4DCAC0 and `town_building_name`
+  0x4610E0 whole (design §12.9); built `describe::HeroList`, the binary's `stats::hero_list`, the unclamped values; the
+  visits and the Grail's line into the rest (T3c2 takes the Grail with the siege's buildings);
+  three stills exact; `drawn`; `check.sh`.
+
+- **2026-11-03, E17 M6 T3b2 (done; #690 merged).** The original data staged
   (57 files) first; #679 and the battle lane's carry (#685) had merged; the baseline's `check.sh`
   passed. Read `hero_morale` 0x4E39B0, `hero_luck` 0x4E36C0 and the clamp whole (design §12.8:
   the hero's own values, 0 on Cursed Ground, the Hourglass's 0); built `hero_info::values` and
   the binary's `stats::field`; CLT-Q42 asked; three stills exact; `drawn`; `check.sh`. The inbox's
   CLT-Q40 item became T3c.
 
-- **2026-11-03, E17 M6 T3b1 (done; #679 open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T3b1 (done; #679 merged).** The original data staged
   (57 files) first, then the computer went offline; #676 had merged; the baseline's `check.sh`
   passed. The user cut T3b in two (T3b1 the window, T3b2 its morale and luck). Read
   `army_info_hero_create` 0x46C370 whole and `battle_right_click`'s hero branches (design §12.8);
   built `[hero_info]`, `h3_view::hero_info`, `Battle::hero_info`, `Boxes::hero_info`; two stills
   exact at their first capture; the window checked under Xvfb; `drawn`; `check.sh`.
 
-- **2026-11-03, E17 M6 T3a (done; #676 merged).** The original data staged
-  (57 files) first; #672 had merged; the VM restarted during the baseline's coverage, CI's green
-  run on `master` stood for it. The user cut T3 in two (T3a the controls' help, T3b the heroes'
-  windows). Read `battle_control_help`, `message_box_size` and the items' right press (design
-  §12.7); built `panel::help`, `Battle::control_help`, `Boxes::help`; five stills exact; the
-  window checked under Xvfb; `drawn`; `check.sh`.

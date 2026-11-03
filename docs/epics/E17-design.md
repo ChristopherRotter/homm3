@@ -5177,7 +5177,8 @@ file: H3ab_bmp.lod's older one lacks a field's lines, so its records after 82 ar
   creatures but war machines (flag 0x40), each by its town (the four elementals neutral in a map of
   kind 0); the number of the ten (neutral, the nine towns) that count one or more.
 - **The hero's lists** (0x4DCAC0 luck, 0x4DC320 morale, which the hero screen shares; read for
-  their sources): the cheat's mark (+0x105 bit 22, GENRLTXT 438); the morale or luck artifacts
+  their sources, then whole at T3c1: §12.9): the cheat's mark (+0x105 bit 22 luck's, 23
+  morale's, GENRLTXT 438); the morale or luck artifacts
   worn, alone or in a worn combination (artifacts 45 to 51 and 108; luck's lines 63 to 66, 80,
   morale's 89 to 92, 111); the adventure map's visits until the next battle (+0x105's bits); the
   Luck or Leadership level (+0xD2, +0xCF; 74 to 76, 105 to 107); the owner's grail building (+0x22);
@@ -5207,8 +5208,10 @@ file: H3ab_bmp.lod's older one lacks a field's lines, so its records after 82 ar
   stack's effects. The spells' line is the value the client's lines and the spells make, less the
   field's change and the base, so it shows what the executable shows when the hero adds nothing.
   The dialog's own morale and luck no longer add the timed effects a second time (T2a1's slip:
-  the wire's values hold them). *Not built:* the lines CLT-Q40 requested; the header and picture
-  by the unclamped value.
+  the wire's values hold them). *Not built:* the lines CLT-Q40 requested (carried since; the
+  hero's lists and the header and picture by the unclamped value built at T3c1, §12.9; the
+  Hourglass's and the Spirit of Oppression's lines, the Angelic Alliance's join and a siege town's
+  buildings T3c2).
 
 ### 12.5 The right button over the battle: a stack's held dialog (M6 T2b1)
 
