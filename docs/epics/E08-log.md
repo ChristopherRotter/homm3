@@ -11201,3 +11201,46 @@ every step it runs (fmt, clippy, check-arch, check-rules, check-stubs, check-doc
 clients-lock, check-lane, test, coverage, determinism, bench-check, doc-drift, original-data; deny
 and ffi-smoke skipped by the scope; exit 2, its normal result); no code changed. CI's full verify
 on the pull request is the record.
+
+### Increment 10, round 1: T88b1, the map side of the design note and ADR-0016's draft (2026-11-03, `adventure/e08-t88b1`)
+
+Baseline: `master` at 92c4cc7 (#677, T88a, merged; #675 and #676 of the town and client lanes
+too). The executables, the five DLLs, the four LODs, `maps.tar` and `extracted.tar` staged at the
+start (the user's computer went offline soon after, as announced). At its start the user added to
+T88a's checkpoint that a dwelling's guards are never its owner's ("you can't actually leave guards
+at your own dwelling … owning it does not grant ownership over the creatures until you recruit"):
+the agent agreed from the survey (no Leave Guards for an own dwelling, §4.1; the guards renewed
+every week whoever owns it, §6.1) and asked two questions (`AskUserQuestion`): T88b's cut (by side,
+recommended; the note then the drafts; whole) and whether batch E10 keeps E10-2 as a check (keep,
+recommended; drop). **User: by side; drop E10-2** (decisions 238, 239; 234 superseded).
+
+**The design note** `E08-design.md` written for increment 10, parts A and B (part C's sections
+named for T88b2): part A, the content (§1 the kinds `dwelling`, `random_dwelling`, `refugee_camp`,
+entered, not from above, by the original's two class lists; §2 `[params.dwellings]` with the guard
+level, the guard factor and the free level, the `[[random_dwelling]]` table of seven dwellings per
+faction checked against the original's derivation, the full guards and the shift derived at
+compile, the costs; §3 the packs by the expansion that introduced each object, the harvest's
+check against `Objects.txt` and the text tables); part B, the map (§4 the import, map import v16:
+the classes, the factions table, the owners, those tied to a town a blocker with ADV-STUB-13, the
+refusals A-34 to A-36 as ledger entries from 36; §5 the holds, a hero on a random dwelling's
+visitable tile refused, the resolution at the build with the type's footprint and the original's
+anchor; §6 the state, adventure state hash v20: the owners, a dwelling's week as one block none
+while every dwelling is full, the camps' block; §7 the visits; §8 the purchase's map side; §9 the
+week's step; §10 information; §11 ids, quirks, the town lane's seams, versions). ADR-0015 needs no
+draft (its import still draws nothing).
+
+**A reading of its own** (`Heroes3.exe`, `scripts/exe.py`): `random_dwellings_resolve`' anchor move
+(0x502CD0 to 0x502D44) counts the bottom-row cells from the anchor leftwards while each is passable
+and not visitable, within the template's width (+0x10), stopping at the first that is not: a run,
+not a count over the row (a count would move the Basilisk Pit's by six); `docs/exe/map.toml`'s
+summary of 0x502B60 says so.
+
+**The draft** `docs/lanes/adventure/adr-drafts/0016-increment-10.md`: ADR-0016 points 1 (the
+dwellings' owners, a dwelling's week, the camps, a random dwelling resolved into the static map),
+3 (no Leave Guards for an own dwelling; the room rule for what a dwelling gives), 4 (the three
+kinds, the visit with the guards unowned, the hire question, the free creatures, the purchase, the
+random dwellings' draw and refusals, the camp, the week's step), 5 (the flag's reveal) and 6
+(what a viewer sees).
+
+**Docs:** decisions 238 and 239 in the epic; the survey's D-51, §13 (E10-2 dropped) and §15 marked
+revised; T88b's entry to `QUEUE-ARCHIVE.md`, T88b2 queued.
