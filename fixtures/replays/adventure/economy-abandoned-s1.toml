@@ -1,0 +1,58 @@
+commands = [
+    "0 move 0 3,4,0 3,5,0 3,6,0 4,7,0 5,8,0 6,9,0 7,10,0 8,11,0",
+    "0 move 0 9,11,0 10,11,0 11,11,0 12,12,0 13,13,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 0 14,13,0 15,13,0 16,13,0 17,14,0 18,15,0",
+    "0 move 0 18,16,0 19,17,0 20,16,0",
+    "0 answer offer accept",
+    "0 battle attack 4 149",
+    "0 battle attack 3 47",
+    "0 battle attack 3 47",
+    "0 answer level-up first",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0xda6563a44eede047",
+    "0x768c770164032377",
+]
+
+[replay]
+format = 8
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x962e87e7a01056f6"
+adventure_ruleset_hash = "0x67e6f0786f22d8f8"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 22
+adventure_state_hash_version = 19
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-economy-36.h3m"
+hash = "0x0d7ea287c88b7469"
+import_version = 15
+
+[result]
+day = 3
+final_hash = "0xc4a6a18f6ae2e7b3"
