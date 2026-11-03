@@ -6383,6 +6383,9 @@ set/help-scroll t00000 bb6a0a1117d35a96
 set/help-tactics t00100 964655febf9a22eb
 set/help-wait t00000 2534978347258a68
 set/help-wait t00100 2534978347258a68
+set/hero-info t00000 56b65f4cee2aeaa4
+set/hero-info t00100 56b65f4cee2aeaa4
+set/hero-info-enemy t00000 1e2771936729e8bb
 set/heroes-castle-rampart t00000 b5d23b63281ef544
 set/heroes-conflux t00000 8382d0cab14bf928
 set/heroes-dungeon-stronghold t00000 29195b1a3bfac8c5

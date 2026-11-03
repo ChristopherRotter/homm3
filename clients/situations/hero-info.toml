@@ -1,0 +1,56 @@
+# E17 M6 T3b1: the heroes' info windows (design §12.8). The ground and obstacles of `book`
+# (book.toml); each army of two towns' creatures (two alignments: no morale from them), no skills
+# or artifacts behind morale or luck, so both heroes' morale and luck are 0 in the original (T3b2
+# builds the others). Orrin (Castle) with Marksmen and Wood Elves, primary skills 4, 3, 2, 2 and
+# 20 spell points (Knowledge 2); Crag Hack (Stronghold) with Goblins and Gnolls, 12, 0, 1, 1 and
+# 10. Red human.
+
+[scenario]
+id = "hero-info"
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:marksman"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "base:wood_elf"
+count = 8
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+[[defender]]
+slot = 2
+creature = "base:gnoll"
+count = 10
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 4
+defense = 3
+power = 2
+knowledge = 2
+mana = 20
+max_mana = 20
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 12
+defense = 0
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10

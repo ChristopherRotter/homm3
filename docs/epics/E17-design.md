@@ -5363,3 +5363,53 @@ the log (`text_pcx_create`, vtable 0x642DE8) and its scroll buttons (`custom_but
   dropped, nothing posted at its end). The stills' `right:` over the panel (`Boxes::help`). *Not
   modelled:* a right press while the battle does not take the input (§12.5's note: the original's
   handler tests no turn, so its help may show on a computer's turn too).
+
+### 12.8 The right button over a hero: its info window (M6 T3b1)
+
+T3b cut in two by the user (2026-11-03): T3b1 here (the window and its counts), its morale and
+luck T3b2 (`hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 not read; CLT-Q40's carry). Read:
+`army_info_hero_create` 0x46C370 whole, `battle_right_click`'s branches 0xFD and 0xFC again
+(0x4769C0 to 0x476AB3); the fill `army_info_hero_set` 0x46CC10 and `army_info_show` 0x46CDF0 at
+T3a (their map entries).
+
+- **The window.** `combat_dialog_create` makes one per side at the battle's start: the
+  attacker's at (1, 135) (the battle dialog's +0x74), the defender's at (721, 135) (+0x78), each
+  78 × 202 with no shadow. Its items, ids 2100 to 2114 (0x834 to 0x842) in this order:
+  `CHrPop.pcx` (0, 0); the portrait's picture, none until filled (10, 6, 58 × 64); four rows at
+  x 9 from y 75, 12 apart, each a label "%s:" (0x660D28) of GENRLTXT 381 to 384 ("Att" to
+  "Know"), alignment 0, and in the same 60 × 12 box its value, alignment 2, `tiny.fnt` colour 4;
+  morale's label (GENRLTXT 385) at (9, 131) and `imrls.def` (47, 131, 22 × 12), luck's (386) at
+  (9, 143) and `ilcks.def` (47, 143), both labels colour 1; the spell points (7, 165, 64 × 30),
+  colour 4, alignment 5 (centred both ways). The labels' texts are set at the construction, the
+  values' empty; every item is added hidden (its state bits 2 and 4 cleared), its shown flag +0x58
+  clear.
+- **The right button** over a hero's rectangle ("hex" 0xFD the defender's, 0xFC the attacker's;
+  `mouse::spot`'s rectangles): the side's hero (+0x53D0, +0x53CC), none: nothing; the fill with
+  the hero, the other side's and +0x53C0 = 2; the window shown (`army_info_show`: the screen under
+  it saved, its items shown and drawn over the battle as it stands, its rectangle shown);
+  `popup_run_held` with no popup (§12.3: the cursor hidden, every dialog paused, so the battle
+  behind stands still; its ends the right button's release, a left press or a left release, every
+  other input dropped); then, unless "Combat Army Info Level" is set (`option_army_info_level`
+  0x6987C8, 0 by default), `army_info_hide` (the screen restored). No cursor set, nothing posted:
+  the status line as the move to the hero left it.
+- **The fill** (T3a's reading): the background in the hero's player's colours, the portrait the
+  hero table's +0x34 by the hero's portrait (58 × 64, `HPL*.pcx`); attack and defense held to
+  0..=99, power and knowledge to 1..=99, by "%d"; morale's and luck's frames the value + 3
+  (T3b2); the spell points "%s\n%d/%d" (0x670088) with GENRLTXT 388's word, the hero's points
+  (+0x18) and knowledge × 10 × the intelligence factor (floats, truncated).
+- **Recorded** (`clients/situations/set.toml`, the right button held through the frames, the
+  clock frozen; `hero-info.toml`: each army two towns' creatures and no skills or artifacts
+  behind morale or luck, so both heroes' are 0 in the original): `hero-info` (Orrin in Red's
+  colours, 4, 3, 2, 2 and 20/20; at 0 and 100 ms, the battle behind still), `hero-info-enemy`
+  (Crag Hack in Blue's at (721, 135), 12, 0, 1, 1 and 10/10). Both exact at their first capture.
+- **The viewer** (`h3_view::hero_info`: the layout's `[hero_info]`, each side's place and the
+  constructor's items; `Info::of` the side's hero as the observation shows it, its `max_mana` the
+  most, its portrait the hero type's (*provisional*, as the result window's: a map's own portrait
+  the client does not know); `at` the side whose hero's rectangle holds a point while it has a
+  hero; `window` the filled box at the side's place). The window (`Battle::hero_info`): the right
+  button down over a hero's rectangle while the battle takes the input opens it as `Asked::Held`
+  (§12.6's popup: the cursor hidden, every input but its ends dropped, nothing posted at its end).
+  The stills' `right:` over a hero (`Boxes::hero_info`). *Not built:* morale and luck (T3b2: both
+  shown 0's frame); "Combat Army Info Level" (T4: the window stays shown after the release and the
+  battle's mouse move fills it, 0x47561C and 0x475676). *Not modelled:* a right press while the
+  battle does not take the input (§12.5's note).

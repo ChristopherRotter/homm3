@@ -490,7 +490,9 @@ then `updateGuards` (3 × growth for level 5 and more). Three sources agree.
   an owned dwelling's guards (the neutral seat or the owner, as increment 9's owned mines,
   ADV-MIN-002's `Defender::Garrison`). Recommended: **the original** (unowned, the neutral seat),
   checked by batch E10's E10-2. *Decided (ADV-Q42, decision 234):* a `fix-optional` quirk, either
-  behaviour by a flag.
+  behaviour by a flag. *Revised (T88b's start, decision 238):* **the original, not a quirk**: the
+  guards are the dwelling's own creatures, renewed weekly (§6.1), never its owner's troops (no
+  Leave Guards, §4.1); no flag; E10-2 dropped.
 - **D-52 (free creatures with a full army).** The original refuses (GENRLTXT 426, the count kept);
   VCMI with `mergeOnRecruit` merges two of the hero's stacks of one type first. Gameplay: a hero
   with seven slots, two of one type, gets the free creatures in VCMI. Recommended: **the
@@ -551,13 +553,13 @@ For T88b's drafts and design note (ADR-0015 to -0017, the GAM-DEC rules); a sket
 Increment 10's batch (named after the increment as batches E3 to E9; not the epic E10), **batch
 E10**, runs on the client lane's harness in SoD on Easy, hot seat, from maps `h3-experiment` writes
 (`docs/experiments/README.md`), as before (decision 232's agent's call). Its spec and recipe are
-tasks of T88b's cut; this is the plan. **Two runs**: **E10a** the visits (E10-1 to E10-7, day 1
-and 2), **E10b** the week (E10-8 to E10-10, to day 8 or 15).
+tasks of T88b's cut; this is the plan. **Two runs**: **E10a** the visits (E10-1, E10-3 to E10-7, day
+1 and 2; E10-2 dropped by decision 238), **E10b** the week (E10-8 to E10-10, to day 8 or 15).
 
 | Row | Settles | Setup | Record | The reading predicts |
 |---|---|---|---|---|
 | E10-1 | §2.2, §4.2, §4.3 | Red's hero (strong) visits a neutral Dragon Cliffs (Green Dragon), a neutral Golem Factory and a neutral Elemental Conflux | each question's text; each battle's defending stacks and side owner; the records' counts, guards and owner after | 3 Green Dragons; 9 Gold + 6 Diamond Golems; 12 Earth Elementals; unowned; flagged after each win, counts = growth |
-| E10-2 | D-51 | Blue owns a Dragon Cliffs at load (Blue human); Red's hero attacks it | the battle's sides: owner and controller | the defending side unowned (owner −1), not Blue's (VCMI Blue's) |
+| ~~E10-2~~ | D-51 | *Dropped (decision 238).* Blue owns a Dragon Cliffs at load (Blue human); Red's hero attacks it | the battle's sides: owner and controller | the defending side unowned (owner −1), not Blue's (VCMI Blue's) |
 | E10-3 | §4.4, D-52 | Red's hero A visits a neutral Guardhouse (Pikemen) twice; hero B with seven stacks, two of Archers, none of Pikemen, visits another | A's army and the record after each visit; B's army and the record | +14 Pikemen then "no Pikemen"; B refused, the count kept (VCMI merges the Archers) |
 | E10-4 | §5.2, §5.3 | Red with 1 000 gold owns a Barracks at load (Swordsmen: 300 gold, growth 4) and buys the most | the dialog's most; the treasury, the army and the count after | the most 3 (min(4, 1 000 ÷ 300)); 900 paid, the count 1 |
 | E10-5 | §5.1, §5.2 | Red owns a Dragon Cliffs at load (Green Dragon: gold and 1 crystal), with 10 000 gold and no crystal; then with 1 crystal | the dialog's most each time | 0, then 1 (the crystal bounds it; no guards for its owner) |
@@ -628,5 +630,7 @@ the mines were (the owner plays an owned mine's guards: `visit_mine` passes the 
 E9's E9-2 saw Blue order each of its mine's stacks), the user made it **a `fix-optional` quirk**,
 either behaviour by a flag (on in `faithful`: unowned; off: the owner's side, as a mine's), its
 ledger entry once E10-2 confirms; (2) D-52 **as the original**; (3) **the original's footprints**
-in the increment; (4) **batch E10 before the build**.
+in the increment; (4) **batch E10 before the build**. *Revised* at T88b's start (decision 238): the user, on how
+the guards come to an owned dwelling, made D-51 **the original's rule, not a quirk** (no flag) and
+dropped E10-2.
 

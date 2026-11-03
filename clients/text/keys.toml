@@ -463,6 +463,48 @@ original = [{ at = "HELP:388:1" }]
 id = "battle.help.end-tactics"
 original = [{ at = "HELP:389:1" }]
 
+# A hero's info window (E17 M6 T3b1, design §12.8; `army_info_hero_create` 0x46C370,
+# `army_info_hero_set` 0x46CC10): each row's label, a word and a colon (the executable's "%s:",
+# 0x660D28); the words GENRLTXT 381 to 386 (the skills' short names, morale, luck); the spell
+# points "%s\n%d/%d" (0x670088) with GENRLTXT 388's word, the points and the most.
+[[key]]
+id = "battle.hero-info.label"
+args = { word = "text" }
+original = [{ at = "EXE:0x660D28", printf = ["word"] }]
+
+[[key]]
+id = "battle.hero-info.attack"
+original = [{ at = "GENRLTXT:381" }]
+
+[[key]]
+id = "battle.hero-info.defense"
+original = [{ at = "GENRLTXT:382" }]
+
+[[key]]
+id = "battle.hero-info.power"
+original = [{ at = "GENRLTXT:383" }]
+
+[[key]]
+id = "battle.hero-info.knowledge"
+original = [{ at = "GENRLTXT:384" }]
+
+[[key]]
+id = "battle.hero-info.morale"
+original = [{ at = "GENRLTXT:385" }]
+
+[[key]]
+id = "battle.hero-info.luck"
+original = [{ at = "GENRLTXT:386" }]
+
+[[key]]
+id = "battle.hero-info.spell-points"
+original = [{ at = "GENRLTXT:388" }]
+
+[[key]]
+id = "battle.hero-info.points"
+args = { word = "text", points = "number", most = "number" }
+original = [{ at = "EXE:0x670088", printf = ["word", "points", "most"] }]
+
 # The word for a creature, by `count`: a strike's perish row names it when the strike killed
 # several kinds.
 [[key]]

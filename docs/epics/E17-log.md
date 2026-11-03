@@ -4109,6 +4109,34 @@ session).
   it; over the log its line, a left press ends it. `drawn`; `clients/scripts/check.sh`; the
   scoped verify with the original data.
 
+### M6 T3b1 — the right button over a hero: its info window (2026-11-03)
+
+On `client/e17-m6-t3b1`, the user present. The sandbox new, the original files staged first
+(57 files; the user's computer then went offline, nothing more needed from it); #676 had merged;
+the baseline's `check.sh` passed. The user cut T3b in two at its start (T3b1 the window and its
+counts, T3b2 its morale and luck: `hero_morale` and `hero_luck` unread, most of their sources not
+in the observation until CLT-Q40's carry).
+
+- **Read** (design §12.8): `army_info_hero_create` 0x46C370 whole (734 instructions: fifteen
+  items, ids 0x834 to 0x842, all added hidden), `battle_right_click`'s branches 0xFD and 0xFC
+  again (the side's hero or nothing, the fill's arguments, `popup_run_held` with no popup, the
+  window hidden after unless "Combat Army Info Level").
+- **The library:** the layout's `[hero_info]` (each side's place and the constructor's items),
+  `h3_view::hero_info` (`Info::of`, `at`, `window`), the catalogue's `battle.hero-info.*` (the
+  label "%s:" 0x660D28, GENRLTXT 381 to 386 and 388, the spell points 0x670088).
+- **The binary:** `Battle::hero_info` (the window as `Asked::Held`), the window's right button
+  over a hero first, the stills' `Boxes::hero_info`; `results::portrait` shared with the result
+  window's way to a hero type's portrait.
+- **Recorded:** `hero-info` (Orrin, Red; 0 and 100 ms) and `hero-info-enemy` (Crag Hack, Blue,
+  defense 0) on the new `hero-info.toml` (two towns' creatures a side: morale and luck 0 in the
+  original): both exact at their first capture; the original's frames looked at (the windows,
+  their colours, rows and spell points).
+- **Checked:** the window under Xvfb with `xdotool` on `hero-info.toml` in hot seat: the right
+  button over Orrin holds his window (a move and the key T meanwhile change no pixel), its release
+  closes it; over Crag Hack his window at (721, 135), a left press ends it. `drawn` (two new,
+  the rest the same); `clients/scripts/check.sh`; `h3-view gate`; the scoped verify with the
+  original data.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

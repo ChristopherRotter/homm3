@@ -4,6 +4,17 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-03, E08 T88b1: the entry as it stood before T88b was cut in two by side, decision 239; T88b1's record in `E08-log.md`, T88b2 queued.)* **E08 T88b — the ADR amendment drafts, the design note and the cut** (decision 232; as T77b)
+
+- **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
+  10 (its pointer replaced; increment 9's note in `E08-log.md` as the model), the building rounds
+  cut, batch E10 first (decision 237: its spec, the harness's reads, its two runs, then its
+  scoring), the D-51 quirk's flag named (decision 234); the checkpoint's question (ADV-Q43): the
+  user accepts the drafts before anything is built (decision 232).
+- **Inputs:** the survey `docs/rules/surveys/E08-dwellings.md` (§12 the interfaces' sketch, §13
+  batch E10's plan, §14 the proposed ids, §15 the answers); decisions 231–237.
+- **Depends on:** T88a (done). **Status:** ready; its cut confirmed with the user at its start.
+
 *(Moved 2026-11-03, E08 T88a: its entry as it stood before it was done whole, decision 233; the record in `E08-log.md`.)* **E08 T88a — the dwellings and hiring survey** (decision 232; as T77a for increment 9: survey file
 `docs/rules/surveys/E08-dwellings.md`)
 

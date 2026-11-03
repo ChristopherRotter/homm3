@@ -485,6 +485,21 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 let key = h3_view::panel::help_at(layout.panel_in(observation), point)?;
                 Some(catalogue.text(key, &h3_ui::text::Args::new()))
             };
+            // A hero's info window where the right button shows it (E17 M6 T3b1): the opening's
+            // hero.
+            let hero_info = |point: [i32; 2]| {
+                let portrait = |hero_type: u16| {
+                    crate::results::portrait(&manifest.keys.hero_types, &tables, hero_type)
+                };
+                let side = h3_view::hero_info::at(&layout, observation, point)?;
+                let info = h3_view::hero_info::Info::of(observation, side, &portrait)?;
+                Some(h3_view::hero_info::window(
+                    &layout.hero_info,
+                    &catalogue,
+                    side,
+                    &info,
+                ))
+            };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
                 leave,
@@ -498,6 +513,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 held: &held,
                 turret: &turret,
                 help: &help,
+                hero_info: &hero_info,
             };
             Some(crate::spellbook::still(
                 &actions,
