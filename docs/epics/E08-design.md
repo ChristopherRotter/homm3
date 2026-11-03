@@ -5,9 +5,10 @@ and owned objects) is in `E08-log.md` ("Increment 9's design note at its closure
 the code's comments cite these notes as "increment N's design note §M".
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 10's
-amendments, drafted in the lane's `adr-drafts/` (`0016-increment-10.md` by T88b1; ADR-0017's by
-T88b2); written from T88a's survey and the answers at ADV-Q41 and ADV-Q42 (the epic's decisions
-231, 232, 235–238). The task that builds a section deletes it; the file goes when the epic closes.
+amendments, drafted in the lane's `adr-drafts/` (`0016-increment-10.md` by T88b1,
+`0017-increment-10.md` by T88b2); written from T88a's survey and the answers at ADV-Q41 and
+ADV-Q42 (the epic's decisions 231, 232, 235–238, 240). The task that builds a section deletes it;
+the file goes when the epic closes.
 Facts and sources: survey `docs/rules/surveys/E08-dwellings.md` (§ numbers are the survey's
 unless they name this note); the proposed rule ids are the survey's §14.
 
@@ -15,7 +16,8 @@ Written in two parts by side (decision 239): **parts A and B** by T88b1, the con
 (`h3-adventure`, `h3-pack-adventure`, `h3-map`); **part C** by T88b2, the game, the env, batch E10
 and the cut (§12 on). ADR-0015 needs no amendment: its point 4's import still draws nothing, a
 random dwelling stays a placeholder the build resolves, as a random monster. *Agent's call (change
-freely)* marks a choice the user may still change at the checkpoint (ADV-Q43, T88b2).
+freely)* marks a choice the user may still change; the checkpoint (ADV-Q43, T88b2) accepted the
+note and both drafts as written, the cut as §17 proposes (decisions 241–243).
 
 **D-51 is the original's rule, not a quirk** (decision 238, revising 234): a dwelling's guards are
 its own creatures, renewed every week whoever owns it (§6.1), never troops its owner left (an own
@@ -131,15 +133,15 @@ Hash tags follow the part's last (the building task's); ruleset part v16.
   the draw (`AdventureState::new` promises it does not). *Agent's call*; the census checks the
   shipped maps (none expected).
 - **The resolution, when the game is built** (`StaticMap::new` with the setup stream, before the
-  static map's tiles, lists and owners are made; the draw's place among the build's draws is
-  ADR-0017 point 4's amendment, T88b2): for each random dwelling in object order, a faction
-  uniform among its set, a level uniform in its range, the table's dwelling type. The object takes
-  that type (as a random resource takes its drawn pile type, ADV-PIK-002), the type's footprint
-  as its masks and the anchor moved right by the type's shift (the original's anchor, which the
-  map client's captures compare; the moved anchor may lie one column past the right edge, where
-  only its free cell is: the static map ignores a cell off the map as it does past the top and
-  left). Its owner is the setup's. From then on it is a dwelling like a placed one; nothing
-  remembers it was random.
+  static map's tiles, lists and owners are made: in the placement walk, before every other draw
+  of the static map and after E09's placeholders, ADR-0017 point 4's draft): for each random
+  dwelling in object order, a faction uniform among its set, a level uniform in its range, the
+  table's dwelling type. The object takes that type (as a random resource takes its drawn pile
+  type, ADV-PIK-002), the type's footprint as its masks and the anchor moved right by the type's
+  shift (the original's anchor, which the map client's captures compare; the moved anchor may lie
+  one column past the right edge, where only its free cell is: the static map ignores a cell off
+  the map as it does past the top and left). Its owner is the setup's. From then on it is a
+  dwelling like a placed one; nothing remembers it was random.
 - **Lists:** the static map lists the dwellings (both kinds, in object order: the **dwelling
   index**) and the camps (the **camp index**) beside its ownable and weekly lists; the dwellings
   join the ownable list.
@@ -265,7 +267,237 @@ A defeated player's dwellings become neutral, their guards kept (ADV-OWN-004, wi
 
 ## Part C — the game, the env, batch E10 and the cut
 
-Written by T88b2 (decision 239): §12 the guards' battles, §13 the game (the hire dialog as a pending
-decision, GAM-DEC-008, its commands and events), §14 the env, replays, fixtures, properties and
-benchmarks, §15 versions, §16 batch E10, §17 shared and `cross-lane` work, the building tasks and
-the exit criteria, §18 risks.
+Written by T88b2 (decision 239, whole: decision 240): §12 the guards' battle, §13 the game (the
+hire dialog as a pending decision, GAM-DEC-008, its answer and events), §14 the env, replays,
+fixtures, properties and benchmarks, §15 versions, §16 batch E10, §17 shared and `cross-lane`
+work, the building tasks and the exit criteria, §18 risks. ADR-0017's draft:
+`adr-drafts/0017-increment-10.md` (points 1, 3, 4, 6, 8, 10, 11).
+
+### 12. The guards' battle (GAM-BAT-001 amended; ADV-DWL-004)
+
+- **The question** (§7 step 2): a new offer kind, *agent's call* `OfferKind::Guarded { creature,
+  count_word }` (no price): the first occupied slot's creature and `MonsterParams::count_word` of
+  the guards' total, as GENRLTXT 422 shows them (VCMI's word reads the first stack: a text
+  difference). Not increment 9's bare `Fight`: the mine's question names neither. Declined:
+  nothing, the hero stays on the entrance.
+- **The battle:** `BattleStart` with `Defender::Guards { army }` (the guards as they stand,
+  unsplit; ADV-PIK-004's kind), so the side is **unowned** and the neutral seat plays it whoever
+  owns the dwelling (decision 238; `Defender::Garrison` stays the owned mine's). Fought at the
+  entrance (the visited tile): its terrain, coast and special ground as any battle's (ADR-0022),
+  no type terrain (the original: the tile's battlefield, unlike the three subterranean mines);
+  the obstacles from the tile under `ADV-QUIRK-5`; the setup's facts as any (GAM-BAT-010 to -013).
+- **Its end** (`AdventureState::end_unowned_battle`, the object at the tile a dwelling): the
+  defender's survivors by slot become the dwelling's guards in its week entry (§6), none after a
+  draw; no event (nothing shows them, §10). Lost or retreated (no surrender to an unowned side):
+  the hero leaves the map (GAM-BAT-003), the owner unchanged. Won: the guards none; the visit's
+  rest (GAM-DEC-007: `AdventureOutcome::reward_after`, given by `give_won` after the winner's
+  levels) flags the dwelling (§7 step 3) and asks the hire question. The experience and the rest
+  of GAM-BAT-002 as any battle's.
+
+### 13. The game (`h3-game`; GAM-DEC-008; game state hash v23)
+
+- **Two offers** (`Answer::Offer`, the system actor's `Decline`): the guards' question (§12) and
+  **the hire question**, *agent's call* `OfferKind::Hire { creatures }` (no price): the dwelling's
+  creatures in its order, a camp's one creature (hidden until then, §10). Accepted:
+  `AdventureState::accept_offer` gives the free creatures (§7 step 4: each `CreaturesJoined`, a new
+  `JoinRefused { hero, creature, count }` without room, a new `NoneToRecruit { object_type,
+  anchor, creature }` for a count of 0; each to the owner alone) and returns the dialog in the
+  outcome's new field **`hire: Option<HireDialog>`** (the hero, the source by object index, type
+  and anchor, `read_only`), or none (no creature above `free_level`). A camp's count of 0 makes no
+  offer: `ObjectEmpty` (ADVEVENT 44's "deserted"), to the owner.
+- **The hire dialog** (`Decision::Hire { owner, dialog }`, GAM-DEC-008; the original's
+  `H3RecruitMgr`): its owner's alone; holds no one else; blocks its owner's moves and `EndTurn`
+  like an offer; opened with `HireOpened` to the owner. **The answer** `Answer::Hire(HireAnswer)`:
+  - **`Buy { creature, amount }`**, in this order of refusal, each typed and leaving the state
+    untouched: a read-only dialog; a creature not the source's (by type: a source's creatures are
+    distinct); an amount of 0 or above the count; no room in the hero's army (ADV-ARM-007: a stack
+    of the type that takes the amount within the stack's most, else a free slot; GENRLTXT 426);
+    the treasury short of cost × amount for any resource. Then the game pays the price
+    (`ResourcePaid` per resource, the core's order) and the adventure's infallible purchase lowers
+    the count and adds the creatures (`CreaturesJoined`, to the owner). A dialog of **one**
+    creature closes after its purchase (`DecisionClosed`), as the original's; one of several
+    stays open.
+  - **`Close`** (the system actor's default, the original's Close): `DecisionClosed`. *Agent's
+    call:* in the kind's own answer, as the University's `Leave`; `Answer::Close` stays the
+    exchange dialogs'.
+- **The legal set** (`legal_commands`): for each creature in the source's order whose **most** is
+  at least 1, `Buy` of the most, then `Close`; read-only: `Close` alone. The most is
+  `min(count, each resource of the cost: treasury ÷ cost, the room's bound)` (the room's: the
+  stack's most if a slot is free, else the most less the smallest count among the hero's stacks
+  of the creature, else 0). The query **`hire_range(state, rules, player, creature)`** gives
+  `1..=most`, as `split_range` gives a split's counts; every amount in it is accepted. *Agent's
+  call:* the room in the bound, so every listed answer applies; the original's slider leaves it
+  out and refuses at Recruit, the same rule.
+- **The view** (`DecisionView::Hire(HireView)`, to its owner alone, ADR-0016 point 6): the hero,
+  the source by type and anchor, `read_only`, and for each creature its count and its cost by
+  resource (the treasury is the owner's own: a client draws the slider). No most in the view.
+- **An ally's dialog** (E10's teams): opened `read_only` after the hire question, nothing free,
+  only `Close` (the original disables every button, §4.4). *Agent's call:* the decision, not an
+  event, so a client draws one dialog. Unreachable until E10 (`allied` is the player alone), so
+  not built now: the building task leaves the branch out (no stub: no player meets it).
+- **The state:** the open decision in `GameState`'s queue (the dialog's counts are the
+  adventure's, read at each view and purchase; the decision holds the names only). Game state
+  hash v23 (the kind and its hash). **E09's reuse** (its decision 4, increment 3): a town's
+  recruitment opens the same decision with a town dwelling as the source and the hero's or the
+  garrison's army as the target: `HireDialog` names its source and target as enums E09 extends;
+  the purchase rule (§8) and the answer stay one.
+
+### 14. The env, replays, fixtures, properties, benchmarks
+
+- **The env** (`h3-sim`, the AI lane's; `cross-lane` in the game's task with the user's consent,
+  as decisions 138 and 203): action encoding **v7** appends four entries, `18 + c`, `c < 4`: buy
+  the most of the open dialog's creature `c` (the source's order, the original's four), masked
+  by `legal_commands`; `Close` on entry 10 (close or leave); the two questions on 9 and 10.
+  *Agent's call:* the most only, as the original's Max then Recruit; an amount head is the AI
+  lane's. The observation the env returns is `GameObservation` (decision 187): no flat encoding.
+- **Replays:** adventure replay format v9 (`Answer::Hire`); every golden replay rehashed (the
+  hashes' versions; no recorded map holds a dwelling, a random dwelling or a camp). New, on
+  **`e08-dwellings-36.h3m`** (`crates/h3-map/tests/dwellings_map.rs`, `h3_map::writer`): two
+  players; a Guardhouse (level 1), a Barracks, a Dragon Cliffs (guarded), the Golem Factory and
+  the Elemental Conflux (class 20), neutral and owned at load by each; random dwellings of 216,
+  217 and 218 (the Angel Portal's move among their outcomes, one drawn by the seed search); two
+  Refugee Camps; a hero with seven stacks (D-52), gold without crystal. Random play over 22 days
+  (three weeks), scripted ones: a lost then a won guards' battle and the flag; the free creatures
+  joined and refused; the dialog's most, a purchase of less, refusals for room and the treasury,
+  a one-creature dialog closing; a camp visited twice in a week and after it; a random dwelling
+  visited at its drawn entrance.
+- **Properties** (`h3-map`'s `play.rs`, `view.rs`): the plans place the new classes
+  (`DWELLINGS`), the end of turn over weeks; the oracles learn the two questions, the free
+  creatures and the dialog; checks: §6's invariants after every command; every listed `Buy`
+  accepted, an amount past the range or another creature rejected with the state unchanged; the
+  treasury and the army change by the price and the amount; after a week's step every dwelling
+  full and every camp's creature of its set and levels with its growth; a resolved random dwelling
+  is a dwelling of its holds with its type's footprint at the moved anchor; no viewer sees a
+  dwelling's counts or guards or a camp's creature but the visitor's owner through its question,
+  dialog and events.
+- **Benchmarks** (`benches/adventure/`, on **`e08-dwellings-144.h3m`**: the shipped maps' most
+  dwellings (99) and camps, random dwellings, a monster on every hundredth free tile):
+  `day-start-dwellings-xl-144` (the `EndTurn` that starts day 8: the refill and the camps' draws),
+  `fork-dwellings-xl-144` (forks after a visit's write: one block copy), `random-play-dwellings-36`
+  (hiring in random play). The existing workloads measured against `master` right after the
+  visits' first build (`homm3-bench-regression`): none plays a dwelling, so a change is the
+  dispatch's and is fixed, not re-baselined, unless its reason is written.
+- **`--with-original-data`** (`crates/h3-map/examples/original_data.rs`): every shipped map's
+  static layer with the new classes: the 2 061 dwellings typed (695 under `base` alone on the 44
+  RoE-format maps), the owners at load, the 206 random dwellings resolved for a fixed seed (each a
+  dwelling of its set and range, its entrance on the map), the 1 397 tied to towns as blockers
+  (ADV-STUB-13), the 321 camps; the harvest's check (§3).
+
+### 15. Versions, rule ids, quirks
+
+| Version | Change | Task |
+|---|---|---|
+| adventure ruleset part v16 | the three kinds, `[params.dwellings]`, `[[random_dwelling]]` (§1, §2) | T93a |
+| map import v16 | classes 17, 20, 78, 216–218, the owners, the refusals (§4) | T93b |
+| adventure state hash v20 | the owners, a dwelling's week, the camps, the resolved random dwellings (§5, §6) | T94 |
+| game state hash v23 | the hire dialog (§13) | T95b |
+| adventure replay format v9 | `Answer::Hire` | T95b |
+| env action encoding v7 (the AI lane's) | the four hire entries | T95b (`cross-lane`) |
+
+E09 bumps the same rows (`E09-design.md` §19: replay format v9 by T5a, map import v16 by T7a,
+game state hash v23 by T7b, part v16 and state hash v20 by T8a): **the second to merge bumps
+again**, each change once (the table's numbers are this increment's if it merges first).
+
+Rule ids (the survey's §14): ADV-DWL-001 to -005, ADV-HIR-001, -002, ADV-RFG-001, GAM-DEC-008 new;
+amended: ADV-OWN-001, -002, -003, ADV-OBJ-002, ADV-MON-003, GAM-CAL-002, GAM-BAT-001 (§12).
+ADV-OWN-004 (a defeat's) stays E10's. Quirks: `ADV-QUIRK-36` A-34, `-37` A-35, `-38` A-36 (refused
+at the import, `exploit-fix`, no flag, as `ADV-QUIRK-33`). Stub: ADV-STUB-13 (a random dwelling
+tied to a town, E09).
+
+### 16. Batch E10
+
+Survey §13's nine rows in two runs (decision 237), on the harness (`clients/capture/`, common) in
+SoD on Easy, hot seat, from maps `h3-experiment` writes: **E10a** the visits (E10-1, E10-3 to
+E10-7, days 1 and 2), **E10b** the week (E10-8 to E10-10, to day 8). E10-2 dropped (decision 238).
+Two predictions added to the survey's rows: **E10-4** records whether the Barracks' dialog is
+closed after its purchase (§5.3: a single creature's closes; §13 follows it); **E10-1** records the
+question's size word against the guards' total and the first stack (§12).
+
+- **The writer and the specs** (T89): `h3_map::writer` writes classes 17, 20 (by subclass, with an
+  owner), 78 and 216 to 218 (a set, levels, a town identifier of 0) — the fixtures of §14 reuse it;
+  the spec's fields (`h3-experiment`, `cross-lane`): dwellings with an owner, random dwellings,
+  camps, a hero's full army of named stacks, teams in a hot-seat map (E10-6; if the original's
+  hot seat refuses teams, E10-6 is scored from the reading and says so), a town for each player
+  in E10b (past day 7: the lane's `TRAPS.md`); the specs `E08-batch-10a.toml`, `-10b.toml` and
+  their templates.
+- **The harness** (T90; common, CLT-Q18: built with the harness check, the client and map-client
+  lanes' inboxes told): the dwelling records (game +0x4E39C: creatures, counts, guards; the owner
+  +0x57 is read), a camp's tile words (+0x22, +0x0), the hire dialog (the most +0xAC, the amount
+  +0xB8, the items Max 532, Recruit 30722, Close 30721; whether it is open), the battle's
+  defending side's owner (E9-2's read), the hint and popup texts (E10-10). The recipes, the runs.
+- **The scoring** (T91): survey §16 (new), each row against its prediction; a row against the
+  reading opens an `ADV-Q` before the shared task; the rows each new rule cites (`verified` when
+  built).
+
+### 17. Shared and `cross-lane` work; the building tasks; the exit criteria
+
+**Shared and `cross-lane`:** the `shared/` task (T92): ADR-0016's and -0017's drafts applied with
+batch E10's outcome; `docs/03-domain.md`'s terms (dwelling, random dwelling, Refugee Camp, a
+dwelling's guards, free creatures, hire question, hire dialog); `docs/06-security.md`'s lines
+(§10, §13). **No shared code:** the core's creatures hold the faction, level, cost and growth; the
+part's kinds and packs are the lane's. `cross-lane`: batch E10's spec (`h3-experiment`, T89); the
+harness (common, T90); the env's encoding (`h3-sim`, T95b). The inboxes: the town lane's (the
+factions table, T93b; the dwellings' owners and kind for its growth, T94; the dialog to reuse,
+T95b), the AI lane's (v7, T95b), the map-client lane's (the views' drawn type and moved anchor,
+T94).
+
+**The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut
+confirmed at its start). **Batch E10 runs before the build and before the shared task** (decision
+237), so the ADRs are applied once with the rows' verdicts:
+
+| Round | Tasks | Content |
+|---|---|---|
+| 2 | **T89** | Batch E10's maps: the writer's classes, the spec's fields (`cross-lane`), the two specs and templates (§16) |
+| 3 | **T90** + **T91** | T90: the harness's reads and clicks, the recipes, the runs E10a and E10b. T91: scored (survey §16) |
+| 4 | **T92** | `shared/`: the two ADRs with T91's outcome, the glossary, `docs/06-security.md` |
+| 5 | **T93** | T93a: the kinds, the parameters, the table, the derivations, the packs, the harvest's check (§1–§3; part v16). T93b: the import, its refusals and quirk entries, ADV-STUB-13 (§4; map import v16) |
+| 6 | **T94** | The holds, the resolution, the lists, the owners and the start's reveal, the week's and the camps' blocks, the week's step, the views (§5, §6, §9, §10; adventure state hash v20) |
+| 7 | **T95** | T95a: the visits, the guards' question and battle, the flag, the free creatures, the camp's visit (§7, §12). T95b: the purchase, the hire dialog and its legal set, view and events, the env (§8, §13, §14's env; game state hash v23, replay format v9, `cross-lane` v7) |
+| 8 | **T96** + **T97** | T96: the dwellings maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T97: the audit against the exit criteria; increment 10 closed; increment 11 refined |
+
+**Increment 10's exit criteria:**
+1. Dwellings (17, 20), random dwellings not tied to a town (216–218) and Refugee Camps import typed
+   with their owners; A-34 to A-36 are refused and recorded; those tied to a town are blockers
+   (ADV-DWL-001, -005, ADV-OBJ-002, ADV-OWN-002).
+2. A random dwelling resolves when the game is built into its drawn faction's and level's dwelling
+   with that type's footprint at the original's moved anchor; a hero on its visitable tile is
+   refused (ADV-DWL-005).
+3. Every dwelling holds its creatures' growth and its guards (the factor times the growth of each
+   creature of the guard level or more) from the build and each week, owned or not, no week's or
+   month's kind; each camp a creature of its levels with its growth (ADV-DWL-002, -003,
+   ADV-RFG-001, GAM-CAL-002).
+4. Another team's visit to a guarded dwelling asks, then fights the guards unsplit and unowned at
+   its entrance, their survivors kept until the week; won or unguarded it is flagged (radius 3);
+   one's own team's skips both; no Leave Guards (ADV-DWL-004, ADV-OWN-001, GAM-BAT-001).
+5. The hire question on one's own dwelling joins the free creatures (all of each or none, D-52)
+   and opens the hire dialog; a purchase is bounded by the count, the treasury and the room, paid
+   and counted down; the dialog stays open until closed, a one-creature dialog closing after its
+   purchase; a camp's for any visitor (ADV-HIR-001, -002, GAM-DEC-008, ADV-RFG-001).
+6. A viewer sees a dwelling's type and owner, never its counts or guards nor a camp's creature;
+   the questions, the joins, the dialog and the purchases are its visitor's owner's alone
+   (ADV-OWN-003).
+7. Every new rule has its id, source and tests; `ADV-QUIRK-36` to `-38` recorded; the gates pass
+   (coverage, determinism with the new and rehashed replays, the benchmarks at their baselines and
+   the new ones baselined); the env plays the hire dialog.
+8. Batch E10 run and scored (T91); the consensus rows `verified`.
+
+### 18. Risks and open points
+
+- **Two lanes in the same crates:** E09's T5a, T7a, T7b and T8a bump the versions of §15 and
+  touch `h3-game`'s composition and the static map; each merge in order, the second rebasing and
+  bumping again (the town lane's `TRAPS.md`); T95b's `HireDialog` keeps E09's source and target
+  open (§13).
+- **The resolution changes the static map's draws:** the random dwellings draw first in the
+  placement walk (ADR-0017 point 4's draft), so on a map with one every later setup draw moves;
+  no recorded game has one. A moved anchor past the right edge is the static map's first cell off
+  the map: tests at the edge (§5).
+- **The dialog's legal set by query:** the env buys the most only (v7); an agent saving gold
+  cannot buy less until the AI lane adds an amount head.
+- **Teams:** every team test is `allied`, the player alone until E10; an ally's read-only dialog
+  (§13) and a defeated player's dwellings (§9) come with E10.
+- **Not read** (survey §4.4, §7): `ai_dwelling_visit` 0x527B00 and `ai_refugee_camp_hire` 0x527E10
+  (a computer player's hiring, E10); the dialog's slider and its Portal of Summoning use (E09's
+  town building); `dwelling_offer_hire`'s second free-creatures loop (no dwelling reaches it).
+- **Not in increment 10** (decision 231): garrisons, the teleporters, creature banks, quests,
+  towns' dwellings and recruitment (E09; it reuses §8 and §13), the random dwellings tied to a
+  town, a computer player's hiring and a defeat (E10).
