@@ -54,5 +54,6 @@ pub const TOWN_STATE_HASH_VERSION: u32 = 1;
 
 /// Version of the town ruleset part's canonical hash encoding (ADR-0028 points 5 and 9; owned by
 /// the town lane). v1 (E09 T5a1; the constant since T4b): the first encoding, the parameters and
-/// the factions' town records ([`TownRuleset`]'s `hash_into`).
-pub const TOWN_RULESET_HASH_VERSION: u32 = 1;
+/// the factions' town records ([`TownRuleset`]'s `hash_into`). v2 (E09 T5b2a): each building's
+/// automatic set (`auto_with`, the hordes' upgrade).
+pub const TOWN_RULESET_HASH_VERSION: u32 = 2;
