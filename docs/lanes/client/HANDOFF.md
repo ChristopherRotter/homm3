@@ -12,7 +12,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   done (#690; CLT-Q42 asked); T3c cut in two by the user (2026-11-03): **T3c1 done** (#692: the hero's
   lists and the unclamped value, design §12.9); **T3c2 done** (the overrides, the Alliance's
   join, a siege town's buildings and the Grail's line, design §12.10; unit-tested, no capture
-  possible for the artifacts; PR from `client/e17-m6-t3c2`: check it first); **next: T3c3**
+  possible for the artifacts; #699 from `client/e17-m6-t3c2`: check it first); **next: T3c3**
   (capture `stats-morale-siege`, needs Wine) or T4 (QUEUE), then T5 to T7; then M7 ranked play and the server
   browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -43,7 +43,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T3c2 (done; PR open: check it first).** The original data staged (57
+- **2026-11-03, E17 M6 T3c2 (done; #699 open: check it first).** The original data staged (57
   files) first; #692 had merged. The user asked for one part to a sub-agent, one commit: A (the
   Hourglass, the Spirit of Oppression, the Alliance's join; `stack_morale` 0x43E0D3 read) by the
   session, B (siege buildings, the Grail) by a sub-agent in a worktree, its patch applied and the
