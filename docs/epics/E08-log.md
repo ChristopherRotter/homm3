@@ -10627,3 +10627,69 @@ stopped for CI's run on #660's code (green). No original data staged.
   last three gaps above (a Leave Guards close and a garrison's survivors untold in `check_told`,
   the boat tile, an entrance turned to water by `vary`), their seeds committed. The play
   property's games are longer: about 100 s for its 48 cases locally, 55 s before.
+
+### Increment 9, round 8: T86b2, the economy XL and its benchmarks (2026-11-03, `adventure/e08-t86b2` with `shared/e08-t86b2`)
+
+**The cut** (decision 228, the user at T86b2's start): whole, one pull request, the benches
+README's rows in a `shared/` one first; the new workloads only baselined. With it ADV-Q40
+answered (decision 229: the boat tile to the owner's team, built in T87). **Baseline:** `master`
+dd94aa3 (#663 merged; #661, the client's, after it); the sandbox's light gates green on CI's
+fingerprint of `master`'s code. The original data staged (the LODs, the executables, the DLLs,
+the sound and video archives, `maps.tar`, `extracted.tar`, the MP3s).
+
+- **The economy XL** (`fixtures/maps/e08-economy-144.h3m`; `h3-map`'s `tests/economy_xl_map.rs`):
+  SoD, 144 × 144 of grass with the sea east of column 127 over an underground of subterranean
+  ground, written by `h3_map::writer`; survey `E08-economy.md` §1's most of each class on one
+  map: 116 mines (26, 14, 20, 13, 13, 12, 18 by subclass; the larger half of each on the surface
+  with the economy map's templates, the rest with the subterranean pictures read from
+  `Objects.txt`; every fourth owned at load, red's and blue's in turn: 29), 14 abandoned mines
+  (class 53's four with the grass picture, class 220's ten half and half; all but wood or gold
+  only in turn), 18 Windmills (half underground), 24 Water Wheels, 11 Mystical Gardens (their
+  pictures the surface's), one to an 8 × 8 cell of each level's lattice with the kinds
+  interleaved; on the coast every fifth row 16 Lighthouses and 11 Shipyards (the boat tile two
+  columns right of the entrance; the first Shipyard red's at load); four heroes a player, two a
+  level; 328 wandering monsters, one on every hundredth tile no object's ring or hero's two tiles
+  cover (gnolls and pikemen, 5 to 45, each disposition in turn, one in 25 never growing). Tests:
+  `the_economy_xl_map_is_committed_as_written` (the classes' counts, the owners at load, every
+  boat tile on the water), `the_economy_xl_map_starts_weeks_and_months` (ending turns to day 29
+  with seed 2: four weeks' growth told, a creature month's 179 monsters, `check_added`,
+  `check_weekly`, `check_owners`).
+- **The workload** (`h3-cli`'s `adventure/bench.rs`, `--workload day-start`): random play until
+  the step that starts day `days + 1` (the env's day limit: the episode's last step), played
+  inside `day_start_step` (`#[inline(never)]`, the env's step); only an `EndTurn` on day `days`
+  is tried, on a fork outside the count. `BenchResult::creature_months` (a month's first day in
+  a creature's month) and `added` (the monsters the counted steps added); the CLI prints both.
+  *Agent's calls (change freely):* random play before the counted step, as every other workload
+  (not ends of turn only); the counted step through the env; the run-up's name kept apart from
+  the counted one's (`play_to_day_start`), since the collect pattern matches any symbol holding
+  it.
+- **The new baselines** (callgrind):
+  - `day-start-xl-144`: the start of day 8 in 4 games of 7 days (`--seed 1`): 1 441 383 Ir,
+    about 360 000 a start: `grow_monsters` 22 %, malloc 32 % (each grown monster's stack is a
+    new `Vec` in the army table), the table's writes 10 %.
+  - `month-start-xl-144`: the start of day 29 in 3 games of 28 days (`--seed 4`: the seeds 4 to
+    6, all creature months, 608 monsters added): 37 935 656 Ir, about 12.6 M a start (about
+    4 ms): the walk's loop 50 %, `event_at` per tile 15 %, the draws 13 %, the occupancy's
+    `live` 7 %, adding the monsters 1.5 %. It runs on a month's first day in four months of
+    ten (the base pack's odds), so it was left as it is (decision 228); T87 may serve the
+    walk's tile test from the static map's flags (design §19) and its event test without a
+    lookup per tile.
+  - `fork-economy-xl-144`: 100 000 forks after 7 days: 370 800 075 Ir, 3 708 a fork
+    (`fork-xl-144`'s 3 704: the week's blocks are reference counts).
+  - `random-play-economy-36`: 5 games of 60 days on T86a's map (creature months in games 1, 3
+    and 5 on day 29 and game 4 on day 57): 2 858 062 897 Ir, 6 318 steps, about 452 000 a step,
+    90 % in the reachable-tiles search.
+- **The re-baselines** (`master`'s counts measured in `target/wt-master`, every workload; this
+  branch changes no counted code): the five forks of `fork-xl-144`, `-meeting-xl-144`,
+  `-boxes-xl-144`, `-stones-xl-144` and `-rewards-36` (+0.98 to +1.49 % against T83b1's counts,
+  36 Ir more a fork: the blocks T83b2a to T85b1 added, empty on their maps),
+  `random-play-rewards-36` (+1.50 % against T72's count, the same 1 358 steps: T83b2a +0.76 %,
+  T84a +0.35 %, T85b +0.37 %), `reach-sea-xl-144` (+1.54 % against T75b's count: T83b2a's added
+  objects asked for by the boat's search), `reach-xl-144` (−1.23 %: T85b1 changed the games);
+  each reason in its description. Kept: `random-play-duel-36` (re-set by T85b1),
+  `random-play-sea-36` (+0.24 %), `manage-army-12` (+0.27 %), `reach-lifted-xl-144` and
+  `fork-sea-xl-144` (+0.00 %).
+- **Tests** (`h3-cli`): `the_benchmark_workloads_run_and_count_what_they_say` runs `day-start`
+  on the economy XL (two games' day 8: no month) and on the economy map (seed 3's day 29, a
+  creature month that adds monsters) and through the CLI.
+- **Versions:** none; no replay or bot report changed.
