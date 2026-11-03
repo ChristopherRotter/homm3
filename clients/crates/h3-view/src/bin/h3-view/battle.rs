@@ -1878,8 +1878,33 @@ impl<'g> Battle<'g> {
         self.tell(at, &text, (shown.0, None), shown.1)
     }
 
-    /// Whether the right button's popup over the battle is held (E17 M6 T2b2: a turret's info;
-    /// `popup_run_held` 0x602A40: the cursor hidden, every input but its ends dropped).
+    /// Shows the help of the panel's control at `point` while the right button pressed at `at` is
+    /// held (E17 M6 T3a, design §12.7; `battle_control_help` 0x472A50): the control's right-click
+    /// text in a popup centred on the screen ([`Asked::Held`], as a turret's info by the right
+    /// button), a disabled control's too; nothing over the panel's picture or off the panel.
+    /// Whether it opened (not without the text tables).
+    pub fn control_help(&mut self, at: u32, point: [i32; 2]) -> bool {
+        if self.stats.is_some()
+            || self.message.is_some()
+            || self.book.is_some()
+            || self.aiming.is_some()
+            || !self.takes(at)
+        {
+            return false;
+        }
+        let Some(key) = h3_view::panel::help_at(self.panel_at(at), point) else {
+            return false;
+        };
+        let Some(writer) = self.ground.writer.as_ref() else {
+            return false;
+        };
+        let text = writer.catalogue.text(key, &h3_ui::text::Args::new());
+        self.tell(at, &text, (Style::Popup, None), Asked::Held)
+    }
+
+    /// Whether the right button's popup over the battle is held (E17 M6 T2b2: a turret's info; T3a:
+    /// a control's help; `popup_run_held` 0x602A40: the cursor hidden, every input but its ends
+    /// dropped).
     pub fn popup_held(&self) -> bool {
         self.message
             .as_ref()

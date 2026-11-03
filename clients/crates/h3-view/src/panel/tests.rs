@@ -483,3 +483,35 @@ fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
             .disabled
     );
 }
+
+#[test]
+fn a_control_s_help_is_its_pair_s_second_text() {
+    // E17 M6 T3a (design §12.7; the table 0x472B4C): each control's key, the log's scroll
+    // buttons sharing one; none for the picture or any other id.
+    assert_eq!(help(SURRENDER), Some("battle.help.surrender"));
+    assert_eq!(help(LOG), Some("battle.help.log"));
+    assert_eq!(help(LOG_UP), Some("battle.help.scroll"));
+    assert_eq!(help(LOG_DOWN), help(LOG_UP));
+    assert_eq!(help(NEXT_CREATURE), Some("battle.help.next-creature"));
+    assert_eq!(help(START_COMBAT), Some("battle.help.end-tactics"));
+    for id in BUTTONS {
+        assert!(help(id).is_some(), "{id}");
+    }
+    assert_eq!(help(PICTURE), None);
+    assert_eq!(help(0), None);
+    // Over the panel at (0, 556): a control, the log and its scroll buttons, the picture between
+    // them, the battlefield above.
+    let layout = crate::scene::tests::layout();
+    let at = |point| help_at(&layout.panel, point);
+    assert_eq!(at([700, 570]), Some("battle.help.wait"));
+    assert_eq!(at([300, 570]), Some("battle.help.log"));
+    assert_eq!(at([630, 561]), Some("battle.help.scroll"));
+    assert_eq!(at([641, 596]), Some("battle.help.scroll"));
+    assert_eq!(at([620, 590]), None);
+    assert_eq!(at([400, 300]), None);
+    // The tactics phase's own panel: Next Creature over where the log is in the battle's.
+    let tactics = |point| help_at(&layout.tactics_panel, point);
+    assert_eq!(tactics([300, 570]), Some("battle.help.next-creature"));
+    assert_eq!(tactics([500, 570]), Some("battle.help.end-tactics"));
+    assert_eq!(tactics([700, 570]), Some("battle.help.wait"));
+}

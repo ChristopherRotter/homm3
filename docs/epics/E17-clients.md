@@ -166,8 +166,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   info by either button (design §12.6), four stills exact but 35 pixels of the held popup's
   shadow (listed); a box before the first turn framed by the opening's side (CLT-Q28 (2)). T2
   done.
-- **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
-  battlefield's other items; recorded.
+- **T3, the right button's other popups** (cut in two by the user, 2026-11-03; the battlefield
+  has no other items than T2b1's reading found): **T3a** (done 2026-11-03) the panel's controls'
+  help (0x472A50, design §12.7), a disabled control's too, five stills exact; **T3b** the heroes'
+  info windows (`battle_right_click`'s 0xFC and 0xFD: 0x46C370, 0x46CC10, 0x46CDF0); recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
   movement and cursor shadows, the combat speed, the Auto Combat options, the rest as read), kept
   in the client's settings; recorded.

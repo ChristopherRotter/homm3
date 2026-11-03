@@ -1637,3 +1637,69 @@ actions = ["right:770,250"]
 at = 0
 differing = 0
 why = "exact: a Citadel's keep line alone, held (E17 M6 T2b2)"
+
+# E17 M6 T3a: the right button held over the panel (`battle_control_help` 0x472A50; design
+# §12.7): the control's right-click text (`Help.txt`'s second column, records 379 to 389) in a
+# popup centred on the screen (style 4, `popup_run_held`), the cursor hidden, the status line the
+# move's hint. `help-wait`: Wait's (a title in braces, then the text); `help-log`: the log's text
+# item, one plain line; `help-scroll`: the log's scroll button up (a callback's button: its right
+# press goes on to the battle); `help-tactics`: the tactics phase's Wait, disabled there (the
+# right press does not test the disabled bit); `help-phase`: Next Creature's "Phase Wait", the
+# narrowest popup.
+[[situation]]
+id = "help-wait"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["right:720,578"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Wait's help, its title in the second colour, centred, the cursor hidden, the status line Wait's hint (E17 M6 T3a)"
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: held, the battle behind still (E17 M6 T3a)"
+
+[[situation]]
+id = "help-log"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["right:400,578"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the log's help, one plain line, the status line empty (E17 M6 T3a)"
+
+[[situation]]
+id = "help-scroll"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["right:632,568"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the scroll button's help (its callback leaves the right press to the battle; E17 M6 T3a)"
+
+[[situation]]
+id = "help-tactics"
+scenario = "tactics.toml"
+actions = ["key:Return", "right:720,578"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the tactics phase's disabled Wait gives its help all the same (E17 M6 T3a)"
+
+[[situation]]
+id = "help-phase"
+scenario = "tactics.toml"
+actions = ["key:Return", "right:300,578"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: \"Phase Wait\", the narrowest popup (E17 M6 T3a)"
