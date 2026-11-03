@@ -1,0 +1,286 @@
+# E08 batch E10b played by the capture harness (E08 T90; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-10b.toml as steps, on Easy, with T90's reads (README, "Dwellings, the
+# hire dialog and a computer player's turn"). Hot seat, Red and Blue human, the starting bonus Gold,
+# in the spec's order: day 1, Red: the first reads (D, F, S, K), E10-8's battle at D, E10-8b's
+# purchase at S, E10-9's visit to the camp K, K's popup; Blue: E10-10's hints and popups. Day 2,
+# Red: the reads, K's second visit (Max, then the deserted message); days 3 to 6 ended; day 7: the
+# reads; day 8: the week's message, the reads, K's visit (closed without buying).
+#
+# Each dwelling is read by its entrance (`dwelling:x,y`), the camp by its tile words (`camp:19,10`:
+# the same line in both cells of the table: the creature and the count word). A table's second
+# value of a section is added to its field by a `+` label. A question's kind: `guards` (the fight
+# offer), `hire` (a dwelling's recruit question); the camp's (ADVEVENT 112) and the rest are
+# `other`. Heroes' names on the map are the encounters' ids.
+
+spec = "experiments/specs/E08-batch-10b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8"
+record = { "D day 1 before | owner" = "dwelling:10,10:owner", "D day 1 before | creatures and counts" = "dwelling:10,10:creatures", "D day 1 before | guards (creature and count by slot)" = "dwelling:10,10:guards", "F day 1 before | owner" = "dwelling:13,10:owner", "F day 1 before | creatures and counts" = "dwelling:13,10:creatures", "F day 1 before | guards (creature and count by slot)" = "dwelling:13,10:guards", "S day 1 before | owner" = "dwelling:16,10:owner", "S day 1 before | creatures and counts" = "dwelling:16,10:creatures", "S day 1 before | guards (creature and count by slot)" = "dwelling:16,10:guards", "+the date's words on days 1, 2, 7 and 8" = "date" }
+note = { "the objects anchored in (8, 9) to (20, 11), class and subclass" = "objects:8,9:20,11", "the players' teams" = "teams", "Red's treasury at the start" = "treasury:red", "Blue's treasury at the start" = "treasury:blue", "E10-8's worn artifacts (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+record = { "day 1 before | creature (+0x22)" = "camp:19,10", "day 1 before | count (+0x0)" = "camp:19,10", "+day 1: K's owner (none?); the question's text; the dialog's most; what was bought; E10-9's army; Red's treasury" = ["object:19,10"] }
+note = { "K's entrance tile (19, 10)" = "tile:19,10", "K's object (19, 10)" = "object:19,10", "K's tile (18, 10)" = "tile:18,10" }
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8"
+walk = [10, 11]
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8"
+walk = [10, 10]
+answer = { "guards" = "yes", "hire" = "no", "other" = "yes" }
+battle = "auto"
+expect = { "battle" = true, "dialogs" = true }
+record = { "D's battle: the question's text; the defending stacks; the result" = ["questions", "stacks:start", "winner", "opening:defender", "stacks:end"] }
+note = { "D's visit: the messages" = "messages", "D's visit: the level-ups" = "level_up_dialogs", "D's record right after the visit" = "dwelling:10,10" }
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8"
+walk = [10, 13]
+record = { "D day 1 after its battle | owner" = "dwelling:10,10:owner", "D day 1 after its battle | creatures and counts" = "dwelling:10,10:creatures", "D day 1 after its battle | guards (creature and count by slot)" = "dwelling:10,10:guards" }
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8b"
+walk = [16, 11]
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8b"
+walk = [16, 10]
+answer = { "hire" = "yes", "other" = "yes" }
+expect = { "dialogs" = true }
+actions = [{ "amount" = 2 }, { "click" = ["recruit"] }]
+record = { "+S's purchase: the most; E10-8b's army; Red's gold before and after" = ["questions", "hire:opening:most", "before:resource:gold", "hire:after", "resource:gold"] }
+note = { "S's hire dialog as it opened" = "hire:opening" }
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8b"
+walk = [16, 13]
+record = { "S day 1 after the purchase | owner" = "dwelling:16,10:owner", "S day 1 after the purchase | creatures and counts" = "dwelling:16,10:creatures", "S day 1 after the purchase | guards (creature and count by slot)" = "dwelling:16,10:guards", "+S's purchase: the most; E10-8b's army; Red's gold before and after" = ["hero:army", "resource:gold"] }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 11]
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 10]
+answer = { "other" = "yes", "hire" = "yes" }
+expect = { "dialogs" = true }
+actions = [{ "amount" = 1 }, { "click" = ["recruit"] }]
+record = { "+day 1: K's owner (none?); the question's text; the dialog's most; what was bought; E10-9's army; Red's treasury" = ["questions", "hire:opening:most", "hire:after"] }
+note = { "K's hire dialog as it opened" = "hire:opening", "K's word right after the visit" = "camp:19,10" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 12]
+record = { "day 1 after the purchase | creature (+0x22)" = "camp:19,10", "day 1 after the purchase | count (+0x0)" = "camp:19,10", "+day 1: K's owner (none?); the question's text; the dialog's most; what was bought; E10-9's army; Red's treasury" = ["hero:army", "treasury"] }
+note = { "K's object after the visit" = "object:19,10" }
+
+[[step]]
+encounter = "E10-10"
+hero = "E10-9"
+popup = [19, 10]
+hint = [19, 10]
+record = { "Red, day 1: K's popup" = "popup" }
+note = { "Red's hint over K" = "hint" }
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-10"
+hero = "E10-10"
+note = { "Blue, day 1: the date" = "date", "Blue's treasury" = "treasury:blue" }
+
+[[step]]
+encounter = "E10-10"
+hero = "E10-10"
+hint = [10, 10]
+popup = [10, 10]
+record = { "D (Red's, flagged on day 1) | the hint (hover)" = "hint", "D (Red's, flagged on day 1) | the popup (right-click)" = "popup" }
+note = { "D (Red's, flagged on day 1): hint bar and buffer" = "hint:raw" }
+
+[[step]]
+encounter = "E10-10"
+hero = "E10-10"
+hint = [13, 10]
+popup = [13, 10]
+record = { "F (neutral) | the hint (hover)" = "hint", "F (neutral) | the popup (right-click)" = "popup" }
+note = { "F (neutral): hint bar and buffer" = "hint:raw" }
+
+[[step]]
+encounter = "E10-10"
+hero = "E10-10"
+hint = [16, 10]
+popup = [16, 10]
+record = { "S (Red's at load) | the hint (hover)" = "hint", "S (Red's at load) | the popup (right-click)" = "popup" }
+note = { "S (Red's at load): hint bar and buffer" = "hint:raw" }
+
+[[step]]
+encounter = "E10-10"
+hero = "E10-10"
+hint = [19, 10]
+popup = [19, 10]
+record = { "K (the camp) | the hint (hover)" = "hint", "K (the camp) | the popup (right-click)" = "popup" }
+note = { "K (the camp): hint bar and buffer" = "hint:raw" }
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8"
+record = { "D day 2 | owner" = "dwelling:10,10:owner", "D day 2 | creatures and counts" = "dwelling:10,10:creatures", "D day 2 | guards (creature and count by slot)" = "dwelling:10,10:guards", "F day 2 | owner" = "dwelling:13,10:owner", "F day 2 | creatures and counts" = "dwelling:13,10:creatures", "F day 2 | guards (creature and count by slot)" = "dwelling:13,10:guards", "S day 2 | owner" = "dwelling:16,10:owner", "S day 2 | creatures and counts" = "dwelling:16,10:creatures", "S day 2 | guards (creature and count by slot)" = "dwelling:16,10:guards", "+the date's words on days 1, 2, 7 and 8" = "date" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+record = { "day 2 before | creature (+0x22)" = "camp:19,10", "day 2 before | count (+0x0)" = "camp:19,10" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 11]
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 10]
+answer = { "other" = "yes", "hire" = "yes" }
+expect = { "dialogs" = true }
+actions = [{ "click" = ["max", "recruit"] }]
+record = { "+day 2: the question's text; the dialog's most; what Max and Recruit bought; the message of the second visit; E10-9's army" = ["questions", "hire:opening:most", "hire:after"] }
+note = { "day 2: K's hire dialog as it opened" = "hire:opening" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 11]
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 10]
+answer = { "other" = "no", "hire" = "no" }
+expect = { "dialogs" = true }
+record = { "+day 2: the question's text; the dialog's most; what Max and Recruit bought; the message of the second visit; E10-9's army" = ["messages", "message_pictures", "questions"] }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 12]
+record = { "day 2 after the purchases | creature (+0x22)" = "camp:19,10", "day 2 after the purchases | count (+0x0)" = "camp:19,10", "+day 2: the question's text; the dialog's most; what Max and Recruit bought; the message of the second visit; E10-9's army" = ["hero:army"] }
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8"
+record = { "D day 7 | owner" = "dwelling:10,10:owner", "D day 7 | creatures and counts" = "dwelling:10,10:creatures", "D day 7 | guards (creature and count by slot)" = "dwelling:10,10:guards", "F day 7 | owner" = "dwelling:13,10:owner", "F day 7 | creatures and counts" = "dwelling:13,10:creatures", "F day 7 | guards (creature and count by slot)" = "dwelling:13,10:guards", "S day 7 | owner" = "dwelling:16,10:owner", "S day 7 | creatures and counts" = "dwelling:16,10:creatures", "S day 7 | guards (creature and count by slot)" = "dwelling:16,10:guards", "+the date's words on days 1, 2, 7 and 8" = "date" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+record = { "day 7 | creature (+0x22)" = "camp:19,10", "day 7 | count (+0x0)" = "camp:19,10" }
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+
+[[step]]
+encounter = "E10-8"
+end_turn = true
+record = { "day 8: the week's message (its name)" = ["messages", "message_pictures"] }
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8"
+note = { "day 8: the date" = "date" }
+
+[[step]]
+encounter = "E10-8"
+hero = "E10-8"
+record = { "D day 8 | owner" = "dwelling:10,10:owner", "D day 8 | creatures and counts" = "dwelling:10,10:creatures", "D day 8 | guards (creature and count by slot)" = "dwelling:10,10:guards", "F day 8 | owner" = "dwelling:13,10:owner", "F day 8 | creatures and counts" = "dwelling:13,10:creatures", "F day 8 | guards (creature and count by slot)" = "dwelling:13,10:guards", "S day 8 | owner" = "dwelling:16,10:owner", "S day 8 | creatures and counts" = "dwelling:16,10:creatures", "S day 8 | guards (creature and count by slot)" = "dwelling:16,10:guards", "+the date's words on days 1, 2, 7 and 8" = "date" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+record = { "day 8 before the visit | creature (+0x22)" = "camp:19,10", "day 8 before the visit | count (+0x0)" = "camp:19,10" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 11]
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 10]
+answer = { "other" = "yes", "hire" = "yes" }
+expect = { "dialogs" = true }
+actions = [{  }]
+record = { "+day 8: the question's text; the dialog's most" = ["questions", "hire:opening:most", "hire:after"] }
+note = { "day 8: K's hire dialog as it opened" = "hire:opening" }
+
+[[step]]
+encounter = "E10-9"
+hero = "E10-9"
+walk = [19, 12]

@@ -356,13 +356,29 @@ def observe(mem, index):
 # A question's kind by the record its text was written from (ADVEVENT.TXT; survey E08-battles §3.2):
 # the monster's offer to join for free, to join for gold (one record, or two together), to flee.
 KINDS = {"ADVEVENT:86": "join", "ADVEVENT:88": "join for gold", "ADVEVENT:89+90": "join for gold",
-         "ADVEVENT:91": "flee"}
+         "ADVEVENT:91": "flee",
+         # E08 T90 (batch E10a): a dwelling's guards' question (GENRLTXT 422) and its hire question
+         "GENRLTXT:422": "guards", "ADVEVENT:35": "hire", "ADVEVENT:36": "hire"}
 BATTLE_PARK = (420, 580)  # over the battle's panel, off the battlefield
 SIDES = ("attacker", "defender")
 BATTLE_KEYS = {"retreat": "r", "surrender": "s"}
 # The level-up dialog's two offered skills from its OK's corner, the OK disabled until one is
 # chosen (E17 H2, `[button.ok_disabled]`): a step's `level_up`, default the left one.
 LEVEL_UP_CHOICES = {"left": (-150, -64), "right": (-52, -64)}
+
+
+def size_word(record, mem):
+    """E08 T90 (batch E10a, E10-1): the quantity word of a guards' question (GENRLTXT 422's
+    second conversion, ARRAYTXT's lower-case rows from 176: `a few` 176, `several` 179, `a pack
+    of` 182, ...) as {"size_word": 182}, named by its row, never its text (ADR-0009); {} for
+    any other question."""
+    if record != "GENRLTXT:422":
+        return {}
+    text, rows = mem.dialog_text(), h3lod.table("ARRAYTXT.TXT")
+    found = [n for n in range(176, 215) if n < len(rows) and rows[n] and rows[n][0].strip()
+             and rows[n][0] == rows[n][0].lower()
+             and re.search(r"(?<![A-Za-z])" + re.escape(rows[n][0]) + r"(?![A-Za-z])", text)]
+    return {"size_word": max(found, key=lambda n: len(rows[n][0])) if found else None}
 
 
 def reply(answer, kind):
@@ -969,7 +985,8 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             if said not in ("yes", "no"):
                 raise RuntimeError(f"a question ({record or 'its text not identified'}, {kind}) "
                                    "the step does not answer (`answer`)")
-            events["questions"].append({"record": record, "kind": kind, "answer": said})
+            events["questions"].append({"record": record, "kind": kind, "answer": said,
+                                        **size_word(record, mem)})
             click_button(game, *(("ok", oks[0]) if said == "yes" else ("cancel", cancels[0])))
             last, since = None, time.monotonic()
             continue
@@ -1284,7 +1301,19 @@ def message_record(mem):
     for own in OWN_TEXTS:
         if " ".join(own.split()) in lines:
             return f'the map\'s text "{own}"'
-    return h3lod.identify(text) or "?"
+    found = h3lod.identify(text) or "?"
+    if found == "GENRLTXT:16":
+        # E08 T90 (batch E10b): the week's message (`%s the %s`): the creature it names, by the
+        # game's creature table (ids 0 to 144, plural, then singular), never its text (ADR-0009).
+        names = []
+        for creature in range(145):
+            try:
+                names += [mem.creature_name(creature, 2), mem.creature_name(creature, 1)]
+            except (OSError, IndexError, UnicodeDecodeError):
+                pass
+        hits = sorted({n for n in names if n and n in text}, key=len, reverse=True)
+        found += f" [names {hits[0]}]" if hits else f" [other: {len(text.strip())} characters]"
+    return found
 
 
 # The batch's own message texts (E08 T79b; batch sets them from its spec): message_record names a
@@ -1851,7 +1880,7 @@ def mine_text(mem, x, y, z=0):
             f"abandoned {mine['abandoned']}; guards {guards}")
 
 
-def dwelling_text(mem, x, y, z=0):
+def dwelling_text(mem, x, y, z=0, part=None):
     """A dwelling's record by its entrance (E08 T90, batches E10a, E10b; h3mem.dwellings, game
     +0x4E39C): `record 3; class 20.1; owner none; creatures 0: 14 Pikemen (the slots with a
     creature); guards 0: 3 Green Dragons, 1: ...` (`guards none`); `none` without a record there."""
@@ -1863,6 +1892,10 @@ def dwelling_text(mem, x, y, z=0):
                           if t >= 0) or "none"
     guards = ", ".join(f"{k}: {c} " + (mem.creature_name(t, c) if t >= 0 else "(no creature)")
                        for k, (t, c) in enumerate(found["guards"]) if t >= 0 or c) or "none"
+    # E08 T90 (batch E10a): `dwelling:x,y:owner|creatures|guards` is one field of the record.
+    if part:
+        return {"owner": colour_name(found["owner"]), "creatures": creatures,
+                "guards": guards}[part]
     return (f"record {found['index']}; class {found['class']}.{found['subclass']}; "
             f"owner {colour_name(found['owner'])}; creatures {creatures}; guards {guards}")
 
@@ -2349,6 +2382,11 @@ def value(obs, what, mem):
         return ", ".join(q["kind"] for q in obs.get("questions", [])) or "none"
     if what == "questions":
         return ", ".join(q["record"] or "?" for q in obs.get("questions", [])) or "none"
+    # E08 T90 (batch E10a): the guards' questions' size words by their ARRAYTXT row.
+    if what == "size_words":
+        return ", ".join(f"ARRAYTXT:{q['size_word']}" if q["size_word"] is not None else
+                         "no ARRAYTXT row from 176 found" for q in obs.get("questions", [])
+                         if "size_word" in q) or "none"
     battles = obs.get("battles", [])
     if what == "battle":
         return yes[bool(battles)]
@@ -2500,8 +2538,9 @@ def value(obs, what, mem):
     # right click on a tile the step read (`hint`, `popup`: `text_parts`, `hint:raw` whether
     # the bar and the buffer agree), the battle's defending side's owner
     # (`opening:defender`) and the computer players' turns an end-turn step passed (`ai_turns`).
-    if m := re.match(r"dwelling:(\d+),(\d+)(?:,(\d))?$", what):
-        return dwelling_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
+    if m := re.match(r"dwelling:(\d+),(\d+)(?:,(\d))?(?::(owner|creatures|guards))?$", what):
+        return dwelling_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0),
+                             m.group(4))
     if what == "teams":
         return teams_text(mem)
     if m := re.match(r"(objects|access):(\d+),(\d+):(\d+),(\d+)(?:,(\d))?$", what):

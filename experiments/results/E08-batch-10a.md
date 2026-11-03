@@ -1,5 +1,7 @@
 # E08 batch E10a — results
 
+> Played by the capture harness on 2026-11-03 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-10a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `8455031b`.** The map's description in the scenario list starts with "Stamp 8455031b.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -32,31 +34,16 @@ Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an a
 
 | dwelling | owner | creatures and counts | guards (creature and count by slot) |
 |---|---|---|---|
-| D before |   |   |   |
-| F before |   |   |   |
-| X before |   |   |   |
+| D before | none | 0: 1 Green Dragon | 0: 3 Green Dragons |
+| F before | none | 0: 6 Stone Golems, 1: 6 Iron Golems, 2: 3 Gold Golems, 3: 2 Diamond Golems | 0: 9 Gold Golems, 1: 6 Diamond Golems |
+| X before | none | 0: 6 Air Elementals, 1: 5 Fire Elementals, 2: 4 Earth Elementals, 3: 6 Water Elementals | 0: 12 Earth Elementals |
 
-- D: the question's text: 
-- D: terrain, special field; the defending side's owner: 
-
-| slot | creature | count |
-|---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-
-- D: the result; the messages; the next question's text: 
-- D after: owner, counts, guards: 
-- F: the question's text: 
-- F: terrain, special field; the defending side's owner: 
+- D: the question's text: GENRLTXT:422, ADVEVENT:35; size word: ARRAYTXT:176
+- D: terrain, special field; the defending side's owner: terrain grass, special field none, ship flag 0, blocked hexes 81, 91, 92, 93, 94, 95, 96, 97, 98, 106, 107, 123; none (human 0, here 0)
 
 | slot | creature | count |
 |---|---|---|
-|   |   |   |
+| 0 | Green Dragons | 3 |
 |   |   |   |
 |   |   |   |
 |   |   |   |
@@ -64,14 +51,29 @@ Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an a
 |   |   |   |
 |   |   |   |
 
-- F: the result; the messages; the next question's text: 
-- F after: owner, counts, guards: 
-- X: the question's text: 
-- X: terrain, special field; the defending side's owner: 
+- D: the result; the messages; the next question's text: attacker; GENRLTXT:7; GENRLTXT:7: Red; GENRLTXT:422, ADVEVENT:35
+- D after: owner, counts, guards: record 0; class 17.24; owner red; creatures 0: 1 Green Dragon; guards none
+- F: the question's text: GENRLTXT:422, ADVEVENT:36; size word: ARRAYTXT:182
+- F: terrain, special field; the defending side's owner: terrain grass, special field none, ship flag 0, blocked hexes 74, 75, 76, 77, 92, 93, 94, 95, 110, 111, 164, 165; none (human 0, here 0)
 
 | slot | creature | count |
 |---|---|---|
+| 0 | Gold Golems | 9 |
+| 1 | Diamond Golems | 6 |
 |   |   |   |
+|   |   |   |
+|   |   |   |
+|   |   |   |
+|   |   |   |
+
+- F: the result; the messages; the next question's text: attacker; none; none; GENRLTXT:422, ADVEVENT:36
+- F after: owner, counts, guards: record 1; class 20.1; owner red; creatures 0: 6 Stone Golems, 1: 6 Iron Golems, 2: 3 Gold Golems, 3: 2 Diamond Golems; guards none
+- X: the question's text: GENRLTXT:422, ADVEVENT:36; size word: ARRAYTXT:182
+- X: terrain, special field; the defending side's owner: terrain grass, special field none, ship flag 0, blocked hexes 61, 62, 72, 73, 77, 78, 79, 80, 95, 96, 97, 98, 132; none (human 0, here 0)
+
+| slot | creature | count |
+|---|---|---|
+| 0 | Earth Elementals | 12 |
 |   |   |   |
 |   |   |   |
 |   |   |   |
@@ -79,9 +81,9 @@ Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an a
 |   |   |   |
 |   |   |   |
 
-- X: the result; the messages; the next question's text: 
-- X after: owner, counts, guards: 
-- anything odd: 
+- X: the result; the messages; the next question's text: attacker; none; none; GENRLTXT:422, ADVEVENT:36
+- X after: owner, counts, guards: record 2; class 20.0; owner red; creatures 0: 6 Air Elementals, 1: 5 Fire Elementals, 2: 4 Earth Elementals, 3: 6 Water Elementals; guards none
+- anything odd: worn at the start (the starting bonus): Cape of Conjuring (shoulders); E10-1's army at the start: 0: 10 Archangels; D: the sides: attacker red (human 1, here 1); defender none (human 0, here 0); D: E10-1's tile after: 8,10,0; D: E10-1's army after: 0: 10 Archangels; F: the sides: attacker red (human 1, here 1); defender none (human 0, here 0); F: the level-ups: level 2: Offense or Learning, took left (Offense); F: E10-1's tile after: 13,10,0; F: E10-1's army after: 0: 10 Archangels; X: the sides: attacker red (human 1, here 1); defender none (human 0, here 0); X: E10-1's tile after: 18,10,0; X: E10-1's army after: 0: 10 Archangels
 
 ## E10-3 — A Guardhouse's free Pikemen: twice to one hero, then to a hero with no free slot (ADV-HIR-001, ADV-DWL-004, D-52)
 
@@ -95,14 +97,14 @@ Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before: P's and Q's records (owner, Pikemen's count, guards): 
-- A's first visit: the question's text; the message after yes: 
-- after it: E10-3's army (creature and count by slot); P's owner and count: 
-- A's second visit: the question's text; the message after yes: 
-- after it: E10-3's army; P's owner and count: 
-- B's visit: the question's text; the message after yes: 
-- after it: E10-3b's army (creature and count by slot); Q's owner and count: 
-- anything odd: 
+- before: P's and Q's records (owner, Pikemen's count, guards): P: record 3; class 17.56; owner none; creatures 0: 14 Pikemen; guards none; Q: record 4; class 17.56; owner none; creatures 0: 14 Pikemen; guards none
+- A's first visit: the question's text; the message after yes: ADVEVENT:35; GENRLTXT:424; none
+- after it: E10-3's army (creature and count by slot); P's owner and count: 0: 2 Angels, 1: 14 Pikemen; record 3; class 17.56; owner red; creatures 0: 0 Pikemen; guards none
+- A's second visit: the question's text; the message after yes: ADVEVENT:35; GENRLTXT:423; none
+- after it: E10-3's army; P's owner and count: 0: 2 Angels, 1: 14 Pikemen; record 3; class 17.56; owner red; creatures 0: 0 Pikemen; guards none
+- B's visit: the question's text; the message after yes: ADVEVENT:35; GENRLTXT:426; none
+- after it: E10-3b's army (creature and count by slot); Q's owner and count: 0: 1 Archer, 1: 1 Archer, 2: 1 Griffin, 3: 1 Swordsman, 4: 1 Monk, 5: 1 Cavalier, 6: 1 Angel; record 4; class 17.56; owner red; creatures 0: 14 Pikemen; guards none
+- anything odd: E10-3b's army at the start: 0: 1 Archer, 1: 1 Archer, 2: 1 Griffin, 3: 1 Swordsman, 4: 1 Monk, 5: 1 Cavalier, 6: 1 Angel; A's first visit: the screens passed, battles, E10-3's tile: none; no; 30,10,0; A's second visit: the screens passed, battles, E10-3's tile: none; no; 30,10,0; B's visit: the screens passed, battles, E10-3b's tile: none; no; 35,10,0
 
 ## E10-6 — Red's hero visits Blue's Barracks and Blue's guarded Dragon Cliffs; Red and Blue allied (ADV-DWL-004, ADV-HIR-002, ADV-OWN-001)
 
@@ -117,17 +119,17 @@ Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- the scenario's information on the teams; the team bytes of Red, Blue and Tan: 
-- before: Red's treasury (gold, crystal): 
-- before: U's and V's records (owner, counts, guards): 
-- U: messages before the question; the question's text: 
-- U's dialog: the most; the amount; the buttons enabled; +0x4C; what Max did: 
-- after U: U's record (owner, count); E10-6's army; Red's treasury: 
-- V: messages; the guards' question, if any; the question to recruit: 
-- V's dialog: the most; the buttons enabled; +0x4C: 
-- after V: V's record (owner, count, guards); Red's treasury: 
-- Blue's turn: U's and V's records: 
-- anything odd: 
+- the scenario's information on the teams; the team bytes of Red, Blue and Tan: scenario information: not read (the harness starts the game from the scenario list and reads no screen text); team bytes: red 0, blue 0, tan 1, green 0, orange 0, purple 0, teal 0, pink 0
+- before: Red's treasury (gold, crystal): 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 1000 gold
+- before: U's and V's records (owner, counts, guards): U: record 7; class 17.58; owner blue; creatures 0: 4 Swordsmen; guards none; V: record 8; class 17.24; owner blue; creatures 0: 1 Green Dragon; guards 0: 3 Green Dragons
+- U: messages before the question; the question's text: none; ADVEVENT:35
+- U's dialog: the most; the amount; the buttons enabled; +0x4C; what Max did: as it opened: most 3; amount 0; ally 1; selected 0 (counts 4); max disabled, recruit disabled, close enabled, slider disabled; after Max: most 3; amount 0; ally 1; selected 0 (counts 4); max disabled, recruit disabled, close enabled, slider disabled
+- after U: U's record (owner, count); E10-6's army; Red's treasury: record 7; class 17.58; owner blue; creatures 0: 4 Swordsmen; guards none; 0: 1 Angel; 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 1000 gold
+- V: messages; the guards' question, if any; the question to recruit: none; ADVEVENT:35; size word: none
+- V's dialog: the most; the buttons enabled; +0x4C: most 0; amount 0; ally 1; selected 0 (counts 1); max disabled, recruit disabled, close enabled, slider disabled
+- after V: V's record (owner, count, guards); Red's treasury: record 8; class 17.24; owner blue; creatures 0: 1 Green Dragon; guards 0: 3 Green Dragons; 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 1000 gold
+- Blue's turn: U's and V's records: U: record 7; class 17.58; owner blue; creatures 0: 4 Swordsmen; guards none; V: record 8; class 17.24; owner blue; creatures 0: 1 Green Dragon; guards 0: 3 Green Dragons
+- anything odd: the date at the start: month 1, week 1, day 1; the game's version: SoD; Tan before (day 1, Red's turn): treasury; E10-6t's tile and points: 11 wood, 2 mercury, 11 ore, 2 sulfur, 2 crystal, 2 gems, 5000 gold; 66,66,0; 1560; U: the screens passed, battles, E10-6's tile: hire; no; 55,10,0; U: the dialog's items as it opened (id:state): 538:0x6, 534:0x6, 542:0x6, 30721:0x6, 65535:0x6, 30722:0x26, 65535:0x6, 532:0x26, 65535:0x6, 561:0x6, 560:0x6, 531:0x0, 530:0x6, 529:0x0, 528:0x6, 527:0x6, 559:0x2e, 526:0x6, 525:0x6, 521:0x6, 520:0x6, 516:0x0, 512:0x6, 508:0x0, 504:0x6, 500:0x6, 550:0x6, 554:0x6, 553:0x6, 552:0x6, 551:0x6, 0:0x6; V: the screens passed, battles, E10-6's tile, army: hire; no; 59,10,0; 0: 1 Angel; V: the dialog's items as it opened (id:state): 538:0x6, 534:0x6, 542:0x6, 30721:0x6, 65535:0x6, 30722:0x26, 65535:0x6, 532:0x26, 65535:0x6, 561:0x6, 560:0x6, 531:0x6, 530:0x6, 529:0x6, 528:0x6, 527:0x6, 559:0x2e, 526:0x6, 525:0x6, 521:0x6, 520:0x6, 516:0x6, 512:0x6, 508:0x6, 504:0x6, 500:0x6, 550:0x6, 554:0x6, 553:0x6, 552:0x6, 551:0x6, 0:0x6; Blue, day 1, the turn's start: treasury; the date: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30000 gold; month 1, week 1, day 1; Tan, day 1, Blue's turn: treasury; E10-6t's tile and points: 11 wood, 2 mercury, 11 ore, 2 sulfur, 2 crystal, 2 gems, 5000 gold; 66,66,0; 1560; the team bytes now: red 0, blue 0, tan 1, green 0, orange 0, purple 0, teal 0, pink 0; Blue, day 2, the turn's start: treasury; the date; U's and V's records: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30000 gold; month 1, week 1, day 2; record 7; class 17.58; owner blue; creatures 0: 4 Swordsmen; guards none; record 8; class 17.24; owner blue; creatures 0: 1 Green Dragon; guards 0: 3 Green Dragons
 
 ## E10-4 — Red's own Barracks: the most it may buy with 1 000 gold, the purchase (ADV-HIR-002, GAM-DEC-008)
 
@@ -139,12 +141,12 @@ Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before: Red's treasury (gold, crystal); S's record (owner, count, guards): 
-- the question's text: 
-- the dialog before any click: the most; the amount: 
-- after Recruit: the dialog open or closed (if open, its most): 
-- after: E10-4's army (creature and count by slot); Red's treasury; S's count: 
-- anything odd: 
+- before: Red's treasury (gold, crystal); S's record (owner, count, guards): 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 1000 gold; record 5; class 17.58; owner red; creatures 0: 4 Swordsmen; guards none
+- the question's text: none; ADVEVENT:35
+- the dialog before any click: the most; the amount: most 3; amount 0; ally 0; selected 0 (counts 4); max enabled, recruit disabled, close enabled, slider enabled
+- after Recruit: the dialog open or closed (if open, its most): closed
+- after: E10-4's army (creature and count by slot); Red's treasury; S's count: 0: 1 Angel, 1: 3 Swordsmen; 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 100 gold; record 5; class 17.58; owner red; creatures 0: 1 Swordsman; guards none
+- anything odd: E10-4: the screens passed, E10-4's tile: hire; 41,10,0; Red, day 1, the turn's end: treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 100 gold
 
 ## E10-5 — Red's own Dragon Cliffs with 10 000 gold: no crystal, then one (ADV-HIR-002, ADV-DWL-004)
 
@@ -157,13 +159,13 @@ Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before: Red's treasury (gold, crystal); C's record (owner, count, guards): 
-- the first visit: messages before the question; the question's text: 
-- the first dialog: the most; the buttons enabled: 
-- after the crystal: Red's treasury (gold, crystal): 
-- the second dialog: the most; the buttons enabled: 
-- after Recruit: the dialog open or closed; E10-5's army; Red's treasury; C's record: 
-- anything odd: 
+- before: Red's treasury (gold, crystal); C's record (owner, count, guards): 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 10000 gold; record 6; class 17.24; owner red; creatures 0: 1 Green Dragon; guards 0: 3 Green Dragons
+- the first visit: messages before the question; the question's text: none; ADVEVENT:35
+- the first dialog: the most; the buttons enabled: most 0; amount 0; ally 0; selected 0 (counts 1); max disabled, recruit disabled, close enabled, slider disabled
+- after the crystal: Red's treasury (gold, crystal): 30 wood, 15 mercury, 30 ore, 15 sulfur, 1 crystal, 15 gems, 10000 gold
+- the second dialog: the most; the buttons enabled: most 1; amount 0; ally 0; selected 0 (counts 1); max enabled, recruit disabled, close enabled, slider enabled
+- after Recruit: the dialog open or closed; E10-5's army; Red's treasury; C's record: closed; 0: 1 Angel, 1: 1 Green Dragon; 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 7600 gold; record 6; class 17.24; owner red; creatures 0: 0 Green Dragons; guards 0: 3 Green Dragons
+- anything odd: Red, day 2, the turn's start: the date: month 1, week 1, day 2; Tan, day 2 (after its turn): treasury; E10-6t's tile and points: 11 wood, 2 mercury, 11 ore, 2 sulfur, 2 crystal, 2 gems, 5000 gold; 66,66,0; 1560; day 2: S's, U's and V's records: record 5; class 17.58; owner red; creatures 0: 1 Swordsman; guards none; record 7; class 17.58; owner blue; creatures 0: 4 Swordsmen; guards none; record 8; class 17.24; owner blue; creatures 0: 1 Green Dragon; guards 0: 3 Green Dragons; first visit: the screens passed, battles, E10-5's tile: hire; no; 47,10,0; first visit: the dialog's items as it opened (id:state): 538:0x6, 534:0x6, 542:0x6, 30721:0x6, 65535:0x6, 30722:0x26, 65535:0x6, 532:0x26, 65535:0x6, 561:0x6, 560:0x6, 531:0x6, 530:0x6, 529:0x6, 528:0x6, 527:0x6, 559:0x2e, 526:0x6, 525:0x6, 521:0x6, 520:0x6, 516:0x6, 512:0x6, 508:0x6, 504:0x6, 500:0x6, 550:0x6, 554:0x6, 553:0x6, 552:0x6, 551:0x6, 0:0x6; the pile (clicked from (47, 11), the hero's tile): messages, E10-5's tile after, arrived, points: none; 47,11,0; no; 1459; second visit: the questions, the screens passed, E10-5's tile: ADVEVENT:35; hire; 47,10,0; second visit: the dialog's items as it opened (id:state): 538:0x6, 534:0x6, 542:0x6, 30721:0x6, 65535:0x6, 30722:0x26, 65535:0x6, 532:0x6, 65535:0x6, 561:0x6, 560:0x6, 531:0x6, 530:0x6, 529:0x6, 528:0x6, 527:0x6, 559:0x6, 526:0x6, 525:0x6, 521:0x6, 520:0x6, 516:0x6, 512:0x6, 508:0x6, 504:0x6, 500:0x6, 550:0x6, 554:0x6, 553:0x6, 552:0x6, 551:0x6, 0:0x6; Red, day 2, the turn's end: treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 0 crystal, 15 gems, 7600 gold
 
 ## E10-7 — Three random dwellings: what each became when the game started (ADV-DWL-005, ADV-DWL-002)
 
@@ -176,14 +178,14 @@ Map file: `E08-batch-10a.h3m`. Fill in the blanks below and keep this file; an a
 
 | object | class | subclass | anchor | entrance | blocked tiles |
 |---|---|---|---|---|---|
-| R1 |   |   |   |   |   |
-| R2 |   |   |   |   |   |
-| R3 |   |   |   |   |   |
+| R1 | 13,30 class 17 subclass 8 | 13,30 class 17 subclass 8 | 13,30 class 17 subclass 8 | record at 12,30: record 9; class 17.8; owner none; creatures 0: 1 Angel; guards 0: 3 Angels; record at 13,30: none | blocked 11,30; visitable 12,30 |
+| R2 | 16,30 class 20 subclass 1; 17,31 class 34 subclass 0 | 16,30 class 20 subclass 1; 17,31 class 34 subclass 0 | 16,30 class 20 subclass 1; 17,31 class 34 subclass 0 | record at 16,30: record 10; class 20.1; owner none; creatures 0: 6 Stone Golems, 1: 6 Iron Golems, 2: 3 Gold Golems, 3: 2 Diamond Golems; guards 0: 9 Gold Golems, 1: 6 Diamond Golems; record at 15,30: none | blocked 15,30; visitable 16,30 |
+| R3 | 21,30 class 17 subclass 12 | 21,30 class 17 subclass 12 | 21,30 class 17 subclass 12 | record at 20,30: record 11; class 17.12; owner none; creatures 0: 8 Dwarves; guards none; record at 21,30: none | blocked 21,30; visitable 20,30 |
 
 | object | creatures and counts | guards (creature and count by slot) | owner |
 |---|---|---|---|
-| R1 |   |   |   |
-| R2 |   |   |   |
-| R3 |   |   |   |
+| R1 | 0: 1 Angel | 0: 3 Angels | none |
+| R2 | 0: 6 Stone Golems, 1: 6 Iron Golems, 2: 3 Gold Golems, 3: 2 Diamond Golems | 0: 9 Gold Golems, 1: 6 Diamond Golems | none |
+| R3 | 0: 8 Dwarves | none | none |
 
-- anything odd: 
+- anything odd: every object anchored in (9, 28) to (23, 31): 13,30 class 17 subclass 8; 16,30 class 20 subclass 1; 21,30 class 17 subclass 12; 17,31 class 34 subclass 0; the tiles (10, 29) to (22, 30): blocked and visitable: blocked 11,30 15,30 21,30; visitable 12,30 16,30 20,30; the records at the neighbouring tiles (13, 30), (15, 30), (21, 30): none; none; none
