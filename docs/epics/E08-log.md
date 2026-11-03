@@ -10724,3 +10724,57 @@ original data staged (the four LODs, the two executables, `maps.tar`, `extracted
   point 6 with its revision history (`shared/e08-t87a`); design §12 and exit criterion 8. No
   version moved: the observation's types are unchanged and no replay or hash reads a view.
 
+### Increment 9, round 8: T87b, the audit of increment 9's exit criteria (2026-11-03, `adventure/e08-t87b`)
+
+**The cut** (decision 230): the audit based on `adventure/e08-t87a` without waiting for its merge;
+the criteria handed to three read-only sub-agents (1 to 4, 5 to 8, 9 and 10), the gaps to one
+worker. **The audit** (design §18, moved below by T87c), on T87a's code:
+
+1. Typed imports, the refusals (`ObjectOwner`, `MineResources`, `OwnedOnWater`) and the build's
+   fixed draws and boat tile are tested (`h3-map`'s `import.rs`, `economy.rs`, `economy_map.rs`;
+   `h3-adventure`'s `state/tests/economy.rs`). **Gaps:** ADV-MIN-001 is cited by the criterion,
+   ADR-0016 and survey §16 but was never written in the catalog; the criterion cited ADV-MAP-002
+   (the terrain shares) for the typing, which is ADV-OBJ-002's. **Found:** the parser reads class
+   220 below subclass 7 as a mine body while the class table types every 220 as the abandoned
+   mine, so a crafted 220.0 is refused at the build (`SetupError::Holds`) where the original (220
+   loaded as 53, the subclass kept) and VCMI make a sawmill; no shipped map has one (all 94 are
+   220.7). *Agent's call (change freely):* left for the next import bump (the inbox), since a
+   fix moves `MAP_IMPORT_VERSION` and every replay's header.
+2. Flags, never an own one, the radius, the owners seen: tested. **Partial:** the start's reveal
+   around an owned Lighthouse or Shipyard (A-33's point) only implicitly.
+3. Leave Guards, the kept group, the asked and fought guards, the owner's side, the kinds'
+   fields, the survivors and the flag: tested, with `check_mine_guards` and
+   `check_mine_battle_end` in the plans. **Partial:** D-47's split checked only as
+   `Defender::Monster` in `h3-adventure`, the split itself in the monsters' tests.
+4. The Lighthouses' 500, the boat's offer and `BuildBoat`, its refusals: tested. **Gap:**
+   `BuildBoat` with a hero in a boat on the tile (the visit's case was tested).
+5. The day's start: tested (`h3-game`'s `tests/calendar.rs`, `h3-heroes`' `tests/day.rs`, the
+   plans' `check_income`). **Gap:** the second month (day 57) only in the 60-day replays' hashes.
+6. The week's resets and growth, the creature month and its monsters as placed ones: tested
+   (`state/tests/calendar.rs`, `added.rs`, the plans' `check_week`, `check_told`).
+7. The timed events, their order and floor: tested (`calendar.rs`, `check_timed`).
+8. The views: tested (`state/tests/economy.rs`, `view.rs`), the boat tile since T87a.
+9. Every rule has its id, sources and markers but ADV-MIN-001; `ADV-QUIRK-33` was cited by the
+   import and the design note but **not in the ledger**; ADV-OWN-004 is E10's (design §16); the
+   env plays `BuildBoat` (`h3-sim`'s `adventure/tests/shipyards.rs`).
+10. Every row E9-1 to E9-12 is cited, **but E9-0** (no rule); §19's planned E9-1 sources of
+    ADV-MIN-003 and GAM-BAT-001 were missing. GAM-CAL-004's E9-11 confirms it whole. Still
+    `implemented`, by design: ADV-OWN-001 (the flag's reveal unobserved), ADV-OWN-002 (the
+    refusals, the Shipyard's start reveal), ADV-SHY-001 (only the first offset observed),
+    ADV-VIS-006 and ADV-FOG-006, ADV-OWN-003 (projections), ADV-MIN-001 and -003 (220, the bound
+    and the refusals unobserved), GAM-BAT-001, GAM-CAL-003, ADV-MON-014, ADV-MAP-002.
+
+**The gaps fixed:** ADV-MIN-001 written (the seven by subclass, the abandoned mine, the guards'
+army; code reading, VCMI, the wiki, batch E9; its markers on the class table, the kinds' check,
+`mine_guards`, `check_owners` and five tests); `ADV-QUIRK-33` recorded (exploit-fix, no flag: the
+import's bound, A-31, decision 199), linked from ADV-MIN-003; tests
+`the_owners_come_from_the_setup_and_reveal_around_their_objects` (an owned Lighthouse and
+Shipyard), `build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order` (a hero in a boat on
+the tile: `BoatTileTaken`), `the_next_month_starts_four_weeks_later_on_day_57`,
+`a_neutral_mine_s_single_stack_fights_split_as_a_wandering_monster` (`h3-game`: the defending
+stacks are the split's, on the kind's terrain); GAM-CAL-004 `verified`; E9-0 cited by GAM-RES-003
+and GAM-CAL-002, E9-1 by ADV-MIN-003, E9-1 and E9-2 by GAM-BAT-001; ADV-VIS-006's Garden sentence,
+HER-MAN-002's `regain_mana`, GAM-RES-005's `pay_income` and the week's and month's steps' caller
+`advance_day` named; criterion 1 cites ADV-OBJ-002. No version moved. The scoped verify with the
+original data passed (exit 2: deny and ffi-smoke skipped by scope).
+
