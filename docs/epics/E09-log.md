@@ -309,3 +309,51 @@ open pull request touched `h3-experiment` (#654, #655 the adventure lane's).
   with its seed): a note in the adventure lane's inbox, the seed not committed. Locally: `check-lane --cross-lane`, `cargo check --workspace
   --all-targets`, `h3-experiment`'s tests and clippy, the town scoped verify with the original data
   (every step but `check-lane`, by design, after the fix).
+
+### T3b — batch TWN-1's harness and runs (2026-11-03)
+
+One session, the user present at the start; branch `town/e09-t3b`. Starting point: `master` at
+e02c8e5 (#659 merged; CI on `master` green there; the sandbox's full engine run green on the same
+code). The user kept T3b whole and asked for narrow sub-agents (one wrote the harness's reads and
+the recipe offline in a worktree, one learned the town screen and played the runs); 3b is played
+in a new game instead of loading save 1 (the user: the merge has no random part; the record of 3b's
+opening shows any difference). The installation's files staged from the user's computer at the
+start. The VM restarted once (nothing lost).
+
+- **The harness** (`clients/capture/`, common; README "Towns (E09 T3b)"): `h3mem` reads a town's
+  record by its entrance (`town_at`: owner +0x1, faction +0x4, garrison hero +0xC, visitor +0x10,
+  garrison +0xE0, built +0x150, every-built +0x158; the towns from game +0x21614 to the vector's
+  end +0x21618, `structs.toml` gains `towns_end`, the town fields their readers). `h3adv`: the keys
+  `town:x,y:owner|visitor|built|every|garrison|slot:N`, `towns:every_vs_built`,
+  `towns:owned_garrisons`, `hero[NAME]:slot:N`, `opening:slot:N:<side>`, `town_screen`,
+  `unknown_screens`; a `new_game = true` step (`start_game`, the first start's path); the town
+  screen known by its vtable 0x64372C (`town_dialog_create` 0x5C34D0, map entry, inferred) and
+  closed by its exit button (item 30720), the level-up dialog (0x63FE60) as `level_up`; the table
+  battle plan's `attack` a list of creatures; fixes: `play_turns` reads the turn again after its
+  wait (3b's first run sent the Archangels' order into the Swordsmen's turn), a retreat waits out
+  the retreating side's Catapult. The harness check passed before and after; the client,
+  map-client and adventure lanes' inboxes told.
+- **A town's visitor (+0x10)** reads −1 while its hero is the selected one and holds it otherwise
+  (a probe: TWN-1-4 on the gate after entering, −1 while selected, 18 once another hero was
+  selected and on Blue's turn): the recipe reads TWN-1-4's town with TWN-1-1 selected; the
+  README's and `structs.toml`'s notes.
+- **The recipe** `clients/capture/batches/E09-batch-1.toml` (15 steps): game 1 rows 1 and 2's
+  reads and 3a; game 2 the reads, 3b and row 4; game 3 the reads; all on Red's day 1.
+- **The runs** (Easy, hot seat, the starting bonus Gold, under Wine): the first stopped in 3b
+  (`play_turns`), four probes of 3b, then two whole runs, recorded: `experiments/results/
+  E09-batch-1.md` (the committed recipe) and `E09-batch-1-run2.md` (played first; its row 4's
+  visitor read with the hero still selected, `none`). One more start crashed on the new-game screen
+  (the known rumour fault 0x4CCF8C, README "Traps") and was run again.
+
+**What the runs showed** (for T3c; not scored here): **TWN-1-1** the level-2 dwelling (31) in
+4, 4, 2 (run 2) and 3, 4, 4 (the main record) of the 16 owned towns with a Fort a game: 21 of 96;
+every other set as the reading's ({5, 10}; {5, 7, 10, 30}; neutral {10, 30, 31}, {7, 10, 30, 31})
+but **building 23 in every Rampart, Necropolis and Conflux town of the standard set** (owned and
+neutral, with and without a Fort; not predicted, not in the survey); every-built equal to built.
+**TWN-1-2** NEF and NE empty in all six games; the drawn garrisons in level order, some empty.
+**TWN-1-3** both runs alike: the opening [Swordsman 4, Halberdier 16, Marksman 10, Griffin 5,
+Cavalier 1, Monk 3, Pikeman 15], the garrison left [—, Centaur 4, Archer 5] (the reading's
+prediction exactly); 3a Red retreated, Blue won, Blue's army as the opening; 3b Red's hero on
+(20, 62) with 1 900 of 2 000, the owner Red, no town screen, the garrison empty; the Catapult acted
+by itself. **TWN-1-4** before (40, 62) 2 000; after the siege (40, 62) 1 900, Red, no screen, the
+garrison empty; the later step (40, 61) 1 800, the town screen, the visitor TWN-1-4.

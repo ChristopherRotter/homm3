@@ -87,6 +87,18 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
+  unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
+  `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
+  `towns:owned_garrisons`), `hero[NAME]:slot:N`, `opening:slot:N:<side>`, `town_screen`,
+  `unknown_screens`, a `new_game = true` step, the town screen (vtable 0x64372C, closed by item
+  30720) and the level-up dialog (0x63FE60, `level_up`) as known screens, and a list of creatures
+  in the table battle plan's `attack`. Behaviour changes: `play_turns` reads the turn again after
+  its 0.5 s wait (an order went into the next stack's turn), a retreat waits out the retreating
+  side's Catapult, a `text:` literal ending in `: ` joins the next value without `; `, and `batch
+  --map` fills the template beside the map when its stamp matches (no cargo build). A town's
+  visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
+  after. `clients/capture/README.md`, "Towns (E09 T3b)".
 - 2026-11-03 (this lane, E17 M6 T2a2b2, CLT-Q40): once the battle lane's carry lands (its inbox),
   the morale and luck descriptions' hero lists, the two artifacts' lines, the Angelic Alliance's join and a
   siege town's buildings, and the header and picture by the unclamped value (design §12.4).

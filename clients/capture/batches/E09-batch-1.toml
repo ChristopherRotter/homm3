@@ -1,0 +1,333 @@
+# E09 batch TWN-1 played by the capture harness (E09 T3b; h3adv.py batch): the procedure of
+# experiments/specs/E09-batch-1.toml as steps, on Easy, with T3b's reads (README, "Towns"). Hot
+# seat, Red and Blue human, the starting bonus Gold, everything on Red's day 1 (Blue never plays).
+# Game 1: TWN-1-1's and TWN-1-2's reads (each by its row's hero, which never moves), TWN-1-3a (the
+# reads before, the siege, Red retreats, the reads after). Game 2, a new game: the same reads,
+# TWN-1-3b (the siege won), TWN-1-4 (a siege won, then the later step onto the gate). Game 3, a
+# new game: the same reads.
+#
+# 3b is played in game 2 instead of loading save 1 (the user's decision, 2026-11-03): the merge
+# has no random part, so game 2's is game 1's, and 3b's record of the opening shows any
+# difference; no save is made. The heroes' names on the map are the rows' ids (TWN-1-1 to
+# TWN-1-4) and Blue's Visitor. A town by its entrance (`town:x,y:<part>`), a slot by its row's
+# label (TWN-1-3's table: `<slot> | <column>`). The town screen is known by its vtable (0x64372C,
+# learned live in T3b) and closed by its exit button; the walks onto a gate note any other screen
+# not known by its vtable (`unknown_screens`; README, "Towns").
+
+spec = "experiments/specs/E09-batch-1.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Game 1, day 1, Red: TWN-1-1's and TWN-1-2's reads before any hero moves --------------------
+
+[[step]]
+encounter = "TWN-1-1"
+hero = "TWN-1-1"
+[step.record]
+"RF1 castle (7, 7) | game 1: built (ids)" = "town:7,7:built"
+"RF2 rampart (15, 7) | game 1: built (ids)" = "town:15,7:built"
+"RF3 tower (23, 7) | game 1: built (ids)" = "town:23,7:built"
+"RF4 inferno (31, 7) | game 1: built (ids)" = "town:31,7:built"
+"RF5 necropolis (39, 7) | game 1: built (ids)" = "town:39,7:built"
+"RF6 dungeon (47, 7) | game 1: built (ids)" = "town:47,7:built"
+"RF7 stronghold (55, 7) | game 1: built (ids)" = "town:55,7:built"
+"RF8 fortress (63, 7) | game 1: built (ids)" = "town:63,7:built"
+"BF1 conflux (7, 15) | game 1: built (ids)" = "town:7,15:built"
+"BF2 castle (15, 15) | game 1: built (ids)" = "town:15,15:built"
+"BF3 rampart (23, 15) | game 1: built (ids)" = "town:23,15:built"
+"BF4 tower (31, 15) | game 1: built (ids)" = "town:31,15:built"
+"BF5 inferno (39, 15) | game 1: built (ids)" = "town:39,15:built"
+"BF6 necropolis (47, 15) | game 1: built (ids)" = "town:47,15:built"
+"BF7 dungeon (55, 15) | game 1: built (ids)" = "town:55,15:built"
+"BF8 stronghold (63, 15) | game 1: built (ids)" = "town:63,15:built"
+"R1 fortress (7, 23) | game 1: built (ids)" = "town:7,23:built"
+"R2 conflux (15, 23) | game 1: built (ids)" = "town:15,23:built"
+"R3 castle (23, 23) | game 1: built (ids)" = "town:23,23:built"
+"R4 rampart (31, 23) | game 1: built (ids)" = "town:31,23:built"
+"B1 tower (39, 23) | game 1: built (ids)" = "town:39,23:built"
+"B2 inferno (47, 23) | game 1: built (ids)" = "town:47,23:built"
+"B3 necropolis (55, 23) | game 1: built (ids)" = "town:55,23:built"
+"B4 dungeon (63, 23) | game 1: built (ids)" = "town:63,23:built"
+"NF1 stronghold (7, 31) | game 1: built (ids)" = "town:7,31:built"
+"NF2 fortress (15, 31) | game 1: built (ids)" = "town:15,31:built"
+"NF3 conflux (23, 31) | game 1: built (ids)" = "town:23,31:built"
+"NF4 castle (31, 31) | game 1: built (ids)" = "town:31,31:built"
+"N1 rampart (39, 31) | game 1: built (ids)" = "town:39,31:built"
+"N2 tower (47, 31) | game 1: built (ids)" = "town:47,31:built"
+"N3 inferno (55, 31) | game 1: built (ids)" = "town:55,31:built"
+"N4 necropolis (63, 31) | game 1: built (ids)" = "town:63,31:built"
+"NEF dungeon (7, 39) | game 1: built (ids)" = "town:7,39:built"
+"NE stronghold (15, 39) | game 1: built (ids)" = "town:15,39:built"
+"+every-built (+0x158) different from built anywhere (which town, which ids)" = ["text:game 1: ", "towns:every_vs_built"]
+
+[[step]]
+encounter = "TWN-1-2"
+hero = "TWN-1-2"
+[step.record]
+"NF1 stronghold (7, 31) | game 1: garrison (slot: creature × count)" = "town:7,31:garrison"
+"NF2 fortress (15, 31) | game 1: garrison (slot: creature × count)" = "town:15,31:garrison"
+"NF3 conflux (23, 31) | game 1: garrison (slot: creature × count)" = "town:23,31:garrison"
+"NF4 castle (31, 31) | game 1: garrison (slot: creature × count)" = "town:31,31:garrison"
+"N1 rampart (39, 31) | game 1: garrison (slot: creature × count)" = "town:39,31:garrison"
+"N2 tower (47, 31) | game 1: garrison (slot: creature × count)" = "town:47,31:garrison"
+"N3 inferno (55, 31) | game 1: garrison (slot: creature × count)" = "town:55,31:garrison"
+"N4 necropolis (63, 31) | game 1: garrison (slot: creature × count)" = "town:63,31:garrison"
+"NEF dungeon (7, 39) | game 1: garrison (slot: creature × count)" = "town:7,39:garrison"
+"NE stronghold (15, 39) | game 1: garrison (slot: creature × count)" = "town:15,39:garrison"
+"+the owned towns' garrisons (all 24 empty? which not)" = ["text:game 1: ", "towns:owned_garrisons"]
+[step.note]
+"the game's version" = "map_kind"
+"TWN-1-2's worn artifacts at the start but the war machines (the starting bonus)" = "hero:equipment"
+
+# --- Game 1: TWN-1-3a, the siege, Red retreats --------------------------------------------------
+
+[[step]]
+encounter = "TWN-1-3"
+hero = "TWN-1-3"
+[step.record]
+"0 | before: garrison" = "town:20,61:slot:0"
+"1 | before: garrison" = "town:20,61:slot:1"
+"2 | before: garrison" = "town:20,61:slot:2"
+"3 | before: garrison" = "town:20,61:slot:3"
+"4 | before: garrison" = "town:20,61:slot:4"
+"5 | before: garrison" = "town:20,61:slot:5"
+"6 | before: garrison" = "town:20,61:slot:6"
+"0 | before: Blue's army" = "hero[Visitor]:slot:0"
+"1 | before: Blue's army" = "hero[Visitor]:slot:1"
+"2 | before: Blue's army" = "hero[Visitor]:slot:2"
+"3 | before: Blue's army" = "hero[Visitor]:slot:3"
+"4 | before: Blue's army" = "hero[Visitor]:slot:4"
+"5 | before: Blue's army" = "hero[Visitor]:slot:5"
+"6 | before: Blue's army" = "hero[Visitor]:slot:6"
+"Red's hero before the step: tile, movement points" = ["hero:tile", "hero:points"]
+[step.note]
+"game 1, the town (20, 61) before 3a: owner; visitor; built; every built" = ["town:20,61:owner", "town:20,61:visitor", "town:20,61:built", "town:20,61:every"]
+
+[[step]]
+encounter = "TWN-1-3"
+hero = "TWN-1-3"
+walk = [20, 61]
+# Every Blue stack defends; Red retreats at its first stack's turn (a siege's Catapult, which acts
+# by itself, waited out: h3adv.fight).
+battle = "retreat"
+expect = { question = "none", battle = true }
+[step.record]
+"0 | 3a opening: Blue's stacks" = "opening:slot:0:defender"
+"1 | 3a opening: Blue's stacks" = "opening:slot:1:defender"
+"2 | 3a opening: Blue's stacks" = "opening:slot:2:defender"
+"3 | 3a opening: Blue's stacks" = "opening:slot:3:defender"
+"4 | 3a opening: Blue's stacks" = "opening:slot:4:defender"
+"5 | 3a opening: Blue's stacks" = "opening:slot:5:defender"
+"6 | 3a opening: Blue's stacks" = "opening:slot:6:defender"
+"0 | 3a after: garrison" = "town:20,61:slot:0"
+"1 | 3a after: garrison" = "town:20,61:slot:1"
+"2 | 3a after: garrison" = "town:20,61:slot:2"
+"3 | 3a after: garrison" = "town:20,61:slot:3"
+"4 | 3a after: garrison" = "town:20,61:slot:4"
+"5 | 3a after: garrison" = "town:20,61:slot:5"
+"6 | 3a after: garrison" = "town:20,61:slot:6"
+"0 | 3a after: Blue's army" = "hero[Visitor]:slot:0"
+"1 | 3a after: Blue's army" = "hero[Visitor]:slot:1"
+"2 | 3a after: Blue's army" = "hero[Visitor]:slot:2"
+"3 | 3a after: Blue's army" = "hero[Visitor]:slot:3"
+"4 | 3a after: Blue's army" = "hero[Visitor]:slot:4"
+"5 | 3a after: Blue's army" = "hero[Visitor]:slot:5"
+"6 | 3a after: Blue's army" = "hero[Visitor]:slot:6"
+[step.note]
+"3a: the winner; who retreated; Red's hero on the map after" = ["winner", "retreated", "hero:on_map"]
+"3a opening: the sides; Blue's stacks' hexes; Red's stacks" = ["opening:sides", "hexes:start:defender", "opening:stacks:attacker"]
+"3a after: the town's owner; its visitor" = ["town:20,61:owner", "town:20,61:visitor"]
+"3a: screens not known by their vtable" = "unknown_screens"
+
+# --- Game 2, a new game: TWN-1-1's and TWN-1-2's reads ------------------------------------------
+
+[[step]]
+encounter = "TWN-1-1"
+new_game = true
+
+[[step]]
+encounter = "TWN-1-1"
+hero = "TWN-1-1"
+[step.record]
+"RF1 castle (7, 7) | game 2: built" = "town:7,7:built"
+"RF2 rampart (15, 7) | game 2: built" = "town:15,7:built"
+"RF3 tower (23, 7) | game 2: built" = "town:23,7:built"
+"RF4 inferno (31, 7) | game 2: built" = "town:31,7:built"
+"RF5 necropolis (39, 7) | game 2: built" = "town:39,7:built"
+"RF6 dungeon (47, 7) | game 2: built" = "town:47,7:built"
+"RF7 stronghold (55, 7) | game 2: built" = "town:55,7:built"
+"RF8 fortress (63, 7) | game 2: built" = "town:63,7:built"
+"BF1 conflux (7, 15) | game 2: built" = "town:7,15:built"
+"BF2 castle (15, 15) | game 2: built" = "town:15,15:built"
+"BF3 rampart (23, 15) | game 2: built" = "town:23,15:built"
+"BF4 tower (31, 15) | game 2: built" = "town:31,15:built"
+"BF5 inferno (39, 15) | game 2: built" = "town:39,15:built"
+"BF6 necropolis (47, 15) | game 2: built" = "town:47,15:built"
+"BF7 dungeon (55, 15) | game 2: built" = "town:55,15:built"
+"BF8 stronghold (63, 15) | game 2: built" = "town:63,15:built"
+"R1 fortress (7, 23) | game 2: built" = "town:7,23:built"
+"R2 conflux (15, 23) | game 2: built" = "town:15,23:built"
+"R3 castle (23, 23) | game 2: built" = "town:23,23:built"
+"R4 rampart (31, 23) | game 2: built" = "town:31,23:built"
+"B1 tower (39, 23) | game 2: built" = "town:39,23:built"
+"B2 inferno (47, 23) | game 2: built" = "town:47,23:built"
+"B3 necropolis (55, 23) | game 2: built" = "town:55,23:built"
+"B4 dungeon (63, 23) | game 2: built" = "town:63,23:built"
+"NF1 stronghold (7, 31) | game 2: built" = "town:7,31:built"
+"NF2 fortress (15, 31) | game 2: built" = "town:15,31:built"
+"NF3 conflux (23, 31) | game 2: built" = "town:23,31:built"
+"NF4 castle (31, 31) | game 2: built" = "town:31,31:built"
+"N1 rampart (39, 31) | game 2: built" = "town:39,31:built"
+"N2 tower (47, 31) | game 2: built" = "town:47,31:built"
+"N3 inferno (55, 31) | game 2: built" = "town:55,31:built"
+"N4 necropolis (63, 31) | game 2: built" = "town:63,31:built"
+"NEF dungeon (7, 39) | game 2: built" = "town:7,39:built"
+"NE stronghold (15, 39) | game 2: built" = "town:15,39:built"
+"+every-built (+0x158) different from built anywhere (which town, which ids)" = ["text:game 2: ", "towns:every_vs_built"]
+
+[[step]]
+encounter = "TWN-1-2"
+hero = "TWN-1-2"
+[step.record]
+"NF1 stronghold (7, 31) | game 2" = "town:7,31:garrison"
+"NF2 fortress (15, 31) | game 2" = "town:15,31:garrison"
+"NF3 conflux (23, 31) | game 2" = "town:23,31:garrison"
+"NF4 castle (31, 31) | game 2" = "town:31,31:garrison"
+"N1 rampart (39, 31) | game 2" = "town:39,31:garrison"
+"N2 tower (47, 31) | game 2" = "town:47,31:garrison"
+"N3 inferno (55, 31) | game 2" = "town:55,31:garrison"
+"N4 necropolis (63, 31) | game 2" = "town:63,31:garrison"
+"NEF dungeon (7, 39) | game 2" = "town:7,39:garrison"
+"NE stronghold (15, 39) | game 2" = "town:15,39:garrison"
+"+the owned towns' garrisons (all 24 empty? which not)" = ["text:game 2: ", "towns:owned_garrisons"]
+
+# --- Game 2: TWN-1-3b, the siege won --------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-1-3"
+hero = "TWN-1-3"
+walk = [20, 61]
+# Both players are human in hot seat, so auto combat does not play the battle (h3adv.fight;
+# batch E9a's E9-2), and `attack` would have Blue's stacks act too, its shooters (Marksmen, Monks)
+# included, which its melee strikes were never tried with. The table form with a list (E09 T3b):
+# the Archangels strike Blue's stacks creature by creature, shooters first (an Archer listed too:
+# a merge that leaves them in), while every Blue stack defends, as the procedure says; a creature
+# not there is passed over, and `attack` plays anything left.
+battle = { attack = ["Marksman", "Monk", "Archer", "Cavalier", "Griffin", "Swordsman", "Halberdier", "Centaur", "Pikeman"], by = "attacker", then = "attack" }
+# The level-up's first offer (the dialog's left one, or its only one).
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+[step.record]
+"0 | 3b opening: Blue's stacks" = "opening:slot:0:defender"
+"1 | 3b opening: Blue's stacks" = "opening:slot:1:defender"
+"2 | 3b opening: Blue's stacks" = "opening:slot:2:defender"
+"3 | 3b opening: Blue's stacks" = "opening:slot:3:defender"
+"4 | 3b opening: Blue's stacks" = "opening:slot:4:defender"
+"5 | 3b opening: Blue's stacks" = "opening:slot:5:defender"
+"6 | 3b opening: Blue's stacks" = "opening:slot:6:defender"
+"3b after the battle: Red's hero's tile, movement points; the town's owner; a town screen (yes/no); the garrison" = ["hero:tile", "hero:points", "town:20,61:owner", "town_screen", "town:20,61:garrison"]
+[step.note]
+"3b (game 2) before the step: Red's hero's tile, points; the garrison; Blue's army" = ["before:hero:tile", "before:hero:points", "before:town:20,61:garrison", "before:hero[Visitor]:slots"]
+"3b: the winner; the level-ups; the messages" = ["winner", "level_up_dialogs", "messages"]
+"3b after: the town's visitor; built; Visitor on the map" = ["town:20,61:visitor", "town:20,61:built", "hero[Visitor]:on_map"]
+"3b: screens not known by their vtable" = "unknown_screens"
+
+# --- Game 2: TWN-1-4, a siege won, then the later step onto the gate ----------------------------
+
+[[step]]
+encounter = "TWN-1-4"
+hero = "TWN-1-4"
+record = { "Red's hero before the step: tile, movement points" = ["hero:tile", "hero:points"] }
+note = { "the town (40, 61) before: owner; visitor; garrison; built" = ["town:40,61:owner", "town:40,61:visitor", "town:40,61:garrison", "town:40,61:built"] }
+
+[[step]]
+encounter = "TWN-1-4"
+hero = "TWN-1-4"
+walk = [40, 61]
+# The defender is neutral (the computer plays it): auto combat plays Red's side.
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "after the battle: Red's hero's tile and movement points; the owner; a town screen (yes/no); the garrison" = ["hero:tile", "hero:points", "town:40,61:owner", "town_screen", "town:40,61:garrison"] }
+note = { "the siege: the winner; the defenders at the opening; the level-ups; the messages" = ["winner", "opening:stacks:defender", "level_up_dialogs", "messages"], "the siege: screens not known by their vtable" = "unknown_screens" }
+
+[[step]]
+encounter = "TWN-1-4"
+hero = "TWN-1-4"
+walk = [40, 61]
+# Red's own town now: the step enters it and the town screen opens (noted and closed: README,
+# "Towns").
+expect = { question = "none", battle = false }
+record = { "+after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero" = ["hero:tile", "hero:points", "town_screen"] }
+note = { "the later step: its path's marks, the target's mark; the town's owner" = ["marks", "mark", "town:40,61:owner"], "the later step: screens not known by their vtable" = "unknown_screens" }
+
+# The town's visitor (+0x10) is cleared while its hero is the selected one and set again once
+# another hero is selected (observed in T3b's probe: -1 with TWN-1-4 selected, 18 with TWN-1-1
+# selected and on Blue's turn): it is read with TWN-1-1 selected (README, "Towns").
+[[step]]
+encounter = "TWN-1-4"
+hero = "TWN-1-1"
+record = { "+after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero" = ["text:the visitor with TWN-1-1 selected: ", "town:40,61:visitor"] }
+
+# --- Game 3, a new game: TWN-1-1's and TWN-1-2's reads ------------------------------------------
+
+[[step]]
+encounter = "TWN-1-1"
+new_game = true
+
+[[step]]
+encounter = "TWN-1-1"
+hero = "TWN-1-1"
+[step.record]
+"RF1 castle (7, 7) | game 3: built" = "town:7,7:built"
+"RF2 rampart (15, 7) | game 3: built" = "town:15,7:built"
+"RF3 tower (23, 7) | game 3: built" = "town:23,7:built"
+"RF4 inferno (31, 7) | game 3: built" = "town:31,7:built"
+"RF5 necropolis (39, 7) | game 3: built" = "town:39,7:built"
+"RF6 dungeon (47, 7) | game 3: built" = "town:47,7:built"
+"RF7 stronghold (55, 7) | game 3: built" = "town:55,7:built"
+"RF8 fortress (63, 7) | game 3: built" = "town:63,7:built"
+"BF1 conflux (7, 15) | game 3: built" = "town:7,15:built"
+"BF2 castle (15, 15) | game 3: built" = "town:15,15:built"
+"BF3 rampart (23, 15) | game 3: built" = "town:23,15:built"
+"BF4 tower (31, 15) | game 3: built" = "town:31,15:built"
+"BF5 inferno (39, 15) | game 3: built" = "town:39,15:built"
+"BF6 necropolis (47, 15) | game 3: built" = "town:47,15:built"
+"BF7 dungeon (55, 15) | game 3: built" = "town:55,15:built"
+"BF8 stronghold (63, 15) | game 3: built" = "town:63,15:built"
+"R1 fortress (7, 23) | game 3: built" = "town:7,23:built"
+"R2 conflux (15, 23) | game 3: built" = "town:15,23:built"
+"R3 castle (23, 23) | game 3: built" = "town:23,23:built"
+"R4 rampart (31, 23) | game 3: built" = "town:31,23:built"
+"B1 tower (39, 23) | game 3: built" = "town:39,23:built"
+"B2 inferno (47, 23) | game 3: built" = "town:47,23:built"
+"B3 necropolis (55, 23) | game 3: built" = "town:55,23:built"
+"B4 dungeon (63, 23) | game 3: built" = "town:63,23:built"
+"NF1 stronghold (7, 31) | game 3: built" = "town:7,31:built"
+"NF2 fortress (15, 31) | game 3: built" = "town:15,31:built"
+"NF3 conflux (23, 31) | game 3: built" = "town:23,31:built"
+"NF4 castle (31, 31) | game 3: built" = "town:31,31:built"
+"N1 rampart (39, 31) | game 3: built" = "town:39,31:built"
+"N2 tower (47, 31) | game 3: built" = "town:47,31:built"
+"N3 inferno (55, 31) | game 3: built" = "town:55,31:built"
+"N4 necropolis (63, 31) | game 3: built" = "town:63,31:built"
+"NEF dungeon (7, 39) | game 3: built" = "town:7,39:built"
+"NE stronghold (15, 39) | game 3: built" = "town:15,39:built"
+"+every-built (+0x158) different from built anywhere (which town, which ids)" = ["text:game 3: ", "towns:every_vs_built"]
+
+[[step]]
+encounter = "TWN-1-2"
+hero = "TWN-1-2"
+[step.record]
+"NF1 stronghold (7, 31) | game 3" = "town:7,31:garrison"
+"NF2 fortress (15, 31) | game 3" = "town:15,31:garrison"
+"NF3 conflux (23, 31) | game 3" = "town:23,31:garrison"
+"NF4 castle (31, 31) | game 3" = "town:31,31:garrison"
+"N1 rampart (39, 31) | game 3" = "town:39,31:garrison"
+"N2 tower (47, 31) | game 3" = "town:47,31:garrison"
+"N3 inferno (55, 31) | game 3" = "town:55,31:garrison"
+"N4 necropolis (63, 31) | game 3" = "town:63,31:garrison"
+"NEF dungeon (7, 39) | game 3" = "town:7,39:garrison"
+"NE stronghold (15, 39) | game 3" = "town:15,39:garrison"
+"+the owned towns' garrisons (all 24 empty? which not)" = ["text:game 3: ", "towns:owned_garrisons"]

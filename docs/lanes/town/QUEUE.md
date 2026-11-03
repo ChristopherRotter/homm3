@@ -7,23 +7,9 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are round 3 (round 2's T3a is done, `E09-log.md`); each later round's entries are
+entry below is round 3's last (T3a and T3b are done, `E09-log.md`); each later round's entries are
 written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T3b — batch TWN-1's harness and run**
-
-- **Scope:** round 3 (design §20): the harness (`clients/capture/`, common; this lane builds it
-  with its check and notes the client and map-client lanes' inboxes): reads of a town's record
-  (owner +0x1, built +0x150, every-built +0x158, garrison +0xE0, visitor +0x10), the siege's
-  opening stacks (E04c's reads), a hero's tile and points after a battle (E08's); the recipe
-  `E09-batch-1`; the run in SoD on Easy, hot seat, as E08's T79 (original data staged); the
-  results in `experiments/results/E09-batch-1.md`.
-- **Acceptance:** every row's record filled; the harness's check passes.
-- **Notes from T3a:** the spec's map and template are built (stamp `7902bb9e`); three new games
-  for rows 1 and 2, rows 3 and 4 in the first (3a and 3b from one save, then row 4); the town
-  record's offsets are not in `docs/exe/structs.toml` yet (add them with the harness).
-- **Depends on:** T3a (done). **Status:** ready.
 
 **E09 T3c — batch TWN-1 scored**
 
@@ -31,7 +17,12 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
   TD-7, the siege's aftermath); a row that disagrees reopens design §5 or §10 and the ADR step it
   names (a `TWN-Q` before T4 applies the ADRs); `docs/experiments/README.md`'s row.
 - **Acceptance:** the verdicts in the survey and the design note.
-- **Depends on:** T3b. **Status:** waiting (T3b).
+- **Notes from T3b:** two whole runs (`experiments/results/E09-batch-1.md`, `-run2.md`: six
+  games for rows 1 and 2; `E09-log.md`, T3b, has the summary). Not predicted: building 23 stands
+  in every Rampart, Necropolis and Conflux town of the standard set (`town_buildings_setup`
+  0x5C08C0 or the faction tables: read where it comes from and what 23 is for each). A town's
+  visitor (+0x10) reads −1 while its hero is selected (the harness's README, "Towns").
+- **Depends on:** T3b (done). **Status:** ready.
 
 ## Inbox
 

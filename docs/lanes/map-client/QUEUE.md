@@ -112,6 +112,18 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
+  unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
+  `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
+  `towns:owned_garrisons`), `hero[NAME]:slot:N`, `opening:slot:N:<side>`, `town_screen`,
+  `unknown_screens`, a `new_game = true` step, the town screen (vtable 0x64372C, closed by item
+  30720) and the level-up dialog (0x63FE60, `level_up`) as known screens, and a list of creatures
+  in the table battle plan's `attack`. Behaviour changes: `play_turns` reads the turn again after
+  its 0.5 s wait (an order went into the next stack's turn), a retreat waits out the retreating
+  side's Catapult, a `text:` literal ending in `: ` joins the next value without `; `, and `batch
+  --map` fills the template beside the map when its stamp matches (no cargo build). A town's
+  visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
+  after. `clients/capture/README.md`, "Towns (E09 T3b)".
 - 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
   call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
   amended; the user, AI-Q10), the all-seeing `choose` only as a game's option.
