@@ -8,8 +8,10 @@
 //!
 //! So far: the ruleset part ([`TownRuleset`], its compiler and canonical hash; E09 T5a1), the
 //! buildings' ids and sets, a town's record ([`Town`], [`TownStatic`]) and the store of towns
-//! ([`Towns`]) with its canonical hash (E09 T6a), and the two version constants. E09 increment
-//! 1's design note §5 and §6 (the setup's functions, T6c; the derivations, T6b) say what comes.
+//! ([`Towns`]) with its canonical hash (E09 T6a), the reveal, the Tavern and the Capitol's limit
+//! with the store's first write ([`reveal`], [`has_tavern`], [`Towns::apply_capitol_limit`]; E09
+//! T6b), and the two version constants. E09 increment 1's design note §5 and §6 (the setup's
+//! functions, T6c; the derivations, T6b) say what comes.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -32,6 +34,7 @@
 extern crate alloc;
 
 mod building;
+mod capture;
 mod derive;
 #[cfg(test)]
 mod fixture;
@@ -39,8 +42,10 @@ mod income;
 mod record;
 mod ruleset;
 mod store;
+mod view;
 
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
+pub use capture::{capitol_limit, reveal};
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
 pub use h3_contracts::Moat;
 pub use income::hall_level;
@@ -51,6 +56,7 @@ pub use ruleset::{
     TownOverride, TownPack, TownParams, TownParamsDef, TownPatch, TownRecord, TownRuleset,
 };
 pub use store::{MAX_TOWNS, Towns};
+pub use view::has_tavern;
 
 /// Version of the store of towns' canonical hash encoding, which the game state hash folds in
 /// (ADR-0028 points 4 and 9; `docs/08-work-process.md`, "Versions"; owned by the town lane). Bump

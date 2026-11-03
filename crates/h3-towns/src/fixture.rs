@@ -266,3 +266,12 @@ pub(crate) fn part() -> TownRuleset {
 pub(crate) fn empty_part() -> TownRuleset {
     TownRuleset::empty(&core())
 }
+
+/// The part with the parameters' reveal radius `radius`.
+pub(crate) fn part_with_radius(radius: u8) -> TownRuleset {
+    let params = TownParams {
+        reveal_radius: radius,
+        ..params()
+    };
+    TownRuleset::new(&core(), Some(params), vec![keep(), marsh()])
+}
