@@ -73,7 +73,9 @@ Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-code
   and version, references core entities by handle and its source by key. `h3-game`'s
   `GameRuleset` bundles them; replay headers and the server's manifest record every part's hash.
 - **One pack file per context:** `adventure.toml` beside the pack's existing file, hand-written
-  source the harvester never touches (E08 decision 10), parsed by `h3-pack-adventure`. The split
+  source the harvester never touches (E08 decision 10), parsed by `h3-pack-adventure`; from E09
+  `towns.toml`, the town part's source, parsed by `h3-pack-towns` (ADR-0028 point 5); the original
+  packs' written by `h3-harvest`'s gap-fill (E09 decision 23). The split
   of `h3-content` into a core and a battle part, with `core.toml` and `battle.toml`, waits for
   E04b to close (ADR-0015 point 3); done by R01 (2026-10-13, ADR-0015's amendment R01).
 
@@ -91,3 +93,5 @@ Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-code
 - 2026-10-01: Amended by E03 T2 (abilities in packs, flags/shots on the hot-path creature type, hash v3).
 - 2026-10-10: Amended by E08 (ruleset parts per context, one pack file per context; ADR-0015).
 - 2026-10-11: Amended by E04b T8e (data quirks through gated overrides; ADR-0007).
+- 2026-11-03: E09 T4b: the E08 amendment's pack file line names `towns.toml` (presentation only,
+  the decision is ADR-0028 point 5's).

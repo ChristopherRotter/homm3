@@ -30,7 +30,7 @@ pub use hero::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
     EagleEye, FactionGroup, HeroSex, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
-pub use ids::{HeroId, PlayerId};
+pub use ids::{HeroId, PlayerId, TownId};
 pub use siege::{FortLevel, Moat, Siege};
 
 use h3_content::{ContentKey, CreatureTypeId, Formation, SpellId, TerrainId};

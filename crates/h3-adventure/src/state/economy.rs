@@ -197,7 +197,7 @@ impl AdventureState {
     /// survivors, a Leave Guards dialog's group; from T84), else an abandoned mine's drawn count
     /// of its kind's creature in slot 0; none for a mine of the seven, for an army written empty
     /// (the drawn Troglodytes do not come back) and for an object that is no mine.
-    // rule: ADV-MIN-003
+    // rule: ADV-MIN-001, ADV-MIN-003
     pub fn mine_guards(&self, part: &AdventureRuleset, index: usize) -> Vec<ArmyStack> {
         let kind = kind_at(part, &self.map, index);
         if !matches!(
@@ -325,6 +325,7 @@ impl AdventureState {
     /// keeps: an owner for each ownable object and none other, each a player of the game; a mine's
     /// guards within the army's slots, in distinct slots in order, each of one creature to a
     /// stack's most.
+    // rule: ADV-MIN-001
     pub fn check_owners(&self, part: &AdventureRuleset) -> bool {
         let params = part.params();
         let players = usize::from(self.players);

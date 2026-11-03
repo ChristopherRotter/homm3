@@ -221,9 +221,10 @@ paths = [
 
 # Towns (E09; the user, 2026-10-31, TWN-Q1, opening the lane beside the adventure lane's E08):
 # the town context's crate `h3-towns` (buildings, construction, growth, the available creatures,
-# the mage guild, the market), the town modules inside the adventure lane's crates by the longest
-# match (the town as a map object, its visit and capture, the import of towns, the writer's towns,
-# h3-game's composition), the town rules and quirks, E09's epic, surveys and experiments. The
+# the mage guild, the market), its pack adapter `h3-pack-towns` and each pack's `towns.toml`, the
+# town modules inside the adventure lane's crates by the longest match (the town as a map object,
+# its visit and capture, the import of towns, the writer's towns, h3-game's composition), the
+# town rules and quirks, E09's epic, surveys and experiments. The
 # adventure lane's crates' common parts (`lib.rs`, the state structs and hashes, the versions, the
 # replays) stay the adventure lane's: the town lane changes them `cross-lane`, merged in order.
 # `verify_with`: the scoped verify also runs the adventure lane's crates, replays and workloads.
@@ -233,6 +234,15 @@ code = "TWN"
 verify_with = ["adventure"]
 paths = [
     "crates/h3-towns/",
+    # The town part's adapter and its pack files (ADR-0028 points 1 and 5; E09 T4b): one pack file
+    # per context (ADR-0006's E08 amendment); the original packs' written by `h3-harvest`'s gap-fill
+    # (E09 decision 23, T5b, `cross-lane`), the synthetic ones by hand.
+    "crates/h3-pack-towns/",
+    "packs/base/towns.toml",
+    "packs/ab/towns.toml",
+    "packs/sod/towns.toml",
+    "packs/synthetic/towns.toml",
+    "packs/synthetic-ext/towns.toml",
     "crates/h3-adventure/src/town*",
     "crates/h3-game/src/town*",
     "crates/h3-map/src/import/town*",

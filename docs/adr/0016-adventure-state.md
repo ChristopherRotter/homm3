@@ -525,7 +525,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    team's knowledge, never another's; a mine's guards are seen as the original's hint shows them
    (the size word of their total count, every stack counted, an upgraded one too, and their
    creature only when all are of one), their stacks and counts by the owner's team. A Shipyard's
-   boat tile is static and public with it. A weekly object's **visited mark** is its visitor's
+   boat tile is static and its owner's team's (E08 decision 229: public until E08 T87a; the team
+   has explored every offset, so the tile tells no other viewer which earlier offsets were land
+   or held an object). A weekly object's **visited mark** is its visitor's
    team's (a Garden's too, E08 decision 222), kept through the weeks (the original's hint reads
    "visited" from it, never "emptied"); its contents are never shown, before a visit or after. A
    month's monster is seen as any monster where its tile is; a monster's fraction is never shown
@@ -724,3 +726,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   radius; the town's public facts and the garrison by the viewer's taverns. Drafted in E09 T2a
   (survey `E09-towns.md` §7 to §9, §12); batch TWN-1 (T3c, survey §15) confirmed TD-7 and the
   siege's aftermath.
+- 2026-11-03 (E08 T87a `shared/`; the user at ADV-Q40, E08 decision 229): point 6's Shipyard's
+  boat tile shown only to its owner's team, not public: the team has explored every offset (a
+  flag's reveal, an owned object's at the start), while to another viewer the tile told which
+  earlier offsets were land or held an object (E08 T86b1's view property found it).

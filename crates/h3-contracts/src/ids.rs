@@ -1,5 +1,5 @@
-//! Cross-context identities (ADR-0015 point 5): the players and heroes of a game, named the same
-//! way by every context and by `h3-game`, which keeps the lists they index. Context-internal
+//! Cross-context identities (ADR-0015 point 5): the players, heroes and towns of a game, named the
+//! same way by every context and by `h3-game`, which keeps the lists they index. Context-internal
 //! handles stay in their crates.
 
 /// A player of a game: its position in the game's player list, which follows the original's
@@ -48,6 +48,31 @@ impl HeroId {
     }
 }
 
+/// A town of a game (ADR-0028 point 3): its index among the map's towns (the object classes 77 and
+/// 98) in object order, dense from 0 and fixed when the game is built, since no rule creates or
+/// removes a town. The adventure's town object holds it, the store of towns (`h3-towns`, kept by
+/// `h3-game`) has a town's record by it, and commands, events and observations name a town by it.
+/// Files and the wire write it as its number ([`TownId::raw`]), as they write a [`HeroId`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TownId(u16);
+
+impl TownId {
+    /// The town at `index` among the map's towns.
+    pub const fn new(index: u16) -> Self {
+        Self(index)
+    }
+
+    /// The raw index.
+    pub const fn raw(self) -> u16 {
+        self.0
+    }
+
+    /// The index as a `usize`, for table access.
+    pub const fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,5 +90,12 @@ mod tests {
         let hero = HeroId::new(155);
         assert_eq!((hero.raw(), hero.index()), (155, 155));
         assert!(HeroId::new(3) < hero);
+    }
+
+    #[test]
+    fn town_ids_keep_their_index_and_object_order() {
+        let town = TownId::new(47);
+        assert_eq!((town.raw(), town.index()), (47, 47));
+        assert!(TownId::new(0) < town);
     }
 }

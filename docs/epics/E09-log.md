@@ -405,3 +405,36 @@ its start (the user: the ADRs and docs first, T4b the skeletons). Docs only: no 
   `h3-contracts`), `docs/02` §3, the versions rows, ADR-0005's crate list and ADR-0006's pack
   files.
 
+
+### T4b — the crate skeletons, `TownId`, the gates (2026-11-03)
+
+One session, the user present; branch `shared/e09-t4b`, `cross-lane` (the town lane's docs and
+`packs/README.md`, the battle lane's, ride along). Starting point: `master` at 8ea2e4a (#665
+merged, CI green; the sandbox's baseline the light gates on CI's fingerprint). Taken whole (a
+small task, no seam needed). No version moves: the two new constants start at 1.
+
+- **`h3-towns`** (domain, logic: the lint header, `no_std`): `TownRuleset` and `Towns`, empty
+  `Default` structs whose doc comments say what T5a and T6 add; `TOWN_STATE_HASH_VERSION` and
+  `TOWN_RULESET_HASH_VERSION`, both 1. No dependency and no function yet, so nothing to cover
+  (the gate skips a crate of declarations only, as E08 T2's skeletons).
+- **`h3-pack-towns`** (adapter): doc only; the parser and the format come with T5a.
+- **`h3-contracts`:** `TownId(u16)` beside `HeroId` (`new`, `raw`, `index`; a test), its doc
+  ADR-0028 point 3's. *Agent's call (change freely):* the design note's "serde as a number" read
+  as `HeroId`'s rule: `h3-contracts` has no serde (none of its types derives it), so files and the
+  wire write `raw()`; a derive would be a new external edge of a shared logic crate. `Moat`'s doc
+  comment: the packs decide (ADR-0023 point 2 as E09 amended it), its variants by the packs'
+  records instead of the game's version.
+- **`arch.toml`:** both crates (`h3-towns` → kernel, content, contracts, heroes; `h3-pack-towns`
+  → kernel, content, `h3-towns`, `h3-pack`, serde, toml), `h3-game` → `h3-towns`; and, *agent's
+  call*, the edges T5a's callers need (design §2): `h3-sim` → `h3-towns` (dev `h3-pack-towns`),
+  `h3-cli` → both, `h3-map`'s dev → both, so T5a needs no `shared/` change (as E08 T2 did for its
+  T9). `h3-ffi` gets none: it calls no `GameRuleset::new`.
+- **`lanes.toml`:** `crates/h3-pack-towns/` and each pack folder's `towns.toml` (the five folders,
+  as the adventure lane's files) to the town lane. **`clients.yml`** watches `crates/h3-towns/**`
+  in both lists (the clients build it through `h3-game` from T5a; `check.sh`'s "ci paths" step
+  checks only missing crates).
+- **Docs:** the versions table's two rows and the town lane's paragraph (`docs/08`); `docs/02` §3
+  (the two crates, the lanes' list, "E09 adds"); ADR-0005's amendment (the crates, `TownId`) and
+  ADR-0006's pack file line (`towns.toml`), each a revision history line (presentation); the
+  `README.md` layout table; `packs/README.md`'s file table row. The design note's §1 shrunk to
+  what T5a and T6 still read. The queue: round 5's T5a and T5b written (T5a's likely cut noted).

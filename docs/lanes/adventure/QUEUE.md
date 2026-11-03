@@ -4,24 +4,35 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T86b1 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed. **Increment 9, mines, the week and owned objects** (ADV-Q36; decisions 192, 193): rounds 1 to 7 done, and round 8's T86 (decision 226): T86a (the economy map and its replays), T86b1 (the plans' properties) and T86b2 (decision 228: the economy XL, the day start's workloads, the re-baselines; `adventure/e08-t86b2` with `shared/e08-t86b2`); T87 left. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T87c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1 queued, the survey and the ADR amendment drafts first (T88a, T88b), each task's cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T87 — the audit; increment 9 closed; increment 10 refined**
+**E08 T88a — the dwellings and hiring survey** (decision 232; as T77a for increment 9: survey file
+`docs/rules/surveys/E08-dwellings.md`)
 
-- **Scope:** design §18's exit criteria 1 to 10 audited against the code, the tests and the catalog (a rule still
-  `implemented` that batch E9 observed, a criterion without its test); **decision 229**: `ObjectView::boat_tile`
-  only to the viewers of the Shipyard's owner's team (`h3-adventure`'s views, ADV-OWN-003, the line in
-  `docs/06-security.md` in a `shared/` pull request first, `h3-map`'s `view.rs` exception for a seen Shipyard's
-  offsets removed; no version moves); increment 9 closed (its scope, decisions and task list to `E08-archive.md`,
-  its design note to `E08-log.md`, a row in the closed increments' table); increment 10 refined with the user
-  (the sketch's item 10: dwellings and hiring, the Refugee Camp, garrisons; the town lane's inbox notes on the
-  hire dialog and the random dwellings). Optional, if the audit has room: the month's walk's tile test from the
-  static map's flags and without a lookup of the events per tile (design §19; `month-start-xl-144`, 12.7 M Ir a
-  creature month's start, `E08-log.md` T86b2).
-- **Inputs:** `E08-design.md` §18, §19; `E08-log.md` T86a, T86b1, T86b2; the epic's decisions 192 to 229;
-  `docs/lanes/adventure/QUESTIONS-ANSWERED.md` ADV-Q40; the inbox below (the town lane's and the map client's notes).
-- **Depends on:** T86b2's pull requests merged. **Status:** ready after them; its cut confirmed with the user at
-  its start.
+- **Scope:** the census of classes 17, 20, 216 to 218 and 78 on the 160 shipped maps (by subclass,
+  the owners at load, a random dwelling's faction set, level range and linked town; T76's counts in
+  `E08-log.md`, T76: 216 on 22 maps, 217 on 75, 218 on 1; the town lane's 1 397 tied dwellings on
+  87 maps); their `.h3m` bodies (`docs/formats/h3m.md`, VCMI 1.7.5's map reader); the original's
+  code (the dwellings' visit and flag, the hire dialog, the weekly population, the Refugee Camp's
+  weekly creature, a dwelling's guards; `docs/exe/README.md`, `scripts/exe.py`; the town lane's
+  readings in `docs/rules/surveys/E09-towns.md` §1.6, §2.1, §2.3, and `random_dwellings_resolve`
+  0x502B60), VCMI's and the wiki's rules; disputes `D-<n>` from 51, reading quirk candidates `A-<n>`
+  from 34; the proposed rule ids; the batch's plan on the client lane's harness (decision 232's
+  agent's call); what a player sees. Likely in two (T88a1 the objects and the census, T88a2 the
+  hiring, the week and the checkpoint), confirmed with the user at its start.
+- **Inputs:** decisions 231, 232; the inbox's town-lane notes (2026-10-31 on the hire dialog and the
+  weekly growth, 2026-11-02 on the random dwellings); E09 decision 4; ADR-0015 to -0017.
+- **Depends on:** T87c (done). **Status:** ready (the original data and the shipped maps are needed:
+  staging per `docs/08-work-process.md`, "Cloud sandbox").
+
+**E08 T88b — the ADR amendment drafts, the design note and the cut** (decision 232; as T77b)
+
+- **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
+  10 (its pointer replaced; increment 9's note in `E08-log.md` as the model), the building rounds
+  cut; the checkpoint's question (ADV-Q42, or the next id if T88a's checkpoint takes it): the user
+  accepts the drafts before anything is built (decision 232).
+- **Inputs:** T88a's survey and its checkpoint's answers; decisions 231, 232.
+- **Depends on:** T88a. **Status:** waits for T88a; its cut confirmed with the user at its start.
 
 ## Inbox
 
@@ -128,6 +139,19 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `model::Mission`, written in the SoD layout with no deadline, no texts and a seer's reward
   nothing (`writer::extras::write_quest`; refused on another class or with a list past 255).
   A literal `Extras { tiles, objects }` now needs `..Extras::default()`.
+
+- 2026-11-03 (E08 T87b's audit; **for the next import bump**, increment 10's or the town lane's
+  T7a): the parser reads class 220 below subclass 7 as a mine body (`parse/objects.rs`) while the
+  class table types every 220 as the abandoned mine (`import/codes.rs`), so a crafted 220.0 is
+  refused at the build (`SetupError::Holds`) where the original (220 loaded as 53, the subclass
+  kept, `object_class_values` 0x63A6E4) and VCMI make a sawmill. No shipped map has one (all 94
+  are 220.7). Type 220 by `MINES` like 53, test 220.0 as a sawmill, amend ADV-MIN-001 and
+  ADV-OBJ-002 and `docs/formats/h3m.md`, with the bump that moves `MAP_IMPORT_VERSION` anyway.
+
+- 2026-11-03 (E08 T87, decision 230; **a performance task**): the month's walk's tile test
+  from the static map's flags, without a lookup of the events per tile (increment 9's design
+  note §19): `month-start-xl-144` costs 12.7 M Ir a creature month's start, mostly the walk
+  (`E08-log.md` T86b2). Measure against `master` (`homm3-bench-regression`).
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query

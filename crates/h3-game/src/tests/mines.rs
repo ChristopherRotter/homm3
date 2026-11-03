@@ -5,10 +5,14 @@
 //! that player outside its turn. E08 T84b1: a weekly object's contents go to its week's first
 //! visitor's treasury (design §9).
 
-use h3_adventure::{AdventureEvent, AdventureEventKind, Holds, ObjectSetup, TileMask, Viewers};
+use h3_adventure::{
+    AdventureEvent, AdventureEventKind, Holds, ObjectSetup, TileMask, TileRand, Viewers, split,
+};
+use h3_contracts::BattleSide;
 
 use super::decisions::{ACCEPT, CLOSE, GOLD, after_steps, move_hero, play};
 use super::manage::{army, group, imp, slot};
+use super::monsters::valued;
 use super::*;
 
 const RED: PlayerId = PlayerId::new(0);
@@ -222,6 +226,41 @@ fn a_neutral_mine_s_guards_fight_as_a_monster_and_a_win_flags_it_after_the_level
     assert_eq!(adventure.owner(0), Some(RED));
     assert!(adventure.mine_guards(rules.adventure(), 0).is_empty());
     assert_eq!(adventure.hero(RED_HERO).unwrap().pos, anchor);
+}
+
+// covers: ADV-MIN-002, GAM-BAT-001
+#[test]
+fn a_neutral_mine_s_single_stack_fights_split_as_a_wandering_monster() {
+    // D-47 (batch E9's E9-1): the drawn gogs' one stack split by the army ratio table, its draws
+    // from the entrance tile under ADV-QUIRK-6, on the kind's terrain (rock) over the grass.
+    let rules = valued("t:split");
+    let anchor = Pos::new(1, 1, 0);
+    let mut state = game(&rules, 9, vec![mine(&rules, "t:abandoned", anchor, None)]);
+    let guards = state.adventure().mine_guards(rules.adventure(), 0);
+    play(&mut state, &rules, RED, move_hero(0, &[anchor])).unwrap();
+    play(&mut state, &rules, RED, ACCEPT).unwrap();
+    let battle = state.battle(RED).unwrap();
+    assert_eq!(battle.owners(), [Some(RED), None]);
+    let army = state.adventure().hero(RED_HERO).unwrap().army.clone();
+    let mut tile = TileRand::new(anchor);
+    let expected: Vec<(u8, CreatureTypeId, u32)> =
+        split(rules.core(), &army, (GOG, guards[0].count), || {
+            tile.percent()
+        })
+        .iter()
+        .map(|s| (s.slot, s.creature, s.count))
+        .collect();
+    let defending: Vec<(u8, CreatureTypeId, u32)> = battle
+        .state()
+        .stacks()
+        .iter()
+        .filter(|s| s.side == BattleSide::Defender)
+        .map(|s| (s.slot, s.creature, s.count))
+        .collect();
+    assert_eq!(defending, expected);
+    assert!(expected.len() > 1, "{expected:?}");
+    let seen = h3_battle::observe(battle.state(), rules.battle(), BattleSide::Attacker);
+    assert_eq!(seen.terrain, rules.core().terrain_by_key("t:rock"));
 }
 
 // covers: ADV-MIN-002, GAM-BAT-001, GAM-BAT-010

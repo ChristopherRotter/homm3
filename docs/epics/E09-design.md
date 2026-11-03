@@ -16,23 +16,14 @@ content's route of §3. *Agent's call (change freely)* marks a choice of this no
 
 ## Part A — the town context (`h3-towns`, `h3-pack-towns`, the content)
 
-### 1. The crates (the `shared/` task, T4b; T4a done)
+### 1. The crates (built by T4b, `E09-log.md`)
 
-- **`h3-towns`** (domain, logic; `no_std`, `check-arch` purity, the coverage gate): depends on
-  `h3-kernel`, `h3-content`, `h3-contracts`, `h3-heroes` (ADR-0028 point 1; the last unused until
-  increment 4). Modules: `ruleset` (the part, §2), `record` (a town, §4), `store` (`Towns`, §4),
-  `setup` (the build's town setup, §5), `derive` (§6). Its versions: `TOWN_STATE_HASH_VERSION` and
-  `TOWN_RULESET_HASH_VERSION`, both 1 when T4b creates the crate.
+- **`h3-towns`**'s modules to come: `ruleset` (the part, §2; a skeleton `TownRuleset` since T4b),
+  `record` (a town, §4), `store` (`Towns`, §4; a skeleton since T4b), `setup` (the build's town
+  setup, §5), `derive` (§6). Its dependencies come with the first code that reads each.
 - **`h3-pack-towns`** (adapter, as `h3-pack-adventure`): `compile(texts, profile)` over the enabled
   packs' `towns.toml` in dependency order onto a compiled core, overrides as ADR-0006's; a folder
-  without the file reads as an empty one (`packs/README.md`'s rule). Its format doc lives in its
-  `lib.rs`, a row in `packs/README.md`'s file table.
-- **T4b creates** the two skeletons (an empty part, an empty store, the version constants),
-  `arch.toml`'s edges (ADR-0028's Consequences), `lanes.toml` (`crates/h3-pack-towns/`,
-  `packs/*/towns.toml` to the town lane), `TownId` in `h3-contracts` (a `u16` newtype beside
-  `HeroId`, serde as a number), the versions table's two rows (`docs/08-work-process.md`),
-  `docs/02-architecture.md` §3, `Moat`'s doc comment (the packs decide). T4a (done) moved the
-  five ADRs into `docs/adr/`, wrote `docs/03-domain.md`'s terms and the battle lane's inbox note.
+  without the file reads as an empty one; its format doc in its `lib.rs` (T5a).
 
 ### 2. The town part (`TownRuleset`, `towns.toml`; town ruleset part v1)
 

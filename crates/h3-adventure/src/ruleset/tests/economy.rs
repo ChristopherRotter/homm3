@@ -303,7 +303,7 @@ fn compiles_the_economy_kinds() {
     assert!(compile_economy(&p).is_ok());
 }
 
-// covers: ADV-OBJ-002
+// covers: ADV-OBJ-002, ADV-MIN-001
 #[test]
 fn the_economy_kinds_are_checked() {
     let kind = |k: &'static str, f: &dyn Fn(&mut ObjectKindDef)| {

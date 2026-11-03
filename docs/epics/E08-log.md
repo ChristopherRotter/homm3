@@ -10698,3 +10698,449 @@ the sound and video archives, `maps.tar`, `extracted.tar`, the MP3s).
   on the economy XL (two games' day 8: no month) and on the economy map (seed 3's day 29, a
   creature month that adds monsters) and through the CLI.
 - **Versions:** none; no replay or bot report changed.
+
+### Increment 9, round 8: T87a, a Shipyard's boat tile to its owner's team (2026-11-03, `adventure/e08-t87a` with `shared/e08-t87a`)
+
+**The cut** (decision 230, the user at T87's start): T87 in three, the boat tile first, then the
+audit (T87b) and the closure with increment 10's refinement (T87c), each based on the one before
+without waiting for its merge; the month's walk's tile test to the inbox. **Baseline:** `master`
+8ea2e4a (#664, #665 merged; CI green); the sandbox's light gates green on CI's fingerprint. The
+original data staged (the four LODs, the two executables, `maps.tar`, `extracted.tar`).
+
+- **The projection** (decision 229, ADV-Q40): `ObjectView::boat_tile` is the Shipyard's boat tile
+  only for a viewer of its owner's team (`allied(owner, viewer)`, the test a mine's production
+  uses), none for a neutral Shipyard's, so no viewer learns which earlier offsets were land or
+  held an object on tiles it may not have explored. The owner's team has explored every offset:
+  the start's reveal around an owned object and a flag's reveal are centred on the entrance with
+  the part's `flag_radius` (the base pack's 3), and the twelve offsets lie within 2 columns and 1
+  row of it.
+- **Tests:** `a_viewer_sees_its_own_weekly_marks_and_a_boat_tile_never_contents_or_fractions`
+  (a neutral Shipyard's tile to nobody; red's to red, not blue);
+  `increment_9_s_objects_show_their_owners_never_their_draws` (the economy map's neutral Shipyard
+  shows no tile, red's shows it to red alone). The view property's exception (T86b1: a seen
+  Shipyard's offsets kept as seen, with its `BOAT_OFFSETS`) removed; `h3-map`'s view tests pass
+  without it.
+- **Docs:** ADV-OWN-003's summary and design source; `docs/06-security.md`'s line and ADR-0016
+  point 6 with its revision history (`shared/e08-t87a`); design §12 and exit criterion 8. No
+  version moved: the observation's types are unchanged and no replay or hash reads a view.
+
+### Increment 9, round 8: T87b, the audit of increment 9's exit criteria (2026-11-03, `adventure/e08-t87b`)
+
+**The cut** (decision 230): the audit based on `adventure/e08-t87a` without waiting for its merge;
+the criteria handed to three read-only sub-agents (1 to 4, 5 to 8, 9 and 10), the gaps to one
+worker. **The audit** (design §18, moved below by T87c), on T87a's code:
+
+1. Typed imports, the refusals (`ObjectOwner`, `MineResources`, `OwnedOnWater`) and the build's
+   fixed draws and boat tile are tested (`h3-map`'s `import.rs`, `economy.rs`, `economy_map.rs`;
+   `h3-adventure`'s `state/tests/economy.rs`). **Gaps:** ADV-MIN-001 is cited by the criterion,
+   ADR-0016 and survey §16 but was never written in the catalog; the criterion cited ADV-MAP-002
+   (the terrain shares) for the typing, which is ADV-OBJ-002's. **Found:** the parser reads class
+   220 below subclass 7 as a mine body while the class table types every 220 as the abandoned
+   mine, so a crafted 220.0 is refused at the build (`SetupError::Holds`) where the original (220
+   loaded as 53, the subclass kept) and VCMI make a sawmill; no shipped map has one (all 94 are
+   220.7). *Agent's call (change freely):* left for the next import bump (the inbox), since a
+   fix moves `MAP_IMPORT_VERSION` and every replay's header.
+2. Flags, never an own one, the radius, the owners seen: tested. **Partial:** the start's reveal
+   around an owned Lighthouse or Shipyard (A-33's point) only implicitly.
+3. Leave Guards, the kept group, the asked and fought guards, the owner's side, the kinds'
+   fields, the survivors and the flag: tested, with `check_mine_guards` and
+   `check_mine_battle_end` in the plans. **Partial:** D-47's split checked only as
+   `Defender::Monster` in `h3-adventure`, the split itself in the monsters' tests.
+4. The Lighthouses' 500, the boat's offer and `BuildBoat`, its refusals: tested. **Gap:**
+   `BuildBoat` with a hero in a boat on the tile (the visit's case was tested).
+5. The day's start: tested (`h3-game`'s `tests/calendar.rs`, `h3-heroes`' `tests/day.rs`, the
+   plans' `check_income`). **Gap:** the second month (day 57) only in the 60-day replays' hashes.
+6. The week's resets and growth, the creature month and its monsters as placed ones: tested
+   (`state/tests/calendar.rs`, `added.rs`, the plans' `check_week`, `check_told`).
+7. The timed events, their order and floor: tested (`calendar.rs`, `check_timed`).
+8. The views: tested (`state/tests/economy.rs`, `view.rs`), the boat tile since T87a.
+9. Every rule has its id, sources and markers but ADV-MIN-001; `ADV-QUIRK-33` was cited by the
+   import and the design note but **not in the ledger**; ADV-OWN-004 is E10's (design §16); the
+   env plays `BuildBoat` (`h3-sim`'s `adventure/tests/shipyards.rs`).
+10. Every row E9-1 to E9-12 is cited, **but E9-0** (no rule); §19's planned E9-1 sources of
+    ADV-MIN-003 and GAM-BAT-001 were missing. GAM-CAL-004's E9-11 confirms it whole. Still
+    `implemented`, by design: ADV-OWN-001 (the flag's reveal unobserved), ADV-OWN-002 (the
+    refusals, the Shipyard's start reveal), ADV-SHY-001 (only the first offset observed),
+    ADV-VIS-006 and ADV-FOG-006, ADV-OWN-003 (projections), ADV-MIN-001 and -003 (220, the bound
+    and the refusals unobserved), GAM-BAT-001, GAM-CAL-003, ADV-MON-014, ADV-MAP-002.
+
+**The gaps fixed:** ADV-MIN-001 written (the seven by subclass, the abandoned mine, the guards'
+army; code reading, VCMI, the wiki, batch E9; its markers on the class table, the kinds' check,
+`mine_guards`, `check_owners` and five tests); `ADV-QUIRK-33` recorded (exploit-fix, no flag: the
+import's bound, A-31, decision 199), linked from ADV-MIN-003; tests
+`the_owners_come_from_the_setup_and_reveal_around_their_objects` (an owned Lighthouse and
+Shipyard), `build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order` (a hero in a boat on
+the tile: `BoatTileTaken`), `the_next_month_starts_four_weeks_later_on_day_57`,
+`a_neutral_mine_s_single_stack_fights_split_as_a_wandering_monster` (`h3-game`: the defending
+stacks are the split's, on the kind's terrain); GAM-CAL-004 `verified`; E9-0 cited by GAM-RES-003
+and GAM-CAL-002, E9-1 by ADV-MIN-003, E9-1 and E9-2 by GAM-BAT-001; ADV-VIS-006's Garden sentence,
+HER-MAN-002's `regain_mana`, GAM-RES-005's `pay_income` and the week's and month's steps' caller
+`advance_day` named; criterion 1 cites ADV-OBJ-002. No version moved. The scoped verify with the
+original data passed (exit 2: deny and ffi-smoke skipped by scope).
+
+### Increment 9, round 8: T87c, increment 9 closed; increment 10 refined (2026-11-03, `adventure/e08-t87c`)
+
+Docs only, on `adventure/e08-t87b` (decision 230), after T87b's audit. **Increment 9 closed**
+(2026-11-03): its intro, the decisions at the refinement (192, 193), the decisions during the
+increment still in the epic file (196–230) and its task list moved verbatim to `E08-archive.md`
+("Increment 9 — mines, the week and owned objects"), with the cuts moved early there (194, 195, 200,
+205–213, 215, 218–221, 223–228) nested under it as "The cuts of its done tasks" (as increment 7's)
+and the moved pointer to them repointed; a row in the closed increments' table (T76–T87c, decisions
+192–230). **The design note** moved below ("Increment 9's design note at its closure"), its round 8
+(and T85b) marked done, so T87b's "design §18, moved below by T87c" holds; `E08-design.md` keeps a
+pointer until T88b writes increment 10's note.
+
+**Increment 10 refined** (ADV-Q41, asked interactively at T87's start after its cut; decisions 231,
+232), from T76's census (objects / maps): dwellings (17) 1 981 / 116 and multi-creature dwellings
+(20) 80 / 38; random dwellings (216 to 218) 1 603 (216: 276 / 22, 217: 1 326 / 75, 218: 1 / 1; the question
+said 76 maps, a sum of mine in error), of which 1 397 are tied to a random town and
+wait for E09's random towns (the town lane's note of 2026-11-02, which counts them on 87 maps: the
+survey's census settles it) and about 205 take a faction set; the Refugee Camp (78) 321 / 101. The
+user chose **dwellings and hiring** (the dwellings flagged, their weekly creatures and the hire
+dialog, built here first and reused by E09's recruitment, E09 decision 4), not the whole sketch item
+10 with garrisons, the teleporters or creature banks first; the first round a survey, then the ADR
+amendment drafts with the design note and the cut, not the survey alone. The sketch renumbered:
+garrisons and more visitable objects item 11, the banks 12, the quests 13.
+
+**The queue:** T87's entry and the lead's chronicle moved to `QUEUE-ARCHIVE.md`; **T88a** (the
+survey `docs/rules/surveys/E08-dwellings.md`, likely in two) and **T88b** (the drafts, the design
+note, the cut; the checkpoint) queued. ADV-Q41 recorded in `QUESTIONS-ANSWERED.md`. **The town
+lane's inbox** told (for its increment 3's recruitment, nothing to build now: the hire dialog lands
+here first, its inbox told then).
+
+**Verify:** docs only: `check-docs`, `check-rules`, `check-lane` and `doc-drift` pass; no code,
+version or replay moved. CI's full verify on the pull request is the record.
+
+#### Increment 9's design note at its closure (moved by T87c)
+
+The note as T87b left it, every section built (T78 to T87b; T87c marked round 8 done); its § numbers
+are the ones the code's comments cite as "increment 9's design note".
+
+Increment 9's note: mines, the week and owned objects (E08 decision 192). Increment 8's note
+(boats and the sea) is in `E08-log.md` ("Increment 8's design note at its closure", moved by T76);
+the code's comments cite these notes as "increment N's design note §M".
+
+A handover, not binding (`docs/adr/README.md`): the working detail behind increment 9's
+amendments of ADR-0013 (points 3, 13.6, a new point 16), ADR-0016 (points 1, 3, 4, 5, 6) and
+ADR-0017 (points 1, 3, 4, 6, 8, 10, 11), drafted in the lane's `adr-drafts/` and applied by T81a (`shared/e08-t81a`, decision 211; the drafts deleted);
+written by T77b from T77a's survey and the answers at ADV-Q36 and ADV-Q37 (the epic's decisions
+192, 193, 196–199). The task that builds a section deletes it; the file goes when the epic
+closes. Facts and sources: survey `docs/rules/surveys/E08-economy.md` (§ numbers are the
+survey's unless they name this note); the proposed rule ids are the survey's §16.
+
+Written whole (decision 200): **part A**, the hero side (`h3-heroes`, the core content); **part
+B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E9 and the cut.
+*Agent's call (change freely)* marks a choice the user accepted at the checkpoint (ADV-Q38, decision
+204) and may still change; decision 201's two changes are written in.
+
+##### Part A — the hero side (`h3-heroes`, the core content)
+
+###### 1. The data (the core content and packs: shared)
+
+Built by T81b (`shared/e08-t81b`; its record in `E08-log.md`): the four kinds `daily_resource {
+resource, amount }`, `mana_regain { points }`, `extra_mana_regain { points }`, `full_mana` (none
+reaches `BattleEffect`); `[hero_params]`' `base_mana_regain` (1) and `regain_specialist_bonus`
+(1); the core creature's abilities outside battle, `CreatureInfo::abilities` (`weekly_resource {
+resource, amount }`), written `abilities_outside_battle` in `core.toml` (decision 212: `abilities`
+is the battle file's field); the packs: the six resource artifacts 1, the gold artifacts 1 000,
+750, 500, the Cornucopia 4 of mercury, sulfur, crystal and gems (its parts' 1 each count through
+it: the original's 5), the Charm, Talisman and Mystic Orb 1, 2, 3, the Wizard's Well, Estates 125,
+250, 500 gold, Mysticism 2, 3, 4, the thirteen resource and gold specialists (1 or 350), the
+Crystal Dragon's 3 crystal (`ab`). Core ruleset hash v51, pack format v50.
+
+###### 2. The derivations (`h3-heroes`; HER-MAN-002, GAM-RES-004, HER-ADV-009 amended)
+
+Built by T82 (`adventure/e08-t82-t83a`, decision 213; its record in `E08-log.md`):
+`h3_heroes::daily_income(details, core) -> Vec<u32>` (dense by resource in the core's order, each
+worn copy and a worn combination's parts counting, a skill's amount grown by its specialty, exact
+integers, saturating), `day_mana(details, core) -> u16` (the Well, the highest regain or the base,
+a specialist's growth and bonus only with the skill, each type's extra once, never lowered) and
+`sea_points(details, core, table, lighthouse_points)` (added last; `h3_adventure::sea_day_points`
+passes 0 until §7's visits give it the owner's Lighthouses, T84).
+
+###### 3. Rule ids, quirks, shared needs (the hero side)
+
+Built by T82: HER-MAN-002 (`verified`, E9-12), GAM-RES-004 (`implemented`: its payment is the
+game's, §14, T85b), HER-ADV-009 amended (`verified`, E9-4). No quirk.
+
+##### Part B — the map (`h3-map`, `h3-adventure`)
+
+###### 4. The import (`h3-map`; map import v15)
+
+Built by T83a (`adventure/e08-t82-t83a`, decision 213; its record in `E08-log.md`): the classes
+typed (53 by subclass, 220 as 53.7, 42, 87, 112, 109, 55; 220 ownable scenery), an ownable
+object's owner as `ObjectSetup::owner` (`ObjectOwner` for a colour nobody plays), an abandoned
+mine's set as `Holds::Resources` (`MineResources`), `Unsupported::OwnedOnWater`, the timed events
+as `GameSetup::events` (`h3_game::TimedEventSetup`; `Events` past a `u16`). The setup checks an
+owner (an ownable object, a player of the game: `SetupError::ObjectOwner`), the set
+(`check_holds`), the events (`GameSetupError::Event`); the static map hashes the set (adventure
+state hash v17, *agent's call*: the bump this note gave §6's state moves to T83b's v18); the
+owners and the events are not kept by the state yet (§6, §14).
+
+###### 5. The kinds and the part (`h3-adventure`, `h3-pack-adventure`; adventure ruleset part v14)
+
+Built by T83a: the seven kinds as the table had them, with two *agent's calls*: the Water Wheel
+names its `resource`, the Garden takes a list of gifts (`gifts = [{ resource, amount }]`), both
+data where the table fixed gold and two; every kind entered and not from above (ADV-Q39, decision
+214, the weekly ones too), the four ownable ones refused otherwise; hash tags 23 to 29. One mine a
+resource, and with an abandoned mine one for every resource (`AdventureRuleset::mine_daily`); an
+abandoned mine's count at most `max_stack_count`. `[params.calendar]` (required), the monsters'
+growth (`growth_bp` at most 10 000, `growth_unit` 1 to 256, `growth_cap` at most
+`MAX_MONSTER_COUNT`), `[params.months]` (optional; its `monster`, an object type of kind `monster`
+without levels, *agent's call*: the type the month's monsters are, §11; its creatures no war
+machine, with an adventure count, the count times `spawn_factor` at most `MAX_MONSTER_COUNT`; it
+needs `[params.monsters]`). The base pack's thirteen types and parameters with their sources; the
+synthetic pack's calendar.
+
+###### 6. The state (`h3-adventure`; adventure state hash v19, built)
+
+T83b1 built the static map's ownable and weekly lists, the draws, the owners, a mine's guards,
+the weekly contents, `check_owners`, `check_weekly` and the start's reveal (adventure state hash
+v18; decisions 215, 217); T83b2a the monsters' fractions, the objects added in play in the live
+presence and `check_added` (adventure state hash v19; decision 218). Their records and this
+section's built text are in `E08-log.md` ("T83b1", "T83b2a"); T85a's audit of the static reads
+too (§19).
+
+###### 7. The owned objects' visits (ADV-OWN-001, ADV-OWN-005, ADV-SHY-002; built)
+
+T84a built flagging, the mines' visits and `allied` (decision 220), T84b1 the Lighthouses
+(decision 221), T84b2 the Shipyards and their boat offer (decision 221): their records and this
+section's text as each found it are in `E08-log.md` ("T84a", "T84b1", "T84b2").
+
+###### 8. `BuildBoat` (ADV-SHY-003; built)
+
+T84b2 built it (decision 221): its record and this section's text as T84b2 found it are in
+`E08-log.md` ("T84b2").
+
+###### 9. The weekly objects' visits (ADV-WEK-001 to -003, ADV-VIS-006 amended; built)
+
+T84b1 built it (decision 221): its record and this section's text as T84b1 found it are in
+`E08-log.md` ("T84b1").
+
+###### 10. The week's step (`AdventureState::start_week`; ADV-WEK-001 to -003, ADV-MON-013; built)
+
+T85a built it (decision 223): its record and this section's text as T85a found it are in
+`E08-log.md` ("T85a").
+
+###### 11. The month's step (`AdventureState::start_month`; ADV-MON-014; built)
+
+T85a built it (decision 223): its record and this section's text as T85a found it are in
+`E08-log.md` ("T85a").
+
+###### 12. Information (ADV-OWN-003, ADV-FOG-006 amended; built)
+
+T83b2b built the views (decision 219: a mine's guards as the original's hint, not "creatures and
+their words"); its record and this section's text are in `E08-log.md` ("T83b2b"). Left: the
+events of §7 to §11 carry their viewers as ADR-0016 point 6 says (T84, T85), and
+`docs/06-security.md` gains their lines and the month's kind with them. T87a (decision 229, the
+user at ADV-Q40): a Shipyard's boat tile only to its owner's team, the view property's exception
+for a seen Shipyard's offsets removed.
+
+##### Part C — the game, the env, batch E9 and the cut
+
+###### 13. The mines' battles (GAM-BAT-001 amended; ADV-MIN-002; built)
+
+T84a built it (decision 220): its record and this section's text as T84a found it are in
+`E08-log.md` ("T84a").
+
+###### 14. The game (`h3-game`; game state hash v21 the dialog's holder, T84a; v22 the month and events, T85)
+
+- **The setup:** `GameSetup::events: Vec<TimedEventSetup>` (§4), validated (players in range,
+  known resources); the adventure setup's owners (§4).
+- **The state:** `month: MonthKind { Normal, Creature(CreatureTypeId), Plague }` (`Normal` at the
+  build); `events: Arc<[TimedEventSetup]>` (static). The week and the month are derived from the
+  day (`week_of(day)`, `month_of(day)`, the part's calendar).
+- **The day advance** (`advance_day`, GAM-CAL-002, -003, ADR-0017 point 3's draft):
+  1. the day + 1, `DayStarted`;
+  2. on a week's first day (`(day − 1) % week_days == 0`): `WeekStarted { week }`, then the
+     adventure's `start_week` with the game's stream;
+  3. on a month's first day (`(day − 1) % (week_days × month_weeks) == 0`): the kind drawn
+     (`1..=10` against the odds; a creature month then draws its creature among the twelve),
+     `MonthStarted { month, kind }`, then in a creature month the adventure's `start_month`;
+  4. **the income** (GAM-RES-003 to -005): for each player in id order, the adventure's
+     `income(player, week_start)` (its mines' daily amounts by resource, each mine's
+     `production` as T83b2b reads it, an abandoned mine's through its drawn resource; on a week's first day, for each creature type with a
+     `weekly_resource` ability (§1) in one of the player's heroes' armies, its amount once,
+     however many: the Crystal Dragons' 3 crystal) plus `h3_heroes::daily_income` of each of its heroes
+     on the map, gained (saturating), one `ResourceGained` per resource with a non-zero amount;
+  5. **the spell points** (HER-MAN-002): each hero of the store, `h3_heroes::day_mana`, written
+     only when it changes (a write copies one hero's details);
+  6. the adventure's `start_day` (increment 5's reveal under `strict-fixed`).
+  Day 1 runs none of 1 to 5 (the build calls `start_day` only, as today).
+- **The turn start** (`start_group`): after each player's `start_turn` and `TurnStarted`, its
+  **timed events** (GAM-CAL-004): each in list order whose players include it, whose `human` or
+  `computer` flag matches its `PlayerSetup::human`, and whose day it is (`day == first_day`, or
+  `interval > 0`, `day > first_day` and `(day − first_day) % interval == 0`): positive amounts
+  gained, negative ones lost down to 0 (`ResourceLost` the amount taken), then
+  `TimedEventFired { player, event }` (the owner's). Day 1's fire inside the build (no sink):
+  *agent's call*, `GameObservation::events_today` (the owner's; T85b2a, not `PlayerView`) names the events that fired at its
+  turn start today, derived from the day and the setup, so a client shows day 1's too.
+- **Decisions** (ADR-0017 point 6's draft): the army dialog's holder, the mine's question and
+  the two-owner battle with an owned mine's guards are built (T84a, game state hash v21), the
+  boat offer and `BuildBoat` too (T84b2); their records in `E08-log.md`.
+- **The observation:** `GameObservation::month` (public), `GameObservation::events_today` (the
+  owner's); the adventure's views (§12). `project` passes `WeekStarted`, `MonthStarted` to every
+  viewer, `TimedEventFired` to its player.
+
+###### 15. The env, replays, fixtures, properties, benchmarks
+
+- **The env** (`h3-sim`, the AI lane's; `cross-lane` in T85b with the user's consent, as decision
+  172): the action encoding v6 gains `BuildBoat` (one entry per Shipyard the viewer may use, by its
+  anchor's tile index), masked by `legal_commands`; the army dialog and the offers are typed
+  answers already. No flat observation encoding (decision 187), so nothing to bump there.
+- **Replays:** the adventure replay format v8 (`BuildBoat`; T84b2, done); every golden replay of
+  eight days or more re-recorded (the growth on day 8 changes the monsters' counts), the shorter
+  ones rehashed (the hashes' versions). New, on **`e08-economy-36.h3m`** (written by `h3_map::writer` in
+  `crates/h3-map/tests/economy_map.rs`: two players; the seven mines, guarded by monsters beside
+  and not, one owned at load; an abandoned mine; two Lighthouses on a coast; a Shipyard with its
+  boat tile; two of each weekly object; growing and not growing monsters; timed events once,
+  repeating and taking; heroes with Estates, Mysticism, a resource specialist, the income and mana
+  artifacts and a Crystal Dragon): random play over 60 days (two month starts; a creature month by
+  a seed search), scripted ones for a flag and Leave Guards, a neutral and an owned mine fought,
+  a boat built at a visit and by `BuildBoat`, a weekly object visited twice in a week.
+- **Properties** (`h3-map`'s `play.rs`, `view.rs`): the plans place the new classes
+  (`ECONOMY`), steps `Step::{Garrison, BuildBoat}`, the end of turn over weeks; checks:
+  §6's invariants after every command; the income conserved (the treasuries' change at a new day
+  equals an independent sum of §14's parts); a week's step leaves every weekly object full and
+  every growing monster at `min(⌊v × 1.1⌋, cap)`; an added monster behaves as a placed one (its
+  visit, its guard zone, its view); every legal `BuildBoat` accepted, every other rejected with the
+  state unchanged; the views (§12) to the right viewers only.
+- **Benchmarks** (`benches/adventure/`): `day-start-xl-144` (on **`e08-economy-144.h3m`**, the
+  XL map with as many mines and weekly objects as the largest shipped map and a monster on every
+  hundredth free tile: the `EndTurn` that starts day 8), `month-start-xl-144` (the same map, the
+  `EndTurn` that starts day 29 in a creature month: the spawn's walk), `random-play-economy-36`,
+  `fork-economy-xl-144` (forks after a week's writes). The existing workloads re-baselined where
+  the growth or the typed mines change their games, each with its reason.
+- **`--with-original-data`** (`crates/h3-map/examples/original_data.rs`): every shipped map's
+  static layer with the new classes: the owners at load (60 mines, one Shipyard), the boat tiles
+  (none for Hoard's two), the abandoned mines' sets, the 666 timed events.
+
+###### 16. Versions, rule ids, quirks
+
+| Version | Change | Task |
+|---|---|---|
+| core ruleset hash v51, pack format v50 | the four kinds, the two hero parameters, the core creature's abilities; the packs | T81b (`shared/`), done |
+| adventure ruleset part v14 | the seven kinds; the calendar, growth and months parameters | T83a, done |
+| map import v15 | classes 42, 53, 55, 87, 109, 112, 220; owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater` | T83a, done |
+| adventure state hash v17 | the static map's abandoned mines' sets (`Holds::Resources`) | T83a, done |
+| adventure ruleset part v15, adventure state hash v18 | the flag radius (decision 217); owners, guards, weekly, the draws of abandoned mines and Shipyards | T83b1, done |
+| adventure state hash v19 | the objects added in play, the monsters' fractions (decision 218) | T83b2a, done |
+| game state hash v21 | the army dialog's holder (a join's or a mine's) | T84a, done |
+| game state hash v22 | the month, the events | T85 |
+| adventure replay format v8 | `BuildBoat` | T84b2, done |
+| env action encoding v6 (the AI lane's) | `BuildBoat` | T85b (`cross-lane`) |
+
+Rule ids: survey §16 (ADV-OWN-001 to -005, ADV-MIN-001 to -003, ADV-SHY-001 to -003, ADV-WEK-001
+to -003, ADV-MON-013, -014, GAM-CAL-002 to -004, GAM-RES-003 to -005, HER-MAN-002 and the
+amendments of GAM-BAT-001, HER-ADV-009, ADV-VIS-006, ADV-MAP-002); new here: GAM-DEC-004 amended
+(the kept group), ADV-FOG-006 amended (the owners' views). ADV-OWN-004 (a defeat's) is E10's: not
+written now. Quirks, recorded in `docs/rules/quirks-adventure.md` without flags: `ADV-QUIRK-33`
+A-31 (an abandoned mine without a resource: refused at the import), not reproduced. A-33 is
+withdrawn (T80, survey §19: the original's game start reveals around every owned object, a
+Lighthouse too), so `ADV-QUIRK-34` is not recorded. A-29 is recorded with E10's defeat; A-30 with
+E09; A-32 is the rule (no quirk; confirmed by E9-10).
+
+###### 17. Batch E9
+
+Survey §15's 12 rows in two runs (decision 198), on the harness (`clients/capture/`, common) in
+SoD on Easy, hot seat, from maps `h3-experiment` writes: **E9a** the visits (E9-1 to E9-5),
+**E9b** the day's start (E9-6 to E9-12, two to three weeks of end turns). Two predictions are
+added to the survey's rows: **E9-2** records whether Blue (human) is asked to play its guards'
+side when Red attacks them (§13's call); **E9-4** records whether the tiles around Red's two
+Lighthouses owned at load are explored on day 1 (A-33: the reading says not; they were, T80).
+
+- **The writer and the specs:** built by T78 (`E08-log.md`, T78).
+- **The harness** (T79; common, CLT-Q18: this lane builds it with its check and tells the client
+  and map-client lanes' inboxes): reads of the mine records (game +0x4E38C: owner, resource,
+  guards), a player's income +0x108 and the Garden mask +0xB8, the date's three words
+  (+0x1F63E to +0x1F642), a tile's word (the weekly objects', a monster's bits 27 to 30), the
+  explored tiles; a click at a Shipyard with no hero near and the boat dialog's build button.
+- **The scoring** (T80, done): survey §19, each row against its prediction. Every row as the
+  reading predicted but E9-4's surroundings: D-47, D-49 and A-32 confirmed, §13's call confirmed,
+  A-33 withdrawn (the original reveals around every owned object at the start); no dispute
+  reverts, no `ADV-Q`. The rows each new rule cites are listed there (`verified` when built).
+  D-48 and D-50 stay as read (decision 199), without rows.
+
+###### 18. Shared and `cross-lane` work; the building tasks; the exit criteria
+
+**Shared and `cross-lane`:** T81's `shared/` task in two (decision 211): T81a the three ADRs
+applied with batch E9's outcome and `docs/03-domain.md`'s terms (owner, flag, ownable object, mine,
+guards, Leave Guards, weekly object, the day's start with the week's and the month's steps, the
+month's kind, timed event, income), done; T81b the four kinds, the two parameters and the core
+creature's abilities in `h3-content` and `h3-pack` with the packs and the harvester's gap-fill,
+`cross-lane`, done (decision 212: whole); batch E9's spec (`h3-experiment`, `cross-lane`, T78); the harness (common,
+T79); the env's action encoding (`h3-sim`, `cross-lane`, T85b). Everything else is the lane's own.
+
+**The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut
+confirmed at its start). **Batch E9 runs before the build and before the shared task** (decision
+198, as increments 7 and 8), so the ADRs are applied once with the disputes' verdicts:
+
+| Round | Tasks | Content |
+|---|---|---|
+| 2 | **T78** | Batch E9's maps: the writer's seven classes and timed events (§4); the spec's fields (`cross-lane`); the two specs and templates (§17) |
+| 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
+| 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs (done, decision 212) |
+| 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small; done). T83 in two (decision 213): T83a the kinds and parameters (§5), the import (§4); map import v15, part v14, adventure state hash v17 (done); T83b in two (decision 215): T83b1 the state the visits read (§6; adventure state hash v18, part v15; done), T83b2 in two (decision 218): T83b2a the fractions and the added objects (§6; adventure state hash v19; done), T83b2b the views (§12; done) |
+| 6 | **T84** | `h3-adventure` and `h3-game`, in two (decision 220): T84a flagging, the mines and their battles, the kept dialog (§7, §13, §14; done); T84b in two (decision 221): T84b1 the Lighthouses and the weekly visits (§7, §9; done), T84b2 the Shipyards and their boat offer, `BuildBoat` (§7, §8, §14; done) |
+| 7 | **T85** | The day's start, in two (decision 223): T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads; done); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15; done) |
+| 8 | **T86** + **T87** | T86: the economy maps, their replays and properties, the benchmarks, `--with-original-data` (§15; done). T87: the audit against the exit criteria, increment 9 closed, increment 10 refined (done, in three: decision 230) |
+
+**Increment 9's exit criteria:**
+1. Mines, abandoned mines, Lighthouses, Shipyards and the three weekly objects import typed with
+   their owners; an owner nobody plays, an abandoned mine without a resource and an ownable
+   entrance on water are refused; an abandoned mine's resource and Troglodytes and a Shipyard's
+   boat tile are fixed when the game is built (ADV-OWN-002, ADV-MIN-001, -003, ADV-SHY-001,
+   ADV-OBJ-002).
+2. A visit flags a neutral or another's object for its visitor's owner, never an own one,
+   revealing radius 3; every owned object reveals at the start (as the original, A-33 withdrawn); every
+   viewer sees the owners (ADV-OWN-001, -003).
+3. An own mine's visit opens Leave Guards, whose group stays as the mine's guards; another's
+   guards are asked, then fought (a neutral single stack split, D-47 as batch E9 decided; others
+   as an army, an owned mine's played by its owner), on the subterranean for crystal, gold and
+   abandoned mines; the survivors stay, a win flags (ADV-MIN-002, GAM-BAT-001, GAM-DEC-004).
+4. Lighthouses add 500 each to their owner's heroes' sea points; a Shipyard builds a boat at its
+   visit's offer and by `BuildBoat` without a visit, for the price, on its fixed tile, refused
+   without a tile or with a boat or a hero on it (ADV-OWN-005, HER-ADV-009, ADV-SHY-002, -003).
+5. No new day on day 1; from day 2 the week on days 8, 15, …, the month on days 29, 57, … with
+   its kind; the income of mines, the heroes' artifacts, Estates and specialists and the Crystal
+   Dragons paid to every player before the day's first turn; every hero's spell points regained
+   (GAM-CAL-002, -003, GAM-RES-003 to -005, HER-MAN-002).
+6. Each week resets the Windmills, Water Wheels and Gardens, visited or not, and grows every
+   wandering monster in sixteenths to the cap (D-49 as decided, A-32); a creature month adds its
+   monsters, which behave as placed ones (ADV-WEK-001 to -003, ADV-VIS-006, ADV-MON-013, -014).
+7. Timed events fire at their players' turn start on their days, in the map's order, floored at
+   0 (GAM-CAL-004).
+8. A viewer sees every owner, its own team's mines' production and Shipyards' boat tiles
+   (decision 229), its team's weekly marks (the Garden's too, decision 222), the month's kind; never a weekly object's contents, another team's
+   production nor a monster's fraction (ADV-OWN-003, ADV-FOG-006).
+9. Every new rule has its id, source and tests; `ADV-QUIRK-33` recorded as not reproduced; the gates pass (coverage, determinism with the re-recorded and new replays, the
+   benchmarks at their baselines and the new ones baselined); the env plays `BuildBoat`.
+10. Batch E9 run and scored (T80); the consensus rows `verified`.
+
+###### 19. Risks and open points
+
+- **Objects added in play are a first.** T85a's audit (its record in `E08-log.md`) routed the
+  visit-found reads through `object_at`, fixed `object_named` (an added monster's offers) and
+  wrote why each read left on the static map stays there; the unit tests show an added monster
+  visited, guarding, fighting, offering, growing and seen as a placed one. Left for T86: the
+  plans' property of the same, on games that reach a creature month.
+- **The day's start's cost.** A month's walk draws once per free land tile (about 20 000 on an
+  XL map); a week writes every growing monster and every weekly object (a fork after it copies
+  those tables on its next write). `month-start-xl-144` and `day-start-xl-144` measure both;
+  the walk's tile test should reuse the static map's flags rather than `tile_object`.
+- **Re-recording.** Every golden replay of eight days or more changes (the growth); the maps with
+  mines also change their visits (blockers until T84). T86 re-records them with the README loop
+  (`docs/lanes/adventure/TRAPS.md`), checking each keeps the features its README row names.
+- ~~**The owner's guards side** (§13)~~: closed by T80, E9-2 showed the original hands the side
+  to its human owner: `Defender::Garrison { owner, army }` stands, no neutral seat.
+- **Teams:** every "team" test is `allied`, the player alone until E10; an allied map plays its
+  allies as enemies, as today.
+- **Not read** (survey §14, §17): the three other callers of the income (the kingdom's views); a
+  garrison hero counted twice (E09); a Shipyard side tile's owner byte (no rule depends on it:
+  the command names the Shipyard); the boat dialog itself (0x5D2720); the guards' words
+  (0x40ABE0: the view uses the monsters' words); how an empty side settles a battle (A-29, E10).
+- **Not in increment 9** (decision 199): towns' income and buildings, the Plague's and the
+  week's creature's effects, the Artifact Merchants, the tavern (E09); dwellings and the Refugee
+  Camp (increment 10); the Fountain of Fortune's, Magic Spring's and Stables' resets (their
+  objects' increments); the computer's bonus, the handicap, humans first in a day, a defeat
+  (E10); a revisit command (the original has none).

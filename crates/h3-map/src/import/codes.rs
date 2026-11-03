@@ -345,6 +345,7 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         231 => Some("sod:rocklands"),
         // E08 T83a (increment 9's design note §4): the mines and the abandoned mines, the
         // Lighthouse, the Shipyard and the three weekly objects.
+        // rule: ADV-MIN-001
         53 => by_subclass(&MINES),
         ABANDONED_MINE => Some("base:abandoned_mine"),
         42 => Some("base:lighthouse"),

@@ -87,7 +87,8 @@ the capture harness) read your installation from a copy in `original-data/`
 | `crates/h3-battle`, `h3-battle-ai` | the battle context; the original's battle AI as a policy |
 | `crates/h3-heroes` | the hero model beneath the contexts (levels, skills, artifacts, derived battle heroes) |
 | `crates/h3-adventure`, `h3-game` | the adventure map context; game orchestration (players, turn groups, pending decisions, battles on the map) |
-| `crates/h3-map`, `h3-pack`, `h3-pack-battle`, `h3-pack-adventure` | the `.h3m` reader, writer and import; pack adapters |
+| `crates/h3-towns` | the town context: every town's record, the store of towns, the town part (E09; a skeleton so far) |
+| `crates/h3-map`, `h3-pack`, `h3-pack-battle`, `h3-pack-adventure`, `h3-pack-towns` | the `.h3m` reader, writer and import; pack adapters |
 | `crates/h3-sim`, `h3-ffi` | RL environments, action/observation encodings, replays; the C ABI (`include/h3.h`) |
 | `crates/h3-protocol`, `h3-server` | the wire protocol (sans-I/O core) and the WebSocket game server |
 | `crates/h3-formats`, `h3-harvest`, `h3-experiment` | readers for the original's files; the pack harvester; experiment compiler (staged battles to confirm rules in the original) |

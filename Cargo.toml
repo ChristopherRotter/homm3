@@ -15,6 +15,8 @@ members = [
     "crates/h3-game",
     "crates/h3-map",
     "crates/h3-pack-adventure",
+    "crates/h3-towns",
+    "crates/h3-pack-towns",
     "crates/h3-pack",
     "crates/h3-pack-battle",
     "crates/h3-sim",
@@ -39,6 +41,8 @@ default-members = [
     "crates/h3-game",
     "crates/h3-map",
     "crates/h3-pack-adventure",
+    "crates/h3-towns",
+    "crates/h3-pack-towns",
     "crates/h3-pack",
     "crates/h3-pack-battle",
     "crates/h3-sim",
@@ -75,6 +79,8 @@ h3-adventure = { path = "crates/h3-adventure" }
 h3-game = { path = "crates/h3-game" }
 h3-map = { path = "crates/h3-map" }
 h3-pack-adventure = { path = "crates/h3-pack-adventure" }
+h3-towns = { path = "crates/h3-towns" }
+h3-pack-towns = { path = "crates/h3-pack-towns" }
 h3-cli = { path = "crates/h3-cli" }
 h3-protocol = { path = "crates/h3-protocol" }
 
