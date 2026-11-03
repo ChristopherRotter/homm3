@@ -1,5 +1,7 @@
 # E08 batch E10b — results
 
+> Played by the capture harness on 2026-11-03 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-10b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-10b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `6693babb`.** The map's description in the scenario list starts with "Stamp 6693babb.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -31,26 +33,26 @@ Map file: `E08-batch-10b.h3m`. Fill in the blanks below and keep this file; an a
 
 | dwelling | owner | creatures and counts | guards (creature and count by slot) |
 |---|---|---|---|
-| D day 1 before |   |   |   |
-| F day 1 before |   |   |   |
-| S day 1 before |   |   |   |
-| D day 1 after its battle |   |   |   |
-| S day 1 after the purchase |   |   |   |
-| D day 2 |   |   |   |
-| F day 2 |   |   |   |
-| S day 2 |   |   |   |
-| D day 7 |   |   |   |
-| F day 7 |   |   |   |
-| S day 7 |   |   |   |
-| D day 8 |   |   |   |
-| F day 8 |   |   |   |
-| S day 8 |   |   |   |
+| D day 1 before | none | 0: 1 Green Dragon | 0: 3 Green Dragons |
+| F day 1 before | none | 0: 6 Stone Golems, 1: 6 Iron Golems, 2: 3 Gold Golems, 3: 2 Diamond Golems | 0: 9 Gold Golems, 1: 6 Diamond Golems |
+| S day 1 before | red | 0: 4 Swordsmen | none |
+| D day 1 after its battle | red | 0: 1 Green Dragon | none |
+| S day 1 after the purchase | red | 0: 2 Swordsmen | none |
+| D day 2 | red | 0: 1 Green Dragon | none |
+| F day 2 | none | 0: 6 Stone Golems, 1: 6 Iron Golems, 2: 3 Gold Golems, 3: 2 Diamond Golems | 0: 9 Gold Golems, 1: 6 Diamond Golems |
+| S day 2 | red | 0: 2 Swordsmen | none |
+| D day 7 | red | 0: 1 Green Dragon | none |
+| F day 7 | none | 0: 6 Stone Golems, 1: 6 Iron Golems, 2: 3 Gold Golems, 3: 2 Diamond Golems | 0: 9 Gold Golems, 1: 6 Diamond Golems |
+| S day 7 | red | 0: 2 Swordsmen | none |
+| D day 8 | red | 0: 1 Green Dragon | 0: 3 Green Dragons |
+| F day 8 | none | 0: 6 Stone Golems, 1: 6 Iron Golems, 2: 3 Gold Golems, 3: 2 Diamond Golems | 0: 9 Gold Golems, 1: 6 Diamond Golems |
+| S day 8 | red | 0: 4 Swordsmen | none |
 
-- D's battle: the question's text; the defending stacks; the result: 
-- S's purchase: the most; E10-8b's army; Red's gold before and after: 
-- the date's words on days 1, 2, 7 and 8: 
-- day 8: the week's message (its name): 
-- anything odd: 
+- D's battle: the question's text; the defending stacks; the result: GENRLTXT:422, ADVEVENT:35; attacker 10 Archangels | defender 3 Green Dragons; attacker; none (human 0, here 0); attacker 10 Archangels | defender none
+- S's purchase: the most; E10-8b's army; Red's gold before and after: ADVEVENT:35; 4; 30900; closed; 30300; 1 Angel, 2 Swordsmen; 30300
+- the date's words on days 1, 2, 7 and 8: month 1, week 1, day 1; month 1, week 1, day 2; month 1, week 1, day 7; month 1, week 2, day 1
+- day 8: the week's message (its name): GENRLTXT:14, GENRLTXT:16 [names Beholder]; GENRLTXT:14: Red
+- anything odd: the objects anchored in (8, 9) to (20, 11), class and subclass: 19,10 class 78 subclass 0; 10,10 class 17 subclass 24; 13,10 class 20 subclass 1; 16,10 class 17 subclass 58; the players' teams: red 0, blue 1, tan 2, green 3, orange 4, purple 5, teal 6, pink 7; Red's treasury at the start: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30900 gold; Blue's treasury at the start: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30800 gold; D's record right after the visit: record 0; class 17.24; owner red; creatures 0: 1 Green Dragon; guards none; S's hire dialog as it opened: most 4; amount 0; ally 0; selected 0 (counts 4); max enabled, recruit disabled, close enabled, slider enabled; day 8: the date: month 1, week 2, day 1
 
 ## E10-9 — A Refugee Camp: its creature and count through a week (ADV-RFG-001, ADV-HIR-002, ADV-MON-003)
 
@@ -66,17 +68,17 @@ Map file: `E08-batch-10b.h3m`. Fill in the blanks below and keep this file; an a
 
 | when | creature (+0x22) | count (+0x0) |
 |---|---|---|
-| day 1 before |   |   |
-| day 1 after the purchase |   |   |
-| day 2 before |   |   |
-| day 2 after the purchases |   |   |
-| day 7 |   |   |
-| day 8 before the visit |   |   |
+| day 1 before | tile 19,10,0; creature 131 (Phoenixes); count word 2 | tile 19,10,0; creature 131 (Phoenixes); count word 2 |
+| day 1 after the purchase | tile 19,10,0; creature 131 (Phoenix); count word 1 | tile 19,10,0; creature 131 (Phoenix); count word 1 |
+| day 2 before | tile 19,10,0; creature 131 (Phoenix); count word 1 | tile 19,10,0; creature 131 (Phoenix); count word 1 |
+| day 2 after the purchases | tile 19,10,0; creature 131 (Phoenixes); count word 0 | tile 19,10,0; creature 131 (Phoenixes); count word 0 |
+| day 7 | tile 19,10,0; creature 131 (Phoenixes); count word 0 | tile 19,10,0; creature 131 (Phoenixes); count word 0 |
+| day 8 before the visit | tile 19,10,0; creature 31 (Obsidian Gargoyles); count word 9 | tile 19,10,0; creature 31 (Obsidian Gargoyles); count word 9 |
 
-- day 1: K's owner (none?); the question's text; the dialog's most; what was bought; E10-9's army; Red's treasury: 
-- day 2: the question's text; the dialog's most; what Max and Recruit bought; the message of the second visit; E10-9's army: 
-- day 8: the question's text; the dialog's most: 
-- anything odd: 
+- day 1: K's owner (none?); the question's text; the dialog's most; what was bought; E10-9's army; Red's treasury: class 78; ADVEVENT:35; 2; closed; 1 Angel, 1 Phoenix; 30 wood, 14 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 28300 gold
+- day 2: the question's text; the dialog's most; what Max and Recruit bought; the message of the second visit; E10-9's army: ADVEVENT:35; 1; closed; ADVEVENT:44; none; none; 1 Angel, 2 Phoenixes
+- day 8: the question's text; the dialog's most: ADVEVENT:35; 9; most 9; amount 0; ally 0; selected 0 (counts 9); max enabled, recruit disabled, close enabled, slider enabled
+- anything odd: K's entrance tile (19, 10): 0x00000002 class 78.131; K's object (19, 10): class 78; K's tile (18, 10): 0xffffffff class 78.0; K's hire dialog as it opened: most 2; amount 0; ally 0; selected 0 (counts 2); max enabled, recruit disabled, close enabled, slider enabled; K's word right after the visit: tile 19,10,0; creature 131 (Phoenix); count word 1; K's object after the visit: class 78; day 2: K's hire dialog as it opened: most 1; amount 0; ally 0; selected 0 (counts 1); max enabled, recruit disabled, close enabled, slider enabled; day 8: K's hire dialog as it opened: most 9; amount 0; ally 0; selected 0 (counts 9); max enabled, recruit disabled, close enabled, slider enabled
 
 ## E10-10 — What a player sees of dwellings and a Refugee Camp: the hint and the popup (ADV-OWN-003)
 
@@ -87,13 +89,13 @@ Map file: `E08-batch-10b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Red, day 1: K's popup: 
+- Red, day 1: K's popup: ?: [class 78 name]
 
 | object | the hint (hover) | the popup (right-click) |
 |---|---|---|
-| D (Red's, flagged on day 1) |   |   |
-| F (neutral) |   |   |
-| S (Red's at load) |   |   |
-| K (the camp) |   |   |
+| D (Red's, flagged on day 1) | [CRGEN1 row 24 name] - [owned-by text of red] | GENRLTXT:198: [CRGEN1 row 24 name] /  / [owned-by text of red] |
+| F (neutral) | [CRGEN4 row 1 name] | ?: [CRGEN4 row 1 name] |
+| S (Red's at load) | [CRGEN1 row 58 name] - [owned-by text of red] | GENRLTXT:198: [CRGEN1 row 58 name] /  / [owned-by text of red] |
+| K (the camp) | [class 78 name] | ?: [class 78 name] |
 
-- anything odd: 
+- anything odd: Red's hint over K: [class 78 name]; Blue, day 1: the date: month 1, week 1, day 1; Blue's treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30800 gold; D (Red's, flagged on day 1): hint bar and buffer: same; F (neutral): hint bar and buffer: same; S (Red's at load): hint bar and buffer: same; K (the camp): hint bar and buffer: same

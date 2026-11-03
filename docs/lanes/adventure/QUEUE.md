@@ -4,28 +4,12 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237). T88b in two by side (decision 239; D-51 settled as the original, decision 238): T88b1 done (`adventure/e08-t88b1`: `E08-design.md` parts A and B, ADR-0016's draft), T88b2 done whole (decision 240; `adventure/e08-t88b2`: part C, ADR-0017's draft, the cut; its checkpoint ADV-Q43, decisions 241–243). The cut (design §17): rounds 2 to 8, T89 to T97, batch E10 first. T89 in two at the code's seam (decision 244): T89a done (`adventure/e08-t89a`: the writer's classes and teams, the spec's fields, `cross-lane`), T89b done whole (decision 246; `adventure/e08-t89b`, `cross-lane`: the specs `E08-batch-10a` and `-10b`). Round 3: T90 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237). T88b in two by side (decision 239; D-51 settled as the original, decision 238): T88b1 done (`adventure/e08-t88b1`: `E08-design.md` parts A and B, ADR-0016's draft), T88b2 done whole (decision 240; `adventure/e08-t88b2`: part C, ADR-0017's draft, the cut; its checkpoint ADV-Q43, decisions 241–243). The cut (design §17): rounds 2 to 8, T89 to T97, batch E10 first. T89 in two at the code's seam (decision 244): T89a done (`adventure/e08-t89a`: the writer's classes and teams, the spec's fields, `cross-lane`), T89b done whole (decision 246; `adventure/e08-t89b`, `cross-lane`: the specs `E08-batch-10a` and `-10b`). T90 done (`adventure/e08-t90`: the harness reads and both batches' runs). Round 3: T91 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T90 — batch E10's harness and runs** (design §16, §17's round 3; T91 the scoring after it)
+**E08 T91 — batch E10's scoring** (design §16, §17's round 3)
 
-- **Scope:** the capture harness (`clients/capture/`, common: built with the harness check, the
-  client and map-client lanes' inboxes told; CLT-Q18): the dwelling records (game +0x4E39C, 0x5C
-  bytes: the creatures, counts, guards, entrance, owner +0x57), the map objects' class, subclass and
-  anchor and the tiles' blocked and visitable bits (E10-7), a camp's tile words (+0x22, +0x0), the
-  hire dialog (the most +0xAC, the amount +0xB8 set by its slider, the ally's flag +0x4C, its
-  buttons' enabled state, Max 532, Recruit 30722, Close 30721, whether it is open), the players'
-  team bytes (game +0x1F879), the battle's defending side's owner (E9-2's read), a pile picked up
-  from a neighbour (E10-5), a computer player's turn (Tan in 10a), the status bar's hint and the
-  right-click popup's text (E10-10); the recipes `clients/capture/batches/E08-batch-10a.toml`,
-  `-10b.toml`; the runs, each batch at least twice (10b's camp and battles draw), the filled
-  templates in `experiments/results/`.
-- **Inputs:** the specs `experiments/specs/E08-batch-10a.toml`, `-10b.toml` and their templates
-  (T89b; their review in `E08-log.md`, T89b); design §16; survey `E08-dwellings.md` §2.1, §5,
-  §7, §9; T79a's and T79b's records in `E08-log.md` (the mine records, the boat dialog, Leave
-  Guards); `clients/capture/README.md`.
-- **Depends on:** T89b (`adventure/e08-t89b`, `cross-lane`; merged first). **Status:** ready once
-  T89b merges; its cut confirmed with the user at its start (T79 went in two by batch, decision
-  207).
+- **Scope:** score the filled templates `experiments/results/E08-batch-10a.md`, `-10b.md` (T90; two runs of 10a, five of 10b) against the survey `docs/rules/surveys/E08-dwellings.md` §13's rows, settle the disputes (D-n) and the quirk candidates, record the outcome in the survey and `E08-log.md`. T92 (`shared/`: ADR-0016 and -0017 from the drafts) follows. Its cut is confirmed at its start.
+- **Depends on:** T90 (`adventure/e08-t90`). **Status:** ready once T90 merges.
 
 ## Inbox
 

@@ -49,6 +49,11 @@ T3b (batch TWN-1): `new_game = true` (the map started anew), a battle table's li
 a literal ending in `: ` labelling the value after it, the town screen (noted and closed), and
 the observations town:x,y:<part>, towns:every_vs_built, towns:owned_garrisons,
 hero:slot:<n>, opening:slot:<n>:<side>, town_screen and unknown_screens (the README's "Towns").
+Since E08 T90 (batches E10a, E10b): the hire dialog as a screen (`click = ["max", "recruit"]`,
+`amount = <n>`), a step's `hint = [x, y]` and `popup = [x, y]`, a computer player's turn waited out
+by `end_turn`, and the observations dwelling:x,y, teams, objects:x0,y0:x1,y1, access:x0,y0:x1,y1,
+camp:x,y, hire[:opening|after][:<part>], hint, popup, hint:raw, opening:defender and ai_turns (the
+README's "Dwellings, the hire dialog and a computer player's turn").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -92,6 +97,7 @@ RADAR = (630, 26, 144)  # the minimap: its top-left and side in pixels
 LEVEL_BUTTON = (725, 211)  # the panel's surface/underground button (E17 H2)
 CENTRE = (9, 8)  # a minimap click puts the clicked tile here in the view
 QUIET = 1.5  # seconds without a change: a walk or a visit is over
+AI_TURN_LIMIT = 240  # seconds a computer player's turn may take before the batch stops (E08 T90)
 STRANGE = 30  # seconds on an unknown screen without a dialog: the batch stops
 
 
@@ -193,7 +199,29 @@ def end_turn(game, mem, events=None):
         found = find_button(game, "ok")
         if found:
             click_button(game, "ok", found[0])
-        time.sleep(0.2)
+        time.sleep(0.02)
+    # E08 T90 (batch E10a's Tan): a computer player's turn is played by the game, which can take
+    # less than a poll of 0.2 s; the harness polls every 0.02 s, notes each computer colour it
+    # saw as the current player (events["ai_turns"], with the seconds it was) and goes on at the
+    # next human's turn.
+    end, passed, began = time.monotonic() + AI_TURN_LIMIT, None, time.monotonic()
+    while True:
+        current = mem.current_player()
+        if passed is not None and passed != current and events is not None:
+            events["ai_turns"][-1]["seconds"] = round(time.monotonic() - began, 2)
+        if mem.is_human(current):
+            break
+        if time.monotonic() > end:
+            raise TimeoutError(f"the computer player {current}'s turn does not end "
+                               f"in {AI_TURN_LIMIT} s")
+        if passed != current:
+            passed, began = current, time.monotonic()
+            if events is not None:
+                events.setdefault("ai_turns", []).append({"player": passed})
+        found = find_button(game, "ok")
+        if found:
+            click_button(game, "ok", found[0])
+        time.sleep(0.02)
     dismiss(game, mem=mem, events=events)
     return mem.current_player()
 
@@ -328,13 +356,29 @@ def observe(mem, index):
 # A question's kind by the record its text was written from (ADVEVENT.TXT; survey E08-battles §3.2):
 # the monster's offer to join for free, to join for gold (one record, or two together), to flee.
 KINDS = {"ADVEVENT:86": "join", "ADVEVENT:88": "join for gold", "ADVEVENT:89+90": "join for gold",
-         "ADVEVENT:91": "flee"}
+         "ADVEVENT:91": "flee",
+         # E08 T90 (batch E10a): a dwelling's guards' question (GENRLTXT 422) and its hire question
+         "GENRLTXT:422": "guards", "ADVEVENT:35": "hire", "ADVEVENT:36": "hire"}
 BATTLE_PARK = (420, 580)  # over the battle's panel, off the battlefield
 SIDES = ("attacker", "defender")
 BATTLE_KEYS = {"retreat": "r", "surrender": "s"}
 # The level-up dialog's two offered skills from its OK's corner, the OK disabled until one is
 # chosen (E17 H2, `[button.ok_disabled]`): a step's `level_up`, default the left one.
 LEVEL_UP_CHOICES = {"left": (-150, -64), "right": (-52, -64)}
+
+
+def size_word(record, mem):
+    """E08 T90 (batch E10a, E10-1): the quantity word of a guards' question (GENRLTXT 422's
+    second conversion, ARRAYTXT's lower-case rows from 176: `a few` 176, `several` 179, `a pack
+    of` 182, ...) as {"size_word": 182}, named by its row, never its text (ADR-0009); {} for
+    any other question."""
+    if record != "GENRLTXT:422":
+        return {}
+    text, rows = mem.dialog_text(), h3lod.table("ARRAYTXT.TXT")
+    found = [n for n in range(176, 215) if n < len(rows) and rows[n] and rows[n][0].strip()
+             and rows[n][0] == rows[n][0].lower()
+             and re.search(r"(?<![A-Za-z])" + re.escape(rows[n][0]) + r"(?![A-Za-z])", text)]
+    return {"size_word": max(found, key=lambda n: len(rows[n][0])) if found else None}
 
 
 def reply(answer, kind):
@@ -838,13 +882,19 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
     end = time.monotonic() + 600
     while time.monotonic() < end:
         kind = screen_kind(mem)
-        if kind in ("exchange", "army", "boat"):
+        if kind in ("exchange", "army", "boat", "hire"):
             # E08 T79a (batch E9a): also a mine's Leave Guards (the army dialog) and a
-            # Shipyard's boat dialog.
+            # Shipyard's boat dialog. E08 T90 (batches E10a, E10b): the hire dialog, read as it
+            # opens (`hires`: `opening`, before any click) and as the actions leave it (`after`,
+            # None when they closed it), then closed by its Close.
             events["screens"].append(kind)
+            if kind == "hire":
+                events.setdefault("hires", []).append({"opening": mem.recruit_dialog()})
             if actions and not events["actions"]:
                 events["actions"] = run_actions(game, mem, index, actions)
-            if (now := screen_kind(mem)) in ("exchange", "army", "boat"):
+            if kind == "hire":
+                events["hires"][-1]["after"] = mem.recruit_dialog()
+            if (now := screen_kind(mem)) in ("exchange", "army", "boat", "hire"):
                 close_screen(game, mem, now, screen_heroes(mem, now, index))
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
@@ -935,7 +985,8 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             if said not in ("yes", "no"):
                 raise RuntimeError(f"a question ({record or 'its text not identified'}, {kind}) "
                                    "the step does not answer (`answer`)")
-            events["questions"].append({"record": record, "kind": kind, "answer": said})
+            events["questions"].append({"record": record, "kind": kind, "answer": said,
+                                        **size_word(record, mem)})
             click_button(game, *(("ok", oks[0]) if said == "yes" else ("cancel", cancels[0])))
             last, since = None, time.monotonic()
             continue
@@ -1174,6 +1225,12 @@ SCREEN_KINDS = {0x63A5E4: "map", 0x63D528: "battle", 0x63EAE8: "hero", 0x642428:
 TOWN_SCREEN_VTABLE = 0x64372C
 TOWN_SCREEN_KEY = "Return"
 SCREEN_KINDS[TOWN_SCREEN_VTABLE] = "town"
+# E08 T90 (batches E10a, E10b): the hire dialog of a dwelling or Refugee Camp (H3RecruitMgr,
+# manager vtable 0x640C70, recruit_dialog_init 0x551350; `read`, docs/exe/map.toml; the dialog
+# itself 0x640C4C, observed). Its items: Max 532, Recruit 30722, Close 30721
+# (recruit_dialog_proc 0x550940, `read`) and the slider 559 (observed; the amount's text 530, the
+# Available's 521, the cost's 512), all listed by `hire:items`.
+SCREEN_KINDS[h3mem.RECRUIT_DIALOG] = "hire"
 # Each screen's items by name (survey E08-army §1.1, §2.3, §3.1-§3.4, §4, §5.1: the procedures'
 # item ids; checked under Wine, E08 T47a). A name `<part>:<n>` is the part's n-th (an army slot
 # from 0 at the left, a worn position by its number 0-18, a backpack place from 0 at the left of
@@ -1207,6 +1264,7 @@ SCREEN_ITEMS = {
     "battle": {"start": 30722},
     "boat": {"build": 30722, "cancel": 30721},
     "town": {"close": 30720},
+    "hire": {"max": 532, "recruit": 30722, "close": 30721, "slider": 559},
 }
 # The counts each screen shows under its army slots (text items, first id): the hero screen's
 # 61-67, the exchange's 65-71 and 72-78, the army dialog's 108-114 and 133-139.
@@ -1216,7 +1274,7 @@ SPLIT_SLIDER, SPLIT_COUNTS = 6, (4, 5)
 SHOWN = 0x4  # an item's state bit while it is drawn (an empty slot's count, an empty place: clear)
 QUESTION = (30725, 30726)  # a message's yes and no
 EXCHANGE_MANAGER, EXCHANGE_HEROES = 0x6A3D30, 0x40  # swap_manager_create 0x5AE500: this
-SCREEN_ACTIONS = ("click", "right", "slider")
+SCREEN_ACTIONS = ("click", "right", "slider", "amount")
 
 
 # A message box's pictures by their DEF (E08 T57; observed at a Treasure Chest under Wine): a
@@ -1243,7 +1301,19 @@ def message_record(mem):
     for own in OWN_TEXTS:
         if " ".join(own.split()) in lines:
             return f'the map\'s text "{own}"'
-    return h3lod.identify(text) or "?"
+    found = h3lod.identify(text) or "?"
+    if found == "GENRLTXT:16":
+        # E08 T90 (batch E10b): the week's message (`%s the %s`): the creature it names, by the
+        # game's creature table (ids 0 to 144, plural, then singular), never its text (ADR-0009).
+        names = []
+        for creature in range(145):
+            try:
+                names += [mem.creature_name(creature, 2), mem.creature_name(creature, 1)]
+            except (OSError, IndexError, UnicodeDecodeError):
+                pass
+        hits = sorted({n for n in names if n and n in text}, key=len, reverse=True)
+        found += f" [names {hits[0]}]" if hits else f" [other: {len(text.strip())} characters]"
+    return found
 
 
 # The batch's own message texts (E08 T79b; batch sets them from its spec): message_record names a
@@ -1431,6 +1501,30 @@ def slider_max(game, mem):
     quiet_screen(game)
 
 
+def hire_amount(game, mem, wanted):
+    """The hire dialog's amount set to `wanted` by its slider (E08 T90, E10-8's 2): a click on
+    the slider's right end adds one, on its left end takes one (observed: `h3mem.SLIDER_VTABLE`,
+    id 559); the amount read from the dialog's manager (+0xB8) after each click. Fails when the
+    amount cannot be reached (it stops at the most)."""
+    for _ in range(1000):
+        state = mem.recruit_dialog()
+        if state is None:
+            raise RuntimeError("no hire dialog shows (`amount`)")
+        if state["amount"] == wanted:
+            break
+        if state["slider"] is None:
+            raise RuntimeError("the hire dialog has no slider item")
+        x, y, width, height = next(i["box"] for i in state["items"] if i["id"] == state["slider"])
+        end = x + width - height // 2 if state["amount"] < wanted else x + height // 2
+        before = state["amount"]
+        game.click(end, y + height // 2, 0.15)
+        if mem.recruit_dialog()["amount"] == before:
+            raise RuntimeError(f"the amount stays at {before} (the most is {state['most']}) "
+                               f"short of {wanted}")
+    game.move(*PARK)
+    quiet_screen(game)
+
+
 def split_counts(mem):
     """The split dialog's two counts as it shows them, `<source> : <target>`."""
     if screen_kind(mem) != "split":
@@ -1466,7 +1560,8 @@ def shown_backpack(mem):
 def run_actions(game, mem, step_hero, actions):
     """Plays a step's `actions` in the screens showing (E08 T47a): each action one `click` (a list
     of item names, clicked in order on whichever screen shows at each), `right` (an item's name)
-    or `slider = "max"` (the split dialog's), or none (only reads); a question that comes is
+    or `slider = "max"` (the split dialog's) or, since E08 T90, `amount = <n>` (the hire dialog's
+    slider set to n), or none (only reads); a question that comes is
     answered with the action's `answer`, a message's OK clicked (its record kept). `record` and
     `note` read right after the action, as a step's do (the step's hero before and after it).
     Returns each action's observation: what it clicked, the questions' and messages' records,
@@ -1491,6 +1586,8 @@ def run_actions(game, mem, step_hero, actions):
                 obs["questions"].append({"record": asked, "kind": "other",
                                          "answer": action["answer"]})
             pass_dialogs(game, mem, obs, action.get("answer"), heroes)
+        if "amount" in action:
+            hire_amount(game, mem, int(action["amount"]))  # E08 T90: the hire dialog's slider
         if "slider" in action:
             if action["slider"] != "max":
                 raise ValueError(f"`slider = {action['slider']!r}`: only \"max\"")
@@ -1783,6 +1880,171 @@ def mine_text(mem, x, y, z=0):
             f"abandoned {mine['abandoned']}; guards {guards}")
 
 
+def dwelling_text(mem, x, y, z=0, part=None):
+    """A dwelling's record by its entrance (E08 T90, batches E10a, E10b; h3mem.dwellings, game
+    +0x4E39C): `record 3; class 20.1; owner none; creatures 0: 14 Pikemen (the slots with a
+    creature); guards 0: 3 Green Dragons, 1: ...` (`guards none`); `none` without a record there."""
+    found = mem.dwelling_at(x, y, z)
+    if found is None:
+        return "none"
+    creatures = ", ".join(f"{k}: {c} " + mem.creature_name(t, c)
+                          for k, (t, c) in enumerate(zip(found["creatures"], found["counts"]))
+                          if t >= 0) or "none"
+    guards = ", ".join(f"{k}: {c} " + (mem.creature_name(t, c) if t >= 0 else "(no creature)")
+                       for k, (t, c) in enumerate(found["guards"]) if t >= 0 or c) or "none"
+    # E08 T90 (batch E10a): `dwelling:x,y:owner|creatures|guards` is one field of the record.
+    if part:
+        return {"owner": colour_name(found["owner"]), "creatures": creatures,
+                "guards": guards}[part]
+    return (f"record {found['index']}; class {found['class']}.{found['subclass']}; "
+            f"owner {colour_name(found['owner'])}; creatures {creatures}; guards {guards}")
+
+
+def teams_text(mem):
+    """The players' team bytes (E08 T90; game +0x1F879, by colour): `red 0, blue 0, tan 2, ...`."""
+    return ", ".join(f"{COLOURS[c]} {t}" for c, t in enumerate(mem.teams()))
+
+
+def objects_text(mem, x0, y0, x1, y1, z=0):
+    """The map's objects anchored in a rectangle (E08 T90, E10-7; h3mem.objects): `12,30 class
+    17 subclass 3` for each, in the map's order; `none`."""
+    found = [o for o in mem.objects() if o["anchor"][2] == z
+             and x0 <= o["anchor"][0] <= x1 and y0 <= o["anchor"][1] <= y1]
+    return "; ".join(f"{o['anchor'][0]},{o['anchor'][1]} class {o['class']} subclass "
+                     f"{o['subclass']}" for o in found) or "none"
+
+
+def access_text(mem, x0, y0, x1, y1, z=0):
+    """The tiles of a rectangle whose access byte has the blocked bit (0x01) and those with the
+    visitable bit (0x10), E08 T90, E10-7 (h3mem.access): `blocked 12,30 13,30; visitable 13,30`."""
+    blocked, visitable = [], []
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            found = mem.access(x, y, z)
+            if found["blocked"]:
+                blocked.append(f"{x},{y}")
+            if found["visitable"]:
+                visitable.append(f"{x},{y}")
+    return f"blocked {' '.join(blocked) or 'none'}; visitable {' '.join(visitable) or 'none'}"
+
+
+def camp_text(mem, x, y, z=0):
+    """A Refugee Camp's words (E08 T90, E10-9; h3mem.camp): `tile 19,10,0; creature 14
+    (Pikemen); count word 7` (the tile's subclass +0x22 and word +0x0, on the entrance)."""
+    found = mem.camp(x, y, z)
+    try:
+        name = f" ({mem.creature_name(found['creature'], found['word'])})"
+    except (OSError, IndexError, UnicodeDecodeError):
+        name = ""
+    return (f"tile {','.join(map(str, found['tile']))}; creature {found['creature']}{name}; "
+            f"count word {found['word']}")
+
+
+def hire_text(state, part=None):
+    """The hire dialog as `h3mem.recruit_dialog` read it (E08 T90): `most 3; amount 0; ally 0;
+    selected 0 of 14 (counts 14, 0, 0, 0); max enabled, recruit enabled, close enabled`; `closed`
+    for None; part `items` lists every item (`532:0x4/0x..`, id and state), a part from
+    most, amount, ally, enabled and counts one field."""
+    if state is None:
+        return "closed"
+    if part == "items":
+        return ", ".join(f"{i['id']}:{i['state']:#x}" for i in state["items"])
+    if part == "enabled":
+        return ", ".join(f"{k} {'enabled' if v else 'disabled'}" for k, v in state["enabled"].items())
+    if part == "counts":
+        return ", ".join(str(c) for c, t in zip(state["counts"], state["types"]) if t >= 0)
+    if part:
+        return str(state[part])
+    return (f"most {state['most']}; amount {state['amount']}; ally {state['ally']}; selected "
+            f"{state['index']} (counts {hire_text(state, 'counts')}); {hire_text(state, 'enabled')}")
+
+
+# A hint or popup's pieces (E08 T90, E10-10): never the original's text, only which of the names
+# the game holds it was made of.
+TEXT_REST = re.compile(r"[\s\-,.():%\d]*")
+
+
+def text_parts(mem, text, tile):
+    """A hint's or popup's text described by what it holds (E08 T90, E10-10; ADR-0009: the
+    harness names, it does not reproduce): the names the game holds for the object on `tile`
+    (its class's name, a dwelling's name by CrGen1 or CrGen4's row, the owner's "Owned by"
+    text) replaced by `[label]`, numbers and punctuation kept, any other text `[other: n
+    characters]`. `none` for an empty text."""
+    if not text:
+        return "none"
+    x, y, z = tile
+    found = mem.object_at(x, y, z)
+    pieces = [(f"class {found['class']} name", mem.object_name(found["class"]))]
+    dwelling = mem.dwelling_at(x, y, z)
+    if dwelling is not None:
+        table = "CRGEN1.TXT" if dwelling["class"] == 17 else "CRGEN4.TXT"
+        try:
+            rows = h3lod.table(table)
+            pieces.append((f"{table[:6]} row {dwelling['subclass']} name",
+                           rows[dwelling["subclass"]][0]))
+        except (KeyError, OSError, IndexError):
+            pass
+        pieces.append((f"owner {colour_name(dwelling['owner'])} \"owned by\"",
+                       mem.owned_name(dwelling["owner"])))
+    for colour in range(8):
+        pieces.append((f"owned-by text of {COLOURS[colour]}", mem.owned_name(colour)))
+    pieces = [(label, piece.strip()) for label, piece in pieces if piece and piece.strip()]
+    out, rest = [], text
+    while rest:
+        hits = [(rest.find(piece), -len(piece), label, piece) for label, piece in pieces
+                if piece in rest]
+        if not hits:
+            break
+        at, _, label, piece = min(hits)
+        out.append(rest[:at])
+        out.append(f"[{label}]")
+        rest = rest[at + len(piece):]
+    out.append(rest)
+    return "".join(part if TEXT_REST.fullmatch(part) or part.startswith("[")
+                   else f"[other: {len(part.strip())} characters]"
+                   for part in out).replace("\n", " / ")
+
+
+def hint_at(game, mem, x, y, level=0):
+    """The status bar's hint with the mouse on tile (x, y) (E08 T90, E10-10; h3mem.status_bar,
+    the adventure dialog's item 200 and the message buffer 0x6973D8), after the clock's quiet
+    pause: {bar, buffer, parts}, parts by `text_parts`."""
+    try:
+        hover(game, mem, x, y, level)
+    except ValueError:
+        centre(game, mem, x, y, level)
+        hover(game, mem, x, y, level)
+    quiet_screen(game, 0.5)
+    shown = mem.status_bar()
+    text = shown["bar"] if shown["bar"] else shown["buffer"] or ""
+    return {**shown, "parts": text_parts(mem, text, (x, y, level))}
+
+
+def popup_at(game, mem, x, y, level=0):
+    """The text of the window a right click on tile (x, y) shows (E08 T90, E10-10; the button
+    held while the screen is read, then released, as `right_click`): {opened, record, parts}:
+    whether a dialog opened over the map, the record h3lod identifies its text as (`?`) and
+    `text_parts`. A message left after the release is closed by its OK."""
+    try:
+        hover(game, mem, x, y, level)
+    except ValueError:
+        centre(game, mem, x, y, level)
+        hover(game, mem, x, y, level)
+    before = (mem.dialog() or {}).get("at")
+    h3drive.run("xdotool", "mousedown", "3")
+    time.sleep(0.8)
+    shown = mem.dialog()
+    opened = shown is not None and shown["at"] != before
+    text = mem.dialog_text() if opened else ""
+    record = (h3lod.identify(text) or "?") if opened else None
+    h3drive.run("xdotool", "mouseup", "3")
+    game.move(*PARK)
+    quiet_screen(game)
+    if screen_kind(mem) == "message":
+        click_item(game, mem, "ok", None)
+    return {"opened": opened, "record": record, "parts": text_parts(mem, text, (x, y, level))}
+
+
 def town_text(mem, x, y, z, part):
     """E09 T3b (batch TWN-1): a part of the record of the town whose entrance is (x, y, z)
     (h3mem.town_at; docs/exe/structs.toml "town"): `owner` (+0x1: `red`, …, `neutral`),
@@ -1966,7 +2228,8 @@ def object_word_text(mem, tile):
 # state after it.
 LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flees", "boat",
               "boats", "drawn", "boat_record", "mine", "tile", "income", "gardens", "growth",
-              "town", "towns")  # E09 T3b: the towns' records
+              "town", "towns",  # E09 T3b: the towns' records
+              "dwelling", "teams", "objects", "access", "camp", "hire")  # E08 T90
 
 
 def observations(what):
@@ -2119,6 +2382,11 @@ def value(obs, what, mem):
         return ", ".join(q["kind"] for q in obs.get("questions", [])) or "none"
     if what == "questions":
         return ", ".join(q["record"] or "?" for q in obs.get("questions", [])) or "none"
+    # E08 T90 (batch E10a): the guards' questions' size words by their ARRAYTXT row.
+    if what == "size_words":
+        return ", ".join(f"ARRAYTXT:{q['size_word']}" if q["size_word"] is not None else
+                         "no ARRAYTXT row from 176 found" for q in obs.get("questions", [])
+                         if "size_word" in q) or "none"
     battles = obs.get("battles", [])
     if what == "battle":
         return yes[bool(battles)]
@@ -2260,6 +2528,52 @@ def value(obs, what, mem):
     if m := re.match(r"(mine|tile):(\d+),(\d+)(?:,(\d))?$", what):
         x, y, z = int(m.group(2)), int(m.group(3)), int(m.group(4) or 0)
         return mine_text(mem, x, y, z) if m.group(1) == "mine" else tile_text(mem, x, y, z)
+    # E08 T90 (batches E10a, E10b): a dwelling's record by its entrance (`dwelling:x,y[,level]`),
+    # the players' team bytes (`teams`), the map's objects anchored in a rectangle with their
+    # class and subclass (`objects:x0,y0:x1,y1[,level]`) and its tiles' blocked and visitable
+    # bits (`access:x0,y0:x1,y1[,level]`), a Refugee Camp's words (`camp:x,y[,level]`), the hire
+    # dialog now (`hire`, `hire:<most|amount|ally|enabled|counts|items>`) and as the step's
+    # settle saw it open and after the actions (`hire:opening[:<part>]`, `hire:after[:<part>]`,
+    # the last one; `none` when no hire dialog opened), the status bar's hint and the popup of a
+    # right click on a tile the step read (`hint`, `popup`: `text_parts`, `hint:raw` whether
+    # the bar and the buffer agree), the battle's defending side's owner
+    # (`opening:defender`) and the computer players' turns an end-turn step passed (`ai_turns`).
+    if m := re.match(r"dwelling:(\d+),(\d+)(?:,(\d))?(?::(owner|creatures|guards))?$", what):
+        return dwelling_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0),
+                             m.group(4))
+    if what == "teams":
+        return teams_text(mem)
+    if m := re.match(r"(objects|access):(\d+),(\d+):(\d+),(\d+)(?:,(\d))?$", what):
+        x0, y0, x1, y1 = (int(m.group(k)) for k in range(2, 6))
+        return (objects_text if m.group(1) == "objects" else access_text)(
+            mem, x0, y0, x1, y1, int(m.group(6) or 0))
+    if m := re.match(r"camp:(\d+),(\d+)(?:,(\d))?$", what):
+        return camp_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
+    if m := re.match(r"hire(?::(opening|after))?(?::([a-z]+))?$", what):
+        which, part = m.group(1), m.group(2)
+        if which is None:
+            return hire_text(mem.recruit_dialog(), part)
+        hires = obs.get("hires", [])
+        return hire_text(hires[-1][which], part) if hires else "none"
+    if what in ("hint", "popup"):
+        if what not in obs:
+            return "none"
+        found = obs[what]
+        return found["parts"] if what == "hint" else (
+            f"{found['record']}: {found['parts']}" if found["opened"] else "no window")
+    if what == "hint:raw":
+        found = obs.get("hint")
+        return "none" if not found else ("same" if found["bar"] == found["buffer"]
+                                         else f"bar {found['bar'] is not None}, buffer "
+                                              f"{found['buffer'] is not None}, differ")
+    if what == "opening:defender":
+        if not battles:
+            return "no battle"
+        side = battles[-1]["sides"][1]
+        return f"{colour_name(side['owner'])} (human {side['human']}, here {side['here']})"
+    if what == "ai_turns":
+        return "; ".join(f"{COLOURS[t['player']]} ({t.get('seconds', 0)} s)"
+                         for t in obs.get("ai_turns", [])) or "none"
     if what == "cursor":
         cursor = obs.get("cursor")
         return f"type {cursor[0]}, frame {cursor[1]}" if cursor else "none"
@@ -2634,9 +2948,11 @@ def batch(recipe_path, map_path=None, out=None):
                 index = select(game, mem, step["hero"])["index"]
                 before = snapshot(mem, index)
                 pre = pre_read(step, before, mem)
-                if sum(k in step for k in ("walk", "equip", "screen", "key")) > 1:
-                    raise ValueError("a step walks, equips, opens a screen or presses a key "
-                                     "(E08 T37a, T47a, T68a)")
+                if sum(k in step for k in ("walk", "equip", "screen", "key")) > 1 or (
+                        ("hint" in step or "popup" in step)
+                        and any(k in step for k in ("walk", "equip", "screen", "key"))):
+                    raise ValueError("a step walks, equips, opens a screen, presses a key "
+                                     "(E08 T37a, T47a, T68a) or reads a hint or popup (E08 T90)")
                 # E08 T68a (batch E8a's E8-3): `only_if = "aboard"` plays the step only while its
                 # hero is in a boat (status bit 18); else its fields read `not played`.
                 skip = None
@@ -2657,6 +2973,15 @@ def batch(recipe_path, map_path=None, out=None):
                         # E08 T57: the route set by `ready` makes the first click walk.
                         obs["first_click_walked"] &= not prepared.pop("clicked")
                         obs.update({k: v for k, v in prepared.items() if v})
+                elif "hint" in step or "popup" in step:
+                    # E08 T90 (batch E10b's E10-10): the mouse on a tile (`hint = [x, y]`: the
+                    # status bar's text) and a right click on a tile (`popup = [x, y]`: the
+                    # window it shows), in that order; the observations `hint` and `popup`.
+                    obs = {"hero": step["hero"]}
+                    if "hint" in step:
+                        obs["hint"] = hint_at(game, mem, *step["hint"])
+                    if "popup" in step:
+                        obs["popup"] = popup_at(game, mem, *step["popup"])
                 elif "key" in step:
                     obs = press(game, mem, step["hero"], step["key"])
                 elif "equip" in step:

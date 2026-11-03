@@ -1,0 +1,289 @@
+# E08 batch E10a played by the capture harness (E08 T90; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-10a.toml as steps, on Easy, with T90's reads (README, "Dwellings, the
+# hire dialog and a computer player's turn"). Hot seat, Red and Blue human (allied by the map), Tan
+# a computer. In the spec's order: day 1, Red: the reads before any hero moves (E10-6's teams and
+# treasury, E10-7's objects, tiles and records, E10-1's three records, E10-3's two), E10-1 (three
+# battles), E10-3 (P twice, Q), E10-6 (Blue's Barracks and Dragon Cliffs), E10-4, the treasury;
+# Blue: E10-6's records again; Tan plays inside the end-turn (never seen as the current player:
+# `ai_turns` reads none), so Tan's treasury and hero are read before (day 1, Red) and after (day
+# 2, Red). Day 2, Red: the treasury, E10-5 (the dialog with no crystal, the pile, the dialog with
+# one); Blue: the end.
+#
+# The answers by kind (KINDS, h3adv.py): `guards` the guards' question (GENRLTXT 422), `hire` the
+# hire question (ADVEVENT 35, 36). A guards' question's size word is read as its ARRAYTXT row
+# (`size_words`). A visit to a dwelling is a walk onto its entrance from the tile below it.
+
+spec = "experiments/specs/E08-batch-10a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: the reads before any hero moves ----------------------------------------------------
+
+[[step]]
+encounter = "E10-6"
+hero = "E10-6"
+record = { "the scenario's information on the teams; the team bytes of Red, Blue and Tan" = ["text:scenario information: not read (the harness starts the game from the scenario list and reads no screen text); team bytes: ", "teams"], "before: Red's treasury (gold, crystal)" = "treasury:red", "before: U's and V's records (owner, counts, guards)" = ["text:U: ", "dwelling:55,10", "text:V: ", "dwelling:59,10"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "the date at the start" = "date", "the game's version" = "map_kind", "Tan before (day 1, Red's turn): treasury; E10-6t's tile and points" = ["treasury:tan", "hero[E10-6t]:tile", "hero[E10-6t]:points"] }
+
+[[step]]
+encounter = "E10-7"
+hero = "E10-7"
+record = { "R1 | class" = "objects:11,29:14,31", "R1 | subclass" = "objects:11,29:14,31", "R1 | anchor" = "objects:11,29:14,31", "R1 | entrance" = ["text:record at 12,30: ", "dwelling:12,30", "text:record at 13,30: ", "dwelling:13,30"], "R1 | blocked tiles" = "access:10,29:13,30", "R2 | class" = "objects:15,29:18,31", "R2 | subclass" = "objects:15,29:18,31", "R2 | anchor" = "objects:15,29:18,31", "R2 | entrance" = ["text:record at 16,30: ", "dwelling:16,30", "text:record at 15,30: ", "dwelling:15,30"], "R2 | blocked tiles" = "access:14,29:17,30", "R3 | class" = "objects:19,29:22,31", "R3 | subclass" = "objects:19,29:22,31", "R3 | anchor" = "objects:19,29:22,31", "R3 | entrance" = ["text:record at 20,30: ", "dwelling:20,30", "text:record at 21,30: ", "dwelling:21,30"], "R3 | blocked tiles" = "access:18,29:22,30", "R1 | creatures and counts" = "dwelling:12,30:creatures", "R1 | guards (creature and count by slot)" = "dwelling:12,30:guards", "R1 | owner" = "dwelling:12,30:owner", "R2 | creatures and counts" = "dwelling:16,30:creatures", "R2 | guards (creature and count by slot)" = "dwelling:16,30:guards", "R2 | owner" = "dwelling:16,30:owner", "R3 | creatures and counts" = "dwelling:20,30:creatures", "R3 | guards (creature and count by slot)" = "dwelling:20,30:guards", "R3 | owner" = "dwelling:20,30:owner" }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "every object anchored in (9, 28) to (23, 31)" = "objects:9,28:23,31", "the tiles (10, 29) to (22, 30): blocked and visitable" = "access:10,29:22,30", "the records at the neighbouring tiles (13, 30), (15, 30), (21, 30)" = ["dwelling:13,30", "dwelling:15,30", "dwelling:21,30"] }
+
+[[step]]
+encounter = "E10-1"
+hero = "E10-1"
+record = { "D before | owner" = "dwelling:8,10:owner", "D before | creatures and counts" = "dwelling:8,10:creatures", "D before | guards (creature and count by slot)" = "dwelling:8,10:guards", "F before | owner" = "dwelling:13,10:owner", "F before | creatures and counts" = "dwelling:13,10:creatures", "F before | guards (creature and count by slot)" = "dwelling:13,10:guards", "X before | owner" = "dwelling:18,10:owner", "X before | creatures and counts" = "dwelling:18,10:creatures", "X before | guards (creature and count by slot)" = "dwelling:18,10:guards" }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "E10-1's army at the start" = "hero:slots" }
+
+[[step]]
+encounter = "E10-3"
+hero = "E10-3"
+record = { "before: P's and Q's records (owner, Pikemen's count, guards)" = ["text:P: ", "dwelling:30,10", "text:Q: ", "dwelling:35,10"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E10-3"
+hero = "E10-3b"
+note = { "E10-3b worn at the start (the starting bonus)" = "hero:equipment", "E10-3b's army at the start" = "hero:slots" }
+
+[[step]]
+encounter = "E10-4"
+hero = "E10-4"
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E10-5"
+hero = "E10-5"
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+# --- Day 1, Red: E10-1 visits the three neutral dwellings ---------------------------------------------
+
+[[step]]
+encounter = "E10-1"
+hero = "E10-1"
+walk = [8, 11]
+
+[[step]]
+encounter = "E10-1"
+hero = "E10-1"
+walk = [8, 10]
+answer = { guards = "yes", hire = "no" }
+battle = "auto"
+expect = { dialogs = true, battle = true }
+record = { "D: the question's text" = ["questions", "text:size word: ", "size_words"], "D: terrain, special field; the defending side's owner" = ["opening:field", "opening:defender"], "row:slot" = "opening:slots:defender", "D: the result; the messages; the next question's text" = ["winner", "messages", "message_pictures", "questions"], "D after: owner, counts, guards" = "dwelling:8,10" }
+note = { "D: the sides" = "opening:sides", "D: the level-ups" = "level_up_dialogs", "D: E10-1's tile after" = "hero:tile", "D: E10-1's army after" = "hero:slots" }
+
+[[step]]
+encounter = "E10-1"
+hero = "E10-1"
+walk = [13, 11]
+
+[[step]]
+encounter = "E10-1"
+hero = "E10-1"
+walk = [13, 10]
+answer = { guards = "yes", hire = "no" }
+battle = "auto"
+expect = { dialogs = true, battle = true }
+record = { "F: the question's text" = ["questions", "text:size word: ", "size_words"], "F: terrain, special field; the defending side's owner" = ["opening:field", "opening:defender"], "row:slot#2" = "opening:slots:defender", "F: the result; the messages; the next question's text" = ["winner", "messages", "message_pictures", "questions"], "F after: owner, counts, guards" = "dwelling:13,10" }
+note = { "F: the sides" = "opening:sides", "F: the level-ups" = "level_up_dialogs", "F: E10-1's tile after" = "hero:tile", "F: E10-1's army after" = "hero:slots" }
+
+[[step]]
+encounter = "E10-1"
+hero = "E10-1"
+walk = [18, 11]
+
+[[step]]
+encounter = "E10-1"
+hero = "E10-1"
+walk = [18, 10]
+answer = { guards = "yes", hire = "no" }
+battle = "auto"
+expect = { dialogs = true, battle = true }
+record = { "X: the question's text" = ["questions", "text:size word: ", "size_words"], "X: terrain, special field; the defending side's owner" = ["opening:field", "opening:defender"], "row:slot#3" = "opening:slots:defender", "X: the result; the messages; the next question's text" = ["winner", "messages", "message_pictures", "questions"], "X after: owner, counts, guards" = "dwelling:18,10" }
+note = { "X: the sides" = "opening:sides", "X: the level-ups" = "level_up_dialogs", "X: E10-1's tile after" = "hero:tile", "X: E10-1's army after" = "hero:slots" }
+
+# --- Day 1, Red: E10-3's Guardhouses ----------------------------------------------------------------------
+
+[[step]]
+encounter = "E10-3"
+hero = "E10-3"
+walk = [30, 11]
+
+[[step]]
+encounter = "E10-3"
+hero = "E10-3"
+walk = [30, 10]
+answer = { guards = "yes", hire = "yes" }
+expect = { dialogs = true }
+record = { "A's first visit: the question's text; the message after yes" = ["questions", "messages", "message_pictures"], "after it: E10-3's army (creature and count by slot); P's owner and count" = ["hero:slots", "dwelling:30,10"] }
+note = { "A's first visit: the screens passed, battles, E10-3's tile" = ["screens", "battle", "hero:tile"] }
+
+[[step]]
+encounter = "E10-3"
+hero = "E10-3"
+walk = [30, 11]
+
+[[step]]
+encounter = "E10-3"
+hero = "E10-3"
+walk = [30, 10]
+answer = { guards = "yes", hire = "yes" }
+expect = { dialogs = true }
+record = { "A's second visit: the question's text; the message after yes" = ["questions", "messages", "message_pictures"], "after it: E10-3's army; P's owner and count" = ["hero:slots", "dwelling:30,10"] }
+note = { "A's second visit: the screens passed, battles, E10-3's tile" = ["screens", "battle", "hero:tile"] }
+
+[[step]]
+encounter = "E10-3"
+hero = "E10-3b"
+walk = [35, 11]
+
+[[step]]
+encounter = "E10-3"
+hero = "E10-3b"
+walk = [35, 10]
+answer = { guards = "yes", hire = "yes" }
+expect = { dialogs = true }
+record = { "B's visit: the question's text; the message after yes" = ["questions", "messages", "message_pictures"], "after it: E10-3b's army (creature and count by slot); Q's owner and count" = ["hero:slots", "dwelling:35,10"] }
+note = { "B's visit: the screens passed, battles, E10-3b's tile" = ["screens", "battle", "hero:tile"] }
+
+# --- Day 1, Red: E10-6 visits Blue's Barracks (U) and Dragon Cliffs (V) -------------------------------
+
+[[step]]
+encounter = "E10-6"
+hero = "E10-6"
+walk = [55, 11]
+
+[[step]]
+encounter = "E10-6"
+hero = "E10-6"
+walk = [55, 10]
+answer = { guards = "no", hire = "yes" }
+expect = { dialogs = true }
+actions = [{ click = ["max"] }]
+record = { "U: messages before the question; the question's text" = ["messages", "questions"], "U's dialog: the most; the amount; the buttons enabled; +0x4C; what Max did" = ["text:as it opened: ", "hire:opening", "text:after Max: ", "hire:after"], "after U: U's record (owner, count); E10-6's army; Red's treasury" = ["dwelling:55,10", "hero:slots", "treasury:red"] }
+note = { "U: the screens passed, battles, E10-6's tile" = ["screens", "battle", "hero:tile"], "U: the dialog's items as it opened (id:state)" = "hire:opening:items" }
+
+[[step]]
+encounter = "E10-6"
+hero = "E10-6"
+walk = [59, 11]
+
+[[step]]
+encounter = "E10-6"
+hero = "E10-6"
+walk = [59, 10]
+answer = { guards = "no", hire = "yes" }
+expect = { dialogs = true }
+record = { "V: messages; the guards' question, if any; the question to recruit" = ["messages", "questions", "text:size word: ", "size_words"], "V's dialog: the most; the buttons enabled; +0x4C" = ["hire:opening"], "after V: V's record (owner, count, guards); Red's treasury" = ["dwelling:59,10", "treasury:red"] }
+note = { "V: the screens passed, battles, E10-6's tile, army" = ["screens", "battle", "hero:tile", "hero:slots"], "V: the dialog's items as it opened (id:state)" = "hire:opening:items" }
+
+[[step]]
+encounter = "E10-6"
+hero = "E10-6"
+walk = [59, 12]
+
+# --- Day 1, Red: E10-4's Barracks -----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E10-4"
+hero = "E10-4"
+record = { "before: Red's treasury (gold, crystal); S's record (owner, count, guards)" = ["treasury:red", "dwelling:41,10"] }
+
+[[step]]
+encounter = "E10-4"
+hero = "E10-4"
+walk = [41, 11]
+
+[[step]]
+encounter = "E10-4"
+hero = "E10-4"
+walk = [41, 10]
+answer = { guards = "no", hire = "yes" }
+expect = { dialogs = true }
+actions = [{ click = ["max"] }, { click = ["recruit"] }]
+record = { "the question's text" = ["messages", "questions"], "the dialog before any click: the most; the amount" = ["hire:opening"], "after Recruit: the dialog open or closed (if open, its most)" = ["hire:after"], "after: E10-4's army (creature and count by slot); Red's treasury; S's count" = ["hero:slots", "treasury:red", "dwelling:41,10"] }
+note = { "E10-4: the screens passed, E10-4's tile" = ["screens", "hero:tile"] }
+
+# --- Day 1, Red's treasury; Blue's turn -----------------------------------------------------------------------
+
+[[step]]
+encounter = "E10-4"
+hero = "E10-4"
+note = { "Red, day 1, the turn's end: treasury" = "treasury:red" }
+
+[[step]]
+encounter = "E10-4"
+end_turn = true
+
+[[step]]
+encounter = "E10-6"
+hero = "E10-6c"
+record = { "Blue's turn: U's and V's records" = ["text:U: ", "dwelling:55,10", "text:V: ", "dwelling:59,10"] }
+note = { "Blue, day 1, the turn's start: treasury; the date" = ["treasury:blue", "date"], "Tan, day 1, Blue's turn: treasury; E10-6t's tile and points" = ["treasury:tan", "hero[E10-6t]:tile", "hero[E10-6t]:points"], "the team bytes now" = "teams" }
+
+[[step]]
+encounter = "E10-6"
+end_turn = true
+note = { "Blue's end of turn: the computer players' turns seen (Tan plays inside it)" = "ai_turns" }
+
+# --- Day 2, Red ----------------------------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E10-5"
+hero = "E10-5"
+record = { "before: Red's treasury (gold, crystal); C's record (owner, count, guards)" = ["treasury:red", "dwelling:47,10"] }
+note = { "Red, day 2, the turn's start: the date" = "date", "Tan, day 2 (after its turn): treasury; E10-6t's tile and points" = ["treasury:tan", "hero[E10-6t]:tile", "hero[E10-6t]:points"], "day 2: S's, U's and V's records" = ["dwelling:41,10", "dwelling:55,10", "dwelling:59,10"] }
+
+[[step]]
+encounter = "E10-5"
+hero = "E10-5"
+walk = [47, 11]
+
+[[step]]
+encounter = "E10-5"
+hero = "E10-5"
+walk = [47, 10]
+answer = { guards = "no", hire = "yes" }
+expect = { dialogs = true }
+record = { "the first visit: messages before the question; the question's text" = ["messages", "questions"], "the first dialog: the most; the buttons enabled" = ["hire:opening"] }
+note = { "first visit: the screens passed, battles, E10-5's tile" = ["screens", "battle", "hero:tile"], "first visit: the dialog's items as it opened (id:state)" = "hire:opening:items" }
+
+[[step]]
+encounter = "E10-5"
+hero = "E10-5"
+walk = [48, 12]
+record = { "after the crystal: Red's treasury (gold, crystal)" = "treasury:red" }
+note = { "the pile (clicked from (47, 11), the hero's tile): messages, E10-5's tile after, arrived, points" = ["messages", "hero:tile", "arrived", "hero:points"] }
+
+[[step]]
+encounter = "E10-5"
+hero = "E10-5"
+walk = [47, 10]
+answer = { guards = "no", hire = "yes" }
+expect = { dialogs = true }
+actions = [{ click = ["max"] }, { click = ["recruit"] }]
+record = { "the second dialog: the most; the buttons enabled" = ["hire:opening"], "after Recruit: the dialog open or closed; E10-5's army; Red's treasury; C's record" = ["hire:after", "hero:slots", "treasury:red", "dwelling:47,10"] }
+note = { "second visit: the questions, the screens passed, E10-5's tile" = ["questions", "screens", "hero:tile"], "second visit: the dialog's items as it opened (id:state)" = "hire:opening:items" }
+
+[[step]]
+encounter = "E10-5"
+hero = "E10-5"
+note = { "Red, day 2, the turn's end: treasury" = "treasury:red" }
+
+[[step]]
+encounter = "E10-5"
+end_turn = true
+
+# --- Day 2, Blue: the end ----------------------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E10-6"
+hero = "E10-6c"
+note = { "Blue, day 2, the turn's start: treasury; the date; U's and V's records" = ["treasury:blue", "date", "dwelling:55,10", "dwelling:59,10"] }
+
+[[step]]
+encounter = "E10-6"
+end_turn = true

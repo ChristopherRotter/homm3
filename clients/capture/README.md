@@ -29,7 +29,7 @@ adventure).
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`). |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag. |
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
@@ -675,6 +675,49 @@ after 30 s, with the topmost dialog's vtable in the error. A town's visitor (+0x
 hero is the selected one and holds it otherwise (observed under Wine, E09 T3b's probe: TWN-1-4 on
 the gate after entering, −1 while selected, 18 once TWN-1-1 was selected and on Blue's turn; the
 town screen sets it while it shows): read a visitor with another hero selected.
+
+**Dwellings, the hire dialog and a computer player's turn** (E08 T90, batches E10a and E10b;
+`docs/rules/surveys/E08-dwellings.md` §2.1, §5, §7, §9). `dwelling:x,y[,level]` reads the dwelling
+record whose entrance is that tile (game +0x4E39C, 0x5C bytes each, `h3mem.dwellings`: `record 3;
+class 20.1; owner none; creatures 0: 14 Pikemen; guards 0: 3 Green Dragons`; `guards none`; `none`
+without one: found by the entrance, so a hero standing there hides nothing). `teams` the players'
+team bytes (game +0x1F879: `red 0, blue 0, tan 1, …`). `objects:x0,y0:x1,y1[,level]` the map's
+objects anchored in a rectangle with their template's class and subclass (`h3mem.objects`: the
+object records' anchor, which for a random dwelling is its drawn picture's, one tile off the
+spec's `at` for some pictures; `13,30 class 17 subclass 8`), `access:x0,y0:x1,y1[,level]` the tiles
+of the rectangle with the blocked bit (tile +0xD bit 0x01) and the visitable one (0x10). `camp:x,y[,level]`
+a Refugee Camp's words on its entrance tile (subclass +0x22 the creature, +0x0 the count word:
+`tile 19,10,0; creature 14 (Pikemen); count word 7`). **The hire dialog** is a screen (`hire`; the
+topmost dialog's vtable 0x640C4C, observed; its manager, the vtable 0x640C70 of the docs, is found 0x80
+after it, else by a scan of the writable memory, `h3mem.recruit_dialog`): a walk onto a dwelling (or
+Camp) plays the step's `actions` there, `click = ["max", "recruit"]` (Max 532, Recruit 30722,
+Close 30721; the slider is item 559, vtable 0x641D50, observed) and `amount = <n>` (the slider's
+right end clicked until the amount, +0xB8, is n; its left end takes one), and a dialog they leave
+open is closed by Close. `hire` reads the dialog now (`most 3; amount 0; ally 0; selected 0
+(counts 4); max enabled, recruit disabled, close enabled, slider enabled`; the most +0xAC, the
+ally's flag +0x4C, a button disabled when its state has bit 0x8 or 0x20; `closed` without one),
+`hire:most`, `amount`, `ally`, `enabled`, `counts`, `items` (every item, id and state) one
+field; `hire:opening[:part]` the dialog as it opened, before any click, `hire:after[:part]` as the
+actions left it (`closed` after a Recruit that closed it), `none` when no hire dialog opened.
+Observed: an own dialog opens with Recruit disabled (amount 0) and the slider's state 0x06; an
+ally's with +0x4C 1, every button and the slider disabled (0x2E) and the most still set; a Recruit
+of the one creature of a Barracks closes the dialog. **The status bar and the popup**: a step
+`hint = [x, y]` puts the mouse on the tile and reads the status bar (the adventure dialog's item
+200, the message buffer 0x6973D8 beside it), `popup = [x, y]` right-clicks the tile (the button
+held, the window read, released), each in a step of its own (no walk); `hint` and `popup` record
+them as what the text holds, never the text (ADR-0009): the game's own names replaced by their
+label, `[CRGEN1 row 58 name] - [owned-by text of red]`, `[other: n characters]` for the rest,
+the popup first with the record h3lod names it by (`GENRLTXT:198: ... / / ...`); `hint:raw`
+whether the bar and the buffer agree. `opening:defender` the last battle's defending side's owner
+(`blue (human 1, here 1)`, `none (human 0, here 0)`: `opening:sides`' second half). A computer
+player's turn: `end_turn` polls the current player every 0.02 s and, while it is a computer's
+(player +0xE2 clear), waits it out (limit `AI_TURN_LIMIT`, 240 s), noting each computer colour it
+saw in `ai_turns` (`tan (0.4 s)`; `none`). Observed on the E10a map (Tan's one hero walled in):
+the current player went from Blue straight to Red, Tan never seen, so `ai_turns` read `none`:
+the game plays a computer player inside the end-turn without showing it as the current player
+(or too fast to poll). Read what Tan did from its own state (`treasury:tan`, its hero by the name
+the map gives it: `hero[<name>]:tile`, `hero[<name>]:points`); the step returns at the next human's turn
+as before.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`

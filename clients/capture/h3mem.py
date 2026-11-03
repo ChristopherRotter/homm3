@@ -127,6 +127,32 @@ HERO_OBJECT, BOAT_OBJECT, ENTRANCE = 34, 8, 0x10
 # keeps the class and word of the object under it (i32 +0xC, +0x14; hero_hide).
 MINES, MINE_RECORD, MINE_GUARDS, MINE_ENTRANCE, LIGHTHOUSE = 0x4E38C, 0x40, 0x4, 0x3C, 100
 HERO_UNDER_CLASS, HERO_UNDER_WORD = 0xC, 0x14
+# The dwellings' records (E08 T90, batches E10a and E10b; survey E08-dwellings §2.1, structs.toml
+# "dwelling_record", all `read`): a vector at game +0x4E39C (begin, end as the mines'), 0x5C bytes
+# each: the class (u8 +0x0, 17 or 20), the subclass (u8 +0x1), four creature types (i32 +0x4, -1
+# none), their counts (i16 +0x14), the guards' seven types (i32 +0x1C) and counts (i32 +0x38), the
+# entrance's column, row and level (u8 +0x54), the owner (i8 +0x57, -1 none). The players' team
+# bytes (i8 x 8 at game +0x1F879, by colour). A tile's access byte (+0xD: 0x01 cannot be entered,
+# 0x10 an object's entrance: ENTRANCE; structs.toml map_item). The hire dialog (H3RecruitMgr,
+# vtable 0x640C70; structs.toml "recruit_dialog"): the ally's flag (u8 +0x4C), the selected type
+# (i32 +0x50) and index (+0x58), the four types (i32 +0x5C) and pointers to their counts (+0x6C),
+# the gold cost (i32 +0x84), the other resource (+0x88) and its cost (+0x8C), the most (i32 +0xAC),
+# the amount (i32 +0xB8); its items Max 532, Recruit 30722 and Close 30721 (a state with bit 8 or
+# 0x20 disabled, as `buttons`). The status bar's item 200 in the adventure dialog (map_hint
+# 0x40B150 writes the hint into the message buffer 0x6973D8, then into item 200). object_names
+# 0x6A79EC (232 pointers, by class) and player_owned_names 0x6A5898 (8 pointers, by colour).
+DWELLINGS, DWELLING_RECORD, DWELLING_GUARDS, DWELLING_ENTRANCE, DWELLING_OWNER = (
+    0x4E39C, 0x5C, 0x1C, 0x54, 0x57)
+TEAMS, ACCESS, BLOCKED = 0x1F879, 0xD, 0x01
+# The topmost dialog while a hire dialog shows has the vtable 0x640C4C (observed under Wine, E08
+# T90), not the manager's 0x640C70: the manager object (H3RecruitMgr; the fields above) is a
+# separate object 0x80 bytes after the dialog in the heap (observed once, a Barracks' dialog), no
+# pointer to the dialog in it; `recruit_manager` tries that address and else scans the writable
+# memory for the vtable. The hire dialog's slider is an item of vtable 0x641D50, id 559
+# (observed), 135 x 16 pixels, a click on its right end adds one to the amount.
+RECRUIT_DIALOG, RECRUIT_VTABLE, RECRUIT_NEXT, SLIDER_VTABLE = 0x640C4C, 0x640C70, 0x80, 0x641D50
+RECRUIT_MAX, RECRUIT_BUTTONS = 0xAC, {"max": 532, "recruit": 30722, "close": 30721}
+STATUS_BAR, MESSAGE_BUFFER, OBJECT_NAMES, OWNED_NAMES, DISABLED = 200, 0x6973D8, 0x6A79EC, 0x6A5898, 0x28
 # A player's day's income (E08 T79b, batch E9b; survey E08-economy §8.1, structs.toml
 # "player_record"): seven i32 at +0x108, wood to gold, computed at each day's start
 # (player_daily_income 0x4B8AF0) and kept until the next; its Mystical Gardens' mask (u32 +0xB8,
@@ -716,6 +742,11 @@ class Mem:
             "income": dict(zip(RESOURCES, struct.unpack_from("<7i", raw, PLAYER_INCOME))),
             "gardens": struct.unpack_from("<I", raw, PLAYER_GARDENS)[0],
         }
+
+    def is_human(self, colour):
+        """Whether the player of `colour` is a human's (E08 T90; player record +0xE2, structs.toml
+        `human`, read): a computer player's turn is the one whose current player this is not."""
+        return bool(self.read(self.game() + PLAYERS + PLAYER_SIZE * colour + 0xE2, 1)[0])
 
     def hero(self, index):
         raw = self.read(self.game() + HEROES + HERO_SIZE * index, HERO_SIZE)
@@ -1894,6 +1925,156 @@ class Mem:
                         "abandoned": raw[i + 2], "guards": [[t, c] for t, c in zip(types, counts)],
                         "entrance": list(raw[i + MINE_ENTRANCE:i + MINE_ENTRANCE + 3])})
         return out
+
+    def dwellings(self):
+        """The dwellings' records in the game's order (E08 T90, batches E10a, E10b; game +0x4E39C):
+        [{index, class, subclass, creatures: [4 types], counts: [4], guards: [[creature, count]] by
+        slot (an empty slot [-1, 0]), entrance: [x, y, level], owner (-1 none)}]."""
+        begin, end = struct.unpack("<II", self.read(self.game() + DWELLINGS, 8))
+        raw = self.read(begin, end - begin) if end > begin else b""
+        out = []
+        for i in range(0, len(raw) - DWELLING_RECORD + 1, DWELLING_RECORD):
+            guards = i + DWELLING_GUARDS
+            types = struct.unpack_from("<7i", raw, guards)
+            counts = struct.unpack_from("<7i", raw, guards + 28)
+            out.append({"index": i // DWELLING_RECORD, "class": raw[i], "subclass": raw[i + 1],
+                        "creatures": list(struct.unpack_from("<4i", raw, i + 4)),
+                        "counts": list(struct.unpack_from("<4h", raw, i + 0x14)),
+                        "guards": [[t, c] for t, c in zip(types, counts)],
+                        "entrance": list(raw[i + DWELLING_ENTRANCE:i + DWELLING_ENTRANCE + 3]),
+                        "owner": struct.unpack_from("<b", raw, i + DWELLING_OWNER)[0]})
+        return out
+
+    def dwelling_at(self, x, y, z=0):
+        """The dwelling record whose entrance is (x, y, z) (found by the entrance, never by the
+        tile's word: a hero standing there hides it), None for none."""
+        found = [d for d in self.dwellings() if d["entrance"] == [x, y, z]]
+        return found[0] if found else None
+
+    def teams(self):
+        """The players' team bytes by colour (E08 T90; game +0x1F879, eight i8)."""
+        return list(struct.unpack("<8b", self.read(self.game() + TEAMS, 8)))
+
+    def access(self, x, y, z=0):
+        """A tile's access byte and the two bits batch E10a reads (E08 T90, E10-7; tile +0xD):
+        {byte, blocked (0x01: cannot be entered), visitable (0x10: an object's entrance)}."""
+        game = self.game()
+        side = self.i32(game + MAP_SIDE)
+        byte = self.read(self.u32(game + TILES) + TILE_SIZE * ((z * side + y) * side + x)
+                         + ACCESS, 1)[0]
+        return {"byte": byte, "blocked": bool(byte & BLOCKED), "visitable": bool(byte & ENTRANCE)}
+
+    def objects(self):
+        """The map's objects with their template's class and subclass (E08 T90, E10-7; the object
+        records `map_objects` gives, the templates `map_templates`, which also hold the copies a
+        new game made for its random objects): [{anchor: [x, y, z], template, picture, class,
+        subclass}] in the map's order."""
+        templates = self.map_templates()
+        out = []
+        for x, y, z, template, _ in self.map_objects():
+            picture, kind, sub = templates[template] if template < len(templates) else ("", -1, -1)
+            out.append({"anchor": [x, y, z], "template": template, "picture": picture,
+                        "class": kind, "subclass": sub})
+        return out
+
+    def camp(self, x, y, z=0):
+        """A Refugee Camp's two words on its entrance tile (E08 T90, E10-9; visit_refugee_camp
+        0x4A4600: the tile's word +0x0 the count, its subclass +0x22 the creature): {tile, word,
+        creature}. The tile is the entrance (`object_at` of the anchor), the tile itself when no
+        object is anchored there."""
+        found = self.object_at(x, y, z)
+        return {"tile": found["tile"], "word": found["word"], "creature": found["subclass"]}
+
+    def recruit_manager(self, dialog):
+        """The hire dialog's manager object (the vtable 0x640C70) for the topmost dialog at
+        `dialog` (E08 T90): the address 0x80 after it when that holds the vtable (observed),
+        else the one hit of a scan of the writable memory below 2 GB for the vtable whose
+        selected type (+0x50) is one of its four types (+0x5C); None if none."""
+        guess = dialog + RECRUIT_NEXT
+        if self.u32(guess) == RECRUIT_VTABLE:
+            return guess
+        needle = struct.pack("<I", RECRUIT_VTABLE)
+        for line in open(f"/proc/{self.pid}/maps"):
+            parts = line.split()
+            if len(parts) < 2 or not parts[1].startswith("rw"):
+                continue
+            begin, end = (int(x, 16) for x in parts[0].split("-"))
+            if end > 0x80000000 or end - begin > 0x20000000:
+                continue
+            try:
+                raw = self.read(begin, end - begin)
+            except OSError:
+                continue
+            at = raw.find(needle)
+            while at >= 0:
+                if at % 4 == 0 and begin + at + 0xC0 <= end:
+                    kind, = struct.unpack_from("<i", raw, at + 0x50)
+                    if kind in struct.unpack_from("<4i", raw, at + 0x5C):
+                        return begin + at
+                at = raw.find(needle, at + 1)
+        return None
+
+    def recruit_dialog(self):
+        """The hire dialog when it is the topmost dialog (E08 T90; None otherwise): {at, manager,
+        ally (+0x4C), type (+0x50), index (+0x58), types (+0x5C), counts (read through the
+        pointers at +0x6C), gold_cost, resource (-1 none), resource_cost, most (+0xAC), amount
+        (+0xB8), enabled: {max, recruit, close, slider: whether the item exists and its state has neither
+        bit 8 nor 0x20; the Max and Recruit of an amount of 0 read disabled}, slider: its item's
+        id (None), items: [{id, vtable, state, box}] (every item)}."""
+        shown = self.dialog()
+        if not shown or shown["vtable"] != RECRUIT_DIALOG:
+            return None
+        manager = self.recruit_manager(shown["at"])
+        if manager is None:
+            return None
+        raw = self.read(manager, RECRUIT_MAX + 0x10)
+        pointers = struct.unpack_from("<4I", raw, 0x6C)
+        counts = [struct.unpack("<h", self.read(p, 2))[0] if p else 0 for p in pointers]
+        items = [{"id": i["id"], "vtable": i["vtable"], "state": i["state"], "box": i["box"]}
+                 for i in self.dialog_items()]
+        enabled = {name: any(i["id"] == k for i in items)
+                   and not any(i["id"] == k and i["state"] & DISABLED for i in items)
+                   for name, k in RECRUIT_BUTTONS.items()}
+        slider = [i for i in items if i["vtable"] == SLIDER_VTABLE]
+        enabled["slider"] = bool(slider) and not slider[0]["state"] & DISABLED
+        return {"at": shown["at"], "manager": manager, "ally": raw[0x4C],
+                "type": struct.unpack_from("<i", raw, 0x50)[0],
+                "index": struct.unpack_from("<i", raw, 0x58)[0],
+                "types": list(struct.unpack_from("<4i", raw, 0x5C)), "counts": counts,
+                "gold_cost": struct.unpack_from("<i", raw, 0x84)[0],
+                "resource": struct.unpack_from("<i", raw, 0x88)[0],
+                "resource_cost": struct.unpack_from("<i", raw, 0x8C)[0],
+                "most": struct.unpack_from("<i", raw, RECRUIT_MAX)[0],
+                "amount": struct.unpack_from("<i", raw, 0xB8)[0],
+                "enabled": enabled, "slider": slider[0]["id"] if slider else None,
+                "slider_state": slider[0]["state"] if slider else None, "items": items}
+
+    def status_bar(self):
+        """The adventure screen's status bar text (E08 T90, E10-10): the text of the adventure
+        dialog's item 200 when it holds one, else None; and the message buffer's (0x6973D8, a
+        pointer to the characters the hint was formatted into): {bar, buffer}."""
+        dialog = self.manager_field(ADVENTURE_DIALOG)
+        bar, item, seen = None, self.u32(dialog + FIRST_ITEM), set()
+        while item and item not in seen and len(seen) < 512:
+            seen.add(item)
+            raw = self.read(item, ITEM_TEXT + 12)
+            if struct.unpack_from("<H", raw, ITEM_ID)[0] == STATUS_BAR:
+                bar = self.item_text(raw)
+                break
+            item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
+        try:
+            buffer = self.c_string(MESSAGE_BUFFER, 256)
+        except OSError:
+            buffer = None
+        return {"bar": bar, "buffer": buffer}
+
+    def object_name(self, kind):
+        """The name of an object class (object_names 0x6A79EC), "" for none or above 231."""
+        return self.c_string(self.u32(OBJECT_NAMES + 4 * kind), 128) if 0 <= kind < 232 else ""
+
+    def owned_name(self, colour):
+        """A colour's "Owned by" text (player_owned_names 0x6A5898), "" for none."""
+        return self.c_string(self.u32(OWNED_NAMES + 4 * colour), 128) if 0 <= colour < 8 else ""
 
     def tile_word(self, x, y, z=0):
         """A tile's own word, class and subclass (E08 T79a, batch E9a's Shipyard: each of its
