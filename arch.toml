@@ -328,11 +328,12 @@ dev_deps = []
 dev_external = ["proptest"]
 
 # One-off harvester: original files -> committed packs base/ab/sod (E02, Q13). Tool layer: nothing
-# may depend on it.
+# may depend on it. It compiles what it writes: the battle packs, and the town files through
+# h3-pack-towns (E09 T5b2b2).
 [crate.h3-harvest]
 layer = "tool"
 logic = false
-deps = ["h3-formats", "h3-pack-battle"]
+deps = ["h3-formats", "h3-pack-battle", "h3-pack-towns"]
 external = ["serde", "toml"]
 dev_deps = ["h3-content", "h3-content-battle"]
 dev_external = []

@@ -950,3 +950,35 @@ an entry only where a task builds on it.
     settings may reach about 0.57; the MLP over observation v22 may be what limits it (the moves
     and melee hexes the original's rules pick). **For T21:** an imitation loss holds PPO nearer a
     teacher it leaves; whether that nearness is worth anything is T22's question.
+
+## T20 — The longer clone (2026-11-03)
+
+- **The run** (the user's machine, the GTX 1070, the teacher on its 24 threads;
+  `python/records/distill/clone-2.json`; commit `b163d20`, #682's merge, clean, C ABI v37, system
+  policy 19; `configs/distill/e25-clone-2.toml`: T16's bench at 16 M samples, the learning rate
+  falling over them): the teacher 16.0 M decisions in 307 852 episodes, none lost, 66 truncated,
+  814 s; the student's passes 710 s; the held-out set T16's (16 384 decisions, seed 8).
+
+  | Samples | CE entry | Agreement | Tactics | Wait, defend | Moves | Melee | Shots | Casts | Value |
+  |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | 2 M | 1.603 | 0.506 | 0.773 | 0.479 | 0.280 | 0.336 | 0.582 | 0.776 | 0.543 |
+  | 4 M | 1.522 | 0.527 | 0.794 | 0.475 | 0.305 | 0.361 | 0.593 | 0.811 | 0.565 |
+  | 8 M | 1.431 | 0.552 | 0.816 | 0.499 | 0.375 | 0.381 | 0.630 | 0.777 | 0.588 |
+  | 12 M | 1.379 | 0.565 | 0.829 | 0.519 | 0.380 | 0.388 | 0.646 | 0.807 | 0.639 |
+  | 16 M | 1.344 | **0.576** | 0.836 | 0.542 | 0.378 | 0.401 | 0.660 | 0.831 | 0.633 |
+  | T19's ceiling | ≈0.05 | 0.972 | 0.995 | 0.992 | 0.985 | 0.941 | 0.998 | 0.977 | |
+
+  (T16 at 4 M: 1.514, 0.531, its learning rate at its floor by then.) The cast heads at 16 M:
+  spell 0.694, target 0.640, second 0.996 (the ceiling 0.944, 1.000, 0.999).
+- **Its ladder** (the user's GPU, 500 per kind): against the fair system actor **0.411 ± 0.018,
+  value −0.069** (hero 0.404, siege_hero 0.392, siege_garrison 0.481); against the all-seeing one
+  0.411, −0.071; the neutral set **+0.251** (0.982; wandering 0.986, guards 0.972, siege_neutral
+  0.864). T16's student: 0.396, −0.084; 0.392, −0.085; +0.244.
+- **The read:** four times the samples buy +0.045 of agreement (0.531 to 0.576, as T19's slope
+  said) and +0.015 against both system actors (inside the intervals): the student alone plays at
+  the control's level (`e25-neutral-1` #2, 20 M of PPO: 0.411, −0.064), below the current best
+  (0.454). The curve still rises, but by about 0.02 a doubling: the ceiling (0.972) is out of
+  this MLP's reach by samples. The gap stays where T16 left it, the hexes (moves 0.38 of 0.985,
+  melee 0.40 of 0.941) and the casts' targets (0.64 of 1.000); the tactics phase and the shots
+  gain most. T22's student is this one (`runs/clone-2/students/mlp.pt`, on the user's machine):
+  a start +0.015 above `e25-clone-1`'s.
