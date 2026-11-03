@@ -10698,3 +10698,29 @@ the sound and video archives, `maps.tar`, `extracted.tar`, the MP3s).
   on the economy XL (two games' day 8: no month) and on the economy map (seed 3's day 29, a
   creature month that adds monsters) and through the CLI.
 - **Versions:** none; no replay or bot report changed.
+
+### Increment 9, round 8: T87a, a Shipyard's boat tile to its owner's team (2026-11-03, `adventure/e08-t87a` with `shared/e08-t87a`)
+
+**The cut** (decision 230, the user at T87's start): T87 in three, the boat tile first, then the
+audit (T87b) and the closure with increment 10's refinement (T87c), each based on the one before
+without waiting for its merge; the month's walk's tile test to the inbox. **Baseline:** `master`
+8ea2e4a (#664, #665 merged; CI green); the sandbox's light gates green on CI's fingerprint. The
+original data staged (the four LODs, the two executables, `maps.tar`, `extracted.tar`).
+
+- **The projection** (decision 229, ADV-Q40): `ObjectView::boat_tile` is the Shipyard's boat tile
+  only for a viewer of its owner's team (`allied(owner, viewer)`, the test a mine's production
+  uses), none for a neutral Shipyard's, so no viewer learns which earlier offsets were land or
+  held an object on tiles it may not have explored. The owner's team has explored every offset:
+  the start's reveal around an owned object and a flag's reveal are centred on the entrance with
+  the part's `flag_radius` (the base pack's 3), and the twelve offsets lie within 2 columns and 1
+  row of it.
+- **Tests:** `a_viewer_sees_its_own_weekly_marks_and_a_boat_tile_never_contents_or_fractions`
+  (a neutral Shipyard's tile to nobody; red's to red, not blue);
+  `increment_9_s_objects_show_their_owners_never_their_draws` (the economy map's neutral Shipyard
+  shows no tile, red's shows it to red alone). The view property's exception (T86b1: a seen
+  Shipyard's offsets kept as seen, with its `BOAT_OFFSETS`) removed; `h3-map`'s view tests pass
+  without it.
+- **Docs:** ADV-OWN-003's summary and design source; `docs/06-security.md`'s line and ADR-0016
+  point 6 with its revision history (`shared/e08-t87a`); design §12 and exit criterion 8. No
+  version moved: the observation's types are unchanged and no replay or hash reads a view.
+
