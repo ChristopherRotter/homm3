@@ -11,8 +11,8 @@ use h3_render::Bugs;
 use super::track::Look;
 use super::{
     DEFEND, Facing, Field, Hint, Kind, Legal, NEXT_CREATURE, Pointer, START_COMBAT, Slot, Spot,
-    WAIT, attack_slots, button, click, cursor, distance, look_cursor, looked_at, neighbour,
-    pointer, pointer_in, slot, slots, spot, walls_halve,
+    WAIT, attack_slots, button, click, cursor, distance, held_at, look_cursor, looked_at,
+    neighbour, pointer, pointer_in, slot, slots, spot, walls_halve,
 };
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
@@ -929,4 +929,42 @@ fn a_press_on_a_stack_to_look_at_opens_its_stats() {
         columns: 2,
     });
     assert_eq!(looked(&tactics, &[], centre(90)), Some(1));
+}
+
+#[test]
+fn the_right_button_shows_any_stack_on_the_hex() {
+    // E17 M6 T2b1 (`battle_right_click` 0x4769C0): either side's living stack on the hex, the
+    // side columns' too, whatever the cursor's kind; not a dead one, an empty hex, a hero's
+    // rectangle, the panel; the keep's rectangle in the original's profile outside a siege
+    // (CLT-Q21), the hex below in the client's.
+    let mut o = battle();
+    let mut ballista = stack(4, Side::Attacker, 0, 51, true);
+    ballista.war_machine = true;
+    let mut dead = stack(6, Side::Defender, 0, 104, false);
+    dead.alive = false;
+    o.stacks
+        .extend([ballista, dead, stack(5, Side::Defender, 0, 84, false)]);
+    let held = |o: &Observation, point, bugs| {
+        let legal = Legal::new(&[Command::Heal { target: 2 }]);
+        let field = Field {
+            observation: o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        held_at(&field, &layout(), point)
+    };
+    for (hex, id) in [(86, 0), (90, 1), (120, 2), (100, 3), (51, 4), (52, 4)] {
+        assert_eq!(held(&o, centre(hex), Bugs::Fixed), Some(id), "hex {hex}");
+    }
+    assert_eq!(held(&o, centre(104), Bugs::Fixed), None);
+    assert_eq!(held(&o, centre(87), Bugs::Fixed), None);
+    assert_eq!(held(&o, [0, 16], Bugs::Fixed), None);
+    assert_eq!(held(&o, [700, 570], Bugs::Fixed), None);
+    assert_eq!(held(&o, centre(84), Bugs::Fixed), Some(5));
+    assert_eq!(held(&o, centre(84), Bugs::Original), None);
+    // With no stack acting too (the button needs none).
+    let mut idle = o;
+    idle.active = None;
+    assert_eq!(held(&idle, centre(90), Bugs::Fixed), Some(1));
 }

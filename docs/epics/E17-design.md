@@ -4897,7 +4897,7 @@ constructor was read.
 - **Its place.** Next to the stack's hex: the hex record's anchor (+0x1C4, +0x1C6: left + 22,
   top + 42) less (149, 140), clamped to x 0..502 and y 0..275; 298 × 311, the base dialog's flags
   0x12 (0x10: it casts the shadow, §7.17). A left press (`battle_click_action`, kind 5) runs it
-  modally (0x5F47F0); the right button shows it while held (0x530D30, M6 T2b). The modal one
+  modally (0x5F47F0); the right button shows it while held (0x530D30, M6 T2b1: §12.5). The modal one
   ending with 301 (its cast button) starts the creature's cast (0x468954, M6 T2a2).
 - **Its items, in order** (ids, place and size from the dialog's corner; the fonts' colours and
   alignments as the text items take them, §9.5):
@@ -5117,7 +5117,7 @@ Read: the procedure's right button (0x5F4890 to 0x5F4B86), the items' right pres
   the cast button's click into the aim as the key F's, the dialog's close as it ends. The stills'
   `right:<x>,<y>` (the harness holds the button down through the frames); the sequences' `look:` and
   `cast-button:<x>,<y>:<spell>`. *Not built:* morale's and luck's descriptions (M6 T2a2b2, §12.4), an
-  effect's own; the right button over the battle (M6 T2b, T3).
+  effect's own; the right button over the battle (M6 T2b1, §12.5; T2b2, T3).
 
 ### 12.4 Morale's and luck's descriptions (M6 T2a2b2)
 
@@ -5209,3 +5209,60 @@ file: H3ab_bmp.lod's older one lacks a field's lines, so its records after 82 ar
   The dialog's own morale and luck no longer add the timed effects a second time (T2a1's slip:
   the wire's values hold them). *Not built:* the lines CLT-Q40 requested; the header and picture
   by the unclamped value.
+
+### 12.5 The right button over the battle: a stack's held dialog (M6 T2b1)
+
+T2b cut in two by the user (2026-11-03): T2b1 here, a turret's info T2b2. Read: `battle_buttons`'
+right press (0x474DB8 to 0x474E0F: the message 0x200, subtypes 12 and 14, with the right button's
+flag 0x200 in +0xC; over the battlefield's items 0 and 1 `battle_right_click` with the mouse's hex
++0x132D4, over the others the control's help 0x472A50, M6 T3), `battle_right_click` 0x4769C0
+whole, `stack_stats_dialog` 0x468860 whole (its second argument), the constructor's uses of its
+modal flag (0x5F33D9 into +0x96, read nowhere else; 0x5F3903 the OK, 0x5F3974 the cast button),
+`dialog_show_held` 0x530D30, `popup_run_held` 0x602A40 whole (§12.3).
+
+- **What it finds.** `battle_right_click` takes the mouse's hex as the last move left it (the
+  same `screen_to_hex` as the cursor's: §9.9): the heroes' "hexes" 0xFC and 0xFD (their info
+  windows, M6 T3); the keep's 0xFE (`wall_shot_targets`' last aim) a turret's info (`turret_info`
+  0x47A380 with 1, M6 T2b2); a hex of the field (0 to 186) whose record holds a living stack
+  (+0x1DC, the byte `hex_stack` 0x4E7170 reads) that stack's dialog, either side's, the side
+  columns' war machines too, whatever the cursor's kind; else, in a Castle siege (+0x132F4 = 3),
+  the upper tower's 0xFF or the lower tower's hex 183 a turret's info (T2b2); else nothing. No
+  test of the side to act or of +0x132B4 before it: the button works wherever the battle window
+  takes the mouse (the client: while the battle takes a human's input, as a press, §9.11).
+- **Its dialog.** The combat cursor's frame 6 set (0x476B00, as a left press's look), then
+  `stack_stats_dialog(stack, 1)`: the dialog of §12.1 at the same place (the stack's hex's anchor
+  less (149, 140), clamped to x 0..502 and y 0..275), made with the modal flag 0: **no OK** (nor
+  its back) and **no cast button**, so a Faerie Dragon's ability text shows where the modal
+  dialog has the button; the status line empty. `dialog_show_held` runs it through
+  `popup_run_held` (§12.3): the cursor hidden at once, the dialog added and shown, then only the
+  input loop until the right button's release, a left press or a left release (taken: a left
+  press that ends it acts on nothing); every other input dropped, no procedure run, so no hint, no
+  cursor change and **no step of its creature** (group 2's frame 0 throughout), the battle behind
+  standing still (its idle step is its own loop's) with its status line as the last move left it
+  (the hex's hint). Then the dialog removed and destroyed, the cursor shown (frame 6).
+- **Its close** (0x476B1A to 0x476B73) is the left press's (§12.2): unless the battle is hidden,
+  while the side to act is played here by a human, the mouse's hex forgotten, the log's entries
+  new for 3 000 ms settle and the mouse posted where it rests; else the combat cursor's frame 6
+  again.
+- **Recorded** (`clients/situations/set.toml`, the right button held through the frames from the
+  opening, the clock frozen): `held` (the Marksmen's, the screen's bottom and left; at 300 ms the
+  creature standing), `held-enemy` (the defender's Wolf Riders in Blue's colours, clamped at the
+  right), `held-top` (`held.toml`'s Goblins in the top right corner: (502, 0)), `held-machine` (the
+  Ballista from its first column's hex 51, which no left press reaches), `held-dragon` (the acting
+  Faerie Dragons' ability text, its panel line as `stats-dragon`'s): all as built at their first
+  capture but `held-machine`, which found T2a1's slip: the wire's war machine's range holds its
+  hero's factor already (the engine's BAT-WAR-005), and the viewer multiplied the Ballista's again
+  (8 - 12 for the original's 4 - 6); fixed (the binary's `stats::of` divides the engine's factor out
+  before the dialog's own, attack clamped to 99). Not recorded: the close (the harness holds the
+  button to the last frame; the close is the left press's, `stats-ok`), an empty hex (nothing).
+- **The viewer** (`h3_view::mouse::held_at`: the stack on the hex at a point, any side and
+  column, none over a hero's, the keep's or the tower's rectangle or off the field; the binary's
+  `stats::open` with `held`, `stats::Open::held`, its creature held from the opening). The window
+  (`Battle::look_held`, `stats_popup` and `stats_held` for it too): the right button down over
+  the battlefield while the battle takes the input opens it (the tracker's `Look`: the combat
+  cursor's pointer), the cursor hidden, every input but its ends dropped (a key, a move, the
+  button's other presses), its end closing it as the OK does (`Looked`: the mouse's point posted
+  on a human's turn). The stills' `right:<x>,<y>` over the battle (`Boxes::held`). *Not modelled:*
+  a right press while the battle does not take the input (another side's turn on a server, the
+  computer's, an animation): the original's window may take it there (`battle_buttons` tests no
+  turn), the client drops it as a press made then.

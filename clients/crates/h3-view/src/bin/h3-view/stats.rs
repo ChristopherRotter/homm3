@@ -55,7 +55,8 @@ pub struct Sources<'a> {
 
 /// The dialog a left press (or the key T) opened on a stack: the modal dialog with its OK's
 /// state, status line and cursor (E17 M6 T2a2a), its creature's first steps, and the point the
-/// mouse was at (the battle's cursor and status line keep it: §12.1).
+/// mouse was at (the battle's cursor and status line keep it: §12.1); or the one the right
+/// button shows while held (E17 M6 T2b1, design §12.5: `held`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Open {
     /// The dialog and what its input did to it.
@@ -68,6 +69,11 @@ pub struct Open {
     /// it opened (`u32::MAX` while held): its creature does not step meanwhile
     /// ([`Steps::made_around`]).
     pub holds: Vec<[u32; 2]>,
+    /// The right button's dialog over the battle (E17 M6 T2b1; `stack_stats_dialog` with its
+    /// second argument 1, `dialog_show_held` 0x530D30): without its OK and cast button, shown
+    /// while the button is held (`popup_run_held` 0x602A40: the cursor hidden, every input but
+    /// its ends dropped, no procedure run, so no hint and no step), then closed as the modal one.
+    pub held: bool,
 }
 
 impl Open {
@@ -218,11 +224,20 @@ pub fn of(sources: &Sources<'_>, observation: &Observation, id: u8, modal: bool)
         .get(controller)
         .and_then(|s| s.hero.as_ref());
     // A Ballista under a hero: each end times its attack, clamped to 0..99, plus 1 (0x5F58FD).
+    // The wire's war machine's range holds its side's hero's factor already (the engine's
+    // BAT-WAR-005: its attack plus 1, unclamped), the executable's stack the creature's own:
+    // divided out first (E17 M6 T2b1: T2a1 multiplied the Ballista's twice, `held-machine`).
     let times = match hero {
         Some(h) if original == BALLISTA => i32::from(h.attack.min(99)) + 1,
         _ => 1,
     };
-    let damage = [stack.damage_min, stack.damage_max].map(|d| i32::from(d) * times);
+    let factor = observation
+        .sides
+        .get(usize::from(stack.side == Side::Defender))
+        .and_then(|s| s.hero.as_ref())
+        .filter(|_| stack.war_machine)
+        .map_or(1, |h| u16::from(h.attack) + 1);
+    let damage = [stack.damage_min, stack.damage_max].map(|d| i32::from(d / factor) * times);
     // Morale and luck: the stack's own, Mirth's to Misfortune's changes in them (the engine's
     // materialised values, as the executable's +0x4E8 and +0x4EC; E17 M6 T2a2b2: T2a1 added the
     // timed effects a second time). The engine's are clamped: its luck to 0 and up (CLT-Q40).
@@ -409,18 +424,20 @@ pub fn player(observation: &Observation, stack: &Stack, viewing: u8) -> u8 {
 
 /// The dialog a left press (or the key T) opens on stack `id` (its place next to the stack's hex,
 /// its creature's steps from the frame counts `frames` of its DEF's groups; `seed` the viewer's
-/// generator's), the mouse at `looked`; drawn and hinted in `memory`'s profile, which its opening
-/// may make forget the item last hovered; morale's and luck's descriptions with the pictures'
-/// sizes `sizes` (their DEFs the layout's `morale_described` and `luck_described`).
+/// generator's), the mouse at `looked`, or with `held` the one the right button shows while held
+/// (E17 M6 T2b1: no OK, no cast button, its creature standing); drawn and hinted in `memory`'s
+/// profile, which its opening may make forget the item last hovered; morale's and luck's
+/// descriptions with the pictures' sizes `sizes` (their DEFs the layout's `morale_described` and
+/// `luck_described`).
 pub fn open(
     sources: &Sources<'_>,
     observation: &Observation,
-    (id, looked): (u8, [i32; 2]),
+    (id, looked, held): (u8, [i32; 2], bool),
     (layout, anchor, sizes): (&StatsLayout, [i32; 2], [[i32; 2]; 2]),
     (frames, viewing, seed): (BTreeMap<u32, u32>, u8, u32),
     memory: &mut Memory,
 ) -> Option<Open> {
-    let mut stats = of(sources, observation, id, true)?;
+    let mut stats = of(sources, observation, id, !held)?;
     // The cast button only for the acting stack in the client's profile (CLT-Q38 (4), answered
     // at E17 M6 T2a2a's start: its cast is the acting stack's own drawn spell); the original's
     // shows it for any Faerie Dragon of the side acting, for the comparisons.
@@ -461,6 +478,12 @@ pub fn open(
         modal: Modal::new(window, hints, memory),
         steps: Steps::new(frames, war_machine, seed),
         looked,
-        holds: Vec::new(),
+        // The held one's procedure never runs (`popup_run_held`): held from its opening on.
+        holds: if held {
+            vec![[0, u32::MAX]]
+        } else {
+            Vec::new()
+        },
+        held,
     })
 }

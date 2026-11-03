@@ -766,14 +766,19 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 // right button's release, a left press or release) and drops every other input
                 // (a key's release lets the OK it holds go in the client's profile, CLT-Q39); the
                 // battle keeps where the mouse is.
+                // The right button's stats dialog over the battle (E17 M6 T2b1) the same: its
+                // end closes it, the battle taking the mouse again (`Input::Looked`).
                 Event::KeyUp(Key::RightButton) if battle.stats_popup() => {
-                    book_changed |= battle.stats_held(at, true, None, false);
+                    let did = battle.stats_held(at, true, None, false);
+                    book_changed |= stats_did(&mut battle, &mut inputs, at, did);
                 }
                 Event::Click { down, .. } if battle.stats_popup() => {
-                    book_changed |= battle.stats_held(at, true, None, !down);
+                    let did = battle.stats_held(at, true, None, !down);
+                    book_changed |= stats_did(&mut battle, &mut inputs, at, did);
                 }
                 Event::KeyUp(key) if battle.stats_popup() => {
-                    book_changed |= battle.stats_held(at, false, Some(key.name()), false);
+                    let did = battle.stats_held(at, false, Some(key.name()), false);
+                    book_changed |= stats_did(&mut battle, &mut inputs, at, did);
                 }
                 Event::Key(_) if battle.stats_popup() => {}
                 Event::Pointer(p) if battle.stats_popup() => {
@@ -815,6 +820,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             .filter(|c| matches!(c, Do::LogUp | Do::LogDown | Do::DragonSpell))
                             .map(|c| (c, turn));
                         mouse_changed = true;
+                        continue;
+                    }
+                    // The right button over the battlefield (E17 M6 T2b1, design §12.5;
+                    // `battle_right_click` 0x4769C0): the stack on the hex there shows its stats
+                    // dialog while the button is held, the combat cursor's pointer set first.
+                    if command.is_none()
+                        && matches!(key, Key::RightButton)
+                        && context == Context::Battle
+                    {
+                        let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
+                        if battle.look_held(at, point) {
+                            inputs.push(Input::Look { at });
+                            book_changed = true;
+                        }
                         continue;
                     }
                     let Some(command) = command else {

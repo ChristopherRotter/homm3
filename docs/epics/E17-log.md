@@ -4023,6 +4023,36 @@ VCMI shows them: checked in VCMI's `MoraleLuckBox::set` and its battle's right b
   capture. Not recorded: the Devils (no scenario where the defender holds them and the attacker
   looks), undead, the minimums.
 
+### M6 T2b1 — the right button's held dialog over a stack (2026-11-03)
+
+On `client/e17-m6-t2b1`, the user present. The sandbox new, the original files staged first
+(57 files); #661 had merged; the baseline's `check.sh` passed. T2b cut in two by the user at its
+start: T2b1 the stack's held dialog, T2b2 a turret's info (its code read here, its map entries
+written for it).
+
+- **Read** (design §12.5; map entries `battle_right_click` and `dialog_show_held` now read,
+  `stack_stats_dialog_create`'s modal flag, `turret_info` and the new `turret_info_line`,
+  `town_turret_count`'s second output): `battle_buttons`' right press, `battle_right_click`
+  whole (the heroes' and turrets' "hexes" first, then any living stack on the hex, then the
+  Castle's towers), `stack_stats_dialog`'s held branch, `popup_run_held` again (no procedure
+  runs: no hint, no step).
+- **Found:** T2a1's slip: the stats dialog multiplied a Ballista's range by its hero's factor a
+  second time (the wire's war machine's range holds it, the engine's BAT-WAR-005): fixed.
+- **The library:** `mouse::held_at` (the stack the right button shows: any side's, any column,
+  none over a hero's, the keep's or the tower's rectangle).
+- **The binary:** `stats::open` with `held` (no OK, no cast button, its creature held from the
+  opening), `stats::Open::held`; the window's `Battle::look_held`, `stats_popup` and
+  `stats_held` for it (its end closes it as the OK, `Input::Looked`), the right button down over
+  the battlefield; the stills' `right:` over the battle (`Boxes::held`).
+- **Recorded:** `held`, `held-enemy`, `held-top` (`held.toml`, the top right corner),
+  `held-dragon` (its panel line as `stats-dragon`'s), `held-machine` (after the slip's fix): all
+  as built at their first capture.
+- **Checked:** the window under Xvfb with `xdotool` on `book.toml` in hot seat: the right button
+  over the Wolf Riders shows their dialog at the right clamp in Blue's colours, no cursor; a move
+  and the key T meanwhile dropped; the release closes it, the battle's cursor at the mouse's point;
+  over the Marksmen their dialog with "Shoots twice.", a left press ends it without acting; over an
+  empty hex nothing.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

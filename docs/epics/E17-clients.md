@@ -160,8 +160,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   (4)), CLT-Q39 asked and answered; four stills and a sequence exact; **T2a2b2** (done
   2026-11-03) morale's and luck's descriptions (design §12.4) as far as the observation tells
   their sources (CLT-Q40: the rest requested from the battle, server and adventure lanes, public
-  when carried, as VCMI), CLT-Q41 fixed; seven stills exact; **T2b** the right button's popup
-  (0x4769C0) and a turret's info (0x47A380); recorded.
+  when carried, as VCMI), CLT-Q41 fixed; seven stills exact; T2b cut in two by the user
+  (2026-11-03): **T2b1** (done 2026-11-03) the right button's held dialog over any stack (design
+  §12.5; T2a1's Ballista slip fixed), five stills exact; **T2b2** a turret's info (0x47A380, read
+  at T2b1) by either button; recorded.
 - **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
   battlefield's other items; recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
@@ -311,3 +313,11 @@ The next milestone's list starts here.
     (T2a1: the wire's values hold them already, its doc says otherwise: the server lane's inbox).
 19. The common crates' additions (T2a2b2): `h3_ui::text`'s `%+d` (a signed number the caller
     writes, a text argument); the layout's `[stats]` `morale_described`, `luck_described`.
+20. The right button's held dialog in the window (T2b1, *provisional*): taken while the battle
+    takes a human's input, as a press (the original's window tests no turn: a right press on
+    another side's turn not modelled); the stack on the hex at the press's point (the original's
+    the hex the last move left, the same but for a press in a move's batch); from the side to
+    act's own view, an enemy's as that view shows it; its end closes it as the OK does.
+21. Fixed (T2b1): the stats dialog's Ballista range counted its hero's factor twice (T2a1: the
+    wire's war machine's range holds it); the dialog's clamp of the attack at 99 kept.
+22. The common crates' additions (T2b1): `h3_view::mouse::held_at`.

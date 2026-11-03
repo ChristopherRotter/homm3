@@ -14,9 +14,12 @@
 //! start ([`CAST`]), [`Steps::made_around`] the creature's steps around the holds. Morale's and
 //! luck's descriptions (E17 M6 T2a2b2, design §12.4): [`describe`], their texts from what the
 //! observation tells of the sources ([`Account`]; CLT-Q40), each with the value's sign's picture.
+//! The right button held over a stack (E17 M6 T2b1, design §12.5) shows the same dialog without
+//! its OK and cast button ([`Stats::modal`] false), held as a popup: `crate::mouse::held_at`
+//! finds the stack.
 //!
 //! *Not built yet:* the morale and luck descriptions' lines the observation does not carry
-//! (CLT-Q40); the right button's dialog held over a stack (M6 T2b).
+//! (CLT-Q40).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -200,7 +203,8 @@ pub struct Stats {
     /// The cast button instead of the ability text (a Faerie Dragon of the side acting, with
     /// casts left, outside the tactics phase, in the modal dialog).
     pub cast: bool,
-    /// The modal dialog (a left press): with its OK.
+    /// The modal dialog (a left press): with its OK; the right button's held one without
+    /// (E17 M6 T2b1).
     pub modal: bool,
 }
 

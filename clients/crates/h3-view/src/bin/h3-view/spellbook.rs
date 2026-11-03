@@ -246,6 +246,9 @@ pub struct Boxes<'a> {
     /// The acting stack's stats dialog the key T opens, the mouse at a point (E17 M6 T2a2a; none
     /// in the tactics phase).
     pub acting: &'a dyn Fn([i32; 2], &mut StatsMemory) -> Option<crate::stats::Open>,
+    /// The stats dialog the right button held at a point over the battle shows (E17 M6 T2b1;
+    /// none: no stack on the hex there).
+    pub held: &'a dyn Fn([i32; 2], &mut StatsMemory) -> Option<crate::stats::Open>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -266,7 +269,9 @@ struct Asking {
 /// opens it again) by its key C, Surrender's or Retreat's question by S or R
 /// (E17 M5 T4a, with `boxes`), or is the open box's key or the open book's; `click:<x>,<y>`
 /// moves the mouse there, presses and releases (the open box's or book's) and parks it;
-/// `move:<x>,<y>` moves it, over the open book its hover (0x59D6C4). The book's refusal and
+/// `move:<x>,<y>` moves it, over the open book its hover (0x59D6C4); `right:<x>,<y>` over the
+/// battle (E17 M6 T2b1) moves it there and holds the right button down: the stack there shows its
+/// stats dialog while held (the entry's last action). The book's refusal and
 /// description open their boxes over it, a spell no hex takes "affects no one" over the battle.
 /// A box's OK that gives a command (Retreat's, Surrender's) ends the battle in its result window
 /// (E17 M5 T4b1), which a later key or click takes as the box's. A move to the park point after a
@@ -529,6 +534,17 @@ pub fn still(
                     }
                 }
             }
+            // The right button held over the battle (E17 M6 T2b1, design §12.5): the stack on
+            // the hex there shows its stats dialog while held, through the frames.
+            "right" if asking.is_none() && result.is_none() && still.open.is_none() => {
+                let to = point(arg)?;
+                moved(&mut still, &mut memory, to);
+                still.over = Some(to);
+                still.arrow = false;
+                if let Some(open) = boxes.and_then(|b| (b.held)(to, &mut stats_memory)) {
+                    still.stats = Some(open);
+                }
+            }
             "move" => {
                 let to = point(arg)?;
                 if let Some((r, _)) = result.as_mut() {
@@ -552,7 +568,7 @@ pub fn still(
             }
             _ => {
                 return Err(format!(
-                    "`{action}`: a situation's actions are key:, click: and move:"
+                    "`{action}`: a situation's actions are key:, click:, move: and right: (over the battle)"
                 ));
             }
         }
@@ -581,7 +597,7 @@ fn stats_action(
 ) -> Result<Option<[i32; 2]>, String> {
     use h3_view::message::Outcome;
     let modal = &mut open.modal;
-    if modal.popup.is_some() {
+    if modal.popup.is_some() || open.held {
         return Err(String::from(
             "the right button is held: nothing comes after `right:`",
         ));
@@ -914,6 +930,7 @@ pub(crate) mod tests {
             opening: None,
             look: &|_, _| None,
             acting: &|_, _| None,
+            held: &|_, _| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -958,6 +975,7 @@ pub(crate) mod tests {
             opening: Some("{Tactics Phase}".into()),
             look: &|_, _| None,
             acting: &|_, _| None,
+            held: &|_, _| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {

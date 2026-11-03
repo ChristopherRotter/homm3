@@ -846,7 +846,8 @@ pub(crate) fn draw_frames(
                     .into_iter()
                     .map(scene::Draw::Dialog),
             );
-            // The right button's description held over it, the cursor hidden (E17 M6 T2a2b1).
+            // The right button's description held over it, the cursor hidden (E17 M6 T2a2b1);
+            // the right button's dialog over the battle held, the cursor hidden (E17 M6 T2b1).
             match &open.modal.popup {
                 Some(popup) => list.extend(
                     popup
@@ -855,6 +856,7 @@ pub(crate) fn draw_frames(
                         .into_iter()
                         .map(scene::Draw::Dialog),
                 ),
+                None if open.held => {}
                 None => list.push(crate::stats::cursor(layout, &open.modal, mouse)),
             }
         } else if let Some((open, mouse)) = book {
