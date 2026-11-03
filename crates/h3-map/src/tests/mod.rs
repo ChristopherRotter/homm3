@@ -4,6 +4,7 @@
 //! what a viewer may learn there in `view.rs` (E08 T8b2b); the writer's reward objects and RoE
 //! maps read back and imported in `rewards.rs` (E08 T56); its sea objects in `sea.rs` (E08 T67).
 
+mod dwellings;
 mod economy;
 mod economy_map;
 mod economy_xl_map;
@@ -696,6 +697,7 @@ fn the_experiment_writer_marks_the_coast() {
         level_limit: 0,
         banned_skills: Vec::new(),
         events: Vec::new(),
+        teams: None,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     for (index, t) in m.terrain.tiles.iter().enumerate() {
@@ -772,6 +774,7 @@ fn towns_from_the_experiment_writer_read_back() {
         level_limit: 0,
         banned_skills: Vec::new(),
         events: Vec::new(),
+        teams: None,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     let template = &m.templates[m.objects[1].template as usize];
@@ -934,6 +937,7 @@ fn maps_from_the_experiment_writer_read_back() {
         // Aid.
         banned_skills: vec![5, 11, 27],
         events: Vec::new(),
+        teams: None,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert_eq!(m.header.version, Version::Sod);
@@ -1165,6 +1169,7 @@ fn the_writer_s_underground_and_guarded_piles_read_back() {
         level_limit: 0,
         banned_skills: Vec::new(),
         events: Vec::new(),
+        teams: None,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert!(m.header.two_levels);

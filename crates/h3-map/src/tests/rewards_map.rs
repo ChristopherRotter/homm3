@@ -495,6 +495,7 @@ fn map() -> (w::Map, w::Extras) {
         level_limit: 0,
         banned_skills: Vec::new(),
         events: Vec::new(),
+        teams: None,
     };
     (map, extras)
 }

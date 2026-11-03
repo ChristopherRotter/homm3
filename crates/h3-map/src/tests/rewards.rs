@@ -89,6 +89,7 @@ fn map(objects: Vec<w::MapObject>) -> w::Map {
         level_limit: 0,
         banned_skills: Vec::new(),
         events: Vec::new(),
+        teams: None,
     }
 }
 

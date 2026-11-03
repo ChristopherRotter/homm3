@@ -4,24 +4,37 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237). T88b in two by side (decision 239; D-51 settled as the original, decision 238): T88b1 done (`adventure/e08-t88b1`: `E08-design.md` parts A and B, ADR-0016's draft), T88b2 done whole (decision 240; `adventure/e08-t88b2`: part C, ADR-0017's draft, the cut; its checkpoint ADV-Q43, decisions 241–243). The cut (design §17): rounds 2 to 8, T89 to T97, batch E10 first; T89 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237). T88b in two by side (decision 239; D-51 settled as the original, decision 238): T88b1 done (`adventure/e08-t88b1`: `E08-design.md` parts A and B, ADR-0016's draft), T88b2 done whole (decision 240; `adventure/e08-t88b2`: part C, ADR-0017's draft, the cut; its checkpoint ADV-Q43, decisions 241–243). The cut (design §17): rounds 2 to 8, T89 to T97, batch E10 first. T89 in two at the code's seam (decision 244): T89a done (`adventure/e08-t89a`: the writer's classes and teams, the spec's fields, `cross-lane`), T89b next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T89 — batch E10's maps and specs** (decisions 237, 242; as T78 for batch E9)
+**E08 T89b — batch E10's specs** (decisions 237, 242, 244; as T78's specs for batch E9)
 
-- **Scope:** `h3_map::writer` writes classes 17 and 20 (by subclass, with an owner), 78 and 216
-  to 218 (a faction set, levels, a town identifier of 0) as the import reads them (a round trip),
-  for the batch and for T96's fixtures; the spec's fields in `h3-experiment` (`cross-lane`, the
-  user's consent as T78's): dwellings with an owner, random dwellings, Refugee Camps, a hero's full
-  army of named stacks, teams in a hot-seat map (E10-6), a town for each player in E10b; the specs
-  `experiments/specs/E08-batch-10a.toml` and `-10b.toml` with their templates and predictions
-  (survey §13's rows without E10-2, design §16's two added); each walk priced (`TRAPS.md`).
-- **Inputs:** `E08-design.md` §16 (and §1, §4 for the classes); the survey
-  `docs/rules/surveys/E08-dwellings.md` §13 (the rows, what the spec lacks), §2–§7; T78's record
-  in `E08-log.md` (batch E9's writer and spec); `docs/experiments/README.md`.
-- **Depends on:** T88b2 and its checkpoint ADV-Q43 (done). **Status:** ready; its cut confirmed
-  with the user at its start.
+- **Scope:** the specs `experiments/specs/E08-batch-10a.toml` (the visits: E10-1, E10-3 to E10-7,
+  days 1 and 2) and `-10b.toml` (the week: E10-8 to E10-10, to day 8) with their templates and
+  predictions (survey §13's rows without E10-2, design §16's two added: E10-4's dialog closed after
+  the purchase, E10-1's size word), from T89a's fields (`[[map.ownable]]` dwellings and random
+  dwellings, `[[map.object]]` the camp, `[map] teams`); a town for each player in E10b (past day 7,
+  `TRAPS.md`); each walk priced (`TRAPS.md`); a fresh agent's review against survey §13 and the
+  sections the rows cite; the batch's row in `docs/experiments/README.md`'s table.
+- **Inputs:** `E08-design.md` §16; the survey `docs/rules/surveys/E08-dwellings.md` §13 (the rows),
+  §2–§7; T89a's fields (`docs/experiments/README.md`, "Increment 10's objects"); T78's specs
+  `experiments/specs/E08-batch-9a.toml`, `-9b.toml` and their record in `E08-log.md`.
+- **Depends on:** T89a (`adventure/e08-t89a`, `cross-lane`; merged first). **Status:** ready once
+  T89a merges; its cut confirmed with the user at its start.
 
 ## Inbox
+
+- 2026-11-03 (the adventure lane, E08 T89a, PR #688; **a failing property case on `master`'s code,
+  for a task of its own**): CI's full verify on #688 (run 41694189742) found a case of `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` that fails at `view.rs:1405`: the viewer's
+  events at day 2's start differ between the game and its copy with the unseen changes,
+  `ResourceGained { player: PlayerId(2), resource: #5, amount: 1 }` in one and not the other (the
+  viewer's own income moved by something it cannot see). Independent of T89a (the test lays out a
+  `RawMap`, no writer); reproduced locally in 12 s by appending `cc
+  4ceb0bd67ba12482c10781aa43bd0edf62cdcbf92752404a3c05e6a995b42fdf` to
+  `crates/h3-map/proptest-regressions/tests/view.txt` (not committed: it would fail every run until
+  fixed). The shrunk plan: RoE, side 5, one level, the full input in that run's job log
+  (`gh api repos/ChristopherRotter/homm3/actions/jobs/<id>/logs` reads it). Commit the seed with
+  the fix.
 
 - 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
   unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,

@@ -234,6 +234,7 @@ fn census_map() -> Vec<u8> {
         level_limit: 0,
         banned_skills: Vec::new(),
         events: Vec::new(),
+        teams: None,
     };
     w::gzip(&w::write(&map).unwrap())
 }
