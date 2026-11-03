@@ -264,3 +264,48 @@ lost: the work-in-progress commit was pushed before it).
   terrain and no special battlefield; an unused pick freed after the draws; the resolved choices
   not kept; `GameRuleset::new`'s fourth argument with `TownRuleset::empty` for encounters; the
   Visions factor a part parameter until Visions is placed.
+
+### T3a — batch TWN-1's maps and spec (2026-11-02)
+
+One session, the user present; branch `town/e09-t3a`, `cross-lane` (the user's consent at the
+start: `h3-experiment` and `docs/experiments/README.md` are the battle lane's). Starting point:
+`master` at 75cfdd7 (#656 merged; CI on `master` green at c1a6f68). The user kept T3a whole. No
+open pull request touched `h3-experiment` (#654, #655 the adventure lane's).
+
+- **`h3-experiment`:** `TownSpec` and `MapTownSpec` gain `fort` (the editor's standard set with a
+  Fort, the map's has-fort flag; refused beside `buildings`, which name the Fort) and a
+  `garrison` that is absent (the map's default) or a list, `[]` an explicitly empty custom
+  garrison (seven empty slots written); the template's line says "the standard buildings with a
+  fort" and "an empty custom garrison". The test
+  `a_town_may_have_the_standard_set_with_a_fort_and_an_empty_custom_garrison` builds both for an
+  encounter's town and two map towns and reads them back through `h3_map::parse` (the has-fort
+  flag, a custom army of seven `None`). The spec format in `docs/experiments/README.md`.
+- **The spec** `experiments/specs/E09-batch-1.toml` (stamp `7902bb9e`; its map writes, 34 map
+  towns and two sieges; the template `experiments/results/E09-batch-1.md` committed unfilled):
+  row 1 sixteen owned towns with a Fort, eight without, eight neutral with and without (three new
+  games: 48 draws of the level-2 dwelling, the reading's 30 in 100 against VCMI's 50); row 2 two
+  neutral towns with `garrison = []` beside the eight controls; row 3 Blue's Castle with a lone
+  visitor of seven stacks (two equal weakest, two Pikeman stacks) and a garrison of three (two
+  equal), played twice from one save (3a Red retreats: the garrison's leftovers; 3b Red wins:
+  the leftovers lost, the attacker's tile and points, no screen); row 4 a neutral Rampart with a
+  Fort and 5 Centaurs won, then the later step onto the gate. Each row's prediction from survey
+  §5.2, §5.3, §8.2, §8.3, §9.2, with VCMI's.
+- **Row 3's design** (agent's call): a scratch simulation of both merges (the reading's §9.2 and
+  VCMI's §9.5) chose armies where each of the reading's three points (the last equal weakest, the
+  first equal gain, the rounds until nothing gains) moves a stack: the reading's opening
+  [Swordsman 4, Halberdier 16, Marksman 10, Griffin 5, Cavalier 1, Monk 3, Pikeman 15], the
+  garrison left [—, Centaur 4, Archer 5]; VCMI's Pikeman 10 with the 5 Pikemen left in the
+  garrison under either of its tie rules; each tie flipped alone gives a third and a fourth
+  outcome.
+- **For T3b** (the harness): the town record's reads (game +0x21614, 0x168 bytes each: owner +0x1,
+  visitor +0x10, garrison +0xE0, built +0x150, every-built +0x158) are not in
+  `docs/exe/structs.toml` yet; three new games for rows 1 and 2, rows 3 and 4 in the first.
+- **`check-exe-map` on `master`:** T2b's design note (#656, docs only, so CI's full verify never
+  ran it) cited an address of `building_tables_init`'s lists that no map entry covered; the town
+  scope's verify failed on it. The AI lane's #657 merged the map entry first, so the note stays as
+  it was.
+- **CI's first run on #659** also failed a random case of `h3-map`'s
+  `every_step_keeps_the_commands_invariants` (the adventure lane's; reproduced on `master`'s code
+  with its seed): a note in the adventure lane's inbox, the seed not committed. Locally: `check-lane --cross-lane`, `cargo check --workspace
+  --all-targets`, `h3-experiment`'s tests and clippy, the town scoped verify with the original data
+  (every step but `check-lane`, by design, after the fix).

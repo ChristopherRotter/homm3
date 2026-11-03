@@ -12,12 +12,13 @@
 //! with the three skills and the other artifacts among the four (`fixtures/maps/README.md`); what
 //! each replay meets (from the E08 T42 recording; a flight's or a water walk's pass is a step over
 //! a tile its hero may only pass, before the path's last; since E08 T85b the seven duel replays of
-//! 28 days are recorded again from their seeds, the day advance having changed their games, so
-//! their lists are T42's until E08 T86 checks them again, increment 9's design note §19):
+//! 28 days are recorded again from their seeds, the day advance having changed their games: E08
+//! T86a checked their lists again and replaced the four that had lost what they were chosen for,
+//! increment 9's design note §19):
 //!
 //! - `duel-s1-d28` (`--seed 1 --agent-seed 1 --days 28`): a key, a monster's battle won and its
-//!   level-up answered with the second offer; flights over tiles objects block, a visit at a
-//!   flight's end.
+//!   level-up answered with the second offer; flights over tiles objects block and one over water,
+//!   a visit at a flight's end (a Keymaster's Tent), water walks.
 //! - `duel-s2-d7` (`--seed 2 --agent-seed 3 --days 7`): flights over tiles objects block, a water
 //!   walk over water; no battle.
 //! - `duel-s5-strict-d7` (`--seed 5 --agent-seed 8 --days 7 --profile base:strict-fixed`): in
@@ -27,46 +28,56 @@
 //! - `duel-s3-easy-d7` (`--seed 3 --agent-seed 4 --days 7 --difficulty 0`): at the easy difficulty
 //!   (E08 T14b: the replay's difficulty, which `verify` plays at) a monster's battle won and its
 //!   level-up answered with the first offer.
-//! - `duel-s692-d28` (`--seed 692 --agent-seed 692 --days 28`): a hero battle won with two
-//!   artifacts captured, a Cartographer accepted, a declined flight (the monster leaves), two
-//!   monsters' battles won, a guarded pile fought at once and picked up, level-ups answered with
-//!   both offers; flights over blocked tiles, a water walk, visits at flights' ends.
+//! - `duel-s3560-d28` (`--seed 3560 --agent-seed 3560 --days 28`; E08 T86a, for T42's
+//!   `duel-s692-d28`): a hero battle won by its attacker, blue's surface hero, which captures red's
+//!   flyer's two artifacts and flies with its Angel Wings from then on; two Cartographers
+//!   declined, a declined join and a group joining, a pursuit, four monsters' battles won, a
+//!   guarded pile fought at once and picked up, a key, level-ups answered with both offers;
+//!   flights over blocked tiles, a visit at a flight's end (a Cartographer), water walks.
 //! - `duel-s4893-d28` (`--seed 4893 --agent-seed 4893 --days 28`): a border guard's passage
 //!   accepted with its key (two keys taken), a declined join and a group joining, a declined
 //!   flight and a pursuit won, a pile's question accepted and its guards beaten, level-ups answered
-//!   with both offers; five flights over water, water walks.
-//! - `duel-s2517-d28` (`--seed 2517 --agent-seed 2517 --days 28`): a key, a Cartographer accepted,
-//!   a group joining, two monsters' battles won, a pile's question declined, a pile fought at once
-//!   whose guards beat the visitor (their survivors stay, the hero leaves the map), level-ups
-//!   answered with both offers; a water walk.
-//! - `duel-s3127-d28` (`--seed 3127 --agent-seed 3127 --days 28`): a Cartographer declined, a
-//!   declined flight and two pursuits, monsters' battles won and one lost, two piles' questions
-//!   accepted and their guards beaten, level-ups answered with both offers; a flight over water.
+//!   with both offers; flights over blocked tiles and six over water, a visit at a flight's end,
+//!   water walks, the border guard visited at a water walk's end.
+//! - `duel-s4749-d28` (`--seed 4749 --agent-seed 4749 --days 28`; E08 T86a, for T42's
+//!   `duel-s2517-d28`): a key, a Cartographer accepted, a declined flight, two monsters' battles
+//!   won, a pile's question declined and another's accepted and its guards beaten, a pile fought at
+//!   once whose guards beat the visitor (their survivors stay, the hero leaves the map), level-ups
+//!   answered with the second offer; flights over blocked tiles and one over water, a visit at a
+//!   flight's end, water walks.
+//! - `duel-s645-d28` (`--seed 645 --agent-seed 645 --days 28`; E08 T86a, for T42's
+//!   `duel-s3127-d28`): a Cartographer declined, a pursuit, two monsters' battles won and one lost,
+//!   a pile's question accepted and its guards beaten, a pile fought at once whose guards beat the
+//!   visitor (both of blue's heroes leave the map), level-ups answered with both offers; flights
+//!   over blocked tiles and one over water, a visit at a flight's end.
 //! - `duel-s1308-strict-d28` (`--seed 1308 --agent-seed 1308 --days 28 --profile
 //!   base:strict-fixed`): in strict-fixed a key, a Cartographer accepted, a declined join and a
-//!   declined flight, a pursuit, monsters' battles won, a hero battle lost, the winner capturing
-//!   two artifacts, level-ups answered with both offers; flights over water, a water walk.
-//! - `duel-s2931-d28` (`--seed 2931 --agent-seed 2931 --days 28`; E08 T42, the tenth): an offer to
-//!   join for gold accepted, two groups joining, three monsters' battles won, level-ups answered
-//!   with the second offer; a flight over water.
+//!   declined flight, a pursuit, monsters' battles won, a pile's question accepted and its guards
+//!   beaten, a hero battle lost, the winner capturing two artifacts, level-ups answered with both
+//!   offers; flights over blocked tiles and over water, a water walk.
+//! - `duel-s5249-d28` (`--seed 5249 --agent-seed 5249 --days 28`; E08 T86a, for T42's
+//!   `duel-s2931-d28`): an offer to join for gold accepted and a join accepted (two groups
+//!   joining), a declined flight and a pursuit, three monsters' battles won, a pile's question
+//!   declined, level-ups answered with the second offer; flights over blocked tiles, a flight
+//!   ending in a monster's battle, water walks.
 //!
 //! In every one red's underground hero gains levels 2 to 4 at load (E08 T31: the duel's custom
 //! experience, `fixtures/maps/README.md`; from its level seed in faithful, from the setup stream in
 //! strict-fixed). The last six came from a search over seeds (E08 T42, as T31's: `--seed N
-//! --agent-seed N --days 28` for N up to 5 000 in each profile, with a scratch probe replaying
-//! each game's commands and noting its offers, answers, battles and their ends, its flights and
-//! water walks, not committed): of the 5 000 faithful games 83 have a hero battle (81 with a
-//! capture), 19 a guard's passage, 143 a pile's guards beating the visitor, 477 a monster's battle
-//! lost, one an offer to join for gold accepted (another of the strict ones), 2 758 a flight over
-//! water, 1 723 a water walk over water and every game but two a flight over blocked tiles; of the
-//! strict-fixed ones 69 a hero battle (63 with a capture). Each stands for one of the five it
-//! replaced (`duel-s767-d28`, `duel-s2626-d28`, `duel-s236-d28`, `duel-s12-d28`,
-//! `duel-s929-strict-d28`, T31's) with the closest game: `duel-s692-d28` lacks the key of the hero
-//! battle's, `duel-s4893-d28` the pile fought at once of the passage's, `duel-s2517-d28` the
-//! pursuit, `duel-s3127-d28` the key and the joins, `duel-s1308-strict-d28` the group joining and
-//! the monster's battle lost (no strict-fixed game has a lost hero battle with both); the fixed
-//! four no longer meet the joins and the strict-fixed declined flights T31's list had, and
-//! `duel-s3-easy-d7` no longer its offer to join for gold: `duel-s2931-d28` was added for that.
+//! --agent-seed N --days 28` in each profile, with a scratch probe replaying each game's commands
+//! and noting its offers, answers, battles and their ends, its flights and water walks, not
+//! committed); E08 T86a searched again after T85b's day advance, N up to 6 000: of the faithful
+//! games 85 have a hero battle (46 won by its attacker, 79 with a capture), 24 a guard's passage
+//! accepted, 181 a pile's guards beating the visitor, 680 a pile's question declined, 750 a
+//! monster's battle lost, two an offer to join for gold accepted (three of the strict ones), 3 287
+//! a flight over water, 2 084 a water walk over water and every game but two a flight over blocked
+//! tiles. T42's `duel-s692-d28` had lost its hero battle, `duel-s2517-d28` its pile's question
+//! declined, `duel-s3127-d28` its monster's battle lost and `duel-s2931-d28` its offer to join for
+//! gold: each was replaced by the game closest to its row (`duel-s3560-d28`, `duel-s4749-d28`,
+//! `duel-s645-d28`, `duel-s5249-d28`); `duel-s1-d28`, `duel-s4893-d28` and
+//! `duel-s1308-strict-d28` kept theirs. Before, T42's six had replaced T31's five
+//! (`duel-s767-d28`, `duel-s2626-d28`, `duel-s236-d28`, `duel-s12-d28`, `duel-s929-strict-d28`)
+//! and `duel-s3-easy-d7`'s offer to join for gold.
 //! History: E08 T16a re-recorded the first four when the duel got increment 2's objects and added
 //! two searched ones, E08 T19b1 two with hero battles (format v3); every version bump since (T20a1,
 //! T20a2a, T20b1, `shared/e08-t20b2`, E04c T9, T21a, T29, T30) re-recorded them all with their
@@ -126,7 +137,9 @@
 //! the flag radius; adventure state hash v18: owners, weekly contents, an abandoned mine's draws,
 //! a Shipyard's boat tile; none of the four maps has an increment 9 object) re-recorded all
 //! thirty-two from their commands, the random ones also played again with their options to the
-//! same commands: every hash moved.
+//! same commands: every hash moved. E08 T83b2a, T84a and T85b1 re-recorded them as their records in
+//! `E08-log.md` say; T85b1's day advance changed the seven duel games of 28 days, recorded again
+//! from their seeds (above).
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts
@@ -242,6 +255,59 @@
 //! - `sea-flyer-s1`: Mephala flies over the plain water beside the Flotsam on (12, 16) and lands
 //!   beside it; no flight ends on or passes its tile (D-46, ADV-PIK-018): a refusal a replay
 //!   cannot hold, so `h3-map`'s `sea_map.rs` checks it on the same map.
+//!
+//! **Economy** (E08 T86a, increment 9), on `fixtures/maps/e08-economy-36.h3m` (written by
+//! `h3_map::writer`; `fixtures/maps/README.md`): red's Lord Haart (hero 0, Estates, the Endless
+//! Sack of Gold, two Crystal Dragons, ten archangels and twenty pikemen), Rissa (hero 1,
+//! Mysticism, a mercury specialist, the Charm of Mana) and Orrin (hero 2) below the Shipyard;
+//! blue's Sephinroth (hero 3, a crystal specialist, the Mystic Orb of Mana) and Caitlin (hero 4, a
+//! gold specialist, the Endless Purse of Gold); the seven mines (blue's Crystal Cavern owned at
+//! load, two guarded by a monster beside their entrance), an abandoned mine, two Lighthouses and a
+//! Shipyard on the sea's coast, two of each weekly object, growing and fixed monsters, three timed
+//! events. Random play, recorded with `--map fixtures/maps/e08-economy-36.h3m --seed N
+//! --agent-seed N --days 60` (two month starts): the three of a search over the seeds 1 to 3 000
+//! (a scratch probe noting each game's months, flags, battles by what they were fought for, Leave
+//! Guards, boats, weekly visits and the taxes; not committed: 1 916 games have a creature month,
+//! 1 252 fight a monster it added, 313 the abandoned mine and 65 win it, 145 build a boat by
+//! `BuildBoat`, 59 visit a weekly object emptied that week; none leaves guards in a mine or
+//! fights an owned mine's guards, which the scripted ones hold) whose union meets all 28 features
+//! counted:
+//!
+//! - `economy-s792-d60`: a creature month whose added monsters are fought, the Shipyard flagged and
+//!   a boat bought at its visit, a later visit refused its offer (`ShipyardBlocked`), a hero
+//!   battle, three weekly objects marked, a level-up, a tax floored at 0.
+//! - `economy-s935-d60`: a creature month, the abandoned mine fought and won, Leave Guards opened
+//!   (closed with nothing left), a weekly object visited again in its week, an added monster
+//!   fought.
+//! - `economy-s1451-d60`: a Plague month, three mines flagged and one taken from its owner, a
+//!   Lighthouse flagged, the Shipyard flagged and boats built by `BuildBoat`, a boarding and a
+//!   landing.
+//!
+//! In each the timed events fire and a mine's guarding monster is fought; the weekly growth moves
+//! the monsters.
+//!
+//! **Scripted** (E08 T86a: increment 9's design note §15's paths), on the same map, recorded with
+//! `h3 adventure run --map fixtures/maps/e08-economy-36.h3m --seed 1 --checkpoint-every 5 --script
+//! <script> --record <replay>` (the moves and the battles' commands from the sea's scratch probe;
+//! not committed); each ends with both players' turns:
+//!
+//! - `economy-guards-s1`: Haart fights the six gnolls on his way and the next day flags the
+//!   neutral sawmill (ADV-OWN-001), steps off and onto it again: Leave Guards opens (ADV-MIN-002,
+//!   GAM-DEC-004); he moves his twenty pikemen into its group and closes it, the pikemen the mine's
+//!   guards (`GuardsChanged`), and walks away. Blue's Sephinroth visits the mine: its guards are
+//!   asked, then fought, red playing them as their owner's side without a hero (GAM-BAT-001);
+//!   Sephinroth wins and flags the mine for blue, whose next day's income has its wood; day 3's tax.
+//! - `economy-abandoned-s1`: Haart reaches the abandoned mine on day 2 (crystal drawn, 197
+//!   troglodytes); asked, he fights them, wins and answers his level-up, and only then is the mine
+//!   flagged for red (ADV-MIN-002); day 3's income has its crystal.
+//! - `economy-shipyard-s1`: Orrin visits the Shipyard: it is flagged for red and offers a boat
+//!   (ADV-SHY-002); accepted, 1 000 gold and 10 wood paid, the boat on its tile (30, 20); Orrin
+//!   boards it, the next day sails off, and red builds a second boat by `BuildBoat` without a visit
+//!   (ADV-SHY-003); day 3's tax finds no wood left, floored at 0 (GAM-CAL-004).
+//! - `economy-windmill-s1`: Rissa visits the Windmill on (9, 6) (three crystals, marked), steps off
+//!   and onto it again that day and the next (`ObjectEmpty`), and again on day 8 after the week's
+//!   reset (three gems; ADV-WEK-001, ADV-VIS-006); the week's start also pays the Crystal Dragons'
+//!   three crystals (GAM-RES-005).
 
 use std::path::PathBuf;
 
@@ -256,7 +322,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 32,
+        files.len() >= 39,
         "expected the E08 replay fixtures in {}",
         dir.display()
     );

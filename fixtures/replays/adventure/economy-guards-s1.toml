@@ -1,0 +1,87 @@
+commands = [
+    "0 move 0 3,4,0 3,5,0 3,6,0 3,7,0 3,8,0 4,9,0 4,10,0 4,11,0 5,12,0 6,13,0",
+    "0 battle attack 4 149",
+    "0 battle attack 3 65",
+    "0 move 0 6,14,0 7,15,0",
+    "0 move 0 8,14,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 0 9,14,0 10,15,0 10,16,0 9,17,0 8,16,0",
+    "0 move 0 9,17,0 8,16,0",
+    "0 army move 0:2 g:0",
+    "0 answer close",
+    "0 move 0 9,17,0 10,16,0 11,15,0 12,14,0",
+    "0 end-turn",
+    "1 move 3 3,25,0 3,24,0 4,23,0 5,22,0 6,21,0 7,20,0 8,19,0",
+    "1 move 3 8,18,0 8,17,0 8,16,0",
+    "1 answer offer accept",
+    "1 battle wait",
+    "0 battle move 78",
+    "1 battle shoot 3 78",
+    "1 battle wait",
+    "1 battle move 38",
+    "1 battle move 54",
+    "1 battle wait",
+    "0 battle wait",
+    "1 battle shoot 3 78",
+    "1 battle move 42",
+    "0 battle attack 0 43",
+    "1 battle attack 3 60",
+    "1 battle attack 3 60",
+    "1 battle attack 3 60",
+    "0 battle attack 0 43",
+    "1 battle shoot 3 43",
+    "1 battle attack 3 42",
+    "1 battle attack 3 42",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0xddcf8055f163c4f7",
+    "0x89500a9a56d57ece",
+    "0x5dbbe13be0e0dcd8",
+    "0xe21546faf73020b5",
+    "0x19e0daa9f742b596",
+    "0x66e00b78210f47bc",
+    "0xd1e40e1d7bc4103c",
+]
+
+[replay]
+format = 8
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x962e87e7a01056f6"
+adventure_ruleset_hash = "0x67e6f0786f22d8f8"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 22
+adventure_state_hash_version = 19
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-economy-36.h3m"
+hash = "0x0d7ea287c88b7469"
+import_version = 15
+
+[result]
+day = 4
+final_hash = "0xf300df68cc318176"

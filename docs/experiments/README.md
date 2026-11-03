@@ -190,10 +190,11 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   it too). `[map.underground]` (E08 T22a1): a second level, `terrain` (a land terrain) and its
   own `[[map.underground.patch]]` rectangles (`rock` for walls); no roads or grounds on it.
   `[[map.town]]` (E23 T7): a town no encounter fights, `entrance = [column, row]`, `faction`,
-  `owner` (`blue`, the default, `tan`, `neutral` or, E08 T78, `red`), `buildings`, `garrison`: batch
-  4b's Tavern town of Tan's, which the computer's retreat test asks for; batch E9b's town of each
-  player, which a run past the seventh day needs (a player without a town is defeated seven days
-  after, the original's countdown).
+  `owner` (`blue`, the default, `tan`, `neutral` or, E08 T78, `red`), `buildings`, `fort`,
+  `garrison` as an opponent's town below: batch 4b's Tavern town of Tan's, which the computer's
+  retreat test asks for; batch E9b's town of each player, which a run past the seventh day needs
+  (a player without a town is defeated seven days after, the original's countdown); batch TWN-1's
+  standard sets with and without a Fort and its explicitly empty garrisons (E09 T3a).
   `format` (E08 T56): `sod` (the default) or `roe`, the map in the RoE format (version `0x0E`,
   batch E7's row E7-7): no level limit, banned skills, towns, hero spells or primary skills (its
   heroes take `defaults`) and RoE's codes only; `h3-map`'s writer refuses the rest.
@@ -288,8 +289,10 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   (`blue`, the default, or `neutral`), `buildings` (the built ones by name: `fort`, `citadel`,
   `castle`, `tavern`, `town hall`, `mage guild 1`, `dwelling 1`, `upgraded dwelling 1`, `horde 1`,
   … and the faction's special buildings, `escape tunnel`, `brotherhood of the sword`, …; the
-  Village Hall always; absent, the editor's standard set without a fort), `garrison`
-  (`[creature, count]`, at most seven; empty, the editor's default) and `tight`; with an
+  Village Hall always; absent, the editor's standard set, with a Fort when `fort = true`, E09
+  T3a), `garrison` (`[creature, count]`, at most seven; absent, the map's default: an owned town's
+  empty, a neutral town's drawn at the start; `[]` an explicitly empty custom garrison, E09 T3a)
+  and `tight`; with an
   `[encounter.opponent.hero]` beside it, that hero is the town's visiting hero, on its entrance.
   `[[encounter.also]]` (E08 T10a): more heroes of the
   encounter, each with its own `at`, named as their hero type unless `name` is given (scouts that

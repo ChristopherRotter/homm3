@@ -7,27 +7,9 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are rounds 2 and 3; each later round's entries are written when it comes (the
-epic's list), each task's cut confirmed at its start. Every entry's acceptance includes the
-Definition of Done (`docs/05-testing.md`).
-
-**E09 T3a — batch TWN-1's maps and spec**
-
-- **Scope:** round 2 (design §20; decision 15): the spec `experiments/specs/E09-batch-1.toml`
-  for survey §13's rows 1 to 4 and its maps from `h3-experiment`: row 1 owned standard towns
-  without a Fort and with one, neutral ones with and without (several of each, or several new
-  games for the 30 in 100); row 2 a neutral town with an explicitly empty custom garrison and a
-  control without one; row 3 Blue's town with a lone visitor of seven stacks of mixed values and a
-  garrison of mixed values, Red's hero besieging (an encounter's opponent town with its hero and
-  garrison, E04c T5b's `TownSpec`, as it stands); row 4 a defended neutral town Red
-  besieges and wins, then a later step onto the gate. `[[map.town]]` and `TownSpec` gain what the
-  rows lack (today an absent `buildings` is the standard set without a Fort and an empty
-  `garrison` the map's default): the standard set with a Fort, an explicitly empty custom
-  garrison (`h3-experiment` is the battle lane's: `cross-lane`, the user's
-  consent at the start, the label at once). Each row's prediction from survey §13.
-- **Acceptance:** the spec writes its maps; `h3-experiment`'s tests read each new field back
-  through `h3_map::read`; `cargo xtask check-lane --cross-lane`.
-- **Depends on:** nothing. **Status:** ready.
+entries below are round 3 (round 2's T3a is done, `E09-log.md`); each later round's entries are
+written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
+acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E09 T3b — batch TWN-1's harness and run**
 
@@ -38,7 +20,10 @@ Definition of Done (`docs/05-testing.md`).
   `E09-batch-1`; the run in SoD on Easy, hot seat, as E08's T79 (original data staged); the
   results in `experiments/results/E09-batch-1.md`.
 - **Acceptance:** every row's record filled; the harness's check passes.
-- **Depends on:** T3a. **Status:** waiting (T3a).
+- **Notes from T3a:** the spec's map and template are built (stamp `7902bb9e`); three new games
+  for rows 1 and 2, rows 3 and 4 in the first (3a and 3b from one save, then row 4); the town
+  record's offsets are not in `docs/exe/structs.toml` yet (add them with the harness).
+- **Depends on:** T3a (done). **Status:** ready.
 
 **E09 T3c — batch TWN-1 scored**
 

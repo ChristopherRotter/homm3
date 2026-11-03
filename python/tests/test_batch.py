@@ -295,6 +295,37 @@ def test_the_system_actors_play_inside_the_call() -> None:
     assert ended > 0
 
 
+def test_a_seats_choice_played_outside_plays_as_the_seat_inside() -> None:
+    # v37 (E25 T16, the cloning bench's teacher): the fair system actor's choices, played by an
+    # external side, give the episodes it plays inside the call: here the attacker's choices
+    # through `choice` in both batches, the defender's inside one and through `choice` in the
+    # other. Every env has a choice; none is lost.
+    ended: list[dict[int, tuple[int, float]]] = []
+    for defender in ("system", "external"):
+        batch = BattleBatch(4, seed=7, max_steps=300)
+        batch.add_scenario(scenario("full"), defender=defender)
+        batch.add_scenario(scenario("siege"), defender=defender)
+        with pytest.raises(H3Error, match="H3_ERR_NOT_READY"):
+            batch.choice()
+        batch.reset()
+        episodes = {}
+        while len(episodes) < 12:
+            seeds = batch.episode_seed.copy()
+            encoded, lost = batch.choice("system")
+            assert lost == 0 and (encoded == 1).all()
+            assert defender == "external" or (batch.to_move == 0).all()
+            batch.step()
+            for env in np.nonzero(batch.done)[0]:
+                episodes[int(seeds[env])] = (int(batch.result[env]), float(batch.reward[env, 0]))
+        ended.append(episodes)
+        with pytest.raises(H3Error, match="H3_ERR_ARGUMENT"):
+            batch.choice("external")
+        batch.close()
+    common = ended[0].keys() & ended[1].keys()
+    assert len(common) >= 8
+    assert all(ended[0][seed] == ended[1][seed] for seed in common)
+
+
 def test_neutral_encounters_play_the_defender_inside_the_call() -> None:
     # The neutral kinds' defender is the system actor (A12, E06 T7).
     batch = BattleBatch(8, seed=5, max_steps=300)

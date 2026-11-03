@@ -5,6 +5,7 @@
 //! maps read back and imported in `rewards.rs` (E08 T56); its sea objects in `sea.rs` (E08 T67).
 
 mod economy;
+mod economy_map;
 mod encode;
 mod fixtures;
 mod full_maps;
