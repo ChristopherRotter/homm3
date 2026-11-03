@@ -11144,3 +11144,60 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
   Camp (increment 10); the Fountain of Fortune's, Magic Spring's and Stables' resets (their
   objects' increments); the computer's bonus, the handicap, humans first in a day, a defeat
   (E10); a revisit command (the original has none).
+
+### Increment 10, round 1: T88a, the dwellings and hiring survey; the checkpoint (2026-11-03, `adventure/e08-t88a`)
+
+Baseline: `master` at a3cbd7d (#674 merged); the sandbox's full engine verify with the original data
+green there (`scripts/verify-once.sh`; CI had not yet verified that code). The executable, the four
+LODs, the sound and video archives, the five DLLs, `maps.tar` and `extracted.tar` staged at the
+start (the user's computer went offline soon after, as announced). At its start the agent measured
+the reading (the dwelling's visit 1.9 KB, the camp's 0.4 KB, the flag 0.4 KB, the refill 0.1 KB,
+the hire dialog a manager of a few KB) and recommended the queue's two parts; the user chose
+**whole** (decision 233, `AskUserQuestion`; not chosen: two parts, three).
+
+**The survey** `docs/rules/surveys/E08-dwellings.md` (§0 to §15):
+
+- **The census** (§1) with a throwaway example (deleted): 17 by subclass (79 of 80; none of 18 or
+  19), 20 (Conflux 24, Factory 56), 78 (321 / 101), 216 to 218 by town tie, set and levels; 15
+  dwellings owned at load on 5 maps, no random one; no empty set, level past 6, inverted range or
+  dangling identifier; **206 random dwellings in scope** (79 of 216, 126 of 217, the 218), 96 of
+  them able to become the Golem Factory and 76 the Angel Portal; 5 maps with "flag all creature
+  dwellings"; one template per dwelling kind in `Objects.txt`.
+- **The reading** (§2 to §9): the dwelling record (0x5C, H3API `H3Generator`) and its init at load
+  (one week's growth; guards 3 × growth of each level-5+ creature: the Factory 9 + 6, the Conflux
+  12); the class-20 table (two rows); classes 18, 19 and kinds past the tables; the random
+  dwellings' resolution re-read at the linked town (a dangling identifier reads the entry before
+  the list) and every outcome's footprint from `Objects.txt` (two blocked bottom cells, the entrance
+  at the anchor for 45 kinds and one left for 13: the draw moves the entrance); the visit whole
+  (allies skip the guards and the flag; the guards asked with the total's size word and fought
+  unsplit with owner −1; the flag with radius 3; the free level-1 creatures on one's own
+  dwelling; the hire dialog, read-only for an ally); `set_dwelling_owner` whole; the hire dialog
+  (`H3RecruitMgr`: the most a player may buy from the count, the gold and one resource; the
+  purchase; the buttons); the week's refill whole (counts set to the growth, guards renewed,
+  owned or not, no week's or month's kind); the Refugee Camp (its creature as a random monster's
+  of levels 1–7 and its growth at the new game and each week; its visit whole); a defeat; what a
+  player sees (the hint and the popup: name and owner only; the camp its name).
+- **VCMI 1.7.5 and the wiki** compared at each point (§10's table): consensus but for **D-51** (the
+  guards' side: unowned; VCMI the owner's) and **D-52** (VCMI merges two stacks for free creatures);
+  quirk candidates **A-34** (an empty faction set gives Castle), **A-35** (a dangling town
+  identifier), **A-36** (18, 19, kinds past the tables), all three input bounds the import refuses.
+  No fresh second reading (the token rule); batch E10 has a row for each point that rests on the
+  reading alone.
+- **The interfaces** (§12, a sketch for T88b), **batch E10's plan** (§13: ten rows in two runs; the
+  harness's and the spec's gaps), **the proposed ids** (§14: the new families ADV-DWL and ADV-HIR,
+  ADV-RFG-001, GAM-DEC-008 and amendments).
+- **The address map:** 17 new entries (14 functions, a site, 2 tables), 5 corrected or extended
+  (`dwelling_week_refill` and `set_dwelling_owner` read, `dwelling_creatures`,
+  `random_dwellings_resolve`, `object_popup_text`); `structs.toml`'s `dwelling_record` and
+  `recruit_dialog`.
+
+**The checkpoint** (`ADV-Q42`, asked at the end, four questions; decisions 234–237): D-51 a
+`fix-optional` quirk (the user, after asking how the mines were: the owner plays its mine's guards,
+E9-2), D-52 as the original, the random dwellings in the increment with the original's footprints,
+batch E10 before the build.
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data` passed
+every step it runs (fmt, clippy, check-arch, check-rules, check-stubs, check-docs, check-exe-map,
+clients-lock, check-lane, test, coverage, determinism, bench-check, doc-drift, original-data; deny
+and ffi-smoke skipped by the scope; exit 2, its normal result); no code changed. CI's full verify
+on the pull request is the record.

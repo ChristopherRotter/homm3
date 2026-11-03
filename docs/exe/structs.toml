@@ -426,7 +426,7 @@ fields = [
   { offset = 0x4E372, name = "cartographer_bought", type = "u8[3]", summary = "per Cartographer kind the bits of the players who paid", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x4E37C, name = "messages", type = "message*", summary = "the signs' and Ocean Bottles' message records (the vector's begin; its end at +0x4E380), 20 bytes each, indexed by the object's word: +0 set when the map gave a text, the text's characters at +8 (load_message_body 0x501270; visit_object's cases 59 and 91; E08 T66a2)", confidence = "read", refs = ["rules/surveys/E08-sea.md §8.5"] },
   { offset = 0x4E38C, name = "mines", type = "mine*", summary = "the lighthouses' and mines' vector (begin), 0x40 bytes each, the owner at +0x0 (tile_object_owner 0x40FD20 by the tile's word; E24 M1 T5b1)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
-  { offset = 0x4E39C, name = "dwellings", type = "dwelling*", summary = "the dwellings' vector (classes 17 and 20; begin), 0x5C bytes each, the owner at +0x57 (0x40FD20)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
+  { offset = 0x4E39C, name = "dwellings", type = "dwelling_record*", summary = "the dwellings' vector (classes 17 and 20; begin), 0x5C bytes each (dwelling_record), the owner at +0x57 (0x40FD20)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
   { offset = 0x4E3AC, name = "garrisons", type = "garrison*", summary = "the garrisons' vector (class 33; begin), 0x40 bytes each, the owner at +0x0 (0x40FD20)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
   { offset = 0x4E3BC, name = "boats", type = "boat*", summary = "the boats' vector (begin; its end at +0x4E3C0), 0x28 bytes each, indexed by a boat tile's word (view_boat_piece 0x410760, hero_boat 0x4CE900)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x4E3CC, name = "universities", type = "skill[4]*", summary = "the Universities' vector (begin; its end at +0x4E3D0), four i32 skills each, indexed by the tile word's bits 13-24 (university_setup 0x4C06F0, university_skills 0x405E10)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.8"] },
@@ -752,6 +752,45 @@ fields = [
   { offset = 0x2, name = "abandoned", type = "u8", summary = "1 for an abandoned mine: its Troglodytes at the new game, the subterranean battlefield", confidence = "read", refs = ["rules/surveys/E08-economy.md §3.4"] },
   { offset = 0x4, name = "guards", type = "army", summary = "the guards: creature types +0x4 to +0x1F, counts +0x20 to +0x3B; a neutral single stack fights as slot 0 (visit_mine 0x4A39A0)", confidence = "read", refs = ["rules/surveys/E08-economy.md §3.2"] },
   { offset = 0x3C, name = "entrance", type = "u8[3]", summary = "the entrance's column, row and level", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.1"] },
+]
+
+[[struct]]
+name = "dwelling_record"
+size = 0x5C
+summary = "A dwelling's record (classes 17 and 20; the vector at game +0x4E39C; the entrance tile's word is its index; made by dwelling_record_init 0x4B8860 at the map's load; E08 T88a)."
+refs = ["rules/surveys/E08-dwellings.md §2.1", "rules/surveys/E08-dwellings.md §2.2"]
+h3api = "H3Generator"
+fields = [
+  { offset = 0x0, name = "class", type = "u8", summary = "17 or 20", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §2.1"] },
+  { offset = 0x1, name = "subclass", type = "u8", summary = "the kind: dwelling_creatures 0x63D570 or dwelling4_creatures 0x677938 by it, its name's row in CrGen1 or CrGen4", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §2.1"] },
+  { offset = 0x4, name = "creatures", type = "i32[4]", summary = "the creatures, -1 none (one for class 17, four for class 20)", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §2.1"] },
+  { offset = 0x14, name = "counts", type = "i16[4]", summary = "how many of each may be hired: set to the growth each week (dwelling_week_refill 0x4B8A60); the hire dialog lowers them through pointers", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §2.2", "rules/surveys/E08-dwellings.md §6.1", "rules/surveys/E08-dwellings.md §5.3"] },
+  { offset = 0x1C, name = "guards", type = "army", summary = "the guards: 3 x growth of each creature of level 5+ at load and each week; fought unowned (visit_dwelling 0x4A18B0), their losses kept", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §2.2", "rules/surveys/E08-dwellings.md §4.2"] },
+  { offset = 0x54, name = "entrance", type = "u8[3]", summary = "the entrance's column, row and level (dwelling_at 0x4BB900)", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §2.1"] },
+  { offset = 0x57, name = "owner", type = "i8", summary = "the owner colour, -1 none (set_dwelling_owner 0x4C67B0)", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §4.5"] },
+  { offset = 0x58, name = "unknown_58", type = "i8", summary = "set to -1 by dwelling_record_init; no reader met", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §2.1"] },
+]
+
+[[struct]]
+name = "recruit_dialog"
+size = 0xBC
+summary = "The hire dialog (H3API's H3RecruitMgr; vtable 0x640C70; recruit_dialog_init 0x551350): a dwelling's, a Refugee Camp's, the Portal of Summoning's; only what the docs cite (E08 T88a)."
+refs = ["rules/surveys/E08-dwellings.md §5.1", "rules/surveys/E08-dwellings.md §5.2", "rules/surveys/E08-dwellings.md §5.3"]
+h3api = "H3RecruitMgr"
+fields = [
+  { offset = 0x4C, name = "ally_dwelling", type = "u8", summary = "set by dwelling_offer_hire 0x4ABA50 for another player's (an ally's) dwelling: Recruit, Max and the slider stay disabled (H3API teamDwelling)", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.2"] },
+  { offset = 0x50, name = "selected_type", type = "i32", summary = "the selected creature", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x54, name = "selected_count", type = "i16*", summary = "a pointer to the selected creature's count (the dwelling's own; H3API calls it selectedAmount, an INT32)", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x58, name = "selected_index", type = "i32", summary = "the selected creature's index 0-3", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x5C, name = "types", type = "i32[4]", summary = "the creatures offered, -1 none", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x6C, name = "counts", type = "i16*[4]", summary = "pointers to their counts", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x84, name = "gold_cost", type = "i32", summary = "the selected creature's gold cost", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x88, name = "resource", type = "i32", summary = "its first other resource below 6, -1 none", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x8C, name = "resource_cost", type = "i32", summary = "that resource's amount", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x98, name = "army", type = "army*", summary = "the army the creatures join", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0x9C, name = "portal", type = "u8", summary = "the Portal of Summoning's dialog (its own no-room text, GENRLTXT 18)", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.1"] },
+  { offset = 0xAC, name = "most", type = "i32", summary = "the most the player may buy: min(gold / gold cost, the resource / its cost, the count) (recruit_dialog_select 0x5503A0)", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.2"] },
+  { offset = 0xB8, name = "amount", type = "i32", summary = "the amount to buy, at most the most", confidence = "read", refs = ["rules/surveys/E08-dwellings.md §5.2"] },
 ]
 
 [[struct]]

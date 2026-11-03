@@ -4,6 +4,25 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-03, E08 T88a: its entry as it stood before it was done whole, decision 233; the record in `E08-log.md`.)* **E08 T88a — the dwellings and hiring survey** (decision 232; as T77a for increment 9: survey file
+`docs/rules/surveys/E08-dwellings.md`)
+
+- **Scope:** the census of classes 17, 20, 216 to 218 and 78 on the 160 shipped maps (by subclass,
+  the owners at load, a random dwelling's faction set, level range and linked town; T76's counts in
+  `E08-log.md`, T76: 216 on 22 maps, 217 on 75, 218 on 1; the town lane's 1 397 tied dwellings on
+  87 maps); their `.h3m` bodies (`docs/formats/h3m.md`, VCMI 1.7.5's map reader); the original's
+  code (the dwellings' visit and flag, the hire dialog, the weekly population, the Refugee Camp's
+  weekly creature, a dwelling's guards; `docs/exe/README.md`, `scripts/exe.py`; the town lane's
+  readings in `docs/rules/surveys/E09-towns.md` §1.6, §2.1, §2.3, and `random_dwellings_resolve`
+  0x502B60), VCMI's and the wiki's rules; disputes `D-<n>` from 51, reading quirk candidates `A-<n>`
+  from 34; the proposed rule ids; the batch's plan on the client lane's harness (decision 232's
+  agent's call); what a player sees. Likely in two (T88a1 the objects and the census, T88a2 the
+  hiring, the week and the checkpoint), confirmed with the user at its start.
+- **Inputs:** decisions 231, 232; the inbox's town-lane notes (2026-10-31 on the hire dialog and the
+  weekly growth, 2026-11-02 on the random dwellings); E09 decision 4; ADR-0015 to -0017.
+- **Depends on:** T87c (done). **Status:** ready (the original data and the shipped maps are needed:
+  staging per `docs/08-work-process.md`, "Cloud sandbox").
+
 *(Moved 2026-11-03, E08 T87c: the "Tasks" text's lead, the rest of increment 9's chronicle, and the T87 entry as they stood before T87c closed increment 9.)* Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T86b1 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed. **Increment 9, mines, the week and owned objects** (ADV-Q36; decisions 192, 193): rounds 1 to 7 done, and round 8's T86 (decision 226): T86a (the economy map and its replays), T86b1 (the plans' properties) and T86b2 (decision 228: the economy XL, the day start's workloads, the re-baselines; `adventure/e08-t86b2` with `shared/e08-t86b2`); T87 in three (decision 230): T87a and T87b done, T87c left. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T87 — the audit; increment 9 closed; increment 10 refined** (decision 230: in three, each

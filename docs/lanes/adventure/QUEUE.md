@@ -4,35 +4,18 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T87c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1 queued, the survey and the ADR amendment drafts first (T88a, T88b), each task's cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T88a — the dwellings and hiring survey** (decision 232; as T77a for increment 9: survey file
-`docs/rules/surveys/E08-dwellings.md`)
-
-- **Scope:** the census of classes 17, 20, 216 to 218 and 78 on the 160 shipped maps (by subclass,
-  the owners at load, a random dwelling's faction set, level range and linked town; T76's counts in
-  `E08-log.md`, T76: 216 on 22 maps, 217 on 75, 218 on 1; the town lane's 1 397 tied dwellings on
-  87 maps); their `.h3m` bodies (`docs/formats/h3m.md`, VCMI 1.7.5's map reader); the original's
-  code (the dwellings' visit and flag, the hire dialog, the weekly population, the Refugee Camp's
-  weekly creature, a dwelling's guards; `docs/exe/README.md`, `scripts/exe.py`; the town lane's
-  readings in `docs/rules/surveys/E09-towns.md` §1.6, §2.1, §2.3, and `random_dwellings_resolve`
-  0x502B60), VCMI's and the wiki's rules; disputes `D-<n>` from 51, reading quirk candidates `A-<n>`
-  from 34; the proposed rule ids; the batch's plan on the client lane's harness (decision 232's
-  agent's call); what a player sees. Likely in two (T88a1 the objects and the census, T88a2 the
-  hiring, the week and the checkpoint), confirmed with the user at its start.
-- **Inputs:** decisions 231, 232; the inbox's town-lane notes (2026-10-31 on the hire dialog and the
-  weekly growth, 2026-11-02 on the random dwellings); E09 decision 4; ADR-0015 to -0017.
-- **Depends on:** T87c (done). **Status:** ready (the original data and the shipped maps are needed:
-  staging per `docs/08-work-process.md`, "Cloud sandbox").
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237), T88b next, its cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T88b — the ADR amendment drafts, the design note and the cut** (decision 232; as T77b)
 
 - **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
   10 (its pointer replaced; increment 9's note in `E08-log.md` as the model), the building rounds
-  cut; the checkpoint's question (ADV-Q42, or the next id if T88a's checkpoint takes it): the user
-  accepts the drafts before anything is built (decision 232).
-- **Inputs:** T88a's survey and its checkpoint's answers; decisions 231, 232.
-- **Depends on:** T88a. **Status:** waits for T88a; its cut confirmed with the user at its start.
+  cut, batch E10 first (decision 237: its spec, the harness's reads, its two runs, then its
+  scoring), the D-51 quirk's flag named (decision 234); the checkpoint's question (ADV-Q43): the
+  user accepts the drafts before anything is built (decision 232).
+- **Inputs:** the survey `docs/rules/surveys/E08-dwellings.md` (§12 the interfaces' sketch, §13
+  batch E10's plan, §14 the proposed ids, §15 the answers); decisions 231–237.
+- **Depends on:** T88a (done). **Status:** ready; its cut confirmed with the user at its start.
 
 ## Inbox
 
