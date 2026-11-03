@@ -11337,3 +11337,10 @@ Checked with the staged tables: a spec of the Dragon Cliffs, both 20s, the three
 a camp and the teams compiles, the template naming the teams.
 
 **Versions:** none moved (the writer and the spec only; the import reads the classes as before).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data`
+passed every step it runs but `check-lane` (by design on a `cross-lane` branch; `cargo xtask
+check-lane --cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo check --workspace
+--all-targets`, the clients' `cargo check -p h3-view -p h3-map-view --all-targets` (SDL's apt
+packages installed first) and clippy with `-D warnings` on `h3-experiment`, `h3-cli`, `h3-view`
+and `h3-map-view` clean. CI's full verify on the pull request is the record.
