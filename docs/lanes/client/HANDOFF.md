@@ -10,7 +10,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#620 merged); T2 cut in three by the user (2026-11-02): T2a1 done (#645), T2a2a done (#650);
   T2a2b cut in two: T2a2b1 done (#658), T2a2b2 done (#661); T2b cut in two by the user
   (2026-11-03): **T2b1 done** (the right button's held dialog over any stack, design §12.5; T2a1's
-  Ballista slip fixed; five stills exact; the PR from `client/e17-m6-t2b1`: check it first);
+  Ballista slip fixed; five stills exact; #668 from `client/e17-m6-t2b1`: check it first);
   **next: T2b2** (a turret's info, its code read at T2b1: the map's `turret_info`,
   `turret_info_line`), T3 to T7; this lane's inbox: the descriptions' other lines once the
   battle lane's carry lands; then M7 ranked play and the server browser.
@@ -42,7 +42,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T2b1 (done; its PR open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T2b1 (done; #668 open: check it first).** The original data staged
   (57 files) first; the baseline's `check.sh` passed; #661 had merged. The user cut T2b in two
   (T2b1 the stack's held dialog, T2b2 a turret's info). Read `battle_right_click` whole and the
   held branch (design §12.5), `turret_info` for T2b2; built `mouse::held_at` and the held dialog
