@@ -142,6 +142,14 @@ class Config:
     #: samples over `lr_horizon`, as the learning rate, to `entropy_coef * entropy_floor`, then
     #: stays; 1 keeps it constant (every run before T10a).
     entropy_floor: float = field(default=1.0, metadata=_in("ppo"))
+    #: The imitation loss (E25 T21, increment 6, decision 3's second form; `ppo`'s
+    #: documentation): the weight of an auxiliary cross-entropy to the fair system actor's
+    #: choice on the learner's own decisions, falling linearly to 0 over `imitation_horizon`
+    #: (`imitation_weight`). 0 (the default): no teacher is asked, the training as before T21.
+    imitation_coef: float = field(default=0.0, metadata=_in("ppo"))
+    #: The samples over which `imitation_coef` falls to 0 (0: `lr_horizon`'s, the budget at the
+    #: run's start by default).
+    imitation_horizon: int = field(default=0, metadata=_in("ppo"))
     max_grad_norm: float = field(default=0.5, metadata=_in("ppo"))
     #: What a battle cut at `max_steps` costs each learning side (E06 T5c, the user's amendment
     #: of decision 10): its last transition gets `-truncation_penalty` and ends there, instead of
@@ -381,12 +389,14 @@ def resolve(config: Config) -> Config:
         "torch_threads",
         "ladder_promoted",
         "tactics_rounds",
+        "imitation_horizon",
     ):
         if getattr(c, key) < 0:
             problems.append(f"`{key}` must not be negative")
-    if c.checkpoint_minutes < 0 or c.pfsp_power < 0 or c.truncation_penalty < 0:
+    if min(c.checkpoint_minutes, c.pfsp_power, c.truncation_penalty, c.imitation_coef) < 0:
         problems.append(
-            "`checkpoint_minutes`, `pfsp_power` and `truncation_penalty` must not be negative"
+            "`checkpoint_minutes`, `pfsp_power`, `truncation_penalty` and `imitation_coef` must "
+            "not be negative"
         )
     if c.lr_schedule not in ("linear", "constant"):
         problems.append("`lr_schedule` is linear or constant")
@@ -476,6 +486,15 @@ def entropy_bonus(config: Config, samples: int) -> float:
         return config.entropy_coef
     progress = samples / max(config.lr_horizon, 1)
     return config.entropy_coef * max(1.0 - progress, config.entropy_floor)
+
+
+def imitation_weight(config: Config, samples: int) -> float:
+    """The imitation loss's weight after `samples` (E25 T21): `imitation_coef` falling linearly
+    to 0 over `imitation_horizon` (0: `lr_horizon`), then 0; 0 throughout by default."""
+    if not config.imitation_coef:
+        return 0.0
+    progress = samples / max(config.imitation_horizon or config.lr_horizon, 1)
+    return config.imitation_coef * max(1.0 - progress, 0.0)
 
 
 class Cadence:
@@ -650,6 +669,10 @@ CURVE = (
     "clip",
     "explained_variance",
 )
+#: The imitation loss's update fields (E25 T21) the curve averages over the updates that have
+#: them (its weight may reach 0 inside an interval): the cross-entropy to the teacher, the
+#: learner's agreement with it, the teacher's seconds per rollout.
+IMITATION_CURVE = ("imitation_loss", "teacher_agreement", "teacher_s")
 
 
 def _segment(record: dict[str, Any]) -> dict[str, Any]:
@@ -701,6 +724,8 @@ class Record:
         self.ladders: list[dict[str, Any]] = []
         self._sums: dict[str, float] = {}
         self._count = 0
+        #: `IMITATION_CURVE`'s sums and counts since the last gate.
+        self._imitation: dict[str, list[float]] = {}
         #: Per encounter kind since the last gate: the attacker's wins, truncations, episodes.
         self._kinds: dict[str, list[float]] = {}
         #: Per side of the learner against the system actor since the last gate: its score sum
@@ -750,9 +775,15 @@ class Record:
                 if value is not None and value == value:  # NaN (no variance) counts nothing
                     self._sums[k] = self._sums.get(k, 0.0) + float(value)
             self._count += 1
+            for k in IMITATION_CURVE:
+                if record.get(k) is not None:
+                    sums = self._imitation.setdefault(k, [0.0, 0])
+                    sums[0] += float(record[k])
+                    sums[1] += 1
         elif kind == "gate":
             if self._count:
                 point = {k: v / self._count for k, v in self._sums.items()}
+                point.update({k: v / n for k, (v, n) in self._imitation.items()})
                 if self._kinds:
                     point["by_kind"] = {
                         name: {
@@ -771,6 +802,7 @@ class Record:
                     {"samples": record["samples"], "updates": record["update"], **point}
                 )
             self._sums, self._count, self._kinds, self._system = {}, 0, {}, {}
+            self._imitation = {}
             self.gates.append({**at, **{k: record[k] for k in GATE}})
             self.progress["evaluation_minutes"] += record["seconds"] / 60
         elif kind == "promotion":

@@ -982,3 +982,74 @@ an entry only where a task builds on it.
   melee 0.40 of 0.941) and the casts' targets (0.64 of 1.000); the tactics phase and the shots
   gain most. T22's student is this one (`runs/clone-2/students/mlp.pt`, on the user's machine):
   a start +0.015 above `e25-clone-1`'s.
+
+## T21 — The imitation loss (2026-11-03)
+
+- **Built:** `[ppo] imitation_coef` (0, off, by default) and `imitation_horizon` (0: the
+  learning rate's horizon): the weight falls linearly to 0 (`run.imitation_weight`). While it is
+  above 0, each rollout call asks the fair system actor (`ppo.TEACHER`, moved from `clone`) for
+  every env's choice before the step (`BattleBatch.choice`, C ABI v37), and `Trainer.label`
+  keeps it on the learning rows (a league member's rows and the internal defender's get none)
+  whose choice a batch action plays and whose entry the learner's mask (its tactics bound's)
+  holds, with the cast heads' masks along the teacher's choice. The update adds the weight times
+  the mean over a minibatch's labelled rows of −log π(the teacher's action) (the entry, a cast's
+  heads), through the same pass of the trunk as PPO's terms (`Policy.evaluate` split into
+  `entries` and `along`). The update records gain `imitation_coef`, and while it is above 0
+  `imitation_loss`, `teacher_rows`, `teacher_lost`, `teacher_agreement` (the learner's sampled
+  entry the teacher's) and `teacher_s`; the curve averages the last three over the updates that
+  have them; the update line shows the weight, the cross-entropy and the agreement.
+  `configs/e25-imitate.toml`: T22's arm. Tests: three in `test_train.py`, four in `test_run.py`;
+  the Python suite 197 passed.
+- **Decision 3's question** (do the teacher's calls consume draws the learner's episode would
+  see?): **no.** `BattleBatch::choice` draws from the side to move's seat stream; at a call the
+  side to move is always an external seat (the internal ones play inside `step`), whose stream
+  nothing else reads, and `begin` seeds both streams afresh per episode. Tested: a rollout with
+  labels is the one without, bit for bit (observations, actions, sides, rewards), on a mix with a
+  league member and the internal defender, and its first call's labels are the fair actor's
+  choices on a twin batch. At weight 0 no teacher is asked: three rollouts and updates of a fixed
+  config give the same digest (weights, statistics, rollouts) on `master`'s code and the branch.
+- **Agent decisions** (change freely): the horizon defaults to the learning rate's; the call
+  takes every env (the C call selects no rows: a member's rows cost the teacher too); the loss
+  rides on PPO's minibatches (the closed transitions) and averages over their labelled rows; an
+  entry past the tactics bound labels nothing; the label is the teacher's choice (a one-hot
+  cross-entropy, as T16's clone: the fair actor gives a choice, not a distribution); neither key
+  resumes changed.
+- **The CPU check** (the sandbox's 4 cores; commit `3dd8055`, clean, C ABI v37, system policy
+  19; `python/records/imitate/t21-check-*.json`): a clone of 0.53 M samples (T16's bench, its
+  held-out agreement 0.475), then 0.41 M samples of PPO from it at `e25-neutral.toml`'s settings
+  with the weight 0, 0.5 and 2 (the horizon 10 M: nearly constant), the four networks scored by
+  T19's tool against the fair actor's draws (25 600 states, 8 draws each; the learners from their
+  `checkpoint.pt`):
+
+  | Network | All | Tactics | Wait, defend | Moves | Melee | Shots | Casts | CE | Entropy | Samples/s |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | the clone | 0.466 | 0.731 | 0.424 | 0.192 | 0.295 | 0.515 | 0.831 | 1.806 | | |
+  | weight 0 | 0.422 | 0.711 | 0.367 | 0.128 | 0.257 | 0.437 | 0.808 | 2.011 | 1.89 | 1 475 |
+  | weight 0.5 | 0.450 | 0.660 | 0.244 | 0.219 | 0.286 | 0.508 | 0.893 | 1.975 | 2.32 | 1 139 |
+  | weight 2 | 0.453 | 0.650 | 0.242 | 0.227 | 0.294 | 0.512 | 0.905 | 1.972 | 2.30 | 1 185 |
+
+  (Agreement of the most likely entry with the teacher's draws; CE on them in nats; the entropy
+  the last update's; samples a second from the second update on.) On the labels (the learner's
+  own states) the cross-entropy fell 2.53 to 2.32 (weight 0.5) and 2.46 to 2.26 (2); the
+  sampled agreement 0.24 to 0.26 and 0.27; no choice lost, every learning row labelled. **The
+  teacher's cost:** 120 to 127 µs a decision on the batch's 4 threads, 14 % of a run's time;
+  the update 10 % longer (the labels' pass of the heads); throughput −20 to −23 %. On the user's
+  machine (T20: the teacher with its step 51 µs a decision on 24 threads, PPO about 200 µs a
+  sample) an estimated +10 to 25 % over the horizon only (`teacher_s` measures it in T22's
+  record).
+- **The read:** the loss works as designed and holds the learner nearer the teacher (agreement
+  −0.013 to −0.016 over 0.4 M of PPO, −0.044 without; moves, melee, shots and casts kept or
+  gained), but on the teacher's own states the cross-entropy still rises (1.81 to 1.97 with it,
+  2.01 without): the labels sit on the learner's states, which drift from the teacher's. Weight
+  2 is weight 0.5: the gradient's norm clip (0.5) bounds the step, the weight sets only the mix
+  of its direction. Two side effects for T22's read: the entropy stays up (2.3 against 1.9; a
+  cross-entropy to labels the network cannot fit spreads its policy, where PPO and the entropy
+  bonus's floor 0 sharpen it; T9b: sharpening is worth about 0.01), and the tactics phase and
+  wait or defend lose more agreement with the loss than without (0.73 to 0.65 and 0.42 to 0.24,
+  against 0.71 and 0.37), unexplained at this length. A 0.5 M clone and 0.4 M of PPO on the CPU
+  say nothing of strength.
+- **T22's arms** (proposed; fixed with the user when prepared): `e25-clone-2`
+  (`e25-neutral.toml`) and `e25-imitate-1` (`e25-imitate.toml`: weight 0.5, horizon 10 M, half
+  the run; the teacher no longer asked in the second half), both `--init-from` T20's student
+  (`runs/clone-2/students/mlp.pt`), the commands in the config's header; T19's tool scores both
+  arms' final networks against the teacher beside their ladders.

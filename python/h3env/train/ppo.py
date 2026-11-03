@@ -52,6 +52,20 @@ Shaping (E25 T2a, `[ppo] shaping`): each learning side's transition gains Î¦(sâ€
 batch's potential (reward v1 as if the battle ended now) at the side's decisions, 0 at its
 episode's start and end (`Trainer.shape`), so an episode's shaped return is its reward v1 (with
 a cut's `-truncation_penalty`).
+
+The imitation loss (E25 T21, increment 6, decision 3's second form; `[ppo] imitation_coef`): while
+its weight (`run.imitation_weight`, falling linearly to 0 over `imitation_horizon`) is above 0, each
+call of a rollout first asks the fair system actor (`TEACHER`, never the all-seeing one) for its
+choice for every env's side to move (`BattleBatch.choice`, C ABI v37), and the learning rows keep
+it as a label (`Trainer.label`): its entry and cast heads, with the heads' masks along its
+choice; a row whose choice no batch action plays, or whose entry the learner's mask (its tactics
+bound's) lacks, has none. The update adds the weight times the cross-entropy of the learner's
+policy on the labels (the teacher's action's log-probability, through the same pass of the trunk
+as PPO's terms, averaged over a minibatch's labelled rows). The call draws from the side to
+move's seat stream, which no external seat otherwise reads (the internal seats draw from their
+own side's, the battle from its own streams): the episodes, and so the rollout, are the ones
+played without it. Reward v1, the gate and the ladders are unchanged; at weight 0 no teacher is
+asked and the training is the one before T21.
 """
 
 from __future__ import annotations
@@ -80,7 +94,7 @@ from .evaluate import (
 )
 from .gate import Bounds, game_score, gate
 from .league import League, Member
-from .policy import Choice, Policy, build
+from .policy import CASTS, Choice, Policy, build, rows_of
 from .run import (
     Cadence,
     Config,
@@ -91,6 +105,7 @@ from .run import (
     Stop,
     atomic_write,
     entropy_bonus,
+    imitation_weight,
     learning_rate,
     machine,
     resolve,
@@ -103,6 +118,10 @@ from .run import (
 #: The version of `checkpoint.pt`'s layout (`Trainer.state`); 2: the gate's state instead of the
 #: evaluations' (T3b); 3: the league instead of the pool, its networks outside (T4a).
 CHECKPOINT_FORMAT = 3
+
+#: The teacher of the imitation loss and of the cloning bench (`clone`): the fair system actor's
+#: seat (C ABI v36), never the all-seeing one (E25 decision 3).
+TEACHER = "system"
 
 
 class Rollout:
@@ -138,6 +157,29 @@ class Rollout:
         self.terminal = np.zeros((t, n), bool)
         self.truncated = np.zeros((t, n), bool)
         self.final_value = np.zeros((t, n), np.float32)
+        #: The teacher's labels (E25 T21, `teach`; None until a rollout is labelled) and whether
+        #: this rollout's calls were.
+        self.teacher: dict[str, np.ndarray] | None = None
+        self.labelled = False
+
+    def teach(self, batch: BattleBatch) -> dict[str, np.ndarray]:
+        """The imitation loss's label arrays, [call, env] as the learner's (allocated at the first
+        labelled rollout): the teacher's entry and cast heads with their masks, under the
+        learner's fields' names, and `labelled`, the rows that hold a label."""
+        if self.teacher is None:
+            t, n = self.entry.shape
+            self.teacher = {
+                "entry": np.zeros((t, n), np.int64),
+                "cast": np.zeros((t, n), bool),
+                "spell_mask": np.zeros((t, n, batch.spell_count), bool),
+                "spell": np.zeros((t, n), np.int64),
+                "target_mask": np.zeros((t, n, batch.target_count), bool),
+                "target": np.zeros((t, n), np.int64),
+                "second_mask": np.zeros((t, n, batch.target_count), bool),
+                "second": np.zeros((t, n), np.int64),
+                "labelled": np.zeros((t, n), bool),
+            }
+        return self.teacher
 
     def clear(self) -> None:
         self.side.fill(-1)
@@ -146,6 +188,10 @@ class Rollout:
         self.terminal.fill(False)
         self.truncated.fill(False)
         self.cast.fill(False)
+        self.labelled = False
+        if self.teacher is not None:
+            self.teacher["labelled"].fill(False)
+            self.teacher["cast"].fill(False)
 
     def store(self, t: int, batch: BattleBatch, choice: Choice, side: np.ndarray) -> None:
         """Call `t`'s samples: the batch's outputs before the step, the chosen actions and each
@@ -554,6 +600,39 @@ class Trainer:
         self.passes = len(groups)
         return choice, np.where(frozen, -1, to_move).astype(np.int8)
 
+    def label(self, t: int, choice: Choice, side: np.ndarray) -> tuple[int, int, int]:
+        """Call `t`'s labels for the imitation loss (E25 T21, the module's documentation): the
+        teacher's choice for each env's side to move, asked before the step (it writes the
+        batch's actions, which the caller then replaces by the learner's), kept on the learning
+        rows (`side`, `act`'s) whose choice a batch action plays and whose entry the learner's
+        mask (`choice.entry_mask`, its tactics bound's) holds, with its cast heads' masks along
+        it. Returns the rows labelled, the choices lost (none expected) and the labelled rows
+        whose sampled entry was the teacher's."""
+        b = self.batch
+        k = self.rollout.teach(b)
+        encoded, lost = b.choice(TEACHER)
+        a = b.actions
+        entry = a["entry"].astype(np.int64)
+        ok = (side >= 0) & (encoded == 1)
+        rows = np.nonzero(ok)[0]
+        ok[rows] = choice.entry_mask[rows, entry[rows]].astype(bool)
+        cast = ok & np.isin(entry, CASTS)
+        k["labelled"][t] = ok
+        k["entry"][t] = entry
+        k["cast"][t] = cast
+        for name in ("spell", "target", "second"):
+            k[name][t] = a[name]
+        if cast.any():
+            # The head calls take every env's choices: the other rows' entries stay 0 (no cast).
+            entries = np.where(cast, a["entry"], 0)
+            spells = np.where(cast, a["spell"], 0)
+            targets = np.where(cast, a["target"], 0)
+            k["spell_mask"][t, cast] = b.spell_mask(entries)[cast]
+            k["target_mask"][t, cast] = b.target_mask(entries, spells)[cast]
+            k["second_mask"][t, cast] = b.second_mask(entries, spells, targets)[cast]
+        agree = int((ok & (choice.entry == entry)).sum())
+        return int(ok.sum()), int(lost), agree
+
     def collect(self, stop: Stop | None = None) -> dict | None:
         """Plays one rollout; returns its episodes' statistics, or None when `stop` was
         requested before one of its calls (the rollout is discarded: it changed no weights and
@@ -576,12 +655,21 @@ class Trainer:
         #: and games.
         against_system = [[0.0, 0], [0.0, 0]]
         passes = 0
+        # The imitation loss's labels while its weight is above 0 (E25 T21): the rows labelled,
+        # the choices lost, the labelled rows whose entry the learner drew, the teacher's seconds.
+        r.labelled = imitation_weight(c, self.samples) > 0
+        teacher = [0, 0, 0, 0.0]
         for t in range(c.rollout):
             if stop is not None and stop.requested:
                 return None
             choice, side = self.act()
             passes += self.passes
             r.store(t, b, choice, side)
+            if r.labelled:
+                tick = time.perf_counter()
+                for i, n in enumerate(self.label(t, choice, side)):
+                    teacher[i] += n
+                teacher[3] += time.perf_counter() - tick
             live = side >= 0
             decisions += int(live.sum())
             self.opened[rows[live], side[live].astype(np.intp)] = t
@@ -654,7 +742,18 @@ class Trainer:
         self.last_side = np.where(frozen, -1, b.to_move).astype(np.int8)
         ended = int(results.sum()) + truncated
         games = sum(g for _, g in tally.values())
+        labels = {}
+        if r.labelled:
+            # The teacher's rows, its lost choices, the learner's agreement with its entry (the
+            # sampled policy's) and its seconds (inside `rollout_s`).
+            labels = {
+                "teacher_rows": teacher[0],
+                "teacher_lost": teacher[1],
+                "teacher_agreement": teacher[2] / max(teacher[0], 1),
+                "teacher_s": teacher[3],
+            }
         return {
+            **labels,
             "decisions": decisions,
             "rollout_s": elapsed,
             # The self-play episodes that ended (the rates' denominator); not `episodes`, the
@@ -707,9 +806,11 @@ class Trainer:
     def update(self, lr: float, entropy_coef: float | None = None) -> dict:
         """PPO's update over the rollout's samples at the learning rate `lr` and the entropy
         bonus `entropy_coef` (`[ppo] entropy_coef` when None; the run's schedule,
-        `entropy_bonus`)."""
+        `entropy_bonus`), with the imitation loss at its weight (`imitation_weight`) when the
+        rollout is labelled (E25 T21)."""
         c, r = self.config, self.rollout
         bonus = c.entropy_coef if entropy_coef is None else entropy_coef
+        weight = imitation_weight(c, self.samples) if r.labelled else 0.0
         adv, used = gae(
             r.side,
             r.value,
@@ -732,8 +833,13 @@ class Trainer:
         arrays["adv"], arrays["returns"] = adv, returns
         if r.preview is not None:
             arrays["preview"] = r.preview
+        if weight:
+            assert r.teacher is not None
+            arrays.update({f"teacher_{name}": array for name, array in r.teacher.items()})
         stats = {"policy_loss": 0.0, "value_loss": 0.0, "entropy": 0.0, "kl": 0.0, "clip": 0.0}
         steps = 0
+        #: The imitation loss's sum and the minibatches with a label.
+        imitation = [0.0, 0]
         rng = np.random.default_rng(self.updates)
         # Two samples at least: a single one's advantage has no spread (NaN, E06 T9b).
         size = max(2, len(flat) // c.minibatches)
@@ -741,14 +847,12 @@ class Trainer:
             order = rng.permutation(flat)
             for k in range(0, len(order) - size + 1, size):
                 m = self.staging.gather(arrays, np.sort(order[k : k + size]))
-                logp, ent, value = self.policy.evaluate(
-                    m["obs"],
-                    m["entry_mask"],
-                    m["entry"],
-                    m["cast"],
-                    tuple(m[n] for n in FIELDS[4:10]),
-                    m.get("preview"),
+                # `Policy.evaluate` in two halves, so that the teacher's labels share the pass.
+                h, logits, value = self.policy.entries(m["obs"], m["entry_mask"], m.get("preview"))
+                logp, ent = self.policy.along(
+                    h, logits, m["entry"], m["cast"], tuple(m[n] for n in FIELDS[4:10])
                 )
+                assert ent is not None
                 old = m["logprob"]
                 a = m["adv"]
                 a = (a - a.mean()) / (a.std() + 1e-8)
@@ -756,6 +860,21 @@ class Trainer:
                 pg = torch.max(-a * ratio, -a * ratio.clamp(1 - c.clip, 1 + c.clip)).mean()
                 v_loss = 0.5 * ((value - m["returns"]) ** 2).mean()
                 loss = pg - bonus * ent.mean() + c.value_coef * v_loss
+                if weight:
+                    lab = torch.nonzero(m["teacher_labelled"]).squeeze(1)
+                    if lab.numel():
+                        teacher_logp, _ = self.policy.along(
+                            rows_of(h, lab),
+                            logits[lab],
+                            m["teacher_entry"][lab],
+                            m["teacher_cast"][lab],
+                            tuple(m[f"teacher_{n}"][lab] for n in FIELDS[4:10]),
+                            with_entropy=False,
+                        )
+                        ce = -teacher_logp.mean()
+                        loss = loss + weight * ce
+                        imitation[0] += ce.item()
+                        imitation[1] += 1
                 self.optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), c.max_grad_norm)
@@ -769,6 +888,11 @@ class Trainer:
                 stats["entropy"] += ent.mean().item()
                 steps += 1
         stats = {k: v / max(steps, 1) for k, v in stats.items()}
+        stats["imitation_coef"] = weight
+        if weight:
+            # The cross-entropy on the teacher's labels per labelled row, over the minibatches
+            # with one (None: none had).
+            stats["imitation_loss"] = imitation[0] / imitation[1] if imitation[1] else None
         y, p = returns.reshape(-1)[flat], r.value.reshape(-1)[flat]
         var = float(np.var(y))
         stats["explained_variance"] = float("nan") if var == 0 else 1 - float(np.var(y - p)) / var

@@ -41,6 +41,7 @@ from h3env.train.run import (
     by_table,
     check_record,
     entropy_bonus,
+    imitation_weight,
     key_path,
     learning_rate,
     load_config,
@@ -128,6 +129,8 @@ lr_schedule = "constant"
         ("", ["league.system_share=0.25"], "needs `\\[env\\] kinds`"),
         ("", ["league.system_share=0.25", "env.kinds=[1, 0, 0, 0, 0, 1]"], "needs a player kind"),
         ("", ["ppo.shaping=true", "ppo.truncation_penalty=0"], "`shaping` needs"),
+        ("", ["ppo.imitation_coef=-1"], "`imitation_coef` must not be negative"),
+        ("", ["ppo.imitation_horizon=-1"], "`imitation_horizon` must not be negative"),
         ("", ["ppo.lr"], "table.key=value"),
         ("seed = [", [], "not TOML"),
         ("", ["ppo.lr_schedule=cosine"], "linear or constant"),
@@ -214,6 +217,22 @@ def test_the_entropy_bonus_falls_with_the_learning_rate_to_its_floor() -> None:
         "samples = 1000\n[ppo]\nentropy_coef = 1.0\nentropy_floor = 0\nlr_horizon = 4000\n"
     )
     assert entropy_bonus(c, 1000) == 0.75
+
+
+def test_the_imitation_weight_falls_to_0_over_its_horizon() -> None:
+    # E25 T21: 0 throughout by default (no teacher is asked); else linear from `imitation_coef`
+    # to 0 over `imitation_horizon`, the learning rate's horizon when 0, then 0.
+    assert {imitation_weight(Config(), s) for s in (0, 10**9)} == {0.0}
+    c = load_config("samples = 1000\n[ppo]\nimitation_coef = 1.0\n")
+    assert [imitation_weight(c, s) for s in (0, 500, 1000, 5000)] == [1.0, 0.5, 0.0, 0.0]
+    c = load_config("samples = 1000\n[ppo]\nimitation_coef = 2.0\nlr_horizon = 4000\n")
+    assert imitation_weight(c, 1000) == 1.5
+    c = load_config("samples = 1000\n[ppo]\nimitation_coef = 2.0\nimitation_horizon = 250\n")
+    assert [imitation_weight(c, s) for s in (0, 125, 250, 1000)] == [2.0, 1.0, 0.0, 0.0]
+    assert key_path("imitation_horizon") == "ppo.imitation_horizon"
+    # Not resumable: a changed weight or horizon changes the training.
+    with pytest.raises(ConfigError, match="ppo.imitation_coef would change the training"):
+        resumed(c, ["ppo.imitation_coef=0.5"])
 
 
 def test_a_cadence_is_due_once_per_multiple() -> None:
@@ -596,6 +615,54 @@ def test_the_record_scores_the_learner_against_the_system_actor_by_side(tmp_path
     assert line(shown).endswith(" ev +nan system-attacker 0.33 system-defender 0.50")
 
 
+def test_the_record_averages_the_imitation_loss_over_the_updates_that_have_it(
+    tmp_path: Path,
+) -> None:
+    # E25 T21: the imitation loss's fields enter a curve point averaged over the updates that
+    # carry them (its weight may reach 0 inside a gate interval); a point without any lacks them.
+    run = Run(tmp_path / "r", load_config("samples = 30\n"), IDENTITY, "samples = 30\n")
+
+    def update(u: int, loss: float, agreement: float) -> dict:
+        return {
+            **_update(u, 10 * u, 1.0),
+            "imitation_coef": 0.5,
+            "imitation_loss": loss,
+            "teacher_agreement": agreement,
+            "teacher_s": 2.0,
+        }
+
+    records = [
+        {"type": "start", "name": "r", "update": 0, "samples": 0, "episodes": 0, "minutes": 0.0},
+        update(1, 1.5, 0.25),
+        update(2, 0.5, 0.75),
+        {**_update(3, 30, 1.0), "imitation_coef": 0.0},
+        _gate(3, 30, "rejected"),
+        {**_update(4, 40, 1.0), "imitation_coef": 0.0},
+        _gate(4, 40, "rejected"),
+    ]
+    for r in records:
+        run.emit(r)
+    run.write_record()
+    run.close()
+    record = json.loads((tmp_path / "r" / "record.json").read_text())
+    assert check_record(record) == []
+    first, second = record["curve"]
+    assert (first["imitation_loss"], first["teacher_agreement"], first["teacher_s"]) == (
+        1.0,
+        0.5,
+        2.0,
+    )
+    assert first["policy_loss"] == 1.0
+    assert not {"imitation_loss", "teacher_agreement", "teacher_s"} & set(second)
+    shown = {
+        **records[1],
+        **dict.fromkeys(("samples_per_s", "attacker_won", "truncated", "league_score"), 0.5),
+        **dict.fromkeys(("league", "frozen_passes", "value_loss", "entropy", "kl"), 1),
+    }
+    assert line(shown).endswith(" ev +nan imitate 0.500 ce 1.500 agree 0.25")
+    assert "imitate" not in line({**shown, "imitation_loss": None})
+
+
 def test_check_record_names_what_is_missing() -> None:
     assert check_record([]) == ["not a JSON object"]
     assert check_record({"schema": RECORD_SCHEMA + 1})[0].startswith("schema")
@@ -726,6 +793,20 @@ def test_increment_5s_mix_is_the_sharp_runs_with_the_neutral_kinds_back() -> Non
     trainable(neutral)
     assert neutral.kinds == t7.kinds == [78, 2, 100, 50, 25, 3]
     assert dataclasses.replace(neutral, kinds=sharp.kinds) == sharp
+
+
+def test_increment_6s_imitation_arm_is_the_control_with_the_loss() -> None:
+    # E25 T21 (AI-Q15 decision 4): T22's imitation arm runs the control's mix, length and seed
+    # (`e25-neutral.toml`, `e25-clone-1`'s) with the imitation loss, off by default.
+    configs = PYTHON / "configs"
+    imitate, neutral = (
+        load_config((configs / f"{n}.toml").read_text()) for n in ("e25-imitate", "e25-neutral")
+    )
+    trainable(imitate)
+    assert (Config().imitation_coef, Config().imitation_horizon) == (0.0, 0)
+    assert (neutral.imitation_coef, neutral.imitation_horizon) == (0.0, 0)
+    assert 0 < imitate.imitation_coef and 0 < imitate.imitation_horizon <= imitate.samples
+    assert dataclasses.replace(imitate, imitation_coef=0.0, imitation_horizon=0) == neutral
 
 
 def test_the_league_draws_scores_and_retires() -> None:

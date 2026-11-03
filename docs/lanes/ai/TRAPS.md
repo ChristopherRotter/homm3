@@ -116,6 +116,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   gate, `inspect`) run on the user's machine and their output is uploaded (E25 T7d).
 - The sandbox reaches PyTorch's index only while the environment's network access allows
   `*.pytorch.org` (**Custom**; **Trusted** ignores the Allowed domains). `uv --directory python
-  sync --group train`: 3 to 25 minutes.
+  sync --group train`: 3 to 25 minutes. A wheel that crawls (E25 T21: cuDNN at about 70 KB/s for
+  an hour, its `.tmp*` folder under `~/.cache/uv` barely growing, while a fresh `curl` of the
+  index ran at 20 MB/s) is a stalled connection: stop uv by its pid and sync again; the finished
+  wheels are cached (the rerun took 9 s).
 
 - **Procedures as skills:** for a speed or replay question use the skills `homm3-bench-regression`; measure right after the first build (`AGENTS.md`, "Measure before you polish").

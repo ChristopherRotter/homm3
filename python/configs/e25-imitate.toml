@@ -1,0 +1,38 @@
+# E25 T22's imitation arm (increment 6, AI-Q15; T21's loss): `e25-neutral.toml`'s mix, length and
+# seed (the control `e25-clone-1`'s, T17) with the imitation loss, a cross-entropy to the fair
+# system actor's choice on the learner's own decisions (`[ppo] imitation_coef`), its weight falling
+# linearly to 0 over the first half of the budget (`imitation_horizon`). From T20's student, beside
+# `e25-clone-2` (the same start without the loss, `e25-neutral.toml`). The weight and the horizon
+# are T21's proposal (E25-log T21), fixed with the user when T22 is prepared. From python/:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-neutral.toml --init-from runs/clone-2/students/mlp.pt --out runs/e25-clone-2
+#   uv run --group train python -m h3env.train --config configs/e25-imitate.toml --init-from runs/clone-2/students/mlp.pt --out runs/e25-imitate-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+tactics_rounds = 3
+
+[ppo]
+shaping = true
+entropy_floor = 0.0
+imitation_coef = 0.5
+imitation_horizon = 10_000_000
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500
