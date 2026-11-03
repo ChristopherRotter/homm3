@@ -130,10 +130,9 @@ fn hero_lines(
     let mut listed = 0;
     for &(id, context) in artifacts {
         if list.artifacts.contains(&id) {
-            lines.push_str(&catalogue.text(
-                &format!("{prefix}.artifact"),
-                &Args::new().context(context),
-            ));
+            lines.push_str(
+                &catalogue.text(&format!("{prefix}.artifact"), &Args::new().context(context)),
+            );
             listed += if id == PENDANT { 3 } else { 1 };
         }
     }
@@ -141,10 +140,7 @@ fn hero_lines(
         .checked_sub(1)
         .and_then(|k| LEVELS.get(k))
     {
-        lines.push_str(&catalogue.text(
-            &format!("{prefix}.skill"),
-            &Args::new().context(context),
-        ));
+        lines.push_str(&catalogue.text(&format!("{prefix}.skill"), &Args::new().context(context)));
         listed += i32::from(list.skill);
     }
     let rest = list.total - listed;

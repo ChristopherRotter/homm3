@@ -984,10 +984,7 @@ fn the_heros_changes_are_the_bases() {
         hero_morale: skill(1),
         ..Account::default()
     };
-    assert_eq!(
-        describe::morale(&c, &minotaurs, 3),
-        "G|-L1-spells +2"
-    );
+    assert_eq!(describe::morale(&c, &minotaurs, 3), "G|-L1-spells +2");
     let halflings = Account {
         luck_minimum: Some("Halflings".into()),
         hero_luck: skill(1),
