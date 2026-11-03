@@ -1921,12 +1921,14 @@ impl<'g> Battle<'g> {
         let Some(writer) = ground.writer.as_ref() else {
             return false;
         };
-        let keys = &self.record.header.manifest.keys.hero_types;
+        let manifest = &self.record.header.manifest;
+        let keys = &manifest.keys.hero_types;
         let portrait = |hero_type: u16| crate::results::portrait(keys, &ground.tables, hero_type);
         let window = self.taken(at, |field| {
             let observation = field.observation;
             let side = h3_view::hero_info::at(&ground.layout, observation, point)?;
-            let info = h3_view::hero_info::Info::of(observation, side, &portrait)?;
+            let special = crate::stats::field(manifest, observation);
+            let info = h3_view::hero_info::Info::of(observation, side, special, &portrait)?;
             let layout = &ground.layout.hero_info;
             Some(h3_view::hero_info::window(
                 layout,

@@ -8,8 +8,9 @@
 //! - the background in the hero's player's colours, the hero's large portrait;
 //! - four rows "%s:" (GENRLTXT 381 to 384) with their values by "%d": attack and defense held to
 //!   0..=99, power and knowledge to 1..=99;
-//! - morale's and luck's pictures, their frames the hero's morale and luck + 3 (`hero_morale`
-//!   0x4E39B0, `hero_luck` 0x4E36C0); *not built* (M6 T3b2): both shown as 0;
+//! - morale's and luck's pictures, their frames the hero's own morale and luck + 3
+//!   (`hero_morale` 0x4E39B0, `hero_luck` 0x4E36C0 with the other side's hero, Cursed Ground's
+//!   flag and the clamp; M6 T3b2, design §12.8: [`values`]);
 //! - the spell points "%s\n%d/%d" (GENRLTXT 388, the points, the most: knowledge × 10 × the
 //!   hero's intelligence factor, the observation's `max_mana`).
 //!
@@ -19,7 +20,7 @@ use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 
-use h3_protocol::wire::{Observation, Side};
+use h3_protocol::wire::{Affects, MoraleLuck, Observation, Side};
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Dialog, Shown, State};
 use serde::Deserialize;
@@ -27,6 +28,7 @@ use serde::Deserialize;
 use crate::layout::BattleLayout;
 use crate::message::MessageBox;
 use crate::mouse::{Spot, spot};
+use crate::stats::Field;
 
 /// The background (`CHrPop.pcx`), in the hero's player's colours.
 pub const BACKGROUND: u16 = 2100;
@@ -74,9 +76,9 @@ pub struct Info {
     pub portrait: Option<String>,
     /// Attack, defense, power and knowledge, as the hero has them.
     pub skills: [u8; 4],
-    /// Its morale (its picture's frame + 3; held to −3..=3).
+    /// Its own morale ([`values`]; its picture's frame + 3, held to −3..=3).
     pub morale: i32,
-    /// Its luck (as morale).
+    /// Its own luck (as morale).
     pub luck: i32,
     /// Its spell points now.
     pub mana: u16,
@@ -87,28 +89,85 @@ pub struct Info {
 impl Info {
     /// Side `side`'s hero in `observation` (its player's colour, none named: red for the
     /// attacker, blue for the defender, CLT-Q6), its portrait by its hero type's handle from
-    /// `portrait`; none without a hero. Its morale and luck 0 (M6 T3b2).
+    /// `portrait`, its morale and luck on `field` ([`values`]); none without a hero.
     #[must_use]
     pub fn of(
         observation: &Observation,
         side: Side,
+        field: Field,
         portrait: &dyn Fn(u16) -> Option<String>,
     ) -> Option<Self> {
         let index = usize::from(side == Side::Defender);
         let view = &observation.sides[index];
         let hero = view.hero.as_ref()?;
+        let (morale, luck) = values(observation, side, field);
         Some(Self {
             player: view
                 .colour
                 .unwrap_or_else(|| u8::try_from(index).unwrap_or(0)),
             portrait: portrait(hero.hero_type),
             skills: [hero.attack, hero.defense, hero.power, hero.knowledge],
-            morale: 0,
-            luck: 0,
+            morale,
+            luck,
             mana: hero.mana,
             max_mana: hero.max_mana,
         })
     }
+}
+
+/// Side `side`'s hero's own morale and luck on `field`, as the window shows them (E17 M6 T3b2,
+/// design §12.8): `hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0, called with the other side's
+/// hero, Cursed Ground's flag and the clamp (0x46CD3B, 0x46CD55). The hero's own list alone (the
+/// observation's `morale_and_luck`, CLT-Q40: its skills, artifacts, specialty, visits, its owner's
+/// Grail building and the rest as temporary), not its army's alignments or the field's other
+/// changes, which the stacks' values add:
+///
+/// - morale: 0 on Cursed Ground; else the hero's morale changes that reach its own stacks, held
+///   to −3..=3. A cap (the Spirit of Oppression) is not read: the hero's own or the other's
+///   (CLT-Q42);
+/// - luck: 0 on Cursed Ground; else, when a luck cap reaches the side (the Hourglass of the Evil
+///   Hour, worn by either hero: 0x4E36F4, 0x4E3731), the smallest cap's value whatever the
+///   changes (the original's 0, a Fountain of Fortune's −1 too); else the hero's luck changes
+///   that reach its own stacks, held to −3..=3. The other hero's changes are not read.
+///
+/// Both 0 without a hero. The original's cheats (+500 by the status flags' bits 22 and 23, luck's
+/// passing the field and the Hourglass) have no source in the observation.
+#[must_use]
+pub fn values(observation: &Observation, side: Side, field: Field) -> (i32, i32) {
+    if field == Field::Cursed {
+        return (0, 0);
+    }
+    let index = usize::from(side == Side::Defender);
+    let own = &observation.morale_and_luck[index];
+    let other = &observation.morale_and_luck[1 - index];
+    let to_own = |a: Affects| matches!(a, Affects::Own | Affects::Both);
+    let to_enemy = |a: Affects| matches!(a, Affects::Enemy | Affects::Both);
+    let mut morale = 0;
+    let mut luck = 0;
+    for effect in own {
+        match *effect {
+            MoraleLuck::Morale {
+                amount, affects, ..
+            } if to_own(affects) => morale += i32::from(amount),
+            MoraleLuck::Luck {
+                amount, affects, ..
+            } if to_own(affects) => luck += i32::from(amount),
+            _ => {}
+        }
+    }
+    let cap = own
+        .iter()
+        .filter_map(|e| match *e {
+            MoraleLuck::LuckAtMost { value, affects, .. } if to_own(affects) => Some(value),
+            _ => None,
+        })
+        .chain(other.iter().filter_map(|e| match *e {
+            MoraleLuck::LuckAtMost { value, affects, .. } if to_enemy(affects) => Some(value),
+            _ => None,
+        }))
+        .min();
+    let luck = cap.map_or_else(|| luck.clamp(-3, 3), i32::from);
+    (morale.clamp(-3, 3), luck)
 }
 
 /// The side whose hero's window the right button at `point` (on the screen) shows in
