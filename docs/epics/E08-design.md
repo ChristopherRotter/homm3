@@ -274,7 +274,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
    their owners; an owner nobody plays, an abandoned mine without a resource and an ownable
    entrance on water are refused; an abandoned mine's resource and Troglodytes and a Shipyard's
    boat tile are fixed when the game is built (ADV-OWN-002, ADV-MIN-001, -003, ADV-SHY-001,
-   ADV-MAP-002).
+   ADV-OBJ-002).
 2. A visit flags a neutral or another's object for its visitor's owner, never an own one,
    revealing radius 3; every owned object reveals at the start (as the original, A-33 withdrawn); every
    viewer sees the owners (ADV-OWN-001, -003).

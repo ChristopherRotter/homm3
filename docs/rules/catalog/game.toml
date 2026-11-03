@@ -255,6 +255,12 @@ numeric  = "integer"
   retrieved  = "2026-10-30"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-0 (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): nothing on day 1 (Blue's treasury the same at its turn's start and end, its mine flagged that day included); at day 2's start, before Red's turn, every player's mines paid: Red +1 000 gold and +1 gems, Blue +4 wood and +1 crystal, from the mines Red's and Blue's when day 1 ended (Red took two of Blue's on day 2, after the income)"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-CAL-003"
 title    = "The month's kind"
@@ -286,7 +292,7 @@ numeric  = "integer"
 id       = "GAM-CAL-004"
 title    = "The map's timed events"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "The map's timed events, in the map's order: each names its players (the map's colours that play; a colour nobody plays is left out, so an event may fire for none), whether it fires for a human and for a computer player (before SoD for humans always), its first day (the file's day + 1: the file's 0 is day 1), its interval in days (0 once) and the seven resources it gives (a negative amount takes; zeros left out), and its message by its index (the text is the client's). On each of its days, at the turn start of each of its players that is human or computer as it says (after the contexts' start-of-turn steps and TurnStarted), in the map's order, its gains go to that player's treasury, then its losses are taken down to 0 at most (ResourceLost the amount taken), then TimedEventFired names it by its message, all to that player alone; day 1's fire as the game is built, so the observation's events_today (the player's own) names those that fired at its turn start today. The setup refuses an event naming a player twice, out of order or not of the game, a resource twice, not the ruleset's or of 0, or a first day of 0, and more events than a u16 names. E08 T83a: the import (`h3_map`'s `timed_events`, map import v15) and `h3_game::TimedEventSetup`, `GameSetup::events`, checked by `GameSetup::validate`; T85b: `TimedEventSetup::fires`, `GameState::fire_events` (at each turn start), `GameState::events_today`, `GameObservation::events_today`."
 numeric  = "integer"
 
@@ -383,6 +389,12 @@ numeric  = "integer"
   retrieved  = "2026-10-30"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-0 (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): the mines flagged on day 1 pay from day 2's start, nothing on day 1: Red's two abandoned mines +1 000 gold (B, drawn gold) and +1 of A's drawn resource (gems; crystal in -run2.md), Blue's crystal cavern +1 crystal and its two sawmills +4 wood (one owned at load, one flagged on day 1)"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-RES-004"
 title    = "The heroes' income a day"
@@ -423,7 +435,7 @@ id       = "GAM-RES-005"
 title    = "The armies' weekly resources"
 context  = "game"
 status   = "verified"
-summary  = "On a week's first day (GAM-CAL-002), with the income (GAM-RES-003): each creature type with a weekly_resource ability (a core creature's ability outside battle, E08 decision 201) in the army of one of the player's heroes on the map gives its amount once, however many stacks and heroes hold it: the Crystal Dragons' 3 crystal. A mine's guards do not count; a town's garrison is E09's. E08 T85b: AdventureState::income."
+summary  = "On a week's first day (GAM-CAL-002), with the income (GAM-RES-003): each creature type with a weekly_resource ability (a core creature's ability outside battle, E08 decision 201) in the army of one of the player's heroes on the map gives its amount once, however many stacks and heroes hold it: the Crystal Dragons' 3 crystal. A mine's guards do not count; a town's garrison is E09's. E08 T85b: AdventureState::income, paid by GameState::pay_income."
 numeric  = "integer"
 
   [[rule.source]]
@@ -677,6 +689,12 @@ quirks   = ["ADV-QUIRK-5", "ADV-QUIRK-8"]
   kind       = "observation"
   ref        = "experiments/results/E08-batch-8b.md and E08-batch-8a.md (survey E08-sea.md §15; E08 T74b, the battle at sea): E8-11, a hero on the shore attacking one in a boat fights on water with the ship flag and the water obstacle (the deck); E8-12, both in boats on water with exactly the 32 hexes of the two boats; E8-13 and E8-14, a water monster's and an event's guards' battle against a boat on the deck; E8-15, a landing's guards fight on land at the monster's tile"
   retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-1 and E9-2 (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md section 19): mines on grass: the two abandoned mines' and the crystal cavern's battles on the subterranean field, the sawmill's on grass, no special field; an owned mine's guards the defending side of its owner, Blue, human and at the machine, each of its stacks waiting for Blue's order; a neutral abandoned mine's side no player's"
+  retrieved  = "2026-10-30"
   confidence = "high"
 
 [[rule]]

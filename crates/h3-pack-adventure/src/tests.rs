@@ -396,8 +396,7 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     assert!(part.object_type_by_key("base:border_gate_red").is_none());
 }
 
-// covers: ADV-OBJ-002
-// covers: ADV-OBJ-002
+// covers: ADV-OBJ-002, ADV-MIN-001, GAM-BAT-001
 #[test]
 fn the_base_pack_types_the_economy_of_increment_9() {
     // E08 T83a (increment 9's design note §5): the thirteen types, the calendar, the growth and

@@ -311,4 +311,17 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     assert!(events.is_empty());
     assert_eq!(s, before);
     assert_eq!(s.buildable_shipyards(part, RED).count(), 0);
+    // A hero in a boat on the tile takes it as well (the visit's `Taken`): rejected whole.
+    let shipyard = vec![owned(&rules, 2, 7, "t:shipyard", 0)];
+    let mut s = started(&rules, &setup(&rows(true), shipyard)).unwrap();
+    s.put_aboard(HeroId::new(2), 0);
+    assert!(!s.is_empty_boat(TILE));
+    let before = s.clone();
+    let mut events = Vec::new();
+    assert_eq!(
+        s.apply(core, part, &[], RED, &command, &mut events),
+        Err(AdventureCommandError::BoatTileTaken)
+    );
+    assert!(events.is_empty());
+    assert_eq!(s, before);
 }
