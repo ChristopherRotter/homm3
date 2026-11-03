@@ -32,6 +32,10 @@
 extern crate alloc;
 
 mod building;
+mod derive;
+#[cfg(test)]
+mod fixture;
+mod income;
 mod record;
 mod ruleset;
 mod store;
@@ -39,6 +43,7 @@ mod store;
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
 pub use h3_contracts::Moat;
+pub use income::hall_level;
 pub use record::{Town, TownEvent, TownStatic};
 pub use ruleset::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,

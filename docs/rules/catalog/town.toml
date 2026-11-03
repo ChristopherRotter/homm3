@@ -1,0 +1,31 @@
+# Town rules (context `town`, crate `h3-towns`; E09): a town's record, its setup, the derivations
+# over it (the hall and the day's income, the siege's facts, the reveal, the Tavern, the
+# Capitol's limit) and the town on the map (ADR-0028). Format: docs/04-rules-and-sources.md §3.
+# Survey: docs/rules/surveys/E09-towns.md; ids: docs/epics/E09-design.md §19 (created by E09 T6b).
+
+[[rule]]
+id       = "TWN-INC-001"
+title    = "A town's day's gold: its hall and the Grail"
+context  = "town"
+status   = "implemented"
+summary  = "A town's hall level is its highest standing building of role `hall` (1 the Village Hall to 4 the Capitol); a town without a standing hall counts as level 1 (the original pays the Village Hall's gold without testing for it). Its day's gold is the part's `hall_gold` of that level (the base pack's 500, 1 000, 2 000, 4 000), plus `grail_gold` (5 000) when a building of role `grail` was ever built; the faction plays no other part (at most 9 000 in the original packs), gold being the part's `gold` resource. Several Capitols at the start each pay 4 000 (the start never applies TWN-CAP-002). Paid at each day's start from day 2 to the town's owner only (a neutral town pays nobody; a town captured during a day pays its new owner the next day): the day's advance, E09 T8c (design §16). E09 T6b (design §6): `h3_towns::hall_level`, `h3_towns::daily_income`'s gold."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a; survey E09-towns.md sections 11.1 to 11.3): town_gold_income (0x5BF600) starts at 500 and tests the Town Hall (11), the City Hall (12) and the Capitol (13) in the built set +0x150, the last found kept (1 000, 2 000, 4 000; the Village Hall 10 not tested), and adds 5 000 for the Grail building (26) in the every-built set +0x158; player_gold_income (0x4C7930) sums the owner's towns at each day's start from day 2"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 11.5: CGTownInstance::dailyIncome over each built building that no built upgrade supersedes (config/buildingsLibrary.json: the halls 500, 1 000, 2 000, 4 000, the Grail 5 000)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Halls and Grail (survey E09-towns.md section 11.5): the same amounts; a map may give a player two or more Capitols; the Grail building's 5 000 in every town"
+  url        = "https://heroes.thelazy.net/index.php/Halls"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
