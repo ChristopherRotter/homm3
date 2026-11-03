@@ -10792,7 +10792,8 @@ pointer until T88b writes increment 10's note.
 
 **Increment 10 refined** (ADV-Q41, asked interactively at T87's start after its cut; decisions 231,
 232), from T76's census (objects / maps): dwellings (17) 1 981 / 116 and multi-creature dwellings
-(20) 80 / 38; random dwellings (216 to 218) 1 603 / 76, of which 1 397 are tied to a random town and
+(20) 80 / 38; random dwellings (216 to 218) 1 603 (216: 276 / 22, 217: 1 326 / 75, 218: 1 / 1; the question
+said 76 maps, a sum of mine in error), of which 1 397 are tied to a random town and
 wait for E09's random towns (the town lane's note of 2026-11-02, which counts them on 87 maps: the
 survey's census settles it) and about 205 take a faction set; the Refugee Camp (78) 321 / 101. The
 user chose **dwellings and hiring** (the dwellings flagged, their weekly creatures and the hire

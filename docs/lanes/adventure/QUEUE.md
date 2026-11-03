@@ -11,8 +11,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 - **Scope:** the census of classes 17, 20, 216 to 218 and 78 on the 160 shipped maps (by subclass,
   the owners at load, a random dwelling's faction set, level range and linked town; T76's counts in
-  `E08-log.md`, T76, against the town lane's 1 397 tied dwellings on 87 maps: the census settles the
-  map counts); their `.h3m` bodies (`docs/formats/h3m.md`, VCMI 1.7.5's map reader); the original's
+  `E08-log.md`, T76: 216 on 22 maps, 217 on 75, 218 on 1; the town lane's 1 397 tied dwellings on
+  87 maps); their `.h3m` bodies (`docs/formats/h3m.md`, VCMI 1.7.5's map reader); the original's
   code (the dwellings' visit and flag, the hire dialog, the weekly population, the Refugee Camp's
   weekly creature, a dwelling's guards; `docs/exe/README.md`, `scripts/exe.py`; the town lane's
   readings in `docs/rules/surveys/E09-towns.md` §1.6, §2.1, §2.3, and `random_dwellings_resolve`
