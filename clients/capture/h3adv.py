@@ -46,8 +46,8 @@ starting bonus Gold), an end-turn step's `record` and `note` (the new turn's mes
 row label `<label>#<n>`, and the observations income, gardens, growth:x,y, gain and the weekly
 objects' object:x,y, through a hero on the entrance (the README's "The day's start"). Since E09
 T3b (batch TWN-1): `new_game = true` (the map started anew), a battle table's list of creatures,
-a literal ending in `: ` labelling the value after it, the town screen (its vtable to be learned
-live), and the observations town:x,y:<part>, towns:every_vs_built, towns:owned_garrisons,
+a literal ending in `: ` labelling the value after it, the town screen (noted and closed), and
+the observations town:x,y:<part>, towns:every_vs_built, towns:owned_garrisons,
 hero:slot:<n>, opening:slot:<n>:<side>, town_screen and unknown_screens (the README's "Towns").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
@@ -502,6 +502,12 @@ def play_turns(game, mem, order, done, end, what):
             time.sleep(0.1)
             continue
         time.sleep(TURN_SETTLE)  # an order right at the turn's start may be lost
+        if mem.globals()["active"] != active:
+            # E09 T3b (batch TWN-1's 3b, the Archangels' blow that killed the Griffins): the
+            # striker named the active stack again while it turns back after its attack (the
+            # README's trap), the next stack's turn begun within the settle: read the turn again
+            # (an order then went to the Swordsman's turn: the cursor's query over it, frame 5).
+            continue
         aim = order(stack)
         if aim is None:
             game.key("d", 0.3)
@@ -802,7 +808,7 @@ def side_of(choice, shown):
 
 
 def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=None,
-           choice=None, town_gate=False):
+           choice=None):
     """Waits until the hero, its points and the players' resources stay the same for QUIET
     seconds on the adventure map (the walk and any visit over), on the way answering each question
     as `answer` says, playing each battle as `battle` says and clicking any other dialog's OK;
@@ -820,9 +826,8 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
     (`choices`: what each side showed and the side taken), and a message closed with its OK
     keeps its pictures with their captions (`message_pictures`, parallel to `messages`). Since
     E09 T3b the town screen (kind `town`, TOWN_SCREEN_VTABLE) is noted (`town_screen`) and
-    closed, every unknown screen's vtable noted (`unknown_screens`), and after a walk onto a
-    town's gate (`town_gate`) one that stays without an OK is taken for the town screen and
-    closed (`taken_for_town`: its vtable and how it closed; *to be confirmed live*)."""
+    closed (`town_screen_closed`: how), every unknown screen's vtable noted
+    (`unknown_screens`)."""
     events = {"dialogs": 0, "questions": [], "battles": [], "level_ups": [],
               "level_up_dialogs": [], "messages": [], "screens": [], "actions": [],
               "choices": [], "message_pictures": [], "town_screen": False,
@@ -843,15 +848,15 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
                 close_screen(game, mem, now, screen_heroes(mem, now, index))
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
-        # E09 T3b (batch TWN-1): the town screen, once its vtable is known, noted and closed;
-        # an unknown screen's vtable noted for the live run to learn.
+        # E09 T3b (batch TWN-1): the town screen noted and closed; an unknown screen's vtable
+        # noted.
         if kind == "town":
             events["town_screen"] = True
             events["screens"].append(kind)
             events["town_screen_closed"] = close_town_screen(game, mem)
             if events["town_screen_closed"] == "open":
                 game.dump(game.out / "town-screen.xwd")
-                raise RuntimeError("the town screen does not close (TOWN_SCREEN_CLOSE, "
+                raise RuntimeError("the town screen does not close (its item 30720, "
                                    f"TOWN_SCREEN_KEY; the display: {game.out / 'town-screen.xwd'})")
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
@@ -860,16 +865,6 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
         pix = game.pixels()
         if game.matches("adventure", pix) or in_battle(game, pix):
             known = time.monotonic()
-        elif town_gate and kind != "battle" and "taken_for_town" not in events \
-                and time.monotonic() - known > TOWN_SCREEN_WAIT:
-            # E09 T3b, *to be confirmed live*: after a walk onto a town's gate, a screen that is
-            # neither the map nor a battle and shows no OK is taken for the town screen (its
-            # vtable not known yet) and closed.
-            game.dump(game.out / "town-screen.xwd")
-            events["taken_for_town"] = {"vtable": unknown_vtable(mem) or kind or "none",
-                                        "closed": close_town_screen(game, mem)}
-            last, since, known = None, time.monotonic(), time.monotonic()
-            continue
         elif time.monotonic() - known > STRANGE:
             bad = game.out / "not-adventure.xwd"
             game.dump(bad)
@@ -1074,9 +1069,7 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
     if not first_walked and again:
         game.click(*hover(game, mem, x, y, z), 0.3)
         game.move(*PARK)
-    # E09 T3b: a walk onto a town's gate may open the town screen (settle's `town_gate`).
-    after, events = settle(game, mem, index, answer, battle, level_up, actions, choice,
-                           town_gate=mem.town_at(x, y, z) is not None)
+    after, events = settle(game, mem, index, answer, battle, level_up, actions, choice)
     colours = sorted(set(path.values()))
     return {
         "hero": name, "index": index, "from": before["tile"], "target": list(target),
@@ -1170,20 +1163,17 @@ def equip(game, mem, name, moves):
 # coordinates or probes. The adventure map and the battle are dialogs too.
 SCREEN_KINDS = {0x63A5E4: "map", 0x63D528: "battle", 0x63EAE8: "hero", 0x642428: "exchange",
                 0x643854: "army", 0x643C14: "creature", 0x63B8F8: "split", 0x63DB40: "message",
-                0x643908: "boat"}
-# E09 T3b (batch TWN-1), *to be learned live*: the town screen's vtable is not known yet. A walk
-# onto a town's gate notes every unknown screen's vtable (`unknown_screens`) and takes one that
-# stays TOWN_SCREEN_WAIT seconds, neither the map, a battle nor a dialog with an OK, for the town
-# screen (`town_screen` reads `yes?` then); set the vtable here once a run has read it (kind
-# `town`: noted, `town_screen`, and closed). The close is a click on the screen's exit button
-# (TOWN_SCREEN_CLOSE, a placeholder) and, while the screen stays, the key TOWN_SCREEN_KEY: both
-# to be confirmed live.
-TOWN_SCREEN_VTABLE = None  # learned live (E09 T3b)
-TOWN_SCREEN_CLOSE = (744, 544)  # the exit button: to be confirmed live (E09 T3b)
-TOWN_SCREEN_KEY = "Return"  # to be confirmed live (E09 T3b)
-TOWN_SCREEN_WAIT = 5.0
-if TOWN_SCREEN_VTABLE is not None:
-    SCREEN_KINDS[TOWN_SCREEN_VTABLE] = "town"
+                0x643908: "boat", 0x63FE60: "level_up"}
+# E09 T3b (batch TWN-1): the town screen, its vtable 0x64372C (town_dialog_create 0x5C34D0, the
+# town manager's dialog +0x118), read live under Wine with a town opened from the town list: an
+# 800 x 600 dialog whose exit button (the check mark, bottom right) is item 30720, as the hero
+# screen's close. A walk notes it (`town_screen`) and closes it by that item, else the key
+# TOWN_SCREEN_KEY (Return and Escape close it too); every other unknown screen's vtable is noted
+# (`unknown_screens`). The level-up dialog's vtable 0x63FE60 (level_up_dialog 0x4F8880 sets it;
+# noted unknown by TWN-1-3b's first runs) is named `level_up`.
+TOWN_SCREEN_VTABLE = 0x64372C
+TOWN_SCREEN_KEY = "Return"
+SCREEN_KINDS[TOWN_SCREEN_VTABLE] = "town"
 # Each screen's items by name (survey E08-army §1.1, §2.3, §3.1-§3.4, §4, §5.1: the procedures'
 # item ids; checked under Wine, E08 T47a). A name `<part>:<n>` is the part's n-th (an army slot
 # from 0 at the left, a worn position by its number 0-18, a backpack place from 0 at the left of
@@ -1216,6 +1206,7 @@ SCREEN_ITEMS = {
     "message": {"ok": 30722, "yes": 30725, "no": 30726, "left": 30729, "right": 30730},
     "battle": {"start": 30722},
     "boat": {"build": 30722, "cancel": 30721},
+    "town": {"close": 30720},
 }
 # The counts each screen shows under its army slots (text items, first id): the hero screen's
 # 61-67, the exchange's 65-71 and 72-78, the army dialog's 108-114 and 133-139.
@@ -1534,11 +1525,11 @@ def close_screen(game, mem, kind, heroes):
 
 
 def close_town_screen(game, mem):
-    """E09 T3b (batch TWN-1), *to be confirmed live*: closes the town screen (or the unknown
-    screen taken for it): a click on TOWN_SCREEN_CLOSE, then, while the same dialog stays on top,
-    the key TOWN_SCREEN_KEY. Returns how it closed: `click`, `key` or `open` (neither did)."""
+    """E09 T3b (batch TWN-1): closes the town screen: a click on its exit button (item 30720),
+    then, while the same dialog stays on top, the key TOWN_SCREEN_KEY. Returns how it closed:
+    `click`, `key` or `open` (neither did)."""
     shown = (mem.dialog() or {}).get("at")
-    game.click(*TOWN_SCREEN_CLOSE, 1.0)
+    game.click(*item_centre(mem, SCREEN_ITEMS["town"]["close"]), 1.0)
     game.move(*PARK)
     if (mem.dialog() or {}).get("at") != shown:
         return "click"
@@ -2320,15 +2311,9 @@ def value(obs, what, mem):
     if what in ("towns:every_vs_built", "towns:owned_garrisons"):
         return towns_text(mem, what.split(":")[1])
     # E09 T3b (batch TWN-1's TWN-1-3b, TWN-1-4): whether the town screen opened during the step
-    # (settle; `yes?` for an unknown screen taken for it, *to be confirmed live*), and the
-    # unknown screens' vtables the step met (to learn the town screen's).
+    # (settle), and the unknown screens' vtables the step met.
     if what == "town_screen":
-        if obs.get("town_screen"):
-            return "yes"
-        if taken := obs.get("taken_for_town"):
-            return (f"yes? (an unknown screen, vtable {taken['vtable']}, taken for the town "
-                    f"screen; closed: {taken['closed']})")
-        return "no"
+        return "yes" if obs.get("town_screen") else "no"
     if what == "unknown_screens":
         return ", ".join(obs.get("unknown_screens", [])) or "none"
     raise ValueError(f"unknown observation `{what}`")
@@ -2605,6 +2590,11 @@ def batch(recipe_path, map_path=None, out=None):
     want = stamp(spec)
     if f"Stamp {want}.".encode() not in gzip.decompress(map_path.read_bytes()):
         raise SystemExit(f"{map_path} is not a build of {spec} (stamp {want}): compile it again")
+    beside = map_path.with_name(f"{name}-template.md")
+    if template is None and beside.exists() and f"**Stamp `{want}`.**" in beside.read_text():
+        # E09 T3b: the template h3-experiment wrote beside the given map, of the same stamp, is
+        # the one filled (no build: the engine's workspace may be busy or absent).
+        template = beside
     if template is None:
         template = out / f"{name}-template.md"
         compile_spec(spec, out, name)  # the template; the given map stays the one played

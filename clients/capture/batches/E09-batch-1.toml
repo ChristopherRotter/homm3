@@ -10,9 +10,9 @@
 # has no random part, so game 2's is game 1's, and 3b's record of the opening shows any
 # difference; no save is made. The heroes' names on the map are the rows' ids (TWN-1-1 to
 # TWN-1-4) and Blue's Visitor. A town by its entrance (`town:x,y:<part>`), a slot by its row's
-# label (TWN-1-3's table: `<slot> | <column>`). The town screen's vtable is to be learned: the
-# walks onto a gate note the unknown screens (`unknown_screens`) and take one that stays for the
-# town screen (README, "Towns").
+# label (TWN-1-3's table: `<slot> | <column>`). The town screen is known by its vtable (0x64372C,
+# learned live in T3b) and closed by its exit button; the walks onto a gate note any other screen
+# not known by its vtable (`unknown_screens`; README, "Towns").
 
 spec = "experiments/specs/E09-batch-1.toml"
 players = ["Red", "Blue"]
@@ -256,11 +256,11 @@ note = { "the siege: the winner; the defenders at the opening; the level-ups; th
 encounter = "TWN-1-4"
 hero = "TWN-1-4"
 walk = [40, 61]
-# Red's own town now: the step enters it and the town screen opens (taken and closed: README,
+# Red's own town now: the step enters it and the town screen opens (noted and closed: README,
 # "Towns").
 expect = { question = "none", battle = false }
 record = { "after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero" = ["hero:tile", "hero:points", "town_screen", "town:40,61:visitor"] }
-note = { "the later step: its path's marks, the target's mark; the town's owner" = ["marks", "mark", "town:40,61:owner"], "the later step: screens not known by their vtable (the town screen's to learn)" = "unknown_screens" }
+note = { "the later step: its path's marks, the target's mark; the town's owner" = ["marks", "mark", "town:40,61:owner"], "the later step: screens not known by their vtable" = "unknown_screens" }
 
 # --- Game 3, a new game: TWN-1-1's and TWN-1-2's reads ------------------------------------------
 

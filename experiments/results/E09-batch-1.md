@@ -1,5 +1,7 @@
 # E09 batch TWN-1 — results
 
+> Played by the capture harness on 2026-11-03 (`clients/capture/h3adv.py batch clients/capture/batches/E09-batch-1.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory. The map started anew 2 more time(s) by the recipe's `new_game` steps (new games, no save loaded).
+
 Map file: `E09-batch-1.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `7902bb9e`.** The map's description in the scenario list starts with "Stamp 7902bb9e.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -24,42 +26,42 @@ Map file: `E09-batch-1.h3m`. Fill in the blanks below and keep this file; an age
 
 | town | game 1: built (ids) | game 2: built | game 3: built |
 |---|---|---|---|
-| RF1 castle (7, 7) |   |   |   |
-| RF2 rampart (15, 7) |   |   |   |
-| RF3 tower (23, 7) |   |   |   |
-| RF4 inferno (31, 7) |   |   |   |
-| RF5 necropolis (39, 7) |   |   |   |
-| RF6 dungeon (47, 7) |   |   |   |
-| RF7 stronghold (55, 7) |   |   |   |
-| RF8 fortress (63, 7) |   |   |   |
-| BF1 conflux (7, 15) |   |   |   |
-| BF2 castle (15, 15) |   |   |   |
-| BF3 rampart (23, 15) |   |   |   |
-| BF4 tower (31, 15) |   |   |   |
-| BF5 inferno (39, 15) |   |   |   |
-| BF6 necropolis (47, 15) |   |   |   |
-| BF7 dungeon (55, 15) |   |   |   |
-| BF8 stronghold (63, 15) |   |   |   |
-| R1 fortress (7, 23) |   |   |   |
-| R2 conflux (15, 23) |   |   |   |
-| R3 castle (23, 23) |   |   |   |
-| R4 rampart (31, 23) |   |   |   |
-| B1 tower (39, 23) |   |   |   |
-| B2 inferno (47, 23) |   |   |   |
-| B3 necropolis (55, 23) |   |   |   |
-| B4 dungeon (63, 23) |   |   |   |
-| NF1 stronghold (7, 31) |   |   |   |
-| NF2 fortress (15, 31) |   |   |   |
-| NF3 conflux (23, 31) |   |   |   |
-| NF4 castle (31, 31) |   |   |   |
-| N1 rampart (39, 31) |   |   |   |
-| N2 tower (47, 31) |   |   |   |
-| N3 inferno (55, 31) |   |   |   |
-| N4 necropolis (63, 31) |   |   |   |
-| NEF dungeon (7, 39) |   |   |   |
-| NE stronghold (15, 39) |   |   |   |
+| RF1 castle (7, 7) | 5, 7, 10, 30 | 5, 7, 10, 30, 31 | 5, 7, 10, 30 |
+| RF2 rampart (15, 7) | 5, 7, 10, 23, 30 | 5, 7, 10, 23, 30 | 5, 7, 10, 23, 30 |
+| RF3 tower (23, 7) | 5, 7, 10, 30, 31 | 5, 7, 10, 30 | 5, 7, 10, 30 |
+| RF4 inferno (31, 7) | 5, 7, 10, 30 | 5, 7, 10, 30 | 5, 7, 10, 30 |
+| RF5 necropolis (39, 7) | 5, 7, 10, 23, 30, 31 | 5, 7, 10, 23, 30 | 5, 7, 10, 23, 30 |
+| RF6 dungeon (47, 7) | 5, 7, 10, 30 | 5, 7, 10, 30 | 5, 7, 10, 30, 31 |
+| RF7 stronghold (55, 7) | 5, 7, 10, 30 | 5, 7, 10, 30, 31 | 5, 7, 10, 30 |
+| RF8 fortress (63, 7) | 5, 7, 10, 30 | 5, 7, 10, 30 | 5, 7, 10, 30 |
+| BF1 conflux (7, 15) | 5, 7, 10, 23, 30 | 5, 7, 10, 23, 30 | 5, 7, 10, 23, 30 |
+| BF2 castle (15, 15) | 5, 7, 10, 30 | 5, 7, 10, 30 | 5, 7, 10, 30 |
+| BF3 rampart (23, 15) | 5, 7, 10, 23, 30, 31 | 5, 7, 10, 23, 30 | 5, 7, 10, 23, 30 |
+| BF4 tower (31, 15) | 5, 7, 10, 30 | 5, 7, 10, 30 | 5, 7, 10, 30 |
+| BF5 inferno (39, 15) | 5, 7, 10, 30 | 5, 7, 10, 30 | 5, 7, 10, 30 |
+| BF6 necropolis (47, 15) | 5, 7, 10, 23, 30 | 5, 7, 10, 23, 30 | 5, 7, 10, 23, 30 |
+| BF7 dungeon (55, 15) | 5, 7, 10, 30, 31 | 5, 7, 10, 30, 31 | 5, 7, 10, 30 |
+| BF8 stronghold (63, 15) | 5, 7, 10, 30 | 5, 7, 10, 30, 31 | 5, 7, 10, 30, 31 |
+| R1 fortress (7, 23) | 5, 10 | 5, 10 | 5, 10 |
+| R2 conflux (15, 23) | 5, 10, 23 | 5, 10, 23 | 5, 10, 23 |
+| R3 castle (23, 23) | 5, 10 | 5, 10 | 5, 10 |
+| R4 rampart (31, 23) | 5, 10, 23 | 5, 10, 23 | 5, 10, 23 |
+| B1 tower (39, 23) | 5, 10 | 5, 10 | 5, 10 |
+| B2 inferno (47, 23) | 5, 10 | 5, 10 | 5, 10 |
+| B3 necropolis (55, 23) | 5, 10, 23 | 5, 10, 23 | 5, 10, 23 |
+| B4 dungeon (63, 23) | 5, 10 | 5, 10 | 5, 10 |
+| NF1 stronghold (7, 31) | 7, 10, 30, 31 | 7, 10, 30, 31 | 7, 10, 30, 31 |
+| NF2 fortress (15, 31) | 7, 10, 30, 31 | 7, 10, 30, 31 | 7, 10, 30, 31 |
+| NF3 conflux (23, 31) | 7, 10, 23, 30, 31 | 7, 10, 23, 30, 31 | 7, 10, 23, 30, 31 |
+| NF4 castle (31, 31) | 7, 10, 30, 31 | 7, 10, 30, 31 | 7, 10, 30, 31 |
+| N1 rampart (39, 31) | 10, 23, 30, 31 | 10, 23, 30, 31 | 10, 23, 30, 31 |
+| N2 tower (47, 31) | 10, 30, 31 | 10, 30, 31 | 10, 30, 31 |
+| N3 inferno (55, 31) | 10, 30, 31 | 10, 30, 31 | 10, 30, 31 |
+| N4 necropolis (63, 31) | 10, 23, 30, 31 | 10, 23, 30, 31 | 10, 23, 30, 31 |
+| NEF dungeon (7, 39) | 7, 10, 30, 31 | 7, 10, 30, 31 | 7, 10, 30, 31 |
+| NE stronghold (15, 39) | 10, 30, 31 | 10, 30, 31 | 10, 30, 31 |
 
-- every-built (+0x158) different from built anywhere (which town, which ids): 
+- every-built (+0x158) different from built anywhere (which town, which ids): game 1: none; game 2: none; game 3: none
 - anything odd: 
 
 ## TWN-1-2 — A neutral town's explicitly empty custom garrison at day 1, and the drawn garrisons beside it (TD-5, TD-4, TWN-SET-004)
@@ -72,19 +74,19 @@ Map file: `E09-batch-1.h3m`. Fill in the blanks below and keep this file; an age
 
 | town | game 1: garrison (slot: creature × count) | game 2 | game 3 |
 |---|---|---|---|
-| NF1 stronghold (7, 31) |   |   |   |
-| NF2 fortress (15, 31) |   |   |   |
-| NF3 conflux (23, 31) |   |   |   |
-| NF4 castle (31, 31) |   |   |   |
-| N1 rampart (39, 31) |   |   |   |
-| N2 tower (47, 31) |   |   |   |
-| N3 inferno (55, 31) |   |   |   |
-| N4 necropolis (63, 31) |   |   |   |
-| NEF dungeon (7, 39) |   |   |   |
-| NE stronghold (15, 39) |   |   |   |
+| NF1 stronghold (7, 31) | slot 0: 7 Wolf Riders, slot 1: 3 Ogres | slot 0: 5 Orcs | empty |
+| NF2 fortress (15, 31) | slot 0: 12 Gnolls, slot 1: 2 Basilisks | slot 0: 8 Gnolls, slot 1: 7 Lizardmen | slot 0: 13 Gnolls, slot 1: 7 Lizardmen |
+| NF3 conflux (23, 31) | slot 0: 15 Pixies | slot 0: 5 Air Elementals | slot 0: 3 Water Elementals |
+| NF4 castle (31, 31) | slot 0: 6 Archers, slot 1: 2 Swordsmen | slot 0: 13 Pikemen, slot 1: 6 Archers | empty |
+| N1 rampart (39, 31) | slot 0: 14 Centaurs, slot 1: 6 Dwarves | empty | slot 0: 5 Wood Elves |
+| N2 tower (47, 31) | slot 0: 5 Stone Golems, slot 1: 1 Mage | empty | slot 0: 5 Stone Golems |
+| N3 inferno (55, 31) | slot 0: 6 Gogs | slot 0: 7 Gogs | empty |
+| N4 necropolis (63, 31) | slot 0: 5 Walking Dead | slot 0: 6 Walking Dead, slot 1: 3 Wights | empty |
+| NEF dungeon (7, 39) | empty | empty | empty |
+| NE stronghold (15, 39) | empty | empty | empty |
 
-- the owned towns' garrisons (all 24 empty? which not): 
-- anything odd: 
+- the owned towns' garrisons (all 24 empty? which not): game 1: 1 of 25 with a stack: (20, 61): slot 0: 1 Cavalier, slot 1: 16 Halberdiers, slot 2: 10 Marksmen; game 2: 1 of 25 with a stack: (20, 61): slot 0: 1 Cavalier, slot 1: 16 Halberdiers, slot 2: 10 Marksmen; game 3: 1 of 25 with a stack: (20, 61): slot 0: 1 Cavalier, slot 1: 16 Halberdiers, slot 2: 10 Marksmen
+- anything odd: the game's version: SoD
 
 ## TWN-1-3 — The garrison's merge: Blue's town with a lone visitor of seven stacks and a garrison of three; Red besieges (TD-7, TWN-SIE-001, TWN-SIE-002, TWN-CAP-003)
 
@@ -99,17 +101,17 @@ Map file: `E09-batch-1.h3m`. Fill in the blanks below and keep this file; an age
 
 | slot | before: garrison | before: Blue's army | 3a opening: Blue's stacks | 3a after: garrison | 3a after: Blue's army | 3b opening: Blue's stacks |
 |---|---|---|---|---|---|---|
-| 0 |   |   |   |   |   |   |
-| 1 |   |   |   |   |   |   |
-| 2 |   |   |   |   |   |   |
-| 3 |   |   |   |   |   |   |
-| 4 |   |   |   |   |   |   |
-| 5 |   |   |   |   |   |   |
-| 6 |   |   |   |   |   |   |
+| 0 | 1 Cavalier | 4 Swordsmen | 4 Swordsmen | empty | 4 Swordsmen | 4 Swordsmen |
+| 1 | 16 Halberdiers | 4 Centaurs | 16 Halberdiers | 4 Centaurs | 16 Halberdiers | 16 Halberdiers |
+| 2 | 10 Marksmen | 5 Archers | 10 Marksmen | 5 Archers | 10 Marksmen | 10 Marksmen |
+| 3 | empty | 5 Griffins | 5 Griffins | empty | 5 Griffins | 5 Griffins |
+| 4 | empty | 5 Pikemen | 1 Cavalier | empty | 1 Cavalier | 1 Cavalier |
+| 5 | empty | 3 Monks | 3 Monks | empty | 3 Monks | 3 Monks |
+| 6 | empty | 10 Pikemen | 15 Pikemen | empty | 15 Pikemen | 15 Pikemen |
 
-- Red's hero before the step: tile, movement points: 
-- 3b after the battle: Red's hero's tile, movement points; the town's owner; a town screen (yes/no); the garrison: 
-- anything odd: 
+- Red's hero before the step: tile, movement points: 20,62,0; 2000
+- 3b after the battle: Red's hero's tile, movement points; the town's owner; a town screen (yes/no); the garrison: 20,62,0; 1900; red; no; empty
+- anything odd: game 1, the town (20, 61) before 3a: owner; visitor; built; every built: blue; Visitor; 7, 10; 7, 10; 3a: the winner; who retreated; Red's hero on the map after: defender; attacker; no; 3a opening: the sides; Blue's stacks' hexes; Red's stacks: attacker red (human 1, here 1); defender blue (human 1, here 1); 15, 49, 83, 100, 117, 151, 185; slot 0: 20 Archangels, slot -1: 1 Catapult; 3a after: the town's owner; its visitor: blue; Visitor; 3b (game 2) before the step: Red's hero's tile, points; the garrison; Blue's army: 20,62,0; 2000; slot 0: 1 Cavalier, slot 1: 16 Halberdiers, slot 2: 10 Marksmen; 0: 4 Swordsmen, 1: 4 Centaurs, 2: 5 Archers, 3: 5 Griffins, 4: 5 Pikemen, 5: 3 Monks, 6: 10 Pikemen; 3b: the winner; the level-ups; the messages: attacker; level 2: Scouting or Wisdom, took left (Scouting); none; 3b after: the town's visitor; built; Visitor on the map: none; 7, 10; no
 
 ## TWN-1-4 — After a siege won: a defended neutral town, then a later step onto the gate (TWN-CAP-001, TWN-CAP-003, TWN-VIS-001)
 
@@ -122,7 +124,7 @@ Map file: `E09-batch-1.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- Red's hero before the step: tile, movement points: 
-- after the battle: Red's hero's tile and movement points; the owner; a town screen (yes/no); the garrison: 
-- after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero: 
-- anything odd: 
+- Red's hero before the step: tile, movement points: 40,62,0; 2000
+- after the battle: Red's hero's tile and movement points; the owner; a town screen (yes/no); the garrison: 40,62,0; 1900; red; no; empty
+- after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero: 40,61,0; 1800; yes; none
+- anything odd: the town (40, 61) before: owner; visitor; garrison; built: neutral; none; slot 0: 5 Centaurs; 7, 10, 23, 30, 31; the siege: the winner; the defenders at the opening; the level-ups; the messages: attacker; slot 0: 5 Centaurs; none; none; the later step: its path's marks, the target's mark; the town's owner: 1; green; red

@@ -30,7 +30,7 @@ adventure).
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`). |
-| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed (its vtable to be learned live); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
@@ -370,8 +370,9 @@ python3 capture/h3adv.py batch capture/batches/harness-check.toml     # the harn
 ```
 
 `batch` compiles the recipe's spec with `h3-experiment` (the engine's workspace; `--map` plays a
-map compiled before, after checking its stamp), starts it in hot seat with the recipe's
-`players` as the humans (at least two: the hot-seat dialog takes no fewer) at the recipe's
+map compiled before, after checking its stamp, and since E09 T3b fills the template beside it,
+`<batch>-template.md`, when that holds the same stamp, without a build), starts it in hot seat
+with the recipe's `players` as the humans (at least two: the hot-seat dialog takes no fewer) at the recipe's
 `difficulty` (`easy` to `impossible`, default `normal`, checked in memory), plays the steps and
 writes `<out>/<batch>.md`, the batch's results template filled in (a note at its top says how it
 was played), and `<out>/steps.jsonl`, each step's observation. E08 batch 2 (41 steps) takes about
@@ -661,16 +662,15 @@ other stack defends, one gone passed over (TWN-1-3b: Blue's shooters never act; 
 in melee only and was never tried with a shooter); a retreat or surrender waits out its side's
 Catapult (a siege's: without Ballistics it acts by itself).
 
-The town screen is *to be learned live*: its vtable is not known (`h3adv.TOWN_SCREEN_VTABLE =
-None`). A walk notes each unknown screen's vtable (`unknown_screens`), and after a walk onto a
-town's gate a screen that stays 5 s (`TOWN_SCREEN_WAIT`) without the map, a battle or an OK is
-taken for the town screen: the display dumped (`<out>/town-screen.xwd`), a click on its exit
-button (`TOWN_SCREEN_CLOSE`, (744, 544), a placeholder) and, while it stays, the key
-`TOWN_SCREEN_KEY` (`Return`), both to be confirmed; `town_screen` then reads `yes? (an unknown
-screen, vtable 0x…, taken for the town screen; closed: click)`. Once a run has read the vtable,
-set it: the kind `town` is noted (`town_screen`: `yes`, `no`) and closed the same way. A screen
-the harness cannot pass still stops the batch after 30 s, now with the topmost dialog's vtable
-in the error.
+The town screen is the topmost dialog of vtable 0x64372C (`h3adv.TOWN_SCREEN_VTABLE`; set by
+`town_dialog_create` 0x5C34D0, which the town manager keeps at its +0x118; read live under Wine):
+a walk notes it (`town_screen`: `yes`, `no`) and closes it by its exit button, item 30720 (the
+check mark, as the hero screen's close), else the key `Return` (Escape closes it too); every other
+unknown screen's vtable is noted (`unknown_screens`; the level-up dialog, 0x63FE60 from
+`level_up_dialog`, is known as `level_up`). A screen the harness cannot pass still stops the batch
+after 30 s, with the topmost dialog's vtable in the error. A town's visitor (+0x10) holds a hero
+that entered only while its town screen shows (observed under Wine: TWN-1-4's hero, then −1 after
+the screen closed, the hero still on the gate); one the map places there stays.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
@@ -1259,7 +1259,10 @@ design §7.1.
 - In a battle in progress (M3 T1a) the game names a striker the active stack again while it
   turns back after its attack, so `turn:` waits for the stack named, not for any active one; a
   click before the turn starts is lost, and `click:` parks the game's cursor afterwards (the game
-  draws it into the frames).
+  draws it into the frames). A plan's turns (`h3adv.play_turns`) read the turn again after their
+  settle since E09 T3b: in batch TWN-1's 3b the Archangels' blow that killed a stack was read as
+  their turn again, and the order went to the next stack's (the cursor's query over the target,
+  frame 5 everywhere; `no attack cursor`).
 - Under load (a build beside it) a sequence once read the computer's first frame a millisecond
   late (`melee`: 1919 for 1918, `CHANGED`): the turn's start ran after the 20 clock reads the
   driver then waited for. A sequence's steps now wait for 500 reads; still, run `sequences` and
