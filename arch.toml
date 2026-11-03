@@ -279,9 +279,8 @@ dev_external = ["proptest", "criterion"]
 layer = "adapter"
 logic = false
 # h3-game and h3-pack-adventure: the batch's encounter source compiles the original packs'
-# adventure part and bundles the rulesets the sampler reads (E05 T5b); h3-towns the town part
-# in that bundle, empty for an encounter (E09 T4b, for T5a).
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-game", "h3-pack-adventure", "h3-towns"]
+# adventure part and bundles the rulesets the sampler reads (E05 T5b).
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-game", "h3-pack-adventure"]
 external = []
 dev_deps = []
 dev_external = []

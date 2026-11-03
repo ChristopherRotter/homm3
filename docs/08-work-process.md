@@ -84,7 +84,8 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   ledger `docs/rules/quirks-adventure.md`, `benches/adventure/`, the epics E07, E08, E10 and
   E12–E14.
 - **town** (since 2026-10-31; the user opened it beside the adventure lane's E08 at E09's
-  refinement, TWN-Q1): towns, E09: the town context's crate `h3-towns`, the town modules inside the
+  refinement, TWN-Q1): towns, E09: the town context's crate `h3-towns`, its pack adapter
+  `h3-pack-towns` and each pack's `towns.toml` (E09 T4b), the town modules inside the
   adventure lane's crates by the longest match (`h3-adventure`'s and `h3-game`'s `src/town*`,
   `h3-map`'s `src/import/town*` and `src/writer/town*`), the town rules and its quirks ledger
   `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Those crates' common parts
@@ -165,6 +166,8 @@ conflict on rebase and bumps again.
 | adventure state hash, adventure ruleset-part hash | `ADVENTURE_STATE_HASH_VERSION`, `ADVENTURE_RULESET_HASH_VERSION`, `h3-adventure` | adventure |
 | map import | `MAP_IMPORT_VERSION`, `h3-map` (a replay names its map by content hash, path and this version; ADR-0015) | adventure |
 | adventure replay format | `h3-sim/src/adventure/replay.rs`: `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-cli`'s `src/adventure/`) | adventure |
+| town state hash | `TOWN_STATE_HASH_VERSION`, `h3-towns` (the store of towns; the game state hash folds it in, ADR-0028 point 4) | town |
+| town ruleset-part hash | `TOWN_RULESET_HASH_VERSION`, `h3-towns` (the town part; ADR-0028 point 5) | town |
 | adventure action and observation encodings | `h3-sim/src/adventure/`: `adventure::ACTION_ENCODING_VERSION` (E08 T9a); no observation encoding before E13 | ai (the adventure lane's until E08 T45, ADR-0017 point 8) |
 | wire protocol | `PROTOCOL_VERSION`, `h3-protocol` | server |
 | viewer record format | `RECORD_FORMAT_VERSION`, `h3-protocol` (from E16 M1) | server |

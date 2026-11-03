@@ -53,6 +53,14 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
 - **Pointer identity** (`ptr_eq`, `as_ptr`) is a forbidden token in logic crates outside the
   adventure's persistent module (ADR-0016 point 2).
 
+## Amendment — E09 town crates (2026-11-03, ADR-0028)
+
+- **Crates created (E09 T4b):** `h3-towns` (domain, logic) and `h3-pack-towns` (adapter, as
+  `h3-pack-adventure`). `h3-towns` sits beside `h3-adventure`, neither depending on the other;
+  `h3-game` depends on both (ADR-0028 points 1 and 6). ADR-0028 holds the decision; this lists
+  the crates only.
+- **Cross-context ids** gain `TownId` (`h3-contracts`, ADR-0028 point 3).
+
 ## Revision history
 
 - 2026-09-30: Accepted.
@@ -63,3 +71,5 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
   `check-arch` gains **forbidden edges** (`[[policy.forbidden_edge]]` in `arch.toml`): an edge the
   layers would allow but a decision rules out, rejected whether declared or not (`h3-battle` →
   `h3-heroes`).
+- 2026-11-03: Amended by E09 T4b (the town crates and `TownId`; presentation only, the decision
+  is ADR-0028's).

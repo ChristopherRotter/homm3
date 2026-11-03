@@ -7,29 +7,52 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entry below is round 4's second half (rounds 2 and 3 and T4a are done, `E09-log.md`); each later
-round's entries are written when it comes (the epic's list), each task's cut confirmed at its
-start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+entries below are round 5's (rounds 2 to 4 are done, `E09-log.md`); each later round's entries
+are written when it comes (the epic's list), each task's cut confirmed at its start. Every
+entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T4b — `shared/`: the crate skeletons, `TownId`, the gates**
+**E09 T5a — the town part, its compiler and adapter, `GameRuleset`, replay format v9**
 
-- **Scope:** round 4's second half (T4 cut in two at its start, the user; T4a, the ADRs and the
-  glossary, done: `E09-log.md`), one `shared/<topic>` pull request: the skeletons `h3-towns` and
-  `h3-pack-towns` (an empty part and store, both version constants 1; ADR-0028 point 1, design
-  §1); `arch.toml`'s edges (ADR-0028's Consequences); `Cargo.toml`'s members; `lanes.toml`
-  (`crates/h3-pack-towns/`, `packs/*/towns.toml` to the town lane); `TownId` in `h3-contracts` (a
-  `u16` newtype beside `HeroId`, serde as a number); `Moat`'s doc comment (the packs decide,
-  ADR-0023 point 2); the versions table's two rows (`docs/08-work-process.md`);
-  `docs/02-architecture.md` §3; ADR-0005's "Crates created" and ADR-0006's one-file-per-context
-  lines gain the two crates and `towns.toml` (presentation, the revision history noting it);
-  `packs/README.md`'s file table row.
-- **Acceptance:** the skeletons build under every gate (`check-arch`, coverage, `check-lane
-  --cross-lane`, `cargo check --workspace --all-targets`; an `h3-contracts` change also
-  `scripts/verify-once.sh clients --base origin/master`), CI green on the pull request.
-- **Notes from T4a:** the ADRs cite the crates as ADR-0028 point 1 has them; the battle lane's
-  inbox has `siege::setup`'s comment (its own file). The adventure lane's open pull requests first
-  (`TRAPS.md`, "Merge in order"; on 2026-11-03 #664 and #665, which touch neither).
-- **Depends on:** T4a (done). **Status:** ready.
+- **Scope:** round 5's first half (design §2): `TownRuleset` in `h3-towns` (`ruleset`: per
+  faction a town record with its buildings and roles, the silo, the moat and `siege_obstacles`,
+  the creatures by level; the part's parameters; `TownRuleset::empty(core)`), its compiler with
+  §2's checks and its canonical hash (town ruleset part v1's first encoding; the constant stays
+  1); `h3-pack-towns`' `compile(texts, profile)` (strict parsing as `h3-pack-adventure`'s,
+  overrides as ADR-0006's, a folder without the file an empty one; the format documented in its
+  `lib.rs`); `GameRuleset::new(core, adventure, battle, towns)` with the extended mismatch check
+  and its callers (h3-sim's encounter and tests, h3-cli's adventure loader and census, h3-map's
+  tests and examples; `cross-lane`); the adventure replay's header records the part's
+  hash (adventure replay format v9; the golden replays re-recorded, skill
+  `homm3-rerecord-replays`).
+- **Acceptance:** the compiler's checks each refused by a test; the part's hash stable across
+  runs and forks; 100 % coverage on `h3-towns`; the adventure replays at v9 with only header and
+  hash lines moved; `check-lane --cross-lane`; CI green.
+- **Notes from T4b:** `TownRuleset` and `Towns` are empty `Default` structs, replaced here and in
+  T6; the two crates have no dependencies yet (their `Cargo.toml`s are the lane's). `arch.toml`
+  already allows the callers' edges (`h3-sim` → `h3-towns`, dev `h3-pack-towns`; `h3-cli` →
+  both; `h3-map`'s dev → both) and `clients.yml` watches
+  `crates/h3-towns/`, so no `shared/` change is needed; once `h3-game` depends on `h3-towns`,
+  `clients/Cargo.lock` (common) changes and `clients/scripts/check.sh` runs. A likely cut at its
+  start: T5a1 the part, its compiler and the adapter (the lane's own crates); T5a2 `GameRuleset`,
+  its callers and replay format v9 (`cross-lane`). The adventure lane's open pull requests first
+  (`TRAPS.md`, "Merge in order"; it bumps the replay format too).
+- **Depends on:** T4b (merged). **Status:** ready once T4b's pull request merges.
+
+**E09 T5b — the content read and harvested; building 23**
+
+- **Scope:** round 5's second half (design §3, decisions 23 and 25): the code reading of
+  `building_tables_init` 0x4EB730 and the tables §3 names (every address into
+  `docs/exe/map.toml`), the names from the text files (no descriptions, Q13), VCMI 1.7.5's
+  factions and the wiki compared (a difference with gameplay impact a `TD-` row before it is
+  written); building 23's source, whether a custom set gets it and whether the faction's list
+  holds it; `h3-harvest`'s gap-fill (`cross-lane`, the battle lane's crate, as E08 T81b) writes
+  `packs/base/towns.toml`, `packs/ab/towns.toml`, `packs/sod/towns.toml` (decision 20's moats);
+  the synthetic packs' small hand-written records.
+- **Acceptance:** the original packs compile with T5a's compiler; `cargo xtask verify
+  --with-original-data` (the harvest reproduces the files); the survey's new `TD-` rows if any;
+  CI green.
+- **Depends on:** T5a. **Status:** after T5a; needs the original data staged (`Heroes3.exe`, the
+  LODs' text files).
 
 ## Inbox
 

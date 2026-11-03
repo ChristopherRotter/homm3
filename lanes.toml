@@ -235,7 +235,8 @@ verify_with = ["adventure"]
 paths = [
     "crates/h3-towns/",
     # The town part's adapter and its pack files (ADR-0028 points 1 and 5; E09 T4b): one pack file
-    # per context (ADR-0006's E08 amendment), hand-written or harvested by E09 T5b.
+    # per context (ADR-0006's E08 amendment); the original packs' written by `h3-harvest`'s gap-fill
+    # (E09 decision 23, T5b, `cross-lane`), the synthetic ones by hand.
     "crates/h3-pack-towns/",
     "packs/base/towns.toml",
     "packs/ab/towns.toml",
