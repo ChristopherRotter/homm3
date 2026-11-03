@@ -795,6 +795,7 @@ pub(super) fn compile_object_types(
 /// creature leaves its first a slot of the army's (E08 T61a); since E08 T83a that no two mines
 /// produce one resource, that with an abandoned mine every core resource has its mine (its daily
 /// amount, [`super::AdventureRuleset::mine_daily`]) and that its guards fit a stack.
+// rule: ADV-MIN-001
 pub(super) fn check_object_types(
     core: &Ruleset,
     types: &[ObjectType],

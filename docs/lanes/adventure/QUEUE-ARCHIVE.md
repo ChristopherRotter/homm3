@@ -4,6 +4,20 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-03, E08 T87c: the "Tasks" text's lead, the rest of increment 9's chronicle, and the T87 entry as they stood before T87c closed increment 9.)* Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T86b1 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed. **Increment 9, mines, the week and owned objects** (ADV-Q36; decisions 192, 193): rounds 1 to 7 done, and round 8's T86 (decision 226): T86a (the economy map and its replays), T86b1 (the plans' properties) and T86b2 (decision 228: the economy XL, the day start's workloads, the re-baselines; `adventure/e08-t86b2` with `shared/e08-t86b2`); T87 in three (decision 230): T87a and T87b done, T87c left. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+
+**E08 T87 — the audit; increment 9 closed; increment 10 refined** (decision 230: in three, each
+branch based on the one before without waiting for its merge; **T87a** done, decision 229's boat
+tile, `adventure/e08-t87a` with `shared/e08-t87a`; **T87b** done, the audit, `adventure/e08-t87b`)
+
+- **T87c, the closure and the refinement:** increment 9 closed (its scope, decisions and task
+  list to `E08-archive.md`, its design note to `E08-log.md`, a row in the closed increments'
+  table); increment 10 refined with the user (the sketch's item 10: dwellings and hiring, the
+  Refugee Camp, garrisons; the town lane's inbox notes on the hire dialog and the random
+  dwellings). Branch `adventure/e08-t87c` on `adventure/e08-t87b`.
+- **Inputs:** `E08-design.md` §18, §19; `E08-log.md` T86a, T86b1, T86b2, T87a, T87b; the epic's
+  decisions 192 to 230; the inbox below (the town lane's and the map client's notes).
+
 *(Moved 2026-11-03, E08 T86b2: the "Tasks" text's increment 9 chronicle as it stood before T86b2.)* Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). T77b done whole (decision 200; `adventure/e08-t77b`: the drafts, `E08-design.md`, the cut in rounds 2 to 8, decision 202; the checkpoint's `ADV-Q38`, decisions 201–204). T78 done whole (decision 205; `adventure/e08-t78`, `cross-lane`, decision 206: the writer's ownable objects, weekly objects and timed events, the spec's fields, the specs `E08-batch-9a` and `-9b`). T79 in two by batch (decision 207): T79a
 done (`adventure/e08-t79a`: the harness's mine records, tile words, boat dialog, Leave Guards,
 battle sides and `auto again`; the recipe `E08-batch-9a` and its runs); T79b done whole (decision

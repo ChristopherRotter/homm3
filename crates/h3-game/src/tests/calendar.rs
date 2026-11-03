@@ -282,6 +282,42 @@ fn a_months_first_day_draws_its_kind_and_a_creatures_month_adds_its_monsters() {
     }
 }
 
+// covers: GAM-CAL-002
+#[test]
+fn the_next_month_starts_four_weeks_later_on_day_57() {
+    // Day 56 starts no week and no month; day 57, week 9's first day, starts month 3.
+    let rules = rules(None);
+    let mut state = game(&rules);
+    let starts = |events: &[GameEvent]| -> Vec<GameEvent> {
+        events
+            .iter()
+            .filter(|e| {
+                matches!(
+                    e,
+                    GameEvent::WeekStarted { .. } | GameEvent::MonthStarted { .. }
+                )
+            })
+            .copied()
+            .collect()
+    };
+    let events = until(&mut state, &rules, 56);
+    assert_eq!(events[3], GameEvent::DayStarted { day: 56 });
+    assert_eq!(starts(&events), []);
+    let events = until(&mut state, &rules, 57);
+    assert_eq!(events[3], GameEvent::DayStarted { day: 57 });
+    assert_eq!(
+        events[4..6],
+        [
+            GameEvent::WeekStarted { week: 9 },
+            GameEvent::MonthStarted {
+                month: 3,
+                kind: MonthKind::Normal,
+            },
+        ]
+    );
+    assert_eq!(starts(&events).len(), 2);
+}
+
 fn rules_with_odds(odds: [u8; 3]) -> GameRuleset {
     rules(months(odds))
 }

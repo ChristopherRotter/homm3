@@ -99,23 +99,6 @@ fn unseen() -> impl Strategy<Value = Unseen> {
         )
 }
 
-/// A Shipyard's offsets from its entrance, in the order the build tries them for its boat tile
-/// (ADV-SHY-001; the base pack's).
-const BOAT_OFFSETS: [(i8, i8); 12] = [
-    (-2, 0),
-    (2, 0),
-    (-2, 1),
-    (2, 1),
-    (-1, 1),
-    (1, 1),
-    (0, 1),
-    (-2, -1),
-    (2, -1),
-    (-1, -1),
-    (1, -1),
-    (0, -1),
-];
-
 /// An army of its own for the viewer's heroes: at least one stack (a hero whose slots are all
 /// empty gets its type's starting army, drawn from the seed).
 fn own_army() -> impl Strategy<Value = Vec<Option<(u16, u16)>>> {
@@ -182,41 +165,6 @@ fn vary(
     let mut m = m.clone();
     let side = u8::try_from(m.terrain.size).unwrap();
     let levels = u8::try_from(m.terrain.levels).unwrap();
-    // E08 T86b1: a Shipyard the viewer sees shows its boat tile (ADV-OWN-003), the first of its
-    // offsets that was free water when the game was built (ADV-SHY-001), so what lies on its
-    // offsets shows through it: they are kept as seen (`ADV-Q40`).
-    let shipyards: Vec<Spot> = m
-        .objects
-        .iter()
-        .filter(|o| o.template != HERO_TEMPLATE)
-        .filter(|o| KINDS[usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()].0 == 87)
-        .filter(|o| {
-            let template = usize::try_from(o.template - 1).unwrap();
-            !covers((o.pos.x, o.pos.y, o.pos.z), template, side).all(&objects)
-        })
-        .flat_map(|o| {
-            let template = usize::try_from(o.template - 1).unwrap();
-            let (_, visitable) = masks(template);
-            let entrances = visitable.iter().filter_map(|&(column, row)| {
-                Some((
-                    o.pos.x.checked_sub(column)?,
-                    o.pos.y.checked_sub(row)?,
-                    o.pos.z,
-                ))
-            });
-            entrances
-                .flat_map(|(x, y, z)| {
-                    BOAT_OFFSETS.iter().filter_map(move |&(dx, dy)| {
-                        let x = u8::try_from(i16::from(x) + i16::from(dx)).ok()?;
-                        let y = u8::try_from(i16::from(y) + i16::from(dy)).ok()?;
-                        (x < side && y < side).then_some((x, y, z))
-                    })
-                })
-                .collect::<Vec<_>>()
-        })
-        .collect();
-    let ground = |spot: Spot| ground(spot) && !shipyards.contains(&spot);
-    let objects = |spot: Spot| objects(spot) && !shipyards.contains(&spot);
     let mut standing: Vec<Spot> = m
         .objects
         .iter()
@@ -1740,9 +1688,9 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
 /// Increment 9's objects on an imported map (E08 T83b2b, ADR-0016 point 6, `docs/06-security.md`):
 /// the economy map with Red's hero between the mines, a second Red hero by the Shipyard (moved one
 /// column toward the sea, so that it has a boat tile) and Blue's hero below the mines. Every
-/// viewer sees the owners, the abandoned mines' guards as the original's hint shows them and the
-/// boat tile; a mine's production only its owner; nothing of what the build drew for the
-/// abandoned mines, whatever the seed.
+/// viewer sees the owners and the abandoned mines' guards as the original's hint shows them; a
+/// mine's production and a Shipyard's boat tile only their owner (E08 decision 229); nothing of
+/// what the build drew for the abandoned mines, whatever the seed.
 // covers: ADV-OWN-003, ADV-FOG-006
 #[test]
 fn increment_9_s_objects_show_their_owners_never_their_draws() {
@@ -1806,10 +1754,23 @@ fn increment_9_s_objects_show_their_owners_never_their_draws() {
             assert_eq!((mine.guards, mine.production), (expected.clone(), None));
         }
     }
-    // The Shipyard's boat tile, on the sea.
+    // The Shipyard's boat tile, on the sea, to its owner's team alone (E08 decision 229): nobody's
+    // while it is neutral, Red's once it is Red's, never Blue's.
     let tile = state.map().objects()[6].resolved.boat_tile();
     assert_eq!(tile, Some(TilePos::new(30, 16, 0)));
-    assert_eq!(at(&reds, 29, 16).boat_tile, tile);
+    assert_eq!(at(&reds, 29, 16).boat_tile, None);
+    let mut reds_yard = map.clone();
+    let crate::writer::MapObject::Owned(shipyard) = &mut reds_yard.objects[8] else {
+        panic!("the Shipyard is the economy map's ninth object");
+    };
+    shipyard.body = crate::writer::OwnedBody::Owner(Some(0));
+    let reds_yard = start_on(
+        &read_back(&crate::writer::write(&reds_yard).unwrap()),
+        &FAITHFUL,
+        0,
+    );
+    assert_eq!(at(&view(&reds_yard, red), 29, 16).boat_tile, tile);
+    assert!(view(&reds_yard, blue).iter().all(|o| o.boat_tile.is_none()));
     // Other seeds draw other resources and guards; neither player's view changes.
     let mut drawn = std::collections::BTreeSet::new();
     for seed in 0..16 {

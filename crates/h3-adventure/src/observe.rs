@@ -155,8 +155,11 @@ pub struct ObjectView {
     /// weeks, so it says "visited once", never "emptied"; false for every other object. Its
     /// contents never show.
     pub visited: bool,
-    /// A Shipyard's boat tile, fixed when the game was built (ADV-SHY-001: static and public);
-    /// none for a Shipyard without one and for every other object.
+    /// A Shipyard's boat tile, fixed when the game was built (ADV-SHY-001), for a viewer of its
+    /// owner's team only (ADV-OWN-003, E08 decision 229): that team has explored every offset (the
+    /// flag's reveal, an owned object's at the start), so the tile tells no other viewer which
+    /// earlier offsets were land or taken; none for every other viewer, for a neutral Shipyard,
+    /// for one without a tile and for every other object.
     pub boat_tile: Option<Pos>,
 }
 
@@ -447,7 +450,7 @@ impl AdventureState {
                         production: ours.then(|| self.production(part, index)).flatten(),
                         guards: self.guards_view(part, index, ours),
                         visited: self.visited_by(index, viewer),
-                        boat_tile: object.resolved.boat_tile(),
+                        boat_tile: ours.then(|| object.resolved.boat_tile()).flatten(),
                     }
                 })
             })

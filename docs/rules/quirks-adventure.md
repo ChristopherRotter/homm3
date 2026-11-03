@@ -403,6 +403,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-adventure/src/state/tests/boats.rs`, `a_map_holds_more_boats_than_the_original_s_64`
 - Decided by / date: the user 2026-10-28 (ADV-Q32; decisions 164, 166: not reproduced, no flag); recorded by E08 T72
 
+### ADV-QUIRK-33 — An abandoned mine without a resource draws resource 8
+- Class: exploit-fix (no flag: an input bound, the map refused at the import; A-31, E08 decision 199)
+- Context / rules affected: adventure, ADV-MIN-003 (the abandoned mine's resources), the import (`h3_map`)
+- Original behavior: `load_abandoned_mine_body` (0x501130) reads the body's first byte as the set and takes its r-th set bit, r = `random_between(1, n)` for the n bits set; with no bit set no bit is found and the resource is 8, past the seven; bit 7 gives resource 7 (mithril, not in the game). Resource 8 adds no income (`player_daily_income` counts the mines below resource 6, the gold mines' 6 alone), but the mine's message reads past its two tables (MINEEVNT, `mine_daily_income`) (survey `E08-economy.md` §3.4, §6, §8.1, §14).
+- Intended/expected behavior: the import refuses a first byte of 0 or with bit 7 (`ImportError::MineResources`), the game's build refuses an empty set or a resource past the core's (`SetupError::Holds`), the experiment writer refuses both.
+- Impact: unreachable on the shipped maps (every abandoned mine's set holds a resource, none bit 7; the census); a made map with an empty set is refused.
+- Community status: documented on the wiki (Abandoned Mine: the editor requires "at least one resource"); VCMI logs an error for an empty set and gives gold.
+- Sources: code reading (survey §3.4, §6 A-31, §8.1, §14 "A-31 corrected").
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-map/src/tests/economy.rs`, `the_import_refuses_an_owner_nobody_plays_and_an_empty_mine`; `crates/h3-adventure/src/state/tests/holds.rs`, `an_abandoned_mine_holds_its_resources_and_an_ownable_its_owner` (`SetupError::Holds` for an empty set and a resource past the core's)
+- Decided by / date: the user 2026-10-30 (ADV-Q37, E08 decision 199: A-31 refused at the import); built by E08 T83a, recorded by E08 T87b
+
 ### ADV-QUIRK-35 — A Mystical Garden marks its visitor alone, not the visitor's team
 - Class: not reproduced (no flag; the user, E08 decision 222: "always fix")
 - Context / rules affected: adventure, ADV-VIS-006 (the weekly objects' visited marks), ADV-WEK-003 (the Mystical Garden), ADV-OWN-003 (the views)
