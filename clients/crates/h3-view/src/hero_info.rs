@@ -95,7 +95,7 @@ impl Info {
         portrait: &dyn Fn(u16) -> Option<String>,
     ) -> Option<Self> {
         let index = usize::from(side == Side::Defender);
-        let view = observation.sides.get(index)?;
+        let view = &observation.sides[index];
         let hero = view.hero.as_ref()?;
         Some(Self {
             player: view
@@ -119,9 +119,10 @@ pub fn at(layout: &BattleLayout, observation: &Observation, point: [i32; 2]) -> 
     let Spot::Hero(side) = spot(layout, point, false) else {
         return None;
     };
-    let index = usize::from(side == Side::Defender);
-    observation.sides.get(index)?.hero.as_ref()?;
-    Some(side)
+    observation.sides[usize::from(side == Side::Defender)]
+        .hero
+        .is_some()
+        .then_some(side)
 }
 
 /// Side `side`'s window showing `info`, its words from `catalogue` (`army_info_hero_set`
