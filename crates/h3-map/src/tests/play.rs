@@ -21,8 +21,11 @@
 //! effects and a move's inverse (`the_plans_meet_and_manage`); since T64b with increment 7's
 //! objects, one of each class and guarded ones ([`REWARDS`]): their decisions answered, their
 //! gains conserved, and the invariants of the visits' state ([`check_rewards`],
-//! `the_plans_visit_every_kind_and_answer_every_decision`). What a viewer may learn is T8b2b's
-//! ([`super::view`]), on the same maps and driver.
+//! `the_plans_visit_every_kind_and_answer_every_decision`); since T86b1 with increment 9's objects
+//! ([`ECONOMY`]) and weeks and months of play: the flags, the mines' questions, battles and Leave
+//! Guards, the boats bought and built, the weekly visits, the week's step and a creature month's
+//! monsters met as placed ones (`the_plans_flag_guard_build_and_grow`). What a viewer may learn is
+//! T8b2b's ([`super::view`]), on the same maps and driver.
 
 use std::ops::RangeInclusive;
 use std::sync::{Arc, LazyLock};
@@ -112,8 +115,10 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// §16) increment 7's kinds ([`REWARDS`]): one of each of its 31 classes, a guarded box, a guarded
 /// event that stays, a guarded artifact and a monster with a treasure artifact. Then (E08 T75b,
 /// increment 8's design note §15) the sea's kinds ([`SEA`]): the three boats, the four pickups and
-/// Favorable Winds.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 72] = [
+/// Favorable Winds. Then (E08 T86b1, increment 9's design note §15) increment 9's kinds
+/// ([`ECONOMY`]): the seven mines, the abandoned mine, the Lighthouse, the Shipyard, the three
+/// weekly objects and gremlins that never grow.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 86] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -186,6 +191,20 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 72] = [
     (86, 0, None),
     (59, 0, None),
     (225, 0, None),
+    (53, 0, None),
+    (53, 1, None),
+    (53, 2, None),
+    (53, 3, None),
+    (53, 4, None),
+    (53, 5, None),
+    (53, 6, None),
+    (53, 7, None),
+    (42, 0, None),
+    (87, 0, None),
+    (112, 0, None),
+    (109, 0, None),
+    (55, 0, None),
+    (54, 28, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
 /// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
@@ -239,6 +258,34 @@ pub(super) const PICKUP_OBJECTS: [usize; 4] = [
 ];
 /// Favorable Winds' object (no tile blocked or visited, as a special ground's).
 pub(super) const WINDS_OBJECT: usize = BLOCKERS.len() * (SEA.0 + 7);
+/// Increment 9's kinds in [`KINDS`] (E08 T86b1, increment 9's design note §15): the first of them,
+/// and how many. In order: the mines of the seven resources (class 53 by subclass; ADV-OWN-001,
+/// ADV-MIN-002, GAM-RES-003), the abandoned mine (53.7, of a set [`body`] draws from its
+/// identifier; ADV-MIN-003), the Lighthouse (ADV-OWN-005), the Shipyard (ADV-SHY-001 to -003), the
+/// Windmill, the Water Wheel and the Mystical Garden (ADV-WEK-001 to -003), and twelve hostile
+/// gremlins that never grow (ADV-MON-013's exception).
+pub(super) const ECONOMY: (usize, usize) = (72, 14);
+/// The ownable kinds of [`ECONOMY`] (the mines, the abandoned mine, the Lighthouse, the
+/// Shipyard): their owners at load come from the plan's [`Plan::owners`].
+const OWNABLE: RangeInclusive<usize> = ECONOMY.0..=ECONOMY.0 + 9;
+/// The gremlins' kind, the last of [`ECONOMY`].
+const STILL_MONSTER: usize = ECONOMY.0 + ECONOMY.1 - 1;
+/// The objects of [`ECONOMY`] a plan draws: each kind's of a shape with a visitable tile, the
+/// gremlins' of their one tile.
+pub(super) static ECONOMY_OBJECTS: LazyLock<Vec<usize>> = LazyLock::new(|| {
+    (ECONOMY.0..ECONOMY.0 + ECONOMY.1)
+        .flat_map(|kind| {
+            let shapes: &[usize] = if kind == STILL_MONSTER { &[0] } else { &[1, 2] };
+            shapes
+                .iter()
+                .map(move |shape| BLOCKERS.len() * kind + shape)
+        })
+        .collect()
+});
+/// The Shipyard's object visited one column left of its anchor ([`BLOCKERS`]' second shape): a
+/// plan's strait puts one on its coast, so that its first offset east of the entrance, two
+/// columns, is the strait's water (ADV-SHY-001).
+pub(super) const SHIPYARD_OBJECT: usize = BLOCKERS.len() * (ECONOMY.0 + 9) + 1;
 /// The plans' wandering monsters (E08 T20b3b1), by kind: the count, the disposition (0 compliant,
 /// 1 friendly, 2 aggressive, 3 hostile, 4 savage), whether it never flees, and its treasure's
 /// gold. Six compliant goblins join most heroes (aggression −4, ADV-MON-007); fourteen hostile
@@ -327,6 +374,9 @@ pub(super) fn masks(object: usize) -> (Mask, Mask) {
 fn body(kind: usize, v: Version, identifier: u32) -> Body {
     if (REWARDS.0..REWARDS.0 + REWARDS.1).contains(&kind) {
         return reward_body(kind, v, identifier);
+    }
+    if (ECONOMY.0..ECONOMY.0 + ECONOMY.1).contains(&kind) {
+        return economy_body(kind, v, identifier);
     }
     if kind == SEA.0 + 6 {
         return Body::Sign(Text(b"Ahoy".to_vec()));
@@ -457,6 +507,39 @@ fn reward_body(kind: usize, v: Version, identifier: u32) -> Body {
     }
 }
 
+/// The body of an object of increment 9's kind `kind` ([`ECONOMY`]; E08 T86b1), neutral: a mine's
+/// and an ownable's owner (set by [`lay_out`] from [`Plan::owners`]), an abandoned mine's set (one
+/// to all seven resources, by its identifier), the gremlins' data (their identifier, which AB and
+/// SoD store, `identifier`); the weekly objects' none.
+fn economy_body(kind: usize, v: Version, identifier: u32) -> Body {
+    match kind - ECONOMY.0 {
+        0..=6 => Body::Mine {
+            owner: NEUTRAL_OWNER,
+        },
+        7 => Body::AbandonedMine(Bits(vec![
+            u8::try_from(identifier % 127).unwrap() + 1,
+            0,
+            0,
+            0,
+        ])),
+        8 | 9 => Body::Owned {
+            owner: NEUTRAL_OWNER,
+        },
+        13 => Body::Monster(MonsterBody {
+            identifier: (v != Version::RoE).then_some(identifier),
+            count: 12,
+            disposition: 3,
+            treasure: None,
+            never_flees: false,
+            no_growth: true,
+        }),
+        _ => Body::None,
+    }
+}
+
+/// A neutral ownable object's owner in a map's body.
+const NEUTRAL_OWNER: u32 = 0xFF;
+
 /// A tile as column, row and level.
 pub(super) type Spot = (u8, u8, u8);
 /// An army's seven slots as creature code and count (none: the hero type's starting army).
@@ -507,6 +590,10 @@ pub(super) struct Plan {
     /// (E08 T85b) The map's timed events ([`timed`]); before SoD the map writes no human flag, so
     /// [`lay_out`] sets it.
     pub(super) events: Vec<TimedEvent>,
+    /// (E08 T86b1) The owners at load of the ownable objects ([`OWNABLE`]): the `n`-th such
+    /// object of [`Plan::blockers`] the `n`-th's (cyclically), a playing colour by its index
+    /// (modulo the players) or none (neutral); empty: every one neutral.
+    pub(super) owners: Vec<Option<u8>>,
 }
 
 /// Elixir of Life's three parts (E08 T52; HER-ART-006: a SoD combination of artifacts every map
@@ -719,6 +806,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 sea(),
                 // E08 T85b, drawn last for the same reason.
                 timed(),
+                // E08 T86b1, drawn last for the same reason.
+                economy(),
             ),
         ),
     )
@@ -740,7 +829,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     mut skills,
                     beside,
                     pile,
-                    (mut kits, lifts, nomads, exchange, rewards, sea, events),
+                    (mut kits, lifts, nomads, exchange, rewards, sea, events, economy),
                 ),
             )| {
                 // In three plans of four (E08 T42) a flyer and a water walker: the first two
@@ -829,6 +918,14 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
                     blockers.push(((at(hx, dx), at(hy, dy), hz % levels), object));
                 }
+                // E08 T86b1: increment 9's objects within two tiles of a hero, so that random
+                // play flags, guards and visits them ([`Economy`]).
+                for &((dx, dy), hero, object) in &economy.objects {
+                    let ((hx, hy, hz), _) = heroes[usize::from(hero) % heroes.len()];
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+                    blockers.push(((at(hx, dx), at(hy, dy), hz % levels), object));
+                }
                 // E08 T75b: a strait beside a hero, its boats, pickups, winds and monster, and
                 // the hero's sources of sea points ([`Sea`]).
                 if let Some(sea) = sea {
@@ -847,6 +944,12 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     }
                     for &((c, r), object) in sea.boats.iter().chain(&sea.objects) {
                         blockers.push(((column(c), row(r), z), object));
+                    }
+                    // E08 T86b1: a Shipyard on the strait's coast, its entrance two columns west
+                    // of the strait ([`SHIPYARD_OBJECT`]), so that it has a boat tile.
+                    if let Some(r) = economy.coast {
+                        let x = (hx + sea.gap + side - 1) % side;
+                        blockers.push(((x, row(r), z), SHIPYARD_OBJECT));
                     }
                     let worn = sea.worn.map(|w| SEAFARERS[w].0);
                     if let Some(code) =
@@ -877,9 +980,44 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     difficulty,
                     exchange,
                     events,
+                    owners: economy.owners,
                 }
             },
         )
+}
+
+/// Increment 9's objects of a plan (E08 T86b1, increment 9's design note §15), drawn as
+/// [`economy`] draws them.
+#[derive(Debug, Clone)]
+pub(super) struct Economy {
+    /// The objects ([`ECONOMY_OBJECTS`]), each at an offset from a hero's tile (two columns and rows
+    /// left of it to two right) and the hero (modulo the plan's).
+    objects: Vec<((u8, u8), u8, usize)>,
+    /// The ownable objects' owners at load ([`Plan::owners`]).
+    owners: Vec<Option<u8>>,
+    /// On a plan with a strait ([`Sea`]): a Shipyard on its coast ([`SHIPYARD_OBJECT`]) at a row
+    /// from two above the strait's hero to two below (0 to 4).
+    coast: Option<u8>,
+}
+
+/// A plan's increment 9 objects (E08 T86b1): in seven plans of eight, one to six; up to four
+/// owners, each neutral in one case of two; in three plans of four with a strait, a Shipyard on
+/// its coast.
+fn economy() -> impl Strategy<Value = Economy> {
+    let object = (0..ECONOMY_OBJECTS.len()).prop_map(|i| ECONOMY_OBJECTS[i]);
+    (
+        prop_oneof![
+            1 => Just(Vec::new()),
+            7 => vec(((0u8..5, 0u8..5), any::<u8>(), object), 1..=6),
+        ],
+        vec(proptest::option::of(any::<u8>()), 0..=4),
+        proptest::option::weighted(0.75, 0u8..5),
+    )
+        .prop_map(|(objects, owners, coast)| Economy {
+            objects,
+            owners,
+            coast,
+        })
 }
 
 /// A plan's timed events (E08 T85b; GAM-CAL-004): none to three, each for some colours (those
@@ -1100,6 +1238,9 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     // after them ([`boats_laid_out`]).
     let mut covered: Vec<Spot> = Vec::new();
     let mut boats: Vec<(Spot, usize)> = Vec::new();
+    let colours: Vec<u8> = plan.players.iter().map(|&(colour, _)| colour).collect();
+    // E08 T86b1: the ownable objects met so far, for their owners ([`Plan::owners`]).
+    let mut ownables = 0;
     for &((x, y, z), shape) in plan.blockers.iter().chain(&goblins) {
         let (ax, ay, az) = (x % side, y % side, z % levels);
         if BOAT_OBJECTS.contains(&shape) {
@@ -1128,7 +1269,26 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             subclass
         };
         let twin = kind > 0 && typed.contains(&((class, subclass), (ax, ay, az)));
-        if !twin && !heroes.iter().any(covers) {
+        // E08 T86b1: an ownable object takes the next owner; one entered on water is left out
+        // (the import refuses it: `Unsupported::OwnedOnWater`, ADV-MAP-002).
+        let owner = OWNABLE.contains(&kind).then(|| {
+            ownables += 1;
+            let drawn = plan.owners.get((ownables - 1) % plan.owners.len().max(1));
+            drawn.copied().flatten().map_or(NEUTRAL_OWNER, |n| {
+                u32::from(colours[usize::from(n) % colours.len()])
+            })
+        });
+        let afloat = owner.is_some()
+            && visitable.iter().any(|&(column, row)| {
+                let (Some(ex), Some(ey)) = (ax.checked_sub(column), ay.checked_sub(row)) else {
+                    return false;
+                };
+                let index = (usize::from(az) * usize::from(side) + usize::from(ey))
+                    * usize::from(side)
+                    + usize::from(ex);
+                m.terrain.tiles[index].terrain == 8
+            });
+        if !twin && !afloat && !heroes.iter().any(covers) {
             if kind > 0 {
                 typed.push(((class, subclass), (ax, ay, az)));
             }
@@ -1136,6 +1296,11 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             let identifier = u32::try_from(m.objects.len()).unwrap();
             let mut o = object(ax, ay, template, body(kind, v, identifier));
             o.pos.z = az;
+            if let (Some(colour), Body::Mine { owner } | Body::Owned { owner }) =
+                (owner, &mut o.body)
+            {
+                *owner = colour;
+            }
             m.objects.push(o);
             covered.extend(
                 blocked
@@ -1148,7 +1313,6 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         }
     }
     boats_laid_out(&mut m, &boats, &mut covered);
-    let colours: Vec<u8> = plan.players.iter().map(|&(colour, _)| colour).collect();
     // E08 T42: the hero with Nomads (AB and SoD know the creature).
     let nomads = plan
         .nomads
@@ -1362,6 +1526,16 @@ pub(super) enum Step {
     /// (E08 T52) The acting player's open offer to join accepted; on the map its `n`-th option
     /// that ends on a wandering monster's tile ([`join`]); else as `Meet(n)`.
     Join(u16),
+    /// (E08 T86b1; increment 9's design note §15) With an army dialog open (a Leave Guards
+    /// dialog's group is its mine's guards), as `Manage(n)`; its open offer (a mine's question)
+    /// accepted; on the map the acting player's `n`-th option that enters a mine of its own (which
+    /// opens Leave Guards), else one that enters a mine or another ownable object not its own
+    /// (which flags it or asks first), else one that enters a weekly object ([`garrison`]); else
+    /// as `Join(n)`.
+    Garrison(u16),
+    /// (E08 T86b1) The acting player's `n`-th listed `BuildBoat` (ADV-SHY-003; modulo their
+    /// number), or as `Legal(n)` if it lists none.
+    BuildBoat(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -1577,8 +1751,29 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             .chain(ns.into_iter().map(Step::Manage))
             .collect()
     });
+    // E08 T86b1: runs of garrisons, three `Step::Garrison`s (a mine's flag or its guards' battle,
+    // then an own mine's visit) and then `Step::Garrison`s again, which manage its Leave Guards
+    // dialog; single `Step::BuildBoat`s; and runs of 64 ends of turn, so that games reach weeks'
+    // and months' starts (16 to 32 days with two to four players), a creature month's monsters
+    // among them (increment 9's design note §19).
+    let garrison = (any::<u16>(), vec(any::<u16>(), 2..12)).prop_map(|(n, ns)| {
+        [Step::Garrison(n), Step::Garrison(n), Step::Garrison(n)]
+            .into_iter()
+            .chain(ns.into_iter().map(Step::Garrison))
+            .collect()
+    });
+    let boat = any::<u16>().prop_map(|n| vec![Step::BuildBoat(n)]);
+    let days = Just(vec![Step::EndTurn; 64]);
     vec(
-        prop_oneof![12 => step().prop_map(|step| vec![step]), 1 => run, 2 => manage, 1 => join],
+        prop_oneof![
+            12 => step().prop_map(|step| vec![step]),
+            1 => run,
+            2 => manage,
+            1 => join,
+            1 => garrison,
+            1 => boat,
+            1 => days,
+        ],
         0..40,
     )
     .prop_map(|runs: Vec<Vec<Step>>| runs.into_iter().flatten().collect())
@@ -1771,10 +1966,9 @@ fn join(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
     }
     if battle_of(state, self::actor(state)).is_none() && !state.has_decision(actor) {
         let adventure = state.adventure();
+        // E08 T86b1: a monster added in play too.
         let monster = |pos: TilePos| {
-            adventure.map().visited_from(pos).iter().any(|&i| {
-                !adventure.is_removed(i) && adventure.map().objects()[i].monster.is_some()
-            })
+            visited_at(state, pos).is_some_and(|i| adventure.object(i).unwrap().monster.is_some())
         };
         let visits: Vec<(HeroId, &GameCommand)> = legal
             .iter()
@@ -1800,6 +1994,63 @@ fn join(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
         }
     }
     meet(state, rules, legal, n)
+}
+
+/// [`Step::Garrison`] (E08 T86b1): with an army dialog open, the `n`-th of [`managing`] (`Close` if
+/// none, and in one step of eight); its open offer accepted (a mine's guards fought); on the map
+/// the `n`-th of its options that enter a mine of its own, else one that enters an ownable object
+/// not its own, else one that enters a weekly object (a second visit in a week finds it empty);
+/// else as [`join`].
+fn garrison(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+    let actor = acting(state);
+    if battle_of(state, self::actor(state)).is_none() {
+        // One step of eight closes the dialog, so that a mine keeps the group as its guards.
+        if state.army_dialog(actor).is_some() {
+            let managed = pick(&managing(state, rules), n).filter(|_| n % 8 != 7);
+            return managed.unwrap_or(CLOSE);
+        }
+        if state.decision(actor).is_some() {
+            return ANSWERS[0].clone();
+        }
+    }
+    if battle_of(state, self::actor(state)).is_none() && !state.has_decision(actor) {
+        let (adventure, part) = (state.adventure(), rules.adventure());
+        // 0: an own mine; 1: an ownable object not its own; 2: a weekly object.
+        let entered = |aim: u8| -> Vec<&GameCommand> {
+            let wanted = |pos: TilePos| {
+                visited_at(state, pos).is_some_and(|i| {
+                    let ty = adventure.object(i).and_then(|o| o.object_type);
+                    let kind = ty.and_then(|ty| part.object_type(ty)).map(|t| &t.kind);
+                    let mine = matches!(
+                        kind,
+                        Some(ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. })
+                    );
+                    let other = matches!(
+                        kind,
+                        Some(ObjectKind::Lighthouse { .. } | ObjectKind::Shipyard { .. })
+                    );
+                    let owned = adventure.owner(i) == Some(actor);
+                    match aim {
+                        0 => mine && owned,
+                        1 => (mine || other) && !owned,
+                        _ => adventure.weekly(i).is_some(),
+                    }
+                })
+            };
+            legal
+                .iter()
+                .filter(|c| {
+                    as_move(c)
+                        .and_then(|(_, path)| path.last())
+                        .is_some_and(|&to| wanted(to))
+                })
+                .collect()
+        };
+        if let Some(visits) = (0..3).map(entered).find(|v| !v.is_empty()) {
+            return visits[usize::from(n) % visits.len()].clone();
+        }
+    }
+    join(state, rules, legal, n)
 }
 
 /// On the map (E08 T52): the acting player's open offer declined, its level-up's first offer
@@ -1971,7 +2222,33 @@ fn landing(
     // (E08 T75b) A sea pickup leaves at its visit (ADV-PIK-014 to -017): its removal follows.
     let leaves = steps + 2 == kinds.len()
         && matches!(kinds.last(), Some(AdventureEventKind::ObjectRemoved { .. }));
-    prop_assert!(kinds.len() <= steps + 1 || leaves, "{:?}", kinds);
+    // (E08 T86b1) A flag reveals around its object (ADV-OWN-001): its `TilesRevealed` follows,
+    // then a Shipyard's refusal (ADV-SHY-002) or a mine's guards changed by the visit; a weekly
+    // object's mark comes before its emptiness (ADV-VIS-006).
+    let visit = &kinds[steps..];
+    let flagged = matches!(
+        visit,
+        [
+            AdventureEventKind::ObjectFlagged { .. },
+            AdventureEventKind::TilesRevealed { .. },
+            rest @ ..
+        ] if rest.len() <= 1 && rest.iter().all(|k| matches!(
+            k,
+            AdventureEventKind::ShipyardBlocked { .. } | AdventureEventKind::GuardsChanged { .. }
+        ))
+    );
+    let marked = matches!(
+        visit,
+        [
+            AdventureEventKind::ObjectMarked { .. },
+            AdventureEventKind::ObjectEmpty { .. }
+        ]
+    );
+    prop_assert!(
+        kinds.len() <= steps + 1 || leaves || flagged || marked,
+        "{:?}",
+        kinds
+    );
     // A live event on the last tile stepped onto stopped the move: fired, or held on a tile a
     // monster guards, whose visit comes first (E08 T63b, GAM-DEC-007; the plans' events fire for
     // every colour, computers too).
@@ -2227,6 +2504,23 @@ pub(super) fn resolve(
         ),
         Step::Meet(n) => (who, meet(state, rules, legal, *n)),
         Step::Join(n) => (who, join(state, rules, legal, *n)),
+        Step::Garrison(n) => (who, garrison(state, rules, legal, *n)),
+        Step::BuildBoat(n) => {
+            let boats: Vec<&GameCommand> = legal
+                .iter()
+                .filter(|c| {
+                    matches!(
+                        c,
+                        GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
+                    )
+                })
+                .collect();
+            let command = match boats.len() {
+                0 => &legal[usize::from(*n) % legal.len()],
+                len => boats[usize::from(*n) % len],
+            };
+            (who, command.clone())
+        }
         Step::Edited(n, edit) => {
             let moves: Vec<(HeroId, &[TilePos])> = legal.iter().filter_map(as_move).collect();
             let Some(&(mut hero, path)) = moves.get(usize::from(*n) % moves.len().max(1)) else {
@@ -2505,7 +2799,10 @@ fn check_legal(
             } else if choosing {
                 choice_answers(state, rules, player)
             } else {
-                vec![GameCommand::EndTurn]
+                // E08 T86b1: then the Shipyards' boats it may build (ADV-SHY-003).
+                core::iter::once(GameCommand::EndTurn)
+                    .chain(buildable(state, rules, player))
+                    .collect()
             };
             prop_assert_eq!(listed, expected);
         }
@@ -2606,19 +2903,19 @@ fn check_legal(
         // another decision (E08 T63b, GAM-DEC-007: the guard's visit, a record's experience with
         // its levels, an event on the hero's tile with its guards' battle; E08 T71: a guard's join
         // without room, then the event it guarded and its guards' battle).
+        // E08 T86b1: a Leave Guards dialog's group is kept as the mine's guards, lost never
+        // ([`check_mine_guards`]).
+        let lost = state
+            .army_dialog(actor)
+            .filter(|_| state.leave_guards(actor).is_none());
         let closing: Vec<GameEvent> = core::iter::once(GameEvent::DecisionClosed { player: actor })
-            .chain(
-                state
-                    .army_dialog(actor)
-                    .into_iter()
-                    .flat_map(|(hero, group)| {
-                        group.iter().map(move |&stack| GameEvent::GroupLost {
-                            player: actor,
-                            hero,
-                            stack,
-                        })
-                    }),
-            )
+            .chain(lost.into_iter().flat_map(|(hero, group)| {
+                group.iter().map(move |&stack| GameEvent::GroupLost {
+                    player: actor,
+                    hero,
+                    stack,
+                })
+            }))
             .collect();
         prop_assert_eq!(events.get(..closing.len()), Some(&closing[..]));
         prop_assert!(!probe.has_decision(actor) || events.len() > closing.len());
@@ -2649,7 +2946,14 @@ fn check_legal(
         return Ok(());
     }
     prop_assert_eq!(legal.first(), Some(&GameCommand::EndTurn));
+    check_build_boat(state, rules, actor, legal)?;
     for command in &legal[1..] {
+        if matches!(
+            command,
+            GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
+        ) {
+            continue;
+        }
         let (hero, path) = as_move(command).ok_or_else(|| fail(format!("{command:?}")))?;
         prop_assert_eq!(state.adventure().hero(hero).map(|h| h.owner), Some(actor));
         let to = *path.last().unwrap();
@@ -2682,6 +2986,97 @@ fn check_legal(
         let moved = probe.adventure().hero(hero).unwrap();
         let points = reach_of(reaches, hero).points_left(end);
         prop_assert_eq!((moved.pos, Some(moved.movement)), (at, points));
+    }
+    Ok(())
+}
+
+/// The `BuildBoat`s `player` may issue now, by an oracle of ADV-SHY-003 (E08 T86b1; increment 9's
+/// design note §15): one for each Shipyard in object order that is its own (an ally's too: the
+/// player alone until E10), has a tile the player explored, a boat tile (ADV-SHY-001) with neither
+/// an empty boat nor a hero on it, while the treasury pays the kind's price.
+fn buildable(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
+    let adventure = state.adventure();
+    let map = adventure.map();
+    let treasury = state.treasury(player).unwrap_or_default();
+    let objects = map.objects().iter().enumerate();
+    objects
+        .filter_map(|(i, o)| {
+            let object_type = o.object_type?;
+            let kind = rules.adventure().object_type(object_type).map(|t| &t.kind);
+            let Some(ObjectKind::Shipyard { price, .. }) = kind else {
+                return None;
+            };
+            let tile = o.resolved.boat_tile()?;
+            let taken =
+                adventure.is_empty_boat(tile) || adventure.heroes().iter().any(|h| h.pos == tile);
+            let seen = o.tiles(map).any(|pos| adventure.is_explored(player, pos));
+            let pays = price
+                .iter()
+                .all(|&(r, amount)| treasury.get(r.index()).is_some_and(|&t| t >= amount));
+            (adventure.owner(i) == Some(player) && seen && !taken && pays).then_some(
+                GameCommand::Adventure(AdventureCommand::BuildBoat {
+                    object_type,
+                    anchor: o.anchor,
+                }),
+            )
+        })
+        .collect()
+}
+
+/// Every `BuildBoat` (E08 T86b1; ADV-SHY-003, increment 9's design note §15): each one the actor
+/// lists applies, builds the boat on its Shipyard's tile told as `BoatBuilt`, and pays the price;
+/// a `BuildBoat` naming any other typed object, a Shipyard it may not build at among them, is
+/// rejected with the state unchanged.
+fn check_build_boat(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: PlayerId,
+    legal: &[GameCommand],
+) -> Result<(), TestCaseError> {
+    let map = state.adventure().map();
+    for (i, o) in map.objects().iter().enumerate() {
+        let Some(object_type) = o.object_type else {
+            continue;
+        };
+        let command = GameCommand::Adventure(AdventureCommand::BuildBoat {
+            object_type,
+            anchor: o.anchor,
+        });
+        let mut probe = state.clone();
+        let mut events = Vec::new();
+        let result = apply(
+            &mut probe,
+            rules,
+            Actor::Player(actor),
+            command.clone(),
+            &mut events,
+        );
+        if !legal.contains(&command) {
+            prop_assert!(result.is_err(), "unlisted {:?} accepted", command);
+            prop_assert_eq!(&probe, state);
+            prop_assert!(events.is_empty());
+            continue;
+        }
+        prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
+        let tile = o.resolved.boat_tile().unwrap();
+        let built = events.iter().any(|e| {
+            matches!(e, GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::BoatBuilt { tile: t, .. },
+                ..
+            }) if *t == tile)
+        });
+        prop_assert!(built, "{:?}", events);
+        prop_assert!(probe.adventure().is_empty_boat(tile));
+        let Some(ObjectKind::Shipyard { price, .. }) =
+            rules.adventure().object_type(object_type).map(|t| &t.kind)
+        else {
+            return Err(fail(format!("{command:?} listed for object {i}")));
+        };
+        let mut treasury = state.treasury(actor).unwrap().to_vec();
+        for &(r, amount) in price {
+            treasury[r.index()] -= amount;
+        }
+        prop_assert_eq!(probe.treasury(actor).unwrap(), &treasury[..]);
     }
     Ok(())
 }
@@ -2756,6 +3151,32 @@ fn added_at(state: &GameState, pos: TilePos) -> bool {
         .iter()
         .enumerate()
         .any(|(i, o)| o.anchor == pos && !adventure.is_removed(placed + i))
+}
+
+/// Every object of `state` with its index (E08 T86b1): the static map's, then those added in play
+/// (a creature month's monsters), on the map or not.
+fn all_objects(state: &GameState) -> impl Iterator<Item = (usize, &h3_adventure::MapObject)> {
+    let adventure = state.adventure();
+    let added = adventure.added_objects().iter();
+    adventure.map().objects().iter().chain(added).enumerate()
+}
+
+/// The object a visit of `pos` concerns, by index (as the engine's, ADV-OBJ-003): the last object
+/// added in play still on the map that is visited from it (E08 T86b1: a creature month's monster
+/// comes after the static map's in map order), else the static map's last still on the map.
+fn visited_at(state: &GameState, pos: TilePos) -> Option<usize> {
+    let adventure = state.adventure();
+    let placed = adventure.map().objects().len();
+    let live = |&i: &usize| !adventure.is_removed(i);
+    let added = (placed..)
+        .zip(adventure.added_objects())
+        .filter(|&(i, o)| live(&i) && o.covers(pos).1)
+        .map(|(i, _)| i)
+        .last();
+    added.or_else(|| {
+        let statics = adventure.map().visited_from(pos).iter().copied();
+        statics.rev().find(live)
+    })
 }
 
 /// A new day's income (GAM-RES-003 to -005, E08 T85b; increment 9's design note §14), from the
@@ -2993,7 +3414,7 @@ fn check_conservation(
         prop_assert_eq!(&told, &**a);
     }
     prop_assert_eq!(before.heroes().len(), after.heroes().len());
-    let (map, adventure) = (before.adventure().map(), after.adventure());
+    let adventure = after.adventure();
     let joined: Vec<(HeroId, CreatureTypeId, u32)> = events
         .iter()
         .filter_map(|e| match *e {
@@ -3011,8 +3432,13 @@ fn check_conservation(
         .collect();
     // E08 T52: a group that finds no room joins nothing and is held whole in the army dialog
     // (ADV-MON-008, GAM-DEC-004), its monster leaving as one that joins.
+    // E08 T86b1: a Leave Guards dialog's stacks are its mine's guards ([`check_mine_guards`]).
+    let guards = events
+        .iter()
+        .any(|e| matches!(e, GameEvent::LeaveGuardsOpened { .. }));
     let held: Vec<(HeroId, CreatureTypeId, u32)> = events
         .iter()
+        .filter(|_| !guards)
         .filter_map(|e| match *e {
             GameEvent::ArmyDialogOpened { hero, stack, .. } => {
                 Some((hero, stack.creature, stack.count))
@@ -3035,7 +3461,8 @@ fn check_conservation(
             ..
         }) = *event
         {
-            let left = map.objects().iter().enumerate().filter(|&(i, o)| {
+            // E08 T86b1: a monster added in play leaves as a placed one.
+            let left = all_objects(before).filter(|&(i, o)| {
                 (o.object_type, o.anchor) == (Some(object_type), anchor)
                     && !before.adventure().is_removed(i)
                     && adventure.is_removed(i)
@@ -3116,10 +3543,21 @@ fn check_conservation(
             })
         )
     }) || emptied(before, after).next().is_some()
+        || weekly_emptied(before, after).next().is_some()
         || matches!(
             command,
             GameCommand::Answer(Answer::Chest(ChestChoice::Gold))
         );
+    // E08 T86b1: `BuildBoat` pays its Shipyard's price (ADV-SHY-003).
+    let boat = match *command {
+        GameCommand::Adventure(AdventureCommand::BuildBoat { object_type, .. }) => {
+            match rules.adventure().object_type(object_type).map(|t| &t.kind) {
+                Some(ObjectKind::Shipyard { price, .. }) => Some(price),
+                _ => None,
+            }
+        }
+        _ => None,
+    };
     let accepted = events.iter().find_map(|e| match *e {
         GameEvent::OfferAnswered {
             player,
@@ -3153,7 +3591,7 @@ fn check_conservation(
                     let answered = matches!(command, GameCommand::Answer(_))
                         && (before.choice(owner).is_some() || before.university(owner).is_some());
                     prop_assert!(
-                        accepted == Some(owner) || answered,
+                        accepted == Some(owner) || answered || boat.is_some(),
                         "{:?} without an offer",
                         event
                     );
@@ -3173,6 +3611,8 @@ fn check_conservation(
         prop_assert_eq!(after.treasury(player).unwrap(), &treasury[..]);
         if accepted == Some(player) {
             prop_assert_eq!(&paid[..], before.decision(player).unwrap().price());
+        } else if let Some(price) = boat.filter(|_| !paid.is_empty()) {
+            prop_assert_eq!(&paid[..], &price[..]);
         } else if let Some(choice) = before.choice(player).filter(|_| !paid.is_empty()) {
             prop_assert_eq!(&paid[..], choice.price());
         } else if let Some(visit) = before.university(player).filter(|_| !paid.is_empty()) {
@@ -3392,6 +3832,17 @@ fn emptied<'s>(before: &'s GameState, after: &'s GameState) -> impl Iterator<Ite
     (0..before.adventure().map().objects().len()).filter(move |&i| !is(before, i) && is(after, i))
 }
 
+/// The weekly objects a visit emptied between `before` and `after` (E08 T86b1; ADV-WEK-001 to
+/// -003): full before, empty after.
+fn weekly_emptied<'s>(
+    before: &'s GameState,
+    after: &'s GameState,
+) -> impl Iterator<Item = usize> + 's {
+    let amount = |state: &GameState, i| state.adventure().weekly(i).map_or(0, |w| w.amount);
+    let weeklies = before.adventure().map().weeklies().iter().copied();
+    weeklies.filter(move |&i| amount(before, i) > 0 && amount(after, i) == 0)
+}
+
 /// The finds that left the map between `before` and `after` (E08 T75b; ADV-PIK-014 to -016): a
 /// sea pickup leaves at its visit instead of being emptied, so its gains come at its removal.
 fn left<'s>(
@@ -3436,6 +3887,12 @@ fn visit_gains(
         GameCommand::Answer(Answer::Chest(ChestChoice::Gold))
     );
     let mut gains: Amounts = chest.filter(|_| gold).into_iter().collect();
+    // E08 T86b1: a weekly object's resource and amount at the visit that empties it (ADV-WEK-001
+    // to -003).
+    for i in weekly_emptied(before, after) {
+        let weekly = before.adventure().weekly(i).unwrap();
+        gains.push((weekly.resource, weekly.amount));
+    }
     // A find's artifact when its hero receives it, with a fixed entry's resources (E08 T72), else
     // what the artifact turns into (the Corpse's gold, the Wagon's own resources, nothing when it
     // is lost), or its resources; (E08 T75b) a find that leaves, at its removal.
@@ -3523,7 +3980,9 @@ fn records(
 /// The army dialogs' groups (E08 T52; GAM-DEC-004): a dialog opens with the group whole in its
 /// slot 0, as told; a slot of a group changes as told (`StackChanged`); a closed dialog's group
 /// is lost, each stack it held told in slot order after the dialog's close; nothing else
-/// changes a group.
+/// changes a group. (E08 T86b1) An own mine's Leave Guards dialog opens empty, then with each of
+/// the mine's guard stacks as told, and its close keeps the group as the mine's guards
+/// (ADV-MIN-002, GAM-DEC-004 amended; [`check_mine_guards`]): nothing is lost.
 fn check_groups(
     before: &GameState,
     after: &GameState,
@@ -3537,8 +3996,18 @@ fn check_groups(
         };
         let mut expected = group(before);
         let mut lost = Vec::new();
+        let mut mine = before.leave_guards(player).is_some();
         for event in events {
             match *event {
+                GameEvent::LeaveGuardsOpened {
+                    player: owner,
+                    hero,
+                    ..
+                } if owner == player => {
+                    prop_assert!(expected.is_none(), "{:?} with a dialog open", event);
+                    expected = Some((hero, Vec::new()));
+                    mine = true;
+                }
                 // E08 T62b1: one event per stack of the group at its opening, in slot order (a
                 // join's one stack in slot 0; a reward record's at their slots).
                 GameEvent::ArmyDialogOpened {
@@ -3547,7 +4016,7 @@ fn check_groups(
                     stack,
                 } if owner == player => match &mut expected {
                     Some((open, group))
-                        if *open == hero && group.last().is_some_and(|s| s.slot < stack.slot) =>
+                        if *open == hero && group.last().map_or(mine, |s| s.slot < stack.slot) =>
                     {
                         group.push(stack);
                     }
@@ -3576,9 +4045,12 @@ fn check_groups(
                     }
                 }
                 GameEvent::DecisionClosed { player: owner } if owner == player => {
-                    if let Some((_, group)) = expected.take() {
+                    if let Some((_, group)) = expected.take()
+                        && !mine
+                    {
                         lost = group;
                     }
+                    mine = false;
                 }
                 GameEvent::GroupLost {
                     player: owner,
@@ -3598,6 +4070,99 @@ fn check_groups(
             lost
         );
         prop_assert_eq!(group(after), expected);
+    }
+    Ok(())
+}
+
+/// A week's step (E08 T86b1; ADV-WEK-001 to -003, ADV-MON-013; increment 9's design note §15):
+/// after a `WeekStarted` every weekly object is full, its marks kept (a Windmill one of its
+/// resources and an amount within its bounds, a Water Wheel its later weeks' amount, a Garden one
+/// of its gifts), and every wandering monster that stood before grew: one that grows to
+/// `v + ⌊v × growth_bp ÷ 10 000⌋`, at most `growth_cap` creatures (`v` its count in growth units
+/// with its fraction), as count and fraction; one that does not grow keeps its count.
+fn check_week(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    if !events
+        .iter()
+        .any(|e| matches!(e, GameEvent::WeekStarted { .. }))
+    {
+        return Ok(());
+    }
+    let (part, b, a) = (rules.adventure(), before.adventure(), after.adventure());
+    for &i in b.map().weeklies() {
+        let (was, now) = (b.weekly(i).unwrap(), a.weekly(i).unwrap());
+        prop_assert_eq!(now.marks, was.marks);
+        let ty = b.map().objects()[i].object_type.unwrap();
+        let full = match &part.object_type(ty).unwrap().kind {
+            ObjectKind::Windmill { resources, amount } => {
+                resources.contains(&now.resource) && (amount[0]..=amount[1]).contains(&now.amount)
+            }
+            ObjectKind::WaterWheel {
+                resource, later, ..
+            } => (now.resource, now.amount) == (*resource, *later),
+            ObjectKind::Garden { gifts } => gifts.contains(&(now.resource, now.amount)),
+            _ => false,
+        };
+        prop_assert!(full, "weekly object {} after a week's start: {:?}", i, now);
+    }
+    let Some(params) = part.params().monsters() else {
+        return Ok(());
+    };
+    let unit = u64::from(params.growth_unit());
+    let (most, rate) = (
+        u64::from(params.growth_cap()) * unit,
+        u64::from(params.growth_bp()),
+    );
+    for (i, o) in all_objects(before) {
+        let Some(monster) = o.monster.as_ref().filter(|_| !b.is_removed(i)) else {
+            continue;
+        };
+        let count = u64::from(b.monster_count(i).unwrap());
+        let now = (
+            u64::from(a.monster_count(i).unwrap()),
+            u64::from(a.fraction(i)),
+        );
+        if monster.no_growth {
+            prop_assert_eq!(now.0, count);
+            continue;
+        }
+        let value = count * unit + u64::from(b.fraction(i));
+        let grown = (value + value * rate / 10_000).min(most);
+        prop_assert_eq!(now, (grown / unit, grown % unit), "monster {}", i);
+    }
+    Ok(())
+}
+
+/// A Leave Guards dialog's close (E08 T86b1; ADV-MIN-002, GAM-DEC-004 amended, increment 9's
+/// design note §15's `Step::Garrison`): the group as it stood becomes the mine's guards, by slot
+/// (empty: none), and the mine stays its owner's.
+fn check_mine_guards(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+) -> Result<(), TestCaseError> {
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        let (Some((object_type, anchor)), Some((_, group))) =
+            (before.leave_guards(player), before.army_dialog(player))
+        else {
+            continue;
+        };
+        if after.army_dialog(player).is_some() {
+            continue;
+        }
+        let map = before.adventure().map();
+        let index = map
+            .objects()
+            .iter()
+            .position(|o| (o.object_type, o.anchor) == (Some(object_type), anchor))
+            .unwrap();
+        prop_assert_eq!(
+            after.adventure().mine_guards(rules.adventure(), index),
+            group.to_vec()
+        );
+        prop_assert_eq!(after.adventure().owner(index), Some(player));
     }
     Ok(())
 }
@@ -4113,32 +4678,40 @@ fn check_unowned_battle_end(
         .map(OpenBattle::tile)
         .or(started)
         .unwrap();
-    let map = before.adventure().map();
+    let (adventure, map) = (before.adventure(), before.adventure().map());
+    // E08 T86b1: a mine's guards ([`check_mine_battle_end`]).
+    let mine = visited_at(before, tile).filter(|&i| {
+        let ty = adventure.object(i).and_then(|o| o.object_type);
+        matches!(
+            ty.and_then(|ty| rules.adventure().object_type(ty))
+                .map(|t| &t.kind),
+            Some(ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. })
+        )
+    });
+    if let Some(index) = mine {
+        return check_mine_battle_end(rules, (before, after), events, (visitor, index, result));
+    }
+    // E08 T86b1: a found index may be a monster's added in play (a creature month's), read
+    // through `object` (`docs/lanes/adventure/TRAPS.md`, objects added in play).
+    let at = |i: usize| adventure.object(i).unwrap();
     let kind = |i: usize| {
-        let ty = map.objects()[i].object_type;
+        let ty = at(i).object_type;
         ty.and_then(|ty| rules.adventure().object_type(ty))
             .map(|t| &t.kind)
     };
     let pyramid = |i: usize| matches!(kind(i), Some(ObjectKind::Pyramid(_)));
-    let live = |&i: &usize| !before.adventure().is_removed(i);
-    let index = map
-        .visited_from(tile)
-        .iter()
-        .copied()
-        .rev()
-        .find(live)
+    let live = |&i: &usize| !adventure.is_removed(i);
+    let index = visited_at(before, tile)
         .filter(|&i| {
-            let o = &map.objects()[i];
+            let o = at(i);
             o.monster.is_some() || o.guards.is_some() || pyramid(i)
         })
         .or_else(|| {
             let events = map.events_at(tile).iter().copied().rev();
-            events
-                .filter(live)
-                .find(|&i| map.objects()[i].guards.is_some())
+            events.filter(live).find(|&i| at(i).guards.is_some())
         })
         .ok_or_else(|| fail(format!("no monster or guards fought at {tile:?}")))?;
-    let object = &map.objects()[index];
+    let object = at(index);
     let removals = events
         .iter()
         .filter(|e| {
@@ -4272,6 +4845,70 @@ fn check_unowned_battle_end(
         if player != owner {
             prop_assert_eq!(before.treasury(player), after.treasury(player));
         }
+    }
+    Ok(())
+}
+
+/// The end of a battle against a mine's guards (E08 T86b1; ADV-MIN-002, GAM-BAT-001 amended,
+/// increment 9's design note §13), a neutral mine's or another player's (whose owner played their
+/// side): won, the guards are gone and the mine is flagged for the visitor's owner, told as its
+/// flag, unless the winner's level-up is left open (the flag comes after it, GAM-DEC-007); else
+/// its owner is kept and its guards are survivors, each of a stack it had by slot and creature
+/// with at most its count (none after a draw). No object leaves the map; no treasury changes.
+fn check_mine_battle_end(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    (visitor, index, result): (HeroId, usize, BattleResult),
+) -> Result<(), TestCaseError> {
+    let part = rules.adventure();
+    let (b, a) = (before.adventure(), after.adventure());
+    let owner = b.hero(visitor).unwrap().owner;
+    let (had, left) = (b.mine_guards(part, index), a.mine_guards(part, index));
+    let flagged = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectFlagged { owner: o, .. },
+                ..
+            }) if *o == owner
+        )
+    });
+    if result.winner() == Some(BattleSide::Attacker) {
+        prop_assert!(left.is_empty(), "{:?} left after a win", left);
+        let levels = events
+            .iter()
+            .any(|e| matches!(e, GameEvent::LevelUpOpened { hero, .. } if *hero == visitor));
+        prop_assert_eq!(flagged, !levels);
+        let expected = if levels { b.owner(index) } else { Some(owner) };
+        prop_assert_eq!(a.owner(index), expected);
+    } else {
+        prop_assert!(!flagged);
+        prop_assert_eq!(a.owner(index), b.owner(index));
+        prop_assert!(
+            left.iter().all(|s| had
+                .iter()
+                .any(|h| (h.slot, h.creature) == (s.slot, s.creature) && h.count >= s.count)),
+            "{:?} of {:?}",
+            left,
+            had
+        );
+        if result == BattleResult::Draw {
+            prop_assert!(left.is_empty());
+        }
+    }
+    let removed = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved { .. },
+                ..
+            })
+        )
+    });
+    prop_assert!(!removed, "{:?}", events);
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        prop_assert_eq!(before.treasury(player), after.treasury(player));
     }
     Ok(())
 }
@@ -4676,6 +5313,36 @@ fn check_decisions(
                             _ => OfferKind::SearchPyramid,
                         }
                     }
+                    // E08 T86b1: a mine neutral or another's asks while its guards stand, never
+                    // refused (ADV-MIN-002).
+                    ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. } => {
+                        prop_assert!(opened, "{:?}: a mine's question is never refused", event);
+                        let map = before.adventure().map();
+                        let (part, adventure) = (rules.adventure(), before.adventure());
+                        let asks = map.objects().iter().enumerate().any(|(i, o)| {
+                            (o.object_type, o.anchor) == (Some(object_type), anchor)
+                                && adventure.owner(i) != Some(actor)
+                                && !adventure.mine_guards(part, i).is_empty()
+                        });
+                        prop_assert!(asks, "{:?} without guards", event);
+                        OfferKind::Fight
+                    }
+                    // E08 T86b1: a Shipyard's boat while its boat tile is free (ADV-SHY-002),
+                    // refused when the treasury cannot pay the price.
+                    ObjectKind::Shipyard { price, .. } => {
+                        let map = before.adventure().map();
+                        let free = map.objects().iter().any(|o| {
+                            (o.object_type, o.anchor) == (Some(object_type), anchor)
+                                && o.resolved.boat_tile().is_some_and(|tile| {
+                                    !before.adventure().is_empty_boat(tile)
+                                        && after.adventure().heroes().iter().all(|h| h.pos != tile)
+                                })
+                        });
+                        prop_assert!(free, "{:?} without a free boat tile", event);
+                        OfferKind::Boat {
+                            price: price.clone(),
+                        }
+                    }
                     _ => return Err(fail(format!("{event:?} offers no offer"))),
                 };
                 let offer = Offer {
@@ -4788,6 +5455,7 @@ fn check_decisions(
         hero.or_else(|| state.university(actor).map(|u| u.hero))
     };
     let mut exchange = (before.meeting(actor), dialog(before), choosing(before));
+    let mut guards = false;
     for event in events {
         match *event {
             GameEvent::MeetingOpened { player, heroes } => {
@@ -4797,6 +5465,27 @@ fn check_decisions(
                     prop_assert_eq!(owner, Some(actor));
                 }
                 exchange.0 = Some(heroes);
+            }
+            // E08 T86b1: an own mine's Leave Guards dialog (ADV-MIN-002, GAM-DEC-004 amended)
+            // opens as an army dialog, then tells each guard stack as its group's.
+            GameEvent::LeaveGuardsOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } => {
+                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
+                let map = after.adventure().map();
+                let own = map.objects().iter().enumerate().any(|(i, o)| {
+                    (o.object_type, o.anchor) == (Some(object_type), anchor)
+                        && after.adventure().owner(i) == Some(actor)
+                });
+                prop_assert!(own, "{:?} of a mine not the actor's", event);
+                exchange.1 = Some(hero);
+                guards = true;
+            }
+            GameEvent::ArmyDialogOpened { player, hero, .. } if guards => {
+                prop_assert_eq!((player, exchange), (actor, (None, Some(hero), None)));
             }
             GameEvent::ArmyDialogOpened { player, hero, .. } => {
                 prop_assert_eq!((player, exchange), (actor, (None, None, None)));
@@ -4816,6 +5505,7 @@ fn check_decisions(
                     event
                 );
                 exchange = (None, None, None);
+                guards = false;
             }
             _ => {}
         }
@@ -5017,6 +5707,8 @@ proptest! {
             check_decisions(rules, (&before, &state), player, &events)?;
             check_isolation(&before, &state, player, &events)?;
             check_conservation(rules, (&before, &state), &command, &events)?;
+            check_mine_guards(rules, (&before, &state))?;
+            check_week(rules, (&before, &state), &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -5205,12 +5897,8 @@ impl Fought {
 
     /// Whether the battle fought at `tile` is against a guarded pile's guards.
     fn at_pile(state: &GameState, tile: TilePos) -> bool {
-        let map = state.adventure().map();
-        map.visited_from(tile)
-            .iter()
-            .rev()
-            .find(|&&i| !state.adventure().is_removed(i))
-            .is_some_and(|&i| map.objects()[i].guards.is_some())
+        visited_at(state, tile)
+            .is_some_and(|i| state.adventure().object(i).unwrap().guards.is_some())
     }
 
     fn count_result(&mut self, result: BattleResult) {
@@ -5729,6 +6417,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         difficulty: 1,
         exchange: None,
         events: Vec::new(),
+        owners: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
@@ -5907,4 +6596,174 @@ fn the_plans_sail() {
         s.monsters > 0 && s.deck > 0 && s.two_boats > 0 && s.boats_removed > 0,
         "{s:?}"
     );
+}
+
+/// What the plans' games did with increment 9's objects (E08 T86b1, increment 9's design note
+/// §15): the flags of neutral and other players' objects, the mines' questions and their guards'
+/// battles, the Leave Guards dialogs and the guards they left, the boats built at a Shipyard's
+/// offer and by `BuildBoat`, a Shipyard's refusals, the weekly objects' gains and empty visits,
+/// the days a mine's income was paid, the weeks' starts, the monsters a creature month added and
+/// those of them visited (an offer, a battle or a join, as a placed one's).
+#[derive(Debug, Default)]
+struct Owned {
+    flags: usize,
+    taken: usize,
+    questions: usize,
+    mine_battles: usize,
+    guards_left: usize,
+    guards_kept: usize,
+    offered_boats: usize,
+    built_boats: usize,
+    blocked: usize,
+    weekly_gains: usize,
+    weekly_empty: usize,
+    income: usize,
+    weeks: usize,
+    added: usize,
+    added_visited: usize,
+}
+
+impl Owned {
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        (before, after): (&GameState, &GameState),
+        command: &GameCommand,
+        events: &[GameEvent],
+    ) {
+        let (part, adventure) = (rules.adventure(), before.adventure());
+        let index_of = |object_type: ObjectTypeId, anchor: TilePos| {
+            all_objects(before)
+                .find(|(_, o)| (o.object_type, o.anchor) == (Some(object_type), anchor))
+                .map(|(i, _)| i)
+        };
+        let mine = |i: usize| {
+            let kind = adventure.object(i).and_then(|o| o.object_type);
+            matches!(
+                kind.and_then(|ty| part.object_type(ty)).map(|t| &t.kind),
+                Some(ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. })
+            )
+        };
+        let placed = adventure.map().objects().len();
+        for event in events {
+            match *event {
+                GameEvent::Adventure(AdventureEvent { kind, .. }) => match kind {
+                    AdventureEventKind::ObjectFlagged {
+                        object_type,
+                        anchor,
+                        ..
+                    } => {
+                        self.flags += 1;
+                        let was = index_of(object_type, anchor).and_then(|i| adventure.owner(i));
+                        self.taken += usize::from(was.is_some());
+                    }
+                    AdventureEventKind::BoatBuilt { .. } => {
+                        if matches!(
+                            command,
+                            GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
+                        ) {
+                            self.built_boats += 1;
+                        } else {
+                            self.offered_boats += 1;
+                        }
+                    }
+                    AdventureEventKind::ShipyardBlocked { .. } => self.blocked += 1,
+                    AdventureEventKind::ObjectEmpty { .. } => self.weekly_empty += 1,
+                    AdventureEventKind::MonsterAdded { .. } => self.added += 1,
+                    _ => {}
+                },
+                GameEvent::OfferOpened {
+                    object_type,
+                    anchor,
+                    ..
+                } => {
+                    let index = index_of(object_type, anchor);
+                    self.questions += usize::from(index.is_some_and(mine));
+                    self.added_visited += usize::from(index.is_some_and(|i| i >= placed));
+                }
+                GameEvent::BattleStarted { tile, .. } => {
+                    let index = visited_at(before, tile);
+                    self.mine_battles += usize::from(index.is_some_and(mine));
+                    self.added_visited += usize::from(index.is_some_and(|i| i >= placed));
+                }
+                GameEvent::DayStarted { .. } => {
+                    let owned = adventure.map().ownables().iter().any(|&i| {
+                        adventure.owner(i).is_some() && adventure.production(part, i).is_some()
+                    });
+                    self.income += usize::from(owned);
+                }
+                GameEvent::WeekStarted { .. } => self.weeks += 1,
+                _ => {}
+            }
+        }
+        self.weekly_gains += weekly_emptied(before, after).count();
+        // A Leave Guards dialog closed: the guards it left, an empty group or not.
+        for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+            if let (Some(_), Some((_, group)), None) = (
+                before.leave_guards(player),
+                before.army_dialog(player),
+                after.army_dialog(player),
+            ) {
+                if group.is_empty() {
+                    self.guards_left += 1;
+                } else {
+                    self.guards_kept += 1;
+                }
+            }
+        }
+        // A join of a monster added in play.
+        let joined = events.iter().any(|e| {
+            matches!(
+                e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::CreaturesJoined { .. },
+                    ..
+                })
+            )
+        });
+        let gone = (placed..placed + adventure.added_objects().len())
+            .any(|i| !adventure.is_removed(i) && after.adventure().is_removed(i));
+        self.added_visited += usize::from(joined && gone);
+    }
+}
+
+/// The plans' games flag, guard, fight for mines, build boats, visit the weekly objects, earn a
+/// mine's income and meet a creature month's monsters (E08 T86b1, increment 9's design note §15):
+/// every count of [`Owned`] above zero, so that the properties' checks run on them
+/// ([`check_decisions`], [`check_groups`], [`check_mine_guards`], [`check_build_boat`],
+/// [`check_income`], [`check_week`], [`check_unowned_battle_end`]).
+#[test]
+fn the_plans_flag_guard_build_and_grow() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
+    let mut owned = Owned::default();
+    for _ in 0..256 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for step in &steps {
+            let legal = options(&state, rules);
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
+                owned.count(rules, (&before, &state), &command, &events);
+            }
+        }
+    }
+    let o = &owned;
+    eprintln!("{o:?}");
+    assert!(o.flags > 0 && o.taken > 0 && o.questions > 0, "{o:?}");
+    assert!(
+        o.mine_battles > 0 && o.guards_left > 0 && o.guards_kept > 0,
+        "{o:?}"
+    );
+    assert!(
+        o.offered_boats > 0 && o.built_boats > 0 && o.blocked > 0,
+        "{o:?}"
+    );
+    assert!(o.weekly_gains > 0 && o.weekly_empty > 0, "{o:?}");
+    assert!(o.income > 0 && o.weeks > 0, "{o:?}");
+    assert!(o.added > 0 && o.added_visited > 0, "{o:?}");
 }

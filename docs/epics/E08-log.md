@@ -10560,3 +10560,70 @@ lane's #658 (`docs/exe/map.toml` is common).
   run failed only rustfmt's layout of the map test): coverage, determinism with the 39 replays,
   `bench-check` with the thirteen workloads, `check-exe-map` with the new entry; the CLI's replay
   test passed (the scope builds no `h3-cli`).
+
+### Increment 9, round 8: T86b1, the economy plans' properties (2026-11-03, `adventure/e08-t86b1`)
+
+**The cut** (decision 227, the user at T86b's start): T86b in two, the properties first with the
+town lane's failing case on `master`; the economy XL, its four workloads, the re-baselines and the
+benches README next (T86b2). The user lets the agent merge the pull request at green CI.
+**Baseline:** #660 (T86a) merged at green CI (`master` f1b2f2f); the sandbox's full baseline was
+stopped for CI's run on #660's code (green). No original data staged.
+
+- **The town lane's failing case** (its inbox note of 2026-11-03, CI run 41541601650):
+  `check_unowned_battle_end` searched the fought object among the static map's only; the case's
+  game reached a creature month and fought an added monster. The oracle's new `visited_at` finds
+  the object a visit concerns as the engine's `tile_object` does (the objects added in play
+  first); the case committed. The same search now serves `join`'s monsters, `Fought::at_pile`
+  and, through `all_objects`, the conservation's removals (an added monster that joins).
+- **The plans' economy classes** (`KINDS` 72 to 85, `ECONOMY`, `ECONOMY_OBJECTS`): the seven mines,
+  the abandoned mine (53.7, its set by its identifier), the Lighthouse, the Shipyard, the
+  Windmill, the Water Wheel, the Mystical Garden and twelve hostile gremlins that never grow, of
+  the shapes with a visitable tile, drawn last (`Economy`: one to six within two tiles of a hero
+  in seven plans of eight; up to four owners at load, `Plan::owners`, neutral in one case of two;
+  in three plans of four with a strait a Shipyard on its coast, `SHIPYARD_OBJECT`, whose boat tile
+  is the strait's). `lay_out` sets the owners and leaves out an ownable object entered on water
+  (the import's `OwnedOnWater`). Plans without them lay out as before (the fixtures unchanged).
+- **The steps:** `Step::Garrison` (with an army dialog open, the management commands, `Close` in
+  one step of eight; a mine's question accepted; on the map a move entering an own mine, else an
+  ownable not its own, else a weekly object; else `Join`), in runs of three then up to eleven;
+  `Step::BuildBoat` (the `n`-th listed, else `Legal`); runs of 64 ends of turn, so that games reach
+  weeks' and months' starts.
+- **The checks** (design §15): §6's invariants and the income were checked already (T83b1,
+  T85b1) and now meet owned mines; new: a visit's flag and reveal (then a Shipyard's refusal) and a
+  weekly object's mark and emptiness in `landing`; the boat offer and a mine's question in
+  `check_decisions`; Leave Guards in `check_decisions`, `check_groups` (opens empty, its close
+  keeps the group), `check_legal`'s close and `check_mine_guards` (the group becomes the guards,
+  the owner kept); `BuildBoat` listed by an independent oracle (`buildable`: own, a tile explored,
+  a boat tile with neither an empty boat nor a hero, the price paid) and probed for every typed
+  object (`check_build_boat`: each listed one accepted, builds and pays; every other rejected with
+  the state unchanged); `BuildBoat`'s price and the weekly gains in `check_conservation`
+  (`weekly_emptied`, `visit_gains`); a mine's battle in `check_mine_battle_end` (won: no guards
+  left, flagged unless the winner's level-up holds the flag; else survivors by slot, the owner
+  kept, none after a draw; no removal, no treasury change); the week's step in `check_week`
+  (every weekly object full by its kind, its marks kept; every monster that stood grown in growth
+  units to the cap, one that never grows kept). The view properties: the hygiene one varies the
+  owners at load of the ownable objects the viewer never sees (`Unseen::owners`); `check_told`
+  lets a mine's guards, which its owner's team sees whole, change at the close of its Leave Guards
+  dialog (the group it was told) and at the end of the viewer's battle (its garrison's survivors),
+  their hint's change told by `GuardsChanged`; `vary` keeps an ownable object's entrance land
+  (the import refuses one on water).
+- **Found:** a Shipyard's boat tile, public with it (ADV-OWN-003), is the first of its offsets
+  that was free water at the build (ADV-SHY-001), so a viewer learns what lay on the offsets
+  before it, tiles it may not have explored: the 400-case run of the hygiene property found two
+  games differing only there. The property keeps a seen Shipyard's offsets as seen; `ADV-Q40`
+  asks the user (recommended: the boat tile to the owner's team only, which has explored them).
+- **The cover test** `the_plans_flag_guard_build_and_grow` (256 plans): flags (neutral and taken),
+  mines' questions and battles, Leave Guards closed empty and with guards, boats bought and built,
+  a Shipyard's refusals, weekly gains and empty visits, a mine's income paid, weeks, a creature
+  month's monsters and visits of them. The other cover tests kept their counts with the new steps.
+- *Agent's calls (change freely):* the gremlins as the plans' monster that never grows; the
+  abandoned mine's set by its identifier; the garrison runs' lengths and the weekly fallback;
+  the runs of 64 ends of turn (games longer than before: the property's time, below); the probe of
+  every typed object for `BuildBoat`.
+- **Versions:** none; no replay or bot report changed.
+- **Gates:** the scoped verify (no original data) passed every step it runs (coverage, determinism
+  with the 39 replays, `bench-check` with the thirteen workloads; `deny` and `ffi-smoke` skipped by
+  the scope). Every play and view property also passed 400 cases in a worktree; the runs found the
+  last three gaps above (a Leave Guards close and a garrison's survivors untold in `check_told`,
+  the boat tile, an entrance turned to water by `vary`), their seeds committed. The play
+  property's games are longer: about 100 s for its 48 cases locally, 55 s before.
