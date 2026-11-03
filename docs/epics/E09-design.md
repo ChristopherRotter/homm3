@@ -36,7 +36,7 @@ tests, h3-cli's adventure loader and census, h3-map's tests and examples) pass t
 or `TownRuleset::empty(core)` (an encounter has no towns) in the same pull request
 (*agent's call*). The adventure replay's header records the part's hash (replay format v9).
 
-### 3. The content and its harvest (T5b)
+### 3. The content and its harvest (T5b; read by T5b1, harvested by T5b2)
 
 - **Read from `Heroes3.exe`** (a code reading, every address into `docs/exe/map.toml`):
   `building_tables_init` 0x4EB730 (each faction's buildings, its lists from 0x63EC80, and the
@@ -44,12 +44,12 @@ or `TownRuleset::empty(core)` (an encounter has no towns) in the same pull reque
   faction), `town_creatures` 0x6747B4 (levels and upgrades), the silo's table 0x688EB4 (§11.1),
   the neutral garrison's table 0x688E84, 0x688E94, 0x688EA4 (§5.2), the 30 at 0x5C0C5B (§5.3); the
   roles from the readings of §9.4 (the siege's buildings) and §8.3 (the reveal).
-- **Building 23** (batch TWN-1, survey §15; decision 25): built in every Rampart, Necropolis and
-  Conflux town of the standard set, not by §5.3's reading, not in VCMI. T5b reads where it comes
-  from (`town_build` 0x5BE930's hordes, `town_setup_spells` 0x5BE600, the lists of 0x4EB730),
-  whether a custom set gets it and whether the faction's list holds it (so the turrets count it,
-  §6's `structures`); the part and §5's setup then carry it as found (a batch row only if a point
-  stays open).
+- **Read (T5b1, survey §16):** the lists' layout, the supersedes, the hordes, the slots, the
+  roles by faction (§16.6), the names (§16.7), VCMI compared (§16.8). **Building 23** (decision
+  25) is the Village Hall's town-screen companion in Rampart, Necropolis and Conflux (27 to 29 the
+  higher halls'), in no faction's list: **not in the part** (decision 27). The harvest writes the
+  original's lists as they are (each record's buildings the faction's list and the Village Hall;
+  `supersedes` the common and the faction's supersede lists; the upgraded hordes as below, §4).
 - **Names** from `BLDGNEUT.TXT`, `BLDGSPEC.TXT` and `DWELLING.TXT` (the names only: no
   descriptions, Q13); keys from the names, as the other packs'.
 - **Compared** with VCMI 1.7.5's `config/factions/*.json` (buildings, `upgrades`) and the wiki; a
@@ -70,7 +70,11 @@ or `TownRuleset::empty(core)` (an encounter has no towns) in the same pull reque
   built**, the superseded ones too, the original's "every-built" set +0x158); `forbidden:
   BuildingSet`. Derived, never stored: the **standing** set (`built` less every building a built
   one supersedes: the original's built set +0x150). The Capitol's limit is the only write of
-  increment 1.
+  increment 1. **The hordes' upgrade** (survey §16.2, decision 29): a horde ever built with its
+  level's upgraded dwelling makes the upgraded horde ever built too (the original's `town_build`
+  turns the one into the other), so it alone stands; the part says which building that is (T5b2's
+  field). The original's custom-set path that leaves a horde's dwelling standing beside it (T-6)
+  is not reproduced: fixed.
 - **`TownStatic`** per town, shared by every fork (one `Arc` for the store): its name if the map
   gives one (the map's text; an unnamed town's name is the client's), its map events kept for
   increment 2 (the `TownEvent` buildings and creatures, the timed part as `TimedEventSetup`'s
@@ -100,8 +104,9 @@ calls with the setup stream:
   supersede, less the forbidden. A standard set: a Fort with the map's flag; an owned town a Tavern
   and, only with a Fort, the level-1 dwelling and, with one draw `1..=100 <= chance`, the level-2
   one; a neutral town both dwellings, Fort or not (TD-3 by the reading, confirmed by batch
-  TWN-1's row 1, survey §15). Building 23 in a Rampart's, Necropolis' and Conflux's standard set
-  (row 1, not the reading's): as T5b's re-read finds (§3, decision 25).
+  TWN-1's row 1, survey §15). Building 23 in a Rampart's, Necropolis' and Conflux's towns (row 1)
+  is the Village Hall's town-screen companion, left out of the part (decision 27); the hordes'
+  upgrade as §4.
 - **The garrison** (`town_setup`, §5.2; TWN-SET-004): a custom one as the map gives it, each random
   stack the faction's creature of its level, upgraded when the code says so (no draw); a custom
   empty one stays empty (TD-5, confirmed by row 2); none: an owned town's empty, a neutral town's
@@ -120,7 +125,7 @@ calls with the setup stream:
 | `hall_level(town)` | the highest standing `hall`, 1 to 4 | TWN-INC-001 |
 | `daily_income(town)` | gold `hall_gold[level − 1]` + `grail_gold` with a `grail` building ever built; the faction's `silo` resources with a standing `silo` | TWN-INC-001, -002 |
 | `fort_level(town)` | the highest standing `fort` (§9.4: the last of 7, 8, 9 found) | TWN-SIE-003 |
-| `siege(town) -> Siege` | `faction`, `fort`, `moat` (the record's from fort level 2, else `Absent`), `structures` (the standing buildings not forbidden, saturating at 255), `morale` (the highest standing role), `luck` and `escape_tunnel` (the ever-built roles; T5a1) | TWN-SIE-003 (ADR-0023 point 2's amendment) |
+| `siege(town) -> Siege` | `faction`, `fort`, `moat` (the record's from fort level 2, else `Absent`), `structures` (the standing buildings not forbidden, less the hall-1 building: no faction's list holds the Village Hall, survey §16.4, decision 28; saturating at 255), `morale` (the highest standing role), `luck` and `escape_tunnel` (the ever-built roles; T5a1) | TWN-SIE-003 (ADR-0023 point 2's amendment) |
 | `siege_obstacles(town)` | the record's flag, from fort level 2 (a Citadel; the E04c survey's S-29) | TWN-SIE-005 |
 | `defender_bonus(town)` | the sums of the built buildings' `defender` values | TWN-SIE-004 |
 | `reveal(town)` | `reveal_radius`, or the largest built `reveal` (`all` wins) | TWN-CAP-001 |
@@ -389,7 +394,8 @@ GAM-RES-004's "not here" line (the towns'), GAM-SET-001 (the starting armies of 
 
 **Quirks** (`docs/rules/quirks-town.md`, created by T7a), none with a flag: `TWN-QUIRK-1` T-1 (an
 alignment byte from 8 to 254: refused), `-2` T-2 (the pick not reserved: fixed), `-3` T-3 (a
-random hero taking a later hero's type: fixed), `-4` T-4 (the draws' empty cases: typed). T-5
+random hero taking a later hero's type: fixed), `-4` T-4 (the draws' empty cases: typed), `-5`
+T-6 (a custom set's horde leaving its dwelling standing: fixed, decision 29; T6 and T7a). T-5
 comes with increment 3 (decision 12). TD-2's map-version test is the rules' recorded deviation
 (decision 14), not a quirk (as E08 decision 104).
 
@@ -413,7 +419,7 @@ Easy, hot seat, from maps `h3-experiment` writes; several new games for row 1's 
   and points after a battle (E08's).
 - **The scoring** (T3c, done 2026-11-03): survey §15. TD-3, TD-5, TD-7 and the siege's aftermath
   as the reading (VCMI refuted in each); §10 and the ADR drafts stand. Not predicted: building 23
-  (§3, §5; `TWN-Q5`, decision 25: re-read in T5b, no ADR step).
+  (§3, §5; `TWN-Q5`, decision 25: re-read in T5b1, survey §16: the Village Hall's town-screen companion, left out, decision 27).
 
 ### 21. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -432,7 +438,7 @@ the ADRs are applied once with the rows' verdicts:
 | 2 | **T3a** | Batch TWN-1's maps and spec (§20; `cross-lane` in `h3-experiment`) |
 | 3 | **T3b** + **T3c** | T3b: the harness's town reads, the recipe, the run. T3c: scored (survey §15); TD-3, TD-5, TD-7 and row 4 settled |
 | 4 | **T4a** + **T4b** | `shared/`, cut in two at its start: T4a the ADRs with T3c's outcome and the glossary (done); T4b the crate skeletons, `TownId`, the gates (§1) |
-| 5 | **T5a** + **T5b** | T5a: the part, its compiler and adapter, `GameRuleset`, replay format v9 (§2). T5b: the content read and harvested, building 23's re-read (§3; original data) |
+| 5 | **T5a** + **T5b** | T5a: the part, its compiler and adapter, `GameRuleset`, replay format v9 (§2). T5b: the content read (T5b1, survey §16) and harvested (T5b2), building 23's re-read (§3; original data) |
 | 6 | **T6** | `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml`'s rules (§4–§6) |
 | 7 | **T7a** + **T7b** | T7a: the import and the setup's checks (§7, §13; map import v16, the census). T7b: the pool and the build's draws (§14; game state hash v23) |
 | 8 | **T8a** + **T8b** | T8a: the kind, the step, entering and an undefended capture (§8, §9, §11; part v16, state hash v20). T8b: the siege: the merge, the defender, the battle's setup, the outcome (§10, §15) |
@@ -448,14 +454,13 @@ the ADRs are applied once with the rows' verdicts:
   joins) and T86 (the replays) merge first. T3, T4's docs, T5b and T6 do not wait for it.
 - **The reach's hot loop** (§9): the entrance test is measured against `master` right after its
   first build; the town map adds a workload.
-- **The content** (§3): nine factions of about forty buildings, the supersede chains from a
-  reading not yet done (0x4EB730); VCMI's lists are the cross-check. A building whose role the
-  reading and VCMI disagree on is a `TD-` row before T5b writes it.
+- **The content** (§3): nine factions of 34 to 37 listed buildings and the Village Hall, the
+  supersede chains read (survey §16.1); VCMI's lists agree but for TD-8 (decided, 30) and the
+  requirements' TD-9 (increment 2).
 - **The ever-built set as the record** (§4): construction (increment 2) adds a building and its
-  supersedes; the Capitol's limit the only removal. If increment 2 finds a rule that needs the
-  original's two sets apart, the record grows a second set (the hash bumps).
-- **Building 23** (survey §15, §3 above): its source, a custom set's and the turrets' share are
-  T5b's re-read; until then no task builds it.
+  supersedes (the hordes' upgrade too); the Capitol's limit the only removal. If increment 2 finds
+  a rule that needs the original's two sets apart, the record grows a second set (the hash
+  bumps); decision 29 kept the derived set against the original's path (T-6 fixed).
 - **Not read** (survey §6, §10): the boat spot (0x5C0C90), the Grail victory's town (0x5F2160)
   (`TWN-STUB-2`); a special ground under a town's entrance (§15, T7a's census); the Visions
   factor's source (§12).

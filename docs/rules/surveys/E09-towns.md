@@ -9,7 +9,8 @@ appended); **T1b** the town on the map, cut in two at its start (the user, 2026-
 the visit, the visiting hero, capture and the battle at a town with ADR-0023's facts (§7 to §10);
 **T1b2**, cut in two at its start (the user, 2026-11-02): **T1b2a** the hall's income and the
 Capitol, the views, batch TWN-1's rows (§11 to §13); **T1b2b** the checkpoint's `TWN-Q2` (§14);
-later **T3c** batch TWN-1 scored (§15, 2026-11-03).
+later **T3c** batch TWN-1 scored (§15, 2026-11-03); **T5b1** the buildings' tables read, building
+23 found, VCMI compared (§16, 2026-11-03; T5b cut in two at its start, the user).
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -250,6 +251,28 @@ its sources and tests.
     VCMI's merge refuted). **Not predicted:** building 23 in every Rampart, Necropolis and
     Conflux town of the standard set, from a part of the setup the reading did not follow; VCMI
     has no such building; the keep may count it. Re-read in T5b (`TWN-Q5`, decision 25).
+
+**T5b1 (§16):**
+
+30. **Building 23 is a display piece:** in Rampart, Necropolis and Conflux each hall builds a
+    companion with it (Village Hall 23, Town Hall 27, City Hall 28, Capitol 29; `town_build`'s
+    end), in every town of the three, a custom set too. None is in the faction's building list,
+    so none is buildable or counted by the keep, none is superseded, and no rule reads them.
+31. **The keep counts the faction's listed buildings only:** the town's mask +0x160 is the
+    faction's list less the forbidden, and **no list holds the Village Hall** (nor the
+    companions, nor the ship 20): a town whose highest hall is the Village Hall counts 0 for it.
+32. **The standing set depends on the build order:** `town_build` turns a horde into its upgrade
+    when the level's upgraded dwelling stands (either order), and a custom set built in id order
+    leaves a horde's dwelling standing beside it (T-6); the closure of `supersedes` alone gives
+    neither.
+33. **VCMI 1.7.5 matches the lists** (the same buildings, requirements and supersedes) but for
+    the Village Hall and the ship as buildings, 27 to 29 as automatic buildings without 23, the
+    hordes' upgrades and two requirements (increment 2). **TD-8:** the code gives the Fortress's
+    Glyphs of Fear (21) +2 attack and the Blood Obelisk (22) +2 defense, as VCMI; the game's own
+    texts and the fandom wiki say the reverse.
+34. **The checkpoint** (`TWN-Q6`; the epic's decisions 27 to 30, §16.10): the companions left out
+    of the part, the keep skipping the hall-1 building in the derivation, the standing set derived
+    with the hordes' upgrade and T-6 fixed, TD-8 by the code.
 
 ## 1. The census
 
@@ -1193,3 +1216,192 @@ for the dwellings, the garrisons and the merge, and ADR-0017's amendment step 4 
 is unchanged: building 23 involves no draw (built in every game alike). It reopens only §5's
 standard set and §2's content (whether the three factions list 23, with what role, and whether
 the keep counts it), no ADR step: T5b reads it again (`TWN-Q5`, decision 25).
+
+## 16. The buildings' tables read (T5b1, 2026-11-03)
+
+Input for T5b2's harvest (design §3, decision 23) and the answer to decision 25. **Sources**
+(retrieved 2026-11-03): a code reading of the user's `Heroes3.exe` (SHA-256 `aac39e8c…`), every
+address in `docs/exe/map.toml`. **Read whole:** `building_tables_init` 0x4EB730 and its helpers
+`building_list_read` 0x4EBC50, `supersede_list_read` 0x4EBB10, `supersede_table_fill` 0x4EBB70,
+`horde_table_init` 0x5BDF60; `town_build` 0x5BE930; `town_turret_count` 0x5BF4F0;
+`town_buildings_setup` 0x5C08C0 again at its masks. **Tables dumped** (a throwaway script, not
+committed): the faction lists 0x63EC80, the supersede lists 0x63FBC4, `map_building_ids` 0x6888C0,
+`town_creatures` 0x6747B4, `town_hordes` 0x6887A0, `horde_buildings` 0x642E20, the silo
+0x688EB4, the neutral garrison 0x688E84 to 0x688EA4. The text files `BldgNeut.txt`,
+`BldgSpec.txt`, `Dwelling.txt` of both archives (first column only; the SoD and AB names are
+equal). VCMI 1.7.5's `config/buildingsLibrary.json`, `config/factions/*.json` and
+`lib/mapObjects/CGTownInstance.cpp` (`getTownLevel`, the towers' damage), compared by a
+throwaway script.
+
+### 16.1 The tables at start-up (`building_tables_init` 0x4EB730)
+
+- **The faction lists** (0x63EC80 to 0x63FBC4, nine lists of i32): per building its id, then the
+  ids it requires, then -1; a list ends with -100 after a -1. Read into **the faction's mask**
+  (`faction_buildings` 0x6976F0, 64 bits a faction: every id listed) and **the requirements**
+  (`building_requirements` 0x697798, 8 bytes a faction and building, 44 a faction: the listed ids
+  and, transitively, their own, so a list names a building after what it requires). Factions 0 to 2
+  inline, 3 to 8 through 0x4EBC50. Counts: Castle 35, Rampart 37, Tower 36, Inferno 37,
+  Necropolis 36, Dungeon 36, Stronghold 34, Fortress 34, Conflux 35. **No list holds the Village
+  Hall (10), the ship (20) or 27 to 29**; 23 only in the Tower's, the Inferno's, the Dungeon's and
+  the Stronghold's (their fourth special building).
+- **The supersede lists** (0x63FBC4 on, 0x24C bytes, the same layout): `superseded_buildings`
+  0x6A8BB8 per faction is the common list (0x63FBC4: each mage guild level the one below, Citadel
+  the Fort, Castle the Citadel, each hall the one below, 19 the horde 18, 25 the horde 24, each
+  upgraded dwelling its dwelling) and then the faction's, each entry adding the superseded one's
+  own set (transitive): Castle (0x63FCA0) the Brotherhood 22 the Tavern 5, the horde 18 its level-3
+  dwelling 32, 19 both 39 and 18; Rampart (0x63FCCC) 18 the dwelling 31, 19 38 and 18, 24 the
+  dwelling 34, 25 41 and 24, the Fountain of Fortune 21 the Mystic Pond 17; Tower (0x63FD14) 18
+  31, 19 38 and 18; Inferno (0x63FD34) 18 30, 19 37 and 18, 24 32, 25 39 and 24; the five others
+  (0x63FD70 to 0x63FDF0) 18 30, 19 37 and 18. **A horde supersedes its level's dwelling.**
+- **The hordes** (`horde_table_init` 0x5BDF60, the tail call): `town_hordes` 0x6887A0 holds per
+  faction four records of 8 bytes, {creature i32, growth i16, level i16}, for the horde 18, its
+  upgrade 19, the horde 24, its upgrade 25 (`horde_buildings` 0x642E20); the data give the two
+  base creatures and growths (Castle's griffins +3; Rampart's dwarves +4 and Dendroid Guards +2;
+  the Tower's gargoyles +4; the Inferno's imps +8 and hell hounds +3; Necropolis' skeletons +6;
+  the Dungeon's troglodytes +7; the Stronghold's goblins +8; the Fortress' gnolls +6; Conflux's
+  pixies +10), the start-up fills each level (the creature's index among the faction's 14 in
+  `town_creatures`), the upgrade's creature and its level (index + 7). A faction without a second
+  horde keeps level 0 there (never read: 24 is not in its list). The growth is increment 3's.
+
+### 16.2 Building a building (`town_build` 0x5BE930, read whole)
+
+On the town's standing set +0x150 (the every-built set +0x158 is not touched): (1) the building
+in, every building it supersedes out. (2) For each of the four horde records with level L: (a)
+the building is the record's: the level's dwelling (30 + L) out, and for a base horde (L below 7)
+with the level's upgraded dwelling (37 + L) standing, the building and 37 + L out and **the
+upgraded horde** in; (b) the record's building stands and the building is 37 + L: both out, the
+upgraded horde in. So a horde turns into its upgrade when the level's dwelling is upgraded,
+whichever comes first. (3) A dwelling 30 to 36: the town's available creatures of its level
+(+0x16, i16 a level, 14 of them) set to the creature's growth (the creature record +0x44); an
+upgraded one 37 to 43: the base level's count moved to the upgrade's, the base's 0 (increment 3).
+(4) **Rampart, Necropolis and Conflux only** (faction 1, 4, 8; the switch 0x5BEC01): building 10
+also builds 23, 11 builds 27, 12 builds 28, 13 builds 29 (`hall_companions`, through
+`town_build` again).
+
+### 16.3 Building 23 (decision 25's three questions)
+
+- **Where it comes from:** the Village Hall's companion (§16.2 (4)). `town_buildings_setup` builds
+  the Village Hall through `town_build` for every town before it branches (0x5C0938), so every
+  Rampart, Necropolis and Conflux town has 23 from the start, a standard set's and **a custom
+  set's** alike (batch TWN-1's 66 of 66, §15, and none in the other six factions: as read). A
+  custom set's Town Hall, City Hall or Capitol (§5.3's id order) brings 27, 28, 29 the same way.
+- **The faction's list:** none of 23, 27, 28, 29 is in the three factions' lists (§16.1), so none
+  is in the buildable mask +0x160, **the keep never counts them** (§16.4) and they cannot be built
+  by a player. No supersede list names them, so all four stay standing as the halls rise (a
+  Capitol's town stands 13, 23, 27, 28, 29); `capitol_limit` takes only 13 out.
+- **Readers:** the only loads of 23's bit outside the setup are faction-tested (the Tower's Wall
+  of Knowledge at a visit, 0x5BD8E0, and the computer's value of a town's visit buildings,
+  0x52B1E0, for factions 2, 3, 5, 6); none of 27 to 29's bits is loaded anywhere. Loops over every
+  id use the faction's mask (the keep). **They are the town screen's pieces** (BldgSpec's row for
+  23 is blank in the three factions; VCMI draws the Village Hall's piece without a building and
+  27 to 29 as automatic buildings, `extraTownHall` and its two).
+
+### 16.4 The keep's count (`town_turret_count` 0x5BF4F0 with the setup's mask)
+
+4 + the ids 0 to 43 both in the standing set and in the mask +0x160; the mask is written only by
+`town_buildings_setup` (0x5C0AB0 for a custom set, 0x5C0BFC for the standard set; elsewhere only
+whole-town copies) as the faction's list less the forbidden. So **the Village Hall never counts**
+(a town of the standard set counts its Fort, Tavern and dwellings, not its hall), nor the hall
+companions, nor the ship; a chain counts once while its top stands (a horde for its dwelling, an
+upgraded dwelling for its base). Design §6's `structures` ("the standing buildings not
+forbidden") counts the record's Village Hall: one too many in every town without a Town Hall.
+VCMI 1.7.5 has another model (a fixed shooter count; the damage grows with `getTownLevel`, every
+built building that upgrades nothing, the Village Hall and 27 to 29 included), not comparable; the
+battle lane follows the original's count (ADR-0023 `structures`).
+
+### 16.5 The standing set and the build order (T-6)
+
+The design's record keeps the ever-built set and derives the standing one by the closure of
+`supersedes` (§4). Against `town_build`'s path: (a) a horde and the level's upgraded dwelling
+(either order, in play or in a custom set) stand as **the upgraded horde alone** in the original;
+the closure leaves the horde and the upgraded dwelling standing (two for the keep, the original
+one) unless the setup adds the upgraded horde as `town_build` does. (b) **T-6 (quirk candidate):**
+a custom set with a horde builds in id order the horde (18 or 24) before its dwelling (30 + L,
+which the horde's supersede set brings in), so the dwelling's later build removes nothing: **both
+stand** and the keep counts one more than the same buildings built in play (dwelling first, the
+horde then superseding it), and the town screen draws both. No state corruption; a +1 in the
+siege's turrets of such a town. The census of custom sets with a horde is T7a's.
+
+### 16.6 The other tables and the roles
+
+- **`map_building_ids` 0x6888C0** (41 slots a faction, 44 none): slots 0 to 9 the Town Hall,
+  City Hall, Capitol, Fort, Citadel, Castle, Tavern, Blacksmith, Marketplace, Silo; 11 to 17 the
+  mage guilds 1 to 5, the Shipyard 6, the Grail 26; 22 to 40 the dwellings by level (base,
+  upgrade) and the hordes; 10 and 18 to 21 and 24, 27, 30, 33, 36 the faction's specials and
+  hordes, by faction (Castle 18 → 17, 19 → 22, 20 → 21; the Tower 10 → 17, 18 → 22, 19 → 23,
+  20 → 21; Conflux 10 → 17, 18 → 21). No slot gives the Village Hall, the ship, an upgraded horde
+  (19, 25: a forbidden horde forbids its upgrade, §5.3) or 27 to 29.
+- **`town_creatures` 0x6747B4:** every faction seven levels, each with its upgrade (the base
+  creatures at 0 to 6, the upgrades at 7 to 13; the Fortress' levels 3 to 5 the serpent fly, the
+  basilisk, the gorgon; Conflux's the pixie, then the air, water, fire, earth and psychic
+  elementals, the firebird).
+- **As read before:** the silo (§11.1, 0x688EB4), the neutral garrison (§5.2), the level-2
+  dwelling's 30 in 100 (§5.3, 0x5C0C5B).
+- **The roles** (`h3-pack-towns`' format; §5.3, §8.3, §9.4, §11.1): `hall` 10 to 13; `fort` 7 to
+  9; `tavern` 5 and the Castle's Brotherhood 22 (it supersedes the Tavern); `silo` 15 and `grail`
+  26 in every faction; `dwelling` 30 to 36 (`[level, false]`), 37 to 43 (`[level, true]`);
+  `morale` 5 +1, the Castle's 22 +2; `luck` the Rampart's Fountain of Fortune 21 +2;
+  `escape_tunnel` the Stronghold's 17; `defender` the Tower's Grail +150 mana, the Inferno's
+  Brimstone Stormclouds 21 +2 power, the Dungeon's Grail +12 power, the Stronghold's Grail +20
+  attack, the Fortress' 21 +2 attack, 22 +2 defense (TD-8) and Grail +10 attack and defense;
+  `reveal` the Tower's Lookout Tower 21 radius 20 and its Grail `all`.
+
+### 16.7 Names
+
+`BldgNeut.txt` rows 1 to 15 name ids 0 to 14 and row 17 the Blacksmith (16); `BldgSpec.txt` has
+11 rows a faction in the order 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 15 (the silo's name),
+then 11 generic rows; `Dwelling.txt` 14 rows a faction, 30 to 36 then 37 to 43 (the upgrades
+named "Upg. …"), then 14 generic. **Every listed building has a name**; 23 is blank in the three
+factions (and 27 to 29 have no row). The horde and its upgrade share a name in every faction
+(Griffin Bastion twice, …), so their keys need a suffix (T5b2's call); Conflux's Grail is spelled
+"Aurora Borealias". The Village Hall's name is row 11 (the record needs it: `hall` 1).
+
+### 16.8 VCMI 1.7.5 compared
+
+- **The lists:** the same building ids in every faction, plus the Village Hall (10, automatic)
+  everywhere, the ship (20) with a Shipyard (Castle, Necropolis, Fortress, Conflux), and 27 to 29
+  (automatic, from the Town Hall, City Hall, Capitol) in Rampart, Necropolis and Conflux; no 23
+  there (§15).
+- **The requirements:** the same in every faction (VCMI adds the superseded building as one,
+  e.g. the Town Hall on the Village Hall), but the upgraded hordes (19, 25: the original's need
+  the level's upgraded dwelling only, VCMI's the horde too; VCMI builds them automatically, as
+  `town_build`), the Necropolis' Unearthed Graves (18: the Skeleton Transformer, VCMI also the
+  level-1 dwelling, which the Transformer requires anyway), and **the Conflux's upgraded level-4
+  dwelling** (40: the original's the Altar of Fire and the upgraded level-2 dwelling 38, VCMI's
+  the Altar of Fire and the base level-2 dwelling 31). Increment 2's (requirements are not
+  harvested now; its survey takes TD-9 up there).
+- **The supersedes:** the same, but the upgraded horde supersedes the horde in the original (not
+  in VCMI's `upgrades`, which name one building) and VCMI's ship upgrades the Shipyard.
+- **TD-8:** the Fortress' 21 and 22 as the code adds them (+2 attack, +2 defense: VCMI's
+  `special2` and `special3` the same); the game's descriptions (`BldgSpec.txt`, the Glyphs of Fear
+  +2 defense, the Blood Obelisk +2 attack) and the fandom wiki's Fortress page the reverse;
+  `docs/formats/installation.md` §7.27 names 21 the Blood Obelisk (the names swapped there, the
+  values right). Only a town with the Glyphs and without the Obelisk differs (22 requires 21).
+
+### 16.9 Disputes, quirk candidates and open points (T5b1)
+
+| Id | What | Reading | VCMI | Others | Increment |
+|---|---|---|---|---|---|
+| TD-8 | The Fortress' Glyphs of Fear (21) and Blood Obelisk (22) for a siege's defender | 21 +2 attack, 22 +2 defense | the same | the game's texts and the fandom wiki: 21 defense, 22 attack | 1 (the `defender` role) |
+| TD-9 | The Conflux's upgraded Altar of Fire (40) | needs the Altar of Fire and the upgraded Altar of Air (38) | the base Altar of Air (31) | not checked | 2 (requirements) |
+
+- **T-6** (§16.5): a custom set's horde leaves its dwelling standing (the keep +1).
+- **For the checkpoint (`TWN-Q6`, answered in §16.10):** the hall companions in the part or not
+  (§16.3); the keep's count without the Village Hall (§16.4: a field of the building, or the
+  derivation); the standing set stored as the original's or derived (§16.5, T-6's class); TD-8.
+- **Open for T5b2:** the keys (the hordes' shared names, the harvested names' spelling); the
+  synthetic records; how `h3-harvest` reads the executable's lists (an `h3-formats` reader of the
+  addresses above, as its hero and siege tables).
+
+### 16.10 The checkpoint's answers (`TWN-Q6`, the epic's decisions 27 to 30)
+
+- **The hall companions** (23, 27 to 29) **left out of the part** (decision 27): display pieces; a
+  client draws them from the faction and the hall level.
+- **The keep's count skips the hall-1 building in the derivation** (decision 28; design §6's
+  `structures`), no format change; the companions and the ship are not in the records.
+- **The standing set stays derived** (decision 29; design §4): the closure of `supersedes`, plus
+  the hordes' upgrade (a horde and its level's upgraded dwelling ever built bring the upgraded
+  horde); **T-6 fixed** (`TWN-QUIRK-5`): a custom set's horde does not leave its dwelling standing.
+- **TD-8 by the code** (decision 30): the Glyphs of Fear (21) +2 attack, the Blood Obelisk (22) +2
+  defense, as VCMI; the game's descriptions are the recorded difference. TD-9 waits for increment
+  2's survey (requirements).
