@@ -150,8 +150,7 @@ fn moated(r: &BattleRuleset, moat: Moat) -> BattleState {
             moat,
             structures: 0,
             escape_tunnel: false,
-            morale: 0,
-            luck: 0,
+            bonuses: h3_contracts::TownBonuses::NONE,
         }),
         ..setup(r, &[(0, "fixed", 1)], &[(0, "fixed", 1)])
     };
@@ -953,8 +952,7 @@ fn the_computer_s_wall_test_asks_from_a_shooter_s_position() {
         moat: Moat::Absent,
         structures: 0,
         escape_tunnel: false,
-        morale: 0,
-        luck: 0,
+        bonuses: h3_contracts::TownBonuses::NONE,
     };
     let at_fort = |shooter: &'static str| {
         let mut s = arena_on(

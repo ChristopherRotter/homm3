@@ -369,10 +369,12 @@ fn the_harmful_spells_value_nothing_where_their_tests_fail() {
         BattleEffect::Morale {
             amount: -6,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::Luck {
             amount: -6,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
     ] {
         low.effects.push(e);

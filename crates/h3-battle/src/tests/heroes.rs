@@ -38,18 +38,22 @@ fn every_effect(r: &h3_content_battle::BattleRuleset) -> Vec<BattleEffect> {
         BattleEffect::Morale {
             amount: 1,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::Luck {
             amount: -2,
             affects: Affects::Enemy,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::MoraleAtMost {
             value: 0,
             affects: Affects::Both,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::LuckAtMost {
             value: 0,
             affects: Affects::Enemy,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::StackStat {
             creatures: fixed,
@@ -78,6 +82,7 @@ fn every_effect(r: &h3_content_battle::BattleRuleset) -> Vec<BattleEffect> {
                 h3_content::FactionId::from_raw(1),
             ])
             .unwrap(),
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::SpellDamage {
             scope: SpellScope::All,
@@ -239,6 +244,168 @@ fn the_viewers_facts_are_kept_shown_and_hashed() {
         )
         .is_ok()
     );
+}
+
+/// The morale and luck sources (CLT-Q40): a hero's morale and luck effects are kept with their
+/// sources, shown to both sides and spectators and hashed; each stack's unclamped morale and luck
+/// are shown; a source the ruleset does not know is a setup error.
+// covers: BAT-HER-001, BAT-HER-003
+#[test]
+fn the_morale_and_luck_sources_are_kept_shown_and_hashed() {
+    use h3_contracts::EffectSource::{
+        self, Artifact, Building, Skill, Specialty, Temporary, Visit,
+    };
+    let r = ruleset_from(
+        "t:faithful",
+        |_| {},
+        |core, _| {
+            core.skills.push(h3_content::SecondarySkillDef {
+                key: h3_content::ContentKey::new("t", "leadership").unwrap(),
+                name: std::string::String::from("Leadership"),
+                levels: [vec![], vec![], vec![]],
+            });
+            core.artifacts.push(h3_content::ArtifactDef {
+                key: h3_content::ContentKey::new("t", "clover").unwrap(),
+                name: std::string::String::from("Clover"),
+                class: h3_content::ArtifactClass::Minor,
+                cost: vec![],
+                slot: None,
+                war_machine: None,
+                needs_skill: None,
+                effects: vec![],
+                parts: vec![],
+            });
+        },
+    );
+    let leadership = r.skill_by_key("t:leadership").unwrap();
+    let clover = r.artifact_by_key("t:clover").unwrap();
+    let castle = r.faction_by_key("t:castle").unwrap();
+    let skill = |level| Skill {
+        skill: leadership,
+        level,
+    };
+    let morale = |amount, affects, source| BattleEffect::Morale {
+        amount,
+        affects,
+        source,
+    };
+    let luck = |amount, affects, source| BattleEffect::Luck {
+        amount,
+        affects,
+        source,
+    };
+    let sourced = vec![
+        morale(1, Affects::Own, skill(2)),
+        luck(4, Affects::Own, Artifact(clover)),
+        BattleEffect::SpellDuration { rounds: 1 },
+        luck(-2, Affects::Enemy, Specialty),
+        morale(1, Affects::Own, Visit { mark: 3 }),
+        morale(
+            2,
+            Affects::Own,
+            Building {
+                faction: castle,
+                index: 22,
+            },
+        ),
+        BattleEffect::MoraleAtMost {
+            value: 2,
+            affects: Affects::Own,
+            source: Artifact(clover),
+        },
+        BattleEffect::LuckAtMost {
+            value: 5,
+            affects: Affects::Both,
+            source: Temporary,
+        },
+        BattleEffect::AlignmentGroup {
+            factions: h3_contracts::FactionGroup::new(&[castle]).unwrap(),
+            source: Artifact(clover),
+        },
+    ];
+    let with = |effects: Vec<BattleEffect>| BattleSetup {
+        heroes: [
+            Some(BattleHero {
+                effects,
+                ..hero(&r)
+            }),
+            Some(hero(&r)),
+        ],
+        ..setup(
+            &r,
+            &[(0, "fixed", 10)],
+            &[(0, "fixed", 10), (1, "skeleton", 5)],
+        )
+    };
+    let s = BattleState::new(&r, &with(sourced.clone()), 1).unwrap();
+    // Public: both sides and a spectator see the attacker's morale and luck effects, in their
+    // order, without its other effects; the defender's hero has none.
+    let public: Vec<BattleEffect> = sourced
+        .iter()
+        .copied()
+        .filter(|e| !matches!(e, BattleEffect::SpellDuration { .. }))
+        .collect();
+    for viewer in [
+        Viewer::Side(BattleSide::Attacker),
+        Viewer::Side(BattleSide::Defender),
+        Viewer::Spectator,
+    ] {
+        let o = observe_as(&s, &r, viewer);
+        assert_eq!(o.morale_and_luck, [public.clone(), vec![]]);
+        // The attacker's stack: one alignment (+1), the skill, the visit and the building (+4)
+        // capped at 2; its luck +4 under the cap 5, clamped to the roll levels' 3. The
+        // defender's: two alignments (0) and undead (−1), its luck −2 (clamped 0); its skeleton
+        // without morale.
+        let (morale, luck) = (o.unclamped_morale, o.unclamped_luck);
+        assert_eq!((morale[0], luck[0]), (2, 4));
+        let stacks = o.stacks.as_slice();
+        assert_eq!((stacks[0].morale, stacks[0].luck), (2, 3));
+        assert_eq!((morale[1], luck[1]), (-1, -2));
+        assert_eq!(stacks[1].luck, 0);
+        assert_eq!((morale[2], luck[2]), (0, -2));
+        assert_eq!((morale[3], luck[3]), (0, 0));
+    }
+    // Hashed: another source alone changes the state.
+    let mut moved = sourced.clone();
+    moved[0] = morale(1, Affects::Own, skill(3));
+    let other = BattleState::new(&r, &with(moved), 1).unwrap();
+    assert_ne!(other.state_hash(), s.state_hash());
+    assert_eq!(
+        other.stacks().iter().map(|s| s.morale).collect::<Vec<_>>(),
+        s.stacks().iter().map(|s| s.morale).collect::<Vec<_>>()
+    );
+    // Sources the ruleset does not know, and skill levels outside 1..=3.
+    let unknown_faction = h3_content::FactionId::from_raw(99);
+    for source in [
+        skill(0),
+        skill(4),
+        Skill {
+            skill: h3_content::SkillId::from_raw(9),
+            level: 1,
+        },
+        Artifact(h3_content::ArtifactTypeId::from_raw(9)),
+        Building {
+            faction: unknown_faction,
+            index: 0,
+        },
+    ] {
+        for effect in [
+            morale(1, Affects::Own, source),
+            BattleEffect::AlignmentGroup {
+                factions: h3_contracts::FactionGroup::new(&[castle]).unwrap(),
+                source,
+            },
+        ] {
+            assert_eq!(
+                BattleState::new(&r, &with(vec![effect]), 1).err(),
+                Some(SetupError::InvalidHero {
+                    side: BattleSide::Attacker,
+                    error: HeroError::EffectSource,
+                })
+            );
+        }
+    }
+    let _: EffectSource = skill(1);
 }
 
 // covers: BAT-HER-001, BAT-FLE-002
@@ -456,6 +623,7 @@ fn unsound_heroes_are_rejected() {
                         h3_content::FactionId::from_raw(99),
                     ])
                     .unwrap(),
+                    source: h3_contracts::EffectSource::Temporary,
                 }];
             },
             HeroError::UnknownFaction,
@@ -573,6 +741,7 @@ fn statistic_effects_change_the_selected_stacks_of_the_side_at_setup() {
         BattleEffect::Morale {
             amount: 1,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
     ];
     let mut defender = hero(&r);
@@ -642,6 +811,7 @@ fn trait_effects_reach_the_selected_stacks_of_the_side() {
         BattleEffect::Morale {
             amount: 1,
             affects: Affects::Own,
+            source: h3_contracts::EffectSource::Temporary,
         },
         BattleEffect::Regeneration {
             creatures: CreatureSelector::Flag(CreatureFlag::Alive),
@@ -815,6 +985,7 @@ fn alignment_groups_count_their_factions_as_one_alignment() {
             &keys.iter().map(|k| faction(k)).collect::<Vec<_>>(),
         )
         .unwrap(),
+        source: h3_contracts::EffectSource::Temporary,
     };
     // Castle, inferno and neutral creatures: three alignments, −1 for every stack of each side.
     let army = [(0, "pikeman_c", 1), (1, "imp", 1), (2, "serf", 1)];
@@ -947,14 +1118,17 @@ fn hero_morale_and_luck_effects_reach_the_sides_they_name() {
             Morale {
                 amount: 2,
                 affects: Own,
+                source: h3_contracts::EffectSource::Temporary,
             },
             Luck {
                 amount: 2,
                 affects: Own,
+                source: h3_contracts::EffectSource::Temporary,
             },
             Morale {
                 amount: -1,
                 affects: Enemy,
+                source: h3_contracts::EffectSource::Temporary,
             },
             BattleEffect::NoRetreat,
         ],
@@ -962,10 +1136,12 @@ fn hero_morale_and_luck_effects_reach_the_sides_they_name() {
             Morale {
                 amount: 1,
                 affects: Own,
+                source: h3_contracts::EffectSource::Temporary,
             },
             Luck {
                 amount: -1,
                 affects: Enemy,
+                source: h3_contracts::EffectSource::Temporary,
             },
         ],
     );
@@ -979,28 +1155,34 @@ fn hero_morale_and_luck_effects_reach_the_sides_they_name() {
             Morale {
                 amount: 2,
                 affects: Own,
+                source: h3_contracts::EffectSource::Temporary,
             },
             Luck {
                 amount: 2,
                 affects: Own,
+                source: h3_contracts::EffectSource::Temporary,
             },
             MoraleAtMost {
                 value: 0,
                 affects: Both,
+                source: h3_contracts::EffectSource::Temporary,
             },
             LuckAtMost {
                 value: 0,
                 affects: Enemy,
+                source: h3_contracts::EffectSource::Temporary,
             },
         ],
         vec![
             Luck {
                 amount: 3,
                 affects: Own,
+                source: h3_contracts::EffectSource::Temporary,
             },
             MoraleAtMost {
                 value: -1,
                 affects: Enemy,
+                source: h3_contracts::EffectSource::Temporary,
             },
         ],
     );
@@ -1013,10 +1195,26 @@ fn hero_morale_and_luck_effects_reach_the_sides_they_name() {
         .into_iter()
         .flat_map(|affects| {
             [
-                Morale { amount: 1, affects },
-                Luck { amount: 1, affects },
-                MoraleAtMost { value: 3, affects },
-                LuckAtMost { value: 3, affects },
+                Morale {
+                    amount: 1,
+                    affects,
+                    source: h3_contracts::EffectSource::Temporary,
+                },
+                Luck {
+                    amount: 1,
+                    affects,
+                    source: h3_contracts::EffectSource::Temporary,
+                },
+                MoraleAtMost {
+                    value: 3,
+                    affects,
+                    source: h3_contracts::EffectSource::Temporary,
+                },
+                LuckAtMost {
+                    value: 3,
+                    affects,
+                    source: h3_contracts::EffectSource::Temporary,
+                },
             ]
         })
         .collect();

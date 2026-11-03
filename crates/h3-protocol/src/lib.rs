@@ -75,8 +75,11 @@ pub mod wire;
 /// BAT-Q50 (4)): the field is unchanged, its meaning is new. v35 (CLT-Q4, CLT-Q6): for viewers,
 /// the observation names the battlefield picture's variant, each side's player colour and a
 /// hero's sex where its map gave it one. v36 (E17 M5 T5a, BAT-MAG-037): the event `NotCreated`,
-/// a clone or summoned stack that found no place.
-pub const PROTOCOL_VERSION: u32 = 36;
+/// a clone or summoned stack that found no place. v37 (CLT-Q40): public, for viewers: each
+/// side's hero's morale and luck effects with their sources, a siege town's morale and luck
+/// buildings and each stack's unclamped morale and luck; a stack's `morale` and `luck` are
+/// unchanged (their documentation said "before the timed effects", they always held them).
+pub const PROTOCOL_VERSION: u32 = 37;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

@@ -58,8 +58,7 @@ fn town_battle(r: &BattleRuleset, moat: Moat, attacker: &[Spec], defender: &[Spe
             moat,
             structures: 0,
             escape_tunnel: false,
-            morale: 0,
-            luck: 0,
+            bonuses: h3_contracts::TownBonuses::NONE,
         }),
         ..setup(r, attacker, defender)
     }
@@ -473,8 +472,7 @@ fn the_computer_s_walker_keeps_out_of_its_stops_by_its_hit_points() {
             moat,
             structures: 0,
             escape_tunnel: false,
-            morale: 0,
-            luck: 0,
+            bonuses: h3_contracts::TownBonuses::NONE,
         };
         let setup = BattleSetup {
             siege: Some(siege),

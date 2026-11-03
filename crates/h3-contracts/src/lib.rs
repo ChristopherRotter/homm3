@@ -28,10 +28,11 @@ use alloc::vec::Vec;
 
 pub use hero::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
-    EagleEye, FactionGroup, HeroSex, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
+    EagleEye, EffectSource, FactionGroup, HeroSex, MAX_BATTLE_EFFECTS, MachineControl, Rate,
+    StatOp, TentControl,
 };
 pub use ids::{HeroId, PlayerId, TownId};
-pub use siege::{FortLevel, Moat, Siege};
+pub use siege::{FortLevel, MAX_TOWN_BONUSES, Moat, Siege, TownBonus, TownBonuses};
 
 use h3_content::{ContentKey, CreatureTypeId, Formation, SpellId, TerrainId};
 
@@ -402,8 +403,12 @@ mod tests {
                 moat: Moat::Damaging,
                 structures: 12,
                 escape_tunnel: false,
-                morale: 1,
-                luck: 0,
+                bonuses: TownBonuses::new(&[TownBonus {
+                    building: 5,
+                    morale: 1,
+                    luck: 0,
+                }])
+                .unwrap_or_default(),
             }),
             war_machines: [vec![], vec![]],
             formations: [Formation::Tight, Formation::Loose],
@@ -421,5 +426,20 @@ mod tests {
         assert_eq!(setup.siege.map(|siege| siege.fort), Some(FortLevel::Castle));
         assert!(FortLevel::None < FortLevel::Fort && FortLevel::Fort < FortLevel::Citadel);
         assert!(Moat::Absent < Moat::Harmless && Moat::Harmless < Moat::Damaging);
+        let town = setup.siege.unwrap_or(plain.siege.unwrap_or(Siege {
+            faction: h3_content::FactionId::from_raw(0),
+            fort: FortLevel::None,
+            moat: Moat::Absent,
+            structures: 0,
+            escape_tunnel: false,
+            bonuses: TownBonuses::NONE,
+        }));
+        assert_eq!((town.morale(), town.luck()), (1, 0));
+        assert_eq!(
+            town.bonuses.iter().map(|b| b.building).collect::<Vec<_>>(),
+            [5]
+        );
+        assert_eq!(TownBonuses::NONE, TownBonuses::default());
+        assert!(TownBonuses::new(&[TownBonus::default(); MAX_TOWN_BONUSES + 1]).is_none());
     }
 }

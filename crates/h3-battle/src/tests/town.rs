@@ -30,8 +30,7 @@ fn town(r: &BattleRuleset, faction: &str, fort: FortLevel, moat: Moat) -> Siege 
         moat,
         structures: 0,
         escape_tunnel: false,
-        morale: 0,
-        luck: 0,
+        bonuses: h3_contracts::TownBonuses::NONE,
     }
 }
 
@@ -158,8 +157,12 @@ fn a_town_raises_its_defender_s_morale_and_luck() {
     let r = ruleset();
     let start = |morale: i8, luck: i8| {
         let castle = Siege {
-            morale,
-            luck,
+            bonuses: h3_contracts::TownBonuses::new(&[h3_contracts::TownBonus {
+                building: 5,
+                morale,
+                luck,
+            }])
+            .unwrap_or_default(),
             ..town(&r, "t:castle", FortLevel::Fort, Moat::Absent)
         };
         at_town(
@@ -186,6 +189,20 @@ fn a_town_raises_its_defender_s_morale_and_luck() {
     assert_eq!(values(&start(1, 0)), [(1, 0), (0, 0), (0, 0)]);
     assert_eq!(values(&start(3, 2)), [(1, 0), (2, 2), (0, 2)]);
     assert_eq!(values(&start(9, 9)), [(1, 0), (3, 3), (0, 3)]);
+    // The buildings are public with their changes (CLT-Q40), and so are the values before the
+    // clamp: the defender's −1 + 9 morale, its 9 luck.
+    let full = start(9, 9);
+    for viewer in [crate::Viewer::Side(Attacker), crate::Viewer::Spectator] {
+        let o = crate::observe_as(&full, &r, viewer);
+        let bonuses = o.siege.map(|t| t.bonuses.as_slice().to_vec());
+        let expected = h3_contracts::TownBonus {
+            building: 5,
+            morale: 9,
+            luck: 9,
+        };
+        assert_eq!(bonuses, Some(vec![expected]));
+        assert_eq!((o.unclamped_morale[1], o.unclamped_luck[1]), (8, 9));
+    }
     // The setup's terms are the battle's from its start.
     assert_ne!(start(1, 0).state_hash(), start(0, 0).state_hash());
     // Batch 3g's CM and RL: three alignments (−1) and the Brotherhood of the Sword (+2, D-21)
@@ -193,8 +210,12 @@ fn a_town_raises_its_defender_s_morale_and_luck() {
     let mixed = at_town(
         &r,
         Some(Siege {
-            morale: 2,
-            luck: 2,
+            bonuses: h3_contracts::TownBonuses::new(&[h3_contracts::TownBonus {
+                building: 0,
+                morale: 2,
+                luck: 2,
+            }])
+            .unwrap_or_default(),
             ..town(&r, "t:castle", FortLevel::Fort, Moat::Absent)
         }),
         [None, None],

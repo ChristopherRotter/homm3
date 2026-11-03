@@ -128,10 +128,16 @@ fn side_modifier(
 /// A hero effect on morale or luck: the stat, whether it caps, the amount and whose stacks.
 fn morale_or_luck(effect: &BattleEffect) -> Option<(Stat, bool, i8, Affects)> {
     match *effect {
-        BattleEffect::Morale { amount, affects } => Some((Stat::Morale, false, amount, affects)),
-        BattleEffect::Luck { amount, affects } => Some((Stat::Luck, false, amount, affects)),
-        BattleEffect::MoraleAtMost { value, affects } => Some((Stat::Morale, true, value, affects)),
-        BattleEffect::LuckAtMost { value, affects } => Some((Stat::Luck, true, value, affects)),
+        BattleEffect::Morale {
+            amount, affects, ..
+        } => Some((Stat::Morale, false, amount, affects)),
+        BattleEffect::Luck {
+            amount, affects, ..
+        } => Some((Stat::Luck, false, amount, affects)),
+        BattleEffect::MoraleAtMost { value, affects, .. } => {
+            Some((Stat::Morale, true, value, affects))
+        }
+        BattleEffect::LuckAtMost { value, affects, .. } => Some((Stat::Luck, true, value, affects)),
         _ => None,
     }
 }
@@ -204,7 +210,7 @@ fn alignment_groups(hero: Option<&BattleHero>) -> Vec<BTreeSet<u16>> {
     let mut joined: Vec<BTreeSet<u16>> = Vec::new();
     let effects = hero.map(|h| h.effects.as_slice()).unwrap_or_default();
     for effect in effects {
-        let BattleEffect::AlignmentGroup { factions } = effect else {
+        let BattleEffect::AlignmentGroup { factions, .. } = effect else {
             continue;
         };
         let mut group: BTreeSet<u16> = factions.factions().iter().map(|f| f.raw()).collect();
@@ -292,8 +298,8 @@ pub(crate) fn setup(
     materialize(state, ruleset);
 }
 
-/// Inserts a town's morale and luck (`Siege.morale`, `Siege.luck`: the Tavern, the Brotherhood
-/// of the Sword, the Fountain of Fortune, as the town context derives them) as changes of its
+/// Inserts a town's morale and luck (`Siege.bonuses` summed: the Tavern, the Brotherhood of the
+/// Sword, the Fountain of Fortune, as the town context derives them) as changes of its
 /// defender's side (BAT-SIE-025; the original's 0x44AE60 and 0x44B2D0 add them last to the base
 /// values, before the clamp). The original passes the town to the stacks the defender controls
 /// (0x469750, after every action), as every other side term: a hypnotized stack takes its
@@ -303,15 +309,12 @@ fn town_modifiers(state: &mut BattleState, town: Option<&Siege>) {
     let Some(town) = town else {
         return;
     };
-    for (stat, amount) in [(Stat::Morale, town.morale), (Stat::Luck, town.luck)] {
+    for (stat, amount) in [(Stat::Morale, town.morale()), (Stat::Luck, town.luck())] {
         if amount != 0 {
             // The pool is sized for these (MODIFIER_CAPACITY).
-            let _ = state.modifiers.insert(side_modifier(
-                BattleSide::Defender,
-                stat,
-                i32::from(amount),
-                TOWN,
-            ));
+            let _ = state
+                .modifiers
+                .insert(side_modifier(BattleSide::Defender, stat, amount, TOWN));
         }
     }
 }
@@ -323,9 +326,11 @@ fn town_modifiers(state: &mut BattleState, town: Option<&Siege>) {
 /// minimums, then clamped once to the range the rolls read: morale to `[-bad levels, good
 /// levels]`, luck to `[0, good levels]` (there is no bad luck before HotA). The original clamps
 /// where it uses the value (the rolls, the stack window); the stack's fields hold the clamped
-/// value, which the rolls and the observation read. Creatures with flag `no_morale` have morale
-/// 0 (BAT-MOR-001, BAT-LCK-001); on a battlefield with `no_morale` or `no_luck` every stack has
-/// 0 (BAT-TER-003: the original's 0x43E00F and 0x43DF2B return 0 before anything else).
+/// value, which the rolls and the observation read, and beside them the values before the clamp
+/// (`BattleState.unclamped_morale`, `unclamped_luck`, saturated to `i8`; for viewers, CLT-Q40).
+/// Creatures with flag `no_morale` have morale 0 (BAT-MOR-001, BAT-LCK-001); on a battlefield
+/// with `no_morale` or `no_luck` every stack has 0 (BAT-TER-003: the original's 0x43E00F and
+/// 0x43DF2B return 0 before anything else).
 // rule: BAT-MOR-001, BAT-LCK-001, BAT-MAG-011, BAT-TER-003, BAT-MAG-026
 pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
     let params = ruleset.battle();
@@ -334,20 +339,30 @@ pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
     let good_morale = i32::from(params.good_morale.levels());
     let bad_morale = i32::from(params.bad_morale.levels());
     let good_luck = i32::from(params.good_luck.levels());
-    for s in state.stacks.as_mut_slice() {
-        let morale = stat(&pool, ruleset, field, s, Stat::Morale).clamp(-bad_morale, good_morale);
-        let luck = stat(&pool, ruleset, field, s, Stat::Luck).clamp(0, good_luck);
-        // Both are within ±MAX_ROLL_LEVELS.
-        s.morale = if s.has(StackTraits::NO_MORALE) || field.is_some_and(|f| f.no_morale) {
+    let (no_morale, no_luck) = field.map_or((false, false), |f| (f.no_morale, f.no_luck));
+    // Saturated to `i8`.
+    let narrow = |v: i32| i8::try_from(v.clamp(-128, 127)).unwrap_or(0);
+    let slots = state
+        .unclamped_morale
+        .iter_mut()
+        .zip(state.unclamped_luck.iter_mut());
+    for (s, (unclamped_morale, unclamped_luck)) in state.stacks.as_mut_slice().iter_mut().zip(slots)
+    {
+        // The original's +0x4E8 and +0x4EC, the stats dialog's values (CLT-Q40).
+        let morale = if s.has(StackTraits::NO_MORALE) || no_morale {
             0
         } else {
-            i8::try_from(morale).unwrap_or(0)
+            stat(&pool, ruleset, field, s, Stat::Morale)
         };
-        s.luck = if field.is_some_and(|f| f.no_luck) {
+        let luck = if no_luck {
             0
         } else {
-            i8::try_from(luck).unwrap_or(0)
+            stat(&pool, ruleset, field, s, Stat::Luck)
         };
+        (*unclamped_morale, *unclamped_luck) = (narrow(morale), narrow(luck));
+        // Both are within ±MAX_ROLL_LEVELS after the clamp.
+        s.morale = narrow(morale.clamp(-bad_morale, good_morale));
+        s.luck = narrow(luck.clamp(0, good_luck));
     }
 }
 

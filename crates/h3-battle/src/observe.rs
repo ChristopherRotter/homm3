@@ -6,7 +6,9 @@
 //! the other side's hidden spell obstacles the viewer does not see (ADR-0014 point 7,
 //! BAT-MAG-031), the spell a random caster the viewer does not control drew (ADR-0014 point 8,
 //! BAT-MAG-049) and, at a town, the defender's Escape Tunnel, which shows to the defender only,
-//! in its option to retreat too (BAT-SIE-024, BAT-Q50 (4)). The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]):
+//! in its option to retreat too (BAT-SIE-024, BAT-Q50 (4)). The heroes' morale and luck effects
+//! with their sources, a siege town's morale and luck buildings and each stack's unclamped morale
+//! and luck are public (CLT-Q40, as VCMI shows them). The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]):
 //! its spell book, masteries and spell bonuses among them (ADR-0014 point 8), and its hidden
 //! magic, which the other side infers only from the casts it may not make (BAT-Q26). Timed
 //! effects on stacks are public.
@@ -28,7 +30,7 @@ use alloc::vec::Vec;
 
 use h3_content::CreatureTypeId;
 use h3_content_battle::{BattleRuleset, BattlefieldId, ObstacleTypeId};
-use h3_contracts::{BattleResult, BattleSide};
+use h3_contracts::{BattleEffect, BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
 use crate::effects::ActiveEffect;
@@ -142,6 +144,21 @@ pub struct Observation {
     pub cost_change: [i8; 2],
     /// The private part of the viewer's own hero, if the viewer is led by one.
     pub own_hero: Option<OwnHeroView>,
+    /// Each side's hero's morale and luck effects with their sources (its morale and luck
+    /// changes and caps and its alignment groups, in the setup's order), indexed by
+    /// [`BattleSide::index`]; empty without a hero. Public, as the original's and VCMI's
+    /// descriptions of any stack list them (CLT-Q40, ADR-0013 point 9); for viewers, no rule
+    /// reads them.
+    pub morale_and_luck: [Vec<BattleEffect>; 2],
+    /// Per stack, by stack id, its morale before the roll levels' clamp (the original's +0x4E8,
+    /// the stats dialog's value: [`stacks`](Self::stacks) hold the clamped one), saturated to
+    /// `i8`; 0 for a creature without morale, on a field without morale and for an id without a
+    /// stack (public, CLT-Q40).
+    pub unclamped_morale: [i8; STACK_CAPACITY],
+    /// Per stack, by stack id, its luck before the roll levels' clamp (the original's +0x4EC; the
+    /// clamped one is 0 and up), saturated to `i8`; 0 on a field without luck and for an id
+    /// without a stack (public, CLT-Q40).
+    pub unclamped_luck: [i8; STACK_CAPACITY],
     /// The battlefield's terrain (public).
     pub terrain: Option<h3_content::TerrainId>,
     /// The special battlefield, if any (public; BAT-TER-002).
@@ -243,6 +260,9 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
         own_hero: side
             .and_then(|side| state.heroes[side.index()])
             .map(|h| own_hero(state, ruleset, &h, seat)),
+        morale_and_luck: state.morale_and_luck.clone(),
+        unclamped_morale: state.unclamped_morale,
+        unclamped_luck: state.unclamped_luck,
         terrain: state.terrain,
         battlefield: state.battlefield,
         anti_magic: state.anti_magic,

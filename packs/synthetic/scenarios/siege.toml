@@ -22,8 +22,9 @@ faction = "synthetic:vale"
 fort = "citadel"
 moat = "damaging"
 structures = 3                   # E04c T7: the keep, 4 + 3 Spires (BAT-SIE-016)
-morale = 1                       # E04c T8: the town's morale and luck (BAT-SIE-025)
-luck = 1
+# E04c T8: the town's morale and luck (BAT-SIE-025), by building (CLT-Q40: the index in the
+# faction's town record).
+bonuses = [{ building = 5, morale = 1 }, { building = 21, luck = 1 }]
 
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"

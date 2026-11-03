@@ -159,8 +159,7 @@ fn the_automatic_keep_shoots_as_batch_3f() {
             moat: Moat::Damaging,
             structures: 1,
             escape_tunnel: false,
-            morale: 0,
-            luck: 0,
+            bonuses: h3_contracts::TownBonuses::NONE,
         }),
         human: [true, true],
         ..BattleSetup::default()

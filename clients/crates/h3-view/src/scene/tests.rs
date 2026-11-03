@@ -150,6 +150,8 @@ pub(crate) fn stack(id: u8, side: Side, creature: u16, hex: u8, two_hex: bool) -
         damage_roll: DamageRoll::Random {},
         speed_percent: 100,
         effects: Vec::new(),
+        unclamped_luck: 0,
+        unclamped_morale: 0,
     }
 }
 

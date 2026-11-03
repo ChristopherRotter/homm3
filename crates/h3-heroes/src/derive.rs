@@ -12,7 +12,8 @@ use h3_content::{
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
-    EagleEye, FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
+    EagleEye, EffectSource, FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp,
+    TentControl,
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 
@@ -62,7 +63,7 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-003
     hero.effects = morale_and_luck(
-        effects(details, ruleset, Count::OncePerType),
+        sourced_effects(details, ruleset, Count::OncePerType),
         details.bonuses,
     );
 
@@ -580,18 +581,24 @@ fn stack_traits(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
 }
 
 /// The alignment groups (HER-BAT-010): each `alignment_group` effect, each artifact type once,
-/// equal groups once, in the order of their first appearance.
+/// equal groups once with the source of their first appearance (CLT-Q40), in that order.
 fn alignment_groups(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
     let mut out: Vec<BattleEffect> = Vec::new();
-    let groups = effects(details, ruleset, Count::OncePerType).filter_map(|e| match e {
-        // Content holds at most `MAX_ALIGNMENT_FACTIONS` factions per group.
-        HeroEffect::AlignmentGroup { factions } => FactionGroup::new(factions),
-        _ => None,
+    let groups = sourced_effects(details, ruleset, Count::OncePerType).filter_map(|(source, e)| {
+        match e {
+            // Content holds at most `MAX_ALIGNMENT_FACTIONS` factions per group.
+            HeroEffect::AlignmentGroup { factions } => {
+                FactionGroup::new(factions).map(|f| (source, f))
+            }
+            _ => None,
+        }
     });
-    for factions in groups {
-        let group = BattleEffect::AlignmentGroup { factions };
-        if !out.contains(&group) {
-            out.push(group);
+    for (source, factions) in groups {
+        let known = out.iter().any(
+            |e| matches!(e, BattleEffect::AlignmentGroup { factions: f, .. } if *f == factions),
+        );
+        if !known {
+            out.push(BattleEffect::AlignmentGroup { factions, source });
         }
     }
     out
@@ -606,70 +613,65 @@ pub(crate) enum Count {
     OncePerType,
 }
 
-/// The morale and luck effects among `effects`, combined per kind and affected stacks: the
-/// changes summed (saturated to `i8`; a sum of 0 is left out), the caps the smallest. In the
-/// order morale, luck, morale cap, luck cap, each for the own, the enemy and both sides
-/// (HER-BAT-003). The hero's battle bonuses join the own side's morale and luck sums
-/// (HER-ADV-008), so the battle gets one effect of each as from any source and bounds it alike.
+/// The morale and luck effects among `effects`, each with its source (CLT-Q40), in their order
+/// (a change of 0 left out), then the hero's battle bonuses as the temporary source's own morale
+/// and luck (HER-ADV-008; which visit gave how much is the adventure's content, not the
+/// details'): HER-BAT-003. The battle sums the changes and takes the smallest cap; content gives
+/// a source at most one effect of a kind.
 fn morale_and_luck<'a>(
-    effects: impl Iterator<Item = &'a CompiledHeroEffect>,
+    effects: impl Iterator<Item = (EffectSource, &'a CompiledHeroEffect)>,
     bonuses: BattleBonuses,
 ) -> Vec<BattleEffect> {
-    // [morale, luck, morale cap, luck cap][own, enemy, both]
-    let mut totals: [[Option<i32>; 3]; 4] = [[None; 3]; 4];
-    for effect in effects {
-        let (kind, value, affects, cap) = match *effect {
-            HeroEffect::Morale { amount, affects } => (0, amount, affects, false),
-            HeroEffect::Luck { amount, affects } => (1, amount, affects, false),
-            HeroEffect::MoraleAtMost { value, affects } => (2, value, affects, true),
-            HeroEffect::LuckAtMost { value, affects } => (3, value, affects, true),
-            _ => continue,
-        };
-        let value = i32::from(value);
-        let total = &mut totals[kind][affects_index(affects)];
-        *total = Some(match *total {
-            None => value,
-            Some(t) if cap => t.min(value),
-            Some(t) => t + value,
-        });
-    }
     // rule: HER-ADV-008
-    for (kind, bonus) in [(0, bonuses.morale), (1, bonuses.luck)] {
-        let own = &mut totals[kind][affects_index(Affects::Own)];
-        *own = Some(own.unwrap_or(0) + i32::from(bonus));
-    }
-    let mut out = Vec::new();
-    for (kind, by_affects) in totals.iter().enumerate() {
-        for (&total, affects) in by_affects.iter().zip(Affects::ALL) {
-            let Some(total) = total.filter(|&t| kind >= 2 || t != 0) else {
-                continue;
-            };
-            // Within `i8` after the clamp.
-            let value = i8::try_from(total.clamp(-128, 127)).unwrap_or_default();
-            out.push(match kind {
-                0 => BattleEffect::Morale {
-                    amount: value,
-                    affects,
-                },
-                1 => BattleEffect::Luck {
-                    amount: value,
-                    affects,
-                },
-                2 => BattleEffect::MoraleAtMost { value, affects },
-                _ => BattleEffect::LuckAtMost { value, affects },
-            });
-        }
-    }
-    out
+    let temporary = [
+        BattleEffect::Morale {
+            amount: bonuses.morale,
+            affects: Affects::Own,
+            source: EffectSource::Temporary,
+        },
+        BattleEffect::Luck {
+            amount: bonuses.luck,
+            affects: Affects::Own,
+            source: EffectSource::Temporary,
+        },
+    ];
+    effects
+        .filter_map(|(source, effect)| sourced(effect, source))
+        .chain(temporary)
+        .filter(|e| {
+            !matches!(
+                e,
+                BattleEffect::Morale { amount: 0, .. } | BattleEffect::Luck { amount: 0, .. }
+            )
+        })
+        .collect()
 }
 
-/// Index of `affects` in [`Affects::ALL`].
-const fn affects_index(affects: Affects) -> usize {
-    match affects {
-        Affects::Own => 0,
-        Affects::Enemy => 1,
-        Affects::Both => 2,
-    }
+/// `effect` as a battle effect with `source`, if it is a morale or luck change or cap.
+fn sourced(effect: &CompiledHeroEffect, source: EffectSource) -> Option<BattleEffect> {
+    Some(match *effect {
+        HeroEffect::Morale { amount, affects } => BattleEffect::Morale {
+            amount,
+            affects,
+            source,
+        },
+        HeroEffect::Luck { amount, affects } => BattleEffect::Luck {
+            amount,
+            affects,
+            source,
+        },
+        HeroEffect::MoraleAtMost { value, affects } => BattleEffect::MoraleAtMost {
+            value,
+            affects,
+            source,
+        },
+        HeroEffect::LuckAtMost { value, affects } => BattleEffect::LuckAtMost {
+            value,
+            affects,
+            source,
+        },
+        _ => return None,
+    })
 }
 
 /// Every effect with the growth its value gets (HER-BAT-004, HER-BAT-005): the secondary skills'
@@ -1007,15 +1009,31 @@ pub(crate) fn effects<'a>(
     ruleset: &'a Ruleset,
     count: Count,
 ) -> impl Iterator<Item = &'a CompiledHeroEffect> {
-    let skills = details.skills.iter().flat_map(|&(id, level)| {
+    sourced_effects(details, ruleset, count).map(|(_, effect)| effect)
+}
+
+/// [`effects`], each with its source (CLT-Q40): a skill at its level, the artifact (a worn one or
+/// a part of a worn combination), the specialty.
+pub(crate) fn sourced_effects<'a>(
+    details: &'a HeroDetails,
+    ruleset: &'a Ruleset,
+    count: Count,
+) -> impl Iterator<Item = (EffectSource, &'a CompiledHeroEffect)> {
+    let skills = details.skills.iter().flat_map(|&(skill, level)| {
+        let source = EffectSource::Skill { skill, level };
         ruleset
-            .skill(id)
-            .map(|skill| skill.effects(level))
+            .skill(skill)
+            .map(|s| s.effects(level))
             .unwrap_or_default()
+            .iter()
+            .map(move |effect| (source, effect))
     });
-    skills
-        .chain(artifact_effects(details, ruleset, count))
-        .chain(specialty(details, ruleset))
+    let artifacts = sourced_artifact_effects(details, ruleset, count)
+        .map(|(id, effect)| (EffectSource::Artifact(id), effect));
+    let specialty = specialty(details, ruleset)
+        .iter()
+        .map(|effect| (EffectSource::Specialty, effect));
+    skills.chain(artifacts).chain(specialty)
 }
 
 /// The effects of the worn artifacts: a combination together with its parts, an artifact that
@@ -1026,6 +1044,15 @@ pub(crate) fn artifact_effects<'a>(
     ruleset: &'a Ruleset,
     count: Count,
 ) -> impl Iterator<Item = &'a CompiledHeroEffect> {
+    sourced_artifact_effects(details, ruleset, count).map(|(_, effect)| effect)
+}
+
+/// [`artifact_effects`], each with its artifact type.
+fn sourced_artifact_effects<'a>(
+    details: &'a HeroDetails,
+    ruleset: &'a Ruleset,
+    count: Count,
+) -> impl Iterator<Item = (ArtifactTypeId, &'a CompiledHeroEffect)> {
     let mut seen = BTreeSet::new();
     details
         .worn
@@ -1037,13 +1064,13 @@ pub(crate) fn artifact_effects<'a>(
             core::iter::once(id).chain(parts.unwrap_or_default().iter().copied())
         })
         .filter(move |&id| count == Count::PerCopy || seen.insert(id.raw()))
-        .filter_map(|id| ruleset.artifact(id))
-        .filter(|artifact| {
+        .filter_map(|id| ruleset.artifact(id).map(|a| (id, a)))
+        .filter(|(_, artifact)| {
             artifact
                 .needs_skill
                 .is_none_or(|needed| details.skills.iter().any(|&(id, _)| id == needed))
         })
-        .flat_map(|artifact| artifact.effects.iter())
+        .flat_map(|(id, artifact)| artifact.effects.iter().map(move |effect| (id, effect)))
 }
 
 /// The specialty of the hero's type.

@@ -332,8 +332,12 @@ fn situate(r: &BattleRuleset, setup: &mut BattleSetup, place: Place) {
                 moat,
                 structures: town.structures,
                 escape_tunnel: town.escape_tunnel,
-                morale: town.morale,
-                luck: town.luck,
+                bonuses: h3_contracts::TownBonuses::new(&[h3_contracts::TownBonus {
+                    building: 0,
+                    morale: town.morale,
+                    luck: town.luck,
+                }])
+                .unwrap_or_default(),
             });
             if let Some(hero) = setup.heroes[0].as_mut().filter(|_| town.ballistics > 0) {
                 hero.war_machines.catapult = Some(CatapultControl {
@@ -2384,13 +2388,23 @@ fn extreme_effect(
         6 => BattleEffect::Morale {
             amount: value,
             affects,
+            source: h3_contracts::EffectSource::Temporary,
         },
         7 => BattleEffect::Luck {
             amount: value,
             affects,
+            source: h3_contracts::EffectSource::Temporary,
         },
-        8 => BattleEffect::MoraleAtMost { value, affects },
-        _ => BattleEffect::LuckAtMost { value, affects },
+        8 => BattleEffect::MoraleAtMost {
+            value,
+            affects,
+            source: h3_contracts::EffectSource::Temporary,
+        },
+        _ => BattleEffect::LuckAtMost {
+            value,
+            affects,
+            source: h3_contracts::EffectSource::Temporary,
+        },
     }
 }
 

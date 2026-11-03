@@ -904,7 +904,16 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, 
                                  # `spell_specialty` (`spell`, `bp_per_level`, `level`: the
                                  # hero's level; BAT-MAG-004), `magic_resistance` (`bp`;
                                  # BAT-MAG-008) and `spell_duration` (`rounds`; BAT-MAG-010),
-                                 # parameters as in "Hero effects"
+                                 # parameters as in "Hero effects". A morale or luck effect and an
+                                 # alignment group may name their `source` (CLT-Q40, replay
+                                 # format v32; omitted: temporary): `{ kind = "skill", skill =
+                                 # "base:leadership", level = 2 }`, `{ kind = "artifact",
+                                 # artifact = "base:clover_of_fortune" }`, `{ kind = "specialty" }`,
+                                 # `{ kind = "visit", mark = 0 }`, `{ kind = "building", faction =
+                                 # "base:castle", index = 22 }`. A scenario's `[scenario.siege]`
+                                 # names its morale and luck by building: `bonuses = [{ building =
+                                 # 5, morale = 1 }]` (the index in the faction's town record;
+                                 # replaced `morale` and `luck`)
 
 [[attacker]]                     # one entry per stack
 slot = 0

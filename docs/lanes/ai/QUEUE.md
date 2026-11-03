@@ -45,6 +45,17 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
 
+**From the battle lane** (CLT-Q40, BAT-Q64; `claude/keen-cori-oaahgi`, `cross-lane`; for your
+information and one choice):
+
+- 2026-11-03: the battle state hash v55 and the replay format v32 (a hero's morale and luck effects
+  name their sources, `Siege.bonuses` replaces `morale` and `luck`); the golden battle and
+  adventure replays rehashed, their commands unchanged; `encounter.rs`'s siege gives the table's
+  town morale as one stand-in building (0), `h3-ffi`'s `scenario/town.toml` as building 5. The
+  observation gains public fields no rule reads (`morale_and_luck`, `unclamped_morale`,
+  `unclamped_luck`); **your choice**: whether the observation encoding takes the unclamped luck
+  (the computer's Fortune value reads it, E23 T4c) or nothing.
+
 **The adventure env** (yours since E08 T45):
 
 - 2026-11-02 (the adventure lane, E08 T85b2b, `adventure/e08-t85b`, `cross-lane`, decision 203;
