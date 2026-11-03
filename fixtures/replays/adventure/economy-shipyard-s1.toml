@@ -1,0 +1,51 @@
+commands = [
+    "0 move 2 26,22,0 27,21,0 28,20,0",
+    "0 answer offer accept",
+    "0 move 2 29,21,0 30,20,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 2 31,21,0 32,22,0",
+    "0 build-boat 86 29,20,0",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = ["0x70d4c1703cc6598f"]
+
+[replay]
+format = 8
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x962e87e7a01056f6"
+adventure_ruleset_hash = "0x67e6f0786f22d8f8"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 22
+adventure_state_hash_version = 19
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-economy-36.h3m"
+hash = "0x0d7ea287c88b7469"
+import_version = 15
+
+[result]
+day = 3
+final_hash = "0x92eb3c96c17479bf"

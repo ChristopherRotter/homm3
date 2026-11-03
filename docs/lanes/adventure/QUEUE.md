@@ -33,24 +33,27 @@ over two sessions (decision 224): T85b1 done on `adventure/e08-t85b` (pushed, no
 T85b2 in two (decision 225): T85b2a done on the same branch (the timed events, `events_today`;
 the security lines on `shared/e08-t85b`); T85b2b done on it (the env's `BuildBoat`, action
 encoding v6, `cross-lane`; the verify with the original data, the bench; the pull requests,
-`shared/` first: the lane HANDOFF names them).
+`shared/` first: the lane HANDOFF names them). Round 8: T86 in two (decision 226): T86a done
+(`adventure/e08-t86a`: the economy map, its seven replays, the duel replays' lists, four
+replaced).
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T86 — the economy maps, their replays, properties and benchmarks**
+**E08 T86b — the economy plans' properties, the economy XL and its benchmarks**
 
-- **Scope:** round 8's first task (design §15, §18; decision 202), its cut confirmed with the user
-  at its start: `e08-economy-36.h3m` and `e08-economy-144.h3m` (`h3_map::writer`, design §15's
-  objects); the golden replays on them (random play over 60 days with a creature month by a seed
-  search; scripted: a flag and Leave Guards, a neutral and an owned mine fought, a boat built at a
-  visit and by `BuildBoat`, a weekly object visited twice in a week); the plans' `ECONOMY` classes
-  and `Step::{Garrison, BuildBoat}` with design §15's checks; the workloads `day-start-xl-144`,
-  `month-start-xl-144`, `random-play-economy-36`, `fork-economy-xl-144`, the existing ones
-  re-baselined where the growth moved them (T85b1's and T85b2b's records in `E08-log.md`); the
-  `--with-original-data` counts (60 owned mines, one Shipyard, the boat tiles, the abandoned
-  mines' sets, 666 timed events); the seven duel replays' feature lists (T85b1).
-- **Inputs:** design §15, §18; `E08-log.md` T85b1, T85b2b; `docs/lanes/adventure/TRAPS.md` (the
-  plans, `lay_out`, objects added in play).
-- **Depends on:** T85b's pull requests merged. **Status:** ready after them.
+- **Scope:** round 8's first task's second part (design §15, §18; decision 226): the plans'
+  `ECONOMY` classes and `Step::{Garrison, BuildBoat}` with design §15's checks (§6's invariants
+  after every command; the income conserved; a week's step leaving every weekly object full and
+  every growing monster at its growth; an added monster as a placed one, design §19's open
+  point; every legal `BuildBoat` accepted, every other rejected with the state unchanged; the
+  views to the right viewers); `e08-economy-144.h3m` (`h3_map::writer`: the XL map with as many
+  mines and weekly objects as the largest shipped map and a monster on every hundredth free
+  tile); the workloads `day-start-xl-144`, `month-start-xl-144`, `random-play-economy-36` (on
+  T86a's `e08-economy-36.h3m`), `fork-economy-xl-144`; the existing ones re-baselined where the
+  growth moved them (T85b1's and T85b2b's records in `E08-log.md`); the benches README's rows in
+  one `shared/` pull request.
+- **Inputs:** design §15, §18, §19; `E08-log.md` T85b1, T85b2b, T86a; `docs/lanes/adventure/
+  TRAPS.md` (the plans, `lay_out`, objects added in play); the skill `homm3-bench-regression`.
+- **Depends on:** T86a's pull request merged. **Status:** ready after it.
 
 ## Inbox
 
@@ -171,6 +174,5 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 - 2026-10-20 (T22b, E3-9's reading; for E10's computer players or the formation command: increment 6 since decision 90, T44a's survey point 4): the battle places an army in the tight formation only for a human player's side (`battle_war_machine_stacks` 0x463679, the side's +0x54A4): a computer player's hero always fights loose, whatever its formation. The engine has no computer player and keeps the map's formation (`ADV-QUIRK-8`); decide then whether a computer player's side fights loose (a rule or a quirk; the battle lane's inbox has the tables).
 
-- 2026-10-19 (T21b's audit): since E04c T10b's re-recording no golden replay declines a guarded pile's question or a Cartographer's offer (the battle lane's note of 2026-10-16 below, (5)); both stay covered by `h3-game`'s unit tests and the property plans. A wider seed search or a fixture of its own would restore them, with the next re-recording.
 
 Archive of the lane's finished and informational entries: `QUEUE-ARCHIVE.md` (grep it for an id or a task a doc cites). Keep this file to what is open: a done task leaves it, a notice nobody has to act on goes to the archive at once (`docs/08-work-process.md`, "Keeping the start-of-session reading small").
