@@ -11,7 +11,9 @@ use h3_kernel::Handle;
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 use h3_ui::text::{Args, Catalogue};
 use h3_view::message::MessageBox;
-use h3_view::stats::{Effect, Hints, Memory, Modal, Pair, Stats, StatsLayout, Steps, Texts};
+use h3_view::stats::{
+    Account, Described, Effect, Field, Hints, Memory, Modal, Pair, Stats, StatsLayout, Steps, Texts,
+};
 use h3_view::tables::Tables;
 
 /// The creatures the dialog tells by number (their original ids): the Ballista's damage, the war
@@ -27,6 +29,16 @@ const SORROW: u32 = 50;
 const FORTUNE: u32 = 51;
 const MISFORTUNE: u32 = 52;
 const FORGETFULNESS: u32 = 61;
+/// The creatures morale's and luck's descriptions name (their original ids; design §12.4): the
+/// Angels and Archangels in the army, the other army's Bone and Ghost Dragons and Devils and Arch
+/// Devils, the Minotaurs' and the Halflings' minimums.
+const ANGELS: [u32; 2] = [13, 12];
+const DRAGONS: [u32; 2] = [69, 68];
+const DEVILS: [u32; 2] = [55, 54];
+const MINOTAURS: [u32; 2] = [78, 79];
+const HALFLINGS: u32 = 138;
+/// An army's slots (the original's seven); war machines and created stacks take others.
+const ARMY_SLOTS: u8 = 7;
 
 /// What the dialog needs to name and number a stack: the record's manifest (the handles' keys),
 /// the rules, the asset tables and the catalogue.
@@ -211,18 +223,11 @@ pub fn of(sources: &Sources<'_>, observation: &Observation, id: u8, modal: bool)
         _ => 1,
     };
     let damage = [stack.damage_min, stack.damage_max].map(|d| i32::from(d) * times);
-    // Morale and luck: the stack's own, with what Mirth, Sorrow, Fortune and Misfortune change
-    // (the observation's are before them; the executable's +0x4E8 and +0x4EC after).
-    let by = |spell: u32| -> i32 {
-        stack
-            .effects
-            .iter()
-            .filter(|e| spell_original(sources, e.spell) == Some(spell))
-            .map(|e| i32::from(e.value))
-            .sum()
-    };
-    let morale = i32::from(stack.morale) + by(MIRTH) - by(SORROW);
-    let luck = i32::from(stack.luck) + by(FORTUNE) - by(MISFORTUNE);
+    // Morale and luck: the stack's own, Mirth's to Misfortune's changes in them (the engine's
+    // materialised values, as the executable's +0x4E8 and +0x4EC; E17 M6 T2a2b2: T2a1 added the
+    // timed effects a second time). The engine's are clamped: its luck to 0 and up (CLT-Q40).
+    let morale = i32::from(stack.morale);
+    let luck = i32::from(stack.luck);
     let effects = stack
         .effects
         .iter()
@@ -284,9 +289,108 @@ pub fn of(sources: &Sources<'_>, observation: &Observation, id: u8, modal: bool)
         morale,
         luck,
         effects,
+        account: Account::default(),
         ability: Some(ability),
         cast,
         modal,
+    })
+}
+
+/// What morale's and luck's descriptions tell of `stack`'s sources (E17 M6 T2a2b2, design §12.4),
+/// as far as `observation` shows them (CLT-Q40): the special field, the creature's town and
+/// flags, the armies of the side whose sources they list (its controller's in the client's
+/// profile, its owner's in `Bugs::Original`, as the executable's +0xF4: CLT-Q41 (2)), the
+/// creatures' minimums and the timed spells' changes; none when the rules or the tables lack it.
+fn account(
+    sources: &Sources<'_>,
+    observation: &Observation,
+    stack: &Stack,
+    bugs: h3_render::Bugs,
+) -> Option<Account> {
+    let core = &**sources.ruleset;
+    let info = core.creature(Handle::from_raw(stack.creature))?;
+    let key_of = |s: &Stack| sources.manifest.keys.creatures.get(usize::from(s.creature));
+    let original_of = |s: &Stack| {
+        key_of(s)
+            .and_then(|k| sources.tables.creatures.get(k))
+            .map(|e| u32::from(e.original))
+    };
+    // A creature's plural (the creature table's +0x18): its name for more than one.
+    let plural = |s: &Stack| {
+        key_of(s).map(|k| {
+            sources
+                .catalogue
+                .text(&format!("creature.{k}"), &Args::new().count(2))
+        })
+    };
+    let field = observation
+        .battlefield
+        .and_then(|h| sources.manifest.keys.battlefields.get(usize::from(h)))
+        .map_or(Field::Other, |key| match key.rsplit(':').next() {
+            Some("cursed_ground") => Field::Cursed,
+            Some("holy_ground") => Field::Holy,
+            Some("evil_fog") => Field::EvilFog,
+            Some("clover_field") => Field::Clover,
+            _ => Field::Other,
+        });
+    let listed = match bugs {
+        h3_render::Bugs::Fixed => stack.controller,
+        h3_render::Bugs::Original => stack.side,
+    };
+    // A side's army (+0x54C4): its slots' stacks as the battle began, dead ones too.
+    let army = |side: Side| {
+        observation.stacks.iter().filter(move |s| {
+            s.side == side
+                && s.slot < ARMY_SLOTS
+                && !(s.created || s.raised || s.clone || s.war_machine)
+        })
+    };
+    let other = if listed == Side::Attacker {
+        Side::Defender
+    } else {
+        Side::Attacker
+    };
+    // The first of `kinds` the army of `side` holds: its plural.
+    let first_of = |side: Side, kinds: &[u32]| {
+        kinds.iter().find_map(|&kind| {
+            army(side)
+                .find(|s| original_of(s) == Some(kind))
+                .and_then(plural)
+        })
+    };
+    let alignments: std::collections::BTreeSet<Option<usize>> = army(listed)
+        .filter_map(|s| core.creature(Handle::from_raw(s.creature)))
+        .map(|i| i.faction.map(|f| f.index()))
+        .collect();
+    let undead = army(listed)
+        .filter_map(|s| core.creature(Handle::from_raw(s.creature)))
+        .any(|i| i.flags.contains(h3_content::CreatureFlag::Undead));
+    let original = original_of(stack);
+    let by = |spell: u32| -> i32 {
+        stack
+            .effects
+            .iter()
+            .filter(|e| spell_original(sources, e.spell) == Some(spell))
+            .map(|e| i32::from(e.value))
+            .sum()
+    };
+    Some(Account {
+        field,
+        town: info.faction.and_then(|f| u8::try_from(f.index()).ok()),
+        no_morale: info.flags.contains(h3_content::CreatureFlag::NoMorale),
+        alignments: u32::try_from(alignments.len()).unwrap_or(u32::MAX),
+        undead,
+        angels: first_of(listed, &ANGELS),
+        dragons: first_of(other, &DRAGONS),
+        devils: first_of(other, &DEVILS),
+        morale_minimum: original
+            .filter(|o| MINOTAURS.contains(o))
+            .and_then(|_| plural(stack)),
+        luck_minimum: original
+            .filter(|&o| o == HALFLINGS)
+            .and_then(|_| plural(stack)),
+        morale_spells: by(MIRTH) - by(SORROW),
+        luck_spells: by(FORTUNE) - by(MISFORTUNE),
     })
 }
 
@@ -306,12 +410,13 @@ pub fn player(observation: &Observation, stack: &Stack, viewing: u8) -> u8 {
 /// The dialog a left press (or the key T) opens on stack `id` (its place next to the stack's hex,
 /// its creature's steps from the frame counts `frames` of its DEF's groups; `seed` the viewer's
 /// generator's), the mouse at `looked`; drawn and hinted in `memory`'s profile, which its opening
-/// may make forget the item last hovered.
+/// may make forget the item last hovered; morale's and luck's descriptions with the pictures'
+/// sizes `sizes` (their DEFs the layout's `morale_described` and `luck_described`).
 pub fn open(
     sources: &Sources<'_>,
     observation: &Observation,
     (id, looked): (u8, [i32; 2]),
-    (layout, anchor): (&StatsLayout, [i32; 2]),
+    (layout, anchor, sizes): (&StatsLayout, [i32; 2], [[i32; 2]; 2]),
     (frames, viewing, seed): (BTreeMap<u32, u32>, u8, u32),
     memory: &mut Memory,
 ) -> Option<Open> {
@@ -336,6 +441,7 @@ pub fn open(
     let war_machine = original.is_some_and(|o| WAR_MACHINES.contains(&o));
     let texts = Texts::of(sources.catalogue);
     let bugs = memory.bugs();
+    stats.account = account(sources, observation, stack, bugs)?;
     let window = h3_view::stats::layout(
         layout,
         &texts,
@@ -346,7 +452,11 @@ pub fn open(
         ),
         bugs,
     );
-    let hints = Hints::of(sources.catalogue, &stats, bugs);
+    let pictures: Described = [
+        (layout.morale_described.clone(), sizes[0]),
+        (layout.luck_described.clone(), sizes[1]),
+    ];
+    let hints = Hints::of(sources.catalogue, &stats, &pictures, bugs);
     Some(Open {
         modal: Modal::new(window, hints, memory),
         steps: Steps::new(frames, war_machine, seed),

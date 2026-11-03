@@ -15,6 +15,8 @@ fn stats_layout() -> StatsLayout {
         luck: "ilck42.def".into(),
         morale_frames: Some("imrlB.def".into()),
         luck_frames: None,
+        morale_described: "imrl82.def".into(),
+        luck_described: "ilck82.def".into(),
         effects: "spellint.def".into(),
         status: "VARBack.pcx".into(),
         button_back: "Box64x30.pcx".into(),
@@ -60,6 +62,7 @@ fn marksmen() -> Stats {
         morale: 5,
         luck: -1,
         effects: [41, 43, 53, 46].map(effect).into(),
+        account: Account::default(),
         ability: Some("Shoots twice".into()),
         cast: false,
         modal: true,
@@ -355,7 +358,31 @@ fn hints() -> Hints {
         effects: vec!["e0".into(), "e1".into()],
         descriptions: (0..HINTS).map(|i| format!("help {i}")).collect(),
         cast_description: "cast help".into(),
+        morale: Some(("morale help".into(), picture("imrl82.def", 4))),
+        luck: None,
     }
+}
+
+/// The description pictures' DEFs and sizes (82 × 93, as the original's).
+fn pictures() -> Described {
+    [
+        ("imrl82.def".into(), [82, 93]),
+        ("ilck82.def".into(), [82, 93]),
+    ]
+}
+
+fn picture(def: &str, frame: u32) -> message::Picture {
+    message::Picture {
+        def: def.into(),
+        frame,
+        size: [82, 93],
+        caption: String::new(),
+    }
+}
+
+/// The text of a description, its picture left out.
+fn said(described: Option<(String, Option<message::Picture>)>) -> Option<String> {
+    described.map(|(text, _)| text)
 }
 
 #[test]
@@ -405,7 +432,7 @@ fn the_hints_come_from_the_catalogue() {
         ],
         ..marksmen()
     };
-    let fixed = Hints::of(&catalogue, &stats, Bugs::Fixed);
+    let fixed = Hints::of(&catalogue, &stats, &pictures(), Bugs::Fixed);
     assert_eq!(fixed.table.len(), HINTS);
     assert_eq!(
         (fixed.table[0].as_str(), fixed.table[14].as_str()),
@@ -423,7 +450,7 @@ fn the_hints_come_from_the_catalogue() {
     assert_eq!(fixed.cast_description, "Cast");
     // The last three: Bind, Berserk and Disrupting Ray name how long they last.
     assert_eq!(fixed.effects, ["spell 72: B", "spell 59: Z", "spell 47: R"]);
-    let original = Hints::of(&catalogue, &marksmen(), Bugs::Original);
+    let original = Hints::of(&catalogue, &marksmen(), &pictures(), Bugs::Original);
     assert_eq!(original.cast, "Mine");
     assert_eq!(original.cast_description, "Lab");
     assert_eq!(original.effects, ["spell 43 3", "spell 53 3", "spell 46 3"]);
@@ -436,7 +463,7 @@ fn the_hints_come_from_the_catalogue() {
         ..marksmen()
     };
     assert_eq!(
-        Hints::of(&catalogue, &rest, Bugs::Fixed).effects,
+        Hints::of(&catalogue, &rest, &pictures(), Bugs::Fixed).effects,
         ["spell 53 0"]
     );
 }
@@ -542,26 +569,30 @@ fn the_ok_closes_the_dialog_by_a_click_or_its_keys() {
 #[test]
 fn the_right_button_describes_an_item() {
     // E17 M6 T2a2b1: an item's pair's second text; the effects their pair's; the cast button's
-    // its own; none for morale and luck (M6 T2a2b2), an item without a pair or an empty text.
+    // its own; morale's and luck's their own with their pictures (M6 T2a2b2); none for an item
+    // without a pair or an empty text.
     let h = hints();
-    assert_eq!(h.described(NAME, Bugs::Fixed).as_deref(), Some("help 0"));
-    assert_eq!(h.described(206, Bugs::Fixed).as_deref(), Some("help 2"));
+    assert_eq!(said(h.described(NAME, Bugs::Fixed)).as_deref(), Some("help 0"));
+    assert_eq!(said(h.described(206, Bugs::Fixed)).as_deref(), Some("help 2"));
     assert_eq!(
-        h.described(EFFECTS + 1, Bugs::Fixed).as_deref(),
+        said(h.described(EFFECTS + 1, Bugs::Fixed)).as_deref(),
         Some("help 11")
     );
-    assert_eq!(h.described(OK, Bugs::Fixed).as_deref(), Some("help 14"));
+    assert_eq!(said(h.described(OK, Bugs::Fixed)).as_deref(), Some("help 14"));
     assert_eq!(
-        h.described(CAST, Bugs::Original).as_deref(),
-        Some("cast help")
+        h.described(CAST, Bugs::Original),
+        Some(("cast help".into(), None))
     );
-    assert_eq!(h.described(MORALE, Bugs::Fixed), None);
+    assert_eq!(
+        h.described(MORALE, Bugs::Fixed),
+        Some(("morale help".into(), Some(picture("imrl82.def", 4))))
+    );
     assert_eq!(h.described(LUCK, Bugs::Fixed), None);
     assert_eq!(h.described(BACKGROUND, Bugs::Fixed), None);
     assert_eq!(h.described(CREATURE, Bugs::Fixed), None);
     // The speed's label: the health left's in the original (CLT-Q38 (1)), its own in the client's.
-    assert_eq!(h.described(217, Bugs::Original).as_deref(), Some("help 7"));
-    assert_eq!(h.described(217, Bugs::Fixed).as_deref(), Some("help 8"));
+    assert_eq!(said(h.described(217, Bugs::Original)).as_deref(), Some("help 7"));
+    assert_eq!(said(h.described(217, Bugs::Fixed)).as_deref(), Some("help 8"));
     let empty = Hints {
         descriptions: vec![String::new(); HINTS],
         ..hints()
@@ -570,7 +601,7 @@ fn the_right_button_describes_an_item() {
     // Over the dialog: the item a move would enter; off it nothing.
     let mut memory = Memory::new(Bugs::Fixed);
     let m = modal(&mut memory);
-    assert_eq!(m.describe([100 + 160, 50 + 50]).as_deref(), Some("help 2"));
+    assert_eq!(said(m.describe([100 + 160, 50 + 50])).as_deref(), Some("help 2"));
     assert_eq!(m.describe([100 + 5, 50 + 5]), None);
     assert_eq!(m.describe([0, 0]), None);
 }
@@ -647,4 +678,201 @@ fn the_creature_stands_while_a_popup_is_held() {
     assert_eq!(Steps::made_around(100, &[[150, u32::MAX]], 900), 1);
     // A popup after the time asked changes nothing.
     assert_eq!(Steps::made_around(100, &[[500, 600]], 300), 3);
+}
+
+/// A catalogue whose morale and luck descriptions' messages show which line each is.
+fn described_catalogue() -> Catalogue {
+    use h3_ui::text::pack::Pack;
+    let pack = Pack::from_json(
+        "en",
+        r#"{ "stats": {
+            "morale": { "header": "{{text}}|", "good": "G", "neutral": "N", "bad": "B",
+                "none": "-none", "cursed": "-cursed", "unaffected": "-unaffected",
+                "alignments": "-troops {{alignments}} {{change}}", "one-alignment": "-one",
+                "undead": "-undead", "in-group": "-in {{creature}}",
+                "facing": "-facing {{creature}}", "minimum": "-min {{creature}}",
+                "spells": "-spells {{change}}", "holy-good": "-holy+", "holy-evil": "-holy-",
+                "fog-good": "-fog-", "fog-evil": "-fog+" },
+            "luck": { "header": "{{text}}|", "good": "g", "neutral": "n", "bad": "b",
+                "none": "-none", "cursed": "-cursed", "clover": "-clover",
+                "halflings": "{{creature}} lucky" } } }"#,
+    )
+    .unwrap();
+    Catalogue { packs: vec![pack] }
+}
+
+#[test]
+fn morales_description_lists_what_the_observation_shows() {
+    // E17 M6 T2a2b2 (design §12.4): the header by the value's sign, then the lines in the
+    // executable's order, or the empty list's line.
+    let c = described_catalogue();
+    let castle = Account {
+        town: Some(0),
+        alignments: 1,
+        ..Account::default()
+    };
+    let m = |account: &Account, value| describe::morale(&c, account, value);
+    assert_eq!(m(&castle, 1), "G|-one");
+    assert_eq!(m(&Account::default(), 0), "N|-none");
+    // Holy Ground's line before the alignments'; Angels in the army, the other's dragons.
+    let holy = Account {
+        field: Field::Holy,
+        undead: true,
+        angels: Some("Archangels".into()),
+        dragons: Some("Ghost Dragons".into()),
+        ..castle.clone()
+    };
+    assert_eq!(
+        m(&holy, 1),
+        "G|-holy+-one-undead-in Archangels-facing Ghost Dragons"
+    );
+    let evil = Account {
+        field: Field::Holy,
+        town: Some(4),
+        ..Account::default()
+    };
+    assert_eq!(m(&evil, -1), "B|-holy-");
+    // Evil Fog, the other way round; a neutral creature has no field's line.
+    let fog = |town| Account {
+        field: Field::EvilFog,
+        town,
+        ..Account::default()
+    };
+    assert_eq!(m(&fog(Some(1)), -1), "B|-fog-");
+    assert_eq!(m(&fog(Some(5)), 1), "G|-fog+");
+    assert_eq!(m(&fog(None), 0), "N|-none");
+    // Three alignments and more: 2 less the number, -3 from 5; two give no line.
+    let troops = |alignments| Account {
+        alignments,
+        ..Account::default()
+    };
+    assert_eq!(m(&troops(3), -1), "B|-troops 3 -1");
+    assert_eq!(m(&troops(4), -2), "B|-troops 4 -2");
+    assert_eq!(m(&troops(6), -3), "B|-troops 6 -3");
+    assert_eq!(m(&troops(2), 0), "N|-none");
+    // Cursed Ground's line alone, then a creature without morale's alone.
+    let cursed = Account {
+        field: Field::Cursed,
+        no_morale: true,
+        ..holy.clone()
+    };
+    assert_eq!(m(&cursed, 0), "N|-cursed");
+    let unaffected = Account {
+        no_morale: true,
+        ..holy.clone()
+    };
+    assert_eq!(m(&unaffected, 0), "N|-unaffected");
+}
+
+#[test]
+fn the_spells_line_is_the_value_less_the_field_and_the_base() {
+    let c = described_catalogue();
+    let m = |account: &Account, value| describe::morale(&c, account, value);
+    let mirth = Account {
+        town: Some(0),
+        alignments: 1,
+        morale_spells: 2,
+        ..Account::default()
+    };
+    assert_eq!(m(&mirth, 3), "G|-one-spells +2");
+    // The field's change is the field's line's, not the spells'.
+    let fog = Account {
+        field: Field::EvilFog,
+        morale_spells: -1,
+        ..mirth.clone()
+    };
+    assert_eq!(m(&fog, 1), "G|-fog--one-spells -1");
+    // The Minotaurs' minimum: a base below 1 is 1, so Mirth's 2 shows as 1 (0x44BF88).
+    let minotaurs = Account {
+        alignments: 3,
+        morale_minimum: Some("Minotaurs".into()),
+        morale_spells: 2,
+        ..Account::default()
+    };
+    assert_eq!(m(&minotaurs, 1), "G|-troops 3 -1-min Minotaurs");
+    let minotaurs = Account {
+        alignments: 1,
+        morale_spells: 2,
+        ..minotaurs
+    };
+    assert_eq!(m(&minotaurs, 3), "G|-one-spells +2");
+    let minotaurs = Account {
+        alignments: 0,
+        ..minotaurs
+    };
+    assert_eq!(m(&minotaurs, 2), "G|-min Minotaurs-spells +1");
+}
+
+#[test]
+fn lucks_description_and_the_halflings_line() {
+    let c = described_catalogue();
+    let l = |account: &Account, value, bugs| describe::luck(&c, account, value, bugs);
+    assert_eq!(l(&Account::default(), 0, Bugs::Fixed), "n|-none");
+    // Clover Field for a creature of a neutral town (6 to 8) only.
+    let clover = |town| Account {
+        field: Field::Clover,
+        town,
+        ..Account::default()
+    };
+    assert_eq!(l(&clover(Some(6)), 2, Bugs::Fixed), "g|-clover");
+    assert_eq!(l(&clover(Some(8)), 2, Bugs::Fixed), "g|-clover");
+    assert_eq!(l(&clover(Some(2)), 0, Bugs::Fixed), "n|-none");
+    assert_eq!(l(&clover(None), 0, Bugs::Fixed), "n|-none");
+    // The other army's Devils; Fortune's spells line.
+    let devils = Account {
+        devils: Some("Arch Devils".into()),
+        luck_spells: 2,
+        ..Account::default()
+    };
+    assert_eq!(l(&devils, 1, Bugs::Fixed), "g|-facing Arch Devils-spells +2");
+    // Cursed Ground's line alone.
+    let cursed = Account {
+        field: Field::Cursed,
+        ..devils.clone()
+    };
+    assert_eq!(l(&cursed, 0, Bugs::Fixed), "n|-cursed");
+    // The Halflings' line: without a line break in the original's profile, on its own row in
+    // the client's (CLT-Q41 (1)); their base of 1 takes Fortune's 1 into it.
+    let halflings = Account {
+        luck_minimum: Some("Halflings".into()),
+        ..Account::default()
+    };
+    assert_eq!(l(&halflings, 1, Bugs::Original), "g|Halflings lucky");
+    assert_eq!(l(&halflings, 1, Bugs::Fixed), "g|\nHalflings lucky");
+    let fortune = Account {
+        devils: Some("Devils".into()),
+        luck_spells: 1,
+        ..halflings
+    };
+    assert_eq!(
+        l(&fortune, 1, Bugs::Original),
+        "g|-facing DevilsHalflings lucky"
+    );
+}
+
+#[test]
+fn the_described_pictures_follow_the_sign() {
+    assert_eq!(
+        [3, 1, 0, -1, -3].map(describe::picture_frame),
+        [4, 4, 3, 2, 2]
+    );
+    let c = described_catalogue();
+    let stats = Stats {
+        morale: 1,
+        luck: 0,
+        account: Account {
+            alignments: 1,
+            ..Account::default()
+        },
+        ..marksmen()
+    };
+    let h = Hints::of(&c, &stats, &pictures(), Bugs::Fixed);
+    assert_eq!(
+        h.described(MORALE, Bugs::Fixed),
+        Some(("G|-one".into(), Some(picture("imrl82.def", 4))))
+    );
+    assert_eq!(
+        h.described(LUCK, Bugs::Fixed),
+        Some(("n|-none".into(), Some(picture("ilck82.def", 3))))
+    );
 }

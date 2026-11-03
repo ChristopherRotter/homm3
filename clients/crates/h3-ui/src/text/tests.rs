@@ -183,6 +183,19 @@ fn printf_rows_name_their_specifiers() {
         Message::from_printf("%s", &[s("nobody")], kinds),
         Err(PrintfError::Kind(s("nobody"), Kind::Text))
     );
+    // A signed number (`%+d`, `%+i`): a text the caller writes with its sign (E17 M6 T2a2b2).
+    let m = Message::from_printf("\nSpells %+d", &[s("who")], kinds).unwrap();
+    assert_eq!(m.segments, vec![lit("\nSpells "), ph("who")]);
+    let m = Message::from_printf("%+i!", &[s("who")], kinds).unwrap();
+    assert_eq!(m.segments, vec![ph("who"), lit("!")]);
+    assert_eq!(
+        Message::from_printf("%+d", &[s("n")], kinds),
+        Err(PrintfError::Kind(s("n"), Kind::Text))
+    );
+    assert_eq!(
+        Message::from_printf("%+s", &[s("who")], kinds),
+        Err(PrintfError::Specifier(Some('+')))
+    );
 }
 
 #[test]

@@ -5189,3 +5189,23 @@ file: H3ab_bmp.lod's older one lacks a field's lines, so its records after 82 ar
   town's buildings (BattleHero.effects holds their sums unlabelled; the observation none), and
   the unclamped values (the stack's luck is clamped to 0 and up, so the Devils' −1 shows neutral).
   The request: the battle lane's inbox (QUEUE), the server's and the adventure lane's.
+- **The slips** (CLT-Q41, asked and answered the same day: both fixed, the original's for the
+  comparisons): the Halflings' line runs on after the line before; a hypnotized stack's lines are
+  its owner's while its value is its controller's.
+- **Recorded** (`clients/situations/set.toml`): `stats-morale` (one alignment; good: frame 4),
+  `stats-luck` (the empty list's line; neutral: frame 3), `stats-morale-angels`,
+  `stats-morale-holy`, `stats-morale-fog` (neutral with two lines), `stats-morale-cursed`,
+  `stats-luck-cursed`: all exact at their first capture. Not recorded: the Devils (no scenario
+  where the defender holds them), undead, the minimums, the spells' line.
+- **The viewer** (`h3_view::stats::describe`: `Account`, `Field`, `morale`, `luck`,
+  `picture_frame`; `Hints`' `morale` and `luck`, `described` and `Modal::describe` with the
+  picture; the layout's `morale_described`, `luck_described`; `h3_ui::text`'s `%+d`). The
+  binary's `stats::account` from a seat's observation: the field by its key, the creature's town
+  (its faction) and flags (`no_morale`, `undead`), the side's army as the wire's stacks of slots 0
+  to 6 not made in the battle (the original's army record, dead stacks included), the other
+  side's, the named creatures by their original ids, the minimums, the spells' changes from the
+  stack's effects. The spells' line is the value the client's lines and the spells make, less the
+  field's change and the base, so it shows what the executable shows when the hero adds nothing.
+  The dialog's own morale and luck no longer add the timed effects a second time (T2a1's slip:
+  the wire's values hold them). *Not built:* the lines CLT-Q40 requested; the header and picture
+  by the unclamped value.
