@@ -47,7 +47,13 @@ fn rules(months: Option<MonthParamsDef>) -> GameRuleset {
     pack.params.as_mut().unwrap().months = months;
     let part = AdventureRuleset::compile(&core, &[pack]).unwrap();
     let battle = battle_part(&core, 7);
-    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+    GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap()
 }
 
 /// Months of these odds whose creature is the imp, a monster on every free land tile.

@@ -646,3 +646,37 @@ compiles the town files itself**, so a `shared/` pull request first adds `arch.t
   in `ab`) with seven levels each: the files' shape and determinism; every refusal above; the
   gap-fill's errors; a file that does not compile.
 - **Docs:** `packs/README.md` (the file's row, the harvest writes three files).
+
+### T5a2 — `GameRuleset` takes the town part, replay format v9 (2026-11-03)
+
+One session, the user present; branch `town/e09-t5a2` (`cross-lane`: `h3-game`'s `ruleset.rs`
+and tests, `h3-sim`'s encounter and adventure replay, `h3-cli`'s adventure loader, census and
+file format, `h3-map`'s tests and examples, the adventure replays, `clients/Cargo.lock`).
+Starting point: `master` at 2030ef5 (#689 T5b2b2 merged; the sandbox's baseline the full engine
+verify, green; CI's full run there failed one `h3-heroes` property case, fixed on `master` by
+1981203, merged in); the original data staged (`Heroes3.exe`, both LODs, `extracted.tar`,
+`maps.tar`). **At its start** (the user, asked): the task whole, one pull request (not
+`GameRuleset` and its callers first, then the replay format).
+
+- **`GameRuleset::new(core, adventure, battle, towns)`** and `towns()`; `RulesetMismatch` also
+  when the town part was compiled on another core or a faction with a town record has no
+  `[[siege]]` record in the battle part (every town can be besieged). `h3-game` depends on
+  `h3-towns` (`arch.toml` allowed it since T4b).
+- **The callers:** `h3-sim`'s encounter passes `TownRuleset::empty` (an encounter's game has no
+  towns); `h3-sim`'s adventure tests, `h3-cli`'s census and `h3-map`'s tests and both examples
+  the original part (`h3_pack_towns::ORIGINAL_PACKS`; RoE alone for `h3-map`'s one-pack case);
+  `h3-cli`'s `load_rules` reads each folder's `towns.toml` beside `adventure.toml` and
+  `battle.toml` (an absent file an empty text). `h3-game`'s own tests take the empty part
+  (`no_towns`).
+- **Adventure replay format v9:** `ReplayHeader::town_ruleset_hash`, checked after the adventure
+  part's; the file's `town_ruleset_hash` line (*agent's call*: optional when read, so a v8 file
+  reads with 0 and is refused by its version, as a v1 file without a difficulty; a v9 file
+  without it is refused by the hash). The 39 replays re-recorded from their own commands with
+  `h3 adventure run --script` (a scratch script asserting that only `format` and the new line
+  moved); their checkpoints unchanged: the state hash does not read the parts.
+- **Tests:** `h3-game`'s `the_parts_must_belong_to_the_core` (the town part on another core) and
+  `a_town_needs_its_siege` (a town record built in code: the imp and the gog `t:town`'s levels 1
+  and 2, the roles every record needs; no siege record); `h3-sim`'s tampered-header case
+  `town_ruleset_hash`; `h3-cli`'s loader test (the part from the folders is the embedded one, nine
+  records) and its format test (a v8 file without the line, a v9 file without it).
+- **Docs:** the queue's T6 entry (round 6), the adventure lane's versions line (replay format v9).

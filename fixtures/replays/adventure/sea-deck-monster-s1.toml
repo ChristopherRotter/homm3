@@ -11,7 +11,7 @@ commands = [
 checkpoints = ["0x6e23aaa1d488ff56"]
 
 [replay]
-format = 8
+format = 9
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -32,6 +32,7 @@ packs = [
 profile = "base:faithful"
 ruleset_hash = "0x962e87e7a01056f6"
 adventure_ruleset_hash = "0x67e6f0786f22d8f8"
+town_ruleset_hash = "0xe9dc612ed812d825"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"

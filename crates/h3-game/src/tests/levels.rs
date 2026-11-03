@@ -19,7 +19,13 @@ fn rules_in(profile: &str) -> GameRuleset {
     let core = Arc::new(core_with(false, profile));
     let part = part_with(&core, vec![88, 25], 2);
     let battle = battle_part(&core, 7);
-    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+    GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap()
 }
 
 /// The game of [`setup`] with `seed`, blue's hero edited by `edit`.

@@ -7,31 +7,24 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are round 5's (rounds 2 to 4, T5a1, T5b1, T5b2a, T5b2b1 and T5b2b2 are done,
-`E09-log.md`); each later round's entries are written when it comes (the epic's list), each task's
-cut confirmed at its start. Every entry's acceptance includes the Definition of Done
-(`docs/05-testing.md`). Round 5's order is T5a1, T5b (cut in two: T5b1, T5b2; T5b2 again: T5b2a,
-T5b2b; T5b2b again: T5b2b1, T5b2b2), T5a2 (the user, 2026-11-03: the content before
-`GameRuleset`, so the golden replays' header moves once).
+entries below are round 6's (rounds 2 to 5 are done, `E09-log.md`); each later round's entries are
+written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
+acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T5a2 — `GameRuleset`, its callers, adventure replay format v9**
+**E09 T6 — `h3-towns`: the record, the store, the setup's functions, the derivations**
 
-- **Scope:** round 5's last part (design §2's `GameRuleset` paragraph; `cross-lane`):
-  `GameRuleset::new(core, adventure, battle, towns)` with the extended mismatch check (the town
-  part on the same core; every faction with a town record has the battle part's `[[siege]]`
-  record) and its callers (h3-sim's encounter and tests, h3-cli's adventure loader and census,
-  h3-map's tests and examples: the compiled part, or `TownRuleset::empty(core)` for an
-  encounter); the CLI's loader reads `towns.toml` beside `adventure.toml` and `battle.toml`; the
-  adventure replay's header records the part's hash (adventure replay format v9; the golden
-  replays re-recorded, skill `homm3-rerecord-replays`).
-- **Acceptance:** the mismatch check's new cases each refused by a test; the adventure replays at
-  v9 with only header and hash lines moved; `check-lane --cross-lane`; CI green.
-- **Notes:** `arch.toml` already allows the callers' edges (`h3-sim` → `h3-towns`, dev
-  `h3-pack-towns`; `h3-cli` → both; `h3-map`'s dev → both) and `clients.yml` watches
-  `crates/h3-towns/`; once `h3-game` depends on `h3-towns`, `clients/Cargo.lock` (common) changes
-  and `clients/scripts/check.sh` runs. The adventure lane's open pull requests first
-  (`TRAPS.md`, "Merge in order"; it bumps the replay format too).
-- **Depends on:** T5b2b2 (its pull request merged). **Status:** ready once it merges.
+- **Scope:** round 6 (design §4 to §6; the lane's own crate): the record `Town` (`built`,
+  `forbidden`; the standing set derived) and `TownStatic`, the store `Towns` and its canonical
+  hash (town state hash v1's first encoding), the build's setup functions
+  (`town_buildings_setup` TWN-SET-003, the garrison TWN-SET-004, drawn from the setup stream),
+  the derivations of §6's table, and `docs/rules/catalog/town.toml` with the rules §19 names for
+  them; the quirks T-4 and T-6 where §19 places them (`docs/rules/quirks-town.md`).
+- **Acceptance:** every rule with its id, source and test; 100 % coverage of `h3-towns`; the
+  scoped verify.
+- **Notes:** probably cut in two at its start (the record, store and derivations; the setup's
+  functions). §6's `siege(town)` gives `Siege.bonuses` (the inbox's CLT-Q40 note), not one morale
+  and luck. No `cross-lane` path: `h3-game` calls these from T7.
+- **Depends on:** T5a2 (its pull request merged). **Status:** ready once it merges.
 
 ## Inbox
 

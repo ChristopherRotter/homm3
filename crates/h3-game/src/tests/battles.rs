@@ -47,7 +47,13 @@ fn rules_for(profile: &str) -> GameRuleset {
     let core = Arc::new(core_with(false, profile));
     let part = part(&core);
     let battle = battle_part(&core, 7);
-    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+    GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap()
 }
 
 /// The battle's setup as GAM-BAT-001 builds it from `game` before the attack, the obstacles drawn
@@ -673,7 +679,13 @@ fn a_battle_its_part_refuses_does_not_open() {
     let core = Arc::new(core(false));
     let part = part(&core);
     let battle = battle_part_with(&core, 7, |pack| pack.creatures[2].abilities.clear());
-    let rules = GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap();
+    let rules = GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap();
     let mut setup = three_players();
     let cart = rules.core().artifact_by_key("t:cart_art").unwrap().into();
     setup.heroes[0].details.artifacts = Some(HeroArtifactsSetup {

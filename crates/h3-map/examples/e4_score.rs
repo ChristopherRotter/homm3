@@ -84,7 +84,15 @@ fn original_rules() -> Result<GameRuleset, String> {
         h3_pack_battle::SOD_PACK,
     ];
     let battle = h3_pack_battle::compile(&packs, "base:faithful").map_err(|e| format!("{e:?}"))?;
-    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)).map_err(|e| format!("{e:?}"))
+    let towns = h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS, "base:faithful")
+        .map_err(|e| format!("{e:?}"))?;
+    GameRuleset::new(
+        Arc::new(core),
+        Arc::new(part),
+        Arc::new(battle),
+        Arc::new(towns),
+    )
+    .map_err(|e| format!("{e:?}"))
 }
 
 // -- The draws under each rule -----------------------------------------------------------------

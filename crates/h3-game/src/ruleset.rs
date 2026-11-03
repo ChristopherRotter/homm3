@@ -7,19 +7,22 @@ use core::fmt;
 use h3_adventure::{AdventureRuleset, ObjectKind};
 use h3_content::Ruleset;
 use h3_content_battle::BattleRuleset;
+use h3_towns::TownRuleset;
 
-/// The core ruleset and the contexts' parts of one game: the adventure's and, since E08 T19a, the
-/// battle's (ADR-0017 point 11).
+/// The core ruleset and the contexts' parts of one game: the adventure's, since E08 T19a the
+/// battle's (ADR-0017 point 11) and since E09 T5a2 the town's (ADR-0028 point 4).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameRuleset {
     core: Arc<Ruleset>,
     adventure: Arc<AdventureRuleset>,
     battle: Arc<BattleRuleset>,
+    towns: Arc<TownRuleset>,
 }
 
-/// The parts do not fit the core: one was compiled on another core ruleset, or the adventure part
-/// names a battlefield the battle part lacks: a battle on the coast's
-/// ([`h3_adventure::BattleTerrains`]) or a special ground's (E08 T20a2a).
+/// The parts do not fit the core: one was compiled on another core ruleset, the adventure part
+/// names a battlefield the battle part lacks (a battle on the coast's,
+/// [`h3_adventure::BattleTerrains`], or a special ground's, E08 T20a2a), or a faction with a town
+/// record has no siege record in the battle part (E09 T5a2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RulesetMismatch;
 
@@ -32,17 +35,20 @@ impl fmt::Display for RulesetMismatch {
 impl core::error::Error for RulesetMismatch {}
 
 impl GameRuleset {
-    /// Bundles a core ruleset with the adventure and battle parts compiled on it.
+    /// Bundles a core ruleset with the adventure, battle and town parts compiled on it (an
+    /// encounter's game, which has no towns, takes [`TownRuleset::empty`]).
     ///
     /// # Errors
     ///
-    /// [`RulesetMismatch`] if a part was compiled on another core (by content hash), or a
+    /// [`RulesetMismatch`] if a part was compiled on another core (by content hash), a
     /// battlefield of the adventure part, the coast's, the deck's or the boats' (E08 T72) or a
-    /// special ground's, is not the battle part's.
+    /// special ground's, is not the battle part's, or a faction with a town record has no siege
+    /// record in the battle part (E09 T5a2: every town can be besieged).
     pub fn new(
         core: Arc<Ruleset>,
         adventure: Arc<AdventureRuleset>,
         battle: Arc<BattleRuleset>,
+        towns: Arc<TownRuleset>,
     ) -> Result<Self, RulesetMismatch> {
         let hash = core.content_hash();
         let known =
@@ -55,11 +61,21 @@ impl GameRuleset {
                 ObjectKind::Ground { battlefield, .. } => known(battlefield),
                 _ => true,
             });
-        if adventure.core_hash() == hash && battle.core_hash() == hash && field {
+        let besieged = towns
+            .towns()
+            .iter()
+            .all(|t| battle.siege(t.faction).is_some());
+        if adventure.core_hash() == hash
+            && battle.core_hash() == hash
+            && towns.core_hash() == hash
+            && field
+            && besieged
+        {
             Ok(Self {
                 core,
                 adventure,
                 battle,
+                towns,
             })
         } else {
             Err(RulesetMismatch)
@@ -79,5 +95,10 @@ impl GameRuleset {
     /// The battle part (E08 T19a).
     pub fn battle(&self) -> &BattleRuleset {
         &self.battle
+    }
+
+    /// The town part (E09 T5a2).
+    pub fn towns(&self) -> &TownRuleset {
+        &self.towns
     }
 }

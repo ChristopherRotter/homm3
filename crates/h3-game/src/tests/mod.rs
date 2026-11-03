@@ -53,6 +53,10 @@ use h3_content_battle::{
     BattlefieldDef, ObstacleDef, SpellAi, SpellMagic, SpellPolarity, SurrenderDef,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_towns::{
+    BuildingDef, BuildingRoles, CreatureLevelDef, Dwelling, GarrisonRow, Moat, TownDef, TownPack,
+    TownParamsDef, TownRuleset,
+};
 
 use super::*;
 use crate::treasury::Treasuries;
@@ -812,7 +816,18 @@ fn rules_with(chances: Vec<u8>, slots: u8) -> GameRuleset {
     let core = Arc::new(core(false));
     let part = part_with(&core, chances, slots);
     let battle = battle_part(&core, 7);
-    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+    GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap()
+}
+
+/// The town part without towns on `core` (E09 T5a2): what these tests' games bundle.
+fn no_towns(core: &Ruleset) -> Arc<TownRuleset> {
+    Arc::new(TownRuleset::empty(core))
 }
 
 const IMP: CreatureTypeId = CreatureTypeId::from_raw(0);
@@ -1108,47 +1123,150 @@ fn the_parts_must_belong_to_the_core() {
     let other = Arc::new(core(true));
     let part = Arc::new(part(&other));
     let battle = Arc::new(battle_part(&other, 7));
+    let towns = no_towns(&other);
     let ours = Arc::new(core(false));
-    assert_eq!(
-        GameRuleset::new(Arc::clone(&ours), Arc::clone(&part), Arc::clone(&battle)),
-        Err(RulesetMismatch)
-    );
-    // The battle part too (E08 T19a).
+    let new = |core: &Arc<Ruleset>, battle: BattleRuleset| {
+        GameRuleset::new(
+            Arc::clone(core),
+            Arc::clone(&part),
+            Arc::new(battle),
+            Arc::clone(&towns),
+        )
+    };
     assert_eq!(
         GameRuleset::new(
-            Arc::clone(&other),
+            Arc::clone(&ours),
             Arc::clone(&part),
-            Arc::new(battle_part(&ours, 7))
+            Arc::clone(&battle),
+            Arc::clone(&towns)
         ),
         Err(RulesetMismatch)
     );
+    // The battle part too (E08 T19a).
+    assert_eq!(new(&other, battle_part(&ours, 7)), Err(RulesetMismatch));
     // The coast's battlefield must be the battle part's, and every special ground's (E08
     // T20a2a).
     let fieldless = battle_part_with(&other, 7, |pack| pack.battlefields.clear());
-    assert_eq!(
-        GameRuleset::new(Arc::clone(&other), Arc::clone(&part), Arc::new(fieldless)),
-        Err(RulesetMismatch)
-    );
+    assert_eq!(new(&other, fieldless), Err(RulesetMismatch));
     let unholy = battle_part_with(&other, 7, |pack| pack.battlefields.truncate(1));
-    assert_eq!(
-        GameRuleset::new(Arc::clone(&other), Arc::clone(&part), Arc::new(unholy)),
-        Err(RulesetMismatch)
-    );
+    assert_eq!(new(&other, unholy), Err(RulesetMismatch));
     // And the deck's and the boats' (E08 T72).
     for field in ["t:deck", "t:boats"] {
         let without = battle_part_with(&other, 7, |pack| {
             pack.battlefields.retain(|b| b.key.as_str() != field);
         });
-        assert_eq!(
-            GameRuleset::new(Arc::clone(&other), Arc::clone(&part), Arc::new(without)),
-            Err(RulesetMismatch),
-            "{field}"
-        );
+        assert_eq!(new(&other, without), Err(RulesetMismatch), "{field}");
     }
-    let rules = GameRuleset::new(other, part, battle).unwrap();
+    // The town part too (E09 T5a2).
+    assert_eq!(
+        GameRuleset::new(
+            Arc::clone(&other),
+            Arc::clone(&part),
+            Arc::clone(&battle),
+            no_towns(&ours)
+        ),
+        Err(RulesetMismatch)
+    );
+    let rules = GameRuleset::new(other, part, battle, towns).unwrap();
     assert_eq!(rules.core().creature_count(), 4);
     assert_eq!(rules.adventure().params().max_players(), 3);
     assert_eq!(rules.battle().battle().army_slots, 7);
+    assert!(rules.towns().towns().is_empty());
+}
+
+#[test]
+fn a_town_needs_its_siege() {
+    // E09 T5a2: every faction with a town record has the battle part's siege record. The imp and
+    // the gog become `t:town`'s levels 1 and 2, and the town record has the roles every record
+    // needs; the battle part has no siege.
+    let mut pack = core_pack(false);
+    for (creature, level) in pack.creatures.iter_mut().zip([1, 2]) {
+        creature.info.faction = Some(key("t:town"));
+        creature.info.level = level;
+    }
+    let core = Arc::new(Ruleset::compile(&[pack], "t:faithful").unwrap());
+    let mut roles: Vec<BuildingRoles> = (1..=4)
+        .map(|level| BuildingRoles {
+            hall: Some(level),
+            ..BuildingRoles::default()
+        })
+        .collect();
+    roles.extend((1..=3).map(|level| BuildingRoles {
+        fort: Some(level),
+        ..BuildingRoles::default()
+    }));
+    roles.extend((1..=2).map(|level| BuildingRoles {
+        dwelling: Some(Dwelling {
+            level,
+            upgraded: false,
+        }),
+        ..BuildingRoles::default()
+    }));
+    roles.push(BuildingRoles {
+        grail: true,
+        ..BuildingRoles::default()
+    });
+    roles.push(BuildingRoles {
+        silo: true,
+        ..BuildingRoles::default()
+    });
+    let buildings = roles
+        .into_iter()
+        .zip(0_u8..)
+        .map(|(roles, i)| BuildingDef {
+            key: std::format!("b{i}"),
+            name: "Building".into(),
+            slot: None,
+            supersedes: vec![],
+            forbidden_with: None,
+            auto_with: vec![],
+            roles,
+        })
+        .collect();
+    let row = GarrisonRow {
+        chance: 100,
+        count: [1, 1],
+    };
+    let towns = TownPack {
+        params: Some(TownParamsDef {
+            gold: key("t:gold"),
+            hall_gold: [500, 1000, 2000, 4000],
+            grail_gold: 5000,
+            reveal_radius: 5,
+            level_2_dwelling_chance: 50,
+            neutral_garrison: [row; 4],
+            capitol_demoted_to: "b2".into(),
+        }),
+        towns: vec![TownDef {
+            faction: key("t:town"),
+            moat: Moat::Absent,
+            siege_obstacles: false,
+            silo: vec![(key("t:gold"), 1)],
+            creatures: vec![
+                CreatureLevelDef {
+                    base: key("t:imp"),
+                    upgrade: None,
+                },
+                CreatureLevelDef {
+                    base: key("t:gog"),
+                    upgrade: None,
+                },
+            ],
+            buildings,
+        }],
+        ..TownPack::new(manifest())
+    };
+    let towns = TownRuleset::compile(&core, &[towns]).unwrap();
+    assert_eq!(towns.towns().len(), 1);
+    assert_eq!(
+        GameRuleset::new(
+            Arc::clone(&core),
+            Arc::new(part(&core)),
+            Arc::new(battle_part(&core, 7)),
+            Arc::new(towns)
+        ),
+        Err(RulesetMismatch)
+    );
 }
 
 #[test]
