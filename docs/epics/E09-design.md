@@ -125,12 +125,18 @@ calls with the setup stream:
 
 ### 6. The derivations (`h3-towns`, pure functions of a town and the part)
 
+Built by T6b (`E09-log.md`). Each takes `(&Town, &TownRuleset)` (*agent's call*): a faction
+without a record reads as a town without buildings (the setup never makes one). Changed from
+this note's first shape: `siege`'s morale and luck are its `bonuses` (CLT-Q40), at most 8 buildings
+a record (the compiler's refusal); `daily_income` a list of resources; `capitol_limit` gives the
+ever-built set and the store writes it (`Towns::apply_capitol_limit`, `set_built` crate-internal).
+
 | Function | Gives | Rule |
 |---|---|---|
 | `hall_level(town)` | the highest standing `hall`, 1 to 4 | TWN-INC-001 |
 | `daily_income(town)` | gold `hall_gold[level − 1]` + `grail_gold` with a `grail` building ever built; the faction's `silo` resources with a standing `silo` | TWN-INC-001, -002 |
 | `fort_level(town)` | the highest standing `fort` (§9.4: the last of 7, 8, 9 found) | TWN-SIE-003 |
-| `siege(town) -> Siege` | `faction`, `fort`, `moat` (the record's from fort level 2, else `Absent`), `structures` (the standing buildings not forbidden, less the hall-1 building: no faction's list holds the Village Hall, survey §16.4, decision 28; saturating at 255), `morale` (the highest standing role), `luck` and `escape_tunnel` (the ever-built roles; T5a1) | TWN-SIE-003 (ADR-0023 point 2's amendment) |
+| `siege(town) -> Siege` | `faction`, `fort`, `moat` (the record's from fort level 2, else `Absent`), `structures` (the standing buildings not forbidden, less the hall-1 building: no faction's list holds the Village Hall, survey §16.4, decision 28; saturating at 255), `escape_tunnel` (ever built), `bonuses` (a `TownBonus` per building ever built with a change: its `morale` while standing, its `luck` once ever built) | TWN-SIE-003 (ADR-0023 point 2's amendment) |
 | `siege_obstacles(town)` | the record's flag, from fort level 2 (a Citadel; the E04c survey's S-29) | TWN-SIE-005 |
 | `defender_bonus(town)` | the sums of the built buildings' `defender` values | TWN-SIE-004 |
 | `reveal(town)` | `reveal_radius`, or the largest built `reveal` (`all` wins) | TWN-CAP-001 |
