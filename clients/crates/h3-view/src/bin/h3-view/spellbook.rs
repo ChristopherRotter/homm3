@@ -255,6 +255,9 @@ pub struct Boxes<'a> {
     /// The turret's info a press at a point over the battle shows, by the left button or the
     /// right (E17 M6 T2b2; none: no turret's info there).
     pub turret: &'a dyn Fn([i32; 2], bool) -> Option<String>,
+    /// The help of the panel's control the right button held at a point shows (E17 M6 T3a; none:
+    /// no control there).
+    pub help: &'a dyn Fn([i32; 2]) -> Option<String>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -277,8 +280,8 @@ struct Asking {
 /// moves the mouse there, presses and releases (the open box's or book's) and parks it;
 /// `move:<x>,<y>` moves it, over the open book its hover (0x59D6C4); `right:<x>,<y>` over the
 /// battle (E17 M6 T2b1) moves it there and holds the right button down: the stack there shows its
-/// stats dialog while held, else a turret's info its popup (E17 M6 T2b2; the entry's last
-/// action); a `click:` over the battle opens a stack's stats dialog or a turret's info box (E17 M6
+/// stats dialog while held, else a turret's info its popup (E17 M6 T2b2), over the panel a
+/// control's help (T3a; the entry's last action); a `click:` over the battle opens a stack's stats dialog or a turret's info box (E17 M6
 /// T2a1, T2b2). The book's refusal and
 /// description open their boxes over it, a spell no hex takes "affects no one" over the battle.
 /// A box's OK that gives a command (Retreat's, Surrender's) ends the battle in its result window
@@ -554,7 +557,8 @@ pub fn still(
                 }
             }
             // The right button held over the battle (E17 M6 T2b1, design §12.5): the stack on
-            // the hex there shows its stats dialog while held, through the frames.
+            // the hex there shows its stats dialog while held, through the frames; a turret its
+            // info (T2b2), a panel's control its help (T3a, §12.7).
             "right" if asking.is_none() && result.is_none() && still.open.is_none() => {
                 let to = point(arg)?;
                 moved(&mut still, &mut memory, to);
@@ -562,8 +566,11 @@ pub fn still(
                 still.arrow = false;
                 if let Some(open) = boxes.and_then(|b| (b.held)(to, &mut stats_memory)) {
                     still.stats = Some(open);
-                } else if let Some(text) = boxes.and_then(|b| (b.turret)(to, true)) {
-                    // Else a turret's info in its popup (E17 M6 T2b2).
+                } else if let Some(text) =
+                    boxes.and_then(|b| (b.turret)(to, true).or_else(|| (b.help)(to)))
+                {
+                    // Else a turret's info in its popup (E17 M6 T2b2), or over the panel a
+                    // control's help (T3a).
                     asking = tell(&text, Style::Popup, None, Asked::Held);
                     still.held = asking.is_some();
                 }
@@ -955,6 +962,7 @@ pub(crate) mod tests {
             acting: &|_, _| None,
             held: &|_, _| None,
             turret: &|_, _| None,
+            help: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -989,7 +997,8 @@ pub(crate) mod tests {
     fn a_turret_s_info_opens_by_a_click_or_held_by_the_right_button() {
         // E17 M6 T2b2: a click where the turret's info shows opens its box (the park's move its
         // own, the battle's hint the press's); the right button held its popup, no cursor, the
-        // entry's last action.
+        // entry's last action. T3a: over a panel's control the right button holds its help, a
+        // click there none.
         let tell = |_: &str, style, _: Option<&Picture>| {
             let id = if style == Style::Popup {
                 0
@@ -999,6 +1008,7 @@ pub(crate) mod tests {
             Some(one_button(id))
         };
         let turret = |point: [i32; 2], _: bool| (point == [770, 250]).then(|| String::from("info"));
+        let help = |point: [i32; 2]| (point == [700, 570]).then(|| String::from("help"));
         let boxes = Boxes {
             tell: &tell,
             leave: Leave::default(),
@@ -1010,6 +1020,7 @@ pub(crate) mod tests {
             acting: &|_, _| None,
             held: &|_, _| None,
             turret: &turret,
+            help: &help,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -1041,6 +1052,10 @@ pub(crate) mod tests {
         assert!(played(&["right:770,250", "move:5,5"]).is_err());
         let nothing = played(&["right:600,40"]).unwrap();
         assert!(nothing.message.is_none() && !nothing.held);
+        let helped = played(&["right:700,570"]).unwrap();
+        assert!(helped.message.is_some() && helped.held);
+        assert_eq!(helped.over, Some([700, 570]));
+        assert!(played(&["click:700,570"]).unwrap().message.is_none());
     }
 
     #[test]
@@ -1059,6 +1074,7 @@ pub(crate) mod tests {
             acting: &|_, _| None,
             held: &|_, _| None,
             turret: &|_, _| None,
+            help: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {

@@ -762,9 +762,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::KeyUp(_) if options.run.is_some() => {}
                 // A turret's info held by the right button over the battle (E17 M6 T2b2, design
-                // §12.6; `popup_run_held` 0x602A40): its ends (the right button's release, a left
-                // press or release) close it; every other input is dropped, the moves too (the
-                // battle takes none meanwhile, nor after: nothing is posted, 0x476BBF).
+                // §12.6), or a control's help over the panel (T3a, §12.7; `popup_run_held`
+                // 0x602A40): its ends (the right button's release, a left press or release)
+                // close it; every other input is dropped, the moves too (the battle takes none
+                // meanwhile, nor after: nothing is posted, 0x476BBF).
                 Event::KeyUp(Key::RightButton) | Event::Click { .. } if battle.popup_held() => {
                     book_changed |= battle.popup_end();
                 }
@@ -833,7 +834,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                     // The right button over the battlefield (E17 M6 T2b1, design §12.5;
                     // `battle_right_click` 0x4769C0): the stack on the hex there shows its stats
-                    // dialog while the button is held, the combat cursor's pointer set first.
+                    // dialog while the button is held, the combat cursor's pointer set first;
+                    // over the panel a control's help (T3a, `battle_control_help` 0x472A50).
                     if command.is_none()
                         && matches!(key, Key::RightButton)
                         && context == Context::Battle
@@ -843,8 +845,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             inputs.push(Input::Look { at });
                             book_changed = true;
                         } else {
-                            // Else a turret's info held (E17 M6 T2b2, design §12.6).
-                            book_changed |= battle.turret_info(at, point, true);
+                            // Else a turret's info held (E17 M6 T2b2, design §12.6), or over the
+                            // panel a control's help (T3a, design §12.7; `battle_buttons`
+                            // 0x474DE4): either held as the stats dialog's popup.
+                            book_changed |= battle.turret_info(at, point, true)
+                                || battle.control_help(at, point);
                         }
                         continue;
                     }

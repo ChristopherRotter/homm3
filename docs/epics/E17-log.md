@@ -4084,6 +4084,31 @@ small tasks or one bigger one per session; T2b2 fitted).
   release closes it, the turret's cursor back; over hex 183 the same, a left press ends it.
   `drawn`; `clients/scripts/check.sh`; the scoped verify with the original data.
 
+### M6 T3a — the right button over the panel: a control's help (2026-11-03)
+
+On `client/e17-m6-t3a`, the user present. The sandbox new, the original files staged first
+(57 files); #672 had merged; the VM restarted during the baseline's coverage (the files kept): CI's
+green Clients run on `master` stood for it. The user cut T3 in two at its start (T3a the controls'
+help, T3b the heroes' info windows; the lane's rule: a couple of small tasks or one bigger one per
+session).
+
+- **Read** (design §12.7): `battle_buttons`' right press again, `battle_control_help` 0x472A50 and
+  `message_box_size` 0x4F62A0 whole, the right press in the panel's items' handlers
+  (`def_button_message`, `custom_button_message` 0x456E50 whole, `text_item_message`), the log's
+  and its scroll buttons' classes, `Help.txt`'s records 379 to 389. The right press tests only
+  that an item is shown, not the disabled bit: a disabled control gives its help. The help's
+  explicit place is the centre x = y = −1 would give.
+- **The library:** `h3_view::panel::help` (the table 0x472B4C as the catalogue's
+  `battle.help.*`, eleven keys, `HELP:379:1` to `389:1`) and `help_at`.
+- **The binary:** `Battle::control_help` (the help as `Asked::Held`, T2b2's popup); the window's
+  right button over the panel; the stills' `Boxes::help`.
+- **Recorded:** `help-wait`, `help-log`, `help-scroll`, `help-tactics` (the phase's disabled Wait)
+  and `help-phase`: all exact at their first capture.
+- **Checked:** the window under Xvfb with `xdotool` on `book.toml` in hot seat: the right button
+  over Wait holds its help (a move and the key T meanwhile change nothing), its release closes
+  it; over the log its line, a left press ends it. `drawn`; `clients/scripts/check.sh`; the
+  scoped verify with the original data.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
