@@ -3796,3 +3796,79 @@ quirk = "ADV-QUIRK-10"
 class = "Elementalist"
 intervals = [3, 3]
 sources = ["exe-offers", "wiki-secondary-skill"]
+
+# ---------------------------------------------------------------------------------------------
+# Towns (E09 T5b2b2): the town part's files packs/*/towns.toml (format: crates/h3-pack-towns).
+# The executable's town tables give each faction's buildings, the supersede lists, the map's
+# slots, the creatures, the hordes, the Resource Silo, the neutral garrison and the level-2
+# dwelling's chance (docs/formats/installation.md 7.61); BldgNeut.txt, BldgSpec.txt and
+# Dwelling.txt the names. Here: what the code reading gives beside them. Building ids as 7.61's.
+# ---------------------------------------------------------------------------------------------
+
+[[source]]
+id = "exe-town-income"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-towns.md 11.1, 8.3, 8.4): town_gold_income 0x5BF600 pays 500 gold a day, 1 000 with the Town Hall (11), 2 000 with the City Hall (12), 4 000 with the Capitol (13), the highest standing, and 5 000 more with the Grail building (26) ever built; reveal_disk 0x49D160 reveals radius 5 around a captured town's gate; capitol_limit 0x5BEC60 takes a second Capitol (13) out of its town, which then stands as a City Hall (12)"
+url = "docs/rules/surveys/E09-towns.md"
+retrieved = "2026-11-03"
+
+[[source]]
+id = "exe-town-siege"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-towns.md 9.4; installation.md 7.27 to 7.33; E04c-sieges.md S-29): from a Citadel the moat damages under SoD rules and does not under RoE or AB rules, a Tower has its land mines instead, a Stronghold none under RoE or AB rules and then the terrain's natural obstacles; the defender's morale +1 with the Tavern (5), +2 for a Castle with the Brotherhood of the Sword (22, which supersedes the Tavern); luck +2 for a Rampart with the Fountain of Fortune (21); a Stronghold's escape tunnel (17); the defending hero's bonuses: a Tower's Grail +150 spell points, an Inferno's 21 +2 power, a Dungeon's Grail +12 power, a Stronghold's Grail +20 attack, a Fortress' 21 +2 attack and 22 +2 defense (TD-8 by the code, E09 decision 30), its Grail +10 attack and defense"
+url = "docs/rules/surveys/E09-towns.md"
+retrieved = "2026-11-03"
+
+[[source]]
+id = "exe-town-roles"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-towns.md 16.6, 5.3, 8.3, 11.1, 12.3): the halls are the Village Hall (10) to the Capitol (13), the forts the Fort (7), the Citadel (8) and the Castle (9); the Tavern (5) and a Castle's Brotherhood of the Sword (22) count for the Tavern's views; the Resource Silo (15) pays the silo's table and the Grail building (26) the Grail's gold in every faction; a Tower's Lookout Tower (21) reveals radius 20 at a capture, its Grail every tile"
+url = "docs/rules/surveys/E09-towns.md"
+retrieved = "2026-11-03"
+
+# Roles (h3-pack-towns' fields but `dwelling`, which the dwellings' ids 30 to 43 give): of every
+# faction without `faction`; a building's entries merge.
+[towns]
+role = [
+  { building = 10, roles = { hall = 1 }, sources = ["exe-town-roles"] },
+  { building = 11, roles = { hall = 2 }, sources = ["exe-town-roles"] },
+  { building = 12, roles = { hall = 3 }, sources = ["exe-town-roles"] },
+  { building = 13, roles = { hall = 4 }, sources = ["exe-town-roles"] },
+  { building = 7, roles = { fort = 1 }, sources = ["exe-town-roles"] },
+  { building = 8, roles = { fort = 2 }, sources = ["exe-town-roles"] },
+  { building = 9, roles = { fort = 3 }, sources = ["exe-town-roles"] },
+  { building = 5, roles = { tavern = true, morale = 1 }, sources = ["exe-town-roles", "exe-town-siege"] },
+  { building = 15, roles = { silo = true }, sources = ["exe-town-roles"] },
+  { building = 26, roles = { grail = true }, sources = ["exe-town-roles"] },
+  { faction = "Castle", building = 22, roles = { tavern = true, morale = 2 }, sources = ["exe-town-roles", "exe-town-siege"] },
+  { faction = "Rampart", building = 21, roles = { luck = 2 }, sources = ["exe-town-siege"] },
+  { faction = "Tower", building = 21, roles = { reveal = 20 }, sources = ["exe-town-roles"] },
+  { faction = "Tower", building = 26, roles = { reveal = "all", defender = { mana = 150 } }, sources = ["exe-town-roles", "exe-town-siege"] },
+  { faction = "Inferno", building = 21, roles = { defender = { power = 2 } }, sources = ["exe-town-siege"] },
+  { faction = "Dungeon", building = 26, roles = { defender = { power = 12 } }, sources = ["exe-town-siege"] },
+  { faction = "Stronghold", building = 17, roles = { escape_tunnel = true }, sources = ["exe-town-siege"] },
+  { faction = "Stronghold", building = 26, roles = { defender = { attack = 20 } }, sources = ["exe-town-siege"] },
+  { faction = "Fortress", building = 21, roles = { defender = { attack = 2 } }, sources = ["exe-town-siege"] },
+  { faction = "Fortress", building = 22, roles = { defender = { defense = 2 } }, sources = ["exe-town-siege"] },
+  { faction = "Fortress", building = 26, roles = { defender = { attack = 10, defense = 10 } }, sources = ["exe-town-siege"] },
+]
+
+# The [town_params] beside the executable's tables (TWN-INC-001, TWN-CAP-001, TWN-CAP-002).
+[towns.params]
+sources = ["exe-town-income"]
+gold = "Gold"
+hall_gold = [500, 1000, 2000, 4000]
+grail_gold = 5000
+reveal_radius = 5
+capitol_demoted_to = 12
+
+# The moat from a Citadel and a walled siege's natural obstacles (E09 decisions 14 and 20): the
+# base and ab records as RoE and AB play them, the sod pack's overrides as SoD does (a Tower's
+# `moat` is its land mines, ADR-0023 point 2).
+[towns.moat]
+sources = ["exe-town-siege"]
+roe_ab = { moat = "harmless" }
+sod = { moat = "damaging" }
+faction = [
+  { faction = "Stronghold", roe_ab = { moat = "absent", siege_obstacles = true }, sod = { moat = "damaging" } },
+]

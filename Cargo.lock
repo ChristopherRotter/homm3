@@ -594,6 +594,7 @@ dependencies = [
  "h3-content-battle",
  "h3-formats",
  "h3-pack-battle",
+ "h3-pack-towns",
  "serde",
  "toml",
 ]
