@@ -1,0 +1,16 @@
+[package]
+name = "h3-pack-towns"
+description = "Adapter: parses the packs' towns.toml files into the town context's definitions (ADR-0028)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A skeleton (E09 T4b): no dependency yet. `arch.toml` allows the town context, the kernel, the
+# core content and the core packs' adapter, and `serde` and `toml`, as `h3-pack-adventure`'s
+# (ADR-0028's Consequences); each comes with the parser (E09 T5a).
+[dependencies]
+
+[lints]
+workspace = true

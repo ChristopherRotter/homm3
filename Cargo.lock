@@ -671,6 +671,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-pack-towns"
+version = "0.1.0"
+
+[[package]]
 name = "h3-protocol"
 version = "0.1.0"
 dependencies = [
@@ -736,6 +740,10 @@ dependencies = [
  "serde",
  "toml",
 ]
+
+[[package]]
+name = "h3-towns"
+version = "0.1.0"
 
 [[package]]
 name = "half"

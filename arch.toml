@@ -171,13 +171,25 @@ external = []
 dev_deps = []
 dev_external = ["proptest"]
 
+# The town context (ADR-0028; E09): every town's own record, the store of towns, its rules and
+# derivations, its ruleset part. A domain context beside the adventure: neither imports the other,
+# `h3-game` composes them; the hero model for a town's services from E09 increment 4 (point 6).
+[crate.h3-towns]
+layer = "domain"
+logic = true
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-heroes"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
 # The whole game (ADR-0015 point 1, ADR-0017; E08): the first application crate, and a logic
 # crate. It wires the adventure and the battle (increment 3), keeps the store of heroes (the hero
-# model) and bundles the battle's ruleset part (ADR-0017 points 1 and 11).
+# model) and bundles the battle's ruleset part (ADR-0017 points 1 and 11); E09 (ADR-0028 points 4
+# and 5): the store of towns and the town part.
 [crate.h3-game]
 layer = "application"
 logic = true
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-heroes", "h3-content-battle", "h3-battle", "h3-adventure"]
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-heroes", "h3-content-battle", "h3-battle", "h3-adventure", "h3-towns"]
 external = []
 dev_deps = []
 dev_external = ["proptest"]
@@ -207,7 +219,8 @@ external = ["miniz_oxide"]
 # game's rules bundle, which battles need; the battle (E08 T19b2) for the play driver's hero casts,
 # which the game's legal commands do not list (a separate action head, ADR-0014 point 9). The hero
 # model (E08 T32a) for batch E4's scorer, an example: a level-up's draws and the computer's choice.
-dev_deps = ["h3-pack", "h3-pack-adventure", "h3-content-battle", "h3-pack-battle", "h3-battle", "h3-heroes"]
+# The town part and its adapter (E09 T4b, for T5a): the game's rules bundle gains the town part.
+dev_deps = ["h3-pack", "h3-pack-adventure", "h3-content-battle", "h3-pack-battle", "h3-battle", "h3-heroes", "h3-towns", "h3-pack-towns"]
 dev_external = ["proptest"]
 
 # packs/*/adventure.toml -> the adventure's definitions (ADR-0015 point 2; E08 T4).
@@ -215,6 +228,16 @@ dev_external = ["proptest"]
 layer = "adapter"
 logic = false
 deps = ["h3-kernel", "h3-content", "h3-adventure", "h3-pack"]
+external = ["serde", "toml"]
+dev_deps = []
+dev_external = []
+
+# packs/*/towns.toml -> the town context's definitions (ADR-0028 point 5; E09), as
+# h3-pack-adventure.
+[crate.h3-pack-towns]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-towns", "h3-pack"]
 external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
@@ -245,9 +268,11 @@ logic = false
 # h3-heroes, serde and toml: the encounter sampler (E05 T5b) reads its versioned TOML files and
 # derives a sampled hero's battle values (its creatures and places from h3-game's rulesets).
 # h3-battle-ai: the system actor's seat, `Policy::System` (ADR-0025 point 5, ADR-0027; E06 T7).
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-adventure", "h3-game", "h3-heroes", "h3-battle-ai"]
+# h3-towns (dev: h3-pack-towns; E09 T4b, for T5a): the town part the game's rules bundle takes,
+# empty for an encounter (E09 increment 1's design note §2).
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-adventure", "h3-game", "h3-heroes", "h3-battle-ai", "h3-towns"]
 external = ["serde", "toml"]
-dev_deps = ["h3-pack-battle", "h3-map", "h3-pack-adventure"]
+dev_deps = ["h3-pack-battle", "h3-map", "h3-pack-adventure", "h3-pack-towns"]
 dev_external = ["proptest", "criterion"]
 
 [crate.h3-ffi]
@@ -265,7 +290,8 @@ layer = "adapter"
 logic = false
 # The adventure crates: the adventure commands in the adventure-owned src/adventure/ (ADR-0017 point 8).
 # h3-battle-ai: the battle AI's gated benchmark, `h3 bench-computer` (ADR-0027 point 11, E23 T2b).
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure", "h3-battle-ai"]
+# The town part and its adapter (E09 T4b, for T5a): the adventure loader's and the census's rules.
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure", "h3-battle-ai", "h3-towns", "h3-pack-towns"]
 external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
