@@ -69,7 +69,13 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q40 — A Shipyard's boat tile shows what lies on its earlier offsets (E08 T86b1)
+
+**Context.** Every viewer that sees a Shipyard sees its boat tile (`ObjectView::boat_tile`; ADV-OWN-003, decided at T83b2b: "public with it"). The tile is the first of the twelve offsets from the entrance that was free water when the game was built (ADV-SHY-001), so its place tells whether the offsets before it, up to two tiles from the entrance, were land or held an object: tiles the viewer may not have explored. T86b1's hygiene property found it (two games differing only on such tiles showed another boat tile); the property now keeps a seen Shipyard's offsets as seen. The original draws no boat tile: a player meets it only when a boat is built there (the boat dialog, a computer's build).
+
+**Options.** (a) Keep it public (as decided): a small leak, static terrain near a seen object. (b) Show it only to the Shipyard's owner's team (the player alone until E10), who may build there (ADV-SHY-003): a flag reveals radius 3 around the object and an owned object reveals at the start, so the owner has explored every offset and nothing leaks; another viewer learns a boat's place when one is built, as in the original. (c) Show it to a viewer that has explored the tile and every offset before it.
+
+**Recommendation:** (b), at T87's audit or with T86b2 (`ObjectView`'s doc, ADV-OWN-003, `docs/06-security.md`'s line, the property's exception removed; no version moves).
 
 ### Server lane (`SRV-Q<n>`)
 

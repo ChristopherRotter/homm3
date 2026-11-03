@@ -10601,8 +10601,16 @@ stopped for CI's run on #660's code (green). No original data staged.
   left, flagged unless the winner's level-up holds the flag; else survivors by slot, the owner
   kept, none after a draw; no removal, no treasury change); the week's step in `check_week`
   (every weekly object full by its kind, its marks kept; every monster that stood grown in growth
-  units to the cap, one that never grows kept). The view property varies the owners at load of the
-  ownable objects the viewer never sees (`Unseen::owners`).
+  units to the cap, one that never grows kept). The view properties: the hygiene one varies the
+  owners at load of the ownable objects the viewer never sees (`Unseen::owners`); `check_told`
+  lets a mine's guards, which its owner's team sees whole, change at the close of its Leave Guards
+  dialog (the group it was told) and at the end of the viewer's battle (its garrison's survivors),
+  their hint's change told by `GuardsChanged`.
+- **Found:** a Shipyard's boat tile, public with it (ADV-OWN-003), is the first of its offsets
+  that was free water at the build (ADV-SHY-001), so a viewer learns what lay on the offsets
+  before it, tiles it may not have explored: the 400-case run of the hygiene property found two
+  games differing only there. The property keeps a seen Shipyard's offsets as seen; `ADV-Q40`
+  asks the user (recommended: the boat tile to the owner's team only, which has explored them).
 - **The cover test** `the_plans_flag_guard_build_and_grow` (256 plans): flags (neutral and taken),
   mines' questions and battles, Leave Guards closed empty and with guards, boats bought and built,
   a Shipyard's refusals, weekly gains and empty visits, a mine's income paid, weeks, a creature
