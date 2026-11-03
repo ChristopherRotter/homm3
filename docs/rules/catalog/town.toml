@@ -29,3 +29,89 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Halls"
   retrieved  = "2026-11-02"
   confidence = "medium"
+
+[[rule]]
+id       = "TWN-INC-002"
+title    = "The Resource Silo's day's resources"
+context  = "town"
+status   = "implemented"
+summary  = "A town with a standing building of role `silo` (the Resource Silo) gets its faction's record's `silo` resources each day beside its gold (TWN-INC-001): the base pack's 1 wood and 1 ore for the Castle, the Necropolis, the Stronghold and the Fortress, 1 crystal for the Rampart, 1 gems for the Tower, 1 mercury for the Inferno and Conflux, 1 sulfur for the Dungeon; no faction's silo pays gold in the original, a part's that does is summed with the hall's. The day's income is each resource once in the core's resource order, none 0, the sums saturating; paid as TWN-INC-001's gold (E09 T8c, design §16). E09 T6b (design §6): `h3_towns::daily_income`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a and T5b1; survey E09-towns.md sections 11.1, 11.2 and 16.6): town_silo_resources (0x688EB4), seven i32 per faction, its gold 0 for every faction; town_silo_income (0x5C1280) returns the faction's row for a town with the Resource Silo (15) built; the day's income pays it beside the gold (E08-economy.md section 8.1 point 2)"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 11.5: CGTownInstance::dailyIncome sums each built, not superseded building's produce; the silo its faction's resources (config/factions/*.json)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-SIE-003"
+title    = "The siege's facts from the town"
+context  = "town"
+status   = "implemented"
+summary  = "A battle at a town takes from it (ADR-0023 point 2 as amended by E09 and CLT-Q40; `h3_contracts::Siege`): its faction; its fort level, the highest standing building of role `fort` (none, the Fort, the Citadel, the Castle); its moat, its faction's record's from a Citadel, else none (the packs decide it, not a game version: E09 decision 14); its structures for the keep's count, the standing buildings not forbidden less the hall-1 building (no faction's list holds the Village Hall: decision 28); the Escape Tunnel, a building of role `escape_tunnel` ever built; its bonuses, one per building ever built with a morale or luck change, in index order, its morale while it stands (the Tavern +1; the Castle's Brotherhood of the Sword +2 supersedes it, so +2 in all) and its luck once ever built (the Rampart's Fountain of Fortune +2), each naming its building; a record has at most 8 such buildings (the part's compiler refuses more). The battle reads them as BAT-SIE-016 (the keep), BAT-SIE-024 (the Escape Tunnel) and BAT-SIE-025 (morale and luck) say. E09 T6b (design §6): `h3_towns::fort_level`, `h3_towns::siege`; the game puts it into the battle's setup (E09 T8b, design §15)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E04c T4, T7, T8; docs/formats/installation.md sections 7.27 to 7.32; survey E09-towns.md sections 9.4 and 16.4): the fort tested as the Fort (7), the Citadel (8), the Castle (9) in the built set +0x150, the last found kept; the moat flag +0x53A8 with a Citadel or Castle; town_turret_count (0x5BF4F0) 4 + the ids 0 to 43 in the built set among the mask +0x160 that town_buildings_setup writes as the faction's list less the forbidden (no list holds the Village Hall); the Escape Tunnel a Stronghold's 17 in the every-built set +0x158; 0x44AE60 +1 for the Tavern (5) in +0x150 and +2 in a Castle for 22 in +0x158; 0x44B2D0 +2 luck in a Rampart for 21 in +0x158"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3g.md (agent run under Wine, 2026-10-15): a Castle with a Tavern and the Brotherhood gives its defenders +2 morale, not +3 (the Brotherhood replaces the Tavern in +0x150); a Rampart with the Fountain of Fortune +2 luck"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Morale and Luck (as BAT-SIE-025 cites them): the Tavern's +1 and the Brotherhood of the Sword's +2 morale, the Fountain of Fortune's +2 luck, for a siege's defenders"
+  url        = "https://heroes.thelazy.net/index.php/Morale"
+  retrieved  = "2026-10-15"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E09 decisions 14 (the moat by the enabled packs, ADR-0023 point 2) and 28 (the keep's count skips the hall-1 building); CLT-Q40 and BAT-Q64 (the bonuses named by building); docs/epics/E09-design.md section 6; each role's set as h3-pack-towns' format doc lists it (morale standing, luck and the Escape Tunnel ever built: survey section 9.4)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SIE-004"
+title    = "The defending hero's bonuses from the town"
+context  = "town"
+status   = "implemented"
+summary  = "A siege's defending hero is raised by the town's buildings ever built (ADR-0023 point 3): the `defender` role's attack, defense, power and mana, each summed, saturating: the base pack's Tower Grail +150 mana, the Inferno's Brimstone Stormclouds +2 power, the Dungeon's Grail +12 power, the Stronghold's Grail +20 attack, the Fortress' Blood Obelisk +2 attack, Glyphs of Fear +2 defense and Grail +10 attack and defense; the fort level is not tested. After the battle the hero's attack, defense and power are its own again and its mana the smaller of the mana left and the mana before (the game's, E09 T8b, design §15). E09 T6b (design §6): `h3_towns::defender_bonus`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E04c T4; docs/formats/installation.md section 7.27; survey E09-towns.md sections 9.4 and 16.6): 0x463C60 keeps the defending hero's attack, defense, power and mana (+0x13DE8 to +0x13DF4) and raises them by the town type's buildings (the Tower's Grail 26 +150 mana; the Inferno's 21 +2 power; the Dungeon's Grail +12 power; the Stronghold's Grail +20 attack; the Fortress' 21 +2 attack, 22 +2 defense, Grail +10 and +10); the battle's end (0x4776E1 to 0x477719) restores them and keeps the smaller mana"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0023 point 3 (the defending hero's bonuses derived by the town context); the `defender` role read over the buildings ever built (h3-pack-towns' format doc; docs/epics/E09-design.md section 6)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SIE-005"
+title    = "A siege's natural obstacles"
+context  = "town"
+status   = "implemented"
+summary  = "A siege of a town with a Citadel or a Castle draws the battlefield's natural obstacles on its terrain beside the walls only when its faction's record's `siege_obstacles` is set: the base pack's Stronghold (no moat there), which the SoD pack's override clears (the packs decide, not the game's version: E09 decision 14; the E04c survey's S-29); below a Citadel, never. E09 T6b (design §6): `h3_towns::siege_obstacles`; the game draws them from the battle's seed (E09 T8b, design §15)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E04c T4; docs/formats/installation.md section 7.27; survey E04c-sieges.md S-29): 0x466290 with a fort level above 0 places the walls, a Tower's land mines, then no natural obstacle under SoD rules and, under older rules, the usual obstacles only for a Stronghold with a Citadel or Castle"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E09 decision 14 (the packs' records decide, the original's game version from its scenario dialog the recorded deviation); docs/epics/E09-design.md sections 6 and 15"
+  confidence = "high"

@@ -38,18 +38,20 @@ mod fixture;
 mod income;
 mod record;
 mod ruleset;
+mod siege;
 mod store;
 
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
 pub use h3_contracts::Moat;
-pub use income::hall_level;
+pub use income::{daily_income, hall_level};
 pub use record::{Town, TownEvent, TownStatic};
 pub use ruleset::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,
     DefenderBonus, Dwelling, GarrisonRow, MAX_CREATURE_LEVELS, Reveal, TownCompileError, TownDef,
     TownOverride, TownPack, TownParams, TownParamsDef, TownPatch, TownRecord, TownRuleset,
 };
+pub use siege::{defender_bonus, fort_level, siege, siege_obstacles};
 pub use store::{MAX_TOWNS, Towns};
 
 /// Version of the store of towns' canonical hash encoding, which the game state hash folds in

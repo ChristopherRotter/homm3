@@ -224,8 +224,8 @@ fn keep() -> TownRecord {
     }
 }
 
-/// The Marsh's record: its Village Hall (0) and a silo (1) that pays 250 gold, a harmless moat,
-/// no natural obstacles.
+/// The Marsh's record: its Village Hall (0), a silo (1) that pays 250 gold and a Citadel (2), a
+/// harmless moat, no natural obstacles.
 fn marsh() -> TownRecord {
     TownRecord {
         faction: MARSH,
@@ -236,6 +236,7 @@ fn marsh() -> TownRecord {
         buildings: vec![
             building("village_hall", &[], roles(|r| r.hall = Some(1))),
             building("resource_silo", &[], roles(|r| r.silo = true)),
+            building("citadel", &[], roles(|r| r.fort = Some(2))),
         ],
         capitol_demoted_to: BuildingId::from_index(0).unwrap(),
     }
@@ -259,7 +260,14 @@ fn params() -> TownParams {
 
 /// The part: the Keep's and the Marsh's records, the parameters.
 pub(crate) fn part() -> TownRuleset {
-    TownRuleset::new(&core(), Some(params()), vec![keep(), marsh()])
+    part_with(|_| {})
+}
+
+/// The part with its parameters changed by `change`.
+pub(crate) fn part_with(change: impl FnOnce(&mut TownParams)) -> TownRuleset {
+    let mut params = params();
+    change(&mut params);
+    TownRuleset::new(&core(), Some(params), vec![keep(), marsh()])
 }
 
 /// The part without towns (no parameters, no record).
