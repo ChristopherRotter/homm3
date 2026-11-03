@@ -270,6 +270,9 @@ its sources and tests.
     hordes' upgrades and two requirements (increment 2). **TD-8:** the code gives the Fortress's
     Glyphs of Fear (21) +2 attack and the Blood Obelisk (22) +2 defense, as VCMI; the game's own
     texts and the fandom wiki say the reverse.
+34. **The checkpoint** (`TWN-Q6`; the epic's decisions 27 to 30, §16.10): the companions left out
+    of the part, the keep skipping the hall-1 building in the derivation, the standing set derived
+    with the hordes' upgrade and T-6 fixed, TD-8 by the code.
 
 ## 1. The census
 
@@ -1383,9 +1386,22 @@ factions (and 27 to 29 have no row). The horde and its upgrade share a name in e
 | TD-9 | The Conflux's upgraded Altar of Fire (40) | needs the Altar of Fire and the upgraded Altar of Air (38) | the base Altar of Air (31) | not checked | 2 (requirements) |
 
 - **T-6** (§16.5): a custom set's horde leaves its dwelling standing (the keep +1).
-- **For the checkpoint (`TWN-Q6`):** the hall companions in the part or not (§16.3); the keep's
-  count without the Village Hall (§16.4: a field of the building, or the derivation); the
-  standing set stored as the original's or derived (§16.5, T-6's class); TD-8.
+- **For the checkpoint (`TWN-Q6`, answered in §16.10):** the hall companions in the part or not
+  (§16.3); the keep's count without the Village Hall (§16.4: a field of the building, or the
+  derivation); the standing set stored as the original's or derived (§16.5, T-6's class); TD-8.
 - **Open for T5b2:** the keys (the hordes' shared names, the harvested names' spelling); the
   synthetic records; how `h3-harvest` reads the executable's lists (an `h3-formats` reader of the
   addresses above, as its hero and siege tables).
+
+### 16.10 The checkpoint's answers (`TWN-Q6`, the epic's decisions 27 to 30)
+
+- **The hall companions** (23, 27 to 29) **left out of the part** (decision 27): display pieces; a
+  client draws them from the faction and the hall level.
+- **The keep's count skips the hall-1 building in the derivation** (decision 28; design §6's
+  `structures`), no format change; the companions and the ship are not in the records.
+- **The standing set stays derived** (decision 29; design §4): the closure of `supersedes`, plus
+  the hordes' upgrade (a horde and its level's upgraded dwelling ever built bring the upgraded
+  horde); **T-6 fixed** (`TWN-QUIRK-5`): a custom set's horde does not leave its dwelling standing.
+- **TD-8 by the code** (decision 30): the Glyphs of Fear (21) +2 attack, the Blood Obelisk (22) +2
+  defense, as VCMI; the game's descriptions are the recorded difference. TD-9 waits for increment
+  2's survey (requirements).

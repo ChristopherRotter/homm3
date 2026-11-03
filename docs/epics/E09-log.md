@@ -486,3 +486,45 @@ adventure lane's open stack #669 to #674): **T5a1** (this), then **T5b** (the co
   no data quirk needs one).
 - **Not here:** the pack files (T5b, which also writes the synthetic packs' records and
   `packs/README.md`'s row, the battle lane's); `GameRuleset` and the replay header (T5a2).
+
+### T5b1 — the buildings' tables read, building 23 found (2026-11-03)
+
+One session, the user present; branch `town/e09-t5b1` (docs and the common address map only).
+Starting point: `master` at 0e37885 (#675 T5a1 and #677 merged; CI on `master` green at 1642a86,
+the docs-only merge after it runs none). **T5b cut in two at its start** (the user, asked with the
+reason: the reading can raise disputes that change what the harvest writes): **T5b1** (this, the
+reading and the checkpoint), **T5b2** (the harvest, `cross-lane`). `Heroes3.exe` and the text
+files (`extracted.tar`) staged from the user's repo folder; VCMI 1.7.5 sparse-cloned (`config`,
+`lib`).
+
+- **Read whole:** `building_tables_init` 0x4EB730 and its helpers (0x4EBC50, 0x4EBB10, 0x4EBB70,
+  0x5BDF60), `town_build` 0x5BE930, `town_turret_count` 0x5BF4F0 with the setup's mask writes.
+  The tables dumped by a throwaway script: the nine faction lists with their direct requirements,
+  the common and faction supersede lists, `map_building_ids`, `town_creatures`, the hordes, the
+  silo and the garrison. Survey §16; the address map's twelve new entries and five updated, the
+  struct `town`'s `recruits` and `buildable`, `creature_record`'s `growth`.
+- **Building 23** (decision 25): `town_build` builds each hall's town-screen companion in
+  Rampart, Necropolis and Conflux (10 → 23, 11 → 27, 12 → 28, 13 → 29); the Village Hall is built
+  through it for every town before the setup branches, so a custom set has 23 too; none is in the
+  faction's list (not buildable, not in the mask +0x160, not counted by the keep), none is
+  superseded, no rule reads them (the only loads of bit 23 are faction-tested: the Tower's Wall of
+  Knowledge, the computer's visit values).
+- **Also found:** no faction's list holds the Village Hall, so the keep never counts it (design
+  §6's `structures` counted it); a horde supersedes its level's dwelling and `town_build` turns it
+  into the upgraded horde when the level's dwelling is upgraded; a custom set built in id order
+  leaves a horde's dwelling standing (T-6); the dwellings' available creatures set at the build
+  (increment 3); `installation.md` §7.27 names the Fortress' 21 and 22 the wrong way round (the
+  battle lane's inbox).
+- **VCMI 1.7.5:** the same lists, requirements and supersedes, but the Village Hall and the ship
+  as buildings, 27 to 29 as automatic buildings without 23, the upgraded hordes' requirements and
+  supersedes, the Necropolis' horde and the Conflux's upgraded Altar of Fire (TD-9, increment 2);
+  its turrets another model. **TD-8:** the code and VCMI give the Glyphs of Fear +2 attack and the
+  Blood Obelisk +2 defense, the game's descriptions and the fandom wiki the reverse.
+- **The checkpoint** (`TWN-Q6`, one round of four, `AskUserQuestion`): decisions 27 to 30. The
+  companions left out of the part (recommended); the keep skips the hall-1 building **in the
+  derivation** (over the recommended building flag); the standing set **derived, T-6 fixed** with
+  the hordes' upgrade (over the recommended both sets stored, T-6 kept); TD-8 by the code
+  (recommended). The design note's §3 to §6, §19 and §22 amended; T-6 is `TWN-QUIRK-5`.
+- **For T5b2:** the queue entry (rewritten from T5b's): the records as the original's lists plus
+  the Village Hall, the hordes' upgrade as data (the field is T5b2's call), the keys (the hordes
+  share their upgrades' names), the roles by survey §16.6.

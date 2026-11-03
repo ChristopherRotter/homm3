@@ -74,6 +74,25 @@ Towns as the original plays them, on the adventure map of E08: the town context 
 25. **Building 23 re-read in T5b** (survey §15: built in every Rampart, Necropolis and Conflux town of the standard set, not by the reading, not in VCMI): T5b, which stages the executable and reads `building_tables_init`'s lists anyway, reads where 23 comes from, whether a custom set gets it and whether the faction's list and so the keep count it; the content and TWN-SET-003 build it as found, a batch row only if a point stays open. Not chosen: a separate re-read task before T4; VCMI's way (no building 23).
 26. **Batch TWN-1's row in `docs/experiments/README.md`** by T3c, `cross-lane` (the battle lane's file, as T3a and E08 T80). Not chosen: a note in the battle lane's inbox.
 
+### Decisions at the buildings' reading (2026-11-03, the user, TWN-Q6)
+
+27. **The hall companions left out of the town part** (survey §16.3): building 23 in Rampart,
+    Necropolis and Conflux is the Village Hall's town-screen piece (27 to 29 the higher halls'),
+    built with each hall, in no faction's list, read by no rule; a client draws them. Not chosen:
+    companion buildings in the three records, built with each hall and excluded from the keep.
+28. **The keep's count skips the hall-1 building in the derivation** (survey §16.4; design §6's
+    `structures`): no faction's list holds the Village Hall, so the original never counts it. Not
+    chosen: a building flag `buildable = false` (recommended: it would also refuse building it in
+    increment 2); counting it as a recorded deviation.
+29. **The standing set derived, T-6 fixed** (survey §16.5; design §4): the closure of
+    `supersedes` plus the hordes' upgrade (a horde and its level's upgraded dwelling ever built
+    bring the upgraded horde, as `town_build`); a custom set's horde does not leave its dwelling
+    standing (`TWN-QUIRK-5`, fixed). Not chosen: both sets stored and built as `town_build` does,
+    T-6 kept (recommended).
+30. **TD-8 by the code** (survey §16.8): the Fortress' Glyphs of Fear (21) +2 attack, the Blood
+    Obelisk (22) +2 defense for a siege's defender, as VCMI; the game's descriptions and the
+    fandom wiki the reverse. Not chosen: the descriptions; a batch row first.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, the cut confirmed at each checkpoint)
 
 - **T0 E09 refined, the town lane opened.** Done (2026-10-31, `shared/town-lane`; decisions 1–7; TWN-Q1).
@@ -88,7 +107,7 @@ Towns as the original plays them, on the adventure map of E08: the town context 
   - Round 2: **T3a** batch TWN-1's maps and spec (§20; `cross-lane` in `h3-experiment`). Done (2026-11-02, `town/e09-t3a`; the user kept it whole): `fort` and an explicitly empty `garrison` for a spec's towns; `experiments/specs/E09-batch-1.toml`, rows 1 to 4 (row 3 played twice from one save).
   - Round 3: **T3b** batch TWN-1's harness and runs. Done (2026-11-03, `town/e09-t3b`; the user kept it whole, 3b in a new game): the harness's town reads, a new-game step, the town screen known; two whole runs recorded (`experiments/results/E09-batch-1.md`, `-run2.md`). **T3c** scored. Done (2026-11-03, `claude/peaceful-curie-q7wjex`; `TWN-Q5`, decisions 25, 26): survey `E09-towns.md` §15; TD-3, TD-5, TD-7 and the siege's aftermath as the reading, VCMI refuted in each; building 23 in every Rampart, Necropolis and Conflux town of the standard set, not predicted: re-read in T5b; the experiments README's row (`cross-lane`).
   - Round 4: **T4** `shared/` (cut in two at its start, the user: the ADRs first). **T4a** the ADRs and the glossary. Done (2026-11-03, `shared/e09-t4a`, `cross-lane`): ADR-0028 and the amendments of ADR-0015, -0016, -0017, -0023 in `docs/adr/` with T3c's verdicts (no point changed), the index's rows, `docs/03-domain.md`'s terms, the battle lane's inbox note; the drafts deleted. **T4b** the crate skeletons, `TownId`, the gates (§1). Done (2026-11-03, `shared/e09-t4b`, `cross-lane`): `h3-towns` (domain, logic: the empty `TownRuleset` and `Towns`, both version constants 1) and `h3-pack-towns` (adapter, doc only); `TownId` in `h3-contracts`; `Moat`'s doc comment (the packs decide); `arch.toml`'s edges, T5a's callers' too; `lanes.toml`; `clients.yml`; the versions rows, `docs/02` §3, ADR-0005, ADR-0006, `packs/README.md`; round 5's queue.
-  - Round 5 (T5a cut in two at its start and the order changed, the user: the content before `GameRuleset`, so the replays move once): **T5a1** the town part, its compiler and the adapter (§2). Done (2026-11-03, `town/e09-t5a1`): `TownRuleset` with the checks and the hash's first encoding, `BuildingId` and `BuildingSet`, `h3-pack-towns`' parser and format; the file's shape changed where built (`gold`, one to seven levels, the siege's roles split; the log). **T5b** the content read and harvested (§3, decision 23; original data; building 23's re-read, decision 25); then **T5a2** `GameRuleset`, its callers and replay format v9 (§2, `cross-lane`).
+  - Round 5 (T5a cut in two at its start and the order changed, the user: the content before `GameRuleset`, so the replays move once): **T5a1** the town part, its compiler and the adapter (§2). Done (2026-11-03, `town/e09-t5a1`): `TownRuleset` with the checks and the hash's first encoding, `BuildingId` and `BuildingSet`, `h3-pack-towns`' parser and format; the file's shape changed where built (`gold`, one to seven levels, the siege's roles split; the log). **T5b** the content (§3, decision 23), cut in two at its start (the user): **T5b1** the reading. Done (2026-11-03, `town/e09-t5b1`; `TWN-Q6`, decisions 27–30): survey §16: `building_tables_init` and `town_build` read whole, building 23 the Village Hall's town-screen companion in three factions (decision 25), the keep never counting the Village Hall, the standing set's order (T-6), VCMI compared, TD-8, TD-9. **T5b2** the harvest (`cross-lane`, original data); then **T5a2** `GameRuleset`, its callers and replay format v9 (§2, `cross-lane`).
   - Round 6: **T6** `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml` (§4–§6).
   - Round 7: **T7a** the import and the setup's checks (§7, §13; map import v16; the census); **T7b** the pool and the build's draws (§14; game state hash v23).
   - Round 8: **T8a** the kind, the step, entering and an undefended capture (§8, §9, §11; adventure part v16, state hash v20); **T8b** the siege (§10, §15).
