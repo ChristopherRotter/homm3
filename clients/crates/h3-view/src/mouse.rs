@@ -1065,6 +1065,24 @@ pub fn looked_at(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> O
     }
 }
 
+/// The stack whose stats dialog the right button held at `point` shows (`battle_right_click`
+/// 0x4769C0's stack case, 0x476AC5 to 0x476B15; E17 M6 T2b1, design §12.5): any living stack on
+/// the hex the mouse is over (the hex record's stack +0x1DC), either side's, in the side columns
+/// too (the war machines'), whatever the cursor's kind; none over a hero's rectangle (M6 T3), the
+/// keep's or the upper tower's (M6 T2b2: a turret's info; CLT-Q21: in the original's profile in
+/// every battle), an empty hex, or off the battlefield (a control's help, M6 T3).
+#[must_use]
+pub fn held_at(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Option<u8> {
+    let [width, height] = layout.mouse.field;
+    if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
+        return None;
+    }
+    match spot(layout, point, field.rects()) {
+        Spot::Hex(hex) => field.at(hex).map(|s| s.id),
+        _ => None,
+    }
+}
+
 /// The command the panel's button `id` gives when it is clicked (its hotkey's release too:
 /// `def_button_message` 0x456190) for the acting stack's commands `legal` (E17 M5 T2a): Wait and
 /// Defend when listed (a disabled button gives none); in the tactics phase (E17 M5 T4c2b, design

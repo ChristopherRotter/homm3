@@ -653,7 +653,8 @@ pub enum StatsDid {
     Nothing,
     /// The dialog, its status line or its cursor changed: draw again.
     Changed,
-    /// Its OK closed it: the battle takes the mouse again (`Input::Looked`).
+    /// Its OK closed it, or the right button's held dialog ended (E17 M6 T2b1): the battle
+    /// takes the mouse again (`Input::Looked`).
     Closed,
     /// Its cast button closed it (E17 M6 T2a2b1; 0x468943): the acting Faerie Dragon's cast
     /// starts ([`Battle::look_cast`]), the battle taking the mouse as the aim ends.
@@ -1817,6 +1818,27 @@ impl<'g> Battle<'g> {
         } else {
             self.taken(at, |field| mouse::looked_at(field, &ground.layout, point))
         };
+        self.open_stats(at, (id, point), false)
+    }
+
+    /// Shows the stats dialog of the stack on the hex at `point` while the right button is held,
+    /// pressed at `at` (E17 M6 T2b1; `battle_right_click` 0x4769C0, `stack_stats_dialog` with its
+    /// second argument 1; design §12.5): any living stack there, either side's, from the side to
+    /// act's own view, without the OK and the cast button, its creature standing, the cursor
+    /// hidden; its ends close it ([`Self::stats_held`]). Whether it opened (as [`Self::look`]).
+    pub fn look_held(&mut self, at: u32, point: [i32; 2]) -> bool {
+        if self.stats.is_some() || !self.takes(at) {
+            return false;
+        }
+        let ground = self.ground;
+        let id = self.taken(at, |field| mouse::held_at(field, &ground.layout, point));
+        self.open_stats(at, (id, point), true)
+    }
+
+    /// Opens the stats dialog of stack `id` at `at`, the mouse at `point`: modal, or by the
+    /// `right` button, held.
+    fn open_stats(&mut self, at: u32, (id, point): (Option<u8>, [i32; 2]), right: bool) -> bool {
+        let ground = self.ground;
         let (Some(id), Some(observation)) = (id, self.own_view()) else {
             return false;
         };
@@ -1883,7 +1905,7 @@ impl<'g> Battle<'g> {
         let open = crate::stats::open(
             &sources,
             &observation,
-            (id, point),
+            (id, point, right),
             (&ground.layout.stats, anchor, sizes),
             (frames, viewing, seed),
             &mut self.stats_memory,
@@ -1982,27 +2004,36 @@ impl<'g> Battle<'g> {
         true
     }
 
-    /// Whether the stats dialog's popup is held (E17 M6 T2a2b1): the cursor hidden
-    /// (`popup_run_held` 0x602A40, `mouse_hide`), every input but its ends dropped.
+    /// Whether a popup is held (`popup_run_held` 0x602A40, `mouse_hide`: the cursor hidden,
+    /// every input but its ends dropped): the stats dialog's description (E17 M6 T2a2b1), or the
+    /// stats dialog the right button shows over the battle (E17 M6 T2b1).
     pub fn stats_popup(&self) -> bool {
         self.stats
             .as_ref()
-            .is_some_and(|(open, _)| open.modal.popup.is_some())
+            .is_some_and(|(open, _)| open.held || open.modal.popup.is_some())
     }
 
-    /// An input at `at` while the popup is held ([`h3_view::stats::Modal::held_input`]): `ends`
+    /// An input at `at` while a popup is held ([`h3_view::stats::Modal::held_input`]): `ends`
     /// it (the right button's release, a left press or release), a key's release `key_up`, a left
-    /// release `left_release`. Whether the screen changed.
+    /// release `left_release`. The right button's dialog over the battle closes at its end
+    /// (E17 M6 T2b1: then as the modal one, 0x476B1A, [`StatsDid::Closed`]).
     pub fn stats_held(
         &mut self,
         at: u32,
         ends: bool,
         key_up: Option<&str>,
         left_release: bool,
-    ) -> bool {
+    ) -> StatsDid {
         let Some((open, opened)) = self.stats.as_mut() else {
-            return false;
+            return StatsDid::Nothing;
         };
+        if open.held {
+            if ends {
+                self.stats = None;
+                return StatsDid::Closed;
+            }
+            return StatsDid::Nothing;
+        }
         let held = open.modal.popup.is_some();
         let changed = open.modal.held_input(ends, key_up, left_release);
         if held
@@ -2011,7 +2042,11 @@ impl<'g> Battle<'g> {
         {
             hold[1] = at.saturating_sub(*opened);
         }
-        changed
+        if changed {
+            StatsDid::Changed
+        } else {
+            StatsDid::Nothing
+        }
     }
 
     /// The stats dialog's cast button clicked at `at` (E17 M6 T2a2b1; `stack_stats_dialog`

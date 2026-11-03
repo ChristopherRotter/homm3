@@ -8,11 +8,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   at M3 T9c, CLT-Q18: the battle client here, the adventure map client the map-client lane's
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 done
   (#620 merged); T2 cut in three by the user (2026-11-02): T2a1 done (#645), T2a2a done (#650);
-  T2a2b cut in two: T2a2b1 done (#658); **T2a2b2 done** (morale's and luck's descriptions as far
-  as the observation tells their sources, design §12.4; CLT-Q40: the rest requested in the battle,
-  server and adventure lanes' inboxes, public when carried; CLT-Q41 fixed; seven stills exact; #661
-  from `client/e17-m6-t2a2b2`: check it first); **next: T2b** (the right button's popup over a
-  stack, the turret's info), T3 to T7; this lane's inbox: the descriptions' other lines once the
+  T2a2b cut in two: T2a2b1 done (#658), T2a2b2 done (#661); T2b cut in two by the user
+  (2026-11-03): **T2b1 done** (the right button's held dialog over any stack, design §12.5; T2a1's
+  Ballista slip fixed; five stills exact; #668 from `client/e17-m6-t2b1`: check it first);
+  **next: T2b2** (a turret's info, its code read at T2b1: the map's `turret_info`,
+  `turret_info_line`), T3 to T7; this lane's inbox: the descriptions' other lines once the
   battle lane's carry lands; then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -42,7 +42,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T2a2b2 (done; #661 open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T2b1 (done; #668 open: check it first).** The original data staged
+  (57 files) first; the baseline's `check.sh` passed; #661 had merged. The user cut T2b in two
+  (T2b1 the stack's held dialog, T2b2 a turret's info). Read `battle_right_click` whole and the
+  held branch (design §12.5), `turret_info` for T2b2; built `mouse::held_at` and the held dialog
+  in the window and the stills; five stills exact (one after fixing T2a1's Ballista slip); the
+  window checked under Xvfb; `drawn`; `check.sh`.
+
+- **2026-11-03, E17 M6 T2a2b2 (done; #661 merged).** The original data staged
   (57 files) first; the baseline's `check.sh` passed; #658 had merged. Read both descriptions
   whole (design §12.4); CLT-Q40 (the user: build what the observation allows, request the rest,
   public as VCMI) and CLT-Q41 (both fixed); the requests written; built the library's
@@ -55,10 +62,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   button's path (design §12.3); built them; four stills and `dragon-button` exact at their first
   capture; the window checked under Xvfb (a hang behind the held popup found and fixed); `drawn`;
   `check.sh`.
-
-- **2026-11-02, E17 M6 T2a2a (done; #650 merged).** The original data
-  staged (57 files) first; the VM restarted ~20 minutes in (the baseline lost: CI's green
-  `Clients` run on `master` the baseline). The user cut T2a2 in two and answered CLT-Q36 to Q38.
-  Read the dialog's command, close and the key T (design §12.2); built the modal dialog (library,
-  window, stills); six stills exact; the window checked under Xvfb in hot seat and on a local
-  `h3-server`; `drawn`; `check.sh`.

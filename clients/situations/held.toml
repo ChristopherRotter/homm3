@@ -1,0 +1,61 @@
+# E17 M6 T2b1: the right button's stats dialog over the battle (design §12.5), clamped at the
+# screen's top and right. The ground and obstacles of `book` (book.toml): at the opening the
+# Champions' turn, Red human, Orrin's; Crag Hack's four stacks in the loose formation's rows 0, 4,
+# 6 and 10 of column 15, the Goblins in the top right corner (hex 15), whose dialog the right
+# button shows at (502, 0).
+
+[scenario]
+id = "held"
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+[[defender]]
+slot = 1
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:orc"
+count = 6
+
+[[defender]]
+slot = 3
+creature = "base:ogre"
+count = 3
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

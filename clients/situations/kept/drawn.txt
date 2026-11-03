@@ -6371,6 +6371,12 @@ set/grass t04800 3be331171717016a
 set/grass t04900 b4fea1471db56d3e
 set/grass t05000 0895ae7093411f90
 set/grass t05100 6baa9942d6f0818a
+set/held t00000 5d4a15c7587ce8b9
+set/held t00300 5d4a15c7587ce8b9
+set/held-dragon t00000 1ebb9c884d7f7c55
+set/held-enemy t00000 8228c3b5c938f3e2
+set/held-machine t00000 925963d819495382
+set/held-top t00000 00a042c62c6e58b0
 set/heroes-castle-rampart t00000 b5d23b63281ef544
 set/heroes-conflux t00000 8382d0cab14bf928
 set/heroes-dungeon-stronghold t00000 29195b1a3bfac8c5

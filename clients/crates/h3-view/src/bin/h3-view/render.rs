@@ -410,8 +410,11 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                         })
                 });
             // The stack's dialog with the mouse at `point`: the press's stack there, or the
-            // acting stack's by the key T (E17 M6 T2a2a; none in the tactics phase).
-            let dialog = |id: Option<u8>, point: [i32; 2], memory: &mut h3_view::stats::Memory| {
+            // acting stack's by the key T (E17 M6 T2a2a; none in the tactics phase), or `held`
+            // the stack there the right button shows while held (E17 M6 T2b1).
+            let dialog = |(id, held): (Option<u8>, bool),
+                          point: [i32; 2],
+                          memory: &mut h3_view::stats::Memory| {
                 let field = h3_view::mouse::Field {
                     observation,
                     legal: &looking,
@@ -420,6 +423,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 };
                 let id = match id {
                     Some(id) => id,
+                    None if held => h3_view::mouse::held_at(&field, &layout, point)?,
                     None => h3_view::mouse::looked_at(&field, &layout, point)?,
                 };
                 let stack = observation.stacks.iter().find(|s| s.id == id)?;
@@ -439,19 +443,23 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 crate::stats::open(
                     &stats_sources,
                     observation,
-                    (id, point),
+                    (id, point, held),
                     (&layout.stats, anchor, described),
                     (frames, viewing, seed),
                     memory,
                 )
             };
-            let look =
-                |point: [i32; 2], memory: &mut h3_view::stats::Memory| dialog(None, point, memory);
+            let look = |point: [i32; 2], memory: &mut h3_view::stats::Memory| {
+                dialog((None, false), point, memory)
+            };
             let acting = |point: [i32; 2], memory: &mut h3_view::stats::Memory| {
                 let id = observation
                     .active
                     .filter(|_| observation.tactics.is_none())?;
-                dialog(Some(id), point, memory)
+                dialog((Some(id), false), point, memory)
+            };
+            let held = |point: [i32; 2], memory: &mut h3_view::stats::Memory| {
+                dialog((None, true), point, memory)
             };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
@@ -463,6 +471,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     .then(|| catalogue.text("battle.tactics.phase", &h3_ui::text::Args::new())),
                 look: &look,
                 acting: &acting,
+                held: &held,
             };
             Some(crate::spellbook::still(
                 &actions,
