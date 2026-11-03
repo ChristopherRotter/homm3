@@ -5286,7 +5286,7 @@ to 0x476BC4).
   `town_turret_count` on the town (+0x53C8): 4 plus each building of a mask the town has built,
   the attack a literal 10 (0x5BF4FE). The text: the keep's line (part 14) with the count, then
   with a Castle the upper tower's (part 5) and the lower tower's (13) with (count + 1) / 2,
-  appended (0x41B250). A line (`turret_info_line`): while the part has hit points left
+  appended to it. A line (`turret_info_line`): while the part has hit points left
   (+0x13F60 by part) GENRLTXT 156 ("The %s has an attack skill of %d and does %d-%d damage.")
   with the part's name (`siege_wall_parts_by_town` +0x1C by the town's type and the part:
   WALLS.TXT), the attack, twice and three times the count; else 155 ("The %s is destroyed.")

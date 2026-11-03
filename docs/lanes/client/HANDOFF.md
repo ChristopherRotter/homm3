@@ -11,7 +11,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   T2a2b cut in two: T2a2b1 done (#658), T2a2b2 done (#661); T2b cut in two by the user
   (2026-11-03): T2b1 done (#668), **T2b2 done** (a siege turret's info by either button, design
   §12.6; four stills, two exact, two with 35 listed shadow pixels; a box before the first turn
-  framed by the opening's side; its PR from `client/e17-m6-t2b2`: check it first); T2 done.
+  framed by the opening's side; #672 from `client/e17-m6-t2b2`: check it first); T2 done.
   **Next: T3** (the right button's other popups; the held popup over the battle is T2b2's
   `Asked::Held`), T4 to T7; this lane's inbox: the descriptions' other lines once the battle
   lane's carry lands; then M7 ranked play and the server browser.
@@ -43,7 +43,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T2b2 (done; PR open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T2b2 (done; #672 open: check it first).** The original data staged
   (57 files) first; the baseline's `check.sh` passed; #668 had merged. Read the turret's info's
   three functions and both callers (design §12.6); built `h3_view::turret`, `mouse::turret_at`,
   the box and the held popup in the window and the stills; the observation's parts are by
