@@ -18,24 +18,14 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T2b2 — a turret's info
-
-- **Scope:** a siege turret's info by either button (`turret_info` 0x47A380, read at T2b1: the
-  map's entries and design §12.5 for the right button's tests): a message box of the keep's line
-  and, with a Castle, the two towers' (`turret_info_line` 0x47A2D0: GENRLTXT 156, or 155 for a
-  destroyed one, the part's name from WALLS.TXT; the count `town_turret_count`'s, the towers'
-  half rounded up, the attack 10), OK on the left button, a held popup on the right; the counts
-  from what the observation tells (the turrets' stacks, their parts' hit points); recorded in a
-  siege (the runbook's "A siege").
-- **Acceptance:** as T2a2b1's. **Depends on:** T2b1 (done: the held dialog, design §12.5).
-  **Status:** ready.
-
 ### E17 M6 T3 — the right button's other popups
 
 - **Scope:** the right button's popups besides a stack's, read and built: over the battlefield
   (0x4769C0: a hero of either side, the other items the reading finds) and over a control
   (0x472A50: the panel's buttons, the log); recorded.
-- **Acceptance:** as T2a2b1's. **Depends on:** T2b1 (done: the held popup). **Status:** ready.
+- **Acceptance:** as T2a2b1's. **Depends on:** T2b1 (done: the held popup), T2b2 (done: a box
+  held over the battle by the right button, `Asked::Held`, `Battle::popup_held`; design §12.6).
+  **Status:** ready.
 
 ### E17 M6 T4 — the combat options dialog
 

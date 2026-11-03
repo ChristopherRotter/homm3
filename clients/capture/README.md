@@ -195,8 +195,9 @@ spells, so its stills render the attacker's record (`seat = "attacker"`). After 
 original's cursor stays where it was until the clock steps (its status line follows at once):
 take such frames from 100 ms. Since E17 M6 T2a2b1 (design §12.3) `right:x,y` moves the mouse
 there and holds the right button down through the frames (released after the last; the stats
-dialog's descriptions, and since E17 M6 T2b1 over the battle a stack's held dialog, §12.5): it is
-an entry's last action. The setup turns "Animate SpellBook" off (the page turn's videos,
+dialog's descriptions, and since E17 M6 T2b1 over the battle a stack's held dialog, §12.5, since
+T2b2 a turret's info where no stack is, §12.6): it is an entry's last action; a `click:` over a
+turret opens its info's box (T2b2). The setup turns "Animate SpellBook" off (the page turn's videos,
 Smacker clips of `battle-videos.vid` the client does not play); nothing recorded before it turned
 a page. Since E17 M5 T4a (design §7.19) `key:r` and `key:s` open Retreat's and
 Surrender's questions, and an open message box takes the `key:` (`key:Return`, `key:Escape`: down

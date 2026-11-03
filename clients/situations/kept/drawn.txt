@@ -6491,6 +6491,12 @@ set/tactics-open t01000 36b979954078a056
 set/tactics-out t00100 89f94f3895b1ad97
 set/tactics-rest t00100 452c2a20ba22f321
 set/tactics-start t00100 59ee526b0c3218c9
+set/turret t00100 575b67ac6c17e517
+set/turret t01000 575b67ac6c17e517
+set/turret-citadel t00000 884ef7fb0fdec58b
+set/turret-held t00000 fcd1d87c19596132
+set/turret-held t00100 fcd1d87c19596132
+set/turret-lower t00000 fcd1d87c19596132
 set/war-machines t00000 11083af6a1a8f70b
 set/war-machines t00100 af2765da604b80fb
 set/war-machines t00200 74849c6a6cf9086e

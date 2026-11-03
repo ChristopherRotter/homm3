@@ -26,6 +26,14 @@ pub enum Asked {
     /// The battle's result window (E17 M5 T4b1, `crate::results`): its OK (Enter or Escape)
     /// closes the battle's screen.
     Result,
+    /// A siege turret's info by a left press (E17 M6 T2b2, `turret_info` 0x47A380 from
+    /// 0x476E2F): its OK closes it, then the battle takes the mouse again as after a stack's
+    /// stats dialog (0x476E34, `Input::Looked`).
+    Turret,
+    /// A turret's info by the right button (E17 M6 T2b2, 0x476BBA): a popup without buttons held
+    /// while the button is (`popup_run_held` 0x602A40): its ends close it, the input meanwhile
+    /// dropped, the cursor hidden.
+    Held,
 }
 
 /// How the side to act may leave the battle by the panel's buttons: whether it may retreat (the

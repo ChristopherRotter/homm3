@@ -461,6 +461,24 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             let held = |point: [i32; 2], memory: &mut h3_view::stats::Memory| {
                 dialog((None, true), point, memory)
             };
+            // A turret's info where a press shows it (E17 M6 T2b2), the left button's or the
+            // right's: the keep's and towers' lines the record tells.
+            let turret = |point: [i32; 2], right: bool| {
+                let field = h3_view::mouse::Field {
+                    observation,
+                    legal: &looking,
+                    facing: &h3_view::mouse::Facing::Sides,
+                    bugs: Bugs::Original,
+                };
+                if !h3_view::mouse::turret_at(&field, &layout, point, right) {
+                    return None;
+                }
+                let part = |faction: u16, part: usize| {
+                    let key = manifest.keys.factions.get(usize::from(faction))?;
+                    Some(format!("wall.{key}.{part}"))
+                };
+                h3_view::turret::text(observation, &catalogue, &part)
+            };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
                 leave,
@@ -472,6 +490,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 look: &look,
                 acting: &acting,
                 held: &held,
+                turret: &turret,
             };
             Some(crate::spellbook::still(
                 &actions,

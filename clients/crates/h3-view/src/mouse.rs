@@ -11,7 +11,8 @@
 //! A siege's (E17 M4 T2c-2, design §10.2): the keep's and the upper tower's rectangles, the
 //! Catapult's targets (16), the turrets' info (22) and the walls' broken arrow (15). The command a
 //! press gives (E17 M5 T2a, design §9.11): [`click`] over the battlefield (`battle_click_action`
-//! 0x476BD0), [`button`] for the panel's Wait and Defend.
+//! 0x476BD0), [`button`] for the panel's Wait and Defend; what a press opens instead (E17 M6):
+//! [`looked_at`] and [`held_at`] a stack's stats dialog, [`turret_at`] a turret's info.
 
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -1069,7 +1070,7 @@ pub fn looked_at(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> O
 /// 0x4769C0's stack case, 0x476AC5 to 0x476B15; E17 M6 T2b1, design §12.5): any living stack on
 /// the hex the mouse is over (the hex record's stack +0x1DC), either side's, in the side columns
 /// too (the war machines'), whatever the cursor's kind; none over a hero's rectangle (M6 T3), the
-/// keep's or the upper tower's (M6 T2b2: a turret's info; CLT-Q21: in the original's profile in
+/// keep's or the upper tower's ([`turret_at`]: a turret's info; CLT-Q21: in the original's profile in
 /// every battle), an empty hex, or off the battlefield (a control's help, M6 T3).
 #[must_use]
 pub fn held_at(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Option<u8> {
@@ -1080,6 +1081,32 @@ pub fn held_at(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Opt
     match spot(layout, point, field.rects()) {
         Spot::Hex(hex) => field.at(hex).map(|s| s.id),
         _ => None,
+    }
+}
+
+/// Whether a press at `point` shows a siege turret's info (`turret_info` 0x47A380, nothing below
+/// a Citadel; E17 M6 T2b2, design §12.6; its text: [`crate::turret`]): by the left button (not
+/// `right`) where the cursor is a turret's (22, `battle_click_action` 0x476E2F); by the right
+/// button (`battle_right_click` 0x4769C0) over the keep's rectangle, with a Castle over the upper
+/// tower's or over the lower tower's hex 183 while no stack stands there (a stack's dialog comes
+/// first, [`held_at`]), whatever the cursor's kind; nowhere off the battlefield.
+#[must_use]
+pub fn turret_at(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2], right: bool) -> bool {
+    let [width, height] = layout.mouse.field;
+    if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) || field.fort() < CITADEL
+    {
+        return false;
+    }
+    let spot = spot(layout, point, field.rects());
+    if !right {
+        return kind(field, spot, &mut None).0 == Kind::Turret;
+    }
+    let castle = field.fort() >= CASTLE;
+    match spot {
+        Spot::Keep => true,
+        Spot::Tower => castle,
+        Spot::Hex(hex) => castle && hex == TARGET_AIMS[TOWER_TARGETS[1]] && field.at(hex).is_none(),
+        Spot::Hero(_) | Spot::Nothing => false,
     }
 }
 

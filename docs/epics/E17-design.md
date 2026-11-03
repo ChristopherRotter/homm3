@@ -5266,3 +5266,54 @@ modal flag (0x5F33D9 into +0x96, read nowhere else; 0x5F3903 the OK, 0x5F3974 th
   a right press while the battle does not take the input (another side's turn on a server, the
   computer's, an animation): the original's window may take it there (`battle_buttons` tests no
   turn), the client drops it as a press made then.
+
+### 12.6 A siege turret's info (M6 T2b2)
+
+Read (at T2b1, map entries `turret_info`, `turret_info_line`, `town_turret_count`): `turret_info`
+0x47A380 whole, `turret_info_line` 0x47A2D0 whole, `town_turret_count` 0x5BF4F0 whole, its two
+callers (`battle_click_action` 0x476E1C to 0x476E92, `battle_right_click` 0x476AB6 and 0x476B97
+to 0x476BC4).
+
+- **Where.** A left press where the cursor is a turret's (kind 22, §10.2: the keep's rectangle
+  with a Citadel, the upper tower's or the lower tower's hex 183 with a Castle, where no wall shot
+  or move goes): the combat cursor's frame 6 set (0x476E22), then `turret_info(0)`, then the
+  stats dialog's close (§12.2: unless hidden, for a human here the mouse's hex forgotten, the
+  log settled, the mouse posted). The right button (`battle_right_click`, §12.5): the keep's
+  "hex" 0xFE first, in any battle (`turret_info` itself tests the fort), then a living stack on
+  the hex (its dialog), else with a Castle the upper tower's 0xFF or the lower tower's hex 183:
+  `turret_info(1)` and nothing after (no cursor set, nothing posted).
+- **What.** Nothing below a Citadel (+0x132F4 < 2). The count and the attack skill from
+  `town_turret_count` on the town (+0x53C8): 4 plus each building of a mask the town has built,
+  the attack a literal 10 (0x5BF4FE). The text: the keep's line (part 14) with the count, then
+  with a Castle the upper tower's (part 5) and the lower tower's (13) with (count + 1) / 2,
+  appended (0x41B250). A line (`turret_info_line`): while the part has hit points left
+  (+0x13F60 by part) GENRLTXT 156 ("The %s has an attack skill of %d and does %d-%d damage.")
+  with the part's name (`siege_wall_parts_by_town` +0x1C by the town's type and the part:
+  WALLS.TXT), the attack, twice and three times the count; else 155 ("The %s is destroyed.")
+  with the name. Both texts start with two line breaks, so the box's text starts two empty lines
+  down and the lines stand apart. One `message_box` with x = y = −1 (centred), no picture, style
+  1 (its OK, modal, §7.19) for the left press, 4 (the held popup, §12.3) for the right button.
+- **Recorded** (`clients/situations/set.toml`, `turret.toml` and `turret-citadel.toml`: the
+  siege situations' towns with one structure, so that the original's count is the engine's 5;
+  hot seat, the keep's turn, the defender's view): `turret` (a press on the keep: the box with its
+  OK, the default cursor at the park point, the status line the press's hint; from 100 ms: at once
+  the original's cursor stands where the press was), `turret-held` (the right button over the upper
+  tower), `turret-lower` (over hex 183), `turret-citadel` (a Fortress's Citadel: the keep's line
+  alone). All exact at their first capture but the held Castle popup's 12 × 3 pixels of its bottom
+  shadow at (526, 460): there the original's are darker and not the battle's pixels darkened (the
+  battle without the popup is the same; not the mouse's start or end: not explained, listed).
+  *Not recorded:* a destroyed part's line (the harness writes the parts' picture states, not their
+  hit points; a unit test holds it).
+- **The viewer** (`h3_view::turret`: `lines`, `text`, `ATTACK`; `h3_view::mouse::turret_at`;
+  the catalogue's `battle.turret.standing` and `battle.turret.destroyed`). The counts are the
+  observation's: a standing part's turret stack's count (the engine's keep has 4 plus the town's
+  `structures`, a tower half of it rounded up, BAT-SIE-016; 0 without a stack), its standing the
+  observation's `parts` by wall-shot target (the upper tower 0, the lower tower 6, the keep 7).
+  The window (`Battle::turret_info`, `popup_held`, `popup_end`; `boxes::Asked::Turret` and
+  `Held`): a left press with no command and no stack to look at opens the box (`Input::Look`
+  first, its OK's close `Input::Looked`); the right button with no stack's dialog the popup, held
+  as the stats dialog's (§12.5: the cursor hidden, every input but its ends dropped, the moves
+  too, nothing posted at its end). The stills' `click:` and `right:` over a turret (`Boxes::turret`,
+  `Still::held`: no cursor). Found and fixed with it: a box opened before the first turn the
+  timeline holds was framed in the viewing player's colours in the client's profile (CLT-Q28
+  (2): the opening's active stack's side now, as the panel's).

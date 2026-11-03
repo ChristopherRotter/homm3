@@ -623,6 +623,9 @@ pub enum MessageDid {
     Give(Command),
     /// The result window's OK closed the battle's screen (E17 M5 T4b1).
     Ended,
+    /// A turret's info closed by its OK (E17 M6 T2b2): the battle takes the mouse again as
+    /// after a stats dialog (`Input::Looked`).
+    Looked,
 }
 
 /// The original's spells aimed at a second target too (Sacrifice, Teleport): their aims are not
@@ -1835,6 +1838,65 @@ impl<'g> Battle<'g> {
         self.open_stats(at, (id, point), true)
     }
 
+    /// Opens a siege turret's info at `at` with the mouse at `point` (E17 M6 T2b2; `turret_info`
+    /// 0x47A380, design §12.6): by a left press where the cursor is a turret's, a box with its OK
+    /// ([`Asked::Turret`]: its close as a stats dialog's); by the `right` button over the keep or
+    /// a Castle's towers, a popup held while the button is ([`Asked::Held`]); framed as a box
+    /// ([`Self::box_player`]), its counts the turn's observation's. Whether it opened (as
+    /// [`Self::look`]; not without the text tables).
+    pub fn turret_info(&mut self, at: u32, point: [i32; 2], right: bool) -> bool {
+        if self.stats.is_some()
+            || self.message.is_some()
+            || self.book.is_some()
+            || self.aiming.is_some()
+            || !self.takes(at)
+        {
+            return false;
+        }
+        let ground = self.ground;
+        let Some(writer) = ground.writer.as_ref() else {
+            return false;
+        };
+        let factions = &self.record.header.manifest.keys.factions;
+        let part = |faction: u16, part: usize| {
+            let key = factions.get(usize::from(faction))?;
+            Some(format!("wall.{key}.{part}"))
+        };
+        let text = self.taken(at, |field| {
+            mouse::turret_at(field, &ground.layout, point, right)
+                .then(|| h3_view::turret::text(field.observation, &writer.catalogue, &part))
+                .flatten()
+        });
+        let Some(text) = text else {
+            return false;
+        };
+        let shown = if right {
+            (Style::Popup, Asked::Held)
+        } else {
+            (Style::Ok, Asked::Turret)
+        };
+        self.tell(at, &text, (shown.0, None), shown.1)
+    }
+
+    /// Whether the right button's popup over the battle is held (E17 M6 T2b2: a turret's info;
+    /// `popup_run_held` 0x602A40: the cursor hidden, every input but its ends dropped).
+    pub fn popup_held(&self) -> bool {
+        self.message
+            .as_ref()
+            .is_some_and(|(_, _, asked)| *asked == Asked::Held)
+    }
+
+    /// The held popup's end (the right button's release, a left press or release; E17 M6 T2b2):
+    /// it closes and the battle goes on behind it, its cursor shown again as it was (the right
+    /// button's path posts nothing, 0x476BBF). Whether one closed.
+    pub fn popup_end(&mut self) -> bool {
+        if !self.popup_held() {
+            return false;
+        }
+        self.message = None;
+        true
+    }
+
     /// Opens the stats dialog of stack `id` at `at`, the mouse at `point`: modal, or by the
     /// `right` button, held.
     fn open_stats(&mut self, at: u32, (id, point): (Option<u8>, [i32; 2]), right: bool) -> bool {
@@ -2106,13 +2168,25 @@ impl<'g> Battle<'g> {
     /// The colours of a box opened at `at` (CLT-Q28 (2), answered (c) at E17 M5 T8c;
     /// `h3_view::message::framed`): the acting side's player, `side` when given (the tactics
     /// phase's, before any turn), else the controller of the turn `at` falls in as the panel's
-    /// (`Timeline::controllers`); the viewing player's without either.
+    /// (`Timeline::controllers`), before the first turn the timeline holds the opening's active
+    /// stack's (E17 M6 T2b2: its turn starts before the record opens, as the panel's
+    /// `Panels::new`); the viewing player's without any.
     fn box_player(&self, at: u32, side: Option<Side>) -> u8 {
         let timeline = self.timeline();
-        let acting = side.or_else(|| {
-            let turn = timeline.turns.iter().rposition(|&(t, _)| t <= at)?;
-            timeline.controllers.get(turn).copied()
-        });
+        let acting = side.or_else(
+            || match timeline.turns.iter().rposition(|&(t, _)| t <= at) {
+                Some(turn) => timeline.controllers.get(turn).copied(),
+                None => {
+                    let opening = self.record.first_snapshot()?;
+                    let id = opening.active?;
+                    opening
+                        .stacks
+                        .iter()
+                        .find(|s| s.id == id)
+                        .map(|s| s.controller)
+                }
+            },
+        );
         let acting = acting.map(|s| self.side_colour(usize::from(s == Side::Defender)));
         h3_view::message::framed(Bugs::Fixed, self.viewing_player(), acting)
     }
@@ -2232,6 +2306,9 @@ impl<'g> Battle<'g> {
         if asked == Asked::Result {
             self.result_closed = true;
             return MessageDid::Ended;
+        }
+        if asked == Asked::Turret {
+            return MessageDid::Looked;
         }
         let Some(writer) = self.ground.writer.as_ref() else {
             return MessageDid::Changed;

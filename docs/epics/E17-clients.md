@@ -162,8 +162,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   their sources (CLT-Q40: the rest requested from the battle, server and adventure lanes, public
   when carried, as VCMI), CLT-Q41 fixed; seven stills exact; T2b cut in two by the user
   (2026-11-03): **T2b1** (done 2026-11-03) the right button's held dialog over any stack (design
-  §12.5; T2a1's Ballista slip fixed), five stills exact; **T2b2** a turret's info (0x47A380, read
-  at T2b1) by either button; recorded.
+  §12.5; T2a1's Ballista slip fixed), five stills exact; **T2b2** (done 2026-11-03) a turret's
+  info by either button (design §12.6), four stills exact but 35 pixels of the held popup's
+  shadow (listed); a box before the first turn framed by the opening's side (CLT-Q28 (2)). T2
+  done.
 - **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
   battlefield's other items; recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
@@ -321,3 +323,17 @@ The next milestone's list starts here.
 21. Fixed (T2b1): the stats dialog's Ballista range counted its hero's factor twice (T2a1: the
     wire's war machine's range holds it); the dialog's clamp of the attack at 99 kept.
 22. The common crates' additions (T2b1): `h3_view::mouse::held_at`.
+23. The turret's info (T2b2, *provisional*): its counts the observation's turret stacks (a
+    standing part without one shows 0), its standing the parts' hit points by wall-shot target,
+    the attack the executable's literal 10; in the window a left press's box closes as a stats
+    dialog does (`Input::Looked`), the right button's popup held as the stats dialog's (every
+    input but its ends dropped, the moves too, nothing posted after it).
+24. Listed (T2b2): `turret-held` and `turret-lower` differ in 35 pixels, 12 × 3 of the held
+    Castle popup's bottom shadow at (526, 460), darker in the original (not the battle's pixels
+    darkened; not explained); a destroyed part's line not recorded (the harness writes no hit
+    points; a unit test).
+25. Fixed (T2b2): a box opened before the first turn the timeline holds was framed in the
+    viewing player's colours in the client's profile; now the opening's active stack's side's
+    (CLT-Q28 (2)), as the panel's.
+26. The common crates' additions (T2b2): `h3_view::turret`, `h3_view::mouse::turret_at`; the
+    catalogue's `battle.turret.standing` and `battle.turret.destroyed`.

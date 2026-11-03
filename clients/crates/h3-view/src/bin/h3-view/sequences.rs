@@ -824,13 +824,15 @@ pub(crate) fn draw_frames(
                     .into_iter()
                     .map(scene::Draw::Dialog),
             );
-            list.push(scene::Draw::Cursor {
+            // The right button's popup held hides it (E17 M6 T2b2).
+            let held = interface.book.is_some_and(|b| b.held);
+            list.extend((!held).then(|| scene::Draw::Cursor {
                 def: layout.message.cursor.clone(),
                 frame: 0,
                 x: mouse[0],
                 y: mouse[1],
                 hot: layout.book.hot.first().copied().unwrap_or_default(),
-            });
+            }));
         } else if let Some((open, mouse, opened)) = interface
             .book
             .and_then(|b| Some((b.stats.as_ref()?, b.mouse, b.at)))

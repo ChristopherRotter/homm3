@@ -4054,6 +4054,36 @@ written for it).
   empty hex nothing. `drawn`: all 178 earlier sequences and stills the same, the five new
   recorded; `clients/scripts/check.sh`; the scoped verify with the original data.
 
+### M6 T2b2 — a siege turret's info (2026-11-03)
+
+On `client/e17-m6-t2b2`, the user present. The sandbox new, the original files staged first
+(57 files); #668 had merged; the baseline's `check.sh` passed. Not cut (the user: a couple of
+small tasks or one bigger one per session; T2b2 fitted).
+
+- **Read** (design §12.6; the map's entries from T2b1): `turret_info`, `turret_info_line` and
+  `town_turret_count` whole again, the left press's path (0x476E1C: frame 6, the info, the stats
+  dialog's close) and the right button's two (0xFE first, the towers after a stack, nothing after).
+- **The library:** `h3_view::turret` (`lines`, `text`, `ATTACK`), `mouse::turret_at` (either
+  button); the catalogue's `battle.turret.standing` (GENRLTXT 156) and `battle.turret.destroyed`
+  (155). A first capture found the observation's `parts` by wall-shot target, not by part
+  (the keep's 7, the towers' 0 and 6): fixed before recording.
+- **The binary:** `Battle::turret_info`, `popup_held`, `popup_end`, `Asked::Turret` (its close
+  `MessageDid::Looked`, `Input::Looked`) and `Asked::Held`; the window's press and right button,
+  the held popup's input loop and hidden cursor; the stills' `Boxes::turret`, `Still::held`.
+- **Found and fixed:** `Battle::box_player` framed a box opened before the first turn the
+  timeline holds in the viewing player's colours (T1's CLT-Q28 (2) took the turn's controller
+  only): the opening's active stack's side, as the panel's (the keep's turn: Blue's frame).
+- **Recorded:** `turret` (exact from 100 ms), `turret-citadel` (exact), `turret-held` and
+  `turret-lower` (35 pixels each: 12 × 3 of the popup's bottom shadow at (526, 460), the
+  original's darker and not the battle's pixels darkened; the battle without the popup is the
+  same and the mouse's start changes nothing: not explained, listed). Not recorded: a destroyed
+  part's line (the harness writes no hit points).
+- **Checked:** the window under Xvfb with `xdotool` on `turret.toml` in hot seat: a press on the
+  keep opens the box (Blue's frame after the fix), Enter closes it; the right button over the
+  upper tower holds the popup, the cursor hidden, a move and the key T meanwhile dropped; its
+  release closes it, the turret's cursor back; over hex 183 the same, a left press ends it.
+  `drawn`; `clients/scripts/check.sh`; the scoped verify with the original data.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

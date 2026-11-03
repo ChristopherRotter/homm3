@@ -1563,3 +1563,77 @@ actions = ["right:36,238"]
 at = 0
 differing = 0
 why = "exact: the Ballista's dialog from its first column's hex (E17 M6 T2b1)"
+
+# E17 M6 T2b2: a siege turret's info (`turret_info` 0x47A380, design §12.6) on the keep's turn
+# (hot seat, the defender's view, `seat`): the keep's line and, with a Castle, the upper and the
+# lower tower's (GENRLTXT 156: the part's name, the attack 10, the damage twice and three times
+# the count, 5 the keep's and 3 a tower's), each starting with two line breaks, framed in the
+# side to act's colours and centred. `turret`: a left press on the keep's rectangle (the cursor's
+# kind 22): a box with its OK, which takes the park's move (the default cursor's frame 0), the
+# status line keeping the press's hint. `turret-held`: the right button held over the upper
+# tower's rectangle: a popup (style 4), the cursor hidden; `turret-lower`: held over the lower
+# tower's hex 183; `turret-citadel`: a Fortress's Citadel, the keep's line alone, held over the
+# keep.
+[[situation]]
+id = "turret"
+scenario = "turret.toml"
+hot_seat = true
+key = "Up"
+seat = "defender"
+actions = ["click:770,250"]
+
+# At once the original's cursor still stands where the press was (the move's redraw waits for the
+# frozen clock): compared from 100 ms on.
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the keep's and both towers' lines in a box with its OK, the default cursor at the park point, the press's hint (E17 M6 T2b2)"
+
+[[situation.frame]]
+at = 1000
+differing = 0
+why = "exact: the battle behind the box still (E17 M6 T2b2)"
+
+[[situation]]
+id = "turret-held"
+scenario = "turret.toml"
+hot_seat = true
+key = "Up"
+seat = "defender"
+actions = ["right:600,40"]
+
+[[situation.frame]]
+at = 0
+differing = 35
+why = "the three lines in a popup, the cursor hidden; but 12 x 3 pixels of its bottom shadow at (526, 460), darker in the original and not the battle's pixels darkened (not explained; E17 M6 T2b2)"
+
+[[situation.frame]]
+at = 100
+differing = 35
+why = "held, the battle behind still; the shadow's 12 x 3 pixels as at 0 ms (E17 M6 T2b2)"
+
+[[situation]]
+id = "turret-lower"
+scenario = "turret.toml"
+hot_seat = true
+key = "Up"
+seat = "defender"
+actions = ["right:630,532"]
+
+[[situation.frame]]
+at = 0
+differing = 35
+why = "held over the lower tower's hex 183: turret-held's popup, its shadow's 12 x 3 pixels as there (E17 M6 T2b2)"
+
+[[situation]]
+id = "turret-citadel"
+scenario = "turret-citadel.toml"
+hot_seat = true
+key = "Up"
+seat = "defender"
+actions = ["right:770,250"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: a Citadel's keep line alone, held (E17 M6 T2b2)"
