@@ -7,7 +7,8 @@
 //! (`data/gapfill.toml`). Output: the pack texts, each split into `core.toml` and `battle.toml`
 //! ([`split`]), deterministic byte for byte, and a report of
 //! everything that was not harvested or looked suspicious. The harvester checks that the packs
-//! compile in every allowed expansion combination before returning them.
+//! compile in every allowed expansion combination before returning them. The town part's files
+//! (`towns.toml`) come from [`towns::harvest_towns`] on the core files (E09 T5b2b2).
 //!
 //! Layouts: `docs/formats/installation.md`; pack format: `packs/README.md`.
 

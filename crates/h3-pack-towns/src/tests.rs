@@ -298,3 +298,118 @@ fn every_error_has_a_message() {
     let error: &dyn std::error::Error = &TownPackError::Syntax(String::new());
     assert!(error.source().is_none());
 }
+
+/// The original packs' profile.
+const ORIGINAL: &str = "base:faithful";
+
+/// The original core packs, compiled with the original profile.
+fn original_core(texts: &[&str]) -> Ruleset {
+    let packs: Vec<_> = texts
+        .iter()
+        .map(|t| h3_pack::parse_pack(t).unwrap())
+        .collect();
+    Ruleset::compile(&packs, ORIGINAL).unwrap()
+}
+
+#[test]
+fn the_original_packs_compile_with_every_faction() {
+    // E09 T5b2b2: the harvested files compile in every expansion combination.
+    let roe = compile(&ORIGINAL_PACKS[..1], ORIGINAL).unwrap();
+    let ab = compile(&ORIGINAL_PACKS[..2], ORIGINAL).unwrap();
+    let sod = compile(&ORIGINAL_PACKS, ORIGINAL).unwrap();
+    assert!(compile(&ORIGINAL_PACKS, "base:strict-fixed").is_ok());
+    let core = original_core(&[h3_pack::BASE_CORE, h3_pack::AB_CORE, h3_pack::SOD_CORE]);
+    assert_eq!(sod.core_hash(), core.content_hash());
+    assert_eq!(
+        (roe.towns().len(), ab.towns().len(), sod.towns().len()),
+        (8, 9, 9)
+    );
+    let faction = |key: &str| core.faction_by_key(key).unwrap();
+    // Each faction: seven levels, each with its upgrade; its listed buildings (survey E09-towns
+    // §16.1's counts) and the Village Hall; its creatures the faction's of each level.
+    let factions = [
+        ("base:castle", 35),
+        ("base:rampart", 37),
+        ("base:tower", 36),
+        ("base:inferno", 37),
+        ("base:necropolis", 36),
+        ("base:dungeon", 36),
+        ("base:stronghold", 34),
+        ("base:fortress", 34),
+        ("ab:conflux", 35),
+    ];
+    for (key, listed) in factions {
+        let record = sod.town(faction(key)).unwrap();
+        assert_eq!(record.creatures.len(), 7, "{key}");
+        assert!(
+            record.creatures.iter().all(|l| l.upgrade.is_some()),
+            "{key}"
+        );
+        assert_eq!(record.buildings.len(), listed + 1, "{key}");
+        let hall = building(record, "village_hall");
+        assert_eq!((hall.roles.hall, hall.slot), (Some(1), None), "{key}");
+        assert_eq!(
+            record.building(record.capitol_demoted_to).unwrap().key,
+            "city_hall"
+        );
+    }
+    // The moats by edition (E09 decision 20): RoE and AB rules in base and ab, SoD's overrides.
+    let siege = |part: &TownRuleset, key: &str| {
+        let record = part.town(faction(key)).unwrap();
+        (record.moat, record.siege_obstacles)
+    };
+    assert_eq!(siege(&roe, "base:castle"), (Moat::Harmless, false));
+    assert_eq!(siege(&roe, "base:stronghold"), (Moat::Absent, true));
+    assert_eq!(siege(&ab, "ab:conflux"), (Moat::Harmless, false));
+    for (key, _) in factions {
+        assert_eq!(siege(&sod, key), (Moat::Damaging, false), "{key}");
+    }
+    // The parameters.
+    let params = sod.params().unwrap();
+    assert_eq!(params.hall_gold, [500, 1000, 2000, 4000]);
+    assert_eq!((params.grail_gold, params.reveal_radius), (5000, 5));
+    assert_eq!(params.level_2_dwelling_chance, 30);
+    assert_eq!(params.neutral_garrison[3].count, [1, 3]);
+    assert_eq!(
+        core.resources()[params.gold.index()].key.as_str(),
+        "base:gold"
+    );
+    // Roles of one faction each (survey §16.6), the hordes' upgrade (decision 29).
+    let castle = sod.town(faction("base:castle")).unwrap();
+    let brotherhood = building(castle, "brotherhood_of_the_sword");
+    assert!(brotherhood.roles.tavern && brotherhood.roles.morale == 2);
+    let tavern = castle.building_by_key("tavern").unwrap();
+    assert!(brotherhood.supersedes.contains(tavern));
+    let horde = castle.building_by_key("griffin_bastion").unwrap();
+    let upgraded = building(castle, "upg_griffin_bastion");
+    assert_eq!(upgraded.forbidden_with, Some(horde));
+    let dwelling = castle.building_by_key("upg_griffin_tower").unwrap();
+    assert_eq!(
+        upgraded.auto_with,
+        BuildingSet::default().with(horde).with(dwelling)
+    );
+    let rampart = sod.town(faction("base:rampart")).unwrap();
+    assert_eq!(building(rampart, "fountain_of_fortune").roles.luck, 2);
+    let tower = sod.town(faction("base:tower")).unwrap();
+    assert_eq!(
+        building(tower, "lookout_tower").roles.reveal,
+        Some(Reveal::Radius(20))
+    );
+    let skyship = building(tower, "skyship");
+    assert!(skyship.roles.grail && skyship.roles.reveal == Some(Reveal::All));
+    assert_eq!(skyship.roles.defender.mana, 150);
+    let stronghold = sod.town(faction("base:stronghold")).unwrap();
+    assert!(building(stronghold, "escape_tunnel").roles.escape_tunnel);
+    // TD-8 by the code (decision 30).
+    let fortress = sod.town(faction("base:fortress")).unwrap();
+    assert_eq!(
+        building(fortress, "glyphs_of_fear").roles.defender.attack,
+        2
+    );
+    assert_eq!(
+        building(fortress, "blood_obelisk").roles.defender.defense,
+        2
+    );
+    let conflux = sod.town(faction("ab:conflux")).unwrap();
+    assert!(building(conflux, "aurora_borealias").roles.grail);
+}
