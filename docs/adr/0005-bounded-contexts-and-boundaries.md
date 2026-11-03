@@ -57,8 +57,8 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
 
 - **Crates created (E09 T4b):** `h3-towns` (domain, logic) and `h3-pack-towns` (adapter, as
   `h3-pack-adventure`). `h3-towns` sits beside `h3-adventure`, neither depending on the other;
-  `h3-game` depends on both (ADR-0028 points 1 and 6). ADR-0028 holds the decision; this lists
-  the crates only.
+  `h3-game` reads both (ADR-0028 points 1 and 6; `arch.toml` declares the edge, used from E09
+  T5a). ADR-0028 holds the decision; this lists the crates only.
 - **Cross-context ids** gain `TownId` (`h3-contracts`, ADR-0028 point 3).
 
 ## Revision history
