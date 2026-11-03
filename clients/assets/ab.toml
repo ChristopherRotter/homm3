@@ -416,6 +416,8 @@ portrait = "HPL131Dm.PCX"
 [[town]]
 key = "conflux"
 original = 8
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 5, grail = 21 }
 background = "SgElBack.pcx"
 turrets = { shooter = 127, shift = 0, missile = "cprgtix.def", keep = [783, 225], lower = [636, 575], upper = [595, 105] }
 parts = [

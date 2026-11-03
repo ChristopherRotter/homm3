@@ -4,6 +4,24 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-03 (E17 M6 T3c2 done; the entry verbatim; its capture is T3c3 in the queue):
+
+### E17 M6 T3c2 — the descriptions' overrides, the Alliance and a siege town's buildings
+
+- **Scope:** T3c's rest (T3c1 done 2026-11-03: the hero's lists and the unclamped value, design
+  §12.9; T3c's entry in `QUEUE-ARCHIVE.md`), from `Observation.morale_and_luck` and
+  `Siege.bonuses` (design §12.4): the Hourglass of the Evil Hour's line (82, alone; a
+  `LuckAtMost` reaching the side, either hero's), the Spirit of Oppression's (119, replacing the
+  lines before it while the base is above 0; a `MoraleAtMost`), the Angelic Alliance's join of
+  the alignments (an `AlignmentGroup`: its factions count as one), a siege town's buildings
+  (morale's building 5 +1, 0x660B48, and a Castle's 22 +2; luck's Rampart building 21 +2,
+  0x660B40) and the owner's Grail line (§12.9; a `Building` source), both by a town record's
+  index (the town lane's records, `packs/*/towns.toml`: the index to the building's original
+  id); CLT-Q42 if answered by then; each line not derivable listed.
+- **Acceptance:** as T2a2b2's; recorded: a siege town's buildings (the battle's map writes the
+  town). **Depends on:** T3c1 (done). **Status:** ready.
+
+
 - 2026-11-03 (E17 M6 T3c cut in two by the user, T3c1 done; the entry verbatim; T3c2 in the
   queue):
 

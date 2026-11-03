@@ -707,7 +707,7 @@ fn described_catalogue() -> Catalogue {
             "morale": { "header": "{{text}}|", "good": "G", "neutral": "N", "bad": "B",
                 "none": "-none", "cursed": "-cursed", "unaffected": "-unaffected",
                 "alignments": "-troops {{alignments}} {{change}}", "one-alignment": "-one",
-                "undead": "-undead", "in-group": "-in {{creature}}",
+                "undead": "-undead", "oppression": "-oppressed {{artifact}}", "in-group": "-in {{creature}}",
                 "facing": "-facing {{creature}}", "minimum": "-min {{creature}}",
                 "spells": "-spells {{change}}", "holy-good": "-holy+", "holy-evil": "-holy-",
                 "fog-good": "-fog-", "fog-evil": "-fog+",
@@ -715,9 +715,13 @@ fn described_catalogue() -> Catalogue {
                 "artifact_badge": "-badge", "artifact_crest": "-crest", "artifact_glyph": "-glyph",
                 "skill_basic": "-L1", "skill_advanced": "-L2", "skill_expert": "-L3",
                 "temporary_less": "-temp -{{amount}}", "temporary_more": "-temp +{{amount}}" },
+            "building": { "name_tavern": "Tavern", "name_brotherhood": "Brotherhood",
+                "name_fountain": "Fountain", "name_colossus": "Colossus",
+                "name_spirit-guardian": "Guardian", "line_plus-one": "\n{{name}} +1",
+                "line_plus-two": "\n{{name}} +2" },
             "luck": { "header": "{{text}}|", "good": "g", "neutral": "n", "bad": "b",
                 "none": "-none", "cursed": "-cursed", "clover": "-clover",
-                "halflings": "{{creature}} lucky",
+                "hourglass": "-hourglass {{artifact}}", "halflings": "{{creature}} lucky",
                 "artifact_pendant": "-pendant", "artifact_still-eye": "-eye",
                 "artifact_clover": "-clover4", "artifact_cards": "-cards",
                 "artifact_ladybird": "-ladybird",
@@ -919,6 +923,7 @@ fn the_heros_lists_come_first_in_their_own_order() {
         total: 7,
         artifacts: vec![51, 108, 45],
         skill: 2,
+        grail: None,
     };
     let account = Account {
         town: Some(0),
@@ -939,6 +944,7 @@ fn the_heros_lists_come_first_in_their_own_order() {
         total,
         artifacts: Vec::new(),
         skill,
+        grail: None,
     };
     let account = |morale, luck| Account {
         hero_morale: morale,
@@ -977,6 +983,7 @@ fn the_heros_changes_are_the_bases() {
         total: i32::from(level),
         artifacts: Vec::new(),
         skill: level,
+        grail: None,
     };
     let minotaurs = Account {
         morale_minimum: Some("Minotaurs".into()),
@@ -1000,4 +1007,128 @@ fn the_heros_changes_are_the_bases() {
         describe::luck(&c, &halflings, 2, Bugs::Fixed),
         "g|-l1-facing Devils\nHalflings lucky-spells +1"
     );
+}
+
+#[test]
+fn the_caps_artifacts_lines_override_the_others() {
+    // E17 M6 T3c2 (design §12.10): the Hourglass of the Evil Hour's line alone in luck's
+    // description, after Cursed Ground's; the Spirit of Oppression's replaces the lines before it
+    // while the base is above 0 (after the Minotaurs' minimum), and the stack's morale is cut to 0.
+    let c = described_catalogue();
+    let hourglass = Account {
+        hourglass: Some("Hourglass".into()),
+        devils: Some("Devils".into()),
+        luck_spells: 1,
+        hero_luck: HeroList {
+            total: 1,
+            artifacts: vec![46],
+            skill: 0,
+            grail: None,
+        },
+        ..Account::default()
+    };
+    assert_eq!(
+        describe::luck(&c, &hourglass, 0, Bugs::Fixed),
+        "n|-hourglass Hourglass"
+    );
+    let cursed = Account {
+        field: Field::Cursed,
+        ..hourglass
+    };
+    assert_eq!(describe::luck(&c, &cursed, 0, Bugs::Fixed), "n|-cursed");
+    let spirit = Account {
+        town: Some(0),
+        alignments: 1,
+        undead: true,
+        oppression: Some("Spirit".into()),
+        ..Account::default()
+    };
+    // Base 1 - 1 = 0: nothing to suppress, the lines stay.
+    assert_eq!(describe::morale(&c, &spirit, 0), "N|-one-undead");
+    let high = Account {
+        alignments: 2,
+        undead: false,
+        hero_morale: HeroList {
+            total: 2,
+            artifacts: vec![45, 49],
+            skill: 0,
+            grail: None,
+        },
+        ..spirit.clone()
+    };
+    // Base 2 (two artifacts): replaced by the suppression line alone.
+    assert_eq!(describe::morale(&c, &high, 0), "N|-oppressed Spirit");
+    // The Minotaurs' minimum first: a base of 0 becomes 1, which the Spirit then suppresses.
+    let minotaurs = Account {
+        morale_minimum: Some("Minotaurs".into()),
+        ..spirit
+    };
+    assert_eq!(describe::morale(&c, &minotaurs, 0), "N|-oppressed Spirit");
+}
+
+#[test]
+fn a_siege_towns_buildings_and_the_grail_have_their_lines() {
+    // E17 M6 T3c2 (design §12.4, §12.9): at a siege the defender's morale lists the Tavern (+1)
+    // and a Castle's Brotherhood of the Sword (+2) after the Angels' and dragons' lines and
+    // before the Minotaurs', its luck a Rampart's Fountain of Fortune (+2) after the Devils'
+    // and before the Halflings'; the owner's Grail line follows the hero's skill, before the
+    // rest, and leaves the rest what it does not name.
+    let c = described_catalogue();
+    let morale = Account {
+        angels: Some("Archangels".into()),
+        dragons: Some("Ghost Dragons".into()),
+        siege_morale: vec![Building::Tavern, Building::Brotherhood],
+        morale_minimum: Some("Minotaurs".into()),
+        ..Account::default()
+    };
+    assert_eq!(
+        describe::morale(&c, &morale, 3),
+        "G|-in Archangels-facing Ghost Dragons\nTavern +1\nBrotherhood +2"
+    );
+    // The buildings' changes are in the base: a base of 3 lifts the Minotaurs' minimum away and
+    // the spells' line is the value less the base.
+    let spells = Account {
+        morale_spells: 1,
+        ..morale
+    };
+    assert_eq!(
+        describe::morale(&c, &spells, 4),
+        "G|-in Archangels-facing Ghost Dragons\nTavern +1\nBrotherhood +2-spells +1"
+    );
+    let luck = Account {
+        devils: Some("Devils".into()),
+        siege_luck: vec![Building::Fountain],
+        luck_minimum: Some("Halflings".into()),
+        ..Account::default()
+    };
+    assert_eq!(
+        describe::luck(&c, &luck, 1, Bugs::Fixed),
+        "g|-facing Devils\nFountain +2"
+    );
+    // The Grail: after the skill, before the rest; its +2 is out of the rest.
+    let list = |grail, total| HeroList {
+        total,
+        artifacts: vec![108],
+        skill: 1,
+        grail,
+    };
+    let account = Account {
+        hero_morale: list(Some(Building::Colossus), 9),
+        hero_luck: list(Some(Building::SpiritGuardian), 6),
+        ..Account::default()
+    };
+    assert_eq!(
+        describe::morale(&c, &account, 9),
+        "G|-pendant-L1\nColossus +2-temp +3"
+    );
+    assert_eq!(
+        describe::luck(&c, &account, 6, Bugs::Fixed),
+        "g|-pendant-l1\nGuardian +2"
+    );
+    // Without a Grail the same total is all rest.
+    let account = Account {
+        hero_morale: list(None, 9),
+        ..Account::default()
+    };
+    assert_eq!(describe::morale(&c, &account, 9), "G|-pendant-L1-temp +5");
 }

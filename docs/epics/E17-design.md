@@ -5505,3 +5505,40 @@ Halflings') test the base with them, and the spells' line is the value less that
   `stats-luck-devils` (the Archangels' luck −1: bad, frame 2, the dialog's picture frame 2).
   Not recorded: the artifacts' lines (the battle's map writes no worn artifacts but war machines),
   a temporary line (the map gives no battle bonuses), the visits and the Grail (not built).
+
+
+### 12.10 The overrides, the Alliance's join, a siege town's buildings and the Grail (M6 T3c2)
+
+Nothing new read: §12.4's and §12.9's readings, plus `stack_morale` 0x43E000's end (0x43E0D3 to
+0x43E0F2), which cuts the stack's whole morale (base, spells, field) to 0 when it is above 0 and
+either hero wears the Spirit of Oppression (artifact 84); the Minotaurs' minimum comes before.
+
+- **The overrides** (from `MoraleAtMost` and `LuckAtMost` in either side's `morale_and_luck`, by
+  `Affects` toward the listed side; the artifact's name from the catalogue, `artifact.<original
+  id>`, 84 and 85): luck's Hourglass of the Evil Hour line (ARRAYTXT 82) alone after Cursed
+  Ground's; morale's Spirit of Oppression line (119) replaces every line before it while the base
+  is above 0 (after the Minotaurs' minimum), the base then 0, and the value the spells' line is
+  taken from is cut to 0 as the stack's is. Keys `stats.luck.hourglass`, `stats.morale.oppression`.
+- **The Alliance's join** (`AlignmentGroup` on the listed side's hero): the group's factions
+  count as one alignment in the army's set (`Account::alignments`).
+- **A siege town's buildings** (`Siege.bonuses` by the pack record's index; the defender's stacks
+  only, as the original passes the town to them): morale the Tavern +1 and a Castle's Brotherhood
+  of the Sword +2, luck a Rampart's Fountain of Fortune +2, the lines `stats.building.line`
+  (the executable's "\n%s +N", 0x660B48, 0x660B40) with the name `stats.building.name`
+  (BLDGNEUT 5, BLDGSPEC 5, 15, 9, 20); their changes join the base (the minimums and the spells'
+  line count them). The lines print the original's +1 and +2, not the wire's amounts.
+- **The Grail** (`Source::Building` of the listed hero): a Castle's Colossus (morale) or a
+  Rampart's Spirit Guardian (luck), +2, after the skill's line and before the rest, which loses
+  its +2. Any other Grail source stays in the rest.
+- **The index to the name** (*provisional*): the pack's building indices are not the original's
+  ids (the Brotherhood is index 20 in the Castle record), and the client loads no town records;
+  `clients/assets/*.toml`'s `[[town]]` carry `buildings = { tavern, grail, special }` with the pack
+  record indices (`Town.buildings`). Cleaner: the client loading `packs/*/towns.toml`.
+- **Not derivable:** a building the engine leaves out of `Siege.bonuses` (only the Tavern, the
+  Brotherhood and the Fountain are mapped), another Grail source, the visits (the once-marks name
+  no object, §12.9).
+- **Recorded:** none exact. Unit tests for every line and order. `stats-morale-siege` (set.toml,
+  `stats-siege.toml`) is added but not captured: the original's side needs a Castle under siege
+  with the Tavern, Brotherhood and Colossus built and the right-press point of the defender's
+  stack measured; the artifacts' lines cannot be recorded (the battle's map writes no worn
+  artifacts but war machines).

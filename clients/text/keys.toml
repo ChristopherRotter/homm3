@@ -1011,6 +1011,13 @@ original = [{ at = "ARRAYTXT:77" }]
 id = "stats.luck.cursed"
 original = [{ at = "ARRAYTXT:81" }]
 
+# The Hourglass of the Evil Hour's line (82, the artifact's name), alone, when either hero wears it.
+
+[[key]]
+id = "stats.luck.hourglass"
+args = { artifact = "text" }
+original = [{ at = "ARRAYTXT:82", printf = ["artifact"] }]
+
 [[key]]
 id = "stats.luck.clover"
 original = [{ at = "ARRAYTXT:83" }]
@@ -1110,6 +1117,14 @@ id = "stats.morale.facing"
 args = { creature = "text" }
 original = [{ at = "ARRAYTXT:118", printf = ["creature"] }]
 
+# The Spirit of Oppression's line (119, the artifact's name): it replaces the lines before it while
+# the base is above 0.
+
+[[key]]
+id = "stats.morale.oppression"
+args = { artifact = "text" }
+original = [{ at = "ARRAYTXT:119", printf = ["artifact"] }]
+
 [[key]]
 id = "stats.morale.minimum"
 args = { creature = "text" }
@@ -1168,6 +1183,33 @@ contexts = ["less", "more"]
 original = [
     { form = "less", at = "ARRAYTXT:109", printf = ["amount"] },
     { form = "more", at = "ARRAYTXT:110", printf = ["amount"] },
+]
+
+# A town building's name and line in morale's and luck's descriptions (E17 M6 T3c2, design §12.4 and
+# §12.9): `town_building_name` 0x4610E0 (the Tavern from BLDGNEUT's record 5; the others BLDGSPEC's
+# record type x 11 + building - 17: the Brotherhood of the Sword 22 of a Castle, the Fountain of
+# Fortune 21 of a Rampart, the Grail's building 26 of both: the Colossus, the Spirit Guardian), in
+# the executable's "\n%s +N" (0x660B48 for +1, 0x660B40 for +2), which a siege's defender's lists
+# and the owner's Grail line print.
+
+[[key]]
+id = "stats.building.name"
+contexts = ["tavern", "brotherhood", "fountain", "colossus", "spirit-guardian"]
+original = [
+    { form = "tavern", at = "BLDGNEUT:5" },
+    { form = "brotherhood", at = "BLDGSPEC:5" },
+    { form = "fountain", at = "BLDGSPEC:15" },
+    { form = "colossus", at = "BLDGSPEC:9" },
+    { form = "spirit-guardian", at = "BLDGSPEC:20" },
+]
+
+[[key]]
+id = "stats.building.line"
+args = { name = "text" }
+contexts = ["plus-one", "plus-two"]
+original = [
+    { form = "plus-one", at = "EXE:0x660B48", printf = ["name"] },
+    { form = "plus-two", at = "EXE:0x660B40", printf = ["name"] },
 ]
 
 # An effect's hint (0x5F4F33): GENRLTXT's record 611 with the spell's name and its rounds left;
