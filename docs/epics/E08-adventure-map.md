@@ -107,7 +107,8 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
   - **T89b The specs.** Done (2026-11-03, whole, decision 246; `adventure/e08-t89b`, `cross-lane`: the README's row): `experiments/specs/E08-batch-10a.toml` (E10-1, E10-3 to E10-7, two days; Red and Blue allied, Tan a walled-in computer enemy) and `-10b.toml` (E10-8 to E10-10, eight days, a town each), their templates, every walk priced, a fresh review (seven findings, all taken); no version moved.
 - **T90 Batch E10's harness reads and runs** (round 3; design §16). Done (2026-11-03, whole; `adventure/e08-t90`, #697): `clients/capture/`'s reads of the dwelling records, the teams, the objects and tiles, a camp's words, the hire dialog, the hint and the popup; the recipes `batches/E08-batch-10a.toml` and `-10b.toml`; two runs of 10a, five of 10b; the templates filled; no version moved.
 - **T91 Batch E10 scored** (round 3; design §16). Done (2026-11-03, whole, decision 247; `adventure/e08-t91`): survey `E08-dwellings.md` §16, every row as read, D-52 confirmed; no `ADV-Q`; no version moved.
-- Rounds 4 to 8 (T92 to T97) as design §17 lists them, each queued when the one before is done.
+- **T92 The ADRs, the glossary and the security lines** (round 4; design §17). Done (2026-11-03, whole, decision 247; `shared/e08-t92`, the lane's records in `adventure/e08-t91`): ADR-0016 points 1, 3 to 6 and ADR-0017 points 1, 3, 4, 6, 8, 10, 11 from the drafts (deleted) with batch E10's outcome; the glossary; `docs/06-security.md`; the replay format's bump corrected to v10; no version moved.
+- Rounds 5 to 8 (T93 to T97) as design §17 lists them, each queued when the one before is done.
 
 ## Later increments (sketch)
 

@@ -6,7 +6,8 @@ the code's comments cite these notes as "increment N's design note §M".
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 10's
 amendments, drafted in the lane's `adr-drafts/` (`0016-increment-10.md` by T88b1,
-`0017-increment-10.md` by T88b2); written from T88a's survey and the answers at ADV-Q41 and
+`0017-increment-10.md` by T88b2; applied to ADR-0016 and -0017 by T92, `shared/e08-t92`, with batch
+E10's outcome, and deleted); written from T88a's survey and the answers at ADV-Q41 and
 ADV-Q42 (the epic's decisions 231, 232, 235–238, 240). The task that builds a section deletes it;
 the file goes when the epic closes.
 Facts and sources: survey `docs/rules/surveys/E08-dwellings.md` (§ numbers are the survey's
@@ -134,7 +135,7 @@ Hash tags follow the part's last (the building task's); ruleset part v16.
   shipped maps (none expected).
 - **The resolution, when the game is built** (`StaticMap::new` with the setup stream, before the
   static map's tiles, lists and owners are made: in the placement walk, before every other draw
-  of the static map and after E09's placeholders, ADR-0017 point 4's draft): for each random
+  of the static map and after E09's placeholders, ADR-0017 point 4): for each random
   dwelling in object order, a faction uniform among its set, a level uniform in its range, the
   table's dwelling type. The object takes that type (as a random resource takes its drawn pile
   type, ADV-PIK-002), the type's footprint as its masks and the anchor moved right by the type's
@@ -270,8 +271,8 @@ A defeated player's dwellings become neutral, their guards kept (ADV-OWN-004, wi
 Written by T88b2 (decision 239, whole: decision 240): §12 the guards' battle, §13 the game (the
 hire dialog as a pending decision, GAM-DEC-008, its answer and events), §14 the env, replays,
 fixtures, properties and benchmarks, §15 versions, §16 batch E10, §17 shared and `cross-lane`
-work, the building tasks and the exit criteria, §18 risks. ADR-0017's draft:
-`adr-drafts/0017-increment-10.md` (points 1, 3, 4, 6, 8, 10, 11).
+work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment (points 1, 3, 4,
+6, 8, 10, 11; drafted here, applied by T92).
 
 ### 12. The guards' battle (GAM-BAT-001 amended; ADV-DWL-004)
 
@@ -350,8 +351,9 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's draft:
   by `legal_commands`; `Close` on entry 10 (close or leave); the two questions on 9 and 10.
   *Agent's call:* the most only, as the original's Max then Recruit; an amount head is the AI
   lane's. The observation the env returns is `GameObservation` (decision 187): no flat encoding.
-- **Replays:** adventure replay format v9 (`Answer::Hire`); every golden replay rehashed (the
-  hashes' versions; no recorded map holds a dwelling, a random dwelling or a camp). New, on
+- **Replays:** adventure replay format v10 (`Answer::Hire`; E09's T5a2 took v9 first); every
+  golden replay rehashed (the hashes' versions; no recorded map holds a dwelling, a random
+  dwelling or a camp). New, on
   **`e08-dwellings-36.h3m`** (`crates/h3-map/tests/dwellings_map.rs`, `h3_map::writer`): two
   players; a Guardhouse (level 1), a Barracks, a Dragon Cliffs (guarded), the Golem Factory and
   the Elemental Conflux (class 20), neutral and owned at load by each; random dwellings of 216,
@@ -391,7 +393,7 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's draft:
 | map import v16 | classes 17, 20, 78, 216–218, the owners, the refusals (§4) | T93b |
 | adventure state hash v20 | the owners, a dwelling's week, the camps, the resolved random dwellings (§5, §6) | T94 |
 | game state hash v23 | the hire dialog (§13) | T95b |
-| adventure replay format v9 | `Answer::Hire` | T95b |
+| adventure replay format v10 (E09's T5a2 took v9) | `Answer::Hire` | T95b |
 | env action encoding v7 (the AI lane's) | the four hire entries | T95b (`cross-lane`) |
 
 E09 bumps the same rows (`E09-design.md` §19: replay format v9 by T5a, map import v16 by T7a,
@@ -450,7 +452,7 @@ confirmed at its start). **Batch E10 runs before the build and before the shared
 | 4 | **T92** | `shared/`: the two ADRs with T91's outcome, the glossary, `docs/06-security.md` |
 | 5 | **T93** | T93a: the kinds, the parameters, the table, the derivations, the packs, the harvest's check (§1–§3; part v16). T93b: the import, its refusals and quirk entries, ADV-STUB-13 (§4; map import v16) |
 | 6 | **T94** | The holds, the resolution, the lists, the owners and the start's reveal, the week's and the camps' blocks, the week's step, the views (§5, §6, §9, §10; adventure state hash v20) |
-| 7 | **T95** | T95a: the visits, the guards' question and battle, the flag, the free creatures, the camp's visit (§7, §12). T95b: the purchase, the hire dialog and its legal set, view and events, the env (§8, §13, §14's env; game state hash v23, replay format v9, `cross-lane` v7) |
+| 7 | **T95** | T95a: the visits, the guards' question and battle, the flag, the free creatures, the camp's visit (§7, §12). T95b: the purchase, the hire dialog and its legal set, view and events, the env (§8, §13, §14's env; game state hash v23, replay format v10, `cross-lane` v7) |
 | 8 | **T96** + **T97** | T96: the dwellings maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T97: the audit against the exit criteria; increment 10 closed; increment 11 refined |
 
 **Increment 10's exit criteria:**
@@ -486,7 +488,7 @@ confirmed at its start). **Batch E10 runs before the build and before the shared
   bumping again (the town lane's `TRAPS.md`); T95b's `HireDialog` keeps E09's source and target
   open (§13).
 - **The resolution changes the static map's draws:** the random dwellings draw first in the
-  placement walk (ADR-0017 point 4's draft), so on a map with one every later setup draw moves;
+  placement walk (ADR-0017 point 4), so on a map with one every later setup draw moves;
   no recorded game has one. A moved anchor past the right edge is the static map's first cell off
   the map: tests at the edge (§5).
 - **The dialog's legal set by query:** the env buys the most only (v7); an agent saving gold

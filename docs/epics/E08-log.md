@@ -11441,3 +11441,35 @@ towns (E10's defeat); Tan's turn changed nothing read (the computer's hiring, E1
 `observation` source, `verified` when T93 to T95 build it. Nothing in the catalog changes now.
 
 **Versions:** none moved (documents only).
+
+### Increment 10, round 4: T92, the ADRs, the glossary and the security lines (2026-11-03, `shared/e08-t92`)
+
+**The cut** (decision 247): whole, after T91, in the same session. A docs-only `shared/` pull
+request (`shared/e08-t92`) with the shared paths only; the lane's records (the drafts' deletion,
+the design note, this entry, the epic, the queue, the HANDOFF) in T91's adventure pull request
+(`adventure/e08-t91`), so no `cross-lane` label (*agent's call*; T81a's single `cross-lane` pull
+request was the other way).
+
+- **The ADRs** (the two drafts accepted at ADV-Q43, decisions 241 and 243, applied with batch
+  E10's outcome as T91 scored it, then deleted): ADR-0016 points 1 (the dwellings' owners, a
+  dwelling's week block, the camps' block, a random dwelling resolved into the static map), 3 (no
+  Leave Guards at a dwelling; the room rule, D-52 confirmed by E10-3), 4 (the kinds dwelling,
+  random dwelling and Refugee Camp, the week's step; a line on what batch E10 tested and what it
+  did not), 5 (a dwelling's flag and the start's reveal), 6 (a dwelling's type and owner public,
+  its counts and guards and a camp's creature hidden, E10-10), a consequence, an alternative and
+  the history; ADR-0017 points 1 (no command), 3 (the week's refill and the camps' draws), 4 (the
+  random dwellings' and camps' draws), 6 (the guards' and the hire questions, the hire dialog
+  GAM-DEC-008; E10-4, E10-6, E10-8, E10-9 cited), 8 (v7's four entries), 10 (the purchase's
+  outcome), 11 (the guards' battle unowned, E10-1), a consequence, an alternative and the
+  history; the index's two Read-when cells.
+- **A correction folded in:** the adventure replay format's bump for `Answer::Hire` is **v10**,
+  E09's T5a2 having taken v9 first (ADR-0017's consequence; design §14, §15 and §17's T95b row).
+- **The glossary** (`docs/03-domain.md`): dwelling (on the map) and its guards, random dwelling,
+  Refugee Camp, free creatures, hire question, hire dialog.
+- **`docs/06-security.md`:** increment 10's paragraph (design §10, §13): a dwelling's type and
+  owner public, never its counts or guards; a camp's creature hidden, no knowledge kept; the
+  questions, gifts, dialog and purchases the visitor's owner's alone; the guards' battle unowned;
+  a purchase validated against the open decision and the treasury, never the payload's price; an
+  ally's dialog read-only. The events' names come with the build (T94, T95).
+
+**Versions:** none moved (documents only).
