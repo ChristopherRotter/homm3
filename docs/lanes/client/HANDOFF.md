@@ -11,7 +11,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679), T3b2
   done (#690; CLT-Q42 asked); T3c cut in two by the user (2026-11-03): **T3c1 done** (the hero's
   lists in morale's and luck's descriptions and the unclamped value, design §12.9; three stills
-  exact; its pull request from `client/e17-m6-t3c1`: check it first); **next: T3c2** (the
+  exact; #692 from `client/e17-m6-t3c1`: check it first); **next: T3c2** (the
   Hourglass's and the Spirit of Oppression's lines, the Angelic Alliance, a siege town's
   buildings and the Grail's line: QUEUE), then T4 to T7; then M7 ranked play and the server
   browser.
@@ -43,7 +43,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T3c1 (done; its pull request open: check it first).** The original data
+- **2026-11-03, E17 M6 T3c1 (done; #692 open: check it first).** The original data
   staged (57 files) first; #690 had merged; the baseline's `check.sh` passed. The user cut T3c
   in two (T3c1 the hero's lists and the unclamped value, T3c2 the rest). Read
   `hero_morale_description` 0x4DC320, `hero_luck_description` 0x4DCAC0 and `town_building_name`
