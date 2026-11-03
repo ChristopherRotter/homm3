@@ -12,8 +12,8 @@ use h3_protocol::wire::{Manifest, Observation, Side, Stack};
 use h3_ui::text::{Args, Catalogue};
 use h3_view::message::MessageBox;
 use h3_view::stats::{
-    Account, Described, Effect, Field, HeroList, Hints, Memory, Modal, Pair, Stats, StatsLayout,
-    Steps, Texts,
+    Account, Building, Described, Effect, Field, HeroList, Hints, Memory, Modal, Pair, Stats,
+    StatsLayout, Steps, Texts,
 };
 use h3_view::tables::Tables;
 
@@ -366,9 +366,28 @@ fn account(
                 .and_then(plural)
         })
     };
+    // The Angelic Alliance's join (an `AlignmentGroup` on the listed side's hero): its factions
+    // count as one alignment (E17 M6 T3c2, design §12.10).
+    let joined: Vec<usize> = observation.morale_and_luck[usize::from(listed == Side::Defender)]
+        .iter()
+        .filter_map(|e| match e {
+            h3_protocol::wire::MoraleLuck::AlignmentGroup { factions, .. } => Some(factions),
+            _ => None,
+        })
+        .flatten()
+        .map(|&f| usize::from(f))
+        .collect();
     let alignments: std::collections::BTreeSet<Option<usize>> = army(listed)
         .filter_map(|s| core.creature(Handle::from_raw(s.creature)))
-        .map(|i| i.faction.map(|f| f.index()))
+        .map(|i| {
+            i.faction.map(|f| {
+                if joined.contains(&f.index()) {
+                    joined.iter().copied().min().unwrap_or(f.index())
+                } else {
+                    f.index()
+                }
+            })
+        })
         .collect();
     let undead = army(listed)
         .filter_map(|s| core.creature(Handle::from_raw(s.creature)))
@@ -399,9 +418,172 @@ fn account(
             .and_then(|_| plural(stack)),
         morale_spells: by(MIRTH) - by(SORROW),
         luck_spells: by(FORTUNE) - by(MISFORTUNE),
-        hero_morale: hero_list(sources.manifest, observation, listed, Kind::Morale),
-        hero_luck: hero_list(sources.manifest, observation, listed, Kind::Luck),
+        hourglass: cap_artifact(sources, observation, listed, Kind::Luck),
+        oppression: cap_artifact(sources, observation, listed, Kind::Morale),
+        hero_morale: with_grail(
+            hero_list(sources.manifest, observation, listed, Kind::Morale),
+            sources,
+            (observation, listed, Kind::Morale),
+        ),
+        hero_luck: with_grail(
+            hero_list(sources.manifest, observation, listed, Kind::Luck),
+            sources,
+            (observation, listed, Kind::Luck),
+        ),
+        siege_morale: siege_buildings(sources, observation, listed, Kind::Morale),
+        siege_luck: siege_buildings(sources, observation, listed, Kind::Luck),
     })
+}
+
+/// The name of the artifact whose cap on `kind` reaches the stacks of `side` (either hero's:
+/// the Hourglass of the Evil Hour's `LuckAtMost`, the Spirit of Oppression's `MoraleAtMost`;
+/// E17 M6 T3c2, design §12.10): its name from the catalogue by its original id (ARTRAITS).
+fn cap_artifact(
+    sources: &Sources<'_>,
+    observation: &Observation,
+    side: Side,
+    kind: Kind,
+) -> Option<String> {
+    use h3_protocol::wire::{Affects, MoraleLuck, Source};
+    for (index, mine) in [(0usize, Side::Attacker), (1, Side::Defender)] {
+        for effect in &observation.morale_and_luck[index] {
+            let (affects, source) = match (effect, kind) {
+                (
+                    MoraleLuck::MoraleAtMost {
+                        affects, source, ..
+                    },
+                    Kind::Morale,
+                )
+                | (
+                    MoraleLuck::LuckAtMost {
+                        affects, source, ..
+                    },
+                    Kind::Luck,
+                ) => (affects, source),
+                _ => continue,
+            };
+            let reaches = match affects {
+                Affects::Both => true,
+                Affects::Own => mine == side,
+                Affects::Enemy => mine != side,
+            };
+            if !reaches {
+                continue;
+            }
+            let original = match source {
+                Source::Artifact { artifact } => sources
+                    .manifest
+                    .keys
+                    .artifacts
+                    .get(usize::from(*artifact))
+                    .and_then(|k| k.rsplit(':').next())
+                    .and_then(|name| CAP_ARTIFACTS.iter().find(|(key, _)| *key == name))
+                    .map(|&(_, id)| id),
+                _ => None,
+            };
+            if let Some(id) = original {
+                return Some(
+                    sources
+                        .catalogue
+                        .text(&format!("artifact.{id}"), &Args::new()),
+                );
+            }
+        }
+    }
+    None
+}
+
+/// The artifacts that cap morale or luck, by their keys' names in the packs, with their original
+/// ids: the Spirit of Oppression and the Hourglass of the Evil Hour.
+const CAP_ARTIFACTS: [(&str, u32); 2] = [
+    ("spirit_of_oppression", 84),
+    ("hourglass_of_the_evil_hour", 85),
+];
+
+/// The asset tables' record of faction handle `faction` (E17 M6 T3c2).
+fn town_of<'a>(sources: &Sources<'a>, faction: u16) -> Option<&'a h3_view::tables::Town> {
+    let key = sources.manifest.keys.factions.get(usize::from(faction))?;
+    sources.tables.towns.get(key)
+}
+
+/// The siege town's buildings that change the defender's `kind` (E17 M6 T3c2, design §12.4): the
+/// town is passed to the defender's stacks only (`listed` the side whose sources the description
+/// lists); the Tavern (morale), a Castle's Brotherhood of the Sword (morale), a Rampart's
+/// Fountain of Fortune (luck), each from `Siege.bonuses` by its index in the town record (the
+/// asset tables' `buildings`), in the original's order. The observation shows nothing else of a
+/// town's buildings (CLT-Q40).
+fn siege_buildings(
+    sources: &Sources<'_>,
+    observation: &Observation,
+    listed: Side,
+    kind: Kind,
+) -> Vec<Building> {
+    let Some(siege) = observation
+        .siege
+        .as_ref()
+        .filter(|_| listed == Side::Defender)
+    else {
+        return Vec::new();
+    };
+    let Some(town) = town_of(sources, siege.faction) else {
+        return Vec::new();
+    };
+    let Some(indices) = town.buildings else {
+        return Vec::new();
+    };
+    let changing = |index: u8| {
+        siege.bonuses.iter().any(|b| {
+            b.building == index
+                && match kind {
+                    Kind::Morale => b.morale != 0,
+                    Kind::Luck => b.luck != 0,
+                }
+        })
+    };
+    let mut out = Vec::new();
+    if kind == Kind::Morale && changing(indices.tavern) {
+        out.push(Building::Tavern);
+    }
+    match (town.original, kind, indices.special) {
+        (0, Kind::Morale, Some(i)) if changing(i) => out.push(Building::Brotherhood),
+        (1, Kind::Luck, Some(i)) if changing(i) => out.push(Building::Fountain),
+        _ => {}
+    }
+    out
+}
+
+/// `list` with the owner's Grail building (E17 M6 T3c2, design §12.9) its changes name: a
+/// `Source::Building` of side `listed`'s hero (the first town of its owner with the Grail's
+/// building standing, as the engine names it) that is a Castle's Colossus for morale or a
+/// Rampart's Spirit Guardian for luck; its +2 is in `list.total` already.
+fn with_grail(
+    mut list: HeroList,
+    sources: &Sources<'_>,
+    (observation, listed, kind): (&Observation, Side, Kind),
+) -> HeroList {
+    use h3_protocol::wire::{MoraleLuck, Source};
+    let effects = &observation.morale_and_luck[usize::from(listed == Side::Defender)];
+    for effect in effects {
+        let source = match (effect, kind) {
+            (MoraleLuck::Morale { source, .. }, Kind::Morale)
+            | (MoraleLuck::Luck { source, .. }, Kind::Luck) => source,
+            _ => continue,
+        };
+        let Source::Building { faction, index } = *source else {
+            continue;
+        };
+        let Some(town) = town_of(sources, faction) else {
+            continue;
+        };
+        if town.buildings.is_some_and(|b| b.grail == index) {
+            list.grail = match (town.original, kind) {
+                (0, Kind::Morale) => Some(Building::Colossus),
+                (1, Kind::Luck) => Some(Building::SpiritGuardian),
+                _ => list.grail,
+            };
+        }
+    }
+    list
 }
 
 /// Which of a hero's lists.

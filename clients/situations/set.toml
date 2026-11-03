@@ -1534,6 +1534,26 @@ differing = 0
 why = "exact: the Archangels' luck -1, bad: facing the Arch Devils, frame 2 here and in the dialog (E17 M6 T3c1)"
 
 
+# E17 M6 T3c2: a siege's buildings and the owner's Grail line (design §12.4, §12.9).
+# `stats-morale-siege`: the defender's Royal Griffins' morale at a Castle town: the Colossus +2
+# (the hero's Grail), one alignment, the Tavern +1, the Brotherhood of the Sword +2. NOT CAPTURED:
+# needs the original's side (a map with a Castle town under siege, the Tavern, Brotherhood and
+# Colossus built, the defender's hero owning no other Grail town) and the right-click point of the
+# morale picture, which depends on where the acting defender stack's dialog opens (the actions'
+# 44,280 are the attacker situations' and are to be adjusted at the capture).
+
+[[situation]]
+id = "stats-morale-siege"
+scenario = "stats-siege.toml"
+seat = "defender"
+actions = ["key:t", "right:44,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: the defender's Royal Griffins' morale at a Castle siege: Colossus, one alignment, Tavern, Brotherhood of the Sword (E17 M6 T3c2; not yet captured)"
+
+
 # E17 M6 T2b1: the right button held over the battle (`battle_right_click` 0x4769C0; design
 # §12.5): the stack on the hex there, either side's, shows its stats dialog without the OK and the
 # cast button while the button is held (`stack_stats_dialog`'s second argument 1, `popup_run_held`

@@ -18,20 +18,16 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T3c2 — the descriptions' overrides, the Alliance and a siege town's buildings
+### E17 M6 T3c3 — capture `stats-morale-siege`
 
-- **Scope:** T3c's rest (T3c1 done 2026-11-03: the hero's lists and the unclamped value, design
-  §12.9; T3c's entry in `QUEUE-ARCHIVE.md`), from `Observation.morale_and_luck` and
-  `Siege.bonuses` (design §12.4): the Hourglass of the Evil Hour's line (82, alone; a
-  `LuckAtMost` reaching the side, either hero's), the Spirit of Oppression's (119, replacing the
-  lines before it while the base is above 0; a `MoraleAtMost`), the Angelic Alliance's join of
-  the alignments (an `AlignmentGroup`: its factions count as one), a siege town's buildings
-  (morale's building 5 +1, 0x660B48, and a Castle's 22 +2; luck's Rampart building 21 +2,
-  0x660B40) and the owner's Grail line (§12.9; a `Building` source), both by a town record's
-  index (the town lane's records, `packs/*/towns.toml`: the index to the building's original
-  id); CLT-Q42 if answered by then; each line not derivable listed.
-- **Acceptance:** as T2a2b2's; recorded: a siege town's buildings (the battle's map writes the
-  town). **Depends on:** T3c1 (done). **Status:** ready.
+- **Scope:** T3c2's entry `stats-morale-siege` (`situations/set.toml`, `stats-siege.toml`; design
+  §12.10) is added, not captured: measure the defender's stack right-press point (the entry's
+  actions are the attacker situations'), set the original's town up (a Castle under siege with the
+  Tavern, Brotherhood of the Sword and Colossus built, the hero's owner's first Castle) and capture
+  with the harness (`clients/capture/README.md`); `differing = 0` is a placeholder until then.
+  Fix what the first capture shows.
+- **Acceptance:** the still exact or listed; `drawn`; `check.sh`. **Depends on:** T3c2 (done).
+  **Status:** ready (needs the Wine setup).
 
 ### E17 M6 T4 — the combat options dialog
 

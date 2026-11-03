@@ -178,9 +178,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   *not built*), cut in two by the user (2026-11-03): **T3c1** (done 2026-11-03) the hero's lists
   read whole (0x4DC320, 0x4DCAC0; design §12.9) and drawn from the carry (the artifacts,
   Leadership or Luck, the rest as temporary; the visits and the Grail in the rest meanwhile), the
-  header and pictures by the unclamped value, three stills exact; **T3c2** the Hourglass's and the
-  Spirit of Oppression's lines, the Angelic Alliance's join, a siege town's buildings and the
-  Grail's line (a town record's index).
+  header and pictures by the unclamped value, three stills exact; **T3c2** (done 2026-11-03,
+  design §12.10) the Hourglass's and the Spirit of Oppression's lines, the Angelic Alliance's
+  join, a siege town's buildings and the Grail's line (the pack record's index in the asset
+  tables, *provisional*); unit-tested, `stats-morale-siege` added, its capture waits.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
   movement and cursor shadows, the combat speed, the Auto Combat options, the rest as read), kept
   in the client's settings; recorded.

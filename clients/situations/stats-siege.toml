@@ -1,0 +1,51 @@
+# E17 M6 T3c2: the stats dialog's morale description at a siege (design §12.4, §12.9): a Castle
+# town with a Fort, its Tavern (pack record index 4: morale +1) and Brotherhood of the Sword
+# (index 20: +2) standing, the defender's Royal Griffins opening (the human defender's, speed 9
+# against the Pikemen's 4), his hero's owner's Grail building the Colossus (index 21: a morale
+# effect of +2 from the building). Expected lines: the hero's Colossus +2, one alignment, the
+# Tavern +1, the Brotherhood of the Sword +2.
+
+[scenario]
+id = "situation-stats-siege"
+human = ["defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+[scenario.siege]
+faction = "base:castle"
+fort = "fort"
+moat = "absent"
+bonuses = [
+    { building = 4, morale = 1 },
+    { building = 20, morale = 2 },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[[scenario.defender_hero.effects]]
+kind = "morale"
+amount = 2
+source = { kind = "building", faction = "base:castle", index = 21 }

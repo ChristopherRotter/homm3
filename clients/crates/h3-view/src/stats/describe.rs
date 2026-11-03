@@ -4,9 +4,10 @@
 //! `stack_luck_description` 0x44C1C0), or the empty list's line, with the sign's picture. [`Account`]
 //! holds what a seat's observation tells of the sources: since M6 T3c1 the hero's own lists
 //! ([`HeroList`]: its artifacts, its Leadership or Luck and the rest as temporary, from CLT-Q40's
-//! carry); the Hourglass of the Evil Hour and the Spirit of Oppression, the Angelic Alliance's
-//! join and a siege town's buildings are not in it yet (T3c2), so their lines are not written;
-//! the spells' line is the spells' change as the executable counts it from the lines the client
+//! carry), and since M6 T3c2 the Hourglass of the Evil Hour's and the Spirit of Oppression's lines
+//! (design §12.10; the Angelic Alliance's join is in [`Account::alignments`]), a siege town's
+//! buildings and the owner's Grail building ([`Building`]); the spells' line is the spells' change
+//! as the executable counts it from the lines the client
 //! has.
 
 use alloc::format;
@@ -63,10 +64,75 @@ pub struct Account {
     pub morale_spells: i32,
     /// What they change of its luck (Fortune's less Misfortune's).
     pub luck_spells: i32,
+    /// The Hourglass of the Evil Hour's name when a cap on luck reaches the side (either hero's,
+    /// `LuckAtMost`): luck's description is that artifact's line alone (ARRAYTXT 82).
+    pub hourglass: Option<String>,
+    /// The Spirit of Oppression's name when a cap on morale reaches the side (either hero's,
+    /// `MoraleAtMost`): above a base of 0 its line replaces the lines before it (ARRAYTXT 119).
+    pub oppression: Option<String>,
     /// The side's hero's morale list (none without a hero: the default).
     pub hero_morale: HeroList,
     /// Its luck list.
     pub hero_luck: HeroList,
+    /// A siege town's buildings that change the defender's morale, in the original's order
+    /// (T3c2, 0x44B960: the Tavern, a Castle's Brotherhood of the Sword); none for a stack of
+    /// the attacker or outside a siege.
+    pub siege_morale: Vec<Building>,
+    /// Its buildings that change the defender's luck (a Rampart's Fountain of Fortune).
+    pub siege_luck: Vec<Building>,
+}
+
+/// A town building the descriptions name (E17 M6 T3c2, design §12.9; the original's ids in the
+/// town record: the Tavern 5, the Brotherhood of the Sword 22, the Fountain of Fortune 21, the
+/// Grail's building 26).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Building {
+    /// The Tavern: morale +1 for a siege's defender.
+    Tavern,
+    /// A Castle's Brotherhood of the Sword: morale +2 for a siege's defender.
+    Brotherhood,
+    /// A Rampart's Fountain of Fortune: luck +2 for a siege's defender.
+    Fountain,
+    /// A Castle's Grail building (the Colossus): its owner's heroes' morale +2.
+    Colossus,
+    /// A Rampart's Grail building (the Spirit Guardian): its owner's heroes' luck +2.
+    SpiritGuardian,
+}
+
+impl Building {
+    /// The key context of its name (`stats.building.name`).
+    const fn name(self) -> &'static str {
+        match self {
+            Self::Tavern => "tavern",
+            Self::Brotherhood => "brotherhood",
+            Self::Fountain => "fountain",
+            Self::Colossus => "colossus",
+            Self::SpiritGuardian => "spirit-guardian",
+        }
+    }
+
+    /// Its change, which its line prints (the Tavern's 1, the others' 2).
+    const fn change(self) -> i32 {
+        match self {
+            Self::Tavern => 1,
+            _ => 2,
+        }
+    }
+
+    /// Its line (`"\n%s +N"`, the executable's 0x660B48 or 0x660B40) and its change.
+    fn line(self, catalogue: &Catalogue) -> (String, i32) {
+        let name = catalogue.text("stats.building.name", &Args::new().context(self.name()));
+        let context = if self.change() == 1 {
+            "plus-one"
+        } else {
+            "plus-two"
+        };
+        let line = catalogue.text(
+            "stats.building.line",
+            &Args::new().context(context).text("name", &name),
+        );
+        (line, self.change())
+    }
 }
 
 /// A hero's morale or luck list (`hero_morale_description` 0x4DC320, `hero_luck_description`
@@ -89,6 +155,9 @@ pub struct HeroList {
     /// The level, 1 (Basic) to 3 (Expert), of the skill its changes name (Leadership for morale,
     /// Luck for luck); 0 none.
     pub skill: u8,
+    /// The owner's Grail building the list names (T3c2: a Castle's for morale, a Rampart's for
+    /// luck); its change is in `total` and its line is the list's own, after the skill's.
+    pub grail: Option<Building>,
 }
 
 /// The Pendant of Courage (original id 108): its lines' change is 3.
@@ -142,6 +211,11 @@ fn hero_lines(
     {
         lines.push_str(&catalogue.text(&format!("{prefix}.skill"), &Args::new().context(context)));
         listed += i32::from(list.skill);
+    }
+    if let Some(grail) = list.grail {
+        let (line, change) = grail.line(catalogue);
+        lines.push_str(&line);
+        listed += change;
     }
     let rest = list.total - listed;
     if rest != 0 {
@@ -233,12 +307,25 @@ pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
             lines.push_str(&named("stats.morale.facing", dragons));
             base -= 1;
         }
+        base += buildings(catalogue, &mut lines, &account.siege_morale);
         let field_change = field.map_or(0, |(_, change)| change);
         let mut shown = base + account.morale_spells + field_change;
         if let Some(minotaurs) = &account.morale_minimum {
             minimum(&mut lines, (&mut base, &mut shown), || {
                 named("stats.morale.minimum", minotaurs)
             });
+        }
+        if let Some(artifact) = &account.oppression {
+            // The Spirit of Oppression (0x44B960): above a base of 0 its line replaces every
+            // line before it; the stack's morale is cut to 0 when it is above (0x43E0D3).
+            if base > 0 {
+                lines = catalogue.text(
+                    "stats.morale.oppression",
+                    &Args::new().text("artifact", artifact),
+                );
+                base = 0;
+            }
+            shown = shown.min(0);
         }
         spells(catalogue, &mut lines, shown - field_change - base);
         lines
@@ -255,6 +342,12 @@ pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
 pub fn luck(catalogue: &Catalogue, account: &Account, value: i32, bugs: Bugs) -> String {
     let lines = if account.field == Field::Cursed {
         catalogue.text("stats.luck.cursed", &Args::new())
+    } else if let Some(artifact) = &account.hourglass {
+        // Either hero's Hourglass of the Evil Hour (0x44C1C0): its line alone.
+        catalogue.text(
+            "stats.luck.hourglass",
+            &Args::new().text("artifact", artifact),
+        )
     } else {
         // The hero's list after the base (0x44C2A5); its changes are the base's.
         let mut lines = hero_lines(catalogue, "stats.luck", &LUCK_ARTIFACTS, &account.hero_luck);
@@ -269,6 +362,7 @@ pub fn luck(catalogue: &Catalogue, account: &Account, value: i32, bugs: Bugs) ->
             );
             base -= 1;
         }
+        base += buildings(catalogue, &mut lines, &account.siege_luck);
         let field_change = if clover { 2 } else { 0 };
         let mut shown = base + account.luck_spells + field_change;
         if let Some(halflings) = &account.luck_minimum {
@@ -287,6 +381,17 @@ pub fn luck(catalogue: &Catalogue, account: &Account, value: i32, bugs: Bugs) ->
         lines
     };
     compose(catalogue, "stats.luck", value, &lines)
+}
+
+/// The siege town's `list` of buildings: their lines appended, their changes' sum.
+fn buildings(catalogue: &Catalogue, lines: &mut String, list: &[Building]) -> i32 {
+    let mut sum = 0;
+    for building in list {
+        let (line, change) = building.line(catalogue);
+        lines.push_str(&line);
+        sum += change;
+    }
+    sum
 }
 
 /// A creature's minimum of 1 (the Minotaurs' morale 0x44BF7B, the Halflings' luck 0x44C462): the

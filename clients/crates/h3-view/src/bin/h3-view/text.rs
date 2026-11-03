@@ -507,8 +507,8 @@ mod tests {
         assert!(keys.keys.contains_key("creature-ability.base:marksman"));
         assert!(keys.keys.contains_key("stats.hint.ok"));
         let tables = [
-            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "MINENAME", "PRISKILL",
-            "SEERHUT", "SKILLLEV", "SPTRAITS", "WALLS",
+            "ARRAYTXT", "BLDGNEUT", "BLDGSPEC", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS",
+            "MINENAME", "PRISKILL", "SEERHUT", "SKILLLEV", "SPTRAITS", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }

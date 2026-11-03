@@ -446,6 +446,11 @@ pub struct Town {
     pub key: String,
     /// Its town type, the executable's index of the tables.
     pub original: u8,
+    /// The pack town record's indices of the buildings morale's and luck's descriptions name
+    /// (E17 M6 T3c2; provisional: the client has no town records, so the tables hold the few
+    /// indices it needs). None: the descriptions list none for the town.
+    #[serde(default)]
+    pub buildings: Option<TownBuildings>,
     /// The siege's background, in place of the terrain's.
     pub background: String,
     /// The shooters in its turrets.
@@ -455,6 +460,21 @@ pub struct Town {
     /// 13 the lower tower, 14 the keep, 15 to 17 the keep's, the lower and the upper tower's
     /// covers).
     pub parts: Vec<WallPart>,
+}
+
+/// The indices, in a town's pack record, of its buildings that morale's and luck's descriptions
+/// list (E17 M6 T3c2, design §12.9; the original ids are 5, 26 and 22 or 21).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownBuildings {
+    /// The Tavern (original building 5: morale +1 for the defender in a siege).
+    pub tavern: u8,
+    /// The Grail's building (original 26: Colossus, Spirit Guardian, ...).
+    pub grail: u8,
+    /// The Brotherhood of the Sword (a Castle's, original 22) or the Fountain of Fortune (a
+    /// Rampart's, original 21).
+    #[serde(default)]
+    pub special: Option<u8>,
 }
 
 /// A siege's wall part: its picture's top-left corner, the hex it is drawn at and its pictures

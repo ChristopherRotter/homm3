@@ -5069,3 +5069,27 @@ are M6 T1.
     replay from 0; the played timeline still copied); the sequences tool fails naming a clip it
     cannot decode (a comparison needs it); `bink-reference.py` names a packet or file FFmpeg
     refuses, goes on, exits 1.
+
+### M6 T3c2 — the overrides, the Alliance's join, a siege town's buildings and the Grail (2026-11-03)
+
+On `client/e17-m6-t3c2`, the user present. The sandbox new, the original files staged first (57
+files); #692 had merged. The user asked for one part to go to a sub-agent and one commit: part A
+(the overrides and the join) by the session, part B (the buildings and the Grail) by a sub-agent
+in its own worktree, its patch applied on A's commit (design §12.10).
+
+- **Read:** `stack_morale` 0x43E000's end: the Spirit of Oppression cuts the stack's whole morale
+  to 0 when above 0, after the Minotaurs' minimum. ARRAYTXT 82 and 119 take the artifact's name.
+- **Built (A):** `Account::hourglass`, `oppression`; `stats::cap_artifact` (either hero's cap by
+  `Affects`); the Alliance's join in the army's alignment set; keys `stats.luck.hourglass`,
+  `stats.morale.oppression`.
+- **Built (B):** `Building`, `Account::siege_morale`/`siege_luck`, `HeroList::grail`; the binary's
+  `siege_buildings`, `with_grail`, `town_of`; keys `stats.building.name`/`.line`; the tables
+  whitelist gained BLDGNEUT and BLDGSPEC. *Provisional* (agent): `Town.buildings` in the asset
+  tables maps the pack record's index to the original's building; context names `plus-one` and
+  `plus-two` (`one`, `two` are plural categories).
+- **Oddities** (copied, no question needed): the siege buildings apply to the defender's stacks
+  only; the Tavern's +1 is unconditional in the original.
+- **Not recorded:** the artifacts cannot be written into the original's map; `stats-morale-siege`
+  is in `set.toml` without a capture (its actions copied from the attacker situations: measure the
+  defender stack's point).
+- **Checked:** `cargo test -p h3-view`, clippy, fmt; see the HANDOFF for `check.sh` and `drawn`.

@@ -2671,6 +2671,8 @@ backgrounds = ["CmBkBoat.pcx"]
 [[town]]
 key = "castle"
 original = 0
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 4, grail = 21, special = 20 }
 background = "SgCsBack.pcx"
 turrets = { shooter = 2, shift = 0, missile = "plcbowx.def", keep = [780, 238], lower = [648, 566], upper = [596, 80] }
 parts = [
@@ -2697,6 +2699,8 @@ parts = [
 [[town]]
 key = "rampart"
 original = 1
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 5, grail = 23, special = 19 }
 background = "SgRmBack.pcx"
 turrets = { shooter = 18, shift = 0, missile = "pelfx.def", keep = [786, 240], lower = [625, 563], upper = [595, 81] }
 parts = [
@@ -2723,6 +2727,8 @@ parts = [
 [[town]]
 key = "tower"
 original = 2
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 5, grail = 22 }
 background = "SgTwBack.pcx"
 turrets = { shooter = 34, shift = 0, missile = "pmagex.def", keep = [753, 251], lower = [609, 578], upper = [600, 92] }
 parts = [
@@ -2749,6 +2755,8 @@ parts = [
 [[town]]
 key = "inferno"
 original = 3
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 5, grail = 23 }
 background = "SgInBack.pcx"
 turrets = { shooter = 44, shift = 0, missile = "cprgogx.def", keep = [765, 230], lower = [623, 565], upper = [595, 80] }
 parts = [
@@ -2775,6 +2783,8 @@ parts = [
 [[town]]
 key = "necropolis"
 original = 4
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 5, grail = 22 }
 background = "SgNcBack.pcx"
 turrets = { shooter = 64, shift = 0, missile = "PLICH.def", keep = [755, 365], lower = [625, 570], upper = [593, 90] }
 parts = [
@@ -2801,6 +2811,8 @@ parts = [
 [[town]]
 key = "dungeon"
 original = 5
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 5, grail = 22 }
 background = "SgDnBack.pcx"
 turrets = { shooter = 76, shift = 39, missile = "pmedusx.def", keep = [785, 217], lower = [625, 560], upper = [596, 80] }
 parts = [
@@ -2827,6 +2839,8 @@ parts = [
 [[town]]
 key = "stronghold"
 original = 6
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 3, grail = 20 }
 background = "SgStBack.pcx"
 turrets = { shooter = 88, shift = 0, missile = "porchx.def", keep = [785, 222], lower = [615, 557], upper = [596, 80] }
 parts = [
@@ -2853,6 +2867,8 @@ parts = [
 [[town]]
 key = "fortress"
 original = 7
+# The pack town record's indices of the buildings morale's and luck's descriptions name (E17 M6 T3c2).
+buildings = { tavern = 3, grail = 20 }
 background = "SgFrBack.pcx"
 turrets = { shooter = 100, shift = 0, missile = "pplizax.def", keep = [795, 230], lower = [626, 575], upper = [580, 85] }
 parts = [

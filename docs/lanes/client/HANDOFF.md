@@ -9,11 +9,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 and T2
   done (#620 to #672, T2's cuts in the epic). T3 cut in two by the user (2026-11-03): T3a done
   (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679), T3b2
-  done (#690; CLT-Q42 asked); T3c cut in two by the user (2026-11-03): **T3c1 done** (the hero's
-  lists in morale's and luck's descriptions and the unclamped value, design §12.9; three stills
-  exact; #692 from `client/e17-m6-t3c1`: check it first); **next: T3c2** (the
-  Hourglass's and the Spirit of Oppression's lines, the Angelic Alliance, a siege town's
-  buildings and the Grail's line: QUEUE), then T4 to T7; then M7 ranked play and the server
+  done (#690; CLT-Q42 asked); T3c cut in two by the user (2026-11-03): **T3c1 done** (#692: the hero's
+  lists and the unclamped value, design §12.9); **T3c2 done** (the overrides, the Alliance's
+  join, a siege town's buildings and the Grail's line, design §12.10; unit-tested, no capture
+  possible for the artifacts; PR from `client/e17-m6-t3c2`: check it first); **next: T3c3**
+  (capture `stats-morale-siege`, needs Wine) or T4 (QUEUE), then T5 to T7; then M7 ranked play and the server
   browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -43,6 +43,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-03, E17 M6 T3c2 (done; PR open: check it first).** The original data staged (57
+  files) first; #692 had merged. The user asked for one part to a sub-agent, one commit: A (the
+  Hourglass, the Spirit of Oppression, the Alliance's join; `stack_morale` 0x43E0D3 read) by the
+  session, B (siege buildings, the Grail) by a sub-agent in a worktree, its patch applied and the
+  conflicts resolved (design §12.10). The pack building indices live in the asset tables
+  (*provisional*). `stats-morale-siege` added, not captured (T3c3).
+
 - **2026-11-03, E17 M6 T3c1 (done; #692 open: check it first).** The original data
   staged (57 files) first; #690 had merged; the baseline's `check.sh` passed. The user cut T3c
   in two (T3c1 the hero's lists and the unclamped value, T3c2 the rest). Read
@@ -57,11 +64,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   the hero's own values, 0 on Cursed Ground, the Hourglass's 0); built `hero_info::values` and
   the binary's `stats::field`; CLT-Q42 asked; three stills exact; `drawn`; `check.sh`. The inbox's
   CLT-Q40 item became T3c.
-
-- **2026-11-03, E17 M6 T3b1 (done; #679 merged).** The original data staged
-  (57 files) first, then the computer went offline; #676 had merged; the baseline's `check.sh`
-  passed. The user cut T3b in two (T3b1 the window, T3b2 its morale and luck). Read
-  `army_info_hero_create` 0x46C370 whole and `battle_right_click`'s hero branches (design §12.8);
-  built `[hero_info]`, `h3_view::hero_info`, `Battle::hero_info`, `Boxes::hero_info`; two stills
-  exact at their first capture; the window checked under Xvfb; `drawn`; `check.sh`.
-

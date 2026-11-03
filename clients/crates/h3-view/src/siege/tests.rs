@@ -54,6 +54,7 @@ fn town(moat: &str) -> Town {
     Town {
         key: "castle".into(),
         original: 0,
+        buildings: None,
         background: "SgCsBack.pcx".into(),
         turrets: Turrets {
             shooter: 26,

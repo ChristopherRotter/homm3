@@ -30,7 +30,7 @@ use serde::Deserialize;
 use crate::message::{self, MessageBox, Outcome};
 
 pub mod describe;
-pub use describe::{Account, Field, HeroList};
+pub use describe::{Account, Building, Field, HeroList};
 use h3_render::Bugs;
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Button, Def, Dialog, Frames, Item, Label, Picture, Shown, Text};
