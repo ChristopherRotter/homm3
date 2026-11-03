@@ -376,7 +376,8 @@ fn compile_buildings(
     };
     let mut direct = Vec::with_capacity(defs.len());
     let mut forbidden = Vec::with_capacity(defs.len());
-    for def in defs {
+    let mut auto = Vec::with_capacity(defs.len());
+    for (def, &id) in defs.iter().zip(&ids) {
         let mut set = BuildingSet::EMPTY;
         for key in &def.supersedes {
             set = set.with(resolve(
@@ -386,6 +387,18 @@ fn compile_buildings(
             )?);
         }
         direct.push(set);
+        let mut with = BuildingSet::EMPTY;
+        for key in &def.auto_with {
+            with = with.with(resolve(
+                def,
+                key,
+                "it is built with a building the faction lacks",
+            )?);
+        }
+        if with.contains(id) {
+            return Err(invalid_building(faction, def, "it is built with itself"));
+        }
+        auto.push(with);
         forbidden.push(
             def.forbidden_with
                 .as_deref()
@@ -401,8 +414,12 @@ fn compile_buildings(
     }
     let closed = close(&ids, &direct);
     let mut buildings = Vec::with_capacity(defs.len());
-    for (((def, &id), &supersedes), &forbidden_with) in
-        defs.iter().zip(&ids).zip(&closed).zip(&forbidden)
+    for ((((def, &id), &supersedes), &forbidden_with), &auto_with) in defs
+        .iter()
+        .zip(&ids)
+        .zip(&closed)
+        .zip(&forbidden)
+        .zip(&auto)
     {
         if supersedes.contains(id) {
             return Err(invalid_building(
@@ -424,6 +441,7 @@ fn compile_buildings(
             slot: def.slot,
             supersedes,
             forbidden_with,
+            auto_with,
             roles: def.roles,
         });
     }

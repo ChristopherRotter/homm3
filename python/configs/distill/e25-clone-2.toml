@@ -1,0 +1,28 @@
+# E25 T20's longer clone (increment 6, AI-Q15): T16's cloning bench (`e25-clone.toml`) at four
+# times its samples, the learning rate falling over the longer horizon (`samples`), the same seed,
+# distribution and student (`e25-neutral.toml`'s 2 x 512 MLP, from scratch), its curve beside
+# T16's. T19's ceiling: the fair actor repeats its own choice 0.972 of the time, T16's student
+# reached 0.531 (`records/distill/ceiling/ceiling-1.json`). Its length and machine agreed with the
+# user. From python/:
+#
+#   uv run --group train python -m h3env.train.distill --teacher system --config configs/distill/e25-clone-2.toml --out runs/clone-2
+
+run = "configs/e25-neutral.toml"
+seed = 7
+samples = 16_000_000
+heldout = 16_384
+eval_every = 2_000_000
+envs = 256
+rollout = 128
+epochs = 2
+minibatch = 512
+lr = 3e-4
+lr_floor = 0.1
+value_coef = 0.5
+max_grad_norm = 0.5
+device = "auto"
+ladder = ["system", "system-all-seeing"]
+ladder_per_kind = 500
+
+[students.mlp]
+kind = "mlp"

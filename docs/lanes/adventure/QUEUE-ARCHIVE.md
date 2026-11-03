@@ -4,6 +4,34 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-03, E08 T88b2: its entry as it stood before it was done whole, decision 240; the record in `E08-log.md`, T89 queued.)* **E08 T88b2 — the game side, ADR-0017's draft and the cut** (decisions 232, 239; as T77b)
+
+- **Scope:** `E08-design.md` part C (its §12 to §18 as part B's end lists them: the guards' battle,
+  the hire dialog as a pending decision with GAM-DEC-008, its commands and events, the env,
+  replays, fixtures, properties and benchmarks, versions, batch E10, the shared and `cross-lane`
+  work, the building rounds and the exit criteria, risks); ADR-0017's draft in
+  `docs/lanes/adventure/adr-drafts/` (points 1, 3, 4, 6, 8, 10, 11 as increment 9's touched: the
+  commands, the new week's order, the build's and the week's draws, the dialog, the env, the
+  outcome's composition, the guards' battle unowned); the building rounds cut, batch E10 first
+  (decision 237: its spec, the harness's reads, its two runs without E10-2, then its scoring); the
+  checkpoint's question (ADV-Q43): the user accepts both drafts and the note before anything is
+  built (decision 232).
+- **Inputs:** `E08-design.md` parts A and B (T88b1), `adr-drafts/0016-increment-10.md`; the survey
+  `docs/rules/surveys/E08-dwellings.md` (§5 the dialog, §12 the interfaces' sketch, §13 batch
+  E10's plan, §14 the ids); decisions 231–239.
+- **Depends on:** T88b1 (done). **Status:** ready; its cut confirmed with the user at its start.
+
+*(Moved 2026-11-03, E08 T88b1: the entry as it stood before T88b was cut in two by side, decision 239; T88b1's record in `E08-log.md`, T88b2 queued.)* **E08 T88b — the ADR amendment drafts, the design note and the cut** (decision 232; as T77b)
+
+- **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
+  10 (its pointer replaced; increment 9's note in `E08-log.md` as the model), the building rounds
+  cut, batch E10 first (decision 237: its spec, the harness's reads, its two runs, then its
+  scoring), the D-51 quirk's flag named (decision 234); the checkpoint's question (ADV-Q43): the
+  user accepts the drafts before anything is built (decision 232).
+- **Inputs:** the survey `docs/rules/surveys/E08-dwellings.md` (§12 the interfaces' sketch, §13
+  batch E10's plan, §14 the proposed ids, §15 the answers); decisions 231–237.
+- **Depends on:** T88a (done). **Status:** ready; its cut confirmed with the user at its start.
+
 *(Moved 2026-11-03, E08 T88a: its entry as it stood before it was done whole, decision 233; the record in `E08-log.md`.)* **E08 T88a — the dwellings and hiring survey** (decision 232; as T77a for increment 9: survey file
 `docs/rules/surveys/E08-dwellings.md`)
 

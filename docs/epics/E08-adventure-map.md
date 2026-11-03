@@ -65,16 +65,31 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 ### Decisions at the survey's checkpoint (2026-11-03, user; ADV-Q42, survey `E08-dwellings.md` §15)
 
 233. **T88a whole** (the user at its start; not the queue's sketch of two parts, not three).
-234. **D-51 is a `fix-optional` quirk** (the user: "this should be a fix-optional quirk ... so either can be turned on or off"): the original fights an owned dwelling's guards unowned (`visit_dwelling` pushes −1, where an owned mine's guards are their owner's side, batch E9's E9-2); a flag chooses: on (`faithful`) the guards unowned, played by the neutral seat; off (`strict-fixed`) their owner's side without a hero, as an owned mine's (ADV-MIN-002's `Defender::Garrison`). Its ledger entry (`ADV-QUIRK-36`) is written once batch E10's E10-2 confirms the reading (the ledger's rule); T88b names the flag. Not chosen: the original alone, VCMI's alone.
+234. *(Superseded by decision 238.)* **D-51 is a `fix-optional` quirk** (the user: "this should be a fix-optional quirk ... so either can be turned on or off"): the original fights an owned dwelling's guards unowned (`visit_dwelling` pushes −1, where an owned mine's guards are their owner's side, batch E9's E9-2); a flag chooses: on (`faithful`) the guards unowned, played by the neutral seat; off (`strict-fixed`) their owner's side without a hero, as an owned mine's (ADV-MIN-002's `Defender::Garrison`). Its ledger entry (`ADV-QUIRK-36`) is written once batch E10's E10-2 confirms the reading (the ledger's rule); T88b names the flag. Not chosen: the original alone, VCMI's alone.
 235. **D-52 as the original:** free level-1 creatures with no room in the army do not join and stay counted; no merge of the hero's stacks (VCMI's `mergeOnRecruit` not followed). E10-3 checks it.
 236. **The random dwellings with a faction set are in the increment with the original's footprints** (the 206 of 46 shipped maps): each dwelling kind's template (82: the blocked and visitable cells) as content harvested from `Objects.txt`, and the Angel Portal's move; the draw when the game is built. Those tied to a town stay E09's. Not chosen: keeping the random dwelling's 2 × 2, leaving them all to E09.
 237. **Batch E10 before the build**, as batch E9 (decision 198): its spec, the harness's reads (the dwelling records, a camp's tile words, the hire dialog) and its runs are cut by T88b; the build starts after it is scored.
+
+### Decisions at T88b's start (2026-11-03, user)
+
+238. **D-51 as the original, not a quirk** (the user, revising decision 234: "you can't actually leave guards at your own dwelling; you can only recruit from it, and owning it does not grant ownership over the creatures until you recruit"): a dwelling's guards are its own creatures, renewed every week whoever owns it (survey §6.1), never troops its owner left (an own dwelling offers no Leave Guards, §4.1), so they fight unowned, played by the neutral seat, as the original's `visit_dwelling`; VCMI's owner side not followed; no flag, `ADV-QUIRK-36` not reserved. An owned mine's guards stay their owner's side (ADV-MIN-002: its Leave Guards). **Batch E10's row E10-2 dropped** (the user; recommended was keeping it as a check of the reading, since VCMI disagrees).
+239. **T88b in two by side** (the user; recommended): **T88b1** the map side (`E08-design.md` parts A and B, ADR-0016's draft), **T88b2** the game side (part C: the guards' battle, the hire dialog as a pending decision, its commands, the env, replays, batch E10, the cut; ADR-0017's draft; the checkpoint ADV-Q43). Not chosen: the note then the drafts, whole. *Agent's call (change freely):* ADR-0015 needs no draft (its point 4's import still draws nothing).
+
+### Decisions at T88b2 (2026-11-03, user; ADV-Q43)
+
+240. **T88b2 whole** (the user at its start; recommended; not in two by design and plan, nor the note then the draft).
+241. **The drafts and the design note accepted as written** (ADV-Q43): ADR-0016's draft (points 1, 3 to 6), ADR-0017's (points 1, 3, 4, 6, 8, 10, 11) and `E08-design.md` parts A to C with their agent's calls; both drafts go into the ADRs through T92's `shared/` pull request with batch E10's outcome.
+242. **The cut as proposed** (design §17): rounds 2 to 8, batch E10 first (T89; T90 and T91), then `shared/` (T92), the content and the import (T93), the build and the state (T94), the visits and the hire dialog (T95), the fixtures and the audit (T96, T97); each task's cut confirmed at its start. Not chosen: T93 and T94 merged, batch E10 after the build.
+243. **The env's hire entries** (the user's consent to T95b's `cross-lane` change in `h3-sim`, as decisions 138 and 203): action encoding v7 appends four entries, each buying the most of a creature of the open hire dialog; an amount head is left to the AI lane. Not chosen: an amount head now, no env change.
 
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
 - **T88a The dwellings and hiring survey** (decision 232). Done (2026-11-03, whole, decision 233; `adventure/e08-t88a`): survey `docs/rules/surveys/E08-dwellings.md` (the census, the records, the random dwellings, the visit, the hire dialog, the week, the Refugee Camp, what a player sees, D-51, D-52, A-34 to A-36, batch E10's plan, the proposed ids); its checkpoint ADV-Q42 (decisions 234–237).
-- **T88b The ADR amendment drafts, the design note and the cut** (decision 232).
+- **T88b The ADR amendment drafts, the design note and the cut** (decision 232), in two by side (decision 239):
+  - **T88b1 The map side.** Done (2026-11-03, `adventure/e08-t88b1`): `E08-design.md` parts A and B (the kinds, the parameters and the random dwellings' table, the packs; the import, the setup and the build, the state, the visits, the purchase's map side, the week, information, ids and seams); the draft `adr-drafts/0016-increment-10.md`; D-51 settled as the original (decision 238).
+  - **T88b2 The game side and the cut.** Done (2026-11-03, whole, decision 240; `adventure/e08-t88b2`): `E08-design.md` part C (the guards' battle, the hire dialog GAM-DEC-008, the env, replays, fixtures, properties, benchmarks, versions, batch E10, the cut and the exit criteria, risks); the draft `adr-drafts/0017-increment-10.md`; its checkpoint ADV-Q43 (decisions 241–243).
+- **T89 Batch E10's maps and specs** (round 2; design §16): queued. Rounds 3 to 8 (T90 to T97) as design §17 lists them, each queued when the one before is done.
 
 ## Later increments (sketch)
 

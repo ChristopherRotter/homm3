@@ -195,6 +195,15 @@ pub fn tune(won: bool, shown: usize, town: bool, gave_up: Option<GaveUp>) -> Tun
 }
 
 /// Side `index`'s hero, if it has one: its type's key (none: the manifest names no such type).
+/// Hero type `hero_type`'s large portrait by the manifest's hero type `keys` in `tables`
+/// (*provisional*: the hero's own portrait, the executable's hero table's +0x34, is its type's
+/// unless a map sets another, which the client does not know); none when not harvested (E17 M6
+/// T3b1: the hero's info window's too).
+pub fn portrait(keys: &[String], tables: &Tables, hero_type: u16) -> Option<String> {
+    let key = keys.get(usize::from(hero_type))?;
+    tables.heroes.get(key)?.portrait.clone()
+}
+
 fn hero_key<'a>(
     sources: &Sources<'a>,
     opening: &Observation,

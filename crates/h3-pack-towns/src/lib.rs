@@ -38,6 +38,8 @@
 //!   supersedes = ["village_hall"]  # optional: direct; the compiler closes them, no cycle
 //!   forbidden_with = "horde_1"     # optional: forbidden whenever that one is (a horde's
 //!                                  # upgrade with its horde), no cycle
+//!   auto_with = ["horde_1", "upg_dwelling_3"] # optional: built once each of these is ever
+//!                                  # built (a horde's upgrade, E09 decision 29), not itself
 //!   hall = 2                       # its roles, each optional (below)
 //!
 //! [[town_override]]                # ADR-0006: a record a pack of the closure defined; only the
@@ -81,6 +83,11 @@ use h3_towns::{
     TownRuleset,
 };
 use serde::Deserialize;
+
+/// The synthetic pack's town file (tests).
+pub const SYNTHETIC_TOWNS: &str = include_str!("../../../packs/synthetic/towns.toml");
+/// The synthetic expansion's town file (tests).
+pub const SYNTHETIC_EXT_TOWNS: &str = include_str!("../../../packs/synthetic-ext/towns.toml");
 
 /// Errors of this adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -203,6 +210,8 @@ struct BuildingDto {
     #[serde(default)]
     supersedes: Vec<String>,
     forbidden_with: Option<String>,
+    #[serde(default)]
+    auto_with: Vec<String>,
     hall: Option<u8>,
     fort: Option<u8>,
     #[serde(default)]
@@ -280,6 +289,7 @@ fn building(b: BuildingDto) -> BuildingDef {
         slot: b.slot,
         supersedes: b.supersedes,
         forbidden_with: b.forbidden_with,
+        auto_with: b.auto_with,
         roles: BuildingRoles {
             hall: b.hall,
             fort: b.fort,

@@ -7,44 +7,45 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are round 5's (rounds 2 to 4, T5a1 and T5b1 are done, `E09-log.md`); each later round's
-entries are written when it comes (the epic's list), each task's cut confirmed at its start. Every
-entry's acceptance includes the Definition of Done (`docs/05-testing.md`). Round 5's order is
-T5a1, T5b (cut in two: T5b1, T5b2), T5a2 (the user, 2026-11-03: the content before
-`GameRuleset`, so the golden replays' header moves once).
+entries below are round 5's (rounds 2 to 4, T5a1, T5b1 and T5b2a are done, `E09-log.md`); each
+later round's entries are written when it comes (the epic's list), each task's cut confirmed at its
+start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`). Round 5's
+order is T5a1, T5b (cut in two: T5b1, T5b2; T5b2 again: T5b2a, T5b2b), T5a2 (the user,
+2026-11-03: the content before `GameRuleset`, so the golden replays' header moves once).
 
-**E09 T5b2 — the content harvested**
+**E09 T5b2b — the content harvested**
 
-- **Scope:** round 5's second part, after T5b1's reading (T5b cut in two at its start, the user;
-  design §3, decisions 23, 27 to 30; survey §16): `h3-harvest`'s gap-fill (`cross-lane`, the
-  battle lane's crate, as E08 T81b) reads the executable's tables of survey §16 (an
-  `h3-formats` reader of the faction lists 0x63EC80, the supersede lists 0x63FBC4,
-  `map_building_ids` 0x6888C0, `town_creatures` 0x6747B4, the hordes 0x6887A0, the silo
-  0x688EB4, the garrison 0x688E84; every address is in `docs/exe/map.toml`) and the names
-  (`BldgNeut.txt`, `BldgSpec.txt`, `Dwelling.txt`; names only, Q13), and writes
-  `packs/base/towns.toml` (the eight factions; the moat as RoE and AB play it),
-  `packs/ab/towns.toml` (Conflux), `packs/sod/towns.toml` (the overrides; decision 20). Each
-  record: the faction's listed buildings plus the Village Hall (`hall = 1`), not 23 or 27 to 29
-  (decision 27) nor the ship 20; `slot` from `map_building_ids`; `supersedes` the common and the
-  faction's lists (direct); the roles of survey §16.6 (TD-8 by the code: the Fortress' 21
+- **Scope:** round 5's third part, after T5b1's reading and T5b2a's format (T5b2 cut in two at
+  its start, the user; design §3, decisions 23, 27 to 30; survey §16): an `h3-formats` reader
+  (`cross-lane`, the battle lane's crate, as E08 T81b; a `KnownBuild` table set and its
+  `docs/formats/installation.md` section) of the executable's tables of survey §16: the faction
+  lists 0x63EC80, the supersede lists 0x63FBC4, `map_building_ids` 0x6888C0, `town_creatures`
+  0x6747B4, the hordes 0x6887A0 with `horde_buildings` 0x642E20, the silo 0x688EB4, the garrison
+  0x688E84, the 30 at 0x5C0C5B (every address is in `docs/exe/map.toml`); `h3-harvest`'s module
+  that reads them and the names (`BldgNeut.txt`, `BldgSpec.txt`, `Dwelling.txt`; names only,
+  Q13) and writes `packs/base/towns.toml` (the eight factions; the moat as RoE and AB play it),
+  `packs/ab/towns.toml` (Conflux), `packs/sod/towns.toml` (the overrides; decision 20), its
+  `--check` covering them. Each record: the faction's listed buildings plus the Village Hall
+  (`hall = 1`), not 23 or 27 to 29 (decision 27) nor the ship 20; `slot` from
+  `map_building_ids`; `supersedes` the common and the faction's lists (direct); `forbidden_with`
+  each upgraded horde's horde; **`auto_with`** each upgraded horde's horde and level's upgraded
+  dwelling (T5b2a, decision 29); the roles of survey §16.6 (TD-8 by the code: the Fortress' 21
   `defender.attack = 2`, 22 `defense = 2`, decision 30); `creatures` seven levels with upgrades
   from `town_creatures`; `silo`; `[town_params]` (the gold, the halls, the Grail, the reveal, the
-  30, the garrison rows, `capitol_demoted_to`). **The hordes' upgrade as data** (decision 29: the upgraded
-  horde 19 or 25 ever built once its horde and the level's upgraded dwelling are; the field is
-  this task's call, e.g. a building's `auto = true`, VCMI's `mode: auto`; `h3-towns`' compiler
-  checks it, T6's setup applies it); the keep's derivation (decision 28) is T6's. The synthetic
-  packs' small hand-written records (`synthetic`: `vale`, levels 1 and 2 without upgrades;
-  `synthetic-ext`: an override, as T5a1's test files); `packs/README.md`'s row ("no pack has
-  one yet"; the battle lane's file); `h3-pack-towns`' constants for the files (`SYNTHETIC_TOWNS`,
-  `BASE_TOWNS`, …, `ORIGINAL_PACKS`, as `h3-pack-adventure`'s).
-- **Acceptance:** the original packs compile with T5a1's compiler, each of the nine factions with
-  seven levels and their upgrades and its listed buildings (a test); `cargo xtask verify
-  --with-original-data` (the harvest reproduces the files); CI green.
+  30, the garrison rows, `capitol_demoted_to`). The keep's derivation (decision 28) is T6's.
+  `h3-pack-towns`' `BASE_TOWNS`, `AB_TOWNS`, `SOD_TOWNS`, `ORIGINAL_PACKS` (as
+  `h3-pack-adventure`'s) and its test of the original core packs without the file replaced;
+  `packs/README.md`'s row (the battle lane's file: the synthetic packs have the file since T5b2a,
+  the original ones with this task).
+- **Acceptance:** the original packs compile with the town compiler, each of the nine factions
+  with seven levels and their upgrades and its listed buildings (a test); `cargo xtask verify
+  --with-original-data` (the harvest reproduces the files); `check-lane --cross-lane`; CI green.
 - **Notes:** the hordes and their upgrades share a name in every faction (keys need a suffix);
   Conflux's Grail is spelled "Aurora Borealias" in the texts; the format and each role's set are
   in `h3-pack-towns`' `lib.rs`. TD-9 (a requirement) and every requirement wait for increment 2.
-- **Depends on:** T5b1 (its pull request merged). **Status:** ready once it merges; needs the
-  original data staged (`Heroes3.exe`, the LODs or `extracted.tar`).
+  The moats by edition are not in the executable (SoD's): survey §9.4 and design §3 give them.
+- **Depends on:** T5b2a (its pull request merged). **Status:** ready once it merges; needs the
+  original data staged (`Heroes3.exe`, both LODs or `extracted.tar`).
 
 **E09 T5a2 — `GameRuleset`, its callers, adventure replay format v9**
 
@@ -63,7 +64,7 @@ T5a1, T5b (cut in two: T5b1, T5b2), T5a2 (the user, 2026-11-03: the content befo
   `crates/h3-towns/`; once `h3-game` depends on `h3-towns`, `clients/Cargo.lock` (common) changes
   and `clients/scripts/check.sh` runs. The adventure lane's open pull requests first
   (`TRAPS.md`, "Merge in order"; it bumps the replay format too).
-- **Depends on:** T5b2. **Status:** after T5b2.
+- **Depends on:** T5b2b. **Status:** after T5b2b.
 
 ## Inbox
 

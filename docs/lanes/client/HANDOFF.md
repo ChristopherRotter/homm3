@@ -7,12 +7,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E17 M0–M5 done** (M5 closed at T8c on 2026-10-31: the review list accepted; the lane split
   at M3 T9c, CLT-Q18: the battle client here, the adventure map client the map-client lane's
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 and T2
-  done (#620 to #672, T2's cuts in the epic). T3 cut in two by the user (2026-11-03): **T3a done** (the panel's controls' help by the right button, design §12.7, a
-  disabled control's too; five stills exact at their first capture; #676 from
-  `client/e17-m6-t3a`: check it first); **next: T3b** (the heroes' info windows, its scope in
-  QUEUE: the window's constructor 0x46C370 to read), T4 to T7; this lane's inbox: the
-  descriptions' other lines once the battle lane's carry lands; then M7 ranked play and the
-  server browser.
+  done (#620 to #672, T2's cuts in the epic). T3 cut in two by the user (2026-11-03): T3a done
+  (#676, the panel's controls' help, design §12.7); T3b cut in two too: **T3b1 done** (a hero's
+  info window by the right button, design §12.8, its counts; morale and luck shown 0; two stills
+  exact; #679 from `client/e17-m6-t3b1`: check it first); **next: T3b2** (the window's morale and
+  luck: `hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 to read, its scope in QUEUE), T4 to T7;
+  this lane's inbox: the descriptions' other lines once the battle lane's carry lands (T3b2's
+  hero lists with them); then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -41,7 +42,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T3a (done; #676 open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T3b1 (done; #679 open: check it first).** The original data staged
+  (57 files) first, then the computer went offline; #676 had merged; the baseline's `check.sh`
+  passed. The user cut T3b in two (T3b1 the window, T3b2 its morale and luck). Read
+  `army_info_hero_create` 0x46C370 whole and `battle_right_click`'s hero branches (design §12.8);
+  built `[hero_info]`, `h3_view::hero_info`, `Battle::hero_info`, `Boxes::hero_info`; two stills
+  exact at their first capture; the window checked under Xvfb; `drawn`; `check.sh`.
+
+- **2026-11-03, E17 M6 T3a (done; #676 merged).** The original data staged
   (57 files) first; #672 had merged; the VM restarted during the baseline's coverage, CI's green
   run on `master` stood for it. The user cut T3 in two (T3a the controls' help, T3b the heroes'
   windows). Read `battle_control_help`, `message_box_size` and the items' right press (design
@@ -54,10 +62,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   the box and the held popup in the window and the stills; the observation's parts are by
   wall-shot target (a first capture showed it); `box_player`'s opening fixed; four stills
   recorded (35 shadow pixels listed in two); the window checked under Xvfb; `drawn`; `check.sh`.
-
-- **2026-11-03, E17 M6 T2b1 (done; #668 merged).** The original data staged
-  (57 files) first; the baseline's `check.sh` passed; #661 had merged. The user cut T2b in two
-  (T2b1 the stack's held dialog, T2b2 a turret's info). Read `battle_right_click` whole and the
-  held branch (design §12.5), `turret_info` for T2b2; built `mouse::held_at` and the held dialog
-  in the window and the stills; five stills exact (one after fixing T2a1's Ballista slip); the
-  window checked under Xvfb; `drawn`; `check.sh`.

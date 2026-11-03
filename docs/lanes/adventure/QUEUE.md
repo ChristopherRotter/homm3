@@ -4,18 +4,22 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237), T88b next, its cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237). T88b in two by side (decision 239; D-51 settled as the original, decision 238): T88b1 done (`adventure/e08-t88b1`: `E08-design.md` parts A and B, ADR-0016's draft), T88b2 done whole (decision 240; `adventure/e08-t88b2`: part C, ADR-0017's draft, the cut; its checkpoint ADV-Q43, decisions 241–243). The cut (design §17): rounds 2 to 8, T89 to T97, batch E10 first; T89 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T88b — the ADR amendment drafts, the design note and the cut** (decision 232; as T77b)
+**E08 T89 — batch E10's maps and specs** (decisions 237, 242; as T78 for batch E9)
 
-- **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
-  10 (its pointer replaced; increment 9's note in `E08-log.md` as the model), the building rounds
-  cut, batch E10 first (decision 237: its spec, the harness's reads, its two runs, then its
-  scoring), the D-51 quirk's flag named (decision 234); the checkpoint's question (ADV-Q43): the
-  user accepts the drafts before anything is built (decision 232).
-- **Inputs:** the survey `docs/rules/surveys/E08-dwellings.md` (§12 the interfaces' sketch, §13
-  batch E10's plan, §14 the proposed ids, §15 the answers); decisions 231–237.
-- **Depends on:** T88a (done). **Status:** ready; its cut confirmed with the user at its start.
+- **Scope:** `h3_map::writer` writes classes 17 and 20 (by subclass, with an owner), 78 and 216
+  to 218 (a faction set, levels, a town identifier of 0) as the import reads them (a round trip),
+  for the batch and for T96's fixtures; the spec's fields in `h3-experiment` (`cross-lane`, the
+  user's consent as T78's): dwellings with an owner, random dwellings, Refugee Camps, a hero's full
+  army of named stacks, teams in a hot-seat map (E10-6), a town for each player in E10b; the specs
+  `experiments/specs/E08-batch-10a.toml` and `-10b.toml` with their templates and predictions
+  (survey §13's rows without E10-2, design §16's two added); each walk priced (`TRAPS.md`).
+- **Inputs:** `E08-design.md` §16 (and §1, §4 for the classes); the survey
+  `docs/rules/surveys/E08-dwellings.md` §13 (the rows, what the spec lacks), §2–§7; T78's record
+  in `E08-log.md` (batch E9's writer and spec); `docs/experiments/README.md`.
+- **Depends on:** T88b2 and its checkpoint ADV-Q43 (done). **Status:** ready; its cut confirmed
+  with the user at its start.
 
 ## Inbox
 

@@ -134,6 +134,7 @@ fn building(k: &str, roles: BuildingRoles) -> BuildingDef {
         slot: None,
         supersedes: vec![],
         forbidden_with: None,
+        auto_with: vec![],
         roles,
     }
 }
@@ -168,7 +169,7 @@ fn dwelling(level: u8, upgraded: bool) -> BuildingRoles {
 
 /// A valid record of `faction` with these creatures: the four halls and three forts, each
 /// superseding the one below, the Tavern, the silo, the Grail, the two dwellings, the Lookout
-/// Tower, a horde and its upgrade forbidden with it.
+/// Tower, a horde and its upgrade forbidden with it and built with it and the level-2 dwelling.
 fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDef {
     let buildings = vec![
         BuildingDef {
@@ -227,6 +228,7 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
         building("horde", BuildingRoles::default()),
         BuildingDef {
             forbidden_with: Some("horde".into()),
+            auto_with: vec!["horde".into(), "dwelling_2".into()],
             ..building("horde_up", BuildingRoles::default())
         },
     ];
@@ -371,6 +373,14 @@ fn the_buildings_close_what_they_supersede() {
     );
     let horde_up = keep.building(id("horde_up")).unwrap();
     assert_eq!(horde_up.forbidden_with, Some(id("horde")));
+    assert_eq!(
+        horde_up.auto_with,
+        BuildingSet::EMPTY.with(id("horde")).with(id("dwelling_2"))
+    );
+    assert_eq!(
+        keep.building(id("horde")).unwrap().auto_with,
+        BuildingSet::EMPTY
+    );
     assert_eq!(keep.capitol_demoted_to, id("city_hall"));
     let grail = keep.building(id("grail")).unwrap();
     assert_eq!(grail.roles.reveal, Some(Reveal::All));
@@ -414,12 +424,16 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The first encoding (v1): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0xe279c33e2325deb3);
-    assert_eq!(TownRuleset::empty(&core).content_hash(), 0x529a2cdc8ff533ac);
+    // The second encoding (v2): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0x4e68e5a3a7b59930);
+    assert_eq!(TownRuleset::empty(&core).content_hash(), 0x0cd92cf54dc615e5);
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
     let other = TownRuleset::compile(&core, &changed).unwrap();
+    assert_ne!(other.content_hash(), part.content_hash());
+    let mut automatic = packs();
+    keep_building(&mut automatic, "horde_up").auto_with.pop();
+    let other = TownRuleset::compile(&core, &automatic).unwrap();
     assert_ne!(other.content_hash(), part.content_hash());
 }
 
@@ -725,7 +739,7 @@ fn a_building_is_checked() {
 }
 
 #[test]
-fn supersedes_and_forbidden_with_are_checked() {
+fn supersedes_forbidden_with_and_auto_with_are_checked() {
     let reason =
         |k: &'static str, change: fn(&mut BuildingDef)| refused(|p| change(keep_building(p, k)));
     assert_eq!(
@@ -739,6 +753,14 @@ fn supersedes_and_forbidden_with_are_checked() {
     assert_eq!(
         reason("village_hall", |b| b.supersedes.push("capitol".into())),
         building_error("village_hall", "it supersedes itself (a cycle)")
+    );
+    assert_eq!(
+        reason("horde_up", |b| b.auto_with.push("moat".into())),
+        building_error("horde_up", "it is built with a building the faction lacks")
+    );
+    assert_eq!(
+        reason("horde_up", |b| b.auto_with.push("horde_up".into())),
+        building_error("horde_up", "it is built with itself")
     );
     let cycle = "it is forbidden with itself (a cycle)";
     assert_eq!(

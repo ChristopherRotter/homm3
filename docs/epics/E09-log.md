@@ -528,3 +528,30 @@ files (`extracted.tar`) staged from the user's repo folder; VCMI 1.7.5 sparse-cl
 - **For T5b2:** the queue entry (rewritten from T5b's): the records as the original's lists plus
   the Village Hall, the hordes' upgrade as data (the field is T5b2's call), the keys (the hordes
   share their upgrades' names), the roles by survey §16.6.
+
+### T5b2a — the hordes' upgrade as data, the synthetic town records (2026-11-03)
+
+One session, the user present; branch `town/e09-t5b2a` (the town lane's paths only). Starting
+point: `master` at 9e94c8f (#678 T5b1 merged; CI on `master` green at 1642a86, the later merges
+docs and the client only; the sandbox's baseline the light gates). **T5b2 cut in two at its
+start** (the user, asked with the reason: the harvest is a new reader of nine tables in
+`h3-formats`, a module in `h3-harvest` and three generated packs; the town lane's own format work
+needs no original data): **T5b2a** (this) and **T5b2b** (the reader, the harvest and the three
+packs, `cross-lane`, the original data staged).
+
+- **The hordes' upgrade** (decision 29; survey §16.2): a building's `auto_with`, the buildings
+  whose being ever built builds it (*agent's call*: an explicit list, not VCMI's `mode: auto`
+  with the requirements, since the original's upgraded horde requires only the upgraded dwelling,
+  survey §16.8, and requirements wait for increment 2). `BuildingDef::auto_with` (keys),
+  `Building::auto_with` (a `BuildingSet`, empty for none); the compiler refuses a key the record
+  lacks and the building itself (two tests); no cycle check (a cycle only keeps both unbuilt). T6's
+  setup applies it over the ever-built set (design §4), increment 2's construction too.
+- **The part's hash v2** (`TOWN_RULESET_HASH_VERSION`): each building's automatic set after its
+  forbidden-with building; both pinned hashes re-pinned, a test that the set moves the hash.
+- **The synthetic packs' `towns.toml`** (hand-written, invented): `synthetic` the parameters and
+  `vale`'s record (levels 1 and 2 without upgrades, every role once, a horde superseding the
+  level-2 dwelling and its upgrade forbidden and built with it), `synthetic-ext` the override of
+  the moat, the obstacles and the silo. `h3-pack-towns`' `SYNTHETIC_TOWNS`, `SYNTHETIC_EXT_TOWNS`;
+  its tests now read the files (T5a1's inline texts, the same records, moved there).
+- **Left for T5b2b:** `packs/README.md`'s row (the battle lane's file; it still says no pack has a
+  `towns.toml`), the original packs' constants and `ORIGINAL_PACKS`.

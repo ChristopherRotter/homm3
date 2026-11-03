@@ -11201,3 +11201,90 @@ every step it runs (fmt, clippy, check-arch, check-rules, check-stubs, check-doc
 clients-lock, check-lane, test, coverage, determinism, bench-check, doc-drift, original-data; deny
 and ffi-smoke skipped by the scope; exit 2, its normal result); no code changed. CI's full verify
 on the pull request is the record.
+
+### Increment 10, round 1: T88b1, the map side of the design note and ADR-0016's draft (2026-11-03, `adventure/e08-t88b1`)
+
+Baseline: `master` at 92c4cc7 (#677, T88a, merged; #675 and #676 of the town and client lanes
+too). The executables, the five DLLs, the four LODs, `maps.tar` and `extracted.tar` staged at the
+start (the user's computer went offline soon after, as announced). At its start the user added to
+T88a's checkpoint that a dwelling's guards are never its owner's ("you can't actually leave guards
+at your own dwelling … owning it does not grant ownership over the creatures until you recruit"):
+the agent agreed from the survey (no Leave Guards for an own dwelling, §4.1; the guards renewed
+every week whoever owns it, §6.1) and asked two questions (`AskUserQuestion`): T88b's cut (by side,
+recommended; the note then the drafts; whole) and whether batch E10 keeps E10-2 as a check (keep,
+recommended; drop). **User: by side; drop E10-2** (decisions 238, 239; 234 superseded).
+
+**The design note** `E08-design.md` written for increment 10, parts A and B (part C's sections
+named for T88b2): part A, the content (§1 the kinds `dwelling`, `random_dwelling`, `refugee_camp`,
+entered, not from above, by the original's two class lists; §2 `[params.dwellings]` with the guard
+level, the guard factor and the free level, the `[[random_dwelling]]` table of seven dwellings per
+faction checked against the original's derivation, the full guards and the shift derived at
+compile, the costs; §3 the packs by the expansion that introduced each object, the harvest's
+check against `Objects.txt` and the text tables); part B, the map (§4 the import, map import v16:
+the classes, the factions table, the owners, those tied to a town a blocker with ADV-STUB-13, the
+refusals A-34 to A-36 as ledger entries from 36; §5 the holds, a hero on a random dwelling's
+visitable tile refused, the resolution at the build with the type's footprint and the original's
+anchor; §6 the state, adventure state hash v20: the owners, a dwelling's week as one block none
+while every dwelling is full, the camps' block; §7 the visits; §8 the purchase's map side; §9 the
+week's step; §10 information; §11 ids, quirks, the town lane's seams, versions). ADR-0015 needs no
+draft (its import still draws nothing).
+
+**A reading of its own** (`Heroes3.exe`, `scripts/exe.py`): `random_dwellings_resolve`' anchor move
+(0x502CD0 to 0x502D44) counts the bottom-row cells from the anchor leftwards while each is passable
+and not visitable, within the template's width (+0x10), stopping at the first that is not: a run,
+not a count over the row (a count would move the Basilisk Pit's by six); `docs/exe/map.toml`'s
+summary of 0x502B60 says so.
+
+**The draft** `docs/lanes/adventure/adr-drafts/0016-increment-10.md`: ADR-0016 points 1 (the
+dwellings' owners, a dwelling's week, the camps, a random dwelling resolved into the static map),
+3 (no Leave Guards for an own dwelling; the room rule for what a dwelling gives), 4 (the three
+kinds, the visit with the guards unowned, the hire question, the free creatures, the purchase, the
+random dwellings' draw and refusals, the camp, the week's step), 5 (the flag's reveal) and 6
+(what a viewer sees).
+
+**Docs:** decisions 238 and 239 in the epic; the survey's D-51, §13 (E10-2 dropped) and §15 marked
+revised; T88b's entry to `QUEUE-ARCHIVE.md`, T88b2 queued.
+
+### Increment 10, round 1: T88b2, the game side of the design note, ADR-0017's draft and the cut (2026-11-03, `adventure/e08-t88b2`)
+
+Baseline: `master` at 9e94c8f (#680, T88b1, merged). The executables, the five DLLs, the four LODs,
+`maps.tar` and `extracted.tar` staged at the start (the user's computer was to go offline soon).
+The user's cut at the start (decision 240): **whole** (recommended; not chosen: in two by design
+and plan, nor the note then the draft).
+
+**The design note** `E08-design.md` part C: §12 the guards' battle (a new offer kind with the first
+creature and the size word of the total; `Defender::Guards`, unowned, the neutral seat; the
+entrance tile's battlefield; the survivors in the dwelling's week entry through
+`end_unowned_battle`; a win's flag and hire question as the visit's rest), §13 the game (the
+hire question `OfferKind::Hire`; the free creatures' events; the outcome's `hire`; the decision
+GAM-DEC-008 with `Answer::Hire(Buy { creature, amount } | Close)`, its refusals in order, a
+one-creature dialog closing after its purchase as the original's, the legal set by the most with
+the room in it and `hire_range`, the view, an ally's read-only dialog with E10's teams, E09's
+reuse by source and target; game state hash v23), §14 the env (v7's four entries), the replays
+(format v9; `e08-dwellings-36.h3m`), the properties, the benchmarks (`e08-dwellings-144.h3m`:
+`day-start-dwellings-xl-144`, `fork-dwellings-xl-144`, `random-play-dwellings-36`), the census,
+§15 the versions (with E09's same rows: the second to merge bumps again), the rule ids and the
+quirk entries `ADV-QUIRK-36` to `-38`, §16 batch E10 (two runs, two added predictions: E10-4's
+dialog closed after the purchase, E10-1's size word; the writer, the spec's fields, the harness's
+reads), §17 the shared and `cross-lane` work, the cut in rounds 2 to 8 (T89 to T97) and eight
+exit criteria, §18 the risks. Part B's §5 names the random dwellings' place among the draws.
+
+**The draft** `docs/lanes/adventure/adr-drafts/0017-increment-10.md`: ADR-0017 points 1 (no
+command), 3 (the week step's refill and the camps' draws), 4 (the random dwellings first in the
+static map's placement walk after E09's placeholders; a camp's creature with the weekly objects;
+no visit draws), 6 (the guards' and hire questions, the hire dialog), 8 (the env's v7), 10 (the
+free creatures, the dialog to open, the purchase's check and payment), 11 (the guards' battle
+unowned on the entrance's battlefield).
+
+**The checkpoint** (ADV-Q43, asked interactively with the note and both drafts sent to the user;
+decisions 241–243): the drafts and the note accepted as written; the cut as proposed; the env's
+four "buy the most" entries, `cross-lane` in T95b with the user's consent. **T88b2 done**; T89 is
+ready.
+
+**Docs:** decisions 240 to 243 in the epic; ADV-Q43 in `QUESTIONS-ANSWERED.md`; both drafts'
+status accepted; T88b2's entry to `QUEUE-ARCHIVE.md`, T89 queued.
+
+**Verify:** no code changed. The scoped `cargo xtask verify --scope adventure --summary
+--with-original-data` passed every step it runs (deny and ffi-smoke skipped by the scope; the VM
+restarted during the setup's baseline, so the scoped run stands in). CI's full verify on the pull
+request is the record.
