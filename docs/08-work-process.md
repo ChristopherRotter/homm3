@@ -302,6 +302,7 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    - Cloud sessions open pull requests through the REST API (`gh api repos/ChristopherRotter/homm3/pulls`, labels the same way): GraphQL is blocked, so `gh pr create` fails.
    - Git on the user's machine: delete permission for the repo folder first (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email`; no GitHub credentials there.
    - The VM can restart (files stay, jobs die): check `ps` before assuming a job still runs.
+   - Setup installs SDL's build packages only for the client lanes: another lane whose branch needs `scripts/verify-once.sh clients` (an `h3-contracts` change) installs `sandbox-setup.sh`'s client list with `apt-get` first, or the clients' clippy step fails in `sdl3-sys`'s cmake (E09 T4b).
    - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background (the coverage tools: `scripts/llvm-tools.sh`) and poll its log; the inner loop is `verify --scope <lane> --quick`.
    - The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own under `target/` (never shared: `xtask` roots at its build), and remove it afterwards.
    - bench-check at 0 Ir: valgrind 3.22 found no symbols in the lld-linked `h3` (the gate links with `-z norelro`).
