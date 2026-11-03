@@ -11,10 +11,12 @@
 //! descriptions and the cast button (E17 M6 T2a2b1, design §12.3): [`Modal::describe`] the text
 //! a right press over an item shows in a popup held while the button is (style 4), the popup's
 //! hold ([`Modal::popup`]), the cast button pressed and clicked as the OK, its click the cast's
-//! start ([`CAST`]), [`Steps::made_around`] the creature's steps around the holds.
+//! start ([`CAST`]), [`Steps::made_around`] the creature's steps around the holds. Morale's and
+//! luck's descriptions (E17 M6 T2a2b2, design §12.4): [`describe`], their texts from what the
+//! observation tells of the sources ([`Account`]; CLT-Q40), each with the value's sign's picture.
 //!
-//! *Not built yet:* morale's and luck's descriptions (M6 T2a2b2); the right button's dialog held
-//! over a stack (M6 T2b).
+//! *Not built yet:* the morale and luck descriptions' lines the observation does not carry
+//! (CLT-Q40); the right button's dialog held over a stack (M6 T2b).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -23,6 +25,9 @@ use alloc::vec::Vec;
 use serde::Deserialize;
 
 use crate::message::{self, MessageBox, Outcome};
+
+pub mod describe;
+pub use describe::{Account, Field};
 use h3_render::Bugs;
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Button, Def, Dialog, Frames, Item, Label, Picture, Shown, Text};
@@ -116,6 +121,11 @@ pub struct StatsLayout {
     /// Luck's (see `morale_frames`).
     #[serde(default)]
     pub luck_frames: Option<String>,
+    /// Morale's description's picture (`imrl82.def`, the message box's picture types 14 to 16:
+    /// frame 4, 3 or 2 by the value's sign; E17 M6 T2a2b2, design §12.4).
+    pub morale_described: String,
+    /// Luck's (`ilck82.def`, types 11 to 13).
+    pub luck_described: String,
     /// The spells' small pictures (`spellint.def`, frame the spell's original id + 1).
     pub effects: String,
     /// The status line's picture (`VARBack.pcx`).
@@ -183,6 +193,8 @@ pub struct Stats {
     pub luck: i32,
     /// The spells on the stack in its list's order (the last three shown).
     pub effects: Vec<Effect>,
+    /// What morale's and luck's descriptions tell of their sources (E17 M6 T2a2b2).
+    pub account: Account,
     /// The creature's ability text (none: no text).
     pub ability: Option<String>,
     /// The cast button instead of the ability text (a Faerie Dragon of the side acting, with
@@ -527,13 +539,23 @@ pub struct Hints {
     /// book's (*provisional*: the book's own description tells of the hero's book), the mine's
     /// in [`Bugs::Original`].
     pub cast_description: String,
+    /// Morale's description and its picture (E17 M6 T2a2b2, design §12.4; none without the
+    /// pictures' DEFs).
+    pub morale: Option<(String, message::Picture)>,
+    /// Luck's.
+    pub luck: Option<(String, message::Picture)>,
 }
+
+/// Morale's and luck's description pictures' DEFs and sizes, in that order (the layout's
+/// `morale_described` and `luck_described`; their sizes the binary reads from the DEFs).
+pub type Described = [(String, [i32; 2]); 2];
 
 impl Hints {
     /// The hints of a dialog showing `stats`, from `catalogue` (the keys `stats.hint.*`, the
-    /// effects' `stats.hint.effect` and `stats.hint.effect-until`), the cast button's by `bugs`.
+    /// effects' `stats.hint.effect` and `stats.hint.effect-until`), the cast button's by `bugs`;
+    /// morale's and luck's descriptions with their pictures `pictures` ([`describe`]).
     #[must_use]
-    pub fn of(catalogue: &Catalogue, stats: &Stats, bugs: Bugs) -> Self {
+    pub fn of(catalogue: &Catalogue, stats: &Stats, pictures: &Described, bugs: Bugs) -> Self {
         let text = |key: &str| catalogue.text(key, &Args::new());
         let table = HINT_KEYS
             .iter()
@@ -573,28 +595,46 @@ impl Hints {
             Bugs::Fixed => text("battle.control.spell-book"),
             Bugs::Original => text("stats.help.cast-original"),
         };
+        let picture = |(def, size): &(String, [i32; 2]), value: i32| message::Picture {
+            def: def.clone(),
+            frame: describe::picture_frame(value),
+            size: *size,
+            caption: String::new(),
+        };
+        let [morale_picture, luck_picture] = pictures;
+        let morale = (
+            describe::morale(catalogue, &stats.account, stats.morale),
+            picture(morale_picture, stats.morale),
+        );
+        let luck = (
+            describe::luck(catalogue, &stats.account, stats.luck, bugs),
+            picture(luck_picture, stats.luck),
+        );
         Self {
             table,
             cast,
             effects,
             descriptions,
             cast_description,
+            morale: Some(morale),
+            luck: Some(luck),
         }
     }
 
     /// The right button's description of item `id` (`creature_dialog_proc` 0x5F48AD, E17 M6
-    /// T2a2b1): its pair's second text by the hint table's index (an effect's the effects' pair's,
-    /// not the spell's), the cast button's [`Hints::cast_description`]; none for an item without a
-    /// pair or an empty text (0x5F4AAB: no popup), and for morale and luck, whose descriptions
-    /// (0x5F4B86, 0x5F4937) are M6 T2a2b2's.
+    /// T2a2b1) and its picture: its pair's second text by the hint table's index (an effect's the
+    /// effects' pair's, not the spell's), the cast button's [`Hints::cast_description`], without a
+    /// picture; morale's and luck's own (0x5F4B86, 0x5F4937; E17 M6 T2a2b2) with theirs; none for
+    /// an item without a pair or an empty text (0x5F4AAB: no popup).
     #[must_use]
-    pub fn described(&self, id: u16, bugs: Bugs) -> Option<String> {
+    pub fn described(&self, id: u16, bugs: Bugs) -> Option<(String, Option<message::Picture>)> {
         let text = match hint_index(id, bugs)? {
-            MORALE_INDEX | LUCK_INDEX => return None,
+            MORALE_INDEX => return self.morale.clone().map(|(t, p)| (t, Some(p))),
+            LUCK_INDEX => return self.luck.clone().map(|(t, p)| (t, Some(p))),
             i if i < HINTS => self.descriptions.get(i).cloned().unwrap_or_default(),
             _ => self.cast_description.clone(),
         };
-        Some(text).filter(|t| !t.is_empty())
+        Some(text).filter(|t| !t.is_empty()).map(|t| (t, None))
     }
 
     /// The status line's text over item `id` (none: an item without a hint, its line empty).
@@ -613,7 +653,7 @@ impl Hints {
 }
 
 /// Morale's and luck's indices in the hint table: their right button's description is built by
-/// its own procedure (0x5F4B86, 0x5F4937; M6 T2a2b2).
+/// its own procedure (0x5F4B86, 0x5F4937; M6 T2a2b2, [`describe`]).
 const MORALE_INDEX: usize = 9;
 const LUCK_INDEX: usize = 10;
 
@@ -749,9 +789,9 @@ impl Modal {
     /// The description a right press at `point` shows (`creature_dialog_proc` 0x5F48AD: the item
     /// under the mouse that takes it, as a move's, `dialog_area_message` 0x44FF60 and its kin
     /// turning the press into 0x200/0xE with the right button's flag): none off the dialog or over
-    /// an item without one ([`Hints::described`]).
+    /// an item without one ([`Hints::described`]); with its picture (morale's and luck's).
     #[must_use]
-    pub fn describe(&self, point: [i32; 2]) -> Option<String> {
+    pub fn describe(&self, point: [i32; 2]) -> Option<(String, Option<message::Picture>)> {
         let message = &self.open.message;
         let id = message.dialog.item_taking(point, &message.shown)?.id();
         self.hints.described(id, self.bugs)

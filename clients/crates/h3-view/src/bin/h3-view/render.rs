@@ -399,6 +399,16 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 catalogue: &catalogue,
             };
             let seed = u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1);
+            // Morale's and luck's descriptions' pictures' sizes (E17 M6 T2a2b2).
+            let described =
+                [&layout.stats.morale_described, &layout.stats.luck_described].map(|d| {
+                    lookup(&archives, d)
+                        .ok()
+                        .and_then(|b| h3_assets::def::parse_def(&b).ok())
+                        .map_or([0, 0], |d| {
+                            [d.width, d.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
+                        })
+                });
             // The stack's dialog with the mouse at `point`: the press's stack there, or the
             // acting stack's by the key T (E17 M6 T2a2a; none in the tactics phase).
             let dialog = |id: Option<u8>, point: [i32; 2], memory: &mut h3_view::stats::Memory| {
@@ -430,7 +440,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     &stats_sources,
                     observation,
                     (id, point),
-                    (&layout.stats, anchor),
+                    (&layout.stats, anchor, described),
                     (frames, viewing, seed),
                     memory,
                 )

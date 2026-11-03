@@ -157,9 +157,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   seat and a server; CLT-Q37 and Q38 (1) to (3) fixed; six stills exact); T2a2b cut in two by
   the user (2026-11-02): **T2a2b1** (done 2026-11-02) the right button's descriptions held in a
   popup but morale's and luck's (design §12.3), the cast button into the dragon's aim (CLT-Q38
-  (4)), CLT-Q39 asked and answered; four stills and a sequence exact; **T2a2b2** morale's and
-  luck's descriptions; **T2b** the right button's popup (0x4769C0) and a turret's info
-  (0x47A380); recorded.
+  (4)), CLT-Q39 asked and answered; four stills and a sequence exact; **T2a2b2** (done
+  2026-11-03) morale's and luck's descriptions (design §12.4) as far as the observation tells
+  their sources (CLT-Q40: the rest requested from the battle, server and adventure lanes, public
+  when carried, as VCMI), CLT-Q41 fixed; seven stills exact; **T2b** the right button's popup
+  (0x4769C0) and a turret's info (0x47A380); recorded.
 - **T3, the right button's other popups:** a hero's, the panel's controls' help (0x472A50), the
   battlefield's other items; recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
@@ -294,3 +296,18 @@ The next milestone's list starts here.
     nothing visible in the recordings); the original's cast button for a Faerie Dragon that is
     not the acting stack (its cast the pressed stack's drawn spell, CLT-Q38 (4)): the client's
     profile has no such button, the original's shows it but its click casts the acting stack's.
+16. Morale's and luck's descriptions (T2a2b2, *provisional* where noted): only the lines a seat's
+    observation tells (CLT-Q40: the hero's lists, the Hourglass and the Spirit of Oppression, the
+    Angelic Alliance's join and a siege town's buildings wait for the battle lane's carry; the
+    header by the engine's value, whose luck is clamped to 0 and up, so the Devils' −1 shows
+    neutral); a side's army the wire's stacks of slots 0 to 6 not made in the battle; a field by
+    its key's name; a creature's plural its catalogue form for 2 (*provisional*); the spells'
+    line the change the lines the client has leave (design §12.4). ARRAYTXT read from
+    H3bitmap.lod's file (H3ab_bmp.lod's older one numbers a record lower after 82).
+17. CLT-Q41's fixes (T2a2b2): the Halflings' line on its own row, the descriptions of a
+    hypnotized stack from its controller's side, in the client's profile; the original's for the
+    comparisons.
+18. Fixed (T2a2b2): the dialog's morale and luck counted Mirth's to Misfortune's changes twice
+    (T2a1: the wire's values hold them already, its doc says otherwise: the server lane's inbox).
+19. The common crates' additions (T2a2b2): `h3_ui::text`'s `%+d` (a signed number the caller
+    writes, a text argument); the layout's `[stats]` `morale_described`, `luck_described`.

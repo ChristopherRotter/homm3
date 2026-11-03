@@ -21,6 +21,22 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-03 (the client lane, E17 M6 T2a2b2, CLT-Q40; **a request**, `cross-lane` with the server and adventure
+  lanes, as CLT-Q3 and CLT-Q4 were): the stats dialog's morale and luck descriptions (`docs/epics/E17-design.md`
+  §12.4) list each source; a seat's observation carries only each stack's clamped values, the setup only
+  unlabelled sums (`BattleHero.effects`). Carry, setup to wire: (1) each morale and luck effect's source: the
+  Leadership and Luck levels, the morale and luck artifacts worn or in a worn combination (45 to 51, 108), the
+  adventure map's visits until the next battle (the original's hero +0x105 bits), the owner's grail, the
+  temporary rest; the Hourglass of the Evil Hour and the Spirit of Oppression behind the caps; the Angelic
+  Alliance behind `AlignmentGroup`; a siege town's buildings behind `Siege.morale` and `luck` (the Tavern, the
+  Brotherhood of the Sword, the Fountain of Fortune); (2) each stack's unclamped morale and luck (the original's
+  +0x4E8 and +0x4EC; `unclamped_luck` has the luck). **Public to both seats and spectators** (the user: as VCMI,
+  which shows the enemy's), so ADR-0013 point 9 needs its amendment with it. The client fills the lines when it
+  lands (its inbox). **A rule to check meanwhile** (a code reading; compare with the wiki and VCMI): the original's
+  Angelic Alliance joins the alignments when *any* hero of the side's player wears it, on the map or in a town
+  (+0x54B2 from `player_hero_wears_artifact` 0x4BACB0, read at 0x463AE2; the stacks' update reads it at 0x4697F2),
+  where BAT-HER-007 takes the battle's hero's.
+
 - 2026-10-22 (E23 T4c's blind check; a rule to confirm): the original's end routine 0x444510 returns early only for Disrupting Ray (47), so a dispel or Cure that reaches Acid Breath (80) may end it; BAT-MAG-010 keeps every permanent effect. Read the dispels' callers or play a batch row (Cure on a stack under Acid Breath) and align BAT-MAG-010 or record why not.
 
 - **For E23 (the original's battle AI), to read with it:** the original's pathfinder 0x4B3400 is read (§7.40, §7.41) and built (`pathfinder.rs`, E23 T1c): the walks and the berserk turn follow it. `aim.rs`'s threat records (0x422B20, the turrets' and the Ballista's turns) still search on their own (flyers by hex distance, no marks, no first-in-first-out): move them onto `pathfinder::Search`'s marks (BAT-Q53) with the computer's walker (T3). T1b's readings at risk from T1c: S-11's three outcomes, a berserk flyer ending on a hex it passed over, the war machine aimed at by its front, a walk beyond the speed into its side's seen pit (`E23-log.md`). The automatic Catapult's aim with Ballistics (the computer's and hidden battles': the gate first, §7.29) is not modelled: the agent aims. The moat avoidance's further "automatic" cases (0x474BF0: a hidden battle, an options flag, a remote turn; BAT-SIE-022). BAT-Q33 (who commands a side) decides with it.

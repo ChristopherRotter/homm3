@@ -3986,6 +3986,43 @@ The sandbox new, the original files staged first (57 files); #650 had merged; th
   description, its click into the aim ("Select Spell Target"); the library's tests (434) and the
   binary's (92); `clients/scripts/check.sh`; the scoped verify with the original data.
 
+### M6 T2a2b2 — morale's and luck's descriptions (2026-11-03)
+
+On `client/e17-m6-t2a2b2`, the user present. The sandbox new, the original files staged first
+(57 files); #658 had merged; the baseline's `check.sh` passed. CLT-Q40 asked at the reading's end
+and answered (build what the observation allows, request the rest; carried sources public, as
+VCMI shows them: checked in VCMI's `MoraleLuckBox::set` and its battle's right button); CLT-Q41
+(the Halflings' run-on line; a hypnotized stack's sources from its owner) asked and answered
+(both fixed, the original's for the comparisons).
+
+- **Read** (design §12.4; map entries `stack_morale_description`, `stack_luck_description`,
+  `creature_dialog_proc`, `message_box_picture`, `arraytxt_load`, `stack_morale`, new
+  `stack_side_hero`, `army_alignment_count`, `player_hero_wears_artifact`,
+  `hero_morale_description`, `hero_luck_description`, the formats 0x660B40 to 0x660B50,
+  `alignment_join_towns`, the two text tables; the battle manager's +0x54B2): the popup's header
+  by the value's sign and its picture (types 11 to 16: the 82 DEFs' frames 4, 3, 2), both
+  descriptions whole, the alignments' count, the hero's lists for their sources only.
+- **Found:** the original's Angelic Alliance joins the alignments when any hero of the side's
+  player wears it (the battle lane's inbox, a rule to check); ARRAYTXT's two files number the
+  records after 82 differently (H3bitmap.lod's is the game's); the client's dialog counted the
+  timed effects' morale and luck twice since T2a1 (fixed; the wire's doc in the server lane's
+  inbox).
+- **Requested:** the battle lane's inbox (each source carried setup to wire, the unclamped values,
+  public; ADR-0013 point 9's amendment), the server's and the adventure lane's; this lane's inbox
+  for the lines once carried.
+- **The library:** `stats::describe` (`Account`, `Field`, `morale`, `luck`, `picture_frame`),
+  `Hints`' `morale` and `luck`, `described` and `Modal::describe` with a picture, `Described`;
+  `h3_ui::text`'s `%+d`; the catalogue's `stats.morale.*` and `stats.luck.*` (ARRAYTXT 59 to 126
+  and the executable's Halflings' line); the layout's `morale_described`, `luck_described`.
+- **The binary:** `stats::account` (the field by key, the creature's town and flags, the listed
+  side's army by the wire's slots, the other army's dragons and devils, the minimums, the
+  spells' changes); the window's dialog loads the two DEFs; the popup and the stills take the
+  picture.
+- **Recorded:** `stats-morale`, `stats-luck`, `stats-morale-angels`, `stats-morale-holy`,
+  `stats-morale-fog`, `stats-morale-cursed`, `stats-luck-cursed`: all exact at their first
+  capture. Not recorded: the Devils (no scenario where the defender holds them and the attacker
+  looks), undead, the minimums.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

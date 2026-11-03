@@ -1845,6 +1845,25 @@ impl<'g> Battle<'g> {
                     .collect()
             })
             .unwrap_or_default();
+        // Morale's and luck's descriptions' pictures (E17 M6 T2a2b2): loaded for their sizes
+        // and for the popup to draw them.
+        let described = [
+            ground.layout.stats.morale_described.clone(),
+            ground.layout.stats.luck_described.clone(),
+        ];
+        let unheld: Vec<String> = described
+            .iter()
+            .map(|d| d.to_ascii_uppercase())
+            .filter(|d| !held(&self.batch, d))
+            .collect();
+        if !unheld.is_empty() && self.load_names(unheld).is_err() {
+            return false;
+        }
+        let sizes = described.map(|d| {
+            self.batch.sprite(&d).map_or([0, 0], |s| {
+                [s.def.width, s.def.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
+            })
+        });
         let (Some(ruleset), Some(writer)) = (ground.previews(), ground.writer.as_ref()) else {
             return false;
         };
@@ -1865,7 +1884,7 @@ impl<'g> Battle<'g> {
             &sources,
             &observation,
             (id, point),
-            (&ground.layout.stats, anchor),
+            (&ground.layout.stats, anchor, sizes),
             (frames, viewing, seed),
             &mut self.stats_memory,
         );
@@ -1941,12 +1960,18 @@ impl<'g> Battle<'g> {
         if open.modal.popup.is_some() {
             return false;
         }
-        let (Some(text), Some(writer)) = (open.modal.describe(point), self.ground.writer.as_ref())
+        let (Some((text, picture)), Some(writer)) =
+            (open.modal.describe(point), self.ground.writer.as_ref())
         else {
             return false;
         };
-        let Some(window) = writer.message(&self.ground.layout, &text, Style::Popup, None, player)
-        else {
+        let Some(window) = writer.message(
+            &self.ground.layout,
+            &text,
+            Style::Popup,
+            picture.as_ref(),
+            player,
+        ) else {
             return false;
         };
         let Some((open, opened)) = self.stats.as_mut() else {

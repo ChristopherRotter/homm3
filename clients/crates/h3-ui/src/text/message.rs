@@ -72,7 +72,9 @@ impl Message {
     }
 
     /// An original row with its `printf` specifiers named in order (`%s` and `%d`; `%%` is a
-    /// percent sign), each checked against the kind `kind` gives for its name.
+    /// percent sign), each checked against the kind `kind` gives for its name. A `%+d` (or
+    /// `%+i`) is a signed number the caller writes with its sign: a text argument (E17 M6
+    /// T2a2b2, the morale and luck descriptions' spells line, ARRAYTXT 121).
     ///
     /// # Errors
     /// The first problem found, as [`PrintfError`].
@@ -90,6 +92,7 @@ impl Message {
                 continue;
             }
             message.literal(&row[start..at]);
+            let mut width = 2;
             let spec = match chars.next().map(|(_, s)| s) {
                 Some('%') => {
                     message.literal("%");
@@ -99,6 +102,13 @@ impl Message {
                 Some('s') => Kind::Text,
                 // `%i` as `%d` (Acid Breath's line, the executable's own: E17 M3 T7b-2b-3).
                 Some('d' | 'i') => Kind::Number,
+                Some('+') => match chars.next().map(|(_, s)| s) {
+                    Some('d' | 'i') => {
+                        width = 3;
+                        Kind::Text
+                    }
+                    _ => return Err(PrintfError::Specifier(Some('+'))),
+                },
                 other => return Err(PrintfError::Specifier(other)),
             };
             let name = names
@@ -109,7 +119,7 @@ impl Message {
             }
             message.segments.push(Segment::Placeholder(name.clone()));
             used += 1;
-            start = at + 2;
+            start = at + width;
         }
         message.literal(&row[start..]);
         if used < names.len() {

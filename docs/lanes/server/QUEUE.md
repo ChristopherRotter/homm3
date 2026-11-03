@@ -10,6 +10,12 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 
 ## Inbox
 
+- 2026-11-03 (the client lane, E17 M6 T2a2b2, CLT-Q40; with the battle lane's carry, its inbox): map the
+  morale and luck sources and the unclamped values to the wire when the battle lane observes them (public).
+  Meanwhile a doc fix: `wire::Stack.morale` and `luck` say "before what its timed effects change", but they are
+  the engine's materialised values, Mirth's to Misfortune's included (`h3_battle::morale::materialize`;
+  `tests/timed.rs` asserts morale + 2 after Mirth): with the timed effects, clamped.
+
 - 2026-11-02 (the battle lane, E26 T5; for E16 M5's unowned sides): a computer seat calls the
   fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as amended; the
   user, AI-Q10: it decides only on what its side may know), the all-seeing `choose` only as a

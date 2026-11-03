@@ -874,6 +874,133 @@ original = [{ at = "HELP:447:1" }]
 id = "stats.help.cast-original"
 original = [{ at = "MINENAME:1" }]
 
+# Morale's and luck's descriptions (E17 M6 T2a2b2; design §12.4): the right button over the stats
+# dialog's morale and luck (`creature_dialog_proc` 0x5F4B86, 0x5F4937; `stack_morale_description`
+# 0x44B960, `stack_luck_description` 0x44C1C0). ARRAYTXT's records as `arraytxt_load` copies them to
+# `luck_description_texts` 0x6A532C (59 to 83) and `morale_description_texts` 0x6A57BC (85 to 126),
+# H3bitmap.lod's file. The header, its good, neutral or bad text by the value, then the lines (each
+# from a line break but the Halflings', CLT-Q41 (1)), or the empty list's line. Luck's facing line
+# and spells line are morale's records (118, 121), as the executable takes them.
+
+[[key]]
+id = "stats.luck.header"
+args = { text = "text" }
+original = [{ at = "ARRAYTXT:62", printf = ["text"] }]
+
+[[key]]
+id = "stats.luck.good"
+original = [{ at = "ARRAYTXT:59" }]
+
+[[key]]
+id = "stats.luck.neutral"
+original = [{ at = "ARRAYTXT:60" }]
+
+[[key]]
+id = "stats.luck.bad"
+original = [{ at = "ARRAYTXT:61" }]
+
+[[key]]
+id = "stats.luck.none"
+original = [{ at = "ARRAYTXT:77" }]
+
+[[key]]
+id = "stats.luck.cursed"
+original = [{ at = "ARRAYTXT:81" }]
+
+[[key]]
+id = "stats.luck.clover"
+original = [{ at = "ARRAYTXT:83" }]
+
+# The Halflings' minimum (0x44C486): the executable's own text, without a line break before it
+# (CLT-Q41 (1): the client's profile adds one).
+
+[[key]]
+id = "stats.luck.halflings"
+args = { creature = "text" }
+original = [{ at = "EXE:0x660B50", printf = ["creature"] }]
+
+[[key]]
+id = "stats.morale.header"
+args = { text = "text" }
+original = [{ at = "ARRAYTXT:88", printf = ["text"] }]
+
+[[key]]
+id = "stats.morale.good"
+original = [{ at = "ARRAYTXT:85" }]
+
+[[key]]
+id = "stats.morale.neutral"
+original = [{ at = "ARRAYTXT:86" }]
+
+[[key]]
+id = "stats.morale.bad"
+original = [{ at = "ARRAYTXT:87" }]
+
+[[key]]
+id = "stats.morale.none"
+original = [{ at = "ARRAYTXT:108" }]
+
+[[key]]
+id = "stats.morale.cursed"
+original = [{ at = "ARRAYTXT:112" }]
+
+[[key]]
+id = "stats.morale.unaffected"
+original = [{ at = "ARRAYTXT:113" }]
+
+# The army's alignments (114: their number and the morale they give, 2 less the number, -3 from 5).
+
+[[key]]
+id = "stats.morale.alignments"
+args = { alignments = "number", change = "number" }
+original = [{ at = "ARRAYTXT:114", printf = ["alignments", "change"] }]
+
+[[key]]
+id = "stats.morale.one-alignment"
+original = [{ at = "ARRAYTXT:115" }]
+
+[[key]]
+id = "stats.morale.undead"
+original = [{ at = "ARRAYTXT:116" }]
+
+[[key]]
+id = "stats.morale.in-group"
+args = { creature = "text" }
+original = [{ at = "ARRAYTXT:117", printf = ["creature"] }]
+
+[[key]]
+id = "stats.morale.facing"
+args = { creature = "text" }
+original = [{ at = "ARRAYTXT:118", printf = ["creature"] }]
+
+[[key]]
+id = "stats.morale.minimum"
+args = { creature = "text" }
+original = [{ at = "ARRAYTXT:120", printf = ["creature"] }]
+
+# The spells' line: `%+d`, the change with its sign (a text).
+
+[[key]]
+id = "stats.morale.spells"
+args = { change = "text" }
+original = [{ at = "ARRAYTXT:121", printf = ["change"] }]
+
+[[key]]
+id = "stats.morale.holy-good"
+original = [{ at = "ARRAYTXT:123" }]
+
+[[key]]
+id = "stats.morale.holy-evil"
+original = [{ at = "ARRAYTXT:124" }]
+
+[[key]]
+id = "stats.morale.fog-evil"
+original = [{ at = "ARRAYTXT:125" }]
+
+[[key]]
+id = "stats.morale.fog-good"
+original = [{ at = "ARRAYTXT:126" }]
+
 # An effect's hint (0x5F4F33): GENRLTXT's record 611 with the spell's name and its rounds left;
 # Bind's, Berserk's and Disrupting Ray's (0x5F4EB4 to 0x5F4F31) record 680 with how long they last,
 # records 681 to 683.

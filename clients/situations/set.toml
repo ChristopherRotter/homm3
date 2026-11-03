@@ -1410,3 +1410,87 @@ at = 0
 differing = 1276
 why = "the panel's line only (as stats-dragon's): the cast button's description, the second mine's name in the original (CLT-Q38 (2); E17 M6 T2a2b1)"
 
+# E17 M6 T2a2b2: morale's and luck's descriptions (design §12.4): the header by the value's sign
+# and the lines the observation tells (CLT-Q40), with the sign's picture (imrl82.def, ilck82.def).
+# The Marksmen's dialog at (0, 275): morale (23, 189) and luck (77, 189), 42 x 38; the acting
+# first slot's (row 2) by T at (0, 72). `stats-morale`: one alignment, `stats-luck`: none;
+# `stats-morale-angels`: the Archangels in the army; Holy Ground's and Evil Fog's lines for a
+# Castle creature; Cursed Ground's morale and luck lines alone.
+
+[[situation]]
+id = "stats-morale"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "right:44,480"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Marksmen's morale, good: one alignment, imrl82.def's frame 4 (E17 M6 T2a2b2)"
+
+[[situation]]
+id = "stats-luck"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "right:98,480"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: their luck, neutral: no line, the empty list's, ilck82.def's frame 3 (E17 M6 T2a2b2)"
+
+[[situation]]
+id = "stats-morale-angels"
+scenario = "mouse-angels.toml"
+seat = "attacker"
+actions = ["key:t", "right:44,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the acting Archangels' morale: one alignment, the Archangels in the army (E17 M6 T2a2b2)"
+
+[[situation]]
+id = "stats-morale-holy"
+scenario = "holy-ground.toml"
+seat = "attacker"
+actions = ["key:t", "right:44,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Royal Griffins' morale on Holy Ground: its line for a good town's creature, one alignment (E17 M6 T2a2b2)"
+
+[[situation]]
+id = "stats-morale-fog"
+scenario = "evil-fog.toml"
+seat = "attacker"
+actions = ["key:t", "right:44,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: on Evil Fog, neutral with two lines: the good town's -1, one alignment (E17 M6 T2a2b2)"
+
+[[situation]]
+id = "stats-morale-cursed"
+scenario = "cursed-ground.toml"
+seat = "attacker"
+actions = ["key:t", "right:44,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: on Cursed Ground its morale line alone (E17 M6 T2a2b2)"
+
+[[situation]]
+id = "stats-luck-cursed"
+scenario = "cursed-ground.toml"
+seat = "attacker"
+actions = ["key:t", "right:98,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: on Cursed Ground its luck line alone (E17 M6 T2a2b2)"
+

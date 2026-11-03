@@ -5116,5 +5116,96 @@ Read: the procedure's right button (0x5F4890 to 0x5F4B86), the items' right pres
   button over the open dialog, its popup held, the cursor hidden, the input dropped but its ends;
   the cast button's click into the aim as the key F's, the dialog's close as it ends. The stills'
   `right:<x>,<y>` (the harness holds the button down through the frames); the sequences' `look:` and
-  `cast-button:<x>,<y>:<spell>`. *Not built:* morale's and luck's descriptions (M6 T2a2b2), an
+  `cast-button:<x>,<y>:<spell>`. *Not built:* morale's and luck's descriptions (M6 T2a2b2, §12.4), an
   effect's own; the right button over the battle (M6 T2b, T3).
+
+### 12.4 Morale's and luck's descriptions (M6 T2a2b2)
+
+Read: the procedure's luck and morale branches (0x5F4937 to 0x5F4AD4, 0x5F4B86 to 0x5F4CF0),
+`stack_luck_description` 0x44C1C0 and `stack_morale_description` 0x44B960 whole, their calls in
+the constructor (0x5F3763 to 0x5F38CF), `army_alignment_count` 0x44ABB0 whole, `stack_morale`
+0x43E000 to its field (0x43E0AA), `message_box_picture`'s types 11 to 16 (0x4F595E to 0x4F5B4B) and
+its tail for an empty caption (0x4F5BC5), the layout's picture row for style 4 (0x4F60C6 to
+0x4F60DC), `arraytxt_load`'s groups (0x5B9D81 luck's, 0x5B9D9C morale's); the hero's lists
+(0x4DCAC0, 0x4DC320) for their sources only. The texts are ARRAYTXT's records (H3bitmap.lod's
+file: H3ab_bmp.lod's older one lacks a field's lines, so its records after 82 are one lower).
+
+- **The popup** (the right button over item 219 or 220, the hint index 9 or 10): the header
+  (luck's record 62, morale's 88) filled with the good, neutral or bad text (luck's 59 to 61,
+  morale's 85 to 87) by the dialog's value (+0x7C, the stack's luck +0x4EC; +0x68, its morale
+  +0x4E8; unclamped) above, at or below 0, then the description the constructor kept (+0x80,
+  +0x6C), or the empty list's line (luck's 77, morale's 108) when it is empty; shown as §12.3's
+  popup with one picture: types 11, 12, 13 (morale 14, 15, 16), subtype 0, `ilck82.def`
+  (`imrl82.def`) frame 4, 3 or 2: the sign's picture, not the value's. Its caption is empty and
+  takes no room (0x4F5BC8); the picture's bottom is the box's less 30 (style 4 leaves out the
+  buttons' 50, 0x4F60D4), centred.
+- **The arguments** (0x5F3763 to 0x5F38CF): `this` the army of the stack's own side (`armies`
+  +0x54C4 by +0xF4, not its controller's), the creature, the dialog's value, the side's hero
+  (`stack_side_hero` 0x4426D0), the town for the defender only (+0x53C8), the other side's hero
+  and army, the special field (+0x53C0: 2 Cursed Ground, 3 Holy Ground, 4 Evil Fog, 5 Clover
+  Field); morale's also the side's flag +0x54B2 (set at 0x463AE2 by 0x4BACB0 with artifact 129,
+  the Angelic Alliance, on the side's player's record; *inferred*).
+- **Luck's description** (0x44C1C0), each line from a line break: on Cursed Ground its line (81)
+  alone; else when either hero wears the Hourglass of the Evil Hour (85) its suppression (82, the
+  artifact's name) alone; else the base luck (0x44B2D0 with the hero, the town, the other hero and
+  army, no field and no clamp), then the hero's own list (0x4DCAC0, below), Clover Field's line
+  (83) for a creature of town 6 to 8 (the creature table's +0; in a map of kind 0, `[game]+0x1F698`,
+  not the elementals 112 to 115), the value then less 2; "facing" (morale's 118) with the Arch
+  Devils' (55) plural when the other army holds them, else the Devils' (54); at a Rampart (type 1)
+  with building 21 its name +2 (0x660B40); for Halflings (138) with a base below 1 their line
+  (0x660B50, **no line break**: it runs on after the line before), the base then 1; and the
+  spells' line (121) with the value less the base, when it is not 0.
+- **Morale's description** (0x44B960): on Cursed Ground its line (112) alone; for a creature with
+  the flag 0x20000 (no morale) its line (113) alone; else the base morale (0x44AE60, as luck's, the
+  flag passed), then the hero's list (0x4DC320), Holy Ground's lines (towns 0 to 2: 123, the value
+  less 1; 3 to 5: 124, plus 1) and Evil Fog's (0 to 2: 126, plus 1; 3 to 5: 125, less 1), the
+  elementals as Clover Field's; the army's alignments n (below; with the flag the towns 0, 1, 2, 6
+  and 7 among them count as one, a set built once at 0x693884, *inferred*): n ≥ 3 the line 114
+  with n and 2 − n (−3 from 5 on), n = 1 the line 115; undead (flag 0x40000) in the army: 116;
+  Angels (12) or Archangels (13) in it: 117 with the Archangels' plural first; Bone (68) or Ghost
+  Dragons (69) in the other army: 118, the Ghost Dragons' first; at a siege the town's building 5
+  +1 (0x660B48) and a Castle's (type 0) building 22 +2; Minotaurs (78, 79) with a base below 1:
+  120, the base then 1; when either hero wears the Spirit of Oppression (84) and the base is above
+  0, its suppression (119) **replaces** every line before it (assigned to the text where the
+  other lines are appended; the string helpers read from their uses only), the base then 0; and
+  the spells' line (121) as luck's.
+- **The value less the base**: the stack's routines add the timed spells and the field after the
+  same base (0x43E045 passes 0 as the fifth argument too, then Mirth's and Sorrow's values, then
+  Holy Ground's or Evil Fog's change by the stack's town +0x74), so the spells' line is what the
+  spells change, but where a creature's minimum or a cap cuts the value.
+- **`army_alignment_count`** (0x44ABB0, H3API's `H3Army::NumberAlignments`): the seven slots'
+  creatures but war machines (flag 0x40), each by its town (the four elementals neutral in a map of
+  kind 0); the number of the ten (neutral, the nine towns) that count one or more.
+- **The hero's lists** (0x4DCAC0 luck, 0x4DC320 morale, which the hero screen shares; read for
+  their sources): the cheat's mark (+0x105 bit 22, GENRLTXT 438); the morale or luck artifacts
+  worn, alone or in a worn combination (artifacts 45 to 51 and 108; luck's lines 63 to 66, 80,
+  morale's 89 to 92, 111); the adventure map's visits until the next battle (+0x105's bits); the
+  Luck or Leadership level (+0xD2, +0xCF; 74 to 76, 105 to 107); the owner's grail building (+0x22);
+  and the rest as temporary (78, 79; 109, 110): the hero's own value (0x4E36C0, 0x4E39B0) less
+  the lines'.
+- **What a seat's observation lacks** (CLT-Q40, answered by the user at the task's start: build
+  what it allows, request the rest; carried, the sources are public, as VCMI shows them): the
+  hero's lists, the Hourglass and the Spirit of Oppression, the Angelic Alliance's flag, a siege
+  town's buildings (BattleHero.effects holds their sums unlabelled; the observation none), and
+  the unclamped values (the stack's luck is clamped to 0 and up, so the Devils' −1 shows neutral).
+  The request: the battle lane's inbox (QUEUE), the server's and the adventure lane's.
+- **The slips** (CLT-Q41, asked and answered the same day: both fixed, the original's for the
+  comparisons): the Halflings' line runs on after the line before; a hypnotized stack's lines are
+  its owner's while its value is its controller's.
+- **Recorded** (`clients/situations/set.toml`): `stats-morale` (one alignment; good: frame 4),
+  `stats-luck` (the empty list's line; neutral: frame 3), `stats-morale-angels`,
+  `stats-morale-holy`, `stats-morale-fog` (neutral with two lines), `stats-morale-cursed`,
+  `stats-luck-cursed`: all exact at their first capture. Not recorded: the Devils (no scenario
+  where the defender holds them), undead, the minimums, the spells' line.
+- **The viewer** (`h3_view::stats::describe`: `Account`, `Field`, `morale`, `luck`,
+  `picture_frame`; `Hints`' `morale` and `luck`, `described` and `Modal::describe` with the
+  picture; the layout's `morale_described`, `luck_described`; `h3_ui::text`'s `%+d`). The
+  binary's `stats::account` from a seat's observation: the field by its key, the creature's town
+  (its faction) and flags (`no_morale`, `undead`), the side's army as the wire's stacks of slots 0
+  to 6 not made in the battle (the original's army record, dead stacks included), the other
+  side's, the named creatures by their original ids, the minimums, the spells' changes from the
+  stack's effects. The spells' line is the value the client's lines and the spells make, less the
+  field's change and the base, so it shows what the executable shows when the hero adds nothing.
+  The dialog's own morale and luck no longer add the timed effects a second time (T2a1's slip:
+  the wire's values hold them). *Not built:* the lines CLT-Q40 requested; the header and picture
+  by the unclamped value.

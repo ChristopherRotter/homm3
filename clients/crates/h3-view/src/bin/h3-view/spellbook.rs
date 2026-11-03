@@ -617,8 +617,8 @@ fn stats_action(
         "right" => {
             let at = point(arg)?;
             to(modal, at);
-            if let Some(text) = modal.describe(at) {
-                modal.popup = tell.and_then(|tell| tell(&text, Style::Popup, None));
+            if let Some((text, picture)) = modal.describe(at) {
+                modal.popup = tell.and_then(|tell| tell(&text, Style::Popup, picture.as_ref()));
                 // Held from the opening's frozen time through the frames.
                 open.holds.push([0, u32::MAX]);
             }
