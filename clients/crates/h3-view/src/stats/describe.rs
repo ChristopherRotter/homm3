@@ -138,11 +138,9 @@ pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
         let field_change = field.map_or(0, |(_, change)| change);
         let mut shown = base + account.morale_spells + field_change;
         if let Some(minotaurs) = &account.morale_minimum {
-            shown = shown.max(1);
-            if base < 1 {
-                lines.push_str(&named("stats.morale.minimum", minotaurs));
-                base = 1;
-            }
+            minimum(&mut lines, (&mut base, &mut shown), || {
+                named("stats.morale.minimum", minotaurs)
+            });
         }
         spells(catalogue, &mut lines, shown - field_change - base);
         lines
@@ -175,22 +173,31 @@ pub fn luck(catalogue: &Catalogue, account: &Account, value: i32, bugs: Bugs) ->
         let field_change = if clover { 2 } else { 0 };
         let mut shown = base + account.luck_spells + field_change;
         if let Some(halflings) = &account.luck_minimum {
-            shown = shown.max(1);
-            if base < 1 {
-                if bugs == Bugs::Fixed {
-                    lines.push('\n');
-                }
-                lines.push_str(&catalogue.text(
+            minimum(&mut lines, (&mut base, &mut shown), || {
+                let line = catalogue.text(
                     "stats.luck.halflings",
                     &Args::new().text("creature", halflings),
-                ));
-                base = 1;
-            }
+                );
+                match bugs {
+                    Bugs::Fixed => format!("\n{line}"),
+                    Bugs::Original => line,
+                }
+            });
         }
         spells(catalogue, &mut lines, shown - field_change - base);
         lines
     };
     compose(catalogue, "stats.luck", value, &lines)
+}
+
+/// A creature's minimum of 1 (the Minotaurs' morale 0x44BF7B, the Halflings' luck 0x44C462): the
+/// value shown is at least 1; a base below 1 writes its line (`line`) and becomes 1.
+fn minimum(lines: &mut String, (base, shown): (&mut i32, &mut i32), line: impl FnOnce() -> String) {
+    *shown = (*shown).max(1);
+    if *base < 1 {
+        lines.push_str(&line());
+        *base = 1;
+    }
 }
 
 /// The spells' line (ARRAYTXT 121, `%+d`) with `change`, when it is not 0.
