@@ -26,8 +26,8 @@ const NAME: &str = "e08-economy-36.h3m";
 /// The original's templates (`Objects.txt`): one line per object picture the map places, the
 /// grass pictures where a class has several. A mine, the Shipyard, a Windmill and a Mystical
 /// Garden are visited one column left of their position, a Lighthouse and a Water Wheel on it.
-mod lines {
-    pub(super) const MINES: [&str; 7] = [
+pub(super) mod lines {
+    pub(crate) const MINES: [&str; 7] = [
         "AVMsawg0.def 000011110011111111111111111111111111111111111111 \
          010000000000000000000000000000000000000000000000 111111111 000010100 53 0 0 0",
         "AVMalch0.def 000111111111111111111111111111111111111111111111 \
@@ -43,28 +43,28 @@ mod lines {
         "AVMgold0.def 000111111111111111111111111111111111111111111111 \
          010000000000000000000000000000000000000000000000 111111111 000000100 53 6 0 0",
     ];
-    pub(super) const ABANDONED: &str = "AVXabnd0.def \
+    pub(crate) const ABANDONED: &str = "AVXabnd0.def \
         000111111111111111111111111111111111111111111111 \
         010000000000000000000000000000000000000000000000 111111111 000000001 53 7 0 0";
-    pub(super) const LIGHTHOUSE: &str = "AVXlths0.def \
+    pub(crate) const LIGHTHOUSE: &str = "AVXlths0.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 111111111 010111111 42 0 0 0";
-    pub(super) const SHIPYARD: &str = "AVXshyd0.def \
+    pub(crate) const SHIPYARD: &str = "AVXshyd0.def \
         000111111111111111111111111111111111111111111111 \
         010000000000000000000000000000000000000000000000 011111111 011111111 87 0 0 0";
-    pub(super) const WINDMILL: &str = "AVMwndd0.def \
+    pub(crate) const WINDMILL: &str = "AVMwndd0.def \
         101111111111111111111111111111111111111111111111 \
         010000000000000000000000000000000000000000000000 111111111 011111111 112 0 0 0";
-    pub(super) const WATER_WHEEL: &str = "AVMwwhl0.def \
+    pub(crate) const WATER_WHEEL: &str = "AVMwwhl0.def \
         000111110001111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 111111111 000010101 109 0 0 0";
-    pub(super) const GARDEN: &str = "AVTmyst0.def \
+    pub(crate) const GARDEN: &str = "AVTmyst0.def \
         000111111111111111111111111111111111111111111111 \
         010000000000000000000000000000000000000000000000 111111111 000010101 55 0 0 0";
-    pub(super) const PIKEMEN: &str = "AvWPike.def \
+    pub(crate) const PIKEMEN: &str = "AvWPike.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 111111111 000000100 54 0 2 0";
-    pub(super) const GNOLLS: &str = "AVWgnll0.def \
+    pub(crate) const GNOLLS: &str = "AVWgnll0.def \
         011111111111111111111111111111111111111111111111 \
         100000000000000000000000000000000000000000000000 111111111 000000001 54 98 2 0";
 }
@@ -123,7 +123,7 @@ fn monster(line: &str, at: (u8, u8), count: u16, fixed: bool) -> w::MapObject {
     })
 }
 
-fn owned(line: &str, at: (u8, u8), body: w::OwnedBody) -> w::MapObject {
+pub(super) fn owned(line: &str, at: (u8, u8), body: w::OwnedBody) -> w::MapObject {
     w::MapObject::Owned(w::OwnedObject {
         tile: at,
         template: template(line),

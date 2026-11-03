@@ -4,56 +4,24 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). T77b done whole (decision 200; `adventure/e08-t77b`: the drafts, `E08-design.md`, the cut in rounds 2 to 8, decision 202; the checkpoint's `ADV-Q38`, decisions 201–204). T78 done whole (decision 205; `adventure/e08-t78`, `cross-lane`, decision 206: the writer's ownable objects, weekly objects and timed events, the spec's fields, the specs `E08-batch-9a` and `-9b`). T79 in two by batch (decision 207): T79a
-done (`adventure/e08-t79a`: the harness's mine records, tile words, boat dialog, Leave Guards,
-battle sides and `auto again`; the recipe `E08-batch-9a` and its runs); T79b done whole (decision
-208; `adventure/e08-t79b`: the harness's income, Garden mask, weekly objects' and monsters' words,
-end-turn messages; the recipe `E08-batch-9b` and its runs). T80 done (decisions 209, 210: whole
-with A-33's re-read; `adventure/e08-t80`, `cross-lane`: batch E9 scored, survey §19, A-33
-withdrawn). T81 in two, the ADRs first (decision 211): T81a done (`shared/e08-t81a`: the three
-drafts applied, ADR-0015's core row, the index, the glossary); T81b done (decision 212: whole;
-`shared/e08-t81b`, `cross-lane`: the four kinds, the two parameters, the creature's abilities
-outside battle, the packs; core ruleset hash v51, pack format v50). Round 5: T82 and T83a done
-together (decision 213; `adventure/e08-t82-t83a`, `cross-lane`, decision 214: the day's income,
-spell points and the Lighthouses' input; the seven kinds and parameters, the import), T83b in two by what reads it (decision 215): T83b1 done
-(`adventure/e08-t83b1`, `cross-lane`, decision 217: the owners, guards, weekly contents, draws,
-the start's reveal, the flag radius), T83b2 in two, the state first (decision 218): T83b2a done
-(`adventure/e08-t83b2a`: the fractions, the added objects, `check_added`, adventure state hash
-v19), T83b2b done (decision 219: whole, the `shared/` part first, a mine's guards as the
-original's hint; `adventure/e08-t83b2b` with `shared/e08-t83b2b`: the views). Round 6: T84 in two
-halves, the mines first (decision 220): T84a done (`adventure/e08-t84a` with `shared/e08-t84a`:
-the flags, the mines' visits, Leave Guards, their battles; game state hash v21); T84b in two,
-the Lighthouses and the weekly visits first (decision 221): T84b1 done (`adventure/e08-t84b1`
-with `shared/e08-t84b1`: the Lighthouses' flag and points, the weekly visits); T84b2 done
-(`adventure/e08-t84b2` with `shared/e08-t84b2`: the Shipyards, their boat offer and `BuildBoat`,
-adventure replay format v8; the user's decision 222: a Garden marks the team). Round 7: T85 in
-two halves, T85a whole (decision 223): T85a done (`adventure/e08-t85a` with `shared/e08-t85a`:
-the week's step, a creature month's step, the audit of the static reads). T85b on one branch
-over two sessions (decision 224): T85b1 done on `adventure/e08-t85b` (pushed, no pull request);
-T85b2 in two (decision 225): T85b2a done on the same branch (the timed events, `events_today`;
-the security lines on `shared/e08-t85b`); T85b2b done on it (the env's `BuildBoat`, action
-encoding v6, `cross-lane`; the verify with the original data, the bench; the pull requests,
-`shared/` first: the lane HANDOFF names them). Round 8: T86 in two (decision 226): T86a done
-(`adventure/e08-t86a`: the economy map, its seven replays, the duel replays' lists, four
-replaced); T86b in two, the properties first (decision 227): T86b1 done (`adventure/e08-t86b1`:
-the plans' economy classes and steps, design §15's checks, the town lane's failing case).
-Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T86b1 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed. **Increment 9, mines, the week and owned objects** (ADV-Q36; decisions 192, 193): rounds 1 to 7 done, and round 8's T86 (decision 226): T86a (the economy map and its replays), T86b1 (the plans' properties) and T86b2 (decision 228: the economy XL, the day start's workloads, the re-baselines; `adventure/e08-t86b2` with `shared/e08-t86b2`); T87 left. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T86b2 — the economy XL and its benchmarks**
+**E08 T87 — the audit; increment 9 closed; increment 10 refined**
 
-- **Scope:** round 8's first task's last part (design §15, §18; decisions 226, 227):
-  `e08-economy-144.h3m` (`h3_map::writer`: the XL map with as many mines and weekly objects as
-  the largest shipped map, a class's most on one map in survey `E08-economy.md` §1's table and the
-  weekly objects' 18, 24 and 11, and a monster on every hundredth free tile); the workloads
-  `day-start-xl-144` (the `EndTurn` that starts day 8), `month-start-xl-144` (the one that starts
-  day 29 in a creature month: the spawn's walk), `random-play-economy-36` (on T86a's
-  `e08-economy-36.h3m`), `fork-economy-xl-144` (forks after a week's writes); the existing ones
-  re-baselined where the growth moved them (T85b1's and T85b2b's records in `E08-log.md`); the
-  benches README's rows in one `shared/` pull request.
-- **Inputs:** design §15, §18, §19 (the day start's cost); `E08-log.md` T85b1, T85b2b, T86a,
-  T86b1; `docs/lanes/adventure/TRAPS.md` (objects added in play, the reach's loops); the skill
-  `homm3-bench-regression`.
-- **Depends on:** T86b1's pull request merged. **Status:** ready after it.
+- **Scope:** design §18's exit criteria 1 to 10 audited against the code, the tests and the catalog (a rule still
+  `implemented` that batch E9 observed, a criterion without its test); **decision 229**: `ObjectView::boat_tile`
+  only to the viewers of the Shipyard's owner's team (`h3-adventure`'s views, ADV-OWN-003, the line in
+  `docs/06-security.md` in a `shared/` pull request first, `h3-map`'s `view.rs` exception for a seen Shipyard's
+  offsets removed; no version moves); increment 9 closed (its scope, decisions and task list to `E08-archive.md`,
+  its design note to `E08-log.md`, a row in the closed increments' table); increment 10 refined with the user
+  (the sketch's item 10: dwellings and hiring, the Refugee Camp, garrisons; the town lane's inbox notes on the
+  hire dialog and the random dwellings). Optional, if the audit has room: the month's walk's tile test from the
+  static map's flags and without a lookup of the events per tile (design §19; `month-start-xl-144`, 12.7 M Ir a
+  creature month's start, `E08-log.md` T86b2).
+- **Inputs:** `E08-design.md` §18, §19; `E08-log.md` T86a, T86b1, T86b2; the epic's decisions 192 to 229;
+  `docs/lanes/adventure/QUESTIONS-ANSWERED.md` ADV-Q40; the inbox below (the town lane's and the map client's notes).
+- **Depends on:** T86b2's pull requests merged. **Status:** ready after them; its cut confirmed with the user at
+  its start.
 
 ## Inbox
 

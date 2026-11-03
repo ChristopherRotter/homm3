@@ -28,6 +28,9 @@ const FULL: [&str; 2] = [
 ];
 /// The sea XL map (E08 T75b): 144 × 144 of sea, sixteen islands, fifteen boats.
 const SEA_XL: &str = "fixtures/maps/e08-sea-144.h3m";
+/// The economy map (E08 T86a) and the economy XL map (E08 T86b2): increment 9's objects.
+const ECONOMY: &str = "fixtures/maps/e08-economy-36.h3m";
+const ECONOMY_XL: &str = "fixtures/maps/e08-economy-144.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -944,6 +947,44 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     let apart = meeting(DUEL, bench::Workload::Manage, 1);
     assert_eq!((apart.operations, apart.meetings), (0, 0));
     assert!(apart.steps > 2, "{apart:?}");
+    // E08 T86b2: `day-start` counts one step a game, the one that starts the day after the limit:
+    // on the economy XL map day 8, a week's start (`day-start-xl-144`); on the economy map day 29,
+    // a creature month's start for the seed 3 (as `month-start-xl-144`'s on the XL map).
+    let day_start = |map: &str, days, seed, games| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: map.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload: bench::Workload::DayStart,
+                games,
+                days,
+                seed,
+                forks: 0,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: false,
+                queries: 0,
+            },
+        )
+        .unwrap()
+    };
+    let week = day_start(ECONOMY_XL, 7, 1, 2);
+    assert_eq!(
+        (week.operations, week.creature_months, week.added),
+        (2, 0, 0)
+    );
+    assert!(week.steps > 2 * 14, "{week:?}");
+    let month = day_start(ECONOMY, 28, 3, 1);
+    assert_eq!(
+        (month.operations, month.creature_months),
+        (1, 1),
+        "{month:?}"
+    );
+    assert!(month.added > 0, "{month:?}");
     let dir = root().display().to_string();
     let packs = format!("{dir}/packs");
     let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
@@ -953,6 +994,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
         ("reach", "1"),
         ("fork", "1"),
         ("manage", "1"),
+        ("day-start", "1"),
     ] {
         cli::main(&args(&[
             "bench",

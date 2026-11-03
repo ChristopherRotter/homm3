@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the step that starts day 8 (the last EndTurn of day 7: the week's step, the income, the spell points, the next turn's start) in each of 4 random games of 7 days on the economy XL map (E08 T86b2, increment 9's design note §15, §19: 144 x 144 with an underground; the shipped maps' most of each mine, abandoned mine, Lighthouse, Shipyard and weekly object, every fourth mine owned at load; 328 wandering monsters): about 322 000 Ir a day start, 25 % growing the monsters (AdventureState::grow_monsters), 25 % in malloc (a grown monster's stack is a new Vec), 11 % writing the army table; the fork that tries the step is dropped before it, so its allocations reuse what the fork's step freed and the count no longer follows the heap's earlier state (with the fork alive, 2.7 % more on CI's runner than in the sandbox); counts only inside h3_cli::adventure::bench::day_start_step (the env's step)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-economy-144.h3m",
+    "--workload",
+    "day-start",
+    "--games",
+    "4",
+    "--days",
+    "7",
+    "--seed",
+    "1",
+]
+collect = "*day_start_step*"
+instructions = 1286813
+threshold_percent = 2
