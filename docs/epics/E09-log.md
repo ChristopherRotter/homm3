@@ -555,3 +555,41 @@ packs, `cross-lane`, the original data staged).
   its tests now read the files (T5a1's inline texts, the same records, moved there).
 - **Left for T5b2b:** `packs/README.md`'s row (the battle lane's file; it still says no pack has a
   `towns.toml`), the original packs' constants and `ORIGINAL_PACKS`.
+
+### T5b2b1 — the town tables' reader (2026-11-03)
+
+One session, the user present; branch `town/e09-t5b2b1` (`cross-lane`: the battle lane's
+`h3-formats`, `h3-harvest` and `installation.md`, as E08 T81b). Starting point: `master` at
+2c73790 (#681 T5b2a merged; CI on `master` green there; the sandbox's baseline the light gates);
+the original data staged (`Heroes3.exe` SHA-256 `aac39e8c…`, both LODs, the extracted texts, the
+maps). **T5b2b cut in two at its start** (the user, asked with the reason: the reader of nine
+tables and the harvest of three packs are each a session's work): **T5b2b1** (this) and
+**T5b2b2** (the harvest module, the three packs' `towns.toml`, `h3-pack-towns`' constants and
+test, `packs/README.md`'s row).
+
+- **The reader** (`h3_formats::exe::towns`, re-exported `TownTables` and `town_data`; the build's
+  `KnownBuild::towns`): each faction's building list (a building and the ids it requires) and
+  supersede list at its own address, the common supersede list, `map_building_ids` (44 read as
+  none), `town_creatures`, the hordes (the base hordes' creature and growth as the file holds
+  them; the levels and upgrades are filled at start-up, so not read), `horde_buildings`, the silo,
+  the neutral garrison's three rows, the 30 (`cmp eax, 30` at 0x5C0C60). *Agent's calls:* the
+  lists as read, direct (the closure is the harvest's or the compiler's, as the part's
+  `supersedes`); the requirements kept in the result for increment 2, not harvested now; a list at
+  most 64 entries and an entry at most 64 ids (the faction mask's bits).
+- **Checked on the user's executable** (a throwaway example, not committed): every value as
+  survey §16 dumped it (the counts 35, 37, 36, 37, 36, 36, 34, 34, 35; the supersedes; the slots;
+  the hordes; the silo; 33/33/20/13, 8–15, 5–7, 3–5, 1–3; 30). The nine faction lists and the ten
+  supersede lists are contiguous (`installation.md` §7.61).
+- **Tests:** a synthetic image of two factions read whole; each malformed value refused (a
+  building id 44 or negative, a map slot 45, a negative creature, silo or garrison value, a horde
+  creature below −1, a growth above `i16::MAX`, a chance above 100, another opcode); a list of 65
+  entries, an entry of 65 ids, an unterminated list, unmapped and truncated tables, the supersede
+  lists' count; the reader in `robustness.rs`' property over random images.
+- **`h3-harvest`:** `Inputs::town_tables` read from the executable (`TownType.txt` is already
+  `Inputs::towns`); nothing harvested from it yet, so the packs are unchanged and the harvest's
+  `--check` still matches.
+- **For T5b2b2:** the arch edge `h3-harvest` → `h3-pack-towns` does not exist (`arch.toml`, a
+  `shared/` change) if the harvester is to compile the town files itself as it does the battle
+  packs; otherwise `h3-pack-towns`' test of the original packs is the compile check (the queue's
+  acceptance).
+

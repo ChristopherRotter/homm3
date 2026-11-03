@@ -4,7 +4,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E09** (towns) refined with the user on 2026-10-31 (TWN-Q1; the epic's decisions 1–7); the lane opened the same day beside the adventure lane's E08. **Increment 1: towns on the map** (the epic's scope). **T1 done** (the survey `E09-towns.md` §0 to §14; `TWN-Q2`, decisions 8–16). **T2 done**: T2a the ADR drafts in `adr-drafts/` (`TWN-Q3`, decisions 17–20); T2b the design note `E09-design.md` §1 to §22 and the cut (`TWN-Q4`, decisions 21–24: the drafts accepted as written, the cut as proposed, the content read and harvested, the agent's calls kept). **T3a done** (round 2): `fort` and an explicitly empty `garrison` for a spec's towns (`h3-experiment`, `cross-lane`), the spec `experiments/specs/E09-batch-1.toml` and its template. **T3b done** (round 3): the capture harness's town reads, a new-game step and the town screen; batch TWN-1 played twice under Wine (`experiments/results/E09-batch-1.md`, `-run2.md`). **T3c done** (survey §15): TD-3, TD-5, TD-7 and the siege's aftermath as the reading; building 23 in every Rampart, Necropolis and Conflux town of the standard set, not predicted, re-read in T5b (`TWN-Q5`, decisions 25, 26). **T4 done** (round 4, cut in two at its start, the user): T4a ADR-0028 and E09's amendments of ADR-0015, -0016, -0017, -0023 in `docs/adr/`, the glossary; T4b the skeletons `h3-towns` and `h3-pack-towns`, `TownId`, the gates' files (`shared/e09-t4b`). **Round 5** (T5a cut in two, the order changed, the user: T5a1, T5b, T5a2): **T5a1 done** (the part `TownRuleset`, its compiler and hash, `h3-pack-towns`' parser and format). **T5b** cut in two (the user): **T5b1 done** (the reading, survey §16; building 23 the Village Hall's town-screen companion in three factions; `TWN-Q6`, decisions 27–30); **T5b2** cut in two again (the user): **T5b2a done** (a building's `auto_with`, the hordes' upgrade; the synthetic packs' `towns.toml`). Next: **T5b2b** (the reader, the harvest and the three packs, `cross-lane`; original data), then **T5a2** (`GameRuleset`, its callers, replay format v9; `cross-lane`), both in the queue; rounds 6 to 10 in the epic's list.
+- **E09** (towns) refined with the user on 2026-10-31 (TWN-Q1; the epic's decisions 1–7); the lane opened the same day beside the adventure lane's E08. **Increment 1: towns on the map** (the epic's scope). **T1 done** (the survey `E09-towns.md` §0 to §14; `TWN-Q2`, decisions 8–16). **T2 done**: T2a the ADR drafts in `adr-drafts/` (`TWN-Q3`, decisions 17–20); T2b the design note `E09-design.md` §1 to §22 and the cut (`TWN-Q4`, decisions 21–24: the drafts accepted as written, the cut as proposed, the content read and harvested, the agent's calls kept). **T3a done** (round 2): `fort` and an explicitly empty `garrison` for a spec's towns (`h3-experiment`, `cross-lane`), the spec `experiments/specs/E09-batch-1.toml` and its template. **T3b done** (round 3): the capture harness's town reads, a new-game step and the town screen; batch TWN-1 played twice under Wine (`experiments/results/E09-batch-1.md`, `-run2.md`). **T3c done** (survey §15): TD-3, TD-5, TD-7 and the siege's aftermath as the reading; building 23 in every Rampart, Necropolis and Conflux town of the standard set, not predicted, re-read in T5b (`TWN-Q5`, decisions 25, 26). **T4 done** (round 4, cut in two at its start, the user): T4a ADR-0028 and E09's amendments of ADR-0015, -0016, -0017, -0023 in `docs/adr/`, the glossary; T4b the skeletons `h3-towns` and `h3-pack-towns`, `TownId`, the gates' files (`shared/e09-t4b`). **Round 5** (T5a cut in two, the order changed, the user: T5a1, T5b, T5a2): **T5a1 done** (the part `TownRuleset`, its compiler and hash, `h3-pack-towns`' parser and format). **T5b** cut in two (the user): **T5b1 done** (the reading, survey §16; building 23 the Village Hall's town-screen companion in three factions; `TWN-Q6`, decisions 27–30); **T5b2** cut in two again (the user): **T5b2a done** (a building's `auto_with`, the hordes' upgrade; the synthetic packs' `towns.toml`); **T5b2b** cut in two (the user): **T5b2b1 done** (`h3-formats`' reader of the executable's town tables, `installation.md` §7.61, `h3-harvest`'s `Inputs::town_tables`; `cross-lane`). Next: **T5b2b2** (the harvest module and the three packs' `towns.toml`, `cross-lane`; original data), then **T5a2** (`GameRuleset`, its callers, replay format v9; `cross-lane`), both in the queue; rounds 6 to 10 in the epic's list.
 - **Open pull requests:** see the newest session entry.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, the adapter `h3-pack-towns` and each pack folder's `towns.toml` (T4b), the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and `src/writer/town*` of `h3-map`, `docs/rules/catalog/town.toml`, `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Everything else in the adventure lane's crates is the adventure lane's: a change there is `cross-lane`, merged in order with the adventure lane's pull requests.
 - **Versions:** the lane owns the town state hash and the town ruleset-part hash (`TOWN_STATE_HASH_VERSION`, `TOWN_RULESET_HASH_VERSION`, `h3-towns`), the store's 1 (its first encoding by T6), the part's 2 (T5b2a's `auto_with`, pinned in its test). It bumps the adventure lane's (game state hash, adventure state and ruleset-part hashes, map import, adventure replay format) in `cross-lane` pull requests; their current values are in the adventure lane's HANDOFF.
@@ -16,6 +16,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-03 — T5b2b1: the town tables' reader
+
+Baseline 2c73790 (#681 merged; CI on `master` green there; the sandbox's baseline the light
+gates; the original data staged). T5b2b cut in two (the user: the reader, then the harvest).
+`h3_formats::exe::towns` (`TownTables` in `KnownBuild`, `town_data`), checked on the user's
+executable against survey §16; `installation.md` §7.61; `Inputs::town_tables`. Pull request: the
+one of branch `town/e09-t5b2b1` (`cross-lane`).
 
 ### 2026-11-03 — T5b2a: the hordes' upgrade as data, the synthetic town records
 
@@ -31,11 +39,3 @@ T5b cut in two (the user: the reading, then the harvest). Survey §16, the addre
 checkpoint `TWN-Q6` (decisions 27–30: the companions left out, the keep's count without the
 Village Hall in the derivation, the standing set derived with T-6 fixed, TD-8 by the code).
 Pull request: the one of branch `town/e09-t5b1`.
-
-### 2026-11-03 — T5a1: the town part, its compiler and the adapter
-
-Baseline 90e8638 (#671 merged; CI on `master` green; the sandbox's baseline the light gates). T5a
-cut in two, the order changed (the user: the content before `GameRuleset`). `h3-towns`'
-`TownRuleset` (the design §2's checks, the hash's first encoding, `empty`), `BuildingId` and
-`BuildingSet`; `h3-pack-towns`' parser and format; the file's shape changed where built (the
-log). Pull request: the one of branch `town/e09-t5a1`.
