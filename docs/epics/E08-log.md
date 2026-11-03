@@ -10605,7 +10605,8 @@ stopped for CI's run on #660's code (green). No original data staged.
   owners at load of the ownable objects the viewer never sees (`Unseen::owners`); `check_told`
   lets a mine's guards, which its owner's team sees whole, change at the close of its Leave Guards
   dialog (the group it was told) and at the end of the viewer's battle (its garrison's survivors),
-  their hint's change told by `GuardsChanged`.
+  their hint's change told by `GuardsChanged`; `vary` keeps an ownable object's entrance land
+  (the import refuses one on water).
 - **Found:** a Shipyard's boat tile, public with it (ADV-OWN-003), is the first of its offsets
   that was free water at the build (ADV-SHY-001), so a viewer learns what lay on the offsets
   before it, tiles it may not have explored: the 400-case run of the hygiene property found two
@@ -10620,3 +10621,9 @@ stopped for CI's run on #660's code (green). No original data staged.
   the runs of 64 ends of turn (games longer than before: the property's time, below); the probe of
   every typed object for `BuildBoat`.
 - **Versions:** none; no replay or bot report changed.
+- **Gates:** the scoped verify (no original data) passed every step it runs (coverage, determinism
+  with the 39 replays, `bench-check` with the thirteen workloads; `deny` and `ffi-smoke` skipped by
+  the scope). Every play and view property also passed 400 cases in a worktree; the runs found the
+  last three gaps above (a Leave Guards close and a garrison's survivors untold in `check_told`,
+  the boat tile, an entrance turned to water by `vary`), their seeds committed. The play
+  property's games are longer: about 100 s for its 48 cases locally, 55 s before.
