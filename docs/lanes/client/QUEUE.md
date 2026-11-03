@@ -18,20 +18,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T2a2b2 — morale's and luck's descriptions
-
-- **Scope:** T2a2b cut in two by the user (2026-11-02; T2a2b1 done: design §12.3). The right
-  button's descriptions over the stats dialog's morale and luck (`creature_dialog_proc` 0x5F4B86
-  and 0x5F4937: their texts `stack_morale_description` 0x44B960 and `stack_luck_description`
-  0x44C1C0, kept at the dialog's +0x6C and +0x80, with a picture by the value, 0xB or 0xC and
-  their kin), read; their sources against what a seat's observation carries (the hero's
-  Leadership and Luck, artifacts, specialties, the army's alignments and undead, the field, the
-  spells): a `CLT-Q<n>` (or a request to the battle or server lane) for those it lacks; built
-  as far as the observation allows; recorded.
-- **Acceptance:** as T2a2b1's (each behaviour exact against its recordings or listed; `drawn`;
-  `check.sh`).
-- **Depends on:** T2a2b1 (done 2026-11-02: the popup). **Status:** ready.
-
 ### E17 M6 T2b — the right button's stack popup and a turret's info
 
 - **Scope:** the right button held over a stack shows its stats dialog without the OK
@@ -100,6 +86,10 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-11-03 (this lane, E17 M6 T2a2b2, CLT-Q40): once the battle lane's carry lands (its inbox),
+  the morale and luck descriptions' hero lists, the two artifacts' lines, the Angelic Alliance's join and a
+  siege town's buildings, and the header and picture by the unclamped value (design §12.4).
 
 - 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
   call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as

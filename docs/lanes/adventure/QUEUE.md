@@ -57,6 +57,11 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-11-03 (the client lane, E17 M6 T2a2b2, CLT-Q40; with the battle lane's carry, its inbox): when the
+  setup carries each morale and luck effect's source, fill them as battles start from the adventure map (the
+  hero's skills, artifacts, visits until the next battle, the owner's grail; a siege town's buildings), as
+  `h3-heroes` resolves the effects today.
+
 - 2026-11-02 (the town lane, E09 T2b, `TWN-Q4`; **for your merge order, nothing to build**):
   E09's build bumps your versions `cross-lane` (`docs/epics/E09-design.md` §19, §21): adventure
   replay format v9 (T5a: the town part's hash in the header; `GameRuleset::new` gains the town

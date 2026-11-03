@@ -552,6 +552,10 @@ luck = "ilck42.def"
 # memory, E17 M6 T2a1).
 morale_frames = "imrlB.def"
 luck_frames = "ilckB.def"
+# Morale's and luck's descriptions' pictures (E17 M6 T2a2b2, design §12.4): the message box's
+# picture types 14 to 16 and 11 to 13, frame 4, 3 or 2 by the value's sign (0x4F595E to 0x4F5B4B).
+morale_described = "imrl82.def"
+luck_described = "ilck82.def"
 effects = "spellint.def"
 status = "VARBack.pcx"
 button_back = "Box64x30.pcx"
