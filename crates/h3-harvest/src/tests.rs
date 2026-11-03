@@ -102,6 +102,13 @@ fn inputs() -> Inputs {
         siege: siege(),
         wall_shots: wall_shots(),
         wall_tables: wall_tables(),
+        town_tables: TownData {
+            factions: Vec::new(),
+            common_supersedes: Vec::new(),
+            horde_buildings: Vec::new(),
+            garrison: Vec::new(),
+            dwelling_2_chance: 30,
+        },
         hero_tables: hero_tables(),
         artifact_tables: artifact_tables(),
     }

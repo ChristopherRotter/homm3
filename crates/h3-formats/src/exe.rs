@@ -5,6 +5,10 @@
 
 use crate::{FormatError, le};
 
+pub mod towns;
+
+pub use towns::{TownTables, town_data};
+
 /// A build of the executable whose static tables are located.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KnownBuild {
@@ -26,6 +30,8 @@ pub struct KnownBuild {
     pub siege: SiegeTables,
     /// The wall shots' tables and constants (E04c T6).
     pub wall_shots: WallShotTables,
+    /// The towns' tables (E09 T5b2b1).
+    pub towns: TownTables,
 }
 
 /// A one-byte immediate operand of an instruction: the instruction's address and its bytes before
@@ -344,6 +350,41 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         turret_count: Immediate {
             va: 0x005B_F511,
             opcode: &[0xC7, 0x45, 0x0C],
+        },
+    },
+    towns: TownTables {
+        building_lists: &[
+            0x0063_EC80,
+            0x0063_EE24,
+            0x0063_EFE4,
+            0x0063_F1A0,
+            0x0063_F364,
+            0x0063_F51C,
+            0x0063_F6D0,
+            0x0063_F870,
+            0x0063_FA14,
+        ],
+        common_supersedes: 0x0063_FBC4,
+        supersede_lists: &[
+            0x0063_FCA0,
+            0x0063_FCCC,
+            0x0063_FD14,
+            0x0063_FD34,
+            0x0063_FD70,
+            0x0063_FD90,
+            0x0063_FDB0,
+            0x0063_FDD0,
+            0x0063_FDF0,
+        ],
+        map_building_ids: 0x0068_88C0,
+        creatures: 0x0067_47B4,
+        hordes: 0x0068_87A0,
+        horde_buildings: 0x0064_2E20,
+        silo: 0x0068_8EB4,
+        garrison: [0x0068_8E84, 0x0068_8E94, 0x0068_8EA4],
+        dwelling_2_chance: Immediate {
+            va: 0x005C_0C60,
+            opcode: &[0x83, 0xF8],
         },
     },
 }];
