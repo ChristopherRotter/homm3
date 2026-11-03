@@ -4137,6 +4137,37 @@ in the observation until CLT-Q40's carry).
   the rest the same); `clients/scripts/check.sh`; `h3-view gate`; the scoped verify with the
   original data.
 
+### M6 T3b2 — the hero's info window's morale and luck (2026-11-03)
+
+On `client/e17-m6-t3b2`, the user present. The sandbox new, the original files staged first
+(57 files); #679 had merged, and so had the battle lane's CLT-Q40 carry (#685, protocol v37); the
+baseline's `check.sh` passed. Small once read: no cut.
+
+- **Read** (design §12.8): `hero_morale` 0x4E39B0 and `hero_luck` 0x4E36C0 whole, the clamp
+  0x4E6750, the fill's call (0x46CD3B: the other side's hero, `+0x53C0 == 2`, 1). The window
+  shows the hero's **own** morale and luck, as the adventure map's status window: Leadership or
+  Luck by level (a specialist's grown), the Pendant of Courage +3, the +1 artifacts, the owner's
+  Colossus or Spirit Guardian +2, the visits' bonuses, the cheats' +500; held to −3..=3; 0 on
+  Cursed Ground; luck 0 when either hero wears the Hourglass (unless the luck cheat is on).
+  Not the army's alignments, undead or the field's other changes (the queue's scope had guessed
+  the stats dialog's `Account`). `hero_morale` never reads the other hero and tests no Spirit of
+  Oppression: CLT-Q42 asked (recommended: copy), built as the original's.
+- **The library:** `h3_view::hero_info::values` (the side's hero's changes to its own stacks
+  from the observation's `morale_and_luck`; a luck cap reaching the side gives its value whatever
+  the changes; morale caps and the other hero's changes not read), `Info::of` takes the field.
+  **The binary:** `stats::field` (the special field by its key, now shared by the descriptions'
+  account and both windows' call sites).
+- **Recorded:** `hero-info-skills` (Orrin, Advanced Leadership and Expert Luck by the
+  scenario's `effects`: frames 5 and 6), `hero-info-skills-enemy` (Crag Hack, Basic: 4 and 4),
+  `hero-info-cursed` (`cursed-ground`'s battle with Orrin's skills: 3 and 3); exact (the third
+  after its heroes' spell points were set as the original's map gives them: the window's text
+  differed, 0/0 against 10/10). Not recorded: negative values, artifacts, Grail buildings, the
+  Hourglass (the battle's map cannot give them).
+- **Checked:** `drawn` (three new, the rest the same); `clients/scripts/check.sh`; the scoped
+  verify with the original data.
+- **The queue:** the inbox's CLT-Q40 item became T3c (the descriptions' carried lines), its
+  entry in `QUEUE-ARCHIVE.md`.
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

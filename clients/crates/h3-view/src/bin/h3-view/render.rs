@@ -492,7 +492,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     crate::results::portrait(&manifest.keys.hero_types, &tables, hero_type)
                 };
                 let side = h3_view::hero_info::at(&layout, observation, point)?;
-                let info = h3_view::hero_info::Info::of(observation, side, &portrait)?;
+                let field = crate::stats::field(manifest, observation);
+                let info = h3_view::hero_info::Info::of(observation, side, field, &portrait)?;
                 Some(h3_view::hero_info::window(
                     &layout.hero_info,
                     &catalogue,
