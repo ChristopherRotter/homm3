@@ -28,7 +28,7 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
   Tunnel ever built, `morale` standing; the inbox note says standing for both: settle it from
   survey §9.4 and say which). `structures` skips the hall-1 building (decision 28). No
   `cross-lane` path.
-- **Depends on:** T6a (#695 merged). **Status:** ready once it merges.
+- **Depends on:** T6a (its pull request merged). **Status:** ready once it merges.
 
 **E09 T6c — `h3-towns`: the setup's functions**
 
