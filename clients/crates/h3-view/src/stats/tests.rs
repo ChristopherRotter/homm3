@@ -572,13 +572,22 @@ fn the_right_button_describes_an_item() {
     // its own; morale's and luck's their own with their pictures (M6 T2a2b2); none for an item
     // without a pair or an empty text.
     let h = hints();
-    assert_eq!(said(h.described(NAME, Bugs::Fixed)).as_deref(), Some("help 0"));
-    assert_eq!(said(h.described(206, Bugs::Fixed)).as_deref(), Some("help 2"));
+    assert_eq!(
+        said(h.described(NAME, Bugs::Fixed)).as_deref(),
+        Some("help 0")
+    );
+    assert_eq!(
+        said(h.described(206, Bugs::Fixed)).as_deref(),
+        Some("help 2")
+    );
     assert_eq!(
         said(h.described(EFFECTS + 1, Bugs::Fixed)).as_deref(),
         Some("help 11")
     );
-    assert_eq!(said(h.described(OK, Bugs::Fixed)).as_deref(), Some("help 14"));
+    assert_eq!(
+        said(h.described(OK, Bugs::Fixed)).as_deref(),
+        Some("help 14")
+    );
     assert_eq!(
         h.described(CAST, Bugs::Original),
         Some(("cast help".into(), None))
@@ -591,8 +600,14 @@ fn the_right_button_describes_an_item() {
     assert_eq!(h.described(BACKGROUND, Bugs::Fixed), None);
     assert_eq!(h.described(CREATURE, Bugs::Fixed), None);
     // The speed's label: the health left's in the original (CLT-Q38 (1)), its own in the client's.
-    assert_eq!(said(h.described(217, Bugs::Original)).as_deref(), Some("help 7"));
-    assert_eq!(said(h.described(217, Bugs::Fixed)).as_deref(), Some("help 8"));
+    assert_eq!(
+        said(h.described(217, Bugs::Original)).as_deref(),
+        Some("help 7")
+    );
+    assert_eq!(
+        said(h.described(217, Bugs::Fixed)).as_deref(),
+        Some("help 8")
+    );
     let empty = Hints {
         descriptions: vec![String::new(); HINTS],
         ..hints()
@@ -601,7 +616,10 @@ fn the_right_button_describes_an_item() {
     // Over the dialog: the item a move would enter; off it nothing.
     let mut memory = Memory::new(Bugs::Fixed);
     let m = modal(&mut memory);
-    assert_eq!(said(m.describe([100 + 160, 50 + 50])).as_deref(), Some("help 2"));
+    assert_eq!(
+        said(m.describe([100 + 160, 50 + 50])).as_deref(),
+        Some("help 2")
+    );
     assert_eq!(m.describe([100 + 5, 50 + 5]), None);
     assert_eq!(m.describe([0, 0]), None);
 }
@@ -824,7 +842,10 @@ fn lucks_description_and_the_halflings_line() {
         luck_spells: 2,
         ..Account::default()
     };
-    assert_eq!(l(&devils, 1, Bugs::Fixed), "g|-facing Arch Devils-spells +2");
+    assert_eq!(
+        l(&devils, 1, Bugs::Fixed),
+        "g|-facing Arch Devils-spells +2"
+    );
     // Cursed Ground's line alone.
     let cursed = Account {
         field: Field::Cursed,

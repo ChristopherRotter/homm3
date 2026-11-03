@@ -82,9 +82,8 @@ pub const fn picture_frame(value: i32) -> u32 {
 #[must_use]
 pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
     let text = |key: &str| catalogue.text(key, &Args::new());
-    let named = |key: &str, creature: &str| {
-        catalogue.text(key, &Args::new().text("creature", creature))
-    };
+    let named =
+        |key: &str, creature: &str| catalogue.text(key, &Args::new().text("creature", creature));
     let lines = if account.field == Field::Cursed {
         text("stats.morale.cursed")
     } else if account.no_morale {
@@ -111,12 +110,14 @@ pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
             } else {
                 2 - i32::try_from(n).unwrap_or(0)
             };
-            lines.push_str(&catalogue.text(
-                "stats.morale.alignments",
-                &Args::new()
-                    .number("alignments", i64::from(n))
-                    .number("change", i64::from(change)),
-            ));
+            lines.push_str(
+                &catalogue.text(
+                    "stats.morale.alignments",
+                    &Args::new()
+                        .number("alignments", i64::from(n))
+                        .number("change", i64::from(change)),
+                ),
+            );
             base += change;
         } else if n == 1 {
             lines.push_str(&text("stats.morale.one-alignment"));
@@ -211,7 +212,10 @@ fn compose(catalogue: &Catalogue, prefix: &str, value: i32, lines: &str) -> Stri
         _ => "bad",
     };
     let said = catalogue.text(&format!("{prefix}.{sign}"), &Args::new());
-    let mut text = catalogue.text(&format!("{prefix}.header"), &Args::new().text("text", &said));
+    let mut text = catalogue.text(
+        &format!("{prefix}.header"),
+        &Args::new().text("text", &said),
+    );
     if lines.is_empty() {
         text.push_str(&catalogue.text(&format!("{prefix}.none"), &Args::new()));
     } else {
