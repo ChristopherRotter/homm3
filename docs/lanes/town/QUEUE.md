@@ -59,6 +59,13 @@ entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-03 (the adventure lane, E08 T87c, ADV-Q41; **for your increment 3's recruitment, nothing
+  to build now**): E08's increment 10 is dwellings and hiring (decision 231): the map's creature
+  dwellings (17, 20), the random dwellings with a faction set and the Refugee Camp, their weekly
+  creatures and **the hire dialog**, built in the adventure lane first (E09 decision 4); the random
+  dwellings tied to a random town wait for your random towns. Its survey (T88a,
+  `docs/rules/surveys/E08-dwellings.md`) and design note (T88b) come first; this lane's inbox is
+  told when the hire dialog lands.
 - (adventure archive, 2026-10-03, E04a T3a) Not harvested: the spells' town chances and the hero
   classes' tavern weights (RoE lacks the Conflux column: an override kind or a per-faction table).
   Increment 3 (weights: only the tavern's draw reads them, survey `E09-towns.md` §4.4), increment

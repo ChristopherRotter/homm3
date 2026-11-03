@@ -1060,7 +1060,7 @@ quirks   = ["BAT-QUIRK-27"]
   ref        = "experiments/results/E08-batch-9a.md E9-1, E9-2 (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30): the battle's per-side human flag (+0x54A4) 1 for Red's hero, 0 for an abandoned mine's Troglodytes (no player), 1 for Blue's guards of its own mine (a human player's side)"
   retrieved  = "2026-10-30"
   confidence = "high"
-  note       = "E08 T80 (survey E08-economy.md §19); an owned mine's guards with their owner's flag are built by E08 T84 (design E08-design.md §13)."
+  note       = "E08 T80 (survey E08-economy.md §19); an owned mine's guards with their owner's flag are built by E08 T84 (increment 9's design note §13)."
 
 [[rule]]
 id       = "GAM-BAT-011"

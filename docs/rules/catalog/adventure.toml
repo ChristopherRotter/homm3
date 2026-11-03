@@ -507,7 +507,7 @@ quirks   = ["ADV-QUIRK-18"]
   ref        = "experiments/results/E08-batch-9a.md E9-4 and E08-batch-9b.md E9-6 (stamps bfafdcac and c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30): on day 1 before any hero moves, the radius-3 disk (ADV-FOG-002) around each of Red's two Lighthouses and two mines owned at load explored for Red, the tiles just beyond it not (E08 T80; A-33 withdrawn)"
   retrieved  = "2026-10-30"
   confidence = "high"
-  note       = "The original's side of the start's reveal around owned objects; the engine reveals around them from E08 increment 9 (design E08-design.md §16, ADV-OWN-002)."
+  note       = "The original's side of the start's reveal around owned objects; the engine reveals around them from E08 increment 9 (increment 9's design note §16, ADV-OWN-002)."
 
 [[rule]]
 id       = "ADV-FOG-004"
