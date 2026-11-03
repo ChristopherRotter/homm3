@@ -830,3 +830,123 @@ an entry only where a task builds on it.
   not measured (a diagnostic for T18: the fair actor's agreement with itself on the same
   states). T17 starts `e25-clone-1` from this student (`runs/clone-1/students/mlp.pt`, sent to
   the user).
+
+## T17 — The A/B: the neutral kinds back, from scratch and from the clone (2026-11-03)
+
+- **The runs** (the user's machine, the GTX 1070; `configs/e25-neutral.toml`, seed 1, 20 M
+  samples, one segment each, ended by the budget; C ABI v37, the same engine in both: the
+  rulesets' hashes, the system policy 19 and the encodings equal): `e25-neutral-1` from scratch
+  (`python/records/e25-neutral-1.json`; commit `dd99747`, clean; 74 minutes, 8.3 of them the
+  gates and ladders) and `e25-clone-1` from T16's student (`--init-from runs/clone-1/students/
+  mlp.pt`; `python/records/e25-clone-1.json`; commit `a3cbd7d`, clean; 73 minutes, 7.0 of them
+  evaluation). Both promoted at both gates, best #2: the control at 10 M 0.870 in 23 pairs
+  (against its random start), at 20 M 0.531 in 162 (+21 Elo); the clone at 10 M 0.572 in 87
+  (against the student, +50 Elo), at 20 M 0.541 in 115 (+29 Elo).
+- **The final ladders** (the GPU, 500 per kind: ±0.013 against Random, ±0.018 otherwise, ±0.008
+  on the neutral set), beside the current best's (`e25-sharp-1` #2: T10b, its fair columns and
+  neutral set T15) and the student's (the clone's ladder #0, 250 per kind, ±0.025):
+
+  | Network | Random | Aggressor | Greedy | Fair system | All-seeing | Neutral set |
+  |---|---|---|---|---|---|---|
+  | T16's student | 0.811, +0.261 | 0.566, +0.047 | 0.549, +0.027 | 0.383, −0.087 | 0.394, −0.086 | 0.979, +0.243 |
+  | `e25-sharp-1` #2 | 0.849, +0.287 | 0.602, +0.076 | 0.581, +0.061 | 0.424, −0.055 | 0.422, −0.055 | 0.969, +0.245 |
+  | `e25-neutral-1` #2 | 0.843, +0.286 | 0.589, +0.069 | 0.565, +0.051 | 0.411, −0.064 | 0.410, −0.064 | 0.984, +0.269 |
+  | `e25-clone-1` #2 | 0.848, +0.298 | 0.635, +0.112 | 0.609, +0.088 | **0.454, −0.029** | **0.454, −0.030** | 0.986, **+0.282** |
+
+  Against the fair actor per kind: the clone run 0.452, 0.439, 0.491 (hero, siege_hero,
+  siege_garrison), the control 0.395, 0.409, 0.481, `e25-sharp-1` #2 0.417, 0.408, 0.486. The
+  neutral set per kind: 0.990, 0.982, 0.868 (wandering, guards, siege_neutral), the control
+  0.988, 0.976, 0.862, #2 0.972, 0.960, 0.878. Against the fair actor at each ladder (250 per
+  kind): the clone run 0.383, 0.431, 0.440 at 0, 10, 20 M; the control 0.134, 0.389, 0.422.
+- **Training** (`metrics.jsonl`, uploaded, outside git): the entropy at 1, 5, 10, 15, 20 M 2.01,
+  1.72, 1.33, 1.05, 0.76 from the student, 3.52, 1.93, 1.46, 1.21, 0.84 from scratch
+  (`e25-sharp-1` 3.40, 1.93, 1.37, 1.07, 0.84); the value's explained variance per gate interval
+  0.67 and 0.70 from the student, 0.55 and 0.63 from scratch (`e25-sharp-1` 0.47 and 0.53: the
+  neutral episodes are easier to predict, the student's value head a start); the KL per
+  interval 0.0135 and 0.0053 against 0.0112 and 0.0051; 5 520 and 4 880 samples a second against
+  5 600 and 4 800 (the fair defender costs nothing visible); truncations 0.004 % in the clone
+  run's second interval, none in the control's. The attacker's share in training at 20 M per kind
+  (hero, siege_hero, siege_garrison, wandering, guards, siege_neutral): 0.682, 0.559, 0.933,
+  0.986, 0.981, 0.874 from the student, 0.692, 0.591, 0.941, 0.980, 0.977, 0.863 from scratch.
+- **The head-to-heads** (T18's; `h3env.train.gate` on the uploaded `best.pt`, the sandbox's CPU;
+  the gate set v1, elo0 0, elo1 20): `e25-clone-1` #2 against `e25-sharp-1` #2 **promoted after
+  70 pairs, 0.564 (+45 Elo)**, LLR +3.05, 25 s; against `e25-neutral-1` #2 promoted after 122
+  pairs, 0.541 (+29 Elo), 53 s; `e25-neutral-1` #2 against `e25-sharp-1` #2 rejected after 48
+  pairs, 0.479 (−14 Elo), 20 s.
+- **The read:**
+  - *The neutral kinds back* (the control against `e25-sharp-1` #2): the neutral set +0.269
+    (+0.024), the report set lower against every opponent by 0.006 to 0.016 (each inside its
+    interval), head to head 0.479: T2b's trade, the other way round.
+  - *The warm start* (the clone run against the control, the same mix and length): +0.043
+    against both system actors, +0.046 and +0.044 against Aggressor and Greedy, the same against
+    Random, +0.013 on the neutral set; head to head 0.541. PPO kept the student's strength and
+    added 0.06 to it; the student's lead holds at 10 M and at 20 M.
+  - **`e25-clone-1` #2 is the first network past the 0.41 to 0.43** every earlier lever of E25
+    ended at: 0.454 against both system actors (+0.030 over `e25-sharp-1` #2), its value −0.030
+    (−0.055), and on the neutral set +0.282 against the target +0.285 (inside its ±0.008).
+    Exit criterion 1 is not met: 0.046 short of 0.5 against the all-seeing actor and the value
+    still negative; the neutral target within its interval. The fair and the all-seeing
+    columns stay equal (T15).
+
+## T18 — Increment 5's checkpoint (2026-11-03)
+
+- **The user's choices** (AI-Q15, the agent's recommendation on both): **`e25-clone-1` #2 is
+  the current best** (T11's rule: its head-to-head against `e25-sharp-1` #2 0.564, promoted);
+  **increment 6 is better imitation**: the teacher's ceiling first (how often the fair actor
+  repeats its own choice), a longer clone, an imitation loss decaying during PPO, then PPO from
+  them against `e25-clone-1`. Increment 5 closes (`E25-archive.md`); increment 6's decisions
+  and tasks T19 to T23 in the epic file, their scope in the AI queue.
+- **Increment 5 in one line:** the fair system actor plays as strongly as the all-seeing one
+  against the lineage (T15), the neutral kinds back in training buy +0.024 on the neutral set
+  for a little on the report set (T17's control), and a warm start by cloning the fair actor
+  moves every column past E25's earlier ceiling (T17: 0.454, +0.282).
+
+## T19 — The teacher's ceiling (2026-11-03)
+
+- **Built:** `h3env.train.ceiling` (`python/README.md`; tests `tests/test_ceiling.py`): on the
+  cloning bench's held-out distribution (`configs/distill/e25-clone.toml`: `e25-neutral.toml`'s
+  kinds, the fair actor in every external seat, seed 8) each state's choice drawn k times and the
+  last played; by the category of each draw: `mode` (the other draws' most frequent entry is it, a
+  tie credited by its share: a clone of the most likely entry), `pair` (the share of the other
+  draws equal to it: a clone that samples the teacher), the state's entropy (plug-in and
+  Miller-Madow: the clone's cross-entropy floor), the cast heads' `mode` along its choice; each
+  `--network`'s most likely entry and cross-entropy against every draw. No Rust change:
+  `BattleBatch::choice` draws from the side's `seat_rngs` and advances it, so a second call on the
+  unchanged state draws again. Cross-checked against the bench's own `clone.evaluate` on its
+  held-out episodes: `e25-clone-1` #2's agreement 0.263 and cross-entropy 7.72 there, 0.270 and
+  7.75 here.
+- **The run** (the sandbox's CPU; `python/records/distill/ceiling/ceiling-1.json`; commit
+  `22ffc03`, clean, C ABI v37, system policy 19): 25 600 states of 620 episodes, 8 draws each
+  (204 800 scored), none lost, 37 s; run twice, identical. The categories' shares as T16's
+  held-out set's (melee 36 %, tactics 20 %, moves 14 %, shots 13 %, casts 10 %). Agreement with
+  the teacher's draw (T16's student: its record's last evaluation, the same distribution):
+
+  | Category | Draws | Mode | Pair | Entropy | T16's student | `e25-clone-1` #2 | `e25-neutral-1` #2 | `e25-sharp-1` #2 |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|
+  | tactics | 40 016 | 0.995 | 0.994 | 0.008 | 0.788 | 0.142 | 0.034 | 0.025 |
+  | wait, defend | 9 886 | 0.992 | 0.988 | 0.016 | 0.485 | 0.100 | 0.049 | 0.011 |
+  | move | 28 330 | 0.985 | 0.984 | 0.021 | 0.298 | 0.041 | 0.013 | 0.014 |
+  | melee | 74 456 | 0.941 | 0.930 | 0.094 | 0.360 | 0.213 | 0.182 | 0.173 |
+  | shot | 27 569 | 0.998 | 0.998 | 0.003 | 0.608 | 0.384 | 0.287 | 0.315 |
+  | heal | 1 784 | 1.000 | 1.000 | 0.000 | 0.699 | 0.655 | 0.516 | 0.628 |
+  | cast | 21 159 | 0.977 | 0.970 | 0.042 | 0.841 | 0.908 | 0.886 | 0.934 |
+  | other | 1 600 | 0.979 | 0.981 | 0.026 | 0.924 | 0.460 | 0.058 | 0.032 |
+  | **all** | 204 800 | **0.972** | 0.967 | **0.044** | **0.531** | 0.270 | 0.212 | 0.215 |
+
+  (Entropy in nats, plug-in; Miller-Madow 0.049 overall.) The cast heads' mode along the
+  teacher's choice: spell 0.944, target 1.000, second 0.999 (T16's student 0.679, 0.609, 0.997).
+  The cross-entropy on the teacher's entry: T16's student 1.514; the PPO networks 7.7 to 8.8.
+- **The read:**
+  - **The fair actor is almost deterministic:** its most likely entry is its draw 0.972 of the
+    time, 0.94 or more in every category (melee the lowest: near-equal hexes), at 0.044 nats.
+    T16's question is answered: **the clone's gap is the network's, not the teacher's draws.**
+    The student reached 0.531 of 0.972 (moves 0.30 of 0.985, melee 0.36 of 0.941, shots 0.61 of
+    0.998), its cross-entropy 1.514 against a floor near 0.05.
+  - **PPO leaves the teacher at once:** `e25-clone-1` #2 agrees 0.270 with it, the scratch
+    networks 0.21; PPO kept the start's strength (T17) but not its choices (the tactics phase
+    0.79 to 0.14, moves 0.30 to 0.04; only the casts stay, 0.91).
+  - **For T20:** the room is large (0.44 of agreement), but T16's curve gains slowly (the entry's
+    cross-entropy 1.783, 1.600, 1.514 at 0.5, 2, 4 M: about −0.09 a doubling), so 16 M at T16's
+    settings may reach about 0.57; the MLP over observation v22 may be what limits it (the moves
+    and melee hexes the original's rules pick). **For T21:** an imitation loss holds PPO nearer a
+    teacher it leaves; whether that nearness is worth anything is T22's question.

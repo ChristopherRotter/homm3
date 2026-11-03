@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 4 closed 2026-10-28, 29 and 11-02, increment 5 (the fair system actor) refined 2026-11-02 (AI-Q14) · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 5 closed 2026-10-28, 29, 11-02 and 11-03, increment 6 (better imitation) refined 2026-11-03 (AI-Q15) · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -80,7 +80,8 @@ it reads only its side's observation, and its search too (ADR-0025 point 12a).
   With it `[network] order` and `preview` again.
 - **A more diverse league:** exploiters (a second learner trained only against the main agent's
   frozen copies, its snapshots joining the league), aimed at self-play's narrowness (AI-Q12 (b)).
-- **Imitation** of the fair system actor (decision 3): chosen for increment 5 (a warm start, AI-Q14).
+- **Imitation** of the fair system actor (decision 3): chosen for increment 5 (a warm start, AI-Q14)
+  and continued in increment 6 (a better clone, the imitation loss; AI-Q15).
 - **Scale:** the 60 M run at T7's mix (`configs/e06-t7.toml --set samples=60_000_000`, about 4
   hours; without the faithful actor now); the mana-price run (`configs/e06-mana.toml`).
 - **Throughput** (E06 T5's open parts, the AI queue's inbox): the batch size and threads, the
@@ -105,6 +106,7 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 | 2 | 2026-10-29 | T4a, T4b, T5, T6 | the tactics bound (the loop gone, no cost), the scale run (flat from 20 M; `e25-scale-1` #3 the current best) |
 | 3 | 2026-11-02 | T7a–T7d, T8 | the network's architecture: a distillation bench (the wide MLP leads, the structured networks as configured fit ten times worse), the wide MLP in RL at #3's ladder (AI-Q12) |
 | 4 | 2026-11-02 | T9a, T9b, T10a, T10b, T11 | the policy's sharpness: a temperature diagnostic (sharpening gains about 0.01) and the entropy bonus to 0 in training (`e25-sharp-1`: the same 0.01, no more) (AI-Q13) |
+| 5 | 2026-11-03 | T12–T18 | the fair system actor: `system` the fair one everywhere (C ABI v36), the cloning bench (C ABI v37), the neutral kinds back and PPO from the clone (`e25-clone-1` #2: 0.454 against both system actors, the neutral set +0.282) (AI-Q14, AI-Q15) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
@@ -114,38 +116,35 @@ rounds), the network the exit criteria are judged on. **At increment 3's checkpo
 2026-11-02, T8): #3 stays the current best; increment 4 is the policy's sharpness and PPO's
 settings. **At increment 4's checkpoint** (the user, 2026-11-02,
 T11): **`e25-sharp-1` #2** (20 M, the entropy bonus to 0) the current best, its head-to-head
-against #3 0.523 (T12).
+against #3 0.523 (T12). **At increment 5's checkpoint** (the user, 2026-11-03, T18, AI-Q15):
+**`e25-clone-1` #2** (20 M of PPO from T16's clone of the fair actor) the current best, its
+head-to-head against `e25-sharp-1` #2 0.564; increment 6 is better imitation.
 
-**Increment 5: the fair system actor** (the user at T11, AI-Q13; refined at T13, 2026-11-02,
-AI-Q14). The battle lane's fair system actor v1 (E26, #647: `h3_battle_ai::choose_fair`, the
-original's computer on its side's world; 0.500 against the all-seeing one on random armies with
-heroes, +0.8 % Ir per decision) becomes the AI lane's system actor, may train and is imitated.
+**Increment 6: better imitation** (the user at T18, 2026-11-03, AI-Q15). T17's warm start
+by cloning the fair actor was the first lever past 0.41 to 0.43 against the system actor
+(`e25-clone-1` #2: 0.454, the neutral set +0.282), but the clone copies the fair actor loosely
+(T16: agreement 0.531, its cross-entropy still falling at 4 M samples) and PPO from it added
+0.06. Increment 6 copies the teacher better and longer.
 
-*Decisions* (the user, 2026-11-02, AI-Q14):
+*Decisions* (the user, 2026-11-03, AI-Q15; the agent's details, change at a checkpoint):
 
-1. **`system` is the fair actor everywhere:** `Policy::System` (`choose_fair`), `H3_SEAT_SYSTEM`,
-   `h3 ai eval`'s `system`, the neutral kinds' defender. The all-seeing one stays as
-   `system-all-seeing` (`Policy::SystemAllSeeing`, a new seat, C ABI v36). Records tell the two
-   apart; a record before the switch read as all-seeing. The adventure env has no system actor
-   to switch (its neutral seat is the caller's): a computer there is E13's.
-2. **The target** (decision 1 stands): exit criterion 1 against the all-seeing actor on the
-   report set; the fair one a reported column beside it. **The neutral set's defender is the
-   fair actor**, its target the fair actor's own value in the player's seat (the bots' table
-   regenerated).
-3. **Training** (decision 2): the neutral kinds back at E06 T7's third, the fair actor their
-   defender; no `system_share`. `run.trainable` refuses the all-seeing actor only.
-4. **Imitation** (decision 3): a warm start by behaviour cloning on the fair actor's choices,
-   then PPO from it, an A/B against the same mix from scratch (decision 5: the user's machine).
+1. **The teacher stays the fair actor** (decision 3), **the student the run's network** (the
+   2 × 512 MLP over observation v22, so PPO starts from it); no new encoding.
+2. **The ceiling first:** the fair actor draws among near-equal choices, so its agreement with
+   its own second draw on the same states bounds any clone's; T16's 0.531 is read against it
+   and the longer clone's budget set by it.
+3. **The imitation loss** is decision 3's second form: a cross-entropy to the fair actor's
+   choice on the learner's own decisions, its weight decaying to 0, off by default; reward v1
+   and the evaluation unchanged (ADR-0026's gate and ladders).
+4. **The control is `e25-clone-1`** (T17): the A/B's arms run its mix, length and seed.
 
 | Task | Scope | Status |
 |---|---|---|
-| T12 | The head-to-head: `e25-sharp-1` #2 against `e25-scale-1` #3 promoted by the gate, 0.523 over 332 pairs (+16 Elo): #2 the current best | done 2026-11-02 (`E25-log.md` T12) |
-| T13 | Increment 5's refinement (AI-Q14) | done 2026-11-02 (`E25-log.md` T13) |
-| T14 | The switch: `system` the fair actor, `system-all-seeing` beside it (C ABI v36), records, the bots' tables, the neutral bench, `run.trainable` | done 2026-11-02 (`E25-log.md` T14: the fair actor 0.500 against the all-seeing one, the neutral target stays +0.285) |
-| T15 | The ladder at the switch: `e25-sharp-1` #2 against both system actors and on the neutral set with the fair defender | done 2026-11-02 (`E25-log.md` T15: 0.424 against the fair actor, 0.425 against the all-seeing one; the neutral set +0.245 against the target +0.285) |
-| T16 | The cloning bench: the system actor's choice as an encoded action (C ABI v37), the fair actor's choices cloned into a run's network, its agreement and ladder | done 2026-11-02 (`E25-log.md` T16: 4 M samples, agreement 0.531; the clone 0.396 against the fair actor, the neutral set +0.244) |
-| T17 | The A/B: the neutral kinds back from scratch against the same from T16's clone | next (the user's machine) |
-| T18 | The checkpoint: T17 read, the current best, increment 6 | after T17 |
+| T19 | The teacher's ceiling: the fair actor's agreement with its own draws, per category | done 2026-11-03 (`E25-log.md` T19: the fair actor repeats itself 0.972, 0.044 nats; T16's student 0.531, `e25-clone-1` #2 0.270: the gap is the network's) |
+| T20 | The longer clone: the clone bench at a larger budget, read against T19's ceiling | next (`configs/distill/e25-clone-2.toml`; where it runs the user's choice) |
+| T21 | The imitation loss: PPO's auxiliary cross-entropy to the fair actor's choice, decaying to 0 | next (the sandbox) |
+| T22 | The A/B: PPO from T20's student, with and without T21's loss, against `e25-clone-1` | after T20, T21 (the user's machine) |
+| T23 | The checkpoint: T22 read, the current best, increment 7 | after T22 |
 
 Scope and acceptance: the AI queue's entries.
 

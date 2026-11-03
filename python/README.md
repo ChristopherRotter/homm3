@@ -270,6 +270,22 @@ scores are the cross-entropy per head, the agreement per category and of the cas
 the value's explained variance; `ladder` (the report set's opponents) plays each student on the
 report and neutral sets at the end. The all-seeing system actor is never imitated.
 
+**The teacher's ceiling** (E25 T19, `h3env.train.ceiling`): how often the fair actor repeats its
+own choice on the clone bench's held-out states, the bound on any clone's agreement with it:
+
+```sh
+uv run --group train python -m h3env.train.ceiling --config configs/distill/e25-clone.toml \
+    --draws 8 --decisions 25600 --network runs/e25-clone-1/best.pt \
+    --json records/distill/ceiling/ceiling-1.json
+```
+
+Each state's choice is drawn `--draws` times (`choice` advances the side's seat stream, so a
+second call on the unchanged state draws again) and the last draw played. By the category of
+each draw: the share where the other draws' most frequent entry is it (`mode`, a clone of the
+most likely entry), the share of the other draws equal to it (`pair`, a clone that samples the
+teacher), the state's entropy (the clone's cross-entropy floor), the cast heads' `mode` along
+its choice; each `--network`'s most likely entry against every draw and its cross-entropy.
+
 ## Search (E06 T8, design §14)
 
 `h3env.search` searches each decision over W determinized *worlds* of the battle

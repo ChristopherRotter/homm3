@@ -1,7 +1,7 @@
 # E25 — archive: closed increments
 
 Moved out of `E25-battle-ai-v2.md` verbatim when an increment closes (increment 1 on
-2026-10-28, increment 2 on 2026-10-29, increments 3 and 4 on 2026-11-02, at their checkpoints), so that the epic file holds what
+2026-10-28, increment 2 on 2026-10-29, increments 3 and 4 on 2026-11-02, increment 5 on 2026-11-03, at their checkpoints), so that the epic file holds what
 is open and the decisions that apply to the whole epic. Each task's full record is in `E25-log.md` (grep its id).
 
 ## Increment 1 (closed 2026-10-28)
@@ -109,3 +109,36 @@ settings. Decision 1's rules unchanged: the sampled policy is judged, only train
 - [x] **T11 Increment 4's checkpoint** (2026-11-02; `E25-log.md` T11, AI-Q13): no second A/B;
   `e25-sharp-1` #2 the current best after the head-to-head against #3; increment 5 waits for
   the fair system actor v1 (the user: the battle lane pushes it soon).
+
+## Increment 5 (closed 2026-11-03)
+
+**Increment 5: the fair system actor** (the user at T11, AI-Q13; refined at T13, 2026-11-02,
+AI-Q14). The battle lane's fair system actor v1 (E26, #647: `h3_battle_ai::choose_fair`, the
+original's computer on its side's world; 0.500 against the all-seeing one on random armies with
+heroes, +0.8 % Ir per decision) becomes the AI lane's system actor, may train and is imitated.
+
+*Decisions* (the user, 2026-11-02, AI-Q14):
+
+1. **`system` is the fair actor everywhere:** `Policy::System` (`choose_fair`), `H3_SEAT_SYSTEM`,
+   `h3 ai eval`'s `system`, the neutral kinds' defender. The all-seeing one stays as
+   `system-all-seeing` (`Policy::SystemAllSeeing`, a new seat, C ABI v36). Records tell the two
+   apart; a record before the switch read as all-seeing. The adventure env has no system actor
+   to switch (its neutral seat is the caller's): a computer there is E13's.
+2. **The target** (decision 1 stands): exit criterion 1 against the all-seeing actor on the
+   report set; the fair one a reported column beside it. **The neutral set's defender is the
+   fair actor**, its target the fair actor's own value in the player's seat (the bots' table
+   regenerated).
+3. **Training** (decision 2): the neutral kinds back at E06 T7's third, the fair actor their
+   defender; no `system_share`. `run.trainable` refuses the all-seeing actor only.
+4. **Imitation** (decision 3): a warm start by behaviour cloning on the fair actor's choices,
+   then PPO from it, an A/B against the same mix from scratch (decision 5: the user's machine).
+
+| Task | Scope | Status |
+|---|---|---|
+| T12 | The head-to-head: `e25-sharp-1` #2 against `e25-scale-1` #3 promoted by the gate, 0.523 over 332 pairs (+16 Elo): #2 the current best | done 2026-11-02 (`E25-log.md` T12) |
+| T13 | Increment 5's refinement (AI-Q14) | done 2026-11-02 (`E25-log.md` T13) |
+| T14 | The switch: `system` the fair actor, `system-all-seeing` beside it (C ABI v36), records, the bots' tables, the neutral bench, `run.trainable` | done 2026-11-02 (`E25-log.md` T14: the fair actor 0.500 against the all-seeing one, the neutral target stays +0.285) |
+| T15 | The ladder at the switch: `e25-sharp-1` #2 against both system actors and on the neutral set with the fair defender | done 2026-11-02 (`E25-log.md` T15: 0.424 against the fair actor, 0.425 against the all-seeing one; the neutral set +0.245 against the target +0.285) |
+| T16 | The cloning bench: the system actor's choice as an encoded action (C ABI v37), the fair actor's choices cloned into a run's network, its agreement and ladder | done 2026-11-02 (`E25-log.md` T16: 4 M samples, agreement 0.531; the clone 0.396 against the fair actor, the neutral set +0.244) |
+| T17 | The A/B: the neutral kinds back from scratch against the same from T16's clone | done 2026-11-03 (`E25-log.md` T17: `e25-clone-1` #2 0.454 against both system actors, the neutral set +0.282; the control `e25-neutral-1` 0.411, +0.269) |
+| T18 | The checkpoint: T17 read, the current best, increment 6 | done 2026-11-03 (`E25-log.md` T18, AI-Q15: `e25-clone-1` #2 the current best, 0.564 head to head against `e25-sharp-1` #2; increment 6 better imitation) |
