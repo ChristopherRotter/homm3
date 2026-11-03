@@ -523,24 +523,23 @@ fn play_to_day_start(env: &mut AdventureEnv, agent_seed: u64, days: u32) -> DayS
         };
         let action = choose(env, seat, &mut rng);
         steps += 1;
-        if env.state().day() == days && action == Action::end_turn() {
-            let mut probe = env.fork();
-            let _ = probe.step(seat, action);
-            if probe.state().day() > days {
-                let before = env.state().adventure().added_objects().len();
-                let start = Instant::now();
-                black_box(day_start_step(env, seat, action));
-                let seconds = start.elapsed().as_secs_f64();
-                let after = env.state().adventure().added_objects().len();
-                return DayStarted {
-                    counted: 1,
-                    steps,
-                    seconds,
-                    creature_month: month_start(env)
-                        && matches!(env.state().month(), MonthKind::Creature(_)),
-                    added: u64::try_from(after - before).unwrap_or(u64::MAX),
-                };
-            }
+        if env.state().day() == days
+            && action == Action::end_turn()
+            && starts_day(env, seat, action)
+        {
+            let before = env.state().adventure().added_objects().len();
+            let start = Instant::now();
+            black_box(day_start_step(env, seat, action));
+            let seconds = start.elapsed().as_secs_f64();
+            let after = env.state().adventure().added_objects().len();
+            return DayStarted {
+                counted: 1,
+                steps,
+                seconds,
+                creature_month: month_start(env)
+                    && matches!(env.state().month(), MonthKind::Creature(_)),
+                added: u64::try_from(after - before).unwrap_or(u64::MAX),
+            };
         }
         // A legal action is always accepted (h3-sim's tests).
         let _ = env.step(seat, action);
@@ -552,6 +551,17 @@ fn play_to_day_start(env: &mut AdventureEnv, agent_seed: u64, days: u32) -> DayS
         creature_month: false,
         added: 0,
     }
+}
+
+/// Whether `seat`'s `action` starts a new day, tried on a fork of `env` that is dropped before the
+/// counted step: the step's allocations are then served from what the fork's same step freed,
+/// so the count does not depend on the heap's earlier state (E08 T86b2: with the fork alive, a
+/// third of `day-start-xl-144`'s count was glibc's malloc on a heap shaped by the run, 2.7 %
+/// higher on CI's runner than in the sandbox).
+fn starts_day(env: &AdventureEnv, seat: Seat, action: Action) -> bool {
+    let mut probe = env.fork();
+    let _ = probe.step(seat, action);
+    probe.state().day() > env.state().day()
 }
 
 /// Whether `env`'s day is a month's first day (days 29, 57, … in the base pack's calendar).

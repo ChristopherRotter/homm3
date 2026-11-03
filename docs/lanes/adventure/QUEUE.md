@@ -16,7 +16,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   its design note to `E08-log.md`, a row in the closed increments' table); increment 10 refined with the user
   (the sketch's item 10: dwellings and hiring, the Refugee Camp, garrisons; the town lane's inbox notes on the
   hire dialog and the random dwellings). Optional, if the audit has room: the month's walk's tile test from the
-  static map's flags and without a lookup of the events per tile (design §19; `month-start-xl-144`, 12.6 M Ir a
+  static map's flags and without a lookup of the events per tile (design §19; `month-start-xl-144`, 12.7 M Ir a
   creature month's start, `E08-log.md` T86b2).
 - **Inputs:** `E08-design.md` §18, §19; `E08-log.md` T86a, T86b1, T86b2; the epic's decisions 192 to 229;
   `docs/lanes/adventure/QUESTIONS-ANSWERED.md` ADV-Q40; the inbox below (the town lane's and the map client's notes).

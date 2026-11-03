@@ -10657,20 +10657,25 @@ the sound and video archives, `maps.tar`, `extracted.tar`, the MP3s).
 - **The workload** (`h3-cli`'s `adventure/bench.rs`, `--workload day-start`): random play until
   the step that starts day `days + 1` (the env's day limit: the episode's last step), played
   inside `day_start_step` (`#[inline(never)]`, the env's step); only an `EndTurn` on day `days`
-  is tried, on a fork outside the count. `BenchResult::creature_months` (a month's first day in
+  is tried, on a fork outside the count that is dropped before the counted step. `BenchResult::creature_months` (a month's first day in
   a creature's month) and `added` (the monsters the counted steps added); the CLI prints both.
   *Agent's calls (change freely):* random play before the counted step, as every other workload
   (not ends of turn only); the counted step through the env; the run-up's name kept apart from
   the counted one's (`play_to_day_start`), since the collect pattern matches any symbol holding
   it.
 - **The new baselines** (callgrind):
-  - `day-start-xl-144`: the start of day 8 in 4 games of 7 days (`--seed 1`): 1 441 383 Ir,
-    about 360 000 a start: `grow_monsters` 22 %, malloc 32 % (each grown monster's stack is a
-    new `Vec` in the army table), the table's writes 10 %.
+  - `day-start-xl-144`: the start of day 8 in 4 games of 7 days (`--seed 1`): 1 286 813 Ir,
+    about 322 000 a start: `grow_monsters` 25 %, malloc 25 % (each grown monster's stack is a
+    new `Vec` in the army table), the table's writes 11 %. *Found by CI:* the first cut tried
+    the step on a fork kept alive during the counted step, whose allocations then came from a
+    heap shaped by the run: CI's runner counted 2.7 % more than the sandbox (the gate failed),
+    and locally a longer `--root` moved the count by 3.6 %. The fork is now dropped before the
+    counted step (`starts_day`), whose allocations reuse what the fork's same step freed: 0.35 %
+    between those runs, and the step copies no table the fork shared (10.7 % fewer Ir).
   - `month-start-xl-144`: the start of day 29 in 3 games of 28 days (`--seed 4`: the seeds 4 to
-    6, all creature months, 608 monsters added): 37 935 656 Ir, about 12.6 M a start (about
-    4 ms): the walk's loop 50 %, `event_at` per tile 15 %, the draws 13 %, the occupancy's
-    `live` 7 %, adding the monsters 1.5 %. It runs on a month's first day in four months of
+    6, all creature months, 608 monsters added): 38 183 596 Ir, about 12.7 M a start (about
+    4 ms): the walk's loop 49 %, `event_at` per tile 15 %, the draws 13 %, the occupancy's
+    `live` 7 % (0.02 % between the runs above). It runs on a month's first day in four months of
     ten (the base pack's odds), so it was left as it is (decision 228); T87 may serve the
     walk's tile test from the static map's flags (design §19) and its event test without a
     lookup per tile.

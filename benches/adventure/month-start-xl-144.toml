@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "the step that starts day 29, a creature month's and week 5's, in each of 3 random games of 28 days on the economy XL map (E08 T86b2, increment 9's design note §15, §19: the seeds 4 to 6, all creature months, 608 monsters added in all): the month's walk over the 41 472 tiles with a draw on each free land tile; about 12.6 M Ir a start, 50 % in the walk's own loop (AdventureState::start_month), 15 % the event lookup of each tile (event_at), 13 % the draws, 7 % the occupancy's live test, 1.5 % adding the monsters; counts only inside h3_cli::adventure::bench::day_start_step (the env's step)"
+description = "the step that starts day 29, a creature month's and week 5's, in each of 3 random games of 28 days on the economy XL map (E08 T86b2, increment 9's design note §15, §19: the seeds 4 to 6, all creature months, 608 monsters added in all): the month's walk over the 41 472 tiles with a draw on each free land tile; about 12.7 M Ir a start, 49 % in the walk's own loop (AdventureState::start_month), 15 % the event lookup of each tile (event_at), 13 % the draws, 7 % the occupancy's live test; counts only inside h3_cli::adventure::bench::day_start_step (the env's step)"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "4",
 ]
 collect = "*day_start_step*"
-instructions = 37935656
+instructions = 38183596
 threshold_percent = 2
