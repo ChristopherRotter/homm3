@@ -310,19 +310,44 @@ class Policy(nn.Module):
         (masks bool); only the `cast` rows' heads count; `preview` the rows' kill preview, for a
         network that reads it. The entropy is the entry's plus, for a cast, its heads' along the
         chosen path."""
-        spell_mask, spell, target_mask, target, second_mask, second = heads
+        h, logits, value = self.entries(obs, entry_mask, preview)
+        logprob, ent = self.along(h, logits, entry, cast, heads)
+        assert ent is not None
+        return logprob, ent, value
+
+    def entries(
+        self, obs: torch.Tensor, entry_mask: torch.Tensor, preview: torch.Tensor | None = None
+    ) -> tuple[Encoding, torch.Tensor, torch.Tensor]:
+        """`evaluate`'s first half: the rows' encoding, their masked entry logits (the kill
+        preview's bias in them) and their value."""
         h = self.encode(obs)
         value = self.value(h)
         logits = self.with_preview(self.entry_logits(h), h, obs, preview, entry_mask)
-        logits = masked(logits, entry_mask)
+        return h, masked(logits, entry_mask), value
+
+    def along(
+        self,
+        h: Encoding,
+        logits: torch.Tensor,
+        entry: torch.Tensor,
+        cast: torch.Tensor,
+        heads: tuple[torch.Tensor, ...],
+        with_entropy: bool = True,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """`evaluate`'s second half: the log-probability of the actions `entry`, `cast`, `heads`
+        (as `evaluate`'s) under the rows' encoding `h` and masked entry logits `logits`
+        (`entries`), and their entropy along that path (None without `with_entropy`). Two
+        actions of the same rows share one pass of the trunk (E25 T21: the learner's and the
+        teacher's)."""
+        spell_mask, spell, target_mask, target, second_mask, second = heads
         logprob = chosen(logits, entry)
-        ent = entropy(logits)
+        ent = entropy(logits) if with_entropy else None
         rows = torch.nonzero(cast).squeeze(1)
         if rows.numel():
             hc, c = rows_of(h, rows), self.cast_of(entry[rows])
             s, t, u = spell[rows], target[rows], second[rows]
             extra_logp = torch.zeros_like(logprob)
-            extra_ent = torch.zeros_like(ent)
+            extra_ent = None if ent is None else torch.zeros_like(ent)
             for head_logits, mask, index in (
                 (self.spell_logits(hc, c), spell_mask, s),
                 (self.target_logits(hc, c, s), target_mask, t),
@@ -330,10 +355,12 @@ class Policy(nn.Module):
             ):
                 head_logits = masked(head_logits, mask[rows])
                 extra_logp = extra_logp.index_add(0, rows, chosen(head_logits, index))
-                extra_ent = extra_ent.index_add(0, rows, entropy(head_logits))
+                if extra_ent is not None:
+                    extra_ent = extra_ent.index_add(0, rows, entropy(head_logits))
             logprob = logprob + extra_logp
-            ent = ent + extra_ent
-        return logprob, ent, value
+            if ent is not None and extra_ent is not None:
+                ent = ent + extra_ent
+        return logprob, ent
 
 
 #: The features of a previewed entry (`Mlp.with_preview`).

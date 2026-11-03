@@ -35,7 +35,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 8
+//! format = 9
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -43,6 +43,7 @@
 //! profile = "base:faithful"
 //! ruleset_hash = "0x…"                # the core ruleset's content hash
 //! adventure_ruleset_hash = "0x…"      # the adventure part's
+//! town_ruleset_hash = "0x…"           # the town part's (format 9, E09 T5a2)
 //! rng = "xoshiro256starstar+splitmix64"
 //! rng_version = 1
 //! hash = "fnv1a64-le"
@@ -133,10 +134,10 @@ fn read_text(path: &Path) -> Result<String> {
     std::fs::read_to_string(path).map_err(|e| AdventureCliError::Io(path.to_path_buf(), e))
 }
 
-/// Loads `<packs_dir>/<id>/core.toml` and, where they exist, `<id>/adventure.toml` and
-/// `<id>/battle.toml` for each id and compiles them with `profile` into the game's rules (the
-/// battle part since E08 T19a). Ids come from replay files, so they must be valid pack ids (no
-/// paths).
+/// Loads `<packs_dir>/<id>/core.toml` and, where they exist, `<id>/adventure.toml`,
+/// `<id>/battle.toml` and `<id>/towns.toml` for each id and compiles them with `profile` into the
+/// game's rules (the battle part since E08 T19a, the town part since E09 T5a2). Ids come from
+/// replay files, so they must be valid pack ids (no paths).
 ///
 /// # Errors
 ///
@@ -157,25 +158,33 @@ pub fn load_rules(packs_dir: &Path, ids: &[String], profile: &str) -> Result<Gam
         };
         texts.push((
             read_text(&dir.join("core.toml"))?,
-            optional("adventure.toml")?,
-            optional("battle.toml")?,
+            [
+                optional("adventure.toml")?,
+                optional("battle.toml")?,
+                optional("towns.toml")?,
+            ],
         ));
     }
-    let adventure: Vec<(&str, &str)> = texts
-        .iter()
-        .map(|(p, a, _)| (p.as_str(), a.as_str()))
-        .collect();
-    let battle: Vec<(&str, &str)> = texts
-        .iter()
-        .map(|(p, _, b)| (p.as_str(), b.as_str()))
-        .collect();
+    // A context's `(core.toml, <context>.toml)` texts, in load order.
+    let part = |i: usize| -> Vec<(&str, &str)> {
+        texts
+            .iter()
+            .map(|(core, parts)| (core.as_str(), parts[i].as_str()))
+            .collect()
+    };
     let pack_error = |e: String| AdventureCliError::Pack(packs_dir.to_path_buf(), e);
-    let (core, part) =
-        h3_pack_adventure::compile(&adventure, profile).map_err(|e| pack_error(e.to_string()))?;
+    let (core, adventure) =
+        h3_pack_adventure::compile(&part(0), profile).map_err(|e| pack_error(e.to_string()))?;
     let battle =
-        h3_pack_battle::compile(&battle, profile).map_err(|e| pack_error(e.to_string()))?;
-    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle))
-        .map_err(|e| pack_error(e.to_string()))
+        h3_pack_battle::compile(&part(1), profile).map_err(|e| pack_error(e.to_string()))?;
+    let towns = h3_pack_towns::compile(&part(2), profile).map_err(|e| pack_error(e.to_string()))?;
+    GameRuleset::new(
+        Arc::new(core),
+        Arc::new(adventure),
+        Arc::new(battle),
+        Arc::new(towns),
+    )
+    .map_err(|e| pack_error(e.to_string()))
 }
 
 /// Checks that a map path from the command line or a replay file is relative and stays below the
@@ -580,6 +589,10 @@ struct Meta {
     profile: String,
     ruleset_hash: String,
     adventure_ruleset_hash: String,
+    /// Since format v9 (E09 T5a2); an older file has none: read as 0, it is refused by its
+    /// version.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    town_ruleset_hash: Option<String>,
     rng: String,
     rng_version: u32,
     hash: String,
@@ -635,6 +648,7 @@ pub fn replay_to_toml(replay: &Replay) -> Result<String> {
             profile: h.profile.clone(),
             ruleset_hash: hex64(h.ruleset_hash),
             adventure_ruleset_hash: hex64(h.adventure_ruleset_hash),
+            town_ruleset_hash: Some(hex64(h.town_ruleset_hash)),
             rng: h.rng_algorithm.clone(),
             rng_version: h.rng_version,
             hash: h.hash_algorithm.clone(),
@@ -686,6 +700,7 @@ pub fn parse_replay(text: &str) -> Result<Replay> {
             profile: m.profile,
             ruleset_hash: parse_hex64(&m.ruleset_hash)?,
             adventure_ruleset_hash: parse_hex64(&m.adventure_ruleset_hash)?,
+            town_ruleset_hash: m.town_ruleset_hash.as_deref().map_or(Ok(0), parse_hex64)?,
             rng_algorithm: m.rng,
             rng_version: m.rng_version,
             hash_algorithm: m.hash,

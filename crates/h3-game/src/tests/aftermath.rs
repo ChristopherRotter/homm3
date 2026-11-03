@@ -423,7 +423,13 @@ fn single_rules() -> GameRuleset {
     let core = Arc::new(core_with(false, "t:single"));
     let part = part_with(&core, vec![88, 25], 2);
     let battle = battle_part(&core, 7);
-    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+    GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap()
 }
 
 // covers: GAM-BAT-006, HER-NEC-001, HER-NEC-002

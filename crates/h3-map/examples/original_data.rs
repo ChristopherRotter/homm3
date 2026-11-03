@@ -96,7 +96,19 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let Ok(rules) = GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle)) else {
+    let towns = match h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS, "base:faithful") {
+        Ok(towns) => towns,
+        Err(e) => {
+            eprintln!("h3-map: the original town packs do not compile: {e:?}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let Ok(rules) = GameRuleset::new(
+        Arc::new(core),
+        Arc::new(part),
+        Arc::new(battle),
+        Arc::new(towns),
+    ) else {
         eprintln!("h3-map: the parts belong to another core");
         return ExitCode::FAILURE;
     };

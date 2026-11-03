@@ -15,6 +15,7 @@ h3-adventure.workspace = true
 h3-heroes.workspace = true
 h3-content-battle.workspace = true
 h3-battle.workspace = true
+h3-towns.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

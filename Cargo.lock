@@ -511,6 +511,7 @@ dependencies = [
  "h3-map",
  "h3-pack-adventure",
  "h3-pack-battle",
+ "h3-pack-towns",
  "h3-sim",
  "serde",
  "toml",
@@ -583,6 +584,7 @@ dependencies = [
  "h3-contracts",
  "h3-heroes",
  "h3-kernel",
+ "h3-towns",
  "proptest",
 ]
 
@@ -630,6 +632,7 @@ dependencies = [
  "h3-pack",
  "h3-pack-adventure",
  "h3-pack-battle",
+ "h3-pack-towns",
  "miniz_oxide",
  "proptest",
 ]
@@ -744,6 +747,8 @@ dependencies = [
  "h3-map",
  "h3-pack-adventure",
  "h3-pack-battle",
+ "h3-pack-towns",
+ "h3-towns",
  "proptest",
  "serde",
  "toml",

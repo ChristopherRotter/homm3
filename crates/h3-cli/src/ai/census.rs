@@ -241,7 +241,8 @@ pub struct Skipped {
     pub reason: String,
 }
 
-/// The original packs (RoE to SoD) under [`PROFILE`], as the maps are imported.
+/// The original packs (RoE to SoD) under [`PROFILE`], as the maps are imported: the town part's
+/// too since E09 T5a2.
 ///
 /// # Errors
 ///
@@ -256,8 +257,15 @@ pub fn original_rules() -> Result<GameRuleset, String> {
     ];
     let battle = h3_pack_battle::compile(&packs, PROFILE)
         .map_err(|e| format!("the original battle packs: {e}"))?;
-    GameRuleset::new(Arc::new(core), Arc::new(part), Arc::new(battle))
-        .map_err(|e| format!("the original packs: {e:?}"))
+    let towns = h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS, PROFILE)
+        .map_err(|e| format!("the original town packs: {e}"))?;
+    GameRuleset::new(
+        Arc::new(core),
+        Arc::new(part),
+        Arc::new(battle),
+        Arc::new(towns),
+    )
+    .map_err(|e| format!("the original packs: {e:?}"))
 }
 
 /// The map files among `paths`: a file as given, a folder's `.h3m` files (not its subfolders),

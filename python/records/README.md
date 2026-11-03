@@ -121,6 +121,15 @@ Miller-Madow), the distinct entries, the cast heads' mode, and each scored netwo
 and cross-entropy against the draws; the teacher, the states, episodes, lost choices, seconds
 and the identity.
 
+## The imitation loss
+
+`imitate/t21-check-*.json` (E25 T21, the sandbox's CPU check): `-clone` a cloning bench's
+report at 0.5 M samples (`configs/distill/e25-clone.toml`, the ladder left out), `-c0`, `-c0.5`,
+`-c2` the records of 0.4 M samples of PPO from that student at `e25-neutral.toml`'s settings
+with the imitation weight 0, 0.5 and 2 (`imitation_horizon` 10 M, the ladders at one episode a
+kind), `-ceiling` the four networks scored against the fair actor's draws (`h3env.train.ceiling`;
+the runs' learners from their `checkpoint.pt`). The findings in `docs/epics/E25-log.md` T21.
+
 ## The search's measurements
 
 `search/<run>-<set>-<N>[-<per kind>].json` (E06 T8c): `python -m h3env.search --report --best

@@ -43,7 +43,13 @@ fn rules() -> GameRuleset {
     let core = Arc::new(Ruleset::compile(&[pack], "t:faithful").unwrap());
     let part = part_with(&core, vec![88, 25], 2);
     let battle = battle_part(&core, 7);
-    GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
+    GameRuleset::new(
+        Arc::clone(&core),
+        Arc::new(part),
+        Arc::new(battle),
+        no_towns(&core),
+    )
+    .unwrap()
 }
 
 /// The game of [`setup`] with blue's hero a rider with Basic Logistics, the boots and the custom

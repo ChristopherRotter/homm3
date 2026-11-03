@@ -40,7 +40,7 @@ from h3env.train.evaluate import (  # noqa: E402
 )
 from h3env.train.hexnet import HexConv, HexFormer  # noqa: E402
 from h3env.train.policy import Mlp, build  # noqa: E402
-from h3env.train.ppo import Trainer, episode_entries  # noqa: E402
+from h3env.train.ppo import _SEATS, TEACHER, Trainer, episode_entries  # noqa: E402
 from h3env.train.run import (  # noqa: E402
     ConfigError,
     HeldOutError,
@@ -637,6 +637,130 @@ def test_the_update_takes_the_entropy_bonus_it_is_given() -> None:
     plain = stepped("config")
     assert torch.equal(stepped(Config().entropy_coef), plain)
     assert not torch.equal(stepped(1.0), plain)
+
+
+#: The imitation loss's mix (E25 T21): hero battles beside wandering monsters (the fair system
+#: actor defending inside the batch), half the hero battles against a league member.
+IMITATE = dict(**{**SMALL, "max_steps": 60, "rollout": 32}, self_play=0.5, kinds=[1, 0, 1, 0, 0, 0])
+
+
+def imitating(coef: float) -> Trainer:
+    """A trainer of `IMITATE` at the imitation weight `coef`, a member of its league live."""
+    trainer = Trainer(Config(**IMITATE, imitation_coef=coef))
+    trainer.join()
+    assert trainer.league.draw(0)
+    trainer.assign(np.arange(trainer.config.envs))
+    return trainer
+
+
+def test_the_teachers_labels_change_no_episode_and_are_the_fair_actors_choices() -> None:
+    # E25 T21 (decision 3): the teacher's call draws from the side to move's seat stream, which
+    # no external seat otherwise reads, so a labelled rollout is the unlabelled one bit for bit.
+    # Its labels sit on the learner's own decisions (a member's and the internal defender's get
+    # none), within the learner's masks along the teacher's choice; the first call's are the
+    # fair actor's choices on the same batch.
+    plain, taught = imitating(0.0), imitating(1.0)
+    c = taught.config
+    twin = BattleBatch(c.envs, threads=c.threads, seed=taught.batch_seed, max_steps=c.max_steps)
+    for weight, kinds, side in episode_entries(c):
+        twin.add_encounters(weight, kinds=kinds, **({} if side < 0 else _SEATS[side]))
+    twin.reset()
+    np.testing.assert_array_equal(twin.obs, taught.batch.obs)
+    encoded, lost = twin.choice(TEACHER)
+    expected = twin.actions.copy()
+    twin.close()
+    assert lost == 0
+    roll_plain, roll = plain.collect(), taught.collect()
+    p, r = plain.rollout, taught.rollout
+    for name in ("obs", "entry", "spell", "target", "second", "side", "reward", "terminal"):
+        np.testing.assert_array_equal(getattr(p, name), getattr(r, name), err_msg=name)
+    assert p.teacher is None and not p.labelled and "teacher_rows" not in roll_plain
+    assert r.labelled and roll["frozen_passes"] > 0 and roll["by_kind"]["wandering"]
+    k = r.teacher
+    assert k is not None
+    labelled = k["labelled"]
+    # Every learning row (no tactics bound here, no choice lost), no other.
+    np.testing.assert_array_equal(labelled, r.side >= 0)
+    assert labelled.sum() == roll["teacher_rows"] == roll["decisions"]
+    assert roll["teacher_lost"] == 0 and roll["teacher_s"] > 0
+    assert 0.0 <= roll["teacher_agreement"] <= 1.0
+    t, e = np.nonzero(labelled)
+    assert r.entry_mask[t, e, k["entry"][t, e]].all()
+    cast = k["cast"]
+    assert cast.any() and not (cast & ~labelled).any()
+    t, e = np.nonzero(cast)
+    for head in ("spell", "target", "second"):
+        assert k[f"{head}_mask"][t, e, k[head][t, e]].all(), head
+    # The first call's labels: the fair actor's choices.
+    rows = labelled[0]
+    assert rows.any() and (encoded[rows] == 1).all()
+    for head in ("entry", "spell", "target", "second"):
+        np.testing.assert_array_equal(k[head][0, rows], expected[head][rows])
+    plain.batch.close()
+    taught.batch.close()
+
+
+def test_the_imitation_loss_pulls_the_learner_to_the_teacher_while_its_weight_lasts(
+    monkeypatch,
+) -> None:
+    # E25 T21: the same rollout updated from the same weights. At weight 0 (the default) no
+    # teacher is asked and the update is PPO's alone; with a weight the step changes, and
+    # repeated on the labels it lowers their cross-entropy. Past its horizon the teacher is asked
+    # no more.
+    calls = []
+    real = BattleBatch.choice
+
+    def spy(self, *args, **kwargs):
+        calls.append(args)
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(BattleBatch, "choice", spy)
+    small = {**SMALL, "envs": 4, "rollout": 16, "minibatches": 2}
+
+    def updated(coef: float, steps: int = 1, **extra) -> tuple[torch.Tensor, list[dict]]:
+        trainer = Trainer(Config(**small, imitation_coef=coef, **extra))
+        trainer.collect()
+        stats = [trainer.update(trainer.config.lr) for _ in range(steps)]
+        trainer.batch.close()
+        return torch.cat([p.detach().reshape(-1) for p in trainer.policy.parameters()]), stats
+
+    plain, (stats,) = updated(0.0)
+    assert not calls and stats["imitation_coef"] == 0.0 and "imitation_loss" not in stats
+    taught, (stats,) = updated(1.0)
+    assert len(calls) == small["rollout"] and set(calls) == {(TEACHER,)}
+    assert stats["imitation_coef"] == 1.0 and 0.0 < stats["imitation_loss"] < math.inf
+    assert not torch.equal(plain, taught)
+    _, stats = updated(5.0, steps=6, imitation_horizon=10**9)
+    losses = [s["imitation_loss"] for s in stats]
+    assert losses[-1] < losses[0], losses
+    # A horizon of one sample: the first rollout is labelled (its weight the whole coefficient),
+    # the next is not.
+    calls.clear()
+    trainer = Trainer(Config(**small, imitation_coef=1.0, imitation_horizon=1))
+    trainer.collect()
+    assert trainer.update(1e-4)["imitation_coef"] == 1.0 and len(calls) == small["rollout"]
+    roll = trainer.collect()
+    stats = trainer.update(1e-4)
+    assert len(calls) == small["rollout"] and not trainer.rollout.labelled
+    assert "teacher_rows" not in roll and stats["imitation_coef"] == 0.0
+    trainer.batch.close()
+
+
+def test_an_imitating_run_records_its_weight_and_labels(tmp_path) -> None:
+    # E25 T21: the update records carry the weight falling to 0 over its horizon, the labels'
+    # statistics and the cross-entropy while it is above 0; the record's curve their means.
+    config = Config(**SMALL, samples=3 * ONE_UPDATE, imitation_coef=0.5, imitation_horizon=150)
+    train(config, tmp_path)
+    updates = [r for r in _records(tmp_path) if r["type"] == "update"]
+    weights = [r["imitation_coef"] for r in updates]
+    assert weights[0] == 0.5 and weights[-1] == 0.0 and weights == sorted(weights, reverse=True)
+    for r in updates:
+        taught = r["imitation_coef"] > 0
+        assert ("imitation_loss" in r) == ("teacher_rows" in r) == taught
+        if taught:
+            assert r["imitation_loss"] > 0 and r["teacher_rows"] >= r["update_samples"]
+    curve = json.loads((tmp_path / "record.json").read_text())["curve"]
+    assert len(curve) == 1 and curve[0]["imitation_loss"] > 0
 
 
 #: A run that dies hard (SIGKILL; TerminateProcess on Windows) while it writes its fifth

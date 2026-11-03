@@ -8,7 +8,7 @@ with it (E25 decision 2 of increment 6).
 
 The states are the cloning bench's held-out set's (`h3env.train.clone`): the bench's `run`
 config's training distribution on the seed after the bench's `seed`, every external seat the
-fair actor (`clone.TEACHER`). At each state its choice is drawn `draws` times
+fair actor (`ppo.TEACHER`). At each state its choice is drawn `draws` times
 (`BattleBatch.choice` draws from the side's seat stream and advances it, so each call on the
 unchanged state is a fresh draw) and the last draw is played, so the episodes are the fair
 actor's own (not the bench's: its streams advance once a decision). Every state of an ended
@@ -49,10 +49,11 @@ import numpy as np
 import torch
 
 from .. import _ffi
-from .clone import TEACHER, Episodes
+from .clone import Episodes
 from .distill import CATEGORIES, Bench, category, load_bench
 from .evaluate import load
 from .policy import CASTS, masked
+from .ppo import TEACHER
 from .run import ConfigError, atomic_write_text, load_config, machine, source
 
 #: The cast heads, in the order the teacher's choice fixes them.
