@@ -54,6 +54,18 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
+  unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
+  `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
+  `towns:owned_garrisons`), `hero[NAME]:slot:N`, `opening:slot:N:<side>`, `town_screen`,
+  `unknown_screens`, a `new_game = true` step, the town screen (vtable 0x64372C, closed by item
+  30720) and the level-up dialog (0x63FE60, `level_up`) as known screens, and a list of creatures
+  in the table battle plan's `attack`. Behaviour changes: `play_turns` reads the turn again after
+  its 0.5 s wait (an order went into the next stack's turn), a retreat waits out the retreating
+  side's Catapult, a `text:` literal ending in `: ` joins the next value without `; `, and `batch
+  --map` fills the template beside the map when its stamp matches (no cargo build). A town's
+  visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
+  after. `clients/capture/README.md`, "Towns (E09 T3b)".
 - 2026-11-03 (the town lane, E09 T3a, PR #659; **a failing property case on `master`'s code**):
   CI's full verify on #659 (run 41541601650, the merge with `master` at 65b5465b; #659 does not
   touch `h3-map`) found a case of `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants`

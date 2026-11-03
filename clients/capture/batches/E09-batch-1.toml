@@ -259,8 +259,16 @@ walk = [40, 61]
 # Red's own town now: the step enters it and the town screen opens (noted and closed: README,
 # "Towns").
 expect = { question = "none", battle = false }
-record = { "after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero" = ["hero:tile", "hero:points", "town_screen", "town:40,61:visitor"] }
+record = { "+after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero" = ["hero:tile", "hero:points", "town_screen"] }
 note = { "the later step: its path's marks, the target's mark; the town's owner" = ["marks", "mark", "town:40,61:owner"], "the later step: screens not known by their vtable" = "unknown_screens" }
+
+# The town's visitor (+0x10) is cleared while its hero is the selected one and set again once
+# another hero is selected (observed in T3b's probe: -1 with TWN-1-4 selected, 18 with TWN-1-1
+# selected and on Blue's turn): it is read with TWN-1-1 selected (README, "Towns").
+[[step]]
+encounter = "TWN-1-4"
+hero = "TWN-1-1"
+record = { "+after the later step: the hero's tile and movement points; a town screen (yes/no); the town's visiting hero" = ["text:the visitor with TWN-1-1 selected: ", "town:40,61:visitor"] }
 
 # --- Game 3, a new game: TWN-1-1's and TWN-1-2's reads ------------------------------------------
 

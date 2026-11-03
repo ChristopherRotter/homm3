@@ -668,9 +668,10 @@ a walk notes it (`town_screen`: `yes`, `no`) and closes it by its exit button, i
 check mark, as the hero screen's close), else the key `Return` (Escape closes it too); every other
 unknown screen's vtable is noted (`unknown_screens`; the level-up dialog, 0x63FE60 from
 `level_up_dialog`, is known as `level_up`). A screen the harness cannot pass still stops the batch
-after 30 s, with the topmost dialog's vtable in the error. A town's visitor (+0x10) holds a hero
-that entered only while its town screen shows (observed under Wine: TWN-1-4's hero, then −1 after
-the screen closed, the hero still on the gate); one the map places there stays.
+after 30 s, with the topmost dialog's vtable in the error. A town's visitor (+0x10) reads −1 while its
+hero is the selected one and holds it otherwise (observed under Wine, E09 T3b's probe: TWN-1-4 on
+the gate after entering, −1 while selected, 18 once TWN-1-1 was selected and on Blue's turn; the
+town screen sets it while it shows): read a visitor with another hero selected.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
