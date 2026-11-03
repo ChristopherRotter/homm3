@@ -72,8 +72,8 @@ or `TownRuleset::empty(core)` (an encounter has no towns) in the same pull reque
   one supersedes: the original's built set +0x150). The Capitol's limit is the only write of
   increment 1. **The hordes' upgrade** (survey §16.2, decision 29): a horde ever built with its
   level's upgraded dwelling makes the upgraded horde ever built too (the original's `town_build`
-  turns the one into the other), so it alone stands; the part says which building that is (T5b2's
-  field). The original's custom-set path that leaves a horde's dwelling standing beside it (T-6)
+  turns the one into the other), so it alone stands; the part says which building that is (its
+  `auto_with`, T5b2a: built once each listed building is ever built). The original's custom-set path that leaves a horde's dwelling standing beside it (T-6)
   is not reproduced: fixed.
 - **`TownStatic`** per town, shared by every fork (one `Arc` for the store): its name if the map
   gives one (the map's text; an unnamed town's name is the client's), its map events kept for

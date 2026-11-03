@@ -129,6 +129,10 @@ pub struct BuildingDef {
     /// The building forbidden whenever this one's key is (a horde's upgrade with its horde; E09
     /// survey §5.3), if any.
     pub forbidden_with: Option<String>,
+    /// The buildings whose being ever built builds this one (an upgraded horde: its horde and
+    /// the level's upgraded dwelling, as the original's `town_build`; E09 survey §16.2, decision
+    /// 29); empty for a building only built itself.
+    pub auto_with: Vec<String>,
     /// What the rules read of it.
     pub roles: BuildingRoles,
 }
@@ -387,6 +391,10 @@ pub struct Building {
     pub supersedes: BuildingSet,
     /// The building forbidden whenever this one is, if any (never itself, no cycle).
     pub forbidden_with: Option<BuildingId>,
+    /// The buildings that, once each is ever built, make this one ever built too (never itself;
+    /// empty for none; read over the ever-built set by the setup and, from increment 2,
+    /// construction).
+    pub auto_with: BuildingSet,
     /// What the rules read of it.
     pub roles: BuildingRoles,
 }
@@ -481,14 +489,15 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v1 (E09 T5a1, the first): version; the parameters (0 for none, else 1, the gold
-    /// resource's handle, the four hall amounts, the Grail's, the reveal radius, the level-2
-    /// dwelling chance, the four garrison rows' chance and bounds, the demoted Capitol's key);
-    /// the records in faction order as their number and each one's faction handle, moat (0
-    /// absent, 1 harmless, 2 damaging), natural obstacles, the silo (length, each resource handle
-    /// and amount), the creatures (length, each base handle and the upgrade as an option), the
-    /// buildings (length, each key, name, slot as an option, the superseded set's bits, the
-    /// forbidden-with building as an option, then the roles: hall and fort as options, tavern,
+    /// Encoding v2 (E09 T5b2a; v1, T5a1's first, without the automatic set): version; the
+    /// parameters (0 for none, else 1, the gold resource's handle, the four hall amounts, the
+    /// Grail's, the reveal radius, the level-2 dwelling chance, the four garrison rows' chance and
+    /// bounds, the demoted Capitol's key); the records in faction order as their number and each
+    /// one's faction handle, moat (0 absent, 1 harmless, 2 damaging), natural obstacles, the silo
+    /// (length, each resource handle and amount), the creatures (length, each base handle and the
+    /// upgrade as an option), the buildings (length, each key, name, slot as an option, the
+    /// superseded set's bits, the forbidden-with building as an option, the automatic set's bits
+    /// (`auto_with`), then the roles: hall and fort as options, tavern,
     /// silo, grail, the dwelling as an option of its level and upgrade flag, morale, luck, the
     /// escape tunnel, the defender's attack, defense, power and mana, the reveal as 0 none, 1 and
     /// the radius, 2 all) and the demoted Capitol's building. The core's hash is not part of it:
@@ -529,6 +538,7 @@ impl CanonicalHash for TownRuleset {
                 hash_option(h, b.slot, StateHasher::write_u8);
                 h.write_u64(b.supersedes.bits());
                 hash_option(h, b.forbidden_with, |h, w| h.write_u8(w.raw()));
+                h.write_u64(b.auto_with.bits());
                 hash_roles(h, &b.roles);
             }
             h.write_u8(t.capitol_demoted_to.raw());

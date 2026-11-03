@@ -1,126 +1,17 @@
-//! Tests of the town pack format (E09 T5a1), on the synthetic core packs with inline files.
+//! Tests of the town pack format (E09 T5a1), on the synthetic packs' files (E09 T5b2a).
 
 use h3_content::FactionId;
-use h3_towns::{Building, BuildingId, TownRecord};
+use h3_towns::{Building, BuildingId, BuildingSet, TownRecord};
 
 use super::*;
 
 const PROFILE: &str = "synthetic:faithful";
 
-/// A record of the synthetic pack's `vale` (its two levels) and the parameters.
-const VALE: &str = r#"
-[town_params]
-gold = "coin"
-hall_gold = [500, 1000, 2000, 4000]
-grail_gold = 5000
-reveal_radius = 5
-level_2_dwelling_chance = 30
-neutral_garrison = [
-  { chance = 33, count = [8, 15] }, { chance = 33, count = [5, 7] },
-  { chance = 20, count = [3, 5] },  { chance = 13, count = [1, 3] } ]
-capitol_demoted_to = "city_hall"
+/// The synthetic pack's file: the parameters and a record of `vale` (its two levels).
+const VALE: &str = SYNTHETIC_TOWNS;
 
-[[town]]
-faction = "vale"
-moat = "harmless"
-silo = { shard = 1, "synthetic:coin" = 2 }
-creatures = [["spearman"], ["synthetic:brute"]]
-
-  [[town.building]]
-  key = "village_hall"
-  name = "Village Hall"
-  slot = 10
-  hall = 1
-
-  [[town.building]]
-  key = "town_hall"
-  name = "Town Hall"
-  slot = 11
-  supersedes = ["village_hall"]
-  hall = 2
-
-  [[town.building]]
-  key = "city_hall"
-  name = "City Hall"
-  supersedes = ["town_hall"]
-  hall = 3
-
-  [[town.building]]
-  key = "capitol"
-  name = "Capitol"
-  supersedes = ["city_hall"]
-  hall = 4
-
-  [[town.building]]
-  key = "fort"
-  name = "Fort"
-  fort = 1
-
-  [[town.building]]
-  key = "citadel"
-  name = "Citadel"
-  supersedes = ["fort"]
-  fort = 2
-
-  [[town.building]]
-  key = "castle"
-  name = "Castle"
-  supersedes = ["citadel"]
-  fort = 3
-
-  [[town.building]]
-  key = "tavern"
-  name = "Tavern"
-  tavern = true
-  morale = 1
-
-  [[town.building]]
-  key = "silo"
-  name = "Resource Silo"
-  silo = true
-
-  [[town.building]]
-  key = "grail"
-  name = "Grail"
-  grail = true
-  luck = 2
-  escape_tunnel = true
-  defender = { attack = 2, mana = 150 }
-  reveal = "all"
-
-  [[town.building]]
-  key = "dwelling_1"
-  name = "Dwelling 1"
-  dwelling = [1, false]
-
-  [[town.building]]
-  key = "dwelling_2"
-  name = "Dwelling 2"
-  dwelling = [2, false]
-
-  [[town.building]]
-  key = "lookout"
-  name = "Lookout"
-  reveal = 20
-
-  [[town.building]]
-  key = "horde"
-  name = "Horde"
-
-  [[town.building]]
-  key = "horde_up"
-  name = "Horde Upgraded"
-  forbidden_with = "horde"
-"#;
-
-/// The synthetic expansion's override of `vale`.
-const VALE_OVERRIDE: &str = r#"
-[[town_override]]
-faction = "synthetic:vale"
-moat = "damaging"
-siege_obstacles = true
-silo = { "synthetic:shard" = 3 }
-"#;
+/// The synthetic expansion's file: an override of `vale`.
+const VALE_OVERRIDE: &str = SYNTHETIC_EXT_TOWNS;
 
 fn compiled() -> TownRuleset {
     compile(
@@ -225,10 +116,16 @@ fn the_roles_parse() {
             upgraded: false,
         })
     );
+    let horde_up = building(record, "horde_up");
+    let horde = record.building_by_key("horde").unwrap();
+    assert_eq!(horde_up.forbidden_with, Some(horde));
+    let dwelling_2 = record.building_by_key("dwelling_2").unwrap();
     assert_eq!(
-        building(record, "horde_up").forbidden_with,
-        record.building_by_key("horde")
+        horde_up.auto_with,
+        BuildingSet::EMPTY.with(horde).with(dwelling_2)
     );
+    assert!(horde_up.supersedes.contains(horde) && horde_up.supersedes.contains(dwelling_2));
+    assert_eq!(building(record, "horde").auto_with, BuildingSet::EMPTY);
     assert_eq!(
         record.building(record.capitol_demoted_to).unwrap().key,
         "city_hall"
@@ -320,6 +217,10 @@ fn the_parser_is_strict() {
     assert!(syntax(
         &VALE.replace("dwelling = [1, false]", "dwelling = [1]")
     ));
+    assert!(syntax(&VALE.replace(
+        r#"auto_with = ["horde", "dwelling_2"]"#,
+        r#"auto_with = "horde""#
+    )));
     let key = |text: &str| matches!(parse(text), Err(TownPackError::Key(_)));
     assert!(key(
         &VALE.replace("faction = \"vale\"", "faction = \"Vale\"")
