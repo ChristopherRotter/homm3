@@ -10,7 +10,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   done (#620 to #672, T2's cuts in the epic). T3 cut in two by the user (2026-11-03): T3a done
   (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679, the
   hero's info window, design §12.8); **T3b2 done** (its morale and luck: the hero's own, from
-  CLT-Q40's carry; CLT-Q42 asked; three stills exact; PR from `client/e17-m6-t3b2`: check it
+  CLT-Q40's carry; CLT-Q42 asked; three stills exact; #690 from `client/e17-m6-t3b2`: check it
   first); **next: T3c** (morale's and luck's descriptions' carried lines, from the inbox; cut it
   with the user at its start), then T4 to T7; then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -41,7 +41,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T3b2 (done; its PR open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T3b2 (done; #690 open: check it first).** The original data staged
   (57 files) first; #679 and the battle lane's carry (#685) had merged; the baseline's `check.sh`
   passed. Read `hero_morale` 0x4E39B0, `hero_luck` 0x4E36C0 and the clamp whole (design §12.8:
   the hero's own values, 0 on Cursed Ground, the Hourglass's 0); built `hero_info::values` and
