@@ -11414,7 +11414,11 @@ Baseline: `master` at 5714372 (#699; CI's engine verify green on 616e45a7, the c
 c632a24b, T90's #697). The executables, the DLLs, the four LODs, the sound and video archives,
 `maps.tar`, `extracted.tar`, the MP3s and Ghidra's x86 archive staged at the start (the user's
 computer was to be disconnected soon). **The cut** (decision 247): T91 whole, then T92 in the
-same session.
+same session. **`master`'s red gate:** the setup's full baseline (on c632a24's code; CI
+had run only the clients' checks on #697) failed `check-exe-map` and xtask's
+`the_real_map_passes`: T90 cited the hire window's vtable 0x640C4C and the slider's 0x641D50
+without map entries; fixed in its own pull request (#700, `adventure/e08-t90-exe-map`: two
+`inferred` table entries). Every other step passed.
 
 **Scored** (survey `E08-dwellings.md` §16) from T90's filled templates (E10a two runs, E10b five,
 the templates the last): **every row as the reading predicts**, so no `ADV-Q` opens before the
