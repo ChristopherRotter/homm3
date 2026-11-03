@@ -357,3 +357,25 @@ prediction exactly); 3a Red retreated, Blue won, Blue's army as the opening; 3b 
 (20, 62) with 1 900 of 2 000, the owner Red, no town screen, the garrison empty; the Catapult acted
 by itself. **TWN-1-4** before (40, 62) 2 000; after the siege (40, 62) 1 900, Red, no screen, the
 garrison empty; the later step (40, 61) 1 800, the town screen, the visitor TWN-1-4.
+
+### T3c — batch TWN-1 scored (2026-11-03)
+
+One session, the user present; branch `claude/peaceful-curie-q7wjex` (the session's), `cross-lane`
+(decision 26: `docs/experiments/README.md` is the battle lane's). Starting point: `master` at
+dd99747 (#662 merged). Docs only; no game files (VCMI 1.7.5 cloned into the sandbox's scratch).
+
+- **Scored** (survey §15, both records; counted by a throwaway script, not committed): TWN-1-1
+  the reading's sets (building 23 aside) in all 204 readings, the level-2 dwelling 21 of 96 (95 % interval 0.14 to
+  0.32; VCMI's 50 in 100 at p ≈ 10⁻⁸), none in an owned town without a Fort (VCMI's level 1
+  always refuted); TWN-1-2 the empty custom garrisons 12 of 12 empty, the controls' 48 draws as
+  the reading's table (15 empty, 31 %); TWN-1-3 the merge's three points each moving a stack as
+  T3a designed (VCMI's merge refuted); the siege's aftermath as §7.1, §8.2, §8.3. TD-3, TD-5, TD-7
+  confirmed; ADR-0017's amendment step 4 unchanged.
+- **Building 23** in every Rampart, Necropolis and Conflux town of the standard set (66 of 66),
+  in no other faction's: not built by §5.3's reading (its source a part of the setup not read);
+  VCMI has no building 23 there (`"special4" : null`) and drops undefined ids; the keep counts it
+  if the faction's buildable set holds it. `TWN-Q5` (one round of two): **re-read in T5b**
+  (decision 25), the README's row `cross-lane` (decision 26).
+- **Docs:** the survey's §15 and finding 29; the design note's §3, §5, §10, §20, §21, §22; the
+  ADR-0017 draft's consequence; the epic's decisions 25, 26; `docs/experiments/README.md`'s row;
+  the queue: T3c out, round 4's T4 in.
