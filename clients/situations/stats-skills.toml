@@ -1,0 +1,60 @@
+# E17 M6 T3c1: the stats dialog's morale and luck descriptions with the hero's list (design
+# §12.9): the grass situation's field with the holy-ground situation's armies (the human's Royal
+# Griffins open; one alignment), Orrin with Advanced Leadership and Expert Luck (`h3-view
+# situation`: the skills behind the effects, which name them as their sources, CLT-Q40).
+
+[scenario]
+id = "situation-stats-skills"
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[[scenario.attacker_hero.effects]]
+kind = "morale"
+amount = 2
+source = { kind = "skill", skill = "base:leadership", level = 2 }
+
+[[scenario.attacker_hero.effects]]
+kind = "luck"
+amount = 3
+source = { kind = "skill", skill = "base:luck", level = 3 }
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

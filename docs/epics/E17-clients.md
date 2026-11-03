@@ -175,7 +175,12 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   2026-11-03) its morale and luck (`hero_morale`, `hero_luck` read whole: the hero's own, 0 on
   Cursed Ground; from CLT-Q40's carry), CLT-Q42 asked, three stills exact.
   **T3c** (from the inbox, 2026-11-03): morale's and luck's descriptions' carried lines (§12.4's
-  *not built*).
+  *not built*), cut in two by the user (2026-11-03): **T3c1** (done 2026-11-03) the hero's lists
+  read whole (0x4DC320, 0x4DCAC0; design §12.9) and drawn from the carry (the artifacts,
+  Leadership or Luck, the rest as temporary; the visits and the Grail in the rest meanwhile), the
+  header and pictures by the unclamped value, three stills exact; **T3c2** the Hourglass's and the
+  Spirit of Oppression's lines, the Angelic Alliance's join, a siege town's buildings and the
+  Grail's line (a town record's index).
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
   movement and cursor shadows, the combat speed, the Auto Combat options, the rest as read), kept
   in the client's settings; recorded.
