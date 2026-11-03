@@ -18,17 +18,21 @@ pub enum FortLevel {
     Castle,
 }
 
-/// The town's moat as the battle meets it. The game's version decides it (the original's
-/// `mapKind`: a game under RoE or AB rules keeps their moat, survey S-29, not a quirk; BAT-Q41):
-/// before SoD a moat does no damage and a Stronghold has none. A Tower's land mines take its
-/// moat's place, and the same value decides their damage (E04c T5).
+/// The town's moat as the battle meets it. The enabled packs decide it, not a game version (ADR-0023
+/// point 2, E09 decision 14; BAT-Q41's rule): from a Citadel the kind of the town's faction's town
+/// record in the town part, below it `Absent`. The base pack's records give RoE's and AB's moats
+/// (harmless, a Stronghold none), the SoD pack overrides them with SoD's (damaging, a Stronghold's
+/// too); the original's own version from its scenario dialog is E09 decision 14's recorded
+/// deviation. A Tower's land mines take its moat's place, and the same value decides their damage
+/// (E04c T5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Moat {
-    /// No moat: below a Citadel, or a Stronghold in a game under RoE or AB rules.
+    /// No moat: below a Citadel, or a faction's town record without one (the base pack's
+    /// Stronghold).
     Absent,
-    /// A moat that does no damage (a game under RoE or AB rules).
+    /// A moat that does no damage (the base and AB packs' records).
     Harmless,
-    /// A moat that damages a stack entering it (a game under SoD rules).
+    /// A moat that damages a stack entering it (the SoD pack's records).
     Damaging,
 }
 

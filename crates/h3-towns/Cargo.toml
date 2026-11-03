@@ -1,0 +1,15 @@
+[package]
+name = "h3-towns"
+description = "The town context: every town's own record, the store of towns, its rules and derivations, its ruleset part (ADR-0028)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A skeleton (E09 T4b): no dependency yet. `arch.toml` allows the kernel, the core content, the
+# contracts and the hero model (ADR-0028 point 1); each comes with the first code that reads it.
+[dependencies]
+
+[lints]
+workspace = true
