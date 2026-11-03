@@ -24,10 +24,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (refined at T18): the teacher's ceiling, a longer clone, an imitation loss decaying in PPO,
   then their A/B against `e25-clone-1`. **T19 done:** the fair actor repeats its own choice
   0.972 of the time (0.044 nats); T16's student reached 0.531, `e25-clone-1` #2 0.270 (PPO
-  leaves the teacher): the gap is the network's. **Next:** T20, the longer clone
-  (`configs/distill/e25-clone-2.toml`, 16 M; the user's machine or the sandbox, the user's
-  choice), and T21, the imitation loss (a sandbox build).
-- **Open pull requests:** #682 (`claude/quirky-cerf-26fspy`: T17 to T19).
+  leaves the teacher): the gap is the network's. **T20 done** (the user's GPU, 16 M): agreement
+  0.576 (+0.045 for four times the samples), the student alone 0.411 against both system actors
+  and +0.251 on the neutral set; its `students/mlp.pt` on the user's machine for T22. **Next:**
+  T21, the imitation loss (a sandbox build, a fresh session), then T22's A/B on the user's
+  machine.
+- **Open pull requests:** T20's (`claude/quirky-cerf-26fspy`, restarted from `master` once #682,
+  T17 to T19, merged).
   Merged: #651 (T13 to T15), #657 (T16).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
@@ -42,14 +45,15 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-11-03 — E25 T17 to T19
+### 2026-11-03 — E25 T17 to T20
 
 - #657 merged; the branch started from `master`. T17's records and `metrics.jsonl` uploaded by
   the user with the three `best.pt` (`e25-neutral-1`, `e25-clone-1`, `e25-sharp-1` #2); the
   head-to-heads on the sandbox's CPU (25 to 53 s each, `cargo build --release -p h3-ffi` and
   `uv sync --group train` first, about 1 and 7 minutes). The setup's baseline verify passed.
   T18 with the user (AI-Q15): increment 5 closed, increment 6 refined (T19 to T23). T19 on the
-  sandbox's CPU (37 s a run; the PPO networks scored beside the teacher).
+  sandbox's CPU (37 s a run; the PPO networks scored beside the teacher). #682 merged; T20's
+  record from the user's machine on the branch restarted from `master`.
 
 ### 2026-11-02 — E25 T16
 

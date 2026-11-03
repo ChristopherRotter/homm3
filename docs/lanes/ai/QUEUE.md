@@ -11,15 +11,6 @@ to 5 closed (`E25-archive.md`); **`e25-clone-1` #2 the current best** (AI-Q15, T
 against both system actors, the neutral set +0.282). **Increment 6, better imitation** (refined
 at T18, 2026-11-03, AI-Q15; its decisions in the epic file):
 
-- **T20 The longer clone.** *Scope:* the clone bench at a larger budget (16 M samples unless
-  T19's ceiling or the user says otherwise when prepared; its learning rate's schedule over the
-  longer horizon), `configs/distill/e25-clone-2.toml`, run on the user's machine (the GPU; the
-  teacher on its CPU) or the sandbox, the user's choice; its record `distill/clone-2.json`, its
-  curve against T19's ceiling and T16's, its ladder; the student sent to (or from) the user.
-  Prepared at T19: `configs/distill/e25-clone-2.toml` (16 M, T16's settings otherwise). *Depends
-  on:* T19 (done 2026-11-03, `E25-log.md` T19: the fair actor repeats itself 0.972, T16's
-  student 0.531, so the gap is the network's; T16's curve suggests about 0.57 at 16 M).
-  *Status:* next.
 - **T21 The imitation loss.** *Scope:* PPO's auxiliary cross-entropy to the fair actor's choice
   on the learner's own decisions (`h3_batch_choice` on the learner's envs before its step; the
   entry and cast heads as labels; rows the encoding cannot express left out), its weight decaying
@@ -28,12 +19,14 @@ at T18, 2026-11-03, AI-Q15; its decisions in the epic file):
   Whether the teacher's call consumes draws the learner's episode would otherwise see is part of
   the design (decision 3: the evaluation unchanged). *Depends on:* T19 (the ceiling may change its
   weight; done: PPO leaves the teacher, `e25-clone-1` #2 agrees 0.270). *Status:* next (the
-  sandbox; beside T20).
+  sandbox, a fresh session: the user at T20).
 - **T22 The A/B.** *Scope:* on the user's machine, `e25-neutral.toml`'s mix at 20 M and seed 1:
   `e25-clone-2` from T20's student and `e25-imitate-1` from it with T21's loss (the arms fixed
   by T19 to T21's reads when prepared), against `e25-clone-1` (T17, the control); the records
-  committed and read, both system columns; head to head against `e25-clone-1` #2. *Depends on:*
-  T20, T21. *Status:* waiting.
+  committed and read, both system columns; head to head against `e25-clone-1` #2. T20's student
+  is `runs/clone-2/students/mlp.pt` on the user's machine. *Depends on:* T20 (done 2026-11-03,
+  `E25-log.md` T20: agreement 0.576, the student 0.411 against both system actors, +0.251), T21.
+  *Status:* waiting.
 - **T23 The checkpoint.** *Scope:* T22 read with the user: the current best, increment 7 among
   the epic's candidates. *Depends on:* T22. *Status:* waiting.
 
