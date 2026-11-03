@@ -48,6 +48,11 @@ struct Unseen {
     /// the setup stream after every other draw, and so their level-ups in play. A hero without
     /// one (SoD's plans) keeps its default, drawn from the seed before the objects' contents.
     experience: Vec<Option<u32>>,
+    /// (E08 T86b1) Another owner at load for each ownable object the viewer never sees, in the
+    /// map's order (cyclically; empty: kept): a playing colour but the viewer's by its index
+    /// (modulo their number), or none (neutral). Its owner shows only with the object (ADV-OWN-003),
+    /// and its reveal at the start is its owner's (ADV-OWN-001).
+    owners: Vec<Option<u8>>,
 }
 
 /// Each kind of change in about half the cases, so that some cases keep the other players'
@@ -74,9 +79,14 @@ fn unseen() -> impl Strategy<Value = Unseen> {
             Just(Vec::new()),
             vec(proptest::option::weighted(0.5, experience()), 1..=6)
         ],
+        // E08 T86b1, drawn last so that the draws before stay as they were.
+        prop_oneof![
+            Just(Vec::new()),
+            vec(proptest::option::of(any::<u8>()), 1..=4)
+        ],
     )
         .prop_map(
-            |(seed, armies, tiles, removed, added, moved, experience)| Unseen {
+            |(seed, armies, tiles, removed, added, moved, experience, owners)| Unseen {
                 seed,
                 armies,
                 tiles,
@@ -84,6 +94,7 @@ fn unseen() -> impl Strategy<Value = Unseen> {
                 added,
                 moved,
                 experience,
+                owners,
             },
         )
 }
@@ -228,6 +239,33 @@ fn vary(
             );
             o.pos.z = anchor.2;
             m.objects.push(o);
+        }
+    }
+    // E08 T86b1: the owners of the ownable objects the viewer never sees.
+    let playing: Vec<u8> = (0u8..)
+        .zip(&m.players)
+        .filter(|&(c, p)| (p.human || p.computer) && c != colour)
+        .map(|(c, _)| c)
+        .collect();
+    let mut ownable = 0;
+    for o in &mut m.objects {
+        let at = (o.pos.x, o.pos.y, o.pos.z);
+        let template = usize::try_from(o.template.saturating_sub(1)).unwrap();
+        let unseen_object = o.template != HERO_TEMPLATE && covers(at, template, side).all(&objects);
+        let (Body::Mine { owner } | Body::Owned { owner }) = &mut o.body else {
+            continue;
+        };
+        if !unseen_object {
+            continue;
+        }
+        let index = ownable;
+        ownable += 1;
+        match unseen.owners.get(index % unseen.owners.len().max(1)) {
+            Some(Some(n)) if !playing.is_empty() => {
+                *owner = u32::from(playing[usize::from(*n) % playing.len()]);
+            }
+            Some(None) => *owner = 0xFF,
+            _ => {}
         }
     }
     let blocked: Vec<Spot> = m
@@ -1378,6 +1416,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         difficulty: 1,
         exchange: None,
         events: Vec::new(),
+        owners: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -1388,6 +1427,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         added: vec![((3, 6, 0), 0)],
         moved: vec![Some((6, 2, 0))],
         experience: vec![Some(3_000)],
+        owners: Vec::new(),
     };
     let other = vary(&m, 0, &unseen, |_| true, |_| true);
     // Every tile is swamp with a road and a river but the heroes', which stay land as swamp is.
@@ -1474,6 +1514,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         difficulty: 1,
         exchange: None,
         events: Vec::new(),
+        owners: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -1543,6 +1584,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         difficulty: 1,
         exchange: None,
         events: Vec::new(),
+        owners: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {
