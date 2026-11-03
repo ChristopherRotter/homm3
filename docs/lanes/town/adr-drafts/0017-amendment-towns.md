@@ -99,8 +99,8 @@ towns' income with the silo (decision 10), capture and sieges (decision 16).
 
 - `GameState::new` grows the pool and the town draws; their order is part of the game state hash
   and the replays (each adventure golden replay re-recorded with the bump).
-- Batch TWN-1 (T3) confirms TD-3, TD-5, TD-7 and a siege's aftermath (decision 15); a row that
-  disagrees reopens this amendment's step.
+- Batch TWN-1 (T3) confirms TD-3, TD-5, TD-7 and a siege's aftermath (decision 15): confirmed
+  (T3c, survey §15); its building 23 involves no draw and leaves step 4 as it is (decision 25).
 - E10's scenario setup keeps the rest of the setup (teams, conditions, the computer's choices);
   the faction choice and the pick are its seam with E09 (decision 6).
 

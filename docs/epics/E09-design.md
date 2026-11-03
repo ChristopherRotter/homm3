@@ -102,6 +102,12 @@ or `TownRuleset::empty(core)` (an encounter has no towns) in the same pull reque
   faction), `town_creatures` 0x6747B4 (levels and upgrades), the silo's table 0x688EB4 (§11.1),
   the neutral garrison's table 0x688E84, 0x688E94, 0x688EA4 (§5.2), the 30 at 0x5C0C5B (§5.3); the
   roles from the readings of §9.4 (the siege's buildings) and §8.3 (the reveal).
+- **Building 23** (batch TWN-1, survey §15; decision 25): built in every Rampart, Necropolis and
+  Conflux town of the standard set, not by §5.3's reading, not in VCMI. T5b reads where it comes
+  from (`town_build` 0x5BE930's hordes, `town_setup_spells` 0x5BE600, the lists of 0x4EB730),
+  whether a custom set gets it and whether the faction's list holds it (so the turrets count it,
+  §6's `structures`); the part and §5's setup then carry it as found (a batch row only if a point
+  stays open).
 - **Names** from `BLDGNEUT.TXT`, `BLDGSPEC.TXT` and `DWELLING.TXT` (the names only: no
   descriptions, Q13); keys from the names, as the other packs'.
 - **Compared** with VCMI 1.7.5's `config/factions/*.json` (buildings, `upgrades`) and the wiki; a
@@ -151,13 +157,15 @@ calls with the setup stream:
   `forbidden_with` building of a forbidden one too; the built slots' buildings with what they
   supersede, less the forbidden. A standard set: a Fort with the map's flag; an owned town a Tavern
   and, only with a Fort, the level-1 dwelling and, with one draw `1..=100 <= chance`, the level-2
-  one; a neutral town both dwellings, Fort or not (TD-3 by the reading, batch TWN-1's row 1).
+  one; a neutral town both dwellings, Fort or not (TD-3 by the reading, confirmed by batch
+  TWN-1's row 1, survey §15). Building 23 in a Rampart's, Necropolis' and Conflux's standard set
+  (row 1, not the reading's): as T5b's re-read finds (§3, decision 25).
 - **The garrison** (`town_setup`, §5.2; TWN-SET-004): a custom one as the map gives it, each random
   stack the faction's creature of its level, upgraded when the code says so (no draw); a custom
-  empty one stays empty (TD-5, row 2); none: an owned town's empty, a neutral town's drawn: for
-  levels 1 to 4 a draw `1..=100 <= chance` and on success a count drawn in the row's bounds, the
-  base creature of the level, each new stack in the first free slot. Returned to the game, which
-  writes it into the adventure (§8).
+  empty one stays empty (TD-5, confirmed by row 2); none: an owned town's empty, a neutral town's
+  drawn: for levels 1 to 4 a draw `1..=100 <= chance` and on success a count drawn in the row's
+  bounds, the base creature of the level, each new stack in the first free slot. Returned to the
+  game, which writes it into the adventure (§8).
 - **Not now:** the Grail forbidden on a Grail-victory map in another town (0x5F2160, increment 2)
   and the Shipyard forbidden without a boat spot (0x5C0C90, increment 4): `TWN-STUB-2` (a built
   Shipyard without water is kept, counted by the turrets; 9 towns on the shipped maps have one
@@ -256,11 +264,12 @@ ADR-0015's amendment point 3, in the import's order:
 ### 10. The siege's start and the merge (TWN-SIE-001, TWN-SIE-002; T8b)
 
 - **The defender** (§9.1): the visitor, with **the garrison merged into its army first** (§9.2,
-  TD-7 by the reading, batch TWN-1's row 3): rounds of the visitor's weakest stack (least AI value
-  × count, of equal ones the last slot), each garrison stack's gain (its value with a stack of its
-  creature or an empty slot, else its value less the weakest's), the greatest positive gain (the
-  first slot of equal ones) joining its creature's stack, else the first empty slot, else changing
-  places with the weakest; until no gain. What stays in the garrison does not fight.
+  TD-7 by the reading, confirmed by batch TWN-1's row 3, survey §15): rounds of the visitor's
+  weakest stack (least AI value × count, of equal ones the last slot), each garrison stack's gain
+  (its value with a stack of its creature or an empty slot, else its value less the weakest's),
+  the greatest positive gain (the first slot of equal ones) joining its creature's stack, else the
+  first empty slot, else changing places with the weakest; until no gain. What stays in the
+  garrison does not fight.
   `Defender::Hero` with `BattleStart::town: Some(TownId)`.
 - **Without a visitor:** the garrison as an army without a hero: `Defender::Garrison { owner,
   army }` for an owned town (its owner plays it outside its turn, as a mine's), `Defender::Guards
@@ -460,8 +469,9 @@ Easy, hot seat, from maps `h3-experiment` writes; several new games for row 1's 
   lanes' inboxes): reads of a town's record (owner +0x1, built +0x150 and every-built +0x158,
   garrison +0xE0, the visitor +0x10), the battle's opening stacks at a siege (E04c's), a hero's tile
   and points after a battle (E08's).
-- **The scoring** (T3c): survey §15, each row against its prediction; a row that disagrees reopens
-  §5 or §10 and the ADR step it names before T4 applies the ADRs.
+- **The scoring** (T3c, done 2026-11-03): survey §15. TD-3, TD-5, TD-7 and the siege's aftermath
+  as the reading (VCMI refuted in each); §10 and the ADR drafts stand. Not predicted: building 23
+  (§3, §5; `TWN-Q5`, decision 25: re-read in T5b, no ADR step).
 
 ### 21. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -480,7 +490,7 @@ the ADRs are applied once with the rows' verdicts:
 | 2 | **T3a** | Batch TWN-1's maps and spec (§20; `cross-lane` in `h3-experiment`) |
 | 3 | **T3b** + **T3c** | T3b: the harness's town reads, the recipe, the run. T3c: scored (survey §15); TD-3, TD-5, TD-7 and row 4 settled |
 | 4 | **T4** | `shared/`: the ADRs with T3c's outcome, the glossary, the crate skeletons, `TownId`, the gates (§1) |
-| 5 | **T5a** + **T5b** | T5a: the part, its compiler and adapter, `GameRuleset`, replay format v9 (§2). T5b: the content read and harvested (§3; original data) |
+| 5 | **T5a** + **T5b** | T5a: the part, its compiler and adapter, `GameRuleset`, replay format v9 (§2). T5b: the content read and harvested, building 23's re-read (§3; original data) |
 | 6 | **T6** | `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml`'s rules (§4–§6) |
 | 7 | **T7a** + **T7b** | T7a: the import and the setup's checks (§7, §13; map import v16, the census). T7b: the pool and the build's draws (§14; game state hash v23) |
 | 8 | **T8a** + **T8b** | T8a: the kind, the step, entering and an undefended capture (§8, §9, §11; part v16, state hash v20). T8b: the siege: the merge, the defender, the battle's setup, the outcome (§10, §15) |
@@ -502,6 +512,8 @@ the ADRs are applied once with the rows' verdicts:
 - **The ever-built set as the record** (§4): construction (increment 2) adds a building and its
   supersedes; the Capitol's limit the only removal. If increment 2 finds a rule that needs the
   original's two sets apart, the record grows a second set (the hash bumps).
+- **Building 23** (survey §15, §3 above): its source, a custom set's and the turrets' share are
+  T5b's re-read; until then no task builds it.
 - **Not read** (survey §6, §10): the boat spot (0x5C0C90), the Grail victory's town (0x5F2160)
   (`TWN-STUB-2`); a special ground under a town's entrance (§15, T7a's census); the Visions
   factor's source (§12).

@@ -7,22 +7,26 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entry below is round 3's last (T3a and T3b are done, `E09-log.md`); each later round's entries are
-written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
-acceptance includes the Definition of Done (`docs/05-testing.md`).
+entry below is round 4's (rounds 2 and 3, T3a to T3c, are done, `E09-log.md`); each later round's
+entries are written when it comes (the epic's list), each task's cut confirmed at its start. Every
+entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T3c — batch TWN-1 scored**
+**E09 T4 — `shared/`: the ADRs, the glossary, the crate skeletons, `TownId`, the gates**
 
-- **Scope:** round 3: survey `E09-towns.md` §15, each row against its prediction (TD-3, TD-5,
-  TD-7, the siege's aftermath); a row that disagrees reopens design §5 or §10 and the ADR step it
-  names (a `TWN-Q` before T4 applies the ADRs); `docs/experiments/README.md`'s row.
-- **Acceptance:** the verdicts in the survey and the design note.
-- **Notes from T3b:** two whole runs (`experiments/results/E09-batch-1.md`, `-run2.md`: six
-  games for rows 1 and 2; `E09-log.md`, T3b, has the summary). Not predicted: building 23 stands
-  in every Rampart, Necropolis and Conflux town of the standard set (`town_buildings_setup`
-  0x5C08C0 or the faction tables: read where it comes from and what 23 is for each). A town's
-  visitor (+0x10) reads −1 while its hero is selected (the harness's README, "Towns").
-- **Depends on:** T3b (done). **Status:** ready.
+- **Scope:** round 4 (design §1, §21; decision 21), one `shared/<topic>` pull request that merges
+  first: the five drafts of `adr-drafts/` into `docs/adr/` with batch TWN-1's verdicts (survey
+  §15: TD-3, TD-5, TD-7 and the siege's aftermath confirmed; building 23 changes no ADR step,
+  decision 25), ADR-0028's number checked; the skeletons `h3-towns` and `h3-pack-towns` (an empty
+  part and store, both version constants 1); `arch.toml`'s edges; `lanes.toml`
+  (`crates/h3-pack-towns/`, `packs/*/towns.toml` to the town lane); `TownId` in `h3-contracts`;
+  the versions table's two rows; `docs/03-domain.md`'s terms, `docs/02-architecture.md` §3,
+  `Moat`'s doc comment; a note in the battle lane's inbox on `siege::setup`'s comment (design §1
+  lists each).
+- **Acceptance:** the drafts accepted in `docs/adr/` (the index's "Read when" rows), the skeletons
+  build under every gate (`check-arch`, coverage, `check-lane`), CI green on the pull request.
+- **Notes:** a cut at its start may split it (the ADRs and docs, then the skeletons). The
+  adventure lane's open pull requests first (`TRAPS.md`, "Merge in order").
+- **Depends on:** T3c (done). **Status:** ready.
 
 ## Inbox
 

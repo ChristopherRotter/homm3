@@ -249,7 +249,7 @@ its sources and tests.
     level-2 dwelling 21 of 96, VCMI's 50 in 100 refuted; the empty garrisons 12 of 12 empty;
     VCMI's merge refuted). **Not predicted:** building 23 in every Rampart, Necropolis and
     Conflux town of the standard set, from a part of the setup the reading did not follow; VCMI
-    has no such building; the keep may count it (`TWN-Q5`).
+    has no such building; the keep may count it. Re-read in T5b (`TWN-Q5`, decision 25).
 
 ## 1. The census
 
@@ -1148,7 +1148,7 @@ and building 23, which the reading does not build, in three factions' towns.**
   standard set (11 towns, owned and neutral, with and without a Fort: 66 readings of 66), in none
   of the other six factions' 23 towns. §5.3's reading of `town_buildings_setup` (read whole)
   builds no 23, so it comes from a part of the setup's path not read: `town_build`'s hordes
-  (0x6887A6 by faction; `town_build` 0x5BE930 read in part), `town_setup_spells` 0x5BE600 (§5.1),
+  (by faction; `town_build` 0x5BE930 read in part), `town_setup_spells` 0x5BE600 (§5.1),
   or the faction tables of `building_tables_init` 0x4EB730. **VCMI 1.7.5** has no building 23 in
   these factions (`config/factions/rampart.json`, `necropolis.json`, `conflux.json`:
   `"special4" : null`, as Castle's and Fortress's; 23 is the Tower's Wall of Knowledge, the
@@ -1163,7 +1163,7 @@ and building 23, which the reading does not build, in three factions' towns.**
   rounded up) in every siege of such a town from day 1. Whether a custom set gets it too is open (the batch's only
   custom set is a Castle). **The observation stands** (`docs/04-rules-and-sources.md` §1: a
   reading of behaviour ranks with an observation, and one that contradicts it is read again);
-  the re-read needs the executable: `TWN-Q5`.
+  the re-read needs the executable: in T5b (`TWN-Q5`, the epic's decision 25).
 - **TWN-1-2 (TD-5, §5.2).** The two explicitly empty custom garrisons (NEF, NE) empty in all six
   games, 12 of 12 (VCMI's draw leaves a town empty 0.312 of the time, all twelve 9 × 10⁻⁷).
   **TD-5: the reading, confirmed.** The eight controls: 48 draws, 15 empty (31 %; the reading's
@@ -1192,4 +1192,4 @@ and building 23, which the reading does not build, in three factions' towns.**
 for the dwellings, the garrisons and the merge, and ADR-0017's amendment step 4 (the town draws)
 is unchanged: building 23 involves no draw (built in every game alike). It reopens only §5's
 standard set and §2's content (whether the three factions list 23, with what role, and whether
-the keep counts it), no ADR step (`TWN-Q5`).
+the keep counts it), no ADR step: T5b reads it again (`TWN-Q5`, decision 25).
