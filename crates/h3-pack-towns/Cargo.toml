@@ -7,10 +7,12 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
-# A skeleton (E09 T4b): no dependency yet. `arch.toml` allows the town context, the kernel, the
-# core content and the core packs' adapter, and `serde` and `toml`, as `h3-pack-adventure`'s
-# (ADR-0028's Consequences); each comes with the parser (E09 T5a).
 [dependencies]
+h3-content.workspace = true
+h3-towns.workspace = true
+h3-pack.workspace = true
+serde.workspace = true
+toml.workspace = true
 
 [lints]
 workspace = true

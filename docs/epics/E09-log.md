@@ -438,3 +438,51 @@ small task, no seam needed). No version moves: the two new constants start at 1.
   ADR-0006's pack file line (`towns.toml`), each a revision history line (presentation); the
   `README.md` layout table; `packs/README.md`'s file table row. The design note's §1 shrunk to
   what T5a and T6 still read. The queue: round 5's T5a and T5b written (T5a's likely cut noted).
+
+### T5a1 — the town part, its compiler and the adapter (2026-11-03)
+
+One session, the user present; branch `town/e09-t5a1` (the lane's own crates, not `cross-lane`).
+Starting point: `master` at 90e8638 (#671 merged, CI green; the sandbox's baseline the light gates
+on CI's fingerprint). **T5a cut in two at its start, the order changed** (the user, asked with the
+reason: all 39 adventure golden replays use the base pack, so a `GameRuleset` before the content
+would move their header's new line twice; `h3-game`'s and `h3-map`'s test files are also in the
+adventure lane's open stack #669 to #674): **T5a1** (this), then **T5b** (the content), then
+**T5a2** (`GameRuleset`, its callers, replay format v9; `cross-lane`). No version moves:
+`TOWN_RULESET_HASH_VERSION` stays 1 with its first encoding.
+
+- **`h3-towns`** (deps: kernel, content, contracts): `building` (`BuildingId`, below
+  `MAX_BUILDINGS` 64; `BuildingSet`, a `u64`: `EMPTY`, `bits`, `contains`, `with`, `union`, the
+  rest with T6); `ruleset` (the pack definitions `TownPack`, `TownParamsDef`, `TownDef`,
+  `CreatureLevelDef`, `BuildingDef`, `BuildingRoles`, `TownOverride`, `TownPatch`; the compiled
+  `TownParams`, `TownRecord` with `building` and `building_by_key`, `CreatureLevel`, `Building`;
+  `TownRuleset::compile`, `empty(core)`, `core_hash`, `content_hash`, `params`, `towns` in the
+  core's faction order, `town(faction)`); `ruleset/compile.rs` (the load order as
+  `h3-adventure`'s, each pack's parameters, records and overrides in load order, then the checks
+  across packs); `Moat` re-exported (the adapter has no `h3-contracts` edge). Tests on cores built
+  in code: every check of the design §2 refused (the pack set, the references and the closure,
+  an override of a record outside the closure, the parameters, a record's levels, upgrades and
+  silo, the buildings' count, keys, slots, role values, `supersedes` and `forbidden_with` unknown
+  or cyclic, the roles across a record, the demoted Capitol), the closure of `supersedes`, the
+  overrides applied, the empty part; the hash pinned (fixture and empty part). 100 % line and
+  region coverage.
+- **`h3-pack-towns`** (deps: content, `h3-towns`, `h3-pack`, serde, toml): `parse_towns(manifest,
+  text)`, `compile(packs, profile)` (the core compiled from the same texts, as
+  `h3-pack-battle`'s; `""` an empty file), `TownPackError` (`Syntax`, `Key`, `CreatureLevel`,
+  `Core`, `Compile`); the format and each role's set in its `lib.rs`. Tests with inline files on
+  the synthetic core packs (a record of `vale`, the expansion's override) and the original core
+  packs without files (the empty part).
+- *Agent's calls (change freely), the design §2's shape changed where it is built:* `gold` names
+  the resource the halls and the Grail pay; `[town_params]` comes from exactly one pack (as
+  `adventure.toml`'s `[params]`; the design said a later pack's replace), and a part without
+  records may lack it (packs without `towns.toml` compile to `TownRuleset::empty`); `creatures`
+  holds **one to seven** levels, each the base and optionally one upgrade (the design said seven
+  with upgrades: the synthetic factions have two levels and no upgrades, and the synthetic packs
+  are the battle lane's; T5b checks the original nine have seven with upgrades, and a draw of a
+  level a faction lacks is T6's typed failure, T-4's kind); the siege's side facts are three
+  roles (`morale` over the standing set, `luck` and `escape_tunnel` over the ever-built set, as
+  the survey §9.4 reads them) instead of one `siege` table; `dwelling` checked at the record's
+  levels, each once, `[1, false]` and `[2, false]` present; morale and luck -3 to 3; building
+  keys `[a-z0-9_]+`; the override changes `moat`, `siege_obstacles` and `silo` (no `fixes` gate:
+  no data quirk needs one).
+- **Not here:** the pack files (T5b, which also writes the synthetic packs' records and
+  `packs/README.md`'s row, the battle lane's); `GameRuleset` and the replay header (T5a2).

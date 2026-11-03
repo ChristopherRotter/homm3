@@ -16,65 +16,18 @@ content's route of §3. *Agent's call (change freely)* marks a choice of this no
 
 ## Part A — the town context (`h3-towns`, `h3-pack-towns`, the content)
 
-### 1. The crates (built by T4b, `E09-log.md`)
+### 1. The crates (built by T4b and T5a1, `E09-log.md`)
 
-- **`h3-towns`**'s modules to come: `ruleset` (the part, §2; a skeleton `TownRuleset` since T4b),
-  `record` (a town, §4), `store` (`Towns`, §4; a skeleton since T4b), `setup` (the build's town
-  setup, §5), `derive` (§6). Its dependencies come with the first code that reads each.
-- **`h3-pack-towns`** (adapter, as `h3-pack-adventure`): `compile(texts, profile)` over the enabled
-  packs' `towns.toml` in dependency order onto a compiled core, overrides as ADR-0006's; a folder
-  without the file reads as an empty one; its format doc in its `lib.rs` (T5a).
+- **`h3-towns`**'s modules to come: `record` (a town, §4), `store` (`Towns`, §4; a skeleton since
+  T4b), `setup` (the build's town setup, §5), `derive` (§6); `building` and `ruleset` are T5a1's.
 
-### 2. The town part (`TownRuleset`, `towns.toml`; town ruleset part v1)
+### 2. The town part (built by T5a1 but `GameRuleset`, T5a2)
 
-Compiled on the core (ADR-0028 point 5): its canonical hash with its version, the core's hash
-recorded beside it; core entities by handle, by key in the file. *Agent's call:* the file's shape
-below.
-
-```toml
-[town_params]                    # one per ruleset; a later pack's values replace
-hall_gold = [500, 1000, 2000, 4000]   # a day by the highest hall level, 1 to 4 (TWN-INC-001)
-grail_gold = 5000                # with a building of role `grail` ever built
-reveal_radius = 5                # a capture's and the start's reveal (TWN-CAP-001)
-level_2_dwelling_chance = 30     # in 100: an owned standard town with a Fort (TWN-SET-003)
-neutral_garrison = [             # TWN-SET-004: per level 1 to 4, a chance in 100 and the count
-  { chance = 33, count = [8, 15] }, { chance = 33, count = [5, 7] },
-  { chance = 20, count = [3, 5] },  { chance = 13, count = [1, 3] } ]
-capitol_demoted_to = "city_hall" # TWN-CAP-002: a building key of every faction's record
-
-[[town]]                         # one per faction with towns
-faction = "castle"
-moat = "harmless"                # absent | harmless | damaging, from a Citadel (ADR-0023's amendment)
-siege_obstacles = false          # natural obstacles in a walled siege (the base pack's Stronghold)
-silo = { wood = 1, ore = 1 }     # the Resource Silo's resources a day (0x688EB4; decision 10)
-creatures = [["pikeman", "halberdier"], ["archer", "marksman"], ...]  # levels 1 to 7, base and upgrade
-  [[town.building]]
-  key = "town_hall"              # unique within the faction
-  name = "Town Hall"
-  slot = 0                       # the map editor's building slot (h3m bit), if it has one
-  supersedes = ["village_hall"]  # direct; the compiler closes them transitively
-  hall = 2                       # roles, each optional (below)
-
-[[town_override]]                # change a faction's record of a pack in the dependency closure
-faction = "castle"
-moat = "damaging"
-```
-
-**A building's roles** (each optional; only what increment 1 reads): `hall` (1 Village Hall to 4
-Capitol), `fort` (1 Fort to 3 Castle), `tavern` (counts for a viewer's level: the Tavern, Castle's
-Brotherhood of the Sword), `silo`, `grail`, `dwelling = [level, upgraded]` (the standard set's
-levels 1 and 2), `siege = { morale, luck, escape_tunnel }` (ADR-0023 point 2's side facts),
-`defender = { attack, defense, power, mana }` (point 3's hero bonuses), `reveal` (a radius, or
-`"all"`: the Tower's Lookout Tower 20 and Grail), `forbidden_with` (a horde's upgrade, forbidden
-with its horde, §5.3). Every building of the faction is listed, roles or not, because a custom set
-may hold any and the turret count counts all (§6).
-
-**The compiler checks:** factions of the core, each once; at most 64 buildings a faction, keys
-unique, slots 0 to 40 and unique, `supersedes` and `forbidden_with` within the faction and acyclic;
-exactly one building of each hall level 1 to 4, of each fort level 1 to 3, one `grail`, one `silo`;
-`dwelling` levels 1 and 2 present; `creatures` seven levels, each base of the faction at its level
-and the upgrade among the base's `upgrades`; `capitol_demoted_to` a hall-3 building of every
-faction; `neutral_garrison` four rows, counts ordered, chances in 0..=100.
+The part, its compiler, its hash's first encoding and the adapter are built (`E09-log.md`, T5a1):
+the format and each role's set (standing or ever built) are documented in `h3-pack-towns`'
+`lib.rs`. Changed there from this note's first shape (*agent's calls*): `gold` names the paying
+resource; one to seven creature levels; the siege's side facts are the roles `morale` (standing),
+`luck` and `escape_tunnel` (ever built), not one `siege` table, which §6 reads accordingly.
 
 **`GameRuleset`** (`h3-game`, `cross-lane`): `new(core, adventure, battle, towns)`, the mismatch
 check extended: the town part on the same core, and every faction with a town record has the
@@ -167,7 +120,7 @@ calls with the setup stream:
 | `hall_level(town)` | the highest standing `hall`, 1 to 4 | TWN-INC-001 |
 | `daily_income(town)` | gold `hall_gold[level − 1]` + `grail_gold` with a `grail` building ever built; the faction's `silo` resources with a standing `silo` | TWN-INC-001, -002 |
 | `fort_level(town)` | the highest standing `fort` (§9.4: the last of 7, 8, 9 found) | TWN-SIE-003 |
-| `siege(town) -> Siege` | `faction`, `fort`, `moat` (the record's from fort level 2, else `Absent`), `structures` (the standing buildings not forbidden, saturating at 255), `escape_tunnel`, `morale` and `luck` (the highest standing `siege` values) | TWN-SIE-003 (ADR-0023 point 2's amendment) |
+| `siege(town) -> Siege` | `faction`, `fort`, `moat` (the record's from fort level 2, else `Absent`), `structures` (the standing buildings not forbidden, saturating at 255), `morale` (the highest standing role), `luck` and `escape_tunnel` (the ever-built roles; T5a1) | TWN-SIE-003 (ADR-0023 point 2's amendment) |
 | `siege_obstacles(town)` | the record's flag, from fort level 2 (a Citadel; the E04c survey's S-29) | TWN-SIE-005 |
 | `defender_bonus(town)` | the sums of the built buildings' `defender` values | TWN-SIE-004 |
 | `reveal(town)` | `reveal_radius`, or the largest built `reveal` (`all` wins) | TWN-CAP-001 |

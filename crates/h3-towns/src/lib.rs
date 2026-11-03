@@ -6,9 +6,10 @@
 //! adventure's; `h3-game` composes the two, and no domain crate depends on this one (ADR-0028
 //! points 1, 2 and 6).
 //!
-//! So far a skeleton (E09 T4b): the empty ruleset part ([`TownRuleset`]), the empty store
-//! ([`Towns`]) and the two version constants. E09 increment 1's design note §2 (the part, T5a) and
-//! §4 to §6 (the record, the store, the setup, the derivations, T6) say what comes.
+//! So far: the ruleset part ([`TownRuleset`], its compiler and canonical hash; E09 T5a1), the
+//! buildings' ids and sets, the empty store ([`Towns`]) and the two version constants. E09
+//! increment 1's design note §4 to §6 (the record, the store, the setup, the derivations, T6) say
+//! what comes.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -28,10 +29,20 @@
 )]
 #![warn(missing_docs)]
 
+extern crate alloc;
+
+mod building;
 mod ruleset;
 mod store;
 
-pub use ruleset::TownRuleset;
+pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
+/// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
+pub use h3_contracts::Moat;
+pub use ruleset::{
+    BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,
+    DefenderBonus, Dwelling, GarrisonRow, MAX_CREATURE_LEVELS, Reveal, TownCompileError, TownDef,
+    TownOverride, TownPack, TownParams, TownParamsDef, TownPatch, TownRecord, TownRuleset,
+};
 pub use store::Towns;
 
 /// Version of the store of towns' canonical hash encoding, which the game state hash folds in
@@ -42,6 +53,6 @@ pub use store::Towns;
 pub const TOWN_STATE_HASH_VERSION: u32 = 1;
 
 /// Version of the town ruleset part's canonical hash encoding (ADR-0028 points 5 and 9; owned by
-/// the town lane). v1 (E09 T4b): the constant, before any encoding; T5a writes the first (the
-/// factions' town records and the part's parameters; the design note §2).
+/// the town lane). v1 (E09 T5a1; the constant since T4b): the first encoding, the parameters and
+/// the factions' town records ([`TownRuleset`]'s `hash_into`).
 pub const TOWN_RULESET_HASH_VERSION: u32 = 1;
