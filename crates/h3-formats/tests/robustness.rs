@@ -119,9 +119,23 @@ proptest! {
                 artifact_count: count,
             };
             let _ = exe::hero_data_at(&image, &tables);
+            let towns = exe::TownTables {
+                building_lists: &[0x0040_1000, 0x0040_1010],
+                common_supersedes: va,
+                supersede_lists: &[0x0040_1020, 0x0040_1004],
+                map_building_ids: va.wrapping_add(4),
+                creatures: va.wrapping_add(8),
+                hordes: va.wrapping_add(12),
+                horde_buildings: va,
+                silo: va.wrapping_add(16),
+                garrison: [va, 0x0040_1008, 0x0040_1040],
+                dwelling_2_chance: exe::Immediate { va, opcode: &[0x83] },
+            };
+            let _ = exe::towns::town_data_at(&image, &towns);
         }
         let _ = exe::creature_table(&bytes);
         let _ = exe::hero_data(&bytes);
+        let _ = exe::town_data(&bytes);
     }
 
     #[test]

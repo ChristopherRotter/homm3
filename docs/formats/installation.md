@@ -5835,3 +5835,38 @@ built in E23 T7, BAT-AI-020): Teleport's walker turns are real (§7.58), and a c
 entry in them (§7.59) may build a spell context whose predictions (0x422A40 with flag 0) set every
 listed stack's planned damage (+0x534) anew, which the hero's later spells read (0x443080 with
 flag 1). Nothing copied (Q29).
+
+### 7.61 The towns' tables (E09 T5b2b1, 2026-11-03)
+
+Read for E09's content harvest (`docs/epics/E09-design.md` §3; the readings and the start-up's
+use of each table: `docs/rules/surveys/E09-towns.md` §16, every address in `docs/exe/map.toml`).
+The reader is `h3_formats::exe::town_data` (the build's `KnownBuild::towns`); `h3-harvest` reads
+it into `Inputs::town_tables`. It takes the tables as the file holds them, before start-up:
+`building_tables_init` 0x4EB730 closes the lists into per-faction masks (`faction_buildings`
+0x6976F0, `building_requirements` 0x697798, `superseded_buildings` 0x6A8BB8, in `.bss`) and
+`horde_table_init` 0x5BDF60 fills the hordes' levels and upgrades; both are the harvest's to
+derive. Every value is `i32` unless said otherwise; factions in the town types' order (Castle 0
+to Conflux 8).
+
+| Table | VA | Layout |
+|---|---|---|
+| The faction lists | 0x63EC80, 0x63EE24, 0x63EFE4, 0x63F1A0, 0x63F364, 0x63F51C, 0x63F6D0, 0x63F870, 0x63FA14 | per building its id, the ids it requires (direct), −1; −100 in an entry's place ends the list. 35, 37, 36, 37, 36, 36, 34, 34, 35 buildings |
+| The supersede lists | the common one 0x63FBC4 (18 entries); the factions' 0x63FCA0, 0x63FCCC, 0x63FD14, 0x63FD34, 0x63FD70, 0x63FD90, 0x63FDB0, 0x63FDD0, 0x63FDF0 | the same layout: a building, the ids it supersedes (direct), −1; 3, 5, 2, 4, 2, 2, 2, 2, 2 entries |
+| `map_building_ids` | 0x6888C0 | 41 a faction: the building of each of the map's town building bits, 44 none |
+| `town_creatures` | 0x6747B4 | 14 a faction: the creatures of levels 1 to 7, then their upgrades |
+| `town_hordes` | 0x6887A0 | 4 records of 8 bytes a faction (the horde 18, its upgrade 19, the horde 24, its upgrade 25): creature, growth `i16`, level `i16`; the file holds only the base hordes' creature and growth (−1 none, the upgrades' records −1, every level 0) |
+| `horde_buildings` | 0x642E20 | 4: 18, 19, 24, 25 |
+| `town_silo_resources` | 0x688EB4 | 7 a faction, `RESTYPES.TXT`'s order (gold last, 0 everywhere) |
+| The neutral garrison | 0x688E84, 0x688E94, 0x688EA4 | 4 each: the chance in 100 (33, 33, 20, 13), the least (8, 5, 3, 1) and the most count (15, 7, 5, 3) of levels 1 to 4 |
+| The level-2 dwelling | 0x5C0C60 | `cmp eax, 30` (`83 F8 1E`) after `random_between(1, 100)` in the standard set (`standard_dwelling_2_roll` 0x5C0C5B) |
+
+**Layout facts.** The nine faction lists and the ten supersede lists each follow the one before
+without a gap (the common supersede list right after Conflux's faction list); the reader still
+takes each list at its own address, as the code does (factions 0 to 2 inline, 3 to 8 through
+0x4EBC50). No list holds the Village Hall (10), the ship (20) or 27 to 29 (survey §16.1, §16.3).
+
+**What the reader checks** (the input is untrusted, `FormatError` for each): every building id 0
+to 43 (44 only as a map slot's none); at most 64 entries a list and 64 ids an entry (a faction's
+mask is 64 bits); an unterminated list ends at the image's end (truncated); creatures, growths,
+the silo's amounts and the garrison's values not negative, a horde's creature −1 or not negative;
+both chances at most 100; the instruction's bytes before its operand. Nothing copied (Q29).

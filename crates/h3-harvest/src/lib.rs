@@ -22,6 +22,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 
+use h3_formats::exe::towns::TownData;
 use h3_formats::exe::{CreatureRecord, HeroData, ObstacleData, SiegeData};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
@@ -63,6 +64,8 @@ pub struct Inputs {
     pub wall_shots: h3_formats::exe::WallShotData,
     /// `WALLS.TXT` and `BALLIST.TXT` (E04c T6).
     pub wall_tables: (TextTable, TextTable),
+    /// The executable's town tables (E09 T5b2b1; the town packs' harvest, T5b2b2, reads them).
+    pub town_tables: TownData,
     /// Hero content text tables (E04a T3).
     pub hero_tables: heroes::Tables,
     /// Artifact text tables (E04a T3b).
@@ -91,6 +94,8 @@ impl Inputs {
             h3_formats::exe::siege_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let wall_shots =
             h3_formats::exe::wall_shot_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let town_tables =
+            h3_formats::exe::town_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let sod = read("Data/H3bitmap.lod")?;
         let ab = read("Data/H3ab_bmp.lod")?;
         let table = |data: &[u8], archive: &str, name: &str| -> Result<TextTable, String> {
@@ -116,6 +121,7 @@ impl Inputs {
                 table(&sod, "H3bitmap.lod", "WALLS.TXT")?,
                 table(&sod, "H3bitmap.lod", "BALLIST.TXT")?,
             ),
+            town_tables,
             hero_tables: heroes::Tables {
                 classes: table(&sod, "H3bitmap.lod", "HCTRAITS.TXT")?,
                 heroes: table(&sod, "H3bitmap.lod", "HOTRAITS.TXT")?,
