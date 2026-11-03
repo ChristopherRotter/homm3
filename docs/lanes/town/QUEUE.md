@@ -7,24 +7,42 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are round 6's (rounds 2 to 5 are done, `E09-log.md`); each later round's entries are
-written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
-acceptance includes the Definition of Done (`docs/05-testing.md`).
+entries below are round 6's (rounds 2 to 5 and T6a are done, `E09-log.md`); each later round's
+entries are written when it comes (the epic's list), each task's cut confirmed at its start.
+Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T6 — `h3-towns`: the record, the store, the setup's functions, the derivations**
+**E09 T6b — `h3-towns`: the derivations**
 
-- **Scope:** round 6 (design §4 to §6; the lane's own crate): the record `Town` (`built`,
-  `forbidden`; the standing set derived) and `TownStatic`, the store `Towns` and its canonical
-  hash (town state hash v1's first encoding), the build's setup functions
-  (`town_buildings_setup` TWN-SET-003, the garrison TWN-SET-004, drawn from the setup stream),
-  the derivations of §6's table, and `docs/rules/catalog/town.toml` with the rules §19 names for
-  them; the quirks T-4 and T-6 where §19 places them (`docs/rules/quirks-town.md`).
+- **Scope:** round 6 (design §6; the lane's own crate; T6 cut in three, the user): the pure
+  functions of a town and the part: `hall_level`, `daily_income` (the halls' gold, the Grail's,
+  the silo's resources), `fort_level`, `siege(town) -> Siege` (`faction`, `fort`, `moat`,
+  `structures`, `escape_tunnel`, and `bonuses`: a `TownBonus` per building with a morale or luck
+  role, the inbox's CLT-Q40 note), `siege_obstacles`, `defender_bonus`, `reveal`, `has_tavern`,
+  `capitol_limit`; the store's `capitol` read and its first write (`set_built`, crate-internal,
+  copying the list of references and the one town: the Capitol's limit); a new
+  `docs/rules/catalog/town.toml` with the rules §19 names for them (TWN-INC-001, -002,
+  TWN-SIE-003 to -005, TWN-CAP-001's reveal, -002, TWN-VEW-002's Tavern).
 - **Acceptance:** every rule with its id, source and test; 100 % coverage of `h3-towns`; the
   scoped verify.
-- **Notes:** probably cut in two at its start (the record, store and derivations; the setup's
-  functions). §6's `siege(town)` gives `Siege.bonuses` (the inbox's CLT-Q40 note), not one morale
-  and luck. No `cross-lane` path: `h3-game` calls these from T7.
-- **Depends on:** T5a2 (its pull request merged). **Status:** ready once it merges.
+- **Notes:** each role over its set as `h3-pack-towns`' format doc lists (`luck` and the Escape
+  Tunnel ever built, `morale` standing; the inbox note says standing for both: settle it from
+  survey §9.4 and say which). `structures` skips the hall-1 building (decision 28). No
+  `cross-lane` path.
+- **Depends on:** T6a (its pull request merged). **Status:** ready once it merges.
+
+**E09 T6c — `h3-towns`: the setup's functions**
+
+- **Scope:** round 6 (design §5): `TownSetup` and its types (`TownFaction`, `BuildingsSetup` with
+  the map's slots, `GarrisonStack`, the name and the events), `town_buildings_setup` (TWN-SET-003:
+  the standard and custom sets, the forbidden-with buildings, the hordes' upgrade by `auto_with`;
+  T-6 fixed as `TWN-QUIRK-5` in a new `docs/rules/quirks-town.md`), the garrison (TWN-SET-004),
+  the draws from the setup stream; the events' buildings resolved from the map's slots to the
+  faction's (`TownEvent::buildings`, T6a); the rules into `town.toml`.
+- **Acceptance:** every rule with its id, source and test; 100 % coverage of `h3-towns`; the
+  scoped verify.
+- **Notes:** design §19 has T7a create the quirks file: T6c creates it with `-5`, T7a adds `-1`
+  to `-4`. `h3-game` calls the functions from T7b; no `cross-lane` path.
+- **Depends on:** T6b (its `town.toml`). **Status:** after T6b.
 
 ## Inbox
 

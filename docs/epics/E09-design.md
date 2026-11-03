@@ -65,6 +65,11 @@ or `TownRuleset::empty(core)` (an encounter has no towns) in the same pull reque
 
 ### 4. The town's record and the store (`h3-towns`; town state hash v1)
 
+Built by T6a (`E09-log.md`) but `set_built` and `capitol` (T6b, their first callers). Changed
+from this note's first shape (*agent's calls*): `TownStatic` keeps no alignment (the build's
+draw reads it from the setup); a town event has no message field and its buildings are the
+faction's set; the store is `Option<Arc<…>>` (one reference count a fork, none without towns).
+
 - **`Town`** (ADR-0028 point 2), *agent's call* in its shape: `faction: FactionId`; `built:
   BuildingSet` (a `u64` over the faction's buildings in the part's order: **every building ever
   built**, the superseded ones too, the original's "every-built" set +0x158); `forbidden:

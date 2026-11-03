@@ -680,3 +680,40 @@ verify, green; CI's full run there failed one `h3-heroes` property case, fixed o
   `town_ruleset_hash`; `h3-cli`'s loader test (the part from the folders is the embedded one, nine
   records) and its format test (a v8 file without the line, a v9 file without it).
 - **Docs:** the queue's T6 entry (round 6), the adventure lane's versions line (replay format v9).
+
+### T6a — the town's record and the store of towns, town state hash v1 (2026-11-03)
+
+One session, the user present; branch `town/e09-t6a` (the lane's own crate only). Starting point:
+`master` at 9b07bea (#694 T5a2 merged; CI's full run there green; the sandbox's baseline the
+light gates); the original data not staged (not read). **At its start** (the user, asked): T6 cut
+in three, not in two (the record, store and derivations; the setup) nor kept whole: **T6a** the
+record, the store and its hash; **T6b** the derivations (§6); **T6c** the setup's functions (§5).
+
+- **`Town`** (`record.rs`; ADR-0028 point 2, design §4): the faction, `built` (every building
+  ever built, the original's +0x158) and `forbidden`, private behind `new` and three reads;
+  `standing(record)` derives the standing set (`built` less the union of each ever-built
+  building's closed `supersedes`, the original's +0x150; E09 decision 29). Not `Copy`: the record
+  grows with later increments.
+- **`TownStatic`** (the name if the map gives one, the events in the map's order) and
+  **`TownEvent`** (the timed part as `TimedEventSetup`'s fields, the buildings as a `BuildingSet`
+  of the town's faction, the seven creature counts). *Agent's calls (change freely):* the
+  **alignment is not kept** (only the build's faction draw reads it, from `TownSetup`, T6c/T7b;
+  a later reader adds it with the hash); the event has **no message field** (its town and its
+  index in the town's list name it; the text is the client's); its buildings are resolved to the
+  faction at the build (T6c), not kept as the map's slots.
+- **`Towns`** (`store.rs`; ADR-0028 point 4): `Option<Arc<Store>>`, the store's
+  `Vec<Arc<Town>>` and `Arc<[TownStatic]>`: a fork costs one reference count, a map without
+  towns none (*agent's call*, as the game's timed events: E08 T85b's `bench-check` note, an
+  `Arc` always costs a fork 19 Ir); a write (T6b's) copies the list of references and the one
+  town, the static parts stay shared. `new` (`None` above `MAX_TOWNS`, 65 536: one per `TownId`;
+  an empty list is the empty store), `len`, `is_empty`, `get`, `town_static`. **Not here**
+  (*agent's call*): `set_built` and `capitol` (design §4's) come with T6b, their first callers
+  (the Capitol's limit, the hall level); a crate-internal write nobody calls would be dead code.
+- **Town state hash v1's first encoding** (`TOWN_STATE_HASH_VERSION` stays 1: nothing recorded
+  one): the version, the count, each town's faction handle and both sets' bits, then each static
+  part (the name as an option, the events: players, the two flags, first day, interval,
+  resources, buildings' bits, the seven counts), in `TownId` order. Pinned in its test
+  (`0xA02D_E3DA_4142_AB03`), each field shown to move it.
+- **`BuildingSet`** gains `difference`, `is_empty` and `iter` (index order).
+- **No rule id:** the record and the store are state; the rules over them (`town.toml`) come
+  with T6b. 100 % lines and regions on `h3-towns`.

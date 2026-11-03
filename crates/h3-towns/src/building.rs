@@ -1,6 +1,6 @@
 //! A faction's buildings by index (ADR-0028 point 5): [`BuildingId`] and [`BuildingSet`], the sets
-//! the town part holds (what a building supersedes) and a town's record will hold (the buildings
-//! built and forbidden; E09 increment 1's design note §4).
+//! the town part holds (what a building supersedes) and a town's record holds (the buildings ever
+//! built and forbidden, [`crate::Town`]; E09 increment 1's design note §4).
 
 /// The most buildings a faction's town record holds: a [`BuildingSet`] is one `u64`.
 pub const MAX_BUILDINGS: usize = 64;
@@ -59,10 +59,36 @@ impl BuildingSet {
     pub const fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
+
+    /// The set's buildings not in `other`.
+    #[must_use]
+    pub const fn difference(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
+
+    /// Whether the set holds no building.
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    /// The set's buildings, in index order.
+    pub fn iter(self) -> impl Iterator<Item = BuildingId> {
+        let mut bits = self.0;
+        core::iter::from_fn(move || {
+            // The lowest bit's index; 64 (no `BuildingId`) once no bit is left, which ends it.
+            let id = BuildingId::from_index(bits.trailing_zeros() as usize)?;
+            bits &= bits.wrapping_sub(1);
+            Some(id)
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
+    use std::vec::Vec;
+
     use super::*;
 
     #[test]
@@ -82,5 +108,16 @@ mod tests {
         assert!(set.contains(ids[0]) && set.contains(ids[2]) && !set.contains(ids[1]));
         assert_eq!(set.bits(), 1 | 1 << 63);
         assert_eq!(BuildingSet::default(), BuildingSet::EMPTY);
+    }
+
+    #[test]
+    fn a_set_lists_its_buildings_in_order_and_takes_another_away() {
+        let ids = [0, 5, 63].map(|i| BuildingId::from_index(i).unwrap());
+        let set = ids.iter().fold(BuildingSet::EMPTY, |s, &id| s.with(id));
+        assert_eq!(set.iter().collect::<Vec<_>>(), ids);
+        assert!(BuildingSet::EMPTY.iter().next().is_none() && BuildingSet::EMPTY.is_empty());
+        let rest = set.difference(BuildingSet::EMPTY.with(ids[1]).with(ids[2]));
+        assert_eq!(rest.iter().collect::<Vec<_>>(), [ids[0]]);
+        assert!(!rest.is_empty() && set.difference(set).is_empty());
     }
 }
