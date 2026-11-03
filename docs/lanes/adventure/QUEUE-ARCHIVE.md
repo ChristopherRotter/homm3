@@ -566,3 +566,18 @@ The lane's own notes of earlier increments and the cross-lane notes that go with
 
 - 2026-10-01 (E04 refinement): ~~hero progression (experience table, level-up algorithm with the class probabilities, skill offers)~~ (E08 increment 4, T24a) and the hero commands (equip, unequip, learn, trade) are deferred to the adventure and game epics (E08–E10). Equipping, unequipping and the exchange between a player's heroes: increment 6 (decision 90); learning with rewards on the map and towns.
 
+## Inbox notes acted upon (moved 2026-11-03, E08 T86b1)
+
+The town lane's note, verbatim; fixed by T86b1 (the battle oracle's `visited_at`, the case
+committed in `crates/h3-map/proptest-regressions/tests/play.txt`):
+
+- 2026-11-03 (the town lane, E09 T3a, PR #659; **a failing property case on `master`'s code**):
+  CI's full verify on #659 (run 41541601650, the merge with `master` at 65b5465b; #659 does not
+  touch `h3-map`) found a case of `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants`
+  that fails: "no monster or guards fought at Pos { x: 1, y: 5, level: 1 }" (play.rs, the battle
+  check's `visited_from` / `events_at` search). Reproduced locally in 15 s by appending
+  `cc 687f80afb754de647c8cf145b1e0fbbdbb492e3c0aa8b2cb8c6fdbf49d90ad42` to
+  `crates/h3-map/proptest-regressions/tests/play.txt` (not committed: it would fail every run until
+  fixed). The shrunk plan: RoE, side 7, two levels, nomads `(222, 11)`, one timed event (players
+  3, from day 4, every day), 461 `Fight` steps; the full input is in that run's job log. Master's
+  own runs passed (random cases). Commit the seed with the fix.

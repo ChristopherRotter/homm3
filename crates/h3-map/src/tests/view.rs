@@ -48,6 +48,11 @@ struct Unseen {
     /// the setup stream after every other draw, and so their level-ups in play. A hero without
     /// one (SoD's plans) keeps its default, drawn from the seed before the objects' contents.
     experience: Vec<Option<u32>>,
+    /// (E08 T86b1) Another owner at load for each ownable object the viewer never sees, in the
+    /// map's order (cyclically; empty: kept): a playing colour but the viewer's by its index
+    /// (modulo their number), or none (neutral). Its owner shows only with the object (ADV-OWN-003),
+    /// and its reveal at the start is its owner's (ADV-OWN-001).
+    owners: Vec<Option<u8>>,
 }
 
 /// Each kind of change in about half the cases, so that some cases keep the other players'
@@ -74,9 +79,14 @@ fn unseen() -> impl Strategy<Value = Unseen> {
             Just(Vec::new()),
             vec(proptest::option::weighted(0.5, experience()), 1..=6)
         ],
+        // E08 T86b1, drawn last so that the draws before stay as they were.
+        prop_oneof![
+            Just(Vec::new()),
+            vec(proptest::option::of(any::<u8>()), 1..=4)
+        ],
     )
         .prop_map(
-            |(seed, armies, tiles, removed, added, moved, experience)| Unseen {
+            |(seed, armies, tiles, removed, added, moved, experience, owners)| Unseen {
                 seed,
                 armies,
                 tiles,
@@ -84,9 +94,27 @@ fn unseen() -> impl Strategy<Value = Unseen> {
                 added,
                 moved,
                 experience,
+                owners,
             },
         )
 }
+
+/// A Shipyard's offsets from its entrance, in the order the build tries them for its boat tile
+/// (ADV-SHY-001; the base pack's).
+const BOAT_OFFSETS: [(i8, i8); 12] = [
+    (-2, 0),
+    (2, 0),
+    (-2, 1),
+    (2, 1),
+    (-1, 1),
+    (1, 1),
+    (0, 1),
+    (-2, -1),
+    (2, -1),
+    (-1, -1),
+    (1, -1),
+    (0, -1),
+];
 
 /// An army of its own for the viewer's heroes: at least one stack (a hero whose slots are all
 /// empty gets its type's starting army, drawn from the seed).
@@ -154,6 +182,41 @@ fn vary(
     let mut m = m.clone();
     let side = u8::try_from(m.terrain.size).unwrap();
     let levels = u8::try_from(m.terrain.levels).unwrap();
+    // E08 T86b1: a Shipyard the viewer sees shows its boat tile (ADV-OWN-003), the first of its
+    // offsets that was free water when the game was built (ADV-SHY-001), so what lies on its
+    // offsets shows through it: they are kept as seen (`ADV-Q40`).
+    let shipyards: Vec<Spot> = m
+        .objects
+        .iter()
+        .filter(|o| o.template != HERO_TEMPLATE)
+        .filter(|o| KINDS[usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()].0 == 87)
+        .filter(|o| {
+            let template = usize::try_from(o.template - 1).unwrap();
+            !covers((o.pos.x, o.pos.y, o.pos.z), template, side).all(&objects)
+        })
+        .flat_map(|o| {
+            let template = usize::try_from(o.template - 1).unwrap();
+            let (_, visitable) = masks(template);
+            let entrances = visitable.iter().filter_map(|&(column, row)| {
+                Some((
+                    o.pos.x.checked_sub(column)?,
+                    o.pos.y.checked_sub(row)?,
+                    o.pos.z,
+                ))
+            });
+            entrances
+                .flat_map(|(x, y, z)| {
+                    BOAT_OFFSETS.iter().filter_map(move |&(dx, dy)| {
+                        let x = u8::try_from(i16::from(x) + i16::from(dx)).ok()?;
+                        let y = u8::try_from(i16::from(y) + i16::from(dy)).ok()?;
+                        (x < side && y < side).then_some((x, y, z))
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let ground = |spot: Spot| ground(spot) && !shipyards.contains(&spot);
+    let objects = |spot: Spot| objects(spot) && !shipyards.contains(&spot);
     let mut standing: Vec<Spot> = m
         .objects
         .iter()
@@ -167,17 +230,35 @@ fn vary(
         .filter(|o| KINDS[usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()].0 == 8)
         .map(|o| (o.pos.x, o.pos.y, o.pos.z))
         .collect();
+    // E08 T86b1: an ownable object's entrance stays land, as a hero's tile (the import refuses one
+    // on water: `OwnedOnWater`).
+    let entrances: Vec<Spot> = m
+        .objects
+        .iter()
+        .filter(|o| matches!(o.body, Body::Mine { .. } | Body::Owned { .. }))
+        .flat_map(|o| {
+            let (_, visitable) = masks(usize::try_from(o.template - 1).unwrap());
+            visitable.iter().filter_map(|&(column, row)| {
+                Some((
+                    o.pos.x.checked_sub(column)?,
+                    o.pos.y.checked_sub(row)?,
+                    o.pos.z,
+                ))
+            })
+        })
+        .collect();
     let spots =
         (0..levels).flat_map(|z| (0..side).flat_map(move |y| (0..side).map(move |x| (x, y, z))));
     for ((spot, tile), new) in spots.zip(&mut m.terrain.tiles).zip(&unseen.tiles) {
         if let Some((terrain, road, river)) = new.filter(|_| ground(spot)) {
-            tile.terrain = if terrain >= 8 && standing.contains(&spot) {
-                2
-            } else if afloat.contains(&spot) {
-                8
-            } else {
-                terrain
-            };
+            tile.terrain =
+                if terrain >= 8 && (standing.contains(&spot) || entrances.contains(&spot)) {
+                    2
+                } else if afloat.contains(&spot) {
+                    8
+                } else {
+                    terrain
+                };
             tile.road = road;
             tile.river = river;
         }
@@ -228,6 +309,33 @@ fn vary(
             );
             o.pos.z = anchor.2;
             m.objects.push(o);
+        }
+    }
+    // E08 T86b1: the owners of the ownable objects the viewer never sees.
+    let playing: Vec<u8> = (0u8..)
+        .zip(&m.players)
+        .filter(|&(c, p)| (p.human || p.computer) && c != colour)
+        .map(|(c, _)| c)
+        .collect();
+    let mut ownable = 0;
+    for o in &mut m.objects {
+        let at = (o.pos.x, o.pos.y, o.pos.z);
+        let template = usize::try_from(o.template.saturating_sub(1)).unwrap();
+        let unseen_object = o.template != HERO_TEMPLATE && covers(at, template, side).all(&objects);
+        let (Body::Mine { owner } | Body::Owned { owner }) = &mut o.body else {
+            continue;
+        };
+        if !unseen_object {
+            continue;
+        }
+        let index = ownable;
+        ownable += 1;
+        match unseen.owners.get(index % unseen.owners.len().max(1)) {
+            Some(Some(n)) if !playing.is_empty() => {
+                *owner = u32::from(playing[usize::from(*n) % playing.len()]);
+            }
+            Some(None) => *owner = 0xFF,
+            _ => {}
         }
     }
     let blocked: Vec<Spot> = m
@@ -412,6 +520,12 @@ fn check_told(
     };
     // E08 T51b: the group of the army dialog the viewer is told closed, whose stacks are lost.
     let mut lost: Vec<ArmyStack> = Vec::new();
+    // E08 T86b1: the mine of the viewer's open Leave Guards dialog, whose close makes the group
+    // its guards (ADV-MIN-002), which the viewer's team sees whole (ADV-OWN-003).
+    let mut guarding = match &before.decision {
+        Some(DecisionView::ArmyDialog { mine, .. }) => *mine,
+        _ => None,
+    };
     // E08 T84a: the objects the viewer is told were flagged or whose guards' hint changed.
     let mut flagged = Vec::new();
     // E08 T85a: the monsters a creature month added that the viewer is told of (the game emits
@@ -480,6 +594,15 @@ fn check_told(
                 prop_assert_eq!(seen_by, alone);
                 prop_assert!(fighting);
                 fighting = false;
+                // E08 T86b1: the guards' side of one of its mines is the viewer's (ADV-MIN-002,
+                // GAM-BAT-001): their survivors stay as the guards, which it sees whole, told by
+                // the battle's events (their hint's change by `GuardsChanged`).
+                let own = before
+                    .adventure
+                    .objects
+                    .iter()
+                    .filter(|o| o.guards.as_ref().is_some_and(|g| g.army.is_some()));
+                flagged.extend(own.map(|o| (o.object_type, o.anchor)));
             }
             GameEvent::Adventure(AdventureEvent {
                 kind: AdventureEventKind::CreaturesJoined { .. },
@@ -693,14 +816,25 @@ fn check_told(
             }
             // E08 T84a: an own mine's Leave Guards dialog opens as the viewer's army dialog, its
             // guards following as its stacks (none for a mine without guards).
-            GameEvent::LeaveGuardsOpened { player, hero, .. } => {
+            GameEvent::LeaveGuardsOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } => {
                 prop_assert_eq!(player, viewer);
                 prop_assert!(decision.is_none());
                 decision = Some(Open::Dialog(hero, Vec::new()));
+                guarding = Some((object_type, anchor));
             }
+            // E08 T86b1: a Leave Guards dialog's close loses nothing: its group, which the viewer
+            // was told stack by stack, is the mine's guards now.
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, viewer);
                 match decision.take() {
+                    Some(Open::Dialog(..)) if guarding.is_some() => {
+                        flagged.extend(guarding.take());
+                    }
                     Some(Open::Dialog(_, group)) => lost = group,
                     open => prop_assert!(
                         matches!(
@@ -1378,6 +1512,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         difficulty: 1,
         exchange: None,
         events: Vec::new(),
+        owners: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -1388,6 +1523,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         added: vec![((3, 6, 0), 0)],
         moved: vec![Some((6, 2, 0))],
         experience: vec![Some(3_000)],
+        owners: Vec::new(),
     };
     let other = vary(&m, 0, &unseen, |_| true, |_| true);
     // Every tile is swamp with a road and a river but the heroes', which stay land as swamp is.
@@ -1474,6 +1610,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         difficulty: 1,
         exchange: None,
         events: Vec::new(),
+        owners: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -1543,6 +1680,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         difficulty: 1,
         exchange: None,
         events: Vec::new(),
+        owners: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {
