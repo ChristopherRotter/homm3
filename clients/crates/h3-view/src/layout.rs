@@ -73,6 +73,8 @@ pub struct BattleLayout {
     /// A stack's stats dialog's assets and fonts (E17 M6 T2a1; design §12.1; `crate::stats` lays
     /// it out).
     pub stats: crate::stats::StatsLayout,
+    /// A hero's info window (E17 M6 T3b1; design §12.8; `crate::hero_info` fills it).
+    pub hero_info: crate::hero_info::HeroInfoLayout,
 }
 
 /// The hero's spell book (`spell_book_dialog` 0x59BDF0; E17 M5 T3a, design §7.17): its dialog and

@@ -43,6 +43,7 @@ pub mod book;
 pub mod clip;
 pub mod compose;
 pub mod hero;
+pub mod hero_info;
 pub mod keys;
 pub mod layout;
 pub mod message;

@@ -169,7 +169,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
 - **T3, the right button's other popups** (cut in two by the user, 2026-11-03; the battlefield
   has no other items than T2b1's reading found): **T3a** (done 2026-11-03) the panel's controls'
   help (0x472A50, design §12.7), a disabled control's too, five stills exact; **T3b** the heroes'
-  info windows (`battle_right_click`'s 0xFC and 0xFD: 0x46C370, 0x46CC10, 0x46CDF0); recorded.
+  info windows (`battle_right_click`'s 0xFC and 0xFD: 0x46C370, 0x46CC10, 0x46CDF0), cut in two by
+  the user (2026-11-03): **T3b1** (done 2026-11-03) the window read and drawn, held by the right
+  button, its counts (design §12.8), two stills exact at their first capture; **T3b2** its morale
+  and luck (`hero_morale`, `hero_luck`; CLT-Q40's carry); recorded.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
   movement and cursor shadows, the combat speed, the Auto Combat options, the rest as read), kept
   in the client's settings; recorded.
@@ -339,3 +342,11 @@ The next milestone's list starts here.
     (CLT-Q28 (2)), as the panel's.
 26. The common crates' additions (T2b2): `h3_view::turret`, `h3_view::mouse::turret_at`; the
     catalogue's `battle.turret.standing` and `battle.turret.destroyed`.
+27. A hero's info window (T3b1, *provisional*): the layout's new `[hero_info]` (each side's place
+    and the constructor's items, as `[book]`'s dialog); its portrait the hero type's (the hero's
+    own, which a map may set, the client does not know: as the result window's); its counts the
+    observation's hero (its `max_mana` the most); morale and luck shown 0 until T3b2; in the window
+    held as the right button's popups (nothing posted after it). Not modelled: "Combat Army Info
+    Level" keeping it shown and the battle's mouse move filling it (T4).
+28. The common crates' additions (T3b1): `h3_view::hero_info`; the catalogue's
+    `battle.hero-info.*`.
