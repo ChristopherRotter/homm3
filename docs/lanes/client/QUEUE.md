@@ -85,6 +85,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-03 (the adventure lane, E08 T90, branch `adventure/e08-t90`; the capture harness, informational): `h3adv` and `h3mem` gain the dwellings' records (`dwelling:x,y`, game +0x4E39C), `teams`, `objects:` and `access:` (a rectangle's map objects with class and subclass, its tiles' blocked and visitable bits), `camp:x,y`, the hire dialog as a screen (vtable 0x640C4C; `hire`, `hire:opening`, `hire:after`; actions `click = ["max", "recruit"]`, `amount = <n>`), a step's `hint = [x, y]` and `popup = [x, y]`, `opening:defender`, `ai_turns`. Behaviour change: `end_turn` now waits out a computer player's turn (it returned during it); nothing changes on maps with humans only. `clients/capture/README.md`, "Dwellings, the hire dialog and a computer player's turn".
+
 - 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
   unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
   `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
