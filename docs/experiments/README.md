@@ -256,6 +256,25 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   { gold = -500 }`, `message`, `name`. A hero's Estates and Mysticism are its `skills`, a resource
   specialty its `type`'s (`specialty = "resource crystal"` checks it), the income artifacts its
   `artifacts`. The template lists none of these: the procedures say where they are.
+  **Increment 10's objects** (E08 T89a, batch E10; survey `docs/rules/surveys/E08-dwellings.md`
+  §13, increment 10's design note §16; on the surface): `[[map.ownable]]` also takes a dwelling by
+  its `picture`, with its `owner`: of one creature (class 17, the subclass its type in `CrGen1.txt`
+  order: the Guardhouse `AVGpike0`, the Barracks `AVGswor0`, the Dragon Cliffs `AVGgdrg0`, …) or of
+  several (class 20: the Elemental Conflux `AVGelem0`, the Golem Factory `AVGgolm0`). Most block
+  two tiles on `at`'s row and are entered at `at` (the Guardhouse also blocks the tile north-west
+  of `at`; the Conflux two rows of three, entered at the tile west of `at`; the Dwarf Cottage
+  `AVGdwrf0` entered west of `at`; the Angel Portal `AVGangl0` blocks the two tiles west of `at`,
+  entered at the nearer: `Objects.txt`'s masks). It takes a random dwelling not tied to a town,
+  with its `owner`: `avrcgen0` (216) with `factions` (by name, at least one) and `levels = [lowest,
+  highest]` (1 to 7 as the game counts them; the file's codes 0 to 6); `avrcgen1` to `avrcgen7`
+  (217, the level 1 to 7) with `factions`; `avrcgn00` to `avrcgn08` (218, Castle to Conflux) with
+  `levels`. Each blocks 2 × 2 tiles ending on `at`, entered from either bottom tile, until the
+  game draws what it becomes when it starts, with that dwelling's own footprint (survey §3.2). The
+  format holds no guards for a dwelling: the game sets them (survey §2.2). `[[map.object]]` takes
+  the Refugee Camp `AVGrefg0` (two tiles on `at`'s row, entered at `at`; no body: the game draws
+  its creature). `[map] teams = [["red", "blue"]]`: the map's alliances, each team's colours (a
+  colour that plays, on one team at most; a playing colour in none plays alone); the template's
+  top names them. A hero's seven stacks with a creature in several needed nothing new (`army`).
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`

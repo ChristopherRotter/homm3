@@ -11,7 +11,10 @@
 //! so a map left from an earlier build of the spec shows itself before it is played. From E08 T56
 //! (batch E7) a map holds the objects that hand a visiting hero something (artifacts, Spell
 //! Scrolls, Shrines, Witch Huts, Pandora's Boxes and events, in grids of copies), a monster's
-//! treasure and a hero's backpack filled to 64, and may be written in the RoE format.
+//! treasure and a hero's backpack filled to 64, and may be written in the RoE format. From E08
+//! T78 (batch E9) it holds the ownable objects with their owners and the map's timed events; from
+//! E08 T89a (batch E10) the dwellings, the random dwellings with their factions and levels, the
+//! Refugee Camp and the map's teams.
 
 pub mod tables;
 
@@ -23,9 +26,10 @@ use h3_map::writer::{
     ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS,
     EVENT_OBJECT, Event, Format, Ground, Guards, Hero, HeroArtifacts, MINE_OBJECT, Map, MapObject,
     Message, Monster, ObjectTemplate, OwnedBody, OwnedObject, PANDORA_OBJECT, PLAYERS, Patch, Pile,
-    Plain, Player, RANDOM_ARTIFACT_OBJECTS, RewardBody, RewardObject, Road, RoadKind,
-    SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, Terrain, TimedEvent, Town, TownBuildings,
-    Treasure, Underground, WITCH_HUT_OBJECT,
+    Plain, Player, RANDOM_ARTIFACT_OBJECTS, RANDOM_DWELLING_BY_FACTION_OBJECT,
+    RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT, RewardBody, RewardObject, Road,
+    RoadKind, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, Teams, Terrain, TimedEvent, Town,
+    TownBuildings, Treasure, Underground, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -273,6 +277,11 @@ pub struct MapSpec {
     /// the game fires them on a day.
     #[serde(default)]
     pub timed_event: Vec<TimedEventSpec>,
+    /// The map's alliances (E08 T89a: batch E10's row E10-6), each the colours of one team
+    /// (`teams = [["red", "blue"]]`), every colour in one at most, each a colour that plays; a
+    /// playing colour in none plays alone. None (the default): no teams.
+    #[serde(default)]
+    pub teams: Vec<Vec<String>>,
 }
 
 /// Where copies of an object stand (E08 T56): the first on `at`, then `columns` × `rows` of them
@@ -455,16 +464,22 @@ pub struct BottleSpec {
 }
 
 /// An ownable object by its picture (E08 T78: batch E9; increment 9's design note §4), on the
-/// surface: a mine, an abandoned mine, a Lighthouse or a Shipyard. No hero, monster, pile or town
+/// surface: a mine, an abandoned mine, a Lighthouse or a Shipyard; since E08 T89a (batch E10;
+/// increment 10's design note §16) a dwelling and a random dwelling. No hero, monster, pile or town
 /// may stand on a tile it blocks or is visited from. The file holds no guards for a mine: an
 /// abandoned mine's Troglodytes are drawn when the game starts, other guards are left in play
-/// (Leave Guards; survey `docs/rules/surveys/E08-economy.md` §2.1, §3.3, §3.4).
+/// (Leave Guards; survey `docs/rules/surveys/E08-economy.md` §2.1, §3.3, §3.4); nor for a dwelling,
+/// whose guards the game sets (survey `docs/rules/surveys/E08-dwellings.md` §2.2).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OwnableSpec {
     /// The picture's name in `Objects.txt` (`AVMsawg0` or `AVMsawg0.def`, any case), which names
     /// the class and subclass ([`Tables::ownables`]): a mine's (class 53) subclass is its
-    /// resource, 7 the abandoned mine (also SoD's class 220); a Lighthouse (42), a Shipyard (87).
+    /// resource, 7 the abandoned mine (also SoD's class 220); a Lighthouse (42), a Shipyard (87);
+    /// a dwelling of one creature (17, its subclass the type: `AVGpike0` the Guardhouse) or of
+    /// several (20: `AVGelem0` the Elemental Conflux, `AVGgolm0` the Golem Factory); a random
+    /// dwelling (216 `avrcgen0`), one of a level (217 `avrcgen1` level 1 … `avrcgen7` level 7) or
+    /// one of a faction (218 `avrcgn00` Castle … `avrcgn08` Conflux).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile.
     pub at: [u8; 2],
@@ -475,6 +490,14 @@ pub struct OwnableSpec {
     /// them when the map loads (survey §3.4). Only for an abandoned mine.
     #[serde(default)]
     pub resources: Vec<String>,
+    /// A random dwelling's factions by name ([`FACTIONS`]), at least one: what it may become when
+    /// the game starts. Only for 216 and 217 (218's is its picture's); never tied to a town.
+    #[serde(default)]
+    pub factions: Vec<String>,
+    /// A random dwelling's lowest and highest level, 1 to 7 as the game counts them (the file's
+    /// codes 0 to 6), the lowest first. Only for 216 and 218 (217's is its picture's).
+    #[serde(default)]
+    pub levels: Option<[u8; 2]>,
 }
 
 fn neutral() -> String {
@@ -640,7 +663,7 @@ pub struct GroundSpec {
 
 /// An object without a body (E08 T32a, T36a; since E08 T56 increment 7's: the Corpse, the
 /// Pyramid, the Learning Stone, the Treasure Chest, the University, the Wagon, the Warrior's
-/// Tomb): one of its pictures, placed with its bottom-right tile on `at`, on the surface. No
+/// Tomb; since E08 T89a the Refugee Camp `AVGrefg0`): one of its pictures, placed with its bottom-right tile on `at`, on the surface. No
 /// hero, monster, pile or town may stand on a tile it blocks or is visited from: a hero comes to
 /// it in play.
 #[derive(Debug, Clone, Deserialize)]
@@ -1037,7 +1060,11 @@ pub fn build_only(
     let mut owners_per_player = [0usize; PLAYERS];
     for o in &spec.map.ownable {
         let owned = ownable(o, tables, size)?;
-        if let OwnedBody::Owner(Some(owner)) = owned.body {
+        if let OwnedBody::Owner(Some(owner))
+        | OwnedBody::RandomDwelling {
+            owner: Some(owner), ..
+        } = owned.body
+        {
             owners_per_player[usize::from(owner)] += 1;
         }
         objects.push((0, MapObject::Owned(owned)));
@@ -1063,6 +1090,14 @@ pub fn build_only(
         let _ = writeln!(
             text,
             "**Difficulty: {difficulty}.** Choose it in the scenario list before you start.\n"
+        );
+    }
+    if !spec.map.teams.is_empty() {
+        let teams: Vec<String> = spec.map.teams.iter().map(|t| t.join(" and ")).collect();
+        let _ = writeln!(
+            text,
+            "**Teams: {}.** The map makes them allies; any other player plays alone.\n",
+            teams.join("; ")
         );
     }
     for (i, step) in spec.map.instructions.iter().enumerate() {
@@ -1343,6 +1378,7 @@ pub fn build_only(
         .iter()
         .map(|name| Ok(lookup(&tables.skills, name, "skill")? as u8))
         .collect::<Result<Vec<u8>, String>>()?;
+    let teams = teams(&spec.map.teams, &players)?;
     let map = Map {
         name: spec.map.name.clone(),
         description: format!("Stamp {}. {}", spec.stamp, spec.map.description),
@@ -1360,8 +1396,51 @@ pub fn build_only(
         level_limit: spec.map.level_limit,
         banned_skills,
         events: timed_events(&spec.map.timed_event)?,
+        teams,
     };
     Ok((map, text))
+}
+
+/// The map's teams (E08 T89a): the spec's in its order, then each playing colour in none on a
+/// team of its own; a colour nobody plays on the first.
+fn teams(
+    spec: &[Vec<String>],
+    players: &[Option<Player>; PLAYERS],
+) -> Result<Option<Teams>, String> {
+    if spec.is_empty() {
+        return Ok(None);
+    }
+    let mut of_player = [None; PLAYERS];
+    for (team, colours) in spec.iter().enumerate() {
+        if colours.is_empty() {
+            return Err(format!("team {} has no colour", team + 1));
+        }
+        for colour in colours {
+            let c = COLOURS
+                .iter()
+                .position(|c| c == colour)
+                .ok_or_else(|| format!("teams: unknown colour `{colour}`"))?;
+            if players[c].is_none() {
+                return Err(format!(
+                    "teams: {colour} does not play (no hero, town or object)"
+                ));
+            }
+            if of_player[c].replace(team as u8).is_some() {
+                return Err(format!("teams: {colour} is on two teams"));
+            }
+        }
+    }
+    let mut count = spec.len() as u8;
+    for (c, player) in players.iter().enumerate() {
+        if player.is_some() && of_player[c].is_none() {
+            of_player[c] = Some(count);
+            count += 1;
+        }
+    }
+    Ok(Some(Teams {
+        count,
+        of_player: of_player.map(|t| t.unwrap_or(0)),
+    }))
 }
 
 /// The objects of `level`, taken out of `objects` in their order.
@@ -1841,7 +1920,7 @@ fn monster(
     })
 }
 
-/// An ownable object by its picture (E08 T78).
+/// An ownable object by its picture (E08 T78; since E08 T89a the dwellings and random dwellings).
 fn ownable(o: &OwnableSpec, tables: &Tables, size: u8) -> Result<OwnedObject, String> {
     let ctx = |e: String| format!("the ownable `{}` at {:?}: {e}", o.picture, o.at);
     let name = o.picture.to_ascii_lowercase();
@@ -1858,6 +1937,23 @@ fn ownable(o: &OwnableSpec, tables: &Tables, size: u8) -> Result<OwnedObject, St
     }
     let abandoned = template.subclass == ABANDONED_MINE_SUBCLASS
         && matches!(template.class, MINE_OBJECT | ABANDONED_MINE_OBJECT);
+    let class = template.class;
+    let random = (RANDOM_DWELLING_OBJECT..=RANDOM_DWELLING_BY_FACTION_OBJECT).contains(&class);
+    if !random && (!o.factions.is_empty() || o.levels.is_some()) {
+        return Err(ctx("`factions` and `levels` are a random dwelling's".into()));
+    }
+    let owner = || -> Result<Option<u8>, String> {
+        Ok(match o.owner.as_str() {
+            "neutral" => None,
+            colour => Some(
+                ["red", "blue", "tan"]
+                    .iter()
+                    .position(|c| *c == colour)
+                    .ok_or_else(|| ctx(format!("owner `{colour}` (red, blue, tan or neutral)")))?
+                    as u8,
+            ),
+        })
+    };
     let body = if abandoned {
         if o.owner != "neutral" {
             return Err(ctx("an abandoned mine has no owner".into()));
@@ -1876,21 +1972,53 @@ fn ownable(o: &OwnableSpec, tables: &Tables, size: u8) -> Result<OwnedObject, St
             set |= 1 << r;
         }
         OwnedBody::Resources(set)
-    } else {
-        if !o.resources.is_empty() {
-            return Err(ctx("`resources` is an abandoned mine's".into()));
-        }
-        let owner = match o.owner.as_str() {
-            "neutral" => None,
-            colour => Some(
-                ["red", "blue", "tan"]
+    } else if !o.resources.is_empty() {
+        return Err(ctx("`resources` is an abandoned mine's".into()));
+    } else if random {
+        let factions = if class == RANDOM_DWELLING_BY_FACTION_OBJECT {
+            if !o.factions.is_empty() {
+                return Err(ctx("a dwelling of one faction takes no `factions`".into()));
+            }
+            None
+        } else {
+            if o.factions.is_empty() {
+                return Err(ctx(
+                    "a random dwelling needs `factions`, at least one".into()
+                ));
+            }
+            let mut set = 0u16;
+            for name in &o.factions {
+                let faction = FACTIONS
                     .iter()
-                    .position(|c| *c == colour)
-                    .ok_or_else(|| ctx(format!("owner `{colour}` (red, blue, tan or neutral)")))?
-                    as u8,
-            ),
+                    .position(|f| f.eq_ignore_ascii_case(name.trim()))
+                    .ok_or_else(|| ctx(format!("unknown faction `{name}`")))?;
+                set |= 1 << faction;
+            }
+            Some(set)
         };
-        OwnedBody::Owner(owner)
+        let levels = if class == RANDOM_DWELLING_BY_LEVEL_OBJECT {
+            if o.levels.is_some() {
+                return Err(ctx("a dwelling of one level takes no `levels`".into()));
+            }
+            None
+        } else {
+            let [lowest, highest] = o
+                .levels
+                .ok_or_else(|| ctx("a random dwelling needs `levels`".into()))?;
+            if lowest == 0 || lowest > highest || highest > 7 {
+                return Err(ctx(format!(
+                    "levels [{lowest}, {highest}]: 1 to 7, the lowest first"
+                )));
+            }
+            Some((lowest - 1, highest - 1))
+        };
+        OwnedBody::RandomDwelling {
+            owner: owner()?,
+            factions,
+            levels,
+        }
+    } else {
+        OwnedBody::Owner(owner()?)
     };
     Ok(OwnedObject {
         tile: (x, y),
@@ -2482,6 +2610,9 @@ mod tests {
                 // A Windmill (E08 T78).
                 "AVMwndd0.def 101111111111111111111111111111111111111111111111 \
                  010000000000000000000000000000000000000000000000 111111111 011111111 112 0 0 0",
+                // A Refugee Camp (E08 T89a).
+                "AVGrefg0.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 78 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -2533,6 +2664,18 @@ mod tests {
                  100000000000000000000000000000000000000000000000 111111111 010111111 42 0 0 0",
                 "AVXshyd0.def 000111111111111111111111111111111111111111111111 \
                  010000000000000000000000000000000000000000000000 011111111 011111111 87 0 0 0",
+                // E08 T89a: a Guardhouse, the Golem Factory, a random dwelling, one of level 3
+                // and one of Inferno's.
+                "AVGpike0.def 001111111011111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 17 56 0 0",
+                "AVGgolm0.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 20 1 0 0",
+                "avrcgen0.def 001111110011111111111111111111111111111111111111 \
+                 110000000000000000000000000000000000000000000000 111111111 011111111 216 0 0 0",
+                "avrcgen3.def 001111110011111111111111111111111111111111111111 \
+                 110000000000000000000000000000000000000000000000 111111111 011111111 217 2 0 0",
+                "avrcgn03.def 001111110011111111111111111111111111111111111111 \
+                 110000000000000000000000000000000000000000000000 111111111 011111111 218 3 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -4251,5 +4394,199 @@ mod tests {
             fails("gold = -99999", "jewels = 1")
                 .contains("timed event 1 (`Take`): unknown resource")
         );
+    }
+
+    /// Increment 10's objects (E08 T89a): a Red Guardhouse, a neutral Golem Factory, a random
+    /// dwelling of Castle's and the Tower's level 7, a Tan one of level 3 of the Tower's, a Blue
+    /// one of Inferno's levels 1 to 3 and a Refugee Camp; Red and Blue allied.
+    const DWELLINGS: &str = r#"
+        [map]
+        name = "Dwellings"
+        description = "d"
+        terrain = "grass"
+        teams = [["red", "blue"]]
+
+        [[map.ownable]]
+        picture = "AVGpike0"
+        at = [8, 4]
+        owner = "red"
+
+        [[map.ownable]]
+        picture = "avggolm0.def"
+        at = [14, 4]
+
+        [[map.ownable]]
+        picture = "avrcgen0"
+        at = [20, 4]
+        factions = ["castle", "Tower"]
+        levels = [7, 7]
+
+        [[map.ownable]]
+        picture = "avrcgen3"
+        at = [8, 10]
+        owner = "tan"
+        factions = ["tower"]
+
+        [[map.ownable]]
+        picture = "avrcgn03"
+        at = [14, 10]
+        owner = "blue"
+        levels = [1, 3]
+
+        [[map.object]]
+        picture = "AVGrefg0"
+        at = [20, 10]
+
+        [[encounter]]
+        id = "E1"
+        title = "The visits"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [4, 30]
+        primary = [1, 1, 1, 1]
+        skills = [["Armorer", 1]]
+        army = [["Pikeman", 10], ["Archangel", 1], ["Pikeman", 2], ["Pikeman", 3], ["Pikeman", 4], ["Archangel", 2], ["Pikeman", 5]]
+    "#;
+
+    #[test]
+    fn builds_increment_10_s_objects_and_the_teams() {
+        let spec = parse(DWELLINGS).expect("spec");
+        let (map, text) = build(&spec, &tables(), "d.h3m").expect("build");
+        // Blue and Tan play: they own a random dwelling each.
+        assert!(map.players[1].is_some() && map.players[2].is_some());
+        let owned: Vec<(u32, u32, (u8, u8), OwnedBody)> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Owned(o) => {
+                    Some((o.template.class, o.template.subclass, o.tile, o.body))
+                }
+                _ => None,
+            })
+            .collect();
+        let random = |owner, factions, levels| OwnedBody::RandomDwelling {
+            owner,
+            factions,
+            levels,
+        };
+        assert_eq!(
+            owned,
+            [
+                (17, 56, (8, 4), OwnedBody::Owner(Some(0))),
+                (20, 1, (14, 4), OwnedBody::Owner(None)),
+                (216, 0, (20, 4), random(None, Some(0b101), Some((6, 6)))),
+                (217, 2, (8, 10), random(Some(2), Some(0b100), None)),
+                (218, 3, (14, 10), random(Some(1), None, Some((0, 2)))),
+            ]
+        );
+        assert!(
+            map.objects
+                .iter()
+                .any(|o| matches!(o, MapObject::Plain(p) if p.template.class == 78))
+        );
+        // Red and Blue on the first team, Tan on its own.
+        assert_eq!(
+            map.teams,
+            Some(Teams {
+                count: 2,
+                of_player: [0, 0, 1, 0, 0, 0, 0, 0],
+            })
+        );
+        assert!(text.contains("**Teams: red and blue.**"), "{text}");
+        // A hero's full army: seven stacks, a creature in several.
+        let army = map.objects.iter().find_map(|o| match o {
+            MapObject::Hero(h) => h.army,
+            _ => None,
+        });
+        assert_eq!(
+            army.expect("army"),
+            [
+                Some((0, 10)),
+                Some((1, 1)),
+                Some((0, 2)),
+                Some((0, 3)),
+                Some((0, 4)),
+                Some((1, 2)),
+                Some((0, 5)),
+            ]
+        );
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert_eq!(raw.objects.len(), map.objects.len());
+        assert_eq!(raw.teams, map.teams);
+        // No teams: none written.
+        let spec =
+            parse(&DWELLINGS.replacen("teams = [[\"red\", \"blue\"]]", "", 1)).expect("spec");
+        let (map, text) = build(&spec, &tables(), "d.h3m").expect("build");
+        assert_eq!(map.teams, None);
+        assert!(!text.contains("Teams"));
+    }
+
+    #[test]
+    fn rejects_mistakes_in_increment_10_s_objects() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            assert!(DWELLINGS.contains(from), "{from}");
+            let spec = parse(&DWELLINGS.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "d.h3m").expect_err(to)
+        };
+        let err = fails("picture = \"avrcgen3\"", "picture = \"avrcgen9\"");
+        assert!(
+            err.contains("the ownable `avrcgen9` at [8, 10]: no such picture"),
+            "{err}"
+        );
+        let err = fails("owner = \"tan\"", "owner = \"teal\"");
+        assert!(err.contains("owner `teal`"), "{err}");
+        // `factions` and `levels` are a random dwelling's, each where its class has them.
+        let err = fails(
+            "owner = \"red\"",
+            "owner = \"red\"\n        levels = [1, 1]",
+        );
+        assert!(
+            err.contains("`factions` and `levels` are a random dwelling's"),
+            "{err}"
+        );
+        let err = fails("factions = [\"tower\"]", "factions = []");
+        assert!(err.contains("a random dwelling needs `factions`"), "{err}");
+        let err = fails("factions = [\"tower\"]", "factions = [\"forge\"]");
+        assert!(err.contains("unknown faction `forge`"), "{err}");
+        let err = fails(
+            "levels = [1, 3]",
+            "levels = [1, 3]\n        factions = [\"castle\"]",
+        );
+        assert!(
+            err.contains("a dwelling of one faction takes no `factions`"),
+            "{err}"
+        );
+        let err = fails(
+            "factions = [\"tower\"]",
+            "factions = [\"tower\"]\n        levels = [3, 3]",
+        );
+        assert!(
+            err.contains("a dwelling of one level takes no `levels`"),
+            "{err}"
+        );
+        let err = fails("levels = [7, 7]", "");
+        assert!(err.contains("a random dwelling needs `levels`"), "{err}");
+        for levels in ["[0, 3]", "[3, 1]", "[1, 8]"] {
+            let err = fails("levels = [1, 3]", &format!("levels = {levels}"));
+            assert!(err.contains("1 to 7, the lowest first"), "{err}");
+        }
+        let err = fails(
+            "factions = [\"tower\"]",
+            "factions = [\"tower\"]\n        resources = [\"gold\"]",
+        );
+        assert!(err.contains("`resources` is an abandoned mine's"), "{err}");
+        // Teams: known colours that play, each on one team, no empty team.
+        let teams = "teams = [[\"red\", \"blue\"]]";
+        let err = fails(teams, "teams = [[\"red\", \"mauve\"]]");
+        assert!(err.contains("teams: unknown colour `mauve`"), "{err}");
+        let err = fails(teams, "teams = [[\"red\", \"green\"]]");
+        assert!(err.contains("teams: green does not play"), "{err}");
+        let err = fails(teams, "teams = [[\"red\", \"blue\"], [\"blue\"]]");
+        assert!(err.contains("teams: blue is on two teams"), "{err}");
+        let err = fails(teams, "teams = [[\"red\", \"blue\"], []]");
+        assert!(err.contains("team 2 has no colour"), "{err}");
     }
 }

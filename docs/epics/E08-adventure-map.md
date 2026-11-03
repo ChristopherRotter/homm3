@@ -82,6 +82,11 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 242. **The cut as proposed** (design §17): rounds 2 to 8, batch E10 first (T89; T90 and T91), then `shared/` (T92), the content and the import (T93), the build and the state (T94), the visits and the hire dialog (T95), the fixtures and the audit (T96, T97); each task's cut confirmed at its start. Not chosen: T93 and T94 merged, batch E10 after the build.
 243. **The env's hire entries** (the user's consent to T95b's `cross-lane` change in `h3-sim`, as decisions 138 and 203): action encoding v7 appends four entries, each buying the most of a creature of the open hire dialog; an amount head is left to the AI lane. Not chosen: an amount head now, no env change.
 
+### Decisions at T89's start (2026-11-03, user)
+
+244. **T89 in two at the code's seam** (the user; recommended): **T89a** the writer's classes 17, 20, 78 and 216 to 218 and the map's teams, the spec's fields (`h3-experiment`, `cross-lane` with the user's consent, as T78's), their tests and `docs/experiments/README.md`; **T89b** the specs `E08-batch-10a`, `-10b` and their templates, each walk priced, a fresh review against survey §13. Not chosen: T89 whole (as T78).
+245. **The teams as a field of the writer's `Map`** (`teams: Option<Teams>`, the model's type; as decision 206's `events`): one line in each literal `Map` of the client, map-client and AI lanes (`h3-view`'s situation, `h3-map-view`'s situation and art test, `h3-cli`'s AI tests). Not chosen: the teams in `Extras` (the map client's) with `write_with`; no teams, E10-6 scored from the reading.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -89,7 +94,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 - **T88b The ADR amendment drafts, the design note and the cut** (decision 232), in two by side (decision 239):
   - **T88b1 The map side.** Done (2026-11-03, `adventure/e08-t88b1`): `E08-design.md` parts A and B (the kinds, the parameters and the random dwellings' table, the packs; the import, the setup and the build, the state, the visits, the purchase's map side, the week, information, ids and seams); the draft `adr-drafts/0016-increment-10.md`; D-51 settled as the original (decision 238).
   - **T88b2 The game side and the cut.** Done (2026-11-03, whole, decision 240; `adventure/e08-t88b2`): `E08-design.md` part C (the guards' battle, the hire dialog GAM-DEC-008, the env, replays, fixtures, properties, benchmarks, versions, batch E10, the cut and the exit criteria, risks); the draft `adr-drafts/0017-increment-10.md`; its checkpoint ADV-Q43 (decisions 241–243).
-- **T89 Batch E10's maps and specs** (round 2; design §16): queued. Rounds 3 to 8 (T90 to T97) as design §17 lists them, each queued when the one before is done.
+- **T89 Batch E10's maps and specs** (round 2; design §16), in two at the code's seam (decision 244):
+  - **T89a The writer's classes and the spec's fields.** Done (2026-11-03, `adventure/e08-t89a`, `cross-lane`; decision 245): `h3_map::writer` writes the dwellings 17 and 20 with their owners, the random dwellings 216 to 218 with their sets and levels (`OwnedBody::RandomDwelling`), the Refugee Camp 78 as a plain object and `Map::teams`; `h3-experiment`'s `[[map.ownable]]` takes them (`factions`, `levels`), `[[map.object]]` the camp, `[map] teams`; no version moved.
+  - **T89b The specs.** Queued: `E08-batch-10a`, `-10b`, their templates, the walks priced, the review.
+- Rounds 3 to 8 (T90 to T97) as design §17 lists them, each queued when the one before is done.
 
 ## Later increments (sketch)
 

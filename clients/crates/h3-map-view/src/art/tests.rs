@@ -85,6 +85,7 @@ pub(crate) fn map() -> Map {
         level_limit: 0,
         banned_skills: vec![],
         events: Vec::new(),
+        teams: None,
     }
 }
 

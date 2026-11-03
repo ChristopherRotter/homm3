@@ -11288,3 +11288,52 @@ status accepted; T88b2's entry to `QUEUE-ARCHIVE.md`, T89 queued.
 --with-original-data` passed every step it runs (deny and ffi-smoke skipped by the scope; the VM
 restarted during the setup's baseline, so the scoped run stands in). CI's full verify on the pull
 request is the record.
+
+### Increment 10, round 2: T89a, the writer's classes and teams, the spec's fields (2026-11-03, `adventure/e08-t89a`, `cross-lane`)
+
+Baseline: `master` at 0224865c (#683, T88b2, merged; CI's verify of the engine code on b163d206,
+the sandbox's light gates). The executables, the DLLs, the four LODs, the sound and video
+archives, `maps.tar`, `extracted.tar` and the MP3s staged at the start (the user's computer was to
+go offline soon). **The cut** (decision 244): measured at the start against T78's record (the
+writer about 300 lines with tests, the fields about 300, the specs about 1 000 lines of TOML), T89
+in two at the code's seam, T89a this; the teams a field of the writer's `Map` (decision 245).
+
+**The writer** (`h3_map::writer`, module `economy`): `OwnedBody::Owner` also on a dwelling of one
+creature (17, subclass below 80) or of several (20, below 2); `OwnedBody::RandomDwelling { owner,
+factions, levels }` for 216 to 218 not tied to a town (the body's town identifier 0, the set's two
+bytes; `factions` exactly for 216 and 217, at least one of bits 0–8, A-34; `levels` exactly for
+216 and 218, codes 0 to 6, the lowest not above the highest, A-36; 217's subclass a level code,
+218's a faction; refused in an RoE map, which holds none: the census); the owners checked by one
+helper. The Refugee Camp (78) joins `PLAIN_OBJECTS` (21 classes; no body). `Map::teams:
+Option<Teams>` (the model's type, re-exported): the count and each colour's team, 1 to 8 teams,
+every colour's below the count; `None` writes a count of 0. The constants `DWELLING_OBJECT`,
+`MULTI_DWELLING_OBJECT`, `REFUGEE_CAMP_OBJECT`, `RANDOM_DWELLING_OBJECT`,
+`RANDOM_DWELLING_BY_LEVEL_OBJECT`, `RANDOM_DWELLING_BY_FACTION_OBJECT`, `HIGHEST_LEVEL_CODE`.
+Tests (`tests/dwellings.rs`): the eight objects and the teams read back in SoD (the Conflux's
+bit in the set's second byte, no teams a count of 0), an RoE map's dwellings, camp and teams, the
+refusals (classes 18 and 19, the subclasses past the types, an owner nobody plays, a body on the
+wrong class, a set or levels where the class has none, an empty or out-of-range set, levels out
+of order or past 7, the team counts and a team past the count, a random dwelling in RoE), and
+the import as it reads them today (each an untyped object, unowned, until T93). The literal
+writer `Map`s of every lane gain `teams: None` (decision 245): `h3-view`'s situation,
+`h3-map-view`'s situation and art test, `h3-cli`'s AI tests, the lane's own tests and examples.
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane` by decision 244 as T78's):
+`[[map.ownable]]` takes the dwellings (17, 20) with an owner and the random dwellings (216 to 218)
+with `factions` (by `FACTIONS` name, at least one; 216 and 217) and `levels = [lowest, highest]`
+(the game's 1 to 7, written as codes 0 to 6; 216 and 218), refusing either on another class and
+on the class whose picture fixes it; an owned random dwelling makes its colour play, as a mine.
+`[[map.object]]` takes the Refugee Camp (`Tables::plains` follows `PLAIN_OBJECTS`). `[map] teams =
+[["red", "blue"]]`: each team's colours in order, a colour that plays (a hero, a town or an owned
+object), on one team at most; a playing colour in none on a team of its own after them, the
+colours nobody plays on the first; the template's top names the teams. A hero's full army of
+seven named stacks with a creature in several needed nothing new (`army`); a town for each player
+neither (`[[map.town]]`, any owner since T78). `docs/experiments/README.md`, "Increment 10's
+objects": the fields and the pictures' footprints from `Objects.txt` (most dwellings two tiles on
+`at`'s row entered at `at`, the Guardhouse also north-west, the Conflux two rows of three entered
+west of `at`, the Dwarf Cottage entered west of `at`, the Angel Portal the two tiles west of `at`;
+the random dwellings 2 × 2 entered from either bottom tile; the camp two tiles entered at `at`).
+Checked with the staged tables: a spec of the Dragon Cliffs, both 20s, the three random dwellings,
+a camp and the teams compiles, the template naming the teams.
+
+**Versions:** none moved (the writer and the spec only; the import reads the classes as before).

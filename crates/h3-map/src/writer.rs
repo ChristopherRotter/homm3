@@ -34,6 +34,11 @@
 //! owners, the abandoned mine with the resources it may draw), the weekly objects (the Windmill,
 //! the Water Wheel, the Mystical Garden) as [`Plain`] objects and the map's timed events
 //! ([`TimedEvent`]).
+//!
+//! Since E08 T89a (batch E10's maps, increment 10's design note §16) it writes the dwellings (17,
+//! 20) with their owners and the random dwellings (216 to 218) with their faction sets and levels
+//! ([`OwnedBody::RandomDwelling`]), the Refugee Camp (78) as a [`Plain`] object and the map's
+//! teams ([`Map::teams`]).
 
 mod economy;
 mod extras;
@@ -42,8 +47,10 @@ mod rewards;
 use std::fmt;
 
 pub use economy::{
-    ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, LIGHTHOUSE_OBJECT, MINE_OBJECT, OwnedBody,
-    OwnedObject, SHIPYARD_OBJECT, TimedEvent,
+    ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, DWELLING_OBJECT, HIGHEST_LEVEL_CODE,
+    LIGHTHOUSE_OBJECT, MINE_OBJECT, MULTI_DWELLING_OBJECT, OwnedBody, OwnedObject,
+    RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT,
+    REFUGEE_CAMP_OBJECT, SHIPYARD_OBJECT, TimedEvent,
 };
 pub use extras::{AnyObject, Extras, GivenTile, RiverKind};
 pub use rewards::{
@@ -53,6 +60,7 @@ pub use rewards::{
 };
 
 use crate::gzip::crc32;
+pub use crate::model::Teams;
 use crate::model::Version;
 
 /// Why a map could not be written.
@@ -227,9 +235,10 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// in no boat a map writes: one placed on water has none (survey §2), so a hero "in a boat" is a
 /// hero beside an empty boat that boards it in the game. Since E08 T78 increment 9's weekly
 /// objects (batch E9; survey `docs/rules/surveys/E08-economy.md` §9): the Mystical Garden (55),
-/// the Water Wheel (109) and the Windmill (112).
-pub const PLAIN_OBJECTS: [u32; 20] = [
-    8, 13, 22, 29, 55, 63, 82, 86, 100, 101, 104, 105, 108, 109, 112, 124, 135, 137, 155, 212,
+/// the Water Wheel (109) and the Windmill (112). Since E08 T89a increment 10's Refugee Camp (78;
+/// batch E10, survey `docs/rules/surveys/E08-dwellings.md` §7: no body).
+pub const PLAIN_OBJECTS: [u32; 21] = [
+    8, 13, 22, 29, 55, 63, 78, 82, 86, 100, 101, 104, 105, 108, 109, 112, 124, 135, 137, 155, 212,
 ];
 /// Object class of a town of a fixed faction (subclass = faction, `TOWNTYPE.TXT` order: Castle 0
 /// … Conflux 8; E04c T5b).
@@ -712,6 +721,9 @@ pub struct Map {
     /// The map's timed events (E08 T78), in the list's order: the order the game fires them in
     /// on a day (GAM-CAL-004, survey `docs/rules/surveys/E08-economy.md` §11).
     pub events: Vec<TimedEvent>,
+    /// The map's alliances (E08 T89a: batch E10's row E10-6); `None`: no teams, every player on
+    /// its own. The count is at least 1 and at most [`PLAYERS`], each colour's team below it.
+    pub teams: Option<Teams>,
 }
 
 impl Map {
@@ -780,7 +792,13 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
     }
     out.u8(0xff); // victory: standard
     out.u8(0xff); // loss: standard
-    out.u8(0); // no teams
+    match &map.teams {
+        None => out.u8(0),
+        Some(teams) => {
+            out.u8(teams.count);
+            out.bytes(&teams.of_player);
+        }
+    }
     if sod {
         out.bytes(&DEFAULT_ALLOWED_HEROES);
         out.u32(0); // no campaign hero placeholders
@@ -943,6 +961,14 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
     }
     for event in &map.events {
         economy::validate_event(event, codes)?;
+    }
+    if let Some(teams) = &map.teams {
+        if teams.count == 0 || usize::from(teams.count) > PLAYERS {
+            return Err(out_of_range("team count", teams.count));
+        }
+        if let Some(&team) = teams.of_player.iter().find(|&&t| t >= teams.count) {
+            return Err(out_of_range("team (past the count)", team));
+        }
     }
     Ok(())
 }
@@ -1494,6 +1520,7 @@ mod tests {
             level_limit: 0,
             banned_skills: Vec::new(),
             events: Vec::new(),
+            teams: None,
         }
     }
 

@@ -7,10 +7,11 @@ use h3_formats::exe;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
 use h3_map::writer::{
-    ABANDONED_MINE_OBJECT, ARTIFACT_OBJECT, ARTIFACT_SLOTS, EVENT_OBJECT, GROUND_OBJECTS,
-    LIGHTHOUSE_OBJECT, MINE_OBJECT, ObjectTemplate, PANDORA_OBJECT, PLAIN_OBJECTS,
-    RANDOM_ARTIFACT_OBJECTS, SCROLL_OBJECT, SHIPYARD_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS,
-    TOWN_OBJECT, WITCH_HUT_OBJECT,
+    ABANDONED_MINE_OBJECT, ARTIFACT_OBJECT, ARTIFACT_SLOTS, DWELLING_OBJECT, EVENT_OBJECT,
+    GROUND_OBJECTS, LIGHTHOUSE_OBJECT, MINE_OBJECT, MULTI_DWELLING_OBJECT, ObjectTemplate,
+    PANDORA_OBJECT, PLAIN_OBJECTS, RANDOM_ARTIFACT_OBJECTS, RANDOM_DWELLING_BY_FACTION_OBJECT,
+    RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT, SCROLL_OBJECT, SHIPYARD_OBJECT,
+    SHRINE_OBJECTS, SIGN_OBJECTS, TOWN_OBJECT, WITCH_HUT_OBJECT,
 };
 
 /// Object class of a fixed wandering monster (subclass = creature id).
@@ -85,7 +86,7 @@ pub struct Tables {
     pub grounds: Vec<ObjectTemplate>,
     /// Templates of the visitable objects without a body (`Objects.txt`, the classes of
     /// [`PLAIN_OBJECTS`]: the Cartographers, E08 T32a; since E08 T67 the boats, the sea's
-    /// pickups but the bottle, the holes), in the file's order.
+    /// pickups but the bottle, the holes; since E08 T89a the Refugee Camp), in the file's order.
     pub plains: Vec<ObjectTemplate>,
     /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
     pub towns: Vec<(u32, ObjectTemplate)>,
@@ -98,13 +99,19 @@ pub struct Tables {
 }
 
 /// Whether the writer's ownable objects take this class (E08 T78): a mine and the abandoned mine
-/// (53), SoD's abandoned mine (220), a Lighthouse (42), a Shipyard (87).
+/// (53), SoD's abandoned mine (220), a Lighthouse (42), a Shipyard (87); since E08 T89a the
+/// dwellings (17, 20) and the random dwellings (216 to 218).
 pub fn is_ownable(class: u32) -> bool {
     [
         MINE_OBJECT,
         ABANDONED_MINE_OBJECT,
         LIGHTHOUSE_OBJECT,
         SHIPYARD_OBJECT,
+        DWELLING_OBJECT,
+        MULTI_DWELLING_OBJECT,
+        RANDOM_DWELLING_OBJECT,
+        RANDOM_DWELLING_BY_LEVEL_OBJECT,
+        RANDOM_DWELLING_BY_FACTION_OBJECT,
     ]
     .contains(&class)
 }
@@ -351,7 +358,8 @@ mod tests {
              AVXcf0.def {mask} 222 0 0 1\nAVXcg5.def {mask} 223 0 0 1\n\
              AVCstrx0.def {mask} 98 6 1 0\nAVCranx0.def {mask} 77 0 1 0\n\
              AVXmaps0.def {mask} 13 1 0 0\nAVMsawg0.def {mask} 53 0 0 0\n\
-             AVXlths0.def {mask} 42 0 0 0\n"
+             AVXlths0.def {mask} 42 0 0 0\nAVGgolm0.def {mask} 20 1 0 0\n\
+             AVGrefg0.def {mask} 78 0 0 0\navrcgen3.def {mask} 217 2 0 0\n"
         );
         let (heroes, creatures) = (table(&["Orrin"]), table(&["Pikeman"]));
         let (skills, spells) = (table(&["Archery"]), table(&["Combat Spells", "Bless"]));
@@ -383,16 +391,24 @@ mod tests {
             .map(|g| (g.def.as_str(), g.class))
             .collect();
         assert_eq!(grounds, [("AVXcf0.def", 222), ("AVXcg5.def", 223)]);
-        // The Cartographers (E08 T32a).
+        // The Cartographers (E08 T32a); the Refugee Camp (E08 T89a).
         let plains: Vec<_> = t.plains.iter().map(|p| (p.def.as_str(), p.class)).collect();
-        assert_eq!(plains, [("AVXmaps0.def", 13)]);
-        // A mine and a Lighthouse (E08 T78).
+        assert_eq!(plains, [("AVXmaps0.def", 13), ("AVGrefg0.def", 78)]);
+        // A mine and a Lighthouse (E08 T78); a dwelling and a random dwelling (E08 T89a).
         let ownables: Vec<_> = t
             .ownables
             .iter()
             .map(|o| (o.def.as_str(), o.class))
             .collect();
-        assert_eq!(ownables, [("AVMsawg0.def", 53), ("AVXlths0.def", 42)]);
+        assert_eq!(
+            ownables,
+            [
+                ("AVMsawg0.def", 53),
+                ("AVXlths0.def", 42),
+                ("AVGgolm0.def", 20),
+                ("avrcgen3.def", 217)
+            ]
+        );
         // Towns of a fixed faction only (E04c T5b), not the random town (77).
         assert_eq!(ids(&t.towns), [(6, "AVCstrx0.def".to_owned())]);
         assert_eq!(t.spells, ["Bless"]);
