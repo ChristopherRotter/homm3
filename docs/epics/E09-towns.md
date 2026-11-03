@@ -69,6 +69,11 @@ Towns as the original plays them, on the adventure map of E08: the town context 
 23. **The buildings' content read and harvested** (design §3): a code reading of `building_tables_init` 0x4EB730 and the tables it fills, the names from the text files, VCMI's lists compared, written by `h3-harvest`'s gap-fill (`cross-lane`, as E08 T81b). Not chosen: a hand-written `towns.toml` with each value's source; only the roles increment 1 reads, the full lists in increment 2.
 24. **The design note's agent's calls kept** (marked *agent's call* in `E09-design.md`; each stays changeable by the task that builds it). Not chosen: changes now.
 
+### Decisions at batch TWN-1's scoring (2026-11-03, the user, TWN-Q5)
+
+25. **Building 23 re-read in T5b** (survey §15: built in every Rampart, Necropolis and Conflux town of the standard set, not by the reading, not in VCMI): T5b, which stages the executable and reads `building_tables_init`'s lists anyway, reads where 23 comes from, whether a custom set gets it and whether the faction's list and so the keep count it; the content and TWN-SET-003 build it as found, a batch row only if a point stays open. Not chosen: a separate re-read task before T4; VCMI's way (no building 23).
+26. **Batch TWN-1's row in `docs/experiments/README.md`** by T3c, `cross-lane` (the battle lane's file, as T3a and E08 T80). Not chosen: a note in the battle lane's inbox.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, the cut confirmed at each checkpoint)
 
 - **T0 E09 refined, the town lane opened.** Done (2026-10-31, `shared/town-lane`; decisions 1–7; TWN-Q1).
@@ -81,9 +86,9 @@ Towns as the original plays them, on the adventure map of E08: the town context 
 - **T2b The design note, the cut and the checkpoint.** Done (2026-11-02, `town/e09-t2b`; the user kept it whole; `TWN-Q4`, decisions 21–24): `E09-design.md` §1 to §22 (the town part, the record and store, the setup and derivations; the import, the kind `Town`, the step, the siege, capture, the views; the setup's checks, the pool and the draws, the siege's battle, the income, the observation, the gates, versions and ids, batch TWN-1, the cut); the drafts accepted, the cut as proposed, the content harvested, the agent's calls kept.
 - **The build** (decision 22; design §21; the queue holds the next round's entries):
   - Round 2: **T3a** batch TWN-1's maps and spec (§20; `cross-lane` in `h3-experiment`). Done (2026-11-02, `town/e09-t3a`; the user kept it whole): `fort` and an explicitly empty `garrison` for a spec's towns; `experiments/specs/E09-batch-1.toml`, rows 1 to 4 (row 3 played twice from one save).
-  - Round 3: **T3b** batch TWN-1's harness and runs. Done (2026-11-03, `town/e09-t3b`; the user kept it whole, 3b in a new game): the harness's town reads, a new-game step, the town screen known; two whole runs recorded (`experiments/results/E09-batch-1.md`, `-run2.md`). **T3c** scored (TD-3, TD-5, TD-7, row 4).
+  - Round 3: **T3b** batch TWN-1's harness and runs. Done (2026-11-03, `town/e09-t3b`; the user kept it whole, 3b in a new game): the harness's town reads, a new-game step, the town screen known; two whole runs recorded (`experiments/results/E09-batch-1.md`, `-run2.md`). **T3c** scored. Done (2026-11-03, `claude/peaceful-curie-q7wjex`; `TWN-Q5`, decisions 25, 26): survey `E09-towns.md` §15; TD-3, TD-5, TD-7 and the siege's aftermath as the reading, VCMI refuted in each; building 23 in every Rampart, Necropolis and Conflux town of the standard set, not predicted: re-read in T5b; the experiments README's row (`cross-lane`).
   - Round 4: **T4** `shared/`: the ADRs with T3c's verdicts, the glossary, the crate skeletons, `TownId`, the gates (§1).
-  - Round 5: **T5a** the town part, its compiler and adapter, `GameRuleset`, replay format v9 (§2); **T5b** the content read and harvested (§3, decision 23; original data).
+  - Round 5: **T5a** the town part, its compiler and adapter, `GameRuleset`, replay format v9 (§2); **T5b** the content read and harvested (§3, decision 23; original data; building 23's re-read, decision 25).
   - Round 6: **T6** `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml` (§4–§6).
   - Round 7: **T7a** the import and the setup's checks (§7, §13; map import v16; the census); **T7b** the pool and the build's draws (§14; game state hash v23).
   - Round 8: **T8a** the kind, the step, entering and an undefended capture (§8, §9, §11; adventure part v16, state hash v20); **T8b** the siege (§10, §15).
