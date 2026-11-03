@@ -2758,6 +2758,24 @@ fn added_at(state: &GameState, pos: TilePos) -> bool {
         .any(|(i, o)| o.anchor == pos && !adventure.is_removed(placed + i))
 }
 
+/// The object a visit of `pos` concerns, by index (as the engine's, ADV-OBJ-003): the last object
+/// added in play still on the map that is visited from it (E08 T86b1: a creature month's monster
+/// comes after the static map's in map order), else the static map's last still on the map.
+fn visited_at(state: &GameState, pos: TilePos) -> Option<usize> {
+    let adventure = state.adventure();
+    let placed = adventure.map().objects().len();
+    let live = |&i: &usize| !adventure.is_removed(i);
+    let added = (placed..)
+        .zip(adventure.added_objects())
+        .filter(|&(i, o)| live(&i) && o.covers(pos).1)
+        .map(|(i, _)| i)
+        .last();
+    added.or_else(|| {
+        let statics = adventure.map().visited_from(pos).iter().copied();
+        statics.rev().find(live)
+    })
+}
+
 /// A new day's income (GAM-RES-003 to -005, E08 T85b; increment 9's design note §14), from the
 /// day's events (its `DayStarted` on): every player in id order is told, as one gain per resource
 /// with an amount in the core's order, exactly what an independent sum of its parts gives on the
@@ -4113,32 +4131,28 @@ fn check_unowned_battle_end(
         .map(OpenBattle::tile)
         .or(started)
         .unwrap();
-    let map = before.adventure().map();
+    let (adventure, map) = (before.adventure(), before.adventure().map());
+    // E08 T86b1: a found index may be a monster's added in play (a creature month's), read
+    // through `object` (`docs/lanes/adventure/TRAPS.md`, objects added in play).
+    let at = |i: usize| adventure.object(i).unwrap();
     let kind = |i: usize| {
-        let ty = map.objects()[i].object_type;
+        let ty = at(i).object_type;
         ty.and_then(|ty| rules.adventure().object_type(ty))
             .map(|t| &t.kind)
     };
     let pyramid = |i: usize| matches!(kind(i), Some(ObjectKind::Pyramid(_)));
-    let live = |&i: &usize| !before.adventure().is_removed(i);
-    let index = map
-        .visited_from(tile)
-        .iter()
-        .copied()
-        .rev()
-        .find(live)
+    let live = |&i: &usize| !adventure.is_removed(i);
+    let index = visited_at(before, tile)
         .filter(|&i| {
-            let o = &map.objects()[i];
+            let o = at(i);
             o.monster.is_some() || o.guards.is_some() || pyramid(i)
         })
         .or_else(|| {
             let events = map.events_at(tile).iter().copied().rev();
-            events
-                .filter(live)
-                .find(|&i| map.objects()[i].guards.is_some())
+            events.filter(live).find(|&i| at(i).guards.is_some())
         })
         .ok_or_else(|| fail(format!("no monster or guards fought at {tile:?}")))?;
-    let object = &map.objects()[index];
+    let object = at(index);
     let removals = events
         .iter()
         .filter(|e| {
