@@ -2,13 +2,16 @@
 //! button over the stats dialog's morale or luck shows a header by the value's sign, then the lines
 //! that tell where the value comes from (`stack_morale_description` 0x44B960,
 //! `stack_luck_description` 0x44C1C0), or the empty list's line, with the sign's picture. [`Account`]
-//! holds what a seat's observation tells of the sources: the hero's own lists, the Hourglass of the
-//! Evil Hour and the Spirit of Oppression, the Angelic Alliance's join and a siege town's buildings
-//! are not in it (CLT-Q40: requested from the battle lane), so their lines are not written; the
-//! spells' line is the spells' change as the executable counts it from the lines the client has.
+//! holds what a seat's observation tells of the sources: since M6 T3c1 the hero's own lists
+//! ([`HeroList`]: its artifacts, its Leadership or Luck and the rest as temporary, from CLT-Q40's
+//! carry); the Hourglass of the Evil Hour and the Spirit of Oppression, the Angelic Alliance's
+//! join and a siege town's buildings are not in it yet (T3c2), so their lines are not written;
+//! the spells' line is the spells' change as the executable counts it from the lines the client
+//! has.
 
 use alloc::format;
 use alloc::string::String;
+use alloc::vec::Vec;
 
 use h3_render::Bugs;
 use h3_ui::text::{Args, Catalogue};
@@ -60,6 +63,98 @@ pub struct Account {
     pub morale_spells: i32,
     /// What they change of its luck (Fortune's less Misfortune's).
     pub luck_spells: i32,
+    /// The side's hero's morale list (none without a hero: the default).
+    pub hero_morale: HeroList,
+    /// Its luck list.
+    pub hero_luck: HeroList,
+}
+
+/// A hero's morale or luck list (`hero_morale_description` 0x4DC320, `hero_luck_description`
+/// 0x4DCAC0, read whole at E17 M6 T3c1; design §12.9), as far as the observation's sources tell
+/// it (CLT-Q40's carry): the stack's description writes it first, after the base. Its lines: each
+/// listed artifact the hero's changes name, in the list's order (the Pendant of Courage first),
+/// its change the line's own (+3, the others +1); Leadership's or Luck's line by its level (its
+/// change the level); then the rest, the total less those lines' changes, as temporary (less or
+/// more) when it is not 0. The original's visits' lines (their once-marks on the wire name no
+/// object type) and its owner's Grail building's (a town record's index, T3c2) are in the rest
+/// meanwhile, as the original's own rest holds what its lines do not name; its cheats' line has no
+/// source.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HeroList {
+    /// The hero's changes that reach its own stacks, summed (the original's `hero_morale` 0x4E39B0
+    /// or `hero_luck` 0x4E36C0 with no other hero, no field and no clamp): part of the base.
+    pub total: i32,
+    /// The listed artifacts its changes name, by their original ids (any order).
+    pub artifacts: Vec<u32>,
+    /// The level, 1 (Basic) to 3 (Expert), of the skill its changes name (Leadership for morale,
+    /// Luck for luck); 0 none.
+    pub skill: u8,
+}
+
+/// The Pendant of Courage (original id 108): its lines' change is 3.
+const PENDANT: u32 = 108;
+
+/// The morale list's artifacts in its order (0x4DC3A0 to 0x4DC559), by their original ids, with
+/// their key's context: the Pendant of Courage, the Still Eye of the Dragon, the Badge of Courage,
+/// the Crest of Valor, the Glyph of Gallantry.
+const MORALE_ARTIFACTS: [(u32, &str); 5] = [
+    (PENDANT, "pendant"),
+    (45, "still-eye"),
+    (49, "badge"),
+    (50, "crest"),
+    (51, "glyph"),
+];
+
+/// The luck list's (0x4DCB40 to 0x4DCCF9): the Pendant, the Still Eye, the Clover of Fortune, the
+/// Cards of Prophecy, the Ladybird of Luck.
+const LUCK_ARTIFACTS: [(u32, &str); 5] = [
+    (PENDANT, "pendant"),
+    (45, "still-eye"),
+    (46, "clover"),
+    (47, "cards"),
+    (48, "ladybird"),
+];
+
+/// The skill's line's context by its level less 1.
+const LEVELS: [&str; 3] = ["basic", "advanced", "expert"];
+
+/// The lines of `list` with the keys of `prefix` (`stats.morale`, `stats.luck`) and the list's
+/// artifacts `artifacts`.
+fn hero_lines(
+    catalogue: &Catalogue,
+    prefix: &str,
+    artifacts: &[(u32, &str)],
+    list: &HeroList,
+) -> String {
+    let mut lines = String::new();
+    let mut listed = 0;
+    for &(id, context) in artifacts {
+        if list.artifacts.contains(&id) {
+            lines.push_str(&catalogue.text(
+                &format!("{prefix}.artifact"),
+                &Args::new().context(context),
+            ));
+            listed += if id == PENDANT { 3 } else { 1 };
+        }
+    }
+    if let Some(context) = usize::from(list.skill)
+        .checked_sub(1)
+        .and_then(|k| LEVELS.get(k))
+    {
+        lines.push_str(&catalogue.text(
+            &format!("{prefix}.skill"),
+            &Args::new().context(context),
+        ));
+        listed += i32::from(list.skill);
+    }
+    let rest = list.total - listed;
+    if rest != 0 {
+        let args = Args::new()
+            .context(if rest < 0 { "less" } else { "more" })
+            .number("amount", i64::from(rest.unsigned_abs()));
+        lines.push_str(&catalogue.text(&format!("{prefix}.temporary"), &args));
+    }
+    lines
 }
 
 /// The description's picture's frame by the value's sign (`message_box_picture`'s types 11 to 13
@@ -75,10 +170,11 @@ pub const fn picture_frame(value: i32) -> u32 {
     }
 }
 
-/// Morale's description (0x5F4B86 with 0x44B960) for a dialog whose morale shows `value`: on
-/// Cursed Ground its line alone, for a creature without morale its line alone; else the field's
-/// line by the creature's town, the army's alignments, undead, Angels, the other army's dragons,
-/// the Minotaurs' minimum and the spells' line.
+/// Morale's description (0x5F4B86 with 0x44B960) for a dialog whose morale shows `value` (the
+/// stack's, unclamped): on Cursed Ground its line alone, for a creature without morale its line
+/// alone; else the hero's list ([`HeroList`]), the field's line by the creature's town, the army's
+/// alignments, undead, Angels, the other army's dragons, the Minotaurs' minimum and the spells'
+/// line.
 #[must_use]
 pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
     let text = |key: &str| catalogue.text(key, &Args::new());
@@ -89,7 +185,14 @@ pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
     } else if account.no_morale {
         text("stats.morale.unaffected")
     } else {
-        let mut lines = String::new();
+        // The hero's list after the base (0x44BA58); its changes are the base's.
+        let mut lines = hero_lines(
+            catalogue,
+            "stats.morale",
+            &MORALE_ARTIFACTS,
+            &account.hero_morale,
+        );
+        let mut base = account.hero_morale.total;
         // The field's line by the creature's town (0 to 2 good, 3 to 5 evil); its change is in
         // the value, not in the base.
         let field = match (account.field, account.town) {
@@ -102,7 +205,6 @@ pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
         if let Some((key, _)) = field {
             lines.push_str(&text(key));
         }
-        let mut base = 0;
         let n = account.alignments;
         if n >= 3 {
             let change = if n >= 5 {
@@ -148,22 +250,23 @@ pub fn morale(catalogue: &Catalogue, account: &Account, value: i32) -> String {
     compose(catalogue, "stats.morale", value, &lines)
 }
 
-/// Luck's description (0x5F4937 with 0x44C1C0) for a dialog whose luck shows `value`, in the
-/// profile `bugs`: on Cursed Ground its line alone; else Clover Field's line for a creature of a
-/// neutral town, the other army's Devils, the Halflings' minimum (its line without a line break
-/// before it in the original's profile, on its own row in the client's: CLT-Q41 (1)) and the
-/// spells' line.
+/// Luck's description (0x5F4937 with 0x44C1C0) for a dialog whose luck shows `value` (the
+/// stack's, unclamped: below 0 too), in the profile `bugs`: on Cursed Ground its line alone; else
+/// the hero's list ([`HeroList`]), Clover Field's line for a creature of a neutral town, the other
+/// army's Devils, the Halflings' minimum (its line without a line break before it in the
+/// original's profile, on its own row in the client's: CLT-Q41 (1)) and the spells' line.
 #[must_use]
 pub fn luck(catalogue: &Catalogue, account: &Account, value: i32, bugs: Bugs) -> String {
     let lines = if account.field == Field::Cursed {
         catalogue.text("stats.luck.cursed", &Args::new())
     } else {
-        let mut lines = String::new();
+        // The hero's list after the base (0x44C2A5); its changes are the base's.
+        let mut lines = hero_lines(catalogue, "stats.luck", &LUCK_ARTIFACTS, &account.hero_luck);
+        let mut base = account.hero_luck.total;
         let clover = account.field == Field::Clover && matches!(account.town, Some(6..=8));
         if clover {
             lines.push_str(&catalogue.text("stats.luck.clover", &Args::new()));
         }
-        let mut base = 0;
         if let Some(devils) = &account.devils {
             lines.push_str(
                 &catalogue.text("stats.morale.facing", &Args::new().text("creature", devils)),

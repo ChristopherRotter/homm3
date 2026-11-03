@@ -710,10 +710,19 @@ fn described_catalogue() -> Catalogue {
                 "undead": "-undead", "in-group": "-in {{creature}}",
                 "facing": "-facing {{creature}}", "minimum": "-min {{creature}}",
                 "spells": "-spells {{change}}", "holy-good": "-holy+", "holy-evil": "-holy-",
-                "fog-good": "-fog-", "fog-evil": "-fog+" },
+                "fog-good": "-fog-", "fog-evil": "-fog+",
+                "artifact_pendant": "-pendant", "artifact_still-eye": "-eye",
+                "artifact_badge": "-badge", "artifact_crest": "-crest", "artifact_glyph": "-glyph",
+                "skill_basic": "-L1", "skill_advanced": "-L2", "skill_expert": "-L3",
+                "temporary_less": "-temp -{{amount}}", "temporary_more": "-temp +{{amount}}" },
             "luck": { "header": "{{text}}|", "good": "g", "neutral": "n", "bad": "b",
                 "none": "-none", "cursed": "-cursed", "clover": "-clover",
-                "halflings": "{{creature}} lucky" } } }"#,
+                "halflings": "{{creature}} lucky",
+                "artifact_pendant": "-pendant", "artifact_still-eye": "-eye",
+                "artifact_clover": "-clover4", "artifact_cards": "-cards",
+                "artifact_ladybird": "-ladybird",
+                "skill_basic": "-l1", "skill_advanced": "-l2", "skill_expert": "-l3",
+                "temporary_less": "-temp -{{amount}}", "temporary_more": "-temp +{{amount}}" } } }"#,
     )
     .unwrap();
     Catalogue { packs: vec![pack] }
@@ -895,5 +904,103 @@ fn the_described_pictures_follow_the_sign() {
     assert_eq!(
         h.described(LUCK, Bugs::Fixed),
         Some(("n|-none".into(), Some(picture("ilck82.def", 3))))
+    );
+}
+
+#[test]
+fn the_heros_lists_come_first_in_their_own_order() {
+    // E17 M6 T3c1 (design §12.9): the hero's list after the base, before the field's and the
+    // army's lines: its artifacts in the list's order (the Pendant first), the skill by its level,
+    // the rest as temporary; the header by the unclamped value.
+    let c = described_catalogue();
+    let m = |account: &Account, value| describe::morale(&c, account, value);
+    let l = |account: &Account, value| describe::luck(&c, account, value, Bugs::Fixed);
+    let hero = HeroList {
+        total: 7,
+        artifacts: vec![51, 108, 45],
+        skill: 2,
+    };
+    let account = Account {
+        town: Some(0),
+        alignments: 1,
+        field: Field::Holy,
+        hero_morale: hero.clone(),
+        ..Account::default()
+    };
+    assert_eq!(m(&account, 9), "G|-pendant-eye-glyph-L2-holy+-one");
+    // Luck's artifacts are its own: the Glyph of Gallantry is in the rest (+1).
+    let account = Account {
+        hero_luck: hero,
+        ..Account::default()
+    };
+    assert_eq!(l(&account, 7), "g|-pendant-eye-l2-temp +1");
+    // The rest by its sign; an empty list writes nothing.
+    let rest = |total, skill| HeroList {
+        total,
+        artifacts: Vec::new(),
+        skill,
+    };
+    let account = |morale, luck| Account {
+        hero_morale: morale,
+        hero_luck: luck,
+        ..Account::default()
+    };
+    assert_eq!(m(&account(rest(5, 2), rest(0, 0)), 5), "G|-L2-temp +3");
+    assert_eq!(l(&account(rest(0, 0), rest(-1, 0)), -1), "b|-temp -1");
+    assert_eq!(l(&account(rest(1, 3), rest(1, 3)), 1), "g|-l3-temp -2");
+    assert_eq!(m(&account(rest(0, 0), rest(0, 0)), 0), "N|-none");
+    // Cursed Ground's line and no morale's stay alone.
+    let listed = Account {
+        hero_morale: rest(3, 3),
+        hero_luck: rest(3, 3),
+        ..Account::default()
+    };
+    let cursed = Account {
+        field: Field::Cursed,
+        ..listed.clone()
+    };
+    assert_eq!(m(&cursed, 0), "N|-cursed");
+    assert_eq!(l(&cursed, 0), "n|-cursed");
+    let unaffected = Account {
+        no_morale: true,
+        ..listed
+    };
+    assert_eq!(m(&unaffected, 0), "N|-unaffected");
+}
+
+#[test]
+fn the_heros_changes_are_the_bases() {
+    // The minimums test the base with the hero's changes in it, and the spells' line is the
+    // value less the base (0x44BF7B, 0x44C462).
+    let c = described_catalogue();
+    let skill = |level| HeroList {
+        total: i32::from(level),
+        artifacts: Vec::new(),
+        skill: level,
+    };
+    let minotaurs = Account {
+        morale_minimum: Some("Minotaurs".into()),
+        morale_spells: 2,
+        hero_morale: skill(1),
+        ..Account::default()
+    };
+    assert_eq!(
+        describe::morale(&c, &minotaurs, 3),
+        "G|-L1-spells +2"
+    );
+    let halflings = Account {
+        luck_minimum: Some("Halflings".into()),
+        hero_luck: skill(1),
+        ..Account::default()
+    };
+    assert_eq!(describe::luck(&c, &halflings, 1, Bugs::Fixed), "g|-l1");
+    let halflings = Account {
+        devils: Some("Devils".into()),
+        luck_spells: 2,
+        ..halflings
+    };
+    assert_eq!(
+        describe::luck(&c, &halflings, 2, Bugs::Fixed),
+        "g|-l1-facing Devils\nHalflings lucky-spells +1"
     );
 }

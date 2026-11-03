@@ -1023,6 +1023,39 @@ id = "stats.luck.halflings"
 args = { creature = "text" }
 original = [{ at = "EXE:0x660B50", printf = ["creature"] }]
 
+# The hero's list (`hero_luck_description` 0x4DCAC0, read whole at E17 M6 T3c1; design §12.9): a
+# worn luck artifact's line by the artifact as `context` (its change in the text), Luck's by its
+# level, and the rest of the hero's luck as temporary, `amount` its size (78 less, 79 more).
+
+[[key]]
+id = "stats.luck.artifact"
+contexts = ["pendant", "still-eye", "clover", "cards", "ladybird"]
+original = [
+    { form = "pendant", at = "ARRAYTXT:80" },
+    { form = "still-eye", at = "ARRAYTXT:63" },
+    { form = "clover", at = "ARRAYTXT:64" },
+    { form = "cards", at = "ARRAYTXT:65" },
+    { form = "ladybird", at = "ARRAYTXT:66" },
+]
+
+[[key]]
+id = "stats.luck.skill"
+contexts = ["basic", "advanced", "expert"]
+original = [
+    { form = "basic", at = "ARRAYTXT:74" },
+    { form = "advanced", at = "ARRAYTXT:75" },
+    { form = "expert", at = "ARRAYTXT:76" },
+]
+
+[[key]]
+id = "stats.luck.temporary"
+args = { amount = "number" }
+contexts = ["less", "more"]
+original = [
+    { form = "less", at = "ARRAYTXT:78", printf = ["amount"] },
+    { form = "more", at = "ARRAYTXT:79", printf = ["amount"] },
+]
+
 [[key]]
 id = "stats.morale.header"
 args = { text = "text" }
@@ -1104,6 +1137,38 @@ original = [{ at = "ARRAYTXT:125" }]
 [[key]]
 id = "stats.morale.fog-good"
 original = [{ at = "ARRAYTXT:126" }]
+
+# The hero's list (`hero_morale_description` 0x4DC320, read whole at E17 M6 T3c1; design §12.9):
+# as luck's, Leadership's by its level, the rest 109 less, 110 more.
+
+[[key]]
+id = "stats.morale.artifact"
+contexts = ["pendant", "still-eye", "badge", "crest", "glyph"]
+original = [
+    { form = "pendant", at = "ARRAYTXT:111" },
+    { form = "still-eye", at = "ARRAYTXT:89" },
+    { form = "badge", at = "ARRAYTXT:90" },
+    { form = "crest", at = "ARRAYTXT:91" },
+    { form = "glyph", at = "ARRAYTXT:92" },
+]
+
+[[key]]
+id = "stats.morale.skill"
+contexts = ["basic", "advanced", "expert"]
+original = [
+    { form = "basic", at = "ARRAYTXT:105" },
+    { form = "advanced", at = "ARRAYTXT:106" },
+    { form = "expert", at = "ARRAYTXT:107" },
+]
+
+[[key]]
+id = "stats.morale.temporary"
+args = { amount = "number" }
+contexts = ["less", "more"]
+original = [
+    { form = "less", at = "ARRAYTXT:109", printf = ["amount"] },
+    { form = "more", at = "ARRAYTXT:110", printf = ["amount"] },
+]
 
 # An effect's hint (0x5F4F33): GENRLTXT's record 611 with the spell's name and its rounds left;
 # Bind's, Berserk's and Disrupting Ray's (0x5F4EB4 to 0x5F4F31) record 680 with how long they last,
