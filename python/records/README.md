@@ -114,6 +114,13 @@ per student the cross-entropy per head, the agreement overall, per category and 
 heads, the value's scores and the training seconds (the returns' mean and variance beside
 them); `ladders` each student's rows on the report set v1 and the neutral set v1.
 
+`distill/ceiling/ceiling-<n>.json` (E25 T19): the teacher's ceiling (`h3env.train.ceiling
+--json`): the fair actor's draws per state on a cloning bench's held-out distribution, overall
+and per category of each draw their `mode` and `pair` shares, the entropy (plug-in and
+Miller-Madow), the distinct entries, the cast heads' mode, and each scored network's agreement
+and cross-entropy against the draws; the teacher, the states, episodes, lost choices, seconds
+and the identity.
+
 ## The search's measurements
 
 `search/<run>-<set>-<N>[-<per kind>].json` (E06 T8c): `python -m h3env.search --report --best
@@ -183,5 +190,15 @@ its `parent`.
   20 M samples, the entropy bonus falling to 0, 72 minutes): best #2, on the full report set
   0.849, 0.602, 0.581 against Random, Aggressor, Greedy, 0.422 against the system actor, the
   neutral set +0.243: `e25-scale-1` #3's ladder at temperature 0.7 (`docs/epics/E25-log.md`
-  T10b). **#2 is the current best** (E25 T11, the user, 2026-11-02; T12: 0.523 head to head
-  against `e25-scale-1` #3, promoted by the gate). Its networks are on the user's machine.
+  T10b). **#2 the current best** from E25 T11 (the user, 2026-11-02; T12: 0.523 head to head
+  against `e25-scale-1` #3, promoted by the gate) to T18 (2026-11-03). Its networks are on the
+  user's machine.
+- `e25-neutral-1`, `e25-clone-1` (E25 T17, 2026-11-03; `configs/e25-neutral.toml`:
+  `e25-sharp.toml`'s settings with the neutral kinds back at a third, the fair system actor
+  defending them, C ABI v37; 20 M samples, 74 and 73 minutes): the A/B of a start from scratch
+  against one from T16's clone (`--init-from`, `distill/clone-1.json`'s student). Best #2 each;
+  on the full report set against Random, Aggressor, Greedy, the fair and the all-seeing system
+  actor 0.843, 0.589, 0.565, 0.411, 0.410 from scratch, 0.848, 0.635, 0.609, 0.454, 0.454 from
+  the clone; the neutral set +0.269 and +0.282 (`docs/epics/E25-log.md` T17). **`e25-clone-1` #2
+  is the current best** (E25 T18, the user, 2026-11-03, AI-Q15; 0.564 head to head against
+  `e25-sharp-1` #2, promoted by the gate). Their networks are on the user's machine.
