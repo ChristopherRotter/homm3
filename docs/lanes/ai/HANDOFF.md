@@ -22,8 +22,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the neutral set +0.282**, target +0.285; 0.564 head to head against `e25-sharp-1` #2), the
   first past the 0.41 to 0.43 every earlier lever ended at. **Increment 6, better imitation**
   (refined at T18): the teacher's ceiling, a longer clone, an imitation loss decaying in PPO,
-  then their A/B against `e25-clone-1`. **Next:** T19, the teacher's ceiling (the sandbox).
-- **Open pull requests:** none yet for this branch (`claude/quirky-cerf-26fspy`: T17, T18).
+  then their A/B against `e25-clone-1`. **T19 done:** the fair actor repeats its own choice
+  0.972 of the time (0.044 nats); T16's student reached 0.531, `e25-clone-1` #2 0.270 (PPO
+  leaves the teacher): the gap is the network's. **Next:** T20, the longer clone
+  (`configs/distill/e25-clone-2.toml`, 16 M; the user's machine or the sandbox, the user's
+  choice), and T21, the imitation loss (a sandbox build).
+- **Open pull requests:** none yet for this branch (`claude/quirky-cerf-26fspy`: T17 to T19).
   Merged: #651 (T13 to T15), #657 (T16).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
@@ -38,13 +42,14 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-11-03 — E25 T17, T18
+### 2026-11-03 — E25 T17 to T19
 
 - #657 merged; the branch started from `master`. T17's records and `metrics.jsonl` uploaded by
   the user with the three `best.pt` (`e25-neutral-1`, `e25-clone-1`, `e25-sharp-1` #2); the
   head-to-heads on the sandbox's CPU (25 to 53 s each, `cargo build --release -p h3-ffi` and
   `uv sync --group train` first, about 1 and 7 minutes). The setup's baseline verify passed.
-  T18 with the user (AI-Q15): increment 5 closed, increment 6 refined (T19 to T23).
+  T18 with the user (AI-Q15): increment 5 closed, increment 6 refined (T19 to T23). T19 on the
+  sandbox's CPU (37 s a run; the PPO networks scored beside the teacher).
 
 ### 2026-11-02 — E25 T16
 

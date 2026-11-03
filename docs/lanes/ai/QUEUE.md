@@ -11,20 +11,15 @@ to 5 closed (`E25-archive.md`); **`e25-clone-1` #2 the current best** (AI-Q15, T
 against both system actors, the neutral set +0.282). **Increment 6, better imitation** (refined
 at T18, 2026-11-03, AI-Q15; its decisions in the epic file):
 
-- **T19 The teacher's ceiling.** *Scope:* in the sandbox, the fair actor's agreement with its own
-  draws on the same states: on the clone bench's distribution (`configs/distill/e25-clone.toml`'s
-  held-out set or one like it), several of the fair actor's choices per state from independent
-  draws (`BattleBatch.choice` draws from the side's seat stream: check that a second call on an
-  unchanged state draws again, else draw on copies), their agreement per category (tactics,
-  moves, melee, shots, casts) and the cast heads', and the empirical entropy of its choice (a
-  floor of the clone's cross-entropy); T16's student read against them. The tool and its record
-  under `records/distill/`. *Depends on:* T16 (done). *Status:* next.
 - **T20 The longer clone.** *Scope:* the clone bench at a larger budget (16 M samples unless
   T19's ceiling or the user says otherwise when prepared; its learning rate's schedule over the
   longer horizon), `configs/distill/e25-clone-2.toml`, run on the user's machine (the GPU; the
   teacher on its CPU) or the sandbox, the user's choice; its record `distill/clone-2.json`, its
   curve against T19's ceiling and T16's, its ladder; the student sent to (or from) the user.
-  *Depends on:* T19. *Status:* waiting.
+  Prepared at T19: `configs/distill/e25-clone-2.toml` (16 M, T16's settings otherwise). *Depends
+  on:* T19 (done 2026-11-03, `E25-log.md` T19: the fair actor repeats itself 0.972, T16's
+  student 0.531, so the gap is the network's; T16's curve suggests about 0.57 at 16 M).
+  *Status:* next.
 - **T21 The imitation loss.** *Scope:* PPO's auxiliary cross-entropy to the fair actor's choice
   on the learner's own decisions (`h3_batch_choice` on the learner's envs before its step; the
   entry and cast heads as labels; rows the encoding cannot express left out), its weight decaying
@@ -32,7 +27,8 @@ at T18, 2026-11-03, AI-Q15; its decisions in the epic file):
   teacher's cost per sample measured, a short CPU check in the sandbox, tests; T22's configs.
   Whether the teacher's call consumes draws the learner's episode would otherwise see is part of
   the design (decision 3: the evaluation unchanged). *Depends on:* T19 (the ceiling may change its
-  weight). *Status:* waiting.
+  weight; done: PPO leaves the teacher, `e25-clone-1` #2 agrees 0.270). *Status:* next (the
+  sandbox; beside T20).
 - **T22 The A/B.** *Scope:* on the user's machine, `e25-neutral.toml`'s mix at 20 M and seed 1:
   `e25-clone-2` from T20's student and `e25-imitate-1` from it with T21's loss (the arms fixed
   by T19 to T21's reads when prepared), against `e25-clone-1` (T17, the control); the records

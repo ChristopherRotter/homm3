@@ -114,6 +114,13 @@ per student the cross-entropy per head, the agreement overall, per category and 
 heads, the value's scores and the training seconds (the returns' mean and variance beside
 them); `ladders` each student's rows on the report set v1 and the neutral set v1.
 
+`distill/ceiling/ceiling-<n>.json` (E25 T19): the teacher's ceiling (`h3env.train.ceiling
+--json`): the fair actor's draws per state on a cloning bench's held-out distribution, overall
+and per category of each draw their `mode` and `pair` shares, the entropy (plug-in and
+Miller-Madow), the distinct entries, the cast heads' mode, and each scored network's agreement
+and cross-entropy against the draws; the teacher, the states, episodes, lost choices, seconds
+and the identity.
+
 ## The search's measurements
 
 `search/<run>-<set>-<N>[-<per kind>].json` (E06 T8c): `python -m h3env.search --report --best
