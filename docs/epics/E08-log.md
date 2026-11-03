@@ -11343,4 +11343,7 @@ passed every step it runs but `check-lane` (by design on a `cross-lane` branch; 
 check-lane --cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo check --workspace
 --all-targets`, the clients' `cargo check -p h3-view -p h3-map-view --all-targets` (SDL's apt
 packages installed first) and clippy with `-D warnings` on `h3-experiment`, `h3-cli`, `h3-view`
-and `h3-map-view` clean. CI's full verify on the pull request is the record.
+and `h3-map-view` clean. CI's full verify on the pull request is the record: its first run failed
+one random case of `tests::view::a_viewer_learns_nothing_it_cannot_see` on `master`'s code (a
+viewer's own income moved by an unseen change; the test lays out a `RawMap`, no writer), reproduced
+locally with its seed and left to a task of its own (the lane's inbox, the seed uncommitted).

@@ -23,6 +23,19 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-03 (the adventure lane, E08 T89a, PR #688; **a failing property case on `master`'s code,
+  for a task of its own**): CI's full verify on #688 (run 41694189742) found a case of `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` that fails at `view.rs:1405`: the viewer's
+  events at day 2's start differ between the game and its copy with the unseen changes,
+  `ResourceGained { player: PlayerId(2), resource: #5, amount: 1 }` in one and not the other (the
+  viewer's own income moved by something it cannot see). Independent of T89a (the test lays out a
+  `RawMap`, no writer); reproduced locally in 12 s by appending `cc
+  4ceb0bd67ba12482c10781aa43bd0edf62cdcbf92752404a3c05e6a995b42fdf` to
+  `crates/h3-map/proptest-regressions/tests/view.txt` (not committed: it would fail every run until
+  fixed). The shrunk plan: RoE, side 5, one level, the full input in that run's job log
+  (`gh api repos/ChristopherRotter/homm3/actions/jobs/<id>/logs` reads it). Commit the seed with
+  the fix.
+
 - 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
   unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
   `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
