@@ -3,7 +3,8 @@
 //! (ADR-0028 point 5): [`compile`] over the enabled packs' files in dependency order onto a
 //! compiled core, overrides as ADR-0006's; a pack folder without the file reads as an empty one
 //! (`packs/README.md`). The base pack holds the eight factions' town records, the AB pack
-//! Conflux's, the SoD pack its overrides (E09 T5b harvests them). Parsing is strict like
+//! Conflux's, the SoD pack its overrides (harvested by `h3-harvest` since E09 T5b2b2:
+//! [`ORIGINAL_PACKS`]). Parsing is strict like
 //! `h3-pack`'s (unknown fields are errors, numbers must fit their types), and the compiler
 //! validates everything again (E09 increment 1's design note §2).
 //!
@@ -88,6 +89,21 @@ use serde::Deserialize;
 pub const SYNTHETIC_TOWNS: &str = include_str!("../../../packs/synthetic/towns.toml");
 /// The synthetic expansion's town file (tests).
 pub const SYNTHETIC_EXT_TOWNS: &str = include_str!("../../../packs/synthetic-ext/towns.toml");
+/// The base pack's town file (harvested, E09 T5b2b2): the eight RoE factions' records and the
+/// parameters.
+pub const BASE_TOWNS: &str = include_str!("../../../packs/base/towns.toml");
+/// The AB pack's town file (harvested): Conflux's record.
+pub const AB_TOWNS: &str = include_str!("../../../packs/ab/towns.toml");
+/// The SoD pack's town file (harvested): the moats as SoD plays them, overrides.
+pub const SOD_TOWNS: &str = include_str!("../../../packs/sod/towns.toml");
+
+/// The original packs' `(core.toml, towns.toml)` texts in load order (`base`, `ab`, `sod`), for
+/// [`compile`].
+pub const ORIGINAL_PACKS: [(&str, &str); 3] = [
+    (h3_pack::BASE_CORE, BASE_TOWNS),
+    (h3_pack::AB_CORE, AB_TOWNS),
+    (h3_pack::SOD_CORE, SOD_TOWNS),
+];
 
 /// Errors of this adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]

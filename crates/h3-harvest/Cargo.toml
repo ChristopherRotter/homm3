@@ -14,6 +14,7 @@ path = "src/main.rs"
 [dependencies]
 h3-formats.workspace = true
 h3-pack-battle.workspace = true
+h3-pack-towns.workspace = true
 serde.workspace = true
 toml.workspace = true
 

@@ -593,3 +593,56 @@ test, `packs/README.md`'s row).
   packs; otherwise `h3-pack-towns`' test of the original packs is the compile check (the queue's
   acceptance).
 
+
+### T5b2b2 — the content harvested (2026-11-03)
+
+One session, the user present; branch `town/e09-t5b2b2` (`cross-lane`: the battle lane's
+`h3-harvest`, its gap-fill and `packs/README.md`, as T5b2b1), stacked on
+`shared/e09-harvest-towns-edge`. Starting point: `master` at 3fd3665 (#684 T5b2b1 merged; CI on
+`master` green there; the sandbox's baseline the light gates); the original data staged
+(`Heroes3.exe`, both LODs, `extracted.tar`, `maps.tar`). **At its start** (the user, asked): the
+task whole, one pull request (not base's eight factions first, then AB and SoD); **the harvester
+compiles the town files itself**, so a `shared/` pull request first adds `arch.toml`'s edge
+`h3-harvest` → `h3-pack-towns` (not `h3-pack-towns`' test as the only compile check).
+
+- **`h3-harvest`'s `towns` module** (`harvest_towns`, run by `main.rs` after the core harvest on
+  its core files; separate from `harvest` so the crate's fixture keeps its one-level creatures):
+  per faction of `TownType.txt` (base's or, by the gap-fill's `[ab]`, ab's) a record of the
+  faction's listed buildings and the Village Hall; the names from `BldgNeut.txt` (ids 0 to 14,
+  the Blacksmith's row 17), `BldgSpec.txt` (11 rows a faction: 17 to 26, then the silo 15) and
+  `Dwelling.txt` (14 rows a faction), keys `key_of` the names, an upgraded horde `upg_` its
+  horde's (*agent's call*, as the upgraded dwellings' "Upg." names); `slot` from
+  `map_building_ids` (a slot naming a building the faction lacks, a Castle's fifth guild level,
+  gives none); `supersedes` the common list's entries of its buildings and the faction's, direct,
+  in the file's order; an upgraded horde `forbidden_with` its horde and `auto_with` its horde and
+  its level's upgraded dwelling (the level the horde creature's index among the seven, checked
+  against the dwelling the horde supersedes); the dwellings' roles from their ids, the others
+  from the gap-fill; the seven levels with their upgrades from `town_creatures` (a creature of
+  another pack written `pack:key`, `base` refusing one outside its closure); the silo's nonzero
+  amounts; the moat. `[town_params]` in `base`; `sod` the overrides where SoD's siege differs.
+  Refused: a count, a name or a horde that does not fit, a key or a slot twice, a supersede of a
+  building the faction lacks, a role twice or on a building the faction lacks. The three files
+  compile with `h3-pack-towns` on the harvested core files in every allowed combination and
+  both profiles before they are returned. A report line: requirements, costs and the hordes'
+  growth not harvested.
+- **The gap-fill's `[towns]`** (`gapfill.rs`' `Towns`, optional elsewhere, three sources
+  `exe-town-income`, `exe-town-siege`, `exe-town-roles` citing the survey's §8.3, §8.4, §9.4,
+  §11.1, §16.6): `params` (gold, the halls' 500/1 000/2 000/4 000, the Grail's 5 000, the reveal's
+  5, the demoted Capitol building 12); `moat` (RoE and AB harmless, SoD damaging, the Stronghold
+  absent with natural obstacles under RoE and AB, damaging without under SoD; design §3); `role`
+  (21 entries: the halls, forts, Tavern with morale +1, silo and Grail of every faction; the
+  Castle's Brotherhood, the Rampart's Fountain, the Tower's Lookout and Grail, the Inferno's
+  Stormclouds, the Dungeon's, Stronghold's and Fortress' Grails, the escape tunnel, the Fortress'
+  21 and 22 by TD-8's code).
+- **The packs:** `base` 1 958 lines (the parameters, eight records), `ab` Conflux's (its
+  elementals `base:` and their upgrades `ab`'s, the silo `"base:mercury"`), `sod` nine overrides;
+  each record the survey's count + 1 (36, 38, 37, 38, 37, 37, 35, 35, 36). `core.toml` and
+  `battle.toml` unchanged.
+- **`h3-pack-towns`:** `BASE_TOWNS`, `AB_TOWNS`, `SOD_TOWNS`, `ORIGINAL_PACKS`; the test
+  `the_original_packs_compile_with_every_faction` (RoE, AB and SoD; both profiles; the nine
+  records' levels, upgrades and counts, the Village Hall, the demoted Capitol, the moats by
+  edition, the parameters, a role of each kind, the Castle's upgraded horde).
+- **Tests of the harvest:** three synthetic factions (two in `base`, one in `ab` with its creatures
+  in `ab`) with seven levels each: the files' shape and determinism; every refusal above; the
+  gap-fill's errors; a file that does not compile.
+- **Docs:** `packs/README.md` (the file's row, the harvest writes three files).
