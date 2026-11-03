@@ -9,11 +9,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 done
   (#620 merged); T2 cut in three by the user (2026-11-02): T2a1 done (#645), T2a2a done (#650);
   T2a2b cut in two: T2a2b1 done (#658), T2a2b2 done (#661); T2b cut in two by the user
-  (2026-11-03): **T2b1 done** (the right button's held dialog over any stack, design §12.5; T2a1's
-  Ballista slip fixed; five stills exact; #668 from `client/e17-m6-t2b1`: check it first);
-  **next: T2b2** (a turret's info, its code read at T2b1: the map's `turret_info`,
-  `turret_info_line`), T3 to T7; this lane's inbox: the descriptions' other lines once the
-  battle lane's carry lands; then M7 ranked play and the server browser.
+  (2026-11-03): T2b1 done (#668), **T2b2 done** (a siege turret's info by either button, design
+  §12.6; four stills, two exact, two with 35 listed shadow pixels; a box before the first turn
+  framed by the opening's side; #672 from `client/e17-m6-t2b2`: check it first); T2 done.
+  **Next: T3** (the right button's other popups; the held popup over the battle is T2b2's
+  `Asked::Held`), T4 to T7; this lane's inbox: the descriptions' other lines once the battle
+  lane's carry lands; then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -42,7 +43,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T2b1 (done; #668 open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T2b2 (done; #672 open: check it first).** The original data staged
+  (57 files) first; the baseline's `check.sh` passed; #668 had merged. Read the turret's info's
+  three functions and both callers (design §12.6); built `h3_view::turret`, `mouse::turret_at`,
+  the box and the held popup in the window and the stills; the observation's parts are by
+  wall-shot target (a first capture showed it); `box_player`'s opening fixed; four stills
+  recorded (35 shadow pixels listed in two); the window checked under Xvfb; `drawn`; `check.sh`.
+
+- **2026-11-03, E17 M6 T2b1 (done; #668 merged).** The original data staged
   (57 files) first; the baseline's `check.sh` passed; #661 had merged. The user cut T2b in two
   (T2b1 the stack's held dialog, T2b2 a turret's info). Read `battle_right_click` whole and the
   held branch (design §12.5), `turret_info` for T2b2; built `mouse::held_at` and the held dialog
@@ -55,10 +63,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   public as VCMI) and CLT-Q41 (both fixed); the requests written; built the library's
   `stats::describe` and the binary's `stats::account`, fixed T2a1's double count; seven stills
   exact at their first capture; the VM restarted once (files kept); `drawn`; `check.sh`.
-
-- **2026-11-02, E17 M6 T2a2b1 (done; #658 merged).** The original data staged
-  (57 files) first; the baseline's `check.sh` passed; #650 had merged. The user cut T2a2b in two
-  and answered CLT-Q39. Read the right button's descriptions, the held popup's loop and the cast
-  button's path (design §12.3); built them; four stills and `dragon-button` exact at their first
-  capture; the window checked under Xvfb (a hang behind the held popup found and fixed); `drawn`;
-  `check.sh`.

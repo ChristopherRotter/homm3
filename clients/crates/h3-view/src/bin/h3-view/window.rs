@@ -761,6 +761,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 Event::KeyUp(_) if options.run.is_some() => {}
+                // A turret's info held by the right button over the battle (E17 M6 T2b2, design
+                // §12.6; `popup_run_held` 0x602A40): its ends (the right button's release, a left
+                // press or release) close it; every other input is dropped, the moves too (the
+                // battle takes none meanwhile, nor after: nothing is posted, 0x476BBF).
+                Event::KeyUp(Key::RightButton) | Event::Click { .. } if battle.popup_held() => {
+                    book_changed |= battle.popup_end();
+                }
+                Event::Key(_) | Event::KeyUp(_) if battle.popup_held() => {}
+                Event::Pointer(p) if battle.popup_held() => pointer = p,
                 // The stats dialog's right button's description (E17 M6 T2a2b1, design §12.3),
                 // held while the button is: the popup's loop (0x602A40) takes only its ends (the
                 // right button's release, a left press or release) and drops every other input
@@ -833,6 +842,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         if battle.look_held(at, point) {
                             inputs.push(Input::Look { at });
                             book_changed = true;
+                        } else {
+                            // Else a turret's info held (E17 M6 T2b2, design §12.6).
+                            book_changed |= battle.turret_info(at, point, true);
                         }
                         continue;
                     }
@@ -1155,6 +1167,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         // A stack to look at: its stats dialog (E17 M6 T2a2a).
                         inputs.push(Input::Look { at });
                         book_changed = true;
+                    } else if battle.turret_info(at, [x, y], false) {
+                        // A turret: its info in a box, the combat cursor's pointer set first
+                        // (0x476E22; E17 M6 T2b2).
+                        inputs.push(Input::Look { at });
+                        book_changed = true;
                     }
                 }
                 Event::Click { down: false, .. } => {
@@ -1210,8 +1227,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // it changes.
         let ms = clock.ms(win.ticks_ns());
         let frame = battle.cursor(ms);
-        // The stats dialog's popup hides it too (`mouse_hide` 0x602A6C; E17 M6 T2a2b1).
-        let visible = !battle.timeline().cursor_hidden(ms) && !battle.stats_popup();
+        // The stats dialog's popup hides it too (`mouse_hide` 0x602A6C; E17 M6 T2a2b1), and a
+        // turret's info held (T2b2).
+        let visible =
+            !battle.timeline().cursor_hidden(ms) && !battle.stats_popup() && !battle.popup_held();
         if (&frame, visible) != (&frame_now, cursor_visible) {
             let image = if visible && !drawn_cursor {
                 Some(cursors.get(&battle, &frame)?.1)
@@ -1478,6 +1497,11 @@ fn message_did(
     *changed |= did != MessageDid::Nothing;
     match did {
         MessageDid::Give(command) => give(battle, inputs, at, command),
+        // A turret's info closed (E17 M6 T2b2): the battle takes the mouse again (0x476E34).
+        MessageDid::Looked => {
+            inputs.push(Input::Looked { at });
+            Ok(false)
+        }
         MessageDid::Nothing | MessageDid::Changed | MessageDid::Ended => Ok(false),
     }
 }
@@ -1648,6 +1672,12 @@ impl Presser {
             MessageDid::Give(command) => {
                 self.left = Some(command);
                 give(battle, inputs, now, command)
+            }
+            // The presser never presses a turret (E17 M6 T2b2): its box closed, the battle takes
+            // the mouse again all the same.
+            MessageDid::Looked => {
+                inputs.push(Input::Looked { at: now });
+                Ok(true)
             }
             MessageDid::Changed | MessageDid::Nothing | MessageDid::Ended => Ok(true),
         }

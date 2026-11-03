@@ -12,7 +12,7 @@ use super::track::Look;
 use super::{
     DEFEND, Facing, Field, Hint, Kind, Legal, NEXT_CREATURE, Pointer, START_COMBAT, Slot, Spot,
     WAIT, attack_slots, button, click, cursor, distance, held_at, look_cursor, looked_at,
-    neighbour, pointer, pointer_in, slot, slots, spot, walls_halve,
+    neighbour, pointer, pointer_in, slot, slots, spot, turret_at, walls_halve,
 };
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
@@ -967,4 +967,47 @@ fn the_right_button_shows_any_stack_on_the_hex() {
     let mut idle = o;
     idle.active = None;
     assert_eq!(held(&idle, centre(90), Bugs::Fixed), Some(1));
+}
+
+#[test]
+fn a_turret_s_info_shows_by_either_button() {
+    // E17 M6 T2b2 (`turret_info` 0x47A380): the left press where the cursor is a turret's (22),
+    // the right button over the keep's rectangle, a Castle's upper tower's or its lower tower's
+    // hex 183 without a stack, whatever the cursor; nothing below a Citadel, off the battlefield,
+    // over a hero or another hex.
+    let shows = |o: &Observation, legal: &Legal, point, right| {
+        let field = Field {
+            observation: o,
+            legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        };
+        turret_at(&field, &layout(), point, right)
+    };
+    let none = Legal::new(&[]);
+    let castle = siege(3);
+    for right in [false, true] {
+        for point in [KEEP, TOWER, centre(183)] {
+            assert!(shows(&castle, &none, point, right), "{point:?} {right}");
+        }
+        for point in [centre(98), centre(100), [0, 16], [700, 570]] {
+            assert!(!shows(&castle, &none, point, right), "{point:?} {right}");
+        }
+    }
+    // The Catapult's target under the keep: the left press shoots it, the right button tells.
+    let all = catapult(&[7]);
+    assert!(!shows(&castle, &all, KEEP, false));
+    assert!(shows(&castle, &all, KEEP, true));
+    // A stack on hex 183 shows its own dialog.
+    let mut taken = castle.clone();
+    taken.stacks.push(stack(5, Side::Defender, 0, 183, false));
+    assert!(!shows(&taken, &none, centre(183), true));
+    // A Citadel: the keep alone; a Fort: nothing.
+    let citadel = siege(2);
+    for right in [false, true] {
+        assert!(shows(&citadel, &none, KEEP, right));
+        assert!(!shows(&citadel, &none, TOWER, right));
+        assert!(!shows(&citadel, &none, centre(183), right));
+        assert!(!shows(&siege(1), &none, KEEP, right));
+    }
 }

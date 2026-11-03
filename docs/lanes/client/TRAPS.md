@@ -172,7 +172,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   steps 30 000 ms at about 20 a second (25 minutes): probe the turn order with `at:<ms>` first.
 - Sieges: machines acting on their own at the opening act before the record opens (CLT-Q20: the
   defender commands its turrets); the turrets' counts need `structures = 1`; in hot seat the
-  original shows the side to act's view (runbook, "A siege").
+  original shows the side to act's view (runbook, "A siege"). The wire's `Siege::parts` are by
+  wall-shot target (8: the upper tower 0, the lower tower 6, the keep 7), not by the original's
+  18 parts: `siege::TARGET_PARTS` maps them (E17 M6 T2b2). The opening's turn is not in the
+  timeline's `turns` (its start precedes the record): before the first, the opening's active
+  stack acts (`Battle::box_player`, `Panels::new`).
 - The Bink decoder (`h3-bink`, E17 M5 T4b2a) is checked against FFmpeg only through
   `clients/scripts/bink-reference.py` (PyAV, each frame released before the next): the `ffmpeg`
   command line holds the frame before, so its decoder copies only the picture's rows into a new

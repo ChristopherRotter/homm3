@@ -340,6 +340,20 @@ original = [{ at = "GENRLTXT:298", printf = ["creature"] }]
 id = "battle.hint.turret"
 original = [{ at = "GENRLTXT:157" }]
 
+# A siege turret's info (`turret_info` 0x47A380, `turret_info_line` 0x47A2D0; E17 M6 T2b2): one
+# message per turret, the keep's first, then a Castle's upper and lower tower's, one after
+# another; the part's name (`wall.<faction>.<part>`), the attack skill and the damage's ends while
+# it stands, else that it is destroyed. The original's texts start with two line breaks each.
+[[key]]
+id = "battle.turret.standing"
+args = { part = "text", attack = "number", low = "number", high = "number" }
+original = [{ at = "GENRLTXT:156", printf = ["part", "attack", "low", "high"] }]
+
+[[key]]
+id = "battle.turret.destroyed"
+args = { part = "text" }
+original = [{ at = "GENRLTXT:155", printf = ["part"] }]
+
 [[key]]
 id = "battle.hint.heal"
 args = { creature = "text" }

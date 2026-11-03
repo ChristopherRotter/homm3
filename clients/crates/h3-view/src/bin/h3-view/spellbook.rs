@@ -207,6 +207,9 @@ pub struct Still {
     /// The stats dialog a press on a stack to look at or the key T opened (E17 M6 T2a1, T2a2a),
     /// over the battle, with what the actions did to it.
     pub stats: Option<crate::stats::Open>,
+    /// The message box is the right button's popup over the battle, held (E17 M6 T2b2: a
+    /// turret's info): no cursor (`popup_run_held` 0x602A40).
+    pub held: bool,
 }
 
 impl Still {
@@ -249,6 +252,9 @@ pub struct Boxes<'a> {
     /// The stats dialog the right button held at a point over the battle shows (E17 M6 T2b1;
     /// none: no stack on the hex there).
     pub held: &'a dyn Fn([i32; 2], &mut StatsMemory) -> Option<crate::stats::Open>,
+    /// The turret's info a press at a point over the battle shows, by the left button or the
+    /// right (E17 M6 T2b2; none: no turret's info there).
+    pub turret: &'a dyn Fn([i32; 2], bool) -> Option<String>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -271,7 +277,9 @@ struct Asking {
 /// moves the mouse there, presses and releases (the open box's or book's) and parks it;
 /// `move:<x>,<y>` moves it, over the open book its hover (0x59D6C4); `right:<x>,<y>` over the
 /// battle (E17 M6 T2b1) moves it there and holds the right button down: the stack there shows its
-/// stats dialog while held (the entry's last action). The book's refusal and
+/// stats dialog while held, else a turret's info its popup (E17 M6 T2b2; the entry's last
+/// action); a `click:` over the battle opens a stack's stats dialog or a turret's info box (E17 M6
+/// T2a1, T2b2). The book's refusal and
 /// description open their boxes over it, a spell no hex takes "affects no one" over the battle.
 /// A box's OK that gives a command (Retreat's, Surrender's) ends the battle in its result window
 /// (E17 M5 T4b1), which a later key or click takes as the box's. A move to the park point after a
@@ -300,6 +308,7 @@ pub fn still(
         arrow: false,
         over: None,
         stats: None,
+        held: false,
     };
     let mut result: Option<(h3_view::message::Open, Tune)> = None;
     let mut asking: Option<Asking> = None;
@@ -377,6 +386,11 @@ pub fn still(
         }
     }
     for action in actions {
+        if still.held {
+            return Err(format!(
+                "`{action}`: the right button is held: nothing comes after `right:`"
+            ));
+        }
         // The stats dialog open (E17 M6 T2a2a): its moves, its OK's click and keys.
         if let Some(open) = still.stats.as_mut() {
             let tell = boxes.map(|b| b.tell);
@@ -507,6 +521,11 @@ pub fn still(
                     stats.modal.hover(&mut stats_memory, crate::pointer::PARK);
                     still.stats = Some(stats);
                     continue;
+                } else if let Some(text) = boxes.and_then(|b| (b.turret)(to, false)) {
+                    // A turret's info in its box (E17 M6 T2b2), which takes the park's move; the
+                    // battle's status line keeps the press's hint.
+                    asking = tell(&text, Style::Ok, None, Asked::Turret);
+                    still.over = Some(to);
                 }
                 // The tactics phase's message closed: the first turn starts (CLT-Q32).
                 if still.opening && asking.is_none() {
@@ -543,6 +562,10 @@ pub fn still(
                 still.arrow = false;
                 if let Some(open) = boxes.and_then(|b| (b.held)(to, &mut stats_memory)) {
                     still.stats = Some(open);
+                } else if let Some(text) = boxes.and_then(|b| (b.turret)(to, true)) {
+                    // Else a turret's info in its popup (E17 M6 T2b2).
+                    asking = tell(&text, Style::Popup, None, Asked::Held);
+                    still.held = asking.is_some();
                 }
             }
             "move" => {
@@ -931,6 +954,7 @@ pub(crate) mod tests {
             look: &|_, _| None,
             acting: &|_, _| None,
             held: &|_, _| None,
+            turret: &|_, _| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -962,6 +986,64 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn a_turret_s_info_opens_by_a_click_or_held_by_the_right_button() {
+        // E17 M6 T2b2: a click where the turret's info shows opens its box (the park's move its
+        // own, the battle's hint the press's); the right button held its popup, no cursor, the
+        // entry's last action.
+        let tell = |_: &str, style, _: Option<&Picture>| {
+            let id = if style == Style::Popup {
+                0
+            } else {
+                h3_view::message::OK
+            };
+            Some(one_button(id))
+        };
+        let turret = |point: [i32; 2], _: bool| (point == [770, 250]).then(|| String::from("info"));
+        let boxes = Boxes {
+            tell: &tell,
+            leave: Leave::default(),
+            no_one: &|_| false,
+            pictures: (String::new(), [0, 0]),
+            result: &|_| None,
+            opening: None,
+            look: &|_, _| None,
+            acting: &|_, _| None,
+            held: &|_, _| None,
+            turret: &turret,
+        };
+        let catalogue = Catalogue::default();
+        let played = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                crate::pointer::PARK,
+                || None,
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+        };
+        let clicked = played(&["click:770,250"]).unwrap();
+        assert!(clicked.message.is_some() && !clicked.held);
+        assert_eq!(
+            (clicked.over, clicked.mouse),
+            (Some([770, 250]), crate::pointer::PARK)
+        );
+        assert!(
+            played(&["click:770,250", "click:20,20"])
+                .unwrap()
+                .message
+                .is_none()
+        );
+        assert!(played(&["click:600,40"]).unwrap().message.is_none());
+        let held = played(&["right:770,250"]).unwrap();
+        assert!(held.message.is_some() && held.held);
+        assert_eq!(held.over, Some([770, 250]));
+        assert!(played(&["right:770,250", "move:5,5"]).is_err());
+        let nothing = played(&["right:600,40"]).unwrap();
+        assert!(nothing.message.is_none() && !nothing.held);
+    }
+
+    #[test]
     fn the_tactics_phase_s_message_is_open_at_the_opening_until_its_ok() {
         // E17 M5 T4c2a: the battle stands before its first turn behind it; its OK by Enter or a
         // click starts the turn, no result follows.
@@ -976,6 +1058,7 @@ pub(crate) mod tests {
             look: &|_, _| None,
             acting: &|_, _| None,
             held: &|_, _| None,
+            turret: &|_, _| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
