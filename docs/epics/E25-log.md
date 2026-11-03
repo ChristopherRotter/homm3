@@ -887,3 +887,16 @@ an entry only where a task builds on it.
     Exit criterion 1 is not met: 0.046 short of 0.5 against the all-seeing actor and the value
     still negative; the neutral target within its interval. The fair and the all-seeing
     columns stay equal (T15).
+
+## T18 — Increment 5's checkpoint (2026-11-03)
+
+- **The user's choices** (AI-Q15, the agent's recommendation on both): **`e25-clone-1` #2 is
+  the current best** (T11's rule: its head-to-head against `e25-sharp-1` #2 0.564, promoted);
+  **increment 6 is better imitation**: the teacher's ceiling first (how often the fair actor
+  repeats its own choice), a longer clone, an imitation loss decaying during PPO, then PPO from
+  them against `e25-clone-1`. Increment 5 closes (`E25-archive.md`); increment 6's decisions
+  and tasks T19 to T23 in the epic file, their scope in the AI queue.
+- **Increment 5 in one line:** the fair system actor plays as strongly as the all-seeing one
+  against the lineage (T15), the neutral kinds back in training buy +0.024 on the neutral set
+  for a little on the report set (T17's control), and a warm start by cloning the fair actor
+  moves every column past E25's earlier ceiling (T17: 0.454, +0.282).
