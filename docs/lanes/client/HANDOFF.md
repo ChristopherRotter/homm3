@@ -10,8 +10,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#620 merged); T2 cut in three by the user (2026-11-02): T2a1 done (#645), T2a2a done (#650);
   T2a2b cut in two: T2a2b1 done (#658); **T2a2b2 done** (morale's and luck's descriptions as far
   as the observation tells their sources, design §12.4; CLT-Q40: the rest requested in the battle,
-  server and adventure lanes' inboxes, public when carried; CLT-Q41 fixed; seven stills exact; the
-  PR from `client/e17-m6-t2a2b2`: check it first); **next: T2b** (the right button's popup over a
+  server and adventure lanes' inboxes, public when carried; CLT-Q41 fixed; seven stills exact; #661
+  from `client/e17-m6-t2a2b2`: check it first); **next: T2b** (the right button's popup over a
   stack, the turret's info), T3 to T7; this lane's inbox: the descriptions' other lines once the
   battle lane's carry lands; then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -42,7 +42,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T2a2b2 (done; its PR open: check it first).** The original data staged
+- **2026-11-03, E17 M6 T2a2b2 (done; #661 open: check it first).** The original data staged
   (57 files) first; the baseline's `check.sh` passed; #658 had merged. Read both descriptions
   whole (design §12.4); CLT-Q40 (the user: build what the observation allows, request the rest,
   public as VCMI) and CLT-Q41 (both fixed); the requests written; built the library's
