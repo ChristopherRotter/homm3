@@ -18,23 +18,20 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T3c — morale's and luck's descriptions' carried lines
+### E17 M6 T3c2 — the descriptions' overrides, the Alliance and a siege town's buildings
 
-- **Scope:** the inbox's item of 2026-11-03 (CLT-Q40 carried by the battle lane, BAT-Q64,
-  protocol v37; the entry in `QUEUE-ARCHIVE.md`): the stats dialog's morale and luck
-  descriptions (design §12.4, its *not built*) from `Observation.morale_and_luck`,
-  `Siege.bonuses` and `Stack.unclamped_morale`, `unclamped_luck`: the hero's lists
-  (`hero_morale_description` 0x4DC320 and `hero_luck_description` 0x4DCAC0 read whole for their
-  lines' texts: the Leadership or Luck level, the artifacts worn or in a combination, the visits
-  by their once-marks, the owner's Grail building, the temporary rest), the Hourglass's and the
-  Spirit of Oppression's suppression lines, the Angelic Alliance's join of the alignments, a
-  siege town's buildings, and the header and picture by the unclamped value; each line not
-  derivable listed. Until the adventure lane splits the battle bonuses by visit, they come as
-  one temporary line each, as the original's rest. Recorded: the lines the battle's map can give
-  (Leadership, Luck, a siege town's buildings).
-- **Acceptance:** as T2a2b2's. **Depends on:** T2a2b2 (done), the carry (#685, merged).
-  **Status:** ready; cut at its start with the user (likely: the hero's lists read and drawn,
-  then the rest).
+- **Scope:** T3c's rest (T3c1 done 2026-11-03: the hero's lists and the unclamped value, design
+  §12.9; T3c's entry in `QUEUE-ARCHIVE.md`), from `Observation.morale_and_luck` and
+  `Siege.bonuses` (design §12.4): the Hourglass of the Evil Hour's line (82, alone; a
+  `LuckAtMost` reaching the side, either hero's), the Spirit of Oppression's (119, replacing the
+  lines before it while the base is above 0; a `MoraleAtMost`), the Angelic Alliance's join of
+  the alignments (an `AlignmentGroup`: its factions count as one), a siege town's buildings
+  (morale's building 5 +1, 0x660B48, and a Castle's 22 +2; luck's Rampart building 21 +2,
+  0x660B40) and the owner's Grail line (§12.9; a `Building` source), both by a town record's
+  index (the town lane's records, `packs/*/towns.toml`: the index to the building's original
+  id); CLT-Q42 if answered by then; each line not derivable listed.
+- **Acceptance:** as T2a2b2's; recorded: a siege town's buildings (the battle's map writes the
+  town). **Depends on:** T3c1 (done). **Status:** ready.
 
 ### E17 M6 T4 — the combat options dialog
 

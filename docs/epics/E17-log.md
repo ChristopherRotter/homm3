@@ -4168,6 +4168,39 @@ baseline's `check.sh` passed. Small once read: no cut.
 - **The queue:** the inbox's CLT-Q40 item became T3c (the descriptions' carried lines), its
   entry in `QUEUE-ARCHIVE.md`.
 
+### M6 T3c1 — the hero's lists in morale's and luck's descriptions (2026-11-03)
+
+On `client/e17-m6-t3c1`, the user present. The sandbox new, the original files staged first
+(57 files); #690 had merged; the baseline's `check.sh` passed. The user cut T3c in two at its
+start (T3c1 the hero's lists and the unclamped value, T3c2 the Hourglass's and the Spirit of
+Oppression's lines, the Angelic Alliance's join and a siege town's buildings).
+
+- **Read** (design §12.9): `hero_morale_description` 0x4DC320 and `hero_luck_description`
+  0x4DCAC0 whole, `town_building_name` 0x4610E0. Each line's change is its text's own number:
+  the cheat's mark (luck bit 22, morale bit 23: the map's summary had 22 for both), the Pendant of
+  Courage first (+3), the +1 artifacts, the visits by +0x105's bits (12 for morale, 8 for luck,
+  the Fountain of Fortune's line with four amounts), the skill by level, the owner's first Castle
+  (morale) or Rampart (luck) with the Grail's building ("%s +2"), then the hero's own value less
+  the sum as temporary. The stack's description calls the list when the side has a hero
+  (0x44BA58, 0x44C2A5); its changes are in the base, so the minimums and the spells' line count
+  them. The dialog's values (+0x4E8, +0x4EC) are not clamped: the wire's `unclamped_*`.
+- **Seams moved** (agent, *provisional*): the visits (their once-marks name no object on the
+  wire) and the Grail's building (a town record's index; with T3c2's siege buildings, which need
+  the same mapping) fall into the rest, as the original's rest holds what its lines do not name;
+  the specialty too. The lines carry the texts' own changes, the rest the total less them.
+- **The library:** `stats::describe::HeroList` (`Account::hero_morale`, `hero_luck`), the lines
+  first in both descriptions, their total in the base; the keys `stats.<morale|luck>.artifact`,
+  `.skill`, `.temporary` (contexts). **The binary:** `stats::hero_list` (the listed side's
+  changes to its own stacks, the skill and artifacts by their keys), `stats::of` with the
+  unclamped values (the dialog's pictures and the descriptions' header and picture).
+- **Recorded:** `stats-morale-skill` (Advanced Leadership, one alignment), `stats-luck-skill`
+  (Expert Luck), `stats-luck-devils` (the Archangels' luck −1 facing Arch Devils: bad, frame 2);
+  all exact at their first capture. Not recorded: artifacts, a temporary line (the battle's map
+  gives neither), the visits and the Grail (not built).
+- **Checked:** `drawn` (three new, the rest the same); `clients/scripts/check.sh`; the scoped
+  verify with the original data; `scripts/exe.py check` and `cited` (the map's two entries read,
+  `town_building_name` and `fountain_of_fortune_luck_texts` added).
+
 ## Accepted review lists (M1 to M5)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

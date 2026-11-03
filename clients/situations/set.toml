@@ -1494,6 +1494,45 @@ at = 0
 differing = 0
 why = "exact: on Cursed Ground its luck line alone (E17 M6 T2a2b2)"
 
+# E17 M6 T3c1: the hero's list first (`hero_morale_description` 0x4DC320, `hero_luck_description`
+# 0x4DCAC0; design §12.9), and the header and pictures by the stack's unclamped value.
+# `stats-morale-skill`: the Royal Griffins' morale with Orrin's Advanced Leadership and one
+# alignment; `stats-luck-skill`: their luck with his Expert Luck; `stats-luck-devils`: the
+# Archangels' luck facing the defender's Arch Devils, -1 (bad: frame 2, the dialog's too).
+
+[[situation]]
+id = "stats-morale-skill"
+scenario = "stats-skills.toml"
+seat = "attacker"
+actions = ["key:t", "right:44,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Royal Griffins' morale, good: Advanced Leadership's line first, then one alignment (E17 M6 T3c1)"
+
+[[situation]]
+id = "stats-luck-skill"
+scenario = "stats-skills.toml"
+seat = "attacker"
+actions = ["key:t", "right:98,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: their luck, good: Expert Luck's line (E17 M6 T3c1)"
+
+[[situation]]
+id = "stats-luck-devils"
+scenario = "stats-devils.toml"
+seat = "attacker"
+actions = ["key:t", "right:98,280"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Archangels' luck -1, bad: facing the Arch Devils, frame 2 here and in the dialog (E17 M6 T3c1)"
+
 
 # E17 M6 T2b1: the right button held over the battle (`battle_right_click` 0x4769C0; design
 # §12.5): the stack on the hex there, either side's, shows its stats dialog without the OK and the
