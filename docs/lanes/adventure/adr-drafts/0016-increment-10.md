@@ -1,8 +1,9 @@
 # ADR-0016 amendment (draft): increment 10, dwellings and hiring (the map side)
 
 - Status: Draft (E08 T88b1, 2026-11-03), from the survey `docs/rules/surveys/E08-dwellings.md` and
-  the user's answers at ADV-Q41 and ADV-Q42 with decision 238 (E08 decisions 231, 235–238); for
-  the user at ADV-Q43 (T88b2's checkpoint), then into ADR-0016 through a `shared/` pull request.
+  the user's answers at ADV-Q41 and ADV-Q42 with decision 238 (E08 decisions 231, 235–238);
+  **accepted as written** at ADV-Q43 (T88b2's checkpoint, decision 241); into ADR-0016 through
+  T92's `shared/` pull request with batch E10's outcome.
 - Amends: ADR-0016 points 1, 3, 4, 5 and 6 (each text below goes in after the point's increment 9
   and E09 parts); its revision history.
 - Detail: `docs/epics/E08-design.md` parts A and B (§1 to §11). The game's side (the hire dialog
@@ -102,8 +103,8 @@ counts and costs and the purchases are told to the visitor's owner alone. A flag
 tiles are, its reveal told to the new owner; the guards' battle is seen as any battle; the week's
 refill and the camps' draws are told to no one. `docs/06-security.md` lists it.
 
-**Revision history**, a line: the date of the `shared/` pull request (E08 T88b2's checkpoint, the
-user at ADV-Q41 to ADV-Q43): points 1, 3, 4, 5 and 6 amended for E08 increment 10, dwellings and
+**Revision history**, a line: the date of the `shared/` pull request (E08 T92, the user at ADV-Q41
+to ADV-Q43): points 1, 3, 4, 5 and 6 amended for E08 increment 10, dwellings and
 hiring. Drafted in E08 T88b1 (survey `E08-dwellings.md`).
 
 ## Consequences
