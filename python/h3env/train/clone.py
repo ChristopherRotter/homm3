@@ -56,12 +56,9 @@ from . import layout as L
 from .distill import CATEGORIES, NETWORK_KEYS, Bench, Student, category, heads, student_config
 from .evaluate import HELD_OUT_BATCH_SEEDS, compact, held_out_seeds, ladder
 from .policy import CASTS, Policy, build
-from .ppo import _SEATS, CHECKPOINT_FORMAT, Staging, device_of, episode_entries, save
+from .ppo import _SEATS, CHECKPOINT_FORMAT, TEACHER, Staging, device_of, episode_entries, save
 from .run import Config, ConfigError, HeldOut, atomic_write_text, load_config, machine, source
 
-#: The teacher: the fair system actor's seat (C ABI v36), never the all-seeing one (E25
-#: decision 3).
-TEACHER = "system"
 #: The per-sample arrays a student trains on, the teacher's choices among them.
 FIELDS = (
     "obs",

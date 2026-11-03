@@ -125,6 +125,24 @@ network plays (its file's config; the rules set no limit, BAT-TAC-002). No obser
 phase's round: the binding counts it after each call (`batch.tactics_round`, `tactics_turns`).
 `configs/e25-bound.toml`: `e25-shaping.toml` with one round (T4b).
 
+**The imitation loss** (E25 T21, increment 6, decision 3's second form): `[ppo] imitation_coef`
+(0, off, by default) weighs an auxiliary cross-entropy to the fair system actor's choice on the
+learner's own decisions, falling linearly to 0 over `imitation_horizon` samples (0: the learning
+rate's horizon, the budget). While the weight is above 0 each rollout call first asks the fair
+actor for every env's choice (`BattleBatch.choice`, the cloning bench's teacher; never the
+all-seeing one) and keeps it as the label of the learner's rows (not a league member's, nor the
+internal defender's): its entry and cast heads; a choice the encoding cannot express, or an entry
+past the learner's tactics bound, labels nothing. The update adds the weight times the policy's
+cross-entropy on the labels (the teacher's action's log-probability through the same pass as
+PPO's terms). The call draws from the side to move's seat stream, which no external seat
+otherwise reads: the episodes are the ones played without it. The update records gain
+`imitation_coef` (the weight), and while it is above 0 `imitation_loss` (nats per labelled
+decision), `teacher_rows`, `teacher_lost`, `teacher_agreement` (the learner's sampled entry the
+teacher's) and `teacher_s` (the teacher's seconds of `rollout_s`); the record's curve averages
+the last three over the updates that have them, and the update line shows the weight, the
+cross-entropy and the agreement. Neither key resumes changed. `configs/e25-imitate.toml`: T22's
+arm.
+
 **A battle cut at `env.max_steps`** (2 000) costs each learning side `ppo.truncation_penalty`
 (1.0) and ends its trajectory there (E06 T5c; reward v1 lies in about (−1, 1), so stalling to
 the limit never pays); with 0 the trainer bootstraps from the final observation's value instead,

@@ -114,6 +114,12 @@ def line(record: dict) -> str | None:
             f"pg {record['policy_loss']:+.4f} v {record['value_loss']:.4f} "
             f"ent {record['entropy']:.3f} kl {record['kl']:.4f} "
             f"ev {record['explained_variance']:+.2f}"
+            + (
+                f" imitate {record['imitation_coef']:.3f} ce {record['imitation_loss']:.3f} "
+                f"agree {record['teacher_agreement']:.2f}"
+                if record.get("imitation_loss") is not None
+                else ""
+            )
             + "".join(
                 f" {name} {row['attacker_won']:.2f}"
                 for name, row in record.get("by_kind", {}).items()
