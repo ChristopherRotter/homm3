@@ -87,6 +87,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        month's spawn writes one block and the tiles' leaves it touches.
      - **A Shipyard's boat tile** is computed once when the game is built (ADV-SHY-001) and kept
        with the static map: the original never moves it.
+   - **E09's towns** (E09 increment 1; E09 decisions 2, 17; ADR-0028 point 2): a town object's
+     static part holds its template masks and its `TownId` (ADR-0028 point 3); a random town is a
+     town of its drawn faction from the build on (its picture is the client's, from the faction
+     the game shows). Towns are **ownable objects**: their owners in the owners' block by
+     ownable index with the mines', the owners at load the setup's. A town's **garrison** is its
+     army on objects (the table increment 3 made, a mine's guards' since increment 9): the
+     setup's (its random stacks resolved when the game is built, ADR-0017 point 4) until a rule
+     writes it. No other town state is the adventure's: its record (faction, buildings) is
+     `h3-towns`', which the game composes with it.
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -153,6 +162,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    handling is E10's). A hero standing on an owned object's entrance hides it: a step onto that
    tile meets or fights the hero, the object is not visited and its owner does not change. A
    hero does not revisit the object it stands on (the original has no revisit command).
+   **E09's towns:** a town's **visiting hero** is the hero standing on its entrance (the
+   original's `hero_show`, survey `E09-towns.md` §7.3), never a stored field: an entering hero,
+   the main town's hero, a hero moved into a town at the import. A garrison hero (the town
+   screen's swap) comes with E09's increment 3. A hero on a town's entrance hides the town as on
+   an owned object's: a step onto the tile meets it (its own team) or attacks the town (another
+   team, point 4).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -425,6 +440,31 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        month's creature, a count of twice a draw from the creature's adventure-map range, an
        aggression drawn 1 to 10, growing, fleeing as any, without treasure (D-50 as read). It is
        an object added in play (point 1) and guards as any monster from then on.
+   - **E09's kind `Town`** (increment 1; classes 98, and 77 resolved; E09 decisions 11, 13, 16;
+     the type's visit properties: **entered, not visitable from above**, so no flyer comes down
+     onto the gate from the three tiles above and a hero leaves it as off every such object). The
+     step onto a town's entrance (survey `E09-towns.md` §7.1), its outcome composed by the game
+     (ADR-0017 point 10):
+     - a town of the visitor's **own or an allied** team (allies with E10's teams: until then a
+       team is one player) is **entered**: the visit ends the walk on the entrance and changes
+       nothing (no service in increment 1); **never captured**;
+     - a town of **another team or none** that is **defended** (a visiting hero, or a creature in
+       its garrison) is **visited from the tile before** (the step paid, the hero stays, as a
+       monster) and the visit is a **siege**: against the visiting hero with the garrison merged
+       into its army first (TD-7 by the reading, each stack's AI value, survey §9.2; confirmed by
+       batch TWN-1's row 3, survey §15; what stays in the garrison does not fight and is lost
+       with the town), else against the garrison as an army without a hero (E08's
+       `Defender::Garrison`), the defending side the town's owner's (the neutral seat for none).
+       A siege of a town whose visitor is an ally's hero is a **typed refusal**, a stub until
+       E10 (E09 decision 16);
+     - an **undefended** town of another team or none is **entered and captured**.
+     - **Capture** (a town is never flagged; ADV-OWN-001's flagging is the other ownable kinds'):
+       the owner changes, the garrison is emptied, the reveal of point 5; `h3-towns`' part of it
+       (the Capitol's limit) is the game's composition. **After a siege won the attacker stays
+       on the tile it attacked from** (survey §7.1, confirmed by batch TWN-1's row 4) and enters
+       by a later step, which finds the town its own; a defender's win or a battle with no
+       winner changes no owner, the survivors staying in the armies that fought (the visitor's,
+       or the garrison as a mine's guards).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -436,7 +476,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    increment 9 a **flag** reveals the tiles within 3 of the object's entrance to its new owner
    (its team from E10; ADV-FOG-002's disk), and the start of the game reveals the same around
    every object owned at load, a Lighthouse too, as the original does (batch E9's E9-4 and E9-6;
-   its `reveal_owned` from `adventure_manager_start`, as VCMI: A-33 withdrawn). The **fringe** is the hidden tiles touching an explored tile (the
+   its `reveal_owned` from `adventure_manager_start`, as VCMI: A-33 withdrawn). From E09 a
+   change of a **town's owner** reveals to the new owner the tiles within the town's **reveal
+   radius** of its entrance (`h3-towns`' derivation: 5; a Tower with its Lookout Tower 20; a
+   Tower with the Grail every tile of every level; survey `E09-towns.md` §8.3), its team's from
+   E10; the start of the game reveals the same around every town owned at load, with the other
+   owned objects. The **fringe** is the hidden tiles touching an explored tile (the
    reveal's shape: ADV-Q5). A viewer sees on explored tiles the public part of their content; on the
    fringe terrain, roads and rivers, plus object appearance under the `faithful` profile once
    `ADV-QUIRK-1` is confirmed (Q30's rule: until then the clean behaviour only); nothing else of
@@ -486,7 +531,19 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    month's monster is seen as any monster where its tile is; a monster's fraction is never shown
    (its word follows its count). A flag, a built boat and an added monster are seen where their
    tiles are; a mine's income, a weekly object's gain and the guards' exchange are told to their
-   owner alone.
+   owner alone. From E09 (E09 decision 11; the original's levels, survey `E09-towns.md` §12) a
+   viewer that has explored a tile of a **town** sees the town as an owned object (its type,
+   tiles, `TownId`, owner) and, through the game, its **public facts**: its faction, whether it
+   has a Capitol and a fort and the fort's level, its name, and whether it is defended where the
+   step tells it (the cursor). Its **garrison** another team's viewer sees by its **level**, the
+   number of its own towns with a Tavern: none at 0, the stacks' creatures at 1, with their size
+   words at 2 or more. The counts, the hall, the income, the silo's resources and the garrison
+   hero's mark are the **owner's team's**, or a viewer's whose hero within reach has expert
+   Visions or a Rogue (the creature) in its army (survey §12.3; Visions when it is placed, E08's
+   "Not placed yet"). The visiting hero is seen as any hero. Every other building and every
+   derived fact (the Escape Tunnel, ADR-0023 point 2) stays the owner's. A capture is seen where
+   its tiles are; its reveal is told to the new owner alone. `docs/06-security.md` lists it (E09
+   T8c; the design note gives the words).
 
 ## Consequences
 
@@ -534,6 +591,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   classes and refuses three inputs (map import version). A day's start writes every growing
   monster and every weekly object once a week: a fork after it shares nothing of those tables
   until the next fork copies them again (the `day-start-xl-144` workload measures it).
+- E09's increment 1: the adventure state hash and ruleset part (the town type and its kind) and
+  the map import bump (the adventure lane's, `cross-lane`); the replays with a town re-recorded.
+  The adventure never reads a town's buildings: the game passes it the reveal radius and adds the
+  public facts to the observation.
 
 ## Alternatives considered
 
@@ -580,6 +641,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   anyway, ADR-0003's streams; object order is the setup's); a weekly object's contents once per
   player (VCMI's; decision 201); VCMI's neutral mine guards as one stack (D-47: batch E9 showed
   the split) and its whole-number growth (D-49: batch E9 showed the sixteenths).
+- E09: a stored visiting hero (a second record of what the hero's tile already says); capture as
+  a flag (ADV-OWN-001's step: a town's capture empties the garrison, reveals by the town's radius
+  and leaves the attacker outside after a siege, none of which a flag does); the ally's defence
+  built now (no teams until E10; TWN-Q2, E09 decision 16).
 
 ## Revision history
 
@@ -650,3 +715,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   viewer sees the size word of the guards' total count, every stack counted (an upgraded one
   too), and their creature only when all stacks are of one; the owner's team their stacks and
   counts; not each stack's creature and word.
+- 2026-11-03 (E09 T4a `shared/`; the user at TWN-Q1 to TWN-Q4, E09 decisions 2, 11, 13, 16, 17,
+  21): points 1, 3, 4, 5 and 6 amended for E09 increment 1, towns on the map: a town object's
+  `TownId`, owner and garrison (its record `h3-towns`', ADR-0028); the visiting hero, the hero on
+  the entrance; the kind `Town` (entered, not visitable from above), its step (entered, a siege
+  of a defended town with the garrison merged, an undefended one captured, the ally's siege a
+  typed refusal), capture with the attacker outside after a siege; the reveal by the town's
+  radius; the town's public facts and the garrison by the viewer's taverns. Drafted in E09 T2a
+  (survey `E09-towns.md` §7 to §9, §12); batch TWN-1 (T3c, survey §15) confirmed TD-7 and the
+  siege's aftermath.

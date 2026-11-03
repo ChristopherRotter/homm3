@@ -6,7 +6,8 @@
   ADV-Q2)
 
 <!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md (decisions 2-4 and the
-     review's corrections). Longer than 80 lines because it covers decisions 2-4 at once. -->
+     review's corrections). Longer than 80 lines because it covers decisions 2-4 at once and E09's
+     towns (ADR-0028). -->
 
 ## Context
 
@@ -32,6 +33,9 @@ input that must not build a state no sequence of commands could build (`docs/06-
    `h3-heroes`. No domain crate depends on another or on `h3-game`; `h3-heroes` is no longer a
    domain crate but the hero model in the `shared` layer, as `h3-content-battle` (ADR-0013 point
    2), so `h3-adventure` depends on it too; adapters may depend on `h3-game`.
+   **E09's increment 1** (towns; E09 decisions 2, 3; ADR-0028 point 1): two more, `h3-towns`
+   (domain, logic) and `h3-pack-towns` (adapter, `packs/*/towns.toml`); `h3-game` depends on
+   `h3-towns`. The import's towns are `h3-map`'s `src/import/town*`, the town lane's.
 2. **Ruleset parts.** A game's rules are the core ruleset (`h3_content::Ruleset`) plus one
    compiled part per context, each immutable, `Arc`-shared, with its own canonical hash and
    version. A part references core entities by handle, and its source references them by key
@@ -39,7 +43,9 @@ input that must not build a state no sequence of commands could build (`docs/06-
    (`core.toml`, `battle.toml`, `adventure.toml`); increment 1 adds `adventure.toml` beside
    the pack's file, hand-written source the harvester never touches (E08 decision 10).
    `h3-game`'s `GameRuleset` bundles the core ruleset and the parts; replay headers and the
-   server's manifest record every part's hash.
+   server's manifest record every part's hash. **E09** adds a third context part, the **town
+   part** (`TownRuleset`, ADR-0028 point 5): a pack folder holds `core.toml`, `battle.toml`,
+   `adventure.toml` and `towns.toml`, and `GameRuleset` bundles the core and the three parts.
 3. **The content split waits for E04b.** Until it closes, adventure crates use only the core
    items of `h3-content` (keys, packs, resources, factions, terrain ids, creature identity, cost
    and speed, hero types, artifact and spell identity, quirks and profiles). The split into
@@ -57,7 +63,37 @@ input that must not build a state no sequence of commands could build (`docs/06-
      content keys and handles; draws nothing (random placeholders stay placeholders, resolved
      by `h3-game` from a setup stream, ADR-0017); rejects what the
      current increment cannot represent with a typed `Unsupported` error (in increment 1: a
-     random hero, a hero generated at a main town). Checks no game invariant.
+     random hero, a hero generated at a main town; both lifted by E09, below). Checks no game
+     invariant.
+   - *The import from E09's increment 1* (towns and starting heroes; E09 decisions 6, 8, 9, 12 to
+     14). It still draws nothing and checks no game invariant:
+     - **Towns** (classes 77 and 98) become two setups: `h3-towns`' town setup (a fixed faction,
+       or a random town's rule with its alignment and owner; the built and forbidden buildings as
+       the map gives them, or the standard set with the map's Fort flag; the events; the name)
+       and the adventure's town object (its template, owner and garrison; ADR-0016 point 1),
+       joined by the town's `TownId`. A random stack in a garrison stays a placeholder of its
+       level and upgrade. An alignment byte from 8 to 254 is an invalid map, a typed error (T-1,
+       E09 decision 12), as an owner colour nobody plays.
+     - **Players:** each player's setup gains its **allowed factions** (the map's set; an
+       RoE-format map's player whose eight are all allowed also Conflux when the ruleset has it,
+       E09 decision 14), its **faction choice** (the map's default: the one allowed faction, else
+       Random), its **starting-hero pick** (none from the map), its **main town** (the header's,
+       as the town's entrance tile) with whether it **generates a hero**, and its **random-hero
+       flag**. Whoever seats the players may change the choice and the pick before the game is
+       built, as the human flag (E09 decision 6: the seam with E10's scenario setup); the game
+       validates them (ADR-0017 point 1).
+     - **The random hero** (class 70) is a hero placeholder with its owner and the rest of its
+       body as a placed hero's (E09 decision 8); **the main town's hero** is the game's when the
+       main town generates one. Neither is `Unsupported` any longer.
+     - **A hero on a town's blocked tile** right of its entrance is moved onto the entrance (the
+       original's `placed_heroes_setup`, VCMI's "H3M format quirk"; TD-6 by the reading, E09
+       decision 13); elsewhere on a town's blocked tiles it stays `Unsupported::HeroInTown` (none
+       on the shipped maps).
+     - **The allowed heroes** are the map's set, an RoE-format map's with the Conflux heroes when
+       the ruleset has them (by the packs, E09 decision 14) and never the campaign heroes; SoD's
+       disposed heroes give their colour masks.
+     - No version is read for a rule: the moat and Conflux follow the packs (E09 decision 14;
+       ADR-0023 point 2).
    - *Validate* (logic): `h3-game` builds the state from the setup, checks its own part
      (players, schedule) and hands each context its setup type (`h3_adventure::AdventureSetup`),
      which the context validates as `h3-battle` validates `BattleSetup`. A setup must satisfy
@@ -66,7 +102,8 @@ input that must not build a state no sequence of commands could build (`docs/06-
    Setup types are plain owned data, owned by the crate that validates them; no context
    exchanges them, so they are not seams. Tests build setups in code.
 5. **Cross-context identities are contract types:** `PlayerId` and `HeroId` in `h3-contracts`
-   (ADR-0013 point 1 foresaw `HeroId`). Context-internal handles stay in their crates.
+   (ADR-0013 point 1 foresaw `HeroId`), from E09 `TownId` beside them (ADR-0028 point 3).
+   Context-internal handles stay in their crates.
 6. **Sizes come from data** (ADR-0006 guardrails): map dimensions, levels and player counts come
    from the map, bounded by ruleset parameters, never by constants in logic.
 
@@ -85,6 +122,10 @@ input that must not build a state no sequence of commands could build (`docs/06-
 - A replay names its map by content hash and path (a committed fixture, or the server's copy next
   to its journal) plus `h3-map`'s import version; verifying re-imports the map, and an import
   change bumps that version (ADV-Q2). Shipped maps never enter git (ADR-0009).
+- E09's increment 1: the map import's version bumps (the adventure lane's, `cross-lane`); exit
+  criterion 1's census of the imported maps goes into `docs/formats/h3m.md`; the arbitrary-bytes
+  property test covers the towns' and players' new fields with the rest; `h3-map`'s writer (the
+  experiment maps' towns of a fixed faction, E04c T5b) gains what E09 needs in `src/writer/town*`.
 
 ## Amendment — R01, the content split (2026-10-13; proposed, for the user to confirm)
 
@@ -102,7 +143,8 @@ Point 3 carried out (BACKLOG R01; detail in `docs/epics/R01-content-split.md`):
    core's recorded beside it) and also keeps the `Arc` of its core and dereferences to it; its
    creature and spell rows carry copies of the core fields the battle reads.
 3. **Packs:** each folder holds `core.toml` (with the manifest), `battle.toml` and
-   `adventure.toml`; adapters `h3-pack` (core), `h3-pack-battle`, `h3-pack-adventure`.
+   `adventure.toml` (E09: and `towns.toml`, point 2); adapters `h3-pack` (core),
+   `h3-pack-battle`, `h3-pack-adventure` (E09: and `h3-pack-towns`).
 4. **Owners:** `h3-content` and `h3-pack` are shared paths; `h3-content-battle` and
    `h3-pack-battle` the battle lane's.
 5. **Versions:** core ruleset hash v43, battle part hash v1, pack format v35, battle replay
@@ -122,6 +164,9 @@ Point 3 carried out (BACKLOG R01; detail in `docs/epics/R01-content-split.md`):
   for no gain.
 - A replay that embeds the setup or the map file's bytes: every replay carries the whole map (up
   to 41 472 tiles); an embedded setup returns only if saves need it.
+- E09: the import resolving a random town or drawing a starting hero (the import draws nothing,
+  so a placeholder stays one until the game's build); a hero on any of a town's blocked tiles
+  moved (TD-6: only the reading's case, E09 decision 13).
 
 ## Revision history
 
@@ -134,3 +179,9 @@ Point 3 carried out (BACKLOG R01; detail in `docs/epics/R01-content-split.md`):
 - 2026-10-30 (E08 T81a `shared/`; the user at ADV-Q38, E08 decision 201): amendment R01's
   point 1 amended: the core keeps a creature's abilities outside battle (`weekly_resource`, the
   Crystal Dragons' crystal), the battle's abilities staying the battle part's.
+- 2026-11-03 (E09 T4a `shared/`; the user at TWN-Q1 to TWN-Q4, E09 decisions 2, 3, 6, 8, 9, 12
+  to 14, 17 to 19, 21): points 1, 2, 4 and 5 amended for E09 increment 1, towns on the map: the
+  crates `h3-towns` and `h3-pack-towns` (ADR-0028), the town part and `towns.toml`, the import of
+  towns, the players' factions, choices and picks, the random hero, the main town's hero, a hero
+  on a town's tile and the allowed heroes; `TownId`. Drafted in E09 T2a; batch TWN-1's outcome
+  (T3c, survey `E09-towns.md` §15) changes none of it.

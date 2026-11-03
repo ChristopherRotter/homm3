@@ -3,7 +3,9 @@
 - Status: Accepted (user, 2026-10-13, BAT-Q40 and BAT-Q41; drafted at E04c T4); point 6 amended
   2026-10-14 (user, BAT-Q43; E04c T6); point 7 added 2026-10-14 (user, BAT-Q46; E04c T7d); points
   1, 2 and 7 amended 2026-10-15 (user, BAT-Q50; E04c T10b); point 7 widened 2026-10-23 (user,
-  BAT-Q33; E23 T7)
+  BAT-Q33; E23 T7); points 2 and 5 and the Consequences amended 2026-11-03 (user, TWN-Q2 to
+  TWN-Q4, E09 decisions 14, 15, 20, 21; E09 T4a: the town context derives the facts, the packs
+  decide the moat)
 - Date: 2026-10-13
 - Deciders: user; battle lane session (E04c T4, T5)
 - Working detail: the survey [`docs/rules/surveys/E04c-sieges.md`](../rules/surveys/E04c-sieges.md),
@@ -29,21 +31,33 @@ the adventure lane derives the battlefield (ADR-0022).
    its defender, +500 experience for the attacker, the town's terrain; survey D-7). Public but for
    the Escape Tunnel (point 2). `None` elsewhere; every existing constructor takes `None`.
 2. **`Siege` carries derived facts, not the town's buildings.** Whoever starts a battle at a town
-   derives them (the town context, E09; until then scenarios and the CLI give them):
+   derives them: **`h3-towns`** (E09; ADR-0028 points 5 and 7), from the town (its faction and
+   built buildings) and its faction's town record, for every battle at a town, by the readings of
+   survey `E09-towns.md` §9.4; the defending hero's town bonuses (point 3) are derived there too
+   and applied by the game (ADR-0017 point 11). Scenarios and the CLI still give `Siege`
+   directly:
    - `faction: FactionId`: the town's faction, a handle of the battle's ruleset (BAT-Q41); the
      battle part holds a siege record per faction (the walls' parts, the moat's hexes and damage,
      the Fortress's second moat row, the Tower's mines instead of a moat, the turrets);
    - `fort: FortLevel` (`None`, `Fort`, `Citadel`, `Castle`): the walls and the gate from a Fort,
-     the keep and the moat from a Citadel, the towers from a Castle;
-   - `moat: Moat` (`Absent`, `Harmless`, `Damaging`): the game's version decides (under RoE or
-     AB rules a moat is harmless and a Stronghold has none; BAT-Q41), so the battle needs no
-     version; a Tower's land mines take its moat's place and the value decides their damage;
+     the keep and the moat from a Citadel, the towers from a Castle; the town's highest of its
+     Fort, Citadel and Castle;
+   - `moat: Moat` (`Absent`, `Harmless`, `Damaging`): **the enabled packs decide** (E09 decision
+     14; BAT-Q41's rule, the battle needing no version): from a Citadel the faction's town
+     record's kind, below it `Absent`. The base pack's records give RoE's and AB's (harmless; the
+     Stronghold none), the SoD pack overrides them (damaging; the Stronghold's moat). A Tower's
+     land mines take its moat's place and the value decides their damage (as the battle reads it
+     since E04c T5; the original's own moat flag is absent there, survey `E09-towns.md` §9.4).
+     Under the base and AB packs the game plays RoE's or AB's moat on every map, under SoD's on
+     every map; the original's version from its scenario dialog (survey §9.4) is the recorded
+     deviation of E09 decision 14;
    - `structures: u8`: the town's buildings as the original counts them for its turrets
      (0x5BF4F0, BAT-Q41); the turrets' counts from it are a battle rule (T7);
-   - `escape_tunnel: bool`: the town's defender may retreat. Private to the defender (amendment,
-     E04c T10b, BAT-Q50): the original enables the retreat control for the acting side only
-     (0x478573) and a town's buildings are no public fact, so the attacker and a spectator see the
-     defender's option to retreat as `false` (unknown) and the observed siege without the tunnel;
+   - `escape_tunnel: bool`: the town's defender may retreat (a Stronghold's tunnel built).
+     Private to the defender (amendment, E04c T10b, BAT-Q50): the original enables the retreat
+     control for the acting side only (0x478573) and a town's buildings are no public fact, so the
+     attacker and a spectator see the defender's option to retreat as `false` (unknown) and the
+     observed siege without the tunnel;
    - `morale: i8`, `luck: i8`: the town's bonuses to the defender's stacks (the Tavern, the
      Brotherhood of the Sword, the Fountain of Fortune), side modifiers like a hero's.
 3. **The defending hero's town bonuses** (the Grails, Blood Obelisk, Glyphs of Fear, Brimstone
@@ -56,8 +70,10 @@ the adventure lane derives the battlefield (ADR-0022).
 5. **Walls, gate, turrets and moat are battle state**, public and in the observation (their hit
    points, the gate's state), added with E04c T5–T7 with their encodings, the wire and the
    replays; the walls' hexes and parts come from the battle part's siege record. Natural
-   obstacles stay before the seam (BAT-GEO-003): none in a siege under SoD rules, the usual ones
-   for a Stronghold under RoE or AB rules (survey S-29), drawn by whoever derives the siege.
+   obstacles stay before the seam (BAT-GEO-003): whether a siege draws them is the faction's town
+   record's flag (E09; survey S-29: the base pack's Stronghold draws the usual ones, as RoE and AB
+   play it, the SoD pack's override none), drawn by the game as a battle's obstacles (ADR-0017
+   point 4).
 6. **The Catapult** (amendment, E04c T6, BAT-Q43): the battle sets the attacker's Catapult up
    itself in a siege with a fort when the attacker has a hero (the original gives every hero
    one); the setup's `war_machines` never list it. A side commands it when its hero's
@@ -92,9 +108,14 @@ the adventure lane derives the battlefield (ADR-0022).
 - One `shared/` pull request adds `Siege` and its enums, `cross-lane` for the struct literals (as
   ADR-0022's); the battle reads the field from T5 on (BAT-STUB-2 until then) and rejects a `Siege`
   whose faction has no siege record (`SetupError`).
-- The town context's derivation (E09) gets a rule list from the survey's §1; how a game gets its
-  version is the adventure lane's (the original probably takes it from the map's format: an
-  experiment candidate).
+- The town context's derivation (E09) gets its rules as `TWN-*` ids with E04c's survey §1 and
+  E09's §9.4 as sources. No game version exists (E09 decision 14; batch TWN-1's row 5 dropped,
+  decision 15): the earlier "how a game gets its version" is withdrawn.
+- E09: `Moat`'s doc comment in `h3-contracts` follows in E09 T4b's `shared/` pull request, the
+  battle's `siege::setup` comment by a note in the battle lane's inbox; the battle's rules do
+  not change. The battle part's siege records (walls, moat hexes and damage per faction) stay the
+  battle's; the town part holds only whether a moat exists and does damage, so the two never
+  disagree on what the battle needs.
 - Versions with T5: pack format (the siege records), state hash, replay format, observation
   encoding, C ABI and the wire; golden replays with a siege. Battles without a town play as before.
 - Experiments need towns on the experiment maps (`h3-map`'s writer, `cross-lane`).
@@ -115,3 +136,6 @@ the adventure lane derives the battlefield (ADR-0022).
   human player) instead of the two facts. Both routines read in T7d test exactly that, but the
   computer's other choices (spells, retreats) read the difficulty in other ways, and the two
   facts are what the game knows.
+- E09: the game's version from the map's format, or the original's scenario dialog's (the user's
+  rule, E09 decision 14, reads the packs); the moat's kind in the battle part's siege record, or
+  an edition derived from the packs' names (TWN-Q3, E09 decision 20).

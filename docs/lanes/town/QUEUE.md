@@ -7,26 +7,29 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entry below is round 4's (rounds 2 and 3, T3a to T3c, are done, `E09-log.md`); each later round's
-entries are written when it comes (the epic's list), each task's cut confirmed at its start. Every
-entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+entry below is round 4's second half (rounds 2 and 3 and T4a are done, `E09-log.md`); each later
+round's entries are written when it comes (the epic's list), each task's cut confirmed at its
+start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T4 — `shared/`: the ADRs, the glossary, the crate skeletons, `TownId`, the gates**
+**E09 T4b — `shared/`: the crate skeletons, `TownId`, the gates**
 
-- **Scope:** round 4 (design §1, §21; decision 21), one `shared/<topic>` pull request that merges
-  first: the five drafts of `adr-drafts/` into `docs/adr/` with batch TWN-1's verdicts (survey
-  §15: TD-3, TD-5, TD-7 and the siege's aftermath confirmed; building 23 changes no ADR step,
-  decision 25), ADR-0028's number checked; the skeletons `h3-towns` and `h3-pack-towns` (an empty
-  part and store, both version constants 1); `arch.toml`'s edges; `lanes.toml`
-  (`crates/h3-pack-towns/`, `packs/*/towns.toml` to the town lane); `TownId` in `h3-contracts`;
-  the versions table's two rows; `docs/03-domain.md`'s terms, `docs/02-architecture.md` §3,
-  `Moat`'s doc comment; a note in the battle lane's inbox on `siege::setup`'s comment (design §1
-  lists each).
-- **Acceptance:** the drafts accepted in `docs/adr/` (the index's "Read when" rows), the skeletons
-  build under every gate (`check-arch`, coverage, `check-lane`), CI green on the pull request.
-- **Notes:** a cut at its start may split it (the ADRs and docs, then the skeletons). The
-  adventure lane's open pull requests first (`TRAPS.md`, "Merge in order").
-- **Depends on:** T3c (done). **Status:** ready.
+- **Scope:** round 4's second half (T4 cut in two at its start, the user; T4a, the ADRs and the
+  glossary, done: `E09-log.md`), one `shared/<topic>` pull request: the skeletons `h3-towns` and
+  `h3-pack-towns` (an empty part and store, both version constants 1; ADR-0028 point 1, design
+  §1); `arch.toml`'s edges (ADR-0028's Consequences); `Cargo.toml`'s members; `lanes.toml`
+  (`crates/h3-pack-towns/`, `packs/*/towns.toml` to the town lane); `TownId` in `h3-contracts` (a
+  `u16` newtype beside `HeroId`, serde as a number); `Moat`'s doc comment (the packs decide,
+  ADR-0023 point 2); the versions table's two rows (`docs/08-work-process.md`);
+  `docs/02-architecture.md` §3; ADR-0005's "Crates created" and ADR-0006's one-file-per-context
+  lines gain the two crates and `towns.toml` (presentation, the revision history noting it);
+  `packs/README.md`'s file table row.
+- **Acceptance:** the skeletons build under every gate (`check-arch`, coverage, `check-lane
+  --cross-lane`, `cargo check --workspace --all-targets`; an `h3-contracts` change also
+  `scripts/verify-once.sh clients --base origin/master`), CI green on the pull request.
+- **Notes from T4a:** the ADRs cite the crates as ADR-0028 point 1 has them; the battle lane's
+  inbox has `siege::setup`'s comment (its own file). The adventure lane's open pull requests first
+  (`TRAPS.md`, "Merge in order"; on 2026-11-03 #664 and #665, which touch neither).
+- **Depends on:** T4a (done). **Status:** ready.
 
 ## Inbox
 

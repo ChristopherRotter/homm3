@@ -1,16 +1,15 @@
-# ADR-0028 (draft): The town context: `h3-towns`, the store of towns, its ruleset part and seams
+# ADR-0028: The town context: `h3-towns`, the store of towns, its ruleset part and seams
 
-- Status: Draft (E09 T2a, 2026-11-02). Its choices were made by the user: the crate and the split
-  of a town at E09's refinement (the epic's decisions 2 and 3, TWN-Q1), the store, the pool, the
-  part and the moat's data at the drafts (decisions 17 to 20, TWN-Q3). Accepted at T2b's
-  checkpoint (`TWN-Q4`), it moves into `docs/adr/` (the number checked then) with the four
-  amendments beside it, in the `shared/` pull request that creates the crates.
+- Status: Accepted (user, 2026-11-02, TWN-Q4: the draft accepted as written; moved here by E09
+  T4a, 2026-11-03, with batch TWN-1's outcome, survey §15). Its choices were made by the user:
+  the crate and the split of a town at E09's refinement (the epic's decisions 2 and 3, TWN-Q1),
+  the store, the pool, the part and the moat's data at the drafts (decisions 17 to 20, TWN-Q3).
 - Date: 2026-11-02
 - Deciders: user; town lane session (E09 T2a)
-- Amends with it: ADR-0015, ADR-0016, ADR-0017, ADR-0023 (`0015-` to `0023-amendment-towns.md`
-  in this folder).
-- Working detail: the survey `docs/rules/surveys/E09-towns.md` (§0's findings), the design note
-  `docs/epics/E09-design.md` (T2b).
+- Amends with it: ADR-0015, ADR-0016, ADR-0017, ADR-0023 (E09 increment 1's amendments, each in
+  its revision history or status line).
+- Working detail: the survey `docs/rules/surveys/E09-towns.md` (§0's findings, §15 batch TWN-1),
+  the design note `docs/epics/E09-design.md` (T2b).
 
 <!-- Decisions only; the readings are the survey's, the build's detail the design note's. -->
 
@@ -51,10 +50,10 @@ same record (the day's construction, the available creatures, the guild's spells
      the Grail's, the silo's resources), the **fort level**, the **siege's facts** (point 7), the
      **reveal radius** of a capture, whether it has a **Tavern** (another player's view level),
      the **Capitol's limit** (given the owner's other towns).
-   - **The adventure** holds the map object of kind `Town` (ADR-0016's amendment): its static
+   - **The adventure** holds the map object of kind `Town` (ADR-0016 points 1, 3 and 4, E09's amendment): its static
      part (footprint, entrance, the `TownId`), its **owner**, its **garrison** (the armies on
      objects, as a mine's guards) and its **visiting hero** (the hero on its entrance).
-   - **`h3-game`** composes them (ADR-0017's amendment): the build (a random town's faction, the
+   - **`h3-game`** composes them (ADR-0017 points 1, 3, 4, 10 and 11, E09's amendment): the build (a random town's faction, the
      starting heroes and the pool), the visit and the capture, the siege's setup, the day's
      income, the views.
 3. **`TownId`** (`h3-contracts`, ADR-0015 point 5): a town's index among the map's towns (classes
@@ -88,7 +87,7 @@ same record (the day's construction, the available creatures, the guild's spells
    a visit of the adventure does; recruitment returns the creatures for the game to place in an
    army the adventure holds.
 7. **The siege's facts and the editions by the packs** (decisions 14 and 20): `h3-towns` derives
-   `Siege` (ADR-0023's amendment) from the town and its faction's record; no game version exists.
+   `Siege` (ADR-0023 point 2, E09's amendment) from the town and its faction's record; no game version exists.
    The faction's record holds the moat's kind (absent, harmless, damaging) and whether a siege
    there draws natural obstacles: the base pack gives them as RoE and AB play them (harmless; the
    Stronghold none, with natural obstacles), the SoD pack overrides them as SoD plays them
@@ -96,8 +95,8 @@ same record (the day's construction, the available creatures, the guild's spells
    mines' damage, as ADR-0023 point 2 has it.
    Conflux is the AB pack's faction, so the factions a random town or a Random choice may take
    are the ruleset's factions with a town record (eight with the base pack alone, nine with AB),
-   within the map's allowed set for a player (ADR-0017's amendment).
-8. **The hero pool is the game's** (decision 18; ADR-0017's amendment): `h3-towns` holds no hero
+   within the map's allowed set for a player (ADR-0017 point 1).
+8. **The hero pool is the game's** (decision 18; ADR-0017 point 1): `h3-towns` holds no hero
    and no pool; the Tavern (increment 3) is a town's building whose hire the game composes from
    the pool and the store.
 9. **Versions owned by the town lane:** `h3-towns`' state hash and the town part's hash (v1 when
@@ -106,11 +105,12 @@ same record (the day's construction, the available creatures, the guild's spells
 
 ## Consequences
 
-- The `shared/` pull request after acceptance: the two crate skeletons, `arch.toml`'s edges
-  (`h3-game` → `h3-towns`; `h3-towns` → kernel, content, contracts, heroes; `h3-pack-towns` →
-  `h3-towns`, `h3-content`, `h3-pack`, as `h3-pack-adventure`), `lanes.toml` (the adapter and `packs/*/towns.toml` to the town lane),
-  `TownId`, the versions rows, this ADR and the four amendments into `docs/adr/`; `docs/02` §3
-  and `docs/03` follow.
+- Two `shared/` pull requests after acceptance (E09 T4, cut in two at its start, the user): T4a
+  this ADR and the four amendments into `docs/adr/`, `docs/03`'s terms; T4b the two crate
+  skeletons, `arch.toml`'s edges (`h3-game` → `h3-towns`; `h3-towns` → kernel, content,
+  contracts, heroes; `h3-pack-towns` → `h3-towns`, `h3-content`, `h3-pack`, as
+  `h3-pack-adventure`), `lanes.toml` (the adapter and `packs/*/towns.toml` to the town lane),
+  `TownId`, the versions rows; `docs/02` §3 follows.
 - `cross-lane` after it: `GameState` and its hash, `GameRuleset`, the adventure replay's header
   (the part's hash), each adventure golden replay re-recorded (skill `homm3-rerecord-replays`);
   the server's manifest (the server lane's inbox) and the env (the AI lane's) as their notes.
@@ -132,3 +132,12 @@ same record (the day's construction, the available creatures, the guild's spells
   (TWN-Q3): each change `cross-lane`; a rule keyed by names, against ADR-0006.
 - A module inside `h3-adventure` split out later; `h3-towns` owning the town's armies (TWN-Q1,
   decision 2).
+
+## Revision history
+
+- 2026-11-02: Drafted (E09 T2a); accepted as written at T2b's checkpoint (the user, TWN-Q4,
+  decision 21).
+- 2026-11-03 (E09 T4a `shared/`): moved here as ADR-0028 (the next free number) with the four
+  amendments; batch TWN-1 (T3c, survey §15) confirmed TD-3, TD-5, TD-7 and the siege's
+  aftermath, so no point changed; its unpredicted building 23 changes no point (decision 25:
+  re-read in T5b). The Consequences' `shared/` work split in two (T4a, T4b).

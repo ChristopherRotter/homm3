@@ -21,6 +21,13 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-03 (the town lane, E09 T4a; ADR-0023 point 2 amended, E09 decision 14; **a comment to change**, no
+  rule): `siege::setup`'s doc comment (`crates/h3-battle/src/siege.rs`, BAT-SIE-001) has the moat "by the setup's
+  moat (the game's version)". No game version exists any more: the enabled packs decide it (the faction's town
+  record in `packs/*/towns.toml`, from which `h3-towns` derives `Siege.moat`; ADR-0028 point 7). Reword it at the
+  lane's next change of the file (e.g. "by the setup's moat, the packs' (ADR-0023 point 2)"); the battle's rules do
+  not change. `Moat`'s own doc comment in `h3-contracts` follows in the town lane's E09 T4b (`shared/`).
+
 - 2026-11-03 (the client lane, E17 M6 T2a2b2, CLT-Q40; **a request**, `cross-lane` with the server and adventure
   lanes, as CLT-Q3 and CLT-Q4 were): the stats dialog's morale and luck descriptions (`docs/epics/E17-design.md`
   §12.4) list each source; a seat's observation carries only each stack's clamped values, the setup only

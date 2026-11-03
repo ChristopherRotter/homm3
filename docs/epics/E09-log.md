@@ -379,3 +379,29 @@ dd99747 (#662 merged). Docs only; no game files (VCMI 1.7.5 cloned into the sand
 - **Docs:** the survey's §15 and finding 29; the design note's §3, §5, §10, §20, §21, §22; the
   ADR-0017 draft's consequence; the epic's decisions 25, 26; `docs/experiments/README.md`'s row;
   the queue: T3c out, round 4's T4 in.
+
+### T4a — the ADRs and the glossary (2026-11-03)
+
+One session, the user present; branch `shared/e09-t4a`, `cross-lane` (the town lane's docs ride
+along, as E08 T81a's #612). Starting point: `master` at 971da9e (#666 merged). T4 cut in two at
+its start (the user: the ADRs and docs first, T4b the skeletons). Docs only: no code, no version.
+
+- **ADR-0028** moved from the draft (the next free number, 0028, checked: 0027 the last, no other
+  lane's draft numbered), status Accepted (TWN-Q4), its Consequences' `shared/` work split into
+  T4a and T4b, a revision history; its "the amendment" pointers named by point.
+- **The amendments folded in**, each as its ADR's increments are (a block per point, a revision
+  history line; ADR-0023 in its status line): ADR-0015 points 1, 2, 4, 5 (and R01 point 3's
+  folder list); ADR-0016 points 1, 3, 4, 5, 6; ADR-0017 points 1, 2, 3, 4, 9, 10, 11 ("towns
+  later", the pool's and "the moat, E09"'s phrases closed); ADR-0023 points 2 and 5 rewritten
+  (the packs decide the moat; the natural obstacles the town record's flag) and its Consequences
+  (the version question withdrawn). Batch TWN-1's verdicts (survey §15) as "confirmed" beside
+  TD-3, TD-5, TD-7 and the attacker outside; building 23 changes no point (decision 25). Each
+  draft's sentences checked against its target by a throwaway script (every one found but the
+  headings and the reworded decision references).
+- **Also:** the ADR index (0028's row, the four Read-when cells); `docs/03-domain.md` (the Town
+  row's crate and the hero model, a town's terms, a town among the ownable objects);
+  `AGENTS.md`'s town reading list gains ADR-0028; the battle lane's inbox: `siege::setup`'s
+  comment (ADR-0023's consequence). Left to T4b: `Moat`'s doc comment (it is code in
+  `h3-contracts`), `docs/02` §3, the versions rows, ADR-0005's crate list and ADR-0006's pack
+  files.
+

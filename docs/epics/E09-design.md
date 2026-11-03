@@ -1,8 +1,8 @@
 # E09 design note
 
 Increment 1's note: towns on the map (the epic's decision 5). A handover, not binding
-(`docs/adr/README.md`): the working detail behind the draft ADR-0028 and the amendments of
-ADR-0015, -0016, -0017 and -0023 in `docs/lanes/town/adr-drafts/`, written by T2b from the survey
+(`docs/adr/README.md`): the working detail behind ADR-0028 and E09's amendments of ADR-0015,
+-0016, -0017 and -0023 (drafted in T2a, accepted at TWN-Q4, moved into `docs/adr/` by T4a), written by T2b from the survey
 `docs/rules/surveys/E09-towns.md` (§ numbers are the survey's unless they name this note) and the
 answers at `TWN-Q2` and `TWN-Q3` (the epic's decisions 8 to 20). The task that builds a section
 deletes it; the file goes when the epic closes. The code cites it as "E09 increment 1's design note
@@ -16,25 +16,23 @@ content's route of §3. *Agent's call (change freely)* marks a choice of this no
 
 ## Part A — the town context (`h3-towns`, `h3-pack-towns`, the content)
 
-### 1. The crates (the `shared/` task, T4)
+### 1. The crates (the `shared/` task, T4b; T4a done)
 
 - **`h3-towns`** (domain, logic; `no_std`, `check-arch` purity, the coverage gate): depends on
   `h3-kernel`, `h3-content`, `h3-contracts`, `h3-heroes` (ADR-0028 point 1; the last unused until
   increment 4). Modules: `ruleset` (the part, §2), `record` (a town, §4), `store` (`Towns`, §4),
   `setup` (the build's town setup, §5), `derive` (§6). Its versions: `TOWN_STATE_HASH_VERSION` and
-  `TOWN_RULESET_HASH_VERSION`, both 1 when T4 creates the crate.
+  `TOWN_RULESET_HASH_VERSION`, both 1 when T4b creates the crate.
 - **`h3-pack-towns`** (adapter, as `h3-pack-adventure`): `compile(texts, profile)` over the enabled
   packs' `towns.toml` in dependency order onto a compiled core, overrides as ADR-0006's; a folder
   without the file reads as an empty one (`packs/README.md`'s rule). Its format doc lives in its
   `lib.rs`, a row in `packs/README.md`'s file table.
-- **T4 creates** the two skeletons (an empty part, an empty store, the version constants),
+- **T4b creates** the two skeletons (an empty part, an empty store, the version constants),
   `arch.toml`'s edges (ADR-0028's Consequences), `lanes.toml` (`crates/h3-pack-towns/`,
   `packs/*/towns.toml` to the town lane), `TownId` in `h3-contracts` (a `u16` newtype beside
-  `HeroId`, serde as a number), the versions table's two rows (`docs/08-work-process.md`), the five
-  ADRs into `docs/adr/` with batch TWN-1's outcome, `docs/03-domain.md`'s terms (town, town record,
-  garrison, visiting hero, capture, siege's facts, the hero pool, the starting-hero pick, the
-  faction choice, hall, fort level, Capitol), `docs/02-architecture.md` §3, `Moat`'s doc comment
-  (the packs decide), and the battle lane's inbox note on `siege::setup`'s comment.
+  `HeroId`, serde as a number), the versions table's two rows (`docs/08-work-process.md`),
+  `docs/02-architecture.md` §3, `Moat`'s doc comment (the packs decide). T4a (done) moved the
+  five ADRs into `docs/adr/`, wrote `docs/03-domain.md`'s terms and the battle lane's inbox note.
 
 ### 2. The town part (`TownRuleset`, `towns.toml`; town ruleset part v1)
 
@@ -427,7 +425,7 @@ when T8c lands).
 
 | Version | Change | Task |
 |---|---|---|
-| town state hash v1, town ruleset part v1 | new | T4 (constants), T5a, T6 |
+| town state hash v1, town ruleset part v1 | new | T4b (constants), T5a, T6 |
 | adventure replay format v9 | the town part's hash in the header | T5a |
 | map import v16 | towns, players' starts, the random hero, the main town, the moved heroes, the pool's inputs | T7a |
 | game state hash v23 (after T85b's v22) | the store of towns, the pool | T7b |
@@ -489,7 +487,7 @@ the ADRs are applied once with the rows' verdicts:
 |---|---|---|
 | 2 | **T3a** | Batch TWN-1's maps and spec (§20; `cross-lane` in `h3-experiment`) |
 | 3 | **T3b** + **T3c** | T3b: the harness's town reads, the recipe, the run. T3c: scored (survey §15); TD-3, TD-5, TD-7 and row 4 settled |
-| 4 | **T4** | `shared/`: the ADRs with T3c's outcome, the glossary, the crate skeletons, `TownId`, the gates (§1) |
+| 4 | **T4a** + **T4b** | `shared/`, cut in two at its start: T4a the ADRs with T3c's outcome and the glossary (done); T4b the crate skeletons, `TownId`, the gates (§1) |
 | 5 | **T5a** + **T5b** | T5a: the part, its compiler and adapter, `GameRuleset`, replay format v9 (§2). T5b: the content read and harvested, building 23's re-read (§3; original data) |
 | 6 | **T6** | `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml`'s rules (§4–§6) |
 | 7 | **T7a** + **T7b** | T7a: the import and the setup's checks (§7, §13; map import v16, the census). T7b: the pool and the build's draws (§14; game state hash v23) |
