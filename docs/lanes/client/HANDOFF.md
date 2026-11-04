@@ -50,7 +50,8 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   three. Reading, build and captures by three sub-agents in turn: the dialog read whole
   (§12.12; ten oddities: CLT-Q43, Q44 asked), `h3_view::options`, `settings.toml`, the speed
   and volumes in effect (the first run's volume 5: the client 6/10 as loud); six stills
-  exact; `drawn`; `check.sh`.
+  exact; `drawn`; `check.sh`. #709: CI and Clients green; GitHub's CodeQL Rust scan failed
+  once (its default setup: not retryable, logs unreadable from the sandbox; a later push reruns it).
 
 - **2026-11-04, E17 M6 T3c3 (done; #704 and #706 merged).** The original data staged (57
   files) first, the computer offline afterwards; #699 had merged; the baseline's `check.sh`
