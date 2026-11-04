@@ -16,7 +16,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   only its level at the start (`TWN-STUB-5`, narrowed). **Next: T7b2b** (the main towns' heroes;
   its queue entry), once T7b2a's pull request merges; then T8a2, T8b; rounds 9, 10 in the epic's
   list.
-- **Open pull requests:** the one of branch `town/e09-t7b2a` (T7b2a, `cross-lane`: `h3-game`,
+- **Open pull requests:** #723, branch `town/e09-t7b2a` (T7b2a, `cross-lane`: `h3-game`,
   `h3-map`'s census example, `h3-cli`'s `src/ai/census.rs`, two adventure bench workloads, the 39
   adventure replays, the adventure lane's HANDOFF versions line and inbox, the battle lane's inbox).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, the adapter `h3-pack-towns` and each pack folder's `towns.toml` (T4b), the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and `src/writer/town*` of `h3-map`, `docs/rules/catalog/town.toml`, `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Everything else in the adventure lane's crates is the adventure lane's: a change there is `cross-lane`, merged in order with the adventure lane's pull requests.
