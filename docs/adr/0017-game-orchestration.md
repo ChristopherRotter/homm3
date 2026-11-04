@@ -116,6 +116,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    the ruleset's with a town record, a player's within its allowed set (E09 decision 14: with AB
    or SoD enabled, an RoE-format map's player whose eight bits are all allowed may have Conflux;
    one restricted to fewer stays restricted).
+   **Increment 10** (dwellings and hiring; E08 decision 231) adds no command: a dwelling's or a
+   Refugee Camp's visit is a step of `MoveHero` (both kinds are entered), and the free creatures
+   and the purchases are answers (point 6). The setup gains nothing beyond ADR-0016's (the
+   dwellings' owners and the random dwellings' faction sets and level ranges come with the map's
+   objects).
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -177,6 +182,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (GAM-RES-004's path): the day's income `h3-towns` derives (the gold by its highest hall and
    the Grail's, the Resource Silo's resources; E09 decision 10); a neutral town pays nobody. The
    Plague and the week's creature stay E09 increment 3's.
+   From increment 10 **the adventure's week step** first refills **every dwelling**, owned or not
+   (each count its creature's growth, set; the guards the kind's full guards; no week's or month's
+   kind), then draws the weekly objects' contents and **the camps' creatures** in one pass in
+   object order, then grows the monsters (GAM-CAL-002 amended; ADR-0016 point 4; batch E10's E10-8
+   and E10-9).
 4. **An RNG stream per player** (kernel streams, ADR-0003 point 7). Randomness caused by a
    player's command draws only from that player's stream; the day advance draws from a game
    stream, and the random placeholders of a setup are resolved from a setup stream when the
@@ -232,6 +242,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    **The draw** (`hero_draw_of_faction`): uniform over the free types of the faction's two
    classes the player may take, else over every free type it may take, else a typed failure of
    the build (T-4, E09 decision 12: no shipped map reaches it); no tavern weights.
+   **Increment 10's setup placeholders**: in the static map's placement walk, in object order,
+   each **random dwelling's faction** (uniform among its set) then **level** (uniform in its
+   range), after E09's placeholders and **before every other existing one** (the drawn type's
+   footprint fixes the tiles the later draws read: a Shipyard's boat tile, the free tiles); a map
+   without random dwellings draws nothing more, so nothing shifts. **A Refugee Camp's creature**
+   (uniform among the random monsters of its levels, ADV-MON-003's set; its count the creature's
+   growth, no draw) in the first week's walk with the weekly objects, in object order. **At a new
+   week** each camp's creature from the game's stream in the weekly objects' pass, in object
+   order. No visit, question, battle's end or purchase of increment 10 draws.
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -333,6 +352,30 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    boat offer** at a visit is an offer with the kind's price, made only when the treasury can pay
    (else refused, as every price), accepted: the price paid and the boat built. Nothing at the
    day's start asks.
+
+   Increment 10's decisions:
+   - **A guarded dwelling's question** (another team's or a neutral dwelling whose guards stand):
+     an offer naming the guards' first creature and the size word of their total
+     (`Offer(Consent)`, [`Decline`]); accepted, the guards' battle (point 11); declined, nothing.
+   - **The hire question** (a dwelling of the visitor's team, so its own once flagged; a camp with
+     creatures, for any visitor): an offer naming the creatures (a camp's hidden until then).
+     Accepted, on one's own dwelling the creatures of the part's free level or less join free, all
+     of each or none (no room: none, the count kept), then the hire dialog when a creature is
+     above that level.
+   - **The hire dialog** (GAM-DEC-008; a new kind, its owner's alone, holding no one else,
+     blocking its owner's `EndTurn` like an offer), answered **`Hire(HireAnswer)`**: `Buy {
+     creature, amount }` and `Close` [`Close`]. A purchase is refused (typed, nothing changed)
+     unless the creature is the source's, the amount from 1 to its count, the army has room for it
+     (a stack of the type within the stack's most, else a free slot) and the treasury pays its
+     cost times the amount; then the price is paid, the count lowered and the creatures join. The
+     dialog stays open until `Close`; a dialog of **one** creature closes after its purchase, as
+     the original's (batch E10's E10-4, E10-8, E10-9: after a purchase of part of the count too).
+     Its legal answers are each creature's purchase of **the most** it may buy (the count, the
+     treasury's bound and the room's), then `Close`; a query gives the range of amounts from 1 to
+     the most, as a split's counts. Its view (its owner's) shows the source by type and anchor and
+     each creature's count and cost. An ally's dwelling (E10's teams) opens it **read-only**,
+     `Close` alone (E10-6). E09's recruitment reuses the kind, with a town's dwelling as its
+     source and the hero's or the garrison's army as its target.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -390,6 +433,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    flat encoding carries yet (decision 187). The action encoding's change is the AI lane's
    (point 8's ownership), made `cross-lane` in the game's task with the user's consent, as
    increment 7's typed answers were (E08 decision 138).
+   Increment 10's **action encoding v7** appends four entries, each buying the most of the open
+   hire dialog's creature in that place (the original's four), masked by its legality; the
+   dialog's `Close` is the closing entry, the two questions the offer's entries. The observation
+   the env returns gains the dialog's view (`GameObservation` as it is, E08 decision 187). The
+   change is the AI lane's (point 8's ownership), made `cross-lane` in the game's task with the
+   user's consent, as increments 7's and 9's.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -456,6 +505,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     limit**: a captured town with a Capitol whose new owner holds another becomes a City Hall,
     survey `E09-towns.md` §8.4; the start keeps every Capitol the map gives). A town's day's
     income is the day's income step's, as a mine's (point 3).
+    **Increment 10's outcomes**: a visit's free creatures (the adventure's own change of the
+    hero's army, told by its events); **the hire dialog to open** (the hero and the source,
+    read-only or not); a won guards' battle's rest (the flag, then the hire question, after the
+    winner's levels, GAM-DEC-007). **A purchase:** the adventure checks the source, the amount and
+    the room and names the price (the creature's cost times the amount, by resource); the game
+    checks the treasury before and pays after, then calls the adventure's infallible purchase; a
+    rejection leaves everything untouched. The flag is increment 9's.
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -520,6 +576,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     win captures the town (point 10) with the attacker outside; the survivors stay in the armies
     that fought; a beaten hero leaves the map and goes back to the pool. A siege of an ally's
     visitor is refused by the step (a typed refusal, a stub until E10).
+    **Increment 10's battles** (GAM-BAT-001 amended): a dwelling's guards defend on its entrance
+    as an army without a hero, unsplit and **unowned**, played by the neutral seat whoever owns
+    the dwelling (D-51 as the original, E08 decision 238; an owned mine's guards stay their
+    owner's), on the entrance tile's battlefield (no terrain of the type; batch E10's E10-1: the
+    defending side unowned, the tile's grass, no special field). Their survivors stay the
+    dwelling's guards until the week's step (none after a draw); a loss or a retreat changes
+    nothing else; a win flags the dwelling for the attacker after its levels, then the hire
+    question.
 
 ## Consequences
 
@@ -583,6 +647,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the game state hash and the replays (each adventure golden replay re-recorded with the bump).
   E10's scenario setup keeps the rest of the setup (teams, conditions, the computer's choices);
   the faction choice and the pick are its seam with E09 (E09 decision 6).
+- Increment 10: one new decision kind and its answer, so the game state hash (v23) and the
+  adventure replay format bump (E09's T5a2 took the replay format's v9 first, so increment 10's is
+  v10; E09 bumps the game state hash too, the second to merge bumps again). The dialog's purchase
+  rule is one, the map's (ADR-0016 point 4), checked by the game's treasury: E09's recruitment
+  adds a source and a target, not a second dialog. The random dwellings' draws come first among
+  the static map's: a map that holds one draws every later placeholder differently than before; no
+  recorded game holds one. An agent of v7 buys the most of a creature, never less; a finer amount
+  is the AI lane's.
 
 ## Alternatives considered
 
@@ -641,6 +713,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the map; E09 decision 12: fixed, not a flag); the town draws after the existing placeholders
   (the drawn heroes' armies and experiences would need a second walk); every starting hero drawn
   until E10, or the pick for every colour (TWN-Q2, E09 decision 9).
+- Increment 10 (ADV-Q41 to ADV-Q43): every amount in the legal set (each creature's 1 to its most:
+  up to the count per creature, where the most and a query of the range serve, as a split's
+  counts); an ally's dialog as an event (VCMI shows none; the original shows the disabled dialog,
+  batch E10's E10-6, so a client draws one view; built with E10's teams); the dialog open after a
+  one-creature purchase (the original closes it: survey `E08-dwellings.md` §5.3, E10-4);
+  `Answer::Close` for the dialog (the exchange dialogs'; the kind's own answer instead, as the
+  University's `Leave`, so an answer names its decision); the random dwellings drawn after the
+  existing placeholders (their footprints fix the tiles the later draws read); the guards on the
+  owner's side (VCMI; rejected by the user, E08 decision 238).
 
 ## Revision history
 
@@ -722,3 +803,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   Capitol's limit, no command; a siege's setup and defender. Drafted in E09 T2a (survey
   `E09-towns.md` §2, §4, §5, §8, §9, §11); batch TWN-1 (T3c, survey §15) confirmed TD-3, TD-5,
   TD-7 and the siege's aftermath, its building 23 involving no draw (E09 decision 25).
+- 2026-11-03 (E08 T92 `shared/`; the user at ADV-Q41 to ADV-Q43, E08 decisions 231, 235–238, 241,
+  243): points 1, 3, 4, 6, 8, 10 and 11 amended for E08 increment 10, dwellings and hiring: no
+  command; the week's refill and the camps' draws; the random dwellings' and camps' draws; the
+  guards' and the hire questions, the hire dialog; the env's v7; the purchase's outcome; the
+  guards' battle unowned. Drafted in E08 T88b2 (survey `E08-dwellings.md` §4, §5, §6, §7, §12);
+  batch E10's outcome (T91, §16: every row as read) folded in.

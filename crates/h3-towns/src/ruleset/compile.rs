@@ -6,7 +6,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_content::{ContentKey, CreatureTypeId, FactionId, ResourceId, Ruleset};
-use h3_contracts::Moat;
+use h3_contracts::{MAX_TOWN_BONUSES, Moat};
 
 use super::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, GarrisonRow,
@@ -485,7 +485,8 @@ fn forbidden_cycle(forbidden: &[Option<BuildingId>], start: BuildingId) -> bool 
 }
 
 /// The record's roles across its buildings: one building of each hall and fort level, one Grail,
-/// one silo; each dwelling once, the level-1 and level-2 ones present.
+/// one silo; at most `MAX_TOWN_BONUSES` with a morale or luck change; each dwelling once, the
+/// level-1 and level-2 ones present.
 fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
     let count =
         |role: &dyn Fn(&BuildingRoles) -> bool| buildings.iter().filter(|b| role(&b.roles)).count();
@@ -505,6 +506,13 @@ fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
         return Err(invalid_town(
             faction,
             "needs one Grail building and one Resource Silo",
+        ));
+    }
+    // A siege's bonuses name each such building (`h3_contracts::TownBonuses`, E09 T6b).
+    if count(&|r| r.morale != 0 || r.luck != 0) > MAX_TOWN_BONUSES {
+        return Err(invalid_town(
+            faction,
+            "has more than 8 buildings with a morale or luck change",
         ));
     }
     let mut dwellings = BTreeSet::new();

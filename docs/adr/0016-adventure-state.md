@@ -96,6 +96,23 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      setup's (its random stacks resolved when the game is built, ADR-0017 point 4) until a rule
      writes it. No other town state is the adventure's: its record (faction, buildings) is
      `h3-towns`', which the game composes with it.
+   - **Increment 10's dwellings and Refugee Camps** (E08 decision 231):
+     - **Owners:** the dwellings are ownable objects (point 4), their owners in the owners' block
+       by ownable index with the mines', the owners at load the setup's.
+     - **A dwelling's week:** its counts as they stand and its guards as they stand (the kind's
+       full guards, a battle's survivors, or none once beaten) in one block by **dwelling index**
+       (the static map's list of dwellings in object order), **none while every dwelling is as its
+       week began** (when the game is built and after each week's step, which writes none: every
+       dwelling refilled at once); a visit that changes a dwelling makes or copies the block.
+       Equality and the hash read the counts and guards as they stand, so no block and a block of
+       full entries are one state (point 2). Not the armies on objects: a dwelling's guards are
+       not an army a battle or a dialog left on the map but the week's.
+     - **A Refugee Camp's creature and count:** one block by camp index, drawn when the game is
+       built and at every week's step, lowered by a purchase; none for a map without camps.
+     - **A random dwelling** is resolved when the game is built into the static map: the drawn
+       dwelling type, that type's own footprint as its masks, its anchor moved as the original
+       moves it (the moved anchor may lie one column past the map's right edge, holding only a
+       free cell); from then on it is a dwelling like a placed one.
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -168,6 +185,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    screen's swap) comes with E09's increment 3. A hero on a town's entrance hides the town as on
    an owned object's: a step onto the tile meets it (its own team) or attacks the town (another
    team, point 4).
+   From increment 10 **an own dwelling's visit opens no Leave Guards dialog**: a dwelling holds
+   none of its owner's troops (E08 decision 238). Creatures a dwelling gives (free or hired) join
+   the hero's army where the room rule puts a join (a stack of the type within the stack's most,
+   else the first free slot; ADV-ARM-007); with no room they do not join (the free ones stay
+   counted; no merge of the hero's stacks: D-52 as the original, confirmed by batch E10's E10-3).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -465,6 +487,51 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        by a later step, which finds the town its own; a defender's win or a battle with no
        winner changes no owner, the survivors staying in the armies that fought (the visitor's,
        or the garrison as a mine's guards).
+   - **Increment 10's kinds** (the import maps classes 17, 20, 78 and 216 to 218; every one
+     entered, none visitable from above):
+     - **Dwellings** (`dwelling`: one to four creatures in the original's order, its own
+       footprint; ADV-DWL-001, -002): when the game is built and at every new week each count is
+       its creature's growth (set, never added; no week's or month's kind applies) and the guards
+       are, for each creature of the part's guard level (5) or more, a stack of the guard factor
+       (3) times its growth, in creature order (ADV-DWL-002, -003). **The visit** (ADV-DWL-004):
+       one of the visitor's team (an ally's from E10's teams) skips the guards and the flag;
+       another team's or a neutral one with guards standing asks first (the question shows the
+       first stack's creature and the size word of the guards' total), then fights them **unsplit,
+       unowned, without a hero** (the neutral seat plays them, whoever owns the dwelling: E08
+       decision 238; ADR-0017 point 11); a loss, a retreat, a surrender or a draw leaves the
+       survivors as its guards until the week's step and its owner unchanged; a win clears them
+       and, after the winner's levels, the rest of the visit flags it (ADV-OWN-001, the reveal of
+       point 5); an unguarded one is flagged at once. Then the **hire question**: on the visitor's
+       own dwelling the creatures of the part's free level (1) or less join free, all of each, the
+       count set to 0 (none without room, the count kept); with a creature above that level the
+       **hire dialog** opens (ADR-0017 point 6: a pending decision); on an ally's the dialog opens
+       read-only. A purchase (ADV-HIR-002) takes a creature of the source, an amount from 1 to its
+       count and room in the army, lowers the count and adds the creatures; the price (the
+       creature's cost times the amount) is the game's to check and pay.
+     - **Random dwellings** (`random_dwelling`; ADV-DWL-005): the map's faction set and level
+       range (217's level and 218's faction normalised into them); when the game is built a
+       faction is drawn uniformly from the set, a level uniformly from the range, and the part's
+       table names the dwelling type for the faction and level (one per faction and level: the
+       original's unupgraded creature's dwelling, the Golem Factory for the Tower's level 3). The
+       import refuses an empty set (A-34), a town identifier no town of the map has (A-35), a
+       level past 6 or a lowest level above the highest, classes 18 and 19 and a dwelling subclass
+       past its table (A-36): input bounds, no flag. A random dwelling tied to a town is a blocker
+       until E09's random towns resolve it (ADV-STUB-13). A hero on a random dwelling's visitable
+       tile is refused by the setup (the draw would block it).
+     - **The Refugee Camp** (`refugee_camp`: its levels; ADV-RFG-001): not ownable, no guards; its
+       creature drawn among the random monsters of levels 1 to 7 (ADV-MON-003's set) and its count
+       that creature's growth, when the game is built and every week. Any player's visit: a count
+       of 0 is told as deserted; else the hire question naming its creature, then the hire dialog;
+       no flag, no free creatures.
+     - **The week's step:** every dwelling refilled before the weekly objects' contents; the camps
+       drawn with the weekly objects in one pass in object order; then the monsters' growth
+       (ADR-0017 point 3). A defeated player's dwellings become neutral, keeping their guards
+       (ADV-OWN-004, with E10's defeat).
+     Batch E10 (E08 T90, T91; survey `E08-dwellings.md` §16) confirmed what it tested of this as
+     the original's: the guards and counts at load and each week, the unowned battle, the flag,
+     the free creatures and D-52, the dialog's bound and the ally's read-only dialog, the random
+     dwellings' types and moved anchors, the camp. The import's refusals and the defeat were not
+     in it.
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -481,7 +548,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    radius** of its entrance (`h3-towns`' derivation: 5; a Tower with its Lookout Tower 20; a
    Tower with the Grail every tile of every level; survey `E09-towns.md` §8.3), its team's from
    E10; the start of the game reveals the same around every town owned at load, with the other
-   owned objects. The **fringe** is the hidden tiles touching an explored tile (the
+   owned objects. From increment 10 a **dwelling's flag** reveals as a mine's (within 3 of its
+   entrance, to its new owner's team), and the start of the game reveals the same around every
+   dwelling owned at load. The **fringe** is the hidden tiles touching an explored tile (the
    reveal's shape: ADV-Q5). A viewer sees on explored tiles the public part of their content; on the
    fringe terrain, roads and rivers, plus object appearance under the `faithful` profile once
    `ADV-QUIRK-1` is confirmed (Q30's rule: until then the clean behaviour only); nothing else of
@@ -546,6 +615,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    derived fact (the Escape Tunnel, ADR-0023 point 2) stays the owner's. A capture is seen where
    its tiles are; its reveal is told to the new owner alone. `docs/06-security.md` lists it (E09
    T8c; the design note gives the words).
+   From increment 10 every viewer that sees a **dwelling** sees its type (so its name and
+   creatures; a random dwelling's drawn type, footprint and moved anchor, as the original draws
+   it) and its owner; **never its counts or guards** (the original's hint and popup show neither,
+   batch E10's E10-10). A **Refugee Camp** shows its type only, never its creature or count, and
+   no knowledge of it is kept after a visit. The guards' question (its creature and size word),
+   the hire question (a camp's creature), the free creatures joined or refused, the dialog's
+   counts and costs and the purchases are told to the visitor's owner alone. A flag is seen where
+   its tiles are, its reveal told to the new owner; the guards' battle is seen as any battle; the
+   week's refill and the camps' draws are told to no one. `docs/06-security.md` lists it (E08
+   T92).
 
 ## Consequences
 
@@ -597,6 +676,14 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   the map import bump (the adventure lane's, `cross-lane`); the replays with a town re-recorded.
   The adventure never reads a town's buildings: the game passes it the reveal radius and adds the
   public facts to the observation.
+- Increment 10: the map's dwellings, random dwellings and camps become typed objects, so the
+  shipped maps' static maps change (map import v16) and so do the golden replays on maps that hold
+  them; the adventure part gains three kinds, `[params.dwellings]` and the random dwellings' table
+  (ruleset part v16); the state gains the dwellings' and camps' blocks (adventure state hash v20).
+  E09 bumps the same three; the second to merge bumps again. A week's step refills every dwelling
+  by writing one field; a fork costs nothing more for a map whose dwellings are untouched this
+  week, one reference count otherwise. The hire dialog's purchase rule is the map's, reused by
+  E09's town recruitment (its increment 3) for the hero's or the garrison's army.
 
 ## Alternatives considered
 
@@ -647,6 +734,17 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   a flag (ADV-OWN-001's step: a town's capture empties the garrison, reveals by the town's radius
   and leaves the attacker outside after a siege, none of which a flag does); the ally's defence
   built now (no teams until E10; TWN-Q2, E09 decision 16).
+- Increment 10 (ADV-Q41 to ADV-Q43): an owned dwelling's guards on its owner's side (VCMI; the
+  agent's first proposal of a flag, E08 decision 234: rejected by the user, decision 238, as the
+  owner never puts them there, where an owned mine's guards are its owner's because Leave Guards
+  puts them there); a dwelling's guards in the armies on objects as a mine's (the week's refill
+  would clear every dwelling's entry of a table shared with the monsters and mines, where one
+  field resets them all); a resolved random dwelling keeping the random dwelling's 2 × 2 (decision
+  236: the original's entrance moves with the draw, batch E10's E10-7); the free creatures merging
+  two of the hero's stacks first (VCMI's `mergeOnRecruit`; decision 235, D-52, confirmed by
+  E10-3); the original's derivation of a random dwelling's dwelling (the last class-17 subclass
+  listing the creature) instead of the part's table (the same outcomes as data, checked against
+  the derivation by a test).
 
 ## Revision history
 
@@ -730,3 +828,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   boat tile shown only to its owner's team, not public: the team has explored every offset (a
   flag's reveal, an owned object's at the start), while to another viewer the tile told which
   earlier offsets were land or held an object (E08 T86b1's view property found it).
+- 2026-11-03 (E08 T92 `shared/`; the user at ADV-Q41 to ADV-Q43, E08 decisions 231, 235–238, 241):
+  points 1, 3, 4, 5 and 6 amended for E08 increment 10, dwellings and hiring: the dwellings'
+  owners, their week's block, the camps' block, a random dwelling resolved into the static map; no
+  Leave Guards at a dwelling, the room rule for its creatures; the kinds dwelling, random dwelling
+  and Refugee Camp with the guards' question and unowned battle, the flag, the free creatures, the
+  hire dialog, the import's bounds and the week's step; a dwelling's flag and the start's reveal;
+  a dwelling's type and owner public, its counts and guards and a camp's creature hidden. Drafted
+  in E08 T88b1 (survey `E08-dwellings.md`); batch E10's outcome (T91, §16: every row as read, D-52
+  confirmed) folded in.

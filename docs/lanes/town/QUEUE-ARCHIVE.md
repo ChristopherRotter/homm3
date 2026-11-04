@@ -26,3 +26,20 @@ AB pack (§3, T5b).
 - (adventure archive, 2026-10-14, T18b) VCMI gives every hero a catapult; the original was not
   read; it matters in sieges. Increment 1 (the siege's war machines).
 - (E11, Q58) Conflux as a town and the moat by expansion are E09's.
+
+## 2026-11-03 — E09 T6b: carried by `h3_towns::siege`
+
+The siege's `bonuses` (`siege.rs`, TWN-SIE-003): a `TownBonus` per building ever built with a
+morale or luck change, its morale while it stands and its luck once ever built (the format doc's
+readings, survey §9.4: the note's "standing" for both differs only for a superseded luck
+building, which no pack has); at most 8 a record (the compiler). The Grail building's
+`EffectSource::Building` stays in the queue's inbox, shortened (the game's, when it gives the
+owner's heroes that bonus).
+
+- 2026-11-03 (the battle lane, CLT-Q40, BAT-Q64; ADR-0023 point 2 amended; **for your siege
+  derivation**): `Siege.morale` and `luck` became `Siege.bonuses` (`h3_contracts::TownBonuses`, at
+  most 8): one `TownBonus { building, morale, luck }` per standing building with a morale or luck
+  role (`BuildingRoles.morale`, `luck`), `building` its `BuildingId` index; the battle sums them and
+  shows them to everyone for the stats dialog. And the owner's Grail building that adds a hero's
+  morale or luck (the Colossus, the Spirit Guardian) names itself as
+  `EffectSource::Building { faction, index }` on that hero's `BattleEffect`, when the game gives it.

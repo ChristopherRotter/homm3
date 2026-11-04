@@ -5,6 +5,9 @@ drafts, the design note and the cut. Done whole in one session (the user at T88a
 not the queue's sketch of two parts, not three). Input, not rules (`README.md`): a fact becomes
 binding when a task writes it into the catalog with its sources and tests.
 
+**Batch E10** (run by T90) is scored in §16 (T91, 2026-11-03): every row as read; D-52 confirmed
+(the original); no `ADV-Q`.
+
 **Sources** (retrieved 2026-11-03):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
   cited has an entry in `docs/exe/map.toml` or `structs.toml`. The reading follows the human
@@ -106,7 +109,8 @@ binding when a task writes it into the catalog with its sources and tests.
 - **Disputes and candidates** (§11): **D-51** (the guards' side), **D-52** (no merge for the free
   creatures); **A-34** (an empty faction set gives Castle), **A-35** (a dangling town identifier),
   **A-36** (classes 18 and 19, subclasses past the tables): all three refused at the import, as
-  A-31. Batch E10's plan (§13): ten rows in two runs. The proposed ids (§14): the new families
+  A-31. Batch E10's plan (§13): ten rows in two runs (E10-2 dropped), run by T90 and **scored in
+  §16 (T91): every row as read**. The proposed ids (§14): the new families
   ADV-DWL and ADV-HIR, ADV-RFG-001, GAM-DEC-008 and amendments. The checkpoint's questions for
   T88b (§15): ADV-Q42.
 
@@ -496,7 +500,8 @@ then `updateGuards` (3 × growth for level 5 and more). Three sources agree.
 - **D-52 (free creatures with a full army).** The original refuses (GENRLTXT 426, the count kept);
   VCMI with `mergeOnRecruit` merges two of the hero's stacks of one type first. Gameplay: a hero
   with seven slots, two of one type, gets the free creatures in VCMI. Recommended: **the
-  original**, checked by E10-3. *Decided (decision 235):* the original.
+  original**, checked by E10-3. *Decided (decision 235):* the original. *Confirmed* by E10-3
+  (§16, T91).
 - **A-34 (an empty faction set gives Castle).** `random_allowed_faction` over an empty mask gives
   faction 0. VCMI draws any faction with a town. No shipped map has one; the editor never writes
   one. Recommended: **refused at the import** (an input bound, as A-31), no quirk flag.
@@ -517,7 +522,7 @@ then `updateGuards` (3 × growth for level 5 and more). Three sources agree.
   branch of the dialog (the War Machine Factory, not in scope); the computer's hiring (E10). No
   fresh agent re-read this survey (the token rule; T77a2 did): every point that rests on the
   reading alone (D-51, D-52, the ally's disabled dialog, the purchase's bound, the template's
-  move) has a row in batch E10.
+  move) has a row in batch E10 (each as read, §16; D-51's owned case dropped with E10-2).
 
 ## 12. Commands, decisions, events, the observation, replays and benchmarks
 
@@ -550,7 +555,7 @@ For T88b's drafts and design note (ADR-0015 to -0017, the GAM-DEC rules); a sket
 
 ## 13. Batch E10's plan
 
-Increment 10's batch (named after the increment as batches E3 to E9; not the epic E10), **batch
+Run by T90, scored in §16 (T91). Increment 10's batch (named after the increment as batches E3 to E9; not the epic E10), **batch
 E10**, runs on the client lane's harness in SoD on Easy, hot seat, from maps `h3-experiment` writes
 (`docs/experiments/README.md`), as before (decision 232's agent's call). Its spec and recipe are
 tasks of T88b's cut; this is the plan. **Two runs**: **E10a** the visits (E10-1, E10-3 to E10-7, day
@@ -634,3 +639,55 @@ in the increment; (4) **batch E10 before the build**. *Revised* at T88b's start 
 the guards come to an owned dwelling, made D-51 **the original's rule, not a quirk** (no flag) and
 dropped E10-2.
 
+
+## 16. Batch E10 scored (T91)
+
+Scored on 2026-11-03 (E08 T91; decision 247: whole) from the recorded runs: E10a
+`experiments/results/E08-batch-10a.md` (T90: two runs, 72 of 74 records equal; the differences
+the starting bonus and a level-up's offer) and E10b `E08-batch-10b.md` (T90: five runs; its last
+two differ in the starting gold and the camp's day-1 creature), played by the capture harness
+(`clients/capture/batches/E08-batch-10a.toml`, `-10b.toml`) in SoD 4.0 on Easy, hot seat, and read
+from the game's memory. Each row against §13's prediction (§13's levels are zero-based, the
+specs' one-based: "levels 6–6" is the spec's "7 to 7"; the texts by record, counted from 0).
+
+| Row | Predicted | Observed | Verdict |
+|---|---|---|---|
+| E10-1 (§2.2, §4.2, §4.3) | 3 Green Dragons; 9 Gold + 6 Diamond Golems; 12 Earth Elementals; unowned; flagged after each win, counts = growth; the size word the guards' total's (design §16) | the records before: D 1 Green Dragon, F 6, 6, 3, 2 (Stone, Iron, Gold, Diamond), X 6, 5, 4, 6 (Air, Fire, Earth, Water), the guards as predicted, one stack each in creature order; GENRLTXT 422 with ARRAYTXT 176 "a few" (D, 3) and 182 "a pack of" (F 15, its first stack 9 would be 179 "several"; X 12); each battle on the tile's grass, no special field, the defending stacks the guards unsplit by slot, the defending side's owner none and not human; won; then the hire question (ADVEVENT 35 at D, 36 at F and X), answered no; each record Red's, its guards empty, its counts kept | confirmed (the defender unowned as `visit_dwelling` pushes −1; the size word the total's) |
+| E10-3 (§4.4, D-52) | +14 Pikemen then "no Pikemen"; B refused, the count kept (VCMI merges the Archers) | P (neutral, unguarded) flagged Red's, ADVEVENT 35, yes: GENRLTXT 424, 14 Pikemen in E10-3's first empty slot, the count 0; again: ADVEVENT 35, yes: GENRLTXT 423, nothing; Q with E10-3b's seven stacks (two of Archers): flagged Red's, ADVEVENT 35, yes: GENRLTXT 426, the army as it was, the count 14 kept; no hire dialog (a level-1 dwelling), no battle | **D-52 confirmed**: the original's refusal; VCMI's merge is not the original's |
+| E10-4 (§5.2, §5.3) | the most 3 (min(4, 1 000 ÷ 300)); 900 paid, the count 1; the dialog closed after the purchase (design §16) | no guards' question; ADVEVENT 35; the dialog opened with the most 3, the amount 0, Max and the slider enabled, Recruit disabled (amount 0); Max, Recruit: 3 Swordsmen in slot 1, 1 000 → 100 gold, the count 4 → 1; the dialog closed | confirmed |
+| E10-5 (§5.1, §5.2) | 0, then 1 (the crystal bounds it; no guards for its owner) | owned by Red at load and guarded (3 Green Dragons, kept in the record throughout); no guards' question; with 10 000 gold and no crystal the most 0, Max and the slider disabled; after the crystal (1) the most 1; Max, Recruit: 1 Green Dragon for 2 400 gold and 1 crystal (10 000 → 7 600, 1 → 0), the count 0, the dialog closed | confirmed: an owned dwelling holds its guards, its owner never meets them (§4.1, §6.1) |
+| E10-6 (§4.4) | not flagged; the dialog disabled | the team bytes red 0, blue 0, tan 1 (the hot seat keeps the map's teams; design §16's fallback not needed); U (Blue's Barracks): ADVEVENT 35, yes: the dialog with +0x4C set, the most 3 from Red's 1 000 gold, Max, Recruit and the slider disabled, Close enabled; Max changed nothing; V (Blue's, guarded): no guards' question, ADVEVENT 35, the dialog with the most 0, the same buttons; both records Blue's, their counts and V's guards unchanged, Red's treasury unchanged, at Blue's turn and on day 2 too | confirmed: an ally skips the guards and the flag, sees the offer and buys nothing |
+| E10-7 (§3.2) | the Angel Portal moved one right; the Golem Factory with its four golems and guards; the Dwarf Cottage's entrance one left of the anchor | R1 (216, {Castle}, level 7) class 17 subclass 8, anchor (13, 30): one right of the spec's (12, 30), its entrance (12, 30), blocked (11, 30); 1 Angel, 3 Angels' guards. R2 (217, {Tower}, level 3) class 20 subclass 1 at (16, 30), the entrance the anchor, blocked (15, 30); 6, 6, 3, 2 golems, 9 Gold and 6 Diamond Golems' guards. R3 (216, {Rampart}, level 2) class 17 subclass 12 at (21, 30), the entrance (20, 30), blocked (21, 30); 8 Dwarves, no guards. All three unowned; row 29 free | confirmed (T90's note that the anchors differ from the spec's `at` is this move) |
+| E10-8 (§6.1) | counts = growth (not added); guards back on both | S: 2 of 4 bought on day 1 (the most 4; the dialog closed), 2 on days 2 and 7, 4 on day 8 (not 6); F, never visited: 6, 6, 3, 2 and 9 and 6 guards throughout (not added on day 8); D, flagged by Red on day 1 (its guards beaten): no guards on days 2 and 7, 3 Green Dragons again on day 8, still Red's; day 8 the week's first day (week 2, day 1; the week's message) | confirmed (the week was the Beholder's: no week's creature reached these, untested as read) |
+| E10-9 (§7) | a creature of levels 1–7 with its growth; the rest on day 2; a new creature and growth on day 8 | the camp's entrance word (19, 10) +0x22 creature 131 (Phoenix), +0x0 count 2 (its growth), its other tile −1; no owner; the question (ADVEVENT 112's text, see below), the dialog's most 2; 1 bought for 2 000 gold and 1 mercury, the dialog closed, the count 1; day 2: the most 1, bought, 0; the next visit ADVEVENT 44 alone; day 7 still 0; day 8 Obsidian Gargoyles (31) × 9, the most 9 | confirmed |
+| E10-10 (§9) | name; name and owner; the camp's name only | the hint: D's and S's name with " - " and ARRAYTXT 23 ("Owned by red player"), F's name, the camp's name; the popup the same lines (the name, an empty line, the owner's); the camp's popup its name only to Blue and to Red, who had bought there that day (VCMI shows a visitor the creature) | confirmed |
+
+**Beyond the predictions:**
+- **The camp's question** is ADVEVENT 112 by the reading; its text is ADVEVENT 35's, so the screen
+  cannot tell them apart (the harness names the first record). A client's choice of record, no
+  rule.
+- **A one-creature dialog closes after any purchase**, of part of the count too (E10-9's 1 of 2,
+  E10-8's 2 of 4), as §5.3 reads; **an ally's dialog computes the most** and only disables the
+  buttons (E10-6's U: 3), as §5.2.
+- **The flag needs no join:** Q was flagged although nothing joined (the flag before the question,
+  §4.3).
+- **The draws** (the game's seed, no rule): the camp's day-1 creature differed between E10b's
+  last two runs, its week-2 creature was the same in all; the engine draws from its own stream
+  (decision 17).
+- **A player without towns** (E10a's Red) saw GENRLTXT 7 ("… lost your last town …") after D's
+  battle, the harness's known message (`clients/capture/README.md`): E10's defeat, not this
+  increment's. **Tan's turn** (the computer, walled in) changed nothing read (its treasury, its
+  hero's tile and points): the computer's hiring stays E10's (§11).
+- **Not read:** the scenario's information on the teams (the harness reads no screen text there);
+  the team bytes stand in.
+
+**The rules** (§14): the new ones cite these rows as `observation` sources and are written
+`verified` when T93 to T95 build them: E10-1 ADV-DWL-002, ADV-DWL-004, ADV-OWN-001 (amended) and
+the guards' battle (GAM-BAT-001 amended, design §12); E10-3 ADV-HIR-001 (D-52), ADV-DWL-004; E10-4
+ADV-HIR-002, GAM-DEC-008; E10-5 ADV-HIR-002, ADV-DWL-002, ADV-DWL-004; E10-6 ADV-DWL-004,
+ADV-HIR-002, ADV-OWN-001; E10-7 ADV-DWL-005, ADV-DWL-002; E10-8 ADV-DWL-003, GAM-CAL-002
+(amended), ADV-DWL-002; E10-9 ADV-RFG-001, ADV-HIR-002, ADV-MON-003 (amended); E10-10 ADV-OWN-003
+(amended). No rule in the catalog gains a row now: each row tests what the increment adds or
+amends. No `ADV-Q`; D-51 stays as decided (decision 238; E10-1 shows the reading's owner −1 at
+neutral dwellings, the owned case dropped with E10-2); A-34 to A-36 are refused at the import and
+not in the batch.

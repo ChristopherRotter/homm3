@@ -11407,3 +11407,73 @@ entries from below, army room, the order, the early ends and the rows' coverage 
 ### Increment 10, round 3: T90, batch E10's harness reads and runs (2026-11-03, `adventure/e08-t90`)
 
 The user: T90 whole, spread over sub-agents. `clients/capture/`: reads `dwelling:`, `teams`, `objects:`, `access:`, `camp:`, `hire[:part]`, `hint`, `popup`, `opening:defender`, the hire dialog as a screen with step `actions`, steps `hint`/`popup` (h3mem: `dwellings`, `dwelling_at`, `teams`, `access`, `objects`, `camp`, `recruit_dialog`, `recruit_manager`, `status_bar`, `object_name`, `owned_name`, `is_human`); the recipes `batches/E08-batch-10a.toml` (7 rows, 2 runs, 72 of 74 records equal; differences: the start bonus, level-up offers) and `-10b.toml` (46 steps, 5 runs; r4 and r5 differ in start gold and the camp's day-1 draw); templates filled. Raw observations (unscored): Tan's turn is not seen (`ai_turns` none; Tan's treasury and hero unchanged); the defender's owner reads none on the neutral dwellings; allied dwellings open the hire dialog with the ally flag and Max, Recruit and the slider disabled; the camp's week-2 draw is the same in all runs, its day-1 draw varies; the camp's, Barracks' and dwellings' hire questions read as one record (ADVEVENT:35/36). The harness check passed 23 steps on the rerun (flaky once, in the battle `attack` plan, unrelated). Unread: the scenario's team information text. Observed objects' anchors differ from the spec's `at` (R1 at (13,30)). No version moved.
+
+### Increment 10, round 3: T91, batch E10 scored (2026-11-03, `adventure/e08-t91`)
+
+Baseline: `master` at 5714372 (#699; CI's engine verify green on 616e45a7, the clients' on
+c632a24b, T90's #697). The executables, the DLLs, the four LODs, the sound and video archives,
+`maps.tar`, `extracted.tar`, the MP3s and Ghidra's x86 archive staged at the start (the user's
+computer was to be disconnected soon). **The cut** (decision 247): T91 whole, then T92 in the
+same session. **`master`'s red gate:** the setup's full baseline (on c632a24's code; CI
+had run only the clients' checks on #697) failed `check-exe-map` and xtask's
+`the_real_map_passes`: T90 cited the hire window's vtable 0x640C4C and the slider's 0x641D50
+without map entries; fixed in its own pull request (#700, `adventure/e08-t90-exe-map`: two
+`inferred` table entries). Every other step passed.
+
+**Scored** (survey `E08-dwellings.md` §16) from T90's filled templates (E10a two runs, E10b five,
+the templates the last): **every row as the reading predicts**, so no `ADV-Q` opens before the
+shared task. E10-1: the guards at load (3 Green Dragons; 9 Gold and 6 Diamond Golems; 12 Earth
+Elementals), the size word the total's (ARRAYTXT 182 for the Factory's 15, not 179 for its first
+stack's 9), the battles unowned on the tile's terrain, each dwelling flagged after its win, the
+counts kept. E10-3: **D-52 confirmed** (GENRLTXT 426, the count 14 kept, no merge). E10-4: the most
+3, 900 paid, the dialog closed. E10-5: the crystal bounds the most (0, then 1); an owned
+dwelling holds its guards and its owner never meets them. E10-6: the hot seat keeps the map's
+teams; an ally skips the guards and the flag, its dialog computes the most (3) with every button
+but Close disabled. E10-7: the Portal of Glory anchored one right with its entrance on the random
+dwelling's anchor, the Tower's level 3 the Golem Factory (20.1), the Dwarf Cottage entered one
+left. E10-8: the counts set to the growth (4, not 6), the guards back on the week's first day,
+owned or not. E10-9: the camp's creature and count on its entrance word, the rest on day 2, then
+deserted (ADVEVENT 44), a new creature with its growth on day 8. E10-10: name and owner; the
+camp's name only, to its visitor too.
+
+**Beyond the rows** (survey §16): the camp's question ADVEVENT 112 has ADVEVENT 35's text (the
+harness names 35); a one-creature dialog closes after a purchase of part of the count; a flag
+without a join (E10-3b); the camp's draws are the game's seed; GENRLTXT 7 for a player without
+towns (E10's defeat); Tan's turn changed nothing read (the computer's hiring, E10's).
+
+**The rules:** none written yet; §16 lists the rows each new or amended rule cites as its
+`observation` source, `verified` when T93 to T95 build it. Nothing in the catalog changes now.
+
+**Versions:** none moved (documents only).
+
+### Increment 10, round 4: T92, the ADRs, the glossary and the security lines (2026-11-03, `shared/e08-t92`)
+
+**The cut** (decision 247): whole, after T91, in the same session. A docs-only `shared/` pull
+request (`shared/e08-t92`) with the shared paths only; the lane's records (the drafts' deletion,
+the design note, this entry, the epic, the queue, the HANDOFF) in T91's adventure pull request
+(`adventure/e08-t91`), so no `cross-lane` label (*agent's call*; T81a's single `cross-lane` pull
+request was the other way).
+
+- **The ADRs** (the two drafts accepted at ADV-Q43, decisions 241 and 243, applied with batch
+  E10's outcome as T91 scored it, then deleted): ADR-0016 points 1 (the dwellings' owners, a
+  dwelling's week block, the camps' block, a random dwelling resolved into the static map), 3 (no
+  Leave Guards at a dwelling; the room rule, D-52 confirmed by E10-3), 4 (the kinds dwelling,
+  random dwelling and Refugee Camp, the week's step; a line on what batch E10 tested and what it
+  did not), 5 (a dwelling's flag and the start's reveal), 6 (a dwelling's type and owner public,
+  its counts and guards and a camp's creature hidden, E10-10), a consequence, an alternative and
+  the history; ADR-0017 points 1 (no command), 3 (the week's refill and the camps' draws), 4 (the
+  random dwellings' and camps' draws), 6 (the guards' and the hire questions, the hire dialog
+  GAM-DEC-008; E10-4, E10-6, E10-8, E10-9 cited), 8 (v7's four entries), 10 (the purchase's
+  outcome), 11 (the guards' battle unowned, E10-1), a consequence, an alternative and the
+  history; the index's two Read-when cells.
+- **A correction folded in:** the adventure replay format's bump for `Answer::Hire` is **v10**,
+  E09's T5a2 having taken v9 first (ADR-0017's consequence; design §14, §15 and §17's T95b row).
+- **The glossary** (`docs/03-domain.md`): dwelling (on the map) and its guards, random dwelling,
+  Refugee Camp, free creatures, hire question, hire dialog.
+- **`docs/06-security.md`:** increment 10's paragraph (design §10, §13): a dwelling's type and
+  owner public, never its counts or guards; a camp's creature hidden, no knowledge kept; the
+  questions, gifts, dialog and purchases the visitor's owner's alone; the guards' battle unowned;
+  a purchase validated against the open decision and the treasury, never the payload's price; an
+  ally's dialog read-only. The events' names come with the build (T94, T95).
+
+**Versions:** none moved (documents only).

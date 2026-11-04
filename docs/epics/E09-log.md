@@ -717,3 +717,51 @@ record, the store and its hash; **T6b** the derivations (§6); **T6c** the setup
 - **`BuildingSet`** gains `difference`, `is_empty` and `iter` (index order).
 - **No rule id:** the record and the store are state; the rules over them (`town.toml`) come
   with T6b. 100 % lines and regions on `h3-towns`.
+
+### T6b — the derivations, `town.toml` (2026-11-03)
+
+One session, the user present; branch `town/e09-t6b` (the lane's own crate and catalog only).
+Starting point: `master` at 4a46251 (#698 T6a merged; the sandbox's baseline the full engine run,
+CI's on `master` still running at the start); the original data not staged (not read). **At its
+start** (the user, asked whole or cut in two): whole, the work split between the agent and one
+sub-agent in a worktree of its own, merged into one pull request. The agent wrote the common
+reading, the test part and the income and siege half; the sub-agent the reveal, the Tavern and the
+Capitol's limit with the store's write (its branch `town/e09-t6b-cap`, local, merged as 693caaa).
+
+- **The common reading** (`derive.rs`, crate-internal `Roles`): a town with its faction's record
+  in the part, its standing and ever-built sets and their roles in index order. Every derivation
+  takes `(&Town, &TownRuleset)` (*agent's call*, design §6's note); a faction without a record
+  reads as a town without buildings (no dead branch: the setup never makes one).
+- **Income** (`income.rs`; TWN-INC-001, -002): `hall_level` (the highest standing `hall`, 1 with
+  none, as the original pays 500 untested), `daily_income` (a list of resources in the core's
+  order, none 0, the sums saturating: the hall's and the Grail's gold, a standing silo's
+  resources; a silo paying gold summed with the hall's; nothing without the parameters).
+- **The siege** (`siege.rs`; TWN-SIE-003 to -005): `fort_level`, `siege` (the moat from a
+  Citadel; `structures` the standing buildings not forbidden less the hall-1 building, decision
+  28; the Escape Tunnel ever built; `bonuses` one `TownBonus` per building ever built with a
+  change, its **morale while it stands, its luck once ever built**: the format doc's readings and
+  survey §9.4, the code reading's 0x44AE60 and 0x44B2D0; the inbox note's "standing for both"
+  differs only for a superseded luck building, which no pack has), `siege_obstacles` (the
+  record's flag from a Citadel), `defender_bonus` (the `defender` values ever built, summed
+  saturating). **The compiler refuses a record with more than 8 buildings of a morale or luck
+  change** (`TownBonuses`' bound; the part's hash unchanged: no field moved), and
+  `h3-pack-towns`' format doc says so.
+- **Capture and the views** (the sub-agent's; `capture.rs`, `view.rs`, `store.rs`; TWN-CAP-001's
+  reveal, TWN-CAP-002, TWN-VEW-002's Tavern): `reveal` (the part's radius, a larger building's
+  ever built, `All` over any; 0 without parameters), `capitol_limit` (the ever-built set after the
+  limit: the standing hall-4 building out, `capitol_demoted_to` in), `has_tavern` (a standing
+  `tavern`), `Towns::capitol` (a standing hall-4 building), `Towns::apply_capitol_limit` (the
+  public write for T8a, whether the town changed; nothing written without a change) over the
+  crate-internal `set_built` (copy-on-write: the list of references copied once a fork, the one
+  town rebuilt, the others and the static parts shared; an id outside the store copies nothing).
+  *Its calls:* the Capitol found as the standing `hall = 4` building; a custom set's lone Capitol
+  limited puts the City Hall into the ever-built set (the original sets only its built bit;
+  nothing reads the halls over the ever-built set).
+- **`docs/rules/catalog/town.toml`** created: TWN-INC-001, -002, TWN-SIE-003 to -005,
+  TWN-CAP-001 (the reveal; capture is T8a's), -002, TWN-VEW-002 (the Tavern; the levels T8c's),
+  all `implemented`, sourced from the survey's readings, VCMI and the wiki as it cites them, E04c's
+  batch 3g for the siege's morale and luck.
+- **Test part** (`fixture.rs`, cfg(test)): a core and a part built in code, the Keep's record
+  with every role of increment 1 (a luck building superseded, so the ever-built reading shows),
+  the Marsh's small one (a silo paying gold, a Citadel), no record for the Wild. 100 % lines and
+  regions on `h3-towns`; no version moved.
