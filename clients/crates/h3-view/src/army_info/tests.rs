@@ -5,7 +5,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_protocol::wire::{Hero, Observation, Side};
+use h3_protocol::wire::{Command, Hero, Observation, Side};
 use h3_render::Bugs;
 use h3_ui::text::Catalogue;
 use h3_ui::text::pack::Pack;
@@ -17,7 +17,7 @@ use super::{
     StackShown, Windows, on_field, stack_window,
 };
 use crate::layout::BattleLayout;
-use crate::mouse::{Facing, Field, Legal, Spot};
+use crate::mouse::{Facing, Field, Legal, Spot, slot, slots};
 use crate::record::tests::observation;
 use crate::scene::tests::{layout, stack};
 use crate::stats::{Effect, Pair, Stats};
@@ -261,17 +261,21 @@ fn a_still_s_mouse_shows_hides_and_keeps_the_windows() {
     let mut hover = Hover::new(1);
     assert_eq!(hover, Hover::default().with_level(1));
     let attacker = on_hero(&l, 0);
-    hover.moved(&l, &o, (attacker, true));
+    hover.moved(&l, (&o, &Legal::default()), (attacker, true));
     assert_eq!(drawn(&hover.windows), [(Side::Attacker, 0)]);
     // A left press over the battlefield hides it, the hex kept: a move on the same rectangle
     // shows nothing (oddity 5); a press over the panel hides nothing.
     hover.pressed(&l, attacker);
     assert_eq!(drawn(&hover.windows), []);
-    hover.moved(&l, &o, ([attacker[0] + 1, attacker[1]], true));
+    hover.moved(
+        &l,
+        (&o, &Legal::default()),
+        ([attacker[0] + 1, attacker[1]], true),
+    );
     assert_eq!(drawn(&hover.windows), []);
     // The hex forgotten (a dialog's close posts the move): back.
     hover.forget();
-    hover.moved(&l, &o, (attacker, true));
+    hover.moved(&l, (&o, &Legal::default()), (attacker, true));
     assert_eq!(drawn(&hover.windows), [(Side::Attacker, 0)]);
     hover.pressed(&l, [618, 593]);
     assert_eq!(drawn(&hover.windows), [(Side::Attacker, 0)]);
@@ -281,15 +285,15 @@ fn a_still_s_mouse_shows_hides_and_keeps_the_windows() {
     hover.key(&l, attacker, Bugs::Fixed);
     assert_eq!(drawn(&hover.windows), []);
     // A new hex: the defender's; an empty hex: none; out of the battlefield: none.
-    hover.moved(&l, &o, (on_hero(&l, 1), true));
+    hover.moved(&l, (&o, &Legal::default()), (on_hero(&l, 1), true));
     assert_eq!(drawn(&hover.windows), [(Side::Defender, 0)]);
-    hover.moved(&l, &o, (centre(&l, 40), true));
+    hover.moved(&l, (&o, &Legal::default()), (centre(&l, 40), true));
     assert_eq!(drawn(&hover.windows), []);
-    hover.moved(&l, &o, (on_hero(&l, 1), true));
-    hover.moved(&l, &o, ([618, 593], true));
+    hover.moved(&l, (&o, &Legal::default()), (on_hero(&l, 1), true));
+    hover.moved(&l, (&o, &Legal::default()), ([618, 593], true));
     assert_eq!(drawn(&hover.windows), []);
     // F5 cycles the level and changes no window until a new hex (§12.14 oddity 6).
-    hover.moved(&l, &o, (attacker, true));
+    hover.moved(&l, (&o, &Legal::default()), (attacker, true));
     hover.cycle();
     assert_eq!(hover.windows.level, 2);
     assert_eq!(drawn(&hover.windows), [(Side::Attacker, 0)]);
@@ -303,7 +307,7 @@ fn a_still_s_mouse_shows_hides_and_keeps_the_windows() {
     assert_eq!(hover.windows.level, 1);
     // At level 0 a new hex shows nothing.
     let mut hover = Hover::new(0);
-    hover.moved(&l, &o, (attacker, true));
+    hover.moved(&l, (&o, &Legal::default()), (attacker, true));
     assert_eq!(hover.windows, Windows::default());
 }
 
@@ -313,25 +317,84 @@ fn a_still_s_mouse_shows_a_stack_s_window_and_writes_the_line_at_the_level() {
     // level that of the last new hex (the epic's review item 42), F5 after it rewriting nothing.
     let (l, o) = (layout(), battle(true));
     let mut hover = Hover::new(1);
-    hover.moved(&l, &o, (centre(&l, 100), true));
+    hover.moved(&l, (&o, &Legal::default()), (centre(&l, 100), true));
     assert_eq!(
         hover.windows.stack,
         Some(shown(Side::Defender, Kind::All, 2, 0))
     );
     assert_eq!(hover.line_level, 1);
     hover.cycle();
-    hover.moved(&l, &o, (centre(&l, 100), true));
+    hover.moved(&l, (&o, &Legal::default()), (centre(&l, 100), true));
     assert_eq!(hover.windows.stack.map(|s| s.kind), Some(Kind::All));
     assert_eq!(hover.line_level, 1);
-    hover.moved(&l, &o, (centre(&l, 99), true));
+    hover.moved(&l, (&o, &Legal::default()), (centre(&l, 99), true));
     assert_eq!(
         hover.windows.stack,
         Some(shown(Side::Defender, Kind::Spells, 2, 0))
     );
     assert_eq!(hover.line_level, 2);
     hover.cycle();
-    hover.moved(&l, &o, ([618, 593], true));
+    hover.moved(&l, (&o, &Legal::default()), ([618, 593], true));
     assert_eq!((hover.windows, hover.line_level), (Windows::at_level(0), 0));
+}
+
+#[test]
+fn a_still_s_line_is_written_again_at_an_attack_s_new_slot() {
+    // E17 M6 T4b2b2 (0x475553, as `mouse::track`'s): over the hex the mouse is over already the
+    // line is written again only as an attack's slot gives the cursor another frame, at the level
+    // then; the windows unchanged. A shot's hex, or a stack only to look at, never.
+    let (l, mut o) = (layout(), battle(true));
+    o.active = Some(1);
+    let strikes: Vec<Command> = (0..187)
+        .map(|from| Command::Attack { target: 2, from })
+        .collect();
+    let legal = Legal::new(&strikes);
+    let c = centre(&l, 100);
+    // Left of the hex's centre one slot, above it another; a point beside the first.
+    let (a, beside, b) = ([c[0] - 10, c[1]], [c[0] - 11, c[1]], [c[0], c[1] - 10]);
+    let frame = |p: [i32; 2]| slots(&o, &legal, 100)[slot(&l, p, 100)];
+    assert_eq!(frame(a), frame(beside));
+    assert_ne!(frame(a), frame(b));
+    let kind = |o: &Observation, legal: &Legal, p: [i32; 2]| {
+        crate::mouse::pointer(o, legal, &l, (p, Bugs::Original, 0)).kind
+    };
+    assert_eq!(kind(&o, &legal, a), crate::mouse::Kind::Attack);
+    let mut shooting = o.clone();
+    shooting.stacks[0].shots = 5;
+    let moved = |hover: &mut Hover, battle: (&Observation, &Legal), to: [i32; 2]| {
+        hover.moved(&l, battle, (to, true));
+    };
+    // Level 1, F5 twice to 0: the same slot keeps the line's level, another slot writes it at 0.
+    let mut hover = Hover::new(1);
+    moved(&mut hover, (&o, &legal), a);
+    let windows = hover.windows;
+    hover.cycle();
+    hover.cycle();
+    moved(&mut hover, (&o, &legal), beside);
+    assert_eq!(hover.line_level, 1);
+    moved(&mut hover, (&o, &legal), b);
+    assert_eq!(hover.line_level, 0);
+    assert_eq!(
+        hover.windows,
+        Windows {
+            level: 0,
+            ..windows
+        }
+    );
+    // The reverse: F5 to 1, back to the first slot: at 1.
+    hover.cycle();
+    moved(&mut hover, (&o, &legal), a);
+    assert_eq!(hover.line_level, 1);
+    // A shot's hex, a stack only to look at: the slots change nothing.
+    let shot = Legal::new(&[Command::Shoot { target: 2, at: 100 }]);
+    assert_eq!(kind(&shooting, &shot, a), crate::mouse::Kind::Shoot);
+    for (o, legal) in [(&shooting, &shot), (&o, &Legal::default())] {
+        let mut hover = Hover::new(1);
+        moved(&mut hover, (o, legal), a);
+        hover.cycle();
+        moved(&mut hover, (o, legal), b);
+        assert_eq!(hover.line_level, 1, "{legal:?}");
+    }
 }
 
 #[test]
@@ -341,10 +404,10 @@ fn a_field_spot_without_a_hex_hides_the_windows_and_forgets_the_hex() {
     assert!(on_field(&l, gap));
     assert_eq!(crate::mouse::spot(&l, gap, true), Spot::Nothing);
     let mut hover = Hover::new(1);
-    hover.moved(&l, &o, (on_hero(&l, 0), true));
+    hover.moved(&l, (&o, &Legal::default()), (on_hero(&l, 0), true));
     assert_eq!(drawn(&hover.windows), [(Side::Attacker, 0)]);
     // The hex −1 counts as a new hex (the hints' guard, *provisional*): every window hidden.
-    hover.moved(&l, &o, (gap, true));
+    hover.moved(&l, (&o, &Legal::default()), (gap, true));
     assert_eq!((hover.hex, drawn(&hover.windows)), (None, Vec::new()));
     assert_eq!(hover.windows.heroes, [None, None]);
 }

@@ -381,6 +381,28 @@ pub fn legal(
     legal
 }
 
+/// A still's acting stack's legal commands `commands` as the cursor asks them ([`legal`]), its
+/// attacks' and shots' damage the engine's previews at the opening of `scenario` (its file, the
+/// packs, the seed; E17 M6 T4b2b2, the epic's review item 42: the status line's at Creature
+/// Info's levels 1 and 2, as the window's `scenario::previews`); none without one (a record names
+/// none).
+pub fn still_legal(
+    manifest: &Manifest,
+    tables: &Tables,
+    observation: &Observation,
+    (commands, scenario): (
+        &[Command],
+        Option<(&std::path::Path, &std::path::Path, u64)>,
+    ),
+) -> Result<Legal, String> {
+    let mut still = legal(manifest, tables, observation, (commands, &[]));
+    if let Some((scenario, packs, seed)) = scenario {
+        let previews = crate::scenario::opening_previews(scenario, packs, seed)?;
+        still.previews = mouse::Previews::new(&previews);
+    }
+    Ok(still)
+}
+
 /// The original id of `manifest`'s creature `creature` by the asset tables `tables`.
 fn original(manifest: &Manifest, tables: &Tables, creature: u16) -> Option<u16> {
     manifest
@@ -1005,13 +1027,15 @@ mod tests {
                     steps.check(waits, &turned, (&inputs, &switches));
                 }
                 let window = |t| steps.shown.army(t).heroes[c % 2].is_some();
-                if window(now) {
+                let shows = window(now);
+                if shows {
                     assert!(!window(now + 1) && window(now + 2), "{c}");
                     hovered += 1;
                 }
                 now += 3;
                 // E17 M6 T4b2b2: the mouse onto the acting stack's hex: its window by the level
-                // (kind 1 at 1, kind 2 at 2), filled by the waiting turn's battle.
+                // (kind 1 at 1, kind 2 at 2), filled by the waiting turn's battle, wherever the
+                // hero's hover showed its window (a human's turn, the level not 0); else none.
                 let acting = turned.last().and_then(|t| {
                     let id = t.observation.active?;
                     t.observation.stacks.iter().find(|s| s.id == id).cloned()
@@ -1023,12 +1047,15 @@ mod tests {
                     });
                     steps.check(waits, &turned, (&inputs, &switches));
                     let army = steps.shown.army(now);
-                    if let (Some(kind), Some(shown)) =
-                        (h3_view::army_info::Kind::at_level(army.level), army.stack)
-                    {
-                        assert_eq!((shown.stack, shown.kind), (acting.id, kind), "{c}");
-                        assert_eq!(shown.turn + 1, turned.len(), "{c}");
-                        stacks += 1;
+                    let kind = h3_view::army_info::Kind::at_level(army.level);
+                    match (army.stack, shows) {
+                        (Some(shown), true) => {
+                            assert_eq!((shown.stack, Some(shown.kind)), (acting.id, kind), "{c}");
+                            assert_eq!(shown.turn + 1, turned.len(), "{c}");
+                            stacks += 1;
+                        }
+                        (None, false) => {}
+                        (shown, _) => panic!("{c}: {shown:?} at level {}", army.level),
                     }
                     now += 1;
                 }
@@ -1164,15 +1191,28 @@ mod tests {
                 .unwrap();
         let record = h3_view::record::parse(&text).unwrap();
         let o = record.first_snapshot().unwrap();
-        let mut still = legal(&record.header.manifest, &tables, o, (&commands, &[]));
-        still.previews = mouse::Previews::new(&previews);
+        // As `render` wires them: the still's legal commands, its actions' `Still`, its mouse.
+        let manifest = &record.header.manifest;
+        let opening = Some((scenario.as_path(), packs.as_path(), 1));
+        let still = still_legal(manifest, &tables, o, (&commands, opening)).unwrap();
         let (command, damage) = previews[0];
         let Command::Shoot { target, .. } = command else {
             panic!("{command:?}: the Marksmen or the Wood Elves shoot")
         };
         let hex = o.stacks.iter().find(|s| s.id == target).unwrap().hex;
         let point = hex_point(&layout, hex);
-        let hint = |level| mouse::pointer(o, &still, &layout, (point, Bugs::Original, level)).hint;
+        let rest = |legal: &Legal, book: Option<&crate::spellbook::Still>| {
+            crate::sequences::resting(o, (legal, book), &layout, Some(point))
+        };
+        let hint = |level| {
+            let book = crate::spellbook::Still {
+                line_level: level,
+                ..crate::spellbook::Still::new(point)
+            };
+            let (at, pointer) = rest(&still, Some(&book)).unwrap();
+            assert_eq!(at, point);
+            pointer.hint
+        };
         assert_eq!(hint(0), Hint::Attack(target));
         for level in [1, 2] {
             assert!(
@@ -1181,6 +1221,23 @@ mod tests {
                 hint(level)
             );
         }
+        // A sequence's (no actions' `Still`): level 0; a record's battle has no previews; the
+        // tactics phase's message closed: no pointer.
+        assert_eq!(rest(&still, None).unwrap().1.hint, Hint::Attack(target));
+        let recorded = still_legal(manifest, &tables, o, (&commands, None)).unwrap();
+        let book = crate::spellbook::Still {
+            line_level: 1,
+            ..crate::spellbook::Still::new(point)
+        };
+        assert_eq!(
+            rest(&recorded, Some(&book)).unwrap().1.hint,
+            Hint::Attack(target)
+        );
+        let arrow = crate::spellbook::Still {
+            arrow: true,
+            ..book
+        };
+        assert!(rest(&still, Some(&arrow)).is_none());
         // Each a range.
         assert!(previews.iter().all(|(_, [low, high])| low <= high));
     }
@@ -1233,6 +1290,15 @@ mod tests {
         let info = crate::stats::army_info(&sources, o, wolves.id, 5).unwrap();
         assert_eq!(info.player, 1);
         assert_eq!(info.damage, info.own_damage);
+        // Hypnotized, the attacker's to command: still its owner's colours, Blue's (§12.15's
+        // oddity 8), not its controller's.
+        let mut hypnotized = o.clone();
+        let stack = (hypnotized.stacks.iter_mut())
+            .find(|s| s.id == wolves.id)
+            .unwrap();
+        stack.controller = Side::Attacker;
+        let info = crate::stats::army_info(&sources, &hypnotized, wolves.id, 5).unwrap();
+        assert_eq!(info.player, 1);
         // Without a hero on the stack's side: the viewing player's.
         let mut alone = o.clone();
         alone.sides[1].hero = None;

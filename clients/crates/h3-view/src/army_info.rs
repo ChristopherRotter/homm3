@@ -26,7 +26,7 @@ use serde::Deserialize;
 use crate::hero_info::HeroInfoLayout;
 use crate::layout::BattleLayout;
 use crate::message::MessageBox;
-use crate::mouse::{Facing, Field, Legal, Spot, spot};
+use crate::mouse::{Facing, Field, Kind as Cursor, Legal, Spot, pointer_in, slot, slots_in, spot};
 use crate::stats::{Pair, Stats};
 
 /// A stack's window's background (`CCrPop.pcx` for kind 1, `SpellInf.pcx` for kind 2), in the
@@ -384,10 +384,13 @@ pub struct Hover {
     hex: Option<Spot>,
     /// The windows.
     pub windows: Windows,
-    /// Creature Info's level when the battle last wrote the status line (a new hex's, E17 M6
-    /// T4b2b2, *provisional*: the still's line is its mouse's rest's, worded at this level; F5
-    /// after it rewrites nothing, §12.14 oddity 6).
+    /// Creature Info's level when the battle last wrote the status line (a new hex's or an
+    /// attack's new slot's, E17 M6 T4b2b2, *provisional*: the still's line is its mouse's rest's,
+    /// worded at this level; F5 after it rewrites nothing, §12.14 oddity 6).
     pub line_level: u8,
+    /// The combat cursor's frame over the hex when its kind is an attack (+0x133CC: its slot's;
+    /// none for any other kind), as `mouse::track` keeps it.
+    attack: Option<u32>,
 }
 
 impl Hover {
@@ -398,23 +401,27 @@ impl Hover {
             hex: None,
             windows: Windows::at_level(level),
             line_level: level,
+            attack: None,
         }
     }
 
-    /// The battle takes a move to `point` over `observation`'s battle (each side facing its own
-    /// way, a still's), the keep's and the upper tower's rectangles found with `rects`
-    /// (CLT-Q21): out of the battlefield every window hidden and the hex forgotten (0x475402);
-    /// over the hex it is over already nothing changes (0x475544); over a new one
+    /// The battle takes a move to `point` over `observation`'s battle with its acting stack's
+    /// `legal` commands (each side facing its own way, a still's), the keep's and the upper
+    /// tower's rectangles found with `rects` (CLT-Q21): out of the battlefield every window
+    /// hidden and the hex forgotten (0x475402); over the hex it is over already no window
+    /// changes (0x475544) and the status line is written again only as an attack's slot gives
+    /// the cursor another frame (0x475553, as `mouse::track`; a shot's never); over a new one
     /// [`Windows::enter`]. Either way but the same hex the status line is written again.
     pub fn moved(
         &mut self,
         layout: &BattleLayout,
-        observation: &Observation,
+        (observation, legal): (&Observation, &Legal),
         (point, rects): ([i32; 2], bool),
     ) {
         if !on_field(layout, point) {
             self.windows.hide();
             self.hex = None;
+            self.attack = None;
             self.line_level = self.windows.level;
             return;
         }
@@ -422,17 +429,25 @@ impl Hover {
             Spot::Nothing => None,
             other => Some(other),
         };
-        if at.is_some() && at == self.hex {
-            return;
-        }
-        let legal = Legal::default();
         let field = Field {
             observation,
-            legal: &legal,
+            legal,
             facing: &Facing::Sides,
             bugs: Bugs::Original,
         };
+        if at.is_some() && at == self.hex {
+            if let (Some(frame), Some(Spot::Hex(hex))) = (self.attack, at) {
+                let now = slots_in(&field, hex)[slot(layout, point, hex)];
+                if now != frame {
+                    self.attack = Some(now);
+                    self.line_level = self.windows.level;
+                }
+            }
+            return;
+        }
         self.windows.enter(at.unwrap_or(Spot::Nothing), &field, 0);
+        let pointer = pointer_in(&field, layout, point, &mut None);
+        self.attack = (pointer.kind == Cursor::Attack).then_some(pointer.frame);
         self.hex = at;
         self.line_level = self.windows.level;
     }

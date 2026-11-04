@@ -12,6 +12,7 @@ use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
 use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::layout::{BattleLayout, BookLayout};
 use h3_view::message::{MessageBox, Picture, Style};
+use h3_view::mouse::Legal;
 use h3_view::sound::Tune;
 use h3_view::stats::Memory as StatsMemory;
 use h3_view::tables::Tables;
@@ -220,6 +221,26 @@ pub struct Still {
 }
 
 impl Still {
+    /// No action made yet, the mouse at `mouse`.
+    pub const fn new(mouse: [i32; 2]) -> Self {
+        Self {
+            open: None,
+            message: None,
+            result: None,
+            mouse,
+            at: 0,
+            opening: false,
+            arrow: false,
+            over: None,
+            stats: None,
+            held: false,
+            options: None,
+            options_arrow: false,
+            army: Vec::new(),
+            line_level: 0,
+        }
+    }
+
     /// Whether a dialog (the book, a box) is open over the battle.
     pub const fn dialog(&self) -> bool {
         self.open.is_some()
@@ -270,8 +291,9 @@ pub struct Boxes<'a> {
     /// side's hero there).
     pub hero_info: &'a dyn Fn([i32; 2]) -> Option<MessageBox>,
     /// The combat options dialog the key O opens (none given) or a click at a point on the
-    /// panel's Options (E17 M6 T4a; none: the battle takes no command, or no button there).
-    pub options: &'a dyn Fn(Option<[i32; 2]>) -> Option<h3_view::options::Open>,
+    /// panel's Options (E17 M6 T4a; none: the battle takes no command, or no button there), at
+    /// Creature Info's level then (E17 M6 T4b2b2).
+    pub options: &'a dyn Fn(Option<[i32; 2]>, u8) -> Option<h3_view::options::Open>,
     /// The army info windows the battle's mouse shows (E17 M6 T4b2b1; none: none).
     pub army: Option<Army<'a>>,
 }
@@ -283,6 +305,9 @@ pub struct Army<'a> {
     pub layout: &'a BattleLayout,
     /// The battle at the opening (turn 0).
     pub observation: &'a Observation,
+    /// Its acting stack's legal commands, as the still's cursor reads them (E17 M6 T4b2b2: an
+    /// attack's new slot writes the status line again).
+    pub legal: &'a Legal,
     /// Creature Info's level the still starts at (`frames.toml`'s `army_info`, *provisional*:
     /// the harness's registry value; 0, `Settings::CAPTURE`'s, without it); the key F5 cycles it.
     pub level: u8,
@@ -332,22 +357,7 @@ pub fn still(
     // The hero made at the first opening, each later one (the book closed) a copy (R4-3).
     let mut make = Some(hero);
     let mut hero: Option<Hero> = None;
-    let mut still = Still {
-        open: None,
-        message: None,
-        result: None,
-        mouse,
-        at: 0,
-        opening: false,
-        arrow: false,
-        over: None,
-        stats: None,
-        held: false,
-        options: None,
-        options_arrow: false,
-        army: Vec::new(),
-        line_level: 0,
-    };
+    let mut still = Still::new(mouse);
     let mut result: Option<(h3_view::message::Open, Tune)> = None;
     let mut asking: Option<Asking> = None;
     let opening = boxes.and_then(|b| b.opening.as_deref());
@@ -431,7 +441,7 @@ pub fn still(
     let mut hover = Hover::new(army.map_or(0, |a| a.level));
     let take = |hover: &mut Hover, to: [i32; 2]| {
         if let Some(a) = army {
-            hover.moved(a.layout, a.observation, (to, true));
+            hover.moved(a.layout, (a.observation, a.legal), (to, true));
         }
     };
     if !still.opening {
@@ -486,6 +496,9 @@ pub fn still(
                     }
                 }
                 OptionsAction::Closed { moved } => {
+                    // Its level set Creature Info's (E17 M6 T4b2a): the windows as they are, the
+                    // line rewritten only by the park's move (as F5, §12.14 oddity 6).
+                    hover.windows.level = open.settings.army_info;
                     still.options = None;
                     // By a click the park's move reaches the battle; by a key the arrow stays.
                     still.options_arrow = !moved;
@@ -570,7 +583,8 @@ pub fn still(
                     (Some(Do::ArmyInfo), _) => hover.cycle(),
                     // The combat options dialog (E17 M6 T4a), the mouse where it is.
                     (Some(Do::Button(h3_view::panel::OPTIONS)), _) => {
-                        still.options = boxes.and_then(|b| (b.options)(None));
+                        let level = hover.windows.level;
+                        still.options = boxes.and_then(|b| (b.options)(None, level));
                         still.options_arrow = false;
                     }
                     (Some(Do::Button(h3_view::panel::SPELL_BOOK)), _) => {
@@ -638,7 +652,9 @@ pub fn still(
                     // battle's status line keeps the press's hint.
                     asking = tell(&text, Style::Ok, None, Asked::Turret);
                     still.over = Some(to);
-                } else if let Some(open) = boxes.and_then(|b| (b.options)(Some(to))) {
+                } else if let Some(open) =
+                    boxes.and_then(|b| (b.options)(Some(to), hover.windows.level))
+                {
                     // The panel's Options (E17 M6 T4a): the dialog, modal, the park's move its.
                     still.options = Some(open);
                     still.options_arrow = false;
@@ -1221,7 +1237,7 @@ pub(crate) mod tests {
             turret: &|_, _| None,
             help: &|_| None,
             hero_info: &|_| None,
-            options: &|_| None,
+            options: &|_, _| None,
             army: None,
         };
         let catalogue = Catalogue::default();
@@ -1282,7 +1298,7 @@ pub(crate) mod tests {
             turret: &turret,
             help: &help,
             hero_info: &|_| None,
-            options: &|_| None,
+            options: &|_, _| None,
             army: None,
         };
         let catalogue = Catalogue::default();
@@ -1339,7 +1355,7 @@ pub(crate) mod tests {
             turret: &|_, _| None,
             help: &|_| None,
             hero_info: &|_| None,
-            options: &|_| None,
+            options: &|_, _| None,
             army: None,
         };
         let catalogue = Catalogue::default();
@@ -1424,6 +1440,20 @@ pub(crate) mod tests {
         };
         let tell = |_: &str, _, _: Option<&Picture>| None;
         let catalogue = Catalogue::default();
+        let none = Legal::default();
+        // The combat options dialog by the key O or the panel's Options, at the level then.
+        let options = |point: Option<[i32; 2]>, level: u8| {
+            let on_button = point.is_none_or(|p| {
+                battle.panel_in(observation).button_at(p) == Some(h3_view::panel::OPTIONS)
+            });
+            on_button.then(|| {
+                let settings = h3_view::options::Settings {
+                    army_info: level,
+                    ..h3_view::options::Settings::CAPTURE
+                };
+                h3_view::options::Open::new(&battle.options, &catalogue, settings, (0, false))
+            })
+        };
         let played = |level: u8, mouse: [i32; 2], actions: &[&str]| {
             let boxes = Boxes {
                 tell: &tell,
@@ -1441,10 +1471,11 @@ pub(crate) mod tests {
                 turret: &|_, _| None,
                 help: &|_| None,
                 hero_info: &hero_info,
-                options: &|_| None,
+                options: &options,
                 army: Some(Army {
                     layout: &battle,
                     observation,
+                    legal: &none,
                     level,
                     window: &window,
                 }),
@@ -1531,5 +1562,34 @@ pub(crate) mod tests {
         assert_eq!((ids(&still), still.line_level), (vec![1], 2));
         let still = played(1, on, &["key:F5", "move:400,590"]).unwrap();
         assert_eq!((ids(&still), still.line_level), (Vec::new(), 2));
+        // The combat options dialog opens at the level then; its OK sets the level, the windows
+        // as they are: closed by a click, the park's move writes the line at it; by its key
+        // nothing until a new hex (the level-1 box at 421,379, the level-2 box at 421,409, the
+        // OK at 566,467).
+        let level = |still: &Still| still.options.as_ref().map(|o| o.settings.army_info);
+        assert_eq!(level(&played(1, on, &["key:o"]).unwrap()), Some(1));
+        assert_eq!(
+            level(&played(1, on, &["key:F5", "key:o"]).unwrap()),
+            Some(2)
+        );
+        let off = ["key:o", "click:421,379"];
+        let still = played(1, on, &[&off[..], &["click:566,467"]].concat()).unwrap();
+        assert_eq!((ids(&still), still.line_level), (Vec::new(), 0));
+        let still = played(1, on, &[&off[..], &["key:Return"]].concat()).unwrap();
+        assert_eq!((ids(&still), still.line_level), (Vec::new(), 1));
+        let to_theirs = format!("move:{},{}", centre(theirs.id)[0], centre(theirs.id)[1]);
+        let still = played(
+            1,
+            on,
+            &[&off[..], &["key:Return", to_theirs.as_str()]].concat(),
+        )
+        .unwrap();
+        assert_eq!((ids(&still), still.line_level), (Vec::new(), 0));
+        let up = ["key:o", "click:421,409", "key:Return"];
+        let still = played(0, on, &up).unwrap();
+        assert_eq!((ids(&still), still.line_level), (Vec::new(), 0));
+        let still = played(0, on, &[&up[..], &[to_theirs.as_str()]].concat()).unwrap();
+        let spells = stack_id(theirs.id, WindowKind::Spells);
+        assert_eq!((ids(&still), still.line_level), (vec![spells], 2));
     }
 }
