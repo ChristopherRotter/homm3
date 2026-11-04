@@ -9,6 +9,7 @@ mod battles;
 mod calendar;
 mod day;
 mod decisions;
+mod dwellings;
 mod events;
 mod exchanges;
 mod heroes;

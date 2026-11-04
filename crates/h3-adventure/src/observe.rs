@@ -588,7 +588,9 @@ impl AdventureEvent {
                 | AdventureEventKind::ObjectEmpty { .. }
                 | AdventureEventKind::ShipyardBlocked { .. }
                 | AdventureEventKind::BoatBuilt { .. }
-                | AdventureEventKind::MonsterAdded { .. } => self.kind,
+                | AdventureEventKind::MonsterAdded { .. }
+                | AdventureEventKind::NoneToRecruit { .. }
+                | AdventureEventKind::JoinRefused { .. } => self.kind,
             },
             seen_by: alone,
         })

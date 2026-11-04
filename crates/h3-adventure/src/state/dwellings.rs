@@ -1,20 +1,26 @@
-//! The dwellings and the Refugee Camps (E08 T94a, T94b; increment 10's design note §5, §6, §9):
-//! each random dwelling's draw among its outcomes in the static map's placement walk, the names its
-//! outcomes take, and the tiles a hero may not stand on beside one, whatever it draws (T94a); each
-//! dwelling's week as it stands, its counts and guards, and each camp's creature and count, with
-//! their reads, checks and part of the state hash (T94b). The week's step and the first week's
-//! draws are `calendar.rs`' and `economy.rs`'.
+//! The dwellings and the Refugee Camps (E08 T94a, T94b, T95a1; increment 10's design note §5, §6,
+//! §7, §9): each random dwelling's draw among its outcomes in the static map's placement walk, the
+//! names its outcomes take, and the tiles a hero may not stand on beside one, whatever it draws
+//! (T94a); each dwelling's week as it stands, its counts and guards, and each camp's creature and
+//! count, with their reads, checks and part of the state hash (T94b); the visits, the hire
+//! question and a dwelling's free creatures, with the dwellings' writer (T95a1). The week's step
+//! and the first week's draws are `calendar.rs`' and `economy.rs`'.
 
 use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
+use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{CreatureTypeId, FactionId, Ruleset};
-use h3_contracts::ArmyStack;
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
-use super::{AdventureState, StaticMap, pick};
-use crate::ruleset::{AdventureRuleset, MAX_DWELLING_CREATURES, ObjectKind, ObjectTypeId};
+use super::monsters::add_stack;
+use super::{AdventureState, StaticMap, allied, pick};
+use crate::command::{
+    AdventureEvent, AdventureEventKind, AdventureOutcome, Offer, OfferKind, Sink, Viewers,
+};
+use crate::ruleset::{AdventureRuleset, Effect, MAX_DWELLING_CREATURES, ObjectKind, ObjectTypeId};
 use crate::setup::{Holds, ObjectSetup, Pos, TileMask};
 
 /// The most creatures a dwelling has, and so the most stacks its guards hold (ADV-DWL-001: one to
@@ -64,6 +70,12 @@ impl DwellingWeek {
     /// Each creature's count, by the kind's creature order.
     pub(crate) fn counts(&self) -> &[u32] {
         &self.counts[..usize::from(self.creatures)]
+    }
+
+    /// Each creature's count, by the kind's creature order, to write
+    /// ([`AdventureState::write_dwelling`]).
+    pub(super) fn counts_mut(&mut self) -> &mut [u32] {
+        &mut self.counts[..usize::from(self.creatures)]
     }
 
     /// The guards' stacks, by slot.
@@ -430,18 +442,220 @@ impl AdventureState {
     }
 }
 
+impl AdventureState {
+    /// Writes the week of the dwelling at object index `index` as `edit` leaves it (E08 T95a1:
+    /// the free creatures' counts; T95a2: the guards' battle's survivors), keeping the field's
+    /// representation (increment 10's design note §6, as built): a write that changes nothing
+    /// leaves the block as it is (a fork keeps sharing it), the first change makes the block
+    /// (every entry full, then the change), a later one copies it, and one that leaves every
+    /// dwelling as its week began drops it, so [`Self::check_dwellings`] holds after every write
+    /// that keeps each count within its growth and each guards' stack within the full guards.
+    /// Nothing for an object that is no dwelling.
+    pub(super) fn write_dwelling(&mut self, index: usize, edit: impl FnOnce(&mut DwellingWeek)) {
+        let full = &self.map.full_weeks;
+        let weeks = self.dwellings.as_deref().unwrap_or(full);
+        let Some(place) = self.map.dwelling_index(index) else {
+            return;
+        };
+        let mut week = weeks[place];
+        edit(&mut week);
+        if week == weeks[place] {
+            return;
+        }
+        let mut weeks = weeks.to_vec();
+        weeks[place] = week;
+        self.dwellings = (weeks[..] != full[..]).then(|| weeks.into());
+    }
+
+    /// The visit of the dwelling at object index `index`, of type `object_type` and with these
+    /// `creatures` (its kind's, in order), by `player`'s hero `hero` on its entrance (ADV-DWL-004,
+    /// ADV-OWN-001 amended; E08 T95a1, increment 10's design note §7; survey `E08-dwellings.md`
+    /// §4.1, §4.3, the original's `visit_dwelling` 0x4A18B0): one of the visitor's team (the
+    /// visitor's own until E10's teams) asks the hire question at once, no flag, no guards; a
+    /// neutral one or another team's whose guards stand does nothing yet (their question and
+    /// battle are T95a2's); else it is flagged for the visitor's owner ([`Self::flag`]:
+    /// `ObjectFlagged`, then the reveal of the part's flag radius around its entrance), then
+    /// asks the hire question ([`OfferKind::Hire`], naming its creatures in its kind's order: the
+    /// original's ADVEVENT 35, or 36 for four creatures). The flag needs no answer: a declined
+    /// question keeps it.
+    // rule: ADV-DWL-004, ADV-OWN-001
+    pub(super) fn visit_dwelling<S: Sink>(
+        &mut self,
+        rules: (&Ruleset, &AdventureRuleset),
+        (player, hero): (PlayerId, HeroId),
+        object: (usize, ObjectTypeId),
+        creatures: &[CreatureTypeId],
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        if !self
+            .owner(object.0)
+            .is_some_and(|owner| allied(owner, player))
+        {
+            if self
+                .dwelling_week(object.0)
+                .is_some_and(|week| week.guards().next().is_some())
+            {
+                // stub: ADV-STUB-14 (the guards' question and battle, then the flag: T95a2)
+                return AdventureOutcome::default();
+            }
+            self.flag(rules, object, player, sink);
+        }
+        self.ask(
+            hero,
+            object,
+            OfferKind::Hire {
+                creatures: creatures.to_vec(),
+            },
+        )
+    }
+
+    /// The visit of the Refugee Camp at object index `index`, of type `object_type`, by
+    /// `player`'s hero `hero` (ADV-RFG-001; E08 T95a1, increment 10's design note §7; survey
+    /// `E08-dwellings.md` §7, the original's `visit_refugee_camp` 0x4A4600), any player's hero:
+    /// with creatures left, the hire question naming its week's creature ([`OfferKind::Hire`]:
+    /// the original's ADVEVENT 112); with none, nothing but the visitor's owner told it is
+    /// deserted ([`AdventureEventKind::ObjectEmpty`]: ADVEVENT 44). No flag, no guards, no free
+    /// creatures.
+    // rule: ADV-RFG-001
+    pub(super) fn visit_refugee_camp<S: Sink>(
+        &self,
+        (player, hero): (PlayerId, HeroId),
+        (index, object_type): (usize, ObjectTypeId),
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        match self.camp(index) {
+            Some((creature, count)) if count > 0 => self.ask(
+                hero,
+                (index, object_type),
+                OfferKind::Hire {
+                    creatures: vec![creature],
+                },
+            ),
+            _ => {
+                sink.emit(AdventureEvent {
+                    kind: AdventureEventKind::ObjectEmpty {
+                        object_type,
+                        anchor: self.object_at(index).anchor,
+                    },
+                    seen_by: Viewers::NONE.with(player),
+                });
+                AdventureOutcome::default()
+            }
+        }
+    }
+
+    /// An accepted hire question `offer` for `player` on the object at object index `index`, a
+    /// dwelling or a Refugee Camp (ADV-HIR-001; E08 T95a1, increment 10's design note §7 step 4,
+    /// §13; survey `E08-dwellings.md` §4.4, the original's `visit_dwelling` 0x4A18B0 and
+    /// `dwelling_offer_hire` 0x4ABA50): on a dwelling `player` owns when it accepts (an agent's
+    /// call: the owner read at acceptance), its free creatures join ([`Self::give_free`]); on any
+    /// other, a camp's or an ally's (E10), nothing is given. The hire dialog for the rest is
+    /// T95b's.
+    // rule: ADV-HIR-001
+    pub(super) fn accept_hire<S: Sink>(
+        &mut self,
+        (core, part): (&Ruleset, &AdventureRuleset),
+        player: PlayerId,
+        (index, offer): (usize, &Offer),
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        let own = self.owner(index) == Some(player);
+        match part
+            .object_type(offer.object_type)
+            .and_then(|ty| ty.kind.effect())
+        {
+            Some(Effect::Dwelling(creatures)) if own => {
+                self.give_free((core, part), player, (index, offer), creatures, sink);
+            }
+            _ => {}
+        }
+        // stub: ADV-STUB-15 (the hire dialog: a dwelling's creature above free_level, a camp's)
+        AdventureOutcome::default()
+    }
+
+    /// The free creatures of `player`'s dwelling at object index `index` for the hero of its
+    /// accepted hire question `offer` (ADV-HIR-001, ADV-ARM-007; E08 T95a1, increment 10's
+    /// design note §7 step 4; survey `E08-dwellings.md` §4.4): each of its `creatures` (its kind's,
+    /// in order) of the part's `free_level` or less (its core level; 1 in the packs, the
+    /// original's level 1) in turn: with a count of 0, told as none here
+    /// ([`AdventureEventKind::NoneToRecruit`]: the original's GENRLTXT 423); else, where
+    /// ADV-ARM-007's room is (the hero's first stack of the creature that takes the whole count
+    /// within a stack's most, else its first free slot: the original's `army_add_stack`), all of
+    /// it joins and its count is set to 0 ([`AdventureEventKind::CreaturesJoined`]: GENRLTXT
+    /// 424); with no room none of it joins and the count is kept
+    /// ([`AdventureEventKind::JoinRefused`]: GENRLTXT 426; D-52 as the original, decision 235:
+    /// the hero's stacks are not merged). Each told to `player` alone. A creature above
+    /// `free_level` is left to the hire dialog.
+    // rule: ADV-HIR-001, ADV-ARM-007
+    fn give_free<S: Sink>(
+        &mut self,
+        (core, part): (&Ruleset, &AdventureRuleset),
+        player: PlayerId,
+        (index, offer): (usize, &Offer),
+        creatures: &[CreatureTypeId],
+        sink: &mut S,
+    ) {
+        let free = part
+            .params()
+            .dwellings()
+            .map_or(0, |params| params.free_level);
+        let rules = (part.params().army_slots(), part.params().max_stack_count());
+        let mut counts = self.dwelling_counts(index).unwrap_or_default().to_vec();
+        let hero = offer.hero;
+        let mut army = self
+            .heroes
+            .iter_mut()
+            .find(|h| h.id == hero)
+            .map(|h| &mut h.army);
+        for (&creature, count) in creatures.iter().zip(&mut counts) {
+            if !core
+                .creature(creature)
+                .is_some_and(|info| info.level <= free)
+            {
+                continue;
+            }
+            let kind = if *count == 0 {
+                AdventureEventKind::NoneToRecruit {
+                    object_type: offer.object_type,
+                    anchor: offer.anchor,
+                    creature,
+                }
+            } else if army
+                .as_deref_mut()
+                .is_some_and(|army| add_stack(army, rules, creature, *count))
+            {
+                AdventureEventKind::CreaturesJoined {
+                    hero,
+                    creature,
+                    count: core::mem::take(count),
+                }
+            } else {
+                AdventureEventKind::JoinRefused {
+                    hero,
+                    creature,
+                    count: *count,
+                }
+            };
+            sink.emit(AdventureEvent {
+                kind,
+                seen_by: Viewers::NONE.with(player),
+            });
+        }
+        self.write_dwelling(index, |week| {
+            week.counts_mut().copy_from_slice(&counts);
+        });
+    }
+}
+
 #[cfg(test)]
 impl AdventureState {
     /// Writes the counts and the guards of the dwelling at object index `index` (tests of the
-    /// dwellings' state and hash, E08 T94b, until T95's visits write them), keeping the field's
-    /// representation: the first write makes the block (every entry full, then the change), a
-    /// later one copies it, and a write that leaves every dwelling as its week began drops it.
+    /// dwellings' state, hash and writer, E08 T94b, T95a1) through the writer
+    /// ([`Self::write_dwelling`]), which keeps the field's representation.
     pub(crate) fn set_dwelling(&mut self, index: usize, counts: &[u32], guards: &[ArmyStack]) {
-        let full = &self.map.full_weeks;
-        let mut weeks = self.dwellings.as_deref().unwrap_or(full).to_vec();
-        let place = self.map.dwelling_index(index).expect("a dwelling");
-        weeks[place] = DwellingWeek::new(counts.iter().copied(), guards.iter().copied());
-        self.dwellings = (weeks[..] != full[..]).then(|| weeks.into());
+        self.write_dwelling(index, |week| {
+            *week = DwellingWeek::new(counts.iter().copied(), guards.iter().copied());
+        });
     }
 
     /// Writes the dwellings' block as it is, normalised or not (tests of the invariants and the

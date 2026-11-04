@@ -81,6 +81,18 @@ where  = "crates/h3-map/src/import/mod.rs::typed"
 reason = "A random dwelling tied to a town (classes 216 and 217 with a town identifier a town of the map has) takes the town's drawn faction in the original (random_dwellings_resolve 0x502B60; survey E08-dwellings.md §3.2); the import keeps it an untyped blocker until E09's random towns resolve it (E08 decision 231; increment 10's design note §4; 1 397 on the shipped maps, all tied to random towns)"
 epic   = "E09"
 
+[[stub]]
+id     = "ADV-STUB-14"
+where  = "crates/h3-adventure/src/state/dwellings.rs::AdventureState::visit_dwelling"
+reason = "A neutral dwelling's or another team's visit while its guards stand does nothing: the guards' question (an offer naming the first occupied slot's creature and the size word of their total count, GENRLTXT 422), their battle unsplit and unowned (Defender::Guards), the survivors kept until the week's step, and after a win the flag and the hire question (GAM-DEC-007) are E08 T95a2's (ADV-DWL-004; increment 10's design note §7 step 2, §12)"
+epic   = "E08"
+
+[[stub]]
+id     = "ADV-STUB-15"
+where  = "crates/h3-adventure/src/state/dwellings.rs::AdventureState::accept_hire"
+reason = "An accepted hire question gives a dwelling's free creatures only (ADV-HIR-001): the hire dialog that opens after them when the dwelling has a creature above free_level, and always for a Refugee Camp (its creature and count), the outcome's AdventureOutcome::hire (a HireDialog: the hero, the source, read_only for an ally's dwelling), and the purchase are E08 T95b's (ADV-HIR-002; increment 10's design note §7 step 4, §8, §13)"
+epic   = "E08"
+
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---
