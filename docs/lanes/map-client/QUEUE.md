@@ -112,6 +112,17 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-04 (the client lane, E17 M6 T4b2a, branch `client/e17-m6-t4b`; the common crate
+  `h3-ui`, a behaviour change, `cross-lane`): the user decided (2026-11-04) that the windows' own
+  pause, a frame on, restart and vsync move to Ctrl+F5, Ctrl+F6, Ctrl+F7 and Ctrl+F8 in both
+  viewers, because the original's battle takes F5 to F8 alone (F5 Creature Info's level, F6 to
+  F8 the grid and shadows). `h3_ui::keys::Window` gains `ctrl` and `chord` (the default chord;
+  `key` stays the key's name); `h3_map_view::keys`' defaults take `w.chord()`, its tests and the
+  usage name the new chords (built on that branch). The music, the effects, the cursor's kind,
+  fullscreen and Esc are unchanged; a user's `keys.toml` still overrides any. Informational
+  unless `docs/epics/E24-design.md` §3's keys bullet (F5 pause, F6 the next frame, F7 restart, F8
+  vsync) should say so: the map lane's file.
+
 - 2026-11-03 (the adventure lane, E08 T90, branch `adventure/e08-t90`; the capture harness, informational): `h3adv` and `h3mem` gain the dwellings' records (`dwelling:x,y`, game +0x4E39C), `teams`, `objects:` and `access:` (a rectangle's map objects with class and subclass, its tiles' blocked and visitable bits), `camp:x,y`, the hire dialog as a screen (vtable 0x640C4C; `hire`, `hire:opening`, `hire:after`; actions `click = ["max", "recruit"]`, `amount = <n>`), a step's `hint = [x, y]` and `popup = [x, y]`, `opening:defender`, `ai_turns`. Behaviour change: `end_turn` now waits out a computer player's turn (it returned during it); nothing changes on maps with humans only. `clients/capture/README.md`, "Dwellings, the hire dialog and a computer player's turn".
 
 - 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational

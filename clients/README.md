@@ -115,9 +115,10 @@ search the parent directories).
   [--fullscreen]` (from `clients/`) loads the battle as `play` does and shows each frame when it
   falls due, at the largest integer scale that fits the display. Every key goes through the
   table `h3_view::keys` (E24 M3 T1b, *provisional*): the window's own are the map window's (F2
-  the music, F3 the creatures' sounds, F5 pause, F6 a frame on while paused, F7 restart, F8
-  vsync, F9 the cursor's kind, F11 fullscreen, Esc quit) but pause, F12 here because the
-  original's battle takes F5 for Creature Info's level (E17 M6 T4b2a), the battle's the original's hotkeys by
+  the music, F3 the creatures' sounds, Ctrl+F5 pause, Ctrl+F6 a frame on while paused, Ctrl+F7
+  restart, Ctrl+F8 vsync, F9 the cursor's kind, F11 fullscreen, Esc quit; with Ctrl since E17 M6
+  T4b2a, the user, 2026-11-04: F5 to F8 alone are the original battle's, F5 Creature Info's
+  level), the battle's the original's hotkeys by
   what is open over the battle (nothing, the spell book, a message box, an aim, the result
   window: each takes its own and the window's that work whatever is open, so Esc is the book's
   close, the box's Cancel, the aim's give-up and the result window's OK there); the user's `keys.toml` (`--keys`, else in the working directory)
@@ -195,9 +196,10 @@ search the parent directories).
   and walks it on its destination; the cursor is the hardware one, or drawn (`--drawn-cursor`).
   The map's sound plays (T5, design §3.11: the terrain's music as the original's music thread
   plays it (T6a2), the step sound, the ambient loops; `--mute` none, `--cues <file>` writes each cue played). Every key goes through the table
-  `h3_map_view::keys` (*provisional*): F2 the music, F3 the effects, F5 pause, F6 the next frame
-  while paused, F7 restart, F8 vsync, F9 the cursor's kind, F11 fullscreen, Esc quit (the
-  battle window's own too, E24 M3 T1b). A user's `keys.toml` (`--keys`, else in the working
+  `h3_map_view::keys` (*provisional*): F2 the music, F3 the effects, Ctrl+F5 pause, Ctrl+F6 the
+  next frame while paused, Ctrl+F7 restart, Ctrl+F8 vsync, F9 the cursor's kind, F11
+  fullscreen, Esc quit (the battle window's own too, E24 M3 T1b; with Ctrl since E17 M6 T4b2a,
+  the user, 2026-11-04). A user's `keys.toml` (`--keys`, else in the working
   directory) overrides them command by command in its `[map]` table (its format: the usage). `--check <s>` reads every frame back (Xvfb in the sandbox) and plays
   every action headless to check each change shown, `--measure <s>` times them; both take the
   map's input.

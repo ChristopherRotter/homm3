@@ -1,7 +1,8 @@
 //! The battle window's commands (E24 M3 T1b, *provisional*; the user, 2026-10-26: no key hard-coded
 //! in the client), whose keys go through the common table (`h3_ui::keys`: the chords, a user's
 //! file's `[battle]` table, the lookup). The window's own are both viewers' (`h3_ui::keys::Window`:
-//! the function keys and Esc, the user at E24 M3 T0) but pause, F12 here ([`window_key`]); the battle's defaults are the original's
+//! the function keys and Esc, the user at E24 M3 T0; pause, a frame on, restart and vsync with
+//! Ctrl, the user at E17 M6 T4b2a, since the original's battle takes F5 to F8 alone); the battle's defaults are the original's
 //! hotkeys, by where the battle takes them ([`Context`]): with nothing over it the log's arrows, the
 //! Faerie Dragon's F, the stats dialog's T and the panel's buttons' letters; the spell book's
 //! (`book::Key`), a message box's (`message::Key`), the stats dialog's, the combat options
@@ -143,23 +144,12 @@ const MESSAGE: [(message::Key, &str, &[&str]); 2] = [
     (message::Key::Cancel, "box-cancel", &["Escape"]),
 ];
 
-/// The battle window's default key of its own command `w` (E17 M6 T4b2a, *provisional*): the map
-/// window's ([`Window::key`]) but pause's, F12 here, because the original's battle takes F5 for
-/// Creature Info's level ([`Command::ArmyInfo`]; F6 to F8 its grid and shadows, T4c).
-#[must_use]
-pub const fn window_key(w: Window) -> &'static str {
-    match w {
-        Window::Pause => "F12",
-        _ => w.key(),
-    }
-}
-
 impl Command {
     /// Its name and its default keys.
     fn entry(self) -> (String, Vec<Chord>) {
         let plain = |keys: &[&str]| keys.iter().map(|k| Chord::new(false, k)).collect();
         let (name, keys): (String, Vec<Chord>) = match self {
-            Self::Window(w) => (w.name().into(), plain(&[window_key(w)])),
+            Self::Window(w) => (w.name().into(), Vec::from([w.chord()])),
             // The battle's own keys (0x4758FB: the scan codes 72 and 80).
             Self::LogUp => ("log-up".into(), plain(&["Up"])),
             Self::LogDown => ("log-down".into(), plain(&["Down"])),

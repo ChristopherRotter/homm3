@@ -1039,7 +1039,7 @@ impl<'g> Battle<'g> {
                 crate::pointer::stack_of(manifest, tables, &turn.observation)
             }));
         }
-        let first = self.boxes.first().map_or(self.settings.auto, |c| c.2);
+        let first = first_boxes(&self.boxes, self.boxes_open, self.settings.auto);
         h3_view::auto::itself(&stacks, first, self.boxes.get(1..).unwrap_or_default())
     }
 
@@ -3334,9 +3334,32 @@ fn parse<'a>(
         .collect()
 }
 
+/// The Auto Combat boxes the battle began with (E17 M6 T4b1, design §12.13): those before the
+/// first change the options dialog's closes made (`boxes`), else, while the dialog is open (or its
+/// close not applied yet), the boxes as it opened (`open`: its clicks, which write the settings at
+/// once, count only from its close; the reviewer of T4b2a), else the settings' (`settings`).
+fn first_boxes(
+    boxes: &[h3_view::auto::BoxChange],
+    open: Option<[bool; 5]>,
+    settings: [bool; 5],
+) -> [bool; 5] {
+    boxes.first().map_or(open.unwrap_or(settings), |c| c.2)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_boxes_the_battle_began_with_ignore_the_open_dialog_s_clicks() {
+        // E17 M6 T4b2a (the reviewer, §12.13): a change counts only from the dialog's close.
+        let (none, creatures, all) = ([false; 5], [true, false, false, false, false], [true; 5]);
+        assert_eq!(first_boxes(&[], None, creatures), creatures);
+        assert_eq!(first_boxes(&[], Some(creatures), all), creatures);
+        let changes = [(0, 0, none), (3, 900, all)];
+        assert_eq!(first_boxes(&changes, Some(creatures), all), none);
+        assert_eq!(first_boxes(&changes, None, creatures), none);
+    }
 
     #[test]
     fn a_clip_that_does_not_decode_is_left_out() {

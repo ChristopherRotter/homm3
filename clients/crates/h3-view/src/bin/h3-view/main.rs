@@ -110,10 +110,10 @@ commands:
           (the installation's sound archives and MP3 folder; none with --mute): from the
           battle's start its start sound plays while the clock waits, then the battle music
           loops and the creatures' sounds follow their animations. Every key goes through a table
-          of commands (E24 M3 T1b, provisional): the window's own as the map window's but
-          pause, F2 the music, F3 the creatures' sounds, F12 pause, F6 a frame while paused, F7
-          restart, F8 vsync, F9 the hardware or the drawn cursor, F11 fullscreen, Esc quit; Up
-          and Down the log, F5 Creature Info's level (0, 1, 2: the status line's damage at 1
+          of commands (E24 M3 T1b, provisional): the window's own as the map window's, F2 the
+          music, F3 the creatures' sounds, Ctrl+F5 pause, Ctrl+F6 a frame while paused, Ctrl+F7
+          restart, Ctrl+F8 vsync, F9 the hardware or the drawn cursor, F11 fullscreen, Esc quit;
+          Up and Down the log, F5 Creature Info's level (0, 1, 2: the status line's damage at 1
           and 2, saved at once), and the original's hotkeys above. A user's file (--keys, else keys.toml in the
           working directory when there is one; its [battle] table, the map window's [map])
           overrides the defaults command by command, e.g. `[battle]` then `pause = [\"P\"]`

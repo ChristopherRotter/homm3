@@ -7,11 +7,12 @@
 //! falls due; past the end the battle idles. Every key goes through the battle's table of
 //! commands (E24 M3 T1b, `h3_view::keys`, *provisional*; the user's file `--keys`, else
 //! `keys.toml` here, its `[battle]` table over the defaults): the window's own are the map
-//! window's (F2 the music, F3 the creatures' sounds, F5 pause, F6 a frame on while paused, F7
-//! restart, F8 vsync, F9 the hardware or the drawn cursor, F11 fullscreen, Esc quit; until T1b P,
-//! →, Home, M, E, V, H and F11) but pause, F12 here since E17 M6 T4b2a (*provisional*), the
-//! battle's the original's hotkeys by what is open over it: nothing (the log's arrows, the Faerie
-//! Dragon's F, the panel's letters, F5 Creature Info's level since T4b2a), the spell book, a
+//! window's (F2 the music, F3 the creatures' sounds, Ctrl+F5 pause, Ctrl+F6 a frame on while
+//! paused, Ctrl+F7 restart, Ctrl+F8 vsync, F9 the hardware or the drawn cursor, F11 fullscreen,
+//! Esc quit; until T1b P, →, Home, M, E, V, H and F11; the four with Ctrl since E17 M6 T4b2a, the
+//! user, 2026-11-04), the battle's the original's hotkeys by what is open over it: nothing (the
+//! log's arrows, the Faerie Dragon's F, the panel's letters, F5 Creature Info's level since
+//! T4b2a), the spell book, a
 //! message box, an aim or the result window (each its own and the window's that work whatever is
 //! open, Esc its close, Cancel, give-up or OK). Unattended, the keys do nothing but quit.
 //!
@@ -759,13 +760,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             && let Some(&(start, _)) = battle.timeline().turns.get(turn - 1)
         {
             let last = battle.timeline().turns.len();
-            if battle.waiting() && last == turn && battle.auto_at_start(turn) {
+            let at_start = || battle.auto_at_start(turn);
+            let carry = carry((battle.waiting(), last, turn), at_start);
+            if carry != Carry::Wait {
                 stopped_by = None;
-            } else if battle.waiting() && last == turn {
-                stopped_by = None;
+            }
+            if carry == Carry::Act {
                 match command {
                     Do::LogUp | Do::LogDown => {
                         scrolls.push((start, if command == Do::LogUp { -1 } else { 1 }));
+                    }
+                    // F5 both stopped Auto Combat and cycles the level there (E17 M6 T4b2a).
+                    Do::ArmyInfo => {
+                        let at = clock.ms(win.ticks_ns()).max(start);
+                        army_info = cycle_army_info(&mut battle, &mut inputs, at, &files);
                     }
                     _ => {
                         let at = clock.ms(win.ticks_ns()).max(start);
@@ -779,8 +787,6 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 mouse_changed = true;
-            } else if last > turn {
-                stopped_by = None;
             }
         }
         // The input queue is emptied as a box opens (the modal loop 0x602520; design §7.19): the
@@ -900,9 +906,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         && !matches!(command, Some(Do::Window(_)))
                         && let Some(turn) = battle.stop_auto(at)
                     {
-                        stopped_by = command
-                            .filter(|c| matches!(c, Do::LogUp | Do::LogDown | Do::DragonSpell))
-                            .map(|c| (c, turn));
+                        stopped_by = command.filter(|&c| carried(c)).map(|c| (c, turn));
                         mouse_changed = true;
                         continue;
                     }
@@ -1087,12 +1091,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         // another hex), the frame drawn again and the settings written at once.
                         Do::ArmyInfo if !battle.takes(at) => {}
                         Do::ArmyInfo => {
-                            army_info = battle.settings.cycle_army_info();
-                            inputs.push(Input::ArmyInfo {
-                                at,
-                                level: army_info,
-                            });
-                            save_settings(&battle.settings, &files);
+                            army_info = cycle_army_info(&mut battle, &mut inputs, at, &files);
                             book_changed = true;
                         }
                         // One of the battle's keys made while a battle fought here takes no
@@ -1672,6 +1671,58 @@ fn options_did(
     did != crate::battle::OptionsDid::default()
 }
 
+/// What becomes of the key that stopped Auto Combat as the stop's turn `turn` comes ([`carried`];
+/// E17 M5 T4c1, M6 T4b1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Carry {
+    /// It acts on that turn, a human's waiting for its command (0x474625).
+    Act,
+    /// It is lost: the turn played itself (a computer's), or Auto Combat was still on at the
+    /// human's turn's start (`at_start`: a turn it does not play reads no stop, the key dropped
+    /// as with Auto Combat off, CLT-Q45 (2)).
+    Drop,
+    /// The turn has not come or not waited yet.
+    Wait,
+}
+
+/// [`Carry`] by whether the battle waits for a human's command, the turns started `last` and the
+/// stop's `turn`, and (asked only for a human's waiting turn) whether Auto Combat was on at its
+/// start.
+fn carry((waiting, last, turn): (bool, usize, usize), at_start: impl FnOnce() -> bool) -> Carry {
+    if waiting && last == turn {
+        if at_start() { Carry::Drop } else { Carry::Act }
+    } else if last > turn {
+        Carry::Drop
+    } else {
+        Carry::Wait
+    }
+}
+
+/// The battle's keys that act on the turn Auto Combat's stop comes at when they stopped it, a
+/// human's (0x474625, `battle_buttons`' key switch; E17 M5 T4c1, design §7.22): the log's arrows,
+/// the Faerie Dragon's F and, since E17 M6 T4b2a, F5 (case 63, Creature Info's level).
+const fn carried(command: Do) -> bool {
+    matches!(
+        command,
+        Do::LogUp | Do::LogDown | Do::DragonSpell | Do::ArmyInfo
+    )
+}
+
+/// Creature Info's level cycled by the key F5 at `at` (E17 M6 T4b2a, design §12.14;
+/// `battle_buttons`' case 63): an input from then (the hints written after it read it, none is
+/// written again) and the settings file written at once (`files`). The level now.
+fn cycle_army_info(
+    battle: &mut Battle<'_>,
+    inputs: &mut Vec<Input>,
+    at: u32,
+    files: &SettingsFile<'_>,
+) -> u8 {
+    let level = battle.settings.cycle_army_info();
+    inputs.push(Input::ArmyInfo { at, level });
+    save_settings(&battle.settings, files);
+    level
+}
+
 /// Writes `settings` to the settings file (E17 M6 T4a: the options dialog's close after a click;
 /// T4b2a: the key F5), a failure in the report's lines.
 fn save_settings(settings: &Settings, files: &SettingsFile<'_>) {
@@ -2215,6 +2266,31 @@ mod tests {
         assert!(o.speed_set);
         let o = Options::parse(&["a.toml".to_owned()]).unwrap();
         assert!(!o.speed_set && o.settings.is_none());
+    }
+
+    #[test]
+    fn the_keys_a_stop_carries_are_the_battle_s_own_handler_s() {
+        // E17 M6 T4b2a (the reviewer): F5 stops Auto Combat and cycles the level on the human's
+        // turn the stop comes at, as the arrows and F; a button's hotkey or the stats' T not.
+        for c in [Do::LogUp, Do::LogDown, Do::DragonSpell, Do::ArmyInfo] {
+            assert!(carried(c), "{c:?}");
+        }
+        for c in [Do::Stats, Do::Button(h3_view::panel::WAIT), Do::StatsOk] {
+            assert!(!carried(c), "{c:?}");
+        }
+    }
+
+    #[test]
+    fn the_stop_s_key_acts_on_a_human_s_turn_and_is_lost_on_a_computer_s() {
+        // E17 M5 T4c1, M6 T4b1 (the reviewer of T4b2a): the human's turn the stop comes at
+        // waiting, the key acts unless Auto Combat was still on at its start; a turn after it
+        // already, lost; before, it waits.
+        assert_eq!(carry((true, 3, 3), || false), Carry::Act);
+        assert_eq!(carry((true, 3, 3), || true), Carry::Drop);
+        assert_eq!(carry((false, 4, 3), || unreachable!()), Carry::Drop);
+        assert_eq!(carry((true, 4, 3), || unreachable!()), Carry::Drop);
+        assert_eq!(carry((false, 3, 3), || unreachable!()), Carry::Wait);
+        assert_eq!(carry((true, 2, 3), || unreachable!()), Carry::Wait);
     }
 
     #[test]
