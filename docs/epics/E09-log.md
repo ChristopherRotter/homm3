@@ -907,3 +907,52 @@ import bump). The code by one sub-agent in a worktree, the review and the docs b
   the re-run passed.
 - **#712** (E08 T94a) merged first: `master` merged in, the census example's conflict resolved
   (a new check's name first, else T94a's `refusal`); the census unchanged.
+
+### T7b1 — the pool and the heroes' draws (2026-11-04)
+
+One session, the user present; branch `town/e09-t7b1` (`cross-lane`: `h3-game`'s `setup.rs`,
+`state.rs`, `state/battle.rs`, `lib.rs` and tests, `h3-map`'s census example and a test, the 39
+adventure replays, the adventure lane's HANDOFF versions line). Starting point: `master` at
+e654837 (#713 merged; CI green there; the sandbox's baseline the light gates; the original data
+staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`). **At its
+start** (the user): T7b cut in two at the towns, whose owners and objects come with T8a (a random
+town's faction falls back to its owner's, a town's setup differs owned or neutral, a main town's
+hero stands on its entrance): T7b1 the hero half now, T7b2 the towns' half after T8a's town list
+and owners. The code, the bench, the replays and the census by one sub-agent; the review and the
+docs by the agent.
+
+- **`h3-game`** (`src/town/pool.rs`, new, the lane's): `HeroStatus` (`Free`, `Taken(colour)`,
+  `Prisoner`, `Out`), `HeroPool` (per core hero type its status and colour mask; `new`, `free`,
+  `draw`), `draw_heroes` (the placed heroes' types checked, the pool built, the players' Random
+  choices, the random heroes' types, the unused picks freed). `src/town.rs`: `needs_faction`
+  (factored out of `Choice`'s test), `main_town_heroes` (the narrowed `TWN-STUB-3` refusal);
+  `HeroDraw::RandomHero` gone. `setup.rs`: `adventure_setup` returns the pool;
+  `GameSetupError::NoFreeHero(PlayerId)`; `validate`'s doc states the two seed-dependent cases.
+  `state.rs`: `pool: Arc<HeroPool>`, hashed after the store of heroes; `free_hero_types`.
+  `state/battle.rs`: `end_battle` frees the type of every hero it removes from the map (the only
+  path a hero leaves the map). Tests: `src/town/tests/pool.rs` (8), the T7a1/T7a2 refusal tests
+  rewritten, a beaten hero's type freed and the pool's copy on write (`tests/battles.rs`).
+- **The order of the draws** (design §14 "As built"): the players' Random choices a start reads
+  (player order), then the random heroes (hero order: the owner's pick for its first, else the
+  draw), then the unused picks freed, all before the starting armies. *Agent's calls* (change
+  freely): a Random choice nothing reads draws nothing (`needs_faction`), so the fixture maps of 12
+  replays (`e08-duel-36`, `e08-army-12`, `e08-xl-144`: two Random players, no town) keep their
+  stream; step 2's random towns follow the random heroes (T7b2 appends them); a placed hero's and a
+  prisoner's type taken whatever the allowed set (a prisoner's wins a tie), a type two placed
+  heroes share held by the last; a type that leaves the map freed even if the map did not allow
+  it (0x4D9EC0); unknown types in the allowed list, masks and prisoners ignored by the pool;
+  `UnknownHeroType` for a placed hero now before any draw; `NoFreeHero`'s payload the drawing
+  player (T7b2's main towns draw too).
+- **Versions:** game state hash v23 (the pool). The 39 replays rehashed from their own commands:
+  only the hash lines, `final_hash` and `game_state_hash_version` moved; the bot reports untouched
+  (they record the adventure part's hash).
+- **Bench** (master against the branch, the +2 % gate): fork-boxes-xl-144 +0.41 %, fork-xl-144
+  +0.27 %, fork-rewards-36 +0.37 % (about 10 Ir a fork, the extra `Arc`); every adventure workload
+  within −0.60 % and +0.69 % of its baseline; nothing re-baselined.
+- **The census** (`original_data`, 160 maps): 156 import, 4 refused (`OwnedOnWater`); 31 build
+  whole (9 before: the 22 refused for a random hero now build), 125 refused for a main town's hero
+  (`TWN-STUB-3`); none refused by `NoFreeHero`.
+- **Docs:** `town.toml` TWN-SET-005, -007 (new), -001, -006, -008 (the draws); `quirks-town.md`
+  `TWN-QUIRK-2`, `-3` (new), `-4`'s test; `stubs.toml` `TWN-STUB-3` narrowed; the design note's
+  §14 (the cut, "As built"), §19; `h3m.md`'s census; the stale "T7b" lines of `h3-towns` and the
+  import's module doc now say T7b2.

@@ -408,8 +408,8 @@ so a hero on it is no hero in a town; on any other blocked tile of a town `HeroI
 pool's inputs (survey §4.2): the allowed heroes (an RoE-format map's 128 bits and the 16 Conflux
 heroes, never 144 to 155; from AB on the 156 bits as given; a type the ruleset lacks left out),
 SoD's disposed heroes' colour masks, the prisoners' types. `Unsupported::HeroAtMainTown` and
-`RandomHero` are gone; until E09 T7b draws them, the game's build refuses a setup with a random
-hero or a main town that generates a hero (`GameSetupError::HeroDraw`, `TWN-STUB-3`).
+`RandomHero` are gone; the game's build draws a random hero's type (E09 T7b1) and, until E09
+T7b2, refuses a main town that generates a hero (`GameSetupError::HeroDraw`, `TWN-STUB-3`).
 
 E09 T7a1's census (import v17, the 160 shipped maps; `original_data`): 156 maps import (v15: 8;
 128 refused for a main town's hero, 21 for a random hero, 3 for a hero in a town), 4 are refused
@@ -431,6 +431,11 @@ E09 T7a2's census (the same import): the game's new checks of the towns and the 
 `RandomHeroOwner`, run before `TWN-STUB-3`'s refusal) refuse none of the 156 maps that import;
 the outcomes are T7a1's (9 build whole, 125 and 22 refused by `TWN-STUB-3`). The import sets no
 starting-hero pick, so the shipped maps do not exercise `Pick`.
+
+E09 T7b1's census (the same import): with the hero pool and the random heroes' draws, 31 of the 156
+maps build whole (the 22 refused for a random hero now build; no map refused by
+`GameSetupError::NoFreeHero`); 125 are still refused for a main town's hero (`TWN-STUB-3`, E09
+T7b2).
 
 ## The subset we write (E04a T2)
 

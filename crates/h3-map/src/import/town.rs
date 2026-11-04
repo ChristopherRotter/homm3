@@ -2,7 +2,7 @@
 //! hero pool's inputs (E09 T7a1; design note `docs/epics/E09-design.md` §7, survey
 //! `docs/rules/surveys/E09-towns.md` §1 to §5). The towns' static layer stays the blockers
 //! [`super::import_map`] makes of them (their kind: E09 T8a); the game builds none of it yet
-//! (E09 T7b).
+//! (E09 T7b2).
 
 use h3_adventure::{ObjectSetup, Pos};
 use h3_content::HeroTypeId;

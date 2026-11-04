@@ -13,7 +13,9 @@ use h3_adventure::{
     BattleStart, Combatant, Defender, Pos, TileRand, Viewers, split, split_with_second,
 };
 use h3_battle::{BattleState, Command, Event, Visibility, generate_setup_obstacles};
-use h3_content::{FULL_BP, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES, SPLIT_FROM_TILE};
+use h3_content::{
+    FULL_BP, HeroTypeId, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES, SPLIT_FROM_TILE,
+};
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroId,
     PlayerId, StackOrigin, StackRecord,
@@ -460,7 +462,8 @@ impl GameState {
     /// whose side won and has army survivors keeps them as its army (a damaged top creature
     /// forgotten), every other hero — lost, retreated, surrendered, in a draw, or left with stacks
     /// created in the battle only (BAT-END-001) — leaves the map, a hero in a boat with its boat
-    /// (ADV-SEA-006, E08 T74b); then the heroes' part
+    /// (ADV-SEA-006, E08 T74b), its type going back free in the hero pool (TWN-SET-005, E09
+    /// T7b1: the original's 0x4D9EC0); then the heroes' part
     /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then every hero of the battle, winner
     /// and loser, loses its battle bonuses and their once-marks (GAM-BAT-014, E08 T63b:
     /// `HeroChange::ClearBonuses`, told to its owner when it had any; the original's
@@ -482,7 +485,7 @@ impl GameState {
     /// ([`Self::give_levels`], GAM-BAT-008): after the whole outcome, Necromancy and Eagle Eye
     /// included, as the original gives a human player's after the battle's screen (0x4AE324).
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, GAM-BAT-008, ADV-MON-010, ADV-PIK-004
-    // rule: GAM-BAT-014, GAM-DEC-007
+    // rule: GAM-BAT-014, GAM-DEC-007, TWN-SET-005
     pub(crate) fn end_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -506,6 +509,13 @@ impl GameState {
             .collect();
         self.adventure
             .end_battle(rules.core(), &changes, &mut AdventureSink(&mut *sink));
+        // rule: TWN-SET-005
+        let left: Vec<HeroTypeId> = changes
+            .iter()
+            .filter(|(_, army)| army.is_none())
+            .filter_map(|&(hero, _)| self.hero(hero).map(|details| details.hero_type))
+            .collect();
+        self.free_hero_types(&left);
         let winner = result.winner().filter(|&side| army(side).is_some());
         self.heroes_after_battle(rules, (owners, heroes), outcome, winner, sink);
         // rule: GAM-BAT-014
