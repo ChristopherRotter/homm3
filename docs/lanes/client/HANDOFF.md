@@ -54,7 +54,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   the engine's preview, the server lane asked for the previews), two builders in turn, a fresh
   reviewer (two findings fixed: F5 as the key that stops Auto Combat, the open dialog's
   boxes). F5 was the window's pause: the user moved the windows' own keys to Ctrl+F5 to
-  Ctrl+F8 in both viewers (the map-client lane's inbox). `drawn` 209 the same; `check.sh`.
+  Ctrl+F8 in both viewers (the map-client lane's inbox; the PR `cross-lane`). `drawn` 209 the same; `check.sh`.
 
 - **2026-11-04, E17 M6 T4a (done; #709 merged).** The original data staged
   (57 files, by the file tool: the device shell did not start), the computer offline
