@@ -11598,3 +11598,48 @@ the main session wrote the records.
   record the part's hash alone).
 - **Versions:** map import v16. The game state hash, the adventure state hash and the part
   unchanged.
+
+### Increment 10, round 6: T94a, the build (2026-11-04, `adventure/e08-t94a`)
+
+**The cut** (decision 251; asked at the start, `AskUserQuestion`): T94 in two at the design's seam,
+T94a the build now, T94b the state next. Built by two narrow sub-agents (the code and its tests;
+the census); the main session added the boat's refusal and wrote the records.
+
+- **The resolution** (`h3-adventure`'s `state/dwellings.rs`, `resolve`; design §5; ADV-DWL-005):
+  in `StaticMap::new`'s placement walk, before the object is placed and before every other draw
+  of the static map (`resolve`, the rewards', the mines'), for each random dwelling in object
+  order: a faction uniform among its set (`pick`), then a level uniform in its range, the
+  faction's table's type. The object takes the type, the kind's `blocked` and `visitable` as its
+  masks (`ObjectKind::dwelling_footprint`), its anchor moved right by the shift (saturating; the
+  moved anchor may be x == width, its cells off the map ignored as past the top and left),
+  `Holds::Nothing` and no drawn cells, as a placed dwelling; owner and scenery the setup's.
+  E09's random towns, when built, draw before it (ADR-0017 point 4, a comment).
+- **Draw-independent validity** (*agent's calls*, change freely; design §5's "As built"): the
+  design refused a hero on the entrance only; the Angel Portal's shift can block the tile right of
+  the placeholder, so a hero (`SetupError::RandomDwellingTile { hero, object }`, checked before
+  its tile) or a boat (`SetupError::Boat`, the main session's addition) on a random dwelling's
+  entrance or on any tile an outcome of its set and range covers from its moved anchor is refused
+  (`refused_tiles`); the name check (`SharedAnchor`) takes every outcome's type and moved anchor
+  (`names`), not the placeholder's, so it runs after the holds' check (an object failing both
+  reports `Holds`).
+- **The lists:** `StaticMap::dwellings`, `dwelling_index` (the kind `Dwelling`, placed and
+  resolved, object order) and `camps`, `camp_index` (`RefugeeCamp`), built in `list_economy`;
+  consumed by T94b. The owners and the start's reveal needed nothing new (the dwellings ownable
+  since T93a); tests show them on a resolved dwelling, and the view's drawn type, moved anchor,
+  footprint and owner (ADV-OWN-002, -003).
+- **Tests:** `state/tests/dwellings.rs` (eleven: the table's entry, the draw's order and spread,
+  the right edge, the later draws moved, a resolved dwelling equal in state and hash to a placed
+  one, the lists, owner, reveal and view, the hero's and the boat's refusals, the name check);
+  `state/tests/holds.rs`' random dwelling test expects the resolved type (its hash arm tested
+  directly, since no built state holds the set any more).
+- **The census** (`h3-map`'s `original_data`, `built_dwellings`, seed 0, asserted): the 160 shipped
+  maps' static layers build as before (the example's output at 4475340 identical but the new
+  lines): 2 267 dwellings, 2 061 placed (T93b's 1 981 + 80) and 206 resolved (216: 79, 217: 126,
+  218: 1; by faction and level from castle [1, 11, 13, 5, 4, 0, 8] to conflux [4, 7, 1, 3, 2, 1,
+  2]), 8 anchors moved (the Angel Portals), none past the right edge, 321 camps, 15 dwellings
+  owned at the start (none resolved); no hero or boat refused.
+- **Docs:** ADV-DWL-005, ADV-OWN-002, -003 amended; design §5's "As built"; the town lane's inbox
+  (the dwellings' list, owners and creatures for its growth) and the map client lane's (its M4 T0
+  request (2): a random dwelling's drawn type, moved anchor and footprint in `ObjectView`).
+- **Versions:** none moved (the encoding is unchanged; no replay or fixture map holds a dwelling:
+  the determinism gate's 39 replays unchanged). T94b takes the adventure state hash v20.

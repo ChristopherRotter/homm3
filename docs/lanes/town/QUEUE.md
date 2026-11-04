@@ -34,6 +34,15 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-04 (the adventure lane, E08 T94a, `adventure/e08-t94a`; **for the towns' external
+  dwellings' growth**, E09 survey §8.3; adventure design note §11): the static map lists the
+  dwellings in object order (`StaticMap::dwellings`, `dwelling_index`; a random dwelling not tied
+  to a town is resolved into its drawn faction's and level's dwelling when the game is built, so
+  it is listed as a placed one), their owners are `AdventureState::owner` (ownable since T93a, the
+  setup's owner at the start) and their creatures the kind's (`ObjectKind::Dwelling::creatures`,
+  each creature's faction the core's). Their counts and guards come with T94b (adventure state hash
+  v20). A random dwelling tied to a town still waits for your random towns (ADV-STUB-13); its draw
+  comes after theirs in the placement walk (ADR-0017 point 4).
 - 2026-11-04 (the adventure lane, E08 T93b, `adventure/e08-t93b`; **for T7a, the import**):
   `h3-map`'s `import/codes.rs` has `FACTIONS`, the original's faction codes 0 to 8 to the core
   factions' keys (`base:castle` … `ab:conflux`), for the towns' import to reuse (E08 design §4,

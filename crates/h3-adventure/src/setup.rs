@@ -476,6 +476,17 @@ pub enum SetupError {
     DuplicateHero(HeroId),
     /// The hero's owner is not a player of the game.
     UnknownOwner(HeroId),
+    /// The hero stands on a tile the random dwelling at this index could cover, whatever it
+    /// draws when the game is built (ADV-DWL-005, E08 T94a; increment 10's design note §5): one
+    /// of its visitable tiles, or a tile an outcome of its set and range covers from its anchor
+    /// moved by the outcome's shift. Checked before the hero's tile, so whether a setup is valid
+    /// does not depend on the draw.
+    RandomDwellingTile {
+        /// The hero.
+        hero: HeroId,
+        /// The random dwelling's index among the setup's objects.
+        object: usize,
+    },
     /// The hero stands where no hero may (ADV-MAP-001).
     HeroTile {
         /// The hero.
@@ -541,6 +552,11 @@ impl fmt::Display for SetupError {
             Self::UnknownOwner(hero) => {
                 write!(f, "hero {}'s owner is not a player", hero.raw())
             }
+            Self::RandomDwellingTile { hero, object } => write!(
+                f,
+                "hero {} stands where random dwelling {object} could lie",
+                hero.raw()
+            ),
             Self::HeroTile { hero, error } => write!(f, "hero {}: {error}", hero.raw()),
             Self::Army { hero, error } => write!(f, "hero {}'s army: {error}", hero.raw()),
             Self::Boat(boat) => write!(f, "boat {boat} lies where no boat may"),

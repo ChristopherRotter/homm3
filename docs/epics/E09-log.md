@@ -905,3 +905,5 @@ import bump). The code by one sub-agent in a worktree, the review and the docs b
   `tests::view::a_viewer_learns_nothing_it_cannot_see` (the import refuses its laid-out map,
   `OwnedOnWater`; not T7a2's code): its persisted seed left out, the adventure lane's inbox told;
   the re-run passed.
+- **#712** (E08 T94a) merged first: `master` merged in, the census example's conflict resolved
+  (a new check's name first, else T94a's `refusal`); the census unchanged.

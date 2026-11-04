@@ -150,6 +150,14 @@ Hash tags follow the part's last (the building task's); ruleset part v16.
 - **Lists:** the static map lists the dwellings (both kinds, in object order: the **dwelling
   index**) and the camps (the **camp index**) beside its ownable and weekly lists; the dwellings
   join the ownable list.
+- **As built (T94a, decision 251; *agent's calls*, change freely):** the refusal and the name
+  check do not depend on the draw. A hero (`SetupError::RandomDwellingTile`, checked before its
+  tile) or a boat (`SetupError::Boat`) on a random dwelling's entrance or on any tile an outcome of
+  its set and range covers from its moved anchor is refused (`dwellings::refused_tiles`); the
+  name check (`SharedAnchor`) takes every outcome's type and moved anchor, not the placeholder's,
+  so it runs after the holds' check. The resolved object holds nothing and is drawn on no further
+  tile, as a placed dwelling; its owner and scenery stay the setup's. `StaticMap::dwellings`,
+  `dwelling_index`, `camps`, `camp_index`; the dwellings were ownable since T93a.
 
 ### 6. The state (`h3-adventure`; adventure state hash v20)
 
