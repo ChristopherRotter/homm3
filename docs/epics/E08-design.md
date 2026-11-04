@@ -224,6 +224,8 @@ Every seat gets the same questions (as increment 9's Leave Guards: the original 
 computer player's hiring is E10's). A hero standing on an owned dwelling's entrance hides it, as
 any owned object (ADR-0016 point 3); a hero does not revisit the dwelling it stands on.
 
+- **As built (T95a1, decision 253; *agent's calls*, change freely):** `Effect::Dwelling(creatures)` and `Effect::Camp`; a random dwelling has no visit (it is resolved when the game is built). The visit (`AdventureState::visit_dwelling`): of the visitor's team, the hire question; another's or neutral with its guards standing, nothing until T95a2 (ADV-STUB-14); else `flag`, then the question. `OfferKind::Hire { creatures }` (the game's decision hash: tag 11, then the creatures' number and each). The camp (`visit_refugee_camp`): `ObjectEmpty` at 0, else the question with its creature. Accepted (`accept_hire`): the owner is read at the acceptance (another player of the turn group may flag the dwelling meanwhile); at one's own dwelling each creature of `free_level` or less: `NoneToRecruit` at 0, else all of it into ADV-ARM-007's room (`monsters::add_stack`, no merge) with `CreaturesJoined` and its count set to 0, else `JoinRefused` and the count kept (a hero no longer on the map counts as no room); no dialog until T95b (ADV-STUB-15). The writer `write_dwelling(index, edit)`: a write that changes nothing keeps the block shared with the forks; one that leaves every dwelling full drops it (§6's normalisation).
+
 ### 8. The purchase's map side (ADV-HIR-002 in part)
 
 The hire dialog is the game's pending decision (part C §13: its command, the treasury, when it
