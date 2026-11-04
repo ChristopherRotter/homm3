@@ -49,7 +49,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   `metrics.jsonl` and `best.pt`, then `e25-clone-1`'s `best.pt` (identified by T19's tool). In the
   sandbox `cargo build --release -p h3-ffi` 79 s and `uv sync --group train` 63 s (no stall); T19's
   tool 40 s a run, the head-to-heads 24 to 215 s. T23 with the user (AI-Q16); increment 7's survey
-  by a sub-agent.
+  by a sub-agent. Without the setup script the coverage step needed `cargo-llvm-cov`, `llvm-20`
+  and `scripts/sandbox-verify.sh` (the scoped verify then passed, 8 minutes).
 
 ### 2026-11-03 — E25 T21
 
