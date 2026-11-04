@@ -1,0 +1,105 @@
+# E25 T26's structure sweep (increment 7, AI-Q16; `h3env.train.clone`, the distillation bench's
+# clone mode): T16's cloning bench (`e25-clone.toml`: the fair system actor as the teacher on
+# `e25-neutral.toml`'s mix, 4 M samples, the same held-out set) with the 2 x 512 MLP as the
+# control, the MLP with the entry mask as the second control, and one structured candidate per
+# family at two learning rates, each reading the entry mask, the turn order and each melee
+# entry's attack hex (T25's `mask_input`, `order`, `attack_hex`). The cost cap (decision 3, the
+# user at T26 on the GTX 1070's grid, `E25-log.md` T24): a sample-pass of about 700 us at most;
+# the candidates are the largest of decision 2's ranges within it (the GPU's grid without T25's
+# keys: `entity` 256 x 4 293 us, `hexconv` normalised 96 x 6 595, `hexformer` 96 x 4 682). No
+# ladder (T27's). Decision 5's first gate: a candidate at 0.60 agreement at 4 M. From python/:
+#
+#   uv run --group train python -m h3env.train.distill --teacher system --config configs/distill/e25-structure.toml --out runs/structure-1
+run = "configs/e25-neutral.toml"
+seed = 7
+samples = 4_000_000
+heldout = 16_384
+eval_every = 500_000
+envs = 256
+rollout = 128
+epochs = 2
+minibatch = 512
+lr = 3e-4
+lr_floor = 0.1
+value_coef = 0.5
+max_grad_norm = 0.5
+device = "auto"
+
+# The controls: `e25-neutral.toml`'s own network (T16's student), then the same with the mask.
+[students.mlp]
+kind = "mlp"
+
+[students.mlp-mask]
+kind = "mlp"
+mask_input = true
+
+# The entity network, the largest of decision 2's range (256 wide, 4 blocks).
+[students.entity-256x4-a]
+kind = "entity"
+width = 256
+layers = 4
+mask_input = true
+order = true
+attack_hex = true
+lr = 5e-4
+warmup = 131_072
+weight_decay = 0.01
+
+[students.entity-256x4-b]
+kind = "entity"
+width = 256
+layers = 4
+mask_input = true
+order = true
+attack_hex = true
+lr = 2e-4
+warmup = 131_072
+weight_decay = 0.01
+
+# The hex convolution network with normalisation, 96 channels, 6 blocks.
+[students.hexconv-n-96x6-a]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+lr = 1e-3
+warmup = 131_072
+weight_decay = 0.01
+
+[students.hexconv-n-96x6-b]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+lr = 3e-4
+warmup = 131_072
+weight_decay = 0.01
+
+# The hex transformer, 96 wide, 4 blocks (4 heads, feed-forward twice the width).
+[students.hexformer-96x4-a]
+kind = "hexformer"
+width = 96
+layers = 4
+mask_input = true
+order = true
+attack_hex = true
+lr = 5e-4
+warmup = 131_072
+weight_decay = 0.01
+
+[students.hexformer-96x4-b]
+kind = "hexformer"
+width = 96
+layers = 4
+mask_input = true
+order = true
+attack_hex = true
+lr = 2e-4
+warmup = 131_072
+weight_decay = 0.01

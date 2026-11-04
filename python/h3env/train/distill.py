@@ -178,7 +178,7 @@ def heads(net: Policy, m: dict[str, torch.Tensor]):
     """`net`'s log-probabilities on a minibatch `m` (the rollout's fields, bool masks): the entry
     head's [rows, entries], the cast rows' spell, target and second heads' along the stored
     choices, the masked entry logits and the value."""
-    h = net.encode(m["obs"])
+    h = net.encode(m["obs"], m["entry_mask"])
     value = net.value(h)
     logits = masked(net.entry_logits(h), m["entry_mask"])
     rows = torch.nonzero(m["cast"]).squeeze(1)

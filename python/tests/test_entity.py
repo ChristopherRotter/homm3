@@ -1,7 +1,7 @@
 """The entity network (E06 T5a, `docs/epics/E06-log.md` §11): the layout it reads is the
 library's, its logits stand in the encodings' order, an empty slot is not seen, the stacks' slot
-order does not matter to its context; the visualization command and a bench's costs (E25 T24).
-They need the group `train`."""
+order does not matter to its context; the visualization command and a bench's costs (E25 T24;
+a student with E25 T25's keys). They need the group `train`."""
 
 from __future__ import annotations
 
@@ -203,7 +203,10 @@ def test_the_cost_of_a_benchs_students_side_by_side(tmp_path, capsys) -> None:
     bench = tmp_path / "bench.toml"
     bench.write_text(
         "[students.mlp]\nkind = 'mlp'\nhidden = 16\nlr = 1e-3\n"
-        "[students.conv]\nkind = 'hexconv'\nwidth = 8\nlayers = 1\nnorm = 'layer'\nwarmup = 10\n",
+        "[students.conv]\nkind = 'hexconv'\nwidth = 8\nlayers = 1\nnorm = 'layer'\nwarmup = 10\n"
+        # E25 T25's keys on a structured kind.
+        "[students.keys]\nkind = 'entity'\nwidth = 8\nlayers = 1\nheads = 2\nmask_input = true\n"
+        "order = true\nattack_hex = true\n",
         encoding="utf-8",
     )
     main(["--bench", str(bench), "--set", "network.embed=8", "--rows", "4", "--time"])
@@ -212,6 +215,7 @@ def test_the_cost_of_a_benchs_students_side_by_side(tmp_path, capsys) -> None:
     assert rows[0].startswith("| student | network | parameters")
     assert rows[1].startswith("| mlp | kind mlp, hidden 16 |")
     assert rows[2].startswith("| conv | kind hexconv, width 8, layers 1, norm layer |")
+    assert rows[3].startswith("| keys | kind entity, width 8, layers 1, heads 2, mask_input True")
     assert all(row.endswith("| - |") for row in rows[1:])  # no CUDA memory on the CPU
     batch = mixed_batch()
     net = small()
