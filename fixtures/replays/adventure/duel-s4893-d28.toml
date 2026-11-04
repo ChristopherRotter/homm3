@@ -626,31 +626,31 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x8191d6e797db27df",
-    "0xb99e66a87e1c2626",
-    "0x3c56d38f97d6773b",
-    "0x7d751a81ec46f102",
-    "0xcf8ecec6e743fa0c",
-    "0xde87e613b251f8f4",
-    "0xe042cb8f396a4a59",
-    "0x31b2957a7e8ae4ae",
-    "0xdbbf723a285c22a7",
-    "0xb6916f0dd4725624",
-    "0x594d671aa5d2d656",
-    "0x0fe693055f41533c",
-    "0x0c3b652995904b14",
-    "0x11193b96fb5022d4",
-    "0xc17c8b95c300d553",
-    "0xada9a886cc91fa32",
-    "0x4ceb982bbd79b7a1",
-    "0xcddf446b5c1f8997",
-    "0x6fc7dab9c3b2fe1c",
-    "0x125ebf675a6698e8",
-    "0x716a36dade439ea0",
-    "0x8b510d5043ab141a",
-    "0x4f8c8b715840f54b",
-    "0xa1af02d5b68e4d1b",
-    "0x4f112e3d8121ce5c",
+    "0xdc006dea577eb843",
+    "0xb30743323236ed1e",
+    "0x83787755799c35f7",
+    "0xdb11b9b6c20a3b52",
+    "0xc633c93e0569e18c",
+    "0xeec64ffe783fa964",
+    "0x9418da6b1376f00d",
+    "0x19bd15413ca41d76",
+    "0x1b5f4bc1f895d99b",
+    "0xe41e384c168dcdf4",
+    "0xfda658b1fb30b63a",
+    "0x02c3c0f3f67c0c45",
+    "0x4093de8337c6645d",
+    "0x75a608e4be8cea9d",
+    "0x725ab418bb1881ba",
+    "0x7891c753f320c2c7",
+    "0x0f546e7d56f16174",
+    "0xd8c86a6912cb29fe",
+    "0x545e7bf38e33aa77",
+    "0x0945c8a6ef0653c4",
+    "0xba5cbd3363413022",
+    "0x82bb03bb42d5aab4",
+    "0xcec266164bca71ac",
+    "0x402714af3b988bbc",
+    "0x367e56613240b33d",
 ]
 
 [replay]
@@ -674,21 +674,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x962e87e7a01056f6"
-adventure_ruleset_hash = "0xe35bf409c05f50b1"
+adventure_ruleset_hash = "0xf7865aeae57de535"
 town_ruleset_hash = "0xe9dc612ed812d825"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 23
-adventure_state_hash_version = 20
+adventure_state_hash_version = 21
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 17
+import_version = 18
 
 [result]
 day = 29
-final_hash = "0x4f112e3d8121ce5c"
+final_hash = "0x367e56613240b33d"
