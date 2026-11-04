@@ -426,7 +426,9 @@ impl TownRuleset {
         Ok(Self::new(core, params, towns))
     }
 
-    fn new(core: &Ruleset, params: Option<TownParams>, towns: Vec<TownRecord>) -> Self {
+    /// The part of `params` and `towns` (in faction order) on `core`, hashed; the derivations'
+    /// tests build theirs so (`crate::fixture`).
+    pub(crate) fn new(core: &Ruleset, params: Option<TownParams>, towns: Vec<TownRecord>) -> Self {
         let mut part = Self {
             core_hash: core.content_hash(),
             params,

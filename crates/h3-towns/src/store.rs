@@ -8,7 +8,10 @@ use h3_contracts::TownId;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::TOWN_STATE_HASH_VERSION;
+use crate::building::BuildingSet;
+use crate::capture::{capitol_limit, standing_capitol};
 use crate::record::{Town, TownEvent, TownStatic};
+use crate::ruleset::TownRuleset;
 
 /// The most towns a store holds: one per [`TownId`].
 pub const MAX_TOWNS: usize = 1 << 16;
@@ -76,13 +79,55 @@ impl Towns {
     pub fn town_static(&self, town: TownId) -> Option<&TownStatic> {
         self.parts().1.get(town.index())
     }
+
+    /// Whether `town` has a Capitol: a standing hall-4 building (public, E09 increment 1's design
+    /// note §12); false for a town the store lacks.
+    pub fn capitol(&self, town: TownId, part: &TownRuleset) -> bool {
+        self.get(town)
+            .and_then(|t| standing_capitol(t, part))
+            .is_some()
+    }
+
+    /// Applies the Capitol's limit to `town` at its capture ([`capitol_limit`]; E09 increment 1's
+    /// design note §11: the game's, after the adventure's capture), `holds_another` whether the
+    /// new owner holds another town with a Capitol (`false` for a neutral one); whether the town
+    /// changed. A town the store lacks changes nothing.
+    // rule: TWN-CAP-002
+    pub fn apply_capitol_limit(
+        &mut self,
+        town: TownId,
+        part: &TownRuleset,
+        holds_another: bool,
+    ) -> bool {
+        let change = self
+            .get(town)
+            .map(|t| (t.built(), capitol_limit(t, part, holds_another)))
+            .filter(|(built, limited)| built != limited);
+        change
+            .iter()
+            .for_each(|&(_, limited)| self.set_built(town, limited));
+        change.is_some()
+    }
+
+    /// Writes `town`'s ever-built set (only the rules write it, design note §4): the first write
+    /// of a fork copies the list of references, then the one town gets a new record (its faction
+    /// and forbidden set kept); every other town and the static parts stay shared. A town the
+    /// store lacks changes nothing (and copies nothing).
+    pub(crate) fn set_built(&mut self, town: TownId, built: BuildingSet) {
+        let at = town.index();
+        self.0
+            .iter_mut()
+            .filter(|store| at < store.towns.len())
+            .flat_map(|store| Arc::make_mut(store).towns.get_mut(at))
+            .for_each(|slot| *slot = Arc::new(Town::new(slot.faction(), built, slot.forbidden())));
+    }
 }
 
 impl CanonicalHash for Towns {
     /// Encoding v1 (E09 T6a; the first): version; the number of towns; each town in `TownId`
     /// order: its faction's handle, the bits of its ever-built and forbidden sets; then each
     /// town's static part in `TownId` order: its name (0 for none, else 1 and the text), its
-    /// events (length, then each: [`hash_event`]).
+    /// events (length, then each: `hash_event`).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(TOWN_STATE_HASH_VERSION);
         let (towns, statics) = self.parts();
@@ -144,6 +189,9 @@ mod tests {
 
     use super::*;
     use crate::building::{BuildingId, BuildingSet};
+    use crate::fixture::{
+        CAPITOL, CITY_HALL, FORT, KEEP, TOWN_HALL, VILLAGE_HALL, WILD, part, town, town_of,
+    };
 
     fn set(indices: &[usize]) -> BuildingSet {
         indices.iter().fold(BuildingSet::EMPTY, |set, &i| {
@@ -253,5 +301,87 @@ mod tests {
         let mut one = towns();
         one.pop();
         assert_ne!(hash_of(&Towns::new(one).unwrap()), base);
+    }
+
+    const HALLS: [usize; 4] = [VILLAGE_HALL, TOWN_HALL, CITY_HALL, CAPITOL];
+
+    /// Three Keep towns: two with a Capitol (the second named, a Fort forbidden), one with the
+    /// Village Hall.
+    fn keep_towns() -> Towns {
+        let named = TownStatic {
+            name: Some("Tirlan".into()),
+            events: Vec::new(),
+        };
+        Towns::new(vec![
+            (town(&HALLS), TownStatic::default()),
+            (Town::new(KEEP, set(&HALLS), set(&[FORT])), named),
+            (town(&[VILLAGE_HALL]), TownStatic::default()),
+        ])
+        .unwrap()
+    }
+
+    /// The two stores' lists, which both hold towns.
+    fn stores<'a>(a: &'a Towns, b: &'a Towns) -> (&'a Arc<Store>, &'a Arc<Store>) {
+        (a.0.as_ref().unwrap(), b.0.as_ref().unwrap())
+    }
+
+    #[test]
+    fn a_capitol_is_a_standing_hall_4_building() {
+        let part = part();
+        let store = Towns::new(vec![
+            (town(&HALLS), TownStatic::default()),
+            (town(&HALLS[..3]), TownStatic::default()),
+            (town_of(WILD, &HALLS), TownStatic::default()),
+        ])
+        .unwrap();
+        let capitol = |i: u16| store.capitol(TownId::new(i), &part);
+        assert_eq!(
+            [capitol(0), capitol(1), capitol(2), capitol(3)],
+            [true, false, false, false]
+        );
+    }
+
+    #[test]
+    fn the_capitol_s_limit_writes_one_town_of_a_fork() {
+        // covers: TWN-CAP-002
+        let part = part();
+        let store = keep_towns();
+        let mut fork = store.clone();
+        let second = TownId::new(1);
+        assert!(fork.apply_capitol_limit(second, &part, true));
+        // The fork's town is demoted (faction and forbidden set kept); the old store keeps its.
+        let demoted = Town::new(KEEP, set(&HALLS[..3]), set(&[FORT]));
+        assert_eq!(fork.get(second), Some(&demoted));
+        assert_eq!(store.get(second).map(Town::built), Some(set(&HALLS)));
+        assert!(store.capitol(second, &part) && !fork.capitol(second, &part));
+        // The list is copied; the other towns and the static parts are still shared.
+        let (old, new) = stores(&store, &fork);
+        assert!(!Arc::ptr_eq(old, new) && Arc::ptr_eq(&old.statics, &new.statics));
+        assert!(Arc::ptr_eq(&old.towns[0], &new.towns[0]));
+        assert!(Arc::ptr_eq(&old.towns[2], &new.towns[2]));
+        assert!(!Arc::ptr_eq(&old.towns[1], &new.towns[1]));
+        assert_ne!(hash_of(&fork), hash_of(&store));
+        // A later write of the same fork copies no list again.
+        let list = Arc::as_ptr(stores(&fork, &fork).0);
+        assert!(fork.apply_capitol_limit(TownId::new(0), &part, true));
+        assert_eq!(Arc::as_ptr(stores(&fork, &fork).0), list);
+    }
+
+    #[test]
+    fn a_limit_without_a_change_writes_nothing() {
+        let part = part();
+        let store = keep_towns();
+        let mut fork = store.clone();
+        // No other Capitol held (or a neutral captor), no Capitol, no such town.
+        assert!(!fork.apply_capitol_limit(TownId::new(0), &part, false));
+        assert!(!fork.apply_capitol_limit(TownId::new(2), &part, true));
+        assert!(!fork.apply_capitol_limit(TownId::new(3), &part, true));
+        fork.set_built(TownId::new(3), set(&[0]));
+        let (old, new) = stores(&store, &fork);
+        assert!(Arc::ptr_eq(old, new));
+        let mut empty = Towns::default();
+        assert!(!empty.apply_capitol_limit(TownId::new(0), &part, true));
+        empty.set_built(TownId::new(0), set(&[0]));
+        assert_eq!(empty, Towns::default());
     }
 }
