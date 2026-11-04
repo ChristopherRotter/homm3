@@ -327,10 +327,19 @@ fn check(
                 Err(GameSetupError::HeroDraw(draw)) => {
                     return Ok((map.header.version, refused(draw).to_owned()));
                 }
-                built => built.map_err(|e| {
-                    let why = refusal(rules, &setup, e, &mut peaks.6);
-                    format!("imported, but invalid: {why}")
-                })?,
+                // E09 T7a2: a map the setup's checks of the towns and the starts refuse, by the
+                // check's name.
+                Err(error) => match checked(error) {
+                    Some(check) => {
+                        let outcome = format!("imported; the setup's check {check} refuses it");
+                        return Ok((map.header.version, outcome));
+                    }
+                    None => {
+                        let why = refusal(rules, &setup, error, &mut peaks.6);
+                        return Err(format!("imported, but invalid: {why}"));
+                    }
+                },
+                Ok(game) => game,
             };
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
             // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
@@ -359,6 +368,21 @@ const fn refused(draw: HeroDraw) -> &'static str {
     match draw {
         HeroDraw::MainTown(_) => "imported; the build refuses a main town's hero (TWN-STUB-3)",
         HeroDraw::RandomHero(_) => "imported; the build refuses a random hero (TWN-STUB-3)",
+    }
+}
+
+/// The name of a setup's check of the towns and the starts that refuses a map (E09 T7a2), if
+/// `error` is one.
+const fn checked(error: GameSetupError) -> Option<&'static str> {
+    match error {
+        GameSetupError::TownFaction(_) => Some("TownFaction (TWN-SET-002)"),
+        GameSetupError::TownAlignment(_) => Some("TownAlignment (TWN-SET-002)"),
+        GameSetupError::Choice(_) => Some("Choice (TWN-SET-001)"),
+        GameSetupError::MainTown(_) => Some("MainTown (TWN-SET-001)"),
+        GameSetupError::Pick(_) => Some("Pick (TWN-SET-006)"),
+        GameSetupError::PickTaken(_) => Some("PickTaken (TWN-SET-006)"),
+        GameSetupError::RandomHeroOwner(_) => Some("RandomHeroOwner (TWN-SET-008)"),
+        _ => None,
     }
 }
 

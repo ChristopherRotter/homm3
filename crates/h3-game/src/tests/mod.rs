@@ -61,7 +61,7 @@ use h3_towns::{
 use super::*;
 use crate::treasury::Treasuries;
 
-fn key(text: &str) -> ContentKey {
+pub(crate) fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
 }
 
@@ -83,7 +83,7 @@ fn war_machine(k: &str) -> CreatureDef {
     }
 }
 
-fn manifest() -> PackManifest {
+pub(crate) fn manifest() -> PackManifest {
     PackManifest {
         id: "t".into(),
         version: "1".into(),
@@ -91,7 +91,7 @@ fn manifest() -> PackManifest {
     }
 }
 
-fn hero_type(k: &str, army: &[(&str, [u16; 2])], war_machines: &[&str]) -> HeroTypeDef {
+pub(crate) fn hero_type(k: &str, army: &[(&str, [u16; 2])], war_machines: &[&str]) -> HeroTypeDef {
     HeroTypeDef {
         key: key(k),
         name: "Hero".into(),
@@ -126,7 +126,7 @@ fn core_with(extra: bool, profile: &str) -> Ruleset {
 }
 
 /// [`core`]'s pack, before it compiles (E08 T20b2: the monsters' tests give it AI values).
-fn core_pack(extra: bool) -> ContentPack {
+pub(crate) fn core_pack(extra: bool) -> ContentPack {
     // The imp costs 50 gold and the gog 100: a surrender's price (E08 T19a).
     let costing = |k: &str, speed, gold| CreatureDef {
         info: CreatureInfoDef {
@@ -396,7 +396,7 @@ const fn choice(first: PrimarySkill, second: PrimarySkill, amount: u8) -> Gives 
 /// slots, a land table of 1300, 1360, 1430, 1500 for speeds 0 to 3, the original's starting
 /// stack chances, a gold pile `t:pile` (5 to 10 hundreds), a Cartographer `t:chart`, a tent
 /// `t:tent` and a guard `t:guard` of key 0.
-fn part(core: &Ruleset) -> AdventureRuleset {
+pub(crate) fn part(core: &Ruleset) -> AdventureRuleset {
     part_with(core, vec![88, 25], 2)
 }
 
@@ -698,7 +698,7 @@ fn battle_part(core: &Arc<Ruleset>, slots: u8) -> BattleRuleset {
 }
 
 /// [`battle_part`] with its pack edited.
-fn battle_part_with(
+pub(crate) fn battle_part_with(
     core: &Arc<Ruleset>,
     slots: u8,
     edit: impl FnOnce(&mut BattlePack),

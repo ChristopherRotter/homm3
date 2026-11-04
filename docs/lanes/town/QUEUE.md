@@ -11,37 +11,23 @@ entries below are round 7's (rounds 2 to 6 are done, `E09-log.md`); each later r
 written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T7a2 — the setup's checks** (`cross-lane`)
-
-- **Scope:** round 7, T7a's second half (cut at T7a's start, the user; design §13, ADR-0015's
-  amendment point 4): `GameSetup::validate`'s new errors in §13's order, one check per invariant:
-  `TownCount`, `TownFaction`, `TownAlignment`, `Choice`, `MainTown`, `Pick` (outside **the offer**:
-  TWN-SET-006), `PickTaken`, `RandomHeroOwner`; the rules TWN-SET-002's checks and TWN-SET-006 in
-  `town.toml`; `TWN-QUIRK-2` and `-3` where the checks fix them (else with T7b's pool). The census
-  re-run (`h3-map`'s `original_data`): which shipped maps a new check refuses, named in `h3m.md`.
-- **Acceptance:** every rule with its id, source and test; 100 % coverage of the crates touched;
-  the scoped verify with `--with-original-data`.
-- **Notes:** T7a1 built the fields (`PlayerStart`, `GameSetup::towns` and the pool's inputs) and
-  the import; until T7b the build refuses a setup that needs a draw (`TWN-STUB-3`, checked in
-  `validate` after the heroes' count). `TownCount` compares with "the static map's town list",
-  which T8a builds: confirm at the start what it counts until then (the static map's objects of
-  classes 77 and 98, or the check with T8a). The offer reads the faction's two classes and the
-  placed heroes and prisoners (survey `E09-towns.md` §4.3).
-- **Depends on:** T7a1 (its pull request merged). **Status:** ready once it merges; its cut
-  confirmed at its start.
-
 **E09 T7b — the pool and the build's draws** (`cross-lane`)
 
 - **Scope:** round 7 (design §14; ADR-0017's amendment points 1 and 4): `h3-game`'s `HeroPool`
-  (TWN-SET-005; T-2, T-3 fixed), the build's draws from the setup stream in §14's order (the
-  players' random choices TWN-SET-001, a random town's faction TWN-SET-002, a random hero's type
-  TWN-SET-008, each main town's hero TWN-SET-009, the draw TWN-SET-007 with
+  (TWN-SET-005; T-2, T-3 fixed: `TWN-QUIRK-2`, `-3` entered in `quirks-town.md`), the build's
+  draws from the setup stream in §14's order (the players' random choices TWN-SET-001, a random
+  town's faction TWN-SET-002, a random hero's type TWN-SET-008, each main town's hero
+  TWN-SET-009, the draw TWN-SET-007 with
   `GameSetupError::NoFreeHero`, then each town's `h3_towns::town_setup`, T6c); the store of
   towns beside the adventure's state, the garrisons and reveal radii into the adventure's setup;
   game state hash v23; the replays re-recorded where the hash moves (skill
   `homm3-rerecord-replays`).
 - **Acceptance:** as T7a's; the determinism replays green.
-- **Depends on:** T7a2. **Status:** after T7a2; its cut confirmed at its start.
+- **Notes:** T7a2's checks (`town::check_starts`) hold before any draw: every faction of a
+  player's set has a town record, a player whose start needs a faction has a choice, a random
+  town's alignment names a player, a pick is in its offer and no two players share one.
+- **Depends on:** T7a2 (its pull request merged). **Status:** ready once it merges; its cut
+  confirmed at its start.
 
 ## Inbox
 
