@@ -28,12 +28,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 - **Acceptance:** the dialog and each setting's drawing exact against recordings or listed;
   `check.sh`. **Depends on:** T1 (done). **Status:** cut in three by the user (2026-11-04);
   T4a done (design §12.12):
-  - **T4b:** cut in three by the user (2026-11-04):
-    - **T4b1:** the Auto Combat options restricting the window's bot (`stack_automatic`
-      0x474BF0 read whole; Combat Auto Spells kept only: the bot's casts are T5's).
-    - **T4b2a:** Creature Info ("Combat Army Info Level") in effect without new windows: the key
-      F5 (the level cycled, saved at once), the status line's hints with the damage at levels 1
-      and 2.
+  - **T4b:** cut in three by the user (2026-11-04); T4b1 (design §12.13) and T4b2a (§12.14) done:
     - **T4b2b:** the army info windows kept shown and filled by the mouse's move, the heroes'
       windows left shown after their right press, recorded with the level on. T4a's reading
       (design §12.12, oddity 4): the level's help rows (`Help.txt` 425, 426) speak of a right
