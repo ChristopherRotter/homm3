@@ -15,7 +15,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use h3_adventure::{MapSetup, ObjectKind, ObjectSetup, Passage, Pos};
-use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup};
+use h3_game::{
+    BuildingsSetup, DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup,
+    TownFaction, TownSetup,
+};
 use h3_map::Limits;
 use h3_map::model::{Body, Buildings, RawMap, Version};
 use serde::Serialize;
@@ -345,6 +348,25 @@ impl Accumulator {
     fn add(&mut self, file: &[u8], limits: &Limits, rules: &GameRuleset) -> Result<(), String> {
         let raw = h3_map::read(file, limits).map_err(|e| format!("read: {e}"))?;
         let map = h3_map::import_map(&raw, rules).map_err(|e| format!("static layer: {e}"))?;
+        // Since E09 T8a1 the game takes one town record per town of the static map
+        // (`GameSetupError::TownCount`): a random town of no alignment each, which no start reads.
+        let towns = map
+            .objects
+            .iter()
+            .filter(|object| {
+                object
+                    .object_type
+                    .and_then(|id| rules.adventure().object_type(id))
+                    .is_some_and(|ty| ty.kind == ObjectKind::Town)
+            })
+            .map(|_| TownSetup {
+                faction: TownFaction::Random { alignment: None },
+                buildings: BuildingsSetup::Standard { fort: false },
+                garrison: None,
+                name: None,
+                events: Vec::new(),
+            })
+            .collect();
         let setup = GameSetup {
             players: vec![PlayerSetup {
                 colour: 0,
@@ -359,7 +381,7 @@ impl Accumulator {
             banned_spells: Vec::new(),
             banned_artifacts: Vec::new(),
             events: Vec::new(),
-            towns: Vec::new(),
+            towns,
             allowed_heroes: Vec::new(),
             hero_masks: Vec::new(),
             prisoners: Vec::new(),

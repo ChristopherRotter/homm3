@@ -115,8 +115,10 @@ pub use state::{
 /// and 8), the ownable objects' owners and the weekly objects' contents and marks. v19 (E08
 /// T83b2a): the objects added in play (in the occupancy's encoding) and the monsters' fractions.
 /// v20 (E08 T94b): the dwellings' counts and guards as they stand and the Refugee Camps'
-/// creatures and counts.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 20;
+/// creatures and counts. v21 (E09 T8a1): the towns among the ownable objects (their owners in the
+/// owners' block), a town's garrison on its object, a town's formation in the static map's
+/// objects ([`Holds`]' tag 9).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 21;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
@@ -132,4 +134,5 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 20;
 /// increment 9's seven kinds (mines, abandoned mines, Lighthouses, Shipyards, Windmills, Water
 /// Wheels, Gardens), the monsters' growth, the calendar and the months. v15 (E08 T83b1): the flag
 /// radius. v16 (E08 T93a): the dwellings' kinds, `[params.dwellings]`, `[[random_dwelling]]`.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 16;
+/// v17 (E09 T8a1): the town's kind.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 17;

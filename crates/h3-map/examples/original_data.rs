@@ -25,7 +25,9 @@
 //! Since E09 T7a1 the towns, the players' starts, the random heroes, the heroes moved onto a
 //! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import, and a setup the
 //! build refuses for a hero to draw (`TWN-STUB-3`) is counted as an outcome; since E09 T7b1 the
-//! random heroes are drawn and only a main town's hero is refused so.
+//! random heroes are drawn and only a main town's hero is refused so. Since E09 T8a1 the towns are
+//! typed (their owners at load and formations counted), and the static layer's game gives one
+//! town record per town (a random town of no alignment).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -40,10 +42,10 @@ use std::sync::Arc;
 use h3_adventure::{
     DWELLING_LEVELS, Holds, MapSetup, ObjectKind, ObjectTypeId, Pos, SetupError, land_table_points,
 };
-use h3_content::CreatureTypeId;
+use h3_content::{CreatureTypeId, Formation};
 use h3_game::{
     BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameRuleset, GameSetup, GameSetupError,
-    GameState, GarrisonCreature, HeroDraw, PlayerSetup, TownFaction,
+    GameState, GarrisonCreature, HeroDraw, PlayerSetup, TownFaction, TownSetup,
 };
 use h3_map::model::{Artifacts, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
@@ -290,7 +292,26 @@ fn check(
     note(&map, peaks, name);
     let static_map = import_map(&map, rules).map_err(|e| format!("static layer: {e}"))?;
     // The static layer alone, in a game of the map's players without heroes: its objects'
-    // contents are drawn as a game's are (E08 T12b); since E08 T83a its owners are those players.
+    // contents are drawn as a game's are (E08 T12b); since E08 T83a its owners are those players;
+    // since E09 T8a1 one town record per town (`GameSetupError::TownCount`), a random town of no
+    // alignment, which no player's start reads.
+    let town_records = static_map
+        .objects
+        .iter()
+        .filter(|object| {
+            object
+                .object_type
+                .and_then(|id| rules.adventure().object_type(id))
+                .is_some_and(|ty| ty.kind == ObjectKind::Town)
+        })
+        .map(|_| TownSetup {
+            faction: TownFaction::Random { alignment: None },
+            buildings: BuildingsSetup::Standard { fort: false },
+            garrison: None,
+            name: None,
+            events: Vec::new(),
+        })
+        .collect();
     let players = map
         .players
         .iter()
@@ -312,7 +333,7 @@ fn check(
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
         events: Vec::new(),
-        towns: Vec::new(),
+        towns: town_records,
         allowed_heroes: Vec::new(),
         hero_masks: Vec::new(),
         prisoners: Vec::new(),
@@ -1218,6 +1239,18 @@ fn economy(
             ObjectKind::Windmill { .. } => add("economy: Windmills", 1),
             ObjectKind::WaterWheel { .. } => add("economy: Water Wheels", 1),
             ObjectKind::Garden { .. } => add("economy: Mystical Gardens", 1),
+            // E09 T8a1: the towns typed, their owners at load and formations.
+            ObjectKind::Town => {
+                add("E09 towns: typed", 1);
+                add("E09 towns: owned at load", owned);
+                let tight = Holds::Town {
+                    formation: Formation::Tight,
+                };
+                add(
+                    "E09 towns: a tight formation",
+                    usize::from(object.holds == tight),
+                );
+            }
             _ => {}
         }
     }

@@ -11,6 +11,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 
+use h3_adventure::ObjectKind;
 use h3_content::{FactionId, HeroTypeId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::TownFaction;
@@ -170,16 +171,22 @@ impl GameSetup {
 }
 
 /// The setup's checks of the towns and the players' starts (E09 T7a2, design note §13), one pass
-/// per invariant (ADR-0015 point 4): a fixed town's faction, a random town's alignment, each
-/// player's faction choice, main town, pick and a pick of no earlier player, then a random hero's
-/// owner.
+/// per invariant (ADR-0015 point 4): since E09 T8a1 one town record per town of the static map,
+/// then a fixed town's faction, a random town's alignment, each player's faction choice, main town
+/// (since E09 T8a1 a town it owns at the start, §8), pick and a pick of no earlier player, then a
+/// random hero's owner.
 ///
 /// # Errors
 ///
-/// The first [`GameSetupError`] found, in that order: [`GameSetupError::TownFaction`],
-/// [`GameSetupError::TownAlignment`], [`GameSetupError::Choice`], [`GameSetupError::MainTown`],
-/// [`GameSetupError::Pick`], [`GameSetupError::PickTaken`], [`GameSetupError::RandomHeroOwner`].
+/// The first [`GameSetupError`] found, in that order: [`GameSetupError::TownCount`],
+/// [`GameSetupError::TownFaction`], [`GameSetupError::TownAlignment`],
+/// [`GameSetupError::Choice`], [`GameSetupError::MainTown`], [`GameSetupError::Pick`],
+/// [`GameSetupError::PickTaken`], [`GameSetupError::RandomHeroOwner`].
 pub(crate) fn check_starts(setup: &GameSetup, rules: &GameRuleset) -> Result<(), GameSetupError> {
+    let owners = town_owners(setup, rules);
+    if owners.len() != setup.towns.len() {
+        return Err(GameSetupError::TownCount(setup.towns.len()));
+    }
     let towns = || setup.towns.iter().zip((0..=u16::MAX).map(TownId::new));
     // rule: TWN-SET-002
     if let Some((_, town)) = towns().find(|(town, _)| {
@@ -199,11 +206,11 @@ pub(crate) fn check_starts(setup: &GameSetup, rules: &GameRuleset) -> Result<(),
         return Err(GameSetupError::Choice(player));
     }
     // rule: TWN-SET-001
-    if let Some(player) = first_player(setup, |_, player| {
+    if let Some(player) = first_player(setup, |id, player| {
         player
             .start
             .main_town
-            .is_some_and(|main| main.town.index() >= setup.towns.len())
+            .is_some_and(|main| owners.get(main.town.index()) != Some(&Some(id)))
     }) {
         return Err(GameSetupError::MainTown(player));
     }
@@ -236,6 +243,25 @@ pub(crate) fn check_starts(setup: &GameSetup, rules: &GameRuleset) -> Result<(),
         return Err(GameSetupError::RandomHeroOwner(hero));
     }
     Ok(())
+}
+
+/// The owners at the start of the static map's towns by `TownId` (E09 T8a1, design note §8): the
+/// objects whose type is of kind [`ObjectKind::Town`], in object order, as the static map lists
+/// them (`h3_adventure::StaticMap::towns`; no random dwelling becomes a town); an object of an
+/// unknown type is none (the adventure's own check refuses it).
+fn town_owners(setup: &GameSetup, rules: &GameRuleset) -> Vec<Option<PlayerId>> {
+    setup
+        .map
+        .objects
+        .iter()
+        .filter(|object| {
+            object
+                .object_type
+                .and_then(|id| rules.adventure().object_type(id))
+                .is_some_and(|ty| ty.kind == ObjectKind::Town)
+        })
+        .map(|object| object.owner)
+        .collect()
 }
 
 /// The first player in id order that `refused` refuses (the players at most a [`PlayerId`]'s).

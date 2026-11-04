@@ -214,6 +214,20 @@ ADR-0015's amendment point 3, in the import's order:
 - **From T7a2** (the user's cut, 2026-11-04): `GameSetup::validate`'s `TownCount` (the setup's
   towns against the static map's town list) and `MainTown`'s owner half (a main town of another
   owner), once the town list and the towns' owners exist (§13's "As built").
+- **The cut (the user, 2026-11-04):** T8a in two, the order T8a1, T7b2, T8a2. **T8a1** this
+  section with the adventure state hash v21 (E08 T94b took v20) and map import v18 (the towns
+  typed); until T7b2 the game passes empty garrisons and the flag radius (`TWN-STUB-5`), until
+  T8a2 the entrance is not entered (`TWN-STUB-4`). **T8a2** §9 and §11.
+- **As built (T8a1):** `ObjectKind::Town` (the part's hash tag 33), the base type `town` (`town =
+  {}`); `StaticMap::towns`, `town_id` and `town_object` (both options), `Holds::Town { formation
+  }` (the state hash's tag 9; the map's byte, 0 loose, else tight); `AdventureSetup::garrisons`
+  (one per `TownId`, `SetupError::Garrisons`, `Garrison`; `Towns` past a `TownId`),
+  `AdventureState::town_garrison`; `start_game`'s `town_radii` by `TownId` (the flag radius past
+  the slice). The import types 77 and 98 as `base:town` with the owner (`object_owner`) and the
+  formation. *Agent's call:* the entrance carries no typed visit until T8a2, so every step and
+  search meets a blocker's entrance as before. `validate`: `TownCount` first in `check_starts`
+  (the objects of kind `Town`), `MainTown` widened to a town the player owns at the start (no new
+  variant). The census unchanged (31 build).
 
 ### 9. The step onto a town (TWN-VIS-001, TWN-VIS-002; `h3-adventure` `src/town*`, T8a)
 
@@ -436,7 +450,7 @@ when T8c lands).
 | adventure replay format v9 | the town part's hash in the header | T5a |
 | map import v17 (E08 T93b took v16) | towns, players' starts, the random hero, the main town, the moved heroes, the pool's inputs | T7a |
 | game state hash v23 (after T85b's v22); the next for the store | the pool (T7b1); the store of towns (T7b2) | T7b1, T7b2 |
-| adventure ruleset part v17 (T93a took v16), adventure state hash v20 | the kind `Town`; towns ownable, the town list, `Holds::Town` | T8a |
+| adventure ruleset part v17 (T93a took v16), adventure state hash v21 (E08 T94b took v20), map import v18 | the kind `Town`; towns ownable, the town list, `Holds::Town`; the towns typed with their owners | T8a1 |
 | env encodings | none (no new command; no flat adventure observation, E08 decision 187) | — |
 
 **Rule ids** (`docs/rules/catalog/town.toml`, created by T6): TWN-SET-001 the players' factions,
@@ -460,7 +474,9 @@ comes with increment 3 (decision 12). TD-2's map-version test is the rules' reco
 **Stubs:** `TWN-STUB-1` the siege of an ally's visitor (E10), `TWN-STUB-2` the start's forbidden
 Grail and Shipyard (increments 2, 4; registered by T6c); `TWN-STUB-3` the build's
 refusal of a setup that needs a draw (registered by T7a1, narrowed by T7b1 to a main town's
-hero, lifted by T7b2).
+hero, lifted by T7b2); `TWN-STUB-4` a town's entrance not entered (registered by T8a1, lifted
+by T8a2), `TWN-STUB-5` the build's empty garrisons and flag radius for the towns (registered by
+T8a1, lifted by T7b2).
 
 ### 20. Batch TWN-1 (T3)
 
