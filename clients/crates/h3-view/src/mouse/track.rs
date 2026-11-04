@@ -16,7 +16,7 @@ use h3_render::Bugs;
 
 use super::aim::Aim;
 use super::aim::screen_hex;
-use super::{Field, Hint, Kind, Spot, attack_hint, pointer_in, slot, slots_in, spot};
+use super::{Field, Hint, Kind, Spot, pointer_in, slot, slots_in, spot};
 use crate::battle_log::Logged;
 use crate::layout::{BattleLayout, Mouse};
 
@@ -540,10 +540,8 @@ impl Handler<'_> {
                 self.set_frame(now, frame);
                 // A line written again counts the strike from the slot's position now (E17 M6
                 // T4b2a: `battle_status_line` reads the from-hex +0x132D8 the slot set).
-                if let Hint::Strike(id, _) | Hint::Attack(id) = self.hint {
-                    let spot = (Kind::Attack, Spot::Hex(hex), id);
-                    self.hint = attack_hint(field, self.layout, point, spot);
-                }
+                let hint = core::mem::replace(&mut self.hint, Hint::Empty);
+                self.hint = hint.struck_from(field, self.layout, (point, hex));
             }
             if self.written != Some(self.kind) || (self.kind == Kind::Attack && changed) {
                 let hint = self.hint.clone();

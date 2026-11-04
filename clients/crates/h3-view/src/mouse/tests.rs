@@ -513,6 +513,14 @@ fn creature_info_s_hints_carry_the_damage_of_the_command_a_press_gives() {
     assert_eq!(hint(&field, 90), Hint::Shot(1, 3, [5, 5]));
     assert_eq!(hint(&field, 100), Hint::Shot(3, 3, [2, 3]));
     assert!(Hint::Shot(3, 3, [2, 3]).forced() && Hint::Strike(1, [1, 2]).forced());
+    // Again over the same hex (a new slot): a strike's from the slot there, another as it is.
+    let strikes = Field {
+        legal: &bare,
+        ..field
+    };
+    let again = |h: Hint| h.struck_from(&strikes, &l, (centre(90), 90));
+    assert_eq!(again(Hint::Strike(1, [3, 4])), Hint::Attack(1));
+    assert_eq!(again(Hint::Move(0)), Hint::Move(0));
     // Over no hex, nothing to press: the target alone.
     let nowhere = (Kind::Shoot, Spot::Nothing, 1);
     assert_eq!(attack_hint(&field, &l, [0, 0], nowhere), Hint::Attack(1));

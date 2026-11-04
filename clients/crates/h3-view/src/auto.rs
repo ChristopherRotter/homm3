@@ -96,9 +96,7 @@ pub fn itself(stacks: &[Acting], first: [bool; 5], changes: &[BoxChange]) -> Vec
         .iter()
         .enumerate()
         .map(|(k, stack)| {
-            while let Some(&(_, _, set)) = changes.next_if(|&&(turn, _, _)| turn < k) {
-                boxes = set;
-            }
+            // The changes in order: those of the turns before were taken in their own turns.
             let mut from = stack.plays_itself(boxes).then_some(0);
             while let Some(&(_, at, set)) = changes.next_if(|&&(turn, _, _)| turn == k) {
                 boxes = set;

@@ -169,6 +169,9 @@ fn the_boxes_say_from_when_each_turn_plays_itself() {
         itself(&stacks, CREATURES_ONLY, &flop)[..2],
         [Some(9), Some(0)]
     );
+    // Set twice in the same turn: from the first.
+    let twice = [(2, 260, ballista), (2, 280, [true; 5])];
+    assert_eq!(itself(&stacks, CREATURES_ONLY, &twice)[2], Some(260));
     let unset = [
         (0, 5, [false; 5]),
         (0, 9, CREATURES_ONLY),

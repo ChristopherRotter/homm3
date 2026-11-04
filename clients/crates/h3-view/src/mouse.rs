@@ -502,6 +502,23 @@ impl Hint {
         }
     }
 
+    /// A strike's hint over `hex` again with the mouse at `point` in `field` (E17 M6 T4b2a): the
+    /// damage from the position of the slot there ([`attack_hint`]); any other hint as it is.
+    #[must_use]
+    pub(crate) fn struck_from(
+        self,
+        field: &Field<'_>,
+        layout: &BattleLayout,
+        (point, hex): ([i32; 2], u8),
+    ) -> Self {
+        match self {
+            Self::Strike(id, _) | Self::Attack(id) => {
+                attack_hint(field, layout, point, (Kind::Attack, Spot::Hex(hex), id))
+            }
+            other => other,
+        }
+    }
+
     /// The hint's text in `catalogue`'s words, the stacks of `observation` named by `creature`
     /// (a stack's creature key in the catalogue: `creature.base:pikeman`), a spell by `spell`
     /// (its key: `spell.base:slow`).
