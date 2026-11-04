@@ -635,10 +635,18 @@ pub(crate) fn draw_frames(
         .book
         .and_then(|b| b.stats.as_ref().map(|s| s.looked).or(b.over))
         .or(kept.mouse);
+    // Its status line at the level the battle last wrote it at (E17 M6 T4b2b2: a strike's or a
+    // shot's damage at levels 1 and 2, the epic's review item 42; a sequence's 0).
+    let level = interface.book.map_or(0, |b| b.line_level);
     let pointer = rest.filter(|_| !arrow).map(|point| {
         (
             point,
-            mouse::pointer(snapshot, interface.legal, layout, (point, Bugs::Original)),
+            mouse::pointer(
+                snapshot,
+                interface.legal,
+                layout,
+                (point, Bugs::Original, level),
+            ),
         )
     });
     let status = match &pointer {

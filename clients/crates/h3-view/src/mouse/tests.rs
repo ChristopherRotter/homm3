@@ -110,7 +110,7 @@ pub(super) fn centre(hex: u8) -> [i32; 2] {
 }
 
 fn at(o: &Observation, commands: &[Command], point: [i32; 2]) -> Pointer {
-    pointer(o, &Legal::new(commands), &layout(), (point, Bugs::Fixed))
+    pointer(o, &Legal::new(commands), &layout(), (point, Bugs::Fixed, 0))
 }
 
 #[test]
@@ -477,9 +477,14 @@ fn creature_info_s_hints_carry_the_damage_of_the_command_a_press_gives() {
         Hint::Shot(1, 2, [1, 2])
     );
     assert_eq!(Hint::Move(0).at_level(0), Hint::Move(0));
-    // A still is at level 0, the harness's (`Settings::CAPTURE`).
-    let still = pointer(&o, &legal, &l, (centre(90), Bugs::Fixed));
+    // A still at level 0, the harness's (`Settings::CAPTURE`): the target alone; at levels 1 and
+    // 2 (E17 M6 T4b2b2, the epic's review item 42) the strike's damage by the previews.
+    let still = pointer(&o, &legal, &l, (centre(90), Bugs::Fixed, 0));
     assert_eq!(still.hint, Hint::Attack(1));
+    for level in [1, 2] {
+        let still = pointer(&o, &legal, &l, (centre(90), Bugs::Fixed, level));
+        assert_eq!(still.hint, Hint::Strike(1, [10, 12]), "level {level}");
+    }
     // Without the turn's previews (a server's seat, CLT-Q46): the target alone at any level.
     let bare = Legal::new(&strike);
     let without = Field {

@@ -509,6 +509,23 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             };
             let hero_info =
                 |point: [i32; 2]| hero_window(h3_view::hero_info::at(&layout, observation, point)?);
+            // The army info windows as the opening fills them (E17 M6 T4b2b2: a stack's from the
+            // stats dialog's numbers, in the original's profile: a Ballista's Dmg its own range,
+            // CLT-Q48).
+            let army_window = |drawn: h3_view::army_info::Drawn| match drawn {
+                h3_view::army_info::Drawn::Hero(side, _) => hero_window(side),
+                h3_view::army_info::Drawn::Stack(shown) => {
+                    let info =
+                        crate::stats::army_info(&stats_sources, observation, shown.stack, viewing)?;
+                    Some(h3_view::army_info::stack_window(
+                        &layout.army_info,
+                        &catalogue,
+                        (shown.side, shown.kind),
+                        &info,
+                        Bugs::Original,
+                    ))
+                }
+            };
             // The combat options dialog the key O or a click on the panel's Options opens while
             // the opening takes a command (E17 M6 T4a): the capture harness's settings, no audio
             // device (`setup.sh`), its background in the acting side's player's colours.
@@ -553,7 +570,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     layout: &layout,
                     observation,
                     level: army_info,
-                    window: &hero_window,
+                    window: &army_window,
                 }),
             };
             Some(crate::spellbook::still(
@@ -564,14 +581,19 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 Some(&boxes),
             )?)
         };
+        // The status line at Creature Info's levels 1 and 2 words a strike's or a shot's damage
+        // (E17 M6 T4b2b2, the epic's review item 42): the engine's previews of the opening's
+        // attacks, as the window's (`scenario::previews`); a record names none.
+        let mut still_legal =
+            crate::pointer::legal(&record.header.manifest, &tables, observation, (&legal, &[]));
+        if options.scenario() {
+            let previews =
+                crate::scenario::opening_previews(&options.input, &options.packs, options.seed)?;
+            still_legal.previews = h3_view::mouse::Previews::new(&previews);
+        }
         let interface = crate::sequences::Interface {
             panels: &panels,
-            legal: &crate::pointer::legal(
-                &record.header.manifest,
-                &tables,
-                observation,
-                (&legal, &[]),
-            ),
+            legal: &still_legal,
             shown: None,
             walls: options.walls,
             book: book.as_ref(),

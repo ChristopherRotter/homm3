@@ -922,8 +922,9 @@ mod tests {
         // Auto Combat's switches and stops, the battle's own (T8b2, R5c-3).
         let mut switches: Vec<Input> = Vec::new();
         let mut press = 0;
-        // The army info blocks whose hover showed the window.
+        // The army info blocks whose hover showed the window, a hero's and a stack's.
         let mut hovered = 0;
+        let mut stacks = 0;
         for c in 0.. {
             let start = growing.timeline().turns.last().map_or(0, |&(t, _)| t);
             let end = growing.timeline().end;
@@ -1009,6 +1010,28 @@ mod tests {
                     hovered += 1;
                 }
                 now += 3;
+                // E17 M6 T4b2b2: the mouse onto the acting stack's hex: its window by the level
+                // (kind 1 at 1, kind 2 at 2), filled by the waiting turn's battle.
+                let acting = turned.last().and_then(|t| {
+                    let id = t.observation.active?;
+                    t.observation.stacks.iter().find(|s| s.id == id).cloned()
+                });
+                if let Some(acting) = acting {
+                    inputs.push(Input::Move {
+                        at: now,
+                        to: hex_point(&layout, acting.hex),
+                    });
+                    steps.check(waits, &turned, (&inputs, &switches));
+                    let army = steps.shown.army(now);
+                    if let (Some(kind), Some(shown)) =
+                        (h3_view::army_info::Kind::at_level(army.level), army.stack)
+                    {
+                        assert_eq!((shown.stack, shown.kind), (acting.id, kind), "{c}");
+                        assert_eq!(shown.turn + 1, turned.len(), "{c}");
+                        stacks += 1;
+                    }
+                    now += 1;
+                }
             }
             if c % 5 == 2 {
                 // A seek back to the turn's start, then a move from there.
@@ -1057,6 +1080,7 @@ mod tests {
         let drawn = |w: &h3_view::army_info::Windows| w.drawn().next().is_some();
         assert!(steps.shown.army.iter().any(|(_, w)| drawn(w)));
         assert!(hovered >= 3, "{hovered}");
+        assert!(stacks >= 3, "{stacks}");
     }
 
     #[test]
@@ -1118,6 +1142,103 @@ mod tests {
             ..turn
         };
         assert_eq!(hint(&seat), Hint::Attack(target));
+    }
+
+    #[test]
+    fn a_still_s_status_line_words_the_damage_at_levels_1_and_2() {
+        // E17 M6 T4b2b2 (the epic's review item 42): a still's battle is fought here from its
+        // scenario, so its opening's attacks have the engine's previews too (as `Turned::of`'s):
+        // over an enemy the line at levels 1 and 2 names the damage, at 0 the target alone.
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let layout = layout();
+        let (scenario, packs) = (dir.join("situations/hero-info.toml"), dir.join("../packs"));
+        let commands = crate::scenario::opening_legal(&scenario, &packs, 1).unwrap();
+        let previews = crate::scenario::opening_previews(&scenario, &packs, 1).unwrap();
+        let shots = (commands.iter())
+            .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
+            .count();
+        assert!(shots > 0 && previews.len() == shots, "{previews:?}");
+        let text =
+            crate::scenario::record_of(&scenario, &packs, 1, h3_protocol::wire::Seat::Attacker)
+                .unwrap();
+        let record = h3_view::record::parse(&text).unwrap();
+        let o = record.first_snapshot().unwrap();
+        let mut still = legal(&record.header.manifest, &tables, o, (&commands, &[]));
+        still.previews = mouse::Previews::new(&previews);
+        let (command, damage) = previews[0];
+        let Command::Shoot { target, .. } = command else {
+            panic!("{command:?}: the Marksmen or the Wood Elves shoot")
+        };
+        let hex = o.stacks.iter().find(|s| s.id == target).unwrap().hex;
+        let point = hex_point(&layout, hex);
+        let hint = |level| mouse::pointer(o, &still, &layout, (point, Bugs::Original, level)).hint;
+        assert_eq!(hint(0), Hint::Attack(target));
+        for level in [1, 2] {
+            assert!(
+                matches!(hint(level), Hint::Shot(id, _, d) if id == target && d == damage),
+                "{:?}",
+                hint(level)
+            );
+        }
+        // Each a range.
+        assert!(previews.iter().all(|(_, [low, high])| low <= high));
+    }
+
+    #[test]
+    fn a_stack_s_army_info_window_takes_the_stats_dialog_s_numbers() {
+        // E17 M6 T4b2b2 (design §12.15, "Their fill"; CLT-Q48): the window's numbers are the
+        // stats dialog's; Orrin's Ballista (his attack 1) the dialog's 4 to 6, its own range 2 to
+        // 3 (the original's Dmg row); a creature's both the same. The background in the colours
+        // of the stack's side's hero's player (Red), Crag Hack's stacks in Blue's.
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let (scenario, packs) = (
+            dir.join("situations/war-machines.toml"),
+            dir.join("../packs"),
+        );
+        let text =
+            crate::scenario::record_of(&scenario, &packs, 1, h3_protocol::wire::Seat::Attacker)
+                .unwrap();
+        let record = h3_view::record::parse(&text).unwrap();
+        let o = record.first_snapshot().unwrap();
+        let manifest = &record.header.manifest;
+        let ruleset = crate::scenario::ruleset(&packs, manifest).unwrap();
+        let catalogue = Catalogue::default();
+        let sources = crate::stats::Sources {
+            manifest,
+            ruleset: &ruleset,
+            tables: &tables,
+            catalogue: &catalogue,
+            towns: None,
+        };
+        let original = |id: u8| {
+            let stack = o.stacks.iter().find(|s| s.id == id).unwrap();
+            let key = &manifest.keys.creatures[usize::from(stack.creature)];
+            u32::from(tables.creatures[key].original)
+        };
+        let ballista = (o.stacks.iter())
+            .find(|s| s.side == Side::Attacker && original(s.id) == 146)
+            .unwrap();
+        let info = crate::stats::army_info(&sources, o, ballista.id, 5).unwrap();
+        let stats = crate::stats::of(&sources, o, ballista.id, false).unwrap();
+        assert_eq!((info.creature, info.player), (146, 0));
+        assert_eq!((info.damage, info.own_damage), ([4, 6], [2, 3]));
+        assert_eq!((info.attack, info.defense), (stats.attack, stats.defense));
+        assert_eq!((info.health, info.count), (stats.health.now, stats.count));
+        assert!(info.spells.is_empty());
+        let wolves = (o.stacks.iter())
+            .find(|s| s.side == Side::Defender && !s.war_machine)
+            .unwrap();
+        let info = crate::stats::army_info(&sources, o, wolves.id, 5).unwrap();
+        assert_eq!(info.player, 1);
+        assert_eq!(info.damage, info.own_damage);
+        // Without a hero on the stack's side: the viewing player's.
+        let mut alone = o.clone();
+        alone.sides[1].hero = None;
+        let info = crate::stats::army_info(&sources, &alone, wolves.id, 5).unwrap();
+        assert_eq!(info.player, 5);
+        assert!(crate::stats::army_info(&sources, o, 200, 5).is_none());
     }
 
     #[test]

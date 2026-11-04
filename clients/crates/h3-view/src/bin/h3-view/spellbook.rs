@@ -7,7 +7,7 @@ use h3_content_battle::BattleRuleset;
 use h3_kernel::Handle;
 use h3_protocol::wire::{Command, Manifest, Observation, Side};
 use h3_ui::text::{Args, Catalogue};
-use h3_view::army_info::Hover;
+use h3_view::army_info::{Drawn, Hover};
 use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
 use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::layout::{BattleLayout, BookLayout};
@@ -214,6 +214,9 @@ pub struct Still {
     /// The army info windows the actions left drawn over the battle (E17 M6 T4b2b1, design
     /// §12.15: shown at Creature Info's level 1 or 2), under every dialog.
     pub army: Vec<MessageBox>,
+    /// Creature Info's level the battle last wrote its status line at (E17 M6 T4b2b2,
+    /// `Hover::line_level`): the still's line is worded at it (the epic's review item 42).
+    pub line_level: u8,
 }
 
 impl Still {
@@ -283,8 +286,9 @@ pub struct Army<'a> {
     /// Creature Info's level the still starts at (`frames.toml`'s `army_info`, *provisional*:
     /// the harness's registry value; 0, `Settings::CAPTURE`'s, without it); the key F5 cycles it.
     pub level: u8,
-    /// Side's hero's window as the battle at the opening fills it (none: no hero there).
-    pub window: &'a dyn Fn(Side) -> Option<MessageBox>,
+    /// A window as the battle at the opening fills it: a side's hero's (none: no hero there) or,
+    /// E17 M6 T4b2b2, a stack's (none: no rules or tables for it).
+    pub window: &'a dyn Fn(Drawn) -> Option<MessageBox>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -342,6 +346,7 @@ pub fn still(
         options: None,
         options_arrow: false,
         army: Vec::new(),
+        line_level: 0,
     };
     let mut result: Option<(h3_view::message::Open, Tune)> = None;
     let mut asking: Option<Asking> = None;
@@ -718,7 +723,9 @@ pub fn still(
                 still.arrow = false;
                 take(&mut hover, to);
                 let side = army
-                    .and_then(|a| hero_side(a, to).filter(|&s| (a.window)(s).is_some()))
+                    .and_then(|a| {
+                        hero_side(a, to).filter(|&s| (a.window)(Drawn::Hero(s, 0)).is_some())
+                    })
                     .ok_or_else(|| format!("`{action}`: only over a hero's rectangle"))?;
                 hover.windows.held(side, 0);
             }
@@ -758,12 +765,12 @@ pub fn still(
     }
     still.message = asking.map(|a| a.open.message);
     still.result = result.map(|(r, tune)| (r.message, tune));
-    // The army info windows the battle's mouse left shown, drawn while the level is not 0.
+    // The army info windows the battle's mouse left shown, drawn while the level is not 0, and
+    // the level the status line was last written at.
     if let Some(a) = army {
-        still.army = (hover.windows.drawn())
-            .filter_map(|(side, _)| (a.window)(side))
-            .collect();
+        still.army = hover.windows.drawn().filter_map(a.window).collect();
     }
+    still.line_level = hover.line_level;
     Ok(still)
 }
 
@@ -943,6 +950,7 @@ fn stats_action(
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use h3_view::army_info::Kind as WindowKind;
     use h3_view::layout::parse_battle;
 
     fn layout() -> BookLayout {
@@ -1399,9 +1407,19 @@ pub(crate) mod tests {
         let record = h3_view::record::parse(&text).unwrap();
         let observation = record.first_snapshot().unwrap();
         let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
-        let window = |side: Side| Some(one_button(if side == Side::Attacker { 1 } else { 2 }));
+        // A stack's window (E17 M6 T4b2b2) by its id and kind: 100 + the id, 200 + it for kind 2.
+        let stack_id = |id: u8, kind: WindowKind| {
+            u16::from(id) + if kind == WindowKind::All { 100 } else { 200 }
+        };
+        let window = |drawn: Drawn| {
+            Some(one_button(match drawn {
+                Drawn::Hero(Side::Attacker, _) => 1,
+                Drawn::Hero(Side::Defender, _) => 2,
+                Drawn::Stack(s) => stack_id(s.stack, s.kind),
+            }))
+        };
         let hero_info = |point: [i32; 2]| match h3_view::mouse::spot(&battle, point, true) {
-            h3_view::mouse::Spot::Hero(side) => window(side),
+            h3_view::mouse::Spot::Hero(side) => window(Drawn::Hero(side, 0)),
             _ => None,
         };
         let tell = |_: &str, _, _: Option<&Picture>| None;
@@ -1478,5 +1496,40 @@ pub(crate) mod tests {
         // At level 1 the held window and the hover's: both.
         let still = played(1, orrin, &["right:30,70"]).unwrap();
         assert!(still.message.is_some() && ids(&still) == [1]);
+        // E17 M6 T4b2b2: resting on a stack, its window by the level (kind 1 at 1, kind 2 at 2),
+        // none at 0, the enemy's too; the status line worded at the level of the last new hex
+        // (F5 after the move rewrites nothing: the window's kind kept as well).
+        let centre = |id: u8| {
+            let stack = observation.stacks.iter().find(|s| s.id == id).unwrap();
+            let [x, y] = battle.hex_box(stack.hex / 17, stack.hex % 17);
+            [x + 22, y + 26]
+        };
+        let ours = observation
+            .stacks
+            .iter()
+            .find(|s| s.side == Side::Attacker)
+            .unwrap();
+        let theirs = observation
+            .stacks
+            .iter()
+            .find(|s| s.side == Side::Defender)
+            .unwrap();
+        let on = centre(ours.id);
+        let still = played(1, on, &[]).unwrap();
+        assert_eq!(ids(&still), [stack_id(ours.id, WindowKind::All)]);
+        assert_eq!(still.line_level, 1);
+        let still = played(2, centre(theirs.id), &[]).unwrap();
+        assert_eq!(ids(&still), [stack_id(theirs.id, WindowKind::Spells)]);
+        assert_eq!(still.line_level, 2);
+        let still = played(0, on, &[]).unwrap();
+        assert_eq!((ids(&still), still.line_level), (Vec::new(), 0));
+        let still = played(1, on, &["key:F5"]).unwrap();
+        assert_eq!(ids(&still), [stack_id(ours.id, WindowKind::All)]);
+        assert_eq!(still.line_level, 1);
+        // From the stack to a hero and off the battlefield: the line's level each time.
+        let still = played(1, on, &["key:F5", "move:30,70"]).unwrap();
+        assert_eq!((ids(&still), still.line_level), (vec![1], 2));
+        let still = played(1, on, &["key:F5", "move:400,590"]).unwrap();
+        assert_eq!((ids(&still), still.line_level), (Vec::new(), 2));
     }
 }

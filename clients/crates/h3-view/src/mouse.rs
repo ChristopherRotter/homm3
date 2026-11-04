@@ -750,14 +750,16 @@ pub fn look_cursor(layout: &BattleLayout, look: track::Look, [x, y]: [i32; 2]) -
 /// The mouse at `point` of the screen in the battle `observation` shows, its acting stack's
 /// commands `legal` (`battle_buttons`' mouse move 0x4753A4): over the battlefield its spot's
 /// kind, over the panel the pointer and the hint of the control under it. A still: each side
-/// faces its own way, no target is left over ([`pointer_in`]) and Creature Info's level is 0 (the
-/// harness's, `Settings::CAPTURE`); `bugs` the profile (CLT-Q21).
+/// faces its own way, no target is left over ([`pointer_in`]) and the hint is worded at Creature
+/// Info's level `level` (the still's, `army_info::Hover::line_level`: 0 the harness's,
+/// `Settings::CAPTURE`; at 1 and 2 a strike's or a shot's damage where `legal`'s previews give
+/// it, E17 M6 T4b2b2: the epic's review item 42); `bugs` the profile (CLT-Q21).
 #[must_use]
 pub fn pointer(
     observation: &Observation,
     legal: &Legal,
     layout: &BattleLayout,
-    (point, bugs): ([i32; 2], Bugs),
+    (point, bugs, level): ([i32; 2], Bugs, u8),
 ) -> Pointer {
     let field = Field {
         observation,
@@ -766,7 +768,7 @@ pub fn pointer(
         bugs,
     };
     let mut pointer = pointer_in(&field, layout, point, &mut None);
-    pointer.hint = pointer.hint.at_level(0);
+    pointer.hint = pointer.hint.at_level(level);
     pointer
 }
 
