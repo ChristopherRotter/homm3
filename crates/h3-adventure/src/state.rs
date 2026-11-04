@@ -1258,7 +1258,7 @@ impl AdventureState {
         for hero in &setup.heroes {
             state.place(core, part, hero, &refused)?;
         }
-        state.boats = Boats::new(part, &state.map, &setup.map.boats)?;
+        state.boats = Boats::new(part, &state.map, &setup.map.boats, &refused)?;
         Ok(state)
     }
 

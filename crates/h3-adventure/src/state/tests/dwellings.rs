@@ -1,7 +1,7 @@
 //! Tests of the random dwellings when the game is built (E08 T94a; increment 10's design note §5):
 //! the draw and its order, the resolved object, the moved anchor at the right edge, the later
 //! draws, a resolved dwelling as a placed one (owner, reveal, view, state and hash), the static
-//! map's dwelling and camp lists, the name check and the refusal of a hero's tile.
+//! map's dwelling and camp lists, the name check and the refusal of a hero's and a boat's tile.
 
 use core::num::NonZeroU16;
 use std::collections::BTreeSet;
@@ -16,8 +16,8 @@ use crate::ObjectView;
 use crate::ruleset::{
     AdventurePack, DwellingParams, ObjectKindDef, ObjectTypeDef, RandomDwellingDef, Visit,
 };
-use crate::setup::Holds;
-use crate::testing::{PEASANT, hero_at, key, movement_rules_with, world};
+use crate::setup::{BoatSetup, Holds};
+use crate::testing::{PEASANT, SEA, hero_at, key, movement_rules_with, world};
 
 type Rules = (Ruleset, AdventureRuleset);
 
@@ -662,4 +662,32 @@ fn the_name_check_sees_what_a_random_dwelling_may_become() {
     // Two factions sharing a dwelling give one name once: no clash with itself.
     let both = random(&rules, (5, 3), &["t:castle", "t:wild"], (1, 7));
     assert_eq!(shared(vec![both]), accepted);
+}
+
+// covers: ADV-DWL-005
+#[test]
+fn a_boat_may_not_lie_where_a_random_dwelling_could_lie() {
+    // As a hero's tile (an agent's call, E08 T94a): a boat on a water tile an outcome of the
+    // random dwelling's set and range covers is refused whatever the draw; without that outcome
+    // it is not.
+    let rules = rules();
+    let with_boat = |object: ObjectSetup| {
+        let mut setup = setup(vec![object]);
+        setup.map.tiles[2 * 16 + 6].terrain = SEA;
+        setup.map.boats.push(BoatSetup {
+            tile: Pos::new(6, 2, 0),
+            kind: 0,
+        });
+        setup
+    };
+    for seed in 0..16 {
+        // The cell above the Angel Portal's moved anchor (this pack's `t:d7`).
+        let castle = random(&rules, (5, 3), &["t:castle"], (1, 7));
+        assert_eq!(
+            build(&rules, &with_boat(castle), seed),
+            Err(SetupError::Boat(0))
+        );
+        let lower = random(&rules, (5, 3), &["t:castle"], (1, 6));
+        build(&rules, &with_boat(lower), seed).unwrap();
+    }
 }
