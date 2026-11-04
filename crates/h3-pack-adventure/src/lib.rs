@@ -63,6 +63,12 @@
 //!                                  # adventure count
 //! spawn_aggression = [1, 10]       # its aggression's bounds
 //!
+//! [params.dwellings]               # E08 T93a (ADV-DWL-001): required when the part has a
+//! guard_level = 5                  # `dwelling` type, needs [params.monsters]; a creature of this
+//! guard_factor = 3                 # level or more (1 to 7) guards its dwelling, this times its
+//! free_level = 1                   # growth (from 1); one of this level or less (0 to 7) joins
+//!                                  # its owner's visitor free
+//!
 //! not_random_monsters = ["azure_dragon"] # top-level, before any table (E08 T20a2a): creatures
 //!                                  # no random monster becomes (ADV-MON-003)
 //!
@@ -140,6 +146,22 @@
 //! # garden = { gifts = [{ resource = "gems", amount = 5 }, { resource = "gold", amount = 500 }] }
 //! # pyramid = { split = { creature = "gold_golem", count = 40 }, fixed = { creature =
 //! #             "diamond_golem", stacks = [10, 10] }, level = 5, looted = { luck = -2, mark = 1 } }
+//! # E08 T93a, increment 10's kinds, all visit = "enter" (ADV-DWL-001, -005, ADV-RFG-001):
+//! # dwelling = { creatures = ["pikeman"], blocked = [[0, 0], [1, 0], [1, 1]],
+//! #              visitable = [[0, 0]] }
+//! #                                # 1 to 4 distinct creatures in slot order, no war machine;
+//! #                                # cells [columns left, rows up] of the anchor (0-7, 0-5), each
+//! #                                # list distinct, at least one visitable: the import's masks of
+//! #                                # a template (the entrance blocked too); guards derived
+//! # random_dwelling = {}           # ownable as a dwelling; becomes one by the tables below
+//! # refugee_camp = { levels = [1, 7] } # not ownable; 1 <= low <= high <= 7
+//!
+//! [[random_dwelling]]              # E08 T93a (ADV-DWL-005): one table per faction in the part;
+//! faction = "castle"               # a core faction; the `dwelling` types a random dwelling of
+//! dwellings = ["guardhouse", "archers_tower", "griffin_tower", "barracks", "monastery",
+//!              "training_grounds", "portal_of_glory"] # level 1 to 7 becomes, exactly seven,
+//!                                  # each with a creature of the faction and level that is no
+//!                                  # creature's upgrade
 //!
 //! [[difficulty]]                   # E08 T13a, GAM-RES-002: the starting resources by the game's
 //!                                  # difficulty, from 0 (easy); exactly one enabled pack gives
@@ -159,10 +181,10 @@ use std::num::NonZeroU32;
 
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
-    CalendarParams, ChestDef, FindContentDef, FindDef, GiftDef, Gives, MonsterParamsDef,
-    MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill,
-    PyramidDef, RiverDef, RoadDef, StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef,
-    TurnDef, Visit,
+    CalendarParams, ChestDef, DWELLING_LEVELS, DwellingParams, FindContentDef, FindDef, GiftDef,
+    Gives, MonsterParamsDef, MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus, Passage,
+    PickupDef, PrimarySkill, PyramidDef, RandomDwellingDef, RiverDef, RoadDef,
+    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, TurnDef, Visit,
 };
 use h3_content::{ArtifactClass, ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -254,6 +276,15 @@ struct AdventureFile {
     difficulty: Vec<DifficultyDto>,
     #[serde(default)]
     terrain_walker: Vec<TerrainWalkerDto>,
+    #[serde(default)]
+    random_dwelling: Vec<RandomDwellingDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RandomDwellingDto {
+    faction: String,
+    dwellings: [String; DWELLING_LEVELS],
 }
 
 #[derive(Deserialize)]
@@ -295,6 +326,16 @@ struct ParamsDto {
     calendar: CalendarDto,
     #[serde(default)]
     months: Option<MonthsDto>,
+    #[serde(default)]
+    dwellings: Option<DwellingsDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DwellingsDto {
+    guard_level: u8,
+    guard_factor: NonZeroU16,
+    free_level: u8,
 }
 
 #[derive(Deserialize)]
@@ -417,6 +458,23 @@ struct ObjectTypeDto {
     windmill: Option<WindmillDto>,
     water_wheel: Option<WaterWheelDto>,
     garden: Option<GardenDto>,
+    dwelling: Option<DwellingDto>,
+    random_dwelling: Option<EmptyDto>,
+    refugee_camp: Option<RefugeeCampDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DwellingDto {
+    creatures: Vec<String>,
+    blocked: Vec<[u8; 2]>,
+    visitable: Vec<[u8; 2]>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RefugeeCampDto {
+    levels: [u8; 2],
 }
 
 #[derive(Deserialize)]
@@ -934,6 +992,19 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
                 .collect::<Result<_, KeyError>>()?,
         });
     }
+    if let Some(d) = t.dwelling {
+        let cells = |list: Vec<[u8; 2]>| list.into_iter().map(|[c, r]| (c, r)).collect();
+        kinds.push(ObjectKindDef::Dwelling {
+            creatures: refs(d.creatures)?,
+            blocked: cells(d.blocked),
+            visitable: cells(d.visitable),
+        });
+    }
+    kinds.extend(t.random_dwelling.map(|_| ObjectKindDef::RandomDwelling));
+    kinds.extend(
+        t.refugee_camp
+            .map(|c| ObjectKindDef::RefugeeCamp { levels: c.levels }),
+    );
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {
@@ -1040,8 +1111,20 @@ pub fn parse_adventure(
             })
         })
         .collect::<Result<_, KeyError>>()?;
+    let random_dwellings = file
+        .random_dwelling
+        .iter()
+        .map(|r| {
+            let [a, b, c, d, e, f, g] = r.dwellings.each_ref().map(|k| reference(pack, k));
+            Ok(RandomDwellingDef {
+                faction: reference(pack, &r.faction)?,
+                dwellings: [a?, b?, c?, d?, e?, f?, g?],
+            })
+        })
+        .collect::<Result<_, KeyError>>()?;
     Ok(AdventurePack {
         terrains,
+        random_dwellings,
         roads,
         rivers,
         object_types,
@@ -1116,6 +1199,11 @@ pub fn parse_adventure(
                         month_weeks: p.calendar.month_weeks,
                     },
                     months,
+                    dwellings: p.dwellings.map(|d| DwellingParams {
+                        guard_level: d.guard_level,
+                        guard_factor: d.guard_factor,
+                        free_level: d.free_level,
+                    }),
                 })
             })
             .transpose()?,
