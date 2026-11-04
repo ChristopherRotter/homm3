@@ -14,12 +14,13 @@ use h3_contracts::ArmyStack;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::{AdventureState, StaticMap, pick};
-use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId};
+use crate::ruleset::{AdventureRuleset, MAX_DWELLING_CREATURES, ObjectKind, ObjectTypeId};
 use crate::setup::{Holds, ObjectSetup, Pos, TileMask};
 
 /// The most creatures a dwelling has, and so the most stacks its guards hold (ADV-DWL-001: one to
-/// four creatures, the guards a stack of each of level 5 or more, in slots 0 up).
-const SLOTS: usize = 4;
+/// four creatures, the guards a stack of each of level 5 or more, in slots 0 up): the part's own
+/// bound, so the two cannot diverge.
+const SLOTS: usize = MAX_DWELLING_CREATURES;
 
 /// A dwelling's week as it stands (ADV-DWL-002, ADV-DWL-003; E08 T94b, increment 10's design note
 /// §6): each creature's count, and its guards by slot (the kind's full guards, a battle's

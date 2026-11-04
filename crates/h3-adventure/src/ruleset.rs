@@ -32,7 +32,7 @@ mod objects;
 mod rewards;
 mod starting;
 
-pub(crate) use objects::Effect;
+pub(crate) use objects::{Effect, MAX_DWELLING_CREATURES};
 pub use objects::{
     KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
     ObjectTypeId, Pickup, PickupDef, Visit,
