@@ -27,7 +27,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   legal mask an input, the cost cap hexconv 64 × 6's 466 µs a sample-pass on the GTX 1070),
   measured first on the cloning bench against the fair actor. **Next:** T24 in the sandbox (the
   kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the report).
-- **Open pull requests:** none; `claude/clever-ride-oq6lx4` (T22, T23) ready for one.
+- **Open pull requests:** #718 (`claude/clever-ride-oq6lx4`: T22, T23).
   Merged: #687 (T20), #696 (T21).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
