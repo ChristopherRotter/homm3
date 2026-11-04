@@ -136,7 +136,8 @@ impl CanonicalHash for Holds {
     /// Scholar's gift, each 0 for none or 1 and it; 5 a record; 6 an event: the record, the
     /// colours, the computer and removal flags; since adventure state hash v17, E08 T83a, 7 an
     /// abandoned mine's resources as length and handles; since E08 T93b, 8 a random dwelling's
-    /// factions as length and handles, then its lowest and highest level).
+    /// factions as length and handles, then its lowest and highest level: since E08 T94a no
+    /// built object holds it, a random dwelling holding nothing once it resolved).
     fn hash_into(&self, h: &mut StateHasher) {
         match self {
             Self::Nothing => h.write_u8(0),

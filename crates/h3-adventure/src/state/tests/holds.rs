@@ -684,15 +684,19 @@ fn a_random_dwelling_holds_its_factions_and_levels() {
             Holds::RandomDwelling { factions, levels },
         )
     };
+    // Since E08 T94a it resolves when the game is built: its table's dwelling of a level in its
+    // range, holding nothing (`state/tests/dwellings.rs`).
+    let table = rules.1.random_dwelling(castle).unwrap();
     for levels in [(1, 7), (3, 3), (7, 7)] {
         let state = built(&rules, vec![random(vec![castle], levels)]).unwrap();
-        assert_eq!(
-            state.map().objects()[0].holds,
-            Holds::RandomDwelling {
-                factions: vec![castle],
-                levels
-            }
-        );
+        let object = &state.map().objects()[0];
+        assert_eq!(object.holds, Holds::Nothing);
+        let level = table
+            .iter()
+            .position(|&ty| Some(ty) == object.object_type)
+            .unwrap()
+            + 1;
+        assert!((usize::from(levels.0)..=usize::from(levels.1)).contains(&level));
     }
     for holds in [
         Holds::RandomDwelling {
@@ -750,7 +754,8 @@ fn a_random_dwelling_holds_its_factions_and_levels() {
         .err(),
         Some(SetupError::Holds(0))
     );
+    // The hash sees what it resolves to (E08 T94a), no longer its set and range.
     let hash = |levels| hash_of(&built(&rules, vec![random(vec![castle], levels)]).unwrap());
-    assert_ne!(hash((1, 7)), hash((1, 6)));
-    assert_ne!(hash((1, 7)), hash((2, 7)));
+    assert_ne!(hash((3, 3)), hash((4, 4)));
+    assert_ne!(hash((1, 1)), hash((7, 7)));
 }
