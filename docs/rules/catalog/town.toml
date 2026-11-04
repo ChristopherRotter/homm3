@@ -195,7 +195,7 @@ id       = "TWN-SET-001"
 title    = "A player's factions at the start"
 context  = "town"
 status   = "implemented"
-summary  = "Each playing colour starts with a set of factions and a choice among them (the setup's `PlayerStart`, the seam whoever seats the players may change before the build, E09 decision 6). A map's import gives the set: the map's allowed towns (a bit per faction in the format's order, `TOWNTYPE.TXT`'s: Castle 0 to Fortress 7, Conflux 8 from AB on) that the ruleset has as factions with a town record; a bit past the nine names none. An RoE-format map's player whose eight bits are all set also has Conflux when the ruleset has it (E09 decision 14: the enabled expansions decide, not the map's format; the original's map-format test is the recorded deviation, TD-2); one restricted to fewer stays restricted. The choice is the set's faction when it holds exactly one, else Random; no starting-hero pick. With the start come the player's main town (the town whose entrance is the header's position, survey finding 3; one that is no town's entrance is refused, TWN-QUIRK-4), whether it generates the starting hero (the map's flag, an RoE map's always) and the random-hero flag. The game refuses (E09 T7a2, `GameSetup::validate`, `GameSetupError::Choice`) a player whose set holds a faction without a town record (so a draw always gives one, TWN-QUIRK-4), whose choice is a fixed faction outside its set or Random over an empty set, or who has no choice while its start needs a faction (a main town, the random-hero flag, a random hero of its own or a random town aligned to its colour; the agent's call); and a main town that is none of the setup's towns (`MainTown`). Not yet: a main town of another owner, refused once the towns have owners (E09 T8a, the user's cut of 2026-11-04); Random's draw, uniform over the set from the game's seed (E09 T7b, design note section 14). E09 T7a1 (design note sections 7 and 13): `h3_map::import` (`import/town.rs`, `starts`), `h3_game::PlayerStart`."
+summary  = "Each playing colour starts with a set of factions and a choice among them (the setup's `PlayerStart`, the seam whoever seats the players may change before the build, E09 decision 6). A map's import gives the set: the map's allowed towns (a bit per faction in the format's order, `TOWNTYPE.TXT`'s: Castle 0 to Fortress 7, Conflux 8 from AB on) that the ruleset has as factions with a town record; a bit past the nine names none. An RoE-format map's player whose eight bits are all set also has Conflux when the ruleset has it (E09 decision 14: the enabled expansions decide, not the map's format; the original's map-format test is the recorded deviation, TD-2); one restricted to fewer stays restricted. The choice is the set's faction when it holds exactly one, else Random; no starting-hero pick. With the start come the player's main town (the town whose entrance is the header's position, survey finding 3; one that is no town's entrance is refused, TWN-QUIRK-4), whether it generates the starting hero (the map's flag, an RoE map's always) and the random-hero flag. The game refuses (E09 T7a2, `GameSetup::validate`, `GameSetupError::Choice`) a player whose set holds a faction without a town record (so a draw always gives one, TWN-QUIRK-4), whose choice is a fixed faction outside its set or Random over an empty set, or who has no choice while its start needs a faction (a main town, the random-hero flag, a random hero of its own or a random town aligned to its colour; the agent's call); and a main town that is none of the setup's towns (`MainTown`). A Random choice is drawn when the game is built, uniform over the player's set, from the setup stream before every other draw, in player order (E09 T7b1, design note section 14; the resolved faction is not kept), when the player's start reads it (a main town, the random-hero flag, a random hero of its own or a random town aligned to its colour): a choice nothing reads draws nothing (the agent's call, E09 T7b1; the original draws every colour's, with no effect but on its stream). Not yet: a main town of another owner, refused once the towns have owners (E09 T8a, the user's cut of 2026-11-04). E09 T7a1 (design note sections 7 and 13): `h3_map::import` (`import/town.rs`, `starts`), `h3_game::PlayerStart`."
 quirks   = ["TWN-QUIRK-4"]
 numeric  = "integer"
 
@@ -324,11 +324,30 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "TWN-SET-005"
+title    = "The hero pool"
+context  = "town"
+status   = "implemented"
+summary  = "The game keeps a hero pool (ADR-0017's E09 paragraph; `GameState`'s, game state hash v23): per hero type of the core ruleset whether it is free, taken (by a colour, or as a prisoner) or out of the game, and the colours that may take it. Built with the game, before any draw: each type the map allows (`GameSetup::allowed_heroes`) free, the rest out; each type's colour mask the AND of the setup's masks of it (`GameSetup::hero_masks`, SoD's disposed heroes; 0xFF without one); then, whatever the allowed set, every placed hero's type taken by its owner's colour and every prisoner's taken as a prisoner (T-3 fixed, TWN-QUIRK-3), then each player's pick reserved, taken by its colour (T-2 fixed, TWN-QUIRK-2). A drawn hero's type is taken by its owner's colour at once (TWN-SET-007, -008); a pick no random hero took goes back free after the build's draws (the agent's call, design note section 14); a hero that leaves the map in play (every hero a battle's end removes) goes back free. E09 T7b1 (design note section 14): `h3_game`'s `town::pool::HeroPool`, `GameState::new`, `end_battle`. Not yet: the main towns' heroes (TWN-SET-009, E09 T7b2); the tavern's draws and a defeated player's heroes (E09 increment 3)."
+quirks   = ["TWN-QUIRK-2", "TWN-QUIRK-3"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a2; survey E09-towns.md section 4.2): hero_pool_init (0x4C4E30) sets each type 0 to 155 free (-1) when the map's allowed set has its bit, else 0x40 (out for every draw), then each SoD disposed hero whose mask is not 0xFF sets the type's colour mask; a placed, drawn or generated hero's type takes its owner's colour (hero_place 0x4D7900, load_hero_body), a prisoner's 0x41; a hero that leaves the map goes back to -1 (0x4D9EC0), as does a released tavern slot (0x4C00F7) and a defeated player's heroes (0x4F13F3); census: no placed hero (108) or prisoner (89) has its type allowed on its map"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017's E09 paragraph (the pool's state and life) and docs/epics/E09-design.md section 14; E09 decision 12 (T-2, T-3 fixed)"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-SET-006"
 title    = "A player's starting-hero pick and its offer"
 context  = "town"
 status   = "implemented"
-summary  = "A player may pick its starting hero before the game is built (the setup's `PlayerStart::pick`, which whoever seats the players may change, E09 decision 6; a map's import picks none). The pick must be one of the player's offer: none unless its faction choice is fixed and its main town generates its hero or it has the random-hero flag; then the first 16 hero types in the ruleset's type order that the map allows (`GameSetup::allowed_heroes`), that no placed hero and no prisoner has, of a hero class of the chosen faction, and that the player's colour may take (SoD's colour masks: every mask of the type has the colour's bit). The game refuses (E09 T7a2, `GameSetup::validate`) a pick outside the offer (`GameSetupError::Pick`) and a pick an earlier player also has (`PickTaken`). The original's dialog knows only the map's allowed set and the masks, so it would offer a placed hero's or a prisoner's type; none is allowed on the shipped maps (survey section 4.2), and leaving them out keeps a pick off a hero already on the map (the design note's section 13). Not yet: where the pick goes (its player's first random hero, else a human player's main-town hero; TWN-SET-008, -009) and its reservation before every draw (T-2), E09 T7b."
+summary  = "A player may pick its starting hero before the game is built (the setup's `PlayerStart::pick`, which whoever seats the players may change, E09 decision 6; a map's import picks none). The pick must be one of the player's offer: none unless its faction choice is fixed and its main town generates its hero or it has the random-hero flag; then the first 16 hero types in the ruleset's type order that the map allows (`GameSetup::allowed_heroes`), that no placed hero and no prisoner has, of a hero class of the chosen faction, and that the player's colour may take (SoD's colour masks: every mask of the type has the colour's bit). The game refuses (E09 T7a2, `GameSetup::validate`) a pick outside the offer (`GameSetupError::Pick`) and a pick an earlier player also has (`PickTaken`). The original's dialog knows only the map's allowed set and the masks, so it would offer a placed hero's or a prisoner's type; none is allowed on the shipped maps (survey section 4.2), and leaving them out keeps a pick off a hero already on the map (the design note's section 13). The pick is reserved in the pool before every draw (T-2 fixed, TWN-SET-005, E09 T7b1) and goes to its player's first random hero (TWN-SET-008). Not yet: a human player's main-town hero (TWN-SET-009, E09 T7b2)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -356,11 +375,37 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "TWN-SET-007"
+title    = "The draw of a hero"
+context  = "town"
+status   = "implemented"
+summary  = "The draw of a hero for a colour and a faction (a random hero's, TWN-SET-008; a main town's from E09 T7b2): uniform over the pool's free types (TWN-SET-005) of the faction's hero classes (the core's classes whose faction it is) that the colour may take (the type's colour mask has its bit); when there is none, uniform over every free type the colour may take; when there is none either, the build fails typed (`GameSetupError::NoFreeHero`, the drawing player; T-4 fixed, TWN-QUIRK-4). No weights (the classes' tavern weights are the tavern's draw, E09 increment 3). One draw from the setup stream (`Rng::below` over the list in type order), none when the list is empty; the drawn type is taken by the colour at once, so the next draw excludes it. E09 T7b1 (design note section 14): `h3_game`'s `HeroPool::draw`, `town::draw_heroes`."
+quirks   = ["TWN-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a2; survey E09-towns.md section 4.4): hero_draw_of_faction (0x4BB400, read whole) lists every type that is free, takeable by the colour and of one of the faction's two classes, in type order; when empty, every free type takeable by the colour; one of them by random_between(1, n); an empty list reads below it (T-4)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 4.7: CGameState::pickNextHeroType draws an unused hero of the player's faction, else any unused one, and throws when none is left"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 14 (the draw; NoFreeHero's payload the drawing player, the agent's call, E09 T7b1)"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-SET-008"
 title    = "A random hero"
 context  = "town"
 status   = "implemented"
-summary  = "A random hero (the map's class 70) is a placed hero whose type the game draws when it is built (`GameHeroSetup::hero_type` none, the rest of its body a placed hero's; E09 T7a1): its owner's pick for the owner's first random hero in hero order, else the draw (TWN-SET-007) over its owner's faction, so the type is taken before the next random hero draws. The game refuses (E09 T7a2, `GameSetup::validate`) a random hero whose owner is no player of the game (`GameSetupError::RandomHeroOwner`) and an owner without a faction choice (`Choice`, TWN-SET-001). Not yet: the draw; until E09 T7b the build refuses a setup with a random hero (`GameSetupError::HeroDraw`, TWN-STUB-3)."
+summary  = "A random hero (the map's class 70) is a placed hero whose type the game draws when it is built (`GameHeroSetup::hero_type` none, the rest of its body a placed hero's; E09 T7a1): its owner's pick for the owner's first random hero in hero order, else the draw (TWN-SET-007) over its owner's faction, so the type is taken before the next random hero draws. The game refuses (E09 T7a2, `GameSetup::validate`) a random hero whose owner is no player of the game (`GameSetupError::RandomHeroOwner`) and an owner without a faction choice (`Choice`, TWN-SET-001). The draws run when the game is built (E09 T7b1, design note section 14), in hero order after the players' Random choices and before every other draw of the setup stream; a pick no random hero took goes back free afterwards (TWN-SET-005)."
 numeric  = "integer"
 
   [[rule.source]]

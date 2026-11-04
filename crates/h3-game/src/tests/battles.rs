@@ -15,6 +15,7 @@ use h3_heroes::HeroChange;
 use h3_kernel::Rng;
 
 use super::*;
+use crate::town::pool::HeroStatus;
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
@@ -332,13 +333,14 @@ fn play_out(game: &mut GameState, rules: &GameRuleset) -> (Vec<GameEvent>, Battl
     panic!("the battle did not end");
 }
 
-// covers: GAM-BAT-002, GAM-BAT-003
+// covers: GAM-BAT-002, GAM-BAT-003, TWN-SET-005
 #[test]
 fn a_battle_played_to_its_end_applies_its_outcome() {
     let rules = rules();
     for seed in [5, 6, 7] {
         let (mut game, _, _) = attacked(&rules, seed);
         let before = game.clone();
+        assert!(game.shares_pool(&before));
         let (events, outcome) = play_out(&mut game, &rules);
         let winner = outcome.result.winner().unwrap();
         let heroes = [RED_HERO, BLUE_HERO];
@@ -355,6 +357,14 @@ fn a_battle_played_to_its_end_applies_its_outcome() {
             outcome.survivors[winner.index()].stacks
         );
         assert_eq!(game.adventure().hero(lost), None);
+        // Its type went back free in the hero pool (TWN-SET-005, E09 T7b1), the fork's pool
+        // copied on the write (both heroes are Orrin: blue's, placed last, took it).
+        let orrin = game.hero(lost).unwrap().hero_type;
+        let taken = Some(HeroStatus::Taken(1));
+        assert_eq!(before.hero_pool().status(orrin), taken);
+        let free = Some(HeroStatus::Free);
+        assert_eq!(game.hero_pool().status(orrin), free);
+        assert!(!game.shares_pool(&before));
         let lost_at = before.adventure().hero(lost).unwrap().pos;
         let both = Viewers::NONE.with(RED).with(BLUE);
         let ended = events

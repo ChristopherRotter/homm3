@@ -1,5 +1,6 @@
 //! Tests of a player's start, of the setup's checks of the starts and the towns (E09 T7a2) and of
-//! the build's refusal of a setup that needs a hero drawn (E09 T7a1, `TWN-STUB-3`).
+//! the build's refusal of a main town that generates a hero (E09 T7a1, `TWN-STUB-3`); the pool and
+//! the build's draws in [`pool`] (E09 T7b1).
 
 use alloc::format;
 use alloc::string::ToString;
@@ -7,8 +8,12 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{FactionDef, FactionId, HeroClassDef, HeroTypeDef, HeroTypeId, Ruleset};
-use h3_content_battle::{BallisticsRecord, SiegeDef, SiegeFieldDef, WallKind, WallTarget};
+use h3_content::{
+    CreatureDef, FactionDef, FactionId, HeroClassDef, HeroTypeDef, HeroTypeId, Ruleset,
+};
+use h3_content_battle::{
+    BallisticsRecord, BattleCreatureDef, SiegeDef, SiegeFieldDef, WallKind, WallTarget,
+};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::{
     BuildingDef, BuildingRoles, BuildingsSetup, CreatureLevelDef, Dwelling, GarrisonRow, Moat,
@@ -55,11 +60,32 @@ fn a_players_start_defaults_to_none_of_it() {
 
 /// The town tests' core: [`core_pack`]'s with the imp and the gog `t:town`'s levels 1 and 2, the
 /// faction `t:other` with the class `t:cleric`, and after the five knights the cleric `t:c0` and
-/// the knights `t:k0` to `t:k16`.
-fn towns_core() -> Ruleset {
-    let mut pack = core_pack(false);
-    for (creature, level) in pack.creatures.iter_mut().zip([1, 2]) {
-        creature.info.faction = Some(key("t:town"));
+/// the knights `t:k0` to `t:k16`. With `elf`, the extra creature `t:elf` is `t:other`'s level 1
+/// and its copy `t:ent` its level 2.
+fn towns_core(elf: bool) -> Ruleset {
+    let mut pack = core_pack(elf);
+    if elf {
+        let ent = CreatureDef {
+            key: key("t:ent"),
+            ..pack.creatures[3].clone()
+        };
+        pack.creatures.push(ent);
+    }
+    // The imp, the gog, the cart (none) and the elf.
+    let levels = [
+        Some(("t:town", 1)),
+        Some(("t:town", 2)),
+        None,
+        Some(("t:other", 1)),
+        Some(("t:other", 2)),
+    ];
+    for (creature, (faction, level)) in pack
+        .creatures
+        .iter_mut()
+        .zip(levels)
+        .filter_map(|(c, l)| l.map(|l| (c, l)))
+    {
+        creature.info.faction = Some(key(faction));
         creature.info.level = level;
     }
     pack.factions.push(FactionDef {
@@ -122,8 +148,9 @@ fn siege_field() -> SiegeFieldDef {
     }
 }
 
-/// `t:town`'s town record: the roles every record needs, its two levels the imp and the gog.
-fn town_pack() -> TownPack {
+/// `t:town`'s town record: the roles every record needs, its two levels the imp and the gog; with
+/// `elf`, `t:other`'s too, its two levels the elf and the ent.
+fn town_pack(elf: bool) -> TownPack {
     let mut roles: Vec<BuildingRoles> = (1..=4)
         .map(|level| BuildingRoles {
             hall: Some(level),
@@ -166,6 +193,36 @@ fn town_pack() -> TownPack {
         chance: 100,
         count: [1, 1],
     };
+    let town = TownDef {
+        faction: key("t:town"),
+        moat: Moat::Absent,
+        siege_obstacles: false,
+        silo: vec![(key("t:gold"), 1)],
+        creatures: vec![
+            CreatureLevelDef {
+                base: key("t:imp"),
+                upgrade: None,
+            },
+            CreatureLevelDef {
+                base: key("t:gog"),
+                upgrade: None,
+            },
+        ],
+        buildings,
+    };
+    let mut towns = vec![town.clone()];
+    if elf {
+        towns.push(TownDef {
+            faction: key("t:other"),
+            creatures: ["t:elf", "t:ent"]
+                .map(|k| CreatureLevelDef {
+                    base: key(k),
+                    upgrade: None,
+                })
+                .to_vec(),
+            ..town
+        });
+    }
     TownPack {
         params: Some(TownParamsDef {
             gold: key("t:gold"),
@@ -176,41 +233,45 @@ fn town_pack() -> TownPack {
             neutral_garrison: [row; 4],
             capitol_demoted_to: "b2".into(),
         }),
-        towns: vec![TownDef {
-            faction: key("t:town"),
-            moat: Moat::Absent,
-            siege_obstacles: false,
-            silo: vec![(key("t:gold"), 1)],
-            creatures: vec![
-                CreatureLevelDef {
-                    base: key("t:imp"),
-                    upgrade: None,
-                },
-                CreatureLevelDef {
-                    base: key("t:gog"),
-                    upgrade: None,
-                },
-            ],
-            buildings,
-        }],
+        towns,
         ..TownPack::new(manifest())
     }
 }
 
 /// The game's rules on [`towns_core`]: `t:town` has a town record and its siege, `t:other` none.
 fn towns_rules() -> GameRuleset {
-    let core = Arc::new(towns_core());
+    towns_rules_with(false)
+}
+
+/// [`towns_rules`]; with `elf`, `t:other` has a town record and a siege too ([`town_pack`]).
+fn towns_rules_with(elf: bool) -> GameRuleset {
+    let core = Arc::new(towns_core(elf));
+    let factions: &[&str] = if elf {
+        &["t:town", "t:other"]
+    } else {
+        &["t:town"]
+    };
     let battle = battle_part_with(&core, 7, |pack| {
+        if elf {
+            let ent = BattleCreatureDef {
+                key: key("t:ent"),
+                ..pack.creatures[3].clone()
+            };
+            pack.creatures.push(ent);
+        }
         pack.battle.as_mut().unwrap().siege = Some(siege_field());
-        pack.sieges = vec![SiegeDef {
-            faction: key("t:town"),
-            moat_damage: 70,
-            second_moat: false,
-            mines: None,
-            hit_points: vec![2; 8],
-        }];
+        pack.sieges = factions
+            .iter()
+            .map(|faction| SiegeDef {
+                faction: key(faction),
+                moat_damage: 70,
+                second_moat: false,
+                mines: None,
+                hit_points: vec![2; 8],
+            })
+            .collect();
     });
-    let towns = TownRuleset::compile(&core, &[town_pack()]).unwrap();
+    let towns = TownRuleset::compile(&core, &[town_pack(elf)]).unwrap();
     GameRuleset::new(
         Arc::clone(&core),
         Arc::new(part(&core)),
@@ -285,19 +346,24 @@ fn refused(rules: &GameRuleset, text: &str, edit: impl FnOnce(&mut GameSetup)) -
     error
 }
 
-// covers: TWN-SET-001
+// covers: TWN-SET-001, TWN-SET-005
 #[test]
-fn the_build_ignores_the_towns_and_the_pools_inputs() {
+fn the_build_ignores_the_towns_not_the_pools_inputs() {
     let rules = towns_rules();
-    let plain = setup();
     let mut full = towns_setup(&rules);
     full.players[0].start.pick = Some(hero(&rules, "t:loner"));
     full.hero_masks = vec![(hero(&rules, "t:loner"), 0b01)];
     full.prisoners = vec![hero(&rules, "t:crowd")];
-    full.towns[0].name = Some("Steadwick".to_string());
     assert_eq!(full.validate(&rules), Ok(()));
+    let mut named = full.clone();
+    named.towns[0].name = Some("Steadwick".to_string());
+    named.towns[1].buildings = BuildingsSetup::Standard { fort: false };
     let built = |s| GameState::new(&rules, s, 7).unwrap().state_hash();
-    assert_eq!(built(&full), built(&plain));
+    assert_eq!(built(&named), built(&full));
+    // The pool is part of the state (E09 T7b1).
+    let mut plain = full.clone();
+    plain.prisoners.clear();
+    assert_ne!(built(&plain), built(&full));
 }
 
 // covers: TWN-SET-002
@@ -381,7 +447,7 @@ fn a_players_choice_is_among_its_factions_which_have_town_records() {
         start.choice = None;
         start.main_town = None;
     });
-    // A random hero of its own, refused before the build's refusal of the draw.
+    // A random hero of its own, refused before any draw.
     let error = refused(&rules, "player 1's faction choice is invalid", |s| {
         s.towns[1].faction = TownFaction::Random { alignment: None };
         s.players[1].start = PlayerStart::default();
@@ -398,12 +464,7 @@ fn a_players_choice_is_among_its_factions_which_have_town_records() {
     setup.towns[1].faction = TownFaction::Random { alignment: None };
     setup.players[1].start = PlayerStart::default();
     setup.heroes[0].hero_type = None;
-    assert_eq!(
-        setup.validate(&rules),
-        Err(GameSetupError::HeroDraw(HeroDraw::RandomHero(HeroId::new(
-            0
-        ))))
-    );
+    assert_eq!(setup.validate(&rules), Ok(()));
 }
 
 // covers: TWN-SET-001
@@ -591,19 +652,10 @@ fn a_random_heros_owner_is_a_player() {
 }
 
 #[test]
-fn the_build_refuses_a_setup_that_needs_a_hero_drawn() {
+fn the_build_refuses_a_main_town_that_generates_a_hero() {
     let rules = towns_rules();
     let refused = |setup: &GameSetup| setup.validate(&rules).unwrap_err();
-    let mut random = towns_setup(&rules);
-    random.heroes[1].hero_type = None;
-    let error = refused(&random);
-    assert_eq!(
-        error,
-        GameSetupError::HeroDraw(HeroDraw::RandomHero(HeroId::new(1)))
-    );
-    assert_eq!(error.to_string(), "not built yet: hero 1 is a random hero");
-    // A main town generating a hero is refused first, whatever hero is random.
-    let mut generating = random.clone();
+    let mut generating = towns_setup(&rules);
     generating.players[0].start = start(faction(&rules, "t:town"), true);
     generating.players[0].start.pick = Some(hero(&rules, "t:loner"));
     let error = refused(&generating);
@@ -615,16 +667,27 @@ fn the_build_refuses_a_setup_that_needs_a_hero_drawn() {
         error.to_string(),
         "not built yet: player 0's main town generates a hero"
     );
-    // Checked before any hero's type is read: an unknown type before the random hero is not
-    // reached.
-    random.heroes[0].hero_type = Some(HeroTypeId::from_raw(u16::MAX));
+    // Checked before any hero's type is read: an unknown type is not reached.
+    generating.heroes[0].hero_type = Some(HeroTypeId::from_raw(u16::MAX));
     assert_eq!(
-        refused(&random),
-        GameSetupError::HeroDraw(HeroDraw::RandomHero(HeroId::new(1)))
+        refused(&generating),
+        GameSetupError::HeroDraw(HeroDraw::MainTown(PlayerId::new(0)))
     );
-    random.heroes[1].hero_type = Some(HeroTypeId::from_raw(0));
+    // Without it, the unknown type is refused before any draw: a random hero that would find no
+    // free type is not reached.
+    let mut unknown = towns_setup(&rules);
+    unknown.heroes[0].hero_type = Some(HeroTypeId::from_raw(u16::MAX));
+    unknown.heroes[1].hero_type = None;
+    unknown.allowed_heroes.clear();
     assert_eq!(
-        refused(&random),
+        refused(&unknown),
         GameSetupError::UnknownHeroType(HeroId::new(0))
     );
+    unknown.heroes[0].hero_type = Some(HeroTypeId::from_raw(0));
+    assert_eq!(
+        refused(&unknown),
+        GameSetupError::NoFreeHero(PlayerId::new(1))
+    );
 }
+
+mod pool;

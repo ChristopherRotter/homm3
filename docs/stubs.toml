@@ -97,8 +97,8 @@ epic   = "E09"
 
 [[stub]]
 id     = "TWN-STUB-3"
-where  = "crates/h3-game/src/town.rs::hero_types"
-reason = "The build's draws (design note E09-design.md section 14; E09 T7b): a setup whose main town generates a hero, or with a random hero (the map's class 70, `GameHeroSetup::hero_type` None), is refused with `GameSetupError::HeroDraw` until the hero pool and the build's draws exist. The map's import (v16, E09 T7a1) gives both, so 150 of the 160 shipped maps import but do not build yet"
+where  = "crates/h3-game/src/town.rs::main_town_heroes"
+reason = "The main towns' heroes and the towns' draws (design note E09-design.md section 14; E09 T7b2, after T8a): a setup whose main town generates a hero is refused with `GameSetupError::HeroDraw` until the main towns' heroes (TWN-SET-009) and the towns' factions, buildings and garrisons are built. The hero pool and the random heroes' draws exist since E09 T7b1. Of the 160 shipped maps 156 import; since T7b1 31 build whole and the other 125 are refused here (the census, `h3-map`'s example `original_data`)"
 epic   = "E09"
 
 # --- ai (AI-STUB-<n>) ---

@@ -17,7 +17,7 @@
 //! game's build (E09 T6c): what the map gives ([`TownSetup`]) and the functions the game calls
 //! with the setup stream ([`town_buildings_setup`], [`town_garrison`], [`town_setup`]). What
 //! comes next: the map's import of the towns and the game's build that calls the setup (E09 T7a,
-//! T7b; the design note §13, §14).
+//! T7b2; the design note §13, §14).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
