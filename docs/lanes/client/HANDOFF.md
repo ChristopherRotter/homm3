@@ -11,8 +11,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679), T3b2
   done (#690; CLT-Q42 asked); T3c cut by the user (2026-11-03): T3c1 done (#692), T3c2 done
   (#699), **T3c3 done** (the buildings by the packs' town records, the user's choice; three siege
-  stills exact, design §12.11; PR from `client/e17-m6-t3c3` after the shared #704, CI's path
-  filter for `h3-pack-towns`: check both first). T3 done. **Next:
+  stills exact, design §12.11; #706 from `client/e17-m6-t3c3`, stacked on the shared #704, CI's
+  path filter for `h3-pack-towns`: check both first, #704 merges first). T3 done. **Next:
   T4** (the combat options dialog; cut at its start, QUEUE), then T5 to T7; then M7 ranked play
   and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -43,7 +43,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-04, E17 M6 T3c3 (done; PR open: check it first).** The original data staged (57
+- **2026-11-04, E17 M6 T3c3 (done; #706 and #704 open: check them first).** The original data staged (57
   files) first, the computer offline afterwards; #699 had merged; the baseline's `check.sh`
   passed. The user chose the town records over the asset tables (T3c2's question) and T3c3 with
   it, and the shared #704 (`clients.yml` watches `h3-pack-towns`). The binary compiles the
