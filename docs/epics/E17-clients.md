@@ -191,7 +191,7 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   read whole (0x46E3B0, 0x46F7B0), drawn and in the window (O and the panel's button), the
   settings file, the combat speed and both volumes in effect, CLT-Q43 and Q44 asked, six stills
   exact; **T4b** the Auto Combat options and Creature Info in effect, cut in three by the user
-  (2026-11-04): **T4b1** (done 2026-11-04, design §12.13) the Auto Combat options restricting the window's bot, **T4b2a** Creature
+  (2026-11-04): **T4b1** (done 2026-11-04, design §12.13) the Auto Combat options restricting the window's bot, **T4b2a** (done 2026-11-04, design §12.14) Creature
   Info's level without new windows (F5, the status line's damage), **T4b2b** the army info
   windows on the hover, the heroes' windows kept, their stills, the help rows' question;
   **T4c** the grid and the shadows drawn.
@@ -391,3 +391,19 @@ The next milestone's list starts here.
     the battle asking the stack's box; not built: the sequences' parser for a press on a
     human-played turn under Auto Combat, and its recording (a commanded Ballista, Combat Ballista
     off).
+35. Creature Info's damage (T4b2a, *provisional*, design §12.14, CLT-Q46): the engine's preview,
+    not the original's estimate, in oddities 1 to 3 (a forgetful shooter not blessed or cursed
+    counts the half stack; a jouster's run-up the hexes walked, not the straight distance; an
+    arrow tower with Artillery only the target's protections), and a two-hex shooter's distance
+    at its facing before the shot turns it (not compared); over a two-hex target's far hex the
+    target's first strike's damage (the original's from-hex there not read).
+36. A server's seat shows no damage (T4b2a, *provisional*, a stub): the level-0 line until the
+    server lane sends the turn's attack and shot previews (its inbox); they go into the served
+    turn's `Turned::previews` (`battle.rs`), the one place.
+37. The battle window's pause on F12 (T4b2a, *provisional*): the original's battle takes F5 for
+    Creature Info's level, so the window's own pause leaves it there (`keys::window_key`; the
+    map window keeps F5, against the user's "both windows' own keys the same" of E24 M3 T0); F6
+    to F8 (a frame, restart, vsync) clash the same way with the original's grid and shadows at
+    T4c.
+38. Creature Info's level not recorded (T4b2a): no capture at level 1 or 2 (T4b2b's, beside the
+    hover's army info windows); the hints' words checked against the user's tables only.

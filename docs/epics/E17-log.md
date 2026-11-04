@@ -5181,3 +5181,38 @@ the original's for the comparisons only). The build by a sub-agent, its docs wit
   skill as `Acting`, the per-turn plays, the toggle, the dropped press, the hand-over;
   `panel/tests.rs`, `scene/tests.rs`: the button by profile; `pointer`'s commanded Ballista in
   `smoke` with and without Artillery), `clicks` and the sequences' tests unchanged, clippy.
+
+### M6 T4b2a — Creature Info's level: F5 and the status line's damage (2026-11-04)
+
+On `client/e17-m6-t4b`, after the reading (design §12.14) and CLT-Q46's answer (the engine's
+preview; the server lane asked for the previews, a seat without them meanwhile). The build by a
+sub-agent, its docs with it.
+
+- **Built** (design §12.14, "The client's"): `keys::Command::ArmyInfo` (`army-info`, F5, the
+  battle's context) and `keys::window_key` (the battle window's pause on F12);
+  `Settings::cycle_army_info`; `track::Input::ArmyInfo` and the handler's level (`write` words a
+  hint at the level then); `mouse::Hint::Strike` and `Hint::Shot`, `Hint::at_level`,
+  `damage_text` and `damage_number`, `attack_hint` (the damage of the command a press there
+  gives, a strike again on a new slot of the same hex), `Previews` in `Legal::previews`;
+  `pointer` (a still) at level 0; the catalogue's seven `battle.hint.*` keys (GENRLTXT 37, 38,
+  297, the executable's four number forms); the binary's `scenario::previews` and
+  `Turned::previews` (`h3_battle::preview` where the state is), `pointer::battle_of` handing them
+  to the library, the served turn's empty list (the hook for the server lane's previews), the
+  window's F5 (taken where the battle takes its keys, the file written at once by
+  `save_settings`, the frame made again) and its level inputs (at 0, each F5, the dialog's
+  change, a Restart).
+- **Agent's calls** (change freely): the level as a timed input rather than a field of the turn
+  (a re-follow writes each hint at its own time's level: oddity 6 holds); over a two-hex target's
+  far hex, where no slot strikes from, the target's first strike's damage (the original's
+  from-hex there not read); the window's pause moved from F5 to F12 in the battle only (the
+  original's F5; the map window's keys unchanged).
+- **Not built:** the original's own estimate in oddities 1 to 3 (CLT-Q46: the preview instead);
+  the damage on a server's seat (the server lane's previews); a recording at level 1 (T4b2b's,
+  with the hover's windows); the keys F6 to F8 (T4c).
+- **Checked:** unit tests (`mouse/tests.rs`: the hints with and without previews, at each level,
+  a still at 0, the far hex, the words of each kind with one and more shots, the numbers below
+  1 000, in tenths of thousands, in thousands, a range across 1 000, equal ends; `track/tests.rs`:
+  levels between moves, the same hex untouched, a new slot written at the level then;
+  `keys/tests.rs`, `options/tests.rs`; the binary's previews of a battle fought here against a
+  seat's, F5's file, the window's follow with levels), the keys' words against the user's tables
+  (`h3-view text`), clippy, the real-asset gate.

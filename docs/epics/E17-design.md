@@ -5922,34 +5922,48 @@ GENRLTXT 37, 38, 221 and 297 (their specifiers).
   5. Levels 1 and 2 alike on the status line (the spells-only level shows the damage too).
   6. F5 rewrites no hint and hides no window (above).
   7. The shot's estimate by hit points computed and dropped (0x435980).
-- **The client's plan** (for T4b2a's builder; a plan, nothing built):
-  - The level: `Settings::army_info` (kept since T4a) read by the battle. F5: the `keys` table
-    gains `army-info` (F5) in the battle's context, taken where the battle takes its keys (a
-    human's turn waiting; on a turn that plays itself under Auto Combat it is the stop's): the
-    level cycled, the settings file written at once (as the dialog's close writes it), the frame
-    redrawn, no hint written until the mouse enters another hex.
-  - `h3_view::mouse::Hint`: `Attack(id)` stays the level-0 line (221); new `Strike(id, [u64; 2])`
-    (37) and `Shot(id, shots, [u64; 2])` (38 with one shot left, 297 else; the shots from the
-    observation's stack), both `forced`; `Hint::text` with a pure `damage_text([u64; 2])` (the
-    numbers' forms above, the low end by the high end's size) and new catalogue keys
-    (`battle.hint.strike-damage` GENRLTXT:37, `battle.hint.shot-one` :38, `battle.hint.shot-damage`
-    :297; `EXE:0x6772DC`, `EXE:0x6772E4`, `EXE:0x660CB0`, `EXE:0x660A1C`). The hint's choice
-    (`mouse.rs`, `Kind::Shoot | Kind::BrokenArrow | Kind::Attack` over a stack) takes the level and
-    the damage of the command the click would give (`Command::Attack { target, from }`,
-    `Command::Shoot { target, at }`); none known, `Attack(id)`.
-  - The damage: the library is pure over the wire's observation, which holds no damage of a
-    command; the binary holds the battle's state where it plays the battle (`Live`, and
-    `scenario::Turned::of` for a record with its scenario). `Turned` gains each legal attack's and
-    shot's `h3_battle::preview` (BAT-DMG-011, public: the least and the greatest damage of the
-    first strike), equal to the original's hint but in oddities 1 to 3 (and, not compared, a
-    two-hex shooter's distance taken at its facing before the shot turns it). The original's
-    exact numbers would need the battle lane's estimate with the caller's base ends and run-up,
-    a turret through every stage (`combat::estimated_damage` is crate-private): CLT-Q46. A server's
-    seat holds no battle state and the protocol carries no preview (ADR-0018 point 10: the client
-    runs no rules in a hosted game): there the level-0 line (*provisional*, a stub) until the
-    server lane sends the previews (CLT-Q46).
-  - Checks: unit tests of the texts and the numbers' forms (the three sizes, a range across 1 000,
-    one value blessed). A recording at level 1 shows the hover's army info windows (T4b2b's) beside
-    the line: compare the status line's rectangle only, or record after T4b2b; the harness's
-    registry keeps level 0 (`Settings::CAPTURE`), so such a capture needs `setup.sh`'s Combat Army
-    Info Level.
+- **The client's** (M6 T4b2a, *provisional* where marked):
+  - The level: `Settings::army_info` (kept since T4a). F5: `h3_view::keys::Command::ArmyInfo`
+    (`army-info`, default F5, the battle's context), taken only where the battle takes its keys
+    (`Battle::takes`: a human's turn waiting, its last action played; F5 pressed during an action
+    is dropped; under Auto Combat a press on a turn it plays is the stop's, the window's rule):
+    `Settings::cycle_army_info` (0, 1, 2, 0), the settings file written at once (the window's
+    `save_settings`, the dialog's close too), the frame made again. While the options dialog is
+    open F5 does nothing (its context takes its own keys, as the original's modal loop); the
+    dialog's own level radio sets the level from its input on. *Provisional:* the window's pause
+    leaves F5 in the battle for F12 (`keys::window_key`; the map window keeps F5), since the
+    original's battle takes F5 (F6 to F8 will clash the same way at T4c).
+  - Over time: the level is an input at its time (`track::Input::ArmyInfo`; the window pushes one
+    at 0 from the settings, one at each F5, one when the dialog changed it and one at a Restart's
+    time), so a re-follow writes each hint at the level of its own time and F5 rewrites nothing
+    (oddity 6); `Handler::write` words a hint at the level then (`Hint::at_level`).
+  - `h3_view::mouse::Hint`: `Attack(id)` the level-0 line (221) and the line without a preview;
+    `Strike(id, [u64; 2])` (37) and `Shot(id, shots, [u64; 2])` (38 with one shot left, 297 else;
+    the shots the acting stack's in the turn's observation), all three forced; `pointer_in` gives
+    levels 1 and 2's hint (`attack_hint`: the damage of the command a press there gives, a strike
+    from the slot's position, a shot at its aim hex; *provisional*: over a hex no slot strikes
+    from, a two-hex target's far hex, the target's first strike's), `pointer` (a still, the
+    harness's) level 0's. On the same hex a new slot writes the line again with the strike from
+    its position (+0x132D8), at the level then. The words: `damage_text` and `damage_number`
+    (the forms above) with the keys `battle.hint.strike-damage` (GENRLTXT:37),
+    `battle.hint.shot-one` (:38), `battle.hint.shot-damage` (:297), `battle.hint.damage-range`
+    (`EXE:0x6772DC`), `battle.hint.number` (`EXE:0x660A1C`), `battle.hint.thousands-tenths`
+    (`EXE:0x6772E4`), `battle.hint.thousands` (`EXE:0x660CB0`); checked against the user's tables
+    (`h3-view text`).
+  - The numbers (CLT-Q46, answered by the user: (b) and (i)): the engine's `h3_battle::preview`
+    (BAT-DMG-011), so the three cases of oddities 1 to 3 show the strike's true damage, not the
+    original's estimate (and, not compared, a two-hex shooter's distance at its facing before
+    the shot turns it). The binary computes them where it holds the battle's state
+    (`scenario::previews` in `Turned::of`: a battle fought here, `Live`, and a record replayed
+    with its scenario) and hands them to the pure library as data (`Turned::previews`, then
+    `mouse::Previews` in `Legal::previews`, `pointer::battle_of`). A server's seat holds no state
+    and the wire no preview (ADR-0018 point 10): its served turn has none, so its hints keep the
+    level-0 line (*provisional*, a stub) until the server lane sends the turn's attack and shot
+    previews (its inbox); the one place they go is the served turn's `Turned` in `battle.rs`.
+  - Checks: unit tests (`mouse/tests.rs`: the hints with and without previews, a still at level
+    0, each kind's and the shots-left variants' words, the numbers' three sizes, a range across
+    1 000, one value; `track/tests.rs`: levels set between moves, the same hex and a new slot;
+    `keys/tests.rs`, `options/tests.rs`: F5 and its cycle; the binary's: each legal attack's
+    preview in a battle fought here and a seat's line without, F5's file written, the window's
+    follow with level inputs). Not built: a recording at level 1 (T4b2b's: the hover's army
+    info windows beside the line; the harness's registry keeps level 0, `Settings::CAPTURE`).
