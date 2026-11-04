@@ -454,8 +454,22 @@ fn the_typed_classes_import_as_their_object_types() {
         // The footprint is the template's, as for a blocker.
         assert_eq!(object.blocked, TileMask::from_bits(0b11));
     }
-    // Every object type of the original packs has its class.
-    assert_eq!(cases.len(), part.object_types().len());
+    // Every object type of the original packs has its class, but increment 10's dwellings, Refugee
+    // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b.
+    let typed = part
+        .object_types()
+        .iter()
+        .filter(|t| {
+            !matches!(
+                t.kind,
+                h3_adventure::ObjectKind::Dwelling { .. }
+                    | h3_adventure::ObjectKind::RandomDwelling
+                    | h3_adventure::ObjectKind::RefugeeCamp { .. }
+            )
+        })
+        .count();
+    assert_eq!(cases.len(), typed);
+    assert_eq!(part.object_types().len() - typed, 82 + 2);
     // A typed class ignores the subclass where it has one type.
     let fire = import(&typed_map(12, 7, Body::None), &SOD).unwrap();
     assert_eq!(

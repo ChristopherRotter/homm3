@@ -12,8 +12,8 @@ use alloc::vec::Vec;
 use core::num::NonZeroU32;
 
 use h3_content::{
-    ArtifactClass, ContentKey, CreatureFlag, CreatureTypeId, ResourceId, Ruleset, SkillId,
-    TerrainId,
+    ArtifactClass, ContentKey, CreatureFlag, CreatureTypeId, FactionId, ResourceId, Ruleset,
+    SkillId, TerrainId,
 };
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
@@ -22,7 +22,15 @@ use super::rewards::{
     compile_artifact_classes, compile_chest, compile_find, compile_gift, compile_pyramid,
     compile_resources, hash_classes, hash_resources,
 };
-use super::{AdventureCompileError, check_namespace, insert_unique};
+use super::{
+    AdventureCompileError, DWELLING_LEVELS, DwellingParams, RandomDwellingDef, check_namespace,
+    insert_unique,
+};
+use crate::setup::TileMask;
+
+/// The most creatures a dwelling offers (E08 T93a, increment 10's design note §1): the original's
+/// four (the Elemental Conflux's Air, Fire, Earth and Water; the Golem Factory's four golems).
+const MAX_DWELLING_CREATURES: usize = 4;
 
 /// The key colours of Keymaster's tents, border guards and border gates (survey `E08-objects.md`
 /// §6: eight tents' colours, VCMI 1.7.5 `config/objects/moddables.json`); a key is one of them.
@@ -253,6 +261,39 @@ pub enum ObjectKind {
         /// The gifts (5 gems, 500 gold), in the pack's order.
         gifts: Vec<(ResourceId, u32)>,
     },
+    /// A dwelling (E08 T93a, increment 10's design note §1; ADV-DWL-001, ADR-0016 point 1, the
+    /// original's classes 17 and 20): ownable, entered; its owner's heroes recruit its creatures
+    /// (T95). Its footprint is the template a random dwelling that becomes it takes (§5); a
+    /// placed dwelling keeps the map's.
+    Dwelling {
+        /// Its creatures, one to four, distinct, none a war machine, in the pack's order (the
+        /// original's record order: the dialog's and the guards' slot order).
+        creatures: Vec<CreatureTypeId>,
+        /// Its template's impassable cells (the entrance among them), as the import makes a
+        /// map's template's (`h3-map`'s `footprint`).
+        blocked: TileMask,
+        /// Its template's entrances, at least one.
+        visitable: TileMask,
+        /// Its full guards, derived when the part compiles (§2): for each of its creatures of the
+        /// parameters' `guard_level` or more, in creature order, a stack of `guard_factor` times
+        /// its growth (a Dragon Cliffs 3 Green Dragons; every level-1 to -4 dwelling none).
+        guards: Vec<(CreatureTypeId, u32)>,
+        /// The run of bottom-row cells from the anchor leftwards that are neither blocked nor
+        /// visitable, stopping at the first that is (§2; the original's 0x502CD0 to 0x502D44: of
+        /// the 82 only the Angel Portal's is 1).
+        shift: u8,
+    },
+    /// A random dwelling (E08 T93a, increment 10's design note §1; ADV-DWL-005, the original's
+    /// 216 to 218): ownable, entered; it becomes the dwelling of its level in its faction's table
+    /// ([`super::AdventureRuleset::random_dwelling`]), level and faction as the map says (§5).
+    RandomDwelling,
+    /// A Refugee Camp (E08 T93a, increment 10's design note §1; ADV-RFG-001, the original's 78):
+    /// entered, owned by nobody; its creature is drawn among the random monsters of its levels
+    /// (ADV-MON-003's set), its count that creature's growth.
+    RefugeeCamp {
+        /// The levels, inclusive, `1 <= low <= high <= DWELLING_LEVELS`.
+        levels: [u8; 2],
+    },
 }
 
 /// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
@@ -357,8 +398,15 @@ impl ObjectKind {
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
-            // objects' with T84b1, the Shipyards' with T84b2.
-            Self::Ground { .. } | Self::Event | Self::SeaGround | Self::Hole => None,
+            // objects' with T84b1, the Shipyards' with T84b2. E08 T93a: increment 10's three
+            // kinds are typed; their visits come with T95.
+            Self::Ground { .. }
+            | Self::Event
+            | Self::SeaGround
+            | Self::Hole
+            | Self::Dwelling { .. }
+            | Self::RandomDwelling
+            | Self::RefugeeCamp { .. } => None,
         }
     }
 
@@ -372,7 +420,8 @@ impl ObjectKind {
     }
 
     /// Whether a player may own an object of this kind (E08 T83a; ADR-0016 point 1): a mine, an
-    /// abandoned mine, a Lighthouse, a Shipyard (the dwellings come with increment 10).
+    /// abandoned mine, a Lighthouse, a Shipyard; since E08 T93a a dwelling and a random dwelling
+    /// (not a Refugee Camp, increment 10's design note §1).
     pub const fn ownable(&self) -> bool {
         matches!(
             self,
@@ -380,6 +429,8 @@ impl ObjectKind {
                 | Self::AbandonedMine { .. }
                 | Self::Lighthouse { .. }
                 | Self::Shipyard { .. }
+                | Self::Dwelling { .. }
+                | Self::RandomDwelling
         )
     }
 
@@ -618,6 +669,27 @@ pub enum ObjectKindDef {
         /// The gifts.
         gifts: Vec<(ContentKey, u32)>,
     },
+    /// [`ObjectKind::Dwelling`] (E08 T93a): one to four distinct core creatures, none a war
+    /// machine, each with a growth from 1; the cells as (columns left, rows up) of the anchor
+    /// within [`TileMask`]'s block, each list distinct, at least one visitable (the two may
+    /// overlap, as the import's masks of a template do); its type entered. Its guards and shift
+    /// are derived.
+    Dwelling {
+        /// The creatures.
+        creatures: Vec<ContentKey>,
+        /// The blocked cells.
+        blocked: Vec<(u8, u8)>,
+        /// The visitable cells.
+        visitable: Vec<(u8, u8)>,
+    },
+    /// [`ObjectKind::RandomDwelling`] (E08 T93a): its type entered.
+    RandomDwelling,
+    /// [`ObjectKind::RefugeeCamp`] (E08 T93a): levels `1 <= low <= high <= DWELLING_LEVELS`, a
+    /// creature of them that may be drawn; its type entered.
+    RefugeeCamp {
+        /// The levels of its creature.
+        levels: [u8; 2],
+    },
 }
 
 /// An object type as a pack defines it.
@@ -779,6 +851,12 @@ pub(super) fn compile_object_types(
         if kind.ownable() && def.visit != Visit::Enter {
             return Err(invalid("an ownable object is not entered"));
         }
+        // A Refugee Camp is entered too (E08 T93a, increment 10's design note §1: class 78 is on
+        // neither of the original's lists).
+        // rule: ADV-RFG-001
+        if matches!(kind, ObjectKind::RefugeeCamp { .. }) && def.visit != Visit::Enter {
+            return Err(invalid("a refugee camp is not entered"));
+        }
         tables.types.push(ObjectType {
             key: def.key.clone(),
             name: def.name.clone(),
@@ -794,7 +872,8 @@ pub(super) fn compile_object_types(
 /// each random monster has a creature to draw ([`random_monsters`]) and that a Pyramid's second
 /// creature leaves its first a slot of the army's (E08 T61a); since E08 T83a that no two mines
 /// produce one resource, that with an abandoned mine every core resource has its mine (its daily
-/// amount, [`super::AdventureRuleset::mine_daily`]) and that its guards fit a stack.
+/// amount, [`super::AdventureRuleset::mine_daily`]) and that its guards fit a stack; since E08
+/// T93a that a Refugee Camp has a creature to draw, as a random monster.
 // rule: ADV-MIN-001
 pub(super) fn check_object_types(
     core: &Ruleset,
@@ -839,7 +918,8 @@ pub(super) fn check_object_types(
         }
         if let ObjectKind::Monster {
             levels: Some(levels),
-        } = &ty.kind
+        }
+        | ObjectKind::RefugeeCamp { levels } = &ty.kind
             && random_monsters(core, excluded, *levels).next().is_none()
         {
             return Err(AdventureCompileError::InvalidObjectType {
@@ -861,6 +941,115 @@ pub(super) fn check_object_types(
             }
         }
     }
+    Ok(())
+}
+
+/// Derives each dwelling's full guards once the parameters are in (E08 T93a, increment 10's design
+/// note §2; ADV-DWL-001): for each of its creatures of `guard_level` or more, in creature order,
+/// one stack of `guard_factor` times its growth (the original's `army_add_stack` into an empty
+/// army, slots 0 up). A dwelling needs the dwellings' parameters; each stack within
+/// `max_stack_count` (the abandoned mine's bound), the stacks within an army's slots.
+pub(super) fn derive_dwelling_guards(
+    core: &Ruleset,
+    types: &mut [ObjectType],
+    params: Option<DwellingParams>,
+    army_slots: u8,
+    max_stack_count: u32,
+) -> Result<(), AdventureCompileError> {
+    for ty in types {
+        let ObjectKind::Dwelling {
+            creatures, guards, ..
+        } = &mut ty.kind
+        else {
+            continue;
+        };
+        let invalid = |reason| AdventureCompileError::InvalidObjectType {
+            key: String::from(ty.key.as_str()),
+            reason,
+        };
+        let Some(params) = params else {
+            return Err(invalid("a dwelling without [params.dwellings]"));
+        };
+        let derived = creatures
+            .iter()
+            .filter_map(|&creature| {
+                core.creature(creature)
+                    .filter(|info| info.level >= params.guard_level)
+                    .map(|info| {
+                        let count = u32::from(params.guard_factor.get()) * u32::from(info.growth);
+                        (creature, count)
+                    })
+            })
+            .collect::<Vec<_>>();
+        if derived.iter().any(|&(_, count)| count > max_stack_count) {
+            return Err(invalid("a dwelling's guards are above max_stack_count"));
+        }
+        if derived.len() > usize::from(army_slots) {
+            return Err(invalid(
+                "a dwelling's guards need more slots than an army has",
+            ));
+        }
+        *guards = derived;
+    }
+    Ok(())
+}
+
+/// One faction's random dwelling table (E08 T93a, increment 10's design note §2; ADV-DWL-005): a
+/// core faction of the pack's closure without a table yet, and for each level n from 1 a type of
+/// the closure that is a dwelling with a creature of that faction and level that is no creature's
+/// upgrade (the original's `town_creatures[faction × 14 + level]`, the unupgraded one).
+pub(super) fn compile_random_dwelling(
+    scope: &Scope<'_>,
+    objects: &ObjectTables,
+    def: &RandomDwellingDef,
+    tables: &mut BTreeMap<FactionId, [ObjectTypeId; DWELLING_LEVELS]>,
+) -> Result<(), AdventureCompileError> {
+    // rule: ADV-DWL-005
+    let core = scope.core;
+    let name = || String::from(def.faction.as_str());
+    scope.reach(&def.faction)?;
+    let faction = core
+        .faction_by_key(def.faction.as_str())
+        .ok_or_else(|| AdventureCompileError::UnknownFaction(name()))?;
+    if tables.contains_key(&faction) {
+        return Err(AdventureCompileError::DuplicateRandomDwelling(name()));
+    }
+    let upgrades = (0..core.creature_count())
+        .filter_map(CreatureTypeId::from_index)
+        .filter_map(|id| core.creature(id))
+        .flat_map(|info| info.upgrades.iter().copied())
+        .collect::<BTreeSet<_>>();
+    let mut row = [ObjectTypeId::default(); DWELLING_LEVELS];
+    for ((slot, key), level) in row.iter_mut().zip(&def.dwellings).zip(1_u8..) {
+        scope.reach(key)?;
+        let id =
+            objects.index.get(key.as_str()).copied().ok_or_else(|| {
+                AdventureCompileError::UnknownObjectType(String::from(key.as_str()))
+            })?;
+        let invalid = |reason| AdventureCompileError::RandomDwelling {
+            faction: name(),
+            level,
+            reason,
+        };
+        let Some(ObjectKind::Dwelling { creatures, .. }) =
+            objects.types.get(usize::from(id.raw())).map(|ty| &ty.kind)
+        else {
+            return Err(invalid("its type is not a dwelling"));
+        };
+        let fits = |&creature: &CreatureTypeId| {
+            !upgrades.contains(&creature)
+                && core
+                    .creature(creature)
+                    .is_some_and(|info| info.faction == Some(faction) && info.level == level)
+        };
+        if !creatures.iter().any(fits) {
+            return Err(invalid(
+                "its dwelling has no creature of the faction and level that is no upgrade",
+            ));
+        }
+        *slot = id;
+    }
+    tables.insert(faction, row);
     Ok(())
 }
 
@@ -1144,7 +1333,86 @@ fn compile_kind(
                 Ok(ObjectKind::Garden { gifts: list })
             }
         }
+        ObjectKindDef::Dwelling {
+            creatures,
+            blocked,
+            visitable,
+        } => {
+            let list = creatures
+                .iter()
+                .map(|c| scope.creature(c))
+                .collect::<Result<Vec<_>, _>>()?;
+            compile_dwelling(scope, list, blocked, visitable)
+        }
+        ObjectKindDef::RandomDwelling => Ok(ObjectKind::RandomDwelling),
+        ObjectKindDef::RefugeeCamp { levels } => {
+            let [low, high] = *levels;
+            if 1 <= low && low <= high && usize::from(high) <= DWELLING_LEVELS {
+                Ok(ObjectKind::RefugeeCamp { levels: *levels })
+            } else {
+                Err("a refugee camp's levels are not 1 <= low <= high <= DWELLING_LEVELS")
+            }
+        }
     })
+}
+
+/// A dwelling's kind (E08 T93a, increment 10's design note §1, §2), its guards left empty for
+/// [`derive_dwelling_guards`]: one to four distinct creatures, none a war machine, each with a
+/// growth; its cells within the block, each list distinct, at least one visitable; its shift
+/// the free run of the bottom row from the anchor leftwards.
+fn compile_dwelling(
+    scope: &Scope<'_>,
+    creatures: Vec<CreatureTypeId>,
+    blocked: &[(u8, u8)],
+    visitable: &[(u8, u8)],
+) -> Result<ObjectKind, &'static str> {
+    // rule: ADV-DWL-001
+    let distinct = creatures.iter().collect::<BTreeSet<_>>().len() == creatures.len();
+    let growth = |c| scope.core.creature(c).map_or(0, |info| info.growth);
+    if !(1..=MAX_DWELLING_CREATURES).contains(&creatures.len()) {
+        return Err("a dwelling's creatures are not 1 to 4");
+    }
+    if !distinct {
+        return Err("a dwelling names a creature twice");
+    }
+    if creatures.iter().any(|&c| scope.war_machine(c)) {
+        return Err("a dwelling's creature is a war machine");
+    }
+    if creatures.iter().any(|&c| growth(c) == 0) {
+        return Err("a dwelling's creature has no growth");
+    }
+    let blocked = cells(blocked)?;
+    let visitable = cells(visitable)?;
+    if visitable == TileMask::default() {
+        return Err("a dwelling has no visitable cell");
+    }
+    let shift = (0..TileMask::COLUMNS)
+        .take_while(|&column| !blocked.contains(column, 0) && !visitable.contains(column, 0))
+        .last()
+        .map_or(0, |column| column + 1);
+    Ok(ObjectKind::Dwelling {
+        creatures,
+        blocked,
+        visitable,
+        guards: Vec::new(),
+        shift,
+    })
+}
+
+/// A dwelling's cells as a mask (E08 T93a): each within the block, none twice.
+fn cells(list: &[(u8, u8)]) -> Result<TileMask, &'static str> {
+    let mut bits = 0_u64;
+    for &(column, row) in list {
+        if column >= TileMask::COLUMNS || row >= TileMask::ROWS {
+            return Err("a dwelling's cell is outside the 8 by 6 block");
+        }
+        let bit = 1_u64 << (u32::from(row) * u32::from(TileMask::COLUMNS) + u32::from(column));
+        if bits & bit != 0 {
+            return Err("a dwelling names a cell twice");
+        }
+        bits |= bit;
+    }
+    Ok(TileMask::from_bits(bits))
 }
 
 /// An amount from 1 to [`MAX_GAIN`] (E08 T83a), else `reason`.
@@ -1185,14 +1453,17 @@ impl CanonicalHash for ObjectType {
     /// monster, 7 ground; since part v12 8 chest, 9 artifact, 10 scroll, 11 gift, 12 Shrine,
     /// 13 Witch Hut, 14 Scholar, 15 University, 16 find, 17 Pandora's Box, 18 event, 19 Pyramid;
     /// since part v13 20 message, 21 ground of the sea, 22 hole; since part v14 23 mine, 24
-    /// abandoned mine, 25 Lighthouse, 26 Shipyard, 27 Windmill, 28 Water Wheel, 29 Garden) and
-    /// parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in
-    /// order; a monster's levels as 0 for none, else 1, low, high; a ground's battlefield key,
-    /// since part v10 whether it takes the native price away; an artifact's classes as 0 for
-    /// none, else 1 and the classes; a Witch Hut's two skill lists; a University's offers and
-    /// price; a message's whether it leaves; a mine's and an abandoned mine's battle terrain as 0
-    /// for none, else 1 and the terrain; a Shipyard's price, boat type and offsets as length and
-    /// each column and row; a Garden's gifts as a price; the others' fields in order).
+    /// abandoned mine, 25 Lighthouse, 26 Shipyard, 27 Windmill, 28 Water Wheel, 29 Garden; since
+    /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp) and parameters (a pickup's own
+    /// tag, 0 resource, 1 one of, 2 paired, then its fields in order; a monster's levels as 0 for
+    /// none, else 1, low, high; a ground's battlefield key, since part v10 whether it takes the
+    /// native price away; an artifact's classes as 0 for none, else 1 and the classes; a Witch
+    /// Hut's two skill lists; a University's offers and price; a message's whether it leaves; a
+    /// mine's and an abandoned mine's battle terrain as 0 for none, else 1 and the terrain; a
+    /// Shipyard's price, boat type and offsets as length and each column and row; a Garden's
+    /// gifts as a price; a dwelling's creatures as length and handles, its blocked and visitable
+    /// masks' bits, its guards as length and each creature and count, its shift; a Refugee
+    /// Camp's low and high level; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -1358,6 +1629,32 @@ impl CanonicalHash for ObjectType {
             ObjectKind::Garden { gifts } => {
                 h.write_u8(29);
                 hash_resources(gifts, h);
+            }
+            ObjectKind::Dwelling {
+                creatures,
+                blocked,
+                visitable,
+                guards,
+                shift,
+            } => {
+                h.write_u8(30);
+                creatures.hash_into(h);
+                h.write_u64(blocked.bits());
+                h.write_u64(visitable.bits());
+                h.write_len(guards.len());
+                for (creature, count) in guards {
+                    creature.hash_into(h);
+                    h.write_u32(*count);
+                }
+                h.write_u8(*shift);
+            }
+            ObjectKind::RandomDwelling => h.write_u8(31),
+            ObjectKind::RefugeeCamp {
+                levels: [low, high],
+            } => {
+                h.write_u8(32);
+                h.write_u8(*low);
+                h.write_u8(*high);
             }
         }
     }

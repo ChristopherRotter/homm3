@@ -11477,3 +11477,73 @@ request was the other way).
   ally's dialog read-only. The events' names come with the build (T94, T95).
 
 **Versions:** none moved (documents only).
+
+### Increment 10, round 5: T93a, the content (2026-11-04, `adventure/e08-t93a`, `cross-lane`)
+
+**The cut** (decision 248; asked at the start, `AskUserQuestion`): T93 in two at design §17's
+seam, T93a whole (the code with the synthetic packs, then the original packs, one pull request);
+T93b, the import, next. **Decision 249** (asked before the build): the AI lane's two bots tables'
+`engine.adventure` line in this pull request, `cross-lane`. Built by three narrow sub-agents (the
+code; the packs' data from the original files; the check against them) and one for the replays
+(AGENTS.md, "Working rules"); the main session spliced, tested and wrote the records.
+
+- **The part** (`h3-adventure`'s `ruleset/`, adventure ruleset part v16; design §1, §2):
+  `ObjectKind::{Dwelling { creatures, blocked, visitable, guards, shift }, RandomDwelling,
+  RefugeeCamp { levels } }` (hash tags 30 to 32), their `Def`s and checks: a dwelling's creatures
+  1 to 4, distinct, no war machine, each with a growth; its cells within the 8 × 6 block, each
+  list distinct, at least one visitable; its **guards** derived after the parameters (for each
+  creature of `guard_level` or more a stack of `guard_factor` × growth, in creature order; a stack
+  past the abandoned mine's cap or more stacks than an army's slots refused); its **shift** the
+  free run of the bottom row from the anchor leftwards. The dwellings ownable and entered; the
+  camp entered (its levels as a random monster's, at least one creature to draw), not ownable.
+  `DwellingParams { guard_level, guard_factor, free_level }` (`[params.dwellings]`, required with a
+  dwelling, needing `[params.monsters]`; `AdventureParams::dwellings`); `RandomDwellingDef {
+  faction, dwellings: [_; 7] }` (`[[random_dwelling]]`, any pack; a faction once in the part; each
+  level's type a dwelling with a creature of that faction and level that is no upgrade;
+  `AdventureRuleset::{random_dwelling, random_dwellings}`, `DWELLING_LEVELS`); errors
+  `UnknownFaction`, `DuplicateRandomDwelling`, `RandomDwelling { faction, level, reason }`. No visit
+  yet (`effect` none, T95). `h3-pack-adventure`'s format and its doc block; `synthetic`'s two
+  dwellings, camp and parameters (and `[params.monsters]`, which they need); the tables tested with
+  inline packs (the synthetic faction has two levels).
+- *Agent's calls (change freely):* the footprint is **the import's masks** (`blocked` the
+  impassable cells, the entrance among them; `visitable` the entrances), not design §1's disjoint
+  sets: every original entrance is impassable and visitable, and "the type's footprint as its
+  masks" (ADR-0016 point 1) stays literal (design §1 corrected). Ids: the names' snake case, the
+  second Unicorn Glade (68) `unicorn_glade_2`; `ab:crystal_cavern` (63) beside `base:crystal_cavern`
+  (the mine): keys are by pack. A dwelling's creature without growth, guards needing more stacks
+  than an army's slots and a camp not entered are refused.
+- **The packs** (design §3): `base` the RoE objects (class 17 subclasses 0 to 58 and 68, class 20's
+  two: 62 types), the Refugee Camp, the random dwelling, `[params.dwellings]` (5, 3, 1) and the
+  eight RoE factions' tables; `ab` subclasses 59 to 67 and 69 to 79 (20 types; the Altars 69 to 72
+  name base's elementals) and Conflux's table. Each type with its sources (`# original class 17
+  subclass N`, `dwelling_creatures` 0x63D570's entry, the template). Written from the original
+  files by a generator outside the repo (`Objects.txt`'s last template of each subclass, `CrGen1`,
+  `CrGen4`, the executable's tables), checked by:
+- **The check against the original data** (`h3-pack-adventure`'s new `examples/original_data.rs`,
+  run by `verify --with-original-data`): each of the 82 types is one `CrGen1.txt` or `CrGen4.txt`
+  row by name (the two Unicorn Glades in pack order), its masks the subclass's last `Objects.txt`
+  template's as the import converts them, its creatures `dwelling_creatures` 0x63D570 (80 i32) and
+  `dwelling4_creatures` 0x677938 (2 × 4); each faction's table the original's derivation
+  (`town_creatures` 0x6747B4[faction × 14 + level], the last class-17 subclass listing it, the
+  Golem Factory for the Stone Golem): 63 outcomes, the duplicates 7, 13, 16, 47, 51 never drawn.
+  Perturbed footprints, tables and creatures fail it; without the files it is skipped.
+- **Survey corrections** (`E08-dwellings.md` §3.2, a note after the paragraph; design §2): **63**
+  outcomes, not 62 (one per creature); 44 entrances at the anchor besides the Angel Portal's; the
+  one-left list has the Archer's, not the Crusader's; the Giant's (Cloud Temple), not the Titan's,
+  blocks the cell above the left one.
+- **Tests:** `h3-adventure`'s `ruleset/tests/dwellings.rs` (the kinds, the checks, the parameters,
+  the tables, the errors' texts, the hash); `h3-pack-adventure`'s format tests, the costs' test
+  (gold and one other resource at most, design §2) and `the_packs_type_the_dwellings_of_increment_10`
+  (the counts 62 and 82, the guards: 3 Green Dragons, 9 Gold and 6 Diamond Golems, 12 Earth
+  Elementals, 6 Firebirds; the Angel Portal's shift alone; the tables); the two type counts moved.
+- **Rules:** ADV-DWL-001, ADV-DWL-005, ADV-RFG-001 new (`implemented`; their import T93b, the
+  draws T94, the visits T95), citing batch E10's E10-1, E10-7, E10-9 as observations (survey §16).
+- **Replays:** the 39 adventure goldens (`fixtures/replays/adventure/`) re-recorded from their
+  commands: every command and day unchanged; the 39 headers' `adventure_ruleset_hash` moved, and
+  in the 23 duel and sea replays every checkpoint and final hash (base's 64 new types come before
+  ab's and SoD's, so those maps' AB and SoD objects' type ids, which the state hash holds, moved;
+  the army, economy and rewards maps' did not). **The AI lane's** two bots tables: only
+  `engine.adventure` moved, to `e35bf409c05f50b1` (`cross-lane`, decision 249); its run records
+  keep the hash they ran with.
+- **Versions:** adventure ruleset part v16. The game state hash, the adventure state hash and the
+  map import unchanged.

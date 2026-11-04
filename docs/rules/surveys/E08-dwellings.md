@@ -252,7 +252,13 @@ and Hydra's), 3 also block the cell above the left one (Pikeman, Titan, Wolf Rid
 the Ogre keep a blocked 2 × 2 with one entrance. The Angel Portal's template is three cells wide
 with its entrance one left of its anchor: its move puts that entrance on the random dwelling's
 anchor and its third cell on the random dwelling's left one. **So after the draw a player's paths
-and the entrance tile depend on the drawn creature.**
+and the entrance tile depend on the drawn creature.** *Corrected by E08 T93a* (the packs'
+check against `Objects.txt` and the executable's tables, `h3-pack-adventure`'s `original_data`):
+**63** outcomes, one per creature (a class-17 subclass lists one creature, the Golem Factory's
+outcome is the Stone Golem alone); 44 entrances at the anchor besides the Angel Portal's (45 after
+its move); the one-left list has the Archer's (`AVGcros0.def`), not the Crusader's (the Barracks'
+entrance is its anchor); the three blocking the cell above the left one are the Pikeman's, the
+Giant's (the Cloud Temple) and the Wolf Rider's.
 
 `vcmi` (`pickRandomObject`): the same faction (the linked town's, else the set, else any faction
 with a town), level and creature; the dwelling is the first one not `bannedForRandomDwelling` that
