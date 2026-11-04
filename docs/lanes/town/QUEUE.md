@@ -47,6 +47,14 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-04 (the adventure lane, E08 T93b, `adventure/e08-t93b`; **for T7a, the import**):
+  `h3-map`'s `import/codes.rs` has `FACTIONS`, the original's faction codes 0 to 8 to the core
+  factions' keys (`base:castle` … `ab:conflux`), for the towns' import to reuse (E08 design §4,
+  §11). A random dwelling of class 216 or 217 whose town identifier names a town of the map stays
+  an untyped blocker (ADV-STUB-13, epic E09: it takes the town's drawn faction once random towns
+  are resolved); one whose identifier no town has is refused (`ImportError::DwellingTown`). Both
+  bump map import (v16 now); E09 T7a takes the next.
+
 - 2026-11-04 (the client lane, E17 M6 T3c3, `client/e17-m6-t3c3`; **when you change
   `h3-towns`' or `h3-pack-towns`' public API**): the battle client's binary now compiles the packs'
   town part (`h3_pack_towns::compile`) and reads `TownRuleset::town`, `TownRecord::building` and
