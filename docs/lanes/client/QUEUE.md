@@ -27,16 +27,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   client's settings file (beside `keys.toml`, *provisional*); recorded with settings on.
 - **Acceptance:** the dialog and each setting's drawing exact against recordings or listed;
   `check.sh`. **Depends on:** T1 (done). **Status:** cut in three by the user (2026-11-04);
-  T4a done (design §12.12):
-  - **T4b:** cut in three by the user (2026-11-04); T4b1 (design §12.13) and T4b2a (§12.14) done:
-    - **T4b2b:** cut in two by the user (2026-11-04); T4b2b1 done (design §12.15: the hover read
-      whole, the heroes' windows on the hover and kept, CLT-Q47 to Q50):
-      - **T4b2b2:** the stacks' four army info windows (`army_info_stack_create` 0x46CEB0,
-        `army_info_stack_set` 0x46DC30, `army_info_stack_show` 0x46DF00; design §12.15, "The
-        stacks' windows" and "Their fill"): drawn, filled and shown on the hover's empty arm
-        (`h3_view::army_info`) at levels 1 and 2, the Ballista's damage as the stats dialog's
-        (CLT-Q48, fixed in the client's profile), recorded at both levels (the situations'
-        `army_info`); a still's status line at levels 1 and 2 (the epic's review item 42).
+  T4a done (design §12.12); T4b done (cut in three by the user, 2026-11-04: T4b1 §12.13, T4b2a
+  §12.14, T4b2b cut in two: T4b2b1 and T4b2b2 §12.15, the army info windows):
   - **T4c:** the hex grid, the movement and cursor shadows drawn (`draw_hex_overlays` 0x493930's
     options, 0x493EA0), recorded with the settings on; the keys F6 to F8 (`battle_set_shades`
     0x479FC0, saved at once). The spell book's page turns ("Animate SpellBook", kept by T4a)

@@ -5259,3 +5259,44 @@ docs with it.
   inputs, a still's windows at each level, `right-click:`, CLT-Q50), clippy, the real-asset
   gate, two stills at levels 1 and 2 rendered with the original's assets and looked at. Not
   tested (a `Battle` needs the installation's archives): the window's drawing and its inputs.
+
+### M6 T4b2b2 — the stacks' army info windows (2026-11-04)
+
+On `client/e17-m6-t4b2b2`, on the reading of T4b2b1 (design §12.15, "The stacks' windows", "Their
+fill") and CLT-Q48's answer (fixed). The build, the captures, a fresh review and its fixes by
+four sub-agents in turn, their docs with them; CLT-Q51 asked and answered at once (copied).
+
+- **Built** (design §12.15, "The client's (M6 T4b2b2)"): `h3_view::army_info`'s stacks' windows
+  (`ArmyInfoLayout`, `Kind`, `StackShown`, `Drawn`, `StackInfo`, `stack_window`), the layout's
+  `[army_info]` section of `layouts/battle.toml` (ids 2200 to 2218), five string keys
+  (`battle.army-info.*`); the fill from the stats dialog's numbers (`stats::army_info`,
+  `own_damage`), CLT-Q48 by profile in `stack_window` (the client's Ballista Dmg the dialog's, the
+  original's its own range); `Windows::enter`'s hex arm (a living stack on either hex by its
+  facing, the kind by the level, the place by its owner's side), `Windows::stack` in
+  `track::Shown::army`, drawn every frame from `Follower::observation(turn)`; a still's status
+  line at its level (`mouse::pointer` takes a level, `Hover::line_level`,
+  `scenario::opening_previews`). No engine crate changed.
+- **Agent's calls** (change freely): the stacks' layout in the heroes' window's form
+  (`HeroInfoLayout` reused); no cache of the drawn windows; the count the stack's current count
+  (the windows show only between actions); a still's line at the level of the last new hex or
+  attack slot. Kind 2's item ids, provisional at the build, were read from the running
+  original's memory at the captures: 2200 and 2215 to 2218, kind 1's.
+- **Captures:** six stills, every frame exact (0 differing, the whole screen): `army-info-stack`
+  (level 1, the own Marksmen, "View Marksman info."), `-stack-enemy` (level 1, the Goblins, the
+  shot hint with "24 shots left, 14-21 damage"), `-spells` (level 2, the Gnolls, GENRLTXT 675),
+  `-stack-f5` (level 1 then F5: the window and the line kept), `-ballista` (level 1, Dmg 2-3, the
+  original's profile), `-spells-f5` (the captures agent's: level 2 then F5 to 0, the window gone,
+  the line kept at level 2's). `drawn`: 213 the same, 6 new.
+- **Review** (a fresh agent, read-only; five findings, fixed by a sub-agent): a still's line not
+  written again at an attack's new slot on the same hex (now as the handler's: `Hover` keeps the
+  cursor's frame, `spellbook::Army::legal`); the still's wiring tested through `pointer::still_legal`
+  and `sequences::resting` (extracted; `Still::new`); the follower test requiring each window; a
+  hypnotized stack coloured by its owner; a still's options dialog opening at the still's level
+  and setting the hover's (T4b2b1's gap); §12.14's and T4b2b1's still lines marked superseded.
+- **Not built:** a still with a stack's active spells (a still's battle stays at its opening; the
+  unit tests cover the icons and the empty list's text); F6 to F8 (T4c).
+- **Checked:** unit tests (`army_info/tests.rs`: the layout by side and kind, the fill's forms,
+  the Ballista by profile, the spells; `track/tests.rs`: the stacks' windows over time, a two-hex
+  stack's hexes; `mouse/tests.rs`: a still's line at each level; the binary's: the follower
+  hovering the acting stack, a Ballista's fill, a still's previews, the still's stacks' windows),
+  clippy, `fmt`, the real-asset gate, `h3-view`'s coverage 100 %, `drawn`, `check.sh`.
