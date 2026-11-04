@@ -104,6 +104,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 250. **T93b whole, the holds' type moved in from T94** (the user; recommended): the import of classes 17, 20, 78 and 216–218, the factions table, the owners, ADV-STUB-13, the refusals A-34 to A-36 and their entries, the census and `h3m.md` in one pull request (map import v16, one re-record); `Holds::RandomDwelling` and its arm in `check_holds` (design §5's first bullet) come with it, since a random dwelling's faction set and level range reach the game only through them; the resolution, the lists and the refusal of a hero on a random dwelling's entrance stay T94's. Not chosen: two pull requests at the classes (17, 20, 78; then 216–218), two import bumps.
 
+### Decisions at T94's start (2026-11-04, user)
+
+251. **T94 in two at the design's seam, T94a now** (the user; recommended): **T94a** the build (a hero on a tile a random dwelling's outcome may cover refused, the resolution in the placement walk, the dwelling and camp indexes, the owners' and the start's reveal's and the views' tests, the census; no version moves: the encoding is unchanged and no replay has a dwelling); **T94b** the state (the dwellings' week block, the camps' draws, the week's refill; adventure state hash v20, the replays rehashed) in the next session. Not chosen: both in this session; T94 whole.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
