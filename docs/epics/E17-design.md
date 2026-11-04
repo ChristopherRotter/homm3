@@ -5807,35 +5807,49 @@ in `cursor_attack_slots` (0x4746DA), `cursor_attack_from_hex` (0x474A43), `battl
      close, the panel left lit.
   5. The Catapult's case reads the hero's Ballistics with no test of a hero (0x474C95; a Catapult
      always has one).
-- **The client's plan** (for T4b1's builder; a plan, nothing built):
-  - `h3_view::auto`: a pure `plays_itself(creature, auto)` for a human's waiting turn under Auto
-    Combat, the creature by its original id (as `mouse::CATAPULT`): 145 the Catapult's box
-    (`Settings::auto[2]`), 146 and 149 the Ballista's (`[3]`), 147 the Tent's (`[4]`), any other
-    Creatures' (`[0]`); a machine whose turn waits is a commanded one (the engine plays the others
-    itself, so no skill is tested here). `Auto::of` gains per turn whether its stack plays itself
-    (from the turns' observations' active stack and the settings then): on over a turn that does
-    not, that turn is the human's and Auto Combat stays on; `Input::Auto` toggles (off when on); a
-    stop takes effect at the next turn that plays itself, a press before a human-played turn being
-    that turn's (oddity 2: the window carries it to the turn's start as it carries ↑, ↓ and F);
-    `played` true only for the turns it plays (`Autoplay::selected` cleared by a human-played turn,
-    0x47864A, as it already reads).
-  - `h3_view::panel::shown`: `Autoplay::plays` false on a human-played turn under Auto Combat
-    (lit), `selected` false there; the rest as built.
-  - The binary: `Live::set_auto` takes the five boxes with the flag; `Live::waiting` and
-    `Live::next` ask `plays_itself` for the active stack of a human's side. `Battle::switch_auto`
-    toggles: on over a stack that plays itself the bot's command at once (as now), over one that
-    does not nothing more; off, nothing shown. `Battle::stop_auto` stops only at a turn that plays
-    itself, else keeps the press for the human-played turn's start. `Battle::auto_on`,
-    `auto_turn`, `pointer::auto` and `pointer::shown` (`src/bin/h3-view/pointer.rs`) by the
-    per-turn flags, so the mouse is taken on a human-played turn under Auto Combat. The dialog's
-    close applies a changed box at once (oddity 4: the bot's command for the turn waiting if it now
-    plays itself, the panel left as it was), the change joining `Battle::switches` with its time
-    so that a seek back or Restart keeps it (*provisional*). The bot (`Greedy`, *provisional*,
-    M2's review list) chooses for the commanded machines it plays: the original's choices are the
-    engine's automatic turns (BAT-WAR-002, -003, -008, BAT-SIE-011), crate-private in `h3_battle`;
-    equal commands would need them public (the battle lane's; not asked now). Spells:
-    `Settings::auto[1]` kept only (T5). A recording: a commanded Ballista (Artillery) under Auto
-    Combat with Combat Ballista off shows oddities 1 and 2 (the harness's registry has it off).
+- **The client's (M6 T4b1, *provisional* where marked):**
+  - `h3_view::auto`: `plays_itself(creature, boxes)` (the original id, as `mouse::CATAPULT`: 145 the
+    Catapult's box, `Settings::auto[2]`; 146 and 149 the Ballista's, `[3]`; 147 the Tent's, `[4]`;
+    any other or none Creatures', `[0]`; Spells, `[1]`, no stack's: kept only, T5's) and
+    `Acting`, a turn's stack: `Itself` (the computer's, or one no command waits for: a war machine
+    without its skill, which the engine plays) or `Human(original)` (a machine among them a
+    commanded one, so no skill is tested). `auto::itself` (*provisional*): from when each turn's
+    stack plays itself by the boxes the battle began with and the dialog's changes since
+    (`BoxChange`: the turn, the close's time, the boxes): from its start, or from the last close
+    in it that set its box (oddity 4), never after one that cleared it. `Auto::of(inputs, starts,
+    itself)` per turn: the start's stop read only at a turn it plays (else the stop is gone, the
+    flag kept), `Input::Auto` a toggle on a turn it does not play (on over a stack that plays
+    itself: from then), a box set while on handing the turn over; `on`, `on_at_start` and
+    `stopped` beside `plays`, `played` and `from_start`.
+  - `h3_view::panel::Autoplay::on` and `scene::Panels::with_auto(snapshot, auto, bugs)`: below.
+  - The binary: `pointer::stack_of`, `pointer::stacks` (each turn's stack by the engine's battle
+    it pairs with; none: `Itself`), `pointer::captured` (the comparisons': `Settings::CAPTURE`, no
+    dialog), `pointer::auto(inputs, timeline, itself)`, `pointer::shown` and `Follower::shown` by
+    `itself`. `Battle::itself` (by `Battle::boxes`, the closes' changes, kept as the switches: a
+    seek back or Restart keeps them), `auto_turn` by it (`Live::set_auto` stays one flag, whether
+    Auto Combat plays the turn to come, the battle asking the box: *provisional*, not the plan's
+    boxes in `Live`); `auto_on` (a press is a stop only while the battle waits for no human's
+    turn: on a human-played turn waiting under Auto Combat it is that turn's), `auto_at_start`;
+    `switch_auto` a toggle (`hand_over`: the bot's command when Auto Combat now plays the turn
+    waiting, else the panel made again); `boxes_closed` (the window asks each pass: a close's
+    changed boxes join `Battle::boxes` with the turn waiting and the time; under Auto Combat a box
+    set for that turn hands it to the bot at once, oddity 4, *provisional*: the panel dims there
+    as at a switch, where the original's stays lit). The window drops the key a stop carries (↑,
+    ↓, F) when the turn it is at is one Auto Combat does not play. The bot (`Greedy`,
+    *provisional*, M2's review list) chooses for the commanded machines it plays, as planned.
+  - **CLT-Q45** (fixed, the original's for the comparisons only): (1) `Autoplay::on`, set by
+    `Panels::with_auto` in `Bugs::Fixed` (the window's): on over a human's turn it does not play,
+    the button selected while the flag is (its click visibly switching it off), the turns after
+    keeping it; `Bugs::Original` (the sequences' panels) unselects it there (0x47864A). (2) The
+    window drops a press made before a human-played turn (and a carried key), as with Auto Combat
+    off; `Auto::of` drops the stop in both profiles (the flag stays on, as the original's). The
+    original's press acting on that turn is the record's command in the comparisons; their
+    sequences' parser still takes every `key:`, `hex:` and `click:` after `key:a` as a stop (*not
+    built*: a sequence pressing for a human-played turn under Auto Combat, with its recording).
+  - Not built: the computer's casts for the human's hero (Spells, T5's); the engine's own choices
+    for the commanded machines (BAT-WAR-002, -003, -008, BAT-SIE-011, crate-private in
+    `h3_battle`); the recording (a commanded Ballista, Artillery, under Auto Combat with Combat
+    Ballista off: oddities 1 and 2).
 
 ### 12.14 Creature Info's level: F5 and the status line's damage (M6 T4b2a)
 
