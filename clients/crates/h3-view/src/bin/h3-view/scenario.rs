@@ -575,6 +575,24 @@ pub fn opening_legal(scenario: &Path, packs: &Path, seed: u64) -> Result<Vec<Com
         .unwrap_or_default())
 }
 
+/// The engine's previews of the attacks and shots the side to act may give at the opening of
+/// `scenario` (E17 M6 T4b2b2: a still's status line at Creature Info's levels 1 and 2, as
+/// [`Turned::of`]'s; none when no side acts).
+pub fn opening_previews(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+) -> Result<Vec<(Command, [u64; 2])>, String> {
+    let (ruleset, state) = opening(scenario, packs, seed)?;
+    Ok(state
+        .side_to_act()
+        .map(|side| {
+            let commands = map::legal_commands(&state, &ruleset, side);
+            previews(&state, &ruleset, side, &commands)
+        })
+        .unwrap_or_default())
+}
+
 /// The spells of the side to act's hero that the aim's entry tells affect no one at the opening
 /// of `scenario` (E17 M5 T4a; `enter_player_cast` 0x59F085): the stack spells and Teleport no hex
 /// takes (the engine gives no aim), by handle, among `spells` (their original numbers).

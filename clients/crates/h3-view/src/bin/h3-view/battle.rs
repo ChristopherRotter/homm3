@@ -28,6 +28,7 @@ use h3_view::anim::Timeline;
 use h3_view::anim::{
     self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed, Stage,
 };
+use h3_view::army_info::Drawn;
 use h3_view::auto::{Acting, Auto, turn_at};
 use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
@@ -2107,6 +2108,35 @@ impl<'g> Battle<'g> {
         ))
     }
 
+    /// A stack's army info window `shown` as `observation`'s battle fills it (E17 M6 T4b2b2,
+    /// design §12.15: `army_info_stack_set` 0x46DC30, the stats dialog's numbers), in the
+    /// client's profile (CLT-Q48: a Ballista's Dmg the dialog's): none without the stack there,
+    /// the rules or the text tables (*provisional*: built anew at every frame, as the heroes').
+    fn stack_window(
+        &self,
+        observation: &Observation,
+        shown: h3_view::army_info::StackShown,
+    ) -> Option<MessageBox> {
+        let ground = self.ground;
+        let (ruleset, writer) = (ground.previews()?, ground.writer.as_ref()?);
+        let sources = crate::stats::Sources {
+            manifest: &self.record.header.manifest,
+            ruleset,
+            tables: &ground.tables,
+            catalogue: &writer.catalogue,
+            towns: ground.towns(),
+        };
+        let viewing = self.viewing_player();
+        let info = crate::stats::army_info(&sources, observation, shown.stack, viewing)?;
+        Some(h3_view::army_info::stack_window(
+            &ground.layout.army_info,
+            &writer.catalogue,
+            (shown.side, shown.kind),
+            &info,
+            Bugs::Fixed,
+        ))
+    }
+
     /// Whether the combat options dialog is open over the battle (E17 M6 T4a).
     pub fn options_open(&self) -> bool {
         self.options.is_some()
@@ -2869,9 +2899,15 @@ impl<'g> Battle<'g> {
         }
         // The army info windows the mouse shows (E17 M6 T4b2b1, design §12.15): each
         // `battle_redraw` draws the shown ones again while Creature Info's level is not 0, each
-        // filled by the battle of the turn that showed it.
-        for (side, turn) in self.shown.army(t).drawn() {
-            let window = (self.follower.observation(turn)).and_then(|o| self.hero_window(o, side));
+        // filled by the battle of the turn that showed it (the stacks' since T4b2b2).
+        for drawn in self.shown.army(t).drawn() {
+            let window = match drawn {
+                Drawn::Hero(side, turn) => {
+                    (self.follower.observation(turn)).and_then(|o| self.hero_window(o, side))
+                }
+                Drawn::Stack(shown) => (self.follower.observation(shown.turn))
+                    .and_then(|o| self.stack_window(o, shown)),
+            };
             if let Some(window) = window {
                 let draws = window.dialog.draws(&window.shown, &layout.player_palette);
                 list.extend(draws.into_iter().map(Draw::Dialog));

@@ -196,7 +196,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   windows on the hover, cut in two by the user (2026-11-04): **T4b2b1** (done 2026-11-04, design
   §12.15) the hover read whole (both kinds of window), the heroes' windows on the hover and kept
   after their right press, CLT-Q47 to Q50 asked and answered (Q47 copied, Q48 to Q50 fixed),
-  four stills exact (`army-info-hero`, `-hero-enemy`, `-none`, `-kept`); **T4b2b2** the stacks' four windows built, filled and recorded (CLT-Q48's fix);
+  four stills exact (`army-info-hero`, `-hero-enemy`, `-none`, `-kept`); **T4b2b2** (done 2026-11-04, design §12.15) the stacks' four windows built, filled and shown
+  at levels 1 and 2, a still's status line at its level, CLT-Q48 fixed and CLT-Q51 copied, six
+  stills exact (`army-info-stack`, `-stack-enemy`, `-spells`, `-stack-f5`, `-ballista`,
+  `-spells-f5`); T4b done;
   **T4c** the grid and the shadows drawn.
 - **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
   question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
@@ -410,9 +413,9 @@ The next milestone's list starts here.
     table, so the two viewers' own keys stay the same as E24 M3 T0 wants); plain F5 to F8 are the
     original battle's (F5 Creature Info's level since T4b2a, F6 to F8 the grid and shadows at
     T4c). The map viewer's defaults changed with it (a `cross-lane` change; its inbox told).
-38. Creature Info's level recorded for the heroes' windows only (T4b2b1: four stills exact at
-    levels 1 and 2); the stacks' windows at T4b2b2; the hints' damage words checked against the
-    user's tables only (a still has no previews, item 42).
+38. Creature Info's level recorded at levels 1 and 2: the heroes' windows (T4b2b1: four stills
+    exact), the stacks' windows and the shot hint's damage (T4b2b2: six stills exact, item 42);
+    the strike hint's damage words checked against the user's tables only (no still strikes).
 39. The army info windows' model (T4b2b1, *provisional*, design §12.15): a ninth list of
     `track::Shown` (`army`) holding each shown window's turn, the window filling it from the
     follower's turns at every frame (no cache); a new list of `Shown` needs its place in `Lens`.
@@ -426,5 +429,13 @@ The next milestone's list starts here.
 41. CLT-Q49's fix (T4b2b1, *provisional*): the keys C, F, S, R and O hide the windows whatever
     they then do, with the mouse over the battlefield while the battle takes the key; C, S, R
     and O at the hotkey's release. The harness's sequences push no hide (level 0).
-42. The stacks' army info windows not built (T4b2b2): over a stack's hex at levels 1 and 2 no
-    window shows (the original's kind 1 or 2); a still's status line at 1 and 2 stays level 0's.
+42. The stacks' army info windows (T4b2b2, *provisional* where marked; design §12.15): built,
+    filled and shown at levels 1 and 2, six stills exact (`army-info-stack`, `-stack-enemy`,
+    `-spells`, `-stack-f5`, `-ballista`, `-spells-f5`); their layout a new `[army_info]` section of
+    `layouts/battle.toml` in the heroes' window's form (`HeroInfoLayout` reused); kind 2's item ids
+    kind 1's (read from the running original's memory); filled every frame from the turn's
+    observation (no cache). A still's status line at levels 1 and 2 words the damage from the
+    opening's previews (`scenario::opening_previews`), at the level of the last new hex or slot.
+    No still shows a stack's active spells (a still's battle stays at its opening; the unit tests
+    cover the icons and GENRLTXT 675). CLT-Q48 fixed (the client's Ballista Dmg the dialog's),
+    CLT-Q51 copied (negative luck's icon the neutral one).

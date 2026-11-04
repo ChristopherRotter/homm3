@@ -722,6 +722,250 @@ font_palette = "game.pal"
 colour = 4
 align = 5
 
+# The stacks' army info windows (E17 M6 T4b2b2, design §12.15; `crate::army_info` fills them):
+# `army_info_stack_create` 0x46CEB0 builds four (`combat_dialog_create` 0x472483 to 0x4725D4), by
+# the stack's owner's side and Creature Info's level, every item hidden until
+# `army_info_stack_show` 0x46DF00; `army_info_stack_set` 0x46DC30 fills them. No shadow. The ids
+# are the executable's (0x898 on, in the constructor's order); kind 2's as kind 1's
+# (*provisional*: read for kind 1 only).
+#
+# Kind 1, "all statistics" (level 1): the attacker's side's at (1, 267) into the battle dialog's
+# +0x7C, the defender's at (721, 267), +0x80; 78 x 288.
+[army_info.all]
+places = [[1, 267], [721, 267]]
+
+[army_info.all.dialog]
+place = [0, 0]
+
+# The background (flags 0x800), in the colours of the stack's side's hero's player.
+[[army_info.all.dialog.items]]
+kind = "picture"
+id = 2200
+picture = "CCrPop.pcx"
+at = [0, 0]
+size = [78, 288]
+
+# The portrait (flags 0x10), its frame the creature + 2.
+[[army_info.all.dialog.items]]
+kind = "def"
+id = 2201
+def = "TwCrPort.def"
+at = [10, 6]
+size = [58, 64]
+
+# The four rows (+0x3C to +0x48), each 12 below the last from y 75: the label ("%s:" of GENRLTXT
+# 381, 382, 387 and 390), alignment 0, and in the same 60 x 12 box the value, alignment 2, both
+# `tiny.fnt` colour 4.
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2202
+at = [9, 75]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2203
+at = [9, 75]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 2
+
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2204
+at = [9, 87]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2205
+at = [9, 87]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 2
+
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2206
+at = [9, 99]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2207
+at = [9, 99]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 2
+
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2208
+at = [9, 111]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2209
+at = [9, 111]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 2
+
+# Morale: the label ("%s:" of GENRLTXT 385) in colour 4 (the hero's window's is colour 1),
+# `imrls.def` (22 x 12) right of it (+0x4C), its frame the morale held to -3..3, + 3.
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2210
+at = [9, 131]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[army_info.all.dialog.items]]
+kind = "def"
+id = 2211
+def = "imrls.def"
+at = [47, 131]
+size = [22, 12]
+
+# Luck (+0x50): as morale's a row lower, GENRLTXT 386 and `ilcks.def`.
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2212
+at = [9, 143]
+size = [60, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[army_info.all.dialog.items]]
+kind = "def"
+id = 2213
+def = "ilcks.def"
+at = [47, 143]
+size = [22, 12]
+
+# The count (+0x54) over the portrait's box: `Verd10B.fnt` colour 4, alignment 10 (right,
+# bottom).
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2214
+at = [10, 8]
+size = [58, 64]
+font = "Verd10B.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 10
+
+# The last three spells' icons (+0x58 to +0x60), 38 apart: frame the spell + 1, the rest 0.
+[[army_info.all.dialog.items]]
+kind = "def"
+id = 2215
+def = "spellint.def"
+at = [15, 169]
+size = [48, 36]
+
+[[army_info.all.dialog.items]]
+kind = "def"
+id = 2216
+def = "spellint.def"
+at = [15, 207]
+size = [48, 36]
+
+[[army_info.all.dialog.items]]
+kind = "def"
+id = 2217
+def = "spellint.def"
+at = [15, 245]
+size = [48, 36]
+
+# The text over the first icon's box (+0x64): "No active spells" (GENRLTXT 675) without any,
+# else empty; `tiny.fnt` colour 1, alignment 1.
+[[army_info.all.dialog.items]]
+kind = "label"
+id = 2218
+at = [15, 169]
+size = [48, 36]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+
+# Kind 2, "spells only" (level 2): at (1, 429) into +0x84 and (721, 429), +0x88; 78 x 126.
+[army_info.spells]
+places = [[1, 429], [721, 429]]
+
+[army_info.spells.dialog]
+place = [0, 0]
+
+# The background, in the colours of the stack's side's hero's player.
+[[army_info.spells.dialog.items]]
+kind = "picture"
+id = 2200
+picture = "SpellInf.pcx"
+at = [0, 0]
+size = [78, 126]
+
+# The icons and the text as kind 1's, from y 7.
+[[army_info.spells.dialog.items]]
+kind = "def"
+id = 2215
+def = "spellint.def"
+at = [15, 7]
+size = [48, 36]
+
+[[army_info.spells.dialog.items]]
+kind = "def"
+id = 2216
+def = "spellint.def"
+at = [15, 45]
+size = [48, 36]
+
+[[army_info.spells.dialog.items]]
+kind = "def"
+id = 2217
+def = "spellint.def"
+at = [15, 83]
+size = [48, 36]
+
+[[army_info.spells.dialog.items]]
+kind = "label"
+id = 2218
+at = [15, 7]
+size = [48, 36]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+
 # The combat options dialog (E17 M6 T4a, design §12.12; `crate::options` fills it):
 # `combat_options_create` 0x46E3B0 at (159, 84), 481 x 431 (centred on 800 x 600, halves dropped),
 # the base dialog's flags 0x12 (its shadow). The ids are the executable's but the texts': the

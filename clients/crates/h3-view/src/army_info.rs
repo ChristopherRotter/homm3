@@ -8,23 +8,130 @@
 //! battle's mouse over time ([`crate::mouse::track`]) changes it at the inputs and the log's
 //! entries; a still ([`Hover`]) at the harness's moves and presses at the opening. A hero's
 //! window is filled as the right press fills it ([`crate::hero_info`]). The stacks' four windows
-//! (kind 1 "all statistics" at level 1, kind 2 "spells only" at level 2, by the stack's side) are
-//! T4b2b2's: not built; their place is [`Windows::enter`]'s hex arm.
+//! (E17 M6 T4b2b2: kind 1 "all statistics" at level 1, kind 2 "spells only" at level 2, by the
+//! stack's owner's side; `army_info_stack_create` 0x46CEB0) are filled by [`stack_window`]
+//! (`army_info_stack_set` 0x46DC30) from what the stats dialog shows of the stack
+//! ([`StackInfo::of`]), so the two agree.
+
+use alloc::collections::BTreeMap;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use h3_protocol::wire::{Observation, Side};
 use h3_render::Bugs;
+use h3_ui::text::{Args, Catalogue};
+use h3_ui::ui::Shown;
+use serde::Deserialize;
 
+use crate::hero_info::HeroInfoLayout;
 use crate::layout::BattleLayout;
-use crate::mouse::{Spot, spot};
+use crate::message::MessageBox;
+use crate::mouse::{Facing, Field, Kind as Cursor, Legal, Spot, pointer_in, slot, slots_in, spot};
+use crate::stats::{Pair, Stats};
+
+/// A stack's window's background (`CCrPop.pcx` for kind 1, `SpellInf.pcx` for kind 2), in the
+/// colours of its side's hero's player (the ids are the executable's, from 0x898).
+pub const STACK_BACKGROUND: u16 = 2200;
+/// The creature's portrait (`TwCrPort.def`, its frame the creature + 2; kind 1).
+pub const STACK_PORTRAIT: u16 = 2201;
+/// The first row's label; its value is the next id, then the next rows' pairs (attack, defense,
+/// damage, health: 2202 to 2209; kind 1).
+pub const STACK_ROWS: u16 = 2202;
+/// Morale's label (kind 1).
+pub const STACK_MORALE_LABEL: u16 = 2210;
+/// Morale's picture (`imrls.def`; kind 1).
+pub const STACK_MORALE: u16 = 2211;
+/// Luck's label (kind 1).
+pub const STACK_LUCK_LABEL: u16 = 2212;
+/// Luck's picture (`ilcks.def`; kind 1).
+pub const STACK_LUCK: u16 = 2213;
+/// The count, over the portrait's bottom right (`Verd10B.fnt`; kind 1).
+pub const STACK_COUNT: u16 = 2214;
+/// The first of the three spells' icons (`spellint.def`, 2215 to 2217).
+pub const STACK_SPELLS: u16 = 2215;
+/// The text under the icons: "No active spells" (GENRLTXT 675) with none, else empty.
+pub const STACK_NO_SPELLS: u16 = 2218;
+/// How many spells a stack's window shows: the list's last three.
+pub const SPELLS_SHOWN: usize = 3;
+
+/// The rows' words' keys, attack to health (GENRLTXT 381, 382, 387, 390).
+const ROW_WORDS: [&str; 4] = [
+    "battle.hero-info.attack",
+    "battle.hero-info.defense",
+    "battle.army-info.damage",
+    "battle.army-info.health",
+];
+
+/// The stacks' windows' layouts (the layout's `[army_info]`; `combat_dialog_create`'s
+/// 0x472483 to 0x4725D4): each kind's places by side and its items from its corner (*provisional*:
+/// the hero's window's [`HeroInfoLayout`], the same two fields).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArmyInfoLayout {
+    /// Kind 1, "all statistics", 78 × 288: the attacker's side's at (1, 267), the defender's at
+    /// (721, 267).
+    pub all: HeroInfoLayout,
+    /// Kind 2, "spells only", 78 × 126: at (1, 429) and (721, 429).
+    pub spells: HeroInfoLayout,
+}
+
+/// Which of a stack's two windows: kind 1 (level 1, every statistic) or kind 2 (level 2, its
+/// spells alone; GENRLTXT 403 and 404, the options' boxes 233 and 234).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    /// "All Statistics" (+0x7C, +0x80).
+    All,
+    /// "Spells Only" (+0x84, +0x88).
+    Spells,
+}
+
+impl Kind {
+    /// The kind Creature Info's level `level` shows over a stack (none at 0).
+    #[must_use]
+    pub const fn at_level(level: u8) -> Option<Self> {
+        match level {
+            0 => None,
+            1 => Some(Self::All),
+            _ => Some(Self::Spells),
+        }
+    }
+}
+
+/// A stack's window while shown: which of the four (its owner's side's, the kind the level gave
+/// it), the stack it shows and the turn whose battle fills it (*provisional*: the window is
+/// filled again from that battle at every frame, as the heroes').
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StackShown {
+    /// The stack's owner's side (+0xF4): the window's place.
+    pub side: Side,
+    /// The kind.
+    pub kind: Kind,
+    /// The stack's id.
+    pub stack: u8,
+    /// The turn (0 the opening's).
+    pub turn: usize,
+}
+
+/// A window drawn: a side's hero's with the turn that filled it, or a stack's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Drawn {
+    /// Side's hero's window (+0x74, +0x78), filled by the turn's battle.
+    Hero(Side, usize),
+    /// A stack's (+0x7C to +0x88).
+    Stack(StackShown),
+}
 
 /// The army info windows at a time: those shown (their flags, each with what filled it) and
 /// Creature Info's level ("Combat Army Info Level" 0x6987C8), which draws the shown ones while
-/// not 0 (§12.14). Only the heroes' two are built; the stacks' four are T4b2b2's.
+/// not 0 (§12.14).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Windows {
     /// Each side's hero's window while shown (the attacker's first: +0x74 at (1, 135), +0x78 at
     /// (721, 135)): the turn whose battle filled it (0 the opening's).
     pub heroes: [Option<usize>; 2],
+    /// The stack's window shown (E17 M6 T4b2b2): one of the four at most, since only a new hex
+    /// shows one and it hides all six first.
+    pub stack: Option<StackShown>,
     /// Creature Info's level, 0 to 2.
     pub level: u8,
 }
@@ -35,6 +142,7 @@ impl Windows {
     pub const fn at_level(level: u8) -> Self {
         Self {
             heroes: [None; 2],
+            stack: None,
             level,
         }
     }
@@ -43,25 +151,34 @@ impl Windows {
     /// six); the level kept.
     pub const fn hide(&mut self) {
         self.heroes = [None; 2];
+        self.stack = None;
     }
 
     /// The mouse entering a new hex `spot` (0x47557D to 0x475879; [`Spot::Nothing`] for −1) in
-    /// turn `turn`'s battle `observation`: every window hidden, then at most one shown while the
-    /// level is not 0: over a side's hero's rectangle (0xFC, 0xFD) with a hero there, its window,
-    /// filled by the turn's battle (`army_info_hero_set`, then `army_info_show`).
-    pub fn enter(&mut self, spot: Spot, observation: &Observation, turn: usize) {
+    /// turn `turn`'s battle `field` (its stacks where they stand and face): every window hidden,
+    /// then at most one shown while the level is not 0: over a side's hero's rectangle (0xFC,
+    /// 0xFD) with a hero there, its window, filled by the turn's battle (`army_info_hero_set`,
+    /// then `army_info_show`); over a hex a living stack stands on (`hex_stack`, either hex of a
+    /// two-hex one: moving between them hides and shows it again, oddity 10), its window by its
+    /// owner's side, kind 1 at level 1 and kind 2 at level 2 (`army_info_stack_set`, then
+    /// `army_info_stack_show`).
+    pub fn enter(&mut self, spot: Spot, field: &Field<'_>, turn: usize) {
         self.hide();
-        if self.level == 0 {
+        let Some(kind) = Kind::at_level(self.level) else {
             return;
-        }
+        };
         match spot {
-            Spot::Hero(side) if observation.sides[index(side)].hero.is_some() => {
+            Spot::Hero(side) if field.observation.sides[index(side)].hero.is_some() => {
                 self.heroes[index(side)] = Some(turn);
             }
-            // A stack's hex (`hex_stack`): its window by its owner's side, kind 1 at level 1 and
-            // kind 2 at level 2 (`army_info_stack_set`, `army_info_stack_show`): T4b2b2's, not
-            // built; none shown meanwhile.
-            Spot::Hex(_) => {}
+            Spot::Hex(hex) => {
+                self.stack = field.at(hex).map(|s| StackShown {
+                    side: s.side,
+                    kind,
+                    stack: s.id,
+                    turn,
+                });
+            }
             // Anything else: none.
             Spot::Hero(_) | Spot::Keep | Spot::Tower | Spot::Nothing => {}
         }
@@ -85,14 +202,160 @@ impl Windows {
     }
 
     /// The windows drawn (each `battle_redraw`'s end): the shown ones while the level is not 0,
-    /// each hero's side with the turn whose battle filled it; none at level 0.
-    pub fn drawn(&self) -> impl Iterator<Item = (Side, usize)> + '_ {
+    /// in the battle dialog's order (the heroes', then the stack's), each with what fills it;
+    /// none at level 0. A stack's window keeps its kind through a change of the level (§12.14
+    /// oddity 6: kind 1 shown at level 1 is drawn at 2 until a new hex).
+    pub fn drawn(&self) -> impl Iterator<Item = Drawn> + '_ {
         [Side::Attacker, Side::Defender]
             .into_iter()
             .zip(self.heroes)
-            .filter_map(|(side, turn)| Some((side, turn?)))
+            .filter_map(|(side, turn)| Some(Drawn::Hero(side, turn?)))
+            .chain(self.stack.map(Drawn::Stack))
             .filter(|_| self.level != 0)
     }
+}
+
+/// What a stack's window shows of it (`army_info_stack_set` 0x46DC30's fill, design §12.15
+/// "Their fill").
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StackInfo {
+    /// The background's player colour (+0x22 of the stack's side's hero; none: the viewing
+    /// player's, as the stats dialog's).
+    pub player: u8,
+    /// The creature's original id (the portrait's frame is it + 2).
+    pub creature: u32,
+    /// Attack: the creature's own (its record's +0x54) and the stack's now (`stack_attack_against`
+    /// with no target; when it can shoot now the higher of its ranged and its melee one, as the
+    /// stats dialog's).
+    pub attack: Pair,
+    /// Defense: the creature's own (+0x58) and the stack's now (`stack_defense_against`(no
+    /// striker, 1)).
+    pub defense: Pair,
+    /// The damage's range as the stats dialog shows it (a Ballista's each end times its hero's
+    /// attack plus 1): the client's profile's (CLT-Q48, fixed).
+    pub damage: [i32; 2],
+    /// The stack's own range (+0xD0, +0xD4: a war machine's its record's): the original's.
+    pub own_damage: [i32; 2],
+    /// Hit points per creature with their bonuses (+0xC0).
+    pub health: i32,
+    /// Morale (+0x4E8; its picture's frame held to −3..=3, + 3).
+    pub morale: i32,
+    /// Luck (+0x4EC; as morale).
+    pub luck: i32,
+    /// The count (+0x4C: the windows show only between actions, when +0x50 is −1).
+    pub count: u32,
+    /// The spells on the stack, their original ids, in its list's order (+0x420).
+    pub spells: Vec<u32>,
+}
+
+impl StackInfo {
+    /// The window's numbers from the stats dialog's `stats` of the stack (so the two agree), its
+    /// creature's original id `creature`, the background's `player` and the stack's own damage
+    /// range `own_damage` (the original's Dmg row).
+    #[must_use]
+    pub fn of(stats: &Stats, (creature, player): (u32, u8), own_damage: [i32; 2]) -> Self {
+        Self {
+            player,
+            creature,
+            attack: stats.attack,
+            defense: stats.defense,
+            damage: stats.damage,
+            own_damage,
+            health: stats.health.now,
+            morale: stats.morale,
+            luck: stats.luck,
+            count: stats.count,
+            spells: stats.effects.iter().map(|e| e.spell).collect(),
+        }
+    }
+}
+
+/// The stack's window `shown` (its side's and kind's) showing `info`, its words from
+/// `catalogue`, in profile `bugs` (`army_info_stack_set` 0x46DC30): the background in the
+/// player's colours, and in kind 1 the portrait, the rows Att and Def "%d(%d)" (even when equal,
+/// oddity 9), Dmg "%d" or "%d-%d", Health "%d", morale's and luck's frames and the count; in both
+/// the list's last three spells' icons (frame the spell + 1, the rest 0) and "No active spells"
+/// without any. The Dmg row is the stats dialog's range in the client's profile, the stack's own
+/// in the original's (CLT-Q48, the user's answer of 2026-11-04: a Ballista's).
+#[must_use]
+pub fn stack_window(
+    layout: &ArmyInfoLayout,
+    catalogue: &Catalogue,
+    (side, kind): (Side, Kind),
+    info: &StackInfo,
+    bugs: Bugs,
+) -> MessageBox {
+    let placed = match kind {
+        Kind::All => &layout.all,
+        Kind::Spells => &layout.spells,
+    };
+    let mut dialog = placed.dialog.clone();
+    dialog.place = placed.places[index(side)];
+    let number =
+        |value: i64| catalogue.text("battle.hint.number", &Args::new().number("value", value));
+    let mut texts = BTreeMap::new();
+    let mut frames = BTreeMap::new();
+    if kind == Kind::All {
+        let label = |key: &str| {
+            let word = catalogue.text(key, &Args::new());
+            catalogue.text("battle.hero-info.label", &Args::new().text("word", &word))
+        };
+        let pair = |p: Pair| {
+            let args = Args::new()
+                .number("own", i64::from(p.own))
+                .number("now", i64::from(p.now));
+            catalogue.text("battle.army-info.pair", &args)
+        };
+        let [low, high] = match bugs {
+            Bugs::Fixed => info.damage,
+            Bugs::Original => info.own_damage,
+        };
+        let damage = if low == high {
+            number(i64::from(low))
+        } else {
+            let args = Args::new()
+                .number("low", i64::from(low))
+                .number("high", i64::from(high));
+            catalogue.text("battle.army-info.range", &args)
+        };
+        let values = [
+            pair(info.attack),
+            pair(info.defense),
+            damage,
+            number(i64::from(info.health)),
+        ];
+        for (k, (key, value)) in ROW_WORDS.iter().zip(values).enumerate() {
+            let id = STACK_ROWS + 2 * u16::try_from(k).unwrap_or(0);
+            texts.insert(id, label(key));
+            texts.insert(id + 1, value);
+        }
+        texts.insert(STACK_MORALE_LABEL, label("battle.hero-info.morale"));
+        texts.insert(STACK_LUCK_LABEL, label("battle.hero-info.luck"));
+        texts.insert(STACK_COUNT, number(i64::from(info.count)));
+        let frame = |v: i32| u32::try_from(v.clamp(-3, 3) + 3).unwrap_or(3);
+        frames.insert(STACK_PORTRAIT, info.creature + 2);
+        frames.insert(STACK_MORALE, frame(info.morale));
+        frames.insert(STACK_LUCK, frame(info.luck));
+    }
+    // The list's last three, from index max(size − 3, 0); the icons left frame 0.
+    let last = &info.spells[info.spells.len().saturating_sub(SPELLS_SHOWN)..];
+    for k in 0..SPELLS_SHOWN {
+        let id = STACK_SPELLS + u16::try_from(k).unwrap_or(0);
+        frames.insert(id, last.get(k).map_or(0, |spell| spell + 1));
+    }
+    let none = if last.is_empty() {
+        catalogue.text("battle.army-info.no-spells", &Args::new())
+    } else {
+        String::new()
+    };
+    texts.insert(STACK_NO_SPELLS, none);
+    let shown = Shown {
+        texts,
+        frames,
+        players: [(STACK_BACKGROUND, info.player)].into(),
+        ..Shown::default()
+    };
+    MessageBox { dialog, shown }
 }
 
 /// The side's index in the battle's pairs (the attacker's first).
@@ -121,6 +384,13 @@ pub struct Hover {
     hex: Option<Spot>,
     /// The windows.
     pub windows: Windows,
+    /// Creature Info's level when the battle last wrote the status line (a new hex's or an
+    /// attack's new slot's, E17 M6 T4b2b2, *provisional*: the still's line is its mouse's rest's,
+    /// worded at this level; F5 after it rewrites nothing, §12.14 oddity 6).
+    pub line_level: u8,
+    /// The combat cursor's frame over the hex when its kind is an attack (+0x133CC: its slot's;
+    /// none for any other kind), as `mouse::track` keeps it.
+    attack: Option<u32>,
 }
 
 impl Hover {
@@ -130,34 +400,56 @@ impl Hover {
         Self {
             hex: None,
             windows: Windows::at_level(level),
+            line_level: level,
+            attack: None,
         }
     }
 
-    /// The battle takes a move to `point` over `observation`'s battle, the keep's and the upper
+    /// The battle takes a move to `point` over `observation`'s battle with its acting stack's
+    /// `legal` commands (each side facing its own way, a still's), the keep's and the upper
     /// tower's rectangles found with `rects` (CLT-Q21): out of the battlefield every window
-    /// hidden and the hex forgotten (0x475402); over the hex it is over already nothing changes
-    /// (0x475544); over a new one [`Windows::enter`].
+    /// hidden and the hex forgotten (0x475402); over the hex it is over already no window
+    /// changes (0x475544) and the status line is written again only as an attack's slot gives
+    /// the cursor another frame (0x475553, as `mouse::track`; a shot's never); over a new one
+    /// [`Windows::enter`]. Either way but the same hex the status line is written again.
     pub fn moved(
         &mut self,
         layout: &BattleLayout,
-        observation: &Observation,
+        (observation, legal): (&Observation, &Legal),
         (point, rects): ([i32; 2], bool),
     ) {
         if !on_field(layout, point) {
             self.windows.hide();
             self.hex = None;
+            self.attack = None;
+            self.line_level = self.windows.level;
             return;
         }
         let at = match spot(layout, point, rects) {
             Spot::Nothing => None,
             other => Some(other),
         };
+        let field = Field {
+            observation,
+            legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Original,
+        };
         if at.is_some() && at == self.hex {
+            if let (Some(frame), Some(Spot::Hex(hex))) = (self.attack, at) {
+                let now = slots_in(&field, hex)[slot(layout, point, hex)];
+                if now != frame {
+                    self.attack = Some(now);
+                    self.line_level = self.windows.level;
+                }
+            }
             return;
         }
-        self.windows
-            .enter(at.unwrap_or(Spot::Nothing), observation, 0);
+        self.windows.enter(at.unwrap_or(Spot::Nothing), &field, 0);
+        let pointer = pointer_in(&field, layout, point, &mut None);
+        self.attack = (pointer.kind == Cursor::Attack).then_some(pointer.frame);
         self.hex = at;
+        self.line_level = self.windows.level;
     }
 
     /// The mouse's hex forgotten (a stats dialog's close, a human's turn's start: the move they

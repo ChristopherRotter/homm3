@@ -14,10 +14,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#709, design §12.12); T4b cut in three by the user (2026-11-04): T4b1 done (the Auto
   Combat options, §12.13; CLT-Q45) and T4b2a done (#714: F5, the status line's damage, §12.14;
   CLT-Q46; the windows' own keys on Ctrl+F5 to Ctrl+F8). T4b2b cut in two by the user
-  (2026-11-04): **T4b2b1 done** (the hover read whole, §12.15; the heroes' army info windows on
-  the hover and kept after their right press; CLT-Q47 to Q50 answered: Q47 copied, Q48 to Q50
-  fixed; four stills exact; the PR from `client/e17-m6-t4b2b1`: check it first). **Next: T4b2b2** (the
-  stacks' four windows, CLT-Q48's fix, recorded at levels 1 and 2), then T4c (the grid and the
+  (2026-11-04): T4b2b1 done (#717, the heroes' windows, §12.15; CLT-Q47 to Q50) and **T4b2b2
+  done** (the stacks' four windows, a still's status line at levels 1 and 2; CLT-Q48 fixed,
+  CLT-Q51 copied; six stills exact; the PR from `client/e17-m6-t4b2b2`: check it first). T4b
+  done. **Next: T4c** (the grid and the
   shadows on F6 to F8), T5 to T7; then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -28,7 +28,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5 (its
   situations M6 T6), CLT-Q42 (T3b2: copy recommended, built so), CLT-Q43 and Q44 (T4a: fixes
-  recommended, built as the original's). Next id: CLT-Q51.
+  recommended, built as the original's). Next id: CLT-Q52.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -48,6 +48,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-04, E17 M6 T4b2b2 (done; the PR from `client/e17-m6-t4b2b2`: check it first).**
+  The original data staged (93 files, by the file tool: the device shell did not start); #717
+  had merged; the baseline's `check.sh` passed. The task kept whole (its windows and a still's
+  status line are recorded together). A builder (`h3_view::army_info`'s stacks' windows, the
+  fill from the stats dialog's numbers, CLT-Q48 by profile, a still's previews), the captures
+  (six stills exact; kind 2's ids read from the original's memory), a fresh reviewer (five
+  findings: the still's same-slot line rewrite, docs, tests; fixed) and CLT-Q51 (negative
+  luck's icon) asked and answered: copied. `drawn` 213 the same, 6 new; `check.sh`.
+
 - **2026-11-04, E17 M6 T4b2b1 (done; the PR from `client/e17-m6-t4b2b1`: check it first).**
   The original data staged (93 files, by the file tool: the device shell did not start); #714 had
   merged; the baseline's `check.sh` passed. The user cut T4b2b in two and chose the heroes first;
@@ -64,12 +73,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   reviewer (two findings fixed: F5 as the key that stops Auto Combat, the open dialog's
   boxes). F5 was the window's pause: the user moved the windows' own keys to Ctrl+F5 to
   Ctrl+F8 in both viewers (the map-client lane's inbox; the PR `cross-lane`). `drawn` 209 the same; `check.sh`.
-
-- **2026-11-04, E17 M6 T4a (done; #709 merged).** The original data staged
-  (57 files, by the file tool: the device shell did not start), the computer offline
-  afterwards; #704 and #706 had merged; the baseline's `check.sh` passed. The user cut T4 in
-  three. Reading, build and captures by three sub-agents in turn: the dialog read whole
-  (§12.12; ten oddities: CLT-Q43, Q44 asked), `h3_view::options`, `settings.toml`, the speed
-  and volumes in effect (the first run's volume 5: the client 6/10 as loud); six stills
-  exact; `drawn`; `check.sh`. #709: CI and Clients green; GitHub's CodeQL Rust scan failed
-  once (its default setup: not retryable, logs unreadable from the sandbox; a later push reruns it).

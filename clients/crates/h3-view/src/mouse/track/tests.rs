@@ -1321,7 +1321,11 @@ fn the_army_info_windows_follow_the_mouse_the_presses_and_the_actions() {
         8
     );
     let log = [(400, Logged::Action), (500, Logged::Turn(2))];
-    let windows = |heroes, level| Windows { heroes, level };
+    let windows = |heroes, level| Windows {
+        heroes,
+        stack: None,
+        level,
+    };
     for bugs in [Bugs::Fixed, Bugs::Original] {
         let turn = |observation, legal| Turn {
             field: Field {
@@ -1362,6 +1366,87 @@ fn the_army_info_windows_follow_the_mouse_the_presses_and_the_actions() {
         assert_eq!(shown.army(399).heroes, [Some(0), None]);
     }
     assert_eq!(Shown::default().army(0), Windows::default());
+}
+
+#[test]
+fn the_stacks_windows_follow_the_mouse_by_the_level() {
+    // E17 M6 T4b2b2 (design §12.15): a new hex over a stack shows its window by its owner's side,
+    // kind 1 at level 1 and kind 2 at 2, filled by the turn's battle; the same hex changes
+    // nothing, nor the other hex of a two-hex stack (oddity 10: hidden and shown again, the same
+    // window); a level changed keeps the kind (drawn at 0 no more); a press's hide, an action's
+    // start hide it; a human's turn start shows the one under the mouse again.
+    use crate::army_info::{Kind, StackShown};
+    let mut o = battle();
+    o.stacks[3].two_hex = true;
+    let mut next = o.clone();
+    next.active = Some(2);
+    let (legal, none) = (legal(), Legal::default());
+    let to = |at, to| Input::Move { at, to };
+    let level = |at, level| Input::ArmyInfo { at, level };
+    let inputs = [
+        level(0, 1),
+        to(0, PARK),
+        to(100, centre(86)),
+        to(110, [centre(86)[0] + 1, centre(86)[1]]),
+        to(120, centre(90)),
+        level(130, 2),
+        to(140, centre(100)),
+        to(150, centre(99)),
+        Input::Hide {
+            at: 160,
+            key: false,
+        },
+        to(170, centre(87)),
+        to(180, centre(120)),
+        level(190, 0),
+        to(200, centre(90)),
+        level(210, 1),
+        to(220, centre(86)),
+        Input::Act { at: 400 },
+    ];
+    let log = [(400, Logged::Action), (500, Logged::Turn(2))];
+    let windows = |stack: Option<(Side, Kind, u8, usize)>, level| Windows {
+        heroes: [None, None],
+        stack: stack.map(|(side, kind, stack, turn)| StackShown {
+            side,
+            kind,
+            stack,
+            turn,
+        }),
+        level,
+    };
+    let (a, d) = (Side::Attacker, Side::Defender);
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let turn = |observation, legal| Turn {
+            field: Field {
+                observation,
+                legal,
+                facing: &Facing::Sides,
+                bugs,
+            },
+            human: true,
+        };
+        let turns = [turn(&o, &legal), turn(&next, &none)];
+        let shown = run(&log, &[UNMARKS], &turns, &inputs);
+        let army = vec![
+            (0, windows(None, 1)),
+            (100, windows(Some((a, Kind::All, 0, 0)), 1)),
+            (120, windows(Some((d, Kind::All, 1, 0)), 1)),
+            (130, windows(Some((d, Kind::All, 1, 0)), 2)),
+            (140, windows(Some((d, Kind::Spells, 3, 0)), 2)),
+            (160, windows(None, 2)),
+            (180, windows(Some((a, Kind::Spells, 2, 0)), 2)),
+            (190, windows(Some((a, Kind::Spells, 2, 0)), 0)),
+            (200, windows(None, 0)),
+            (210, windows(None, 1)),
+            (220, windows(Some((a, Kind::All, 0, 0)), 1)),
+            (400, windows(None, 1)),
+            (500, windows(Some((a, Kind::All, 0, 1)), 1)),
+        ];
+        assert_eq!(shown.army, army, "{bugs:?}");
+        assert_eq!(shown.army(195).drawn().count(), 0);
+        assert_eq!(shown.army(135).drawn().count(), 1);
+    }
 }
 
 #[test]

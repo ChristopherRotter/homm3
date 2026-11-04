@@ -609,7 +609,7 @@ impl Handler<'_> {
         // E17 M6 T4b2b1), before the stack marked and the line.
         let turn = self.turn;
         self.set_army(now, |army| {
-            army.enter(at.unwrap_or(Spot::Nothing), field.observation, turn);
+            army.enter(at.unwrap_or(Spot::Nothing), field, turn);
         });
         let acting = field.observation.active.unwrap_or(u8::MAX);
         let mut aim = self.aims.get(&acting).copied().flatten();
