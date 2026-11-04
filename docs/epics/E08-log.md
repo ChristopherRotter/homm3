@@ -11643,3 +11643,48 @@ the census); the main session added the boat's refusal and wrote the records.
   request (2): a random dwelling's drawn type, moved anchor and footprint in `ObjectView`).
 - **Versions:** none moved (the encoding is unchanged; no replay or fixture map holds a dwelling:
   the determinism gate's 39 replays unchanged). T94b takes the adventure state hash v20.
+
+### Increment 10, round 6: T94b, the state and the week (2026-11-04, `adventure/e08-t94b`)
+
+**The cut** (decision 252; asked at the start, `AskUserQuestion`): T94b whole. Built by two
+narrow sub-agents (the state and its tests; the replays and the census); the main session wrote
+the records.
+
+- **A dwelling's week** (`h3-adventure`'s `state/dwellings.rs`; design §6, its "As built";
+  ADV-DWL-002): `AdventureState::dwellings`, one block by dwelling index, none while every
+  dwelling is as its week began. The static map keeps each one's week as it begins
+  (`StaticMap::full_weeks`: each creature's growth, the kind's full guards), which
+  `dwelling_counts`, `dwelling_guards` and the hash fall back to; a write that leaves every
+  dwelling full drops the block (`check_dwellings`), so the derived equality compares content
+  (*agent's call*: a field wrapper cannot see the map). An entry is a fixed-size copy (up to four
+  counts, four guard stacks by slot). The test writer `set_dwelling` is `#[cfg(test)]`; T95's
+  writer keeps the normalisation.
+- **The camps** (`economy.rs`; ADV-RFG-001): each camp's creature uniform among
+  `random_monsters(core, levels)` (the levels kept on the static map, `camp_levels`), its count the
+  creature's growth; `camp`, `check_camps` (a count at most the growth, for T95's purchases). One
+  walk of the weekly objects and the camps in object order (`economy::in_object_order`): the
+  build's first week from the setup stream, after the static map's draws, and the week's step.
+- **The week** (`calendar.rs`; ADV-DWL-003, GAM-CAL-002 amended): `start_week` drops the
+  dwellings' block, then the weekly objects with the camps, then the growth; no events.
+- **Information** (ADV-OWN-003 amended): no view shows a dwelling's counts or guards or a camp's
+  creature (`ObjectView::guards` none); tested by a written entry and another draw.
+- **Adventure state hash v20:** after v19's fields the dwellings (their number, each one's counts
+  and guards as they stand), then the camps (0 for none, else 1, their number, each creature and
+  count). The 39 replays re-recorded from their commands: only the hash lines and the version
+  moved (497 checkpoints, 11 one-line lists, 39 final hashes).
+- **Tests:** `state/tests/dwelling_weeks.rs` (seven: built full; a written entry until the week;
+  no block and a full one one state; every change moves the hash; a fork shares, a write copies;
+  the checks; the camps between Windmills at the build and over three weeks for six seeds; no
+  block without camps; the views).
+- **Bench** (`bench-check`, all 17 adventure workloads inside the 2 % gate): the forks +0.86 to
+  +1.30 % (about 32 Ir a fork: two empty blocks cloned and dropped), day-start-xl-144 +0.99 %,
+  the rest within ±0.4 %.
+- **The census** (`h3-map`'s `original_data`, `built_weeks`, seed 0, asserted: the checks, each
+  count its growth, the guards 3 × growth from `guard_level` in creature order and the kind's
+  derived ones, each camp's creature in its set and its count its growth): 695 dwellings with
+  guards, 751 guard stacks (5 007 creatures), 321 camps drawn, by level [37, 59, 47, 33, 53, 61,
+  31]; the example's output identical to master's but the new lines.
+- **Docs:** ADV-DWL-002, -003 new (verified: code reading, wiki, VCMI, batch E10's rows); ADV-RFG-001,
+  ADV-OWN-003, GAM-CAL-002 amended; ADV-DWL-005's E10-7 source corrected (batch 10a, not 10b);
+  design §6's "As built"; the town lane's inbox (T8a takes v21); T95a queued.
+- **Versions:** adventure state hash v20; nothing else.

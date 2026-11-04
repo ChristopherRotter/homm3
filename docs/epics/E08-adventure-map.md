@@ -130,8 +130,9 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
   - **T93b The import.** Done (2026-11-04, whole, decision 250; `adventure/e08-t93b`): classes 17 and 20 by subclass, 78 the camp, 216–218 not tied to a town the random dwelling with its owner and `Holds::RandomDwelling` (the type and its check moved in from T94); `codes::FACTIONS`; one tied to a town a blocker (ADV-STUB-13); A-34 to A-36 refused (`DwellingClass`, `Subclass`, `DwellingTown`, `DwellingFactions`, `DwellingLevels`; ADV-QUIRK-36 to -38); the census; ADV-OBJ-002 amended; map import v16.
 - **T94 The build and the state** (round 6; design §17), in two at the design's seam (decision 251):
   - **T94a The build.** Done (2026-11-04, `adventure/e08-t94a`): the random dwellings resolved in the placement walk (faction, then level, the table's type, its footprint, the moved anchor); a hero (`SetupError::RandomDwellingTile`) or a boat on a tile an outcome could cover refused, the name check over every outcome (agent's calls: validity independent of the draw); `StaticMap::dwellings`, `camps` and their indexes; the census; ADV-DWL-005, ADV-OWN-002, -003 amended; no version moved.
-  - **T94b The state and the week:** next (the queue's entry).
-- Rounds 7 and 8 (T95 to T97) as design §17 lists them, each queued when the one before is done.
+  - **T94b The state and the week.** Done (2026-11-04, whole, decision 252; `adventure/e08-t94b`): the dwellings' week block (none while every dwelling is as its week began, normalised at write), the camps' draws with the weekly objects in object order, `start_week`'s refill first, the views; adventure state hash v20, the 39 replays rehashed; the census (`built_weeks`).
+- **T95 The visits and the hire dialog** (round 7; design §17): T95a the visits next (the queue's entry), then T95b.
+- Round 8 (T96, T97) as design §17 lists it, each queued when the one before is done.
 
 ## Later increments (sketch)
 
