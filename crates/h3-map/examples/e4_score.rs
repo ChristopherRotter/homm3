@@ -376,7 +376,7 @@ impl<'a> Batch<'a> {
                 let id = HeroId::new(index);
                 let army = &base.adventure().hero(id)?.army;
                 Some(MapHero {
-                    hero_type: hero.hero_type,
+                    hero_type: hero.hero_type?,
                     before: base.hero(id)?.clone(),
                     experience: hero.details.experience,
                     land: land_table(rules, army, base.hero(id)?),

@@ -4,9 +4,11 @@
 //! starting-army placeholder, a pile without an amount draws it when the game is built) and
 //! rejects what the current increment cannot represent with a typed [`Unsupported`] error. It checks no game
 //! invariant: `GameSetup::validate` does, with the checks commands use. Notes:
-//! `docs/formats/h3m.md`, "Import".
+//! `docs/formats/h3m.md`, "Import". The towns, the players' starts and the pool's inputs: `town`
+//! (E09 T7a1).
 
 pub(crate) mod codes;
+mod town;
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -20,7 +22,7 @@ use h3_content::{CreatureTypeId, FactionId, Formation, ResourceId, SkillId, Spel
 use h3_contracts::{ArmyStack, HeroSex, PlayerId};
 use h3_game::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, HeroArtifactsSetup,
-    HeroDetailsSetup, PlayerSetup, TimedEventSetup,
+    HeroDetailsSetup, PlayerSetup, PlayerStart, TimedEventSetup,
 };
 
 use crate::model::{
@@ -31,6 +33,7 @@ use crate::model::{
 /// Object classes the import tells apart beside the typed ones (`codes::object_type`); every other
 /// object is a blocker.
 const HERO: u32 = 34;
+const PRISON: u32 = 62;
 const RANDOM_HERO: u32 = 70;
 const RANDOM_TOWN: u32 = 77;
 const TOWN: u32 = 98;
@@ -43,17 +46,14 @@ const RANDOM_STACK_CODES: u16 = 14;
 /// What a map holds that the current increment cannot represent yet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Unsupported {
-    /// The player of this colour gets a hero generated at its main town (towns: E09).
-    HeroAtMainTown(u8),
-    /// The object at this index is a random hero, drawn when the game starts.
-    RandomHero(usize),
     /// The object at this index is a campaign hero placeholder.
     HeroPlaceholder(usize),
     /// The hero object at this index has a random stack in its army.
     RandomStack(usize),
-    /// The hero object at this index stands on a blocked tile of a town: a town's visiting hero
-    /// (towns: E09; VCMI 1.7.5 `CGameState::placeHeroesInTowns` moves it to its own town's
-    /// entrance, an "H3M format quirk").
+    /// The hero object at this index stands on a blocked tile of a town that is not an entrance,
+    /// once a hero right of an entrance has moved onto it (TWN-SET-010, E09 T7a1): the original
+    /// leaves it there, VCMI 1.7.5 `CGameState::placeHeroesInTowns` moves it from any blocked tile
+    /// of its own town (TD-6); none of the shipped maps has one.
     HeroInTown(usize),
     /// The Pandora's Box or event at this index gives more creature stacks than an army's slots
     /// (A-24, always fixed: E08 decision 133; T61a). Its static layer keeps it without its
@@ -73,8 +73,6 @@ impl Unsupported {
     /// The reason without its position, for counting maps by reason.
     pub const fn reason(self) -> &'static str {
         match self {
-            Self::HeroAtMainTown(_) => "a hero generated at a main town",
-            Self::RandomHero(_) => "a random hero",
             Self::HeroPlaceholder(_) => "a campaign hero placeholder",
             Self::RandomStack(_) => {
                 "a random stack in a hero's army, an object's guards or a reward's creatures"
@@ -138,6 +136,12 @@ pub enum ImportError {
     /// The random dwelling at this index has a level byte past 6 or its lowest level above its
     /// highest (A-36's input bound, `ADV-QUIRK-38`; ADV-DWL-005, E08 T93b).
     DwellingLevels(usize),
+    /// The player of this colour has a main town whose position is no town's entrance (T-4,
+    /// `TWN-QUIRK-4`; E09 T7a1).
+    MainTown(u8),
+    /// The random town at this index has an alignment byte from 8 to 254, past the colours (T-1,
+    /// `TWN-QUIRK-1`; E09 T7a1).
+    Alignment(usize),
 }
 
 impl fmt::Display for ImportError {
@@ -193,6 +197,12 @@ impl fmt::Display for ImportError {
                     "random dwelling {object} has levels past 7 or the wrong way round"
                 )
             }
+            Self::MainTown(colour) => {
+                write!(f, "colour {colour}'s main town is no town's entrance")
+            }
+            Self::Alignment(object) => {
+                write!(f, "random town {object} has an alignment past the colours")
+            }
         }
     }
 }
@@ -205,44 +215,54 @@ impl From<Unsupported> for ImportError {
     }
 }
 
-/// Imports a raw map with the game's rules into a game setup: the players in colour order, the
-/// static map ([`import_map`]) and the heroes placed on it.
+/// Imports a raw map with the game's rules into a game setup: the players in colour order with
+/// their starts, the static map ([`import_map`]), the towns, the heroes placed on it (a random
+/// hero without its type, E09 T7a1) and the hero pool's inputs.
 ///
 /// # Errors
 ///
-/// The first [`ImportError`] found: the players (a hero generated at a main town), the static
-/// map, its first object with guards or reward creatures it cannot represent (or, since E08
-/// T83a, an ownable object entered from water), then the hero objects in the map's order, the
-/// banned sets and the timed events.
+/// The first [`ImportError`] found: the static map, its first object with guards or reward
+/// creatures it cannot represent (or, since E08 T83a, an ownable object entered from water), the
+/// players' main towns (E09 T7a1), the towns in the map's order, then the hero objects in the
+/// map's order, the banned sets, the timed events and the pool's inputs.
 pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportError> {
-    let (players, colours) = players(map)?;
+    let (mut players, colours) = players(map);
     let (static_map, unsupported) = static_layer(map, rules, &colours)?;
     if let Some(what) = unsupported {
         return Err(what.into());
     }
     let objects = objects(map)?;
-    let towns: Vec<ObjectSetup> = objects
+    let town_objects: Vec<_> = objects
         .iter()
+        .copied()
         .filter(|(_, _, template)| matches!(template.class, TOWN | RANDOM_TOWN))
+        .collect();
+    let towns: Vec<ObjectSetup> = town_objects
+        .iter()
         .map(|(_, object, template)| footprint(object, template))
         .collect();
+    town::starts(map, rules, &mut players, &towns)?;
+    let town_setups = town::towns(map, rules, &colours, &town_objects)?;
     let mut heroes = Vec::new();
+    let mut prisoners = Vec::new();
     for (index, object, template) in objects {
         match (template.class, &object.body) {
-            (HERO, Body::Hero(body)) => {
+            (HERO | RANDOM_HERO, Body::Hero(body)) => {
+                let random = template.class == RANDOM_HERO;
                 let custom = map
                     .custom_heroes
                     .iter()
-                    .find(|c| c.hero_type == body.hero_type);
-                let hero = hero(
+                    .find(|c| !random && c.hero_type == body.hero_type);
+                let mut hero = hero(
                     map.header.version,
                     rules,
                     &colours,
-                    index,
+                    (index, random),
                     &footprint(object, template),
                     (body, custom),
                 )?;
-                if towns.iter().any(|town| blocks(town, hero.pos)) {
+                hero.pos = town::hero_tile(hero.pos, &towns);
+                if towns.iter().any(|town| town::in_town(town, hero.pos)) {
                     return Err(Unsupported::HeroInTown(index).into());
                 }
                 // rule: ADV-SEA-007
@@ -251,21 +271,30 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
                 }
                 heroes.push(hero);
             }
-            (RANDOM_HERO, _) => return Err(Unsupported::RandomHero(index).into()),
+            (PRISON, body) => prisoners.push(body),
             (HERO_PLACEHOLDER, _) => return Err(Unsupported::HeroPlaceholder(index).into()),
             _ => {}
         }
     }
+    let banned_skills = banned_skills(map, rules)?;
+    let banned_spells = spell_set(rules, &map.banned_spells)?;
+    let banned_artifacts = banned_artifacts(map, rules)?;
+    let events = timed_events(map, rules, &colours)?;
+    let (allowed_heroes, hero_masks, prisoners) = town::pool(map, rules, &prisoners)?;
     Ok(GameSetup {
         players,
         difficulty: DEFAULT_DIFFICULTY,
         map: static_map,
         heroes,
         level_limit: map.header.level_limit,
-        banned_skills: banned_skills(map, rules)?,
-        banned_spells: spell_set(rules, &map.banned_spells)?,
-        banned_artifacts: banned_artifacts(map, rules)?,
-        events: timed_events(map, rules, &colours)?,
+        banned_skills,
+        banned_spells,
+        banned_artifacts,
+        events,
+        towns: town_setups,
+        allowed_heroes,
+        hero_masks,
+        prisoners,
     })
 }
 
@@ -968,30 +997,24 @@ fn colours(map: &RawMap) -> [Option<PlayerId>; 8] {
 }
 
 /// The colours that play, in colour order, and the player each colour is; a colour a human may
-/// play counts as human (GAM-BAT-010, E08 T54: the map's player kinds; ADV-Q27).
-fn players(map: &RawMap) -> Result<(Vec<PlayerSetup>, [Option<PlayerId>; 8]), ImportError> {
+/// play counts as human (GAM-BAT-010, E08 T54: the map's player kinds; ADV-Q27). Their starts
+/// are `town::starts`' (E09 T7a1).
+fn players(map: &RawMap) -> (Vec<PlayerSetup>, [Option<PlayerId>; 8]) {
     let mut players = Vec::new();
     let mut colours = [None; 8];
     for ((player, colour), id) in map.players.iter().zip(0u8..).zip(&mut colours) {
         if !(player.human || player.computer) {
             continue;
         }
-        let generates = player
-            .details
-            .as_ref()
-            .and_then(|d| d.main_town.as_ref())
-            .is_some_and(|t| t.generate_hero);
-        if generates {
-            return Err(Unsupported::HeroAtMainTown(colour).into());
-        }
         *id = u8::try_from(players.len()).ok().map(PlayerId::new);
         // rule: GAM-BAT-010
         players.push(PlayerSetup {
             colour,
             human: player.human,
+            start: PlayerStart::default(),
         });
     }
-    Ok((players, colours))
+    (players, colours)
 }
 
 /// Every tile's terrain, road and river as the ruleset's handles, and whether it is on the coast
@@ -1074,14 +1097,14 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
     }
 }
 
-/// A placed hero: its owner, type, tile, army, formation and the customisations of its details
-/// (E08 T18b), the body's over its hero type's map-wide entry's, field by field (VCMI 1.7.5
-/// `CMapLoaderH3M::readHero`: "using the latter set").
+/// A placed hero: its owner, type (none for a random hero, E09 T7a1), tile, army, formation and
+/// the customisations of its details (E08 T18b), the body's over its hero type's map-wide
+/// entry's, field by field (VCMI 1.7.5 `CMapLoaderH3M::readHero`: "using the latter set").
 fn hero(
     version: Version,
     rules: &GameRuleset,
     colours: &[Option<PlayerId>; 8],
-    index: usize,
+    (index, random): (usize, bool),
     footprint: &ObjectSetup,
     (body, custom): (&HeroBody, Option<&CustomHero>),
 ) -> Result<GameHeroSetup, ImportError> {
@@ -1090,17 +1113,23 @@ fn hero(
         .copied()
         .flatten()
         .ok_or(ImportError::HeroOwner(index))?;
-    let key =
-        codes::HERO_TYPES
-            .get(usize::from(body.hero_type))
-            .ok_or(ImportError::UnknownCode {
-                what: "hero type",
-                code: u16::from(body.hero_type),
-            })?;
-    let hero_type = rules
-        .core()
-        .hero_type_by_key(key)
-        .ok_or(ImportError::MissingContent(key))?;
+    let hero_type = if random {
+        None
+    } else {
+        let key =
+            codes::HERO_TYPES
+                .get(usize::from(body.hero_type))
+                .ok_or(ImportError::UnknownCode {
+                    what: "hero type",
+                    code: u16::from(body.hero_type),
+                })?;
+        Some(
+            rules
+                .core()
+                .hero_type_by_key(key)
+                .ok_or(ImportError::MissingContent(key))?,
+        )
+    };
     let details = details(version, rules, hero_type, (body, custom))?;
     Ok(GameHeroSetup {
         hero_type,
@@ -1127,12 +1156,12 @@ const TYPE_SPELL: u8 = 0xFE;
 /// `E08-battles.md` §6.3: the placed hero's are copied as they are, `placed_hero_setup` 0x4D8BF1,
 /// survey `E08-progression.md` §3.1, and no shipped map has one above 9, §6.1), secondary skills,
 /// artifacts worn and in the backpack, spells (SoD's set; AB's one spell beside the type's,
-/// `0xFF` none, `0xFE` the type's), since E08 T54 the sex ([`hero_sex`]); the body's field over
-/// the map-wide entry's.
+/// `0xFF` none, `0xFE` the type's; a random hero's type has none), since E08 T54 the sex
+/// ([`hero_sex`]); the body's field over the map-wide entry's.
 fn details(
     version: Version,
     rules: &GameRuleset,
-    hero_type: h3_content::HeroTypeId,
+    hero_type: Option<h3_content::HeroTypeId>,
     (body, custom): (&HeroBody, Option<&CustomHero>),
 ) -> Result<HeroDetailsSetup, ImportError> {
     let experience = body
@@ -1176,9 +1205,8 @@ fn details(
             .map(|bits| spell_set(rules, bits))
             .transpose()?,
         (None, Some(code)) => {
-            let mut own = rules
-                .core()
-                .hero_type(hero_type)
+            let mut own = hero_type
+                .and_then(|t| rules.core().hero_type(t))
                 .map(|t| t.spells.clone())
                 .unwrap_or_default();
             let spell = spell(rules, code)?;

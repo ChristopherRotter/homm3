@@ -59,7 +59,7 @@ fn game(rules: &GameRuleset, experience: u32) -> GameState {
     let boots: ArtifactInstance = rules.core().artifact_by_key("t:boots").unwrap().into();
     let mut setup = setup();
     let hero = &mut setup.heroes[1];
-    hero.hero_type = RIDER;
+    hero.hero_type = Some(RIDER);
     hero.army = HeroArmy::Starting;
     hero.details.skills = Some(vec![(roads, 1)]);
     hero.details.artifacts = Some(HeroArtifactsSetup {

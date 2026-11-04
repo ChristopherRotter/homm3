@@ -30,7 +30,7 @@ fn build(rules: &GameRuleset, setup: &GameSetup, seed: u64) -> GameState {
 /// Blue's hero's drawn army when it is of `hero_type`.
 fn drawn(rules: &GameRuleset, hero_type: HeroTypeId, seed: u64) -> Vec<ArmyStack> {
     let mut setup = setup();
-    setup.heroes[1].hero_type = hero_type;
+    setup.heroes[1].hero_type = Some(hero_type);
     let state = build(rules, &setup, seed);
     state.adventure().hero(HeroId::new(1)).unwrap().army.clone()
 }

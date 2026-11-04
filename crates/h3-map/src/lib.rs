@@ -61,8 +61,14 @@ pub use parse::parse;
 /// dwellings (216 to 218) typed, a dwelling's and a random dwelling's owner, a random dwelling's
 /// faction set and level range, one tied to a town of the map a blocker; classes 18 and 19, a
 /// dwelling's subclass past its table, a random dwelling's empty faction set, unknown town or bad
-/// levels refused; the random dwellings ownable among a battle's surroundings.
-pub const MAP_IMPORT_VERSION: u32 = 16;
+/// levels refused; the random dwellings ownable among a battle's surroundings. v17 (E09 T7a1):
+/// the towns (77, 98), each player's start (its factions, choice, main town and random-hero flag)
+/// and the hero pool's inputs (the allowed heroes, SoD's colour masks, the prisoners' types) into
+/// the game's setup; a random hero (70) without its type and a main town generating a hero
+/// supported; a placed hero right of a town's entrance moved onto it (TWN-SET-010), one on a
+/// town's entrance supported; a main town that is no town's entrance and a random town's
+/// alignment past the colours refused.
+pub const MAP_IMPORT_VERSION: u32 = 17;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

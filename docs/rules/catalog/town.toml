@@ -191,6 +191,39 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "TWN-SET-001"
+title    = "A player's factions at the start"
+context  = "town"
+status   = "implemented"
+summary  = "Each playing colour starts with a set of factions and a choice among them (the setup's `PlayerStart`, the seam whoever seats the players may change before the build, E09 decision 6). A map's import gives the set: the map's allowed towns (a bit per faction in the format's order, `TOWNTYPE.TXT`'s: Castle 0 to Fortress 7, Conflux 8 from AB on) that the ruleset has as factions with a town record; a bit past the nine names none. An RoE-format map's player whose eight bits are all set also has Conflux when the ruleset has it (E09 decision 14: the enabled expansions decide, not the map's format; the original's map-format test is the recorded deviation, TD-2); one restricted to fewer stays restricted. The choice is the set's faction when it holds exactly one, else Random (an empty set's Random the game refuses, E09 T7a2); no starting-hero pick. With the start come the player's main town (the town whose entrance is the header's position, survey finding 3; one that is no town's entrance is refused, TWN-QUIRK-4), whether it generates the starting hero (the map's flag, an RoE map's always) and the random-hero flag. Not yet: Random's draw, uniform over the set from the game's seed (E09 T7b, design note section 14). E09 T7a1 (design note sections 7 and 13): `h3_map::import` (`import/town.rs`, `starts`), `h3_game::PlayerStart`."
+quirks   = ["TWN-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a1; survey E09-towns.md sections 2.1 and 2.2, finding 4): scenario_dialog_begin (0x588330) copies each colour's dialog record into the game's chosen factions, drawing a Random one with random_allowed_faction (0x5132D0), uniform over the colour's allowed factions (the map's mask: eight bits in RoE, nine from AB on); the dialog offers the colour's one faction when it has one, else the player picks one of them or Random (faction_choice_offered 0x58CE70, count_allowed_factions 0x5132B0); census (section 1.2): 553 main towns, each the entrance tile of a town of its player (the anchor less two columns), 538 generating a hero"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 2.5: MapFormatH3M keeps the allowed set unless it is random with every faction allowed (then the game's default, all nine) and converts the main town's position to the object's; CGameState::initRandomFactionsForPlayers draws a player's Random uniformly over its allowed set"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Player Specs (survey E09-towns.md section 2.2): the allowed alignments restrict the town available, and the random pool rolls only from them"
+  url        = "https://heroes.thelazy.net/index.php/Player_Specs"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E09 decision 14 (TD-2 by the enabled expansions, not the map's version) and decision 6 (the players' choices as the seam with E10's scenario setup); the agent's call in docs/epics/E09-design.md section 7: the choice Fixed with exactly one faction, else Random"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-SET-003"
 title    = "A town's buildings at the start"
 context  = "town"
@@ -255,4 +288,29 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "The agent's calls the user confirmed for E09 T6c: a random stack at a level the record lacks leaves its slot empty, an upgraded one at a level without an upgrade is the base, the garrison's draws before the buildings' (the original's town_setup order); docs/epics/E09-design.md section 5"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SET-010"
+title    = "A hero right of a town's entrance starts on it"
+context  = "town"
+status   = "implemented"
+summary  = "A hero the map places (a hero or a random hero, not a prisoner) on the tile right of a town's entrance (the entrance's column plus one, the same row and level), whatever the town's owner, starts on the entrance: the town's visitor. A hero on the entrance itself stays there. A hero on any other blocked tile of a town is not supported by the import (none of the shipped maps has one; the original leaves it there). On the shipped maps 23 heroes move so (21 placed, 2 random), each right of its own town's entrance. E09 T7a1 (design note section 7): `h3_map::import` (`import/town.rs`, `hero_tile`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a2; survey E09-towns.md section 4.6): placed_heroes_setup (0x4CAE10) decreases a placed record's column by one when the tile one column left of it is an entrance (+0xD bit 0x10) of a town (class 98, random towns are 98 by then) and the hero is not a prisoner (0x4CAE95 to 0x4CAEC2), any owner's town, no other blocked tile; hero_show (0x4D75D0) then makes it the town's visitor; census (sections 1.4 and 4.6): 23 such heroes, all right of their own town's entrance"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 4.7: CGameState::placeHeroesInTowns moves a hero on any blocked tile of a town of its own owner to the entrance (TD-6: differs on another owner's town and on the other tiles; the shipped maps' 23 agree)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 7 (TD-6 by the reading): the import moves the hero; a hero on another blocked tile of a town stays Unsupported::HeroInTown"
   confidence = "high"

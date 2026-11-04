@@ -349,6 +349,7 @@ impl Accumulator {
             players: vec![PlayerSetup {
                 colour: 0,
                 human: true,
+                start: Default::default(),
             }],
             difficulty: DEFAULT_DIFFICULTY,
             map,
@@ -358,6 +359,10 @@ impl Accumulator {
             banned_spells: Vec::new(),
             banned_artifacts: Vec::new(),
             events: Vec::new(),
+            towns: Vec::new(),
+            allowed_heroes: Vec::new(),
+            hero_masks: Vec::new(),
+            prisoners: Vec::new(),
         };
         // The seed draws the static layer's random contents, which no number here reads.
         let state = GameState::new(rules, &setup, 0).map_err(|e| format!("setup: {e}"))?;

@@ -8,6 +8,7 @@
 //! maximum on its new surface, and their events; since E08 T74b a boat leaving the map with its
 //! hero after a battle too (ADV-SEA-006).
 
+use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
 use h3_content::Ruleset;
@@ -70,7 +71,8 @@ impl Boats {
     /// # Errors
     ///
     /// [`SetupError::Boat`] for the first boat in the setup's order that lies off the map or off
-    /// water, on a tile an object blocks or is visited from, or on an earlier boat's tile (no
+    /// water, on a tile an object blocks or is visited from, on an earlier boat's tile, or (E08
+    /// T94a) on a tile in `refused`, one a random dwelling could cover whatever it draws (no
     /// hero stands on water: [`AdventureState::check_stand`] refuses it, so none stands on a
     /// boat's tile either).
     // rule: ADV-SEA-001
@@ -78,6 +80,7 @@ impl Boats {
         part: &AdventureRuleset,
         map: &StaticMap,
         setup: &[BoatSetup],
+        refused: &BTreeMap<Pos, usize>,
     ) -> Result<Option<Self>, SetupError> {
         if setup.is_empty() {
             return Ok(None);
@@ -92,7 +95,11 @@ impl Boats {
                     && !tile.blocked
                     && !tile.visitable
             });
-            if !free || boats.empty.get(boat.tile) {
+            // rule: ADV-DWL-005
+            // E08 T94a (an agent's call, as a hero's): a tile a random dwelling could cover
+            // whatever it draws (`dwellings::refused_tiles`), so whether the setup is valid does
+            // not depend on the draw.
+            if !free || boats.empty.get(boat.tile) || refused.contains_key(&boat.tile) {
                 return Err(SetupError::Boat(index));
             }
             boats.empty.set(boat.tile, true);

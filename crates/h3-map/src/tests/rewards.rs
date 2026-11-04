@@ -131,6 +131,7 @@ fn static_layer_validates(m: &RawMap, rules: &GameRuleset) {
         players: vec![PlayerSetup {
             colour: 0,
             human: true,
+            start: Default::default(),
         }],
         difficulty: DEFAULT_DIFFICULTY,
         map: import_map(m, rules).unwrap(),
@@ -140,6 +141,10 @@ fn static_layer_validates(m: &RawMap, rules: &GameRuleset) {
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
         events: Vec::new(),
+        towns: Vec::new(),
+        allowed_heroes: Vec::new(),
+        hero_masks: Vec::new(),
+        prisoners: Vec::new(),
     };
     setup.validate(rules).unwrap();
 }

@@ -442,6 +442,22 @@ impl ObjectKind {
             Self::Windmill { .. } | Self::WaterWheel { .. } | Self::Garden { .. }
         )
     }
+
+    /// A dwelling's footprint, its blocked and visitable cells, and its shift (E08 T94a: what a
+    /// random dwelling that becomes it takes, increment 10's design note §5; ADV-DWL-005); none
+    /// for every other kind.
+    pub(crate) const fn dwelling_footprint(&self) -> Option<(TileMask, TileMask, u8)> {
+        match self {
+            Self::Dwelling {
+                blocked,
+                visitable,
+                shift,
+                ..
+            } => Some((*blocked, *visitable, *shift)),
+            _ => None,
+        }
+    }
+
     /// The terrain a battle on the entrance of a mine of this kind is fought on, whatever lies
     /// under it (GAM-BAT-001 amended, E08 T84a: the original's crystal, gold and abandoned mines'
     /// subterranean); none for a mine without one and for every other kind.
