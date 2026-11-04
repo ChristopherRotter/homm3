@@ -1212,3 +1212,78 @@ an entry only where a task builds on it.
   student trained, scored and saved; agreement at 65 k 0.379, 0.438, 0.401, 0.423 (too early to
   rank); the µs a sample-pass at the bench's 512 rows on the CPU 119, 2 787, 11 557, 1 097 (the
   hex transformer's attention costs three times its 128-row figure at 512 rows).
+- **The grid on the GTX 1070** (the user, 2026-11-04, after T24: T26's first step run early;
+  `network --bench configs/distill/e25-grid.toml --time --rows 512 --device cuda`; the ratio is
+  the sample-pass's to `hexconv` 64 × 6's, 301 µs here, where T7c's bench measured 466):
+
+  | Student | Forward µs | Training µs | Sample-pass µs | Peak MB | Ratio |
+  |---|---:|---:|---:|---:|---:|
+  | MLP 2 × 512 | 5.4 | 12.6 | 17.7 | 87 | 0.06 |
+  | `hexconv` 64 × 6 (the cap) | 113 | 301 | 301 | 903 | 1 |
+  | `hexconv` normalised 64 × 6 | 179 | 413 | 448 | 1 641 | 1.49 |
+  | … 64 × 8 | 237 | 539 | 539 | 2 069 | 1.79 |
+  | … 64 × 10 | 265 | 649 | 659 | 2 498 | 2.19 |
+  | … 96 × 6 | 226 | 595 | 595 | 2 450 | 1.97 |
+  | … 96 × 8 | 292 | 766 | 774 | 3 091 | 2.57 |
+  | … 96 × 10 | 360 | 945 | 947 | 3 732 | 3.14 |
+  | … 128 × 6 | 303 | 796 | 799 | 3 242 | 2.65 |
+  | … 128 × 8 | 394 | 1 036 | 1 040 | 4 098 | 3.45 |
+  | … 128 × 10 | 484 | 1 289 | 1 291 | 4 952 | 4.28 |
+  | `hexformer` 96 × 4 | 145 | 681 | 682 | 1 823 | 2.26 |
+  | … 96 × 4, feed-forward 4 | 166 | 1 165 | 766 | 2 067 | 2.54 |
+  | … 96 × 6 | 248 | 1 041 | 1 003 | 2 536 | 3.33 |
+  | … 128 × 4 | 183 | 982 | 868 | 2 332 | 2.88 |
+  | … 128 × 6 | 272 | 1 312 | 1 325 | 3 278 | 4.40 |
+  | `entity` 192 × 2 | 43 | 134 | 135 | 724 | 0.45 |
+  | … 192 × 2, feed-forward 4 | 52 | 154 | 156 | 792 | 0.52 |
+  | … 192 × 4 | 67 | 222 | 221 | 1 064 | 0.73 |
+  | … 256 × 2 | 60 | 181 | 177 | 949 | 0.59 |
+  | … 256 × 4 | 94 | 287 | 293 | 1 401 | 0.97 |
+
+  The GPU agrees with the CPU's read: within the cap's network only the MLP and the entity
+  network up to 256 × 4; no `hexformer` (the smallest 2.3 times) and no larger `hexconv`. The
+  normalisation costs more here than on the CPU (+49 % a sample-pass against +13 %, +82 % peak
+  memory: the permuted LayerNorm's channels-last tensors). Decision 3's two readings now differ:
+  "at most `hexconv` 64 × 6's" on this measure is 301 µs, "466 µs" (T7c's bench, about ten hours of
+  network time for 20 M samples of PPO) also admits `hexconv` normalised 64 × 6 (448). The user's
+  call at T26, after T25's cost change.
+
+## T25 — The heads read the geometry (2026-11-04)
+
+- **Built:** `h3env.train.geometry`, a port of `Field::attack_positions` and the footprints
+  (`h3-battle`'s `geometry.rs`, BAT-GEO-001, -002; `Stack::footprint`'s fallback): `attack_table`
+  (each position, shape and side's 24 attack hexes) and `attack_hexes` (an observation's [rows,
+  42, 24] attack hexes of the active stack, a stack's side by its owner as in `h3-battle`, so a
+  hypnotised one keeps its owner's shape). Its test plays real battles (`field`, `full`, `siege`)
+  and checks each legal attack entry in a fork: 18 823 attacks, every category above 7 900 (one-
+  and two-hex attackers and targets, both sides), none without a hex, each one's hex the
+  attacker's or a legal move's; 8 ended short on the opponent's Quicksand the attacker could not
+  see (BAT-MAG-032), the one exclusion (at most 0.5 %). `encode(obs, mask)` and `values(obs,
+  mask)` take the rows' entry mask, the one the logits are masked with (`act`'s bounded one; the
+  search's; the bench's stored one; PPO's last value the bounded batch mask, the bootstrap of a
+  cut battle an empty mask, unused at `truncation_penalty` 1, every E25 config). Three `[network]`
+  keys, off by default (older files build and play bit for bit, tested per kind): `mask_input`
+  (the MLP: the 1 404 entries as inputs after the observation; the structured kinds: the legal
+  moves and the legal attacks' hexes as two hex planes, each slot's 27 entries on its token, the
+  15 fixed entries on the global one), `order` for the structured kinds (the slot's three turn
+  order columns on its token), `attack_hex` (the structured kinds: a legal melee entry adds a
+  score of its target's vector, its attack hex's vector and the context, computed for the legal
+  entries only). The Python suite: 238 passed, 1 skipped.
+- **The cost on the CPU** (4 threads, 128 rows, the median of 15, noisy by about 15 %; µs a
+  sample-pass): `entity` 192 × 2 1 330 without the keys, 1 210 with all three (a rerun in the other
+  order 1 121 and 1 137); `hexconv` normalised 64 × 6 2 784, 2 624; `hexformer` 96 × 4 4 896, 5 160;
+  the MLP 193, with the mask 311 (+0.72 M parameters, its AdamW step). The keys add 0.2 to 1.3 % of
+  the structured kinds' multiply-adds.
+- **The smokes** (the sandbox's CPU): a PPO run per kind from `e25-imitate.toml` (2 048 samples,
+  three updates, the gate, a promotion and the ladder; the MLP with the mask, the three structured
+  kinds with all keys at `entity` 192 × 2, `hexconv` normalised 64 × 6, `hexformer` 96 × 4) 23, 55,
+  105 and 179 s; a stopped run resumed to its budget; every network file loads and plays. The
+  clone (`e25-clone.toml` with those four students, 49 152 samples, the held-out set 4 096; 1 306
+  s): agreement 0.401, 0.451, 0.466, 0.432, too early to rank.
+- **T26 prepared:** the user's cap (after the GPU's grid above): **a sample-pass of about 700 µs**
+  on the GTX 1070 (`network --time`'s measure), which admits one candidate of each family at the
+  largest size of decision 2's range within it. `configs/distill/e25-structure.toml`: the MLP,
+  the MLP with the mask, `entity` 256 × 4 (293 µs without the keys), `hexconv` normalised 96 × 6
+  (595) and `hexformer` 96 × 4 (682), each with the three keys at two learning rates (5e-4 and
+  2e-4; `hexconv` 1e-3 and 3e-4), a warm-up of 131 072 samples, weight decay 0.01. By the grid,
+  about 7 to 8 hours (4 M samples, two passes each).

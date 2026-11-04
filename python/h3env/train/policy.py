@@ -17,10 +17,10 @@ share of the target stack they are, the hit points they are), `φ` a small netwo
 entries, `u` a linear map of the trunk's output, so the state decides how much a kill counts.
 Only the entry head reads it; the value and the cast heads do not.
 
-The turn order (`[network] order`, the MLP's; the turn-order probe, E06-log): the MLP's trunk reads
-the whole observation v22, each stack slot's places in the turn order (`layout.ORDER_ROUND` to
+The turn order (`[network] order`; the turn-order probe, E06-log): the MLP's trunk reads the
+whole observation v22, each stack slot's places in the turn order (`layout.ORDER_ROUND` to
 `ORDER_NEXT`) with it; without it the trunk reads v21's prefix, so a network saved before v22
-plays on.
+plays on. The structured kinds' stack tokens read the places since E25 T25 (`entity`).
 
 The tactics bound (`[network] tactics_rounds`, E25 T4a, any kind): the agent ends its own tactics
 phase after that many rounds of it, the rules unchanged (BAT-TAC-002 has no limit): once its
@@ -28,6 +28,15 @@ active stack would start a later round (`BattleBatch.tactics_round`), End tactic
 entry (`bounded`). It is the agent's, so wherever the network plays (`act`: rollouts, league
 members, gates, ladders, `inspect`; `h3env.search`'s tree) it plays bounded, from its file's
 config; a file without the key plays unbounded, as before.
+
+The legal entry mask as an input (`[network] mask_input`, E25 increment 7 decision 4, T25):
+`encode(obs, mask)` takes the rows' entry mask, exactly the one the entry logits are masked with
+there (the tactics bound in it: `act`'s `bounded` mask, `evaluate`'s `entry_mask`), and a network
+that reads it (`reads_mask`) refuses an encoding without one. The MLP's trunk reads it as 0/1
+inputs after the observation's; the structured kinds read it as hex planes, per stack slot and
+fixed entries (`entity`'s documentation, which also has their `order` and `attack_hex`: a melee
+entry scoring its from-hex, which reads the mask too); a file without the keys reads no mask, as
+before.
 """
 
 from __future__ import annotations
@@ -136,10 +145,14 @@ class Policy(nn.Module):
     """The interface of the trainer's networks: `encode` an observation's rows, then the value and
     the heads' logits from the encoding; `act`, `evaluate`, `values` and `frozen` on top. A kind
     implements `encode`, `value` and the four `*_logits`; one that reads the kill preview
-    (`reads_preview`) also `with_preview`."""
+    (`reads_preview`) also `with_preview`. Every caller of `encode` and `values` hands them the
+    rows' entry mask (bool [rows, entries], the one the entry logits are masked with there)."""
 
     #: Whether the entry head reads the batch's kill preview (`BattleBatch(preview=True)`).
     reads_preview = False
+    #: Whether `encode` reads the rows' legal entry mask (`[network] mask_input`, E25 T25); such a
+    #: network refuses an encoding without it.
+    reads_mask = False
     #: The rounds of its own tactics phase the network plays (`[network] tactics_rounds`; 0: no
     #: bound, as every network before E25 T4a).
     tactics_rounds = 0
@@ -156,8 +169,21 @@ class Policy(nn.Module):
         bool); unchanged for a network that does not read it."""
         return logits
 
-    def encode(self, obs: torch.Tensor) -> Encoding:
+    def encode(self, obs: torch.Tensor, mask: torch.Tensor | None = None) -> Encoding:
+        """The rows of `obs` encoded; `mask` their entry mask (bool [rows, entries]), which a
+        network that reads it (`reads_mask`) needs and the others ignore."""
         raise NotImplementedError
+
+    @staticmethod
+    def mask_inputs(mask: torch.Tensor | None, dtype: torch.dtype) -> torch.Tensor:
+        """The entry mask `mask` as the 0/1 inputs (`dtype`) of a network that reads it; a clear
+        error without one."""
+        if mask is None:
+            raise ValueError(
+                "this network reads the legal entry mask (`[network] mask_input`): "
+                "encode(obs, mask) and values(obs, mask) need the rows' entry mask"
+            )
+        return mask.to(dtype)
 
     def value(self, encoding: Encoding) -> torch.Tensor:
         raise NotImplementedError
@@ -178,9 +204,9 @@ class Policy(nn.Module):
     ) -> torch.Tensor:
         raise NotImplementedError
 
-    def values(self, obs: torch.Tensor) -> torch.Tensor:
-        """The value of each row of `obs`."""
-        return self.value(self.encode(obs))
+    def values(self, obs: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
+        """The value of each row of `obs` (`mask` their entry mask, as `encode`'s)."""
+        return self.value(self.encode(obs, mask))
 
     @staticmethod
     def cast_of(entry: torch.Tensor) -> torch.Tensor:
@@ -224,9 +250,9 @@ class Policy(nn.Module):
         entry_mask = bounded(entry_mask, rounds, self.tactics_rounds)
         m = len(rows)
         x = torch.from_numpy(obs).to(device)
-        h = self.encode(x)
-        value = self.value(h)
         legal = torch.from_numpy(entry_mask).to(device).bool()
+        h = self.encode(x, legal)
+        value = self.value(h)
         if self.reads_preview:
             if preview is None:
                 raise ValueError("this network reads the kill preview: BattleBatch(preview=True)")
@@ -320,7 +346,7 @@ class Policy(nn.Module):
     ) -> tuple[Encoding, torch.Tensor, torch.Tensor]:
         """`evaluate`'s first half: the rows' encoding, their masked entry logits (the kill
         preview's bias in them) and their value."""
-        h = self.encode(obs)
+        h = self.encode(obs, entry_mask)
         value = self.value(h)
         logits = self.with_preview(self.entry_logits(h), h, obs, preview, entry_mask)
         return h, masked(logits, entry_mask), value
@@ -385,7 +411,9 @@ class Mlp(Policy):
     the default), the value and entry heads on it; the spell head takes the trunk and which cast,
     the target head also the spell's embedding, the second head also the target's. With
     `preview` (E06 T6d) the entry head reads the kill preview, with `order` the trunk the turn
-    order (the module's documentation)."""
+    order, with `mask_input` (E25 T25) the trunk the entry mask: its first layer reads the
+    observation's `inputs` (after `symlog`), then the `actions` entries' mask as 0/1 (the
+    module's documentation). Without it the parameters and outputs are those before T25."""
 
     def __init__(
         self,
@@ -398,13 +426,17 @@ class Mlp(Policy):
         preview: tuple[int, int] | None = None,
         order: bool = False,
         layers: int = 2,
+        mask_input: bool = False,
     ) -> None:
         super().__init__()
         root2 = float(np.sqrt(2.0))
         #: Whether the trunk reads the turn order; else only v21's prefix of the observation.
         self.reads_order = order
         self.inputs = observation_len if order else min(observation_len, L.ORDER)
-        trunk: list[nn.Module] = [init(nn.Linear(self.inputs, hidden), root2), nn.ReLU()]
+        #: Whether the trunk reads the entry mask after the observation (`[network] mask_input`).
+        self.reads_mask = mask_input
+        width = self.inputs + (actions if mask_input else 0)
+        trunk: list[nn.Module] = [init(nn.Linear(width, hidden), root2), nn.ReLU()]
         for _ in range(layers - 1):
             trunk += [init(nn.Linear(hidden, hidden), root2), nn.ReLU()]
         self.trunk = nn.Sequential(*trunk)
@@ -440,9 +472,10 @@ class Mlp(Policy):
         preview: bool = False,
         order: bool = False,
         layers: int = 2,
+        mask_input: bool = False,
     ) -> Mlp:
         """A network sized for `batch`'s encodings (with `preview`, for its kill preview; with
-        `order`, reading the turn order)."""
+        `order`, reading the turn order; with `mask_input`, the entry mask)."""
         return cls(
             batch.observation_len,
             batch.action_count,
@@ -453,6 +486,7 @@ class Mlp(Policy):
             (batch.preview_base, batch.preview_entries) if preview else None,
             order,
             layers,
+            mask_input,
         )
 
     def with_preview(self, logits, encoding, obs, preview, mask):
@@ -489,8 +523,11 @@ class Mlp(Policy):
             dim=1,
         )
 
-    def encode(self, obs: torch.Tensor) -> Encoding:
-        return (self.trunk(symlog(obs[:, : self.inputs])),)
+    def encode(self, obs: torch.Tensor, mask: torch.Tensor | None = None) -> Encoding:
+        x = symlog(obs[:, : self.inputs])
+        if self.reads_mask:
+            x = torch.cat([x, self.mask_inputs(mask, x.dtype)], dim=1)
+        return (self.trunk(x),)
 
     def value(self, encoding: Encoding) -> torch.Tensor:
         return self.value_head(encoding[0]).squeeze(1)
@@ -519,19 +556,30 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
     (before v22) one that reads v21's prefix of the observation, one without `tactics_rounds`
     (before E25 T4a) one without the tactics bound, an MLP without `layers` two layers (every MLP
     before E25 T7a had two), one without `norm` or `feed_forward` (before E25 T24) a hex
-    convolution network without normalisation and transformer blocks of twice the width."""
+    convolution network without normalisation and transformer blocks of twice the width, one
+    without `mask_input` (before E25 T25) a network that does not read the entry mask, a
+    structured one without `order` or `attack_hex` (before T25) one whose stack tokens do not
+    read the turn order and whose melee entries do not score their from-hexes (`entity`'s
+    documentation)."""
     kind = config.get("kind", "mlp")
+    mask_input = bool(config.get("mask_input", False))
+    order = bool(config.get("order", False))
+    attack_hex = bool(config.get("attack_hex", False))
+    if attack_hex and kind == "mlp":
+        raise ValueError("`attack_hex` is the structured kinds', not the MLP's")
     if kind == "mlp":
         policy: Policy = Mlp.for_batch(
             batch,
             config["hidden"],
             config["embed"],
             config.get("preview", False),
-            config.get("order", False),
+            order,
             config.get("layers", 2),
+            mask_input,
         )
     elif kind == "entity":
         from .entity import Entity
+        from .geometry import FIELD_HEIGHT, FIELD_WIDTH
 
         policy = Entity.for_batch(
             batch,
@@ -540,6 +588,13 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
             config["heads"],
             config["embed"],
             int(config.get("feed_forward", 2)),
+            mask_input,
+            order,
+            attack_hex,
+            (
+                int(config.get("field_width", FIELD_WIDTH)),
+                int(config.get("field_height", FIELD_HEIGHT)),
+            ),
         )
     elif kind in ("hexconv", "hexformer"):
         from . import hexnet

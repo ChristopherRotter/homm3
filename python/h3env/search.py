@@ -355,9 +355,9 @@ class Searcher:
         rounds = count_tactics_turns(turns, obs, ~root & (masks[:, L.END_TACTICS] != 0))
         rounds[root] = [leaf.search.round for leaf in leaves if leaf.root]
         masks = bounded(masks, rounds, policy.tactics_rounds)
-        h = policy.encode(torch.from_numpy(obs).to(self.device))
-        values = policy.value(h).cpu().numpy().astype(np.float64)
         legal = torch.from_numpy(masks).to(self.device).bool()
+        h = policy.encode(torch.from_numpy(obs).to(self.device), legal)
+        values = policy.value(h).cpu().numpy().astype(np.float64)
         logp = torch.log_softmax(masked(policy.entry_logits(h), legal), dim=1).cpu().numpy()
         heads = self.cast_heads(leaves, h, masks)
         for r, leaf in enumerate(leaves):
