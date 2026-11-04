@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b; `MAP_IMPORT_VERSION` 16)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b; E09 T7a1; `MAP_IMPORT_VERSION` 17)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -386,6 +386,45 @@ static layer built as a game builds it, adventure state hash v18): 61 objects ow
 every abandoned mine drawn within its set and 100 to 200, every Shipyard with a boat tile but
 Hoard's at (62, 38, 0) in both Hoard maps (survey `E08-economy.md` §1), every weekly object's
 first week its kind's, every owner checked.
+
+**Towns and starting heroes** (E09 T7a1, map import v17; E09 design note §7, `src/import/town.rs`).
+The order: the static layer, the players' main towns, the towns, the heroes, the banned sets, the
+events, the pool's inputs. Each playing colour's `PlayerSetup::start`: its factions (the map's
+allowed bits that the ruleset has as factions with a town record; an RoE-format player with all
+eight set also Conflux when the ruleset has it, E09 decision 14), `Fixed` when exactly one, else
+`Random` (none allowed: `Random`, which `validate` refuses, T7a2); its main town (the town whose
+entrance is the header's position, else `ImportError::MainTown`, `TWN-QUIRK-4`) with whether it
+generates a hero; the random-hero flag. The towns (classes 77, 98 in object order; the index is
+the `TownId`): `GameSetup::towns`, class 98's faction by subclass (`TOWNTYPE.TXT`'s order, the
+table `FACTIONS`), class 77 random with SoD's alignment (`0xFF` none, 0 to 7 a colour, 8 to 254
+`ImportError::Alignment`, `TWN-QUIRK-1`), the buildings' slots as stored, the garrison (a random
+stack's code `GarrisonCreature::Random`; a count of 0 an empty slot), the name (Windows-1252),
+the events (the first day + 1, as the timed events'); the adventure's town object is unchanged
+(the kind `Town` is E09 T8a). A random hero (class 70) is a placed hero without a type
+(`hero_type: None`; the map's custom-hero entries are not applied to it; an AB spell byte naming a
+spell gives that spell alone). A placed hero (not a prisoner) right of a town's entrance stands on
+the entrance (TWN-SET-010; survey `E09-towns.md` §4.6); a town's entrance is blocked and visitable,
+so a hero on it is no hero in a town; on any other blocked tile of a town `HeroInTown` stays. The
+pool's inputs (survey §4.2): the allowed heroes (an RoE-format map's 128 bits and the 16 Conflux
+heroes, never 144 to 155; from AB on the 156 bits as given; a type the ruleset lacks left out),
+SoD's disposed heroes' colour masks, the prisoners' types. `Unsupported::HeroAtMainTown` and
+`RandomHero` are gone; until E09 T7b draws them, the game's build refuses a setup with a random
+hero or a main town that generates a hero (`GameSetupError::HeroDraw`, `TWN-STUB-3`).
+
+E09 T7a1's census (import v17, the 160 shipped maps; `original_data`): 156 maps import (v15: 8;
+128 refused for a main town's hero, 21 for a random hero, 3 for a hero in a town), 4 are refused
+for an ownable object entered from water (`Unsupported::OwnedOnWater`, E08 T93b's dwellings now
+typed); 9 build whole, 125 are refused by the build for a main town's hero and 22 for a random
+hero (`TWN-STUB-3`). Over the 156: 1 437 towns: 577 fixed (castle 116, rampart 81, tower 66,
+inferno 79, necropolis 32, dungeon 86, stronghold 61, fortress 56, conflux 0) and 860 random (813
+without an alignment, 47 aligned to a colour); 568 custom building sets (at most 58 with a horde
+built and 9 with a Shipyard built, counting a random town's slot by any faction; no built
+Shipyard without water: `TWN-STUB-2`'s case absent), 110 custom garrisons (12 with a random
+stack, 52 empty), 250 named towns, 110 with events. 726 players: 538 main towns (523 generating a
+hero), 140 with the random-hero flag, 223 fixed choices and 503 random, 108 RoE-format players
+with all eight factions allowed. 176 random heroes (18 with a custom experience); 23 heroes moved
+onto an entrance, none left in a town. The allowed heroes: 144 to 155 types on 91 maps, 128 to
+143 on 51, fewer on 14; hero masks on 9 maps (832); 86 prisoners.
 
 ## The subset we write (E04a T2)
 

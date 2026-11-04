@@ -20,6 +20,9 @@
 //! RoE maps' dwellings under the base pack alone (checked: every RoE map's static layer imports
 //! with it, each of its dwellings typed), and since E08 T94a the dwellings the game's build gives
 //! (the random ones resolved, checked) and the maps it refuses for a random dwelling's tiles.
+//! Since E09 T7a1 the towns, the players' starts, the random heroes, the heroes moved onto a
+//! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import, and a setup the
+//! build refuses for a hero to draw (`TWN-STUB-3`) is counted as an outcome.
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -34,7 +37,10 @@ use std::sync::Arc;
 use h3_adventure::{
     DWELLING_LEVELS, Holds, MapSetup, ObjectKind, ObjectTypeId, Pos, SetupError, land_table_points,
 };
-use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameSetupError, GameState, PlayerSetup};
+use h3_game::{
+    BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameRuleset, GameSetup, GameSetupError,
+    GameState, GarrisonCreature, HeroDraw, PlayerSetup, TownFaction,
+};
 use h3_map::model::{Artifacts, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -269,6 +275,7 @@ fn check(
         .map(|(player, colour)| PlayerSetup {
             colour,
             human: player.human,
+            start: Default::default(),
         })
         .collect();
     let setup = GameSetup {
@@ -281,6 +288,10 @@ fn check(
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
         events: Vec::new(),
+        towns: Vec::new(),
+        allowed_heroes: Vec::new(),
+        hero_masks: Vec::new(),
+        prisoners: Vec::new(),
     };
     let built = GameState::new(rules, &setup, SEED)
         .map_err(|e| format!("static layer: {}", refusal(rules, &setup, e, &mut peaks.6)))?;
@@ -310,10 +321,17 @@ fn check(
     }
     let outcome = match import(&map, rules) {
         Ok(setup) => {
-            let game = GameState::new(rules, &setup, SEED).map_err(|e| {
-                let why = refusal(rules, &setup, e, &mut peaks.6);
-                format!("imported, but invalid: {why}")
-            })?;
+            towns(&map, &setup, rules, &mut peaks.5);
+            let game = match GameState::new(rules, &setup, SEED) {
+                // E09 T7a1: the draws are T7b's.
+                Err(GameSetupError::HeroDraw(draw)) => {
+                    return Ok((map.header.version, refused(draw).to_owned()));
+                }
+                built => built.map_err(|e| {
+                    let why = refusal(rules, &setup, e, &mut peaks.6);
+                    format!("imported, but invalid: {why}")
+                })?,
+            };
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
             // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
             let levels: Vec<u8> = game.heroes().iter().map(|h| h.level).collect();
@@ -334,6 +352,225 @@ fn check(
         Err(e) => return Err(format!("import: {e}")),
     };
     Ok((map.header.version, outcome))
+}
+
+/// The outcome of a map the build refuses for a hero to draw (`TWN-STUB-3`, until E09 T7b).
+const fn refused(draw: HeroDraw) -> &'static str {
+    match draw {
+        HeroDraw::MainTown(_) => "imported; the build refuses a main town's hero (TWN-STUB-3)",
+        HeroDraw::RandomHero(_) => "imported; the build refuses a random hero (TWN-STUB-3)",
+    }
+}
+
+/// The factions' labels in the original packs' order (Castle 0 to Conflux 8).
+const FACTIONS: [&str; 9] = [
+    "E09 towns: class 98 castle",
+    "E09 towns: class 98 rampart",
+    "E09 towns: class 98 tower",
+    "E09 towns: class 98 inferno",
+    "E09 towns: class 98 necropolis",
+    "E09 towns: class 98 dungeon",
+    "E09 towns: class 98 stronghold",
+    "E09 towns: class 98 fortress",
+    "E09 towns: class 98 conflux",
+];
+
+/// E09 T7a1's census of a map that imports (`docs/formats/h3m.md`, "Import"): its towns by kind,
+/// faction and alignment, their custom building sets (with a horde built, a Shipyard built and
+/// that Shipyard without water on either tile two rows below the entrance and one column aside,
+/// TWN-STUB-2's case), custom garrisons (with random stacks), names and events; the players'
+/// starts (main towns, those generating a hero, the random-hero flag, the choices, an RoE map's
+/// players with all eight bits); the random heroes (with a custom experience), the placed heroes
+/// on a town's entrance (moved there, TWN-SET-010: no map places one there itself, survey §1.4)
+/// and the pool's inputs.
+fn towns(
+    map: &RawMap,
+    setup: &GameSetup,
+    rules: &GameRuleset,
+    counts: &mut BTreeMap<&'static str, usize>,
+) {
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    let records = rules.towns();
+    let hordes = |faction: h3_content::FactionId| {
+        records.town(faction).map_or(Vec::new(), |record| {
+            record
+                .buildings
+                .iter()
+                .filter_map(|b| b.forbidden_with)
+                .filter_map(|horde| record.building(horde).and_then(|b| b.slot))
+                .collect::<Vec<u8>>()
+        })
+    };
+    let shipyard = |faction: h3_content::FactionId| {
+        records.town(faction).and_then(|record| {
+            record
+                .buildings
+                .iter()
+                .find(|b| b.key == "shipyard")
+                .and_then(|b| b.slot)
+        })
+    };
+    let factions: Vec<_> = (0..rules.core().factions().len())
+        .filter_map(h3_content::FactionId::from_index)
+        .collect();
+    let side = setup.map.width;
+    let water = |x: u16, y: u16, level: u8| {
+        let index = (usize::from(level) * usize::from(side) + usize::from(y)) * usize::from(side)
+            + usize::from(x);
+        x < side
+            && y < side
+            && setup.map.tiles.get(index).is_some_and(|tile| {
+                matches!(
+                    rules.adventure().passage(tile.terrain),
+                    Some(h3_adventure::Passage::Water(_))
+                )
+            })
+    };
+    // The towns' entrances: the anchor less two columns (survey finding 3).
+    let entrances: Vec<(u16, u16, u8)> = map
+        .objects
+        .iter()
+        .filter(|o| matches!(o.body, Body::Town(_)))
+        .map(|o| {
+            (
+                u16::from(o.pos.x).saturating_sub(2),
+                u16::from(o.pos.y),
+                o.pos.z,
+            )
+        })
+        .collect();
+    add("E09 maps that import", 1);
+    for (town, &(x, y, level)) in setup.towns.iter().zip(&entrances) {
+        let candidates = match town.faction {
+            TownFaction::Fixed(faction) => {
+                add(
+                    FACTIONS
+                        .get(faction.index())
+                        .copied()
+                        .unwrap_or("E09 towns: class 98 other"),
+                    1,
+                );
+                vec![faction]
+            }
+            TownFaction::Random { alignment } => {
+                add(
+                    if alignment.is_some() {
+                        "E09 towns: class 77 aligned to a colour"
+                    } else {
+                        "E09 towns: class 77 without an alignment"
+                    },
+                    1,
+                );
+                factions.clone()
+            }
+        };
+        if let BuildingsSetup::Custom { built, .. } = town.buildings {
+            add("E09 towns: a custom building set", 1);
+            let horde = candidates
+                .iter()
+                .any(|&f| hordes(f).iter().any(|&slot| built.contains(slot)));
+            add(
+                "E09 towns: a custom set with a horde built",
+                usize::from(horde),
+            );
+            let yard = candidates
+                .iter()
+                .any(|&f| shipyard(f).is_some_and(|slot| built.contains(slot)));
+            add(
+                "E09 towns: a custom set with a Shipyard built",
+                usize::from(yard),
+            );
+            let wet = water(x.wrapping_sub(1), y + 2, level) || water(x + 1, y + 2, level);
+            add(
+                "E09 towns: a built Shipyard without water (TWN-STUB-2)",
+                usize::from(yard && !wet),
+            );
+        }
+        if let Some(garrison) = &town.garrison {
+            add("E09 towns: a custom garrison", 1);
+            let random = garrison
+                .iter()
+                .any(|s| matches!(s.creature, GarrisonCreature::Random { .. }));
+            add(
+                "E09 towns: a custom garrison with a random stack",
+                usize::from(random),
+            );
+            add(
+                "E09 towns: a custom garrison, empty",
+                usize::from(garrison.is_empty()),
+            );
+        }
+        add("E09 towns: named", usize::from(town.name.is_some()));
+        add(
+            "E09 towns: with events",
+            usize::from(!town.events.is_empty()),
+        );
+    }
+    for player in &setup.players {
+        let start = &player.start;
+        add("E09 players", 1);
+        add(
+            "E09 players: a main town",
+            usize::from(start.main_town.is_some()),
+        );
+        add(
+            "E09 players: a main town generating a hero",
+            usize::from(start.main_town.is_some_and(|t| t.generates_hero)),
+        );
+        add(
+            "E09 players: the random-hero flag",
+            usize::from(start.random_hero),
+        );
+        add(
+            match start.choice {
+                Some(FactionChoice::Fixed(_)) => "E09 players: choice Fixed",
+                Some(FactionChoice::Random) if start.factions.is_empty() => {
+                    "E09 players: choice Random, no faction"
+                }
+                Some(FactionChoice::Random) => "E09 players: choice Random",
+                None => "E09 players: no choice",
+            },
+            1,
+        );
+        let eight = map.header.version == Version::RoE
+            && map.players[usize::from(player.colour)]
+                .details
+                .as_ref()
+                .is_some_and(|d| d.allowed_towns & 0xFF == 0xFF);
+        add(
+            "E09 players: RoE format, all eight factions",
+            usize::from(eight),
+        );
+    }
+    for hero in &setup.heroes {
+        let random = hero.hero_type.is_none();
+        add("E09 heroes: random", usize::from(random));
+        add(
+            "E09 heroes: random, custom experience",
+            usize::from(random && hero.details.experience.is_some()),
+        );
+        let (x, y, level) = (hero.pos.x, hero.pos.y, hero.pos.level);
+        add(
+            "E09 heroes: on a town's entrance (TWN-SET-010)",
+            usize::from(entrances.contains(&(x, y, level))),
+        );
+    }
+    let allowed = setup.allowed_heroes.len();
+    add(
+        match allowed {
+            156 => "E09 pool: maps allowing 156 heroes",
+            144..=155 => "E09 pool: maps allowing 144 to 155",
+            128..=143 => "E09 pool: maps allowing 128 to 143",
+            _ => "E09 pool: maps allowing fewer than 128",
+        },
+        1,
+    );
+    add(
+        "E09 pool: maps with hero masks",
+        usize::from(!setup.hero_masks.is_empty()),
+    );
+    add("E09 pool: hero masks", setup.hero_masks.len());
+    add("E09 pool: prisoners", setup.prisoners.len());
 }
 
 /// The Tutorial's hero's day's points at the start (E08 T42, increment 5's exit criterion 1;

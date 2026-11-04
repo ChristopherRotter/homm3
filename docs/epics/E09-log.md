@@ -806,3 +806,56 @@ the docs and the review by the agent, one pull request; the agent's four calls b
   2, VCMI 1.7.5, the wiki for the garrison, a `design` source for the confirmed calls). The test
   part's Keep has map slots, four creature levels, a horde with its upgraded horde and a shrine of
   its own (two-step fixpoints); 16 tests, 100 % lines and regions on `h3-towns`; no version moved.
+
+### T7a1 — the setup's new fields and the import, map import v17 (2026-11-04)
+
+One session, the user present; branch `town/e09-t7a1` (`cross-lane`: `h3-game`'s `setup.rs` and
+`lib.rs`, `h3-map`'s import and tests, the replays' headers, `h3-cli`'s census literal (the ai
+lane's), `docs/formats/h3m.md`, the adventure lane's HANDOFF and inbox). Starting point: `master`
+at 03b6601 (#707 merged; CI green there; the sandbox's baseline lost to a VM restart; the original
+data staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`); #708
+(E08 T93a, adventure part v16) merged in during the task, cleanly. **At its start** (the user): T7a
+cut in two at the queue's seam, T7a1 (the setup's fields, the import, map import v17, the census)
+now and T7a2 (`validate`'s checks, §13) next; until T7b draws them, the build refuses a setup that
+needs a draw (`TWN-STUB-3`). The code by one sub-agent (resumed once after a VM restart), the
+review and the docs by the agent.
+
+- **`h3-game`** (`src/town.rs`, the lane's): `PlayerStart` (`FactionSet`, a `u64` bit set;
+  `FactionChoice`; `MainTown`), `PlayerSetup::start`, `GameSetup::towns`, `allowed_heroes`,
+  `hero_masks`, `prisoners`, `GameHeroSetup::hero_type: Option<_>`; `h3-towns`' setup types
+  re-exported, so `h3-map` needs no new crate edge. `GameSetupError::HeroDraw` (`RandomHero(hero)`,
+  `MainTown(player)`; *the sub-agent's call*: the player, not the colour, as the game's other
+  errors), checked in `validate` after the heroes' count and before any hero's type is read
+  (`town::hero_types`, the only place a type is taken out of the option); everything else new is
+  ignored by the build: no hash moved.
+- **`h3-map`** (`src/import/town.rs`, the lane's; `import/mod.rs` wires it): the players' starts
+  (TWN-SET-001's import half: factions, choice, main town, the flag), the towns (classes 77, 98;
+  the faction table `FACTIONS` here, not in `codes.rs` as §7 said; `ImportError::Alignment`,
+  `TWN-QUIRK-1`; `ImportError::MainTown`, `TWN-QUIRK-4`'s import half), class 70 without a type,
+  TWN-SET-010 (a placed hero right of an entrance moved onto it), the pool's inputs.
+  `Unsupported::HeroAtMainTown` and `RandomHero` removed. **Found by the census:** a shipped town's
+  entrance is blocked and visitable, so the hero-in-a-town test leaves the entrance out (a moved
+  hero stands there; the old writer test that wanted `HeroInTown` there changed). *The sub-agent's
+  calls:* the import's order (the static layer, the main towns, the towns, the heroes, the banned
+  sets, the events, the pool's inputs); no faction allowed gives `Random` (T7a2 refuses it); a hero
+  type the ruleset lacks leaves the pool's inputs; every disposed hero's mask kept (0xFF too); the
+  town's name as Windows-1252 (a copy of `h3-formats`' table, no new edge); a town event's first
+  day + 1 as the timed events'; a random hero takes no custom-hero entry, and an AB spell byte
+  naming a spell gives that spell alone. Survey §4.2 checked by the agent: RoE maps never set 144
+  to 155; AB and SoD maps take their 156 bits as given.
+- **Versions:** map import v17 (`MAP_IMPORT_VERSION`; E08 T93b took v16 first, #711 merged
+  before this pull request, so it bumped again); the 39 adventure replays' `import_version` lines
+  (nothing else moved). Game state hash v22, the adventure's hashes and the replay format
+  unchanged.
+- **Docs:** `town.toml` TWN-SET-001, -010; `quirks-town.md` TWN-QUIRK-1, -4; `docs/stubs.toml`
+  TWN-STUB-3; `h3m.md`'s "Import" (the towns and the census); the design note's §7 "As built" and
+  §19 (T8a takes the adventure part after T93a's v16).
+- **The census** (`original_data`, 160 shipped maps): every map imports (v15: 8); 10 build whole,
+  128 refused by the build for a main town's hero and 22 for a random hero; 1 468 towns (592 fixed,
+  876 random, 47 of them aligned), 574 custom building sets, 113 custom garrisons; 176 random
+  heroes; 23 heroes moved; 89 prisoners (`h3m.md`). After #711 (E08 T93b) merged in: 156 maps
+  import, 4 are refused for an ownable object entered from water (T93b's dwellings), 9 build
+  whole, 125 and 22 refused by the build; 1 437 towns (577 fixed, 860 random), 726 players, 86
+  prisoners.
+- **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
+  `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass.

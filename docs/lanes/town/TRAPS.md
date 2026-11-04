@@ -8,3 +8,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **Merge in order:** before a task starts and before a pull request opens, look at the adventure lane's open pull requests (its HANDOFF). When both lanes bump the same version, the second rebases and bumps again, and re-records the replays a second time (skill `homm3-rerecord-replays`).
 - **The adventure lane's traps apply** to its crates (forks without deep copies, server-only RNG seeds, template masks, staging the shipped maps): its `TRAPS.md`.
 - **The scoped verify** `cargo xtask verify --scope town --summary` also runs the adventure lane's crates, replays and benchmark workloads (`verify_with`); its `check-lane` step fails by design on a `cross-lane` branch.
+
+## The import (`h3-map` `src/import/town.rs`)
+
+- **A town's entrance is blocked and visitable** in the shipped maps' templates: a test "does a town block this tile" also hits the entrance, where a moved hero (TWN-SET-010) and a town's visitor stand. Use `town::in_town` (a blocked tile that is not an entrance), not `blocks` (E09 T7a1, found by the census).
+- **Every struct literal of `GameSetup`, `PlayerSetup` and `GameHeroSetup`** lives in other lanes' crates too (`h3-cli`'s `src/ai/census.rs`, the ai lane's; `h3-map`'s examples): a new field is a `cross-lane` change there.

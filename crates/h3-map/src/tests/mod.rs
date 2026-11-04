@@ -19,6 +19,7 @@ mod sea;
 mod sea_map;
 mod sea_xl_map;
 mod strategy;
+mod towns;
 mod view;
 
 use proptest::prelude::*;
@@ -714,7 +715,8 @@ fn the_experiment_writer_marks_the_coast() {
 }
 
 /// E04c T5b: a town reads back with its body, and a hero on its entrance, two columns west of
-/// the town's position, stands in it (the import's own test of a town's blocked tiles).
+/// the town's position, stands on it (E09 T7a1; the import's own test of a town's blocked tiles
+/// in `towns.rs`).
 #[test]
 fn towns_from_the_experiment_writer_read_back() {
     use crate::writer as w;
@@ -796,14 +798,11 @@ fn towns_from_the_experiment_writer_read_back() {
         }
     );
     assert_eq!((t.formation, t.alignment, t.events.len()), (0, 0xff, 0));
-    // The visiting hero on the entrance stands in the town, which the import cannot represent
-    // yet (towns: E09).
-    assert!(matches!(
-        crate::import(&m, &import::SOD),
-        Err(crate::ImportError::Unsupported(
-            crate::Unsupported::HeroInTown(2)
-        ))
-    ));
+    // The visiting hero on the entrance stands on it: an entrance is no tile a hero stands in
+    // the town on (E09 T7a1).
+    let setup = crate::import(&m, &import::SOD).unwrap();
+    assert_eq!(setup.heroes[1].pos, h3_adventure::Pos::new(10, 9, 0));
+    assert_eq!(setup.towns.len(), 1);
 }
 
 #[test]

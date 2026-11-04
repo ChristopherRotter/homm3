@@ -48,6 +48,7 @@ mod observe;
 mod ruleset;
 mod setup;
 mod state;
+mod town;
 mod treasury;
 
 #[cfg(test)]
@@ -75,6 +76,12 @@ pub use h3_heroes::{Movement, movement};
 /// `h3_heroes`' (the map's import equips a map's entries where they are taken, since E08 T49b
 /// with Titan's Thunder's Spell Book; `wearing` places a list).
 pub use h3_heroes::{Position, equip, positions, takes, wearing};
+/// A town's setup as the map gives it (E09 T7a1; `h3_towns`' types): what a [`GameSetup`]'s towns
+/// hold, re-exported so that a map's import builds them through this crate.
+pub use h3_towns::{
+    BuildingsSetup, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup, TownFaction,
+    TownSetup,
+};
 pub use legal::{default_answer, legal_commands, legal_management, legal_moves, split_range};
 pub use manage::{Manage, ManageError};
 pub use observe::{
@@ -86,6 +93,7 @@ pub use setup::{
     HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, MonthKind, OpenBattle};
+pub use town::{FactionChoice, FactionSet, HeroDraw, MainTown, PlayerStart};
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):
