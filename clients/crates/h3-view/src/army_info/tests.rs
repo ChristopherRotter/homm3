@@ -180,6 +180,21 @@ fn a_still_s_mouse_shows_hides_and_keeps_the_windows() {
 }
 
 #[test]
+fn a_field_spot_without_a_hex_hides_the_windows_and_forgets_the_hex() {
+    let (l, o) = (layout(), battle(true));
+    let gap = [400, 2];
+    assert!(on_field(&l, gap));
+    assert_eq!(crate::mouse::spot(&l, gap, true), Spot::Nothing);
+    let mut hover = Hover::new(1);
+    hover.moved(&l, &o, (on_hero(&l, 0), true));
+    assert_eq!(drawn(&hover.windows), [(Side::Attacker, 0)]);
+    // The hex −1 counts as a new hex (the hints' guard, *provisional*): every window hidden.
+    hover.moved(&l, &o, (gap, true));
+    assert_eq!((hover.hex, drawn(&hover.windows)), (None, Vec::new()));
+    assert_eq!(hover.windows.heroes, [None, None]);
+}
+
+#[test]
 fn the_battlefield_ends_at_799_555() {
     let l = layout();
     assert!(on_field(&l, [0, 0]));
