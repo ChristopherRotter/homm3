@@ -18,7 +18,8 @@
 //! map's players (an owner must be one); since E08 T93b the dwellings (17, 20), the Refugee
 //! Camps, the random dwellings typed by class and those tied to a town (left blockers), and the
 //! RoE maps' dwellings under the base pack alone (checked: every RoE map's static layer imports
-//! with it, each of its dwellings typed).
+//! with it, each of its dwellings typed), and since E08 T94a the dwellings the game's build gives
+//! (the random ones resolved, checked) and the maps it refuses for a random dwelling's tiles.
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -30,8 +31,10 @@ use std::process::ExitCode;
 
 use std::sync::Arc;
 
-use h3_adventure::{Holds, MapSetup, ObjectKind, land_table_points};
-use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup};
+use h3_adventure::{
+    DWELLING_LEVELS, Holds, MapSetup, ObjectKind, ObjectTypeId, Pos, SetupError, land_table_points,
+};
+use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameSetupError, GameState, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -40,7 +43,7 @@ use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 /// objects of each body kind the maps hold; how many tiles objects are visited from; each map
 /// with stacked visitable tiles, with the classes on each such tile in map order; each map with
 /// typed objects that share their type and anchor with an earlier one, with how many; the
-/// monsters' and grounds' counts (E08 T20a2a).
+/// monsters' and grounds' counts (E08 T20a2a); the dwellings the game's build gives (E08 T94a).
 #[derive(Default)]
 struct Peaks(
     BTreeMap<&'static str, (usize, String)>,
@@ -49,7 +52,28 @@ struct Peaks(
     BTreeMap<String, Vec<Vec<u32>>>,
     BTreeMap<String, usize>,
     BTreeMap<&'static str, usize>,
+    Built,
 );
+
+/// The census of the dwellings the game's build gives (E08 T94a, [`built_dwellings`]): its
+/// counts, and the resolved random dwellings by faction (the core's index) and level.
+#[derive(Default)]
+struct Built(
+    BTreeMap<&'static str, usize>,
+    BTreeMap<usize, [usize; DWELLING_LEVELS]>,
+);
+
+/// The seed every game of the check is built with: the census of what the build draws (E08
+/// T94a, [`built_dwellings`]) is that seed's.
+const SEED: u64 = 0;
+
+/// The maps refused for a hero on a tile a random dwelling could cover (E08 T94a,
+/// `SetupError::RandomDwellingTile`).
+const REFUSED_HERO: &str = "maps refused for a hero on a random dwelling's tile";
+
+/// The maps refused for a boat on a tile a random dwelling could cover (E08 T94a,
+/// `SetupError::Boat`, which the setup without its random dwellings does not give).
+const REFUSED_BOAT: &str = "maps refused for a boat on a random dwelling's tile";
 
 impl Peaks {
     fn note(&mut self, what: &'static str, value: usize, map: &str) {
@@ -144,6 +168,30 @@ fn main() -> ExitCode {
     for (what, n) in &peaks.5 {
         println!("  {what}: {n}");
     }
+    let built = &mut peaks.6;
+    for what in [REFUSED_HERO, REFUSED_BOAT] {
+        built.0.entry(what).or_default();
+    }
+    println!("  dwellings built (seed {SEED}), checked:");
+    for (what, n) in &built.0 {
+        println!("    {what}: {n}");
+    }
+    let spread: Vec<String> = built
+        .1
+        .iter()
+        .map(|(&faction, levels)| {
+            let key = rules
+                .core()
+                .factions()
+                .get(faction)
+                .map_or("?", |f| f.key.as_str());
+            format!("{key} {levels:?}")
+        })
+        .collect();
+    println!(
+        "    resolved by faction drawn, levels 1 to {DWELLING_LEVELS} (seed {SEED}): {}",
+        spread.join(", ")
+    );
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -234,10 +282,15 @@ fn check(
         banned_artifacts: Vec::new(),
         events: Vec::new(),
     };
-    let built = GameState::new(rules, &setup, 0).map_err(|e| format!("static layer: {e}"))?;
+    let built = GameState::new(rules, &setup, SEED)
+        .map_err(|e| format!("static layer: {}", refusal(rules, &setup, e, &mut peaks.6)))?;
     // E08 T83b1: the state the game builds (ADV-SHY-001, ADV-MIN-003, ADV-OWN-002).
     for shipyard in built_economy(&built, rules, name, &mut peaks.5) {
         println!("h3-map: a Shipyard without a boat tile: {shipyard}");
+    }
+    // E08 T94a: the dwellings it builds, the random ones resolved (ADV-DWL-005).
+    for dwelling in built_dwellings(&built, &map, &setup.map, rules, name, &mut peaks.6)? {
+        println!("h3-map: a resolved dwelling's anchor past the right edge: {dwelling}");
     }
     let (visitable, stacked) = stacked(&map, &setup.map);
     peaks.2 += visitable;
@@ -257,8 +310,10 @@ fn check(
     }
     let outcome = match import(&map, rules) {
         Ok(setup) => {
-            let game = GameState::new(rules, &setup, 0)
-                .map_err(|e| format!("imported, but invalid: {e}"))?;
+            let game = GameState::new(rules, &setup, SEED).map_err(|e| {
+                let why = refusal(rules, &setup, e, &mut peaks.6);
+                format!("imported, but invalid: {why}")
+            })?;
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
             // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
             let levels: Vec<u8> = game.heroes().iter().map(|h| h.level).collect();
@@ -548,6 +603,167 @@ fn built_economy(
         usize::from(!adventure.check_added(rules.adventure())),
     );
     without
+}
+
+/// Counts the dwellings the game's build gives (E08 T94a; ADV-DWL-005, increment 10's design note
+/// §5), on the static map built with [`SEED`]: the dwellings (`StaticMap::dwellings`), placed by
+/// the map or random dwellings resolved (their setup object holds a [`Holds::RandomDwelling`]),
+/// the resolved ones by class (216 to 218) and by the faction and level drawn (the first faction
+/// of the set whose table has the type at a level of the range), those whose anchor moved (the
+/// Angel Portal's shift) and those whose moved anchor lies past the right edge (x the map's width;
+/// returned by name and anchor), the Refugee Camps (`StaticMap::camps`) and the dwellings owned at
+/// the start. Checked (an error fails the map): the dwellings and the camps are the built objects
+/// of their kinds in object order; each typed object of 216 to 218 holds a set and a range and is
+/// resolved, its type its set's tables' at a level of its range, its anchor moved right by the
+/// type's shift.
+fn built_dwellings(
+    game: &GameState,
+    raw: &RawMap,
+    setup: &MapSetup,
+    rules: &GameRuleset,
+    name: &str,
+    built: &mut Built,
+) -> Result<Vec<String>, String> {
+    let adventure = game.adventure();
+    let map = adventure.map();
+    let part = rules.adventure();
+    let kind = |ty: Option<ObjectTypeId>| ty.and_then(|ty| part.object_type(ty)).map(|ty| &ty.kind);
+    let objects = map.objects();
+    let of_kind = |dwelling: bool| -> Vec<usize> {
+        objects
+            .iter()
+            .map(|o| kind(o.object_type))
+            .enumerate()
+            .filter(|(_, kind)| match kind {
+                Some(ObjectKind::Dwelling { .. }) => dwelling,
+                Some(ObjectKind::RefugeeCamp { .. }) => !dwelling,
+                _ => false,
+            })
+            .map(|(index, _)| index)
+            .collect()
+    };
+    let classes: Vec<u32> = placed(raw).map(|(_, class)| class).collect();
+    if objects.len() != setup.objects.len()
+        || classes.len() != setup.objects.len()
+        || of_kind(true) != map.dwellings()
+        || of_kind(false) != map.camps()
+    {
+        return Err(format!(
+            "{name}: the built dwellings or camps are not the objects of their kinds"
+        ));
+    }
+    let (counts, spread) = (&mut built.0, &mut built.1);
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    add("maps built", 1);
+    add("dwellings", map.dwellings().len());
+    add("Refugee Camps", map.camps().len());
+    let owned = |index| usize::from(adventure.owner(index).is_some());
+    add(
+        "dwellings owned at the start",
+        map.dwellings().iter().map(|&index| owned(index)).sum(),
+    );
+    let mut edge = Vec::new();
+    for ((index, object), &class) in setup.objects.iter().enumerate().zip(&classes) {
+        let at = |why: &str| {
+            format!(
+                "{name}: the random dwelling at {:?} (object {index}) {why}",
+                object.anchor
+            )
+        };
+        let Holds::RandomDwelling {
+            factions,
+            levels: (low, high),
+        } = &object.holds
+        else {
+            if (216..=218).contains(&class) && object.object_type.is_some() {
+                return Err(at("holds no set and range"));
+            }
+            add(
+                "dwellings placed by the map",
+                usize::from(map.dwelling_index(index).is_some()),
+            );
+            continue;
+        };
+        let resolved = &objects[index];
+        let Some(ObjectKind::Dwelling { shift, .. }) = kind(resolved.object_type) else {
+            return Err(at("is not resolved"));
+        };
+        let drawn = factions.iter().find_map(|&faction| {
+            let row = part.random_dwelling(faction)?;
+            (*low..=*high)
+                .find(|&level| {
+                    let place = usize::from(level).checked_sub(1);
+                    place.and_then(|place| row.get(place)) == resolved.object_type.as_ref()
+                })
+                .map(|level| (faction.index(), level))
+        });
+        let anchor = object.anchor;
+        let moved = Pos::new(
+            anchor.x.saturating_add(u16::from(*shift)),
+            anchor.y,
+            anchor.level,
+        );
+        let Some((faction, level)) = drawn.filter(|_| resolved.anchor == moved) else {
+            return Err(at(
+                "is not a type of its set's tables at a level of its range, its anchor moved by \
+                 the type's shift",
+            ));
+        };
+        let class = match class {
+            216 => "random dwellings of class 216 resolved",
+            217 => "random dwellings of class 217 resolved",
+            218 => "random dwellings of class 218 resolved",
+            _ => return Err(at("is of another class")),
+        };
+        spread.entry(faction).or_default()[usize::from(level - 1)] += 1;
+        add(class, 1);
+        add("random dwellings resolved", 1);
+        add("resolved ones owned at the start", owned(index));
+        add(
+            "resolved with the anchor moved (the Angel Portal's shift)",
+            usize::from(*shift != 0),
+        );
+        let past = resolved.anchor.x == map.width();
+        add(
+            "resolved with the moved anchor past the right edge",
+            usize::from(past),
+        );
+        if past {
+            edge.push(format!("{name} {:?}", resolved.anchor));
+        }
+    }
+    Ok(edge)
+}
+
+/// Why the game refuses `setup` (E08 T94a): `error`, and when a random dwelling's tiles refuse it,
+/// counted in `built` by the reason and named so: a hero on one
+/// (`SetupError::RandomDwellingTile`), or a boat the same setup without its random dwellings does
+/// not refuse (`SetupError::Boat`).
+fn refusal(
+    rules: &GameRuleset,
+    setup: &GameSetup,
+    error: GameSetupError,
+    built: &mut Built,
+) -> String {
+    let why = match error {
+        GameSetupError::Adventure(SetupError::RandomDwellingTile { .. }) => Some(REFUSED_HERO),
+        GameSetupError::Adventure(SetupError::Boat(_)) => {
+            let mut without = setup.clone();
+            without
+                .map
+                .objects
+                .retain(|o| !matches!(o.holds, Holds::RandomDwelling { .. }));
+            (GameState::new(rules, &without, SEED).err() != Some(error)).then_some(REFUSED_BOAT)
+        }
+        _ => None,
+    };
+    match why {
+        Some(why) => {
+            *built.0.entry(why).or_default() += 1;
+            format!("{error} ({why})")
+        }
+        None => error.to_string(),
+    }
 }
 
 /// Counts increment 9's objects and the timed events (E08 T83a): the mines, those owned at
