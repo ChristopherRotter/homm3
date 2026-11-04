@@ -1,7 +1,8 @@
 //! The town context (ADR-0028, E09): every town's own record (its faction, the buildings built and
-//! forbidden, its map events, its name), the store of towns by `h3_contracts::TownId`, the rules
-//! and derivations over a town (the hall and the day's income, the fort level, the siege's facts,
-//! the reveal radius, the Tavern, the Capitol's limit), its ruleset part and that part's compiler.
+//! forbidden, its map events, its name), its setup at the game's build, the store of towns by
+//! `h3_contracts::TownId`, the rules and derivations over a town (the hall and the day's income,
+//! the fort level, the siege's facts, the reveal radius, the Tavern, the Capitol's limit), its
+//! ruleset part and that part's compiler.
 //! The town on the map (its tiles and entrance, owner, garrison and visiting hero) is the
 //! adventure's; `h3-game` composes the two, and no domain crate depends on this one (ADR-0028
 //! points 1, 2 and 6).
@@ -12,8 +13,11 @@
 //! T6b): the hall and the day's income ([`hall_level`], [`daily_income`]), the siege's facts
 //! ([`fort_level`], [`siege`], [`siege_obstacles`], [`defender_bonus`]), the reveal, the Tavern
 //! and the Capitol's limit with the store's first write ([`reveal`], [`has_tavern`],
-//! [`Towns::apply_capitol_limit`]), and the two version constants. E09 increment 1's design
-//! note §5 (the setup's functions, T6c) says what comes next.
+//! [`Towns::apply_capitol_limit`]), and the two version constants; the town's setup at the
+//! game's build (E09 T6c): what the map gives ([`TownSetup`]) and the functions the game calls
+//! with the setup stream ([`town_buildings_setup`], [`town_garrison`], [`town_setup`]). What
+//! comes next: the map's import of the towns and the game's build that calls the setup (E09 T7a,
+//! T7b; the design note §13, §14).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -43,6 +47,7 @@ mod fixture;
 mod income;
 mod record;
 mod ruleset;
+mod setup;
 mod siege;
 mod store;
 mod view;
@@ -57,6 +62,10 @@ pub use ruleset::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,
     DefenderBonus, Dwelling, GarrisonRow, MAX_CREATURE_LEVELS, Reveal, TownCompileError, TownDef,
     TownOverride, TownPack, TownParams, TownParamsDef, TownPatch, TownRecord, TownRuleset,
+};
+pub use setup::{
+    BuildingsSetup, BuiltTown, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup,
+    TownFaction, TownSetup, TownSetupError, town_buildings_setup, town_garrison, town_setup,
 };
 pub use siege::{defender_bonus, fort_level, siege, siege_obstacles};
 pub use store::{MAX_TOWNS, Towns};

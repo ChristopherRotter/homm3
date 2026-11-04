@@ -95,6 +95,11 @@ faction's set; the store is `Option<Arc<…>>` (one reference count a fork, none
 
 ### 5. The town's setup at the build (TWN-SET-003, TWN-SET-004)
 
+Built by T6c (`E09-log.md`; `h3_towns::town_setup`, `town_buildings_setup`, `town_garrison`).
+*Agent's calls* confirmed at its start: the garrison's draws before the buildings' in a town; a
+random stack at a level the record lacks an empty slot, an upgrade the level lacks the base; the
+start's Tavern the `tavern` building that supersedes no other; `TWN-STUB-2` registered there.
+
 `h3_towns::TownSetup` (in `GameSetup`, §13): `faction: TownFaction` (`Fixed(FactionId)` or
 `Random { alignment: Option<u8> }`, the colour the SoD byte names), `buildings: BuildingsSetup`
 (`Standard { fort }` or `Custom { built: SlotSet, forbidden: SlotSet }`, the map's 41 slots),
@@ -403,7 +408,7 @@ the public facts, -002 the garrison's levels, -003 the owner's team. Amended: AD
 classes 77, 98 typed), ADV-OWN-002 (towns' owners, the start's reveal), GAM-BAT-001 (a siege),
 GAM-RES-004's "not here" line (the towns'), GAM-SET-001 (the starting armies of the drawn heroes).
 
-**Quirks** (`docs/rules/quirks-town.md`, created by T7a), none with a flag: `TWN-QUIRK-1` T-1 (an
+**Quirks** (`docs/rules/quirks-town.md`, created by T6c with `-5`; T7a adds `-1` to `-4`), none with a flag: `TWN-QUIRK-1` T-1 (an
 alignment byte from 8 to 254: refused), `-2` T-2 (the pick not reserved: fixed), `-3` T-3 (a
 random hero taking a later hero's type: fixed), `-4` T-4 (the draws' empty cases: typed), `-5`
 T-6 (a custom set's horde leaving its dwelling standing: fixed, decision 29; T6 and T7a). T-5
@@ -411,7 +416,7 @@ comes with increment 3 (decision 12). TD-2's map-version test is the rules' reco
 (decision 14), not a quirk (as E08 decision 104).
 
 **Stubs:** `TWN-STUB-1` the siege of an ally's visitor (E10), `TWN-STUB-2` the start's forbidden
-Grail and Shipyard (increments 2, 4).
+Grail and Shipyard (increments 2, 4; registered by T6c).
 
 ### 20. Batch TWN-1 (T3)
 

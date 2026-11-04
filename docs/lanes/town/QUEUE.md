@@ -7,23 +7,40 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are round 6's (rounds 2 to 5, T6a and T6b are done, `E09-log.md`); each later round's
-entries are written when it comes (the epic's list), each task's cut confirmed at its start.
-Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+entries below are round 7's (rounds 2 to 6 are done, `E09-log.md`); each later round's entries are
+written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
+acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T6c — `h3-towns`: the setup's functions**
+**E09 T7a — the import and the setup's checks** (`cross-lane`)
 
-- **Scope:** round 6 (design §5): `TownSetup` and its types (`TownFaction`, `BuildingsSetup` with
-  the map's slots, `GarrisonStack`, the name and the events), `town_buildings_setup` (TWN-SET-003:
-  the standard and custom sets, the forbidden-with buildings, the hordes' upgrade by `auto_with`;
-  T-6 fixed as `TWN-QUIRK-5` in a new `docs/rules/quirks-town.md`), the garrison (TWN-SET-004),
-  the draws from the setup stream; the events' buildings resolved from the map's slots to the
-  faction's (`TownEvent::buildings`, T6a); the rules into `town.toml`.
-- **Acceptance:** every rule with its id, source and test; 100 % coverage of `h3-towns`; the
-  scoped verify.
-- **Notes:** design §19 has T7a create the quirks file: T6c creates it with `-5`, T7a adds `-1`
-  to `-4`. `h3-game` calls the functions from T7b; no `cross-lane` path.
-- **Depends on:** T6b (its `town.toml`; its pull request merged). **Status:** ready once it merges.
+- **Scope:** round 7 (design §7, §13; ADR-0015's amendment point 3): `h3-map`'s import of the
+  players' starts, the towns (classes 77, 98: the adventure's object and `GameSetup::towns[id]`, a
+  `h3_towns::TownSetup` each, T6c), the random hero (class 70), a hero right of a town's entrance
+  moved (TD-6, TWN-SET-010) and the pool's inputs; `PlayerSetup::start`, `GameSetup`'s new fields
+  and `GameSetup::validate`'s new errors (§13); map import v16; `TWN-QUIRK-1` to `-4` in
+  `docs/rules/quirks-town.md` (T6c created it with `-5`); the census with the original data
+  (every shipped map imports, the custom sets with a horde, the Shipyards without water:
+  `TWN-STUB-2`); the rules TWN-SET-001, -002's checks, -006, -010 as §19 names them.
+- **Acceptance:** every rule with its id, source and test; 100 % coverage of the crates touched;
+  the scoped verify with `--with-original-data`; the census in `docs/formats/h3m.md` ("Import").
+- **Notes:** large: cut it at its start (the import, then the setup's checks, is a seam). The
+  adventure lane's paths (`h3-map` outside `src/import/town*`, `setup.rs` in `h3-game`) make it
+  `cross-lane`; look at the adventure lane's HANDOFF first: its T93 (increment 10's import) may
+  bump map import before, then this task takes the next version (the lane's `TRAPS.md`).
+- **Depends on:** T6c (its pull request merged). **Status:** ready once it merges.
+
+**E09 T7b — the pool and the build's draws** (`cross-lane`)
+
+- **Scope:** round 7 (design §14; ADR-0017's amendment points 1 and 4): `h3-game`'s `HeroPool`
+  (TWN-SET-005; T-2, T-3 fixed), the build's draws from the setup stream in §14's order (the
+  players' random choices TWN-SET-001, a random town's faction TWN-SET-002, a random hero's type
+  TWN-SET-008, each main town's hero TWN-SET-009, the draw TWN-SET-007 with
+  `GameSetupError::NoFreeHero`, then each town's `h3_towns::town_setup`, T6c); the store of
+  towns beside the adventure's state, the garrisons and reveal radii into the adventure's setup;
+  game state hash v23; the replays re-recorded where the hash moves (skill
+  `homm3-rerecord-replays`).
+- **Acceptance:** as T7a's; the determinism replays green.
+- **Depends on:** T7a. **Status:** after T7a; its cut confirmed at its start.
 
 ## Inbox
 

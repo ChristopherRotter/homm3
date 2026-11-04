@@ -83,6 +83,12 @@ epic   = "E08"
 
 # --- town (TWN-STUB-<n>) ---
 
+[[stub]]
+id     = "TWN-STUB-2"
+where  = "crates/h3-towns/src/setup.rs::town_buildings_setup"
+reason = "The start's two forbids the original adds before a town's buildings (E09 survey E09-towns.md section 5.3 step 2; design note E09-design.md section 5, 'Not now'): the Grail building forbidden in every town a Grail-victory map's condition does not name (0x5F2160, increment 2, with the victory conditions) and the Shipyard forbidden when the faction has none or neither tile two rows below the entrance, one column left or right, is a boat's spot (0x5C0C90, increment 4, with the Shipyard). Until then a custom set's built Shipyard without water is kept (the siege's keep counts it) and the Grail building may be built anywhere"
+epic   = "E09"
+
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]
