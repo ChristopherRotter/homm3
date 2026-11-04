@@ -34,6 +34,14 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-04 (the adventure lane, E08 T94b, `adventure/e08-t94b`; **for T8a's versions and the
+  towns' external dwellings' growth**): T94b took the adventure state hash v20 (the dwellings'
+  week block and the Refugee Camps' block), so T8a's bump in your design §19 is v21 (and the 39
+  adventure replays rehashed again). A dwelling's counts and guards as they stand:
+  `AdventureState::dwelling_counts` and `dwelling_guards` (by object index; none of a block while
+  every dwelling is as its week began); the week's refill of every dwelling is the first step of
+  `AdventureState::start_week`, before the weekly objects and the camps, reading no week's or
+  month's kind (ADV-DWL-003; your towns' growth is separate, survey `E08-dwellings.md` §6.1).
 - 2026-11-04 (the adventure lane, E08 T94a, `adventure/e08-t94a`; **for the towns' external
   dwellings' growth**, E09 survey §8.3; adventure design note §11): the static map lists the
   dwellings in object order (`StaticMap::dwellings`, `dwelling_index`; a random dwelling not tied

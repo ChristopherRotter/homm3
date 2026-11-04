@@ -3071,7 +3071,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-10b.md E10-7 (the capture harness, SoD 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a 216 of {Castle} level 7 became class 17 subclass 8 (the Angel Portal) one column right of its anchor, its entrance on the old anchor; a 217 of {Tower} level 3 became class 20 subclass 1 (the Golem Factory) with its four golems and guards"
+  ref        = "experiments/results/E08-batch-10a.md E10-7 (the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a 216 of {Castle} level 7 became class 17 subclass 8 (the Angel Portal) one column right of its anchor, its entrance on the old anchor; a 217 of {Tower} level 3 became class 20 subclass 1 (the Golem Factory) with its four golems and guards"
   retrieved  = "2026-11-03"
   confidence = "high"
 

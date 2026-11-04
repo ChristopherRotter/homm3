@@ -108,6 +108,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 251. **T94 in two at the design's seam, T94a now** (the user; recommended): **T94a** the build (a hero on a tile a random dwelling's outcome may cover refused, the resolution in the placement walk, the dwelling and camp indexes, the owners' and the start's reveal's and the views' tests, the census; no version moves: the encoding is unchanged and no replay has a dwelling); **T94b** the state (the dwellings' week block, the camps' draws, the week's refill; adventure state hash v20, the replays rehashed) in the next session. Not chosen: both in this session; T94 whole.
 
+### Decisions at T94b's start (2026-11-04, user)
+
+252. **T94b whole** (the user; recommended): the dwellings' week block, the camps' block and draws, the week's refill, the views, the census and the adventure state hash v20 with the 39 replays rehashed in one pull request. Not chosen: the dwellings then the camps (two hash bumps); the state then the census.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
