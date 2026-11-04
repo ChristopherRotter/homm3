@@ -859,3 +859,49 @@ review and the docs by the agent.
   prisoners.
 - **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
   `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass.
+
+### T7a2 — the setup's checks (2026-11-04)
+
+One session, the user present; branch `town/e09-t7a2` (`cross-lane`: `h3-game`'s `setup.rs` and
+its tests' helpers, `h3-map`'s census example). Starting point: `master` at 0387933 (#710 merged;
+CI green there; the sandbox's baseline passed with only the light gates, CI having verified the
+code; the original data staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`,
+`extracted.tar`). **At its start** (the user): `TownCount` and `MainTown`'s owner half move to T8a
+(the towns have no owner in the setup and the static map no town list before it); `TownAlignment`
+refuses a colour no player has, as §13 says (the original falls through to the owner, then the
+draw, as for no alignment; none on the shipped maps), not the import's resolution to none (a map
+import bump). The code by one sub-agent in a worktree, the review and the docs by the agent.
+
+- **`h3-game`** (`src/town.rs`, the lane's): `check_starts`, called by `adventure_setup` after the
+  heroes' count and before `hero_types` (the `HeroDraw` refusal, `TWN-STUB-3`), one pass per
+  invariant in §13's order: `TownFaction(TownId)` (a fixed faction without a town record),
+  `TownAlignment(TownId)`, `Choice(PlayerId)`, `MainTown(PlayerId)` (its town none of the setup's),
+  `Pick(PlayerId)`, `PickTaken(PlayerId)` (the later player), `RandomHeroOwner(HeroId)`.
+  `GameSetup::offer(rules, player)` and `GameSetup::OFFERED_HEROES` (16, the dialog's list) are
+  public: none unless the choice is fixed and the main town generates the hero or the random-hero
+  flag is set; then the first 16 types in the core's order that the map allows, no placed hero
+  and no prisoner has, of a class of the faction, every colour mask of the type with the colour's
+  bit. *The agent's calls:* `Choice` also refuses a set holding a faction without a town record
+  (`TWN-QUIRK-4`: a draw always gives one) and no choice where the start needs a faction (a main
+  town, the random-hero flag, a random hero of its own, a random town aligned to its colour).
+  *The sub-agent's calls:* a colour mask test past bit 7 offers nothing (`checked_shr`; the offer
+  may be asked before `validate`); towns past a `TownId`'s range are unchecked until T8a's
+  `TownCount`; the tests build a ruleset of their own (a second faction and class, a town record,
+  the battle tests' siege field), so six helpers of `src/tests/mod.rs` (the adventure lane's)
+  became `pub(crate)`; the two T7a1 tests of the build rewritten on it.
+- **`h3-map`** (`examples/original_data.rs`, the census): a map a new check refuses is reported by
+  the check's name; nothing in the import changed.
+- **Versions:** none moved (no hash, no import, no replay).
+- **Docs:** `town.toml` TWN-SET-001 (the checks), TWN-SET-002, -006, -008 (new); `quirks-town.md`
+  (`TWN-QUIRK-2`, `-3` with T7b's pool: the checks fix neither; `-4`'s faction now checked); the
+  design note's §8 (T8a takes the two checks), §13 "As built", §19; `h3m.md`'s census.
+- **The census** (`original_data`, 160 maps): as T7a1's after #711: 156 import, 4 refused for an
+  ownable object entered from water, 9 build whole, 125 and 22 refused by the build
+  (`TWN-STUB-3`); no map refused by a new check (the import sets no pick, so `Pick` is not
+  exercised by the shipped maps).
+- **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
+  `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass. Its
+  first coverage run met a failing random case of `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` (the import refuses its laid-out map,
+  `OwnedOnWater`; not T7a2's code): its persisted seed left out, the adventure lane's inbox told;
+  the re-run passed.

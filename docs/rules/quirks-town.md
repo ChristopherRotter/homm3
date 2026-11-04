@@ -1,6 +1,6 @@
 # Quirks ledger: town lane
 
-Known differences between the original game's behaviour and a clean design, in the town lane's rules (a town's record and setup, the derivations over it, the town on the map; E09). Classes, the decision guide and profiles are in `docs/04-rules-and-sources.md` §4; the entry template is in `docs/rules/quirks-ledger.md` (the battle lane's ledger). Ids are `TWN-QUIRK-<n>` (`docs/08-work-process.md`, "Lanes"); 1 to 4 are the quirk candidates T-1 to T-4 (E09 design note §19): E09 T7a1 entered 1 and 4, 2 and 3 come with T7a2's checks and T7b's pool.
+Known differences between the original game's behaviour and a clean design, in the town lane's rules (a town's record and setup, the derivations over it, the town on the map; E09). Classes, the decision guide and profiles are in `docs/04-rules-and-sources.md` §4; the entry template is in `docs/rules/quirks-ledger.md` (the battle lane's ledger). Ids are `TWN-QUIRK-<n>` (`docs/08-work-process.md`, "Lanes"); 1 to 4 are the quirk candidates T-1 to T-4 (E09 design note §19): E09 T7a1 entered 1 and 4, 2 and 3 come with T7b's pool (T7a2's checks fix neither).
 
 A candidate becomes an entry here only once it is confirmed for SoD (by an experiment, by original data, or by a code reading that a second look confirms). Until then it waits in its survey and the engine implements the clean behaviour. `exploit-fix` entries and those not reproduced need no confirmation.
 
@@ -23,7 +23,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Class: fix, no flag (the user, 2026-11-02, TWN-Q2, T-4: typed; the epic's decision 12)
 - Context / rules affected: town, TWN-SET-001 (the player's main town; E09 T7a1), TWN-SET-007 and TWN-SET-009 (the draw and the main town's hero; E09 T7b)
 - Original behavior: `main_town_heroes` (0x4CA040) looks for the town whose position equals the main town's; when none matches, the town pointer stays null and is used. A draw with no free hero at all (`hero_draw_of_faction` 0x4BB400) calls `random_between(1, 0)` and reads below the list. A faction outside 0 to 8 draws from Castle's classes.
-- Intended/expected behavior: each case is typed. The import refuses a main town whose position is no town's entrance (`h3_map::ImportError::MainTown`, the colour; E09 T7a1); a draw with nothing free fails typed (E09 T7b); the faction is always one of the ruleset's with a town record.
+- Intended/expected behavior: each case is typed. The import refuses a main town whose position is no town's entrance (`h3_map::ImportError::MainTown`, the colour; E09 T7a1); a draw with nothing free fails typed (E09 T7b); the faction is always one of the ruleset's with a town record (the setup refuses a player's set holding another, `h3_game::GameSetupError::Choice`; E09 T7a2).
 - Impact: none on the shipped maps (all 553 main towns match a town; 156 heroes); a malformed map or an exhausted pool fails typed instead of reading memory it should not.
 - Community status: VCMI 1.7.5 throws when no hero is left (survey §4.7).
 - Sources: code reading of `main_town_heroes` 0x4CA040 (read whole) and `hero_draw_of_faction` 0x4BB400 (E09 T1a2; survey `docs/rules/surveys/E09-towns.md` §4.4, §4.5, §6 T-4).

@@ -426,6 +426,12 @@ with all eight factions allowed. 176 random heroes (18 with a custom experience)
 onto an entrance, none left in a town. The allowed heroes: 144 to 155 types on 91 maps, 128 to
 143 on 51, fewer on 14; hero masks on 9 maps (832); 86 prisoners.
 
+E09 T7a2's census (the same import): the game's new checks of the towns and the players' starts
+(`GameSetupError::TownFaction`, `TownAlignment`, `Choice`, `MainTown`, `Pick`, `PickTaken`,
+`RandomHeroOwner`, run before `TWN-STUB-3`'s refusal) refuse none of the 156 maps that import;
+the outcomes are T7a1's (9 build whole, 125 and 22 refused by `TWN-STUB-3`). The import sets no
+starting-hero pick, so the shipped maps do not exercise `Pick`.
+
 ## The subset we write (E04a T2)
 
 ### Order of a SoD map (version `0x1C`), as we write it

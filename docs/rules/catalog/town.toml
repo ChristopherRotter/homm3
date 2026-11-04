@@ -195,7 +195,7 @@ id       = "TWN-SET-001"
 title    = "A player's factions at the start"
 context  = "town"
 status   = "implemented"
-summary  = "Each playing colour starts with a set of factions and a choice among them (the setup's `PlayerStart`, the seam whoever seats the players may change before the build, E09 decision 6). A map's import gives the set: the map's allowed towns (a bit per faction in the format's order, `TOWNTYPE.TXT`'s: Castle 0 to Fortress 7, Conflux 8 from AB on) that the ruleset has as factions with a town record; a bit past the nine names none. An RoE-format map's player whose eight bits are all set also has Conflux when the ruleset has it (E09 decision 14: the enabled expansions decide, not the map's format; the original's map-format test is the recorded deviation, TD-2); one restricted to fewer stays restricted. The choice is the set's faction when it holds exactly one, else Random (an empty set's Random the game refuses, E09 T7a2); no starting-hero pick. With the start come the player's main town (the town whose entrance is the header's position, survey finding 3; one that is no town's entrance is refused, TWN-QUIRK-4), whether it generates the starting hero (the map's flag, an RoE map's always) and the random-hero flag. Not yet: Random's draw, uniform over the set from the game's seed (E09 T7b, design note section 14). E09 T7a1 (design note sections 7 and 13): `h3_map::import` (`import/town.rs`, `starts`), `h3_game::PlayerStart`."
+summary  = "Each playing colour starts with a set of factions and a choice among them (the setup's `PlayerStart`, the seam whoever seats the players may change before the build, E09 decision 6). A map's import gives the set: the map's allowed towns (a bit per faction in the format's order, `TOWNTYPE.TXT`'s: Castle 0 to Fortress 7, Conflux 8 from AB on) that the ruleset has as factions with a town record; a bit past the nine names none. An RoE-format map's player whose eight bits are all set also has Conflux when the ruleset has it (E09 decision 14: the enabled expansions decide, not the map's format; the original's map-format test is the recorded deviation, TD-2); one restricted to fewer stays restricted. The choice is the set's faction when it holds exactly one, else Random; no starting-hero pick. With the start come the player's main town (the town whose entrance is the header's position, survey finding 3; one that is no town's entrance is refused, TWN-QUIRK-4), whether it generates the starting hero (the map's flag, an RoE map's always) and the random-hero flag. The game refuses (E09 T7a2, `GameSetup::validate`, `GameSetupError::Choice`) a player whose set holds a faction without a town record (so a draw always gives one, TWN-QUIRK-4), whose choice is a fixed faction outside its set or Random over an empty set, or who has no choice while its start needs a faction (a main town, the random-hero flag, a random hero of its own or a random town aligned to its colour; the agent's call); and a main town that is none of the setup's towns (`MainTown`). Not yet: a main town of another owner, refused once the towns have owners (E09 T8a, the user's cut of 2026-11-04); Random's draw, uniform over the set from the game's seed (E09 T7b, design note section 14). E09 T7a1 (design note sections 7 and 13): `h3_map::import` (`import/town.rs`, `starts`), `h3_game::PlayerStart`."
 quirks   = ["TWN-QUIRK-4"]
 numeric  = "integer"
 
@@ -221,6 +221,39 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "E09 decision 14 (TD-2 by the enabled expansions, not the map's version) and decision 6 (the players' choices as the seam with E10's scenario setup); the agent's call in docs/epics/E09-design.md section 7: the choice Fixed with exactly one faction, else Random"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SET-002"
+title    = "A random town's faction"
+context  = "town"
+status   = "implemented"
+summary  = "A random town (the map's class 77) takes its faction when the game is built: an alignment to a colour (SoD's byte, 0 to 7) gives that colour's resolved faction, else an owned town takes its owner's, else a draw uniform over the factions with a town record (eight with the base pack, nine with AB: TD-1 by the reading, TD-2 by the packs, E09 decision 14). A fixed town (class 98) keeps its faction. The game refuses a setup (E09 T7a2, `GameSetup::validate`) with a fixed town whose faction has no town record in the town part (`GameSetupError::TownFaction`) or a random town aligned to a colour that no player of the game has (`TownAlignment`). The original lets such a town fall through to its owner, then the draw, as if it had no alignment; it is refused instead (the user, 2026-11-04), since no shipped map has one (every aligned colour plays, survey section 1.1). An alignment byte from 8 to 254 the import refuses (TWN-QUIRK-1). Not yet: the draw (E09 T7b, design note section 14)."
+quirks   = ["TWN-QUIRK-1"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a1; survey E09-towns.md section 2.3): load_town_body (0x5019F0) keeps a class 98 town's subclass as its faction; for class 77 it reads SoD's alignment byte after the events (0x502049; 0xFF before SoD) and takes, for an alignment other than 0xFF to a colour that plays (its human or computer flag), that colour's chosen faction (0x5020AB); else, for an owner other than 0xFF, the owner's (0x50215B); else random_allowed_faction of 0xFF or 0x1FF (0x5020C5: eight factions on an RoE map, nine on AB and SoD); a colour that does not play falls through to the owner, then the draw; census (section 1.1): 47 aligned random towns, every aligned colour plays"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 2.5: MapFormatH3M keeps an alignment below 8 to a colour that can play and warns on the rest (kept as the owner's or random); CGTownInstance::randomizeFaction takes the owner's faction first, then the alignment's, else a uniform draw over every faction with a town (nine on every format; differs: TD-1, TD-2)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Map Editor - Objects, Random Towns (survey E09-towns.md section 2.5): \"Same as Owner or Random\" gives the owner's faction, a random one when unowned; \"Same as player\" applies even when that player is not the owner, falling back to random when that player has no faction (the reading's order); HotA 1.6.0's changelog adds Conflux to RoE maps' random towns"
+  url        = "https://heroes.thelazy.net/index.php/Map_Editor_-_Objects"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E09 decision 14 (TD-2 by the enabled expansions); docs/epics/E09-design.md section 13 (the checks TownFaction, TownAlignment); the user's call of 2026-11-04 at T7a2's start: an alignment to a colour no player has is refused, not resolved as none"
   confidence = "high"
 
 [[rule]]
@@ -288,6 +321,63 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "The agent's calls the user confirmed for E09 T6c: a random stack at a level the record lacks leaves its slot empty, an upgraded one at a level without an upgrade is the base, the garrison's draws before the buildings' (the original's town_setup order); docs/epics/E09-design.md section 5"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SET-006"
+title    = "A player's starting-hero pick and its offer"
+context  = "town"
+status   = "implemented"
+summary  = "A player may pick its starting hero before the game is built (the setup's `PlayerStart::pick`, which whoever seats the players may change, E09 decision 6; a map's import picks none). The pick must be one of the player's offer: none unless its faction choice is fixed and its main town generates its hero or it has the random-hero flag; then the first 16 hero types in the ruleset's type order that the map allows (`GameSetup::allowed_heroes`), that no placed hero and no prisoner has, of a hero class of the chosen faction, and that the player's colour may take (SoD's colour masks: every mask of the type has the colour's bit). The game refuses (E09 T7a2, `GameSetup::validate`) a pick outside the offer (`GameSetupError::Pick`) and a pick an earlier player also has (`PickTaken`). The original's dialog knows only the map's allowed set and the masks, so it would offer a placed hero's or a prisoner's type; none is allowed on the shipped maps (survey section 4.2), and leaving them out keeps a pick off a hero already on the map (the design note's section 13). Not yet: where the pick goes (its player's first random hero, else a human player's main-town hero; TWN-SET-008, -009) and its reservation before every draw (T-2), E09 T7b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a2; survey E09-towns.md section 4.3): scenario_hero_lists (0x583890, read whole) offers a colour that plays with a faction (not Random) up to 16 heroes in type order, free in the dialog's pool (the header's allowed set and hero_pool_init only), of the faction's two classes (hero_table +0x8), takeable by the colour (a disposed hero's mask); the column offers the choice when the colour's main town generates a hero or the colour has the random-hero flag; load_hero_body (0x5022ED) gives it to the colour's first random hero, main_town_heroes (0x4CA146) to a human colour's main-town hero; neither checks that it is still free (T-2)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 4.7: CGameState::pickNextHeroType takes the player's chosen hero while no hero of that type exists on the map, else draws one unused (the choices and the map's heroes reserved)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "community"
+  ref        = "A Celestial Heavens thread on \"Generate hero at main town\" and a GOG forum thread on picking the initial hero (survey E09-towns.md sections 0 and 4.7, through the search's summaries): the player chooses among the chosen town's heroes, unless the map sets the hero"
+  url        = "https://www.celestialheavens.com/forum/7/14260"
+  retrieved  = "2026-11-02"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 13 (the checks Pick, PickTaken; the offer after the placed heroes and prisoners are taken); the offer's 16 a constant of the original's dialog, kept in h3-game (the agent's call, E09 T7a2)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SET-008"
+title    = "A random hero"
+context  = "town"
+status   = "implemented"
+summary  = "A random hero (the map's class 70) is a placed hero whose type the game draws when it is built (`GameHeroSetup::hero_type` none, the rest of its body a placed hero's; E09 T7a1): its owner's pick for the owner's first random hero in hero order, else the draw (TWN-SET-007) over its owner's faction, so the type is taken before the next random hero draws. The game refuses (E09 T7a2, `GameSetup::validate`) a random hero whose owner is no player of the game (`GameSetupError::RandomHeroOwner`) and an owner without a faction choice (`Choice`, TWN-SET-001). Not yet: the draw; until E09 T7b the build refuses a setup with a random hero (`GameSetupError::HeroDraw`, TWN-STUB-3)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a2; survey E09-towns.md section 4.4): load_hero_body for class 70 takes the owner's chosen hero (0x5022ED, the choice then cleared) or hero_draw_of_faction(chosen_factions[owner], owner) at once (0x502352); the type is the owner's from then (0x502988), so the next draw excludes it; the rest of its body applies as a placed hero's; census: 176 random heroes on 36 maps"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 4.7: a random hero draws through CGameState::pickNextHeroType at the objects' randomisation, every object first read (the map's later heroes reserved, T-3)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E09 decision 8 (the random hero in increment 1); docs/epics/E09-design.md sections 13 (the check RandomHeroOwner) and 14 (the draw)"
   confidence = "high"
 
 [[rule]]

@@ -13,6 +13,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-04 (the town lane, E09 T7a2, `town/e09-t7a2`; **a failing property case on `master`'s
+  import, for a task of yours**): the scoped verify's coverage run found a case of `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` whose laid-out map the import refuses:
+  `start_on` (`tests/play.rs:1478`) unwraps `Err(Unsupported(OwnedOnWater(12)))` (an RoE plan,
+  side 15, one level, its third tile water). T7a2 changes neither the import, the writer nor these
+  tests, so `master` has it too (CI's runs passed on other random cases). Proptest's persisted
+  seed, not committed by T7a2 (it would fail every later run): adding the line
+  `cc f1e6f5bccdc743b549410caa31f1089b743afa8f5432e8ffc10073eb14d036fc` to
+  `crates/h3-map/proptest-regressions/tests/view.txt` replays it. Likely the plan generator
+  placing an ownable object (T93b's dwellings) where it is entered from water.
+
 - 2026-11-04 (the town lane, E09 T7a1, #710; **increment 10's dwellings on water, for a task of
   yours**): with #710 the import reads the static layer before the players (a main town needs the
   towns), so a refusal the players' `HeroAtMainTown` used to hide now shows: 4 shipped maps are

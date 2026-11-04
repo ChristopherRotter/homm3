@@ -211,6 +211,9 @@ ADR-0015's amendment point 3, in the import's order:
   every other ownable keeps the flag radius.
 - The state hash (v20): towns in the ownables and the owners block, the static map's town list and
   holds.
+- **From T7a2** (the user's cut, 2026-11-04): `GameSetup::validate`'s `TownCount` (the setup's
+  towns against the static map's town list) and `MainTown`'s owner half (a main town of another
+  owner), once the town list and the towns' owners exist (§13's "As built").
 
 ### 9. The step onto a town (TWN-VIS-001, TWN-VIS-002; `h3-adventure` `src/town*`, T8a)
 
@@ -303,6 +306,17 @@ The words for `docs/06-security.md` (a section "Towns (E09 increment 1)"):
   first 16 in type order of the free types of the faction's two classes the colour may take, after
   the placed heroes and prisoners are taken), `PickTaken` (two players), `RandomHeroOwner` (no
   player of the game).
+- **As built (T7a2):** `h3_game::town::check_starts`, after the heroes' count and before the
+  `HeroDraw` refusal (`TWN-STUB-3`), one pass each: `TownFaction`, `TownAlignment`, `Choice`,
+  `MainTown`, `Pick`, `PickTaken`, `RandomHeroOwner`. **`TownCount` and `MainTown`'s owner move to
+  T8a** (the user, 2026-11-04: the towns have no owner and the static map no town list before it);
+  `MainTown` refuses a town that is none of the setup's. `TownAlignment` refuses a colour no
+  player has, though the original falls through to the owner (the user, the same day; none on the
+  shipped maps). *Agent's calls:* `Choice` also refuses a set holding a faction without a town
+  record (`TWN-QUIRK-4`) and no choice where the start needs a faction (a main town, the
+  random-hero flag, a random hero of its own, a random town aligned to its colour); the offer is
+  public (`GameSetup::offer`, `OFFERED_HEROES` = 16) for whoever seats the players. The census:
+  no shipped map refused by a new check (the import picks nothing, so `Pick` is not exercised).
 
 ### 14. The pool and the build's draws (`GameState::new`; game state hash v23, T7b)
 
@@ -415,7 +429,7 @@ the public facts, -002 the garrison's levels, -003 the owner's team. Amended: AD
 classes 77, 98 typed), ADV-OWN-002 (towns' owners, the start's reveal), GAM-BAT-001 (a siege),
 GAM-RES-004's "not here" line (the towns'), GAM-SET-001 (the starting armies of the drawn heroes).
 
-**Quirks** (`docs/rules/quirks-town.md`, created by T6c with `-5`; T7a1 added `-1`, `-4`; `-2`, `-3` come with T7a2's checks and T7b's pool), none with a flag: `TWN-QUIRK-1` T-1 (an
+**Quirks** (`docs/rules/quirks-town.md`, created by T6c with `-5`; T7a1 added `-1`, `-4`; `-2`, `-3` come with T7b's pool: T7a2's checks fix neither), none with a flag: `TWN-QUIRK-1` T-1 (an
 alignment byte from 8 to 254: refused), `-2` T-2 (the pick not reserved: fixed), `-3` T-3 (a
 random hero taking a later hero's type: fixed), `-4` T-4 (the draws' empty cases: typed), `-5`
 T-6 (a custom set's horde leaving its dwelling standing: fixed, decision 29; T6 and T7a). T-5
