@@ -15,13 +15,16 @@
 //! water is counted by its reason, `Unsupported::HeroOnWater`; a boat the setup refuses fails the
 //! static layer's validation), and since E08 T83a increment 9's objects (their owners at load, the
 //! abandoned mines' sets) and the timed events; the static layer is validated in a game of the
-//! map's players (an owner must be one).
+//! map's players (an owner must be one); since E08 T93b the dwellings (17, 20), the Refugee
+//! Camps, the random dwellings typed by class and those tied to a town (left blockers), and the
+//! RoE maps' dwellings under the base pack alone (checked: every RoE map's static layer imports
+//! with it, each of its dwellings typed).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
 //! The installation copy is only read. Without a `Maps` folder the check is skipped with a note.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -29,7 +32,7 @@ use std::sync::Arc;
 
 use h3_adventure::{Holds, MapSetup, ObjectKind, land_table_points};
 use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup};
-use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
+use h3_map::model::{Artifacts, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
@@ -77,40 +80,12 @@ fn main() -> ExitCode {
         })
         .collect();
     files.sort();
-    let (core, part) = match compile(&ORIGINAL_PACKS, "base:faithful") {
-        Ok(rules) => rules,
-        Err(e) => {
-            eprintln!("h3-map: the original packs do not compile: {e:?}");
+    let (rules, base) = match (ruleset(ORIGINAL_PACKS.len()), ruleset(1)) {
+        (Ok(rules), Ok(base)) => (rules, base),
+        (Err(e), _) | (_, Err(e)) => {
+            eprintln!("h3-map: {e}");
             return ExitCode::FAILURE;
         }
-    };
-    let packs = [
-        h3_pack_battle::BASE_PACK,
-        h3_pack_battle::AB_PACK,
-        h3_pack_battle::SOD_PACK,
-    ];
-    let battle = match h3_pack_battle::compile(&packs, "base:faithful") {
-        Ok(battle) => battle,
-        Err(e) => {
-            eprintln!("h3-map: the original battle packs do not compile: {e:?}");
-            return ExitCode::FAILURE;
-        }
-    };
-    let towns = match h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS, "base:faithful") {
-        Ok(towns) => towns,
-        Err(e) => {
-            eprintln!("h3-map: the original town packs do not compile: {e:?}");
-            return ExitCode::FAILURE;
-        }
-    };
-    let Ok(rules) = GameRuleset::new(
-        Arc::new(core),
-        Arc::new(part),
-        Arc::new(battle),
-        Arc::new(towns),
-    ) else {
-        eprintln!("h3-map: the parts belong to another core");
-        return ExitCode::FAILURE;
     };
     let mut imports = BTreeMap::<String, Vec<String>>::new();
     let limits = Limits::default();
@@ -121,7 +96,7 @@ fn main() -> ExitCode {
         let name = path
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        match check(path, &limits, &mut peaks, &name, &rules) {
+        match check(path, &limits, &mut peaks, &name, (&rules, &base)) {
             Ok((version, outcome)) => {
                 *versions.entry(version).or_default() += 1;
                 imports.entry(outcome).or_default().push(name);
@@ -186,15 +161,39 @@ fn main() -> ExitCode {
 /// The outcome of a map that imports and validates.
 const IMPORTED: &str = "imported and valid";
 
+/// The game's ruleset of the first `n` original packs, RoE to SoD: all three for the import, the
+/// base pack alone for the RoE maps' check (E08 T93b, [`roe`]).
+fn ruleset(n: usize) -> Result<GameRuleset, String> {
+    let (core, part) = compile(&ORIGINAL_PACKS[..n], "base:faithful")
+        .map_err(|e| format!("the original packs do not compile: {e:?}"))?;
+    let packs = [
+        h3_pack_battle::BASE_PACK,
+        h3_pack_battle::AB_PACK,
+        h3_pack_battle::SOD_PACK,
+    ];
+    let battle = h3_pack_battle::compile(&packs[..n], "base:faithful")
+        .map_err(|e| format!("the original battle packs do not compile: {e:?}"))?;
+    let towns = h3_pack_towns::compile(&h3_pack_towns::ORIGINAL_PACKS[..n], "base:faithful")
+        .map_err(|e| format!("the original town packs do not compile: {e:?}"))?;
+    GameRuleset::new(
+        Arc::new(core),
+        Arc::new(part),
+        Arc::new(battle),
+        Arc::new(towns),
+    )
+    .map_err(|_| "the parts belong to another core".to_owned())
+}
+
 /// Reads one map and checks that its terrain codes are in range (a misaligned read shows there),
 /// then imports it: its static layer must import and validate; the whole map imports and
-/// validates, or the import reports what is not supported yet (the outcome).
+/// validates, or the import reports what is not supported yet (the outcome). Since E08 T93b an RoE
+/// map's static layer must also import with the base pack alone (`base`, [`roe`]).
 fn check(
     path: &Path,
     limits: &Limits,
     peaks: &mut Peaks,
     name: &str,
-    rules: &GameRuleset,
+    (rules, base): (&GameRuleset, &GameRuleset),
 ) -> Result<(Version, String), String> {
     let file = std::fs::read(path).map_err(|e| e.to_string())?;
     peaks.note("file", file.len(), name);
@@ -250,6 +249,12 @@ fn check(
         peaks.4.insert(name.to_owned(), twins);
     }
     census(&map, &setup.map, rules, &mut peaks.5);
+    if map.header.version == Version::RoE {
+        let counts = &mut peaks.5;
+        roe(&map, base, &mut |what, n| {
+            *counts.entry(what).or_default() += n
+        })?;
+    }
     let outcome = match import(&map, rules) {
         Ok(setup) => {
             let game = GameState::new(rules, &setup, 0)
@@ -419,6 +424,7 @@ fn census(
     events(setup, rules, &mut add);
     sea(setup, rules, &mut add);
     economy(map, setup, rules, &mut add);
+    dwellings(map, setup, &mut add);
     let mut lying = BTreeMap::<(u16, u16, u8), usize>::new();
     let ground = |object: &&h3_adventure::ObjectSetup| {
         matches!(
@@ -614,6 +620,88 @@ fn economy(
     );
 }
 
+/// Counts increment 10's dwellings (E08 T93b, increment 10's design note §3, §4): the dwellings
+/// (17, 20) and the Refugee Camps (78) typed by class, the random dwellings (216 to 218) typed by
+/// class, those with a faction set (the survey: 206), and those
+/// tied to a town, which stay blockers (ADV-STUB-13), with those tied to a random town (the
+/// survey: about 1 397, all to random towns).
+fn dwellings(map: &RawMap, setup: &MapSetup, add: &mut impl FnMut(&'static str, usize)) {
+    let random_towns: BTreeSet<u32> = placed(map)
+        .filter(|&(_, class)| class == 77)
+        .filter_map(|(object, _)| match &object.body {
+            Body::Town(town) => town.identifier,
+            _ => None,
+        })
+        .collect();
+    for ((object, class), entry) in placed(map).zip(&setup.objects) {
+        let typed = entry.object_type.is_some();
+        let what = match class {
+            17 => "dwellings: class 17 typed",
+            20 => "dwellings: class 20 typed",
+            78 => "dwellings: Refugee Camps (78) typed",
+            216 => "dwellings: random dwellings of class 216 typed",
+            217 => "dwellings: random dwellings of class 217 typed",
+            218 => "dwellings: random dwellings of class 218 typed",
+            _ => continue,
+        };
+        add(what, usize::from(typed));
+        let Body::RandomDwelling(body) = &object.body else {
+            continue;
+        };
+        match body.faction {
+            Some((0, _)) => add("dwellings: random dwellings with a faction set", 1),
+            Some((town, _)) if !typed => {
+                add(
+                    "dwellings: random dwellings tied to a town (blockers, ADV-STUB-13)",
+                    1,
+                );
+                add(
+                    "dwellings: random dwellings tied to a random town",
+                    usize::from(random_towns.contains(&town)),
+                );
+            }
+            _ => {}
+        }
+    }
+}
+
+/// An RoE map's dwellings under the base pack alone (E08 T93b, increment 10's design note §3):
+/// its static layer must import with the RoE ruleset (`base`), each of its dwellings (17, 20)
+/// typed, so none takes a type AB added; the maps and the dwellings by class counted (the survey:
+/// 49 RoE maps; of class 17 695 on 44, of class 20 14 on 10).
+fn roe(
+    map: &RawMap,
+    base: &GameRuleset,
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<(), String> {
+    let setup = import_map(map, base).map_err(|e| format!("under the base pack alone: {e}"))?;
+    let (mut all, mut typed) = (0, 0);
+    for ((_, class), entry) in placed(map).zip(&setup.objects) {
+        let what = match class {
+            17 => "dwellings: RoE maps' class 17 typed with the base pack alone",
+            20 => "dwellings: RoE maps' class 20 typed with the base pack alone",
+            _ => continue,
+        };
+        all += 1;
+        let one = usize::from(entry.object_type.is_some());
+        typed += one;
+        add(what, one);
+    }
+    add("dwellings: RoE maps imported with the base pack alone", 1);
+    add(
+        "dwellings: RoE maps' dwellings (17, 20) typed with the base pack alone",
+        typed,
+    );
+    if typed == all {
+        Ok(())
+    } else {
+        Err(format!(
+            "under the base pack alone: {} of its {all} dwellings (17, 20) untyped",
+            all - typed
+        ))
+    }
+}
+
 /// Counts the events (E08 T62b2, ADV-OBJ-007): how many, those that fire for a computer, those
 /// removed after they fire, those whose template has other than one visitable tile, and the
 /// tiles they lie on that are another object's visitable or blocked tile, another event's, water,
@@ -714,19 +802,25 @@ fn events(setup: &MapSetup, rules: &GameRuleset, add: &mut impl FnMut(&'static s
 /// `h3_map::import_map` does.
 const HERO_CLASSES: [u32; 3] = [34, 70, 214];
 
+/// The boat's class: the setup lists boats apart (E08 T72).
+const BOAT: u32 = 8;
+
+/// The map's objects the static layer places, in its order, with their classes: all but the
+/// heroes and (since E08 T93b, which needs the order) the boats.
+fn placed(map: &RawMap) -> impl Iterator<Item = (&Object, u32)> {
+    map.objects
+        .iter()
+        .filter_map(|o| {
+            let template = map.templates.get(usize::try_from(o.template).ok()?)?;
+            Some((o, template.class))
+        })
+        .filter(|(_, class)| !HERO_CLASSES.contains(class) && *class != BOAT)
+}
+
 /// How many tiles of the static layer objects are visited from, and each one that is the
 /// visitable tile of two or more objects, with the objects' classes in map order.
 fn stacked(map: &RawMap, setup: &MapSetup) -> (usize, Vec<Vec<u32>>) {
-    let classes = map
-        .objects
-        .iter()
-        .filter_map(|o| {
-            usize::try_from(o.template)
-                .ok()
-                .and_then(|t| map.templates.get(t))
-        })
-        .map(|t| t.class)
-        .filter(|class| !HERO_CLASSES.contains(class));
+    let classes = placed(map).map(|(_, class)| class);
     let mut tiles = BTreeMap::<(u8, u16, u16), Vec<u32>>::new();
     for (object, class) in setup.objects.iter().zip(classes) {
         let anchor = object.anchor;

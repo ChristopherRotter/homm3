@@ -139,7 +139,8 @@
 //! thirty-two from their commands, the random ones also played again with their options to the
 //! same commands: every hash moved. E08 T83b2a, T84a and T85b1 re-recorded them as their records in
 //! `E08-log.md` say; T85b1's day advance changed the seven duel games of 28 days, recorded again
-//! from their seeds (above).
+//! from their seeds (above). E08 T93a (the part's hash) and T93b (map import v16) re-recorded
+//! them all from their commands: T93a moved the hashes, T93b the import version alone.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

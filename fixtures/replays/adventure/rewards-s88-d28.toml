@@ -271,7 +271,7 @@ checkpoint_every = 25
 [map]
 path = "fixtures/maps/e08-rewards-36.h3m"
 hash = "0x776d6b23b0ba2d87"
-import_version = 15
+import_version = 16
 
 [result]
 day = 29

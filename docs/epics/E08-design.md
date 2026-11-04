@@ -94,7 +94,8 @@ Hash tags follow the part's last (the building task's); ruleset part v16.
   Altar of Thought (60), Conflux's table. *Agent's call:* a type in the pack that introduced its
   object (an AB map's Altar under RoE rules is `MissingContent`, as any AB object); the building
   task lists which subclass is whose (`dwelling_creatures` 0x63D570 and the creatures' packs) and
-  checks it on the 44 RoE-format maps (695 dwellings import under `base` alone). `sod` adds none.
+  checks it on the RoE-format maps (T93b's census: all 49, 709 dwellings, 695 of class 17 and 14 of
+  class 20, import under `base` alone). `sod` adds none.
 - **The harvest's check** (with the original data, `h3-map`'s tests): each dwelling type's
   footprint equals its class and subclass's last template in `Objects.txt` converted as the import
   converts a map's template; each name equals `CrGen1.txt`'s or `CrGen4.txt`'s row; the creatures
@@ -383,8 +384,8 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
   visits' first build (`homm3-bench-regression`): none plays a dwelling, so a change is the
   dispatch's and is fixed, not re-baselined, unless its reason is written.
 - **`--with-original-data`** (`crates/h3-map/examples/original_data.rs`): every shipped map's
-  static layer with the new classes: the 2 061 dwellings typed (695 under `base` alone on the 44
-  RoE-format maps), the owners at load, the 206 random dwellings resolved for a fixed seed (each a
+  static layer with the new classes: the 2 061 dwellings typed (709 under `base` alone on the 49
+  RoE-format maps, T93b's census), the owners at load, the 206 random dwellings resolved for a fixed seed (each a
   dwelling of its set and range, its entrance on the map), the 1 397 tied to towns as blockers
   (ADV-STUB-13), the 321 camps; the harvest's check (§3).
 
