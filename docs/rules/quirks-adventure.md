@@ -439,7 +439,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (survey §3.2, §11 A-34).
 - Flag: none (always fixed)
 - Defaults: fixed in every profile
-- Regression test: TBD
+- Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load`; `crates/h3-adventure/src/state/tests/holds.rs`, `a_random_dwelling_holds_its_factions_and_levels` (`SetupError::Holds`)
 - Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b
 
 ### ADV-QUIRK-37 — A random dwelling tied to a missing town reads before the town list
@@ -452,7 +452,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (survey §3.2, §11 A-35).
 - Flag: none (always fixed)
 - Defaults: fixed in every profile
-- Regression test: TBD
+- Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load` and `a_random_dwelling_tied_to_a_town_stays_a_blocker`
 - Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b
 
 ### ADV-QUIRK-38 — Dwelling classes 18 and 19 and kinds past the tables
@@ -465,5 +465,5 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (survey §2.4, §3.2, §11 A-36).
 - Flag: none (always fixed)
 - Defaults: fixed in every profile
-- Regression test: TBD
+- Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load`; `crates/h3-adventure/src/state/tests/holds.rs`, `a_random_dwelling_holds_its_factions_and_levels` (`SetupError::Holds`)
 - Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b
