@@ -3186,6 +3186,85 @@ fn visited_at(state: &GameState, pos: TilePos) -> Option<usize> {
     })
 }
 
+/// The index of the object of type `object_type` anchored at `anchor` in `state`, the objects
+/// added in play included.
+fn object_index(state: &GameState, object_type: ObjectTypeId, anchor: TilePos) -> Option<usize> {
+    all_objects(state)
+        .find(|(_, o)| (o.object_type, o.anchor) == (Some(object_type), anchor))
+        .map(|(i, _)| i)
+}
+
+/// What an accepted hire question `offer` (its hero, object type and anchor) naming `creatures`
+/// tells `actor` on `before` (ADV-HIR-001, ADV-ARM-007; E08 T95a1): nothing but on a dwelling
+/// `actor` owns, where each of its creatures of the part's `free_level` or less in turn, by an
+/// independent reading of the rule: none here at a count of 0; else all of the count joins where
+/// the army has room (a stack of the creature that takes it within a stack's most, or a free
+/// slot), the army taking it for the next; else refused, the army as it was.
+fn free_creatures(
+    rules: &GameRuleset,
+    before: &GameState,
+    actor: PlayerId,
+    (hero, object_type, anchor): (HeroId, ObjectTypeId, TilePos),
+    creatures: &[CreatureTypeId],
+) -> Vec<AdventureEventKind> {
+    let (part, adventure) = (rules.adventure(), before.adventure());
+    let index = object_index(before, object_type, anchor).unwrap();
+    let dwelling = matches!(
+        part.object_type(object_type).map(|t| &t.kind),
+        Some(ObjectKind::Dwelling { .. })
+    );
+    if !dwelling || adventure.owner(index) != Some(actor) {
+        return Vec::new();
+    }
+    let free = part.params().dwellings().map_or(0, |p| p.free_level);
+    let (most, slots) = (part.params().max_stack_count(), part.params().army_slots());
+    let counts = adventure.dwelling_counts(index).unwrap();
+    let mut army = adventure.hero(hero).unwrap().army.clone();
+    let mut told = Vec::new();
+    for (&creature, &count) in creatures.iter().zip(counts) {
+        if rules.core().creature(creature).unwrap().level > free {
+            continue;
+        }
+        let stack = army
+            .iter()
+            .position(|s| s.creature == creature && s.count.saturating_add(count) <= most);
+        let slot = (0..slots).find(|&slot| army.iter().all(|s| s.slot != slot));
+        told.push(if count == 0 {
+            AdventureEventKind::NoneToRecruit {
+                object_type,
+                anchor,
+                creature,
+            }
+        } else if let Some(i) = stack {
+            army[i].count += count;
+            AdventureEventKind::CreaturesJoined {
+                hero,
+                creature,
+                count,
+            }
+        } else if let Some(slot) = slot {
+            army.push(h3_contracts::ArmyStack {
+                slot,
+                creature,
+                count,
+            });
+            army.sort_by_key(|s| s.slot);
+            AdventureEventKind::CreaturesJoined {
+                hero,
+                creature,
+                count,
+            }
+        } else {
+            AdventureEventKind::JoinRefused {
+                hero,
+                creature,
+                count,
+            }
+        });
+    }
+    told
+}
+
 /// A new day's income (GAM-RES-003 to -005, E08 T85b; increment 9's design note §14), from the
 /// day's events (its `DayStarted` on): every player in id order is told, as one gain per resource
 /// with an amount in the core's order, exactly what an independent sum of its parts gives on the
@@ -3453,7 +3532,40 @@ fn check_conservation(
             _ => None,
         })
         .collect();
-    prop_assert!(joined.len() + held.len() <= 1, "{:?} {:?}", joined, held);
+    // E08 T95a1: an accepted hire question's free creatures, one join per creature, come from its
+    // dwelling, whose count of each that joined drops to 0, the others kept, as a camp's
+    // (ADV-HIR-001; their events: [`free_creatures`]).
+    let hired = events.iter().find_map(|e| match *e {
+        GameEvent::OfferAnswered {
+            player,
+            accepted: true,
+            ..
+        } => before
+            .decision(player)
+            .filter(|o| matches!(o.kind, OfferKind::Hire { .. })),
+        _ => None,
+    });
+    if let Some(offer) = hired {
+        let OfferKind::Hire { creatures } = &offer.kind else {
+            unreachable!()
+        };
+        let index = object_index(before, offer.object_type, offer.anchor).unwrap();
+        let (was, now) = (before.adventure(), after.adventure());
+        let mut counts = was.dwelling_counts(index).map(<[u32]>::to_vec);
+        for &(hero, creature, count) in &joined {
+            prop_assert_eq!(hero, offer.hero);
+            let at = creatures.iter().position(|&c| c == creature);
+            let left = counts.as_mut().zip(at).map(|(counts, at)| &mut counts[at]);
+            prop_assert!(left.is_some(), "{:?} joined from {:?}", creature, offer);
+            let left = left.unwrap();
+            prop_assert_eq!(core::mem::take(left), count);
+        }
+        prop_assert_eq!(now.dwelling_counts(index).map(<[u32]>::to_vec), counts);
+        prop_assert_eq!(now.camp(index), was.camp(index));
+        prop_assert!(held.is_empty(), "{:?} held at {:?}", held, offer);
+    } else {
+        prop_assert!(joined.len() + held.len() <= 1, "{:?} {:?}", joined, held);
+    }
     let mut contents = visit_gains(rules, (before, after), command, events);
     let mut losses = Vec::new();
     for event in events {
@@ -5350,6 +5462,37 @@ fn check_decisions(
                             price: price.clone(),
                         }
                     }
+                    // E08 T95a1: a dwelling's hire question, of its kind's creatures, never
+                    // refused (no price): its visitor's own at once, else unguarded and flagged
+                    // for the visitor first (a guarded one asks nothing yet, ADV-STUB-14;
+                    // ADV-DWL-004, ADV-OWN-001).
+                    ObjectKind::Dwelling { creatures, .. } => {
+                        prop_assert!(opened, "{:?}: a hire question is never refused", event);
+                        let index = object_index(before, object_type, anchor).unwrap();
+                        let was = before.adventure().owner(index);
+                        let guarded = !before.adventure().dwelling_guards(index).is_empty();
+                        prop_assert!(
+                            was == Some(actor) || !guarded,
+                            "{:?} of guards standing",
+                            event
+                        );
+                        prop_assert_eq!(after.adventure().owner(index), Some(actor));
+                        OfferKind::Hire {
+                            creatures: creatures.clone(),
+                        }
+                    }
+                    // E08 T95a1: a Refugee Camp's, naming its week's creature while it has some
+                    // left (ADV-RFG-001); never refused, never flagged.
+                    ObjectKind::RefugeeCamp { .. } => {
+                        prop_assert!(opened, "{:?}: a hire question is never refused", event);
+                        let index = object_index(before, object_type, anchor).unwrap();
+                        let camp = before.adventure().camp(index);
+                        prop_assert!(camp.is_some_and(|(_, count)| count > 0), "{:?}", event);
+                        prop_assert_eq!(after.adventure().owner(index), None);
+                        OfferKind::Hire {
+                            creatures: vec![camp.unwrap().0],
+                        }
+                    }
                     _ => return Err(fail(format!("{event:?} offers no offer"))),
                 };
                 let offer = Offer {
@@ -5426,6 +5569,33 @@ fn check_decisions(
                         });
                         prop_assert!(built, "{:?} without its boat", event);
                     }
+                    // E08 T95a1: an accepted hire question gives exactly its free creatures
+                    // ([`free_creatures`]); the hire dialog is T95b's (ADV-STUB-15).
+                    (true, OfferKind::Hire { creatures }) => {
+                        let told: Vec<AdventureEventKind> = events
+                            .iter()
+                            .filter_map(|e| match *e {
+                                GameEvent::Adventure(AdventureEvent { kind, seen_by })
+                                    if matches!(
+                                        kind,
+                                        AdventureEventKind::CreaturesJoined { .. }
+                                            | AdventureEventKind::JoinRefused { .. }
+                                            | AdventureEventKind::NoneToRecruit { .. }
+                                    ) =>
+                                {
+                                    Some((kind, seen_by))
+                                }
+                                _ => None,
+                            })
+                            .map(|(kind, seen_by)| {
+                                prop_assert_eq!(seen_by, Viewers::NONE.with(actor));
+                                Ok(kind)
+                            })
+                            .collect::<Result<_, TestCaseError>>()?;
+                        let offer = (open.hero, object_type, anchor);
+                        let expected = free_creatures(rules, before, actor, offer, &creatures);
+                        prop_assert_eq!(told, expected);
+                    }
                     (false, _) => {}
                 }
             }
@@ -5436,6 +5606,23 @@ fn check_decisions(
                 prop_assert_eq!(seen_by, Viewers::NONE.with(actor));
                 prop_assert!(keys >> key & 1 == 0, "{:?} held", event);
                 keys |= 1 << key;
+            }
+            // E08 T95a1: a visit found empty is a weekly object's (ADV-WEK-001 to -003) or a
+            // Refugee Camp's without creatures (ADV-RFG-001), told to its visitor's owner alone.
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::ObjectEmpty {
+                        object_type,
+                        anchor,
+                    },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, Viewers::NONE.with(actor));
+                let index = object_index(before, object_type, anchor).unwrap();
+                let adventure = before.adventure();
+                let weekly = adventure.map().weeklies().contains(&index);
+                let deserted = adventure.camp(index).is_some_and(|(_, count)| count == 0);
+                prop_assert!(weekly || deserted, "{:?}", event);
             }
             GameEvent::Adventure(AdventureEvent {
                 kind:
@@ -6675,7 +6862,15 @@ impl Owned {
                         }
                     }
                     AdventureEventKind::ShipyardBlocked { .. } => self.blocked += 1,
-                    AdventureEventKind::ObjectEmpty { .. } => self.weekly_empty += 1,
+                    // E08 T95a1: a deserted Refugee Camp's is not a weekly object's.
+                    AdventureEventKind::ObjectEmpty {
+                        object_type,
+                        anchor,
+                    } => {
+                        let index = index_of(object_type, anchor);
+                        let weekly = |i| adventure.map().weeklies().contains(&i);
+                        self.weekly_empty += usize::from(index.is_some_and(weekly));
+                    }
                     AdventureEventKind::MonsterAdded { .. } => self.added += 1,
                     _ => {}
                 },
