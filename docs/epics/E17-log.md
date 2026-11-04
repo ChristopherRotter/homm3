@@ -5201,11 +5201,21 @@ sub-agent, its docs with it.
   window's F5 (taken where the battle takes its keys, the file written at once by
   `save_settings`, the frame made again) and its level inputs (at 0, each F5, the dialog's
   change, a Restart).
+- **Review round** (a fresh reviewer, the user's decision on the keys, 2026-11-04): the windows'
+  own pause, a frame on, restart and vsync on Ctrl+F5 to Ctrl+F8 in both viewers
+  (`h3_ui::keys::Window::ctrl` and `chord`; the battle's F12 override gone; the map viewer's
+  defaults and tests, a `cross-lane` change, its inbox told); F5 that stops Auto Combat also
+  cycles the level on the human's turn the stop comes at (`window.rs`' `carried`, `carry`,
+  `cycle_army_info`); while the options dialog is open the boxes the battle began with are those
+  as it opened (`battle.rs`' `first_boxes`, §12.13). The server seat's stub not registered:
+  `check-stubs` scans only `crates/`, so a `CLT-STUB` entry with its marker under `clients/`
+  fails it (a `shared/` change first).
 - **Agent's calls** (change freely): the level as a timed input rather than a field of the turn
   (a re-follow writes each hint at its own time's level: oddity 6 holds); over a two-hex target's
   far hex, where no slot strikes from, the target's first strike's damage (the original's
   from-hex there not read); the window's pause moved from F5 to F12 in the battle only (the
-  original's F5; the map window's keys unchanged).
+  original's F5; the map window's keys unchanged; replaced in the review round by the user's
+  Ctrl+F5 to Ctrl+F8 in both windows).
 - **Not built:** the original's own estimate in oddities 1 to 3 (CLT-Q46: the preview instead);
   the damage on a server's seat (the server lane's previews); a recording at level 1 (T4b2b's,
   with the hover's windows); the keys F6 to F8 (T4c).
@@ -5214,5 +5224,8 @@ sub-agent, its docs with it.
   1 000, in tenths of thousands, in thousands, a range across 1 000, equal ends; `track/tests.rs`:
   levels between moves, the same hex untouched, a new slot written at the level then;
   `keys/tests.rs`, `options/tests.rs`; the binary's previews of a battle fought here against a
-  seat's, F5's file, the window's follow with levels), the keys' words against the user's tables
-  (`h3-view text`), clippy, the real-asset gate.
+  seat's, F5's file, the window's follow with levels; in the review round the keys a stop
+  carries and when (`carry`), `first_boxes`, the Ctrl chords in `h3-ui` and `h3-map-view`), the
+  keys' words against the user's tables (`h3-view text`), clippy, the real-asset gate. Not
+  tested (a `Battle` needs the installation's archives): `boxes_closed`, `hand_over`,
+  `switch_auto` over a human-played turn.

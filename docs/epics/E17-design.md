@@ -5835,8 +5835,12 @@ in `cursor_attack_slots` (0x4746DA), `cursor_attack_from_hex` (0x474A43), `battl
     waiting, else the panel made again); `boxes_closed` (the window asks each pass: a close's
     changed boxes join `Battle::boxes` with the turn waiting and the time; under Auto Combat a box
     set for that turn hands it to the bot at once, oddity 4, *provisional*: the panel dims there
-    as at a switch, where the original's stays lit). The window drops the key a stop carries (↑,
-    ↓, F) when the turn it is at is one Auto Combat does not play. The bot (`Greedy`,
+    as at a switch, where the original's stays lit). While the dialog is open (its close not
+    applied yet) the boxes the battle began with are those as it opened (`boxes_open`,
+    `battle.rs`' `first_boxes`; M6 T4b2a, the reviewer: the dialog writes the settings at every
+    click, so a re-follow meanwhile took its unsaved boxes for the opening's): a change counts
+    only from the close. The window drops the key a stop carries (↑, ↓, F; F5 since T4b2a) when
+    the turn it is at is one Auto Combat does not play (`window.rs`' `carry`). The bot (`Greedy`,
     *provisional*, M2's review list) chooses for the commanded machines it plays, as planned.
   - **CLT-Q45** (fixed, the original's for the comparisons only): (1) `Autoplay::on`, set by
     `Panels::with_auto` in `Bugs::Fixed` (the window's): on over a human's turn it does not play,
@@ -5930,9 +5934,12 @@ GENRLTXT 37, 38, 221 and 297 (their specifiers).
     `Settings::cycle_army_info` (0, 1, 2, 0), the settings file written at once (the window's
     `save_settings`, the dialog's close too), the frame made again. While the options dialog is
     open F5 does nothing (its context takes its own keys, as the original's modal loop); the
-    dialog's own level radio sets the level from its input on. *Provisional:* the window's pause
-    leaves F5 in the battle for F12 (`keys::window_key`; the map window keeps F5), since the
-    original's battle takes F5 (F6 to F8 will clash the same way at T4c).
+    dialog's own level radio sets the level from its input on. F5 that stopped Auto Combat both
+    stops it and cycles the level on the human's turn the stop comes at, as ↑, ↓ and F (§7.22:
+    the stop's key reaches `battle_buttons`' key switch, 0x474625; `window.rs`' `carried`, lost on
+    a computer's turn). The window's own keys (the user, 2026-11-04): pause, a frame on, restart
+    and vsync on Ctrl+F5 to Ctrl+F8 in both windows (`h3_ui::keys::Window::ctrl`, `chord`), so
+    plain F5 to F8 are the original's (F5 here, F6 to F8 T4c's).
   - Over time: the level is an input at its time (`track::Input::ArmyInfo`; the window pushes one
     at 0 from the settings, one at each F5, one when the dialog changed it and one at a Restart's
     time), so a re-follow writes each hint at the level of its own time and F5 rewrites nothing
@@ -5958,12 +5965,15 @@ GENRLTXT 37, 38, 221 and 297 (their specifiers).
     with its scenario) and hands them to the pure library as data (`Turned::previews`, then
     `mouse::Previews` in `Legal::previews`, `pointer::battle_of`). A server's seat holds no state
     and the wire no preview (ADR-0018 point 10): its served turn has none, so its hints keep the
-    level-0 line (*provisional*, a stub) until the server lane sends the turn's attack and shot
-    previews (its inbox); the one place they go is the served turn's `Turned` in `battle.rs`.
+    level-0 line (*provisional*, a stub: not in `docs/stubs.toml`, whose `check-stubs` scans only
+    `crates/`, so a client entry fails it; M6's review list) until the server lane sends the
+    turn's attack and shot previews (its inbox); the one place they go is the served turn's
+    `Turned` in `battle.rs`.
   - Checks: unit tests (`mouse/tests.rs`: the hints with and without previews, a still at level
     0, each kind's and the shots-left variants' words, the numbers' three sizes, a range across
     1 000, one value; `track/tests.rs`: levels set between moves, the same hex and a new slot;
     `keys/tests.rs`, `options/tests.rs`: F5 and its cycle; the binary's: each legal attack's
     preview in a battle fought here and a seat's line without, F5's file written, the window's
-    follow with level inputs). Not built: a recording at level 1 (T4b2b's: the hover's army
+    follow with level inputs, the keys a stop carries and when, `first_boxes`; the window keys'
+    Ctrl chords in `h3-ui` and `h3-map-view`). Not built: a recording at level 1 (T4b2b's: the hover's army
     info windows beside the line; the harness's registry keeps level 0, `Settings::CAPTURE`).

@@ -399,11 +399,13 @@ The next milestone's list starts here.
     target's first strike's damage (the original's from-hex there not read).
 36. A server's seat shows no damage (T4b2a, *provisional*, a stub): the level-0 line until the
     server lane sends the turn's attack and shot previews (its inbox); they go into the served
-    turn's `Turned::previews` (`battle.rs`), the one place.
-37. The battle window's pause on F12 (T4b2a, *provisional*): the original's battle takes F5 for
-    Creature Info's level, so the window's own pause leaves it there (`keys::window_key`; the
-    map window keeps F5, against the user's "both windows' own keys the same" of E24 M3 T0); F6
-    to F8 (a frame, restart, vsync) clash the same way with the original's grid and shadows at
-    T4c.
+    turn's `Turned::previews` (`battle.rs`), the one place. Not in `docs/stubs.toml`: its
+    `check-stubs` scans only `crates/`, so a `CLT-STUB` entry with a marker under `clients/` fails
+    it; registering client stubs needs a `shared/` change to the xtask first.
+37. The windows' own keys (T4b2a; the user's decision, 2026-11-04): pause, a frame on, restart
+    and vsync on Ctrl+F5 to Ctrl+F8 in both windows (`h3_ui::keys::Window::ctrl`, the common
+    table, so the two viewers' own keys stay the same as E24 M3 T0 wants); plain F5 to F8 are the
+    original battle's (F5 Creature Info's level since T4b2a, F6 to F8 the grid and shadows at
+    T4c). The map viewer's defaults changed with it (a `cross-lane` change; its inbox told).
 38. Creature Info's level not recorded (T4b2a): no capture at level 1 or 2 (T4b2b's, beside the
     hover's army info windows); the hints' words checked against the user's tables only.
