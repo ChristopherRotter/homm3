@@ -7,28 +7,9 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are round 6's (rounds 2 to 5 and T6a are done, `E09-log.md`); each later round's
+entries below are round 6's (rounds 2 to 5, T6a and T6b are done, `E09-log.md`); each later round's
 entries are written when it comes (the epic's list), each task's cut confirmed at its start.
 Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T6b — `h3-towns`: the derivations**
-
-- **Scope:** round 6 (design §6; the lane's own crate; T6 cut in three, the user): the pure
-  functions of a town and the part: `hall_level`, `daily_income` (the halls' gold, the Grail's,
-  the silo's resources), `fort_level`, `siege(town) -> Siege` (`faction`, `fort`, `moat`,
-  `structures`, `escape_tunnel`, and `bonuses`: a `TownBonus` per building with a morale or luck
-  role, the inbox's CLT-Q40 note), `siege_obstacles`, `defender_bonus`, `reveal`, `has_tavern`,
-  `capitol_limit`; the store's `capitol` read and its first write (`set_built`, crate-internal,
-  copying the list of references and the one town: the Capitol's limit); a new
-  `docs/rules/catalog/town.toml` with the rules §19 names for them (TWN-INC-001, -002,
-  TWN-SIE-003 to -005, TWN-CAP-001's reveal, -002, TWN-VEW-002's Tavern).
-- **Acceptance:** every rule with its id, source and test; 100 % coverage of `h3-towns`; the
-  scoped verify.
-- **Notes:** each role over its set as `h3-pack-towns`' format doc lists (`luck` and the Escape
-  Tunnel ever built, `morale` standing; the inbox note says standing for both: settle it from
-  survey §9.4 and say which). `structures` skips the hall-1 building (decision 28). No
-  `cross-lane` path.
-- **Depends on:** T6a (its pull request merged). **Status:** ready once it merges.
 
 **E09 T6c — `h3-towns`: the setup's functions**
 
@@ -42,20 +23,17 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
   scoped verify.
 - **Notes:** design §19 has T7a create the quirks file: T6c creates it with `-5`, T7a adds `-1`
   to `-4`. `h3-game` calls the functions from T7b; no `cross-lane` path.
-- **Depends on:** T6b (its `town.toml`). **Status:** after T6b.
+- **Depends on:** T6b (its `town.toml`; its pull request merged). **Status:** ready once it merges.
 
 ## Inbox
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
-- 2026-11-03 (the battle lane, CLT-Q40, BAT-Q64; ADR-0023 point 2 amended; **for your siege
-  derivation**): `Siege.morale` and `luck` became `Siege.bonuses` (`h3_contracts::TownBonuses`, at
-  most 8): one `TownBonus { building, morale, luck }` per standing building with a morale or luck
-  role (`BuildingRoles.morale`, `luck`), `building` its `BuildingId` index; the battle sums them and
-  shows them to everyone for the stats dialog. And the owner's Grail building that adds a hero's
-  morale or luck (the Colossus, the Spirit Guardian) names itself as
-  `EffectSource::Building { faction, index }` on that hero's `BattleEffect`, when the game gives it.
+- 2026-11-03 (the battle lane, CLT-Q40; its siege half done by T6b, `QUEUE-ARCHIVE.md`): the
+  owner's Grail building that adds a hero's morale or luck (the Colossus, the Spirit Guardian)
+  names itself as `EffectSource::Building { faction, index }` on that hero's `BattleEffect`, when
+  the game gives it.
 - 2026-11-03 (the adventure lane, E08 T87c, ADV-Q41; **for your increment 3's recruitment, nothing
   to build now**): E08's increment 10 is dwellings and hiring (decision 231): the map's creature
   dwellings (17, 20), the random dwellings with a faction set and the Refugee Camp, their weekly

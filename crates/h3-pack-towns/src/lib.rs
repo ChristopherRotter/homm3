@@ -63,7 +63,7 @@
 //! | `grail = true` | one building: pays `grail_gold` | ever built |
 //! | `dwelling = [level, upgraded]` | a level of the record, upgraded only with the level's upgrade; each once, `[1, false]` and `[2, false]` present | the standard set's setup (TWN-SET-003) |
 //! | `morale = n` | the siege's defender, -3 to 3 (the Brotherhood of the Sword replaces the Tavern) | standing |
-//! | `luck = n` | the siege's defender, -3 to 3 (the Fountain of Fortune) | ever built |
+//! | `luck = n` | the siege's defender, -3 to 3 (the Fountain of Fortune); at most 8 buildings of a record change morale or luck (a siege names each, E09 T6b) | ever built |
 //! | `escape_tunnel = true` | the siege's defender may retreat | ever built |
 //! | `defender = { attack, defense, power, mana }` | the defending hero's bonuses, each optional (ADR-0023 point 3) | ever built |
 //! | `reveal = n` or `"all"` | a reveal larger than `reveal_radius` (the Lookout Tower, a Grail) | ever built |

@@ -1,0 +1,191 @@
+# Town rules (context `town`, crate `h3-towns`; E09): a town's record, its setup, the derivations
+# over it (the hall and the day's income, the siege's facts, the reveal, the Tavern, the
+# Capitol's limit) and the town on the map (ADR-0028). Format: docs/04-rules-and-sources.md §3.
+# Survey: docs/rules/surveys/E09-towns.md; ids: docs/epics/E09-design.md §19 (created by E09 T6b).
+
+[[rule]]
+id       = "TWN-INC-001"
+title    = "A town's day's gold: its hall and the Grail"
+context  = "town"
+status   = "implemented"
+summary  = "A town's hall level is its highest standing building of role `hall` (1 the Village Hall to 4 the Capitol); a town without a standing hall counts as level 1 (the original pays the Village Hall's gold without testing for it). Its day's gold is the part's `hall_gold` of that level (the base pack's 500, 1 000, 2 000, 4 000), plus `grail_gold` (5 000) when a building of role `grail` was ever built; the faction plays no other part (at most 9 000 in the original packs), gold being the part's `gold` resource. Several Capitols at the start each pay 4 000 (the start never applies TWN-CAP-002). Paid at each day's start from day 2 to the town's owner only (a neutral town pays nobody; a town captured during a day pays its new owner the next day): the day's advance, E09 T8c (design §16). E09 T6b (design §6): `h3_towns::hall_level`, `h3_towns::daily_income`'s gold."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a; survey E09-towns.md sections 11.1 to 11.3): town_gold_income (0x5BF600) starts at 500 and tests the Town Hall (11), the City Hall (12) and the Capitol (13) in the built set +0x150, the last found kept (1 000, 2 000, 4 000; the Village Hall 10 not tested), and adds 5 000 for the Grail building (26) in the every-built set +0x158; player_gold_income (0x4C7930) sums the owner's towns at each day's start from day 2"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 11.5: CGTownInstance::dailyIncome over each built building that no built upgrade supersedes (config/buildingsLibrary.json: the halls 500, 1 000, 2 000, 4 000, the Grail 5 000)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Halls and Grail (survey E09-towns.md section 11.5): the same amounts; a map may give a player two or more Capitols; the Grail building's 5 000 in every town"
+  url        = "https://heroes.thelazy.net/index.php/Halls"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-INC-002"
+title    = "The Resource Silo's day's resources"
+context  = "town"
+status   = "implemented"
+summary  = "A town with a standing building of role `silo` (the Resource Silo) gets its faction's record's `silo` resources each day beside its gold (TWN-INC-001): the base pack's 1 wood and 1 ore for the Castle, the Necropolis, the Stronghold and the Fortress, 1 crystal for the Rampart, 1 gems for the Tower, 1 mercury for the Inferno and Conflux, 1 sulfur for the Dungeon; no faction's silo pays gold in the original, a part's that does is summed with the hall's. The day's income is each resource once in the core's resource order, none 0, the sums saturating; paid as TWN-INC-001's gold (E09 T8c, design §16). E09 T6b (design §6): `h3_towns::daily_income`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a and T5b1; survey E09-towns.md sections 11.1, 11.2 and 16.6): town_silo_resources (0x688EB4), seven i32 per faction, its gold 0 for every faction; town_silo_income (0x5C1280) returns the faction's row for a town with the Resource Silo (15) built; the day's income pays it beside the gold (E08-economy.md section 8.1 point 2)"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 11.5: CGTownInstance::dailyIncome sums each built, not superseded building's produce; the silo its faction's resources (config/factions/*.json)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-SIE-003"
+title    = "The siege's facts from the town"
+context  = "town"
+status   = "implemented"
+summary  = "A battle at a town takes from it (ADR-0023 point 2 as amended by E09 and CLT-Q40; `h3_contracts::Siege`): its faction; its fort level, the highest standing building of role `fort` (none, the Fort, the Citadel, the Castle); its moat, its faction's record's from a Citadel, else none (the packs decide it, not a game version: E09 decision 14); its structures for the keep's count, the standing buildings not forbidden less the hall-1 building (no faction's list holds the Village Hall: decision 28); the Escape Tunnel, a building of role `escape_tunnel` ever built; its bonuses, one per building ever built with a morale or luck change, in index order, its morale while it stands (the Tavern +1; the Castle's Brotherhood of the Sword +2 supersedes it, so +2 in all) and its luck once ever built (the Rampart's Fountain of Fortune +2), each naming its building; a record has at most 8 such buildings (the part's compiler refuses more). The battle reads them as BAT-SIE-016 (the keep), BAT-SIE-024 (the Escape Tunnel) and BAT-SIE-025 (morale and luck) say. E09 T6b (design §6): `h3_towns::fort_level`, `h3_towns::siege`; the game puts it into the battle's setup (E09 T8b, design §15)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E04c T4, T7, T8; docs/formats/installation.md sections 7.27 to 7.32; survey E09-towns.md sections 9.4 and 16.4): the fort tested as the Fort (7), the Citadel (8), the Castle (9) in the built set +0x150, the last found kept; the moat flag +0x53A8 with a Citadel or Castle; town_turret_count (0x5BF4F0) 4 + the ids 0 to 43 in the built set among the mask +0x160 that town_buildings_setup writes as the faction's list less the forbidden (no list holds the Village Hall); the Escape Tunnel a Stronghold's 17 in the every-built set +0x158; 0x44AE60 +1 for the Tavern (5) in +0x150 and +2 in a Castle for 22 in +0x158; 0x44B2D0 +2 luck in a Rampart for 21 in +0x158"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3g.md (agent run under Wine, 2026-10-15): a Castle with a Tavern and the Brotherhood gives its defenders +2 morale, not +3 (the Brotherhood replaces the Tavern in +0x150); a Rampart with the Fountain of Fortune +2 luck"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Morale and Luck (as BAT-SIE-025 cites them): the Tavern's +1 and the Brotherhood of the Sword's +2 morale, the Fountain of Fortune's +2 luck, for a siege's defenders"
+  url        = "https://heroes.thelazy.net/index.php/Morale"
+  retrieved  = "2026-10-15"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E09 decisions 14 (the moat by the enabled packs, ADR-0023 point 2) and 28 (the keep's count skips the hall-1 building); CLT-Q40 and BAT-Q64 (the bonuses named by building); docs/epics/E09-design.md section 6; each role's set as h3-pack-towns' format doc lists it (morale standing, luck and the Escape Tunnel ever built: survey section 9.4)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SIE-004"
+title    = "The defending hero's bonuses from the town"
+context  = "town"
+status   = "implemented"
+summary  = "A siege's defending hero is raised by the town's buildings ever built (ADR-0023 point 3): the `defender` role's attack, defense, power and mana, each summed, saturating: the base pack's Tower Grail +150 mana, the Inferno's Brimstone Stormclouds +2 power, the Dungeon's Grail +12 power, the Stronghold's Grail +20 attack, the Fortress' Blood Obelisk +2 attack, Glyphs of Fear +2 defense and Grail +10 attack and defense; the fort level is not tested. After the battle the hero's attack, defense and power are its own again and its mana the smaller of the mana left and the mana before (the game's, E09 T8b, design §15). E09 T6b (design §6): `h3_towns::defender_bonus`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E04c T4; docs/formats/installation.md section 7.27; survey E09-towns.md sections 9.4 and 16.6): 0x463C60 keeps the defending hero's attack, defense, power and mana (+0x13DE8 to +0x13DF4) and raises them by the town type's buildings (the Tower's Grail 26 +150 mana; the Inferno's 21 +2 power; the Dungeon's Grail +12 power; the Stronghold's Grail +20 attack; the Fortress' 21 +2 attack, 22 +2 defense, Grail +10 and +10); the battle's end (0x4776E1 to 0x477719) restores them and keeps the smaller mana"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0023 point 3 (the defending hero's bonuses derived by the town context); the `defender` role read over the buildings ever built (h3-pack-towns' format doc; docs/epics/E09-design.md section 6)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SIE-005"
+title    = "A siege's natural obstacles"
+context  = "town"
+status   = "implemented"
+summary  = "A siege of a town with a Citadel or a Castle draws the battlefield's natural obstacles on its terrain beside the walls only when its faction's record's `siege_obstacles` is set: the base pack's Stronghold (no moat there), which the SoD pack's override clears (the packs decide, not the game's version: E09 decision 14; the E04c survey's S-29); below a Citadel, never. E09 T6b (design §6): `h3_towns::siege_obstacles`; the game draws them from the battle's seed (E09 T8b, design §15)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E04c T4; docs/formats/installation.md section 7.27; survey E04c-sieges.md S-29): 0x466290 with a fort level above 0 places the walls, a Tower's land mines, then no natural obstacle under SoD rules and, under older rules, the usual obstacles only for a Stronghold with a Citadel or Castle"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E09 decision 14 (the packs' records decide, the original's game version from its scenario dialog the recorded deviation); docs/epics/E09-design.md sections 6 and 15"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-CAP-001"
+title    = "A town's capture: the reveal for its new owner"
+context  = "town"
+status   = "implemented"
+summary  = "When a town changes owner (a capture, and each owned town at the start) its new owner sees the tiles within the part's `reveal_radius` (the base pack's 5) of the town, or within the largest `reveal` of a building ever built when larger (the Tower's Lookout Tower, 20); a building that reveals `all` (the Tower's Grail) shows every tile of every level, over any radius; a part without parameters reveals a radius of 0. The capture itself, the owner change and its reveal on the map, are E09 T8a's (design §11). E09 T6b (design §6): the reveal's radius, `h3_towns::reveal`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1; survey E09-towns.md section 8.3 step 8): town_change_owner (0x4C61E0) reveals for the new owner with reveal_disk (0x49D160) radius 5 around the gate, radius 20 for a Tower (faction 2) with the Lookout Tower (building 21), every tile of the surface and of the underground for a Tower with the Grail (26); town_setup calls it for every town at the start (the same radii as reveal_owned)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 9.5: CGTownInstance::onTownCaptured reveals the fog for the new owner at getSightRadius (a base setting and sight bonuses)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-CAP-002"
+title    = "The Capitol's limit: one per player after a capture"
+context  = "town"
+status   = "implemented"
+summary  = "After a capture, a town with a standing building of role `hall` 4 (the Capitol) whose new owner holds another town with a standing Capitol loses it: the Capitol leaves the ever-built set and the record's `capitol_demoted_to` (its hall-3 building, the City Hall) enters it, so that the City Hall stands; a neutral owner never loses it. The start never applies it, so a map may give a player several Capitols (survey §11.3). E09 T6b (design §6, §11): `h3_towns::capitol_limit`, written by the store's `Towns::apply_capitol_limit` (its caller the game's capture after the adventure's, E09 T8a)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1; survey E09-towns.md sections 8.1, 8.2, 8.4 and 11.3): capitol_limit (0x5BEC60, read whole), after town_change_owner: a town with the Capitol (13) in its built set whose owner has another town with the Capitol loses it, 13 leaving the built (+0x150) and every-built (+0x158) sets and the City Hall (12) entering the built one; a neutral owner skips it; its only callers are town_visit's capture paths (0x4AB1BA, 0x4AB363), town_setup never calls it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md sections 8.4, 9.5 and 11.5: CGTownInstance::setOwner calls removeCapitols, which razes a captured Capitol the same way, only for a change in play"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Halls (survey E09-towns.md section 11.5): a captured Capitol becomes a City Hall when the captor already holds one, the only downgrade of a building; a map may give a player two or more Capitols"
+  url        = "https://heroes.thelazy.net/index.php/Halls"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-VEW-002"
+title    = "The garrison's levels a viewer sees"
+context  = "town"
+status   = "implemented"
+summary  = "Another team's viewer sees a town's garrison by its level, the number of the viewer's towns with a standing building of role `tavern` (the Tavern, or Castle's Brotherhood of the Sword that supersedes it), at most 2: 0 nothing (not even whether it is empty), 1 each stack's creature by slot, 2 also each stack's size word (E08's monster words); the counts are the owner's team's and Visions' (TWN-VEW-003). E09 T6b (design §6): what a town counts, `h3_towns::has_tavern`; the level and the views are E09 T8c's (design §12)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a; survey E09-towns.md section 12.3): town_popup (0x4167A0) sets the level at 0x416E63: 3 for the owner's team or Visions at level 3 in reach (hero_visions_level 0x4E5DE0, hero_visions_reach 0x4E5E10), else player_tavern_count (0x4CCE30: the viewer's towns with the Tavern, 5, built, or for Castle the Brotherhood of the Sword, 22, that replaces it), at most 2; quick_view_army (0x530990) shows nothing at level 0, each stack's creature at 1, also its size word (creature_quantity_word 0x44ADE0) at 2"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 12.4: CGameInfoCallback::getTownInfo and InfoAboutTown::initFromTown give two levels, the details for an own or allied town or Visions in reach, else the stacks' creatures with their size words whatever the viewer's taverns (differs from the original's tavern levels)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/CGameInfoCallback.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Tavern (survey E09-towns.md section 12.4): no Tavern, an opponent's town looks empty; one, the stacks without numbers; two or more, the stacks and their approximate numbers"
+  url        = "https://heroes.thelazy.net/index.php/Tavern"
+  retrieved  = "2026-11-02"
+  confidence = "medium"

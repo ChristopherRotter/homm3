@@ -660,6 +660,39 @@ fn the_roles_across_a_record_are_checked() {
     let grail = town_error("t:keep", "needs one Grail building and one Resource Silo");
     assert_eq!(reason(|t| t.buildings[9].roles.grail = false), grail);
     assert_eq!(reason(|t| t.buildings[13].roles.silo = true), grail);
+    let changes = town_error(
+        "t:keep",
+        "has more than 8 buildings with a morale or luck change",
+    );
+    let lucky = |t: &mut TownDef, n: usize| {
+        for i in 0..n {
+            let roles = BuildingRoles {
+                morale: i8::from(i % 2 == 0),
+                luck: i8::from(i % 2 == 1),
+                ..BuildingRoles::default()
+            };
+            t.buildings
+                .push(building(&std::format!("shrine_{i}"), roles));
+        }
+    };
+    let morale_buildings = keep(&mut packs())
+        .buildings
+        .iter()
+        .filter(|b| b.roles.morale != 0 || b.roles.luck != 0)
+        .count();
+    let mut packs_at_most = packs();
+    lucky(
+        keep(&mut packs_at_most),
+        h3_contracts::MAX_TOWN_BONUSES - morale_buildings,
+    );
+    let core = core();
+    assert!(TownRuleset::compile(&core, &packs_at_most).is_ok());
+    let mut packs_more = packs();
+    lucky(
+        keep(&mut packs_more),
+        h3_contracts::MAX_TOWN_BONUSES + 1 - morale_buildings,
+    );
+    assert_eq!(TownRuleset::compile(&core, &packs_more), Err(changes));
     assert_eq!(
         reason(|t| t
             .buildings
