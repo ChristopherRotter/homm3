@@ -293,8 +293,16 @@ fn check(
     let static_map = import_map(&map, rules).map_err(|e| format!("static layer: {e}"))?;
     // The static layer alone, in a game of the map's players without heroes: its objects'
     // contents are drawn as a game's are (E08 T12b); since E08 T83a its owners are those players;
-    // since E09 T8a1 one town record per town (`GameSetupError::TownCount`), a random town of no
-    // alignment, which no player's start reads.
+    // since E09 T8a1 one town record per town (`GameSetupError::TownCount`), since E09 T7b2a of
+    // the first faction with a town record, which no player's start reads (a random town its
+    // owner's start would: `GameSetupError::Choice`).
+    let faction = rules
+        .towns()
+        .towns()
+        .first()
+        .map_or(TownFaction::Random { alignment: None }, |record| {
+            TownFaction::Fixed(record.faction)
+        });
     let town_records = static_map
         .objects
         .iter()
@@ -305,7 +313,7 @@ fn check(
                 .is_some_and(|ty| ty.kind == ObjectKind::Town)
         })
         .map(|_| TownSetup {
-            faction: TownFaction::Random { alignment: None },
+            faction,
             buildings: BuildingsSetup::Standard { fort: false },
             garrison: None,
             name: None,
@@ -388,6 +396,7 @@ fn check(
                 },
                 Ok(game) => game,
             };
+            built_towns(&setup, &game, rules, &mut peaks.5);
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
             // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
             let levels: Vec<u8> = game.heroes().iter().map(|h| h.level).collect();
@@ -408,6 +417,65 @@ fn check(
         Err(e) => return Err(format!("import: {e}")),
     };
     Ok((map.header.version, outcome))
+}
+
+/// E09 T7b2a: the towns of a game that builds as the build resolved them (TWN-SET-002 to -004,
+/// TWN-CAP-001): each random town by what gave its faction, the neutral towns' drawn garrisons,
+/// the owned towns whose start reveals more than the part's radius.
+fn built_towns(
+    setup: &GameSetup,
+    game: &GameState,
+    rules: &GameRuleset,
+    counts: &mut BTreeMap<&'static str, usize>,
+) {
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    let adventure = game.adventure();
+    let objects = adventure.map().towns();
+    for ((town, &object), index) in setup.towns.iter().zip(objects).zip(0u16..) {
+        let owner = adventure.owner(object);
+        add("E09 built: towns", 1);
+        if let TownFaction::Random { alignment } = town.faction {
+            let by = match (alignment, owner) {
+                (Some(_), _) => "E09 built: random towns by their alignment",
+                (None, Some(_)) => "E09 built: random towns by their owner",
+                (None, None) => "E09 built: random towns drawn uniformly",
+            };
+            add(by, 1);
+        }
+        if owner.is_none() && town.garrison.is_none() {
+            add("E09 built: neutral towns with a drawn garrison", 1);
+            let empty = adventure.town_garrison(object).is_some_and(<[_]>::is_empty);
+            add(
+                "E09 built: neutral towns with a drawn garrison, empty",
+                usize::from(empty),
+            );
+        }
+        let built = game
+            .towns()
+            .get(h3_contracts::TownId::new(index))
+            .and_then(|t| rules.towns().town(t.faction()).map(|r| (t.built(), r)));
+        if let (Some(_), Some((built, record))) = (owner, built) {
+            let grails: Vec<bool> = built
+                .iter()
+                .filter_map(|b| record.building(b))
+                .filter(|b| b.roles.reveal.is_some())
+                .map(|b| b.roles.grail)
+                .collect();
+            let all = grails.contains(&true);
+            add(
+                "E09 built: owned towns revealing a larger radius at the start",
+                usize::from(!grails.is_empty() && !all),
+            );
+            add(
+                "E09 built: owned towns revealing every tile at the start",
+                usize::from(all),
+            );
+            add(
+                "E09 built: owned towns revealing every tile, two levels",
+                usize::from(all && setup.map.levels > 1),
+            );
+        }
+    }
 }
 
 /// The outcome of a map the build refuses for a hero to draw (`TWN-STUB-3`, until E09 T7b2).
@@ -510,8 +578,21 @@ fn towns(
             )
         })
         .collect();
+    // The towns' owners at the start (E09 T7b2a: a random town takes its owner's faction).
+    let owners: Vec<_> = setup
+        .map
+        .objects
+        .iter()
+        .filter(|object| {
+            object
+                .object_type
+                .and_then(|id| rules.adventure().object_type(id))
+                .is_some_and(|ty| ty.kind == ObjectKind::Town)
+        })
+        .map(|object| object.owner)
+        .collect();
     add("E09 maps that import", 1);
-    for (town, &(x, y, level)) in setup.towns.iter().zip(&entrances) {
+    for ((town, &(x, y, level)), owner) in setup.towns.iter().zip(&entrances).zip(&owners) {
         let candidates = match town.faction {
             TownFaction::Fixed(faction) => {
                 add(
@@ -532,6 +613,10 @@ fn towns(
                     },
                     1,
                 );
+                add(
+                    "E09 towns: class 77 without an alignment, owned at the start",
+                    usize::from(alignment.is_none() && owner.is_some()),
+                );
                 factions.clone()
             }
         };
@@ -550,6 +635,27 @@ fn towns(
             add(
                 "E09 towns: a custom set with a Shipyard built",
                 usize::from(yard),
+            );
+            // E09 T7b2a: a building that reveals at the start (TWN-CAP-001), the Grail's every
+            // tile.
+            let reveals = |grail: bool| {
+                candidates.iter().any(|&f| {
+                    records.town(f).is_some_and(|record| {
+                        record.buildings.iter().any(|b| {
+                            b.roles.reveal.is_some()
+                                && b.roles.grail == grail
+                                && b.slot.is_some_and(|slot| built.contains(slot))
+                        })
+                    })
+                })
+            };
+            add(
+                "E09 towns: a custom set with a building revealing a radius built",
+                usize::from(reveals(false)),
+            );
+            add(
+                "E09 towns: a custom set with a building revealing every tile built",
+                usize::from(reveals(true)),
             );
             let wet = water(x.wrapping_sub(1), y + 2, level) || water(x + 1, y + 2, level);
             add(

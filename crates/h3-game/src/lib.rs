@@ -114,5 +114,6 @@ pub use town::{FactionChoice, FactionSet, HeroDraw, MainTown, PlayerStart};
 /// adventure state hash v16). v21 (E08 T84a): an army dialog's holder (a join's group or a
 /// mine's guards, the Leave Guards dialog). v22 (E08 T85b): the month's kind and the map's
 /// timed events. v23 (E09 T7b1): the hero pool (TWN-SET-005: each hero type's status and colour
-/// mask), after the store of heroes.
-pub const GAME_STATE_HASH_VERSION: u32 = 23;
+/// mask), after the store of heroes. v24 (E09 T7b2a): the store of towns (`h3_towns::Towns`'
+/// encoding, the town state hash), after the hero pool.
+pub const GAME_STATE_HASH_VERSION: u32 = 24;

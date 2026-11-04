@@ -96,7 +96,7 @@ fn the_setup_stream_draws_the_objects_contents_after_the_armies_and_experience()
     for seed in 0..40 {
         let state = build(&rules, &setup, seed);
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
-        let (part, _, _) = setup.adventure_setup(&rules, &mut draws).unwrap();
+        let (part, _, _, _) = setup.adventure_setup(&rules, &mut draws).unwrap();
         let alone =
             AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws).unwrap();
         // The map's draws; the heroes' points and reveals follow at the start of the game.

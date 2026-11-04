@@ -5,8 +5,9 @@
 //! 6's seam), the pick from the player's offer ([`GameSetup::offer`], TWN-SET-006). The game's
 //! build checks the starts and the towns (E09 T7a2: [`check_starts`]), then builds the hero pool
 //! and draws the random factions and the random heroes' types (E09 T7b1: [`pool`], design note
-//! §14); it still refuses a main town that generates a hero ([`HeroDraw`], `TWN-STUB-3`; the main
-//! towns' heroes and the towns' draws are E09 T7b2's).
+//! §14), then the random towns' factions and each town's garrison and buildings (E09 T7b2a:
+//! [`build`]); it still refuses a main town that generates a hero ([`HeroDraw`], `TWN-STUB-3`;
+//! the main towns' heroes are E09 T7b2b's).
 
 use alloc::vec::Vec;
 use core::fmt;
@@ -18,8 +19,10 @@ use h3_towns::TownFaction;
 
 use crate::{GameRuleset, GameSetup, GameSetupError, PlayerSetup};
 
+pub(crate) mod build;
 pub(crate) mod pool;
 
+pub(crate) use build::{build_towns, draw_towns, start_radius};
 pub(crate) use pool::{HeroPool, draw_heroes};
 
 /// A set of the core's factions, a bit per faction below [`FactionSet::CAPACITY`] (the map's
@@ -172,9 +175,10 @@ impl GameSetup {
 
 /// The setup's checks of the towns and the players' starts (E09 T7a2, design note §13), one pass
 /// per invariant (ADR-0015 point 4): since E09 T8a1 one town record per town of the static map,
-/// then a fixed town's faction, a random town's alignment, each player's faction choice, main town
-/// (since E09 T8a1 a town it owns at the start, §8), pick and a pick of no earlier player, then a
-/// random hero's owner.
+/// then a town's faction (a fixed one's town record; since E09 T7b2a a random town needs a faction
+/// with one), a random town's alignment, each player's faction choice, main town (since E09 T8a1
+/// a town it owns at the start, §8), pick and a pick of no earlier player, then a random hero's
+/// owner. The towns' owners at the start by `TownId` when every check passes.
 ///
 /// # Errors
 ///
@@ -182,15 +186,20 @@ impl GameSetup {
 /// [`GameSetupError::TownFaction`], [`GameSetupError::TownAlignment`],
 /// [`GameSetupError::Choice`], [`GameSetupError::MainTown`], [`GameSetupError::Pick`],
 /// [`GameSetupError::PickTaken`], [`GameSetupError::RandomHeroOwner`].
-pub(crate) fn check_starts(setup: &GameSetup, rules: &GameRuleset) -> Result<(), GameSetupError> {
+pub(crate) fn check_starts(
+    setup: &GameSetup,
+    rules: &GameRuleset,
+) -> Result<Vec<Option<PlayerId>>, GameSetupError> {
     let owners = town_owners(setup, rules);
     if owners.len() != setup.towns.len() {
         return Err(GameSetupError::TownCount(setup.towns.len()));
     }
     let towns = || setup.towns.iter().zip((0..=u16::MAX).map(TownId::new));
     // rule: TWN-SET-002
-    if let Some((_, town)) = towns().find(|(town, _)| {
-        matches!(town.faction, TownFaction::Fixed(faction) if rules.towns().town(faction).is_none())
+    let no_records = rules.towns().towns().is_empty();
+    if let Some((_, town)) = towns().find(|(town, _)| match town.faction {
+        TownFaction::Fixed(faction) => rules.towns().town(faction).is_none(),
+        TownFaction::Random { .. } => no_records,
     }) {
         return Err(GameSetupError::TownFaction(town));
     }
@@ -202,7 +211,9 @@ pub(crate) fn check_starts(setup: &GameSetup, rules: &GameRuleset) -> Result<(),
         return Err(GameSetupError::TownAlignment(town));
     }
     // rule: TWN-SET-001
-    if let Some(player) = first_player(setup, |id, player| !chooses(setup, rules, id, player)) {
+    if let Some(player) = first_player(setup, |id, player| {
+        !chooses(setup, rules, &owners, id, player)
+    }) {
         return Err(GameSetupError::Choice(player));
     }
     // rule: TWN-SET-001
@@ -242,7 +253,7 @@ pub(crate) fn check_starts(setup: &GameSetup, rules: &GameRuleset) -> Result<(),
     {
         return Err(GameSetupError::RandomHeroOwner(hero));
     }
-    Ok(())
+    Ok(owners)
 }
 
 /// The owners at the start of the static map's towns by `TownId` (E09 T8a1, design note §8): the
@@ -279,9 +290,17 @@ fn first_player(
 
 /// Whether `player`'s faction choice is valid (TWN-SET-001): every faction of its set has a town
 /// record (a draw gives one of them, `TWN-QUIRK-4`), and its choice is a faction of the set,
-/// random among a set that is not empty, or none while its start needs no faction: no main town,
-/// no random-hero flag, no random hero of its own and no random town aligned to its colour.
-fn chooses(setup: &GameSetup, rules: &GameRuleset, id: PlayerId, player: &PlayerSetup) -> bool {
+/// random among a set that is not empty, or none while its start needs no faction
+/// ([`needs_faction`]): no main town, no random-hero flag, no random hero of its own, no random
+/// town aligned to its colour and, since E09 T7b2a, no random town it owns at the start
+/// (`owners`, by `TownId`).
+fn chooses(
+    setup: &GameSetup,
+    rules: &GameRuleset,
+    owners: &[Option<PlayerId>],
+    id: PlayerId,
+    player: &PlayerSetup,
+) -> bool {
     let start = &player.start;
     start
         .factions
@@ -290,14 +309,21 @@ fn chooses(setup: &GameSetup, rules: &GameRuleset, id: PlayerId, player: &Player
         && match start.choice {
             Some(FactionChoice::Fixed(faction)) => start.factions.contains(faction),
             Some(FactionChoice::Random) => !start.factions.is_empty(),
-            None => !needs_faction(setup, id, player),
+            None => !needs_faction(setup, owners, id, player),
         }
 }
 
-/// Whether `player`'s start reads its faction (TWN-SET-001): it has a main town, the random-hero
-/// flag, a random hero of its own or a random town aligned to its colour. Only such a player's
-/// `Random` choice is drawn when the game is built ([`draw_heroes`]).
-pub(crate) fn needs_faction(setup: &GameSetup, id: PlayerId, player: &PlayerSetup) -> bool {
+/// Whether `player`'s start reads its faction (TWN-SET-001, TWN-SET-002): it has a main town, the
+/// random-hero flag, a random hero of its own, a random town aligned to its colour or, since E09
+/// T7b2a, a random town it owns at the start (`owners`, the towns' owners by `TownId`; aligned to
+/// a colour or not). Only such a player's `Random` choice is drawn when the game is built
+/// ([`draw_heroes`]).
+pub(crate) fn needs_faction(
+    setup: &GameSetup,
+    owners: &[Option<PlayerId>],
+    id: PlayerId,
+    player: &PlayerSetup,
+) -> bool {
     let start = &player.start;
     start.main_town.is_some()
         || start.random_hero
@@ -305,11 +331,13 @@ pub(crate) fn needs_faction(setup: &GameSetup, id: PlayerId, player: &PlayerSetu
             .heroes
             .iter()
             .any(|hero| hero.hero_type.is_none() && hero.owner == id)
-        || setup.towns.iter().any(|town| {
+        || setup.towns.iter().zip(owners).any(|(town, &owner)| {
+            let random = matches!(town.faction, TownFaction::Random { .. });
             town.faction
                 == TownFaction::Random {
                     alignment: Some(player.colour),
                 }
+                || random && owner == Some(id)
         })
 }
 
