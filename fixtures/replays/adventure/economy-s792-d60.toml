@@ -1035,51 +1035,51 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x55416d58f208995f",
-    "0xb07c3010db57b396",
-    "0xda132269ffc10cd4",
-    "0xd536e54f3a5549a4",
-    "0x81e3daa464d76678",
-    "0xf1f08202801d1e09",
-    "0xbae14a7837820be2",
-    "0x825240f575b0d7cc",
-    "0xfb818fb36c5c14ab",
-    "0x3fdf2e75e58ea871",
-    "0x3c9ea77945abdab3",
-    "0x64a7f12703b2e553",
-    "0x681ff1ba3c9a4236",
-    "0x2a73f668bda427f4",
-    "0x074a09a860d353ea",
-    "0x4c734500f1bacd70",
-    "0x267787676d91642d",
-    "0x0f2117b1046616ab",
-    "0x9101bae42c59a5bf",
-    "0x917eee5544ceae13",
-    "0x0654b6afab55d7c2",
-    "0x824108b0a0092502",
-    "0xc3b52f651c888b31",
-    "0x02380bcd220f6951",
-    "0xcc564bfc4bf9aee8",
-    "0x43bc89ec745c2b58",
-    "0x6acede7c75e2dce4",
-    "0x7a2ccd0ff917e163",
-    "0x3b0a7c9a0b473414",
-    "0x60f311f8308daf7d",
-    "0xea6da421a27d079c",
-    "0xcc9531cd95f786d8",
-    "0xefa6d3e7b09fc05a",
-    "0x06f04904243ad0e5",
-    "0x2026e4826b27fc75",
-    "0xe74b153c42f3a02a",
-    "0x22d508c2eaf8edd9",
-    "0xef7a908730552fb6",
-    "0xa9ad0375d26edb2e",
-    "0x9f2418183b379d52",
-    "0xb10200c1dcd2e32c",
+    "0xe604ebe58f4b5f94",
+    "0xa87e0de409c8af8d",
+    "0x25b94fd269732625",
+    "0x25fc7c586161a163",
+    "0x8910f3654410bd53",
+    "0xc99de85dc23a6b8c",
+    "0x36303308e9dc5b9d",
+    "0xc3f5e4f0df0129a7",
+    "0x510564df801742a4",
+    "0x10af38f77883b67e",
+    "0x38fb6c2cfd7c1d10",
+    "0xf6805c34a40ca5a4",
+    "0x594d110229966743",
+    "0x350f13824666b30d",
+    "0x62cee0b326fa383b",
+    "0x78dc2fd263580435",
+    "0xd7f32e5987b2ffe0",
+    "0x4837d5af8ac4bfba",
+    "0x2442da5813d79ed6",
+    "0x5290e63a1f3740ce",
+    "0x0a23f395a50896bf",
+    "0x6bc09e6c306d2157",
+    "0xfcce54c353a99cae",
+    "0x2207f48f926f28ca",
+    "0xd8223712c23c8c0f",
+    "0x74e5a004fc19bcd3",
+    "0xa3b440d3acd05c5d",
+    "0xf8ad232daa8f0bbe",
+    "0xad5c74a9a4ec127d",
+    "0x10f36a608f2d55ae",
+    "0x5efa1d170debb479",
+    "0x376fa132a7edb649",
+    "0x96aab5d2a5221123",
+    "0xe17e1874a9b031dc",
+    "0x4b94fd632c2ea89c",
+    "0xe57b42d100feff1f",
+    "0xfd8355ab27db814a",
+    "0xb20e93ad2f277601",
+    "0x2c1d093264ed80cd",
+    "0x01fb914ff3a80eef",
+    "0x94d65583bb931c3b",
 ]
 
 [replay]
-format = 9
+format = 10
 engine = "0.1.0"
 seed = "792"
 difficulty = 1
@@ -1105,7 +1105,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 24
+game_state_hash_version = 25
 adventure_state_hash_version = 21
 checkpoint_every = 25
 
@@ -1116,4 +1116,4 @@ import_version = 18
 
 [result]
 day = 61
-final_hash = "0x9d1d4bc700eb2357"
+final_hash = "0xc4bf3e7003486750"

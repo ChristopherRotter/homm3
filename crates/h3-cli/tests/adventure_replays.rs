@@ -146,7 +146,9 @@
 //! T94b (adventure state hash v20) re-recorded them all from their commands: every hash moved.
 //! E09 T8a1 (adventure state hash v21, adventure ruleset part v17, map import v18: the town as a
 //! map object) re-recorded all thirty-nine from their commands: only the hashes and the versions
-//! moved.
+//! moved. E08 T95b (game state hash v25: the hire dialog; replay format v10: its answers; none of
+//! the maps holds a dwelling, a random dwelling or a camp) re-recorded all thirty-nine from their
+//! commands: only the hashes and the versions moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts
