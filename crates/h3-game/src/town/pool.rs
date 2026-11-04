@@ -1,7 +1,8 @@
 //! The hero pool (TWN-SET-005; E09 T7b1, design note `E09-design.md` §14, ADR-0017's E09
 //! paragraph) and the build's draws of the heroes: each player's random faction choice
 //! (TWN-SET-001), then each random hero's type (TWN-SET-008: its owner's pick, else the draw,
-//! TWN-SET-007), from the setup stream before every other draw of the build.
+//! TWN-SET-007), from the setup stream before every other draw of the build (the random towns'
+//! factions next, [`super::build`]).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -167,13 +168,15 @@ impl CanonicalHash for HeroPool {
 /// Each hero's type in hero order, with the ruleset's record of it.
 pub(crate) type HeroTypes<'r> = Vec<(HeroTypeId, &'r HeroType)>;
 
-/// The pool and each hero's type in hero order, the build's first draws from `draws` (design
-/// note §14, E09 T7b1): every placed hero's type checked first (before any draw), the pool built
-/// ([`HeroPool::new`]); then each player's `Random` faction choice in player order, uniform over
-/// its factions (TWN-SET-001; the resolved factions are not kept), only when its start reads it
-/// ([`needs_faction`]: a choice nothing reads draws nothing, the agent's call, so a map whose
-/// players allow several factions but have no towns and no random hero, as the duel's, keeps its
-/// stream); then each random hero in hero
+/// The pool, each hero's type in hero order and each player's resolved faction by id (`None`
+/// without a choice, or a `Random` one its start does not read), the build's first draws from
+/// `draws` (design note §14, E09 T7b1): every placed hero's type checked first (before any draw),
+/// the pool built ([`HeroPool::new`]); then each player's `Random` faction choice in player order,
+/// uniform over its factions (TWN-SET-001; the resolved factions are not kept in the game, the
+/// build's random towns read them, [`super::draw_towns`]), only when its start reads it
+/// ([`needs_faction`] with the towns' owners at the start, `owners` by `TownId`: a choice nothing
+/// reads draws nothing, the agent's call, so a map whose players allow several factions but have
+/// no towns and no random hero, as the duel's, keeps its stream); then each random hero in hero
 /// order (TWN-SET-008): its owner's pick for the owner's first random hero, else the draw over
 /// the owner's faction (TWN-SET-007), the type taken by the owner's colour at once; last, every
 /// pick no random hero took goes back free (the agent's call, design note §14). The setup's
@@ -189,8 +192,9 @@ pub(crate) type HeroTypes<'r> = Vec<(HeroTypeId, &'r HeroType)>;
 pub(crate) fn draw_heroes<'r>(
     setup: &GameSetup,
     rules: &'r GameRuleset,
+    owners: &[Option<PlayerId>],
     draws: &mut Rng,
-) -> Result<(HeroPool, HeroTypes<'r>), GameSetupError> {
+) -> Result<(HeroPool, HeroTypes<'r>, Vec<Option<FactionId>>), GameSetupError> {
     let core = rules.core();
     let placed: Vec<Option<(HeroTypeId, &HeroType)>> = setup
         .heroes
@@ -213,7 +217,7 @@ pub(crate) fn draw_heroes<'r>(
         .zip((0..=u8::MAX).map(PlayerId::new))
         .map(|(player, id)| match player.start.choice {
             Some(FactionChoice::Fixed(faction)) => Some(faction),
-            Some(FactionChoice::Random) if needs_faction(setup, id, player) => {
+            Some(FactionChoice::Random) if needs_faction(setup, owners, id, player) => {
                 let set = player.start.factions;
                 let drawn = usize::try_from(draws.below(set.len())).unwrap_or(usize::MAX);
                 set.iter().nth(drawn)
@@ -247,5 +251,5 @@ pub(crate) fn draw_heroes<'r>(
     for pick in picks.into_iter().flatten() {
         pool.free(pick);
     }
-    Ok((pool, types))
+    Ok((pool, types, factions))
 }

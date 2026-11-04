@@ -8,7 +8,6 @@
 //! infallible, and commands go through [`crate::apply`].
 
 use alloc::sync::Arc;
-use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{
@@ -23,13 +22,14 @@ use h3_heroes::{
 };
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
+use h3_towns::Towns;
 
 use crate::command::{
     Actor, AdventureSink, Answer, Consent, GameCommandError, GameEvent, NoopSink, Sink,
     UniversityAnswer,
 };
 use crate::observe::LevelUpView;
-use crate::town::HeroPool;
+use crate::town::{self, HeroPool};
 use crate::treasury::Treasuries;
 use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError, TimedEventSetup};
 use levels::Progression;
@@ -263,6 +263,10 @@ pub struct GameState {
     /// whether it is free, taken or out and the colours that may take it. Shared by forks and
     /// copied on a write (a hero that leaves the map).
     pool: Arc<HeroPool>,
+    /// The store of towns (ADR-0028 point 4, E09 T7b2a; design note §14): every town's record and
+    /// static part by `TownId`, as the build made them (TWN-SET-002 to -004). Shared by forks (a
+    /// fork of a map with towns counts one reference, of one without none) and copied on a write.
+    towns: Towns,
     /// What the heroes' levels read that never changes after the build (E08 T29): the scenario's
     /// level limit and banned skills, each hero's level seed (GAM-HER-002; server-only, ADR-0017
     /// point 5). Shared by forks.
@@ -273,14 +277,18 @@ pub struct GameState {
 impl GameState {
     /// Builds a game from its setup and master seed: the setup's checks
     /// ([`GameSetup::validate`]), the hero pool (TWN-SET-005), its random placeholders resolved
-    /// from the setup stream (first the players' random faction choices and the random heroes'
-    /// types, TWN-SET-001, TWN-SET-008, E09 T7b1; then the starting armies, GAM-SET-001, each
+    /// from the setup stream (first, step 1, the players' random faction choices, TWN-SET-001;
+    /// step 2, the random heroes' types, TWN-SET-008, E09 T7b1, then the random towns' factions in
+    /// `TownId` order, TWN-SET-002, E09 T7b2a; step 4, each town's garrison and buildings in
+    /// `TownId` order, TWN-SET-004, TWN-SET-003; then the starting armies, GAM-SET-001, each
     /// default experience, GAM-HER-001, the map objects' contents, ADR-0016 point 4, then each
     /// hero's level seed in hero id order, GAM-HER-002;
     /// last of the stream's draws, so the earlier ones do not depend on the heroes' levels), the
+    /// store of towns (E09 T7b2a) with each town's garrison written into the adventure, the
     /// levels at load of each hero with a custom experience in hero id order (GAM-SET-002: its
     /// levels' draws from the setup stream in `strict-fixed`), the adventure's start of the game
-    /// after them (the heroes' day's points and reveals from their details, E08 T40), a stream
+    /// after them (the heroes' day's points and reveals from their details, E08 T40; each owned
+    /// town's reveal by its own radius, TWN-CAP-001), a stream
     /// and the difficulty's human row of starting resources per player (GAM-RES-002), sequential
     /// play (GAM-TRN-001) on day 1 (GAM-CAL-001), day 1's start-of-day step and the first group's
     /// turn started, so the first day starts as every later one (ADR-0017 point 3).
@@ -296,9 +304,17 @@ impl GameState {
             .get(usize::from(setup.difficulty))
             .ok_or(GameSetupError::Difficulty(setup.difficulty))?;
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
-        let (part, mut heroes, pool) = setup.adventure_setup(rules, &mut draws)?;
+        let (part, mut heroes, pool, towns) = setup.adventure_setup(rules, &mut draws)?;
         let mut adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
             .map_err(GameSetupError::Adventure)?;
+        // rule: TWN-CAP-001
+        let town_radii: Vec<u8> = towns
+            .iter()
+            .map(|(town, _)| town::start_radius(town, rules))
+            .collect();
+        // Step 4 builds `MAX_TOWNS` towns at most (`town::build_towns`), so the store is never
+        // refused here (the adventure refused a map with more, `SetupError::Towns`).
+        let towns = Towns::new(towns).unwrap_or_default();
         let progression = Progression::new(
             setup.level_limit,
             &setup.banned_skills,
@@ -316,10 +332,7 @@ impl GameState {
             Arc::new(heroes.into_iter().map(Arc::new).collect());
         // ADR-0017 point 1 (E08 T40): the adventure's start of the game after the levels at
         // load, then day 1's start-of-day step (ADV-MOV-002, ADV-FOG-003). Since E09 T8a1 each
-        // town's radius by `TownId` (ADV-OWN-002).
-        // stub: TWN-STUB-5 (the flag radius for every town until E09 T7b2's store of towns)
-        let town_radii =
-            vec![rules.adventure().params().flag_radius(); adventure.map().towns().len()];
+        // town's radius by `TownId` (ADV-OWN-002), since E09 T7b2a its own (TWN-CAP-001).
         adventure.start_game(rules.core(), rules.adventure(), &heroes, &town_radii);
         adventure.start_day(rules.core(), rules.adventure(), &heroes);
         let players: Vec<PlayerState> = setup
@@ -352,6 +365,7 @@ impl GameState {
             rng: Rng::for_stream(seed, StreamId::GAME),
             heroes,
             pool: Arc::new(pool),
+            towns,
             progression: Arc::new(progression),
             adventure,
         };
@@ -1262,6 +1276,12 @@ impl GameState {
         &self.heroes
     }
 
+    /// The store of towns (ADR-0028 point 4, E09 T7b2a): every town's record and static part by
+    /// `TownId`, the static map's towns in object order.
+    pub fn towns(&self) -> &Towns {
+        &self.towns
+    }
+
     /// The scenario's level limit (HER-EXP-003; E08 T29): 0 none.
     pub fn level_limit(&self) -> u8 {
         self.progression.level_limit()
@@ -1298,10 +1318,10 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v23 (E09 T7b1; v1 was E08 T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
+    /// Encoding v24 (E09 T7b2a; v1 was E08 T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
     /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's, v14
     /// T54's, v15 T60a's, v16 T62a's, v17 T62b1's, v18 T63a's, v19 T63b's, v20 T72's, v21
-    /// T84a's, v22 T85b's): version; the master seed; the day; since v22 the month's kind
+    /// T84a's, v22 T85b's, v23 E09 T7b1's): version; the master seed; the day; since v22 the month's kind
     /// ([`MonthKind`]'s encoding) and the map's timed events (length, then each: [`hash_event`]);
     /// the running group's index; the schedule (groups as
     /// length + player ids); the players (colour, since v14 whether it counts as human, acting,
@@ -1313,8 +1333,10 @@ impl CanonicalHash for GameState {
     /// 5 a guarded pile's fight, since v16 6 a gift's price, 7 a find's question, since v17 8
     /// Pandora's Box's question, 9 the Pyramid's, since E08 T84b2 10 a Shipyard's boat (no version
     /// moved: no earlier state holds one), since E08 T95a1 11 the hire question (no version moved,
-    /// as the boat's), then a reveal's, a join for gold's, a gift's or a boat's price as length
-    /// and resource–amount pairs, a hire question's creatures as length and each, from v7 to v18
+    /// as the boat's), since E08 T95a2 12 a dwelling's guards' question (no version moved, as the
+    /// boat's), then a reveal's, a join for gold's, a gift's or a boat's price as length and
+    /// resource–amount pairs, a hire question's creatures as length and each, a guards' question's
+    /// creature and count word, from v7 to v18
     /// whether a guard's visit waits for the answer;
     /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
     /// state hash; since v11 (E08 T30) 2 a level-up: its owner, hero, new level, primary skill
@@ -1330,7 +1352,10 @@ impl CanonicalHash for GameState {
     /// and entries ([`Held`]'s encoding); the game's stream; since v5 the store of heroes
     /// (length, then each hero's details by id, [`hash_details`]); since v23 (E09 T7b1) the hero
     /// pool (`HeroPool`'s encoding: the number of types, then each type's status, 0 free, 1 taken
-    /// and the colour, 2 a prisoner's, 3 out, and its colour mask); since v10 (E08 T29) the
+    /// and the colour, 2 a prisoner's, 3 out, and its colour mask); since v24 (E09 T7b2a) the
+    /// store of towns (`h3_towns::Towns`' encoding: the town state hash version, the number of
+    /// towns, each town's faction and ever-built and forbidden sets in `TownId` order, then each
+    /// town's static part, its name and events); since v10 (E08 T29) the
     /// heroes' progression (the level limit, the banned skills, the level seeds, since v14 the
     /// heroes' sexes: [`Progression`]'s encoding); the adventure
     /// state's hash.
@@ -1383,17 +1408,29 @@ impl CanonicalHash for GameState {
                         OfferKind::SearchPyramid => (9, None),
                         OfferKind::Boat { price } => (10, Some(price)),
                         OfferKind::Hire { .. } => (11, None),
+                        OfferKind::Guarded { .. } => (12, None),
                     };
                     h.write_u8(tag);
                     if let Some(price) = price {
                         hash_price(price, h);
                     }
-                    // E08 T95a1: the hire question's creatures, their number then each.
-                    if let OfferKind::Hire { creatures } = &offer.kind {
-                        h.write_len(creatures.len());
-                        for creature in creatures {
-                            creature.hash_into(h);
+                    match &offer.kind {
+                        // E08 T95a1: the hire question's creatures, their number then each.
+                        OfferKind::Hire { creatures } => {
+                            h.write_len(creatures.len());
+                            for creature in creatures {
+                                creature.hash_into(h);
+                            }
                         }
+                        // E08 T95a2: the guards' question's creature and count word.
+                        OfferKind::Guarded {
+                            creature,
+                            count_word,
+                        } => {
+                            creature.hash_into(h);
+                            h.write_u8(*count_word);
+                        }
+                        _ => {}
                     }
                 }
                 Decision::Battle(battle) => {
@@ -1499,6 +1536,7 @@ impl CanonicalHash for GameState {
             hash_details(details, h);
         }
         self.pool.hash_into(h);
+        self.towns.hash_into(h);
         self.progression.hash_into(h);
         h.write_u64(self.adventure.state_hash());
     }

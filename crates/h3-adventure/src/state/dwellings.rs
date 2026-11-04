@@ -1,10 +1,11 @@
-//! The dwellings and the Refugee Camps (E08 T94a, T94b, T95a1; increment 10's design note §5, §6,
-//! §7, §9): each random dwelling's draw among its outcomes in the static map's placement walk, the
-//! names its outcomes take, and the tiles a hero may not stand on beside one, whatever it draws
-//! (T94a); each dwelling's week as it stands, its counts and guards, and each camp's creature and
-//! count, with their reads, checks and part of the state hash (T94b); the visits, the hire
-//! question and a dwelling's free creatures, with the dwellings' writer (T95a1). The week's step
-//! and the first week's draws are `calendar.rs`' and `economy.rs`'.
+//! The dwellings and the Refugee Camps (E08 T94a, T94b, T95a1, T95a2; increment 10's design
+//! note §5, §6, §7, §9, §12): each random dwelling's draw among its outcomes in the static map's
+//! placement walk, the names its outcomes take, and the tiles a hero may not stand on beside one,
+//! whatever it draws (T94a); each dwelling's week as it stands, its counts and guards, and each
+//! camp's creature and count, with their reads, checks and part of the state hash (T94b); the
+//! visits, the hire question and a dwelling's free creatures, with the dwellings' writer (T95a1);
+//! the guards' question, their battle and its end (T95a2). The week's step and the first week's
+//! draws are `calendar.rs`' and `economy.rs`'.
 
 use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
@@ -18,7 +19,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use super::monsters::add_stack;
 use super::{AdventureState, StaticMap, allied, pick};
 use crate::command::{
-    AdventureEvent, AdventureEventKind, AdventureOutcome, Offer, OfferKind, Sink, Viewers,
+    AdventureEvent, AdventureEventKind, AdventureOutcome, Defender, Offer, OfferKind, Sink, Viewers,
 };
 use crate::ruleset::{AdventureRuleset, Effect, MAX_DWELLING_CREATURES, ObjectKind, ObjectTypeId};
 use crate::setup::{Holds, ObjectSetup, Pos, TileMask};
@@ -59,12 +60,19 @@ impl DwellingWeek {
             *cell = count;
             week.creatures += 1;
         }
+        week.set_guards(guards);
+        week
+    }
+
+    /// Sets the guards to these stacks, each in its slot, every other slot empty (E08 T94b; T95a2:
+    /// a battle's survivors, none once beaten): a stack of a slot past [`SLOTS`] is left out.
+    fn set_guards(&mut self, guards: impl IntoIterator<Item = ArmyStack>) {
+        self.guards = [None; SLOTS];
         for stack in guards {
-            if let Some(cell) = week.guards.get_mut(usize::from(stack.slot)) {
+            if let Some(cell) = self.guards.get_mut(usize::from(stack.slot)) {
                 *cell = Some(stack);
             }
         }
-        week
     }
 
     /// Each creature's count, by the kind's creature order.
@@ -469,15 +477,13 @@ impl AdventureState {
 
     /// The visit of the dwelling at object index `index`, of type `object_type` and with these
     /// `creatures` (its kind's, in order), by `player`'s hero `hero` on its entrance (ADV-DWL-004,
-    /// ADV-OWN-001 amended; E08 T95a1, increment 10's design note §7; survey `E08-dwellings.md`
-    /// §4.1, §4.3, the original's `visit_dwelling` 0x4A18B0): one of the visitor's team (the
-    /// visitor's own until E10's teams) asks the hire question at once, no flag, no guards; a
-    /// neutral one or another team's whose guards stand does nothing yet (their question and
-    /// battle are T95a2's); else it is flagged for the visitor's owner ([`Self::flag`]:
-    /// `ObjectFlagged`, then the reveal of the part's flag radius around its entrance), then
-    /// asks the hire question ([`OfferKind::Hire`], naming its creatures in its kind's order: the
-    /// original's ADVEVENT 35, or 36 for four creatures). The flag needs no answer: a declined
-    /// question keeps it.
+    /// ADV-OWN-001 amended; E08 T95a1, T95a2, increment 10's design note §7, §12; survey
+    /// `E08-dwellings.md` §4.1 to §4.3, the original's `visit_dwelling` 0x4A18B0): one of the
+    /// visitor's team (the visitor's own until E10's teams) asks the hire question at once, no
+    /// flag, no guards; a neutral one or another team's whose guards stand asks the guards'
+    /// question ([`OfferKind::Guarded`], [`Self::guards_question`]: the original's GENRLTXT 422),
+    /// accepted their battle ([`Self::fight_for_dwelling`]); else the visit goes on at once
+    /// ([`Self::enter_dwelling`]: the flag, then the hire question).
     // rule: ADV-DWL-004, ADV-OWN-001
     pub(super) fn visit_dwelling<S: Sink>(
         &mut self,
@@ -490,14 +496,54 @@ impl AdventureState {
         if !self
             .owner(object.0)
             .is_some_and(|owner| allied(owner, player))
+            && let Some(kind) = self.guards_question(rules.1, object.0)
         {
-            if self
-                .dwelling_week(object.0)
-                .is_some_and(|week| week.guards().next().is_some())
-            {
-                // stub: ADV-STUB-14 (the guards' question and battle, then the flag: T95a2)
-                return AdventureOutcome::default();
-            }
+            return self.ask(hero, object, kind);
+        }
+        self.enter_dwelling(rules, (player, hero), object, creatures, sink)
+    }
+
+    /// The guards' question of the dwelling at object index `index` while its guards stand
+    /// (ADV-DWL-004; E08 T95a2, increment 10's design note §7 step 2, §12; survey
+    /// `E08-dwellings.md` §4.2, the original's GENRLTXT 422): the creature of their first occupied
+    /// slot and the word of their total count ([`crate::MonsterParams::count_word`]; 0 for a part
+    /// without monster parameters). VCMI reads the first stack's count: a text difference only.
+    /// None while none stand, and for an object that is no dwelling.
+    // rule: ADV-DWL-004
+    fn guards_question(&self, part: &AdventureRuleset, index: usize) -> Option<OfferKind> {
+        let mut guards = self
+            .dwelling_week(index)
+            .into_iter()
+            .flat_map(DwellingWeek::guards);
+        let first = guards.next()?;
+        let total = guards.fold(first.count, |sum, stack| sum.saturating_add(stack.count));
+        Some(OfferKind::Guarded {
+            creature: first.creature,
+            count_word: part.params().monsters().map_or(0, |m| m.count_word(total)),
+        })
+    }
+
+    /// The visit's rest at the dwelling at object index `index`, of type `object_type` and with
+    /// these `creatures` (its kind's, in order), for `player`'s hero `hero`, once no guards stand
+    /// in its way (ADV-DWL-004, ADV-OWN-001 amended; E08 T95a1, T95a2, increment 10's design note
+    /// §7): one not of the visitor's team is flagged for its owner ([`Self::flag`]:
+    /// `ObjectFlagged`, then the reveal of the part's flag radius around its entrance), then the
+    /// hire question ([`OfferKind::Hire`], naming its creatures in its kind's order: the
+    /// original's ADVEVENT 35, or 36 for four creatures). The flag needs no answer: a declined
+    /// question keeps it.
+    // rule: ADV-DWL-004, ADV-OWN-001
+    fn enter_dwelling<S: Sink>(
+        &mut self,
+        rules: (&Ruleset, &AdventureRuleset),
+        (player, hero): (PlayerId, HeroId),
+        object: (usize, ObjectTypeId),
+        creatures: &[CreatureTypeId],
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        if !self
+            .owner(object.0)
+            .is_some_and(|owner| allied(owner, player))
+        {
             self.flag(rules, object, player, sink);
         }
         self.ask(
@@ -507,6 +553,95 @@ impl AdventureState {
                 creatures: creatures.to_vec(),
             },
         )
+    }
+
+    /// An accepted guards' question ([`OfferKind::Guarded`]) of `player`'s hero `hero` on the
+    /// dwelling at object index `index`, of type `object_type` (ADV-DWL-004, GAM-BAT-001 amended;
+    /// E08 T95a2, increment 10's design note §7 step 2, §12; survey `E08-dwellings.md` §4.2, the
+    /// original's `visit_dwelling` 0x4A18B0), the state read anew: not of the hero's team with its
+    /// guards standing, their battle, unsplit and unowned whatever its owner and however many
+    /// stacks ([`Defender::Guards`]: the original's `adventure_battle` with owner −1 and no hero;
+    /// VCMI's side is the owner's, D-51), fought on its entrance, where the hero stands, as any
+    /// battle there
+    /// ([`Self::battle_at`]: the tile's battlefield, the coast, a special ground; no type
+    /// terrain); else the visit's rest ([`Self::enter_dwelling`]). Nothing when the hero is not
+    /// on the map (or the type is no dwelling's).
+    // rule: ADV-DWL-004, GAM-BAT-001
+    pub(super) fn fight_for_dwelling<S: Sink>(
+        &mut self,
+        (core, part): (&Ruleset, &AdventureRuleset),
+        (player, hero): (PlayerId, HeroId),
+        object: (usize, ObjectTypeId),
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        let effect = part.object_type(object.1).and_then(|ty| ty.kind.effect());
+        let (Some(attacker), Some(Effect::Dwelling(creatures))) = (self.hero(hero), effect) else {
+            return AdventureOutcome::default();
+        };
+        let guards = self.dwelling_guards(object.0);
+        if !self
+            .owner(object.0)
+            .is_some_and(|owner| allied(owner, player))
+            && !guards.is_empty()
+        {
+            let defender = Defender::Guards { army: guards };
+            return AdventureOutcome {
+                battle: Some(self.battle_at(part, attacker, defender, attacker.pos)),
+                ..AdventureOutcome::default()
+            };
+        }
+        // Unreachable under sequential play (ADR-0017 point 7: one player per turn group is
+        // built, and an open offer allows only its answers, so nothing changes the dwelling
+        // between its question and the acceptance); kept so the infallible acceptance reads the
+        // state anew, as a mine's does ([`Self::fight_for_mine`]; E08 decision 254).
+        self.enter_dwelling((core, part), (player, hero), object, creatures, sink)
+    }
+
+    /// The end of the battle against the guards of the dwelling at object index `index`, fought
+    /// by the visitor's hero `hero` at `tile` (ADV-DWL-004; E08 T95a2, increment 10's design note
+    /// §7 step 2, §10, §12): after the visitor's side `won` the guards are gone and the visit's
+    /// rest comes after the winner's levels ([`AdventureOutcome::reward_after`], GAM-DEC-007:
+    /// [`Self::dwelling_won`]); else the guards' `survivors` stay as its guards, by slot as they
+    /// stand (none after a draw: the next visit flags it at once). Written through
+    /// [`Self::write_dwelling`]; its owner is unchanged; no event (the guards are hidden,
+    /// ADV-OWN-003).
+    // rule: ADV-DWL-004
+    pub(super) fn end_dwelling_battle(
+        &mut self,
+        index: usize,
+        (hero, tile): (HeroId, Pos),
+        (survivors, won): (&[ArmyStack], bool),
+    ) -> AdventureOutcome {
+        let left = if won { &[][..] } else { survivors };
+        self.write_dwelling(index, |week| week.set_guards(left.iter().copied()));
+        AdventureOutcome {
+            reward_after: won.then_some((hero, tile)),
+            ..AdventureOutcome::default()
+        }
+    }
+
+    /// The visit's rest at the dwelling at object index `index`, of type `object_type` and with
+    /// these `creatures` (its kind's, in order), its guards beaten by the hero `hero`
+    /// (ADV-DWL-004; E08 T95a2, increment 10's design note §7 step 2; [`Self::give_won`], after
+    /// the winner's levels): for the hero's owner, the flag when it is not of its team, then the
+    /// hire question ([`Self::enter_dwelling`]). Nothing when the hero is no longer on the map
+    /// (or guards stand there again).
+    // rule: ADV-DWL-004
+    pub(super) fn dwelling_won<S: Sink>(
+        &mut self,
+        rules: (&Ruleset, &AdventureRuleset),
+        hero: HeroId,
+        object: (usize, ObjectTypeId),
+        creatures: &[CreatureTypeId],
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        let beaten = self.dwelling_guards(object.0).is_empty();
+        match self.hero(hero).map(|h| h.owner) {
+            Some(player) if beaten => {
+                self.enter_dwelling(rules, (player, hero), object, creatures, sink)
+            }
+            _ => AdventureOutcome::default(),
+        }
     }
 
     /// The visit of the Refugee Camp at object index `index`, of type `object_type`, by
@@ -548,9 +683,10 @@ impl AdventureState {
     /// dwelling or a Refugee Camp (ADV-HIR-001; E08 T95a1, increment 10's design note §7 step 4,
     /// §13; survey `E08-dwellings.md` §4.4, the original's `visit_dwelling` 0x4A18B0 and
     /// `dwelling_offer_hire` 0x4ABA50): on a dwelling `player` owns when it accepts (an agent's
-    /// call: the owner read at acceptance), its free creatures join ([`Self::give_free`]); on any
-    /// other, a camp's or an ally's (E10), nothing is given. The hire dialog for the rest is
-    /// T95b's.
+    /// call: the owner read at acceptance, defensive only: under sequential play nothing changes it
+    /// between the question and the acceptance, E08 decision 254), its free creatures join
+    /// ([`Self::give_free`]); on any other, a camp's or an ally's (E10), nothing is given. The hire
+    /// dialog for the rest is T95b's.
     // rule: ADV-HIR-001
     pub(super) fn accept_hire<S: Sink>(
         &mut self,

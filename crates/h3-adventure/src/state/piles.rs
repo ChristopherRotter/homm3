@@ -127,9 +127,11 @@ impl AdventureState {
     /// are hidden). A won Pyramid's loot and spell come after the levels too; after any other end
     /// nothing changes (its guards' losses are not kept). Else, since E08 T62b2, an event's
     /// guards' battle at its tile, where its visitor stands ([`Self::end_event_battle`],
-    /// ADV-OBJ-007). Infallible: nothing when none of them is at `tile`.
+    /// ADV-OBJ-007). A dwelling's guards' (ADV-DWL-004, E08 T95a2: [`Self::end_dwelling_battle`],
+    /// the survivors kept in its week's entry). Infallible: nothing when none of them is at
+    /// `tile`.
     // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, GAM-DEC-007
-    // rule: ADV-MIN-002
+    // rule: ADV-MIN-002, ADV-DWL-004
     pub fn end_unowned_battle<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -157,6 +159,9 @@ impl AdventureState {
                 sink,
             ),
             ObjectKind::Pyramid(_) => reward,
+            ObjectKind::Dwelling { .. } => {
+                self.end_dwelling_battle(index, (hero, tile), (survivors, won))
+            }
             _ if self.object_at(index).guards.is_some() => {
                 let left = if won { Vec::new() } else { survivors.to_vec() };
                 self.army_left.set(index, Some(left));
@@ -173,10 +178,13 @@ impl AdventureState {
     /// outcome's gains, an artifact or a scroll goes to the hero) or a box gives its record
     /// ([`Self::give_box`]), and it leaves the map, told to the players that see it there; a
     /// Pyramid not looted is looted and teaches its spell ([`Self::loot_pyramid`]); an event whose
-    /// guards are beaten gives its record ([`Self::give_event`]). Read when it is given: the
-    /// levels' skills decide what the hero can receive or learn (the Pyramid's spell, E7-22).
-    /// Nothing when none of them is at `tile` any more.
+    /// guards are beaten gives its record ([`Self::give_event`]); a dwelling whose guards are
+    /// beaten goes on with the visit's rest, its flag and its hire question (ADV-DWL-004, E08
+    /// T95a2: [`Self::dwelling_won`]). Read when it is given: the levels' skills decide what the
+    /// hero can receive or learn (the Pyramid's spell, E7-22). Nothing when none of them is at
+    /// `tile` any more.
     // rule: GAM-DEC-007, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, ADV-MIN-002
+    // rule: ADV-DWL-004
     pub fn give_won<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -198,6 +206,11 @@ impl AdventureState {
                 } else {
                     self.loot_pyramid(rules, hero, index)
                 }
+            }
+            Some((index, object_type, ty))
+                if let ObjectKind::Dwelling { creatures, .. } = &ty.kind =>
+            {
+                self.dwelling_won((core, part), hero, (index, object_type), creatures, sink)
             }
             Some((index, object_type, ty)) if beaten(self, index) => match ty.kind {
                 ObjectKind::PandoraBox => self.give_box(rules, hero, (index, object_type), sink),

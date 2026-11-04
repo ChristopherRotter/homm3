@@ -15,7 +15,7 @@ use h3_content::{
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, OfferLevels};
 use h3_kernel::Rng;
-use h3_towns::TownSetup;
+use h3_towns::{Town, TownSetup, TownStatic};
 
 use crate::town::{self, HeroDraw, HeroPool, PlayerStart};
 use crate::{GameRuleset, GameState};
@@ -184,6 +184,15 @@ impl TimedEventSetup {
     }
 }
 
+/// What [`GameSetup::adventure_setup`] prepares for [`GameState::new`]: the adventure's setup,
+/// the heroes' details by id, the hero pool and each town's record and static part by `TownId`.
+pub(crate) type Prepared = (
+    AdventureSetup,
+    Vec<HeroDetails>,
+    HeroPool,
+    Vec<(Town, TownStatic)>,
+);
+
 /// Why a [`GameSetup`] cannot start a game.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameSetupError {
@@ -218,15 +227,18 @@ pub enum GameSetupError {
     /// kind `Town` (E09 T8a1, the town epic's design note §13); their number.
     TownCount(usize),
     /// The town's faction is fixed and has no town record in the town part (TWN-SET-002, E09
-    /// T7a2).
+    /// T7a2), or since E09 T7b2a the town is random and no faction has a town record (a random
+    /// town takes a faction with one: its aligned colour's, its owner's or, neutral, one drawn
+    /// among them).
     TownFaction(TownId),
     /// The random town is aligned to a colour no player has (TWN-SET-002, E09 T7a2): refused,
     /// though the original falls through to the town's owner (no shipped map has one).
     TownAlignment(TownId),
     /// The player's factions hold one without a town record, or its choice is a fixed faction
     /// outside them, random among none, or missing while its start needs a faction: a main town,
-    /// the random-hero flag, a random hero of its own or a random town aligned to its colour
-    /// (TWN-SET-001, E09 T7a2).
+    /// the random-hero flag, a random hero of its own, a random town aligned to its colour
+    /// (TWN-SET-001, E09 T7a2) or, since E09 T7b2a, a random town it owns at the start, which
+    /// takes its faction (TWN-SET-002).
     Choice(PlayerId),
     /// The player's main town is not one of the setup's towns (TWN-SET-001, E09 T7a2), or since
     /// E09 T8a1 a town the player does not own at the start (another player's or neutral).
@@ -335,7 +347,11 @@ impl GameSetup {
     /// against the free types decides; with one, an earlier draw may take the last free type a
     /// later owner's colour may take, or leave it), and [`GameSetupError::StartingArmy`] for a
     /// random hero with the starting army when the pool holds a type without a valid one (no
-    /// original hero type). A setup valid with the seed 0 may then fail with another.
+    /// original hero type). A setup valid with the seed 0 may then fail with another. The towns'
+    /// draws (E09 T7b2a: a random town's faction, a neutral town's garrison and buildings) keep
+    /// it valid with the original packs; a town part whose neutral garrison gives more stacks than
+    /// the army's slots, or counts past a stack's most, would make the adventure's
+    /// `SetupError::Garrison` depend on them.
     ///
     /// # Errors
     ///
@@ -344,16 +360,20 @@ impl GameSetup {
         GameState::new(rules, self, 0).map(drop)
     }
 
-    /// The adventure context's setup, the heroes' details and the hero pool: the pool and the
-    /// random heroes' types drawn first from `draws` (TWN-SET-005, TWN-SET-007, TWN-SET-008:
-    /// [`town::draw_heroes`], E09 T7b1), then each starting army in hero order, then each default
-    /// experience in hero order (GAM-HER-001); a hero with a custom experience at experience 0,
-    /// which [`GameState::new`] gives it with its levels (GAM-SET-002).
+    /// The adventure context's setup, the heroes' details, the hero pool and the towns' records
+    /// by `TownId`: the pool, the players' random factions and the random heroes' types drawn first
+    /// from `draws` (TWN-SET-005, TWN-SET-001, TWN-SET-007, TWN-SET-008: [`town::draw_heroes`], E09
+    /// T7b1), then the random towns' factions (TWN-SET-002: [`town::draw_towns`], E09 T7b2a), then
+    /// each town's garrison and buildings in `TownId` order (TWN-SET-004, TWN-SET-003:
+    /// [`town::build_towns`]; the garrisons into the adventure's setup), then each starting army in
+    /// hero order, then each default experience in hero order (GAM-HER-001); a hero with a custom
+    /// experience at experience 0, which [`GameState::new`] gives it with its levels
+    /// (GAM-SET-002).
     pub(crate) fn adventure_setup(
         &self,
         rules: &GameRuleset,
         draws: &mut Rng,
-    ) -> Result<(AdventureSetup, Vec<HeroDetails>, HeroPool), GameSetupError> {
+    ) -> Result<Prepared, GameSetupError> {
         let count = self.players.len();
         let players = u8::try_from(count).map_err(|_| GameSetupError::Players(count))?;
         let params = rules.adventure().params();
@@ -401,9 +421,15 @@ impl GameSetup {
         if self.heroes.len() > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(self.heroes.len()));
         }
-        town::check_starts(self, rules)?;
+        let owners = town::check_starts(self, rules)?;
         town::main_town_heroes(self)?;
-        let (pool, types) = town::draw_heroes(self, rules, draws)?;
+        let (pool, types, factions) = town::draw_heroes(self, rules, &owners, draws)?;
+        let factions = town::draw_towns(self, rules, &owners, &factions, draws);
+        let (garrisons, towns): (Vec<_>, Vec<_>) =
+            town::build_towns(self, rules, &owners, &factions, draws)
+                .into_iter()
+                .map(|built| (built.garrison, (built.town, built.town_static)))
+                .unzip();
         let mut heroes = Vec::with_capacity(self.heroes.len());
         let mut machines = Vec::with_capacity(self.heroes.len());
         for ((hero, &(type_id, hero_type)), index) in
@@ -459,11 +485,10 @@ impl GameSetup {
                 })
                 .collect(),
             // E09 T8a1: one garrison per town, by `TownId` (the setup's towns are the static
-            // map's, `TownCount`).
-            // stub: TWN-STUB-5 (empty garrisons until E09 T7b2 resolves the towns' records)
-            garrisons: vec![Vec::new(); self.towns.len()],
+            // map's, `TownCount`); since E09 T7b2a each town's as built (TWN-SET-004).
+            garrisons,
         };
-        Ok((setup, details, pool))
+        Ok((setup, details, pool, towns))
     }
 }
 
