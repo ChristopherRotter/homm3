@@ -1861,6 +1861,81 @@ at = 0
 differing = 0
 why = "exact: on Cursed Ground Orrin's morale and luck 0 whatever his skills, frames 3 (E17 M6 T3b2)"
 
+# E17 M6 T4b2b1: the heroes' army info windows on the mouse's move (design §12.15;
+# `battle_mouse_move` 0x4755F0, 0x4756CC; `army_info_show` 0x46CDF0): at Creature Info's level 1
+# or 2 (`army_info`, which the harness writes into the original's registry as `Combat Army Info
+# Level` before the run and puts back after) the mouse resting on a hero's rectangle shows its
+# window at its side's place, as the right press's (`hero-info`), with the hover's status line;
+# a new hex, a left press and an action's start hide it, and a right press released over a hero
+# keeps it at levels 1 and 2 (0x476A1D). Taken from 100 ms (the mouse's move waits for the frozen
+# clock's next poll). `army-info-hero`: level 1, the mouse on Orrin, no press: his window at (1,
+# 135). `army-info-hero-enemy`: level 2 on Crag Hack: his at (721, 135). `army-info-none`: level
+# 1, from Orrin to the empty hex 110: none. `army-info-kept`: level 1 on Crag Hack, a left press
+# there (the window hidden), then the right button pressed and released over him: his window
+# kept after the release (at level 0 the release hides it, CLT-Q50). It cannot tell the right
+# press's show from the move's: the `click:` parks the mouse off the battlefield (the window
+# hidden, the hex forgotten), so `right-click:`'s move back onto the rectangle is a new hex and
+# shows it alone; a still that presses without the park (no such action yet) would.
+[[situation]]
+id = "army-info-hero"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 1
+mouse = [30, 70]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Orrin's window at (1, 135) shown by the move alone at level 1, the status line's View Hero Stats (E17 M6 T4b2b1)"
+
+[[situation.frame]]
+at = 200
+differing = 0
+why = "exact: as at 100, the window kept while the mouse rests (E17 M6 T4b2b1)"
+
+[[situation]]
+id = "army-info-hero-enemy"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 2
+mouse = [770, 70]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Crag Hack's window at (721, 135) in Blue's colours at level 2, View Enemy Hero Stats (E17 M6 T4b2b1)"
+
+[[situation]]
+id = "army-info-none"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 1
+mouse = [30, 70]
+actions = ["move:410,364"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: no window over the empty hex 110 (out of the active stack's reach: the forbidden cursor, no hint) (E17 M6 T4b2b1)"
+
+[[situation]]
+id = "army-info-kept"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 1
+mouse = [770, 70]
+actions = ["click:770,70", "right-click:770,70"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Crag Hack's window kept after the right press's release at level 1; shown again by the move back from the click's park as much as by the press, which this still cannot tell apart (E17 M6 T4b2b1)"
+
+[[situation.frame]]
+at = 200
+differing = 0
+why = "exact: as at 100, still kept (E17 M6 T4b2b1)"
+
 # E17 M6 T4a: the combat options dialog (design §12.12; `combat_options_create` 0x46E3B0): the key
 # O on the human's turn opens it at (159, 84) with its shadow, the background in Red's colours,
 # the cursor the adventure's arrow; the battle behind it standing. The harness's settings

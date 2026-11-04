@@ -198,7 +198,14 @@ there and holds the right button down through the frames (released after the las
 dialog's descriptions, and since E17 M6 T2b1 over the battle a stack's held dialog, §12.5, since
 T2b2 a turret's info where no stack is, §12.6, since T3a over the panel a control's help, §12.7,
 since T3b1 over a hero its info window, §12.8):
-it is an entry's last action; a `click:` over a turret opens its info's box (T2b2). The setup
+it is an entry's last action; a `click:` over a turret opens its info's box (T2b2). Since E17 M6
+T4b2b1 (design §12.15) `right-click:x,y` moves the mouse there and presses and releases the right
+button (over a hero: its window kept at Creature Info's levels 1 and 2), the mouse left there;
+an entry's `army_info = 1` or `2` is the level it runs at: `set` writes it into the prefix's
+registry (`Combat Army Info Level`, `h3drive.ARMY_INFO`) before the game starts, puts the
+prefix's value back after the run (`Game.stop`; `setup.sh` leaves it unset, 0) and copies it into
+`frames.toml` (the viewer's level, 0 without it); an entry with a `key:F5` and no `army_info`
+runs at 0 and is put back too (the game saves the level F5 cycles to at once). The setup
 turns "Animate SpellBook" off (the page turn's videos, Smacker clips of `battle-videos.vid` the
 client does not play); nothing recorded before it turned a page. Since E17 M5 T4a (design
 §7.19) `key:r` and `key:s` open Retreat's and Surrender's questions, and an open message box takes the `key:` (`key:Return`, `key:Escape`: down
@@ -1257,6 +1264,9 @@ design §7.1.
   reachable hexes.
 - The combat speed lives in the prefix's registry (`Combat Speed`, 0 to 2, not set by
   `setup.sh`: 0); a run at another speed sets it with `wine regedit` and puts it back.
+  Creature Info's level too (`Combat Army Info Level`, unset: 0): a situation's `army_info`
+  sets it and `Game.stop` puts the prefix's back, also after a `key:F5` (E17 M6 T4b2b1); a
+  capture of the original at another level than its `frames.toml` says differs on every hover.
 - `setup.sh` sets `Show Route` (the game's default in a new prefix is 0: the first click on a
   tile walks at once). The game also walks on the first click when the hero's path already ends
   on that tile; `walk` notes it under "anything odd".

@@ -6144,10 +6144,12 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
     the options dialog's close by a click, T. `Still::army` holds the windows left drawn;
     `draw_frames` draws them after the panel, under every dialog; a held press that shows
     nothing draws no cursor. A still at level 1 or 2 without actions is a still too. The still's
-    status line stays level 0's (`mouse::pointer`; no previews in a still). The harness's part
-    (next step): write the situation's level into the original's registry (`Combat Army Info
-    Level`) before the run and copy it into `frames.toml`, restore it after a `key:F5`, and add
-    `right-click:` to `h3drive.py`'s `act`.
+    status line stays level 0's (`mouse::pointer`; no previews in a still). The harness writes
+    the situation's level into the original's registry (`Combat Army Info Level`) before the run,
+    puts the prefix's back after it (also over a `key:F5`) and copies it into `frames.toml`;
+    `right-click:` presses and releases there. Recorded: `army-info-hero`, `-hero-enemy`, `-none`,
+    `-kept` (levels 1, 2, 1, 1), every frame exact (0 differing); `-kept` shows the release keeping
+    the window, not the press showing it (the `click:`'s park makes the move back a new hex).
   - Checks: unit tests (`army_info/tests.rs`: the shows by level and spot, none without a hero,
     drawn only while the level is not 0, the held press at each level, CLT-Q50 by profile, a
     still's moves, presses, keys and F5, the battlefield's bounds; `track/tests.rs`: the windows
@@ -6157,5 +6159,4 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
     each level with its presses, `right-click:` and CLT-Q50), the real-asset gate, two stills
     rendered at levels 1 and 2 with the original's assets (looked at, not compared).
   - Not built: the stacks' four windows (T4b2b2: `Windows::enter`'s hex arm shows none; no fill,
-    no layout); the harness's side of the stills at levels 1 and 2 (above); the keys F6 to F8
-    (T4c).
+    no layout); the keys F6 to F8 (T4c).

@@ -231,6 +231,49 @@ def sound_settings(on):
         subprocess.run(["wineserver", "-k"], env=env(), check=False)
 
 
+# Creature Info's level (E17 M6 T4b2b1, design §12.15): the setting's value name (settings_names
+# 0x63FF74; option_army_info_level 0x6987C8, 0 to 2). setup.sh leaves it unset (0 at a first run,
+# `Settings::CAPTURE`'s); a situation's `army_info` writes it before its run and puts the
+# prefix's value back after (`Game.start`, `Game.stop`).
+ARMY_INFO = "Combat Army Info Level"
+
+
+def setting_dword(name):
+    """A dword of the game's settings key as the prefix's registry holds it (`system.reg`, which
+    the wineserver saves as it ends: read after `wineserver -w` or `-k`), or None when it is unset
+    (E17 M6 T4b2b1)."""
+    reg = Path(env()["WINEPREFIX"]) / "system.reg"
+    # Wine writes the key relative to HKLM, each backslash doubled and a character above 0x7F as
+    # `\x<hex>`.
+    path = SETTINGS_KEY.split("\\", 1)[1].replace("\\", "\\\\").replace("\xae", "\\xae")
+    head = f"[{path}]".lower()
+    inside = False
+    for line in reg.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("["):
+            inside = line.split("]", 1)[0].lower() + "]" == head
+        elif inside and line.startswith(f'"{name}"=dword:'):
+            return int(line.split(":", 1)[1], 16)
+    return None
+
+
+def set_setting_dword(name, value):
+    """Writes a dword of the game's settings key into the prefix's registry, or removes it when
+    `value` is None (E17 M6 T4b2b1: Creature Info's level put back as it was), waits for the
+    prefix's wineserver to save it, as `sound_settings` does, and reads it back."""
+    reg = GAME_DIR.parent / "setting.reg"
+    line = f'"{name}"=-' if value is None else f'"{name}"=dword:{value:08x}'
+    reg.write_bytes(f"REGEDIT4\r\n\r\n[{SETTINGS_KEY}]\r\n{line}\r\n\r\n".encode("cp1252"))
+    subprocess.run(["wine", "regedit", str(reg)], env=env(), check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        subprocess.run(["wineserver", "-w"], env=env(), check=False, timeout=WINESERVER_WAIT)
+    except subprocess.TimeoutExpired:
+        subprocess.run(["wineserver", "-k"], env=env(), check=False)
+    held = setting_dword(name)
+    if held != value:
+        raise RuntimeError(f"the prefix's registry holds {name} = {held}, not {value} as written")
+
+
 def view(args):
     """Runs `h3-view` (`args`, the binary first); its own message on a failure (E17 M3 T9b, the
     reviewer: a non-zero exit said no more)."""
@@ -276,7 +319,7 @@ def load_screens():
 class Game:
     """One run of the original under Wine with our clock."""
 
-    def __init__(self, out, sound=False):
+    def __init__(self, out, sound=False, army_info=None):
         self.out = Path(out)
         self.out.mkdir(parents=True, exist_ok=True)
         self.clock_dir = self.out / "clock"
@@ -286,6 +329,11 @@ class Game:
         # E17 M5 T5b2: the game plays its sounds (an audio device, an effects volume, xdd.dll's
         # samples on the virtual clock), so it waits for them as on a computer with sound.
         self.sound = sound
+        # E17 M6 T4b2b1: Creature Info's level the run writes into the registry (`ARMY_INFO`; None
+        # leaves it), and the prefix's value `stop` puts back (`army_info_before`, None: unset).
+        self.army_info = army_info
+        self.army_info_before = None
+        self.army_info_set = False
 
     # -- the process ------------------------------------------------------------------------
     def start(self, map_path=None):
@@ -323,6 +371,11 @@ class Game:
         e = env()
         e["H3CLOCK"] = "Z:" + str(self.clock_dir.resolve()).replace("/", "\\")
         sound_settings(self.sound)
+        if self.army_info is not None:
+            # Read after `sound_settings` waited for the wineserver (the registry saved).
+            self.army_info_before = setting_dword(ARMY_INFO)
+            self.army_info_set = True
+            set_setting_dword(ARMY_INFO, self.army_info)
         if self.sound:
             # Wine's ALSA driver over ALSA's null sink (no sound card in a sandbox): Miles opens
             # its digital driver, so the game plays and waits for its samples (xdd.dll's 6.).
@@ -347,6 +400,11 @@ class Game:
             except subprocess.TimeoutExpired:
                 self.proc.kill()
                 self.proc.wait(timeout=30)
+        # Creature Info's level put back as the prefix held it (E17 M6 T4b2b1): also over a
+        # `key:F5`, which the game saves into the registry at once (0x475902).
+        if self.army_info_set:
+            self.army_info_set = False
+            set_setting_dword(ARMY_INFO, self.army_info_before)
 
     # -- the screen ---------------------------------------------------------------------------
     def pixels(self):
@@ -856,7 +914,8 @@ def run_set(rest):
         # viewer draws its cursor and hint there.
         mouse = tuple(sit.get("mouse", PARK))
         walled = walls_args(sit)  # checked before the game starts (E17 M4 T3a)
-        game, stacks = Game(here), []
+        level = army_info_level(sit)
+        game, stacks = Game(here, army_info=level), []
         try:
             # The step into the battle (E17 M4 T1b): a siege's attacker stands south of the
             # town's entrance (`key = "Up"`), any other west of the defender.
@@ -871,8 +930,8 @@ def run_set(rest):
         # original's clock, the original's fidgets taken from its memory, as the frame check does.
         kept = [{"t": at, "frame": p.name, "stacks": st}
                 for at, p, st in zip(sorted(frames), paths, stacks)]
-        (here / "frames.toml").write_text(frames_toml(kept, mouse,
-                                                      actions=sit.get("actions", ())))
+        (here / "frames.toml").write_text(frames_toml(kept, mouse, actions=sit.get("actions", ()),
+                                                      army_info=level or 0))
         ours = here / "ours.png"  # its record: ours.jsonl (the count boxes' masks)
         # Whose record (E17 M4 T1b): a side's shows its hidden objects (a Tower's mines on the
         # defender's turn in hot seat), a spectator's by default.
@@ -928,7 +987,8 @@ def book_place(k):
 
 def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
-    right:x,y (E17 M6 T2a2b1: the right button held down there through the frames), look:x,y and
+    right:x,y (E17 M6 T2a2b1: the right button held down there through the frames),
+    right-click:x,y (E17 M6 T4b2b1: the right button pressed there and released), look:x,y and
     cast-button:x,y:<n> (clicks: a stack's stats dialog, its cast button),
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
     hex if the spell takes one), aim:<k>:<n> (E17 M5 T3b: the book's place k, the aim of its
@@ -1002,6 +1062,16 @@ def act(game, action):
         time.sleep(0.3)
         run("xdotool", "mousedown", "3")
         game.right_held = True
+        time.sleep(0.5)
+    elif kind == "right-click":
+        # E17 M6 T4b2b1 (design §12.15): the mouse moved there, the right button pressed (a hero's
+        # window shows while it is held) and released; the mouse stays there.
+        x, y = map(int, arg.split(","))
+        game.move(x, y)
+        time.sleep(0.3)
+        run("xdotool", "mousedown", "3")
+        time.sleep(0.5)
+        run("xdotool", "mouseup", "3")
         time.sleep(0.5)
     elif kind == "key":
         game.key(arg, 0.3)
@@ -1360,7 +1430,20 @@ def ray_draws(clock_dir):
             if line.startswith("ray_aim ")]
 
 
-def frames_toml(kept, mouse=None, rays=(), actions=()):
+def army_info_level(entry):
+    """Creature Info's level a situation runs at (E17 M6 T4b2b1): its `army_info` (0 to 2, checked
+    before the game starts), else 0 when an action is `key:F5` (the game saves the level it cycles
+    to at once: `Game.stop` puts the prefix's back), else None (the prefix's level untouched:
+    setup.sh's unset, 0)."""
+    level = entry.get("army_info")
+    if level is None:
+        return 0 if "key:F5" in entry.get("actions", ()) else None
+    if level not in (0, 1, 2):
+        raise ValueError(f"{entry['id']}: army_info is 0, 1 or 2, not {level}")
+    return level
+
+
+def frames_toml(kept, mouse=None, rays=(), actions=(), army_info=0):
     """The kept frames for `h3-view sequences --frames`: each one's time, file and the stacks the
     original shows fidgeting (group 1: the viewer draws none of its own in a check), and, where
     the original's memory was read for them (the frame check, M3 T3a), its heroes' groups and
@@ -1370,9 +1453,12 @@ def frames_toml(kept, mouse=None, rays=(), actions=()):
     T6c-2: its memory, `cursor_at`; the game reads the mouse on a 33 ms grid of its own, design
     §9.10); a frame that replaced another within its millisecond the heroes that one showed
     (`before`, M3 T7c-3); the draws its Chain Lightning's rays turned by (M3 T7c-3: `h3-view
-    sequences --frames` draws the same rays); and a situation's actions after its mouse's move
-    (E17 M5 T3a: the viewer plays them into the spell book)."""
+    sequences --frames` draws the same rays); a situation's actions after its mouse's move
+    (E17 M5 T3a: the viewer plays them into the spell book); and Creature Info's level it ran at
+    when not 0 (E17 M6 T4b2b1: `army_info`, the viewer's default 0)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
+    if army_info:
+        out += [f"army_info = {army_info}", ""]
     if mouse is not None:
         out += [f"mouse = [{mouse[0]}, {mouse[1]}]", ""]
     if actions:
