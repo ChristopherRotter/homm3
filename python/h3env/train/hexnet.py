@@ -32,6 +32,13 @@ vector (its token plus the trunk's vector at its position, through a linear laye
 stacks' mean). The field's size is the network's config (`[network] field_width`,
 `field_height`; the base ruleset's battlefield, `packs/base/battle.toml`): a stack outside it is
 off the field.
+
+The opt-in keys (E25 T25; `entity`'s module docstring has their inputs, `entity.Extra`): with
+`mask_input` the entry mask's two hex planes through a linear layer into each hex's drawn vector,
+each stack slot's entries into its token before it is drawn, the fixed entries into the global
+vector (and so onto every hex); with `order` each slot's turn-order places into its token before
+it is drawn; with `attack_hex` a melee entry also scores its from-hex's vector of the trunk's
+output (`entity.AttackHex`).
 """
 
 from __future__ import annotations
@@ -43,7 +50,7 @@ from torch.nn import functional as F
 
 from ..batch import BattleBatch
 from . import layout as L
-from .entity import CREATURES, Block, Pointed, check_layout
+from .entity import CREATURES, Block, Extra, Pointed, check_layout
 from .policy import Encoding, symlog
 
 #: The base ruleset's battlefield (`[battle] field_width`, `field_height`), the default.
@@ -103,6 +110,8 @@ class HexNet(Pointed):
     entity network's heads (module docstring). A kind implements `trunk`."""
 
     def __init__(self, width: int, embed: int, field_width: int, field_height: int) -> None:
+        """The drawing's and the read-out's modules; a kind makes its trunk, the heads and the
+        opt-in keys' modules (`Pointed.make_extra`) after them."""
         super().__init__()
         self.width = width
         self.grid = Grid(field_width, field_height)
@@ -117,18 +126,22 @@ class HexNet(Pointed):
         self.read = nn.Linear(width, width)
         self.context = nn.Linear(5 * width, width)
 
-    def draw(self, obs: torch.Tensor):
+    def draw(self, obs: torch.Tensor, extra: Extra | None = None, x: torch.Tensor | None = None):
         """The rows' hex vectors [rows, hexes, width], the global vector [rows, width], the stack
         slots' tokens [rows, 42, width], each slot's hex (its position; -1 off the field or
-        without a stack) and its presence and activity [rows, 42] (bool)."""
+        without a stack) and its presence and activity [rows, 42] (bool); the opt-in keys' terms
+        `extra` (`Pointed.extra`) added (`x`: `symlog(obs)` if the caller has it)."""
         rows = obs.shape[0]
         g = self.grid
-        x = symlog(obs)
+        x = symlog(obs) if x is None else x
+        extra = Extra() if extra is None else extra
         raw = obs[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES)
         present = raw[..., L.PRESENT] > 0.5
         tokens = self.stack_in(
             x[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES)
         ) + self.creature_embed(raw[..., L.CREATURE].long().clamp(0, CREATURES - 1))
+        if extra.stacks is not None:
+            tokens = tokens + extra.stacks
         sx, sy = raw[..., L.X].long(), raw[..., L.Y].long()
         inside = present & (sx >= 0) & (sx < g.width) & (sy >= 0) & (sy < g.height)
         position = torch.where(inside, sy * g.width + sx, torch.full_like(sx, -1))
@@ -140,7 +153,11 @@ class HexNet(Pointed):
         other = inside & (raw[..., L.TWO_HEX] > 0.5) & (fx >= 0) & (fx < g.width)
         planes = x[:, L.FIELD : L.STACKS].view(rows, L.HEX_PLANES, L.MAX_FIELD_HEXES)
         glob = self.global_in(x[:, : L.OWN_HERO]) + self.own_in(x[:, L.OWN_HERO : L.FIELD])
+        if extra.glob is not None:
+            glob = glob + extra.glob
         field = self.hex_in(planes[:, :, : g.hexes].transpose(1, 2)) + self.hex_embed
+        if extra.hexes is not None:
+            field = field + extra.hexes
         field = field + glob.unsqueeze(1)
         base = torch.arange(rows, device=obs.device).unsqueeze(1) * g.hexes
         flat = field.reshape(rows * g.hexes, self.width)
@@ -156,9 +173,12 @@ class HexNet(Pointed):
 
     def encode(self, obs: torch.Tensor, mask: torch.Tensor | None = None) -> Encoding:
         """The context [rows, width], the stacks' vectors [rows, 42, width] and the hexes'
-        vectors [rows, 255, width] (zero off the field); `mask` (the entry mask) is not read yet
-        (E25 T25)."""
-        field, glob, tokens, position, present, active = self.draw(obs)
+        vectors [rows, 255, width] (zero off the field), with `attack_hex` the legal attack
+        entries' from-hexes [rows, 42, 24]; `mask` (the entry mask) is read with `mask_input` or
+        `attack_hex`."""
+        x = symlog(obs)
+        extra = self.extra(obs, x, mask, self.grid.hexes)
+        field, glob, tokens, position, present, active = self.draw(obs, extra, x)
         hexes, glob = self.trunk(field, glob)
         rows = hexes.shape[0]
         at = position.clamp(min=0)
@@ -183,7 +203,9 @@ class HexNet(Pointed):
         )
         padded = hexes.new_zeros(rows, L.MAX_FIELD_HEXES, self.width)
         padded[:, : self.grid.hexes] = hexes
-        return context, stacks, padded
+        if extra.legal_from is None:
+            return context, stacks, padded
+        return context, stacks, padded, extra.legal_from
 
 
 class HexConv2d(nn.Conv2d):
@@ -249,6 +271,9 @@ class HexConv(HexNet):
         field_width: int = FIELD_WIDTH,
         field_height: int = FIELD_HEIGHT,
         norm: str = "none",
+        mask_input: bool = False,
+        order: bool = False,
+        attack_hex: bool = False,
     ) -> None:
         super().__init__(width, embed, field_width, field_height)
         if norm not in ("none", "layer"):
@@ -263,6 +288,7 @@ class HexConv(HexNet):
         self.norm_out = CellNorm(width) if layer else None
         self.glob_out = nn.Linear(width, width)
         self.make_heads(width, width, embed)
+        self.make_extra(width, width, mask_input, order, attack_hex, (field_width, field_height))
 
     def trunk(self, field: torch.Tensor, glob: torch.Tensor):
         rows = field.shape[0]
@@ -301,6 +327,9 @@ class HexFormer(HexNet):
         field_width: int = FIELD_WIDTH,
         field_height: int = FIELD_HEIGHT,
         feed_forward: int = 2,
+        mask_input: bool = False,
+        order: bool = False,
+        attack_hex: bool = False,
     ) -> None:
         super().__init__(width, embed, field_width, field_height)
         if width % heads:
@@ -314,6 +343,7 @@ class HexFormer(HexNet):
         self.offset_bias = nn.Parameter(torch.zeros(layers, heads, span_q * span_r))
         self.norm = nn.LayerNorm(width)
         self.make_heads(width, width, embed)
+        self.make_extra(width, width, mask_input, order, attack_hex, (field_width, field_height))
 
     def trunk(self, field: torch.Tensor, glob: torch.Tensor):
         x = torch.cat([glob.unsqueeze(1), field], dim=1)
@@ -329,15 +359,22 @@ class HexFormer(HexNet):
 def for_batch(kind: str, batch: BattleBatch, config: dict) -> HexNet:
     """The hex network `kind` names for `batch` (whose encodings must be the layout's), from a
     run's `[network]` settings (`config`; a file without `norm` or `feed_forward`, before E25
-    T24, has none and twice the width)."""
+    T24, has none and twice the width; one without `mask_input`, `order` or `attack_hex`, before
+    E25 T25, none of them)."""
     check_layout(batch, f"{kind} network")
     field = (
         int(config.get("field_width", FIELD_WIDTH)),
         int(config.get("field_height", FIELD_HEIGHT)),
     )
+    keys = {key: bool(config.get(key, False)) for key in ("mask_input", "order", "attack_hex")}
     if kind == "hexconv":
         return HexConv(
-            config["width"], config["layers"], config["embed"], *field, config.get("norm", "none")
+            config["width"],
+            config["layers"],
+            config["embed"],
+            *field,
+            config.get("norm", "none"),
+            **keys,
         )
     return HexFormer(
         config["width"],
@@ -346,4 +383,5 @@ def for_batch(kind: str, batch: BattleBatch, config: dict) -> HexNet:
         config["embed"],
         *field,
         int(config.get("feed_forward", 2)),
+        **keys,
     )

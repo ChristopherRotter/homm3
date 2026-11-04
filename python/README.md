@@ -133,10 +133,16 @@ phase's round: the binding counts it after each call (`batch.tactics_round`, `ta
 `configs/e25-bound.toml`: `e25-shaping.toml` with one round (T4b).
 
 **The entry mask as an input** (E25 T25, increment 7 decision 4): `[network] mask_input = true`
-(the MLP's for now; false by default) has the network read the rows' legal entry mask (action
-encoding v13's 1 404 entries, the tactics bound in it) as well as the observation: the MLP's
-trunk reads it as 0/1 inputs after the observation's. A network saved without the key reads no
-mask and computes what it did before.
+(any kind; false by default) has the network read the rows' legal entry mask (action encoding
+v13's 1 404 entries, the tactics bound in it) as well as the observation: the MLP's trunk reads
+it as 0/1 inputs after the observation's; a structured kind (`entity`, `hexconv`, `hexformer`)
+reads two hex planes (the legal moves, the hexes a legal attack is made from) into each hex's
+vector, each stack slot's 27 entries (attacks, shots, heal) into its token and the 15 fixed
+entries into the global vector. For the structured kinds `[network] order = true` adds each slot's
+turn-order places to its token, and `[network] attack_hex = true` (not the MLP's) has a melee
+entry also score the hex its attack is made from (its target's vector, that hex's and the context,
+for the legal entries only; it reads the mask too). A network saved without the keys reads no mask
+and computes what it did before.
 
 **The imitation loss** (E25 T21, increment 6, decision 3's second form): `[ppo] imitation_coef`
 (0, off, by default) weighs an auxiliary cross-entropy to the fair system actor's choice on the

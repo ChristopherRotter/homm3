@@ -88,7 +88,11 @@ def casting_policy(batch: BattleBatch, kind: str = "mlp") -> Policy:
     if kind == "entity":
         policy = Entity.for_batch(batch, width=16, layers=1, heads=2, embed=8)
     else:
-        policy = build(asdict(Config(kind=kind, width=16, layers=1, heads=2, embed=8)), batch)
+        # "<kind>-keys": the structured kind with E25 T25's keys (`mask_input`, `order`,
+        # `attack_hex`).
+        keys = dict(mask_input=True, order=True, attack_hex=True) if "-" in kind else {}
+        config = Config(kind=kind.split("-")[0], width=16, layers=1, heads=2, embed=8, **keys)
+        policy = build(asdict(config), batch)
     with torch.no_grad():
         # The fixed entries: Wait, Defend, End tactics, Retreat, Surrender, the two casts, ….
         policy.fixed_head.bias[[5, 6]] = 30.0
@@ -104,7 +108,19 @@ def mixed_batch() -> BattleBatch:
     return batch
 
 
-@pytest.mark.parametrize("kind", ["mlp", "mlp-mask", "entity", "hexconv", "hexformer"])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "mlp",
+        "mlp-mask",
+        "entity",
+        "hexconv",
+        "hexformer",
+        "entity-keys",
+        "hexconv-keys",
+        "hexformer-keys",
+    ],
+)
 def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities(kind) -> None:
     batch = mixed_batch()
     policy = casting_policy(batch, kind)
@@ -1358,12 +1374,20 @@ def test_the_entry_mask_reaches_the_trunk_only_with_mask_input(tmp_path) -> None
     batch.close()
 
 
-def test_a_mask_input_learner_collects_bootstraps_and_updates() -> None:
-    # A PPO update of an MLP reading the entry mask; without a truncation penalty a cut battle
-    # bootstraps from its final observation, valued with no entry legal (the batch keeps no
-    # final mask).
+@pytest.mark.parametrize(
+    "network",
+    [
+        dict(mask_input=True),
+        dict(kind="hexconv", width=16, layers=1, mask_input=True, order=True, attack_hex=True),
+    ],
+    ids=["mlp", "hexconv-keys"],
+)
+def test_a_mask_input_learner_collects_bootstraps_and_updates(network) -> None:
+    # A PPO update of a network reading the entry mask (the MLP; a structured kind with E25
+    # T25's keys); without a truncation penalty a cut battle bootstraps from its final
+    # observation, valued with no entry legal (the batch keeps no final mask).
     small = {**SMALL, "envs": 4, "rollout": 8, "max_steps": 6}
-    trainer = Trainer(Config(**small, mask_input=True, truncation_penalty=0.0))
+    trainer = Trainer(Config(**small, **network, truncation_penalty=0.0))
     assert trainer.policy.reads_mask
     trainer.collect()
     r = trainer.rollout

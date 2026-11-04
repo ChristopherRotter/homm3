@@ -17,10 +17,10 @@ share of the target stack they are, the hit points they are), `φ` a small netwo
 entries, `u` a linear map of the trunk's output, so the state decides how much a kill counts.
 Only the entry head reads it; the value and the cast heads do not.
 
-The turn order (`[network] order`, the MLP's; the turn-order probe, E06-log): the MLP's trunk reads
-the whole observation v22, each stack slot's places in the turn order (`layout.ORDER_ROUND` to
+The turn order (`[network] order`; the turn-order probe, E06-log): the MLP's trunk reads the
+whole observation v22, each stack slot's places in the turn order (`layout.ORDER_ROUND` to
 `ORDER_NEXT`) with it; without it the trunk reads v21's prefix, so a network saved before v22
-plays on.
+plays on. The structured kinds' stack tokens read the places since E25 T25 (`entity`).
 
 The tactics bound (`[network] tactics_rounds`, E25 T4a, any kind): the agent ends its own tactics
 phase after that many rounds of it, the rules unchanged (BAT-TAC-002 has no limit): once its
@@ -33,7 +33,10 @@ The legal entry mask as an input (`[network] mask_input`, E25 increment 7 decisi
 `encode(obs, mask)` takes the rows' entry mask, exactly the one the entry logits are masked with
 there (the tactics bound in it: `act`'s `bounded` mask, `evaluate`'s `entry_mask`), and a network
 that reads it (`reads_mask`) refuses an encoding without one. The MLP's trunk reads it as 0/1
-inputs after the observation's; a file without the key reads no mask, as before.
+inputs after the observation's; the structured kinds read it as hex planes, per stack slot and
+fixed entries (`entity`'s documentation, which also has their `order` and `attack_hex`: a melee
+entry scoring its from-hex, which reads the mask too); a file without the keys reads no mask, as
+before.
 """
 
 from __future__ import annotations
@@ -554,25 +557,29 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
     (before E25 T4a) one without the tactics bound, an MLP without `layers` two layers (every MLP
     before E25 T7a had two), one without `norm` or `feed_forward` (before E25 T24) a hex
     convolution network without normalisation and transformer blocks of twice the width, one
-    without `mask_input` (before E25 T25) a network that does not read the entry mask (only the
-    MLP reads it so far)."""
+    without `mask_input` (before E25 T25) a network that does not read the entry mask, a
+    structured one without `order` or `attack_hex` (before T25) one whose stack tokens do not
+    read the turn order and whose melee entries do not score their from-hexes (`entity`'s
+    documentation)."""
     kind = config.get("kind", "mlp")
     mask_input = bool(config.get("mask_input", False))
-    if mask_input and kind != "mlp":
-        # E25 T25 part 2: the structured kinds' part lifts this (and `run.validate`'s refusal).
-        raise ValueError(f"`mask_input` is the MLP's for now, not the {kind!r} network's")
+    order = bool(config.get("order", False))
+    attack_hex = bool(config.get("attack_hex", False))
+    if attack_hex and kind == "mlp":
+        raise ValueError("`attack_hex` is the structured kinds', not the MLP's")
     if kind == "mlp":
         policy: Policy = Mlp.for_batch(
             batch,
             config["hidden"],
             config["embed"],
             config.get("preview", False),
-            config.get("order", False),
+            order,
             config.get("layers", 2),
             mask_input,
         )
     elif kind == "entity":
         from .entity import Entity
+        from .geometry import FIELD_HEIGHT, FIELD_WIDTH
 
         policy = Entity.for_batch(
             batch,
@@ -581,6 +588,13 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
             config["heads"],
             config["embed"],
             int(config.get("feed_forward", 2)),
+            mask_input,
+            order,
+            attack_hex,
+            (
+                int(config.get("field_width", FIELD_WIDTH)),
+                int(config.get("field_height", FIELD_HEIGHT)),
+            ),
         )
     elif kind in ("hexconv", "hexformer"):
         from . import hexnet
