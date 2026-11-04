@@ -17,6 +17,7 @@ use h3_render::Bugs;
 use super::aim::Aim;
 use super::aim::screen_hex;
 use super::{Field, Hint, Kind, Spot, pointer_in, slot, slots_in, spot};
+use crate::army_info::Windows;
 use crate::battle_log::Logged;
 use crate::layout::{BattleLayout, Mouse};
 
@@ -103,6 +104,26 @@ pub enum Input {
         /// The level, 0 to 2.
         level: u8,
     },
+    /// The army info windows hidden (E17 M6 T4b2b1, design §12.15; [`crate::army_info`]), the
+    /// mouse's hex kept: a left press over the battlefield while the battle takes it (0x4752BB,
+    /// before what the press does), the key T before the acting stack's stats dialog (0x475D1E),
+    /// or one of the keys C, F, S, R and O pressed with the mouse over the battlefield (`key`).
+    Hide {
+        /// When.
+        at: u32,
+        /// By one of the keys C, F, S, R and O: the client's profile alone hides then (CLT-Q49,
+        /// fixed; the original's keeps the windows through the key's book, aim or box).
+        key: bool,
+    },
+    /// The right button pressed over side `side`'s hero's rectangle (E17 M6 T4b2b1, design
+    /// §12.15; `battle_right_click` 0x4769C0): its window shown while held, then hidden at level
+    /// 0, kept at 1 and 2 ([`Windows::held`]).
+    HeroInfo {
+        /// When.
+        at: u32,
+        /// Whose hero.
+        side: Side,
+    },
 }
 
 impl Input {
@@ -119,7 +140,9 @@ impl Input {
             | Self::Looked { at }
             | Self::Auto { at, .. }
             | Self::Stop { at, .. }
-            | Self::ArmyInfo { at, .. } => at,
+            | Self::ArmyInfo { at, .. }
+            | Self::Hide { at, .. }
+            | Self::HeroInfo { at, .. } => at,
         }
     }
 }
@@ -142,6 +165,9 @@ pub struct Start {
     /// It unmarks the mouse's stack (`battle_clear_highlight` 0x477E10: a walk, a strike, a shot,
     /// a cast).
     pub unmarks: bool,
+    /// It ends the tactics phase: no action in the original (Start Combat 0x4751CC, design
+    /// §7.24), it hides no army info window (§12.15).
+    pub ends_tactics: bool,
 }
 
 /// What the mouse shows over time.
@@ -168,6 +194,9 @@ pub struct Shown {
     /// none outside an aim or over a hex it does not take; each change once (E17 M5 T8b2,
     /// R4b-5).
     pub aimed: Vec<(u32, Option<u8>)>,
+    /// The army info windows from a time on (E17 M6 T4b2b1): those shown, what filled them and
+    /// Creature Info's level; each change once, in order.
+    pub army: Vec<(u32, Windows)>,
 }
 
 /// A cursor's look: the combat cursor's frame, or the spell cursor's (E17 M5 T3b).
@@ -222,6 +251,13 @@ impl Shown {
         last(&self.aimed, t).copied().flatten()
     }
 
+    /// The army info windows at `t` (E17 M6 T4b2b1; none shown at level 0 before the first
+    /// change).
+    #[must_use]
+    pub fn army(&self, t: u32) -> Windows {
+        last(&self.army, t).copied().unwrap_or_default()
+    }
+
     /// How long each of its lists is.
     fn lens(&self) -> Lens {
         Lens([
@@ -233,13 +269,14 @@ impl Shown {
             self.spell.len(),
             self.area.len(),
             self.aimed.len(),
+            self.army.len(),
         ])
     }
 
     /// Whether its lists from `from` on are `tail`'s (E17 M5 T8a, R3-1: [`follow_on`]'s).
     #[must_use]
     pub fn ends_with(&self, from: Lens, tail: &Self) -> bool {
-        let [a, b, c, d, e, f, g, h] = from.0;
+        let [a, b, c, d, e, f, g, h, k] = from.0;
         self.frames.get(a..) == Some(&tail.frames)
             && self.points.get(b..) == Some(&tail.points)
             && self.marked.get(c..) == Some(&tail.marked)
@@ -248,6 +285,7 @@ impl Shown {
             && self.spell.get(f..) == Some(&tail.spell)
             && self.area.get(g..) == Some(&tail.area)
             && self.aimed.get(h..) == Some(&tail.aimed)
+            && self.army.get(k..) == Some(&tail.army)
     }
 
     /// Its lists cut at `from`, `tail`'s put after them (E17 M5 T8a, R3-1: [`follow_on`]'s):
@@ -258,7 +296,7 @@ impl Shown {
             list.append(&mut tail);
             gone
         }
-        let [a, b, c, d, e, f, g, h] = from.0;
+        let [a, b, c, d, e, f, g, h, k] = from.0;
         Self {
             frames: cut(&mut self.frames, a, tail.frames),
             points: cut(&mut self.points, b, tail.points),
@@ -268,6 +306,7 @@ impl Shown {
             spell: cut(&mut self.spell, f, tail.spell),
             area: cut(&mut self.area, g, tail.area),
             aimed: cut(&mut self.aimed, h, tail.aimed),
+            army: cut(&mut self.army, k, tail.army),
         }
     }
 }
@@ -275,7 +314,7 @@ impl Shown {
 /// How long each of a [`Shown`]'s lists is (E17 M5 T8a, R3-1): where what a follow gone on from
 /// a [`Mark`] shows goes.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Lens([usize; 8]);
+pub struct Lens([usize; 9]);
 
 impl Lens {
     fn plus(self, other: Self) -> Self {
@@ -338,8 +377,11 @@ struct Handler<'l> {
     items: bool,
     /// The profile: the client's forgets the hovered item over the battlefield (CLT-Q24).
     bugs: Bugs,
-    /// Creature Info's level the hints are written at (E17 M6 T4b2a, [`Input::ArmyInfo`]).
-    level: u8,
+    /// The army info windows (E17 M6 T4b2b1) and Creature Info's level, which the hints are
+    /// written at too (E17 M6 T4b2a, [`Input::ArmyInfo`]).
+    army: Windows,
+    /// The turn now (0 the opening's): the battle a window shown now is filled by.
+    turn: usize,
     shown: Shown,
 }
 
@@ -441,6 +483,17 @@ impl Handler<'_> {
         self.set_area(now, BTreeSet::new());
     }
 
+    /// The army info windows changed by `change` at `now` (E17 M6 T4b2b1): shown from now if they
+    /// differ.
+    fn set_army(&mut self, now: u32, change: impl FnOnce(&mut Windows)) {
+        let mut army = self.army;
+        change(&mut army);
+        if army != self.army {
+            self.army = army;
+            self.shown.army.push((now, army));
+        }
+    }
+
     fn set_marked(&mut self, now: u32, marked: Option<u8>) {
         if self.marked != marked {
             self.marked = marked;
@@ -456,7 +509,7 @@ impl Handler<'_> {
         name: &dyn Fn(&Hint, &Observation) -> String,
     ) {
         // At Creature Info's level now (E17 M6 T4b2a): the line `battle_status_line` writes.
-        let hint = hint.clone().at_level(self.level);
+        let hint = hint.clone().at_level(self.army.level);
         let text = field.map_or_else(String::new, |f| name(&hint, f.observation));
         let forced = hint.forced();
         self.shown.log.push((now, Logged::Status { text, forced }));
@@ -498,8 +551,10 @@ impl Handler<'_> {
             // opening, so `walk`'s next human turn empties the line and `hit`'s keeps the
             // Catapult's hint; `aim`'s mouse rests over the field until its shot). The
             // battlefield's last hint so stays over the panel's picture: the original's, kept in
-            // its profile (CLT-Q24, answered (a)).
+            // its profile (CLT-Q24, answered (a)). Every army info window hidden (0x4754B4; E17
+            // M6 T4b2b1).
             self.set_marked(now, None);
+            self.set_army(now, Windows::hide);
             let item = if self.items {
                 self.layout.panel.item_at(point)
             } else {
@@ -550,6 +605,12 @@ impl Handler<'_> {
             }
             return;
         }
+        // A new hex: every army info window hidden, then at most one shown (0x475586 to 0x475879;
+        // E17 M6 T4b2b1), before the stack marked and the line.
+        let turn = self.turn;
+        self.set_army(now, |army| {
+            army.enter(at.unwrap_or(Spot::Nothing), field.observation, turn);
+        });
         let acting = field.observation.active.unwrap_or(u8::MAX);
         let mut aim = self.aims.get(&acting).copied().flatten();
         let pointer = pointer_in(field, self.layout, point, &mut aim);
@@ -779,8 +840,23 @@ pub fn follow_on<'l>(
             // Auto Combat's turns are the computer's (`Turn::human`); its switch shows with the
             // action it starts, its stop with the turn it stops at.
             Input::Auto { .. } | Input::Stop { .. } => {}
-            // F5 or the options dialog: the hints written from now (E17 M6 T4b2a).
-            Input::ArmyInfo { level, .. } => h.level = level,
+            // F5 or the options dialog: the hints written from now (E17 M6 T4b2a); the windows
+            // shown drawn or not from now, none shown or hidden (§12.15: until a new hex).
+            Input::ArmyInfo { at: now, level } => h.set_army(now, |army| army.level = level),
+            // A left press over the battlefield, the key T, or (the client's profile alone,
+            // CLT-Q49) one of the keys C, F, S, R and O over it: every window hidden, the mouse's
+            // hex kept (E17 M6 T4b2b1).
+            Input::Hide { at: now, key } => {
+                if !key || h.bugs == Bugs::Fixed {
+                    h.set_army(now, Windows::hide);
+                }
+            }
+            // The right press over a hero: its window shown while held (the window's popup), then
+            // hidden at level 0 or kept (E17 M6 T4b2b1).
+            Input::HeroInfo { at: now, side } => {
+                let turn = h.turn;
+                h.set_army(now, |army| army.held(side, turn));
+            }
             Input::Act { at: now } => {
                 // In the aim a click casts only at the hex the last move took (0x5A30E9).
                 if h.aiming.as_ref().is_some_and(|a| a.last.is_none()) {
@@ -847,7 +923,8 @@ impl<'l> Handler<'l> {
             hovered: None,
             items: false,
             bugs: turns.first().map_or(Bugs::Fixed, |t| t.field.bugs),
-            level: 0,
+            army: Windows::default(),
+            turn: 0,
             shown: Shown::default(),
         };
         if turns.first().is_some_and(|t| !t.human) {
@@ -887,9 +964,15 @@ impl Handler<'_> {
                 if start.unmarks {
                     self.set_marked(now, None);
                 }
+                // Every action's start hides the army info windows (`action_dispatcher` 0x478DC0;
+                // E17 M6 T4b2b1); the tactics phase's end is none (§12.15).
+                if !start.ends_tactics {
+                    self.set_army(now, Windows::hide);
+                }
             }
             Logged::Turn(_) => {
                 at.turn += 1;
+                self.turn = at.turn;
                 self.busy = false;
                 let Some(turn) = turns.get(at.turn) else {
                     return;

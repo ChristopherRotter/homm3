@@ -11,13 +11,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679), T3b2
   done (#690; CLT-Q42 asked); T3c cut by the user (2026-11-03): T3c1 done (#692), T3c2 done
   (#699), T3c3 done (#706). T3 done. **T4** cut in three by the user (2026-11-04): T4a done
-  (#709, design §12.12); T4b cut in three by the user (2026-11-04): **T4b1 done** (the Auto
-  Combat options, design §12.13; CLT-Q45 fixed) and **T4b2a done** (Creature Info's level: F5,
-  the status line's damage from the engine's preview, design §12.14; CLT-Q46; the windows' own
-  keys on Ctrl+F5 to Ctrl+F8, the user's decision; the PR from `client/e17-m6-t4b`: check it
-  first). **Next: T4b2b** (the army info windows, the heroes' windows kept, their stills, the
-  help rows' question), then T4c (the grid and the shadows on F6 to F8), T5 to T7; then M7
-  ranked play and the server browser.
+  (#709, design §12.12); T4b cut in three by the user (2026-11-04): T4b1 done (the Auto
+  Combat options, §12.13; CLT-Q45) and T4b2a done (#714: F5, the status line's damage, §12.14;
+  CLT-Q46; the windows' own keys on Ctrl+F5 to Ctrl+F8). T4b2b cut in two by the user
+  (2026-11-04): **T4b2b1 done** (the hover read whole, §12.15; the heroes' army info windows on
+  the hover and kept after their right press; CLT-Q47 to Q50 answered: Q47 copied, Q48 to Q50
+  fixed; four stills exact; the PR from `client/e17-m6-t4b2b1`: check it first). **Next: T4b2b2** (the
+  stacks' four windows, CLT-Q48's fix, recorded at levels 1 and 2), then T4c (the grid and the
+  shadows on F6 to F8), T5 to T7; then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -27,7 +28,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5 (its
   situations M6 T6), CLT-Q42 (T3b2: copy recommended, built so), CLT-Q43 and Q44 (T4a: fixes
-  recommended, built as the original's). Next id: CLT-Q47.
+  recommended, built as the original's). Next id: CLT-Q51.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -47,8 +48,16 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-04, E17 M6 T4b1 and T4b2a (done; the PR from `client/e17-m6-t4b`: check it
-  first).** The original data staged (60 files, by the file tool: the device shell did not
+- **2026-11-04, E17 M6 T4b2b1 (done; the PR from `client/e17-m6-t4b2b1`: check it first).**
+  The original data staged (93 files, by the file tool: the device shell did not start); #714 had
+  merged; the baseline's `check.sh` passed. The user cut T4b2b in two and chose the heroes first;
+  CLT-Q47 to Q50 asked and answered at once. A reader (§12.15, both kinds of window, every hide
+  and show), a builder (`h3_view::army_info`, `track::Shown`'s `army`, the stills' `army_info` and
+  `right-click:`), the captures (the harness's registry level; four stills exact) and a fresh reviewer
+  (four findings fixed: two tests that missed their path, no hide at the tactics phase's end;
+  two gaps of the stills' model written down). `drawn` 209 the same, 4 new; `check.sh`.
+
+- **2026-11-04, E17 M6 T4b1 and T4b2a (done; #714 merged).** The original data staged (60 files, by the file tool: the device shell did not
   start); #709 had merged; the baseline's `check.sh` passed. The user cut T4b in three and
   chose T4b1 and T4b2a. A reader (§12.13, §12.14; CLT-Q45 and Q46, answered at once: fix both;
   the engine's preview, the server lane asked for the previews), two builders in turn, a fresh
@@ -64,10 +73,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   and volumes in effect (the first run's volume 5: the client 6/10 as loud); six stills
   exact; `drawn`; `check.sh`. #709: CI and Clients green; GitHub's CodeQL Rust scan failed
   once (its default setup: not retryable, logs unreadable from the sandbox; a later push reruns it).
-
-- **2026-11-04, E17 M6 T3c3 (done; #704 and #706 merged).** The original data staged (57
-  files) first, the computer offline afterwards; #699 had merged; the baseline's `check.sh`
-  passed. The user chose the town records over the asset tables (T3c2's question) and T3c3 with
-  it, and the shared #704 (`clients.yml` watches `h3-pack-towns`). The binary compiles the
-  packs' town part; the map writer builds the siege's buildings by their slots; `effect_skills`' Grail-as-Leadership fixed. A siege opens on a turret's or the
-  Catapult's turn (TRAPS); three stills exact; `drawn`; `check.sh`.

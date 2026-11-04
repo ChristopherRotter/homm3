@@ -30,7 +30,7 @@ use crate::setup::TileMask;
 
 /// The most creatures a dwelling offers (E08 T93a, increment 10's design note §1): the original's
 /// four (the Elemental Conflux's Air, Fire, Earth and Water; the Golem Factory's four golems).
-const MAX_DWELLING_CREATURES: usize = 4;
+pub(crate) const MAX_DWELLING_CREATURES: usize = 4;
 
 /// The key colours of Keymaster's tents, border guards and border gates (survey `E08-objects.md`
 /// §6: eight tents' colours, VCMI 1.7.5 `config/objects/moddables.json`); a key is one of them.

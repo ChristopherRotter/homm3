@@ -777,6 +777,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                     _ => {
                         let at = clock.ms(win.ticks_ns()).max(start);
+                        // F over the battlefield hides the army info windows first (CLT-Q49,
+                        // E17 M6 T4b2b1).
+                        if let Some(hide) = key_hides(&battle, at, pointer) {
+                            inputs.push(hide);
+                        }
                         if let Some(spell) = battle.dragon_aim(at) {
                             inputs.push(Input::Aim {
                                 at,
@@ -922,13 +927,17 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         if battle.look_held(at, point) {
                             inputs.push(Input::Look { at });
                             book_changed = true;
-                        } else {
+                        } else if let Some(side) = battle.hero_info(at, point) {
                             // Else a hero's info window over its rectangle (T3b1, design §12.8),
-                            // a turret's info held (E17 M6 T2b2, design §12.6), or over the
+                            // held as the stats dialog's popup; at Creature Info's levels 1 and 2
+                            // it stays shown after the release (E17 M6 T4b2b1, §12.15).
+                            inputs.push(Input::HeroInfo { at, side });
+                            (book_changed, mouse_changed) = (true, true);
+                        } else {
+                            // Else a turret's info held (E17 M6 T2b2, design §12.6), or over the
                             // panel a control's help (T3a, design §12.7; `battle_buttons`
                             // 0x474DE4): each held as the stats dialog's popup.
-                            book_changed |= battle.hero_info(at, point)
-                                || battle.turret_info(at, point, true)
+                            book_changed |= battle.turret_info(at, point, true)
                                 || battle.control_help(at, point);
                         }
                         continue;
@@ -1061,10 +1070,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         Do::StatsOk => {
                             book_changed |= battle.stats_key(key.name()) != StatsDid::Nothing;
                         }
-                        // The acting stack's stats dialog (E17 M6 T2a2a), the mouse where it is.
+                        // The acting stack's stats dialog (E17 M6 T2a2a), the mouse where it is;
+                        // the army info windows hidden first (0x475D1E; E17 M6 T4b2b1).
                         Do::Stats => {
                             let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
                             if battle.look(at, point, true) {
+                                inputs.push(Input::Hide { at, key: false });
                                 inputs.push(Input::Look { at });
                                 book_changed = true;
                             }
@@ -1101,8 +1112,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             scrolls.push((at, if command == Do::LogUp { -1 } else { 1 }));
                             mouse_changed = true;
                         }
-                        // The Faerie Dragon's key aims its drawn spell (E17 M5 T3b).
+                        // The Faerie Dragon's key aims its drawn spell (E17 M5 T3b); with the mouse
+                        // over the battlefield the client's profile hides the army info windows
+                        // first (CLT-Q49, E17 M6 T4b2b1).
                         Do::DragonSpell => {
+                            if let Some(hide) = key_hides(&battle, at, pointer) {
+                                inputs.push(hide);
+                                mouse_changed = true;
+                            }
                             if let Some(spell) = battle.dragon_aim(at) {
                                 inputs.push(Input::Aim {
                                     at,
@@ -1144,6 +1161,19 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::KeyUp(_) if battle.book_open() || battle.aiming() => {}
                 Event::KeyUp(key) => {
                     if let Some(h) = held.take_if(|h| h.key == Some(key)) {
+                        // The keys C, S, R and O over the battlefield hide the army info windows
+                        // first in the client's profile (CLT-Q49, E17 M6 T4b2b1).
+                        let keyed = [
+                            h3_view::panel::SPELL_BOOK,
+                            h3_view::panel::SURRENDER,
+                            h3_view::panel::RETREAT,
+                            h3_view::panel::OPTIONS,
+                        ];
+                        if keyed.contains(&h.id)
+                            && let Some(hide) = key_hides(&battle, at, pointer)
+                        {
+                            inputs.push(hide);
+                        }
                         // A hotkey's release clicks its button (0x45659F).
                         if let Some(command) = battle.button(at, h.id) {
                             grew |= give(&mut battle, &mut inputs, at, command)?;
@@ -1297,7 +1327,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             over: true,
                         });
                         mouse_changed = true;
-                    } else if let Some(command) = battle.press(at, [x, y]) {
+                        continue;
+                    }
+                    // Any left press over the battlefield hides the army info windows first, the
+                    // mouse's hex kept (0x4752BB; E17 M6 T4b2b1, design §12.15).
+                    if h3_view::army_info::on_field(battle.layout(), [x, y]) {
+                        inputs.push(Input::Hide { at, key: false });
+                        mouse_changed = true;
+                    }
+                    if let Some(command) = battle.press(at, [x, y]) {
                         // A press over the battlefield acts as the button goes down (design
                         // §9.11; E17 M5 T2b).
                         grew |= give(&mut battle, &mut inputs, at, command)?;
@@ -1740,6 +1778,16 @@ struct SettingsFile<'a> {
     path: &'a Path,
     library: Option<&'a Library>,
     lines: &'a std::cell::RefCell<Vec<String>>,
+}
+
+/// The hide one of the keys C, F, S, R and O gives at `at` with the mouse at `pointer` (E17 M6
+/// T4b2b1, CLT-Q49 fixed in the client's profile, the window's; `h3_view::army_info::Hover::key`
+/// for a still): over the battlefield while the battle takes the key, as a left press there
+/// hides the army info windows (*provisional*: whatever the key then does).
+fn key_hides(battle: &Battle<'_>, at: u32, pointer: Option<(i32, i32)>) -> Option<Input> {
+    let (x, y) = pointer?;
+    (battle.takes(at) && h3_view::army_info::on_field(battle.layout(), [x, y]))
+        .then_some(Input::Hide { at, key: true })
 }
 
 /// What a message box `did` at `at` (E17 M5 T4a): a change to draw, or the command its OK gave

@@ -12,6 +12,7 @@ use h3_protocol::wire::{Command, Observation, Side};
 use h3_render::Bugs;
 
 use super::{Input, Lens, Look, Shown, Start, Turn, follow, follow_on, spell_frame};
+use crate::army_info::Windows;
 use crate::battle_log::Logged;
 use crate::mouse::aim::{Aim, Area, Target};
 use crate::mouse::tests::{battle, centre, layout};
@@ -46,6 +47,12 @@ fn legal() -> Legal {
         },
     ])
 }
+
+/// An action's start that unmarks the mouse's stack (a walk, a strike, a shot, a cast).
+const UNMARKS: Start = Start {
+    unmarks: true,
+    ends_tactics: false,
+};
 
 /// The mouse followed through the battle, checked gone on from the marks of shorter follows too.
 fn run(log: &[(u32, Logged)], starts: &[Start], turns: &[Turn<'_>], inputs: &[Input]) -> Shown {
@@ -237,12 +244,7 @@ fn an_item_writes_its_hint_only_as_the_mouse_enters_it() {
         (500, Logged::Action),
         (900, Logged::Turn(2)),
     ];
-    let shown = run(
-        &log,
-        &[Start { unmarks: true }, Start::default()],
-        &turns,
-        &inputs,
-    );
+    let shown = run(&log, &[UNMARKS, Start::default()], &turns, &inputs);
     assert_eq!(
         shown.log,
         [
@@ -303,7 +305,7 @@ fn moves_wait_while_an_action_plays() {
         },
     ];
     let log = [(100, Logged::Action), (500, Logged::Turn(2))];
-    let shown = run(&log, &[Start { unmarks: true }], &turns, &inputs);
+    let shown = run(&log, &[UNMARKS], &turns, &inputs);
     // The same hex again writes nothing; the action shows the pointer and unmarks; the parked
     // mouse waits until the next human turn, which takes it (entering the panel's picture: an
     // empty line), then posts it again (the same item: nothing; E17 M4 T3b).
@@ -656,7 +658,7 @@ fn a_hero_s_aim_follows_the_mouse() {
         Input::Act { at: 320 },
     ];
     let log = [(320, Logged::Action)];
-    let shown = run(&log, &[Start { unmarks: true }], &turns, &inputs);
+    let shown = run(&log, &[UNMARKS], &turns, &inputs);
     assert_eq!(
         texts(&shown),
         [
@@ -902,7 +904,7 @@ fn a_press_reads_the_move_made_at_its_time() {
     let mut pressed = moved;
     pressed.extend([to(30, 90), Input::Act { at: 30 }]);
     let log = [(30, Logged::Action)];
-    let shown = run(&log, &[Start { unmarks: true }], &turns, &pressed);
+    let shown = run(&log, &[UNMARKS], &turns, &pressed);
     assert_eq!(
         shown.aimed,
         [(10, Some(90)), (20, None), (30, Some(90)), (30, None)]
@@ -998,7 +1000,7 @@ fn moves_made_while_an_action_plays_are_dropped_as_the_next_turn_starts() {
         },
     ];
     let log = [(100, Logged::Action), (500, Logged::Turn(2))];
-    let shown = run(&log, &[Start { unmarks: true }], &turns, &inputs);
+    let shown = run(&log, &[UNMARKS], &turns, &inputs);
     assert_eq!(shown.marked, []);
     assert_eq!(shown.entered, []);
     assert_eq!(
@@ -1012,7 +1014,7 @@ fn moves_made_while_an_action_plays_are_dropped_as_the_next_turn_starts() {
     );
     assert_eq!(shown.point(400), Some(centre(88)));
     // A human turn starting with the mouse nowhere takes nothing (the action showed the pointer).
-    let still = run(&log, &[Start { unmarks: true }], &turns, &[]);
+    let still = run(&log, &[UNMARKS], &turns, &[]);
     assert_eq!(still.log, log);
     assert_eq!(still.frames, [(100, 6)]);
 }
@@ -1036,7 +1038,7 @@ fn auto_combat_s_switch_and_stop_move_nothing_themselves() {
         to: centre(87),
     };
     let log = [(100, Logged::Action)];
-    let starts = [Start { unmarks: true }];
+    let starts = [UNMARKS];
     let with = run(
         &log,
         &starts,
@@ -1115,7 +1117,7 @@ fn a_mark_holds_only_where_the_follow_went_the_same() {
         human: true,
     };
     let turns = [turn(&o, &legal), turn(&next, &none)];
-    let starts = [Start { unmarks: true }];
+    let starts = [UNMARKS];
     let log = [
         (100, Logged::Action),
         (300, Logged::Round),
@@ -1263,4 +1265,177 @@ fn the_dialogs_close_after_an_action_settles_the_log_and_posts_no_move() {
         .collect();
     assert!(at_two.contains(&&Logged::Settle));
     assert!(!at_two.iter().any(|l| matches!(l, Logged::Status { .. })));
+}
+
+#[test]
+fn the_army_info_windows_follow_the_mouse_the_presses_and_the_actions() {
+    // E17 M6 T4b2b1 (design §12.15): a new hex hides every window and shows the hero's under
+    // it at levels 1 and 2; the same hex changes nothing; a press over the battlefield (`Hide`)
+    // hides them, the hex kept; the level changes none (drawn or not); the right press keeps its
+    // window at 1 and 2, hides it at 0; an action's start hides them; a human's turn start shows
+    // the one under the mouse again, filled by its own battle.
+    let (o, legal) = (battle(), legal());
+    let mut next = battle();
+    next.active = Some(2);
+    let none = Legal::default();
+    let l = layout();
+    let hero = |index: usize| {
+        let [left, top, right, bottom] = l.mouse.heroes[index];
+        [(left + right) / 2, (top + bottom) / 2]
+    };
+    let (a, d) = (hero(0), hero(1));
+    let to = |at, to| Input::Move { at, to };
+    let level = |at, level| Input::ArmyInfo { at, level };
+    let inputs = [
+        level(0, 1),
+        to(0, PARK),
+        to(100, a),
+        to(110, [a[0] + 1, a[1]]),
+        Input::Hide { at: 120, key: true },
+        to(130, d),
+        level(140, 0),
+        Input::HeroInfo {
+            at: 150,
+            side: Side::Defender,
+        },
+        level(160, 2),
+        to(170, centre(87)),
+        to(180, a),
+        Input::Hide {
+            at: 190,
+            key: false,
+        },
+        Input::HeroInfo {
+            at: 200,
+            side: Side::Attacker,
+        },
+        Input::Act { at: 400 },
+    ];
+    assert_eq!(Input::Hide { at: 7, key: false }.at(), 7);
+    assert_eq!(
+        Input::HeroInfo {
+            at: 8,
+            side: Side::Attacker
+        }
+        .at(),
+        8
+    );
+    let log = [(400, Logged::Action), (500, Logged::Turn(2))];
+    let windows = |heroes, level| Windows { heroes, level };
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let turn = |observation, legal| Turn {
+            field: Field {
+                observation,
+                legal,
+                facing: &Facing::Sides,
+                bugs,
+            },
+            human: true,
+        };
+        let turns = [turn(&o, &legal), turn(&next, &none)];
+        let shown = run(&log, &[UNMARKS], &turns, &inputs);
+        let mut army = vec![
+            (0, windows([None, None], 1)),
+            (100, windows([Some(0), None], 1)),
+            (120, windows([None, None], 1)),
+            (130, windows([None, Some(0)], 1)),
+            (140, windows([None, Some(0)], 0)),
+            (150, windows([None, None], 0)),
+            (160, windows([None, None], 2)),
+            (180, windows([Some(0), None], 2)),
+            (190, windows([None, None], 2)),
+            (200, windows([Some(0), None], 2)),
+            (400, windows([None, None], 2)),
+            (500, windows([Some(1), None], 2)),
+        ];
+        if bugs == Bugs::Original {
+            // The original's keeps the windows through the keys C, F, S, R and O (CLT-Q49).
+            army.remove(2);
+        }
+        assert_eq!(shown.army, army, "{bugs:?}");
+        assert_eq!(shown.army(115), windows([Some(0), None], 1));
+        assert_eq!(shown.army(145).drawn().count(), 0);
+        // The mouse still on the attacker's rectangle since 180: the left press hides its window,
+        // the right press shows it again, and it stays after the release until the action.
+        assert_eq!(shown.army(195).heroes, [None, None]);
+        assert_eq!(shown.army(200).heroes, [Some(0), None]);
+        assert_eq!(shown.army(399).heroes, [Some(0), None]);
+    }
+    assert_eq!(Shown::default().army(0), Windows::default());
+}
+
+#[test]
+fn the_tactics_phase_s_end_hides_no_window() {
+    // E17 M6 T4b2b1 (design §12.15): Start Combat is no action (0x4751CC, §7.24): the window
+    // shown stays through the phase's end and a computer's turn start; the next action's start
+    // hides it. In an action's place the same log hides it at once.
+    let (o, legal) = (battle(), legal());
+    let none = Legal::default();
+    let turn = |legal, human| Turn {
+        field: Field {
+            observation: &o,
+            legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        },
+        human,
+    };
+    let turns = [turn(&legal, true), turn(&none, false)];
+    let [left, top, right, bottom] = layout().mouse.heroes[0];
+    let a = [(left + right) / 2, (top + bottom) / 2];
+    let inputs = [
+        Input::ArmyInfo { at: 0, level: 1 },
+        Input::Move { at: 10, to: a },
+        Input::Act { at: 100 },
+    ];
+    let log = [
+        (100, Logged::Action),
+        (100, Logged::Turn(2)),
+        (900, Logged::Action),
+    ];
+    let ended = Start {
+        ends_tactics: true,
+        ..Start::default()
+    };
+    let shown = run(&log, &[ended, Start::default()], &turns, &inputs);
+    let heroes = |shown: &Shown, t| shown.army(t).heroes;
+    assert_eq!(heroes(&shown, 10), [Some(0), None]);
+    assert_eq!(heroes(&shown, 899), [Some(0), None]);
+    assert_eq!(heroes(&shown, 900), [None, None]);
+    let action = run(&log, &[Start::default(); 2], &turns, &inputs);
+    assert_eq!(heroes(&action, 100), [None, None]);
+}
+
+#[test]
+fn the_stats_dialog_s_close_and_the_book_s_cancel_show_the_window_again() {
+    // E17 M6 T4b2b1 (design §12.15, "Every show"): the key T hides the windows before the
+    // stats dialog; its close forgets the mouse's hex and posts the move: the window under the
+    // mouse comes back; so does a book closed without a spell (0x47519A).
+    let (o, legal) = (battle(), legal());
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let [left, top, right, bottom] = layout().mouse.heroes[0];
+    let a = [(left + right) / 2, (top + bottom) / 2];
+    let inputs = [
+        Input::ArmyInfo { at: 0, level: 1 },
+        Input::Move { at: 10, to: a },
+        Input::Hide { at: 20, key: false },
+        Input::Look { at: 20 },
+        Input::Looked { at: 30 },
+        Input::Hide { at: 40, key: true },
+        Input::Book { at: 40 },
+        Input::Cancel { at: 50 },
+    ];
+    let shown = run(&[], &[], &turns, &inputs);
+    let shown_at = |t| shown.army(t).heroes;
+    assert_eq!(shown_at(10), [Some(0), None]);
+    assert_eq!(shown_at(20), [None, None]);
+    assert_eq!(shown_at(30), [Some(0), None]);
+    assert_eq!(shown_at(40), [None, None]);
+    assert_eq!(shown_at(50), [Some(0), None]);
 }

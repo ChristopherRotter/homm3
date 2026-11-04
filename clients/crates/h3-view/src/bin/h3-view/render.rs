@@ -304,9 +304,14 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         };
         // A situation's actions (E17 M5 T3a: the spell book's stills) played at its opening,
         // after the tactics phase's message it opens with (E17 M5 T4c2a).
-        let (mouse, actions) = crate::sequences::situation_inputs(dir)?;
+        let crate::sequences::Situation {
+            mouse,
+            actions,
+            army_info,
+        } = crate::sequences::situation_inputs(dir)?;
         let told = h3_view::tactics::told(observation);
-        let book = if actions.is_empty() && !told {
+        // At Creature Info's level 1 or 2 the mouse at rest shows a window too (E17 M6 T4b2b1).
+        let book = if actions.is_empty() && !told && army_info == 0 {
             None
         } else {
             let ruleset = crate::scenario::ruleset(&options.packs, manifest)?;
@@ -487,13 +492,12 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 let key = h3_view::panel::help_at(layout.panel_in(observation), point)?;
                 Some(catalogue.text(key, &h3_ui::text::Args::new()))
             };
-            // A hero's info window where the right button shows it (E17 M6 T3b1): the opening's
-            // hero.
-            let hero_info = |point: [i32; 2]| {
+            // A side's hero's info window as the opening fills it (E17 M6 T3b1), where the right
+            // button shows it and, at Creature Info's levels 1 and 2, the mouse's move (T4b2b1).
+            let hero_window = |side: h3_protocol::wire::Side| {
                 let portrait = |hero_type: u16| {
                     crate::results::portrait(&manifest.keys.hero_types, &tables, hero_type)
                 };
-                let side = h3_view::hero_info::at(&layout, observation, point)?;
                 let field = crate::stats::field(manifest, observation);
                 let info = h3_view::hero_info::Info::of(observation, side, field, &portrait)?;
                 Some(h3_view::hero_info::window(
@@ -503,6 +507,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     &info,
                 ))
             };
+            let hero_info =
+                |point: [i32; 2]| hero_window(h3_view::hero_info::at(&layout, observation, point)?);
             // The combat options dialog the key O or a click on the panel's Options opens while
             // the opening takes a command (E17 M6 T4a): the capture harness's settings, no audio
             // device (`setup.sh`), its background in the acting side's player's colours.
@@ -543,6 +549,12 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 help: &help,
                 hero_info: &hero_info,
                 options: &options,
+                army: Some(crate::spellbook::Army {
+                    layout: &layout,
+                    observation,
+                    level: army_info,
+                    window: &hero_window,
+                }),
             };
             Some(crate::spellbook::still(
                 &actions,

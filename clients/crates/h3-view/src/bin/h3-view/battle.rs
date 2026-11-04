@@ -34,7 +34,7 @@ use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
 use h3_view::hero::Heroes;
 use h3_view::layout::{self, BattleLayout};
-use h3_view::message::{Picture, Style};
+use h3_view::message::{MessageBox, Picture, Style};
 use h3_view::mouse::aim::Target;
 use h3_view::mouse::track::{Input, Lens, Shown};
 use h3_view::mouse::{self, Field};
@@ -2063,43 +2063,48 @@ impl<'g> Battle<'g> {
     /// Shows a side's hero's info window while the right button pressed at `at` over the hero's
     /// rectangle at `point` is held (E17 M6 T3b1, design §12.8; `battle_right_click` 0x4769C0's
     /// "hexes" 0xFC and 0xFD): at the side's place, the hero as the turn's observation shows it
-    /// ([`h3_view::hero_info`]), held as the right button's popups ([`Asked::Held`]: the cursor
+    /// ([`Self::hero_window`]), held as the right button's popups ([`Asked::Held`]: the cursor
     /// hidden, every input but its ends dropped, nothing posted after); nothing over a side
-    /// without a hero. Whether it opened (not without the text tables).
-    pub fn hero_info(&mut self, at: u32, point: [i32; 2]) -> bool {
+    /// without a hero. The side whose window opened (none without the text tables): the window
+    /// gives the mouse its `Input::HeroInfo` (E17 M6 T4b2b1: at Creature Info's levels 1 and 2
+    /// the window stays shown after the release). The client's profile shows it even when it is
+    /// shown already at level 0 (CLT-Q50, fixed: `Windows::held_shows`).
+    pub fn hero_info(&mut self, at: u32, point: [i32; 2]) -> Option<Side> {
         if self.stats.is_some()
             || self.message.is_some()
             || self.book.is_some()
             || self.aiming.is_some()
             || !self.takes(at)
         {
-            return false;
+            return None;
         }
+        let layout = &self.ground.layout;
+        let side = self.taken(at, |field| {
+            h3_view::hero_info::at(layout, field.observation, point)
+        })?;
+        let observation = &self.turned.last()?.observation;
+        let window = self.hero_window(observation, side)?;
+        self.message = Some((h3_view::message::Open::new(window), at, Asked::Held));
+        Some(side)
+    }
+
+    /// Side `side`'s hero's info window as `observation`'s battle fills it (E17 M6 T3b1,
+    /// design §12.8: `army_info_hero_set` 0x46CC10; the right press's and, E17 M6 T4b2b1, the
+    /// hover's): none without a hero there or the text tables.
+    fn hero_window(&self, observation: &Observation, side: Side) -> Option<MessageBox> {
         let ground = self.ground;
-        let Some(writer) = ground.writer.as_ref() else {
-            return false;
-        };
+        let writer = ground.writer.as_ref()?;
         let manifest = &self.record.header.manifest;
         let keys = &manifest.keys.hero_types;
         let portrait = |hero_type: u16| crate::results::portrait(keys, &ground.tables, hero_type);
-        let window = self.taken(at, |field| {
-            let observation = field.observation;
-            let side = h3_view::hero_info::at(&ground.layout, observation, point)?;
-            let special = crate::stats::field(manifest, observation);
-            let info = h3_view::hero_info::Info::of(observation, side, special, &portrait)?;
-            let layout = &ground.layout.hero_info;
-            Some(h3_view::hero_info::window(
-                layout,
-                &writer.catalogue,
-                side,
-                &info,
-            ))
-        });
-        let Some(window) = window else {
-            return false;
-        };
-        self.message = Some((h3_view::message::Open::new(window), at, Asked::Held));
-        true
+        let special = crate::stats::field(manifest, observation);
+        let info = h3_view::hero_info::Info::of(observation, side, special, &portrait)?;
+        Some(h3_view::hero_info::window(
+            &ground.layout.hero_info,
+            &writer.catalogue,
+            side,
+            &info,
+        ))
     }
 
     /// Whether the combat options dialog is open over the battle (E17 M6 T4a).
@@ -2861,6 +2866,16 @@ impl<'g> Battle<'g> {
                 text,
                 self.pressed,
             ));
+        }
+        // The army info windows the mouse shows (E17 M6 T4b2b1, design §12.15): each
+        // `battle_redraw` draws the shown ones again while Creature Info's level is not 0, each
+        // filled by the battle of the turn that showed it.
+        for (side, turn) in self.shown.army(t).drawn() {
+            let window = (self.follower.observation(turn)).and_then(|o| self.hero_window(o, side));
+            if let Some(window) = window {
+                let draws = window.dialog.draws(&window.shown, &layout.player_palette);
+                list.extend(draws.into_iter().map(Draw::Dialog));
+            }
         }
         // Earthquake's shake (E17 M4 T2c-2): the screen as it was, shifted.
         if let Some(steps) = moment.shake {
