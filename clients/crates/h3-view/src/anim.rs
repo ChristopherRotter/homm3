@@ -2322,12 +2322,14 @@ impl<'a> Growing<'a> {
         let now = player.clock.now;
         *ended = ended.or_else(|| player.outcome.map(|o| (now, o)));
         let (stands, unmarks) = calms(command.events, player.stage.bugs);
+        let ends_tactics = (command.events.iter()).any(|e| matches!(e, Event::TacticsEnded {}));
         actions.push(Action {
             start: started,
             end: player.clock.now,
             happenings: core::mem::take(&mut player.happenings),
             stands,
             unmarks,
+            ends_tactics,
         });
         if let Some(f) = fidgets.as_mut() {
             let drawn: Vec<u8> = player.keys[before..].iter().map(|k| k.stack).collect();

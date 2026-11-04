@@ -6113,12 +6113,15 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
     (moves, presses, the keys, F5), `on_field`. Over time (`mouse::track`): `Shown::army` (each
     change once; `Lens` of nine lists) by the handler's `set_army`: a new hex `Windows::enter`
     (before the mark and the line), out of the battlefield and every action's start
-    (`Logged::Action`) `hide`; the inputs `Input::Hide { at, key }` (a left press over the battlefield while the
-    battle takes it, the key T before its dialog; `key`: C, F, S, R or O) and
-    `Input::HeroInfo { at, side }` (the right press over a hero, at the press: the window's popup
-    draws it while held); `Input::ArmyInfo` sets the level only. The shows without a move come
-    from the hex the handler already forgets (a human's turn start, `Looked`, `Cancel`): the
-    window under the mouse, filled by that turn's battle.
+    (`Logged::Action`) `hide`, but the tactics phase's end (`Start::ends_tactics`, the timeline's
+    `Action::ends_tactics`: `EndTactics`' `TacticsEnded`); the inputs `Input::Hide { at, key }` (a
+    left press over the battlefield while the battle takes it, the key T before its dialog; `key`:
+    C, F, S, R or O) and `Input::HeroInfo { at, side }` (the right press over a hero, at the press:
+    the window's popup draws it while held); `Input::ArmyInfo` sets the level only. The shows
+    without a move come from the hex the handler already forgets (a human's turn start, `Looked`,
+    `Cancel`): the window under the mouse, filled by that turn's battle. *Provisional*: a forgotten
+    hex (−1) and a move to a field spot with no hex count as a new hex (the hints' guard), where
+    0x475544 may count them the same hex (unverified; the original's profile only).
   - The window (`window.rs`, `battle.rs`): `Battle::hero_info` returns the side (the input
     pushed with it); the press over the battlefield pushes `Hide` before its command, dialog or
     nothing; T `Hide` then `Look`; the keys by `key_hides` (the mouse over the battlefield, the
@@ -6150,13 +6153,20 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
     `right-click:` presses and releases there. Recorded: `army-info-hero`, `-hero-enemy`, `-none`,
     `-kept` (levels 1, 2, 1, 1), every frame exact (0 differing); `-kept` shows the release keeping
     the window, not the press showing it (the `click:`'s park makes the move back a new hex).
+    Not modelled: after the book returns a chosen spell, the still's park and later `move:`
+    actions reach the hover, where the original's aim loop takes them and the windows stay
+    (oddity 3); and a book closed by its key does not forget the hex as 0x47519A does; no still
+    hits either.
   - Checks: unit tests (`army_info/tests.rs`: the shows by level and spot, none without a hero,
     drawn only while the level is not 0, the held press at each level, CLT-Q50 by profile, a
     still's moves, presses, keys and F5, the battlefield's bounds; `track/tests.rs`: the windows
-    through moves, the same hex, the hides, the levels, the right press, an action and a human's
-    turn start in both profiles, the stats dialog's close and the book's cancel showing again;
-    the binary's: the follower's lists against the whole follow with the new inputs, a still at
-    each level with its presses, `right-click:` and CLT-Q50), the real-asset gate, two stills
-    rendered at levels 1 and 2 with the original's assets (looked at, not compared).
+    through moves, the same hex, the hides, the levels, the right press (showing again a window
+    a left press hid, the mouse still there), an action and a human's turn start in both
+    profiles, none at the tactics phase's end, the stats dialog's close and the book's cancel
+    showing again; the binary's: the follower's lists against the whole follow with the new
+    inputs (`battle.toml` given two heroes: the hover, a hide and the right press in waiting
+    turns), a still at each level with its presses, `right-click:` and CLT-Q50), the real-asset
+    gate, two stills rendered at levels 1 and 2 with the original's assets (looked at, not
+    compared).
   - Not built: the stacks' four windows (T4b2b2: `Windows::enter`'s hex arm shows none; no fill,
     no layout); the keys F6 to F8 (T4c).

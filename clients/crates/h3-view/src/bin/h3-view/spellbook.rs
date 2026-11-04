@@ -1455,7 +1455,10 @@ pub(crate) mod tests {
         assert_eq!(ids(&played(0, orrin, &[]).unwrap()), [0; 0]);
         // From the hero to an empty hex: none.
         assert_eq!(ids(&played(1, orrin, &["move:400,300"]).unwrap()), [0; 0]);
-        // A left press over the enemy's hero (nothing), then the right press released: kept.
+        // A left press over the enemy's hero (nothing; the click's park leaves the battlefield),
+        // then the right press there: its window shown (the move back a new hex shows it by
+        // itself) and kept after the release. The press showing again a window a left press hid
+        // with the mouse still on the rectangle: `mouse::track`'s tests.
         let still = played(1, crag, &["click:770,70", "right-click:770,70"]).unwrap();
         assert_eq!(ids(&still), [2]);
         assert!(still.message.is_none() && !still.held);

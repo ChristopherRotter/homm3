@@ -165,6 +165,9 @@ pub struct Start {
     /// It unmarks the mouse's stack (`battle_clear_highlight` 0x477E10: a walk, a strike, a shot,
     /// a cast).
     pub unmarks: bool,
+    /// It ends the tactics phase: no action in the original (Start Combat 0x4751CC, design
+    /// §7.24), it hides no army info window (§12.15).
+    pub ends_tactics: bool,
 }
 
 /// What the mouse shows over time.
@@ -962,8 +965,10 @@ impl Handler<'_> {
                     self.set_marked(now, None);
                 }
                 // Every action's start hides the army info windows (`action_dispatcher` 0x478DC0;
-                // E17 M6 T4b2b1).
-                self.set_army(now, Windows::hide);
+                // E17 M6 T4b2b1); the tactics phase's end is none (§12.15).
+                if !start.ends_tactics {
+                    self.set_army(now, Windows::hide);
+                }
             }
             Logged::Turn(_) => {
                 at.turn += 1;

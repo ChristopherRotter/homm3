@@ -84,6 +84,9 @@ pub struct Action {
     /// Its start unmarks the mouse's stack (`battle_clear_highlight` 0x477E10: a walk, a strike,
     /// a shot, a cast, the Catapult's shot).
     pub unmarks: bool,
+    /// It ends the tactics phase (the engine's `EndTactics`): the original's Start Combat is no
+    /// action (0x4751CC, design §7.24), its start hides no army info window (§12.15).
+    pub ends_tactics: bool,
 }
 
 /// The battle's heroes: each side's look (none: no hero), whose players are human, the groups,
