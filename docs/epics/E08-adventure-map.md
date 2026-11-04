@@ -91,6 +91,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 246. **T89b whole** (the user; recommended, measured against T78's record: about 800 lines of TOML for 9 rows against batch E9's 1 000 for 13): both specs, one review over both, one pull request, with the batch's row in `docs/experiments/README.md`'s table (a battle-owned path), `cross-lane` with the user's consent (as T78 and T89a). Not chosen: T89b by batch (10a, then 10b); the row through the battle lane's inbox.
 
+### Decisions at T91's start (2026-11-03, user)
+
+247. **T91 whole, then T92** (the user; recommended): the scoring (survey `E08-dwellings.md` §16, the log, the epic) in one pull request, every row being as read; then T92's `shared/` pull request in the same session. Not chosen: T91 alone; T92 in two (the ADRs, then the glossary and the security lines).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -101,7 +105,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 - **T89 Batch E10's maps and specs** (round 2; design §16), in two at the code's seam (decision 244):
   - **T89a The writer's classes and the spec's fields.** Done (2026-11-03, `adventure/e08-t89a`, `cross-lane`; decision 245): `h3_map::writer` writes the dwellings 17 and 20 with their owners, the random dwellings 216 to 218 with their sets and levels (`OwnedBody::RandomDwelling`), the Refugee Camp 78 as a plain object and `Map::teams`; `h3-experiment`'s `[[map.ownable]]` takes them (`factions`, `levels`), `[[map.object]]` the camp, `[map] teams`; no version moved.
   - **T89b The specs.** Done (2026-11-03, whole, decision 246; `adventure/e08-t89b`, `cross-lane`: the README's row): `experiments/specs/E08-batch-10a.toml` (E10-1, E10-3 to E10-7, two days; Red and Blue allied, Tan a walled-in computer enemy) and `-10b.toml` (E10-8 to E10-10, eight days, a town each), their templates, every walk priced, a fresh review (seven findings, all taken); no version moved.
-- Rounds 3 to 8 (T90 to T97) as design §17 lists them, each queued when the one before is done.
+- **T90 Batch E10's harness reads and runs** (round 3; design §16). Done (2026-11-03, whole; `adventure/e08-t90`, #697): `clients/capture/`'s reads of the dwelling records, the teams, the objects and tiles, a camp's words, the hire dialog, the hint and the popup; the recipes `batches/E08-batch-10a.toml` and `-10b.toml`; two runs of 10a, five of 10b; the templates filled; no version moved.
+- **T91 Batch E10 scored** (round 3; design §16). Done (2026-11-03, whole, decision 247; `adventure/e08-t91`): survey `E08-dwellings.md` §16, every row as read, D-52 confirmed; no `ADV-Q`; no version moved.
+- **T92 The ADRs, the glossary and the security lines** (round 4; design §17). Done (2026-11-03, whole, decision 247; `shared/e08-t92`, the lane's records in `adventure/e08-t91`): ADR-0016 points 1, 3 to 6 and ADR-0017 points 1, 3, 4, 6, 8, 10, 11 from the drafts (deleted) with batch E10's outcome; the glossary; `docs/06-security.md`; the replay format's bump corrected to v10; no version moved.
+- Rounds 5 to 8 (T93 to T97) as design §17 lists them, each queued when the one before is done.
 
 ## Later increments (sketch)
 
