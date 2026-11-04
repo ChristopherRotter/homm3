@@ -409,3 +409,15 @@ The next milestone's list starts here.
     T4c). The map viewer's defaults changed with it (a `cross-lane` change; its inbox told).
 38. Creature Info's level not recorded (T4b2a): no capture at level 1 or 2 (T4b2b's, beside the
     hover's army info windows); the hints' words checked against the user's tables only.
+39. The army info windows' model (T4b2b1, *provisional*, design §12.15): a ninth list of
+    `track::Shown` (`army`) holding each shown window's turn, the window filling it from the
+    follower's turns at every frame (no cache); a new list of `Shown` needs its place in `Lens`.
+40. A still's level and its right press released (T4b2b1, *provisional*): `frames.toml`'s
+    `army_info` and the action `right-click:<x>,<y>` (over a hero's rectangle only); `key:F5`
+    cycles. The harness is untouched: it must write the level into the original's registry, copy
+    it into `frames.toml`, restore it after an F5, and press and release for `right-click:`.
+41. CLT-Q49's fix (T4b2b1, *provisional*): the keys C, F, S, R and O hide the windows whatever
+    they then do, with the mouse over the battlefield while the battle takes the key; C, S, R
+    and O at the hotkey's release. The harness's sequences push no hide (level 0).
+42. The stacks' army info windows not built (T4b2b2): over a stack's hex at levels 1 and 2 no
+    window shows (the original's kind 1 or 2); a still's status line at 1 and 2 stays level 0's.

@@ -6106,4 +6106,56 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
   `hero-info`'s, with the hover's status line; level 2 on the defender's hero: Crag Hack's at (721,
   135) as `hero-info-enemy`'s; level 1, from the hero to an empty hex: none; level 1 on the enemy's
   hero, a left press (none), then a right press released: the window again, kept; level 0: none.
-- **The client's** (T4b2b1: to be written by the builder).
+- **The client's** (M6 T4b2b1, *provisional* where marked):
+  - Where it lives: `h3_view::army_info`: `Windows` (the heroes' two flags, each with the turn
+    whose battle filled it, and the level; `enter` a new hex, `held` the right press released,
+    `hide`, `drawn` the shown ones while the level is not 0), `Hover` a still's battle mouse
+    (moves, presses, the keys, F5), `on_field`. Over time (`mouse::track`): `Shown::army` (each
+    change once; `Lens` of nine lists) by the handler's `set_army`: a new hex `Windows::enter`
+    (before the mark and the line), out of the battlefield and every action's start
+    (`Logged::Action`) `hide`; the inputs `Input::Hide { at, key }` (a left press over the battlefield while the
+    battle takes it, the key T before its dialog; `key`: C, F, S, R or O) and
+    `Input::HeroInfo { at, side }` (the right press over a hero, at the press: the window's popup
+    draws it while held); `Input::ArmyInfo` sets the level only. The shows without a move come
+    from the hex the handler already forgets (a human's turn start, `Looked`, `Cancel`): the
+    window under the mouse, filled by that turn's battle.
+  - The window (`window.rs`, `battle.rs`): `Battle::hero_info` returns the side (the input
+    pushed with it); the press over the battlefield pushes `Hide` before its command, dialog or
+    nothing; T `Hide` then `Look`; the keys by `key_hides` (the mouse over the battlefield, the
+    battle taking the key; C, S, R and O at the hotkey's release, F as it aims, a carried F
+    too). `Battle::list` draws `shown.army(t).drawn()` after the panel, each window built anew
+    by `hero_window` from `Follower::observation(turn)` (*provisional*: no cache).
+  - The fixes (the user's answers, 2026-11-04): CLT-Q49 by the profile in the library: the
+    handler takes `Hide { key: true }` only in `Bugs::Fixed` (`Hover::key` for a still), the
+    original's keeps the windows through the keys' book, aim and boxes; CLT-Q50 by
+    `Windows::held_shows(side, bugs)`: the client's press shows its window whatever, the
+    original's (a still) shows nothing over a window flagged at level 0, the cursor hidden all the
+    same. The window is the client's profile; the stills the original's.
+  - Over time: the windows are lists of `Shown` like the hints, so a re-follow, a Restart (its
+    inputs cut, the level input put back) and the follower's resumption (`follow_on`'s marks)
+    give them at each time from the inputs and the levels of that time.
+  - The stills (*provisional*): `frames.toml`'s `army_info = 1` or `2` (default 0,
+    `Settings::CAPTURE`'s; `sequences::Situation`) is the level a situation's still runs at; a
+    still's `key:F5` cycles it. The battle's mouse in `spellbook::still` (`Boxes::army`,
+    `spellbook::Army`): the harness's move at the opening (none under the tactics phase's
+    message), `move:`, `click:` (its move, the press's hide, the park's move unless a dialog or a
+    box takes it), `right:` (held; CLT-Q50), the new `right-click:<x>,<y>` (pressed and released
+    over a hero's rectangle only, else an error), the stats dialog's close (the hex forgotten),
+    the options dialog's close by a click, T. `Still::army` holds the windows left drawn;
+    `draw_frames` draws them after the panel, under every dialog; a held press that shows
+    nothing draws no cursor. A still at level 1 or 2 without actions is a still too. The still's
+    status line stays level 0's (`mouse::pointer`; no previews in a still). The harness's part
+    (next step): write the situation's level into the original's registry (`Combat Army Info
+    Level`) before the run and copy it into `frames.toml`, restore it after a `key:F5`, and add
+    `right-click:` to `h3drive.py`'s `act`.
+  - Checks: unit tests (`army_info/tests.rs`: the shows by level and spot, none without a hero,
+    drawn only while the level is not 0, the held press at each level, CLT-Q50 by profile, a
+    still's moves, presses, keys and F5, the battlefield's bounds; `track/tests.rs`: the windows
+    through moves, the same hex, the hides, the levels, the right press, an action and a human's
+    turn start in both profiles, the stats dialog's close and the book's cancel showing again;
+    the binary's: the follower's lists against the whole follow with the new inputs, a still at
+    each level with its presses, `right-click:` and CLT-Q50), the real-asset gate, two stills
+    rendered at levels 1 and 2 with the original's assets (looked at, not compared).
+  - Not built: the stacks' four windows (T4b2b2: `Windows::enter`'s hex arm shows none; no fill,
+    no layout); the harness's side of the stills at levels 1 and 2 (above); the keys F6 to F8
+    (T4c).

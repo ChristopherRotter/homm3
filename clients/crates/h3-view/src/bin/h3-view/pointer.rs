@@ -612,6 +612,12 @@ struct TurnRead {
 }
 
 impl<'l> Follower<'l> {
+    /// The battle of turn `turn` as last read (0 the opening's): what fills an army info window
+    /// shown in that turn (E17 M6 T4b2b1, `h3_view::army_info::Windows`).
+    pub fn observation(&self, turn: usize) -> Option<&Observation> {
+        self.turns.get(turn).map(|(read, _)| &read.observation)
+    }
+
     /// The engine's battle `index` changed in place (E17 M5 T3b: an aim the book added; T6b1: a
     /// turn served again): the turn paired with it is read again.
     pub fn touch(&mut self, index: usize) {
@@ -856,8 +862,9 @@ mod tests {
         // window grows it (`Battle::command`: every side's events, the turn after each, the
         // timeline waiting for the next); the mouse over hexes, the panel and its log while each
         // turn waits, while each action plays and at each turn's start, the spell book opened and
-        // closed, a seek back's inputs gone, a turn's legal commands changed in place: at every
-        // step the follower's lists are the whole follow's (every turn read again; 70 turns).
+        // closed, a seek back's inputs gone, a turn's legal commands changed in place, the army
+        // info windows' presses (E17 M6 T4b2b1): at every step the follower's lists are the whole
+        // follow's (every turn read again; 70 turns).
         use h3_view::anim::{Casts, Command as Given, Growing, Look, Speed};
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
@@ -959,6 +966,30 @@ mod tests {
                 inputs.push(Input::ArmyInfo { at: now, level });
                 steps.check(waits, &turned, (&inputs, &switches));
             }
+            // The army info windows (E17 M6 T4b2b1): a hero's right press, a press's or a key's
+            // hide between moves.
+            if c % 3 == 2 {
+                let side = if c % 2 == 0 {
+                    Side::Attacker
+                } else {
+                    Side::Defender
+                };
+                let more = [
+                    Input::HeroInfo { at: now, side },
+                    Input::Move {
+                        at: now + 1,
+                        to: middle(layout.mouse.heroes[c % 2]),
+                    },
+                    Input::Hide {
+                        at: now + 2,
+                        key: c % 4 == 0,
+                    },
+                ];
+                for input in more {
+                    inputs.push(input);
+                    steps.check(waits, &turned, (&inputs, &switches));
+                }
+            }
             if c % 5 == 2 {
                 // A seek back to the turn's start, then a move from there.
                 inputs.retain(|i| i.at() <= start);
@@ -1001,6 +1032,9 @@ mod tests {
             );
         }
         assert!(steps.checked > 600, "{}", steps.checked);
+        // The heroes' army info windows were shown and drawn on the way (E17 M6 T4b2b1).
+        let drawn = |w: &h3_view::army_info::Windows| w.drawn().next().is_some();
+        assert!(steps.shown.army.iter().any(|(_, w)| drawn(w)));
     }
 
     #[test]
