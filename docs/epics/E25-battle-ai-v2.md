@@ -157,8 +157,8 @@ against the fair actor before any RL run.
 
 | Task | Scope | Status |
 |---|---|---|
-| T24 | The kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the bench's report | next (the sandbox) |
-| T25 | The heads read the geometry: a melee entry's attack hex, the legal mask as an input, `order` for the structured kinds | after T24 (the sandbox) |
+| T24 | The kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the bench's report | done 2026-11-04 (`hexconv`'s `norm`, `feed_forward`, the bench's `warmup` and `weight_decay`, the cost per student, `network --bench` and the grid's CPU table) |
+| T25 | The heads read the geometry: a melee entry's attack hex, the legal mask as an input, `order` for the structured kinds | next (the sandbox) |
 | T26 | The structure sweep on the cloning bench, against decision 5's first gate | after T25 (the user's machine) |
 | T27 | The long clone of the best candidate, its ladder against decision 5's second gate | after T26 (the user's machine) |
 | T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | after T27 (the user's machine) |

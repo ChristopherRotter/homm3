@@ -25,10 +25,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   teacher unless the loss holds it (0.317 against 0.276), and the lineage moved about 0.01 (T22).
   **Increment 7, a network that reads the battle's structure** (refined at T23 with the user: the
   legal mask an input, the cost cap hexconv 64 × 6's 466 µs a sample-pass on the GTX 1070),
-  measured first on the cloning bench against the fair actor. **Next:** T24 in the sandbox (the
-  kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the report).
-- **Open pull requests:** #718 (`claude/clever-ride-oq6lx4`: T22, T23).
-  Merged: #687 (T20), #696 (T21).
+  measured first on the cloning bench against the fair actor. **T24 done** (`hexconv`'s `norm`,
+  `feed_forward`, the bench's warm-up, AdamW and cost, `network --bench`): on the CPU decision 2's
+  ranges mostly exceed decision 3's cap (`E25-log.md`, T24; T26's GPU table decides, the user's
+  call there). **Next:** T25 in the sandbox (the heads read the geometry).
+- **Open pull requests:** see the newest session entry (T24). Merged: #696 (T21), #718 (T22, T23).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -41,6 +42,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-04 — E25 T24
+
+- #718 merged; the branch `claude/cool-mccarthy-cfodpk` started from `master`. The setup's
+  baseline ran only the light gates (CI had verified `master`'s code); `cargo build --release -p
+  h3-ffi` 90 s, `uv sync --group train` a few minutes (no stall). The Python suite 205 passed
+  (3 minutes), the grid's CPU table 197 s, the CPU clone smoke 35 minutes (the hex transformer
+  alone 25 of them).
 
 ### 2026-11-04 — E25 T22 and T23
 
@@ -59,13 +68,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   about 70 KB/s for over an hour; killed and restarted, it finished in 9 s from uv's cache (the
   trap in `TRAPS.md`). T21 built and its CPU check run in the sandbox (the clone 5 minutes, each
   PPO run 5 to 6, T19's tool 38 s); the VM restarted once, nothing lost.
-
-### 2026-11-03 — E25 T17 to T20
-
-- #657 merged; the branch started from `master`. T17's records and `metrics.jsonl` uploaded by
-  the user with the three `best.pt` (`e25-neutral-1`, `e25-clone-1`, `e25-sharp-1` #2); the
-  head-to-heads on the sandbox's CPU (25 to 53 s each, `cargo build --release -p h3-ffi` and
-  `uv sync --group train` first, about 1 and 7 minutes). The setup's baseline verify passed.
-  T18 with the user (AI-Q15): increment 5 closed, increment 6 refined (T19 to T23). T19 on the
-  sandbox's CPU (37 s a run; the PPO networks scored beside the teacher). #682 merged; T20's
-  record from the user's machine on the branch restarted from `master`.

@@ -350,9 +350,10 @@ def evaluate(
 
 def table(evaluation: dict[str, Any], samples: int) -> str:
     """An evaluation as a short text table (the cost: µs a sample-pass, peak CUDA MB)."""
+    w = max(14, *(len(name) for name in evaluation["students"]))
     lines = [
         f"at {samples:,} samples ({evaluation['heldout']:,} held out)",
-        f"{'student':<14} {'CE entry':>9} {'CE cast':>8} {'agree':>6} {'move':>6} {'melee':>6} "
+        f"{'student':<{w}} {'CE entry':>9} {'CE cast':>8} {'agree':>6} {'move':>6} {'melee':>6} "
         f"{'shot':>6} {'value ev':>8} {'seconds':>8}{COST_HEADER}",
     ]
 
@@ -364,7 +365,7 @@ def table(evaluation: dict[str, Any], samples: int) -> str:
         cast = sum(ce.get(h, 0.0) for h in ("spell", "target", "second"))
         by = row["agreement_by_category"]
         lines.append(
-            f"{name:<14} {ce['entry']:>9.4f} {cast:>8.4f} {row['agreement']:>6.3f} "
+            f"{name:<{w}} {ce['entry']:>9.4f} {cast:>8.4f} {row['agreement']:>6.3f} "
             f"{pct(by['move']):>6} {pct(by['melee']):>6} {pct(by['shot']):>6} "
             f"{row['value']['explained_variance']:>8.3f} {row['seconds']:>8.0f}{cost_columns(row)}"
         )

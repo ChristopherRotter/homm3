@@ -456,10 +456,11 @@ def cost_columns(row: dict[str, Any]) -> str:
 
 def table(evaluation: dict[str, Any], samples: int) -> str:
     """An evaluation as a short text table."""
+    w = max(14, *(len(name) for name in evaluation["students"]))
     lines = [
         f"at {samples:,} samples ({evaluation['heldout']:,} held out; the teacher's value: "
         f"explained variance {evaluation['teacher']['explained_variance']:.3f})",
-        f"{'student':<14} {'KL entry':>9} {'KL cast':>8} {'agree':>6} {'move':>6} {'melee':>6} "
+        f"{'student':<{w}} {'KL entry':>9} {'KL cast':>8} {'agree':>6} {'move':>6} {'melee':>6} "
         f"{'value ev':>8} {'seconds':>8}{COST_HEADER}",
     ]
     for name, row in evaluation["students"].items():
@@ -471,7 +472,7 @@ def table(evaluation: dict[str, Any], samples: int) -> str:
             return "-" if x is None else f"{x:.3f}"
 
         lines.append(
-            f"{name:<14} {k['entry']:>9.4f} {cast:>8.4f} {row['agreement']:>6.3f} "
+            f"{name:<{w}} {k['entry']:>9.4f} {cast:>8.4f} {row['agreement']:>6.3f} "
             f"{pct(by['move']):>6} {pct(by['melee']):>6} "
             f"{row['value']['explained_variance']:>8.3f} {row['seconds']:>8.0f}{cost_columns(row)}"
         )
