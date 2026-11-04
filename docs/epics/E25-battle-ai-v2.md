@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 5 closed 2026-10-28, 29, 11-02 and 11-03, increment 6 (better imitation) refined 2026-11-03 (AI-Q15) · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 6 closed 2026-10-28, 29, 11-02, 11-03 and 11-04, increment 7 (a structured network) refined 2026-11-04 (AI-Q16) · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -72,7 +72,8 @@ it reads only its side's observation, and its search too (ADR-0025 point 12a).
 - **Expert iteration:** a search in Rust over determinized worlds, trained on its own choices
   (E06 design §14's T8d). Needs AI-STUB-1's gaps, the cast heads perturbed at the root, and a rule
   for the most visited action's repetitions (greedy play repeats itself, E05 T8b).
-- **A network that reads the battle's structure, built and tuned properly** (the user at T8):
+- **A network that reads the battle's structure, built and tuned properly** (the user at T8;
+  chosen for increment 7, AI-Q16):
   T7c's verdict holds for its configurations only (`hexconv` 64 × 6 without normalisation,
   `hexformer` 64 × 4, E06's entity network; 0.3 to 1.2 M parameters, one optimiser setting, no
   warm-up). Wider ones with normalisation, warm-up and a learning rate of their own, on the bench
@@ -107,6 +108,7 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 | 3 | 2026-11-02 | T7a–T7d, T8 | the network's architecture: a distillation bench (the wide MLP leads, the structured networks as configured fit ten times worse), the wide MLP in RL at #3's ladder (AI-Q12) |
 | 4 | 2026-11-02 | T9a, T9b, T10a, T10b, T11 | the policy's sharpness: a temperature diagnostic (sharpening gains about 0.01) and the entropy bonus to 0 in training (`e25-sharp-1`: the same 0.01, no more) (AI-Q13) |
 | 5 | 2026-11-03 | T12–T18 | the fair system actor: `system` the fair one everywhere (C ABI v36), the cloning bench (C ABI v37), the neutral kinds back and PPO from the clone (`e25-clone-1` #2: 0.454 against both system actors, the neutral set +0.282) (AI-Q14, AI-Q15) |
+| 6 | 2026-11-04 | T19–T23 | better imitation: the teacher's ceiling (0.972: the gap is the network's), a 16 M clone (0.576), the imitation loss; PPO from the clone with the loss (`e25-imitate-1` #2: 0.458 and 0.462 against the system actors, the neutral set +0.287) (AI-Q15, AI-Q16) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
@@ -118,7 +120,10 @@ settings. **At increment 4's checkpoint** (the user, 2026-11-02,
 T11): **`e25-sharp-1` #2** (20 M, the entropy bonus to 0) the current best, its head-to-head
 against #3 0.523 (T12). **At increment 5's checkpoint** (the user, 2026-11-03, T18, AI-Q15):
 **`e25-clone-1` #2** (20 M of PPO from T16's clone of the fair actor) the current best, its
-head-to-head against `e25-sharp-1` #2 0.564; increment 6 is better imitation.
+head-to-head against `e25-sharp-1` #2 0.564; increment 6 is better imitation. **At increment 6's
+checkpoint** (the user, 2026-11-04, T23, AI-Q16): **`e25-imitate-1` #2** (20 M of PPO from T20's
+clone with the imitation loss) the current best, its head-to-head against `e25-clone-1` #2 0.534;
+increment 7 is a network that reads the battle's structure.
 
 **Increment 6: better imitation** (the user at T18, 2026-11-03, AI-Q15). T17's warm start
 by cloning the fair actor was the first lever past 0.41 to 0.43 against the system actor
