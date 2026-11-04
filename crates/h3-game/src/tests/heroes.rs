@@ -28,7 +28,7 @@ fn details(
     edit: impl FnOnce(&mut GameHeroSetup),
 ) -> HeroDetails {
     let mut setup = setup();
-    setup.heroes[1].hero_type = hero_type;
+    setup.heroes[1].hero_type = Some(hero_type);
     edit(&mut setup.heroes[1]);
     GameState::new(rules, &setup, seed)
         .unwrap()
@@ -194,7 +194,7 @@ fn the_store_is_in_the_hash_and_shared_by_forks() {
             });
         },
         |h| h.details.spells = Some(vec![SpellId::from_raw(0)]),
-        |h| h.hero_type = SAGE,
+        |h| h.hero_type = Some(SAGE),
         |h| h.formation = Formation::Tight,
     ];
     for (i, change) in changes.iter().enumerate() {
@@ -239,7 +239,7 @@ fn the_store_is_in_the_hash_and_shared_by_forks() {
 fn a_player_sees_its_heroes_details_and_the_others_types() {
     let rules = rules();
     let mut setup = setup();
-    setup.heroes[1].hero_type = SAGE;
+    setup.heroes[1].hero_type = Some(SAGE);
     let state = GameState::new(&rules, &setup, 3).unwrap();
     let red = observe(&state, &rules, Viewer::Player(RED));
     let blue = observe(&state, &rules, Viewer::Player(BLUE));

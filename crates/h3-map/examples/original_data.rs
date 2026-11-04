@@ -28,7 +28,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use h3_adventure::{Holds, MapSetup, ObjectKind, land_table_points};
-use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup};
+use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameSetupError, GameState, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -222,6 +222,7 @@ fn check(
         .map(|(player, colour)| PlayerSetup {
             colour,
             human: player.human,
+            start: Default::default(),
         })
         .collect();
     let setup = GameSetup {
@@ -234,6 +235,10 @@ fn check(
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
         events: Vec::new(),
+        towns: Vec::new(),
+        allowed_heroes: Vec::new(),
+        hero_masks: Vec::new(),
+        prisoners: Vec::new(),
     };
     let built = GameState::new(rules, &setup, 0).map_err(|e| format!("static layer: {e}"))?;
     // E08 T83b1: the state the game builds (ADV-SHY-001, ADV-MIN-003, ADV-OWN-002).
@@ -252,8 +257,16 @@ fn check(
     census(&map, &setup.map, rules, &mut peaks.5);
     let outcome = match import(&map, rules) {
         Ok(setup) => {
-            let game = GameState::new(rules, &setup, 0)
-                .map_err(|e| format!("imported, but invalid: {e}"))?;
+            let game = match GameState::new(rules, &setup, 0) {
+                // E09 T7a1: the draws are T7b's (TWN-STUB-3).
+                Err(GameSetupError::HeroDraw(_)) => {
+                    return Ok((
+                        map.header.version,
+                        "imported; the build refuses a hero draw (TWN-STUB-3)".to_owned(),
+                    ));
+                }
+                built => built.map_err(|e| format!("imported, but invalid: {e}"))?,
+            };
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
             // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
             let levels: Vec<u8> = game.heroes().iter().map(|h| h.level).collect();

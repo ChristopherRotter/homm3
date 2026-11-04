@@ -89,6 +89,12 @@ where  = "crates/h3-towns/src/setup.rs::town_buildings_setup"
 reason = "The start's two forbids the original adds before a town's buildings (E09 survey E09-towns.md section 5.3 step 2; design note E09-design.md section 5, 'Not now'): the Grail building forbidden in every town a Grail-victory map's condition does not name (0x5F2160, increment 2, with the victory conditions) and the Shipyard forbidden when the faction has none or neither tile two rows below the entrance, one column left or right, is a boat's spot (0x5C0C90, increment 4, with the Shipyard). Until then a custom set's built Shipyard without water is kept (the siege's keep counts it) and the Grail building may be built anywhere"
 epic   = "E09"
 
+[[stub]]
+id     = "TWN-STUB-3"
+where  = "crates/h3-game/src/town.rs::hero_types"
+reason = "The build's draws (design note E09-design.md section 14; E09 T7b): a setup whose main town generates a hero, or with a random hero (the map's class 70, `GameHeroSetup::hero_type` None), is refused with `GameSetupError::HeroDraw` until the hero pool and the build's draws exist. The map's import (v16, E09 T7a1) gives both, so 150 of the 160 shipped maps import but do not build yet"
+epic   = "E09"
+
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]

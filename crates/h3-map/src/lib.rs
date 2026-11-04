@@ -57,8 +57,13 @@ pub use parse::parse;
 /// (109) and the Mystical Gardens (55) typed; an ownable object's owner, an abandoned mine's set
 /// of resources; the map's timed events into the game's setup; an owner nobody plays, an
 /// abandoned mine without a resource of the seven refused, an ownable object entered from water
-/// unsupported.
-pub const MAP_IMPORT_VERSION: u32 = 15;
+/// unsupported. v16 (E09 T7a1): the towns (77, 98), each player's start (its factions, choice,
+/// main town and random-hero flag) and the hero pool's inputs (the allowed heroes, SoD's colour
+/// masks, the prisoners' types) into the game's setup; a random hero (70) without its type and a
+/// main town generating a hero supported; a placed hero right of a town's entrance moved onto it
+/// (TWN-SET-010), one on a town's entrance supported; a main town that is no town's entrance and
+/// a random town's alignment past the colours refused.
+pub const MAP_IMPORT_VERSION: u32 = 16;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

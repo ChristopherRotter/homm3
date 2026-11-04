@@ -807,7 +807,7 @@ fn battle_part_with(
     BattleRuleset::compile(Arc::clone(core), &[pack]).unwrap()
 }
 
-fn rules() -> GameRuleset {
+pub(crate) fn rules() -> GameRuleset {
     rules_with(vec![88, 25], 2)
 }
 
@@ -835,7 +835,7 @@ const ORRIN: HeroTypeId = HeroTypeId::from_raw(0);
 
 /// A 4 × 4 grass map with rock at (3, 3); two players (red and blue), a hero each: red's
 /// Orrin with a custom army, blue's with its starting army.
-fn setup() -> GameSetup {
+pub(crate) fn setup() -> GameSetup {
     let mut tiles = vec![
         TileSetup {
             terrain: TerrainId::from_raw(0),
@@ -851,10 +851,12 @@ fn setup() -> GameSetup {
             PlayerSetup {
                 colour: 0,
                 human: true,
+                start: Default::default(),
             },
             PlayerSetup {
                 colour: 1,
                 human: true,
+                start: Default::default(),
             },
         ],
         difficulty: 1,
@@ -868,7 +870,7 @@ fn setup() -> GameSetup {
         },
         heroes: vec![
             GameHeroSetup {
-                hero_type: ORRIN,
+                hero_type: Some(ORRIN),
                 owner: PlayerId::new(0),
                 pos: Pos::new(0, 0, 0),
                 army: HeroArmy::Custom(vec![ArmyStack {
@@ -880,7 +882,7 @@ fn setup() -> GameSetup {
                 details: HeroDetailsSetup::default(),
             },
             GameHeroSetup {
-                hero_type: ORRIN,
+                hero_type: Some(ORRIN),
                 owner: PlayerId::new(1),
                 pos: Pos::new(2, 2, 0),
                 army: HeroArmy::Starting,
@@ -893,6 +895,10 @@ fn setup() -> GameSetup {
         banned_spells: Vec::new(),
         banned_artifacts: Vec::new(),
         events: Vec::new(),
+        towns: Vec::new(),
+        allowed_heroes: Vec::new(),
+        hero_masks: Vec::new(),
+        prisoners: Vec::new(),
     }
 }
 
@@ -972,7 +978,7 @@ fn the_timed_events_are_checked() {
                 first_day: 0,
                 ..event.clone()
             }];
-            s.heroes[0].hero_type = HeroTypeId::from_raw(u16::MAX);
+            s.heroes[0].hero_type = Some(HeroTypeId::from_raw(u16::MAX));
         }),
         GameSetupError::Event(0)
     );
@@ -992,6 +998,7 @@ fn the_game_checks_its_part_before_the_adventure() {
     let player = PlayerSetup {
         colour: 0,
         human: true,
+        start: Default::default(),
     };
     assert_eq!(
         error(|s| s.players = vec![player; 256]),
@@ -1011,7 +1018,7 @@ fn the_game_checks_its_part_before_the_adventure() {
     assert_eq!(
         error(|s| {
             s.banned_skills = vec![SkillId::from_raw(0), unknown];
-            s.heroes[1].hero_type = HeroTypeId::from_raw(5);
+            s.heroes[1].hero_type = Some(HeroTypeId::from_raw(5));
         }),
         GameSetupError::BannedSkill(unknown)
     );
@@ -1048,18 +1055,18 @@ fn the_game_checks_its_part_before_the_adventure() {
         GameSetupError::Adventure(SetupError::HeroTile { .. })
     ));
     assert_eq!(
-        error(|s| s.heroes[1].hero_type = HeroTypeId::from_raw(5)),
+        error(|s| s.heroes[1].hero_type = Some(HeroTypeId::from_raw(5))),
         GameSetupError::UnknownHeroType(HeroId::new(1))
     );
     assert_eq!(
         error(|s| {
-            s.heroes[0].hero_type = HeroTypeId::from_raw(5);
+            s.heroes[0].hero_type = Some(HeroTypeId::from_raw(5));
             s.heroes[0].army = HeroArmy::Starting;
         }),
         GameSetupError::UnknownHeroType(HeroId::new(0))
     );
     assert_eq!(
-        error(|s| s.heroes[1].hero_type = HeroTypeId::from_raw(1)),
+        error(|s| s.heroes[1].hero_type = Some(HeroTypeId::from_raw(1))),
         GameSetupError::StartingArmy(HeroId::new(1))
     );
 }
@@ -1069,7 +1076,8 @@ fn the_adventure_checks_the_rest() {
     assert_eq!(
         error(|s| s.players.push(PlayerSetup {
             colour: 3,
-            human: true
+            human: true,
+            start: Default::default(),
         })),
         GameSetupError::Colour(2)
     );
@@ -1078,6 +1086,7 @@ fn the_adventure_checks_the_rest() {
         .map(|colour| PlayerSetup {
             colour,
             human: true,
+            start: Default::default(),
         })
         .collect();
     assert_eq!(three.validate(&rules()), Ok(()));
@@ -1095,7 +1104,7 @@ fn the_adventure_checks_the_rest() {
     // A starting army is checked whole by the game: three stacks do not fit two slots, whatever
     // the draw; a custom army goes to the adventure's checks.
     assert_eq!(
-        error(|s| s.heroes[1].hero_type = HeroTypeId::from_raw(2)),
+        error(|s| s.heroes[1].hero_type = Some(HeroTypeId::from_raw(2))),
         GameSetupError::StartingArmy(HeroId::new(1))
     );
     assert_eq!(

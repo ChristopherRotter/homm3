@@ -19,8 +19,8 @@ use super::sample;
 use super::strategy::{raw_map, version};
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Bits, Body, CustomHero, EventBody, HeroBody, MainTown, Message, MonsterBody,
-    MonsterTreasure, Object, Player, Pos, RawMap, Rewards, Stack, Template, Text, Tile, Version,
+    Artifacts, Bits, Body, CustomHero, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure,
+    Object, Player, Pos, RawMap, Rewards, Stack, Template, Text, Tile, Version,
 };
 use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 
@@ -140,13 +140,10 @@ fn imports_the_static_layer_players_and_a_placed_hero() {
     let core = SOD.core();
     let part = SOD.adventure();
     let setup = import(&map(), &SOD).unwrap();
-    assert_eq!(
-        setup.players,
-        [PlayerSetup {
-            colour: 0,
-            human: true
-        }]
-    );
+    let kinds = |players: &[PlayerSetup]| -> Vec<(u8, bool)> {
+        players.iter().map(|p| (p.colour, p.human)).collect()
+    };
+    assert_eq!(kinds(&setup.players), [(0, true)]);
     let s = &setup.map;
     assert_eq!((s.width, s.height, s.levels, s.tiles.len()), (3, 3, 1, 9));
     let dirt = core.terrain_by_key("base:dirt");
@@ -173,7 +170,7 @@ fn imports_the_static_layer_players_and_a_placed_hero() {
     let [hero] = setup.heroes.as_slice() else {
         panic!("one hero expected");
     };
-    assert_eq!(Some(hero.hero_type), core.hero_type_by_key("base:orrin"));
+    assert_eq!(hero.hero_type, core.hero_type_by_key("base:orrin"));
     assert_eq!(hero.owner, PlayerId::new(0));
     assert_eq!(hero.pos, TilePos::new(1, 0, 0));
     let creature = |key| core.creature_by_key(key).unwrap();
@@ -230,19 +227,6 @@ fn what_the_increment_cannot_represent_is_unsupported() {
         ImportError::Unsupported(what) => what,
         other => panic!("expected an unsupported case, got {other:?}"),
     };
-    assert_eq!(
-        unsupported(|m| {
-            m.players[0].details.as_mut().unwrap().main_town = Some(MainTown {
-                generate_hero: true,
-                ..MainTown::default()
-            });
-        }),
-        Unsupported::HeroAtMainTown(0)
-    );
-    assert_eq!(
-        unsupported(|m| m.templates[1].class = 70),
-        Unsupported::RandomHero(1)
-    );
     assert_eq!(
         unsupported(|m| m.templates[1].class = 214),
         Unsupported::HeroPlaceholder(1)
@@ -936,8 +920,8 @@ fn content_beyond_the_rules_is_missing() {
 fn the_errors_and_reasons_read_well() {
     let cases = [
         (
-            ImportError::Unsupported(Unsupported::RandomHero(4)),
-            "not supported yet: a random hero",
+            ImportError::Unsupported(Unsupported::HeroPlaceholder(4)),
+            "not supported yet: a campaign hero placeholder",
         ),
         (
             ImportError::MapSize(300, 2),
@@ -983,16 +967,19 @@ fn the_errors_and_reasons_read_well() {
             ImportError::Events(70_000),
             "70000 timed events are too many",
         ),
+        (
+            ImportError::MainTown(2),
+            "colour 2's main town is no town's entrance",
+        ),
+        (
+            ImportError::Alignment(3),
+            "random town 3 has an alignment past the colours",
+        ),
     ];
     for (error, text) in cases {
         assert_eq!(error.to_string(), text);
     }
     let reasons = [
-        (
-            Unsupported::HeroAtMainTown(0),
-            "a hero generated at a main town",
-        ),
-        (Unsupported::RandomHero(0), "a random hero"),
         (
             Unsupported::HeroPlaceholder(0),
             "a campaign hero placeholder",
@@ -1390,8 +1377,8 @@ fn a_maps_player_kinds_and_object_classes_carry_over() {
         details: m.players[0].details.clone(),
     };
     let setup = import(&m, &SOD).unwrap();
-    let player = |colour, human| PlayerSetup { colour, human };
-    assert_eq!(setup.players, [player(0, true), player(1, false)]);
+    let kinds: Vec<(u8, bool)> = setup.players.iter().map(|p| (p.colour, p.human)).collect();
+    assert_eq!(kinds, [(0, true), (1, false)]);
     // Each class's scenery (`codes::scenery`, 0x40FCA0's and 0x41ADB0's tables).
     let kinds = [
         (114, Scenery::Tree),
