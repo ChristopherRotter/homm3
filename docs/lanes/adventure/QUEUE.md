@@ -8,11 +8,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 **E08 T95b — the purchase and the hire dialog** (design §17's round 7; design §8, §13, §14)
 
-- **Scope:** the purchase, the hire dialog (`Decision::Hire`, `Answer::Hire`, `hire_range`, the view), the env; ADV-STUB-15 closed. Versions: game state hash v24, adventure replay format v10, the env's action encoding v7 (`cross-lane`).
+- **Scope:** the purchase, the hire dialog (`Decision::Hire`, `Answer::Hire`, `hire_range`, the view), the env; ADV-STUB-15 closed. Versions: game state hash v25 (E09 T7b2a took v24), adventure replay format v10, the env's action encoding v7 (`cross-lane`).
 - **Depends on:** T95a2 (`adventure/e08-t95a2`). **Status:** ready once T95a2 merges; its cut confirmed at its start.
 
 ## Inbox
 
+- 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **for the 2026-11-03 note's task**):
+  another seed of `h3-map`'s `tests::view::a_viewer_learns_nothing_it_cannot_see` failing on
+  `master` ae59f3b at `view.rs:1207` (the viewer's events at day 2's start differ by a
+  `ResourceGained` of player 1): `cc e44ebd639ea55b7cce88a74f668c8a98053fa52b72eeaee3c64f471260697aba`
+  (an RoE plan, side 15, two levels; not committed).
 - 2026-11-04 (the town lane, E09 T7a2, `town/e09-t7a2`; **a failing property case on `master`'s
   import, for a task of yours**): the scoped verify's coverage run found a case of `h3-map`'s
   `tests::view::a_viewer_learns_nothing_it_cannot_see` whose laid-out map the import refuses:

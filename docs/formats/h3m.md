@@ -412,7 +412,7 @@ pool's inputs (survey §4.2): the allowed heroes (an RoE-format map's 128 bits a
 heroes, never 144 to 155; from AB on the 156 bits as given; a type the ruleset lacks left out),
 SoD's disposed heroes' colour masks, the prisoners' types. `Unsupported::HeroAtMainTown` and
 `RandomHero` are gone; the game's build draws a random hero's type (E09 T7b1) and, until E09
-T7b2, refuses a main town that generates a hero (`GameSetupError::HeroDraw`, `TWN-STUB-3`).
+T7b2b, refuses a main town that generates a hero (`GameSetupError::HeroDraw`, `TWN-STUB-3`).
 
 E09 T7a1's census (import v17, the 160 shipped maps; `original_data`): 156 maps import (v15: 8;
 128 refused for a main town's hero, 21 for a random hero, 3 for a hero in a town), 4 are refused
@@ -446,7 +446,15 @@ with a tight formation); 965 objects are owned at the start (60 mines, 1 Shipyar
 main town is its player's own) refuse none of the 156 maps that import; the outcomes are T7b1's
 (31 build whole, 125 refused by `TWN-STUB-3`, 4 not supported for an ownable object entered from
 water). The static layer's game in the census gives one town record per town (a random town of no
-alignment).
+alignment; since E09 T7b2a the first faction with a town record, fixed, as an owned random town
+needs its owner's choice).
+
+E09 T7b2a's census (the build resolves and sets up the towns): the outcomes unchanged (31 build
+whole, 125 refused by `TWN-STUB-3`), no map refused by a new check. The 31 build 294 towns: 139
+random towns take their owner's faction, 52 a drawn one, none an alignment's; 79 neutral towns
+draw a garrison (16 of them empty); every owned town reveals the radius 5 at the start. Over the
+156: 47 random towns aligned to a colour, 813 not (553 owned at the start); 9 custom sets with a
+building that reveals every tile built (an upper bound), 4 with one that reveals a radius.
 
 ## The subset we write (E04a T2)
 

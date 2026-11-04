@@ -419,7 +419,7 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
 | adventure ruleset part v16 | the three kinds, `[params.dwellings]`, `[[random_dwelling]]` (§1, §2) | T93a |
 | map import v16 | classes 17, 20, 78, 216–218, the owners, the refusals (§4) | T93b |
 | adventure state hash v20 | the owners, a dwelling's week, the camps, the resolved random dwellings (§5, §6) | T94 |
-| game state hash v23 | the hire dialog (§13) | T95b |
+| game state hash v25 (E09 T7b1 took v23, T7b2a v24) | the hire dialog (§13) | T95b |
 | adventure replay format v10 (E09's T5a2 took v9) | `Answer::Hire` | T95b |
 | env action encoding v7 (the AI lane's) | the four hire entries | T95b (`cross-lane`) |
 

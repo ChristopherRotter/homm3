@@ -701,3 +701,11 @@ committed in `crates/h3-map/proptest-regressions/tests/play.txt`):
   merges `master` in and rehashes the replays again (skill `homm3-rerecord-replays`).
   `end_battle` now frees the hero types of the heroes it removes from the map.
   (Done by E08 T94b, #716: `master` merged in, the replays rehashed again.)
+
+- 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **for T95b, the versions**): T7b2a
+  takes game state hash v24 (the store of towns, `GameState::towns`, hashed after the pool; your
+  HANDOFF's versions line updated), so T95b's is v25. The build now draws each random town's
+  faction and each town's garrison and buildings from the setup stream before the starting armies
+  (design note E09 §14), so the seed-0 draws after them move on maps with towns (the census's
+  guarded dwellings 691, 695 before).
+  (Done by E08 T95a2, #724: T95b's queue entry, the HANDOFF and design §15 say v25.)

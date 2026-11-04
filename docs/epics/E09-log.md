@@ -1022,3 +1022,58 @@ review and the docs by the agent.
   `ai::tests::the_census_counts_a_known_map`) built its game with no town records, refused by
   `TownCount`; the census now gives each town a neutral record as `h3-map`'s does, and the
   workspace's tests pass (a trap in `TRAPS.md`).
+
+### T7b2a — the towns resolved and stored, game state hash v24 (2026-11-04)
+
+One session, the user present; branch `town/e09-t7b2a` (`cross-lane`: `h3-game`'s `lib.rs`,
+`setup.rs`, `state.rs` and tests, `h3-map`'s census example, `h3-cli`'s `src/ai/census.rs` (the
+ai lane's), two adventure bench workloads, the 39 adventure replays, the adventure lane's HANDOFF
+versions line). Starting point: `master` at ae59f3b (#719 merged; CI green there; the sandbox's
+baseline the light gates; the original data staged: `Heroes3.exe`, `H3bitmap.lod`,
+`H3ab_bmp.lod`, `maps.tar`, `extracted.tar`); `master` merged in before the pull request (#720,
+#721, #722: no version, replay or workload moved). **At its start** (the user): T7b2 cut in two at
+the store (design note §14): T7b2a now, T7b2b (the main towns' heroes) next. The code, the census,
+the bench and the replays by one sub-agent; the review and the docs by the agent.
+
+- **`h3-game`:** `town::build` (`draw_towns`: step 2's random towns after the random heroes,
+  TWN-SET-002; `build_towns`: step 4, `h3_towns::town_setup` by `TownId`, owned or neutral,
+  TWN-SET-003, -004, before the starting armies; `start_radius`: TWN-CAP-001's start).
+  `check_starts` returns the towns' owners; `draw_heroes` takes them and returns the players'
+  resolved factions; `needs_faction` also reads a random town the player owns. `GameState`'s store
+  of towns (`Towns`; `GameState::towns`), hashed after the pool; `AdventureSetup::garrisons` the
+  built garrisons, `start_game`'s radii each town's reveal. No new error variant: `TownFaction`
+  widened (a random town when no faction has a town record), `Choice` widened (a random town the
+  player owns).
+- **Agent's calls:** step 4 cannot fail after the checks (a town it could not build is left out
+  and the adventure would refuse the garrisons' count; no `?` on an error never reached, which the
+  coverage gate counted as a region); `Towns::new(..).unwrap_or_default()` (at most `MAX_TOWNS`
+  built); an owner that is no player draws as a neutral town (the adventure refuses it later,
+  `ObjectOwner`); `Reveal::All` the radius 255 (the town's level on any map up to 181 a side, not
+  the other level: `TWN-STUB-5` narrowed, not lifted); the censuses' static-layer games give each
+  town the first faction with a town record, fixed (else `Choice` refuses the owned ones); the test
+  part gained a Lookout Tower (radius 20) and a Grail that reveals every tile.
+- **Versions:** game state hash v24. The 39 replays re-recorded from their own commands: only the
+  checkpoint and final hashes and `game_state_hash_version` moved; the bot reports unchanged (the
+  part did not move).
+- **The census** (`original_data`, 160 maps): 156 import, 4 refused (`OwnedOnWater`); 31 build,
+  125 refused for a main town's hero (`TWN-STUB-3`), as before; none refused by a new check. The
+  31 build 294 towns: 139 random towns by their owner, 52 drawn, none aligned; 79 neutral towns
+  with a drawn garrison (16 drawn empty); no start radius other than 5. The 156 imported: 47
+  random towns aligned, 813 not (553 owned at the start); 9 custom sets with a Grail revealing
+  every tile (an upper bound: a random town's Grail slot counts), 4 with a Lookout Tower. The
+  dwellings' seed-0 counts moved (691 dwellings with guards, 695 before): step 4's draws come
+  before them in the setup stream.
+- **Bench** (`master` built in a worktree, per function): every fork +0.24 % to +0.36 % (only
+  `AdventureEnv::fork` +6 Ir and the state's drop +3 Ir a fork: the field's clone and drop); boxes
+  and stones re-baselined (+2.07 % against their stored counts, `master` already +1.71 %), the
+  other forks +1.37 % to +1.91 % against theirs (fork-rewards-36 the next to reach the gate); the
+  rest −0.19 % to +0.68 %.
+- **Docs:** the design note's §14 (the cut, "As built"), §19; `stubs.toml` `TWN-STUB-5` narrowed;
+  `town.toml` TWN-SET-002, -003, -004, TWN-CAP-001; the queue's T7b2b and T8a2 entries; the
+  inboxes of the battle and adventure lanes (two failing property cases on `master`'s code).
+- **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
+  `cross-lane`); `check-lane --cross-lane` passes; `cargo test --workspace --exclude xtask
+  --all-targets` passes but two random property cases independent of this task: `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` (fails the same way on `master`) and
+  `h3-battle`'s `a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden` (a crate that
+  depends on nothing this task changed); both seeds in the lanes' inboxes.
