@@ -675,6 +675,7 @@ fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                 month_weeks: NonZeroU8::new(4).unwrap(),
             },
             months: None,
+            dwellings: None,
         }),
         // Difficulty 0 starts with 3 000 gold for a human, 1 with 2 000 (E08 T13a).
         starting_resources: [3000, 2000]

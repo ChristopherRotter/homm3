@@ -3,7 +3,7 @@
 use std::error::Error;
 
 use h3_adventure::{
-    Chest, Find, FindContent, Gift, Gives, KEY_COLOURS, ObjectKind, Pickup, Pyramid, Turn,
+    Chest, Find, FindContent, Gift, Gives, KEY_COLOURS, ObjectKind, Pickup, Pyramid, TileMask, Turn,
 };
 use h3_content::{ResourceId, SkillId};
 
@@ -1014,7 +1014,7 @@ fn the_base_pack_holds_the_starting_resources() {
 
 #[test]
 fn the_synthetic_packs_compile() {
-    let (_, part) = compile(
+    let (core, part) = compile(
         &[
             (h3_pack::SYNTHETIC_EXT_CORE, SYNTHETIC_EXT_ADVENTURE),
             (h3_pack::SYNTHETIC_CORE, SYNTHETIC_ADVENTURE),
@@ -1026,6 +1026,172 @@ fn the_synthetic_packs_compile() {
     assert_eq!(roads, ["synthetic:trail", "synthetic-ext:causeway"]);
     assert_eq!(part.river_by_key("synthetic-ext:creek").unwrap().raw(), 1);
     assert_eq!(part.params().land_points(9), 1700);
+    // E08 T93a: the dwellings, their guards derived (a drake, level 5, guards three times its
+    // growth), the Lair's free anchor cell its shift, and the Refugee Camp.
+    let kind = |k: &str| {
+        &part
+            .object_type(part.object_type_by_key(k).unwrap())
+            .unwrap()
+            .kind
+    };
+    let creature = |k: &str| core.creature_by_key(k).unwrap();
+    assert_eq!(
+        kind("synthetic:spear_hut"),
+        &ObjectKind::Dwelling {
+            creatures: vec![creature("synthetic:spearman")],
+            blocked: TileMask::from_bits(0b11),
+            visitable: TileMask::from_bits(0b1),
+            guards: vec![],
+            shift: 0,
+        }
+    );
+    assert_eq!(
+        kind("synthetic:lair"),
+        &ObjectKind::Dwelling {
+            creatures: vec![creature("synthetic:wisp"), creature("synthetic:drake")],
+            blocked: TileMask::from_bits(0b110 | 1 << 9),
+            visitable: TileMask::from_bits(0b10),
+            guards: vec![(creature("synthetic:drake"), 6)],
+            shift: 1,
+        }
+    );
+    assert_eq!(
+        kind("synthetic:camp"),
+        &ObjectKind::RefugeeCamp { levels: [1, 7] }
+    );
+    assert_eq!(
+        part.params().dwellings(),
+        Some(DwellingParams {
+            guard_level: 4,
+            guard_factor: cost(3),
+            free_level: 1,
+        })
+    );
+}
+
+// E08 T93a: increment 10's kind tables, `[params.dwellings]` and `[[random_dwelling]]`, their
+// references resolved in the pack's namespace.
+#[test]
+fn parses_the_dwellings() {
+    let kind = |table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+        );
+        parse(&text).unwrap().object_types.remove(0).kind
+    };
+    let k = key_of;
+    assert_eq!(
+        kind(
+            "dwelling = { creatures = [\"imp\", \"other:gog\"], blocked = [[0, 0], [1, 2]], visitable = [[0, 0]] }"
+        ),
+        ObjectKindDef::Dwelling {
+            creatures: vec![k("p:imp"), k("other:gog")],
+            blocked: vec![(0, 0), (1, 2)],
+            visitable: vec![(0, 0)],
+        }
+    );
+    assert_eq!(kind("random_dwelling = {}"), ObjectKindDef::RandomDwelling);
+    assert_eq!(
+        kind("refugee_camp = { levels = [1, 7] }"),
+        ObjectKindDef::RefugeeCamp { levels: [1, 7] }
+    );
+    let params = |table: &str| {
+        let text = format!(
+            "[params]\nnative_cost = 100\nland_points = [1]\nscouting_radius = 1\n\
+             max_map_size = 1\nmax_levels = 1\nmax_players = 1\narmy_slots = 1\n\
+             max_stack_count = 4095\nstarting_stack_chances = []\n\
+             fly_cost = [1, 1, 1, 1]\nwater_walk_cost = [1, 1, 1, 1]\n\
+             sea_points = [1, 1, 1, 1]\nsea_ground = [1, 1]\nflag_radius = 1\n\
+             [params.calendar]\nweek_days = 1\nmonth_weeks = 1\n{table}"
+        );
+        parse(&text).map(|pack| pack.params.unwrap().dwellings)
+    };
+    assert_eq!(params(""), Ok(None));
+    assert_eq!(
+        params("[params.dwellings]\nguard_level = 5\nguard_factor = 3\nfree_level = 1"),
+        Ok(Some(DwellingParams {
+            guard_level: 5,
+            guard_factor: cost(3),
+            free_level: 1,
+        }))
+    );
+    assert!(matches!(
+        params("[params.dwellings]\nguard_level = 5\nguard_factor = 0\nfree_level = 1"),
+        Err(AdventurePackError::Syntax(_))
+    ));
+    let table = |dwellings: &str| {
+        parse(&format!(
+            "[[random_dwelling]]\nfaction = \"castle\"\ndwellings = [{dwellings}]"
+        ))
+    };
+    let seven = "\"d1\", \"d2\", \"d3\", \"d4\", \"d5\", \"d6\", \"other:d7\"";
+    assert_eq!(
+        table(seven).unwrap().random_dwellings,
+        [RandomDwellingDef {
+            faction: k("p:castle"),
+            dwellings: ["p:d1", "p:d2", "p:d3", "p:d4", "p:d5", "p:d6", "other:d7"].map(k),
+        }]
+    );
+    assert!(matches!(
+        table("\"d1\""),
+        Err(AdventurePackError::Syntax(_))
+    ));
+    assert!(matches!(
+        table("\"d1\", \"d2\", \"d3\", \"d4\", \"d5\", \"d6\", \"Bad\""),
+        Err(AdventurePackError::Key(_))
+    ));
+    assert!(matches!(
+        parse(
+            "[[random_dwelling]]\nfaction = \"Bad\"\ndwellings = [\"a\", \"b\", \"c\", \"d\", \"e\", \"f\", \"g\"]"
+        ),
+        Err(AdventurePackError::Key(_))
+    ));
+    assert!(matches!(
+        kind_error("dwelling = { creatures = [\"Bad\"], blocked = [], visitable = [[0, 0]] }"),
+        AdventurePackError::Key(_)
+    ));
+}
+
+/// The error of parsing one object type with this kind table.
+fn kind_error(table: &str) -> AdventurePackError {
+    let text = format!(
+        "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+    );
+    parse(&text).unwrap_err()
+}
+
+// E08 T93a (increment 10's design note §2, "Costs"): every creature a dwelling of the packs offers
+// costs gold and at most one other resource, as the original's dialog handles.
+#[test]
+fn the_dwellings_creatures_cost_gold_and_one_other_resource_at_most() {
+    let synthetic = [
+        (h3_pack::SYNTHETIC_EXT_CORE, SYNTHETIC_EXT_ADVENTURE),
+        (h3_pack::SYNTHETIC_CORE, SYNTHETIC_ADVENTURE),
+    ];
+    let cases = [
+        (&ORIGINAL_PACKS[..], PROFILE, "base:gold"),
+        (&synthetic[..], "synthetic:faithful", "synthetic:coin"),
+    ];
+    let mut dwellings = 0;
+    for (packs, profile, gold) in cases {
+        let (core, part) = compile(packs, profile).unwrap();
+        for ty in part.object_types() {
+            let ObjectKind::Dwelling { creatures, .. } = &ty.kind else {
+                continue;
+            };
+            dwellings += 1;
+            for &creature in creatures {
+                let info = core.creature(creature).unwrap();
+                let others = info
+                    .cost
+                    .iter()
+                    .filter(|(r, _)| core.resources()[usize::from(r.raw())].key.as_str() != gold)
+                    .count();
+                assert!(others <= 1, "{}: {}", ty.key.as_str(), info.name);
+            }
+        }
+    }
+    assert!(dwellings >= 2);
 }
 
 #[test]
@@ -1395,6 +1561,7 @@ fn parses_every_field() {
                 spawn_factor: NonZeroU8::new(2).unwrap(),
                 spawn_aggression: [1, 10],
             }),
+            dwellings: None,
         })
     );
     assert_eq!(

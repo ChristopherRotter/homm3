@@ -22,6 +22,21 @@ flag_radius = 2
 week_days = 5
 month_weeks = 3
 
+# E08 T93a: the dwellings' parameters need the monsters' (invented values).
+[params.monsters]
+aggression = [[1, 10]]
+count_words = [5, 10]
+price_resource = "coin"
+growth_bp = 1000
+growth_unit = 16
+growth_cap = 4000
+
+# E08 T93a: a level-4 creature or more guards its dwelling, three times its growth.
+[params.dwellings]
+guard_level = 4
+guard_factor = 3
+free_level = 1
+
 [[difficulty]]
 human = { coin = 500, shard = 5 }
 computer = { coin = 100 }
@@ -46,3 +61,29 @@ cost = 70
 [[river]]
 id = "brook"
 name = "Brook"
+
+# E08 T93a: increment 10's kinds (invented footprints).
+[[object_type]]
+id = "spear_hut"
+name = "Spear Hut"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["spearman"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+[[object_type]]
+id = "lair"
+name = "Lair"
+visit = "enter"
+from_above = false
+
+[object_type.dwelling]
+creatures = ["wisp", "drake"]
+blocked = [[1, 0], [2, 0], [1, 1]]
+visitable = [[1, 0]]
+
+[[object_type]]
+id = "camp"
+name = "Camp"
+visit = "enter"
+from_above = false
+refugee_camp = { levels = [1, 7] }

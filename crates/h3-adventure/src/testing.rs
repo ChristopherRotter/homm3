@@ -284,6 +284,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
                 month_weeks: NonZeroU8::new(4).unwrap(),
             },
             months: None,
+            dwellings: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -564,6 +565,7 @@ pub(crate) fn movement_rules_with(
                 month_weeks: NonZeroU8::new(4).unwrap(),
             },
             months: None,
+            dwellings: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
