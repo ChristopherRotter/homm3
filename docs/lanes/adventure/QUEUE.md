@@ -13,6 +13,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-04 (the town lane, E09 T7a1, branch `town/e09-t7a1`; **for T93b, map import's
+  version**): T7a1 bumps map import to **v16** (the towns, the players' starts, a random hero
+  without a type, the moved heroes, the pool's inputs; `h3m.md`'s "Import"). Whichever of its pull
+  request and T93b's merges second takes the next version and re-records the replays' headers
+  again (39 files, only `import_version`). Also: `GameSetup` and `PlayerSetup` gained fields
+  (literals need them), `GameHeroSetup::hero_type` is an `Option`, `Unsupported::HeroAtMainTown`
+  and `RandomHero` are gone, and the hero-in-a-town test leaves a town's entrance out.
+
 - 2026-11-03 (the adventure lane, E08 T89a, PR #688; **a failing property case on `master`'s code,
   for a task of its own**): CI's full verify on #688 (run 41694189742) found a case of `h3-map`'s
   `tests::view::a_viewer_learns_nothing_it_cannot_see` that fails at `view.rs:1405`: the viewer's

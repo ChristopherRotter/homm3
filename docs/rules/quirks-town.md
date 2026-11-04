@@ -1,6 +1,6 @@
 # Quirks ledger: town lane
 
-Known differences between the original game's behaviour and a clean design, in the town lane's rules (a town's record and setup, the derivations over it, the town on the map; E09). Classes, the decision guide and profiles are in `docs/04-rules-and-sources.md` §4; the entry template is in `docs/rules/quirks-ledger.md` (the battle lane's ledger). Ids are `TWN-QUIRK-<n>` (`docs/08-work-process.md`, "Lanes"); 1 to 4 are reserved for the quirk candidates T-1 to T-4 (E09 design note §19), which E09 T7a enters.
+Known differences between the original game's behaviour and a clean design, in the town lane's rules (a town's record and setup, the derivations over it, the town on the map; E09). Classes, the decision guide and profiles are in `docs/04-rules-and-sources.md` §4; the entry template is in `docs/rules/quirks-ledger.md` (the battle lane's ledger). Ids are `TWN-QUIRK-<n>` (`docs/08-work-process.md`, "Lanes"); 1 to 4 are the quirk candidates T-1 to T-4 (E09 design note §19): E09 T7a1 entered 1 and 4, 2 and 3 come with T7a2's checks and T7b's pool.
 
 A candidate becomes an entry here only once it is confirmed for SoD (by an experiment, by original data, or by a code reading that a second look confirms). Until then it waits in its survey and the engine implements the clean behaviour. `exploit-fix` entries and those not reproduced need no confirmation.
 
