@@ -137,7 +137,8 @@ pub struct GameSetup {
     /// At most 65 536 (an event's [`TimedEventSetup::message`] is a `u16`).
     pub events: Vec<TimedEventSetup>,
     /// The towns as the map gives them, by `TownId` (the map's classes 77 and 98 in object order;
-    /// E09 T7a1, design note `E09-design.md` §5 and §13). Not built yet (E09 T7b2).
+    /// E09 T7a1, design note `E09-design.md` §5 and §13); built with the game since E09 T7b2a
+    /// (their factions, garrisons and buildings) and T7b2b (the main towns' heroes).
     pub towns: Vec<TownSetup>,
     /// The hero types the map allows in the pool (E09 T7a1; the pool: E09 T7b1, TWN-SET-005).
     pub allowed_heroes: Vec<HeroTypeId>,

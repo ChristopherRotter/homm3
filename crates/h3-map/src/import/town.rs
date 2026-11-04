@@ -2,7 +2,7 @@
 //! hero pool's inputs (E09 T7a1; design note `docs/epics/E09-design.md` §7, survey
 //! `docs/rules/surveys/E09-towns.md` §1 to §5). Since E09 T8a1 a town's static layer is typed
 //! (design note §8, [`object`]): the type `town`, its owner and its garrison's formation; the game
-//! builds none of the rest yet (E09 T7b2).
+//! builds the rest (E09 T7b2a: the towns; T7b2b: the main towns' heroes).
 
 use h3_adventure::{Holds, ObjectSetup, Pos};
 use h3_content::{Formation, HeroTypeId};
