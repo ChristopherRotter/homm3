@@ -6176,7 +6176,8 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
     the turn's `mouse::Field` (`Field::at`: a living stack on either hex, by its facing) and shows
     kind 1 at level 1, kind 2 at 2; `drawn` gives `Drawn::Hero` or `Drawn::Stack` (the heroes'
     first), a kind kept through a level's change. The layout's `[army_info]` (`all`, `spells`: each
-    the places by side and the items, ids 2200 to 2218; kind 2's ids as kind 1's, *provisional*).
+    the places by side and the items, ids 2200 to 2218; kind 2's ids as kind 1's: 2200 and 2215
+    to 2218, read in the original's memory, the window's +0x34 and +0x58 to +0x64, the rest null).
   - The fill: `StackInfo::of` takes the stats dialog's `Stats` (the binary's `stats::of`, so the
     two agree: Att and Def pairs, the range, Health its `now`, morale, luck, the count, the
     spells' original ids) with the creature (TwCrPort's frame + 2), the player (the owner's side's
@@ -6196,13 +6197,15 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
   - The stills: `spellbook::Army::window` takes a `Drawn` (render.rs: `stats::army_info` in the
     original's profile); `Hover` finds stacks each side facing its own way. Review item 42: a
     still's status line is worded at `Hover::line_level` (the level of the last new hex, F5 after
-    it rewrites nothing) through `mouse::pointer(.., (point, bugs, level))`, with the opening's
+    it rewrites nothing; recorded: `army-info-spells-f5`) through `mouse::pointer(.., (point,
+    bugs, level))`, with the opening's
     attacks' previews (`scenario::opening_previews`, as `Turned::of`'s) in its `Legal`.
   - Assets checked (the gate, `h3-view sprite`): `CCrPop.pcx` 78 × 288, `SpellInf.pcx` 78 × 126,
     `TwCrPort.def` 151 frames (148 the Ballista), `imrls.def` and `ilcks.def` 7 (`ilcks`' 0 to 3
     one picture), `spellint.def` 79 (frame 0 a plain tile).
-  - Stills (not recorded, no `differing`; ours looked at): `army-info-stack`, `-stack-enemy` (the
-    line 297, 14-21), `-spells` (kind 2), `-stack-f5` (as `-enemy`), `-ballista` (Dmg 2-3).
+  - Stills, recorded (every frame exact, 0 differing): `army-info-stack`, `-stack-enemy` (the
+    line 297, 14-21), `-spells` (kind 2), `-stack-f5` (as `-enemy`), `-ballista` (Dmg 2-3),
+    `-spells-f5` (level 2, F5 to 0: the window left out of the redraw, the line still 297's).
   - Checks: unit tests (`army_info/tests.rs`: places, ids, the fill's texts and frames, "%d"
     and "%d-%d", the Ballista by profile, the spells, either hex, facing, the dead, a still's line
     level; `track/tests.rs`: moves, the same hex, a two-hex stack, a level's change, a hide, an
