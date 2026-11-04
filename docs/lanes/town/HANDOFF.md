@@ -25,6 +25,15 @@ In `TRAPS.md`.
 
 ## Recent sessions
 
+### 2026-11-04 — T7a1: the setup's new fields and the import (in progress)
+
+Baseline 03b6601 (#707 merged; CI green there; the sandbox's baseline lost to a VM restart; the
+original data staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`,
+`extracted.tar`). At the start (the user): T7a cut in two (T7a1 the setup's fields and the
+import, map import v16, the census; T7a2 `validate`'s checks); until T7b the build refuses a
+setup that needs a draw (`TWN-STUB-3`). In progress on branch `town/e09-t7a1`: the code by one
+sub-agent, then the census and the docs.
+
 ### 2026-11-04 — T6c: the town's setup at the build
 
 Baseline ec2ceb7 (#700 to #703 merged; the sandbox's full engine run as the baseline; the
@@ -42,11 +51,3 @@ sub-agent in its own worktree, merged into one branch. The common reading of a t
 the siege's facts with the named bonuses (and the compiler's bound of 8), the reveal, the Tavern,
 the Capitol's limit with the store's first write; `town.toml` created. Pull request: #701; the
 scoped verify passes but master's `check-exe-map`.
-
-### 2026-11-03 — T6a: the town's record and the store
-
-Baseline 9b07bea (#694 merged; CI on `master` green there; the sandbox's baseline the light
-gates; the original data not staged, not read). At the start (the user): T6 cut in three (T6a
-the record and the store, T6b the derivations, T6c the setup). `Town` with the standing set
-derived, `TownStatic` and `TownEvent`, `Towns` (`Option<Arc<…>>`) and town state hash v1's first
-encoding; `set_built` and `capitol` moved to T6b. Pull request: the one of branch `town/e09-t6a`.
