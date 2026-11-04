@@ -2602,7 +2602,7 @@ id       = "ADV-OWN-003"
 title    = "What a viewer sees of owned, guarded and weekly objects"
 context  = "adventure"
 status   = "implemented"
-summary  = "Every viewer that sees an ownable object (ADV-FOG-004) sees its owner, as the original draws its flag in the owner's colour. A mine's production, its resource and its amount a day, shows only to a viewer of its owner's team (the player alone until E10's teams), so an abandoned mine's drawn resource is hidden from every other viewer, and a neutral abandoned mine's from all. A mine's guards show to every viewer as the original's hint shows them: the word of their total count, every stack counted, an upgraded one too (ADV-FOG-006's words), and their creature only when all stacks are of one (else the original's generic text); never their stacks or counts, which the owner's team sees (the user at T83b2b's start, 2026-10-31; ADR-0016 point 6 corrected by `shared/e08-t83b2b`). A guarded pile's guards stay hidden (ADV-PIK-004). A Shipyard's boat tile (ADV-SHY-001) shows only to a viewer of its owner's team, which has explored every offset (the flag's reveal, an owned object's at the start), so the tile tells no other viewer which earlier offsets were land or held an object; a neutral Shipyard's to none (E08 decision 229, the user at ADV-Q40). A weekly object shows a viewer its own visited mark (set for the visitor's team, by a Mystical Garden too since E08 T84b2, `ADV-QUIRK-35`; never cleared: it says visited, not emptied); its resource and amount never show. E08 T83b2b (increment 9's design note §12): `ObjectView::owner`, `production`, `guards` (`GuardsView`), `visited` and `boat_tile`, `AdventureState::production` and `visited_by`; the views on the imported economy map hide the abandoned mines' draws whatever the seed. The visits that set the owners and guards: E08 T84a (the mines, ADV-OWN-001, ADV-MIN-002, which tell a change of the guards' hint as `GuardsChanged`); the marks: E08 T84b1 (the weekly objects' visits, ADV-VIS-006, a mark set anew told to its player as `ObjectMarked`). E08 T87a: `ObjectView::boat_tile` projected to the owner's team, the view property's exception for a seen Shipyard's offsets removed. E08 T94a (increment 10's design note §10): a dwelling shows its type and owner to every viewer that sees it, a resolved random dwelling its drawn type with that type's footprint at its moved anchor (ADV-DWL-005); its counts and guards and a camp's creature never show (T94b)."
+summary  = "Every viewer that sees an ownable object (ADV-FOG-004) sees its owner, as the original draws its flag in the owner's colour. A mine's production, its resource and its amount a day, shows only to a viewer of its owner's team (the player alone until E10's teams), so an abandoned mine's drawn resource is hidden from every other viewer, and a neutral abandoned mine's from all. A mine's guards show to every viewer as the original's hint shows them: the word of their total count, every stack counted, an upgraded one too (ADV-FOG-006's words), and their creature only when all stacks are of one (else the original's generic text); never their stacks or counts, which the owner's team sees (the user at T83b2b's start, 2026-10-31; ADR-0016 point 6 corrected by `shared/e08-t83b2b`). A guarded pile's guards stay hidden (ADV-PIK-004). A Shipyard's boat tile (ADV-SHY-001) shows only to a viewer of its owner's team, which has explored every offset (the flag's reveal, an owned object's at the start), so the tile tells no other viewer which earlier offsets were land or held an object; a neutral Shipyard's to none (E08 decision 229, the user at ADV-Q40). A weekly object shows a viewer its own visited mark (set for the visitor's team, by a Mystical Garden too since E08 T84b2, `ADV-QUIRK-35`; never cleared: it says visited, not emptied); its resource and amount never show. E08 T83b2b (increment 9's design note §12): `ObjectView::owner`, `production`, `guards` (`GuardsView`), `visited` and `boat_tile`, `AdventureState::production` and `visited_by`; the views on the imported economy map hide the abandoned mines' draws whatever the seed. The visits that set the owners and guards: E08 T84a (the mines, ADV-OWN-001, ADV-MIN-002, which tell a change of the guards' hint as `GuardsChanged`); the marks: E08 T84b1 (the weekly objects' visits, ADV-VIS-006, a mark set anew told to its player as `ObjectMarked`). E08 T87a: `ObjectView::boat_tile` projected to the owner's team, the view property's exception for a seen Shipyard's offsets removed. E08 T94a (increment 10's design note §10): a dwelling shows its type and owner to every viewer that sees it, a resolved random dwelling its drawn type with that type's footprint at its moved anchor (ADV-DWL-005); its counts and guards and a camp's creature never show (T94b). E08 T94b (increment 10's design note §10): a dwelling's counts and guards (ADV-DWL-002, `AdventureState::dwelling_counts`, `dwelling_guards`) and a Refugee Camp's creature and count (ADV-RFG-001, `camp`) are in no view (`ObjectView::guards` stays none for both: the original's hint and popup show neither; VCMI's popup, which shows a visited camp's creature, is not followed), and the week's refill and the camps' draws tell no one."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2981,6 +2981,74 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "ADV-DWL-002"
+title    = "A dwelling's counts and guards when the game is built"
+context  = "adventure"
+status   = "verified"
+summary  = "When the game is built every dwelling, placed or resolved from a random dwelling (ADV-DWL-005), owned or not, holds one week's growth of each of its creatures and its kind's full guards (ADV-DWL-001: 3 times the growth of each creature of level 5 or more, one stack each in creature order, slots 0 up; a level-1 to -4 dwelling none), as the original's `dwelling_record_init` calls the week's refill at load. E08 T94b (increment 10's design note §6; adventure state hash v20): the state's dwellings' week by dwelling index (`StaticMap::dwellings`), none while every dwelling is as its week began (the static map keeps each one's full week), a write making the block (every entry full, then the change) or copying it, a fork sharing it; the block is normalised at write (a write that leaves every dwelling full drops it, `check_dwellings`), so equality reads the content, and the hash reads each dwelling's counts and guards as they stand (ADR-0016 point 2). `AdventureState::dwelling_counts`, `dwelling_guards`; each count at most its growth, each guards' stack at most its full count in its slot. Nothing shows them (ADV-OWN-003). A purchase and the guards' battle change them: T95."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T88a; survey E08-dwellings.md sections 2.2, 6.1): dwelling_record_init 0x4B8860 (read whole) empties the four creatures and the guards, sets the creatures by class and subclass, then calls dwelling_week_refill 0x4B8A60: each count set to the creature's growth (+0x44), and army_add_stack(guards, creature, 3 x growth, -1) for each creature of zero-based level 4 or more; setup_map_objects then only sets the same owner (the reveal)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Creature dwelling (survey E08-dwellings.md section 2.2): dwellings of level 5, 6 and 7 are guarded by growth times three of their creature, a Pyre by 6 Firebirds; a dwelling owned at the start is guarded for the enemy at the first week"
+  url        = "https://heroes.thelazy.net/index.php/Creature_dwelling"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-dwellings.md section 2.2: randomizeObject puts 3 x growth of each creature of level 5 or more as the guards; newTurn runs for every object on the first day too, so the counts start at the growth"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGDwelling.cpp"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10a.md E10-1, E10-5 and E10-7 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): the records before any visit, D 1 Green Dragon with 3 Green Dragons' guards, F 6, 6, 3, 2 golems with 9 Gold and 6 Diamond Golems, X 6, 5, 4, 6 elementals with 12 Earth Elementals, one stack each in creature order; an owned Dragon Cliffs guarded at load; a resolved Angel Portal 1 Angel with 3 Angels, a resolved Golem Factory its four golems and guards, a Dwarf Cottage 8 Dwarves and no guards"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-DWL-003"
+title    = "The week's refill of every dwelling"
+context  = "adventure"
+status   = "verified"
+summary  = "At each week's start (GAM-CAL-002), before the weekly objects and the Refugee Camps, every dwelling, owned or not, is refilled: each creature's count set to its growth (the counts never accumulate; unbought creatures are lost) and its guards set back to the kind's full guards (beaten ones come back, an owned dwelling's too). The refill reads no week's or month's kind: neither the week's creature, the month's doubling nor a Plague reaches an external dwelling. No draw and no event (nothing shows the counts or the guards, ADV-OWN-003). E08 T94b (increment 10's design note §9; adventure state hash v20): `AdventureState::start_week` drops the dwellings' week block first."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T88a; survey E08-dwellings.md section 6.1): new_day_week_events (after the towns' growth, the week's count and the taverns, before the map's scan) calls dwelling_week_refill 0x4B8A60 (read whole) for every record, owned or not: the guards emptied, each count set to its growth, the guards 3 x growth of each creature of zero-based level 4 or more; it reads no week's or month's kind"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Creature dwelling, Growth (survey E08-dwellings.md section 6.1): in adventure map dwellings the number of creatures cannot exceed the weekly growth; the guards are renewed at the beginning of each week"
+  url        = "https://heroes.thelazy.net/index.php/Creature_dwelling"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-dwellings.md section 6.1: newTurn on a week's first day sets the count to the growth (accumulateWhenNeutral and accumulateWhenOwned false), then updateGuards (3 x growth for level 5 and more)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGDwelling.cpp"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10b.md E10-8 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a Barracks bought down to 2 of 4 on day 1 held 2 on days 2 and 7 and 4 on day 8 (not 6); a Golem Factory never visited kept its counts and guards (not added); a Dragon Cliffs Red flagged on day 1, its guards beaten, had none on days 2 and 7 and 3 Green Dragons again on day 8, still Red's"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-DWL-005"
 title    = "Random dwellings: the faction's table and what one becomes"
 context  = "adventure"
@@ -3012,7 +3080,7 @@ id       = "ADV-RFG-001"
 title    = "The Refugee Camp"
 context  = "adventure"
 status   = "implemented"
-summary  = "The Refugee Camp (class 78) holds a creature drawn, when the game is built and at each week's start, uniformly among the random monsters of levels 1 to 7 (ADV-MON-003's set: no war machine, not the part's `not_random_monsters`, the ruleset's packs' creatures), its count that creature's growth; any player's hero may hire from it through the hire dialog (ADV-HIR-002); it is never flagged, has no guards and gives no free creatures. E08 T93a (increment 10's design note §1; adventure ruleset part v16): the kind `refugee_camp` with its inclusive levels, the base pack's type. The import: E08 T93b (class 78, ADV-OBJ-002); the draws: T94; the visit: T95."
+summary  = "The Refugee Camp (class 78) holds a creature drawn, when the game is built and at each week's start, uniformly among the random monsters of levels 1 to 7 (ADV-MON-003's set: no war machine, not the part's `not_random_monsters`, the ruleset's packs' creatures), its count that creature's growth; any player's hero may hire from it through the hire dialog (ADV-HIR-002); it is never flagged, has no guards and gives no free creatures. E08 T93a (increment 10's design note §1; adventure ruleset part v16): the kind `refugee_camp` with its inclusive levels, the base pack's type. The import: E08 T93b (class 78, ADV-OBJ-002). The draws (E08 T94b, increment 10's design note §6, §9; adventure state hash v20): the state's camps' block by camp index (`StaticMap::camps`), each camp's creature and count (`AdventureState::camp`, checked by `check_camps`), none for a map without camps; drawn when the game is built in one pass with the weekly objects' first week, in object order, from the setup stream, and at each week's step in one pass with their refill, from the game's stream (the original's map scan holds case 78 beside the weekly objects'; agent's call: one pass, so the stream's order follows the object order); no event. Its creature and count are never shown (ADV-OWN-003). The visit: T95."
 quirks   = []
 numeric  = "integer"
 

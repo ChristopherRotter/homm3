@@ -1,6 +1,7 @@
 //! The adventure's steps of the day's start (ADR-0016 point 4, ADR-0017 point 3; E08 T85a,
 //! increment 9's design note §10, §11; survey `E08-economy.md` §7.3, §7.4, §10): the week's step,
-//! which fills the weekly objects again and grows the wandering monsters, and a creature month's
+//! which refills every dwelling (since E08 T94b), fills the weekly objects and the Refugee Camps
+//! again and grows the wandering monsters, and a creature month's
 //! step, which adds the month's monsters on free land tiles as objects added in play. The game
 //! calls them on a week's and a month's first day after day 1, with its stream (design §14,
 //! T85b); they read the static map's flags and the live presence, never a hero's tile but to keep
@@ -15,7 +16,8 @@ use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::ArmyStack;
 use h3_kernel::Rng;
 
-use super::economy::{contents, kind_at};
+use super::dwellings::draw_camp;
+use super::economy::{Drawn, block, contents, in_object_order, kind_at};
 use super::{Added, AdventureState, MapObject, Monster, Resolved, Weekly, aggression_between};
 use crate::command::{AdventureEvent, AdventureEventKind, Sink};
 use crate::ruleset::{AdventureRuleset, MAX_MONSTER_COUNT, ObjectTypeId, Passage};
@@ -45,11 +47,19 @@ impl AdventureState {
     /// `E08-economy.md` §7.3, the original's `new_day_week_events` 0x4C8AE0 to 0x4C8D19), called
     /// by the game on a week's first day after the first with the game's stream:
     ///
-    /// 1. **The weekly objects** (ADV-WEK-001 to -003), in the order of the static map's weekly
-    ///    objects, visited or not, whoever stands on them: a Windmill draws its resource, then
-    ///    its amount; a Water Wheel takes its later amount; a Garden draws its gift. The marks
-    ///    stay (the original's week keeps them).
-    /// 2. **The growth** (ADV-MON-013; D-49 and A-32 as batch E9's E9-9 and E9-10 confirmed), in
+    /// 1. **The dwellings** (ADV-DWL-003, E08 T94b; increment 10's design note §9; survey
+    ///    `E08-dwellings.md` §6.1, the original's `dwelling_week_refill` 0x4B8A60 for every
+    ///    record): every dwelling refilled, owned or not, each count its growth and its guards the
+    ///    kind's full guards again (the week's block dropped, ADR-0016 point 1). The refill reads
+    ///    no week's or month's kind (neither the week's creature, the month's doubling nor a
+    ///    Plague reaches an external dwelling); unbought creatures are lost.
+    /// 2. **The weekly objects and the Refugee Camps** (ADV-WEK-001 to -003, ADV-RFG-001), in one
+    ///    pass in object order (since E08 T94b; the original's map scan), visited or not, whoever
+    ///    stands on them: a Windmill draws its resource, then its amount; a Water Wheel takes its
+    ///    later amount; a Garden draws its gift; a camp draws its creature among its levels'
+    ///    random monsters, its count that creature's growth. The marks stay (the original's week
+    ///    keeps them).
+    /// 3. **The growth** (ADV-MON-013; D-49 and A-32 as batch E9's E9-9 and E9-10 confirmed), in
     ///    object index order over the wandering monsters still on the map, the static map's then
     ///    those added in play, but those that do not grow: the value `count × unit + fraction`
     ///    (the original's sixteenths) gains `⌊value × growth_bp ÷ 10 000⌋`, capped at
@@ -60,8 +70,9 @@ impl AdventureState {
     ///    within the word stays hidden, as the count and the fraction do (ADV-FOG-006).
     ///
     /// No hero is lifted (the original lifts one off an entrance only to read the object under
-    /// it). Draws only for the weekly objects.
-    // rule: ADV-WEK-001, ADV-WEK-002, ADV-WEK-003, ADV-MON-013
+    /// it). Draws only for the weekly objects and the camps; no event for the refill or the draws
+    /// (nothing shows a dwelling's counts and guards or a camp's creature, ADV-OWN-003).
+    // rule: ADV-DWL-003, ADV-WEK-001, ADV-WEK-002, ADV-WEK-003, ADV-RFG-001, ADV-MON-013
     pub fn start_week<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -69,34 +80,51 @@ impl AdventureState {
         draws: &mut Rng,
         sink: &mut S,
     ) {
-        self.refill_weekly(part, draws);
+        self.dwellings = None;
+        self.refill_weekly(core, part, draws);
         self.grow_monsters(core, part, sink);
     }
 
-    /// The week's step's first part ([`Self::start_week`]): each weekly object's contents for a
-    /// later week, its marks kept. One write of the block the forks share; none without weekly
-    /// objects.
-    // rule: ADV-WEK-001, ADV-WEK-002, ADV-WEK-003
-    fn refill_weekly(&mut self, part: &AdventureRuleset, draws: &mut Rng) {
-        let Some(block) = self.weekly.as_deref() else {
+    /// The week's step's draws ([`Self::start_week`]), in one pass in object order (since E08
+    /// T94b): each weekly object's contents for a later week, its marks kept, and each camp's
+    /// creature and count drawn anew. One write of each block the forks share; none without
+    /// weekly objects and camps.
+    // rule: ADV-WEK-001, ADV-WEK-002, ADV-WEK-003, ADV-RFG-001
+    fn refill_weekly(&mut self, core: &Ruleset, part: &AdventureRuleset, draws: &mut Rng) {
+        if self.weekly.is_none() && self.camps.is_none() {
             return;
-        };
+        }
         let map = &self.map;
-        let weekly: Vec<Weekly> = map
-            .weeklies()
-            .iter()
-            .zip(block)
-            .map(|(&index, &old)| {
-                let (resource, amount) = contents(kind_at(part, map, index), false, draws)
-                    .unwrap_or((old.resource, old.amount));
-                Weekly {
-                    resource,
-                    amount,
-                    marks: old.marks,
+        let old_weekly = self.weekly.as_deref().unwrap_or_default();
+        let old_camps = self.camps.as_deref().unwrap_or_default();
+        let mut weekly = Vec::with_capacity(old_weekly.len());
+        let mut camps = Vec::with_capacity(old_camps.len());
+        for drawn in in_object_order(map) {
+            match drawn {
+                Drawn::Weekly(place) => {
+                    let kind = kind_at(part, map, map.weeklies()[place]);
+                    weekly.extend(old_weekly.get(place).map(|&old| {
+                        let (resource, amount) =
+                            contents(kind, false, draws).unwrap_or((old.resource, old.amount));
+                        Weekly {
+                            resource,
+                            amount,
+                            marks: old.marks,
+                        }
+                    }));
                 }
-            })
-            .collect();
-        self.weekly = Some(weekly.into());
+                Drawn::Camp(place) => {
+                    let levels = map.camp_levels[place];
+                    camps.extend(
+                        old_camps
+                            .get(place)
+                            .map(|&old| draw_camp(core, part, levels, draws).unwrap_or(old)),
+                    );
+                }
+            }
+        }
+        self.weekly = block(weekly);
+        self.camps = block(camps);
     }
 
     /// The week's step's growth ([`Self::start_week`]; ADV-MON-013). Nothing for a part without

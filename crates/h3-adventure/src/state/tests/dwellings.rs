@@ -19,7 +19,7 @@ use crate::ruleset::{
 use crate::setup::{BoatSetup, Holds};
 use crate::testing::{PEASANT, SEA, hero_at, key, movement_rules_with, world};
 
-type Rules = (Ruleset, AdventureRuleset);
+pub(super) type Rules = (Ruleset, AdventureRuleset);
 
 const ROWS: [&str; 8] = ["gggggggggggggggg"; 8];
 
@@ -37,7 +37,7 @@ fn cells(offsets: &[(u8, u8)]) -> Vec<(u8, u8)> {
 /// fortress's `t:e1` to `t:e7` entered one left of the anchor. The random dwelling `t:random`, a
 /// Refugee Camp `t:camp` and a Windmill `t:windmill`; the
 /// castle's, the fortress's and the wild's random dwelling tables.
-fn rules() -> Rules {
+pub(super) fn rules() -> Rules {
     movement_rules_with(
         true,
         16,
@@ -115,7 +115,7 @@ fn rules() -> Rules {
     )
 }
 
-fn type_of(rules: &Rules, k: &str) -> ObjectTypeId {
+pub(super) fn type_of(rules: &Rules, k: &str) -> ObjectTypeId {
     rules.1.object_type_by_key(k).unwrap()
 }
 
@@ -124,7 +124,7 @@ fn faction(rules: &Rules, k: &str) -> FactionId {
 }
 
 /// The mask of these `(column, row)` offsets.
-fn mask(offsets: &[(u8, u8)]) -> TileMask {
+pub(super) fn mask(offsets: &[(u8, u8)]) -> TileMask {
     TileMask::from_bits(
         offsets
             .iter()
@@ -134,7 +134,7 @@ fn mask(offsets: &[(u8, u8)]) -> TileMask {
 }
 
 /// An object of type `k` on `(x, y)` with these masks, ownable, holding nothing.
-fn placed(
+pub(super) fn placed(
     rules: &Rules,
     k: &str,
     (x, y): (u16, u16),
@@ -191,7 +191,7 @@ fn as_resolved(rules: &Rules, k: &str, (x, y): (u16, u16)) -> ObjectSetup {
 
 /// A grass map of 16 × 8 with red's hero 1 on (0, 7) and blue's hero 2 on (15, 7), and these
 /// objects.
-fn setup(objects: Vec<ObjectSetup>) -> AdventureSetup {
+pub(super) fn setup(objects: Vec<ObjectSetup>) -> AdventureSetup {
     let mut setup = world(
         &ROWS,
         1,
@@ -204,11 +204,11 @@ fn setup(objects: Vec<ObjectSetup>) -> AdventureSetup {
     setup
 }
 
-fn seeded(seed: u64) -> Rng {
+pub(super) fn seeded(seed: u64) -> Rng {
     Rng::for_stream(seed, StreamId::SETUP)
 }
 
-fn build_with(
+pub(super) fn build_with(
     rules: &Rules,
     setup: &AdventureSetup,
     draws: &mut Rng,
@@ -218,7 +218,11 @@ fn build_with(
     Ok(state)
 }
 
-fn build(rules: &Rules, setup: &AdventureSetup, seed: u64) -> Result<AdventureState, SetupError> {
+pub(super) fn build(
+    rules: &Rules,
+    setup: &AdventureSetup,
+    seed: u64,
+) -> Result<AdventureState, SetupError> {
     build_with(rules, setup, &mut seeded(seed))
 }
 
@@ -391,7 +395,7 @@ fn a_random_dwelling_at_the_right_edge_moves_its_anchor_off_the_map() {
 }
 
 /// What `viewer` sees of the typed objects, in map order.
-fn views(state: &AdventureState, rules: &Rules, viewer: PlayerId) -> Vec<ObjectView> {
+pub(super) fn views(state: &AdventureState, rules: &Rules, viewer: PlayerId) -> Vec<ObjectView> {
     state.observe(&rules.0, &rules.1, viewer).objects
 }
 

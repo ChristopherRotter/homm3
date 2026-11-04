@@ -2,7 +2,8 @@
 //! note §6): each ownable object's owner by its place among the static map's ownable objects, a
 //! mine's guards (the armies on objects, else an abandoned mine's drawn Troglodytes), each weekly
 //! object's contents and visited marks by its place among the weekly ones, with the first week's
-//! drawn when the game is built, and the start's reveal around every owned object. The owners are
+//! drawn when the game is built (since E08 T94b in one pass with the Refugee Camps' draws, in
+//! object order, [`in_object_order`]), and the start's reveal around every owned object. The owners are
 //! one block the forks share (a write copies it: a few hundred bytes on the largest shipped map),
 //! the weekly contents one too, each none for a map without such objects, so a fork of one costs
 //! nothing more and of another a reference count or two (`bench-check`).
@@ -16,6 +17,7 @@ use h3_content::{CreatureAbility, CreatureTypeId, ResourceId, Ruleset};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
+use super::dwellings::{Camp, draw_camp};
 use super::{AdventureState, StaticMap, pick};
 use crate::fog::reveal;
 use crate::ruleset::{AdventureRuleset, ObjectKind};
@@ -131,23 +133,76 @@ pub(super) fn owners_at_start(
     })
 }
 
-/// The first week's weekly contents (ADV-WEK-001 to -003; increment 9's design note §6, §10), drawn
-/// from the setup stream after the static map's draws, in object order (the weekly objects'
-/// order): each one's first week's [`contents`], no marks. None for a map without weekly objects.
+/// A weekly object or a Refugee Camp, by its place among its own (E08 T94b): what the week's
+/// draws walk ([`in_object_order`]).
+#[derive(Clone, Copy)]
+pub(super) enum Drawn {
+    /// The weekly object at this place among the static map's weekly objects.
+    Weekly(usize),
+    /// The camp at this camp index.
+    Camp(usize),
+}
+
+/// The weekly objects and the camps of `map` in object order, in one pass (E08 T94b, increment
+/// 10's design note §9: the original's map scan holds case 78 beside the weekly objects' cases;
+/// *agent's call:* one pass, so the stream's order follows the object order).
+pub(super) fn in_object_order(map: &StaticMap) -> impl Iterator<Item = Drawn> + '_ {
+    let (weeklies, camps) = (map.weeklies(), map.camps());
+    let (mut weekly, mut camp) = (0, 0);
+    core::iter::from_fn(move || {
+        let next_camp = camps
+            .get(camp)
+            .is_some_and(|c| weeklies.get(weekly).is_none_or(|w| c < w));
+        if next_camp {
+            camp += 1;
+            return Some(Drawn::Camp(camp - 1));
+        }
+        let place = weekly;
+        weekly += 1;
+        weeklies.get(place).map(|_| Drawn::Weekly(place))
+    })
+}
+
+/// A block of the state the forks share, by place: none for a map without its objects.
+pub(super) type Block<T> = Option<Arc<[T]>>;
+
+/// A block of `entries`, none for none.
+pub(super) fn block<T>(entries: Vec<T>) -> Block<T> {
+    (!entries.is_empty()).then(|| entries.into())
+}
+
+/// The first week's weekly contents and camps (ADV-WEK-001 to -003, ADV-RFG-001; increment 9's
+/// design note §6, §10, increment 10's §9), drawn from the setup stream after the static map's
+/// draws, in one pass in object order (since E08 T94b, [`in_object_order`]): each weekly object's
+/// first week's [`contents`], no marks; each camp's creature and count ([`draw_camp`]). Each block
+/// none for a map without its objects.
+// rule: ADV-RFG-001
 pub(super) fn first_week(
+    core: &Ruleset,
     part: &AdventureRuleset,
     map: &StaticMap,
     draws: &mut Rng,
-) -> Option<Arc<[Weekly]>> {
-    let weekly: Vec<Weekly> = (0..map.objects().len())
-        .filter_map(|index| contents(kind_at(part, map, index), true, draws))
-        .map(|(resource, amount)| Weekly {
-            resource,
-            amount,
-            marks: 0,
-        })
-        .collect();
-    (!weekly.is_empty()).then(|| weekly.into())
+) -> (Block<Weekly>, Block<Camp>) {
+    let mut weekly = Vec::with_capacity(map.weeklies().len());
+    let mut camps = Vec::with_capacity(map.camps().len());
+    for drawn in in_object_order(map) {
+        match drawn {
+            Drawn::Weekly(place) => {
+                let kind = kind_at(part, map, map.weeklies()[place]);
+                weekly.extend(
+                    contents(kind, true, draws).map(|(resource, amount)| Weekly {
+                        resource,
+                        amount,
+                        marks: 0,
+                    }),
+                );
+            }
+            Drawn::Camp(place) => {
+                camps.extend(draw_camp(core, part, map.camp_levels[place], draws));
+            }
+        }
+    }
+    (block(weekly), block(camps))
 }
 
 impl AdventureState {

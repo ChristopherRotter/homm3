@@ -103,6 +103,7 @@ mod weekly;
 pub use boats::Boat;
 use boats::Boats;
 pub use draws::Resolved;
+use dwellings::{Camp, DwellingWeek};
 pub use economy::Weekly;
 pub(crate) use economy::allied;
 use flags::Flags;
@@ -293,9 +294,17 @@ pub struct StaticMap {
     /// The dwellings' indices, in object order (E08 T94a; increment 10's design note §5): placed
     /// and resolved alike ([`ObjectKind::Dwelling`]), the dwelling index. Follows from the objects.
     dwellings: Vec<usize>,
+    /// Each dwelling's week as it begins, by dwelling index (E08 T94b; increment 10's design note
+    /// §6, [`dwellings::full_week`]): its creatures' growths and its kind's full guards, what the
+    /// state's dwellings stand at while their week's block is none, and what the hash reads then.
+    /// Follows from the objects and the rules, so the static map's hash leaves it out.
+    full_weeks: Vec<DwellingWeek>,
     /// The Refugee Camps' indices, in object order (E08 T94a; increment 10's design note §5:
     /// [`ObjectKind::RefugeeCamp`]), the camp index. Follows from the objects.
     camps: Vec<usize>,
+    /// Each camp's kind's levels, by camp index (E08 T94b): what its draws read
+    /// ([`dwellings::draw_camp`]). Follows from the objects.
+    camp_levels: Vec<[u8; 2]>,
     hash: u64,
 }
 
@@ -373,7 +382,9 @@ impl StaticMap {
             ownables: Vec::new(),
             weeklies: Vec::new(),
             dwellings: Vec::new(),
+            full_weeks: Vec::new(),
             camps: Vec::new(),
+            camp_levels: Vec::new(),
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -462,7 +473,7 @@ impl StaticMap {
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
         draws::resolve_mines(part, &mut map.objects, draws);
         map.fix_boat_tiles(part);
-        map.list_economy(part);
+        map.list_economy(core, part);
         map.mark_near_monsters();
         map.mark_grounds(part);
         // After the objects, as the original counts after placing its map's objects.
@@ -514,8 +525,9 @@ impl StaticMap {
 
     /// Lists the ownable and the weekly objects ([`Self::ownables`], [`Self::weeklies`]); since
     /// E08 T94a the dwellings and the camps ([`Self::dwellings`], [`Self::camps`]), after the
-    /// random dwellings resolved.
-    fn list_economy(&mut self, part: &AdventureRuleset) {
+    /// random dwellings resolved; since T94b each dwelling's week as it begins and each camp's
+    /// levels.
+    fn list_economy(&mut self, core: &Ruleset, part: &AdventureRuleset) {
         for (index, object) in self.objects.iter().enumerate() {
             let kind = object
                 .object_type
@@ -527,11 +539,13 @@ impl StaticMap {
             if kind.is_some_and(ObjectKind::weekly) {
                 self.weeklies.push(index);
             }
-            if matches!(kind, Some(ObjectKind::Dwelling { .. })) {
+            if let Some(week) = dwellings::full_week(core, kind) {
                 self.dwellings.push(index);
+                self.full_weeks.push(week);
             }
-            if matches!(kind, Some(ObjectKind::RefugeeCamp { .. })) {
+            if let Some(&ObjectKind::RefugeeCamp { levels }) = kind {
                 self.camps.push(index);
+                self.camp_levels.push(levels);
             }
         }
     }
@@ -1184,6 +1198,23 @@ pub struct AdventureState {
     /// block the forks share, which a visit or the week's step copies (T84b1,
     /// [`Self::start_week`]).
     weekly: Option<Arc<[Weekly]>>,
+    /// The dwellings' week by dwelling index (ADV-DWL-002, ADV-DWL-003, E08 T94b; increment 10's
+    /// design note §6; ADR-0016 point 1): each dwelling's counts and guards as they stand. **None
+    /// while every dwelling is as its week began** (each count its growth, the guards the kind's
+    /// full guards, [`StaticMap`]'s `full_weeks`): when the game is built and after each week's
+    /// step, which drops it ([`Self::start_week`]). A write that changes a dwelling (a visit, T95)
+    /// makes the block, every entry full and then the change, or copies it; the forks share it.
+    /// *Agent's call* (ADR-0016 point 2, nothing sees the sharing): the block is normalised at
+    /// write, so it stands only while some dwelling differs from its week's start (a write that
+    /// leaves every dwelling full drops it; `check_dwellings` holds it), and the derived equality,
+    /// reading this representation, reads the content; the hash reads each dwelling as it stands
+    /// (`hash_dwellings`), so no block and a block of full entries hash alike whatever the write.
+    dwellings: Option<Arc<[DwellingWeek]>>,
+    /// The Refugee Camps' creature and count by camp index (ADV-RFG-001, E08 T94b; increment 10's
+    /// design note §6): drawn when the game is built with the weekly objects' first week and at
+    /// each week's step with their refill, in object order ([`Self::start_week`]); none for a map
+    /// without camps, else one block the forks share.
+    camps: Option<Arc<[Camp]>>,
     /// Each wandering monster's fraction of a creature (its sixteenths, the monsters' growth unit;
     /// ADV-MON-013, E08 T83b2a; increment 9's design note §6), by object index, none for 0: what
     /// the week's growth leaves below a whole creature ([`Self::start_week`], T85a). A persistent
@@ -1236,7 +1267,7 @@ impl AdventureState {
         // rule: ADV-DWL-005
         let refused = dwellings::refused_tiles(part, &map, &setup.map.objects);
         let owners = economy::owners_at_start(&map, &setup.map.objects);
-        let weekly = economy::first_week(part, &map, draws);
+        let (weekly, camps) = economy::first_week(core, part, &map, draws);
         let unexplored = BitGrid::new(map.width(), map.height(), map.levels());
         let mut state = Self {
             map: Arc::new(map),
@@ -1253,6 +1284,8 @@ impl AdventureState {
             boats: None,
             owners,
             weekly,
+            dwellings: None,
+            camps,
             fractions: Table::new(),
         };
         for hero in &setup.heroes {
@@ -2665,9 +2698,9 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v19 (E08 T83b2a; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6
+    /// Encoding v20 (E08 T94b; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6
     /// T15a's, v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's, v11 T50's, v14 T61b's, v15 T62b2's,
-    /// v16 T72's, v18 T83b1's; v12, v13 and v17 changed the static map's):
+    /// v16 T72's, v18 T83b1's, v19 T83b2a's; v12, v13 and v17 changed the static map's):
     /// version; the static map's content hash (since v4 with the objects' types and contents); the
     /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
     /// creature, count; since v7 the formation, 0 loose, 1 tight; since v11 the tactics flag;
@@ -2685,7 +2718,9 @@ impl CanonicalHash for AdventureState {
     /// 1 and [`Visits`]' encoding; there is one only once a visit wrote it); since v16 the boats
     /// (their number, 0 for a map without boats, then each: [`Boat`]'s fields in order); since
     /// v18 the owners and the weekly contents (`economy.rs`' `hash_economy`); since v19 the
-    /// monsters' fractions as their number and, by object index, the index and the fraction.
+    /// monsters' fractions as their number and, by object index, the index and the fraction;
+    /// since v20 the dwellings' counts and guards as they stand, then the camps' creatures and
+    /// counts (`dwellings.rs`' `hash_dwellings`).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -2764,6 +2799,7 @@ impl CanonicalHash for AdventureState {
             h.write_len(index);
             h.write_u8(fraction);
         }
+        self.hash_dwellings(h);
     }
 }
 
