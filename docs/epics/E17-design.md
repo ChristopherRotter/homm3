@@ -5530,15 +5530,43 @@ either hero wears the Spirit of Oppression (artifact 84); the Minotaurs' minimum
 - **The Grail** (`Source::Building` of the listed hero): a Castle's Colossus (morale) or a
   Rampart's Spirit Guardian (luck), +2, after the skill's line and before the rest, which loses
   its +2. Any other Grail source stays in the rest.
-- **The index to the name** (*provisional*): the pack's building indices are not the original's
-  ids (the Brotherhood is index 20 in the Castle record), and the client loads no town records;
-  `clients/assets/*.toml`'s `[[town]]` carry `buildings = { tavern, grail, special }` with the pack
-  record indices (`Town.buildings`). Cleaner: the client loading `packs/*/towns.toml`.
+- **The index to the name:** the pack's building indices are not the original's ids (the
+  Brotherhood is index 20 in the Castle record). T3c2 kept them in the asset tables
+  (*provisional*); since T3c3 the client reads the packs' town records (§12.11).
 - **Not derivable:** a building the engine leaves out of `Siege.bonuses` (only the Tavern, the
   Brotherhood and the Fountain are mapped), another Grail source, the visits (the once-marks name
   no object, §12.9).
-- **Recorded:** none exact. Unit tests for every line and order. `stats-morale-siege` (set.toml,
-  `stats-siege.toml`) is added but not captured: the original's side needs a Castle under siege
-  with the Tavern, Brotherhood and Colossus built and the right-press point of the defender's
-  stack measured; the artifacts' lines cannot be recorded (the battle's map writes no worn
-  artifacts but war machines).
+- **Recorded:** unit tests for every line and order; the buildings' and the Grail's lines three
+  stills exact since T3c3 (§12.11); the artifacts' lines cannot be recorded (the battle's map
+  writes no worn artifacts but war machines).
+
+### 12.11 A siege's buildings by the town records, and their stills (M6 T3c3)
+
+- **The town records** (the user, 2026-11-03: the cleaner fix §12.10 named): the wire's building
+  indices (`Siege.bonuses`, a hero's `Source::Building`) are the engine's `h3_towns::BuildingId`,
+  so the binary compiles the packs' town part beside the battle's ruleset (`scenario::towns`,
+  `h3_pack_towns::compile` over the manifest's packs and profile; binary-only crates) and names a
+  building by its key in the faction's record: `tavern`, `brotherhood_of_the_sword` and
+  `fountain_of_fortune` for the siege's lines, `colossus` and `spirit_guardian` for the Grail's.
+  The window keeps it with the fight's ruleset (a server's game only when its content is the
+  same); a record file's has none, as its stats dialog. The asset tables' `buildings` went.
+- **The original's map** (`h3-view situation`): the siege town's other buildings by the record's
+  map editor slot, which is the map's building bit (`docs/formats/h3m.md`, "Town buildings"):
+  each of the siege's `bonuses` and a hero's Grail building of the town's faction (the defender's
+  only: the attacker's owner has no town on the map; another faction's has none either). A
+  Grail building's morale or luck is the town's, so `effect_skills` no longer gives the hero
+  Leadership or Luck for it (the first capture showed "Advanced Leadership +2" above the
+  Colossus).
+- **The siege's opening:** the turrets' turn comes first, then the Catapult's (BAT-SIE-016, -011),
+  before any creature's, so a defender's creature never opens a siege, and during the Catapult's
+  turn a left press on a stack opens nothing (the original and the client). The stills take a
+  town with a Citadel in hot seat, the defender commanding the keep: during the keep's turn a
+  press on the Royal Griffins opens their dialog (502, 198: hex 100's anchor less (149, 140),
+  clamped), then the right button on its morale or luck picture.
+- **The Tavern beside the Brotherhood:** the original omits the Tavern's line when the
+  Brotherhood of the Sword stands (it supersedes the Tavern), as the engine's `morale` role is
+  read over the standing buildings: `Siege.bonuses` never holds both, and the client lists what
+  they hold. `stats-siege.toml` lost its Tavern bonus.
+- **Recorded:** `stats-morale-siege` (the Colossus, one alignment, the Brotherhood),
+  `stats-morale-tavern` (one alignment, the Tavern) and `stats-luck-siege` (a Rampart: the
+  Spirit Guardian, the Fountain of Fortune) exact.

@@ -426,6 +426,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-pack-towns"
+version = "0.1.0"
+dependencies = [
+ "h3-content",
+ "h3-pack",
+ "h3-towns",
+ "serde",
+ "toml 0.8.23",
+]
+
+[[package]]
 name = "h3-protocol"
 version = "0.1.0"
 dependencies = [
@@ -490,9 +501,11 @@ dependencies = [
  "h3-kernel",
  "h3-map",
  "h3-pack-battle",
+ "h3-pack-towns",
  "h3-protocol",
  "h3-render",
  "h3-sdl",
+ "h3-towns",
  "h3-ui",
  "nanomp3",
  "proptest",

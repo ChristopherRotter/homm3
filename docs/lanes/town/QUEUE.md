@@ -30,6 +30,14 @@ Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-04 (the client lane, E17 M6 T3c3, `client/e17-m6-t3c3`; **when you change
+  `h3-towns`' or `h3-pack-towns`' public API**): the battle client's binary now compiles the packs'
+  town part (`h3_pack_towns::compile`) and reads `TownRuleset::town`, `TownRecord::building` and
+  `buildings`, `Building::key` and `slot` and `BuildingId::from_index` (a siege's buildings and a
+  Grail building by key in the stats dialog, the original's map by slot; design E17 §12.11). CI's
+  clients job watches both crates (#704): a change there runs `clients/scripts/check.sh`, locally
+  `scripts/verify-once.sh clients --base origin/master`; a dependency change updates
+  `clients/Cargo.lock`.
 - 2026-11-03 (the battle lane, CLT-Q40; its siege half done by T6b, `QUEUE-ARCHIVE.md`): the
   owner's Grail building that adds a hero's morale or luck (the Colossus, the Spirit Guardian)
   names itself as `EffectSource::Building { faction, index }` on that hero's `BattleEffect`, when

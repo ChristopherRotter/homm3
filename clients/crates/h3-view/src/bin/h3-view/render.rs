@@ -310,6 +310,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             None
         } else {
             let ruleset = crate::scenario::ruleset(&options.packs, manifest)?;
+            let towns = crate::scenario::towns(&options.packs, manifest)?;
             let catalogue = crate::log::catalogue(&tables, &archives, &exe)?;
             let hero = || {
                 crate::spellbook::takes(observation)
@@ -397,6 +398,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 ruleset: &ruleset,
                 tables: &tables,
                 catalogue: &catalogue,
+                towns: Some(&towns),
             };
             let seed = u32::try_from(options.seed & u64::from(u32::MAX)).unwrap_or(1);
             // Morale's and luck's descriptions' pictures' sizes (E17 M6 T2a2b2).

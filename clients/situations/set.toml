@@ -1534,24 +1534,53 @@ differing = 0
 why = "exact: the Archangels' luck -1, bad: facing the Arch Devils, frame 2 here and in the dialog (E17 M6 T3c1)"
 
 
-# E17 M6 T3c2: a siege's buildings and the owner's Grail line (design §12.4, §12.9).
-# `stats-morale-siege`: the defender's Royal Griffins' morale at a Castle town: the Colossus +2
-# (the hero's Grail), one alignment, the Tavern +1, the Brotherhood of the Sword +2. NOT CAPTURED:
-# needs the original's side (a map with a Castle town under siege, the Tavern, Brotherhood and
-# Colossus built, the defender's hero owning no other Grail town) and the right-click point of the
-# morale picture, which depends on where the acting defender stack's dialog opens (the actions'
-# 44,280 are the attacker situations' and are to be adjusted at the capture).
+# E17 M6 T3c2, T3c3: a siege's buildings and the owner's Grail line (design §12.4, §12.9,
+# §12.11). Hot seat at a town with a Citadel: the defender commands the keep, whose turn opens the
+# battle (the turrets act before the Catapult), and a press on the defender's Royal Griffins opens
+# their dialog (502, 198: hex 100's anchor less (149, 140), clamped), then the right button on its
+# morale or luck picture. `h3-view situation` builds the town's buildings by the town record's
+# map editor slots. `stats-morale-siege`: a Castle's Brotherhood of the Sword (it supersedes the
+# Tavern, whose line the original then omits) and the hero's Colossus; `stats-morale-tavern`: the
+# Tavern alone; `stats-luck-siege`: a Rampart's Fountain of Fortune and the hero's Spirit Guardian.
 
 [[situation]]
 id = "stats-morale-siege"
 scenario = "stats-siege.toml"
+hot_seat = true
+key = "Up"
 seat = "defender"
-actions = ["key:t", "right:44,280"]
+actions = ["click:696,320", "right:546,406"]
 
 [[situation.frame]]
 at = 0
 differing = 0
-why = "expected exact: the defender's Royal Griffins' morale at a Castle siege: Colossus, one alignment, Tavern, Brotherhood of the Sword (E17 M6 T3c2; not yet captured)"
+why = "exact: the defender's Royal Griffins' morale at a Castle siege: Colossus, one alignment, the Brotherhood of the Sword (E17 M6 T3c3)"
+
+[[situation]]
+id = "stats-morale-tavern"
+scenario = "stats-siege-tavern.toml"
+hot_seat = true
+key = "Up"
+seat = "defender"
+actions = ["click:696,320", "right:546,406"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: the defender's Royal Griffins' morale at a Castle siege with the Tavern alone: one alignment, the Tavern (E17 M6 T3c3)"
+
+[[situation]]
+id = "stats-luck-siege"
+scenario = "stats-siege-rampart.toml"
+hot_seat = true
+key = "Up"
+seat = "defender"
+actions = ["click:696,320", "right:600,406"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: the defender's Royal Griffins' luck at a Rampart siege: the Spirit Guardian, the Fountain of Fortune (E17 M6 T3c3)"
 
 
 # E17 M6 T2b1: the right button held over the battle (`battle_right_click` 0x4769C0; design

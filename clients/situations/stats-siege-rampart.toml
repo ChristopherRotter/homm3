@@ -1,0 +1,60 @@
+# E17 M6 T3c3: as stats-siege.toml at a Rampart with a Citadel: its Fountain of Fortune standing
+# (index 19 of the pack's record: luck +2) and the defender's hero's owner's Grail building the
+# Spirit Guardian (index 23: a luck effect of +2 from the building): the defender's Royal Griffins'
+# luck, the Spirit Guardian +2 and the Fountain of Fortune +2 (design §12.4, §12.9, §12.11).
+
+[scenario]
+id = "situation-stats-siege-rampart"
+# Both human (hot seat, E17 M6 T3c3): Red steps into Blue's town, whose hero defends it and
+# commands the keep, whose turn opens the battle (the turrets act before the Catapult,
+# BAT-SIE-016 and -011): the defender's view, the Griffins' dialog opened by a press on them.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+[scenario.siege]
+faction = "base:rampart"
+fort = "citadel"
+# Under SoD rules (the situation's map) the Citadel's moat damages.
+moat = "damaging"
+bonuses = [
+    { building = 19, luck = 2 },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+# Basic Artillery: the keep waits for its command.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000
+
+[[scenario.defender_hero.effects]]
+kind = "luck"
+amount = 2
+source = { kind = "building", faction = "base:rampart", index = 23 }
