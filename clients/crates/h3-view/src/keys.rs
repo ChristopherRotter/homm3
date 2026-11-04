@@ -4,10 +4,10 @@
 //! the function keys and Esc, the user at E24 M3 T0); the battle's defaults are the original's
 //! hotkeys, by where the battle takes them ([`Context`]): with nothing over it the log's arrows, the
 //! Faerie Dragon's F, the stats dialog's T and the panel's buttons' letters; the spell book's
-//! (`book::Key`), a message box's (`message::Key`), the stats dialog's, an aim's and the result
-//! window's while one is open. Esc quits only with nothing over the battle: over it, it is the
-//! book's close, the box's Cancel, the stats dialog's OK, the aim's give-up and the result
-//! window's OK.
+//! (`book::Key`), a message box's (`message::Key`), the stats dialog's, the combat options
+//! dialog's (E17 M6 T4a), an aim's and the result window's while one is open. Esc quits only with
+//! nothing over the battle: over it, it is the book's close, the box's Cancel, the stats or the
+//! options dialog's OK, the aim's give-up and the result window's OK.
 
 use alloc::format;
 use alloc::string::String;
@@ -35,6 +35,8 @@ pub enum Context {
     Message,
     /// A stack's stats dialog (E17 M6 T2a2a).
     Stats,
+    /// The combat options dialog (E17 M6 T4a).
+    Options,
     /// A spell aimed (E17 M5 T3b).
     Aim,
     /// The battle's result window (E17 M5 T4b1), the battle over.
@@ -43,15 +45,24 @@ pub enum Context {
 
 impl Context {
     /// What takes the keys: the result window when it is open, else a message box, else a
-    /// stack's stats dialog, else the book, else an aim, else the battle.
+    /// stack's stats dialog, else the combat options dialog, else the book, else an aim, else the
+    /// battle.
     #[must_use]
-    pub const fn of(result: bool, message: bool, stats: bool, book: bool, aim: bool) -> Self {
+    pub const fn of(
+        result: bool,
+        message: bool,
+        (stats, options): (bool, bool),
+        book: bool,
+        aim: bool,
+    ) -> Self {
         if result {
             Self::Result
         } else if message {
             Self::Message
         } else if stats {
             Self::Stats
+        } else if options {
+            Self::Options
         } else if book {
             Self::Book
         } else if aim {
@@ -84,6 +95,8 @@ pub enum Command {
     Message(message::Key),
     /// The stats dialog's OK pressed, the dialog closed as it is released.
     StatsOk,
+    /// The combat options dialog's OK pressed, the dialog closed as it is released (E17 M6 T4a).
+    OptionsOk,
     /// The aim given up.
     AimCancel,
     /// The result window's OK pressed (its id `result::OK`), the battle's screen left as it is
@@ -156,6 +169,8 @@ impl Command {
                 .unwrap_or_default(),
             // Its iOKAY.def's hotkeys (0x5F6870).
             Self::StatsOk => ("stats-ok".into(), plain(&["Return", "Escape"])),
+            // Its soretrn.def's hotkeys (the window manager's +0x38 = 30722; design §12.12).
+            Self::OptionsOk => ("options-ok".into(), plain(&["Return", "Escape"])),
             // Escape (0x5A317A) or the right button (0x5A3184) in the aim's loop 0x5A3070.
             Self::AimCancel => ("aim-cancel".into(), plain(&["Escape", "RightButton"])),
             // Enter and Escape, its OK's hotkeys (0x4715C3).
@@ -178,7 +193,12 @@ impl keys::Command for Command {
         all.extend(BUTTONS.map(|(id, _, _)| Self::Button(id)));
         all.extend(BOOK.map(|(k, _, _)| Self::Book(k)));
         all.extend(MESSAGE.map(|(k, _, _)| Self::Message(k)));
-        all.extend([Self::StatsOk, Self::AimCancel, Self::ResultOk]);
+        all.extend([
+            Self::StatsOk,
+            Self::OptionsOk,
+            Self::AimCancel,
+            Self::ResultOk,
+        ]);
         all
     }
 
@@ -209,6 +229,7 @@ impl keys::Command for Command {
             Self::Book(_) => Some(Context::Book),
             Self::Message(_) => Some(Context::Message),
             Self::StatsOk => Some(Context::Stats),
+            Self::OptionsOk => Some(Context::Options),
             Self::AimCancel => Some(Context::Aim),
             Self::ResultOk => Some(Context::Result),
         }

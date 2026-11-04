@@ -5700,3 +5700,24 @@ frames.
      type choice the dialog lacks).
   10. After the close the cursor stays the dialog's arrow, and the status line and the hovered
      hex as they were, until the mouse moves (nothing posted).
+- **The client's (M6 T4a, *provisional* where marked).** `h3_view::options` holds the dialog
+  (the layout's `[options]`; its texts' ids 240 to 256 the client's, the executable's all −1),
+  the settings (`Settings`: a first run's, `settings_check`'s ranges, the file's read and write)
+  and the clicks; the window's battle opens it while it takes a command (`Battle::open_options`:
+  a battle fought here, its human's turn waiting, nothing open over it). The settings file is
+  `settings.toml` beside `keys.toml` (`--settings`, else the working directory's): a `[battle]`
+  table of the registry's value names in snake case, written whole as the dialog closes after a
+  click (other tables are not kept: *provisional*); an explicit `--speed` wins over its combat
+  speed for the run. In effect: the combat speed (`Growing::set_speed`: from the next command on)
+  and both volumes (`sound_volume` on every SDL gain: the music's by its setting, every other
+  stream's by the effects'; the first run's 5 makes the client's sound 6/10 of what it was before
+  T4a); the press samples are `button.wav` on the creature channels, the DEF buttons' at its
+  loader's 127 (*provisional*: `button_press`' category not read), the procedure's at 0x40. The
+  no-sound guard tests the client's audio device (none with `--mute` or without a device) and
+  each column's own volume. Kept only: the grid, both shadows, the spell book's animation (T4c;
+  the page-turn videos are not built), the Auto Combat options and the army info level (T4b),
+  the keys F5 to F8. The stills use the harness's settings (`Settings::CAPTURE`, `setup.sh`'s
+  registry) without a sound device, so a capture's volume bars at 0 open GENRLTXT 151's box
+  (`options-no-sound`) and never move; a capture that clicks anything before the OK would make
+  the original write its registry (0x46F7A2), which later captures read: `options-closed`
+  closes by Enter without a click.

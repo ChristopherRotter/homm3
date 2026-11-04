@@ -769,6 +769,22 @@ pub(crate) fn draw_frames(
                 .unwrap_or_else(|| u8::try_from(index).unwrap_or(0));
             list.extend(open.draws(&layout.book, &layout.player_palette, player));
         }
+        // The combat options dialog the actions left open (E17 M6 T4a), with its shadow, under
+        // its boxes.
+        let options = interface.book.and_then(|b| b.options.as_ref());
+        if let Some(open) = options {
+            let window = &open.window;
+            list.extend(
+                window
+                    .dialog
+                    .draws(&window.shown, &layout.player_palette)
+                    .into_iter()
+                    .map(scene::Draw::Dialog),
+            );
+        }
+        // Its arrow, the cursor type 0 frame 0 (crdeflt.def's), while it is open or after its key
+        // closed it, the mouse not moved since (oddity 10).
+        let options_arrow = options.is_some() || interface.book.is_some_and(|b| b.options_arrow);
         // A message box the actions left open (E17 M5 T4a), over the book and the battle, the
         // default cursor's frame 0 at the mouse (0x4F74AC).
         let message = interface
@@ -861,6 +877,14 @@ pub(crate) fn draw_frames(
                 None if open.held => {}
                 None => list.push(crate::stats::cursor(layout, &open.modal, mouse)),
             }
+        } else if let Some(still) = interface.book.filter(|_| options_arrow) {
+            list.push(scene::Draw::Cursor {
+                def: layout.message.cursor.clone(),
+                frame: 0,
+                x: still.mouse[0],
+                y: still.mouse[1],
+                hot: layout.book.hot.first().copied().unwrap_or_default(),
+            });
         } else if let Some((open, mouse)) = book {
             // The cursor the book set, else the battle's where the actions left the mouse.
             match open.cursor_draw(&layout.book, mouse) {

@@ -1860,3 +1860,93 @@ actions = ["right:30,70"]
 at = 0
 differing = 0
 why = "exact: on Cursed Ground Orrin's morale and luck 0 whatever his skills, frames 3 (E17 M6 T3b2)"
+
+# E17 M6 T4a: the combat options dialog (design §12.12; `combat_options_create` 0x46E3B0): the key
+# O on the human's turn opens it at (159, 84) with its shadow, the background in Red's colours,
+# the cursor the adventure's arrow; the battle behind it standing. The harness's settings
+# (`setup.sh`): the volumes, the grid, both shadows and the spell book's animation 0, Auto
+# Creatures 1, the rest 0, no sound device. NOT CAPTURED (the next step). The points: the grid's
+# box 199,151, the movement shadow's 199,184, the cursor shadow's 199,218, Auto Spells' 421,210,
+# the level 1 box 421,379, speed 2 346,325, Default 455,467, the music bar 5 292,405.
+# `options`: as it opens. `options-set`: the grid, Auto Spells, the level 1 and speed 2 clicked
+# (the volumes cannot move in the harness: no sound device at volume 0, see `options-no-sound`).
+# `options-no-sound`: a music bar clicked at volume 0 without a sound device: GENRLTXT 151 in an
+# OK box over the dialog, nothing changed (oddity 7). `options-help`: the right button held over
+# the cursor shadow's box (Help 429). `options-default`: three clicks, then Default. `options-closed`:
+# opened and closed by Enter with no click (so the original writes nothing to the registry, which
+# later captures read): the battle redrawn, the arrow left until the mouse moves (oddity 10).
+[[situation]]
+id = "options"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["key:o"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: the dialog as it opens, speed 0 chosen, Auto Creatures on (E17 M6 T4a; not yet captured)"
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "expected exact: the battle behind it still (E17 M6 T4a; not yet captured)"
+
+[[situation]]
+id = "options-set"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["key:o", "click:199,151", "click:421,210", "click:421,379", "click:346,325"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: the grid, Auto Spells and the level 1 on, speed 2 chosen (E17 M6 T4a; not yet captured)"
+
+[[situation]]
+id = "options-no-sound"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["key:o", "click:292,405"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: GENRLTXT 151's box over the dialog, the music bar 0 still shown (E17 M6 T4a; not yet captured)"
+
+[[situation]]
+id = "options-help"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["key:o", "right:199,218"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: the cursor shadow's help (Help 429) held, the cursor hidden (E17 M6 T4a; not yet captured)"
+
+[[situation]]
+id = "options-default"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["key:o", "click:199,151", "click:421,210", "click:346,325", "click:455,467"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: Default: the spell book's animation and the five Auto Combat options on, speed 0 (E17 M6 T4a; not yet captured)"
+
+[[situation]]
+id = "options-closed"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["key:o", "key:Return"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "expected exact: the battle redrawn, the dialog's arrow at the mouse (E17 M6 T4a; not yet captured)"
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "expected exact: as at 0, the mouse not moved (E17 M6 T4a; not yet captured)"

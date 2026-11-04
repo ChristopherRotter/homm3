@@ -66,6 +66,7 @@ use h3_view::anim::Speed;
 use h3_view::compose::FORMAT;
 use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::mouse::track::Input;
+use h3_view::options::Settings;
 use h3_view::scene::Draw;
 use h3_view::sound::Tune;
 
@@ -97,6 +98,9 @@ const BOOK_TURNS: usize = 64;
 
 /// The user's file of keys looked for in the working directory (its `[battle]` table; E24 M3 T1b).
 const KEYS_FILE: &str = "keys.toml";
+/// The user's settings file in the working directory, beside the keys' (E17 M6 T4a,
+/// *provisional*: the combat options dialog's settings, `h3_view::options::Settings`).
+const SETTINGS_FILE: &str = "settings.toml";
 
 /// The tunes a battle may end with (E17 M5 T1b: decoded before a battle fought as it is played
 /// ends).
@@ -129,6 +133,10 @@ pub struct Options {
     auto: Option<usize>,
     /// The user's file of keys (E24 M3 T1b).
     keys: Option<PathBuf>,
+    /// The user's settings file (E17 M6 T4a; none: `settings.toml` here).
+    settings: Option<PathBuf>,
+    /// `--speed` was given: it wins over the settings file's combat speed for this run.
+    speed_set: bool,
 }
 
 /// The sides `name` names (`attacker`, `defender`, `both`).
@@ -156,6 +164,7 @@ impl Options {
         let (mut scale, mut vsync, mut drawn_cursor, mut fullscreen) = (None, false, false, false);
         let (mut from, mut run, mut mute, mut humans) = (0, None, false, [false; 2]);
         let (mut leave, mut keys, mut auto) = (None, None, None);
+        let (mut settings, mut speed_set) = (None, false);
         // A seat on a server (E17 M5 T6b1): `connect`'s options.
         let mut server: Vec<String> = Vec::new();
         let mut rest = args.iter();
@@ -176,9 +185,13 @@ impl Options {
                         .parse::<u64>()
                         .map_err(|_| format!("window: bad number `{v}` for `{arg}`"))?;
                 }
-                "--speed" => speed = number(value()?)?.min(2),
+                "--speed" => {
+                    speed = number(value()?)?.min(2);
+                    speed_set = true;
+                }
                 "--packs" => packs = Some(PathBuf::from(value()?)),
                 "--install" => install = Some(PathBuf::from(value()?)),
+                "--settings" => settings = Some(PathBuf::from(value()?)),
                 "--human" => {
                     let v = value()?;
                     humans = sides(&v).ok_or_else(|| format!("window: no sides `{v}`"))?;
@@ -251,6 +264,8 @@ impl Options {
             leave,
             auto,
             keys,
+            settings,
+            speed_set,
         })
     }
 }
@@ -305,6 +320,24 @@ fn load_keys(path: Option<&Path>) -> Result<(Keys, String), String> {
     let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
     keys.check(&known).map_err(|e| format!("{from}: {e}"))?;
     Ok((keys, from))
+}
+
+/// The combat options' settings (E17 M6 T4a): the user's file (`--settings`, else `settings.toml`
+/// here if there is one; its `[battle]` table, `h3_view::options::Settings::read`), else a first
+/// run's; and the file the dialog writes them to as it closes after a click (the one named, else
+/// `settings.toml` here).
+fn load_settings(path: Option<&Path>) -> Result<(Settings, PathBuf, String), String> {
+    let here = Path::new(SETTINGS_FILE);
+    let read = path.or_else(|| here.exists().then_some(here));
+    let text = read
+        .map(|p| fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display())))
+        .transpose()?;
+    let settings = Settings::read(text.as_deref()).map_err(|e| {
+        let from = read.map_or(String::new(), |p| p.display().to_string());
+        format!("{from}: {e}")
+    })?;
+    let from = read.map_or_else(|| "a first run's".to_owned(), |p| p.display().to_string());
+    Ok((settings, path.unwrap_or(here).to_path_buf(), from))
 }
 
 /// Runs the command.
@@ -422,10 +455,11 @@ fn next_frame(
     changes: &mut Changes,
     shown: &Frame,
 ) -> Result<Option<Frame>, String> {
-    // Behind the open spell book or a message box the battle stands still (E17 M5 T3a, T4a):
+    // Behind the open spell book, a message box or the combat options dialog the battle stands
+    // still (E17 M5 T3a, T4a; M6 T4a):
     // only an input changes it; the result window's clip plays on, a frame at each of its
     // decodes (E17 M5 T4b2b).
-    if battle.book_open() || battle.message_open() {
+    if battle.book_open() || battle.message_open() || battle.options_open() {
         return match battle.clip_times(shown.t) {
             Some((_, Some(next))) => frame_at(battle, next).map(Some),
             _ => Ok(None),
@@ -481,7 +515,17 @@ struct Report {
 fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut lines = Vec::new();
     let (keys, keys_from) = load_keys(options.keys.as_deref())?;
-    let source = &options.source;
+    // The combat options' settings (E17 M6 T4a): the file's combat speed unless `--speed` gave
+    // one.
+    let (settings, settings_path, settings_from) = load_settings(options.settings.as_deref())?;
+    let source = &Source {
+        speed: if options.speed_set {
+            options.source.speed
+        } else {
+            Speed::new(settings.speed)
+        },
+        ..options.source.clone()
+    };
     let ground = Ground::load(source)?;
     let mut battle = Battle::new(&ground)?;
     // The checkpoint batch: the cursor now, each frame's names as it is first drawn.
@@ -530,7 +574,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let sounds = (battle.stack_sounds(), battle.battle_sounds());
         Some(Library::load(
             &source.install,
-            opening,
+            (opening, &battle.layout().options.sound),
             sounds,
             &TUNES,
             &mut lines,
@@ -551,6 +595,19 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         battle = Battle::new(&ground)?;
         battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
     }
+    // The settings the combat options dialog shows, against the audio device opened or not (its
+    // no-sound box; E17 M6 T4a); its volumes on the sound.
+    battle.settings = settings;
+    battle.audio = player.is_some();
+    if let Some(p) = player.as_mut() {
+        p.set_volumes(settings.music, settings.effects);
+    }
+    let unsaved = std::cell::RefCell::new(Vec::new());
+    let files = SettingsFile {
+        path: &settings_path,
+        library: library.as_ref(),
+        lines: &unsaved,
+    };
     // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
     // before the window joined is not played again.
     let start = if ground.online().is_some() {
@@ -738,7 +795,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let context = Context::of(
                         battle.result_open(),
                         battle.message_open(),
-                        battle.stats_open(),
+                        (battle.stats_open(), battle.options_open()),
                         battle.book_open(),
                         battle.aiming(),
                     );
@@ -802,6 +859,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
                     book_changed |= battle.stats_right(at, point);
                 }
+                // The combat options dialog's help (E17 M6 T4a, design §12.12): the right button
+                // over a control shows it while held, as the panel's controls' help.
+                Event::Key(Key::RightButton) if battle.options_open() && !battle.message_open() => {
+                    let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
+                    book_changed |= battle.options_right(point);
+                }
                 // What a key does where the battle takes it now (E24 M3 T1b, `h3_view::keys`): a
                 // dialog or an aim over the battle takes its own keys and the window's that work
                 // whatever is open; its Esc is its close, Cancel or give-up, never the window's
@@ -810,7 +873,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let context = Context::of(
                         battle.result_open(),
                         battle.message_open(),
-                        battle.stats_open(),
+                        (battle.stats_open(), battle.options_open()),
                         battle.book_open(),
                         battle.aiming(),
                     );
@@ -967,6 +1030,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             grew |=
                                 message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
                         }
+                        // The combat options dialog's OK down, its key's release closing it (E17
+                        // M6 T4a).
+                        Do::OptionsOk => {
+                            let did = battle.options_key(key.name());
+                            book_changed |= options_did(&mut battle, &mut player, did, &files);
+                        }
                         // A stack's stats dialog's OK down, its key's release closing it (E17
                         // M6 T2a2a).
                         Do::StatsOk => {
@@ -1037,6 +1106,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     (book_changed, mouse_changed) =
                         (book_changed | changed, mouse_changed | changed);
                 }
+                Event::KeyUp(key) if battle.options_open() => {
+                    let did = battle.options_key_up(key.name());
+                    let changed = options_did(&mut battle, &mut player, did, &files);
+                    (book_changed, mouse_changed) =
+                        (book_changed | changed, mouse_changed | changed);
+                }
                 Event::KeyUp(_) if battle.book_open() || battle.aiming() => {}
                 Event::KeyUp(key) => {
                     if let Some(h) = held.take_if(|h| h.key == Some(key)) {
@@ -1053,6 +1128,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             inputs.push(Input::Book { at });
                             book_changed = true;
                         }
+                        // O opens the combat options dialog (E17 M6 T4a).
+                        book_changed |= h.id == h3_view::panel::OPTIONS && battle.open_options(at);
                         // S and R ask first (E17 M5 T4a).
                         book_changed |= battle.ask_leave(at, h.id);
                         mouse_changed = true;
@@ -1099,6 +1176,29 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     (book_changed, mouse_changed) =
                         (book_changed | changed, mouse_changed | changed);
                 }
+                // The combat options dialog over the battle (E17 M6 T4a): its moves (the button
+                // held follows; the battle takes none), its presses and releases.
+                Event::Pointer(p) if battle.options_open() => {
+                    pointer = p;
+                    redraw |= drawn_cursor;
+                    if let Some((x, y)) = p {
+                        let did = battle.options_moved([x, y]);
+                        book_changed |= options_did(&mut battle, &mut player, did, &files);
+                    }
+                }
+                Event::Click {
+                    down: true,
+                    at: (x, y),
+                } if battle.options_open() => {
+                    let did = battle.options_press([x, y]);
+                    book_changed |= options_did(&mut battle, &mut player, did, &files);
+                }
+                Event::Click { down: false, .. } if battle.options_open() => {
+                    let did = battle.options_release();
+                    let changed = options_did(&mut battle, &mut player, did, &files);
+                    (book_changed, mouse_changed) =
+                        (book_changed | changed, mouse_changed | changed);
+                }
                 Event::Pointer(p) if battle.book_open() => {
                     pointer = p;
                     redraw |= drawn_cursor;
@@ -1137,6 +1237,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     pointer = p;
                     redraw |= drawn_cursor;
                     if let Some((x, y)) = p {
+                        // The options dialog's arrow goes (E17 M6 T4a).
+                        battle.mouse_moved();
                         // The battle takes the move now (inputs after a seek back are gone).
                         inputs.retain(|i| i.at() <= at);
                         inputs.push(Input::Move { at, to: [x, y] });
@@ -1200,6 +1302,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             inputs.push(Input::Book { at });
                             book_changed = true;
                         }
+                        // The combat options dialog opens as its button is released over it (E17
+                        // M6 T4a).
+                        book_changed |=
+                            h.over && h.id == h3_view::panel::OPTIONS && battle.open_options(at);
                         // Surrender and Retreat ask first (E17 M5 T4a).
                         book_changed |= h.over && battle.ask_leave(at, h.id);
                         mouse_changed = true;
@@ -1345,6 +1451,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     }
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
     lines.push(format!("keys: {keys_from}"));
+    lines.push(format!("settings: {settings_from}"));
+    lines.extend(unsaved.take());
     lines.push(win.describe());
     if let Some(lib) = &library {
         lines.push(lib.describe());
@@ -1487,9 +1595,52 @@ fn stats_did(battle: &mut Battle<'_>, inputs: &mut Vec<Input>, at: u32, did: Sta
 
 fn box_shown(battle: &Battle<'_>) -> Option<[Option<[i32; 2]>; 3]> {
     use h3_view::message::{NO, OK, YES};
+    // The combat options dialog's opening flushes the input queue too (E17 M6 T4a).
+    let options = battle
+        .options_open()
+        .then_some([None, None, Some([-1, -1])]);
     battle
         .message_open()
         .then(|| [OK, YES, NO].map(|id| battle.message_button(id)))
+        .or(options)
+}
+
+/// What the combat options dialog `did` (E17 M6 T4a, design §12.12): its press samples played
+/// (the speeds' twice, oddity 1), its volumes on the sound at once; at its close after a click its
+/// settings written to the settings file (`files`: the file and the report's lines). Whether it
+/// changed (draw again).
+fn options_did(
+    battle: &mut Battle<'_>,
+    player: &mut Option<Player>,
+    did: crate::battle::OptionsDid,
+    files: &SettingsFile<'_>,
+) -> bool {
+    if let (Some(p), Some(lib)) = (player.as_mut(), files.library) {
+        if did.button_sound {
+            p.click(lib, h3_view::sound::FILE_VOLUME);
+        }
+        if did.box_sound {
+            p.click(lib, h3_view::sound::EFFECT_VOLUME);
+        }
+        p.set_volumes(battle.settings.music, battle.settings.effects);
+    }
+    if let Some(settings) = battle.options_saved()
+        && let Err(e) = fs::write(files.path, settings.write())
+    {
+        files
+            .lines
+            .borrow_mut()
+            .push(format!("settings: {}: {e}", files.path.display()));
+    }
+    did != crate::battle::OptionsDid::default()
+}
+
+/// Where the combat options dialog's settings go (E17 M6 T4a): the file, the sound's library for
+/// its press sample, the report's lines for a failed write.
+struct SettingsFile<'a> {
+    path: &'a Path,
+    library: Option<&'a Library>,
+    lines: &'a std::cell::RefCell<Vec<String>>,
 }
 
 /// What a message box `did` at `at` (E17 M5 T4a): a change to draw, or the command its OK gave
@@ -1981,6 +2132,41 @@ mod tests {
         let (keys, from) = load_keys(None).unwrap();
         assert_eq!((keys, from.as_str()), (Keys::original(), "the defaults"));
         assert!(load_keys(Some(Path::new("no/such/keys.toml"))).is_err());
+    }
+
+    #[test]
+    fn the_settings_come_from_the_users_file_or_a_first_run() {
+        // E17 M6 T4a: no file here, a first run's, written to settings.toml here; a file named
+        // is read and written back; a missing or a bad one refused.
+        let (settings, to, from) = load_settings(None).unwrap();
+        assert_eq!(settings, Settings::FIRST_RUN);
+        assert_eq!(
+            (to.as_path(), from.as_str()),
+            (Path::new(SETTINGS_FILE), "a first run's")
+        );
+        assert!(load_settings(Some(Path::new("no/such/settings.toml"))).is_err());
+        let dir = std::env::temp_dir().join(format!("h3-view-settings-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.toml");
+        let set = Settings {
+            speed: 2,
+            ..Settings::FIRST_RUN
+        };
+        fs::write(&path, set.write()).unwrap();
+        let (read, to, _) = load_settings(Some(&path)).unwrap();
+        assert_eq!((read, to), (set, path.clone()));
+        fs::write(&path, "[battle]\nmusic = 1\n").unwrap();
+        assert!(load_settings(Some(&path)).unwrap_err().contains("music"));
+        fs::remove_dir_all(&dir).unwrap();
+        // --settings and an explicit --speed.
+        let args: Vec<String> = ["a.toml", "--settings", "s.toml", "--speed", "1"]
+            .map(String::from)
+            .into();
+        let o = Options::parse(&args).unwrap();
+        assert_eq!(o.settings.as_deref(), Some(Path::new("s.toml")));
+        assert!(o.speed_set);
+        let o = Options::parse(&["a.toml".to_owned()]).unwrap();
+        assert!(!o.speed_set && o.settings.is_none());
     }
 
     #[test]

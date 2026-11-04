@@ -581,6 +581,21 @@ pub struct Battle<'g> {
     /// and what its OK does. The battle (and the book, when the box is the book's) stands still
     /// behind it (its modal loop runs no idle step).
     message: Option<(h3_view::message::Open, u32, Asked)>,
+    /// The combat options dialog open over the battle and when it opened (E17 M6 T4a; design
+    /// §12.12): the battle stands as it was then (`battle_combat_options`' modal loop runs no
+    /// idle step); a box over it (its help, the no-sound box) is `message`.
+    options: Option<(h3_view::options::Open, u32)>,
+    /// The options dialog closed and the mouse not moved since: the dialog's arrow stays (nothing
+    /// set or posted at its close, oddity 10).
+    options_arrow: bool,
+    /// The options dialog closed after a click (+0x4C): its settings to save (0x46F7A2).
+    options_save: bool,
+    /// The combat options' settings (the window's settings file's; E17 M6 T4a).
+    pub settings: h3_view::options::Settings,
+    /// The window's audio device opened: without it the options' bars at volume 0 tell so.
+    pub audio: bool,
+    /// The combat speed the battle grows at: the ground's, then the options dialog's.
+    speed: Speed,
     /// The result window was closed (E17 M5 T4b1): the battle's screen is done.
     result_closed: bool,
     /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
@@ -684,6 +699,10 @@ pub enum StatsDid {
     Cast,
 }
 
+/// What the combat options dialog did with an input (E17 M6 T4a): to draw again, its samples, its
+/// no-sound box, its close.
+pub type OptionsDid = h3_view::options::Did;
+
 /// What the spell book did with an input (E17 M5 T3a).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BookDid {
@@ -713,7 +732,21 @@ impl<'g> Battle<'g> {
     pub fn afresh(&self) -> Result<Self, String> {
         let online = self.ground.online().ok_or("not a seat on a server")?;
         let opening = seat_opening(&online.borrow())?;
-        Self::open(self.ground, opening)
+        let mut battle = Self::open(self.ground, opening)?;
+        // The combat options' settings and speed carry over (E17 M6 T4a).
+        (battle.settings, battle.audio) = (self.settings, self.audio);
+        battle.set_speed(self.speed);
+        Ok(battle)
+    }
+
+    /// Every animation after now at combat speed `speed` (E17 M6 T4a: the options dialog's; a
+    /// record file's battle, played whole, keeps its own).
+    pub fn set_speed(&mut self, speed: Speed) {
+        self.speed = speed;
+        match &mut self.played {
+            Played::Growing(g) | Played::Waiting(g, _) => g.set_speed(speed),
+            Played::Finished(_) => {}
+        }
     }
 
     /// Whether the seat's record opened afresh since this battle opened (E17 M5 T6b2): the window
@@ -833,6 +866,12 @@ impl<'g> Battle<'g> {
             stats_memory: h3_view::stats::Memory::new(Bugs::Fixed),
             look_aim: false,
             message: None,
+            options: None,
+            options_arrow: false,
+            options_save: false,
+            settings: h3_view::options::Settings::FIRST_RUN,
+            audio: false,
+            speed: ground.speed,
             result_closed: false,
             behind: h3_view::result::Behind::default(),
             end_seen: std::cell::OnceCell::new(),
@@ -1524,8 +1563,10 @@ impl<'g> Battle<'g> {
                 hot: hot_of(&mouse.hot, frame),
             };
         }
-        // A message box sets the default cursor's frame 0 (0x4F74AC; E17 M5 T4a).
-        if self.message.is_some() {
+        // A message box sets the default cursor's frame 0 (0x4F74AC; E17 M5 T4a), the combat
+        // options dialog its type 0 frame 0 (E17 M6 T4a), which stays after its close until the
+        // mouse moves (oddity 10).
+        if self.message.is_some() || self.options.is_some() || self.options_arrow {
             let book = &self.ground.layout.book;
             return CursorLook {
                 def: self.ground.layout.message.cursor.clone(),
@@ -1962,6 +2003,124 @@ impl<'g> Battle<'g> {
         };
         self.message = Some((h3_view::message::Open::new(window), at, Asked::Held));
         true
+    }
+
+    /// Whether the combat options dialog is open over the battle (E17 M6 T4a).
+    pub fn options_open(&self) -> bool {
+        self.options.is_some()
+    }
+
+    /// Opens the combat options dialog at `at` (E17 M6 T4a, design §12.12; the panel's Options
+    /// 2003 or its key O, `battle_combat_options` 0x4686B0): only while the battle takes a command
+    /// (`battle_buttons`' +0x132B4: a battle fought here whose human's turn waits, its last
+    /// action played), nothing else open over it; its background in the acting side's player's
+    /// colours ([`Self::box_player`]), its settings the battle's. Whether it opened (not without
+    /// the text tables).
+    pub fn open_options(&mut self, at: u32) -> bool {
+        if self.stats.is_some()
+            || self.message.is_some()
+            || self.book.is_some()
+            || self.aiming.is_some()
+            || self.options.is_some()
+            || self.fight.is_none()
+            || !self.takes(at)
+        {
+            return false;
+        }
+        let player = self.box_player(at, None);
+        let Some(writer) = self.ground.writer.as_ref() else {
+            return false;
+        };
+        let open = h3_view::options::Open::new(
+            &self.ground.layout.options,
+            &writer.catalogue,
+            self.settings,
+            (player, self.audio),
+        );
+        self.options = Some((open, at));
+        true
+    }
+
+    /// A left press at `point` while the options dialog is open.
+    pub fn options_press(&mut self, point: [i32; 2]) -> OptionsDid {
+        self.options_did(|o| o.press(point))
+    }
+
+    /// The mouse moved to `point` while the options dialog is open: the button held follows it.
+    pub fn options_moved(&mut self, point: [i32; 2]) -> OptionsDid {
+        self.options_did(|o| o.moved(point))
+    }
+
+    /// The left button released while the options dialog is open.
+    pub fn options_release(&mut self) -> OptionsDid {
+        self.options_did(h3_view::options::Open::release)
+    }
+
+    /// The OK's key down while the options dialog is open (`by` the key, whose release clicks).
+    pub fn options_key(&mut self, by: &str) -> OptionsDid {
+        self.options_did(|o| o.key(by))
+    }
+
+    /// A key up while the options dialog is open.
+    pub fn options_key_up(&mut self, by: &str) -> OptionsDid {
+        self.options_did(|o| o.key_up(by))
+    }
+
+    /// The right button pressed at `point` while the options dialog is open (design §12.12): the
+    /// help of the control there in a popup centred on the screen while the button is held
+    /// ([`Asked::Held`]); nothing over the picture or a text. Whether it opened.
+    pub fn options_right(&mut self, point: [i32; 2]) -> bool {
+        let Some((open, opened)) = self.options.as_ref() else {
+            return false;
+        };
+        let (Some(key), Some(writer)) = (open.help_at(point), self.ground.writer.as_ref()) else {
+            return false;
+        };
+        let text = writer.catalogue.text(&key, &h3_ui::text::Args::new());
+        let opened = *opened;
+        self.tell(opened, &text, (Style::Popup, None), Asked::Held)
+    }
+
+    /// The mouse moved over the battle: the options dialog's arrow left at its close goes.
+    pub fn mouse_moved(&mut self) {
+        self.options_arrow = false;
+    }
+
+    /// The settings to save once the options dialog closed after a click (+0x4C; 0x46F7A2),
+    /// taken once.
+    pub fn options_saved(&mut self) -> Option<h3_view::options::Settings> {
+        core::mem::take(&mut self.options_save).then_some(self.settings)
+    }
+
+    /// The open options dialog's answer to an input (`combat_options_proc` 0x46F7B0): a bar at
+    /// volume 0 without the audio device opens the no-sound box (GENRLTXT 151, an OK box); the
+    /// OK's click closes it, the battle taking its settings, its speed from the next command on
+    /// (the redraw: the window's), the arrow staying until the mouse moves.
+    fn options_did(
+        &mut self,
+        input: impl FnOnce(&mut h3_view::options::Open) -> h3_view::options::Did,
+    ) -> OptionsDid {
+        let Some((open, opened)) = self.options.as_mut() else {
+            return OptionsDid::default();
+        };
+        let did = input(open);
+        let (settings, clicked, opened) = (open.settings, open.clicked, *opened);
+        self.settings = settings;
+        if did.no_sound
+            && let Some(writer) = self.ground.writer.as_ref()
+        {
+            let text = writer
+                .catalogue
+                .text(h3_view::options::NO_SOUND, &h3_ui::text::Args::new());
+            self.tell(opened, &text, (Style::Ok, None), Asked::Told);
+        }
+        if did.closed {
+            self.options = None;
+            self.options_arrow = true;
+            self.options_save = clicked;
+            self.set_speed(Speed::new(settings.speed));
+        }
+        did
     }
 
     /// Whether the right button's popup over the battle is held (E17 M6 T2b2: a turret's info; T3a:
@@ -2754,9 +2913,11 @@ impl<'g> Battle<'g> {
         // behind a message box as it was when the box opened (E17 M5 T4a).
         let book = self.book.as_ref().map(|&(_, opened, _)| opened);
         let message = self.message.as_ref().map(|&(_, opened, _)| opened);
-        // Behind a stack's stats dialog as it was when the dialog opened (E17 M6 T2a2a).
+        // Behind a stack's stats dialog as it was when the dialog opened (E17 M6 T2a2a), behind
+        // the combat options dialog too (E17 M6 T4a).
         let stats = self.stats.as_ref().map(|&(_, opened)| opened);
-        let at = [Some(t), book, message, stats]
+        let options = self.options.as_ref().map(|&(_, opened)| opened);
+        let at = [Some(t), book, message, stats, options]
             .into_iter()
             .flatten()
             .min()
@@ -2799,6 +2960,17 @@ impl<'g> Battle<'g> {
                         .map(Draw::Dialog),
                 );
             }
+        }
+        // The combat options dialog with its shadow (E17 M6 T4a), under its boxes.
+        if let Some((open, _)) = &self.options {
+            let window = &open.window;
+            list.extend(
+                window
+                    .dialog
+                    .draws(&window.shown, &self.ground.layout.player_palette)
+                    .into_iter()
+                    .map(Draw::Dialog),
+            );
         }
         if let Some((open, opened, asked)) = &self.message {
             // The result window over the whole screen darkened (E17 M5 T4b1).

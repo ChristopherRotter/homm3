@@ -505,6 +505,227 @@ id = "battle.hero-info.points"
 args = { word = "text", points = "number", most = "number" }
 original = [{ at = "EXE:0x670088", printf = ["word", "points", "most"] }]
 
+# The combat options dialog (E17 M6 T4a, design §12.12; `h3_view::options`): its title, headings
+# and labels (GENRLTXT 393 to 407 and 578; the Ballista's the creature's name row, 152), and the
+# no-sound box's text (GENRLTXT 151, 0x46FE42).
+[[key]]
+id = "battle.options.title"
+original = [{ at = "GENRLTXT:393" }]
+
+[[key]]
+id = "battle.options.speed"
+original = [{ at = "GENRLTXT:394" }]
+
+[[key]]
+id = "battle.options.music"
+original = [{ at = "GENRLTXT:395" }]
+
+[[key]]
+id = "battle.options.effects"
+original = [{ at = "GENRLTXT:396" }]
+
+[[key]]
+id = "battle.options.grid"
+original = [{ at = "GENRLTXT:405" }]
+
+[[key]]
+id = "battle.options.movement-shade"
+original = [{ at = "GENRLTXT:406" }]
+
+[[key]]
+id = "battle.options.cursor-shade"
+original = [{ at = "GENRLTXT:407" }]
+
+[[key]]
+id = "battle.options.spell-book"
+original = [{ at = "GENRLTXT:578" }]
+
+[[key]]
+id = "battle.options.auto"
+original = [{ at = "GENRLTXT:397" }]
+
+[[key]]
+id = "battle.options.auto-creatures"
+original = [{ at = "GENRLTXT:399" }]
+
+[[key]]
+id = "battle.options.auto-spells"
+original = [{ at = "GENRLTXT:400" }]
+
+[[key]]
+id = "battle.options.auto-catapult"
+original = [{ at = "GENRLTXT:401" }]
+
+[[key]]
+id = "battle.options.auto-ballista"
+original = [{ at = "GENRLTXT:152" }]
+
+[[key]]
+id = "battle.options.auto-first-aid-tent"
+original = [{ at = "GENRLTXT:402" }]
+
+[[key]]
+id = "battle.options.info"
+original = [{ at = "GENRLTXT:398" }]
+
+[[key]]
+id = "battle.options.info-all"
+original = [{ at = "GENRLTXT:403" }]
+
+[[key]]
+id = "battle.options.info-spells"
+original = [{ at = "GENRLTXT:404" }]
+
+[[key]]
+id = "battle.options.no-sound"
+original = [{ at = "GENRLTXT:151" }]
+
+# The dialog's help (`combat_options_hints` 0x6A55A8's right-click field: `Help.txt`'s second
+# column, record 392 for the OK, else 392 + (id - 200)), shown while the right button is held.
+[[key]]
+id = "battle.options.help.ok"
+original = [{ at = "HELP:392:1" }]
+
+[[key]]
+id = "battle.options.help.default"
+original = [{ at = "HELP:393:1" }]
+
+[[key]]
+id = "battle.options.help.music-0"
+original = [{ at = "HELP:394:1" }]
+
+[[key]]
+id = "battle.options.help.music-1"
+original = [{ at = "HELP:395:1" }]
+
+[[key]]
+id = "battle.options.help.music-2"
+original = [{ at = "HELP:396:1" }]
+
+[[key]]
+id = "battle.options.help.music-3"
+original = [{ at = "HELP:397:1" }]
+
+[[key]]
+id = "battle.options.help.music-4"
+original = [{ at = "HELP:398:1" }]
+
+[[key]]
+id = "battle.options.help.music-5"
+original = [{ at = "HELP:399:1" }]
+
+[[key]]
+id = "battle.options.help.music-6"
+original = [{ at = "HELP:400:1" }]
+
+[[key]]
+id = "battle.options.help.music-7"
+original = [{ at = "HELP:401:1" }]
+
+[[key]]
+id = "battle.options.help.music-8"
+original = [{ at = "HELP:402:1" }]
+
+[[key]]
+id = "battle.options.help.music-9"
+original = [{ at = "HELP:403:1" }]
+
+[[key]]
+id = "battle.options.help.effects-0"
+original = [{ at = "HELP:404:1" }]
+
+[[key]]
+id = "battle.options.help.effects-1"
+original = [{ at = "HELP:405:1" }]
+
+[[key]]
+id = "battle.options.help.effects-2"
+original = [{ at = "HELP:406:1" }]
+
+[[key]]
+id = "battle.options.help.effects-3"
+original = [{ at = "HELP:407:1" }]
+
+[[key]]
+id = "battle.options.help.effects-4"
+original = [{ at = "HELP:408:1" }]
+
+[[key]]
+id = "battle.options.help.effects-5"
+original = [{ at = "HELP:409:1" }]
+
+[[key]]
+id = "battle.options.help.effects-6"
+original = [{ at = "HELP:410:1" }]
+
+[[key]]
+id = "battle.options.help.effects-7"
+original = [{ at = "HELP:411:1" }]
+
+[[key]]
+id = "battle.options.help.effects-8"
+original = [{ at = "HELP:412:1" }]
+
+[[key]]
+id = "battle.options.help.effects-9"
+original = [{ at = "HELP:413:1" }]
+
+[[key]]
+id = "battle.options.help.auto-creatures"
+original = [{ at = "HELP:417:1" }]
+
+[[key]]
+id = "battle.options.help.auto-spells"
+original = [{ at = "HELP:418:1" }]
+
+[[key]]
+id = "battle.options.help.auto-catapult"
+original = [{ at = "HELP:419:1" }]
+
+[[key]]
+id = "battle.options.help.auto-ballista"
+original = [{ at = "HELP:420:1" }]
+
+[[key]]
+id = "battle.options.help.auto-first-aid-tent"
+original = [{ at = "HELP:421:1" }]
+
+[[key]]
+id = "battle.options.help.speed-0"
+original = [{ at = "HELP:422:1" }]
+
+[[key]]
+id = "battle.options.help.speed-1"
+original = [{ at = "HELP:423:1" }]
+
+[[key]]
+id = "battle.options.help.speed-2"
+original = [{ at = "HELP:424:1" }]
+
+[[key]]
+id = "battle.options.help.info-all"
+original = [{ at = "HELP:425:1" }]
+
+[[key]]
+id = "battle.options.help.info-spells"
+original = [{ at = "HELP:426:1" }]
+
+[[key]]
+id = "battle.options.help.grid"
+original = [{ at = "HELP:427:1" }]
+
+[[key]]
+id = "battle.options.help.movement-shade"
+original = [{ at = "HELP:428:1" }]
+
+[[key]]
+id = "battle.options.help.cursor-shade"
+original = [{ at = "HELP:429:1" }]
+
+[[key]]
+id = "battle.options.help.spell-book"
+original = [{ at = "HELP:430:1" }]
+
 # The word for a creature, by `count`: a strike's perish row names it when the strike killed
 # several kinds.
 [[key]]
