@@ -473,7 +473,8 @@ pub enum Defender {
     },
     /// A guarded pile's guards (ADV-PIK-004, E08 T21a), unowned: their stacks by slot as they
     /// stand, which defend unsplit (the original passes the map's army, 0x4A4876). Since E08
-    /// T62b1 a Pandora's Box's too (ADV-PIK-013).
+    /// T62b1 a Pandora's Box's too (ADV-PIK-013); since E08 T95a2 a dwelling's, whatever its
+    /// owner (ADV-DWL-004; D-51: the original's owner −1).
     Guards {
         /// The stacks by slot.
         army: Vec<ArmyStack>,
@@ -561,7 +562,8 @@ impl Offer {
             | OfferKind::Search
             | OfferKind::OpenBox
             | OfferKind::SearchPyramid
-            | OfferKind::Hire { .. } => &[],
+            | OfferKind::Hire { .. }
+            | OfferKind::Guarded { .. } => &[],
         }
     }
 }
@@ -635,6 +637,18 @@ pub enum OfferKind {
     Hire {
         /// The creatures it names: the dwelling's, in its kind's order; a camp's week's one.
         creatures: Vec<CreatureTypeId>,
+    },
+    /// A dwelling's guards' question (ADV-DWL-004; E08 T95a2, increment 10's design note §7 step
+    /// 2, §12: the original's GENRLTXT 422), without a price: a neutral dwelling's or another
+    /// team's whose guards stand. It names the creature of the guards' first occupied slot and the
+    /// word of their total count (VCMI reads the first stack's: a text difference only).
+    /// Accepted, the hero fights the guards, or, when none stand any more, the visit goes on (the
+    /// flag, then [`Self::Hire`]); declined, nothing (the hero stays on the entrance).
+    Guarded {
+        /// The creature of the guards' first occupied slot.
+        creature: CreatureTypeId,
+        /// The word of the guards' total count ([`crate::MonsterParams::count_word`]).
+        count_word: u8,
     },
 }
 

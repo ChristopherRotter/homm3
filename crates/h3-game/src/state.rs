@@ -1313,8 +1313,10 @@ impl CanonicalHash for GameState {
     /// 5 a guarded pile's fight, since v16 6 a gift's price, 7 a find's question, since v17 8
     /// Pandora's Box's question, 9 the Pyramid's, since E08 T84b2 10 a Shipyard's boat (no version
     /// moved: no earlier state holds one), since E08 T95a1 11 the hire question (no version moved,
-    /// as the boat's), then a reveal's, a join for gold's, a gift's or a boat's price as length
-    /// and resource–amount pairs, a hire question's creatures as length and each, from v7 to v18
+    /// as the boat's), since E08 T95a2 12 a dwelling's guards' question (no version moved, as the
+    /// boat's), then a reveal's, a join for gold's, a gift's or a boat's price as length and
+    /// resource–amount pairs, a hire question's creatures as length and each, a guards' question's
+    /// creature and count word, from v7 to v18
     /// whether a guard's visit waits for the answer;
     /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
     /// state hash; since v11 (E08 T30) 2 a level-up: its owner, hero, new level, primary skill
@@ -1383,17 +1385,29 @@ impl CanonicalHash for GameState {
                         OfferKind::SearchPyramid => (9, None),
                         OfferKind::Boat { price } => (10, Some(price)),
                         OfferKind::Hire { .. } => (11, None),
+                        OfferKind::Guarded { .. } => (12, None),
                     };
                     h.write_u8(tag);
                     if let Some(price) = price {
                         hash_price(price, h);
                     }
-                    // E08 T95a1: the hire question's creatures, their number then each.
-                    if let OfferKind::Hire { creatures } = &offer.kind {
-                        h.write_len(creatures.len());
-                        for creature in creatures {
-                            creature.hash_into(h);
+                    match &offer.kind {
+                        // E08 T95a1: the hire question's creatures, their number then each.
+                        OfferKind::Hire { creatures } => {
+                            h.write_len(creatures.len());
+                            for creature in creatures {
+                                creature.hash_into(h);
+                            }
                         }
+                        // E08 T95a2: the guards' question's creature and count word.
+                        OfferKind::Guarded {
+                            creature,
+                            count_word,
+                        } => {
+                            creature.hash_into(h);
+                            h.write_u8(*count_word);
+                        }
+                        _ => {}
                     }
                 }
                 Decision::Battle(battle) => {

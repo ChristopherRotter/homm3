@@ -116,6 +116,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 253. **T95a in two at the guards, T95a1 now** (the user; recommended): **T95a1** the visit without a battle (the step onto an own or unguarded dwelling's entrance, the flag, the hire question `OfferKind::Hire`, the free creatures of `free_level` or less, the Refugee Camp's visit, the dwellings' block's real writer; `h3-adventure`, the plans' oracles; the guarded visit ADV-STUB-14, the hire dialog ADV-STUB-15); **T95a2** the guards (the guards' question `OfferKind::Guarded`, the unsplit unowned battle at the entrance, the survivors in the week entry, after a win the flag and the hire question through `give_won`; `h3-game`'s battle-flow tests) in the next session. Not chosen: both halves in this session as two pull requests; T95a whole.
 
+### Decisions at T95a2's start (2026-11-04, user)
+
+254. **T95a2 whole** (the user; recommended): the guards' question, their battle, its end, the flag and the hire question after a win, `h3-game`'s battle-flow tests and the plans' oracles in one pull request. Not chosen: a cut at the game (the adventure side first, the game's tests and the oracles after). And **an acceptance re-reads the dwelling** (the user; recommended): with no guards standing it runs the visit's rest (the flag, the hire question), as the mine's `fight_for_mine`; not chosen: nothing. The branch is unreachable: sequential play is the only schedule built (ADR-0017 point 7) and an open offer allows only its answers, so nothing changes the dwelling between the question and the acceptance; the user: no two players may ever interact with one object at the same time (an input for the contact rule ADR-0017 point 7 leaves open). T95a1's hedge ("another player of the turn group may flag the dwelling meanwhile") is moot for the same reason.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).

@@ -70,7 +70,7 @@ fn answer_all(state: &mut GameState, rules: &GameRuleset, player: PlayerId) -> V
 
 /// Plays red's battle to its end: the owner of the side to act (the system for an unowned side),
 /// each the last legal command that stays in the battle; all the events.
-fn fight(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
+pub(super) fn fight(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
     let mut all = Vec::new();
     for _ in 0..4000 {
         let Some(battle) = state.battle(RED) else {
@@ -86,7 +86,7 @@ fn fight(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
 }
 
 /// The adventure's events among `events`.
-fn adventure(events: &[GameEvent]) -> Vec<AdventureEvent> {
+pub(super) fn adventure(events: &[GameEvent]) -> Vec<AdventureEvent> {
     events
         .iter()
         .filter_map(|e| match e {

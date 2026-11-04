@@ -5539,8 +5539,9 @@ fn check_decisions(
                     }
                     (false, OfferKind::Pursue) => passed = Some((object_type, anchor)),
                     // E08 T21a: an accepted question of a guarded pile is its battle (its guards
-                    // stand: nobody but the visitor's owner acts while it is open).
-                    (true, OfferKind::Pursue | OfferKind::Fight) => {
+                    // stand: nobody but the visitor's owner acts while it is open). E08 T95a2: a
+                    // dwelling's guards' question too.
+                    (true, OfferKind::Pursue | OfferKind::Fight | OfferKind::Guarded { .. }) => {
                         let fought = events
                             .iter()
                             .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
