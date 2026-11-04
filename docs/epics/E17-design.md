@@ -6170,3 +6170,44 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
     compared).
   - Not built: the stacks' four windows (T4b2b2: `Windows::enter`'s hex arm shows none; no fill,
     no layout); the keys F6 to F8 (T4c).
+- **The client's** (M6 T4b2b2, *provisional* where marked):
+  - Where it lives: `h3_view::army_info`: `Windows::stack` (`StackShown`: the owner's side, the
+    `Kind` the level gave it at the show, the stack, the turn whose battle fills it); `enter` takes
+    the turn's `mouse::Field` (`Field::at`: a living stack on either hex, by its facing) and shows
+    kind 1 at level 1, kind 2 at 2; `drawn` gives `Drawn::Hero` or `Drawn::Stack` (the heroes'
+    first), a kind kept through a level's change. The layout's `[army_info]` (`all`, `spells`: each
+    the places by side and the items, ids 2200 to 2218; kind 2's ids as kind 1's, *provisional*).
+  - The fill: `StackInfo::of` takes the stats dialog's `Stats` (the binary's `stats::of`, so the
+    two agree: Att and Def pairs, the range, Health its `now`, morale, luck, the count, the
+    spells' original ids) with the creature (TwCrPort's frame + 2), the player (the owner's side's
+    hero's, else the viewing player's: oddity 8) and the stack's own range (`stats::own_damage`:
+    the wire's war machine's factor divided out); `stack_window` words it (Att and Def
+    `battle.army-info.pair`, Dmg `battle.hint.number` or `battle.army-info.range`, Health and the
+    count "%d", the last three spells' frames + 1, the rest 0, `battle.army-info.no-spells` with
+    none; GENRLTXT 387, 390, 675, `EXE:0x6700E4`, `EXE:0x6700DC`). The count +0x4C's (shown
+    between actions only).
+  - The fix (CLT-Q48, the user's answer): `stack_window(.., bugs)`: the Dmg row the dialog's range
+    in `Bugs::Fixed` (the window, `Battle::stack_window`), the stack's own in `Bugs::Original`
+    (the stills): a Ballista's "4-6" against "2-3" with its hero's attack 1.
+  - The shows: the handler's new hex (`Windows::enter`, before the mark and the line), filled at
+    each frame from `Follower::observation(turn)` (`Battle::list`, after the panel; *provisional*:
+    no cache); every hide of T4b2b1 applies; moving between a two-hex stack's hexes gives the same
+    window (oddity 10: no change listed). Over time `Shown::army` holds it as the heroes'.
+  - The stills: `spellbook::Army::window` takes a `Drawn` (render.rs: `stats::army_info` in the
+    original's profile); `Hover` finds stacks each side facing its own way. Review item 42: a
+    still's status line is worded at `Hover::line_level` (the level of the last new hex, F5 after
+    it rewrites nothing) through `mouse::pointer(.., (point, bugs, level))`, with the opening's
+    attacks' previews (`scenario::opening_previews`, as `Turned::of`'s) in its `Legal`.
+  - Assets checked (the gate, `h3-view sprite`): `CCrPop.pcx` 78 × 288, `SpellInf.pcx` 78 × 126,
+    `TwCrPort.def` 151 frames (148 the Ballista), `imrls.def` and `ilcks.def` 7 (`ilcks`' 0 to 3
+    one picture), `spellint.def` 79 (frame 0 a plain tile).
+  - Stills (not recorded, no `differing`; ours looked at): `army-info-stack`, `-stack-enemy` (the
+    line 297, 14-21), `-spells` (kind 2), `-stack-f5` (as `-enemy`), `-ballista` (Dmg 2-3).
+  - Checks: unit tests (`army_info/tests.rs`: places, ids, the fill's texts and frames, "%d"
+    and "%d-%d", the Ballista by profile, the spells, either hex, facing, the dead, a still's line
+    level; `track/tests.rs`: moves, the same hex, a two-hex stack, a level's change, a hide, an
+    action, a turn start; `mouse/tests.rs`: a still's line at 1 and 2); the binary's (the
+    follower with the acting stack hovered, the Ballista's fill, a still's previews and windows);
+    the gate; `drawn`'s digests the same.
+  - Not built: a still with a stack's active spells (a still's battle is the opening's: no spell
+    on a stack yet; the unit tests cover the icons); the keys F6 to F8 (T4c).

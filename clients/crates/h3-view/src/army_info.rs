@@ -63,7 +63,8 @@ const ROW_WORDS: [&str; 4] = [
 ];
 
 /// The stacks' windows' layouts (the layout's `[army_info]`; `combat_dialog_create`'s
-/// 0x472483 to 0x4725D4): each kind's places by side and its items from its corner.
+/// 0x472483 to 0x4725D4): each kind's places by side and its items from its corner (*provisional*:
+/// the hero's window's [`HeroInfoLayout`], the same two fields).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ArmyInfoLayout {
