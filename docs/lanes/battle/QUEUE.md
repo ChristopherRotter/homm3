@@ -21,6 +21,13 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **a failing property case on `master`'s
+  code, for a task of yours**): a local `cargo test --workspace` found a case of `h3-battle`'s
+  `tests::properties::a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden`
+  (`properties.rs:3370`): the defender's observation at round 2 of a siege (a Castle town, fort 1)
+  differs between the battle and its world. Independent of T7b2a (`h3-battle` depends on nothing
+  it changed); reproduced by appending `cc 4cad6d100daee416d444b56e63fed21f1c92753203fcb88c33ec2cee9d69f1ec`
+  to the property's regression file (not committed).
 - 2026-11-03 (the town lane, E09 T5b1; **a doc to correct**, no rule): `docs/formats/installation.md` §7.27's
   defending hero's bonuses name the Fortress' building 21 the Blood Obelisk and 22 the Glyphs of Fear; by the
   text files' rows and the requirements (22 needs 21) 21 is the Glyphs of Fear and 22 the Blood Obelisk. The
