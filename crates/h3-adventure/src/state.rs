@@ -83,6 +83,7 @@ impl StaticTile {
 mod boats;
 mod calendar;
 mod draws;
+mod dwellings;
 mod economy;
 mod events;
 mod flags;
@@ -289,13 +290,21 @@ pub struct StaticMap {
     /// Mystical Garden ([`ObjectKind::weekly`]); the state's weekly contents are by their place
     /// here. Follows from the objects too.
     weeklies: Vec<usize>,
+    /// The dwellings' indices, in object order (E08 T94a; increment 10's design note §5): placed
+    /// and resolved alike ([`ObjectKind::Dwelling`]), the dwelling index. Follows from the objects.
+    dwellings: Vec<usize>,
+    /// The Refugee Camps' indices, in object order (E08 T94a; increment 10's design note §5:
+    /// [`ObjectKind::RefugeeCamp`]), the camp index. Follows from the objects.
+    camps: Vec<usize>,
     hash: u64,
 }
 
 impl StaticMap {
     /// Builds the static map from its setup, checking the dimensions, the tiles and the objects
     /// (level, type, amount, their number), then draws the objects' random contents from `draws`
-    /// under the scenario's `bans`.
+    /// under the scenario's `bans`. Since E08 T94a each random dwelling first draws the dwelling it
+    /// becomes as it is placed, in object order ([`dwellings::resolve`], ADV-DWL-005; increment
+    /// 10's design note §5).
     fn new(
         core: &Ruleset,
         part: &AdventureRuleset,
@@ -363,6 +372,8 @@ impl StaticMap {
             shares: TerrainShares::default(),
             ownables: Vec::new(),
             weeklies: Vec::new(),
+            dwellings: Vec::new(),
+            camps: Vec::new(),
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -374,7 +385,8 @@ impl StaticMap {
         // guard's passage could remove the other). The 160 shipped maps have none (T15a, T21b) but
         // special grounds, which nothing names (never visited, offered or removed): 5 maps stack
         // two of one type on one anchor (E08 T20a2a), so grounds are left out of the check.
-        let mut named = BTreeSet::new();
+        // Each name with the first object that takes it (a random dwelling may take one twice).
+        let mut named = BTreeMap::new();
         for (index, object) in setup.objects.iter().enumerate() {
             if object.anchor.level >= map.levels {
                 return Err(SetupError::ObjectLevel(index));
@@ -393,19 +405,6 @@ impl StaticMap {
                 .is_some_and(|a| !(takes && (1..=MAX_PICKUP_AMOUNT).contains(&a)))
             {
                 return Err(SetupError::ObjectAmount(index));
-            }
-            // E08 T72: nothing names a ground of the sea or a hole either.
-            let ground = ty.is_some_and(|ty| {
-                matches!(
-                    ty.kind,
-                    ObjectKind::Ground { .. } | ObjectKind::SeaGround | ObjectKind::Hole
-                )
-            });
-            if let Some(id) = object.object_type
-                && !ground
-                && !named.insert((id.raw(), object.anchor))
-            {
-                return Err(SetupError::SharedAnchor(index));
             }
             // rule: ADV-MON-001
             let levels = ty.and_then(|ty| match ty.kind {
@@ -437,8 +436,27 @@ impl StaticMap {
             if !holds::check_holds(core, part, ty.map(|ty| &ty.kind), &object.holds) {
                 return Err(SetupError::Holds(index));
             }
+            // E08 T72: nothing names a ground of the sea or a hole either. Since E08 T94a after
+            // the holds, which a random dwelling's names come from ([`dwellings::names`]).
+            let ground = ty.is_some_and(|ty| {
+                matches!(
+                    ty.kind,
+                    ObjectKind::Ground { .. } | ObjectKind::SeaGround | ObjectKind::Hole
+                )
+            });
+            for name in dwellings::names(part, object, ground) {
+                if named
+                    .insert(name, index)
+                    .is_some_and(|earlier| earlier != index)
+                {
+                    return Err(SetupError::SharedAnchor(index));
+                }
+            }
             let event = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Event));
-            map.place(object, guards, event);
+            // rule: ADV-DWL-005
+            // Before every other draw of the static map; E09's random towns, when built, draw
+            // their placeholders before this walk (ADR-0017 point 4).
+            map.place(&dwellings::resolve(part, object, draws), guards, event);
         }
         map.resolve(core, part, &setup.objects, draws);
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
@@ -494,7 +512,9 @@ impl StaticMap {
         }
     }
 
-    /// Lists the ownable and the weekly objects ([`Self::ownables`], [`Self::weeklies`]).
+    /// Lists the ownable and the weekly objects ([`Self::ownables`], [`Self::weeklies`]); since
+    /// E08 T94a the dwellings and the camps ([`Self::dwellings`], [`Self::camps`]), after the
+    /// random dwellings resolved.
     fn list_economy(&mut self, part: &AdventureRuleset) {
         for (index, object) in self.objects.iter().enumerate() {
             let kind = object
@@ -506,6 +526,12 @@ impl StaticMap {
             }
             if kind.is_some_and(ObjectKind::weekly) {
                 self.weeklies.push(index);
+            }
+            if matches!(kind, Some(ObjectKind::Dwelling { .. })) {
+                self.dwellings.push(index);
+            }
+            if matches!(kind, Some(ObjectKind::RefugeeCamp { .. })) {
+                self.camps.push(index);
             }
         }
     }
@@ -882,6 +908,31 @@ impl StaticMap {
         self.weeklies.binary_search(&index).ok()
     }
 
+    /// The dwellings' indices, in object order (E08 T94a; increment 10's design note §5): every
+    /// object of kind [`ObjectKind::Dwelling`], placed by the map or a random dwelling resolved
+    /// when the game was built (ADV-DWL-005). The state's dwellings are by their place here, the
+    /// dwelling index.
+    pub fn dwellings(&self) -> &[usize] {
+        &self.dwellings
+    }
+
+    /// The dwelling index of the object at `index`, its place among the dwellings, if it is one.
+    pub fn dwelling_index(&self, index: usize) -> Option<usize> {
+        self.dwellings.binary_search(&index).ok()
+    }
+
+    /// The Refugee Camps' indices, in object order (E08 T94a; increment 10's design note §5):
+    /// every object of kind [`ObjectKind::RefugeeCamp`]. The state's camps are by their place
+    /// here, the camp index.
+    pub fn camps(&self) -> &[usize] {
+        &self.camps
+    }
+
+    /// The camp index of the object at `index`, its place among the camps, if it is one.
+    pub fn camp_index(&self, index: usize) -> Option<usize> {
+        self.camps.binary_search(&index).ok()
+    }
+
     /// The objects visited from `pos`, by index in map order, if a typed one is among them (none
     /// for a tile only blockers are visited from, or one off the map). A visit concerns the last
     /// of them still on the map ([`AdventureState::visit_at`], E08 T14a).
@@ -1142,7 +1193,8 @@ pub struct AdventureState {
 
 impl AdventureState {
     /// Builds the state from a setup, checking every invariant commands keep: the map's bounds
-    /// and tiles, the objects, the players' bound, and each hero's owner, tile (ADV-MAP-001) and
+    /// and tiles, the objects, the players' bound, and each hero's owner, tile (ADV-MAP-001; since
+    /// E08 T94a none a random dwelling could cover, [`SetupError::RandomDwellingTile`]) and
     /// army. The objects' random contents are drawn from `draws`, the game's setup stream
     /// (ADR-0017 point 4); every draw is valid, so whether a setup is valid does not depend on
     /// them. The heroes are kept by id, their stacks by slot, without movement points, then the
@@ -1181,6 +1233,8 @@ impl AdventureState {
         }
         let mut seats = [Seat::default(); MAX_PLAYERS as usize];
         seats[..setup.seats.len()].copy_from_slice(&setup.seats);
+        // rule: ADV-DWL-005
+        let refused = dwellings::refused_tiles(part, &map, &setup.map.objects);
         let owners = economy::owners_at_start(&map, &setup.map.objects);
         let weekly = economy::first_week(part, &map, draws);
         let unexplored = BitGrid::new(map.width(), map.height(), map.levels());
@@ -1202,7 +1256,7 @@ impl AdventureState {
             fractions: Table::new(),
         };
         for hero in &setup.heroes {
-            state.place(core, part, hero)?;
+            state.place(core, part, hero, &refused)?;
         }
         state.boats = Boats::new(part, &state.map, &setup.map.boats)?;
         Ok(state)
@@ -1279,18 +1333,28 @@ impl AdventureState {
     }
 
     /// Checks and places one hero of the setup, without movement points ([`Self::start_game`]
-    /// gives them).
+    /// gives them). Since E08 T94a a hero on one of the `refused` tiles, which a random dwelling
+    /// could cover whatever it draws ([`dwellings::refused_tiles`]), is refused before its tile
+    /// is checked on the resolved map.
     fn place(
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
         hero: &HeroSetup,
+        refused: &BTreeMap<Pos, usize>,
     ) -> Result<(), SetupError> {
         let Err(at) = self.heroes.binary_search_by_key(&hero.id, |h| h.id) else {
             return Err(SetupError::DuplicateHero(hero.id));
         };
         if hero.owner.raw() >= self.players {
             return Err(SetupError::UnknownOwner(hero.id));
+        }
+        // rule: ADV-DWL-005
+        if let Some(&object) = refused.get(&hero.pos) {
+            return Err(SetupError::RandomDwellingTile {
+                hero: hero.id,
+                object,
+            });
         }
         self.check_stand(part, hero.pos)
             .map_err(|error| SetupError::HeroTile {
