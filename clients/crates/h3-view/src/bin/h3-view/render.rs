@@ -503,6 +503,31 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     &info,
                 ))
             };
+            // The combat options dialog the key O or a click on the panel's Options opens while
+            // the opening takes a command (E17 M6 T4a): the capture harness's settings, no audio
+            // device (`setup.sh`), its background in the acting side's player's colours.
+            let acting_player = observation
+                .active
+                .and_then(|id| observation.stacks.iter().find(|s| s.id == id))
+                .map(|s| usize::from(s.controller == h3_protocol::wire::Side::Defender))
+                .map_or(viewing, |i| {
+                    observation.sides[i]
+                        .colour
+                        .unwrap_or_else(|| u8::try_from(i).unwrap_or(0))
+                });
+            let options = |point: Option<[i32; 2]>| {
+                let on_button = point.is_none_or(|p| {
+                    layout.panel_in(observation).button_at(p) == Some(h3_view::panel::OPTIONS)
+                });
+                (on_button && !legal.is_empty()).then(|| {
+                    h3_view::options::Open::new(
+                        &layout.options,
+                        &catalogue,
+                        h3_view::options::Settings::CAPTURE,
+                        (acting_player, false),
+                    )
+                })
+            };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
                 leave,
@@ -517,6 +542,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 turret: &turret,
                 help: &help,
                 hero_info: &hero_info,
+                options: &options,
             };
             Some(crate::spellbook::still(
                 &actions,

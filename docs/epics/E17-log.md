@@ -5125,3 +5125,34 @@ user chose the town records over T3c2's asset tables and both parts in one task 
 - **Checked:** unit tests (`a_siege_towns_buildings_become_its_map_bits`, the writer's bits,
   `effect_skills`' Grail), `drawn --record`, `check.sh`, the scoped verify.
 
+### M6 T4a — the combat options dialog (2026-11-04)
+
+On `client/e17-m6-t4a`, the user present at the start. The sandbox new, the original files
+staged first (the device shell did not start: staged by the file tool) before the computer went
+offline; #704 and #706 had merged; the baseline's `check.sh` passed. The user cut T4 in three
+(T4a here, T4b the Auto Combat options and Creature Info, T4c the grid and the shadows). The
+reading, the build and the captures each by a sub-agent, the docs by the session.
+
+- **Read** (design §12.12): `battle_combat_options` 0x4686B0 (the panel's 2003 and O while the
+  battle takes a command), `combat_options_create` 0x46E3B0, `combat_options_proc` 0x46F7B0, its
+  run and destructor, `combat_options_hints` 0x6A55A8, `combat_options_defaults` 0x50B700 (the
+  Default), `settings_first_run`, `settings_check`'s ranges, `battle_set_shades` 0x479FC0 (the
+  keys F6 to F8 and the aim's shade), `typed_text_command` 0x4022E0 (a cheat); 0x6987C0 is the
+  cursor's shade ("Show Combat Mouse Hex"), 0x6987C4 the movement's ("Combat Shade Level"). The
+  dialog holds the volumes and "Animate SpellBook" besides the battle's options; every click
+  writes at once (no cancel; Enter and Escape are OK), the registry written at the close after a
+  click.
+- **Built:** `h3_view::options` (the layout's `[options]`, `Settings`, the fill, the clicks, the
+  help popups), the window's opening and modal run, `settings.toml` (*provisional*, review item
+  31), the combat speed (`Growing::set_speed`) and both volumes (`sound_volume` on the SDL gains)
+  in effect; the rest kept (T4b, T4c). Ten oddities found: CLT-Q43 (the input slips) and CLT-Q44
+  (the no-sound guard) asked, built as the original's; one for T4b; four copied (§12.12).
+- **Recorded:** `options`, `options-set`, `options-no-sound`, `options-help`, `options-default`,
+  `options-closed`, all exact; `options-no-sound` from 100 ms (a box a click opens shows its
+  arrow at the click until the frozen clock's next poll: the runbook's Traps).
+- **Agent's calls** (change freely): the settings file's format and place; `--speed` over the
+  file; the texts' item ids 240 to 256; the DEF buttons' press at 127; the dialog not opened
+  while a record plays; oddities 3, 5, 6, 9 copied without a question.
+- **Checked:** unit tests (`options/tests.rs`, the keys' context, `set_speed`), the real-asset
+  gate, `drawn --record`, `check.sh`, the scoped verify.
+

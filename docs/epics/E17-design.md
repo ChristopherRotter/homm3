@@ -5570,3 +5570,156 @@ either hero wears the Spirit of Oppression (artifact 84); the Minotaurs' minimum
 - **Recorded:** `stats-morale-siege` (the Colossus, one alignment, the Brotherhood),
   `stats-morale-tavern` (one alignment, the Tavern) and `stats-luck-siege` (a Rampart: the
   Spirit Guardian, the Fountain of Fortune) exact.
+
+### 12.12 The combat options dialog (M6 T4a)
+
+Read: `battle_buttons`' case 2003 (0x474F02) and its keys 63 to 66 (0x475902 to 0x475BE1),
+`battle_combat_options` 0x4686B0 whole, the dialog's constructor `combat_options_create`
+0x46E3B0, its run 0x46F780, its procedure `combat_options_proc` 0x46F7B0 and its destructor
+0x46F700 whole; `combat_options_defaults` 0x50B700, `settings_check` 0x50B260 and
+`settings_first_run` 0x50B4D0 whole, `settings_read` and `settings_write` 0x50BE10 in part,
+`battle_set_shades` 0x479FC0 and `typed_text_command` 0x4022E0 whole; the item handlers' paths
+this dialog takes (`dialog_def_message` 0x4EA810's mouse, `def_button_draw`, `button_press`,
+`dialog_item_message`'s states, `dialog_item_at`); `Help.txt`'s records 392 to 430 and the DEFs'
+frames.
+
+- **Opening.** The panel's Options button (2003, `icm003.def`, hotkey O; §9.7) gives its command;
+  `battle_buttons` takes commands only while +0x132B4 (§9.10), so only when the battle takes the
+  input. `battle_combat_options` builds the dialog on the stack and runs it modally: the input
+  queue flushed, then only the dialog's loop runs (`adventure_tick` and the messages; the
+  battle's idle step does not: no fidget, no outline pulse, nothing of the battle redrawn while
+  it shows). Nothing is hidden first (the army info windows stay; the T key's path hides them).
+- **Closing.** The loop ends on the OK's command (30722: its click, or its hotkeys Enter and
+  Escape alike; the window manager's +0x38 = 30722). Then, when anything was clicked (+0x4C,
+  set by every handled click, Default and an unchanged volume included), `settings_save` writes
+  every setting to the registry (0x46F7A2); the loop's end took the dialog off (its vtable +8). The
+  battle marks its background not composed (+0x53B8 = 0, so the grid and shadows are composed
+  again), computes the movement overlay again (`draw_hex_overlays` with its second argument),
+  redraws and shows the whole frame (`battle_redraw` 1, 0, 0, 0, 1, 0), then destroys the dialog.
+  **No cursor is set and nothing posted**: the arrow the dialog set stays until the mouse moves.
+  There is no cancel: every click writes its global at once.
+- **The dialog.** At (159, 84), 481 × 431 (centred on 800 × 600, halves dropped), the base
+  dialog's flags 0x12 (it casts the shadow, §7.17); `comopbck.pcx` (481 × 431, id 200) in the
+  colours of the acting side's player (+0x132C0's owner +0x54A8; no fallback, the turn being a
+  human's); the cursor set to type 0 frame 0 (the adventure's arrow) at the build. Its pointer
+  is kept in 0x694F90 while it lives.
+- **Its items** (from the dialog's corner; texts by the executable's row, §9.4; the fonts'
+  colours and alignments as §9.5 takes them: colour 7 and alignment 5 for the title and the
+  headings, colour 1 and alignment 4 for the labels; every text item id −1; the DEF pictures with
+  the flags 0x10, the DEF buttons 2; no hints set, so the pairs' first fields go unused):
+
+| id | kind | x, y | w × h | asset, frames | text | a left click |
+|---|---|---|---|---|---|---|
+| 200 | picture | 0, 0 | 481 × 431 | `comopbck.pcx` | | nothing |
+| | text | 26, 19 | 432 × 28 | `bigfont.fnt` | GENRLTXT 393 | |
+| | text | 26, 204 | 193 × 20 | `medfont.fnt` | GENRLTXT 394 | |
+| 230, 231, 232 | DEF button | 28, 92, 156; 225 | 62 × 32 | `sysopb9.def`, `sysob10.def`, `sysob11.def`: 0 normal, 1 pressed, 2 the chosen | | combat speed 0, 1, 2 |
+| | text | 26, 283 | 193 × 20 | `medfont.fnt` | GENRLTXT 395 | |
+| 202 to 211 | DEF | 29 + 19 k, 303 | 18 × 36 | `syslb.def` frame k | | music volume k |
+| | text | 26, 349 | 193 × 20 | `medfont.fnt` | GENRLTXT 396 | |
+| 212 to 221 | DEF | 29 + 19 k, 369 | 18 × 36 | `syslb.def` frame k | | effects volume k |
+| 235 to 238 | DEF box | 24; 55, 88, 122, 154 | 32 × 24 | `sysopchk.def`: 0 off, 1 on | | toggles 0x6987BC, 0x6987C4, 0x6987C0, 0x698788 |
+| | text | 61; 55, 88, 122, 154 | 168 × 24 | `medfont.fnt` | GENRLTXT 405, 406, 407, 578 | |
+| | text | 248, 56 | 211 × 20 | `medfont.fnt` | GENRLTXT 397 | |
+| 225 to 229 | DEF box | 246; 84 + 30 k | 32 × 24 | `sysopchk.def` | | toggles 0x698794 to 0x6987A4 |
+| | text | 283; 84 + 30 k | 182 × 24 | `medfont.fnt` | GENRLTXT 399, 400, 401, 152, 402 | |
+| | text | 248, 255 | 211 × 20 | `medfont.fnt` | GENRLTXT 398 | |
+| 233, 234 | DEF box | 246; 283, 313 | 32 × 24 | `sysopchk.def` | | army info level 1, 2 |
+| | text | 283; 283, 313 | 182 × 24 | `medfont.fnt` | GENRLTXT 403, 404 | |
+| 201 | DEF button | 246, 359 | 100 × 48 | `codefaul.def`: 1 normal, 0 pressed | | Default |
+| 30722 | DEF button | 357, 359 | 100 × 48 | `soretrn.def`: 1 normal, 0 pressed | | closes |
+
+  The boxes are, in order: the grid, the movement shadow, the cursor shadow and the spell book's
+  animation (left column); the five auto-combat options, creatures, spells, Catapult, Ballista,
+  First Aid Tent (right column, top); the creature info's two levels (right, below). Each box's
+  frame is its option at the build (233 on at level 1, 234 at level 2). The texts are added after
+  the controls (the build's order: picture, Default, OK, the bars, the speeds, the boxes, the
+  texts); no two boxes meet.
+- **The bars.** Each column holds ten DEF pictures over the background's printed staircase; all
+  but the volume's are hidden (state bit 4 cleared) and the shown one has its frame set to the
+  volume. Hidden is not disabled: a DEF picture takes the mouse with its bit 2 alone, so the whole
+  track clicks and each position gives its own right-click row. A click sets the volume to the
+  position (music 0x698760; effects 0x698764 and Last Sound Volume 0x69876C), shows that bar
+  alone and applies it at once (the music 0x59A1B0, the playing samples 0x59A0C0). With the
+  volume at 0 and no digital driver (the sound manager's +0x3C), the click opens GENRLTXT 151 in
+  an OK box (style 1, centred) and changes nothing.
+- **The speeds.** The chosen one is disabled (`SendCommand` 5 with 0x1000 sets bit 8), so it
+  draws its disabled frame 2 (the lit one) and takes no press; a click on another sets the speed,
+  enables all three and disables the new one.
+- **The boxes.** A box's left press (the DEF picture's bit 1, no picture change) plays
+  `button.wav` from the procedure (any 0x200/0xC whose item at the cursor is 225 to 238: volume
+  0x40, once, category 3); its release toggles the option and the frame. 233 and 234 form a pair
+  that can be emptied: a click on the one shown sets the level 0, on the other its level (the
+  first's frame cleared). Default (201) calls `combat_options_defaults` (the spell book's
+  animation 1, the grid, both shadows, the level and the speed 0, the five auto options 1; the
+  volumes kept) and sets every item again but the bars. Each handled click redraws the whole
+  dialog (vtable +0x14 with all ids) and shows it. The DEF buttons play their own press sample
+  (`button_press`).
+- **The right button** over 30722 or an item 201 to 238 (a DEF picture's right press, hidden
+  bars included; a DEF button's, the chosen speed's too, §12.7) opens `message_box` style 4 at
+  x = y = −1 (centred, held while the button is) with the right-click field of
+  `combat_options_hints` 0x6A55A8: `Help.txt` 392 for 30722, else 392 + (id − 200): 393 Default,
+  394 to 403 the music bars, 404 to 413 the effects bars, 417 to 421 the auto boxes, 422 to 424
+  the speeds, 425 and 426 the levels, 427 to 429 the grid and the shadows, 430 the spell book.
+  The picture (200) and the texts (−1) give nothing; keys other than the OK's do nothing.
+- **The settings.** All are process-wide globals, read from the registry at the start
+  (`settings_read`; no Music Volume value there: `settings_first_run`, whose combat values are
+  Default's and the volumes 5), kept in range by `settings_check` (flags 0 or 1, level 0 to 2
+  else 0, speed 0 to 2 else 0, volumes 0 to 9 else 5) and written whole by `settings_write`. Their
+  value names (`settings_names`): Show Combat Grid 0x6987BC, Show Combat Mouse Hex 0x6987C0 (the
+  dialog's cursor shadow), Combat Shade Level 0x6987C4 (the movement shadow), Combat Army Info
+  Level 0x6987C8, Combat Speed 0x6987EC, Combat Auto Creatures, Combat Auto Spells, Combat
+  Catapult, Combat Ballista, Combat First Aid Tent 0x698794 to 0x6987A4, Animate SpellBook
+  0x698788, Music Volume, Sound Volume. Nothing goes over the network. Outside the dialog the
+  battle's keys F5 (code 63: the level cycled 0, 1, 2), F6, F7 and F8 (the grid, the cursor
+  shadow, the movement shadow toggled; `battle_set_shades` inlined) change them, with no test of
+  the turn, each redrawn and saved at once; the area aim's `battle_set_shades` turns the
+  movement shadow off while the cursor shadow is on and back after, saving each time (0x59EFD0,
+  0x59F077, 0x59F041); `battle_start` clears 0x6987C0 during its setup (§7.18); the cheat code
+  (`typed_text_command` 0x4022E0) sets the five auto options, the speed 2 and both
+  walk speeds 4 without saving.
+- **Oddities** (asked: 1, 2 and 10 as CLT-Q43, 7 and 8 as CLT-Q44; 4 with T4b's army info;
+  3, 5, 6 and 9 copied without a question, the agent's call: a slider's track, the default
+  level, a label's source and ids without items show nothing a player would call a slip):
+  1. The speed buttons sound twice: `button_press` plays `button.wav`, then the procedure's press
+     path plays it again, its range 225 to 238 holding 230 to 232.
+  2. A box or a bar acts on the left release anywhere: its press inside is enough
+     (`dialog_def_message`'s release tests no box), where a DEF button needs the release inside.
+  3. The hidden bars take clicks and right presses (above): the whole track is live, drawn or not.
+  4. The level's help rows (425, 426) speak of a right click on a unit; the level's readers are
+     the hover's army info windows (0x4755F0; 1 and 2 told apart at 0x4756CC), the heroes' windows
+     left shown after their right press (0x476A1D), the status line's damage (0x492A0D,
+     0x492B39) and the redraw (0x494AB1); the right click on a stack shows the full dialog
+     whatever the level (§12.5).
+  5. The level's pair can be emptied (0, neither box), the default, as no radio group allows.
+  6. The Ballista's label is GENRLTXT 152, the creature's name row, the other four labels the
+     dialog's block (399 to 402).
+  7. The no-sound box tests the volume before the click: at 0 without a driver no bar works (bar
+     0 included); above 0 without a driver every bar does, silently.
+  8. The effects bars also write Last Sound Volume; the music bars leave Last Music Volume
+     (0x698768) alone (the system options do the same).
+  9. The procedure's ids reach 222 to 224 (nothing; their help rows 414 to 416 name a music
+     type choice the dialog lacks).
+  10. After the close the cursor stays the dialog's arrow, and the status line and the hovered
+     hex as they were, until the mouse moves (nothing posted).
+- **The client's (M6 T4a, *provisional* where marked).** `h3_view::options` holds the dialog
+  (the layout's `[options]`; its texts' ids 240 to 256 the client's, the executable's all −1),
+  the settings (`Settings`: a first run's, `settings_check`'s ranges, the file's read and write)
+  and the clicks; the window's battle opens it while it takes a command (`Battle::open_options`:
+  a battle fought here, its human's turn waiting, nothing open over it). The settings file is
+  `settings.toml` beside `keys.toml` (`--settings`, else the working directory's): a `[battle]`
+  table of the registry's value names in snake case, written whole as the dialog closes after a
+  click (other tables are not kept: *provisional*); an explicit `--speed` wins over its combat
+  speed for the run. In effect: the combat speed (`Growing::set_speed`: from the next command on)
+  and both volumes (`sound_volume` on every SDL gain: the music's by its setting, every other
+  stream's by the effects'; the first run's 5 makes the client's sound 6/10 of what it was before
+  T4a); the press samples are `button.wav` on the creature channels, the DEF buttons' at its
+  loader's 127 (*provisional*: `button_press`' category not read), the procedure's at 0x40. The
+  no-sound guard tests the client's audio device (none with `--mute` or without a device) and
+  each column's own volume. Kept only: the grid, both shadows, the spell book's animation (T4c;
+  the page-turn videos are not built), the Auto Combat options and the army info level (T4b),
+  the keys F5 to F8. The stills use the harness's settings (`Settings::CAPTURE`, `setup.sh`'s
+  registry) without a sound device, so a capture's volume bars at 0 open GENRLTXT 151's box
+  (`options-no-sound`) and never move; a capture that clicks anything before the OK would make
+  the original write its registry (0x46F7A2), which later captures read: `options-closed`
+  closes by Enter without a click.

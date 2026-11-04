@@ -120,7 +120,12 @@ search the parent directories).
   what is open over the battle (nothing, the spell book, a message box, an aim, the result
   window: each takes its own and the window's that work whatever is open, so Esc is the book's
   close, the box's Cancel, the aim's give-up and the result window's OK there); the user's `keys.toml` (`--keys`, else in the working directory)
-  overrides them in its `[battle]` table (its format: the usage). The mouse is the battle's (E17 M3 T6c-2,
+  overrides them in its `[battle]` table (its format: the usage). The panel's Options (or O) opens
+  the combat options dialog on a human's turn (E17 M6 T4a, design §12.12); its settings come from
+  the user's `settings.toml` (`--settings`, else in the working directory; its `[battle]` table of
+  the original's registry values, *provisional*), else a first run's, and are written back there
+  as the dialog closes after a click; the combat speed (an explicit `--speed` wins for the run)
+  and both volumes are in effect, the rest kept for T4b and T4c. The mouse is the battle's (E17 M3 T6c-2,
   design §9.10): its cursor, the stack it marks and enters, its hints in the log; a panel button
   shows its click frame while the mouse or its hotkey (S, R, O, A, C, W, D, Space) holds it, the
   log's scroll buttons and ↑ ↓ scroll the log. Retreat and Surrender (their buttons, R and S; E17

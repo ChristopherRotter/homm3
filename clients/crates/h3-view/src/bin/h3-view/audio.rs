@@ -11,8 +11,12 @@
 //! on the start sound's stream (E17 M3 T3b; *provisional*: the category's other three channels
 //! are not built), as the start sound at its loader's volume (127, E17 M3 T8); a spell's own sound
 //! in the creatures' category 3 at that volume (`play_sound_async` 0x59A590 from 0x5A0331). The battle's end (T8) ends every effect and plays its
-//! tune once on the music's stream, at the music's volume, from its start. An adapter: it reads
-//! files and drives the audio device.
+//! tune once on the music's stream, at the music's volume, from its start. Every volume is taken
+//! through the combat options' settings (E17 M6 T4a, design §12.12; `sound_volume` 0x5996C0,
+//! `h3_view::options::sound_volume`): the music's by the music setting, every other by the
+//! effects', changed at once as the dialog's bars set them ([`Player::set_volumes`]); the dialog's
+//! press sample is the buttons' (`button.wav`, [`Player::click`]). An adapter: it reads files and
+//! drives the audio device.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -22,6 +26,7 @@ use h3_assets::snd::SndArchive;
 use h3_assets::wav::{Pcm, decode_wav};
 use h3_sdl::Audio;
 use h3_view::anim::{Cue, Sound};
+use h3_view::options::sound_volume;
 use h3_view::sound::{
     EFFECT_VOLUME, FILE_VOLUME, Lengths, MUSIC_VOLUME, Opening, START_WAIT, Tune, length_ms,
     music_volume,
@@ -94,21 +99,25 @@ pub struct Library {
     /// The battle's own sounds by cue, upper-cased: the tent's heal (E17 M3 T3b), a resisted
     /// spell's and the cast spells' (E17 M3 T7b-1).
     named: BTreeMap<Sound, String>,
+    /// The buttons' press sample, upper-cased (E17 M6 T4a: the combat options dialog's).
+    button: String,
 }
 
 impl Library {
-    /// Decodes the start sound, every sound of `voices` and the battle's own sounds `named` by cue
-    /// from the sound archives of `install`, and the music and the end's `tunes` from its `MP3`
-    /// folder. A missing or undecodable sound costs that sound, noted in `lines`.
+    /// Decodes the start sound, every sound of `voices`, the battle's own sounds `named` by cue
+    /// and the buttons' press sample `button` from the sound archives of `install`, and the music
+    /// and the end's `tunes` from its `MP3` folder. A missing or undecodable sound costs that
+    /// sound, noted in `lines`.
     pub fn load(
         install: &Path,
-        opening: Opening,
+        (opening, button): (Opening, &str),
         (voices, named): (Voices, BTreeMap<Sound, String>),
         tunes: &[Tune],
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
-        let (result, took) =
-            crate::gate::timed(|| Self::decode(install, opening, (voices, named), tunes, lines));
+        let (result, took) = crate::gate::timed(|| {
+            Self::decode(install, (opening, button), (voices, named), tunes, lines)
+        });
         let mut library = result?;
         library.took = took.as_millis();
         Ok(library)
@@ -117,7 +126,7 @@ impl Library {
     /// [`Library::load`] without its timing.
     fn decode(
         install: &Path,
-        opening: Opening,
+        (opening, button): (Opening, &str),
         (voices, named): (Voices, BTreeMap<Sound, String>),
         tunes: &[Tune],
         lines: &mut Vec<String>,
@@ -132,6 +141,7 @@ impl Library {
             .chain(std::iter::once(&start))
             .chain(named.values())
             .map(|n| n.to_ascii_uppercase())
+            .chain(std::iter::once(button.to_ascii_uppercase()))
             .collect();
         wanted.sort_unstable();
         wanted.dedup();
@@ -151,6 +161,7 @@ impl Library {
             took: 0,
             voices,
             named,
+            button: button.to_ascii_uppercase(),
         })
     }
 
@@ -222,6 +233,7 @@ pub fn lengths(
         took: 0,
         voices,
         named,
+        button: String::new(),
     };
     Ok(library.lengths())
 }
@@ -312,6 +324,8 @@ struct Channel {
     format: (u32, u16),
     /// The cue that plays here (its stack, its sound and its voice).
     owner: Option<Cue>,
+    /// The volume of the sound it plays, before the effects' setting (E17 M6 T4a).
+    volume: u8,
     /// Whether that sound loops.
     looping: bool,
 }
@@ -337,6 +351,8 @@ pub struct Player {
     /// Whether the music and the effects are heard (the keys M and E).
     pub music_on: bool,
     pub effects_on: bool,
+    /// The combat options' music and effects volume settings, 0 to 9 (E17 M6 T4a).
+    settings: (u8, u8),
 }
 
 impl Player {
@@ -347,16 +363,15 @@ impl Player {
         let (rate, channels) = library.music.as_ref().map_or((44_100, 2), |m| (m.0, m.1));
         let music_stream = out.add_stream(rate, channels)?;
         let start_stream = out.add_stream(22_050, 1)?;
-        out.set_gain(start_stream, gain(FILE_VOLUME));
         let mut list = Vec::with_capacity(CHANNELS);
         for _ in 0..CHANNELS {
             let stream = out.add_stream(22_050, 1)?;
-            out.set_gain(stream, gain(EFFECT_VOLUME));
             list.push(Channel {
                 stream,
                 format: (22_050, 1),
                 owner: None,
                 looping: false,
+                volume: EFFECT_VOLUME,
             });
         }
         Ok(Self {
@@ -371,7 +386,76 @@ impl Player {
             paused: None,
             music_on: true,
             effects_on: true,
+            settings: (0, 0),
         })
+        .map(|mut player| {
+            let first = h3_view::options::Settings::FIRST_RUN;
+            player.set_volumes(first.music, first.effects);
+            player
+        })
+    }
+
+    /// The combat options' volume settings `music` and `effects` (0 to 9; E17 M6 T4a), applied at
+    /// once (`music_volume_apply` 0x59A1B0, `effects_volume_apply` 0x59A0C0): the start sound's
+    /// stream and every creature channel at their sounds' volumes by the effects' setting, the
+    /// music by its own from the next service.
+    pub fn set_volumes(&mut self, music: u8, effects: u8) {
+        self.settings = (music, effects);
+        self.out
+            .set_gain(self.start_stream, gain(sound_volume(FILE_VOLUME, effects)));
+        for c in &self.channels {
+            self.out
+                .set_gain(c.stream, gain(sound_volume(c.volume, effects)));
+        }
+    }
+
+    /// Plays the buttons' press sample once at `volume` (E17 M6 T4a; `button_press` 0x456860,
+    /// *provisional*: its loader's volume, `FILE_VOLUME`, on the creature channels; the combat
+    /// options' procedure's at 0x40 in category 3, 0x46FDB1), if it was found.
+    pub fn click(&mut self, library: &Library, volume: u8) {
+        if !self.effects_on {
+            return;
+        }
+        let Some(clip) = library.clips.get(&library.button) else {
+            return;
+        };
+        let index = self.free_channel();
+        self.play_on(index, clip, volume, None);
+    }
+
+    /// A creature channel free (none looping, nothing queued), else the next one in turn.
+    fn free_channel(&mut self) -> usize {
+        let free = self
+            .channels
+            .iter()
+            .position(|c| !c.looping && self.out.queued(c.stream) == 0);
+        free.unwrap_or_else(|| {
+            let i = self.turn % CHANNELS;
+            self.turn = i + 1;
+            i
+        })
+    }
+
+    /// `clip` played once on channel `index` at `volume` (through the effects' setting), owned by
+    /// `owner` (a stack's cue; none: the dialog's press).
+    fn play_on(&mut self, index: usize, clip: &Pcm, volume: u8, owner: Option<Cue>) {
+        let effects = self.settings.1;
+        let Some(channel) = self.channels.get_mut(index) else {
+            return;
+        };
+        self.out.clear(channel.stream);
+        channel.volume = volume;
+        self.out
+            .set_gain(channel.stream, gain(sound_volume(volume, effects)));
+        if channel.format != (clip.rate, clip.channels) {
+            self.out
+                .set_format(channel.stream, clip.rate, clip.channels);
+            channel.format = (clip.rate, clip.channels);
+        }
+        if self.out.put(channel.stream, &clip.samples, true).is_ok() {
+            channel.owner = owner;
+            channel.looping = false;
+        }
     }
 
     /// Plays the start sound; how long the battle waits for it, in ms (at most [`START_WAIT`]).
@@ -462,15 +546,8 @@ impl Player {
             let _ = self.out.put(self.start_stream, &clip.samples, true);
             return;
         }
-        let free = self
-            .channels
-            .iter()
-            .position(|c| !c.looping && self.out.queued(c.stream) == 0);
-        let index = free.unwrap_or_else(|| {
-            let i = self.turn % CHANNELS;
-            self.turn = i + 1;
-            i
-        });
+        let index = self.free_channel();
+        let effects = self.settings.1;
         let Some(channel) = self.channels.get_mut(index) else {
             return;
         };
@@ -484,7 +561,9 @@ impl Player {
             }
             _ => EFFECT_VOLUME,
         };
-        self.out.set_gain(channel.stream, gain(volume));
+        channel.volume = volume;
+        self.out
+            .set_gain(channel.stream, gain(sound_volume(volume, effects)));
         if channel.format != (clip.rate, clip.channels) {
             self.out
                 .set_format(channel.stream, clip.rate, clip.channels);
@@ -540,7 +619,11 @@ impl Player {
         }
         let playing = self.tune.and_then(|(t, _)| library.tune(t));
         if let (Some((_, next)), Some((rate, channels, samples))) = (self.tune.as_mut(), playing) {
-            let volume = if self.music_on { MUSIC_VOLUME } else { 0 };
+            let volume = if self.music_on {
+                sound_volume(MUSIC_VOLUME, self.settings.0)
+            } else {
+                0
+            };
             self.out.set_gain(self.music_stream, gain(volume));
             // Once: queued up to its end, never from its start again.
             let ahead = ahead(*rate, *channels);
@@ -564,7 +647,11 @@ impl Player {
             return;
         };
         let ms = u32::try_from(now.saturating_sub(*started) / MS).unwrap_or(u32::MAX);
-        let volume = if self.music_on { music_volume(ms) } else { 0 };
+        let volume = if self.music_on {
+            sound_volume(music_volume(ms), self.settings.0)
+        } else {
+            0
+        };
         self.out.set_gain(self.music_stream, gain(volume));
         let ahead = ahead(*rate, *channels);
         while self.out.queued(self.music_stream) < ahead && !samples.is_empty() {

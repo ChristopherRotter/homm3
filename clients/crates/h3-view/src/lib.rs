@@ -48,6 +48,7 @@ pub mod keys;
 pub mod layout;
 pub mod message;
 pub mod mouse;
+pub mod options;
 pub mod panel;
 pub mod ray;
 pub mod record;

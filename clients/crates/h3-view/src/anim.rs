@@ -1922,6 +1922,19 @@ pub struct Growing<'a> {
 }
 
 impl<'a> Growing<'a> {
+    /// Every animation played after now at combat speed `speed` (E17 M6 T4a: the combat options
+    /// dialog's speed, design §12.12): the frames' times and the clock's grid by its factor from the
+    /// next command on; the timeline grown so far is kept.
+    pub fn set_speed(&mut self, speed: Speed) {
+        self.player.speed = speed;
+        self.player.clock.grid = speed.scale(TICK).max(1);
+    }
+
+    /// The combat speed the next command plays at.
+    pub const fn speed(&self) -> Speed {
+        self.player.speed
+    }
+
     /// The battle `snapshot` shows, before its first command, at combat speed `speed`; `looks`
     /// holds each creature's numbers by its handle; the stacks fidget while it idles, from the
     /// viewer's own generator seeded with `seed` (none: no fidgets, [`Fidgets`]).

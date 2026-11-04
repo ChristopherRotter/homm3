@@ -75,6 +75,9 @@ pub struct BattleLayout {
     pub stats: crate::stats::StatsLayout,
     /// A hero's info window (E17 M6 T3b1; design §12.8; `crate::hero_info` fills it).
     pub hero_info: crate::hero_info::HeroInfoLayout,
+    /// The combat options dialog (E17 M6 T4a; design §12.12; `crate::options` fills it), its
+    /// loops' entries made into their items ([`Dialog::expanded`]).
+    pub options: crate::options::OptionsLayout,
 }
 
 /// The hero's spell book (`spell_book_dialog` 0x59BDF0; E17 M5 T3a, design §7.17): its dialog and
@@ -277,7 +280,8 @@ pub fn parse_battle(text: &str) -> Result<BattleLayout, String> {
         shadow: None,
         items: Vec::new(),
     };
-    layout.book.dialog = core::mem::replace(&mut layout.book.dialog, empty).expanded();
+    layout.book.dialog = core::mem::replace(&mut layout.book.dialog, empty.clone()).expanded();
+    layout.options.dialog = core::mem::replace(&mut layout.options.dialog, empty).expanded();
     Ok(layout)
 }
 

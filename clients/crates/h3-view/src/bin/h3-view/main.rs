@@ -88,8 +88,8 @@ commands:
           f<ms>.png there. --moments times a frame's moment for each quarter of the frames: the
           playhead's (read forward) and the reference's (read from the battle's start).
   window <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
-         [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--scale <n>]
-         [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute]
+         [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--settings <file>]
+         [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute]
          [--check <s> | --measure <s>] [--leave retreat|surrender] [--auto <n>]
           a battle in a window (SDL 3, h3-sdl), as `play` loads it, at the original's frame
           times from --from ms: each frame is shown when it falls due, at the largest integer
@@ -103,7 +103,9 @@ commands:
           (their buttons or R and S, then the question's OK or Enter; Cancel or Esc keeps
           fighting), Auto Combat (its button or A, against the bot: the bot plays the human's
           stacks too, the panel dimmed but its button, selected; any key or press of the battle
-          stops it as the next turn starts). A battle fought here ends in its result window over the screen darkened;
+          stops it as the next turn starts), the combat options (its button or O: the dialog;
+          Default, the speeds, the volumes, the boxes; OK, Enter or Esc closes it; the right
+          button over a control its help). A battle fought here ends in its result window over the screen darkened;
           its OK (or Enter or Esc) closes the window. With sound
           (the installation's sound archives and MP3 folder; none with --mute): from the
           battle's start its start sound plays while the clock waits, then the battle music
@@ -117,8 +119,16 @@ commands:
           (the commands: music, effects, pause, frame, restart, vsync, cursor, fullscreen, quit,
           log-up, log-down, dragon-spell, surrender, retreat, options, auto-combat, spell-book,
           wait, defend, book-close, book-adventure, book-combat, book-previous, book-next,
-          book-tab-up, book-tab-down, box-ok, box-cancel, aim-cancel, result-ok; [] unbinds one;
-          a key may be the battle's and a dialog's at once, Esc is). --measure runs
+          book-tab-up, book-tab-down, box-ok, box-cancel, options-ok, aim-cancel, result-ok; []
+          unbinds one; a key may be the battle's and a dialog's at once, Esc is). The combat
+          options' settings (E17 M6 T4a, provisional) come from a settings file (--settings,
+          else settings.toml in the working directory when there is one; its [battle] table of
+          the original's registry values: combat_speed, music_volume, sound_volume, ...), else a
+          first run's (speed 0, volumes 5); the dialog writes them there (--settings, else
+          settings.toml here) as it closes after a click. In effect: the combat speed (from the
+          next command; an explicit --speed wins over the file's for the run) and the music and
+          effects volumes (at once); the grid, the shadows, the spell book's animation, the Auto
+          Combat options and the army info level are kept only. --measure runs
           <s> seconds unattended and prints how late each frame showed; --check also reads
           every frame back and compares it with the frame drawn headless (exit 1 on a
           difference); unattended, a human's commands are the bot's choices pressed by the

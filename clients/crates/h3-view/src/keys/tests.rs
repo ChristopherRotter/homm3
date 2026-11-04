@@ -103,6 +103,14 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
     assert_eq!(on(Context::Stats, "Return"), Some(Command::StatsOk));
     assert_eq!(on(Context::Stats, "Escape"), Some(Command::StatsOk));
     assert_eq!(on(Context::Stats, "T"), None);
+    // The combat options dialog's OK by Enter or Escape (E17 M6 T4a); its O does nothing there.
+    assert_eq!(
+        on(Context::Battle, "O"),
+        Some(Command::Button(panel::OPTIONS))
+    );
+    assert_eq!(on(Context::Options, "Return"), Some(Command::OptionsOk));
+    assert_eq!(on(Context::Options, "Escape"), Some(Command::OptionsOk));
+    assert_eq!(on(Context::Options, "O"), None);
     // The result window's OK by Enter or Escape.
     assert_eq!(on(Context::Result, "Return"), Some(Command::ResultOk));
     assert_eq!(on(Context::Result, "Escape"), Some(Command::ResultOk));
@@ -114,7 +122,7 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
 #[test]
 fn every_command_has_a_name_in_the_tables_order() {
     let all = Command::all();
-    assert_eq!(all.len(), 34);
+    assert_eq!(all.len(), 35);
     let mut sorted = all.clone();
     sorted.sort_unstable();
     assert_eq!(sorted, all);
@@ -148,6 +156,7 @@ fn every_command_has_a_name_in_the_tables_order() {
             "box-ok",
             "box-cancel",
             "stats-ok",
+            "options-ok",
             "aim-cancel",
             "result-ok"
         ]
@@ -159,32 +168,37 @@ fn every_command_has_a_name_in_the_tables_order() {
     // Every command bound by default, in the table's order.
     let keys = Keys::original();
     let chords = keys.chords();
-    assert_eq!(chords.len(), 39);
+    assert_eq!(chords.len(), 41);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, all);
     assert_eq!(chords[0].1.to_string(), "F2");
-    assert_eq!(chords[36].1.to_string(), "RightButton");
-    assert_eq!(chords[38].1.to_string(), "Escape");
+    assert_eq!(chords[38].1.to_string(), "RightButton");
+    assert_eq!(chords[40].1.to_string(), "Escape");
 }
 
 #[test]
 fn the_context_is_the_topmost_thing_open() {
+    let none = (false, false);
     assert_eq!(
-        Context::of(false, false, false, false, false),
+        Context::of(false, false, none, false, false),
         Context::Battle
     );
-    assert_eq!(Context::of(false, false, false, false, true), Context::Aim);
-    assert_eq!(Context::of(false, false, false, true, true), Context::Book);
-    assert_eq!(Context::of(false, false, true, true, true), Context::Stats);
+    assert_eq!(Context::of(false, false, none, false, true), Context::Aim);
+    assert_eq!(Context::of(false, false, none, true, true), Context::Book);
     assert_eq!(
-        Context::of(false, true, true, true, false),
+        Context::of(false, false, (false, true), true, true),
+        Context::Options
+    );
+    assert_eq!(
+        Context::of(false, false, (true, true), true, true),
+        Context::Stats
+    );
+    assert_eq!(
+        Context::of(false, true, (true, true), true, false),
         Context::Message
     );
-    assert_eq!(
-        Context::of(true, true, false, false, false),
-        Context::Result
-    );
+    assert_eq!(Context::of(true, true, none, false, false), Context::Result);
 }
 
 #[test]

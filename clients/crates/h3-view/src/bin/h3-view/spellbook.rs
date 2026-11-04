@@ -210,6 +210,13 @@ pub struct Still {
     /// The message box is the right button's popup over the battle, held (E17 M6 T2b2: a
     /// turret's info): no cursor (`popup_run_held` 0x602A40).
     pub held: bool,
+    /// The combat options dialog the key O or a click on the panel's Options opened (E17 M6
+    /// T4a), with what the actions did to it; a box over it (its help, the no-sound box) is
+    /// `message`.
+    pub options: Option<h3_view::options::Open>,
+    /// The options dialog closed by its key and the mouse not moved since: its arrow stays at the
+    /// mouse, the battle's status line and marked hex as before (oddity 10).
+    pub options_arrow: bool,
 }
 
 impl Still {
@@ -219,6 +226,7 @@ impl Still {
             || self.message.is_some()
             || self.result.is_some()
             || self.stats.is_some()
+            || self.options.is_some()
     }
 }
 
@@ -261,6 +269,9 @@ pub struct Boxes<'a> {
     /// The hero's info window the right button held at a point shows (E17 M6 T3b1; none: no
     /// side's hero there).
     pub hero_info: &'a dyn Fn([i32; 2]) -> Option<MessageBox>,
+    /// The combat options dialog the key O opens (none given) or a click at a point on the
+    /// panel's Options (E17 M6 T4a; none: the battle takes no command, or no button there).
+    pub options: &'a dyn Fn(Option<[i32; 2]>) -> Option<h3_view::options::Open>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -315,6 +326,8 @@ pub fn still(
         over: None,
         stats: None,
         held: false,
+        options: None,
+        options_arrow: false,
     };
     let mut result: Option<(h3_view::message::Open, Tune)> = None;
     let mut asking: Option<Asking> = None;
@@ -415,6 +428,38 @@ pub fn still(
             }
             continue;
         }
+        // The combat options dialog open, no box over it (E17 M6 T4a): its moves, clicks, keys
+        // and the right button's help.
+        if let Some(open) = still.options.as_mut()
+            && asking.is_none()
+        {
+            let outcome = options_action(open, (action, &keys), &mut still.mouse)
+                .map_err(|e| format!("`{action}`: {e}"))?;
+            match outcome {
+                OptionsAction::Open => {}
+                OptionsAction::Tell(key, style) => {
+                    let text = catalogue.text(&key, &Args::new());
+                    let asked = if style == Style::Popup {
+                        Asked::Held
+                    } else {
+                        Asked::Told
+                    };
+                    asking = tell(&text, style, None, asked);
+                    if style == Style::Popup {
+                        still.held = asking.is_some();
+                    }
+                }
+                OptionsAction::Closed { moved } => {
+                    still.options = None;
+                    // By a click the park's move reaches the battle; by a key the arrow stays.
+                    still.options_arrow = !moved;
+                    if moved {
+                        still.over = Some(still.mouse);
+                    }
+                }
+            }
+            continue;
+        }
         // Its OK closed it: the first turn starts, the box's cursor left (CLT-Q32).
         if still.opening && asking.is_none() {
             still.opening = false;
@@ -433,7 +478,7 @@ pub fn still(
                 let context = Context::of(
                     result.is_some(),
                     asking.is_some(),
-                    false,
+                    (false, false),
                     still.open.is_some(),
                     false,
                 );
@@ -474,6 +519,11 @@ pub fn still(
                         if let Some(open) = opened {
                             still.stats = Some(open);
                         }
+                    }
+                    // The combat options dialog (E17 M6 T4a), the mouse where it is.
+                    (Some(Do::Button(h3_view::panel::OPTIONS)), _) => {
+                        still.options = boxes.and_then(|b| (b.options)(None));
+                        still.options_arrow = false;
                     }
                     (Some(Do::Button(h3_view::panel::SPELL_BOOK)), _) => {
                         if let Some(f) = make.take() {
@@ -532,6 +582,15 @@ pub fn still(
                     // battle's status line keeps the press's hint.
                     asking = tell(&text, Style::Ok, None, Asked::Turret);
                     still.over = Some(to);
+                } else if let Some(open) = boxes.and_then(|b| (b.options)(Some(to))) {
+                    // The panel's Options (E17 M6 T4a): the dialog, modal, the park's move its.
+                    still.options = Some(open);
+                    still.options_arrow = false;
+                    still.mouse = crate::pointer::PARK;
+                    if let Some(o) = still.options.as_mut() {
+                        o.moved(crate::pointer::PARK);
+                    }
+                    continue;
                 }
                 // The tactics phase's message closed: the first turn starts (CLT-Q32).
                 if still.opening && asking.is_none() {
@@ -620,6 +679,91 @@ pub fn still(
     still.message = asking.map(|a| a.open.message);
     still.result = result.map(|(r, tune)| (r.message, tune));
     Ok(still)
+}
+
+/// What one of a situation's actions did to the combat options dialog (E17 M6 T4a).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum OptionsAction {
+    /// It stays open.
+    Open,
+    /// A box over it: its text's key and style (the no-sound box, an OK; a control's help, held).
+    Tell(String, Style),
+    /// The OK closed it, by a click (the park's move then reaches the battle) or by its key.
+    Closed {
+        /// The mouse moved as it closed.
+        moved: bool,
+    },
+}
+
+/// One of a situation's actions over the open combat options dialog `open` (E17 M6 T4a, design
+/// §12.12): `move:<x>,<y>` moves the mouse there (a button held following); `click:<x>,<y>` moves
+/// it, presses, releases and parks it; `key:<k>` presses the dialog's key (its OK's) and releases
+/// it; `right:<x>,<y>` moves it there and holds the right button down over a control: its help,
+/// held through the frames. The mouse is `mouse`.
+fn options_action(
+    open: &mut h3_view::options::Open,
+    (action, keys): (&str, &Keys),
+    mouse: &mut [i32; 2],
+) -> Result<OptionsAction, String> {
+    let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
+    let point = |arg: &str| -> Result<[i32; 2], String> {
+        let (x, y) = arg.split_once(',').ok_or("not x,y")?;
+        let parse = |v: &str| v.trim().parse::<i32>().map_err(|e| e.to_string());
+        Ok([parse(x)?, parse(y)?])
+    };
+    let did = match kind {
+        "move" => {
+            *mouse = point(arg)?;
+            open.moved(*mouse)
+        }
+        "click" => {
+            *mouse = point(arg)?;
+            open.moved(*mouse);
+            open.press(*mouse);
+            let did = open.release();
+            *mouse = crate::pointer::PARK;
+            if !did.closed {
+                open.moved(*mouse);
+            }
+            if did.closed {
+                return Ok(OptionsAction::Closed { moved: true });
+            }
+            did
+        }
+        "right" => {
+            *mouse = point(arg)?;
+            open.moved(*mouse);
+            return Ok(match open.help_at(*mouse) {
+                Some(key) => OptionsAction::Tell(key, Style::Popup),
+                None => OptionsAction::Open,
+            });
+        }
+        "key" => {
+            let key = if arg.len() == 1 {
+                arg.to_ascii_uppercase()
+            } else {
+                arg.to_owned()
+            };
+            if keys.command(Context::Options, false, &key) != Some(Do::OptionsOk) {
+                return Err(String::from("not a key of the combat options dialog"));
+            }
+            open.key(&key);
+            if open.key_up(&key).closed {
+                return Ok(OptionsAction::Closed { moved: false });
+            }
+            return Ok(OptionsAction::Open);
+        }
+        _ => {
+            return Err(String::from(
+                "over the combat options dialog only key:, click:, move: and right:",
+            ));
+        }
+    };
+    Ok(if did.no_sound {
+        OptionsAction::Tell(String::from(h3_view::options::NO_SOUND), Style::Ok)
+    } else {
+        OptionsAction::Open
+    })
 }
 
 /// One of a situation's actions over an open stats dialog `open` (E17 M6 T2a2a): `move:<x>,<y>`
@@ -974,6 +1118,7 @@ pub(crate) mod tests {
             turret: &|_, _| None,
             help: &|_| None,
             hero_info: &|_| None,
+            options: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -1033,6 +1178,7 @@ pub(crate) mod tests {
             turret: &turret,
             help: &help,
             hero_info: &|_| None,
+            options: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -1088,6 +1234,7 @@ pub(crate) mod tests {
             turret: &|_, _| None,
             help: &|_| None,
             hero_info: &|_| None,
+            options: &|_| None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
