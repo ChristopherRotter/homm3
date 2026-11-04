@@ -5977,3 +5977,133 @@ GENRLTXT 37, 38, 221 and 297 (their specifiers).
     follow with level inputs, the keys a stop carries and when, `first_boxes`; the window keys'
     Ctrl chords in `h3-ui` and `h3-map-view`). Not built: a recording at level 1 (T4b2b's: the hover's army
     info windows beside the line; the harness's registry keeps level 0, `Settings::CAPTURE`).
+
+### 12.15 The army info windows on the mouse's move (M6 T4b2b1)
+
+Read: `battle_buttons`' mouse move with its windows whole (0x47533E to 0x4758E1: the guard, the
+move out of the battlefield 0x475402, the same hex 0x475544, a new hex 0x47557D to 0x475879), its
+left press (0x475290 to 0x47533B), its command 2008 (0x474F17 to 0x474F9C), the keys F and T (their
+calls); `combat_dialog_create`'s six windows (0x472483 to 0x4725D4); `army_info_stack_create`
+0x46CEB0 (its items and its end), `army_info_stack_set` 0x46DC30, `army_info_stack_show` 0x46DF00,
+`army_info_stack_hide` 0x46DF80 and `army_info_hide` 0x46CE70 whole; `battle_right_click`'s hero
+branches again (0x4769C0 to 0x476AB3) and `battle_cursor`'s (0x4764E4 to 0x476540); every caller
+of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 and 426.
+
+- **The six windows** (the battle dialog's, made at the battle's start, every item hidden, a shown
+  flag each): the heroes' +0x74 (the attacker's, (1, 135)) and +0x78 (the defender's, (721, 135)),
+  78 × 202 (§12.8); the stacks' "all statistics" (kind 1) +0x7C (the attacker's side, (1, 267)) and
+  +0x80 ((721, 267)), 78 × 288; the stacks' "spells only" (kind 2) +0x84 ((1, 429)) and +0x88
+  ((721, 429)), 78 × 126; all end on row 555. Shown: the screen under it saved, its items shown and
+  drawn, its rectangle shown at once; hidden: its items hidden, the saved screen put back, nothing
+  redrawn; each a no-op when already so. Every `battle_redraw` ends by drawing the shown ones again
+  while the level is not 0 (§12.14).
+- **The mouse's move** (message type 4) reaches `battle_buttons` only on a turn the battle takes the
+  input (a human's, no action set, the acting stack not playing itself; §12.14), the tactics phase
+  included; under Auto Combat or on a remote turn also not while the battle is hidden or the acting
+  stack plays itself (0x47533E). Nothing else is tested: not +0x132B4, the acting stack, the phase
+  or the sides. `screen_to_hex` gives the "hex": 0 to 186, 0xFC the attacker's hero's rectangle,
+  0xFD the defender's, 0xFE and 0xFF the turrets', −1 none.
+  1. **Out of the battlefield** (x outside 0..799 or y outside 0..555): at every move the marked
+     stack redrawn unmarked, all six hidden, the items' hints, the combat cursor's frame 6, the
+     mouse's hex −1 (+0x132D4), the line's kind forgotten (+0x132DC = −99).
+  2. **The same hex** (+0x132D4): no window changes (an attack's slot again, §9.9).
+  3. **A new hex**: all six hidden (+0x74, +0x78, +0x7C, +0x80, +0x84, +0x88), then at most one
+     shown. 0xFD, with a defender's hero (+0x53D0) and the level (`option_army_info_level`) not 0:
+     `army_info_hero_set`(that hero, the attacker's +0x53CC, +0x53C0 == 2) on +0x78, then
+     `army_info_show`; 0xFC the same with the attacker's hero on +0x74. 0 to 186 whose record holds
+     a stack (its side byte +0x18 not negative; `hex_stack`): level 1 by the stack's side (+0xF4,
+     its owner's) +0x7C or +0x80, level 2 +0x84 or +0x88; `army_info_stack_set`(stack,
+     `stack_side_hero`), then `army_info_stack_show`. Anything else: none (with the cheat flag
+     +0x13D76, over an obstacle's hex without a stack, a debug line into the log and a return
+     before the cursor and the line).
+  4. Then `battle_mouse_stack` (its `battle_redraw` draws the shown window again), the hex stored,
+     `battle_cursor` and the cursor, the status line last (§9.9): one message, one frame.
+- **The levels.** A hero's window is the same at 1 and 2; a stack's is kind 1 at level 1, kind 2 at
+  level 2 (GENRLTXT 403 "All Statistics", 404 "Spells Only": the options' boxes 233 and 234). A
+  level changed by F5 or the dialog changes no window until a new hex (§12.14, oddity 6).
+- **The right press over a hero** (§12.8): the fill and the show on the side's window, held, then
+  the hide at level 0 only (0x476A1D). At 1 or 2 the hover has shown it unless a left press hid it
+  with the mouse still on the rectangle (the enemy's hero; the own hero's book closed without a
+  cast): then the press shows it again; else the fill changes nothing seen (the show a no-op). Either way the release keeps it, and it ends as a
+  hover's window does: at the next hide below, in practice the mouse leaving the rectangle.
+- **Every hide** (all six each time; the callers of 0x46CE70 and 0x46DF80): the mouse's new hex
+  (0x475586) or a move out of the battlefield (0x4754B4); the left press over the battlefield
+  (0x4752BB: its items 0 and 1, while +0x132B4), before its `battle_redraw`(1, 0, 0, 0, 1, 0) and
+  the action by the cursor's kind, whatever it is, the mouse's hex kept (a press that does nothing,
+  on the enemy's hero, kind 21, or a blocked hex, leaves no window until another hex); the key T
+  outside the tactics phase (0x475D1E), before the acting stack's stats dialog (its close posts a
+  move: back); the hero's cast
+  chosen in the book of a left press over the own hero (`battle_click_action` 0x476D4C, hidden by
+  the press already); every action's start in a shown battle, after the log settled
+  (`action_dispatcher` 0x478DC0): a human's, the computer's, Auto Combat's. None at a turn's or a
+  round's start, at the tactics phase's end or the battle's end (the last action's start hid them),
+  nor before the commands of keys pressed with the mouse over the battlefield: C (2008, the book
+  then the aim), a Faerie Dragon's F (its aim, 0x475CE3), S, R and O (their boxes, the dialog). The
+  book and the aims are modal loops that never run this move, and their redraws draw the shown
+  windows again (oddity 3); after C's a human's hex is forgotten and a move posted (0x47519A), after
+  F's not. Through the panel's buttons the mouse has left the battlefield first.
+- **Every show:** a new hex (0x47562A, 0x475684, 0x475709) and the right press over a hero
+  (0x476A0B, 0x476A81). Without a move the windows come back where the mouse's hex is forgotten and
+  a move posted: a human's turn start (`battle_controls_state` 0x478857), the battle's start and
+  after an arrow tower's own shot (`battle_turn_mouse`), a stats dialog's close (§12.2, §12.5), the
+  end of a cast entered by the book (0x476E05, 0x47519A), the keys F6 to F8 (§12.12); the hovered
+  hex then counts as new, at the level of that time.
+- **The stacks' windows** (for T4b2b2): `army_info_stack_create`(x, y, 78, h, the dialog, kind),
+  the kind at +0x6C, ids from 2200 (0x898) in this order, every item added hidden, the shown flag
+  +0x68 clear. Kind 1: `CCrPop.pcx` (0, 0, 78 × 288, flags 0x800) +0x34; `TwCrPort.def` (10, 6, 58
+  × 64, flags 0x10) +0x38; four rows at x 9, 60 × 12, y 75, 87, 99, 111, each a label "%s:"
+  (0x660D28) of GENRLTXT 381 "Att", 382 "Def", 387 "Dmg", 390 "Health", alignment 0, and in the
+  same box its value, alignment 2 (+0x3C to +0x48); morale's label (385) at (9, 131) and
+  `imrls.def` (47, 131, 22 × 12) +0x4C; luck's (386) at (9, 143) and `ilcks.def` (47, 143) +0x50;
+  these texts `tiny.fnt` colour 4 (the labels too, unlike the hero's); the count (10, 8, 58 × 64)
+  `Verd10B.fnt` colour 4, alignment 10 (right, bottom) +0x54; three `spellint.def` (15, 169 + 38k,
+  48 × 36, ids 2215 + k) +0x58 to +0x60; a text (15, 169, 48 × 36) `tiny.fnt` colour 1, alignment
+  1, id 2218, empty, +0x64. Kind 2: `SpellInf.pcx` (0, 0, 78 × 126) +0x34, the icons at (15, 7 +
+  38k) and the text at (15, 7), as kind 1's.
+- **Their fill** (`army_info_stack_set`(stack, hero)): the background in the hero's player's
+  colours (+0x22), with no hero the viewing player's (as the stats dialog's). Kind 1 only: the
+  portrait's frame the creature + 2; Att "%d(%d)" (0x6700E4) of the creature record's attack
+  (+0x54) and the stack's (`stack_attack_against`, no target; when it can shoot now the higher of
+  its ranged and its melee, as §12.1); Def "%d(%d)" of the record's defense (+0x58) and
+  `stack_defense_against`(no striker, 1); Dmg "%d" (0x660A1C) of +0xD0 when it equals +0xD4, else
+  "%d-%d" (0x6700DC); Health "%d" of +0xC0 (per creature, with its bonuses); morale's and luck's
+  frames clamp(+0x4E8 and +0x4EC, −3, 3) + 3; the count "%d" of +0x50 unless −1, else +0x4C. Both
+  kinds: the last three spells of the list (+0x420, its size +0x44C, from index max(size − 3, 0)),
+  each icon's frame the spell + 1, the icons left frame 0; the text GENRLTXT 675 ("No active
+  spells") when the list is empty, else empty. Not read: the base panel, the screen's save and
+  restore (H3API's backupScreen, restoreBackupScreen), the texts' setter (vtable +0x34), the DEFs'
+  frames (not staged).
+- **The help** (`Help.txt` 425 and 426, the level boxes' right press, §12.12): "{All Statistics}"
+  and "{Spells Only}", each saying "Right clicking on a unit will" display all its statistics and
+  spells, or only its spells. The code ties the level to the hover's windows, the kept hero window
+  and the hints' damage (§12.14); the right press over a stack gives its stats dialog at every
+  level (§12.5).
+- **Oddities** (asked: 1 to 4, CLT-Q47 to Q50, answered by the user on 2026-11-04: 1 copied; 2 to
+  4 fixed in the client's profile, the original's for the comparisons only; 5 to 12 copied without
+  a question, the agent's call: forms, timings and states no player would call a slip):
+  1. The help speaks of the right click; the windows come with the mouse's move (CLT-Q47).
+  2. A Ballista's Dmg row is its own range, where the stats dialog and the hints give each end
+     times its hero's attack plus 1 (CLT-Q48; T4b2b2's).
+  3. The windows stay through the keys' commands (C's book and aim, F's aim, S's, R's and O's
+     boxes): during an aim the window hovered before the key shows while the mouse goes elsewhere
+     (CLT-Q49).
+  4. With the level set to 0 while a hero's window is shown (F5, the dialog), a right press over
+     that hero shows nothing: still flagged, the window is not shown again and the redraw at 0
+     skips it; the release hides it (CLT-Q50).
+  5. Any left press over the battlefield hides the windows: one that does nothing leaves none until
+     the next hex.
+  6. At 1 or 2 the right press over a hero whose window is shown refills it without a redraw.
+  7. A hero's window alike at levels 1 and 2.
+  8. A stack's window by its owner's side, in its side's hero's colours (the stats dialog the
+     controller's); without a hero the viewing player's, as the dialog's.
+  9. Att and Def always "%d(%d)", Dmg "%d-%d" (the dialog: "%d" when equal, "%d - %d").
+  10. Moving between a two-hex stack's hexes hides and shows its window again.
+  11. A hide puts back the screen saved at the show: what the battle drew under the window since (a
+      fidget, an outline) stays stale until drawn again (inferred). Not modelled (whole frames).
+  12. The cheat flag's obstacle line: not modelled (no cheats).
+- **Stills for T4b2b1** (the harness's registry at level 1 or 2; `Settings::CAPTURE` keeps 0):
+  level 1, the pointer resting on the attacker's hero, no press: Orrin's window at (1, 135) as
+  `hero-info`'s, with the hover's status line; level 2 on the defender's hero: Crag Hack's at (721,
+  135) as `hero-info-enemy`'s; level 1, from the hero to an empty hex: none; level 1 on the enemy's
+  hero, a left press (none), then a right press released: the window again, kept; level 0: none.
+- **The client's** (T4b2b1: to be written by the builder).
