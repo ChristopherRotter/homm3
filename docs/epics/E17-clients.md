@@ -190,8 +190,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   in the client's settings; recorded. Cut in three by the user (2026-11-04): **T4a** (done 2026-11-04, design §12.12) the dialog
   read whole (0x46E3B0, 0x46F7B0), drawn and in the window (O and the panel's button), the
   settings file, the combat speed and both volumes in effect, CLT-Q43 and Q44 asked, six stills
-  exact; **T4b** the Auto Combat options and Creature Info in effect; **T4c** the grid and the
-  shadows drawn.
+  exact; **T4b** the Auto Combat options and Creature Info in effect, cut in three by the user
+  (2026-11-04): **T4b1** (done 2026-11-04, design §12.13) the Auto Combat options restricting the window's bot, **T4b2a** (done 2026-11-04, design §12.14) Creature
+  Info's level without new windows (F5, the status line's damage), **T4b2b** the army info
+  windows on the hover, the heroes' windows kept, their stills, the help rows' question;
+  **T4c** the grid and the shadows drawn.
 - **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
   question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
   not drawn yet and their sounds' waits (M5's items 5, 9, 24, 42, 45, 79, 84), each as far as read.
@@ -382,3 +385,27 @@ The next milestone's list starts here.
     category not read); the dialog only in a battle fought here (not while a record plays).
 33. The common crates' additions (T4a): `h3_view::options`, `Growing::set_speed`, the keys'
     `Context::Options`; the catalogue's `battle.options.*`.
+34. The Auto Combat options (T4b1, *provisional*, design §12.13): a box set in the dialog under
+    Auto Combat hands the turn under way to the bot with the panel dimmed (the original's stays
+    lit, oddity 4; no recording: the agent's call by CLT-Q45's answer); `Live::set_auto` one flag,
+    the battle asking the stack's box; not built: the sequences' parser for a press on a
+    human-played turn under Auto Combat, and its recording (a commanded Ballista, Combat Ballista
+    off).
+35. Creature Info's damage (T4b2a, *provisional*, design §12.14, CLT-Q46): the engine's preview,
+    not the original's estimate, in oddities 1 to 3 (a forgetful shooter not blessed or cursed
+    counts the half stack; a jouster's run-up the hexes walked, not the straight distance; an
+    arrow tower with Artillery only the target's protections), and a two-hex shooter's distance
+    at its facing before the shot turns it (not compared); over a two-hex target's far hex the
+    target's first strike's damage (the original's from-hex there not read).
+36. A server's seat shows no damage (T4b2a, *provisional*, a stub): the level-0 line until the
+    server lane sends the turn's attack and shot previews (its inbox); they go into the served
+    turn's `Turned::previews` (`battle.rs`), the one place. Not in `docs/stubs.toml`: its
+    `check-stubs` scans only `crates/`, so a `CLT-STUB` entry with a marker under `clients/` fails
+    it; registering client stubs needs a `shared/` change to the xtask first.
+37. The windows' own keys (T4b2a; the user's decision, 2026-11-04): pause, a frame on, restart
+    and vsync on Ctrl+F5 to Ctrl+F8 in both windows (`h3_ui::keys::Window::ctrl`, the common
+    table, so the two viewers' own keys stay the same as E24 M3 T0 wants); plain F5 to F8 are the
+    original battle's (F5 Creature Info's level since T4b2a, F6 to F8 the grid and shadows at
+    T4c). The map viewer's defaults changed with it (a `cross-lane` change; its inbox told).
+38. Creature Info's level not recorded (T4b2a): no capture at level 1 or 2 (T4b2b's, beside the
+    hover's army info windows); the hints' words checked against the user's tables only.

@@ -15,7 +15,7 @@ use super::{Input, Lens, Look, Shown, Start, Turn, follow, follow_on, spell_fram
 use crate::battle_log::Logged;
 use crate::mouse::aim::{Aim, Area, Target};
 use crate::mouse::tests::{battle, centre, layout};
-use crate::mouse::{Facing, Field, Hint, Legal, Spot, slot, slots, spot};
+use crate::mouse::{Facing, Field, Hint, Legal, Previews, Spot, slot, slots, spot};
 
 /// Where the harness parks the mouse: in the panel, over nothing that has a hint.
 const PARK: [i32; 2] = [618, 593];
@@ -145,6 +145,54 @@ fn a_waiting_human_turn_takes_each_move() {
     assert_eq!(Shown::default().frame(0), None);
     assert_eq!(Shown::default().point(0), None);
     assert_eq!(Shown::default().marked(0), None);
+}
+
+#[test]
+fn creature_info_s_level_words_the_hints_written_after_it() {
+    // E17 M6 T4b2a (design §12.14): F5 or the options dialog sets the level at its time and
+    // writes nothing (oddity 6); a move over the same hex writes nothing either, but a new slot
+    // writes the strike from its position again, at the level then; a new hex at the level then.
+    let o = battle();
+    let mut legal = legal();
+    let from = |from| Command::Attack { target: 1, from };
+    legal.previews = Previews::new(&[(from(89), [10, 12]), (from(91), [20, 24])]);
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    // Right of hex 90's centre the slot from 91, left of it the one from 89.
+    let (a, b) = (
+        [centre(90)[0] + 10, centre(90)[1]],
+        [centre(90)[0] - 10, centre(90)[1]],
+    );
+    let level = |at, level| Input::ArmyInfo { at, level };
+    let to = |at, to| Input::Move { at, to };
+    let inputs = [
+        to(0, PARK),
+        to(100, a),
+        level(110, 1),
+        to(120, a),
+        to(150, b),
+        level(160, 2),
+        to(170, b),
+        to(200, centre(87)),
+        to(220, a),
+        level(250, 0),
+        to(300, b),
+    ];
+    assert_eq!(level(7, 1).at(), 7);
+    let shown = run(&[], &[], &turns, &inputs);
+    let log = [
+        (100, status("Attack(1)", true)),
+        (150, status("Strike(1, [10, 12])", true)),
+        (200, status("Move(0)", false)),
+        (220, status("Strike(1, [20, 24])", true)),
+        (300, status("Attack(1)", true)),
+    ];
+    assert_eq!(shown.log, log);
 }
 
 #[test]

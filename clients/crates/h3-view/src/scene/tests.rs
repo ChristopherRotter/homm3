@@ -1222,7 +1222,7 @@ fn the_panel_follows_each_turns_controller() {
         [2, 0, 2]
     );
     // Auto Combat's selection reads the same sides.
-    let auto = panels.with_auto(&o, Auto::default());
+    let auto = panels.with_auto(&o, Auto::default(), Bugs::Original);
     assert_eq!(wait(&auto.at(&o, &started, 250, &layout)), 0);
 }
 
@@ -1268,8 +1268,9 @@ fn auto_combat_dims_the_panel_and_keeps_its_button_selected_through_the_computer
             Input::Stop { at: 120, turn: 1 },
         ],
         &[0, 100, 300],
+        &[],
     );
-    let panels = Panels::new(&o, &events, Vec::new()).with_auto(&o, auto);
+    let panels = Panels::new(&o, &events, Vec::new()).with_auto(&o, auto, Bugs::Original);
     let frames = |t| {
         let list = panels.at(&o, &started, t, &layout);
         [4, 6].map(|i| match &list[i] {
@@ -1293,6 +1294,47 @@ fn auto_combat_dims_the_panel_and_keeps_its_button_selected_through_the_computer
     assert_eq!(frame(seat.at(&o, &started, 0, &layout)), 2);
     assert_eq!(frame(seat.before(&o, &layout)), 2);
     assert_eq!(frame(panels.before(&o, &layout)), 0);
+}
+
+#[test]
+fn auto_combat_over_a_turn_it_does_not_play_shows_on_in_the_client_s_profile() {
+    // E17 M6 T4b1 (design §12.13, CLT-Q45 (1)): switched on at 50 in Red's opening turn; the
+    // computer's turn from 100; Red's next (300) a commanded Ballista's, its box off: lit, Auto
+    // Combat on. Its click at 350 switches it off. The original's (the comparisons) shows the
+    // button unselected throughout that turn (0x47864A); the client's selected until the click.
+    use crate::mouse::track::Input;
+    let layout = layout();
+    let mut o = battle_view();
+    o.sides[0].human = true;
+    let events = [
+        Event::TurnStarted { stack: 2 },
+        Event::TurnStarted { stack: 0 },
+    ];
+    let started = [(100, 2), (300, 0)];
+    let inputs = [
+        Input::Auto { at: 50, turn: 0 },
+        Input::Auto { at: 350, turn: 2 },
+    ];
+    let auto = Auto::of(&inputs, &[0, 100, 300], &[Some(0), Some(0), None]);
+    let frames = |panels: &Panels, t| {
+        let list = panels.at(&o, &started, t, &layout);
+        [4, 6].map(|i| match &list[i] {
+            Draw::Dialog(ui::Draw::Button { frame, .. }) => *frame,
+            _ => 9,
+        })
+    };
+    let made = Panels::new(&o, &events, Vec::new());
+    let original = made.clone().with_auto(&o, auto.clone(), Bugs::Original);
+    let fixed = made.with_auto(&o, auto, Bugs::Fixed);
+    for panels in [&original, &fixed] {
+        assert_eq!(frames(panels, 50), [3, 2]);
+        assert_eq!(frames(panels, 200), [3, 2]);
+    }
+    // Auto Combat's frame and Wait's on the Ballista's turn: Wait lit in both.
+    assert_eq!(frames(&original, 300), [0, 0]);
+    assert_eq!(frames(&fixed, 300), [3, 0]);
+    assert_eq!(frames(&fixed, 349), [3, 0]);
+    assert_eq!(frames(&fixed, 350), [0, 0]);
 }
 
 /// The count box's hue under spells (E17 M3 T7b-2a, 0x43E6AA): the executable's f64 and f32

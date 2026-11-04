@@ -404,6 +404,23 @@ fn a_volume_is_scaled_by_its_setting() {
 }
 
 #[test]
+fn the_key_f5_cycles_the_army_info_level_and_its_file_keeps_it() {
+    // E17 M6 T4b2a (design §12.14; 0x475902): 0, 1, 2, 0; the rest untouched; the file written
+    // at once reads the level back.
+    let mut s = Settings::FIRST_RUN;
+    let levels: Vec<u8> = (0..4).map(|_| s.cycle_army_info()).collect();
+    assert_eq!(levels, [1, 2, 0, 1]);
+    assert_eq!(
+        s,
+        Settings {
+            army_info: 1,
+            ..Settings::FIRST_RUN
+        }
+    );
+    assert_eq!(Settings::read(Some(&s.write())), Ok(s));
+}
+
+#[test]
 fn the_settings_file_is_read_as_the_registry() {
     // No file, or no music volume: a first run's.
     assert_eq!(Settings::read(None), Ok(Settings::FIRST_RUN));

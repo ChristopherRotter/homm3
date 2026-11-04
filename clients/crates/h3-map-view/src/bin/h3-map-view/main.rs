@@ -94,9 +94,10 @@ commands:
           map's sound plays (E24 M2 T5): the terrain's music, the walking hero's step sound, the
           objects' ambient loops within three tiles of the view's middle; --mute plays none,
           --cues writes each cue played with the clock's millisecond. Every key goes through a
-          table of commands (E24 M2 T4a, provisional): F2 switches the music, F3 the effects, F5
-          pauses, F6 shows the next frame while paused, F7 restarts, F8 turns vsync on or off, F9
-          the cursor's kind, F11 fullscreen, Esc quits (the battle window's own keys too); the
+          table of commands (E24 M2 T4a, provisional): F2 switches the music, F3 the effects,
+          Ctrl+F5 pauses, Ctrl+F6 shows the next frame while paused, Ctrl+F7 restarts, Ctrl+F8
+          turns vsync on or off, F9 the cursor's kind, F11 fullscreen, Esc quits (the battle
+          window's own keys too); the
           panels' hotkeys are the original's letters (E24 M3 T6b1), Space chooses the selected
           hero again and visits what it stands on (T6b3). A user's file (--keys, else keys.toml
           in the working directory when there is one; its [map] table, the battle window's

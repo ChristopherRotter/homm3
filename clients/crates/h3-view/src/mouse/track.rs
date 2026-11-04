@@ -93,6 +93,16 @@ pub enum Input {
         /// The turn it was pressed in (0 the opening's): it stops as the one after starts.
         turn: usize,
     },
+    /// Creature Info's level ("Combat Army Info Level" 0x6987C8) from now (E17 M6 T4b2a, design
+    /// §12.14): the key F5 cycled it or the options dialog set it. The hints written from now
+    /// read it; none is written again (oddity 6: the line stays until the mouse takes another
+    /// hex). Before the first, level 0 (the harness's).
+    ArmyInfo {
+        /// When.
+        at: u32,
+        /// The level, 0 to 2.
+        level: u8,
+    },
 }
 
 impl Input {
@@ -108,7 +118,8 @@ impl Input {
             | Self::Look { at }
             | Self::Looked { at }
             | Self::Auto { at, .. }
-            | Self::Stop { at, .. } => at,
+            | Self::Stop { at, .. }
+            | Self::ArmyInfo { at, .. } => at,
         }
     }
 }
@@ -327,6 +338,8 @@ struct Handler<'l> {
     items: bool,
     /// The profile: the client's forgets the hovered item over the battlefield (CLT-Q24).
     bugs: Bugs,
+    /// Creature Info's level the hints are written at (E17 M6 T4b2a, [`Input::ArmyInfo`]).
+    level: u8,
     shown: Shown,
 }
 
@@ -442,7 +455,9 @@ impl Handler<'_> {
         field: Option<&Field<'_>>,
         name: &dyn Fn(&Hint, &Observation) -> String,
     ) {
-        let text = field.map_or_else(String::new, |f| name(hint, f.observation));
+        // At Creature Info's level now (E17 M6 T4b2a): the line `battle_status_line` writes.
+        let hint = hint.clone().at_level(self.level);
+        let text = field.map_or_else(String::new, |f| name(&hint, f.observation));
         let forced = hint.forced();
         self.shown.log.push((now, Logged::Status { text, forced }));
     }
@@ -523,6 +538,10 @@ impl Handler<'_> {
                 let frame = slots_in(field, hex)[slot(self.layout, point, hex)];
                 changed = self.frame != Some(frame);
                 self.set_frame(now, frame);
+                // A line written again counts the strike from the slot's position now (E17 M6
+                // T4b2a: `battle_status_line` reads the from-hex +0x132D8 the slot set).
+                let hint = core::mem::replace(&mut self.hint, Hint::Empty);
+                self.hint = hint.struck_from(field, self.layout, (point, hex));
             }
             if self.written != Some(self.kind) || (self.kind == Kind::Attack && changed) {
                 let hint = self.hint.clone();
@@ -760,6 +779,8 @@ pub fn follow_on<'l>(
             // Auto Combat's turns are the computer's (`Turn::human`); its switch shows with the
             // action it starts, its stop with the turn it stops at.
             Input::Auto { .. } | Input::Stop { .. } => {}
+            // F5 or the options dialog: the hints written from now (E17 M6 T4b2a).
+            Input::ArmyInfo { level, .. } => h.level = level,
             Input::Act { at: now } => {
                 // In the aim a click casts only at the hex the last move took (0x5A30E9).
                 if h.aiming.as_ref().is_some_and(|a| a.last.is_none()) {
@@ -826,6 +847,7 @@ impl<'l> Handler<'l> {
             hovered: None,
             items: false,
             bugs: turns.first().map_or(Bugs::Fixed, |t| t.field.bugs),
+            level: 0,
             shown: Shown::default(),
         };
         if turns.first().is_some_and(|t| !t.human) {

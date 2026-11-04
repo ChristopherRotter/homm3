@@ -11,6 +11,7 @@ const NO_AUTO: Autoplay = Autoplay {
     plays: false,
     selected: false,
     off: false,
+    on: false,
 };
 
 /// What the panel keeps before any human turn: `side`'s colours, the scroll buttons as built.
@@ -445,6 +446,15 @@ fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
     );
     let human = shown(&o, Some(Side::Attacker), (red.0, kept), "", RED_BLUE);
     assert!(!human.state(AUTO_COMBAT).selected && disabled(&human).is_empty());
+    // E17 M6 T4b1 (CLT-Q45 (1)): on over a human's turn it does not play (its stack's box off),
+    // the client's profile shows its button selected, the panel lit; off, unselected.
+    let on = Autoplay { on: true, ..kept };
+    let lit = shown(&o, Some(Side::Attacker), (red.0, on), "", RED_BLUE);
+    let button = lit.state(AUTO_COMBAT);
+    assert!(button.selected && !button.disabled && disabled(&lit).is_empty());
+    let off = Autoplay { on: false, ..kept };
+    let unlit = shown(&o, Some(Side::Attacker), (red.0, off), "", RED_BLUE);
+    assert!(!unlit.state(AUTO_COMBAT).selected);
     // E17 M5 T4c2b: in the tactics phase the panel's +0xC (0x46C290) dims its two as well.
     let mut phase = o.clone();
     phase.tactics = Some(Tactics {

@@ -1,6 +1,7 @@
 //! The mouse's tests (E17 M3 T6c-1, design §9.9), on the committed layout and an invented pack
 //! (the original's text never enters git, ADR-0009).
 
+use alloc::format;
 use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -10,9 +11,10 @@ use h3_render::Bugs;
 
 use super::track::Look;
 use super::{
-    DEFEND, Facing, Field, Hint, Kind, Legal, NEXT_CREATURE, Pointer, START_COMBAT, Slot, Spot,
-    WAIT, attack_slots, button, click, cursor, distance, held_at, look_cursor, looked_at,
-    neighbour, pointer, pointer_in, slot, slots, spot, turret_at, walls_halve,
+    DEFEND, Facing, Field, Hint, Kind, Legal, NEXT_CREATURE, Pointer, Previews, START_COMBAT, Slot,
+    Spot, WAIT, attack_hint, attack_slots, button, click, cursor, damage_text, distance, held_at,
+    look_cursor, looked_at, neighbour, pointer, pointer_in, slot, slots, spot, turret_at,
+    walls_halve,
 };
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
@@ -41,7 +43,14 @@ const PACK: &str = r#"{
             "hostile-only": "{{spell}}: foes",
             "friendly-only": "{{spell}}: friends",
             "not-on": "{{spell}} not on {{creature}}",
-            "immune": "{{creature}} shrug {{spell}}"
+            "immune": "{{creature}} shrug {{spell}}",
+            "strike-damage": "Hit {{creature}} ({{damage}})",
+            "shot-one": "Shoot {{creature}} ({{damage}}, last)",
+            "shot-damage": "Shoot {{creature}} ({{shots}} left, {{damage}})",
+            "damage-range": "{{low}}-{{high}}",
+            "number": "{{value}}",
+            "thousands-tenths": "{{thousands}}.{{tenths}}k",
+            "thousands": "{{thousands}}k"
         },
         "control": { "wait": "Hold" }
     },
@@ -436,6 +445,114 @@ fn hints_are_worded_by_the_catalogue() {
     assert_eq!(text(Hint::View(2)), "See .");
     assert_eq!(text(Hint::View(9)), "See .");
     assert!(!Hint::Move(0).forced());
+}
+
+#[test]
+fn creature_info_s_hints_carry_the_damage_of_the_command_a_press_gives() {
+    // E17 M6 T4b2a (design §12.14): over a stack to strike, the damage of the strike from the
+    // slot's position; over one to shoot, the shot's at its aim hex with the acting stack's shots
+    // left; as levels 1 and 2 write them, level 0 the target alone.
+    let mut o = battle();
+    o.stacks[0].shots = 3;
+    let l = layout();
+    let strike = [Command::Attack {
+        target: 1,
+        from: 89,
+    }];
+    let mut legal = Legal::new(&strike);
+    legal.previews = Previews::new(&[(strike[0], [10, 12]), (Command::Wait {}, [1, 1])]);
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let hint = |f: &Field<'_>, hex: u8| pointer_in(f, &l, centre(hex), &mut None).hint;
+    assert_eq!(hint(&field, 90), Hint::Strike(1, [10, 12]));
+    assert_eq!(Hint::Strike(1, [10, 12]).at_level(0), Hint::Attack(1));
+    assert_eq!(Hint::Strike(1, [1, 2]).at_level(1), Hint::Strike(1, [1, 2]));
+    assert_eq!(Hint::Shot(1, 2, [1, 2]).at_level(0), Hint::Attack(1));
+    assert_eq!(
+        Hint::Shot(1, 2, [1, 2]).at_level(2),
+        Hint::Shot(1, 2, [1, 2])
+    );
+    assert_eq!(Hint::Move(0).at_level(0), Hint::Move(0));
+    // A still is at level 0, the harness's (`Settings::CAPTURE`).
+    let still = pointer(&o, &legal, &l, (centre(90), Bugs::Fixed));
+    assert_eq!(still.hint, Hint::Attack(1));
+    // Without the turn's previews (a server's seat, CLT-Q46): the target alone at any level.
+    let bare = Legal::new(&strike);
+    let without = Field {
+        legal: &bare,
+        ..field
+    };
+    assert_eq!(hint(&without, 90), Hint::Attack(1));
+    // A strike from no slot of the hex (a two-hex target's far hex): the target's first one's.
+    let far = [Command::Attack {
+        target: 1,
+        from: 50,
+    }];
+    let mut legal = Legal::new(&far);
+    legal.previews = Previews::new(&[(far[0], [7, 9])]);
+    let away = Field {
+        legal: &legal,
+        ..field
+    };
+    assert_eq!(hint(&away, 90), Hint::Strike(1, [7, 9]));
+    // Shots: a full one and, at 100, a broken arrow's; the shots left from the acting stack.
+    let shots = [
+        Command::Shoot { target: 1, at: 90 },
+        Command::Shoot { target: 3, at: 100 },
+    ];
+    let mut legal = Legal::new(&shots);
+    legal.previews = Previews::new(&[(shots[0], [5, 5]), (shots[1], [2, 3])]);
+    let field = Field {
+        legal: &legal,
+        ..field
+    };
+    assert_eq!(hint(&field, 90), Hint::Shot(1, 3, [5, 5]));
+    assert_eq!(hint(&field, 100), Hint::Shot(3, 3, [2, 3]));
+    assert!(Hint::Shot(3, 3, [2, 3]).forced() && Hint::Strike(1, [1, 2]).forced());
+    // Again over the same hex (a new slot): a strike's from the slot there, another as it is.
+    let strikes = Field {
+        legal: &bare,
+        ..field
+    };
+    let again = |h: Hint| h.struck_from(&strikes, &l, (centre(90), 90));
+    assert_eq!(again(Hint::Strike(1, [3, 4])), Hint::Attack(1));
+    assert_eq!(again(Hint::Move(0)), Hint::Move(0));
+    // Over no hex, nothing to press: the target alone.
+    let nowhere = (Kind::Shoot, Spot::Nothing, 1);
+    assert_eq!(attack_hint(&field, &l, [0, 0], nowhere), Hint::Attack(1));
+}
+
+#[test]
+fn creature_info_s_damage_is_worded_as_the_executable_writes_its_numbers() {
+    // E17 M6 T4b2a (`status_damage_text` 0x4933D0, `status_damage_number` 0x493650): the target
+    // by its number, a range or one number (blessed or cursed: the ends equal), a shot's with one
+    // shot left or more; the numbers by the greatest's size.
+    let o = battle();
+    let c = catalogue();
+    let name = |_: &Stack| Some("creature.t:ant".to_string());
+    let text = |h: Hint| h.text(&c, &o, (&name, &|_| None, &|_, _| None));
+    assert_eq!(text(Hint::Strike(1, [10, 12])), "Hit Ants (10-12)");
+    assert_eq!(text(Hint::Strike(1, [12, 12])), "Hit Ants (12)");
+    assert_eq!(text(Hint::Shot(1, 1, [4, 6])), "Shoot Ants (4-6, last)");
+    assert_eq!(text(Hint::Shot(1, 7, [4, 6])), "Shoot Ants (7 left, 4-6)");
+    assert_eq!(text(Hint::Shot(1, 2, [5, 5])), "Shoot Ants (2 left, 5)");
+    let d = |low: u64, high: u64| damage_text(&c, [low, high]);
+    // Below 1 000 the numbers themselves.
+    assert_eq!(d(0, 999), "0-999");
+    // Below 10 000 thousands with their tenths, rounded, the low end in the high end's unit;
+    // the tenths left out at 0.
+    assert_eq!(d(800, 1_200), "0.8k-1.2k");
+    assert_eq!(d(1_000, 1_000), "1k");
+    assert_eq!(d(1_949, 1_951), "1.9k-2k");
+    assert_eq!(d(9_950, 9_999), "10k-10k");
+    // Else thousands alone, rounded.
+    assert_eq!(d(999, 10_000), "1k-10k");
+    assert_eq!(d(12_345, 15_499), "12k-15k");
+    assert_eq!(d(u64::MAX, u64::MAX), format!("{}k", u64::MAX / 1_000));
 }
 
 #[test]

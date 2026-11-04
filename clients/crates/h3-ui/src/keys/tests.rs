@@ -129,11 +129,20 @@ fn the_windows_own_commands_are_both_viewers() {
             "quit"
         ]
     );
-    let keys: Vec<&str> = Window::ALL.iter().map(|w| w.key()).collect();
+    let keys: Vec<String> = Window::ALL.iter().map(|w| w.chord().to_string()).collect();
     assert_eq!(
         keys,
-        ["F2", "F3", "F5", "F6", "F7", "F8", "F9", "F11", "Escape"]
+        [
+            "F2", "F3", "Ctrl+F5", "Ctrl+F6", "Ctrl+F7", "Ctrl+F8", "F9", "F11", "Escape"
+        ]
     );
+    // The user, 2026-11-04 (E17 M6 T4b2a): F5 to F8 alone are the original battle's.
+    let with_ctrl: Vec<Window> = Window::ALL.into_iter().filter(|w| w.ctrl()).collect();
+    assert_eq!(
+        with_ctrl,
+        [Window::Pause, Window::Frame, Window::Restart, Window::Vsync]
+    );
+    assert_eq!(Window::Pause.key(), "F5");
     let everywhere: Vec<Window> = Window::ALL
         .into_iter()
         .filter(|w| !w.everywhere())

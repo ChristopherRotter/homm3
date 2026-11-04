@@ -330,6 +330,46 @@ id = "battle.hint.attack"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:221", printf = ["creature"] }]
 
+# Creature Info's damage on the status line (E17 M6 T4b2a, docs/epics/E17-design.md §12.14): at
+# levels 1 and 2 `battle_status_line`'s kinds 7 (a strike), 3 and 15 (a shot: one shot left, or
+# more) name the target by its number and the damage (`status_damage_text` 0x4933D0): its ends'
+# range or, equal, its one number, each by the greatest's size (`status_damage_number` 0x493650:
+# the number itself, thousands with their tenths, or thousands alone).
+[[key]]
+id = "battle.hint.strike-damage"
+args = { creature = "text", damage = "text" }
+original = [{ at = "GENRLTXT:37", printf = ["creature", "damage"] }]
+
+[[key]]
+id = "battle.hint.shot-one"
+args = { creature = "text", damage = "text" }
+original = [{ at = "GENRLTXT:38", printf = ["creature", "damage"] }]
+
+[[key]]
+id = "battle.hint.shot-damage"
+args = { creature = "text", shots = "number", damage = "text" }
+original = [{ at = "GENRLTXT:297", printf = ["creature", "shots", "damage"] }]
+
+[[key]]
+id = "battle.hint.damage-range"
+args = { low = "text", high = "text" }
+original = [{ at = "EXE:0x6772DC", printf = ["low", "high"] }]
+
+[[key]]
+id = "battle.hint.number"
+args = { value = "number" }
+original = [{ at = "EXE:0x660A1C", printf = ["value"] }]
+
+[[key]]
+id = "battle.hint.thousands-tenths"
+args = { thousands = "number", tenths = "number" }
+original = [{ at = "EXE:0x6772E4", printf = ["thousands", "tenths"] }]
+
+[[key]]
+id = "battle.hint.thousands"
+args = { thousands = "number" }
+original = [{ at = "EXE:0x660CB0", printf = ["thousands"] }]
+
 [[key]]
 id = "battle.hint.view"
 args = { creature = "text" }
