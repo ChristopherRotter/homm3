@@ -18,17 +18,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T3c3 — capture `stats-morale-siege`
-
-- **Scope:** T3c2's entry `stats-morale-siege` (`situations/set.toml`, `stats-siege.toml`; design
-  §12.10) is added, not captured: measure the defender's stack right-press point (the entry's
-  actions are the attacker situations'), set the original's town up (a Castle under siege with the
-  Tavern, Brotherhood of the Sword and Colossus built, the hero's owner's first Castle) and capture
-  with the harness (`clients/capture/README.md`); `differing = 0` is a placeholder until then.
-  Fix what the first capture shows.
-- **Acceptance:** the still exact or listed; `drawn`; `check.sh`. **Depends on:** T3c2 (done).
-  **Status:** ready (needs the Wine setup).
-
 ### E17 M6 T4 — the combat options dialog
 
 - **Scope:** the panel's Options (O): the dialog read (its items, keys and defaults), drawn and

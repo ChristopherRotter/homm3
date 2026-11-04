@@ -5093,3 +5093,32 @@ in its own worktree, its patch applied on A's commit (design §12.10).
   is in `set.toml` without a capture (its actions copied from the attacker situations: measure the
   defender stack's point).
 - **Checked:** `cargo test -p h3-view`, clippy, fmt; see the HANDOFF for `check.sh` and `drawn`.
+
+### M6 T3c3 — a siege's buildings by the town records, and their stills (2026-11-04)
+
+On `client/e17-m6-t3c3`, the user present. The sandbox new, the original files staged first (57
+files) before the computer went offline; #699 had merged; the baseline's `check.sh` passed. The
+user chose the town records over T3c2's asset tables and both parts in one task (design §12.11).
+
+- **Built:** `scenario::towns` and `town_part` (the packs' `towns.toml` through
+  `h3_pack_towns::compile`; `pack_texts` takes the context's file); `stats::Sources::towns` and
+  `building_key` (the siege's lines and the Grail's by key); `Ground::towns` (with the fight's
+  ruleset, a server's game only when its content is the same); `scenario::SiegeTown` and
+  `siege_town` (the town's other buildings by the record's map editor slots, a hero's Grail
+  building of another faction or of the attacker an error); the writer's bits checked within the
+  map's 48. Removed: `tables::TownBuildings`, the asset tables' `buildings`.
+- **Fixed:** `effect_skills` gave a Grail building's morale or luck as Leadership or Luck (the
+  first exact-place capture showed "Advanced Leadership +2"); it skips `Source::Building` now.
+- **Found by the captures:** a Fort-level siege opens on the Catapult's turn (BAT-SIE-011), where
+  `key:t` and a press on a stack open nothing in either; a Citadel with the keep commanded in
+  hot seat opens on the keep's turn, where a press on the Griffins opens their dialog. The
+  original omits the Tavern's line beside the Brotherhood of the Sword (superseded), as the
+  engine's bonuses never hold both: `stats-siege.toml` lost its Tavern bonus.
+- **Recorded:** `stats-morale-siege`, `stats-morale-tavern`, `stats-luck-siege` exact
+  (`stats-siege-tavern.toml`, `stats-siege-rampart.toml` new).
+- **Agent's calls** (change freely): the Grail's and the siege's buildings matched by key, not by
+  the original's ids; a scenario's attacker Grail building refused by the writer rather than
+  dropped; the two sibling stills added to cover the other three building lines.
+- **Checked:** unit tests (`a_siege_towns_buildings_become_its_map_bits`, the writer's bits,
+  `effect_skills`' Grail), `drawn --record`, `check.sh`, the scoped verify.
+

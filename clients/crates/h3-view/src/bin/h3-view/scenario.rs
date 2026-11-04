@@ -10,12 +10,13 @@ use std::path::Path;
 use h3_battle::{BattleSetup, BattleSide, BattleState, NoopSink, Viewer};
 use h3_content::{CompiledHeroEffect, HeroEffect};
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{BattleEffect, FortLevel, MachineControl};
+use h3_contracts::{BattleEffect, BattleHero, EffectSource, FortLevel, MachineControl, Siege};
 use h3_kernel::{Rng, StreamId};
 use h3_pack_battle::ScenarioDef;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Manifest, Observation, Seat, ServerMessage};
 use h3_protocol::{codec, map};
+use h3_towns::{BuildingId, TownRuleset};
 use h3_view::mouse::aim::Aim;
 
 /// The game's id in the in-process session.
@@ -25,31 +26,51 @@ fn read(path: &Path) -> Result<String, String> {
     fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The texts of the packs `ids`: `<packs>/<id>/core.toml` and, where it exists, `battle.toml`,
-/// as `h3_cli::load_ruleset` reads them.
-fn pack_texts(packs: &Path, ids: &[String]) -> Result<Vec<(String, String)>, String> {
+/// The texts of the packs `ids`: `<packs>/<id>/core.toml` and, where it exists, the context's
+/// file `part` (`battle.toml`, `towns.toml`; empty where it does not), as `h3_cli::load_ruleset`
+/// reads them.
+fn pack_texts(packs: &Path, ids: &[String], part: &str) -> Result<Vec<(String, String)>, String> {
     let mut texts = Vec::new();
     for id in ids {
         if id.is_empty() || id.contains(['/', '\\', '.', ':']) {
             return Err(format!("invalid pack id `{id}`"));
         }
         let dir = packs.join(id);
-        let battle = dir.join("battle.toml");
-        let battle = if battle.is_file() {
-            read(&battle)?
+        let file = dir.join(part);
+        let part = if file.is_file() {
+            read(&file)?
         } else {
             String::new()
         };
-        texts.push((read(&dir.join("core.toml"))?, battle));
+        texts.push((read(&dir.join("core.toml"))?, part));
     }
     Ok(texts)
+}
+
+/// The town part the packs `ids` (read from `packs`) compile to with `profile` (E17 M6 T3c3): the
+/// town records whose building indices the wire names (`Siege.bonuses`, a hero's
+/// `Source::Building`: `h3_towns::BuildingId`), so that the client knows a building by its key and
+/// the original's map by its map editor slot.
+fn town_part(packs: &Path, ids: &[String], profile: &str) -> Result<TownRuleset, String> {
+    let texts = pack_texts(packs, ids, "towns.toml")?;
+    let refs: Vec<(&str, &str)> = texts
+        .iter()
+        .map(|(c, t)| (c.as_str(), t.as_str()))
+        .collect();
+    h3_pack_towns::compile(&refs, profile).map_err(|e| format!("{}: {e}", packs.display()))
+}
+
+/// The town part a record's `manifest` names, its packs read from `packs` (E17 M6 T3c3).
+pub fn towns(packs: &Path, manifest: &Manifest) -> Result<TownRuleset, String> {
+    let ids: Vec<String> = manifest.packs.iter().map(|p| p.id.clone()).collect();
+    town_part(packs, &ids, &manifest.profile)
 }
 
 /// The ruleset a record's `manifest` names, its packs read from `packs` (E17 M3 T7b-2a: what a
 /// spell's effect is).
 pub fn ruleset(packs: &Path, manifest: &Manifest) -> Result<BattleRuleset, String> {
     let ids: Vec<String> = manifest.packs.iter().map(|p| p.id.clone()).collect();
-    let texts = pack_texts(packs, &ids)?;
+    let texts = pack_texts(packs, &ids, "battle.toml")?;
     let refs: Vec<(&str, &str)> = texts
         .iter()
         .map(|(c, b)| (c.as_str(), b.as_str()))
@@ -79,7 +100,7 @@ pub fn definition(scenario: &Path) -> Result<ScenarioDef, String> {
 
 /// The ruleset `def`'s packs (read from `packs`) compile to with its profile.
 pub fn compiled(def: &ScenarioDef, packs: &Path) -> Result<BattleRuleset, String> {
-    let texts = pack_texts(packs, &def.packs)?;
+    let texts = pack_texts(packs, &def.packs, "battle.toml")?;
     let refs: Vec<(&str, &str)> = texts
         .iter()
         .map(|(c, b)| (c.as_str(), b.as_str()))
@@ -120,10 +141,23 @@ pub struct Sides {
     /// `ArtSlots.txt`'s order) and the artifact's number, which is the original's when the packs
     /// come in their order (base first: the Ballista 4, the Ammo Cart 5, the First Aid Tent 6).
     pub machines: [Vec<(usize, u16)>; 2],
-    /// The town the battle is fought at (E17 M4 T1b): its town type (the faction's index in the
-    /// ruleset, the original's when the packs come in their order) and fort level (1 Fort, 2
-    /// Citadel, 3 Castle; 0 none).
-    pub siege: Option<(usize, u8)>,
+    /// The town the battle is fought at (E17 M4 T1b).
+    pub siege: Option<SiegeTown>,
+}
+
+/// A siege's town for the original's map (E17 M4 T1b, M6 T3c3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SiegeTown {
+    /// Its town type: the faction's index in the ruleset, the original's when the packs come in
+    /// their order.
+    pub town: usize,
+    /// Its fort level: 1 Fort, 2 Citadel, 3 Castle; 0 none.
+    pub fort: u8,
+    /// The map's bits of the other buildings the battle shows (M6 T3c3), sorted: each building of
+    /// the siege's `bonuses` and a hero's Grail building of the town's faction (a morale or luck
+    /// effect from `Building`: the defender's owner's, whose one town is the siege's), each by its
+    /// town record's map editor slot (`docs/formats/h3m.md`, "Town buildings").
+    pub built: Vec<u8>,
 }
 
 /// A side's hero for the original's map (E17 M3 T3a): its hero type's and class's numbers in
@@ -234,7 +268,8 @@ pub fn school_skills(
 /// skill and level whose effects are that effect alone (the packs' Leadership for a morale change
 /// of 1 to 3 to the own stacks, Luck for a luck change), the skill's number the ruleset's, which
 /// is the original's (`sstraits.txt`'s order). An effect no skill level gives alone, or two of one
-/// skill, the map cannot give the hero: an error. By number.
+/// skill, the map cannot give the hero: an error. A morale or luck change from a town building (a
+/// Grail's) is the siege town's on the map, not a skill's (E17 M6 T3c3, [`SiegeTown`]). By number.
 pub fn effect_skills(
     ruleset: &BattleRuleset,
     effects: &[BattleEffect],
@@ -243,6 +278,14 @@ pub fn effect_skills(
     let mut skills: Vec<(u8, u8)> = Vec::new();
     for effect in effects {
         let wanted: CompiledHeroEffect = match *effect {
+            BattleEffect::Morale {
+                source: EffectSource::Building { .. },
+                ..
+            }
+            | BattleEffect::Luck {
+                source: EffectSource::Building { .. },
+                ..
+            } => continue,
             BattleEffect::Morale {
                 amount, affects, ..
             } => HeroEffect::Morale { amount, affects },
@@ -277,7 +320,10 @@ pub fn effect_skills(
 
 /// The [`Sides`] of the battle `scenario` sets up, its packs read from `packs`.
 pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
-    let (ruleset, setup) = battle(scenario, packs, 1)?;
+    let def = definition(scenario)?;
+    let ruleset = compiled(&def, packs)?;
+    let setup = set_up(&def, &ruleset, 1).map_err(|e| format!("{}: {e}", scenario.display()))?;
+    let towns = town_part(packs, &def.packs, &def.profile)?;
     let terrain = setup
         .terrain
         .and_then(|t| ruleset.terrains().get(t.index()))
@@ -397,15 +443,70 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
         heroes,
         human: setup.human,
         machines: [machines(0)?, machines(1)?],
-        siege: setup.siege.map(|s| {
-            let fort = match s.fort {
-                FortLevel::None => 0,
-                FortLevel::Fort => 1,
-                FortLevel::Citadel => 2,
-                FortLevel::Castle => 3,
+        siege: setup
+            .siege
+            .map(|s| siege_town(&s, &setup.heroes, &towns))
+            .transpose()?,
+    })
+}
+
+/// The town of the siege `siege` for the original's map (E17 M4 T1b, M6 T3c3; [`SiegeTown`]):
+/// its buildings by `towns`' record of its faction. A hero's Grail building of another faction
+/// has no town on the map, and the attacker's has none of the siege's (its owner is not the
+/// town's): both are errors, as a building without a map editor slot.
+fn siege_town(
+    siege: &Siege,
+    heroes: &[Option<BattleHero>; 2],
+    towns: &TownRuleset,
+) -> Result<SiegeTown, String> {
+    let fort = match siege.fort {
+        FortLevel::None => 0,
+        FortLevel::Fort => 1,
+        FortLevel::Citadel => 2,
+        FortLevel::Castle => 3,
+    };
+    let record = towns
+        .town(siege.faction)
+        .ok_or_else(|| format!("faction {} has no town record", siege.faction.index()))?;
+    let mut indices: Vec<u8> = siege.bonuses.iter().map(|b| b.building).collect();
+    for (side, hero) in heroes.iter().enumerate() {
+        let effects = hero.as_ref().map_or(&[][..], |h| h.effects.as_slice());
+        for effect in effects {
+            let (BattleEffect::Morale { source, .. } | BattleEffect::Luck { source, .. }) = effect
+            else {
+                continue;
             };
-            (s.faction.index(), fort)
-        }),
+            let EffectSource::Building { faction, index } = *source else {
+                continue;
+            };
+            if faction != siege.faction || side == 0 {
+                return Err(format!(
+                    "the {} hero's Grail building (faction {}, building {index}) has no town on \
+                     the original's map: only the defender's of the siege's faction has",
+                    ["attacker's", "defender's"][side],
+                    faction.index()
+                ));
+            }
+            indices.push(index);
+        }
+    }
+    let mut built = indices
+        .into_iter()
+        .map(|index| {
+            let building = BuildingId::from_index(usize::from(index))
+                .and_then(|id| record.building(id))
+                .ok_or_else(|| format!("the town record has no building {index}"))?;
+            building
+                .slot
+                .ok_or_else(|| format!("{}: no map editor slot", building.key))
+        })
+        .collect::<Result<Vec<u8>, String>>()?;
+    built.sort_unstable();
+    built.dedup();
+    Ok(SiegeTown {
+        town: siege.faction.index(),
+        fort,
+        built,
     })
 }
 
@@ -765,6 +866,7 @@ pub(crate) fn hosted<'r>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use h3_contracts::{TownBonus, TownBonuses};
     use std::path::PathBuf;
 
     fn repo() -> PathBuf {
@@ -809,6 +911,87 @@ mod tests {
         let grass = repo().join("clients/situations/grass.toml");
         let sides = super::sides(&grass, &repo().join("packs")).unwrap();
         assert_eq!(sides.machines, [Vec::new(), Vec::new()]);
+    }
+
+    #[test]
+    fn a_siege_towns_buildings_become_its_map_bits() {
+        // E17 M6 T3c3: stats-siege.toml's Tavern (index 4) and Brotherhood of the Sword (20) and
+        // the defender's Colossus (21) by the Castle record's map editor slots 6, 19 and 17.
+        let packs = repo().join("packs");
+        let siege = repo().join("clients/situations/stats-siege.toml");
+        let town = sides(&siege, &packs).unwrap().siege.unwrap();
+        assert_eq!((town.town, town.fort, town.built), (0, 1, vec![6, 17, 19]));
+        let castle = siege_castle();
+        let towns = town_part(&packs, &["base".into()], "base:faithful").unwrap();
+        let grail = |faction: u16, index: u8| BattleEffect::Morale {
+            amount: 2,
+            affects: h3_content::Affects::Own,
+            source: EffectSource::Building {
+                faction: h3_content::FactionId::from_raw(faction),
+                index,
+            },
+        };
+        let hero = |effects: Vec<BattleEffect>| {
+            let mut hero = BattleHero::new(h3_content::HeroTypeId::from_raw(0));
+            hero.effects = effects;
+            Some(hero)
+        };
+        // A Grail building of another faction, or the attacker's, has no town on the map.
+        let rampart = [None, hero(vec![grail(1, 23)])];
+        let error = siege_town(&castle, &rampart, &towns).unwrap_err();
+        assert!(
+            error.contains("defender's hero's Grail building (faction 1"),
+            "{error}"
+        );
+        let attacker = [hero(vec![grail(0, 21)]), None];
+        assert!(siege_town(&castle, &attacker, &towns).is_err());
+        // A building the record lacks, or one without a map editor slot (the Village Hall).
+        let lacking = Siege {
+            bonuses: TownBonuses::new(&[TownBonus {
+                building: 63,
+                morale: 1,
+                luck: 0,
+            }])
+            .unwrap(),
+            ..castle
+        };
+        let error = siege_town(&lacking, &[None, None], &towns).unwrap_err();
+        assert!(error.contains("no building 63"), "{error}");
+        let hall = towns
+            .town(castle.faction)
+            .and_then(|r| r.building_by_key("village_hall"))
+            .unwrap();
+        let unslotted = Siege {
+            bonuses: TownBonuses::new(&[TownBonus {
+                building: u8::try_from(hall.index()).unwrap(),
+                morale: 1,
+                luck: 0,
+            }])
+            .unwrap(),
+            ..castle
+        };
+        let error = siege_town(&unslotted, &[None, None], &towns).unwrap_err();
+        assert!(
+            error.contains("village_hall: no map editor slot"),
+            "{error}"
+        );
+        let nowhere = Siege {
+            faction: h3_content::FactionId::from_raw(60),
+            ..castle
+        };
+        assert!(siege_town(&nowhere, &[None, None], &towns).is_err());
+    }
+
+    /// A Castle with a Fort and nothing else (E17 M6 T3c3).
+    fn siege_castle() -> Siege {
+        Siege {
+            faction: h3_content::FactionId::from_raw(0),
+            fort: FortLevel::Fort,
+            moat: h3_contracts::Moat::Absent,
+            structures: 0,
+            escape_tunnel: false,
+            bonuses: TownBonuses::NONE,
+        }
     }
 
     #[test]
@@ -876,23 +1059,44 @@ mod tests {
         let luck = |amount, affects| BattleEffect::Luck {
             amount,
             affects,
-            source: h3_contracts::EffectSource::Temporary,
+            source: EffectSource::Temporary,
         };
         let morale = BattleEffect::Morale {
             amount: 2,
             affects: Affects::Own,
-            source: h3_contracts::EffectSource::Temporary,
+            source: EffectSource::Temporary,
         };
         assert_eq!(
             effect_skills(&ruleset, &[luck(3, Affects::Own), morale]),
             Ok(vec![(6, 2), (9, 3)])
         );
         assert_eq!(effect_skills(&ruleset, &[]), Ok(Vec::new()));
+        // A Grail building's morale is the town's, no skill's (E17 M6 T3c3).
+        let colossus = BattleEffect::Morale {
+            amount: 2,
+            affects: Affects::Own,
+            source: EffectSource::Building {
+                faction: h3_content::FactionId::from_raw(0),
+                index: 21,
+            },
+        };
+        let guardian = BattleEffect::Luck {
+            amount: 2,
+            affects: Affects::Own,
+            source: EffectSource::Building {
+                faction: h3_content::FactionId::from_raw(1),
+                index: 23,
+            },
+        };
+        assert_eq!(
+            effect_skills(&ruleset, &[colossus, guardian, morale]),
+            Ok(vec![(6, 2)])
+        );
         // No skill level gives these alone, or one skill twice.
         let capped = BattleEffect::LuckAtMost {
             value: 0,
             affects: Affects::Enemy,
-            source: h3_contracts::EffectSource::Temporary,
+            source: EffectSource::Temporary,
         };
         for bad in [
             vec![luck(4, Affects::Own)],

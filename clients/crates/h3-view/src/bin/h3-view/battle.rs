@@ -22,6 +22,7 @@ use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, Observation, Seat, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
+use h3_towns::TownRuleset;
 use h3_ui::sprite::Sprite;
 use h3_view::anim::Timeline;
 use h3_view::anim::{
@@ -147,6 +148,10 @@ pub struct Ground {
     speed: Speed,
     /// A battle fought as it is played (none: a record file's).
     fight: Option<Fought>,
+    /// The town part its packs compile to here (E17 M6 T3c3: the stats dialog's building lines),
+    /// beside the fight's ruleset; none: a record file's, or a server's game whose packs do not
+    /// compile here.
+    towns: Option<TownRuleset>,
     /// The sides a human plays here ([`Source::humans`]).
     humans: [bool; 2],
     /// The samples' lengths once the window plays the battle's sounds (E17 M5 T5b2,
@@ -206,6 +211,12 @@ impl Ground {
                 .as_ref()
                 .filter(|_| served.content == h3_view::remote::Content::Same),
         }
+    }
+
+    /// The town part of the battle's packs, when its ruleset is the previews' (E17 M6 T3c3).
+    fn towns(&self) -> Option<&TownRuleset> {
+        self.previews()?;
+        self.towns.as_ref()
     }
 
     /// The content check of a server's game (E17 M5 T6b1; none: a battle here or a record).
@@ -293,6 +304,14 @@ impl Ground {
         record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
+        let manifest = &record.header.manifest;
+        let towns = match &fight {
+            Some(Fought::Here(_)) => Some(crate::scenario::towns(&source.packs, manifest)?),
+            Some(Fought::Server(served)) if served.ruleset.is_some() => {
+                crate::scenario::towns(&source.packs, manifest).ok()
+            }
+            _ => None,
+        };
         let top = record
             .header
             .manifest
@@ -341,6 +360,7 @@ impl Ground {
             seed,
             speed: source.speed,
             fight,
+            towns,
             humans,
             lengths: std::cell::OnceCell::new(),
         })
@@ -2027,6 +2047,7 @@ impl<'g> Battle<'g> {
             ruleset,
             tables: &ground.tables,
             catalogue: &writer.catalogue,
+            towns: ground.towns(),
         };
         // The viewer's own generator for the creature's later groups (§7.2), seeded by the time.
         let seed = at.wrapping_mul(2_654_435_761) | 1;

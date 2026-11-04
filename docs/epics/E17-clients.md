@@ -181,7 +181,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   header and pictures by the unclamped value, three stills exact; **T3c2** (done 2026-11-03,
   design §12.10) the Hourglass's and the Spirit of Oppression's lines, the Angelic Alliance's
   join, a siege town's buildings and the Grail's line (the pack record's index in the asset
-  tables, *provisional*); unit-tested, `stats-morale-siege` added, its capture waits.
+  tables, *provisional*); unit-tested, `stats-morale-siege` added; **T3c3** (done 2026-11-04,
+  design §12.11) the buildings named by the packs' town records (the user's choice), the
+  original's town built by their map slots, the writer's Grail-as-Leadership fixed, three stills
+  exact (`stats-morale-siege`, `-tavern`, `stats-luck-siege`). T3 done.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
   movement and cursor shadows, the combat speed, the Auto Combat options, the rest as read), kept
   in the client's settings; recorded.
@@ -359,3 +362,10 @@ The next milestone's list starts here.
     Level" keeping it shown and the battle's mouse move filling it (T4).
 28. The common crates' additions (T3b1): `h3_view::hero_info`; the catalogue's
     `battle.hero-info.*`.
+29. The town records in the client (T3c3; the user chose it over T3c2's asset tables): the
+    binary compiles the packs' town part (`h3-pack-towns`, `h3-towns`, binary-only) to name a
+    siege's buildings and a hero's Grail building by key, and the map writer builds them by the
+    records' map editor slots. The cost: the town lane's API changes now reach the client's
+    build, as the battle lane's do.
+30. Fixed (T3c3): `h3-view situation` gave a hero's Grail-building morale or luck effect as
+    Leadership or Luck (`effect_skills`); the siege town's building gives it now.

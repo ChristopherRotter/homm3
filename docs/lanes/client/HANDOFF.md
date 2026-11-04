@@ -9,12 +9,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 and T2
   done (#620 to #672, T2's cuts in the epic). T3 cut in two by the user (2026-11-03): T3a done
   (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679), T3b2
-  done (#690; CLT-Q42 asked); T3c cut in two by the user (2026-11-03): **T3c1 done** (#692: the hero's
-  lists and the unclamped value, design §12.9); **T3c2 done** (the overrides, the Alliance's
-  join, a siege town's buildings and the Grail's line, design §12.10; unit-tested, no capture
-  possible for the artifacts; #699 from `client/e17-m6-t3c2`: check it first); **next: T3c3**
-  (capture `stats-morale-siege`, needs Wine) or T4 (QUEUE), then T5 to T7; then M7 ranked play and the server
-  browser.
+  done (#690; CLT-Q42 asked); T3c cut by the user (2026-11-03): T3c1 done (#692), T3c2 done
+  (#699), **T3c3 done** (the buildings by the packs' town records, the user's choice; three siege
+  stills exact, design §12.11; PR from `client/e17-m6-t3c3`: check it first). T3 done. **Next:
+  T4** (the combat options dialog; cut at its start, QUEUE), then T5 to T7; then M7 ranked play
+  and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -43,24 +42,24 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-03, E17 M6 T3c2 (done; #699 open: check it first).** The original data staged (57
+- **2026-11-04, E17 M6 T3c3 (done; PR open: check it first).** The original data staged (57
+  files) first, the computer offline afterwards; #699 had merged; the baseline's `check.sh`
+  passed. The user chose the town records over the asset tables (T3c2's question) and T3c3 with
+  it. The binary compiles the packs' town part; the map writer builds the siege's buildings by
+  their slots; `effect_skills`' Grail-as-Leadership fixed. A siege opens on a turret's or the
+  Catapult's turn (TRAPS); three stills exact; `drawn`; `check.sh`.
+
+- **2026-11-03, E17 M6 T3c2 (done; #699 merged).** The original data staged (57
   files) first; #692 had merged. The user asked for one part to a sub-agent, one commit: A (the
   Hourglass, the Spirit of Oppression, the Alliance's join; `stack_morale` 0x43E0D3 read) by the
   session, B (siege buildings, the Grail) by a sub-agent in a worktree, its patch applied and the
   conflicts resolved (design §12.10). The pack building indices live in the asset tables
   (*provisional*). `stats-morale-siege` added, not captured (T3c3).
 
-- **2026-11-03, E17 M6 T3c1 (done; #692 open: check it first).** The original data
+- **2026-11-03, E17 M6 T3c1 (done; #692 merged).** The original data
   staged (57 files) first; #690 had merged; the baseline's `check.sh` passed. The user cut T3c
   in two (T3c1 the hero's lists and the unclamped value, T3c2 the rest). Read
   `hero_morale_description` 0x4DC320, `hero_luck_description` 0x4DCAC0 and `town_building_name`
   0x4610E0 whole (design §12.9); built `describe::HeroList`, the binary's `stats::hero_list`, the unclamped values; the
   visits and the Grail's line into the rest (T3c2 takes the Grail with the siege's buildings);
   three stills exact; `drawn`; `check.sh`.
-
-- **2026-11-03, E17 M6 T3b2 (done; #690 merged).** The original data staged
-  (57 files) first; #679 and the battle lane's carry (#685) had merged; the baseline's `check.sh`
-  passed. Read `hero_morale` 0x4E39B0, `hero_luck` 0x4E36C0 and the clamp whole (design §12.8:
-  the hero's own values, 0 on Cursed Ground, the Hourglass's 0); built `hero_info::values` and
-  the binary's `stats::field`; CLT-Q42 asked; three stills exact; `drawn`; `check.sh`. The inbox's
-  CLT-Q40 item became T3c.

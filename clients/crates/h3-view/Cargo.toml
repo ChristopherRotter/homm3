@@ -29,6 +29,9 @@ h3-content-battle.workspace = true
 h3-content.workspace = true
 h3-contracts.workspace = true
 h3-map.workspace = true
+# A siege's buildings by the town records (E17 M6 T3c3).
+h3-pack-towns.workspace = true
+h3-towns.workspace = true
 # The window (E17 M2 T5a): the platform adapter, the binary's only.
 h3-sdl.workspace = true
 # The music (E17 M2 T5b): MP3, the binary's only.

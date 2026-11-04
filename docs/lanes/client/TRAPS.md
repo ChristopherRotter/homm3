@@ -176,7 +176,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   wall-shot target (8: the upper tower 0, the lower tower 6, the keep 7), not by the original's
   18 parts: `siege::TARGET_PARTS` maps them (E17 M6 T2b2). The opening's turn is not in the
   timeline's `turns` (its start precedes the record): before the first, the opening's active
-  stack acts (`Battle::box_player`, `Panels::new`).
+  stack acts (`Battle::box_player`, `Panels::new`). A siege opens on the turrets' turn, then the
+  Catapult's, never a creature's: `key:t` finds no creature, and in the Catapult's turn a press on
+  a stack opens nothing; a defender stack's dialog needs a Citadel, the keep commanded, hot seat
+  and `click:` on the stack (E17 M6 T3c3, design §12.11).
 - The Bink decoder (`h3-bink`, E17 M5 T4b2a) is checked against FFmpeg only through
   `clients/scripts/bink-reference.py` (PyAV, each frame released before the next): the `ffmpeg`
   command line holds the frame before, so its decoder copies only the picture's rows into a new

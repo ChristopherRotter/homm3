@@ -1,23 +1,26 @@
-# E17 M6 T3c2: the stats dialog's morale description at a siege (design §12.4, §12.9): a Castle
-# town with a Fort, its Tavern (pack record index 4: morale +1) and Brotherhood of the Sword
-# (index 20: +2) standing, the defender's Royal Griffins opening (the human defender's, speed 9
-# against the Pikemen's 4), his hero's owner's Grail building the Colossus (index 21: a morale
-# effect of +2 from the building). Expected lines: the hero's Colossus +2, one alignment, the
-# Tavern +1, the Brotherhood of the Sword +2.
+# E17 M6 T3c2, T3c3: the stats dialog's morale description at a siege (design §12.4, §12.9,
+# §12.11): a Castle town with a Citadel and its Brotherhood of the Sword standing (index 20 of the
+# pack's record: +2; it supersedes the Tavern, whose line the original then omits), the
+# defender's Royal Griffins, his hero's owner's Grail building the Colossus (index 21: a morale
+# effect of +2 from the building; `h3-view situation` builds both in the original's town by their
+# map editor slots). Lines: the hero's Colossus +2, one alignment, the Brotherhood of the Sword +2.
 
 [scenario]
 id = "situation-stats-siege"
-human = ["defender"]
+# Both human (hot seat, E17 M6 T3c3): Red steps into Blue's town, whose hero defends it and
+# commands the keep, whose turn opens the battle (the turrets act before the Catapult,
+# BAT-SIE-016 and -011): the defender's view, the Griffins' dialog opened by a press on them.
+human = ["attacker", "defender"]
 packs = ["base"]
 profile = "base:faithful"
 terrain = "base:grass"
 
 [scenario.siege]
 faction = "base:castle"
-fort = "fort"
-moat = "absent"
+fort = "citadel"
+# Under SoD rules (the situation's map) the Citadel's moat damages.
+moat = "damaging"
 bonuses = [
-    { building = 4, morale = 1 },
     { building = 20, morale = 2 },
 ]
 
@@ -37,6 +40,8 @@ attack = 1
 defense = 1
 power = 1
 knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
 
 [scenario.defender_hero]
 hero_type = "base:orrin"
@@ -44,6 +49,12 @@ attack = 1
 defense = 1
 power = 1
 knowledge = 1
+
+# Basic Artillery: the keep waits for its command.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000
 
 [[scenario.defender_hero.effects]]
 kind = "morale"
