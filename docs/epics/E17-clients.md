@@ -385,3 +385,9 @@ The next milestone's list starts here.
     category not read); the dialog only in a battle fought here (not while a record plays).
 33. The common crates' additions (T4a): `h3_view::options`, `Growing::set_speed`, the keys'
     `Context::Options`; the catalogue's `battle.options.*`.
+34. The Auto Combat options (T4b1, *provisional*, design §12.13): a box set in the dialog under
+    Auto Combat hands the turn under way to the bot with the panel dimmed (the original's stays
+    lit, oddity 4; no recording: the agent's call by CLT-Q45's answer); `Live::set_auto` one flag,
+    the battle asking the stack's box; not built: the sequences' parser for a press on a
+    human-played turn under Auto Combat, and its recording (a commanded Ballista, Combat Ballista
+    off).

@@ -5804,7 +5804,8 @@ in `cursor_attack_slots` (0x4746DA), `cursor_attack_from_hex` (0x474A43), `battl
      not play and acts there (no flush, no stop's read).
   3. Combat Ballista also rules an arrow tower aimed with Artillery (149 in the Ballista's case).
   4. A box set in the dialog under Auto Combat hands the turn under way to the computer at the
-     close, the panel left lit.
+     close, the panel left lit (the client's dims it, as at a switch: the agent's call by
+     CLT-Q45's answer, a misleading panel; M6's review list).
   5. The Catapult's case reads the hero's Ballistics with no test of a hero (0x474C95; a Catapult
      always has one).
 - **The client's (M6 T4b1, *provisional* where marked):**
