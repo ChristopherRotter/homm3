@@ -11739,3 +11739,55 @@ replays, the bench and the bot reports' check); the main session wrote the recor
 - **Docs:** ADV-DWL-004 (its first half) and ADV-HIR-001 new; ADV-OWN-001, ADV-RFG-001 amended;
   ADV-STUB-14 (T95a2), ADV-STUB-15 (T95b); design §7's "As built"; T95a2 queued.
 - **Versions:** none.
+
+### Increment 10, round 7: T95a2, the guards (2026-11-04, `adventure/e08-t95a2`)
+
+**The cut** (decision 254; asked at the start, `AskUserQuestion`): T95a2 whole. The user also
+settled the acceptance with no guards standing: the visit's rest, as a mine's, unreachable under
+sequential play (no two players may interact with one object at the same time). Built by two
+narrow sub-agents (the code and its tests; the plans' oracles); the main session wrote the records.
+
+- **The question** (`h3-adventure`'s `state/dwellings.rs`; design §7 step 2, §12, their "As
+  built"; ADV-DWL-004 whole): `OfferKind::Guarded { creature, count_word }`, no price
+  (`guards_question`: the first occupied slot's creature, `MonsterParams::count_word` of the total,
+  GENRLTXT 422). `visit_dwelling`: not of the visitor's team with guards standing, the question;
+  else `enter_dwelling` (the flag unless of the team, then the hire question), which the
+  acceptance and `give_won` share.
+- **The battle** (`fight_for_dwelling`, `accept_offer`'s `Guarded` arm; GAM-BAT-001 amended):
+  `Defender::Guards { army }` even for one stack, at the hero's tile through `battle_at`, no type
+  terrain; the system actor plays it whoever owns the dwelling. With no guards standing at the
+  acceptance, the visit's rest (decision 254); a hero off the map, nothing (*agent's call*: one
+  let-else with an offer type that is no dwelling's).
+- **Its end** (`end_unowned_battle`'s `ObjectKind::Dwelling` arm, `end_dwelling_battle`): the
+  survivors by slot through `write_dwelling` (`DwellingWeek::set_guards`, moved out of
+  `DwellingWeek::new`), none when won; no event; `reward_after` when won. A beaten dwelling's empty
+  guards differ from the full week's, so the block stays until `start_week` (checked).
+- **After a win** (`give_won`'s dwelling arm, `dwelling_won`): with the guards none and the hero on
+  the map, `enter_dwelling` for its owner; the game opens the offer through the rest's
+  `settle_outcome` unchanged.
+- **The game** (`h3-game`): the decision hash's `Guarded` arm (tag 12, then the creature and the
+  word); no recorded hash moved, so no version.
+- **The plans' oracles** (`h3-map`'s `play.rs`): a dwelling's visit asks `Guarded` (its creature
+  and word, nothing flagged) when not the actor's and guarded, else `Hire` with the flag exactly
+  when it was not the actor's (also right after a won battle); an accepted `Guarded` opens a battle
+  at the hero's tile without a defending hero, unowned, its stacks the guards unsplit;
+  `check_dwelling_battle_end`: counts and treasuries unchanged, no removal or guards' event; won,
+  the guards none and, unless a level-up is open or the hero left the map, the flag then the hire
+  question; else the owner kept and the guards a subset by slot (*agent's call*: survivors are only
+  bounded, as the mines' and piles' oracles, since `BattleEnded` carries no army). **No plan places
+  a dwelling yet**: the arms run once T96 adds them.
+- **Tests:** `state/tests/dwelling_visits.rs` (the guards' question replacing the stub's test; the
+  accepted question's battle, unsplit and unowned on the hero's tile; the acceptance with none
+  standing; the end lost, drawn and won with `give_won`), `h3-game`'s
+  `another_s_guarded_dwelling_is_fought_by_the_system_and_a_win_flags_it_then_asks` (blue's
+  dwelling, the defender unowned, a whole battle, the levels, then the flag and the hire question)
+  and `a_lost_guards_battle_takes_the_hero_off_the_map_and_keeps_the_survivors`.
+- **Verify** (scoped, with the original data): every step passed: coverage 100 %, determinism (the
+  39 replays unchanged: no recorded command visits a dwelling), bench-check (all 17 adventure
+  workloads inside the gate: the reaches and random plays within ±0.4 %, day-start-xl-144
+  +0.71 %, the forks' +1.1 to +1.7 % over the stored baselines the sandbox's drift, as T95a1's),
+  original-data. The AI lane's bot reports unchanged (the adventure part's content hash did not
+  move).
+- **Docs:** ADV-DWL-004 whole, GAM-BAT-001 amended; ADV-STUB-14 closed; design §7's and §12's "As
+  built"; decision 254; T95a1's hedge on the acceptance's owner reworded as defensive only.
+- **Versions:** none.

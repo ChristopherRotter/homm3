@@ -2300,9 +2300,11 @@ impl AdventureState {
     /// looted one's luck or its guards' battle ([`Self::search_pyramid`]). A Shipyard's boat
     /// (ADV-SHY-002, E08 T84b2): the boat built on its tile ([`Self::build_boat`]). The hire
     /// question (ADV-HIR-001, E08 T95a1): an own dwelling's free creatures
-    /// ([`Self::accept_hire`]). Infallible; the outcome is what the game applies after.
+    /// ([`Self::accept_hire`]). A dwelling's guards' question (ADV-DWL-004, E08 T95a2): their
+    /// battle, or the visit's rest when none stand any more ([`Self::fight_for_dwelling`]).
+    /// Infallible; the outcome is what the game applies after.
     // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008, ADV-PIK-004, ADV-TCH-003, ADV-PIK-011
-    // rule: ADV-PIK-013, ADV-TCH-008, ADV-MIN-002, ADV-SHY-002, ADV-HIR-001
+    // rule: ADV-PIK-013, ADV-TCH-008, ADV-MIN-002, ADV-SHY-002, ADV-HIR-001, ADV-DWL-004
     pub fn accept_offer<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -2350,6 +2352,13 @@ impl AdventureState {
             OfferKind::Hire { .. } => self
                 .offer_object(offer)
                 .map(|index| self.accept_hire((core, part), player, (index, offer), sink))
+                .unwrap_or_default(),
+            OfferKind::Guarded { .. } => self
+                .offer_object(offer)
+                .map(|index| {
+                    let object = (index, offer.object_type);
+                    self.fight_for_dwelling((core, part), (player, offer.hero), object, sink)
+                })
                 .unwrap_or_default(),
         }
     }
