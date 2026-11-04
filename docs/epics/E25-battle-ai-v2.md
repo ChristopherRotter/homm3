@@ -144,7 +144,9 @@ against the fair actor before any RL run.
    with a warm-up, AdamW and its own learning rate. The grid is the agent's, from T24's costs.
 3. **The cost cap** (the user): a sample-pass on the GTX 1070 at most hexconv 64 × 6's (466 µs,
    about 10 hours of network time for 20 M samples of PPO); fp32 only; among the candidates within
-   0.02 of the best agreement the cheapest wins.
+   0.02 of the best agreement the cheapest wins. **Raised at T25** (the user, 2026-11-04, on the
+   GPU's grid, `E25-log.md` T24): about 700 µs on `network --time`'s measure (where `hexconv` 64 ×
+   6 is 301), one candidate of each family.
 4. **The heads read the geometry** (the user: the legal mask as an input is no encoding change):
    a melee entry scores the hex its attack is made from; the legal mask (action encoding v13's,
    handed with every decision) is an input of every kind, an MLP with it a second control.
@@ -158,8 +160,8 @@ against the fair actor before any RL run.
 | Task | Scope | Status |
 |---|---|---|
 | T24 | The kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the bench's report | done 2026-11-04 (`hexconv`'s `norm`, `feed_forward`, the bench's `warmup` and `weight_decay`, the cost per student, `network --bench` and the grid's CPU table) |
-| T25 | The heads read the geometry: a melee entry's attack hex, the legal mask as an input, `order` for the structured kinds | next (the sandbox) |
-| T26 | The structure sweep on the cloning bench, against decision 5's first gate | after T25 (the user's machine) |
+| T25 | The heads read the geometry: a melee entry's attack hex, the legal mask as an input, `order` for the structured kinds | done 2026-11-04 (`geometry`'s port checked on 18 823 real attacks; `encode(obs, mask)`; `[network] mask_input`, `order`, `attack_hex`; T26's bench prepared at the user's cap of about 700 µs) |
+| T26 | The structure sweep on the cloning bench, against decision 5's first gate | next (the user's machine) |
 | T27 | The long clone of the best candidate, its ladder against decision 5's second gate | after T26 (the user's machine) |
 | T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | after T27 (the user's machine) |
 | T29 | The checkpoint: structure against the MLP (clone, RL, cost), the current best, increment 8 | after T28 or a failed gate |
