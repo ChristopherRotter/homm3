@@ -7,9 +7,8 @@ use h3_adventure::{Holds, Pos as TilePos, TileMask};
 use h3_content::{FactionId, Formation, HeroTypeId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
-    BuildingsSetup, FactionChoice, FactionSet, GameRuleset, GameSetup, GameSetupError,
-    GarrisonCreature, GarrisonStack, HeroDraw, MainTown, SlotSet, TownEventSetup, TownFaction,
-    TownSetup,
+    BuildingsSetup, FactionChoice, FactionSet, GameRuleset, GameSetup, GarrisonCreature,
+    GarrisonStack, MainTown, SlotSet, TownEventSetup, TownFaction, TownSetup,
 };
 
 use super::import::{ROE, SOD, object, template};
@@ -596,8 +595,9 @@ fn a_random_hero_is_a_placed_hero_without_its_type() {
     assert_eq!(spells.map(|s| s.len()), Some(1));
 }
 
+// covers: TWN-SET-009
 #[test]
-fn a_main_town_generating_a_hero_is_refused_by_the_build() {
+fn a_main_town_generating_a_hero_gets_one_on_its_entrance() {
     let mut m = town_map(Version::Sod);
     details(&mut m).main_town = Some(MapMainTown {
         generate_hero: false,
@@ -605,12 +605,21 @@ fn a_main_town_generating_a_hero_is_refused_by_the_build() {
         pos: Pos { x: 4, y: 4, z: 0 },
     });
     assert_eq!(imported(&m).validate(&SOD), Ok(()));
+    // E09 T7b2b: the build draws the hero's type over the player's faction and stands it on the
+    // town's entrance, its id after the map's heroes.
     details(&mut m).main_town.as_mut().unwrap().generate_hero = true;
+    let setup = imported(&m);
+    let game = h3_game::GameState::new(&SOD, &setup, 1).unwrap();
+    let id = HeroId::new(u16::try_from(setup.heroes.len()).unwrap());
+    let hero = game.adventure().hero(id).unwrap();
     assert_eq!(
-        imported(&m).validate(&SOD),
-        Err(GameSetupError::HeroDraw(HeroDraw::MainTown(PlayerId::new(
-            0
-        ))))
+        (hero.owner, hero.pos),
+        (PlayerId::new(0), TilePos::new(4, 4, 0))
+    );
+    assert!(
+        setup
+            .allowed_heroes
+            .contains(&game.hero(id).unwrap().hero_type)
     );
 }
 

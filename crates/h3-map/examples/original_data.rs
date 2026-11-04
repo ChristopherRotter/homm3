@@ -23,11 +23,13 @@
 //! since E08 T94b the weeks it gives: the dwellings' counts and guards and the Refugee Camps'
 //! creatures and counts (checked).
 //! Since E09 T7a1 the towns, the players' starts, the random heroes, the heroes moved onto a
-//! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import, and a setup the
-//! build refuses for a hero to draw (`TWN-STUB-3`) is counted as an outcome; since E09 T7b1 the
-//! random heroes are drawn and only a main town's hero is refused so. Since E09 T8a1 the towns are
-//! typed (their owners at load and formations counted), and the static layer's game gives one
-//! town record per town (a random town of no alignment).
+//! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import; since E09 T7b1 the
+//! random heroes are drawn. Since E09 T8a1 the towns are typed (their owners at load and
+//! formations counted), and the static layer's game gives one town record per town (a random
+//! town of no alignment). Since E09 T7b2b the main towns' heroes are built (TWN-SET-009; until
+//! then a setup with one was counted as refused, `TWN-STUB-3`): counted by pick and draw, with a
+//! spell book in a town with a Mage Guild built (the guild's spells at the start, `TWN-STUB-6`),
+//! and on the maps of 36 tiles a side.
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -45,7 +47,7 @@ use h3_adventure::{
 use h3_content::{CreatureTypeId, Formation};
 use h3_game::{
     BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameRuleset, GameSetup, GameSetupError,
-    GameState, GarrisonCreature, HeroDraw, PlayerSetup, TownFaction, TownSetup,
+    GameState, GarrisonCreature, PlayerSetup, TownFaction, TownSetup,
 };
 use h3_map::model::{Artifacts, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
@@ -378,10 +380,6 @@ fn check(
         Ok(setup) => {
             towns(&map, &setup, rules, &mut peaks.5);
             let game = match GameState::new(rules, &setup, SEED) {
-                // E09 T7a1: the main towns' heroes are T7b2's.
-                Err(GameSetupError::HeroDraw(draw)) => {
-                    return Ok((map.header.version, refused(draw).to_owned()));
-                }
                 // E09 T7a2: a map the setup's checks of the towns and the starts refuse, by the
                 // check's name.
                 Err(error) => match checked(error) {
@@ -397,6 +395,7 @@ fn check(
                 Ok(game) => game,
             };
             built_towns(&setup, &game, rules, &mut peaks.5);
+            built_heroes(&setup, &game, rules, map.header.size, &mut peaks.5);
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
             // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
             let levels: Vec<u8> = game.heroes().iter().map(|h| h.level).collect();
@@ -478,10 +477,54 @@ fn built_towns(
     }
 }
 
-/// The outcome of a map the build refuses for a hero to draw (`TWN-STUB-3`, until E09 T7b2).
-const fn refused(draw: HeroDraw) -> &'static str {
-    match draw {
-        HeroDraw::MainTown(_) => "imported; the build refuses a main town's hero (TWN-STUB-3)",
+/// E09 T7b2b: the main towns' heroes of a game that builds (TWN-SET-009), the heroes after the
+/// setup's: by a human player's pick or drawn, those whose type starts with a spell book in a
+/// main town with a Mage Guild built (the original teaches them the guild's spells at the start,
+/// `TWN-STUB-6`), and those on a map of 36 tiles a side.
+fn built_heroes(
+    setup: &GameSetup,
+    game: &GameState,
+    rules: &GameRuleset,
+    size: u32,
+    counts: &mut BTreeMap<&'static str, usize>,
+) {
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    let generated = game.heroes().iter().skip(setup.heroes.len());
+    for (details, index) in generated.zip(setup.heroes.len()..) {
+        let id = h3_contracts::HeroId::new(u16::try_from(index).unwrap_or(u16::MAX));
+        let Some(owner) = game.adventure().hero(id).map(|hero| hero.owner) else {
+            continue;
+        };
+        let player = &setup.players[owner.index()];
+        add("E09 built: main towns' heroes", 1);
+        let picked = player.human && player.start.pick == Some(details.hero_type);
+        add(
+            "E09 built: main towns' heroes by a human pick",
+            usize::from(picked),
+        );
+        add("E09 built: main towns' heroes drawn", usize::from(!picked));
+        add(
+            "E09 built: main towns' heroes on a map of 36 tiles a side",
+            usize::from(size == 36),
+        );
+        let book = rules
+            .core()
+            .hero_type(details.hero_type)
+            .is_some_and(|ty| ty.spell_book);
+        let guild = player.start.main_town.and_then(|main| {
+            let town = game.towns().get(main.town)?;
+            let record = rules.towns().town(town.faction())?;
+            Some(
+                town.built()
+                    .iter()
+                    .filter_map(|b| record.building(b))
+                    .any(|b| b.key.starts_with("mage_guild")),
+            )
+        });
+        add(
+            "E09 built: main towns' heroes with a spell book in a town with a Mage Guild",
+            usize::from(book && guild == Some(true)),
+        );
     }
 }
 

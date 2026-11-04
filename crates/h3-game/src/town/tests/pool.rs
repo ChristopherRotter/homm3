@@ -146,7 +146,9 @@ fn a_random_choice_is_drawn_from_its_factions() {
     setup.players[1].start.factions = FactionSet::EMPTY.with(castle).with(other);
     let mut draws = Rng::for_stream(9, StreamId::SETUP);
     let owners = [Some(RED), Some(BLUE)];
-    let (_, types, _) = draw_heroes(&setup, &rules, &owners, &mut draws).unwrap();
+    let types = draw_heroes(&setup, &rules, &owners, &mut draws)
+        .unwrap()
+        .types;
     let mut replay = Rng::for_stream(9, StreamId::SETUP);
     let chosen = [castle, other][usize::try_from(replay.below(2)).unwrap()];
     assert_eq!(faction_of(&rules, types[1].0), chosen);

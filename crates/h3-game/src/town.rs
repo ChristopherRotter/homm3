@@ -5,14 +5,12 @@
 //! 6's seam), the pick from the player's offer ([`GameSetup::offer`], TWN-SET-006). The game's
 //! build checks the starts and the towns (E09 T7a2: [`check_starts`]), then builds the hero pool
 //! and draws the random factions and the random heroes' types (E09 T7b1: [`pool`], design note
-//! §14), then the random towns' factions and each town's garrison and buildings (E09 T7b2a:
-//! [`build`]); it still refuses a main town that generates a hero ([`HeroDraw`], `TWN-STUB-3`;
-//! the main towns' heroes are E09 T7b2b's).
+//! §14), then the random towns' factions (E09 T7b2a: [`build`]), then the main towns' heroes (E09
+//! T7b2b: [`heroes`]), then each town's garrison and buildings ([`build`]).
 
 use alloc::vec::Vec;
-use core::fmt;
 
-use h3_adventure::ObjectKind;
+use h3_adventure::{MapSetup, ObjectKind, ObjectSetup, Pos};
 use h3_content::{FactionId, HeroTypeId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::TownFaction;
@@ -20,9 +18,11 @@ use h3_towns::TownFaction;
 use crate::{GameRuleset, GameSetup, GameSetupError, PlayerSetup};
 
 pub(crate) mod build;
+pub(crate) mod heroes;
 pub(crate) mod pool;
 
 pub(crate) use build::{build_towns, draw_towns, start_radius};
+pub(crate) use heroes::main_town_heroes;
 pub(crate) use pool::{HeroPool, draw_heroes};
 
 /// A set of the core's factions, a bit per faction below [`FactionSet::CAPACITY`] (the map's
@@ -105,24 +105,6 @@ pub struct PlayerStart {
     pub random_hero: bool,
 }
 
-/// What a setup needs drawn that the game cannot build yet (`TWN-STUB-3`; the main towns' heroes:
-/// E09 T7b2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HeroDraw {
-    /// This player's main town generates its starting hero.
-    MainTown(PlayerId),
-}
-
-impl fmt::Display for HeroDraw {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MainTown(player) => {
-                write!(f, "player {}'s main town generates a hero", player.index())
-            }
-        }
-    }
-}
-
 impl GameSetup {
     /// The most hero types a player's offer holds: the start dialog's list of 16
     /// (`scenario_hero_lists` 0x583890; survey `E09-towns.md` §4.3, TWN-SET-006).
@@ -173,12 +155,19 @@ impl GameSetup {
     }
 }
 
+/// What the setup's checks of the starts give the build ([`check_starts`]): the towns' owners at
+/// the start by `TownId`, and by player id the tile its main town's hero stands on when its main
+/// town generates one (E09 T7b2b: the town's entrance, [`entrance`]).
+pub(crate) type Starts = (Vec<Option<PlayerId>>, Vec<Option<Pos>>);
+
 /// The setup's checks of the towns and the players' starts (E09 T7a2, design note §13), one pass
 /// per invariant (ADR-0015 point 4): since E09 T8a1 one town record per town of the static map,
 /// then a town's faction (a fixed one's town record; since E09 T7b2a a random town needs a faction
 /// with one), a random town's alignment, each player's faction choice, main town (since E09 T8a1
-/// a town it owns at the start, §8), pick and a pick of no earlier player, then a random hero's
-/// owner. The towns' owners at the start by `TownId` when every check passes.
+/// a town it owns at the start, §8; since E09 T7b2b one visited from a tile of the map when it
+/// generates a hero, TWN-SET-009), pick and a pick of no earlier player, then a random hero's
+/// owner. The towns' owners at the start by `TownId` and the main towns' heroes' tiles by player
+/// ([`Starts`]) when every check passes.
 ///
 /// # Errors
 ///
@@ -189,8 +178,22 @@ impl GameSetup {
 pub(crate) fn check_starts(
     setup: &GameSetup,
     rules: &GameRuleset,
-) -> Result<Vec<Option<PlayerId>>, GameSetupError> {
-    let owners = town_owners(setup, rules);
+) -> Result<Starts, GameSetupError> {
+    let objects = town_objects(setup, rules);
+    let owners: Vec<Option<PlayerId>> = objects.iter().map(|object| object.owner).collect();
+    // rule: TWN-SET-009
+    let entrances: Vec<Option<Pos>> = setup
+        .players
+        .iter()
+        .map(|player| {
+            player
+                .start
+                .main_town
+                .filter(|main| main.generates_hero)
+                .and_then(|main| objects.get(main.town.index()))
+                .and_then(|object| entrance(&setup.map, object))
+        })
+        .collect();
     if owners.len() != setup.towns.len() {
         return Err(GameSetupError::TownCount(setup.towns.len()));
     }
@@ -216,12 +219,12 @@ pub(crate) fn check_starts(
     }) {
         return Err(GameSetupError::Choice(player));
     }
-    // rule: TWN-SET-001
+    // rule: TWN-SET-001, TWN-SET-009
     if let Some(player) = first_player(setup, |id, player| {
-        player
-            .start
-            .main_town
-            .is_some_and(|main| owners.get(main.town.index()) != Some(&Some(id)))
+        player.start.main_town.is_some_and(|main| {
+            owners.get(main.town.index()) != Some(&Some(id))
+                || main.generates_hero && entrances[id.index()].is_none()
+        })
     }) {
         return Err(GameSetupError::MainTown(player));
     }
@@ -253,14 +256,14 @@ pub(crate) fn check_starts(
     {
         return Err(GameSetupError::RandomHeroOwner(hero));
     }
-    Ok(owners)
+    Ok((owners, entrances))
 }
 
-/// The owners at the start of the static map's towns by `TownId` (E09 T8a1, design note §8): the
-/// objects whose type is of kind [`ObjectKind::Town`], in object order, as the static map lists
-/// them (`h3_adventure::StaticMap::towns`; no random dwelling becomes a town); an object of an
-/// unknown type is none (the adventure's own check refuses it).
-fn town_owners(setup: &GameSetup, rules: &GameRuleset) -> Vec<Option<PlayerId>> {
+/// The static map's towns by `TownId` (E09 T8a1, design note §8), each with its owner at the
+/// start: the objects whose type is of kind [`ObjectKind::Town`], in object order, as the static
+/// map lists them (`h3_adventure::StaticMap::towns`; no random dwelling becomes a town); an
+/// object of an unknown type is none (the adventure's own check refuses it).
+fn town_objects<'s>(setup: &'s GameSetup, rules: &GameRuleset) -> Vec<&'s ObjectSetup> {
     setup
         .map
         .objects
@@ -271,8 +274,24 @@ fn town_owners(setup: &GameSetup, rules: &GameRuleset) -> Vec<Option<PlayerId>> 
                 .and_then(|id| rules.adventure().object_type(id))
                 .is_some_and(|ty| ty.kind == ObjectKind::Town)
         })
-        .map(|object| object.owner)
         .collect()
+}
+
+/// A town's entrance on `map` (TWN-SET-009, E09 T7b2b): the first tile of the map `object` is
+/// visited from, in its visitable mask's order (row by row up from its anchor's, each row from
+/// the anchor's column leftwards), as the adventure's `MapObject::entrance` finds it on the
+/// static map it builds; none when no visitable tile of it lies on the map.
+fn entrance(map: &MapSetup, object: &ObjectSetup) -> Option<Pos> {
+    let anchor = object.anchor;
+    object.visitable.offsets().find_map(|(column, row)| {
+        let x = anchor.x.checked_sub(u16::from(column))?;
+        let y = anchor.y.checked_sub(u16::from(row))?;
+        (x < map.width && y < map.height && anchor.level < map.levels).then_some(Pos::new(
+            x,
+            y,
+            anchor.level,
+        ))
+    })
 }
 
 /// The first player in id order that `refused` refuses (the players at most a [`PlayerId`]'s).
@@ -339,21 +358,6 @@ pub(crate) fn needs_faction(
                 }
                 || random && owner == Some(id)
         })
-}
-
-/// Refuses a main town that generates a hero, which the game cannot build yet (E09 T7b2).
-///
-/// # Errors
-///
-/// [`GameSetupError::HeroDraw`]: the first player in id order whose main town generates a hero.
-// stub: TWN-STUB-3
-pub(crate) fn main_town_heroes(setup: &GameSetup) -> Result<(), GameSetupError> {
-    match first_player(setup, |_, player| {
-        player.start.main_town.is_some_and(|t| t.generates_hero)
-    }) {
-        Some(player) => Err(GameSetupError::HeroDraw(HeroDraw::MainTown(player))),
-        None => Ok(()),
-    }
 }
 
 #[cfg(test)]
