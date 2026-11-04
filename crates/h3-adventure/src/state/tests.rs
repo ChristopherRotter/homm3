@@ -897,6 +897,7 @@ mod boats;
 mod calendar;
 mod day;
 mod draws;
+mod dwelling_weeks;
 mod dwellings;
 mod economy;
 mod events;

@@ -177,6 +177,15 @@ Hash tags follow the part's last (the building task's); ruleset part v16.
 - **A camp's week:** one block by camp index, each its creature and count, drawn when the game is
   built and at every week's step (§9), as the weekly objects' block; a purchase lowers the count.
   None for a map without camps.
+- **As built (T94b, decision 252; *agent's calls*, change freely):** the static map keeps each
+  dwelling's week as it begins (`StaticMap::full_weeks`: each creature's growth, the kind's full
+  guards), which the reads (`dwelling_counts`, `dwelling_guards`) and the hash fall back to; the
+  block is normalised at write (a write that leaves every dwelling full drops it,
+  `check_dwellings`), so the derived equality compares content without a wrapper (one that cannot
+  see the map). An entry is a fixed-size copy (up to four counts and four guard stacks by slot).
+  T95's writer keeps the normalisation (the test writer `set_dwelling` is `#[cfg(test)]`). The
+  camps' levels are kept on the static map (`camp_levels`); `economy::in_object_order` walks the
+  weekly objects and the camps together, for the build's first week and the week's step.
 
 ### 7. The visits (ADV-DWL-004, ADV-OWN-001 amended, ADV-HIR-001, ADV-RFG-001)
 

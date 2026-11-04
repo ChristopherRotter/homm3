@@ -19,7 +19,9 @@
 //! Camps, the random dwellings typed by class and those tied to a town (left blockers), and the
 //! RoE maps' dwellings under the base pack alone (checked: every RoE map's static layer imports
 //! with it, each of its dwellings typed), and since E08 T94a the dwellings the game's build gives
-//! (the random ones resolved, checked) and the maps it refuses for a random dwelling's tiles.
+//! (the random ones resolved, checked) and the maps it refuses for a random dwelling's tiles, and
+//! since E08 T94b the weeks it gives: the dwellings' counts and guards and the Refugee Camps'
+//! creatures and counts (checked).
 //! Since E09 T7a1 the towns, the players' starts, the random heroes, the heroes moved onto a
 //! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import, and a setup the
 //! build refuses for a hero to draw (`TWN-STUB-3`) is counted as an outcome; since E09 T7b1 the
@@ -38,6 +40,7 @@ use std::sync::Arc;
 use h3_adventure::{
     DWELLING_LEVELS, Holds, MapSetup, ObjectKind, ObjectTypeId, Pos, SetupError, land_table_points,
 };
+use h3_content::CreatureTypeId;
 use h3_game::{
     BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameRuleset, GameSetup, GameSetupError,
     GameState, GarrisonCreature, HeroDraw, PlayerSetup, TownFaction,
@@ -50,7 +53,8 @@ use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 /// objects of each body kind the maps hold; how many tiles objects are visited from; each map
 /// with stacked visitable tiles, with the classes on each such tile in map order; each map with
 /// typed objects that share their type and anchor with an earlier one, with how many; the
-/// monsters' and grounds' counts (E08 T20a2a); the dwellings the game's build gives (E08 T94a).
+/// monsters' and grounds' counts (E08 T20a2a); the dwellings the game's build gives (E08 T94a);
+/// the dwellings' and the Refugee Camps' weeks it gives (E08 T94b).
 #[derive(Default)]
 struct Peaks(
     BTreeMap<&'static str, (usize, String)>,
@@ -60,6 +64,7 @@ struct Peaks(
     BTreeMap<String, usize>,
     BTreeMap<&'static str, usize>,
     Built,
+    Weeks,
 );
 
 /// The census of the dwellings the game's build gives (E08 T94a, [`built_dwellings`]): its
@@ -69,6 +74,15 @@ struct Built(
     BTreeMap<&'static str, usize>,
     BTreeMap<usize, [usize; DWELLING_LEVELS]>,
 );
+
+/// The census of the dwellings' and the Refugee Camps' weeks the game's build gives (E08 T94b,
+/// [`built_weeks`]): its counts, and the camps' draws by the drawn creature's level.
+#[derive(Default)]
+struct Weeks(BTreeMap<&'static str, usize>, [usize; DWELLING_LEVELS]);
+
+/// A dwelling's guards of a creature of the part's guard level or more are this times its growth
+/// (ADV-DWL-002; E08 T94b's census, [`built_weeks`]): the original's 3, checked against the pack.
+const GUARD_FACTOR: u32 = 3;
 
 /// The seed every game of the check is built with: the census of what the build draws (E08
 /// T94a, [`built_dwellings`]) is that seed's.
@@ -199,6 +213,15 @@ fn main() -> ExitCode {
         "    resolved by faction drawn, levels 1 to {DWELLING_LEVELS} (seed {SEED}): {}",
         spread.join(", ")
     );
+    let weeks = &peaks.7;
+    println!("  the dwellings' and the Refugee Camps' weeks built (seed {SEED}), checked:");
+    for (what, n) in &weeks.0 {
+        println!("    {what}: {n}");
+    }
+    println!(
+        "    the camps' draws by creature level, 1 to {DWELLING_LEVELS} (seed {SEED}): {:?}",
+        weeks.1
+    );
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -304,6 +327,8 @@ fn check(
     for dwelling in built_dwellings(&built, &map, &setup.map, rules, name, &mut peaks.6)? {
         println!("h3-map: a resolved dwelling's anchor past the right edge: {dwelling}");
     }
+    // E08 T94b: the dwellings' and the camps' weeks it builds (ADV-DWL-002, ADV-RFG-001).
+    built_weeks(&built, rules, name, &mut peaks.7)?;
     let (visitable, stacked) = stacked(&map, &setup.map);
     peaks.2 += visitable;
     if !stacked.is_empty() {
@@ -995,6 +1020,124 @@ fn built_dwellings(
         }
     }
     Ok(edge)
+}
+
+/// Counts the dwellings' and the Refugee Camps' weeks the game's build gives (E08 T94b;
+/// ADV-DWL-002, ADV-DWL-003, ADV-RFG-001, increment 10's design note §6, §9), on the state built
+/// with [`SEED`]: the dwellings with guards, their guard stacks and creatures, the camps drawn and
+/// their draws by the drawn creature's level. Checked (an error fails the map): the state's
+/// dwellings' and camps' invariants hold (`check_dwellings`, `check_camps`); each dwelling's
+/// counts are its kind's creatures' growths in creature order, its guards one stack for each of
+/// its creatures of the part's guard level or more, in creature order from slot 0, of
+/// [`GUARD_FACTOR`] times its growth, and so are the kind's derived full guards; each camp holds a
+/// creature of its levels' random set, its count that creature's growth.
+fn built_weeks(
+    game: &GameState,
+    rules: &GameRuleset,
+    name: &str,
+    weeks: &mut Weeks,
+) -> Result<(), String> {
+    let adventure = game.adventure();
+    let map = adventure.map();
+    let (core, part) = (rules.core(), rules.adventure());
+    let objects = map.objects();
+    let kind = |index: usize| {
+        objects[index]
+            .object_type
+            .and_then(|ty| part.object_type(ty))
+            .map(|ty| &ty.kind)
+    };
+    let at = |index: usize, what: &str, why: &str| {
+        format!(
+            "{name}: the {what} at {:?} (object {index}) {why}",
+            objects[index].anchor
+        )
+    };
+    let growth = |creature| core.creature(creature).map(|c| u32::from(c.growth));
+    let Some(params) = part.params().dwellings() else {
+        return Err(format!("{name}: the part has no dwellings' parameters"));
+    };
+    if !adventure.check_dwellings() || !adventure.check_camps(core, part) {
+        return Err(format!(
+            "{name}: the built dwellings' or camps' weeks break their invariants"
+        ));
+    }
+    let (counts, by_level) = (&mut weeks.0, &mut weeks.1);
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    for &index in map.dwellings() {
+        let Some(ObjectKind::Dwelling {
+            creatures, guards, ..
+        }) = kind(index)
+        else {
+            return Err(at(index, "dwelling", "is not of a dwelling's kind"));
+        };
+        let growths: Option<Vec<u32>> = creatures.iter().map(|&c| growth(c)).collect();
+        if growths.as_deref() != adventure.dwelling_counts(index) {
+            return Err(at(
+                index,
+                "dwelling",
+                "does not hold its creatures' growths",
+            ));
+        }
+        let full: Vec<(CreatureTypeId, u32)> = creatures
+            .iter()
+            .filter(|&&c| {
+                core.creature(c)
+                    .is_some_and(|c| c.level >= params.guard_level)
+            })
+            .map(|&c| (c, GUARD_FACTOR * growth(c).unwrap_or(0)))
+            .collect();
+        let stood: Vec<(u8, CreatureTypeId, u32)> = adventure
+            .dwelling_guards(index)
+            .iter()
+            .map(|stack| (stack.slot, stack.creature, stack.count))
+            .collect();
+        let slotted: Vec<(u8, CreatureTypeId, u32)> = (0..)
+            .zip(&full)
+            .map(|(slot, &(creature, count))| (slot, creature, count))
+            .collect();
+        if *guards != full || stood != slotted {
+            return Err(at(
+                index,
+                "dwelling",
+                "is not guarded by a stack of 3 times the growth of each of its creatures of the \
+                 guard level or more, in creature order",
+            ));
+        }
+        add("dwellings with guards", usize::from(!full.is_empty()));
+        add("dwellings' guard stacks", full.len());
+        let guarding: u32 = full.iter().map(|&(_, count)| count).sum();
+        add("dwellings' guards (creatures)", guarding as usize);
+    }
+    for &index in map.camps() {
+        let Some(ObjectKind::RefugeeCamp { levels }) = kind(index) else {
+            return Err(at(index, "Refugee Camp", "is not of a camp's kind"));
+        };
+        let drawn = adventure.camp(index).and_then(|(creature, count)| {
+            let info = core.creature(creature)?;
+            let place = usize::from(info.level).checked_sub(1)?;
+            part.random_monsters(core, *levels)
+                .any(|c| c == creature)
+                .then_some((place, count == u32::from(info.growth)))
+        });
+        let Some((place, true)) = drawn else {
+            return Err(at(
+                index,
+                "Refugee Camp",
+                "holds no creature of its levels' random set, its growth the count",
+            ));
+        };
+        let Some(level) = by_level.get_mut(place) else {
+            return Err(at(
+                index,
+                "Refugee Camp",
+                "holds a creature past the levels",
+            ));
+        };
+        *level += 1;
+        add("Refugee Camps drawn", 1);
+    }
+    Ok(())
 }
 
 /// Why the game refuses `setup` (E08 T94a): `error`, and when a random dwelling's tiles refuse it,

@@ -114,7 +114,9 @@ pub use state::{
 /// v18 (E08 T83b1): what the build drew for abandoned mines and Shipyards ([`Resolved`]' tags 7
 /// and 8), the ownable objects' owners and the weekly objects' contents and marks. v19 (E08
 /// T83b2a): the objects added in play (in the occupancy's encoding) and the monsters' fractions.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 19;
+/// v20 (E08 T94b): the dwellings' counts and guards as they stand and the Refugee Camps'
+/// creatures and counts.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 20;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

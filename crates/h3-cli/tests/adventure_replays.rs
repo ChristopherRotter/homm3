@@ -143,6 +143,7 @@
 //! them all from their commands: T93a moved the hashes, T93b the import version alone. E09 T7b1
 //! (game state hash v23: the hero pool) re-recorded them all from their commands: only the
 //! hashes moved (their maps have no random hero, pick or start that reads a random faction).
+//! E08 T94b (adventure state hash v20) re-recorded them all from their commands: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts
