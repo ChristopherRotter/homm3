@@ -11688,3 +11688,54 @@ the records.
   ADV-OWN-003, GAM-CAL-002 amended; ADV-DWL-005's E10-7 source corrected (batch 10a, not 10b);
   design §6's "As built"; the town lane's inbox (T8a takes v21); T95a queued.
 - **Versions:** adventure state hash v20; nothing else.
+
+### Increment 10, round 7: T95a1, the visits without a battle (2026-11-04, `adventure/e08-t95a1`)
+
+**The cut** (decision 253; asked at the start, `AskUserQuestion`): T95a in two at the guards,
+T95a1 now. Built by two narrow sub-agents (the visits and their tests; the plans' oracles, the
+replays, the bench and the bot reports' check); the main session wrote the records.
+
+- **The visit** (`h3-adventure`'s `state/dwellings.rs`; design §7, its "As built"; ADV-DWL-004's
+  first half, ADV-OWN-001 amended): `Effect::Dwelling(creatures)` and `Effect::Camp`, so a step
+  onto a dwelling's or a camp's entrance is no longer refused. `visit_dwelling`: of the visitor's
+  team (the player alone until E10) the hire question; another's or neutral with its guards
+  standing nothing (ADV-STUB-14, T95a2); else `flag` (`ObjectFlagged`, the radius-3 reveal), then
+  the question. `OfferKind::Hire { creatures }`, the kind's creatures in order, no price.
+- **The camp** (`visit_refugee_camp`; ADV-RFG-001 amended): `ObjectEmpty` to the visitor's owner
+  at a count of 0 (ADVEVENT 44), else the question naming its creature; no flag, no guards.
+- **The free creatures** (`accept_hire`, `give_free`; ADV-HIR-001, D-52 as the original): the owner
+  read at the acceptance (*agent's call*: another player of the turn group may flag the dwelling
+  while the offer is open); at one's own dwelling each creature of `free_level` (1) or less:
+  `NoneToRecruit` at 0, else all of it into ADV-ARM-007's room (`monsters::add_stack`: a stack of
+  the type within the most, else the first free slot; no merge) with `CreaturesJoined` and its
+  count set to 0, else `JoinRefused` and the count kept (*agent's call*: a hero no longer on the
+  map counts as no room); each to the owner alone. The dialog is T95b's (ADV-STUB-15); an ally's
+  dwelling (E10) is left out, unreachable.
+- **The writer** (`write_dwelling(index, edit)`, `DwellingWeek::counts_mut`; design §6): a write
+  that changes nothing keeps the block shared with the forks, one that leaves every dwelling full
+  drops it; the test writer `set_dwelling` goes through it.
+- **The game** (`h3-game`): the decision hash's `Hire` arm (tag 11, the creatures' number and each,
+  after the price); no recorded hash moved, so no version (as T93b's call).
+- **The plans' oracles** (`h3-map`'s `play.rs`, `view.rs`): a hire question opened at a dwelling
+  (never refused, its creatures, owned by the visitor or flagged by it) or a camp (its week's
+  creature, a count above 0, unowned); an accepted one's events exactly as an independent
+  `free_creatures` works them out, told to the actor alone; the joins an inflow of
+  `check_conservation`, the joined counts 0 and the rest unchanged; `ObjectEmpty` a weekly object's
+  or an empty camp's (`weekly_empty` counts the weekly objects only); the viewer property's two new
+  events the viewer's alone. **No plan places a dwelling or a camp yet** (`KINDS` has no class 17,
+  20 or 78): the oracles run once T96 adds them.
+- **Tests:** `state/tests/dwelling_visits.rs` (eight: the own dwelling's question; the flag then
+  the question; guarded nothing; the camp; the free creatures into a stack and a free slot; no
+  room and none here; none above `free_level` nor at another's; the writer keeps a shared block),
+  `compiles_the_dwellings` for the new arms, `h3-game`'s
+  `a_dwelling_s_hire_question_opens_and_accepted_gives_its_free_creatures`.
+- **Replays:** the 39 pass and re-record byte-identical (no recorded command held a refused step).
+- **Bench** (`bench-check`, master 990e07e in `target/wt-master`): all 17 adventure workloads inside
+  the gate (day-start-xl-144 −0.98 %, month-start-xl-144 −0.34 %, the rest within ±0.01 %, the
+  forks and reaches identical); the forks' +1.1 to +1.7 % over the stored baselines is master's
+  too (the sandbox's drift).
+- **The AI lane's bot reports** (`python/records/bots-*.json`): unchanged (`h3 ai eval` plays
+  encounter battles, no map; the adventure part's content hash did not move).
+- **Docs:** ADV-DWL-004 (its first half) and ADV-HIR-001 new; ADV-OWN-001, ADV-RFG-001 amended;
+  ADV-STUB-14 (T95a2), ADV-STUB-15 (T95b); design §7's "As built"; T95a2 queued.
+- **Versions:** none.

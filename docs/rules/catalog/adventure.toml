@@ -2543,7 +2543,7 @@ id       = "ADV-OWN-001"
 title    = "Flagging an ownable object"
 context  = "adventure"
 status   = "implemented"
-summary  = "A visit flags a neutral ownable object, or another team's (the player alone until E10's teams), for its visitor's owner; never an own or allied one; nothing is paid. The new owner is told with every player that sees the object (`ObjectFlagged`, by type and anchor), then the tiles within the part's flag radius (3, `flag_radius`, E08 decision 217) of its entrance are explored for the new owner (ADV-FOG-002's disk), told to it alone with the number it had not explored (`TilesRevealed`). A hero standing on an owned entrance is met or fought there instead, as any hero (ADR-0016 point 3); a hero does not revisit the object it stands on. E08 T84a (increment 9's design note §7): the mines and abandoned mines (`AdventureState::flag`; ADV-MIN-002 says when a mine's visit flags it); E08 T84b1: the Lighthouses (`AdventureState::visit_lighthouse`: no guards, no question; ADV-OWN-005); E08 T84b2: the Shipyards (`AdventureState::visit_shipyard`: the flag, then the boat offer; ADV-SHY-002)."
+summary  = "A visit flags a neutral ownable object, or another team's (the player alone until E10's teams), for its visitor's owner; never an own or allied one; nothing is paid. The new owner is told with every player that sees the object (`ObjectFlagged`, by type and anchor), then the tiles within the part's flag radius (3, `flag_radius`, E08 decision 217) of its entrance are explored for the new owner (ADV-FOG-002's disk), told to it alone with the number it had not explored (`TilesRevealed`). A hero standing on an owned entrance is met or fought there instead, as any hero (ADR-0016 point 3); a hero does not revisit the object it stands on. E08 T84a (increment 9's design note §7): the mines and abandoned mines (`AdventureState::flag`; ADV-MIN-002 says when a mine's visit flags it); E08 T84b1: the Lighthouses (`AdventureState::visit_lighthouse`: no guards, no question; ADV-OWN-005); E08 T84b2: the Shipyards (`AdventureState::visit_shipyard`: the flag, then the boat offer; ADV-SHY-002). E08 T95a1 (increment 10's design note §7): the dwellings (`AdventureState::visit_dwelling`: one of the visitor's team is not flagged; a neutral one or another team's without guards standing is flagged, then asks the hire question; ADV-DWL-004), never a Refugee Camp (ADV-RFG-001)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3054,6 +3054,34 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "ADV-DWL-004"
+title    = "A dwelling's visit: its owner's team, its guards, its flag and the hire question"
+context  = "adventure"
+status   = "implemented"
+summary  = "A dwelling is entered; the visit ends the walk on its entrance. One of the visitor's team (the visitor's own until E10's teams) asks the hire question at once: no guards' question, no flag, whatever guards it has. A neutral one or another team's whose guards stand asks their question first and is fought for (T95a2: until then such a visit does nothing, ADV-STUB-14). One without guards standing is flagged for the visitor's owner (ADV-OWN-001: `ObjectFlagged`, then the reveal of the part's flag radius around its entrance), then asks the hire question; the flag needs no answer, so a declined question keeps it. The hire question (`OfferKind::Hire`, without a price, the original's ADVEVENT 35, or 36 for four creatures) names the dwelling's creatures in its kind's order; declined, the visit ends; accepted, the free creatures (ADV-HIR-001) and then the hire dialog (ADV-HIR-002, T95b). Every seat gets the same question (the original asks a human; a computer player's hiring is E10's). E08 T95a1 (increment 10's design note §7, §13): `AdventureState::visit_dwelling`, the kind's visit (`Effect::Dwelling`); the game's `Decision::Offer` (game state hash's offer tag 11 with the creatures, no version moved). The guards' half (their question, the battle unsplit and unowned, the survivors, the flag after a win): E08 T95a2."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T88a; survey E08-dwellings.md sections 4.1, 4.3, 4.4): visit_dwelling 0x4A18B0 (read whole): the record's owner of the current player's team (the team bytes, game +0x1F879) skips the guards and the flag; else the guards' question GENRLTXT 422 while the guards' army holds a creature, then set_dwelling_owner 0x4C67B0 for the current player; then the hire question ADVEVENT 35 (class 17) or 36 (class 20, the four plurals)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Creature dwelling (survey E08-dwellings.md sections 4.3, 4.4): a hero visiting a dwelling that belongs to an allied player doesn't re-flag it and cannot hire creatures from it; if the attacking hero retreats or is defeated, only the surviving guards will be there"
+  url        = "https://heroes.thelazy.net/index.php/Creature_dwelling"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-dwellings.md sections 4.2, 4.3: the same guards' question while guards stand (its text index 421, our 422), setOwner for an enemy's or a neutral dwelling (relations ENEMIES), not for an ally's or one's own, then the recruitment question; they agree with the original"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGDwelling.cpp"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+[[rule]]
 id       = "ADV-DWL-005"
 title    = "Random dwellings: the faction's table and what one becomes"
 context  = "adventure"
@@ -3085,7 +3113,7 @@ id       = "ADV-RFG-001"
 title    = "The Refugee Camp"
 context  = "adventure"
 status   = "implemented"
-summary  = "The Refugee Camp (class 78) holds a creature drawn, when the game is built and at each week's start, uniformly among the random monsters of levels 1 to 7 (ADV-MON-003's set: no war machine, not the part's `not_random_monsters`, the ruleset's packs' creatures), its count that creature's growth; any player's hero may hire from it through the hire dialog (ADV-HIR-002); it is never flagged, has no guards and gives no free creatures. E08 T93a (increment 10's design note §1; adventure ruleset part v16): the kind `refugee_camp` with its inclusive levels, the base pack's type. The import: E08 T93b (class 78, ADV-OBJ-002). The draws (E08 T94b, increment 10's design note §6, §9; adventure state hash v20): the state's camps' block by camp index (`StaticMap::camps`), each camp's creature and count (`AdventureState::camp`, checked by `check_camps`), none for a map without camps; drawn when the game is built in one pass with the weekly objects' first week, in object order, from the setup stream, and at each week's step in one pass with their refill, from the game's stream (the original's map scan holds case 78 beside the weekly objects'; agent's call: one pass, so the stream's order follows the object order); no event. Its creature and count are never shown (ADV-OWN-003). The visit: T95."
+summary  = "The Refugee Camp (class 78) holds a creature drawn, when the game is built and at each week's start, uniformly among the random monsters of levels 1 to 7 (ADV-MON-003's set: no war machine, not the part's `not_random_monsters`, the ruleset's packs' creatures), its count that creature's growth; any player's hero may hire from it through the hire dialog (ADV-HIR-002); it is never flagged, has no guards and gives no free creatures. E08 T93a (increment 10's design note §1; adventure ruleset part v16): the kind `refugee_camp` with its inclusive levels, the base pack's type. The import: E08 T93b (class 78, ADV-OBJ-002). The draws (E08 T94b, increment 10's design note §6, §9; adventure state hash v20): the state's camps' block by camp index (`StaticMap::camps`), each camp's creature and count (`AdventureState::camp`, checked by `check_camps`), none for a map without camps; drawn when the game is built in one pass with the weekly objects' first week, in object order, from the setup stream, and at each week's step in one pass with their refill, from the game's stream (the original's map scan holds case 78 beside the weekly objects'; agent's call: one pass, so the stream's order follows the object order); no event. Its creature and count are never shown (ADV-OWN-003). E08 T95a1 (increment 10's design note §7, §13; the original's `visit_refugee_camp` 0x4A4600): the visit, any player's hero, `AdventureState::visit_refugee_camp`: with creatures left, the hire question naming its week's creature (`OfferKind::Hire`, the original's ADVEVENT 112); with none, `ObjectEmpty` to the visitor's owner alone (ADVEVENT 44, \"deserted\"), no question; no flag, no guards, and an accepted question gives no free creatures (ADV-HIR-001), whatever the creature's level; the hire dialog is T95b's (ADV-HIR-002)."
 quirks   = []
 numeric  = "integer"
 
@@ -3113,3 +3141,31 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-10b.md E10-9 (the capture harness, SoD 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): the camp's creature 131 (Phoenix) with its growth 2, no owner; a new creature and its growth (Obsidian Gargoyles, 9) on day 8"
   retrieved  = "2026-11-03"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-HIR-001"
+title    = "A dwelling's free creatures"
+context  = "adventure"
+status   = "implemented"
+summary  = "An accepted hire question (ADV-DWL-004) at a dwelling the accepting player owns gives, for each of its creatures of the part's `free_level` or less (`[params.dwellings]`, 1 in the packs: the original's level 1; the creature's core level), in its kind's order: with a count of 0, nothing, told as none here (`NoneToRecruit`, the original's GENRLTXT 423); else, where ADV-ARM-007's room is (the hero's first stack of the creature that takes the whole count within a stack's most, else its first free slot: the original's `army_add_stack`), all of it joins and the dwelling's count is set to 0 (`CreaturesJoined`, GENRLTXT 424); with no room, none of it joins and the count is kept (`JoinRefused`, GENRLTXT 426; D-52 as the original, E08 decision 235: the hero's stacks are not merged to make room, where VCMI's `mergeOnRecruit` merges two). Each is told to the owner alone. No dwelling class of the packs holds creatures of level 1 and of level 2 or more, so the original's second pass in `dwelling_offer_hire` changes nothing. A creature above `free_level` is left to the hire dialog (ADV-HIR-002, T95b), which opens when the dwelling has one, and a Refugee Camp's always: a camp gives no free creatures (ADV-RFG-001); an ally's dwelling (E10's teams) neither. E08 T95a1 (increment 10's design note §7 step 4, §13): `AdventureState::accept_offer`'s hire arm (`accept_hire`, the owner read at acceptance: an agent's call), the dwellings' writer (`write_dwelling`, keeping T94b's normalised block, copied at a write)."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T88a; survey E08-dwellings.md section 4.4): visit_dwelling 0x4A18B0 after a yes on the visitor's own dwelling (owner = current player): for each creature of zero-based level 0, a count of 0 adds GENRLTXT 423, else army_add_stack(hero's army, creature, count, -1) (a slot of the type, else the first empty): added, the count set to 0 and GENRLTXT 424, no room GENRLTXT 426 and the count kept; the lines in one message box; then dwelling_offer_hire 0x4ABA50 (read whole) when a creature of level 2 or more is there; an ally's dwelling goes straight to it without free creatures"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Creature dwelling (survey E08-dwellings.md section 4.4): level 1 creatures, which are recruited for free"
+  url        = "https://heroes.thelazy.net/index.php/Creature_dwelling"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-dwellings.md section 4.4: heroAcceptsCreatures gives a first creature of level 1 free, the count to 0, GENERAL_TXT 423 and 422 and 425 (ours 424, 423, 426); with mergeOnRecruit (on by default) a full army first merges two stacks of one type to free a slot (D-52, not followed)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGDwelling.cpp"
+  retrieved  = "2026-11-03"
+  confidence = "medium"

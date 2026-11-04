@@ -268,10 +268,23 @@ fn compiles_the_dwellings() {
     );
     assert_eq!(kind("t:random_dwelling"), ObjectKind::RandomDwelling);
     assert_eq!(kind("t:camp"), ObjectKind::RefugeeCamp { levels: [1, 7] });
-    // Typed, no visit yet (T95); the dwellings and the random dwelling ownable, not the camp.
-    for k in ["t:d1", "t:factory", "t:random_dwelling", "t:camp"] {
+    // Typed; the dwellings and the random dwelling ownable, not the camp. Since E08 T95a1 a
+    // dwelling's visit names its creatures in its kind's order and a camp's is the camp's; a
+    // random dwelling is never visited (it becomes a dwelling when the game is built).
+    let effects = [
+        ("t:d1", Some(Effect::Dwelling(&[c("t:pike")][..]))),
+        (
+            "t:factory",
+            Some(Effect::Dwelling(
+                &[c("t:knight"), c("t:imp"), c("t:angel")][..],
+            )),
+        ),
+        ("t:random_dwelling", None),
+        ("t:camp", Some(Effect::Camp)),
+    ];
+    for (k, effect) in effects {
         let kind = kind(k);
-        assert_eq!(kind.effect(), None, "{k}");
+        assert_eq!(kind.effect(), effect, "{k}");
         assert_eq!(kind.ownable(), k != "t:camp", "{k}");
         assert!(!kind.weekly(), "{k}");
         assert_eq!(kind.battle_terrain(), None, "{k}");
