@@ -2137,9 +2137,10 @@ impl AdventureState {
     /// hero as a human's, `ADV-QUIRK-30` not reproduced), then, when it leaves, taken off the map;
     /// nothing given, no question. Since E08 T84a a mine ([`Self::visit_mine`]), since T84b1 a
     /// Lighthouse ([`Self::visit_lighthouse`]) and a weekly object ([`Self::visit_weekly`]), since
-    /// T84b2 a Shipyard ([`Self::visit_shipyard`]).
+    /// T84b2 a Shipyard ([`Self::visit_shipyard`]), since T95a1 a dwelling
+    /// ([`Self::visit_dwelling`]) and a Refugee Camp ([`Self::visit_refugee_camp`]).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
-    // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017
+    // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001
     fn visit<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -2213,6 +2214,11 @@ impl AdventureState {
             Effect::Shipyard(price) => {
                 outcome = self.visit_shipyard((core, rules.1), (player, hero), object, price, sink);
             }
+            Effect::Dwelling(creatures) => {
+                outcome =
+                    self.visit_dwelling((core, rules.1), (player, hero), object, creatures, sink);
+            }
+            Effect::Camp => outcome = self.visit_refugee_camp((player, hero), object, sink),
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {
@@ -2292,10 +2298,11 @@ impl AdventureState {
     /// (ADV-PIK-011): the find searched. Pandora's Box's (ADV-PIK-013, E08 T62b1): its guards'
     /// battle or its record ([`Self::open_box`]). The Pyramid's (ADV-TCH-008, E08 T62b1): a
     /// looted one's luck or its guards' battle ([`Self::search_pyramid`]). A Shipyard's boat
-    /// (ADV-SHY-002, E08 T84b2): the boat built on its tile ([`Self::build_boat`]). Infallible;
-    /// the outcome is what the game applies after.
+    /// (ADV-SHY-002, E08 T84b2): the boat built on its tile ([`Self::build_boat`]). The hire
+    /// question (ADV-HIR-001, E08 T95a1): an own dwelling's free creatures
+    /// ([`Self::accept_hire`]). Infallible; the outcome is what the game applies after.
     // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008, ADV-PIK-004, ADV-TCH-003, ADV-PIK-011
-    // rule: ADV-PIK-013, ADV-TCH-008, ADV-MIN-002, ADV-SHY-002
+    // rule: ADV-PIK-013, ADV-TCH-008, ADV-MIN-002, ADV-SHY-002, ADV-HIR-001
     pub fn accept_offer<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -2340,6 +2347,10 @@ impl AdventureState {
                 }
                 AdventureOutcome::default()
             }
+            OfferKind::Hire { .. } => self
+                .offer_object(offer)
+                .map(|index| self.accept_hire((core, part), player, (index, offer), sink))
+                .unwrap_or_default(),
         }
     }
 

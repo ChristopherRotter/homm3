@@ -1,7 +1,8 @@
 """The hex networks (E25 T7a, `h3env.train.hexnet`) and the MLP's depth: the kernel covers a
 hex's neighbours, a stack is drawn on its hexes, an empty slot is not seen and the slots' order
 does not matter to the context, the field's size holds on real battles, the visualization counts
-the convolutions. They need the group `train`."""
+the convolutions; the normalisation keeps the field and the defaults are the networks before it,
+the transformer blocks' feed-forward width (E25 T24). They need the group `train`."""
 
 from __future__ import annotations
 
@@ -17,10 +18,12 @@ from h3env.train.run import Config, ConfigError, load_config
 
 torch = pytest.importorskip("torch")
 
+from h3env.train.entity import Entity  # noqa: E402
 from h3env.train.hexnet import (  # noqa: E402
     FIELD_HEIGHT,
     FIELD_WIDTH,
     HEX_KERNEL,
+    CellNorm,
     Grid,
     HexConv,
     HexConv2d,
@@ -30,11 +33,22 @@ from h3env.train.hexnet import (  # noqa: E402
 from h3env.train.network import hex_mermaid, parts  # noqa: E402
 from h3env.train.policy import Mlp, build  # noqa: E402
 
+KINDS = ["hexconv", "hexconv-norm", "hexformer"]
+
 
 def small(kind: str):
     torch.manual_seed(0)
     if kind == "hexconv":
         return HexConv(width=16, layers=2, embed=8)
+    if kind == "hexconv-norm":
+        net = HexConv(width=16, layers=2, embed=8, norm="layer")
+        # Gains and biases away from 1 and 0, as training moves them.
+        with torch.no_grad():
+            for m in net.modules():
+                if isinstance(m, CellNorm):
+                    m.weight.uniform_(0.5, 1.5)
+                    m.bias.uniform_(-0.5, 0.5)
+        return net
     return HexFormer(width=16, layers=2, heads=2, embed=8)
 
 
@@ -77,7 +91,7 @@ def stack_obs(x: int, y: int, two_hex: bool, own: bool, viewer_attacks: bool) ->
     return obs
 
 
-@pytest.mark.parametrize("kind", ["hexconv", "hexformer"])
+@pytest.mark.parametrize("kind", KINDS)
 def test_a_stack_is_drawn_on_its_hexes(kind) -> None:
     # The drawing differs from the empty field's only on the stack's hexes: its position, and for
     # a two-hex stack the hex in front of it, right for the attacker's, left for the defender's
@@ -108,7 +122,7 @@ def test_a_stack_is_drawn_on_its_hexes(kind) -> None:
         assert torch.allclose(field, net.draw(empty)[0])
 
 
-@pytest.mark.parametrize("kind", ["hexconv", "hexformer"])
+@pytest.mark.parametrize("kind", KINDS)
 def test_an_empty_slot_is_not_seen_and_the_slots_order_does_not_matter(kind) -> None:
     batch = mixed_batch()
     obs = torch.from_numpy(batch.obs.copy())
@@ -202,3 +216,85 @@ def test_the_visualization_counts_the_convolutions() -> None:
     assert sum(p.parameters for p in by_name.values()) == sum(p.numel() for p in net.parameters())
     assert "hex convolutions" in hex_mermaid(net)
     assert "bias per axial offset" in hex_mermaid(small("hexformer"))
+
+
+def test_the_normalisation_keeps_the_cells_off_the_field_at_zero() -> None:
+    # A LayerNorm's bias would move a cell off the field; the normalised network sets them back,
+    # so every block's output, and the trunk's, is 0 there as without it.
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    batch.close()
+    net = small("hexconv-norm").eval()
+    seen = []
+    hooks = [b.register_forward_hook(lambda m, a, out: seen.append(out)) for b in net.blocks]
+    with torch.no_grad():
+        net.encode(obs)
+    for hook in hooks:
+        hook.remove()
+    off = 1.0 - net.cells
+    assert len(seen) == 2 and all((out * off == 0).all() for out in seen)
+    assert all((out * net.cells != 0).any() for out in seen)
+    names = list(net.state_dict())
+    assert {"blocks.0.norm1.weight", "blocks.0.norm2.bias", "norm_out.weight"} <= set(names)
+
+
+def t7a_block(block, x: torch.Tensor, cells: torch.Tensor, real: int) -> torch.Tensor:
+    """`ConvBlock.forward` as E25 T7a wrote it (no normalisation), verbatim."""
+    h = block.conv1(torch.relu(x)) * cells
+    mean = h.sum((2, 3)) / real
+    top = (h - (1.0 - cells) * 1e9).amax((2, 3))
+    h = torch.relu(h + block.pool(torch.cat([mean, top], dim=1))[:, :, None, None])
+    return x + block.conv2(h) * cells
+
+
+def test_the_defaults_are_the_networks_before_t24() -> None:
+    # A network file before E25 T24 has no `norm` or `feed_forward`: it builds the network it
+    # was (the same parameters by name and shape) and plays as it did (the hex convolution's
+    # block bit for bit as T7a's); the transformer blocks' feed-forward layer twice the width.
+    batch = mixed_batch()
+    for kind in ("hexconv", "hexformer", "entity"):
+        config = asdict(Config(kind=kind, width=16, layers=2, heads=2, embed=8))
+        old = {k: v for k, v in config.items() if k not in ("norm", "feed_forward")}
+        torch.manual_seed(0)
+        net = build(old, batch)
+        torch.manual_seed(0)
+        same = build(config, batch)
+        shapes = {k: v.shape for k, v in net.state_dict().items()}
+        assert shapes == {k: v.shape for k, v in same.state_dict().items()}
+        if kind == "hexconv":
+            assert not any("norm" in k for k in shapes)
+        else:
+            assert shapes["blocks.0.ff.0.weight"] == (32, 16)
+            assert shapes["blocks.0.ff.2.weight"] == (16, 32)
+    batch.close()
+    net = small("hexconv").train()
+    with torch.no_grad():
+        for p in net.parameters():
+            p.add_(torch.randn_like(p) * 0.1)
+    x = torch.randn(5, 16, net.grid.height, net.grid.columns) * net.cells
+    for block in net.blocks:
+        assert torch.equal(block(x, net.cells, net.grid.hexes), t7a_block(block, x, net.cells, 187))
+    with pytest.raises(ValueError, match="no normalisation"):
+        HexConv(width=8, layers=1, embed=8, norm="batch")
+
+
+def test_the_feed_forward_width_and_the_new_keys_config() -> None:
+    batch = mixed_batch()
+    for kind in ("hexformer", "entity"):
+        config = asdict(Config(kind=kind, width=16, layers=1, heads=2, embed=8, feed_forward=4))
+        net = build(config, batch)
+        assert net.blocks[0].ff[0].out_features == 64 and net.blocks[0].ff[2].in_features == 64
+    assert isinstance(net, Entity)
+    conv = build(asdict(Config(kind="hexconv", width=16, layers=1, embed=8, norm="layer")), batch)
+    choice = conv.act(batch)
+    assert (batch.entry_mask[np.arange(batch.envs), choice.entry] == 1).all()
+    batch.close()
+    assert load_config("[network]\nkind = 'hexconv'\nnorm = 'layer'\n").norm == "layer"
+    for text, match in (
+        ("[network]\nnorm = 'layer'\n", "`norm` is the hex convolution network's"),
+        ("[network]\nkind = 'hexformer'\nnorm = 'layer'\n", "`norm` is the hex convolution"),
+        ("[network]\nkind = 'hexconv'\nnorm = 'batch'\n", "`norm` is one of none, layer"),
+        ("[network]\nfeed_forward = 0\n", "`feed_forward` must be positive"),
+    ):
+        with pytest.raises(ConfigError, match=match):
+            load_config(text)

@@ -601,6 +601,30 @@ fn kept_rays(here: &Path) -> Result<Vec<i32>, String> {
     Ok(kept.rays)
 }
 
+/// Where a still's battle's mouse rests and its pointer there over `snapshot` with `legal`: the
+/// situation's mouse where the harness left it, at the opening (E17 M3 T6c-1; `kept`), or where
+/// the actions of `book` moved it over the battle (E17 M5 T4c2a), a stats dialog's press where it
+/// was made (E17 M6 T2a1); none while the tactics phase's message left the box's cursor
+/// (CLT-Q32). Its status line at the level the battle last wrote it at (E17 M6 T4b2b2: a strike's
+/// or a shot's damage at levels 1 and 2, the epic's review item 42; a sequence's 0). A sequence's
+/// mouse goes over time (T6c-2: `Interface::shown`).
+pub(crate) fn resting(
+    snapshot: &h3_protocol::wire::Observation,
+    (legal, book): (&Legal, Option<&crate::spellbook::Still>),
+    layout: &BattleLayout,
+    kept: Option<[i32; 2]>,
+) -> Option<([i32; 2], mouse::Pointer)> {
+    let arrow = book.is_some_and(|b| b.arrow);
+    let rest = book
+        .and_then(|b| b.stats.as_ref().map(|s| s.looked).or(b.over))
+        .or(kept);
+    let level = book.map_or(0, |b| b.line_level);
+    rest.filter(|_| !arrow).map(|point| {
+        let pointer = mouse::pointer(snapshot, legal, layout, (point, Bugs::Original, level));
+        (point, pointer)
+    })
+}
+
 /// Draws the viewer's frame at each time in `<here>/frames.toml` (the stacks the original shows
 /// fidgeting then in its poses) into `<here>/ours/<file>.png`, what it drew into
 /// `<here>/ours.txt` and the text its log's item showed into `<here>/ours-log.json` (by the
@@ -626,21 +650,12 @@ pub(crate) fn draw_frames(
     let mut lists = Vec::new();
     let mut drawn = String::new();
     let mut texts = serde_json::Map::new();
-    // A situation's mouse where the harness left it, at the opening (E17 M3 T6c-1), or where its
-    // actions moved it over the battle (E17 M5 T4c2a), none while the tactics phase's message
-    // left the box's cursor (CLT-Q32); a sequence's over time (T6c-2: `interface.shown`).
-    let arrow = interface.book.is_some_and(|b| b.arrow);
-    // A stats dialog's press (E17 M6 T2a1): the battle's mouse stays where the press was made.
-    let rest = interface
-        .book
-        .and_then(|b| b.stats.as_ref().map(|s| s.looked).or(b.over))
-        .or(kept.mouse);
-    let pointer = rest.filter(|_| !arrow).map(|point| {
-        (
-            point,
-            mouse::pointer(snapshot, interface.legal, layout, (point, Bugs::Original)),
-        )
-    });
+    let pointer = resting(
+        snapshot,
+        (interface.legal, interface.book),
+        layout,
+        kept.mouse,
+    );
     let status = match &pointer {
         Some((_, p)) => {
             let catalogue = log::catalogue(tables, archives, exe)?;

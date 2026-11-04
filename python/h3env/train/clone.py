@@ -21,7 +21,10 @@ minibatches of `minibatch` rows over each batch of at least `envs` × `rollout` 
 cross-entropy of its entry head on the teacher's entry over the legal entries, plus for a cast
 row its spell, target and second heads along the teacher's choices (summed over the cast rows
 and divided by all rows), plus `value_coef` times half the squared error against the returns.
-Adam, the learning rate falling linearly to `lr_floor` of `lr` over `samples`.
+The optimizer and its schedule are the distillation bench's (AdamW, a warm-up, the learning rate
+falling linearly to `lr_floor` of `lr` over `samples`; a student's own `lr`, `warmup`,
+`weight_decay`; E25 T24), and so is each student's cost (`distill.cost`, its training
+microseconds a sample-pass and its peak CUDA memory, in every evaluation and the table).
 
 Every `eval_every` samples and at the end each student scores on a held-out set (`heldout`
 decisions of whole episodes on the seed after `seed`, collected once): the cross-entropy per
@@ -53,10 +56,26 @@ import torch
 from .. import _ffi
 from ..batch import BattleBatch
 from . import layout as L
-from .distill import CATEGORIES, NETWORK_KEYS, Bench, Student, category, heads, student_config
+from .distill import (
+    CATEGORIES,
+    COST_HEADER,
+    NETWORK_KEYS,
+    Bench,
+    Student,
+    bench_device,
+    category,
+    cost,
+    cost_columns,
+    described,
+    heads,
+    learning_rate,
+    make_student,
+    step,
+    steps_of,
+)
 from .evaluate import HELD_OUT_BATCH_SEEDS, compact, held_out_seeds, ladder
-from .policy import CASTS, Policy, build
-from .ppo import _SEATS, CHECKPOINT_FORMAT, TEACHER, Staging, device_of, episode_entries, save
+from .policy import CASTS, Policy
+from .ppo import _SEATS, CHECKPOINT_FORMAT, TEACHER, Staging, episode_entries, save
 from .run import Config, ConfigError, HeldOut, atomic_write_text, load_config, machine, source
 
 #: The per-sample arrays a student trains on, the teacher's choices among them.
@@ -324,16 +343,18 @@ def evaluate(
                 "explained_variance": 1 - float(np.var(y - v)) / var if var else 0.0,
             },
             "seconds": s.seconds,
+            **cost(s),
         }
     return out
 
 
 def table(evaluation: dict[str, Any], samples: int) -> str:
-    """An evaluation as a short text table."""
+    """An evaluation as a short text table (the cost: µs a sample-pass, peak CUDA MB)."""
+    w = max(14, *(len(name) for name in evaluation["students"]))
     lines = [
         f"at {samples:,} samples ({evaluation['heldout']:,} held out)",
-        f"{'student':<14} {'CE entry':>9} {'CE cast':>8} {'agree':>6} {'move':>6} {'melee':>6} "
-        f"{'shot':>6} {'value ev':>8} {'seconds':>8}",
+        f"{'student':<{w}} {'CE entry':>9} {'CE cast':>8} {'agree':>6} {'move':>6} {'melee':>6} "
+        f"{'shot':>6} {'value ev':>8} {'seconds':>8}{COST_HEADER}",
     ]
 
     def pct(x):
@@ -344,9 +365,9 @@ def table(evaluation: dict[str, Any], samples: int) -> str:
         cast = sum(ce.get(h, 0.0) for h in ("spell", "target", "second"))
         by = row["agreement_by_category"]
         lines.append(
-            f"{name:<14} {ce['entry']:>9.4f} {cast:>8.4f} {row['agreement']:>6.3f} "
+            f"{name:<{w}} {ce['entry']:>9.4f} {cast:>8.4f} {row['agreement']:>6.3f} "
             f"{pct(by['move']):>6} {pct(by['melee']):>6} {pct(by['shot']):>6} "
-            f"{row['value']['explained_variance']:>8.3f} {row['seconds']:>8.0f}"
+            f"{row['value']['explained_variance']:>8.3f} {row['seconds']:>8.0f}{cost_columns(row)}"
         )
     return "\n".join(lines)
 
@@ -369,19 +390,15 @@ def run(
     text = Path(bench.run).read_text(encoding="utf-8") if config_text is None else config_text
     base = dataclasses.replace(load_config(text), seed=bench.seed, system_share=0.0)
     (out / "students").mkdir(parents=True, exist_ok=True)
-    device = device_of(bench.device)
+    device = bench_device(bench.device)
     teacher = Episodes(
         base, bench.seed, bench.envs, bench.threads, bench.envs * (bench.rollout + 64)
     )
     torch.manual_seed(bench.seed)
-    students = []
-    for name, keys in bench.students.items():
-        config = student_config(base, keys)
-        net: Policy = build(asdict(config), teacher.batch).to(device)
-        lr = float(keys.get("lr", bench.lr))
-        students.append(
-            Student(name, net, config, torch.optim.Adam(net.parameters(), lr=lr, eps=1e-5), lr)
-        )
+    students = [
+        make_student(name, keys, base, bench, teacher.batch, device)
+        for name, keys in bench.students.items()
+    ]
     versions = _ffi.versions()
     report: dict[str, Any] = {
         "teacher": {
@@ -404,14 +421,7 @@ def run(
             "gpu": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
             **machine(),
         },
-        "students": {
-            s.name: {
-                "network": {k: v for k, v in asdict(s.config).items() if k in NETWORK_KEYS},
-                "lr": s.lr,
-                "parameters": sum(p.numel() for p in s.net.parameters()),
-            }
-            for s in students
-        },
+        "students": {s.name: described(s) for s in students},
         "evaluations": [],
         "ended": None,
     }
@@ -448,29 +458,24 @@ def run(
         while samples < bench.samples:
             arrays, flat = teacher.take(bench.envs * bench.rollout)
             n = len(flat)
-            frac = min(1.0, samples / bench.samples)
             rng = np.random.default_rng(samples)
             size = min(n, bench.minibatch)
+            done, steps = 0, steps_of(n, size, bench.epochs)
             for _ in range(bench.epochs):
                 order = rng.permutation(flat)
                 for k in range(0, n - size + 1, size):
                     m = staging.gather(arrays, np.sort(order[k : k + size]))
-                    for s in students:
-                        if device.type == "cuda":
-                            torch.cuda.synchronize(device)
-                        start = time.perf_counter()
-                        for g in s.optimizer.param_groups:
-                            g["lr"] = s.lr * (1.0 - (1.0 - bench.lr_floor) * frac)
-                        mine = heads(s.net, m)
-                        loss, _ = cross_entropy(mine, m)
+
+                    def loss(net: Policy, m=m) -> torch.Tensor:
+                        mine = heads(net, m)
+                        ce, _ = cross_entropy(mine, m)
                         v_loss = 0.5 * ((mine[3] - m["returns"]) ** 2).mean()
-                        s.optimizer.zero_grad()
-                        (loss + bench.value_coef * v_loss).backward()
-                        torch.nn.utils.clip_grad_norm_(s.net.parameters(), bench.max_grad_norm)
-                        s.optimizer.step()
-                        if device.type == "cuda":
-                            torch.cuda.synchronize(device)
-                        s.seconds += time.perf_counter() - start
+                        return ce + bench.value_coef * v_loss
+
+                    done += 1
+                    for s in students:
+                        rate = learning_rate(s, bench, samples, samples + n * done / steps)
+                        step(s, loss, rate, bench.max_grad_norm, size, device)
             teacher.release()
             samples += n
             if samples >= next_eval:

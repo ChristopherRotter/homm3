@@ -1332,9 +1332,10 @@ impl CanonicalHash for GameState {
     /// kind, 0 a reveal, 1 a passage, since v7 2 a join, 3 a join for gold, 4 a flight, since v8
     /// 5 a guarded pile's fight, since v16 6 a gift's price, 7 a find's question, since v17 8
     /// Pandora's Box's question, 9 the Pyramid's, since E08 T84b2 10 a Shipyard's boat (no version
-    /// moved: no earlier state holds one), then a reveal's, a join for gold's, a gift's or a boat's
-    /// price as length and resource–amount pairs, from v7 to v18 whether a guard's visit waits for
-    /// the answer;
+    /// moved: no earlier state holds one), since E08 T95a1 11 the hire question (no version moved,
+    /// as the boat's), then a reveal's, a join for gold's, a gift's or a boat's price as length
+    /// and resource–amount pairs, a hire question's creatures as length and each, from v7 to v18
+    /// whether a guard's visit waits for the answer;
     /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
     /// state hash; since v11 (E08 T30) 2 a level-up: its owner, hero, new level, primary skill
     /// (0 attack to 3 knowledge), its two offers, the offers' levels after it (Wisdom's, a
@@ -1404,10 +1405,18 @@ impl CanonicalHash for GameState {
                         OfferKind::OpenBox => (8, None),
                         OfferKind::SearchPyramid => (9, None),
                         OfferKind::Boat { price } => (10, Some(price)),
+                        OfferKind::Hire { .. } => (11, None),
                     };
                     h.write_u8(tag);
                     if let Some(price) = price {
                         hash_price(price, h);
+                    }
+                    // E08 T95a1: the hire question's creatures, their number then each.
+                    if let OfferKind::Hire { creatures } = &offer.kind {
+                        h.write_len(creatures.len());
+                        for creature in creatures {
+                            creature.hash_into(h);
+                        }
                     }
                 }
                 Decision::Battle(battle) => {

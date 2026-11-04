@@ -518,7 +518,8 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
     `preview` (before E06 T6d) a network that does not read the kill preview, one without `order`
     (before v22) one that reads v21's prefix of the observation, one without `tactics_rounds`
     (before E25 T4a) one without the tactics bound, an MLP without `layers` two layers (every MLP
-    before E25 T7a had two)."""
+    before E25 T7a had two), one without `norm` or `feed_forward` (before E25 T24) a hex
+    convolution network without normalisation and transformer blocks of twice the width."""
     kind = config.get("kind", "mlp")
     if kind == "mlp":
         policy: Policy = Mlp.for_batch(
@@ -533,7 +534,12 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
         from .entity import Entity
 
         policy = Entity.for_batch(
-            batch, config["width"], config["layers"], config["heads"], config["embed"]
+            batch,
+            config["width"],
+            config["layers"],
+            config["heads"],
+            config["embed"],
+            int(config.get("feed_forward", 2)),
         )
     elif kind in ("hexconv", "hexformer"):
         from . import hexnet

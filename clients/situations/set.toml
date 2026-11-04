@@ -1936,6 +1936,101 @@ at = 200
 differing = 0
 why = "exact: as at 100, still kept (E17 M6 T4b2b1)"
 
+# E17 M6 T4b2b2: the stacks' army info windows on the mouse's move (design §12.15, "The stacks'
+# windows" and "Their fill"; `army_info_stack_create` 0x46CEB0, `army_info_stack_set` 0x46DC30,
+# `army_info_stack_show` 0x46DF00): at level 1 the mouse resting on a stack's hex shows its "all
+# statistics" window (78 x 288) at its owner's side's place, (1, 267) or (721, 267), at level 2
+# its "spells only" one (78 x 126) at (1, 429) or (721, 429), in its side's hero's player's
+# colours; at levels 1 and 2 the status line words a shot's damage (GENRLTXT 297: the shots left,
+# the engine's preview; §12.14, the epic's review item 42). All exact (E17 M6 T4b2b2; the
+# original's memory read once: kind 2's items carry kind 1's ids, 2200 and 2215 to 2218, the
+# rest not made). `army-info-stack`: level 1 on the
+# acting Marksmen (hex 35): kind 1 at (1, 267) in Red's colours, Att 6(11), Def 3(7), Dmg 2-3,
+# Health 10, the count 10, GENRLTXT 675 under the icons; the line the query's.
+# `army-info-stack-enemy`: level 1 on the Goblins (hex 49): kind 1 at (721, 267) in Blue's, Att
+# 4(16), Def 2(2), Dmg 1-2, Health 5, 15; the line 297 with 24 shots and 14-21. `army-info-spells`:
+# level 2 on the Gnolls (hex 151): kind 2 at (721, 429), GENRLTXT 675; the line 297 with 24 and
+# 13-19. `army-info-stack-f5`: as `-enemy`, then F5 (level 2): no window changes until a new hex
+# and the line is not written again (§12.14 oddity 6): as `-enemy`'s frame. `army-info-ballista`:
+# war-machines.toml, level 1 on Orrin's Ballista (hex 51, the first column): kind 1 at (1, 267),
+# Att 10(11), Def 10(11), Dmg 2-3 (the original's: its own range, where the stats dialog gives
+# 4 - 6; CLT-Q48: the client's window the dialog's), Health 250, 1; no line (the first column).
+# `army-info-spells-f5`: as `-spells`, then F5 (level 0): the redraw leaves the window out, the
+# line still 297's (the level of the last new hex, not the level now).
+[[situation]]
+id = "army-info-stack"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 1
+mouse = [102, 196]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the Marksmen's kind 1 window at (1, 267) in Red's colours shown by the move alone at level 1, the query's line (E17 M6 T4b2b2)"
+
+[[situation]]
+id = "army-info-stack-enemy"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 1
+mouse = [718, 196]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the Goblins' kind 1 window at (721, 267) in Blue's colours, the shot's damage in the line at level 1 (GENRLTXT 297: 24 shots, 14-21) (E17 M6 T4b2b2)"
+
+[[situation]]
+id = "army-info-spells"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 2
+mouse = [718, 448]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the Gnolls' kind 2 window at (721, 429), no active spells, the shot's damage in the line at level 2 (24 shots, 13-19) (E17 M6 T4b2b2)"
+
+[[situation]]
+id = "army-info-stack-f5"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 1
+mouse = [718, 196]
+actions = ["key:F5"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: F5 to level 2 over the Goblins: their kind 1 window and the level-1 line kept until a new hex, as -enemy's frame (E17 M6 T4b2b2)"
+
+[[situation]]
+id = "army-info-ballista"
+scenario = "war-machines.toml"
+seat = "attacker"
+army_info = 1
+mouse = [36, 238]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the Ballista's kind 1 window at (1, 267), its Dmg its own range 2-3 in the original's profile (CLT-Q48), no line (E17 M6 T4b2b2)"
+
+[[situation]]
+id = "army-info-spells-f5"
+scenario = "hero-info.toml"
+seat = "attacker"
+army_info = 2
+mouse = [718, 448]
+actions = ["key:F5"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: F5 from level 2 to 0 over the Gnolls: the redraw leaves their kind 2 window out, the line keeps level 2's damage (the level of the last new hex, review item 42) (E17 M6 T4b2b2)"
+
 # E17 M6 T4a: the combat options dialog (design §12.12; `combat_options_create` 0x46E3B0): the key
 # O on the human's turn opens it at (159, 84) with its shadow, the background in Red's colours,
 # the cursor the adventure's arrow; the battle behind it standing. The harness's settings

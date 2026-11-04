@@ -112,6 +112,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 252. **T94b whole** (the user; recommended): the dwellings' week block, the camps' block and draws, the week's refill, the views, the census and the adventure state hash v20 with the 39 replays rehashed in one pull request. Not chosen: the dwellings then the camps (two hash bumps); the state then the census.
 
+### Decisions at T95a's start (2026-11-04, user)
+
+253. **T95a in two at the guards, T95a1 now** (the user; recommended): **T95a1** the visit without a battle (the step onto an own or unguarded dwelling's entrance, the flag, the hire question `OfferKind::Hire`, the free creatures of `free_level` or less, the Refugee Camp's visit, the dwellings' block's real writer; `h3-adventure`, the plans' oracles; the guarded visit ADV-STUB-14, the hire dialog ADV-STUB-15); **T95a2** the guards (the guards' question `OfferKind::Guarded`, the unsplit unowned battle at the entrance, the survivors in the week entry, after a win the flag and the hire question through `give_won`; `h3-game`'s battle-flow tests) in the next session. Not chosen: both halves in this session as two pull requests; T95a whole.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -131,7 +135,9 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 - **T94 The build and the state** (round 6; design §17), in two at the design's seam (decision 251):
   - **T94a The build.** Done (2026-11-04, `adventure/e08-t94a`): the random dwellings resolved in the placement walk (faction, then level, the table's type, its footprint, the moved anchor); a hero (`SetupError::RandomDwellingTile`) or a boat on a tile an outcome could cover refused, the name check over every outcome (agent's calls: validity independent of the draw); `StaticMap::dwellings`, `camps` and their indexes; the census; ADV-DWL-005, ADV-OWN-002, -003 amended; no version moved.
   - **T94b The state and the week.** Done (2026-11-04, whole, decision 252; `adventure/e08-t94b`): the dwellings' week block (none while every dwelling is as its week began, normalised at write), the camps' draws with the weekly objects in object order, `start_week`'s refill first, the views; adventure state hash v20, the 39 replays rehashed; the census (`built_weeks`).
-- **T95 The visits and the hire dialog** (round 7; design §17): T95a the visits next (the queue's entry), then T95b.
+- **T95 The visits and the hire dialog** (round 7; design §17): T95a the visits in two at the guards (decision 253), then T95b:
+  - **T95a1 The visits without a battle.** Done (2026-11-04, `adventure/e08-t95a1`): a step onto a dwelling's or a Refugee Camp's entrance visits it (`Effect::Dwelling`, `Effect::Camp`); of the visitor's team the hire question (`OfferKind::Hire { creatures }`), neutral or another's unguarded the flag (radius 3) and then the question, guarded nothing yet (ADV-STUB-14); a camp `ObjectEmpty` at 0, else the question; accepted at one's own dwelling the free creatures of `free_level` or less (`CreaturesJoined`, `JoinRefused` without room, `NoneToRecruit` at 0; D-52), the dialog T95b's (ADV-STUB-15); the dwellings' writer `write_dwelling`; the plans' oracles (exercised once T96 places dwellings); ADV-DWL-004 (its first half), ADV-HIR-001 new, ADV-OWN-001, ADV-RFG-001 amended; no version moved.
+  - **T95a2 The guards.** Next (the queue's entry): the guards' question, their battle, its end, the flag and the question after a win.
 - Round 8 (T96, T97) as design §17 lists it, each queued when the one before is done.
 
 ## Later increments (sketch)

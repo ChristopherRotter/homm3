@@ -310,6 +310,20 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             army_info,
         } = crate::sequences::situation_inputs(dir)?;
         let told = h3_view::tactics::told(observation);
+        // The status line at Creature Info's levels 1 and 2 words a strike's or a shot's damage
+        // (E17 M6 T4b2b2, the epic's review item 42): the engine's previews of the opening's
+        // attacks, as the window's (`scenario::previews`); a record names none.
+        let scenario = (options.scenario()).then_some((
+            options.input.as_path(),
+            options.packs.as_path(),
+            options.seed,
+        ));
+        let still_legal = crate::pointer::still_legal(
+            &record.header.manifest,
+            &tables,
+            observation,
+            (&legal, scenario),
+        )?;
         // At Creature Info's level 1 or 2 the mouse at rest shows a window too (E17 M6 T4b2b1).
         let book = if actions.is_empty() && !told && army_info == 0 {
             None
@@ -509,9 +523,27 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             };
             let hero_info =
                 |point: [i32; 2]| hero_window(h3_view::hero_info::at(&layout, observation, point)?);
+            // The army info windows as the opening fills them (E17 M6 T4b2b2: a stack's from the
+            // stats dialog's numbers, in the original's profile: a Ballista's Dmg its own range,
+            // CLT-Q48).
+            let army_window = |drawn: h3_view::army_info::Drawn| match drawn {
+                h3_view::army_info::Drawn::Hero(side, _) => hero_window(side),
+                h3_view::army_info::Drawn::Stack(shown) => {
+                    let info =
+                        crate::stats::army_info(&stats_sources, observation, shown.stack, viewing)?;
+                    Some(h3_view::army_info::stack_window(
+                        &layout.army_info,
+                        &catalogue,
+                        (shown.side, shown.kind),
+                        &info,
+                        Bugs::Original,
+                    ))
+                }
+            };
             // The combat options dialog the key O or a click on the panel's Options opens while
-            // the opening takes a command (E17 M6 T4a): the capture harness's settings, no audio
-            // device (`setup.sh`), its background in the acting side's player's colours.
+            // the opening takes a command (E17 M6 T4a): the capture harness's settings at
+            // Creature Info's level then (E17 M6 T4b2b2), no audio device (`setup.sh`), its
+            // background in the acting side's player's colours.
             let acting_player = observation
                 .active
                 .and_then(|id| observation.stacks.iter().find(|s| s.id == id))
@@ -521,7 +553,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                         .colour
                         .unwrap_or_else(|| u8::try_from(i).unwrap_or(0))
                 });
-            let options = |point: Option<[i32; 2]>| {
+            let options = |point: Option<[i32; 2]>, level: u8| {
                 let on_button = point.is_none_or(|p| {
                     layout.panel_in(observation).button_at(p) == Some(h3_view::panel::OPTIONS)
                 });
@@ -529,7 +561,10 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     h3_view::options::Open::new(
                         &layout.options,
                         &catalogue,
-                        h3_view::options::Settings::CAPTURE,
+                        h3_view::options::Settings {
+                            army_info: level,
+                            ..h3_view::options::Settings::CAPTURE
+                        },
                         (acting_player, false),
                     )
                 })
@@ -552,8 +587,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 army: Some(crate::spellbook::Army {
                     layout: &layout,
                     observation,
+                    legal: &still_legal,
                     level: army_info,
-                    window: &hero_window,
+                    window: &army_window,
                 }),
             };
             Some(crate::spellbook::still(
@@ -566,12 +602,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         };
         let interface = crate::sequences::Interface {
             panels: &panels,
-            legal: &crate::pointer::legal(
-                &record.header.manifest,
-                &tables,
-                observation,
-                (&legal, &[]),
-            ),
+            legal: &still_legal,
             shown: None,
             walls: options.walls,
             book: book.as_ref(),

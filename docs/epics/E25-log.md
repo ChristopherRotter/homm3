@@ -1133,3 +1133,82 @@ an entry only where a task builds on it.
   there: moves 0.38 of 0.985, melee 0.40 of 0.941). The other candidates offered: scale with the
   loss, expert iteration, an exploiter league. Increment 6 closes (`E25-archive.md`); increment
   7's decisions and tasks in the epic file, their scope in the AI queue.
+
+## T24 — The kinds and the bench, built properly (2026-11-04)
+
+- **Built:** `[network] norm` (`"none"`, every network before; `"layer"`, `hexconv`'s only): a
+  pre-activation LayerNorm over each field cell's channels before each convolution (then the
+  ReLU, the cells off the field set back to 0, as the norm's bias moves them) and once on the
+  trunk's output (`hexnet.CellNorm`, `activate`), the residual branch still initialised at 0.
+  `[network] feed_forward` (2): the transformer blocks' feed-forward width in multiples of
+  `width` (`entity.Block`: the entity network and the hex transformer). The bench (`distill`
+  and its clone mode) gains `warmup` (samples; the rate rises linearly from 0, a batch's samples
+  counted pro rata over its minibatches, then falls as before) and `weight_decay` (AdamW,
+  decoupled, on every parameter of two dimensions or more: the layers' weights, the embeddings,
+  the attention's offset bias; not on biases or the norms' gains), for the bench and per student
+  beside `lr` (`STUDENT_KEYS`); the training step is one function for both modes (`step`,
+  `learning_rate`, `make_student`). Each evaluation holds each student's cost
+  (`us_per_sample_pass`: its step seconds over the rows it trained on, each pass counted;
+  `peak_memory_mb`: the most CUDA memory a step took above what was allocated before it, none on
+  the CPU), the table two columns; the report's students their `warmup` and `weight_decay`;
+  cuDNN's autotuner on CUDA (`bench_device`, also `network`'s). `network --time` adds the
+  sample-pass (the training pass, the clipping and an AdamW step at rate 0; on CUDA its peak
+  memory); `network --bench FILE` puts every student of a bench's file in one table.
+  `configs/distill/e25-grid.toml`: decision 2's candidates and the two references, a timing grid
+  (not a bench to run). **The defaults keep the past:** a file without the new keys builds the
+  same parameters and the hex convolution's block computes T7a's bit for bit (tested against
+  its code verbatim); at weight decay 0 the steps are Adam's bit for bit, without a warm-up the
+  rate is T7b's exactly (tested); T16's and T20's configs set neither (tested). The Python suite:
+  205 passed, 1 skipped.
+- **The grid on the CPU** (the sandbox's 4 threads, 128 rows, the median of 15, still noisy by
+  about 15 %; `network --bench configs/distill/e25-grid.toml --time --rows 128 --repeats 15`; the
+  ratio is the sample-pass's to `hexconv` 64 × 6's, the cap's network):
+
+  | Student | Parameters | Multiply-adds | Forward µs | Training µs | Sample-pass µs | Ratio |
+  |---|---:|---:|---:|---:|---:|---:|
+  | MLP 2 × 512 | 5.95 M | 5.5 M | 35 | 81 | 259 | 0.12 |
+  | `hexconv` 64 × 6 (the cap) | 0.69 M | 85 M | 534 | 2 377 | 2 099 | 1 |
+  | `hexconv` normalised 64 × 6 | 0.69 M | 85 M | 749 | 2 965 | 2 368 | 1.13 |
+  | … 64 × 8 | 0.85 M | 113 M | 1 100 | 4 081 | 3 733 | 1.78 |
+  | … 64 × 10 | 1.02 M | 141 M | 1 114 | 4 800 | 4 619 | 2.20 |
+  | … 96 × 6 | 1.45 M | 192 M | 1 463 | 4 975 | 4 749 | 2.26 |
+  | … 96 × 8 | 1.82 M | 254 M | 1 555 | 6 326 | 7 732 | 3.68 |
+  | … 96 × 10 | 2.19 M | 317 M | 2 466 | 8 539 | 7 321 | 3.49 |
+  | … 128 × 6 | 2.50 M | 340 M | 2 139 | 6 681 | 7 157 | 3.41 |
+  | … 128 × 8 | 3.16 M | 451 M | 2 823 | 9 353 | 9 050 | 4.31 |
+  | … 128 × 10 | 3.82 M | 562 M | 3 050 | 11 165 | 11 391 | 5.43 |
+  | `hexformer` 96 × 4 | 0.65 M | 87 M | 903 | 3 352 | 3 551 | 1.69 |
+  | … 96 × 4, feed-forward 4 | 0.79 M | 114 M | 1 502 | 4 013 | 4 151 | 1.98 |
+  | … 96 × 6 | 0.80 M | 128 M | 1 273 | 6 357 | 6 727 | 3.20 |
+  | … 128 × 4 | 1.06 M | 142 M | 1 297 | 4 452 | 5 153 | 2.45 |
+  | … 128 × 6 | 1.33 M | 209 M | 1 750 | 8 776 | 9 349 | 4.45 |
+  | `entity` 192 × 2 | 2.12 M | 33 M | 243 | 788 | 873 | 0.42 |
+  | … 192 × 2, feed-forward 4 | 2.42 M | 46 M | 308 | 932 | 1 071 | 0.51 |
+  | … 192 × 4 | 2.72 M | 61 M | 402 | 1 411 | 1 782 | 0.85 |
+  | … 256 × 2 | 3.28 M | 56 M | 442 | 1 260 | 1 256 | 0.60 |
+  | … 256 × 4 | 4.34 M | 105 M | 1 062 | 2 254 | 2 719 | 1.30 |
+
+  The MLP's sample-pass is mostly its AdamW step over 5.95 M parameters, a step's cost shared by
+  128 rows here (512 at the bench). The normalisation's own cost (the trunk of 64 × 6 forward
+  and backward, 128 rows, interleaved, the median of 30): none 1 690 µs a row, the permuted
+  LayerNorm 1 993 (+18 %), with a contiguous copy after it 2 533, a plain NCHW one 2 848: the
+  permuted one is kept (on the GPU it hands the convolution a channels-last tensor; T26's table
+  shows whether that costs on the GTX 1070).
+- **The read: decision 2's ranges against decision 3's cap.** On the CPU only the entity network
+  up to 256 × 2 or 192 × 4 lies below the cap's network; the normalisation puts `hexconv` 64 × 6
+  13 to 18 % above it, and every larger `hexconv` and every `hexformer` of decision 2's ranges is
+  1.7 to 5.4 times it. The GPU's ratios differ (T7c on the GTX 1070: `entity` 128 × 2 106 µs
+  against `hexconv`'s 466, 0.23, where the CPU says about 0.4; `hexformer` 64 × 4 553, already
+  above the cap), and T26's GPU table decides (`network --bench configs/distill/e25-grid.toml
+  --time --rows 512 --device cuda`, a few minutes). If the GPU agrees, the cap admits the MLP
+  and the MLP with the mask, the entity network up to 256 × 4 and `hexconv` normalised at 64 × 6
+  only if its normalisation costs little there; no `hexformer` and no larger `hexconv`. That is
+  the user's call at T26 (keep the cap, or raise it for a candidate whose agreement pays for
+  it).
+- **The CPU smoke** (the clone mode on `e25-neutral.toml`'s distribution, 65 640 samples, the
+  held-out set 4 096, 2 106 s; the teacher 75 008 decisions, none lost, 1 405 episodes): the MLP
+  (as T16), `hexconv` normalised 64 × 6 (lr 1e-3), `hexformer` 96 × 4 with feed-forward 4 (5e-4)
+  and `entity` 192 × 2 (5e-4), the three with a warm-up of 16 384 samples and decay 0.01. Every
+  student trained, scored and saved; agreement at 65 k 0.379, 0.438, 0.401, 0.423 (too early to
+  rank); the µs a sample-pass at the bench's 512 rows on the CPU 119, 2 787, 11 557, 1 097 (the
+  hex transformer's attention costs three times its 128-row figure at 512 rows).

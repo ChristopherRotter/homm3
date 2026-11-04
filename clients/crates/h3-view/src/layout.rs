@@ -75,6 +75,9 @@ pub struct BattleLayout {
     pub stats: crate::stats::StatsLayout,
     /// A hero's info window (E17 M6 T3b1; design §12.8; `crate::hero_info` fills it).
     pub hero_info: crate::hero_info::HeroInfoLayout,
+    /// The stacks' army info windows (E17 M6 T4b2b2; design §12.15; `crate::army_info` fills
+    /// them).
+    pub army_info: crate::army_info::ArmyInfoLayout,
     /// The combat options dialog (E17 M6 T4a; design §12.12; `crate::options` fills it), its
     /// loops' entries made into their items ([`Dialog::expanded`]).
     pub options: crate::options::OptionsLayout,

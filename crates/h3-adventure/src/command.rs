@@ -560,7 +560,8 @@ impl Offer {
             | OfferKind::Fight
             | OfferKind::Search
             | OfferKind::OpenBox
-            | OfferKind::SearchPyramid => &[],
+            | OfferKind::SearchPyramid
+            | OfferKind::Hire { .. } => &[],
         }
     }
 }
@@ -623,6 +624,17 @@ pub enum OfferKind {
     Boat {
         /// The price, by resource in the core's order.
         price: Vec<(ResourceId, u32)>,
+    },
+    /// The hire question (ADV-DWL-004, ADV-RFG-001, ADV-HIR-001; E08 T95a1, increment 10's
+    /// design note §7, §13: the original's ADVEVENT 35, or 36 for four creatures, and a Refugee
+    /// Camp's 112), without a price: a dwelling's, after its flag when it was not the visitor's
+    /// team's, and a camp's with creatures left. Accepted, on the visitor's own dwelling, each
+    /// creature of the part's `free_level` or less joins free where its army has room
+    /// ([`crate::AdventureState::accept_offer`]); the hire dialog for the rest, and a camp's, is
+    /// T95b's. Declined, nothing (the flag stays).
+    Hire {
+        /// The creatures it names: the dwelling's, in its kind's order; a camp's week's one.
+        creatures: Vec<CreatureTypeId>,
     },
 }
 
@@ -754,7 +766,9 @@ pub enum AdventureEventKind {
     },
     /// A wandering monster's group joined a hero's army (ADV-MON-008, E08 T20b1): its stack of
     /// the creature, else its first free slot. Seen by the hero's owner, as its army is; the
-    /// monster's leaving the map follows ([`Self::ObjectRemoved`]).
+    /// monster's leaving the map follows ([`Self::ObjectRemoved`]). Since E08 T95a1 a dwelling's
+    /// free creatures too (ADV-HIR-001: the original's GENRLTXT 424), all of its count, which
+    /// the dwelling then holds no more of.
     CreaturesJoined {
         /// The hero.
         hero: HeroId,
@@ -880,7 +894,9 @@ pub enum AdventureEventKind {
     },
     /// A weekly object's visit found it emptied this week (ADV-WEK-001 to -003, E08 T84b1;
     /// increment 9's design note §9: the original's "nothing" message, the Garden's "already"):
-    /// nothing given. Seen by the visitor's owner alone, as the gain its contents would have been.
+    /// nothing given. Since E08 T95a1 a Refugee Camp's visit with no creature left (ADV-RFG-001:
+    /// the original's ADVEVENT 44, "deserted"): no question. Seen by the visitor's owner alone,
+    /// as the gain its contents would have been.
     ObjectEmpty {
         /// The object's type.
         object_type: ObjectTypeId,
@@ -907,6 +923,30 @@ pub enum AdventureEventKind {
         tile: Pos,
         /// The boat's type (appearance only).
         boat_type: u8,
+    },
+    /// An accepted hire question found none of a free creature at its owner's dwelling
+    /// (ADV-HIR-001; E08 T95a1, increment 10's design note §7: the original's GENRLTXT 423,
+    /// "There are no %s here to recruit."): nothing joins. Seen by the dwelling's owner alone.
+    NoneToRecruit {
+        /// The dwelling's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// The free creature.
+        creature: CreatureTypeId,
+    },
+    /// A dwelling's free creatures found no room in the hero's army (ADV-HIR-001, ADV-ARM-007; E08
+    /// T95a1, increment 10's design note §7: the original's GENRLTXT 426, "not enough
+    /// provisions"): none of them joins and the dwelling keeps them (D-52 as the original: the
+    /// hero's stacks are not merged to make room). Seen by the hero's owner alone, as its army
+    /// is.
+    JoinRefused {
+        /// The hero.
+        hero: HeroId,
+        /// The creature.
+        creature: CreatureTypeId,
+        /// How many would have joined.
+        count: u32,
     },
     /// A month of a creature added a wandering monster on a free land tile (ADV-MON-014; E08
     /// T85a; increment 9's design note §11): an object added in play, one tile blocked and visited

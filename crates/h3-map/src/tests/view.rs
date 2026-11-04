@@ -556,6 +556,24 @@ fn check_told(
                 kind: AdventureEventKind::CreaturesJoined { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            // E08 T95a1: a dwelling's free creatures refused for want of room, told to the hero's
+            // owner alone, as its army is; none of a free creature at its dwelling, told to the
+            // dwelling's owner alone (ADV-HIR-001): nothing the viewer sees changes.
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::JoinRefused { hero, .. },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let own = before
+                    .heroes
+                    .iter()
+                    .any(|h| h.id == hero && h.details.is_some());
+                prop_assert!(own, "{:?} of a hero not the viewer's", event);
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::NoneToRecruit { .. },
+                seen_by,
+            }) => prop_assert_eq!(seen_by, alone),
             // E08 T73: a boarding and a landing, told where the viewer sees heroes on the boat's
             // tile, as it sees the empty boat there (ADV-FOG-008); E08 T74b: a boat leaving with
             // its hero likewise (ADV-SEA-006). E08 T75b follows the boats: a boarding takes the

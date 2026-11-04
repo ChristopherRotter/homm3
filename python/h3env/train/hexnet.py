@@ -17,10 +17,14 @@ town's turret) only keeps its token. The kinds differ in the trunk over the hexe
   neighbours (`HEX_KERNEL`), one ordinary convolution per layer. `layers` residual blocks of two
   such convolutions of `width` channels, the second with a bias from the real cells' mean and
   maximum (global pooling), the branch initialised at 0; the cells off the field stay 0; no batch
-  statistics (a frozen copy plays as it trained).
+  statistics (a frozen copy plays as it trained). With `norm = "layer"` (E25 T24) each
+  convolution's input is normalised first (pre-activation: a LayerNorm over each field cell's
+  channels, then the ReLU, the cells off the field kept at 0) and the trunk's output once more;
+  `norm = "none"` (every network before T24) normalises nothing.
 - `HexFormer` (`kind = "hexformer"`): a global token and the field's hexes as tokens, `layers`
-  pre-norm transformer blocks (`entity.Block`'s) whose attention adds a learned bias per head
-  and axial offset between two hexes (the same for every row).
+  pre-norm transformer blocks (`entity.Block`'s, their feed-forward layer `feed_forward` times
+  the width) whose attention adds a learned bias per head and axial offset between two hexes (the
+  same for every row).
 
 The heads read the trunk's output: a hex's vector (zero for an index off the field), a stack's
 vector (its token plus the trunk's vector at its position, through a linear layer), the context
@@ -193,14 +197,32 @@ class HexConv2d(nn.Conv2d):
         return F.conv2d(x, self.weight * self.kernel_mask, self.bias, padding=1)
 
 
+class CellNorm(nn.LayerNorm):
+    """A LayerNorm over the channels of each cell of [rows, width, rows of the grid, columns]."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return super().forward(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
+
+
+def activate(norm: CellNorm | None, x: torch.Tensor, cells: torch.Tensor) -> torch.Tensor:
+    """A convolution's input: `x` through the ReLU, normalised first with a `norm` (its cells off
+    the field set back to 0, as a LayerNorm's bias moves them)."""
+    if norm is None:
+        return torch.relu(x)
+    return torch.relu(norm(x)) * cells
+
+
 class ConvBlock(nn.Module):
     """A residual block of two hex convolutions, the second's input biased by the first's mean
-    and maximum over the real cells (global pooling); the branch starts at 0."""
+    and maximum over the real cells (global pooling); the branch starts at 0. With `norm` each
+    convolution's input is normalised first (pre-activation, E25 T24)."""
 
-    def __init__(self, width: int) -> None:
+    def __init__(self, width: int, norm: bool = False) -> None:
         super().__init__()
+        self.norm1 = CellNorm(width) if norm else None
         self.conv1 = HexConv2d(width)
         self.pool = nn.Linear(2 * width, width)
+        self.norm2 = CellNorm(width) if norm else None
         self.conv2 = HexConv2d(width)
         nn.init.zeros_(self.conv2.weight)
         nn.init.zeros_(self.conv2.bias)
@@ -208,11 +230,11 @@ class ConvBlock(nn.Module):
     def forward(self, x: torch.Tensor, cells: torch.Tensor, real: int) -> torch.Tensor:
         """`x` [rows, width, rows of the grid, its columns]; `cells` [1, 1, …] 1 on the field's
         cells, 0 off it; `real` their number."""
-        h = self.conv1(torch.relu(x)) * cells
+        h = self.conv1(activate(self.norm1, x, cells)) * cells
         mean = h.sum((2, 3)) / real
         top = (h - (1.0 - cells) * 1e9).amax((2, 3))
-        h = torch.relu(h + self.pool(torch.cat([mean, top], dim=1))[:, :, None, None])
-        return x + self.conv2(h) * cells
+        h = h + self.pool(torch.cat([mean, top], dim=1))[:, :, None, None]
+        return x + self.conv2(activate(self.norm2, h, cells)) * cells
 
 
 class HexConv(HexNet):
@@ -225,14 +247,19 @@ class HexConv(HexNet):
         embed: int = 32,
         field_width: int = FIELD_WIDTH,
         field_height: int = FIELD_HEIGHT,
+        norm: str = "none",
     ) -> None:
         super().__init__(width, embed, field_width, field_height)
+        if norm not in ("none", "layer"):
+            raise ValueError(f"no normalisation {norm!r} (none or layer)")
         g = self.grid
         cells = torch.zeros(g.height * g.columns)
         cells[torch.from_numpy(g.cell)] = 1.0
         self.register_buffer("cells", cells.view(1, 1, g.height, g.columns), persistent=False)
         self.register_buffer("cell_index", torch.from_numpy(g.cell).long(), persistent=False)
-        self.blocks = nn.ModuleList(ConvBlock(width) for _ in range(layers))
+        layer = norm == "layer"
+        self.blocks = nn.ModuleList(ConvBlock(width, layer) for _ in range(layers))
+        self.norm_out = CellNorm(width) if layer else None
         self.glob_out = nn.Linear(width, width)
         self.make_heads(width, width, embed)
 
@@ -244,8 +271,8 @@ class HexConv(HexNet):
         x = grid.transpose(1, 2).reshape(rows, self.width, g.height, g.columns)
         for block in self.blocks:
             x = block(x, self.cells, g.hexes)
-        hexes = torch.relu(x).flatten(2).transpose(1, 2)[:, self.cell_index]
-        return hexes, torch.relu(self.glob_out(glob))
+        hexes = activate(self.norm_out, x, self.cells).flatten(2).transpose(1, 2)
+        return hexes[:, self.cell_index], torch.relu(self.glob_out(glob))
 
 
 class BiasBlock(Block):
@@ -272,6 +299,7 @@ class HexFormer(HexNet):
         embed: int = 32,
         field_width: int = FIELD_WIDTH,
         field_height: int = FIELD_HEIGHT,
+        feed_forward: int = 2,
     ) -> None:
         super().__init__(width, embed, field_width, field_height)
         if width % heads:
@@ -281,7 +309,7 @@ class HexFormer(HexNet):
         dq = g.q[None, :] - g.q[:, None] + g.columns - 1
         dr = g.r[None, :] - g.r[:, None] + g.height - 1
         self.register_buffer("offset", torch.from_numpy(dq * span_r + dr).long(), persistent=False)
-        self.blocks = nn.ModuleList(BiasBlock(width, heads) for _ in range(layers))
+        self.blocks = nn.ModuleList(BiasBlock(width, heads, feed_forward) for _ in range(layers))
         self.offset_bias = nn.Parameter(torch.zeros(layers, heads, span_q * span_r))
         self.norm = nn.LayerNorm(width)
         self.make_heads(width, width, embed)
@@ -299,12 +327,22 @@ class HexFormer(HexNet):
 
 def for_batch(kind: str, batch: BattleBatch, config: dict) -> HexNet:
     """The hex network `kind` names for `batch` (whose encodings must be the layout's), from a
-    run's `[network]` settings (`config`)."""
+    run's `[network]` settings (`config`; a file without `norm` or `feed_forward`, before E25
+    T24, has none and twice the width)."""
     check_layout(batch, f"{kind} network")
     field = (
         int(config.get("field_width", FIELD_WIDTH)),
         int(config.get("field_height", FIELD_HEIGHT)),
     )
     if kind == "hexconv":
-        return HexConv(config["width"], config["layers"], config["embed"], *field)
-    return HexFormer(config["width"], config["layers"], config["heads"], config["embed"], *field)
+        return HexConv(
+            config["width"], config["layers"], config["embed"], *field, config.get("norm", "none")
+        )
+    return HexFormer(
+        config["width"],
+        config["layers"],
+        config["heads"],
+        config["embed"],
+        *field,
+        int(config.get("feed_forward", 2)),
+    )

@@ -545,6 +545,33 @@ id = "battle.hero-info.points"
 args = { word = "text", points = "number", most = "number" }
 original = [{ at = "EXE:0x670088", printf = ["word", "points", "most"] }]
 
+# A stack's army info windows (E17 M6 T4b2b2, design §12.15; `army_info_stack_set` 0x46DC30):
+# the rows' labels as the hero's ("%s:" with GENRLTXT 381, 382, 385 and 386's words) and the words
+# GENRLTXT 387 and 390; Att and Def "%d(%d)" (0x6700E4: the creature's own, the stack's now), Dmg
+# "%d" (`battle.hint.number`) or "%d-%d" (0x6700DC), Health and the count "%d"; GENRLTXT 675 under
+# the spells' icons when there are none.
+[[key]]
+id = "battle.army-info.damage"
+original = [{ at = "GENRLTXT:387" }]
+
+[[key]]
+id = "battle.army-info.health"
+original = [{ at = "GENRLTXT:390" }]
+
+[[key]]
+id = "battle.army-info.pair"
+args = { own = "number", now = "number" }
+original = [{ at = "EXE:0x6700E4", printf = ["own", "now"] }]
+
+[[key]]
+id = "battle.army-info.range"
+args = { low = "number", high = "number" }
+original = [{ at = "EXE:0x6700DC", printf = ["low", "high"] }]
+
+[[key]]
+id = "battle.army-info.no-spells"
+original = [{ at = "GENRLTXT:675" }]
+
 # The combat options dialog (E17 M6 T4a, design §12.12; `h3_view::options`): its title, headings
 # and labels (GENRLTXT 393 to 407 and 578; the Ballista's the creature's name row, 152), and the
 # no-sound box's text (GENRLTXT 151, 0x46FE42).

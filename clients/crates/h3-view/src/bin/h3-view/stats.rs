@@ -236,13 +236,7 @@ pub fn of(sources: &Sources<'_>, observation: &Observation, id: u8, modal: bool)
         Some(h) if original == BALLISTA => i32::from(h.attack.min(99)) + 1,
         _ => 1,
     };
-    let factor = observation
-        .sides
-        .get(usize::from(stack.side == Side::Defender))
-        .and_then(|s| s.hero.as_ref())
-        .filter(|_| stack.war_machine)
-        .map_or(1, |h| u16::from(h.attack) + 1);
-    let damage = [stack.damage_min, stack.damage_max].map(|d| i32::from(d / factor) * times);
+    let damage = own_damage(observation, stack).map(|d| d * times);
     // Morale and luck: the stack's own, Mirth's to Misfortune's changes in them (the engine's
     // materialised values, as the executable's +0x4E8 and +0x4EC; E17 M6 T2a2b2: T2a1 added the
     // timed effects a second time), before the roll levels' clamp as the executable's (CLT-Q40's
@@ -315,6 +309,55 @@ pub fn of(sources: &Sources<'_>, observation: &Observation, id: u8, modal: bool)
         cast,
         modal,
     })
+}
+
+/// `stack`'s own damage range (the executable's +0xD0 and +0xD4: a war machine's its record's).
+/// The wire's war machine's range holds its side's hero's factor (the engine's BAT-WAR-005: its
+/// attack plus 1, unclamped), divided out here.
+fn own_damage(observation: &Observation, stack: &Stack) -> [i32; 2] {
+    let factor = observation
+        .sides
+        .get(usize::from(stack.side == Side::Defender))
+        .and_then(|s| s.hero.as_ref())
+        .filter(|_| stack.war_machine)
+        .map_or(1, |h| u16::from(h.attack) + 1);
+    [stack.damage_min, stack.damage_max].map(|d| i32::from(d / factor))
+}
+
+/// What stack `id`'s army info window shows in `observation` (E17 M6 T4b2b2, design §12.15
+/// "Their fill"; `army_info_stack_set` 0x46DC30): the stats dialog's numbers ([`of`]), so the two
+/// agree, the stack's own damage range for the original's Dmg row (CLT-Q48), the background in
+/// the colours of the stack's side's hero's player (+0xF4's: its owner's, where the dialog takes
+/// its controller's; oddity 8), else the viewing player's `viewing`. None without the stack, its
+/// creature's rules or tables.
+pub fn army_info(
+    sources: &Sources<'_>,
+    observation: &Observation,
+    id: u8,
+    viewing: u8,
+) -> Option<h3_view::army_info::StackInfo> {
+    let stats = of(sources, observation, id, false)?;
+    let stack = observation.stacks.iter().find(|s| s.id == id)?;
+    let key = sources
+        .manifest
+        .keys
+        .creatures
+        .get(usize::from(stack.creature))?;
+    let creature = u32::from(sources.tables.creatures.get(key)?.original);
+    let index = usize::from(stack.side == Side::Defender);
+    let side = &observation.sides[index];
+    let player = match side.hero {
+        Some(_) => side
+            .colour
+            .unwrap_or_else(|| u8::try_from(index).unwrap_or(0)),
+        None => viewing,
+    };
+    let own = own_damage(observation, stack);
+    Some(h3_view::army_info::StackInfo::of(
+        &stats,
+        (creature, player),
+        own,
+    ))
 }
 
 /// What morale's and luck's descriptions tell of `stack`'s sources (E17 M6 T2a2b2, design §12.4),

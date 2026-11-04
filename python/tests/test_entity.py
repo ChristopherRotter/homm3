@@ -1,8 +1,11 @@
 """The entity network (E06 T5a, `docs/epics/E06-log.md` §11): the layout it reads is the
 library's, its logits stand in the encodings' order, an empty slot is not seen, the stacks' slot
-order does not matter to its context; the visualization command. They need the group `train`."""
+order does not matter to its context; the visualization command and a bench's costs (E25 T24).
+They need the group `train`."""
 
 from __future__ import annotations
+
+import copy
 
 import numpy as np
 import pytest
@@ -14,7 +17,7 @@ from h3env.train import layout as L
 torch = pytest.importorskip("torch")
 
 from h3env.train.entity import COLUMNS, FIXED, PER_STACK, ROWS, Entity  # noqa: E402
-from h3env.train.network import main, mermaid, parts  # noqa: E402
+from h3env.train.network import main, mermaid, parts, timing  # noqa: E402
 from h3env.train.policy import Mlp  # noqa: E402
 
 
@@ -189,6 +192,33 @@ def test_the_architecture_shows_its_parts_costs_and_diagram(tmp_path, capsys) ->
         ]
     )
     printed = capsys.readouterr().out
-    assert "| **total** |" in printed and "training pass" in printed
+    assert "| **total** |" in printed and "training pass" in printed and "sample-pass" in printed
     text = out.read_text(encoding="utf-8")
     assert text.startswith("# The entity network of the defaults") and "```mermaid" in text
+
+
+def test_the_cost_of_a_benchs_students_side_by_side(tmp_path, capsys) -> None:
+    # E25 T24: `--bench` puts every student of a bench in one table over the base config, and
+    # the timing's sample-pass (an AdamW step at rate 0) leaves the network as it was.
+    bench = tmp_path / "bench.toml"
+    bench.write_text(
+        "[students.mlp]\nkind = 'mlp'\nhidden = 16\nlr = 1e-3\n"
+        "[students.conv]\nkind = 'hexconv'\nwidth = 8\nlayers = 1\nnorm = 'layer'\nwarmup = 10\n",
+        encoding="utf-8",
+    )
+    main(["--bench", str(bench), "--set", "network.embed=8", "--rows", "4", "--time"])
+    printed = capsys.readouterr().out
+    rows = [line for line in printed.splitlines() if line.startswith("| ")]
+    assert rows[0].startswith("| student | network | parameters")
+    assert rows[1].startswith("| mlp | kind mlp, hidden 16 |")
+    assert rows[2].startswith("| conv | kind hexconv, width 8, layers 1, norm layer |")
+    assert all(row.endswith("| - |") for row in rows[1:])  # no CUDA memory on the CPU
+    batch = mixed_batch()
+    net = small()
+    before = copy.deepcopy(net.state_dict())
+    t = timing(net, batch, 1)
+    batch.close()
+    assert t["sample_pass"] > 0 and t["peak_mb"] is None
+    assert all(torch.equal(v, net.state_dict()[k]) for k, v in before.items())
+    with pytest.raises(SystemExit):
+        main(["--bench", str(bench), "--mermaid", str(tmp_path / "x.md")])
