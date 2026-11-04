@@ -8,7 +8,7 @@ use h3_protocol::wire::{Command, Manifest, Observation, Side, Stack};
 use h3_render::Bugs;
 use h3_ui::text::Catalogue;
 use h3_view::anim::Timeline;
-use h3_view::auto::{Auto, turn_at};
+use h3_view::auto::{Acting, Auto, turn_at};
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::aim::Aim;
 use h3_view::mouse::track::{self, Input, Lens, Shown, Start, Turn};
@@ -373,12 +373,7 @@ pub fn legal(
         .active
         .and_then(|id| observation.stacks.iter().find(|s| s.id == id));
     if let Some(s) = acting {
-        let original = manifest
-            .keys
-            .creatures
-            .get(usize::from(s.creature))
-            .and_then(|key| tables.creatures.get(key))
-            .map(|c| c.original);
+        let original = original(manifest, tables, s.creature);
         legal.catapult = original == Some(CATAPULT);
         legal.wall_exempt =
             s.no_distance_penalty || original.is_some_and(|o| WALL_EXEMPT.contains(&o));
@@ -386,11 +381,73 @@ pub fn legal(
     legal
 }
 
+/// The original id of `manifest`'s creature `creature` by the asset tables `tables`.
+fn original(manifest: &Manifest, tables: &Tables, creature: u16) -> Option<u16> {
+    manifest
+        .keys
+        .creatures
+        .get(usize::from(creature))
+        .and_then(|key| tables.creatures.get(key))
+        .map(|c| c.original)
+}
+
+/// The acting stack of `observation` to Auto Combat (E17 M6 T4b1): a human player's with its
+/// creature's original id (by the record's `manifest` and the asset tables `tables`), else the
+/// computer's.
+pub fn stack_of(manifest: &Manifest, tables: &Tables, observation: &Observation) -> Acting {
+    if !human(observation) {
+        return Acting::Itself;
+    }
+    let creature = observation
+        .active
+        .and_then(|id| observation.stacks.iter().find(|s| s.id == id))
+        .and_then(|s| original(manifest, tables, s.creature));
+    Acting::Human(creature)
+}
+
+/// Each turn's stack of `timeline` to Auto Combat (E17 M6 T4b1; the opening's, then each one
+/// started): the stack of the engine's battle (of `turned`) it pairs with ([`stack_of`]); one
+/// none pairs with plays itself: no command waited for it (a war machine without its hero's
+/// skill, which the engine plays: BAT-WAR-002, -003; or a record without its scenario, which
+/// takes no switch).
+pub fn stacks(
+    record: &Record,
+    timeline: &Timeline,
+    turned: &[Turned],
+    tables: &Tables,
+) -> Vec<Acting> {
+    let opening = record.first_snapshot().and_then(|o| o.active);
+    let mut next = 0;
+    core::iter::once(opening)
+        .chain(timeline.turns.iter().map(|&(_, stack)| Some(stack)))
+        .map(|stack| match pair(turned, &mut next, stack) {
+            Some(i) => stack_of(&record.header.manifest, tables, &turned[i].observation),
+            None => Acting::Itself,
+        })
+        .collect()
+}
+
+/// From when each turn of `timeline` plays itself under Auto Combat in the comparisons (E17 M6
+/// T4b1, [`Auto::of`]'s `itself`): by the harness's boxes, which no dialog changes
+/// (`Settings::CAPTURE`: Creatures alone, so a commanded war machine stays the human's).
+pub fn captured(
+    record: &Record,
+    timeline: &Timeline,
+    turned: &[Turned],
+    tables: &Tables,
+) -> Vec<Option<u32>> {
+    let boxes = h3_view::options::Settings::CAPTURE.auto;
+    (stacks(record, timeline, turned, tables).into_iter())
+        .map(|stack| stack.plays_itself(boxes).then_some(0))
+        .collect()
+}
+
 /// What the mouse shows over the record's battle as `timeline` plays it: `turned` the battle and
 /// its legal commands before each command and after the last (`scenario::turned`; none for a
 /// record without its scenario: the opening's battle then stands for every turn, with no legal
 /// commands), `inputs` what the mouse does; its hints in `catalogue`'s words; the acting stacks'
-/// creatures by `tables` ([`legal`]), the profile `bugs` (the siege's rectangles, CLT-Q21).
+/// creatures by `tables` ([`legal`]), the profile `bugs` (the siege's rectangles, CLT-Q21); Auto
+/// Combat's turns by the harness's boxes ([`captured`]).
 pub fn shown(
     record: &Record,
     timeline: &Timeline,
@@ -401,10 +458,11 @@ pub fn shown(
 ) -> Shown {
     let name =
         |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
+    let itself = captured(record, timeline, turned, tables);
     followed(
         record,
         (timeline, turned),
-        inputs,
+        (inputs, &itself),
         (layout, &name),
         (tables, bugs),
     )
@@ -413,12 +471,13 @@ pub fn shown(
 /// A hint's words.
 type Name<'a> = &'a dyn Fn(&Hint, &Observation) -> String;
 
-/// [`shown`] with the hints in `name`'s words: the battle followed from its opening, every turn
-/// read again (what [`Follower`] goes on from without).
+/// [`shown`] with the hints in `name`'s words, its turns' stacks playing themselves under Auto
+/// Combat from when `itself` says: the battle followed from its opening, every turn read again
+/// (what [`Follower`] goes on from without).
 fn followed(
     record: &Record,
     (timeline, turned): (&Timeline, &[Turned]),
-    inputs: &[Input],
+    (inputs, itself): (&[Input], &[Option<u32>]),
     (layout, name): (&BattleLayout, Name<'_>),
     (tables, bugs): (&Tables, Bugs),
 ) -> Shown {
@@ -436,7 +495,7 @@ fn followed(
     }
     // A turn Auto Combat plays from its start is the computer's (E17 M5 T4c1).
     let starts: Vec<u32> = times.iter().map(|&(t, _)| t).collect();
-    let auto = Auto::of(inputs, &starts);
+    let auto = Auto::of(inputs, &starts, itself);
     let turns: Vec<Turn<'_>> = battles
         .iter()
         .enumerate()
@@ -617,17 +676,18 @@ impl<'l> Follower<'l> {
     }
 
     /// What the mouse shows through `timeline` by `inputs` and Auto Combat's `switches` (the
-    /// battle's [`Input::Auto`] and [`Input::Stop`]; the inputs' own do nothing here): as
-    /// [`shown`]'s by the inputs with the switches among them (the hints in `name`'s words, the
-    /// turns as last read): where in what the last call showed (cut there, [`Shown::splice`])
-    /// the lists returned go.
+    /// battle's [`Input::Auto`] and [`Input::Stop`]; the inputs' own do nothing here), the turns'
+    /// stacks playing themselves under it from when `itself` says (E17 M6 T4b1): as [`shown`]'s
+    /// by the inputs with the switches among them (the hints in `name`'s words, the turns as last
+    /// read): where in what the last call showed (cut there, [`Shown::splice`]) the lists
+    /// returned go.
     pub fn shown(
         &mut self,
         timeline: &Timeline,
-        (inputs, switches): (&[Input], &[Input]),
+        (inputs, switches, itself): (&[Input], &[Input], &[Option<u32>]),
         (layout, name, bugs): (&'l BattleLayout, Name<'_>, Bugs),
     ) -> (Lens, Shown) {
-        let auto = Auto::of(switches, &self.starts);
+        let auto = Auto::of(switches, &self.starts, itself);
         let before = self.mark.as_ref().map_or(0, track::Mark::turn);
         if (0..before).any(|k| auto.from_start(k) != self.auto.from_start(k)) {
             self.mark = None;
@@ -652,12 +712,13 @@ impl<'l> Follower<'l> {
 }
 
 /// When Auto Combat plays `timeline`'s turns (the opening's, then each one started) by the mouse's
-/// and the keys' `inputs` (E17 M5 T4c1).
-pub fn auto(inputs: &[Input], timeline: &Timeline) -> Auto {
+/// and the keys' `inputs` (E17 M5 T4c1), their stacks playing themselves under it from when
+/// `itself` says (E17 M6 T4b1).
+pub fn auto(inputs: &[Input], timeline: &Timeline, itself: &[Option<u32>]) -> Auto {
     let starts: Vec<u32> = core::iter::once(0)
         .chain(timeline.turns.iter().map(|&(t, _)| t))
         .collect();
-    Auto::of(inputs, &starts)
+    Auto::of(inputs, &starts, itself)
 }
 
 /// Which way the stacks face at `t` of `timeline`: those its poses then mirror face left.
@@ -767,7 +828,9 @@ mod tests {
             let read = (timeline, turned);
             (self.follower).read(self.record, read, self.tables, (settled, grew));
             let words = (self.layout, &name as _, Bugs::Fixed);
-            let (from, tail) = self.follower.shown(timeline, (inputs, switches), words);
+            let itself = captured(self.record, timeline, turned, self.tables);
+            let switched = (inputs, switches, &itself[..]);
+            let (from, tail) = self.follower.shown(timeline, switched, words);
             let words = (self.layout, &name as _);
             // The whole follow's inputs: the switches among the mouse's by time.
             let mut all = inputs.to_vec();
@@ -775,7 +838,8 @@ mod tests {
                 let i = all.partition_point(|i| i.at() <= switch.at());
                 all.insert(i, switch);
             }
-            let whole = followed(self.record, read, &all, words, (self.tables, Bugs::Fixed));
+            let all = (&all[..], &itself[..]);
+            let whole = followed(self.record, read, all, words, (self.tables, Bugs::Fixed));
             let same = self.shown.ends_with(from, &tail);
             assert_eq!(same, self.shown == whole, "step {}", self.checked);
             self.shown.splice(from, tail);
@@ -932,6 +996,60 @@ mod tests {
     }
 
     #[test]
+    fn a_war_machine_waits_for_its_human_only_with_its_hero_s_skill() {
+        // E17 M6 T4b1 (design §12.13): Orrin's Ballista (`smoke`'s, Red a human's) without
+        // Artillery is the engine's: no turn waits for it (under Auto Combat it plays itself
+        // whatever the boxes). With it, its turn waits for the human, its stack the Ballista
+        // (original id 146), whose box rules it under Auto Combat; a creature's by Creatures.
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let (scenario, packs) = (dir.join("scenarios/smoke.toml"), dir.join("../packs"));
+        let waiting = |artillery: bool| -> Vec<Acting> {
+            let (ruleset, mut setup) = crate::scenario::battle(&scenario, &packs, 1).unwrap();
+            setup.human = [true, false];
+            if artillery && let Some(hero) = setup.heroes[0].as_mut() {
+                hero.war_machines.ballista = Some(h3_contracts::BallistaControl {
+                    level: 1,
+                    shots: 1,
+                    double_damage_chance_bp: 0,
+                });
+            }
+            let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, false]).unwrap();
+            let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
+            let mut acting = Vec::new();
+            for _ in 0..12 {
+                if live.over() {
+                    break;
+                }
+                if live.waiting() {
+                    let turn = live.turn().unwrap();
+                    acting.push(stack_of(
+                        &record.header.manifest,
+                        &tables,
+                        &turn.observation,
+                    ));
+                    let choice = live.choice().unwrap();
+                    live.play(choice).unwrap();
+                } else {
+                    live.next().unwrap();
+                }
+            }
+            acting
+        };
+        let ballista = Acting::Human(Some(146));
+        let without = waiting(false);
+        assert!(
+            !without.is_empty() && !without.contains(&ballista),
+            "{without:?}"
+        );
+        let with = waiting(true);
+        assert!(with.contains(&ballista), "{with:?}");
+        assert!(with.iter().all(|a| matches!(a, Acting::Human(Some(_)))));
+        let boxes = h3_view::options::Settings::CAPTURE.auto;
+        assert!(!ballista.plays_itself(boxes) && with[0].plays_itself(boxes));
+    }
+
+    #[test]
     fn auto_combat_s_key_switches_it_on_and_a_press_then_stops_it() {
         // E17 M5 T4c1: A switches it on; while it plays a key or a click stops it, the click
         // giving nothing; then A switches it on again and a key gives a command once it is off.
@@ -959,7 +1077,7 @@ mod tests {
         );
         assert!(auto_combat("a") && auto_combat("A") && !auto_combat("d") && !auto_combat(""));
         // When it plays the timeline's turns: the opening's from 0.
-        let auto = auto(&got, &timeline);
+        let auto = auto(&got, &timeline, &[]);
         assert!(auto.plays(0, 0) && !auto.from_start(0));
     }
 

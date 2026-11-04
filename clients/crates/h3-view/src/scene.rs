@@ -13,6 +13,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
+use h3_render::Bugs;
 use h3_render::recolour::Effect;
 
 use crate::anim::{
@@ -503,6 +504,9 @@ pub struct Panels {
     auto: (Auto, Vec<bool>),
     /// The window takes no switch of Auto Combat ([`Panels::without_switch`]).
     auto_off: bool,
+    /// Auto Combat's button shows selected while it is on over a human's turn it does not play
+    /// (E17 M6 T4b1, CLT-Q45 (1): the client's profile, [`Panels::with_auto`]).
+    auto_shown_on: bool,
 }
 
 impl Panels {
@@ -532,6 +536,7 @@ impl Panels {
             by_time,
             auto: (Auto::default(), Vec::new()),
             auto_off: false,
+            auto_shown_on: false,
         }
     }
 
@@ -558,17 +563,23 @@ impl Panels {
 
     /// The panel with Auto Combat playing as `auto` says (E17 M5 T4c1, design §7.22): a turn it
     /// plays dims the panel, its button enabled and selected; the button stays selected through
-    /// the other sides' turns until a human's turn it does not play.
+    /// the other sides' turns until a human's turn it does not play. In the client's profile
+    /// (`bugs`, E17 M6 T4b1, CLT-Q45 (1)) a human's turn it does not play while on (its stack's
+    /// box off) shows it selected while it is on, and the turns after keep that; the original's
+    /// (the comparisons) unselects it there (0x47864A).
     #[must_use]
-    pub fn with_auto(self, snapshot: &Observation, auto: Auto) -> Self {
+    pub fn with_auto(self, snapshot: &Observation, auto: Auto, bugs: Bugs) -> Self {
+        let shown_on = bugs == Bugs::Fixed;
         let mut selected = alloc::vec![false];
         for (k, c) in self.controllers.iter().enumerate() {
             let last = selected[k];
             let human = c.is_some_and(|s| snapshot.sides[usize::from(s == Side::Defender)].human);
-            selected.push(if human { auto.played(k) } else { last });
+            let on = shown_on && auto.on(k, u32::MAX);
+            selected.push(if human { auto.played(k) || on } else { last });
         }
         Self {
             auto: (auto, selected),
+            auto_shown_on: shown_on,
             ..self
         }
     }
@@ -742,6 +753,7 @@ impl Panels {
             plays: auto.plays(k, t),
             selected: selected.get(k).copied().unwrap_or_default(),
             off: self.auto_off,
+            on: self.auto_shown_on && auto.on(k, t),
         };
         (now, kept, autoplay)
     }

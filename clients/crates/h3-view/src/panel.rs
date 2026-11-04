@@ -205,6 +205,11 @@ pub struct Autoplay {
     /// The window takes no switch (E17 M5 T8b2, R5c-7: a seat on a server, *provisional*): its
     /// button disabled, as when both players are human (0x46BB40).
     pub off: bool,
+    /// Auto Combat is on over a human's turn it does not play (its stack's box off; E17 M6
+    /// T4b1, design §12.13): its button shows selected there, its click switching it off
+    /// visibly (CLT-Q45 (1): the client's profile; the original's clears it, 0x47864A, and its
+    /// comparisons leave this false).
+    pub on: bool,
 }
 
 /// What the panel shows when the stacks of `side` (the active stack's controller; none before a
@@ -278,8 +283,16 @@ pub fn shown(
             states.insert(SURRENDER, enabled(surrender));
             states.insert(RETREAT, enabled(retreat));
             states.insert(OPTIONS, State::default());
-            // 0x47864A: no longer selected; disabled when both sides are human.
-            states.insert(AUTO_COMBAT, enabled(!both));
+            // 0x47864A: no longer selected (the client's profile: selected while Auto Combat is
+            // on, CLT-Q45); disabled when both sides are human.
+            states.insert(
+                AUTO_COMBAT,
+                State {
+                    disabled: both,
+                    selected: auto.on,
+                    ..State::default()
+                },
+            );
             states.insert(SPELL_BOOK, enabled(book));
             // 0x478755: Wait outside the round's wait phase and the tactics phase.
             states.insert(WAIT, enabled(!observation.wait_phase && !tactics));

@@ -465,7 +465,9 @@ fn sequences(options: &Options) -> Result<usize, String> {
                     crate::render::viewing_player(snapshot),
                 )
             });
-            // Auto Combat as the actions switched it (E17 M5 T4c1).
+            // Auto Combat as the actions switched it (E17 M5 T4c1), the stacks playing
+            // themselves by the harness's boxes and the original's button (E17 M6 T4b1).
+            let itself = pointer::captured(&record, &timeline, &turned, &tables);
             let panels = log::panels(
                 &record,
                 (&shown.log, &timeline.controllers),
@@ -474,7 +476,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 (&archives, &exe),
                 Bugs::Original,
             )?
-            .with_auto(snapshot, pointer::auto(&inputs, &timeline));
+            .with_auto(
+                snapshot,
+                pointer::auto(&inputs, &timeline, &itself),
+                Bugs::Original,
+            );
             let interface = Interface {
                 panels: &panels,
                 legal: &Legal::default(),

@@ -28,7 +28,7 @@ use h3_view::anim::Timeline;
 use h3_view::anim::{
     self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed, Stage,
 };
-use h3_view::auto::{Auto, turn_at};
+use h3_view::auto::{Acting, Auto, turn_at};
 use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
@@ -554,6 +554,14 @@ pub struct Battle<'g> {
     /// apart from the window's inputs, so a seek back or Restart keeps them and a turn's Auto
     /// Combat costs the turns only).
     switches: Vec<Input>,
+    /// The combat options dialog's closes that changed the Auto Combat boxes, each with its turn
+    /// and time, after the boxes the battle began with (E17 M6 T4b1, *provisional*; empty while
+    /// none changed: the settings' boxes then): kept as the switches, so a seek back or Restart
+    /// keeps which turns played themselves.
+    boxes: Vec<h3_view::auto::BoxChange>,
+    /// The Auto Combat boxes as the options dialog opened, until its close is applied
+    /// ([`Battle::boxes_closed`]).
+    boxes_open: Option<[bool; 5]>,
     /// The log scrolled (each at a time, by entries).
     scrolls: Vec<(u32, i64)>,
     /// The panel's button pressed (the mouse's or a hotkey's).
@@ -640,6 +648,14 @@ enum Fight<'g> {
 impl<'g> Fight<'g> {
     /// The battle fought here.
     fn here(fight: Option<&mut Self>) -> Option<&mut Live<'g>> {
+        match fight? {
+            Fight::Here(live) => Some(live),
+            Fight::Server(_) => None,
+        }
+    }
+
+    /// [`Fight::here`], to read.
+    fn here_ref(fight: Option<&Self>) -> Option<&Live<'g>> {
         match fight? {
             Fight::Here(live) => Some(live),
             Fight::Server(_) => None,
@@ -857,6 +873,8 @@ impl<'g> Battle<'g> {
             follower: crate::pointer::Follower::default(),
             inputs: Vec::new(),
             switches: Vec::new(),
+            boxes: Vec::new(),
+            boxes_open: None,
             scrolls: Vec::new(),
             pressed: None,
             book: None,
@@ -993,7 +1011,9 @@ impl<'g> Battle<'g> {
     }
 
     /// Whether Auto Combat plays the last turn started from its start, or (`next`) the turn to
-    /// come after it (E17 M5 T4c1): switched on before and no key or button pressed since.
+    /// come after it (E17 M5 T4c1): switched on before and no key or button pressed since, its
+    /// stack playing itself (E17 M6 T4b1: by its box; the battle tells `Live` so, which then
+    /// plays it by the bot or waits).
     fn auto_turn(&self, next: bool) -> bool {
         let mut starts: Vec<u32> = std::iter::once(0)
             .chain(self.played.timeline().turns.iter().map(|&(t, _)| t))
@@ -1001,33 +1021,104 @@ impl<'g> Battle<'g> {
         if next {
             starts.push(u32::MAX);
         }
-        Auto::of(&self.switches, &starts).from_start(starts.len() - 1)
+        Auto::of(&self.switches, &starts, &self.itself(next)).from_start(starts.len() - 1)
+    }
+
+    /// From when each turn's stack plays itself under Auto Combat (E17 M6 T4b1, design §12.13,
+    /// `h3_view::auto::itself`): the opening's, then each one started, then (`next`) the turn to
+    /// come after them (the side to act's, fought here); by the boxes the battle began with and
+    /// the options dialog's changes since.
+    fn itself(&self, next: bool) -> Vec<Option<u32>> {
+        let tables = &self.ground.tables;
+        let timeline = self.played.timeline();
+        let mut stacks = crate::pointer::stacks(&self.record, timeline, &self.turned, tables);
+        if next {
+            let manifest = &self.record.header.manifest;
+            let to_come = Fight::here_ref(self.fight.as_ref()).and_then(Live::turn);
+            stacks.push(to_come.map_or(Acting::Itself, |turn| {
+                crate::pointer::stack_of(manifest, tables, &turn.observation)
+            }));
+        }
+        let first = self.boxes.first().map_or(self.settings.auto, |c| c.2);
+        h3_view::auto::itself(&stacks, first, self.boxes.get(1..).unwrap_or_default())
     }
 
     /// Auto Combat over the battle's turns as played so far (E17 M5 T4c1).
     fn auto(&self) -> Auto {
-        crate::pointer::auto(&self.switches, self.played.timeline())
+        let itself = self.itself(false);
+        crate::pointer::auto(&self.switches, self.played.timeline(), &itself)
     }
 
-    /// Whether Auto Combat is on for the turns to come (E17 M5 T4c1): a key or a button pressed
-    /// now stops it ([`Battle::stop_auto`]).
+    /// Whether a key or a button pressed now stops Auto Combat (E17 M5 T4c1;
+    /// [`Battle::stop_auto`]): fought here, on (the flag, after the last turn's start) with no
+    /// stop waiting, and no human's turn it does not play waiting for its command (E17 M6 T4b1:
+    /// the press is that turn's).
     pub fn auto_on(&self) -> bool {
-        matches!(self.fight, Some(Fight::Here(_))) && self.auto_turn(true)
+        if !matches!(self.fight, Some(Fight::Here(_))) || self.waiting() {
+            return false;
+        }
+        let (auto, k) = (self.auto(), self.played.timeline().turns.len());
+        auto.on(k, u32::MAX) && !auto.stopped(k)
     }
 
-    /// Auto Combat's button clicked (or its key released) at `at` (E17 M5 T4c1, design §7.22):
-    /// on a human's turn waiting for its command, the button enabled (not both sides human,
-    /// 0x46BB40), it switches on, the bot playing the turn from then; the switch joins the
-    /// battle's, in the turn waiting (T8b2, R5c-1: the bot's command may take no time, the next
-    /// turn starting at `at` too). Whether it did.
+    /// Whether Auto Combat was on as turn `k` started (0 the opening's; E17 M6 T4b1): a stop
+    /// waiting for it then stopped it only if not (a turn it does not play reads none, the press
+    /// dropped: CLT-Q45 (2)).
+    pub fn auto_at_start(&self, k: usize) -> bool {
+        self.auto().on_at_start(k)
+    }
+
+    /// Auto Combat's button clicked (or its key released) at `at` (E17 M5 T4c1, design §7.22;
+    /// E17 M6 T4b1, §12.13): on a human's turn waiting for its command, the button enabled (not
+    /// both sides human, 0x46BB40), it toggles: on over a stack that plays itself (its box set),
+    /// the bot playing the turn from then; on over one that does not, or off, nothing more (the
+    /// panel's button shows which, CLT-Q45 (1)). The switch joins the battle's, in the turn
+    /// waiting (T8b2, R5c-1: the bot's command may take no time, the next turn starting at `at`
+    /// too). Whether it did.
     pub fn switch_auto(&mut self, at: u32) -> Result<bool, String> {
         if !self.takes_auto() || !self.takes(at) {
             return Ok(false);
         }
         let turn = self.played.timeline().turns.len();
         self.switches.push(Input::Auto { at, turn });
-        let choice = self.choice().ok_or("no command for the turn waiting")?;
-        self.command(at, choice)
+        self.hand_over(turn, at)
+    }
+
+    /// The bot's command for the turn `turn` waiting if Auto Combat plays it at `at` (a switch
+    /// or a box set); else the panel made again (its button). Whether anything changed.
+    fn hand_over(&mut self, turn: usize, at: u32) -> Result<bool, String> {
+        if self.auto().plays(turn, at) {
+            let choice = self.choice().ok_or("no command for the turn waiting")?;
+            return self.command(at, choice);
+        }
+        self.panels = self.panel()?;
+        Ok(true)
+    }
+
+    /// The options dialog's close applied at `at` (E17 M6 T4b1, *provisional*; the window asks
+    /// every pass): Auto Combat boxes it changed join the battle's with the turn waiting and the
+    /// time, counting for the turns to come; under Auto Combat a box set for the turn waiting
+    /// hands it to the bot at once (the original's oddity 4, 0x4744C0, whose panel stays lit:
+    /// here it dims as at a switch). Whether anything changed.
+    pub fn boxes_closed(&mut self, at: u32) -> Result<bool, String> {
+        if self.options.is_some() {
+            return Ok(false);
+        }
+        let Some(before) = self.boxes_open.take() else {
+            return Ok(false);
+        };
+        if before == self.settings.auto {
+            return Ok(false);
+        }
+        let turn = self.played.timeline().turns.len();
+        if self.boxes.is_empty() {
+            self.boxes.push((0, 0, before));
+        }
+        self.boxes.push((turn, at, self.settings.auto));
+        if !self.waiting() || !self.takes(at) {
+            return Ok(false);
+        }
+        self.hand_over(turn, at)
     }
 
     /// Whether the battle takes Auto Combat's switch at all: fought here (not on a server, E17 M5
@@ -1425,8 +1516,9 @@ impl<'g> Battle<'g> {
             crate::pointer::hint_text(record, &writer.catalogue, hint, observation)
         };
         let inputs = inputs.unwrap_or(&self.inputs);
+        let itself = self.itself(false);
         let words = (&ground.layout, &name as _, Bugs::Fixed);
-        (self.follower).shown(timeline, (inputs, &self.switches), words)
+        (self.follower).shown(timeline, (inputs, &self.switches, &itself), words)
     }
 
     /// The mouse, the timeline shown and the panel after the battle grew (or as it starts): the
@@ -1504,7 +1596,7 @@ impl<'g> Battle<'g> {
     fn panel(&self) -> Result<Panels, String> {
         let mut panels = self.logged_panel()?;
         if let Some(snapshot) = self.record.first_snapshot() {
-            panels = panels.with_auto(snapshot, self.auto());
+            panels = panels.with_auto(snapshot, self.auto(), Bugs::Fixed);
         }
         if matches!(self.fight, Some(Fight::Server(_))) {
             panels = panels.without_switch();
@@ -2038,6 +2130,7 @@ impl<'g> Battle<'g> {
             (player, self.audio),
         );
         self.options = Some((open, at));
+        self.boxes_open.get_or_insert(self.settings.auto);
         true
     }
 

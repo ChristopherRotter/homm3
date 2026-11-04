@@ -745,12 +745,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(ticks), ticks / 1_000_000)?;
         }
         // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
-        // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it.
+        // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it. A
+        // human's turn Auto Combat does not play reads no stop (E17 M6 T4b1): its start drops
+        // the key, as with Auto Combat off (CLT-Q45 (2): the original's acts there).
         if let Some((command, turn)) = stopped_by
             && let Some(&(start, _)) = battle.timeline().turns.get(turn - 1)
         {
             let last = battle.timeline().turns.len();
-            if battle.waiting() && last == turn {
+            if battle.waiting() && last == turn && battle.auto_at_start(turn) {
+                stopped_by = None;
+            } else if battle.waiting() && last == turn {
                 stopped_by = None;
                 match command {
                     Do::LogUp | Do::LogDown => {
@@ -1318,6 +1322,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         if battle.result_closed() {
             break;
         }
+        // The options dialog's close changed the Auto Combat boxes (E17 M6 T4b1): the turns to
+        // come, and under Auto Combat the turn waiting, play by them.
+        grew |= battle.boxes_closed(clock.ms(win.ticks_ns()))?;
         // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
         // T2b): the battle follows them and the frame now is made again.
         if mouse_changed || grew || book_changed {
