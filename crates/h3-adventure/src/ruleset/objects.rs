@@ -853,6 +853,7 @@ pub(super) fn compile_object_types(
         }
         // A Refugee Camp is entered too (E08 T93a, increment 10's design note §1: class 78 is on
         // neither of the original's lists).
+        // rule: ADV-RFG-001
         if matches!(kind, ObjectKind::RefugeeCamp { .. }) && def.visit != Visit::Enter {
             return Err(invalid("a refugee camp is not entered"));
         }
@@ -1003,6 +1004,7 @@ pub(super) fn compile_random_dwelling(
     def: &RandomDwellingDef,
     tables: &mut BTreeMap<FactionId, [ObjectTypeId; DWELLING_LEVELS]>,
 ) -> Result<(), AdventureCompileError> {
+    // rule: ADV-DWL-005
     let core = scope.core;
     let name = || String::from(def.faction.as_str());
     scope.reach(&def.faction)?;
@@ -1364,6 +1366,7 @@ fn compile_dwelling(
     blocked: &[(u8, u8)],
     visitable: &[(u8, u8)],
 ) -> Result<ObjectKind, &'static str> {
+    // rule: ADV-DWL-001
     let distinct = creatures.iter().collect::<BTreeSet<_>>().len() == creatures.len();
     let growth = |c| scope.core.creature(c).map_or(0, |info| info.growth);
     if !(1..=MAX_DWELLING_CREATURES).contains(&creatures.len()) {

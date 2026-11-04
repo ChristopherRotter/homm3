@@ -146,6 +146,17 @@ spawn_one_in = 200
 spawn_factor = 2
 spawn_aggression = [1, 10]
 
+# E08 T93a (increment 10's design note section 2; ADV-DWL-001): a dwelling's guards at the start
+# and each week are guard_factor x growth of each creature of guard_level or more
+# (dwelling_record_init 0x4B8860, dwelling_week_refill 0x4B8A60; survey E08-dwellings.md sections
+# 2.2, 6.1: zero-based level 4 or more, 3 x growth; the wiki and VCMI agree); its creatures of
+# free_level or less join its owner's visitor free (visit_dwelling 0x4A18B0; survey section 4.4:
+# zero-based level 0, GENRLTXT 424; the wiki and VCMI agree).
+[params.dwellings]
+guard_level = 5
+guard_factor = 3
+free_level = 1
+
 # GAM-RES-002 (E08 T13a): the starting resources by the game's difficulty, from 0 (easy) to 4
 # (impossible), a human player's and a computer player's; the engine gives every player the human
 # row (E08 decision 16: no human/computer distinction yet). Code reading (survey
@@ -1060,3 +1071,572 @@ name = "Mystical Garden"
 visit = "enter"
 from_above = false
 garden = { gifts = [{ resource = "gems", amount = 5 }, { resource = "gold", amount = 500 }] }
+
+# E08 T93a (increment 10's design note sections 1 to 3; survey E08-dwellings.md sections 2, 3):
+# the creature dwellings (ADV-DWL-001), ownable and entered: classes 17 and 20 are on neither
+# object_classes_not_entered (0x63AA58) nor object_classes_from_above (0x63AB00). A type's
+# creatures are the original record's (load_dwelling_body 0x4FED40, dwelling_record_init 0x4B8860;
+# survey section 2.2): class 17 one, dwelling_creatures 0x63D570[subclass] (80 i32 entries); class
+# 20 four, dwelling4_creatures 0x677938[subclass], in the record's order. Its footprint is the
+# subclass's last template in Objects.txt (H3ab_bmp), the one random_dwellings_resolve 0x502B60
+# step 5 gives a random dwelling (object_set_class_template 0x505F20; survey section 3.2),
+# converted as the import converts a map's template: blocked the passability mask's '0' cells,
+# visitable the visitability mask's '1' cells (the entrance is both), as [columns left, rows up]
+# of the anchor. Names: CrGen1.txt (class 17) and CrGen4.txt (class 20) by subclass. This pack
+# holds the RoE objects (class 17 subclasses 0 to 58 and 68, class 20's two); ab the ones AB added
+# (design note section 3).
+
+# original class 17 subclass 0 (CrGen1.txt row 0; dwelling_creatures 0x63D570[0] = 106; Objects.txt AVGbasl0.def, the subclass's last template)
+[[object_type]]
+id = "basilisk_pit"
+name = "Basilisk Pit"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["basilisk"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 1 (CrGen1.txt row 1; dwelling_creatures 0x63D570[1] = 96; Objects.txt AVGbhmt0.def, the subclass's last template)
+[[object_type]]
+id = "behemoth_crag"
+name = "Behemoth Crag"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["behemoth"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 2 (CrGen1.txt row 2; dwelling_creatures 0x63D570[2] = 74; Objects.txt AVGbhld0.def, the subclass's last template)
+[[object_type]]
+id = "pillar_of_eyes"
+name = "Pillar of Eyes"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["beholder"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 3 (CrGen1.txt row 3; dwelling_creatures 0x63D570[3] = 66; Objects.txt AVGbkni0.def, the subclass's last template)
+[[object_type]]
+id = "hall_of_darkness"
+name = "Hall of Darkness"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["black_knight"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 4 (CrGen1.txt row 4; dwelling_creatures 0x63D570[4] = 68; Objects.txt AVGbone0.def, the subclass's last template)
+[[object_type]]
+id = "dragon_vault"
+name = "Dragon Vault"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["bone_dragon"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 5 (CrGen1.txt row 5; dwelling_creatures 0x63D570[5] = 10; Objects.txt AVGcavl0.def, the subclass's last template)
+[[object_type]]
+id = "training_grounds"
+name = "Training Grounds"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["cavalier"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 6 (CrGen1.txt row 6; dwelling_creatures 0x63D570[6] = 14; Objects.txt AVGcent0.def, the subclass's last template)
+[[object_type]]
+id = "centaur_stables"
+name = "Centaur Stables"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["centaur"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 7 (CrGen1.txt row 7; dwelling_creatures 0x63D570[7] = 112; Objects.txt AVGair0.def, the subclass's last template)
+[[object_type]]
+id = "air_elemental_conflux"
+name = "Air Elemental Conflux"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["air_elemental"], blocked = [[0, 0], [1, 0], [2, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 8 (CrGen1.txt row 8; dwelling_creatures 0x63D570[8] = 12; Objects.txt AVGangl0.def, the subclass's last template)
+[[object_type]]
+id = "portal_of_glory"
+name = "Portal of Glory"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["angel"], blocked = [[1, 0], [2, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 9 (CrGen1.txt row 9; dwelling_creatures 0x63D570[9] = 94; Objects.txt AVGcycl0.def, the subclass's last template)
+[[object_type]]
+id = "cyclops_cave"
+name = "Cyclops Cave"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["cyclops"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 10 (CrGen1.txt row 10; dwelling_creatures 0x63D570[10] = 54; Objects.txt AVGdevl0.def, the subclass's last template)
+[[object_type]]
+id = "forsaken_palace"
+name = "Forsaken Palace"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["devil"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 11 (CrGen1.txt row 11; dwelling_creatures 0x63D570[11] = 104; Objects.txt AVGdfly0.def, the subclass's last template)
+[[object_type]]
+id = "serpent_fly_hive"
+name = "Serpent Fly Hive"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["serpent_fly"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 12 (CrGen1.txt row 12; dwelling_creatures 0x63D570[12] = 16; Objects.txt AVGdwrf0.def, the subclass's last template)
+[[object_type]]
+id = "dwarf_cottage"
+name = "Dwarf Cottage"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["dwarf"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 13 (CrGen1.txt row 13; dwelling_creatures 0x63D570[13] = 113; Objects.txt AVGerth0.def, the subclass's last template)
+[[object_type]]
+id = "earth_elemental_conflux"
+name = "Earth Elemental Conflux"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["earth_elemental"], blocked = [[0, 0], [1, 0], [2, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 14 (CrGen1.txt row 14; dwelling_creatures 0x63D570[14] = 52; Objects.txt AVGefre0.def, the subclass's last template)
+[[object_type]]
+id = "fire_lake"
+name = "Fire Lake"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["efreeti"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 15 (CrGen1.txt row 15; dwelling_creatures 0x63D570[15] = 18; Objects.txt AVGelf0.def, the subclass's last template)
+[[object_type]]
+id = "homestead"
+name = "Homestead"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["wood_elf"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 16 (CrGen1.txt row 16; dwelling_creatures 0x63D570[16] = 114; Objects.txt AVGfire0.def, the subclass's last template)
+[[object_type]]
+id = "fire_elemental_conflux"
+name = "Fire Elemental Conflux"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["fire_elemental"], blocked = [[0, 0], [1, 0], [2, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 17 (CrGen1.txt row 17; dwelling_creatures 0x63D570[17] = 30; Objects.txt AVGgarg0.def, the subclass's last template)
+[[object_type]]
+id = "parapet"
+name = "Parapet"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["stone_gargoyle"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 18 (CrGen1.txt row 18; dwelling_creatures 0x63D570[18] = 36; Objects.txt AVGgeni0.def, the subclass's last template)
+[[object_type]]
+id = "altar_of_wishes"
+name = "Altar of Wishes"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["genie"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 19 (CrGen1.txt row 19; dwelling_creatures 0x63D570[19] = 86; Objects.txt AVGwolf0.def, the subclass's last template)
+[[object_type]]
+id = "wolf_pen"
+name = "Wolf Pen"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["wolf_rider"], blocked = [[0, 0], [1, 0], [1, 1]], visitable = [[0, 0]] }
+
+# original class 17 subclass 20 (CrGen1.txt row 20; dwelling_creatures 0x63D570[20] = 98; Objects.txt AVGgnll0.def, the subclass's last template)
+[[object_type]]
+id = "gnoll_hut"
+name = "Gnoll Hut"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["gnoll"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 21 (CrGen1.txt row 21; dwelling_creatures 0x63D570[21] = 84; Objects.txt AVGgobl0.def, the subclass's last template)
+[[object_type]]
+id = "goblin_barracks"
+name = "Goblin Barracks"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["goblin"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 22 (CrGen1.txt row 22; dwelling_creatures 0x63D570[22] = 44; Objects.txt AVGgogs0.def, the subclass's last template)
+[[object_type]]
+id = "hall_of_sins"
+name = "Hall of Sins"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["gog"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 23 (CrGen1.txt row 23; dwelling_creatures 0x63D570[23] = 102; Objects.txt AVGgorg0.def, the subclass's last template)
+[[object_type]]
+id = "gorgon_lair"
+name = "Gorgon Lair"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["gorgon"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 24 (CrGen1.txt row 24; dwelling_creatures 0x63D570[24] = 26; Objects.txt AVGgdrg0.def, the subclass's last template)
+[[object_type]]
+id = "dragon_cliffs"
+name = "Dragon Cliffs"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["green_dragon"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 25 (CrGen1.txt row 25; dwelling_creatures 0x63D570[25] = 4; Objects.txt AVGgrff0.def, the subclass's last template)
+[[object_type]]
+id = "griffin_tower"
+name = "Griffin Tower"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["griffin"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 26 (CrGen1.txt row 26; dwelling_creatures 0x63D570[26] = 72; Objects.txt AVGharp0.def, the subclass's last template)
+[[object_type]]
+id = "harpy_loft"
+name = "Harpy Loft"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["harpy"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 27 (CrGen1.txt row 27; dwelling_creatures 0x63D570[27] = 46; Objects.txt AVGhell0.def, the subclass's last template)
+[[object_type]]
+id = "kennels"
+name = "Kennels"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["hell_hound"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 28 (CrGen1.txt row 28; dwelling_creatures 0x63D570[28] = 110; Objects.txt AVGhydr0.def, the subclass's last template)
+[[object_type]]
+id = "hydra_pond"
+name = "Hydra Pond"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["hydra"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 29 (CrGen1.txt row 29; dwelling_creatures 0x63D570[29] = 42; Objects.txt AVGimp0.def, the subclass's last template)
+[[object_type]]
+id = "imp_crucible"
+name = "Imp Crucible"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["imp"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 30 (CrGen1.txt row 30; dwelling_creatures 0x63D570[30] = 100; Objects.txt AVGlzrd0.def, the subclass's last template)
+[[object_type]]
+id = "lizard_den"
+name = "Lizard Den"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["lizardman"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 31 (CrGen1.txt row 31; dwelling_creatures 0x63D570[31] = 34; Objects.txt AVGmage0.def, the subclass's last template)
+[[object_type]]
+id = "mage_tower"
+name = "Mage Tower"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["mage"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 32 (CrGen1.txt row 32; dwelling_creatures 0x63D570[32] = 80; Objects.txt AVGmant0.def, the subclass's last template)
+[[object_type]]
+id = "manticore_lair"
+name = "Manticore Lair"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["manticore"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 33 (CrGen1.txt row 33; dwelling_creatures 0x63D570[33] = 76; Objects.txt AVGmdsa0.def, the subclass's last template)
+[[object_type]]
+id = "chapel_of_stilled_voices"
+name = "Chapel of Stilled Voices"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["medusa"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 34 (CrGen1.txt row 34; dwelling_creatures 0x63D570[34] = 78; Objects.txt AVGmino0.def, the subclass's last template)
+[[object_type]]
+id = "labyrinth"
+name = "Labyrinth"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["minotaur"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 35 (CrGen1.txt row 35; dwelling_creatures 0x63D570[35] = 8; Objects.txt AVGmonk0.def, the subclass's last template)
+[[object_type]]
+id = "monastery"
+name = "Monastery"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["monk"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 36 (CrGen1.txt row 36; dwelling_creatures 0x63D570[36] = 38; Objects.txt AVGnaga0.def, the subclass's last template)
+[[object_type]]
+id = "golden_pavilion"
+name = "Golden Pavilion"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["naga"], blocked = [[0, 0], [1, 0], [0, 1], [1, 1]], visitable = [[0, 0]] }
+
+# original class 17 subclass 37 (CrGen1.txt row 37; dwelling_creatures 0x63D570[37] = 48; Objects.txt AVGdemn0.def, the subclass's last template)
+[[object_type]]
+id = "demon_gate"
+name = "Demon Gate"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["demon"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 38 (CrGen1.txt row 38; dwelling_creatures 0x63D570[38] = 90; Objects.txt AVGogre0.def, the subclass's last template)
+[[object_type]]
+id = "ogre_fort"
+name = "Ogre Fort"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["ogre"], blocked = [[0, 0], [1, 0], [0, 1], [1, 1]], visitable = [[0, 0]] }
+
+# original class 17 subclass 39 (CrGen1.txt row 39; dwelling_creatures 0x63D570[39] = 88; Objects.txt AVGorcg0.def, the subclass's last template)
+[[object_type]]
+id = "orc_tower"
+name = "Orc Tower"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["orc"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 40 (CrGen1.txt row 40; dwelling_creatures 0x63D570[40] = 50; Objects.txt AVGpit0.def, the subclass's last template)
+[[object_type]]
+id = "hell_hole"
+name = "Hell Hole"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["pit_fiend"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 41 (CrGen1.txt row 41; dwelling_creatures 0x63D570[41] = 82; Objects.txt AVGrdrg0.def, the subclass's last template)
+[[object_type]]
+id = "dragon_cave"
+name = "Dragon Cave"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["red_dragon"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 42 (CrGen1.txt row 42; dwelling_creatures 0x63D570[42] = 92; Objects.txt AVGrocs0.def, the subclass's last template)
+[[object_type]]
+id = "cliff_nest"
+name = "Cliff Nest"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["roc"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 43 (CrGen1.txt row 43; dwelling_creatures 0x63D570[43] = 28; Objects.txt AVGgrem0.def, the subclass's last template)
+[[object_type]]
+id = "workshop"
+name = "Workshop"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["gremlin"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 44 (CrGen1.txt row 44; dwelling_creatures 0x63D570[44] = 40; Objects.txt AVGtitn0.def, the subclass's last template)
+[[object_type]]
+id = "cloud_temple"
+name = "Cloud Temple"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["giant"], blocked = [[0, 0], [1, 0], [1, 1]], visitable = [[0, 0]] }
+
+# original class 17 subclass 45 (CrGen1.txt row 45; dwelling_creatures 0x63D570[45] = 22; Objects.txt AVGtree0.def, the subclass's last template)
+[[object_type]]
+id = "dendroid_arches"
+name = "Dendroid Arches"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["dendroid_guard"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 46 (CrGen1.txt row 46; dwelling_creatures 0x63D570[46] = 70; Objects.txt AVGtrog0.def, the subclass's last template)
+[[object_type]]
+id = "warren"
+name = "Warren"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["troglodyte"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 47 (CrGen1.txt row 47; dwelling_creatures 0x63D570[47] = 115; Objects.txt AVGwatr0.def, the subclass's last template)
+[[object_type]]
+id = "water_elemental_conflux"
+name = "Water Elemental Conflux"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["water_elemental"], blocked = [[0, 0], [1, 0], [2, 0], [1, 1]], visitable = [[1, 0]] }
+
+# original class 17 subclass 48 (CrGen1.txt row 48; dwelling_creatures 0x63D570[48] = 60; Objects.txt AVGwght0.def, the subclass's last template)
+[[object_type]]
+id = "tomb_of_souls"
+name = "Tomb of Souls"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["wight"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 49 (CrGen1.txt row 49; dwelling_creatures 0x63D570[49] = 108; Objects.txt AVGwyvn0.def, the subclass's last template)
+[[object_type]]
+id = "wyvern_nest"
+name = "Wyvern Nest"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["wyvern"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 50 (CrGen1.txt row 50; dwelling_creatures 0x63D570[50] = 20; Objects.txt AVGpega0.def, the subclass's last template)
+[[object_type]]
+id = "enchanted_spring"
+name = "Enchanted Spring"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["pegasus"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 51 (CrGen1.txt row 51; dwelling_creatures 0x63D570[51] = 24; Objects.txt AVGunic0.def, the subclass's last template)
+[[object_type]]
+id = "unicorn_glade"
+name = "Unicorn Glade"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["unicorn"], blocked = [[0, 0], [1, 0], [2, 0], [1, 1], [2, 1]], visitable = [[1, 0]] }
+
+# original class 17 subclass 52 (CrGen1.txt row 52; dwelling_creatures 0x63D570[52] = 64; Objects.txt AVGlich0.def, the subclass's last template)
+[[object_type]]
+id = "mausoleum"
+name = "Mausoleum"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["lich"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 53 (CrGen1.txt row 53; dwelling_creatures 0x63D570[53] = 62; Objects.txt AVGvamp0.def, the subclass's last template)
+[[object_type]]
+id = "estate"
+name = "Estate"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["vampire"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 54 (CrGen1.txt row 54; dwelling_creatures 0x63D570[54] = 56; Objects.txt AVGskel0.def, the subclass's last template)
+[[object_type]]
+id = "cursed_temple"
+name = "Cursed Temple"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["skeleton"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 55 (CrGen1.txt row 55; dwelling_creatures 0x63D570[55] = 58; Objects.txt AVGzomb0.def, the subclass's last template)
+[[object_type]]
+id = "graveyard"
+name = "Graveyard"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["walking_dead"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 56 (CrGen1.txt row 56; dwelling_creatures 0x63D570[56] = 0; Objects.txt AVGpike0.def, the subclass's last template)
+[[object_type]]
+id = "guardhouse"
+name = "Guardhouse"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["pikeman"], blocked = [[0, 0], [1, 0], [1, 1]], visitable = [[0, 0]] }
+
+# original class 17 subclass 57 (CrGen1.txt row 57; dwelling_creatures 0x63D570[57] = 2; Objects.txt AVGcros0.def, the subclass's last template)
+[[object_type]]
+id = "archers_tower"
+name = "Archers' Tower"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["archer"], blocked = [[0, 0], [1, 0]], visitable = [[1, 0]] }
+
+# original class 17 subclass 58 (CrGen1.txt row 58; dwelling_creatures 0x63D570[58] = 6; Objects.txt AVGswor0.def, the subclass's last template)
+[[object_type]]
+id = "barracks"
+name = "Barracks"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["swordsman"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 68 (CrGen1.txt row 68; dwelling_creatures 0x63D570[68] = 24; Objects.txt AVG2uni.def, the subclass's last template)
+[[object_type]]
+id = "unicorn_glade_2"
+name = "Unicorn Glade"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["unicorn"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 20 subclass 0 (CrGen4.txt row 0; dwelling4_creatures 0x677938[0] = 112, 114, 113, 115; Objects.txt AVGelem0.def, the subclass's last template)
+[[object_type]]
+id = "elemental_conflux"
+name = "Elemental Conflux"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["air_elemental", "fire_elemental", "earth_elemental", "water_elemental"], blocked = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]], visitable = [[1, 0]] }
+
+# original class 20 subclass 1 (CrGen4.txt row 1; dwelling4_creatures 0x677938[1] = 32, 33, 116, 117; Objects.txt AVGgolm0.def, the subclass's last template)
+[[object_type]]
+id = "golem_factory"
+name = "Golem Factory"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["stone_golem", "iron_golem", "gold_golem", "diamond_golem"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# ADV-RFG-001 (E08 T93a; survey E08-dwellings.md section 7): the Refugee Camp (class 78, ObjNames.txt
+# row 78), entered, owned by nobody and never flagged: its creature drawn among the random monsters
+# of levels 1 to 7 (random_creature_by_level 0x4C92C0 with levels 0 to 6; ADV-MON-003's set), its
+# count that creature's growth, at a new game and each week.
+[[object_type]]
+id = "refugee_camp"
+name = "Refugee Camp"
+visit = "enter"
+from_above = false
+refugee_camp = { levels = [1, 7] }
+
+# ADV-DWL-005 (E08 T93a; survey E08-dwellings.md section 3): the random dwelling (classes 216 to
+# 218, ObjNames.txt row 216), entered: what it becomes is drawn when the game is built from the
+# map's faction and levels and the part's [[random_dwelling]] tables.
+[[object_type]]
+id = "random_dwelling"
+name = "Random Dwelling"
+visit = "enter"
+from_above = false
+random_dwelling = {}
+
+# ADV-DWL-005 (E08 T93a, increment 10's design note section 2): what a random dwelling of level n
+# of the faction becomes. The original derives it (random_dwellings_resolve 0x502B60 steps 3 and
+# 4; survey E08-dwellings.md section 3.2): town_creatures 0x6747B4[faction x 14 + level], the
+# unupgraded creature, then the last class-17 subclass dwelling_creatures 0x63D570 lists it at, or
+# the Golem Factory (class 20 subclass 1) for the Stone Golem; written out here as data. The
+# duplicates 7, 13, 16, 47 and 51 are never drawn (VCMI's bannedForRandomDwelling agrees).
+[[random_dwelling]]
+faction = "castle"
+dwellings = ["guardhouse", "archers_tower", "griffin_tower", "barracks", "monastery", "training_grounds", "portal_of_glory"]
+
+[[random_dwelling]]
+faction = "rampart"
+dwellings = ["centaur_stables", "dwarf_cottage", "homestead", "enchanted_spring", "dendroid_arches", "unicorn_glade_2", "dragon_cliffs"]
+
+[[random_dwelling]]
+faction = "tower"
+dwellings = ["workshop", "parapet", "golem_factory", "mage_tower", "altar_of_wishes", "golden_pavilion", "cloud_temple"]
+
+[[random_dwelling]]
+faction = "inferno"
+dwellings = ["imp_crucible", "hall_of_sins", "kennels", "demon_gate", "hell_hole", "fire_lake", "forsaken_palace"]
+
+[[random_dwelling]]
+faction = "necropolis"
+dwellings = ["cursed_temple", "graveyard", "tomb_of_souls", "estate", "mausoleum", "hall_of_darkness", "dragon_vault"]
+
+[[random_dwelling]]
+faction = "dungeon"
+dwellings = ["warren", "harpy_loft", "pillar_of_eyes", "chapel_of_stilled_voices", "labyrinth", "manticore_lair", "dragon_cave"]
+
+[[random_dwelling]]
+faction = "stronghold"
+dwellings = ["goblin_barracks", "wolf_pen", "orc_tower", "ogre_fort", "cliff_nest", "cyclops_cave", "behemoth_crag"]
+
+[[random_dwelling]]
+faction = "fortress"
+dwellings = ["gnoll_hut", "lizard_den", "serpent_fly_hive", "basilisk_pit", "gorgon_lair", "wyvern_nest", "hydra_pond"]

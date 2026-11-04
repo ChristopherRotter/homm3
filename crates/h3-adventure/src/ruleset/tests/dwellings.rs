@@ -203,7 +203,7 @@ fn table_error(level: u8, reason: &'static str) -> AdventureCompileError {
     }
 }
 
-// covers: ADV-OBJ-002
+// covers: ADV-OBJ-002, ADV-DWL-001, ADV-DWL-005, ADV-RFG-001
 #[test]
 fn compiles_the_dwellings() {
     let core = dwelling_core();
@@ -310,7 +310,7 @@ fn compiles_the_dwellings() {
     assert_eq!(part.random_dwelling(castle).unwrap()[0], fen_house);
 }
 
-// covers: ADV-OBJ-002
+// covers: ADV-OBJ-002, ADV-DWL-001, ADV-RFG-001
 #[test]
 fn the_dwellings_are_checked() {
     let kind = |k: &str, kind: ObjectKindDef| {
@@ -401,7 +401,7 @@ fn the_dwellings_are_checked() {
     );
 }
 
-// covers: ADV-OBJ-002
+// covers: ADV-OBJ-002, ADV-DWL-001
 #[test]
 fn the_guards_and_the_dwellings_parameters_are_checked() {
     // A dwelling needs the parameters, which need the monsters'.
@@ -482,7 +482,7 @@ fn the_guards_and_the_dwellings_parameters_are_checked() {
     );
 }
 
-// covers: ADV-OBJ-002
+// covers: ADV-OBJ-002, ADV-DWL-005
 #[test]
 fn the_random_dwellings_tables_are_checked() {
     let table = |f: fn(&mut RandomDwellingDef)| {

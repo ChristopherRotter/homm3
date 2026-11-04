@@ -388,10 +388,11 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     }
     // E08 T61a: increment 7's 31 types after them; E08 T72: the sea's four pickups and the hole;
     // E08 T83a: increment 9's thirteen (seven mines, the abandoned mine, the Lighthouse, the
-    // Shipyard and the three weekly objects).
+    // Shipyard and the three weekly objects); E08 T93a: increment 10's 64 (the 62 RoE dwellings,
+    // the Refugee Camp, the random dwelling).
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64
     );
     assert!(part.object_type_by_key("base:border_gate_red").is_none());
 }
@@ -956,7 +957,8 @@ fn the_expansions_add_the_border_gates() {
     let (sod_core, sod) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
     assert_ne!(ab.content_hash(), base.content_hash());
     assert_ne!(sod.content_hash(), ab.content_hash());
-    assert_eq!(ab.object_types().len(), base.object_types().len() + 8);
+    // AB's eight Border Gates and, since E08 T93a, its twenty dwellings.
+    assert_eq!(ab.object_types().len(), base.object_types().len() + 8 + 20);
     assert_eq!(
         ab.object_types()[..base.object_types().len()],
         *base.object_types()
@@ -2174,4 +2176,160 @@ fn errors_explain_themselves() {
         AdventurePackError::from(key.clone()),
         AdventurePackError::Key(key)
     );
+}
+
+// covers: ADV-DWL-001, ADV-DWL-005, ADV-RFG-001
+#[test]
+fn the_packs_type_the_dwellings_of_increment_10() {
+    // E08 T93a (increment 10's design note §1 to §3): base's 62 RoE dwellings, the camp, the
+    // random dwelling, the parameters and the eight RoE tables; ab's twenty and Conflux's table.
+    let (core, base) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    let (ab_core, ab) = compile(&ORIGINAL_PACKS[..2], PROFILE).unwrap();
+    let dwellings = |part: &AdventureRuleset| {
+        part.object_types()
+            .iter()
+            .filter(|t| matches!(t.kind, ObjectKind::Dwelling { .. }))
+            .count()
+    };
+    assert_eq!((dwellings(&base), dwellings(&ab)), (62, 82));
+    let ty = |key: &str| ab.object_type(ab.object_type_by_key(key).unwrap()).unwrap();
+    let c = |key: &str| ab_core.creature_by_key(key).unwrap();
+    let dwelling = |key: &str| match &ty(key).kind {
+        ObjectKind::Dwelling {
+            creatures,
+            blocked,
+            visitable,
+            guards,
+            shift,
+        } => (
+            creatures.clone(),
+            blocked.bits(),
+            visitable.bits(),
+            guards.clone(),
+            *shift,
+        ),
+        other => panic!("{key}: {other:?}"),
+    };
+    // A level-1 dwelling: no guards; the Pikeman's template blocks the cell above the left one.
+    assert_eq!(
+        dwelling("base:guardhouse"),
+        (vec![c("base:pikeman")], 0b11 | 1 << 9, 1, vec![], 0)
+    );
+    assert_eq!(ty("base:guardhouse").name, "Guardhouse");
+    // Guards: three times the growth of each creature of level 5 or more, in creature order.
+    assert_eq!(
+        dwelling("base:dragon_cliffs").3,
+        [(c("base:green_dragon"), 3)]
+    );
+    assert_eq!(
+        dwelling("base:golem_factory"),
+        (
+            ["stone_golem", "iron_golem", "gold_golem", "diamond_golem"]
+                .map(|k| c(&format!("base:{k}")))
+                .to_vec(),
+            0b11,
+            1,
+            vec![(c("base:gold_golem"), 9), (c("base:diamond_golem"), 6)],
+            0
+        )
+    );
+    let conflux = dwelling("base:elemental_conflux");
+    assert_eq!(
+        conflux.0,
+        ["air", "fire", "earth", "water"].map(|k| c(&format!("base:{k}_elemental")))
+    );
+    assert_eq!(conflux.3, [(c("base:earth_elemental"), 12)]);
+    assert_eq!(dwelling("ab:pyre").3, [(c("ab:firebird"), 6)]);
+    // The Angel Portal: its anchor free, its entrance one left; the only shift of the 82.
+    assert_eq!(
+        dwelling("base:portal_of_glory"),
+        (
+            vec![c("base:angel")],
+            0b110,
+            0b10,
+            vec![(c("base:angel"), 3)],
+            1
+        )
+    );
+    let shifts = ab
+        .object_types()
+        .iter()
+        .filter(|t| matches!(t.kind, ObjectKind::Dwelling { shift: 1.., .. }))
+        .map(|t| t.key.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(shifts, ["base:portal_of_glory"]);
+    // AB's Altars offer base creatures; the duplicate Unicorn Glade is base's.
+    assert_eq!(dwelling("ab:altar_of_air").0, [c("base:air_elemental")]);
+    assert_eq!(dwelling("base:unicorn_glade_2").0, [c("base:unicorn")]);
+    for t in ab.object_types().iter().filter(|t| {
+        matches!(
+            t.kind,
+            ObjectKind::Dwelling { .. }
+                | ObjectKind::RandomDwelling
+                | ObjectKind::RefugeeCamp { .. }
+        )
+    }) {
+        assert_eq!((t.visit, t.from_above), (Visit::Enter, false), "{}", t.key);
+        assert_eq!(
+            t.kind.ownable(),
+            !matches!(t.kind, ObjectKind::RefugeeCamp { .. })
+        );
+    }
+    assert_eq!(ty("base:random_dwelling").kind, ObjectKind::RandomDwelling);
+    assert_eq!(
+        ty("base:refugee_camp").kind,
+        ObjectKind::RefugeeCamp { levels: [1, 7] }
+    );
+    let params = base.params().dwellings().unwrap();
+    assert_eq!(
+        (
+            params.guard_level,
+            params.guard_factor.get(),
+            params.free_level
+        ),
+        (5, 3, 1)
+    );
+    // The tables: the eight RoE factions in base, Conflux's in ab; the Tower's level 3 the Golem
+    // Factory, Rampart's level 6 the second Unicorn Glade (the original's last listing).
+    assert_eq!(base.random_dwellings().len(), 8);
+    assert_eq!(ab.random_dwellings().len(), 9);
+    let row = |faction: &str| {
+        ab.random_dwelling(ab_core.faction_by_key(faction).unwrap())
+            .unwrap()
+            .map(|id| ab.object_type(id).unwrap().key.as_str().to_owned())
+    };
+    assert_eq!(row("base:tower")[2], "base:golem_factory");
+    assert_eq!(row("base:rampart")[5], "base:unicorn_glade_2");
+    assert_eq!(
+        row("ab:conflux"),
+        [
+            "ab:magic_lantern",
+            "ab:altar_of_air",
+            "ab:altar_of_water",
+            "ab:altar_of_fire",
+            "ab:altar_of_earth",
+            "ab:altar_of_thought",
+            "ab:pyre",
+        ]
+    );
+    // 63 creatures, 63 outcomes; the duplicates 7, 13, 16, 47 and 51 never drawn.
+    let mut outcomes = ab
+        .random_dwellings()
+        .iter()
+        .flat_map(|(_, row)| *row)
+        .collect::<Vec<_>>();
+    outcomes.sort_unstable();
+    outcomes.dedup();
+    assert_eq!(outcomes.len(), 63);
+    for key in [
+        "air_elemental_conflux",
+        "earth_elemental_conflux",
+        "fire_elemental_conflux",
+        "water_elemental_conflux",
+        "unicorn_glade",
+    ] {
+        let id = ab.object_type_by_key(&format!("base:{key}")).unwrap();
+        assert!(!outcomes.contains(&id), "{key}");
+    }
+    assert_eq!(core.factions().len(), 8);
 }
