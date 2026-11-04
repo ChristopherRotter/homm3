@@ -20,7 +20,9 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
-use h3_content::{ContentKey, CreatureTypeId, PackManifest, ResourceId, Ruleset, TerrainId};
+use h3_content::{
+    ContentKey, CreatureTypeId, FactionId, PackManifest, ResourceId, Ruleset, TerrainId,
+};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
@@ -35,7 +37,10 @@ pub use objects::{
     KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
     ObjectTypeId, Pickup, PickupDef, Visit,
 };
-use objects::{ObjectTables, Scope, check_object_types, compile_object_types, random_monsters};
+use objects::{
+    ObjectTables, Scope, check_object_types, compile_object_types, compile_random_dwelling,
+    derive_dwelling_guards, random_monsters,
+};
 pub(crate) use rewards::Resources;
 pub use rewards::{
     Chest, ChestDef, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, OnceBonus,
@@ -55,6 +60,11 @@ pub const MAX_MONSTER_COUNT: u32 = 0xFFF;
 /// The highest bound a part may set on a game's players: the original's eight colours, and the
 /// players an event's [`crate::Viewers`] holds (E08 T8a).
 pub const MAX_PLAYERS: u8 = 8;
+
+/// The levels of a faction's dwellings (E08 T93a, increment 10's design note §2): a random
+/// dwelling's table has a type for each, a Refugee Camp's levels and the dwellings' parameters'
+/// levels lie within them (the original's seven).
+pub const DWELLING_LEVELS: usize = 7;
 
 /// How a hero may cross a terrain (ADV-MOV-007), with the straight cost of a step where it may
 /// (ADV-MOV-003).
@@ -179,6 +189,34 @@ pub struct AdventureParamsDef {
     /// The months' kinds and their monsters (GAM-CAL-003, ADV-MON-014, E08 T83a; read by the
     /// month's step from T85a); none: every month is a normal one.
     pub months: Option<MonthParamsDef>,
+    /// The dwellings' parameters (E08 T93a; ADV-DWL-001): required when the part has a type of
+    /// kind [`ObjectKindDef::Dwelling`], and they need [`Self::monsters`].
+    pub dwellings: Option<DwellingParams>,
+}
+
+/// The dwellings' parameters (E08 T93a, increment 10's design note §2; ADV-DWL-001): the
+/// original's numbers (§2.2, §4.4) as data (ADR-0006).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DwellingParams {
+    /// A dwelling's creature of this level or more guards it (5), from 1 to
+    /// [`DWELLING_LEVELS`].
+    pub guard_level: u8,
+    /// Such a creature's guards are this times its growth (3).
+    pub guard_factor: NonZeroU16,
+    /// A dwelling's creature of this level or less joins its owner's visitor free (1; read from
+    /// T95), at most [`DWELLING_LEVELS`] (0: none).
+    pub free_level: u8,
+}
+
+/// A faction's random dwelling table in a pack (E08 T93a, increment 10's design note §2;
+/// ADV-DWL-005): what a random dwelling of each level becomes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RandomDwellingDef {
+    /// A core faction; one table per faction in the whole part.
+    pub faction: ContentKey,
+    /// The type a random dwelling of level n becomes at index n - 1: a dwelling with a creature
+    /// of the faction and level that is no creature's upgrade.
+    pub dwellings: [ContentKey; DWELLING_LEVELS],
 }
 
 /// The calendar (GAM-CAL-002, E08 T83a; increment 9's design note §5): a week's days and a month's
@@ -345,6 +383,8 @@ pub struct AdventurePack {
     pub not_random_monsters: Vec<ContentKey>,
     /// Terrain walkers (E08 T40, ADV-MOV-003): Nomads' sand priced as dirt.
     pub terrain_walkers: Vec<TerrainWalkerDef>,
+    /// The random dwellings' tables by faction (E08 T93a, ADV-DWL-005).
+    pub random_dwellings: Vec<RandomDwellingDef>,
 }
 
 /// A terrain walker in a pack (E08 T40, ADV-MOV-003): an army with a stack of `creature` counts
@@ -385,6 +425,7 @@ impl AdventurePack {
             starting_resources: Vec::new(),
             not_random_monsters: Vec::new(),
             terrain_walkers: Vec::new(),
+            random_dwellings: Vec::new(),
         }
     }
 }
@@ -448,6 +489,7 @@ pub struct AdventureParams {
     flag_radius: u8,
     calendar: CalendarParams,
     months: Option<MonthParams>,
+    dwellings: Option<DwellingParams>,
 }
 
 /// The compiled [`BattleTerrainsDef`].
@@ -572,6 +614,12 @@ impl AdventureParams {
     pub const fn months(&self) -> Option<&MonthParams> {
         self.months.as_ref()
     }
+
+    /// The dwellings' parameters, if the packs give them (E08 T93a; ADV-DWL-001): given whenever
+    /// the part has a dwelling.
+    pub const fn dwellings(&self) -> Option<DwellingParams> {
+        self.dwellings
+    }
 }
 
 /// Why the adventure packs could not be compiled into an [`AdventureRuleset`].
@@ -614,6 +662,8 @@ pub enum AdventureCompileError {
     UnknownCreature(String),
     /// A secondary skill the core ruleset does not define (E08 T61a).
     UnknownSkill(String),
+    /// A faction the core ruleset does not define (E08 T93a).
+    UnknownFaction(String),
     /// An object type no pack defines.
     UnknownObjectType(String),
     /// An object type's parameters are invalid.
@@ -653,6 +703,17 @@ pub enum AdventureCompileError {
     /// More entries of a kind (`road`, `river`, `object_type`, `difficulty`) than handles or
     /// indices can address.
     TooManyEntries(&'static str),
+    /// A second random dwelling table names this faction (E08 T93a).
+    DuplicateRandomDwelling(String),
+    /// A random dwelling table's type of a level does not fit it (E08 T93a, ADV-DWL-005).
+    RandomDwelling {
+        /// The table's faction.
+        faction: String,
+        /// The level, from 1.
+        level: u8,
+        /// Why.
+        reason: &'static str,
+    },
 }
 
 impl fmt::Display for AdventureCompileError {
@@ -680,6 +741,7 @@ impl fmt::Display for AdventureCompileError {
             Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
             Self::UnknownSkill(k) => write!(f, "unknown skill `{k}`"),
+            Self::UnknownFaction(k) => write!(f, "unknown faction `{k}`"),
             Self::UnknownResource(k) => write!(f, "unknown resource `{k}`"),
             Self::UnknownObjectType(k) => write!(f, "unknown object type `{k}`"),
             Self::InvalidObjectType { key, reason } => {
@@ -712,6 +774,17 @@ impl fmt::Display for AdventureCompileError {
             ),
             Self::InvalidDifficulty { row, reason } => write!(f, "difficulty {row}: {reason}"),
             Self::TooManyEntries(kind) => write!(f, "too many {kind} entries"),
+            Self::DuplicateRandomDwelling(k) => {
+                write!(f, "faction `{k}` has a second random dwelling table")
+            }
+            Self::RandomDwelling {
+                faction,
+                level,
+                reason,
+            } => write!(
+                f,
+                "random dwelling table of `{faction}`, level {level}: {reason}"
+            ),
         }
     }
 }
@@ -731,6 +804,7 @@ pub struct AdventureRuleset {
     starting_resources: Vec<StartingResources>,
     not_random_monsters: BTreeSet<CreatureTypeId>,
     terrain_walkers: Vec<TerrainWalker>,
+    random_dwellings: Vec<(FactionId, [ObjectTypeId; DWELLING_LEVELS])>,
     hash: u64,
 }
 
@@ -748,6 +822,7 @@ struct Tables {
     starting_resources: Option<Vec<StartingResources>>,
     not_random_monsters: BTreeSet<CreatureTypeId>,
     terrain_walkers: Vec<TerrainWalker>,
+    random_dwellings: BTreeMap<FactionId, [ObjectTypeId; DWELLING_LEVELS]>,
 }
 
 /// The parameters with the battle terrains, the monsters' price resource and (E08 T83a) the
@@ -794,6 +869,13 @@ impl AdventureRuleset {
             .map(|months| month_monster(&tables.objects, &months.monster))
             .transpose()?;
         let params = validate_params(resolved, month_monster)?;
+        derive_dwelling_guards(
+            core,
+            &mut tables.objects.types,
+            params.dwellings(),
+            params.army_slots(),
+            params.max_stack_count(),
+        )?;
         check_object_types(
             core,
             &tables.objects.types,
@@ -817,6 +899,7 @@ impl AdventureRuleset {
             starting_resources,
             not_random_monsters: tables.not_random_monsters,
             terrain_walkers: tables.terrain_walkers,
+            random_dwellings: tables.random_dwellings.into_iter().collect(),
             hash: 0,
         };
         part.hash = hash_of(&part);
@@ -921,6 +1004,20 @@ impl AdventureRuleset {
         })
     }
 
+    /// The types a random dwelling of `faction` becomes, by level from 1 at index 0 (E08 T93a,
+    /// ADV-DWL-005): the faction's table, if a pack gives one.
+    pub fn random_dwelling(&self, faction: FactionId) -> Option<&[ObjectTypeId; DWELLING_LEVELS]> {
+        self.random_dwellings
+            .iter()
+            .find(|(f, _)| *f == faction)
+            .map(|(_, row)| row)
+    }
+
+    /// The random dwellings' tables, by faction in the core's order (E08 T93a, ADV-DWL-005).
+    pub fn random_dwellings(&self) -> &[(FactionId, [ObjectTypeId; DWELLING_LEVELS])] {
+        &self.random_dwellings
+    }
+
     /// The adventure parameters.
     pub const fn params(&self) -> &AdventureParams {
         &self.params
@@ -950,8 +1047,9 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v15 (E08 T83b1; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
-    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's, v11 T50's, v12 T61a's, v13 T72's, v14 T83a's):
+    /// Encoding v16 (E08 T93a; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
+    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's, v11 T50's, v12 T61a's, v13 T72's, v14 T83a's,
+    /// v15 T83b1's):
     /// version; the terrains in the
     /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable; since v9 the
     /// costs by Pathfinding level, 0 for none, else 1 and the three costs); the road kinds
@@ -975,7 +1073,10 @@ impl CanonicalHash for AdventureRuleset {
     /// resource, and last the calendar (a week's days, a month's weeks) and the months (0 for
     /// none, else 1, the three weights, the creatures as length and handles, the monster's type,
     /// the spawn's chance, factor and aggression bounds); since v15 (E08 T83b1) last the flag
-    /// radius. The core's hash is not part of it: replays record both.
+    /// radius; since v16 (E08 T93a) increment 10's three kinds in [`ObjectType`]'s, then last the
+    /// dwellings' parameters (0 for none, else 1, the guard level, the guard factor, the free
+    /// level) and the random dwellings' tables (their number, then each one's faction and its
+    /// seven types, by faction). The core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -1086,6 +1187,20 @@ impl CanonicalHash for AdventureRuleset {
             }
         }
         h.write_u8(self.params.flag_radius);
+        match self.params.dwellings {
+            None => h.write_u8(0),
+            Some(dwellings) => {
+                h.write_u8(1);
+                h.write_u8(dwellings.guard_level);
+                h.write_u16(dwellings.guard_factor.get());
+                h.write_u8(dwellings.free_level);
+            }
+        }
+        h.write_len(self.random_dwellings.len());
+        for (faction, row) in &self.random_dwellings {
+            faction.hash_into(h);
+            row.iter().for_each(|id| id.hash_into(h));
+        }
     }
 }
 
@@ -1178,6 +1293,14 @@ fn compile_pack(
         }
     }
     compile_object_types(core, id, closure, &pack.object_types, &mut tables.objects)?;
+    let scope = Scope {
+        core,
+        pack: id,
+        closure,
+    };
+    for def in &pack.random_dwellings {
+        compile_random_dwelling(&scope, &tables.objects, def, &mut tables.random_dwellings)?;
+    }
     for key in &pack.not_random_monsters {
         if !closure.contains(key.pack()) {
             return Err(AdventureCompileError::ReferenceOutsideDependencies {
@@ -1406,10 +1529,15 @@ fn validate_params(
         Some("sea_ground is not 1 <= numerator <= denominator")
     } else if let Some(reason) = def.monsters.as_ref().and_then(check_monster_params) {
         Some(reason)
-    } else if let Some(months) = &def.months {
-        check_month_params(months, def.monsters.is_some())
+    } else if let Some(reason) = def
+        .months
+        .as_ref()
+        .and_then(|months| check_month_params(months, def.monsters.is_some()))
+    {
+        Some(reason)
     } else {
-        None
+        def.dwellings
+            .and_then(|dwellings| check_dwelling_params(dwellings, def.monsters.is_some()))
     };
     match reason {
         Some(reason) => Err(AdventureCompileError::InvalidParams(reason)),
@@ -1438,6 +1566,7 @@ fn validate_params(
             sea_ground: def.sea_ground,
             flag_radius: def.flag_radius,
             calendar: def.calendar,
+            dwellings: def.dwellings,
             months: def
                 .months
                 .zip(month_monster)
@@ -1468,6 +1597,21 @@ fn check_month_params(def: &MonthParamsDef, monsters: bool) -> Option<&'static s
         Some("months.spawn_aggression's low bound is above its high one")
     } else if !monsters {
         Some("months without the monsters' parameters")
+    } else {
+        None
+    }
+}
+
+/// Why the dwellings' parameters are invalid, if they are (E08 T93a): a guard level outside 1 to
+/// [`DWELLING_LEVELS`], a free level above it, or dwellings without the monsters' parameters (the
+/// guards' size word, increment 10's design note §10).
+fn check_dwelling_params(def: DwellingParams, monsters: bool) -> Option<&'static str> {
+    if !(1..=DWELLING_LEVELS).contains(&usize::from(def.guard_level)) {
+        Some("dwellings.guard_level is not 1 to DWELLING_LEVELS")
+    } else if usize::from(def.free_level) > DWELLING_LEVELS {
+        Some("dwellings.free_level is above DWELLING_LEVELS")
+    } else if !monsters {
+        Some("dwellings without the monsters' parameters")
     } else {
         None
     }

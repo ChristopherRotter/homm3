@@ -70,14 +70,14 @@ pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef, Find, FindContent,
-    FindContentDef, FindDef, Gift, GiftDef, Gives, KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN,
-    MAX_LAND_POINTS, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS, MonsterParams,
-    MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind, ObjectKindDef, ObjectType,
-    ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid, PyramidDef,
-    RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
-    StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef,
-    Turn, TurnDef, Visit,
+    BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef, DWELLING_LEVELS,
+    DwellingParams, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, KEY_COLOURS,
+    MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS,
+    MonsterParams, MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind, ObjectKindDef,
+    ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid,
+    PyramidDef, RandomDwellingDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind,
+    StartingResources, StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker,
+    TerrainWalkerDef, Turn, TurnDef, Visit,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
@@ -129,5 +129,5 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 19;
 /// a hole), the sea points, the sea ground's share and the battle terrains at sea. v14 (E08 T83a):
 /// increment 9's seven kinds (mines, abandoned mines, Lighthouses, Shipyards, Windmills, Water
 /// Wheels, Gardens), the monsters' growth, the calendar and the months. v15 (E08 T83b1): the flag
-/// radius.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 15;
+/// radius. v16 (E08 T93a): the dwellings' kinds, `[params.dwellings]`, `[[random_dwelling]]`.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 16;

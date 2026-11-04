@@ -80,3 +80,181 @@ name = "Border gate (black)"
 visit = "neighbour"
 from_above = true
 key_gate = { key = 7 }
+
+# E08 T93a (increment 10's design note sections 1 to 3; survey E08-dwellings.md sections 2, 3):
+# the creature dwellings AB added (ADV-DWL-001; class 17 subclasses 59 to 67 and 69 to 79):
+# Conflux's, the special ones (62 to 67), the four Altars (69 to 72, base creatures in an AB
+# object), the neutral ones (73 to 79). Ownable and entered as base's. Creatures:
+# dwelling_creatures 0x63D570[subclass] (load_dwelling_body 0x4FED40, dwelling_record_init
+# 0x4B8860; survey section 2.2). Footprint: the subclass's last template in Objects.txt
+# (H3ab_bmp; random_dwellings_resolve 0x502B60 step 5, survey section 3.2), blocked the
+# passability mask's '0' cells, visitable the visitability mask's '1' cells, as [columns left,
+# rows up] of the anchor. Names: CrGen1.txt by subclass.
+
+# original class 17 subclass 59 (CrGen1.txt row 59; dwelling_creatures 0x63D570[59] = 118; Objects.txt AVGpixie.def, the subclass's last template)
+[[object_type]]
+id = "magic_lantern"
+name = "Magic Lantern"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["pixie"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 60 (CrGen1.txt row 60; dwelling_creatures 0x63D570[60] = 120; Objects.txt AVGelp.def, the subclass's last template)
+[[object_type]]
+id = "altar_of_thought"
+name = "Altar of Thought"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["psychic_elemental"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 61 (CrGen1.txt row 61; dwelling_creatures 0x63D570[61] = 130; Objects.txt AVGfbrd.def, the subclass's last template)
+[[object_type]]
+id = "pyre"
+name = "Pyre"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["firebird"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 62 (CrGen1.txt row 62; dwelling_creatures 0x63D570[62] = 132; Objects.txt AVGazur.def, the subclass's last template)
+[[object_type]]
+id = "frozen_cliffs"
+name = "Frozen Cliffs"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["azure_dragon"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 63 (CrGen1.txt row 63; dwelling_creatures 0x63D570[63] = 133; Objects.txt AVGcdrg.def, the subclass's last template)
+[[object_type]]
+id = "crystal_cavern"
+name = "Crystal Cavern"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["crystal_dragon"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 64 (CrGen1.txt row 64; dwelling_creatures 0x63D570[64] = 134; Objects.txt AVGfdrg.def, the subclass's last template)
+[[object_type]]
+id = "magic_forest"
+name = "Magic Forest"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["faerie_dragon"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 65 (CrGen1.txt row 65; dwelling_creatures 0x63D570[65] = 135; Objects.txt AVGrust.def, the subclass's last template)
+[[object_type]]
+id = "sulfurous_lair"
+name = "Sulfurous Lair"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["rust_dragon"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 66 (CrGen1.txt row 66; dwelling_creatures 0x63D570[66] = 136; Objects.txt AVGench.def, the subclass's last template)
+[[object_type]]
+id = "enchanters_hollow"
+name = "Enchanter's Hollow"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["enchanter"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 67 (CrGen1.txt row 67; dwelling_creatures 0x63D570[67] = 137; Objects.txt AVGshrp.def, the subclass's last template)
+[[object_type]]
+id = "treetop_tower"
+name = "Treetop Tower"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["sharpshooter"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 69 (CrGen1.txt row 69; dwelling_creatures 0x63D570[69] = 112; Objects.txt AVG2ela.def, the subclass's last template)
+[[object_type]]
+id = "altar_of_air"
+name = "Altar of Air"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["base:air_elemental"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 70 (CrGen1.txt row 70; dwelling_creatures 0x63D570[70] = 113; Objects.txt AVG2ele.def, the subclass's last template)
+[[object_type]]
+id = "altar_of_earth"
+name = "Altar of Earth"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["base:earth_elemental"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 71 (CrGen1.txt row 71; dwelling_creatures 0x63D570[71] = 114; Objects.txt AVG2elf.def, the subclass's last template)
+[[object_type]]
+id = "altar_of_fire"
+name = "Altar of Fire"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["base:fire_elemental"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 72 (CrGen1.txt row 72; dwelling_creatures 0x63D570[72] = 115; Objects.txt AVG2elw.def, the subclass's last template)
+[[object_type]]
+id = "altar_of_water"
+name = "Altar of Water"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["base:water_elemental"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 73 (CrGen1.txt row 73; dwelling_creatures 0x63D570[73] = 138; Objects.txt AVGhalf.def, the subclass's last template)
+[[object_type]]
+id = "thatched_hut"
+name = "Thatched Hut"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["halfling"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 74 (CrGen1.txt row 74; dwelling_creatures 0x63D570[74] = 139; Objects.txt AVGpeas.def, the subclass's last template)
+[[object_type]]
+id = "hovel"
+name = "Hovel"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["peasant"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 75 (CrGen1.txt row 75; dwelling_creatures 0x63D570[75] = 140; Objects.txt AVGboar.def, the subclass's last template)
+[[object_type]]
+id = "boar_glen"
+name = "Boar Glen"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["boar"], blocked = [[0, 0], [1, 0], [0, 1], [1, 1]], visitable = [[0, 0]] }
+
+# original class 17 subclass 76 (CrGen1.txt row 76; dwelling_creatures 0x63D570[76] = 141; Objects.txt AVGmumy.def, the subclass's last template)
+[[object_type]]
+id = "tomb_of_curses"
+name = "Tomb of Curses"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["mummy"], blocked = [[0, 0], [1, 0], [0, 1], [1, 1]], visitable = [[1, 0]] }
+
+# original class 17 subclass 77 (CrGen1.txt row 77; dwelling_creatures 0x63D570[77] = 142; Objects.txt AVGnomd.def, the subclass's last template)
+[[object_type]]
+id = "nomad_tent"
+name = "Nomad Tent"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["nomad"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 78 (CrGen1.txt row 78; dwelling_creatures 0x63D570[78] = 143; Objects.txt AVGrog.def, the subclass's last template)
+[[object_type]]
+id = "rogue_cavern"
+name = "Rogue Cavern"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["rogue"], blocked = [[0, 0], [1, 0]], visitable = [[0, 0]] }
+
+# original class 17 subclass 79 (CrGen1.txt row 79; dwelling_creatures 0x63D570[79] = 144; Objects.txt AVGtrll.def, the subclass's last template)
+[[object_type]]
+id = "troll_bridge"
+name = "Troll Bridge"
+visit = "enter"
+from_above = false
+dwelling = { creatures = ["troll"], blocked = [[0, 0], [1, 0], [1, 1]], visitable = [[0, 0]] }
+
+# ADV-DWL-005 (E08 T93a, increment 10's design note section 2): Conflux's random-dwelling table,
+# derived as base's (random_dwellings_resolve 0x502B60 steps 3 and 4; town_creatures
+# 0x6747B4[8 x 14 + level], then the last class-17 subclass dwelling_creatures 0x63D570 lists the
+# creature at: the Altars 69 to 72, not the RoE duplicates 7, 13, 16, 47).
+[[random_dwelling]]
+faction = "conflux"
+dwellings = ["magic_lantern", "altar_of_air", "altar_of_water", "altar_of_fire", "altar_of_earth", "altar_of_thought", "pyre"]

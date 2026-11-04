@@ -2939,3 +2939,98 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-9b.md E9-8 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-30; survey E08-economy.md section 19): M1 gave 500 gold; each visitor's own Garden bit; full again after the week's reset"
   retrieved  = "2026-10-30"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-DWL-001"
+title    = "Creature dwellings: the kinds of classes 17 and 20, their creatures, footprints and names"
+context  = "adventure"
+status   = "implemented"
+summary  = "A creature dwelling is content: an object type of the kind `dwelling` with one to four distinct core creatures in the original's record order (class 17 one creature by subclass, the 80 of `dwelling_creatures`; class 20 four: the Elemental Conflux's Air, Fire, Earth and Water Elementals, the Golem Factory's Stone, Iron, Gold and Diamond Golems), no war machine; its footprint, the blocked and visitable cells of its class and subclass's last template (the import's masks, the entrance blocked and visitable), which a random dwelling becomes (ADV-DWL-005); its name the type's (`CrGen1.txt`, `CrGen4.txt` by subclass). Ownable and entered, not visitable from above. Derived when the part is compiled: its full guards, for each creature of `guard_level` (5) or more a stack of `guard_factor` (3) times its growth, one stack each in creature order (paid out by ADV-DWL-002), and its shift, the free bottom-row cells left of the anchor (only the Angel Portal's is 1). The `base` pack holds the RoE objects (subclasses 0 to 58 and 68, both class-20 kinds), `ab` the objects AB added (59 to 67, 69 to 79). E08 T93a (increment 10's design note §1 to §3; adventure ruleset part v16): `ObjectKind::Dwelling`, `[params.dwellings]`. The import of classes 17 and 20 and its refusals (A-36): T93b."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T88a; survey E08-dwellings.md sections 2.1 to 2.3): load_dwelling_body 0x4FED40 and dwelling_record_init 0x4B8860 give class 17 one creature, dwelling_creatures 0x63D570[subclass] (80 entries), class 20 four, dwelling4_creatures 0x677938[subclass] (0: 112, 114, 113, 115; 1: 32, 33, 116, 117); dwelling_week_refill 0x4B8A60 puts 3 x growth of each creature of zero-based level 4 or more as the guards, one stack each in creature order; Objects.txt (H3ab_bmp.lod) the templates, CrGen1.txt and CrGen4.txt the names"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-dwellings.md sections 2.2 and 10: dwellings.json's creatures by subclass (the Conflux's and the Factory's four), randomizeObject's guards 3 x growth of each creature of level 5 or more"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/dwellings.json"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Creature dwelling (survey E08-dwellings.md section 2.2): dwellings of level 5, 6 and 7 guarded by growth times three of their creature"
+  url        = "https://heroes.thelazy.net/index.php/Creature_dwelling"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10a.md E10-1 (the capture harness, SoD 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): the records' creatures in order (the Golem Factory's Stone, Iron, Gold, Diamond; the Conflux's Air, Fire, Earth, Water) and their guards 3 Green Dragons, 9 Gold and 6 Diamond Golems, 12 Earth Elementals, one stack each in creature order"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-DWL-005"
+title    = "Random dwellings: the faction's table and what one becomes"
+context  = "adventure"
+status   = "implemented"
+summary  = "A random dwelling (216 to 218) becomes, when the game is built, the dwelling of a faction drawn uniformly among its set (218: its subclass) and a level drawn uniformly in its range (217: its subclass): the part's table `[[random_dwelling]]` names for each faction the seven dwelling types a random dwelling of level 1 to 7 becomes, each one with a creature of that faction and level that is no creature's upgrade (the original's `town_creatures[faction x 14 + level]`, the unupgraded one); the type is the last class-17 subclass listing that creature, the Golem Factory for the Stone Golem, so the duplicates 7, 13, 16, 47 and 51 are never drawn (62 outcomes for the 63 creatures). The object takes the type, its footprint as its masks and its anchor moved right by the type's shift (the Angel Portal's 1). E08 T93a (increment 10's design note §2, §3; adventure ruleset part v16): the kind `random_dwelling`, the table and its checks, the base pack's eight RoE factions and ab's Conflux, a test of the table against the original's derivation. The import's bounds (A-34 to A-36) and those tied to a town (ADV-STUB-13): T93b; the draw: T94."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T88a; survey E08-dwellings.md sections 3.1, 3.2): random_dwellings_resolve 0x502B60: the faction (the set's random_allowed_faction 0x5132D0, uniform over its set bits), the level random_between(lowest, highest), the creature town_creatures 0x6747B4[faction x 14 + level], the dwelling class 20 subclass 1 for the Stone Golem, else class 17 with the last subclass dwelling_creatures 0x63D570 lists it at; object_set_class_template 0x505F20 that class's last template of the subclass, the anchor's column moved by the new template's free bottom-row cells left of it (0x502CD0 to 0x502D44)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-dwellings.md section 3.2: pickRandomObject draws the same faction, level and creature; the dwelling is the first not bannedForRandomDwelling producing it, dwellings.json banning exactly 7, 13, 16, 47, 51 and the Elemental Conflux, so the same subclasses"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGDwelling.cpp"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10b.md E10-7 (the capture harness, SoD 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a 216 of {Castle} level 7 became class 17 subclass 8 (the Angel Portal) one column right of its anchor, its entrance on the old anchor; a 217 of {Tower} level 3 became class 20 subclass 1 (the Golem Factory) with its four golems and guards"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-RFG-001"
+title    = "The Refugee Camp"
+context  = "adventure"
+status   = "implemented"
+summary  = "The Refugee Camp (class 78) holds a creature drawn, when the game is built and at each week's start, uniformly among the random monsters of levels 1 to 7 (ADV-MON-003's set: no war machine, not the part's `not_random_monsters`, the ruleset's packs' creatures), its count that creature's growth; any player's hero may hire from it through the hire dialog (ADV-HIR-002); it is never flagged, has no guards and gives no free creatures. E08 T93a (increment 10's design note §1; adventure ruleset part v16): the kind `refugee_camp` with its inclusive levels, the base pack's type. The import: T93b; the draws: T94; the visit: T95."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T88a; survey E08-dwellings.md sections 6.2, 7): setup_map_objects case 78 and new_day_week_events case 78 draw random_creature_by_level 0x4C92C0 with levels 0 to 6 (AB and SoD leaving out 132 to 137, RoE allowing only 0 to 117), the count the creature's growth; visit_refugee_camp 0x4A4600: no flag, no guards, no free creatures, any player's hero"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/GameRandomizer.cpp GameRandomizer::rollCreature and lib/mapObjects/CGDwelling.cpp (VCMI 1.7.5, survey E08-dwellings.md section 7): rollCreature over every creature with a monster object not excludeFromRandomization, the count the growth each week"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/GameRandomizer.cpp"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Refugee camp (survey E08-dwellings.md section 7): a random creature, neutral ones included, changing every week, its growth available; never the four AB dragons, the Enchanter or the Sharpshooter; cannot be flagged"
+  url        = "https://heroes.thelazy.net/index.php/Refugee_camp"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10b.md E10-9 (the capture harness, SoD 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): the camp's creature 131 (Phoenix) with its growth 2, no owner; a new creature and its growth (Obsidian Gargoyles, 9) on day 8"
+  retrieved  = "2026-11-03"
+  confidence = "high"

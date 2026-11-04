@@ -38,8 +38,10 @@ Three kinds, each **ownable but the camp**, **entered**, not visitable from abov
   original's record order (the dialog's and the guards' slot order: the Conflux's Air, Fire, Earth,
   Water; the Factory's Stone, Iron, Gold, Diamond; §2.1, §11 "Not disputes"), no war machine; and
   `footprint`, the kind's own template, `blocked` and `visitable` cells as (columns left, rows up)
-  offsets from the anchor, disjoint, at least one visitable (each of the 82 has one: its
-  entrance), in the 8 × 6 block of `TileMask`. A placed dwelling keeps the map's template; the
+  offsets from the anchor, at least one visitable (each of the 82 has one: its entrance), in the
+  8 × 6 block of `TileMask`; *agent's call (T93a, correcting "disjoint"):* the masks the import
+  makes from the template, so the entrance, impassable and visitable in every original
+  dwelling, is in both. A placed dwelling keeps the map's template; the
   footprint is what a random dwelling becomes (§5). Its name is the type's (`CrGen1.txt`,
   `CrGen4.txt` by subclass).
 - **`random_dwelling`** (216 to 218): no parameters; what it may become is the map's (the setup's
@@ -64,7 +66,7 @@ Hash tags follow the part's last (the building task's); ruleset part v16.
   dwelling with a creature of that faction and level that is no creature's upgrade (the original's
   `town_creatures[faction × 14 + level]`, the unupgraded one). *Agent's call:* the table, not the
   original's derivation (the last class-17 subclass listing the creature, the Golem Factory for a
-  Stone Golem, §3.2 steps 3–4): the same 62 outcomes, as data a pack can read, and a test over the
+  Stone Golem, §3.2 steps 3–4): the same 63 outcomes (T93a: not 62), as data a pack can read, and a test over the
   base and ab packs checks the table against that derivation (the duplicates 7, 13, 16, 47 and 51
   never drawn; VCMI's `bannedForRandomDwelling` agrees, §3.2).
 - **Derived at compile**, kept in the compiled kind: a dwelling's **full guards**, for each creature
