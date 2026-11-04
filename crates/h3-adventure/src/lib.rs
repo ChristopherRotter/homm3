@@ -93,8 +93,8 @@ pub use split::{TileRand, split, split_with_second};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, MapObject, Monster, Resolved, StaticMap,
-    StaticTile, Visits, Weekly,
+    AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, HirePurchase, MapObject, Monster, Resolved,
+    StaticMap, StaticTile, Visits, Weekly, hire_price,
 };
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,

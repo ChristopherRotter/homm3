@@ -7,8 +7,8 @@
 //! hero off the map and the survivors kept as its guards.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, DwellingParams, Holds, ObjectSetup, ObjectTypeId,
-    OfferKind, TileMask, Viewers,
+    AdventureEvent, AdventureEventKind, DwellingParams, HireTarget, Holds, ObjectSetup,
+    ObjectTypeId, OfferKind, TileMask, Viewers,
 };
 use h3_contracts::BattleSide;
 
@@ -17,27 +17,35 @@ use super::manage::imp;
 use super::mines::{adventure, fight};
 use super::*;
 
-const RED: PlayerId = PlayerId::new(0);
-const BLUE: PlayerId = PlayerId::new(1);
-const RED_HERO: HeroId = HeroId::new(0);
-const GOG: CreatureTypeId = CreatureTypeId::from_raw(1);
+pub(super) const RED: PlayerId = PlayerId::new(0);
+pub(super) const BLUE: PlayerId = PlayerId::new(1);
+pub(super) const RED_HERO: HeroId = HeroId::new(0);
+pub(super) const GOG: CreatureTypeId = CreatureTypeId::from_raw(1);
 /// The dwelling's anchor and entrance, one step right of red's hero.
-const ANCHOR: Pos = Pos::new(1, 0, 0);
+pub(super) const ANCHOR: Pos = Pos::new(1, 0, 0);
 
 /// The rules of [`rules`](super::rules) with imps of level 1 growing 3 a week, gogs of level 2
 /// growing 2, a dwelling `t:hut` of both (entered, one tile) and the original's dwellings'
 /// parameters (the guards from level 5, the free creatures up to level 1).
-fn rules() -> GameRuleset {
+pub(super) fn rules() -> GameRuleset {
     rules_with(5)
 }
 
 /// [`rules`] with the guards from `guard_level`: from level 2, the hut's 6 gogs in slot 0.
 fn rules_with(guard_level: u8) -> GameRuleset {
+    rules_edited(guard_level, |_, _| ())
+}
+
+/// [`rules_with`] with `edit` made to its core and adventure packs before they compile (E08 T95b:
+/// `hiring.rs`'s second resource and Refugee Camp).
+pub(super) fn rules_edited(
+    guard_level: u8,
+    edit: impl FnOnce(&mut ContentPack, &mut AdventurePack),
+) -> GameRuleset {
     let mut pack = core_pack(false);
     pack.creatures[0].info.growth = 3;
     pack.creatures[1].info.level = 2;
     pack.creatures[1].info.growth = 2;
-    let core = Arc::new(Ruleset::compile(&[pack], "t:faithful").unwrap());
     let mut part = adventure_pack(vec![88, 25], 2);
     part.object_types.push(ObjectTypeDef {
         from_above: false,
@@ -55,6 +63,8 @@ fn rules_with(guard_level: u8) -> GameRuleset {
         guard_factor: NonZeroU16::new(3).unwrap(),
         free_level: 1,
     });
+    edit(&mut pack, &mut part);
+    let core = Arc::new(Ruleset::compile(&[pack], "t:faithful").unwrap());
     let part = AdventureRuleset::compile(&core, &[part]).unwrap();
     let battle = battle_part(&core, 7);
     GameRuleset::new(
@@ -66,7 +76,7 @@ fn rules_with(guard_level: u8) -> GameRuleset {
     .unwrap()
 }
 
-fn hut_type(rules: &GameRuleset) -> ObjectTypeId {
+pub(super) fn hut_type(rules: &GameRuleset) -> ObjectTypeId {
     rules.adventure().object_type_by_key("t:hut").unwrap()
 }
 
@@ -145,7 +155,7 @@ fn a_dwelling_s_hire_question_opens_and_accepted_gives_its_free_creatures() {
     );
     assert_ne!(state.state_hash(), declined.state_hash());
     // Accepted: the 3 imps (level 1) join red's stack of them, told to red alone; the gogs
-    // (level 2) are the hire dialog's (T95b).
+    // (level 2) are the hire dialog's, which opens (T95b: `hiring.rs`).
     let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
     assert_eq!(
         events,
@@ -164,6 +174,12 @@ fn a_dwelling_s_hire_question_opens_and_accepted_gives_its_free_creatures() {
                 },
                 seen_by: Viewers::NONE.with(RED),
             }),
+            GameEvent::HireOpened {
+                player: RED,
+                target: HireTarget::Hero(RED_HERO),
+                object_type: ty,
+                anchor: ANCHOR,
+            },
         ]
     );
     let army = &state.adventure().hero(RED_HERO).unwrap().army;

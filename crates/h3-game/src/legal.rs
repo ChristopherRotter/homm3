@@ -16,7 +16,7 @@ use core::ops::RangeInclusive;
 
 use h3_adventure::{AdventureCommand, ArmyRef, ArmySlot, ChoiceKind, Reach};
 use h3_battle::LegalCommands;
-use h3_content::Formation;
+use h3_content::{CreatureTypeId, Formation};
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::{
     ArmyWorth, ArtifactMove, ArtifactPlace, HeroDetails, Position, SlotState, check_assemble,
@@ -24,8 +24,8 @@ use h3_heroes::{
 };
 
 use crate::command::{
-    Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, SchoolChoice, SkillOffer,
-    UniversityAnswer,
+    Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, HireAnswer, SchoolChoice,
+    SkillOffer, UniversityAnswer,
 };
 use crate::manage::Manage;
 use crate::state::Together;
@@ -34,7 +34,8 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// The commands `actor` may issue now but its moves: with an open battle the battle's legal
 /// commands for its side while that side is to act, and none while the other side is
 /// (`h3_battle::legal_commands`; GAM-BAT-001, E08 T19a); otherwise with an open decision its
-/// answers alone, in its turn or not ([`answers`]: GAM-DEC-001 to GAM-DEC-006), and none for any
+/// answers alone, in its turn or not ([`answers`]: GAM-DEC-001 to GAM-DEC-006, GAM-DEC-008), and
+/// none for any
 /// other actor while the game waits for a level-up (GAM-DEC-002, E08 T30); otherwise `EndTurn`,
 /// then since E08 T84b2 a `BuildBoat` for each Shipyard of the player's or an ally's whose boat
 /// tile is free while the treasury can pay its price, in object order (ADV-SHY-003:
@@ -42,7 +43,7 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// is not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves are
 /// [`legal_moves`]; a meeting's and an army dialog's management commands [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
-// rule: ADV-SHY-003
+// rule: GAM-DEC-008, ADV-SHY-003
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -91,7 +92,9 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
 /// dialog's `Close` (GAM-DEC-003, GAM-DEC-004); a chest's `Gold`, then `Experience`; the Arena's
 /// `Attack`, then `Defense`; a School's `First`, `Second`, then `Leave` (GAM-DEC-005); a
 /// University's `Buy` of each slot open for the hero while the treasury can pay its price, in
-/// slot order, then `Leave` (GAM-DEC-006).
+/// slot order, then `Leave` (GAM-DEC-006); a hire dialog's `Buy` of the most of each creature in
+/// the source's order whose most is at least 1 (`GameState::hire_mosts`), then `Close`
+/// (GAM-DEC-008, E08 T95b).
 fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answer> {
     if let Some(offer) = state.decision(player) {
         let accept = state.adventure().offer_stands(offer);
@@ -135,6 +138,15 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
             .chain([Answer::University(UniversityAnswer::Leave)])
             .collect();
     }
+    if let Some(dialog) = state.hire_dialog(player) {
+        return state
+            .hire_mosts(rules, player, dialog)
+            .into_iter()
+            .filter(|&(_, most)| most > 0)
+            .map(|(creature, amount)| Answer::Hire(HireAnswer::Buy { creature, amount }))
+            .chain([Answer::Hire(HireAnswer::Close)])
+            .collect();
+    }
     // The other decisions but a battle: a meeting or an army dialog.
     vec![Answer::Close]
 }
@@ -143,12 +155,13 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
 /// E08 T30, T63a), which the hosting layer gives when the player does not answer (the server
 /// lane's M5): an offer's `Decline`; a meeting's and an army dialog's `Close` (E08 T51b); a
 /// chest's `Gold` (the original's plain OK), the Arena's `Attack` (its Cancel), a School's and a
-/// University's `Leave`; for a level-up the offer the original's choice takes (HER-LVL-006, the
-/// original's when the dialog's time runs out), with the setup's army worth and the map's
-/// terrain shares, as at load (GAM-SET-002), until E10 gives the engine the computer player's
-/// state its flag-set path reads (ADR-0017 point 6, ADV-Q17: `ADV-STUB-8`); none for a battle (a
-/// battle's default is the server lane's) or without an open decision.
-// rule: GAM-DEC-002, GAM-DEC-005, GAM-DEC-006
+/// University's `Leave`, a hire dialog's `Close` (the original's Close, E08 T95b); for a level-up
+/// the offer the original's choice takes (HER-LVL-006, the original's when the dialog's time runs
+/// out), with the setup's army worth and the map's terrain shares, as at load (GAM-SET-002), until
+/// E10 gives the engine the computer player's state its flag-set path reads (ADR-0017 point 6,
+/// ADV-Q17: `ADV-STUB-8`); none for a battle (a battle's default is the server lane's) or without
+/// an open decision.
+// rule: GAM-DEC-002, GAM-DEC-005, GAM-DEC-006, GAM-DEC-008
 pub fn default_answer(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Option<Answer> {
     if state.decision(player).is_some() {
         return Some(Answer::Offer(Consent::Decline));
@@ -162,6 +175,9 @@ pub fn default_answer(state: &GameState, rules: &GameRuleset, player: PlayerId) 
     }
     if state.university(player).is_some() {
         return Some(Answer::University(UniversityAnswer::Leave));
+    }
+    if state.hire_dialog(player).is_some() {
+        return Some(Answer::Hire(HireAnswer::Close));
     }
     if !matches!(state.together(player), Some(Together::Alone) | None) {
         return Some(Answer::Close);
@@ -353,4 +369,31 @@ pub fn split_range(
     state
         .adventure()
         .split_range(rules.adventure(), player, (from, to), group)
+}
+
+/// The amounts of `creature` `player` may buy now in its open hire dialog (GAM-DEC-008,
+/// ADV-HIR-002; E08 T95b, increment 10's design note §13), as [`split_range`] gives a split's
+/// counts: from 1 to the most (`GameState::hire_mosts`: the least of the source's count, the
+/// treasury divided by the creature's cost for each resource, and the room in the army), each a
+/// `Buy` `apply` accepts. Empty when the game waits for another player's level-up, the player's
+/// first open decision is no hire dialog, or its source does not sell the creature.
+// rule: GAM-DEC-008
+pub fn hire_range(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    creature: CreatureTypeId,
+) -> RangeInclusive<u32> {
+    let most = state
+        .check_held(Actor::Player(player))
+        .ok()
+        .and_then(|()| state.hire_dialog(player))
+        .and_then(|dialog| {
+            state
+                .hire_mosts(rules, player, dialog)
+                .into_iter()
+                .find(|&(sold, _)| sold == creature)
+        })
+        .map_or(0, |(_, most)| most);
+    1..=most
 }

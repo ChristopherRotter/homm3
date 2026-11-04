@@ -9,8 +9,8 @@
 use core::fmt;
 
 use h3_adventure::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, ArmySlot, ObjectTypeId, Pick, Pos,
-    Viewers,
+    AdventureCommand, AdventureCommandError, AdventureEvent, ArmySlot, HireError, HireTarget,
+    ObjectTypeId, Pick, Pos, Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, BattleResult, HeroId, PlayerId};
@@ -71,6 +71,8 @@ pub enum Answer {
     School(SchoolChoice),
     /// A University's purchase or leaving (GAM-DEC-006, ADV-TCH-007).
     University(UniversityAnswer),
+    /// A hire dialog's purchase or closing (GAM-DEC-008, ADV-HIR-002; E08 T95b).
+    Hire(HireAnswer),
     /// Closes a meeting (GAM-DEC-003) or an army dialog (GAM-DEC-004; increment 6's `Decline`).
     Close,
 }
@@ -155,6 +157,26 @@ pub enum UniversityAnswer {
     Leave,
 }
 
+/// A hire dialog's answer (GAM-DEC-008, ADV-HIR-002; E08 T95b, increment 10's design note §13;
+/// the original's `H3RecruitMgr`): a purchase, which keeps a dialog of several creatures open and
+/// closes one of a single creature, or closing it (the original's Close; the kind's own, as the
+/// University's `Leave`: [`Answer::Close`] stays the exchange dialogs').
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HireAnswer {
+    /// Buys `amount` `creature`s of the dialog's source for their price (the creature's cost
+    /// times the amount, by resource), joined to the dialog's army: refused when the creature is
+    /// not the source's, the amount is 0 or above its count, the army has no room for it
+    /// ([`GameCommandError::Hire`]) or the treasury cannot pay ([`GameCommandError::CannotPay`]).
+    Buy {
+        /// The creature, one of the source's.
+        creature: CreatureTypeId,
+        /// How many, from 1 to the most ([`crate::hire_range`]).
+        amount: u32,
+    },
+    /// Closes the dialog.
+    Close,
+}
+
 impl ChestChoice {
     /// The adventure's pick of this answer.
     pub(crate) const fn pick(self) -> Pick {
@@ -230,8 +252,13 @@ pub enum GameCommandError {
     /// (`h3_heroes::university_slot`), or the University has no such slot.
     SlotClosed,
     /// A University's purchase the treasury cannot pay (GAM-DEC-006, E08 T63a); since E08 T84b2
-    /// also a `BuildBoat` (ADV-SHY-003), checked after the adventure's own checks.
+    /// also a `BuildBoat` (ADV-SHY-003), checked after the adventure's own checks; since E08 T95b
+    /// a hire dialog's purchase (GAM-DEC-008), checked after the map's ([`Self::Hire`]).
     CannotPay,
+    /// A hire dialog's purchase the map refused (GAM-DEC-008, ADV-HIR-002; E08 T95b), in this
+    /// order: the creature not the source's, the amount 0 or above its count, no room in the army
+    /// (`h3_adventure::AdventureState::check_hire`).
+    Hire(HireError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -257,6 +284,7 @@ impl fmt::Display for GameCommandError {
             Self::Manage(error) => write!(f, "{error}"),
             Self::SlotClosed => f.write_str("the University's slot is not open for the hero"),
             Self::CannotPay => f.write_str("the treasury cannot pay the price"),
+            Self::Hire(error) => write!(f, "{error}"),
         }
     }
 }
@@ -552,9 +580,24 @@ pub enum GameEvent {
         /// The object's anchor.
         anchor: Pos,
     },
+    /// A hire dialog opened as a pending decision of its player (GAM-DEC-008, E08 T95b) after an
+    /// accepted hire question: its creatures, their counts and costs are its view
+    /// ([`crate::DecisionView::Hire`]). The source is named by type and anchor, never by index
+    /// (ADR-0016 point 6). Seen by the owner.
+    HireOpened {
+        /// The player.
+        player: PlayerId,
+        /// The army the bought creatures join: the visiting hero's.
+        target: HireTarget,
+        /// The source's type: the dwelling's or the Refugee Camp's.
+        object_type: ObjectTypeId,
+        /// The source's anchor.
+        anchor: Pos,
+    },
     /// The player's meeting or army dialog closed (its `Close`; E08 T51b); since E08 T63a also
     /// its choice once answered (the answer's payment and effects follow) and its University
-    /// left. Seen by the owner.
+    /// left; since E08 T95b its hire dialog closed or a single creature's bought. Seen by the
+    /// owner.
     DecisionClosed {
         /// Its owner.
         player: PlayerId,

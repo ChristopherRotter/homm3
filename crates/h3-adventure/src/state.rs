@@ -104,6 +104,7 @@ pub use boats::Boat;
 use boats::Boats;
 pub use draws::Resolved;
 use dwellings::{Camp, DwellingWeek};
+pub use dwellings::{HirePurchase, hire_price};
 pub use economy::Weekly;
 pub(crate) use economy::allied;
 use flags::Flags;

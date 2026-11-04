@@ -654,6 +654,38 @@ quirks   = ["ADV-QUIRK-29"]
   confidence = "high"
 
 [[rule]]
+id       = "GAM-DEC-008"
+title    = "The hire dialog: a pending decision of purchases bounded by the count, the treasury and the room"
+context  = "game"
+status   = "implemented"
+summary  = "An accepted hire question's dialog (`AdventureOutcome::hire`, ADV-HIR-002: at the visitor's own dwelling with a creature above `free_level`, after its free creatures, and at a Refugee Camp) opens as a pending decision of the visitor's owner (GAM-DEC-001; `Decision::Hire`, the original's `H3RecruitMgr`) whatever its treasury holds, told to it alone (`HireOpened`: the army, the source by type and anchor, never its index); it holds no one else and blocks its owner's moves, management and `EndTurn` (`DecisionOpen`) as any decision. The owner's observation shows the army, the source by type and anchor, and each of the source's creatures in its order with its count as it stands and the cost of one by resource in the core's order (`DecisionView::Hire`, `HireView`; no most: the treasury is the owner's own); no other player sees it. It is answered with `Answer::Hire`: `Buy { creature, amount }` is refused, each typed and changing nothing, first by the map (`GameCommandError::Hire`: the creature not the source's, the amount 0 or above its count, no room in the army, ADV-ARM-007), then when the treasury is short of cost times amount for any resource (`CannotPay`); else the price is paid (`ResourcePaid` per resource, the core's order) and the map's purchase lowers the count and joins the creatures (`CreaturesJoined`, to the owner); a dialog whose source sells one creature (a camp's) then closes (`DecisionClosed`), one of several stays open with its counts read again. `Close` closes it (`DecisionClosed`); the exchange dialogs' `Answer::Close` and any other kind's answer are `WrongAnswer`; the system actor's default is `Close`. The most of a creature is the least of its count, the treasury divided by its cost for each resource it costs more than 0 of (integer division) and the room's bound (`AdventureState::hire_room`); `legal_commands` lists a `Buy` of the most of each creature in the source's order whose most is at least 1, then `Close`, and `hire_range(state, rules, player, creature)` gives `1..=most` (empty without the player's open dialog selling the creature, or while the game waits for another's level-up), every amount of it accepted. *Agent's call* (increment 10's design note section 13): the room in the most, so every listed answer applies; the original's slider leaves it out and refuses at Recruit (GENRLTXT 426), the same rule. A monster guarding the hero's tile visits once the dialog closes (GAM-DEC-007). The decision is hashed (game state hash v25: its owner, target and source). An ally's read-only dialog (E10's teams) is not built (unreachable while `allied` is the player alone). E08 T95b: `Decision::Hire`, `HireAnswer`, `HireView`, `HireCreature`, `hire_range`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T88a; survey E08-dwellings.md section 5): H3RecruitMgr::initialize 0x551350 (read whole): the dialog's army, the source's types with pointers to its own counts, the gold cost and at most one other resource; recruit_dialog_select 0x5503A0 (read in part): the most = min(gold / gold cost, resource / its cost, the count) from the current player's treasury, integer division, Recruit, Max and the slider enabled only above 0 and not for an ally's dialog; recruit_dialog_proc 0x550940 (read in part): Recruit tests army_can_take 0x44AC50, none GENRLTXT 426 with nothing bought and the dialog open, else army_add_stack and the treasury lowered by each cost times the amount; a single creature's dialog then closes, one of several stays open; Close (item 30721) ends it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E08-dwellings.md section 5.3: recruitCreatures reduces the amount to the count, refuses more than the treasury pays for (maxAmount), 0 or less, or no slot; takes getFullRecruitCost() times the amount. The same rule"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Creature dwelling (survey E08-dwellings.md section 5.3): the cost of creatures is the same in towns and on the adventure map, except level 1 creatures (recruited for free)"
+  url        = "https://heroes.thelazy.net/index.php/Creature_dwelling"
+  retrieved  = "2026-11-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 (a decision like the University, open until closed, each purchase checked against the state and the treasury); increment 10's design note section 13 in E08-design.md (the decision, the answer, the legal set's most with the room, hire_range, the view)"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-BAT-001"
 title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
 context  = "game"

@@ -811,9 +811,10 @@ fn free_level(part: &AdventureRuleset) -> u8 {
 /// The price of `amount` `creature`s (ADV-HIR-002; survey `E08-dwellings.md` §5.3, the original's
 /// `recruit_dialog_proc` 0x550940): its core cost times the amount, saturating, for each resource
 /// it costs more than 0 of, in the core's resource order (the pack lists a creature's cost in its
-/// own order).
+/// own order). A purchase's ([`HirePurchase::price`]); of 1 the cost the game's hire view shows
+/// and its most divides the treasury by (GAM-DEC-008, E08 T95b).
 // rule: ADV-HIR-002
-fn hire_price(core: &Ruleset, creature: CreatureTypeId, amount: u32) -> Vec<(ResourceId, u32)> {
+pub fn hire_price(core: &Ruleset, creature: CreatureTypeId, amount: u32) -> Vec<(ResourceId, u32)> {
     let cost = core
         .creature(creature)
         .map_or(&[][..], |info| &info.cost[..]);
@@ -825,14 +826,36 @@ fn hire_price(core: &Ruleset, creature: CreatureTypeId, amount: u32) -> Vec<(Res
     by_resource.into_iter().collect()
 }
 
-/// Where a checked purchase goes ([`AdventureState::check_hire`]).
-struct Purchase {
+/// A purchase in a hire dialog [`AdventureState::check_hire`] accepted (ADV-HIR-002; E08 T95b,
+/// increment 10's design note §13): its price, which the game checks against the treasury and
+/// pays (GAM-DEC-008, ADR-0004), and where it goes, which [`AdventureState::hire`] then makes
+/// without a check of its own (the design's infallible purchase: no refusal the game could not
+/// reach). It holds for the state that checked it as that state stands: nothing of the adventure
+/// changes between the check and the purchase.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HirePurchase {
+    /// The price, by resource in the core's order ([`hire_price`]).
+    price: Vec<(ResourceId, u32)>,
+    /// The creature bought.
+    creature: CreatureTypeId,
+    /// How many.
+    amount: u32,
+    /// The source's object index.
+    index: usize,
     /// The hero's place among the state's heroes.
     at: usize,
     /// The creature's place in the source's stock (its count's place).
     place: usize,
     /// Where the creatures join the hero's army.
     room: Room,
+}
+
+impl HirePurchase {
+    /// The price, by resource in the core's order: the creature's core cost times the amount for
+    /// each resource it costs more than 0 of ([`hire_price`]).
+    pub fn price(&self) -> &[(ResourceId, u32)] {
+        &self.price
+    }
 }
 
 /// The purchase's map side (ADV-HIR-002, ADV-ARM-007; E08 T95b, increment 10's design note §8,
@@ -901,14 +924,16 @@ impl AdventureState {
 
     /// Checks a purchase of `amount` `creature`s in `dialog` (ADV-HIR-002, ADV-ARM-007; E08 T95b,
     /// increment 10's design note §8; survey `E08-dwellings.md` §5.3, the original's
-    /// `recruit_dialog_proc` 0x550940) and gives its price (`hire_price`: the creature's core
-    /// cost times the amount by resource, in the core's order), which the game checks against the
-    /// treasury before and pays after (ADR-0004). Refused, in this order: the dialog's hero not
-    /// on the map or its source not the object it names ([`HireError::NoSource`]; defensive: the
-    /// game holds the dialog its outcome gave, and its hero cannot move while it is open); the
-    /// creature not the source's ([`HireError::NotOffered`]); the amount 0 or above its count
+    /// `recruit_dialog_proc` 0x550940) and gives it with its price ([`HirePurchase::price`]:
+    /// [`hire_price`], the creature's core cost times the amount by resource, in the core's
+    /// order), which the game checks against the treasury before and pays after (ADR-0004), then
+    /// makes with [`Self::hire`]. Refused, in this order: the dialog's hero not on the map or its
+    /// source not the object it names ([`HireError::NoSource`]; defensive: the game holds the
+    /// dialog its outcome gave, and its hero cannot move while it is open); the creature not the
+    /// source's ([`HireError::NotOffered`]); the amount 0 or above its count
     /// ([`HireError::Amount`]); no room in the army ([`HireError::NoRoom`]: the original's
-    /// GENRLTXT 426, nothing bought). *Agent's call:* the hero's tile is not tested against the
+    /// GENRLTXT 426, nothing bought; every amount up to [`Self::hire_room`] finds room, in the
+    /// [`room`] the purchase keeps). *Agent's call:* the hero's tile is not tested against the
     /// source's entrance, as the visit put it there and nothing moves it while the dialog is open.
     // rule: ADV-HIR-002, ADV-ARM-007
     pub fn check_hire(
@@ -916,21 +941,9 @@ impl AdventureState {
         (core, part): (&Ruleset, &AdventureRuleset),
         dialog: &HireDialog,
         (creature, amount): (CreatureTypeId, u32),
-    ) -> Result<Vec<(ResourceId, u32)>, HireError> {
-        self.hire_place(part, dialog, (creature, amount))
-            .map(|_| hire_price(core, creature, amount))
-    }
-
-    /// [`Self::check_hire`]'s refusals in order, else where the purchase goes: the hero's place
-    /// among the heroes, the creature's in the source's stock, and the room [`room`] finds in the
-    /// hero's army (so every amount up to [`Self::hire_room`] passes).
-    fn hire_place(
-        &self,
-        part: &AdventureRuleset,
-        dialog: &HireDialog,
-        (creature, amount): (CreatureTypeId, u32),
-    ) -> Result<Purchase, HireError> {
+    ) -> Result<HirePurchase, HireError> {
         let HireTarget::Hero(hero) = dialog.target;
+        let HireSource::Object { index, .. } = dialog.source;
         let (at, stock) = self
             .heroes
             .binary_search_by_key(&hero, |h| h.id)
@@ -946,28 +959,36 @@ impl AdventureState {
         }
         let rules = (part.params().army_slots(), part.params().max_stack_count());
         let room = room(&self.heroes[at].army, rules, creature, amount).ok_or(HireError::NoRoom)?;
-        Ok(Purchase { at, place, room })
+        Ok(HirePurchase {
+            price: hire_price(core, creature, amount),
+            creature,
+            amount,
+            index,
+            at,
+            place,
+            room,
+        })
     }
 
-    /// Buys `amount` `creature`s in `dialog` (ADV-HIR-002, ADV-ARM-007; E08 T95b, increment 10's
-    /// design note §8; survey `E08-dwellings.md` §5.3, the original's `recruit_dialog_proc`
-    /// 0x550940): [`Self::check_hire`] first, so a refusal leaves the state untouched; then the
-    /// creatures join the hero's army where ADV-ARM-007's room is (the original's
-    /// `army_add_stack`: a stack of the creature that takes them within a stack's most, else the
-    /// first free slot), the source's count goes down by the amount (a dwelling's through
-    /// `write_dwelling`, a camp's block copied at the write), and the hero's owner alone
-    /// is told ([`AdventureEventKind::CreaturesJoined`]). Returns the price, which the game has
-    /// checked and pays (GAM-DEC-008); the treasury is never this crate's.
+    /// Makes `purchase` (ADV-HIR-002, ADV-ARM-007; E08 T95b, increment 10's design note §8, §13;
+    /// survey `E08-dwellings.md` §5.3, the original's `recruit_dialog_proc` 0x550940), which
+    /// [`Self::check_hire`] gave for this state as it stands, after the game paid its price
+    /// (GAM-DEC-008; the treasury is never this crate's): the creatures join the hero's army where
+    /// ADV-ARM-007's room is (the original's `army_add_stack`: a stack of the creature that takes
+    /// them within a stack's most, else the first free slot), the source's count goes down by the
+    /// amount (a dwelling's through `write_dwelling`, a camp's block copied at the write), and the
+    /// hero's owner alone is told ([`AdventureEventKind::CreaturesJoined`]).
     // rule: ADV-HIR-002, ADV-ARM-007
-    pub fn hire<S: Sink>(
-        &mut self,
-        (core, part): (&Ruleset, &AdventureRuleset),
-        dialog: &HireDialog,
-        (creature, amount): (CreatureTypeId, u32),
-        sink: &mut S,
-    ) -> Result<Vec<(ResourceId, u32)>, HireError> {
-        let Purchase { at, place, room } = self.hire_place(part, dialog, (creature, amount))?;
-        let HireSource::Object { index, .. } = dialog.source;
+    pub fn hire<S: Sink>(&mut self, purchase: HirePurchase, sink: &mut S) {
+        let HirePurchase {
+            creature,
+            amount,
+            index,
+            at,
+            place,
+            room,
+            ..
+        } = purchase;
         let on_map = &mut self.heroes[at];
         join_at(&mut on_map.army, room, creature, amount);
         let (hero, owner) = (on_map.id, on_map.owner);
@@ -980,7 +1001,6 @@ impl AdventureState {
             },
             seen_by: Viewers::NONE.with(owner),
         });
-        Ok(hire_price(core, creature, amount))
     }
 
     /// Lowers by `amount` the count of the creature at `place` of the source at object index

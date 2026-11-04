@@ -44,12 +44,13 @@ fn buy(
     (k, amount): (&str, u32),
 ) -> (Bought, Vec<AdventureEvent>) {
     let mut events = Vec::new();
-    let bought = state.hire(
-        (&rules.0, &rules.1),
-        dialog,
-        (creature(rules, k), amount),
-        &mut events,
-    );
+    let bought = state
+        .check_hire((&rules.0, &rules.1), dialog, (creature(rules, k), amount))
+        .map(|purchase| {
+            let price = purchase.price().to_vec();
+            state.hire(purchase, &mut events);
+            price
+        });
     (bought, events)
 }
 
@@ -197,6 +198,7 @@ fn a_purchase_lowers_the_count_joins_the_army_and_tells_the_owner_alone() {
     // The price by resource in the core's order (wood, then gold), whatever the pack's order.
     let check = |s: &AdventureState, k, amount| {
         s.check_hire((&rules.0, &rules.1), &open, (creature(&rules, k), amount))
+            .map(|purchase| purchase.price().to_vec())
     };
     assert_eq!(check(&s, "t:w5", 2), Ok(vec![(WOOD, 8), (GOLD, 100)]));
     assert_eq!(check(&s, "t:c5", 1), Ok(vec![(GOLD, 50)]));
@@ -239,7 +241,11 @@ fn a_purchase_lowers_the_count_joins_the_army_and_tells_the_owner_alone() {
         &level_1,
         (creature(&rules, "t:w1"), 2),
     );
-    assert_eq!(price, Ok(vec![(GOLD, 20)]));
+    assert_eq!(price.map(|p| p.price().to_vec()), Ok(vec![(GOLD, 20)]));
+    assert_eq!(
+        hire_price(&rules.0, creature(&rules, "t:w1"), 1),
+        [(GOLD, 10)]
+    );
 }
 
 // covers: ADV-HIR-002, ADV-RFG-001
