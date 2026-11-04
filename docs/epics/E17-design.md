@@ -5678,7 +5678,9 @@ frames.
   0x59F077, 0x59F041); `battle_start` clears 0x6987C0 during its setup (§7.18); the cheat code
   (`typed_text_command` 0x4022E0) sets the five auto options, the speed 2 and both
   walk speeds 4 without saving.
-- **Oddities** (each a question for the user):
+- **Oddities** (asked: 1, 2 and 10 as CLT-Q43, 7 and 8 as CLT-Q44; 4 with T4b's army info;
+  3, 5, 6 and 9 copied without a question, the agent's call: a slider's track, the default
+  level, a label's source and ids without items show nothing a player would call a slip):
   1. The speed buttons sound twice: `button_press` plays `button.wav`, then the procedure's press
      path plays it again, its range 225 to 238 holding 230 to 232.
   2. A box or a bar acts on the left release anywhere: its press inside is enough

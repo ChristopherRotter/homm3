@@ -26,15 +26,17 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   the Auto Combat options restricting the window's bot; the others as read), kept in the
   client's settings file (beside `keys.toml`, *provisional*); recorded with settings on.
 - **Acceptance:** the dialog and each setting's drawing exact against recordings or listed;
-  `check.sh`. **Depends on:** T1 (done). **Status:** cut in three by the user (2026-11-04):
-  - **T4a** (in progress): the dialog read whole, drawn, opened by O and the panel's button in
-    the window, its settings kept in the client's settings file, the combat speed in effect;
-    the dialog's stills recorded.
+  `check.sh`. **Depends on:** T1 (done). **Status:** cut in three by the user (2026-11-04);
+  T4a done (design §12.12):
   - **T4b:** the Auto Combat options restricting the window's bot; Creature Info ("Combat Army
     Info Level") keeping the army info windows shown, filled by the mouse's move, the hints with
-    the damage.
+    the damage; the key F5 (the level cycled, saved at once). T4a's reading (design §12.12,
+    oddity 4): the level's help rows (`Help.txt` 425, 426) speak of a right click the code does not
+    tie to it: a `CLT-Q` when the effect is built.
   - **T4c:** the hex grid, the movement and cursor shadows drawn (`draw_hex_overlays` 0x493930's
-    options, 0x493EA0), recorded with the settings on.
+    options, 0x493EA0), recorded with the settings on; the keys F6 to F8 (`battle_set_shades`
+    0x479FC0, saved at once). The spell book's page turns ("Animate SpellBook", kept by T4a)
+    stay unbuilt (their videos), listed at M6's closure.
 
 ### E17 M6 T5 — M5's gaps
 

@@ -187,9 +187,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   exact (`stats-morale-siege`, `-tavern`, `stats-luck-siege`). T3 done.
 - **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
   movement and cursor shadows, the combat speed, the Auto Combat options, the rest as read), kept
-  in the client's settings; recorded. Cut in three by the user (2026-11-04): **T4a** the dialog
-  read, drawn and in the window, the settings file, the combat speed in effect; **T4b** the
-  Auto Combat options and Creature Info in effect; **T4c** the grid and the shadows drawn.
+  in the client's settings; recorded. Cut in three by the user (2026-11-04): **T4a** (done 2026-11-04, design §12.12) the dialog
+  read whole (0x46E3B0, 0x46F7B0), drawn and in the window (O and the panel's button), the
+  settings file, the combat speed and both volumes in effect, CLT-Q43 and Q44 asked, six stills
+  exact; **T4b** the Auto Combat options and Creature Info in effect; **T4c** the grid and the
+  shadows drawn.
 - **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
   question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
   not drawn yet and their sounds' waits (M5's items 5, 9, 24, 42, 45, 79, 84), each as far as read.
@@ -371,3 +373,12 @@ The next milestone's list starts here.
     build, as the battle lane's do.
 30. Fixed (T3c3): `h3-view situation` gave a hero's Grail-building morale or luck effect as
     Leadership or Luck (`effect_skills`); the siege town's building gives it now.
+31. The client's settings file (T4a, *provisional*): `settings.toml` beside `keys.toml`
+    (`--settings`), a `[battle]` table of the registry's value names in snake case, written whole
+    at the dialog's close after a click (other tables not kept); `--speed` wins for a run. The
+    first run's volumes (5) make the client's sound 6/10 of its loudness before T4a.
+32. The combat options dialog (T4a, *provisional*): its texts' item ids 240 to 256 the client's
+    (the executable's −1); the DEF buttons' press sample at its loader's 127 (`button_press`'
+    category not read); the dialog only in a battle fought here (not while a record plays).
+33. The common crates' additions (T4a): `h3_view::options`, `Growing::set_speed`, the keys'
+    `Context::Options`; the catalogue's `battle.options.*`.
