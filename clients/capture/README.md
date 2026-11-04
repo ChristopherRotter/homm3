@@ -1202,6 +1202,10 @@ design §7.1.
   last read it (design §9.10): the harness sets the grid's next time at a sequence's opening
   (`h3mem.Mem.align_mouse_poll`, a sequence's only write into the game's memory, a timer of the
   mouse manager); without it the frames kept where the cursor moves change their times between runs.
+- At the frozen clock no move is read until the next poll, but a message box's opening reads the
+  mouse: a box a `click:` opens shows its arrow at the click's point at 0 ms, at the parked point
+  from the next poll (`options-no-sound`, E17 M6 T4a: 92 pixels at 0). Take such frames from
+  100 ms (the `msg-*` boxes, `options-no-sound`).
 - Entering a stack redraws only its new frame's rectangle: the old frame's pixels outside it
   stay until the next idle step (`hover`'s four frames of 1 and 13 pixels, design §9.10).
 - The game draws its cursor at an even x (0x50CE04): at an odd point the canvas is a pixel
