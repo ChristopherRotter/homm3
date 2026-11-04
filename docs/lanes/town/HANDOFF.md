@@ -6,16 +6,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 - **E09** (towns) refined with the user on 2026-10-31 (TWN-Q1; decisions 1–7); the lane opened
   the same day beside the adventure lane's E08. **Increment 1: towns on the map**, built in rounds
-  (the epic's task list; each task's record in `E09-log.md`): rounds 2 to 5 done (batch TWN-1, the
-  ADRs and skeletons, the part, the content harvested, `GameRuleset` with the town part; decisions
-  8–30, `TWN-Q2` to `TWN-Q6`). **Round 6:** T6 cut in three at its start (the user): **T6a** and
-  **T6b done** (the record and the store; the derivations, `town.toml` with eight rules); next
-  **T6c** (the setup's functions, in the queue), once T6b's pull request merges; rounds 7 to 10
-  in the epic's list.
-- **Open pull requests:** #701 (T6b, `town/e09-t6b`). Its CI is red only because `master` is red at 4a46251 (`check-exe-map`: the E08 T90 harness's 0x640C4C and 0x641D50), which the adventure lane's #700 fixes; once #700 merges, merge `master` in.
+  (the epic's task list; each task's record in `E09-log.md`): rounds 2 to 6 done (batch TWN-1, the
+  ADRs and skeletons, the part, the content harvested, `GameRuleset` with the town part, `h3-towns`'
+  record, store, derivations and setup; decisions 8–30, `TWN-Q2` to `TWN-Q6`). **Round 7** next:
+  **T7a** (the import and the setup's checks, `cross-lane`; large, cut it at its start) once T6c's
+  pull request merges, then **T7b** (the pool and the build's draws); both in the queue; rounds 8
+  to 10 in the epic's list.
+- **Open pull requests:** the one of branch `town/e09-t6c` (T6c; the lane's own crate, catalog
+  and quirks file, the common `docs/stubs.toml`).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, the adapter `h3-pack-towns` and each pack folder's `towns.toml` (T4b), the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and `src/writer/town*` of `h3-map`, `docs/rules/catalog/town.toml`, `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Everything else in the adventure lane's crates is the adventure lane's: a change there is `cross-lane`, merged in order with the adventure lane's pull requests.
 - **Versions:** the lane owns the town state hash and the town ruleset-part hash (`TOWN_STATE_HASH_VERSION`, `TOWN_RULESET_HASH_VERSION`, `h3-towns`), the store's 1 (its first encoding, T6a), the part's 2 (T5b2a's `auto_with`, pinned in its test). It bumps the adventure lane's (game state hash, adventure state and ruleset-part hashes, map import, adventure replay format) in `cross-lane` pull requests (T5a2: the replay format v9); their current values are in the adventure lane's HANDOFF.
-- **Ids:** questions `TWN-Q<n>` (next 7), quirks `TWN-QUIRK-<n>` (next 1; 1 to 5 reserved by the design §19 for T-1 to T-4 and T-6), stubs `TWN-STUB-<n>` (next 1; 1 and 2 reserved by the design §19), rules `TWN-*` (the design §19 names them; in `town.toml` since T6b: TWN-INC-001, -002, TWN-SIE-003 to -005, TWN-CAP-001, -002, TWN-VEW-002), decisions next 31, ADRs: 0028 is the lane's (accepted, T4a; a new one drafts in `adr-drafts/`), experiment batches `TWN-<n>` (next 2; TWN-1's rows 1 to 4, survey §13, decision 15), the survey's disputes `TD-<n>` (next 10) and quirk candidates `T-<n>` (next 7).
+- **Ids:** questions `TWN-Q<n>` (next 7), quirks `TWN-QUIRK-<n>` (`docs/rules/quirks-town.md` holds 5, T-6, since T6c; 1 to 4 reserved for T-1 to T-4, T7a's; next 6), stubs `TWN-STUB-<n>` (2 registered by T6c; 1 reserved, E10's; next 3), rules `TWN-*` (the design §19 names them; in `town.toml`: TWN-INC-001, -002, TWN-SIE-003 to -005, TWN-CAP-001, -002, TWN-VEW-002 since T6b, TWN-SET-003, -004 since T6c), decisions next 31, ADRs: 0028 is the lane's (accepted, T4a; a new one drafts in `adr-drafts/`), experiment batches `TWN-<n>` (next 2; TWN-1's rows 1 to 4, survey §13, decision 15), the survey's disputes `TD-<n>` (next 10) and quirk candidates `T-<n>` (next 7).
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at each round; the user confirms seams and ADRs; tokens first.
 
 ## Standing traps
@@ -23,6 +24,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-04 — T6c: the town's setup at the build
+
+Baseline ec2ceb7 (#700 to #703 merged; the sandbox's full engine run as the baseline; the
+original data not staged, not read). At the start (the user): T6c whole, its code by one
+sub-agent in a worktree, the agent's four calls confirmed (design §5). `TownSetup` and its types,
+`town_buildings_setup` (TWN-SET-003; T-6 fixed as `TWN-QUIRK-5` in the new quirks file;
+`TWN-STUB-2`), `town_garrison` (TWN-SET-004), `town_setup`; round 7's queue entries. Pull
+request: the one of branch `town/e09-t6c`.
 
 ### 2026-11-03 — T6b: the derivations and `town.toml`
 
@@ -40,11 +50,3 @@ gates; the original data not staged, not read). At the start (the user): T6 cut 
 the record and the store, T6b the derivations, T6c the setup). `Town` with the standing set
 derived, `TownStatic` and `TownEvent`, `Towns` (`Option<Arc<…>>`) and town state hash v1's first
 encoding; `set_built` and `capitol` moved to T6b. Pull request: the one of branch `town/e09-t6a`.
-
-### 2026-11-03 — T5a2: `GameRuleset` takes the town part
-
-Baseline 2030ef5 (#689 merged; the sandbox's full engine verify green there; CI's run failed one
-`h3-heroes` property case, fixed on `master` by 1981203 and merged in; the original data staged).
-At the start (the user): the task whole. `GameRuleset::new` with the town part and its two new
-refusals, the callers, the CLI's loader reading `towns.toml`, adventure replay format v9 and the
-39 replays' headers. Pull request: #694 (`town/e09-t5a2`, `cross-lane`).
