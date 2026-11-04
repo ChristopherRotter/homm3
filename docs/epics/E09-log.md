@@ -765,3 +765,44 @@ Capitol's limit with the store's write (its branch `town/e09-t6b-cap`, local, me
   with every role of increment 1 (a luck building superseded, so the ever-built reading shows),
   the Marsh's small one (a silo paying gold, a Citadel), no record for the Wild. 100 % lines and
   regions on `h3-towns`; no version moved.
+
+### T6c — the town's setup at the build (2026-11-04)
+
+One session, the user present; branch `town/e09-t6c` (the lane's own crate, catalog, quirks file;
+the common `docs/stubs.toml`). Starting point: `master` at ec2ceb7 (#700, #701, #702, #703
+merged; the sandbox's baseline the full engine run; the original data not staged, not read). **At
+its start** (the user, asked whole or cut in two): whole, the code by one sub-agent in a worktree,
+the docs and the review by the agent, one pull request; the agent's four calls below confirmed.
+
+- **The types** (`setup.rs`): `SlotSet` (the map editor's 41 slots; `buildings(record)` resolves
+  each slot to the record's building at it, a slot without one nothing), `TownFaction` (`Fixed`,
+  `Random { alignment }`, resolved by the game in T7b), `BuildingsSetup` (`Standard { fort }`,
+  `Custom { built, forbidden }`), `GarrisonStack` with `GarrisonCreature` (`Creature`,
+  `Random { level, upgraded }`), `TownEventSetup` (`TownEvent`'s fields, the buildings by slots),
+  `TownSetup`, `BuiltTown` (the `Town`, its `TownStatic`, the garrison as `ArmyStack`s) and
+  `TownSetupError::NoTownRecord`.
+- **The buildings** (`town_buildings_setup`, TWN-SET-003): the record's Village Hall always ever
+  built (a forbidden one too, as the original builds it first: *the sub-agent's call*); a custom
+  set's forbidden slots closed over `forbidden_with` to a fixpoint, its built slots with what they
+  supersede, less the forbidden; a standard set's Fort with the map's flag, an owned town's Tavern
+  (**the confirmed call:** the `tavern` building that supersedes no other, not the Castle's
+  Brotherhood) and, only with the flag, the level-1 dwelling and the level-2 one on one draw
+  `1..=100 <= level_2_dwelling_chance` (no draw without the flag), a neutral town's both
+  dwellings without a draw; then the hordes' upgrade (`auto_with` all ever built, not forbidden)
+  to a fixpoint. Several buildings of one role: the first by index. **T-6 fixed** as
+  `TWN-QUIRK-5` in the new `docs/rules/quirks-town.md` (the standing set is derived, so no code;
+  its regression test `twn_quirk_5_a_custom_sets_horde_never_leaves_its_dwelling_standing`).
+  `TWN-STUB-2` registered (the start's Grail and Shipyard forbids, an empty set for now).
+- **The garrison** (`town_garrison`, TWN-SET-004): a custom one in the map's order, a random
+  stack the record's creature of its level (**the confirmed call:** a level the record lacks, or
+  0, leaves the slot empty; an upgrade at a level without one gives the base), a count of 0
+  empty, no draw (TD-5); none: an owned town's empty, a neutral town's drawn row by row for the
+  levels the record has (the chance, then the count), the stacks from slot 0. The import (T7a)
+  gives each slot once.
+- **The whole town** (`town_setup`): the record and the parameters (else the typed error, nothing
+  drawn), **the garrison's draws first, then the buildings'** (the confirmed call: the original's
+  `town_setup` order), the name and the events with their slots resolved to the faction's set.
+- **`town.toml`**: TWN-SET-003, -004 (`implemented`; the code reading, batch TWN-1's rows 1 and
+  2, VCMI 1.7.5, the wiki for the garrison, a `design` source for the confirmed calls). The test
+  part's Keep has map slots, four creature levels, a horde with its upgraded horde and a shrine of
+  its own (two-step fixpoints); 16 tests, 100 % lines and regions on `h3-towns`; no version moved.

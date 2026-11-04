@@ -31,7 +31,7 @@ use h3_map::writer::{
 
 use crate::gate::find_ci;
 use crate::harvest::{creature_names, hero_names, spell_numbers};
-use crate::scenario::{Book, Sides, sides};
+use crate::scenario::{Book, Sides, SiegeTown, sides};
 /// Where Blue stands on the 36 × 36 map by default; Red stands one tile west. The original's
 /// obstacles depend on the battle's tile (`--tile`: the capture set's other battlefields).
 const BLUE_TILE: (u8, u8) = (11, 10);
@@ -180,12 +180,11 @@ fn situation(options: &Options) -> Result<(), String> {
     let (patches, ground) = special(battle.battlefield.as_deref(), &objects, options.tile)?;
     map.patches = patches;
     map.objects.extend(ground);
-    if let Some((town, fort)) = battle.siege {
+    if let Some(siege) = &battle.siege {
         if battle.battlefield.is_some() {
             return Err(format!("{id}: a siege on a special battlefield"));
         }
-        map.objects
-            .push(siege_town(town, fort, &objects, options.tile)?);
+        map.objects.push(siege_town(siege, &objects, options.tile)?);
     }
     let bytes = write(&map).map_err(|e| format!("the map: {e}"))?;
     if let Some(dir) = options.out.parent() {
@@ -291,13 +290,15 @@ fn special(
 /// A level is built with those below it, as the experiments' sieges build them (E04c T5b).
 const FORT_BITS: [u8; 3] = [3, 4, 5];
 
-/// The town of a siege (E17 M4 T1b): Blue's, of town type `town` with the fort level `fort` (0
-/// to 3) and no other building but the Village Hall, an empty garrison, its entrance on Blue's
-/// `tile`, so that Blue's hero is its visiting hero; its picture is `objects`' (`Objects.txt`)
-/// first of class 98 with the town type as subclass, its anchor two tiles east of the entrance
-/// (h3-map's `Town`). Red stands south of the entrance ([`map`]) and steps north into the town
-/// (the situation's `key = "Up"`, `h3drive.py`).
-fn siege_town(town: usize, fort: u8, objects: &str, tile: (u8, u8)) -> Result<MapObject, String> {
+/// The town of a siege (E17 M4 T1b): Blue's, of `siege`'s town type with its fort level (0 to
+/// 3) and its other buildings' bits (M6 T3c3: the Tavern, a Grail building, ...), no other
+/// building but the Village Hall, an empty garrison, its entrance on Blue's `tile`, so that
+/// Blue's hero is its visiting hero; its picture is `objects`' (`Objects.txt`) first of class 98
+/// with the town type as subclass, its anchor two tiles east of the entrance (h3-map's `Town`).
+/// Red stands south of the entrance ([`map`]) and steps north into the town (the situation's
+/// `key = "Up"`, `h3drive.py`).
+fn siege_town(siege: &SiegeTown, objects: &str, tile: (u8, u8)) -> Result<MapObject, String> {
+    let (town, fort) = (siege.town, siege.fort);
     let anchor = (tile.0 + 2, tile.1);
     if tile.0 < 5 || tile.1 < 5 || anchor.0 > 35 || tile.1 > 34 {
         return Err(format!(
@@ -315,8 +316,11 @@ fn siege_town(town: usize, fort: u8, objects: &str, tile: (u8, u8)) -> Result<Ma
         .ok_or(format!("Objects.txt has no town of type {town}"))?;
     let template = ObjectTemplate::from_objects_txt(line).map_err(|e| e.to_string())?;
     let mut built = [0u8; 6];
-    for &bit in FORT_BITS.iter().take(usize::from(fort)) {
-        built[usize::from(bit / 8)] |= 1 << (bit % 8);
+    for &bit in FORT_BITS.iter().take(usize::from(fort)).chain(&siege.built) {
+        let byte = built
+            .get_mut(usize::from(bit / 8))
+            .ok_or(format!("building bit {bit} is not a map's (0 to 47)"))?;
+        *byte |= 1 << (bit % 8);
     }
     Ok(MapObject::Town(Town {
         tile: anchor,
@@ -799,7 +803,18 @@ mod tests {
     #[test]
     fn a_siege_puts_blues_hero_into_its_town() {
         let blue = BLUE_TILE;
-        let town = |t, fort| siege_town(t, fort, TOWNS, blue);
+        let at = |town, fort, objects, tile| {
+            siege_town(
+                &SiegeTown {
+                    town,
+                    fort,
+                    built: Vec::new(),
+                },
+                objects,
+                tile,
+            )
+        };
+        let town = |t, fort| at(t, fort, TOWNS, blue);
         let Ok(MapObject::Town(castle)) = town(0, 3) else {
             panic!("a town");
         };
@@ -823,18 +838,43 @@ mod tests {
         );
         assert!(town(5, 2).unwrap_err().contains("no town of type 5"));
         assert!(
-            siege_town(0, 1, TOWNS, (4, 10))
+            at(0, 1, TOWNS, (4, 10))
                 .unwrap_err()
                 .contains("does not fit")
         );
-        assert!(siege_town(0, 1, TOWNS, (11, 4)).is_err());
-        assert!(siege_town(0, 1, TOWNS, (34, 10)).is_err());
-        assert!(siege_town(0, 1, TOWNS, (11, 35)).is_err());
+        assert!(at(0, 1, TOWNS, (11, 4)).is_err());
+        assert!(at(0, 1, TOWNS, (34, 10)).is_err());
+        assert!(at(0, 1, TOWNS, (11, 35)).is_err());
         let bad = "AVCcasx0.def 1 2 3 4 98 0 1 0";
-        assert!(siege_town(0, 1, bad, blue).is_err());
+        assert!(at(0, 1, bad, blue).is_err());
+        // The other buildings' bits (E17 M6 T3c3): the Tavern 6, the Grail 17, the Brotherhood of
+        // the Sword 19 beside the Fort's 3; a bit past the map's 48 is refused.
+        let with = |built: Vec<u8>| {
+            siege_town(
+                &SiegeTown {
+                    town: 0,
+                    fort: 1,
+                    built,
+                },
+                TOWNS,
+                blue,
+            )
+        };
+        let Ok(MapObject::Town(tavern)) = with(vec![6, 17, 19]) else {
+            panic!("a town");
+        };
+        let TownBuildings::Custom { built: bits, .. } = tavern.buildings else {
+            panic!("custom buildings");
+        };
+        assert_eq!(bits, [0b100_1000, 0, 0b1010, 0, 0, 0]);
+        assert!(with(vec![48]).unwrap_err().contains("bit 48"));
         // Red stands south of the entrance; the map with the town is written.
         let mut battle = sides_of(Some("grass"), &[(0, "Archer", 20)]);
-        battle.siege = Some((0, 3));
+        battle.siege = Some(SiegeTown {
+            town: 0,
+            fort: 3,
+            built: Vec::new(),
+        });
         let mut map = map("t", &battle, &ids(), blue, false).unwrap();
         let [MapObject::Hero(red), MapObject::Hero(b)] = &map.objects[..] else {
             panic!("two heroes");

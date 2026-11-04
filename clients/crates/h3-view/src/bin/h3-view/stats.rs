@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Handle;
 use h3_protocol::wire::{Manifest, Observation, Side, Stack};
+use h3_towns::TownRuleset;
 use h3_ui::text::{Args, Catalogue};
 use h3_view::message::MessageBox;
 use h3_view::stats::{
@@ -52,6 +53,9 @@ pub struct Sources<'a> {
     pub tables: &'a Tables,
     /// The catalogue.
     pub catalogue: &'a Catalogue,
+    /// The town part the battle's packs compile to (E17 M6 T3c3: a siege's buildings and a
+    /// hero's Grail building by their keys); none: the descriptions name no building.
+    pub towns: Option<&'a TownRuleset>,
 }
 
 /// The dialog a left press (or the key T) opened on a stack: the modal dialog with its OK's
@@ -500,18 +504,22 @@ const CAP_ARTIFACTS: [(&str, u32); 2] = [
     ("hourglass_of_the_evil_hour", 85),
 ];
 
-/// The asset tables' record of faction handle `faction` (E17 M6 T3c2).
-fn town_of<'a>(sources: &Sources<'a>, faction: u16) -> Option<&'a h3_view::tables::Town> {
-    let key = sources.manifest.keys.factions.get(usize::from(faction))?;
-    sources.tables.towns.get(key)
+/// The key of building `index` in faction handle `faction`'s town record (E17 M6 T3c3): the
+/// wire's building indices are the engine's (`h3_towns::BuildingId`), so the packs' town part
+/// names them; none without it.
+fn building_key<'a>(sources: &Sources<'a>, faction: u16, index: u8) -> Option<&'a str> {
+    let record = sources
+        .towns?
+        .town(h3_content::FactionId::from_raw(faction))?;
+    let building = record.buildings.get(usize::from(index))?;
+    Some(building.key.as_str())
 }
 
 /// The siege town's buildings that change the defender's `kind` (E17 M6 T3c2, design §12.4): the
 /// town is passed to the defender's stacks only (`listed` the side whose sources the description
 /// lists); the Tavern (morale), a Castle's Brotherhood of the Sword (morale), a Rampart's
-/// Fountain of Fortune (luck), each from `Siege.bonuses` by its index in the town record (the
-/// asset tables' `buildings`), in the original's order. The observation shows nothing else of a
-/// town's buildings (CLT-Q40).
+/// Fountain of Fortune (luck), each from `Siege.bonuses` by its key in the town record (T3c3), in
+/// the original's order. The observation shows nothing else of a town's buildings (CLT-Q40).
 fn siege_buildings(
     sources: &Sources<'_>,
     observation: &Observation,
@@ -525,37 +533,34 @@ fn siege_buildings(
     else {
         return Vec::new();
     };
-    let Some(town) = town_of(sources, siege.faction) else {
-        return Vec::new();
-    };
-    let Some(indices) = town.buildings else {
-        return Vec::new();
-    };
-    let changing = |index: u8| {
-        siege.bonuses.iter().any(|b| {
-            b.building == index
-                && match kind {
-                    Kind::Morale => b.morale != 0,
-                    Kind::Luck => b.luck != 0,
-                }
+    let changing: Vec<&str> = siege
+        .bonuses
+        .iter()
+        .filter(|b| match kind {
+            Kind::Morale => b.morale != 0,
+            Kind::Luck => b.luck != 0,
         })
+        .filter_map(|b| building_key(sources, siege.faction, b.building))
+        .collect();
+    let order: &[(&str, Building)] = match kind {
+        Kind::Morale => &[
+            ("tavern", Building::Tavern),
+            ("brotherhood_of_the_sword", Building::Brotherhood),
+        ],
+        Kind::Luck => &[("fountain_of_fortune", Building::Fountain)],
     };
-    let mut out = Vec::new();
-    if kind == Kind::Morale && changing(indices.tavern) {
-        out.push(Building::Tavern);
-    }
-    match (town.original, kind, indices.special) {
-        (0, Kind::Morale, Some(i)) if changing(i) => out.push(Building::Brotherhood),
-        (1, Kind::Luck, Some(i)) if changing(i) => out.push(Building::Fountain),
-        _ => {}
-    }
-    out
+    order
+        .iter()
+        .filter(|(key, _)| changing.contains(key))
+        .map(|&(_, building)| building)
+        .collect()
 }
 
 /// `list` with the owner's Grail building (E17 M6 T3c2, design §12.9) its changes name: a
 /// `Source::Building` of side `listed`'s hero (the first town of its owner with the Grail's
 /// building standing, as the engine names it) that is a Castle's Colossus for morale or a
-/// Rampart's Spirit Guardian for luck; its +2 is in `list.total` already.
+/// Rampart's Spirit Guardian for luck, by its key in the town record (T3c3); its +2 is in
+/// `list.total` already.
 fn with_grail(
     mut list: HeroList,
     sources: &Sources<'_>,
@@ -572,16 +577,11 @@ fn with_grail(
         let Source::Building { faction, index } = *source else {
             continue;
         };
-        let Some(town) = town_of(sources, faction) else {
-            continue;
+        list.grail = match (building_key(sources, faction, index), kind) {
+            (Some("colossus"), Kind::Morale) => Some(Building::Colossus),
+            (Some("spirit_guardian"), Kind::Luck) => Some(Building::SpiritGuardian),
+            _ => list.grail,
         };
-        if town.buildings.is_some_and(|b| b.grail == index) {
-            list.grail = match (town.original, kind) {
-                (0, Kind::Morale) => Some(Building::Colossus),
-                (1, Kind::Luck) => Some(Building::SpiritGuardian),
-                _ => list.grail,
-            };
-        }
     }
     list
 }

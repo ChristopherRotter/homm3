@@ -189,3 +189,70 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Tavern"
   retrieved  = "2026-11-02"
   confidence = "medium"
+
+[[rule]]
+id       = "TWN-SET-003"
+title    = "A town's buildings at the start"
+context  = "town"
+status   = "implemented"
+summary  = "At the game's build each town's buildings ever built and forbidden are set from the map's (h3m) set, its faction's record read through the map editor's 41 slots (a slot without one of the faction's buildings gives nothing). The record's Village Hall (its building of `hall` 1) is always ever built, even when a custom set forbids it. A custom set: forbidden its forbidden slots' buildings and, to a fixpoint, each building whose `forbidden_with` is forbidden (a horde's upgrade with its horde); built each built slot's building with every building it supersedes, less the forbidden; no draw. A standard set: the Fort (`fort` 1) with the map's flag; an owned town its Tavern (the building of role `tavern` that supersedes no other, not the Castle's Brotherhood of the Sword) and, only with the map's Fort, the level-1 dwelling and, when one draw of 1 to 100 from the setup stream is at most the part's `level_2_dwelling_chance` (the base pack's 30), the level-2 one (owned without a Fort: no dwelling and no draw; the draw is made with the Fort whether or not the record has the dwellings); a neutral town both dwellings, Fort or not, without a draw (TD-3); each with what it supersedes. Then the hordes' upgrade (decision 29): a building not forbidden whose non-empty `auto_with` is all ever built becomes ever built with what it supersedes, to a fixpoint, so that a horde and its level's upgraded dwelling stand as the upgraded horde alone. The standing set is derived from the ever-built set, so a custom set's horde never leaves its dwelling standing (the original's does: TWN-QUIRK-5, fixed). Not yet: the start's forbidden Grail building on a Grail-victory map in another town and Shipyard without a boat's spot (TWN-STUB-2, increments 2 and 4). The game draws the garrison (TWN-SET-004) before the buildings. E09 T6c (design §5): `h3_towns::town_buildings_setup`, `h3_towns::town_setup`; the game calls them at its build (E09 T7b, design §14)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a2 and T5b1; survey E09-towns.md sections 5.1, 5.3, 16.2 and 16.5): town_setup (0x5C0670) sets the garrison, then calls town_buildings_setup (0x5C08C0, read whole), which builds the Village Hall (10); forbids from the start the Grail building (26) on a map whose victory is to build the Grail in a town the condition does not name (0x5F2160) and the Shipyard (6) without a boat's spot by the entrance (0x5C0C90); for a custom set adds the map's forbidden bits through map_building_ids (0x6888C0), a forbidden horde (18, 24) forbidding its upgrade (19, 25), and builds each built bit with the buildings it supersedes (0x6A8BB8) less what is not buildable, in id order through town_build (0x5BE930); for a standard set builds a Fort (7) with the map's flag, in an owned town the Tavern (5) and only with a Fort the level-1 dwelling (30) and at random_between(1, 100) at most 30 the level-2 one (31), in a neutral town both dwellings; town_build turns a horde with its level's upgraded dwelling into the upgraded horde, and its id order leaves a custom set's horde standing beside its dwelling (T-6)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-1.md and E09-batch-1-run2.md, batch TWN-1 row TWN-1-1 (the capture harness under Wine, 2026-11-03; scored in survey E09-towns.md section 15): 34 standard towns in six new games each: owned without a Fort {5, 10} in 48 readings of 48, no dwelling; owned with a Fort {5, 7, 10, 30} each time and the level-2 dwelling (31) in 21 of 96 (the reading's 30 in 100 inside, VCMI's 50 refuted); neutral {10, 30, 31} without a Fort and {7, 10, 30, 31} with one in 60 of 60; every-built equal to built; building 23 in every Rampart, Necropolis and Conflux town, the Village Hall's town-screen companion, left out of the part (E09 decision 27)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 5.3: CGameState::initTowns builds the Village Hall, a Tavern in an owned town and, in every standard town, owned or neutral, Fort or not, the level-1 dwelling always and the level-2 one half the time (config/gameConfig.json startingDwellingChances [100, 50]; differs, TD-3); it removes a built Shipyard without water"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E09 decision 29 and TWN-QUIRK-5 (the user, 2026-11-03, TWN-Q6): the standing set derived from the ever-built set, the hordes' upgrade by the part's auto_with, the original's custom-set horde beside its dwelling (T-6) fixed; the agent's calls the user confirmed for E09 T6c: the start's Tavern the tavern building that supersedes no other, the forbidden_with closure to a fixpoint; docs/epics/E09-design.md sections 4 and 5"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SET-004"
+title    = "A town's garrison at the start"
+context  = "town"
+status   = "implemented"
+summary  = "At the game's build each town's garrison is set from the map's. A custom garrison (the map's) as the map gives it, without a draw: a stack of count 0 leaves its slot empty; a random stack (the h3m's creature codes from -2 down) is its town's faction's creature of its level, the level's upgrade when the code says so (the base at a level without an upgrade; a level the faction's record lacks leaves the slot empty); so a custom empty garrison stays empty, a neutral town's too (TD-5). No custom garrison: an owned town's is empty; a neutral town's is drawn from the setup stream, for levels 1 to 4 in order (the part's `neutral_garrison` rows, only the levels the record has): one draw of 1 to 100 at most the row's chance (the base pack's 33, 33, 20, 13) adds a stack of the faction's unupgraded creature of the level, its count one draw in the row's bounds (8 to 15, 5 to 7, 3 to 5, 1 to 3), in the first free slot from 0. The garrison's draws come before the buildings' (TWN-SET-003), the original's order. E09 T6c (design §5): `h3_towns::town_garrison`, `h3_towns::town_setup`; the game calls them at its build and writes the garrison into the adventure (E09 T7b, design §8 and §14)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1a2; survey E09-towns.md sections 5.1 and 5.2): town_setup (0x5C0670, read whole) sets the garrison before town_buildings_setup: a custom garrison's seven slots as the map gives them, a stack with a count above 0 and a code from -2 down the town's faction's creature of level (-2 - code) / 2, upgraded when the code is odd (town_creatures 0x6747B4), a count of 0 an empty slot; without one, a neutral town draws for levels 1 to 4 random_between(1, 100) at most 33, 33, 20, 13 (0x688E84) and adds the faction's unupgraded creature of the level, random_between of 8 to 15, 5 to 7, 3 to 5, 1 to 3 (0x688E94, 0x688EA4), with army_add_stack at slot -1 (the first free); an owned town's stays empty"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-1.md and E09-batch-1-run2.md, batch TWN-1 row TWN-1-2 (the capture harness under Wine, 2026-11-03; scored in survey E09-towns.md section 15): the two neutral towns with an explicitly empty custom garrison empty in 12 games of 12 (VCMI's draw refuted); the eight controls' 48 draws 15 empty (the reading's 31.2 %), 46 stacks, each the faction's base creature of its level with a count inside its row's bounds, in level order from slot 0; every owned standard town's garrison empty (24 of 24)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 5.2: CGTownInstance::initializeNeutralTownGarrison, the same four rows with level 4 at 14 in 100 (TD-4), and only when the town has no stack, so it also fills an explicitly empty custom garrison (its own FIXME; differs, TD-5)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Town, Neutral Town Garrison (survey E09-towns.md section 5.2): the four rows as the reading, level 4 at 13 in 100, and only when the map defines no garrison"
+  url        = "https://heroes.thelazy.net/index.php/Town"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "The agent's calls the user confirmed for E09 T6c: a random stack at a level the record lacks leaves its slot empty, an upgraded one at a level without an upgrade is the base, the garrison's draws before the buildings' (the original's town_setup order); docs/epics/E09-design.md section 5"
+  confidence = "high"

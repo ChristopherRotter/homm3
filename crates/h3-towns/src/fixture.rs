@@ -1,7 +1,8 @@
-//! The derivations' test part (E09 T6b), built in code (a domain crate takes no pack adapter as a
-//! dev-dependency): a core of three resources and three factions, a town part with the Keep's full
-//! record (every role of increment 1, the Castle's and the Rampart's roles side by side), the
-//! Marsh's small one (a silo that pays gold) and no record for the Wild.
+//! The derivations' and the setup's test part (E09 T6b, T6c), built in code (a domain crate takes
+//! no pack adapter as a dev-dependency): a core of three resources and three factions, a town part
+//! with the Keep's full record (every role of increment 1, the Castle's and the Rampart's roles
+//! side by side, map slots, four levels of creatures, a horde and its upgrade), the Marsh's small
+//! one (a silo that pays gold, one level of creatures) and no record for the Wild.
 
 extern crate std;
 
@@ -9,17 +10,18 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    ContentKey, ContentPack, FactionDef, FactionId, PackManifest, ProfileDef, ResourceDef,
-    ResourceId, Ruleset,
+    ContentKey, ContentPack, CreatureTypeId, FactionDef, FactionId, PackManifest, ProfileDef,
+    ResourceDef, ResourceId, Ruleset,
 };
 use h3_contracts::Moat;
 
 use crate::building::{BuildingId, BuildingSet};
 use crate::record::Town;
 use crate::ruleset::{
-    Building, BuildingRoles, DefenderBonus, Dwelling, GarrisonRow, Reveal, TownParams, TownRecord,
-    TownRuleset,
+    Building, BuildingRoles, CreatureLevel, DefenderBonus, Dwelling, GarrisonRow, Reveal,
+    TownParams, TownRecord, TownRuleset,
 };
+use crate::setup::SlotSet;
 
 /// The core's resources, in its order.
 pub(crate) const WOOD: ResourceId = ResourceId::from_raw(0);
@@ -62,11 +64,60 @@ pub(crate) const DWELLING_1: usize = 17;
 /// The upgraded level-1 dwelling, superseding the dwelling.
 pub(crate) const UPG_DWELLING_1: usize = 18;
 pub(crate) const DWELLING_2: usize = 19;
+/// The level-1 horde, superseding the level-1 dwelling.
+pub(crate) const HORDE_1: usize = 20;
+/// The upgraded level-1 horde (no slot): forbidden with the horde, built once the horde and the
+/// upgraded dwelling are, superseding both (and the dwelling).
+pub(crate) const UPG_HORDE_1: usize = 21;
+/// The fixture's own shrine (no slot; no original's building is one): forbidden with the upgraded
+/// horde and built once it is, so that both closures take two steps.
+pub(crate) const SHRINE: usize = 22;
+
+/// The Keep's buildings' map slots by index (the Mystic Pond, the upgraded horde and the shrine
+/// have none): not their indices, so that a slot and a building's index are told apart.
+const KEEP_SLOTS: [(usize, u8); 20] = [
+    (VILLAGE_HALL, 10),
+    (TOWN_HALL, 11),
+    (CITY_HALL, 12),
+    (CAPITOL, 13),
+    (FORT, 7),
+    (CITADEL, 8),
+    (CASTLE, 9),
+    (TAVERN, 5),
+    (BROTHERHOOD, 22),
+    (SILO, 15),
+    (GRAIL, 26),
+    (LOOKOUT, 21),
+    (FOUNTAIN, 20),
+    (ESCAPE_TUNNEL, 17),
+    (OBELISK, 23),
+    (GLYPHS, 24),
+    (DWELLING_1, 30),
+    (UPG_DWELLING_1, 37),
+    (DWELLING_2, 31),
+    (HORDE_1, 18),
+];
+
+/// A map slot no building of the Keep's has.
+pub(crate) const NO_BUILDING_SLOT: u8 = 40;
+
+/// The creature of handle `raw`: the Keep's level `n` is `10 n`, its upgrade `10 n + 1` (none at
+/// level 3); the Marsh's one level 50, without an upgrade.
+pub(crate) const fn creature(raw: u16) -> CreatureTypeId {
+    CreatureTypeId::from_raw(raw)
+}
 
 /// The set of the Keep's buildings at `indices`.
 pub(crate) fn set(indices: &[usize]) -> BuildingSet {
     indices.iter().fold(BuildingSet::EMPTY, |set, &i| {
         set.with(BuildingId::from_index(i).unwrap())
+    })
+}
+
+/// The slots of the Keep's buildings at `indices` (each has one).
+pub(crate) fn slots(indices: &[usize]) -> SlotSet {
+    indices.iter().fold(SlotSet::EMPTY, |set, &i| {
+        set.with(KEEP_SLOTS.iter().find(|&&(b, _)| b == i).unwrap().1)
     })
 }
 
@@ -130,10 +181,10 @@ fn roles(change: impl FnOnce(&mut BuildingRoles)) -> BuildingRoles {
     roles
 }
 
-/// The Keep's record: the buildings above, a damaging moat, the natural obstacles, a silo of 1
-/// wood and 1 ore, its demoted Capitol the City Hall.
+/// The Keep's record: the buildings above at their slots, a damaging moat, the natural obstacles,
+/// a silo of 1 wood and 1 ore, four levels of creatures, its demoted Capitol the City Hall.
 fn keep() -> TownRecord {
-    let buildings: Vec<Building> = vec![
+    let mut buildings: Vec<Building> = vec![
         building("village_hall", &[], roles(|r| r.hall = Some(1))),
         building("town_hall", &[0], roles(|r| r.hall = Some(2))),
         building("city_hall", &[0, 1], roles(|r| r.hall = Some(3))),
@@ -212,27 +263,57 @@ fn keep() -> TownRecord {
                 });
             }),
         ),
+        building("horde_1", &[DWELLING_1], BuildingRoles::default()),
+        Building {
+            forbidden_with: BuildingId::from_index(HORDE_1),
+            auto_with: set(&[HORDE_1, UPG_DWELLING_1]),
+            ..building(
+                "upg_horde_1",
+                &[HORDE_1, UPG_DWELLING_1, DWELLING_1],
+                BuildingRoles::default(),
+            )
+        },
+        Building {
+            forbidden_with: BuildingId::from_index(UPG_HORDE_1),
+            auto_with: set(&[UPG_HORDE_1]),
+            ..building("shrine", &[], BuildingRoles::default())
+        },
     ];
+    for (index, slot) in KEEP_SLOTS {
+        buildings[index].slot = Some(slot);
+    }
+    let level = |base: u16, upgrade: Option<u16>| CreatureLevel {
+        base: creature(base),
+        upgrade: upgrade.map(creature),
+    };
     TownRecord {
         faction: KEEP,
         moat: Moat::Damaging,
         siege_obstacles: true,
         silo: vec![(WOOD, 1), (ORE, 1)],
-        creatures: vec![],
+        creatures: vec![
+            level(10, Some(11)),
+            level(20, Some(21)),
+            level(30, None),
+            level(40, Some(41)),
+        ],
         buildings,
         capitol_demoted_to: BuildingId::from_index(CITY_HALL).unwrap(),
     }
 }
 
-/// The Marsh's record: its Village Hall (0), a silo (1) that pays 250 gold and a Citadel (2), a
-/// harmless moat, no natural obstacles.
+/// The Marsh's record: its Village Hall (0), a silo (1) that pays 250 gold and a Citadel (2), no
+/// slot, a harmless moat, no natural obstacles, one level of creatures.
 fn marsh() -> TownRecord {
     TownRecord {
         faction: MARSH,
         moat: Moat::Harmless,
         siege_obstacles: false,
         silo: vec![(GOLD, 250)],
-        creatures: vec![],
+        creatures: vec![CreatureLevel {
+            base: creature(50),
+            upgrade: None,
+        }],
         buildings: vec![
             building("village_hall", &[], roles(|r| r.hall = Some(1))),
             building("resource_silo", &[], roles(|r| r.silo = true)),

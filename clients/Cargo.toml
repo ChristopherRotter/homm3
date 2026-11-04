@@ -48,6 +48,11 @@ h3-content-battle = { path = "../crates/h3-content-battle" }
 h3-content = { path = "../crates/h3-content" }
 h3-contracts = { path = "../crates/h3-contracts" }
 h3-map = { path = "../crates/h3-map" }
+# The town records (E17 M6 T3c3): a siege's buildings and a hero's Grail building by the engine's
+# index (`h3_towns::BuildingId`), their keys for the stats dialog and their map editor slots for
+# the original's map. Never in a pure crate.
+h3-pack-towns = { path = "../crates/h3-pack-towns" }
+h3-towns = { path = "../crates/h3-towns" }
 # Light dependencies (the engine's versions and features).
 miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 # The asset tables' parser (E17 M1 T4): serde is the engine's (without std); toml is the engine's
