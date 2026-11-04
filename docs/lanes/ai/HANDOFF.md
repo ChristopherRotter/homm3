@@ -29,7 +29,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `feed_forward`, the bench's warm-up, AdamW and cost, `network --bench`): on the CPU decision 2's
   ranges mostly exceed decision 3's cap (`E25-log.md`, T24; T26's GPU table decides, the user's
   call there). **Next:** T25 in the sandbox (the heads read the geometry).
-- **Open pull requests:** see the newest session entry (T24). Merged: #696 (T21), #718 (T22, T23).
+- **Open pull requests:** the one of `claude/cool-mccarthy-cfodpk` (T24). Merged: #696 (T21),
+  #718 (T22, T23).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)

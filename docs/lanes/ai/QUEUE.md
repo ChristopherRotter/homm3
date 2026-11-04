@@ -24,9 +24,12 @@ the epic file; the code facts below from the refinement's survey, re-check them 
 - **T26 The structure sweep.** *Scope:* the user's GPU, one run of about 3 to 5 hours:
   `configs/distill/e25-structure.toml`, T16's bench with about 8 students (the MLP 2 × 512, the
   MLP with the mask, three structured candidates at two learning rates each, within the cost
-  cap), `network --time --device cuda` for the grid; its record `records/distill/structure-1.json`
-  uploaded. *Acceptance:* a read ranking agreement (overall, moves, melee) against the GPU's µs,
-  decision 5's first gate applied (0.60 at 4 M). *Depends on:* T25. *Status:* waiting.
+  cap), first `network --bench configs/distill/e25-grid.toml --time --rows 512 --device cuda`
+  for the grid (T24's CPU table puts most of decision 2's ranges above the cap: the user's call
+  on the cap with the GPU's table, `E25-log.md` T24); its record
+  `records/distill/structure-1.json` uploaded. *Acceptance:* a read ranking agreement (overall,
+  moves, melee) against the GPU's µs, decision 5's first gate applied (0.60 at 4 M). *Depends
+  on:* T25. *Status:* waiting.
 - **T27 The long clone.** *Scope:* the user's GPU: T20's bench (`configs/distill/e25-clone-2.toml`,
   16 M samples) with T26's best student (the best two if within 0.02); its ladder against both
   system actors and on the neutral set; T19's tool per category; the student uploaded (under
