@@ -193,7 +193,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   exact; **T4b** the Auto Combat options and Creature Info in effect, cut in three by the user
   (2026-11-04): **T4b1** (done 2026-11-04, design §12.13) the Auto Combat options restricting the window's bot, **T4b2a** (done 2026-11-04, design §12.14) Creature
   Info's level without new windows (F5, the status line's damage), **T4b2b** the army info
-  windows on the hover, the heroes' windows kept, their stills, the help rows' question;
+  windows on the hover, cut in two by the user (2026-11-04): **T4b2b1** (done 2026-11-04, design
+  §12.15) the hover read whole (both kinds of window), the heroes' windows on the hover and kept
+  after their right press, CLT-Q47 to Q50 asked and answered (Q47 copied, Q48 to Q50 fixed),
+  four stills exact (`army-info-hero`, `-hero-enemy`, `-none`, `-kept`); **T4b2b2** the stacks' four windows built, filled and recorded (CLT-Q48's fix);
   **T4c** the grid and the shadows drawn.
 - **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
   question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
@@ -407,15 +410,19 @@ The next milestone's list starts here.
     table, so the two viewers' own keys stay the same as E24 M3 T0 wants); plain F5 to F8 are the
     original battle's (F5 Creature Info's level since T4b2a, F6 to F8 the grid and shadows at
     T4c). The map viewer's defaults changed with it (a `cross-lane` change; its inbox told).
-38. Creature Info's level not recorded (T4b2a): no capture at level 1 or 2 (T4b2b's, beside the
-    hover's army info windows); the hints' words checked against the user's tables only.
+38. Creature Info's level recorded for the heroes' windows only (T4b2b1: four stills exact at
+    levels 1 and 2); the stacks' windows at T4b2b2; the hints' damage words checked against the
+    user's tables only (a still has no previews, item 42).
 39. The army info windows' model (T4b2b1, *provisional*, design §12.15): a ninth list of
     `track::Shown` (`army`) holding each shown window's turn, the window filling it from the
     follower's turns at every frame (no cache); a new list of `Shown` needs its place in `Lens`.
 40. A still's level and its right press released (T4b2b1, *provisional*): `frames.toml`'s
     `army_info` and the action `right-click:<x>,<y>` (over a hero's rectangle only); `key:F5`
-    cycles. The harness is untouched: it must write the level into the original's registry, copy
-    it into `frames.toml`, restore it after an F5, and press and release for `right-click:`.
+    cycles. The harness writes a situation's `army_info` into the original's registry for its run
+    and puts the old value back (an F5 within the run restored with it), copies it into
+    `frames.toml`, and presses and releases for `right-click:`, the mouse left there. Its `click:`
+    parks the mouse off the battlefield, so no still shows the right press bringing back a window
+    a left press hid (the move does it first; the library's tests cover the press).
 41. CLT-Q49's fix (T4b2b1, *provisional*): the keys C, F, S, R and O hide the windows whatever
     they then do, with the mouse over the battlefield while the battle takes the key; C, S, R
     and O at the hotkey's release. The harness's sequences push no hide (level 0).
