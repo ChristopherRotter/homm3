@@ -132,6 +132,12 @@ network plays (its file's config; the rules set no limit, BAT-TAC-002). No obser
 phase's round: the binding counts it after each call (`batch.tactics_round`, `tactics_turns`).
 `configs/e25-bound.toml`: `e25-shaping.toml` with one round (T4b).
 
+**The entry mask as an input** (E25 T25, increment 7 decision 4): `[network] mask_input = true`
+(the MLP's for now; false by default) has the network read the rows' legal entry mask (action
+encoding v13's 1 404 entries, the tactics bound in it) as well as the observation: the MLP's
+trunk reads it as 0/1 inputs after the observation's. A network saved without the key reads no
+mask and computes what it did before.
+
 **The imitation loss** (E25 T21, increment 6, decision 3's second form): `[ppo] imitation_coef`
 (0, off, by default) weighs an auxiliary cross-entropy to the fair system actor's choice on the
 learner's own decisions, falling linearly to 0 over `imitation_horizon` samples (0: the learning

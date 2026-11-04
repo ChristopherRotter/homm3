@@ -130,6 +130,11 @@ class Config:
     #: own tactics phase it plays before End tactics is its only entry, wherever it plays (0: no
     #: bound; the rules set none, BAT-TAC-002).
     tactics_rounds: int = field(default=0, metadata=_in("network"))
+    #: Whether the network reads the rows' legal entry mask as an input (E25 increment 7,
+    #: decision 4; `policy`'s documentation): the mask the entry logits are masked with (the
+    #: tactics bound in it), as 0/1 inputs after the observation's. False: every network before
+    #: E25 T25. The MLP's for now (T25 part 2); the structured kinds' follow.
+    mask_input: bool = field(default=False, metadata=_in("network"))
     rollout: int = field(default=128, metadata=_in("ppo"))
     #: 1.0 since E06 T5a (AI-Q9: γ 0.995 let the winner stall, `t4-1` against `t4-2`).
     gamma: float = field(default=1.0, metadata=_in("ppo"))
@@ -383,6 +388,10 @@ def resolve(config: Config) -> Config:
         problems.append('`order` is the MLP\'s (`kind = "mlp"`)')
     elif c.norm != "none" and c.kind != "hexconv":
         problems.append('`norm` is the hex convolution network\'s (`kind = "hexconv"`)')
+    elif c.mask_input and c.kind != "mlp":
+        # E25 T25 part 2: only the MLP reads the mask so far; the structured kinds' part lifts
+        # this (and `policy.build`'s refusal).
+        problems.append('`mask_input` is the MLP\'s for now (`kind = "mlp"`)')
     if c.norm not in NORMS:
         problems.append(f"`norm` is one of {', '.join(NORMS)}")
     if c.feed_forward <= 0:

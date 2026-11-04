@@ -154,9 +154,10 @@ class HexNet(Pointed):
         kind's layers."""
         raise NotImplementedError
 
-    def encode(self, obs: torch.Tensor) -> Encoding:
+    def encode(self, obs: torch.Tensor, mask: torch.Tensor | None = None) -> Encoding:
         """The context [rows, width], the stacks' vectors [rows, 42, width] and the hexes'
-        vectors [rows, 255, width] (zero off the field)."""
+        vectors [rows, 255, width] (zero off the field); `mask` (the entry mask) is not read yet
+        (E25 T25)."""
         field, glob, tokens, position, present, active = self.draw(obs)
         hexes, glob = self.trunk(field, glob)
         rows = hexes.shape[0]

@@ -102,7 +102,7 @@ def parts(
             hooks.append(module.register_forward_hook(count))
     own = sum(p.numel() for p in net.parameters(recurse=False))
     with torch.no_grad():
-        h = net.encode(obs)
+        h = net.encode(obs, mask)
         net.value(h)
         logits = net.entry_logits(h)
         if net.reads_preview:
@@ -271,7 +271,7 @@ def timing(net: Policy, batch: BattleBatch, repeats: int) -> dict[str, float | N
 
     def forward() -> None:
         with torch.no_grad():
-            h = net.encode(obs)
+            h = net.encode(obs, mask)
             net.value(h)
             net.with_preview(net.entry_logits(h), h, obs, preview, mask)
 

@@ -94,7 +94,7 @@ from .evaluate import (
 )
 from .gate import Bounds, game_score, gate
 from .league import League, Member
-from .policy import CASTS, Choice, Policy, build, rows_of
+from .policy import CASTS, Choice, Policy, bounded, build, rows_of
 from .run import (
     Cadence,
     Config,
@@ -699,8 +699,15 @@ class Trainer:
             r.truncated[at, e] = trunc
             if trunc.any():
                 final = torch.from_numpy(b.final_obs[e[trunc], s[trunc]]).to(self.device)
+                # The batch keeps no entry mask of a final observation (only `final_obs`): a
+                # network that reads the mask (`[network] mask_input`, E25 T25) values it with
+                # none legal. Only a run without `truncation_penalty` bootstraps here (the
+                # default 1.0, which every e25 config keeps, ends a cut battle at a loss).
+                none = torch.zeros(
+                    (len(final), b.action_count), dtype=torch.bool, device=self.device
+                )
                 with torch.no_grad():
-                    v = self.policy.values(final).cpu().numpy()
+                    v = self.policy.values(final, none).cpu().numpy()
                 r.final_value[at[trunc], e[trunc]] = v
             self.opened[e, s] = -1
             done = np.nonzero(b.done)[0]
@@ -736,7 +743,10 @@ class Trainer:
         elapsed = time.perf_counter() - start
         with torch.no_grad():
             obs = torch.from_numpy(b.obs).to(self.device)
-            self.last_value = self.policy.values(obs).cpu().numpy()
+            # The entry mask `act` would mask with: the batch's with the learner's tactics bound.
+            mask = bounded(b.entry_mask, b.tactics_round, self.policy.tactics_rounds)
+            legal = torch.from_numpy(mask).to(self.device).bool()
+            self.last_value = self.policy.values(obs, legal).cpu().numpy()
         # A frozen network to move: the learner's transition stays open (left out).
         frozen = (b.to_move >= 0) & (self.frozen_side == b.to_move)
         self.last_side = np.where(frozen, -1, b.to_move).astype(np.int8)

@@ -31,7 +31,7 @@ from h3env.train.hexnet import (  # noqa: E402
     neighbours,
 )
 from h3env.train.network import hex_mermaid, parts  # noqa: E402
-from h3env.train.policy import Mlp, build  # noqa: E402
+from h3env.train.policy import Mlp, build, symlog  # noqa: E402
 
 KINDS = ["hexconv", "hexconv-norm", "hexformer"]
 
@@ -298,3 +298,45 @@ def test_the_feed_forward_width_and_the_new_keys_config() -> None:
     ):
         with pytest.raises(ConfigError, match=match):
             load_config(text)
+
+
+def test_the_defaults_are_the_networks_before_t25() -> None:
+    # A network file before E25 T25 has no `mask_input`: it builds the network it was (the same
+    # parameters by name and shape) and encodes as it did, its entry mask handed or not (the
+    # MLP's trunk bit for bit as `Mlp.encode` before T25).
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    for kind in ("mlp", "entity", "hexconv", "hexformer"):
+        config = asdict(Config(kind=kind, hidden=32, width=16, layers=2, heads=2, embed=8))
+        old = {k: v for k, v in config.items() if k != "mask_input"}
+        torch.manual_seed(0)
+        net = build(old, batch).eval()
+        torch.manual_seed(0)
+        same = build(config, batch)
+        shapes = {k: v.shape for k, v in net.state_dict().items()}
+        assert shapes == {k: v.shape for k, v in same.state_dict().items()}
+        assert not net.reads_mask
+        with torch.no_grad():
+            plain, given = net.encode(obs), net.encode(obs, mask)
+            assert all(torch.equal(a, b) for a, b in zip(plain, given, strict=True))
+            assert torch.equal(net.values(obs), net.values(obs, mask))
+            if kind == "mlp":
+                assert shapes["trunk.0.weight"] == (32, L.ORDER)
+                assert torch.equal(given[0], net.trunk(symlog(obs[:, : L.ORDER])))
+    batch.close()
+
+
+def test_the_entry_mask_input_is_the_mlps_for_now() -> None:
+    # E25 T25 part 2: only the MLP reads the entry mask so far. The structured kinds' part lifts
+    # both refusals (`run.validate`, `policy.build`) and turns this test round.
+    batch = mixed_batch()
+    for kind in ("entity", "hexconv", "hexformer"):
+        config = asdict(Config(kind=kind, width=16, layers=1, heads=2, embed=8, mask_input=True))
+        with pytest.raises(ValueError, match="`mask_input` is the MLP's for now"):
+            build(config, batch)
+        with pytest.raises(ConfigError, match="`mask_input` is the MLP's for now"):
+            load_config(f"[network]\nkind = '{kind}'\nmask_input = true\n")
+    batch.close()
+    assert load_config("[network]\nmask_input = true\n").mask_input
+    assert not load_config("").mask_input

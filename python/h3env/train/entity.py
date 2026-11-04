@@ -209,9 +209,9 @@ class Entity(Pointed):
         check_layout(batch, "entity network")
         return cls(width, layers, heads, embed, feed_forward)
 
-    def encode(self, obs: torch.Tensor) -> Encoding:
+    def encode(self, obs: torch.Tensor, mask: torch.Tensor | None = None) -> Encoding:
         """The context [rows, width], the stacks' tokens [rows, 42, width] and the hexes'
-        vectors [rows, 255, HEX_WIDTH]."""
+        vectors [rows, 255, HEX_WIDTH]; `mask` (the entry mask) is not read yet (E25 T25)."""
         rows = obs.shape[0]
         x = symlog(obs)
         raw = obs[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES)

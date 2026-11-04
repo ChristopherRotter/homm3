@@ -79,8 +79,9 @@ def casting_policy(batch: BattleBatch, kind: str = "mlp") -> Policy:
     """A small network of `kind` that prefers the casts where they are legal, so that their
     heads are chosen too."""
     torch.manual_seed(0)
-    if kind == "mlp":
-        policy = Mlp.for_batch(batch, hidden=32, embed=8)
+    if kind in ("mlp", "mlp-mask"):
+        # "mlp-mask": the MLP reading the entry mask (`[network] mask_input`, E25 T25).
+        policy = Mlp.for_batch(batch, hidden=32, embed=8, mask_input=kind == "mlp-mask")
         with torch.no_grad():
             policy.entry_head.bias[[_ffi.HERO_CAST, _ffi.CREATURE_CAST]] = 30.0
         return policy
@@ -103,7 +104,7 @@ def mixed_batch() -> BattleBatch:
     return batch
 
 
-@pytest.mark.parametrize("kind", ["mlp", "entity", "hexconv", "hexformer"])
+@pytest.mark.parametrize("kind", ["mlp", "mlp-mask", "entity", "hexconv", "hexformer"])
 def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities(kind) -> None:
     batch = mixed_batch()
     policy = casting_policy(batch, kind)
@@ -1324,6 +1325,53 @@ def test_an_order_run_resumes_and_its_files_read_the_order(tmp_path) -> None:
     record = json.loads((tmp_path / "record.json").read_text())
     assert check_record(record) == [] and record["config"]["network"]["order"] is True
     assert load(tmp_path / "best.pt").reads_order
+
+
+def test_the_entry_mask_reaches_the_trunk_only_with_mask_input(tmp_path) -> None:
+    # E25 T25 (increment 7 decision 4): an MLP with `[network] mask_input` reads the rows' entry
+    # mask as 0/1 inputs after the observation's and refuses an encoding without it; a file
+    # saved without the key (every network before T25) loads and plays as it did.
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    torch.manual_seed(0)
+    reads = build(asdict(Config(hidden=32, embed=8, mask_input=True)), batch)
+    assert reads.reads_mask and reads.trunk[0].in_features == L.ORDER + L.ACTION_COUNT
+    for call in (reads.encode, reads.values):
+        with pytest.raises(ValueError, match="reads the legal entry mask"):
+            call(obs)
+    other = mask.clone()
+    other[:, L.END_TACTICS] = ~other[:, L.END_TACTICS]
+    with torch.no_grad():
+        assert not torch.equal(reads.encode(obs, mask)[0], reads.encode(obs, other)[0])
+        assert not torch.equal(reads.values(obs, mask), reads.values(obs, other))
+    config = asdict(Config(hidden=32, embed=8))
+    del config["mask_input"]
+    torch.manual_seed(0)
+    plain = build(config, batch)
+    torch.save({"config": config, "policy": plain.state_dict()}, tmp_path / "old.pt")
+    loaded = load(tmp_path / "old.pt")
+    assert not loaded.reads_mask and list(loaded.state_dict()) == list(plain.state_dict())
+    before, after = plain.act(batch, greedy=True), loaded.act(batch, greedy=True)
+    for name in ("entry", "spell", "target", "second", "logprob", "value"):
+        np.testing.assert_array_equal(getattr(after, name), getattr(before, name))
+    batch.close()
+
+
+def test_a_mask_input_learner_collects_bootstraps_and_updates() -> None:
+    # A PPO update of an MLP reading the entry mask; without a truncation penalty a cut battle
+    # bootstraps from its final observation, valued with no entry legal (the batch keeps no
+    # final mask).
+    small = {**SMALL, "envs": 4, "rollout": 8, "max_steps": 6}
+    trainer = Trainer(Config(**small, mask_input=True, truncation_penalty=0.0))
+    assert trainer.policy.reads_mask
+    trainer.collect()
+    r = trainer.rollout
+    assert r.truncated.any() and np.isfinite(trainer.last_value).all()
+    stats = trainer.update(trainer.config.lr)
+    assert stats["update_samples"] > 0
+    assert all(torch.isfinite(p).all() for p in trainer.policy.parameters())
+    trainer.batch.close()
 
 
 def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
