@@ -10,6 +10,14 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 
 ## Inbox
 
+- 2026-11-04 (the client lane, E17 M6 T4b2a, CLT-Q46; **the user's request**, when online play
+  needs it): **the attack and shot previews on a seat's wire.** With Creature Info on, the battle
+  client's status line shows an attack's or a shot's damage range (`docs/epics/E17-design.md`
+  §12.14); a local battle takes it from `h3_battle::preview` (BAT-DMG-011), but a server's seat
+  holds no battle state (ADR-0018 point 10), so it shows the hint without the damage. Send the
+  acting seat, with each turn's legal commands, the preview (least and greatest damage) of each
+  attack and shot it may give (a protocol version step; the client lane then reads it).
+
 - 2026-11-02 (the battle lane, E26 T5; for E16 M5's unowned sides): a computer seat calls the
   fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as amended; the
   user, AI-Q10: it decides only on what its side may know), the all-seeing `choose` only as a
