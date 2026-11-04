@@ -105,6 +105,109 @@ const MINES: [&str; 8] = [
     "base:abandoned_mine",
 ];
 
+/// Class 17 by subclass (E08 T93b; increment 10's design note §4): the one-creature dwellings,
+/// by the subclass the packs record beside each type (`# original class 17 subclass N`; a test
+/// keeps the table in step with `packs/*/adventure.toml`).
+pub(crate) const DWELLINGS: [&str; 80] = [
+    "base:basilisk_pit",
+    "base:behemoth_crag",
+    "base:pillar_of_eyes",
+    "base:hall_of_darkness",
+    "base:dragon_vault",
+    "base:training_grounds",
+    "base:centaur_stables",
+    "base:air_elemental_conflux",
+    "base:portal_of_glory",
+    "base:cyclops_cave",
+    "base:forsaken_palace",
+    "base:serpent_fly_hive",
+    "base:dwarf_cottage",
+    "base:earth_elemental_conflux",
+    "base:fire_lake",
+    "base:homestead",
+    "base:fire_elemental_conflux",
+    "base:parapet",
+    "base:altar_of_wishes",
+    "base:wolf_pen",
+    "base:gnoll_hut",
+    "base:goblin_barracks",
+    "base:hall_of_sins",
+    "base:gorgon_lair",
+    "base:dragon_cliffs",
+    "base:griffin_tower",
+    "base:harpy_loft",
+    "base:kennels",
+    "base:hydra_pond",
+    "base:imp_crucible",
+    "base:lizard_den",
+    "base:mage_tower",
+    "base:manticore_lair",
+    "base:chapel_of_stilled_voices",
+    "base:labyrinth",
+    "base:monastery",
+    "base:golden_pavilion",
+    "base:demon_gate",
+    "base:ogre_fort",
+    "base:orc_tower",
+    "base:hell_hole",
+    "base:dragon_cave",
+    "base:cliff_nest",
+    "base:workshop",
+    "base:cloud_temple",
+    "base:dendroid_arches",
+    "base:warren",
+    "base:water_elemental_conflux",
+    "base:tomb_of_souls",
+    "base:wyvern_nest",
+    "base:enchanted_spring",
+    "base:unicorn_glade",
+    "base:mausoleum",
+    "base:estate",
+    "base:cursed_temple",
+    "base:graveyard",
+    "base:guardhouse",
+    "base:archers_tower",
+    "base:barracks",
+    "ab:magic_lantern",
+    "ab:altar_of_thought",
+    "ab:pyre",
+    "ab:frozen_cliffs",
+    "ab:crystal_cavern",
+    "ab:magic_forest",
+    "ab:sulfurous_lair",
+    "ab:enchanters_hollow",
+    "ab:treetop_tower",
+    "base:unicorn_glade_2",
+    "ab:altar_of_air",
+    "ab:altar_of_earth",
+    "ab:altar_of_fire",
+    "ab:altar_of_water",
+    "ab:thatched_hut",
+    "ab:hovel",
+    "ab:boar_glen",
+    "ab:tomb_of_curses",
+    "ab:nomad_tent",
+    "ab:rogue_cavern",
+    "ab:troll_bridge",
+];
+
+/// Class 20 by subclass (E08 T93b): the four-creature dwellings (`# original class 20 subclass N`).
+pub(crate) const DWELLINGS_4: [&str; 2] = ["base:elemental_conflux", "base:golem_factory"];
+
+/// The original's faction codes 0 to 8 (a random dwelling's faction set, bit i for code i; E08
+/// T93b, increment 10's design note §4). The town lane's import reuses it for a town's faction.
+pub(crate) const FACTIONS: [&str; 9] = [
+    "base:castle",
+    "base:rampart",
+    "base:tower",
+    "base:inferno",
+    "base:necropolis",
+    "base:dungeon",
+    "base:stronghold",
+    "base:fortress",
+    "ab:conflux",
+];
+
 /// The abandoned mine's own class (E08 T83a): 53.7 in the original.
 pub(crate) const ABANDONED_MINE: u32 = 220;
 
@@ -145,12 +248,15 @@ pub(crate) const SPELL_SCROLL: u16 = 1;
 /// What an object of `class` is among a battle's surroundings (GAM-BAT-011, E08 T54; survey
 /// `E08-objects.md` §2.5): ownable by the original's `class_is_ownable` (0x40FCA0: the creature
 /// generators 17 and 20, a garrison 33, a lighthouse 42, a mine 53, a random town 77, a shipyard
-/// 87, a town 98; since E08 T83a the abandoned mine 220, which the original makes 53), and the
+/// 87, a town 98; since E08 T83a the abandoned mine 220, which the original makes 53; since E08
+/// T93b the random dwellings 216 to 218, whose class is 17 or 20 from the load on), and the
 /// decorations 0x41ADB0 counts by its table over classes 114 to 160: trees 114, 115, 135, 137,
 /// 155, 159 and 160, mountains 123, 133, 134, 136, 157 and 158, dead vegetation 119.
 pub(crate) const fn scenery(class: u32) -> Scenery {
     match class {
-        17 | 20 | 33 | 42 | 53 | 77 | 87 | 98 | ABANDONED_MINE => Scenery::Ownable,
+        17 | 20 | 33 | 42 | 53 | 77 | 87 | 98 | 216 | 217 | 218 | ABANDONED_MINE => {
+            Scenery::Ownable
+        }
         114 | 115 | 135 | 137 | 155 | 159 | 160 => Scenery::Tree,
         123 | 133 | 134 | 136 | 157 | 158 => Scenery::Mountain,
         119 => Scenery::DeadVegetation,
@@ -361,6 +467,16 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         86 => Some("base:shipwreck_survivor"),
         124 => Some("base:hole"),
         225 => Some("sod:favorable_winds"),
+        // E08 T93b (increment 10's design note §4): the dwellings by subclass, the Refugee Camp
+        // and the random dwellings (216 to 218, a faction set and a level range the import
+        // reads from the object's body; one tied to a town stays a blocker, ADV-STUB-13).
+        // rule: ADV-DWL-001
+        17 => by_subclass(&DWELLINGS),
+        20 => by_subclass(&DWELLINGS_4),
+        // rule: ADV-RFG-001
+        78 => Some("base:refugee_camp"),
+        // rule: ADV-DWL-005
+        216..=218 => Some("base:random_dwelling"),
         _ => return None,
     })
 }

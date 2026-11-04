@@ -2,14 +2,18 @@
 //! increment 10's design note §1, §4, §16, survey `docs/rules/surveys/E08-dwellings.md` §1, §3.1,
 //! §7): dwellings of one creature (17) and of several (20) with their owners, the Refugee Camp
 //! (78), the random dwellings (216 to 218) not tied to a town with their faction sets and levels,
-//! and the teams, read back as written in SoD and RoE; what the writer refuses; and what the
-//! import makes of them until T93 types them.
+//! and the teams, read back as written in SoD and RoE; what the writer refuses; and, since E08
+//! T93b, what the import makes of them (increment 10's design note §4) and what it refuses.
+
+use h3_adventure::{Holds, Scenery};
+use h3_contracts::PlayerId;
 
 use super::economy::{hero, read_back};
-use super::import::SOD;
-use crate::import;
-use crate::model::{Bits, Body, RandomDwelling};
+use super::import::{self as raw_import, ROE, SOD, object};
+use crate::import::codes;
+use crate::model::{Bits, Body, RandomDwelling, RawMap, TownBody};
 use crate::writer as w;
+use crate::{ImportError, Unsupported, import, import_map};
 
 /// The game's `Objects.txt` lines of the classes written here: a Guardhouse (17.56), the Dragon
 /// Cliffs (17.24), the Golem Factory (20.1), the Elemental Conflux (20.0), a Refugee Camp (78),
@@ -111,7 +115,7 @@ fn dwellings_map() -> w::Map {
 }
 
 /// The objects' classes, subclasses and positions, the heroes left out.
-fn placed(m: &crate::RawMap) -> Vec<(u32, u32, (u8, u8))> {
+fn placed(m: &RawMap) -> Vec<(u32, u32, (u8, u8))> {
     m.objects[2..]
         .iter()
         .map(|o| {
@@ -300,27 +304,236 @@ fn the_writer_refuses_what_the_game_cannot_load() {
     }
 }
 
-#[test]
-fn the_dwellings_map_imports_as_the_import_reads_it_today() {
-    // Until T93 types the classes (increment 10's design note §4), the import places each as an
-    // untyped object of its template, unowned.
-    let setup = import(&read_back(&w::write(&dwellings_map()).unwrap()), &SOD).unwrap();
-    setup.validate(&SOD).unwrap();
-    let placed: Vec<_> = setup
-        .map
-        .objects
+/// The dwellings map read back (SoD).
+fn raw() -> RawMap {
+    read_back(&w::write(&dwellings_map()).unwrap())
+}
+
+/// The map with the object at `index` of this class and subclass (its own template).
+fn retyped(raw: &RawMap, index: usize, class: u32, subclass: u32) -> RawMap {
+    let mut map = raw.clone();
+    let t = usize::try_from(map.objects[index].template).unwrap();
+    map.templates[t].class = class;
+    map.templates[t].subclass = subclass;
+    map
+}
+
+/// The map with the object at `index` holding this random dwelling's body.
+fn with_body(
+    raw: &RawMap,
+    index: usize,
+    owner: u32,
+    faction: Option<(u32, Option<Bits>)>,
+    levels: Option<(u8, u8)>,
+) -> RawMap {
+    let mut map = raw.clone();
+    map.objects[index].body = Body::RandomDwelling(RandomDwelling {
+        owner,
+        faction,
+        levels,
+    });
+    map
+}
+
+/// A random dwelling's holds in SoD's rules: the factions by their codes.
+fn holds(codes: &[usize], levels: (u8, u8)) -> Holds {
+    let factions = codes
         .iter()
-        .map(|o| (o.object_type, o.owner, (o.anchor.x, o.anchor.y)))
+        .map(|&code| SOD.core().faction_by_key(codes::FACTIONS[code]).unwrap())
         .collect();
-    let tiles = [
-        (6, 4),
-        (12, 4),
-        (18, 4),
-        (24, 4),
-        (6, 10),
-        (12, 10),
-        (18, 10),
-        (24, 10),
-    ];
-    assert_eq!(placed, tiles.map(|tile| (None, None, tile)));
+    Holds::RandomDwelling { factions, levels }
+}
+
+// covers: ADV-DWL-001, ADV-DWL-005, ADV-RFG-001, ADV-OWN-002, GAM-BAT-011
+#[test]
+fn the_dwellings_map_imports_typed() {
+    // E08 T93b (increment 10's design note §4): the dwellings by class and subclass, the camp and
+    // the random dwellings with their owners, faction sets and level ranges.
+    let setup = import(&raw(), &SOD).unwrap();
+    setup.validate(&SOD).unwrap();
+    let part = SOD.adventure();
+    let types: Vec<_> = setup.map.objects.iter().map(|o| o.object_type).collect();
+    let keys = [
+        "guardhouse",
+        "dragon_cliffs",
+        "golem_factory",
+        "elemental_conflux",
+        "refugee_camp",
+        "random_dwelling",
+        "random_dwelling",
+        "random_dwelling",
+    ]
+    .map(|k| part.object_type_by_key(&format!("base:{k}")));
+    assert!(keys.iter().all(Option::is_some));
+    assert_eq!(types, keys);
+    let owners: Vec<_> = setup.map.objects.iter().map(|o| o.owner).collect();
+    let (red, blue) = (Some(PlayerId::new(0)), Some(PlayerId::new(1)));
+    assert_eq!(owners, [red, None, blue, None, None, None, None, red]);
+    let held: Vec<_> = setup.map.objects.iter().map(|o| o.holds.clone()).collect();
+    let mut expected = vec![Holds::Nothing; 8];
+    expected[5] = holds(&[0], (7, 7));
+    expected[6] = holds(&[2], (3, 3));
+    expected[7] = holds(&[3], (1, 3));
+    assert_eq!(held, expected);
+    // Every one but the camp is ownable scenery (GAM-BAT-011: 216 to 218 are 17 or 20 then).
+    let scenery: Vec<_> = setup.map.objects.iter().map(|o| o.scenery).collect();
+    let mut expected = [Scenery::Ownable; 8];
+    expected[4] = Scenery::Other;
+    assert_eq!(scenery, expected);
+    // The table's last subclasses, a level 7 of 217 and Conflux by 218, and a set of several
+    // factions in the core's order with the full level range.
+    assert!(import(&retyped(&raw(), 2, 17, 79), &SOD).is_ok());
+    assert!(import(&retyped(&raw(), 4, 20, 1), &SOD).is_ok());
+    let placed =
+        |map: &RawMap, index: usize| import(map, &SOD).unwrap().map.objects[index].holds.clone();
+    assert_eq!(placed(&retyped(&raw(), 8, 217, 6), 6), holds(&[2], (7, 7)));
+    assert_eq!(placed(&retyped(&raw(), 9, 218, 8), 7), holds(&[8], (1, 3)));
+    let several = with_body(
+        &raw(),
+        7,
+        0xFF,
+        Some((0, Some(Bits(vec![0x85, 1])))),
+        Some((0, 6)),
+    );
+    assert_eq!(placed(&several, 5), holds(&[0, 2, 7, 8], (1, 7)));
+}
+
+// covers: ADV-DWL-005
+#[test]
+fn a_random_dwelling_tied_to_a_town_stays_a_blocker() {
+    // ADV-STUB-13 until E09's random towns: an identifier a town or a random town of the map has
+    // keeps the object untyped, unowned and empty, whatever its levels and owner; an RoE town has
+    // no identifier, and an object of a town's class without a town's body names none.
+    let mut map = with_body(&raw(), 7, 5, Some((5, None)), Some((9, 9)));
+    let town = |identifier| {
+        Body::Town(Box::new(TownBody {
+            identifier,
+            ..TownBody::default()
+        }))
+    };
+    let first = u32::try_from(map.templates.len()).unwrap();
+    map.templates
+        .extend([98, 77, 77].map(|class| raw_import::template(class, &[(0, 0)], &[(0, 0)])));
+    map.objects.extend([
+        object(30, 20, first, town(Some(5))),
+        object(30, 24, first + 1, town(None)),
+        object(30, 28, first + 2, Body::None),
+    ]);
+    let setup = import(&map, &SOD).unwrap();
+    let dwelling = &setup.map.objects[5];
+    assert_eq!(
+        (dwelling.object_type, dwelling.owner, &dwelling.holds),
+        (None, None, &Holds::Nothing)
+    );
+    assert_eq!(dwelling.scenery, Scenery::Ownable);
+    // The other identifiers name no town.
+    let mut other = map.clone();
+    other.objects[7].body = with_body(&raw(), 7, 0xFF, Some((6, None)), Some((0, 0))).objects[7]
+        .body
+        .clone();
+    assert_eq!(
+        import(&other, &SOD).unwrap_err(),
+        ImportError::DwellingTown(7)
+    );
+}
+
+// covers: ADV-DWL-001, ADV-DWL-005, ADV-OWN-002
+#[test]
+fn the_import_refuses_what_the_original_cannot_load() {
+    // E08 T93b (increment 10's design note §4): input bounds as A-31 (ADV-QUIRK-36 to -38); errors
+    // name the map's object index (the heroes 0 and 1 included).
+    let raw = raw();
+    let refused = |map: &RawMap| import(map, &SOD).unwrap_err();
+    // Classes 18 and 19 (A-36), subclasses past the tables and past 217's and 218's codes.
+    assert_eq!(
+        refused(&retyped(&raw, 2, 18, 0)),
+        ImportError::DwellingClass(2)
+    );
+    assert_eq!(
+        refused(&retyped(&raw, 3, 19, 0)),
+        ImportError::DwellingClass(3)
+    );
+    assert_eq!(refused(&retyped(&raw, 2, 17, 80)), ImportError::Subclass(2));
+    assert_eq!(refused(&retyped(&raw, 4, 20, 2)), ImportError::Subclass(4));
+    assert_eq!(refused(&retyped(&raw, 8, 217, 7)), ImportError::Subclass(8));
+    assert_eq!(refused(&retyped(&raw, 9, 218, 9)), ImportError::Subclass(9));
+    // A town no town of the map has (A-35).
+    let body = |faction, levels| with_body(&raw, 7, 0xFF, faction, levels);
+    assert_eq!(
+        refused(&body(Some((5, None)), Some((0, 6)))),
+        ImportError::DwellingTown(7)
+    );
+    // A faction code past 8, an empty set (A-34), a faction the rules lack (RoE's: Conflux).
+    assert_eq!(
+        refused(&body(Some((0, Some(Bits(vec![1, 2])))), Some((0, 6)))),
+        ImportError::UnknownCode {
+            what: "faction",
+            code: 9
+        }
+    );
+    for set in [Some(Bits(vec![0, 0])), Some(Bits(vec![])), None] {
+        assert_eq!(
+            refused(&body(Some((0, set)), Some((0, 6)))),
+            ImportError::DwellingFactions(7)
+        );
+    }
+    assert_eq!(
+        import(&body(Some((0, Some(Bits(vec![1, 1])))), Some((0, 6))), &ROE).unwrap_err(),
+        ImportError::MissingContent("ab:conflux")
+    );
+    // A level past 6 or the lowest above the highest (A-36).
+    for levels in [(7, 7), (0, 7), (3, 2)] {
+        assert_eq!(
+            refused(&body(Some((0, Some(Bits(vec![1, 0])))), Some(levels))),
+            ImportError::DwellingLevels(7)
+        );
+    }
+    // An owner nobody plays: a dwelling's and a random dwelling's.
+    assert_eq!(
+        refused(&with_body(&raw, 9, 5, None, Some((0, 2)))),
+        ImportError::ObjectOwner(9)
+    );
+    let mut map = raw.clone();
+    map.objects[2].body = Body::Owned { owner: 5 };
+    assert_eq!(refused(&map), ImportError::ObjectOwner(2));
+    // The order within one object: subclass, town, faction set, levels, owner.
+    let both = |faction, levels| with_body(&raw, 8, 5, faction, levels);
+    let mut map = both(Some((5, None)), None);
+    let t = usize::try_from(map.objects[8].template).unwrap();
+    map.templates[t].subclass = 7;
+    assert_eq!(refused(&map), ImportError::Subclass(8));
+    assert_eq!(
+        refused(&both(Some((5, None)), Some((3, 2)))),
+        ImportError::DwellingTown(8)
+    );
+    assert_eq!(
+        refused(&both(Some((0, None)), Some((3, 2)))),
+        ImportError::DwellingFactions(8)
+    );
+    assert_eq!(
+        refused(&both(Some((0, Some(Bits(vec![1, 0])))), Some((3, 2)))),
+        ImportError::DwellingLevels(8)
+    );
+    assert_eq!(
+        refused(&both(Some((0, Some(Bits(vec![1, 0])))), Some((2, 3)))),
+        ImportError::ObjectOwner(8)
+    );
+}
+
+// covers: ADV-OWN-002
+#[test]
+fn a_dwelling_entered_from_water_is_unsupported() {
+    // The ownable kinds' rule covers the dwellings and the random dwellings: Inferno's random
+    // dwelling's entrance on water.
+    let mut map = raw();
+    let layer = import_map(&map, &SOD).unwrap();
+    let dwelling = &layer.objects[7];
+    let (column, row) = dwelling.visitable.offsets().next().unwrap();
+    let x = usize::from(dwelling.anchor.x) - usize::from(column);
+    let y = usize::from(dwelling.anchor.y) - usize::from(row);
+    map.terrain.tiles[y * 36 + x].terrain = 8;
+    assert_eq!(
+        import(&map, &SOD).unwrap_err(),
+        ImportError::Unsupported(Unsupported::OwnedOnWater(9))
+    );
 }

@@ -428,3 +428,42 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: the engine's rule in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/weekly.rs`, `a_water_wheel_and_a_garden_give_their_week_s_amounts` (the Garden's mark through the same team test as the Windmill's)
 - Decided by / date: the user 2026-11-02 (at E08 T84b2's start, decision 222: "always fix"); recorded by E08 T84b2
+
+### ADV-QUIRK-36 — A random dwelling with an empty faction set becomes Castle's
+- Class: exploit-fix (no flag: an input bound, the map refused at the import; A-34, as A-31's `ADV-QUIRK-33`)
+- Context / rules affected: adventure, ADV-DWL-005 (the random dwellings), the import (`h3_map`)
+- Original behavior: a random dwelling of class 216 or 217 without a town identifier draws its faction with `random_allowed_faction` (0x5132D0), uniform over the set's bits; over an empty set it gives faction 0, Castle (survey `E08-dwellings.md` §3.2 step 1, §11).
+- Intended/expected behavior: the import refuses an empty set (`ImportError::DwellingFactions`); the game's build refuses a random dwelling without a faction (`SetupError::Holds`); the experiment writer refuses both.
+- Impact: unreachable on the shipped maps (none has one: the census) and from the editor, which never writes one; a made map is refused.
+- Community status: not documented; VCMI draws any faction with a town.
+- Sources: code reading (survey §3.2, §11 A-34).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load`; `crates/h3-adventure/src/state/tests/holds.rs`, `a_random_dwelling_holds_its_factions_and_levels` (`SetupError::Holds`)
+- Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b
+
+### ADV-QUIRK-37 — A random dwelling tied to a missing town reads before the town list
+- Class: exploit-fix (no flag: an input bound, the map refused at the import; A-35)
+- Context / rules affected: adventure, ADV-DWL-005 (the random dwellings), the import (`h3_map`)
+- Original behavior: a random dwelling of class 216 or 217 with a town identifier takes the faction of the town with that identifier, searched from the end of the game's town list; when no town has it the search ends at index −1 and reads the entry before the list, a garbage faction (survey `E08-dwellings.md` §3.2 step 1, §11).
+- Intended/expected behavior: the import refuses an identifier no town of the map has (`ImportError::DwellingTown`). An identifier a town has keeps the object a blocker until E09's random towns (ADV-STUB-13).
+- Impact: unreachable on the shipped maps (every identifier names a town: the census) and from the editor; a made map is refused.
+- Community status: not documented; VCMI draws any faction.
+- Sources: code reading (survey §3.2, §11 A-35).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load` and `a_random_dwelling_tied_to_a_town_stays_a_blocker`
+- Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b
+
+### ADV-QUIRK-38 — Dwelling classes 18 and 19 and kinds past the tables
+- Class: exploit-fix (no flag: input bounds, the map refused at the import; A-36)
+- Context / rules affected: adventure, ADV-DWL-001 and ADV-DWL-005 (the dwellings, the random dwellings), the import (`h3_map`)
+- Original behavior: `setup_map_objects` shows a message box for classes 18 and 19 ("Invalid Generator") and goes on; a class-17 subclass of 80 or more or a class-20 one of 2 or more reads past `dwelling_creatures` (0x63D570) or `dwelling4_creatures` (0x677938) and the names' tables; a random dwelling's level outside 0 to 6, a lowest above the highest (`random_between` divides by zero or worse), a class-217 subclass past 6 or a class-218 one past 8 read past `town_creatures` (0x6747B4) (survey `E08-dwellings.md` §2.4, §3.2, §11).
+- Intended/expected behavior: the import refuses classes 18 and 19 (`ImportError::DwellingClass`), the subclasses past their tables (`ImportError::Subclass`) and the levels (`ImportError::DwellingLevels`); the game's build refuses a level range outside 1 to 7 (`SetupError::Holds`).
+- Impact: unreachable on the shipped maps (none has one: the census) and from the editor; a made map is refused.
+- Community status: not documented; the map client's MCL-Q21 (b) asks the import to refuse a dwelling's kind past its table.
+- Sources: code reading (survey §2.4, §3.2, §11 A-36).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load`; `crates/h3-adventure/src/state/tests/holds.rs`, `a_random_dwelling_holds_its_factions_and_levels` (`SetupError::Holds`)
+- Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b

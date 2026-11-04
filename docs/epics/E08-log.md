@@ -11547,3 +11547,54 @@ code; the packs' data from the original files; the check against them) and one f
   keep the hash they ran with.
 - **Versions:** adventure ruleset part v16. The game state hash, the adventure state hash and the
   map import unchanged.
+
+### Increment 10, round 5: T93b, the import (2026-11-04, `adventure/e08-t93b`)
+
+**The cut** (decision 250; asked at the start, `AskUserQuestion`): T93b whole, one pull request,
+one import bump; `Holds::RandomDwelling` and its arm in `check_holds` (design §5's first bullet)
+moved in from T94, since a random dwelling's faction set and level range reach the game only
+through them. Built by two narrow sub-agents (the code and its tests; the census and the replays);
+the main session wrote the records.
+
+- **The import** (`h3-map`'s `import/`, map import v16; design §4): `codes::DWELLINGS` (class 17,
+  80 keys) and `DWELLINGS_4` (class 20, 2), each the type of the pack that introduced its object
+  (`base` the RoE ones, `ab` the ones AB added; a test compares them with the packs' `# original
+  class … subclass …` lines), 78 `base:refugee_camp`, 216 to 218 `base:random_dwelling`;
+  `codes::FACTIONS` (the original's faction codes 0 to 8 to `base:castle` … `ab:conflux`, for the
+  town lane's import too: its inbox told); 216 to 218 ownable scenery (GAM-BAT-011). A dwelling's
+  owner through `Body::Owned` as a mine's; a random dwelling's (`random_dwelling`, `faction_set`,
+  `town_identifiers`) in the order subclass, town identifier, faction set, levels, owner: 217's
+  subclass its level, 218's its faction (decided by the body's shape: a body without levels takes
+  the subclass as the level, one without a faction as the faction; the same as by class for every
+  map the parser reads); an identifier a town of the map has (`TownBody::identifier`) keeps it an
+  untyped blocker (`// stub: ADV-STUB-13` in `typed`), else `DwellingTown` (A-35); a faction bit
+  past 8 `UnknownCode` (`faction`), an empty set (an identifier of 0 without a set too)
+  `DwellingFactions` (A-34); a level code past 6 or a lowest above the highest `DwellingLevels`
+  (A-36); classes 18 and 19 `DwellingClass` at the top of `typed`, the subclasses past their
+  tables `Subclass` (A-36). Ownable on water already covered both kinds (a test).
+- **The holds** (`h3-adventure`): `Holds::RandomDwelling { factions: Vec<FactionId>, levels: (u8,
+  u8) }`; `check_holds`: only for the random dwelling kind (a random dwelling with `Nothing`
+  refused), factions non-empty, ascending, each with a `[[random_dwelling]]` table, levels `1 <=
+  low <= high <= DWELLING_LEVELS`. Its hash arm (tag 8, the factions, the two levels): no state
+  could hold the variant before, so no recorded hash moves and the adventure state hash stays v19
+  (*agent's call*; T94's v20 follows).
+- **Tests:** `h3-map`'s `tests/dwellings.rs` (the typed map, a town-tied dwelling, every refusal and
+  their order, a dwelling entered from water), `tests/import.rs` (the tables against the packs, the
+  errors' texts; the scenery test's 216 to 218 now ownable); `h3-adventure`'s
+  `state/tests/holds.rs` (the shape check and the hash).
+- **The census** (`h3-map`'s `original_data`): every shipped map's static layer imports and
+  validates (none refused by A-34 to A-36). Typed: class 17 1 981, class 20 80, Refugee Camps 321,
+  random dwellings 79 (216), 126 (217), 1 (218); 205 with a faction set; 1 397 tied to a town, all
+  to random towns (blockers, ADV-STUB-13). **The RoE check** (design §3): each of the **49**
+  RoE-format maps imports under `base` alone with every class-17 and -20 object typed: 695 of class
+  17 and 14 of class 20, 709 in all (the survey's "695 on 44" counted class 17 alone; design §3's
+  "44 maps, 695 dwellings" corrected here). `placed()` aligns the raw objects with the setup's
+  (heroes and boats skipped).
+- **Docs:** the ledger's ADV-QUIRK-36 to -38 (`exploit-fix`, no flag), `docs/stubs.toml`'s
+  ADV-STUB-13 (epic E09), ADV-OBJ-002 amended (batch E10's E10-1, E10-7, E10-9 as observations),
+  ADV-DWL-001, -005, ADV-RFG-001's import lines, `h3m.md`'s "Import", design §5 and §17's T94 row.
+- **Replays:** the 39 adventure goldens re-recorded from their commands: only `import_version`
+  moved (15 to 16); none of the fixture maps holds a dwelling. The bots tables are unchanged (they
+  record the part's hash alone).
+- **Versions:** map import v16. The game state hash, the adventure state hash and the part
+  unchanged.

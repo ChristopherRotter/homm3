@@ -57,8 +57,12 @@ pub use parse::parse;
 /// (109) and the Mystical Gardens (55) typed; an ownable object's owner, an abandoned mine's set
 /// of resources; the map's timed events into the game's setup; an owner nobody plays, an
 /// abandoned mine without a resource of the seven refused, an ownable object entered from water
-/// unsupported.
-pub const MAP_IMPORT_VERSION: u32 = 15;
+/// unsupported. v16 (E08 T93b): the dwellings (17 and 20), the Refugee Camp (78) and the random
+/// dwellings (216 to 218) typed, a dwelling's and a random dwelling's owner, a random dwelling's
+/// faction set and level range, one tied to a town of the map a blocker; classes 18 and 19, a
+/// dwelling's subclass past its table, a random dwelling's empty faction set, unknown town or bad
+/// levels refused; the random dwellings ownable among a battle's surroundings.
+pub const MAP_IMPORT_VERSION: u32 = 16;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

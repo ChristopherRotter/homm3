@@ -997,6 +997,22 @@ fn the_errors_and_reasons_read_well() {
             ImportError::Events(70_000),
             "70000 timed events are too many",
         ),
+        (
+            ImportError::DwellingClass(3),
+            "object 3 is of a dwelling class no dwelling has",
+        ),
+        (
+            ImportError::DwellingFactions(3),
+            "random dwelling 3 may become no faction's",
+        ),
+        (
+            ImportError::DwellingTown(3),
+            "random dwelling 3 names a town the map does not have",
+        ),
+        (
+            ImportError::DwellingLevels(3),
+            "random dwelling 3 has levels past 7 or the wrong way round",
+        ),
     ];
     for (error, text) in cases {
         assert_eq!(error.to_string(), text);
@@ -1096,6 +1112,46 @@ fn the_code_tables_follow_the_packs() {
     // The terrains in the .h3m code order are the core's first ten.
     let order: Vec<&str> = core.terrains().iter().map(|t| t.key.as_str()).collect();
     assert_eq!(order, codes::TERRAINS);
+    // E08 T93b: the factions by code are the core's, in its order.
+    let factions: Vec<&str> = core.factions().iter().map(|f| f.key.as_str()).collect();
+    assert_eq!(factions, codes::FACTIONS);
+    // The dwellings by subclass follow the subclasses the packs record beside each type.
+    let dwellings = |class: u32| {
+        let mut found = Vec::new();
+        for (pack, text) in [
+            ("base", h3_pack_adventure::BASE_ADVENTURE),
+            ("ab", h3_pack_adventure::AB_ADVENTURE),
+            ("sod", h3_pack_adventure::SOD_ADVENTURE),
+        ] {
+            let lines: Vec<&str> = text.lines().collect();
+            for (i, line) in lines.iter().enumerate() {
+                let prefix = format!("# original class {class} subclass ");
+                let Some(rest) = line.strip_prefix(prefix.as_str()) else {
+                    continue;
+                };
+                let subclass: usize = rest.split(' ').next().unwrap().parse().unwrap();
+                assert_eq!(lines[i + 1], "[[object_type]]");
+                let id = lines[i + 2]
+                    .strip_prefix("id = \"")
+                    .and_then(|id| id.strip_suffix('"'))
+                    .unwrap();
+                found.push((subclass, format!("{pack}:{id}")));
+            }
+        }
+        found.sort();
+        found
+    };
+    let table = |keys: &[&str]| -> Vec<(usize, String)> {
+        keys.iter().map(|&k| k.to_owned()).enumerate().collect()
+    };
+    assert_eq!(dwellings(17), table(&codes::DWELLINGS));
+    assert_eq!(dwellings(20), table(&codes::DWELLINGS_4));
+    assert!(
+        codes::DWELLINGS
+            .iter()
+            .chain(&codes::DWELLINGS_4)
+            .all(|k| SOD.adventure().object_type_by_key(k).is_some())
+    );
 }
 
 proptest! {
@@ -1432,7 +1488,11 @@ fn a_maps_player_kinds_and_object_classes_carry_over() {
         (116, Scenery::Other),
         (124, Scenery::Other),
         (161, Scenery::Other),
-        (216, Scenery::Other),
+        // E08 T93b: the random dwellings are 17 or 20 from the load on.
+        (216, Scenery::Ownable),
+        (217, Scenery::Ownable),
+        (218, Scenery::Ownable),
+        (78, Scenery::Other),
     ];
     for (class, scenery) in kinds {
         let mut m = map();

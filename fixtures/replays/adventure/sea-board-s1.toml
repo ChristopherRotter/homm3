@@ -45,7 +45,7 @@ checkpoint_every = 5
 [map]
 path = "fixtures/maps/e08-sea-36.h3m"
 hash = "0x22096c6bf8ae59ca"
-import_version = 15
+import_version = 16
 
 [result]
 day = 3
