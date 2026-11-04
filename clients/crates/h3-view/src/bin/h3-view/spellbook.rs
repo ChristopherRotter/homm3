@@ -5,11 +5,12 @@
 use h3_content::SpellCategory;
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Handle;
-use h3_protocol::wire::{Command, Manifest, Observation};
+use h3_protocol::wire::{Command, Manifest, Observation, Side};
 use h3_ui::text::{Args, Catalogue};
+use h3_view::army_info::Hover;
 use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
 use h3_view::keys::{Command as Do, Context, Keys};
-use h3_view::layout::BookLayout;
+use h3_view::layout::{BattleLayout, BookLayout};
 use h3_view::message::{MessageBox, Picture, Style};
 use h3_view::sound::Tune;
 use h3_view::stats::Memory as StatsMemory;
@@ -67,9 +68,9 @@ pub fn hero(
     (tables, catalogue): (&Tables, &Catalogue),
     layout: &BookLayout,
 ) -> Option<Hero> {
-    let side = observation.sides.get(usize::from(
-        observation.viewer == h3_protocol::wire::Side::Defender,
-    ))?;
+    let side = observation
+        .sides
+        .get(usize::from(observation.viewer == Side::Defender))?;
     let view = side.hero.as_ref()?;
     let own = observation.own_hero.as_ref()?;
     let core = &**ruleset;
@@ -146,20 +147,13 @@ fn mastered_cost(base: u16, change: i8) -> u16 {
 /// What `side`'s hero's cast of `spell` costs in the battle `observation` shows (E17 M5 T6b1: the
 /// seat's battle on a server spends its mana by its casts, `h3_view::remote::seen`), as the book
 /// prices it ([`hero`]): the observation's own hero's alone (another hero's book is unknown: 0).
-pub fn cost(
-    observation: &Observation,
-    ruleset: &BattleRuleset,
-    side: h3_protocol::wire::Side,
-    spell: u16,
-) -> u16 {
+pub fn cost(observation: &Observation, ruleset: &BattleRuleset, side: Side, spell: u16) -> u16 {
     let (Some(own), Some(view)) = (
         observation
             .own_hero
             .as_ref()
             .filter(|_| side == observation.viewer),
-        observation
-            .sides
-            .get(usize::from(side == h3_protocol::wire::Side::Defender)),
+        observation.sides.get(usize::from(side == Side::Defender)),
     ) else {
         return 0;
     };
@@ -217,6 +211,9 @@ pub struct Still {
     /// The options dialog closed by its key and the mouse not moved since: its arrow stays at the
     /// mouse, the battle's status line and marked hex as before (oddity 10).
     pub options_arrow: bool,
+    /// The army info windows the actions left drawn over the battle (E17 M6 T4b2b1, design
+    /// §12.15: shown at Creature Info's level 1 or 2), under every dialog.
+    pub army: Vec<MessageBox>,
 }
 
 impl Still {
@@ -272,6 +269,22 @@ pub struct Boxes<'a> {
     /// The combat options dialog the key O opens (none given) or a click at a point on the
     /// panel's Options (E17 M6 T4a; none: the battle takes no command, or no button there).
     pub options: &'a dyn Fn(Option<[i32; 2]>) -> Option<h3_view::options::Open>,
+    /// The army info windows the battle's mouse shows (E17 M6 T4b2b1; none: none).
+    pub army: Option<Army<'a>>,
+}
+
+/// What a still's army info windows need (E17 M6 T4b2b1, design §12.15): where the mouse finds
+/// the heroes' rectangles, the battle at the opening, the level and each side's hero's window.
+pub struct Army<'a> {
+    /// The battle's layout.
+    pub layout: &'a BattleLayout,
+    /// The battle at the opening (turn 0).
+    pub observation: &'a Observation,
+    /// Creature Info's level the still starts at (`frames.toml`'s `army_info`, *provisional*:
+    /// the harness's registry value; 0, `Settings::CAPTURE`'s, without it); the key F5 cycles it.
+    pub level: u8,
+    /// Side's hero's window as the battle at the opening fills it (none: no hero there).
+    pub window: &'a dyn Fn(Side) -> Option<MessageBox>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -328,6 +341,7 @@ pub fn still(
         held: false,
         options: None,
         options_arrow: false,
+        army: Vec::new(),
     };
     let mut result: Option<(h3_view::message::Open, Tune)> = None;
     let mut asking: Option<Asking> = None;
@@ -404,6 +418,20 @@ pub fn still(
             let _ = a.open.moved(mouse);
         }
     }
+    // The army info windows (E17 M6 T4b2b1, *provisional*): the battle's mouse at the harness's
+    // moves and presses, in the original's profile (its rectangles, CLT-Q21; its keys, CLT-Q49;
+    // its held press, CLT-Q50). The harness's move at the opening reaches the battle unless the
+    // tactics phase's message takes it (its close posts none that does, CLT-Q32).
+    let army = boxes.and_then(|b| b.army.as_ref());
+    let mut hover = Hover::new(army.map_or(0, |a| a.level));
+    let take = |hover: &mut Hover, to: [i32; 2]| {
+        if let Some(a) = army {
+            hover.moved(a.layout, a.observation, (to, true));
+        }
+    };
+    if !still.opening {
+        take(&mut hover, mouse);
+    }
     for action in actions {
         if still.held {
             return Err(format!(
@@ -421,10 +449,13 @@ pub fn still(
             )
             .map_err(|e| format!("`{action}`: {e}"))?;
             if let Some(rest) = closed {
-                // Closed: the battle takes the mouse posted where it rests (0x476F3A).
+                // Closed: the battle takes the mouse posted where it rests (0x476F3A), its hex
+                // forgotten: the window under it comes back (E17 M6 T4b2b1).
                 still.stats = None;
                 still.over = Some(rest);
                 still.arrow = false;
+                hover.forget();
+                take(&mut hover, rest);
             }
             continue;
         }
@@ -455,6 +486,7 @@ pub fn still(
                     still.options_arrow = !moved;
                     if moved {
                         still.over = Some(still.mouse);
+                        take(&mut hover, still.mouse);
                     }
                 }
             }
@@ -482,7 +514,13 @@ pub fn still(
                     still.open.is_some(),
                     false,
                 );
-                match (keys.command(context, false, &key), still.open.as_mut()) {
+                let command = keys.command(context, false, &key);
+                // The keys C, S, R and O keep the army info windows in the original's profile
+                // (CLT-Q49; the client's hides them, `Hover::key`).
+                if let (Some(a), Context::Battle, Some(Do::Button(_))) = (army, context, command) {
+                    hover.key(a.layout, still.mouse, h3_render::Bugs::Original);
+                }
+                match (command, still.open.as_mut()) {
                     (Some(Do::ResultOk), _) => {
                         if let Some((r, _)) = result.as_mut() {
                             // The result window's OK by its key: the window closed.
@@ -517,9 +555,14 @@ pub fn still(
                     (Some(Do::Stats), _) => {
                         let opened = boxes.and_then(|b| (b.acting)(still.mouse, &mut stats_memory));
                         if let Some(open) = opened {
+                            // The army info windows hidden first (0x475D1E; E17 M6 T4b2b1).
+                            hover.windows.hide();
                             still.stats = Some(open);
                         }
                     }
+                    // Creature Info's level cycled (E17 M6 T4b2a; the windows as they are until
+                    // a new hex, E17 M6 T4b2b1).
+                    (Some(Do::ArmyInfo), _) => hover.cycle(),
                     // The combat options dialog (E17 M6 T4a), the mouse where it is.
                     (Some(Do::Button(h3_view::panel::OPTIONS)), _) => {
                         still.options = boxes.and_then(|b| (b.options)(None));
@@ -549,6 +592,14 @@ pub fn still(
             "click" => {
                 let to = point(arg)?;
                 moved(&mut still, &mut memory, to);
+                // Over the battle (no box, no book): its move, then the left press over the
+                // battlefield hiding the army info windows, the hex kept (E17 M6 T4b2b1).
+                if result.is_none() && asking.is_none() && still.open.is_none() {
+                    take(&mut hover, to);
+                    if let Some(a) = army {
+                        hover.pressed(a.layout, to);
+                    }
+                }
                 if let Some((r, _)) = result.as_mut() {
                     let _ = r.press(to);
                     if let h3_view::message::Outcome::Closed(_) = r.release() {
@@ -611,6 +662,9 @@ pub fn still(
                     }
                     None => {
                         moved(&mut still, &mut memory, crate::pointer::PARK);
+                        if still.open.is_none() {
+                            take(&mut hover, crate::pointer::PARK);
+                        }
                         if still.arrow {
                             still.over = Some(crate::pointer::PARK);
                             still.arrow = false;
@@ -627,10 +681,20 @@ pub fn still(
                 moved(&mut still, &mut memory, to);
                 still.over = Some(to);
                 still.arrow = false;
+                take(&mut hover, to);
                 if let Some(open) = boxes.and_then(|b| (b.held)(to, &mut stats_memory)) {
                     still.stats = Some(open);
                 } else if let Some(window) = boxes.and_then(|b| (b.hero_info)(to)) {
-                    asking = Some(Asking {
+                    // Held through the frames; the original's shows nothing when its window is
+                    // shown already at level 0 (CLT-Q50), the cursor hidden all the same (E17 M6
+                    // T4b2b1).
+                    let side = army.and_then(|a| hero_side(a, to));
+                    let shows = side
+                        .is_none_or(|s| (hover.windows).held_shows(s, h3_render::Bugs::Original));
+                    if let Some(s) = side {
+                        hover.windows.held(s, 0);
+                    }
+                    asking = shows.then(|| Asking {
                         open: h3_view::message::Open::new(window),
                         asked: Asked::Held,
                     });
@@ -643,6 +707,20 @@ pub fn still(
                     asking = tell(&text, Style::Popup, None, Asked::Held);
                     still.held = asking.is_some();
                 }
+            }
+            // The right button pressed over a hero's rectangle and released at once (E17 M6
+            // T4b2b1, *provisional*: the harness's `right-click:`): its window shown while held,
+            // then kept at Creature Info's levels 1 and 2, hidden at 0 (design §12.15).
+            "right-click" if asking.is_none() && result.is_none() && still.open.is_none() => {
+                let to = point(arg)?;
+                moved(&mut still, &mut memory, to);
+                still.over = Some(to);
+                still.arrow = false;
+                take(&mut hover, to);
+                let side = army
+                    .and_then(|a| hero_side(a, to).filter(|&s| (a.window)(s).is_some()))
+                    .ok_or_else(|| format!("`{action}`: only over a hero's rectangle"))?;
+                hover.windows.held(side, 0);
             }
             "move" => {
                 let to = point(arg)?;
@@ -661,13 +739,15 @@ pub fn still(
                         if still.open.is_none() {
                             still.over = Some(to);
                             still.arrow = false;
+                            take(&mut hover, to);
                         }
                     }
                 }
             }
             _ => {
                 return Err(format!(
-                    "`{action}`: a situation's actions are key:, click:, move: and right: (over the battle)"
+                    "`{action}`: a situation's actions are key:, click:, move:, right: and \
+                     right-click: (over the battle)"
                 ));
             }
         }
@@ -678,7 +758,22 @@ pub fn still(
     }
     still.message = asking.map(|a| a.open.message);
     still.result = result.map(|(r, tune)| (r.message, tune));
+    // The army info windows the battle's mouse left shown, drawn while the level is not 0.
+    if let Some(a) = army {
+        still.army = (hover.windows.drawn())
+            .filter_map(|(side, _)| (a.window)(side))
+            .collect();
+    }
     Ok(still)
+}
+
+/// The side whose hero's rectangle `point` is over in `army`'s battle (the original's
+/// rectangles).
+fn hero_side(army: &Army<'_>, point: [i32; 2]) -> Option<Side> {
+    match h3_view::mouse::spot(army.layout, point, true) {
+        h3_view::mouse::Spot::Hero(side) => Some(side),
+        _ => None,
+    }
 }
 
 /// What one of a situation's actions did to the combat options dialog (E17 M6 T4a).
@@ -998,7 +1093,7 @@ pub(crate) mod tests {
                 .clone()
         };
         let base = |handle: u16| ruleset.spell(Handle::from_raw(handle)).unwrap().cost;
-        let attacker = h3_protocol::wire::Side::Attacker;
+        let attacker = Side::Attacker;
         let book = made(&observation, &manifest).unwrap();
         assert_eq!((book.mana, book.spells.len()), (20, 22));
         // The school levels from the spells of one school alone: Magic Arrow (all four, Expert)
@@ -1064,7 +1159,7 @@ pub(crate) mod tests {
         let handles: Vec<u16> = short.spells.iter().map(|s| s.handle).collect();
         assert_eq!((handles, short.schools), (vec![haste], [3, 0, 0, 0]));
         // The other side's hero's cost, a spell not in the book: unknown, 0.
-        let defender = h3_protocol::wire::Side::Defender;
+        let defender = Side::Defender;
         assert_eq!(cost(&observation, &ruleset, defender, slow), 0);
         assert_eq!(cost(&observation, &ruleset, attacker, arrow), 0);
         // No own hero: no book.
@@ -1119,6 +1214,7 @@ pub(crate) mod tests {
             help: &|_| None,
             hero_info: &|_| None,
             options: &|_| None,
+            army: None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -1179,6 +1275,7 @@ pub(crate) mod tests {
             help: &help,
             hero_info: &|_| None,
             options: &|_| None,
+            army: None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -1235,6 +1332,7 @@ pub(crate) mod tests {
             help: &|_| None,
             hero_info: &|_| None,
             options: &|_| None,
+            army: None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -1284,5 +1382,101 @@ pub(crate) mod tests {
         assert!(played(&["hex:40"], Some(hero())).is_err());
         assert!(played(&["key:c", "click:1"], Some(hero())).is_err());
         assert!(played(&["move:a,2"], Some(hero())).is_err());
+    }
+
+    #[test]
+    fn a_still_shows_the_army_info_windows_at_its_level() {
+        // E17 M6 T4b2b1 (design §12.15's stills): `hero-info`'s battle at the level the still
+        // asks (`frames.toml`'s `army_info`); the windows by name: "A" and "D".
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let text = crate::scenario::record_of(
+            &root.join("situations/hero-info.toml"),
+            &root.join("../packs"),
+            1,
+            h3_protocol::wire::Seat::Attacker,
+        )
+        .unwrap();
+        let record = h3_view::record::parse(&text).unwrap();
+        let observation = record.first_snapshot().unwrap();
+        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let window = |side: Side| Some(one_button(if side == Side::Attacker { 1 } else { 2 }));
+        let hero_info = |point: [i32; 2]| match h3_view::mouse::spot(&battle, point, true) {
+            h3_view::mouse::Spot::Hero(side) => window(side),
+            _ => None,
+        };
+        let tell = |_: &str, _, _: Option<&Picture>| None;
+        let catalogue = Catalogue::default();
+        let played = |level: u8, mouse: [i32; 2], actions: &[&str]| {
+            let boxes = Boxes {
+                tell: &tell,
+                leave: Leave {
+                    retreat: false,
+                    surrender: None,
+                },
+                no_one: &|_| false,
+                pictures: (String::new(), [0, 0]),
+                result: &|_| None,
+                opening: None,
+                look: &|_, _| None,
+                acting: &|_, _| None,
+                held: &|_, _| None,
+                turret: &|_, _| None,
+                help: &|_| None,
+                hero_info: &hero_info,
+                options: &|_| None,
+                army: Some(Army {
+                    layout: &battle,
+                    observation,
+                    level,
+                    window: &window,
+                }),
+            };
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                mouse,
+                || None,
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+        };
+        let ids = |still: &Still| -> Vec<u16> {
+            (still.army.iter())
+                .filter_map(|w| match w.dialog.items.first() {
+                    Some(h3_ui::ui::Item::Button(b)) => Some(b.id),
+                    _ => None,
+                })
+                .collect()
+        };
+        let (orrin, crag) = ([30, 70], [770, 70]);
+        // Resting on a hero: its window at levels 1 and 2, none at 0.
+        assert_eq!(ids(&played(1, orrin, &[]).unwrap()), [1]);
+        assert_eq!(ids(&played(2, crag, &[]).unwrap()), [2]);
+        assert_eq!(ids(&played(0, orrin, &[]).unwrap()), [0; 0]);
+        // From the hero to an empty hex: none.
+        assert_eq!(ids(&played(1, orrin, &["move:400,300"]).unwrap()), [0; 0]);
+        // A left press over the enemy's hero (nothing; the click's park leaves the battlefield),
+        // then the right press there: its window shown (the move back a new hex shows it by
+        // itself) and kept after the release. The press showing again a window a left press hid
+        // with the mouse still on the rectangle: `mouse::track`'s tests.
+        let still = played(1, crag, &["click:770,70", "right-click:770,70"]).unwrap();
+        assert_eq!(ids(&still), [2]);
+        assert!(still.message.is_none() && !still.held);
+        assert_eq!(ids(&played(1, crag, &["click:770,70"]).unwrap()), [0; 0]);
+        assert_eq!(
+            ids(&played(0, crag, &["right-click:770,70"]).unwrap()),
+            [0; 0]
+        );
+        assert!(played(1, crag, &["right-click:400,300"]).is_err());
+        // F5 to level 0 under Orrin's window: the original's right press shows nothing, held
+        // (CLT-Q50); a window not shown before shows.
+        let still = played(1, orrin, &["key:F5", "key:F5", "right:30,70"]).unwrap();
+        assert_eq!(ids(&still), [0; 0]);
+        assert!(still.message.is_none() && still.held);
+        let still = played(0, orrin, &["right:30,70"]).unwrap();
+        assert!(still.message.is_some() && still.held);
+        // At level 1 the held window and the hover's: both.
+        let still = played(1, orrin, &["right:30,70"]).unwrap();
+        assert!(still.message.is_some() && ids(&still) == [1]);
     }
 }

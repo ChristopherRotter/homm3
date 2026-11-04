@@ -7,7 +7,8 @@
 //! battle's panel of them ([`auto`]: when Auto Combat plays its turns), [`message`] the message box laid out as them and [`result`] the
 //! battle's result window, [`stats`] a stack's stats dialog, [`turret`] a siege turret's info, [`clip`] the clip it plays, [`tactics`] the hexes the tactics phase shades; [`keys`] is what the battle window's keys do (through the common
 //! table, `h3_ui::keys`); [`mouse`] is what the
-//! mouse shows over the battle (the cursor's kind, the status line's hint, the stack it marks);
+//! mouse shows over the battle (the cursor's kind, the status line's hint, the stack it marks;
+//! [`army_info`] the info windows its move shows);
 //! [`sound`] is what a battle's opening plays; [`battle_log`] the battle log's lines composed from
 //! the string catalogue (`h3_ui::text`); [`remote`] is the client's side of a game on a server
 //! (the welcome's checks, the join, the record it grows), its I/O the binary's. What both viewers share is the common crate `h3-ui`'s
@@ -36,6 +37,7 @@
 extern crate alloc;
 
 pub mod anim;
+pub mod army_info;
 pub mod auto;
 pub mod batch;
 pub mod battle_log;

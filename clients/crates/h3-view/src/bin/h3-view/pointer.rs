@@ -570,7 +570,10 @@ fn actions(timeline: &Timeline) -> Vec<Start> {
     timeline
         .actions
         .iter()
-        .map(|a| Start { unmarks: a.unmarks })
+        .map(|a| Start {
+            unmarks: a.unmarks,
+            ends_tactics: a.ends_tactics,
+        })
         .collect()
 }
 
@@ -612,6 +615,12 @@ struct TurnRead {
 }
 
 impl<'l> Follower<'l> {
+    /// The battle of turn `turn` as last read (0 the opening's): what fills an army info window
+    /// shown in that turn (E17 M6 T4b2b1, `h3_view::army_info::Windows`).
+    pub fn observation(&self, turn: usize) -> Option<&Observation> {
+        self.turns.get(turn).map(|(read, _)| &read.observation)
+    }
+
     /// The engine's battle `index` changed in place (E17 M5 T3b: an aim the book added; T6b1: a
     /// turn served again): the turn paired with it is read again.
     pub fn touch(&mut self, index: usize) {
@@ -856,14 +865,22 @@ mod tests {
         // window grows it (`Battle::command`: every side's events, the turn after each, the
         // timeline waiting for the next); the mouse over hexes, the panel and its log while each
         // turn waits, while each action plays and at each turn's start, the spell book opened and
-        // closed, a seek back's inputs gone, a turn's legal commands changed in place: at every
-        // step the follower's lists are the whole follow's (every turn read again; 70 turns).
+        // closed, a seek back's inputs gone, a turn's legal commands changed in place, the army
+        // info windows' presses (E17 M6 T4b2b1): at every step the follower's lists are the whole
+        // follow's (every turn read again; 70 turns).
         use h3_view::anim::{Casts, Command as Given, Growing, Look, Speed};
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
         let layout = layout();
         let (scenario, packs) = (dir.join("scenarios/battle.toml"), dir.join("../packs"));
-        let (ruleset, mut setup) = crate::scenario::battle(&scenario, &packs, 1).unwrap();
+        // With a hero on each side, every number 0 (the battle fought as without): their army
+        // info windows (E17 M6 T4b2b1).
+        let heroes = "[scenario.attacker_hero]\nhero_type = \"base:orrin\"\n\
+                      [scenario.defender_hero]\nhero_type = \"base:crag_hack\"\n";
+        let text = std::fs::read_to_string(&scenario).unwrap() + heroes;
+        let def = h3_pack_battle::parse_scenario(&text).unwrap();
+        let ruleset = crate::scenario::compiled(&def, &packs).unwrap();
+        let mut setup = crate::scenario::set_up(&def, &ruleset, 1).unwrap();
         setup.human = [true, true];
         let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, true]).unwrap();
         let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
@@ -905,6 +922,8 @@ mod tests {
         // Auto Combat's switches and stops, the battle's own (T8b2, R5c-3).
         let mut switches: Vec<Input> = Vec::new();
         let mut press = 0;
+        // The army info blocks whose hover showed the window.
+        let mut hovered = 0;
         for c in 0.. {
             let start = growing.timeline().turns.last().map_or(0, |&(t, _)| t);
             let end = growing.timeline().end;
@@ -959,6 +978,38 @@ mod tests {
                 inputs.push(Input::ArmyInfo { at: now, level });
                 steps.check(waits, &turned, (&inputs, &switches));
             }
+            // The army info windows (E17 M6 T4b2b1), inside the waiting turn: the mouse onto a
+            // hero, a press's or a key's hide with the mouse still there, then the hero's right
+            // press; where the hover showed the window (a human's turn, the level not 0), the
+            // hide hides it and the press shows it again.
+            if c % 3 == 2 {
+                let side = if c % 2 == 0 {
+                    Side::Attacker
+                } else {
+                    Side::Defender
+                };
+                let more = [
+                    Input::Move {
+                        at: now,
+                        to: middle(layout.mouse.heroes[c % 2]),
+                    },
+                    Input::Hide {
+                        at: now + 1,
+                        key: c % 4 == 0,
+                    },
+                    Input::HeroInfo { at: now + 2, side },
+                ];
+                for input in more {
+                    inputs.push(input);
+                    steps.check(waits, &turned, (&inputs, &switches));
+                }
+                let window = |t| steps.shown.army(t).heroes[c % 2].is_some();
+                if window(now) {
+                    assert!(!window(now + 1) && window(now + 2), "{c}");
+                    hovered += 1;
+                }
+                now += 3;
+            }
             if c % 5 == 2 {
                 // A seek back to the turn's start, then a move from there.
                 inputs.retain(|i| i.at() <= start);
@@ -1001,6 +1052,11 @@ mod tests {
             );
         }
         assert!(steps.checked > 600, "{}", steps.checked);
+        // The heroes' army info windows were shown and drawn on the way (E17 M6 T4b2b1), the
+        // hover's in waiting turns among them.
+        let drawn = |w: &h3_view::army_info::Windows| w.drawn().next().is_some();
+        assert!(steps.shown.army.iter().any(|(_, w)| drawn(w)));
+        assert!(hovered >= 3, "{hovered}");
     }
 
     #[test]

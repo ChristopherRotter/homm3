@@ -2682,6 +2682,9 @@ fn the_log_records_what_the_battle_writes_and_when() {
         calm,
         [(false, false), (true, true), (true, true), (false, false)]
     );
+    // E17 M6 T4b2b1: the first ends the tactics phase (no army info window hidden, §12.15).
+    let ended: Vec<bool> = t.actions.iter().map(|a| a.ends_tactics).collect();
+    assert_eq!(ended, [true, false, false, false]);
     assert_eq!(t.actions[1].start, 100);
     assert_eq!(
         kinds,

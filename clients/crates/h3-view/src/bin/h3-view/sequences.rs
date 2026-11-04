@@ -124,15 +124,37 @@ struct Frames {
     /// `crate::spellbook::still`).
     #[serde(default)]
     actions: Vec<String>,
+    /// Creature Info's level a situation runs at (E17 M6 T4b2b1, *provisional*: the harness
+    /// writes it into the original's registry as `Combat Army Info Level` before the run; 0, the
+    /// harness's `Settings::CAPTURE`, without it).
+    #[serde(default)]
+    army_info: u8,
 }
 
-/// A situation's mouse and actions as the harness kept them in `here`'s `frames.toml` (E17 M5
-/// T3a).
-pub(crate) fn situation_inputs(here: &Path) -> Result<(Option<[i32; 2]>, Vec<String>), String> {
+/// A situation's inputs as the harness kept them (E17 M5 T3a; M6 T4b2b1).
+pub(crate) struct Situation {
+    /// Where the harness left the mouse at the opening.
+    pub mouse: Option<[i32; 2]>,
+    /// The actions after the mouse's move.
+    pub actions: Vec<String>,
+    /// Creature Info's level it runs at (0 to 2).
+    pub army_info: u8,
+}
+
+/// A situation's mouse, actions and Creature Info's level as the harness kept them in `here`'s
+/// `frames.toml` (E17 M5 T3a; the level E17 M6 T4b2b1).
+pub(crate) fn situation_inputs(here: &Path) -> Result<Situation, String> {
     let path = here.join("frames.toml");
     let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let kept: Frames = toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok((kept.mouse, kept.actions))
+    if kept.army_info > 2 {
+        return Err(format!("{}: army_info is 0, 1 or 2", path.display()));
+    }
+    Ok(Situation {
+        mouse: kept.mouse,
+        actions: kept.actions,
+        army_info: kept.army_info,
+    })
 }
 
 /// What the frames draw below and over the battlefield: the panel over the battle and the mouse:
@@ -759,6 +781,12 @@ pub(crate) fn draw_frames(
         } else {
             list.extend(panels.at_showing(snapshot, &timeline.turns, at, layout, text));
         }
+        // The army info windows a situation's battle mouse left shown (E17 M6 T4b2b1, design
+        // §12.15): the battle's redraw ends with them, under every dialog.
+        for window in interface.book.map_or(&[][..], |b| &b.army) {
+            let draws = window.dialog.draws(&window.shown, &layout.player_palette);
+            list.extend(draws.into_iter().map(scene::Draw::Dialog));
+        }
         // Earthquake's shake (E17 M4 T2c-2): the screen as it was, shifted; the cursor hidden.
         if let Some(steps) = moment.shake {
             list = vec![scene::shaken(list, steps, layout)];
@@ -883,6 +911,9 @@ pub(crate) fn draw_frames(
                 None if open.held => {}
                 None => list.push(crate::stats::cursor(layout, &open.modal, mouse)),
             }
+        } else if interface.book.is_some_and(|b| b.held) {
+            // The right button held over a hero whose window shows nothing (CLT-Q50, the
+            // original's: E17 M6 T4b2b1): no cursor (`popup_run_held`).
         } else if let Some(still) = interface.book.filter(|_| options_arrow) {
             list.push(scene::Draw::Cursor {
                 def: layout.message.cursor.clone(),

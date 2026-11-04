@@ -5229,3 +5229,33 @@ sub-agent, its docs with it.
   keys' words against the user's tables (`h3-view text`), clippy, the real-asset gate. Not
   tested (a `Battle` needs the installation's archives): `boxes_closed`, `hand_over`,
   `switch_auto` over a human-played turn.
+
+### M6 T4b2b1 — the heroes' army info windows on the mouse's move (2026-11-04)
+
+On `client/e17-m6-t4b2b1`, after the reading (design §12.15) and CLT-Q47 to Q50's answers (Q47
+copied, Q48 T4b2b2's, Q49 and Q50 fixed in the client's profile). The build by a sub-agent, its
+docs with it.
+
+- **Built** (design §12.15, "The client's"): `h3_view::army_info` (`Windows`, `Hover`,
+  `on_field`); `track::Shown::army`, `Input::Hide` and `Input::HeroInfo`, the handler's windows
+  (a new hex, out of the battlefield, every action's start, the level as an input, the shows
+  again where the hex is forgotten); the window's inputs (the left press over the battlefield,
+  T, the keys C, F, S, R and O by `key_hides`, the right press over a hero) and its drawing
+  (`Battle::list`, `hero_window`, `Follower::observation`); a still's level (`frames.toml`'s
+  `army_info`), its battle mouse in `spellbook::still`, `right-click:`, `key:F5`, `Still::army`
+  drawn by `draw_frames`.
+- **Agent's calls** (change freely): the windows as a timed list of `Shown` holding the turn
+  whose battle fills each (the window maps it through the follower's turns) rather than the fill
+  itself; the right press's input at the press, its level-0 hide applied then (the popup draws
+  it while held); CLT-Q49's keys hide whatever they then do (F on a stack that is no Faerie
+  Dragon too), C, S, R and O at the hotkey's release; the still's level a `frames.toml` field and
+  the press-and-release a new `right-click:` action, over a hero's rectangle only; a still at
+  level 1 or 2 without actions drawn through the still path; no cache of the drawn windows; the
+  harness's sequences (`pointer::inputs`) push no `Hide` (nothing shows at their level 0).
+- **Not built:** the stacks' windows (T4b2b2); the harness's part of the stills at levels 1 and
+  2 (the registry's level, `frames.toml`'s copy, `right-click:` in `h3drive.py`); F6 to F8 (T4c).
+- **Checked:** unit tests (`army_info/tests.rs`; `track/tests.rs`: the windows over time in both
+  profiles, the dialogs' closes; the binary's follower against the whole follow with the new
+  inputs, a still's windows at each level, `right-click:`, CLT-Q50), clippy, the real-asset
+  gate, two stills at levels 1 and 2 rendered with the original's assets and looked at. Not
+  tested (a `Battle` needs the installation's archives): the window's drawing and its inputs.

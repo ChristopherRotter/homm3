@@ -6341,6 +6341,12 @@ sequences/walk t02392 4c4ab887cfe8a666
 sequences/walk t02492 66db92452ff62bf0
 sequences/walk t02592 0a254a6d569a8d49
 sequences/walk t02692 4e620de245f0f52f
+set/army-info-hero t00100 2120804ae24c7684
+set/army-info-hero t00200 7d259d8bca0e1724
+set/army-info-hero-enemy t00100 7c49e103888e1f14
+set/army-info-kept t00100 7c49e103888e1f14
+set/army-info-kept t00200 b8935f0cf8f719f6
+set/army-info-none t00100 0a7e89f49c39a33a
 set/book t00000 291199e911c0b032
 set/book-fire t00000 1e42a0a812f8cf8d
 set/book-hint t00100 87b838d5d1a041b2
