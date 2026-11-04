@@ -12,7 +12,7 @@ use h3_content::{
     ArtifactTypeId, CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, ResourceId,
     Ruleset, SkillId, SpellId, StartingStack,
 };
-use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, OfferLevels};
 use h3_kernel::Rng;
 use h3_towns::TownSetup;
@@ -214,6 +214,25 @@ pub enum GameSetupError {
     /// The timed event at this index names a player twice, out of order or not of the game,
     /// a resource twice, not the ruleset's or of 0, or a first day of 0 (GAM-CAL-004, E08 T83a).
     Event(usize),
+    /// The town's faction is fixed and has no town record in the town part (TWN-SET-002, E09
+    /// T7a2).
+    TownFaction(TownId),
+    /// The random town is aligned to a colour no player has (TWN-SET-002, E09 T7a2): refused,
+    /// though the original falls through to the town's owner (no shipped map has one).
+    TownAlignment(TownId),
+    /// The player's factions hold one without a town record, or its choice is a fixed faction
+    /// outside them, random among none, or missing while its start needs a faction: a main town,
+    /// the random-hero flag, a random hero of its own or a random town aligned to its colour
+    /// (TWN-SET-001, E09 T7a2).
+    Choice(PlayerId),
+    /// The player's main town is not one of the setup's towns (TWN-SET-001, E09 T7a2).
+    MainTown(PlayerId),
+    /// The player's pick is not in its offer ([`GameSetup::offer`]; TWN-SET-006, E09 T7a2).
+    Pick(PlayerId),
+    /// The player's pick is an earlier player's too (TWN-SET-006, E09 T7a2).
+    PickTaken(PlayerId),
+    /// The random hero's owner is no player of the game (TWN-SET-008, E09 T7a2).
+    RandomHeroOwner(HeroId),
     /// The setup needs a hero drawn, which the game cannot build yet (`TWN-STUB-3`; E09 T7b).
     HeroDraw(HeroDraw),
     /// The adventure context rejects its part.
@@ -249,6 +268,29 @@ impl fmt::Display for GameSetupError {
             }
             Self::Events(n) => write!(f, "{n} timed events are too many"),
             Self::Event(event) => write!(f, "timed event {event} is invalid"),
+            Self::TownFaction(town) => {
+                write!(f, "town {}'s faction has no town record", town.raw())
+            }
+            Self::TownAlignment(town) => {
+                write!(f, "town {} is aligned to no player's colour", town.raw())
+            }
+            Self::Choice(player) => {
+                write!(f, "player {}'s faction choice is invalid", player.index())
+            }
+            Self::MainTown(player) => {
+                write!(
+                    f,
+                    "player {}'s main town is not the setup's",
+                    player.index()
+                )
+            }
+            Self::Pick(player) => write!(f, "player {}'s pick is not offered", player.index()),
+            Self::PickTaken(player) => {
+                write!(f, "player {}'s pick is an earlier player's", player.index())
+            }
+            Self::RandomHeroOwner(hero) => {
+                write!(f, "random hero {}'s owner is no player", hero.raw())
+            }
             Self::HeroDraw(draw) => write!(f, "not built yet: {draw}"),
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
@@ -260,7 +302,10 @@ impl core::error::Error for GameSetupError {}
 impl GameSetup {
     /// Checks the setup: the game's part (a difficulty the ruleset has, players in colour order
     /// within the ruleset's players, banned skills, then spells and artifacts of the ruleset (E08
-    /// T29, T61b), the timed events (E08 T83a), no hero to draw (E09 T7a1: a main town that
+    /// T29, T61b), the timed events (E08 T83a), the towns and the players' starts (E09 T7a2: a
+    /// fixed town's faction with a town record, a random town's alignment to a player's colour,
+    /// each player's faction choice, main town, pick from its offer and a pick of no earlier
+    /// player, a random hero's owner), no hero to draw (E09 T7a1: a main town that
     /// generates a hero, then a random hero; `TWN-STUB-3`), known hero types,
     /// starting armies that can be drawn, the heroes' details by the hero model, E08 T18b), then
     /// the adventure context's part with its own checks. It builds the game as
@@ -335,6 +380,7 @@ impl GameSetup {
         if self.heroes.len() > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(self.heroes.len()));
         }
+        town::check_starts(self, rules)?;
         let types = town::hero_types(self)?;
         let mut heroes = Vec::with_capacity(self.heroes.len());
         let mut machines = Vec::with_capacity(self.heroes.len());

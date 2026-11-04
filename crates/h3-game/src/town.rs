@@ -2,16 +2,19 @@
 //! factions it may start with, its choice among them, its starting hero's pick, its main town and
 //! whether its starting hero is random. A map's import fills it (`h3-map`, TWN-SET-001); whoever
 //! seats the players may change the choice and the pick before the game is built (E09 decision
-//! 6's seam). The game's build reads none of it yet but the refusal of a setup that needs a hero
-//! drawn ([`HeroDraw`], `TWN-STUB-3`): the draws are E09 T7b's (design note §14).
+//! 6's seam), the pick from the player's offer ([`GameSetup::offer`], TWN-SET-006). The game's
+//! build checks the starts and the towns (E09 T7a2: [`check_starts`]) but draws nothing yet: it
+//! refuses a setup that needs a hero drawn ([`HeroDraw`], `TWN-STUB-3`; the draws are E09 T7b's,
+//! design note §14).
 
 use alloc::vec::Vec;
 use core::fmt;
 
 use h3_content::{FactionId, HeroTypeId};
 use h3_contracts::{HeroId, PlayerId, TownId};
+use h3_towns::TownFaction;
 
-use crate::{GameSetup, GameSetupError};
+use crate::{GameRuleset, GameSetup, GameSetupError, PlayerSetup};
 
 /// A set of the core's factions, a bit per faction below [`FactionSet::CAPACITY`] (the map's
 /// allowed towns, read through the ruleset's factions).
@@ -111,6 +114,168 @@ impl fmt::Display for HeroDraw {
             }
         }
     }
+}
+
+impl GameSetup {
+    /// The most hero types a player's offer holds: the start dialog's list of 16
+    /// (`scenario_hero_lists` 0x583890; survey `E09-towns.md` §4.3, TWN-SET-006).
+    pub const OFFERED_HEROES: usize = 16;
+
+    /// The hero types `player` may pick its starting hero from (TWN-SET-006; survey
+    /// `E09-towns.md` §4.3): none unless its choice is a fixed faction and its main town generates
+    /// its starting hero or its starting hero is random; then the first
+    /// [`GameSetup::OFFERED_HEROES`] in the core's type order that the map allows, that no placed
+    /// hero and no prisoner has, whose class is of that faction and that the player's colour may
+    /// take (each of the type's [`GameSetup::hero_masks`] has the colour's bit; a type without
+    /// one, every colour). None for a player not of the setup. Whoever seats the players chooses
+    /// a pick among them before the game is built.
+    pub fn offer(&self, rules: &GameRuleset, player: PlayerId) -> Vec<HeroTypeId> {
+        let Some(seat) = self.players.get(player.index()) else {
+            return Vec::new();
+        };
+        let start = &seat.start;
+        let Some(FactionChoice::Fixed(faction)) = start.choice else {
+            return Vec::new();
+        };
+        if !(start.random_hero || start.main_town.is_some_and(|t| t.generates_hero)) {
+            return Vec::new();
+        }
+        let core = rules.core();
+        let colour = u32::from(seat.colour);
+        // rule: TWN-SET-006
+        core.hero_types()
+            .iter()
+            .enumerate()
+            .filter_map(|(index, ty)| HeroTypeId::from_index(index).map(|id| (id, ty)))
+            .filter(|&(id, ty)| {
+                self.allowed_heroes.contains(&id)
+                    && !self.heroes.iter().any(|hero| hero.hero_type == Some(id))
+                    && !self.prisoners.contains(&id)
+                    && core
+                        .hero_class(ty.class)
+                        .is_some_and(|class| class.faction == faction)
+                    && self
+                        .hero_masks
+                        .iter()
+                        .filter(|&&(masked, _)| masked == id)
+                        .all(|&(_, mask)| mask.checked_shr(colour).is_some_and(|m| m & 1 == 1))
+            })
+            .map(|(id, _)| id)
+            .take(Self::OFFERED_HEROES)
+            .collect()
+    }
+}
+
+/// The setup's checks of the towns and the players' starts (E09 T7a2, design note §13), one pass
+/// per invariant (ADR-0015 point 4): a fixed town's faction, a random town's alignment, each
+/// player's faction choice, main town, pick and a pick of no earlier player, then a random hero's
+/// owner.
+///
+/// # Errors
+///
+/// The first [`GameSetupError`] found, in that order: [`GameSetupError::TownFaction`],
+/// [`GameSetupError::TownAlignment`], [`GameSetupError::Choice`], [`GameSetupError::MainTown`],
+/// [`GameSetupError::Pick`], [`GameSetupError::PickTaken`], [`GameSetupError::RandomHeroOwner`].
+pub(crate) fn check_starts(setup: &GameSetup, rules: &GameRuleset) -> Result<(), GameSetupError> {
+    let towns = || setup.towns.iter().zip((0..=u16::MAX).map(TownId::new));
+    // rule: TWN-SET-002
+    if let Some((_, town)) = towns().find(|(town, _)| {
+        matches!(town.faction, TownFaction::Fixed(faction) if rules.towns().town(faction).is_none())
+    }) {
+        return Err(GameSetupError::TownFaction(town));
+    }
+    // rule: TWN-SET-002
+    if let Some((_, town)) = towns().find(|(town, _)| {
+        matches!(town.faction, TownFaction::Random { alignment: Some(colour) }
+            if !setup.players.iter().any(|player| player.colour == colour))
+    }) {
+        return Err(GameSetupError::TownAlignment(town));
+    }
+    // rule: TWN-SET-001
+    if let Some(player) = first_player(setup, |id, player| !chooses(setup, rules, id, player)) {
+        return Err(GameSetupError::Choice(player));
+    }
+    // rule: TWN-SET-001
+    if let Some(player) = first_player(setup, |_, player| {
+        player
+            .start
+            .main_town
+            .is_some_and(|main| main.town.index() >= setup.towns.len())
+    }) {
+        return Err(GameSetupError::MainTown(player));
+    }
+    // rule: TWN-SET-006
+    if let Some(player) = first_player(setup, |id, player| {
+        player
+            .start
+            .pick
+            .is_some_and(|pick| !setup.offer(rules, id).contains(&pick))
+    }) {
+        return Err(GameSetupError::Pick(player));
+    }
+    // rule: TWN-SET-006
+    if let Some(player) = first_player(setup, |id, player| {
+        player.start.pick.is_some_and(|pick| {
+            setup.players[..id.index()]
+                .iter()
+                .any(|earlier| earlier.start.pick == Some(pick))
+        })
+    }) {
+        return Err(GameSetupError::PickTaken(player));
+    }
+    // rule: TWN-SET-008
+    if let Some((_, hero)) = setup
+        .heroes
+        .iter()
+        .zip((0..=u16::MAX).map(HeroId::new))
+        .find(|(hero, _)| hero.hero_type.is_none() && hero.owner.index() >= setup.players.len())
+    {
+        return Err(GameSetupError::RandomHeroOwner(hero));
+    }
+    Ok(())
+}
+
+/// The first player in id order that `refused` refuses (the players at most a [`PlayerId`]'s).
+fn first_player(
+    setup: &GameSetup,
+    mut refused: impl FnMut(PlayerId, &PlayerSetup) -> bool,
+) -> Option<PlayerId> {
+    setup
+        .players
+        .iter()
+        .zip((0..=u8::MAX).map(PlayerId::new))
+        .find(|&(player, id)| refused(id, player))
+        .map(|(_, id)| id)
+}
+
+/// Whether `player`'s faction choice is valid (TWN-SET-001): every faction of its set has a town
+/// record (a draw gives one of them, `TWN-QUIRK-4`), and its choice is a faction of the set,
+/// random among a set that is not empty, or none while its start needs no faction: no main town,
+/// no random-hero flag, no random hero of its own and no random town aligned to its colour.
+fn chooses(setup: &GameSetup, rules: &GameRuleset, id: PlayerId, player: &PlayerSetup) -> bool {
+    let start = &player.start;
+    start
+        .factions
+        .iter()
+        .all(|faction| rules.towns().town(faction).is_some())
+        && match start.choice {
+            Some(FactionChoice::Fixed(faction)) => start.factions.contains(faction),
+            Some(FactionChoice::Random) => !start.factions.is_empty(),
+            None => {
+                start.main_town.is_none()
+                    && !start.random_hero
+                    && !setup
+                        .heroes
+                        .iter()
+                        .any(|hero| hero.hero_type.is_none() && hero.owner == id)
+                    && !setup.towns.iter().any(|town| {
+                        town.faction
+                            == TownFaction::Random {
+                                alignment: Some(player.colour),
+                            }
+                    })
+            }
+        }
 }
 
 /// Each hero's type in hero order, the setup's heroes at most a [`HeroId`]'s.
