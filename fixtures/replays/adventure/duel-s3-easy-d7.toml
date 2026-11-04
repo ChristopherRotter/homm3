@@ -313,18 +313,18 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x2dd36bdf0405dc2b",
-    "0xacfceedaaad91b3b",
-    "0x30eb6fe6ade3b40e",
-    "0x59ae688b4cd121f9",
-    "0x2e0163de63da09cb",
-    "0xdd9e005ebba0d349",
-    "0x54eb77c6589c61b4",
-    "0x660d80782bd79d97",
-    "0x7d9f1e72f70a33d4",
-    "0x103bc52976c79994",
-    "0xe5a1bd1c76ec3184",
-    "0x67e5267388d4a9e0",
+    "0x41e6a2f888ca91f2",
+    "0xf0ea86c1e4373662",
+    "0x7586ce5745325b43",
+    "0x7a4ee0ecd4f5e99c",
+    "0x60cb555245bbaa12",
+    "0x308f1c51dd77424c",
+    "0x4927144549b1418d",
+    "0x71175e988f0801ee",
+    "0x8ec88782e26d65ad",
+    "0xc2cc8cd6d26cfa6d",
+    "0xe3a1887367d3a07d",
+    "0x732f03e00866f247",
 ]
 
 [replay]
@@ -348,21 +348,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x962e87e7a01056f6"
-adventure_ruleset_hash = "0xe35bf409c05f50b1"
+adventure_ruleset_hash = "0xf7865aeae57de535"
 town_ruleset_hash = "0xe9dc612ed812d825"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 23
-adventure_state_hash_version = 20
+adventure_state_hash_version = 21
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 17
+import_version = 18
 
 [result]
 day = 8
-final_hash = "0x29a41c72da7b513f"
+final_hash = "0x26673d9ece923cd5"

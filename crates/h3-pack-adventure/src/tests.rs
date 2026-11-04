@@ -389,11 +389,16 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     // E08 T61a: increment 7's 31 types after them; E08 T72: the sea's four pickups and the hole;
     // E08 T83a: increment 9's thirteen (seven mines, the abandoned mine, the Lighthouse, the
     // Shipyard and the three weekly objects); E08 T93a: increment 10's 64 (the 62 RoE dwellings,
-    // the Refugee Camp, the random dwelling).
+    // the Refugee Camp, the random dwelling); E09 T8a1: the town.
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1
     );
+    // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above.
+    let town = ty("base:town");
+    assert_eq!(town.kind, ObjectKind::Town);
+    assert!(town.kind.ownable());
+    assert_eq!((town.visit, town.from_above), (Visit::Enter, false));
     assert!(part.object_type_by_key("base:border_gate_red").is_none());
 }
 
@@ -1097,6 +1102,8 @@ fn parses_the_dwellings() {
         kind("refugee_camp = { levels = [1, 7] }"),
         ObjectKindDef::RefugeeCamp { levels: [1, 7] }
     );
+    // E09 T8a1: the town.
+    assert_eq!(kind("town = {}"), ObjectKindDef::Town);
     let params = |table: &str| {
         let text = format!(
             "[params]\nnative_cost = 100\nland_points = [1]\nscouting_radius = 1\n\

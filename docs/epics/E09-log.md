@@ -959,3 +959,66 @@ docs by the agent.
 - **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
   `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass.
   `master` (#714, the client lane) merged in before the run.
+
+### T8a1 — the town as a map object (2026-11-04)
+
+One session, the user present; branch `town/e09-t8a1` (`cross-lane`: `h3-adventure`'s
+`lib.rs`, `setup.rs`, `state.rs`, `state/economy.rs`, `state/holds.rs`, `ruleset/objects.rs`,
+`testing.rs` and tests, `h3-game`'s `setup.rs`, `state.rs`, `town.rs` and tests, `h3-map`'s
+import, `lib.rs`, census example and tests, `h3-cli`'s `src/ai/census.rs` (the ai lane's), `h3-pack-adventure`, `packs/base/adventure.toml`,
+`adventure.toml`'s catalog, the 39 adventure replays, the ai lane's two bot reports, the adventure
+lane's HANDOFF versions line and `OVERVIEW.md`'s import version). Starting point: `master` at
+5dac0d2 (#715 merged; CI green there; the sandbox's baseline the light gates; the original data
+staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`). **At its
+start** (the user): T8a cut in two and round 8's order changed (T8a1, T7b2, T8a2, then T8b; the
+design note §8's cut), the branch stacked on the adventure lane's #716 (E08 T94b, adventure state
+hash v20). #716 was behind `master` (both had rehashed the 39 replays: 41 files in conflict), so
+`master` was merged into the stacked base in a commit of its own (the replays' lines taken from
+T94b with game state hash v23, the stale hashes re-recorded once by this task); once #716 merged
+(its own merge of `master` the same code), the branch was rebased onto `master` at 990e07e and the
+re-recorded replays kept. The code, the census, the bench and the replays by one sub-agent; the
+review and the docs by the agent.
+
+- **`h3-adventure`:** `ObjectKind::Town` and `ObjectKindDef::Town` (ownable, no parameter; the
+  part's hash tag 33), `Holds::Town { formation }` (the state hash's tag 9). `StaticMap::towns`
+  (the town objects in object order), `town_id(index) -> Option<TownId>`,
+  `town_object(id) -> Option<usize>` (*agent's call*: an option, so a foreign id cannot panic);
+  `SetupError::Towns` (more towns than a `TownId` names). `AdventureSetup::garrisons` (one army
+  per `TownId`, written on the town's object as `army_left`, an empty one written empty;
+  `SetupError::Garrisons` for another count, `Garrison { town, error }` for an invalid army);
+  `AdventureState::town_garrison(index)`. `start_game` takes `town_radii` by `TownId`
+  (`reveal_owned`: a town past the slice the flag radius).
+- **The entrance not entered** (`TWN-STUB-4`, *agent's call*): `StaticMap::place` sets no typed
+  visit on a town's entrance, so the step, the reach and the legal moves meet a blocker's entrance
+  as before the town was typed (the from-above test included) and their loops test nothing more; a
+  test compares the reach and the step with the blocker's.
+- **The import** (`h3-map`): `codes` maps classes 77 and 98 to `base:town` whatever the subclass;
+  `import/town.rs::object` gives the owner (`object_owner`: 0xFF neutral, a colour nobody plays
+  refused as every ownable's) and the formation (the map's byte, 0 loose, any other tight).
+- **`h3-game`:** `GameSetupError::TownCount` (the setup's towns against the objects of kind
+  `Town`, `check_starts`' first check); `MainTown` widened (*agent's call*, no new variant): a main
+  town the player does not own at the start (another player's or neutral) is refused as one none
+  of the setup's ("not a town of its own"). The build passes empty garrisons and the flag radius
+  for every town (`TWN-STUB-5`, lifted by T7b2).
+- **Versions:** adventure ruleset part v17, map import v18, adventure state hash v21. The 39
+  replays re-recorded from their own commands: only the checkpoint and final hashes,
+  `adventure_ruleset_hash`, `adventure_state_hash_version` and `import_version` moved; both bot
+  reports regenerated (only the part's hash moved).
+- **The census** (`original_data`, 160 maps): 156 import, 4 refused (`OwnedOnWater`); 31 build,
+  125 refused for a main town's hero (`TWN-STUB-3`), as before; none refused by the new checks;
+  1 468 towns typed, 889 owned at load, 3 with a tight formation. The census's static-layer game
+  gives each town a neutral town record (else `TownCount` refuses it).
+- **Bench** (the stored baselines, the +2 % gate): the fork workloads +1.13 % to +1.71 %, the
+  highest on maps without a town (Learning Stones, boxes), so most likely the base's own creep
+  (T7b1's `Arc`, T94b's blocks; the base itself not measured); the rest −0.19 % to +0.71 %;
+  nothing re-baselined.
+- **Docs:** `adventure.toml` ADV-OBJ-002 (77, 98 typed), ADV-OWN-002 (towns' owners, the
+  start's reveal by the game's radii; a source); `stubs.toml` `TWN-STUB-4`, `-5`; `h3m.md`'s
+  import and census; the design note's §8 (the cut, "As built"), §19; the queue's T8a1, T7b2 and
+  T8a2 entries.
+- **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
+  `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass. CI's
+  coverage failed on #719: the ai lane's census test (`h3-cli`'s
+  `ai::tests::the_census_counts_a_known_map`) built its game with no town records, refused by
+  `TownCount`; the census now gives each town a neutral record as `h3-map`'s does, and the
+  workspace's tests pass (a trap in `TRAPS.md`).

@@ -1,18 +1,20 @@
 //! The import of the towns, the players' starts, the heroes moved onto a town's entrance and the
 //! hero pool's inputs (E09 T7a1; design note `docs/epics/E09-design.md` §7, survey
-//! `docs/rules/surveys/E09-towns.md` §1 to §5). The towns' static layer stays the blockers
-//! [`super::import_map`] makes of them (their kind: E09 T8a); the game builds none of it yet
-//! (E09 T7b2).
+//! `docs/rules/surveys/E09-towns.md` §1 to §5). Since E09 T8a1 a town's static layer is typed
+//! (design note §8, [`object`]): the type `town`, its owner and its garrison's formation; the game
+//! builds none of the rest yet (E09 T7b2).
 
-use h3_adventure::{ObjectSetup, Pos};
-use h3_content::HeroTypeId;
+use h3_adventure::{Holds, ObjectSetup, Pos};
+use h3_content::{Formation, HeroTypeId};
 use h3_contracts::{PlayerId, TownId};
 use h3_game::{
     BuildingsSetup, FactionChoice, FactionSet, GameRuleset, GarrisonCreature, GarrisonStack,
     MainTown, PlayerSetup, SlotSet, TownEventSetup, TownFaction, TownSetup,
 };
 
-use super::{ImportError, blocks, codes, creature, entrances, random_stack, resource};
+use super::{
+    ImportError, blocks, codes, creature, entrances, object_owner, random_stack, resource,
+};
 use crate::model::{Army, Body, Buildings, RawMap, Template, TownBody, TownEvent, Version};
 use crate::model::{Object, Text};
 
@@ -110,6 +112,36 @@ pub(super) fn starts(
         player.start.random_hero = details.random_hero;
     }
     Ok(())
+}
+
+/// A town's static layer beside its type (E09 T8a1, design note §8; ADV-OWN-002): its owner, the
+/// player of its body's owner colour (none for neutral; a colour nobody plays refused, as every
+/// ownable object's, [`object_owner`]), and its garrison's formation ([`Holds::Town`]; the map's
+/// byte, 0 loose, any other tight, as a hero's). An object of these classes without a town's body
+/// (never the reader's) is a neutral town's defaults, loose.
+///
+/// # Errors
+///
+/// [`ImportError::ObjectOwner`] for an owner colour nobody plays.
+// rule: ADV-OWN-002
+pub(super) fn object(
+    colours: &[Option<PlayerId>; 8],
+    index: usize,
+    body: &Body,
+) -> Result<(Option<PlayerId>, Holds), ImportError> {
+    let (owner, formation) = match body {
+        Body::Town(body) => (body.owner, body.formation),
+        _ => (NO_ALIGNMENT, 0),
+    };
+    let formation = if formation == 0 {
+        Formation::Loose
+    } else {
+        Formation::Tight
+    };
+    Ok((
+        object_owner(colours, index, u32::from(owner))?,
+        Holds::Town { formation },
+    ))
 }
 
 /// The towns (classes 77 and 98) in the map's order, each as the map gives it (design note §5 and

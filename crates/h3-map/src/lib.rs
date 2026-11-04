@@ -67,8 +67,9 @@ pub use parse::parse;
 /// the game's setup; a random hero (70) without its type and a main town generating a hero
 /// supported; a placed hero right of a town's entrance moved onto it (TWN-SET-010), one on a
 /// town's entrance supported; a main town that is no town's entrance and a random town's
-/// alignment past the colours refused.
-pub const MAP_IMPORT_VERSION: u32 = 17;
+/// alignment past the colours refused. v18 (E09 T8a1): the towns (77, 98) typed (the type `town`),
+/// each with its owner (a colour nobody plays refused) and its garrison's formation.
+pub const MAP_IMPORT_VERSION: u32 = 18;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

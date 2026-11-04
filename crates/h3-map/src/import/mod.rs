@@ -371,7 +371,8 @@ fn skill_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SkillId>, ImportErr
 /// 20), the Refugee Camp (78) and the random dwellings (216 to 218) are typed, a dwelling and a
 /// random dwelling with its owner, a random dwelling with its faction set and level range
 /// ([`Holds::RandomDwelling`]); one tied to a town of the map stays a blocker (ADV-STUB-13), and
-/// classes 18 and 19 are refused.
+/// classes 18 and 19 are refused. Since E09 T8a1 the towns (77 and 98) are typed, each with its
+/// owner and its garrison's formation ([`Holds::Town`]).
 ///
 /// # Errors
 ///
@@ -547,6 +548,10 @@ fn typed(
     if let Some((owner, holds)) = dwelling {
         setup.owner = owner;
         setup.holds = holds;
+    }
+    // E09 T8a1 (the town epic's design note §8): a town's owner and formation.
+    if matches!(template.class, RANDOM_TOWN | TOWN) {
+        (setup.owner, setup.holds) = town::object(colours, index, &object.body)?;
     }
     // E08 T72: a ground of the sea and a hole lie on their pictures' tiles too.
     if matches!(
