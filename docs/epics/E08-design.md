@@ -94,7 +94,8 @@ Hash tags follow the part's last (the building task's); ruleset part v16.
   Altar of Thought (60), Conflux's table. *Agent's call:* a type in the pack that introduced its
   object (an AB map's Altar under RoE rules is `MissingContent`, as any AB object); the building
   task lists which subclass is whose (`dwelling_creatures` 0x63D570 and the creatures' packs) and
-  checks it on the 44 RoE-format maps (695 dwellings import under `base` alone). `sod` adds none.
+  checks it on the RoE-format maps (T93b's census: all 49, 709 dwellings, 695 of class 17 and 14 of
+  class 20, import under `base` alone). `sod` adds none.
 - **The harvest's check** (with the original data, `h3-map`'s tests): each dwelling type's
   footprint equals its class and subclass's last template in `Objects.txt` converted as the import
   converts a map's template; each name equals `CrGen1.txt`'s or `CrGen4.txt`'s row; the creatures
@@ -130,7 +131,8 @@ Hash tags follow the part's last (the building task's); ruleset part v16.
 
 - **`Holds::RandomDwelling { factions, levels }`**: distinct core factions, each with a
   `[[random_dwelling]]` table, and an inclusive level range within 1 to 7; else
-  `SetupError::Holds` (`check_holds`). Only for the random dwelling kind.
+  `SetupError::Holds` (`check_holds`). Only for the random dwelling kind. Built by T93b with the
+  import (decision 250).
 - **A hero on a random dwelling's visitable tile** is refused (`SetupError`, named by the building
   task): any outcome blocks one of its two bottom cells, so the setup's validity would depend on
   the draw (`AdventureState::new` promises it does not). *Agent's call*; the census checks the
@@ -382,8 +384,8 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
   visits' first build (`homm3-bench-regression`): none plays a dwelling, so a change is the
   dispatch's and is fixed, not re-baselined, unless its reason is written.
 - **`--with-original-data`** (`crates/h3-map/examples/original_data.rs`): every shipped map's
-  static layer with the new classes: the 2 061 dwellings typed (695 under `base` alone on the 44
-  RoE-format maps), the owners at load, the 206 random dwellings resolved for a fixed seed (each a
+  static layer with the new classes: the 2 061 dwellings typed (709 under `base` alone on the 49
+  RoE-format maps, T93b's census), the owners at load, the 206 random dwellings resolved for a fixed seed (each a
   dwelling of its set and range, its entrance on the map), the 1 397 tied to towns as blockers
   (ADV-STUB-13), the 321 camps; the harvest's check (§3).
 
@@ -453,7 +455,7 @@ confirmed at its start). **Batch E10 runs before the build and before the shared
 | 3 | **T90** + **T91** | T90: the harness's reads and clicks, the recipes, the runs E10a and E10b. T91: scored (survey §16) |
 | 4 | **T92** | `shared/`: the two ADRs with T91's outcome, the glossary, `docs/06-security.md` |
 | 5 | **T93** | T93a: the kinds, the parameters, the table, the derivations, the packs, the harvest's check (§1–§3; part v16). T93b: the import, its refusals and quirk entries, ADV-STUB-13 (§4; map import v16) |
-| 6 | **T94** | The holds, the resolution, the lists, the owners and the start's reveal, the week's and the camps' blocks, the week's step, the views (§5, §6, §9, §10; adventure state hash v20) |
+| 6 | **T94** | A hero on a random dwelling's entrance refused (the holds' type and check came with T93b, decision 250), the resolution, the lists, the owners and the start's reveal, the week's and the camps' blocks, the week's step, the views (§5, §6, §9, §10; adventure state hash v20) |
 | 7 | **T95** | T95a: the visits, the guards' question and battle, the flag, the free creatures, the camp's visit (§7, §12). T95b: the purchase, the hire dialog and its legal set, view and events, the env (§8, §13, §14's env; game state hash v23, replay format v10, `cross-lane` v7) |
 | 8 | **T96** + **T97** | T96: the dwellings maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T97: the audit against the exit criteria; increment 10 closed; increment 11 refined |
 

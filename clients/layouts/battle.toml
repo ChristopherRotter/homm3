@@ -721,3 +721,256 @@ font = "tiny.fnt"
 font_palette = "game.pal"
 colour = 4
 align = 5
+
+# The combat options dialog (E17 M6 T4a, design §12.12; `crate::options` fills it):
+# `combat_options_create` 0x46E3B0 at (159, 84), 481 x 431 (centred on 800 x 600, halves dropped),
+# the base dialog's flags 0x12 (its shadow). The ids are the executable's but the texts': the
+# executable's are all -1, the client's 240 to 256 (*provisional*). The build's order: the
+# picture, Default, OK, the bars, the speeds, the boxes, the texts; no two controls meet.
+[options]
+# The press sample (`button_sample` 0x694DA4): the DEF buttons' own (`button_press` 0x456860) and
+# the procedure's on a box or a speed (0x46FDB1).
+sound = "button.wav"
+
+[options.dialog]
+place = [159, 84]
+shadow = [481, 431]
+
+# The background (0x46E40C), in the acting side's player's colours.
+[[options.dialog.items]]
+kind = "picture"
+id = 200
+picture = "comopbck.pcx"
+at = [0, 0]
+size = [481, 431]
+
+# Default and OK (`codefaul.def`, `soretrn.def`: 1 normal, 0 pressed), 100 x 48; OK's hotkeys
+# Enter and Escape (the window manager's +0x38 = 30722).
+[[options.dialog.items]]
+kind = "button"
+id = 201
+def = "codefaul.def"
+at = [246, 359]
+size = [100, 48]
+frames = { normal = 1, pressed = 0, disabled = 2, selected = 3 }
+
+[[options.dialog.items]]
+kind = "button"
+id = 30722
+def = "soretrn.def"
+at = [357, 359]
+size = [100, 48]
+frames = { normal = 1, pressed = 0, disabled = 2, selected = 3 }
+
+# The music bars 202 to 211 and the effects bars 212 to 221 (DEF pictures, the flags 0x10):
+# `syslb.def` at (29 + 19 k, 303) and (29 + 19 k, 369), 18 x 36, over the background's printed
+# staircase; all but the volume's hidden, the shown one's frame the volume (the fill's).
+[[options.dialog.items]]
+kind = "def"
+id = 202
+def = "syslb.def"
+at = [29, 303]
+size = [18, 36]
+repeat = { count = [10, 1], step = [19, 0] }
+
+[[options.dialog.items]]
+kind = "def"
+id = 212
+def = "syslb.def"
+at = [29, 369]
+size = [18, 36]
+repeat = { count = [10, 1], step = [19, 0] }
+
+# The combat speeds 0 to 2 (DEF buttons, 62 x 32): 0 normal, 1 pressed, 2 the chosen one's
+# (disabled by `SendCommand` 5 with 0x1000).
+[[options.dialog.items]]
+kind = "button"
+id = 230
+def = "sysopb9.def"
+at = [28, 225]
+size = [62, 32]
+
+[[options.dialog.items]]
+kind = "button"
+id = 231
+def = "sysob10.def"
+at = [92, 225]
+size = [62, 32]
+
+[[options.dialog.items]]
+kind = "button"
+id = 232
+def = "sysob11.def"
+at = [156, 225]
+size = [62, 32]
+
+# The boxes (DEF pictures, `sysopchk.def`: 0 off, 1 on; 32 x 24): the grid, the movement shadow,
+# the cursor shadow and the spell book's animation (left column); the five Auto Combat options
+# (right, top: 225 to 229, 30 apart); the army info's two levels (right, below: 233, 234).
+[[options.dialog.items]]
+kind = "def"
+id = 235
+def = "sysopchk.def"
+at = [24, 55]
+size = [32, 24]
+
+[[options.dialog.items]]
+kind = "def"
+id = 236
+def = "sysopchk.def"
+at = [24, 88]
+size = [32, 24]
+
+[[options.dialog.items]]
+kind = "def"
+id = 237
+def = "sysopchk.def"
+at = [24, 122]
+size = [32, 24]
+
+[[options.dialog.items]]
+kind = "def"
+id = 238
+def = "sysopchk.def"
+at = [24, 154]
+size = [32, 24]
+
+[[options.dialog.items]]
+kind = "def"
+id = 225
+def = "sysopchk.def"
+at = [246, 84]
+size = [32, 24]
+repeat = { count = [1, 5], step = [0, 30] }
+
+[[options.dialog.items]]
+kind = "def"
+id = 233
+def = "sysopchk.def"
+at = [246, 283]
+size = [32, 24]
+repeat = { count = [1, 2], step = [0, 30] }
+
+# The texts (§9.4's rows, `crate::options`' keys): the title (`bigfont.fnt`) and the headings
+# (`medfont.fnt`) in colour 7, alignment 5; the labels in `medfont.fnt` colour 1, alignment 4.
+[[options.dialog.items]]
+kind = "label"
+id = 240
+at = [26, 19]
+size = [432, 28]
+font = "bigfont.fnt"
+font_palette = "game.pal"
+colour = 7
+align = 5
+
+[[options.dialog.items]]
+kind = "label"
+id = 241
+at = [26, 204]
+size = [193, 20]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 7
+align = 5
+
+[[options.dialog.items]]
+kind = "label"
+id = 242
+at = [26, 283]
+size = [193, 20]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 7
+align = 5
+
+[[options.dialog.items]]
+kind = "label"
+id = 243
+at = [26, 349]
+size = [193, 20]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 7
+align = 5
+
+[[options.dialog.items]]
+kind = "label"
+id = 244
+at = [61, 55]
+size = [168, 24]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 4
+
+[[options.dialog.items]]
+kind = "label"
+id = 245
+at = [61, 88]
+size = [168, 24]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 4
+
+[[options.dialog.items]]
+kind = "label"
+id = 246
+at = [61, 122]
+size = [168, 24]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 4
+
+[[options.dialog.items]]
+kind = "label"
+id = 247
+at = [61, 154]
+size = [168, 24]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 4
+
+[[options.dialog.items]]
+kind = "label"
+id = 248
+at = [248, 56]
+size = [211, 20]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 7
+align = 5
+
+[[options.dialog.items]]
+kind = "label"
+id = 249
+at = [283, 84]
+size = [182, 24]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 4
+repeat = { count = [1, 5], step = [0, 30] }
+
+[[options.dialog.items]]
+kind = "label"
+id = 254
+at = [248, 255]
+size = [211, 20]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 7
+align = 5
+
+[[options.dialog.items]]
+kind = "label"
+id = 255
+at = [283, 283]
+size = [182, 24]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 4
+repeat = { count = [1, 2], step = [0, 30] }

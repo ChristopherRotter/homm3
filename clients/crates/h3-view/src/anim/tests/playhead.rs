@@ -362,3 +362,45 @@ fn a_turn_pushed_as_the_computers_outlines_its_stack_once_a_human_plays_it() {
     fresh.outline_waiting();
     assert_eq!(fresh.timeline().outlines, before);
 }
+
+#[test]
+fn a_speed_set_while_growing_times_the_next_command() {
+    // E17 M6 T4a (design §12.12): the combat options dialog's speed, set between two commands,
+    // times the next command's walk as a battle grown at that speed from the start does.
+    let (layout, tables, magic, casts) = (layout(), tables(), magic(), Casts::default());
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables.battle.groups,
+        magic: &magic,
+        casts: &casts,
+        bugs: Bugs::Original,
+        siege: None,
+        lengths: None,
+    };
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 50, false),
+        at(1, Side::Defender, PIKEMAN, 60, false),
+    ]);
+    let events = [
+        moved(0, 50, 51),
+        h3_protocol::wire::Event::TurnStarted { stack: 1 },
+    ];
+    let command = Command {
+        at: Some(0),
+        events: &events,
+    };
+    let grown = |speed: u8, set: Option<u8>| {
+        let mut growing = Growing::new(&o, &looks(), stage, Speed::new(speed), None).unwrap();
+        if let Some(s) = set {
+            growing.set_speed(Speed::new(s));
+        }
+        growing.push(&command, false);
+        growing
+    };
+    let fast = grown(2, None);
+    let set = grown(0, Some(2));
+    assert_eq!(set.speed(), Speed::new(2));
+    assert_eq!(set.timeline().end, fast.timeline().end);
+    assert!(set.timeline().end < grown(0, None).timeline().end);
+}

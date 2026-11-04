@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a; E09 T7a1; `MAP_IMPORT_VERSION` 16)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b; E09 T7a1; `MAP_IMPORT_VERSION` 17)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -256,6 +256,23 @@ content and draws nothing; it rejects what the current increment cannot represen
   flags as read, the file's first day + 1, the interval, the resources without zeros, the index
   for the message; none refused (more than a `u16` names is `Events`). The census's static layer
   is validated in a game of the map's players (an owner is one).
+- **Increment 10's objects** (v16, E08 T93b, increment 10's design note §4; ADV-OBJ-002,
+  ADV-DWL-001, -005, ADV-RFG-001): 17 by subclass (0 to 79) and 20 by subclass (0 and 1) the
+  dwellings (`codes.rs`'s tables, each the type of the pack that introduced its object: `base` the
+  RoE ones, `ab` the ones AB added), 78 `base:refugee_camp`, 216 to 218 `base:random_dwelling`
+  when not tied to a town; 216 to 218 are ownable scenery as 17 and 20 (GAM-BAT-011). A dwelling's
+  and a random dwelling's owner as a mine's (`ObjectOwner`, `OwnedOnWater`). A random dwelling's
+  holds (`Holds::RandomDwelling`, checked when the game is built): the factions, by the original's
+  faction codes 0 to 8 (`codes::FACTIONS`, the town lane's import reuses it) in the core's order —
+  216 and 217 the set's bits (one byte in RoE, two from AB), 218 its subclass; the levels, inclusive
+  and one-based — 216 and 218 the two level codes plus one, 217 its subclass plus one. A random
+  dwelling of 216 or 217 whose town identifier names a town of the map (`TownBody::identifier`)
+  stays a blocker until E09's random towns (ADV-STUB-13). Refused, in this order for one object
+  (input bounds, ADV-QUIRK-36 to -38): classes 18 and 19 (`DwellingClass`, A-36); a subclass past
+  its table, 17 past 79, 20 past 1, 217 past 6, 218 past 8 (`Subclass`, A-36); a town identifier
+  no town of the map has (`DwellingTown`, A-35); a faction bit past 8 (`UnknownCode`, `faction`); an
+  empty set (`DwellingFactions`, A-34); a level code past 6 or a lowest above the highest
+  (`DwellingLevels`, A-36); then the owner.
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
@@ -370,7 +387,7 @@ every abandoned mine drawn within its set and 100 to 200, every Shipyard with a 
 Hoard's at (62, 38, 0) in both Hoard maps (survey `E08-economy.md` §1), every weekly object's
 first week its kind's, every owner checked.
 
-**Towns and starting heroes** (E09 T7a1, map import v16; E09 design note §7, `src/import/town.rs`).
+**Towns and starting heroes** (E09 T7a1, map import v17; E09 design note §7, `src/import/town.rs`).
 The order: the static layer, the players' main towns, the towns, the heroes, the banned sets, the
 events, the pool's inputs. Each playing colour's `PlayerSetup::start`: its factions (the map's
 allowed bits that the ruleset has as factions with a town record; an RoE-format player with all
@@ -394,7 +411,7 @@ SoD's disposed heroes' colour masks, the prisoners' types. `Unsupported::HeroAtM
 `RandomHero` are gone; until E09 T7b draws them, the game's build refuses a setup with a random
 hero or a main town that generates a hero (`GameSetupError::HeroDraw`, `TWN-STUB-3`).
 
-E09 T7a1's census (import v16, the 160 shipped maps; `original_data`): every map imports (v15: 8;
+E09 T7a1's census (import v17, the 160 shipped maps; `original_data`): every map imports (v15: 8;
 128 refused for a main town's hero, 21 for a random hero, 3 for a hero in a town); 10 build whole,
 128 are refused by the build for a main town's hero and 22 for a random hero (`TWN-STUB-3`). 1 468
 towns: 592 fixed (castle 119, rampart 83, tower 69, inferno 80, necropolis 32, dungeon 89,

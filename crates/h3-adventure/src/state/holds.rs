@@ -9,7 +9,7 @@ use h3_heroes::{ArtifactInstance, ScholarGift, validate_artifact};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use super::check_army;
-use crate::ruleset::{AdventureRuleset, ObjectKind};
+use crate::ruleset::{AdventureRuleset, DWELLING_LEVELS, ObjectKind};
 use crate::setup::{EventSetup, Holds, RewardRecord};
 
 /// Whether `holds` fits `kind`, an object's (none for a blocker), and is valid (ADV-OBJ-002):
@@ -17,7 +17,9 @@ use crate::setup::{EventSetup, Holds, RewardRecord};
 /// one a hero may hold; a Shrine a hero spell or none; a Witch Hut distinct skills or none; a
 /// Scholar a gift of the ruleset or none; Pandora's Box and an event a valid record
 /// ([`check_record`]); since E08 T83a an abandoned mine at least one resource of the ruleset, in
-/// the core's order without repeats; every other kind nothing.
+/// the core's order without repeats; since E08 T93b a random dwelling at least one faction with a
+/// `[[random_dwelling]]` table, in the core's order without repeats, and levels within 1 to
+/// [`DWELLING_LEVELS`], the lowest not above the highest; every other kind nothing.
 pub(super) fn check_holds(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -55,6 +57,18 @@ pub(super) fn check_holds(
                     .iter()
                     .all(|&r| usize::from(r.raw()) < core.resources().len())
         }
+        // rule: ADV-DWL-005
+        (Some(ObjectKind::RandomDwelling), Holds::RandomDwelling { factions, levels }) => {
+            let (low, high) = *levels;
+            !factions.is_empty()
+                && factions.windows(2).all(|pair| pair[0] < pair[1])
+                && factions
+                    .iter()
+                    .all(|&faction| part.random_dwelling(faction).is_some())
+                && 1 <= low
+                && low <= high
+                && usize::from(high) <= DWELLING_LEVELS
+        }
         (
             Some(
                 ObjectKind::Artifact { classes: None }
@@ -64,7 +78,8 @@ pub(super) fn check_holds(
                 | ObjectKind::Scholar
                 | ObjectKind::PandoraBox
                 | ObjectKind::Event
-                | ObjectKind::AbandonedMine { .. },
+                | ObjectKind::AbandonedMine { .. }
+                | ObjectKind::RandomDwelling,
             ),
             _,
         ) => false,
@@ -120,7 +135,8 @@ impl CanonicalHash for Holds {
     /// Its tag (0 nothing, 1 an artifact: the artifact and its spell; 2 a spell, 3 skills, 4 a
     /// Scholar's gift, each 0 for none or 1 and it; 5 a record; 6 an event: the record, the
     /// colours, the computer and removal flags; since adventure state hash v17, E08 T83a, 7 an
-    /// abandoned mine's resources as length and handles).
+    /// abandoned mine's resources as length and handles; since E08 T93b, 8 a random dwelling's
+    /// factions as length and handles, then its lowest and highest level).
     fn hash_into(&self, h: &mut StateHasher) {
         match self {
             Self::Nothing => h.write_u8(0),
@@ -172,6 +188,12 @@ impl CanonicalHash for Holds {
             Self::Resources(resources) => {
                 h.write_u8(7);
                 resources.hash_into(h);
+            }
+            Self::RandomDwelling { factions, levels } => {
+                h.write_u8(8);
+                factions.hash_into(h);
+                h.write_u8(levels.0);
+                h.write_u8(levels.1);
             }
         }
     }

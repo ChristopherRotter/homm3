@@ -807,7 +807,7 @@ the docs and the review by the agent, one pull request; the agent's four calls b
   part's Keep has map slots, four creature levels, a horde with its upgraded horde and a shrine of
   its own (two-step fixpoints); 16 tests, 100 % lines and regions on `h3-towns`; no version moved.
 
-### T7a1 — the setup's new fields and the import, map import v16 (2026-11-04)
+### T7a1 — the setup's new fields and the import, map import v17 (2026-11-04)
 
 One session, the user present; branch `town/e09-t7a1` (`cross-lane`: `h3-game`'s `setup.rs` and
 `lib.rs`, `h3-map`'s import and tests, the replays' headers, `h3-cli`'s census literal (the ai
@@ -815,7 +815,7 @@ lane's), `docs/formats/h3m.md`, the adventure lane's HANDOFF and inbox). Startin
 at 03b6601 (#707 merged; CI green there; the sandbox's baseline lost to a VM restart; the original
 data staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`); #708
 (E08 T93a, adventure part v16) merged in during the task, cleanly. **At its start** (the user): T7a
-cut in two at the queue's seam, T7a1 (the setup's fields, the import, map import v16, the census)
+cut in two at the queue's seam, T7a1 (the setup's fields, the import, map import v17, the census)
 now and T7a2 (`validate`'s checks, §13) next; until T7b draws them, the build refuses a setup that
 needs a draw (`TWN-STUB-3`). The code by one sub-agent (resumed once after a VM restart), the
 review and the docs by the agent.
@@ -843,8 +843,9 @@ review and the docs by the agent.
   day + 1 as the timed events'; a random hero takes no custom-hero entry, and an AB spell byte
   naming a spell gives that spell alone. Survey §4.2 checked by the agent: RoE maps never set 144
   to 155; AB and SoD maps take their 156 bits as given.
-- **Versions:** map import v16 (`MAP_IMPORT_VERSION`); the 39 adventure replays' `import_version`
-  lines (nothing else moved). Game state hash v22, the adventure's hashes and the replay format
+- **Versions:** map import v17 (`MAP_IMPORT_VERSION`; E08 T93b took v16 first, #711 merged
+  before this pull request, so it bumped again); the 39 adventure replays' `import_version` lines
+  (nothing else moved). Game state hash v22, the adventure's hashes and the replay format
   unchanged.
 - **Docs:** `town.toml` TWN-SET-001, -010; `quirks-town.md` TWN-QUIRK-1, -4; `docs/stubs.toml`
   TWN-STUB-3; `h3m.md`'s "Import" (the towns and the census); the design note's §7 "As built" and

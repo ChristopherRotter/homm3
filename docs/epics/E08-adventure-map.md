@@ -100,6 +100,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 248. **T93 in two at the design's seam, T93a whole** (the user; recommended): **T93a** the content (the kinds, `[params.dwellings]`, the random dwellings' table, the derivations, the base and ab packs, the check against the original data; adventure ruleset part v16) in one pull request; **T93b** the import (map import v16) next. Not chosen: T93a in two (the code with the synthetic packs, then the original packs); T93a and T93b in one session.
 249. **The bots tables' adventure hash in T93a's pull request** (the user's consent, `cross-lane`, as decision 214): the AI lane's `python/records/bots-report-v1.json` and `bots-neutral-v1.json` move only their `engine.adventure` line with the part's hash. Not chosen: the AI lane's inbox, its tables stale until it acts.
 
+### Decisions at T93b's start (2026-11-04, user)
+
+250. **T93b whole, the holds' type moved in from T94** (the user; recommended): the import of classes 17, 20, 78 and 216–218, the factions table, the owners, ADV-STUB-13, the refusals A-34 to A-36 and their entries, the census and `h3m.md` in one pull request (map import v16, one re-record); `Holds::RandomDwelling` and its arm in `check_holds` (design §5's first bullet) come with it, since a random dwelling's faction set and level range reach the game only through them; the resolution, the lists and the refusal of a hero on a random dwelling's entrance stay T94's. Not chosen: two pull requests at the classes (17, 20, 78; then 216–218), two import bumps.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -115,7 +119,7 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 - **T92 The ADRs, the glossary and the security lines** (round 4; design §17). Done (2026-11-03, whole, decision 247; `shared/e08-t92`, the lane's records in `adventure/e08-t91`): ADR-0016 points 1, 3 to 6 and ADR-0017 points 1, 3, 4, 6, 8, 10, 11 from the drafts (deleted) with batch E10's outcome; the glossary; `docs/06-security.md`; the replay format's bump corrected to v10; no version moved.
 - **T93 The content and the import** (round 5; design §17), in two at the design's seam (decision 248):
   - **T93a The content.** Done (2026-11-04, whole, decision 248; `adventure/e08-t93a`, `cross-lane`, decision 249): the kinds `dwelling` (its creatures, footprint, derived guards and shift), `random_dwelling` and `refugee_camp`, `[params.dwellings]`, `[[random_dwelling]]` and their checks; `base`'s 62 RoE dwellings, the camp, the random dwelling, the parameters and the eight RoE tables, `ab`'s twenty dwellings and Conflux's table; `h3-pack-adventure`'s `original_data` check; ADV-DWL-001, -005, ADV-RFG-001; adventure ruleset part v16.
-  - **T93b The import.** Next (design §4; map import v16).
+  - **T93b The import.** Done (2026-11-04, whole, decision 250; `adventure/e08-t93b`): classes 17 and 20 by subclass, 78 the camp, 216–218 not tied to a town the random dwelling with its owner and `Holds::RandomDwelling` (the type and its check moved in from T94); `codes::FACTIONS`; one tied to a town a blocker (ADV-STUB-13); A-34 to A-36 refused (`DwellingClass`, `Subclass`, `DwellingTown`, `DwellingFactions`, `DwellingLevels`; ADV-QUIRK-36 to -38); the census; ADV-OBJ-002 amended; map import v16.
 - Rounds 6 to 8 (T94 to T97) as design §17 lists them, each queued when the one before is done.
 
 ## Later increments (sketch)

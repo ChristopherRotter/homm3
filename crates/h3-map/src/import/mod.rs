@@ -10,14 +10,15 @@
 pub(crate) mod codes;
 mod town;
 
+use std::collections::BTreeSet;
 use std::fmt;
 
 use h3_adventure::{
     ArtifactInstance, BoatSetup, EventSetup, Guards, HeroReward, Holds, MapSetup, MonsterSetup,
     ObjectSetup, Pos, PrimarySkill, RewardRecord, ScholarGift, TileMask, TileSetup,
 };
-use h3_adventure::{ObjectKind, Passage};
-use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId, SpellId};
+use h3_adventure::{DWELLING_LEVELS, ObjectKind, Passage};
+use h3_content::{CreatureTypeId, FactionId, Formation, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, HeroSex, PlayerId};
 use h3_game::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, HeroArtifactsSetup,
@@ -25,8 +26,8 @@ use h3_game::{
 };
 
 use crate::model::{
-    Army, Artifacts, Bits, Body, CustomHero, HeroBody, Message, MonsterBody, Object, RawMap,
-    Rewards, Stack, Template, Version,
+    Army, Artifacts, Bits, Body, CustomHero, HeroBody, Message, MonsterBody, Object,
+    RandomDwelling, RawMap, Rewards, Stack, Template, Version,
 };
 
 /// Object classes the import tells apart beside the typed ones (`codes::object_type`); every other
@@ -93,7 +94,8 @@ pub enum ImportError {
     MapSize(usize, usize),
     /// A code the format does not define.
     UnknownCode {
-        /// What it names: `terrain`, `road`, `river`, `creature` or `hero type`.
+        /// What it names: `terrain`, `road`, `river`, `creature`, `hero type` or (E08 T93b) a
+        /// random dwelling's `faction`.
         what: &'static str,
         /// The code.
         code: u16,
@@ -103,7 +105,9 @@ pub enum ImportError {
     /// The object at this index names a template the map does not have.
     Template(usize),
     /// The object at this index has a subclass its class does not define (a resource pile of
-    /// resource 7).
+    /// resource 7; since E08 T93b a dwelling of class 17 past subclass 79 or of class 20 past 1,
+    /// a random dwelling of class 217 past level 6 or of class 218 past faction 8: A-36's input
+    /// bound, `ADV-QUIRK-38`, not reproduced).
     Subclass(usize),
     /// The hero object at this index belongs to a colour nobody plays.
     HeroOwner(usize),
@@ -120,6 +124,18 @@ pub enum ImportError {
     MineResources(usize),
     /// The map holds more timed events than a setup names (E08 T83a); the number.
     Events(usize),
+    /// The object at this index is of class 18 or 19, which no dwelling has (A-36's input bound,
+    /// `ADV-QUIRK-38`: the original stops with an error box; E08 T93b).
+    DwellingClass(usize),
+    /// The random dwelling at this index may become no faction's (A-34's input bound,
+    /// `ADV-QUIRK-36`; ADV-DWL-005, E08 T93b).
+    DwellingFactions(usize),
+    /// The random dwelling at this index takes its faction from a town identifier no town of the
+    /// map has (A-35's input bound, `ADV-QUIRK-37`; ADV-DWL-005, E08 T93b).
+    DwellingTown(usize),
+    /// The random dwelling at this index has a level byte past 6 or its lowest level above its
+    /// highest (A-36's input bound, `ADV-QUIRK-38`; ADV-DWL-005, E08 T93b).
+    DwellingLevels(usize),
     /// The player of this colour has a main town whose position is no town's entrance (T-4,
     /// `TWN-QUIRK-4`; E09 T7a1).
     MainTown(u8),
@@ -163,6 +179,24 @@ impl fmt::Display for ImportError {
                 )
             }
             Self::Events(n) => write!(f, "{n} timed events are too many"),
+            Self::DwellingClass(object) => {
+                write!(f, "object {object} is of a dwelling class no dwelling has")
+            }
+            Self::DwellingFactions(object) => {
+                write!(f, "random dwelling {object} may become no faction's")
+            }
+            Self::DwellingTown(object) => {
+                write!(
+                    f,
+                    "random dwelling {object} names a town the map does not have"
+                )
+            }
+            Self::DwellingLevels(object) => {
+                write!(
+                    f,
+                    "random dwelling {object} has levels past 7 or the wrong way round"
+                )
+            }
             Self::MainTown(colour) => {
                 write!(f, "colour {colour}'s main town is no town's entrance")
             }
@@ -333,12 +367,17 @@ fn skill_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SkillId>, ImportErr
 /// (ADV-SEA-001), and a ground of the sea and a hole lie on their pictures' tiles. Since E08 T83a
 /// the mines, abandoned mines, Lighthouses, Shipyards and weekly objects are typed, an ownable
 /// object with its owner (the player of its colour; the whole [`import`] refuses one entered from
-/// water) and an abandoned mine with its set of resources.
+/// water) and an abandoned mine with its set of resources. Since E08 T93b the dwellings (17 and
+/// 20), the Refugee Camp (78) and the random dwellings (216 to 218) are typed, a dwelling and a
+/// random dwelling with its owner, a random dwelling with its faction set and level range
+/// ([`Holds::RandomDwelling`]); one tied to a town of the map stays a blocker (ADV-STUB-13), and
+/// classes 18 and 19 are refused.
 ///
 /// # Errors
 ///
 /// The first [`ImportError`] found: the map's size, the tiles, then the objects' templates,
-/// types, owners and sets and the boats' tiles and types in the map's order.
+/// types, owners, sets and, since E08 T93b, random dwellings' factions and levels and the boats'
+/// tiles and types in the map's order.
 pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportError> {
     static_layer(map, rules, &colours(map)).map(|(setup, _)| setup)
 }
@@ -359,7 +398,9 @@ fn static_layer(
     let mut unsupported = None;
     let mut placed = Vec::new();
     let mut boats = Vec::new();
-    for (index, object, template) in objects(map)? {
+    let objects = objects(map)?;
+    let towns = town_identifiers(&objects);
+    for (index, object, template) in objects {
         if matches!(template.class, HERO | RANDOM_HERO | HERO_PLACEHOLDER) {
             continue;
         }
@@ -370,7 +411,7 @@ fn static_layer(
         let (setup, what) = typed(
             rules,
             map.header.version,
-            (index, colours),
+            (index, colours, &towns),
             (object, template),
         )?;
         unsupported = unsupported.or(what);
@@ -400,19 +441,37 @@ fn static_layer(
 /// guarded object's guards ([`message_guards`]) and, since E08 T61a, what the map puts in an
 /// object of increment 7's kinds ([`Holds`]); what it makes unsupported: guards with a random
 /// stack, kept unguarded, or a reward's creatures with a random stack or beyond an army's slots,
-/// kept without them ([`record`]).
+/// kept without them ([`record`]). Since E08 T93b classes 18 and 19 are refused and a random
+/// dwelling tied to a town of the map (`towns`, its identifiers) stays a blocker
+/// ([`random_dwelling`]).
 // rule: ADV-OBJ-002
 fn typed(
     rules: &GameRuleset,
     version: Version,
-    (index, colours): (usize, &[Option<PlayerId>; 8]),
+    (index, colours, towns): (usize, &[Option<PlayerId>; 8], &BTreeSet<u32>),
     (object, template): (&Object, &Template),
 ) -> Result<(ObjectSetup, Option<Unsupported>), ImportError> {
     let mut setup = footprint(object, template);
+    // E08 T93b (increment 10's design note §4): no dwelling has class 18 or 19 (A-36).
+    if matches!(template.class, 18 | 19) {
+        return Err(ImportError::DwellingClass(index));
+    }
     let Some(key) = codes::object_type(template.class, template.subclass) else {
         return Ok((setup, None));
     };
     let key = key.ok_or(ImportError::Subclass(index))?;
+    let dwelling = match &object.body {
+        Body::RandomDwelling(body) => {
+            let Some(dwelling) =
+                random_dwelling(rules, (index, colours, towns), template.subclass, body)?
+            else {
+                // stub: ADV-STUB-13 (a random dwelling tied to a town: E09's random towns)
+                return Ok((setup, None));
+            };
+            Some(dwelling)
+        }
+        _ => None,
+    };
     let object_type = rules
         .adventure()
         .object_type_by_key(key)
@@ -476,7 +535,7 @@ fn typed(
             unsupported = unsupported.or(what);
         }
         // E08 T83a (increment 9's design note §4): a mine's, a Lighthouse's and a Shipyard's
-        // owner; an abandoned mine's set.
+        // owner (since E08 T93b a dwelling's); an abandoned mine's set.
         Body::Mine { owner } | Body::Owned { owner } => {
             setup.owner = object_owner(colours, index, *owner)?;
         }
@@ -484,6 +543,10 @@ fn typed(
             setup.holds = Holds::Resources(mine_resources(rules, index, set)?);
         }
         _ => {}
+    }
+    if let Some((owner, holds)) = dwelling {
+        setup.owner = owner;
+        setup.holds = holds;
     }
     // E08 T72: a ground of the sea and a hole lie on their pictures' tiles too.
     if matches!(
@@ -581,6 +644,112 @@ fn mine_resources(
         .collect::<Result<Vec<_>, _>>()?;
     resources.sort();
     Ok(resources)
+}
+
+/// The identifiers of the map's towns and random towns (E08 T93b: a random dwelling tied to one
+/// stays a blocker); an RoE town has none.
+fn town_identifiers(objects: &[(usize, &Object, &Template)]) -> BTreeSet<u32> {
+    objects
+        .iter()
+        .filter(|(_, _, template)| matches!(template.class, RANDOM_TOWN | TOWN))
+        .filter_map(|(_, object, _)| match &object.body {
+            Body::Town(town) => town.identifier,
+            _ => None,
+        })
+        .collect()
+}
+
+/// A random dwelling's owner and holds (ADV-DWL-005, E08 T93b; increment 10's design note §4), or
+/// none for one tied to a town of the map (`towns`, its identifiers; ADV-STUB-13 until E09's random
+/// towns). The format gives 216 a town (or, for none, a faction set) and levels, 217 a town (or
+/// set) and 218 levels: what the body lacks the subclass gives, 217's level code and 218's
+/// faction code. The faction set is bit i for faction code i ([`codes::FACTIONS`]), in the core's
+/// order; the level codes 0 to 6 are levels 1 to 7. Checked in this order: the subclass (a level
+/// code past 6 or a faction code past 8: [`ImportError::Subclass`], A-36), the town (an identifier
+/// no town of the map has: [`ImportError::DwellingTown`], A-35), the faction set (a bit past 8:
+/// [`ImportError::UnknownCode`]; none: [`ImportError::DwellingFactions`], A-34; a faction the
+/// ruleset lacks: [`ImportError::MissingContent`]), the levels (a code past 6 or the lowest above
+/// the highest: [`ImportError::DwellingLevels`], A-36), the owner ([`object_owner`]).
+// rule: ADV-DWL-005
+fn random_dwelling(
+    rules: &GameRuleset,
+    (index, colours, towns): (usize, &[Option<PlayerId>; 8], &BTreeSet<u32>),
+    subclass: u32,
+    body: &RandomDwelling,
+) -> Result<Option<(Option<PlayerId>, Holds)>, ImportError> {
+    let level_codes = u32::try_from(DWELLING_LEVELS).unwrap_or(u32::MAX);
+    let faction_codes = u32::try_from(codes::FACTIONS.len()).unwrap_or(u32::MAX);
+    if (body.levels.is_none() && subclass >= level_codes)
+        || (body.faction.is_none() && subclass >= faction_codes)
+    {
+        return Err(ImportError::Subclass(index));
+    }
+    let numbers: Vec<u32> = match &body.faction {
+        Some((0, set)) => set
+            .iter()
+            .flat_map(Bits::bytes)
+            .zip(0u32..)
+            .flat_map(|(&byte, i)| {
+                (0..8)
+                    .filter(move |b| byte >> b & 1 == 1)
+                    .map(move |b| 8 * i + b)
+            })
+            .collect(),
+        Some((town, _)) if towns.contains(town) => return Ok(None),
+        Some(_) => return Err(ImportError::DwellingTown(index)),
+        None => vec![subclass],
+    };
+    let factions = faction_set(rules, index, &numbers)?;
+    let levels = match body.levels {
+        Some((low, high)) => {
+            if low > high || u32::from(high) >= level_codes {
+                return Err(ImportError::DwellingLevels(index));
+            }
+            (low + 1, high + 1)
+        }
+        None => {
+            let level = u8::try_from(subclass + 1).unwrap_or(u8::MAX);
+            (level, level)
+        }
+    };
+    let owner = object_owner(colours, index, body.owner)?;
+    Ok(Some((owner, Holds::RandomDwelling { factions, levels })))
+}
+
+/// A random dwelling's factions from their codes, ascending (E08 T93b): a code past 8 is unknown,
+/// none is refused (A-34), each a core faction of the ruleset, in the core's order.
+fn faction_set(
+    rules: &GameRuleset,
+    index: usize,
+    numbers: &[u32],
+) -> Result<Vec<FactionId>, ImportError> {
+    let keys = numbers
+        .iter()
+        .map(|&code| {
+            usize::try_from(code)
+                .ok()
+                .and_then(|i| codes::FACTIONS.get(i))
+                .copied()
+                .ok_or(ImportError::UnknownCode {
+                    what: "faction",
+                    code: u16::try_from(code).unwrap_or(u16::MAX),
+                })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if keys.is_empty() {
+        return Err(ImportError::DwellingFactions(index));
+    }
+    let mut factions = keys
+        .into_iter()
+        .map(|key| {
+            rules
+                .core()
+                .faction_by_key(key)
+                .ok_or(ImportError::MissingContent(key))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    factions.sort();
+    Ok(factions)
 }
 
 /// A wandering monster's data (ADV-MON-001, E08 T20a2a; `docs/formats/h3m.md`, "Import"): the

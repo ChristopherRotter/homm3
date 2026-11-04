@@ -10,6 +10,7 @@ use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 use h3_kernel::hash::hash_of;
 
 use std::boxed::Box;
+use std::format;
 use std::string::ToString;
 
 use super::*;
@@ -610,4 +611,146 @@ fn the_hash_sees_what_objects_hold() {
     {
         assert_ne!(event(colours, computer, remove), reference);
     }
+}
+
+/// [`movement_rules_with`] with the castle's seven dwellings `t:d1` to `t:d7` (its creature
+/// `t:c1` to `t:c7` of each level), the random dwelling `t:random` and the castle's random
+/// dwelling table (E08 T93b); the fortress and the wild have none.
+fn dwelling_rules() -> Rules {
+    use core::num::NonZeroU16;
+
+    use crate::ruleset::{DwellingParams, RandomDwellingDef};
+    movement_rules_with(
+        true,
+        16,
+        |core: &mut ContentPack| {
+            core.creatures.extend((1..=7).map(|level| CreatureDef {
+                key: key(&format!("t:c{level}")),
+                speed: 4,
+                info: CreatureInfoDef {
+                    faction: Some(key("t:castle")),
+                    level,
+                    growth: 2,
+                    ..CreatureInfoDef::default()
+                },
+            }));
+        },
+        |part: &mut AdventurePack| {
+            let ty = |k: &str, kind| ObjectTypeDef {
+                key: key(k),
+                name: "Object".into(),
+                visit: Visit::Enter,
+                from_above: false,
+                kind,
+            };
+            part.object_types.extend((1..=7).map(|level| {
+                ty(
+                    &format!("t:d{level}"),
+                    ObjectKindDef::Dwelling {
+                        creatures: vec![key(&format!("t:c{level}"))],
+                        blocked: vec![(0, 0)],
+                        visitable: vec![(0, 0)],
+                    },
+                )
+            }));
+            part.object_types
+                .push(ty("t:random", ObjectKindDef::RandomDwelling));
+            part.random_dwellings = vec![RandomDwellingDef {
+                faction: key("t:castle"),
+                dwellings: core::array::from_fn(|i| key(&format!("t:d{}", i + 1))),
+            }];
+            part.params.as_mut().unwrap().dwellings = Some(DwellingParams {
+                guard_level: 5,
+                guard_factor: NonZeroU16::new(3).unwrap(),
+                free_level: 1,
+            });
+        },
+    )
+}
+
+// covers: ADV-DWL-005
+#[test]
+fn a_random_dwelling_holds_its_factions_and_levels() {
+    // E08 T93b (increment 10's design note §5): distinct core factions with a table, in the core's
+    // order, and levels 1 <= lowest <= highest <= DWELLING_LEVELS; checked when the game is built.
+    let rules = dwelling_rules();
+    let faction = |k| rules.0.faction_by_key(k).unwrap();
+    let (castle, fortress) = (faction("t:castle"), faction("t:fortress"));
+    let random = |factions, levels| {
+        object(
+            &rules,
+            3,
+            "t:random",
+            Holds::RandomDwelling { factions, levels },
+        )
+    };
+    for levels in [(1, 7), (3, 3), (7, 7)] {
+        let state = built(&rules, vec![random(vec![castle], levels)]).unwrap();
+        assert_eq!(
+            state.map().objects()[0].holds,
+            Holds::RandomDwelling {
+                factions: vec![castle],
+                levels
+            }
+        );
+    }
+    for holds in [
+        Holds::RandomDwelling {
+            factions: vec![],
+            levels: (1, 7),
+        },
+        Holds::RandomDwelling {
+            factions: vec![castle, castle],
+            levels: (1, 7),
+        },
+        // A core faction without a table, before or beside one with.
+        Holds::RandomDwelling {
+            factions: vec![fortress],
+            levels: (1, 7),
+        },
+        Holds::RandomDwelling {
+            factions: vec![castle, fortress],
+            levels: (1, 7),
+        },
+        Holds::RandomDwelling {
+            factions: vec![castle],
+            levels: (0, 3),
+        },
+        Holds::RandomDwelling {
+            factions: vec![castle],
+            levels: (4, 3),
+        },
+        Holds::RandomDwelling {
+            factions: vec![castle],
+            levels: (1, 8),
+        },
+        Holds::Nothing,
+        Holds::Resources(vec![ResourceId::from_raw(0)]),
+    ] {
+        assert_eq!(
+            built(&rules, vec![object(&rules, 3, "t:random", holds.clone())]).err(),
+            Some(SetupError::Holds(0)),
+            "{holds:?}"
+        );
+    }
+    // Only a random dwelling holds them, and the hash sees them.
+    assert_eq!(
+        built(
+            &rules,
+            vec![object(
+                &rules,
+                3,
+                "t:d1",
+                Holds::RandomDwelling {
+                    factions: vec![castle],
+                    levels: (1, 7)
+                }
+            )]
+        )
+        .err(),
+        Some(SetupError::Holds(0))
+    );
+    let hash = |levels| hash_of(&built(&rules, vec![random(vec![castle], levels)]).unwrap());
+    assert_ne!(hash((1, 7)), hash((1, 6)));
+    assert_ne!(hash((1, 7)), hash((2, 7)));
 }
