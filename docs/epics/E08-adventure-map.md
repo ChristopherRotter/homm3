@@ -95,6 +95,11 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 247. **T91 whole, then T92** (the user; recommended): the scoring (survey `E08-dwellings.md` §16, the log, the epic) in one pull request, every row being as read; then T92's `shared/` pull request in the same session. Not chosen: T91 alone; T92 in two (the ADRs, then the glossary and the security lines).
 
+### Decisions at T93's start (2026-11-04, user)
+
+248. **T93 in two at the design's seam, T93a whole** (the user; recommended): **T93a** the content (the kinds, `[params.dwellings]`, the random dwellings' table, the derivations, the base and ab packs, the check against the original data; adventure ruleset part v16) in one pull request; **T93b** the import (map import v16) next. Not chosen: T93a in two (the code with the synthetic packs, then the original packs); T93a and T93b in one session.
+249. **The bots tables' adventure hash in T93a's pull request** (the user's consent, `cross-lane`, as decision 214): the AI lane's `python/records/bots-report-v1.json` and `bots-neutral-v1.json` move only their `engine.adventure` line with the part's hash. Not chosen: the AI lane's inbox, its tables stale until it acts.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -108,7 +113,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 - **T90 Batch E10's harness reads and runs** (round 3; design §16). Done (2026-11-03, whole; `adventure/e08-t90`, #697): `clients/capture/`'s reads of the dwelling records, the teams, the objects and tiles, a camp's words, the hire dialog, the hint and the popup; the recipes `batches/E08-batch-10a.toml` and `-10b.toml`; two runs of 10a, five of 10b; the templates filled; no version moved.
 - **T91 Batch E10 scored** (round 3; design §16). Done (2026-11-03, whole, decision 247; `adventure/e08-t91`): survey `E08-dwellings.md` §16, every row as read, D-52 confirmed; no `ADV-Q`; no version moved.
 - **T92 The ADRs, the glossary and the security lines** (round 4; design §17). Done (2026-11-03, whole, decision 247; `shared/e08-t92`, the lane's records in `adventure/e08-t91`): ADR-0016 points 1, 3 to 6 and ADR-0017 points 1, 3, 4, 6, 8, 10, 11 from the drafts (deleted) with batch E10's outcome; the glossary; `docs/06-security.md`; the replay format's bump corrected to v10; no version moved.
-- Rounds 5 to 8 (T93 to T97) as design §17 lists them, each queued when the one before is done.
+- **T93 The content and the import** (round 5; design §17), in two at the design's seam (decision 248):
+  - **T93a The content.** Done (2026-11-04, whole, decision 248; `adventure/e08-t93a`, `cross-lane`, decision 249): the kinds `dwelling` (its creatures, footprint, derived guards and shift), `random_dwelling` and `refugee_camp`, `[params.dwellings]`, `[[random_dwelling]]` and their checks; `base`'s 62 RoE dwellings, the camp, the random dwelling, the parameters and the eight RoE tables, `ab`'s twenty dwellings and Conflux's table; `h3-pack-adventure`'s `original_data` check; ADV-DWL-001, -005, ADV-RFG-001; adventure ruleset part v16.
+  - **T93b The import.** Next (design §4; map import v16).
+- Rounds 6 to 8 (T94 to T97) as design §17 lists them, each queued when the one before is done.
 
 ## Later increments (sketch)
 
