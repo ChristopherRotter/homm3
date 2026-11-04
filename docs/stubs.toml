@@ -121,8 +121,8 @@ epic   = "E09"
 
 [[stub]]
 id     = "TWN-STUB-5"
-where  = "crates/h3-game/src/setup.rs::GameSetup::adventure_setup"
-reason = "The towns' garrisons and reveal radii from the game (design note E09-design.md section 8; E09 T7b2, the towns' draws and the store of towns): since E09 T8a1 the adventure takes one garrison per town (AdventureSetup::garrisons) and each town's reveal radius at the start (AdventureState::start_game's town_radii, by TownId), but until the game resolves its towns' records it passes every town an empty garrison (here) and the part's flag radius (GameState::new): a map's custom garrison and a town's own radius are not read yet"
+where  = "crates/h3-game/src/town/build.rs::start_radius"
+reason = "A town whose start reveals every tile (h3_towns::Reveal::All: a Tower with its Grail, the Skyship, ever built) reveals only its own level (design note E09-design.md section 8; since E09 T7b2a, narrowed from the towns' garrisons and radii, which the game now passes): the adventure's start takes one radius per town (AdventureState::start_game's town_radii, a u8 by TownId), and the game gives Reveal::All a radius of 255, whose disc covers every tile of the town's level on a map of up to 181 tiles a side (the base pack's largest is 144) but not the other level of a two-level map, which the original reveals too (survey E09-towns.md section 8.3 step 8). A whole-map reveal at the start (and at T8a2's capture) needs the adventure to take one. The census (h3-map's example original_data): none in the 31 shipped maps that build; 9 towns of the imported maps have a custom set with such a Grail built (an upper bound: a random town's Grail slot counts)"
 epic   = "E09"
 
 # --- ai (AI-STUB-<n>) ---

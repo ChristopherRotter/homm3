@@ -32,7 +32,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 23
+game_state_hash_version = 24
 adventure_state_hash_version = 21
 checkpoint_every = 5
 
@@ -43,4 +43,4 @@ import_version = 18
 
 [result]
 day = 2
-final_hash = "0x6e5c590b69409e8c"
+final_hash = "0x2300dcab9d99d2fc"

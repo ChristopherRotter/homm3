@@ -7,30 +7,26 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
-(the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2, T8a2, then T8b (rounds 2
-to 6, T7a, T7b1 and T8a1 are done, `E09-log.md`); each later round's entries are written when it comes
+(the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
+T8a2, then T8b (rounds 2 to 6, T7a, T7b1, T8a1 and T7b2a are done, `E09-log.md`); each later round's entries are written when it comes
 (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T7b2 — the towns' draws and the store** (`cross-lane`)
+**E09 T7b2b — the main towns' heroes** (`cross-lane`)
 
-- **Scope:** the towns' half of round 7 (design §14; T7b cut in two at its start, the user,
-  2026-11-04; T7b1 built the pool and the heroes' draws): step 2's random towns (a town's faction,
-  TWN-SET-002: an alignment to a colour that plays gives that colour's resolved faction, else the
-  owner's, else uniform over the factions with a town record), after the random heroes (T7b1's
-  draws do not move); step 3, each main town's hero (TWN-SET-009: a human player's pick, else the
-  draw `HeroPool::draw`, on the town's entrance as its visitor, its hero id after the setup's
-  heroes), the unused picks freed after it; step 4, each town's `h3_towns::town_setup` (T6c) by
-  owned or neutral; the store of towns beside the adventure's state, the garrisons and reveal
-  radii into the adventure's setup; `town::needs_faction` (and so `Choice`) gains a random town
-  the player owns; `TWN-STUB-3` lifted; a game state hash version (the store); the replays
-  rehashed (skill `homm3-rerecord-replays`).
+- **Scope:** design §14 step 3 (T7b2 cut in two at the store, the user, 2026-11-04; T7b2a built
+  steps 2's towns and 4 and the store, `E09-log.md`): each main town's hero when it generates one
+  (TWN-SET-009: a human player's pick, else the draw `HeroPool::draw` with the player's resolved
+  faction, colour order), on the town's entrance as its visitor, its hero id after the setup's
+  heroes in colour order, its army and experience the type's placeholders (GAM-SET-001,
+  GAM-HER-001, drawn in hero id order with the existing ones); its draws between step 2's
+  (`town::draw_towns`) and step 4's (`town::build_towns`); the unused picks freed after it (today
+  at the end of `town::draw_heroes`); `town::main_town_heroes` and `TWN-STUB-3` lifted. No version
+  moves (those maps are refused until it); a replay of a shipped map with a main town's hero if
+  the census finds a small one.
 - **Acceptance:** as T7a's; the determinism replays green; the census's 125 maps refused for a
   main town's hero build or are refused by a typed check.
-- **Notes:** each town's owner and object come with T8a1 (the static map's town list, towns
-  ownable, the adventure's garrison and radius inputs, which the game fills with empty garrisons and
-  the flag radius until this task: `TWN-STUB-5`, lifted here).
-- **Depends on:** T8a1 (its pull request merged). **Status:** waiting; its cut confirmed at its
+- **Depends on:** T7b2a (its pull request merged). **Status:** next; its cut confirmed at its
   start.
 
 **E09 T8a2 — the step onto a town** (`cross-lane`)
@@ -41,7 +37,10 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
   legal moves (a defended entrance as a monster's tile; measured against `master`, skill
   `homm3-bench-regression`), `AdventureState::capture_town` and the game's composition
   (`h3_towns::reveal`, the Capitol's limit, `TownCaptured`, `TownChanged`); `TWN-STUB-4` lifted.
-- **Depends on:** T7b2 (the garrisons and the store). **Status:** waiting; its cut confirmed at its
+- **Also:** `TWN-STUB-5` (narrowed by T7b2a): a town that reveals every tile (a Tower's Grail)
+  reveals only its own level at the start (`h3_game`'s `town::start_radius`, the radius 255); the
+  capture's reveal needs the adventure to take a whole-map reveal, the start's then too.
+- **Depends on:** T7b2b (the main towns' heroes). **Status:** waiting; its cut confirmed at its
   start.
 
 ## Inbox
