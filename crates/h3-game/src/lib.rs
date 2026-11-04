@@ -63,9 +63,10 @@ pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 /// A choice's and a University's views (E08 T63a; `h3_adventure`'s types): what
 /// [`DecisionView::Choice`] and [`DecisionView::University`] show.
 pub use h3_adventure::{Choice, ChoiceKind, UniversityVisit};
-/// A hire dialog's army and refusals (E08 T95b; `h3_adventure`'s types): what
-/// [`GameEvent::HireOpened`], [`DecisionView::Hire`] and [`GameCommandError::Hire`] carry.
-pub use h3_adventure::{HireError, HireTarget};
+/// A hire dialog, its army, source and refusals (E08 T95b; `h3_adventure`'s types): what
+/// [`GameState::hire_dialog`], [`GameEvent::HireOpened`], [`DecisionView::Hire`] and
+/// [`GameCommandError::Hire`] carry.
+pub use h3_adventure::{HireDialog, HireError, HireSource, HireTarget};
 /// A University's slot state for a hero (`h3_heroes`' derivation, HER-CHG-004), which
 /// [`DecisionView::University`] shows (E08 T63a).
 pub use h3_heroes::SlotState;

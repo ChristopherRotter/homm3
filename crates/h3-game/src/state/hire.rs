@@ -88,8 +88,11 @@ impl GameState {
         Ok(())
     }
 
-    /// The hire dialog of `player`'s first open decision, if it is one (GAM-DEC-008, E08 T95b).
-    pub(crate) fn hire_dialog(&self, player: PlayerId) -> Option<&HireDialog> {
+    /// The hire dialog of `player`'s first open decision, if it is one (GAM-DEC-008, E08 T95b),
+    /// as [`Self::university`] gives a University: its target and source by name; the source's
+    /// creatures and counts are the adventure's (`AdventureState::hire_stock`). The env reads
+    /// its creatures' order from it (action encoding v7).
+    pub fn hire_dialog(&self, player: PlayerId) -> Option<&HireDialog> {
         match self.first_decision(player)? {
             Decision::Hire { dialog, .. } => Some(dialog),
             _ => None,

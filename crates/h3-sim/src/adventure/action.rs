@@ -78,9 +78,8 @@ use h3_battle::{BattleState, LegalCommands};
 use h3_content::CreatureTypeId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
-    Actor, Answer, ArenaChoice, ChestChoice, Consent, DecisionView, GameCommand, GameRuleset,
-    GameState, HireAnswer, SchoolChoice, SkillOffer, UniversityAnswer, Viewer, legal_commands,
-    legal_moves, observe,
+    Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset, GameState,
+    HireAnswer, SchoolChoice, SkillOffer, UniversityAnswer, legal_commands, legal_moves,
 };
 
 use crate::action as battle;
@@ -503,15 +502,22 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
     }
 }
 
-/// The creatures of `player`'s open hire dialog in its source's order (E08 T95b), as its owner's
-/// view shows them (`DecisionView::Hire`: the game reads the dialog out to its owner's view
-/// alone); none when its first open decision is no hire dialog. The view is the player's whole
-/// observation: it is read only for a hire entry or a listed purchase ([`listed_hire`]).
+/// The creatures of `player`'s open hire dialog in its source's order (E08 T95b): its source's
+/// stock (`GameState::hire_dialog`, `AdventureState::hire_stock`), as its owner's view
+/// (`DecisionView::Hire`) lists them; none when its first open decision is no hire dialog. Read
+/// only for a hire entry or a listed purchase ([`listed_hire`]).
 fn hire_creatures(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<CreatureTypeId> {
-    match observe(state, rules, Viewer::Player(player)).decision {
-        Some(DecisionView::Hire(view)) => view.creatures.iter().map(|sold| sold.creature).collect(),
-        _ => Vec::new(),
-    }
+    state
+        .hire_dialog(player)
+        .and_then(|dialog| {
+            state
+                .adventure()
+                .hire_stock(rules.adventure(), &dialog.source)
+        })
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(creature, _)| creature)
+        .collect()
 }
 
 /// [`hire_creatures`] of `seat`'s player when `listed`, its legal commands, hold a hire dialog's
