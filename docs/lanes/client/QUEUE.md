@@ -26,8 +26,15 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   the Auto Combat options restricting the window's bot; the others as read), kept in the
   client's settings file (beside `keys.toml`, *provisional*); recorded with settings on.
 - **Acceptance:** the dialog and each setting's drawing exact against recordings or listed;
-  `check.sh`. **Depends on:** T1 (done). **Status:** ready; likely cut at its start (the dialog,
-  then the shadows and the grid).
+  `check.sh`. **Depends on:** T1 (done). **Status:** cut in three by the user (2026-11-04):
+  - **T4a** (in progress): the dialog read whole, drawn, opened by O and the panel's button in
+    the window, its settings kept in the client's settings file, the combat speed in effect;
+    the dialog's stills recorded.
+  - **T4b:** the Auto Combat options restricting the window's bot; Creature Info ("Combat Army
+    Info Level") keeping the army info windows shown, filled by the mouse's move, the hints with
+    the damage.
+  - **T4c:** the hex grid, the movement and cursor shadows drawn (`draw_hex_overlays` 0x493930's
+    options, 0x493EA0), recorded with the settings on.
 
 ### E17 M6 T5 — M5's gaps
 
