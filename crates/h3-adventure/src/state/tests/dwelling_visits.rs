@@ -5,24 +5,24 @@
 //! camp's question or its "deserted"; an accepted question's free
 //! creatures (into a stack of the type, the first free slot, refused without room, none here,
 //! none of a level above `free_level`, none on another's dwelling or a camp); the dwellings'
-//! writer.
+//! writer. The hire dialog they open and its purchases: `hiring.rs` (T95b).
 
 use super::dwellings::{Rules, mask, placed, rules, setup, type_of};
 use super::*;
 use crate::command::{BattleStart, Defender};
 use crate::testing::{PEASANT, started};
 
-const RED: PlayerId = PlayerId::new(0);
-const BLUE: PlayerId = PlayerId::new(1);
-const HERO: HeroId = HeroId::new(1);
+pub(super) const RED: PlayerId = PlayerId::new(0);
+pub(super) const BLUE: PlayerId = PlayerId::new(1);
+pub(super) const HERO: HeroId = HeroId::new(1);
 /// The objects' entrance in these tests, two steps right of red's hero at (0, 7).
-const ENTRANCE: Pos = Pos::new(2, 7, 0);
+pub(super) const ENTRANCE: Pos = Pos::new(2, 7, 0);
 
-fn creature(rules: &Rules, k: &str) -> CreatureTypeId {
+pub(super) fn creature(rules: &Rules, k: &str) -> CreatureTypeId {
     rules.0.creature_by_key(k).unwrap()
 }
 
-fn stack(slot: u8, creature: CreatureTypeId, count: u32) -> ArmyStack {
+pub(super) fn stack(slot: u8, creature: CreatureTypeId, count: u32) -> ArmyStack {
     ArmyStack {
         slot,
         creature,
@@ -31,7 +31,7 @@ fn stack(slot: u8, creature: CreatureTypeId, count: u32) -> ArmyStack {
 }
 
 /// An object of type `k` at [`ENTRANCE`], one tile, blocked and entered, neutral or `owner`'s.
-fn at_entrance(rules: &Rules, k: &str, owner: Option<PlayerId>) -> ObjectSetup {
+pub(super) fn at_entrance(rules: &Rules, k: &str, owner: Option<PlayerId>) -> ObjectSetup {
     ObjectSetup {
         owner,
         ..placed(
@@ -45,19 +45,22 @@ fn at_entrance(rules: &Rules, k: &str, owner: Option<PlayerId>) -> ObjectSetup {
 }
 
 /// The game of [`setup`]'s grass map with `object` at [`ENTRANCE`], red's hero's army `army`.
-fn game(rules: &Rules, object: ObjectSetup, army: Vec<ArmyStack>) -> AdventureState {
+pub(super) fn game(rules: &Rules, object: ObjectSetup, army: Vec<ArmyStack>) -> AdventureState {
     let mut setup = setup(vec![object]);
     setup.heroes[0].army = army;
     started(rules, &setup).unwrap()
 }
 
 /// Red's hero's army as the setup gives it: one peasant in slot 0.
-fn peasant() -> Vec<ArmyStack> {
+pub(super) fn peasant() -> Vec<ArmyStack> {
     vec![stack(0, PEASANT, 1)]
 }
 
 /// Red's hero's walk onto [`ENTRANCE`]: the outcome and the events after the steps.
-fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<AdventureEvent>) {
+pub(super) fn visit(
+    rules: &Rules,
+    state: &mut AdventureState,
+) -> (AdventureOutcome, Vec<AdventureEvent>) {
     let mut events = Vec::new();
     let walk = AdventureCommand::MoveHero {
         hero: HERO,
@@ -73,7 +76,7 @@ fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<Ad
 
 /// The hire question of the object of type `k` at [`ENTRANCE`] to red's hero, naming these
 /// creatures.
-fn hire(rules: &Rules, k: &str, creatures: &[&str]) -> Offer {
+pub(super) fn hire(rules: &Rules, k: &str, creatures: &[&str]) -> Offer {
     Offer {
         hero: HERO,
         object_type: type_of(rules, k),
@@ -85,7 +88,7 @@ fn hire(rules: &Rules, k: &str, creatures: &[&str]) -> Offer {
 }
 
 /// `offer` accepted by red: the outcome and the events.
-fn accept(
+pub(super) fn accept(
     rules: &Rules,
     state: &mut AdventureState,
     offer: &Offer,
@@ -96,7 +99,7 @@ fn accept(
 }
 
 /// `kind` told to red alone.
-fn to_red(kind: AdventureEventKind) -> AdventureEvent {
+pub(super) fn to_red(kind: AdventureEventKind) -> AdventureEvent {
     AdventureEvent {
         kind,
         seen_by: Viewers::NONE.with(RED),
@@ -433,10 +436,11 @@ fn a_camp_asks_the_hire_question_or_tells_its_visitor_it_is_deserted() {
     );
     assert!(events.is_empty());
     assert_eq!(s.owner(0), None);
-    // Accepted: no free creatures, whatever the creature's level (the hire dialog is T95b's).
+    // Accepted: no free creatures, whatever the creature's level; the hire dialog (T95b,
+    // `hiring.rs`).
     let mut accepted = s.clone();
     let (outcome, events) = accept(&rules, &mut accepted, &outcome.offer.unwrap());
-    assert_eq!(outcome, AdventureOutcome::default());
+    assert!(outcome.hire.is_some());
     assert!(events.is_empty());
     assert_eq!(accepted, s);
     // None left: deserted, told to red alone, no question.
@@ -575,7 +579,7 @@ fn no_creature_joins_free_above_free_level_nor_at_another_s_dwelling() {
     let visited = s.clone();
     let offer = hire(&rules, "t:d5", &["t:c5", "t:w5"]);
     let (outcome, events) = accept(&rules, &mut s, &offer);
-    assert_eq!(outcome, AdventureOutcome::default());
+    assert!(outcome.hire.is_some());
     assert!(events.is_empty());
     assert_eq!(s, visited);
     // A dwelling blue owns when red accepts: nothing (the owner is read at acceptance).
