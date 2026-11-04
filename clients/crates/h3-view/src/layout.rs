@@ -51,6 +51,9 @@ pub struct BattleLayout {
     /// The movement shade's cell (`ccellshd.pcx`, E17 M5 T4c2a, §7.23): at a shaded hex's box
     /// corner, every pixel of a non-zero index halves what lies under it (0x44E6A0).
     pub cell_shade: String,
+    /// The grid's cell (`ccellgrd.pcx`, E17 M6 T4c, §12.16): at each hex's box corner but the
+    /// side columns', opaque but its index 0 (0x44FC70's flag).
+    pub cell_grid: String,
     /// A stack's count box (§4.3; E17 M3 T4a).
     pub count_box: CountBox,
     /// The mouse over the battle (E17 M3 T6c-1; design §9.9).

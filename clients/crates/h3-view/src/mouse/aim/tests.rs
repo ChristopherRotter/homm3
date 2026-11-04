@@ -24,6 +24,7 @@ fn arrow() -> Aim {
         polarity: -1,
         level: 1,
         anti_magic: Some(9),
+        mastery: 0,
     }
 }
 
@@ -143,6 +144,7 @@ fn a_refusal_says_why() {
         assert_eq!(high.refusal(field, 100, side), Hint::Immune(3, 7));
         let none = Aim {
             anti_magic: None,
+            mastery: 0,
             ..a.clone()
         };
         assert_eq!(none.refusal(field, 100, side), Hint::Immune(3, 7));

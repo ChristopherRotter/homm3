@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 
 use h3_protocol::wire::{Side, Stack};
 
-use super::{COLUMNS, Field, Hint, ROWS, Spot, distance};
+use super::{COLUMNS, Field, Hint, ROWS, Spot};
 
 /// The original's spells whose cast's line names no stack (0x5A8690's first case: Force Field,
 /// Fire Wall, Frost Ring, Fireball, Inferno, Meteor Shower).
@@ -23,6 +23,8 @@ const RAISES: [u16; 2] = [38, 39];
 const SACRIFICE: u16 = 40;
 /// Remove Obstacle's original number: its own line (GENRLTXT 551, 0x5A87D8).
 const REMOVE_OBSTACLE: u16 = 64;
+/// Berserk's original number: its area by the mastery (`berserk_area_hexes` 0x5A4430).
+pub const BERSERK: u16 = 59;
 
 /// What the engine lets a spell be cast at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -66,6 +68,9 @@ pub struct Aim {
     pub polarity: i8,
     /// Its level.
     pub level: u8,
+    /// The caster's mastery of it, 0 (none) to 3 (Expert) (E17 M6 T4c: Fire Wall's hexes, design
+    /// §12.16).
+    pub mastery: u8,
     /// Anti-Magic's handle (a stack under it "protects" from the spells below its level).
     pub anti_magic: Option<u16>,
 }
@@ -180,25 +185,19 @@ impl Aim {
     /// The living stacks an area spell aimed at `hex` marks (0x59F8A0 through `area_stacks`
     /// 0x5A46F0): those on its hexes (`area_hexes` 0x5A4170: within the radius, in the columns
     /// 1 to 15, its own only with the centre), each once; none without an area or off the field.
+    /// Off the field the original's arithmetic takes a hex −1 as row 0's column −1, so Inferno's
+    /// radius 2 marks the stacks on hexes 1 and 18 (§12.16's oddity 5, CLT-Q55: fixed, the
+    /// original's for the comparisons only; Berserk's marks, `stacks_in_area`, not read: none).
     /// *Provisional:* the executable marks only the stacks the spell may affect (0x5A8090 above
     /// 0); the client marks every living stack of the area.
     #[must_use]
     pub fn marks(&self, field: &Field<'_>, hex: i32) -> BTreeSet<u8> {
-        let (Some(area), Some(centre)) = (
-            self.area,
-            u8::try_from(hex).ok().filter(|&h| h < COLUMNS * ROWS),
-        ) else {
+        let on_field = (0..i32::from(COLUMNS * ROWS)).contains(&hex);
+        let off = field.bugs == h3_render::Bugs::Original && self.original != BERSERK;
+        let Some(area) = self.area.filter(|_| on_field || off) else {
             return BTreeSet::new();
         };
-        let within = |h: u8| {
-            let column = h % COLUMNS;
-            let d = distance(centre, h);
-            h < COLUMNS * ROWS
-                && column != 0
-                && column != COLUMNS - 1
-                && d <= i32::from(area.radius)
-                && (d != 0 || area.centre)
-        };
+        let within = |h: u8| crate::shades::in_area(hex, area, h);
         // By stack, not by hex (E17 M5 T8b2, R4b-5): each living stack whose hex of the area
         // finds it (the first living stack on a hex, as the scan by hex did).
         (field.observation.stacks.iter())

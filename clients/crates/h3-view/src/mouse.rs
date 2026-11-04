@@ -270,6 +270,17 @@ impl Legal {
         legal
     }
 
+    /// The positions it may walk or fly to (E17 M6 T4c: the movement shadow's).
+    pub(crate) const fn moves(&self) -> &BTreeSet<u8> {
+        &self.moves
+    }
+
+    /// The stacks it may strike in melee, each with a position to strike from (E17 M6 T4c: the
+    /// movement shadow's).
+    pub(crate) const fn attacks(&self) -> &BTreeSet<(u8, u8)> {
+        &self.attacks
+    }
+
     /// Whether it may shoot `target`.
     fn shoots(&self, target: u8) -> bool {
         self.shots
@@ -343,14 +354,14 @@ impl Field<'_> {
     }
 
     /// The acting stack.
-    fn acting(&self) -> Option<&Stack> {
+    pub(crate) fn acting(&self) -> Option<&Stack> {
         let id = self.observation.active?;
         self.observation.stacks.iter().find(|s| s.id == id)
     }
 
     /// A stack's hexes: its position and, two hexes wide, its front hex by its facing
     /// (`stack_other_hex` 0x4466A0).
-    fn hexes(&self, stack: &Stack) -> [u8; 2] {
+    pub(crate) fn hexes(&self, stack: &Stack) -> [u8; 2] {
         let other = if !stack.two_hex {
             stack.hex
         } else if self.facing.left(stack) {

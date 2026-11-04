@@ -121,8 +121,23 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
         keys.command(Context::Battle, true, "F5"),
         Some(Command::Window(Window::Pause))
     );
-    for key in ["F6", "F7", "F8"] {
-        assert_eq!(on(Context::Battle, key), None, "{key}");
+    // The grid and the shadows by F6 to F8 (E17 M6 T4c, design §12.16), the original's; the
+    // window's own keep Ctrl+F6 to Ctrl+F8.
+    let toggles = [
+        ("F6", crate::shades::Toggle::Grid),
+        ("F7", crate::shades::Toggle::Cursor),
+        ("F8", crate::shades::Toggle::Movement),
+    ];
+    for (key, toggle) in toggles {
+        assert_eq!(
+            on(Context::Battle, key),
+            Some(Command::Shades(toggle)),
+            "{key}"
+        );
+        assert!(matches!(
+            keys.command(Context::Battle, true, key),
+            Some(Command::Window(_))
+        ));
     }
     for context in [
         Context::Options,
@@ -130,7 +145,9 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
         Context::Message,
         Context::Stats,
     ] {
-        assert_eq!(on(context, "F5"), None, "{context:?}");
+        for key in ["F5", "F6", "F7", "F8"] {
+            assert_eq!(on(context, key), None, "{context:?} {key}");
+        }
     }
     // The result window's OK by Enter or Escape.
     assert_eq!(on(Context::Result, "Return"), Some(Command::ResultOk));
@@ -143,7 +160,7 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
 #[test]
 fn every_command_has_a_name_in_the_tables_order() {
     let all = Command::all();
-    assert_eq!(all.len(), 36);
+    assert_eq!(all.len(), 39);
     let mut sorted = all.clone();
     sorted.sort_unstable();
     assert_eq!(sorted, all);
@@ -177,6 +194,9 @@ fn every_command_has_a_name_in_the_tables_order() {
             "box-ok",
             "box-cancel",
             "army-info",
+            "grid",
+            "cursor-shadow",
+            "movement-shadow",
             "stats-ok",
             "options-ok",
             "aim-cancel",
@@ -190,13 +210,13 @@ fn every_command_has_a_name_in_the_tables_order() {
     // Every command bound by default, in the table's order.
     let keys = Keys::original();
     let chords = keys.chords();
-    assert_eq!(chords.len(), 42);
+    assert_eq!(chords.len(), 45);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, all);
     assert_eq!(chords[0].1.to_string(), "F2");
-    assert_eq!(chords[39].1.to_string(), "RightButton");
-    assert_eq!(chords[41].1.to_string(), "Escape");
+    assert_eq!(chords[42].1.to_string(), "RightButton");
+    assert_eq!(chords[44].1.to_string(), "Escape");
 }
 
 #[test]

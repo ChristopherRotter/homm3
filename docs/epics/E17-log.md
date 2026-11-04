@@ -5300,3 +5300,39 @@ four sub-agents in turn, their docs with them; CLT-Q51 asked and answered at onc
   stack's hexes; `mouse/tests.rs`: a still's line at each level; the binary's: the follower
   hovering the acting stack, a Ballista's fill, a still's previews, the still's stacks' windows),
   clippy, `fmt`, the real-asset gate, `h3-view`'s coverage 100 %, `drawn`, `check.sh`.
+
+### M6 T4c — the grid and the shadows drawn (2026-11-04)
+
+On `client/e17-m6-t4c`, on its reading (design §12.16, commit e5a05c4) and the user's answers to
+CLT-Q52 to Q56 (all fixed, the original's for the comparisons only, `h3_render::Bugs`).
+
+- **Built** (design §12.16, "The client's (M6 T4c)"): `h3_view::shades` (the options, F6 to F8's
+  toggles, the grid's and the mouse's hexes, the areas with the executable's arithmetic off the
+  field, Fire Wall's hexes, the movement shadow's reach outside the tactics phase, the cursor
+  shadow's list `Cells` with its saved blocks' compositions); the scene's `Overlays` and `Stale`,
+  `Draw::Grid`, the layout's `cell_grid`; `mouse::track`'s `Input::Shades` and `Shown::shades`
+  (moves, actions, turns, the aims' area and wall shades and the movement shadow off through an
+  aim with both shadows on); `Aim::mastery`; `keys::Command::Shades` (F6 to F8); the window's
+  keys, its settings file written at each toggle and around an aim, the options dialog's close
+  as a composition; the stills' and the sequences' `grid`, `cursor_shadow` and `movement_shadow`
+  (the harness's `SHADES` in the registry, `frames.toml`), a still's `Cells` (its moves, F6 to F8,
+  the dialog opening with its options and composing at its close; its dialog's arrow now goes
+  with a move).
+- **The fixes:** CLT-Q52 `Cells::compose` forgets the list; CLT-Q53 a given-up aim's shade off;
+  CLT-Q54 every aim starts with the cursor's shade off; CLT-Q55 no area shade or marks off the
+  field (`area_shade`, `Aim::marks`: the original's hexes 1 and 18 in its profile); CLT-Q56 the
+  wall's aim as every aim (the original's: no cursor at its start, the last wall hex kept).
+- ***Provisional*** (the agent's): the reach is the engine's legal moves (each with its front hex
+  by the facing now) and strikes' targets; an action's start clears the blocks put back (the
+  overlay's redraw taken for a composition); a block put back keeps one composition; the area's
+  shade leaves out the hexes of living stacks the marks leave out (none yet: §7.18's marks hold
+  every living stack); F6 to F8 act only while the battle takes keys and are carried by Auto
+  Combat's stop as F5; the idle step's move (oddity 10) not modelled; the stills take no aim
+  (an aim's shade is recorded as a sequence).
+- **Not built:** the recordings (§12.16's "To record": the capture agent's); the battle's
+  decided and hidden tests, a later battle's save picture, the deferred composition +0x53B8.
+- **Checked:** unit tests (`shades/tests.rs`, `track/tests.rs`, `scene/tests.rs`,
+  `keys/tests.rs`; the binary's `pointer.rs` and `spellbook.rs`), clippy, `fmt`, the real-asset
+  gate, `check-exe-map`, `check-docs`, `h3-view`'s coverage 100 %, `drawn` on the aims', the
+  options dialog's, the tactics phase's and the army info stills' entries the same,
+  `check.sh`.

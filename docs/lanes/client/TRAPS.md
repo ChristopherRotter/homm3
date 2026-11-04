@@ -52,7 +52,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `track::follow_on` resumes from a `Mark`): every growth of the timeline goes through
   `Battle::follow`, and every change of `turned` in place (a re-served turn, the book's aim)
   calls `Follower::touch`, or the cached turns go stale; `pointer::shown` (the whole re-follow)
-  stays the tests' reference.
+  stays the tests' reference. A new list of `Shown` dedupes its changes by a field of the
+  handler, never by the list's last entry (a resumed follow starts with an empty `shown`: E17 M6
+  T4c), and counts in `Lens`.
 - A change of the mouse's fidgets (a stack entered, or the battle grown with some entered) carries
   the playhead (`Playhead::carry`, E17 M5 T8b2): it compares the keys shown by now and re-sweeps
   only the keys; every other list goes through `extend`'s checks. A new way to change the shown

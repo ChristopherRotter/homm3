@@ -1877,6 +1877,18 @@ impl<'g> Battle<'g> {
         self.aiming.is_some()
     }
 
+    /// The original's number of the spell being aimed (E17 M6 T4c: whether its aim turns the
+    /// movement shadow off, `h3_view::shades::Options::aiming`; 0 for one the tables lack).
+    pub fn aim_original(&self) -> Option<u16> {
+        let (spell, creature) = self.aiming?;
+        let aims = self.turned.last().map(|t| &t.aims);
+        let aim = aims.and_then(|a| {
+            a.iter()
+                .find(|a| a.spell == spell && a.creature == creature)
+        });
+        Some(aim.map_or(0, |a| a.original))
+    }
+
     /// The aim given up (Escape, the right button; E17 M5 T3b).
     pub fn cancel_aim(&mut self) {
         self.aiming = None;
@@ -2875,6 +2887,17 @@ impl<'g> Battle<'g> {
             && let Some(turn) = self.turned.last()
         {
             moment.shade = h3_view::tactics::shade(&turn.observation);
+        }
+        // The movement shadow outside the tactics phase, the grid and the cursor shadow as the
+        // mouse's follow has them (E17 M6 T4c, design §12.16); behind the tactics phase's message
+        // the grid alone (the background composed with it, no turn yet).
+        if let Some(drawn) = self.shown.shades(t) {
+            if self.opening {
+                moment.overlays.grid = drawn.overlays.grid;
+            } else {
+                moment.shade.extend(&drawn.shade);
+                moment.overlays = drawn.overlays.clone();
+            }
         }
         let mut list = scene::battle_at(
             snapshot,

@@ -70,7 +70,7 @@ pub fn compose(
             Draw::Background { picture, x, y } => {
                 draw_image(&mut screen, picture_of(batch, picture)?, *x, *y);
             }
-            Draw::AbsoluteObstacle { picture, x, y } => {
+            Draw::AbsoluteObstacle { picture, x, y } | Draw::Grid { picture, x, y } => {
                 draw_image_keyed(&mut screen, picture_of(batch, picture)?, *x, *y);
             }
             Draw::Shade { picture, x, y } => {

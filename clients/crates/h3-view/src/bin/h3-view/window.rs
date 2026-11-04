@@ -70,6 +70,7 @@ use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::mouse::track::Input;
 use h3_view::options::Settings;
 use h3_view::scene::Draw;
+use h3_view::shades::{Options as Shades, Toggle};
 use h3_view::sound::Tune;
 
 use crate::assets;
@@ -644,11 +645,25 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2). Creature Info's
     // level from the settings at the opening (E17 M6 T4b2a), kept by every Restart, and the level
     // the hints read now: a change (F5, the options dialog) is an input at its time.
-    let mut inputs: Vec<Input> = vec![Input::ArmyInfo {
-        at: 0,
-        level: battle.settings.army_info,
-    }];
+    let mut inputs: Vec<Input> = vec![
+        Input::ArmyInfo {
+            at: 0,
+            level: battle.settings.army_info,
+        },
+        // The grid's and the shadows' options from the settings at the opening (E17 M6 T4c), the
+        // background composed with them.
+        Input::Shades {
+            at: 0,
+            options: Shades::of(&battle.settings),
+            keyed: false,
+        },
+    ];
     let mut army_info = battle.settings.army_info;
+    // The options dialog open as the last pass ended, and the spell aimed then with whether its
+    // aim turned the movement shadow off (E17 M6 T4c, design §12.16).
+    let mut options_open = false;
+    let mut aimed: Option<u16> = None;
+    let mut aim_shades = false;
     let mut scrolls: Vec<(u32, i64)> = Vec::new();
     let mut held: Option<Held> = None;
     // A battle's own key that stopped Auto Combat, and the turn the stop comes at (E17 M5 T4c1;
@@ -770,10 +785,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     Do::LogUp | Do::LogDown => {
                         scrolls.push((start, if command == Do::LogUp { -1 } else { 1 }));
                     }
-                    // F5 both stopped Auto Combat and cycles the level there (E17 M6 T4b2a).
+                    // F5 both stopped Auto Combat and cycles the level there (E17 M6 T4b2a); F6 to
+                    // F8 toggle their options there (E17 M6 T4c).
                     Do::ArmyInfo => {
                         let at = clock.ms(win.ticks_ns()).max(start);
                         army_info = cycle_army_info(&mut battle, &mut inputs, at, &files);
+                    }
+                    Do::Shades(toggle) => {
+                        let at = clock.ms(win.ticks_ns()).max(start);
+                        toggle_shades(&mut battle, &mut inputs, (at, toggle), &files);
                     }
                     _ => {
                         let at = clock.ms(win.ticks_ns()).max(start);
@@ -990,10 +1010,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                                     // battle's, and a key that stopped it still acts on the
                                     // turn it stops at (T8b2, R5c-4).
                                     inputs.retain(|i| i.at() <= options.from);
-                                    // Creature Info's level stays the settings' (E17 M6 T4b2a).
+                                    // Creature Info's level stays the settings' (E17 M6 T4b2a),
+                                    // the grid's and the shadows' options too (E17 M6 T4c).
                                     inputs.push(Input::ArmyInfo {
                                         at: options.from,
                                         level: army_info,
+                                    });
+                                    inputs.push(Input::Shades {
+                                        at: options.from,
+                                        options: Shades::of(&battle.settings),
+                                        keyed: false,
                                     });
                                     scrolls.retain(|&(t, _)| t <= options.from);
                                     mouse_changed = true;
@@ -1104,6 +1130,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         Do::ArmyInfo => {
                             army_info = cycle_army_info(&mut battle, &mut inputs, at, &files);
                             book_changed = true;
+                        }
+                        // The grid and the shadows (E17 M6 T4c, design §12.16; `battle_buttons`'
+                        // F6 to F8, no test of the turn but only where the battle takes its
+                        // keys): toggled, the frame drawn again (on a human's turn the mouse's
+                        // hex shaded again), the settings written at once.
+                        Do::Shades(_) if !battle.takes(at) => {}
+                        Do::Shades(toggle) => {
+                            toggle_shades(&mut battle, &mut inputs, (at, toggle), &files);
+                            (book_changed, mouse_changed) = (true, true);
                         }
                         // One of the battle's keys made while a battle fought here takes no
                         // input is dropped (design §9.11; E17 M5 T2b).
@@ -1388,6 +1423,33 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // The options dialog's close changed the Auto Combat boxes (E17 M6 T4b1): the turns to
         // come, and under Auto Combat the turn waiting, play by them.
         grew |= battle.boxes_closed(clock.ms(win.ticks_ns()))?;
+        // The options dialog's close composes the background again with its options, without the
+        // cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52).
+        if options_open && !battle.options_open() {
+            inputs.push(Input::Shades {
+                at: clock.ms(win.ticks_ns()),
+                options: Shades::of(&battle.settings),
+                keyed: false,
+            });
+            mouse_changed = true;
+        }
+        options_open = battle.options_open();
+        // An aim with both shadows on turns the movement shadow off as it starts, saved so, and on
+        // again as it ends (E17 M6 T4c, design §12.16: `battle_set_shades` 0x59EFB8, 0x59F077;
+        // oddity 8), as the mouse's follow does (`mouse::track`).
+        let aim = battle.aim_original();
+        if aimed.is_none()
+            && let Some(set) = aim.and_then(|o| Shades::of(&battle.settings).aiming(o))
+        {
+            set.set_in(&mut battle.settings);
+            save_settings(&battle.settings, &files);
+            aim_shades = true;
+        }
+        if aim.is_none() && core::mem::take(&mut aim_shades) {
+            battle.settings.movement_shade = true;
+            save_settings(&battle.settings, &files);
+        }
+        aimed = aim;
         // The options dialog set Creature Info's level (E17 M6 T4b2a): the hints read it from now.
         if battle.settings.army_info != army_info {
             army_info = battle.settings.army_info;
@@ -1738,11 +1800,12 @@ fn carry((waiting, last, turn): (bool, usize, usize), at_start: impl FnOnce() ->
 
 /// The battle's keys that act on the turn Auto Combat's stop comes at when they stopped it, a
 /// human's (0x474625, `battle_buttons`' key switch; E17 M5 T4c1, design §7.22): the log's arrows,
-/// the Faerie Dragon's F and, since E17 M6 T4b2a, F5 (case 63, Creature Info's level).
+/// the Faerie Dragon's F and, since E17 M6 T4b2a, F5 (case 63, Creature Info's level), since
+/// E17 M6 T4c F6 to F8 (the grid and the shadows).
 const fn carried(command: Do) -> bool {
     matches!(
         command,
-        Do::LogUp | Do::LogDown | Do::DragonSpell | Do::ArmyInfo
+        Do::LogUp | Do::LogDown | Do::DragonSpell | Do::ArmyInfo | Do::Shades(_)
     )
 }
 
@@ -1759,6 +1822,26 @@ fn cycle_army_info(
     inputs.push(Input::ArmyInfo { at, level });
     save_settings(&battle.settings, files);
     level
+}
+
+/// The grid, the cursor shadow or the movement shadow toggled by its key at `at` (E17 M6 T4c,
+/// design §12.16; `battle_buttons`' F6 to F8, `battle_set_shades`' effects): an input from then
+/// (the mouse's follow takes the shade off first, composes the background again and on a human's
+/// turn shades the mouse's hex again) and the settings file written at once (`files`).
+fn toggle_shades(
+    battle: &mut Battle<'_>,
+    inputs: &mut Vec<Input>,
+    (at, toggle): (u32, Toggle),
+    files: &SettingsFile<'_>,
+) {
+    let options = Shades::of(&battle.settings).toggled(toggle);
+    options.set_in(&mut battle.settings);
+    inputs.push(Input::Shades {
+        at,
+        options,
+        keyed: true,
+    });
+    save_settings(&battle.settings, files);
 }
 
 /// Writes `settings` to the settings file (E17 M6 T4a: the options dialog's close after a click;

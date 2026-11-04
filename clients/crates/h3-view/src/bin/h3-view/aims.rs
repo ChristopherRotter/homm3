@@ -133,6 +133,7 @@ pub fn served(
             polarity: 0,
             level: 0,
             anti_magic: None,
+            mastery,
         },
     })
 }
@@ -180,6 +181,7 @@ fn engine_part(
         polarity: 0,
         level: record.map_or(0, |s| s.level),
         anti_magic: None,
+        mastery,
     }
 }
 

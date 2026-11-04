@@ -122,6 +122,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         Draw::Background { picture, .. }
         | Draw::AbsoluteObstacle { picture, .. }
         | Draw::Shade { picture, .. }
+        | Draw::Grid { picture, .. }
         | Draw::Wall { picture, .. } => vec![picture],
         Draw::Obstacle { def, .. }
         | Draw::Projectile { def, .. }
@@ -257,9 +258,14 @@ mod tests {
                 effect: None,
             },
             picture("BG.pcx"),
-            // E17 M5 T4c2a: a hex's shade names its cell's picture.
+            // E17 M5 T4c2a: a hex's shade names its cell's picture; E17 M6 T4c: its grid's.
             Draw::Shade {
                 picture: "ccellshd.pcx".to_string(),
+                x: 0,
+                y: 0,
+            },
+            Draw::Grid {
+                picture: "ccellgrd.pcx".to_string(),
                 x: 0,
                 y: 0,
             },
@@ -445,6 +451,7 @@ mod tests {
                 "BOOK.PAL",
                 "C06SPF0.DEF",
                 "CBAR.PCX",
+                "CCELLGRD.PCX",
                 "CCELLSHD.PCX",
                 "CH00.DEF",
                 "CLCBOW.DEF",
