@@ -621,6 +621,11 @@ pub struct Turned {
     pub commands: Vec<Command>,
     /// The spells it may aim: its hero's of the ones asked, its Faerie Dragon's drawn one.
     pub aims: Vec<Aim>,
+    /// Each legal attack's and shot's least and greatest damage (E17 M6 T4b2a, design §12.14,
+    /// *provisional*: CLT-Q46 answered (b) and (i)): the engine's preview (BAT-DMG-011) where the
+    /// battle's state is here, the status line's at Creature Info's levels 1 and 2. A server's
+    /// seat has none ([`crate::battle`]'s served turn: the one place its previews would go).
+    pub previews: Vec<(Command, [u64; 2])>,
 }
 
 impl Turned {
@@ -639,12 +644,31 @@ impl Turned {
             .filter_map(|&spell| crate::aims::hero(state, ruleset, side, spell))
             .collect();
         aims.extend(crate::aims::dragon(state, ruleset, side, &own));
+        let previews = previews(state, ruleset, side, &commands);
         Self {
             observation,
             commands,
             aims,
+            previews,
         }
     }
+}
+
+/// The engine's preview (BAT-DMG-011) of each attack and shot of `commands` the side `side` may
+/// give in `state` (E17 M6 T4b2a): its first strike's least and greatest damage.
+pub fn previews(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    commands: &[Command],
+) -> Vec<(Command, [u64; 2])> {
+    (commands.iter())
+        .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
+        .filter_map(|&c| {
+            let preview = h3_battle::preview(state, ruleset, side, map::command_to_engine(c))?;
+            Some((c, preview.damage))
+        })
+        .collect()
 }
 
 /// The battle `scenario` sets up with `seed` before each of `commands` and after the last, while

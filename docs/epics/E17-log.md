@@ -5156,3 +5156,76 @@ reading, the build and the captures each by a sub-agent, the docs by the session
 - **Checked:** unit tests (`options/tests.rs`, the keys' context, `set_speed`), the real-asset
   gate, `drawn --record`, `check.sh`, the scoped verify.
 
+
+### M6 T4b1 — the Auto Combat options restricting the window's bot (2026-11-04)
+
+On `client/e17-m6-t4b`, after the reading (design §12.13) and CLT-Q45's answer (fix both slips,
+the original's for the comparisons only). The build by a sub-agent, its docs with it.
+
+- **Built** (design §12.13, "The client's"): `h3_view::auto` (`plays_itself` by the original id
+  and the five boxes, Spells kept only; `Acting`; `itself` from the boxes' changes; `Auto::of`
+  per turn: the stop read only at a turn it plays, the switch a toggle, a box set while on
+  handing the turn over; `on`, `on_at_start`, `stopped`); `panel::Autoplay::on` and
+  `Panels::with_auto`'s profile (CLT-Q45 (1)); the binary's `pointer::stack_of`, `stacks`,
+  `captured`, `Battle::itself`, `auto_on`, `auto_at_start`, `switch_auto` (`hand_over`),
+  `boxes_closed` and `Battle::boxes`; the window's carried key dropped at a turn Auto Combat does
+  not play (CLT-Q45 (2)).
+- **Agent's calls** (change freely): `Live::set_auto` one flag, the battle asking the box (not
+  the plan's boxes in `Live`); a turn no engine battle pairs with plays itself (an automatic
+  machine's); the boxes' changes kept with their turn and time; oddity 4's panel dims at the
+  hand-over (the original's stays lit).
+- **Not built:** a sequence pressing for a human-played turn under Auto Combat (its parser takes
+  every press after `key:a` as a stop) and its recording (a commanded Ballista under Auto Combat,
+  Combat Ballista off); the bot's casts (Spells, T5).
+- **Checked:** unit tests (`auto/tests.rs`: each box on and off, a machine with and without its
+  skill as `Acting`, the per-turn plays, the toggle, the dropped press, the hand-over;
+  `panel/tests.rs`, `scene/tests.rs`: the button by profile; `pointer`'s commanded Ballista in
+  `smoke` with and without Artillery), `clicks` and the sequences' tests unchanged, clippy.
+
+### M6 T4b2a — Creature Info's level: F5 and the status line's damage (2026-11-04)
+
+On `client/e17-m6-t4b`, after the reading (design §12.14) and CLT-Q46's answer (the engine's
+preview; the server lane asked for the previews, a seat without them meanwhile). The build by a
+sub-agent, its docs with it.
+
+- **Built** (design §12.14, "The client's"): `keys::Command::ArmyInfo` (`army-info`, F5, the
+  battle's context) and `keys::window_key` (the battle window's pause on F12);
+  `Settings::cycle_army_info`; `track::Input::ArmyInfo` and the handler's level (`write` words a
+  hint at the level then); `mouse::Hint::Strike` and `Hint::Shot`, `Hint::at_level`,
+  `damage_text` and `damage_number`, `attack_hint` (the damage of the command a press there
+  gives, a strike again on a new slot of the same hex), `Previews` in `Legal::previews`;
+  `pointer` (a still) at level 0; the catalogue's seven `battle.hint.*` keys (GENRLTXT 37, 38,
+  297, the executable's four number forms); the binary's `scenario::previews` and
+  `Turned::previews` (`h3_battle::preview` where the state is), `pointer::battle_of` handing them
+  to the library, the served turn's empty list (the hook for the server lane's previews), the
+  window's F5 (taken where the battle takes its keys, the file written at once by
+  `save_settings`, the frame made again) and its level inputs (at 0, each F5, the dialog's
+  change, a Restart).
+- **Review round** (a fresh reviewer, the user's decision on the keys, 2026-11-04): the windows'
+  own pause, a frame on, restart and vsync on Ctrl+F5 to Ctrl+F8 in both viewers
+  (`h3_ui::keys::Window::ctrl` and `chord`; the battle's F12 override gone; the map viewer's
+  defaults and tests, a `cross-lane` change, its inbox told); F5 that stops Auto Combat also
+  cycles the level on the human's turn the stop comes at (`window.rs`' `carried`, `carry`,
+  `cycle_army_info`); while the options dialog is open the boxes the battle began with are those
+  as it opened (`battle.rs`' `first_boxes`, §12.13). The server seat's stub not registered:
+  `check-stubs` scans only `crates/`, so a `CLT-STUB` entry with its marker under `clients/`
+  fails it (a `shared/` change first).
+- **Agent's calls** (change freely): the level as a timed input rather than a field of the turn
+  (a re-follow writes each hint at its own time's level: oddity 6 holds); over a two-hex target's
+  far hex, where no slot strikes from, the target's first strike's damage (the original's
+  from-hex there not read); the window's pause moved from F5 to F12 in the battle only (the
+  original's F5; the map window's keys unchanged; replaced in the review round by the user's
+  Ctrl+F5 to Ctrl+F8 in both windows).
+- **Not built:** the original's own estimate in oddities 1 to 3 (CLT-Q46: the preview instead);
+  the damage on a server's seat (the server lane's previews); a recording at level 1 (T4b2b's,
+  with the hover's windows); the keys F6 to F8 (T4c).
+- **Checked:** unit tests (`mouse/tests.rs`: the hints with and without previews, at each level,
+  a still at 0, the far hex, the words of each kind with one and more shots, the numbers below
+  1 000, in tenths of thousands, in thousands, a range across 1 000, equal ends; `track/tests.rs`:
+  levels between moves, the same hex untouched, a new slot written at the level then;
+  `keys/tests.rs`, `options/tests.rs`; the binary's previews of a battle fought here against a
+  seat's, F5's file, the window's follow with levels; in the review round the keys a stop
+  carries and when (`carry`), `first_boxes`, the Ctrl chords in `h3-ui` and `h3-map-view`), the
+  keys' words against the user's tables (`h3-view text`), clippy, the real-asset gate. Not
+  tested (a `Battle` needs the installation's archives): `boxes_closed`, `hand_over`,
+  `switch_auto` over a human-played turn.

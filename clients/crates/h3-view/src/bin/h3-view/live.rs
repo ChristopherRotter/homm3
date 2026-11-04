@@ -33,6 +33,8 @@ pub struct Live<'r> {
     /// The sides a human plays here (the bot plays the others).
     humans: [bool; 2],
     /// Auto Combat plays the turn to come (E17 M5 T4c1): the bot plays the humans' sides too.
+    /// E17 M6 T4b1 (*provisional*): the battle says so by the stack's box (`Battle::auto_turn`),
+    /// so a human's turn under Auto Combat whose box is off waits here as with it off.
     auto: bool,
     sent: u32,
     /// The bot's commands since a human's (E17 M5 T8a, R3-4): [`FOUGHT_LIMIT`] stops the bot's
@@ -100,8 +102,10 @@ impl<'r> Live<'r> {
                 .is_some_and(|side| self.humans[side.index()])
     }
 
-    /// Auto Combat on or off for the turns to come (E17 M5 T4c1): while on, the bot plays the
-    /// humans' sides too ([`Live::next`]).
+    /// Whether Auto Combat plays the turn to come (E17 M5 T4c1): while it does, the bot plays the
+    /// humans' sides too ([`Live::next`]). E17 M6 T4b1: the battle asks the stack's box first
+    /// (`h3_view::auto::plays_itself`), so Auto Combat on over a stack it does not play sets it
+    /// off here.
     pub fn set_auto(&mut self, on: bool) {
         self.auto = on;
     }

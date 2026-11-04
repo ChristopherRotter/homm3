@@ -5,7 +5,9 @@
 //! a direction key alone steps the selected hero; the keypad's eight give the same scan codes in
 //! either NumLock state, §3.10) and the window's own (`h3_ui::keys::Window`, the battle's too: the
 //! music, the effects, pause, a frame on, restart, vsync, the cursor's kind, fullscreen, quit),
-//! which take the function keys and Esc, keys the original's map leaves to nothing else; since
+//! which take the function keys and Esc, keys the original's map leaves to nothing else (pause, a
+//! frame on, restart and vsync with Ctrl since E17 M6 T4b2a, the user, 2026-11-04: the original's
+//! battle takes F5 to F8 alone, and both windows' own keys stay the same); since
 //! E24 M3 T6b1 the panels' buttons' hotkeys (the original's letters K, U, Q, Z, W, M, C, A, O, H
 //! and E, design §4.13); since T6b3 Space (the selected hero chosen again and its tile visited,
 //! design §4.15).
@@ -125,7 +127,7 @@ impl keys::Command for Command {
         }
         defaults.push((Self::Visit, Vec::from([Chord::new(false, "Space")])));
         for w in Window::ALL {
-            defaults.push((Self::Window(w), Vec::from([Chord::new(false, w.key())])));
+            defaults.push((Self::Window(w), Vec::from([w.chord()])));
         }
         defaults
     }

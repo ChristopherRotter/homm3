@@ -27,10 +27,6 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
     for (key, command) in [
         ("F2", Window::Music),
         ("F3", Window::Effects),
-        ("F5", Window::Pause),
-        ("F6", Window::Frame),
-        ("F7", Window::Restart),
-        ("F8", Window::Vsync),
         ("F9", Window::Cursor),
         ("F11", Window::Fullscreen),
         ("Escape", Window::Quit),
@@ -39,6 +35,18 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
         assert_eq!(keys.command((), false, key), Some(command), "{key}");
         // A chord matches exactly: Ctrl held is another chord.
         assert_eq!(keys.command((), true, key), None, "{key}");
+    }
+    // Pause, a frame on, restart and vsync with Ctrl (the user, 2026-11-04, E17 M6 T4b2a: the
+    // battle window's the same, where F5 to F8 alone are the original's).
+    for (key, command) in [
+        ("F5", Window::Pause),
+        ("F6", Window::Frame),
+        ("F7", Window::Restart),
+        ("F8", Window::Vsync),
+    ] {
+        let command = Command::Window(command);
+        assert_eq!(keys.command((), true, key), Some(command), "{key}");
+        assert_eq!(keys.command((), false, key), None, "{key}");
     }
     assert_eq!(keys.command((), false, "P"), None);
     // The panels' hotkeys (E24 M3 T6b1): the original's letters.
@@ -155,7 +163,7 @@ fn a_users_file_overrides_command_by_command() {
         keys.command((), false, "P"),
         Some(Command::Window(Window::Pause))
     );
-    assert_eq!(keys.command((), false, "F5"), None);
+    assert_eq!(keys.command((), true, "F5"), None);
     // Unbound.
     assert_eq!(keys.command((), false, "Escape"), None);
     assert_eq!(keys.command((), false, "Up"), None);
@@ -174,7 +182,7 @@ fn a_users_file_overrides_command_by_command() {
     );
     // The rest kept.
     assert_eq!(
-        keys.command((), false, "F6"),
+        keys.command((), true, "F6"),
         Some(Command::Window(Window::Frame))
     );
     let chords = keys.chords();

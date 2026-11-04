@@ -6,7 +6,9 @@
 //! own ([`VIEWERS`]). A key is named as the adapter names it (`h3-sdl`'s `Key::name`: `Up`,
 //! `PageUp`, `F5`, …), `Ctrl+` holding either Control key with it; the adapter checks the names
 //! ([`Keys::check`]). A chord matches exactly: a key with Ctrl held is not the key alone. Both
-//! windows' own keys are the same ([`Window`]: the function keys and Esc, the user at E24 M3 T0).
+//! windows' own keys are the same ([`Window`]: the function keys and Esc, the user at E24 M3 T0;
+//! pause, a frame on, restart and vsync with Ctrl since E17 M6 T4b2a, the user, 2026-11-04: the
+//! original's battle takes F5 to F8 alone).
 //! A viewer with dialogs over its screen takes some keys only while one is open
 //! ([`Command::context`]: the battle's spell book, message box and aim), so a key may give one
 //! command in each. Common to both viewers and generic over their commands since E24 M3 T1a, the
@@ -109,8 +111,9 @@ impl Window {
         }
     }
 
-    /// Its default key: F2 the music, F3 the effects, F5 pause, F6 a frame on, F7 restart, F8
-    /// vsync, F9 the cursor's kind, F11 fullscreen, Esc quit.
+    /// Its default key, held with Ctrl where [`Self::ctrl`] says: F2 the music, F3 the effects,
+    /// Ctrl+F5 pause, Ctrl+F6 a frame on, Ctrl+F7 restart, Ctrl+F8 vsync, F9 the cursor's kind,
+    /// F11 fullscreen, Esc quit.
     #[must_use]
     pub const fn key(self) -> &'static str {
         match self {
@@ -124,6 +127,23 @@ impl Window {
             Self::Fullscreen => "F11",
             Self::Quit => "Escape",
         }
+    }
+
+    /// Whether its default key is held with Ctrl (the user, 2026-11-04, E17 M6 T4b2a): pause, a
+    /// frame on, restart and vsync, because the original's battle takes F5 to F8 alone (Creature
+    /// Info's level, the grid and the shadows); both viewers' the same.
+    #[must_use]
+    pub const fn ctrl(self) -> bool {
+        matches!(
+            self,
+            Self::Pause | Self::Frame | Self::Restart | Self::Vsync
+        )
+    }
+
+    /// Its default chord: its key, with Ctrl where [`Self::ctrl`] says.
+    #[must_use]
+    pub fn chord(self) -> Chord {
+        Chord::new(self.ctrl(), self.key())
     }
 
     /// Whether it works whatever is open over the viewer's screen: all but quit, a frame on and
