@@ -124,7 +124,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 - **T93 The content and the import** (round 5; design §17), in two at the design's seam (decision 248):
   - **T93a The content.** Done (2026-11-04, whole, decision 248; `adventure/e08-t93a`, `cross-lane`, decision 249): the kinds `dwelling` (its creatures, footprint, derived guards and shift), `random_dwelling` and `refugee_camp`, `[params.dwellings]`, `[[random_dwelling]]` and their checks; `base`'s 62 RoE dwellings, the camp, the random dwelling, the parameters and the eight RoE tables, `ab`'s twenty dwellings and Conflux's table; `h3-pack-adventure`'s `original_data` check; ADV-DWL-001, -005, ADV-RFG-001; adventure ruleset part v16.
   - **T93b The import.** Done (2026-11-04, whole, decision 250; `adventure/e08-t93b`): classes 17 and 20 by subclass, 78 the camp, 216–218 not tied to a town the random dwelling with its owner and `Holds::RandomDwelling` (the type and its check moved in from T94); `codes::FACTIONS`; one tied to a town a blocker (ADV-STUB-13); A-34 to A-36 refused (`DwellingClass`, `Subclass`, `DwellingTown`, `DwellingFactions`, `DwellingLevels`; ADV-QUIRK-36 to -38); the census; ADV-OBJ-002 amended; map import v16.
-- Rounds 6 to 8 (T94 to T97) as design §17 lists them, each queued when the one before is done.
+- **T94 The build and the state** (round 6; design §17), in two at the design's seam (decision 251):
+  - **T94a The build.** Done (2026-11-04, `adventure/e08-t94a`): the random dwellings resolved in the placement walk (faction, then level, the table's type, its footprint, the moved anchor); a hero (`SetupError::RandomDwellingTile`) or a boat on a tile an outcome could cover refused, the name check over every outcome (agent's calls: validity independent of the draw); `StaticMap::dwellings`, `camps` and their indexes; the census; ADV-DWL-005, ADV-OWN-002, -003 amended; no version moved.
+  - **T94b The state and the week:** next (the queue's entry).
+- Rounds 7 and 8 (T95 to T97) as design §17 lists them, each queued when the one before is done.
 
 ## Later increments (sketch)
 
