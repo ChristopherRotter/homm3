@@ -31,7 +31,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `[network] mask_input`, `order`, `attack_hex`; `E25-log.md` T25). The user's GPU grid and cap:
   about 700 µs a sample-pass (decision 3 as amended). **Next:** T26 on the user's GPU
   (`configs/distill/e25-structure.toml`, about 7 to 8 hours; the command in `QUEUE.md`).
-- **Open pull requests:** the one of `claude/determined-mayer-t1waz5` (T25). Merged: #718 (T22,
+- **Open pull requests:** #725 (T25, `claude/determined-mayer-t1waz5`). Merged: #718 (T22,
   T23), #721 (T24).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
