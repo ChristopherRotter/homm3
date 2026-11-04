@@ -30,6 +30,13 @@ In `TRAPS.md`.
 
 ## Recent sessions
 
+### 2026-11-05 — T7b2b: the main towns' heroes (in progress)
+
+Baseline f720585 (#724 merged; the sandbox's light gates on 1c906d6). At the start (the user):
+T7b2b whole; the hero right of a town's entrance checked: the visitor, not a garrison hero (the
+reading 64d2e98, VCMI 1.7.5). **In progress:** the code, census and replay by one sub-agent on
+`town/e09-t7b2b`; then the review and docs.
+
 ### 2026-11-04 — T7b2a: the towns resolved and stored
 
 Baseline ae59f3b (#719 merged; CI green there; the sandbox's baseline the light gates; the
@@ -53,13 +60,3 @@ commit; once #716 merged, the branch rebased onto `master` (the engine's code th
 replays kept). The code, census, bench and replays by one sub-agent, the review and docs by the agent.
 Part v17, map import v18, adventure state hash v21; the census unchanged (31 build); the bench
 inside its gate (forks +1.1 to +1.7 % on the stored baselines, the highest on maps without a town).
-
-### 2026-11-04 — T7b1: the pool and the heroes' draws
-
-Baseline e654837 (#713 merged; CI green there; the sandbox's baseline the light gates; the
-original data staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`,
-`extracted.tar`). At the start (the user): T7b cut in two at the towns (T7b1 now, T7b2 after
-T8a's town list and owners). The code, bench, replays and census by one sub-agent, the review and
-docs by the agent. `HeroPool` (TWN-SET-005, -007; `TWN-QUIRK-2`, `-3`), `NoFreeHero`, game state
-hash v23 (39 replays rehashed), forks +0.3 to +0.4 %; the census: 31 maps build (9 before), 125
-refused for a main town's hero. Pull request: the one of branch `town/e09-t7b1`.
