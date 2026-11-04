@@ -345,6 +345,27 @@ The words for `docs/06-security.md` (a section "Towns (E09 increment 1)"):
 - **Then** the existing build: the adventure's setup with the towns' garrisons and each town's
   reveal radius, the store of towns (`Towns`) beside the adventure's state, the levels at load
   (the random heroes' 18 custom experiences included).
+- **The cut (the user, 2026-11-04):** T7b in two at the towns, whose owners and objects come with
+  T8a. **T7b1** the pool and the heroes' draws (step 1, step 2's random heroes, the draw, game
+  state hash v23); **T7b2** step 2's random towns, step 3, step 4 and the store of towns, with the
+  garrisons and radii into the adventure, once T8a gives the town list and the towns' owners.
+- **As built (T7b1):** `h3_game`'s `town::pool` (`HeroPool`, `HeroStatus` free, taken by a
+  colour, a prisoner's or out, each type's mask the AND of the setup's masks; `draw_heroes`);
+  `GameState`'s `Arc<HeroPool>`, hashed after the store of heroes; `GameSetupError::NoFreeHero`
+  (the drawing player); `end_battle` frees the type of every hero it removes from the map;
+  `TWN-STUB-3` narrowed to a main town that generates a hero (`town::main_town_heroes`). Order:
+  the placed heroes' types checked, the pool built, then the draws, before the starting armies.
+  *Agent's calls:* a `Random` choice is drawn only when the start reads it (`town::needs_faction`,
+  the test `Choice` uses: a main town, the random-hero flag, a random hero of its own, a random
+  town aligned to its colour), so a setup whose choices nothing reads keeps its stream (the
+  fixture maps of 12 replays have two Random players and no town); T7b2 adds a random town the
+  player owns to that test. Step 2's random towns come after the random heroes (T7b2 appends
+  them, so T7b1's draws do not move). A placed hero's and a prisoner's type are taken whatever the
+  allowed set, and a hero that leaves the map frees its type even if the map did not allow it (the
+  original's 0x4D9EC0). `validate` with the seed 0 may differ from a build with another seed in
+  two cases, stated in its doc: `NoFreeHero` when a colour mask leaves a random hero's owner out
+  of types an earlier draw may take, and a drawn type without a valid starting army (none in the
+  core). The census: 31 shipped maps build (9 before), 125 refused for a main town's hero.
 
 ### 15. The siege's battle (GAM-BAT-001 amended; TWN-SIE-003 to -005; T8b)
 
@@ -414,7 +435,7 @@ when T8c lands).
 | town state hash v1, town ruleset part v1 | new | T4b (constants), T5a, T6 |
 | adventure replay format v9 | the town part's hash in the header | T5a |
 | map import v17 (E08 T93b took v16) | towns, players' starts, the random hero, the main town, the moved heroes, the pool's inputs | T7a |
-| game state hash v23 (after T85b's v22) | the store of towns, the pool | T7b |
+| game state hash v23 (after T85b's v22); the next for the store | the pool (T7b1); the store of towns (T7b2) | T7b1, T7b2 |
 | adventure ruleset part v17 (T93a took v16), adventure state hash v20 | the kind `Town`; towns ownable, the town list, `Holds::Town` | T8a |
 | env encodings | none (no new command; no flat adventure observation, E08 decision 187) | — |
 
@@ -429,7 +450,7 @@ the public facts, -002 the garrison's levels, -003 the owner's team. Amended: AD
 classes 77, 98 typed), ADV-OWN-002 (towns' owners, the start's reveal), GAM-BAT-001 (a siege),
 GAM-RES-004's "not here" line (the towns'), GAM-SET-001 (the starting armies of the drawn heroes).
 
-**Quirks** (`docs/rules/quirks-town.md`, created by T6c with `-5`; T7a1 added `-1`, `-4`; `-2`, `-3` come with T7b's pool: T7a2's checks fix neither), none with a flag: `TWN-QUIRK-1` T-1 (an
+**Quirks** (`docs/rules/quirks-town.md`, created by T6c with `-5`; T7a1 added `-1`, `-4`; T7b1 `-2`, `-3` with the pool), none with a flag: `TWN-QUIRK-1` T-1 (an
 alignment byte from 8 to 254: refused), `-2` T-2 (the pick not reserved: fixed), `-3` T-3 (a
 random hero taking a later hero's type: fixed), `-4` T-4 (the draws' empty cases: typed), `-5`
 T-6 (a custom set's horde leaving its dwelling standing: fixed, decision 29; T6 and T7a). T-5
@@ -438,7 +459,8 @@ comes with increment 3 (decision 12). TD-2's map-version test is the rules' reco
 
 **Stubs:** `TWN-STUB-1` the siege of an ally's visitor (E10), `TWN-STUB-2` the start's forbidden
 Grail and Shipyard (increments 2, 4; registered by T6c); `TWN-STUB-3` the build's
-refusal of a setup that needs a draw (registered by T7a1, lifted by T7b).
+refusal of a setup that needs a draw (registered by T7a1, narrowed by T7b1 to a main town's
+hero, lifted by T7b2).
 
 ### 20. Batch TWN-1 (T3)
 

@@ -1,6 +1,6 @@
 # Quirks ledger: town lane
 
-Known differences between the original game's behaviour and a clean design, in the town lane's rules (a town's record and setup, the derivations over it, the town on the map; E09). Classes, the decision guide and profiles are in `docs/04-rules-and-sources.md` §4; the entry template is in `docs/rules/quirks-ledger.md` (the battle lane's ledger). Ids are `TWN-QUIRK-<n>` (`docs/08-work-process.md`, "Lanes"); 1 to 4 are the quirk candidates T-1 to T-4 (E09 design note §19): E09 T7a1 entered 1 and 4, 2 and 3 come with T7b's pool (T7a2's checks fix neither).
+Known differences between the original game's behaviour and a clean design, in the town lane's rules (a town's record and setup, the derivations over it, the town on the map; E09). Classes, the decision guide and profiles are in `docs/04-rules-and-sources.md` §4; the entry template is in `docs/rules/quirks-ledger.md` (the battle lane's ledger). Ids are `TWN-QUIRK-<n>` (`docs/08-work-process.md`, "Lanes"); 1 to 4 are the quirk candidates T-1 to T-4 (E09 design note §19): E09 T7a1 entered 1 and 4, E09 T7b1 2 and 3 with the pool.
 
 A candidate becomes an entry here only once it is confirmed for SoD (by an experiment, by original data, or by a code reading that a second look confirms). Until then it waits in its survey and the engine implements the clean behaviour. `exploit-fix` entries and those not reproduced need no confirmation.
 
@@ -19,6 +19,32 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-map/src/tests/towns.rs`, `a_random_towns_alignment_is_a_colour_or_none`
 - Decided by / date: the user, 2026-11-02 (TWN-Q2; the epic's decision 12); entered by E09 T7a1, 2026-11-04
 
+### TWN-QUIRK-2 — The starting-hero pick is not reserved
+- Class: fix, no flag (the user, 2026-11-02, TWN-Q2, T-2: a state-corrupting bug; the epic's decision 12)
+- Context / rules affected: town, TWN-SET-005 (the pool; E09 T7b1), TWN-SET-006 (the pick), TWN-SET-008 (a random hero)
+- Original behavior: `new_game_heroes` marks a human's chosen hero (0x4BFF83), the map read's `hero_pool_init` (0x4C4E30) frees it again (0x4C4E6B), and neither `load_hero_body` nor `main_town_heroes` checks a choice before placing it. Another colour's random hero, or an earlier colour's main-town draw, can take the chosen hero, which is then placed a second time for its chooser: one hero type on two tiles and in two players' lists.
+- Intended/expected behavior: each player's pick is taken by its colour in the pool before any draw (`h3_game`'s `HeroPool::new`), so no other colour's draw gives it; its first random hero takes it, and a pick no random hero took goes back free after the draws.
+- Impact: none on the shipped maps' imports (the import picks nothing); a start where a colour picks and another colour can draw its faction's heroes no longer places one type twice.
+- Community status: VCMI 1.7.5 reserves the choices before any draw (survey §4.7).
+- Sources: code reading of `new_game_heroes`, `hero_pool_init` 0x4C4E30, `load_hero_body` and `main_town_heroes` 0x4CA040 (E09 T1a2; survey `docs/rules/surveys/E09-towns.md` §4.2, §4.3, §6 T-2).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-game/src/town/tests/pool.rs`, `twn_quirk_2_a_pick_is_reserved_before_any_draw`
+- Decided by / date: the user, 2026-11-02 (TWN-Q2; the epic's decision 12); entered by E09 T7b1, 2026-11-04
+
+### TWN-QUIRK-3 — A random hero can take a later hero's type
+- Class: fix, no flag (the user, 2026-11-02, TWN-Q2, T-3; the epic's decision 12)
+- Context / rules affected: town, TWN-SET-005 (the pool; E09 T7b1), TWN-SET-008 (a random hero)
+- Original behavior: a placed hero or a prisoner marks its type in the pool only when its body is read (`load_hero_body`), so a random hero earlier in the file can draw it when the map allows it; the later body then overwrites the type's record (`hero_setup` by type).
+- Intended/expected behavior: every placed hero's and prisoner's type is taken in the pool before the random heroes are drawn (`h3_game`'s `HeroPool::new`, whatever the allowed set), as VCMI does.
+- Impact: none on the shipped maps (no placed hero's or prisoner's type is allowed on its map, survey §4.2); a map that allows one never gets that type twice.
+- Community status: VCMI 1.7.5 draws the random heroes after every object is read (survey §4.7).
+- Sources: code reading of `load_hero_body` and `hero_pool_init` 0x4C4E30 (E09 T1a2; survey `docs/rules/surveys/E09-towns.md` §4.2, §4.4, §6 T-3).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-game/src/town/tests/pool.rs`, `twn_quirk_3_a_random_hero_draws_no_later_placed_heros_type`
+- Decided by / date: the user, 2026-11-02 (TWN-Q2; the epic's decision 12); entered by E09 T7b1, 2026-11-04
+
 ### TWN-QUIRK-4 — The start's draws' empty cases
 - Class: fix, no flag (the user, 2026-11-02, TWN-Q2, T-4: typed; the epic's decision 12)
 - Context / rules affected: town, TWN-SET-001 (the player's main town; E09 T7a1), TWN-SET-007 and TWN-SET-009 (the draw and the main town's hero; E09 T7b)
@@ -29,7 +55,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading of `main_town_heroes` 0x4CA040 (read whole) and `hero_draw_of_faction` 0x4BB400 (E09 T1a2; survey `docs/rules/surveys/E09-towns.md` §4.4, §4.5, §6 T-4).
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, strict-fixed = fixed
-- Regression test: `crates/h3-map/src/tests/towns.rs`, `a_main_town_is_the_town_whose_entrance_the_header_names` (the import's case; T7b adds the draw's)
+- Regression test: `crates/h3-map/src/tests/towns.rs`, `a_main_town_is_the_town_whose_entrance_the_header_names` (the import's case); `crates/h3-game/src/town/tests/pool.rs`, `the_draw_falls_back_to_every_free_type_then_fails` (the draw's, `GameSetupError::NoFreeHero`; E09 T7b1)
 - Decided by / date: the user, 2026-11-02 (TWN-Q2; the epic's decision 12); entered by E09 T7a1, 2026-11-04
 
 ### TWN-QUIRK-5 — A custom set's horde leaves its dwelling standing

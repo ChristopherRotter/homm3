@@ -24,7 +24,8 @@
 //! creatures and counts (checked).
 //! Since E09 T7a1 the towns, the players' starts, the random heroes, the heroes moved onto a
 //! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import, and a setup the
-//! build refuses for a hero to draw (`TWN-STUB-3`) is counted as an outcome.
+//! build refuses for a hero to draw (`TWN-STUB-3`) is counted as an outcome; since E09 T7b1 the
+//! random heroes are drawn and only a main town's hero is refused so.
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -348,7 +349,7 @@ fn check(
         Ok(setup) => {
             towns(&map, &setup, rules, &mut peaks.5);
             let game = match GameState::new(rules, &setup, SEED) {
-                // E09 T7a1: the draws are T7b's.
+                // E09 T7a1: the main towns' heroes are T7b2's.
                 Err(GameSetupError::HeroDraw(draw)) => {
                     return Ok((map.header.version, refused(draw).to_owned()));
                 }
@@ -388,16 +389,15 @@ fn check(
     Ok((map.header.version, outcome))
 }
 
-/// The outcome of a map the build refuses for a hero to draw (`TWN-STUB-3`, until E09 T7b).
+/// The outcome of a map the build refuses for a hero to draw (`TWN-STUB-3`, until E09 T7b2).
 const fn refused(draw: HeroDraw) -> &'static str {
     match draw {
         HeroDraw::MainTown(_) => "imported; the build refuses a main town's hero (TWN-STUB-3)",
-        HeroDraw::RandomHero(_) => "imported; the build refuses a random hero (TWN-STUB-3)",
     }
 }
 
-/// The name of a setup's check of the towns and the starts that refuses a map (E09 T7a2), if
-/// `error` is one.
+/// The name of a setup's check of the towns and the starts that refuses a map (E09 T7a2), or of
+/// the random heroes' draw (E09 T7b1), if `error` is one.
 const fn checked(error: GameSetupError) -> Option<&'static str> {
     match error {
         GameSetupError::TownFaction(_) => Some("TownFaction (TWN-SET-002)"),
@@ -407,6 +407,7 @@ const fn checked(error: GameSetupError) -> Option<&'static str> {
         GameSetupError::Pick(_) => Some("Pick (TWN-SET-006)"),
         GameSetupError::PickTaken(_) => Some("PickTaken (TWN-SET-006)"),
         GameSetupError::RandomHeroOwner(_) => Some("RandomHeroOwner (TWN-SET-008)"),
+        GameSetupError::NoFreeHero(_) => Some("NoFreeHero (TWN-SET-007)"),
         _ => None,
     }
 }

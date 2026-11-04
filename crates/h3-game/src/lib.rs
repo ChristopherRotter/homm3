@@ -113,5 +113,6 @@ pub use town::{FactionChoice, FactionSet, HeroDraw, MainTown, PlayerStart};
 /// decision. v20 (E08 T72): the adventure's boats, each hero's boat and day's maximum (the
 /// adventure state hash v16). v21 (E08 T84a): an army dialog's holder (a join's group or a
 /// mine's guards, the Leave Guards dialog). v22 (E08 T85b): the month's kind and the map's
-/// timed events.
-pub const GAME_STATE_HASH_VERSION: u32 = 22;
+/// timed events. v23 (E09 T7b1): the hero pool (TWN-SET-005: each hero type's status and colour
+/// mask), after the store of heroes.
+pub const GAME_STATE_HASH_VERSION: u32 = 23;

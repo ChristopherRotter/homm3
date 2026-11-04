@@ -9,7 +9,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 **E08 T95a — the visits** (design §17's round 7; design §7, §12)
 
 - **Scope:** the step onto a dwelling's entrance (ADV-DWL-004, ADV-OWN-001 amended, ADV-HIR-001): the owner's team's (no guards, no flag, the hire question); another's or a neutral one with its guards standing: the guards' question (a new `OfferKind`, the first slot's creature and the total's size word), declined nothing, accepted the guards' battle as they stand (`Defender::Guards`, unsplit; GAM-BAT-001 amended, §12), its survivors the dwelling's guards until the week, a win flagging it after the winner's levels; unguarded: flagged (increment 9's `flag`), then the hire question (accepted on one's own: the free creatures of `free_level` or less joining where ADV-ARM-007's room is, D-52 as the original); the Refugee Camp's visit (deserted at 0, else the hire question naming its creature; ADV-RFG-001); the dwellings' block's real writer keeping T94b's normalisation (design §6's "As built"); the hire dialog's opening is T95b's. Versions per design §15 (none for T95a; a new offer variant's encodings checked at its start).
-- **Depends on:** T94b (merged). **Status:** ready once T94b merges; its cut confirmed at its start. Then **T95b** (the purchase, the hire dialog, the env; §8, §13, §14; game state hash v23, replay format v10, `cross-lane` v7), queued when T95a is done.
+- **Depends on:** T94b (merged). **Status:** ready once T94b merges; its cut confirmed at its start. Then **T95b** (the purchase, the hire dialog, the env; §8, §13, §14; game state hash v24 (E09 T7b1 took v23), replay format v10, `cross-lane` v7), queued when T95a is done.
 
 ## Inbox
 

@@ -1,7 +1,7 @@
 //! A town's setup at the game's build (E09 increment 1's design note §5): what the map gives a
 //! town ([`TownSetup`]: its faction, its buildings by the map editor's slots, its garrison, its
 //! name and events) and the pure functions `h3-game` calls with the setup stream once it has
-//! resolved the faction (design §14, E09 T7b): the buildings ([`town_buildings_setup`],
+//! resolved the faction (design §14, E09 T7b2): the buildings ([`town_buildings_setup`],
 //! TWN-SET-003), the garrison ([`town_garrison`], TWN-SET-004) and the whole town
 //! ([`town_setup`]). The original's `town_setup` (0x5C0670) and `town_buildings_setup` (0x5C08C0;
 //! E09 survey §5).
@@ -74,7 +74,7 @@ impl SlotSet {
 }
 
 /// A town's faction as the map gives it; the game resolves it before the setup (design §14, E09
-/// T7b).
+/// T7b2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TownFaction {
     /// A fixed faction, which has a town record in the town part.

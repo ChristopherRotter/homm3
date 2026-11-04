@@ -3,9 +3,10 @@
 //! whether its starting hero is random. A map's import fills it (`h3-map`, TWN-SET-001); whoever
 //! seats the players may change the choice and the pick before the game is built (E09 decision
 //! 6's seam), the pick from the player's offer ([`GameSetup::offer`], TWN-SET-006). The game's
-//! build checks the starts and the towns (E09 T7a2: [`check_starts`]) but draws nothing yet: it
-//! refuses a setup that needs a hero drawn ([`HeroDraw`], `TWN-STUB-3`; the draws are E09 T7b's,
-//! design note §14).
+//! build checks the starts and the towns (E09 T7a2: [`check_starts`]), then builds the hero pool
+//! and draws the random factions and the random heroes' types (E09 T7b1: [`pool`], design note
+//! §14); it still refuses a main town that generates a hero ([`HeroDraw`], `TWN-STUB-3`; the main
+//! towns' heroes and the towns' draws are E09 T7b2's).
 
 use alloc::vec::Vec;
 use core::fmt;
@@ -15,6 +16,10 @@ use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::TownFaction;
 
 use crate::{GameRuleset, GameSetup, GameSetupError, PlayerSetup};
+
+pub(crate) mod pool;
+
+pub(crate) use pool::{HeroPool, draw_heroes};
 
 /// A set of the core's factions, a bit per faction below [`FactionSet::CAPACITY`] (the map's
 /// allowed towns, read through the ruleset's factions).
@@ -65,7 +70,7 @@ impl FactionSet {
 /// A player's choice of its faction before the game is built.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FactionChoice {
-    /// Drawn among the player's factions when the game is built (T7b).
+    /// Drawn among the player's factions when the game is built (TWN-SET-001, E09 T7b1).
     Random,
     /// This faction.
     Fixed(FactionId),
@@ -96,11 +101,10 @@ pub struct PlayerStart {
     pub random_hero: bool,
 }
 
-/// What a setup needs drawn that the game cannot build yet (`TWN-STUB-3`; the draws: E09 T7b).
+/// What a setup needs drawn that the game cannot build yet (`TWN-STUB-3`; the main towns' heroes:
+/// E09 T7b2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeroDraw {
-    /// This hero is random: its type is drawn.
-    RandomHero(HeroId),
     /// This player's main town generates its starting hero.
     MainTown(PlayerId),
 }
@@ -108,7 +112,6 @@ pub enum HeroDraw {
 impl fmt::Display for HeroDraw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::RandomHero(hero) => write!(f, "hero {} is a random hero", hero.raw()),
             Self::MainTown(player) => {
                 write!(f, "player {}'s main town generates a hero", player.index())
             }
@@ -261,52 +264,42 @@ fn chooses(setup: &GameSetup, rules: &GameRuleset, id: PlayerId, player: &Player
         && match start.choice {
             Some(FactionChoice::Fixed(faction)) => start.factions.contains(faction),
             Some(FactionChoice::Random) => !start.factions.is_empty(),
-            None => {
-                start.main_town.is_none()
-                    && !start.random_hero
-                    && !setup
-                        .heroes
-                        .iter()
-                        .any(|hero| hero.hero_type.is_none() && hero.owner == id)
-                    && !setup.towns.iter().any(|town| {
-                        town.faction
-                            == TownFaction::Random {
-                                alignment: Some(player.colour),
-                            }
-                    })
-            }
+            None => !needs_faction(setup, id, player),
         }
 }
 
-/// Each hero's type in hero order, the setup's heroes at most a [`HeroId`]'s.
+/// Whether `player`'s start reads its faction (TWN-SET-001): it has a main town, the random-hero
+/// flag, a random hero of its own or a random town aligned to its colour. Only such a player's
+/// `Random` choice is drawn when the game is built ([`draw_heroes`]).
+pub(crate) fn needs_faction(setup: &GameSetup, id: PlayerId, player: &PlayerSetup) -> bool {
+    let start = &player.start;
+    start.main_town.is_some()
+        || start.random_hero
+        || setup
+            .heroes
+            .iter()
+            .any(|hero| hero.hero_type.is_none() && hero.owner == id)
+        || setup.towns.iter().any(|town| {
+            town.faction
+                == TownFaction::Random {
+                    alignment: Some(player.colour),
+                }
+        })
+}
+
+/// Refuses a main town that generates a hero, which the game cannot build yet (E09 T7b2).
 ///
 /// # Errors
 ///
-/// [`GameSetupError::HeroDraw`]: the first player in id order whose main town generates a hero,
-/// else the first random hero.
+/// [`GameSetupError::HeroDraw`]: the first player in id order whose main town generates a hero.
 // stub: TWN-STUB-3
-pub(crate) fn hero_types(setup: &GameSetup) -> Result<Vec<HeroTypeId>, GameSetupError> {
-    if let Some((_, player)) = setup
-        .players
-        .iter()
-        .zip(0..=u8::MAX)
-        .find(|(player, _)| player.start.main_town.is_some_and(|t| t.generates_hero))
-    {
-        return Err(GameSetupError::HeroDraw(HeroDraw::MainTown(PlayerId::new(
-            player,
-        ))));
+pub(crate) fn main_town_heroes(setup: &GameSetup) -> Result<(), GameSetupError> {
+    match first_player(setup, |_, player| {
+        player.start.main_town.is_some_and(|t| t.generates_hero)
+    }) {
+        Some(player) => Err(GameSetupError::HeroDraw(HeroDraw::MainTown(player))),
+        None => Ok(()),
     }
-    setup
-        .heroes
-        .iter()
-        .zip(0..=u16::MAX)
-        .map(|(hero, index)| {
-            hero.hero_type
-                .ok_or(GameSetupError::HeroDraw(HeroDraw::RandomHero(HeroId::new(
-                    index,
-                ))))
-        })
-        .collect()
 }
 
 #[cfg(test)]

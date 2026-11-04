@@ -836,39 +836,39 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x7bdb076da18bb58f",
-    "0x55a22375d7b6026a",
-    "0x38f3e24bffd110d5",
-    "0x8e53386f04278deb",
-    "0xd6271ad239007e7f",
-    "0xbb62f6c39bd8583e",
-    "0x19f3fd926bdb37af",
-    "0x2d7ed7caadeb4fe2",
-    "0x38852e49f186c3d7",
-    "0xb14b650222b79045",
-    "0xa9f0aef7acc2a2f9",
-    "0xb5353ebd0e2439a3",
-    "0xaef077c1e3f05562",
-    "0xf92943a5dd568daa",
-    "0x50460f3e7de734a0",
-    "0xd804b45d864ca326",
-    "0x58e12d1bece85748",
-    "0x02293c53637b2fdf",
-    "0xd3fa73f1976f436e",
-    "0xb6e027c4a2de0631",
-    "0x2f0fa49062afd5b8",
-    "0xed6a3519a75f41d5",
-    "0x967ebf5a1f5ba36b",
-    "0x00b20f836df76e7a",
-    "0xa12712b60bca07b6",
-    "0x9e7c81fc609a9772",
-    "0x5c342ed3e3c17be7",
-    "0x0abca2c0874ff485",
-    "0x4ca9977128234a2d",
-    "0x7cfc2cd6a871c5f9",
-    "0x19c8020b02bf3ada",
-    "0x415d860bccfe2966",
-    "0x147f27dc48cc3dc0",
+    "0x0411068ed8f904c6",
+    "0x253951ed1b70bcf5",
+    "0xea7c9936aade371a",
+    "0x931da287c67ca340",
+    "0x8ce65c4963e93d60",
+    "0xf3f0253c30f24369",
+    "0x9fa3b12f91026086",
+    "0xe875c64fc1e1c91f",
+    "0x30525e2d5f762f2a",
+    "0xf0f3c5c94e87a972",
+    "0x91dc8185e038f3a2",
+    "0xe0ca370ba6b89ea4",
+    "0x71999d93b6d07efb",
+    "0xb05cd6579d4986c7",
+    "0x4bc792f010e3b6ef",
+    "0xde3fa2ba26e18e8d",
+    "0xf894371d964724bf",
+    "0x12b6a9709f1a35a6",
+    "0xf6e6ccd129dfdc2d",
+    "0x0271e611fce4ab88",
+    "0xa9ee9d1944884b09",
+    "0xd4d58c24f16c86d2",
+    "0x01b854cfebf2250c",
+    "0x916d4455d6c12f7b",
+    "0x535dcd27e9260e87",
+    "0x198da9e63de378d3",
+    "0x9de96dceb2c6b414",
+    "0xe54563f738445ede",
+    "0xeb54cac7e481a406",
+    "0x089cee4c1b295dc2",
+    "0xafc10ca042f65503",
+    "0x05e352f4d916629f",
+    "0xc477acea1ba3f589",
 ]
 
 [replay]
@@ -898,7 +898,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 22
+game_state_hash_version = 23
 adventure_state_hash_version = 20
 checkpoint_every = 25
 
@@ -909,4 +909,4 @@ import_version = 17
 
 [result]
 day = 29
-final_hash = "0xedb34316eb7eec97"
+final_hash = "0x0bca97c4adfa01e2"

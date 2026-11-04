@@ -692,3 +692,12 @@ committed in `crates/h3-map/proptest-regressions/tests/play.txt`):
   fixed). The shrunk plan: RoE, side 7, two levels, nomads `(222, 11)`, one timed event (players
   3, from day 4, every day), 461 `Fight` steps; the full input is in that run's job log. Master's
   own runs passed (random cases). Commit the seed with the fix.
+
+- 2026-11-04 (the town lane, E09 T7b1, `town/e09-t7b1`; **for T94b, when both pull requests are
+  open**): `h3-game` gains the hero pool (`GameState::pool`, `town::pool`), game state hash v23,
+  and the 39 adventure replays are rehashed; `GameState::new` draws the players' Random choices a
+  start reads and the random heroes' types before the starting armies (no fixture map has one, so
+  only the hashes moved). Whichever of T94b (adventure state hash v20) and T7b1 merges second
+  merges `master` in and rehashes the replays again (skill `homm3-rerecord-replays`).
+  `end_battle` now frees the hero types of the heroes it removes from the map.
+  (Done by E08 T94b, #716: `master` merged in, the replays rehashed again.)
