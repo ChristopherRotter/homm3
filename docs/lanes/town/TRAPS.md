@@ -13,3 +13,7 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 - **A town's entrance is blocked and visitable** in the shipped maps' templates: a test "does a town block this tile" also hits the entrance, where a moved hero (TWN-SET-010) and a town's visitor stand. Use `town::in_town` (a blocked tile that is not an entrance), not `blocks` (E09 T7a1, found by the census).
 - **Every struct literal of `GameSetup`, `PlayerSetup` and `GameHeroSetup`** lives in other lanes' crates too (`h3-cli`'s `src/ai/census.rs`, the ai lane's; `h3-map`'s examples): a new field is a `cross-lane` change there.
+
+## The game's setup (`h3-game` `src/town*`, `setup.rs`)
+
+- **A setup's towns match its map's** (E09 T8a1, `GameSetupError::TownCount`): a `GameSetup` whose static map has objects of the type `town` needs one `TownSetup` per such object, in object order; a test or tool that builds a game from a static layer alone gives each a neutral town record (`h3-map`'s census example does).
