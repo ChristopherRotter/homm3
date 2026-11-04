@@ -965,7 +965,7 @@ docs by the agent.
 One session, the user present; branch `town/e09-t8a1` (`cross-lane`: `h3-adventure`'s
 `lib.rs`, `setup.rs`, `state.rs`, `state/economy.rs`, `state/holds.rs`, `ruleset/objects.rs`,
 `testing.rs` and tests, `h3-game`'s `setup.rs`, `state.rs`, `town.rs` and tests, `h3-map`'s
-import, `lib.rs`, census example and tests, `h3-pack-adventure`, `packs/base/adventure.toml`,
+import, `lib.rs`, census example and tests, `h3-cli`'s `src/ai/census.rs` (the ai lane's), `h3-pack-adventure`, `packs/base/adventure.toml`,
 `adventure.toml`'s catalog, the 39 adventure replays, the ai lane's two bot reports, the adventure
 lane's HANDOFF versions line and `OVERVIEW.md`'s import version). Starting point: `master` at
 5dac0d2 (#715 merged; CI green there; the sandbox's baseline the light gates; the original data
@@ -1017,4 +1017,8 @@ review and the docs by the agent.
   import and census; the design note's §8 (the cut, "As built"), §19; the queue's T8a1, T7b2 and
   T8a2 entries.
 - **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
-  `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass.
+  `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass. CI's
+  coverage failed on #719: the ai lane's census test (`h3-cli`'s
+  `ai::tests::the_census_counts_a_known_map`) built its game with no town records, refused by
+  `TownCount`; the census now gives each town a neutral record as `h3-map`'s does, and the
+  workspace's tests pass (a trap in `TRAPS.md`).
