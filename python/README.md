@@ -94,17 +94,24 @@ hex network (`h3env.train.hexnet`, the entity network's heads): `"hexconv"`, `la
 blocks of hex convolutions with `width` channels on the field's axial grid, or `"hexformer"`,
 `layers` transformer blocks of `width` over the hexes with a bias per axial offset; both draw
 the stacks on their hexes, on a field of `field_width` × `field_height` (17 × 11, the base
-ruleset's). `embed` (32) sizes every kind's spell and target embeddings. A saved network's config names its kind (a file from before
+ruleset's). `norm = "layer"` (E25 T24; `"none"` by default) normalises the hex convolutions'
+inputs (a pre-activation LayerNorm over each cell's channels); `feed_forward` (2) sizes the
+transformer blocks' feed-forward layer in multiples of `width`. `embed` (32) sizes every kind's
+spell and target embeddings. A saved network's config names its kind (a file from before
 T5a is an MLP); `--init-from` a network of another kind is refused. A network at a glance:
 
 ```sh
 uv run --group train python -m h3env.train.network --config configs/e06-t5.toml --time --mermaid net.md
 uv run --group train python -m h3env.train.network --from runs/t4-2/best.pt
+uv run --group train python -m h3env.train.network --bench configs/distill/e25-grid.toml --time --rows 512
 ```
 
 prints each part's parameters, output shape and multiply-adds per decision (a cast's heads
-apart), with `--time` the microseconds per decision of a forward and a training pass (`--device
-cuda` on the GPU), and `--mermaid` writes the table with the data flow as a Mermaid diagram.
+apart), with `--time` the microseconds per decision of a forward pass, a training pass and a
+sample-pass (the training pass with an AdamW step, a bench's or PPO's minibatch step; on CUDA its
+peak memory too; `--device cuda` on the GPU), and `--mermaid` writes the table with the data
+flow as a Mermaid diagram. `--bench` puts every student of a bench's file in one table (E25
+T24: the candidates' cost side by side before a run).
 
 **The turn order** (E06 T6f, design §15): observation v22 appends each stack slot's places in
 the engine's turn order (`h3_battle::turn_order`: the rest of the round, its side's, the next
@@ -262,10 +269,15 @@ uv run --group train python -m h3env.train.distill --teacher runs/e25-scale-1/be
 The teacher plays itself in PPO's rollouts on its run's training distribution; each student (a
 `[students.<name>]` table of `[network]` keys over the teacher's) learns the teacher's heads (the
 KL divergence over the legal entries, a cast's heads along the teacher's choices) and its
-λ-returns, all on the same minibatches. Every `eval_every` samples a held-out set of rollouts on
+λ-returns, all on the same minibatches. The optimizer is AdamW: the learning rate rises from 0
+over the first `warmup` samples (0 by default) and falls linearly to `lr_floor` of `lr` over
+`samples`; `weight_decay` (0 by default: Adam's steps) decays the matrices and kernels, not the
+biases or norms; a student's table may set its own `lr`, `warmup` and `weight_decay` (E25 T24).
+Every `eval_every` samples a held-out set of rollouts on
 another seed scores them: the KL per head, the agreement of the most likely entry per category
 (tactics, wait or defend, move, melee, shot, heal, cast, other), the value's explained variance
-(the teacher's beside it) and the training seconds. Its files: `report.json`, `metrics.jsonl`,
+(the teacher's beside it), the training seconds and the cost (the µs a sample-pass, on CUDA the
+peak memory of a step; E25 T24). Its files: `report.json`, `metrics.jsonl`,
 `students/<name>.pt` (run network files: `--init-from` starts a run from one). `--set key=value`
 changes a top-level setting (`samples`, `device`, …). It does not resume; Ctrl-C scores and
 saves what it has. Bench configs live in `configs/distill/`.

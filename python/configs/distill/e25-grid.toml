@@ -1,0 +1,140 @@
+# E25 T24's timing grid (increment 7, AI-Q16 decision 2): the structured candidates across their
+# ranges beside the two references, for `network --bench` (each student's parameters,
+# multiply-adds and cost a decision), not a bench to run (T26's `e25-structure.toml` takes about 8
+# of them). The cap (decision 3): a sample-pass on the GTX 1070 at most `hexconv-64x6`'s (466 us at
+# T7c). The settings are T16's cloning bench's (`e25-clone.toml`). From python/:
+#
+#   uv run --group train python -m h3env.train.network --bench configs/distill/e25-grid.toml --time --rows 512 --device cuda
+
+run = "configs/e25-neutral.toml"
+seed = 7
+samples = 4_000_000
+heldout = 16_384
+eval_every = 500_000
+envs = 256
+rollout = 128
+epochs = 2
+minibatch = 512
+lr = 3e-4
+lr_floor = 0.1
+value_coef = 0.5
+max_grad_norm = 0.5
+device = "auto"
+
+# The references: `e25-neutral.toml`'s MLP and T7c's hex convolution network (the cap).
+[students.mlp]
+kind = "mlp"
+
+[students.hexconv-64x6]
+kind = "hexconv"
+width = 64
+layers = 6
+
+# The hex convolution network with normalisation: 64 to 128 channels, 6 to 10 blocks.
+[students.hexconv-n-64x6]
+kind = "hexconv"
+norm = "layer"
+width = 64
+layers = 6
+
+[students.hexconv-n-64x8]
+kind = "hexconv"
+norm = "layer"
+width = 64
+layers = 8
+
+[students.hexconv-n-64x10]
+kind = "hexconv"
+norm = "layer"
+width = 64
+layers = 10
+
+[students.hexconv-n-96x6]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+
+[students.hexconv-n-96x8]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 8
+
+[students.hexconv-n-96x10]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 10
+
+[students.hexconv-n-128x6]
+kind = "hexconv"
+norm = "layer"
+width = 128
+layers = 6
+
+[students.hexconv-n-128x8]
+kind = "hexconv"
+norm = "layer"
+width = 128
+layers = 8
+
+[students.hexconv-n-128x10]
+kind = "hexconv"
+norm = "layer"
+width = 128
+layers = 10
+
+# The hex transformer: 96 to 128 wide, 4 to 6 blocks (4 heads), one with a wider feed-forward.
+[students.hexformer-96x4]
+kind = "hexformer"
+width = 96
+layers = 4
+
+[students.hexformer-96x4-ff4]
+kind = "hexformer"
+width = 96
+layers = 4
+feed_forward = 4
+
+[students.hexformer-96x6]
+kind = "hexformer"
+width = 96
+layers = 6
+
+[students.hexformer-128x4]
+kind = "hexformer"
+width = 128
+layers = 4
+
+[students.hexformer-128x6]
+kind = "hexformer"
+width = 128
+layers = 6
+
+# The entity network, wider: 192 to 256, 2 to 4 blocks (4 heads), one with a wider feed-forward.
+[students.entity-192x2]
+kind = "entity"
+width = 192
+layers = 2
+
+[students.entity-192x2-ff4]
+kind = "entity"
+width = 192
+layers = 2
+feed_forward = 4
+
+[students.entity-192x4]
+kind = "entity"
+width = 192
+layers = 4
+
+[students.entity-256x2]
+kind = "entity"
+width = 256
+layers = 2
+
+[students.entity-256x4]
+kind = "entity"
+width = 256
+layers = 4

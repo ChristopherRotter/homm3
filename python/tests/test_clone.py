@@ -145,6 +145,9 @@ def test_a_clone_bench_trains_saves_starts_a_run_and_plays_its_ladder(tmp_path) 
     first, last = evaluations[0]["students"]["mlp"], evaluations[-1]["students"]["mlp"]
     assert last["cross_entropy"]["entry"] < first["cross_entropy"]["entry"]
     assert last["agreement"] > first["agreement"] and last["seconds"] > 0
+    # Its cost (E25 T24): the µs a sample-pass in the evaluation and the table.
+    assert last["us_per_sample_pass"] > 0 and last["peak_memory_mb"] is None
+    assert any("µs" in line for line in lines)
     assert sum(evaluations[-1]["categories"].values()) == evaluations[-1]["heldout"] == 150
     stats = report["teacher"]["stats"]
     assert stats["lost"] == 0 and stats["decisions"] > 600 and stats["episodes"] > 0

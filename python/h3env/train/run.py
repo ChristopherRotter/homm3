@@ -68,6 +68,8 @@ IDENTITY = (
 
 #: The networks `[network] kind` names (`policy.build`).
 NETWORK_KINDS = ("mlp", "entity", "hexconv", "hexformer")
+#: The hex convolution network's normalisations (`[network] norm`, E25 T24).
+NORMS = ("none", "layer")
 
 
 def _in(table: str) -> dict:
@@ -107,6 +109,12 @@ class Config:
     layers: int = field(default=2, metadata=_in("network"))
     #: The attention heads of the entity network and the hex transformer.
     heads: int = field(default=4, metadata=_in("network"))
+    #: The hex convolution network's normalisation (E25 T24): "none" (every network before T24)
+    #: or "layer", a pre-activation LayerNorm over each field cell's channels (`hexnet`).
+    norm: str = field(default="none", metadata=_in("network"))
+    #: The feed-forward layer of the entity network's and the hex transformer's blocks, in
+    #: multiples of `width` (E25 T24; 2 before).
+    feed_forward: int = field(default=2, metadata=_in("network"))
     #: The battlefield's size the hex networks draw on (the base ruleset's, `[battle]
     #: field_width`, `field_height`).
     field_width: int = field(default=17, metadata=_in("network"))
@@ -373,6 +381,12 @@ def resolve(config: Config) -> Config:
         problems.append('`preview` is the MLP\'s (`kind = "mlp"`)')
     elif c.order and c.kind != "mlp":
         problems.append('`order` is the MLP\'s (`kind = "mlp"`)')
+    elif c.norm != "none" and c.kind != "hexconv":
+        problems.append('`norm` is the hex convolution network\'s (`kind = "hexconv"`)')
+    if c.norm not in NORMS:
+        problems.append(f"`norm` is one of {', '.join(NORMS)}")
+    if c.feed_forward <= 0:
+        problems.append("`feed_forward` must be positive")
     if min(c.embed, c.width, c.layers, c.heads) <= 0 or c.width % c.heads:
         problems.append(
             "`embed`, `width`, `layers` and `heads` are positive, `width` a multiple of `heads`"
