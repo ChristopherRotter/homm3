@@ -6,9 +6,10 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
-Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entry below is round 7's last (rounds 2 to 6, T7a and T7b1 are done, `E09-log.md`); each later round's entries are
-written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
+Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
+(the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2, T8a2, then T8b (rounds 2
+to 6, T7a, T7b1 and T8a1 are done, `E09-log.md`); each later round's entries are written when it comes
+(the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E09 T7b2 — the towns' draws and the store** (`cross-lane`)
@@ -26,21 +27,31 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
   rehashed (skill `homm3-rerecord-replays`).
 - **Acceptance:** as T7a's; the determinism replays green; the census's 125 maps refused for a
   main town's hero build or are refused by a typed check.
-- **Notes:** each town's owner and object come with T8a (the static map's town list, towns
-  ownable); the order of T8a's parts and T7b2 is settled at round 8's start (T8a may be cut so its
-  kind, town list and owners come first).
-- **Depends on:** T7b1 (its pull request merged) and T8a's town list and owners. **Status:**
-  waiting; its cut confirmed at its start.
+- **Notes:** each town's owner and object come with T8a1 (the static map's town list, towns
+  ownable, the adventure's garrison and radius inputs, which the game fills with empty garrisons and
+  the flag radius until this task: `TWN-STUB-5`, lifted here).
+- **Depends on:** T8a1 (its pull request merged). **Status:** waiting; its cut confirmed at its
+  start.
+
+**E09 T8a2 — the step onto a town** (`cross-lane`)
+
+- **Scope:** design §9 and §11 (TWN-VIS-001, -002, TWN-CAP-001, -002): the step's three cases by
+  the owner's team, the garrison and the visitor (entered; defended: visited from the tile before,
+  its siege T8b's; undefended: entered and captured), the visitor on the entrance, the reach and the
+  legal moves (a defended entrance as a monster's tile; measured against `master`, skill
+  `homm3-bench-regression`), `AdventureState::capture_town` and the game's composition
+  (`h3_towns::reveal`, the Capitol's limit, `TownCaptured`, `TownChanged`); `TWN-STUB-4` lifted.
+- **Depends on:** T7b2 (the garrisons and the store). **Status:** waiting; its cut confirmed at its
+  start.
 
 ## Inbox
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
-- 2026-11-04 (the adventure lane, E08 T94b, `adventure/e08-t94b`; **for T8a's versions and the
-  towns' external dwellings' growth**): T94b took the adventure state hash v20 (the dwellings'
-  week block and the Refugee Camps' block), so T8a's bump in your design §19 is v21 (and the 39
-  adventure replays rehashed again). A dwelling's counts and guards as they stand:
+- 2026-11-04 (the adventure lane, E08 T94b, `adventure/e08-t94b`; **for the towns' external
+  dwellings' growth**; its versions half done by E09 T8a1, v21): A dwelling's counts and guards as
+  they stand:
   `AdventureState::dwelling_counts` and `dwelling_guards` (by object index; none of a block while
   every dwelling is as its week began); the week's refill of every dwelling is the first step of
   `AdventureState::start_week`, before the weekly objects and the camps, reading no week's or

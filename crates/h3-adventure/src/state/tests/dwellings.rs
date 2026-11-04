@@ -214,7 +214,7 @@ pub(super) fn build_with(
     draws: &mut Rng,
 ) -> Result<AdventureState, SetupError> {
     let mut state = AdventureState::new(&rules.0, &rules.1, setup, draws)?;
-    state.start_game(&rules.0, &rules.1, &[]);
+    state.start_game(&rules.0, &rules.1, &[], &[]);
     Ok(state)
 }
 

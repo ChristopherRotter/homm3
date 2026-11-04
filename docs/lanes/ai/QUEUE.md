@@ -7,22 +7,51 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** closed 2026-10-20, **E06** closed 2026-10-27 (`t7-1` the battle AI v1 and the baseline); their tasks' history and E06's closing numbers in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`): increments 1
-to 5 closed (`E25-archive.md`); **`e25-clone-1` #2 the current best** (AI-Q15, T18: 0.454
-against both system actors, the neutral set +0.282). **Increment 6, better imitation** (refined
-at T18, 2026-11-03, AI-Q15; its decisions in the epic file):
+to 6 closed (`E25-archive.md`); **`e25-imitate-1` #2 the current best** (AI-Q16, T23: 0.458 and
+0.462 against the fair and the all-seeing system actor, the neutral set +0.287). **Increment 7, a
+network that reads the battle's structure** (refined at T23, 2026-11-04, AI-Q16; its decisions in
+the epic file; the code facts below from the refinement's survey, re-check them when a task starts):
 
-- **T22 The A/B.** *Scope:* on the user's machine, `e25-neutral.toml`'s mix at 20 M and seed 1:
-  `e25-clone-2` from T20's student and `e25-imitate-1` from it with T21's loss (the arms fixed
-  by T19 to T21's reads when prepared), against `e25-clone-1` (T17, the control); the records
-  committed and read, both system columns; head to head against `e25-clone-1` #2; T19's tool
-  scores both arms against the teacher. T20's student is `runs/clone-2/students/mlp.pt` on the
-  user's machine; the arms `configs/e25-neutral.toml` and `configs/e25-imitate.toml` (T21's
-  proposal: weight 0.5, horizon 10 M; the commands in its header). *Depends on:* T20 (done
-  2026-11-03, `E25-log.md` T20: agreement 0.576, the student 0.411 against both system actors,
-  +0.251), T21 (done 2026-11-03, `E25-log.md` T21: the loss and its CPU check). *Status:* next
-  (the user's machine; the weight and horizon fixed with the user when prepared).
-- **T23 The checkpoint.** *Scope:* T22 read with the user: the current best, increment 7 among
-  the epic's candidates. *Depends on:* T22. *Status:* waiting.
+- **T24 The kinds and the bench, built properly.** *Scope:* the sandbox's CPU. `[network] norm`
+  for `hexconv` (a pre-activation LayerNorm over the channels on the field's cells; the branch
+  still initialised at 0; today none, `h3env/train/hexnet.py`'s residual blocks); a feed-forward
+  multiplier for the transformer blocks (`entity`, `hexformer`: fixed at 2 × the width); a
+  learning-rate `warmup` and AdamW's `weight_decay`, for the bench and per student beside `lr`
+  (`clone.py`: plain Adam, the rate only falling); the bench's report and table gain each
+  student's µs a sample-pass and peak CUDA memory; `cudnn.benchmark` on CUDA. The defaults keep
+  every saved network and T16's and T20's configs as they are (tested); `network --time`'s CPU
+  table of T26's grid with the parameter counts. *Acceptance:* the Python tests and the scoped
+  verify pass; a CPU clone of about 65 k samples with the new students runs. *Depends on:* T23
+  (done 2026-11-04). *Status:* next.
+- **T25 The heads read the geometry.** *Scope:* the sandbox's CPU. A melee entry's attack
+  position k scores the hex the attack is made from (today `Pointed`'s heads read the target
+  stack and the context only, `entity.py`): a port of `Field::attack_positions`
+  (`h3-battle`'s `geometry.rs`, as `h3-sim`'s `action.rs` calls it) tested against the env's legal attack entries on real battles;
+  `[network] mask_input` for every kind, the MLP's included (the legal moves and attack hexes as
+  hex planes or inputs), passed through `encode` in PPO, the bench and `evaluate`; `order` for the
+  structured kinds. No encoding moves (decision 4, the user). *Acceptance:* the tests pass, older
+  network files load and play bit for bit; CPU smokes of a PPO run and a clone per kind; the cost
+  change on the CPU. *Depends on:* T24. *Status:* waiting.
+- **T26 The structure sweep.** *Scope:* the user's GPU, one run of about 3 to 5 hours:
+  `configs/distill/e25-structure.toml`, T16's bench with about 8 students (the MLP 2 × 512, the
+  MLP with the mask, three structured candidates at two learning rates each, within the cost
+  cap), `network --time --device cuda` for the grid; its record `records/distill/structure-1.json`
+  uploaded. *Acceptance:* a read ranking agreement (overall, moves, melee) against the GPU's µs,
+  decision 5's first gate applied (0.60 at 4 M). *Depends on:* T25. *Status:* waiting.
+- **T27 The long clone.** *Scope:* the user's GPU: T20's bench (`configs/distill/e25-clone-2.toml`,
+  16 M samples) with T26's best student (the best two if within 0.02); its ladder against both
+  system actors and on the neutral set; T19's tool per category; the student uploaded (under
+  30 MB). *Acceptance:* the agreement beside T20's (0.576; moves 0.378, melee 0.401), the ladder
+  beside 0.411 ± 0.018, decision 5's second gate applied. *Depends on:* T26 (its gate passed).
+  *Status:* waiting.
+- **T28 The A/B.** *Scope:* a CPU smoke of `configs/e25-imitate-structure.toml` in the sandbox
+  (the candidate's network, `[ppo] minibatches` for its memory, the imitation loss on that kind),
+  then the user's GPU: `--init-from` T27's student, 20 M samples, seed 1. *Acceptance:* the final
+  ladder, the head-to-head against `e25-imitate-1` #2, the samples a second, T19's tool after RL.
+  *Depends on:* T27 (its gate passed). *Status:* waiting.
+- **T29 The checkpoint.** *Scope:* with the user: structure against the MLP (the clone, RL and
+  the cost), the current best, increment 8 (whether the evidence asks for an encoding change).
+  *Depends on:* T28, or the gate that stopped the increment. *Status:* waiting.
 
 ## Inbox
 

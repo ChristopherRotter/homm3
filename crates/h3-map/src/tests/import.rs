@@ -407,6 +407,9 @@ fn the_typed_classes_import_as_their_object_types() {
     ] {
         cases.push((class, 0, format!("base:{key}")));
     }
+    // E09 T8a1: a town (here without a town's body, never the reader's: a neutral town's
+    // defaults); the random town (77) below.
+    cases.push((98, 0, "base:town".into()));
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
@@ -454,6 +457,21 @@ fn the_typed_classes_import_as_their_object_types() {
         .count();
     assert_eq!(cases.len(), typed);
     assert_eq!(part.object_types().len() - typed, 82 + 2);
+    let town = import(&typed_map(98, 0, Body::None), &SOD).unwrap();
+    assert_eq!(
+        (town.map.objects[0].owner, &town.map.objects[0].holds),
+        (
+            None,
+            &Holds::Town {
+                formation: Formation::Loose
+            }
+        )
+    );
+    let random = import(&typed_map(77, 3, Body::None), &SOD).unwrap();
+    assert_eq!(
+        random.map.objects[0].object_type,
+        part.object_type_by_key("base:town")
+    );
     // A typed class ignores the subclass where it has one type.
     let fire = import(&typed_map(12, 7, Body::None), &SOD).unwrap();
     assert_eq!(

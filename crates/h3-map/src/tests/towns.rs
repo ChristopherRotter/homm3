@@ -1,9 +1,10 @@
 //! Tests of the import of the towns, the players' starts, the random heroes, the heroes moved onto
 //! a town's entrance and the hero pool's inputs (E09 T7a1, map import v16; design note
-//! `docs/epics/E09-design.md` §7).
+//! `docs/epics/E09-design.md` §7); since E09 T8a1 (map import v18, §8) the towns' type, owners and
+//! formations.
 
-use h3_adventure::Pos as TilePos;
-use h3_content::{FactionId, HeroTypeId};
+use h3_adventure::{Holds, Pos as TilePos, TileMask};
+use h3_content::{FactionId, Formation, HeroTypeId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     BuildingsSetup, FactionChoice, FactionSet, GameRuleset, GameSetup, GameSetupError,
@@ -92,6 +93,56 @@ fn faction(rules: &GameRuleset, key: &str) -> FactionId {
 
 fn details(m: &mut RawMap) -> &mut PlayerDetails {
     m.players[0].details.as_mut().unwrap()
+}
+
+// covers: ADV-OBJ-002, ADV-OWN-002
+#[test]
+fn a_town_is_typed_with_its_owner_and_formation() {
+    // E09 T8a1: the classes 98 and 77 the type `town`, the template's footprint (the entrance
+    // blocked and visited), the owner the player of its colour (none for neutral), the garrison's
+    // formation the map's byte (0 loose, any other tight).
+    let mut m = town_map(Version::Sod);
+    let tight = TownBody {
+        owner: 0xFF,
+        alignment: 0xFF,
+        formation: 2,
+        ..TownBody::default()
+    };
+    m.objects.push(object(6, 7, 1, Body::Town(Box::new(tight))));
+    let setup = imported(&m);
+    let town = SOD.adventure().object_type_by_key("base:town");
+    let objects = &setup.map.objects;
+    assert!(town.is_some());
+    assert_eq!(
+        (objects[0].object_type, objects[1].object_type),
+        (town, town)
+    );
+    assert_eq!(objects[0].visitable, TileMask::from_bits(1 << 2));
+    assert_eq!(
+        objects[0].blocked,
+        TileMask::from_bits(0b1_1111 | 0b1110 << 8)
+    );
+    assert_eq!(objects[0].owner, Some(PlayerId::new(0)));
+    assert_eq!(
+        objects[0].holds,
+        Holds::Town {
+            formation: Formation::Loose
+        }
+    );
+    assert_eq!(objects[1].owner, None);
+    assert_eq!(
+        objects[1].holds,
+        Holds::Town {
+            formation: Formation::Tight
+        }
+    );
+    // The game builds them: one record per town of the static map, red's main town its own.
+    let rules = &*SOD;
+    let state = h3_game::GameState::new(rules, &setup, 3).unwrap();
+    assert_eq!(state.adventure().map().towns(), [0, 1]);
+    // A town of a colour nobody plays is refused, as every ownable object's.
+    m.objects[1] = object(6, 7, 1, town_body(3));
+    assert_eq!(import(&m, &SOD), Err(ImportError::ObjectOwner(1)));
 }
 
 // covers: TWN-SET-001
@@ -520,7 +571,7 @@ fn a_random_hero_is_a_placed_hero_without_its_type() {
     assert_eq!(hero.hero_type, None);
     assert_eq!(hero.owner, PlayerId::new(0));
     assert_eq!(hero.pos, TilePos::new(1, 1, 0));
-    assert_eq!(hero.formation, h3_content::Formation::Tight);
+    assert_eq!(hero.formation, Formation::Tight);
     assert_eq!(hero.details.experience, Some(1234));
     assert!(matches!(&hero.army, h3_game::HeroArmy::Custom(stacks) if stacks.len() == 1));
     // The build draws its type (TWN-SET-008, E09 T7b1): one the map allows, taken by its owner.

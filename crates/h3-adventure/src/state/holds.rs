@@ -4,7 +4,7 @@
 
 use alloc::collections::BTreeSet;
 
-use h3_content::{ArtifactTypeId, CreatureFlag, Ruleset, SpellCategory, SpellId};
+use h3_content::{ArtifactTypeId, CreatureFlag, Formation, Ruleset, SpellCategory, SpellId};
 use h3_heroes::{ArtifactInstance, ScholarGift, validate_artifact};
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -19,7 +19,8 @@ use crate::setup::{EventSetup, Holds, RewardRecord};
 /// ([`check_record`]); since E08 T83a an abandoned mine at least one resource of the ruleset, in
 /// the core's order without repeats; since E08 T93b a random dwelling at least one faction with a
 /// `[[random_dwelling]]` table, in the core's order without repeats, and levels within 1 to
-/// [`DWELLING_LEVELS`], the lowest not above the highest; every other kind nothing.
+/// [`DWELLING_LEVELS`], the lowest not above the highest; since E09 T8a1 a town its garrison's
+/// formation; every other kind nothing.
 pub(super) fn check_holds(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -69,6 +70,7 @@ pub(super) fn check_holds(
                 && low <= high
                 && usize::from(high) <= DWELLING_LEVELS
         }
+        (Some(ObjectKind::Town), Holds::Town { .. }) => true,
         (
             Some(
                 ObjectKind::Artifact { classes: None }
@@ -79,7 +81,8 @@ pub(super) fn check_holds(
                 | ObjectKind::PandoraBox
                 | ObjectKind::Event
                 | ObjectKind::AbandonedMine { .. }
-                | ObjectKind::RandomDwelling,
+                | ObjectKind::RandomDwelling
+                | ObjectKind::Town,
             ),
             _,
         ) => false,
@@ -137,7 +140,8 @@ impl CanonicalHash for Holds {
     /// colours, the computer and removal flags; since adventure state hash v17, E08 T83a, 7 an
     /// abandoned mine's resources as length and handles; since E08 T93b, 8 a random dwelling's
     /// factions as length and handles, then its lowest and highest level: since E08 T94a no
-    /// built object holds it, a random dwelling holding nothing once it resolved).
+    /// built object holds it, a random dwelling holding nothing once it resolved; since adventure
+    /// state hash v21, E09 T8a1, 9 a town's formation, 0 loose, 1 tight).
     fn hash_into(&self, h: &mut StateHasher) {
         match self {
             Self::Nothing => h.write_u8(0),
@@ -195,6 +199,10 @@ impl CanonicalHash for Holds {
                 factions.hash_into(h);
                 h.write_u8(levels.0);
                 h.write_u8(levels.1);
+            }
+            Self::Town { formation } => {
+                h.write_u8(9);
+                h.write_bool(*formation == Formation::Tight);
             }
         }
     }

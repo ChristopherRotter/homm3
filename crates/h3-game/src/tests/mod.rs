@@ -635,6 +635,8 @@ fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                     ],
                 },
             ),
+            // E09 T8a1: a town.
+            entered("t:town", ObjectKindDef::Town),
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,

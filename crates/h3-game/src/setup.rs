@@ -214,6 +214,9 @@ pub enum GameSetupError {
     /// The timed event at this index names a player twice, out of order or not of the game,
     /// a resource twice, not the ruleset's or of 0, or a first day of 0 (GAM-CAL-004, E08 T83a).
     Event(usize),
+    /// The setup's towns do not give one per town of the static map, the objects whose type is of
+    /// kind `Town` (E09 T8a1, the town epic's design note §13); their number.
+    TownCount(usize),
     /// The town's faction is fixed and has no town record in the town part (TWN-SET-002, E09
     /// T7a2).
     TownFaction(TownId),
@@ -225,7 +228,8 @@ pub enum GameSetupError {
     /// the random-hero flag, a random hero of its own or a random town aligned to its colour
     /// (TWN-SET-001, E09 T7a2).
     Choice(PlayerId),
-    /// The player's main town is not one of the setup's towns (TWN-SET-001, E09 T7a2).
+    /// The player's main town is not one of the setup's towns (TWN-SET-001, E09 T7a2), or since
+    /// E09 T8a1 a town the player does not own at the start (another player's or neutral).
     MainTown(PlayerId),
     /// The player's pick is not in its offer ([`GameSetup::offer`]; TWN-SET-006, E09 T7a2).
     Pick(PlayerId),
@@ -272,6 +276,7 @@ impl fmt::Display for GameSetupError {
             }
             Self::Events(n) => write!(f, "{n} timed events are too many"),
             Self::Event(event) => write!(f, "timed event {event} is invalid"),
+            Self::TownCount(n) => write!(f, "{n} towns do not give one per town of the map"),
             Self::TownFaction(town) => {
                 write!(f, "town {}'s faction has no town record", town.raw())
             }
@@ -284,7 +289,7 @@ impl fmt::Display for GameSetupError {
             Self::MainTown(player) => {
                 write!(
                     f,
-                    "player {}'s main town is not the setup's",
+                    "player {}'s main town is not a town of its own",
                     player.index()
                 )
             }
@@ -309,9 +314,10 @@ impl core::error::Error for GameSetupError {}
 impl GameSetup {
     /// Checks the setup: the game's part (a difficulty the ruleset has, players in colour order
     /// within the ruleset's players, banned skills, then spells and artifacts of the ruleset (E08
-    /// T29, T61b), the timed events (E08 T83a), the towns and the players' starts (E09 T7a2: a
-    /// fixed town's faction with a town record, a random town's alignment to a player's colour,
-    /// each player's faction choice, main town, pick from its offer and a pick of no earlier
+    /// T29, T61b), the timed events (E08 T83a), the towns and the players' starts (E09 T7a2: since
+    /// E09 T8a1 one town record per town of the static map, then a fixed town's faction with a
+    /// town record, a random town's alignment to a player's colour, each player's faction choice,
+    /// main town (since E09 T8a1 one it owns), pick from its offer and a pick of no earlier
     /// player, a random hero's owner), no main town's hero to draw (E09 T7a1: `TWN-STUB-3`), the
     /// placed heroes' known hero types, a free type for each random hero's draw (E09 T7b1,
     /// TWN-SET-007), starting armies that can be drawn, the heroes' details by the hero model,
@@ -452,6 +458,10 @@ impl GameSetup {
                     human: player.human,
                 })
                 .collect(),
+            // E09 T8a1: one garrison per town, by `TownId` (the setup's towns are the static
+            // map's, `TownCount`).
+            // stub: TWN-STUB-5 (empty garrisons until E09 T7b2 resolves the towns' records)
+            garrisons: vec![Vec::new(); self.towns.len()],
         };
         Ok((setup, details, pool))
     }

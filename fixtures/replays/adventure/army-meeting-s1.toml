@@ -18,9 +18,9 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x980ffc97bed359b5",
-    "0x1fd7a35703ac8501",
-    "0x5494d31e4a54da56",
+    "0x62fd2f72f34fb245",
+    "0x1bddc3fb5ac4eb81",
+    "0xa9efa7688f611f7e",
 ]
 
 [replay]
@@ -44,21 +44,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x962e87e7a01056f6"
-adventure_ruleset_hash = "0xe35bf409c05f50b1"
+adventure_ruleset_hash = "0xf7865aeae57de535"
 town_ruleset_hash = "0xe9dc612ed812d825"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 23
-adventure_state_hash_version = 20
+adventure_state_hash_version = 21
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-army-12.h3m"
 hash = "0x40320993e64e5b23"
-import_version = 17
+import_version = 18
 
 [result]
 day = 2
-final_hash = "0x68fbe7ff57d2f0d6"
+final_hash = "0xc4db4d2cfbd6295d"

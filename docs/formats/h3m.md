@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b; E09 T7a1; `MAP_IMPORT_VERSION` 17)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b; E09 T7a1, T8a1; `MAP_IMPORT_VERSION` 18)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -400,7 +400,10 @@ table `FACTIONS`), class 77 random with SoD's alignment (`0xFF` none, 0 to 7 a c
 `ImportError::Alignment`, `TWN-QUIRK-1`), the buildings' slots as stored, the garrison (a random
 stack's code `GarrisonCreature::Random`; a count of 0 an empty slot), the name (Windows-1252),
 the events (the first day + 1, as the timed events'); the adventure's town object is unchanged
-(the kind `Town` is E09 T8a). A random hero (class 70) is a placed hero without a type
+(the kind `Town` is E09 T8a; since E09 T8a1, map import v18, both classes take the type
+`base:town` whatever the subclass, with the body's owner byte as the object's owner, `0xFF`
+neutral and a colour nobody plays refused as every ownable object's, `ImportError::ObjectOwner`,
+and the formation byte as `Holds::Town`, 0 loose, any other tight). A random hero (class 70) is a placed hero without a type
 (`hero_type: None`; the map's custom-hero entries are not applied to it; an AB spell byte naming a
 spell gives that spell alone). A placed hero (not a prisoner) right of a town's entrance stands on
 the entrance (TWN-SET-010; survey `E09-towns.md` §4.6); a town's entrance is blocked and visitable,
@@ -436,6 +439,14 @@ E09 T7b1's census (the same import): with the hero pool and the random heroes' d
 maps build whole (the 22 refused for a random hero now build; no map refused by
 `GameSetupError::NoFreeHero`); 125 are still refused for a main town's hero (`TWN-STUB-3`, E09
 T7b2).
+
+E09 T8a1's census (import v18): the 1 468 towns of the 160 maps are typed (889 owned at load, 3
+with a tight formation); 965 objects are owned at the start (60 mines, 1 Shipyard, 15 dwellings,
+889 towns). The game's new checks (`GameSetupError::TownCount`, `MainTown`'s owner half: every
+main town is its player's own) refuse none of the 156 maps that import; the outcomes are T7b1's
+(31 build whole, 125 refused by `TWN-STUB-3`, 4 not supported for an ownable object entered from
+water). The static layer's game in the census gives one town record per town (a random town of no
+alignment).
 
 ## The subset we write (E04a T2)
 
