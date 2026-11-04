@@ -4779,7 +4779,9 @@ fn check_battle_end(
 /// winner's level-up is left open, its guards beaten meanwhile; else it stays, its guards'
 /// survivors by slot each of its stack's creature and at most its count (none after a draw). An
 /// event held on the tile fires after the guard's visit ([`records`]). No treasury changes
-/// otherwise; no side surrenders to them or pays them.
+/// otherwise; no side surrenders to them or pays them. A mine's guards (E08 T86b1:
+/// [`check_mine_battle_end`]) and a dwelling's (E08 T95a2: [`check_dwelling_battle_end`]) have
+/// their own.
 fn check_unowned_battle_end(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -4798,17 +4800,21 @@ fn check_unowned_battle_end(
         .or(started)
         .unwrap();
     let (adventure, map) = (before.adventure(), before.adventure().map());
-    // E08 T86b1: a mine's guards ([`check_mine_battle_end`]).
-    let mine = visited_at(before, tile).filter(|&i| {
+    // E08 T86b1: a mine's guards ([`check_mine_battle_end`]); E08 T95a2: a dwelling's
+    // ([`check_dwelling_battle_end`]).
+    let guarded = visited_at(before, tile).and_then(|i| {
         let ty = adventure.object(i).and_then(|o| o.object_type);
-        matches!(
-            ty.and_then(|ty| rules.adventure().object_type(ty))
-                .map(|t| &t.kind),
-            Some(ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. })
-        )
+        let kind = ty.and_then(|ty| rules.adventure().object_type(ty));
+        kind.map(|t| (i, &t.kind))
     });
-    if let Some(index) = mine {
-        return check_mine_battle_end(rules, (before, after), events, (visitor, index, result));
+    match guarded {
+        Some((index, ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. })) => {
+            return check_mine_battle_end(rules, (before, after), events, (visitor, index, result));
+        }
+        Some((index, ObjectKind::Dwelling { .. })) => {
+            return check_dwelling_battle_end((before, after), events, (visitor, index, result));
+        }
+        _ => {}
     }
     // E08 T86b1: a found index may be a monster's added in play (a creature month's), read
     // through `object` (`docs/lanes/adventure/TRAPS.md`, objects added in play).
@@ -5026,6 +5032,99 @@ fn check_mine_battle_end(
         )
     });
     prop_assert!(!removed, "{:?}", events);
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        prop_assert_eq!(before.treasury(player), after.treasury(player));
+    }
+    Ok(())
+}
+
+/// The end of a battle against a dwelling's guards (E08 T95a2; ADV-DWL-004, GAM-BAT-001 amended,
+/// increment 10's design note §7 step 2, §12), a neutral dwelling's or another player's (the
+/// system played its guards, unsplit, whoever its owner): its creatures' counts are kept, no
+/// object leaves the map, no treasury changes, and nothing tells its guards or its emptiness. Won,
+/// the guards are gone; after the winner's levels (GAM-DEC-007) the visit goes on for a visitor
+/// still on the map: the dwelling is flagged for the visitor's owner, told as its flag, then asks
+/// that player's hero the hire question (its kind: [`check_decisions`]), in this command unless the
+/// winner's level-up is left open, its owner kept meanwhile. Else its owner is kept, nothing is
+/// flagged or asked, and its guards are survivors, each of a stack it had by slot and creature
+/// with at most its count, some unless after a draw (none).
+fn check_dwelling_battle_end(
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    (visitor, index, result): (HeroId, usize, BattleResult),
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    let owner = b.hero(visitor).unwrap().owner;
+    // A found index read through `object` (`docs/lanes/adventure/TRAPS.md`, objects added in
+    // play).
+    let object = b.object(index).unwrap();
+    let (object_type, anchor) = (object.object_type.unwrap(), object.anchor);
+    let (had, left) = (b.dwelling_guards(index), a.dwelling_guards(index));
+    prop_assert_eq!(a.dwelling_counts(index), b.dwelling_counts(index));
+    let flagged = events.iter().position(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectFlagged {
+                    object_type: t,
+                    anchor: at,
+                    ..
+                },
+                ..
+            }) if (*t, *at) == (object_type, anchor)
+        )
+    });
+    let asked = events.iter().position(|e| {
+        matches!(
+            e,
+            GameEvent::OfferOpened {
+                player,
+                hero,
+                object_type: t,
+                anchor: at,
+            } if (*player, *hero, *t, *at) == (owner, visitor, object_type, anchor)
+        )
+    });
+    let told = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved { .. }
+                    | AdventureEventKind::ObjectEmpty { .. }
+                    | AdventureEventKind::GuardsChanged { .. },
+                ..
+            })
+        )
+    });
+    prop_assert!(!told, "{:?}", events);
+    if result.winner() == Some(BattleSide::Attacker) {
+        prop_assert!(left.is_empty(), "{:?} left after a win", left);
+        let levels = events
+            .iter()
+            .any(|e| matches!(e, GameEvent::LevelUpOpened { hero, .. } if *hero == visitor));
+        let rest = !levels && a.hero(visitor).is_some();
+        prop_assert_eq!(flagged.is_some(), rest, "{:?}", events);
+        prop_assert_eq!(asked.is_some(), rest, "{:?}", events);
+        prop_assert!(
+            flagged <= asked,
+            "the flag after the question: {:?}",
+            events
+        );
+        let expected = if rest { Some(owner) } else { b.owner(index) };
+        prop_assert_eq!(a.owner(index), expected);
+    } else {
+        prop_assert_eq!((flagged, asked), (None, None), "{:?}", events);
+        prop_assert_eq!(a.owner(index), b.owner(index));
+        prop_assert!(
+            left.iter().all(|s| had
+                .iter()
+                .any(|h| (h.slot, h.creature) == (s.slot, s.creature) && h.count >= s.count)),
+            "{:?} of {:?}",
+            left,
+            had
+        );
+        prop_assert_eq!(left.is_empty(), result == BattleResult::Draw, "{:?}", left);
+    }
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         prop_assert_eq!(before.treasury(player), after.treasury(player));
     }
@@ -5463,22 +5562,67 @@ fn check_decisions(
                         }
                     }
                     // E08 T95a1: a dwelling's hire question, of its kind's creatures, never
-                    // refused (no price): its visitor's own at once, else unguarded and flagged
-                    // for the visitor first (a guarded one asks nothing yet, ADV-STUB-14;
-                    // ADV-DWL-004, ADV-OWN-001).
+                    // refused (no price): its visitor's own at once, unflagged, else flagged for
+                    // the visitor first, told as its flag (ADV-DWL-004, ADV-OWN-001). E08 T95a2
+                    // (increment 10's design note §7 step 2, §12): one not its own whose guards
+                    // stand asks the guards' question instead, never refused, its owner kept and
+                    // nothing flagged: the creature of their first occupied slot and the word of
+                    // their total count; once the visitor's hero beat them, in this command's
+                    // battle after the winner's levels (GAM-DEC-007), it is flagged, then asks
+                    // the hire question.
                     ObjectKind::Dwelling { creatures, .. } => {
-                        prop_assert!(opened, "{:?}: a hire question is never refused", event);
-                        let index = object_index(before, object_type, anchor).unwrap();
-                        let was = before.adventure().owner(index);
-                        let guarded = !before.adventure().dwelling_guards(index).is_empty();
                         prop_assert!(
-                            was == Some(actor) || !guarded,
-                            "{:?} of guards standing",
+                            opened,
+                            "{:?}: a dwelling's question is never refused",
                             event
                         );
-                        prop_assert_eq!(after.adventure().owner(index), Some(actor));
-                        OfferKind::Hire {
-                            creatures: creatures.clone(),
+                        let index = object_index(before, object_type, anchor).unwrap();
+                        let (b, a) = (before.adventure(), after.adventure());
+                        let (was, guards) = (b.owner(index), b.dwelling_guards(index));
+                        let won = events.iter().any(|e| {
+                            matches!(
+                                e,
+                                GameEvent::BattleEnded { heroes, result, .. }
+                                    if heroes[BattleSide::Attacker.index()] == Some(hero)
+                                        && result.winner() == Some(BattleSide::Attacker)
+                            )
+                        });
+                        let flagged = events.iter().any(|e| {
+                            matches!(
+                                e,
+                                GameEvent::Adventure(AdventureEvent {
+                                    kind: AdventureEventKind::ObjectFlagged {
+                                        object_type: t,
+                                        anchor: at,
+                                        owner,
+                                    },
+                                    ..
+                                }) if (*t, *at, *owner) == (object_type, anchor, actor)
+                            )
+                        });
+                        if was != Some(actor) && !guards.is_empty() && !won {
+                            prop_assert!(!flagged, "{:?} flagged with guards standing", event);
+                            prop_assert_eq!(a.owner(index), was);
+                            prop_assert_eq!(a.dwelling_guards(index), guards.clone());
+                            let total = guards
+                                .iter()
+                                .fold(0, |sum: u32, s| sum.saturating_add(s.count));
+                            let words = rules.adventure().params().monsters();
+                            OfferKind::Guarded {
+                                creature: guards[0].creature,
+                                count_word: words.map_or(0, |m| m.count_word(total)),
+                            }
+                        } else {
+                            prop_assert_eq!(flagged, was != Some(actor), "{:?}", event);
+                            prop_assert_eq!(a.owner(index), Some(actor));
+                            prop_assert!(
+                                was == Some(actor) || a.dwelling_guards(index).is_empty(),
+                                "{:?} flagged with guards standing",
+                                event
+                            );
+                            OfferKind::Hire {
+                                creatures: creatures.clone(),
+                            }
                         }
                     }
                     // E08 T95a1: a Refugee Camp's, naming its week's creature while it has some
@@ -5539,13 +5683,48 @@ fn check_decisions(
                     }
                     (false, OfferKind::Pursue) => passed = Some((object_type, anchor)),
                     // E08 T21a: an accepted question of a guarded pile is its battle (its guards
-                    // stand: nobody but the visitor's owner acts while it is open). E08 T95a2: a
-                    // dwelling's guards' question too.
-                    (true, OfferKind::Pursue | OfferKind::Fight | OfferKind::Guarded { .. }) => {
+                    // stand: nobody but the visitor's owner acts while it is open).
+                    (true, OfferKind::Pursue | OfferKind::Fight) => {
                         let fought = events
                             .iter()
                             .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
                         prop_assert!(fought, "{:?} without its battle", event);
+                    }
+                    // E08 T95a2: an accepted guards' question of a dwelling is their battle
+                    // (ADV-DWL-004, GAM-BAT-001 amended; increment 10's design note §7 step 2,
+                    // §12), on the tile its visitor stands on, without a defending hero; while it
+                    // is open, unowned whoever owns the dwelling (the system plays it), its
+                    // defenders the guards as they stood, unsplit, each by slot.
+                    (true, OfferKind::Guarded { .. }) => {
+                        let tile = before.adventure().hero(open.hero).unwrap().pos;
+                        let fought = events.iter().any(|e| {
+                            matches!(
+                                e,
+                                GameEvent::BattleStarted { heroes, tile: at, .. }
+                                    if *heroes == [Some(open.hero), None] && *at == tile
+                            )
+                        });
+                        prop_assert!(fought, "{:?} without its battle", event);
+                        if let Some(battle) = after.battle(actor) {
+                            prop_assert_eq!(battle.owners(), [Some(actor), None]);
+                            prop_assert_eq!(battle.tile(), tile);
+                            let mut defending: Vec<_> = battle
+                                .state()
+                                .stacks()
+                                .iter()
+                                .filter(|s| s.side == BattleSide::Defender)
+                                .map(|s| (s.slot, s.creature, s.count))
+                                .collect();
+                            defending.sort_by_key(|&(slot, ..)| slot);
+                            let index = object_index(before, object_type, anchor).unwrap();
+                            let guards: Vec<_> = before
+                                .adventure()
+                                .dwelling_guards(index)
+                                .iter()
+                                .map(|s| (s.slot, s.creature, s.count))
+                                .collect();
+                            prop_assert_eq!(defending, guards);
+                        }
                     }
                     // E08 T62a, T62b1: a gift's price, a find's, a box's and the Pyramid's
                     // questions (their gains: `check_rewards`, E08 T64b).

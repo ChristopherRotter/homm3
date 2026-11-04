@@ -226,6 +226,8 @@ any owned object (ADR-0016 point 3); a hero does not revisit the dwelling it sta
 
 - **As built (T95a1, decision 253; *agent's calls*, change freely):** `Effect::Dwelling(creatures)` and `Effect::Camp`; a random dwelling has no visit (it is resolved when the game is built). The visit (`AdventureState::visit_dwelling`): of the visitor's team, the hire question; another's or neutral with its guards standing, nothing until T95a2 (ADV-STUB-14); else `flag`, then the question. `OfferKind::Hire { creatures }` (the game's decision hash: tag 11, then the creatures' number and each). The camp (`visit_refugee_camp`): `ObjectEmpty` at 0, else the question with its creature. Accepted (`accept_hire`): the owner is read at the acceptance (defensive only: under sequential play nothing changes the dwelling between the question and the acceptance, decision 254); at one's own dwelling each creature of `free_level` or less: `NoneToRecruit` at 0, else all of it into ADV-ARM-007's room (`monsters::add_stack`, no merge) with `CreaturesJoined` and its count set to 0, else `JoinRefused` and the count kept (a hero no longer on the map counts as no room); no dialog until T95b (ADV-STUB-15). The writer `write_dwelling(index, edit)`: a write that changes nothing keeps the block shared with the forks; one that leaves every dwelling full drops it (§6's normalisation).
 
+- **As built (T95a2, decision 254; *agent's calls*, change freely):** `OfferKind::Guarded { creature, count_word }` (`guards_question`: the first occupied slot's creature and the word of the total). `enter_dwelling` (the flag unless of the visitor's team, then the hire question) is shared by the visit, the acceptance and `give_won`. The acceptance (`fight_for_dwelling`) re-reads the dwelling: not of the acceptor's team with guards standing, their battle (§12); else the visit's rest (unreachable under sequential play, decision 254); nothing for a hero off the map.
+
 ### 8. The purchase's map side (ADV-HIR-002 in part)
 
 The hire dialog is the game's pending decision (part C §13: its command, the treasury, when it
@@ -317,6 +319,8 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
   rest (GAM-DEC-007: `AdventureOutcome::reward_after`, given by `give_won` after the winner's
   levels) flags the dwelling (§7 step 3) and asks the hire question. The experience and the rest
   of GAM-BAT-002 as any battle's.
+
+- **As built (T95a2; *agent's calls*, change freely):** `fight_for_dwelling` opens `Defender::Guards { army: dwelling_guards }` at the hero's tile through `battle_at`, no terrain set. `end_unowned_battle`'s `ObjectKind::Dwelling` arm (`end_dwelling_battle`): the survivors by slot through `write_dwelling` (`DwellingWeek::set_guards`), none when won, then `reward_after` when won; no event. `give_won`'s dwelling arm (`dwelling_won`): with the guards none and the hero on the map, `enter_dwelling` for the hero's owner; else nothing. The game's decision hash: `Guarded` tag 12, then its creature and word; `give_won`'s offer opens through the rest's `settle_outcome` unchanged.
 
 ### 13. The game (`h3-game`; GAM-DEC-008; game state hash v23)
 
