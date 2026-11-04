@@ -8,21 +8,9 @@ Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2, T8a2, then T8b (rounds 2
-to 6, T7a and T7b1 are done, `E09-log.md`); each later round's entries are written when it comes
+to 6, T7a, T7b1 and T8a1 are done, `E09-log.md`); each later round's entries are written when it comes
 (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T8a1 — the town as a map object** (`cross-lane`)
-
-- **Scope:** design §8: the kind `Town` and the base pack's type `town` (classes 77, 98; adventure
-  part v17), the import's towns typed with their owners and `Holds::Town { formation }` (map
-  import v18), the static map's town list (`town_id`, `town_object`), towns ownable, the garrison as
-  the town object's army and each town's reveal radius from the game (empty and the flag's until
-  T7b2, `TWN-STUB-5`), `validate`'s `TownCount` and `MainTown`'s owner; adventure state hash v21
-  (after E08 T94b's v20), the replays re-recorded; the entrance not entered until T8a2
-  (`TWN-STUB-4`).
-- **Depends on:** #716 (E08 T94b) merged; the branch is stacked on it. **Status:** in progress
-  (`town/e09-t8a1`).
 
 **E09 T7b2 — the towns' draws and the store** (`cross-lane`)
 

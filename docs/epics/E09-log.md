@@ -974,8 +974,10 @@ start** (the user): T8a cut in two and round 8's order changed (T8a1, T7b2, T8a2
 design note §8's cut), the branch stacked on the adventure lane's #716 (E08 T94b, adventure state
 hash v20). #716 was behind `master` (both had rehashed the 39 replays: 41 files in conflict), so
 `master` was merged into the stacked base in a commit of its own (the replays' lines taken from
-T94b with game state hash v23, the stale hashes re-recorded once by this task). The code, the
-census, the bench and the replays by one sub-agent; the review and the docs by the agent.
+T94b with game state hash v23, the stale hashes re-recorded once by this task); once #716 merged
+(its own merge of `master` the same code), the branch was rebased onto `master` at 990e07e and the
+re-recorded replays kept. The code, the census, the bench and the replays by one sub-agent; the
+review and the docs by the agent.
 
 - **`h3-adventure`:** `ObjectKind::Town` and `ObjectKindDef::Town` (ownable, no parameter; the
   part's hash tag 33), `Holds::Town { formation }` (the state hash's tag 9). `StaticMap::towns`
