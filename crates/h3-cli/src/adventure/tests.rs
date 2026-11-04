@@ -123,6 +123,20 @@ fn commands_round_trip_through_their_text() {
             answer(Answer::University(UniversityAnswer::Leave)),
             "0 answer university leave",
         ),
+        // Format v10 (E08 T95b): a hire dialog's answers.
+        (
+            PlayerId::new(1),
+            answer(Answer::Hire(HireAnswer::Buy {
+                creature: CreatureTypeId::from_raw(116),
+                amount: 4_000_000,
+            })),
+            "1 answer hire buy 116 4000000",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Hire(HireAnswer::Close)),
+            "0 answer hire close",
+        ),
         (PlayerId::new(0), answer(Answer::Close), "0 answer close"),
         (
             PlayerId::new(7),
@@ -284,6 +298,16 @@ fn commands_round_trip_through_their_text() {
         "0 answer university buy 256",
         "0 answer university buy 1 now",
         "0 answer university stay",
+        "0 answer hire",
+        "0 answer hire buy",
+        "0 answer hire buy 2",
+        "0 answer hire buy x 3",
+        "0 answer hire buy 70000 3",
+        "0 answer hire buy 2 x",
+        "0 answer hire buy 2 -1",
+        "0 answer hire buy 2 3 now",
+        "0 answer hire close now",
+        "0 answer hire leave",
         "0 answer close now",
         "0 answer shrug",
         "0 move",
@@ -426,7 +450,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     };
     let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
     assert_eq!(replay.difficulty, 0);
-    assert!(text.contains("format = 9\n"), "{text}");
+    assert!(text.contains("format = 10\n"), "{text}");
     assert!(text.contains("difficulty = 0\n"), "{text}");
     let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
     assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
@@ -455,7 +479,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     // A v1 file: no difficulty, refused by its version before its map is read.
     let v1 = text
-        .replacen("format = 9", "format = 1", 1)
+        .replacen("format = 10", "format = 1", 1)
         .replacen("difficulty = 0\n", "", 1);
     assert_eq!(
         parse_replay(&v1).unwrap().difficulty,
@@ -472,7 +496,10 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     // A later file without its difficulty is malformed, not a game at normal difficulty.
     let e = verify(&text.replacen("difficulty = 0\n", "", 1)).unwrap_err();
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
-    assert!(e.to_string().contains("format 9 needs a difficulty"), "{e}");
+    assert!(
+        e.to_string().contains("format 10 needs a difficulty"),
+        "{e}"
+    );
     // A v8 file has no town part's hash (format v9, E09 T5a2): it reads, and its version refuses
     // it; a v9 file without it is refused by the hash.
     let line = text
@@ -481,7 +508,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
         .unwrap();
     let townless = text.replacen(&format!("{line}\n"), "", 1);
     assert_eq!(parse_replay(&townless).unwrap().header.town_ruleset_hash, 0);
-    let e = verify(&townless.replacen("format = 9", "format = 8", 1)).unwrap_err();
+    let e = verify(&townless.replacen("format = 10", "format = 8", 1)).unwrap_err();
     assert!(
         matches!(
             e,
@@ -508,7 +535,20 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
         Actor::Player(PlayerId::new(0)),
         answer(Answer::University(UniversityAnswer::Buy(2))),
     ));
+    answered.commands.push((
+        Actor::Player(PlayerId::new(0)),
+        answer(Answer::Hire(HireAnswer::Buy {
+            creature: CreatureTypeId::from_raw(3),
+            amount: 7,
+        })),
+    ));
+    answered.commands.push((
+        Actor::Player(PlayerId::new(0)),
+        answer(Answer::Hire(HireAnswer::Close)),
+    ));
     let text = replay_to_toml(&answered).unwrap();
+    assert!(text.contains("\"0 answer hire buy 3 7\""), "{text}");
+    assert!(text.contains("\"0 answer hire close\""), "{text}");
     assert!(text.contains("\"1 answer offer accept\""), "{text}");
     assert_eq!(parse_replay(&text).unwrap(), answered);
     // A difficulty the rules do not have is the setup's error.
