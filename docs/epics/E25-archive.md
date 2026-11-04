@@ -142,3 +142,32 @@ heroes, +0.8 % Ir per decision) becomes the AI lane's system actor, may train an
 | T16 | The cloning bench: the system actor's choice as an encoded action (C ABI v37), the fair actor's choices cloned into a run's network, its agreement and ladder | done 2026-11-02 (`E25-log.md` T16: 4 M samples, agreement 0.531; the clone 0.396 against the fair actor, the neutral set +0.244) |
 | T17 | The A/B: the neutral kinds back from scratch against the same from T16's clone | done 2026-11-03 (`E25-log.md` T17: `e25-clone-1` #2 0.454 against both system actors, the neutral set +0.282; the control `e25-neutral-1` 0.411, +0.269) |
 | T18 | The checkpoint: T17 read, the current best, increment 6 | done 2026-11-03 (`E25-log.md` T18, AI-Q15: `e25-clone-1` #2 the current best, 0.564 head to head against `e25-sharp-1` #2; increment 6 better imitation) |
+
+## Increment 6 (closed 2026-11-04)
+
+**Increment 6: better imitation** (the user at T18, 2026-11-03, AI-Q15). T17's warm start
+by cloning the fair actor was the first lever past 0.41 to 0.43 against the system actor
+(`e25-clone-1` #2: 0.454, the neutral set +0.282), but the clone copies the fair actor loosely
+(T16: agreement 0.531, its cross-entropy still falling at 4 M samples) and PPO from it added
+0.06. Increment 6 copies the teacher better and longer.
+
+*Decisions* (the user, 2026-11-03, AI-Q15; the agent's details, change at a checkpoint):
+
+1. **The teacher stays the fair actor** (decision 3), **the student the run's network** (the
+   2 × 512 MLP over observation v22, so PPO starts from it); no new encoding.
+2. **The ceiling first:** the fair actor draws among near-equal choices, so its agreement with
+   its own second draw on the same states bounds any clone's; T16's 0.531 is read against it
+   and the longer clone's budget set by it.
+3. **The imitation loss** is decision 3's second form: a cross-entropy to the fair actor's
+   choice on the learner's own decisions, its weight decaying to 0, off by default; reward v1
+   and the evaluation unchanged (ADR-0026's gate and ladders).
+4. **The control is `e25-clone-1`** (T17): the A/B's arms run its mix, length and seed.
+
+| Task | Scope | Status |
+|---|---|---|
+| T19 | The teacher's ceiling: the fair actor's agreement with its own draws, per category | done 2026-11-03 (`E25-log.md` T19: the fair actor repeats itself 0.972, 0.044 nats; T16's student 0.531, `e25-clone-1` #2 0.270: the gap is the network's) |
+| T20 | The longer clone: the clone bench at a larger budget, read against T19's ceiling | done 2026-11-03 (`E25-log.md` T20: 16 M samples, agreement 0.576 (T16 0.531, the ceiling 0.972); the student 0.411 against both system actors, the neutral set +0.251) |
+| T21 | The imitation loss: PPO's auxiliary cross-entropy to the fair actor's choice, decaying to 0 | done 2026-11-03 (`E25-log.md` T21: `[ppo] imitation_coef`, `imitation_horizon`; the teacher's calls change no episode, weight 0 is `master`'s training bit for bit; the CPU check: agreement held, −0.015 over 0.4 M against −0.044, the entropy kept up; the teacher 14 % of the sandbox's time) |
+| T22 | The A/B: PPO from T20's student, with and without T21's loss, against `e25-clone-1` | done 2026-11-04 (`E25-log.md` T22: `e25-imitate-1` #2 (the loss, weight 0.5 to 0 at 10 M) 0.458 and 0.462 against the system actors, the neutral set +0.287, 0.534 head to head against `e25-clone-1` #2; `e25-clone-2` #2 (without) 0.451, +0.284, 0.508) |
+| T23 | The checkpoint: T22 read, the current best, increment 7 | done 2026-11-04 (`E25-log.md` T23, AI-Q16: `e25-imitate-1` #2 the current best; increment 7 a structured network) |
+

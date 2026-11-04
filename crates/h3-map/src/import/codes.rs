@@ -477,6 +477,9 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         78 => Some("base:refugee_camp"),
         // rule: ADV-DWL-005
         216..=218 => Some("base:random_dwelling"),
+        // E09 T8a1 (the town epic's design note §8): the random town and the town, one type
+        // whatever the subclass (a town's faction is its record's, `town::towns`).
+        77 | 98 => Some("base:town"),
         _ => return None,
     })
 }

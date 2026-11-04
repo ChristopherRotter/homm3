@@ -294,6 +294,12 @@ pub enum ObjectKind {
         /// The levels, inclusive, `1 <= low <= high <= DWELLING_LEVELS`.
         levels: [u8; 2],
     },
+    /// A town (E09 T8a1, the town epic's design note §8; ADR-0016's amendment point 4, the
+    /// original's classes 77 and 98): ownable, entered; its faction, buildings and the rest of its
+    /// record are the town context's (`h3-towns`), its garrison the army on its object
+    /// ([`crate::AdventureState::town_garrison`]), its place among the static map's towns its
+    /// `TownId` ([`crate::StaticMap::town_id`]). Its step comes with E09 T8a2 (`TWN-STUB-4`).
+    Town,
 }
 
 /// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
@@ -410,12 +416,14 @@ impl ObjectKind {
             // objects' with T84b1, the Shipyards' with T84b2. E08 T93a: increment 10's three
             // kinds are typed; the dwellings' and the camps' visits came with T95a1. A random
             // dwelling becomes a dwelling when the game is built (ADV-DWL-005); one its draw
-            // found no dwelling for stays random and is never visited.
+            // found no dwelling for stays random and is never visited. E09 T8a1: the town is
+            // typed; its step comes with E09 T8a2 (`TWN-STUB-4`).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling => None,
+            | Self::RandomDwelling
+            | Self::Town => None,
         }
     }
 
@@ -430,7 +438,7 @@ impl ObjectKind {
 
     /// Whether a player may own an object of this kind (E08 T83a; ADR-0016 point 1): a mine, an
     /// abandoned mine, a Lighthouse, a Shipyard; since E08 T93a a dwelling and a random dwelling
-    /// (not a Refugee Camp, increment 10's design note §1).
+    /// (not a Refugee Camp, increment 10's design note §1); since E09 T8a1 a town.
     pub const fn ownable(&self) -> bool {
         matches!(
             self,
@@ -440,6 +448,7 @@ impl ObjectKind {
                 | Self::Shipyard { .. }
                 | Self::Dwelling { .. }
                 | Self::RandomDwelling
+                | Self::Town
         )
     }
 
@@ -715,6 +724,8 @@ pub enum ObjectKindDef {
         /// The levels of its creature.
         levels: [u8; 2],
     },
+    /// [`ObjectKind::Town`] (E09 T8a1): its type entered, as every ownable one's.
+    Town,
 }
 
 /// An object type as a pack defines it.
@@ -1370,6 +1381,7 @@ fn compile_kind(
             compile_dwelling(scope, list, blocked, visitable)
         }
         ObjectKindDef::RandomDwelling => Ok(ObjectKind::RandomDwelling),
+        ObjectKindDef::Town => Ok(ObjectKind::Town),
         ObjectKindDef::RefugeeCamp { levels } => {
             let [low, high] = *levels;
             if 1 <= low && low <= high && usize::from(high) <= DWELLING_LEVELS {
@@ -1479,16 +1491,16 @@ impl CanonicalHash for ObjectType {
     /// 13 Witch Hut, 14 Scholar, 15 University, 16 find, 17 Pandora's Box, 18 event, 19 Pyramid;
     /// since part v13 20 message, 21 ground of the sea, 22 hole; since part v14 23 mine, 24
     /// abandoned mine, 25 Lighthouse, 26 Shipyard, 27 Windmill, 28 Water Wheel, 29 Garden; since
-    /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp) and parameters (a pickup's own
-    /// tag, 0 resource, 1 one of, 2 paired, then its fields in order; a monster's levels as 0 for
-    /// none, else 1, low, high; a ground's battlefield key, since part v10 whether it takes the
-    /// native price away; an artifact's classes as 0 for none, else 1 and the classes; a Witch
-    /// Hut's two skill lists; a University's offers and price; a message's whether it leaves; a
-    /// mine's and an abandoned mine's battle terrain as 0 for none, else 1 and the terrain; a
-    /// Shipyard's price, boat type and offsets as length and each column and row; a Garden's
-    /// gifts as a price; a dwelling's creatures as length and handles, its blocked and visitable
-    /// masks' bits, its guards as length and each creature and count, its shift; a Refugee
-    /// Camp's low and high level; the others' fields in order).
+    /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp; since part v17 33 town) and
+    /// parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in order; a
+    /// monster's levels as 0 for none, else 1, low, high; a ground's battlefield key, since part
+    /// v10 whether it takes the native price away; an artifact's classes as 0 for none, else 1
+    /// and the classes; a Witch Hut's two skill lists; a University's offers and price; a
+    /// message's whether it leaves; a mine's and an abandoned mine's battle terrain as 0 for none,
+    /// else 1 and the terrain; a Shipyard's price, boat type and offsets as length and each column
+    /// and row; a Garden's gifts as a price; a dwelling's creatures as length and handles, its
+    /// blocked and visitable masks' bits, its guards as length and each creature and count, its
+    /// shift; a Refugee Camp's low and high level; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -1681,6 +1693,7 @@ impl CanonicalHash for ObjectType {
                 h.write_u8(*low);
                 h.write_u8(*high);
             }
+            ObjectKind::Town => h.write_u8(33),
         }
     }
 }

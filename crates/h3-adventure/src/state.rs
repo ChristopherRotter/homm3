@@ -15,7 +15,7 @@ use h3_content::{
     ArtifactTypeId, ContentKey, CreatureFlag, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation,
     RADIUS_WAITS_FOR_A_STEP, ResourceId, Ruleset, TerrainId,
 };
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_heroes::{HeroDetails, TerrainShares};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -284,9 +284,14 @@ pub struct StaticMap {
     /// them out.
     shares: TerrainShares,
     /// The ownable objects' indices, in object order (E08 T83b1; increment 9's design note §6): a
-    /// mine, an abandoned mine, a Lighthouse, a Shipyard ([`ObjectKind::ownable`]); the state's
-    /// owners are by their place here. Follows from the objects, so the hash leaves it out.
+    /// mine, an abandoned mine, a Lighthouse, a Shipyard ([`ObjectKind::ownable`]; since E08 T93a
+    /// the dwellings, since E09 T8a1 the towns); the state's owners are by their place here.
+    /// Follows from the objects, so the hash leaves it out.
     ownables: Vec<usize>,
+    /// The towns' indices, in object order (E09 T8a1, the town epic's design note §8: every object
+    /// of kind [`ObjectKind::Town`]); a town's `TownId` is its place here, so no object stores
+    /// its id. Follows from the objects, so the hash leaves it out.
+    towns: Vec<usize>,
     /// The weekly objects' indices, in object order (E08 T83b1): a Windmill, a Water Wheel, a
     /// Mystical Garden ([`ObjectKind::weekly`]); the state's weekly contents are by their place
     /// here. Follows from the objects too.
@@ -380,6 +385,7 @@ impl StaticMap {
             any_monster: false,
             shares: TerrainShares::default(),
             ownables: Vec::new(),
+            towns: Vec::new(),
             weeklies: Vec::new(),
             dwellings: Vec::new(),
             full_weeks: Vec::new(),
@@ -464,16 +470,25 @@ impl StaticMap {
                 }
             }
             let event = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Event));
+            // stub: TWN-STUB-4 (a town's entrance is not entered until E09 T8a2)
+            let town = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Town));
             // rule: ADV-DWL-005
             // Before every other draw of the static map; E09's random towns, when built, draw
             // their placeholders before this walk (ADR-0017 point 4).
-            map.place(&dwellings::resolve(part, object, draws), guards, event);
+            map.place(
+                &dwellings::resolve(part, object, draws),
+                guards,
+                (event, town),
+            );
         }
         map.resolve(core, part, &setup.objects, draws);
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
         draws::resolve_mines(part, &mut map.objects, draws);
         map.fix_boat_tiles(part);
         map.list_economy(core, part);
+        if u16::try_from(map.towns.len().saturating_sub(1)).is_err() {
+            return Err(SetupError::Towns(map.towns.len()));
+        }
         map.mark_near_monsters();
         map.mark_grounds(part);
         // After the objects, as the original counts after placing its map's objects.
@@ -526,7 +541,7 @@ impl StaticMap {
     /// Lists the ownable and the weekly objects ([`Self::ownables`], [`Self::weeklies`]); since
     /// E08 T94a the dwellings and the camps ([`Self::dwellings`], [`Self::camps`]), after the
     /// random dwellings resolved; since T94b each dwelling's week as it begins and each camp's
-    /// levels.
+    /// levels; since E09 T8a1 the towns ([`Self::towns`]).
     fn list_economy(&mut self, core: &Ruleset, part: &AdventureRuleset) {
         for (index, object) in self.objects.iter().enumerate() {
             let kind = object
@@ -535,6 +550,9 @@ impl StaticMap {
                 .map(|ty| &ty.kind);
             if kind.is_some_and(ObjectKind::ownable) {
                 self.ownables.push(index);
+            }
+            if matches!(kind, Some(ObjectKind::Town)) {
+                self.towns.push(index);
             }
             if kind.is_some_and(ObjectKind::weekly) {
                 self.weeklies.push(index);
@@ -784,9 +802,12 @@ impl StaticMap {
     /// (ADV-OBJ-001). An `event` blocks no tile, and its visitable tiles are the tiles it lies on,
     /// no tile an object is visited from (ADV-OBJ-007, E08 T62b2: the original's placement clears
     /// the blocked and the visitable bit of its tile, 0x505C78; every shipped map's event has a
-    /// template blocking its tile).
+    /// template blocking its tile). A `town`'s entrance is marked as a blocker's until E09 T8a2
+    /// (`TWN-STUB-4`): no typed visit there ([`Self::typed_visits`]), so the step, the reachable
+    /// tiles and the legal moves meet a blocker's entrance, which no hero ends on or passes, as
+    /// before the town was typed, and their loops test nothing more (`bench-check`).
     // rule: ADV-OBJ-001, ADV-OBJ-007
-    fn place(&mut self, object: &ObjectSetup, guards: Option<Guards>, event: bool) {
+    fn place(&mut self, object: &ObjectSetup, guards: Option<Guards>, (event, town): (bool, bool)) {
         for (column, row) in object.blocked.offsets().filter(|_| !event) {
             if let Some(index) = self.offset(object.anchor, column, row) {
                 self.tiles[index].blocked = true;
@@ -807,7 +828,8 @@ impl StaticMap {
                     .entry(index)
                     .or_default()
                     .push(self.objects.len());
-                if object.object_type.is_some() {
+                // stub: TWN-STUB-4 (a town's entrance is not entered until E09 T8a2)
+                if object.object_type.is_some() && !town {
                     self.typed_visits[index / 64] |= 1 << (index % 64);
                 }
             }
@@ -909,6 +931,27 @@ impl StaticMap {
     /// The place of the object at `index` among the ownable ones, if it is one.
     pub fn ownable_index(&self, index: usize) -> Option<usize> {
         self.ownables.binary_search(&index).ok()
+    }
+
+    /// The towns' indices, in object order (E09 T8a1, the town epic's design note §8): every
+    /// object of kind [`ObjectKind::Town`]. A town's `TownId` is its place here ([`Self::town_id`],
+    /// [`Self::town_object`]), the place of its record in the game's store of towns.
+    pub fn towns(&self) -> &[usize] {
+        &self.towns
+    }
+
+    /// The `TownId` of the object at `index`, its place among the towns, if it is one.
+    pub fn town_id(&self, index: usize) -> Option<TownId> {
+        self.towns
+            .binary_search(&index)
+            .ok()
+            .and_then(|place| u16::try_from(place).ok())
+            .map(TownId::new)
+    }
+
+    /// The object index of the town `town`, if the map has it.
+    pub fn town_object(&self, town: TownId) -> Option<usize> {
+        self.towns.get(town.index()).copied()
     }
 
     /// The weekly objects' indices, in object order (E08 T83b1): the state's weekly contents are
@@ -1228,7 +1271,9 @@ impl AdventureState {
     /// E08 T94a none a random dwelling could cover, [`SetupError::RandomDwellingTile`]) and
     /// army. The objects' random contents are drawn from `draws`, the game's setup stream
     /// (ADR-0017 point 4); every draw is valid, so whether a setup is valid does not depend on
-    /// them. The heroes are kept by id, their stacks by slot, without movement points, then the
+    /// them. Since E09 T8a1 the towns' garrisons, one per town, each written on its town's object
+    /// by slot, an empty one written empty ([`Self::town_garrison`]). The heroes are kept by id,
+    /// their stacks by slot, without movement points, then the
     /// boats (since E08 T72; [`SetupError::Boat`]), each empty; nothing is explored, and every
     /// object is on the map. The game gives the heroes their levels at load,
     /// then starts the game ([`Self::start_game`]: the points and the reveals, ADR-0017 point 1).
@@ -1262,6 +1307,7 @@ impl AdventureState {
                 return Err(SetupError::ObjectOwner(index));
             }
         }
+        let army_left = garrisons(core, part, &map, &setup.garrisons)?;
         let mut seats = [Seat::default(); MAX_PLAYERS as usize];
         seats[..setup.seats.len()].copy_from_slice(&setup.seats);
         // rule: ADV-DWL-005
@@ -1279,7 +1325,7 @@ impl AdventureState {
             flags: None,
             difficulty: setup.difficulty,
             seats,
-            army_left: Table::new(),
+            army_left,
             visits: None,
             boats: None,
             owners,
@@ -1303,14 +1349,16 @@ impl AdventureState {
     /// sets the points after the levels (survey `E08-progression.md` §3.2), `placed_heroes_setup`
     /// 0x4CAE10 reveals after it (0x4CAF74, §3.1). Since E08 T83b1 every object owned at load then
     /// reveals the tiles within the part's flag radius of its entrance to its owner
-    /// (`reveal_owned`, ADV-OWN-002; ADR-0016 point 5). The game calls it once, before day 1's
-    /// start-of-day step.
+    /// (`reveal_owned`, ADV-OWN-002; ADR-0016 point 5); since E09 T8a1 a town within its radius
+    /// in `town_radii`, by `TownId`, the game's (the flag radius for a town past the slice). The
+    /// game calls it once, before day 1's start-of-day step.
     // rule: ADV-MOV-002, ADV-FOG-001, ADV-FOG-003
     pub fn start_game(
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
+        town_radii: &[u8],
     ) {
         let lighthouses: Vec<u32> = (0..self.players)
             .map(|p| self.lighthouse_points(part, PlayerId::new(p)))
@@ -1325,7 +1373,7 @@ impl AdventureState {
             hero.movement = hero.max_movement;
         }
         self.reveal_around_heroes(core, part, heroes);
-        self.reveal_owned(part);
+        self.reveal_owned(part, town_radii);
     }
 
     /// The adventure's start-of-day step (ADR-0017 point 3, E08 T40), after the calendar and
@@ -2668,9 +2716,18 @@ impl AdventureState {
     }
 
     /// The army a battle left on the object at `index`, if one did (E08 T20a2a; written from
-    /// E08 T20b).
+    /// E08 T20b); since E09 T8a1 a town's garrison ([`Self::town_garrison`]).
     pub fn army_left(&self, index: usize) -> Option<&[ArmyStack]> {
         self.army_left.get(index).map(Vec::as_slice)
+    }
+
+    /// The garrison of the town at object index `index` as it stands (E09 T8a1, the town epic's
+    /// design note §8): the army on its object, by slot, as a mine's guards; empty for a town
+    /// without one. None for an object that is no town.
+    pub fn town_garrison(&self, index: usize) -> Option<&[ArmyStack]> {
+        self.map
+            .town_id(index)
+            .map(|_| self.army_left(index).unwrap_or_default())
     }
 
     /// What visits left on the objects (E08 T61b, increment 7's design note §10): none until a
@@ -2818,6 +2875,38 @@ impl CanonicalHash for AdventureState {
 /// creature each and at most a stack's most (ADV-ARM-007, E08 T50), in distinct slots below the
 /// army slots) and returns its stacks by slot.
 // rule: ADV-ARM-007
+/// The towns' garrisons at the start (E09 T8a1, the town epic's design note §8), each checked as
+/// an army ([`check_army`]) unless it is empty, on their towns' objects by object index.
+///
+/// # Errors
+///
+/// [`SetupError::Garrisons`] for a number other than the map's towns', then
+/// [`SetupError::Garrison`] for the first invalid one by `TownId`.
+fn garrisons(
+    core: &Ruleset,
+    part: &AdventureRuleset,
+    map: &StaticMap,
+    garrisons: &[Vec<ArmyStack>],
+) -> Result<Table<Vec<ArmyStack>>, SetupError> {
+    if garrisons.len() != map.towns().len() {
+        return Err(SetupError::Garrisons(garrisons.len()));
+    }
+    let mut table = Table::new();
+    // The static map holds at most a `TownId`'s towns ([`SetupError::Towns`]).
+    for ((garrison, &index), town) in garrisons.iter().zip(map.towns()).zip(0..=u16::MAX) {
+        let army = if garrison.is_empty() {
+            Vec::new()
+        } else {
+            check_army(core, part, garrison).map_err(|error| SetupError::Garrison {
+                town: TownId::new(town),
+                error,
+            })?
+        };
+        table.set(index, Some(army));
+    }
+    Ok(table)
+}
+
 fn check_army(
     core: &Ruleset,
     part: &AdventureRuleset,

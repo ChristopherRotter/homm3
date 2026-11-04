@@ -407,7 +407,7 @@ fn a_viewer_sees_a_monsters_creature_and_the_word_of_its_count() {
     setup.heroes = vec![hero_at(1, 0, Pos::new(1, 2, 0), &[PIKEMAN])];
     setup.map.objects.push(ground(HALLOW, (5, 2, 0), (1, 3)));
     let mut state = AdventureState::new(&core, &part, &setup, &mut draws()).unwrap();
-    state.start_game(&core, &part, &[]);
+    state.start_game(&core, &part, &[], &[]);
     let seen = state.observe(&core, &part, RED);
     let monsters: Vec<_> = seen
         .objects

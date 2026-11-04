@@ -1,6 +1,7 @@
-//! Tests of a player's start, of the setup's checks of the starts and the towns (E09 T7a2) and of
-//! the build's refusal of a main town that generates a hero (E09 T7a1, `TWN-STUB-3`); the pool and
-//! the build's draws in [`pool`] (E09 T7b1).
+//! Tests of a player's start, of the setup's checks of the starts and the towns (E09 T7a2; since
+//! T8a1 the towns' count and the main town's owner) and of the build's refusal of a main town that
+//! generates a hero (E09 T7a1, `TWN-STUB-3`); the pool and the build's draws in [`pool`] (E09
+//! T7b1).
 
 use alloc::format;
 use alloc::string::ToString;
@@ -8,8 +9,9 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use h3_adventure::{Holds, ObjectSetup, Pos, Scenery, TileMask};
 use h3_content::{
-    CreatureDef, FactionDef, FactionId, HeroClassDef, HeroTypeDef, HeroTypeId, Ruleset,
+    CreatureDef, FactionDef, FactionId, Formation, HeroClassDef, HeroTypeDef, HeroTypeId, Ruleset,
 };
 use h3_content_battle::{
     BallisticsRecord, BattleCreatureDef, SiegeDef, SiegeFieldDef, WallKind, WallTarget,
@@ -300,15 +302,44 @@ fn town(faction: TownFaction) -> TownSetup {
     }
 }
 
-/// [`setup`] with towns that passes the checks: a `t:town` town (red's main town, which generates
-/// no hero; red's starting hero is random, its choice `t:town`) and a random town aligned to blue,
-/// whose choice is random among `t:town`; every hero type allowed.
+/// A town object of the part's `t:town` on `(x, y)`, a single tile its entrance, owned by
+/// `owner` at the start (E09 T8a1).
+pub(super) fn town_object(
+    rules: &GameRuleset,
+    (x, y): (u16, u16),
+    owner: Option<u8>,
+) -> ObjectSetup {
+    ObjectSetup {
+        anchor: Pos::new(x, y, 0),
+        blocked: TileMask::from_bits(1),
+        visitable: TileMask::from_bits(1),
+        object_type: rules.adventure().object_type_by_key("t:town"),
+        amount: None,
+        drawn: TileMask::default(),
+        monster: None,
+        guards: None,
+        scenery: Scenery::Ownable,
+        holds: Holds::Town {
+            formation: Formation::Loose,
+        },
+        owner: owner.map(PlayerId::new),
+    }
+}
+
+/// [`setup`] with towns that passes the checks: a `t:town` town on (1, 1) (red's and red's main
+/// town, which generates no hero; red's starting hero is random, its choice `t:town`) and a random
+/// town aligned to blue on (3, 0), blue's, whose choice is random among `t:town`; every hero type
+/// allowed.
 fn towns_setup(rules: &GameRuleset) -> GameSetup {
     let castle = faction(rules, "t:town");
     let mut setup = setup();
     setup.towns = vec![
         town(TownFaction::Fixed(castle)),
         town(TownFaction::Random { alignment: Some(1) }),
+    ];
+    setup.map.objects = vec![
+        town_object(rules, (1, 1), Some(0)),
+        town_object(rules, (3, 0), Some(1)),
     ];
     setup.players[0].start = start(castle, false);
     setup.players[1].start = PlayerStart {
@@ -382,6 +413,7 @@ fn a_fixed_towns_faction_has_a_town_record() {
         s.towns[1].faction = TownFaction::Fixed(other);
         s.towns
             .push(town(TownFaction::Random { alignment: Some(2) }));
+        s.map.objects.push(town_object(&rules, (2, 0), None));
     });
     assert_eq!(error, GameSetupError::TownFaction(TownId::new(0)));
 }
@@ -407,6 +439,7 @@ fn a_random_town_is_aligned_to_a_players_colour_or_none() {
     setup
         .towns
         .push(town(TownFaction::Random { alignment: Some(0) }));
+    setup.map.objects.push(town_object(&rules, (2, 0), None));
     assert_eq!(setup.validate(&rules), Ok(()));
 }
 
@@ -471,9 +504,13 @@ fn a_players_choice_is_among_its_factions_which_have_town_records() {
 #[test]
 fn a_main_town_is_one_of_the_setups_towns() {
     let rules = towns_rules();
-    let error = refused(&rules, "player 0's main town is not the setup's", |s| {
-        s.players[0].start.main_town.as_mut().unwrap().town = TownId::new(2);
-    });
+    let error = refused(
+        &rules,
+        "player 0's main town is not a town of its own",
+        |s| {
+            s.players[0].start.main_town.as_mut().unwrap().town = TownId::new(2);
+        },
+    );
     assert_eq!(error, GameSetupError::MainTown(PlayerId::new(0)));
     // Checked after the choices, before the picks.
     let error = refused(&rules, "player 0's faction choice is invalid", |s| {
@@ -481,15 +518,100 @@ fn a_main_town_is_one_of_the_setups_towns() {
         s.players[0].start.choice = None;
     });
     assert_eq!(error, GameSetupError::Choice(PlayerId::new(0)));
-    let error = refused(&rules, "player 0's main town is not the setup's", |s| {
-        s.players[0].start.main_town.as_mut().unwrap().town = TownId::new(2);
-        s.players[0].start.pick = Some(HeroTypeId::from_raw(0));
-    });
+    let error = refused(
+        &rules,
+        "player 0's main town is not a town of its own",
+        |s| {
+            s.players[0].start.main_town.as_mut().unwrap().town = TownId::new(2);
+            s.players[0].start.pick = Some(HeroTypeId::from_raw(0));
+        },
+    );
     assert_eq!(error, GameSetupError::MainTown(PlayerId::new(0)));
     // The last town is the setup's.
     let mut setup = towns_setup(&rules);
     setup.players[0].start.main_town.as_mut().unwrap().town = TownId::new(1);
+    setup.map.objects[1].owner = Some(PlayerId::new(0));
     assert_eq!(setup.validate(&rules), Ok(()));
+}
+
+// covers: ADV-OWN-002
+#[test]
+fn the_towns_stand_on_the_map_with_their_owners_and_empty_garrisons() {
+    // E09 T8a1 (design note §8): the static map's towns by `TownId`, owned as the setup says;
+    // until T7b2 the game gives every town an empty garrison (`TWN-STUB-5`).
+    let rules = towns_rules();
+    let state = GameState::new(&rules, &towns_setup(&rules), 7).unwrap();
+    let adventure = state.adventure();
+    assert_eq!(adventure.map().towns(), [0, 1]);
+    assert_eq!(adventure.map().town_id(1), Some(TownId::new(1)));
+    assert_eq!(
+        (adventure.owner(0), adventure.owner(1)),
+        (Some(PlayerId::new(0)), Some(PlayerId::new(1)))
+    );
+    for index in [0, 1] {
+        assert_eq!(adventure.town_garrison(index), Some(&[][..]));
+    }
+}
+
+// covers: TWN-SET-001
+#[test]
+fn a_main_town_is_its_players_own() {
+    // E09 T8a1 (design note §8, §13): blue's town, or a neutral one, is no main town of red's.
+    let rules = towns_rules();
+    let text = "player 0's main town is not a town of its own";
+    let error = refused(&rules, text, |s| {
+        s.players[0].start.main_town.as_mut().unwrap().town = TownId::new(1);
+    });
+    assert_eq!(error, GameSetupError::MainTown(PlayerId::new(0)));
+    let error = refused(&rules, text, |s| s.map.objects[0].owner = None);
+    assert_eq!(error, GameSetupError::MainTown(PlayerId::new(0)));
+    // Blue's main town is its own.
+    let mut setup = towns_setup(&rules);
+    setup.players[1].start.main_town = Some(MainTown {
+        town: TownId::new(1),
+        generates_hero: false,
+    });
+    assert_eq!(setup.validate(&rules), Ok(()));
+    let error = refused(
+        &rules,
+        "player 1's main town is not a town of its own",
+        |s| {
+            s.players[1].start.main_town = Some(MainTown {
+                town: TownId::new(0),
+                generates_hero: false,
+            });
+        },
+    );
+    assert_eq!(error, GameSetupError::MainTown(PlayerId::new(1)));
+}
+
+#[test]
+fn the_setup_gives_one_town_record_per_town_of_the_map() {
+    // E09 T8a1 (design note §13): the setup's towns against the objects of kind `Town`.
+    let rules = towns_rules();
+    let error = refused(&rules, "1 towns do not give one per town of the map", |s| {
+        s.towns.pop();
+    });
+    assert_eq!(error, GameSetupError::TownCount(1));
+    let error = refused(&rules, "3 towns do not give one per town of the map", |s| {
+        s.towns.push(town(TownFaction::Random { alignment: None }));
+    });
+    assert_eq!(error, GameSetupError::TownCount(3));
+    let error = refused(&rules, "2 towns do not give one per town of the map", |s| {
+        s.map.objects.pop();
+    });
+    assert_eq!(error, GameSetupError::TownCount(2));
+    // An object of an unknown type is no town: the count refuses before the adventure's check.
+    let error = refused(&rules, "2 towns do not give one per town of the map", |s| {
+        s.map.objects[1].object_type = Some(h3_adventure::ObjectTypeId::from_raw(u16::MAX));
+    });
+    assert_eq!(error, GameSetupError::TownCount(2));
+    // Checked first, before a town's faction.
+    let error = refused(&rules, "1 towns do not give one per town of the map", |s| {
+        s.towns.pop();
+        s.towns[0].faction = TownFaction::Fixed(faction(&rules, "t:other"));
+    });
+    assert_eq!(error, GameSetupError::TownCount(1));
 }
 
 // covers: TWN-SET-006
@@ -640,6 +762,10 @@ fn a_random_heros_owner_is_a_player() {
         s.heroes[1].hero_type = None;
         s.heroes[1].owner = PlayerId::new(2);
         s.players[1].start = start(faction(&rules, "t:town"), false);
+        s.players[1].start.main_town = s.players[1].start.main_town.map(|main| MainTown {
+            town: TownId::new(1),
+            ..main
+        });
         s.players[1].start.pick = Some(hero(&rules, "t:loner"));
         s.players[0].start.pick = Some(hero(&rules, "t:loner"));
     });

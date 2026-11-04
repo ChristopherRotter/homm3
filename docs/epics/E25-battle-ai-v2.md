@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 5 closed 2026-10-28, 29, 11-02 and 11-03, increment 6 (better imitation) refined 2026-11-03 (AI-Q15) · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 6 closed 2026-10-28, 29, 11-02, 11-03 and 11-04, increment 7 (a structured network) refined 2026-11-04 (AI-Q16) · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -72,7 +72,8 @@ it reads only its side's observation, and its search too (ADR-0025 point 12a).
 - **Expert iteration:** a search in Rust over determinized worlds, trained on its own choices
   (E06 design §14's T8d). Needs AI-STUB-1's gaps, the cast heads perturbed at the root, and a rule
   for the most visited action's repetitions (greedy play repeats itself, E05 T8b).
-- **A network that reads the battle's structure, built and tuned properly** (the user at T8):
+- **A network that reads the battle's structure, built and tuned properly** (the user at T8;
+  chosen for increment 7, AI-Q16):
   T7c's verdict holds for its configurations only (`hexconv` 64 × 6 without normalisation,
   `hexformer` 64 × 4, E06's entity network; 0.3 to 1.2 M parameters, one optimiser setting, no
   warm-up). Wider ones with normalisation, warm-up and a learning rate of their own, on the bench
@@ -107,6 +108,7 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 | 3 | 2026-11-02 | T7a–T7d, T8 | the network's architecture: a distillation bench (the wide MLP leads, the structured networks as configured fit ten times worse), the wide MLP in RL at #3's ladder (AI-Q12) |
 | 4 | 2026-11-02 | T9a, T9b, T10a, T10b, T11 | the policy's sharpness: a temperature diagnostic (sharpening gains about 0.01) and the entropy bonus to 0 in training (`e25-sharp-1`: the same 0.01, no more) (AI-Q13) |
 | 5 | 2026-11-03 | T12–T18 | the fair system actor: `system` the fair one everywhere (C ABI v36), the cloning bench (C ABI v37), the neutral kinds back and PPO from the clone (`e25-clone-1` #2: 0.454 against both system actors, the neutral set +0.282) (AI-Q14, AI-Q15) |
+| 6 | 2026-11-04 | T19–T23 | better imitation: the teacher's ceiling (0.972: the gap is the network's), a 16 M clone (0.576), the imitation loss; PPO from the clone with the loss (`e25-imitate-1` #2: 0.458 and 0.462 against the system actors, the neutral set +0.287) (AI-Q15, AI-Q16) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
@@ -118,33 +120,49 @@ settings. **At increment 4's checkpoint** (the user, 2026-11-02,
 T11): **`e25-sharp-1` #2** (20 M, the entropy bonus to 0) the current best, its head-to-head
 against #3 0.523 (T12). **At increment 5's checkpoint** (the user, 2026-11-03, T18, AI-Q15):
 **`e25-clone-1` #2** (20 M of PPO from T16's clone of the fair actor) the current best, its
-head-to-head against `e25-sharp-1` #2 0.564; increment 6 is better imitation.
+head-to-head against `e25-sharp-1` #2 0.564; increment 6 is better imitation. **At increment 6's
+checkpoint** (the user, 2026-11-04, T23, AI-Q16): **`e25-imitate-1` #2** (20 M of PPO from T20's
+clone with the imitation loss) the current best, its head-to-head against `e25-clone-1` #2 0.534;
+increment 7 is a network that reads the battle's structure.
 
-**Increment 6: better imitation** (the user at T18, 2026-11-03, AI-Q15). T17's warm start
-by cloning the fair actor was the first lever past 0.41 to 0.43 against the system actor
-(`e25-clone-1` #2: 0.454, the neutral set +0.282), but the clone copies the fair actor loosely
-(T16: agreement 0.531, its cross-entropy still falling at 4 M samples) and PPO from it added
-0.06. Increment 6 copies the teacher better and longer.
+**Increment 7: a network that reads the battle's structure** (the user at T23, 2026-11-04,
+AI-Q16). Increments 5 and 6 found the gap in the network: the 2 × 512 MLP copies the fair actor
+0.576 of the time (T20; the teacher's ceiling 0.972), its moves 0.38 of 0.985 and its melee hexes
+0.40 of 0.941, and samples gain about 0.02 a doubling. Increment 3's structured networks were
+measured in one configuration each (no normalisation, no warm-up, one learning rate) and against
+an MLP teacher (T7c). Increment 7 builds them properly and measures them on the cloning bench
+against the fair actor before any RL run.
 
-*Decisions* (the user, 2026-11-03, AI-Q15; the agent's details, change at a checkpoint):
+*Decisions* (the user, 2026-11-04, AI-Q16; the agent's details, change at a checkpoint):
 
-1. **The teacher stays the fair actor** (decision 3), **the student the run's network** (the
-   2 × 512 MLP over observation v22, so PPO starts from it); no new encoding.
-2. **The ceiling first:** the fair actor draws among near-equal choices, so its agreement with
-   its own second draw on the same states bounds any clone's; T16's 0.531 is read against it
-   and the longer clone's budget set by it.
-3. **The imitation loss** is decision 3's second form: a cross-entropy to the fair actor's
-   choice on the learner's own decisions, its weight decaying to 0, off by default; reward v1
-   and the evaluation unchanged (ADR-0026's gate and ladders).
-4. **The control is `e25-clone-1`** (T17): the A/B's arms run its mix, length and seed.
+1. **The bench is T16's cloning bench** (the fair actor, `e25-neutral.toml`'s mix, 4 M samples,
+   the held-out set of seed 8), the 2 × 512 MLP its control in every run. A student is scored by
+   its agreement (overall, moves, melee), its cross-entropy and its value's explained variance;
+   its cost by the GPU's µs a sample-pass.
+2. **The candidates:** `hexconv` with normalisation (64 to 128 channels, 6 to 10 blocks),
+   `hexformer` (96 to 128 wide, 4 to 6 blocks), a wider `entity` (192 to 256, 2 to 4 blocks); each
+   with a warm-up, AdamW and its own learning rate. The grid is the agent's, from T24's costs.
+3. **The cost cap** (the user): a sample-pass on the GTX 1070 at most hexconv 64 × 6's (466 µs,
+   about 10 hours of network time for 20 M samples of PPO); fp32 only; among the candidates within
+   0.02 of the best agreement the cheapest wins.
+4. **The heads read the geometry** (the user: the legal mask as an input is no encoding change):
+   a melee entry scores the hex its attack is made from; the legal mask (action encoding v13's,
+   handed with every decision) is an input of every kind, an MLP with it a second control.
+   Observation v22 and action v13 stay.
+5. **Gates:** the long clone runs only if a candidate reaches 0.60 agreement at 4 M within the cap
+   (the MLP: 0.531 at 4 M, 0.576 at 16 M); PPO only if the long clone's ladder beats T20's student
+   (0.411) beyond its interval. A failed gate goes to the checkpoint.
+6. **The RL arm:** `e25-imitate.toml`'s settings with the candidate's network, from its clone,
+   20 M samples, seed 1, against `e25-imitate-1` #2 (the current best).
 
 | Task | Scope | Status |
 |---|---|---|
-| T19 | The teacher's ceiling: the fair actor's agreement with its own draws, per category | done 2026-11-03 (`E25-log.md` T19: the fair actor repeats itself 0.972, 0.044 nats; T16's student 0.531, `e25-clone-1` #2 0.270: the gap is the network's) |
-| T20 | The longer clone: the clone bench at a larger budget, read against T19's ceiling | done 2026-11-03 (`E25-log.md` T20: 16 M samples, agreement 0.576 (T16 0.531, the ceiling 0.972); the student 0.411 against both system actors, the neutral set +0.251) |
-| T21 | The imitation loss: PPO's auxiliary cross-entropy to the fair actor's choice, decaying to 0 | done 2026-11-03 (`E25-log.md` T21: `[ppo] imitation_coef`, `imitation_horizon`; the teacher's calls change no episode, weight 0 is `master`'s training bit for bit; the CPU check: agreement held, −0.015 over 0.4 M against −0.044, the entropy kept up; the teacher 14 % of the sandbox's time) |
-| T22 | The A/B: PPO from T20's student, with and without T21's loss, against `e25-clone-1` | next (the user's machine; `configs/e25-imitate.toml`, its weight and horizon fixed when prepared) |
-| T23 | The checkpoint: T22 read, the current best, increment 7 | after T22 |
+| T24 | The kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the bench's report | next (the sandbox) |
+| T25 | The heads read the geometry: a melee entry's attack hex, the legal mask as an input, `order` for the structured kinds | after T24 (the sandbox) |
+| T26 | The structure sweep on the cloning bench, against decision 5's first gate | after T25 (the user's machine) |
+| T27 | The long clone of the best candidate, its ladder against decision 5's second gate | after T26 (the user's machine) |
+| T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | after T27 (the user's machine) |
+| T29 | The checkpoint: structure against the MLP (clone, RL, cost), the current best, increment 8 | after T28 or a failed gate |
 
 Scope and acceptance: the AI queue's entries.
 
@@ -174,4 +192,8 @@ Scope and acceptance: the AI queue's entries.
   needs the tree in Rust.
 - **The GTX 1070** (8 GB, no tensor cores): a structured network costs samples per second (E06:
   3.4 times).
+- **The gap may be information observation v22 lacks** (no reachability or distances in its hex
+  planes): if the structured networks and the MLP with the mask all stall well below the
+  teacher, that is evidence for an encoding change (a `cross-lane` change after the user's
+  review, T29).
 - **The encounter approximation** (E05's risk) carries over.

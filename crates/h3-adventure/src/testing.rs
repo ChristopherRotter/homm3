@@ -706,6 +706,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
         difficulty: 0,
         bans: crate::Bans::default(),
         seats: seats(2),
+        garrisons: Vec::new(),
     }
 }
 
@@ -727,7 +728,7 @@ pub(crate) fn started(
     setup: &AdventureSetup,
 ) -> Result<AdventureState, crate::SetupError> {
     let mut state = AdventureState::new(&rules.0, &rules.1, setup, &mut draws())?;
-    state.start_game(&rules.0, &rules.1, &[]);
+    state.start_game(&rules.0, &rules.1, &[], &[]);
     Ok(state)
 }
 

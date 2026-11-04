@@ -155,6 +155,8 @@
 //! #                                # a template (the entrance blocked too); guards derived
 //! # random_dwelling = {}           # ownable as a dwelling; becomes one by the tables below
 //! # refugee_camp = { levels = [1, 7] } # not ownable; 1 <= low <= high <= 7
+//! # town = {}                     # E09 T8a1: a town, ownable, visit = "enter"; its record is
+//! #                                # the town part's (`h3-towns`)
 //!
 //! [[random_dwelling]]              # E08 T93a (ADV-DWL-005): one table per faction in the part;
 //! faction = "castle"               # a core faction; the `dwelling` types a random dwelling of
@@ -461,6 +463,7 @@ struct ObjectTypeDto {
     dwelling: Option<DwellingDto>,
     random_dwelling: Option<EmptyDto>,
     refugee_camp: Option<RefugeeCampDto>,
+    town: Option<EmptyDto>,
 }
 
 #[derive(Deserialize)]
@@ -1005,6 +1008,7 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
         t.refugee_camp
             .map(|c| ObjectKindDef::RefugeeCamp { levels: c.levels }),
     );
+    kinds.extend(t.town.map(|_| ObjectKindDef::Town));
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {

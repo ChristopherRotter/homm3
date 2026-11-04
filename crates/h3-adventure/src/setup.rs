@@ -13,7 +13,7 @@ use alloc::boxed::Box;
 use h3_content::{
     ArtifactTypeId, CreatureTypeId, FactionId, Formation, ResourceId, SkillId, SpellId, TerrainId,
 };
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, HeroReward, ScholarGift};
 
 use crate::ruleset::{ObjectTypeId, RiverId, RoadId};
@@ -173,6 +173,12 @@ pub enum Holds {
         /// The lowest and the highest level it may take.
         levels: (u8, u8),
     },
+    /// A town's (E09 T8a1, the town epic's design note §8): its garrison's formation in battle,
+    /// the map's byte, which a battle reads when the garrison defends alone (*agent's call*).
+    Town {
+        /// The garrison's formation.
+        formation: Formation,
+    },
 }
 
 /// A reward record (ADV-RWD-001, E08 T61a; survey `E08-rewards.md` §7.1, increment 7's design note
@@ -325,6 +331,12 @@ pub struct AdventureSetup {
     /// Each player's seat, by player id (E08 T62b2): what an event's colours and computer flag
     /// test (ADV-OBJ-007). The game gives its players' (`PlayerSetup`); one per player.
     pub seats: Vec<Seat>,
+    /// Each town's garrison at the start, by `TownId` (E09 T8a1, the town epic's design note §8):
+    /// one per town of the static map ([`crate::StaticMap::towns`]), its stacks in distinct slots
+    /// as a hero's army's, or none at all for a town without a garrison; the game gives the
+    /// resolved garrisons of its towns' records. The state writes each on its town's object
+    /// ([`crate::AdventureState::town_garrison`]).
+    pub garrisons: Vec<Vec<ArmyStack>>,
 }
 
 /// A player's seat as an event tests it (ADV-OBJ-007, E08 T62b2): the game's player's colour and
@@ -472,6 +484,17 @@ pub enum SetupError {
     ObjectOwner(usize),
     /// More objects than the state tracks (32 × 65 535); the number.
     Objects(usize),
+    /// More towns than a `TownId` names (65 536; E09 T8a1); the number.
+    Towns(usize),
+    /// The garrisons do not give one per town of the static map (E09 T8a1); their number.
+    Garrisons(usize),
+    /// The town's garrison has stacks and is not a valid army (E09 T8a1).
+    Garrison {
+        /// The town.
+        town: TownId,
+        /// Why.
+        error: ArmyError,
+    },
     /// Two heroes share this id.
     DuplicateHero(HeroId),
     /// The hero's owner is not a player of the game.
@@ -548,6 +571,11 @@ impl fmt::Display for SetupError {
                 write!(f, "object {object} has an owner it may not have")
             }
             Self::Objects(n) => write!(f, "{n} objects are too many"),
+            Self::Towns(n) => write!(f, "{n} towns are too many"),
+            Self::Garrisons(n) => write!(f, "{n} garrisons do not give one per town"),
+            Self::Garrison { town, error } => {
+                write!(f, "town {}'s garrison: {error}", town.raw())
+            }
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),
             Self::UnknownOwner(hero) => {
                 write!(f, "hero {}'s owner is not a player", hero.raw())

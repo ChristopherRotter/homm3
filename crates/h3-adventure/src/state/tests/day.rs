@@ -95,13 +95,13 @@ fn the_start_of_the_game_gives_the_points_and_reveals_from_the_store() {
         hero_details(&[(LOGISTICS, 1), (SCOUTING, 2)]),
         hero_details(&[]),
     ]);
-    state.start_game(&rules.0, &rules.1, &heroes);
+    state.start_game(&rules.0, &rules.1, &heroes, &[]);
     assert_eq!(points(&state), [1650, 1500]);
     assert_eq!(state.explored(RED), Some(&disks(&[(p(2, 2), 7)])));
     assert_eq!(state.explored(BLUE), Some(&disks(&[(p(12, 12), 5)])));
     // Without the store (this crate's tests): the table's entry and the part's radius.
     let mut plain = placed(&rules, &grass());
-    plain.start_game(&rules.0, &rules.1, &[]);
+    plain.start_game(&rules.0, &rules.1, &[], &[]);
     assert_eq!(points(&plain), [1500, 1500]);
     assert_eq!(plain.explored(RED), Some(&disks(&[(p(2, 2), 5)])));
 }
@@ -117,7 +117,7 @@ fn a_gain_in_the_day_shows_at_the_next_turn_start_and_step() {
             hero_details(&[]),
             hero_details(&[]),
         ]);
-        state.start_game(&rules.0, &rules.1, &before);
+        state.start_game(&rules.0, &rules.1, &before, &[]);
         // The hero learns Expert Logistics and Basic Scouting in the day: neither its points left
         // nor the explored tiles change (survey §1.4).
         let after = store(vec![
@@ -167,7 +167,7 @@ fn a_move_and_the_reach_price_the_steps_by_the_heros_pathfinding() {
             &[(PATHFINDING, level)]
         };
         let heroes = store(vec![hero_details(&[]), hero_details(skills)]);
-        state.start_game(&rules.0, &rules.1, &heroes);
+        state.start_game(&rules.0, &rules.1, &heroes, &[]);
         let reach = state
             .reach(&rules.0, &rules.1, &heroes, HeroId::new(1))
             .unwrap();
@@ -223,7 +223,7 @@ fn cursed_ground_takes_the_native_price_away_on_its_tiles() {
     let plain = AdventureState::new(&rules.0, &rules.1, &plain, &mut draws()).unwrap();
     assert!(plain.map().tiles().iter().all(|t| !t.no_native));
     // Gnolls (native to swamp) step east from (2, 2): 175 from each cursed tile, then 100.
-    state.start_game(&rules.0, &rules.1, &[]);
+    state.start_game(&rules.0, &rules.1, &[], &[]);
     let path: Vec<Pos> = (3..=6).map(|x| p(x, 2)).collect();
     walk(&mut state, &rules, &[], &path).unwrap();
     assert_eq!(
@@ -233,7 +233,7 @@ fn cursed_ground_takes_the_native_price_away_on_its_tiles() {
     // The drop after a step onto a cursed tile prices its terrain: 174 points left on (3, 2)
     // fall to 0.
     let mut tired = AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap();
-    tired.start_game(&rules.0, &rules.1, &[]);
+    tired.start_game(&rules.0, &rules.1, &[], &[]);
     tired.set_movement(HeroId::new(1), 175 + 174);
     walk(&mut tired, &rules, &[], &[p(3, 2)]).unwrap();
     assert_eq!(tired.hero(HeroId::new(1)).unwrap().movement, 0);

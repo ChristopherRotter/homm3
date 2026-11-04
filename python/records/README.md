@@ -119,7 +119,8 @@ them); `ladders` each student's rows on the report set v1 and the neutral set v1
 and per category of each draw their `mode` and `pair` shares, the entropy (plug-in and
 Miller-Madow), the distinct entries, the cast heads' mode, and each scored network's agreement
 and cross-entropy against the draws; the teacher, the states, episodes, lost choices, seconds
-and the identity.
+and the identity. `ceiling-1` (T19): the teacher's ceiling and four PPO networks; `ceiling-2`
+(T22): the same states, `e25-clone-1`, `e25-clone-2` and `e25-imitate-1` #2.
 
 ## The imitation loss
 
@@ -209,5 +210,15 @@ its `parent`.
   on the full report set against Random, Aggressor, Greedy, the fair and the all-seeing system
   actor 0.843, 0.589, 0.565, 0.411, 0.410 from scratch, 0.848, 0.635, 0.609, 0.454, 0.454 from
   the clone; the neutral set +0.269 and +0.282 (`docs/epics/E25-log.md` T17). **`e25-clone-1` #2
-  is the current best** (E25 T18, the user, 2026-11-03, AI-Q15; 0.564 head to head against
-  `e25-sharp-1` #2, promoted by the gate). Their networks are on the user's machine.
+  the current best** from E25 T18 (the user, 2026-11-03, AI-Q15; 0.564 head to head against
+  `e25-sharp-1` #2, promoted by the gate) to T23 (2026-11-04). Their networks are on the user's
+  machine.
+- `e25-clone-2`, `e25-imitate-1` (E25 T22, 2026-11-04; `configs/e25-neutral.toml` and
+  `configs/e25-imitate.toml`: `e25-clone-1`'s settings, both from T20's student
+  (`distill/clone-2.json`), the second with the imitation loss, weight 0.5 falling to 0 at 10 M;
+  20 M samples, 72 and 77 minutes): the A/B of the loss. Best #2 each; on the full report set
+  against Random, Aggressor, Greedy, the fair and the all-seeing system actor 0.858, 0.650, 0.623,
+  0.451, 0.450 without the loss, 0.858, 0.651, 0.626, 0.458, 0.462 with it; the neutral set
+  +0.284 and +0.287 (`docs/epics/E25-log.md` T22). **`e25-imitate-1` #2 is the current best**
+  (E25 T23, the user, 2026-11-04, AI-Q16; 0.534 head to head against `e25-clone-1` #2, promoted
+  by the gate). Their networks are on the user's machine.

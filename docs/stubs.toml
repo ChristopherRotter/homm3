@@ -113,6 +113,18 @@ where  = "crates/h3-game/src/town.rs::main_town_heroes"
 reason = "The main towns' heroes and the towns' draws (design note E09-design.md section 14; E09 T7b2, after T8a): a setup whose main town generates a hero is refused with `GameSetupError::HeroDraw` until the main towns' heroes (TWN-SET-009) and the towns' factions, buildings and garrisons are built. The hero pool and the random heroes' draws exist since E09 T7b1. Of the 160 shipped maps 156 import; since T7b1 31 build whole and the other 125 are refused here (the census, `h3-map`'s example `original_data`)"
 epic   = "E09"
 
+[[stub]]
+id     = "TWN-STUB-4"
+where  = "crates/h3-adventure/src/state.rs::StaticMap::place"
+reason = "A town's entrance is not entered until its step (design note E09-design.md section 9; E09 T8a2): since E09 T8a1 a town is typed (ObjectKind::Town, ownable, entered, not from above) but its object marks no typed visit on its entrance (StaticMap's typed_visits), so the step, the reachable tiles and the legal moves meet a blocker's entrance there exactly as before the town was typed: no hero ends on or passes it (AdventureCommandError::Visit), and a hero standing on it leaves it upwards too (the from-above test, ADV-OBJ-004, reads no town). The reach's and the step's loops test nothing more. T8a2 marks the entrance, builds the step's three cases and lifts this"
+epic   = "E09"
+
+[[stub]]
+id     = "TWN-STUB-5"
+where  = "crates/h3-game/src/setup.rs::GameSetup::adventure_setup"
+reason = "The towns' garrisons and reveal radii from the game (design note E09-design.md section 8; E09 T7b2, the towns' draws and the store of towns): since E09 T8a1 the adventure takes one garrison per town (AdventureSetup::garrisons) and each town's reveal radius at the start (AdventureState::start_game's town_radii, by TownId), but until the game resolves its towns' records it passes every town an empty garrison (here) and the part's flag radius (GameState::new): a map's custom garrison and a town's own radius are not read yet"
+epic   = "E09"
+
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]

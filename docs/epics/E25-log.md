@@ -1053,3 +1053,83 @@ an entry only where a task builds on it.
   the run; the teacher no longer asked in the second half), both `--init-from` T20's student
   (`runs/clone-2/students/mlp.pt`), the commands in the config's header; T19's tool scores both
   arms' final networks against the teacher beside their ladders.
+
+## T22 — The A/B: from T20's student, with and without the imitation loss (2026-11-04)
+
+- **The runs** (the user's machine, the GTX 1070; `configs/e25-neutral.toml`'s mix, seed 1,
+  20 M samples, one segment each, ended by the budget; both `--init-from` T20's student
+  `runs/clone-2/students/mlp.pt`; commit `783e1af` (#712's merge), clean; C ABI v37, the system
+  policy 19, the encodings and the battle ruleset's hash T17's, only the adventure ruleset's moved,
+  which no battle reads; the battle lane's `049cbb8`, merged after T17's runs, gives a siege's town
+  morale as one building's bonus, the same value, the bots' tables unchanged): `e25-clone-2` without the loss
+  (`python/records/e25-clone-2.json`; 72 minutes, 6.8 of them evaluation) and `e25-imitate-1` with
+  it (`configs/e25-imitate.toml`: weight 0.5 falling to 0 at 10 M, fixed with the user at T22's
+  preparation; `python/records/e25-imitate-1.json`; 77 minutes, 5.9 evaluation). Both promoted at
+  both gates, best #2: `e25-clone-2` at 10 M 0.535 in 201 pairs (+24 Elo), at 20 M 0.524 in 248
+  (+17); `e25-imitate-1` 0.568 in 81 (+47), 0.528 in 232 (+19).
+- **The final ladders** (the GPU, 500 per kind: ±0.012 against Random, ±0.018 otherwise, ±0.019
+  against the system actors, ±0.010 on the neutral set), beside the control (T17):
+
+  | Network | Random | Aggressor | Greedy | Fair system | All-seeing | Neutral set |
+  |---|---|---|---|---|---|---|
+  | `e25-clone-1` #2 (control) | 0.848, +0.298 | 0.635, +0.112 | 0.609, +0.088 | 0.454, −0.029 | 0.454, −0.030 | 0.986, +0.282 |
+  | `e25-clone-2` #2 | 0.858, +0.303 | 0.650, +0.121 | 0.623, +0.096 | 0.451, −0.026 | 0.450, −0.028 | 0.984, +0.284 |
+  | `e25-imitate-1` #2 | 0.858, +0.305 | 0.651, +0.124 | 0.626, +0.099 | **0.458, −0.020** | **0.462, −0.022** | 0.983, **+0.287** |
+
+  Against the fair actor per kind (hero, siege_hero, siege_garrison): `e25-clone-2` 0.439, 0.451,
+  0.497, `e25-imitate-1` 0.447, 0.462, 0.493 (the control 0.452, 0.439, 0.491). The neutral set
+  per kind (wandering, guards, siege_neutral): 0.988, 0.978, 0.880 and 0.986, 0.982, 0.884 (0.990,
+  0.982, 0.868). Against the fair actor at each ladder (250 per kind) at 0, 10, 20 M:
+  `e25-clone-2` 0.409, 0.439, 0.458; `e25-imitate-1` 0.409, 0.441, 0.467; the control 0.383,
+  0.431, 0.440.
+- **Training** (`metrics.jsonl`, uploaded, outside git): the entropy at 1, 5, 10, 15, 20 M 1.71,
+  1.53, 1.29, 1.07, 0.80 without the loss, 1.78, 1.78, 1.61, 1.10, 0.88 with it (the control 2.01,
+  1.72, 1.33, 1.05, 0.76); the value's explained variance per gate interval 0.69 and 0.71, 0.74
+  and 0.74 (0.67, 0.70); the KL 0.0148 and 0.0055, 0.0137 and 0.0060; 5 150 and 5 120 samples a
+  second without the loss, 4 390 and 5 090 with it (the teacher 0.32 of the rollout's time at
+  1 M, 0.21 to 0.23 from 5 M; the run 5.7 minutes, 9 %, longer); truncations 0.002 % and 0.013 %
+  without the loss, none with it. The imitation terms (weight 0.45, 0.25, near 0 at 1, 5, 10 M):
+  the cross-entropy on the learner's own states 1.82, 1.87, 2.27, the learner's sampled entry the
+  teacher's 0.38, 0.38, 0.35; no label lost.
+- **T19's tool** (the sandbox's CPU; `python/records/distill/ceiling/ceiling-2.json`; commit
+  `5dac0d2`, clean; T19's states, 25 600 with 8 draws each, its ceiling reproduced: 0.972, 0.044
+  nats; the uploaded control's `best.pt` identified by it, 0.2705 and 7.745 as T19's):
+
+  | Network | All | Tactics | Wait, defend | Moves | Melee | Shots | Heal | Casts | Other | CE |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | `e25-clone-1` #2 | 0.270 | 0.142 | 0.100 | 0.041 | 0.213 | 0.384 | 0.655 | 0.908 | 0.460 | 7.745 |
+  | `e25-clone-2` #2 | 0.276 | 0.119 | 0.098 | 0.063 | 0.221 | 0.397 | 0.686 | 0.912 | 0.732 | 7.252 |
+  | `e25-imitate-1` #2 | **0.317** | 0.190 | 0.128 | 0.093 | 0.260 | 0.469 | 0.668 | 0.868 | 0.916 | **4.566** |
+
+  (T20's student, the arms' start: 0.576 on its bench's held-out states.)
+- **The head-to-heads** (`h3env.train.gate` on the uploaded `best.pt`, the sandbox's CPU; the
+  gate set v1, elo0 0, elo1 20): `e25-imitate-1` #2 against `e25-clone-1` #2 **promoted after
+  171 pairs, 0.534 (+23 Elo)**, LLR +2.95, 24 s; `e25-clone-2` #2 against it rejected after 446
+  pairs, 0.508 (+6 Elo), LLR −3.43, 91 s; `e25-imitate-1` #2 against `e25-clone-2` #2 rejected
+  after 738 pairs, 0.512 (+8 Elo), LLR −2.97, 215 s.
+- **The read:**
+  - *The longer clone* (`e25-clone-2` against the control, the loss off in both): its start's
+    lead (T20: +0.015; the ladder at 0 +0.026) is gone at 20 M, every column inside its interval
+    and head to head 0.508, rejected. PPO leaves the better student as it left T16's (agreement
+    0.276 against 0.270).
+  - *The loss* (`e25-imitate-1` against `e25-clone-2`, the same start): it keeps the network
+    nearer the teacher (0.317 against 0.276, the cross-entropy 4.57 against 7.25, every category
+    but the heals and casts) and the entropy higher over its horizon; the ladders +0.007 and +0.012
+    against the fair and all-seeing actors, +0.003 on the neutral set (inside the intervals), head
+    to head +8 Elo, rejected. It is the only arm that promoted against the control (0.534). Its
+    cost: 9 % of the run's time.
+  - **Increment 6 in one line:** better imitation moved the lineage by about 0.01
+    (`e25-imitate-1` #2: 0.458 and 0.462 against the system actors, value −0.020; the neutral set
+    +0.287 against the target +0.285, inside its ±0.010): a better clone is capped by the network
+    (T20), and PPO drifts from the teacher unless the loss holds it. Exit criterion 1 is not met:
+    0.038 to 0.042 short of 0.5 against the system actors and the value still negative.
+
+## T23 — Increment 6's checkpoint (2026-11-04)
+
+- **The user's choices** (AI-Q16, the agent's recommendation on both): **`e25-imitate-1` #2 is
+  the current best** (T11's rule: its head-to-head against `e25-clone-1` #2 0.534, promoted);
+  **increment 7 is a network that reads the battle's structure, built and tuned properly**,
+  measured first on the cloning bench by its agreement with the fair actor (T19 and T20 put the gap
+  there: moves 0.38 of 0.985, melee 0.40 of 0.941). The other candidates offered: scale with the
+  loss, expert iteration, an exploiter league. Increment 6 closes (`E25-archive.md`); increment
+  7's decisions and tasks in the epic file, their scope in the AI queue.
