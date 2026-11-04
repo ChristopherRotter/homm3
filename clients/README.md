@@ -116,7 +116,8 @@ search the parent directories).
   falls due, at the largest integer scale that fits the display. Every key goes through the
   table `h3_view::keys` (E24 M3 T1b, *provisional*): the window's own are the map window's (F2
   the music, F3 the creatures' sounds, F5 pause, F6 a frame on while paused, F7 restart, F8
-  vsync, F9 the cursor's kind, F11 fullscreen, Esc quit), the battle's the original's hotkeys by
+  vsync, F9 the cursor's kind, F11 fullscreen, Esc quit) but pause, F12 here because the
+  original's battle takes F5 for Creature Info's level (E17 M6 T4b2a), the battle's the original's hotkeys by
   what is open over the battle (nothing, the spell book, a message box, an aim, the result
   window: each takes its own and the window's that work whatever is open, so Esc is the book's
   close, the box's Cancel, the aim's give-up and the result window's OK there); the user's `keys.toml` (`--keys`, else in the working directory)

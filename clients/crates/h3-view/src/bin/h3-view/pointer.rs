@@ -550,12 +550,14 @@ fn battle_of(
     (found, stack): (Option<usize>, Option<u8>),
 ) -> Option<(Observation, Legal)> {
     if let Some(turn) = found.and_then(|i| turned.get(i)) {
-        let legal = legal(
+        let mut legal = legal(
             &record.header.manifest,
             tables,
             &turn.observation,
             (&turn.commands, &turn.aims),
         );
+        // The damage the status line shows at Creature Info's levels 1 and 2 (E17 M6 T4b2a).
+        legal.previews = mouse::Previews::new(&turn.previews);
         return Some((turn.observation.clone(), legal));
     }
     let mut observation = record.first_snapshot()?.clone();
@@ -951,6 +953,12 @@ mod tests {
                 switches.insert(0, Input::Auto { at: 0, turn: 0 });
                 steps.check(waits, &turned, (&inputs, &switches));
             }
+            // Creature Info's level (E17 M6 T4b2a: F5 or the options dialog) between moves.
+            if c % 4 == 1 {
+                let level = u8::try_from(c % 3).unwrap();
+                inputs.push(Input::ArmyInfo { at: now, level });
+                steps.check(waits, &turned, (&inputs, &switches));
+            }
             if c % 5 == 2 {
                 // A seek back to the turn's start, then a move from there.
                 inputs.retain(|i| i.at() <= start);
@@ -993,6 +1001,67 @@ mod tests {
             );
         }
         assert!(steps.checked > 600, "{}", steps.checked);
+    }
+
+    #[test]
+    fn a_turn_fought_here_has_each_attack_s_preview_and_a_seat_s_none() {
+        // E17 M6 T4b2a (design §12.14, CLT-Q46): a battle fought here gives each legal attack and
+        // shot the engine's preview (BAT-DMG-011), which the hints take at Creature Info's levels
+        // 1 and 2; a server's seat has none, its hint the target alone (the level-0 line).
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let layout = layout();
+        let (scenario, packs) = (dir.join("scenarios/battle.toml"), dir.join("../packs"));
+        let (ruleset, mut setup) = crate::scenario::battle(&scenario, &packs, 1).unwrap();
+        setup.human = [true, true];
+        let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, true]).unwrap();
+        let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
+        let attacks = |t: &Turned| {
+            (t.commands.iter())
+                .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
+                .count()
+        };
+        // Defended until a turn may strike or shoot.
+        let mut turn = live.turn().unwrap();
+        while attacks(&turn) == 0 {
+            live.play(Command::Defend {}).unwrap();
+            turn = live.turn().unwrap();
+        }
+        assert_eq!(turn.previews.len(), attacks(&turn));
+        for (command, [low, high]) in &turn.previews {
+            assert!(turn.commands.contains(command));
+            assert!(0 < *low && low <= high, "{command:?}");
+        }
+        let (command, damage) = turn.previews[0];
+        let (Command::Attack { target, .. } | Command::Shoot { target, .. }) = command else {
+            unreachable!()
+        };
+        let hex = (turn.observation.stacks.iter())
+            .find(|s| s.id == target)
+            .unwrap()
+            .hex;
+        let hint = |t: &Turned| {
+            let read = (Some(0), t.observation.active);
+            let (o, legal) = battle_of(&record, &tables, core::slice::from_ref(t), read).unwrap();
+            let field = Field {
+                observation: &o,
+                legal: &legal,
+                facing: &Facing::Sides,
+                bugs: Bugs::Fixed,
+            };
+            let point = hex_point(&layout, hex);
+            mouse::pointer_in(&field, &layout, point, &mut None).hint
+        };
+        let shown = hint(&turn);
+        assert!(
+            matches!(shown, Hint::Strike(id, _) | Hint::Shot(id, ..) if id == target),
+            "{shown:?} {damage:?}"
+        );
+        let seat = Turned {
+            previews: Vec::new(),
+            ..turn
+        };
+        assert_eq!(hint(&seat), Hint::Attack(target));
     }
 
     #[test]

@@ -9,8 +9,9 @@
 //! `keys.toml` here, its `[battle]` table over the defaults): the window's own are the map
 //! window's (F2 the music, F3 the creatures' sounds, F5 pause, F6 a frame on while paused, F7
 //! restart, F8 vsync, F9 the hardware or the drawn cursor, F11 fullscreen, Esc quit; until T1b P,
-//! →, Home, M, E, V, H and F11), the battle's the original's hotkeys by what is open over it:
-//! nothing (the log's arrows, the Faerie Dragon's F, the panel's letters), the spell book, a
+//! →, Home, M, E, V, H and F11) but pause, F12 here since E17 M6 T4b2a (*provisional*), the
+//! battle's the original's hotkeys by what is open over it: nothing (the log's arrows, the Faerie
+//! Dragon's F, the panel's letters, F5 Creature Info's level since T4b2a), the spell book, a
 //! message box, an aim or the result window (each its own and the window's that work whatever is
 //! open, Esc its close, Cancel, give-up or OK). Unattended, the keys do nothing but quit.
 //!
@@ -639,8 +640,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let from = changes.latest(&mut battle, start)?;
     let mut next = Some(frame_at(&mut battle, from)?);
     let mut pointer: Option<(i32, i32)> = None;
-    // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2).
-    let mut inputs: Vec<Input> = Vec::new();
+    // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2). Creature Info's
+    // level from the settings at the opening (E17 M6 T4b2a), kept by every Restart, and the level
+    // the hints read now: a change (F5, the options dialog) is an input at its time.
+    let mut inputs: Vec<Input> = vec![Input::ArmyInfo {
+        at: 0,
+        level: battle.settings.army_info,
+    }];
+    let mut army_info = battle.settings.army_info;
     let mut scrolls: Vec<(u32, i64)> = Vec::new();
     let mut held: Option<Held> = None;
     // A battle's own key that stopped Auto Combat, and the turn the stop comes at (E17 M5 T4c1;
@@ -970,6 +977,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                                     // battle's, and a key that stopped it still acts on the
                                     // turn it stops at (T8b2, R5c-4).
                                     inputs.retain(|i| i.at() <= options.from);
+                                    // Creature Info's level stays the settings' (E17 M6 T4b2a).
+                                    inputs.push(Input::ArmyInfo {
+                                        at: options.from,
+                                        level: army_info,
+                                    });
                                     scrolls.retain(|&(t, _)| t <= options.from);
                                     mouse_changed = true;
                                     shown = None;
@@ -1068,6 +1080,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                                 inputs.push(Input::Looked { at });
                             }
                             mouse_changed = true;
+                        }
+                        // Creature Info's level (E17 M6 T4b2a, design §12.14; `battle_buttons`'
+                        // case 63, no test of the turn but only where the battle takes its keys):
+                        // cycled 0, 1, 2, no hint written (the line stays until the mouse takes
+                        // another hex), the frame drawn again and the settings written at once.
+                        Do::ArmyInfo if !battle.takes(at) => {}
+                        Do::ArmyInfo => {
+                            army_info = battle.settings.cycle_army_info();
+                            inputs.push(Input::ArmyInfo {
+                                at,
+                                level: army_info,
+                            });
+                            save_settings(&battle.settings, &files);
+                            book_changed = true;
                         }
                         // One of the battle's keys made while a battle fought here takes no
                         // input is dropped (design §9.11; E17 M5 T2b).
@@ -1325,6 +1351,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // The options dialog's close changed the Auto Combat boxes (E17 M6 T4b1): the turns to
         // come, and under Auto Combat the turn waiting, play by them.
         grew |= battle.boxes_closed(clock.ms(win.ticks_ns()))?;
+        // The options dialog set Creature Info's level (E17 M6 T4b2a): the hints read it from now.
+        if battle.settings.army_info != army_info {
+            army_info = battle.settings.army_info;
+            inputs.push(Input::ArmyInfo {
+                at: clock.ms(win.ticks_ns()),
+                level: army_info,
+            });
+            mouse_changed = true;
+        }
         // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
         // T2b): the battle follows them and the frame now is made again.
         if mouse_changed || grew || book_changed {
@@ -1631,15 +1666,21 @@ fn options_did(
         }
         p.set_volumes(battle.settings.music, battle.settings.effects);
     }
-    if let Some(settings) = battle.options_saved()
-        && let Err(e) = fs::write(files.path, settings.write())
-    {
+    if let Some(settings) = battle.options_saved() {
+        save_settings(&settings, files);
+    }
+    did != crate::battle::OptionsDid::default()
+}
+
+/// Writes `settings` to the settings file (E17 M6 T4a: the options dialog's close after a click;
+/// T4b2a: the key F5), a failure in the report's lines.
+fn save_settings(settings: &Settings, files: &SettingsFile<'_>) {
+    if let Err(e) = fs::write(files.path, settings.write()) {
         files
             .lines
             .borrow_mut()
             .push(format!("settings: {}: {e}", files.path.display()));
     }
-    did != crate::battle::OptionsDid::default()
 }
 
 /// Where the combat options dialog's settings go (E17 M6 T4a): the file, the sound's library for
@@ -2174,6 +2215,33 @@ mod tests {
         assert!(o.speed_set);
         let o = Options::parse(&["a.toml".to_owned()]).unwrap();
         assert!(!o.speed_set && o.settings.is_none());
+    }
+
+    #[test]
+    fn the_key_f5_s_level_is_written_at_once() {
+        // E17 M6 T4b2a: F5 cycles the level and writes the file, which the next start reads; a
+        // file that cannot be written is a line of the report.
+        let dir = std::env::temp_dir().join(format!("h3-view-army-info-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.toml");
+        let lines = std::cell::RefCell::new(Vec::new());
+        let files = SettingsFile {
+            path: &path,
+            library: None,
+            lines: &lines,
+        };
+        let mut settings = Settings::FIRST_RUN;
+        assert_eq!(settings.cycle_army_info(), 1);
+        save_settings(&settings, &files);
+        assert_eq!(load_settings(Some(&path)).unwrap().0.army_info, 1);
+        let unwritable = SettingsFile {
+            path: &dir,
+            ..files
+        };
+        save_settings(&settings, &unwritable);
+        assert_eq!(lines.borrow().len(), 1);
+        assert!(lines.borrow()[0].starts_with("settings: "));
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

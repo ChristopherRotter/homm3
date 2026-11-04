@@ -1362,10 +1362,15 @@ impl<'g> Battle<'g> {
                 aims.extend(aimed.filter(|a| a.spell == spell && !a.creature));
             }
         }
+        // The status line's damage at Creature Info's levels 1 and 2 (E17 M6 T4b2a, CLT-Q46,
+        // *provisional*): a seat holds no battle state and the wire no preview yet, so its hints
+        // keep the level-0 line. The hook: the server lane's previews of the turn's attacks and
+        // shots (its inbox) go here, as `scenario::previews` gives them where the state is.
         let turn = crate::scenario::Turned {
             observation,
             commands: legal,
             aims,
+            previews: Vec::new(),
         };
         self.follower.touch(self.turned.len());
         self.turned.push(turn);

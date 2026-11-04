@@ -17,7 +17,8 @@
 //! window's music and effects at once). **Kept, not in effect yet:** the hex grid, the movement
 //! and the cursor shadows and the spell book's animation (the page-turn videos are not built; the
 //! shades and grid T4c), the five Auto Combat options and the army info level (T4b). The battle's
-//! keys F5 to F8 that change four of them outside the dialog are not built (T4b, T4c).
+//! keys F5 to F8 change four of them outside the dialog: F5 the army info level since T4b2a
+//! ([`Settings::cycle_army_info`]), F6 to F8 not built (T4c).
 //!
 //! The original's oddities are built as the original's (design §12.12, "Oddities"): the speed
 //! buttons' sample twice, a box or a bar acting on a left release anywhere, the hidden bars
@@ -201,6 +202,14 @@ impl Settings {
         self.army_info = 0;
         self.speed = 0;
         self.auto = [true; 5];
+    }
+
+    /// The battle's key F5 (E17 M6 T4b2a, design §12.14; `battle_buttons`' case 63, 0x475902):
+    /// Combat Army Info Level cycled 0, 1, 2, 0; the level now. The window draws the frame again
+    /// and writes the settings at once.
+    pub const fn cycle_army_info(&mut self) -> u8 {
+        self.army_info = (self.army_info + 1) % 3;
+        self.army_info
     }
 
     /// The settings from the values read, by their names in the file ([`NAMES`]; a value not

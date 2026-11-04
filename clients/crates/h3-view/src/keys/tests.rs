@@ -16,14 +16,14 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
         } else {
             None
         };
-        assert_eq!(on(Context::Battle, w.key()), Some(Command::Window(w)));
+        assert_eq!(on(Context::Battle, window_key(w)), Some(Command::Window(w)));
         for context in [
             Context::Book,
             Context::Message,
             Context::Aim,
             Context::Result,
         ] {
-            let got = on(context, w.key());
+            let got = on(context, window_key(w));
             if w == Window::Quit {
                 assert_ne!(got, Some(Command::Window(w)), "{context:?}");
             } else {
@@ -111,6 +111,24 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
     assert_eq!(on(Context::Options, "Return"), Some(Command::OptionsOk));
     assert_eq!(on(Context::Options, "Escape"), Some(Command::OptionsOk));
     assert_eq!(on(Context::Options, "O"), None);
+    // Creature Info's level by F5 with nothing over the battle (E17 M6 T4b2a), the original's;
+    // the window's pause on F12 there, the map window's F5 (`window_key`). The options dialog
+    // takes its own keys alone: F5 does nothing while it is open.
+    assert_eq!(on(Context::Battle, "F5"), Some(Command::ArmyInfo));
+    assert_eq!(
+        on(Context::Battle, "F12"),
+        Some(Command::Window(Window::Pause))
+    );
+    assert_eq!(window_key(Window::Pause), "F12");
+    assert_eq!(window_key(Window::Restart), Window::Restart.key());
+    for context in [
+        Context::Options,
+        Context::Book,
+        Context::Message,
+        Context::Stats,
+    ] {
+        assert_eq!(on(context, "F5"), None, "{context:?}");
+    }
     // The result window's OK by Enter or Escape.
     assert_eq!(on(Context::Result, "Return"), Some(Command::ResultOk));
     assert_eq!(on(Context::Result, "Escape"), Some(Command::ResultOk));
@@ -122,7 +140,7 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
 #[test]
 fn every_command_has_a_name_in_the_tables_order() {
     let all = Command::all();
-    assert_eq!(all.len(), 35);
+    assert_eq!(all.len(), 36);
     let mut sorted = all.clone();
     sorted.sort_unstable();
     assert_eq!(sorted, all);
@@ -155,6 +173,7 @@ fn every_command_has_a_name_in_the_tables_order() {
             "book-tab-down",
             "box-ok",
             "box-cancel",
+            "army-info",
             "stats-ok",
             "options-ok",
             "aim-cancel",
@@ -168,13 +187,13 @@ fn every_command_has_a_name_in_the_tables_order() {
     // Every command bound by default, in the table's order.
     let keys = Keys::original();
     let chords = keys.chords();
-    assert_eq!(chords.len(), 41);
+    assert_eq!(chords.len(), 42);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, all);
     assert_eq!(chords[0].1.to_string(), "F2");
-    assert_eq!(chords[38].1.to_string(), "RightButton");
-    assert_eq!(chords[40].1.to_string(), "Escape");
+    assert_eq!(chords[39].1.to_string(), "RightButton");
+    assert_eq!(chords[41].1.to_string(), "Escape");
 }
 
 #[test]
@@ -214,7 +233,7 @@ fn a_users_file_rebinds_the_battles_keys() {
         on(Context::Book, false, "P"),
         Some(Command::Window(Window::Pause))
     );
-    assert_eq!(on(Context::Battle, false, "F5"), None);
+    assert_eq!(on(Context::Battle, false, "F12"), None);
     assert_eq!(on(Context::Battle, false, "Q"), None);
     assert_eq!(on(Context::Battle, true, "Up"), Some(Command::LogUp));
     assert_eq!(on(Context::Battle, false, "Up"), None);

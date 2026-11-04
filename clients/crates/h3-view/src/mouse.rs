@@ -14,7 +14,7 @@
 //! 0x476BD0), [`button`] for the panel's Wait and Defend; what a press opens instead (E17 M6):
 //! [`looked_at`] and [`held_at`] a stack's stats dialog, [`turret_at`] a turret's info.
 
-use alloc::collections::BTreeSet;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -198,6 +198,45 @@ pub struct Legal {
     /// The spells its side may aim now, each with what the engine lets it be cast at (E17 M5
     /// T3b: the hero's book's choice, a Faerie Dragon's drawn spell by its key F).
     pub aims: Vec<aim::Aim>,
+    /// The damage its attacks and shots would deal (E17 M6 T4b2a): the status line's at Creature
+    /// Info's levels 1 and 2.
+    pub previews: Previews,
+}
+
+/// The least and the greatest damage each legal attack and shot of a turn would deal (E17 M6
+/// T4b2a, design §12.14, *provisional*: CLT-Q46 answered (b) and (i)): the engine's preview
+/// (BAT-DMG-011), which the binary computes where it holds the battle's state (a battle fought or
+/// a record replayed with its scenario); a server's seat holds none until the server lane sends
+/// the turn's previews, so its hints keep the level-0 line. The original's own estimate
+/// (`status_damage_text` 0x4933D0) differs in three rare cases (a forgetful shooter, a jousting
+/// run-up, an arrow tower with Artillery: §12.14's oddities 1 to 3).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Previews {
+    /// Each strike by its target and the position it strikes from.
+    strikes: BTreeMap<(u8, u8), [u64; 2]>,
+    /// Each shot by its target and the hex it aims at.
+    shots: BTreeMap<(u8, u8), [u64; 2]>,
+}
+
+impl Previews {
+    /// The previews of `previews`' attacks and shots, each with its least and greatest damage
+    /// (any other command left out).
+    #[must_use]
+    pub fn new(previews: &[(Command, [u64; 2])]) -> Self {
+        let mut out = Self::default();
+        for &(command, damage) in previews {
+            match command {
+                Command::Attack { target, from } => {
+                    out.strikes.insert((target, from), damage);
+                }
+                Command::Shoot { target, at } => {
+                    out.shots.insert((target, at), damage);
+                }
+                _ => {}
+            }
+        }
+        out
+    }
 }
 
 impl Legal {
@@ -394,9 +433,17 @@ pub enum Hint {
     Move(u8),
     /// "Fly %s here." (296).
     Fly(u8),
-    /// "Attack %s" (221), the target by its number: a strike's and, while the army info is off,
-    /// a shot's.
+    /// "Attack %s" (221), the target by its number: a strike's and a shot's at Creature Info's
+    /// level 0, or without the damage's preview (a server's seat: CLT-Q46).
     Attack(u8),
+    /// A strike at Creature Info's levels 1 and 2 (E17 M6 T4b2a, design §12.14): GENRLTXT 37
+    /// (`%s`, `%s`), the target by its number and the damage's least and greatest
+    /// ([`damage_text`]).
+    Strike(u8, [u64; 2]),
+    /// A shot at levels 1 and 2 (E17 M6 T4b2a): the target, the acting stack's shots left and the
+    /// damage; with one shot left 38 (the target and the damage), else 297 (the target, the
+    /// shots, the damage).
+    Shot(u8, u16, [u64; 2]),
     /// "View %s info." (298), the stack's singular name.
     View(u8),
     /// "View Hero Stats" (418).
@@ -441,7 +488,18 @@ impl Hint {
     /// argument: an attack's or a shot's; design §9.8; a cast's not, as `arrow`'s frames show).
     #[must_use]
     pub const fn forced(&self) -> bool {
-        matches!(self, Self::Attack(_))
+        matches!(self, Self::Attack(_) | Self::Strike(..) | Self::Shot(..))
+    }
+
+    /// The hint at Creature Info's `level` (E17 M6 T4b2a; `battle_status_line` tests only
+    /// whether it is 0, so levels 1 and 2 write the same line, §12.14's oddity 5): at 0 a strike's
+    /// or a shot's damage goes, the target's line alone (221); any other hint as it is.
+    #[must_use]
+    pub fn at_level(self, level: u8) -> Self {
+        match self {
+            Self::Strike(id, _) | Self::Shot(id, ..) if level == 0 => Self::Attack(id),
+            other => other,
+        }
     }
 
     /// The hint's text in `catalogue`'s words, the stacks of `observation` named by `creature`
@@ -484,6 +542,23 @@ impl Hint {
             Self::Move(id) => with("battle.hint.move", *id, false),
             Self::Fly(id) => with("battle.hint.fly", *id, false),
             Self::Attack(id) => with("battle.hint.attack", *id, false),
+            Self::Strike(id, damage) => {
+                let args = Args::new()
+                    .text("creature", &name(*id, false).unwrap_or_default())
+                    .text("damage", &damage_text(catalogue, *damage));
+                catalogue.text("battle.hint.strike-damage", &args)
+            }
+            Self::Shot(id, shots, damage) => {
+                let args = Args::new()
+                    .text("creature", &name(*id, false).unwrap_or_default())
+                    .text("damage", &damage_text(catalogue, *damage));
+                if *shots == 1 {
+                    catalogue.text("battle.hint.shot-one", &args)
+                } else {
+                    let args = args.number("shots", i64::from(*shots));
+                    catalogue.text("battle.hint.shot-damage", &args)
+                }
+            }
             Self::View(id) => with("battle.hint.view", *id, true),
             Self::Heal(id) => with("battle.hint.heal", *id, false),
             Self::Wall(t) => {
@@ -560,6 +635,47 @@ pub type Namers<'a> = (
     &'a dyn Fn(u16, usize) -> Option<String>,
 );
 
+/// A strike's or a shot's damage on the status line (E17 M6 T4b2a; `status_damage_text`
+/// 0x4933D0's end, design §12.14): one number when the least and the greatest are equal, else
+/// the range of the two (`battle.hint.damage-range`), each in [`damage_number`]'s forms by the
+/// greatest's size (0x493527: the low end in the high end's unit).
+#[must_use]
+pub fn damage_text(catalogue: &Catalogue, [low, high]: [u64; 2]) -> String {
+    if low == high {
+        return damage_number(catalogue, high, high);
+    }
+    let args = Args::new()
+        .text("low", &damage_number(catalogue, low, high))
+        .text("high", &damage_number(catalogue, high, high));
+    catalogue.text("battle.hint.damage-range", &args)
+}
+
+/// A damage `value` written by the size of `size` (`status_damage_number` 0x493650): below
+/// 1 000 the number itself; below 10 000 in thousands with one decimal, h = trunc((value + 50) /
+/// 100), h / 10 and h mod 10, or the thousands alone when h mod 10 is 0; else the thousands
+/// alone, trunc((value + 500) / 1 000).
+#[must_use]
+pub fn damage_number(catalogue: &Catalogue, value: u64, size: u64) -> String {
+    let n = |v: u64| i64::try_from(v).unwrap_or(i64::MAX);
+    if size < 1_000 {
+        return catalogue.text("battle.hint.number", &Args::new().number("value", n(value)));
+    }
+    let (thousands, tenths) = if size < 10_000 {
+        let h = value.saturating_add(50) / 100;
+        (h / 10, h % 10)
+    } else {
+        (value.saturating_add(500) / 1_000, 0)
+    };
+    if tenths == 0 {
+        let args = Args::new().number("thousands", n(thousands));
+        return catalogue.text("battle.hint.thousands", &args);
+    }
+    let args = Args::new()
+        .number("thousands", n(thousands))
+        .number("tenths", n(tenths));
+    catalogue.text("battle.hint.thousands-tenths", &args)
+}
+
 /// The mouse at a point: the cursor, the status line's hint and the stack the mouse marks.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pointer {
@@ -617,7 +733,8 @@ pub fn look_cursor(layout: &BattleLayout, look: track::Look, [x, y]: [i32; 2]) -
 /// The mouse at `point` of the screen in the battle `observation` shows, its acting stack's
 /// commands `legal` (`battle_buttons`' mouse move 0x4753A4): over the battlefield its spot's
 /// kind, over the panel the pointer and the hint of the control under it. A still: each side
-/// faces its own way and no target is left over ([`pointer_in`]); `bugs` the profile (CLT-Q21).
+/// faces its own way, no target is left over ([`pointer_in`]) and Creature Info's level is 0 (the
+/// harness's, `Settings::CAPTURE`); `bugs` the profile (CLT-Q21).
 #[must_use]
 pub fn pointer(
     observation: &Observation,
@@ -631,13 +748,17 @@ pub fn pointer(
         facing: &Facing::Sides,
         bugs,
     };
-    pointer_in(&field, layout, point, &mut None)
+    let mut pointer = pointer_in(&field, layout, point, &mut None);
+    pointer.hint = pointer.hint.at_level(0);
+    pointer
 }
 
 /// As [`pointer`] in `field`, the acting stack's target `aim` (+0x10, +0x14) as `battle_cursor`
 /// leaves it: cleared over a hex of the field, set over an enemy the stack may shoot or strike,
 /// kept over nothing, a side column or a hero (E17 M3 T6c-2); over nothing a shooter without
-/// shots whose target is still set shows "No shots left!".
+/// shots whose target is still set shows "No shots left!". Its hint is Creature Info's levels 1
+/// and 2's (E17 M6 T4b2a: a strike's or a shot's damage where `field`'s previews give it;
+/// [`Hint::at_level`] gives level 0's).
 #[must_use]
 pub fn pointer_in(
     field: &Field<'_>,
@@ -677,7 +798,9 @@ pub fn pointer_in(
     let hint = match (kind, target, acting) {
         (Kind::Move, _, Some(s)) => Hint::Move(s.id),
         (Kind::Fly, _, Some(s)) => Hint::Fly(s.id),
-        (Kind::Shoot | Kind::BrokenArrow | Kind::Attack, Some(id), _) => Hint::Attack(id),
+        (Kind::Shoot | Kind::BrokenArrow | Kind::Attack, Some(id), _) => {
+            attack_hint(field, layout, point, (kind, spot, id))
+        }
         (Kind::Hero, ..) => Hint::Hero,
         (Kind::EnemyHero, ..) => Hint::EnemyHero,
         (Kind::Query, Some(id), _) => Hint::View(id),
@@ -692,6 +815,43 @@ pub fn pointer_in(
         frame,
         hint,
         marked,
+    }
+}
+
+/// The hint over a stack to strike or shoot (`battle_status_line`'s kinds 7, 3 and 15; E17 M6
+/// T4b2a, design §12.14): with the damage of the command a press would give there ([`click`]'s:
+/// a strike from its slot's position, a shot at its aim hex) where the turn's previews hold it,
+/// as Creature Info's levels 1 and 2 write it ([`Hint::at_level`] gives level 0's); else the
+/// target alone (CLT-Q46: a server's seat until the server lane sends the previews).
+fn attack_hint(
+    field: &Field<'_>,
+    layout: &BattleLayout,
+    point: [i32; 2],
+    (kind, spot, target): (Kind, Spot, u8),
+) -> Hint {
+    let previews = &field.legal.previews;
+    let damage = match spot {
+        // Over a hex no slot strikes from (a two-hex target's far hex), the target's first
+        // strike's (*provisional*: the original's from-hex there not read; they differ only by a
+        // jouster's run-up).
+        Spot::Hex(hex) if kind == Kind::Attack => attack_slots(field, hex)
+            [slot(layout, point, hex)]
+        .from
+        .and_then(|from| previews.strikes.get(&(target, from)))
+        .or_else(|| {
+            (previews.strikes.range((target, 0)..=(target, u8::MAX)))
+                .next()
+                .map(|(_, damage)| damage)
+        }),
+        Spot::Hex(hex) => {
+            (field.legal.aim(target, hex)).and_then(|at| previews.shots.get(&(target, at)))
+        }
+        _ => None,
+    };
+    match damage {
+        Some(&damage) if kind == Kind::Attack => Hint::Strike(target, damage),
+        Some(&damage) => Hint::Shot(target, field.acting().map_or(0, |s| s.shots), damage),
+        None => Hint::Attack(target),
     }
 }
 

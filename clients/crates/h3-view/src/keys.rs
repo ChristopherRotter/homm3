@@ -1,7 +1,7 @@
 //! The battle window's commands (E24 M3 T1b, *provisional*; the user, 2026-10-26: no key hard-coded
 //! in the client), whose keys go through the common table (`h3_ui::keys`: the chords, a user's
 //! file's `[battle]` table, the lookup). The window's own are both viewers' (`h3_ui::keys::Window`:
-//! the function keys and Esc, the user at E24 M3 T0); the battle's defaults are the original's
+//! the function keys and Esc, the user at E24 M3 T0) but pause, F12 here ([`window_key`]); the battle's defaults are the original's
 //! hotkeys, by where the battle takes them ([`Context`]): with nothing over it the log's arrows, the
 //! Faerie Dragon's F, the stats dialog's T and the panel's buttons' letters; the spell book's
 //! (`book::Key`), a message box's (`message::Key`), the stats dialog's, the combat options
@@ -93,6 +93,9 @@ pub enum Command {
     Book(book::Key),
     /// A message box's.
     Message(message::Key),
+    /// Creature Info's level cycled (0, 1, 2; E17 M6 T4b2a, design §12.14: the original's F5,
+    /// case 63 of `battle_buttons`), the frame drawn again and the settings file written.
+    ArmyInfo,
     /// The stats dialog's OK pressed, the dialog closed as it is released.
     StatsOk,
     /// The combat options dialog's OK pressed, the dialog closed as it is released (E17 M6 T4a).
@@ -140,12 +143,23 @@ const MESSAGE: [(message::Key, &str, &[&str]); 2] = [
     (message::Key::Cancel, "box-cancel", &["Escape"]),
 ];
 
+/// The battle window's default key of its own command `w` (E17 M6 T4b2a, *provisional*): the map
+/// window's ([`Window::key`]) but pause's, F12 here, because the original's battle takes F5 for
+/// Creature Info's level ([`Command::ArmyInfo`]; F6 to F8 its grid and shadows, T4c).
+#[must_use]
+pub const fn window_key(w: Window) -> &'static str {
+    match w {
+        Window::Pause => "F12",
+        _ => w.key(),
+    }
+}
+
 impl Command {
     /// Its name and its default keys.
     fn entry(self) -> (String, Vec<Chord>) {
         let plain = |keys: &[&str]| keys.iter().map(|k| Chord::new(false, k)).collect();
         let (name, keys): (String, Vec<Chord>) = match self {
-            Self::Window(w) => (w.name().into(), plain(&[w.key()])),
+            Self::Window(w) => (w.name().into(), plain(&[window_key(w)])),
             // The battle's own keys (0x4758FB: the scan codes 72 and 80).
             Self::LogUp => ("log-up".into(), plain(&["Up"])),
             Self::LogDown => ("log-down".into(), plain(&["Down"])),
@@ -153,6 +167,7 @@ impl Command {
             Self::DragonSpell => ("dragon-spell".into(), plain(&["F"])),
             // The key code 20 (0x475D07): the acting stack's dialog, outside the tactics phase.
             Self::Stats => ("stats".into(), plain(&["T"])),
+            Self::ArmyInfo => ("army-info".into(), plain(&["F5"])),
             Self::Button(id) => BUTTONS.iter().find(|&&(b, _, _)| b == id).map_or_else(
                 || (format!("button-{id}"), Vec::new()),
                 |&(_, name, keys)| (name.into(), plain(keys)),
@@ -194,6 +209,7 @@ impl keys::Command for Command {
         all.extend(BOOK.map(|(k, _, _)| Self::Book(k)));
         all.extend(MESSAGE.map(|(k, _, _)| Self::Message(k)));
         all.extend([
+            Self::ArmyInfo,
             Self::StatsOk,
             Self::OptionsOk,
             Self::AimCancel,
@@ -225,6 +241,7 @@ impl keys::Command for Command {
             | Self::LogDown
             | Self::DragonSpell
             | Self::Stats
+            | Self::ArmyInfo
             | Self::Button(_) => Some(Context::Battle),
             Self::Book(_) => Some(Context::Book),
             Self::Message(_) => Some(Context::Message),
