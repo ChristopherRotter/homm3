@@ -956,3 +956,6 @@ docs by the agent.
   `TWN-QUIRK-2`, `-3` (new), `-4`'s test; `stubs.toml` `TWN-STUB-3` narrowed; the design note's
   §14 (the cut, "As built"), §19; `h3m.md`'s census; the stale "T7b" lines of `h3-towns` and the
   import's module doc now say T7b2.
+- **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
+  `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass.
+  `master` (#714, the client lane) merged in before the run.
