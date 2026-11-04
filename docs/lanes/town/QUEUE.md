@@ -6,10 +6,23 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
-Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entry below is round 7's last (rounds 2 to 6, T7a and T7b1 are done, `E09-log.md`); each later round's entries are
-written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
+Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
+(the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2, T8a2, then T8b (rounds 2
+to 6, T7a and T7b1 are done, `E09-log.md`); each later round's entries are written when it comes
+(the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
+
+**E09 T8a1 — the town as a map object** (`cross-lane`)
+
+- **Scope:** design §8: the kind `Town` and the base pack's type `town` (classes 77, 98; adventure
+  part v17), the import's towns typed with their owners and `Holds::Town { formation }` (map
+  import v18), the static map's town list (`town_id`, `town_object`), towns ownable, the garrison as
+  the town object's army and each town's reveal radius from the game (empty and the flag's until
+  T7b2, `TWN-STUB-5`), `validate`'s `TownCount` and `MainTown`'s owner; adventure state hash v21
+  (after E08 T94b's v20), the replays re-recorded; the entrance not entered until T8a2
+  (`TWN-STUB-4`).
+- **Depends on:** #716 (E08 T94b) merged; the branch is stacked on it. **Status:** in progress
+  (`town/e09-t8a1`).
 
 **E09 T7b2 — the towns' draws and the store** (`cross-lane`)
 
@@ -26,11 +39,22 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
   rehashed (skill `homm3-rerecord-replays`).
 - **Acceptance:** as T7a's; the determinism replays green; the census's 125 maps refused for a
   main town's hero build or are refused by a typed check.
-- **Notes:** each town's owner and object come with T8a (the static map's town list, towns
-  ownable); the order of T8a's parts and T7b2 is settled at round 8's start (T8a may be cut so its
-  kind, town list and owners come first).
-- **Depends on:** T7b1 (its pull request merged) and T8a's town list and owners. **Status:**
-  waiting; its cut confirmed at its start.
+- **Notes:** each town's owner and object come with T8a1 (the static map's town list, towns
+  ownable, the adventure's garrison and radius inputs, which the game fills with empty garrisons and
+  the flag radius until this task: `TWN-STUB-5`, lifted here).
+- **Depends on:** T8a1 (its pull request merged). **Status:** waiting; its cut confirmed at its
+  start.
+
+**E09 T8a2 — the step onto a town** (`cross-lane`)
+
+- **Scope:** design §9 and §11 (TWN-VIS-001, -002, TWN-CAP-001, -002): the step's three cases by
+  the owner's team, the garrison and the visitor (entered; defended: visited from the tile before,
+  its siege T8b's; undefended: entered and captured), the visitor on the entrance, the reach and the
+  legal moves (a defended entrance as a monster's tile; measured against `master`, skill
+  `homm3-bench-regression`), `AdventureState::capture_town` and the game's composition
+  (`h3_towns::reveal`, the Capitol's limit, `TownCaptured`, `TownChanged`); `TWN-STUB-4` lifted.
+- **Depends on:** T7b2 (the garrisons and the store). **Status:** waiting; its cut confirmed at its
+  start.
 
 ## Inbox
 
