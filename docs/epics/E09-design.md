@@ -189,7 +189,8 @@ ADR-0015's amendment point 3, in the import's order:
   blocked and visitable, so the hero-in-a-town test leaves the entrance out (a moved hero stands
   there); a hero type the ruleset lacks leaves the pool's inputs (not refused); until T7b the
   build refuses a setup that needs a draw (`GameSetupError::HeroDraw`, `TWN-STUB-3`); map import
-  v17 (E08 T93b took v16 first). The census: every shipped map imports; `h3m.md`.
+  v17 (E08 T93b took v16 first). The census: 156 of the 160 shipped maps import, 4 are refused
+  for a dwelling entered from water (`Unsupported::OwnedOnWater`, since T93b); `h3m.md`.
 
 ### 8. The kind `Town` and the static map (`h3-adventure`; adventure part v16, state hash v20, T8a)
 

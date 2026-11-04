@@ -9,9 +9,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (the epic's task list; each task's record in `E09-log.md`): rounds 2 to 6 done (batch TWN-1, the
   ADRs and skeletons, the part, the content harvested, `GameRuleset` with the town part, `h3-towns`'
   record, store, derivations and setup; decisions 8–30, `TWN-Q2` to `TWN-Q6`). **Round 7**: T7a
-  cut in two (the user); **T7a1** done (the setup's fields and the import, map import v17; every
-  shipped map imports; until T7b the build refuses a setup that needs a draw, `TWN-STUB-3`).
-  **Next: T7a2** (`validate`'s checks, §13; its cut confirmed at its start) once T7a1's pull
+  cut in two (the user); **T7a1** done (the setup's fields and the import, map import v17; 156
+  shipped maps import, 4 are refused for a dwelling entered from water since T93b; until T7b the
+  build refuses a setup that needs a draw, `TWN-STUB-3`). **Next: T7a2** (`validate`'s checks, §13; its cut confirmed at its start) once T7a1's pull
   request merges, then **T7b** (the pool and the build's draws); both in the queue; rounds 8 to
   10 in the epic's list.
 - **Open pull requests:** the one of branch `town/e09-t7a1` (T7a1, `cross-lane`: `h3-game`'s
@@ -37,7 +37,8 @@ next); until T7b the build refuses a setup that needs a draw (`TWN-STUB-3`). The
 sub-agent (resumed after a second VM restart), the review and docs by the agent; #708 merged in.
 `PlayerStart`, `GameSetup`'s towns and pool inputs, the import (TWN-SET-001's half, -010;
 `TWN-QUIRK-1`, `-4`), map import v17 (T93b, #711, took v16 first; `master` merged in), the
-census (every shipped map imports, 10 build). Pull request: the one of branch `town/e09-t7a1`.
+census (156 maps import, 4 refused by T93b's dwellings on water, 9 build). Pull request: the one
+of branch `town/e09-t7a1`.
 
 ### 2026-11-04 — T6c: the town's setup at the build
 

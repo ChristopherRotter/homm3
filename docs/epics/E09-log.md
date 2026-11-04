@@ -853,6 +853,9 @@ review and the docs by the agent.
 - **The census** (`original_data`, 160 shipped maps): every map imports (v15: 8); 10 build whole,
   128 refused by the build for a main town's hero and 22 for a random hero; 1 468 towns (592 fixed,
   876 random, 47 of them aligned), 574 custom building sets, 113 custom garrisons; 176 random
-  heroes; 23 heroes moved; 89 prisoners (`h3m.md`).
+  heroes; 23 heroes moved; 89 prisoners (`h3m.md`). After #711 (E08 T93b) merged in: 156 maps
+  import, 4 are refused for an ownable object entered from water (T93b's dwellings), 9 build
+  whole, 125 and 22 refused by the build; 1 437 towns (577 fixed, 860 random), 726 players, 86
+  prisoners.
 - **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
   `cross-lane`); `check-lane --cross-lane` and `cargo check --workspace --all-targets` pass.
