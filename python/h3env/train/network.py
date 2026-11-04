@@ -4,20 +4,25 @@
     uv run --group train python -m h3env.train.network --set network.kind=mlp --time
     uv run --group train python -m h3env.train.network --from runs/t4-2/best.pt \
         --mermaid runs/t4-2/network.md
+    uv run --group train python -m h3env.train.network --bench configs/distill/e25-grid.toml \
+        --time --rows 512 --device cuda
 
 The network a config names (`--config`, `--set`, as a run's) or a saved file holds (`--from`),
 run on `--rows` observations of the encounter distribution: each part's parameters, output shape
 and multiply-adds per decision (the linear layers' and the attention's; the cast heads apart, as
 only a cast runs them), the totals, and with `--time` the time per decision of a call's forward
-pass and of a training pass (forward and backward of `evaluate`). `--mermaid` writes the data
-flow as a Mermaid diagram with the table (Markdown, which GitHub renders). No dependency beyond
-torch.
+pass, of a training pass (forward and backward of `evaluate`) and of a sample-pass (the training
+pass with an AdamW step, a bench's or PPO's minibatch step; on CUDA its peak memory too, E25
+T24). `--bench` puts every student of a bench's file in one table instead (its parameters,
+multiply-adds and with `--time` its timing; E25 T24). `--mermaid` writes the data flow as a
+Mermaid diagram with the table (Markdown, which GitHub renders). No dependency beyond torch.
 """
 
 from __future__ import annotations
 
 import argparse
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -26,10 +31,11 @@ import torch
 from torch import nn
 
 from ..batch import BattleBatch
+from .distill import STUDENT_KEYS, Bench, bench_device, load_bench, optimizer, student_config
 from .entity import Block, Entity
 from .hexnet import HexConv, HexNet
 from .policy import CASTS, Mlp, Policy, build
-from .run import load_config
+from .run import Config, load_config
 
 
 @dataclass
@@ -244,11 +250,15 @@ def hex_mermaid(net: HexNet) -> str:
     )
 
 
-def timing(net: Policy, batch: BattleBatch, repeats: int) -> dict[str, float]:
+def timing(net: Policy, batch: BattleBatch, repeats: int) -> dict[str, float | None]:
     """Microseconds per decision of a call's forward pass (`encode`, `value`, `entry_logits` on
-    the batch's rows) and of a training pass (`evaluate` and its backward), each the median of
-    `repeats` after one warm-up."""
+    the batch's rows), of a training pass (`evaluate` and its backward) and of a sample-pass (a
+    training pass, the gradient's clipping and an AdamW step at learning rate 0, so the network
+    stays as it was: a bench's or PPO's minibatch step, E25 T24), each the median of `repeats`
+    after one warm-up; and on CUDA the peak memory of a sample-pass above what was allocated
+    before it (`peak_mb`; None on the CPU)."""
     device = next(net.parameters()).device
+    cuda = device.type == "cuda"
     obs = torch.from_numpy(batch.obs).to(device)
     mask = torch.from_numpy(batch.entry_mask).to(device).bool()
     preview = None if batch.preview is None else torch.from_numpy(batch.preview).to(device)
@@ -257,6 +267,7 @@ def timing(net: Policy, batch: BattleBatch, repeats: int) -> dict[str, float]:
     cast = torch.zeros(rows, dtype=torch.bool, device=device)
     zero = torch.zeros(rows, dtype=torch.long, device=device)
     heads = (mask, zero, mask, zero, mask, zero)
+    adam = optimizer(net, 0.0)
 
     def forward() -> None:
         with torch.no_grad():
@@ -269,20 +280,76 @@ def timing(net: Policy, batch: BattleBatch, repeats: int) -> dict[str, float]:
         (logp.sum() + ent.sum() + value.sum()).backward()
         net.zero_grad(set_to_none=True)
 
-    out = {}
-    for name, step in (("forward", forward), ("training", train)):
+    def sample_pass() -> None:
+        logp, ent, value = net.evaluate(obs, mask, entry, cast, heads, preview)
+        adam.zero_grad()
+        (logp.sum() + ent.sum() + value.sum()).backward()
+        torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
+        adam.step()
+
+    out: dict[str, float | None] = {"peak_mb": None}
+    for name, step in (("forward", forward), ("training", train), ("sample_pass", sample_pass)):
         seconds = []
         for i in range(repeats + 1):
-            if device.type == "cuda":
+            if cuda:
                 torch.cuda.synchronize()
+                base = torch.cuda.memory_allocated()
+                torch.cuda.reset_peak_memory_stats()
             start = time.perf_counter()
             step()
-            if device.type == "cuda":
+            if cuda:
                 torch.cuda.synchronize()
             if i:
                 seconds.append(time.perf_counter() - start)
+            if cuda and name == "sample_pass":
+                peak = (torch.cuda.max_memory_allocated() - base) / 2**20
+                out["peak_mb"] = max(out["peak_mb"] or 0.0, peak)
         out[name] = float(np.median(seconds)) * 1e6 / rows
+    net.zero_grad(set_to_none=True)
     return out
+
+
+def bench_table(
+    bench: Bench,
+    base: Config,
+    batch: BattleBatch,
+    device: torch.device,
+    repeats: int | None,
+    log: Callable[[str], None] = print,
+) -> str:
+    """Every student of `bench` (its `[network]` keys over `base`) on the batch's rows as a
+    Markdown table, each line logged as it comes: its parameters and multiply-adds a decision,
+    and with `repeats` its `timing` (E25 T24: a bench's candidates side by side, their cost before
+    a run)."""
+    obs = torch.from_numpy(batch.obs).to(device)
+    mask = torch.from_numpy(batch.entry_mask).to(device).bool()
+    lines = [
+        "| student | network | parameters | multiply-adds | forward µs | training µs "
+        "| sample-pass µs | peak MB |",
+        "|---|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for line in lines:
+        log(line)
+    for name, keys in bench.students.items():
+        torch.manual_seed(0)
+        net = build(asdict(student_config(base, keys)), batch).to(device)
+        counted = parts(net, obs, mask)
+        t = timing(net, batch, repeats) if repeats else {}
+
+        def us(key: str, t=t) -> str:
+            x = t.get(key)
+            return "-" if x is None else f"{x:,.1f}"
+
+        network = ", ".join(f"{k} {v}" for k, v in keys.items() if k not in STUDENT_KEYS)
+        line = (
+            f"| {name} | {network} | {sum(p.parameters for p in counted):,} | "
+            f"{sum(p.macs for p in counted):,.0f} | {us('forward')} | {us('training')} | "
+            f"{us('sample_pass')} | {us('peak_mb')} |"
+        )
+        log(line)
+        lines.append(line)
+        del net
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -290,12 +357,43 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--config", type=Path, default=None, help="a run's TOML config file")
     parser.add_argument("--set", action="append", default=[], metavar="TABLE.KEY=VALUE")
     parser.add_argument("--from", dest="saved", type=Path, default=None, metavar="FILE")
-    parser.add_argument("--rows", type=int, default=256, help="the observations (a call's envs)")
-    parser.add_argument("--time", action="store_true", help="time a forward and a training pass")
+    parser.add_argument(
+        "--bench",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="a bench's TOML file: every student of it in one table (over its `run` config, "
+        "else over --config and --set)",
+    )
+    parser.add_argument(
+        "--rows", type=int, default=256, help="the observations (a call's envs, a minibatch's rows)"
+    )
+    parser.add_argument(
+        "--time", action="store_true", help="time a forward, a training pass and a sample-pass"
+    )
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--mermaid", type=Path, default=None, metavar="FILE.md")
     args = parser.parse_args(argv)
+    device = bench_device(args.device)
+    if args.bench is not None:
+        if args.saved is not None or args.mermaid is not None:
+            parser.error("--bench times a bench's students: no --from, no --mermaid")
+        bench = load_bench(args.bench.read_text(encoding="utf-8"))
+        path = Path(bench.run) if bench.run else args.config
+        base = load_config(path.read_text(encoding="utf-8") if path else "", args.set)
+        batch = BattleBatch(args.rows, seed=base.seed)
+        try:
+            batch.add_encounters(kinds=base.kinds)
+            batch.reset()
+            print(
+                f"# The students of {args.bench} over {path or 'the defaults'} ({args.rows} "
+                f"observations on {device}, {torch.get_num_threads()} threads)\n"
+            )
+            bench_table(bench, base, batch, device, args.repeats if args.time else None)
+        finally:
+            batch.close()
+        return
     if args.saved is not None:
         config = torch.load(args.saved, map_location="cpu", weights_only=True)["config"]
         source = str(args.saved)
@@ -307,24 +405,26 @@ def main(argv: list[str] | None = None) -> None:
     try:
         batch.add_encounters(kinds=config.get("kinds"))
         batch.reset()
-        net = build(config, batch).to(args.device)
+        net = build(config, batch).to(device)
         if args.saved is not None:
-            saved = torch.load(args.saved, map_location=args.device, weights_only=True)
+            saved = torch.load(args.saved, map_location=device, weights_only=True)
             net.load_state_dict(saved["policy"])
         net.eval()
-        obs = torch.from_numpy(batch.obs).to(args.device)
+        obs = torch.from_numpy(batch.obs).to(device)
         kind = config.get("kind", "mlp")
         title = f"The {kind} network of {source} ({args.rows} observations)"
-        mask = torch.from_numpy(batch.entry_mask).to(args.device).bool()
-        preview = None if batch.preview is None else torch.from_numpy(batch.preview).to(args.device)
+        mask = torch.from_numpy(batch.entry_mask).to(device).bool()
+        preview = None if batch.preview is None else torch.from_numpy(batch.preview).to(device)
         rows = parts(net, obs, mask, preview)
         lines = [f"# {title}", "", table(rows)]
         if args.time:
             t = timing(net, batch, args.repeats)
+            peak = "" if t["peak_mb"] is None else f", its peak {t['peak_mb']:,.0f} MB"
             lines += [
                 "",
-                f"Per decision on {args.device}: forward {t['forward']:.1f} µs, "
-                f"training pass {t['training']:.1f} µs ({torch.get_num_threads()} threads).",
+                f"Per decision on {device}: forward {t['forward']:.1f} µs, "
+                f"training pass {t['training']:.1f} µs, sample-pass {t['sample_pass']:.1f} µs"
+                f"{peak} ({torch.get_num_threads()} threads).",
             ]
     finally:
         batch.close()

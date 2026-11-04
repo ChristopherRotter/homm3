@@ -13,13 +13,17 @@ rows (the hex networks' activations do not fit PPO's few thousand rows on an 8 G
 teacher's distributions computed once per minibatch: the loss is the KL divergence from the
 teacher's entry head over the legal entries, plus for a cast row its spell, target and second
 heads along the teacher's choices, plus `value_coef` times half the squared error against the
-teacher's λ-returns (PPO's value targets: `ppo.gae` with the teacher's values, γ and λ). Adam,
-the learning rate falling linearly to `lr_floor` of `lr` over `samples`; a student's table may set
-its own `lr`. Every `eval_every` samples and at the end each student scores on a held-out set
-(`heldout` samples of rollouts on the seed after `seed`, collected once): the KL per head, the
-agreement of its most likely entry with the teacher's, overall and per category of the teacher's
-(`CATEGORIES`), and its value's mean squared error and explained variance against the returns
-(the teacher's own beside them), with its training seconds. `report.json` holds the settings,
+teacher's λ-returns (PPO's value targets: `ppo.gae` with the teacher's values, γ and λ). AdamW
+(`optimizer`; `weight_decay` 0, the default, is Adam's steps), the learning rate rising linearly
+from 0 over the first `warmup` samples (0: none) and falling linearly to `lr_floor` of `lr` over
+`samples` (`learning_rate`); a student's table may set its own `lr`, `warmup` and
+`weight_decay` (E25 T24). On CUDA cuDNN picks its fastest kernels (`bench_device`). Every
+`eval_every` samples and at the end each student scores on a held-out set (`heldout` samples of
+rollouts on the seed after `seed`, collected once): the KL per head, the agreement of its most
+likely entry with the teacher's, overall and per category of the teacher's (`CATEGORIES`), and
+its value's mean squared error and explained variance against the returns (the teacher's own
+beside them), with its training seconds and its cost (`cost`: the microseconds a sample-pass,
+the peak CUDA memory of a step). `report.json` holds the settings,
 the teacher, each student's parameters and every evaluation; `metrics.jsonl` the evaluations as
 they come; `students/<name>.pt` each student as a run's network file (`evaluate.load` and
 `--init-from` read it). A stopped bench (Ctrl-C) scores and saves what it has; it does not
@@ -51,10 +55,13 @@ from .run import Config, ConfigError, atomic_write_text, machine, resolve, sourc
 #: The teacher's entry categories the agreement is split by (`category`): a decision of the
 #: tactics phase (round 0), then by its entry.
 CATEGORIES = ("tactics", "wait_defend", "move", "melee", "shot", "heal", "cast", "other")
-#: The keys a student's table may set: its `[network]` settings and its learning rate.
+#: The `[network]` keys a student's table may set.
 NETWORK_KEYS = frozenset(
     f.name for f in dataclasses.fields(Config) if f.metadata.get("table") == "network"
 )
+#: The optimizer's keys a student's table may set over the bench's (E25 T24: `warmup` and
+#: `weight_decay` beside `lr`).
+STUDENT_KEYS = frozenset({"lr", "warmup", "weight_decay"})
 
 
 @dataclass
@@ -76,6 +83,10 @@ class Bench:
     minibatch: int = 512
     lr: float = 3e-4
     lr_floor: float = 0.1
+    #: The samples over which the learning rate rises from 0 to `lr` (E25 T24; 0: none).
+    warmup: int = 0
+    #: AdamW's decoupled weight decay of the matrices and kernels (E25 T24; 0: Adam's steps).
+    weight_decay: float = 0.0
     value_coef: float = 0.5
     max_grad_norm: float = 0.5
     device: str = "auto"
@@ -86,7 +97,7 @@ class Bench:
     #: (none: no ladder), the neutral set v1 beside it, `ladder_per_kind` episodes of each kind.
     ladder: list[str] = field(default_factory=list)
     ladder_per_kind: int = REPORT_V1_ENVS
-    #: Each student's `[network]` keys (and `lr`) over the teacher's, by name, in order.
+    #: Each student's `[network]` keys (and `STUDENT_KEYS`) over the teacher's, by name, in order.
     students: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
@@ -120,17 +131,23 @@ def load_bench(text: str, sets: list[str] | tuple[str, ...] = ()) -> Bench:
     ):
         if getattr(bench, key) <= 0:
             problems.append(f"`{key}` must be positive")
+    for key in ("warmup", "weight_decay"):
+        if getattr(bench, key) < 0:
+            problems.append(f"`{key}` must not be negative")
     if not bench.students:
         problems.append("no `[students.<name>]` table")
     unknown = [o for o in bench.ladder if o not in OPPONENTS]
     if unknown:
         problems.append(f"`ladder`: {', '.join(unknown)} are no opponents ({', '.join(OPPONENTS)})")
     for name, keys in bench.students.items():
-        bad = sorted(set(keys) - NETWORK_KEYS - {"lr"})
+        bad = sorted(set(keys) - NETWORK_KEYS - STUDENT_KEYS)
         if bad:
             problems.append(f"student {name!r}: {', '.join(bad)} are no `[network]` keys")
         if keys.get("preview"):
             problems.append(f"student {name!r}: no network that reads the kill preview")
+        for key in ("warmup", "weight_decay"):
+            if keys.get(key, 0) < 0:
+                problems.append(f"student {name!r}: `{key}` must not be negative")
     if problems:
         raise ConfigError("; ".join(problems))
     return bench
@@ -138,7 +155,7 @@ def load_bench(text: str, sets: list[str] | tuple[str, ...] = ()) -> Bench:
 
 def student_config(teacher: Config, keys: dict[str, Any]) -> Config:
     """The teacher's run config with a student's `[network]` keys (its file's config)."""
-    net = {k: v for k, v in keys.items() if k != "lr"}
+    net = {k: v for k, v in keys.items() if k not in STUDENT_KEYS}
     return resolve(dataclasses.replace(teacher, **net))
 
 
@@ -201,7 +218,9 @@ def losses(target, mine, entry_mask: torch.Tensor) -> tuple[torch.Tensor, dict[s
 
 @dataclass
 class Student:
-    """A student: its name, network, config, optimizer, learning rate and training seconds."""
+    """A student: its name, network, config, optimizer, learning rate and training seconds, its
+    warm-up and weight decay, the rows it trained on (each pass counted) and the most CUDA memory
+    a step of it took above what was allocated before the step (bytes; 0 on the CPU)."""
 
     name: str
     net: Policy
@@ -209,6 +228,121 @@ class Student:
     optimizer: torch.optim.Optimizer
     lr: float
     seconds: float = 0.0
+    warmup: int = 0
+    weight_decay: float = 0.0
+    rows: int = 0
+    peak: int = 0
+
+
+def optimizer(net: Policy, lr: float, weight_decay: float = 0.0) -> torch.optim.Optimizer:
+    """A student's AdamW (Adam's ε 1e-5, as every bench's): the decoupled `weight_decay` on its
+    matrices and kernels (a parameter of two dimensions or more: the layers' weights, the
+    embeddings, the attention's offset bias), none on its biases and norms' gains; at 0 Adam's
+    steps exactly (every bench before E25 T24)."""
+    if not weight_decay:
+        return torch.optim.AdamW(net.parameters(), lr=lr, eps=1e-5, weight_decay=0.0)
+    params = list(net.parameters())
+    groups = [
+        {"params": [p for p in params if p.ndim >= 2], "weight_decay": weight_decay},
+        {"params": [p for p in params if p.ndim < 2], "weight_decay": 0.0},
+    ]
+    return torch.optim.AdamW(groups, lr=lr, eps=1e-5)
+
+
+def make_student(
+    name: str, keys: dict[str, Any], base: Config, bench: Bench, batch, device: torch.device
+) -> Student:
+    """The student of the table `keys` (its `[network]` keys over `base`, its optimizer's over
+    the bench's), its network built for `batch` on `device`."""
+    config = student_config(base, keys)
+    net = build(asdict(config), batch).to(device)
+    lr = float(keys.get("lr", bench.lr))
+    decay = float(keys.get("weight_decay", bench.weight_decay))
+    return Student(
+        name,
+        net,
+        config,
+        optimizer(net, lr, decay),
+        lr,
+        warmup=int(keys.get("warmup", bench.warmup)),
+        weight_decay=decay,
+    )
+
+
+def learning_rate(s: Student, bench: Bench, samples: int, seen: float) -> float:
+    """`s`'s learning rate at a minibatch: its `lr` falling linearly to `lr_floor` of it over the
+    bench's `samples` by `samples`, the samples before the minibatch's batch (as before E25 T24),
+    times its warm-up, rising linearly from 0 to 1 over its first `warmup` samples by `seen`, the
+    samples into the training at the minibatch (a batch's counted pro rata over its minibatches)."""
+    fall = s.lr * (1.0 - (1.0 - bench.lr_floor) * min(1.0, samples / bench.samples))
+    return fall if seen >= s.warmup else fall * seen / s.warmup
+
+
+def step(
+    s: Student,
+    loss: Callable[[Policy], torch.Tensor],
+    rate: float,
+    max_grad_norm: float,
+    rows: int,
+    device: torch.device,
+) -> None:
+    """One optimizer step of `s` at the learning rate `rate` on the `loss` of its network over a
+    minibatch of `rows` rows, the gradient's norm clipped to `max_grad_norm`: its seconds and rows
+    counted, on CUDA its peak memory above what was allocated before the step."""
+    cuda = device.type == "cuda"
+    if cuda:
+        torch.cuda.synchronize(device)
+        base = torch.cuda.memory_allocated(device)
+        torch.cuda.reset_peak_memory_stats(device)
+    start = time.perf_counter()
+    for g in s.optimizer.param_groups:
+        g["lr"] = rate
+    value = loss(s.net)
+    s.optimizer.zero_grad()
+    value.backward()
+    torch.nn.utils.clip_grad_norm_(s.net.parameters(), max_grad_norm)
+    s.optimizer.step()
+    if cuda:
+        torch.cuda.synchronize(device)
+        s.peak = max(s.peak, torch.cuda.max_memory_allocated(device) - base)
+    s.seconds += time.perf_counter() - start
+    s.rows += rows
+
+
+def cost(s: Student) -> dict[str, float | None]:
+    """`s`'s cost so far (E25 T24): the microseconds of a sample-pass (a row's share of a step:
+    forward, backward and the optimizer; None before any) and the peak memory of a step on CUDA
+    (MB; None on the CPU)."""
+    return {
+        "us_per_sample_pass": s.seconds * 1e6 / s.rows if s.rows else None,
+        "peak_memory_mb": s.peak / 2**20 if s.peak else None,
+    }
+
+
+def described(s: Student) -> dict[str, Any]:
+    """`s` in a report: its `[network]` keys, its optimizer's settings, its parameters."""
+    return {
+        "network": {k: v for k, v in asdict(s.config).items() if k in NETWORK_KEYS},
+        "lr": s.lr,
+        "warmup": s.warmup,
+        "weight_decay": s.weight_decay,
+        "parameters": sum(p.numel() for p in s.net.parameters()),
+    }
+
+
+def bench_device(name: str) -> torch.device:
+    """The bench's device (`ppo.device_of`), with cuDNN's autotuner on CUDA (E25 T24: the
+    minibatches keep their shape, so each convolution's fastest kernel is found once)."""
+    device = device_of(name)
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True
+    return device
+
+
+def steps_of(n: int, size: int, epochs: int) -> int:
+    """The minibatches of `epochs` passes over `n` rows in minibatches of `size` (the last,
+    smaller one of each pass left out)."""
+    return epochs * len(range(0, n - size + 1, size))
 
 
 def collect(trainer: Trainer) -> tuple[dict[str, np.ndarray], np.ndarray]:
@@ -301,7 +435,22 @@ def evaluate(
             "agreement_by_category": agree,
             "value": value_scores(np.concatenate(row["value"])),
             "seconds": s.seconds,
+            **cost(s),
         }
+    return out
+
+
+#: A table's cost columns (`cost_columns`): the microseconds a sample-pass, the peak MB.
+COST_HEADER = f" {'µs':>6} {'MB':>6}"
+
+
+def cost_columns(row: dict[str, Any]) -> str:
+    """A student's evaluation's cost (`cost`) as a table's columns (`COST_HEADER`; "-" for none,
+    and for a report written before E25 T24)."""
+    out = ""
+    for key in ("us_per_sample_pass", "peak_memory_mb"):
+        x = row.get(key)
+        out += f" {'-' if x is None else f'{x:.0f}':>6}"
     return out
 
 
@@ -311,7 +460,7 @@ def table(evaluation: dict[str, Any], samples: int) -> str:
         f"at {samples:,} samples ({evaluation['heldout']:,} held out; the teacher's value: "
         f"explained variance {evaluation['teacher']['explained_variance']:.3f})",
         f"{'student':<14} {'KL entry':>9} {'KL cast':>8} {'agree':>6} {'move':>6} {'melee':>6} "
-        f"{'value ev':>8} {'seconds':>8}",
+        f"{'value ev':>8} {'seconds':>8}{COST_HEADER}",
     ]
     for name, row in evaluation["students"].items():
         k = row["kl"]
@@ -324,7 +473,7 @@ def table(evaluation: dict[str, Any], samples: int) -> str:
         lines.append(
             f"{name:<14} {k['entry']:>9.4f} {cast:>8.4f} {row['agreement']:>6.3f} "
             f"{pct(by['move']):>6} {pct(by['melee']):>6} "
-            f"{row['value']['explained_variance']:>8.3f} {row['seconds']:>8.0f}"
+            f"{row['value']['explained_variance']:>8.3f} {row['seconds']:>8.0f}{cost_columns(row)}"
         )
     return "\n".join(lines)
 
@@ -346,7 +495,7 @@ def run(
     if saved["config"].get("preview"):
         raise ConfigError("the teacher reads the kill preview: no bench network does")
     base = resolve(Config(**saved["config"]))
-    device = device_of(bench.device)
+    device = bench_device(bench.device)
     play = dataclasses.replace(
         base,
         seed=bench.seed,
@@ -367,14 +516,10 @@ def run(
     trainer = teacher_trainer(bench.seed)
     teacher = trainer.policy
     torch.manual_seed(bench.seed)
-    students = []
-    for name, keys in bench.students.items():
-        config = student_config(base, keys)
-        net = build(asdict(config), trainer.batch).to(device)
-        lr = float(keys.get("lr", bench.lr))
-        students.append(
-            Student(name, net, config, torch.optim.Adam(net.parameters(), lr=lr, eps=1e-5), lr)
-        )
+    students = [
+        make_student(name, keys, base, bench, trainer.batch, device)
+        for name, keys in bench.students.items()
+    ]
     report: dict[str, Any] = {
         "teacher": {
             "path": str(teacher_path),
@@ -391,14 +536,7 @@ def run(
             "gpu": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
             **machine(),
         },
-        "students": {
-            s.name: {
-                "network": {k: v for k, v in asdict(s.config).items() if k in NETWORK_KEYS},
-                "lr": s.lr,
-                "parameters": sum(p.numel() for p in s.net.parameters()),
-            }
-            for s in students
-        },
+        "students": {s.name: described(s) for s in students},
         "evaluations": [],
         "ended": None,
     }
@@ -432,31 +570,26 @@ def run(
         while samples < bench.samples:
             arrays, flat = collect(trainer)
             n = len(flat)
-            frac = min(1.0, samples / bench.samples)
             rng = np.random.default_rng(samples)
             size = min(n, bench.minibatch)
+            done, steps = 0, steps_of(n, size, bench.epochs)
             for _ in range(bench.epochs):
                 order = rng.permutation(flat)
                 for k in range(0, n - size + 1, size):
                     m = staging.gather(arrays, np.sort(order[k : k + size]))
                     with torch.no_grad():
                         target = heads(teacher, m)
-                    for s in students:
-                        if device.type == "cuda":
-                            torch.cuda.synchronize(device)
-                        start = time.perf_counter()
-                        for g in s.optimizer.param_groups:
-                            g["lr"] = s.lr * (1.0 - (1.0 - bench.lr_floor) * frac)
-                        mine = heads(s.net, m)
-                        loss, _ = losses(target, mine, m["entry_mask"])
+
+                    def loss(net: Policy, m=m, target=target) -> torch.Tensor:
+                        mine = heads(net, m)
+                        kl_, _ = losses(target, mine, m["entry_mask"])
                         v_loss = 0.5 * ((mine[3] - m["returns"]) ** 2).mean()
-                        s.optimizer.zero_grad()
-                        (loss + bench.value_coef * v_loss).backward()
-                        torch.nn.utils.clip_grad_norm_(s.net.parameters(), bench.max_grad_norm)
-                        s.optimizer.step()
-                        if device.type == "cuda":
-                            torch.cuda.synchronize(device)
-                        s.seconds += time.perf_counter() - start
+                        return kl_ + bench.value_coef * v_loss
+
+                    done += 1
+                    for s in students:
+                        rate = learning_rate(s, bench, samples, samples + n * done / steps)
+                        step(s, loss, rate, bench.max_grad_norm, size, device)
             samples += n
             if samples >= next_eval:
                 score()

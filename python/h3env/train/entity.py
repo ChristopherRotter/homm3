@@ -56,16 +56,18 @@ class Pointer(nn.Module):
 
 class Block(nn.Module):
     """A pre-norm transformer block: self-attention over the tokens a row's mask lets through,
-    then a feed-forward layer of twice the width, each added to its input."""
+    then a feed-forward layer of `feed_forward` times the width (twice before E25 T24), each
+    added to its input."""
 
-    def __init__(self, width: int, heads: int) -> None:
+    def __init__(self, width: int, heads: int, feed_forward: int = 2) -> None:
         super().__init__()
         self.heads = heads
         self.norm1 = nn.LayerNorm(width)
         self.qkv = nn.Linear(width, 3 * width)
         self.proj = nn.Linear(width, width)
         self.norm2 = nn.LayerNorm(width)
-        self.ff = nn.Sequential(nn.Linear(width, 2 * width), nn.ReLU(), nn.Linear(2 * width, width))
+        inner = feed_forward * width
+        self.ff = nn.Sequential(nn.Linear(width, inner), nn.ReLU(), nn.Linear(inner, width))
 
     def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """`x` [rows, tokens, width]; `mask` [rows, tokens] bool, the tokens attended to."""
@@ -166,7 +168,14 @@ def check_layout(batch: BattleBatch, name: str) -> None:
 class Entity(Pointed):
     """The entity network of design §11 (module docstring)."""
 
-    def __init__(self, width: int = 128, layers: int = 2, heads: int = 4, embed: int = 32) -> None:
+    def __init__(
+        self,
+        width: int = 128,
+        layers: int = 2,
+        heads: int = 4,
+        embed: int = 32,
+        feed_forward: int = 2,
+    ) -> None:
         super().__init__()
         if width % heads:
             raise ValueError(f"the width {width} is no multiple of the heads {heads}")
@@ -181,7 +190,7 @@ class Entity(Pointed):
         self.hex_embed = nn.Parameter(torch.zeros(L.MAX_FIELD_HEXES, HEX_WIDTH))
         nn.init.normal_(self.hex_embed, std=0.02)
         self.field_in = nn.Linear(L.MAX_FIELD_HEXES * HEX_WIDTH, width)
-        self.blocks = nn.ModuleList(Block(width, heads) for _ in range(layers))
+        self.blocks = nn.ModuleList(Block(width, heads, feed_forward) for _ in range(layers))
         self.norm = nn.LayerNorm(width)
         self.context = nn.Linear(3 * width, width)
         self.make_heads(width, HEX_WIDTH, embed)
@@ -194,10 +203,11 @@ class Entity(Pointed):
         layers: int = 2,
         heads: int = 4,
         embed: int = 32,
+        feed_forward: int = 2,
     ) -> Entity:
         """The network for `batch`, whose encodings must be the layout's."""
         check_layout(batch, "entity network")
-        return cls(width, layers, heads, embed)
+        return cls(width, layers, heads, embed, feed_forward)
 
     def encode(self, obs: torch.Tensor) -> Encoding:
         """The context [rows, width], the stacks' tokens [rows, 42, width] and the hexes'
