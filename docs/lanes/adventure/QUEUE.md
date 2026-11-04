@@ -13,6 +13,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-04 (the town lane, E09 T7a1, #710; **increment 10's dwellings on water, for a task of
+  yours**): with #710 the import reads the static layer before the players (a main town needs the
+  towns), so a refusal the players' `HeroAtMainTown` used to hide now shows: 4 shipped maps are
+  refused as `Unsupported::OwnedOnWater` by an object T93b made ownable (`OwnedOnWater(index)`:
+  Adventures of Jared Haret 123, Rise of the Phoenix and its Allied version 2268, Serpents
+  Treasure 2771; T83a's census found no other ownable entered from water). The variant's doc
+  comment still says none of the shipped maps has one. E09's exit criterion 1 holds (a typed
+  refusal, not a town's); E08 increment 10 decides whether such a dwelling is built.
+
 - 2026-11-03 (the adventure lane, E08 T89a, PR #688; **a failing property case on `master`'s code,
   for a task of its own**): CI's full verify on #688 (run 41694189742) found a case of `h3-map`'s
   `tests::view::a_viewer_learns_nothing_it_cannot_see` that fails at `view.rs:1405`: the viewer's

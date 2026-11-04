@@ -11,23 +11,24 @@ entries below are round 7's (rounds 2 to 6 are done, `E09-log.md`); each later r
 written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T7a — the import and the setup's checks** (`cross-lane`)
+**E09 T7a2 — the setup's checks** (`cross-lane`)
 
-- **Scope:** round 7 (design §7, §13; ADR-0015's amendment point 3): `h3-map`'s import of the
-  players' starts, the towns (classes 77, 98: the adventure's object and `GameSetup::towns[id]`, a
-  `h3_towns::TownSetup` each, T6c), the random hero (class 70), a hero right of a town's entrance
-  moved (TD-6, TWN-SET-010) and the pool's inputs; `PlayerSetup::start`, `GameSetup`'s new fields
-  and `GameSetup::validate`'s new errors (§13); map import v16; `TWN-QUIRK-1` to `-4` in
-  `docs/rules/quirks-town.md` (T6c created it with `-5`); the census with the original data
-  (every shipped map imports, the custom sets with a horde, the Shipyards without water:
-  `TWN-STUB-2`); the rules TWN-SET-001, -002's checks, -006, -010 as §19 names them.
+- **Scope:** round 7, T7a's second half (cut at T7a's start, the user; design §13, ADR-0015's
+  amendment point 4): `GameSetup::validate`'s new errors in §13's order, one check per invariant:
+  `TownCount`, `TownFaction`, `TownAlignment`, `Choice`, `MainTown`, `Pick` (outside **the offer**:
+  TWN-SET-006), `PickTaken`, `RandomHeroOwner`; the rules TWN-SET-002's checks and TWN-SET-006 in
+  `town.toml`; `TWN-QUIRK-2` and `-3` where the checks fix them (else with T7b's pool). The census
+  re-run (`h3-map`'s `original_data`): which shipped maps a new check refuses, named in `h3m.md`.
 - **Acceptance:** every rule with its id, source and test; 100 % coverage of the crates touched;
-  the scoped verify with `--with-original-data`; the census in `docs/formats/h3m.md` ("Import").
-- **Notes:** large: cut it at its start (the import, then the setup's checks, is a seam). The
-  adventure lane's paths (`h3-map` outside `src/import/town*`, `setup.rs` in `h3-game`) make it
-  `cross-lane`; look at the adventure lane's HANDOFF first: its T93 (increment 10's import) may
-  bump map import before, then this task takes the next version (the lane's `TRAPS.md`).
-- **Depends on:** T6c (its pull request merged). **Status:** ready once it merges.
+  the scoped verify with `--with-original-data`.
+- **Notes:** T7a1 built the fields (`PlayerStart`, `GameSetup::towns` and the pool's inputs) and
+  the import; until T7b the build refuses a setup that needs a draw (`TWN-STUB-3`, checked in
+  `validate` after the heroes' count). `TownCount` compares with "the static map's town list",
+  which T8a builds: confirm at the start what it counts until then (the static map's objects of
+  classes 77 and 98, or the check with T8a). The offer reads the faction's two classes and the
+  placed heroes and prisoners (survey `E09-towns.md` §4.3).
+- **Depends on:** T7a1 (its pull request merged). **Status:** ready once it merges; its cut
+  confirmed at its start.
 
 **E09 T7b — the pool and the build's draws** (`cross-lane`)
 
@@ -40,7 +41,7 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
   game state hash v23; the replays re-recorded where the hash moves (skill
   `homm3-rerecord-replays`).
 - **Acceptance:** as T7a's; the determinism replays green.
-- **Depends on:** T7a. **Status:** after T7a; its cut confirmed at its start.
+- **Depends on:** T7a2. **Status:** after T7a2; its cut confirmed at its start.
 
 ## Inbox
 
@@ -53,7 +54,7 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   §11). A random dwelling of class 216 or 217 whose town identifier names a town of the map stays
   an untyped blocker (ADV-STUB-13, epic E09: it takes the town's drawn faction once random towns
   are resolved); one whose identifier no town has is refused (`ImportError::DwellingTown`). Both
-  bump map import (v16 now); E09 T7a takes the next.
+  bump map import (T93b v16, E09 T7a1 v17).
 
 - 2026-11-04 (the client lane, E17 M6 T3c3, `client/e17-m6-t3c3`; **when you change
   `h3-towns`' or `h3-pack-towns`' public API**): the battle client's binary now compiles the packs'

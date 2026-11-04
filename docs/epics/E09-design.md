@@ -155,7 +155,7 @@ which (*agent's call:* each role has one fixed reading, listed in `h3-pack-towns
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
-### 7. The import (`h3-map` `src/import/town*`; map import v16, T7a)
+### 7. The import (`h3-map` `src/import/town*`; map import v17, T7a)
 
 ADR-0015's amendment point 3, in the import's order:
 
@@ -167,7 +167,7 @@ ADR-0015's amendment point 3, in the import's order:
   else `ImportError::MainTown(colour)` (T-4 typed, `TWN-QUIRK-4`); `random_hero` the flag.
 - **Towns** (classes 77 and 98, in object order; their index is the `TownId`): the adventure's
   object (§8: the `town` type, the owner as an ownable's, `Holds::Town { formation }`) and
-  `GameSetup::towns[id]` (§5): class 98's faction by subclass (`TOWNTYPE.TXT`'s order, a new table in `codes.rs`), class
+  `GameSetup::towns[id]` (§5): class 98's faction by subclass (`TOWNTYPE.TXT`'s order, the table `FACTIONS` in `import/town.rs`), class
   77 `Random` with the SoD alignment (`0xFF` none; 0 to 7 a colour; 8 to 254
   `ImportError::Alignment(index)`, T-1, `TWN-QUIRK-1`); the buildings' slots as stored; the
   garrison's stacks (a random stack's code, the 14 below "none", a `Random { level, upgraded }`
@@ -184,6 +184,13 @@ ADR-0015's amendment point 3, in the import's order:
   still blockers: their types leave the pool, T-3).
 - **The census** with the original data (T7a, `cross-lane` doc `docs/formats/h3m.md`, "Import"):
   every shipped map imports (exit criterion 1), or the typed refusal that remains.
+- **As built (T7a1):** the order is the static layer, the main towns, the towns, the heroes, the
+  banned sets, the events, the pool's inputs (a main town needs the towns); a town's entrance is
+  blocked and visitable, so the hero-in-a-town test leaves the entrance out (a moved hero stands
+  there); a hero type the ruleset lacks leaves the pool's inputs (not refused); until T7b the
+  build refuses a setup that needs a draw (`GameSetupError::HeroDraw`, `TWN-STUB-3`); map import
+  v17 (E08 T93b took v16 first). The census: 156 of the 160 shipped maps import, 4 are refused
+  for a dwelling entered from water (`Unsupported::OwnedOnWater`, since T93b); `h3m.md`.
 
 ### 8. The kind `Town` and the static map (`h3-adventure`; adventure part v16, state hash v20, T8a)
 
@@ -392,9 +399,9 @@ when T8c lands).
 |---|---|---|
 | town state hash v1, town ruleset part v1 | new | T4b (constants), T5a, T6 |
 | adventure replay format v9 | the town part's hash in the header | T5a |
-| map import v16 | towns, players' starts, the random hero, the main town, the moved heroes, the pool's inputs | T7a |
+| map import v17 (E08 T93b took v16) | towns, players' starts, the random hero, the main town, the moved heroes, the pool's inputs | T7a |
 | game state hash v23 (after T85b's v22) | the store of towns, the pool | T7b |
-| adventure ruleset part v16, adventure state hash v20 | the kind `Town`; towns ownable, the town list, `Holds::Town` | T8a |
+| adventure ruleset part v17 (T93a took v16), adventure state hash v20 | the kind `Town`; towns ownable, the town list, `Holds::Town` | T8a |
 | env encodings | none (no new command; no flat adventure observation, E08 decision 187) | — |
 
 **Rule ids** (`docs/rules/catalog/town.toml`, created by T6): TWN-SET-001 the players' factions,
@@ -408,7 +415,7 @@ the public facts, -002 the garrison's levels, -003 the owner's team. Amended: AD
 classes 77, 98 typed), ADV-OWN-002 (towns' owners, the start's reveal), GAM-BAT-001 (a siege),
 GAM-RES-004's "not here" line (the towns'), GAM-SET-001 (the starting armies of the drawn heroes).
 
-**Quirks** (`docs/rules/quirks-town.md`, created by T6c with `-5`; T7a adds `-1` to `-4`), none with a flag: `TWN-QUIRK-1` T-1 (an
+**Quirks** (`docs/rules/quirks-town.md`, created by T6c with `-5`; T7a1 added `-1`, `-4`; `-2`, `-3` come with T7a2's checks and T7b's pool), none with a flag: `TWN-QUIRK-1` T-1 (an
 alignment byte from 8 to 254: refused), `-2` T-2 (the pick not reserved: fixed), `-3` T-3 (a
 random hero taking a later hero's type: fixed), `-4` T-4 (the draws' empty cases: typed), `-5`
 T-6 (a custom set's horde leaving its dwelling standing: fixed, decision 29; T6 and T7a). T-5
@@ -416,7 +423,8 @@ comes with increment 3 (decision 12). TD-2's map-version test is the rules' reco
 (decision 14), not a quirk (as E08 decision 104).
 
 **Stubs:** `TWN-STUB-1` the siege of an ally's visitor (E10), `TWN-STUB-2` the start's forbidden
-Grail and Shipyard (increments 2, 4; registered by T6c).
+Grail and Shipyard (increments 2, 4; registered by T6c); `TWN-STUB-3` the build's
+refusal of a setup that needs a draw (registered by T7a1, lifted by T7b).
 
 ### 20. Batch TWN-1 (T3)
 
@@ -456,7 +464,7 @@ the ADRs are applied once with the rows' verdicts:
 | 4 | **T4a** + **T4b** | `shared/`, cut in two at its start: T4a the ADRs with T3c's outcome and the glossary (done); T4b the crate skeletons, `TownId`, the gates (§1) |
 | 5 | **T5a** + **T5b** | T5a: the part, its compiler and adapter, `GameRuleset`, replay format v9 (§2). T5b: the content read (T5b1, survey §16) and harvested (T5b2), building 23's re-read (§3; original data) |
 | 6 | **T6** | `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml`'s rules (§4–§6) |
-| 7 | **T7a** + **T7b** | T7a: the import and the setup's checks (§7, §13; map import v16, the census). T7b: the pool and the build's draws (§14; game state hash v23) |
+| 7 | **T7a** + **T7b** | T7a: the import and the setup's checks (§7, §13; map import v17, the census). T7b: the pool and the build's draws (§14; game state hash v23) |
 | 8 | **T8a** + **T8b** | T8a: the kind, the step, entering and an undefended capture (§8, §9, §11; part v16, state hash v20). T8b: the siege: the merge, the defender, the battle's setup, the outcome (§10, §15) |
 | 9 | **T8c** + **T9** | T8c: the income, the views, the observation, `docs/06-security.md` (§12, §16, §17). T9: the fixtures, replays, properties, benchmarks, the env (§18) |
 | 10 | **T10** | The audit against the exit criteria; increment 1 closed; increment 2 refined |
