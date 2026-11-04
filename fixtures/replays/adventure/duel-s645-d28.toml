@@ -836,39 +836,39 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xe4db3d0aea52206f",
-    "0x3b9e1ede978376bd",
-    "0xdb4126a5c866a0be",
-    "0xfa78fd4420000a80",
-    "0x2589a549f1ef0054",
-    "0xe42858fdc28b7dd3",
-    "0xc7246253e5d48d02",
-    "0x6495b0a3cc00af17",
-    "0x6c78937751e93fba",
-    "0xcf9226c52985cbc7",
-    "0xcd1124a5556f0723",
-    "0x1f83130fcb49525d",
-    "0x76f7e7414a7a2b61",
-    "0x441cd4709733baac",
-    "0x8b2e274ce377f8b7",
-    "0x73facbb4075780a9",
-    "0x7d5dd9e268df19ef",
-    "0x13371f573ca57b04",
-    "0x484ffdf0a7c06601",
-    "0x13fec24b37105482",
-    "0x5c4d31178ae9010d",
-    "0x6f133b977e8d1934",
-    "0x8529f1a10945df0e",
-    "0x15ae74c2d48e5ceb",
-    "0x164b2e075ec06cb7",
-    "0xf032637c0dfc2bc3",
-    "0x7a354f46712ed78a",
-    "0xc15ccaa77c999544",
-    "0x99ef95d78c71c30c",
-    "0x0e9a2056e0f246c8",
-    "0xb5d8eb5ddb42c98b",
-    "0x1c49627dc2c0abc7",
-    "0x857864a13d991955",
+    "0x7bdb076da18bb58f",
+    "0x55a22375d7b6026a",
+    "0x38f3e24bffd110d5",
+    "0x8e53386f04278deb",
+    "0xd6271ad239007e7f",
+    "0xbb62f6c39bd8583e",
+    "0x19f3fd926bdb37af",
+    "0x2d7ed7caadeb4fe2",
+    "0x38852e49f186c3d7",
+    "0xb14b650222b79045",
+    "0xa9f0aef7acc2a2f9",
+    "0xb5353ebd0e2439a3",
+    "0xaef077c1e3f05562",
+    "0xf92943a5dd568daa",
+    "0x50460f3e7de734a0",
+    "0xd804b45d864ca326",
+    "0x58e12d1bece85748",
+    "0x02293c53637b2fdf",
+    "0xd3fa73f1976f436e",
+    "0xb6e027c4a2de0631",
+    "0x2f0fa49062afd5b8",
+    "0xed6a3519a75f41d5",
+    "0x967ebf5a1f5ba36b",
+    "0x00b20f836df76e7a",
+    "0xa12712b60bca07b6",
+    "0x9e7c81fc609a9772",
+    "0x5c342ed3e3c17be7",
+    "0x0abca2c0874ff485",
+    "0x4ca9977128234a2d",
+    "0x7cfc2cd6a871c5f9",
+    "0x19c8020b02bf3ada",
+    "0x415d860bccfe2966",
+    "0x147f27dc48cc3dc0",
 ]
 
 [replay]
@@ -899,7 +899,7 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 22
-adventure_state_hash_version = 19
+adventure_state_hash_version = 20
 checkpoint_every = 25
 
 [map]
@@ -909,4 +909,4 @@ import_version = 17
 
 [result]
 day = 29
-final_hash = "0xc7431395ed3a83dc"
+final_hash = "0xedb34316eb7eec97"
