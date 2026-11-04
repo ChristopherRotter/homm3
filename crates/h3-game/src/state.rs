@@ -8,6 +8,7 @@
 //! infallible, and commands go through [`crate::apply`].
 
 use alloc::sync::Arc;
+use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{
@@ -314,8 +315,12 @@ impl GameState {
         let heroes: Arc<Vec<Arc<HeroDetails>>> =
             Arc::new(heroes.into_iter().map(Arc::new).collect());
         // ADR-0017 point 1 (E08 T40): the adventure's start of the game after the levels at
-        // load, then day 1's start-of-day step (ADV-MOV-002, ADV-FOG-003).
-        adventure.start_game(rules.core(), rules.adventure(), &heroes);
+        // load, then day 1's start-of-day step (ADV-MOV-002, ADV-FOG-003). Since E09 T8a1 each
+        // town's radius by `TownId` (ADV-OWN-002).
+        // stub: TWN-STUB-5 (the flag radius for every town until E09 T7b2's store of towns)
+        let town_radii =
+            vec![rules.adventure().params().flag_radius(); adventure.map().towns().len()];
+        adventure.start_game(rules.core(), rules.adventure(), &heroes, &town_radii);
         adventure.start_day(rules.core(), rules.adventure(), &heroes);
         let players: Vec<PlayerState> = setup
             .players

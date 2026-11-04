@@ -359,12 +359,19 @@ impl AdventureState {
     /// the tiles within the part's flag radius of its entrance, to its owner (its team from E10),
     /// a Lighthouse's and a Shipyard's too, as the original's `reveal_owned` 0x4C7C50 from
     /// `adventure_manager_start` (batch E9's E9-4 and E9-6; A-33 withdrawn) and VCMI's
-    /// `initFogOfWar`. No event, as the start's other reveals.
+    /// `initFogOfWar`. Since E09 T8a1 a town's within its radius in `town_radii` by `TownId`, the
+    /// game's (its buildings', the town context's), the flag radius for a town past the slice. No
+    /// event, as the start's other reveals.
     // rule: ADV-OWN-002
-    pub(super) fn reveal_owned(&mut self, part: &AdventureRuleset) {
-        let radius = part.params().flag_radius();
+    pub(super) fn reveal_owned(&mut self, part: &AdventureRuleset, town_radii: &[u8]) {
+        let flag = part.params().flag_radius();
         let owners = self.owners.as_deref().unwrap_or(&[]);
         for (owner, &index) in owners.iter().zip(self.map.ownables()) {
+            let radius = self
+                .map
+                .town_id(index)
+                .and_then(|town| town_radii.get(town.index()).copied())
+                .unwrap_or(flag);
             let entrance = self.map.objects()[index].entrance(&self.map);
             if let (Some(owner), Some(entrance)) = (owner, entrance) {
                 reveal(

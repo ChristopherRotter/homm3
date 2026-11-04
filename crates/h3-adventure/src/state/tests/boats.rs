@@ -181,7 +181,7 @@ fn a_hero_in_a_boat_takes_the_sea_points_at_its_turn_start() {
     let (rules, navigation) = navigation_rules();
     let mut state = build(&rules, &world(&rows(), 1, heroes())).unwrap();
     // At the start of the game every hero is on land: the land's points, which are its maximum.
-    state.start_game(&rules.0, &rules.1, &[]);
+    state.start_game(&rules.0, &rules.1, &[], &[]);
     let land = state.hero(HeroId::new(1)).unwrap().movement;
     assert!(land > 0);
     for hero in state.heroes() {

@@ -121,6 +121,7 @@ fn setup() -> AdventureSetup {
         difficulty: 0,
         bans: Bans::default(),
         seats: crate::testing::seats(2),
+        garrisons: Vec::new(),
     }
 }
 
@@ -912,5 +913,6 @@ mod sea;
 mod sea_battles;
 mod sea_pickups;
 mod shipyards;
+mod towns;
 mod visits;
 mod weekly;
