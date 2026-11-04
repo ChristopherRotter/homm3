@@ -190,8 +190,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   in the client's settings; recorded. Cut in three by the user (2026-11-04): **T4a** (done 2026-11-04, design §12.12) the dialog
   read whole (0x46E3B0, 0x46F7B0), drawn and in the window (O and the panel's button), the
   settings file, the combat speed and both volumes in effect, CLT-Q43 and Q44 asked, six stills
-  exact; **T4b** the Auto Combat options and Creature Info in effect; **T4c** the grid and the
-  shadows drawn.
+  exact; **T4b** the Auto Combat options and Creature Info in effect, cut in three by the user
+  (2026-11-04): **T4b1** the Auto Combat options restricting the window's bot, **T4b2a** Creature
+  Info's level without new windows (F5, the status line's damage), **T4b2b** the army info
+  windows on the hover, the heroes' windows kept, their stills, the help rows' question;
+  **T4c** the grid and the shadows drawn.
 - **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
   question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
   not drawn yet and their sounds' waits (M5's items 5, 9, 24, 42, 45, 79, 84), each as far as read.
