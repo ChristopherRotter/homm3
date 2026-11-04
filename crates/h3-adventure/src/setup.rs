@@ -11,7 +11,7 @@ use core::fmt;
 use alloc::boxed::Box;
 
 use h3_content::{
-    ArtifactTypeId, CreatureTypeId, Formation, ResourceId, SkillId, SpellId, TerrainId,
+    ArtifactTypeId, CreatureTypeId, FactionId, Formation, ResourceId, SkillId, SpellId, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{ArtifactInstance, HeroReward, ScholarGift};
@@ -162,6 +162,17 @@ pub enum Holds {
     /// built (ADV-MIN-003, E08 T83a): distinct resources of the ruleset, at least one, in the
     /// core's order.
     Resources(Vec<ResourceId>),
+    /// A random dwelling's faction set and level range (ADV-DWL-005, E08 T93b; increment 10's
+    /// design note §5), which it resolves among when the game is built: distinct core factions in
+    /// the core's order, each with a `[[random_dwelling]]` table
+    /// ([`crate::AdventureRuleset::random_dwelling`]), and the lowest and highest level, 1-based
+    /// and inclusive, `1 <= lowest <= highest <=` [`crate::DWELLING_LEVELS`].
+    RandomDwelling {
+        /// The factions it may become one of.
+        factions: Vec<FactionId>,
+        /// The lowest and the highest level it may take.
+        levels: (u8, u8),
+    },
 }
 
 /// A reward record (ADV-RWD-001, E08 T61a; survey `E08-rewards.md` §7.1, increment 7's design note
