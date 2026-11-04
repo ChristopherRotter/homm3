@@ -14,7 +14,7 @@ use h3_adventure::{
     AdventureOutcome, AdventureState, Choice, ChoiceKind, Garrison, HeroGains, Meeting,
     ObjectTypeId, Offer, OfferKind, Pick, Pos, UniversityVisit,
 };
-use h3_content::{ResourceId, SkillId};
+use h3_content::{HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
 use h3_heroes::{
     ArtifactInstance, HeroChange, HeroDetails, LevelUp, OfferLevels, Offers, SlotState,
@@ -28,6 +28,7 @@ use crate::command::{
     UniversityAnswer,
 };
 use crate::observe::LevelUpView;
+use crate::town::HeroPool;
 use crate::treasury::Treasuries;
 use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError, TimedEventSetup};
 use levels::Progression;
@@ -257,6 +258,10 @@ pub struct GameState {
     /// a fork costs one reference count (`bench-check`: a list per fork cost the XL fork
     /// benchmark about 10 %); a write copies the list of references and the one hero.
     heroes: Arc<Vec<Arc<HeroDetails>>>,
+    /// The hero pool (TWN-SET-005, E09 T7b1; ADR-0017's E09 paragraph): per core hero type
+    /// whether it is free, taken or out and the colours that may take it. Shared by forks and
+    /// copied on a write (a hero that leaves the map).
+    pool: Arc<HeroPool>,
     /// What the heroes' levels read that never changes after the build (E08 T29): the scenario's
     /// level limit and banned skills, each hero's level seed (GAM-HER-002; server-only, ADR-0017
     /// point 5). Shared by forks.
@@ -266,9 +271,11 @@ pub struct GameState {
 
 impl GameState {
     /// Builds a game from its setup and master seed: the setup's checks
-    /// ([`GameSetup::validate`]), its random placeholders resolved from the setup stream (the
-    /// starting armies, GAM-SET-001, each default experience, GAM-HER-001, the map objects'
-    /// contents, ADR-0016 point 4, then each hero's level seed in hero id order, GAM-HER-002;
+    /// ([`GameSetup::validate`]), the hero pool (TWN-SET-005), its random placeholders resolved
+    /// from the setup stream (first the players' random faction choices and the random heroes'
+    /// types, TWN-SET-001, TWN-SET-008, E09 T7b1; then the starting armies, GAM-SET-001, each
+    /// default experience, GAM-HER-001, the map objects' contents, ADR-0016 point 4, then each
+    /// hero's level seed in hero id order, GAM-HER-002;
     /// last of the stream's draws, so the earlier ones do not depend on the heroes' levels), the
     /// levels at load of each hero with a custom experience in hero id order (GAM-SET-002: its
     /// levels' draws from the setup stream in `strict-fixed`), the adventure's start of the game
@@ -288,7 +295,7 @@ impl GameState {
             .get(usize::from(setup.difficulty))
             .ok_or(GameSetupError::Difficulty(setup.difficulty))?;
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
-        let (part, mut heroes) = setup.adventure_setup(rules, &mut draws)?;
+        let (part, mut heroes, pool) = setup.adventure_setup(rules, &mut draws)?;
         let mut adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
             .map_err(GameSetupError::Adventure)?;
         let progression = Progression::new(
@@ -339,6 +346,7 @@ impl GameState {
             events: (!setup.events.is_empty()).then(|| setup.events.clone().into()),
             rng: Rng::for_stream(seed, StreamId::GAME),
             heroes,
+            pool: Arc::new(pool),
             progression: Arc::new(progression),
             adventure,
         };
@@ -1264,6 +1272,14 @@ impl GameState {
         &self.adventure
     }
 
+    /// Each of `types` goes back free in the hero pool (TWN-SET-005: their heroes left the map,
+    /// the original's 0x4D9EC0), the pool copied first when a fork shares it.
+    pub(crate) fn free_hero_types(&mut self, types: &[HeroTypeId]) {
+        for &hero_type in types {
+            Arc::make_mut(&mut self.pool).free(hero_type);
+        }
+    }
+
     /// The adventure state to change, with the store of heroes it reads (E08 T20a2b).
     pub(crate) fn adventure_with_heroes(&mut self) -> (&mut AdventureState, &[Arc<HeroDetails>]) {
         (&mut self.adventure, &self.heroes)
@@ -1277,12 +1293,12 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v22 (E08 T85b; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
+    /// Encoding v23 (E09 T7b1; v1 was E08 T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
     /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's, v14
     /// T54's, v15 T60a's, v16 T62a's, v17 T62b1's, v18 T63a's, v19 T63b's, v20 T72's, v21
-    /// T84a's): version; the master seed; the day; since v22 the month's kind ([`MonthKind`]'s
-    /// encoding) and the map's timed events (length, then each: [`hash_event`]); the running
-    /// group's index; the schedule (groups as
+    /// T84a's, v22 T85b's): version; the master seed; the day; since v22 the month's kind
+    /// ([`MonthKind`]'s encoding) and the map's timed events (length, then each: [`hash_event`]);
+    /// the running group's index; the schedule (groups as
     /// length + player ids); the players (colour, since v14 whether it counts as human, acting,
     /// stream state); since v2 the treasuries (the
     /// resource kinds, then every player's amounts as length and entries); since v3 the open
@@ -1305,10 +1321,12 @@ impl CanonicalHash for GameState {
     /// the price, whether it may be left), in v18 whether a guard's visit waits; 6 a University:
     /// its owner, hero, object type, anchor, its skills (length, then each), its price, in v18
     /// whether a guard's visit waits; since v19 (E08 T63b) the rests in holding order, as length
-    /// and entries ([`Held`]'s encoding); the game's stream; since v5 the store of heroes (length, then each hero's
-    /// details by id, [`hash_details`]); since v10 (E08 T29) the heroes' progression (the level
-    /// limit, the banned skills, the level seeds, since v14 the heroes' sexes: [`Progression`]'s
-    /// encoding); the adventure
+    /// and entries ([`Held`]'s encoding); the game's stream; since v5 the store of heroes
+    /// (length, then each hero's details by id, [`hash_details`]); since v23 (E09 T7b1) the hero
+    /// pool (`HeroPool`'s encoding: the number of types, then each type's status, 0 free, 1 taken
+    /// and the colour, 2 a prisoner's, 3 out, and its colour mask); since v10 (E08 T29) the
+    /// heroes' progression (the level limit, the banned skills, the level seeds, since v14 the
+    /// heroes' sexes: [`Progression`]'s encoding); the adventure
     /// state's hash.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(GAME_STATE_HASH_VERSION);
@@ -1466,6 +1484,7 @@ impl CanonicalHash for GameState {
         for details in self.heroes.iter() {
             hash_details(details, h);
         }
+        self.pool.hash_into(h);
         self.progression.hash_into(h);
         h.write_u64(self.adventure.state_hash());
     }
@@ -1592,6 +1611,16 @@ impl GameState {
     /// A hero's level seed (GAM-HER-002).
     pub(crate) fn level_seed(&self, hero: HeroId) -> u8 {
         self.progression.seed(hero)
+    }
+
+    /// The hero pool (TWN-SET-005, E09 T7b1).
+    pub(crate) fn hero_pool(&self) -> &HeroPool {
+        &self.pool
+    }
+
+    /// Whether two games share their hero pool (a fork's is shared until a write copies it).
+    pub(crate) fn shares_pool(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.pool, &other.pool)
     }
 
     /// Whether two games share their progression (a fork's is shared, not copied).

@@ -7,27 +7,30 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. The
-entries below are round 7's (rounds 2 to 6 are done, `E09-log.md`); each later round's entries are
+entry below is round 7's last (rounds 2 to 6, T7a and T7b1 are done, `E09-log.md`); each later round's entries are
 written when it comes (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T7b — the pool and the build's draws** (`cross-lane`)
+**E09 T7b2 — the towns' draws and the store** (`cross-lane`)
 
-- **Scope:** round 7 (design §14; ADR-0017's amendment points 1 and 4): `h3-game`'s `HeroPool`
-  (TWN-SET-005; T-2, T-3 fixed: `TWN-QUIRK-2`, `-3` entered in `quirks-town.md`), the build's
-  draws from the setup stream in §14's order (the players' random choices TWN-SET-001, a random
-  town's faction TWN-SET-002, a random hero's type TWN-SET-008, each main town's hero
-  TWN-SET-009, the draw TWN-SET-007 with
-  `GameSetupError::NoFreeHero`, then each town's `h3_towns::town_setup`, T6c); the store of
-  towns beside the adventure's state, the garrisons and reveal radii into the adventure's setup;
-  game state hash v23; the replays re-recorded where the hash moves (skill
-  `homm3-rerecord-replays`).
-- **Acceptance:** as T7a's; the determinism replays green.
-- **Notes:** T7a2's checks (`town::check_starts`) hold before any draw: every faction of a
-  player's set has a town record, a player whose start needs a faction has a choice, a random
-  town's alignment names a player, a pick is in its offer and no two players share one.
-- **Depends on:** T7a2 (its pull request merged). **Status:** ready once it merges; its cut
-  confirmed at its start.
+- **Scope:** the towns' half of round 7 (design §14; T7b cut in two at its start, the user,
+  2026-11-04; T7b1 built the pool and the heroes' draws): step 2's random towns (a town's faction,
+  TWN-SET-002: an alignment to a colour that plays gives that colour's resolved faction, else the
+  owner's, else uniform over the factions with a town record), after the random heroes (T7b1's
+  draws do not move); step 3, each main town's hero (TWN-SET-009: a human player's pick, else the
+  draw `HeroPool::draw`, on the town's entrance as its visitor, its hero id after the setup's
+  heroes), the unused picks freed after it; step 4, each town's `h3_towns::town_setup` (T6c) by
+  owned or neutral; the store of towns beside the adventure's state, the garrisons and reveal
+  radii into the adventure's setup; `town::needs_faction` (and so `Choice`) gains a random town
+  the player owns; `TWN-STUB-3` lifted; a game state hash version (the store); the replays
+  rehashed (skill `homm3-rerecord-replays`).
+- **Acceptance:** as T7a's; the determinism replays green; the census's 125 maps refused for a
+  main town's hero build or are refused by a typed check.
+- **Notes:** each town's owner and object come with T8a (the static map's town list, towns
+  ownable); the order of T8a's parts and T7b2 is settled at round 8's start (T8a may be cut so its
+  kind, town list and owners come first).
+- **Depends on:** T7b1 (its pull request merged) and T8a's town list and owners. **Status:**
+  waiting; its cut confirmed at its start.
 
 ## Inbox
 

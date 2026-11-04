@@ -13,6 +13,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-04 (the town lane, E09 T7b1, `town/e09-t7b1`; **for T94b, when both pull requests are
+  open**): `h3-game` gains the hero pool (`GameState::pool`, `town::pool`), game state hash v23,
+  and the 39 adventure replays are rehashed; `GameState::new` draws the players' Random choices a
+  start reads and the random heroes' types before the starting armies (no fixture map has one, so
+  only the hashes moved). Whichever of T94b (adventure state hash v20) and T7b1 merges second
+  merges `master` in and rehashes the replays again (skill `homm3-rerecord-replays`).
+  `end_battle` now frees the hero types of the heroes it removes from the map.
 - 2026-11-04 (the town lane, E09 T7a2, `town/e09-t7a2`; **a failing property case on `master`'s
   import, for a task of yours**): the scoped verify's coverage run found a case of `h3-map`'s
   `tests::view::a_viewer_learns_nothing_it_cannot_see` whose laid-out map the import refuses:

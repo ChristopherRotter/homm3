@@ -523,13 +523,10 @@ fn a_random_hero_is_a_placed_hero_without_its_type() {
     assert_eq!(hero.formation, h3_content::Formation::Tight);
     assert_eq!(hero.details.experience, Some(1234));
     assert!(matches!(&hero.army, h3_game::HeroArmy::Custom(stacks) if stacks.len() == 1));
-    // The build refuses it until the draw (TWN-STUB-3).
-    assert_eq!(
-        setup.validate(&SOD),
-        Err(GameSetupError::HeroDraw(HeroDraw::RandomHero(HeroId::new(
-            0
-        ))))
-    );
+    // The build draws its type (TWN-SET-008, E09 T7b1): one the map allows, taken by its owner.
+    let game = h3_game::GameState::new(&SOD, &setup, 1).unwrap();
+    let drawn = game.hero(HeroId::new(0)).unwrap().hero_type;
+    assert!(setup.allowed_heroes.contains(&drawn));
     // AB's spell byte beside a random hero's type: the spell alone (the type's own unknown).
     let mut m = town_map(Version::Ab);
     m.objects.push(object(

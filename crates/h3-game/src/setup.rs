@@ -17,7 +17,7 @@ use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, OfferLevels};
 use h3_kernel::Rng;
 use h3_towns::TownSetup;
 
-use crate::town::{self, HeroDraw, PlayerStart};
+use crate::town::{self, HeroDraw, HeroPool, PlayerStart};
 use crate::{GameRuleset, GameState};
 
 /// A player of the game.
@@ -52,7 +52,7 @@ pub enum HeroArmy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameHeroSetup {
     /// The hero type; `None` for a random hero (the map's class 70, E09 T7a1), whose type the game
-    /// draws when it is built (E09 T7b; until then such a setup is refused, `TWN-STUB-3`).
+    /// draws when it is built (TWN-SET-008, E09 T7b1).
     pub hero_type: Option<HeroTypeId>,
     /// The player owning it.
     pub owner: PlayerId,
@@ -135,14 +135,14 @@ pub struct GameSetup {
     /// At most 65 536 (an event's [`TimedEventSetup::message`] is a `u16`).
     pub events: Vec<TimedEventSetup>,
     /// The towns as the map gives them, by `TownId` (the map's classes 77 and 98 in object order;
-    /// E09 T7a1, design note `E09-design.md` §5 and §13). Not built yet (E09 T7b).
+    /// E09 T7a1, design note `E09-design.md` §5 and §13). Not built yet (E09 T7b2).
     pub towns: Vec<TownSetup>,
-    /// The hero types the map allows in the pool (E09 T7a1; the pool: E09 T7b, TWN-SET-005).
+    /// The hero types the map allows in the pool (E09 T7a1; the pool: E09 T7b1, TWN-SET-005).
     pub allowed_heroes: Vec<HeroTypeId>,
     /// The hero types the map restricts to some colours, each with its colour mask (bit `c` for
-    /// colour `c`; SoD's disposed heroes; E09 T7a1).
+    /// colour `c`; SoD's disposed heroes; E09 T7a1): the pool's masks (TWN-SET-005).
     pub hero_masks: Vec<(HeroTypeId, u8)>,
-    /// The prisoners' hero types (the map's class 62; E09 T7a1): out of the pool.
+    /// The prisoners' hero types (the map's class 62; E09 T7a1): taken in the pool (TWN-SET-005).
     pub prisoners: Vec<HeroTypeId>,
 }
 
@@ -233,8 +233,12 @@ pub enum GameSetupError {
     PickTaken(PlayerId),
     /// The random hero's owner is no player of the game (TWN-SET-008, E09 T7a2).
     RandomHeroOwner(HeroId),
-    /// The setup needs a hero drawn, which the game cannot build yet (`TWN-STUB-3`; E09 T7b).
+    /// The setup needs a main town's hero drawn, which the game cannot build yet (`TWN-STUB-3`;
+    /// E09 T7b2).
     HeroDraw(HeroDraw),
+    /// The draw finds no free hero type this player's colour may take for its random hero
+    /// (TWN-SET-007, `TWN-QUIRK-4`; E09 T7b1).
+    NoFreeHero(PlayerId),
     /// The adventure context rejects its part.
     Adventure(SetupError),
 }
@@ -292,6 +296,9 @@ impl fmt::Display for GameSetupError {
                 write!(f, "random hero {}'s owner is no player", hero.raw())
             }
             Self::HeroDraw(draw) => write!(f, "not built yet: {draw}"),
+            Self::NoFreeHero(player) => {
+                write!(f, "player {} draws a hero with none free", player.index())
+            }
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
     }
@@ -305,17 +312,24 @@ impl GameSetup {
     /// T29, T61b), the timed events (E08 T83a), the towns and the players' starts (E09 T7a2: a
     /// fixed town's faction with a town record, a random town's alignment to a player's colour,
     /// each player's faction choice, main town, pick from its offer and a pick of no earlier
-    /// player, a random hero's owner), no hero to draw (E09 T7a1: a main town that
-    /// generates a hero, then a random hero; `TWN-STUB-3`), known hero types,
-    /// starting armies that can be drawn, the heroes' details by the hero model, E08 T18b), then
-    /// the adventure context's part with its own checks. It builds the game as
-    /// [`GameState::new`] does: whether a setup is valid does not depend on the seed, since every
-    /// starting army it can draw is valid when its hero type's army has a first stack and no more
-    /// stacks than the army's slots (the core checks each stack's counts), and neither a drawn
-    /// experience nor a war machine's artifact (worn only where its slot is free) makes the
-    /// details invalid, nor do the levels at load (the details are checked at experience 0 before
-    /// a custom experience is gained under the bound, and every level the hero model gives keeps
-    /// them valid, GAM-SET-002).
+    /// player, a random hero's owner), no main town's hero to draw (E09 T7a1: `TWN-STUB-3`), the
+    /// placed heroes' known hero types, a free type for each random hero's draw (E09 T7b1,
+    /// TWN-SET-007), starting armies that can be drawn, the heroes' details by the hero model,
+    /// E08 T18b), then the adventure context's part with its own checks. It builds the game as
+    /// [`GameState::new`] does, with the seed 0: whether a setup is valid does not depend on the
+    /// seed, since every starting army it can draw is valid when its hero type's army has a first
+    /// stack and no more stacks than the army's slots (the core checks each stack's counts), and
+    /// neither a drawn experience nor a war machine's artifact (worn only where its slot is free)
+    /// makes the details invalid, nor do the levels at load (the details are checked at
+    /// experience 0 before a custom experience is gained under the bound, and every level the
+    /// hero model gives keeps them valid, GAM-SET-002). **Two exceptions, both from the random
+    /// heroes' draws** (E09 T7b1): [`GameSetupError::NoFreeHero`] when a colour mask
+    /// ([`GameSetup::hero_masks`]) leaves out a random hero's owner's colour (without one every
+    /// draw takes one free type whatever it draws, so the number of random heroes without a pick
+    /// against the free types decides; with one, an earlier draw may take the last free type a
+    /// later owner's colour may take, or leave it), and [`GameSetupError::StartingArmy`] for a
+    /// random hero with the starting army when the pool holds a type without a valid one (no
+    /// original hero type). A setup valid with the seed 0 may then fail with another.
     ///
     /// # Errors
     ///
@@ -324,15 +338,16 @@ impl GameSetup {
         GameState::new(rules, self, 0).map(drop)
     }
 
-    /// The adventure context's setup and the heroes' details: each starting army drawn from
-    /// `draws` in hero order, then each default experience in hero order (GAM-HER-001); a hero
-    /// with a custom experience at experience 0, which [`GameState::new`] gives it with its
-    /// levels (GAM-SET-002).
+    /// The adventure context's setup, the heroes' details and the hero pool: the pool and the
+    /// random heroes' types drawn first from `draws` (TWN-SET-005, TWN-SET-007, TWN-SET-008:
+    /// [`town::draw_heroes`], E09 T7b1), then each starting army in hero order, then each default
+    /// experience in hero order (GAM-HER-001); a hero with a custom experience at experience 0,
+    /// which [`GameState::new`] gives it with its levels (GAM-SET-002).
     pub(crate) fn adventure_setup(
         &self,
         rules: &GameRuleset,
         draws: &mut Rng,
-    ) -> Result<(AdventureSetup, Vec<HeroDetails>), GameSetupError> {
+    ) -> Result<(AdventureSetup, Vec<HeroDetails>, HeroPool), GameSetupError> {
         let count = self.players.len();
         let players = u8::try_from(count).map_err(|_| GameSetupError::Players(count))?;
         let params = rules.adventure().params();
@@ -381,15 +396,14 @@ impl GameSetup {
             return Err(GameSetupError::Heroes(self.heroes.len()));
         }
         town::check_starts(self, rules)?;
-        let types = town::hero_types(self)?;
+        town::main_town_heroes(self)?;
+        let (pool, types) = town::draw_heroes(self, rules, draws)?;
         let mut heroes = Vec::with_capacity(self.heroes.len());
         let mut machines = Vec::with_capacity(self.heroes.len());
-        for ((hero, &type_id), index) in self.heroes.iter().zip(&types).zip(0..=u16::MAX) {
+        for ((hero, &(type_id, hero_type)), index) in
+            self.heroes.iter().zip(&types).zip(0..=u16::MAX)
+        {
             let id = HeroId::new(index);
-            let hero_type = rules
-                .core()
-                .hero_type(type_id)
-                .ok_or(GameSetupError::UnknownHeroType(id))?;
             let (army, given) = match &hero.army {
                 HeroArmy::Custom(stacks) => (stacks.clone(), Vec::new()),
                 HeroArmy::Starting => {
@@ -439,7 +453,7 @@ impl GameSetup {
                 })
                 .collect(),
         };
-        Ok((setup, details))
+        Ok((setup, details, pool))
     }
 }
 
