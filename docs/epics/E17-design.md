@@ -5723,3 +5723,218 @@ frames.
   (`options-no-sound`) and never move; a capture that clicks anything before the OK would make
   the original write its registry (0x46F7A2), which later captures read: `options-closed`
   closes by Enter without a click.
+
+### 12.13 The Auto Combat options (M6 T4b1)
+
+Read: `stack_automatic` 0x474BF0 whole (its case table 0x474D64 by creature 145 to 149) and its
+fourteen call sites: `battle_loop_turn` 0x4740D0 at the stop (0x47417A to 0x474265), the machines'
+own turns (0x474273 to 0x4743B5) and the action (0x474477 to 0x4744D4, 0x474622 to 0x474643);
+`battle_controls_state` 0x4782D0 at its head (0x4782D0 to 0x478330), the panel (0x47846E to
+0x478680) and its end (0x478804 to 0x478884); `battle_buttons` 0x474D80's head (0x474D80 to
+0x474E53), Auto Combat's case (0x474E5A to 0x474EEA), the mouse move's guard (0x47533E to
+0x4753A4) and F's (0x475C2B to 0x475CC4); `active_stack_automatic` 0x474BA0 whole;
+`catapult_turn` 0x473C00 to 0x473D20; `automatic_first_aid_tent` 0x473F93 to 0x474001; the sites
+in `cursor_attack_slots` (0x4746DA), `cursor_attack_from_hex` (0x474A43), `battle_pathfinder`
+(0x4B3433) and `round_start` (0x475F34, §7.24); `ai_hero_cast_turn` 0x422DA0 to 0x422E7B.
+
+- **Who plays itself** (`stack_automatic`, asked again at every pass of the battle loop, so a box
+  changed in the dialog counts at once): in a hidden battle every stack. By its creature (+0x34):
+  the Catapult (145) by Combat Catapult 0x69879C, the Ballista (146) and an arrow tower (149) by
+  Combat Ballista 0x6987A0, the First Aid Tent (147) by Combat First Aid Tent 0x6987A4, any other
+  (the Ammo Cart too, never active) by Combat Auto Creatures 0x698794. A creature plays itself with
+  Auto Combat on (+0x132C4) and its box set, else by the player's test. A war machine: never in
+  the tactics phase (+0x13D68; none is active there); itself with Auto Combat on and its box set;
+  else itself when its controlling hero (0x442690) lacks its skill (Ballistics +0xD3 for the
+  Catapult, Artillery +0xDD for the Ballista and a tower, which also play themselves without a
+  hero, First Aid +0xE4 for the Tent); else by the player's test. The player's test (0x474CFA):
+  itself on a remote turn (0x691209 with +0x132B4); else not when the player of the side that
+  controls it (+0xF4, the other while hypnotized, +0x288; its player +0x54A8) is human; else itself
+  (the computer, a neutral side −1). Combat Auto Spells (0x698798) is no stack's (below).
+- **So, for a human's side:** Auto Combat off, its creatures and its commanded machines (the hero
+  with the skill) are the human's and a machine without its skill plays itself, whatever the boxes
+  (the engine's automatic turns: BAT-WAR-002, -003, BAT-SIE-011). Auto Combat on: a creature
+  plays itself with Creatures set, else it is the human's; a commanded machine plays itself with
+  its box set, else it is the human's; a machine without its skill plays itself. A first run and
+  Default set all five boxes; the harness's registry sets Creatures alone (`Settings::CAPTURE`),
+  so there a commanded machine stays the human's under Auto Combat.
+- **How a machine plays itself** (each pass while the side to act is played here and no action is
+  set, +0x3C, before the computer is asked): the Tent by `automatic_first_aid_tent` (the most hurt
+  stack), an arrow tower by `turret_automatic_shot` 0x465F20 (a siege with towers, +0x132F4 ≥ 2;
+  then `battle_turn_mouse` 0x478890, the mouse as at a turn's end of `battle_controls_state`), the
+  Catapult by `catapult_turn`'s own aim (a hero's Ballistics still choosing the gate first,
+  0x473D0A), the Ballista by the computer's action (`ai_battle_action` 0x477EE0 at 0x4744C0), as
+  every creature that plays itself: with its box set under Auto Combat each takes the turn a machine
+  without the skill takes.
+- **A turn Auto Combat does not play** (on, the stack the human's: its box off) is played as with
+  Auto Combat off: the loop hands the message to `battle_buttons` (0x474622), no stop's read
+  (0x4741F0 false), the mouse's move, F and the attack slots work (0x475397, 0x475C7A, 0x4746DA,
+  0x474A43). Three things differ. The turn's start flushes no input (0x4782F0: only with Auto
+  Combat off), so a key or a press queued during the computer's turn before reaches this turn and
+  acts there (a click on a hex walks or strikes; Auto Combat stays on). The panel is lit as on any
+  human's turn (0x478525) and Auto Combat's button unselected (0x47864A), though the flag stays
+  set. Its click there switches it off (0x474E5A) with nothing redrawn (`battle_controls_state`
+  runs only when it switches on), the turns after it the human's; clicked again, on, with again
+  nothing shown on this turn. The next turn that plays itself dims the panel and selects the
+  button (0x4784F9), and its start's stop's read takes a press found then (§7.22).
+- **Switching on** (the button or A, on a human's turn): `battle_controls_state` again; over a
+  stack that plays itself the panel dims and the computer acts in the next pass (§7.22); over one
+  that does not, only the turn's start again (the mouse's hex forgotten and the mouse posted, the
+  hero's cast asked: below), nothing shown.
+- **A box changed** in the dialog on a turn Auto Combat does not play counts at the close's next
+  pass: Creatures (or the machine's box) set, the computer plays the turn under way at once
+  (0x4744C0), the panel left lit and the button unselected (nothing runs `battle_controls_state`);
+  cleared, the turns after it are the human's.
+- **Spells** (`ai_hero_cast_turn`, called at every turn's start by `battle_controls_state`,
+  0x478861 and 0x47887D, whether the stack plays itself or not): for a human's side the computer is
+  asked for the hero's cast only with Auto Combat on (or a remote turn) and Combat Auto Spells set,
+  or in a hidden battle (0x422E42); once a round (+0x54B4), never in the tactics phase nor at a war
+  machine's turn (+0x84 bit 6). So with Spells set the computer casts for the human on the turns
+  the human plays too, and on the switch's own turn. T5's (the client's bot casts nothing): kept
+  only.
+- **The other sites:** `active_stack_automatic` (the overlay left empty, §7.23), the cursor's
+  attack slots and from-hex (none for a stack that plays itself), `battle_buttons`' mouse move and
+  F (nothing while the active stack plays itself under Auto Combat), `round_start`'s end of the
+  tactics phase (§7.24), the pathfinder's siege branch (0x4B3433, with a town +0x53C8: not read
+  further).
+- **Oddities** (asked: 1 and 2 as CLT-Q45; 3 to 5 copied without a question, the agent's call:
+  rare, or shown to no player):
+  1. Over a stack it does not play, Auto Combat looks off (the panel lit, its button unselected)
+     while on, and its click switches it off with nothing shown, then on again likewise.
+  2. A key or a press made during the computer's turn reaches a following turn Auto Combat does
+     not play and acts there (no flush, no stop's read).
+  3. Combat Ballista also rules an arrow tower aimed with Artillery (149 in the Ballista's case).
+  4. A box set in the dialog under Auto Combat hands the turn under way to the computer at the
+     close, the panel left lit.
+  5. The Catapult's case reads the hero's Ballistics with no test of a hero (0x474C95; a Catapult
+     always has one).
+- **The client's plan** (for T4b1's builder; a plan, nothing built):
+  - `h3_view::auto`: a pure `plays_itself(creature, auto)` for a human's waiting turn under Auto
+    Combat, the creature by its original id (as `mouse::CATAPULT`): 145 the Catapult's box
+    (`Settings::auto[2]`), 146 and 149 the Ballista's (`[3]`), 147 the Tent's (`[4]`), any other
+    Creatures' (`[0]`); a machine whose turn waits is a commanded one (the engine plays the others
+    itself, so no skill is tested here). `Auto::of` gains per turn whether its stack plays itself
+    (from the turns' observations' active stack and the settings then): on over a turn that does
+    not, that turn is the human's and Auto Combat stays on; `Input::Auto` toggles (off when on); a
+    stop takes effect at the next turn that plays itself, a press before a human-played turn being
+    that turn's (oddity 2: the window carries it to the turn's start as it carries ↑, ↓ and F);
+    `played` true only for the turns it plays (`Autoplay::selected` cleared by a human-played turn,
+    0x47864A, as it already reads).
+  - `h3_view::panel::shown`: `Autoplay::plays` false on a human-played turn under Auto Combat
+    (lit), `selected` false there; the rest as built.
+  - The binary: `Live::set_auto` takes the five boxes with the flag; `Live::waiting` and
+    `Live::next` ask `plays_itself` for the active stack of a human's side. `Battle::switch_auto`
+    toggles: on over a stack that plays itself the bot's command at once (as now), over one that
+    does not nothing more; off, nothing shown. `Battle::stop_auto` stops only at a turn that plays
+    itself, else keeps the press for the human-played turn's start. `Battle::auto_on`,
+    `auto_turn`, `pointer::auto` and `pointer::shown` (`src/bin/h3-view/pointer.rs`) by the
+    per-turn flags, so the mouse is taken on a human-played turn under Auto Combat. The dialog's
+    close applies a changed box at once (oddity 4: the bot's command for the turn waiting if it now
+    plays itself, the panel left as it was), the change joining `Battle::switches` with its time
+    so that a seek back or Restart keeps it (*provisional*). The bot (`Greedy`, *provisional*,
+    M2's review list) chooses for the commanded machines it plays: the original's choices are the
+    engine's automatic turns (BAT-WAR-002, -003, -008, BAT-SIE-011), crate-private in `h3_battle`;
+    equal commands would need them public (the battle lane's; not asked now). Spells:
+    `Settings::auto[1]` kept only (T5). A recording: a commanded Ballista (Artillery) under Auto
+    Combat with Combat Ballista off shows oddities 1 and 2 (the harness's registry has it off).
+
+### 12.14 Creature Info's level: F5 and the status line's damage (M6 T4b2a)
+
+Read: `battle_buttons`' key switch (0x4758E4 to 0x4758FB) and its case 63, F5 (0x475902 to
+0x47593C); `battle_redraw` 0x494440 at its end (0x494AA4 to 0x494AC1) and
+`army_info_windows_redraw` 0x495650 whole; the mouse move's windows (0x4755B3 to 0x47571E) and
+`army_info_stack_hide` 0x46DF80 whole, for F5 only (the rest T4b2b's); `battle_status_line`
+0x492840's head (0x492840 to 0x4928EC), its cases 7 (0x4929FF to 0x492B08) and 3 and 15
+(0x492B0D to 0x492CFA) and its end (0x493288 to 0x4932DA); `status_damage_text` 0x4933D0 and
+`status_damage_number` 0x493650 whole; `strike_base_damage` 0x443160 to 0x4432B4;
+`physical_damage` 0x443F40's head (0x443F40 to 0x443FF5) and its arguments in `stack_shot`
+(0x43FC1B to 0x43FC2E) and `melee_strike` (0x4419F8 to 0x441A0E); `damage_stage1_with_luck`
+0x443840's head (0x443840 to 0x443910); `damage_stage2_factor` 0x443B90 at 0x443C4B to 0x443CD5;
+GENRLTXT 37, 38, 221 and 297 (their specifiers).
+
+- **F5** (key code 63; `battle_buttons` tests no turn): the level becomes (level + 1) mod 3 (0, 1,
+  2, 0), then `battle_redraw`(1, 0, 0, 0, 1, 0) (the whole battlefield from its background, shown
+  at once, no wait) and `settings_save`. Nothing else: no status line written (the hint stays as
+  written until the mouse enters another hex, §9.9), no cursor set, nothing posted, no window shown
+  or hidden. The redraw ends with the shown army info windows only while the level is not 0
+  (0x494AB1, `army_info_windows_redraw`: each of the six whose shown flag is set): stepped to 0, a
+  shown window leaves the frame but stays flagged until the mouse's next hex hides it
+  (`army_info_stack_hide` restores the background it saved, T4b2b's); stepped to 1 or 2, the
+  windows change at the next hex. The battle's keys reach `battle_buttons` only on a turn the human
+  plays (the loop's 0x474622): the computer's passes skip it (0x4744D4) and a turn's start flushes
+  the queue with Auto Combat off (0x4782FB), so F5 pressed during an action is lost; under Auto
+  Combat a press on a turn that plays itself is the stop's (§7.22).
+- **The status line** (`battle_status_line`, written on a new hex, §9.9) reads the level in two
+  cases and tests only whether it is 0: level 1 (GENRLTXT 403, every statistic) and level 2 (404,
+  the spells alone) write the same line. Both stay forced over the log's lines (0x4932B7).
+  - Kind 7, a melee attack (0x4929FF): level 0 GENRLTXT 221 (`%s`, the target's name by its
+    count); else GENRLTXT 37 (`%s`, `%s`: the target's name by its count, the damage text). The
+    damage text of the acting stack on the target (the hex's stack), a strike (shot flag 0), the
+    run-up `hex_distance`(the acting stack's hex +0x38, the attack's from-hex +0x132D8).
+  - Kinds 3 and 15, a shot (0x492B0D): first the computer's damage by hit points
+    (`ai_strike_damage_by_hit_points` 0x435980 over both stacks' hit points left), its result
+    dropped; level 0 GENRLTXT 221; else, with one shot left (the acting stack's +0xD8) GENRLTXT 38
+    (`%s`, `%s`: the name, the damage text), with more GENRLTXT 297 (`%s`, `%d`, `%s`: the name,
+    the shots left, the damage text). The damage text of a shot (flag 1), its run-up
+    `hex_distance`(target, shooter) (no effect: no shooter jousts). Kind 15's halves (the walls,
+    the distance) come from the shot's stage 2 inside it.
+- **The damage text** (`status_damage_text` 0x4933D0: ecx the text, edx the attacker; the target,
+  the shot flag, the run-up): the base ends b_lo = +0xD0 × count and b_hi = +0xD4 × count (the
+  stack's least and greatest damage, the Ballista's times its controlling hero's attack, 0 to 99,
+  plus 1); blessed (+0x23C) or cursed (+0x240), both `strike_base_damage`(1) instead: (max + Bless's
+  value +0x458) × n or max(1, min − Curse's value +0x45C) × n, n the count halved (at least 1) for
+  a forgetful shooter (+0x28C). Each end goes through `physical_damage`(target, b, the shot flag,
+  the estimate flag 1, the run-up, no Fire Shield out): every stage of a strike
+  (`installation.md` §7.10: attack and defense, jousting by the run-up, elements and hate, Offense
+  or Archery, a Bless specialist; the defense factor, the elemental halves, a shot's wall and
+  distance halves from the shooter's place and facing now, 0x467510 and 0x467600, a shooter's melee
+  half; Shield or Air Shield, petrified, Armorer) without the rolls (luck, Death Blow, the
+  Ballista's double damage run outside an estimate only, 0x443840). Equal ends give one number,
+  else `%s-%s` (0x6772DC) of the low and the high end. No kills.
+- **The numbers** (`status_damage_number` 0x493650: edx the value, the argument the value whose size
+  decides): below 1 000 `%d` (0x660A1C); below 10 000, h = trunc((v + 50) / 100) and `%d.%dk`
+  (0x6772E4) of h / 10 and h mod 10, or `%dk` (0x660CB0) of h / 10 when h mod 10 is 0; else `%dk` of
+  trunc((v + 500) / 1 000). The low end is written by the high end's size (0x493527: the high
+  pushed, the low in edx): 800 to 1 200 reads `0.8k-1.2k`.
+- **Oddities** (asked: 1 to 3, with where the client's numbers come from, as CLT-Q46; 4 to 7
+  copied without a question, the agent's call: forms or timings no player would call a slip):
+  1. A forgetful shooter's hint counts the whole stack unless blessed or cursed (the strike halves
+     it, `strike_base_damage`).
+  2. A Cavalier's or Champion's hint counts the straight distance to its from-hex, the strike the
+     hexes walked (+0x490, BAT-DMG-005; Q22 asks about the strike, which this does not answer).
+  3. An arrow tower aimed with Artillery: its record's damage through every stage, where the real
+     shot takes only the target's protections (0x443D90, BAT-SIE-018).
+  4. The low end in the high end's unit (`0.8k-1.2k`).
+  5. Levels 1 and 2 alike on the status line (the spells-only level shows the damage too).
+  6. F5 rewrites no hint and hides no window (above).
+  7. The shot's estimate by hit points computed and dropped (0x435980).
+- **The client's plan** (for T4b2a's builder; a plan, nothing built):
+  - The level: `Settings::army_info` (kept since T4a) read by the battle. F5: the `keys` table
+    gains `army-info` (F5) in the battle's context, taken where the battle takes its keys (a
+    human's turn waiting; on a turn that plays itself under Auto Combat it is the stop's): the
+    level cycled, the settings file written at once (as the dialog's close writes it), the frame
+    redrawn, no hint written until the mouse enters another hex.
+  - `h3_view::mouse::Hint`: `Attack(id)` stays the level-0 line (221); new `Strike(id, [u64; 2])`
+    (37) and `Shot(id, shots, [u64; 2])` (38 with one shot left, 297 else; the shots from the
+    observation's stack), both `forced`; `Hint::text` with a pure `damage_text([u64; 2])` (the
+    numbers' forms above, the low end by the high end's size) and new catalogue keys
+    (`battle.hint.strike-damage` GENRLTXT:37, `battle.hint.shot-one` :38, `battle.hint.shot-damage`
+    :297; `EXE:0x6772DC`, `EXE:0x6772E4`, `EXE:0x660CB0`, `EXE:0x660A1C`). The hint's choice
+    (`mouse.rs`, `Kind::Shoot | Kind::BrokenArrow | Kind::Attack` over a stack) takes the level and
+    the damage of the command the click would give (`Command::Attack { target, from }`,
+    `Command::Shoot { target, at }`); none known, `Attack(id)`.
+  - The damage: the library is pure over the wire's observation, which holds no damage of a
+    command; the binary holds the battle's state where it plays the battle (`Live`, and
+    `scenario::Turned::of` for a record with its scenario). `Turned` gains each legal attack's and
+    shot's `h3_battle::preview` (BAT-DMG-011, public: the least and the greatest damage of the
+    first strike), equal to the original's hint but in oddities 1 to 3 (and, not compared, a
+    two-hex shooter's distance taken at its facing before the shot turns it). The original's
+    exact numbers would need the battle lane's estimate with the caller's base ends and run-up,
+    a turret through every stage (`combat::estimated_damage` is crate-private): CLT-Q46. A server's
+    seat holds no battle state and the protocol carries no preview (ADR-0018 point 10: the client
+    runs no rules in a hosted game): there the level-0 line (*provisional*, a stub) until the
+    server lane sends the previews (CLT-Q46).
+  - Checks: unit tests of the texts and the numbers' forms (the three sizes, a range across 1 000,
+    one value blessed). A recording at level 1 shows the hover's army info windows (T4b2b's) beside
+    the line: compare the status line's rectangle only, or record after T4b2b; the harness's
+    registry keeps level 0 (`Settings::CAPTURE`), so such a capture needs `setup.sh`'s Combat Army
+    Info Level.
