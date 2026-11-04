@@ -1212,3 +1212,38 @@ an entry only where a task builds on it.
   student trained, scored and saved; agreement at 65 k 0.379, 0.438, 0.401, 0.423 (too early to
   rank); the µs a sample-pass at the bench's 512 rows on the CPU 119, 2 787, 11 557, 1 097 (the
   hex transformer's attention costs three times its 128-row figure at 512 rows).
+- **The grid on the GTX 1070** (the user, 2026-11-04, after T24: T26's first step run early;
+  `network --bench configs/distill/e25-grid.toml --time --rows 512 --device cuda`; the ratio is
+  the sample-pass's to `hexconv` 64 × 6's, 301 µs here, where T7c's bench measured 466):
+
+  | Student | Forward µs | Training µs | Sample-pass µs | Peak MB | Ratio |
+  |---|---:|---:|---:|---:|---:|
+  | MLP 2 × 512 | 5.4 | 12.6 | 17.7 | 87 | 0.06 |
+  | `hexconv` 64 × 6 (the cap) | 113 | 301 | 301 | 903 | 1 |
+  | `hexconv` normalised 64 × 6 | 179 | 413 | 448 | 1 641 | 1.49 |
+  | … 64 × 8 | 237 | 539 | 539 | 2 069 | 1.79 |
+  | … 64 × 10 | 265 | 649 | 659 | 2 498 | 2.19 |
+  | … 96 × 6 | 226 | 595 | 595 | 2 450 | 1.97 |
+  | … 96 × 8 | 292 | 766 | 774 | 3 091 | 2.57 |
+  | … 96 × 10 | 360 | 945 | 947 | 3 732 | 3.14 |
+  | … 128 × 6 | 303 | 796 | 799 | 3 242 | 2.65 |
+  | … 128 × 8 | 394 | 1 036 | 1 040 | 4 098 | 3.45 |
+  | … 128 × 10 | 484 | 1 289 | 1 291 | 4 952 | 4.28 |
+  | `hexformer` 96 × 4 | 145 | 681 | 682 | 1 823 | 2.26 |
+  | … 96 × 4, feed-forward 4 | 166 | 1 165 | 766 | 2 067 | 2.54 |
+  | … 96 × 6 | 248 | 1 041 | 1 003 | 2 536 | 3.33 |
+  | … 128 × 4 | 183 | 982 | 868 | 2 332 | 2.88 |
+  | … 128 × 6 | 272 | 1 312 | 1 325 | 3 278 | 4.40 |
+  | `entity` 192 × 2 | 43 | 134 | 135 | 724 | 0.45 |
+  | … 192 × 2, feed-forward 4 | 52 | 154 | 156 | 792 | 0.52 |
+  | … 192 × 4 | 67 | 222 | 221 | 1 064 | 0.73 |
+  | … 256 × 2 | 60 | 181 | 177 | 949 | 0.59 |
+  | … 256 × 4 | 94 | 287 | 293 | 1 401 | 0.97 |
+
+  The GPU agrees with the CPU's read: within the cap's network only the MLP and the entity
+  network up to 256 × 4; no `hexformer` (the smallest 2.3 times) and no larger `hexconv`. The
+  normalisation costs more here than on the CPU (+49 % a sample-pass against +13 %, +82 % peak
+  memory: the permuted LayerNorm's channels-last tensors). Decision 3's two readings now differ:
+  "at most `hexconv` 64 × 6's" on this measure is 301 µs, "466 µs" (T7c's bench, about ten hours of
+  network time for 20 M samples of PPO) also admits `hexconv` normalised 64 × 6 (448). The user's
+  call at T26, after T25's cost change.
