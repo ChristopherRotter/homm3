@@ -5098,6 +5098,7 @@ in its own worktree, its patch applied on A's commit (design §12.10).
 
 On `client/e17-m6-t3c3`, the user present. The sandbox new, the original files staged first (57
 files) before the computer went offline; #699 had merged; the baseline's `check.sh` passed. The
+sandbox's VM restarted once (`drawn` and `check.sh` run again). The
 user chose the town records over T3c2's asset tables and both parts in one task (design §12.11).
 
 - **Built:** `scenario::towns` and `town_part` (the packs' `towns.toml` through
@@ -5106,7 +5107,9 @@ user chose the town records over T3c2's asset tables and both parts in one task 
   ruleset, a server's game only when its content is the same); `scenario::SiegeTown` and
   `siege_town` (the town's other buildings by the record's map editor slots, a hero's Grail
   building of another faction or of the attacker an error); the writer's bits checked within the
-  map's 48. Removed: `tables::TownBuildings`, the asset tables' `buildings`.
+  map's 48. Removed: `tables::TownBuildings`, the asset tables' `buildings`. Shared: #704
+  (`clients.yml` watches `crates/h3-pack-towns`, which `check.sh`'s "ci paths" requires; the
+  user's choice over a reader of the client's own). The town lane's inbox has the coupling.
 - **Fixed:** `effect_skills` gave a Grail building's morale or luck as Leadership or Luck (the
   first exact-place capture showed "Advanced Leadership +2"); it skips `Source::Building` now.
 - **Found by the captures:** a Fort-level siege opens on the Catapult's turn (BAT-SIE-011), where

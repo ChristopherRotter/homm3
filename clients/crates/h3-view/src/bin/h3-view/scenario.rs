@@ -915,12 +915,16 @@ mod tests {
 
     #[test]
     fn a_siege_towns_buildings_become_its_map_bits() {
-        // E17 M6 T3c3: stats-siege.toml's Tavern (index 4) and Brotherhood of the Sword (20) and
-        // the defender's Colossus (21) by the Castle record's map editor slots 6, 19 and 17.
+        // E17 M6 T3c3: stats-siege.toml's Citadel, its Brotherhood of the Sword (index 20) and
+        // the defender's Colossus (21) by the Castle record's map editor slots 19 and 17;
+        // stats-siege-tavern.toml's Tavern (4) by slot 6.
         let packs = repo().join("packs");
         let siege = repo().join("clients/situations/stats-siege.toml");
         let town = sides(&siege, &packs).unwrap().siege.unwrap();
-        assert_eq!((town.town, town.fort, town.built), (0, 1, vec![6, 17, 19]));
+        assert_eq!((town.town, town.fort, town.built), (0, 2, vec![17, 19]));
+        let tavern = repo().join("clients/situations/stats-siege-tavern.toml");
+        let town = sides(&tavern, &packs).unwrap().siege.unwrap();
+        assert_eq!(town.built, [6]);
         let castle = siege_castle();
         let towns = town_part(&packs, &["base".into()], "base:faithful").unwrap();
         let grail = |faction: u16, index: u8| BattleEffect::Morale {
