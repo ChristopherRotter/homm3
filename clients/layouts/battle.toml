@@ -33,6 +33,9 @@ player_palette = "PLAYERS.PAL"
 # corner into the background, each pixel of a non-zero index halving what lies under it
 # (0x44E6A0).
 cell_shade = "ccellshd.pcx"
+# The grid's cell (E17 M6 T4c, §12.16; `draw_hex_overlays` 0x493C4C): drawn at each hex's box
+# corner but the side columns' into the background after the movement shade, index 0 skipped.
+cell_grid = "ccellgrd.pcx"
 
 # A stack's count box (§4.3, `draw_battle_stack` 0x43E568; E17 M3 T4a): the picture, index 0
 # transparent, beside the stack; its inside tinted (0x44E940); the count in the font, centred.

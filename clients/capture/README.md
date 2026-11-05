@@ -205,7 +205,15 @@ an entry's `army_info = 1` or `2` is the level it runs at: `set` writes it into 
 registry (`Combat Army Info Level`, `h3drive.ARMY_INFO`) before the game starts, puts the
 prefix's value back after the run (`Game.stop`; `setup.sh` leaves it unset, 0) and copies it into
 `frames.toml` (the viewer's level, 0 without it); an entry with a `key:F5` and no `army_info`
-runs at 0 and is put back too (the game saves the level F5 cycles to at once). The setup
+runs at 0 and is put back too (the game saves the level F5 cycles to at once). Since E17 M6 T4c
+(design §12.16) an entry's `grid`, `cursor_shadow` and `movement_shadow` (each 0 or 1) are the
+grid's and the shadows' options it runs at, written the same way (`Show Combat Grid`, `Show
+Combat Mouse Hex`, `Combat Shade Level`; `h3drive.SHADES`), a situation's copied into
+`frames.toml`, a sequence's read by the viewer from `sequences.toml`; an entry pressing `key:F6`,
+`key:F7` or `key:F8` without its option's value runs at 0 and is put back too. A situation's
+actions draw the cursor shadow at every move the battle takes, `key:F6` to `key:F8`'s and the
+options dialog's compositions (the stills take no spell's aim: an aim's shade is a sequence's,
+`aim:<k>:<n>` then `move:`). The setup
 turns "Animate SpellBook" off (the page turn's videos, Smacker clips of `battle-videos.vid` the
 client does not play); nothing recorded before it turned a page. Since E17 M5 T4a (design
 §7.19) `key:r` and `key:s` open Retreat's and Surrender's questions, and an open message box takes the `key:` (`key:Return`, `key:Escape`: down

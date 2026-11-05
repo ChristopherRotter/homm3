@@ -237,6 +237,18 @@ def sound_settings(on):
 # prefix's value back after (`Game.start`, `Game.stop`).
 ARMY_INFO = "Combat Army Info Level"
 
+# The grid and the shadows (E17 M6 T4c, design §12.16): an entry's key (0 or 1), the setting's
+# value name (settings_names 0x63FF74: Show Combat Grid 0x6987BC, Show Combat Mouse Hex 0x6987C0,
+# Combat Shade Level 0x6987C4) and the key that toggles it in a battle (F6 to F8, which the game
+# saves at once, as an aim with both shadows on saves the movement shadow off and on again).
+# setup.sh leaves them unset (0); an entry's values are written before its run and the prefix's
+# put back after (`Game.start`, `Game.stop`), as Creature Info's level.
+SHADES = {
+    "grid": ("Show Combat Grid", "key:F6"),
+    "cursor_shadow": ("Show Combat Mouse Hex", "key:F7"),
+    "movement_shadow": ("Combat Shade Level", "key:F8"),
+}
+
 
 def setting_dword(name):
     """A dword of the game's settings key as the prefix's registry holds it (`system.reg`, which
@@ -319,7 +331,7 @@ def load_screens():
 class Game:
     """One run of the original under Wine with our clock."""
 
-    def __init__(self, out, sound=False, army_info=None):
+    def __init__(self, out, sound=False, army_info=None, shades=None):
         self.out = Path(out)
         self.out.mkdir(parents=True, exist_ok=True)
         self.clock_dir = self.out / "clock"
@@ -334,6 +346,10 @@ class Game:
         self.army_info = army_info
         self.army_info_before = None
         self.army_info_set = False
+        # E17 M6 T4c: the grid's and the shadows' values the run writes (`shade_values`), and the
+        # prefix's that `stop` puts back.
+        self.shades = dict(shades or {})
+        self.shades_before = {}
 
     # -- the process ------------------------------------------------------------------------
     def start(self, map_path=None):
@@ -376,6 +392,9 @@ class Game:
             self.army_info_before = setting_dword(ARMY_INFO)
             self.army_info_set = True
             set_setting_dword(ARMY_INFO, self.army_info)
+        for name, value in self.shades.items():
+            self.shades_before[name] = setting_dword(name)
+            set_setting_dword(name, value)
         if self.sound:
             # Wine's ALSA driver over ALSA's null sink (no sound card in a sandbox): Miles opens
             # its digital driver, so the game plays and waits for its samples (xdd.dll's 6.).
@@ -405,6 +424,10 @@ class Game:
         if self.army_info_set:
             self.army_info_set = False
             set_setting_dword(ARMY_INFO, self.army_info_before)
+        # The grid's and the shadows' as the prefix held them (E17 M6 T4c).
+        for name, before in self.shades_before.items():
+            set_setting_dword(name, before)
+        self.shades_before = {}
 
     # -- the screen ---------------------------------------------------------------------------
     def pixels(self):
@@ -915,7 +938,8 @@ def run_set(rest):
         mouse = tuple(sit.get("mouse", PARK))
         walled = walls_args(sit)  # checked before the game starts (E17 M4 T3a)
         level = army_info_level(sit)
-        game, stacks = Game(here, army_info=level), []
+        shades = shade_values(sit)
+        game, stacks = Game(here, army_info=level, shades=shades), []
         try:
             # The step into the battle (E17 M4 T1b): a siege's attacker stands south of the
             # town's entrance (`key = "Up"`), any other west of the defender.
@@ -931,7 +955,7 @@ def run_set(rest):
         kept = [{"t": at, "frame": p.name, "stacks": st}
                 for at, p, st in zip(sorted(frames), paths, stacks)]
         (here / "frames.toml").write_text(frames_toml(kept, mouse, actions=sit.get("actions", ()),
-                                                      army_info=level or 0))
+                                                      army_info=level or 0, shades=sit))
         ours = here / "ours.png"  # its record: ours.jsonl (the count boxes' masks)
         # Whose record (E17 M4 T1b): a side's shows its hidden objects (a Tower's mines on the
         # defender's turn in hot seat), a spectator's by default.
@@ -1396,7 +1420,7 @@ def run_sequences(rest):
         here.mkdir(parents=True, exist_ok=True)
         map_path = here / f"{e['id']}.h3m"
         view(situation_args(h3view, set_path, e, map_path))
-        game = Game(here, e.get("sound", False))
+        game = Game(here, e.get("sound", False), shades=shade_values(e))
         try:
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                      hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False),
@@ -1443,7 +1467,25 @@ def army_info_level(entry):
     return level
 
 
-def frames_toml(kept, mouse=None, rays=(), actions=(), army_info=0):
+def shade_values(entry):
+    """The grid's and the shadows' registry values an entry runs at (E17 M6 T4c, `SHADES`): each
+    of its `grid`, `cursor_shadow` and `movement_shadow` (0 or 1, checked before the game starts),
+    else 0 when an action presses the option's key (the game saves it at once: `Game.stop` puts
+    the prefix's back), else left (the prefix's: setup.sh's unset, 0)."""
+    out = {}
+    for key, (name, press) in SHADES.items():
+        value = entry.get(key)
+        if value is None:
+            if press in entry.get("actions", ()):
+                out[name] = 0
+            continue
+        if value not in (0, 1):
+            raise ValueError(f"{entry['id']}: {key} is 0 or 1, not {value}")
+        out[name] = value
+    return out
+
+
+def frames_toml(kept, mouse=None, rays=(), actions=(), army_info=0, shades=None):
     """The kept frames for `h3-view sequences --frames`: each one's time, file and the stacks the
     original shows fidgeting (group 1: the viewer draws none of its own in a check), and, where
     the original's memory was read for them (the frame check, M3 T3a), its heroes' groups and
@@ -1455,10 +1497,15 @@ def frames_toml(kept, mouse=None, rays=(), actions=(), army_info=0):
     (`before`, M3 T7c-3); the draws its Chain Lightning's rays turned by (M3 T7c-3: `h3-view
     sequences --frames` draws the same rays); a situation's actions after its mouse's move
     (E17 M5 T3a: the viewer plays them into the spell book); and Creature Info's level it ran at
-    when not 0 (E17 M6 T4b2b1: `army_info`, the viewer's default 0)."""
+    when not 0 (E17 M6 T4b2b1: `army_info`, the viewer's default 0), and the grid's and the
+    shadows' options of the entry `shades` when not 0 (E17 M6 T4c: `grid`, `cursor_shadow`,
+    `movement_shadow`)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
     if army_info:
         out += [f"army_info = {army_info}", ""]
+    for key in SHADES:
+        if (shades or {}).get(key):
+            out += [f"{key} = {shades[key]}", ""]
     if mouse is not None:
         out += [f"mouse = [{mouse[0]}, {mouse[1]}]", ""]
     if actions:
@@ -1513,7 +1560,7 @@ def run_frames(rest):
         if not (reuse and (here / "frames.jsonl").exists()):
             map_path = here / f"{e['id']}.h3m"
             view(situation_args(h3view, set_path, e, map_path))
-            game = Game(here, e.get("sound", False))
+            game = Game(here, e.get("sound", False), shades=shade_values(e))
             try:
                 sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                          frames=True, hot_seat=e.get("hot_seat", False), fail=e.get("fail", ()),

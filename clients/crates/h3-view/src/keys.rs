@@ -97,6 +97,10 @@ pub enum Command {
     /// Creature Info's level cycled (0, 1, 2; E17 M6 T4b2a, design §12.14: the original's F5,
     /// case 63 of `battle_buttons`), the frame drawn again and the settings file written.
     ArmyInfo,
+    /// The grid, the cursor shadow or the movement shadow toggled (E17 M6 T4c, design §12.16: the
+    /// original's F6, F7 and F8, `battle_buttons` 0x47593F to 0x475BDE), the frame drawn again and
+    /// the settings file written.
+    Shades(crate::shades::Toggle),
     /// The stats dialog's OK pressed, the dialog closed as it is released.
     StatsOk,
     /// The combat options dialog's OK pressed, the dialog closed as it is released (E17 M6 T4a).
@@ -158,6 +162,14 @@ impl Command {
             // The key code 20 (0x475D07): the acting stack's dialog, outside the tactics phase.
             Self::Stats => ("stats".into(), plain(&["T"])),
             Self::ArmyInfo => ("army-info".into(), plain(&["F5"])),
+            Self::Shades(toggle) => {
+                let (name, key) = match toggle {
+                    crate::shades::Toggle::Grid => ("grid", "F6"),
+                    crate::shades::Toggle::Cursor => ("cursor-shadow", "F7"),
+                    crate::shades::Toggle::Movement => ("movement-shadow", "F8"),
+                };
+                (name.into(), plain(&[key]))
+            }
             Self::Button(id) => BUTTONS.iter().find(|&&(b, _, _)| b == id).map_or_else(
                 || (format!("button-{id}"), Vec::new()),
                 |&(_, name, keys)| (name.into(), plain(keys)),
@@ -200,6 +212,9 @@ impl keys::Command for Command {
         all.extend(MESSAGE.map(|(k, _, _)| Self::Message(k)));
         all.extend([
             Self::ArmyInfo,
+            Self::Shades(crate::shades::Toggle::Grid),
+            Self::Shades(crate::shades::Toggle::Cursor),
+            Self::Shades(crate::shades::Toggle::Movement),
             Self::StatsOk,
             Self::OptionsOk,
             Self::AimCancel,
@@ -232,6 +247,7 @@ impl keys::Command for Command {
             | Self::DragonSpell
             | Self::Stats
             | Self::ArmyInfo
+            | Self::Shades(_)
             | Self::Button(_) => Some(Context::Battle),
             Self::Book(_) => Some(Context::Book),
             Self::Message(_) => Some(Context::Message),

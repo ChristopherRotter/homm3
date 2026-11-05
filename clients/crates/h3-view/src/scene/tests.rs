@@ -581,6 +581,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
         bridge: None,
         shake: None,
         shade: BTreeSet::new(),
+        overlays: Overlays::default(),
         created: BTreeMap::new(),
         dissolve: None,
     };
@@ -605,6 +606,64 @@ fn a_moment_draws_each_stack_in_its_pose() {
         [Draw::Background { .. }, Draw::AbsoluteObstacle { .. }]
     ));
     assert_eq!(shades.len(), list.len() + 2);
+    // E17 M6 T4c (design §12.16): the grid after the movement shade at every hex's box but the
+    // side columns', the blocks of an earlier composition put back (each its hex box's, cut to
+    // the battlefield, drawn as that composition drew the background), the cursor shadow's hexes
+    // last, in its list's order; all into the background.
+    let mut overlaid = moment.clone();
+    overlaid.shade = [hex(0, 1)].into_iter().collect();
+    overlaid.overlays = Overlays {
+        grid: true,
+        cursor: vec![hex(10, 3), hex(0, 1)],
+        stale: vec![
+            Stale {
+                hex: hex(10, 2),
+                grid: false,
+                shade: [hex(10, 2)].into_iter().collect(),
+            },
+            Stale {
+                hex: hex(2, 2),
+                grid: true,
+                shade: BTreeSet::new(),
+            },
+        ],
+    };
+    let drawn = battle_at(&battle_view(), &overlaid, &keys(), &tables(), &layout).unwrap();
+    let grid = drawn
+        .iter()
+        .filter(|d| matches!(d, Draw::Grid { .. }))
+        .count();
+    assert_eq!(grid, 11 * 15);
+    let at = |row, column| layout.hex_box(row, column);
+    let grid_cell = |[x, y]: [i32; 2]| Draw::Grid {
+        picture: "ccellgrd.pcx".to_string(),
+        x,
+        y,
+    };
+    assert_eq!(drawn[2], cell(80, 86));
+    assert_eq!(drawn[3], grid_cell(at(0, 1)));
+    assert!(!drawn.contains(&grid_cell(at(0, 0))) && !drawn.contains(&grid_cell(at(0, 16))));
+    let [x, y] = at(10, 2);
+    let Draw::Within { rect, list: inner } = &drawn[3 + grid] else {
+        panic!("not a block: {:?}", drawn[3 + grid]);
+    };
+    assert_eq!(*rect, [x, y, x + 45, (y + 52).min(556)]);
+    assert!(y + 52 > 556);
+    assert!(matches!(
+        inner[..],
+        [
+            Draw::Background { .. },
+            Draw::AbsoluteObstacle { .. },
+            Draw::Shade { .. }
+        ]
+    ));
+    let Draw::Within { list: inner, .. } = &drawn[4 + grid] else {
+        panic!("not a block");
+    };
+    assert_eq!(inner.len(), 2 + grid);
+    let [cx, cy] = at(10, 3);
+    assert_eq!(drawn[5 + grid..7 + grid], [cell(cx, cy), cell(80, 86)]);
+    assert_eq!(drawn.len(), list.len() + 1 + grid + 2 + 2);
     // The magic animation right after its stack's sprite, once.
     let walker = list
         .iter()

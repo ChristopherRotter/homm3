@@ -1,0 +1,14 @@
+# The original's kept frames (h3drive.py frames): numbers only.
+
+grid = 1
+
+cursor_shadow = 1
+
+movement_shadow = 1
+
+mouse = [190, 196]
+
+[[frame]]
+t = 100
+file = "t00100.xwd"
+fidgets = []

@@ -308,6 +308,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             mouse,
             actions,
             army_info,
+            shades,
         } = crate::sequences::situation_inputs(dir)?;
         let told = h3_view::tactics::told(observation);
         // The status line at Creature Info's levels 1 and 2 words a strike's or a shot's damage
@@ -324,8 +325,11 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             observation,
             (&legal, scenario),
         )?;
-        // At Creature Info's level 1 or 2 the mouse at rest shows a window too (E17 M6 T4b2b1).
-        let book = if actions.is_empty() && !told && army_info == 0 {
+        // At Creature Info's level 1 or 2 the mouse at rest shows a window too (E17 M6 T4b2b1), and
+        // with the cursor shadow on shades its hex, the grid and the movement shadow drawn with
+        // their options (E17 M6 T4c).
+        let plain = shades == h3_view::shades::Options::default();
+        let book = if actions.is_empty() && !told && army_info == 0 && plain {
             None
         } else {
             let ruleset = crate::scenario::ruleset(&options.packs, manifest)?;
@@ -553,22 +557,26 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                         .colour
                         .unwrap_or_else(|| u8::try_from(i).unwrap_or(0))
                 });
-            let options = |point: Option<[i32; 2]>, level: u8| {
-                let on_button = point.is_none_or(|p| {
-                    layout.panel_in(observation).button_at(p) == Some(h3_view::panel::OPTIONS)
-                });
-                (on_button && !legal.is_empty()).then(|| {
-                    h3_view::options::Open::new(
-                        &layout.options,
-                        &catalogue,
-                        h3_view::options::Settings {
+            let options =
+                |point: Option<[i32; 2]>, (level, shades): (u8, h3_view::shades::Options)| {
+                    let on_button = point.is_none_or(|p| {
+                        layout.panel_in(observation).button_at(p) == Some(h3_view::panel::OPTIONS)
+                    });
+                    (on_button && !legal.is_empty()).then(|| {
+                        // The grid's and the shadows' boxes as the still's options stand (E17 M6 T4c).
+                        let mut settings = h3_view::options::Settings {
                             army_info: level,
                             ..h3_view::options::Settings::CAPTURE
-                        },
-                        (acting_player, false),
-                    )
-                })
-            };
+                        };
+                        shades.set_in(&mut settings);
+                        h3_view::options::Open::new(
+                            &layout.options,
+                            &catalogue,
+                            settings,
+                            (acting_player, false),
+                        )
+                    })
+                };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
                 leave,
@@ -590,6 +598,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     legal: &still_legal,
                     level: army_info,
                     window: &army_window,
+                    shades,
                 }),
             };
             Some(crate::spellbook::still(
