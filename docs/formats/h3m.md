@@ -411,8 +411,9 @@ so a hero on it is no hero in a town; on any other blocked tile of a town `HeroI
 pool's inputs (survey §4.2): the allowed heroes (an RoE-format map's 128 bits and the 16 Conflux
 heroes, never 144 to 155; from AB on the 156 bits as given; a type the ruleset lacks left out),
 SoD's disposed heroes' colour masks, the prisoners' types. `Unsupported::HeroAtMainTown` and
-`RandomHero` are gone; the game's build draws a random hero's type (E09 T7b1) and, until E09
-T7b2b, refuses a main town that generates a hero (`GameSetupError::HeroDraw`, `TWN-STUB-3`).
+`RandomHero` are gone; the game's build draws a random hero's type (E09 T7b1) and, since E09
+T7b2b, builds the hero of a main town that generates one (TWN-SET-009; refused until then,
+`TWN-STUB-3`).
 
 E09 T7a1's census (import v17, the 160 shipped maps; `original_data`): 156 maps import (v15: 8;
 128 refused for a main town's hero, 21 for a random hero, 3 for a hero in a town), 4 are refused
@@ -455,6 +456,16 @@ random towns take their owner's faction, 52 a drawn one, none an alignment's; 79
 draw a garrison (16 of them empty); every owned town reveals the radius 5 at the start. Over the
 156: 47 random towns aligned to a colour, 813 not (553 owned at the start); 9 custom sets with a
 building that reveals every tile built (an upper bound), 4 with one that reveals a radius.
+
+E09 T7b2b's census (the build places the main towns' heroes, seed 0): all 156 maps that import
+build whole (31 before; the 125 refused for a main town's hero build, none refused by a new check:
+no main town without an entrance, no second hero on an entrance, no `NoFreeHero`), 4 are still not
+supported for an ownable object entered from water. 523 main towns' heroes, all drawn (the import
+picks none, so no human pick), 84 of them on maps of 36 tiles a side; 33 start with a spell book in
+a main town with a Mage Guild built (the guild's spells at the start, `TWN-STUB-6`). The 156 build
+1 437 towns: 553 random towns take their owner's faction, 47 their alignment's, 260 a drawn one;
+486 neutral towns draw a garrison (105 of them empty); every owned town reveals the radius 5 at the
+start. 54 heroes level at load, with 304 levels.
 
 ## The subset we write (E04a T2)
 

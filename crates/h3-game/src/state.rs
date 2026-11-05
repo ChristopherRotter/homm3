@@ -279,8 +279,10 @@ impl GameState {
     /// ([`GameSetup::validate`]), the hero pool (TWN-SET-005), its random placeholders resolved
     /// from the setup stream (first, step 1, the players' random faction choices, TWN-SET-001;
     /// step 2, the random heroes' types, TWN-SET-008, E09 T7b1, then the random towns' factions in
-    /// `TownId` order, TWN-SET-002, E09 T7b2a; step 4, each town's garrison and buildings in
-    /// `TownId` order, TWN-SET-004, TWN-SET-003; then the starting armies, GAM-SET-001, each
+    /// `TownId` order, TWN-SET-002, E09 T7b2a; step 3, each main town's hero's type in player
+    /// order, TWN-SET-009, E09 T7b2b, its hero after the setup's heroes; step 4, each town's
+    /// garrison and buildings in `TownId` order, TWN-SET-004, TWN-SET-003; then the starting
+    /// armies, GAM-SET-001, each
     /// default experience, GAM-HER-001, the map objects' contents, ADR-0016 point 4, then each
     /// hero's level seed in hero id order, GAM-HER-002;
     /// last of the stream's draws, so the earlier ones do not depend on the heroes' levels), the
@@ -304,7 +306,10 @@ impl GameState {
             .get(usize::from(setup.difficulty))
             .ok_or(GameSetupError::Difficulty(setup.difficulty))?;
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
-        let (part, mut heroes, pool, towns) = setup.adventure_setup(rules, &mut draws)?;
+        let (part, mut heroes, pool, towns, generated) =
+            setup.adventure_setup(rules, &mut draws)?;
+        // E09 T7b2b: the main towns' heroes follow the setup's (TWN-SET-009).
+        let all = || setup.heroes.iter().chain(&generated);
         let mut adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
             .map_err(GameSetupError::Adventure)?;
         // rule: TWN-CAP-001
@@ -318,11 +323,11 @@ impl GameState {
         let progression = Progression::new(
             setup.level_limit,
             &setup.banned_skills,
-            setup.heroes.iter().map(|hero| hero.details.sex).collect(),
+            all().map(|hero| hero.details.sex).collect(),
             &mut draws,
         );
         let shares = adventure.map().terrain_shares();
-        for ((details, hero), index) in heroes.iter_mut().zip(&setup.heroes).zip(0..=u16::MAX) {
+        for ((details, hero), index) in heroes.iter_mut().zip(all()).zip(0..=u16::MAX) {
             if let Some(experience) = hero.details.experience {
                 let hero = (HeroId::new(index), details);
                 progression.levels_at_load(rules.core(), hero, experience, shares, &mut draws);

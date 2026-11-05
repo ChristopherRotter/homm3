@@ -93,7 +93,7 @@ pub use setup::{
     HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, MonthKind, OpenBattle};
-pub use town::{FactionChoice, FactionSet, HeroDraw, MainTown, PlayerStart};
+pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):

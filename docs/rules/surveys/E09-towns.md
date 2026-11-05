@@ -565,7 +565,10 @@ after every hero placed earlier in the file.
   `hero_draw_of_faction(chosen_factions[colour], colour)`; the colour's first hero if none yet;
   the type the colour's; `town_hero_place` 0x5C13B0 puts it on the town's entrance
   (`hero_place` 0x4D7900: added to the player's heroes, the type's mask gains the colour, shown
-  on its tile); then the town's guild spells are learned (0x5BE030, increment 4); one campaign
+  on its tile); then the town's guild spells are learned (0x5BE030 with 0: the visitor first,
+  then the garrison hero; read whole in E09 T7b2b: a hero with a spell book in a town with its
+  Mage Guild, the levels up to Wisdom's + 2 and the guild's highest built; the guild's spells are
+  drawn before, `town_setup_spells` 0x5BE600 in `setup_towns`; TD-10, increment 4); one campaign
   scenario adds experience (not followed).
 - **The faction is the colour's, not the town's:** on the 5 players whose fixed main town allows
   other factions too (`Unexpected Inheritance`, `Warmongers`, §1.2), a hero of another faction can
@@ -580,6 +583,16 @@ after every hero placed earlier in the file.
   entrance (+0xD bit 0x10) of a town (class 98; random towns are 98 by then) and the hero is not a
   prisoner, the hero's column is decreased by one (0x4CAE95 to 0x4CAEC2); the hero is then shown
   on its tile (the visitor, §4.5). Any owner's town; no other blocked tile.
+- **Visitor, not garrison** (read again in E09 T7b2b, at the user's question whether such a hero
+  is the town's garrison hero): the hero's start tile is its template's visitable tile
+  (`load_hero_body` 0x502999), one column left of the object's anchor; the 23 shipped heroes'
+  objects lie on their town's anchor, each written right after its town, so this is how the
+  editor stores a hero dropped on a town. Nothing at a new game writes a town's garrison hero
+  (+0xC: cleared by `town_init` 0x5BDE80, only read by `town_setup`; its writers, the town
+  screen's swap 0x5BE450 and its two moves 0x4B9FC0, 0x5BE390, are not reached from
+  `new_game_load` 0x4C0520), and the map's town record has no hero field. VCMI 1.7.5 agrees
+  (`placeHeroesInTowns`, `initVisitingAndGarrisonedHeroes`: the visitor, never a garrison hero).
+  Such a hero learns no guild spell at the start (nothing on its path calls 0x5BE030).
 - **The census:** 23 such heroes (21 placed, 2 random), all on the tile right of the entrance, in
   towns of their own owners, none in a main town that generates a hero (so no town starts with
   two visitors).
@@ -1384,6 +1397,7 @@ factions (and 27 to 29 have no row). The horde and its upgrade share a name in e
 |---|---|---|---|---|---|
 | TD-8 | The Fortress' Glyphs of Fear (21) and Blood Obelisk (22) for a siege's defender | 21 +2 attack, 22 +2 defense | the same | the game's texts and the fandom wiki: 21 defense, 22 attack | 1 (the `defender` role) |
 | TD-9 | The Conflux's upgraded Altar of Fire (40) | needs the Altar of Fire and the upgraded Altar of Air (38) | the base Altar of Air (31) | not checked | 2 (requirements) |
+| TD-10 | A main town's hero learns the guild's spells at the start | yes: 0x5BE030 at 0x4CA1A2 (the visitor and the garrison hero, a spell book, the Mage Guild) | no (`giveSpells` only on a visit, a skill, a bought book, a building) | not found | 33 of 523 main towns' heroes (E09 T7b2b's census; `TWN-STUB-6`, increment 4) |
 
 - **T-6** (§16.5): a custom set's horde leaves its dwelling standing (the keep +1).
 - **For the checkpoint (`TWN-Q6`, answered in §16.10):** the hall companions in the part or not

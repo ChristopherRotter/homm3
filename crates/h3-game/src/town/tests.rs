@@ -1,7 +1,7 @@
-//! Tests of a player's start, of the setup's checks of the starts and the towns (E09 T7a2; since
-//! T8a1 the towns' count and the main town's owner) and of the build's refusal of a main town that
-//! generates a hero (E09 T7a1, `TWN-STUB-3`); the pool and the build's draws in [`pool`] (E09
-//! T7b1); the towns' draws, the store of towns and the start's reveal in [`build`] (E09 T7b2a).
+//! Tests of a player's start and of the setup's checks of the starts and the towns (E09 T7a2;
+//! since T8a1 the towns' count and the main town's owner); the pool and the build's draws in
+//! [`pool`] (E09 T7b1); the towns' draws, the store of towns and the start's reveal in [`build`]
+//! (E09 T7b2a); the main towns' heroes in [`heroes`] (E09 T7b2b).
 
 use alloc::format;
 use alloc::string::ToString;
@@ -23,7 +23,7 @@ use h3_towns::{
     Reveal, SlotSet, TownDef, TownFaction, TownPack, TownParamsDef, TownRuleset, TownSetup,
 };
 
-use super::{FactionChoice, FactionSet, HeroDraw, MainTown, PlayerStart};
+use super::{FactionChoice, FactionSet, MainTown, PlayerStart};
 use crate::tests::{adventure_pack, battle_part_with, core_pack, hero_type, key, manifest, setup};
 use crate::{GameRuleset, GameSetup, GameSetupError, GameState, PlayerSetup};
 
@@ -837,30 +837,13 @@ fn a_random_heros_owner_is_a_player() {
 }
 
 #[test]
-fn the_build_refuses_a_main_town_that_generates_a_hero() {
+fn a_placed_heros_unknown_type_is_refused_before_any_draw() {
     let rules = towns_rules();
     let refused = |setup: &GameSetup| setup.validate(&rules).unwrap_err();
-    let mut generating = towns_setup(&rules);
-    generating.players[0].start = start(faction(&rules, "t:town"), true);
-    generating.players[0].start.pick = Some(hero(&rules, "t:loner"));
-    let error = refused(&generating);
-    assert_eq!(
-        error,
-        GameSetupError::HeroDraw(HeroDraw::MainTown(PlayerId::new(0)))
-    );
-    assert_eq!(
-        error.to_string(),
-        "not built yet: player 0's main town generates a hero"
-    );
-    // Checked before any hero's type is read: an unknown type is not reached.
-    generating.heroes[0].hero_type = Some(HeroTypeId::from_raw(u16::MAX));
-    assert_eq!(
-        refused(&generating),
-        GameSetupError::HeroDraw(HeroDraw::MainTown(PlayerId::new(0)))
-    );
-    // Without it, the unknown type is refused before any draw: a random hero that would find no
-    // free type is not reached.
+    // An unknown type is refused before any draw: a random hero and a main town's hero that
+    // would find no free type are not reached.
     let mut unknown = towns_setup(&rules);
+    unknown.players[0].start = start(faction(&rules, "t:town"), true);
     unknown.heroes[0].hero_type = Some(HeroTypeId::from_raw(u16::MAX));
     unknown.heroes[1].hero_type = None;
     unknown.allowed_heroes.clear();
@@ -868,6 +851,7 @@ fn the_build_refuses_a_main_town_that_generates_a_hero() {
         refused(&unknown),
         GameSetupError::UnknownHeroType(HeroId::new(0))
     );
+    // Without it, blue's random hero draws first (step 2), before red's main town's (step 3).
     unknown.heroes[0].hero_type = Some(HeroTypeId::from_raw(0));
     assert_eq!(
         refused(&unknown),
@@ -876,4 +860,5 @@ fn the_build_refuses_a_main_town_that_generates_a_hero() {
 }
 
 mod build;
+mod heroes;
 mod pool;
