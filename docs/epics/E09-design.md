@@ -406,6 +406,24 @@ The words for `docs/06-security.md` (a section "Towns (E09 increment 1)"):
   16 of them drawn empty; no start radius other than 5), none refused by a new check; of the 156
   imported maps 9 towns have a custom set with a Grail that reveals every tile, 4 one with a
   Lookout Tower.
+- **As built (T7b2b):** `h3_game`'s `town::heroes::main_town_heroes` (TWN-SET-009) after
+  `draw_towns` and before `build_towns`: per player in id order (the colours strictly increase,
+  so colour order) whose main town generates a hero, a human's pick unless its first random hero
+  took it, else the draw over the player's resolved faction for its colour (`NoFreeHero`), taken
+  at once; the hero on the town's entrance (`check_starts` now also returns each such player's
+  entrance, the first visitable tile on the map as the adventure's `MapObject::entrance`; a main
+  town without one is refused as `MainTown`), the starting army, the default formation and
+  details; its id after the setup's heroes; the armies, then the details drawn in hero id order
+  over both (so the setup's heroes' experience draws follow the new heroes' armies, on maps the
+  build refused before). `draw_heroes` frees no pick now: every unused pick goes back free after
+  step 3. `HeroDraw` and `GameSetupError::HeroDraw` are gone; the heroes' count includes the
+  main towns' heroes. *Agent's calls (the user told):* a second hero on an entrance (a moved
+  placed hero, TWN-SET-010, and a main town's) is refused by the adventure's
+  `SetupError::HeroTile` (`Occupied`; `TWN-QUIRK-6`, the original draws the new hero over the
+  visitor); the guild's spells at the start (0x5BE030) wait for increment 4 (`TWN-STUB-6`; TD-10:
+  VCMI teaches none). At the user's question the hero right of an entrance was read again: the
+  visitor, never a garrison hero (survey §4.6). The census: all 156 imported maps build (523
+  main towns' heroes, all drawn; 33 with a spell book in a town with its Mage Guild).
 
 ### 15. The siege's battle (GAM-BAT-001 amended; TWN-SIE-003 to -005; T8b)
 
@@ -493,7 +511,8 @@ GAM-RES-004's "not here" line (the towns'), GAM-SET-001 (the starting armies of 
 **Quirks** (`docs/rules/quirks-town.md`, created by T6c with `-5`; T7a1 added `-1`, `-4`; T7b1 `-2`, `-3` with the pool), none with a flag: `TWN-QUIRK-1` T-1 (an
 alignment byte from 8 to 254: refused), `-2` T-2 (the pick not reserved: fixed), `-3` T-3 (a
 random hero taking a later hero's type: fixed), `-4` T-4 (the draws' empty cases: typed), `-5`
-T-6 (a custom set's horde leaving its dwelling standing: fixed, decision 29; T6 and T7a). T-5
+T-6 (a custom set's horde leaving its dwelling standing: fixed, decision 29; T6 and T7a), `-6`
+T-7 (a main town's hero drawn over the town's visitor: refused, T7b2b). T-5
 comes with increment 3 (decision 12). TD-2's map-version test is the rules' recorded deviation
 (decision 14), not a quirk (as E08 decision 104).
 
@@ -503,7 +522,8 @@ refusal of a setup that needs a draw (registered by T7a1, narrowed by T7b1 to a 
 hero, lifted by T7b2b); `TWN-STUB-4` a town's entrance not entered (registered by T8a1, lifted
 by T8a2), `TWN-STUB-5` the build's empty garrisons and flag radius for the towns (registered by
 T8a1; narrowed by T7b2a to a whole-map reveal at the start, which reaches only the town's level;
-lifted with the capture's reveal, T8a2).
+lifted with the capture's reveal, T8a2); `TWN-STUB-6` a main town's hero learning no guild spell
+at the start (registered by T7b2b; increment 4, TD-10).
 
 ### 20. Batch TWN-1 (T3)
 

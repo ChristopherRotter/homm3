@@ -72,7 +72,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Decided by / date: the user, 2026-11-03 (TWN-Q6; decision 29)
 
 ### TWN-QUIRK-6 — A main town's hero is drawn over the town's visitor
-- Class: fix, no flag (state-corrupting: two heroes on one tile; settled with the user for E09 T7b2b; quirk candidate T-7)
+- Class: fix, no flag (state-corrupting: two heroes on one tile, which AGENTS.md always fixes; quirk candidate T-7)
 - Context / rules affected: town, TWN-SET-009 (the main town's hero; E09 T7b2b), TWN-SET-010 (a hero right of a town's entrance starts on it)
 - Original behavior: `main_town_heroes` (0x4CA040) puts the main town's hero on the town's entrance (`town_hero_place` 0x5C13B0) without testing for a hero already there; a placed hero that `placed_heroes_setup` (0x4CAE10) moved onto the same entrance stays the town's visitor (+0x10, `hero_show`), the new hero is drawn over it on the same tile, and the guild's spells (0x5BE030) then go to that visitor, not to the new hero.
 - Intended/expected behavior: the build refuses the setup: the adventure's check of the heroes' tiles refuses the main town's hero, whose id follows the setup's heroes, on a tile another hero stands on (`h3_game::GameSetupError::Adventure` with `SetupError::HeroTile` and `StandError::Occupied`).
@@ -82,4 +82,4 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, strict-fixed = fixed
 - Regression test: `crates/h3-game/src/town/tests/heroes.rs`, `twn_quirk_6_a_main_towns_hero_is_refused_on_a_visitors_entrance`
-- Decided by / date: the user, 2026-11-05 (the task's brief: fixed, refused); entered by E09 T7b2b, 2026-11-05
+- Decided by / date: the agent, 2026-11-05 (state-corrupting, so fixed; the refusal proposed to the user at the task's start, the user told of it after the reading); entered by E09 T7b2b, 2026-11-05

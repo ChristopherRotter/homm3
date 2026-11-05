@@ -8,26 +8,9 @@ Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
-T8a2, then T8b (rounds 2 to 6, T7a, T7b1, T8a1 and T7b2a are done, `E09-log.md`); each later round's entries are written when it comes
+T8a2, then T8b (rounds 2 to 6, T7a, T7b, T8a1 are done, `E09-log.md`); each later round's entries are written when it comes
 (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T7b2b — the main towns' heroes** (`cross-lane`)
-
-- **Scope:** design §14 step 3 (T7b2 cut in two at the store, the user, 2026-11-04; T7b2a built
-  steps 2's towns and 4 and the store, `E09-log.md`): each main town's hero when it generates one
-  (TWN-SET-009: a human player's pick, else the draw `HeroPool::draw` with the player's resolved
-  faction, colour order), on the town's entrance as its visitor, its hero id after the setup's
-  heroes in colour order, its army and experience the type's placeholders (GAM-SET-001,
-  GAM-HER-001, drawn in hero id order with the existing ones); its draws between step 2's
-  (`town::draw_towns`) and step 4's (`town::build_towns`); the unused picks freed after it (today
-  at the end of `town::draw_heroes`); `town::main_town_heroes` and `TWN-STUB-3` lifted. No version
-  moves (those maps are refused until it); a replay of a shipped map with a main town's hero if
-  the census finds a small one.
-- **Acceptance:** as T7a's; the determinism replays green; the census's 125 maps refused for a
-  main town's hero build or are refused by a typed check.
-- **Depends on:** T7b2a (its pull request merged). **Status:** next; its cut confirmed at its
-  start.
 
 **E09 T8a2 — the step onto a town** (`cross-lane`)
 
@@ -40,8 +23,7 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 - **Also:** `TWN-STUB-5` (narrowed by T7b2a): a town that reveals every tile (a Tower's Grail)
   reveals only its own level at the start (`h3_game`'s `town::start_radius`, the radius 255); the
   capture's reveal needs the adventure to take a whole-map reveal, the start's then too.
-- **Depends on:** T7b2b (the main towns' heroes). **Status:** waiting; its cut confirmed at its
-  start.
+- **Depends on:** T7b2b (done). **Status:** next; its cut confirmed at its start.
 
 ## Inbox
 
