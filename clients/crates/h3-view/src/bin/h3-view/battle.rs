@@ -47,7 +47,7 @@ use h3_view::tables::{Sounds, Tables};
 
 use crate::audio::Voices;
 use crate::boxes::{Answered, Asked, Leave};
-use crate::live::Live;
+use crate::live::{Computer, Live};
 use crate::online::{Online, Server};
 use crate::render::{lookup, read_archives};
 use crate::{assets, motion};
@@ -69,9 +69,12 @@ pub struct Source {
     /// The installation copy whose archives are read.
     pub install: PathBuf,
     /// The sides a human plays here, a scenario's (E17 M5 T2b): their players are the battle's
-    /// human ones, the others the computer's (the bot's); none, the scenario's own and the bot
-    /// plays both.
+    /// human ones, the others the computer's; none, the scenario's own and the computer plays
+    /// both.
     pub humans: [bool; 2],
+    /// Who plays the computer's sides of a scenario's battle (E17 M6 T5b1: the window's the
+    /// engine's original computer by `--sight`, `play`'s the fixed bot).
+    pub computer: Computer,
     /// The seat played on a server instead (E17 M5 T6b1): the input is none then.
     pub server: Option<Server>,
 }
@@ -155,6 +158,8 @@ pub struct Ground {
     towns: Option<TownRuleset>,
     /// The sides a human plays here ([`Source::humans`]).
     humans: [bool; 2],
+    /// Who plays the computer's sides ([`Source::computer`]).
+    computer: Computer,
     /// The samples' lengths once the window plays the battle's sounds (E17 M5 T5b2,
     /// [`Ground::play_sounds`]): the battle waits for them; unset, no sound and no waits.
     lengths: std::cell::OnceCell<Lengths>,
@@ -291,7 +296,8 @@ impl Ground {
             if humans.contains(&true) {
                 setup.human = humans;
             }
-            let opening = Live::new(&ruleset, setup.clone(), source.seed, humans)?.record()?;
+            let players = (humans, source.computer);
+            let opening = Live::new(&ruleset, setup.clone(), source.seed, players)?.record()?;
             let record = record::parse(&opening).map_err(|e| e.to_string())?;
             (
                 record,
@@ -363,6 +369,7 @@ impl Ground {
             fight,
             towns,
             humans,
+            computer: source.computer,
             lengths: std::cell::OnceCell::new(),
         })
     }
@@ -822,7 +829,7 @@ impl<'g> Battle<'g> {
                     ruleset,
                     setup.clone(),
                     *seed,
-                    ground.humans,
+                    (ground.humans, ground.computer),
                 )?)))
             }
             Some(Fought::Server(served)) => Some(Fight::Server(&served.online)),
@@ -1017,45 +1024,62 @@ impl<'g> Battle<'g> {
         Ok(true)
     }
 
-    /// The next command: the bot's, sent from its seat ([`Battle::take`]); none while the
+    /// The next command: the computer's, sent from its seat ([`Battle::take`]); none while the
     /// battle waits for a human's. A human's turn Auto Combat no longer plays (E17 M5 T4c1: a
-    /// press stopped it after the command before was played) waits.
+    /// press stopped it after the command before was played) waits; so does one whose start
+    /// asked the computer for its hero's cast and got none (E17 M6 T5b1).
     fn play_next(&mut self) -> Result<(), String> {
-        let auto = self.auto_turn(false);
+        let (auto, cast) = self.auto_turn(false);
         let (Some(live), Played::Growing(_)) = (Fight::here(self.fight.as_mut()), &self.played)
         else {
             return Ok(());
         };
         live.set_auto(auto);
-        if live.waiting() {
-            let placeholder = Played::Finished(Box::default());
-            if let Played::Growing(mut growing) = std::mem::replace(&mut self.played, placeholder) {
-                // Outlined from its start as a human's turn (pushed as the computer's).
-                growing.outline_waiting();
-                let tail = Box::new(growing.waiting());
-                self.played = Played::Waiting(growing, tail);
-            }
-            self.head = Playhead::new(self.timeline());
-            return Ok(());
+        live.set_cast(cast);
+        if let Some(played) = live.next()? {
+            return self.take(None, played);
         }
-        match live.next()? {
-            Some(played) => self.take(None, played),
-            None => Ok(()),
+        let placeholder = Played::Finished(Box::default());
+        if let Played::Growing(mut growing) = std::mem::replace(&mut self.played, placeholder) {
+            // Outlined from its start as a human's turn (pushed as the computer's).
+            growing.outline_waiting();
+            let tail = Box::new(growing.waiting());
+            self.played = Played::Waiting(growing, tail);
         }
+        self.head = Playhead::new(self.timeline());
+        Ok(())
     }
 
-    /// Whether Auto Combat plays the last turn started from its start, or (`next`) the turn to
-    /// come after it (E17 M5 T4c1): switched on before and no key or button pressed since, its
-    /// stack playing itself (E17 M6 T4b1: by its box; the battle tells `Live` so, which then
-    /// plays it by the bot or waits).
-    fn auto_turn(&self, next: bool) -> bool {
+    /// Whether Auto Combat plays the last turn started, or (`next`) the turn to come after it
+    /// (E17 M5 T4c1): switched on before and no key or button pressed since, its stack playing
+    /// itself (E17 M6 T4b1: by its box; the battle tells `Live` so, which then plays it by the
+    /// computer or waits); the last turn started from when Auto Combat handed it over, a switch
+    /// in it too (E17 M6 T5b1: its stack's action after the hero's cast). And whether its start
+    /// asked the computer for a human's hero's cast (E17 M6 T5b1, design §12.18: Auto Combat on
+    /// as it started and Combat Auto Spells set then, `Auto::asks_cast`; in the client's profile
+    /// only on a turn it plays, CLT-Q62).
+    fn auto_turn(&self, next: bool) -> (bool, bool) {
         let mut starts: Vec<u32> = std::iter::once(0)
             .chain(self.played.timeline().turns.iter().map(|&(t, _)| t))
             .collect();
         if next {
             starts.push(u32::MAX);
         }
-        Auto::of(&self.switches, &starts, &self.itself(next)).from_start(starts.len() - 1)
+        let k = starts.len() - 1;
+        let auto = Auto::of(&self.switches, &starts, &self.itself(next));
+        let plays = if next {
+            auto.from_start(k)
+        } else {
+            auto.plays(k, u32::MAX)
+        };
+        (plays, auto.asks_cast(k, self.boxes_at(k), Bugs::Fixed))
+    }
+
+    /// The Auto Combat boxes as turn `k` started (E17 M6 T5b1, `h3_view::auto::boxes_at`): the
+    /// battle's first, then the options dialog's closes before it.
+    fn boxes_at(&self, k: usize) -> [bool; 5] {
+        let first = first_boxes(&self.boxes, self.boxes_open, self.settings.auto);
+        h3_view::auto::boxes_at(first, self.boxes.get(1..).unwrap_or_default(), k)
     }
 
     /// From when each turn's stack plays itself under Auto Combat (E17 M6 T4b1, design §12.13,
@@ -1086,13 +1110,20 @@ impl<'g> Battle<'g> {
     /// Whether a key or a button pressed now stops Auto Combat (E17 M5 T4c1;
     /// [`Battle::stop_auto`]): fought here, on (the flag, after the last turn's start) with no
     /// stop waiting, and no human's turn it does not play waiting for its command (E17 M6 T4b1:
-    /// the press is that turn's).
+    /// the press is that turn's), nor playing the computer's cast for its hero (E17 M6 T5b1: the
+    /// original reads no stop on that turn, the key reaching the turn after the cast; here it is
+    /// dropped, as a press while an action plays on a human's turn).
     pub fn auto_on(&self) -> bool {
         if !matches!(self.fight, Some(Fight::Here(_))) || self.waiting() {
             return false;
         }
-        let (auto, k) = (self.auto(), self.played.timeline().turns.len());
-        auto.on(k, u32::MAX) && !auto.stopped(k)
+        let timeline = self.played.timeline();
+        let (auto, k) = (self.auto(), timeline.turns.len());
+        let start = timeline.turns.last().map_or(0, |&(t, _)| t);
+        // An action of the last turn started, from its start on: the computer's cast (or one
+        // that took no time and started it, whose press a turn not played drops all the same).
+        let within = (timeline.actions.last()).is_some_and(|a| a.start >= start);
+        auto.on(k, u32::MAX) && !auto.stopped(k) && (auto.plays(k, u32::MAX) || !within)
     }
 
     /// Whether Auto Combat was on as turn `k` started (0 the opening's; E17 M6 T4b1): a stop
@@ -1115,17 +1146,45 @@ impl<'g> Battle<'g> {
         }
         let turn = self.played.timeline().turns.len();
         self.switches.push(Input::Auto { at, turn });
-        self.hand_over(turn, at)
+        self.hand_over(turn, at, true)
     }
 
-    /// The bot's command for the turn `turn` waiting if Auto Combat plays it at `at` (a switch
-    /// or a box set); else the panel made again (its button). Whether anything changed.
-    fn hand_over(&mut self, turn: usize, at: u32) -> Result<bool, String> {
-        if self.auto().plays(turn, at) {
-            let choice = self.choice().ok_or("no command for the turn waiting")?;
-            return self.command(at, choice);
+    /// The computer's command for the turn `turn` waiting if Auto Combat plays it at `at` (a
+    /// switch or a box set); E17 M6 T5b1 (design §12.18): a switch on runs the turn's start
+    /// again, so with Combat Auto Spells set (the boxes now) the computer is asked for the
+    /// human's hero's cast first; the original's whether the stack plays itself or not, the
+    /// client's (CLT-Q62) only when it does (`Auto::asks_cast_at`). Else the panel made again
+    /// (its button). Whether anything changed.
+    fn hand_over(&mut self, turn: usize, at: u32, switched: bool) -> Result<bool, String> {
+        let auto = self.auto();
+        let plays = auto.plays(turn, at);
+        let cast = switched && auto.asks_cast_at(turn, at, self.boxes_at(usize::MAX), Bugs::Fixed);
+        if let Some(live) = Fight::here(self.fight.as_mut()) {
+            live.set_auto(plays);
+            if cast {
+                live.cast_again();
+            }
+        }
+        if (plays || cast) && self.computer_at(at)? {
+            return Ok(true);
         }
         self.panels = self.panel()?;
+        Ok(true)
+    }
+
+    /// The computer's next command for the turn waiting, played at `at` (Auto Combat's hand-over:
+    /// the hero's cast asked, or the stack's action): as a human's [`Battle::command`], the
+    /// command the computer's. Whether one was played (none: a cast asked gave none, the turn
+    /// waits on; E17 M6 T5b1).
+    fn computer_at(&mut self, at: u32) -> Result<bool, String> {
+        let (Some(live), Played::Waiting(..)) = (Fight::here(self.fight.as_mut()), &self.played)
+        else {
+            return Ok(false);
+        };
+        let Some(played) = live.next()? else {
+            return Ok(false);
+        };
+        self.grow_from_waiting(at, played)?;
         Ok(true)
     }
 
@@ -1152,7 +1211,7 @@ impl<'g> Battle<'g> {
         if !self.waiting() || !self.takes(at) {
             return Ok(false);
         }
-        self.hand_over(turn, at)
+        self.hand_over(turn, at, false)
     }
 
     /// Whether the battle takes Auto Combat's switch at all: fought here (not on a server, E17 M5
@@ -1203,6 +1262,13 @@ impl<'g> Battle<'g> {
         let Some(played) = live.play(command)? else {
             return Ok(false);
         };
+        self.grow_from_waiting(at, played)?;
+        Ok(true)
+    }
+
+    /// A command `played` on the turn waiting at `at` (a human's, or Auto Combat's hand-over):
+    /// its action starts at `at` or at the timeline's end if later.
+    fn grow_from_waiting(&mut self, at: u32, played: crate::live::Played) -> Result<(), String> {
         let placeholder = Played::Finished(Box::default());
         if let Played::Waiting(growing, _) = std::mem::replace(&mut self.played, placeholder) {
             let at = at.max(growing.timeline().end);
@@ -1211,24 +1277,26 @@ impl<'g> Battle<'g> {
         }
         // The timeline shown was the one waiting: a playhead afresh.
         self.head = Playhead::new(self.timeline());
-        self.follow()?;
-        Ok(true)
+        self.follow()
     }
 
     /// A command `played` at `at` (none: the computer's, as soon as the last one ended): what
     /// the spectator was sent for it joins the record, its events the timeline (every side's when
     /// a human plays here), the battle at the turn after it the mouse's; the next command the
     /// computer's unless the battle is over or a human's comes next. Over, the timeline is
-    /// finished; a human's next, it waits.
+    /// finished; a human's next, it waits. E17 M6 T5b1: a command that starts no turn (a hero's
+    /// cast) leaves the turn under way to go on.
     fn take(&mut self, at: Option<u32>, played: crate::live::Played) -> Result<(), String> {
-        // Auto Combat plays the turn this command starts unless stopped by then (E17 M5 T4c1).
-        let auto = self.auto_turn(true);
+        // Auto Combat plays the turn this command starts unless stopped by then (E17 M5 T4c1),
+        // and its start asks the computer for a human's hero's cast (E17 M6 T5b1).
+        let (auto, cast) = self.auto_turn(played.turned);
         let (Some(live), Played::Growing(growing)) =
             (Fight::here(self.fight.as_mut()), &mut self.played)
         else {
             return Ok(());
         };
         live.set_auto(auto);
+        live.set_cast(cast);
         let (over, waiting) = (live.over(), live.waiting());
         let computer = !over && !waiting;
         let first = self.record.messages.len();
@@ -3115,16 +3183,19 @@ impl<'g> Battle<'g> {
         }
     }
 
-    /// Whether the fought battle's record so far is the start of the battle the bot fights at
-    /// once with the same setup (E17 M5 T2b: a battle pressed by the bot's choices); none for a
-    /// record.
+    /// Whether the fought battle's record so far is the start of the battle fought again at once
+    /// with the same setup (E17 M5 T2b: a battle pressed by the presser's choices; E17 M6 T5b1:
+    /// the computer's choices asked again in the same order from the seats' streams afresh,
+    /// `live::refight`); none for a record.
     pub fn as_the_bot_fights(&mut self) -> Option<Result<bool, String>> {
         let Some(Fought::Here(here)) = self.ground.fight.as_ref() else {
             return None;
         };
         let (ruleset, setup, seed) = &**here;
         let mut check = || {
-            let bot = crate::live::bot_record(ruleset, setup.clone(), *seed)?;
+            let live = Fight::here(self.fight.as_mut()).ok_or("no battle")?;
+            let (players, asks) = (live.players(), live.asks().to_vec());
+            let bot = crate::live::refight(ruleset, setup.clone(), *seed, players, &asks)?;
             let bot = record::parse(&bot).map_err(|e| e.to_string())?;
             let ours = Fight::here(self.fight.as_mut())
                 .ok_or("no battle")?

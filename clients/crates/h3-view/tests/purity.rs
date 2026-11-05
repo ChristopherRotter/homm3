@@ -37,7 +37,8 @@ const PURE: [(&str, &[&str]); 4] = [
 /// `nanomp3`, the music; M3 T7b-2b-2a: `h3-content` and `h3-contracts`, a hero's battle effects
 /// and the skills behind them for the original's map; M5 T6a: the connection's I/O thread, the
 /// WebSocket with TLS, the welcome's signature and the hello's nonce; M5 T7: `argon2`, the
-/// account's key; M6 T3c3: `h3-pack-towns` and `h3-towns`, the town records).
+/// account's key; M6 T3c3: `h3-pack-towns` and `h3-towns`, the town records; M6 T5b1:
+/// `h3-battle-ai`, the original's computer).
 const BINARY_ONLY: [(&str, &[&str]); 1] = [(
     "h3-view",
     &[
@@ -45,6 +46,7 @@ const BINARY_ONLY: [(&str, &[&str]); 1] = [(
         "ed25519-dalek",
         "getrandom",
         "h3-battle",
+        "h3-battle-ai",
         "h3-content",
         "h3-content-battle",
         "h3-contracts",

@@ -1869,3 +1869,50 @@ command = [
     { seat = "Attacker", at = 1200, command = { Defend = {} } },
     { seat = "Defender", at = 1200, command = { Defend = {} } },
 ]
+
+# E17 M6 T5b1 (design §12.18, "Recorded"): the computer's casts for the human's hero under Auto
+# Combat (`seq-auto-cast.toml`, Orrin's book Bless alone; prepared in `to-record.toml`, recorded
+# by a capture agent). The commands without a time are the original's computer's.
+# `auto-cast`: Combat Auto Creatures and Combat Auto Spells set. A at the Champions' turn: the
+# computer casts nothing and walks them to 62 at once (the engine's computer: 45); as the
+# Marksmen's turn starts (5 280) it casts Bless on them, no stack outlined before or during the
+# cast, the panel dimmed but Auto Combat, selected; the Marksmen outlined for the 100 ms from
+# 8 180 (the hero standing), then their shot at the Goblins, ended at 9 000 ms inside it. 131
+# frames: 84 differ in 2 pixels each, the walk's redraws over Orrin (58, 113 and 114, 400 to
+# 5 180 ms, as `walk`'s: redraw artifacts); every frame from the cast on exact.
+[[sequence]]
+id = "auto-cast"
+scenario = "seq-auto-cast.toml"
+actions = ["key:a"]
+ms = 9000
+auto_spells = 1
+heroes = true
+timeline = "timelines/auto-cast.txt"
+frames = "timelines/auto-cast-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Move = { to = 62 } } },
+    { seat = "Attacker", command = { Cast = { spell = 41, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+    { seat = "Attacker", command = { Shoot = { target = 3, at = 151 } } },
+]
+
+# `auto-cast-human`: Combat Auto Creatures cleared, Combat Auto Spells set. A at the Champions'
+# turn (nothing shown: the panel lit, the button unselected), D defends them (the human's, at 0);
+# the computer casts Bless on the Marksmen in the same millisecond, as their turn starts, the
+# Marksmen not outlined until the cast's end (2 900, the hero standing), the spell book dimmed
+# from the cast; then the turn waits for the human, outlined, the mouse parked. 41 frames exact.
+[[sequence]]
+id = "auto-cast-human"
+scenario = "seq-auto-cast.toml"
+actions = ["key:a", "key:d"]
+ms = 4000
+auto_creatures = 0
+auto_spells = 1
+heroes = true
+timeline = "timelines/auto-cast-human.txt"
+frames = "timelines/auto-cast-human-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", command = { Cast = { spell = 41, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+]

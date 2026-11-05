@@ -1,4 +1,5 @@
 use super::*;
+use h3_render::Bugs;
 
 /// A switch at `at` in turn `turn`.
 const fn switch(at: u32, turn: usize) -> Input {
@@ -260,4 +261,56 @@ fn a_box_set_under_auto_combat_hands_the_turn_under_way_over() {
     // A switch after the close while on: the turn was handed over at the close.
     let handed = Auto::of(&[switch(30, 0), switch(280, 2)], &starts, &boxed);
     assert!(handed.plays(2, 270) && handed.on(2, u32::MAX));
+}
+
+#[test]
+fn the_computer_casts_for_a_human_s_hero_as_a_turn_starts_under_it_with_spells_set() {
+    // E17 M6 T5b1 (design §12.18, 0x422E42): asked as each turn starts with Auto Combat on (its
+    // stop read) and Combat Auto Spells set, in the original's whether the stack plays itself or
+    // not; in the client's (CLT-Q62) only on a turn it plays.
+    let starts = [0, 100, 250, 400];
+    let spells = [false, true, false, false, false];
+    let both = [true, true, false, false, false];
+    // On at 30 in the opening's: not as it started; the turns after it, until the stop in turn 2
+    // stops it as turn 3 starts.
+    let auto = Auto::of(&[switch(30, 0), stop(260, 2)], &starts, &[]);
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        assert!(!auto.asks_cast(0, both, bugs));
+        assert!(auto.asks_cast(1, both, bugs) && auto.asks_cast(2, spells, bugs));
+        assert!(!auto.asks_cast(1, CREATURES_ONLY, bugs) && !auto.asks_cast(3, both, bugs));
+        // The switch's own turn: on from 30.
+        assert!(auto.asks_cast_at(0, 30, spells, bugs) && !auto.asks_cast_at(0, 29, spells, bugs));
+        assert!(!auto.asks_cast_at(0, 30, CREATURES_ONLY, bugs));
+    }
+    // Over stacks it does not play (their box off) the flag stays on: asked in the original's,
+    // the stop dropped; never in the client's.
+    let human = Auto::of(
+        &[switch(30, 0), stop(260, 2)],
+        &starts,
+        &[None, None, None, None],
+    );
+    let original = Bugs::Original;
+    assert!(human.asks_cast(1, spells, original) && human.asks_cast(3, spells, original));
+    assert!(!human.asks_cast(9, spells, original));
+    assert!(human.asks_cast_at(0, 30, spells, original));
+    assert!(!human.asks_cast(1, spells, Bugs::Fixed) && !human.asks_cast(3, spells, Bugs::Fixed));
+    assert!(!human.asks_cast_at(0, 30, spells, Bugs::Fixed));
+}
+
+#[test]
+fn the_boxes_as_a_turn_starts_are_those_of_the_last_close_before_it() {
+    // E17 M6 T5b1: a close in turn 2 counts from turn 3; the first boxes before any.
+    let (none, all) = ([false; 5], [true; 5]);
+    let changes = [
+        (0, 0, CREATURES_ONLY),
+        (2, 900, all),
+        (2, 950, none),
+        (4, 2000, all),
+    ];
+    assert_eq!(boxes_at(CREATURES_ONLY, &[], 7), CREATURES_ONLY);
+    assert_eq!(boxes_at(none, &changes, 0), none);
+    assert_eq!(boxes_at(none, &changes, 1), CREATURES_ONLY);
+    assert_eq!(boxes_at(none, &changes, 2), CREATURES_ONLY);
+    assert_eq!(boxes_at(all, &changes, 3), none);
+    assert_eq!(boxes_at(none, &changes, 5), all);
 }

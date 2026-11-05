@@ -25,6 +25,9 @@ h3-battle.workspace = true
 h3-kernel.workspace = true
 h3-pack-battle.workspace = true
 h3-content-battle.workspace = true
+# The original's computer (E17 M6 T5b1): the window's opponent and Auto Combat's casts and
+# actions for a human's side.
+h3-battle-ai.workspace = true
 # A hero's battle effects and the skills that give them (E17 M3 T7b-2b-2a, `situation`).
 h3-content.workspace = true
 h3-contracts.workspace = true

@@ -25,17 +25,20 @@
 //! keys scroll it.
 //!
 //! Hot seat (E17 M5 T2b): `--human attacker|defender|both` names the sides a human plays here
-//! (their players the battle's human ones, the bot playing the others). On a human's turn the
+//! (their players the battle's human ones, the computer playing the others: E17 M6 T5b1, the
+//! engine's original computer on its side's world, or seeing the whole battle with `--sight
+//! all-seeing`, *provisional*; under Auto Combat it plays a human's side too, casting for its
+//! hero with Combat Auto Spells set, design §12.18). On a human's turn the
 //! battle waits at its end, idling, until a left press over the battlefield gives its command
 //! (`h3_view::mouse::click`, as the button goes down) or the panel's Wait or Defend is clicked
 //! (the mouse's button released over it, or its hotkey released: `mouse::button`; in the tactics
 //! phase its panel's Next Creature or Start Combat, E17 M5 T4c2b); input made
 //! while the battle takes none (an action playing, the computer's turn) gives nothing. The screen
 //! shows the side to act's hidden objects (`anim::Timeline::screen`). Unattended (`--check`,
-//! `--measure`), the window presses a human's commands itself: the bot's choice, pressed where
-//! the mouse gives it (a hero's cast through its book and aim; the tactics phase ended by Start
-//! Combat, E17 M5 T4c2b), so that the battle is the bot's at once with the same setup, which the
-//! run checks.
+//! `--measure`), the window presses a human's commands itself: a fixed bot's choice, pressed
+//! where the mouse gives it (a hero's cast through its book and aim; the tactics phase ended by
+//! Start Combat, E17 M5 T4c2b), so that the battle is the one fought again at once with the same
+//! setup (the computer's choices asked again in order, `live::refight`), which the run checks.
 //!
 //! The sound (T5b, [`crate::audio`]): a battle shown from its start opens as the original's does,
 //! its start sound playing over the first frame while the battle's clock waits (at most 10 s),
@@ -57,6 +60,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use h3_battle_ai::Sight;
 use h3_protocol::wire::{Command, Target};
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
@@ -78,6 +82,7 @@ use crate::audio::{Library, Player};
 use crate::battle::{
     Battle, BookDid, CursorLook, Ground, MessageDid, Opened, Press, Source, StatsDid,
 };
+use crate::live::Computer;
 
 /// How far past the last change the window looks for the next one before it waits for input
 /// only (a battle that no longer changes).
@@ -161,7 +166,7 @@ impl Options {
     /// [--seed <n>] [--speed <0-2>] [--packs <dir>]
     /// [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--scale <n>] [--vsync]
     /// [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute] [--check <s> | --measure <s>]
-    /// [--leave retreat|surrender] [--auto <turn>]`.
+    /// [--leave retreat|surrender] [--auto <turn>] [--sight fair|all-seeing]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let clients = assets::clients_dir();
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
@@ -170,6 +175,8 @@ impl Options {
         let (mut from, mut run, mut mute, mut humans) = (0, None, false, [false; 2]);
         let (mut leave, mut keys, mut auto) = (None, None, None);
         let (mut settings, mut speed_set) = (None, false);
+        // The computer's sight (E17 M6 T5b1, *provisional*): the fair actor's by default.
+        let mut sight = None;
         // A seat on a server (E17 M5 T6b1): `connect`'s options.
         let mut server: Vec<String> = Vec::new();
         let mut rest = args.iter();
@@ -221,6 +228,13 @@ impl Options {
                     let turn = usize::try_from(number(value()?)?).unwrap_or(usize::MAX);
                     auto = Some(turn.max(1));
                 }
+                "--sight" => {
+                    sight = Some(match value()?.as_str() {
+                        "fair" => Sight::Fair,
+                        "all-seeing" => Sight::AllSeeing,
+                        v => return Err(format!("window: no sight `{v}` (fair, all-seeing)")),
+                    });
+                }
                 "--server" | "--game" | "--create" | "--seat" | "--token" | "--name" | "--pins"
                 | "--drop" | "--login" | "--register" | "--accounts" => {
                     let v = value()?;
@@ -243,6 +257,9 @@ impl Options {
         if server.is_some() && (input.is_some() || humans.contains(&true)) {
             return Err("window: a seat on a server, or a scenario or record, not both".into());
         }
+        if server.is_some() && sight.is_some() {
+            return Err("window: a seat on a server plays against the server's computer".into());
+        }
         Ok(Self {
             source: Source {
                 input: match (input, &server) {
@@ -257,6 +274,7 @@ impl Options {
                     .or(env)
                     .unwrap_or_else(|| clients.join("../original-data/install")),
                 humans,
+                computer: Computer::Original(sight.unwrap_or_default()),
                 server,
             },
             scale,
@@ -2426,8 +2444,12 @@ mod tests {
             "mine.toml",
             "--auto",
             "0",
+            "--sight",
+            "all-seeing",
         ]))
         .unwrap();
+        // E17 M6 T5b1: the computer's sight, the fair actor's without `--sight`.
+        assert_eq!(o.source.computer, Computer::Original(Sight::AllSeeing));
         assert_eq!(o.keys, Some(PathBuf::from("mine.toml")));
         assert_eq!(o.auto, Some(1));
         assert_eq!(o.source.seed, 7);
@@ -2435,6 +2457,20 @@ mod tests {
         assert!(o.source.scenario() && o.vsync && o.drawn_cursor && o.fullscreen && o.mute);
         assert_eq!((o.scale, o.from, o.run), (Some(1), 100, Some((20, true))));
         let m = Options::parse(&args(&["a/b.jsonl", "--measure", "5"])).unwrap();
+        assert_eq!(m.source.computer, Computer::Original(Sight::Fair));
+        assert!(Options::parse(&args(&["a", "--sight", "blind"])).is_err());
+        // A seat on a server plays against the server's computer.
+        let seat = [
+            "--server",
+            "ws://127.0.0.1:1",
+            "--game",
+            "1",
+            "--seat",
+            "attacker",
+        ];
+        assert!(Options::parse(&args(&seat)).is_ok());
+        let sighted = [&seat[..], &["--sight", "fair"]].concat();
+        assert!(Options::parse(&args(&sighted)).is_err());
         assert!(!m.source.scenario());
         assert_eq!((m.scale, m.run), (None, Some((5, false))));
         assert!(Options::parse(&args(&[])).is_err());

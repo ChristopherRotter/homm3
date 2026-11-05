@@ -77,6 +77,8 @@ impl Options {
                     .or(env)
                     .unwrap_or_else(|| clients.join("../original-data/install")),
                 humans: [false; 2],
+                // The fixed bot on both sides (E17 M6 T5b1, *provisional*: a fixture's battle).
+                computer: crate::live::Computer::Greedy,
                 server: None,
             },
             out,
