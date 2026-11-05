@@ -315,7 +315,6 @@ pub fn inputs(
     Ok(out)
 }
 
-/// Whether the harness's key `name` (xdotool's: `a`, `space`) is Auto Combat's in the original's
 /// The option a harness key toggles (E17 M6 T4c: `F6` the grid, `F7` the cursor shadow, `F8` the
 /// movement shadow, the original's keys).
 fn toggle(key: &str) -> Option<h3_view::shades::Toggle> {
@@ -327,6 +326,7 @@ fn toggle(key: &str) -> Option<h3_view::shades::Toggle> {
     }
 }
 
+/// Whether the harness's key `name` (xdotool's: `a`, `space`) is Auto Combat's in the original's
 /// table (E17 M5 T4c1).
 fn auto_combat(name: &str) -> bool {
     let mut chars = name.chars();

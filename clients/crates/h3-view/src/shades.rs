@@ -18,7 +18,8 @@ use alloc::vec::Vec;
 use h3_protocol::wire::Side;
 use h3_render::Bugs;
 
-use crate::mouse::aim::{Aim, Area};
+use crate::anim::{FROST_RING, METEOR_SHOWER};
+use crate::mouse::aim::{Aim, Area, BERSERK};
 use crate::mouse::{COLUMNS, Field, ROWS};
 use crate::options::Settings;
 use crate::scene::{Overlays, Stale};
@@ -27,10 +28,6 @@ use crate::scene::{Overlays, Stale};
 pub const FORCE_FIELD: u16 = 12;
 /// Fire Wall's original number: the wall's aim shading its hexes (0x5A334D).
 pub const FIRE_WALL: u16 = 13;
-/// Sacrifice's original number: its aim sets no shades (§7.18).
-const SACRIFICE: u16 = 40;
-/// Teleport's original number: its aim sets no shades (§7.18).
-const TELEPORT: u16 = 63;
 /// The save picture's slots (855 × 52 at the battle's start, 19 blocks: Inferno's fit).
 const SLOTS: usize = 19;
 /// The key of no hex (0x6772D8's −1).
@@ -90,13 +87,20 @@ impl Options {
     }
 
     /// The options an aim of the spell numbered `original` sets as it starts (`enter_player_cast`
-    /// 0x59EFB8, 0x59F05F: `battle_set_shades(grid, 1, 0, 1)`): with both shadows on, the aims
-    /// of `aim_handler` (every targeted and area spell) and the wall's turn the movement shadow
-    /// off, saved so, until the aim ends; Teleport's and Sacrifice's set none (§7.18). None when
-    /// it sets none.
+    /// 0x59EFB8, 0x59F05F: `battle_set_shades(grid, 1, 0, 1)`): with both shadows on, the area
+    /// spells' aims (Frost Ring to Meteor Shower and Berserk, the dispatcher's case 0x59EF9B) and
+    /// the wall's turn the movement shadow off, saved so, until the aim ends; the others set none
+    /// (the targeted spells' 0x59EE6A, Sacrifice's, Teleport's, Remove Obstacle's and Clone's
+    /// 0x59F434). None when it sets none.
     #[must_use]
     pub const fn aiming(self, original: u16) -> Option<Self> {
-        if self.cursor && self.movement && !matches!(original, TELEPORT | SACRIFICE) {
+        if self.cursor
+            && self.movement
+            && matches!(
+                original,
+                FORCE_FIELD | FIRE_WALL | FROST_RING..=METEOR_SHOWER | BERSERK
+            )
+        {
             Some(Self {
                 movement: false,
                 ..self
@@ -246,25 +250,14 @@ pub fn reach(field: &Field<'_>) -> BTreeSet<u8> {
     shaded
 }
 
-/// The movement shade's hexes on the turn of `field` with the movement shadow `on`: the tactics
-/// phase's whatever the option ([`crate::tactics::shade`]), else with it [`reach`].
-#[must_use]
-pub fn movement(field: &Field<'_>, on: bool) -> BTreeSet<u8> {
-    if field.observation.tactics.is_some() {
-        crate::tactics::shade(field.observation)
-    } else if on {
-        reach(field)
-    } else {
-        BTreeSet::new()
-    }
-}
-
 /// What a composition of the background drew besides the field: the grid and the movement
-/// shadow (the options as it was composed).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+/// shadow (the options as it was composed), and the tactics phase's shade, drawn whatever the
+/// option ([`Cells::phase`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct Composed {
     grid: bool,
     movement: bool,
+    phase: BTreeSet<u8>,
 }
 
 /// What the background draws from a time on (E17 M6 T4c): the movement shade on a turn outside
@@ -311,6 +304,7 @@ impl Cells {
             composed: Composed {
                 grid: options.grid,
                 movement: options.movement,
+                phase: BTreeSet::new(),
             },
             last: NONE,
             list: Vec::new(),
@@ -354,10 +348,20 @@ impl Cells {
 
     /// An action's start (`action_dispatcher` 0x478E45: `shade_mouse_hex(−1, 1)`): the shade
     /// goes; the blocks of an earlier composition with it (*provisional*: the movement overlay's
-    /// redraw there, 0x478E51, taken for a composition).
+    /// redraw there, 0x478E51, taken for a composition); the overlay cleared, the tactics phase's
+    /// shade with it.
     pub fn action(&mut self) {
         self.mouse(NONE, true);
         self.stale.clear();
+        self.composed.phase.clear();
+    }
+
+    /// A turn's start (the movement overlay drawn, 0x478375): `shade` the tactics phase's shade
+    /// ([`crate::tactics::shade`], on a human's turn in the phase; else none), which every
+    /// composition draws whatever the movement shadow (§7.23) until an action's start; a block
+    /// saved from it keeps it.
+    pub fn phase(&mut self, shade: BTreeSet<u8>) {
+        self.composed.phase = shade;
     }
 
     /// The keys F6 to F8 and `battle_set_shades` (0x479FF6): the shade off while the option is
@@ -376,6 +380,7 @@ impl Cells {
         self.composed = Composed {
             grid: options.grid,
             movement: options.movement,
+            phase: core::mem::take(&mut self.composed.phase),
         };
         self.shaded = false;
         self.stale.clear();
@@ -388,13 +393,15 @@ impl Cells {
     /// The composition the background shows at `hex`'s block: a block put back's, else the last.
     fn at(&self, hex: u8) -> Composed {
         (self.stale.iter().rev())
-            .find(|&&(h, _)| h == hex)
-            .map_or(self.composed, |&(_, c)| c)
+            .find(|&(h, _)| *h == hex)
+            .map_or(&self.composed, |(_, c)| c)
+            .clone()
     }
 
     /// What the background draws with `reach` the turn's movement shade outside the tactics phase
     /// (none while it does not wait): the movement shade with the movement shadow composed, the
-    /// grid, the blocks put back and the hexes shaded.
+    /// grid, the blocks put back (each with its composition's movement shade: the tactics phase's
+    /// and, with its movement shadow, `reach`) and the hexes shaded.
     #[must_use]
     pub fn drawn(&self, reach: &BTreeSet<u8>) -> Drawn {
         let shade = |movement: bool| {
@@ -415,10 +422,14 @@ impl Cells {
                 grid: self.composed.grid,
                 cursor,
                 stale: (self.stale.iter())
-                    .map(|&(hex, c)| Stale {
-                        hex,
-                        grid: c.grid,
-                        shade: shade(c.movement),
+                    .map(|(hex, c)| {
+                        let mut shaded = shade(c.movement);
+                        shaded.extend(&c.phase);
+                        Stale {
+                            hex: *hex,
+                            grid: c.grid,
+                            shade: shaded,
+                        }
                     })
                     .collect(),
             },

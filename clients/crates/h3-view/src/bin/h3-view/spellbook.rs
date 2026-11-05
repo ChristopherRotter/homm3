@@ -461,6 +461,11 @@ pub fn still(
         army.map_or_else(Shades::default, |a| a.shades),
         h3_render::Bugs::Original,
     );
+    // The opening's turn in the tactics phase: its shade in every composition (a block saved
+    // from one keeps it).
+    cells.phase(army.map_or_else(std::collections::BTreeSet::new, |a| {
+        h3_view::tactics::shade(a.observation)
+    }));
     let take = |hover: &mut Hover, cells: &mut Cells, to: [i32; 2]| {
         if let Some(a) = army {
             let spot = h3_view::mouse::spot(a.layout, to, true);

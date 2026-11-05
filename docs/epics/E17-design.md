@@ -6229,7 +6229,8 @@ Read: `battle_shade_hexes` 0x493EA0 and `shade_mouse_hex` 0x494390 whole; every 
 `battle_buttons`' move (0x4753C9 to 0x4753E4) and its keys F6 to F8 (0x47593F to 0x475BDE),
 `action_dispatcher`'s head (0x478E30 to 0x478E62), `battle_set_shades` (0x479FF6),
 `aim_area_marks` 0x59F8A0 whole, `aim_wall_handler` 0x5A3250 whole; `enter_player_cast` at the
-aims (0x59EF9B to 0x59F083), `aim_handler`'s move (0x5A309D to 0x5A30D3), `spell_target_cursor`'s
+aims (0x59EF9B to 0x59F083; at the review the targeted aim 0x59EE08 to 0x59EE6A and Remove
+Obstacle's and Clone's 0x59F35A to 0x59F439), `aim_handler`'s move (0x5A309D to 0x5A30D3), `spell_target_cursor`'s
 head and refusal (0x59F700 to 0x59F7BD, 0x59F83E to 0x59F889), `area_hexes` 0x5A4170's centre
 and bounds, `berserk_area_hexes` 0x5A4430's head and bounds; again `draw_hex_overlays` 0x493930's
 grid (0x493C4C to 0x493CED) and its call by `compose_battle_background` (0x493E53),
@@ -6328,15 +6329,18 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
   `battle_shade_hexes(hex, list, 0)`. Refused: the forbidden cursor, the refusal line and, with
   the option (Fire Wall), `battle_shade_hexes(hex, empty, 0)`. Force Field shades nothing. Its
   loop starts without the start's cursor call (0x59F07C).
-- **The movement shadow in an aim.** With both shadows on, the aims of `aim_handler` (every
-  targeted and area spell, 0x59EFB8) and the wall's (0x59F05F) start with `battle_set_shades(grid,
-  1, 0, 1)`: the cursor's shade goes, the movement shadow off (and saved so), the frame composed
-  again and shown (the posted move flushed by the aim's loop, §7.18). After the loop
-  `battle_set_shades(grid, 1, 1, +0x3C == 0)`: the aim's shade goes, the movement shadow back on
-  (saved), the whole redraw only for a given-up aim (Escape or the right button set +0x3C = 0,
-  0x5A3505); its posted move shades the mouse's hex (given up) or waits for the next turn, which
-  drops it (a cast, §7.18). With the movement shadow off none of this runs (oddities 3, 4). The
-  other aims (Teleport, Sacrifice; §7.18) call neither.
+- **The movement shadow in an aim.** With both shadows on, the area spells' aims (Frost Ring,
+  Fireball, Inferno, Meteor Shower, Berserk: the dispatcher's case 0x59EF9B, 0x59EFB8) and the
+  wall's (0x59F05F) start with `battle_set_shades(grid, 1, 0, 1)`: the cursor's shade goes, the
+  movement shadow off (and saved so), the frame composed again and shown, the log settled (the
+  posted move flushed by the aim's loop, §7.18). After the loop `battle_set_shades(grid, 1, 1,
+  +0x3C == 0)`: the aim's shade goes, the movement shadow back on (saved), the whole redraw only
+  for a given-up aim (Escape or the right button set +0x3C = 0, 0x5A3505); the log settled and
+  its posted move, whatever began the aim (the key F's too, which posts none of its own), shades
+  the mouse's hex (given up) or waits for the next turn, which drops it (a cast, §7.18). With the
+  movement shadow off none of this runs (oddities 3, 4). The other aims call neither: the
+  targeted spells' (0x59EE6A), Sacrifice's and Teleport's (§7.18), Remove Obstacle's and
+  Clone's (one loop at 0x59F434, no cursor call before it; read at the review).
 - **The dialog** (`battle_combat_options`: its button, or the key O with the mouse anywhere) calls
   no 0x494390: at its close +0x53B8 = 0, `draw_hex_overlays(0, 1)`, `battle_redraw(1, 0, 0, 0, 1,
   0)`: the background composed again with the options as left, the cursor's shade gone from it
@@ -6364,11 +6368,13 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
   3. A given-up area or Fire Wall aim with the movement shadow off leaves its shade (up to 19
      hexes) until the mouse leaves the hex it rests on: the book's posted move (0x474F72) brings
      the same key. With both shadows on `battle_set_shades` removes it. CLT-Q53.
-  4. The aims differ: Fire Wall shades its hexes, Force Field none; with only the cursor shadow
-     on, a targeted spell's aim (Teleport's and Sacrifice's with both on too) keeps the shade
+  4. The aims differ: Fire Wall shades its hexes, Force Field none; with the cursor shadow on, a
+     targeted spell's aim, Teleport's, Sacrifice's, Remove Obstacle's and Clone's keep the shade
      where the mouse was as the aim began (by the key C over the field; the book's button leaves
-     none, the panel is −1), frozen until the aim ends; with both on the targeted aim shows none,
-     and the movement shadow is off through every aim of `aim_handler` and the wall's. CLT-Q54.
+     none, the panel is −1), frozen until the aim ends, the movement shadow on through them; it is
+     off through the area aims and the wall's alone (corrected at the review: CLT-Q54's context
+     had the targeted aims take the shade off with both on, their path 0x59EE6A calls no
+     `battle_set_shades`). CLT-Q54.
   5. An area aim of radius 2 (Inferno; Berserk at Expert, whose hexes 0x5A4430 counts alike)
      with the mouse off the field shades hexes 1 and 18, and Inferno marks their stacks
      (`area_stacks` walks `area_hexes`; Berserk's marks, `stacks_in_area`, not read): the
@@ -6410,8 +6416,8 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
      mouse over a hex, its grid box toggled, then `move:` to the next hex (2).
 - **The client's** (M6 T4c, *provisional* where marked):
   - Where it lives: `h3_view::shades` (`Options` and `Toggle`, `gridded`, `mouse_hexes`, `in_area`
-    and `area_shade`, `wall` and `wall_shade`, `reach` and `movement`, `Cells`: the list, its
-    saved blocks' compositions and the last key, `Drawn`); the scene's `Moment::overlays`
+    and `area_shade`, `wall` and `wall_shade`, `reach`, `Cells`: the list, its saved blocks'
+    compositions (with the tactics phase's shade, `Cells::phase`) and the last key, `Drawn`); the scene's `Moment::overlays`
     (`Overlays`: the grid, the cursor's hexes, the blocks put back, `Stale`), `Draw::Grid` (keyed
     as the absolute obstacle) and the layout's `cell_grid` (`ccellgrd.pcx`). The background's
     order: the field, the movement shade (`Moment::shade`), the grid, each block put back (a
@@ -6422,15 +6428,18 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     may strike stand for the reach map and its search's marks; the flyer's run of hexes is the
     engine's; a stack with a listed shot shades every living enemy on the field, the map's
     shooter marks), from a human turn's start to the next action's start; the phase's stays
-    `tactics::shade` whatever the option.
+    `tactics::shade` whatever the option, set into `Cells::phase` at a human turn's start in the
+    phase and cleared at an action's, so a block put back keeps its composition's (the phase's
+    shade too).
   - The mouse's follow (`mouse::track`, `Shown::shades`, a tenth list): `Input::Shades { options,
     keyed }` (the opening's and the dialog's close compose; F6 to F8 are `battle_set_shades`'
     effects with the posted move and `Logged::Settle` on a human's turn, else the pointer); every
     move the battle takes `Cells::mouse` with `screen_hex` before the field's test; an action's
     start `Cells::action` (*provisional*: the blocks put back go there too, the overlay's redraw
     taken for a composition) and no reach; a human turn's start its reach and posted move. The
-    aims: with both shadows on (not Teleport, Sacrifice) `Options::aiming` at the start, the
-    movement shadow back at `end_aim`; an area aim's `area_shade` forced at the start, at each
+    aims: with both shadows on the area aims' and the wall's `Options::aiming` at the start with
+    `Logged::Settle`, the movement shadow back at `end_aim`, a given-up one's end with
+    `Logged::Settle` and the posted move whatever began it (the key F's too); an area aim's `area_shade` forced at the start, at each
     other hex and for a refused one (a hex whose living stack the marks leave out is left out:
     `Aim::unaffected`, the stacks the engine's cast may not affect, *provisional*: `computer::
     spell_affects` for 0x5A8090; recorded, `shade-area`'s Efreeti); Fire Wall's `wall_shade` at each other hex (its mastery `Aim::mastery`, the
@@ -6447,7 +6456,7 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     client's it is aimed as every other aim (the hex under the mouse kept, CLT-Q27 (2)).
   - The window: the keys `grid` F6, `cursor-shadow` F7 and `movement-shadow` F8
     (`keys::Command::Shades`, the battle's context; Ctrl+F5 to Ctrl+F8 stay the window's own),
-    taken while the battle takes its keys and carried by Auto Combat's stop as F5;
+    taken while the battle takes its keys (*provisional*) and carried by Auto Combat's stop as F5;
     `toggle_shades` writes the settings file at once; the options dialog's close is a
     composition; an aim's movement shadow off and on again is saved each time
     (`Battle::aim_original`, oddity 8); `Battle::list` draws `Shown::shades`.
@@ -6467,11 +6476,12 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     deferred composition +0x53B8 (the client composes at once).
   - Checks: unit tests (`shades/tests.rs`: the options and their keys, the grid's and the mouse's
     hexes, the areas off the field, the area's shade and marks by profile, Fire Wall's hexes, the
-    reach, the list's blocks and a composition by profile; `track/tests.rs`: moves, F6 on a human's
-    and a computer's turn, an action and a turn, an area aim with and without the movement shadow,
-    a targeted aim and the walls by profile; `scene/tests.rs`: the layers' order and a block's
-    rectangle; `keys/tests.rs`: F6 to F8); the binary's (`pointer.rs`: a sequence's keys); the
-    gate; `drawn`'s digests the same.
+    reach, the list's blocks and a composition by profile, a block keeping the phase's shade;
+    `track/tests.rs`: moves, F6 on a human's and a computer's turn, an action and a turn, an area
+    aim with and without the movement shadow, the key F's area aim given up with both on, a
+    targeted aim and the walls by profile, a block put back in the tactics phase;
+    `scene/tests.rs`: the layers' order and a block's rectangle; `keys/tests.rs`: F6 to F8); the
+    binary's (`pointer.rs`: a sequence's keys); the gate; `drawn`'s digests the same.
 - **Recorded** (M6 T4c's capture, 2026-11-05; the comparison profile): the stills `grid`,
   `shade-move` (a walker that may shoot), `shade-move-fly`, `shade-move-wide` (a two-hex walker),
   `shade-cursor` (a reachable empty hex), `shade-cursor-far` (row 10, unreachable),

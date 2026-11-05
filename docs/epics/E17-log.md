@@ -5355,3 +5355,13 @@ CLT-Q52 to Q56 (all fixed, the original's for the comparisons only, `h3_render::
   finds): the next run's captures showed the grid; set unset again and captured anew. `drawn` (all
   235): 219 the same, 16 new (recorded, `drawn --record --only`). `check.sh`: all gates passed,
   coverage 100 %.
+- **The review's findings fixed** (2026-11-05): an aim that turned the movement shadow off (both
+  shadows on) settles the log at its start and, given up, settles it and posts the mouse whatever
+  began it, the key F's too (`battle_set_shades`, 0x479FC0); read at 0x59F434 (`book_plain_aim`):
+  Remove Obstacle's and Clone's aims call no `battle_set_shades` and no cursor before their loop,
+  and the targeted spells' (0x59EE6A, `book_targeted_aim`) none either, so `Options::aiming` now
+  holds the area aims and the walls alone (oddity 4 corrected: the targeted aims keep the frozen
+  shade and the movement shadow with both on); a block put back keeps its composition's tactics
+  phase shade (`Cells::phase`); `shades::movement` dropped; the tests of Force Field's taken hex
+  and of F6's pointer made to see their branches. Unit tests for each; `drawn` all the same;
+  `check.sh` passed, coverage 100 %.

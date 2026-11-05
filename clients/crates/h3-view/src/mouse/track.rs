@@ -876,6 +876,9 @@ pub fn follow_on<'l>(
                     if let Some(options) = h.cells.options().aiming(aim.original) {
                         h.cells.set(options);
                         h.aim_shades = true;
+                        // On the human's turn the log settled (0x472BF0); its posted move is
+                        // flushed as the aim's loop starts (§7.18).
+                        h.shown.log.push((now, Logged::Settle));
                     }
                     if h.bugs == Bugs::Fixed {
                         h.cells.mouse(-1, false);
@@ -921,7 +924,14 @@ pub fn follow_on<'l>(
             }
             Input::Cancel { at: now } => {
                 let aimed = h.aiming.as_ref().map(|a| a.aim.creature);
+                // `battle_set_shades` after an aim that turned the movement shadow off settles
+                // the log and posts the mouse on the human's turn whatever began the aim, the key
+                // F too (0x479FC0; design §12.16). A cast's settles with its action's start.
+                let shaded = h.aim_shades;
                 h.end_aim(now);
+                if shaded {
+                    h.shown.log.push((now, Logged::Settle));
+                }
                 // The client's given-up aim takes its shade off whatever the movement shadow
                 // (CLT-Q53, fixed: the original's leaves it until the mouse takes another hex).
                 if aimed.is_some() && h.bugs == Bugs::Fixed {
@@ -932,12 +942,12 @@ pub fn follow_on<'l>(
                     // `enter_player_cast`'s end (0x59F65C).
                     h.set_frame(now, layout.mouse.panel_frame);
                 }
-                if aimed != Some(true) || h.bugs == Bugs::Fixed {
+                if aimed != Some(true) || h.bugs == Bugs::Fixed || shaded {
                     // The book's button's end (0x47519A): the mouse's hex forgotten and the
                     // mouse posted where it rests (0x4ECC00); the key F's posts nothing, so the
                     // aim's pointer and line stay until the mouse takes another hex: the client
                     // posts it there too (CLT-Q27 (1), answered (b) at E17 M5 T8c), the
-                    // original's for the comparisons.
+                    // original's for the comparisons (but `battle_set_shades`' above).
                     h.hex = None;
                     if let (Some(point), Some(turn)) = (h.point, turns.get(at.turn)) {
                         h.take(now, point, Some(&turn.field), name);
@@ -1086,6 +1096,8 @@ impl<'l> Handler<'l> {
             drawn: Drawn::default(),
             shown: Shown::default(),
         };
+        h.cells
+            .phase(turns.first().map_or_else(BTreeSet::new, phase));
         if turns.first().is_some_and(|t| !t.human) {
             h.set_frame(0, layout.mouse.panel_frame);
         }
@@ -1142,6 +1154,7 @@ impl Handler<'_> {
                 };
                 // The movement overlay drawn at the turn's start (0x478375).
                 self.reach = reach(turn);
+                self.cells.phase(phase(turn));
                 if turn.human {
                     // The waiting moves dropped (0x478301; E17 M5 T2a), the mouse's hex forgotten
                     // (0x47883E) and the mouse posted where it rests (0x478857).
@@ -1168,6 +1181,17 @@ impl Handler<'_> {
 fn reach(turn: &Turn<'_>) -> BTreeSet<u8> {
     if turn.human && turn.field.observation.tactics.is_none() {
         shades::reach(&turn.field)
+    } else {
+        BTreeSet::new()
+    }
+}
+
+/// The tactics phase's shade `turn`'s start draws into the background whatever the movement
+/// shadow (E17 M6 T4c, §7.23): [`crate::tactics::shade`] on a human's turn here (none outside the
+/// phase), else none; kept by a block the cursor shadow saves ([`shades::Cells::phase`]).
+fn phase(turn: &Turn<'_>) -> BTreeSet<u8> {
+    if turn.human {
+        crate::tactics::shade(turn.field.observation)
     } else {
         BTreeSet::new()
     }

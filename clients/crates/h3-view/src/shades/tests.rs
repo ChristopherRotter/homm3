@@ -79,16 +79,19 @@ fn the_options_come_from_the_settings_and_their_keys_toggle_them() {
     assert_eq!((all.grid, all.cursor, all.movement), (true, true, true));
     all.set_in(&mut settings);
     assert!(settings.grid && settings.cursor_shade && settings.movement_shade);
-    // An aim with both shadows on turns the movement shadow off; Teleport's and Sacrifice's none,
-    // and none with either shadow off.
+    // An area aim or the wall's with both shadows on turns the movement shadow off; the others
+    // none (Magic Arrow, Sacrifice, Teleport, Remove Obstacle, Clone), and none with either
+    // shadow off.
     let off = Options {
         movement: false,
         ..all
     };
-    assert_eq!(all.aiming(21), Some(off));
-    assert_eq!(all.aiming(FIRE_WALL), Some(off));
-    assert_eq!(all.aiming(TELEPORT), None);
-    assert_eq!(all.aiming(SACRIFICE), None);
+    for original in [FORCE_FIELD, FIRE_WALL, 20, 21, 22, 23, BERSERK] {
+        assert_eq!(all.aiming(original), Some(off), "{original}");
+    }
+    for original in [15, 19, 24, 40, 58, 60, 63, 64, 65] {
+        assert_eq!(all.aiming(original), None, "{original}");
+    }
     assert_eq!(off.aiming(21), None);
     assert_eq!(options.toggled(Toggle::Movement).aiming(21), Some(options));
     assert_eq!(
@@ -200,8 +203,6 @@ fn the_movement_shadow_shades_the_acting_stack_s_reach() {
     ]);
     let on = field(&o, &legal, Bugs::Fixed);
     assert_eq!(reach(&on), BTreeSet::from([70, 86, 87, 89, 90]));
-    assert_eq!(movement(&on, true), reach(&on));
-    assert!(movement(&on, false).is_empty());
     // A two-hex mover's front hex at each position, by its facing now.
     o.stacks[0].two_hex = true;
     let wide = field(&o, &legal, Bugs::Fixed);
@@ -235,15 +236,6 @@ fn the_movement_shadow_shades_the_acting_stack_s_reach() {
     assert!(reach(&field(&o, &legal, Bugs::Fixed)).is_empty());
     o.active = None;
     assert!(reach(&field(&o, &legal, Bugs::Fixed)).is_empty());
-    // The tactics phase's own whatever the option.
-    let mut phase = battle();
-    phase.tactics = Some(Tactics {
-        side: Side::Attacker,
-        columns: 3,
-    });
-    let in_phase = field(&phase, &legal, Bugs::Fixed);
-    assert_eq!(movement(&in_phase, false), crate::tactics::shade(&phase));
-    assert!(!movement(&in_phase, false).is_empty());
 }
 
 /// The cursor shadow on, the grid and the movement shadow by `grid` and `movement`.
@@ -331,4 +323,40 @@ fn the_client_s_composition_forgets_the_cursor_shadow_s_list() {
     assert_eq!(overlays.cursor, [90]);
     cells.mouse(91, false);
     assert!(cells.drawn(&reach).overlays.stale.is_empty());
+}
+
+#[test]
+fn a_block_put_back_keeps_the_tactics_phase_s_shade() {
+    // E17 M6 T4c (design §12.16, oddity 2): in the tactics phase every composition draws the
+    // phase's shade whatever the movement shadow; a block saved from one keeps it after the
+    // dialog (the original's), and an action's start clears it.
+    let mut phase = battle();
+    phase.tactics = Some(Tactics {
+        side: Side::Attacker,
+        columns: 3,
+    });
+    let zone = crate::tactics::shade(&phase);
+    assert!(zone.contains(&86));
+    let none = BTreeSet::new();
+    let mut cells = Cells::new(on(false, false), Bugs::Original);
+    cells.phase(zone.clone());
+    cells.mouse(86, false);
+    cells.compose(on(true, false));
+    cells.mouse(87, false);
+    let drawn = cells.drawn(&none);
+    assert!(drawn.shade.is_empty());
+    assert_eq!(
+        drawn.overlays.stale,
+        [Stale {
+            hex: 86,
+            grid: false,
+            shade: zone,
+        }]
+    );
+    // After an action's start a block saved from the new overlay has none.
+    cells.action();
+    cells.mouse(86, false);
+    cells.compose(on(false, false));
+    cells.mouse(87, false);
+    assert_eq!(cells.drawn(&none).overlays.stale[0].shade, none);
 }
