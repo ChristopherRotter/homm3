@@ -1287,3 +1287,32 @@ an entry only where a task builds on it.
   (595) and `hexformer` 96 × 4 (682), each with the three keys at two learning rates (5e-4 and
   2e-4; `hexconv` 1e-3 and 3e-4), a warm-up of 131 072 samples, weight decay 0.01. By the grid,
   about 7 to 8 hours (4 M samples, two passes each).
+
+## T26 — The structure sweep: a first segment, stopped (2026-11-05)
+
+- **The user's run** of `configs/distill/e25-structure.toml` on the GTX 1070, stopped after about
+  1.5 hours at its first evaluation (`eval_every` 500 k; by the students' training seconds over
+  their µs about 0.45 M samples of 4 M). The bench does not resume, so the run is lost but for
+  this table; **the user's rule: every run over 2 hours resumes** (T26a makes the bench do so):
+
+  | Student | CE entry | CE cast | Agreement | Moves | Melee | Shots | Value | Seconds | µs | MB |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | MLP 2 × 512 | 1.805 | 2.336 | 0.464 | 0.239 | 0.292 | 0.530 | 0.247 | 21 | 24 | 100 |
+  | MLP with the mask | 1.642 | 2.343 | 0.495 | 0.345 | 0.310 | 0.519 | 0.270 | 21 | 24 | 102 |
+  | `entity` 256 × 4, 5e-4 | 1.395 | 1.980 | 0.594 | 0.296 | 0.541 | 0.672 | 0.318 | 302 | 340 | 1 451 |
+  | … 2e-4 | 1.564 | 2.138 | 0.550 | 0.105 | 0.502 | 0.622 | 0.231 | 301 | 339 | 1 453 |
+  | `hexconv` normalised 96 × 6, 1e-3 | **1.136** | **1.884** | **0.619** | 0.414 | 0.513 | 0.593 | 0.330 | 583 | 658 | 3 071 |
+  | … 3e-4 | 1.263 | 2.199 | 0.590 | **0.428** | 0.486 | 0.565 | **0.370** | 583 | 658 | 2 455 |
+  | `hexformer` 96 × 4, 5e-4 | 1.320 | 2.103 | 0.578 | 0.402 | 0.446 | 0.595 | 0.295 | 657 | 742 | 1 829 |
+  | … 2e-4 | 1.475 | 2.346 | 0.541 | 0.384 | 0.418 | 0.555 | 0.370 | 659 | 743 | 1 829 |
+
+- **The read (early, one evaluation):** every structured student is ahead of both MLPs by 0.05
+  to 0.15 agreement at about an eighth of the budget (the MLP 0.464 here, 0.531 at 4 M in T16);
+  `hexconv` at 1e-3 already passes decision 5's gate value (0.60, due at 4 M). The melee hexes
+  gain most (0.42 to 0.54 against 0.29 to 0.31: T25's attack hex), the moves least (`entity` at
+  2e-4 0.105). The higher of each family's two rates leads in agreement. The mask alone gains the
+  MLP 0.03 (its moves 0.24 to 0.35). The keys' cost on the GPU: `entity` 340 µs against the
+  grid's 293, `hexconv` 658 against 595, `hexformer` 742 against 682 (the cap about 700).
+- **The time:** about 1.5 hours for the first 0.5 M (the teacher's play, the held-out set and
+  the evaluation beside 52 minutes of the students' steps), so the whole bench is about 10 to 12
+  hours, not T25's 7 to 8 (which counted the students only).

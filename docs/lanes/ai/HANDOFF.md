@@ -29,10 +29,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `feed_forward`, the bench's warm-up, AdamW and cost, `network --bench`). **T25 done** (the
   heads read the geometry: `geometry`'s port of the attack positions, `encode(obs, mask)`,
   `[network] mask_input`, `order`, `attack_hex`; `E25-log.md` T25). The user's GPU grid and cap:
-  about 700 µs a sample-pass (decision 3 as amended). **Next:** T26 on the user's GPU
-  (`configs/distill/e25-structure.toml`, about 7 to 8 hours; the command in `QUEUE.md`).
-- **Open pull requests:** #725 (T25, `claude/determined-mayer-t1waz5`). Merged: #718 (T22,
-  T23), #721 (T24).
+  about 700 µs a sample-pass (decision 3 as amended). T26's first segment (the user, stopped at
+  0.45 M; `E25-log.md` T26): every structured student ahead of the MLPs, `hexconv` 96 × 6 at
+  0.619. **Next:** T26a in the sandbox (the benches resume: the user's rule, every run over 2
+  hours resumes), then T26b on the user's GPU in parts.
+- **Open pull requests:** the one of `claude/determined-mayer-t1waz5` (T26's records). Merged:
+  #721 (T24), #725 (T25).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)

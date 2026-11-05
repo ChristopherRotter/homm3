@@ -116,6 +116,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   reads it refuses none; a melee entry's attack hex is `geometry.attack_hexes`, never a copy. Time
   a kind with `python -m h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats
   30`), a bench's students side by side with `--bench`.
+- **A user's run over 2 hours must resume** (the user, 2026-11-05; no overnight runs): the
+  trainer's `--resume`, the benches' since E25 T26a; a run that cannot resume is split into parts
+  under 2 hours or not handed over.
 - A user's run: they upload `record.json`, `metrics.jsonl`, `best.pt`; `evaluate.load` builds
   a network on the CPU. The upload takes at most 30 MB: a network file is 4 bytes a parameter
   (2 × 512 about 24 MB, 2 × 1 024 49.5 MB), so a larger network's scripts (`battles.py`, a
