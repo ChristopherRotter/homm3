@@ -116,20 +116,32 @@ class Config:
     #: multiples of `width` (E25 T24; 2 before).
     feed_forward: int = field(default=2, metadata=_in("network"))
     #: The battlefield's size the hex networks draw on (the base ruleset's, `[battle]
-    #: field_width`, `field_height`).
+    #: field_width`, `field_height`), and the structured kinds' attack positions are on (E25
+    #: T25: `mask_input`, `attack_hex`).
     field_width: int = field(default=17, metadata=_in("network"))
     field_height: int = field(default=11, metadata=_in("network"))
     #: Whether the MLP's entry head reads the batch's kill preview (AI-Q7 (b) part 2, E06 T6d:
     #: each legal strike's previewed kills, `policy`'s documentation); every batch the network
     #: plays then writes it.
     preview: bool = field(default=False, metadata=_in("network"))
-    #: Whether the MLP's trunk reads the turn order (observation v22's last block, each stack
-    #: slot's places; the turn-order probe, E06-log); else v21's prefix, as before v22.
+    #: Whether the network reads the turn order (observation v22's last block, each stack slot's
+    #: places; the turn-order probe, E06-log): the MLP's trunk, else v21's prefix, as before v22;
+    #: a structured kind's stack tokens (E25 T25), else not.
     order: bool = field(default=False, metadata=_in("network"))
     #: The agent's tactics bound (E25 T4a, any kind; `policy`'s documentation): the rounds of its
     #: own tactics phase it plays before End tactics is its only entry, wherever it plays (0: no
     #: bound; the rules set none, BAT-TAC-002).
     tactics_rounds: int = field(default=0, metadata=_in("network"))
+    #: Whether the network reads the rows' legal entry mask as an input (E25 increment 7,
+    #: decision 4; `policy`'s documentation): the mask the entry logits are masked with (the
+    #: tactics bound in it), the MLP's as 0/1 inputs after the observation's, a structured
+    #: kind's as hex planes, per stack slot and fixed entries (`entity`). False: every network
+    #: before E25 T25.
+    mask_input: bool = field(default=False, metadata=_in("network"))
+    #: Whether a structured kind's melee entries also score the hex their attack is made from
+    #: (E25 T25, `entity.AttackHex`; it reads the entry mask). False: every network before T25;
+    #: not the MLP's.
+    attack_hex: bool = field(default=False, metadata=_in("network"))
     rollout: int = field(default=128, metadata=_in("ppo"))
     #: 1.0 since E06 T5a (AI-Q9: γ 0.995 let the winner stall, `t4-1` against `t4-2`).
     gamma: float = field(default=1.0, metadata=_in("ppo"))
@@ -379,10 +391,10 @@ def resolve(config: Config) -> Config:
         problems.append(f"`kind` is one of {', '.join(NETWORK_KINDS)}")
     elif c.preview and c.kind != "mlp":
         problems.append('`preview` is the MLP\'s (`kind = "mlp"`)')
-    elif c.order and c.kind != "mlp":
-        problems.append('`order` is the MLP\'s (`kind = "mlp"`)')
     elif c.norm != "none" and c.kind != "hexconv":
         problems.append('`norm` is the hex convolution network\'s (`kind = "hexconv"`)')
+    elif c.attack_hex and c.kind == "mlp":
+        problems.append("`attack_hex` is the structured kinds' (entity, hexconv, hexformer)")
     if c.norm not in NORMS:
         problems.append(f"`norm` is one of {', '.join(NORMS)}")
     if c.feed_forward <= 0:

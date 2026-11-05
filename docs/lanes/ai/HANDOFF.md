@@ -26,11 +26,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **Increment 7, a network that reads the battle's structure** (refined at T23 with the user: the
   legal mask an input, the cost cap hexconv 64 × 6's 466 µs a sample-pass on the GTX 1070),
   measured first on the cloning bench against the fair actor. **T24 done** (`hexconv`'s `norm`,
-  `feed_forward`, the bench's warm-up, AdamW and cost, `network --bench`): on the CPU decision 2's
-  ranges mostly exceed decision 3's cap (`E25-log.md`, T24; T26's GPU table decides, the user's
-  call there). **Next:** T25 in the sandbox (the heads read the geometry).
-- **Open pull requests:** the one of `claude/cool-mccarthy-cfodpk` (T24). Merged: #696 (T21),
-  #718 (T22, T23).
+  `feed_forward`, the bench's warm-up, AdamW and cost, `network --bench`). **T25 done** (the
+  heads read the geometry: `geometry`'s port of the attack positions, `encode(obs, mask)`,
+  `[network] mask_input`, `order`, `attack_hex`; `E25-log.md` T25). The user's GPU grid and cap:
+  about 700 µs a sample-pass (decision 3 as amended). **Next:** T26 on the user's GPU
+  (`configs/distill/e25-structure.toml`, about 7 to 8 hours; the command in `QUEUE.md`).
+- **Open pull requests:** #725 (T25, `claude/determined-mayer-t1waz5`). Merged: #718 (T22,
+  T23), #721 (T24).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -43,6 +45,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-04 — E25 T25
+
+- #721 merged; the branch started from `master`. The setup's full baseline was stopped (CI is
+  the record); `cargo build --release -p h3-ffi` 78 s, `uv sync --group train` from the cache.
+  The user's GPU grid arrived with the task (in `E25-log.md` T24), the cap raised at the end
+  (AI-Q16's decision 3). Four narrow workers in turn (the port, the mask through `encode`, the
+  structured kinds, the smokes); the VM restarted once during the smokes, the finished PPO runs
+  kept and the rest rerun (the clone smoke 22 minutes).
 
 ### 2026-11-04 — E25 T24
 
@@ -61,11 +72,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   tool 40 s a run, the head-to-heads 24 to 215 s. T23 with the user (AI-Q16); increment 7's survey
   by a sub-agent. Without the setup script the coverage step needed `cargo-llvm-cov`, `llvm-20`
   and `scripts/sandbox-verify.sh` (the scoped verify then passed, 8 minutes).
-
-### 2026-11-03 — E25 T21
-
-- #687 merged; the branch started from `master`. The setup's full baseline was stopped (CI is the
-  record), the scoped verify ran instead. `uv sync --group train`'s cuDNN download stalled at
-  about 70 KB/s for over an hour; killed and restarted, it finished in 9 s from uv's cache (the
-  trap in `TRAPS.md`). T21 built and its CPU check run in the sandbox (the clone 5 minutes, each
-  PPO run 5 to 6, T19's tool 38 s); the VM restarted once, nothing lost.

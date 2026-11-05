@@ -252,7 +252,8 @@ def score_networks(sums: Sums, nets: dict[str, Any], states: list[tuple]) -> Non
     cats = np.stack([s[1] for s in states])
     with torch.no_grad():
         for name, net in nets.items():
-            logp = torch.log_softmax(masked(net.entry_logits(net.encode(obs)), mask), dim=1)
+            logits = net.entry_logits(net.encode(obs, mask))
+            logp = torch.log_softmax(masked(logits, mask), dim=1)
             best = logp.argmax(1).numpy()
             picked = -logp.gather(1, torch.from_numpy(entries)).numpy()
             for j in range(entries.shape[1]):
