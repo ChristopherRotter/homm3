@@ -92,7 +92,7 @@ fn end(
 ) -> (GameState, Vec<GameEvent>) {
     let mut ended = game.clone();
     let mut events = Vec::new();
-    ended.end_battle(rules, SIDES, outcome, &mut events);
+    ended.end_battle(rules, SIDES, None, outcome, &mut events);
     (ended, events)
 }
 

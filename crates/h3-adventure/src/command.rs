@@ -536,6 +536,11 @@ pub struct BattleStart {
     /// ([`crate::AdventureState::special_ground`], GAM-BAT-013; E08 T54): the original's computer
     /// values that hero's spells at the mastery of its own tile.
     pub attacker_ground: Option<ContentKey>,
+    /// The town of a siege, if the battle is one (E09 T8b1; the town epic's design note §10 and
+    /// §15): the battle at a defended town's entrance, `tile`. The game builds the siege's setup
+    /// from the town (its facts, the defending hero's bonuses, its terrain; TWN-SIE-003 to -005)
+    /// and an attacker's win captures it (TWN-CAP-003). None for every other battle.
+    pub town: Option<TownId>,
 }
 
 /// The defending side of a battle on the map (ADR-0017 point 10).

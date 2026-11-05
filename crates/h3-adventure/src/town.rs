@@ -1,13 +1,15 @@
 //! The town on the adventure map (E09 T8a2; the town epic's design note §9 and §11; survey
 //! `E09-towns.md` §7, §8): the step onto a town's entrance by its owner's team and the town's
 //! garrison (TWN-VIS-001), the visitor, the hero standing on the entrance (TWN-VIS-002), and the
-//! capture of an undefended town with its reveal (TWN-CAP-001). The siege of a defended town comes
-//! with E09 T8b (`TWN-STUB-7`); until then such a step is refused as a visit not built.
+//! capture of an undefended town with its reveal (TWN-CAP-001). The siege's end (E09 T8b1): its
+//! garrison's survivors and the capture after an attacker's win (TWN-CAP-003). The step onto a
+//! defended town, the siege's start, comes with E09 T8b2 (`TWN-STUB-7`); until then such a step is
+//! refused as a visit not built.
 
 use alloc::vec::Vec;
 
 use h3_content::Ruleset;
-use h3_contracts::{HeroId, PlayerId, TownId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 
 use crate::command::{AdventureEvent, AdventureEventKind, AdventureOutcome, Sink, Viewers};
 use crate::fog;
@@ -177,5 +179,48 @@ impl AdventureState {
             seen_by: Viewers::NONE.with(player),
         });
         Some(seen_by)
+    }
+
+    /// The end of a siege of the town at object index `index` that its garrison fought without a
+    /// hero, against the visitor's hero `hero` at `tile`, the town's entrance (E09 T8b1; the town
+    /// epic's design note §11; survey `E09-towns.md` §8.2, §9.3): after the visitor's side `won`
+    /// the garrison is beaten, written empty, and the capture comes after the winner's levels
+    /// ([`AdventureOutcome::reward_after`], then [`Self::give_won`]: [`Self::town_won`]); else its
+    /// `survivors`, by slot, stay as its garrison, as a mine's guards' (none after a battle without
+    /// a winner, and the town keeps its owner).
+    // rule: TWN-CAP-003
+    pub(crate) fn end_town_battle(
+        &mut self,
+        index: usize,
+        (hero, tile): (HeroId, Pos),
+        (survivors, won): (&[ArmyStack], bool),
+    ) -> AdventureOutcome {
+        let left = if won { Vec::new() } else { survivors.to_vec() };
+        self.set_army_left(index, left);
+        AdventureOutcome {
+            reward_after: won.then_some((hero, tile)),
+            ..AdventureOutcome::default()
+        }
+    }
+
+    /// What a siege of `town` won by the hero `hero` gives after the winner's levels
+    /// (TWN-CAP-003; the town epic's design note §11; survey `E09-towns.md` §8.2, the original's
+    /// `town_visit` 0x4AB33D to 0x4AB3BA): the town's capture for the hero's owner
+    /// ([`AdventureOutcome::capture`], which the game applies with its reveal and the Capitol's
+    /// limit, as an undefended town's), unless the town is of the owner's team by then. The hero
+    /// stays on the tile it attacked from (no town screen): a later step enters the town, which it
+    /// finds its own. Nothing when the hero left the map (a win with only creatures the battle
+    /// made, BAT-END-001), as a mine's flag (ADV-MIN-002).
+    // rule: TWN-CAP-003
+    pub(crate) fn town_won(&self, hero: HeroId, town: TownId) -> AdventureOutcome {
+        let capture = self
+            .hero(hero)
+            .zip(self.map().town_object(town))
+            .filter(|&(hero, index)| !self.owner(index).is_some_and(|o| allied(o, hero.owner)))
+            .map(|_| town);
+        AdventureOutcome {
+            capture,
+            ..AdventureOutcome::default()
+        }
     }
 }

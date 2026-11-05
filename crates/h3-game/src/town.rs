@@ -6,7 +6,9 @@
 //! build checks the starts and the towns (E09 T7a2: [`check_starts`]), then builds the hero pool
 //! and draws the random factions and the random heroes' types (E09 T7b1: [`pool`], design note
 //! §14), then the random towns' factions (E09 T7b2a: [`build`]), then the main towns' heroes (E09
-//! T7b2b: [`heroes`]), then each town's garrison and buildings ([`build`]).
+//! T7b2b: [`heroes`]), then each town's garrison and buildings ([`build`]). In play the game
+//! composes a town's capture ([`capture`], E09 T8a2) and builds a siege's battle ([`siege`],
+//! E09 T8b1).
 
 use alloc::vec::Vec;
 
@@ -21,11 +23,13 @@ pub(crate) mod build;
 pub(crate) mod capture;
 pub(crate) mod heroes;
 pub(crate) mod pool;
+pub(crate) mod siege;
 
 pub(crate) use build::{adventure_reveal, build_towns, draw_towns};
 pub(crate) use capture::capture;
 pub(crate) use heroes::main_town_heroes;
 pub(crate) use pool::{HeroPool, draw_heroes};
+pub(crate) use siege::{mana_after, siege_experience, siege_setup};
 
 /// A set of the core's factions, a bit per faction below [`FactionSet::CAPACITY`] (the map's
 /// allowed towns, read through the ruleset's factions).

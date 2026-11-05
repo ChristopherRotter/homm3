@@ -115,7 +115,7 @@ fn a_won_guards_reward_comes_after_the_winners_levels() {
     let mut state = guarded_ring(&rules);
     let sides = ([Some(RED), None], [Some(HERO), None], AT);
     let mut events = Vec::new();
-    state.end_battle(&rules, sides, &won_a_level(), &mut events);
+    state.end_battle(&rules, sides, None, &won_a_level(), &mut events);
     state.run_rests(&rules, &mut events);
     let ring = changed(HeroChange::AddArtifact(ArtifactInstance::from(RING)));
     // The level has two offers: the artifact waits for its answer (before E08 T63b it came
@@ -152,7 +152,7 @@ fn the_hash_sees_each_rest() {
     // A won battle's reward held until the winner's levels are given.
     let mut won = guarded_ring(&rules);
     let sides = ([Some(RED), None], [Some(HERO), None], AT);
-    won.end_battle(&rules, sides, &won_a_level(), &mut Vec::new());
+    won.end_battle(&rules, sides, None, &won_a_level(), &mut Vec::new());
     for state in [experience, guarded, won] {
         assert_eq!(state.held_rests(), 1);
         let mut bare = state.clone();

@@ -1862,6 +1862,7 @@ impl AdventureState {
             battlefield,
             background: self.background(tile),
             attacker_ground: self.special_ground(part, attacker.pos),
+            town: None,
         }
     }
 

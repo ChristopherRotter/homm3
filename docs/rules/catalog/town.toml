@@ -55,7 +55,7 @@ id       = "TWN-SIE-003"
 title    = "The siege's facts from the town"
 context  = "town"
 status   = "implemented"
-summary  = "A battle at a town takes from it (ADR-0023 point 2 as amended by E09 and CLT-Q40; `h3_contracts::Siege`): its faction; its fort level, the highest standing building of role `fort` (none, the Fort, the Citadel, the Castle); its moat, its faction's record's from a Citadel, else none (the packs decide it, not a game version: E09 decision 14); its structures for the keep's count, the standing buildings not forbidden less the hall-1 building (no faction's list holds the Village Hall: decision 28); the Escape Tunnel, a building of role `escape_tunnel` ever built; its bonuses, one per building ever built with a morale or luck change, in index order, its morale while it stands (the Tavern +1; the Castle's Brotherhood of the Sword +2 supersedes it, so +2 in all) and its luck once ever built (the Rampart's Fountain of Fortune +2), each naming its building; a record has at most 8 such buildings (the part's compiler refuses more). The battle reads them as BAT-SIE-016 (the keep), BAT-SIE-024 (the Escape Tunnel) and BAT-SIE-025 (morale and luck) say. E09 T6b (design §6): `h3_towns::fort_level`, `h3_towns::siege`; the game puts it into the battle's setup (E09 T8b, design §15)."
+summary  = "A battle at a town takes from it (ADR-0023 point 2 as amended by E09 and CLT-Q40; `h3_contracts::Siege`): its faction; its fort level, the highest standing building of role `fort` (none, the Fort, the Citadel, the Castle); its moat, its faction's record's from a Citadel, else none (the packs decide it, not a game version: E09 decision 14); its structures for the keep's count, the standing buildings not forbidden less the hall-1 building (no faction's list holds the Village Hall: decision 28); the Escape Tunnel, a building of role `escape_tunnel` ever built; its bonuses, one per building ever built with a morale or luck change, in index order, its morale while it stands (the Tavern +1; the Castle's Brotherhood of the Sword +2 supersedes it, so +2 in all) and its luck once ever built (the Rampart's Fountain of Fortune +2), each naming its building; a record has at most 8 such buildings (the part's compiler refuses more). The battle reads them as BAT-SIE-016 (the keep), BAT-SIE-024 (the Escape Tunnel) and BAT-SIE-025 (morale and luck) say. E09 T6b (design §6): `h3_towns::fort_level`, `h3_towns::siege`. Since E09 T8b1 (design §15) the game puts it into a siege's setup (`BattleStart::town`; `h3_game`'s `town::siege_setup` from `GameState::start_battle`), with or without a fort."
 numeric  = "integer"
 
   [[rule.source]]
@@ -85,7 +85,7 @@ id       = "TWN-SIE-004"
 title    = "The defending hero's bonuses from the town"
 context  = "town"
 status   = "implemented"
-summary  = "A siege's defending hero is raised by the town's buildings ever built (ADR-0023 point 3): the `defender` role's attack, defense, power and mana, each summed, saturating: the base pack's Tower Grail +150 mana, the Inferno's Brimstone Stormclouds +2 power, the Dungeon's Grail +12 power, the Stronghold's Grail +20 attack, the Fortress' Blood Obelisk +2 attack, Glyphs of Fear +2 defense and Grail +10 attack and defense; the fort level is not tested. After the battle the hero's attack, defense and power are its own again and its mana the smaller of the mana left and the mana before (the game's, E09 T8b, design §15). E09 T6b (design §6): `h3_towns::defender_bonus`."
+summary  = "A siege's defending hero is raised by the town's buildings ever built (ADR-0023 point 3): the `defender` role's attack, defense, power and mana, each summed, saturating: the base pack's Tower Grail +150 mana, the Inferno's Brimstone Stormclouds +2 power, the Dungeon's Grail +12 power, the Stronghold's Grail +20 attack, the Fortress' Blood Obelisk +2 attack, Glyphs of Fear +2 defense and Grail +10 attack and defense; the fort level is not tested. After the battle the hero's attack, defense and power are its own again and its mana the smaller of the mana left and the mana before. E09 T6b (design §6): `h3_towns::defender_bonus`. Since E09 T8b1 (design §15) the game applies them: the defending hero's battle hero raised before the seam, its attack, defense and power at most the core's `primary_max` (the original raises the hero's own skills, which its effective skills hold within the highest, HER-DET-001), its spell points saturating (`town::raise`); the battle never writes the skills back, and after a siege the defending hero's spell points are the smaller of those left and those before (`town::mana_after`, in `end_battle`'s heroes' part, whatever the result)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -100,10 +100,10 @@ numeric  = "integer"
 
 [[rule]]
 id       = "TWN-SIE-005"
-title    = "A siege's natural obstacles"
+title    = "A siege's terrain, battlefield and natural obstacles"
 context  = "town"
 status   = "implemented"
-summary  = "A siege of a town with a Citadel or a Castle draws the battlefield's natural obstacles on its terrain beside the walls only when its faction's record's `siege_obstacles` is set: the base pack's Stronghold (no moat there), which the SoD pack's override clears (the packs decide, not the game's version: E09 decision 14; the E04c survey's S-29); below a Citadel, never. E09 T6b (design §6): `h3_towns::siege_obstacles`; the game draws them from the battle's seed (E09 T8b, design §15)."
+summary  = "A battle at a town (any fort level) is fought on its faction's native terrain, whatever the tile (water, the underground or the coast), on the special ground's battlefield when one lies on the entrance, never the coast's shore nor a boat's deck (the original's battlefield setup takes a siege's terrain first, then the tile's special ground in every case); a faction without a native terrain keeps the tile's. Its natural obstacles: without a fort the usual ones on that terrain and battlefield, from the battle's obstacle seed (GAM-BAT-001, ADV-QUIRK-5); with a fort none, but a town with a Citadel or a Castle draws the usual ones beside the walls when its faction's record's `siege_obstacles` is set: the base pack's Stronghold (no moat there), which the SoD pack's override clears (the packs decide, not the game's version: E09 decision 14; the E04c survey's S-29); below a Citadel, never. E09 T6b (design §6): `h3_towns::siege_obstacles`. Since E09 T8b1 (design §15): `h3_game`'s `town::siege_setup` (the terrain, the battlefield), the obstacles by `generate_setup_obstacles` (none at a fort); the walled Stronghold's usual obstacles are `TWN-STUB-8` (their placement keeps off the walls by a branch for town type 6 not read, 0x466147 to 0x466194, and the battle's generator knows no walls)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -112,8 +112,31 @@ numeric  = "integer"
   confidence = "high"
 
   [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E04c T1; docs/formats/installation.md sections 7.26 and 7.27): battle_setup_battlefield 0x4643B0 takes the terrain from the first case that applies, a siege (the town +0x53C8) first, the town's faction's native terrain (0x5C1440, table 0x643698), before a boat, the underground, a mine and the coast; then, in every case, the tile's special ground (0x4FCE20); a town without a fort is fought like any battle but on the town's terrain"
+  confidence = "high"
+
+  [[rule.source]]
   kind       = "design"
   ref        = "E09 decision 14 (the packs' records decide, the original's game version from its scenario dialog the recorded deviation); docs/epics/E09-design.md sections 6 and 15"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SIE-006"
+title    = "A siege's attacking winner's experience"
+context  = "town"
+status   = "implemented"
+summary  = "The winner's experience of a battle at a town (any fort level) is the battle's (GAM-BAT-002: the loser's losses, a defeated hero's 500) and 500 more when the winner is the attacker, whatever the result (the defender's retreat through the Escape Tunnel included), before Learning; the defender's win gives no more. E09 T8b1: `h3_game`'s `town::siege_experience` in the heroes' part of `end_battle`, `SIEGE_EXPERIENCE`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E04c T4; docs/formats/installation.md section 7.27; re-read at E09 T8b1): battle_experience 0x46A350 adds 0x1F4 at 0x46A416 when the battle's town +0x53C8 is set and the winning side argument is 0 (the attacker), after the loser's hero's +500 (0x46A3DF) and the -500 of a retreat or a surrender (0x46A3FC)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0023 point 1 (a battle at a town: +500 experience for the attacker); docs/epics/E09-design.md section 15"
   confidence = "high"
 
 [[rule]]
@@ -160,6 +183,31 @@ numeric  = "integer"
   kind       = "wiki"
   ref        = "Heroes 3 wiki, Halls (survey E09-towns.md section 11.5): a captured Capitol becomes a City Hall when the captor already holds one, the only downgrade of a building; a map may give a player two or more Capitols"
   url        = "https://heroes.thelazy.net/index.php/Halls"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-CAP-003"
+title    = "A siege won: the capture with the attacker outside"
+context  = "town"
+status   = "implemented"
+summary  = "After a siege the attacker won with an army left (a hero of the winning side that keeps no army survivor leaves the map, BAT-END-001, and captures nothing), the town is captured for the attacker's owner as an undefended town's (TWN-CAP-001, TWN-CAP-002: the owner, the garrison emptied with what did not fight, the reveal, the Capitol's limit) once that owner has no open decision, after the winner's levels (GAM-DEC-007, GAM-BAT-008), unless the town is of that owner's team by then; the attacker stays on the tile it attacked from with its points (no town screen) and enters the town by a later step, which finds it its own. A defender's win or a battle without a winner changes no owner; the survivors stay in the armies that fought: the visitor's, else the garrison's, by slot, as a mine's guards (none after a battle without a winner); a beaten hero leaves the map, its type free in the pool (TWN-SET-005). E09 T8b1 (design §11, §15): `AdventureState::end_unowned_battle`'s `end_town_battle` (a garrison without a hero), `GameState::end_battle` holding `Rest::Won` against a visitor, `AdventureState::give_won`'s `town_won` (`AdventureOutcome::capture`, which the game applies with `town::capture`); the town of an ended battle is the battle's own (its siege) at its tile."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1; survey E09-towns.md sections 8.2 and 9.3): town_visit after adventure_battle returns 0 (the attacker won; battle manager +0x13D48, 0x4AB33D to 0x4AB3BA) clears the garrison hero, calls town_change_owner and the Capitol's limit, opens no town screen; the attacker stays on the tile it visited from (visit_from_neighbour 0x480240); adventure_battle (0x4AD470) gives the winner's levels before it returns (0x4AE324) and sends the beaten heroes to the pool (0x4D9EC0); the survivors stay in the armies the battle was given"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-1.md rows 3b and 4 (TWN-1-4; survey E09-towns.md section 15): after each siege won the attacker stood on the tile it attacked from with its points less the step's, the town its owner's, no town screen, the garrison empty (the merge's leftovers lost), the beaten visitor off the map; a later step entered the town"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 9.5: CGTownInstance::battleFinished clears the garrison (clearArmy) and captures after an attacker's win"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
   retrieved  = "2026-11-02"
   confidence = "medium"
 
