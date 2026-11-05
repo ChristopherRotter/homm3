@@ -13,9 +13,14 @@ use h3_view::tables::Tables;
 /// What a message box asks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Asked {
-    /// Nothing: its OK alone closes it (the book's refusal or description, a spell that affects
-    /// no one, the surrender refused).
+    /// Nothing: its OK alone closes it (the book's own refusal or description over the book, the
+    /// surrender refused).
     Told,
+    /// A refusal of the spell book button or of the aim's entry over the battle (E17 M6 T5a,
+    /// design §12.17: 685, 684 before the book; 748, 537 and the entry's boxes after it): its OK
+    /// alone closes it, then the button's path posts the mouse where it rests (0x474F72), as
+    /// after a book closed without a spell.
+    Refused,
     /// Retreat (2002, `battle_retreat_button` 0x474FA1): its OK retreats.
     Retreat,
     /// Surrender (2001, `battle_surrender_button` 0x474FE9) at its price: its OK surrenders, or
@@ -165,7 +170,7 @@ pub fn book_box(
 }
 
 /// The original's stack spells (15 to 19, 24 to 39, 41 to 58, 60 to 62) and Teleport (63): the
-/// aim's entry tells "That spell will affect no one!" (GENRLTXT 186) when no hex takes them
+/// aim's entry tells that the spell affects no one (GENRLTXT 186) when no hex takes them
 /// (`enter_player_cast` 0x59F085).
 pub fn affects_someone_only(original: u32) -> bool {
     matches!(original, 15..=19 | 24..=39 | 41..=58 | 60..=63)
@@ -206,15 +211,16 @@ pub struct HeroFacts {
 
 /// What the spell book button's and the aim's entry's refusals read (E17 M6 T5a, design §12.17):
 /// the battle's facts as the side to act may know them. Local play knows every one (both sides'
-/// own views); a server's seat its own hero's magic alone (gap G1, answered (c) meanwhile: the
-/// other hero's Orb and Cloak show no box).
+/// own views); a server's seat its own hero's magic alone ([`seat_magic`]; gap G1, CLT-STUB-2:
+/// the other hero's Orb and Cloak show no box until the wire carries them).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Facts {
     /// The battle is at an anti-magic garrison (`Observation::anti_magic`).
     pub garrison: bool,
     /// The attacker's and the defender's hero.
     pub heroes: [Option<HeroFacts>; 2],
-    /// The side to act: 0 the attacker, 1 the defender.
+    /// The side to act (+0x132C0, the acting stack's controller): 0 the attacker, 1 the
+    /// defender.
     pub side: usize,
     /// The highest spell level the battlefield allows (Cursed Ground's 1), none without a limit.
     pub field_level: Option<u8>,
@@ -237,9 +243,12 @@ pub type Names<'a> = (&'a Manifest, &'a Tables, &'a Catalogue);
 impl Facts {
     /// The facts of the battle the side to act sees in its own observation `own`, its opening
     /// `first` (the natives), each side's hero's private part `magic` as far as the seat knows it
-    /// (local play: both sides' own views; a server's seat: its own) and the battle's `ruleset`
-    /// when the game's content is the client's own (the field's level limit, the stack limit;
-    /// else Cursed Ground by its key and the original's 20), named by `names`.
+    /// (local play: both sides' own views; a server's seat: its own, [`seat_magic`]) and the
+    /// battle's `ruleset` when the game's content is the client's own (the field's level limit,
+    /// the stack limit; else Cursed Ground by its key and the original's 20), named by `names`.
+    /// The side to act is the active stack's controller (+0x132C0, as the engine's
+    /// `side_to_act`: a hypnotized stack's turn is its controller's, whose hero casts), else the
+    /// viewer.
     pub fn of(
         own: &Observation,
         first: &Observation,
@@ -250,7 +259,7 @@ impl Facts {
         let acting = own
             .active
             .and_then(|id| own.stacks.iter().find(|s| s.id == id))
-            .map_or(own.viewer, |s| s.side);
+            .map_or(own.viewer, |s| s.controller);
         let side = usize::from(acting == Side::Defender);
         let heroes = [0, 1].map(|i| {
             let hero = own.sides[i].hero.as_ref()?;
@@ -306,6 +315,20 @@ impl Facts {
     fn hero(&self) -> &str {
         self.heroes[self.side].as_ref().map_or("", |h| &h.name)
     }
+}
+
+/// Each side's hero's magic limits as a seat on a server knows them from its own view `own` (E17
+/// M6 T5a, design §12.17, gap G1): its own hero's (`OwnHero`, private) alone; the other side's
+/// none, so its Orb of Inhibition (684) and Recanter's Cloak (537) show no box there, where local
+/// play shows them (the entry's box instead, e.g. 186 or 713, or a wall's aim with every hex
+/// refused). The user (2026-11-05) requires a server's game to behave as a local one: the battle
+/// and server lanes are to put each side's two facts (forbids casting, spell level limit) on the
+/// wire, read here once they are.
+pub fn seat_magic(own: &Observation) -> [Option<OwnHero>; 2] {
+    let mut magic = [None, None];
+    // stub: CLT-STUB-2 (the other side's forbids-casting and level-limit facts, once on the wire)
+    magic[usize::from(own.viewer == Side::Defender)] = own.own_hero.clone();
+    magic
 }
 
 /// The box the spell book button shows instead of the book (`hero_book_button` 0x59E900's tests
@@ -439,10 +462,9 @@ mod tests {
         );
         assert!(matches!(answered(poor, YES, &c), Answered::Tell(_)));
         assert_eq!(answered(poor, no, &c), Answered::Closed);
-        assert_eq!(
-            answered(Asked::Told, h3_view::message::OK, &c),
-            Answered::Closed
-        );
+        for told in [Asked::Told, Asked::Refused] {
+            assert_eq!(answered(told, h3_view::message::OK, &c), Answered::Closed);
+        }
         assert!(affects_someone_only(39) && affects_someone_only(63) && !affects_someone_only(40));
         assert!(!affects_someone_only(20) && !affects_someone_only(59));
     }
@@ -572,14 +594,14 @@ mod tests {
         let box_of = |facts: &Facts, spell: (u32, u8)| after_book(facts, spell, Bugs::Fixed, &c);
         let arrow = (15, 1);
         assert_eq!(box_of(&base, arrow).unwrap(), "No one.");
-        // A spell the entry does not refuse on its own (a wall, Magic Arrow's level on Cursed
-        // Ground's limit): none.
+        // A spell the entry does not refuse on its own (a wall): none.
         assert_eq!(box_of(&base, (12, 3)), None);
         let cursed = Facts {
             field_level: Some(1),
             ..base.clone()
         };
         assert_eq!(box_of(&cursed, (17, 2)).unwrap(), "Cursed.");
+        // A level at Cursed Ground's limit passes it: spell 13 (a wall) at level 1, none.
         assert_eq!(box_of(&cursed, (13, 1)), None);
         let mut cloaked = base.clone();
         cloaked.heroes[0].as_mut().unwrap().level_limit = Some(2);
@@ -728,6 +750,106 @@ mod tests {
         let facts = Facts::of(&own, &own, [None, None], Some(&ruleset), names);
         assert_eq!((facts.side, facts.hero()), (1, ""));
         assert_eq!(facts.summoned, None);
+    }
+
+    #[test]
+    fn a_hypnotized_stack_s_turn_names_its_controller_s_hero() {
+        // E17 M6 T5a (the review): the side to act is the active stack's controller (+0x132C0, as
+        // the engine's `side_to_act`), not its owner: the attacker's Catapult controlled by the
+        // defender casts with the defender's hero, whom 537 and 539 name; the records and the
+        // elemental are the defender's, the natives the attacker's.
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let c = refusals_catalogue();
+        let (ruleset, mut own, manifest) = opening_of("msg-remove");
+        let names = (&manifest, &tables, &c);
+        let active = own.active.unwrap();
+        let stack = own.stacks.iter_mut().find(|s| s.id == active).unwrap();
+        assert_eq!(
+            (stack.side, stack.controller),
+            (Side::Attacker, Side::Attacker)
+        );
+        stack.controller = Side::Defender;
+        let raw = |key: &str| ruleset.creature_by_key(key).unwrap().raw();
+        own.sides[0].summoned = Some(raw("base:water_elemental"));
+        own.sides[1].summoned = Some(raw("base:fire_elemental"));
+        let mut facts = Facts::of(&own, &own, [None, None], Some(&ruleset), names);
+        assert_eq!(facts.side, 1);
+        let defender = facts.heroes[1].clone().unwrap();
+        assert_ne!(defender.name, facts.heroes[0].as_ref().unwrap().name);
+        assert_eq!(facts.hero(), defender.name);
+        let records = own.stacks.iter().filter(|s| s.side == Side::Defender);
+        assert_eq!(facts.records, u32::try_from(records.count()).unwrap());
+        assert_eq!(facts.summoned.as_ref().map(|s| s.0), Some(114));
+        // Summon Water Elemental with the defender's Fire Elementals bound.
+        let pronoun = if defender.female { "her" } else { "his" };
+        let summoned = after_book(&facts, (68, 5), Bugs::Fixed, &c).unwrap();
+        let fire = "creature.base:fire_elemental";
+        assert_eq!(summoned, format!("{}: {fire} ({pronoun})", defender.name));
+        // The attacker's hero wears the Cloak: the defender's hero is kept from casting.
+        facts.heroes[0].as_mut().unwrap().level_limit = Some(2);
+        let cloak = after_book(&facts, (17, 3), Bugs::Fixed, &c).unwrap();
+        assert_eq!(cloak, format!("Cloak stops {}", defender.name));
+    }
+
+    #[test]
+    fn a_seat_on_a_server_knows_its_own_hero_s_magic_alone() {
+        // E17 M6 T5a (`Battle::facts`' server branch; gap G1, CLT-STUB-2): the seat's own hero's
+        // limits filled, the other side's none (its Orb shows no 684 there), the public facts
+        // (the garrison, Cursed Ground by its key without the ruleset) present all the same.
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let c = refusals_catalogue();
+        let (_, mut own, manifest) = opening_of("msg-cursed");
+        let names = (&manifest, &tables, &c);
+        assert_eq!(own.viewer, Side::Attacker);
+        let mine = own.own_hero.as_mut().unwrap();
+        (mine.no_casting, mine.level_limit) = (true, Some(3));
+        own.anti_magic = true;
+        let magic = seat_magic(&own);
+        assert_eq!(magic, [own.own_hero.clone(), None]);
+        let [attacker, defender] = &magic;
+        let facts = Facts::of(
+            &own,
+            &own,
+            [attacker.as_ref(), defender.as_ref()],
+            None,
+            names,
+        );
+        assert!(facts.garrison);
+        assert_eq!((facts.field_level, facts.limit), (Some(1), 20));
+        let hero = facts.heroes[0].clone().unwrap();
+        assert!(hero.forbids);
+        assert_eq!(hero.level_limit, Some(3));
+        assert!(
+            facts.heroes[1]
+                .iter()
+                .all(|h| !h.forbids && h.level_limit.is_none())
+        );
+        assert_eq!(before_book(&facts, &c).unwrap(), "Garrison.");
+        let open = Facts {
+            garrison: false,
+            ..facts
+        };
+        assert_eq!(
+            before_book(&open, &c).unwrap(),
+            format!("{} wears Orb", hero.name)
+        );
+        // The other side's hero unknown: no box for it.
+        let unknown = Facts::of(&own, &own, [None, None], None, names);
+        assert_eq!(
+            before_book(
+                &Facts {
+                    garrison: false,
+                    ..unknown
+                },
+                &c
+            ),
+            None
+        );
+        // The defender's seat: its own hero's alone.
+        own.viewer = Side::Defender;
+        assert_eq!(seat_magic(&own), [None, own.own_hero.clone()]);
     }
 
     #[test]

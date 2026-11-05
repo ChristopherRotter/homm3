@@ -678,6 +678,22 @@ pub enum MessageDid {
     /// A turret's info closed by its OK (E17 M6 T2b2): the battle takes the mouse again as
     /// after a stats dialog (`Input::Looked`).
     Looked,
+    /// A refusal of the spell book button or of the aim's entry closed by its OK (E17 M6 T5a,
+    /// design §12.17; [`Asked::Refused`]): the box being modal, only now does the button's path
+    /// post the mouse where it rests (0x474F72, `Input::Cancel`).
+    Refused,
+}
+
+/// What a box that asked `asked` leads to as it closes, before its buttons' answer
+/// ([`crate::boxes::answered`]): the result window closes the battle's screen, a turret's info
+/// hands the mouse back as a stats dialog, a refusal posts the mouse; none: by the button.
+fn closed(asked: Asked) -> Option<MessageDid> {
+    match asked {
+        Asked::Result => Some(MessageDid::Ended),
+        Asked::Turret => Some(MessageDid::Looked),
+        Asked::Refused => Some(MessageDid::Refused),
+        _ => None,
+    }
 }
 
 /// The original's spells aimed at a second target too (Sacrifice, Teleport): their aims are not
@@ -727,9 +743,9 @@ pub enum Opened {
     No,
     /// The book opened.
     Book,
-    /// A box told why the hero may not cast (an anti-magic garrison, the Orb of Inhibition;
-    /// design §12.17): the battle takes the mouse again (`hero_book_button`'s −1, the mouse
-    /// posted, 0x474F72).
+    /// A box tells why the hero may not cast (an anti-magic garrison, the Orb of Inhibition;
+    /// design §12.17): the battle takes the mouse again after its OK (`hero_book_button`'s −1,
+    /// the mouse posted, 0x474F72; [`MessageDid::Refused`]).
     Refused,
 }
 
@@ -744,6 +760,10 @@ pub enum BookDid {
     Cast(Command),
     /// The book closed on a spell that takes a target: its aim starts (E17 M5 T3b).
     Aim(u16),
+    /// The book closed on a spell the engine refuses and a box tells why over the battle (E17
+    /// M6 T5a, design §12.17): the battle takes the mouse again after its OK
+    /// ([`MessageDid::Refused`]).
+    Refused,
 }
 
 impl<'g> Battle<'g> {
@@ -1756,7 +1776,7 @@ impl<'g> Battle<'g> {
         let refused =
             (self.facts()).and_then(|facts| crate::boxes::before_book(&facts, &writer.catalogue));
         if let Some(text) = refused {
-            return if self.tell(at, &text, (Style::Ok, None), Asked::Told) {
+            return if self.tell(at, &text, (Style::Ok, None), Asked::Refused) {
                 Opened::Refused
             } else {
                 Opened::No
@@ -1790,11 +1810,8 @@ impl<'g> Battle<'g> {
         let first = self.record.first_snapshot()?;
         let magic = match self.fight.as_ref()? {
             Fight::Here(live) => live.magic(),
-            Fight::Server(_) => {
-                let mut magic = [None, None];
-                magic[usize::from(own.viewer == Side::Defender)] = own.own_hero.clone();
-                magic
-            }
+            // The seat's own hero's alone (gap G1, CLT-STUB-2).
+            Fight::Server(_) => crate::boxes::seat_magic(&own),
         };
         let writer = self.ground.writer.as_ref()?;
         let names = (
@@ -1835,8 +1852,9 @@ impl<'g> Battle<'g> {
 
     /// The open book's answer to `outcome` (E17 M5 T3a): closed, or closed on a spell, whose cast
     /// is given when the engine takes it without a target (one that takes a target is aimed first:
-    /// T3b's); a refusal or a description shows its message box over the book, a stack spell
-    /// that no hex takes "That spell will affect no one!" over the battle (E17 M5 T4a).
+    /// T3b's); a refusal or a description shows its message box over the book, a spell the
+    /// engine refuses its refusal's box over the battle (E17 M5 T4a: a stack spell no hex takes,
+    /// GENRLTXT 186; E17 M6 T5a, design §12.17: the others, [`BookDid::Refused`]).
     fn book_did(&mut self, outcome: h3_view::book::Outcome) -> BookDid {
         use h3_view::book::Outcome;
         match outcome {
@@ -1870,8 +1888,9 @@ impl<'g> Battle<'g> {
                 // A spell with a second target (Teleport, Sacrifice) has aims of its own (not
                 // built); a spell the engine refuses tells why as the original's book button and
                 // aim's entry do (E17 M5 T4a: a stack spell or Teleport no hex takes, GENRLTXT
-                // 186; E17 M6 T5a, design §12.17: the others), the posted move after the box as
-                // after the book; a wall with no free hex opens its aim all the same.
+                // 186; E17 M6 T5a, design §12.17: the others), the move posted after the box's OK
+                // as after a book closed without a spell; a wall with no free hex opens its aim
+                // all the same.
                 let keys = &self.record.header.manifest.keys.spells;
                 let original =
                     motion::spell_entry_in(keys, &self.ground.tables, spell).map(|e| e.original);
@@ -1879,8 +1898,12 @@ impl<'g> Battle<'g> {
                 let mut aim = self.hero_aim(spell);
                 if aim.is_none() {
                     if let Some(text) = self.refusal(spell, original) {
-                        self.tell(opened, &text, (Style::Ok, None), Asked::Told);
-                        return BookDid::Changed;
+                        let told = self.tell(opened, &text, (Style::Ok, None), Asked::Refused);
+                        return if told {
+                            BookDid::Refused
+                        } else {
+                            BookDid::Changed
+                        };
                     }
                     if original.is_some_and(h3_view::shades::wall) {
                         aim = self.nowhere(spell);
@@ -2773,12 +2796,9 @@ impl<'g> Battle<'g> {
         self.opening = false;
         // *Not built* (E17 M5 T8b2, R5b-4): what `battle_end` does after the window closes, the
         // experience given (0x477948) and Eagle Eye's message.
-        if asked == Asked::Result {
-            self.result_closed = true;
-            return MessageDid::Ended;
-        }
-        if asked == Asked::Turret {
-            return MessageDid::Looked;
+        self.result_closed |= asked == Asked::Result;
+        if let Some(did) = closed(asked) {
+            return did;
         }
         let Some(writer) = self.ground.writer.as_ref() else {
             return MessageDid::Changed;
@@ -3501,6 +3521,18 @@ fn first_boxes(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_refusal_s_box_hands_the_mouse_back_as_it_closes() {
+        // E17 M6 T5a (the review, design §12.17): the book's and the aim's refusals post the mouse
+        // after their OK; the result window and a turret's info keep their own close; the other
+        // boxes answer by their button.
+        assert_eq!(closed(Asked::Refused), Some(MessageDid::Refused));
+        assert_eq!(closed(Asked::Result), Some(MessageDid::Ended));
+        assert_eq!(closed(Asked::Turret), Some(MessageDid::Looked));
+        assert_eq!(closed(Asked::Told), None);
+        assert_eq!(closed(Asked::Retreat), None);
+    }
 
     #[test]
     fn the_boxes_the_battle_began_with_ignore_the_open_dialog_s_clicks() {
