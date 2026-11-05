@@ -518,13 +518,14 @@ mod tests {
         // the moats' names; E17 M4 T2c-2 the walls' parts (WALLS.TXT); E24 M3 T6a2b the map
         // viewer's quests' texts (SeerHut.txt, the map hint's keys every client lists); E17 M6
         // T2a1 the stats dialog's attack and defense labels (PRISKILL.TXT) and the creatures'
-        // ability texts; T2a2a its hints, the cast button's the first mine's name (MineName.txt).
+        // ability texts; T2a2a its hints, the cast button's the first mine's name (MineName.txt);
+        // E17 M6 T5a the artifacts' names (ARTRAITS.TXT).
         assert!(keys.keys.contains_key("stats.attack"));
         assert!(keys.keys.contains_key("creature-ability.base:marksman"));
         assert!(keys.keys.contains_key("stats.hint.ok"));
         let tables = [
-            "ARRAYTXT", "BLDGNEUT", "BLDGSPEC", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS",
-            "MINENAME", "PRISKILL", "SEERHUT", "SKILLLEV", "SPTRAITS", "WALLS",
+            "ARRAYTXT", "ARTRAITS", "BLDGNEUT", "BLDGSPEC", "CRTRAITS", "EXE", "GENRLTXT", "HELP",
+            "HOTRAITS", "MINENAME", "PRISKILL", "SEERHUT", "SKILLLEV", "SPTRAITS", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }
