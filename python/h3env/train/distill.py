@@ -40,9 +40,9 @@ counts its samples pro rata of the steps taken, one the teacher is still playing
 scored and saved; a second Ctrl-C aborts at once, losing what came after the last checkpoint.
 `--resume DIR` continues it in a new segment to its budget, as the trainer's segments do: the
 teacher plays new battles on the segment's seed (`run.segment_seed`), the metrics are cut back to
-the checkpoint, the report is the whole run's (`segments`: each one's seed, start, device and
-end). A resume's `--set` changes only `RESUMABLE`'s keys; the learning rate's horizon stays the
-budget at the start.
+the checkpoint, the report is the whole run's (`segments`: each one's seed, start, device,
+wall-clock seconds and end). A resume's `--set` changes only `RESUMABLE`'s keys; the learning
+rate's horizon stays the budget at the start.
 """
 
 from __future__ import annotations
@@ -667,6 +667,7 @@ def go(
     ]
     gpu = torch.cuda.get_device_name(device) if device.type == "cuda" else None
     started = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    begun = time.monotonic()
     entry: dict[str, Any] = {
         "segment": segment,
         "seed": segment_seed(bench.seed, segment),
@@ -677,6 +678,8 @@ def go(
         "samples": 0 if state is None else state["samples"],
         "changed": changed or {},
         "ended": None,
+        #: The segment's wall-clock seconds, as of its latest checkpoint.
+        "seconds": 0.0,
     }
     metrics_path = out / "metrics.jsonl"
     with stop, ExitStack() as closing:
@@ -733,6 +736,7 @@ def go(
             nonlocal last_save
             metrics.flush()
             report["samples"] = samples
+            entry["seconds"] = time.monotonic() - begun
             cuda = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else []
             save(
                 out / CHECKPOINT,

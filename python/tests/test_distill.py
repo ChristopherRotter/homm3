@@ -370,6 +370,7 @@ def test_a_stopped_bench_resumes_to_its_budget(tmp_path) -> None:
         (2, "budget"),
     ]
     third = finished["segments"][2]
+    assert all(s["seconds"] > 0 for s in finished["segments"])
     assert third["changed"] == {"samples": [600, 900]} and third["samples"] == stopped["samples"]
     assert third["seed"] == segment_seed(7, 2) != 7 and finished["bench"]["samples"] == 900
     saved = json.loads((out / "report.json").read_text())

@@ -4,13 +4,41 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237). T88b in two by side (decision 239; D-51 settled as the original, decision 238): T88b1 done (`adventure/e08-t88b1`: `E08-design.md` parts A and B, ADR-0016's draft), T88b2 done whole (decision 240; `adventure/e08-t88b2`: part C, ADR-0017's draft, the cut; its checkpoint ADV-Q43, decisions 241–243). The cut (design §17): rounds 2 to 8, T89 to T97, batch E10 first. T89 in two at the code's seam (decision 244): T89a done (`adventure/e08-t89a`: the writer's classes and teams, the spec's fields, `cross-lane`), T89b done whole (decision 246; `adventure/e08-t89b`, `cross-lane`: the specs `E08-batch-10a` and `-10b`). T90 done (`adventure/e08-t90`: the harness reads and both batches' runs), T91 done whole (decision 247; `adventure/e08-t91`: survey §16, every row as read). T92 done whole (decision 247; `shared/e08-t92`: the ADRs, the glossary, the security lines). Round 5: T93 in two at the design's seam (decision 248): T93a done whole (`adventure/e08-t93a`, `cross-lane`, decision 249: the kinds, the parameters, the table, the packs, the check against the original data; part v16); T93b done whole (decision 250; `adventure/e08-t93b`: the import, map import v16). Round 6: T94 in two at the design's seam (decision 251): T94a done (`adventure/e08-t94a`: the build, the refusals, the resolution, the lists, the census); T94b done whole (decision 252; `adventure/e08-t94b`: the dwellings' and camps' week state, adventure state hash v20). Round 7: T95a in two at the guards (decision 253): T95a1 done (`adventure/e08-t95a1`: the visits without a battle, the hire question, the free creatures, the camp's visit, the writer); T95a2 done whole (decision 254; `adventure/e08-t95a2`: the guards' question, their battle, its end, the flag and the hire question after a win); T95b done whole (decision 255; `adventure/e08-t95b`, `cross-lane`: the purchase, the hire dialog, the env's v7, replay format v10, game state hash v25). Round 8: T96 in three (decision 256, as increment 9's T86): T96a done (`adventure/e08-t96a`: the map `e08-dwellings-36`, its three random and five scripted replays); T96b1 done whole (decision 257; `adventure/e08-t96b1`: the plans' dwellings, their checks and cover test, the three failing `view.rs` seeds fixed in the test); T96b2 done whole (`adventure/e08-t96b2`, `shared/e08-t96b2-benches`: the map `e08-dwellings-144`, its three workloads, the census's entrance check and most per map); T97 in three (decision 258): T97a done (`adventure/e08-t97a`: the audit, its gaps fixed); T97b in two (decision 259): T97b1 done (#742, `adventure/e08-t97b1`: survey §17, the dwellings entered from water imported, a tied random dwelling's checks, map import v19); T97b2 done (`adventure/e08-t97b2`: the plans' dwellings on water, the boat plans' cover and view tests, `check_told`'s heroes stepping into sight); T97c next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a next, then T98b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T97 — the audit; increment 10 closed, increment 11 refined** (design §17, the exit criteria; decision 256; in three, decision 258: **T97a** done, the audit, `adventure/e08-t97a`; **T97b** the dwellings entered from water, in two (decision 259): **T97b1** done, `adventure/e08-t97b1`; **T97b2** done, `adventure/e08-t97b2`; **T97c** the closure and the refinement)
+**E08 T98a — the teleporters survey** (decision 261; as T88a for increment 10: survey file
+`docs/rules/surveys/E08-teleporters.md`)
 
-- **Scope:** increment 10 against its eight exit criteria (design §17), as T87 audited increment 9: the rules' ids, sources and tests, the quirks and stubs, the gates; **the four shipped maps refused as `OwnedOnWater`** (a dwelling entered from water: Adventures of Jared Haret, Rise of the Phoenix and its Allied version, Serpents Treasure; the inbox's note of 2026-11-04): whether such a dwelling is built is a sourced rule, settled here or carried into increment 11 (the typed refusal stays meanwhile); the increment's scope, decisions and task list moved to `E08-archive.md`; increment 11 refined with the user (the epic's sketch).
-- **T97c, the closure and the refinement:** increment 10's scope, decisions and task list to `E08-archive.md`, the design note to the log; increment 11 refined with the user (ADV-Q44; the epic's sketch item 11).
-- **Depends on:** T96b2 (done); each part on the one before. **Status:** T97c ready (T97b2's pull request merged first; docs and the user's refinement).
+- **Scope:** the census of classes 103, 43 to 45 and 111 on the 160 shipped maps (by subclass and
+  level, the gates' pairs, each channel's entrances and exits, the Whirlpools' waters; T97c's counts
+  in `E08-log.md`, T97c); their `.h3m` bodies and templates (`docs/formats/h3m.md`, VCMI 1.7.5's
+  reader); the original's code (a step onto an entrance: the exit and how it is chosen, a random
+  exit's draw and its stream, an exit that is occupied or guarded, the points after the jump,
+  whether a move goes on through it, the paths and the reach through a teleporter, a Whirlpool's
+  losses and its hero in a boat, what the fog reveals at the exit; `docs/exe/README.md`,
+  `scripts/exe.py`), VCMI's and the wiki's rules; disputes `D-<n>` from 53, reading quirk
+  candidates `A-<n>` from 37; the proposed rule ids; the batch's plan (E11) on the client lane's
+  harness (decision 261's agent's call); what a viewer sees of a hero passing. Likely in two (T98a1
+  the objects, the census and the jump; T98a2 the reach and the paths, the views, the batch's plan
+  and the checkpoint), confirmed with the user at its start.
+- **Inputs:** decisions 260, 261; ADR-0015 to -0017 (ADR-0016 points 3 and 4, ADR-0017's streams);
+  the lane's `TRAPS.md` (a new read in the reach's or the passage's loops; a test's blocker of a
+  class that gets a kind); the inbox's performance note of 2026-10-23
+  (a lifted hero's reach); surveys `E08-hero-movement.md` (the reach, flying, A-13) and `E08-sea.md`
+  (a boat's entrances).
+- **Depends on:** T97c (done). **Status:** ready (the original data and the shipped maps are needed:
+  staging per `docs/08-work-process.md`, "Cloud sandbox").
+
+**E08 T98b — the ADR amendment drafts, the design note and the cut** (decision 261; as T88b)
+
+- **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
+  11 (its pointer replaced; increment 10's note in `E08-log.md` as the model), the reach's and the
+  passage's cost planned against the gated workloads (the hot path, `homm3-bench-regression`), the
+  building rounds cut, batch E11 first; the checkpoint's question: the user accepts the drafts
+  before anything is built (decision 261).
+- **Inputs:** the survey `docs/rules/surveys/E08-teleporters.md` (its interfaces' sketch, the
+  batch's plan, the proposed ids, its checkpoint's answers); decisions 260, 261.
+- **Depends on:** T98a. **Status:** after T98a; its cut confirmed with the user at its start.
 
 ## Inbox
 
@@ -34,27 +62,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   once the derivation knows each mark's amounts (your content), the rest staying temporary; the
   owner's Grail building is the town lane's (its inbox).
 
-- 2026-11-02 (the town lane, E09 T2b, `TWN-Q4`; **for your merge order, nothing to build**):
-  E09's build bumps your versions `cross-lane` (`docs/epics/E09-design.md` §19, §21): adventure
-  replay format v9 (T5a: the town part's hash in the header; `GameRuleset::new` gains the town
-  part), map import v16 (T7a), game state hash v23 after your T85b's v22 (T7b), adventure ruleset
-  part v16 and state hash v20 (T8a: the kind `Town`, towns ownable); the towns' income joins your
-  T85b's day advance (§16). None starts before your T85b's pull requests merge; the second to
-  merge rebases and bumps again.
-
 - 2026-11-02 (the town lane, E09 T1b2b, `TWN-Q2`; **nothing to build, for your import and
   setup**): E09's increment 1 builds **the random hero** (class 70, drawn as the main town's hero;
   E09 decision 8) and **the starting-hero pick per colour in the setup** beside the faction
   (decision 9), `cross-lane` in your import and setup, merged in order with yours; leave both to
   it (your 2026-10-20 note's 18 random heroes with a custom experience come with it). An allied
   town is entered and never captured (decision 16), as your owned objects' team test.
-
-- 2026-11-02 (the battle lane, E26 T5; for your information, nothing to do now): the fair
-  system actor `h3_battle_ai::choose_fair` (ADR-0027 point 4 as amended) is to be the computer's
-  default battle policy everywhere, the all-seeing `choose` a game's option, "player option too"
-  (the user, AI-Q10). When the game's setup gets options, the sight is one of them; the neutral
-  seat (`h3-sim`'s adventure env) is the AI lane's switch. `crates/h3-cli/tests/
-  adventure_replays.rs`' uncommitted both-sides battles may use either.
 
 - 2026-10-31 (the town lane, E09 T0, `shared/town-lane`; **read before your next task**): the user
   opened a lane `town` (`TWN`) for E09 in parallel with E08 (TWN-Q1). It owns the crate `h3-towns`
@@ -69,13 +82,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   E09 notes of your inbox and archive are gathered in the town queue's inbox; yours can leave
   them as they are. Increment 1 of E09 builds towns on the map (the import's main-town hero and
   `HeroInTown`, entering, capture by siege, the hall's income).
-
-- 2026-11-02 (the town lane, E09 T1a1; **for increment 10's random dwellings**): of the shipped
-  maps' random dwellings tied to a town by its identifier (classes 216 and 217), all 1 397 (87
-  maps) are tied to a random town (class 77), none to a fixed one; the original resolves the
-  random towns' factions as the map's objects are read and the dwellings after them
-  (`random_dwellings_resolve` 0x502B60). So these dwellings wait for E09's random towns (increment
-  1, survey `docs/rules/surveys/E09-towns.md` §1.6, §2.1, §2.3); 205 take a faction set instead.
 
 - 2026-10-31 (the map client lane, E24 M4 T0; **for the views, before E24 M4 T3**; your archive's
   note (3) of 2026-10-23, "refined with you at M4"): the map viewer takes the static art from the
@@ -95,13 +101,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   is needed before the server lane's whole-game record exists; increment 9's views (your T83b2b,
   T85) are read by the same task.
 
-- 2026-10-31 (the client lane, E17 M5 T8b2, review R7-8; for information, nothing to do): the
-  harness checks the starting bonus Gold it sets. `h3drive.gold_bonus` (a recipe's `gold = true`,
-  `h3adv.to_hot_seat(..., gold=True)`) reads the scenario list's rows in memory
-  (`h3mem.starting_bonuses`: H3API's `H3SelectScenarioDialog` pointer 0x69FBE8, `bonusType` +0x6C,
-  3 Random, 0 Artifact, 1 Gold; observed) and stops the run unless exactly its players read Gold.
-  Recipes without `gold` are unchanged.
-
 - 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
   after it merges, run `clients/capture/setup.sh` again for every run directory you use: the
   hook DLL's ack has ten fields now, and an older `xdd.dll` stops a run with "stale xdd.dll".
@@ -113,13 +112,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   opening (else the run raises), loops counted (`sounds_settled` too); a paused sample answers
   Miles' 8; `wineserver -w` waits at most 60 s. Nothing else drives the original otherwise
   (runbook, "Sound", "The clips", "Traps").
-
-- 2026-10-30 (the map client lane, E24 M3 T6a2b; the user's standing consent for the writer, E24
-  T0; for your information, nothing to do): **the writer writes quests**: `Extras::quests` maps
-  an index of `Extras::objects` (a Seer's Hut, 83, or a Quest Guard, 215) to a
-  `model::Mission`, written in the SoD layout with no deadline, no texts and a seer's reward
-  nothing (`writer::extras::write_quest`; refused on another class or with a list past 255).
-  A literal `Extras { tiles, objects }` now needs `..Extras::default()`.
 
 - 2026-11-03 (E08 T87b's audit; **for the next import bump**, increment 10's or the town lane's
   T7a): the parser reads class 220 below subclass 7 as a mine body (`parse/objects.rs`) while the
