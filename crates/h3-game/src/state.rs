@@ -484,12 +484,15 @@ impl GameState {
     /// without room a reward record's experience held as a rest, given after its army dialog
     /// closes, ADV-RWD-001, E08 T63b), then
     /// the offer ([`Self::open`]) with whatever follows one that does not open, then the battle
-    /// ([`Self::start_battle`]), the meeting ([`Self::meet`], E08 T51b), the army dialog
-    /// ([`Self::open_army_dialog`], T51b), the choice ([`Self::open_choice`], T63a), the
+    /// ([`Self::start_battle`]; a siege its town's visitor defends after the garrison's merge into
+    /// the visitor's army, each slot it changed told to its army's owner as `StackChanged`:
+    /// [`town::merge`], TWN-SIE-002, E09 T8b2b), the meeting ([`Self::meet`], E08 T51b), the army
+    /// dialog ([`Self::open_army_dialog`], T51b), the choice ([`Self::open_choice`], T63a), the
     /// University ([`Self::open_university`], T63a) or the hire dialog ([`Self::open_hire`], E08
     /// T95b): an outcome has at most one of the offer, the battle, the meeting, the group without
     /// room, the choice, the University and the hire dialog.
     // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
+    // rule: TWN-SIE-002
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -526,7 +529,16 @@ impl GameState {
             next = outcome
                 .offer
                 .and_then(|offer| self.open(rules, player, offer, sink));
-            if let Some(battle) = outcome.battle {
+            if let Some(mut battle) = outcome.battle {
+                // rule: TWN-SIE-002
+                for (owner, at) in town::merge(&mut self.adventure, rules, &mut battle) {
+                    let stack = self.stack_at(owner, at);
+                    sink.emit(GameEvent::StackChanged {
+                        player: owner,
+                        at,
+                        stack,
+                    });
+                }
                 self.start_battle(rules, player, battle, sink);
             }
             if let Some(meeting) = outcome.meeting {

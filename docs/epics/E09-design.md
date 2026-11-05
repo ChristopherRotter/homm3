@@ -302,6 +302,30 @@ ADR-0015's amendment point 3, in the import's order:
   the battle ends (T8b1's end). `StaticMap::town_formation(TownId)`: the game's `siege_setup`
   puts the town's formation (§8's byte) on the defending side when no hero defends. The merge,
   `Defender::Hero` and `besieges`' siege are T8b2b's. No version moved.
+- **As built (T8b2b; kept whole, the user, 2026-11-05):** `town_visit` gives `Neighbour` also
+  when a hero of another team stands on the entrance, whoever owns the town (an own town's only
+  by a map's placement, TWN-SET-010), so `TWN-STUB-7` is lifted: `check_step`'s and the passage's
+  hero branch, meeting such a visitor (`besieges`), visit the town instead (`visit_at`: from the
+  tile before, a flight's from a stop node only, passing otherwise; a boat's step stays
+  `sail_entry`'s landing refusal; the passage leaves such a visitor out of its hero, so the town
+  is visited on every neighbour object's path), and the reach's cold `unmark_visitors` pass is
+  kept, the walking loop untouched (the bench against `master`: the passage +0.7 % of its own
+  count, `reach-lifted-xl-144` +0.24 %, `random-play-duel-36` +0.16 %, `reach-xl-144` −0.03 %;
+  inside the gate). `siege_start` gives the visitor
+  `Defender::Hero` (its army as it stands). **The merge** is the game's composition, as an army
+  command's: `settle_outcome` calls `h3_game`'s `town::merge` before `start_battle` for a siege
+  whose defender is a hero; it calls `AdventureState::merge_garrison(core, part, town)`, which
+  plans with `h3_adventure`'s pure `town::merge` (the rounds above; the room is the joins'
+  `room` with the part's slots and a stack's most, ADV-ARM-007; a creature the ruleset lacks is
+  worth 0), writes both armies (the garrison only when it changed) and returns the slots it
+  changed, the visitor's then the garrison's, each in slot order; the game sets the battle's
+  defending army to the merged one and tells each slot as `StackChanged` to its army's owner (the
+  visitor's to the visitor's owner, the garrison's to the town's, a neutral town's to nobody)
+  (the events' **agent's call**, the user's choice of three: a new `ArmyRef::Garrison(TownId)`,
+  which no army command may name before increment 3's town screen, `ArmyCommandError::Garrison`
+  in the adventure and the game's `admits`; `h3-cli`'s slot text `t<town>:<slot>`), before
+  `BattleStarted`. T8b1's tests that start a siege directly (`start_battle`) merge nothing. No
+  version moved: no state field, no hash input, no replay with a town.
 
 ### 11. Capture (TWN-CAP-001 to -003; T8a, the siege's case T8b)
 
@@ -613,7 +637,7 @@ T8a1; narrowed by T7b2a to a whole-map reveal at the start, which reaches only t
 lifted with the capture's reveal, T8a2); `TWN-STUB-6` a main town's hero learning no guild spell
 at the start (registered by T7b2b; increment 4, TD-10); `TWN-STUB-7` a defended town refused
 until the siege's start (registered by T8a2; narrowed by T8b2a to a visitor of another team;
-T8b2b's); `TWN-STUB-8` a walled Stronghold's natural
+lifted by T8b2b); `TWN-STUB-8` a walled Stronghold's natural
 obstacles (registered by T8b1; a siege-aware draw in `h3-battle`).
 
 ### 20. Batch TWN-1 (T3)

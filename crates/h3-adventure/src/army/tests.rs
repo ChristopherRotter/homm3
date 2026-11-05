@@ -8,7 +8,7 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{CreatureTypeId, Formation, Ruleset};
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_kernel::hash::hash_of;
 use proptest::prelude::{prop_assert, prop_assert_eq, proptest};
 use proptest::strategy::Strategy;
@@ -42,6 +42,14 @@ fn hero(id: u16, slot: u8) -> ArmySlot {
 fn group(slot: u8) -> ArmySlot {
     ArmySlot {
         army: ArmyRef::Group,
+        slot,
+    }
+}
+
+/// A slot of town 0's garrison (E09 T8b2b).
+fn garrison(slot: u8) -> ArmySlot {
+    ArmySlot {
+        army: ArmyRef::Garrison(TownId::new(0)),
         slot,
     }
 }
@@ -400,6 +408,10 @@ fn the_errors_read_well() {
         ),
         (ArmyCommandError::NoGroup, "no army dialog's group is open"),
         (
+            ArmyCommandError::Garrison(TownId::new(2)),
+            "town 2's garrison is not managed",
+        ),
+        (
             ArmyCommandError::NoSlot(7),
             "slot 7 is beyond the army's slots",
         ),
@@ -505,6 +517,11 @@ fn the_state_applies_a_command_on_its_players_heroes_and_the_group() {
         ),
         (moved(hero(1, 0), group(1)), ArmyCommandError::NoGroup),
         (moved(hero(1, 4), hero(3, 1)), ArmyCommandError::NoStack(4)),
+        // E09 T8b2b: a town's garrison is not managed before the town screen.
+        (
+            moved(garrison(0), hero(1, 1)),
+            ArmyCommandError::Garrison(TownId::new(0)),
+        ),
     ];
     for (command, error) in refused {
         assert_eq!(state.manage_army(part, RED, &command, None), Err(error));

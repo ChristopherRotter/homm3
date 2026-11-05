@@ -300,8 +300,8 @@ pub enum ObjectKind {
     /// ([`crate::AdventureState::town_garrison`]), its place among the static map's towns its
     /// `TownId` ([`crate::StaticMap::town_id`]). Its step since E09 T8a2 ([`Effect::Town`]): an
     /// ally's town entered, another player's or a neutral one captured when undefended
-    /// (TWN-VIS-001); since E09 T8b2a besieged from the tile before when its garrison defends it
-    /// (TWN-SIE-001; the siege against a visitor comes with E09 T8b2b, `TWN-STUB-7`).
+    /// (TWN-VIS-001); since E09 T8b2a besieged from the tile before when its garrison defends it,
+    /// since T8b2b when a visitor of another team does (TWN-SIE-001, TWN-SIE-002).
     Town,
 }
 
@@ -373,9 +373,8 @@ pub(crate) enum Effect<'k> {
     Camp,
     /// Entered by a hero of its owner's team, entered and captured when another player's or
     /// neutral and undefended ([`crate::AdventureOutcome::capture`]); besieged from the tile
-    /// before when its garrison defends it ([`crate::AdventureOutcome::battle`], E09 T8b2a); one a
-    /// visitor of another team defends is not visited until the siege against it (a town,
-    /// TWN-VIS-001, E09 T8a2; `TWN-STUB-7`).
+    /// before when its garrison or a visitor of another team defends it
+    /// ([`crate::AdventureOutcome::battle`], E09 T8b2a, T8b2b; a town, TWN-VIS-001, E09 T8a2).
     Town,
 }
 

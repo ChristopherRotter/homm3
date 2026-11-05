@@ -25,7 +25,7 @@ use crate::setup::Pos;
 /// stack of the creature that takes the group whole within `most` (the original's first stack,
 /// which takes any), else its first free slot of `slots` if the group fits a stack, else none.
 // rule: ADV-ARM-007
-pub(super) fn room(
+pub(crate) fn room(
     army: &[ArmyStack],
     (slots, most): (u8, u32),
     creature: CreatureTypeId,
@@ -62,7 +62,7 @@ pub(super) fn room_bound(
 
 /// Where a group goes in an army ([`room`]): onto the stack at this index, or into this free slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Room {
+pub(crate) enum Room {
     Stack(usize),
     Slot(u8),
 }
@@ -86,7 +86,7 @@ pub(super) fn add_stack(
 /// Adds `count` of `creature` to `army` at `room`, which [`room`] found for them: onto the stack
 /// at its index, or as a stack in its free slot, the army kept in slot order.
 // rule: ADV-ARM-007
-pub(super) fn join_at(army: &mut Vec<ArmyStack>, room: Room, creature: CreatureTypeId, count: u32) {
+pub(crate) fn join_at(army: &mut Vec<ArmyStack>, room: Room, creature: CreatureTypeId, count: u32) {
     match room {
         Room::Stack(index) => army[index].count += count,
         Room::Slot(slot) => {

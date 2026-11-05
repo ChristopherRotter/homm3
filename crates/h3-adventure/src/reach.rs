@@ -250,10 +250,11 @@ impl Reach {
 
     /// Unmarks in `occupied` the tile of each hero of another team than `hero`'s that stands on a
     /// town's entrance (E09 T8a2; TWN-VIS-002; [`AdventureState::besieges`]: the tile's object a
-    /// town, the one `visit_at` reads): the walking search meets the town there, which
-    /// that visitor defends (`visit_at`: refused until the siege against it, E09 T8b2b,
-    /// `TWN-STUB-7`), as `MoveHero`'s step refuses it, so that the search's loop tests nothing
-    /// more; a map without towns never asks (`bench-check`).
+    /// town, the one `visit_at` reads): the walking search meets the town there, which that
+    /// visitor defends (`visit_at`: since E09 T8b2b visited from the tile before, the siege
+    /// against the visitor, a destination as a monster's), as `MoveHero`'s step visits it, so
+    /// that the search's loop tests nothing more (its occupied branch would meet a field battle);
+    /// a map without towns never asks (`bench-check`).
     // rule: TWN-VIS-002
     #[cold]
     #[inline(never)]
@@ -263,7 +264,6 @@ impl Reach {
                 .slot(other.pos)
                 .filter(|_| state.besieges(hero.owner, other))
             {
-                // stub: TWN-STUB-7
                 occupied[slot] = false;
             }
         }

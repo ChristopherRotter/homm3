@@ -11,17 +11,23 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::ops::RangeInclusive;
 
-use h3_contracts::{ArmyStack, HeroId};
+use h3_contracts::{ArmyStack, HeroId, TownId};
 
 /// An army a management command names (ADR-0016 point 3): a hero's on the map, or the group of
 /// its owner's open army dialog (GAM-DEC-004), an army of the ruleset's slots without a hero,
-/// which the game holds and passes in.
+/// which the game holds and passes in; since E09 T8b2b a town's garrison, which the game's
+/// events name (the town epic's design note §10).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ArmyRef {
     /// A hero's army.
     Hero(HeroId),
     /// The open army dialog's group.
     Group,
+    /// A town's garrison (E09 T8b2b): the slots the garrison's merge into its visitor's army
+    /// changed before a siege (TWN-SIE-002, [`crate::AdventureState::merge_garrison`]). No army
+    /// command manages it before the town screen (E09 increment 3): one that names it is refused
+    /// ([`ArmyCommandError::Garrison`]).
+    Garrison(TownId),
 }
 
 /// A slot of an army.
@@ -110,6 +116,9 @@ pub enum ArmyCommandError {
     OtherCreature,
     /// A split's count is outside the range the two stacks allow ([`split_range`]).
     SplitCount(u32),
+    /// The command names a town's garrison, which no army command manages before the town screen
+    /// (E09 T8b2b; E09 increment 3).
+    Garrison(TownId),
 }
 
 impl fmt::Display for ArmyCommandError {
@@ -124,6 +133,7 @@ impl fmt::Display for ArmyCommandError {
             Self::LastStack => f.write_str("a hero's last stack would leave its army"),
             Self::OtherCreature => f.write_str("the split's target holds another creature"),
             Self::SplitCount(count) => write!(f, "a split cannot leave {count} in its target"),
+            Self::Garrison(town) => write!(f, "town {}'s garrison is not managed", town.raw()),
         }
     }
 }

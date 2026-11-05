@@ -493,7 +493,10 @@ pub enum GameEvent {
     },
     /// A slot of a player's army changed by an army command (GAM-MAN-001, E08 T51a): one event per
     /// slot the command names, the stack's, then its target's, with what it holds now (a slot of
-    /// an army dialog's group too, `ArmyRef::Group`: T51b). Seen by the owner.
+    /// an army dialog's group too, `ArmyRef::Group`: T51b). Since E09 T8b2b also each slot the
+    /// garrison's merge into a town's defending visitor's army changed before the siege, the
+    /// visitor's, then the garrison's (`ArmyRef::Garrison`; TWN-SIE-002; a neutral town's slots
+    /// to nobody). Seen by the owner.
     StackChanged {
         /// The army's owner.
         player: PlayerId,

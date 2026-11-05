@@ -9,33 +9,24 @@ Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
 T8a2, then T8b (cut in two: T8b1, T8b2, itself cut in two: T8b2a, T8b2b; rounds 2 to 6, T7a, T7b,
-T8a1, T8a2, T8b1, T8b2a are done, `E09-log.md`); each later round's entries are written when it
-comes (the epic's list), each task's cut confirmed at its start. Every entry's acceptance includes
-the Definition of Done (`docs/05-testing.md`).
+T8a1, T8a2, T8b1, T8b2a, T8b2b are done, `E09-log.md`); each later round's entries are written
+when it comes (the epic's list; round 9's below), each task's cut confirmed at its start. Every
+entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T8b2b — the siege against a town's visitor** (`cross-lane`; T8b2 cut in two at its start,
-the user, 2026-11-05: T8b2a, the step onto a town its garrison alone defends, is done,
-`E09-log.md`)
+**E09 T8c — the income, the views, the observation** (`cross-lane`; round 9, design §21)
 
-- **Scope:** design §10 (TWN-SIE-001's visitor, TWN-SIE-002; TWN-VIS-002 amended): `TWN-STUB-7`
-  lifted: a town a visitor of another team defends (`AdventureState::town_visit` gives none today)
-  visited from the tile before, the siege against the visitor (`Defender::Hero` with
-  `BattleStart::town`, `siege_start`); a step onto that visitor itself the same siege, never a
-  field battle (`besieges` in `check_step` and `passage`: today a refusal; a flight passes);
-  the reach's cold `unmark_visitors` pass kept or dropped by the bench against `master` (skill
-  `homm3-bench-regression`; the adventure lane's trap on the walking search's loop: the occupied
-  branch and a town's visit give the same destination); **the merge** of the garrison into the
-  visitor's army before the battle (§10, survey §9.2, TD-7 by the reading, batch TWN-1's row 3):
-  rounds of the visitor's weakest stack (the least AI value × count, of equal ones the last slot),
-  each garrison stack's gain, the greatest positive one (the first slot of equal ones) joining its
-  creature's stack or the first empty slot, else changing places with the weakest; what stays
-  does not fight; **its events** to the town's owner (design: `StackChanged` per slot, the hero's
-  and the garrison's, *agent's call*: the garrison has no `ArmyRef` today, so the event's shape is
-  this task's call, a new variant on the wire maps in `h3-protocol`, the global HANDOFF's trap);
-  end-to-end tests through `GameState::apply` (both steps, the merge seen in the battle's
-  armies, a defender's win keeping the merged army, an attacker's win capturing with the
-  attacker outside: T8b1's end).
-- **Depends on:** T8b2a (its pull request). **Status:** next; its cut confirmed at its start.
+- **Scope:** design §16 (TWN-INC-001, -002): each town a player owns pays `h3_towns::daily_income`
+  in the day advance beside the mines (from day 2, saturating, one `ResourceGained` per
+  resource; a neutral town nobody); §12 and §17 (TWN-VEW-001 to -003): the observation's
+  `towns: Vec<TownView>` (the towns the viewer has explored a tile of; owner, faction, name, fort,
+  Capitol; the garrison by the viewer's tavern level; the owner's facts for its team or a Rogue's
+  Visions), `ObjectView::town`, `project` of `TownCaptured` and `TownChanged`; the merge's
+  stacks stay the owner's (T8b2b's `StackChanged`); `docs/06-security.md`'s section "Towns";
+  inbox notes to the map client and the AI lane when it lands.
+- **Depends on:** T8b2b (its pull request). **Status:** next; its cut confirmed at its start.
+
+**E09 T9 — the fixtures, replays, properties, benchmarks, the env** (`cross-lane`; round 9,
+design §18): after T8c; its entry is written when T8c is done.
 
 ## Inbox
 
