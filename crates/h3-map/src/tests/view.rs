@@ -1225,7 +1225,8 @@ fn hire_source(rules: &GameRuleset, object_type: h3_adventure::ObjectTypeId) -> 
 /// on the source's entrance, as an offer's and a dialog's opening there (`OfferOpened`,
 /// `HireOpened`); the free creatures joined or refused and the purchases' joins (`CreaturesJoined`,
 /// `JoinRefused`) are of a hero of its own; a free creature missing (`NoneToRecruit`) is at a
-/// dwelling of its own, and a deserted camp (`ObjectEmpty`) is one a hero of its own stands on.
+/// dwelling of its own on whose entrance a hero of its own stands, and a deserted camp
+/// (`ObjectEmpty`) is one a hero of its own stands on.
 /// Of a source any viewer that sees it is told only the flag, with the owner the state holds
 /// (`ObjectFlagged`, never a camp's), and never a change of guards, of a monster's word or of a
 /// mark (`GuardsChanged`, `MonsterChanged`, `ObjectMarked`: §10, "a battle's change of a
@@ -1292,6 +1293,14 @@ fn check_hire_sources(
         own(hero)
             .zip(source(object_type, anchor))
             .is_some_and(|(h, (_, o))| o.covers(h.pos).1)
+    };
+    // Whether one of the viewer's heroes stands on an entrance of the source.
+    let stands = |object_type, anchor| {
+        let source = source(object_type, anchor);
+        adventure
+            .heroes()
+            .iter()
+            .any(|h| h.owner == viewer && source.is_some_and(|(_, o)| o.covers(h.pos).1))
     };
     let hiring =
         |kind: &OfferKind| matches!(kind, OfferKind::Hire { .. } | OfferKind::Guarded { .. });
@@ -1361,6 +1370,11 @@ fn check_hire_sources(
             }) => {
                 let owner = source(object_type, anchor).and_then(|(i, _)| adventure.owner(i));
                 prop_assert_eq!(owner, Some(viewer), "{:?}", event);
+                prop_assert!(
+                    stands(object_type, anchor),
+                    "{:?} told without the viewer's visit",
+                    event
+                );
             }
             GameEvent::Adventure(AdventureEvent {
                 kind:
@@ -1369,14 +1383,11 @@ fn check_hire_sources(
                         anchor,
                     },
                 ..
-            }) if hire_source(rules, object_type).is_some() => {
-                let camp = source(object_type, anchor);
-                let stands = adventure
-                    .heroes()
-                    .iter()
-                    .any(|h| h.owner == viewer && camp.is_some_and(|(_, o)| o.covers(h.pos).1));
-                prop_assert!(stands, "{:?} told without the viewer's visit", event);
-            }
+            }) if hire_source(rules, object_type).is_some() => prop_assert!(
+                stands(object_type, anchor),
+                "{:?} told without the viewer's visit",
+                event
+            ),
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::ObjectFlagged {
@@ -1532,8 +1543,9 @@ proptest! {
     /// other counts after another player's visit (its free creatures joined in one game and
     /// refused for want of room in the other, its army changed); never other guards (another
     /// player's battle goes alike in both games, [`outcome`]; nothing else sets them). A question
-    /// of the viewer's at a dwelling or a camp ends the comparison when the two games' differ,
-    /// and every step checks what the viewer is shown of them in both games
+    /// of the viewer's at a camp, or at a dwelling whose counts differ between the two games, ends
+    /// the comparison when the two games' differ; at any other dwelling the two are the same. And
+    /// every step checks what the viewer is shown of them in both games
     /// ([`check_hire_sources`]).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
@@ -1715,21 +1727,38 @@ proptest! {
             // E08 T96b1: a dwelling's or a Refugee Camp's question shows its visitor's owner, in
             // its decision, what the source holds: a camp's week's creature, a draw of the game's
             // stream (ADV-RFG-001) that the hidden differences move, or a dwelling's guards'
-            // creature and word. When the viewer's own names another in the other game the
-            // comparison ends, as at a visit's contents (its events, the same, name the object
-            // only); one that names the same goes on (a decline keeps the rest hidden, an
-            // acceptance ends it, `bought`). Another player's is told to that player alone
-            // (`OfferOpened`): the comparison goes on past it, its answer compared by
-            // [`outcome`] (a purchase of a creature the other game's camp lacks is refused
-            // there, which ends it).
-            let question = ta.iter().any(|e| {
-                matches!(*e, GameEvent::OfferOpened { object_type, .. }
-                    if hire_source(rules, object_type).is_some())
+            // creature and word, the same in both games by construction (above). When the
+            // viewer's own at a camp, or at a dwelling whose counts differ between the two games
+            // (another player's visit, above), names another in the other game the comparison
+            // ends, as at a visit's contents (its events, the same, name the object only); at any
+            // other dwelling the two games' decisions are the same (a difference is a leak). One
+            // that names the same goes on (a decline keeps the rest hidden, an acceptance ends
+            // it, `bought`). Another player's is told to that player alone (`OfferOpened`): the
+            // comparison goes on past it, its answer compared by [`outcome`] (a purchase of a
+            // creature the other game's camp lacks is refused there, which ends it).
+            let question = ta.iter().find_map(|e| match *e {
+                GameEvent::OfferOpened {
+                    object_type,
+                    anchor,
+                    ..
+                } => hire_source(rules, object_type).map(|camp| (camp, object_type, anchor)),
+                _ => None,
             });
-            let decision = |game: &GameState| observe(game, rules, Viewer::Player(viewer)).decision;
-            if question && decision(&a) != decision(&b) {
-                prop_assert_eq!(ta, tb);
-                break;
+            if let Some((camp, object_type, anchor)) = question {
+                let decision =
+                    |game: &GameState| observe(game, rules, Viewer::Player(viewer)).decision;
+                let counts = |game: &GameState| {
+                    let index = object_index(game, object_type, anchor)?;
+                    game.adventure().dwelling_counts(index).map(<[u32]>::to_vec)
+                };
+                if camp || counts(&a) != counts(&b) {
+                    if decision(&a) != decision(&b) {
+                        prop_assert_eq!(ta, tb);
+                        break;
+                    }
+                } else {
+                    prop_assert_eq!(decision(&a), decision(&b), "{:?}", question);
+                }
             }
             prop_assert_eq!(ta, tb);
             check_same(&a, &b, rules, viewer)?;

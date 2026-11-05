@@ -38,7 +38,7 @@ use h3_adventure::{
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
 };
-use h3_content::{ArtifactTypeId, CreatureTypeId, Formation, ResourceId};
+use h3_content::{ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, ResourceId};
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
@@ -1676,8 +1676,10 @@ pub(super) fn start_on(m: &RawMap, rules: &GameRuleset, seed: u64) -> GameState 
 /// dwelling of the import's setup (its holds a faction set and a level range) is on `state`'s map
 /// a dwelling of a type its holds name (a faction of the set, the dwelling of a level of the range
 /// in that faction's table), with that type's blocked and visitable cells as its masks, its anchor
-/// the setup's moved right by the type's shift, holding nothing and owned as the setup says. The
-/// number of them.
+/// the setup's moved right by the type's shift, holding nothing and owned as the setup says; and
+/// its type one of the outcomes the map's bytes name (its class, subclass and body read back,
+/// [`dwelling_outcomes`], apart from the import's holds), its anchor the map's moved by that
+/// outcome's shift. The number of them.
 fn check_resolved(
     rules: &GameRuleset,
     m: &RawMap,
@@ -1686,13 +1688,39 @@ fn check_resolved(
     let m = parse(&encode(m), &Limits::default()).unwrap();
     let setup = import(&m, rules).unwrap();
     let (part, adventure) = (rules.adventure(), state.adventure());
+    // The map's random dwellings in its order, which the import keeps (it leaves out none: a
+    // plan lays out none entered on water): each one's outcomes read from its bytes read back
+    // (its kind by its template, its faction set and level range by its body;
+    // [`dwelling_outcomes`]), apart from the import's holds.
+    let mut raw = m
+        .objects
+        .iter()
+        .filter(|o| matches!(o.body, Body::RandomDwelling(_)));
     let mut resolved = 0;
     for (i, placed) in setup.map.objects.iter().enumerate() {
         let Holds::RandomDwelling { factions, levels } = &placed.holds else {
             continue;
         };
         resolved += 1;
+        // A random dwelling is an object of the static map, which the build resolves in place.
         let object = &adventure.map().objects()[i];
+        let Some(o) = raw.next() else {
+            return Err(fail(format!("random dwelling {i} not in the map")));
+        };
+        let kind = usize::try_from(o.template - 1).unwrap() / BLOCKERS.len();
+        let read = dwelling_outcomes(kind, &o.body);
+        let ty = object.object_type.unwrap();
+        let Some(&(_, _, shift)) = read.iter().find(|&&(named, _, _)| named == ty) else {
+            return Err(fail(format!(
+                "random dwelling {i} resolved to {ty:?}, not one of the map's {read:?}"
+            )));
+        };
+        let at = TilePos::new(
+            u16::from(o.pos.x) + u16::from(shift),
+            u16::from(o.pos.y),
+            o.pos.z,
+        );
+        prop_assert_eq!(object.anchor, at, "random dwelling {}", i);
         let outcomes: Vec<ObjectTypeId> = factions
             .iter()
             .flat_map(|&faction| part.random_dwelling(faction).unwrap())
@@ -1700,7 +1728,6 @@ fn check_resolved(
             .filter(|&(_, level)| (levels.0..=levels.1).contains(&level))
             .map(|(&ty, _)| ty)
             .collect();
-        let ty = object.object_type.unwrap();
         prop_assert!(outcomes.contains(&ty), "random dwelling {}: {:?}", i, ty);
         let Some(&ObjectKind::Dwelling {
             blocked,
@@ -1721,6 +1748,10 @@ fn check_resolved(
         prop_assert_eq!(&object.holds, &Holds::Nothing);
         prop_assert_eq!(adventure.owner(i), placed.owner);
     }
+    prop_assert!(
+        raw.next().is_none(),
+        "a random dwelling of the map not imported"
+    );
     Ok(resolved)
 }
 
@@ -3178,8 +3209,9 @@ fn hire_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec
 /// takes them within a stack's most, else its first free slot; `CreaturesJoined` to the owner
 /// alone) and lowers the source's count by it, the dialog closing (`DecisionClosed`) exactly when
 /// its source sells one creature; `Close` closes it and does nothing else. What follows a close
-/// (E08 T96b1) comes from the visit's held rests (a guarding monster's visit, GAM-DEC-007), the
-/// treasury and the army then compared by [`check_conservation`] alone.
+/// (E08 T96b1) comes from the visit's held rests: on a tile a monster guards, its visit, starting
+/// with its offer or its battle (GAM-DEC-007, ADV-MON-006), which leave the treasury and the army
+/// as the close left them; on any other tile, nothing.
 fn check_hire(
     state: &GameState,
     rules: &GameRuleset,
@@ -3240,6 +3272,31 @@ fn check_hire(
         let params = rules.adventure().params();
         (params.army_slots(), params.max_stack_count())
     };
+    // E08 T96b1: what may follow the dialog's close, the visit's held rests (GAM-DEC-007,
+    // ADV-MON-006): the visit of the monster guarding the hero's tile (an added one's too), its
+    // offer to the hero (to join, to flee) or its battle with the hero first; nothing on a tile
+    // no monster guards.
+    let guard = state.adventure().hero(hero).and_then(|h| {
+        let index = state.adventure().guard_of(rules.adventure(), h.pos)?;
+        state.adventure().object(index)
+    });
+    let held = |rest: &[GameEvent]| match (guard, rest.first()) {
+        (_, None) => true,
+        (
+            Some(o),
+            Some(&GameEvent::OfferOpened {
+                player,
+                hero: by,
+                object_type,
+                anchor,
+            }),
+        ) => (player, by, Some(object_type), anchor) == (actor, hero, o.object_type, o.anchor),
+        (Some(o), Some(&GameEvent::BattleStarted { heroes, tile, .. })) => {
+            let (blocks, visited) = o.covers(tile);
+            heroes == [Some(hero), None] && (blocks || visited)
+        }
+        _ => false,
+    };
     for command in legal {
         let (after, events, result) = probe(command);
         prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
@@ -3256,6 +3313,7 @@ fn check_hire(
                 events.first(),
                 Some(&GameEvent::DecisionClosed { player: actor })
             );
+            prop_assert!(held(&events[1..]), "{:?} after {:?}", events, command);
             prop_assert!(hire_view(&after, rules, actor).is_none());
             continue;
         };
@@ -3281,10 +3339,12 @@ fn check_hire(
         }));
         expected.extend(single.then_some(GameEvent::DecisionClosed { player: actor }));
         // E08 T96b1: after a purchase that closes the dialog, its visit's held rests (a guarding
-        // monster's visit, GAM-DEC-007, ADV-MON-006), whose gains and joins
-        // [`check_conservation`] counts; the treasury and the army are compared without them.
+        // monster's visit, GAM-DEC-007, ADV-MON-006: `held`), which start with an offer or a
+        // battle and so leave the treasury and the army as the purchase left them.
         prop_assert_eq!(events.get(..expected.len()), Some(&expected[..]));
-        prop_assert!(single || events.len() == expected.len(), "{:?}", events);
+        let rest = &events[expected.len()..];
+        prop_assert!(single || rest.is_empty(), "{:?}", events);
+        prop_assert!(held(rest), "{:?} after {:?}", events, command);
         let mut left = stock.clone();
         let place = left.iter().position(|&(sold, _)| sold == creature).unwrap();
         left[place].1 -= amount;
@@ -3296,9 +3356,6 @@ fn check_hire(
                 (open.target, open.object_type, open.anchor),
                 (view.target, source.0, source.1)
             );
-        }
-        if events.len() > expected.len() {
-            continue;
         }
         let mut treasury = state.treasury(actor).unwrap().to_vec();
         for &(resource, paid) in &price {
@@ -4881,12 +4938,15 @@ fn check_week(
 /// every dwelling full, owned or not, read apart from the engine's week: each of its kind's
 /// creatures its growth, its guards one stack by slot from 0 of each creature of the part's
 /// `guard_level` or more, `guard_factor` times its growth, in its kind's order; every Refugee
-/// Camp's creature a random monster of its kind's levels (ADV-MON-003's set), its count that
-/// creature's growth.
+/// Camp's creature a random monster of its kind's levels (ADV-MON-003's set, read from the core:
+/// its level within them, no war machine, none of [`CAMP_NOT_RANDOM`]), its count that creature's
+/// growth.
 fn check_dwellings_week(rules: &GameRuleset, after: &GameState) -> Result<(), TestCaseError> {
     let (core, part, a) = (rules.core(), rules.adventure(), after.adventure());
     let growth = |creature: CreatureTypeId| u32::from(core.creature(creature).unwrap().growth);
     for &i in a.map().dwellings() {
+        // A dwelling is an object of the static map (`StaticMap::dwellings`), never one added in
+        // play.
         let ty = a.map().objects()[i].object_type.unwrap();
         let Some(ObjectKind::Dwelling { creatures, .. }) = part.object_type(ty).map(|t| &t.kind)
         else {
@@ -4909,23 +4969,46 @@ fn check_dwellings_week(rules: &GameRuleset, after: &GameState) -> Result<(), Te
             .collect();
         prop_assert_eq!(a.dwelling_guards(i), guards, "dwelling {}", i);
     }
+    // The six creatures the original's draw leaves out (its ids 132 to 137, ADV-MON-003), named
+    // here apart from the part's `not_random_monsters`, which the engine's draw reads.
+    let not_random = CAMP_NOT_RANDOM.map(|key| core.creature_by_key(key).unwrap());
     for &i in a.map().camps() {
+        // A camp is an object of the static map (`StaticMap::camps`), never one added in play.
         let ty = a.map().objects()[i].object_type.unwrap();
         let Some(&ObjectKind::RefugeeCamp { levels }) = part.object_type(ty).map(|t| &t.kind)
         else {
             return Err(fail(format!("camp {i} of no camp's type")));
         };
         let (creature, count) = a.camp(i).unwrap();
+        // ADV-RFG-001's set read from the core, not from `random_monsters` (the pool the engine
+        // draws from, which `check_camps` already reads after every command).
+        let info = core.creature(creature).unwrap();
         prop_assert!(
-            part.random_monsters(core, levels).any(|c| c == creature),
-            "camp {}: {:?}",
+            (levels[0]..=levels[1]).contains(&info.level)
+                && !info.flags.contains(CreatureFlag::WarMachine)
+                && !not_random.contains(&creature),
+            "camp {}: {:?} of level {} not of the camp's set, levels {:?}",
             i,
-            creature
+            creature,
+            info.level,
+            levels
         );
         prop_assert_eq!(count, growth(creature), "camp {}", i);
     }
     Ok(())
 }
+
+/// The creatures a Refugee Camp never holds besides the war machines (ADV-RFG-001, ADV-MON-003:
+/// the original's `random_creature_by_level` draws among its ids 0 to 144 without 132 to 137), by
+/// key, for [`check_dwellings_week`].
+const CAMP_NOT_RANDOM: [&str; 6] = [
+    "ab:azure_dragon",
+    "ab:crystal_dragon",
+    "ab:faerie_dragon",
+    "ab:rust_dragon",
+    "ab:enchanter",
+    "ab:sharpshooter",
+];
 
 /// A Leave Guards dialog's close (E08 T86b1; ADV-MIN-002, GAM-DEC-004 amended, increment 9's
 /// design note §15's `Step::Garrison`): the group as it stood becomes the mine's guards, by slot
@@ -7909,7 +7992,9 @@ fn the_plans_flag_guard_build_and_grow() {
 /// a random dwelling's after the build resolved it), the hire questions and the guards' questions
 /// accepted and declined, the guards' battles and those won, the free creatures joined, the
 /// purchases in a dwelling's and in a camp's dialog, the dialogs closed, the weeks that refilled a
-/// dwelling, and the random dwellings resolved at the builds.
+/// dwelling, and the random dwellings resolved at the builds; the free creatures missing
+/// (`NoneToRecruit`), the camps found deserted (`ObjectEmpty`) and the weeks started with a camp on
+/// the map ([`check_dwellings_week`]'s camps).
 #[derive(Debug, Default)]
 struct Hired {
     visits: [usize; DWELLINGS.1],
@@ -7925,6 +8010,9 @@ struct Hired {
     closes: usize,
     refills: usize,
     resolved: usize,
+    none_to_recruit: usize,
+    camps_deserted: usize,
+    camp_weeks: usize,
     /// The visitors of the guards' battles in progress.
     fighting: Vec<HeroId>,
 }
@@ -8000,6 +8088,21 @@ impl Hired {
                             != (a.dwelling_counts(i), a.dwelling_guards(i))
                     });
                     self.refills += usize::from(refilled);
+                    self.camp_weeks += usize::from(!a.map().camps().is_empty());
+                }
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::NoneToRecruit { .. },
+                    ..
+                }) => self.none_to_recruit += 1,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::ObjectEmpty { object_type, .. },
+                    ..
+                }) if matches!(
+                    part.object_type(object_type).map(|t| &t.kind),
+                    Some(ObjectKind::RefugeeCamp { .. })
+                ) =>
+                {
+                    self.camps_deserted += 1;
                 }
                 _ => {}
             }
@@ -8027,7 +8130,8 @@ impl Hired {
 /// fight their guards and hire (E08 T96b1, increment 10's design note §14): every count of
 /// [`Hired`] above zero, so that the properties' checks run on them ([`check_decisions`]' hire
 /// and guards' questions and [`free_creatures`], [`check_dwelling_battle_end`], [`check_hire`],
-/// [`check_conservation`]'s purchases, [`check_week`]'s refill, [`check_resolved`]).
+/// [`check_conservation`]'s purchases, [`check_week`]'s refill and camps, [`check_resolved`];
+/// `view.rs`'s `check_hire_sources` on `NoneToRecruit` and a deserted camp's `ObjectEmpty`).
 // covers: ADV-DWL-001, ADV-DWL-002, ADV-DWL-003, ADV-DWL-004, ADV-DWL-005
 // covers: ADV-HIR-001, ADV-HIR-002, ADV-RFG-001, GAM-DEC-008
 #[test]
@@ -8072,4 +8176,8 @@ fn the_plans_visit_dwellings_and_hire() {
         "{h:?}"
     );
     assert!(h.closes > 0 && h.refills > 0 && h.resolved > 0, "{h:?}");
+    assert!(
+        h.none_to_recruit > 0 && h.camps_deserted > 0 && h.camp_weeks > 0,
+        "{h:?}"
+    );
 }
