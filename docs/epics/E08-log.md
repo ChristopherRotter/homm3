@@ -12049,3 +12049,9 @@ staged at the start. Built by the main session.
     five (`h3 adventure run --seed 1+g --agent-seed g` replays game g; 28 days held one purchase).
 - *Agent's calls (change freely):* the XL's dwelling types and random dwellings' bodies, the owners
   every fourth; the fork's seeking mode rather than a seed search; 60 days for random play.
+- **Gates:** the scoped verify with the original data passed every step it runs, `check-lane`
+  included, on the branch with `master` (#733) merged in: coverage (the accessor tested in
+  `h3-adventure`), determinism with the 47 replays (none changed), bench-check (the 20 workloads
+  inside the gate; the 17 old ones unmoved), original-data (the census's new lines); `h3-cli`'s
+  clippy and adventure tests (outside the scope) passed.
+- **Versions:** none.
