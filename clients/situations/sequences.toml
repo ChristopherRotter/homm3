@@ -1687,24 +1687,36 @@ frames = "timelines/shade-keys-frames.txt"
 boxes = true
 
 # `shade-area` (`seq-shades.toml`, the Angels' turn, the cursor shadow on): Fireball aimed over
-# hex 100 (the Wolf Riders' rear: its area holds them, the Goblins on 117 and the Efreeti on 83,
-# immune to it: their hex left out, unmarked), given up by Escape (oddity 3, CLT-Q53: its shade
-# stays until the mouse leaves the hex), the mouse to hex 97; Frost Ring over hex 100 (its centre
-# left out), given up; Inferno over hex 97 (19 hexes), over hex 99 (the Efreeti's hex left out),
-# onto the panel (oddity 5, CLT-Q55: hexes 1 and 18 shaded, the Pikemen on 1 marked), given up.
+# hex 82 (its area holds the Wolf Riders, 99 and 100, and the Efreeti on 83, immune to it: their
+# hex left out, unmarked), given up by Escape (oddity 3, CLT-Q53: its shade stays until the mouse
+# leaves the hex), the mouse to hex 97 (the cursor's shade); Frost Ring over hex 98 (its centre
+# left out), given up. Each aim marks the Wolf Riders alone, whose four frames of group 1 the
+# original's draws may stall (design §7.2; the timeline compares the stacks the mouse marked):
+# timed so that none does (its last at 2 100 ms, after the end).
 [[sequence]]
 id = "shade-area"
 scenario = "seq-shades.toml"
 cursor_shadow = 1
 actions = [
-    "aim:0:21", "at:300", "move:696,322", "at:700", "key:Escape", "at:900", "move:564,322",
-    "at:1100", "aim:1:20", "at:1400", "move:696,322", "at:1800", "key:Escape",
-    "at:2000", "aim:2:22", "at:2300", "move:564,322", "at:2700", "move:652,322",
-    "at:3100", "move:618,580", "at:3500", "key:Escape",
+    "aim:0:21", "at:300", "move:674,280", "at:700", "key:Escape", "at:900", "move:564,322",
+    "at:1100", "aim:1:20", "at:1400", "move:608,322", "at:1800", "key:Escape",
 ]
-ms = 400
+ms = 250
 timeline = "timelines/shade-area.txt"
 frames = "timelines/shade-area-frames.txt"
+boxes = true
+
+# `shade-area-inferno` (`seq-shades.toml`, the cursor shadow on): Inferno over hex 97 (19 hexes,
+# the obstacle's hex 78 among them; the Wolf Riders marked), then onto the panel (oddity 5,
+# CLT-Q55: hexes 1 and 18 shaded, the Pikemen on 1 marked), given up.
+[[sequence]]
+id = "shade-area-inferno"
+scenario = "seq-shades.toml"
+cursor_shadow = 1
+actions = ["aim:2:22", "at:300", "move:564,322", "at:700", "move:618,580", "at:1100", "key:Escape"]
+ms = 400
+timeline = "timelines/shade-area-inferno.txt"
+frames = "timelines/shade-area-inferno-frames.txt"
 boxes = true
 
 # `shade-area-move` (`seq-shades.toml`, both shadows on): the Angels' reach shaded; Fireball's
