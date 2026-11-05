@@ -8,25 +8,28 @@ Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
-T8a2, then T8b (rounds 2 to 6, T7a, T7b, T8a1, T8a2 are done, `E09-log.md`); each later round's entries are written when it comes
+T8a2, then T8b (cut in two: T8b1, T8b2; rounds 2 to 6, T7a, T7b, T8a1, T8a2, T8b1 are done,
+`E09-log.md`); each later round's entries are written when it comes
 (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T8b — the siege** (`cross-lane`)
+**E09 T8b2 — the step onto a defended town** (`cross-lane`; T8b cut in two at its start, the user,
+2026-11-05: T8b1, the siege's battle and its end, is done, `E09-log.md`)
 
-- **Scope:** design §10 and §15 (TWN-SIE-001 to -005, GAM-BAT-001 amended, TWN-CAP-003):
+- **Scope:** design §9 case 2 and §10 (TWN-SIE-001, -002; TWN-VIS-001, -002 amended):
   `TWN-STUB-7` lifted: a defended town of another team or none (a creature in its garrison, or a
   visitor of another team) visited from the tile before (ADV-OBJ-003's neighbour mode: the step
-  paid, ADV-MOV-006's drop, the hero stays), its outcome the siege (`BattleStart::town`); a step
-  onto another team's hero on a town's entrance the same siege, never a field battle (T8a2's
-  `besieges`); the reach and the legal moves then list a defended entrance as a neighbour's
-  destination (today `visit_at`'s refusal through `town_defended` and the reach's cold
-  `unmark_visitors`: measured against `master`, skill `homm3-bench-regression`, and the adventure
-  lane's trap on the walking search's loop); the merge of the garrison into the visitor's army
-  (§10), the defender (`Defender::Hero`, `Garrison`, `Guards`), the siege's `BattleSetup` (§15);
-  the outcome: an attacker's win captures through T8a2's composition with the attacker outside
-  (TWN-CAP-003), a beaten hero leaves the map back to the pool, the survivors as §11.
-- **Depends on:** T8a2 (#733). **Status:** next; its cut confirmed at its start.
+  paid, ADV-MOV-006's drop, the hero stays), its outcome the siege (`BattleStart::town`, T8b1);
+  a step onto another team's hero on a town's entrance the same siege, never a field battle
+  (`besieges` in `check_step` and `passage`); the reach and the legal moves list a defended
+  entrance as a neighbour's destination (today `visit_at`'s refusal through `town_defended` and
+  the reach's cold `unmark_visitors`: measured against `master`, skill
+  `homm3-bench-regression`, and the adventure lane's trap on the walking search's loop); the
+  merge of the garrison into the visitor's army (§10, TD-7 by the reading) with its events; the
+  defender (`Defender::Hero`, `Garrison` for an owned town, `Guards` for a neutral one); the
+  battle's tile the entrance, its terrain the game's (T8b1); end-to-end tests through
+  `GameState::apply` (a siege started by a step, played, captured with the attacker outside).
+- **Depends on:** T8b1 (its pull request). **Status:** next; its cut confirmed at its start.
 
 ## Inbox
 
