@@ -91,7 +91,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `Trainer.state` and `restore` together, and into `test_a_stopped_run_resumes_to_its_budget`'s
   comparisons (checkpoint format 3, T4a; the promoted networks and the league's stay in their
   files, which a resume reads: a file the checkpoint names is deleted only after the next one); `resume` checks before `Run(…, resume=…)` cuts the metrics (a refused resume
-  changes nothing). `h3env.train.run` stays free of torch
+  changes nothing). The benches' likewise (E25 T26a): a piece of a bench's state goes into
+  `distill.go`'s `checkpoint` and its restore together, and into
+  `test_a_stopped_bench_resumes_to_its_budget`'s comparisons (`BENCH_FORMAT`); a new `Bench`
+  key that changes the training stays out of `distill.RESUMABLE`. `h3env.train.run` stays free of torch
   (the package loads its torch modules lazily); `tests/test_run.py` runs without torch
   (to block it: a `torch.py` raising `ModuleNotFoundError` first on `PYTHONPATH`; pytest 9). In a background shell `cd`
   may not hold: run `uv --directory python run …` (a plain `uv run` from the root takes the

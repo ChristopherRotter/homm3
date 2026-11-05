@@ -31,10 +31,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `[network] mask_input`, `order`, `attack_hex`; `E25-log.md` T25). The user's GPU grid and cap:
   about 700 µs a sample-pass (decision 3 as amended). T26's first segment (the user, stopped at
   0.45 M; `E25-log.md` T26): every structured student ahead of the MLPs, `hexconv` 96 × 6 at
-  0.619. **Next:** T26a in the sandbox (the benches resume: the user's rule, every run over 2
-  hours resumes), then T26b on the user's GPU in parts.
-- **Open pull requests:** the one of `claude/determined-mayer-t1waz5` (T26's records). Merged:
-  #721 (T24), #725 (T25).
+  0.619. **T26a done** (the benches resume, both modes: `distill.go`, `checkpoint.pt`, Ctrl-C at
+  the next minibatch, `--resume DIR`; `E25-log.md` T26a). **Next:** T26b on the user's GPU in
+  parts under 2 hours (its commands in `QUEUE.md`).
+- **Open pull requests:** the one of `claude/gifted-keller-2dtp2o` (T26's records and T26a; the
+  branch `claude/determined-mayer-t1waz5` opened none, its commit is in it). Merged: #721 (T24),
+  #725 (T25).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -47,6 +49,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-05 — E25 T26a
+
+- The branch started from `master` with T26's records (`claude/determined-mayer-t1waz5`, no pull
+  request). The setup's baseline ran only the light gates (code verified on `master`); `cargo
+  build --release -p h3-ffi` 56 s, `uv sync --group train` from the cache. The Python suite 241
+  (3.5 minutes); the stop-and-resume smoke of T25's clone (in progress: see the log entry).
 
 ### 2026-11-04 — E25 T25
 
@@ -64,13 +73,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   h3-ffi` 90 s, `uv sync --group train` a few minutes (no stall). The Python suite 205 passed
   (3 minutes), the grid's CPU table 197 s, the CPU clone smoke 35 minutes (the hex transformer
   alone 25 of them).
-
-### 2026-11-04 — E25 T22 and T23
-
-- #696 merged; the branch started from `master`. The user ran both arms before T22 was prepared
-  (the weight and horizon as proposed, confirmed after) and uploaded each run's `record.json`,
-  `metrics.jsonl` and `best.pt`, then `e25-clone-1`'s `best.pt` (identified by T19's tool). In the
-  sandbox `cargo build --release -p h3-ffi` 79 s and `uv sync --group train` 63 s (no stall); T19's
-  tool 40 s a run, the head-to-heads 24 to 215 s. T23 with the user (AI-Q16); increment 7's survey
-  by a sub-agent. Without the setup script the coverage step needed `cargo-llvm-cov`, `llvm-20`
-  and `scripts/sandbox-verify.sh` (the scoped verify then passed, 8 minutes).
