@@ -17,8 +17,8 @@ use h3_contracts::{
 };
 use h3_kernel::Rng;
 
-use super::{ARMY, BALLISTA, TENT, at_town, caster, creature, hero, ruleset_as, setup};
-use crate::{choose, choose_fair, unchecked};
+use super::{ARMY, BALLISTA, TENT, at_town, by_parts, caster, creature, hero, ruleset_as, setup};
+use crate::{Sight, choose, choose_fair, unchecked};
 
 /// A random field battle of the test armies, on a random difficulty, each side's `human` drawn.
 fn battle(rng: &mut Rng) -> BattleSetup {
@@ -365,6 +365,13 @@ fn the_fair_choice_is_legal_and_reads_nothing_hidden_in_random_battles() {
             let expected = if refused { Command::Defend } else { proposed };
             assert_eq!(fair, expected, "game {game_no}");
             assert_eq!(after, again, "game {game_no}");
+            let mut parts = seat.clone();
+            assert_eq!(
+                by_parts(&state, &r, side, Sight::Fair, &mut parts),
+                fair,
+                "game {game_no}: the fair decision's parts"
+            );
+            assert_eq!(parts, after, "game {game_no}");
             tally.decisions += 1;
             let hero = setup.heroes[other].is_some();
             if !hero {
