@@ -2121,3 +2121,144 @@ why = "exact: the battle redrawn whole, the dialog's arrow left at the mouse (od
 at = 100
 differing = 0
 why = "exact: as at 0, the mouse not moved: the arrow stays (oddity 10) (E17 M6 T4a)"
+
+# E17 M6 T4c: the grid and the shadows (design §12.16; `draw_hex_overlays` 0x493930's grid,
+# `battle_shade_hexes` 0x493EA0, `shade_mouse_hex` 0x494390): each entry's `grid`,
+# `cursor_shadow` and `movement_shadow` (0 or 1) are the options it runs at (the harness writes
+# them into the original's registry as `Show Combat Grid`, `Show Combat Mouse Hex` and `Combat
+# Shade Level` before the run and puts them back after). Taken from 100 ms (the mouse's move
+# waits for the frozen clock's next poll). `grid`: the opening's grid, `ccellgrd.pcx` at each
+# hex but the side columns, under the stacks and the obstacles. `shade-move`, `-fly`, `-wide`:
+# the movement shadow at the opening's human turn, a walker (the Marksmen, hex 35, the obstacle
+# in the way), a flyer (the Angels) and a two-hex walker (the Champions, by their facing).
+# `shade-cursor`: the cursor shadow over the reachable empty hex 37; `-far` over the unreachable
+# row-10 hex 178 (its block clipped to 50 rows); `-enemy` over hex 48, the Wolf Riders' front hex
+# (the Angels' attack cursor: the hex under the mouse alone, not where they would stand);
+# `-self` over the acting Marksmen. `shades-all`: all three over the reachable hex 37 (quartered,
+# the grid's lines halved); `-out` over hex 42, beside the reach (halved). `shade-dialog`
+# (oddity 2, CLT-Q52, fixed in the client's profile): the cursor shadow over hex 37, the options
+# dialog opened by O, its grid box clicked and closed by Enter (the background composed with the
+# grid, the shade gone, the list kept), then the mouse to hex 38: hex 37's block saved before the
+# dialog comes back, without the grid's lines (`grid = 0` puts the prefix's value back).
+[[situation]]
+id = "grid"
+scenario = "hero-info.toml"
+grid = 1
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shade-move"
+scenario = "hero-info.toml"
+movement_shadow = 1
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shade-move-fly"
+scenario = "seq-melee.toml"
+movement_shadow = 1
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shade-move-wide"
+scenario = "seq-spell-aim.toml"
+movement_shadow = 1
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shade-cursor"
+scenario = "hero-info.toml"
+cursor_shadow = 1
+mouse = [190, 196]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shade-cursor-far"
+scenario = "hero-info.toml"
+cursor_shadow = 1
+mouse = [410, 532]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shade-cursor-enemy"
+scenario = "seq-melee.toml"
+cursor_shadow = 1
+mouse = [674, 196]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shade-cursor-self"
+scenario = "hero-info.toml"
+cursor_shadow = 1
+mouse = [102, 196]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shades-all"
+scenario = "hero-info.toml"
+grid = 1
+cursor_shadow = 1
+movement_shadow = 1
+mouse = [190, 196]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shades-all-out"
+scenario = "hero-info.toml"
+grid = 1
+cursor_shadow = 1
+movement_shadow = 1
+mouse = [410, 196]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
+
+[[situation]]
+id = "shade-dialog"
+scenario = "hero-info.toml"
+grid = 0
+cursor_shadow = 1
+mouse = [190, 196]
+actions = ["key:o", "click:199,151", "key:Return", "move:234,196"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "(E17 M6 T4c)"
