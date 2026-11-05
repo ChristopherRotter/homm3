@@ -23,8 +23,8 @@ use h3_content_battle::{
     AbilityDef, AreaShot, AuraTarget, BallisticsRecord, BattleCreatureDef, BattlePack,
     BattleParamsDef, BattleRuleset, BattleSpellDef, EffectDuration, HexStep, ObstacleKind,
     ObstacleShape, SiegeDef, SiegeFieldDef, SpellAi, SpellArea, SpellChain, SpellEffect,
-    SpellMagic, SpellPolarity, SpellTarget, TargetSide, TimedChange, Usefulness, WallKind,
-    WallTarget,
+    SpellMagic, SpellPolarity, SpellTarget, SurrenderDef, TargetSide, TimedChange, Usefulness,
+    WallKind, WallTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate,
@@ -1004,7 +1004,7 @@ const AI_VALUES: [(usize, u32); 2] = [(RUNNER, 126), (TOWER, 400)];
 
 /// The core ruleset of the test creatures, one hero type and the profiles `t:faithful` (the
 /// original's slips in its estimates, BAT-QUIRK-25) and `t:fixed` (none), in `profile`.
-fn core(profile: &str) -> Ruleset {
+fn core(profile: &str, priced: bool) -> Ruleset {
     let mut pack = ContentPack::new(manifest());
     pack.terrains = vec![TerrainDef {
         key: key("t:grass"),
@@ -1024,6 +1024,12 @@ fn core(profile: &str) -> Ruleset {
                         .find(|&&(h, _)| h == handle)
                         .map_or(0, |&(_, v)| v),
                     flags: flags.iter().map(|f| f.to_string()).collect(),
+                    // Priced: a creature costs its Fight Value in gold.
+                    cost: if priced {
+                        vec![(key("t:gold"), fight_value)]
+                    } else {
+                        vec![]
+                    },
                     ..CreatureInfoDef::default()
                 },
             },
@@ -1172,6 +1178,17 @@ fn ruleset() -> BattleRuleset {
 /// The test ruleset in `profile`: [`core`] and its battle part on the original's field, without
 /// morale and luck.
 fn ruleset_as(profile: &str) -> BattleRuleset {
+    ruleset_with(profile, false)
+}
+
+/// The test ruleset with prices (E17 M6 T5b2): each creature costs its Fight Value in gold, a
+/// surrender half of the army's cost (BAT-FLE-002).
+fn priced() -> BattleRuleset {
+    ruleset_with("t:faithful", true)
+}
+
+/// The test ruleset in `profile`, `priced` or not ([`ruleset_as`], [`priced`]).
+fn ruleset_with(profile: &str, priced: bool) -> BattleRuleset {
     let creatures = CREATURES
         .iter()
         .map(
@@ -1375,7 +1392,10 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
                 .map(|n| (0..n).map(|i| i * 11 / n).collect())
                 .collect(),
             tactics_zone_columns: vec![3, 5, 7],
-            surrender: None,
+            surrender: priced.then(|| SurrenderDef {
+                resource: key("t:gold"),
+                cost_percent: 50,
+            }),
             hero_casts_per_round: 1,
             side_stack_limit: 20,
             siege: Some(siege_field()),
@@ -1389,7 +1409,7 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
         }],
         ..BattlePack::new(manifest())
     };
-    BattleRuleset::compile(Arc::new(core(profile)), &[pack]).unwrap()
+    BattleRuleset::compile(Arc::new(core(profile, priced)), &[pack]).unwrap()
 }
 
 /// The siege's field: the original's (`docs/formats/installation.md` §7.27, §7.28).
