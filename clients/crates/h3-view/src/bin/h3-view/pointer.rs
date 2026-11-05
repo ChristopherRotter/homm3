@@ -105,14 +105,16 @@ const BOOK_PLACES: u8 = 12;
 /// harness pressed it, T8b2 R5c-8). E17 M5 T4c2b: a battle that
 /// opens with the tactics phase's message (`told`) takes its first `key:Return` as the box's OK,
 /// which gives nothing (the first turn starts); the phase's `key:space` and `key:Return` are its
-/// panel's Next Creature and Start Combat. *Not modelled:* the book over the battlefield, the
-/// mouse moved over the phase's message.
+/// panel's Next Creature and Start Combat. E17 M6 T4c (design §12.16): the battle opens with the
+/// grid's and the shadows' options `shades` (the sequence's), which `key:F6` to `key:F8` toggle
+/// ([`Input::Shades`]). *Not modelled:* the book over the battlefield, the mouse moved over the
+/// phase's message.
 pub fn inputs(
     actions: &[String],
     pre: u32,
     layout: &BattleLayout,
     (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
-    told: bool,
+    (told, shades): (bool, h3_view::shades::Options),
 ) -> Result<Vec<Input>, String> {
     let mut told = told;
     let mut spells = spells.iter().copied();
@@ -120,7 +122,15 @@ pub fn inputs(
     // The stats dialog's cast button's aim under way (E17 M6 T2a2b1): the dialog's close comes as
     // it ends.
     let mut look_aim = false;
-    let mut out = vec![Input::Move { at: 0, to: PARK }];
+    let mut shades = shades;
+    let mut out = vec![
+        Input::Shades {
+            at: 0,
+            options: shades,
+            keyed: false,
+        },
+        Input::Move { at: 0, to: PARK },
+    ];
     let (mut now, mut turns) = (pre, 0);
     // The stack whose turn the battle opens with (E17 M3 T7b-1): a first `turn:` naming it acts
     // at once, as the harness's does (the game names it the active stack already).
@@ -210,6 +220,17 @@ pub fn inputs(
                 at: now,
                 to: point(arg)?,
             }),
+            // The grid and the shadows toggled (E17 M6 T4c, design §12.16).
+            "key" if toggle(arg).is_some() => {
+                if let Some(t) = toggle(arg) {
+                    shades = shades.toggled(t);
+                }
+                out.push(Input::Shades {
+                    at: now,
+                    options: shades,
+                    keyed: true,
+                });
+            }
             // Escape gives an aim up (E17 M5 T3b, 0x5A317A); the cast button's aim closes the
             // stats dialog after it (E17 M6 T2a2b1).
             "key" if arg == "Escape" => {
@@ -292,6 +313,17 @@ pub fn inputs(
         }
     }
     Ok(out)
+}
+
+/// The option a harness key toggles (E17 M6 T4c: `F6` the grid, `F7` the cursor shadow, `F8` the
+/// movement shadow, the original's keys).
+fn toggle(key: &str) -> Option<h3_view::shades::Toggle> {
+    match key {
+        "F6" => Some(h3_view::shades::Toggle::Grid),
+        "F7" => Some(h3_view::shades::Toggle::Cursor),
+        "F8" => Some(h3_view::shades::Toggle::Movement),
+        _ => None,
+    }
 }
 
 /// Whether the harness's key `name` (xdotool's: `a`, `space`) is Auto Combat's in the original's
@@ -1370,10 +1402,23 @@ mod tests {
         let actions: Vec<String> = ["key:a", "at:10", "hex:40", "key:a", "key:Escape", "key:d"]
             .map(String::from)
             .into();
-        let got = inputs(&actions, 0, &layout, (&timeline, &[], &|_| None), false).unwrap();
+        let got = inputs(
+            &actions,
+            0,
+            &layout,
+            (&timeline, &[], &|_| None),
+            (false, h3_view::shades::Options::default()),
+        )
+        .unwrap();
+        let opening = Input::Shades {
+            at: 0,
+            options: h3_view::shades::Options::default(),
+            keyed: false,
+        };
         assert_eq!(
             got,
             vec![
+                opening,
                 Input::Move { at: 0, to: PARK },
                 Input::Auto { at: 0, turn: 0 },
                 Input::Move {
@@ -1394,6 +1439,51 @@ mod tests {
     }
 
     #[test]
+    fn the_keys_f6_to_f8_toggle_the_sequence_s_options() {
+        // E17 M6 T4c (design §12.16): the battle opens with the sequence's options, each key
+        // toggling one from then.
+        use h3_view::shades::Options;
+        let layout = layout();
+        let timeline = Timeline::default();
+        let actions: Vec<String> = ["key:F6", "key:F8", "key:F6", "key:F7"]
+            .map(String::from)
+            .into();
+        let start = Options {
+            cursor: true,
+            ..Options::default()
+        };
+        let none = |_| None;
+        let got = inputs(
+            &actions,
+            5,
+            &layout,
+            (&timeline, &[], &none),
+            (false, start),
+        )
+        .unwrap();
+        let shades = |at, [grid, cursor, movement]: [bool; 3], keyed| Input::Shades {
+            at,
+            options: Options {
+                grid,
+                cursor,
+                movement,
+            },
+            keyed,
+        };
+        assert_eq!(
+            got,
+            vec![
+                shades(0, [false, true, false], false),
+                Input::Move { at: 0, to: PARK },
+                shades(5, [true, true, false], true),
+                shades(5, [true, true, true], true),
+                shades(5, [false, true, true], true),
+                shades(5, [false, false, true], true),
+            ]
+        );
+    }
+
+    #[test]
     fn the_stats_dialogs_cast_button_aims_and_closes_the_dialog_as_the_aim_ends() {
         // E17 M6 T2a2b1: a look, the cast button's aim (its spell by number), the aim's click: the
         // dialog's close after the action; given up by Escape, after the cancel.
@@ -1402,7 +1492,13 @@ mod tests {
         let handle = |n: u16| (n == 21).then_some(7);
         let run = |actions: &[&str]| {
             let actions: Vec<String> = actions.iter().map(|a| String::from(*a)).collect();
-            inputs(&actions, 0, &layout, (&timeline, &[], &handle), false)
+            inputs(
+                &actions,
+                0,
+                &layout,
+                (&timeline, &[], &handle),
+                (false, h3_view::shades::Options::default()),
+            )
         };
         let got = run(&["look:10,20", "cast-button:30,40:21", "hex:83"]).unwrap();
         let aim = Input::Aim {
@@ -1413,6 +1509,11 @@ mod tests {
         assert_eq!(
             got,
             vec![
+                Input::Shades {
+                    at: 0,
+                    options: h3_view::shades::Options::default(),
+                    keyed: false,
+                },
                 Input::Move { at: 0, to: PARK },
                 Input::Move {
                     at: 0,

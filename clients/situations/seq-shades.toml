@@ -1,0 +1,97 @@
+# E17 M6 T4c (design §12.16): the area aims' shades. At the opening the Angels' turn (speed 12,
+# hex 69); Orrin aims Fireball (place 0), Frost Ring (place 1) and Inferno (place 2) from his
+# book over the defender's right column: the Wolf Riders (hexes 99, 100), the Efreeti (hex 83,
+# immune to the fire school: Fireball's and Inferno's areas leave its hex out) and the Goblins
+# (hexes 49, 117, ...). The attacker's four stacks stand on 1, 69, 103 and 171, so the Pikemen on
+# hex 1 are in Inferno's area off the field (oddity 5, CLT-Q55). On grass at the capture set's
+# tile (grass.toml's obstacles), as `spell-aim`.
+
+[scenario]
+id = "sequence-shades"
+# Red human, Blue a computer, as the original's map (`h3-view situation`).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+[[attacker]]
+slot = 1
+creature = "base:angel"
+count = 2
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[attacker]]
+slot = 3
+creature = "base:swordsman"
+count = 5
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+[[defender]]
+slot = 1
+creature = "base:goblin"
+count = 12
+
+[[defender]]
+slot = 2
+creature = "base:efreeti"
+count = 3
+
+[[defender]]
+slot = 3
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 4
+creature = "base:goblin"
+count = 10
+
+[[defender]]
+slot = 5
+creature = "base:goblin"
+count = 9
+
+[[defender]]
+slot = 6
+creature = "base:goblin"
+count = 7
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge 2, for Inferno's 16
+# spell points (the original's hero starts with 10 per knowledge); his book Fireball, Frost Ring
+# and Inferno, without their schools' skills.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:fireball", "base:frost_ring", "base:inferno"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10

@@ -32,6 +32,9 @@ use crate::tables::{ObstacleArt, Tables};
 const PASSES: u8 = 8;
 /// The pass that draws the layer-0 obstacle anchored on a hex.
 const OBSTACLE_PASS: u8 = 2;
+/// A hex's cell (`ccellshd.pcx`, `ccellgrd.pcx`): 45 × 52 (E17 M6 T4c: the cursor shadow's saved
+/// block, `battle_shade_hexes` 0x493EA0).
+const CELL: [i32; 2] = [45, 52];
 /// A standing stack's draw layer, the pass it is drawn in (+0x8 = 4 from the setup, 0x43D750);
 /// a pose names its own (`crate::anim`: walks, strikes, the corpses' pass 1).
 const STANDING: u8 = 4;
@@ -91,8 +94,12 @@ pub struct Moment {
     /// frame's assembler shifts the whole screen ([`Draw::Shaken`]).
     pub shake: Option<u32>,
     /// The hexes shaded into the background (E17 M5 T4c2a: a human's turn in the tactics phase,
-    /// [`crate::tactics::shade`]; the timeline leaves none, its viewers set them).
+    /// [`crate::tactics::shade`]; E17 M6 T4c: the movement shadow on every human turn,
+    /// [`crate::shades`]; the timeline leaves none, its viewers set them).
     pub shade: BTreeSet<u8>,
+    /// The grid and the cursor shadow drawn into the background after the movement shade (E17 M6
+    /// T4c, design §12.16; the timeline leaves none, its viewers set them).
+    pub overlays: Overlays,
     /// The stacks the battle created, by id (E17 M5 T5a): drawn as the snapshot's are, a reused
     /// id's in place of its earlier stack.
     pub created: BTreeMap<u8, Stack>,
@@ -144,6 +151,7 @@ impl Moment {
                 .map(|before| Box::new(Self::at(timeline, before))),
             shake: timeline.shake(t),
             shade: BTreeSet::new(),
+            overlays: Overlays::default(),
             created: timeline.created_at(t),
             dissolve: timeline.dissolving(t).map(|(d, step)| Dissolve {
                 before: Box::new(Self {
@@ -155,6 +163,35 @@ impl Moment {
             }),
         }
     }
+}
+
+/// What the grid and the cursor shadow draw into the background (E17 M6 T4c, design §12.16), in
+/// this order after the movement shade ([`Moment::shade`]): the grid, the blocks of an earlier
+/// composition put back, the cursor shadow's hexes. Every shade lies under the stacks.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Overlays {
+    /// Show Combat Grid (0x6987BC): `ccellgrd.pcx` at each hex's box but the side columns',
+    /// index 0 skipped, after the movement shade, so its lines are not halved by it (0x493C4C).
+    pub grid: bool,
+    /// The cursor shadow's hexes (Show Combat Mouse Hex 0x6987C0, `battle_shade_hexes` 0x493EA0):
+    /// each halved again under `ccellshd.pcx`, over the movement shade and the grid.
+    pub cursor: Vec<u8>,
+    /// The blocks the cursor shadow put back from a save of an earlier composition (the
+    /// original's profile, CLT-Q52; [`crate::shades::Cells`]).
+    pub stale: Vec<Stale>,
+}
+
+/// A hex's block put back from an earlier composition of the background (E17 M6 T4c, design
+/// §12.16's oddity 2, CLT-Q52: the original's profile): its 45 × 52 block (the hex box's, cut to
+/// the battlefield) as the field with that composition's grid and movement shade drew it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Stale {
+    /// The hex whose block it is.
+    pub hex: u8,
+    /// That composition drew the grid.
+    pub grid: bool,
+    /// The hexes that composition's movement shade shaded.
+    pub shade: BTreeSet<u8>,
 }
 
 /// One thing drawn, in the order of the list.
@@ -182,6 +219,16 @@ pub enum Draw {
     /// non-zero index halve what lies under them (0x44E6A0), its top-left corner at the hex box's.
     Shade {
         /// The cell's picture (`ccellshd.pcx`).
+        picture: String,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+    },
+    /// A hex's grid cell into the background (E17 M6 T4c, §12.16): the picture opaque but its
+    /// index 0 (0x44FC70's flag), its top-left corner at the hex box's.
+    Grid {
+        /// The cell's picture (`ccellgrd.pcx`).
         picture: String,
         /// Its left edge.
         x: i32,
@@ -1097,17 +1144,56 @@ fn drawn(
             y: i32::from(point[1]),
         });
     }
-    // The hexes the tactics phase shades for a human's stack (E17 M5 T4c2a, §7.23): drawn into the
-    // background by `draw_hex_overlays` 0x493930, in hex order.
-    for &hex in &moment.shade {
-        let (row, column) = at(hex);
+    // The background buffer's own items (the field, the absolute obstacle): a block put back from
+    // an earlier composition draws them again (E17 M6 T4c).
+    let field_items = list.len();
+    // The movement shade (E17 M5 T4c2a, §7.23: the tactics phase's; E17 M6 T4c, §12.16: the
+    // movement shadow on every human turn), drawn into the background by `draw_hex_overlays`
+    // 0x493930, in hex order; then the grid over it (0x493C4C), its lines not halved.
+    let shaded = |list: &mut Vec<Draw>, hexes: &mut dyn Iterator<Item = u8>| {
+        for hex in hexes {
+            let (row, column) = at(hex);
+            let [x, y] = layout.hex_box(row, column);
+            list.push(Draw::Shade {
+                picture: layout.cell_shade.clone(),
+                x,
+                y,
+            });
+        }
+    };
+    let gridded = |list: &mut Vec<Draw>| {
+        let columns = 1..width.saturating_sub(1);
+        for hex in (0..width.saturating_mul(height)).filter(|&h| columns.contains(&at(h).1)) {
+            let (row, column) = at(hex);
+            let [x, y] = layout.hex_box(row, column);
+            list.push(Draw::Grid {
+                picture: layout.cell_grid.clone(),
+                x,
+                y,
+            });
+        }
+    };
+    shaded(&mut list, &mut moment.shade.iter().copied());
+    if moment.overlays.grid {
+        gridded(&mut list);
+    }
+    // The cursor shadow (§12.16, `battle_shade_hexes` 0x493EA0): the blocks it put back from an
+    // earlier composition (the original's profile, CLT-Q52), each its hex box's 45 × 52 cut to
+    // the battlefield, then its hexes halved again over the movement shade and the grid.
+    for stale in &moment.overlays.stale {
+        let mut inner = list.get(..field_items).unwrap_or_default().to_vec();
+        shaded(&mut inner, &mut stale.shade.iter().copied());
+        if stale.grid {
+            gridded(&mut inner);
+        }
+        let (row, column) = at(stale.hex);
         let [x, y] = layout.hex_box(row, column);
-        list.push(Draw::Shade {
-            picture: layout.cell_shade.clone(),
-            x,
-            y,
+        list.push(Draw::Within {
+            rect: [x, y, x + CELL[0], (y + CELL[1]).min(BATTLEFIELD[3])],
+            list: inner,
         });
     }
+    shaded(&mut list, &mut moment.overlays.cursor.iter().copied());
     let background = list.len();
     let mut placed = Vec::new();
     for o in &observation.removable_obstacles {

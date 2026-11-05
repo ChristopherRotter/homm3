@@ -17,6 +17,7 @@ use crate::battle_log::Logged;
 use crate::mouse::aim::{Aim, Area, Target};
 use crate::mouse::tests::{battle, centre, layout};
 use crate::mouse::{Facing, Field, Hint, Legal, Previews, Spot, slot, slots, spot};
+use crate::shades::Options;
 
 /// Where the harness parks the mouse: in the panel, over nothing that has a hint.
 const PARK: [i32; 2] = [618, 593];
@@ -571,6 +572,8 @@ fn arrow(creature: bool) -> Aim {
         polarity: -1,
         level: 1,
         anti_magic: None,
+        unaffected: Vec::new(),
+        mastery: 0,
     }
 }
 
@@ -1523,4 +1526,419 @@ fn the_stats_dialog_s_close_and_the_book_s_cancel_show_the_window_again() {
     assert_eq!(shown_at(30), [Some(0), None]);
     assert_eq!(shown_at(40), [None, None]);
     assert_eq!(shown_at(50), [Some(0), None]);
+}
+
+/// The cursor shadow's hexes at `t` (E17 M6 T4c).
+fn cursor_at(shown: &Shown, t: u32) -> Vec<u8> {
+    shown
+        .shades(t)
+        .map_or_else(Vec::new, |d| d.overlays.cursor.clone())
+}
+
+/// The movement shade at `t` outside the tactics phase (E17 M6 T4c).
+fn shade_at(shown: &Shown, t: u32) -> BTreeSet<u8> {
+    shown
+        .shades(t)
+        .map_or_else(BTreeSet::new, |d| d.shade.clone())
+}
+
+/// The options with the grid by `grid`, the cursor shadow on, the movement shadow by `movement`.
+const fn shadows(grid: bool, movement: bool) -> Options {
+    Options {
+        grid,
+        cursor: true,
+        movement,
+    }
+}
+
+fn shades(at: u32, options: Options, keyed: bool) -> Input {
+    Input::Shades { at, options, keyed }
+}
+
+#[test]
+fn the_cursor_shadow_follows_the_moves_the_keys_and_the_actions() {
+    // E17 M6 T4c (design §12.16): the hex under each move the battle takes, the same hex once;
+    // F6 takes it off, composes the background again and posts the mouse, which shades it again;
+    // an action's start takes it and the movement shade off, the next human turn's posted move
+    // and overlay bring them back.
+    let mut o = battle();
+    o.sides[0].human = true;
+    let legal = legal();
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }, Turn { field, human: true }];
+    let to = |at, hex: u8| Input::Move {
+        at,
+        to: centre(hex),
+    };
+    let log = [(30, Logged::Action), (40, Logged::Turn(0))];
+    let inputs = [
+        shades(
+            0,
+            Options {
+                grid: true,
+                ..shadows(true, true)
+            },
+            false,
+        ),
+        to(5, 90),
+        Input::Move {
+            at: 6,
+            to: [centre(90)[0] + 3, centre(90)[1]],
+        },
+        Input::Move { at: 7, to: PARK },
+        to(8, 91),
+        shades(10, shadows(false, true), true),
+        Input::Act { at: 30 },
+    ];
+    let shown = run(&log, &[UNMARKS], &turns, &inputs);
+    let reach = BTreeSet::from([86, 87, 90]);
+    assert_eq!(crate::shades::reach(&field), reach);
+    let opening = shown.shades(0).unwrap();
+    assert!(opening.overlays.grid && opening.overlays.cursor.is_empty());
+    assert_eq!(opening.shade, reach);
+    assert_eq!(
+        [5, 6, 7, 8].map(|t| cursor_at(&shown, t)),
+        [vec![90], vec![90], vec![], vec![91]]
+    );
+    assert!(!shown.shades(10).unwrap().overlays.grid);
+    assert_eq!(cursor_at(&shown, 10), [91]);
+    assert!(shown.log.contains(&(10, Logged::Settle)));
+    assert!(cursor_at(&shown, 30).is_empty() && shade_at(&shown, 30).is_empty());
+    assert_eq!(
+        (cursor_at(&shown, 40), shade_at(&shown, 40)),
+        (vec![91], reach)
+    );
+    // On the computer's turn the keys leave the combat cursor's pointer (its frame since the
+    // turn began), the mouse not posted, the log not settled.
+    let computer = [Turn {
+        field,
+        human: false,
+    }];
+    let keyed = [
+        Input::Move {
+            at: 3,
+            to: centre(87),
+        },
+        shades(5, shadows(true, false), true),
+    ];
+    let shown = run(&[], &[], &computer, &keyed);
+    assert_eq!(shown.frames, [(0, 6)]);
+    assert!(shown.log.is_empty() && cursor_at(&shown, 5).is_empty());
+    assert!(shown.shades(5).unwrap().overlays.grid);
+    // On a human's turn before the mouse's first move: nothing to post, the pointer set by the
+    // key (its frame shown from it).
+    let shown = run(&[], &[], &turns, &[shades(5, shadows(true, false), true)]);
+    assert_eq!(shown.frames, [(5, 6)]);
+    assert!(shown.log.is_empty());
+}
+
+#[test]
+fn an_area_aim_shades_its_area_the_movement_shadow_off_through_it() {
+    // E17 M6 T4c (design §12.16): with both shadows on the aim turns the movement shadow off as it
+    // starts and on as it ends, its area shaded at the start and each other hex; given up, the
+    // book's posted move shades the mouse's hex.
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let mut o = battle();
+        o.sides[0].human = true;
+        let mut legal = legal();
+        legal.aims = vec![fireball()];
+        let field = Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        let turns = [Turn { field, human: true }];
+        let to = |at, hex: u8| Input::Move {
+            at,
+            to: centre(hex),
+        };
+        let aim = Input::Aim {
+            at: 10,
+            spell: 8,
+            creature: false,
+        };
+        let inputs = [
+            shades(0, shadows(false, true), false),
+            to(5, 90),
+            aim,
+            to(20, 87),
+            Input::Cancel { at: 30 },
+        ];
+        let shown = run(&[], &[], &turns, &inputs);
+        let area = |hex| crate::shades::area_shade(&fireball(), &field, hex);
+        assert!(shade_at(&shown, 10).is_empty(), "{bugs:?}");
+        assert_eq!(cursor_at(&shown, 10), area(90), "{bugs:?}");
+        assert_eq!(cursor_at(&shown, 20), area(87), "{bugs:?}");
+        assert_eq!(cursor_at(&shown, 30), [87], "{bugs:?}");
+        assert!(!shade_at(&shown, 30).is_empty(), "{bugs:?}");
+        // With the movement shadow off the given-up aim's shade stays in the original's profile
+        // (oddity 3, the same key); the client's takes it off (CLT-Q53).
+        let off = [
+            shades(0, shadows(false, false), false),
+            to(5, 90),
+            aim,
+            to(20, 87),
+            Input::Cancel { at: 30 },
+        ];
+        let shown = run(&[], &[], &turns, &off);
+        let left = if bugs == Bugs::Original {
+            area(87)
+        } else {
+            vec![87]
+        };
+        assert_eq!(cursor_at(&shown, 30), left, "{bugs:?}");
+    }
+}
+
+#[test]
+fn a_targeted_aim_s_shade_is_frozen_in_the_original_s_profile_alone() {
+    // CLT-Q54 (1): the original's keeps the hex shaded as the aim began through it; the client's
+    // aims start with the cursor's shade off.
+    // Its aim calls no `battle_set_shades` (0x59EE6A): with both shadows on too, the movement
+    // shadow stays on through it.
+    for (bugs, movement) in [Bugs::Original, Bugs::Fixed]
+        .map(|b| [(b, false), (b, true)])
+        .concat()
+    {
+        let mut o = battle();
+        o.sides[0].human = true;
+        let mut legal = legal();
+        legal.aims = vec![arrow(false)];
+        let field = Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        let turns = [Turn { field, human: true }];
+        let inputs = [
+            shades(0, shadows(false, movement), false),
+            Input::Move {
+                at: 5,
+                to: centre(91),
+            },
+            Input::Aim {
+                at: 10,
+                spell: 7,
+                creature: false,
+            },
+            Input::Move {
+                at: 20,
+                to: centre(90),
+            },
+        ];
+        let shown = run(&[], &[], &turns, &inputs);
+        let frozen = if bugs == Bugs::Original {
+            vec![91]
+        } else {
+            vec![]
+        };
+        assert_eq!(
+            [10, 20].map(|t| cursor_at(&shown, t)),
+            [frozen.clone(), frozen]
+        );
+        assert_eq!(shade_at(&shown, 20).is_empty(), !movement);
+        assert!(!shown.log.contains(&(10, Logged::Settle)));
+    }
+}
+
+#[test]
+fn a_given_up_aim_with_both_shadows_on_posts_the_mouse_whatever_began_it() {
+    // E17 M6 T4c (design §12.16): with both shadows on, `battle_set_shades` at the aim's start
+    // settles the log, and at its end settles it again and posts the mouse, the key F's aim (a
+    // Faerie Dragon's) too: the battle's hover at once, the mouse's hex shaded. With the cursor
+    // shadow alone the original's key F posts nothing (CLT-Q27 (1)), the aim's shade left
+    // (oddity 3); the client's posts it (CLT-Q27, CLT-Q53).
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let mut o = battle();
+        o.sides[0].human = true;
+        let mut legal = legal();
+        let dragon = Aim {
+            creature: true,
+            ..fireball()
+        };
+        legal.aims = vec![dragon.clone()];
+        let field = Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        let turns = [Turn { field, human: true }];
+        let inputs = |movement| {
+            [
+                shades(0, shadows(false, movement), false),
+                Input::Move {
+                    at: 5,
+                    to: centre(90),
+                },
+                Input::Aim {
+                    at: 10,
+                    spell: 8,
+                    creature: true,
+                },
+                Input::Cancel { at: 30 },
+            ]
+        };
+        let shown = run(&[], &[], &turns, &inputs(true));
+        let area = crate::shades::area_shade(&dragon, &field, 90);
+        assert_eq!(cursor_at(&shown, 10), area, "{bugs:?}");
+        assert!(shade_at(&shown, 10).is_empty(), "{bugs:?}");
+        assert_eq!(cursor_at(&shown, 30), [90], "{bugs:?}");
+        assert!(!shade_at(&shown, 30).is_empty(), "{bugs:?}");
+        assert_eq!(shown.frame(30), shown.frame(5), "{bugs:?}");
+        assert!(shown.log.contains(&(10, Logged::Settle)), "{bugs:?}");
+        assert!(shown.log.contains(&(30, Logged::Settle)), "{bugs:?}");
+        let shown = run(&[], &[], &turns, &inputs(false));
+        let (left, frame) = if bugs == Bugs::Original {
+            (area, Some(layout().mouse.panel_frame))
+        } else {
+            (vec![90], shown.frame(5))
+        };
+        assert_eq!(cursor_at(&shown, 30), left, "{bugs:?}");
+        assert_eq!(shown.frame(30), frame, "{bugs:?}");
+        assert!(
+            !shown.log.iter().any(|(_, e)| *e == Logged::Settle),
+            "{bugs:?}"
+        );
+    }
+}
+
+#[test]
+fn a_block_put_back_in_the_tactics_phase_keeps_its_shade() {
+    // E17 M6 T4c (design §12.16, oddity 2, the original's): the options dialog's close composes
+    // the background again; the block saved before it comes back with the phase's shade, which
+    // that composition drew whatever the movement shadow.
+    let mut o = battle();
+    o.sides[0].human = true;
+    o.tactics = Some(h3_protocol::wire::Tactics {
+        side: Side::Attacker,
+        columns: 3,
+    });
+    let zone = crate::tactics::shade(&o);
+    let mut hexes = zone.iter().copied().filter(|&h| crate::shades::gridded(h));
+    let (Some(first), Some(next)) = (hexes.next(), hexes.next()) else {
+        panic!("a zone of two hexes: {zone:?}");
+    };
+    let legal = legal();
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Original,
+    };
+    let turns = [Turn { field, human: true }];
+    let off = Options {
+        movement: false,
+        ..shadows(false, false)
+    };
+    let inputs = [
+        shades(0, off, false),
+        Input::Move {
+            at: 5,
+            to: centre(first),
+        },
+        shades(10, Options { grid: true, ..off }, false),
+        Input::Move {
+            at: 20,
+            to: centre(next),
+        },
+    ];
+    let shown = run(&[], &[], &turns, &inputs);
+    let overlays = &shown.shades(20).unwrap().overlays;
+    assert_eq!(overlays.cursor, [next]);
+    assert_eq!(
+        overlays.stale,
+        [crate::scene::Stale {
+            hex: first,
+            grid: false,
+            shade: zone,
+        }]
+    );
+}
+
+/// Fire Wall (its handle 11, its original number 13) at Advanced, aimed at hexes 87 and 104, or
+/// Force Field (handle 12, number 12).
+fn wall(fire: bool) -> Aim {
+    Aim {
+        spell: if fire { 11 } else { 12 },
+        original: if fire { 13 } else { 12 },
+        targets: vec![Target::Hex(87), Target::Hex(104)],
+        stacks: false,
+        polarity: 0,
+        mastery: 2,
+        ..arrow(false)
+    }
+}
+
+#[test]
+fn the_wall_s_aim_keeps_its_last_hex_in_the_original_s_profile_alone() {
+    // E17 M6 T4c (design §12.16): Fire Wall shades its hexes, Force Field none (CLT-Q54 (2),
+    // copied). The original's wall aim calls no cursor as it starts and keeps the hex the wall's
+    // aim before took: a click before a move casts there (CLT-Q56); the client's takes the hex
+    // under the mouse.
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let o = battle();
+        let mut legal = legal();
+        legal.aims = vec![wall(true), wall(false)];
+        let field = Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        let turns = [Turn { field, human: true }];
+        let to = |at, hex: u8| Input::Move {
+            at,
+            to: centre(hex),
+        };
+        let aim = |at, spell| Input::Aim {
+            at,
+            spell,
+            creature: false,
+        };
+        let inputs = [
+            shades(0, shadows(false, false), false),
+            to(5, 90),
+            aim(10, 11),
+            to(20, 87),
+            Input::Act { at: 30 },
+            to(35, 104),
+            aim(40, 11),
+            Input::Cancel { at: 45 },
+            aim(50, 12),
+            to(55, 90),
+            to(60, 104),
+        ];
+        let shown = run(&[], &[], &turns, &inputs);
+        let started = if bugs == Bugs::Original {
+            vec![90]
+        } else {
+            vec![]
+        };
+        assert_eq!(cursor_at(&shown, 10), started, "{bugs:?}");
+        // The original's keeps the book's arrow until the aim's first cursor (`shade-wall`).
+        let mouse = &layout().mouse;
+        let arrow = (bugs == Bugs::Original).then_some(Look::Arrow);
+        assert_eq!(shown.look(10, mouse).filter(|l| *l == Look::Arrow), arrow);
+        assert_ne!(shown.look(20, mouse), Some(Look::Arrow));
+        assert_eq!(cursor_at(&shown, 20), [87, 70, 53], "{bugs:?}");
+        let aimed = if bugs == Bugs::Original { 87 } else { 104 };
+        assert_eq!(shown.aimed(40), Some(aimed), "{bugs:?}");
+        // Force Field's aim shades nothing, at a refused hex (90) or a taken one (104): the
+        // mouse's hex as the aim began stays (the original's) or none (the client's).
+        let kept = cursor_at(&shown, 50);
+        assert_eq!(shown.aimed(60), Some(104), "{bugs:?}");
+        assert_eq!(
+            [55, 60].map(|t| cursor_at(&shown, t)),
+            [kept.clone(), kept],
+            "{bugs:?}"
+        );
+    }
 }

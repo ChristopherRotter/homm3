@@ -13,6 +13,7 @@ use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::layout::{BattleLayout, BookLayout};
 use h3_view::message::{MessageBox, Picture, Style};
 use h3_view::mouse::Legal;
+use h3_view::shades::{Cells, Options as Shades};
 use h3_view::sound::Tune;
 use h3_view::stats::Memory as StatsMemory;
 use h3_view::tables::Tables;
@@ -218,6 +219,9 @@ pub struct Still {
     /// Creature Info's level the battle last wrote its status line at (E17 M6 T4b2b2,
     /// `Hover::line_level`): the still's line is worded at it (the epic's review item 42).
     pub line_level: u8,
+    /// The cursor shadow's list and the background as the actions left them, with the grid's and
+    /// the shadows' options (E17 M6 T4c, design §12.16).
+    pub cells: Cells,
 }
 
 impl Still {
@@ -238,6 +242,14 @@ impl Still {
             options_arrow: false,
             army: Vec::new(),
             line_level: 0,
+            cells: Cells::new(
+                Shades {
+                    grid: false,
+                    cursor: false,
+                    movement: false,
+                },
+                h3_render::Bugs::Original,
+            ),
         }
     }
 
@@ -293,7 +305,7 @@ pub struct Boxes<'a> {
     /// The combat options dialog the key O opens (none given) or a click at a point on the
     /// panel's Options (E17 M6 T4a; none: the battle takes no command, or no button there), at
     /// Creature Info's level then (E17 M6 T4b2b2).
-    pub options: &'a dyn Fn(Option<[i32; 2]>, u8) -> Option<h3_view::options::Open>,
+    pub options: &'a dyn Fn(Option<[i32; 2]>, (u8, Shades)) -> Option<h3_view::options::Open>,
     /// The army info windows the battle's mouse shows (E17 M6 T4b2b1; none: none).
     pub army: Option<Army<'a>>,
 }
@@ -314,6 +326,10 @@ pub struct Army<'a> {
     /// A window as the battle at the opening fills it: a side's hero's (none: no hero there) or,
     /// E17 M6 T4b2b2, a stack's (none: no rules or tables for it).
     pub window: &'a dyn Fn(Drawn) -> Option<MessageBox>,
+    /// The grid's and the shadows' options the still starts at (E17 M6 T4c: `frames.toml`'s
+    /// `grid`, `cursor_shadow` and `movement_shadow`, *provisional*: the harness's registry
+    /// values; off without them); the keys F6 to F8 toggle them.
+    pub shades: Shades,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -439,13 +455,26 @@ pub fn still(
     // tactics phase's message takes it (its close posts none that does, CLT-Q32).
     let army = boxes.and_then(|b| b.army.as_ref());
     let mut hover = Hover::new(army.map_or(0, |a| a.level));
-    let take = |hover: &mut Hover, to: [i32; 2]| {
+    // The cursor shadow (E17 M6 T4c, design §12.16): the original's list, every move the battle
+    // takes shading the hex under the mouse.
+    let mut cells = Cells::new(
+        army.map_or_else(Shades::default, |a| a.shades),
+        h3_render::Bugs::Original,
+    );
+    // The opening's turn in the tactics phase: its shade in every composition (a block saved
+    // from one keeps it).
+    cells.phase(army.map_or_else(std::collections::BTreeSet::new, |a| {
+        h3_view::tactics::shade(a.observation)
+    }));
+    let take = |hover: &mut Hover, cells: &mut Cells, to: [i32; 2]| {
         if let Some(a) = army {
+            let spot = h3_view::mouse::spot(a.layout, to, true);
+            cells.mouse(h3_view::mouse::aim::screen_hex(spot), false);
             hover.moved(a.layout, (a.observation, a.legal), (to, true));
         }
     };
     if !still.opening {
-        take(&mut hover, mouse);
+        take(&mut hover, &mut cells, mouse);
     }
     for action in actions {
         if still.held {
@@ -470,7 +499,7 @@ pub fn still(
                 still.over = Some(rest);
                 still.arrow = false;
                 hover.forget();
-                take(&mut hover, rest);
+                take(&mut hover, &mut cells, rest);
             }
             continue;
         }
@@ -497,14 +526,17 @@ pub fn still(
                 }
                 OptionsAction::Closed { moved } => {
                     // Its level set Creature Info's (E17 M6 T4b2a): the windows as they are, the
-                    // line rewritten only by the park's move (as F5, §12.14 oddity 6).
+                    // line rewritten only by the park's move (as F5, §12.14 oddity 6). The
+                    // background composed again with its options, the cursor shadow's list kept
+                    // (E17 M6 T4c, oddity 2: the original's).
                     hover.windows.level = open.settings.army_info;
+                    cells.compose(Shades::of(&open.settings));
                     still.options = None;
                     // By a click the park's move reaches the battle; by a key the arrow stays.
                     still.options_arrow = !moved;
                     if moved {
                         still.over = Some(still.mouse);
-                        take(&mut hover, still.mouse);
+                        take(&mut hover, &mut cells, still.mouse);
                     }
                 }
             }
@@ -581,10 +613,19 @@ pub fn still(
                     // Creature Info's level cycled (E17 M6 T4b2a; the windows as they are until
                     // a new hex, E17 M6 T4b2b1).
                     (Some(Do::ArmyInfo), _) => hover.cycle(),
+                    // The grid or a shadow toggled (E17 M6 T4c, design §12.16): the shade off, the
+                    // background composed again, the mouse's hex forgotten and the mouse posted
+                    // where it rests (the opening's turn a human's).
+                    (Some(Do::Shades(toggle)), _) => {
+                        cells.set(cells.options().toggled(toggle));
+                        hover.forget();
+                        take(&mut hover, &mut cells, still.mouse);
+                    }
                     // The combat options dialog (E17 M6 T4a), the mouse where it is.
                     (Some(Do::Button(h3_view::panel::OPTIONS)), _) => {
                         let level = hover.windows.level;
-                        still.options = boxes.and_then(|b| (b.options)(None, level));
+                        let shades = cells.options();
+                        still.options = boxes.and_then(|b| (b.options)(None, (level, shades)));
                         still.options_arrow = false;
                     }
                     (Some(Do::Button(h3_view::panel::SPELL_BOOK)), _) => {
@@ -614,7 +655,7 @@ pub fn still(
                 // Over the battle (no box, no book): its move, then the left press over the
                 // battlefield hiding the army info windows, the hex kept (E17 M6 T4b2b1).
                 if result.is_none() && asking.is_none() && still.open.is_none() {
-                    take(&mut hover, to);
+                    take(&mut hover, &mut cells, to);
                     if let Some(a) = army {
                         hover.pressed(a.layout, to);
                     }
@@ -652,8 +693,8 @@ pub fn still(
                     // battle's status line keeps the press's hint.
                     asking = tell(&text, Style::Ok, None, Asked::Turret);
                     still.over = Some(to);
-                } else if let Some(open) =
-                    boxes.and_then(|b| (b.options)(Some(to), hover.windows.level))
+                } else if let Some(open) = boxes
+                    .and_then(|b| (b.options)(Some(to), (hover.windows.level, cells.options())))
                 {
                     // The panel's Options (E17 M6 T4a): the dialog, modal, the park's move its.
                     still.options = Some(open);
@@ -684,7 +725,7 @@ pub fn still(
                     None => {
                         moved(&mut still, &mut memory, crate::pointer::PARK);
                         if still.open.is_none() {
-                            take(&mut hover, crate::pointer::PARK);
+                            take(&mut hover, &mut cells, crate::pointer::PARK);
                         }
                         if still.arrow {
                             still.over = Some(crate::pointer::PARK);
@@ -702,7 +743,7 @@ pub fn still(
                 moved(&mut still, &mut memory, to);
                 still.over = Some(to);
                 still.arrow = false;
-                take(&mut hover, to);
+                take(&mut hover, &mut cells, to);
                 if let Some(open) = boxes.and_then(|b| (b.held)(to, &mut stats_memory)) {
                     still.stats = Some(open);
                 } else if let Some(window) = boxes.and_then(|b| (b.hero_info)(to)) {
@@ -737,7 +778,7 @@ pub fn still(
                 moved(&mut still, &mut memory, to);
                 still.over = Some(to);
                 still.arrow = false;
-                take(&mut hover, to);
+                take(&mut hover, &mut cells, to);
                 let side = army
                     .and_then(|a| {
                         hero_side(a, to).filter(|&s| (a.window)(Drawn::Hero(s, 0)).is_some())
@@ -762,7 +803,10 @@ pub fn still(
                         if still.open.is_none() {
                             still.over = Some(to);
                             still.arrow = false;
-                            take(&mut hover, to);
+                            // The options dialog's arrow goes with the move (E17 M6 T4c: the
+                            // dialog's witness of §12.16's oddity 2 moves after its key's close).
+                            still.options_arrow = false;
+                            take(&mut hover, &mut cells, to);
                         }
                     }
                 }
@@ -787,6 +831,7 @@ pub fn still(
         still.army = hover.windows.drawn().filter_map(a.window).collect();
     }
     still.line_level = hover.line_level;
+    still.cells = cells;
     Ok(still)
 }
 
@@ -1442,19 +1487,20 @@ pub(crate) mod tests {
         let catalogue = Catalogue::default();
         let none = Legal::default();
         // The combat options dialog by the key O or the panel's Options, at the level then.
-        let options = |point: Option<[i32; 2]>, level: u8| {
+        let options = |point: Option<[i32; 2]>, (level, shades): (u8, Shades)| {
             let on_button = point.is_none_or(|p| {
                 battle.panel_in(observation).button_at(p) == Some(h3_view::panel::OPTIONS)
             });
             on_button.then(|| {
-                let settings = h3_view::options::Settings {
+                let mut settings = h3_view::options::Settings {
                     army_info: level,
                     ..h3_view::options::Settings::CAPTURE
                 };
+                shades.set_in(&mut settings);
                 h3_view::options::Open::new(&battle.options, &catalogue, settings, (0, false))
             })
         };
-        let played = |level: u8, mouse: [i32; 2], actions: &[&str]| {
+        let played_with = |(level, shades): (u8, Shades), mouse: [i32; 2], actions: &[&str]| {
             let boxes = Boxes {
                 tell: &tell,
                 leave: Leave {
@@ -1478,6 +1524,7 @@ pub(crate) mod tests {
                     legal: &none,
                     level,
                     window: &window,
+                    shades,
                 }),
             };
             let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
@@ -1488,6 +1535,9 @@ pub(crate) mod tests {
                 (&layout(), &catalogue),
                 Some(&boxes),
             )
+        };
+        let played = |level: u8, mouse: [i32; 2], actions: &[&str]| {
+            played_with((level, Shades::default()), mouse, actions)
         };
         let ids = |still: &Still| -> Vec<u16> {
             (still.army.iter())
@@ -1591,5 +1641,39 @@ pub(crate) mod tests {
         let still = played(0, on, &[&up[..], &[to_theirs.as_str()]].concat()).unwrap();
         let spells = stack_id(theirs.id, WindowKind::Spells);
         assert_eq!((ids(&still), still.line_level), (vec![spells], 2));
+        // E17 M6 T4c (design §12.16): the cursor shadow follows the battle's moves, F7 takes it
+        // off, F6 composes the grid and shades the mouse's hex again; the dialog opens with the
+        // still's options, and its close composes without the shade's call (oddity 2): the next
+        // hex puts the old block back (the grid's box at 199,151).
+        let cursor = Shades {
+            cursor: true,
+            ..Shades::default()
+        };
+        let hex = |still: &Still| {
+            still
+                .cells
+                .drawn(&std::collections::BTreeSet::new())
+                .overlays
+        };
+        let theirs_hex = theirs.hex;
+        let still = played_with((0, cursor), on, &[]).unwrap();
+        assert_eq!(hex(&still).cursor, [ours.hex]);
+        let still = played_with((0, cursor), on, &[to_theirs.as_str()]).unwrap();
+        assert_eq!(hex(&still).cursor, [theirs_hex]);
+        let still = played_with((0, cursor), on, &["key:F7"]).unwrap();
+        assert!(hex(&still).cursor.is_empty() && !still.cells.options().cursor);
+        let still = played_with((0, cursor), on, &["key:F6"]).unwrap();
+        assert_eq!(
+            (hex(&still).grid, hex(&still).cursor),
+            (true, vec![ours.hex])
+        );
+        let opened = played_with((0, cursor), on, &["key:o"]).unwrap();
+        assert!(opened.options.is_some_and(|o| o.settings.cursor_shade));
+        let dialog = ["key:o", "click:199,151", "key:Return", to_theirs.as_str()];
+        let still = played_with((0, cursor), on, &dialog).unwrap();
+        let overlays = hex(&still);
+        assert_eq!((overlays.grid, overlays.cursor), (true, vec![theirs_hex]));
+        assert_eq!(overlays.stale.len(), 1);
+        assert!(!still.options_arrow);
     }
 }

@@ -141,6 +141,7 @@ fields = [
   { offset = 0x53A9, name = "moat_fortress", type = "u8", summary = "the Fortress's second moat row", confidence = "read", refs = ["installation.md §7.27"] },
   { offset = 0x53AC, name = "field_copy", type = "pcx16*", summary = "a copy of the background's field area (58, 86, 683 x 472) before the hex overlays (0x493CF0)", confidence = "inferred", refs = ["epics/E17-design.md §4"] },
   { offset = 0x53B0, name = "background", type = "pcx16*", summary = "the background buffer, 800 x 556 (0x493CF0)", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x53B4, name = "shade_saves", type = "pcx16*", summary = "the cursor shadow's saves: 855 x 52, 19 slots of 45 x 52 (made at the battle's start 0x462BAA; battle_shade_hexes 0x493EA0)", confidence = "read", refs = ["epics/E17-design.md §12.16"] },
   { offset = 0x53B8, name = "background_composed", type = "i32", summary = "the buffer is composed (H3API calls it doNotDrawShade)", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x53BC, name = "map_tile", type = "map_tile*", summary = "the adventure map tile of the battle (H3API mapitem)", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x53C0, name = "special_field", type = "i32", summary = "special battlefield: -1 none, 0 the shore, 1 Magic Plains, 2 Cursed Ground, 3 Holy Ground, 4 Evil Fog, 5 Clover Field, 6 Lucid Pools, 7 Fiery Fields, 8 Rocklands, 9 Magic Clouds", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.21", "installation.md §7.26"] },
@@ -228,6 +229,7 @@ fields = [
   { offset = 0x2E, name = "corpse_records", type = "u8[14]", summary = "their record indices", confidence = "read", refs = ["installation.md §7.18"] },
   { offset = 0x3C, name = "corpse_other_hex", type = "u8[14]", summary = "per corpse the other hex of a two-hex one (0 next, 1 previous)", confidence = "read", refs = ["installation.md §7.18"] },
   { offset = 0x4A, name = "attackable", type = "u8", summary = "the battle pathfinder's attack mark: the stack here can be attacked at the cell's cost (0x4B3400; 0x4B2FF0); +0x4A and +0x4B are cleared in its head", confidence = "read", refs = ["installation.md §7.40"] },
+  { offset = 0x4D, name = "shade_slot", type = "i8", summary = "the cursor shadow's save slot in the manager's +0x53B4 while the hex is shaded, -1 after its restore (battle_shade_hexes 0x493EA0)", confidence = "read", refs = ["epics/E17-design.md §12.16"] },
 ]
 
 [[struct]]

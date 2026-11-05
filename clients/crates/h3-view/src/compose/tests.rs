@@ -135,6 +135,38 @@ fn each_draw_takes_its_drawer() {
 }
 
 #[test]
+fn a_grid_cell_is_drawn_as_the_absolute_obstacle() {
+    // E17 M6 T4c (design §12.16): `ccellgrd.pcx` opaque but its index 0 (0x44FC70's flag).
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let absolute = Draw::AbsoluteObstacle {
+        picture: "abs.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let grid = Draw::Grid {
+        picture: "abs.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let [a, b] = [absolute, grid]
+        .map(|cell| compose(&[background.clone(), cell], &batch(), &small()).unwrap());
+    assert_eq!(a.pixels(), b.pixels());
+    let missing = Draw::Grid {
+        picture: "no.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(
+        compose(&[missing], &batch(), &small()).unwrap_err(),
+        ComposeError::Missing("no.pcx".to_string())
+    );
+}
+
+#[test]
 fn a_stack_s_palette_effect_recolours_its_sprite_from_entry_10() {
     // E17 M5 T5b1 (design §7.26): `draw_battle_stack` changes the creature's palette from entry
     // 10 on for its sprite alone (0x43E280): a clone's white at entry 10 is a light blue, the

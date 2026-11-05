@@ -200,7 +200,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   at levels 1 and 2, a still's status line at its level, CLT-Q48 fixed and CLT-Q51 copied, six
   stills exact (`army-info-stack`, `-stack-enemy`, `-spells`, `-stack-f5`, `-ballista`,
   `-spells-f5`); T4b done;
-  **T4c** the grid and the shadows drawn.
+  **T4c** (done 2026-11-05, design §12.16; kept whole by the user) the grid, the movement and cursor
+  shadows and the aims' shades drawn, F6 to F8 saved at once, CLT-Q52 to Q56 asked and answered
+  (all five fixed), 11 stills exact and 5 sequences (their 17 other frames the original's listed
+  redraw artifacts); T4 done.
 - **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
   question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
   not drawn yet and their sounds' waits (M5's items 5, 9, 24, 42, 45, 79, 84), each as far as read.
@@ -439,3 +442,14 @@ The next milestone's list starts here.
     No still shows a stack's active spells (a still's battle stays at its opening; the unit tests
     cover the icons and GENRLTXT 675). CLT-Q48 fixed (the client's Ballista Dmg the dialog's),
     CLT-Q51 copied (negative luck's icon the neutral one).
+43. The grid and the shadows (T4c, *provisional* where marked; design §12.16): built in both
+    profiles, CLT-Q52 to Q56 fixed through `h3_render::Bugs` (the original's in the comparisons;
+    Q56 as put to the user: a wall aim takes the mouse's hex at its start). *Provisional*: the reach
+    from the engine's legal moves and strikes' targets; an action's start clears the blocks put
+    back, each keeping one composition; F6 to F8 only while the battle takes keys; the idle step's
+    move (oddity 10) not modelled; an aim's shade recorded as sequences only (a still takes no
+    aim); creature casts' and a server seat's aims know no immune stacks. Recorded: 11 stills
+    exact, 5 sequences whose 17 other frames are the original's redraw artifacts (the book's
+    closing, a given-up area aim's outline until the next idle step, a whole redraw's pose a
+    deadline early), listed, not copied. Not built: the battle's decided and hidden tests, a later
+    battle's save picture, the deferred composition +0x53B8.

@@ -1,0 +1,57 @@
+commands = [
+    "0 move 1 6,6,0 7,5,0 8,4,0",
+    "0 answer offer accept",
+    "system battle move 89",
+    "0 battle attack 1 87",
+    "0 move 0 5,8,0 5,7,0 6,6,0 7,5,0 8,4,0",
+    "0 answer offer accept",
+    "0 battle attack 1 114",
+    "0 answer offer accept",
+    "0 answer hire close",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x90aff27fb5ed406b",
+    "0x4815f9617ff4198f",
+]
+
+[replay]
+format = 10
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x962e87e7a01056f6"
+adventure_ruleset_hash = "0xf7865aeae57de535"
+town_ruleset_hash = "0xe9dc612ed812d825"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 25
+adventure_state_hash_version = 21
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-dwellings-36.h3m"
+hash = "0xbbd135d542e15bc3"
+import_version = 18
+
+[result]
+day = 2
+final_hash = "0x56903d1a8fd39d48"

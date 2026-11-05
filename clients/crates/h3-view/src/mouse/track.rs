@@ -20,6 +20,7 @@ use super::{Field, Hint, Kind, Spot, pointer_in, slot, slots_in, spot};
 use crate::army_info::Windows;
 use crate::battle_log::Logged;
 use crate::layout::{BattleLayout, Mouse};
+use crate::shades::{self, Cells, Drawn, Options};
 
 /// What the mouse does, in time order (the harness's actions, the window's events).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,6 +125,20 @@ pub enum Input {
         /// Whose hero.
         side: Side,
     },
+    /// The grid's and the shadows' options from now (E17 M6 T4c, design §12.16): by one of the
+    /// keys F6 to F8 (`keyed`: `battle_set_shades`' effects, the cursor's shade off first, the
+    /// background composed again, on a human's turn the mouse's hex forgotten and the mouse
+    /// posted where it rests), or the background composed again with them without the shade's
+    /// call (the battle's opening, the combat options dialog's close: oddity 2, CLT-Q52). Before
+    /// the first, all off (the harness's).
+    Shades {
+        /// When.
+        at: u32,
+        /// The options.
+        options: Options,
+        /// By a key.
+        keyed: bool,
+    },
 }
 
 impl Input {
@@ -142,7 +157,8 @@ impl Input {
             | Self::Stop { at, .. }
             | Self::ArmyInfo { at, .. }
             | Self::Hide { at, .. }
-            | Self::HeroInfo { at, .. } => at,
+            | Self::HeroInfo { at, .. }
+            | Self::Shades { at, .. } => at,
         }
     }
 }
@@ -197,16 +213,26 @@ pub struct Shown {
     /// The army info windows from a time on (E17 M6 T4b2b1): those shown, what filled them and
     /// Creature Info's level; each change once, in order.
     pub army: Vec<(u32, Windows)>,
+    /// What the background draws from a time on (E17 M6 T4c, design §12.16): the movement shade
+    /// outside the tactics phase, the grid and the cursor shadow; each change once, in order.
+    pub shades: Vec<(u32, Drawn)>,
 }
 
-/// A cursor's look: the combat cursor's frame, or the spell cursor's (E17 M5 T3b).
+/// A cursor's look: the combat cursor's frame, or the spell cursor's (E17 M5 T3b), or the default
+/// cursor's arrow (E17 M6 T4c).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Look {
     /// `crcombat.DEF`'s frame (the mouse manager's type 2).
     Combat(u32),
     /// `crspell.DEF`'s frame (type 3).
     Spell(u32),
+    /// The default cursor's frame 0 (type 0, `crdeflt.def`): the spell book's, which the wall's
+    /// aim keeps as it starts in the original's profile (it calls no cursor, 0x59F07C; CLT-Q56).
+    Arrow,
 }
+
+/// The frame of [`Shown::frames`] that stands for [`Look::Arrow`] (no combat cursor's frame).
+pub const ARROW: u32 = u32::MAX;
 
 impl Shown {
     /// The cursor's frame at `t` (none before the mouse is anywhere).
@@ -234,7 +260,13 @@ impl Shown {
     pub fn look(&self, t: u32, mouse: &Mouse) -> Option<Look> {
         match last(&self.spell, t).copied().flatten() {
             Some(since) => Some(Look::Spell(spell_frame(since, t, mouse))),
-            None => self.frame(t).map(Look::Combat),
+            None => self.frame(t).map(|f| {
+                if f == ARROW {
+                    Look::Arrow
+                } else {
+                    Look::Combat(f)
+                }
+            }),
         }
     }
 
@@ -258,6 +290,13 @@ impl Shown {
         last(&self.army, t).copied().unwrap_or_default()
     }
 
+    /// What the background draws at `t` besides the tactics phase's shade (E17 M6 T4c; none
+    /// before the first change: nothing).
+    #[must_use]
+    pub fn shades(&self, t: u32) -> Option<&Drawn> {
+        last(&self.shades, t)
+    }
+
     /// How long each of its lists is.
     fn lens(&self) -> Lens {
         Lens([
@@ -270,13 +309,14 @@ impl Shown {
             self.area.len(),
             self.aimed.len(),
             self.army.len(),
+            self.shades.len(),
         ])
     }
 
     /// Whether its lists from `from` on are `tail`'s (E17 M5 T8a, R3-1: [`follow_on`]'s).
     #[must_use]
     pub fn ends_with(&self, from: Lens, tail: &Self) -> bool {
-        let [a, b, c, d, e, f, g, h, k] = from.0;
+        let [a, b, c, d, e, f, g, h, k, m] = from.0;
         self.frames.get(a..) == Some(&tail.frames)
             && self.points.get(b..) == Some(&tail.points)
             && self.marked.get(c..) == Some(&tail.marked)
@@ -286,6 +326,7 @@ impl Shown {
             && self.area.get(g..) == Some(&tail.area)
             && self.aimed.get(h..) == Some(&tail.aimed)
             && self.army.get(k..) == Some(&tail.army)
+            && self.shades.get(m..) == Some(&tail.shades)
     }
 
     /// Its lists cut at `from`, `tail`'s put after them (E17 M5 T8a, R3-1: [`follow_on`]'s):
@@ -296,7 +337,7 @@ impl Shown {
             list.append(&mut tail);
             gone
         }
-        let [a, b, c, d, e, f, g, h, k] = from.0;
+        let [a, b, c, d, e, f, g, h, k, m] = from.0;
         Self {
             frames: cut(&mut self.frames, a, tail.frames),
             points: cut(&mut self.points, b, tail.points),
@@ -307,6 +348,7 @@ impl Shown {
             area: cut(&mut self.area, g, tail.area),
             aimed: cut(&mut self.aimed, h, tail.aimed),
             army: cut(&mut self.army, k, tail.army),
+            shades: cut(&mut self.shades, m, tail.shades),
         }
     }
 }
@@ -314,7 +356,7 @@ impl Shown {
 /// How long each of a [`Shown`]'s lists is (E17 M5 T8a, R3-1): where what a follow gone on from
 /// a [`Mark`] shows goes.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Lens([usize; 9]);
+pub struct Lens([usize; 10]);
 
 impl Lens {
     fn plus(self, other: Self) -> Self {
@@ -382,6 +424,19 @@ struct Handler<'l> {
     army: Windows,
     /// The turn now (0 the opening's): the battle a window shown now is filled by.
     turn: usize,
+    /// The cursor shadow's list and the background (E17 M6 T4c, design §12.16).
+    cells: Cells,
+    /// The movement shade of the turn waiting outside the tactics phase (a human's), drawn with
+    /// the movement shadow on; none while an action plays.
+    reach: BTreeSet<u8>,
+    /// The aim under way turned the movement shadow off as it started (`battle_set_shades`,
+    /// 0x59EFB8): its end turns it on again.
+    aim_shades: bool,
+    /// The wall's aim's last hex (0x688328: set at each hex it takes, none at a refusal, kept
+    /// from one wall aim to the next; the original's profile, CLT-Q56).
+    wall_last: Option<u8>,
+    /// What the background draws, as last shown.
+    drawn: Drawn,
     shown: Shown,
 }
 
@@ -445,11 +500,21 @@ impl Handler<'_> {
         name: &dyn Fn(&Hint, &Observation) -> String,
     ) -> Option<u8> {
         let taken = aim.takes(field, hex);
+        // Fire Wall's hexes, or none at a refusal (0x5A334D, E17 M6 T4c, design §12.16); Force
+        // Field's aim shades nothing (CLT-Q54 (2), copied).
+        if aim.original == shades::FIRE_WALL {
+            let side = field.acting().map_or(Side::Attacker, |s| s.controller);
+            let list = taken.map_or_else(Vec::new, |h| {
+                shades::wall_shade(aim.original, h, (side, aim.mastery))
+            });
+            self.cells.shade(hex, &list, false);
+        }
         if let Some(h) = taken {
             self.set_spell(now, u32::from(aim.original) + 1);
             self.write(now, &aim.line(field, h), Some(field), name);
             if aim.area.is_some() {
                 self.set_area(now, aim.marks(field, hex));
+                self.area_shade(aim, field, hex);
             } else {
                 // `battle_mouse_stack`: nothing over the stack already marked.
                 let stack = field.at(h).map(|s| s.id);
@@ -469,18 +534,49 @@ impl Handler<'_> {
             self.set_marked(now, None);
             if aim.area.is_some() {
                 self.set_area(now, aim.marks(field, hex));
+                self.area_shade(aim, field, hex);
             }
         }
         taken
     }
 
+    /// The area's shade after its marks (`aim_area_marks` 0x59F8A0, E17 M6 T4c: forced, for a
+    /// refused hex too; the marks drawn over it).
+    fn area_shade(&mut self, aim: &Aim, field: &Field<'_>, hex: i32) {
+        self.cells
+            .shade(hex, &shades::area_shade(aim, field, hex), true);
+    }
+
+    /// The background's drawing now, shown from `now` if it changed (E17 M6 T4c).
+    fn show_shades(&mut self, now: u32) {
+        let drawn = self.cells.drawn(&self.reach);
+        if drawn != self.drawn {
+            self.drawn = drawn.clone();
+            self.shown.shades.push((now, drawn));
+        }
+    }
+
     /// The aim ends (a click's cast or a cancel: 0x5A3109, 0x5A31A3): no stack keeps an area's
     /// mark.
     fn end_aim(&mut self, now: u32) {
-        if self.aiming.take().is_some_and(|a| a.last.is_some()) {
+        let aiming = self.aiming.take();
+        if aiming.as_ref().is_some_and(|a| a.last.is_some()) {
             self.shown.aimed.push((now, None));
         }
+        // The wall's last hex outlives its aim (0x688328, E17 M6 T4c: CLT-Q56's original's).
+        if let Some(a) = aiming.filter(|a| shades::wall(a.aim.original)) {
+            self.wall_last = a.last;
+        }
         self.set_area(now, BTreeSet::new());
+        // `battle_set_shades(grid, 1, 1, …)` after the aim's loop (0x59F077): its shade goes, the
+        // movement shadow on again (design §12.16).
+        if core::mem::take(&mut self.aim_shades) {
+            let options = self.cells.options();
+            self.cells.set(Options {
+                movement: true,
+                ..options
+            });
+        }
     }
 
     /// The army info windows changed by `change` at `now` (E17 M6 T4b2b1): shown from now if they
@@ -541,6 +637,11 @@ impl Handler<'_> {
             self.aiming = Some(aiming);
             return;
         }
+        // The cursor shadow follows every move the battle takes, before the battlefield's test
+        // (`battle_buttons` 0x4753DF, E17 M6 T4c, design §12.16): the hex `screen_to_hex` answers.
+        let rects = field.is_some_and(|f| f.rects()) || self.bugs == Bugs::Original;
+        self.cells
+            .mouse(screen_hex(spot(self.layout, point, rects)), false);
         let [width, height] = self.layout.mouse.field;
         if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
             // Outside the battlefield: unmarked, the items' hints, the pointer (0x475402). The
@@ -768,15 +869,40 @@ pub fn follow_on<'l>(
                         .find(|a| a.spell == spell && a.creature == creature)
                 });
                 if let (Some(turn), Some(aim)) = (turn, aim) {
+                    // With both shadows on the aim turns the movement shadow off first (E17 M6
+                    // T4c, design §12.16: `battle_set_shades(grid, 1, 0, 1)`, the cursor's shade
+                    // gone); the client's every aim starts with the cursor's shade off (CLT-Q54
+                    // (1), fixed: the original's keeps it frozen through a targeted aim).
+                    if let Some(options) = h.cells.options().aiming(aim.original) {
+                        h.cells.set(options);
+                        h.aim_shades = true;
+                        // On the human's turn the log settled (0x472BF0); its posted move is
+                        // flushed as the aim's loop starts (§7.18).
+                        h.shown.log.push((now, Logged::Settle));
+                    }
+                    if h.bugs == Bugs::Fixed {
+                        h.cells.mouse(-1, false);
+                    }
                     // The cursor where the mouse is now (0x59EE2E), the hex it takes not kept
                     // (0x59EE56): a click before the next move casts nothing. The client keeps
                     // it, so such a click casts there (CLT-Q27 (2), answered (b) at E17 M5 T8c);
-                    // the original's for the comparisons.
+                    // the original's for the comparisons. The wall's aim calls no cursor as it
+                    // starts (0x59F07C) and keeps its last hex from the wall's aim before, a
+                    // click before a move casting there (CLT-Q56: the original's alone; the
+                    // client's aims it as the others, at the hex under the mouse).
                     let hex = h
                         .point
                         .map_or(-1, |p| screen_hex(spot(layout, p, turn.field.rects())));
-                    let taken = h.aim_at(now, (aim, hex), &turn.field, name);
-                    let last = taken.filter(|_| h.bugs == Bugs::Fixed);
+                    let walled = shades::wall(aim.original) && h.bugs == Bugs::Original;
+                    let taken = if walled {
+                        // The book's arrow stays until the aim's first cursor (recorded in
+                        // `shade-wall`).
+                        h.set_frame(now, ARROW);
+                        h.wall_last
+                    } else {
+                        h.aim_at(now, (aim, hex), &turn.field, name)
+                    };
+                    let last = taken.filter(|_| h.bugs == Bugs::Fixed || walled);
                     if last.is_some() {
                         h.shown.aimed.push((now, last));
                     }
@@ -798,18 +924,30 @@ pub fn follow_on<'l>(
             }
             Input::Cancel { at: now } => {
                 let aimed = h.aiming.as_ref().map(|a| a.aim.creature);
+                // `battle_set_shades` after an aim that turned the movement shadow off settles
+                // the log and posts the mouse on the human's turn whatever began the aim, the key
+                // F too (0x479FC0; design §12.16). A cast's settles with its action's start.
+                let shaded = h.aim_shades;
                 h.end_aim(now);
+                if shaded {
+                    h.shown.log.push((now, Logged::Settle));
+                }
+                // The client's given-up aim takes its shade off whatever the movement shadow
+                // (CLT-Q53, fixed: the original's leaves it until the mouse takes another hex).
+                if aimed.is_some() && h.bugs == Bugs::Fixed {
+                    h.cells.mouse(-1, false);
+                }
                 h.dialog = false;
                 if aimed.is_some() {
                     // `enter_player_cast`'s end (0x59F65C).
                     h.set_frame(now, layout.mouse.panel_frame);
                 }
-                if aimed != Some(true) || h.bugs == Bugs::Fixed {
+                if aimed != Some(true) || h.bugs == Bugs::Fixed || shaded {
                     // The book's button's end (0x47519A): the mouse's hex forgotten and the
                     // mouse posted where it rests (0x4ECC00); the key F's posts nothing, so the
                     // aim's pointer and line stay until the mouse takes another hex: the client
                     // posts it there too (CLT-Q27 (1), answered (b) at E17 M5 T8c), the
-                    // original's for the comparisons.
+                    // original's for the comparisons (but `battle_set_shades`' above).
                     h.hex = None;
                     if let (Some(point), Some(turn)) = (h.point, turns.get(at.turn)) {
                         h.take(now, point, Some(&turn.field), name);
@@ -857,6 +995,30 @@ pub fn follow_on<'l>(
                 let turn = h.turn;
                 h.set_army(now, |army| army.held(side, turn));
             }
+            // The grid's and the shadows' options (E17 M6 T4c, design §12.16).
+            Input::Shades {
+                at: now,
+                options,
+                keyed,
+            } => {
+                if !keyed {
+                    h.cells.compose(options);
+                } else {
+                    // F6 to F8 (`battle_set_shades`' effects): the shade off, the options set,
+                    // the background composed again; on a human's turn here the mouse's hex
+                    // forgotten, the log settled and the mouse posted where it rests (0x4ECC00),
+                    // which shades its hex again; else the combat cursor's pointer.
+                    h.cells.set(options);
+                    match (turns.get(at.turn), h.point) {
+                        (Some(turn), Some(point)) if turn.human && !h.busy && !h.dialog => {
+                            h.hex = None;
+                            h.shown.log.push((now, Logged::Settle));
+                            h.take(now, point, Some(&turn.field), name);
+                        }
+                        _ => h.set_frame(now, layout.mouse.panel_frame),
+                    }
+                }
+            }
             Input::Act { at: now } => {
                 // In the aim a click casts only at the hex the last move took (0x5A30E9).
                 if h.aiming.as_ref().is_some_and(|a| a.last.is_none()) {
@@ -888,6 +1050,7 @@ pub fn follow_on<'l>(
                 h.items = true;
             }
         }
+        h.show_shades(input.at());
     }
     // The mark gone on from where it was taken again is the same: its inputs kept.
     let mark = match marked {
@@ -905,6 +1068,7 @@ impl<'l> Handler<'l> {
     /// The handler at the battle's opening, `turns` its turns: the computer's first shows the
     /// pointer.
     fn new(layout: &'l BattleLayout, turns: &[Turn<'_>]) -> Self {
+        let bugs = turns.first().map_or(Bugs::Fixed, |t| t.field.bugs);
         let mut h = Self {
             layout,
             point: None,
@@ -922,11 +1086,18 @@ impl<'l> Handler<'l> {
             area: BTreeSet::new(),
             hovered: None,
             items: false,
-            bugs: turns.first().map_or(Bugs::Fixed, |t| t.field.bugs),
+            bugs,
             army: Windows::default(),
             turn: 0,
+            cells: Cells::new(Options::default(), bugs),
+            reach: turns.first().map_or_else(BTreeSet::new, reach),
+            aim_shades: false,
+            wall_last: None,
+            drawn: Drawn::default(),
             shown: Shown::default(),
         };
+        h.cells
+            .phase(turns.first().map_or_else(BTreeSet::new, phase));
         if turns.first().is_some_and(|t| !t.human) {
             h.set_frame(0, layout.mouse.panel_frame);
         }
@@ -968,7 +1139,11 @@ impl Handler<'_> {
                 // E17 M6 T4b2b1); the tactics phase's end is none (§12.15).
                 if !start.ends_tactics {
                     self.set_army(now, Windows::hide);
+                    // The cursor's shade goes, the movement overlay cleared (0x478E45, 0x478E51;
+                    // E17 M6 T4c, design §12.16).
+                    self.cells.action();
                 }
+                self.reach.clear();
             }
             Logged::Turn(_) => {
                 at.turn += 1;
@@ -977,6 +1152,9 @@ impl Handler<'_> {
                 let Some(turn) = turns.get(at.turn) else {
                     return;
                 };
+                // The movement overlay drawn at the turn's start (0x478375).
+                self.reach = reach(turn);
+                self.cells.phase(phase(turn));
                 if turn.human {
                     // The waiting moves dropped (0x478301; E17 M5 T2a), the mouse's hex forgotten
                     // (0x47883E) and the mouse posted where it rests (0x478857).
@@ -994,6 +1172,28 @@ impl Handler<'_> {
             Logged::Round | Logged::Unmark => self.set_marked(now, None),
             _ => {}
         }
+        self.show_shades(now);
+    }
+}
+
+/// The movement shade of `turn` outside the tactics phase (E17 M6 T4c): [`shades::reach`] on a
+/// human's turn here, else none (the phase's is the viewers', `crate::tactics::shade`).
+fn reach(turn: &Turn<'_>) -> BTreeSet<u8> {
+    if turn.human && turn.field.observation.tactics.is_none() {
+        shades::reach(&turn.field)
+    } else {
+        BTreeSet::new()
+    }
+}
+
+/// The tactics phase's shade `turn`'s start draws into the background whatever the movement
+/// shadow (E17 M6 T4c, §7.23): [`crate::tactics::shade`] on a human's turn here (none outside the
+/// phase), else none; kept by a block the cursor shadow saves ([`shades::Cells::phase`]).
+fn phase(turn: &Turn<'_>) -> BTreeSet<u8> {
+    if turn.human {
+        crate::tactics::shade(turn.field.observation)
+    } else {
+        BTreeSet::new()
     }
 }
 

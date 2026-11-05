@@ -18,7 +18,7 @@ use crate::{ImportError, Unsupported, import, import_map};
 /// The game's `Objects.txt` lines of the classes written here: a Guardhouse (17.56), the Dragon
 /// Cliffs (17.24), the Golem Factory (20.1), the Elemental Conflux (20.0), a Refugee Camp (78),
 /// a random dwelling (216), one of level 3 (217.2) and one of Inferno's (218.3).
-const LINES: [&str; 8] = [
+pub(super) const LINES: [&str; 8] = [
     "AVGpike0.def 001111111011111111111111111111111111111111111111 \
      100000000000000000000000000000000000000000000000 111111111 011111111 17 56 0 0",
     "AVGgdrg0.def 001111111111111111111111111111111111111111111111 \

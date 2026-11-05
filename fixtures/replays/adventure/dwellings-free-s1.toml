@@ -1,0 +1,56 @@
+commands = [
+    "0 move 2 15,3,0 14,4,0 13,4,0",
+    "0 answer offer accept",
+    "0 move 2 14,4,0 14,3,0 15,2,0",
+    "0 move 1 6,6,0 7,6,0 8,6,0 9,6,0 10,6,0 11,6,0 12,5,0 13,4,0",
+    "0 answer offer accept",
+    "0 move 1 12,5,0",
+    "0 move 0 6,9,0 7,9,0 8,9,0 9,9,0 10,8,0 11,7,0 12,6,0 13,5,0 13,4,0",
+    "0 answer offer accept",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0xeba4f6a2a060823d",
+    "0xe1271a039245d099",
+]
+
+[replay]
+format = 10
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x962e87e7a01056f6"
+adventure_ruleset_hash = "0xf7865aeae57de535"
+town_ruleset_hash = "0xe9dc612ed812d825"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 25
+adventure_state_hash_version = 21
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-dwellings-36.h3m"
+hash = "0xbbd135d542e15bc3"
+import_version = 18
+
+[result]
+day = 2
+final_hash = "0xe1271a039245d099"

@@ -317,6 +317,81 @@
 //!   and onto it again that day and the next (`ObjectEmpty`), and again on day 8 after the week's
 //!   reset (three gems; ADV-WEK-001, ADV-VIS-006); the week's start also pays the Crystal Dragons'
 //!   three crystals (GAM-RES-005).
+//!
+//! **Dwellings** (E08 T96a, increment 10), on `fixtures/maps/e08-dwellings-36.h3m` (written by
+//! `h3_map::writer`; `fixtures/maps/README.md`): red's Orrin (hero 0, ten archangels), Valeska
+//! (hero 1, five halberdiers) and Thorgrim (hero 2, seven stacks: D-52's full army), blue's Adela
+//! (hero 3) and Rion (hero 4); a neutral Guardhouse and Barracks, the Dragon Cliffs (three Green
+//! Dragons guard it), red's Golem Factory and blue's Elemental Conflux (class 20, guarded, owned
+//! at load); the random dwellings 216 (neutral, the Angel Portal among its outcomes), 217 (red's)
+//! and 218 (blue's); two Refugee Camps. Random play, recorded with `--map
+//! fixtures/maps/e08-dwellings-36.h3m --seed N --agent-seed N --days 22` (three week starts): the
+//! three of a search over the seeds 1 to 3 000 (a scratch probe noting each game's guards'
+//! questions and battles, flags, hire questions, free creatures, hire dialogs and purchases by
+//! source, camp visits by week, the random dwellings' draws and visits, hero battles and
+//! level-ups; not committed: 396 games ask a dwelling's guards, 202 fight them, 52 win and flag
+//! the dwelling after, 153 lose with survivors kept; 709 flag an unguarded dwelling; 154 have free
+//! creatures join, 57 refused for room; 185 buy at a one-creature dwelling, 180 at a class 20, 112
+//! at a camp; 147 draw the Angel Portal and 16 visit it; 119 have a hero battle, one a level-up
+//! (1 087); 8 visit a camp again in its week, 15 visit a dwelling refilled after a purchase; none
+//! finds a camp deserted) whose union meets 19 of the 22 features counted (free creatures joining,
+//! a camp visited again in its week and a refill visited are not in it: the scripted ones hold
+//! them):
+//!
+//! - `dwellings-s765-d22`: Valeska accepts the hire question at red's Golem Factory and buys the
+//!   most of its Gold Golems, then of its Iron Golems, the dialog of four creatures open after each
+//!   purchase (GAM-DEC-008), then closes it; Thorgrim accepts the Dragon Cliffs' guards' question
+//!   and loses to the three Green Dragons, the survivors its guards; the next week Orrin fights
+//!   them and wins: the Cliffs flagged for red after the win, their hire question declined.
+//! - `dwellings-s2192-d22`: the 216 drawn as the Angel Portal (three Angels guard it), at whose
+//!   moved entrance (18, 27) Rion is asked its guards' question and declines; Thorgrim flags the
+//!   Guardhouse and accepts its question: its free pikemen find no room in his full army
+//!   (`JoinRefused`, D-52); he accepts the Refugee Camp's on (9, 12) and closes its dialog; Orrin
+//!   flags the Barracks and buys the most of its swordsmen, the one-creature dialog closing on the
+//!   purchase.
+//! - `dwellings-s1087-d22`: Valeska flags the Barracks and closes its dialog; Adela buys the most
+//!   of the camp's on (14, 31) two Efreet Sultans, the dialog closing on the purchase; Thorgrim
+//!   attacks Adela, wins and answers his level-up with the first offer (a hero battle, the only
+//!   level-up of the search); the 217 drawn as a Golem Factory.
+//!
+//! **Scripted** (E08 T96a: increment 10's design note §14's paths), on the same map, recorded with
+//! `h3 adventure run --map fixtures/maps/e08-dwellings-36.h3m --seed 1 --checkpoint-every 5
+//! --script <script> --record <replay>` (the moves and the battles' commands from a scratch probe,
+//! E23's `h3_battle_ai::choose` for both sides; not committed); each ends with both players'
+//! turns. A refusal is a command the game rejects, the state unchanged, so no replay holds one: it
+//! shows as the legal set without that `Buy` (the most bounded by the room and the treasury,
+//! GAM-DEC-008), the dialog then closed.
+//!
+//! - `dwellings-guards-s1`: Valeska steps onto the neutral Dragon Cliffs (8, 4): the guards'
+//!   question (ADV-DWL-004); accepted, the three Green Dragons fight unowned, played by the system
+//!   actor (GAM-BAT-001), and win: Valeska leaves the map (GAM-BAT-003), the three stay its guards
+//!   and the Cliffs neutral. Orrin asks the same day and wins with his ten archangels: the Cliffs
+//!   flagged for red (ADV-OWN-001; its radius-3 reveal finds nothing new), then the hire question;
+//!   accepted, the dialog of one Green Dragon lists no `Buy` (its crystal: red's went to day 1's
+//!   event, `CannotPay`) and is closed.
+//! - `dwellings-free-s1`: Thorgrim flags the neutral Guardhouse (13, 4) for red (ADV-OWN-001);
+//!   accepted, its fourteen pikemen (level 1, the free level) find no room among his seven stacks:
+//!   `JoinRefused`, the count kept (ADV-HIR-001, D-52: all of it or none; ADV-ARM-007), and no
+//!   dialog (no creature above the free level). He steps off; Valeska visits the red Guardhouse:
+//!   no flag, the question, the fourteen join free in her free slot (`CreaturesJoined`, the count
+//!   0); Orrin's visit after her finds none (`NoneToRecruit`).
+//! - `dwellings-dialog-s1`: Thorgrim at red's Golem Factory (18, 6) (class 20, four creatures, none
+//!   free): the dialog lists no `Buy` (no room, `NoRoom`; ADV-HIR-002) and is closed; he steps off.
+//!   Orrin's dialog there: the most of the Diamond Golems (two, 1 500 gold; ADV-HIR-002,
+//!   GAM-DEC-008), then four of the six Iron Golems, less than the most, the dialog of several open
+//!   until he closes it. Valeska flags the neutral Barracks (13, 9) (ADV-OWN-001, ADV-DWL-004): its
+//!   dialog of one creature closes after her purchase of two of its four Swordsmen
+//!   (`DecisionClosed`).
+//! - `dwellings-camp-s1`: Orrin visits the Refugee Camp on (9, 12) (ADV-RFG-001): its question
+//!   names its three Gold Golems; he buys two, the dialog of one creature closing; off and on again
+//!   the same day he buys the one left; the next day the camp is deserted (`ObjectEmpty`, no
+//!   question). Day 8's week step draws its new creature (ADV-RFG-001, ADV-DWL-003: six Ice
+//!   Elementals), bought at the most.
+//! - `dwellings-random-s1`: blue's Rion reaches the neutral random dwelling 216, built as a
+//!   Homestead (ADV-DWL-005), at its drawn entrance (17, 27) left of its anchor (18, 27): flagged
+//!   for blue (ADV-OWN-001), the question, its seven Wood Elves bought at the most (ADV-HIR-002).
+//!   The next day Orrin visits red's random 217 on (20, 11), built as a second Golem Factory owned
+//!   at load: no flag, the dialog, its six Stone Golems bought, the dialog closed.
 
 use std::path::PathBuf;
 
@@ -331,7 +406,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 39,
+        files.len() >= 47,
         "expected the E08 replay fixtures in {}",
         dir.display()
     );

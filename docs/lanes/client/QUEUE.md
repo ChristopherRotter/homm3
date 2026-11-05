@@ -18,22 +18,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T4 — the combat options dialog
-
-- **Scope:** the panel's Options (O): the dialog read (its items, keys and defaults), drawn and
-  in effect: each setting the original has (the hex grid; the movement and cursor shadows, the
-  hex shade design §9.11 does not model yet; the combat speed, whose factors design §7.1 holds;
-  the Auto Combat options restricting the window's bot; the others as read), kept in the
-  client's settings file (beside `keys.toml`, *provisional*); recorded with settings on.
-- **Acceptance:** the dialog and each setting's drawing exact against recordings or listed;
-  `check.sh`. **Depends on:** T1 (done). **Status:** cut in three by the user (2026-11-04);
-  T4a done (design §12.12); T4b done (cut in three by the user, 2026-11-04: T4b1 §12.13, T4b2a
-  §12.14, T4b2b cut in two: T4b2b1 and T4b2b2 §12.15, the army info windows):
-  - **T4c:** the hex grid, the movement and cursor shadows drawn (`draw_hex_overlays` 0x493930's
-    options, 0x493EA0), recorded with the settings on; the keys F6 to F8 (`battle_set_shades`
-    0x479FC0, saved at once). The spell book's page turns ("Animate SpellBook", kept by T4a)
-    stay unbuilt (their videos), listed at M6's closure.
-
 ### E17 M6 T5 — M5's gaps
 
 - **Scope:** what M5's review list (`E17-log.md`, "M5 review list") names as not built, each as

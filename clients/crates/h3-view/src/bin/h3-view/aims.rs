@@ -46,7 +46,25 @@ pub fn hero(
         .as_ref()
         .and_then(|h| h.spell_book.iter().find(|b| b.spell == spell))
         .map_or(0, |b| b.mastery.min(3));
-    Some(engine_part(ruleset, spell, mastery, targets, false))
+    let mut aim = engine_part(ruleset, spell, mastery, targets, false);
+    // The stacks an area's marks leave out (E17 M6 T4c, `spell_effect_factor` 0x5A8090 at 0):
+    // those the engine's cast may not affect (*provisional*: its 0x5A3C80, `spell_affects`).
+    if aim.area.is_some() {
+        let handle = h3_kernel::Handle::from_raw(spell);
+        aim.unaffected = (0..state.stacks().len())
+            .filter_map(|i| u8::try_from(i).ok())
+            .filter(|&id| {
+                !h3_battle::computer::spell_affects(
+                    state,
+                    ruleset,
+                    side,
+                    handle,
+                    h3_battle::StackId(id),
+                )
+            })
+            .collect();
+    }
+    Some(aim)
 }
 
 /// The engine's part of the Faerie Dragon's aim of its drawn spell (the key F, 0x475C17) for
@@ -133,6 +151,8 @@ pub fn served(
             polarity: 0,
             level: 0,
             anti_magic: None,
+            unaffected: Vec::new(),
+            mastery,
         },
     })
 }
@@ -180,6 +200,8 @@ fn engine_part(
         polarity: 0,
         level: record.map_or(0, |s| s.level),
         anti_magic: None,
+        unaffected: Vec::new(),
+        mastery,
     }
 }
 
@@ -242,6 +264,28 @@ mod tests {
         assert_eq!(served(None, (7, 0, false), &[], [3]), None);
         let none = [Wire::Stack { stack: 3 }, Wire::None {}];
         assert_eq!(served(None, (7, 0, false), &none, [3]), None);
+    }
+
+    #[test]
+    fn an_area_aim_knows_the_stacks_its_spell_may_not_affect() {
+        // E17 M6 T4c (`shade-area`): Orrin's Fireball spares the Efreeti (the defender's slot 2,
+        // stack 6: immune to the fire school), Frost Ring nobody; a stack spell has no area to
+        // leave anyone out of.
+        let scenario = repo().join("clients/situations/seq-shades.toml");
+        let (ruleset, setup) =
+            crate::scenario::battle(&scenario, &repo().join("packs"), 1).unwrap();
+        let state = BattleState::new(&ruleset, &setup, 1).unwrap();
+        let handle = |key: &str| {
+            let at = ruleset.spells().iter().position(|s| s.key.as_str() == key);
+            u16::try_from(at.unwrap()).unwrap()
+        };
+        let side = BattleSide::Attacker;
+        let fireball = hero(&state, &ruleset, side, handle("base:fireball")).unwrap();
+        assert_eq!(fireball.unaffected, [6]);
+        let frost = hero(&state, &ruleset, side, handle("base:frost_ring")).unwrap();
+        assert!(frost.area.is_some() && frost.unaffected.is_empty());
+        let arrow = hero(&state, &ruleset, side, handle("base:magic_arrow"));
+        assert!(arrow.is_none_or(|a| a.area.is_none() && a.unaffected.is_empty()));
     }
 
     #[test]

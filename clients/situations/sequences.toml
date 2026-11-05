@@ -1666,3 +1666,101 @@ command = [
     { seat = "Attacker", at = 0, command = { ShootWall = { part = 2 } } },
     { seat = "Attacker", at = 3577, command = { Move = { to = 79 } } },
 ]
+
+# E17 M6 T4c (design §12.16): the grid's and the shadows' keys and the aims' shades. The entries'
+# `grid`, `cursor_shadow` and `movement_shadow` (0 or 1) are the options each runs at (the
+# harness writes them into the original's registry and puts them back; one whose key F6 to F8 an
+# action presses runs at 0). `shade-keys` (`hero-info.toml`, the Marksmen's turn): the mouse
+# resting over the empty hex 37, F7 (the cursor shadow on: the posted move shades the hex), F6
+# (the grid on: the whole redraw, the hex shaded again), F8 (the movement shadow on: the reach,
+# the hex quartered), F7 (the cursor shadow off: its shade goes). All 17 frames exact. The
+# aims' sequences differ only where the design lists it (§12.16, "Recorded"): the book's
+# closing leaves the Wolf Riders' shadow drawn twice until a redraw (frames 0 to 200, as
+# `spell-aim`'s 71 pixels); a given-up area aim takes its marks off without a redraw, so their
+# outline stays until the stacks' next idle step (`shade-area` 700 and 1 800, `-inferno` 1 100);
+# the whole redraw of a given-up aim with both shadows on draws the Wolf Riders standing a
+# deadline early (`-move` 700, §7.1); redraw artifacts, not copied (the user, 2026-10-14).
+[[sequence]]
+id = "shade-keys"
+scenario = "hero-info.toml"
+actions = [
+    "move:190,196", "at:300", "key:F7", "at:600", "key:F6", "at:900", "key:F8", "at:1200",
+    "key:F7",
+]
+ms = 300
+timeline = "timelines/shade-keys.txt"
+frames = "timelines/shade-keys-frames.txt"
+boxes = true
+
+# `shade-area` (`seq-shades.toml`, the Angels' turn, the cursor shadow on): Fireball aimed over
+# hex 82 (its area holds the Wolf Riders, 99 and 100, and the Efreeti on 83, immune to it: their
+# hex left out, unmarked), given up by Escape (oddity 3, CLT-Q53: its shade stays until the mouse
+# leaves the hex), the mouse to hex 97 (the cursor's shade); Frost Ring over hex 98 (its centre
+# left out), given up. Each aim marks the Wolf Riders alone, whose four frames of group 1 the
+# original's draws may stall (design §7.2; the timeline compares the stacks the mouse marked):
+# timed so that none does (its last at 2 100 ms, after the end).
+[[sequence]]
+id = "shade-area"
+scenario = "seq-shades.toml"
+cursor_shadow = 1
+actions = [
+    "aim:0:21", "at:300", "move:674,280", "at:700", "key:Escape", "at:900", "move:564,322",
+    "at:1100", "aim:1:20", "at:1400", "move:608,322", "at:1800", "key:Escape",
+]
+ms = 250
+timeline = "timelines/shade-area.txt"
+frames = "timelines/shade-area-frames.txt"
+boxes = true
+
+# `shade-area-inferno` (`seq-shades.toml`, the cursor shadow on): Inferno over hex 97 (19 hexes,
+# the obstacle's hex 78 among them; the Wolf Riders marked), then onto the panel (oddity 5,
+# CLT-Q55: hexes 1 and 18 shaded, the Pikemen on 1 marked), given up: exact but the book's
+# closing (0 to 200) and the Pikemen's outline at 1 100.
+[[sequence]]
+id = "shade-area-inferno"
+scenario = "seq-shades.toml"
+cursor_shadow = 1
+actions = ["aim:2:22", "at:300", "move:564,322", "at:700", "move:618,580", "at:1100", "key:Escape"]
+ms = 400
+timeline = "timelines/shade-area-inferno.txt"
+frames = "timelines/shade-area-inferno-frames.txt"
+boxes = true
+
+# `shade-area-move` (`seq-shades.toml`, both shadows on): the Angels' reach shaded; Fireball's
+# aim turns the movement shadow off (`battle_set_shades`) and shades its area over hex 100;
+# given up by Escape, the movement shadow back on and the whole battle redrawn, the posted move
+# shading the mouse's hex (the Efreeti on 83 again left out): exact but the Wolf Riders' pose
+# at 700.
+[[sequence]]
+id = "shade-area-move"
+scenario = "seq-shades.toml"
+cursor_shadow = 1
+movement_shadow = 1
+actions = ["aim:0:21", "at:300", "move:696,322", "at:700", "key:Escape"]
+ms = 400
+timeline = "timelines/shade-area-move.txt"
+frames = "timelines/shade-area-move-frames.txt"
+boxes = true
+
+# `shade-wall` (`seq-shade-wall.toml`, hot seat, the cursor shadow on): Orrin's Fire Wall at Basic
+# (side 0: the hex and its upper right neighbour) over hex 47, over the Goblins' hex 100
+# (refused: no shade), over hex 45, given up; Force Field over hex 30 (no shade), given up; the
+# Marksmen defend; at the Goblins' turn Crag Hack's Fire Wall at Advanced (side 1: the hex, its
+# upper left neighbour and the hex two rows up) over hex 45 and hex 64, given up. The wall's aim
+# starts with the book's arrow (it calls no cursor, CLT-Q56's original's). All 47 frames exact.
+[[sequence]]
+id = "shade-wall"
+scenario = "seq-shade-wall.toml"
+hot_seat = true
+cursor_shadow = 1
+actions = [
+    "aim:0:13", "at:300", "move:630,196", "at:600", "move:696,322", "at:900", "move:542,196",
+    "at:1200", "key:Escape", "at:1400", "aim:1:12", "at:1700", "move:608,154", "at:2000",
+    "key:Escape", "at:2200", "key:d", "turn:1.0", "at:2400", "aim:0:13", "at:2700",
+    "move:542,196", "at:3000", "move:608,238", "at:3300", "key:Escape",
+]
+ms = 400
+timeline = "timelines/shade-wall.txt"
+frames = "timelines/shade-wall-frames.txt"
+boxes = true
+command = [{ seat = "Attacker", at = 2200, command = { Defend = {} } }]

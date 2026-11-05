@@ -70,6 +70,10 @@ struct Sequence {
     /// installation's sound archives).
     #[serde(default)]
     sound: bool,
+    /// The grid's and the shadows' options it was recorded at (E17 M6 T4c, *provisional*: the
+    /// harness writes them into the original's registry; 0 without them).
+    #[serde(flatten)]
+    shades: Shadows,
 }
 
 /// The engine's seed unless a sequence names one.
@@ -129,6 +133,41 @@ struct Frames {
     /// harness's `Settings::CAPTURE`, without it).
     #[serde(default)]
     army_info: u8,
+    /// The grid's and the shadows' options a situation runs at (E17 M6 T4c, *provisional*: the
+    /// harness writes them into the original's registry as `Show Combat Grid`, `Show Combat Mouse
+    /// Hex` and `Combat Shade Level` before the run; 0, the harness's, without them).
+    #[serde(flatten)]
+    shades: Shadows,
+}
+
+/// The grid's and the shadows' options a situation or a sequence runs at (E17 M6 T4c): each 0 or
+/// 1, 0 without it.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+pub(crate) struct Shadows {
+    /// Show Combat Grid.
+    #[serde(default)]
+    grid: u8,
+    /// Show Combat Mouse Hex.
+    #[serde(default)]
+    cursor_shadow: u8,
+    /// Combat Shade Level.
+    #[serde(default)]
+    movement_shadow: u8,
+}
+
+impl Shadows {
+    /// The options (`what` names the file in an error).
+    pub(crate) fn options(self, what: &str) -> Result<h3_view::shades::Options, String> {
+        let flag = |name: &str, v: u8| match v {
+            0 | 1 => Ok(v == 1),
+            _ => Err(format!("{what}: {name} is 0 or 1")),
+        };
+        Ok(h3_view::shades::Options {
+            grid: flag("grid", self.grid)?,
+            cursor: flag("cursor_shadow", self.cursor_shadow)?,
+            movement: flag("movement_shadow", self.movement_shadow)?,
+        })
+    }
 }
 
 /// A situation's inputs as the harness kept them (E17 M5 T3a; M6 T4b2b1).
@@ -139,6 +178,8 @@ pub(crate) struct Situation {
     pub actions: Vec<String>,
     /// Creature Info's level it runs at (0 to 2).
     pub army_info: u8,
+    /// The grid's and the shadows' options it runs at (E17 M6 T4c).
+    pub shades: h3_view::shades::Options,
 }
 
 /// A situation's mouse, actions and Creature Info's level as the harness kept them in `here`'s
@@ -150,10 +191,12 @@ pub(crate) fn situation_inputs(here: &Path) -> Result<Situation, String> {
     if kept.army_info > 2 {
         return Err(format!("{}: army_info is 0, 1 or 2", path.display()));
     }
+    let shades = kept.shades.options(&path.display().to_string())?;
     Ok(Situation {
         mouse: kept.mouse,
         actions: kept.actions,
         army_info: kept.army_info,
+        shades,
     })
 }
 
@@ -402,7 +445,10 @@ fn sequences(options: &Options) -> Result<usize, String> {
             sequence.pre,
             &layout,
             (&timeline, &spells, &handle),
-            h3_view::tactics::told(snapshot),
+            (
+                h3_view::tactics::told(snapshot),
+                sequence.shades.options(&sequence.id)?,
+            ),
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
         // The spells the actions aim, each turn's aims of them (E17 M5 T3b).
@@ -709,6 +755,39 @@ pub(crate) fn draw_frames(
         } else {
             moment.shade =
                 h3_view::tactics::shade_at(snapshot, panels.turns(), &timeline.log, frame.t);
+        }
+        // The movement shadow outside the tactics phase, the grid and the cursor shadow (E17 M6
+        // T4c, design §12.16): a sequence's as its mouse's follow has them, a situation's as its
+        // actions left them over the opening's turn; behind the tactics phase's message the grid
+        // alone.
+        let shades = match (interface.shown, interface.book) {
+            (Some(shown), _) => shown.shades(frame.t).cloned(),
+            (None, Some(still)) if opening => Some(h3_view::shades::Drawn {
+                shade: std::collections::BTreeSet::new(),
+                overlays: scene::Overlays {
+                    grid: still.cells.options().grid,
+                    ..scene::Overlays::default()
+                },
+            }),
+            (None, Some(still)) => {
+                let field = mouse::Field {
+                    observation: snapshot,
+                    legal: interface.legal,
+                    facing: &mouse::Facing::Sides,
+                    bugs: Bugs::Original,
+                };
+                let reach = if snapshot.tactics.is_none() {
+                    h3_view::shades::reach(&field)
+                } else {
+                    std::collections::BTreeSet::new()
+                };
+                Some(still.cells.drawn(&reach))
+            }
+            (None, None) => None,
+        };
+        if let Some(shades) = shades {
+            moment.shade.extend(shades.shade);
+            moment.overlays = shades.overlays;
         }
         for &[side, index, group, f] in &frame.fidgets {
             let side = if side == 0 {

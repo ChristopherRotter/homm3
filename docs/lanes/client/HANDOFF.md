@@ -14,11 +14,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#709, design §12.12); T4b cut in three by the user (2026-11-04): T4b1 done (the Auto
   Combat options, §12.13; CLT-Q45) and T4b2a done (#714: F5, the status line's damage, §12.14;
   CLT-Q46; the windows' own keys on Ctrl+F5 to Ctrl+F8). T4b2b cut in two by the user
-  (2026-11-04): T4b2b1 done (#717, the heroes' windows, §12.15; CLT-Q47 to Q50) and **T4b2b2
-  done** (the stacks' four windows, a still's status line at levels 1 and 2; CLT-Q48 fixed,
-  CLT-Q51 copied; six stills exact; the PR from `client/e17-m6-t4b2b2`: check it first). T4b
-  done. **Next: T4c** (the grid and the
-  shadows on F6 to F8), T5 to T7; then M7 ranked play and the server browser.
+  (2026-11-04): T4b2b1 done (#717, the heroes' windows, §12.15; CLT-Q47 to Q50) and T4b2b2 done
+  (#722). **T4c done** (kept whole by the user: the grid, the movement and cursor shadows, the
+  aims' shades, F6 to F8 saved at once, §12.16; CLT-Q52 to Q56 answered, all fixed; 11 stills
+  exact, 5 sequences; the PR from `client/e17-m6-t4c`: check it first). T4 done. **Next: T5**
+  (M5's gaps, cut at its start), T6, T7; then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -28,7 +28,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5 (its
   situations M6 T6), CLT-Q42 (T3b2: copy recommended, built so), CLT-Q43 and Q44 (T4a: fixes
-  recommended, built as the original's). Next id: CLT-Q52.
+  recommended, built as the original's). Next id: CLT-Q57.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -48,7 +48,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-04, E17 M6 T4b2b2 (done; the PR from `client/e17-m6-t4b2b2`: check it first).**
+- **2026-11-04/05, E17 M6 T4c (done; the PR from `client/e17-m6-t4c`: check it first).**
+  The original data staged (60 files, by the file tool: the device shell did not start); the
+  baseline's `check.sh` passed. The user kept T4c whole. A reader (§12.16: `battle_shade_hexes`,
+  `shade_mouse_hex` 0x494390, the aims'; CLT-Q52 to Q56 asked and answered at once: fix all), a
+  builder (`h3_view::shades`), the captures (11 stills exact, 5 sequences; the sandbox's server
+  stopped overnight mid-capture: resumed, nothing lost) and a fresh reviewer (five findings
+  fixed; the targeted aims call no `battle_set_shades`, read). `drawn` 219 the same, 16 new (235 the same after the review); `check.sh`.
+
+- **2026-11-04, E17 M6 T4b2b2 (done; #722 merged).**
   The original data staged (93 files, by the file tool: the device shell did not start); #717
   had merged; the baseline's `check.sh` passed. The task kept whole (its windows and a still's
   status line are recorded together). A builder (`h3_view::army_info`'s stacks' windows, the
@@ -57,7 +65,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   findings: the still's same-slot line rewrite, docs, tests; fixed) and CLT-Q51 (negative
   luck's icon) asked and answered: copied. `drawn` 213 the same, 6 new; `check.sh`.
 
-- **2026-11-04, E17 M6 T4b2b1 (done; the PR from `client/e17-m6-t4b2b1`: check it first).**
+- **2026-11-04, E17 M6 T4b2b1 (done; #717 merged).**
   The original data staged (93 files, by the file tool: the device shell did not start); #714 had
   merged; the baseline's `check.sh` passed. The user cut T4b2b in two and chose the heroes first;
   CLT-Q47 to Q50 asked and answered at once. A reader (§12.15, both kinds of window, every hide
@@ -65,11 +73,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `right-click:`), the captures (the harness's registry level; four stills exact) and a fresh reviewer
   (four findings fixed: two tests that missed their path, no hide at the tactics phase's end;
   two gaps of the stills' model written down). `drawn` 209 the same, 4 new; `check.sh`.
-
-- **2026-11-04, E17 M6 T4b1 and T4b2a (done; #714 merged).** The original data staged (60 files, by the file tool: the device shell did not
-  start); #709 had merged; the baseline's `check.sh` passed. The user cut T4b in three and
-  chose T4b1 and T4b2a. A reader (§12.13, §12.14; CLT-Q45 and Q46, answered at once: fix both;
-  the engine's preview, the server lane asked for the previews), two builders in turn, a fresh
-  reviewer (two findings fixed: F5 as the key that stops Auto Combat, the open dialog's
-  boxes). F5 was the window's pause: the user moved the windows' own keys to Ctrl+F5 to
-  Ctrl+F8 in both viewers (the map-client lane's inbox; the PR `cross-lane`). `drawn` 209 the same; `check.sh`.
