@@ -608,3 +608,51 @@ fn a_reveal_of_all_explores_every_tile_of_every_level() {
     assert_eq!(state.explored(BLUE).unwrap().count(), every);
     assert_eq!(events.len(), 2);
 }
+
+// covers: TWN-CAP-003
+#[test]
+fn a_sieges_end_keeps_the_garrisons_survivors_or_captures_the_town_after_the_win() {
+    // E09 T8b1: blue's town, its garrison fighting without a hero, red's hero below its entrance.
+    let rules = town_rules();
+    let state = at_town(&rules, Some(1), garrison(), (FAR, None));
+    let heroes = store(&[]);
+    let context = (&rules.0, &rules.1, &heroes[..]);
+    let end = |survivors: &[ArmyStack], won| {
+        let mut ended = state.clone();
+        let outcome =
+            ended.end_unowned_battle(context, (HERO, ENTRANCE), (survivors, won), &mut Vec::new());
+        (ended, outcome)
+    };
+    // Lost: the survivors stay as the garrison, by slot; nothing follows.
+    let survivors = [stack(2, PIKEMAN, 1)];
+    let (lost, outcome) = end(&survivors, false);
+    assert_eq!(lost.town_garrison(0), Some(&survivors[..]));
+    assert_eq!(
+        (outcome, lost.owner(0)),
+        (AdventureOutcome::default(), Some(BLUE))
+    );
+    // Won: the garrison beaten, the capture after the winner's levels, the owner unchanged until
+    // the game applies it; the hero stays below the entrance.
+    let (mut won, outcome) = end(&[], true);
+    assert_eq!(won.town_garrison(0), Some(&[][..]));
+    assert_eq!(outcome.reward_after, Some((HERO, ENTRANCE)));
+    let given = won.give_won(context, (HERO, ENTRANCE), &mut Vec::new());
+    assert_eq!(given.capture, Some(TownId::new(0)));
+    assert_eq!(
+        (won.owner(0), won.hero(HERO).unwrap().pos),
+        (Some(BLUE), p(4, 5))
+    );
+    // A town of the hero's team by then, or a hero no longer on the map: nothing.
+    won.capture_town(
+        &rules.0,
+        TownId::new(0),
+        RED,
+        TownReveal::Radius(0),
+        &mut Vec::new(),
+    );
+    let given = won.give_won(context, (HERO, ENTRANCE), &mut Vec::new());
+    assert_eq!(given, AdventureOutcome::default());
+    let (mut other, _) = end(&[], true);
+    let gone = other.give_won(context, (HeroId::new(9), ENTRANCE), &mut Vec::new());
+    assert_eq!(gone, AdventureOutcome::default());
+}

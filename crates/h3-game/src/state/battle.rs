@@ -18,7 +18,7 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroId,
-    PlayerId, StackOrigin, StackRecord,
+    PlayerId, StackOrigin, StackRecord, TownId,
 };
 use h3_heroes::{
     BattleBonuses, HeroChange, Necromancy, check_change, derive_battle_hero, gained_experience,
@@ -27,9 +27,9 @@ use h3_heroes::{
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
-use super::{Decision, GameState};
-use crate::GameRuleset;
+use super::{Decision, GameState, Rest};
 use crate::command::{AdventureSink, GameCommandError, GameEvent, Sink};
+use crate::{GameRuleset, town};
 
 /// A battle in progress on the adventure map (ADR-0017 points 6 and 11; GAM-BAT-001, E08 T19a):
 /// the battle's state, the players owning its sides (the attacker's the visitor's; against
@@ -191,10 +191,14 @@ impl GameState {
     /// owner's, who plays it as a hero battle's defender. The battle opens as a decision of its
     /// owners (the visitor's alone against a monster or unowned guards), told to them with its
     /// start's events, unless it is
-    /// already over (then its outcome applies at once). A setup the battle refuses cannot come
+    /// already over (then its outcome applies at once). Since E09 T8b1 a siege
+    /// ([`BattleStart::town`]) is built so, then from its town ([`town::siege_setup`]: its facts,
+    /// the defending hero's bonuses, the town's terrain and the tile's special ground; TWN-SIE-003
+    /// to -005) before its obstacles are drawn. A setup the battle refuses cannot come
     /// from a valid game (the armies, the heroes and the parts were checked when they were built);
     /// it would start no battle.
     // rule: GAM-BAT-001, GAM-BAT-004, ADV-MON-009, ADV-PIK-004, ADV-MIN-002
+    // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005
     pub(crate) fn start_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -304,6 +308,11 @@ impl GameState {
             colours,
             ..BattleSetup::default()
         };
+        // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005
+        if let Some(town) = start.town {
+            let state = (&self.towns, &self.adventure);
+            town::siege_setup(state, rules, (town, start.tile), &mut setup);
+        }
         let obstacles = if core.quirks().is_enabled(OBSTACLES_FROM_TILE) {
             tile_seed(start.tile)
         } else {
@@ -449,11 +458,14 @@ impl GameState {
             .and_then(Decision::battle)
             .and_then(|battle| {
                 let sides = (battle.owners, battle.heroes, battle.tile);
-                battle.state.outcome().map(|outcome| (sides, outcome))
+                // A siege's town (E09 T8b1): a battle at a town, fought at its entrance.
+                let town = h3_battle::computer::siege(&battle.state)
+                    .and_then(|_| self.adventure.map().town_at(battle.tile));
+                battle.state.outcome().map(|outcome| (sides, town, outcome))
             });
-        if let Some((sides, outcome)) = ended {
+        if let Some((sides, town, outcome)) = ended {
             self.close(at);
-            self.end_battle(rules, sides, &outcome, sink);
+            self.end_battle(rules, sides, town, &outcome, sink);
         }
     }
 
@@ -481,15 +493,23 @@ impl GameState {
     /// Pandora's Box giving its record (ADV-PIK-013, E08 T62b1), a won Pyramid looted and its
     /// spell taught (ADV-TCH-008), an event giving its record (ADV-OBJ-007, E08 T62b2): since E08
     /// T63b after the winner's levels, held as a rest of the visit (GAM-DEC-007), applied
-    /// as a command's outcome. Last (E08 T30) the winner's hero gets its pending levels
+    /// as a command's outcome. A siege (E09 T8b1; `town` the town fought at, the battle's
+    /// `tile` its entrance) ends so too, its garrison's survivors staying as its garrison
+    /// (`AdventureState::end_unowned_battle`), its defending hero keeping the smaller of the
+    /// spell points it has left and those it had before ([`town::mana_after`], TWN-SIE-004); an
+    /// attacker's win with a hero defending holds the capture as a rest of the visit for the
+    /// attacker (TWN-CAP-003: `AdventureState::give_won` once its owner has no open decision, as
+    /// the unowned battle's end holds it against a garrison), the attacker staying outside.
+    /// Last (E08 T30) the winner's hero gets its pending levels
     /// ([`Self::give_levels`], GAM-BAT-008): after the whole outcome, Necromancy and Eagle Eye
     /// included, as the original gives a human player's after the battle's screen (0x4AE324).
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, GAM-BAT-008, ADV-MON-010, ADV-PIK-004
-    // rule: GAM-BAT-014, GAM-DEC-007, TWN-SET-005
+    // rule: GAM-BAT-014, GAM-DEC-007, TWN-SET-005, TWN-CAP-003
     pub(crate) fn end_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
         (owners, heroes, tile): ([Option<PlayerId>; 2], [Option<HeroId>; 2], Pos),
+        town: Option<TownId>,
         outcome: &BattleOutcome,
         sink: &mut S,
     ) {
@@ -517,7 +537,8 @@ impl GameState {
             .collect();
         self.free_hero_types(&left);
         let winner = result.winner().filter(|&side| army(side).is_some());
-        self.heroes_after_battle(rules, (owners, heroes), outcome, winner, sink);
+        let sides = (owners, heroes, town.is_some());
+        self.heroes_after_battle(rules, sides, outcome, winner, sink);
         // rule: GAM-BAT-014
         for side in BattleSide::BOTH {
             let (hero, owner) = (heroes[side.index()], owners[side.index()]);
@@ -562,6 +583,13 @@ impl GameState {
             );
             self.settle_outcome(rules, visitor, ended, sink);
         }
+        // rule: TWN-CAP-003
+        let attacker = (owners[0], heroes[0]);
+        if let (Some(_), Some(BattleSide::Attacker), (Some(owner), Some(hero)), Some(_)) =
+            (town, winner, attacker, heroes[1])
+        {
+            self.hold(owner, hero, Rest::Won(tile));
+        }
         // rule: GAM-BAT-008
         let levelled = winner.and_then(|w| heroes[w.index()].zip(owners[w.index()]));
         if let Some(hero) = levelled {
@@ -572,7 +600,9 @@ impl GameState {
     /// The heroes' part of an ended battle's outcome (ADR-0017 point 11; E08 T19a2a), after the
     /// adventure's, each change checked by `h3_heroes` and told to the hero's owner
     /// ([`Self::change_hero`]). Each side's hero keeps the spell points it has left
-    /// (`HeroOutcome::mana`) and loses the artifact of each war machine destroyed in the battle
+    /// (`HeroOutcome::mana`; a siege's defender at most those it had before, TWN-SIE-004, E09
+    /// T8b1: `siege`; and a siege's attacker gains 500 more experience as the winner,
+    /// TWN-SIE-006) and loses the artifact of each war machine destroyed in the battle
     /// (HER-WAR-002), whatever the result (GAM-BAT-002). The `winner`'s hero — that of the side
     /// that won and keeps its army, so it stays on the map — gains the battle's experience
     /// (GAM-BAT-002: [`battle_experience`], grown by Learning, HER-EXP-001) and, after a victory
@@ -588,7 +618,7 @@ impl GameState {
     fn heroes_after_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
-        (owners, heroes): ([Option<PlayerId>; 2], [Option<HeroId>; 2]),
+        (owners, heroes, siege): ([Option<PlayerId>; 2], [Option<HeroId>; 2], bool),
         outcome: &BattleOutcome,
         winner: Option<BattleSide>,
         sink: &mut S,
@@ -600,7 +630,14 @@ impl GameState {
         });
         for (i, hero, owner) in sides.into_iter().flatten() {
             // rule: GAM-BAT-002
-            let mana = outcome.heroes[i].as_ref().map(|h| h.mana);
+            let mut mana = outcome.heroes[i].as_ref().map(|h| h.mana);
+            // rule: TWN-SIE-004
+            if siege && i == BattleSide::Defender.index() {
+                let before = self.hero(hero).map(|d| d.mana);
+                mana = mana
+                    .zip(before)
+                    .map(|(left, before)| town::mana_after(left, before));
+            }
             let changed = mana.filter(|&m| self.hero(hero).is_some_and(|d| d.mana != m));
             if let Some(points) = changed {
                 self.change_hero(core, hero, owner, HeroChange::SetSpellPoints(points), sink);
@@ -631,6 +668,8 @@ impl GameState {
             .and_then(|d| necromancy(d, core))
             .map(|n| (n.creature, raised_count(rules, &outcome.stacks[l], n)));
         let base = battle_experience(rules, &outcome.stacks[l], defeated);
+        // rule: TWN-SIE-006
+        let base = town::siege_experience(base, siege && w == BattleSide::Attacker);
         let gained = self
             .hero(hero)
             .map_or(0, |d| gained_experience(d, core, base));

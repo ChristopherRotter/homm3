@@ -568,7 +568,7 @@ fn every_result_takes_the_heroes_that_did_not_win_off_the_map() {
     let end = |outcome: BattleOutcome| {
         let mut ended = game.clone();
         let mut events = Vec::new();
-        ended.end_battle(&rules, sides, &outcome, &mut events);
+        ended.end_battle(&rules, sides, None, &outcome, &mut events);
         let on_map =
             [RED_HERO, BLUE_HERO].map(|id| ended.adventure().hero(id).map(|h| h.army.clone()));
         (on_map, ended, events)

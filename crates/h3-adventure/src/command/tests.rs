@@ -1448,6 +1448,7 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
                 battlefield: Some(ContentKey::parse("t:shore").unwrap()),
                 background: 2,
                 attacker_ground: None,
+                town: None,
             }),
             ..AdventureOutcome::default()
         }

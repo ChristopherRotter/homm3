@@ -476,7 +476,7 @@ fn a_won_guarded_artifact_and_a_beaten_monsters_artifact_reach_the_hero() {
     for (object, gained) in [(guarded, 0), (monster, 100)] {
         let mut state = game(&rules, object);
         let mut events = Vec::new();
-        state.end_battle(&rules, sides, &won(), &mut events);
+        state.end_battle(&rules, sides, None, &won(), &mut events);
         state.run_rests(&rules, &mut events);
         let ring = ArtifactInstance::from(RING);
         assert!(events.contains(&changed(HeroChange::AddArtifact(ring))));

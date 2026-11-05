@@ -170,7 +170,7 @@ fn a_won_guarded_boxs_record_reaches_the_treasury() {
     let mut state = guarded();
     let sides = ([Some(RED), None], [Some(HERO), None], AT);
     let mut events = Vec::new();
-    state.end_battle(&rules, sides, &won(), &mut events);
+    state.end_battle(&rules, sides, None, &won(), &mut events);
     state.run_rests(&rules, &mut events);
     assert!(events.contains(&GameEvent::ResourceGained {
         player: RED,
@@ -231,7 +231,7 @@ fn the_pyramid_fights_two_creatures_split_by_its_tile_and_a_looted_one_costs_luc
     // Won: looted; asked again, its luck once by its mark.
     let mut state = game(&rules, reward_at(&rules, "t:pyramid", Holds::Nothing));
     let sides = ([Some(RED), None], [Some(HERO), None], AT);
-    state.end_battle(&rules, sides, &won(), &mut Vec::new());
+    state.end_battle(&rules, sides, None, &won(), &mut Vec::new());
     state.run_rests(&rules, &mut Vec::new());
     assert!(state.adventure().is_emptied(0) && !state.adventure().is_removed(0));
     visit(&mut state, &rules);

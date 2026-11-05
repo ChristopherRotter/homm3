@@ -27,7 +27,9 @@ pub(super) enum Rest {
     Experience(u32),
     /// What a won battle against the guards of the object at this tile gives, after the winner's
     /// levels (the original's visit goes on after 0x4DA720): a pickup, a box's or an event's
-    /// record, the Pyramid's loot and spell (`AdventureState::give_won`).
+    /// record, the Pyramid's loot and spell, a mine's flag, a dwelling's visit; since E09 T8b1 the
+    /// capture of a town whose siege was won at its entrance, against its garrison or its visitor
+    /// (TWN-CAP-003; `AdventureState::give_won`).
     Won(Pos),
     /// The event at this tile, after the visit of the monster guarding it, for a hero still on
     /// the tile (ADV-OBJ-007, `ADV-QUIRK-29`: `AdventureState::fire_held_event`).
@@ -94,9 +96,11 @@ impl GameState {
     /// Runs one rest: the guard's visit ([`Self::visit_guard`]; nothing for a hero that left the
     /// map or a tile no monster guards any more), the experience with its levels
     /// ([`Self::give_hero`]), a won battle's reward (`AdventureState::give_won`; nothing when
-    /// the object left the map meanwhile), or a held event (`AdventureState::fire_held_event`:
-    /// nothing for a hero no longer on its tile), each applied as a command's outcome.
+    /// the object left the map meanwhile; a won siege's capture, TWN-CAP-003), or a held event
+    /// (`AdventureState::fire_held_event`: nothing for a hero no longer on its tile), each applied
+    /// as a command's outcome.
     // rule: ADV-MON-006, ADV-RWD-001, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007
+    // rule: TWN-CAP-003
     fn run_rest<S: Sink>(&mut self, rules: &GameRuleset, held: Held, sink: &mut S) {
         let Held { owner, hero, rest } = held;
         match rest {

@@ -317,6 +317,22 @@ ADR-0015's amendment point 3, in the import's order:
   review's call: no player that does not see the town learns its Capitol); the limit runs only
   after a capture. A capture's events: the step's `HeroStepped`, `TownCaptured`,
   `TilesRevealed`, then `TownChanged`.
+- **As built (T8b1, the siege's case; TWN-CAP-003):** the capture after a siege won comes once
+  the attacker's owner has no open decision, after the winner's levels (survey §9.3: the
+  original's levels at 0x4AE324 inside `adventure_battle`, before `town_visit`'s capture), as a
+  guarded object's reward: a rest of the visit, `Rest::Won(entrance)` (GAM-DEC-007), whose
+  `AdventureState::give_won` meets the town first (`StaticMap::town_at`) and gives
+  `AdventureState::town_won`: `AdventureOutcome::capture` for the hero's owner unless the town is
+  of its team by then, nothing when the hero left the map (a win with only created stacks, as a
+  mine's flag); the game applies it with T8a2's `town::capture` (the leftovers of the garrison
+  lost with it). Against a garrison without a hero `AdventureState::end_unowned_battle`'s
+  `ObjectKind::Town` arm (`end_town_battle`) writes the garrison (empty after the win, else the
+  survivors by slot) and holds the capture by `reward_after`; against a visitor
+  `GameState::end_battle` holds it itself once the attacker won with an army (the beaten visitor
+  already off the map, its type free). The battle's town is derived, not stored: a battle whose
+  state has a siege (`h3_battle::computer::siege`) is at the town whose entrance is its tile
+  (`settle`), so `OpenBattle` and the game state hash are unchanged; `end_battle` takes it as
+  `town: Option<TownId>`.
 
 ### 12. Information (TWN-VEW-001 to -003; `docs/06-security.md`, T8c)
 
@@ -483,6 +499,23 @@ is set:
   catapult is settled).
 - **The outcome:** the attacker's win captures (§11) with the attacker outside; a beaten hero
   leaves the map and goes back to the pool; the survivors as §11.
+- **As built (T8b1):** `BattleStart::town: Option<TownId>` (the adventure's; none from every
+  visit until T8b2). `h3_game`'s `src/town/siege.rs`: `siege_setup`, called by
+  `GameState::start_battle` after the field battle's setup and before the obstacles' draw:
+  `siege` (TWN-SIE-003), the defending hero raised (`raise`: attack, defense and power at most the
+  core's `primary_max`, the spell points saturating; TWN-SIE-004), the terrain the faction's
+  native one (the start's for a faction without one) and the battlefield the special ground on
+  the entrance if any, never the shore or a deck (TWN-SIE-005: **the code reading, not the agent's
+  call above**: `installation.md` §7.26 has the special ground in every case after a siege's
+  terrain). The obstacles: `generate_setup_obstacles` (none at a fort); the base pack's walled
+  Stronghold's usual obstacles are `TWN-STUB-8` (the original keeps them off the walls by a branch
+  for town type 6 not read, 0x466147 to 0x466194, and `generate_battlefield_obstacles` knows no
+  walls: the battle would refuse an obstacle on a wall; the battle lane's inbox). After the
+  battle: the defending hero's spell points `mana_after` (the smaller of left and before) in the
+  heroes' part; **the attacker's +500 experience** as the winner of a battle at a town
+  (`siege_experience`, TWN-SIE-006: ADR-0023 point 1 and the code, 0x46A416, re-read: added
+  whatever the result, after the defeated hero's +500 and the −500 of a retreat or a surrender),
+  which this note had not listed. No version moved.
 
 ### 16. The day's income (TWN-INC-001, -002; T8c)
 
@@ -542,7 +575,7 @@ when T8c lands).
 hero, -009 the main town's hero, -010 a hero right of an entrance moved; TWN-VIS-001 the step,
 -002 the visitor; TWN-CAP-001 capture, -002 the Capitol's limit, -003 the attacker outside after a
 siege; TWN-SIE-001 who defends, -002 the merge, -003 the siege's facts, -004 the defender's
-bonuses and mana, -005 the terrain and obstacles; TWN-INC-001 the gold, -002 the silo; TWN-VEW-001
+bonuses and mana, -005 the terrain and obstacles, -006 the attacker's experience (T8b1); TWN-INC-001 the gold, -002 the silo; TWN-VEW-001
 the public facts, -002 the garrison's levels, -003 the owner's team. Amended: ADV-OBJ-002 (the
 classes 77, 98 typed), ADV-OWN-002 (towns' owners, the start's reveal), GAM-BAT-001 (a siege),
 GAM-RES-004's "not here" line (the towns'), GAM-SET-001 (the starting armies of the drawn heroes).
@@ -562,7 +595,9 @@ hero, lifted by T7b2b); `TWN-STUB-4` a town's entrance not entered (registered b
 by T8a2), `TWN-STUB-5` the build's empty garrisons and flag radius for the towns (registered by
 T8a1; narrowed by T7b2a to a whole-map reveal at the start, which reaches only the town's level;
 lifted with the capture's reveal, T8a2); `TWN-STUB-6` a main town's hero learning no guild spell
-at the start (registered by T7b2b; increment 4, TD-10).
+at the start (registered by T7b2b; increment 4, TD-10); `TWN-STUB-7` a defended town refused
+until the siege's start (registered by T8a2; T8b2's); `TWN-STUB-8` a walled Stronghold's natural
+obstacles (registered by T8b1; a siege-aware draw in `h3-battle`).
 
 ### 20. Batch TWN-1 (T3)
 
@@ -603,7 +638,7 @@ the ADRs are applied once with the rows' verdicts:
 | 5 | **T5a** + **T5b** | T5a: the part, its compiler and adapter, `GameRuleset`, replay format v9 (§2). T5b: the content read (T5b1, survey §16) and harvested (T5b2), building 23's re-read (§3; original data) |
 | 6 | **T6** | `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml`'s rules (§4–§6) |
 | 7 | **T7a** + **T7b** | T7a: the import and the setup's checks (§7, §13; map import v17, the census). T7b: the pool and the build's draws (§14; game state hash v23) |
-| 8 | **T8a** + **T8b** | T8a: the kind, the step, entering and an undefended capture (§8, §9, §11; part v16, state hash v20). T8b: the siege: the merge, the defender, the battle's setup, the outcome (§10, §15) |
+| 8 | **T8a** + **T8b** | T8a: the kind, the step, entering and an undefended capture (§8, §9, §11; part v16, state hash v20). T8b: the siege, cut in two (the user): T8b1 the battle's setup and its end (§15, §11; done), T8b2 the step onto a defended town, the merge, the defender (§9, §10) |
 | 9 | **T8c** + **T9** | T8c: the income, the views, the observation, `docs/06-security.md` (§12, §16, §17). T9: the fixtures, replays, properties, benchmarks, the env (§18) |
 | 10 | **T10** | The audit against the exit criteria; increment 1 closed; increment 2 refined |
 
