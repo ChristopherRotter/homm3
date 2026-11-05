@@ -4,6 +4,7 @@ samples, before any of them trains by RL.
 
     uv run --group train python -m h3env.train.distill --teacher runs/e25-scale-1/best.pt \\
         --config configs/distill/e25.toml --out runs/distill-1
+    uv run --group train python -m h3env.train.distill --resume runs/distill-1
 
 The teacher (a run's network file) plays itself on the training distribution of its run's config
 (its kinds, tactics bound and shaping; the sampled policy) in PPO's rollouts (`ppo.Trainer`'s,
@@ -26,8 +27,22 @@ beside them), with its training seconds and its cost (`cost`: the microseconds a
 the peak CUDA memory of a step). `report.json` holds the settings,
 the teacher, each student's parameters and every evaluation; `metrics.jsonl` the evaluations as
 they come; `students/<name>.pt` each student as a run's network file (`evaluate.load` and
-`--init-from` read it). A stopped bench (Ctrl-C) scores and saves what it has; it does not
-resume. No network that reads the kill preview takes part.
+`--init-from` read it). No network that reads the kill preview takes part.
+
+A bench resumes (E25 T26a; the shared loop `go`, both modes): it checkpoints (`checkpoint.pt`)
+at a batch boundary every `checkpoint_minutes` of wall clock, after each evaluation, at a stop
+and at the end: each student's network and AdamW state, seconds, rows and peak memory, the
+samples seen (the learning rate's warm-up and fall continue), the next evaluation, the report so
+far (its evaluations) and the teacher's statistics; the held-out set is written once
+(`heldout.npz`, compressed: the observations are sparse), a network teacher copied
+(`teacher.pt`). Ctrl-C stops it at the next minibatch or teacher's batch call (a batch cut short
+counts its samples pro rata of the steps taken, one the teacher is still playing is dropped),
+scored and saved; a second Ctrl-C aborts at once, losing what came after the last checkpoint.
+`--resume DIR` continues it in a new segment to its budget, as the trainer's segments do: the
+teacher plays new battles on the segment's seed (`run.segment_seed`), the metrics are cut back to
+the checkpoint, the report is the whole run's (`segments`: each one's seed, start, device and
+end). A resume's `--set` changes only `RESUMABLE`'s keys; the learning rate's horizon stays the
+budget at the start.
 """
 
 from __future__ import annotations
@@ -36,9 +51,11 @@ import argparse
 import dataclasses
 import json
 import os
+import shutil
 import time
 import tomllib
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from contextlib import ExitStack
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -46,11 +63,23 @@ from typing import Any
 import numpy as np
 import torch
 
+from .. import _ffi
 from . import layout as L
 from .evaluate import OPPONENTS, REPORT_V1_ENVS
 from .policy import Policy, build, masked, rows_of
 from .ppo import CHECKPOINT_FORMAT, FIELDS, Staging, Trainer, device_of, gae, save
-from .run import Config, ConfigError, atomic_write_text, machine, resolve, source
+from .run import (
+    Config,
+    ConfigError,
+    ResumeError,
+    Stop,
+    atomic_write,
+    atomic_write_text,
+    machine,
+    resolve,
+    segment_seed,
+    source,
+)
 
 #: The teacher's entry categories the agreement is split by (`category`): a decision of the
 #: tactics phase (round 0), then by its entry.
@@ -62,6 +91,13 @@ NETWORK_KEYS = frozenset(
 #: The optimizer's keys a student's table may set over the bench's (E25 T24: `warmup` and
 #: `weight_decay` beside `lr`).
 STUDENT_KEYS = frozenset({"lr", "warmup", "weight_decay"})
+#: The bench's checkpoint format (`checkpoint.pt`, E25 T26a; not the trainer's).
+BENCH_FORMAT = 1
+#: The bench's keys a resume may change (`--set`, as `run.RESUMABLE`): the budget, the threads,
+#: the device and the checkpoints' cadence.
+RESUMABLE = ("samples", "threads", "device", "checkpoint_minutes")
+#: A bench directory's files a resume reads (beside `report.json`, `metrics.jsonl`, `students/`).
+CHECKPOINT, HELDOUT, TEACHER_FILE = "checkpoint.pt", "heldout.npz", "teacher.pt"
 
 
 @dataclass
@@ -90,6 +126,8 @@ class Bench:
     value_coef: float = 0.5
     max_grad_norm: float = 0.5
     device: str = "auto"
+    #: The wall-clock minutes between checkpoints at a batch boundary (E25 T26a; 0: every batch).
+    checkpoint_minutes: float = 10.0
     #: The clone mode's run config (`h3env.train.clone`, E25 T16): its network the students'
     #: and its training distribution the fair system actor's; empty for a teacher's network file.
     run: str = ""
@@ -106,13 +144,46 @@ def load_bench(text: str, sets: list[str] | tuple[str, ...] = ()) -> Bench:
     top-level key, the value as TOML writes it)."""
     try:
         data = tomllib.loads(text)
-        for item in sets:
-            key, sep, value = item.partition("=")
-            if not sep:
-                raise ConfigError(f"--set takes key=value, not {item!r}")
-            data[key.strip()] = tomllib.loads(f"v = {value.strip()}")["v"]
     except tomllib.TOMLDecodeError as e:
         raise ConfigError(f"the bench file is not TOML: {e}") from None
+    _apply(data, sets)
+    return checked(data)
+
+
+def _apply(data: dict[str, Any], sets: Iterable[str]) -> None:
+    """Each `--set key=value` into a bench's `data` (a top-level key, the value as TOML writes
+    it)."""
+    for item in sets:
+        key, sep, value = item.partition("=")
+        if not sep:
+            raise ConfigError(f"--set takes key=value, not {item!r}")
+        try:
+            data[key.strip()] = tomllib.loads(f"v = {value.strip()}")["v"]
+        except tomllib.TOMLDecodeError as e:
+            raise ConfigError(f"--set {item!r} is not TOML: {e}") from None
+
+
+def resumed_bench(
+    saved: dict[str, Any], sets: Iterable[str] = ()
+) -> tuple[Bench, dict[str, list[Any]]]:
+    """The bench a resume continues with (E25 T26a): the checkpoint's `saved` settings with each
+    `--set` applied, and what changed (`{key: [old, new]}`, for the segment's entry). A change
+    outside `RESUMABLE` is refused with its keys named, before anything changes."""
+    data = dict(saved)
+    _apply(data, sets)
+    bench = checked(data)
+    changed = {k: [saved.get(k), v] for k, v in asdict(bench).items() if saved.get(k) != v}
+    refused = sorted(k for k in changed if k not in RESUMABLE)
+    if refused:
+        raise ConfigError(
+            f"a resume changes only {', '.join(RESUMABLE)}; {', '.join(refused)} would change "
+            "the training: start a new bench"
+        )
+    return bench, changed
+
+
+def checked(data: dict[str, Any]) -> Bench:
+    """The bench of the settings `data` (unknown keys and bad values refused)."""
     known = {f.name for f in dataclasses.fields(Bench)}
     unknown = sorted(set(data) - known)
     if unknown:
@@ -131,7 +202,7 @@ def load_bench(text: str, sets: list[str] | tuple[str, ...] = ()) -> Bench:
     ):
         if getattr(bench, key) <= 0:
             problems.append(f"`{key}` must be positive")
-    for key in ("warmup", "weight_decay"):
+    for key in ("warmup", "weight_decay", "checkpoint_minutes"):
         if getattr(bench, key) < 0:
             problems.append(f"`{key}` must not be negative")
     if not bench.students:
@@ -269,12 +340,16 @@ def make_student(
     )
 
 
-def learning_rate(s: Student, bench: Bench, samples: int, seen: float) -> float:
+def learning_rate(
+    s: Student, bench: Bench, samples: int, seen: float, horizon: int | None = None
+) -> float:
     """`s`'s learning rate at a minibatch: its `lr` falling linearly to `lr_floor` of it over the
-    bench's `samples` by `samples`, the samples before the minibatch's batch (as before E25 T24),
-    times its warm-up, rising linearly from 0 to 1 over its first `warmup` samples by `seen`, the
-    samples into the training at the minibatch (a batch's counted pro rata over its minibatches)."""
-    fall = s.lr * (1.0 - (1.0 - bench.lr_floor) * min(1.0, samples / bench.samples))
+    `horizon` (the bench's `samples` at its start, which a resume keeps, E25 T26a) by `samples`,
+    the samples before the minibatch's batch (as before E25 T24), times its warm-up, rising
+    linearly from 0 to 1 over its first `warmup` samples by `seen`, the samples into the training
+    at the minibatch (a batch's counted pro rata over its minibatches)."""
+    horizon = bench.samples if horizon is None else horizon
+    fall = s.lr * (1.0 - (1.0 - bench.lr_floor) * min(1.0, samples / horizon))
     return fall if seen >= s.warmup else fall * seen / s.warmup
 
 
@@ -345,11 +420,15 @@ def steps_of(n: int, size: int, epochs: int) -> int:
     return epochs * len(range(0, n - size + 1, size))
 
 
-def collect(trainer: Trainer) -> tuple[dict[str, np.ndarray], np.ndarray]:
+def collect(
+    trainer: Trainer, stop: Stop | None = None
+) -> tuple[dict[str, np.ndarray], np.ndarray] | None:
     """One rollout of the teacher (`trainer.policy`): the rollout's `FIELDS`, its values and
     λ-returns (`returns`), [calls, envs, ...] (the rollout's own arrays: the next rollout
-    overwrites them), and the used samples' flat indices."""
-    trainer.collect()
+    overwrites them), and the used samples' flat indices; None when `stop` was requested before
+    one of its calls (`Trainer.collect`)."""
+    if trainer.collect(stop) is None:
+        return None
     c, r = trainer.config, trainer.rollout
     adv, used = gae(
         r.side,
@@ -373,6 +452,57 @@ def copied(arrays: dict[str, np.ndarray], flat: np.ndarray) -> dict[str, np.ndar
     """The samples `flat` of a rollout's `arrays`, copied, as [samples, 1, ...] (`Staging`'s
     [calls, envs, ...] shape)."""
     return {k: v.reshape(-1, *v.shape[2:])[flat][:, None] for k, v in arrays.items()}
+
+
+class Rollouts:
+    """The network teacher's play (`Parts.player`): PPO's rollouts of its `Trainer` (`collect`),
+    a batch a rollout; it keeps no statistics."""
+
+    def __init__(self, trainer: Trainer) -> None:
+        self.trainer, self.batch = trainer, trainer.batch
+        self.stats: dict[str, Any] = {}
+
+    def take(self, minimum: int, stop: Stop | None = None):
+        return collect(self.trainer, stop)
+
+    def release(self) -> None:
+        pass
+
+    def close(self) -> None:
+        self.trainer.batch.close()
+
+
+def held_out(player, n: int) -> dict[str, np.ndarray]:
+    """`n` samples of the teacher's batches (`player`'s, then closed), copied as [samples, 1,
+    ...]: the held-out set, collected once."""
+    parts: list[dict[str, np.ndarray]] = []
+    total = 0
+    while total < n:
+        arrays, flat = player.take(n - total)
+        parts.append(copied(arrays, flat))
+        total += len(flat)
+        player.release()
+    player.close()
+    return {k: np.concatenate([p[k] for p in parts])[:n] for k in parts[0]}
+
+
+def student_state(s: Student) -> dict[str, Any]:
+    """`s`'s training state in a checkpoint (E25 T26a): its network, its optimizer's state, its
+    seconds, rows and peak memory."""
+    return {
+        "policy": s.net.state_dict(),
+        "optimizer": s.optimizer.state_dict(),
+        "seconds": s.seconds,
+        "rows": s.rows,
+        "peak": s.peak,
+    }
+
+
+def restore_student(s: Student, state: dict[str, Any]) -> None:
+    """Takes a checkpoint's `student_state` over into `s` (on `s`'s device)."""
+    s.net.load_state_dict(state["policy"])
+    s.optimizer.load_state_dict(state["optimizer"])
+    s.seconds, s.rows, s.peak = state["seconds"], state["rows"], state["peak"]
 
 
 def evaluate(
@@ -479,24 +609,231 @@ def table(evaluation: dict[str, Any], samples: int) -> str:
     return "\n".join(lines)
 
 
-def run(
-    teacher_path: Path,
+@dataclass
+class Parts:
+    """A bench mode's parts, which the shared loop (`go`) drives (E25 T26a)."""
+
+    #: The checkpoint's mode: "distill" (a network teacher) or "clone" (the fair system actor).
+    mode: str
+    #: The run config the students' configs are over (`student_config`; the checkpoint keeps it).
+    base: Config
+    #: The report's `teacher` section of a new bench.
+    teacher: dict[str, Any]
+    #: The teacher's play of the segment: its `batch` (the students' networks are built for it),
+    #: `take(minimum, stop)` (a batch of at least `minimum` samples as [calls, envs, ...] arrays
+    #: and the used samples' flat indices, valid until `release()`; None at a stop), `close()`
+    #: and `stats` (its statistics so far in JSON's types, which the checkpoint keeps).
+    player: Any
+    #: The held-out set's play (on the seed after the bench's), as `player`.
+    held: Callable[[], Any]
+    #: A minibatch's loss of a student's network.
+    loss: Callable[[dict[str, torch.Tensor]], Callable[[Policy], torch.Tensor]]
+    #: The students' scores on the held-out set, and an evaluation as a table.
+    evaluate: Callable[[list[Student], dict[str, np.ndarray], torch.device], dict[str, Any]]
+    table: Callable[[dict[str, Any], int], str]
+    #: A student's file's entry naming its teacher (`distilled_from`, `cloned_from`).
+    origin: dict[str, Any]
+    #: What runs after the training (`finish(report, stats, students, stopped, stop,
+    #: checkpoint)`, returning whether a stop cut it short): the clone mode's ladders.
+    finish: Callable[..., bool] | None = None
+
+
+def fresh(out: Path) -> None:
+    """Refuses a new bench's directory `out` that is not empty."""
+    if out.exists() and any(out.iterdir()):
+        raise ConfigError(f"{out} is not empty: a new bench takes a new directory (--resume DIR)")
+
+
+def go(
+    parts: Parts,
     bench: Bench,
     out: Path,
+    device: torch.device,
     log: Callable[[str], None] = print,
+    stop: Stop | None = None,
+    state: dict[str, Any] | None = None,
+    changed: dict[str, list[Any]] | None = None,
 ) -> dict[str, Any]:
-    """Runs `bench` with the teacher of `teacher_path` into `out` (the module's documentation);
-    returns the report."""
-    if bench.run or bench.ladder:
-        raise ConfigError("`run` and `ladder` are the clone mode's (--teacher system)")
-    if out.exists() and any(out.iterdir()):
-        raise ConfigError(f"{out} is not empty: a bench does not resume")
-    (out / "students").mkdir(parents=True, exist_ok=True)
-    saved = torch.load(teacher_path, map_location="cpu", weights_only=True)
+    """The bench's loop, both modes' (the module's documentation): a new bench into `out`, or
+    the segment after the checkpoint `state` (`resume`; `changed`: its `--set`s); returns the
+    report. Ctrl+C (or `stop`'s request) stops it at the next minibatch or batch call, saved."""
+    stop = Stop() if stop is None else stop
+    player = parts.player
+    segment = 0 if state is None else state["segment"] + 1
+    torch.manual_seed(bench.seed)
+    students = [
+        make_student(name, keys, parts.base, bench, player.batch, device)
+        for name, keys in bench.students.items()
+    ]
+    gpu = torch.cuda.get_device_name(device) if device.type == "cuda" else None
+    started = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    entry: dict[str, Any] = {
+        "segment": segment,
+        "seed": segment_seed(bench.seed, segment),
+        "started": started,
+        **source(),
+        "device": str(device),
+        "gpu": gpu,
+        "samples": 0 if state is None else state["samples"],
+        "changed": changed or {},
+        "ended": None,
+    }
+    metrics_path = out / "metrics.jsonl"
+    with stop, ExitStack() as closing:
+        closing.callback(player.close)
+        if state is None:
+            report: dict[str, Any] = {
+                "teacher": parts.teacher,
+                "bench": asdict(bench),
+                "identity": {
+                    "started": started,
+                    **source(),
+                    **_ffi.versions(),
+                    "torch": torch.__version__,
+                    "device": str(device),
+                    "gpu": gpu,
+                    **machine(),
+                },
+                "students": {s.name: described(s) for s in students},
+                "evaluations": [],
+                "segments": [],
+                "ended": None,
+            }
+            log(f"held-out set: {bench.heldout:,} samples of the teacher on seed {bench.seed + 1}")
+            held = parts.held()
+            heldout = held_out(held, bench.heldout)
+            if held.stats:
+                report["teacher"]["heldout"] = {
+                    k: v for k, v in held.stats.items() if k != "seconds"
+                }
+            atomic_write(out / HELDOUT, lambda f: np.savez_compressed(f, **heldout))
+            samples, next_eval, horizon = 0, 0, bench.samples
+        else:
+            report = json.loads(state["report"])
+            report["bench"] = asdict(bench)
+            for s in students:
+                restore_student(s, state["students"][s.name])
+            player.stats = json.loads(state["stats"])
+            samples, next_eval, horizon = state["samples"], state["next_eval"], state["horizon"]
+            with np.load(out / HELDOUT) as f:
+                heldout = {k: f[k] for k in f.files}
+            torch.set_rng_state(state["rng"]["torch"])
+            cuda = state["rng"]["cuda"]
+            if cuda and len(cuda) == torch.cuda.device_count():
+                torch.cuda.set_rng_state_all(cuda)
+            with metrics_path.open("r+b") as f:
+                f.truncate(state["metrics_length"])
+        report["segments"].append(entry)
+        metrics = closing.enter_context(metrics_path.open("a", encoding="utf-8"))
+        staging = Staging(device)
+        last_save = time.monotonic()
+
+        def checkpoint(finished: bool = False) -> None:
+            """The training state, then the report; the state names the metrics' length."""
+            nonlocal last_save
+            metrics.flush()
+            report["samples"] = samples
+            cuda = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else []
+            save(
+                out / CHECKPOINT,
+                {
+                    "format": BENCH_FORMAT,
+                    "mode": parts.mode,
+                    "bench": asdict(bench),
+                    "base": asdict(parts.base),
+                    "segment": segment,
+                    "samples": samples,
+                    "next_eval": next_eval,
+                    "horizon": horizon,
+                    "finished": finished,
+                    "students": {s.name: student_state(s) for s in students},
+                    "stats": json.dumps(player.stats),
+                    "report": json.dumps(report),
+                    "metrics_length": metrics_path.stat().st_size,
+                    "rng": {"torch": torch.get_rng_state(), "cuda": cuda},
+                },
+            )
+            atomic_write_text(out / "report.json", json.dumps(report, indent=1) + "\n")
+            last_save = time.monotonic()
+
+        def score() -> None:
+            for s in students:
+                s.net.eval()
+            evaluation = {"samples": samples, **parts.evaluate(students, heldout, device)}
+            for s in students:
+                s.net.train()
+            report["evaluations"].append(evaluation)
+            metrics.write(json.dumps(evaluation) + "\n")
+            metrics.flush()
+            log(parts.table(evaluation, samples))
+
+        if state is None:
+            score()
+            next_eval = bench.eval_every
+            checkpoint()
+        while samples < bench.samples and not stop.requested:
+            taken = player.take(bench.envs * bench.rollout, stop)
+            if taken is None:
+                break
+            arrays, flat = taken
+            # Training on: the ladders of an earlier end are stale.
+            report.pop("ladders", None)
+            n = len(flat)
+            rng = np.random.default_rng(samples)
+            size = min(n, bench.minibatch)
+            done, steps = 0, steps_of(n, size, bench.epochs)
+            for _ in range(bench.epochs):
+                order = rng.permutation(flat)
+                for k in range(0, n - size + 1, size):
+                    if stop.requested:
+                        break
+                    m = staging.gather(arrays, np.sort(order[k : k + size]))
+                    loss = parts.loss(m)
+                    done += 1
+                    for s in students:
+                        seen = samples + n * done / steps
+                        rate = learning_rate(s, bench, samples, seen, horizon)
+                        step(s, loss, rate, bench.max_grad_norm, size, device)
+            player.release()
+            # A batch a stop cut short counts its samples pro rata of the steps taken (as `seen`).
+            samples += n * done // steps
+            if samples >= next_eval:
+                score()
+                next_eval += bench.eval_every
+                checkpoint()
+            elif time.monotonic() - last_save >= 60 * bench.checkpoint_minutes:
+                checkpoint()
+        player.close()
+        stopped = stop.requested and samples < bench.samples
+        if report["evaluations"][-1]["samples"] != samples:
+            score()
+        for s in students:
+            save(
+                out / "students" / f"{s.name}.pt",
+                {
+                    "format": CHECKPOINT_FORMAT,
+                    "config": asdict(s.config),
+                    "policy": s.net.state_dict(),
+                    "updates": 0,
+                    "samples": samples,
+                    **parts.origin,
+                },
+            )
+        if parts.finish is not None:
+            stopped = parts.finish(report, player.stats, students, stopped, stop, checkpoint)
+        report["ended"] = entry["ended"] = "stop" if stopped else "budget"
+        checkpoint(finished=not stopped)
+    return report
+
+
+def distill_parts(
+    saved: dict[str, Any], path: str, bench: Bench, device: torch.device, segment: int = 0
+) -> Parts:
+    """The distillation bench's parts (`go`): the teacher `saved` (a run's network file, named
+    `path` in the report), its play on the bench's seed's `segment`."""
     if saved["config"].get("preview"):
         raise ConfigError("the teacher reads the kill preview: no bench network does")
     base = resolve(Config(**saved["config"]))
-    device = bench_device(bench.device)
     play = dataclasses.replace(
         base,
         seed=bench.seed,
@@ -508,130 +845,127 @@ def run(
         device=str(device),
     )
 
-    def teacher_trainer(seed: int) -> Trainer:
-        t = Trainer(resolve(dataclasses.replace(play, seed=seed)))
+    def rollouts(seed: int, segment: int = 0) -> Rollouts:
+        t = Trainer(resolve(dataclasses.replace(play, seed=seed)), segment=segment)
         t.policy.load_state_dict(saved["policy"])
         t.policy.eval()
-        return t
+        return Rollouts(t)
 
-    trainer = teacher_trainer(bench.seed)
-    teacher = trainer.policy
-    torch.manual_seed(bench.seed)
-    students = [
-        make_student(name, keys, base, bench, trainer.batch, device)
-        for name, keys in bench.students.items()
-    ]
-    report: dict[str, Any] = {
-        "teacher": {
-            "path": str(teacher_path),
+    player = rollouts(bench.seed, segment)
+    teacher = player.trainer.policy
+
+    def loss(m: dict[str, torch.Tensor]) -> Callable[[Policy], torch.Tensor]:
+        with torch.no_grad():
+            target = heads(teacher, m)
+
+        def value(net: Policy) -> torch.Tensor:
+            mine = heads(net, m)
+            kl_, _ = losses(target, mine, m["entry_mask"])
+            v_loss = 0.5 * ((mine[3] - m["returns"]) ** 2).mean()
+            return kl_ + bench.value_coef * v_loss
+
+        return value
+
+    return Parts(
+        mode="distill",
+        base=base,
+        teacher={
+            "path": path,
             "config": {k: v for k, v in asdict(base).items() if k in NETWORK_KEYS},
             "samples": saved.get("samples"),
             "parameters": sum(p.numel() for p in teacher.parameters()),
         },
-        "bench": asdict(bench),
-        "identity": {
-            "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            **source(),
-            "torch": torch.__version__,
-            "device": str(device),
-            "gpu": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
-            **machine(),
-        },
-        "students": {s.name: described(s) for s in students},
-        "evaluations": [],
-        "ended": None,
-    }
-    log(f"held-out set: {bench.heldout:,} samples of the teacher on seed {bench.seed + 1}")
-    held = teacher_trainer(bench.seed + 1)
-    parts: list[dict[str, np.ndarray]] = []
-    while sum(p["returns"].shape[0] for p in parts) < bench.heldout:
-        parts.append(copied(*collect(held)))
-    held.batch.close()
-    heldout = {k: np.concatenate([p[k] for p in parts])[: bench.heldout] for k in parts[0]}
-    del parts
-    staging = Staging(device)
-    metrics = (out / "metrics.jsonl").open("a", encoding="utf-8")
-    samples, next_eval = 0, 0
+        player=player,
+        held=lambda: rollouts(bench.seed + 1),
+        loss=loss,
+        evaluate=lambda students, data, device: evaluate(teacher, students, data, device),
+        table=table,
+        origin={"distilled_from": path},
+    )
 
-    def score() -> None:
-        for s in students:
-            s.net.eval()
-        evaluation = {"samples": samples, **evaluate(teacher, students, heldout, device)}
-        for s in students:
-            s.net.train()
-        report["evaluations"].append(evaluation)
-        metrics.write(json.dumps(evaluation) + "\n")
-        metrics.flush()
-        log(table(evaluation, samples))
 
-    stopped = False
-    try:
-        score()
-        next_eval = bench.eval_every
-        while samples < bench.samples:
-            arrays, flat = collect(trainer)
-            n = len(flat)
-            rng = np.random.default_rng(samples)
-            size = min(n, bench.minibatch)
-            done, steps = 0, steps_of(n, size, bench.epochs)
-            for _ in range(bench.epochs):
-                order = rng.permutation(flat)
-                for k in range(0, n - size + 1, size):
-                    m = staging.gather(arrays, np.sort(order[k : k + size]))
-                    with torch.no_grad():
-                        target = heads(teacher, m)
+def run(
+    teacher_path: Path,
+    bench: Bench,
+    out: Path,
+    log: Callable[[str], None] = print,
+    stop: Stop | None = None,
+) -> dict[str, Any]:
+    """Runs `bench` with the teacher of `teacher_path` into `out` (the module's documentation);
+    returns the report."""
+    if bench.run or bench.ladder:
+        raise ConfigError("`run` and `ladder` are the clone mode's (--teacher system)")
+    fresh(out)
+    saved = torch.load(teacher_path, map_location="cpu", weights_only=True)
+    device = bench_device(bench.device)
+    parts = distill_parts(saved, str(teacher_path), bench, device)
+    (out / "students").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(teacher_path, out / TEACHER_FILE)
+    return go(parts, bench, out, device, log, stop)
 
-                    def loss(net: Policy, m=m, target=target) -> torch.Tensor:
-                        mine = heads(net, m)
-                        kl_, _ = losses(target, mine, m["entry_mask"])
-                        v_loss = 0.5 * ((mine[3] - m["returns"]) ** 2).mean()
-                        return kl_ + bench.value_coef * v_loss
 
-                    done += 1
-                    for s in students:
-                        rate = learning_rate(s, bench, samples, samples + n * done / steps)
-                        step(s, loss, rate, bench.max_grad_norm, size, device)
-            samples += n
-            if samples >= next_eval:
-                score()
-                next_eval += bench.eval_every
-        report["ended"] = "budget"
-    except KeyboardInterrupt:
-        stopped = True
-        report["ended"] = "stop"
-    finally:
-        trainer.batch.close()
-    if stopped or not report["evaluations"] or report["evaluations"][-1]["samples"] != samples:
-        score()
-    metrics.close()
-    for s in students:
-        save(
-            out / "students" / f"{s.name}.pt",
-            {
-                "format": CHECKPOINT_FORMAT,
-                "config": asdict(s.config),
-                "policy": s.net.state_dict(),
-                "updates": 0,
-                "samples": samples,
-                "distilled_from": str(teacher_path),
-            },
+def resume(
+    out: Path,
+    sets: Iterable[str] = (),
+    log: Callable[[str], None] = print,
+    stop: Stop | None = None,
+) -> dict[str, Any]:
+    """Continues the bench in `out` (either mode) from its checkpoint in a new segment, to its
+    budget (the module's documentation): `sets` (`--set key=value`) may change only `RESUMABLE`'s
+    keys. A refused resume changes nothing."""
+    out = Path(out)
+    path = out / CHECKPOINT
+    if not path.exists():
+        raise ResumeError(f"{out} holds no {CHECKPOINT} to resume")
+    state = torch.load(path, map_location="cpu", weights_only=True)
+    if state.get("format") != BENCH_FORMAT or state.get("mode") not in ("distill", "clone"):
+        raise ResumeError(f"{path} is not a bench's checkpoint of format {BENCH_FORMAT}")
+    bench, changed = resumed_bench(state["bench"], sets)
+    if state["finished"] and state["samples"] >= bench.samples:
+        raise ResumeError(
+            f"the bench in {out} reached its budget ({bench.samples} samples): extend it with "
+            "--set samples=N"
         )
-    report["samples"] = samples
-    atomic_write_text(out / "report.json", json.dumps(report, indent=1) + "\n")
-    return report
+    device = bench_device(bench.device)
+    segment = state["segment"] + 1
+    if state["mode"] == "clone":
+        from . import clone
+
+        parts = clone.parts(Config(**state["base"]), bench, device, segment, log)
+    else:
+        saved = torch.load(out / TEACHER_FILE, map_location="cpu", weights_only=True)
+        named = json.loads(state["report"])["teacher"]["path"]
+        parts = distill_parts(saved, named, bench, device, segment)
+    return go(parts, bench, out, device, log, stop, state, changed)
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m h3env.train.distill", description=__doc__)
     parser.add_argument(
         "--teacher",
-        required=True,
         help="a run's network file, or `system`: the fair system actor (the clone mode, E25 T16)",
     )
-    parser.add_argument("--config", type=Path, required=True, help="the bench's TOML file")
-    parser.add_argument("--out", type=Path, required=True, help="a new directory")
+    parser.add_argument("--config", type=Path, help="the bench's TOML file")
+    where = parser.add_mutually_exclusive_group(required=True)
+    where.add_argument("--out", type=Path, help="a new directory")
+    where.add_argument(
+        "--resume",
+        type=Path,
+        metavar="DIR",
+        help="continue the bench in DIR from its checkpoint (E25 T26a)",
+    )
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     args = parser.parse_args(argv)
+    if args.resume is not None:
+        if args.teacher is not None or args.config is not None:
+            parser.error(
+                "--resume takes the bench's settings and teacher from its checkpoint: change "
+                f"{', '.join(RESUMABLE)} by --set"
+            )
+        resume(args.resume, args.set)
+        return
+    if args.teacher is None or args.config is None:
+        parser.error("a new bench takes --teacher and --config")
     if args.teacher == "system-all-seeing":
         parser.error("the all-seeing system actor is never imitated (E25 decision 3)")
     bench = load_bench(args.config.read_text(encoding="utf-8"), args.set)

@@ -1,23 +1,24 @@
 """The cloning bench (E25 T16, `h3env.train.clone`, the distillation bench's clone mode): the fair
 system actor's episodes and their returns, the cross-entropy on its choices, a bench run end to
-end whose student learns, saves as a run's network, starts a run and plays its ladder. They need
-the group `train`."""
+end whose student learns, saves as a run's network, starts a run and plays its ladder; a stopped
+bench resuming its training and its ladder (E25 T26a). They need the group `train`."""
 
 from __future__ import annotations
 
 import json
+import signal
 from dataclasses import replace
 
 import numpy as np
 import pytest
 
-from h3env.train.run import ConfigError, load_config
+from h3env.train.run import ConfigError, ResumeError, load_config
 
 torch = pytest.importorskip("torch")
 
 from h3env.train import distill  # noqa: E402
 from h3env.train.clone import FIELDS, Episodes, cross_entropy, run  # noqa: E402
-from h3env.train.distill import Bench, heads  # noqa: E402
+from h3env.train.distill import Bench, heads, resume  # noqa: E402
 from h3env.train.evaluate import load  # noqa: E402
 from h3env.train.policy import Mlp  # noqa: E402
 from h3env.train.ppo import Staging, Trainer  # noqa: E402
@@ -172,7 +173,7 @@ def test_a_clone_bench_trains_saves_starts_a_run_and_plays_its_ladder(tmp_path) 
         assert torch.equal(a, b)
     trainer.batch.close()
     assert any("held-out set" in line for line in lines)
-    with pytest.raises(ConfigError, match="does not resume"):
+    with pytest.raises(ConfigError, match="not empty"):
         run(bench, tmp_path / "bench", config_text=RUN)
 
 
@@ -185,3 +186,71 @@ def test_the_distillation_bench_leaves_the_clone_modes_keys_to_it(tmp_path) -> N
         distill.main(
             ["--teacher", "system-all-seeing", "--config", "x.toml", "--out", str(tmp_path)]
         )
+
+
+def test_a_stopped_clone_bench_resumes_its_training_and_its_ladder(tmp_path) -> None:
+    # E25 T26a: Ctrl+C at the first evaluation past the start, then at the ladder. Each stop is
+    # saved; the last resume plays the ladder the stop cut short, the teacher's statistics the
+    # whole run's.
+    bench = Bench(
+        seed=7,
+        samples=600,
+        heldout=150,
+        eval_every=300,
+        envs=8,
+        threads=2,
+        rollout=16,
+        epochs=2,
+        minibatch=64,
+        lr=3e-3,
+        device="cpu",
+        ladder=["system"],
+        ladder_per_kind=2,
+        students={"mlp": {"kind": "mlp"}},
+    )
+    out = tmp_path / "bench"
+
+    def in_training(line: str) -> None:
+        if line.startswith("at ") and not line.startswith("at 0 "):
+            signal.raise_signal(signal.SIGINT)
+
+    def at_the_ladder(line: str) -> None:
+        if "the ladder" in line:
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = run(bench, out, log=in_training, config_text=RUN)
+    assert stopped["ended"] == "stop" and stopped["samples"] < 600 and "ladders" not in stopped
+    stats = stopped["teacher"]["stats"]
+    assert stats["episodes"] > 0 and stats["lost"] == 0
+    state = torch.load(out / "checkpoint.pt", weights_only=True)
+    assert (state["mode"], state["segment"], state["finished"]) == ("clone", 0, False)
+    assert state["base"] == json.loads(json.dumps(state["base"])) and state["base"]["seed"] == 7
+
+    cut = resume(out, log=at_the_ladder)
+    assert cut["ended"] == "stop" and cut["samples"] >= 600 and cut["ladders"] == {}
+    state = torch.load(out / "checkpoint.pt", weights_only=True)
+    assert (state["segment"], state["finished"], state["samples"]) == (1, False, cut["samples"])
+
+    lines: list[str] = []
+    done = resume(out, log=lines.append)
+    assert done["ended"] == "budget" and done["samples"] == cut["samples"]
+    assert not any(line.startswith("at ") for line in lines)
+    assert set(done["ladders"]["mlp"]) == {"report-v1", "neutral-v1"}
+    assert 0.0 <= done["ladders"]["mlp"]["report-v1"]["system"]["win_rate"] <= 1.0
+    assert [(s["segment"], s["ended"]) for s in done["segments"]] == [
+        (0, "stop"),
+        (1, "stop"),
+        (2, "budget"),
+    ]
+    whole = done["teacher"]["stats"]
+    assert whole["episodes"] > stats["episodes"] and whole["decisions"] > stats["decisions"]
+    assert (
+        whole["lost"] == 0
+        and sum(k["episodes"] for k in whole["by_kind"].values()) == (whole["episodes"])
+    )
+    samples = [e["samples"] for e in done["evaluations"]]
+    assert samples[0] == 0 and samples == sorted(set(samples)) and samples[-1] == done["samples"]
+    assert json.loads((out / "report.json").read_text()) == json.loads(json.dumps(done))
+    assert load(out / "students" / "mlp.pt").tactics_rounds == 3
+    with pytest.raises(ResumeError, match="extend it"):
+        resume(out)

@@ -10,23 +10,29 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 to 6 closed (`E25-archive.md`); **`e25-imitate-1` #2 the current best** (AI-Q16, T23: 0.458 and
 0.462 against the fair and the all-seeing system actor, the neutral set +0.287). **Increment 7, a
 network that reads the battle's structure** (refined at T23, 2026-11-04, AI-Q16; its decisions in
-the epic file; **T25 done** 2026-11-04, the heads read the geometry, `E25-log.md`):
+the epic file; **T25 done** 2026-11-04, the heads read the geometry; **T26a done** 2026-11-05,
+the benches resume; `E25-log.md`):
 
-- **T26 The structure sweep.** *Scope:* the user's GPU, one run of about 7 to 8 hours (the
-  grid's µs, two passes of 4 M samples a student): `uv run --group train python -m
-  h3env.train.distill --teacher system --config configs/distill/e25-structure.toml --out
-  runs/structure-1` (prepared at T25: the MLP, the MLP with the mask, `entity` 256 × 4, `hexconv`
-  normalised 96 × 6, `hexformer` 96 × 4, the three with T25's keys at two learning rates each;
-  the user's cap of about 700 µs a sample-pass, `E25-log.md` T25; dropping the structured
-  families' second rates saves about 3.5 hours); its record `records/distill/structure-1.json`
-  uploaded. *Acceptance:* a read ranking agreement (overall, moves, melee) against the GPU's µs
-  (the bench's `us_per_sample_pass`, T25's keys included), decision 5's first gate applied (0.60
-  at 4 M). *Depends on:* T25 (done 2026-11-04). *Status:* next.
+- **T26b The structure sweep.** *Scope:* the user's GPU, about 10 to 12 hours in parts under 2
+  hours (T26's stopped first segment: `E25-log.md` T26), from `python/`: the first part `uv run
+  --group train python -m h3env.train.distill --teacher system --config
+  configs/distill/e25-structure.toml --out runs/structure-1`, Ctrl-C before 2 hours (it stops at
+  the next minibatch, scores and saves: a minute or two; a second Ctrl-C aborts unsaved), each
+  later part `uv run --group train python -m h3env.train.distill --resume runs/structure-1` until
+  it ends at its budget (`report.json`'s `ended` "budget"). Prepared at T25: the MLP, the MLP with
+  the mask, `entity` 256 × 4, `hexconv` normalised 96 × 6, `hexformer` 96 × 4, the three with
+  T25's keys at two learning rates each; the user's cap of about 700 µs a sample-pass; a
+  checkpoint about 300 MB every 10 minutes. Before the first part the user's call whether to drop
+  each family's lower rate (behind at T26's 0.45 M in every family; saves about a third of the
+  time; a resume keeps the students). Its record `records/distill/structure-1.json` uploaded.
+  *Acceptance:* a read ranking agreement (overall, moves, melee) against the GPU's µs (the
+  bench's `us_per_sample_pass`, T25's keys included), decision 5's first gate applied (0.60 at
+  4 M). *Depends on:* nothing (T26a done). *Status:* next.
 - **T27 The long clone.** *Scope:* the user's GPU: T20's bench (`configs/distill/e25-clone-2.toml`,
-  16 M samples) with T26's best student (the best two if within 0.02); its ladder against both
+  16 M samples) with T26b's best student (the best two if within 0.02); its ladder against both
   system actors and on the neutral set; T19's tool per category; the student uploaded (under
   30 MB). *Acceptance:* the agreement beside T20's (0.576; moves 0.378, melee 0.401), the ladder
-  beside 0.411 ± 0.018, decision 5's second gate applied. *Depends on:* T26 (its gate passed).
+  beside 0.411 ± 0.018, decision 5's second gate applied. *Depends on:* T26b (its gate passed).
   *Status:* waiting.
 - **T28 The A/B.** *Scope:* a CPU smoke of `configs/e25-imitate-structure.toml` in the sandbox
   (the candidate's network, `[ppo] minibatches` for its memory, the imitation loss on that kind;
