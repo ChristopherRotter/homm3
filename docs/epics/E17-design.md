@@ -6950,9 +6950,10 @@ T5b2 cut in two by the user (2026-11-05): T5b2a the retreat question, T5b2b CLT-
   - `boxes.rs`: `Asked::Question`, `Asked::Offer`, `answered`'s `Answered::Auto(Then)` for both
     buttons; `question` (keys `battle.auto.retreat.ask`, `battle.auto.surrender.ask`; the
     layout's `[message] resources`, frame `GOLD`, `gold_caption`).
-  - `battle.rs`: the box at the action's millisecond (`play_next`, `computer_at`), no outline;
-    `Battle::answer` after `anim::Growing::hold` (no idle step behind the box, the command the
-    computer's; *provisional*). Unattended `--auto-question cancel|retreat|surrender` (cancel
+  - `battle.rs`: the box at the action's millisecond (`play_next`, `computer_at`), no stack
+    outlined behind it (`anim::Growing::unoutline`: a switch's, §12.18 (2)); `Battle::answer`
+    after `Growing::hold` (no idle step behind the box, the command the computer's;
+    *provisional*). Unattended `--auto-question cancel|retreat|surrender` (cancel
     by default, *provisional*).
   - The comparisons: a step `question = true` with the answer's `at` (`anim::held`); its span
     takes `key:Return`, `key:Escape`, `click:` as answers (`pointer::answering`,

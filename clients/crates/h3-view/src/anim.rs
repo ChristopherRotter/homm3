@@ -1865,14 +1865,15 @@ pub fn timeline(
 }
 
 /// As [`timeline`], the battle standing still before the commands `holds` names, each by its
-/// index with when it stood until (E17 M6 T5b2a: Auto Combat's question, a modal box over the
-/// computer's turn, answered then; [`Growing::hold`]); a held command has no time of its own.
+/// index with when it stood from (at least the command before's end) and until (E17 M6 T5b2a:
+/// Auto Combat's question, a modal box over the computer's turn, answered then;
+/// [`Growing::hold`]); a held command has no time of its own.
 ///
 /// # Errors
 /// As [`timeline`].
 pub fn held(
     snapshot: &Observation,
-    (commands, holds): (&[Command<'_>], &[(usize, u32)]),
+    (commands, holds): (&[Command<'_>], &[(usize, u32, u32)]),
     looks: &BTreeMap<u16, Look>,
     stage: Stage<'_>,
     speed: Speed,
@@ -1901,7 +1902,7 @@ pub fn fidgeting(
 /// names ([`Growing::hold`]).
 fn played(
     snapshot: &Observation,
-    (commands, holds): (&[Command<'_>], &[(usize, u32)]),
+    (commands, holds): (&[Command<'_>], &[(usize, u32, u32)]),
     looks: &BTreeMap<u16, Look>,
     stage: Stage<'_>,
     speed: Speed,
@@ -1910,8 +1911,8 @@ fn played(
     let mut growing = Growing::new(snapshot, looks, stage, speed, seed)?;
     for (i, command) in commands.iter().enumerate() {
         let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
-        for &(_, until) in holds.iter().filter(|&&(k, _)| k == i) {
-            growing.hold(until);
+        for &(_, from, until) in holds.iter().filter(|&&(k, ..)| k == i) {
+            growing.hold((from, until));
         }
         growing.push(command, computer);
     }
@@ -2242,16 +2243,30 @@ impl<'a> Growing<'a> {
         }
     }
 
-    /// The battle stood still from its end until `until` (E17 M6 T5b2a, design §12.19: a modal
-    /// box over a turn the computer plays, Auto Combat's question, answered then): no idle step
-    /// ran meanwhile, so the next command without a time, the computer's, starts then, its tick
-    /// there (*provisional*: the loop's next step due then, a first command's too). Nothing
-    /// before `until` changes.
-    pub fn hold(&mut self, until: u32) {
+    /// The battle stood still from `from` (at least its end) until `until` (E17 M6 T5b2a, design
+    /// §12.19: a modal box over a turn the computer plays, Auto Combat's question, answered
+    /// then): no stack outlined from `from` ([`Growing::unoutline`]), no idle step meanwhile, so
+    /// the next command without a time, the computer's, starts at `until`, its tick there
+    /// (*provisional*: the loop's next step due then, a first command's too). Nothing before
+    /// `from` changes.
+    pub fn hold(&mut self, (from, until): (u32, u32)) {
+        let _ = self.unoutline(from.max(self.timeline.end));
         let Player { clock, idle, .. } = &mut self.player;
         clock.start(until);
         idle.next = idle.next.max(clock.now);
         idle.from = idle.from.max(clock.now);
+    }
+
+    /// No stack outlined from `at` on, at or past the timeline's end (E17 M6 T5b2a: Auto
+    /// Combat's switch over a stack that plays itself empties the active stack, design §12.18
+    /// (2), so the turn waiting behind its question shows none); whether one was.
+    pub fn unoutline(&mut self, at: u32) -> bool {
+        let outlines = &mut self.timeline.outlines;
+        let outlined = outlines.last().is_some_and(|&(_, stack)| stack.is_some());
+        if outlined {
+            outlines.push((at, None));
+        }
+        outlined
     }
 
     /// Plays `command` after those before it (a command without a time as soon as the previous

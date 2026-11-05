@@ -511,8 +511,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let snapshot = record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
-        let at = (&commands[..], &holds[..]);
-        let mut timeline = anim::held(snapshot, at, &looks, stage, options.speed)
+        // Each held from the command before's end (the first from `pre`, the switch's).
+        let held: Vec<(usize, u32, u32)> = (holds.iter())
+            .map(|&(i, until)| (i, if i == 0 { sequence.pre } else { 0 }, until))
+            .collect();
+        let mut timeline = anim::held(snapshot, (&commands, &held), &looks, stage, options.speed)
             .map_err(|e| format!("{}: {e}", sequence.id))?
             .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
         let spans = asked_spans(&holds, &timeline, sequence.pre);

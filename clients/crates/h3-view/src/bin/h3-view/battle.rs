@@ -1058,7 +1058,7 @@ impl<'g> Battle<'g> {
         }
         self.head = Playhead::new(self.timeline());
         if asked {
-            self.open_question(end);
+            self.open_question(end)?;
         }
         Ok(())
     }
@@ -1196,7 +1196,7 @@ impl<'g> Battle<'g> {
         };
         let Some(played) = live.next()? else {
             // Auto Combat's question at the switch's own turn (E17 M6 T5b2a).
-            return Ok(self.open_question(at));
+            return self.open_question(at);
         };
         self.grow_from_waiting(at, played)?;
         Ok(true)
@@ -1206,19 +1206,28 @@ impl<'g> Battle<'g> {
     /// T5b2a, design §12.19; `crate::boxes::question`) at `at`, the battle standing still behind
     /// it; whether it opened (none waits, a box is open, or no text tables). *Not built* for a
     /// seat on a server: it plays no Auto Combat (`Battle::takes_auto`), so asks no question.
-    fn open_question(&mut self, at: u32) -> bool {
+    fn open_question(&mut self, at: u32) -> Result<bool, String> {
         let Some(question) = Fight::here_ref(self.fight.as_ref()).and_then(Live::question) else {
-            return false;
+            return Ok(false);
         };
         if self.message.is_some() {
-            return false;
+            return Ok(false);
+        }
+        // No stack outlined behind it (Auto Combat's switch over a stack that plays itself
+        // empties the active stack, §12.18 (2)): the turn waiting shown so, followed again.
+        if let Played::Waiting(growing, tail) = &mut self.played
+            && growing.unoutline(at.max(growing.timeline().end))
+        {
+            **tail = growing.waiting();
+            self.head = Playhead::new(self.timeline());
+            self.follow()?;
         }
         // The resources' pictures' DEF, for its size (the offer's gold).
         let def = self.ground.layout.message.resources.clone();
         let size = match question {
             crate::live::Question::Offer { .. } => {
                 if self.load_names(vec![def.to_ascii_uppercase()]).is_err() {
-                    return false;
+                    return Ok(false);
                 }
                 self.batch.sprite(&def).map_or([0, 0], |s| {
                     [s.def.width, s.def.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
@@ -1227,12 +1236,12 @@ impl<'g> Battle<'g> {
             crate::live::Question::Retreat => [0, 0],
         };
         let (Some(writer), Some(own)) = (self.ground.writer.as_ref(), self.own_view()) else {
-            return false;
+            return Ok(false);
         };
         let hero_types = &self.record.header.manifest.keys.hero_types;
         let (text, picture, asked) =
             crate::boxes::question(question, &own, hero_types, &writer.catalogue, (&def, size));
-        self.tell(at, &text, (Style::OkCancel, picture.as_ref()), asked)
+        Ok(self.tell(at, &text, (Style::OkCancel, picture.as_ref()), asked))
     }
 
     /// The human's answer `ok` at `at` to Auto Combat's question or offer, its box closed (E17 M6
@@ -1246,11 +1255,12 @@ impl<'g> Battle<'g> {
             return Ok(false);
         };
         let Some(played) = live.answer(ok)? else {
-            return Ok(self.open_question(at));
+            return self.open_question(at);
         };
         let placeholder = Played::Finished(Box::default());
         if let Played::Waiting(mut growing, _) = std::mem::replace(&mut self.played, placeholder) {
-            growing.hold(at);
+            let end = growing.timeline().end;
+            growing.hold((end, at));
             self.played = Played::Growing(growing);
             self.take(None, played)?;
         }

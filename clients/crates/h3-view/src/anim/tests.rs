@@ -1479,7 +1479,7 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
     let free = super::timeline(&o, &commands, &looks(), stage, Speed::default()).unwrap();
     let stood = held(
         &o,
-        (&commands, &[(1, 5000)]),
+        (&commands, &[(1, 0, 5000)]),
         &looks(),
         stage,
         Speed::default(),
@@ -1496,7 +1496,7 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
     // A hold before its time changes nothing.
     let early = held(
         &o,
-        (&commands, &[(1, 0)]),
+        (&commands, &[(1, 0, 0)]),
         &looks(),
         stage,
         Speed::default(),
@@ -1505,7 +1505,7 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
     // The first command held: one step as it starts, none before.
     let first = held(
         &o,
-        (&commands, &[(0, 3000)]),
+        (&commands, &[(0, 0, 3000)]),
         &looks(),
         stage,
         Speed::default(),
@@ -1513,6 +1513,26 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
     .unwrap();
     assert_eq!(first.actions[0].start, 3000);
     assert_eq!(first.steps.iter().filter(|&&t| t <= 3000).count(), 1);
+    // The opening's waiting stack is outlined until the hold's start (Auto Combat's switch at
+    // 200), none after until the computer's tick.
+    let switched = held(
+        &o,
+        (&commands, &[(0, 200, 3000)]),
+        &looks(),
+        stage,
+        Speed::default(),
+    )
+    .unwrap();
+    assert_eq!(switched.outlines.first(), Some(&(0, Some(0))));
+    assert_eq!(switched.outlines.get(1), Some(&(200, None)));
+    let mut growing = Growing::new(&o, &looks(), stage, Speed::default(), None).unwrap();
+    assert!(growing.unoutline(10) && !growing.unoutline(20));
+    let outlines = &growing.timeline().outlines;
+    assert_eq!(
+        outlines.iter().filter(|o| o.1.is_none()).count(),
+        1,
+        "{outlines:?}"
+    );
 }
 
 #[test]

@@ -225,7 +225,8 @@ sequence a `key:Return`, `key:Escape` or `click:` on a button between the action
 and the answer that gave the command answers the box open (the question's, then the offer's),
 no stop, and the command after it is marked `question = true` with its `at` the last answer
 (`{ seat = "Attacker", command = { Retreat = {} }, at = 2000, question = true }`; *provisional*:
-the battle held behind the boxes, no idle step, the command the computer's from then). What the
+the battle held behind the boxes, no stack outlined and no idle step, the command the computer's
+from then; a first command's box opens at `pre`, the switch's). What the
 test reads comes from the scenario: `attacker_funds` (20 000, the harness's Normal),
 `difficulty = 1` (the harness's), `[scenario.attacker_retreat]` (`experience`, `tavern`) and
 the enemy's hero (`defender_hero`; the map needs one, so the Retreat without it is not
