@@ -1363,8 +1363,10 @@ an entry only where a task builds on it.
 ## T26b — The structure sweep (2026-11-05)
 
 - **The user's run** of `configs/distill/e25-structure.toml` on the GTX 1070 to its budget (4 M
-  samples, two passes; the bench's resume of T26a; the table as pasted, `report.json` to be
-  uploaded as `records/distill/structure-1.json`):
+  samples, two passes; `records/distill/structure-1.json`): two segments, a stop at 1 266 342
+  samples (started 11:01 UTC) and one resumed part to 4 032 126 (from 15:06); the fair actor's
+  play 215 s in all. The segments hold no wall-clock time, so the bench's segments record their
+  seconds since (`segments[].seconds`, updated at each checkpoint):
 
   | Student | CE entry | CE cast | Agreement | Moves | Melee | Shots | Value | Seconds | µs | MB |
   |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|

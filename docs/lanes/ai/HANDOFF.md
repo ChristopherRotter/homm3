@@ -36,10 +36,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   5's first gate passed by `hexconv` normalised 96 × 6 at 1e-3, **0.755 at 4 M** (moves 0.669,
   melee 0.718; 683 µs), `entity` 256 × 4 0.719 at half the cost, the MLP 0.533; its value 0.590
   (below the MLP's 0.624: T28's to watch). **Next:** T27 on the user's GPU in parts
-  (`configs/distill/e25-clone-3.toml`, its commands in `QUEUE.md`); T26b's `report.json` still to
-  be uploaded (with T27's files).
+  (`configs/distill/e25-clone-3.toml`, its commands in `QUEUE.md`).
 - **Open pull requests:** the one of `claude/gifted-keller-2dtp2o` (T26b's records, T27's
-  config). Merged: #721 (T24), #725 (T25), #730 (T26a).
+  config, T26b's record, the segments' seconds). Merged: #721 (T24), #725 (T25), #730 (T26a).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -61,7 +60,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   (3.5 minutes); the stop-and-resume smoke of T25's clone by the command line 27 minutes
   (`E25-log.md` T26a), which showed the held-out file's 156 MB (now compressed).
 - #730 merged; the user ran T26b to its budget in parts and pasted the table; the branch
-  restarted from `master` for its records and T27's config (no `report.json` uploaded yet).
+  restarted from `master` for its records and T27's config; its `report.json` uploaded after.
 
 ### 2026-11-04 — E25 T25
 

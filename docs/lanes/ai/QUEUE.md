@@ -21,8 +21,8 @@ normalised 96 × 6 at 1e-3, 0.755 at 4 M; `E25-log.md`):
   h3env.train.distill --resume runs/clone-3` until it ends at its budget and its ladders (T20's
   bench, 16 M samples, with T26b's winner `hexconv` normalised 96 × 6 at 1e-3 and the 2 × 512 MLP
   as the control; its ladder against both system actors and on the neutral set). Uploaded:
-  `report.json` (to `records/distill/clone-3.json`), the winner's `students/hexconv-n-96x6-a.pt`
-  (about 6 MB), and T26b's `runs/structure-1/report.json` (to `records/distill/structure-1.json`).
+  `report.json` (to `records/distill/clone-3.json`) and the winner's
+  `students/hexconv-n-96x6-a.pt` (about 6 MB).
   Then T19's tool per category on the winner. *Acceptance:* the agreement beside T20's (0.576;
   moves 0.378, melee 0.401) and the MLP control's, the ladder beside 0.411 ± 0.018, decision 5's
   second gate applied. *Depends on:* nothing (T26b's gate passed). *Status:* next.
