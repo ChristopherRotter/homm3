@@ -48,9 +48,10 @@ pub(crate) fn siege_setup(
             defender_bonus(record, part),
             rules.core().hero_params(),
         );
-    } else if let Some(formation) = adventure.map().town_formation(town) {
+    } else {
         // rule: TWN-SIE-001
-        setup.formations[1] = formation;
+        let formation = adventure.map().town_formation(town);
+        setup.formations[1] = formation.unwrap_or(setup.formations[1]);
     }
     // rule: TWN-SIE-005
     let native = rules

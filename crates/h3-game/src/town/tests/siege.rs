@@ -784,4 +784,19 @@ fn a_siege_a_step_started_is_played_and_captures_the_town_with_the_attacker_outs
         assert!(stepped(&events) && !captured(&events), "{events:?}");
         assert_eq!(game.adventure().town_visitor(T1), Some(HERO));
     }
+    // Behind a neutral town's walls red's hero retreats; the system actor's garrison keeps it.
+    let mut game = GameState::new(&rules, &garrisoned(&rules, true, true), 7).unwrap();
+    let imps = garrison(&game).to_vec();
+    let mut events = step_onto_gate(&rules, &mut game);
+    events.extend(play(&mut game, &rules, |actor, listed| {
+        if actor == Actor::Player(RED) {
+            GameCommand::Battle(Command::Retreat)
+        } else {
+            fight(actor, listed)
+        }
+    }));
+    assert!(game.battle(RED).is_none() && !captured(&events));
+    assert!(game.adventure().hero(HERO).is_none());
+    assert_eq!(garrison(&game), &imps[..]);
+    assert_eq!(game.adventure().owner(1), None);
 }

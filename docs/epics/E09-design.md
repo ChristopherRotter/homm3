@@ -247,7 +247,8 @@ ADR-0015's amendment point 3, in the import's order:
   tile (a destination reached from a neighbour, not passed) and the rest as an entered object; the
   test is per entrance tile the search meets (a town is rare), measured against `master`
   (`homm3-bench-regression`).
-- **As built (T8a2):** `h3_adventure`'s `src/town.rs`. A town's entrance is a typed visit
+- **As built (T8a2;** its defended town's refusal superseded by §10's T8b2a: `town_defended`
+  became `town_visit`**):** `h3_adventure`'s `src/town.rs`. A town's entrance is a typed visit
   (`StaticMap::place`; `Effect::Town`; `StaticMap::town_at(pos)`), so ADV-OBJ-004 reads the town:
   a hero on the entrance does not leave it upwards and the guard test skips the row above.
   `town_visitor(id)` the hero on the entrance. `town_defended(index, player)`: the owner not

@@ -417,6 +417,11 @@ fn a_town_its_garrison_defends_is_besieged_from_the_tile_before() {
             if heroes == &flyer[..] {
                 assert!(past.unwrap().0.battle.is_none());
                 assert!(reach.points_left(p(4, 3)).is_some());
+                // Its visit is made from a stop node only: not from over the town's blocked tile.
+                assert_eq!(
+                    walk(&rules, &mut state.clone(), heroes, &[p(3, 4), ENTRANCE]).unwrap_err(),
+                    AdventureCommandError::NoStop { step: 1 }
+                );
             } else {
                 assert_eq!(
                     past.unwrap_err(),

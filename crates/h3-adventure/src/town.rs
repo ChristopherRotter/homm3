@@ -183,7 +183,8 @@ impl AdventureState {
     /// ADV-MIN-002), the neutral seat's for a neutral one ([`Defender::Guards`], *agent's call*: no
     /// new variant); fought at the town's entrance ([`Self::battle_at`]) as the battle of its town
     /// ([`BattleStart::town`]), which the game builds from the town (TWN-SIE-003 to -005). None
-    /// when `hero` is not on the map or `index` is not a town's (the step checked both).
+    /// when `hero` is not on the map or `index` is not a town's: never, the step checked both (a
+    /// none would leave the step paid and no battle).
     // rule: TWN-SIE-001
     fn siege_start(
         &self,

@@ -65,7 +65,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E09-batch-1.md and E09-batch-1-run2.md, batch TWN-1 row TWN-1-4 (the capture harness under Wine, 2026-11-03; scored in survey E09-towns.md section 15): a defended town is attacked from the tile before, the attacker staying there with its points"
+  ref        = "experiments/results/E09-batch-1.md and E09-batch-1-run2.md, batch TWN-1 row TWN-1-4 (the capture harness under Wine, 2026-11-03; scored in survey E09-towns.md section 15): a defended town is attacked from the tile before, the attacker staying there with the points left after the step"
   confidence = "high"
 
   [[rule.source]]
@@ -246,7 +246,7 @@ id       = "TWN-VIS-001"
 title    = "The step onto a town's entrance: entered, captured or besieged"
 context  = "town"
 status   = "implemented"
-summary  = "A town is entered, not visited from above (ADV-OBJ-003, ADV-OBJ-004: the base type `town`). A hero's step onto its entrance is decided by the town's owner and garrison, for the hero's owner: a town of the hero's team (allied with its owner; the player alone until E10) is entered, the walk ending on the entrance with no service, no decision and no event beyond the step's (*agent's call*); a town of another player or of none without a creature in its garrison is entered and captured at once (`AdventureOutcome::capture`, which the game applies: TWN-CAP-001); one with a creature in its garrison is defended: visited from the tile before (ADV-OBJ-003's neighbour mode: the step paid, ADV-MOV-006's drop, the hero stays; the reachable tiles and the legal moves list the entrance as a destination, as a monster's; a flight passes over it), the siege (TWN-SIE-001; E09 T8b2a). A visitor of another team defends a town too (TWN-VIS-002): until its siege (E09 T8b2b) such a town is refused as a visit not built (`AdventureCommandError::Visit`; `TWN-STUB-7`). E09 T8a2 (design §9): `AdventureState::visit_at`'s town branch, `visit_town`; since T8b2a `town_visit` (the visit's mode for the player).
+summary  = "A town is entered, not visited from above (ADV-OBJ-003, ADV-OBJ-004: the base type `town`). A hero's step onto its entrance is decided by the town's owner and garrison, for the hero's owner: a town of the hero's team (allied with its owner; the player alone until E10) is entered, the walk ending on the entrance with no service, no decision and no event beyond the step's (*agent's call*); a town of another player or of none without a creature in its garrison is entered and captured at once (`AdventureOutcome::capture`, which the game applies: TWN-CAP-001); one with a creature in its garrison is defended: visited from the tile before (ADV-OBJ-003's neighbour mode: the step paid, ADV-MOV-006's drop, the hero stays; the reachable tiles and the legal moves list the entrance as a destination, as a monster's; a flight passes over it), the siege (TWN-SIE-001; E09 T8b2a). A visitor of another team defends a town too (TWN-VIS-002): until its siege (E09 T8b2b) such a town is refused as a visit not built (`AdventureCommandError::Visit`; `TWN-STUB-7`). E09 T8a2 (design §9): `AdventureState::visit_at`'s town branch, `visit_town`; since T8b2a `town_visit` (the visit's mode for the player)."
 numeric  = "integer"
 
   [[rule.source]]
