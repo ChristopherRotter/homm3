@@ -3755,8 +3755,10 @@ fn added_at(state: &GameState, pos: TilePos) -> bool {
 }
 
 /// Every object of `state` with its index (E08 T86b1): the static map's, then those added in play
-/// (a creature month's monsters), on the map or not.
-fn all_objects(state: &GameState) -> impl Iterator<Item = (usize, &h3_adventure::MapObject)> {
+/// (a creature month's monsters), on the map or not. (E08 T96b1) `view.rs`'s too.
+pub(super) fn all_objects(
+    state: &GameState,
+) -> impl Iterator<Item = (usize, &h3_adventure::MapObject)> {
     let adventure = state.adventure();
     let added = adventure.added_objects().iter();
     adventure.map().objects().iter().chain(added).enumerate()
@@ -3781,8 +3783,12 @@ fn visited_at(state: &GameState, pos: TilePos) -> Option<usize> {
 }
 
 /// The index of the object of type `object_type` anchored at `anchor` in `state`, the objects
-/// added in play included.
-fn object_index(state: &GameState, object_type: ObjectTypeId, anchor: TilePos) -> Option<usize> {
+/// added in play included. (E08 T96b1) `view.rs`'s too.
+pub(super) fn object_index(
+    state: &GameState,
+    object_type: ObjectTypeId,
+    anchor: TilePos,
+) -> Option<usize> {
     all_objects(state)
         .find(|(_, o)| (o.object_type, o.anchor) == (Some(object_type), anchor))
         .map(|(i, _)| i)

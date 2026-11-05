@@ -25,3 +25,4 @@ cc 05563c0d66991facda2d37ca1de340a742c04c758a95c998795973f931992c2c # shrinks to
 cc 4ceb0bd67ba12482c10781aa43bd0edf62cdcbf92752404a3c05e6a995b42fdf # E08 T96b1: vary made neutral the viewer's own gem mine, anchored on the first column (no entrance, so no start reveal): its income moved
 cc e44ebd639ea55b7cce88a74f668c8a98053fa52b72eeaee3c64f471260697aba # E08 T96b1: vary gave another player the viewer's own sulfur mine on the first column (no entrance, no start reveal): its income moved
 cc f1e6f5bccdc743b549410caa31f1089b743afa8f5432e8ffc10073eb14d036fc # E08 T96b1: vary turned an abandoned mine's entrance to water (its entrances kept only Mine and Owned bodies land): OwnedOnWater
+cc b8f1f227db037a570280873b80bf9d85244b7bdf1ffa41a7ad5d81017a5aafe1 # E08 T96b1: the viewer's Refugee Camp question named another creature in the other game, its told events the same (`OfferOpened` names the camp only): the comparison ends when the two games' decisions differ
