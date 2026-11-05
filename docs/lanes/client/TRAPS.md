@@ -93,6 +93,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   Since T8b2 (R5c) the switches and stops carry their turn's index and live in
   `Battle::switches`, never in the window's inputs (Restart and seeks keep them); `h3_sdl` sends
   `Key::Other` for a key without a name (no key table binds it).
+  Since E17 M6 T5b1 a command may leave the turn under way going on (the computer's cast for a
+  human's hero, `live::Played::turned` false): `Battle::take` then asks Auto Combat of that turn
+  (`Auto::plays` to its end), never of a turn to come; and every command the computer gives is
+  logged by what asked for it (`live::Ask`), or the unattended check's re-fight (`refight`)
+  draws otherwise.
+- `clicks`' test fights every `situations/*.toml` but `counts`, `sequences`, `set` and
+  `to-record` as a scenario: a new file there that is not one joins that list (E17 M6 T5b1).
 - A message box (E17 M5 T4a) is modal as the book: while `Battle::message_open` the window's
   `next_frame` returns at once (else it hangs scanning idle steps), every key but the viewer's
   own goes to the box (Escape is Cancel's, never the window's quit) and the mouse's moves reach

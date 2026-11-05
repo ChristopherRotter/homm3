@@ -682,7 +682,13 @@ mod tests {
         let (ruleset, setup) =
             crate::scenario::battle(&scenario, &dir.join("../packs"), 1).unwrap();
         let (observation, record) = {
-            let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, true]).unwrap();
+            let mut live = crate::live::Live::new(
+                &ruleset,
+                setup,
+                1,
+                ([true, true], crate::live::Computer::Greedy),
+            )
+            .unwrap();
             (live.own_view().unwrap(), live.record().unwrap())
         };
         let manifest = h3_view::record::parse(&record).unwrap().header.manifest;

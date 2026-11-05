@@ -249,6 +249,16 @@ SHADES = {
     "movement_shadow": ("Combat Shade Level", "key:F8"),
 }
 
+# The Auto Combat options a sequence runs at (E17 M6 T5b1, design §12.18): an entry's key (0 or 1)
+# and the setting's value name (settings_names 0x63FF74: Combat Auto Creatures 0x698794, Combat
+# Auto Spells 0x698798). setup.sh sets Creatures to 1 and leaves Spells unset (0); an entry's
+# values are written before its run and the prefix's put back after (`Game.start`, `Game.stop`),
+# as the grid's; the viewer reads them from `sequences.toml` (`AutoBoxes`).
+AUTO = {
+    "auto_creatures": "Combat Auto Creatures",
+    "auto_spells": "Combat Auto Spells",
+}
+
 
 def setting_dword(name):
     """A dword of the game's settings key as the prefix's registry holds it (`system.reg`, which
@@ -347,7 +357,8 @@ class Game:
         self.army_info_before = None
         self.army_info_set = False
         # E17 M6 T4c: the grid's and the shadows' values the run writes (`shade_values`), and the
-        # prefix's that `stop` puts back.
+        # prefix's that `stop` puts back; E17 M6 T5b1: a sequence's Auto Combat options too
+        # (`registry_values`).
         self.shades = dict(shades or {})
         self.shades_before = {}
 
@@ -1420,7 +1431,7 @@ def run_sequences(rest):
         here.mkdir(parents=True, exist_ok=True)
         map_path = here / f"{e['id']}.h3m"
         view(situation_args(h3view, set_path, e, map_path))
-        game = Game(here, e.get("sound", False), shades=shade_values(e))
+        game = Game(here, e.get("sound", False), shades=registry_values(e))
         try:
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                      hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False),
@@ -1483,6 +1494,28 @@ def shade_values(entry):
             raise ValueError(f"{entry['id']}: {key} is 0 or 1, not {value}")
         out[name] = value
     return out
+
+
+def auto_values(entry):
+    """The Auto Combat options' registry values an entry runs at (E17 M6 T5b1, `AUTO`): each of its
+    `auto_creatures` and `auto_spells` (0 or 1, checked before the game starts), else left (the
+    prefix's: setup.sh's Creatures 1, Spells unset)."""
+    out = {}
+    for key, name in AUTO.items():
+        value = entry.get(key)
+        if value is None:
+            continue
+        if value not in (0, 1):
+            raise ValueError(f"{entry['id']}: {key} is 0 or 1, not {value}")
+        out[name] = value
+    return out
+
+
+def registry_values(entry):
+    """Every registry value an entry's run writes before the game starts and puts back after: the
+    grid's and the shadows' (`shade_values`), and a sequence's Auto Combat options
+    (`auto_values`, E17 M6 T5b1)."""
+    return {**shade_values(entry), **auto_values(entry)}
 
 
 def frames_toml(kept, mouse=None, rays=(), actions=(), army_info=0, shades=None):
@@ -1560,7 +1593,7 @@ def run_frames(rest):
         if not (reuse and (here / "frames.jsonl").exists()):
             map_path = here / f"{e['id']}.h3m"
             view(situation_args(h3view, set_path, e, map_path))
-            game = Game(here, e.get("sound", False), shades=shade_values(e))
+            game = Game(here, e.get("sound", False), shades=registry_values(e))
             try:
                 sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                          frames=True, hot_seat=e.get("hot_seat", False), fail=e.get("fail", ()),

@@ -210,7 +210,14 @@ runs at 0 and is put back too (the game saves the level F5 cycles to at once). S
 grid's and the shadows' options it runs at, written the same way (`Show Combat Grid`, `Show
 Combat Mouse Hex`, `Combat Shade Level`; `h3drive.SHADES`), a situation's copied into
 `frames.toml`, a sequence's read by the viewer from `sequences.toml`; an entry pressing `key:F6`,
-`key:F7` or `key:F8` without its option's value runs at 0 and is put back too. A situation's
+`key:F7` or `key:F8` without its option's value runs at 0 and is put back too. Since E17 M6 T5b1
+(design §12.18) a sequence's `auto_creatures` and `auto_spells` (each 0 or 1) are the Auto Combat
+options it runs at (`Combat Auto Creatures`, `Combat Auto Spells`; `h3drive.AUTO`), written and
+put back the same way (`registry_values`), the viewer reading them from `sequences.toml`
+(`setup.sh`'s Creatures 1 and Spells unset without them); sequences prepared for a recording wait
+in a `situations/to-record.toml` (`sequences situations/to-record.toml --only <id>`), each moved
+into `sequences.toml` with its commands once recorded, the file removed once empty (T5b1's
+`auto-cast` and `auto-cast-human` were recorded so). A situation's
 actions draw the cursor shadow at every move the battle takes, `key:F6` to `key:F8`'s and the
 options dialog's compositions (the stills take no spell's aim: an aim's shade is a sequence's,
 `aim:<k>:<n>` then `move:`). The setup
@@ -1297,7 +1304,8 @@ design §7.1.
   and its player's resources rest for 1.5 s. Keep heavy builds off the machine while a batch runs.
 - Auto combat plays a human side's creatures only with the setting `Combat Auto Creatures` on
   (`setup.sh` sets it; a new prefix holds 0, and then the button only sets a flag and the turn
-  still waits: 0x474CDF). The capture set never turns auto combat on.
+  still waits: 0x474CDF). The capture set never turns auto combat on. A sequence's
+  `auto_creatures` and `auto_spells` set them for its run (E17 M6 T5b1).
 - Auto combat does not play a battle between two human players in hot seat (E08 T32b1: neither
   its key nor its button did anything on a human stack's turn): a hero against another player's
   hero is played by `attack` or a plan.

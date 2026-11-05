@@ -107,14 +107,17 @@ const BOOK_PLACES: u8 = 12;
 /// which gives nothing (the first turn starts); the phase's `key:space` and `key:Return` are its
 /// panel's Next Creature and Start Combat. E17 M6 T4c (design §12.16): the battle opens with the
 /// grid's and the shadows' options `shades` (the sequence's), which `key:F6` to `key:F8` toggle
-/// ([`Input::Shades`]). *Not modelled:* the book over the battlefield, the mouse moved over the
-/// phase's message.
+/// ([`Input::Shades`]). E17 M6 T5b1 (design §12.18, *provisional*): with Combat Auto Creatures
+/// clear (`creatures`, the sequence's box) no creature of the human's plays itself, so a `key:`,
+/// `hex:` or `click:` after `key:a` is the human's turn's own, not a stop (such a sequence presses
+/// only on the human's turns). *Not modelled:* the book over the battlefield, the mouse moved
+/// over the phase's message.
 pub fn inputs(
     actions: &[String],
     pre: u32,
     layout: &BattleLayout,
     (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
-    (told, shades): (bool, h3_view::shades::Options),
+    (told, shades, creatures): (bool, h3_view::shades::Options, bool),
 ) -> Result<Vec<Input>, String> {
     let mut told = told;
     let mut spells = spells.iter().copied();
@@ -210,7 +213,7 @@ pub fn inputs(
                 turn: turn_at(&timeline.turns, now),
             }),
             "key" if auto_combat(arg) => {
-                auto = true;
+                auto = creatures;
                 out.push(Input::Auto {
                     at: now,
                     turn: turn_at(&timeline.turns, now),
@@ -482,15 +485,15 @@ pub fn stacks(
 }
 
 /// From when each turn of `timeline` plays itself under Auto Combat in the comparisons (E17 M6
-/// T4b1, [`Auto::of`]'s `itself`): by the harness's boxes, which no dialog changes
-/// (`Settings::CAPTURE`: Creatures alone, so a commanded war machine stays the human's).
+/// T4b1, [`Auto::of`]'s `itself`): by the harness's boxes `boxes`, which no dialog changes
+/// (`Settings::CAPTURE`'s: Creatures alone, so a commanded war machine stays the human's; E17 M6
+/// T5b1: a sequence's own Creatures and Spells, `sequences.rs`' `AutoBoxes`).
 pub fn captured(
     record: &Record,
     timeline: &Timeline,
     turned: &[Turned],
-    tables: &Tables,
+    (tables, boxes): (&Tables, [bool; 5]),
 ) -> Vec<Option<u32>> {
-    let boxes = h3_view::options::Settings::CAPTURE.auto;
     (stacks(record, timeline, turned, tables).into_iter())
         .map(|stack| stack.plays_itself(boxes).then_some(0))
         .collect()
@@ -501,18 +504,18 @@ pub fn captured(
 /// record without its scenario: the opening's battle then stands for every turn, with no legal
 /// commands), `inputs` what the mouse does; its hints in `catalogue`'s words; the acting stacks'
 /// creatures by `tables` ([`legal`]), the profile `bugs` (the siege's rectangles, CLT-Q21); Auto
-/// Combat's turns by the harness's boxes ([`captured`]).
+/// Combat's turns by the harness's boxes `boxes` ([`captured`]).
 pub fn shown(
     record: &Record,
     timeline: &Timeline,
     turned: &[Turned],
     inputs: &[Input],
     (layout, catalogue): (&BattleLayout, &Catalogue),
-    (tables, bugs): (&Tables, Bugs),
+    (tables, bugs, boxes): (&Tables, Bugs, [bool; 5]),
 ) -> Shown {
     let name =
         |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
-    let itself = captured(record, timeline, turned, tables);
+    let itself = captured(record, timeline, turned, (tables, boxes));
     followed(
         record,
         (timeline, turned),
@@ -893,7 +896,8 @@ mod tests {
             let read = (timeline, turned);
             (self.follower).read(self.record, read, self.tables, (settled, grew));
             let words = (self.layout, &name as _, Bugs::Fixed);
-            let itself = captured(self.record, timeline, turned, self.tables);
+            let capture = h3_view::options::Settings::CAPTURE.auto;
+            let itself = captured(self.record, timeline, turned, (self.tables, capture));
             let switched = (inputs, switches, &itself[..]);
             let (from, tail) = self.follower.shown(timeline, switched, words);
             let words = (self.layout, &name as _);
@@ -936,7 +940,13 @@ mod tests {
         let ruleset = crate::scenario::compiled(&def, &packs).unwrap();
         let mut setup = crate::scenario::set_up(&def, &ruleset, 1).unwrap();
         setup.human = [true, true];
-        let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, true]).unwrap();
+        let mut live = crate::live::Live::new(
+            &ruleset,
+            setup,
+            1,
+            ([true, true], crate::live::Computer::Greedy),
+        )
+        .unwrap();
         let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
         let snapshot = record.first_snapshot().unwrap();
         // Every creature's DEF groups, four frames each (the looks' numbers do not matter here).
@@ -1153,7 +1163,13 @@ mod tests {
         let (scenario, packs) = (dir.join("scenarios/battle.toml"), dir.join("../packs"));
         let (ruleset, mut setup) = crate::scenario::battle(&scenario, &packs, 1).unwrap();
         setup.human = [true, true];
-        let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, true]).unwrap();
+        let mut live = crate::live::Live::new(
+            &ruleset,
+            setup,
+            1,
+            ([true, true], crate::live::Computer::Greedy),
+        )
+        .unwrap();
         let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
         let attacks = |t: &Turned| {
             (t.commands.iter())
@@ -1358,7 +1374,13 @@ mod tests {
                     double_damage_chance_bp: 0,
                 });
             }
-            let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, false]).unwrap();
+            let mut live = crate::live::Live::new(
+                &ruleset,
+                setup,
+                1,
+                ([true, false], crate::live::Computer::Greedy),
+            )
+            .unwrap();
             let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
             let mut acting = Vec::new();
             for _ in 0..12 {
@@ -1407,7 +1429,7 @@ mod tests {
             0,
             &layout,
             (&timeline, &[], &|_| None),
-            (false, h3_view::shades::Options::default()),
+            (false, h3_view::shades::Options::default(), true),
         )
         .unwrap();
         let opening = Input::Shades {
@@ -1436,6 +1458,30 @@ mod tests {
         // When it plays the timeline's turns: the opening's from 0.
         let auto = auto(&got, &timeline, &[]);
         assert!(auto.plays(0, 0) && !auto.from_start(0));
+        // E17 M6 T5b1: with Combat Auto Creatures clear nothing of the human's plays itself: the
+        // key and the click after A are the human's turn's own.
+        let actions: Vec<String> = ["key:a", "key:d", "hex:40"].map(String::from).into();
+        let human = inputs(
+            &actions,
+            0,
+            &layout,
+            (&timeline, &[], &|_| None),
+            (false, h3_view::shades::Options::default(), false),
+        )
+        .unwrap();
+        assert_eq!(
+            human[2..],
+            [
+                Input::Auto { at: 0, turn: 0 },
+                Input::Act { at: 0 },
+                Input::Move {
+                    at: 0,
+                    to: hex_point(&layout, 40)
+                },
+                Input::Act { at: 0 },
+                Input::Move { at: 0, to: PARK },
+            ]
+        );
     }
 
     #[test]
@@ -1458,7 +1504,7 @@ mod tests {
             5,
             &layout,
             (&timeline, &[], &none),
-            (false, start),
+            (false, start, true),
         )
         .unwrap();
         let shades = |at, [grid, cursor, movement]: [bool; 3], keyed| Input::Shades {
@@ -1497,7 +1543,7 @@ mod tests {
                 0,
                 &layout,
                 (&timeline, &[], &handle),
-                (false, h3_view::shades::Options::default()),
+                (false, h3_view::shades::Options::default(), true),
             )
         };
         let got = run(&["look:10,20", "cast-button:30,40:21", "hex:83"]).unwrap();
