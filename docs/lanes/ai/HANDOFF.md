@@ -32,11 +32,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   about 700 µs a sample-pass (decision 3 as amended). T26's first segment (the user, stopped at
   0.45 M; `E25-log.md` T26): every structured student ahead of the MLPs, `hexconv` 96 × 6 at
   0.619. **T26a done** (the benches resume, both modes: `distill.go`, `checkpoint.pt`, Ctrl-C at
-  the next minibatch, `--resume DIR`; `E25-log.md` T26a). **Next:** T26b on the user's GPU in
-  parts under 2 hours (its commands in `QUEUE.md`).
-- **Open pull requests:** #730 (`claude/gifted-keller-2dtp2o`: T26's records and T26a; the
-  branch `claude/determined-mayer-t1waz5` opened none, its commit is in it). Merged: #721 (T24),
-  #725 (T25).
+  the next minibatch, `--resume DIR`). **T26b done** (the user's GPU, `E25-log.md` T26b): decision
+  5's first gate passed by `hexconv` normalised 96 × 6 at 1e-3, **0.755 at 4 M** (moves 0.669,
+  melee 0.718; 683 µs), `entity` 256 × 4 0.719 at half the cost, the MLP 0.533; its value 0.590
+  (below the MLP's 0.624: T28's to watch). **Next:** T27 on the user's GPU in parts
+  (`configs/distill/e25-clone-3.toml`, its commands in `QUEUE.md`).
+- **Open pull requests:** the one of `claude/gifted-keller-2dtp2o` (T26b's records, T27's
+  config, T26b's record, the segments' seconds). Merged: #721 (T24), #725 (T25), #730 (T26a).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -57,6 +59,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   build --release -p h3-ffi` 56 s, `uv sync --group train` from the cache. The Python suite 241
   (3.5 minutes); the stop-and-resume smoke of T25's clone by the command line 27 minutes
   (`E25-log.md` T26a), which showed the held-out file's 156 MB (now compressed).
+- #730 merged; the user ran T26b to its budget in parts and pasted the table; the branch
+  restarted from `master` for its records and T27's config; its `report.json` uploaded after.
 
 ### 2026-11-04 — E25 T25
 
