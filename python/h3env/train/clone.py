@@ -36,14 +36,15 @@ report set v1, the neutral set v1 beside them; the sampled policy): how near the
 the fair actor, which scores 0.5 against itself. `report.json` (the distillation bench's layout,
 the teacher's statistics and the ladders added), `metrics.jsonl` and `students/<name>.pt` (run
 network files of the run config, the bench's seed as theirs: `--init-from` starts a run from one)
-as the distillation bench writes them. A stopped bench (Ctrl-C) scores and saves what it has; it
-does not resume.
+as the distillation bench writes them. It checkpoints, stops (Ctrl-C) and resumes (`--resume
+DIR`) as the distillation bench does (E25 T26a; the shared loop `distill.go`): a resumed segment's
+fair actor plays on the segment's seed, its statistics continue; a stop before the ladders or
+during one leaves the rest pending, played at the resume (the ladders played kept).
 """
 
 from __future__ import annotations
 
 import dataclasses
-import json
 import time
 from collections.abc import Callable
 from dataclasses import asdict
@@ -61,22 +62,20 @@ from .distill import (
     COST_HEADER,
     NETWORK_KEYS,
     Bench,
+    Parts,
     Student,
     bench_device,
     category,
     cost,
     cost_columns,
-    described,
+    fresh,
+    go,
     heads,
-    learning_rate,
-    make_student,
-    step,
-    steps_of,
 )
-from .evaluate import HELD_OUT_BATCH_SEEDS, compact, held_out_seeds, ladder
+from .evaluate import HELD_OUT_BATCH_SEEDS, Stopped, compact, held_out_seeds, ladder
 from .policy import CASTS, Policy
-from .ppo import _SEATS, CHECKPOINT_FORMAT, TEACHER, Staging, episode_entries, save
-from .run import Config, ConfigError, HeldOut, atomic_write_text, load_config, machine, source
+from .ppo import _SEATS, TEACHER, Staging, episode_entries
+from .run import Config, ConfigError, HeldOut, Stop, load_config, segment_seed
 
 #: The per-sample arrays a student trains on, the teacher's choices among them.
 FIELDS = (
@@ -239,11 +238,15 @@ class Episodes:
             self.held_out.check(b.episode_seed[done])
         self.stats["seconds"] += time.perf_counter() - start
 
-    def take(self, minimum: int) -> tuple[dict[str, np.ndarray], np.ndarray]:
+    def take(
+        self, minimum: int, stop: Stop | None = None
+    ) -> tuple[dict[str, np.ndarray], np.ndarray] | None:
         """Plays until at least `minimum` decisions of ended episodes are kept; returns the
         arrays as [rows, 1, ...] (`Staging`'s [calls, envs, ...] shape) and those rows (valid
-        until `release`)."""
+        until `release`), or None when `stop` was requested before one of its calls."""
         while self.completed < minimum:
+            if stop is not None and stop.requested:
+                return None
             self.step()
         idx = np.sort(np.concatenate(self.complete))
         return {k: self.arrays[k][:, None] for k in FIELDS}, idx
@@ -372,36 +375,90 @@ def table(evaluation: dict[str, Any], samples: int) -> str:
     return "\n".join(lines)
 
 
-def run(
+def summarized(stats: dict[str, Any]) -> dict[str, Any]:
+    """The teacher's statistics (`Episodes.stats`) in the report: per encounter kind its
+    episodes, the attacker's wins and the truncations as shares."""
+    out = dict(stats)
+    out["by_kind"] = {
+        kind: {"episodes": n, "attacker_won": won / n, "truncated": cut / n}
+        for kind, (won, cut, n) in sorted(stats["by_kind"].items())
+    }
+    return out
+
+
+def parts(
+    base: Config,
     bench: Bench,
-    out: Path,
+    device: torch.device,
+    segment: int = 0,
     log: Callable[[str], None] = print,
-    config_text: str | None = None,
-) -> dict[str, Any]:
-    """Runs the clone mode of `bench` into `out` (the module's documentation; `config_text`: the
-    run config's text, else read from `bench.run`); returns the report."""
-    if not bench.run and config_text is None:
-        raise ConfigError("the clone mode needs `run`, the run config whose distribution it plays")
-    for seed in (bench.seed, bench.seed + 1):
-        if seed in HELD_OUT_BATCH_SEEDS:
-            raise ConfigError(f"the seed {seed:#x} is a held-out set's")
-    if out.exists() and any(out.iterdir()):
-        raise ConfigError(f"{out} is not empty: a bench does not resume")
-    text = Path(bench.run).read_text(encoding="utf-8") if config_text is None else config_text
-    base = dataclasses.replace(load_config(text), seed=bench.seed, system_share=0.0)
-    (out / "students").mkdir(parents=True, exist_ok=True)
-    device = bench_device(bench.device)
-    teacher = Episodes(
-        base, bench.seed, bench.envs, bench.threads, bench.envs * (bench.rollout + 64)
+) -> Parts:
+    """The clone mode's parts (`distill.go`): the fair actor's play of the run config `base` on
+    the bench's seed's `segment`, the ladders at the end (the module's documentation)."""
+    player = Episodes(
+        base,
+        segment_seed(bench.seed, segment),
+        bench.envs,
+        bench.threads,
+        bench.envs * (bench.rollout + 64),
     )
-    torch.manual_seed(bench.seed)
-    students = [
-        make_student(name, keys, base, bench, teacher.batch, device)
-        for name, keys in bench.students.items()
-    ]
+
+    def held() -> Episodes:
+        return Episodes(
+            base, bench.seed + 1, bench.envs, bench.threads, bench.heldout + 64 * bench.envs
+        )
+
+    def loss(m: dict[str, torch.Tensor]) -> Callable[[Policy], torch.Tensor]:
+        def value(net: Policy) -> torch.Tensor:
+            mine = heads(net, m)
+            ce, _ = cross_entropy(mine, m)
+            v_loss = 0.5 * ((mine[3] - m["returns"]) ** 2).mean()
+            return ce + bench.value_coef * v_loss
+
+        return value
+
+    def finish(
+        report: dict[str, Any],
+        stats: dict[str, Any],
+        students: list[Student],
+        stopped: bool,
+        stop: Stop,
+        checkpoint: Callable[[], None],
+    ) -> bool:
+        """The teacher's statistics into the report, then each student's ladder not yet played
+        (each saved when it ends); whether a stop cut them short."""
+        report["teacher"]["stats"] = summarized(stats)
+        if not bench.ladder or stopped:
+            return stopped
+        ladders = report.setdefault("ladders", {})
+        for s in students:
+            if s.name in ladders:
+                continue
+            s.net.eval()
+            log(f"{s.name}: the ladder ({', '.join(bench.ladder)}; the neutral set)")
+            settings = {"per_kind": bench.ladder_per_kind, "threads": bench.threads, "stop": stop}
+            try:
+                rows = ladder(s.net, opponents=bench.ladder, max_steps=2000, **settings)
+                neutral = ladder(s.net, held_out="neutral-v1", max_steps=2000, **settings)
+            except Stopped:
+                return True
+            ladders[s.name] = {
+                "report-v1": {o: compact(r) for o, r in rows.items()},
+                "neutral-v1": {o: compact(r) for o, r in neutral.items()},
+            }
+            for opponent, r in {**rows, "neutral": neutral["system"]}.items():
+                log(
+                    f"  against {opponent}: win rate {r['win_rate']:.3f} ± {r['interval']:.3f}, "
+                    f"value {r['value']:+.3f}"
+                )
+            checkpoint()
+        return False
+
     versions = _ffi.versions()
-    report: dict[str, Any] = {
-        "teacher": {
+    return Parts(
+        mode="clone",
+        base=base,
+        teacher={
             "system": TEACHER,
             "system_policy": versions["system_policy"],
             "run": bench.run,
@@ -411,131 +468,35 @@ def run(
             "truncation_penalty": base.truncation_penalty,
             "max_steps": base.max_steps,
         },
-        "bench": asdict(bench),
-        "identity": {
-            "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            **source(),
-            **versions,
-            "torch": torch.__version__,
-            "device": str(device),
-            "gpu": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
-            **machine(),
-        },
-        "students": {s.name: described(s) for s in students},
-        "evaluations": [],
-        "ended": None,
-    }
-    log(f"held-out set: {bench.heldout:,} decisions of the fair actor on seed {bench.seed + 1}")
-    held = Episodes(
-        base, bench.seed + 1, bench.envs, bench.threads, bench.heldout + 64 * bench.envs
+        player=player,
+        held=held,
+        loss=loss,
+        evaluate=evaluate,
+        table=table,
+        origin={"cloned_from": TEACHER},
+        finish=finish,
     )
-    arrays, idx = held.take(bench.heldout)
-    heldout = {
-        k: v.reshape(-1, *v.shape[2:])[idx[: bench.heldout]][:, None] for k, v in arrays.items()
-    }
-    report["teacher"]["heldout"] = {k: v for k, v in held.stats.items() if k != "seconds"}
-    held.close()
-    del arrays
-    staging = Staging(device)
-    metrics = (out / "metrics.jsonl").open("a", encoding="utf-8")
-    samples, next_eval = 0, 0
 
-    def score() -> None:
-        for s in students:
-            s.net.eval()
-        evaluation = {"samples": samples, **evaluate(students, heldout, device)}
-        for s in students:
-            s.net.train()
-        report["evaluations"].append(evaluation)
-        metrics.write(json.dumps(evaluation) + "\n")
-        metrics.flush()
-        log(table(evaluation, samples))
 
-    stopped = False
-    try:
-        score()
-        next_eval = bench.eval_every
-        while samples < bench.samples:
-            arrays, flat = teacher.take(bench.envs * bench.rollout)
-            n = len(flat)
-            rng = np.random.default_rng(samples)
-            size = min(n, bench.minibatch)
-            done, steps = 0, steps_of(n, size, bench.epochs)
-            for _ in range(bench.epochs):
-                order = rng.permutation(flat)
-                for k in range(0, n - size + 1, size):
-                    m = staging.gather(arrays, np.sort(order[k : k + size]))
-
-                    def loss(net: Policy, m=m) -> torch.Tensor:
-                        mine = heads(net, m)
-                        ce, _ = cross_entropy(mine, m)
-                        v_loss = 0.5 * ((mine[3] - m["returns"]) ** 2).mean()
-                        return ce + bench.value_coef * v_loss
-
-                    done += 1
-                    for s in students:
-                        rate = learning_rate(s, bench, samples, samples + n * done / steps)
-                        step(s, loss, rate, bench.max_grad_norm, size, device)
-            teacher.release()
-            samples += n
-            if samples >= next_eval:
-                score()
-                next_eval += bench.eval_every
-        report["ended"] = "budget"
-    except KeyboardInterrupt:
-        stopped = True
-        report["ended"] = "stop"
-    finally:
-        teacher.close()
-    if stopped or not report["evaluations"] or report["evaluations"][-1]["samples"] != samples:
-        score()
-    metrics.close()
-    stats = dict(teacher.stats)
-    stats["by_kind"] = {
-        kind: {"episodes": n, "attacker_won": won / n, "truncated": cut / n}
-        for kind, (won, cut, n) in sorted(stats["by_kind"].items())
-    }
-    report["teacher"]["stats"] = stats
-    for s in students:
-        save(
-            out / "students" / f"{s.name}.pt",
-            {
-                "format": CHECKPOINT_FORMAT,
-                "config": asdict(s.config),
-                "policy": s.net.state_dict(),
-                "updates": 0,
-                "samples": samples,
-                "cloned_from": TEACHER,
-            },
-        )
-    report["samples"] = samples
-    if bench.ladder and not stopped:
-        report["ladders"] = {}
-        for s in students:
-            s.net.eval()
-            log(f"{s.name}: the ladder ({', '.join(bench.ladder)}; the neutral set)")
-            rows = ladder(
-                s.net,
-                opponents=bench.ladder,
-                per_kind=bench.ladder_per_kind,
-                threads=bench.threads,
-                max_steps=2000,
-            )
-            neutral = ladder(
-                s.net,
-                held_out="neutral-v1",
-                per_kind=bench.ladder_per_kind,
-                threads=bench.threads,
-                max_steps=2000,
-            )
-            report["ladders"][s.name] = {
-                "report-v1": {o: compact(r) for o, r in rows.items()},
-                "neutral-v1": {o: compact(r) for o, r in neutral.items()},
-            }
-            for opponent, r in {**rows, "neutral": neutral["system"]}.items():
-                log(
-                    f"  against {opponent}: win rate {r['win_rate']:.3f} ± {r['interval']:.3f}, "
-                    f"value {r['value']:+.3f}"
-                )
-    atomic_write_text(out / "report.json", json.dumps(report, indent=1) + "\n")
-    return report
+def run(
+    bench: Bench,
+    out: Path,
+    log: Callable[[str], None] = print,
+    config_text: str | None = None,
+    stop: Stop | None = None,
+) -> dict[str, Any]:
+    """Runs the clone mode of `bench` into `out` (the module's documentation; `config_text`: the
+    run config's text, else read from `bench.run`); returns the report. `distill.resume`
+    continues it."""
+    if not bench.run and config_text is None:
+        raise ConfigError("the clone mode needs `run`, the run config whose distribution it plays")
+    for seed in (bench.seed, bench.seed + 1):
+        if seed in HELD_OUT_BATCH_SEEDS:
+            raise ConfigError(f"the seed {seed:#x} is a held-out set's")
+    fresh(out)
+    text = Path(bench.run).read_text(encoding="utf-8") if config_text is None else config_text
+    base = dataclasses.replace(load_config(text), seed=bench.seed, system_share=0.0)
+    device = bench_device(bench.device)
+    p = parts(base, bench, device, 0, log)
+    (out / "students").mkdir(parents=True, exist_ok=True)
+    return go(p, bench, out, device, log, stop)
