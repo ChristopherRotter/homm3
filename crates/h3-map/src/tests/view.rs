@@ -424,6 +424,8 @@ enum Open {
     // E08 T63a: a choice and a University, named by the hero and the object.
     Choice(HeroId, h3_adventure::ObjectTypeId, TilePos),
     University(HeroId, h3_adventure::ObjectTypeId, TilePos),
+    // E08 T95b: a hire dialog, named by its army and its source.
+    Hire(h3_game::HireTarget, h3_adventure::ObjectTypeId, TilePos),
 }
 
 fn check_told(
@@ -465,6 +467,7 @@ fn check_told(
         DecisionView::University { visit: v, .. } => {
             Open::University(v.hero, v.object_type, v.anchor)
         }
+        DecisionView::Hire(view) => Open::Hire(view.target, view.object_type, view.anchor),
     };
     // E08 T51b: the group of the army dialog the viewer is told closed, whose stacks are lost.
     let mut lost: Vec<ArmyStack> = Vec::new();
@@ -741,6 +744,16 @@ fn check_told(
                 prop_assert!(decision.is_none());
                 decision = Some(Open::University(hero, object_type, anchor));
             }
+            GameEvent::HireOpened {
+                player,
+                target,
+                object_type,
+                anchor,
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some(Open::Hire(target, object_type, anchor));
+            }
             // E08 T51a: the management's events are the owner's (the plans manage since T52); a
             // slot of an army dialog's group changes its group (T51b).
             GameEvent::StackChanged { player, at, stack } => {
@@ -805,7 +818,12 @@ fn check_told(
                     open => prop_assert!(
                         matches!(
                             open,
-                            Some(Open::Meeting(_) | Open::Choice(..) | Open::University(..))
+                            Some(
+                                Open::Meeting(_)
+                                    | Open::Choice(..)
+                                    | Open::University(..)
+                                    | Open::Hire(..)
+                            )
                         ),
                         "{:?}",
                         open

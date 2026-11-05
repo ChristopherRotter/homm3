@@ -46,6 +46,18 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
 
+**From the adventure lane** (E08 T95b; the adventure agents' action space grows):
+
+- 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`, `cross-lane` with the user's
+  consent, E08 decision 243; **the env's action encoding v7, for the adventure agents**):
+  `crates/h3-sim/src/adventure/action.rs` appends four entries `HIRE_BASE + c` (18 to 21,
+  `HIRE_SLOTS = 4`; `ENTRY_COUNT` 22): buy the most of creature `c`, in its source's order, of
+  the player's open hire dialog (masked by `legal_commands`: a creature of none to buy is
+  masked); the dialog's `Close` is entry 10. The most only, as the original's Max then
+  Recruit: an amount head is the AI lane's call. A policy trained on v6 sees four new entries,
+  masked on every map without a dwelling or a Refugee Camp (no committed map has one before
+  E08 T96).
+
 **From the battle lane** (CLT-Q40, BAT-Q64; `claude/keen-cori-oaahgi`, `cross-lane`; for your
 information and one choice):
 

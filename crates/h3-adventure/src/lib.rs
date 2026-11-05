@@ -58,8 +58,9 @@ mod testing;
 pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Choice, ChoiceKind, Combatant, Defender, Garrison, HeroGains, Meeting, NoRoom,
-    Offer, OfferKind, Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
+    BattleStart, Choice, ChoiceKind, Combatant, Defender, Garrison, HeroGains, HireDialog,
+    HireError, HireSource, HireTarget, Meeting, NoRoom, Offer, OfferKind, Pick, ShipyardBlock,
+    Sink, UniversityVisit, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{
@@ -92,8 +93,8 @@ pub use split::{TileRand, split, split_with_second};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, MapObject, Monster, Resolved, StaticMap,
-    StaticTile, Visits, Weekly,
+    AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, HirePurchase, MapObject, Monster, Resolved,
+    StaticMap, StaticTile, Visits, Weekly, hire_price,
 };
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,

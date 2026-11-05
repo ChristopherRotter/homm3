@@ -2,7 +2,7 @@
 //! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, since E08 T85b the
 //! month's kind, the players' colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
 //! show), since E08 T85b the timed events that fired at its turn start today, and open decision (T14b; since T30 an offer or a level-up, since T51b a meeting or an
-//! army dialog, since T63a a choice or a University), the heroes it sees with their types and its own heroes'
+//! army dialog, since T63a a choice or a University, since T95b a hire dialog), the heroes it sees with their types and its own heroes'
 //! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
 //! battle's, as its side sees it), and the projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
@@ -11,9 +11,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureObservation, Choice, ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
+    AdventureObservation, Choice, HireTarget, ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
 };
-use h3_content::{HeroTypeId, SkillId};
+use h3_content::{CreatureTypeId, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
@@ -50,9 +50,10 @@ pub struct GameObservation {
     /// players' never show.
     pub events_today: Vec<u16>,
     /// The viewer's first open decision but a battle (GAM-DEC-001, E08 T14b; GAM-DEC-002, T30;
-    /// GAM-DEC-003, GAM-DEC-004, T51b; GAM-DEC-005, GAM-DEC-006, T63a): an offer, its object
-    /// named by type and anchor, with its price, a level-up with its offers, a meeting's two
-    /// heroes, an army dialog's hero and group, a choice, or a University with its slots; other
+    /// GAM-DEC-003, GAM-DEC-004, T51b; GAM-DEC-005, GAM-DEC-006, T63a; GAM-DEC-008, T95b): an
+    /// offer, its object named by type and anchor, with its price, a level-up with its offers, a
+    /// meeting's two heroes, an army dialog's hero and group, a choice, a University with its
+    /// slots, or a hire dialog with its creatures; other
     /// players' never show. While it is open the viewer's only legal commands are
     /// its answers, and in a meeting or an army dialog the management commands on what it holds.
     pub decision: Option<DecisionView>,
@@ -106,6 +107,9 @@ pub enum DecisionView {
         /// Each skill's slot state for the hero, in the skills' order.
         slots: Vec<SlotState>,
     },
+    /// A hire dialog (GAM-DEC-008, E08 T95b): its army, its source and the source's creatures
+    /// with their counts and costs, answered `Hire`.
+    Hire(HireView),
 }
 
 impl DecisionView {
@@ -124,6 +128,33 @@ impl DecisionView {
             _ => None,
         }
     }
+}
+
+/// A hire dialog as its owner sees it (GAM-DEC-008, E08 T95b; increment 10's design note §13):
+/// what the original's `H3RecruitMgr` shows but the most, which the owner's own treasury gives (a
+/// client draws the slider). The source is named by type and anchor, never by index (ADR-0016
+/// point 6).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HireView {
+    /// The army the bought creatures join: the visiting hero's.
+    pub target: HireTarget,
+    /// The source's type: the dwelling's or the Refugee Camp's.
+    pub object_type: ObjectTypeId,
+    /// The source's anchor.
+    pub anchor: Pos,
+    /// The source's creatures in its order (a dwelling's kind's; a camp's one).
+    pub creatures: Vec<HireCreature>,
+}
+
+/// A creature a hire dialog sells, as its owner sees it ([`HireView`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HireCreature {
+    /// The creature.
+    pub creature: CreatureTypeId,
+    /// How many the source holds now.
+    pub count: u32,
+    /// The cost of one, by resource in the core's order (each resource it costs more than 0 of).
+    pub cost: Vec<(ResourceId, u32)>,
 }
 
 /// A level-up with two offers as its owner sees it (GAM-DEC-002, E08 T30): what the original's
@@ -214,6 +245,10 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                         .collect(),
                     visit: visit.clone(),
                 })
+            })
+            .or_else(|| {
+                let dialog = state.hire_dialog(player)?;
+                Some(DecisionView::Hire(state.hire_view(rules, dialog)))
             }),
         heroes: adventure
             .heroes
@@ -239,8 +274,9 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
 /// public but a treasury's change, a timed event's firing (E08 T85b), an offer's, a hero's change and its level-ups, which show to
 /// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a, a meeting's
-/// and an army dialog's since T51b, a choice's and a University's since T63a), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
-/// battle event shows to the players who see it, naming the viewer alone among them
+/// and an army dialog's since T51b, a choice's and a University's since T63a, a hire dialog's
+/// since T95b), and a battle's, which show to the owners that see them (E08 T19a); an adventure
+/// or a battle event shows to the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
     let Viewer::Player(player) = viewer;
@@ -291,6 +327,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::LeaveGuardsOpened { player: owner, .. }
         | GameEvent::ChoiceOpened { player: owner, .. }
         | GameEvent::UniversityOpened { player: owner, .. }
+        | GameEvent::HireOpened { player: owner, .. }
         | GameEvent::DecisionClosed { player: owner }
         | GameEvent::GroupLost { player: owner, .. }
         | GameEvent::TimedEventFired { player: owner, .. } => (owner == player).then_some(*event),

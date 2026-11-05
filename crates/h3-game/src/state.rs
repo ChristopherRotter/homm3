@@ -1,8 +1,8 @@
 //! The whole game's state (ADR-0017, E08 T6b): the players with their RNG streams, the day's
 //! schedule of turn groups, the calendar, the game's own stream, the treasuries (T13), the pending
 //! decisions (T14b; battles since T19a, `state/battle.rs`; level-ups since T30,
-//! `state/levels.rs`; meetings and army dialogs since T51b, managed in `state/manage.rs`) and
-//! the contexts' states (the
+//! `state/levels.rs`; meetings and army dialogs since T51b, managed in `state/manage.rs`; the hire
+//! dialogs since T95b, `state/hire.rs`) and the contexts' states (the
 //! adventure; a battle lives in its decision). Built from a validated
 //! [`GameSetup`]; the steps only the game triggers (the start of a day, the start of a turn) are
 //! infallible, and commands go through [`crate::apply`].
@@ -11,8 +11,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureOutcome, AdventureState, Choice, ChoiceKind, Garrison, HeroGains, Meeting,
-    ObjectTypeId, Offer, OfferKind, Pick, Pos, UniversityVisit,
+    AdventureOutcome, AdventureState, Choice, ChoiceKind, Garrison, HeroGains, HireDialog,
+    HireSource, HireTarget, Meeting, ObjectTypeId, Offer, OfferKind, Pick, Pos, UniversityVisit,
 };
 use h3_content::{HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
@@ -25,7 +25,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
 use h3_towns::Towns;
 
 use crate::command::{
-    Actor, AdventureSink, Answer, Consent, GameCommandError, GameEvent, NoopSink, Sink,
+    Actor, AdventureSink, Answer, Consent, GameCommandError, GameEvent, HireAnswer, NoopSink, Sink,
     UniversityAnswer,
 };
 use crate::observe::LevelUpView;
@@ -37,6 +37,7 @@ use rests::{Held, Rest};
 
 mod battle;
 mod day;
+mod hire;
 mod levels;
 mod manage;
 mod rests;
@@ -64,7 +65,9 @@ struct PlayerState {
 /// wandering monsters' too (ADV-MON-008, E08 T20b1); since E08 T19a a battle, owned by the
 /// players of its sides, who play it; since E08 T30 a level-up with two offers (GAM-DEC-002);
 /// since E08 T51b a meeting (GAM-DEC-003) and an army dialog (GAM-DEC-004), during which its
-/// owner also manages the heroes (and the group) it holds together (GAM-MAN-001).
+/// owner also manages the heroes (and the group) it holds together (GAM-MAN-001); since E08 T63a
+/// a choice (GAM-DEC-005) and a University (GAM-DEC-006); since E08 T95b a hire dialog
+/// (GAM-DEC-008).
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Decision {
     /// An offer, answered by its owner.
@@ -125,6 +128,15 @@ enum Decision {
         /// The University: the hero, the object, its skills and their price.
         visit: UniversityVisit,
     },
+    /// A hire dialog (GAM-DEC-008, E08 T95b; the original's `H3RecruitMgr`), open until its
+    /// owner closes it or buys a single creature's: the names only, its creatures and counts read
+    /// from the adventure at each view and purchase.
+    Hire {
+        /// The hero's owner, who answers it.
+        owner: PlayerId,
+        /// The dialog: the army the creatures join and their source.
+        dialog: HireDialog,
+    },
 }
 
 /// What holds an army dialog's group (GAM-DEC-004 amended; E08 T84a): a join's (or a reward
@@ -170,7 +182,8 @@ impl Decision {
             | Self::Meeting { owner, .. }
             | Self::ArmyDialog { owner, .. }
             | Self::Choice { owner, .. }
-            | Self::University { owner, .. } => *owner == player,
+            | Self::University { owner, .. }
+            | Self::Hire { owner, .. } => *owner == player,
             Self::Battle(battle) => battle.owners().contains(&Some(player)),
         }
     }
@@ -468,10 +481,11 @@ impl GameState {
     /// closes, ADV-RWD-001, E08 T63b), then
     /// the offer ([`Self::open`]) with whatever follows one that does not open, then the battle
     /// ([`Self::start_battle`]), the meeting ([`Self::meet`], E08 T51b), the army dialog
-    /// ([`Self::open_army_dialog`], T51b), the choice ([`Self::open_choice`], T63a) or the
-    /// University ([`Self::open_university`], T63a): an outcome has at most one of the offer, the
-    /// battle, the meeting, the group without room, the choice and the University.
-    // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, ADV-MON-006
+    /// ([`Self::open_army_dialog`], T51b), the choice ([`Self::open_choice`], T63a), the
+    /// University ([`Self::open_university`], T63a) or the hire dialog ([`Self::open_hire`], E08
+    /// T95b): an outcome has at most one of the offer, the battle, the meeting, the group without
+    /// room, the choice, the University and the hire dialog.
+    // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -521,6 +535,9 @@ impl GameState {
             }
             if let Some(visit) = outcome.university {
                 self.open_university(player, visit, sink);
+            }
+            if let Some(dialog) = outcome.hire {
+                self.open_hire(player, dialog, sink);
             }
         }
     }
@@ -750,15 +767,17 @@ impl GameState {
     /// ([`Self::answer_offer`]), a level-up's ([`Self::answer_level_up`], GAM-DEC-002, E08 T30),
     /// a meeting's or an army dialog's `Close` ([`Self::close_exchange`]; GAM-DEC-003,
     /// GAM-DEC-004, E08 T51b), a choice's ([`Self::answer_choice`], GAM-DEC-005), a University's
-    /// purchase ([`Self::buy`]) or leaving (GAM-DEC-006).
+    /// purchase ([`Self::buy`]) or leaving (GAM-DEC-006), a hire dialog's purchase
+    /// ([`Self::hire`]) or closing (GAM-DEC-008, E08 T95b).
     ///
     /// # Errors
     ///
     /// `UnknownPlayer`, then `NoDecision`, then `BattleOpen` when the first is a battle (E08
     /// T19a), then `WrongAnswer` for an answer of another kind (E08 T30, T63a), then `OfferGone`
-    /// for an acceptance, `SlotClosed` and `CannotPay` for a purchase (T63a); the state is then
-    /// unchanged.
+    /// for an acceptance, `SlotClosed` and `CannotPay` for a University's purchase (T63a), `Hire`
+    /// and `CannotPay` for a hire dialog's (T95b); the state is then unchanged.
     // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006
+    // rule: GAM-DEC-008
     pub(crate) fn answer<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -807,10 +826,14 @@ impl GameState {
                 Decision::University { visit, .. },
                 Answer::University(UniversityAnswer::Buy(slot)),
             ) => self.buy(rules, player, &visit, slot, sink),
-            (Decision::University { .. }, Answer::University(UniversityAnswer::Leave)) => {
+            (Decision::University { .. }, Answer::University(UniversityAnswer::Leave))
+            | (Decision::Hire { .. }, Answer::Hire(HireAnswer::Close)) => {
                 self.close(at);
                 sink.emit(GameEvent::DecisionClosed { player });
                 Ok(())
+            }
+            (Decision::Hire { dialog, .. }, Answer::Hire(HireAnswer::Buy { creature, amount })) => {
+                self.hire(rules, (player, at), &dialog, (creature, amount), sink)
             }
             _ => Err(GameCommandError::WrongAnswer),
         }
@@ -1353,7 +1376,9 @@ impl CanonicalHash for GameState {
     /// (its gold's resource and amount, its experience) or 1 two primary skills (each, the amount,
     /// the price, whether it may be left), in v18 whether a guard's visit waits; 6 a University:
     /// its owner, hero, object type, anchor, its skills (length, then each), its price, in v18
-    /// whether a guard's visit waits; since v19 (E08 T63b) the rests in holding order, as length
+    /// whether a guard's visit waits; since v25 (E08 T95b) 7 a hire dialog: its owner, its target
+    /// (0 a hero and its id), its source (0 an object: its index, type and anchor); since v19 (E08
+    /// T63b) the rests in holding order, as length
     /// and entries ([`Held`]'s encoding); the game's stream; since v5 the store of heroes
     /// (length, then each hero's details by id, [`hash_details`]); since v23 (E09 T7b1) the hero
     /// pool (`HeroPool`'s encoding: the number of types, then each type's status, 0 free, 1 taken
@@ -1528,6 +1553,22 @@ impl CanonicalHash for GameState {
                         skill.hash_into(h);
                     }
                     hash_price(&visit.price, h);
+                }
+                Decision::Hire { owner, dialog } => {
+                    h.write_u8(7);
+                    h.write_u8(owner.raw());
+                    let HireTarget::Hero(hero) = dialog.target;
+                    h.write_u8(0);
+                    h.write_u16(hero.raw());
+                    let HireSource::Object {
+                        index,
+                        object_type,
+                        anchor,
+                    } = dialog.source;
+                    h.write_u8(0);
+                    h.write_len(index);
+                    object_type.hash_into(h);
+                    anchor.hash_into(h);
                 }
             }
         }

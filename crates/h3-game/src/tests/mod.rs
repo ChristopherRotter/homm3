@@ -13,6 +13,7 @@ mod dwellings;
 mod events;
 mod exchanges;
 mod heroes;
+mod hiring;
 mod legal;
 mod level_ups;
 mod levels;
