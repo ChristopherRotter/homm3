@@ -59,8 +59,8 @@ use super::sample;
 use super::strategy::version;
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Bits, Body, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure, RawMap,
-    Rewards, Stack, Template, Text, Tile, TimedEvent, Version,
+    Artifacts, Bits, Body, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure,
+    RandomDwelling, RawMap, Rewards, Stack, Template, Text, Tile, TimedEvent, Version,
 };
 use crate::{Limits, import, parse};
 
@@ -125,8 +125,10 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// increment 8's design note §15) the sea's kinds ([`SEA`]): the three boats, the four pickups and
 /// Favorable Winds. Then (E08 T86b1, increment 9's design note §15) increment 9's kinds
 /// ([`ECONOMY`]): the seven mines, the abandoned mine, the Lighthouse, the Shipyard, the three
-/// weekly objects and gremlins that never grow.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 86] = [
+/// weekly objects and gremlins that never grow. Then (E08 T96b1, increment 10's design note §14)
+/// increment 10's kinds ([`DWELLINGS`]): six dwellings, the three random dwellings and the Refugee
+/// Camp.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 96] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -213,6 +215,16 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 86] = [
     (109, 0, None),
     (55, 0, None),
     (54, 28, None),
+    (17, 56, None),
+    (17, 29, None),
+    (17, 12, None),
+    (17, 58, None),
+    (17, 35, None),
+    (20, 0, None),
+    (216, 0, None),
+    (217, 1, None),
+    (218, 6, None),
+    (78, 0, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
 /// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
@@ -294,6 +306,32 @@ pub(super) static ECONOMY_OBJECTS: LazyLock<Vec<usize>> = LazyLock::new(|| {
 /// plan's strait puts one on its coast, so that its first offset east of the entrance, two
 /// columns, is the strait's water (ADV-SHY-001).
 pub(super) const SHIPYARD_OBJECT: usize = BLOCKERS.len() * (ECONOMY.0 + 9) + 1;
+/// Increment 10's kinds in [`KINDS`] (E08 T96b1, increment 10's design note §14): the first of
+/// them, and how many. In order: the one-creature dwellings (class 17; ADV-DWL-001 to -004) of the
+/// Guardhouse (Castle's level 1, Pikemen: free to their owner's visitor, no dialog), the Imp
+/// Crucible (Inferno's level 1), the Dwarf Cottage (Rampart's level 2), the Barracks (Castle's
+/// level 4) and the Monastery (Castle's level 5, guarded by nine Monks), the Elemental Conflux
+/// (class 20, four creatures, guarded by twelve Earth Elementals), the random dwellings not tied to
+/// a town (ADV-DWL-005: 216 of a faction set and a level range, 217 of level 2 and a set, 218 of
+/// Stronghold and a range, each drawn by [`dwelling_body`] from its identifier) and the Refugee
+/// Camp (78; ADV-RFG-001).
+pub(super) const DWELLINGS: (usize, usize) = (86, 10);
+/// The Refugee Camp's kind, the last of [`DWELLINGS`]: owned by nobody (increment 10's design note
+/// §1), its every other kind ownable.
+const CAMP: usize = DWELLINGS.0 + DWELLINGS.1 - 1;
+/// The objects of [`DWELLINGS`] a plan draws: each kind's of a shape with a visitable tile.
+pub(super) static DWELLING_OBJECTS: LazyLock<Vec<usize>> = LazyLock::new(|| {
+    (DWELLINGS.0..DWELLINGS.0 + DWELLINGS.1)
+        .flat_map(|kind| [1, 2].map(|shape| BLOCKERS.len() * kind + shape))
+        .collect()
+});
+
+/// Whether an object of kind `kind` is ownable, its owner at load from the plan's
+/// [`Plan::owners`]: [`OWNABLE`]'s (E08 T86b1) and (E08 T96b1) a dwelling or a random dwelling of
+/// [`DWELLINGS`] (not the camp), as the import's ownable kinds (ADV-OWN-001).
+fn ownable(kind: usize) -> bool {
+    OWNABLE.contains(&kind) || (DWELLINGS.0..CAMP).contains(&kind)
+}
 /// The plans' wandering monsters (E08 T20b3b1), by kind: the count, the disposition (0 compliant,
 /// 1 friendly, 2 aggressive, 3 hostile, 4 savage), whether it never flees, and its treasure's
 /// gold. Six compliant goblins join most heroes (aggression −4, ADV-MON-007); fourteen hostile
@@ -385,6 +423,9 @@ fn body(kind: usize, v: Version, identifier: u32) -> Body {
     }
     if (ECONOMY.0..ECONOMY.0 + ECONOMY.1).contains(&kind) {
         return economy_body(kind, v, identifier);
+    }
+    if (DWELLINGS.0..DWELLINGS.0 + DWELLINGS.1).contains(&kind) {
+        return dwelling_body(kind, v, identifier);
     }
     if kind == SEA.0 + 6 {
         return Body::Sign(Text(b"Ahoy".to_vec()));
@@ -545,6 +586,105 @@ fn economy_body(kind: usize, v: Version, identifier: u32) -> Body {
     }
 }
 
+/// The body of an object of increment 10's kind `kind` ([`DWELLINGS`]; E08 T96b1), neutral: a
+/// dwelling's owner (set by [`lay_out`] from [`Plan::owners`]); a random dwelling's owner, faction
+/// set (216 and 217: one of the eight base factions, codes 0 to 7, in a map's set of its version's
+/// bytes) and level range (216 and 218: one level, codes 0 to 6), by its `identifier`; the camp's
+/// none. One outcome each, varied over the objects: the dwelling a random one becomes is a draw of
+/// the setup stream that every viewer of its tiles sees (its type), which the hygiene property's
+/// hidden differences (the seed, the other players' armies drawn before it) would move
+/// (`view.rs`).
+fn dwelling_body(kind: usize, v: Version, identifier: u32) -> Body {
+    let mut set = vec![0; v.faction_bytes()];
+    set[0] = 1 << (identifier % 8);
+    let level = u8::try_from(identifier / 8 % 7).unwrap();
+    let faction = Some((0, Some(Bits(set))));
+    let (low, high) = (level, level);
+    let random = |faction, levels| {
+        Body::RandomDwelling(RandomDwelling {
+            owner: NEUTRAL_OWNER,
+            faction,
+            levels,
+        })
+    };
+    match kind - DWELLINGS.0 {
+        0..=5 => Body::Owned {
+            owner: NEUTRAL_OWNER,
+        },
+        6 => random(faction, Some((low, high))),
+        7 => random(faction, None),
+        8 => random(None, Some((low, high))),
+        _ => Body::None,
+    }
+}
+
+/// A random dwelling's outcome ([`dwelling_outcomes`]): the dwelling type, its blocked and
+/// visitable cells as `(column, row)` left of and above the anchor, and its shift.
+type Outcome = (ObjectTypeId, Vec<(u8, u8)>, u8);
+
+/// The tiles and names a random dwelling of kind `kind` (216 to 218 of [`DWELLINGS`]) with `body` may
+/// take on the build (E08 T96b1; ADV-DWL-005, increment 10's design note §5): for each faction of
+/// its set and each level of its range (the subclass giving 217's level and 218's faction, as the
+/// import reads them), the dwelling type its faction's table gives, that type's blocked and
+/// visitable cells and its shift. The tables are the faithful rules' (the strict profile's are the
+/// same packs').
+fn dwelling_outcomes(kind: usize, body: &Body) -> Vec<Outcome> {
+    let Body::RandomDwelling(d) = body else {
+        return Vec::new();
+    };
+    let subclass = u8::try_from(KINDS[kind].1).unwrap();
+    let factions: Vec<usize> = match &d.faction {
+        Some((_, Some(set))) => (0..8).filter(|&b| set.bytes()[0] >> b & 1 == 1).collect(),
+        _ => vec![usize::from(subclass)],
+    };
+    let (low, high) = d.levels.unwrap_or((subclass, subclass));
+    let (core, part) = (FAITHFUL.core(), FAITHFUL.adventure());
+    let mut outcomes = Vec::new();
+    for faction in factions {
+        let faction = core.faction_by_key(codes::FACTIONS[faction]).unwrap();
+        let table = part.random_dwelling(faction).unwrap();
+        for &object_type in &table[usize::from(low)..=usize::from(high)] {
+            let kind = &part.object_type(object_type).unwrap().kind;
+            let ObjectKind::Dwelling {
+                blocked,
+                visitable,
+                shift,
+                ..
+            } = *kind
+            else {
+                unreachable!("a random dwelling's table names a dwelling");
+            };
+            let cells = blocked.offsets().chain(visitable.offsets()).collect();
+            outcomes.push((object_type, cells, shift));
+        }
+    }
+    outcomes
+}
+
+/// The tiles of the map of side `side` that the random dwelling with this kind, body and anchor
+/// may cover once the build resolves it (E08 T96b1; ADV-DWL-005): every outcome's
+/// ([`dwelling_outcomes`]) blocked and visitable cells from the anchor moved by its shift; none for
+/// an object of another kind. No hero may stand there (`SetupError::RandomDwellingTile`) and no
+/// boat lie there (`SetupError::Boat`).
+fn dwelling_reach(kind: usize, body: &Body, (ax, ay, az): Spot, side: u8) -> Vec<Spot> {
+    dwelling_outcomes(kind, body)
+        .iter()
+        .flat_map(|(_, cells, shift)| {
+            cells.iter().filter_map(move |&(column, row)| {
+                let x = (ax + shift).checked_sub(column).filter(|&x| x < side)?;
+                Some((x, ay.checked_sub(row)?, az))
+            })
+        })
+        .collect()
+}
+
+/// [`dwelling_reach`] of an object of a laid-out map of side `side` (E08 T96b1), for the hygiene
+/// property's changes (`view.rs`).
+pub(super) fn object_reach(o: &crate::model::Object, side: u8) -> Vec<Spot> {
+    let kind = usize::try_from(o.template.saturating_sub(1)).unwrap() / BLOCKERS.len();
+    dwelling_reach(kind, &o.body, (o.pos.x, o.pos.y, o.pos.z), side)
+}
+
 /// A neutral ownable object's owner in a map's body.
 const NEUTRAL_OWNER: u32 = 0xFF;
 
@@ -598,9 +738,10 @@ pub(super) struct Plan {
     /// (E08 T85b) The map's timed events ([`timed`]); before SoD the map writes no human flag, so
     /// [`lay_out`] sets it.
     pub(super) events: Vec<TimedEvent>,
-    /// (E08 T86b1) The owners at load of the ownable objects ([`OWNABLE`]): the `n`-th such
-    /// object of [`Plan::blockers`] the `n`-th's (cyclically), a playing colour by its index
-    /// (modulo the players) or none (neutral); empty: every one neutral.
+    /// (E08 T86b1) The owners at load of the ownable objects ([`ownable`]; since E08 T96b1 the
+    /// dwellings and random dwellings too): the `n`-th such object of [`Plan::blockers`] the
+    /// `n`-th's (cyclically), a playing colour by its index (modulo the players) or none
+    /// (neutral); empty: every one neutral.
     pub(super) owners: Vec<Option<u8>>,
 }
 
@@ -816,6 +957,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 timed(),
                 // E08 T86b1, drawn last for the same reason.
                 economy(),
+                // E08 T96b1, drawn last for the same reason.
+                dwellings(),
             ),
         ),
     )
@@ -837,7 +980,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     mut skills,
                     beside,
                     pile,
-                    (mut kits, lifts, nomads, exchange, rewards, sea, events, economy),
+                    (mut kits, lifts, nomads, exchange, rewards, sea, events, economy, dwellings),
                 ),
             )| {
                 // In three plans of four (E08 T42) a flyer and a water walker: the first two
@@ -972,6 +1115,16 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                         own.push((NAVIGATION, sea.navigation));
                     }
                 }
+                // E08 T96b1: increment 10's objects within two tiles of a hero, so that random
+                // play visits them, answers their questions, fights their guards and hires
+                // ([`dwellings`]); after every other object, so that a plan without them lays out
+                // as before.
+                for &((dx, dy), hero, object) in &dwellings {
+                    let ((hx, hy, hz), _) = heroes[usize::from(hero) % heroes.len()];
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+                    blockers.push(((at(hx, dx), at(hy, dy), hz % levels), object));
+                }
                 Plan {
                     version,
                     side,
@@ -1026,6 +1179,18 @@ fn economy() -> impl Strategy<Value = Economy> {
             owners,
             coast,
         })
+}
+
+/// Increment 10's objects of a plan (E08 T96b1, increment 10's design note §14): each one's
+/// offset from a hero's tile (two columns and rows left of it to two right), the hero (modulo the
+/// plan's), and the object ([`DWELLING_OBJECTS`]); in seven plans of eight, one to six; their
+/// owners at load are the ownable objects' ([`Plan::owners`]).
+fn dwellings() -> impl Strategy<Value = Vec<((u8, u8), u8, usize)>> {
+    let object = (0..DWELLING_OBJECTS.len()).prop_map(|i| DWELLING_OBJECTS[i]);
+    prop_oneof![
+        1 => Just(Vec::new()),
+        7 => vec(((0u8..5, 0u8..5), any::<u8>(), object), 1..=6),
+    ]
 }
 
 /// A plan's timed events (E08 T85b; GAM-CAL-004): none to three, each for some colours (those
@@ -1249,6 +1414,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     let colours: Vec<u8> = plan.players.iter().map(|&(colour, _)| colour).collect();
     // E08 T86b1: the ownable objects met so far, for their owners ([`Plan::owners`]).
     let mut ownables = 0;
+    // E08 T96b1: the names the dwellings laid out may take, as type and anchor.
+    let mut named: Vec<(ObjectTypeId, Spot)> = Vec::new();
     for &((x, y, z), shape) in plan.blockers.iter().chain(&goblins) {
         let (ax, ay, az) = (x % side, y % side, z % levels);
         if BOAT_OBJECTS.contains(&shape) {
@@ -1277,9 +1444,31 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             subclass
         };
         let twin = kind > 0 && typed.contains(&((class, subclass), (ax, ay, az)));
+        // E08 T96b1: a dwelling's name, a random dwelling's every outcome's (its type and moved
+        // anchor, `dwelling_outcomes`), which no other dwelling may share (the build's name check,
+        // `SetupError::SharedAnchor`); a random dwelling's outcomes' tiles, on which no hero may
+        // stand (`SetupError::RandomDwellingTile`) and no boat lie (`SetupError::Boat`).
+        let identifier = u32::try_from(m.objects.len()).unwrap();
+        let body = body(kind, v, identifier);
+        let outcomes = dwelling_outcomes(kind, &body);
+        let names: Vec<(ObjectTypeId, Spot)> = match class {
+            17 | 20 => {
+                let key = codes::object_type(class, subclass).flatten().unwrap();
+                let id = FAITHFUL.adventure().object_type_by_key(key).unwrap();
+                vec![(id, (ax, ay, az))]
+            }
+            _ => outcomes
+                .iter()
+                .map(|&(id, _, shift)| (id, (ax + shift, ay, az)))
+                .collect(),
+        };
+        let reach = dwelling_reach(kind, &body, (ax, ay, az), side);
+        let shared = names.iter().any(|name| named.contains(name));
+        let refused = heroes.iter().any(|&(at, _)| reach.contains(&at));
         // E08 T86b1: an ownable object takes the next owner; one entered on water is left out
-        // (the import refuses it: `Unsupported::OwnedOnWater`, ADV-MAP-002).
-        let owner = OWNABLE.contains(&kind).then(|| {
+        // (the import refuses it: `Unsupported::OwnedOnWater`, ADV-MAP-002); (E08 T96b1) a
+        // dwelling and a random dwelling too.
+        let owner = ownable(kind).then(|| {
             ownables += 1;
             let drawn = plan.owners.get((ownables - 1) % plan.owners.len().max(1));
             drawn.copied().flatten().map_or(NEUTRAL_OWNER, |n| {
@@ -1296,18 +1485,19 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
                     + usize::from(ex);
                 m.terrain.tiles[index].terrain == 8
             });
-        if !twin && !afloat && !heroes.iter().any(covers) {
+        if !twin && !afloat && !shared && !refused && !heroes.iter().any(covers) {
             if kind > 0 {
                 typed.push(((class, subclass), (ax, ay, az)));
             }
+            named.extend(names);
+            covered.extend(reach);
             let template = 1 + u32::try_from(shape).unwrap();
-            let identifier = u32::try_from(m.objects.len()).unwrap();
-            let mut o = object(ax, ay, template, body(kind, v, identifier));
+            let mut o = object(ax, ay, template, body);
             o.pos.z = az;
-            if let (Some(colour), Body::Mine { owner } | Body::Owned { owner }) =
-                (owner, &mut o.body)
-            {
-                *owner = colour;
+            match (owner, &mut o.body) {
+                (Some(colour), Body::Mine { owner } | Body::Owned { owner }) => *owner = colour,
+                (Some(colour), Body::RandomDwelling(d)) => d.owner = colour,
+                _ => {}
             }
             m.objects.push(o);
             covered.extend(
@@ -1481,6 +1671,59 @@ pub(super) fn start_on(m: &RawMap, rules: &GameRuleset, seed: u64) -> GameState 
     GameState::new(rules, &setup, seed).unwrap()
 }
 
+/// The random dwellings of the map `m` as the game built on it with `rules` resolved them (E08
+/// T96b1; ADV-DWL-005, increment 10's design note §5, §14), read apart from the build: each random
+/// dwelling of the import's setup (its holds a faction set and a level range) is on `state`'s map
+/// a dwelling of a type its holds name (a faction of the set, the dwelling of a level of the range
+/// in that faction's table), with that type's blocked and visitable cells as its masks, its anchor
+/// the setup's moved right by the type's shift, holding nothing and owned as the setup says. The
+/// number of them.
+fn check_resolved(
+    rules: &GameRuleset,
+    m: &RawMap,
+    state: &GameState,
+) -> Result<usize, TestCaseError> {
+    let m = parse(&encode(m), &Limits::default()).unwrap();
+    let setup = import(&m, rules).unwrap();
+    let (part, adventure) = (rules.adventure(), state.adventure());
+    let mut resolved = 0;
+    for (i, placed) in setup.map.objects.iter().enumerate() {
+        let Holds::RandomDwelling { factions, levels } = &placed.holds else {
+            continue;
+        };
+        resolved += 1;
+        let object = &adventure.map().objects()[i];
+        let outcomes: Vec<ObjectTypeId> = factions
+            .iter()
+            .flat_map(|&faction| part.random_dwelling(faction).unwrap())
+            .zip((1..=7).cycle())
+            .filter(|&(_, level)| (levels.0..=levels.1).contains(&level))
+            .map(|(&ty, _)| ty)
+            .collect();
+        let ty = object.object_type.unwrap();
+        prop_assert!(outcomes.contains(&ty), "random dwelling {}: {:?}", i, ty);
+        let Some(&ObjectKind::Dwelling {
+            blocked,
+            visitable,
+            shift,
+            ..
+        }) = part.object_type(ty).map(|t| &t.kind)
+        else {
+            return Err(fail(format!("random dwelling {i} resolved to no dwelling")));
+        };
+        prop_assert_eq!((object.blocked, object.visitable), (blocked, visitable));
+        let moved = TilePos::new(
+            placed.anchor.x + u16::from(shift),
+            placed.anchor.y,
+            placed.anchor.level,
+        );
+        prop_assert_eq!(object.anchor, moved);
+        prop_assert_eq!(&object.holds, &Holds::Nothing);
+        prop_assert_eq!(adventure.owner(i), placed.owner);
+    }
+    Ok(resolved)
+}
+
 /// The eight directions, as column and row offsets.
 const DIRECTIONS: [(i16, i16); 8] = [
     (0, -1),
@@ -1544,6 +1787,11 @@ pub(super) enum Step {
     /// (E08 T86b1) The acting player's `n`-th listed `BuildBoat` (ADV-SHY-003; modulo their
     /// number), or as `Legal(n)` if it lists none.
     BuildBoat(u16),
+    /// (E08 T96b1; increment 10's design note §14) Its open offer (a dwelling's guards' question
+    /// or a hire question) accepted, declined in one step of four; its hire dialog answered with
+    /// the `n`-th of its legal answers (a `Buy` or `Close`); on the map the acting player's `n`-th
+    /// option that enters a dwelling or a Refugee Camp ([`hire`]); else as `Garrison(n)`.
+    Hire(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -1772,6 +2020,15 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     });
     let boat = any::<u16>().prop_map(|n| vec![Step::BuildBoat(n)]);
     let days = Just(vec![Step::EndTurn; 64]);
+    // E08 T96b1: runs of hires, three `Step::Hire`s (a dwelling's or a camp's visit, its question
+    // answered, a guards' battle's first command or a dialog's answer) and then `Step::Hire`s
+    // again, which play the battle on or answer the hire question and the dialog.
+    let hire = (any::<u16>(), vec(any::<u16>(), 2..12)).prop_map(|(n, ns)| {
+        [Step::Hire(n), Step::Hire(n), Step::Hire(n)]
+            .into_iter()
+            .chain(ns.into_iter().map(Step::Hire))
+            .collect()
+    });
     vec(
         prop_oneof![
             12 => step().prop_map(|step| vec![step]),
@@ -1781,6 +2038,7 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             1 => garrison,
             1 => boat,
             1 => days,
+            1 => hire,
         ],
         0..40,
     )
@@ -2089,6 +2347,47 @@ fn garrison(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u1
         }
     }
     join(state, rules, legal, n)
+}
+
+/// [`Step::Hire`] (E08 T96b1; increment 10's design note §14): not in a battle, its open offer
+/// accepted, declined when `n % 4 == 3` (a guards' question or a hire question, both ways); its
+/// hire dialog answered with the `n`-th of its legal answers (each creature's most, `Close`); on the
+/// map the `n`-th of its options that enter a dwelling (any owner's: a flag, a guards' question
+/// or a hire question) or a Refugee Camp; else as [`garrison`].
+fn hire(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+    let actor = acting(state);
+    if battle_of(state, self::actor(state)).is_none() {
+        if state.decision(actor).is_some() {
+            return ANSWERS[usize::from(n % 4 == 3)].clone();
+        }
+        if hiring(state, actor) {
+            return legal[usize::from(n) % legal.len()].clone();
+        }
+        if !state.has_decision(actor) {
+            let (adventure, part) = (state.adventure(), rules.adventure());
+            let wanted = |pos: TilePos| {
+                visited_at(state, pos).is_some_and(|i| {
+                    let ty = adventure.object(i).and_then(|o| o.object_type);
+                    matches!(
+                        ty.and_then(|ty| part.object_type(ty)).map(|t| &t.kind),
+                        Some(ObjectKind::Dwelling { .. } | ObjectKind::RefugeeCamp { .. })
+                    )
+                })
+            };
+            let visits: Vec<&GameCommand> = legal
+                .iter()
+                .filter(|c| {
+                    as_move(c)
+                        .and_then(|(_, path)| path.last())
+                        .is_some_and(|&to| wanted(to))
+                })
+                .collect();
+            if !visits.is_empty() {
+                return visits[usize::from(n) % visits.len()].clone();
+            }
+        }
+    }
+    garrison(state, rules, legal, n)
 }
 
 /// On the map (E08 T52): the acting player's open offer declined, its level-up's first offer
@@ -2543,6 +2842,7 @@ pub(super) fn resolve(
         Step::Meet(n) => (who, meet(state, rules, legal, *n)),
         Step::Join(n) => (who, join(state, rules, legal, *n)),
         Step::Garrison(n) => (who, garrison(state, rules, legal, *n)),
+        Step::Hire(n) => (who, hire(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boats: Vec<&GameCommand> = legal
                 .iter()
@@ -2877,7 +3177,9 @@ fn hire_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec
 /// joins the amount to the army where ADV-ARM-007's room is (its first stack of the creature that
 /// takes them within a stack's most, else its first free slot; `CreaturesJoined` to the owner
 /// alone) and lowers the source's count by it, the dialog closing (`DecisionClosed`) exactly when
-/// its source sells one creature; `Close` closes it and does nothing else.
+/// its source sells one creature; `Close` closes it and does nothing else. What follows a close
+/// (E08 T96b1) comes from the visit's held rests (a guarding monster's visit, GAM-DEC-007), the
+/// treasury and the army then compared by [`check_conservation`] alone.
 fn check_hire(
     state: &GameState,
     rules: &GameRuleset,
@@ -2947,9 +3249,12 @@ fn check_hire(
                 command,
                 &GameCommand::Answer(Answer::Hire(HireAnswer::Close))
             );
+            // E08 T96b1: what follows the close comes from the visit's held rests (GAM-DEC-007,
+            // ADV-MON-006: the visit of a monster guarding the dwelling's entrance, held until the
+            // dialog closes), as after a meeting's or an army dialog's ([`check_legal`]).
             prop_assert_eq!(
-                &events[..],
-                &[GameEvent::DecisionClosed { player: actor }][..]
+                events.first(),
+                Some(&GameEvent::DecisionClosed { player: actor })
             );
             prop_assert!(hire_view(&after, rules, actor).is_none());
             continue;
@@ -2975,7 +3280,26 @@ fn check_hire(
             seen_by: Viewers::NONE.with(actor),
         }));
         expected.extend(single.then_some(GameEvent::DecisionClosed { player: actor }));
-        prop_assert_eq!(&events, &expected);
+        // E08 T96b1: after a purchase that closes the dialog, its visit's held rests (a guarding
+        // monster's visit, GAM-DEC-007, ADV-MON-006), whose gains and joins
+        // [`check_conservation`] counts; the treasury and the army are compared without them.
+        prop_assert_eq!(events.get(..expected.len()), Some(&expected[..]));
+        prop_assert!(single || events.len() == expected.len(), "{:?}", events);
+        let mut left = stock.clone();
+        let place = left.iter().position(|&(sold, _)| sold == creature).unwrap();
+        left[place].1 -= amount;
+        prop_assert_eq!(hire_stock(rules, &after, source), left);
+        let open = hire_view(&after, rules, actor);
+        prop_assert_eq!(open.is_none(), single, "{:?}", command);
+        if let Some(open) = open {
+            prop_assert_eq!(
+                (open.target, open.object_type, open.anchor),
+                (view.target, source.0, source.1)
+            );
+        }
+        if events.len() > expected.len() {
+            continue;
+        }
         let mut treasury = state.treasury(actor).unwrap().to_vec();
         for &(resource, paid) in &price {
             treasury[usize::from(resource.raw())] -= paid;
@@ -3004,18 +3328,6 @@ fn check_hire(
             );
         }
         prop_assert_eq!(&after.adventure().hero(hero).unwrap().army, &army);
-        let mut left = stock.clone();
-        let place = left.iter().position(|&(sold, _)| sold == creature).unwrap();
-        left[place].1 -= amount;
-        prop_assert_eq!(hire_stock(rules, &after, source), left);
-        let open = hire_view(&after, rules, actor);
-        prop_assert_eq!(open.is_none(), single, "{:?}", command);
-        if let Some(open) = open {
-            prop_assert_eq!(
-                (open.target, open.object_type, open.anchor),
-                (view.target, source.0, source.1)
-            );
-        }
     }
     Ok(())
 }
@@ -4498,7 +4810,8 @@ fn check_groups(
 /// A week's step (E08 T86b1; ADV-WEK-001 to -003, ADV-MON-013; increment 9's design note §15):
 /// after a `WeekStarted` every weekly object is full, its marks kept (a Windmill one of its
 /// resources and an amount within its bounds, a Water Wheel its later weeks' amount, a Garden one
-/// of its gifts), and every wandering monster that stood before grew: one that grows to
+/// of its gifts), (E08 T96b1) every dwelling full and every camp drawn anew
+/// ([`check_dwellings_week`]), and every wandering monster that stood before grew: one that grows to
 /// `v + ⌊v × growth_bp ÷ 10 000⌋`, at most `growth_cap` creatures (`v` its count in growth units
 /// with its fraction), as count and fraction; one that does not grow keeps its count.
 fn check_week(
@@ -4529,6 +4842,7 @@ fn check_week(
         };
         prop_assert!(full, "weekly object {} after a week's start: {:?}", i, now);
     }
+    check_dwellings_week(rules, after)?;
     let Some(params) = part.params().monsters() else {
         return Ok(());
     };
@@ -4553,6 +4867,56 @@ fn check_week(
         let value = count * unit + u64::from(b.fraction(i));
         let grown = (value + value * rate / 10_000).min(most);
         prop_assert_eq!(now, (grown / unit, grown % unit), "monster {}", i);
+    }
+    Ok(())
+}
+
+/// After a week's step (E08 T96b1; ADV-DWL-003, ADV-RFG-001, increment 10's design note §9, §14):
+/// every dwelling full, owned or not, read apart from the engine's week: each of its kind's
+/// creatures its growth, its guards one stack by slot from 0 of each creature of the part's
+/// `guard_level` or more, `guard_factor` times its growth, in its kind's order; every Refugee
+/// Camp's creature a random monster of its kind's levels (ADV-MON-003's set), its count that
+/// creature's growth.
+fn check_dwellings_week(rules: &GameRuleset, after: &GameState) -> Result<(), TestCaseError> {
+    let (core, part, a) = (rules.core(), rules.adventure(), after.adventure());
+    let growth = |creature: CreatureTypeId| u32::from(core.creature(creature).unwrap().growth);
+    for &i in a.map().dwellings() {
+        let ty = a.map().objects()[i].object_type.unwrap();
+        let Some(ObjectKind::Dwelling { creatures, .. }) = part.object_type(ty).map(|t| &t.kind)
+        else {
+            return Err(fail(format!("dwelling {i} of no dwelling's type")));
+        };
+        let counts: Vec<u32> = creatures.iter().map(|&c| growth(c)).collect();
+        prop_assert_eq!(a.dwelling_counts(i).unwrap(), &counts[..], "dwelling {}", i);
+        let params = part.params().dwellings().unwrap();
+        let guards: Vec<h3_contracts::ArmyStack> = (0..)
+            .zip(
+                creatures
+                    .iter()
+                    .filter(|&&c| core.creature(c).unwrap().level >= params.guard_level),
+            )
+            .map(|(slot, &creature)| h3_contracts::ArmyStack {
+                slot,
+                creature,
+                count: u32::from(params.guard_factor.get()) * growth(creature),
+            })
+            .collect();
+        prop_assert_eq!(a.dwelling_guards(i), guards, "dwelling {}", i);
+    }
+    for &i in a.map().camps() {
+        let ty = a.map().objects()[i].object_type.unwrap();
+        let Some(&ObjectKind::RefugeeCamp { levels }) = part.object_type(ty).map(|t| &t.kind)
+        else {
+            return Err(fail(format!("camp {i} of no camp's type")));
+        };
+        let (creature, count) = a.camp(i).unwrap();
+        prop_assert!(
+            part.random_monsters(core, levels).any(|c| c == creature),
+            "camp {}: {:?}",
+            i,
+            creature
+        );
+        prop_assert_eq!(count, growth(creature), "camp {}", i);
     }
     Ok(())
 }
@@ -4834,6 +5198,11 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
     prop_assert!(adventure.check_weekly(rules.adventure()));
     // E08 T83b2a: the monsters' fractions' and the objects added in play's invariants.
     prop_assert!(adventure.check_added(rules.adventure()));
+    // E08 T96b1: the dwellings' and the camps' invariants (increment 10's design note §6): no
+    // week's block while every dwelling is full, each count at most its growth, each guards' stack
+    // within the full guards; each camp's creature of its levels, its count at most its growth.
+    prop_assert!(adventure.check_dwellings());
+    prop_assert!(adventure.check_camps(rules.core(), rules.adventure()));
     for player in (0..state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let own = |hero: HeroId| {
             state
@@ -6408,7 +6777,10 @@ proptest! {
         experience in proptest::option::weighted(0.5, vec(experience(), 6)),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
-        let mut state = start_on(&experienced(&plan, experience.as_deref()), rules, seed);
+        let m = experienced(&plan, experience.as_deref());
+        let mut state = start_on(&m, rules, seed);
+        // E08 T96b1: the random dwellings as the build resolved them.
+        check_resolved(rules, &m, &state)?;
         for step in &steps {
             check_progression(rules, &state)?;
             check_invariants(rules, &state)?;
@@ -6987,7 +7359,7 @@ fn the_plans_visit_every_kind_and_answer_every_decision() {
     let strategy = (plan(), any::<bool>(), any::<u64>(), steps);
     let mut rewarded = Rewarded::default();
     let mut timed = [0; 3];
-    for _ in 0..512 {
+    for _ in 0..1024 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start(&plan, rules, seed);
@@ -7524,4 +7896,174 @@ fn the_plans_flag_guard_build_and_grow() {
     assert!(o.weekly_gains > 0 && o.weekly_empty > 0, "{o:?}");
     assert!(o.income > 0 && o.weeks > 0, "{o:?}");
     assert!(o.added > 0 && o.added_visited > 0, "{o:?}");
+}
+
+/// What the plans' games did with increment 10's objects (E08 T96b1, increment 10's design note
+/// §14): the visits of each kind of [`DWELLINGS`] (a question opened there, a camp found deserted;
+/// a random dwelling's after the build resolved it), the hire questions and the guards' questions
+/// accepted and declined, the guards' battles and those won, the free creatures joined, the
+/// purchases in a dwelling's and in a camp's dialog, the dialogs closed, the weeks that refilled a
+/// dwelling, and the random dwellings resolved at the builds.
+#[derive(Debug, Default)]
+struct Hired {
+    visits: [usize; DWELLINGS.1],
+    hire_accepted: usize,
+    hire_declined: usize,
+    guards_accepted: usize,
+    guards_declined: usize,
+    guard_battles: usize,
+    guards_beaten: usize,
+    free_joined: usize,
+    dwelling_buys: usize,
+    camp_buys: usize,
+    closes: usize,
+    refills: usize,
+    resolved: usize,
+    /// The visitors of the guards' battles in progress.
+    fighting: Vec<HeroId>,
+}
+
+impl Hired {
+    /// Counts what `command` did on its way from `before` to `after`, `kinds` the plan's kind of
+    /// each object of the static map, by index.
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        (before, after): (&GameState, &GameState),
+        (command, events): (&GameCommand, &[GameEvent]),
+        kinds: &[usize],
+    ) {
+        let part = rules.adventure();
+        let player = acting(before);
+        let open = before.decision(player).map(|o| &o.kind);
+        let mut visit = |object_type, anchor| {
+            let kind = object_index(before, object_type, anchor).and_then(|i| kinds.get(i));
+            if let Some(&kind) = kind.filter(|&&k| (DWELLINGS.0..CAMP + 1).contains(&k)) {
+                self.visits[kind - DWELLINGS.0] += 1;
+            }
+        };
+        for event in events {
+            match *event {
+                GameEvent::OfferOpened {
+                    object_type,
+                    anchor,
+                    ..
+                }
+                | GameEvent::Adventure(AdventureEvent {
+                    kind:
+                        AdventureEventKind::ObjectEmpty {
+                            object_type,
+                            anchor,
+                        },
+                    ..
+                }) => visit(object_type, anchor),
+                _ => {}
+            }
+        }
+        for event in events {
+            match *event {
+                GameEvent::OfferAnswered { accepted, .. } => match open {
+                    Some(OfferKind::Hire { .. }) if accepted => self.hire_accepted += 1,
+                    Some(OfferKind::Hire { .. }) => self.hire_declined += 1,
+                    Some(OfferKind::Guarded { .. }) if accepted => self.guards_accepted += 1,
+                    Some(OfferKind::Guarded { .. }) => self.guards_declined += 1,
+                    _ => {}
+                },
+                GameEvent::BattleStarted { heroes, .. }
+                    if matches!(open, Some(OfferKind::Guarded { .. })) =>
+                {
+                    self.guard_battles += 1;
+                    self.fighting.extend(heroes[0]);
+                }
+                GameEvent::BattleEnded { heroes, result, .. }
+                    if heroes[0].is_some_and(|h| self.fighting.contains(&h)) =>
+                {
+                    self.fighting.retain(|&h| Some(h) != heroes[0]);
+                    if result.winner() == Some(BattleSide::Attacker) {
+                        self.guards_beaten += 1;
+                    }
+                }
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::CreaturesJoined { .. },
+                    ..
+                }) if matches!(open, Some(OfferKind::Hire { .. })) => self.free_joined += 1,
+                GameEvent::WeekStarted { .. } => {
+                    let (b, a) = (before.adventure(), after.adventure());
+                    let refilled = b.map().dwellings().iter().any(|&i| {
+                        (b.dwelling_counts(i), b.dwelling_guards(i))
+                            != (a.dwelling_counts(i), a.dwelling_guards(i))
+                    });
+                    self.refills += usize::from(refilled);
+                }
+                _ => {}
+            }
+        }
+        if let Some(view) = hire_view(before, rules, player) {
+            let camp = matches!(
+                part.object_type(view.object_type).map(|t| &t.kind),
+                Some(ObjectKind::RefugeeCamp { .. })
+            );
+            match command {
+                GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) if camp => {
+                    self.camp_buys += 1;
+                }
+                GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) => {
+                    self.dwelling_buys += 1;
+                }
+                GameCommand::Answer(Answer::Hire(HireAnswer::Close)) => self.closes += 1,
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The plans' games visit dwellings, random dwellings and Refugee Camps, answer their questions,
+/// fight their guards and hire (E08 T96b1, increment 10's design note §14): every count of
+/// [`Hired`] above zero, so that the properties' checks run on them ([`check_decisions`]' hire
+/// and guards' questions and [`free_creatures`], [`check_dwelling_battle_end`], [`check_hire`],
+/// [`check_conservation`]'s purchases, [`check_week`]'s refill, [`check_resolved`]).
+// covers: ADV-DWL-001, ADV-DWL-002, ADV-DWL-003, ADV-DWL-004, ADV-DWL-005
+// covers: ADV-HIR-001, ADV-HIR-002, ADV-RFG-001, GAM-DEC-008
+#[test]
+fn the_plans_visit_dwellings_and_hire() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
+    let mut hired = Hired::default();
+    for _ in 0..256 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let m = lay_out(&plan);
+        let mut state = start_on(&m, rules, seed);
+        hired.resolved += check_resolved(rules, &m, &state).unwrap();
+        // The plan's kind of each object of the static map (the import keeps every object but
+        // the heroes and the boats, in the map's order).
+        let kinds: Vec<usize> = m
+            .objects
+            .iter()
+            .filter(|o| o.template != HERO_TEMPLATE)
+            .map(|o| usize::try_from(o.template - 1).unwrap() / BLOCKERS.len())
+            .filter(|&kind| KINDS[kind].0 != 8)
+            .collect();
+        for step in &steps {
+            let legal = options(&state, rules);
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
+                hired.count(rules, (&before, &state), (&command, &events), &kinds);
+            }
+        }
+    }
+    let h = &hired;
+    eprintln!("{h:?}");
+    assert!(h.visits.iter().all(|&n| n > 0), "{h:?}");
+    assert!(h.hire_accepted > 0 && h.hire_declined > 0, "{h:?}");
+    assert!(h.guards_accepted > 0 && h.guards_declined > 0, "{h:?}");
+    assert!(h.guard_battles > 0 && h.guards_beaten > 0, "{h:?}");
+    assert!(
+        h.free_joined > 0 && h.dwelling_buys > 0 && h.camp_buys > 0,
+        "{h:?}"
+    );
+    assert!(h.closes > 0 && h.refills > 0 && h.resolved > 0, "{h:?}");
 }

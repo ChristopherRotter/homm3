@@ -20,8 +20,8 @@ use proptest::test_runner::TestCaseError;
 use super::import::object;
 use super::play::{
     BLOCKERS, FAITHFUL, HERO_TEMPLATE, KINDS, MONSTER_OBJECTS, STRICT, Slots, Spot, Step, army,
-    experience, experienced, lay_out, masks, options, plan, player_of, resolve, slots, start_on,
-    steps, tile,
+    experience, experienced, lay_out, masks, object_reach, options, plan, player_of, resolve,
+    slots, start_on, steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
@@ -158,7 +158,9 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 /// removed as a blocker is. (E08 T96b1) An object the viewer owns at load stays, and stays its
 /// own, wherever it lies: what it owns is its own, and so its income (GAM-RES-003), which the
 /// start's reveal does not always show (ADV-OWN-002: an object visited from no tile of the map, as
-/// a mine anchored on the map's first column, has no entrance and reveals nothing).
+/// a mine anchored on the map's first column, has no entrance and reveals nothing). A random
+/// dwelling stays too, and no hero is moved onto a tile it may cover once resolved
+/// ([`object_reach`]; E08 T96b1, increment 10's objects in the plans).
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -184,14 +186,18 @@ fn vary(
         .collect();
     // E08 T86b1: an ownable object's entrance stays land, as a hero's tile (the import refuses one
     // on water: `OwnedOnWater`); (E08 T96b1) an abandoned mine's too, which is ownable (`lay_out`'s
-    // `OWNABLE`) though neutral at load, with no owner in its body.
+    // `OWNABLE`) though neutral at load, with no owner in its body; and a random dwelling's, ownable
+    // too (`lay_out`'s `ownable`; a dwelling's body is `Owned`).
     let entrances: Vec<Spot> = m
         .objects
         .iter()
         .filter(|o| {
             matches!(
                 o.body,
-                Body::Mine { .. } | Body::AbandonedMine(_) | Body::Owned { .. }
+                Body::Mine { .. }
+                    | Body::AbandonedMine(_)
+                    | Body::Owned { .. }
+                    | Body::RandomDwelling(_)
             )
         })
         .flat_map(|o| {
@@ -242,8 +248,11 @@ fn vary(
             objects(spot) && (!monster || ground(spot)) && !seen_monsters.contains(&spot)
         })
     };
+    // E08 T96b1: a random dwelling is never removed either: it may cover tiles past its
+    // template's once resolved ([`object_reach`]), which the viewer may see.
     let own = |o: &Object| match o.body {
         Body::Mine { owner } | Body::Owned { owner } => owner == u32::from(colour),
+        Body::RandomDwelling(_) => true,
         _ => false,
     };
     let mut blocker = 0;
@@ -303,13 +312,15 @@ fn vary(
             _ => {}
         }
     }
+    // E08 T96b1: and the tiles a random dwelling may cover once resolved (the setup refuses a
+    // hero there, `SetupError::RandomDwellingTile`).
     let blocked: Vec<Spot> = m
         .objects
         .iter()
         .filter(|o| o.template != HERO_TEMPLATE)
         .flat_map(|o| {
             let template = usize::try_from(o.template - 1).unwrap();
-            covers((o.pos.x, o.pos.y, o.pos.z), template, side)
+            covers((o.pos.x, o.pos.y, o.pos.z), template, side).chain(object_reach(o, side))
         })
         .collect();
     let mut other = 0;
@@ -1374,12 +1385,14 @@ proptest! {
             }
             // A monster's answer follows from its aggression, drawn from the seed and never
             // shown (ADV-MON-002, ADV-MON-007; E08 T20b3b1): the comparison ends when the viewer
-            // is told a monster's offer, as at a battle.
+            // is told a monster's offer, as at a battle. (E08 T96b1) So it does at a Refugee
+            // Camp's question, which names the week's creature, a draw of the game's stream
+            // (ADV-RFG-001) that the hidden differences move.
             let answered = |events: &[GameEvent]| {
                 events.iter().any(|e| match *e {
                     GameEvent::OfferOpened { object_type, .. } => matches!(
                         rules.adventure().object_type(object_type).map(|t| &t.kind),
-                        Some(ObjectKind::Monster { .. })
+                        Some(ObjectKind::Monster { .. } | ObjectKind::RefugeeCamp { .. })
                     ),
                     _ => false,
                 })
