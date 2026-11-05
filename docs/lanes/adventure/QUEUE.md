@@ -4,30 +4,27 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a next, then T98b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), T98a1 done, T98a2 next, then T98b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T98a — the teleporters survey** (decision 261; as T88a for increment 10: survey file
-`docs/rules/surveys/E08-teleporters.md`)
+**E08 T98a2 — the teleporters survey, its second part** (decisions 261, 262; survey
+`docs/rules/surveys/E08-teleporters.md` §9 to §14)
 
-- **Scope:** the census of classes 103, 43 to 45 and 111 on the 160 shipped maps (by subclass and
-  level, the gates' pairs, each channel's entrances and exits, the Whirlpools' waters; T97c's counts
-  in `E08-log.md`, T97c); their `.h3m` bodies and templates (`docs/formats/h3m.md`, VCMI 1.7.5's
-  reader); the original's code (a step onto an entrance: the exit and how it is chosen, a random
-  exit's draw and its stream, an exit that is occupied or guarded, the points after the jump,
-  whether a move goes on through it, the paths and the reach through a teleporter, a Whirlpool's
-  losses and its hero in a boat, what the fog reveals at the exit; `docs/exe/README.md`,
-  `scripts/exe.py`), VCMI's and the wiki's rules; disputes `D-<n>` from 53, reading quirk
-  candidates `A-<n>` from 37; the proposed rule ids; the batch's plan (E11) on the client lane's
-  harness (decision 261's agent's call); what a viewer sees of a hero passing. Likely in two (T98a1
-  the objects, the census and the jump; T98a2 the reach and the paths, the views, the batch's plan
-  and the checkpoint), confirmed with the user at its start.
-- **Inputs:** decisions 260, 261; ADR-0015 to -0017 (ADR-0016 points 3 and 4, ADR-0017's streams);
-  the lane's `TRAPS.md` (a new read in the reach's or the passage's loops; a test's blocker of a
-  class that gets a kind); the inbox's performance note of 2026-10-23
+- **Scope:** the reach and the paths through a teleporter (the original's: `pathfinder_pass_through`
+  reads the monolith lists at 0x56AE39 and 0x56AE81, whose paths those are; the engine's reach and
+  passage, the hot path); the space key's visit (`key_space_visit` 0x408E65: its full gate, which
+  classes, RoE) and whether the increment takes it as a command; what a viewer sees of a hero
+  passing (`hero_relocate_inner` 0x49CF50, the network message, the wiki's exit shown in the
+  shroud); the interfaces' sketch (commands, decisions, events, the observation, replays,
+  benchmarks); batch E11's plan on the client lane's harness (decision 261's agent's call), with
+  rows for the points resting on the reading alone (survey §8's open points); the proposed rule ids;
+  the checkpoint's questions (D-53 to D-57, A-37's fix, A-38, A-39, A-40), asked at its end.
+- **Inputs:** survey §0 to §8 (T98a1); decisions 260 to 262; ADR-0015 to -0017 (ADR-0016 points 3
+  and 4, ADR-0017's streams); the lane's `TRAPS.md` (a new read in the reach's or the passage's
+  loops; a test's blocker of a class that gets a kind); the inbox's performance note of 2026-10-23
   (a lifted hero's reach); surveys `E08-hero-movement.md` (the reach, flying, A-13) and `E08-sea.md`
   (a boat's entrances).
-- **Depends on:** T97c (done). **Status:** ready (the original data and the shipped maps are needed:
-  staging per `docs/08-work-process.md`, "Cloud sandbox").
+- **Depends on:** T98a1 (done). **Status:** ready (the original data staged: `Heroes3.exe` for the
+  reading, the shipped maps for the batch's plan).
 
 **E08 T98b — the ADR amendment drafts, the design note and the cut** (decision 261; as T88b)
 

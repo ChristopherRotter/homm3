@@ -279,6 +279,7 @@ fields = [
   { offset = 0x14, name = "name_singular", type = "char*", summary = "singular name", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
   { offset = 0x18, name = "name_plural", type = "char*", summary = "plural name", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
   { offset = 0x38, name = "cost_gold", type = "i32", summary = "gold cost (the last of the seven costs from +0x20)", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.2"] },
+  { offset = 0x3C, name = "fight_value", type = "i32", summary = "fight value: a Whirlpool takes from the stack with the least fight value x count (whirlpool_losses 0x4ACAA0)", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §4.4"] },
   { offset = 0x40, name = "ai_value", type = "i32", summary = "AI value: an army's value and a monster's strength", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.1"] },
   { offset = 0x44, name = "growth", type = "i32", summary = "the weekly growth: a dwelling built sets its level's available creatures to it (town_build 0x5BEBB7; E09 T5b1; H3API grow)", confidence = "read", refs = ["rules/surveys/E09-towns.md §16.2"] },
   { offset = 0x6C, name = "adv_map_low", type = "i32", summary = "the smallest random count of a wandering monster (CRTRAITS AdvMap Low)", confidence = "read", refs = ["rules/surveys/E08-battles.md §1.5"] },
@@ -435,6 +436,11 @@ fields = [
   { offset = 0x4E3CC, name = "universities", type = "skill[4]*", summary = "the Universities' vector (begin; its end at +0x4E3D0), four i32 skills each, indexed by the tile word's bits 13-24 (university_setup 0x4C06F0, university_skills 0x405E10)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.8"] },
   { offset = 0x4E3E9, name = "obelisks_visited", type = "u8[]", summary = "per Obelisk (its word) the bits of the players who visited it: the map hint's mark by the viewing player's bit (0x40C504, a signed byte; E24 M3 T6a2a)", confidence = "read", refs = ["epics/E24-design.md §4.11"] },
   { offset = 0x4E658, name = "banned_skills", type = "u8[28]", summary = "per secondary skill id, set when the map bans it (H3API's bannedSkills): the level-up offers no new banned skill (0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
+  { offset = 0x4E67C, name = "two_way_monoliths", type = "vector[8]", summary = "per subclass 0-7 a vector (16 bytes: begin +4, end +8) of the two-way monoliths' packed positions in the setup's walk order (setup_monoliths_two_way 0x4C174C); a tile's word is its index", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §3.1"] },
+  { offset = 0x4E6FC, name = "one_way_exits", type = "vector[8]", summary = "per subclass 0-7 the one-way exits' packed positions (setup_monolith_exits 0x4C1653); the entrances have no list", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §3.1"] },
+  { offset = 0x4E77C, name = "whirlpool_tiles", type = "vector", summary = "every Whirlpool's six visitable tiles, any subclass (setup_whirlpools 0x4C1F88)", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §3.1"] },
+  { offset = 0x4E78C, name = "gates", type = "vector", summary = "the Subterranean Gates' packed positions (begin +0x4E790, end +0x4E794; setup_gates 0x4C16C1); a gate tile's word is its index", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §3.1"] },
+  { offset = 0x4E79C, name = "gate_pairs", type = "vector", summary = "per gate the index of its pair, -1 none (begin +0x4E7A0; gates_pair 0x4C0B60, gate_exit 0x4CDE40)", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §3.2"] },
 ]
 
 [[struct]]
@@ -558,7 +564,7 @@ summary = "A tile of the adventure map (game +0x1FC40; H3API's H3MapItem); only 
 refs = ["rules/surveys/E08-objects.md"]
 h3api = "H3MapItem"
 fields = [
-  { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up), a monster's count (bits 0-11), aggression (12-16), never flees (17), does not grow (18), message index (19-26) and message flag (31)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3", "rules/surveys/E08-battles.md §1.2"] },
+  { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up), a monster's count (bits 0-11), aggression (12-16), never flees (17), does not grow (18), message index (19-26) and message flag (31); a monolith's or gate's index in its list, a Whirlpool's counter (on all six tiles; E08 T98a1)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3", "rules/surveys/E08-battles.md §1.2"] },
   { offset = 0x4, name = "terrain", type = "u8", summary = "terrain code 0-9", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x5, name = "terrain_picture", type = "u8", summary = "the terrain DEF's frame", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
   { offset = 0x6, name = "river", type = "u8", summary = "river code 1-4 (clear, icy, mud, lava), 0 none", confidence = "read", refs = ["epics/E24-design.md §1.3"] },

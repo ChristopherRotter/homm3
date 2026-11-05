@@ -12823,3 +12823,64 @@ confirmed at its start). **Batch E10 runs before the build and before the shared
 - **Not in increment 10** (decision 231): garrisons, the teleporters, creature banks, quests,
   towns' dwellings and recruitment (E09; it reuses §8 and §13), the random dwellings tied to a
   town, a computer player's hiring and a defeat (E10).
+
+### Increment 11, round 1: T98a1, the teleporters survey's first part (2026-11-05, `adventure/e08-t98a1`)
+
+Baseline: `master` ac169d1 (#747, T97c, merged before the start; the AI lane's #748, python only,
+merged during the session). The sandbox's setup baseline died with a VM restart at its start; CI's
+green full verify on c584f7e (the same engine code) stands in. The original data staged at the
+start (the four LODs, the executables, the five DLLs, the sound and video archives, `maps.tar`,
+`extracted.tar`, the 40 MP3s; the computer's shell did not start, staging worked). The reading was
+measured first (the jump about 3 KB: 0x4A8230 340 bytes, 0x4A8390 341, 0x4ACAA0 262, the gate's
+case about 380, one shared draw 0x4CDB80 561); the user cut T98a in two as the queue sketched
+(decision 262, `AskUserQuestion`; not chosen: the paths in the first part, the whole).
+
+**The survey** `docs/rules/surveys/E08-teleporters.md` §0 to §8 (§9 to §14 are T98a2's, headed):
+
+- **The census** (§1) with a throwaway example over `h3_map::read` (deleted): on 146 maps (RoE 41,
+  AB 51, SoD 54); by class, subclass and level; 111 one-way channels (22 with several exits, none
+  without an exit or an entrance), 219 two-way (34 of three or more, none alone), Whirlpools two or
+  more per map, 46 of 330 monolith channels across the levels; the gates paired by the original's
+  rule: all 301 pairs found, no tie at the truncated minimum, 18 gates on 8 maps paired with one
+  not their nearest; subclasses 3 to 7 on SoD maps only; 42 SoD monoliths with a template of one
+  blocked tile where `Objects.txt` has two; clean inputs (no shared entrance, no body).
+- **The objects** (§2): templates, no body (VCMI's `readGeneric`), entered; only the Whirlpool
+  from above (`object_classes_from_above`).
+- **The channels** (§3): `setup_map_objects`'s cases 44, 45, 103, 111 (the lists in the game
+  record, the tile words; one-way entrances have no list; every Whirlpool tile listed, subclass
+  ignored; no bound on a monolith subclass); `gates_pair` 0x4C0B60 (greedy in the walk's order,
+  truncated Euclidean distance, first on a tie).
+- **The jump** (§4): `teleport_exit_draw` 0x4CDB80 (the candidates: the channel's other tiles but
+  those with a hero of the mover's team; `random_between(1, n)`, one draw even for one candidate);
+  the monoliths' handlers (an enemy on the exit fought first, radius-1 reveal); the one-way exit's
+  ADVEVENT 70 for a human; the gate's pair, ADVEVENT 153 without a pair, the meeting with a hero of
+  the team and no move; the Whirlpool (the losses first, then the draw; no hero test at the drawn
+  tile); `whirlpool_losses` 0x4ACAA0 whole (a human's hero only, the Sea Captain's Hat alone or in the Admiral's Hat, the least fight
+  value × count from 99 999 999, `count >> 1`, a lone creature kept, ADVEVENT 168).
+- **The arrival** (§5, `hero_relocate` read in part): the tile, the scouting radius's reveal; no
+  points, guards or visit. **The move** (§6): the entrance's step priced as any; a human's walk ends
+  at the entrance (the path cleared before the visit); the pathfinder reads the monolith lists
+  (T98a2); the space key's visit read in part (T98a2).
+- **VCMI 1.7.5 and the wiki** (§7's table) agree on the channels, the exits a hero of the team
+  blocks, the battle with an enemy, the arrival and the gate's message; the disputes **D-53** (an
+  exit named by VCMI's answer), **D-54** (the weakest stack: AI value, the last on a tie), **D-55**
+  (VCMI keeps the larger half and takes a lone creature's message), **D-56** (the gates' tie on
+  squared distances; no shipped map differs), **D-57** (VCMI's two draws for a Whirlpool's tile);
+  quirk candidates **A-37** (a Whirlpool lands on an enemy hero: state-corrupting, fixed, how at the
+  checkpoint), **A-38** (the weakest stack's bound and the write before the counts), **A-39** (a
+  monolith subclass past 7: refused at the import, proposed), **A-40** (a computer's hero loses
+  nothing: not reproduced, proposed, decision 16 and A-27's precedent). Each with the recommended
+  answer; the user is asked at T98a2's checkpoint.
+
+**The address map:** 18 new entries (10 functions: `visit_monolith_one_way`,
+`visit_monolith_two_way`, `whirlpool_losses`, `gates_pair`, `teleport_exit_draw` and its three
+callers, `gate_exit`, `hero_relocate_inner` inferred; 8 sites: `key_space_visit`, the inline cases
+44, 103, 111 and four `setup_map_objects` cases); `visit_object` and `hero_relocate` (now read in
+part) extended; `structs.toml`: the creature's fight value, the game record's five teleporter
+lists, the tile word of the teleporters. `scripts/exe.py check` agrees with the executable.
+
+**The queue:** the T98a entry moved verbatim to `QUEUE-ARCHIVE.md`; T98a2 queued in its place.
+
+**Verify:** docs and the address map only: `check-docs`, `check-rules`, `check-stubs`,
+`check-exe-map`, `check-lane` and `doc-drift` pass, `scripts/exe.py check` agrees with the
+executable. No code, version or replay moved; CI's run on the pull request is the record.
