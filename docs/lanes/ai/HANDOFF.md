@@ -34,7 +34,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   0.619. **T26a done** (the benches resume, both modes: `distill.go`, `checkpoint.pt`, Ctrl-C at
   the next minibatch, `--resume DIR`; `E25-log.md` T26a). **Next:** T26b on the user's GPU in
   parts under 2 hours (its commands in `QUEUE.md`).
-- **Open pull requests:** the one of `claude/gifted-keller-2dtp2o` (T26's records and T26a; the
+- **Open pull requests:** #730 (`claude/gifted-keller-2dtp2o`: T26's records and T26a; the
   branch `claude/determined-mayer-t1waz5` opened none, its commit is in it). Merged: #721 (T24),
   #725 (T25).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
