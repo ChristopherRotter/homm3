@@ -1134,3 +1134,61 @@ review and the docs by the agent.
 - **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
   `cross-lane`); `check-lane --cross-lane` and `cargo test --workspace --exclude xtask
   --all-targets` pass. No version moved; the 39 replays unchanged.
+
+### T8a2 — the step onto a town and an undefended capture (2026-11-05)
+
+One session, the user present; branch `town/e09-t8a2` (`cross-lane`: `h3-adventure`'s
+`state.rs`, `reach.rs`, `command.rs`, `observe.rs`, `lib.rs`, `ruleset/objects.rs`,
+`state/passage.rs`, `state/economy.rs` and tests; `h3-game`'s `state.rs`, `command.rs`,
+`observe.rs`, `legal.rs`; `h3-map`'s `tests/view.rs`; the adventure lane's `TRAPS.md`). Starting
+point: `master` at a415b1d (#727 merged; the sandbox's baseline the light gates there; the
+original data staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`,
+`extracted.tar`); `master` (#728, #729, #730) merged in on the way. **At its start:** the agent
+proposed a cut in two (entering with the reach and the bench, then the capture and the game's
+composition); the user chose T8a2 whole. The adventure side with the bench, then the game's
+composition with the gates, by two sub-agents in turn; an independent review by a third, its
+fixes by a fourth; the docs by the agent.
+
+- **`h3-adventure`** (design note §9 and §11 "As built (T8a2)"): `src/town.rs` (`TownReveal`,
+  `StaticMap::town_at`, `town_visitor`, `besieges`, `town_defended`, `visit_town`,
+  `capture_town`); the entrance a typed visit (`Effect::Town`; ADV-OBJ-004 now reads the town);
+  `visit_at`'s town branch; `check_step` and `passage` refuse another team's visitor (a flight
+  passes over it); `AdventureOutcome::capture`; `AdventureEventKind::TownCaptured`;
+  `set_owner`; `start_game` takes `&[TownReveal]` (`TWN-STUB-5` lifted).
+- **`h3-game`:** `town::capture::capture` first in `settle_outcome`'s loop (`adventure_reveal`,
+  which was `start_radius`; the Capitol's limit with `holds_another`); `GameEvent::TownChanged`.
+- **The reach:** the walking loop is `master`'s. The first cut tested the visitor in its occupied
+  branch: +7.7 % on `reach-xl-144`; then a `#[cold]` `unmark_visitors` pass before the loop on a
+  map with towns, `visit_at` `#[inline(never)]` (the trap in the adventure lane's `TRAPS.md`).
+  Bench against a built `master` worktree (the same toolchain), nothing re-baselined:
+  `reach-xl-144` −0.03 %, `reach-lifted-xl-144` +0.35 %, `reach-sea-xl-144` −0.79 %,
+  `random-play-duel-36` +0.31 %, `random-play-sea-36` −0.42 %, `random-play-economy-36`
+  −0.45 %, `random-play-rewards-36` +0.02 %.
+- **Rules, stubs:** TWN-VIS-001 (the step's three cases), TWN-VIS-002 (the visitor) in
+  `town.toml`; TWN-CAP-001's and -002's summaries amended; `TWN-STUB-4` and `-5` lifted;
+  `TWN-STUB-7` (a defended town and another team's visitor refused until T8b's siege) added;
+  case 2's `AllyInTown` not built (`TWN-STUB-1` stays E10's).
+- **Tests:** `h3-adventure` six in `state/tests/towns.rs` (an own town entered and ending the
+  walk; an undefended town of another player or none entered for its capture; a defended one
+  refused until the siege; another player's visitor refused, an allied one met; a capture's owner,
+  garrison, reveal and events; a reveal of all on two levels), the reach's property test with up
+  to three towns; `h3-game` seven in `town/tests/capture.rs` (a neutral and a blue town captured;
+  a Capitol demoted when the new owner holds another; kept when not, or when the other is
+  neutral's; a town the store lacks; an own town entered; a defended one refused; the legal
+  moves), the Grail's start test on both levels.
+- **The review** (independent, no behaviour bug): the visitor's test and `visit_at` read
+  different objects of a shared entrance tile (fixed); `TownChanged` told to every player (given
+  the capture's viewers); the limit could run after no capture (only after one); the game's
+  reveal untested (tested); two texts (`TWN-STUB-7`'s reason, `legal_moves`' doc).
+- **The fixes** (the sandbox restarted during them; the worker resumed from its transcript):
+  `besieges` through `AdventureState::tile_index` (a first version shared `tile_object`'s lookup
+  and failed `bench-check`: `reach-lifted-xl-144` +2.76 %, `random-play-duel-36` +2.01 %; with its
+  own copy +0.38 % and +0.29 %), the test `the_visitors_town_is_the_tiles_object_the_step_meets`
+  (a town and a sawmill on one entrance, both orders); `capture_town` returns the `Viewers` it
+  told (`None`: nothing captured, no limit); `TownChanged { town, capitol, seen_by }` projected
+  as `BattleEnded`; `a_capture_reveals_the_towns_radius_and_tells_its_change_where_it_is_seen`
+  (48×48, a neutral town with a Capitol and a Lookout: the radius 20; blue told nothing).
+- **Gates** (after the fixes): `cargo fmt`, workspace clippy; the scoped verify with the
+  original data every step passed (coverage 100 %, determinism, `bench-check`, `original-data`)
+  but `check-lane` (by design on a `cross-lane` branch); `check-lane --cross-lane`; the workspace
+  tests. No version moved; no replay touched.

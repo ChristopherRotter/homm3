@@ -38,6 +38,7 @@ use crate::setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
     ObjectSetup, Pos, Scenery, Seat, SetupError, StandError, TileMask,
 };
+use crate::town::TownReveal;
 
 /// How far around a battle's tile the battlefield picture's variant counts the scenery, in tiles
 /// along each axis (GAM-BAT-011, E08 T54; the original's 0x41ADB0: x − 3 to x + 3, y − 3 to y + 3).
@@ -471,16 +472,10 @@ impl StaticMap {
                 }
             }
             let event = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Event));
-            // stub: TWN-STUB-4 (a town's entrance is not entered until E09 T8a2)
-            let town = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Town));
             // rule: ADV-DWL-005
             // Before every other draw of the static map; E09's random towns, when built, draw
             // their placeholders before this walk (ADR-0017 point 4).
-            map.place(
-                &dwellings::resolve(part, object, draws),
-                guards,
-                (event, town),
-            );
+            map.place(&dwellings::resolve(part, object, draws), guards, event);
         }
         map.resolve(core, part, &setup.objects, draws);
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
@@ -803,12 +798,10 @@ impl StaticMap {
     /// (ADV-OBJ-001). An `event` blocks no tile, and its visitable tiles are the tiles it lies on,
     /// no tile an object is visited from (ADV-OBJ-007, E08 T62b2: the original's placement clears
     /// the blocked and the visitable bit of its tile, 0x505C78; every shipped map's event has a
-    /// template blocking its tile). A `town`'s entrance is marked as a blocker's until E09 T8a2
-    /// (`TWN-STUB-4`): no typed visit there ([`Self::typed_visits`]), so the step, the reachable
-    /// tiles and the legal moves meet a blocker's entrance, which no hero ends on or passes, as
-    /// before the town was typed, and their loops test nothing more (`bench-check`).
+    /// template blocking its tile). Since E09 T8a2 a town's entrance is a typed visit as every
+    /// typed object's ([`Self::typed_visits`]; its step, TWN-VIS-001).
     // rule: ADV-OBJ-001, ADV-OBJ-007
-    fn place(&mut self, object: &ObjectSetup, guards: Option<Guards>, (event, town): (bool, bool)) {
+    fn place(&mut self, object: &ObjectSetup, guards: Option<Guards>, event: bool) {
         for (column, row) in object.blocked.offsets().filter(|_| !event) {
             if let Some(index) = self.offset(object.anchor, column, row) {
                 self.tiles[index].blocked = true;
@@ -829,8 +822,7 @@ impl StaticMap {
                     .entry(index)
                     .or_default()
                     .push(self.objects.len());
-                // stub: TWN-STUB-4 (a town's entrance is not entered until E09 T8a2)
-                if object.object_type.is_some() && !town {
+                if object.object_type.is_some() {
                     self.typed_visits[index / 64] |= 1 << (index % 64);
                 }
             }
@@ -1350,16 +1342,17 @@ impl AdventureState {
     /// sets the points after the levels (survey `E08-progression.md` §3.2), `placed_heroes_setup`
     /// 0x4CAE10 reveals after it (0x4CAF74, §3.1). Since E08 T83b1 every object owned at load then
     /// reveals the tiles within the part's flag radius of its entrance to its owner
-    /// (`reveal_owned`, ADV-OWN-002; ADR-0016 point 5); since E09 T8a1 a town within its radius
-    /// in `town_radii`, by `TownId`, the game's (the flag radius for a town past the slice). The
-    /// game calls it once, before day 1's start-of-day step.
+    /// (`reveal_owned`, ADV-OWN-002; ADR-0016 point 5); since E09 T8a1 a town by its reveal in
+    /// `towns`, by `TownId`, the game's (the flag radius for a town past the slice; since E09
+    /// T8a2 [`TownReveal::All`] every tile of every level). The game calls it once, before day 1's
+    /// start-of-day step.
     // rule: ADV-MOV-002, ADV-FOG-001, ADV-FOG-003
     pub fn start_game(
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
-        town_radii: &[u8],
+        towns: &[TownReveal],
     ) {
         let lighthouses: Vec<u32> = (0..self.players)
             .map(|p| self.lighthouse_points(part, PlayerId::new(p)))
@@ -1374,7 +1367,7 @@ impl AdventureState {
             hero.movement = hero.max_movement;
         }
         self.reveal_around_heroes(core, part, heroes);
-        self.reveal_owned(part, town_radii);
+        self.reveal_owned(part, towns);
     }
 
     /// The adventure's start-of-day step (ADR-0017 point 3, E08 T40), after the calendar and
@@ -2220,6 +2213,7 @@ impl AdventureState {
                     self.visit_dwelling((core, rules.1), (player, hero), object, creatures, sink);
             }
             Effect::Camp => outcome = self.visit_refugee_camp((player, hero), object, sink),
+            Effect::Town => outcome = self.visit_town(player, visit.object),
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {
@@ -2440,7 +2434,7 @@ impl AdventureState {
     /// every player that has explored a tile it covers and, under `ADV-QUIRK-1` or for a monster
     /// (E08 decision 40: it guards the explored tiles beside it), every player with such a tile on
     /// its fringe.
-    fn object_viewers(&self, core: &Ruleset, object: &MapObject) -> Viewers {
+    pub(crate) fn object_viewers(&self, core: &Ruleset, object: &MapObject) -> Viewers {
         let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS) || object.monster.is_some();
         self.explored
             .iter()
@@ -2479,15 +2473,33 @@ impl AdventureState {
         part.object_type(id).map(|ty| (index, id, ty))
     }
 
+    /// The index of [`Self::tile_object`]'s object, typed or not: the one a step onto `pos`
+    /// meets (E09 T8a2: [`Self::besieges`] reads it as [`Self::visit_at`] does). The same lookup
+    /// as `tile_object`'s, which keeps its own copy: calling this one there put the lookup out of
+    /// line in the walking search's visits (`bench-check`: reach-lifted-xl-144 +2.8 %).
+    pub(crate) fn tile_index(&self, pos: Pos) -> Option<usize> {
+        self.added_visited_from(pos).or_else(|| {
+            self.map
+                .visited_from(pos)
+                .iter()
+                .rev()
+                .copied()
+                .find(|&index| !self.is_removed(index))
+        })
+    }
+
     /// What a step of `player`'s hero onto `pos` meets, if the visit of its object is built
     /// ([`ObjectKind::effect`]): the object of [`Self::tile_object`], how it is visited, whether
     /// the player passes it instead and what the visit does. The visit mode is the type's, but per
     /// player: a border gate whose key `player` holds is passed, not visited (ADV-VIS-005, E08
     /// T15b; the original's step, 0x480EE2, and its pathfinder, 0x56ABB1, test the player's key
-    /// bit). `MoveHero` and the reachable-tiles query both ask here. The caller has checked that
-    /// `pos` is visitable as it stands now.
-    // rule: ADV-VIS-005
-    #[inline]
+    /// bit). Since E09 T8a2 a town defended against `player` is not visited until the siege
+    /// (TWN-VIS-001's second case, [`Self::town_defended`], `TWN-STUB-7`). `MoveHero` and the
+    /// reachable-tiles query both ask here. The caller has checked that `pos` is visitable as it
+    /// stands now. Out of line, as the compiler kept it before the town's test, which made it
+    /// inline it into the walking search (`bench-check`, E09 T8a2).
+    // rule: ADV-VIS-005, TWN-VIS-001
+    #[inline(never)]
     pub(crate) fn visit_at<'p>(
         &self,
         part: &'p AdventureRuleset,
@@ -2495,7 +2507,11 @@ impl AdventureState {
         pos: Pos,
     ) -> Option<StepVisit<'p>> {
         let (object, object_type, ty) = self.tile_object(part, pos)?;
-        ty.kind.effect().map(|effect| StepVisit {
+        // stub: TWN-STUB-7 (a defended town of another team or none is refused until the siege)
+        let open = |effect: &Effect<'_>| {
+            !matches!(effect, Effect::Town) || !self.town_defended(object, player)
+        };
+        ty.kind.effect().filter(open).map(|effect| StepVisit {
             object,
             object_type,
             tile: pos,
@@ -2563,8 +2579,10 @@ impl AdventureState {
         let closed = || across.is_some_and(|at| self.closed_above(part, at));
         // ADR-0016 point 4: another hero is visited from the neighbouring tile: another player's
         // in a battle at once (E08 T19a), an own one in a meeting (T50); not across the top of an
-        // object's tile it stands on or the visitor stands on.
-        // rule: GAM-BAT-004, GAM-MET-001
+        // object's tile it stands on or the visitor stands on. Since E09 T8a2 another team's
+        // hero on a town's entrance is refused ([`Self::besieges`]: the siege, never a field
+        // battle, E09 T8b).
+        // rule: GAM-BAT-004, GAM-MET-001, TWN-VIS-002
         if let Some(other) = self
             .heroes
             .iter()
@@ -2572,6 +2590,10 @@ impl AdventureState {
         {
             if closed() {
                 return Err(AdventureCommandError::FromAbove { step });
+            }
+            // stub: TWN-STUB-7 (another team's hero on a town's entrance: the siege, E09 T8b)
+            if self.besieges(player, &self.heroes[other]) {
+                return Err(AdventureCommandError::Visit { step });
             }
             return Ok((self.live(pos, self.map.at(pos)), Some(Meets::Hero(other))));
         }
@@ -2731,6 +2753,18 @@ impl AdventureState {
     /// E08 T20b); since E09 T8a1 a town's garrison ([`Self::town_garrison`]).
     pub fn army_left(&self, index: usize) -> Option<&[ArmyStack]> {
         self.army_left.get(index).map(Vec::as_slice)
+    }
+
+    /// Writes `army` on the object at `index` (E09 T8a2: a captured town's garrison, written
+    /// empty; tests of a mine's guards since E08 T83b1).
+    pub(crate) fn set_army_left(&mut self, index: usize, army: Vec<ArmyStack>) {
+        self.army_left.set(index, Some(army));
+    }
+
+    /// `player`'s explored tiles, with the static map (E09 T8a2: a captured town's reveal). The
+    /// caller names a player of the game.
+    pub(crate) fn explored_mut(&mut self, player: PlayerId) -> (&mut BitGrid, &StaticMap) {
+        (&mut self.explored[usize::from(player.raw())], &self.map)
     }
 
     /// The garrison of the town at object index `index` as it stands (E09 T8a1, the town epic's
@@ -2957,12 +2991,6 @@ impl AdventureState {
             .iter_mut()
             .filter(|h| h.id == hero)
             .for_each(|h| h.movement = points);
-    }
-
-    /// Writes an army on the object at `index` (tests of a mine's guards, E08 T83b1, until T84's
-    /// battles and Leave Guards write them).
-    pub(crate) fn set_army_left(&mut self, index: usize, army: Vec<ArmyStack>) {
-        self.army_left.set(index, Some(army));
     }
 
     /// Writes the weekly contents at weekly place `place` (tests of the weekly invariants and

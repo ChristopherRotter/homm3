@@ -1,5 +1,5 @@
 //! The town's kind in the ruleset part (E09 T8a1, the town epic's design note §8): compiled,
-//! ownable and entered, without a visit until T8a2 (`TWN-STUB-4`), and in the hash.
+//! ownable and entered, its step's effect since T8a2 (TWN-VIS-001), and in the hash.
 
 use super::*;
 
@@ -14,7 +14,7 @@ fn town_packs(visit: Visit) -> Vec<AdventurePack> {
 
 // covers: ADV-OBJ-002
 #[test]
-fn the_town_is_an_ownable_kind_entered_without_a_visit_yet() {
+fn the_town_is_an_ownable_kind_entered_with_its_step() {
     let part = compile(&town_packs(Visit::Enter)).unwrap();
     let ty = part
         .object_type(part.object_type_by_key("t:town").unwrap())
@@ -23,7 +23,7 @@ fn the_town_is_an_ownable_kind_entered_without_a_visit_yet() {
     assert_eq!((ty.visit, ty.from_above), (Visit::Enter, false));
     assert!(ty.kind.ownable());
     assert!(!ty.kind.weekly());
-    assert_eq!(ty.kind.effect(), None);
+    assert_eq!(ty.kind.effect(), Some(Effect::Town));
     assert_eq!(ty.kind.battle_terrain(), None);
     assert_eq!(ty.kind.dwelling_footprint(), None);
     // An ownable object is entered.
