@@ -1044,7 +1044,7 @@ fn the_errors_and_reasons_read_well() {
         (Unsupported::HeroOnWater(0), "a hero placed on water"),
         (
             Unsupported::OwnedOnWater(0),
-            "an ownable object entered from water",
+            "an ownable object other than a dwelling entered from water",
         ),
     ];
     for (what, text) in reasons {

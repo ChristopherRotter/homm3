@@ -250,7 +250,9 @@ content and draws nothing; it rejects what the current increment cannot represen
   abandoned mine's set (`Body::AbandonedMine`): the first byte's bits 0 to 6 as the resources it
   may draw (`Holds::Resources`, in the core's order; the other three bytes dropped, as the
   original's loader), an empty set or bit 7 refused (`MineResources`, A-31, ADV-MIN-003).
-  Unsupported: an ownable object whose entrance is on water (`OwnedOnWater`). **The map's timed
+  Unsupported: an ownable object whose entrance is on water (`OwnedOnWater`; since v19, E08
+  T97b1, not a dwelling or a random dwelling: a hero in a boat visits one as on land, ADV-DWL-004).
+  **The map's timed
   events** (`RawMap::events`) become `GameSetup::events` in the map's order (GAM-CAL-004): the
   players of their colours that play (a colour nobody plays left out), the human and computer
   flags as read, the file's first day + 1, the interval, the resources without zeros, the index
@@ -261,13 +263,15 @@ content and draws nothing; it rejects what the current increment cannot represen
   dwellings (`codes.rs`'s tables, each the type of the pack that introduced its object: `base` the
   RoE ones, `ab` the ones AB added), 78 `base:refugee_camp`, 216 to 218 `base:random_dwelling`
   when not tied to a town; 216 to 218 are ownable scenery as 17 and 20 (GAM-BAT-011). A dwelling's
-  and a random dwelling's owner as a mine's (`ObjectOwner`, `OwnedOnWater`). A random dwelling's
+  and a random dwelling's owner as a mine's (`ObjectOwner`; on water imported since v19, E08
+  T97b1). A random dwelling's
   holds (`Holds::RandomDwelling`, checked when the game is built): the factions, by the original's
   faction codes 0 to 8 (`codes::FACTIONS`, the town lane's import reuses it) in the core's order —
   216 and 217 the set's bits (one byte in RoE, two from AB), 218 its subclass; the levels, inclusive
   and one-based — 216 and 218 the two level codes plus one, 217 its subclass plus one. A random
   dwelling of 216 or 217 whose town identifier names a town of the map (`TownBody::identifier`)
-  stays a blocker until E09's random towns (ADV-STUB-13). Refused, in this order for one object
+  stays a blocker until E09's random towns (ADV-STUB-13), since v19 (E08 T97b1) once its levels and
+  owner pass the checks below (its faction set is the town's). Refused, in this order for one object
   (input bounds, ADV-QUIRK-36 to -38): classes 18 and 19 (`DwellingClass`, A-36); a subclass past
   its table, 17 past 79, 20 past 1, 217 past 6, 218 past 8 (`Subclass`, A-36); a town identifier
   no town of the map has (`DwellingTown`, A-35); a faction bit past 8 (`UnknownCode`, `faction`); an
