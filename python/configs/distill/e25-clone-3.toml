@@ -1,0 +1,45 @@
+# E25 T27's long clone (increment 7, AI-Q16): T20's bench (`e25-clone-2.toml`: the fair system
+# actor on `e25-neutral.toml`'s mix, 16 M samples, the same seed and held-out set, the learning
+# rate falling over the 16 M) with T26b's best student, `hexconv` normalised 96 x 6 at 1e-3 with
+# T25's keys (0.755 agreement at 4 M, 683 us a sample-pass on the GTX 1070; the next best 0.034
+# behind, so it alone by decision 3), and the 2 x 512 MLP as the control (decision 1; T20's own
+# student on the same episodes: 0.576, its ladder 0.411 +- 0.018). Decision 5's second gate:
+# PPO only if the clone's ladder against the fair actor beats 0.411 beyond its interval. About 6
+# hours of the student's steps (T26b: 5 481 s per 4 M), in parts under 2 hours. From python/:
+#
+#   uv run --group train python -m h3env.train.distill --teacher system --config configs/distill/e25-clone-3.toml --out runs/clone-3
+#
+# Ctrl-C stops it at the next minibatch, scored and saved (E25 T26a); each later part:
+#
+#   uv run --group train python -m h3env.train.distill --resume runs/clone-3
+run = "configs/e25-neutral.toml"
+seed = 7
+samples = 16_000_000
+heldout = 16_384
+eval_every = 2_000_000
+envs = 256
+rollout = 128
+epochs = 2
+minibatch = 512
+lr = 3e-4
+lr_floor = 0.1
+value_coef = 0.5
+max_grad_norm = 0.5
+device = "auto"
+ladder = ["system", "system-all-seeing"]
+ladder_per_kind = 500
+
+[students.mlp]
+kind = "mlp"
+
+[students.hexconv-n-96x6-a]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+lr = 1e-3
+warmup = 131_072
+weight_decay = 0.01

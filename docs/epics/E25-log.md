@@ -1359,3 +1359,41 @@ an entry only where a task builds on it.
 - **For T26b:** the structure sweep's eight students hold 23.9 M parameters, a checkpoint about
   300 MB; its commands in parts in `QUEUE.md`. Dropping a student needs a new bench (a resume
   keeps the students), so the lower rates' call comes before the first part.
+
+## T26b — The structure sweep (2026-11-05)
+
+- **The user's run** of `configs/distill/e25-structure.toml` on the GTX 1070 to its budget (4 M
+  samples, two passes; the bench's resume of T26a; the table as pasted, `report.json` to be
+  uploaded as `records/distill/structure-1.json`):
+
+  | Student | CE entry | CE cast | Agreement | Moves | Melee | Shots | Value | Seconds | µs | MB |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | MLP 2 × 512 | 1.510 | 1.996 | 0.533 | 0.285 | 0.364 | 0.617 | 0.624 | 188 | 23 | 100 |
+  | MLP with the mask | 1.354 | 2.023 | 0.561 | 0.409 | 0.388 | 0.606 | 0.603 | 200 | 25 | 102 |
+  | `entity` 256 × 4, 5e-4 | 0.867 | 1.397 | 0.719 | 0.481 | 0.685 | **0.783** | **0.679** | 2 836 | 353 | 1 457 |
+  | … 2e-4 | 1.055 | 1.512 | 0.673 | 0.346 | 0.652 | 0.768 | 0.648 | 2 825 | 352 | 1 456 |
+  | `hexconv` normalised 96 × 6, 1e-3 | **0.662** | **1.351** | **0.755** | **0.669** | **0.718** | 0.760 | 0.590 | 5 481 | 683 | 3 076 |
+  | … 3e-4 | 0.785 | 1.581 | 0.721 | 0.598 | 0.670 | 0.719 | 0.545 | 5 487 | 683 | 2 460 |
+  | `hexformer` 96 × 4, 5e-4 | 0.864 | 1.469 | 0.704 | 0.511 | 0.656 | 0.733 | 0.633 | 6 205 | 773 | 1 831 |
+  | … 2e-4 | 1.078 | 1.729 | 0.642 | 0.462 | 0.560 | 0.691 | 0.540 | 6 216 | 774 | 1 831 |
+
+- **The read:** every structured student passes the MLP by 0.11 to 0.22 agreement at the same
+  samples (the MLP 0.533 here, T16's 0.531: the bench reproduces); `hexconv` at 1e-3 leads overall
+  (0.755), in the moves (0.669 against the MLP's 0.285 and T20's 16 M MLP's 0.378) and in melee
+  (0.718), and in both cross-entropies; `entity` at 5e-4 is second (0.719) at half the cost (353
+  µs) and leads the shots (0.783) and the value (explained variance 0.679 against `hexconv`'s
+  0.590, below the MLP's 0.624). The higher rate leads in every family, by 0.03 to 0.06 (as at
+  T26's 0.45 M). The mask alone gains the MLP 0.028 (its moves 0.285 to 0.409). Ranked against
+  the cost: `hexconv` 1e-3 (0.755, 683 µs), `entity` 5e-4 (0.719, 353), `hexformer` 5e-4 (0.704,
+  773), the MLP with the mask (0.561, 25).
+- **Decision 5's first gate passed:** `hexconv` normalised 96 × 6 at 1e-3, 0.755 at 4 M (0.60
+  asked) within the cap (about 700 µs on `network --time`'s measure, where it was 595 without
+  T25's keys; 683 on the bench's with them). By decision 3 it alone goes to T27: the
+  next best (`hexconv` at 3e-4, 0.721; `entity` at 5e-4, 0.719) is 0.034 behind, beyond 0.02. Its
+  lower value (0.590) is T28's to watch (PPO's critic starts from it); T27's clone measures it at
+  16 M.
+- **T27 prepared:** `configs/distill/e25-clone-3.toml`, T20's bench (16 M, the same seed and
+  held-out set, the ladder against both system actors at 500 a kind) with the winner and the 2 ×
+  512 MLP as the control (decision 1; T20's student again on the same episodes, 12 minutes of
+  steps). About 6 hours of the winner's steps by T26b's seconds, in parts under 2 hours; its
+  file about 6 MB (1.49 M parameters).
