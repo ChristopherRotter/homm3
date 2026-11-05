@@ -2516,7 +2516,7 @@ impl AdventureState {
         let (object, object_type, ty) = self.tile_object(part, pos)?;
         ty.kind.effect().and_then(|effect| {
             let mode = match effect {
-                Effect::Town => self.town_visit(object, player)?,
+                Effect::Town => self.town_visit(object, player),
                 _ => ty.visit,
             };
             Some(StepVisit {

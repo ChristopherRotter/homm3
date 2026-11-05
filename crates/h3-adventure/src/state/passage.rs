@@ -148,26 +148,17 @@ impl AdventureState {
                 _ => Err(blocked(StandError::Terrain)),
             };
         }
+        // Another team's hero on a town's entrance (TWN-VIS-002, E09 T8b2b): not met as a hero,
+        // the step visits the town instead (the siege against that hero, a neighbour's object
+        // below: from a stop node, and a flight passes it); a boat's step stays a landing onto a
+        // hero, which `sail_entry` refuses.
         let hero = self
             .heroes
             .iter()
-            .position(|h| h.pos == pos && h.id != mover);
-        // Another team's hero on a town's entrance (TWN-VIS-002): the town's siege from the tile
-        // before, from a stop node only, as a neighbour's object (E09 T8b2b); a flight passes it.
-        // A boat's step there is a landing onto a hero, which `sail_entry` refuses.
-        let besieged = hero.is_some_and(|other| self.besieges(player, &self.heroes[other]));
-        if besieged && !matches!(mode, Mode::Sail(_)) {
-            let town = self.visit_at(part, player, pos);
-            let stop = town.filter(|_| node == Node::Stop).map(Meets::Object);
-            return match (stop, fly) {
-                (None, false) => Err(AdventureCommandError::NoStop { step }),
-                (stop, _) => Ok(Entry {
-                    tile,
-                    stop: stop.map(Some),
-                    pass: fly,
-                }),
-            };
-        }
+            .position(|h| h.pos == pos && h.id != mover)
+            .filter(|&other| {
+                matches!(mode, Mode::Sail(_)) || !self.besieges(player, &self.heroes[other])
+            });
         if let Mode::Sail(boat) = mode {
             return self.sail_entry(part, (player, boat), (from, pos), tile, hero, step);
         }

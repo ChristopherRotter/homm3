@@ -124,11 +124,10 @@ impl AdventureState {
     /// survey's §7.2 step 3: a visiting hero defends; an own town's included, which only a map
     /// placing another player's hero on its entrance gives, TWN-SET-010). The step meets such a
     /// visitor first ([`Self::besieges`]) and visits the town here; the walking search, which
-    /// leaves its tile unmarked, meets it here too. Always a visit (an `Option` for
-    /// [`Self::visit_at`], whose other kinds may have none).
+    /// leaves its tile unmarked, meets it here too.
     // rule: TWN-VIS-001, TWN-VIS-002
     #[inline(never)]
-    pub(crate) fn town_visit(&self, index: usize, player: PlayerId) -> Option<Visit> {
+    pub(crate) fn town_visit(&self, index: usize, player: PlayerId) -> Visit {
         let map = self.map();
         let visitor = map.objects()[index].entrance(map).is_some_and(|entrance| {
             self.heroes()
@@ -141,11 +140,11 @@ impl AdventureState {
                 && self
                     .town_garrison(index)
                     .is_some_and(|army| !army.is_empty());
-        Some(if defended {
+        if defended {
             Visit::Neighbour
         } else {
             Visit::Enter
-        })
+        }
     }
 
     /// The visit of the town at object index `index` by `player`'s hero `hero` (TWN-VIS-001; the
