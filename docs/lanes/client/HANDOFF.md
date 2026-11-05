@@ -54,7 +54,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `shade_mouse_hex` 0x494390, the aims'; CLT-Q52 to Q56 asked and answered at once: fix all), a
   builder (`h3_view::shades`), the captures (11 stills exact, 5 sequences; the sandbox's server
   stopped overnight mid-capture: resumed, nothing lost) and a fresh reviewer (five findings
-  fixed; the targeted aims call no `battle_set_shades`, read). `drawn` 235 the same; `check.sh`.
+  fixed; the targeted aims call no `battle_set_shades`, read). `drawn` 219 the same, 16 new (235 the same after the review); `check.sh`.
 
 - **2026-11-04, E17 M6 T4b2b2 (done; #722 merged).**
   The original data staged (93 files, by the file tool: the device shell did not start); #717
