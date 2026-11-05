@@ -19,9 +19,9 @@ use proptest::test_runner::TestCaseError;
 
 use super::import::object;
 use super::play::{
-    BLOCKERS, FAITHFUL, HERO_TEMPLATE, KINDS, MONSTER_OBJECTS, STRICT, Slots, Spot, Step, army,
-    experience, experienced, lay_out, masks, options, plan, player_of, resolve, slots, start_on,
-    steps, tile,
+    BLOCKERS, FAITHFUL, HERO_TEMPLATE, KINDS, MONSTER_OBJECTS, STRICT, Slots, Spot, Step,
+    all_objects, army, experience, experienced, lay_out, masks, object_index, object_reach,
+    options, plan, player_of, resolve, slots, start_on, steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
@@ -49,9 +49,11 @@ struct Unseen {
     /// one (SoD's plans) keeps its default, drawn from the seed before the objects' contents.
     experience: Vec<Option<u32>>,
     /// (E08 T86b1) Another owner at load for each ownable object the viewer never sees, in the
-    /// map's order (cyclically; empty: kept): a playing colour but the viewer's by its index
-    /// (modulo their number), or none (neutral). Its owner shows only with the object (ADV-OWN-003),
-    /// and its reveal at the start is its owner's (ADV-OWN-001).
+    /// map's order (cyclically; empty: kept; one the viewer owns is kept, E08 T96b1, [`vary`]): a
+    /// playing colour but the viewer's by its index (modulo their number), or none (neutral). Its
+    /// owner shows only with the object (ADV-OWN-003), and its reveal at the start is its owner's
+    /// (ADV-OWN-001). (E08 T96b1) A dwelling's too (increment 10's design note §10: its owner
+    /// shows with it), the random dwellings after every other ownable object.
     owners: Vec<Option<u8>>,
 }
 
@@ -154,7 +156,14 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 /// ground (E08 decision 40: a monster shows on the fringe in either profile). A hero's tile stays
 /// land, and no blocker is added over it; (E08 T75b) a boat's tile stays water, and no blocker is
 /// added over it (the setup refuses both, ADV-SEA-001), while a boat the viewer never sees may be
-/// removed as a blocker is.
+/// removed as a blocker is. (E08 T96b1) An object the viewer owns at load stays, and stays its
+/// own, wherever it lies: what it owns is its own, and so its income (GAM-RES-003), which the
+/// start's reveal does not always show (ADV-OWN-002: an object visited from no tile of the map, as
+/// a mine anchored on the map's first column, has no entrance and reveals nothing). A random
+/// dwelling (increment 10's objects in the plans) shows as the dwelling the build resolves it to,
+/// whose footprint may lie past its template's at a moved anchor: it is removed, or its owner at
+/// load changed, only where the viewer sees none of the tiles it may cover once resolved
+/// ([`object_reach`]), and no hero is moved onto one of those tiles.
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -179,11 +188,22 @@ fn vary(
         .map(|o| (o.pos.x, o.pos.y, o.pos.z))
         .collect();
     // E08 T86b1: an ownable object's entrance stays land, as a hero's tile (the import refuses one
-    // on water: `OwnedOnWater`).
+    // on water: `OwnedOnWater`); (E08 T96b1) an abandoned mine's too, which is ownable (`lay_out`'s
+    // `OWNABLE`) though neutral at load, with no owner in its body; and a random dwelling's, ownable
+    // too (`lay_out`'s `ownable`; a placed dwelling's body is `Owned`): its template's entrance at
+    // the map's anchor, which the import checks before the build resolves it.
     let entrances: Vec<Spot> = m
         .objects
         .iter()
-        .filter(|o| matches!(o.body, Body::Mine { .. } | Body::Owned { .. }))
+        .filter(|o| {
+            matches!(
+                o.body,
+                Body::Mine { .. }
+                    | Body::AbandonedMine(_)
+                    | Body::Owned { .. }
+                    | Body::RandomDwelling(_)
+            )
+        })
         .flat_map(|o| {
             let (_, visitable) = masks(usize::try_from(o.template - 1).unwrap());
             visitable.iter().filter_map(|&(column, row)| {
@@ -232,6 +252,21 @@ fn vary(
             objects(spot) && (!monster || ground(spot)) && !seen_monsters.contains(&spot)
         })
     };
+    // E08 T96b1: a random dwelling the viewer owns at load stays too (its body holds its owner).
+    let own = |o: &Object| match o.body {
+        Body::Mine { owner } | Body::Owned { owner } => owner == u32::from(colour),
+        Body::RandomDwelling(ref d) => d.owner == u32::from(colour),
+        _ => false,
+    };
+    // E08 T96b1: the tiles a random dwelling may cover once resolved past its template's
+    // ([`object_reach`]: its outcomes' footprints at the moved anchor), which the viewer sees of it
+    // as of any object (its view is the resolved dwelling's): it is removed only when it sees none
+    // of them either, nor a monster there (as [`unseen_blocker`]'s).
+    let unseen_reach = |o: &Object| {
+        object_reach(o, side)
+            .into_iter()
+            .all(|spot| objects(spot) && !seen_monsters.contains(&spot))
+    };
     let mut blocker = 0;
     m.objects.retain(|o| {
         if o.template == HERO_TEMPLATE {
@@ -241,7 +276,10 @@ fn vary(
         let index = blocker;
         blocker += 1;
         let removed = unseen.removed.get(index % unseen.removed.len().max(1)) == Some(&true);
-        !(removed && unseen_blocker((o.pos.x, o.pos.y, o.pos.z), template))
+        own(o)
+            || !(removed
+                && unseen_blocker((o.pos.x, o.pos.y, o.pos.z), template)
+                && unseen_reach(o))
     });
     for &((x, y, z), template) in &unseen.added {
         let anchor = (x % side, y % side, z % levels);
@@ -265,34 +303,52 @@ fn vary(
         .filter(|&(c, p)| (p.human || p.computer) && c != colour)
         .map(|(c, _)| c)
         .collect();
+    // (E08 T96b1) A placed dwelling's owner is among them (its body is `Owned`); a random
+    // dwelling's comes after every other's, so that the others keep the owners they drew before,
+    // and only when the viewer sees none of the tiles it may cover once resolved
+    // ([`object_reach`]).
     let mut ownable = 0;
-    for o in &mut m.objects {
+    let unseen_owner = |o: &Object| {
         let at = (o.pos.x, o.pos.y, o.pos.z);
         let template = usize::try_from(o.template.saturating_sub(1)).unwrap();
-        let unseen_object = o.template != HERO_TEMPLATE && covers(at, template, side).all(&objects);
-        let (Body::Mine { owner } | Body::Owned { owner }) = &mut o.body else {
-            continue;
-        };
-        if !unseen_object {
-            continue;
-        }
-        let index = ownable;
-        ownable += 1;
-        match unseen.owners.get(index % unseen.owners.len().max(1)) {
-            Some(Some(n)) if !playing.is_empty() => {
-                *owner = u32::from(playing[usize::from(*n) % playing.len()]);
+        o.template != HERO_TEMPLATE
+            && covers(at, template, side).all(&objects)
+            && object_reach(o, side).into_iter().all(&objects)
+    };
+    for random in [false, true] {
+        for o in &mut m.objects {
+            let unseen_object = unseen_owner(o);
+            let owner = match &mut o.body {
+                Body::Mine { owner } | Body::Owned { owner } if !random => owner,
+                Body::RandomDwelling(d) if random => &mut d.owner,
+                _ => continue,
+            };
+            if !unseen_object {
+                continue;
             }
-            Some(None) => *owner = 0xFF,
-            _ => {}
+            let index = ownable;
+            ownable += 1;
+            if *owner == u32::from(colour) {
+                continue;
+            }
+            match unseen.owners.get(index % unseen.owners.len().max(1)) {
+                Some(Some(n)) if !playing.is_empty() => {
+                    *owner = u32::from(playing[usize::from(*n) % playing.len()]);
+                }
+                Some(None) => *owner = 0xFF,
+                _ => {}
+            }
         }
     }
+    // E08 T96b1: and the tiles a random dwelling may cover once resolved, whatever it draws (the
+    // setup refuses a hero there, `SetupError::RandomDwellingTile`).
     let blocked: Vec<Spot> = m
         .objects
         .iter()
         .filter(|o| o.template != HERO_TEMPLATE)
         .flat_map(|o| {
             let template = usize::try_from(o.template - 1).unwrap();
-            covers((o.pos.x, o.pos.y, o.pos.z), template, side)
+            covers((o.pos.x, o.pos.y, o.pos.z), template, side).chain(object_reach(o, side))
         })
         .collect();
     let mut other = 0;
@@ -1147,6 +1203,221 @@ fn check_told(
     Ok(())
 }
 
+/// Whether objects of type `object_type` hire out creatures (E08 T96b1, increment 10's objects):
+/// some(false) for a dwelling or a random dwelling (which the build resolves to a dwelling,
+/// ADV-DWL-005), some(true) for a Refugee Camp, none for every other type.
+fn hire_source(rules: &GameRuleset, object_type: h3_adventure::ObjectTypeId) -> Option<bool> {
+    match rules.adventure().object_type(object_type).map(|t| &t.kind) {
+        Some(ObjectKind::Dwelling { .. } | ObjectKind::RandomDwelling) => Some(false),
+        Some(ObjectKind::RefugeeCamp { .. }) => Some(true),
+        _ => None,
+    }
+}
+
+/// What `viewer` is shown of the dwellings and the Refugee Camps of `state` (E08 T96b1; increment
+/// 10's design note §10, ADV-OWN-003 amended; §14's "Properties"): `view` its observation and
+/// `told` the events of the command that led there as it is told them. Each one it sees shows its
+/// type, anchor and footprint and, a dwelling, its owner as the state holds it, a camp none:
+/// nothing else (no monster, production, guards, visited mark or boat tile), so never a
+/// dwelling's counts or guards nor a camp's creature or count; and none is among what it knows
+/// by its visits. Those show only to the visitor's owner, by its decision and its own events: an
+/// open hire or guards' question and a hire dialog (its counts and costs) are of a hero of its own
+/// on the source's entrance, as an offer's and a dialog's opening there (`OfferOpened`,
+/// `HireOpened`); the free creatures joined or refused and the purchases' joins (`CreaturesJoined`,
+/// `JoinRefused`) are of a hero of its own; a free creature missing (`NoneToRecruit`) is at a
+/// dwelling of its own on whose entrance a hero of its own stands, and a deserted camp
+/// (`ObjectEmpty`) is one a hero of its own stands on.
+/// Of a source any viewer that sees it is told only the flag, with the owner the state holds
+/// (`ObjectFlagged`, never a camp's), and never a change of guards, of a monster's word or of a
+/// mark (`GuardsChanged`, `MonsterChanged`, `ObjectMarked`: §10, "a battle's change of a
+/// dwelling's guards needs no event"). The guards' battle shows as any battle (§10, ADR-0016
+/// point 6), which [`check_told`] follows. The view properties check every player after every
+/// command, so each of those is told to the visitor's owner alone.
+fn check_hire_sources(
+    state: &GameState,
+    rules: &GameRuleset,
+    viewer: PlayerId,
+    view: &GameObservation,
+    told: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let adventure = state.adventure();
+    let map = adventure.map();
+    let public: Vec<ObjectView> = all_objects(state)
+        .filter(|&(i, _)| !adventure.is_removed(i))
+        .filter_map(|(i, o)| {
+            let object_type = o.object_type?;
+            let camp = hire_source(rules, object_type)?;
+            o.tiles(map).any(|pos| sees(view, pos)).then(|| ObjectView {
+                object_type,
+                anchor: o.anchor,
+                blocked: o.blocked,
+                visitable: o.visitable,
+                drawn: o.drawn,
+                monster: None,
+                owner: if camp { None } else { adventure.owner(i) },
+                production: None,
+                guards: None,
+                visited: false,
+                boat_tile: None,
+            })
+        })
+        .collect();
+    let shown: Vec<ObjectView> = view
+        .adventure
+        .objects
+        .iter()
+        .filter(|o| hire_source(rules, o.object_type).is_some())
+        .cloned()
+        .collect();
+    prop_assert_eq!(shown, public);
+    let known = &view.adventure.known;
+    prop_assert!(
+        known
+            .iter()
+            .all(|k| hire_source(rules, k.object_type).is_none()),
+        "a dwelling or a camp known by a visit: {:?}",
+        known
+    );
+    // The source of this type and anchor still on the map, if it is one.
+    let source = |object_type, anchor| {
+        hire_source(rules, object_type)?;
+        let index = object_index(state, object_type, anchor)?;
+        let object = adventure
+            .object(index)
+            .filter(|_| !adventure.is_removed(index));
+        object.map(|o| (index, o))
+    };
+    let own = |hero: HeroId| adventure.hero(hero).filter(|h| h.owner == viewer);
+    // Whether the viewer's hero `hero` stands on an entrance of the source.
+    let visits = |hero: HeroId, object_type, anchor| {
+        own(hero)
+            .zip(source(object_type, anchor))
+            .is_some_and(|(h, (_, o))| o.covers(h.pos).1)
+    };
+    // Whether one of the viewer's heroes stands on an entrance of the source.
+    let stands = |object_type, anchor| {
+        let source = source(object_type, anchor);
+        adventure
+            .heroes()
+            .iter()
+            .any(|h| h.owner == viewer && source.is_some_and(|(_, o)| o.covers(h.pos).1))
+    };
+    let hiring =
+        |kind: &OfferKind| matches!(kind, OfferKind::Hire { .. } | OfferKind::Guarded { .. });
+    match &view.decision {
+        Some(DecisionView::Offer(offer)) if hiring(&offer.kind) => prop_assert!(
+            visits(offer.hero, offer.object_type, offer.anchor),
+            "{:?} open for the viewer without its visit",
+            offer
+        ),
+        Some(DecisionView::Hire(hire)) => {
+            let h3_game::HireTarget::Hero(hero) = hire.target;
+            prop_assert!(
+                visits(hero, hire.object_type, hire.anchor),
+                "{:?} open for the viewer without its visit",
+                hire
+            );
+        }
+        _ => {}
+    }
+    for event in told {
+        match *event {
+            // A question's content is the decision's, above.
+            GameEvent::OfferOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } if hire_source(rules, object_type).is_some() => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(
+                    visits(hero, object_type, anchor),
+                    "{:?} told without the viewer's visit",
+                    event
+                );
+            }
+            GameEvent::HireOpened {
+                player,
+                target: h3_game::HireTarget::Hero(hero),
+                object_type,
+                anchor,
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(
+                    visits(hero, object_type, anchor),
+                    "{:?} told without the viewer's visit",
+                    event
+                );
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::CreaturesJoined { hero, .. }
+                    | AdventureEventKind::JoinRefused { hero, .. },
+                ..
+            }) => prop_assert!(
+                own(hero).is_some(),
+                "{:?} of a hero not the viewer's",
+                event
+            ),
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::NoneToRecruit {
+                        object_type,
+                        anchor,
+                        ..
+                    },
+                ..
+            }) => {
+                let owner = source(object_type, anchor).and_then(|(i, _)| adventure.owner(i));
+                prop_assert_eq!(owner, Some(viewer), "{:?}", event);
+                prop_assert!(
+                    stands(object_type, anchor),
+                    "{:?} told without the viewer's visit",
+                    event
+                );
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::ObjectEmpty {
+                        object_type,
+                        anchor,
+                    },
+                ..
+            }) if hire_source(rules, object_type).is_some() => prop_assert!(
+                stands(object_type, anchor),
+                "{:?} told without the viewer's visit",
+                event
+            ),
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::ObjectFlagged {
+                        object_type,
+                        anchor,
+                        owner,
+                    },
+                ..
+            }) if hire_source(rules, object_type).is_some() => {
+                let flagged = source(object_type, anchor).map(|(i, _)| adventure.owner(i));
+                prop_assert_eq!(flagged, Some(Some(owner)), "{:?}", event);
+                prop_assert_eq!(hire_source(rules, object_type), Some(false), "{:?}", event);
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::GuardsChanged { object_type, .. }
+                    | AdventureEventKind::MonsterChanged { object_type, .. }
+                    | AdventureEventKind::ObjectMarked { object_type, .. },
+                ..
+            }) => prop_assert!(
+                hire_source(rules, object_type).is_none(),
+                "{:?} of a dwelling or a camp",
+                event
+            ),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 /// The tiles of `player`'s heroes, by id.
 fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
     let heroes = game.adventure().heroes().iter();
@@ -1267,6 +1538,15 @@ proptest! {
     /// running: [`another_players_level_up_shows_nothing_of_its_offers`] plays one whose offers
     /// differ. Since E08 T85b a month's start ends the comparison: its kind and a creature
     /// month's monsters are public draws of the game's stream, which the hidden differences move.
+    /// Since E08 T96b1 the other game may hold other owners at load of the dwellings the viewer
+    /// never sees, fewer of them and of the camps, other camps' creatures (the seed) and, seldom,
+    /// other counts after another player's visit (its free creatures joined in one game and
+    /// refused for want of room in the other, its army changed); never other guards (another
+    /// player's battle goes alike in both games, [`outcome`]; nothing else sets them). A question
+    /// of the viewer's at a camp, or at a dwelling whose counts differ between the two games, ends
+    /// the comparison when the two games' differ; at any other dwelling the two are the same. And
+    /// every step checks what the viewer is shown of them in both games
+    /// ([`check_hire_sources`]).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in plan(),
@@ -1345,6 +1625,12 @@ proptest! {
                 break;
             }
             let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
+            // E08 T96b1: what the viewer is shown of the dwellings and the camps, in both games
+            // (the other's owners at load, armies and seed differ).
+            for (game, events) in [(&a, &ta), (&b, &tb)] {
+                let seen = observe(game, rules, Viewer::Player(viewer));
+                check_hire_sources(game, rules, viewer, &seen, events)?;
+            }
             // A battle shows its side the other's stacks (survey `E08-battles.md` §9; E08
             // T19a): the comparison ends when the viewer's starts.
             let battle = |events: &[GameEvent]| {
@@ -1357,7 +1643,7 @@ proptest! {
             }
             // A monster's answer follows from its aggression, drawn from the seed and never
             // shown (ADV-MON-002, ADV-MON-007; E08 T20b3b1): the comparison ends when the viewer
-            // is told a monster's offer, as at a battle.
+            // is told a monster's offer, as at a battle (a dwelling's or a camp's question: below).
             let answered = |events: &[GameEvent]| {
                 events.iter().any(|e| match *e {
                     GameEvent::OfferOpened { object_type, .. } => matches!(
@@ -1438,13 +1724,50 @@ proptest! {
                 prop_assert_eq!(blind(ta), blind(tb));
                 break;
             }
+            // E08 T96b1: a dwelling's or a Refugee Camp's question shows its visitor's owner, in
+            // its decision, what the source holds: a camp's week's creature, a draw of the game's
+            // stream (ADV-RFG-001) that the hidden differences move, or a dwelling's guards'
+            // creature and word, the same in both games by construction (above). When the
+            // viewer's own at a camp, or at a dwelling whose counts differ between the two games
+            // (another player's visit, above), names another in the other game the comparison
+            // ends, as at a visit's contents (its events, the same, name the object only); at any
+            // other dwelling the two games' decisions are the same (a difference is a leak). One
+            // that names the same goes on (a decline keeps the rest hidden, an acceptance ends
+            // it, `bought`). Another player's is told to that player alone (`OfferOpened`): the
+            // comparison goes on past it, its answer compared by [`outcome`] (a purchase of a
+            // creature the other game's camp lacks is refused there, which ends it).
+            let question = ta.iter().find_map(|e| match *e {
+                GameEvent::OfferOpened {
+                    object_type,
+                    anchor,
+                    ..
+                } => hire_source(rules, object_type).map(|camp| (camp, object_type, anchor)),
+                _ => None,
+            });
+            if let Some((camp, object_type, anchor)) = question {
+                let decision =
+                    |game: &GameState| observe(game, rules, Viewer::Player(viewer)).decision;
+                let counts = |game: &GameState| {
+                    let index = object_index(game, object_type, anchor)?;
+                    game.adventure().dwelling_counts(index).map(<[u32]>::to_vec)
+                };
+                if camp || counts(&a) != counts(&b) {
+                    if decision(&a) != decision(&b) {
+                        prop_assert_eq!(ta, tb);
+                        break;
+                    }
+                } else {
+                    prop_assert_eq!(decision(&a), decision(&b), "{:?}", question);
+                }
+            }
             prop_assert_eq!(ta, tb);
             check_same(&a, &b, rules, viewer)?;
         }
     }
 
     /// The observation's consistency with the events, for every player at every step of random
-    /// play on imported maps, in both profiles ([`check_told`]).
+    /// play on imported maps, in both profiles ([`check_told`]); (E08 T96b1) and what each is
+    /// shown of the dwellings and the camps ([`check_hire_sources`]), at the start too.
     #[test]
     fn views_move_as_the_events_say(
         plan in plan(),
@@ -1460,6 +1783,9 @@ proptest! {
             .iter()
             .map(|&p| observe(&state, rules, Viewer::Player(p)))
             .collect();
+        for (&player, view) in players.iter().zip(&views) {
+            check_hire_sources(&state, rules, player, view, &[])?;
+        }
         for step in &steps {
             let legal = options(&state, rules);
             let (actor, command) = resolve(&state, rules, &legal, step);
@@ -1468,7 +1794,10 @@ proptest! {
             for (&player, view) in players.iter().zip(&mut views) {
                 let after = observe(&state, rules, Viewer::Player(player));
                 let own = Actor::Player(player) == actor && result.is_ok();
-                check_told(player, (view, &after), &told(&events, player), own)?;
+                let told = told(&events, player);
+                check_told(player, (view, &after), &told, own)?;
+                // E08 T96b1: the dwellings and the camps, to every player.
+                check_hire_sources(&state, rules, player, &after, &told)?;
                 *view = after;
             }
         }
@@ -1565,6 +1894,75 @@ fn vary_changes_what_the_viewer_never_sees_only() {
     });
     let varied = vary(&roe, 0, &unseen, |_| false, |_| false);
     assert_eq!(experience(&varied), [Some(0), Some(3_000)]);
+}
+
+/// [`vary`] and a random dwelling (E08 T96b1): the build resolves it to a dwelling whose tiles may
+/// lie past its template's, at a moved anchor ([`object_reach`]), and the viewer sees it wherever
+/// it sees one of those. Red's at load: with every tile unseen by Blue it is removed or made
+/// neutral; with one tile past its template's seen it stays, Red's; Red's own stays its own.
+#[test]
+fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
+    let plan = super::play::Plan {
+        version: crate::model::Version::Sod,
+        side: 8,
+        two_levels: false,
+        tiles: vec![(0, 0, 0); 64],
+        players: vec![(0, true), (1, true)],
+        heroes: vec![((1, 1, 0), None), ((6, 6, 0), None)],
+        hero_types: 0,
+        backpacks: vec![],
+        skills: vec![],
+        kits: vec![],
+        nomads: None,
+        // A random dwelling of 216 (one faction, one level), visited on the left.
+        blockers: vec![((5, 3, 0), BLOCKERS.len() * 92 + 1)],
+        difficulty: 1,
+        exchange: None,
+        events: Vec::new(),
+        owners: vec![Some(0)],
+    };
+    let m = lay_out(&plan);
+    let random = |m: &RawMap| -> Vec<(Spot, u32)> {
+        m.objects
+            .iter()
+            .filter_map(|o| match &o.body {
+                Body::RandomDwelling(d) => Some(((o.pos.x, o.pos.y, o.pos.z), d.owner)),
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!(random(&m), [((5, 3, 0), 0)]);
+    let o = m
+        .objects
+        .iter()
+        .find(|o| matches!(o.body, Body::RandomDwelling(_)));
+    let o = o.unwrap();
+    let template = usize::try_from(o.template - 1).unwrap();
+    let past: Vec<Spot> = object_reach(o, 8)
+        .into_iter()
+        .filter(|&spot| covers((5, 3, 0), template, 8).all(|c| c != spot))
+        .collect();
+    assert!(!past.is_empty(), "{:?}", object_reach(o, 8));
+    let unseen = |removed: bool| Unseen {
+        seed: None,
+        armies: Vec::new(),
+        tiles: Vec::new(),
+        removed: vec![removed],
+        added: Vec::new(),
+        moved: Vec::new(),
+        experience: Vec::new(),
+        owners: vec![None],
+    };
+    let blue = |removed: bool, objects: &dyn Fn(Spot) -> bool| {
+        random(&vary(&m, 1, &unseen(removed), |_| true, objects))
+    };
+    assert_eq!(blue(true, &|_| true), []);
+    assert_eq!(blue(false, &|_| true), [((5, 3, 0), 0xFF)]);
+    for removed in [true, false] {
+        assert_eq!(blue(removed, &|spot| spot != past[0]), [((5, 3, 0), 0)]);
+    }
+    let red = vary(&m, 0, &unseen(true), |_| true, |_| true);
+    assert_eq!(random(&red), [((5, 3, 0), 0)]);
 }
 
 // covers: ADV-FOG-004, ADV-PIK-001, ADV-PIK-003

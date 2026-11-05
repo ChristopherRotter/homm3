@@ -128,6 +128,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 256. **T96 in three, as increment 9's T86** (the user; recommended): T96a the map `e08-dwellings-36` and its golden replays (random play over 22 days, the scripted paths of design §14); T96b1 the plans' `DWELLINGS` classes and their properties (`play.rs`, `view.rs`), with the inbox's three failing `view.rs` seeds and the plan generator's `OwnedOnWater` case (the same plans; the seeds committed with the fix); T96b2 `e08-dwellings-144`, the three workloads and the census's remaining lines. Not chosen: T96a and T96b1 in one session; T96 whole. And **the four shipped maps refused as `OwnedOnWater`** (a dwelling entered from water: Adventures of Jared Haret, Rise of the Phoenix and its Allied version, Serpents Treasure) **go to T97's audit** (the user; recommended): the typed refusal stays; whether such a dwelling is built is a sourced rule, settled at the audit or carried into increment 11. Not chosen: in T96; a task of its own before T97.
 
+### Decisions at T96b1's start (2026-11-05, user)
+
+257. **T96b1 whole, in one pull request** (the user; the agent had recommended two, the three failing seeds first): the three `view.rs` seeds with their fixes, the plans' `DWELLINGS` classes and design §14's checks in `play.rs` and `view.rs`, the cover test's hire answers. The user merges the pull request (not the agent). Not chosen: two parts, the seeds now and the plans in the next session; two parts, both in this session.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -153,7 +157,8 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
   - **T95b The purchase and the hire dialog.** Done (2026-11-05, whole, decision 255; `adventure/e08-t95b`, `cross-lane`): the map's purchase (`HireDialog` in the hire question's outcome at one's own dwelling holding a creature above `free_level` and at a camp; `check_hire` in the design's order, then the infallible `hire`; ADV-HIR-002 new); the game's dialog (`Decision::Hire`, `Answer::Hire(HireAnswer::{Buy, Close})`, the treasury's `CannotPay` last, `ResourcePaid` then `CreaturesJoined`, a one-creature dialog closing, `HireOpened`, the legal set of each creature's most and `hire_range`, `DecisionView::Hire`, `GameState::hire_dialog`; GAM-DEC-008 new); the env's four purchases of the most (action encoding v7); `answer hire` in replays (format v10); game state hash v25, the 39 replays rehashed; the plans' oracles learn the dialog; ADV-STUB-15 closed. ADV-HIR-001, ADV-RFG-001 amended.
 - Round 8: **T96** in three (decision 256):
   - **T96a The dwellings map and its replays.** Done (2026-11-05, `adventure/e08-t96a`): `fixtures/maps/e08-dwellings-36.h3m` (`h3-map`'s `tests/dwellings_map.rs`; every class of increment 10, owners at load, the random dwellings resolved at their moved anchors); golden replays `dwellings-s765-d22`, `-s1087-d22`, `-s2192-d22` (random play, the union of a search over 3 000 seeds) and `dwellings-guards-s1`, `-free-s1`, `-dialog-s1`, `-camp-s1`, `-random-s1` (design §14's paths); 47 replays. No version moved.
-  - **T96b1** (the plans' properties) and **T96b2** (the XL, the benchmarks, the census) queued; T97 after them.
+  - **T96b1 The dwellings plans' properties.** Done (2026-11-05, `adventure/e08-t96b1`, whole, decision 257): the plans' `DWELLINGS` (ten kinds, owners at load, `Step::Hire`), §14's checks (`check_dwellings`, `check_camps`, `check_dwellings_week`, `check_resolved`; `check_hire_sources` in the view properties), the cover test `the_plans_visit_dwellings_and_hire`; the inbox's three failing `view.rs` seeds fixed in the test's `vary` (no engine leak); no version moved.
+  - **T96b2** (the XL, the benchmarks, the census) queued; T97 after it.
 
 ## Later increments (sketch)
 
