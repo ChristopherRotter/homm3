@@ -565,6 +565,13 @@ beside the mines' and the heroes': each town it owns (the adventure's owners by 
 per resource as today. From day 2; a neutral town pays nobody; a capture during the day pays the
 new owner the next day. Several Capitols at the start pay 4 000 each (§11.3).
 
+- **As built (T8c1; T8c cut in two at its start, the user, 2026-11-05: the Rogue's Visions,
+  `docs/06-security.md` and the inbox notes in T8c2):** `h3_game`'s `town::add_income` (the
+  town lane's `src/town/income.rs`) adds each owned town's `daily_income` into `pay_income`'s
+  vector after the heroes', so the towns' gold and resources join the mines' and the heroes' in
+  one `ResourceGained` per resource; the adventure lane's `day.rs` gains one call. No version
+  moved: the state is unchanged, only the treasury's day changes, and no fixture map has a town.
+
 ### 17. The observation (T8c)
 
 `GameObservation::towns: Vec<TownView>` in `TownId` order, the towns of which the viewer has
@@ -574,6 +581,21 @@ GarrisonView` (`level`, then by level the creatures by slot, their words, their 
 `ObjectView::town` links an object to its view. `project` passes `TownCaptured` and `TownChanged`
 to the viewers of §12. The map client (E24) and the env read the same (notes to their inboxes
 when T8c lands).
+
+- **As built (T8c1):** `ObjectView::town: Option<TownId>` (every seen object; `StaticMap::town_id`)
+  and `GameObservation::towns` from `h3_game`'s `town::view::town_views`, over the adventure
+  observation's objects, so in `TownId` order: a town a tile of which (blocked, visitable or
+  drawn) the viewer has explored. A town only on the fringe, which `faithful` shows as an object
+  (ADV-QUIRK-1), has its object's `town` but no view (the popup reads an explored tile only,
+  *agent's call*). `TownView { town, anchor, owner, faction, name, fort, capitol, garrison,
+  owner_facts }`; `GarrisonView { level, stacks, army }`: the stacks packed in slot order (the
+  popup's places, never the slots), `GarrisonStackView { creature, count_word, count }` (the word
+  from level 2, the count at 3), `army` the garrison by slot to the owner's team only (as a mine's
+  `GuardsView`, the town screen's, which T8b2b's `StackChanged` with `ArmyRef::Garrison` changes);
+  `TownOwnerView { hall, income }` (the income `daily_income`'s, the silo's resources within it).
+  The level: `OWNER_LEVEL` (3) by `h3_adventure::allied` (made public), else the viewer's own
+  towns with `has_tavern`, at most `TAVERN_LEVELS` (2), counted once an observation. The
+  Rogue's Visions is `TWN-STUB-9` (T8c2). `project` was already the §12 one (T8a2, T8b1).
 
 ### 18. The env, replays, fixtures, properties, benchmarks (T9)
 
@@ -638,7 +660,8 @@ lifted with the capture's reveal, T8a2); `TWN-STUB-6` a main town's hero learnin
 at the start (registered by T7b2b; increment 4, TD-10); `TWN-STUB-7` a defended town refused
 until the siege's start (registered by T8a2; narrowed by T8b2a to a visitor of another team;
 lifted by T8b2b); `TWN-STUB-8` a walled Stronghold's natural
-obstacles (registered by T8b1; a siege-aware draw in `h3-battle`).
+obstacles (registered by T8b1; a siege-aware draw in `h3-battle`); `TWN-STUB-9` a Rogue's
+Visions not giving another team's viewer the top level (registered by T8c1; T8c2).
 
 ### 20. Batch TWN-1 (T3)
 
@@ -680,7 +703,7 @@ the ADRs are applied once with the rows' verdicts:
 | 6 | **T6** | `h3-towns`: the record, the store, the setup's functions, the derivations, `town.toml`'s rules (§4–§6) |
 | 7 | **T7a** + **T7b** | T7a: the import and the setup's checks (§7, §13; map import v17, the census). T7b: the pool and the build's draws (§14; game state hash v23) |
 | 8 | **T8a** + **T8b** | T8a: the kind, the step, entering and an undefended capture (§8, §9, §11; part v16, state hash v20). T8b: the siege, cut in two (the user): T8b1 the battle's setup and its end (§15, §11; done), T8b2 the step onto a defended town, the merge, the defender (§9, §10) |
-| 9 | **T8c** + **T9** | T8c: the income, the views, the observation, `docs/06-security.md` (§12, §16, §17). T9: the fixtures, replays, properties, benchmarks, the env (§18) |
+| 9 | **T8c** + **T9** | T8c: the income, the views, the observation, `docs/06-security.md` (§12, §16, §17), cut in two (the user): T8c1 the income and the observation's towns (done), T8c2 the Rogue's Visions, the security doc, the notes. T9: the fixtures, replays, properties, benchmarks, the env (§18) |
 | 10 | **T10** | The audit against the exit criteria; increment 1 closed; increment 2 refined |
 
 **Increment 1's exit criteria** are the epic's seven; T10 checks each against its rules and tests.

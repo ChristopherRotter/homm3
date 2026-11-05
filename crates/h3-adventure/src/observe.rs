@@ -28,7 +28,7 @@ use h3_content::{
     CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset, SkillId, SpellId,
     TerrainId,
 };
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 
 use crate::command::{AdventureEvent, AdventureEventKind, Viewers};
 use crate::fog::Sight;
@@ -161,6 +161,11 @@ pub struct ObjectView {
     /// earlier offsets were land or taken; none for every other viewer, for a neutral Shipyard,
     /// for one without a tile and for every other object.
     pub boat_tile: Option<Pos>,
+    /// The town it is (E09 T8c1, the town epic's design note §17; ADR-0028 point 3: observations
+    /// name a town by its `TownId`), for every viewer that sees it: what the viewer sees of the
+    /// town is the game's view of it under that id (`h3_game::TownView`); none for every other
+    /// object.
+    pub town: Option<TownId>,
 }
 
 /// A mine's guards as a viewer sees them (ADV-OWN-003, E08 T83b2b): what the original's hint shows
@@ -298,7 +303,8 @@ impl AdventureState {
     /// (ADV-FOG-007, E08 T62b2). Since E08 T83b2a the objects added in play are among them as the
     /// static map's, after those, and cover their tiles in the tile views. Since E08 T83b2b each
     /// object shows its owner, a mine its production to its owner's team and its guards, a weekly
-    /// object the viewer's mark and a Shipyard its boat tile (ADV-OWN-003).
+    /// object the viewer's mark and a Shipyard its boat tile (ADV-OWN-003); since E09 T8c1 a town
+    /// its `TownId` ([`ObjectView::town`]).
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007, ADV-FOG-008, ADV-OWN-003
     pub fn observe(
         &self,
@@ -451,6 +457,7 @@ impl AdventureState {
                         guards: self.guards_view(part, index, ours),
                         visited: self.visited_by(index, viewer),
                         boat_tile: ours.then(|| object.resolved.boat_tile()).flatten(),
+                        town: map.town_id(index),
                     }
                 })
             })

@@ -462,6 +462,7 @@ fn a_typed_object_shows_whole_once_a_tile_it_covers_is_seen() {
         guards: None,
         visited: false,
         boat_tile: None,
+        town: None,
     };
     for faithful in [true, false] {
         let rules = movement_rules(faithful);

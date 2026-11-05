@@ -9,21 +9,27 @@ Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
 T8a2, then T8b (cut in two: T8b1, T8b2, itself cut in two: T8b2a, T8b2b; rounds 2 to 6, T7a, T7b,
-T8a1, T8a2, T8b1, T8b2a, T8b2b are done, `E09-log.md`); each later round's entries are written
-when it comes (the epic's list; round 9's below), each task's cut confirmed at its start. Every
-entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+T8a1, T8a2, T8b1, T8b2a, T8b2b are done, `E09-log.md`). Round 9: T8c cut in two at its start (the
+user, 2026-11-05: at the Rogue; T8c1 done); each later round's entries are written when it comes
+(the epic's list; round 9's below), each task's cut confirmed at its start. Every entry's
+acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T8c — the income, the views, the observation** (`cross-lane`; round 9, design §21)
+**E09 T8c2 — the Rogue's Visions, the security doc, the inbox notes** (`cross-lane` for the
+packs' and the harvest's files; round 9, design §12, §17)
 
-- **Scope:** design §16 (TWN-INC-001, -002): each town a player owns pays `h3_towns::daily_income`
-  in the day advance beside the mines (from day 2, saturating, one `ResourceGained` per
-  resource; a neutral town nobody); §12 and §17 (TWN-VEW-001 to -003): the observation's
-  `towns: Vec<TownView>` (the towns the viewer has explored a tile of; owner, faction, name, fort,
-  Capitol; the garrison by the viewer's tavern level; the owner's facts for its team or a Rogue's
-  Visions), `ObjectView::town`, `project` of `TownCaptured` and `TownChanged`; the merge's
-  stacks stay the owner's (T8b2b's `StackChanged`); `docs/06-security.md`'s section "Towns";
-  inbox notes to the map client and the AI lane when it lands.
-- **Depends on:** T8b2b (its pull request). **Status:** next; its cut confirmed at its start.
+- **Scope:** lift `TWN-STUB-9` (TWN-VEW-003): a viewer one of whose heroes on the map has a
+  Rogue (the original's creature 143, `ab:rogue`: a town part parameter naming it, or a creature
+  flag; the agent's call at the start) in its army, with the town on its level and the squared
+  distance from the hero below the square of the radius (Visions' expert factor, a town part
+  parameter until Visions is placed, ×the hero's power, at least 3; survey §12.3,
+  `hero_visions_reach` 0x4E5E10: which tile of the town it measures from is read first), sees the
+  town at `OWNER_LEVEL` (the counts and `owner_facts`, never `GarrisonView::army`, the owner's
+  team's); the town part's hash bumps (v3) with the parameters in the three packs'
+  `towns.toml`, the synthetic packs and the harvest's gap-fill. `docs/06-security.md`'s section
+  "Towns (E09 increment 1)" (design §12's words with T8c1's "As built": a `shared/` pull request,
+  merged first or beside). Inbox notes to the map client (E24: `GameObservation::towns`,
+  `ObjectView::town`) and the AI lane (the observation's new field, the day's town income).
+- **Depends on:** T8c1 (its pull request). **Status:** next; its cut confirmed at its start.
 
 **E09 T9 — the fixtures, replays, properties, benchmarks, the env** (`cross-lane`; round 9,
 design §18): after T8c; its entry is written when T8c is done.

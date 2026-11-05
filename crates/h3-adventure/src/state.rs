@@ -107,7 +107,7 @@ pub use draws::Resolved;
 use dwellings::{Camp, DwellingWeek};
 pub use dwellings::{HirePurchase, hire_price};
 pub use economy::Weekly;
-pub(crate) use economy::allied;
+pub use economy::allied;
 use flags::Flags;
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
