@@ -1861,7 +1861,23 @@ pub fn timeline(
     stage: Stage<'_>,
     speed: Speed,
 ) -> Result<Timeline, AnimError> {
-    played(snapshot, commands, looks, stage, speed, None)
+    played(snapshot, (commands, &[]), looks, stage, speed, None)
+}
+
+/// As [`timeline`], the battle standing still before the commands `holds` names, each by its
+/// index with when it stood until (E17 M6 T5b2a: Auto Combat's question, a modal box over the
+/// computer's turn, answered then; [`Growing::hold`]); a held command has no time of its own.
+///
+/// # Errors
+/// As [`timeline`].
+pub fn held(
+    snapshot: &Observation,
+    (commands, holds): (&[Command<'_>], &[(usize, u32)]),
+    looks: &BTreeMap<u16, Look>,
+    stage: Stage<'_>,
+    speed: Speed,
+) -> Result<Timeline, AnimError> {
+    played(snapshot, (commands, holds), looks, stage, speed, None)
 }
 
 /// As [`timeline`], the stacks fidgeting while the battle idles, from the viewer's own generator
@@ -1877,14 +1893,15 @@ pub fn fidgeting(
     speed: Speed,
     seed: u32,
 ) -> Result<Timeline, AnimError> {
-    played(snapshot, commands, looks, stage, speed, Some(seed))
+    played(snapshot, (commands, &[]), looks, stage, speed, Some(seed))
 }
 
-/// [`timeline`] or [`fidgeting`]: the commands grown one by one, the next one's being the
-/// computer's when it has no time ([`Growing::push`]).
+/// [`timeline`], [`held`] or [`fidgeting`]: the commands grown one by one, the next one's being
+/// the computer's when it has no time ([`Growing::push`]), the battle held before those `holds`
+/// names ([`Growing::hold`]).
 fn played(
     snapshot: &Observation,
-    commands: &[Command<'_>],
+    (commands, holds): (&[Command<'_>], &[(usize, u32)]),
     looks: &BTreeMap<u16, Look>,
     stage: Stage<'_>,
     speed: Speed,
@@ -1893,6 +1910,9 @@ fn played(
     let mut growing = Growing::new(snapshot, looks, stage, speed, seed)?;
     for (i, command) in commands.iter().enumerate() {
         let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
+        for &(_, until) in holds.iter().filter(|&&(k, _)| k == i) {
+            growing.hold(until);
+        }
         growing.push(command, computer);
     }
     Ok(growing.finish())
@@ -2220,6 +2240,18 @@ impl<'a> Growing<'a> {
         if let Some(&(at, stack)) = self.timeline.turns.last() {
             self.timeline.outlines.push((at, Some(stack)));
         }
+    }
+
+    /// The battle stood still from its end until `until` (E17 M6 T5b2a, design §12.19: a modal
+    /// box over a turn the computer plays, Auto Combat's question, answered then): no idle step
+    /// ran meanwhile, so the next command without a time, the computer's, starts then, its tick
+    /// there (*provisional*: the loop's next step due then, a first command's too). Nothing
+    /// before `until` changes.
+    pub fn hold(&mut self, until: u32) {
+        let Player { clock, idle, .. } = &mut self.player;
+        clock.start(until);
+        idle.next = idle.next.max(clock.now);
+        idle.from = idle.from.max(clock.now);
     }
 
     /// Plays `command` after those before it (a command without a time as soon as the previous

@@ -682,6 +682,9 @@ pub enum MessageDid {
     Give(Command),
     /// The result window's OK closed the battle's screen (E17 M5 T4b1).
     Ended,
+    /// Auto Combat's question or offer answered (E17 M6 T5b2a): its OK (true) or its Cancel, the
+    /// computer's next for the side ([`Battle::answer`]).
+    Answer(bool),
     /// A turret's info closed by its OK (E17 M6 T2b2): the battle takes the mouse again as
     /// after a stats dialog (`Input::Looked`).
     Looked,
@@ -1027,7 +1030,9 @@ impl<'g> Battle<'g> {
     /// The next command: the computer's, sent from its seat ([`Battle::take`]); none while the
     /// battle waits for a human's. A human's turn Auto Combat no longer plays (E17 M5 T4c1: a
     /// press stopped it after the command before was played) waits; so does one whose start
-    /// asked the computer for its hero's cast and got none (E17 M6 T5b1).
+    /// asked the computer for its hero's cast and got none (E17 M6 T5b1). E17 M6 T5b2a: Auto
+    /// Combat's question (the retreat test's yes) waits for the human's answer from the action's
+    /// millisecond, its box open (*provisional*: no outline, the turn the computer's).
     fn play_next(&mut self) -> Result<(), String> {
         let (auto, cast) = self.auto_turn(false);
         let (Some(live), Played::Growing(_)) = (Fight::here(self.fight.as_mut()), &self.played)
@@ -1039,14 +1044,22 @@ impl<'g> Battle<'g> {
         if let Some(played) = live.next()? {
             return self.take(None, played);
         }
+        let asked = live.question().is_some();
         let placeholder = Played::Finished(Box::default());
+        let mut end = 0;
         if let Played::Growing(mut growing) = std::mem::replace(&mut self.played, placeholder) {
             // Outlined from its start as a human's turn (pushed as the computer's).
-            growing.outline_waiting();
+            if !asked {
+                growing.outline_waiting();
+            }
+            end = growing.timeline().end;
             let tail = Box::new(growing.waiting());
             self.played = Played::Waiting(growing, tail);
         }
         self.head = Playhead::new(self.timeline());
+        if asked {
+            self.open_question(end);
+        }
         Ok(())
     }
 
@@ -1182,10 +1195,74 @@ impl<'g> Battle<'g> {
             return Ok(false);
         };
         let Some(played) = live.next()? else {
-            return Ok(false);
+            // Auto Combat's question at the switch's own turn (E17 M6 T5b2a).
+            return Ok(self.open_question(at));
         };
         self.grow_from_waiting(at, played)?;
         Ok(true)
+    }
+
+    /// Opens the box of Auto Combat's question or offer waiting for the human's answer (E17 M6
+    /// T5b2a, design §12.19; `crate::boxes::question`) at `at`, the battle standing still behind
+    /// it; whether it opened (none waits, a box is open, or no text tables). *Not built* for a
+    /// seat on a server: it plays no Auto Combat (`Battle::takes_auto`), so asks no question.
+    fn open_question(&mut self, at: u32) -> bool {
+        let Some(question) = Fight::here_ref(self.fight.as_ref()).and_then(Live::question) else {
+            return false;
+        };
+        if self.message.is_some() {
+            return false;
+        }
+        // The resources' pictures' DEF, for its size (the offer's gold).
+        let def = self.ground.layout.message.resources.clone();
+        let size = match question {
+            crate::live::Question::Offer { .. } => {
+                if self.load_names(vec![def.to_ascii_uppercase()]).is_err() {
+                    return false;
+                }
+                self.batch.sprite(&def).map_or([0, 0], |s| {
+                    [s.def.width, s.def.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
+                })
+            }
+            crate::live::Question::Retreat => [0, 0],
+        };
+        let (Some(writer), Some(own)) = (self.ground.writer.as_ref(), self.own_view()) else {
+            return false;
+        };
+        let hero_types = &self.record.header.manifest.keys.hero_types;
+        let (text, picture, asked) =
+            crate::boxes::question(question, &own, hero_types, &writer.catalogue, (&def, size));
+        self.tell(at, &text, (Style::OkCancel, picture.as_ref()), asked)
+    }
+
+    /// The human's answer `ok` at `at` to Auto Combat's question or offer, its box closed (E17 M6
+    /// T5b2a, `Live::answer`): the computer's command for the side (the stack's action, the
+    /// Retreat or the Surrender) starts at `at`, the battle having stood still behind the box
+    /// since the action's millisecond (`Growing::hold`: no idle step ran; the command the
+    /// computer's, *provisional*); or the offer's box opens at once. Whether anything changed.
+    pub fn answer(&mut self, at: u32, ok: bool) -> Result<bool, String> {
+        let (Some(live), Played::Waiting(..)) = (Fight::here(self.fight.as_mut()), &self.played)
+        else {
+            return Ok(false);
+        };
+        let Some(played) = live.answer(ok)? else {
+            return Ok(self.open_question(at));
+        };
+        let placeholder = Played::Finished(Box::default());
+        if let Played::Waiting(mut growing, _) = std::mem::replace(&mut self.played, placeholder) {
+            growing.hold(at);
+            self.played = Played::Growing(growing);
+            self.take(None, played)?;
+        }
+        self.head = Playhead::new(self.timeline());
+        self.follow()?;
+        Ok(true)
+    }
+
+    /// What the open message box asks, if one is open (E17 M6 T5b2a: the unattended presser's
+    /// answer to Auto Combat's boxes).
+    pub fn message_asked(&self) -> Option<Asked> {
+        self.message.as_ref().map(|&(_, _, asked)| asked)
     }
 
     /// The options dialog's close applied at `at` (E17 M6 T4b1, *provisional*; the window asks
@@ -2878,6 +2955,7 @@ impl<'g> Battle<'g> {
                 MessageDid::Changed
             }
             Answered::Closed => MessageDid::Changed,
+            Answered::Auto(then) => MessageDid::Answer(then.ok()),
         }
     }
 

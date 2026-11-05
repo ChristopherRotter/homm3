@@ -501,7 +501,8 @@ align = 1
 # the frame's pieces (0 to 3 the corners, 4 to 7 the left, right, top and bottom edges, in the
 # viewing player's colours); a button's back and the two buttons; the text's font (0x698A0C) and a
 # picture's caption's (0x698A08), their colours' palette; the spells' pictures (a slot of type 9,
-# 0x4F52FA); the cursor while it is open (frame 0, 0x4F74AC).
+# 0x4F52FA) and the resources' (types 0 to 6, 0x4F4F5A: the gold of Auto Combat's offer, E17 M6
+# T5b2a); the cursor while it is open (frame 0, 0x4F74AC).
 [message]
 background = "diboxbck.pcx"
 frame = "dialgbox.def"
@@ -512,6 +513,7 @@ font = "medfont.fnt"
 caption_font = "smalfont.fnt"
 font_palette = "game.pal"
 spell_pictures = "spellScr.def"
+resources = "resour82.def"
 cursor = "crdeflt.def"
 
 # The battle's result window (E17 M5 T4b1; design §7.20; `battle_result_dialog` 0x4702D0): its

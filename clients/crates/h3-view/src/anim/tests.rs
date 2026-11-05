@@ -1445,6 +1445,77 @@ fn commands_start_at_their_time_or_by_default() {
 }
 
 #[test]
+fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
+    // E17 M6 T5b2a (design §12.19): Auto Combat's question holds the battle from the end of the
+    // command before until its answer: no idle step runs meanwhile, the computer's command
+    // starts then with its tick (its stack outlined there), nothing before the hold changed.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 35, false),
+        at(1, Side::Defender, PIKEMAN, 50, false),
+    ]);
+    let first = vec![moved(0, 35, 36), Event::TurnStarted { stack: 1 }];
+    let second = vec![moved(1, 50, 49)];
+    let commands = [
+        Command {
+            at: None,
+            events: &first,
+        },
+        Command {
+            at: None,
+            events: &second,
+        },
+    ];
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic(),
+        casts: &Casts::default(),
+        bugs: Bugs::Original,
+        siege: None,
+        lengths: None,
+    };
+    let free = super::timeline(&o, &commands, &looks(), stage, Speed::default()).unwrap();
+    let stood = held(
+        &o,
+        (&commands, &[(1, 5000)]),
+        &looks(),
+        stage,
+        Speed::default(),
+    )
+    .unwrap();
+    playhead::agrees(&stood);
+    let end = stood.actions[0].end;
+    assert!(end < 5000 && stood.actions[0] == free.actions[0]);
+    assert_eq!(stood.actions[1].start, 5000);
+    assert!(stood.steps.iter().all(|&t| t <= end || t >= 5000));
+    assert!(stood.steps.contains(&5000) && stood.outlines.contains(&(5000, Some(1))));
+    assert!(free.actions[1].start < 5000);
+    assert_eq!(stood.steps.iter().filter(|&&t| t == 5000).count(), 1);
+    // A hold before its time changes nothing.
+    let early = held(
+        &o,
+        (&commands, &[(1, 0)]),
+        &looks(),
+        stage,
+        Speed::default(),
+    );
+    assert_eq!(early.unwrap().lines(), free.lines());
+    // The first command held: one step as it starts, none before.
+    let first = held(
+        &o,
+        (&commands, &[(0, 3000)]),
+        &looks(),
+        stage,
+        Speed::default(),
+    )
+    .unwrap();
+    assert_eq!(first.actions[0].start, 3000);
+    assert_eq!(first.steps.iter().filter(|&&t| t <= 3000).count(), 1);
+}
+
+#[test]
 fn differences_list_both_sides() {
     assert!(differences("1\n2\n", "1\n2\n").is_empty());
     assert_eq!(differences("1\n3\n", "1\n2\n"), ["- 2", "+ 3"]);

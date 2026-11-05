@@ -427,7 +427,8 @@ pub fn still(
     let answered = |id: u16, asked: Asked| match crate::boxes::answered(asked, id, catalogue) {
         Answered::Tell(text) => Next::Box(tell(&text, Style::Ok, None, Asked::Told).map(Box::new)),
         Answered::Give(command) => Next::Give(command),
-        Answered::Closed => Next::Box(None),
+        // Auto Combat's boxes (E17 M6 T5b2a) open in no still.
+        Answered::Closed | Answered::Auto(_) => Next::Box(None),
     };
     // The result window a command ends the battle with.
     let ended = |command: Command| -> Option<(h3_view::message::Open, Tune)> {

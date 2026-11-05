@@ -6940,3 +6940,25 @@ T5b2 cut in two by the user (2026-11-05): T5b2a the retreat question, T5b2b CLT-
   thresholds take the expected one (0x477A00), as the original's code does; the two agree but
   where BAT-Q28 row 7 says.
 - **Oddities:** none found by the reading.
+- **The client's (M6 T5b2a, *provisional* where marked):**
+  - `live.rs`: `Decision::human` for the cast and the action; the retreat test before each
+    action of a human's stack that plays itself (`Live::action`); on its yes while
+    `Live::may_ask` (+0x1402F) `Live::question` (`Question::Retreat`, the stream from before
+    the decision kept: the same world for the answer), `Live::answer(ok)`: Cancel clears the
+    flag and plays `Decision::action`, OK `Decision::leaving` (Retreat, or `Question::Offer`:
+    OK Surrender, Cancel Retreat). `Ask::Answered` makes `refight` reproduce it.
+  - `boxes.rs`: `Asked::Question`, `Asked::Offer`, `answered`'s `Answered::Auto(Then)` for both
+    buttons; `question` (keys `battle.auto.retreat.ask`, `battle.auto.surrender.ask`; the
+    layout's `[message] resources`, frame `GOLD`, `gold_caption`).
+  - `battle.rs`: the box at the action's millisecond (`play_next`, `computer_at`), no outline;
+    `Battle::answer` after `anim::Growing::hold` (no idle step behind the box, the command the
+    computer's; *provisional*). Unattended `--auto-question cancel|retreat|surrender` (cancel
+    by default, *provisional*).
+  - The comparisons: a step `question = true` with the answer's `at` (`anim::held`); its span
+    takes `key:Return`, `key:Escape`, `click:` as answers (`pointer::answering`,
+    `sequences::asked_boxes`), the boxes drawn in the frames (`Interface::asked`).
+    `h3-view situation` writes the facts' experience and a Tavern town (`tavern_towns`);
+    prepared: `to-record.toml`'s `auto-retreat-*` over `seq-auto-retreat.toml`.
+- **Not built:** a server's seat (no Auto Combat there); the facts' artifacts' worth and
+  `wanted` in the original's map; the original's map without the enemy's hero (a monster's
+  split); CLT-Q61's stop (T5b2b).

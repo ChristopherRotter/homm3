@@ -1,0 +1,40 @@
+# Sequences prepared for a recording (E17 M6 T5b2a, design §12.19): the harness plays each
+# (`sequences situations/to-record.toml --only <id>`); once recorded it moves into
+# `sequences.toml` with the original's commands (the command after the question marked
+# `question = true`, its `at` the answer that gave it), and this file goes once empty.
+# `seq-auto-retreat.toml`: A at the Champions' turn (Combat Auto Creatures set, the harness's),
+# the computer's retreat test says yes as their action starts: the question.
+
+# The question's Cancel (Escape): the Champions' action at once, no question again this battle.
+[[sequence]]
+id = "auto-retreat-cancel"
+scenario = "seq-auto-retreat.toml"
+actions = ["key:a", "at:1000", "key:Escape"]
+ms = 4000
+heroes = true
+timeline = "timelines/auto-retreat-cancel.txt"
+frames = "timelines/auto-retreat-cancel-frames.txt"
+boxes = true
+
+# The question's OK (Enter), the offer's OK (a click on it, the box 320 x 320 at (240, 140) in the
+# client's layout): the surrender at the price.
+[[sequence]]
+id = "auto-retreat-surrender"
+scenario = "seq-auto-retreat.toml"
+actions = ["key:a", "at:1000", "key:Return", "at:2000", "click:359,414"]
+ms = 3000
+heroes = true
+timeline = "timelines/auto-retreat-surrender.txt"
+frames = "timelines/auto-retreat-surrender-frames.txt"
+boxes = true
+
+# The question's OK, the offer's Cancel (Escape): the retreat.
+[[sequence]]
+id = "auto-retreat-flee"
+scenario = "seq-auto-retreat.toml"
+actions = ["key:a", "at:1000", "key:Return", "at:2000", "key:Escape"]
+ms = 3000
+heroes = true
+timeline = "timelines/auto-retreat-flee.txt"
+frames = "timelines/auto-retreat-flee-frames.txt"
+boxes = true

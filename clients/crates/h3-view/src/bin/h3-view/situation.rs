@@ -6,8 +6,10 @@
 //! machines (E17 M3 T3b: their artifacts) and its spell book (M3 T7a-2a: the book in its slot,
 //! its spells, and the school skills behind its masteries, M3 T7a-2b), the secondary skills
 //! behind its battle effects (M3 T7b-2b-2a: Leadership for its morale, Luck for its luck) and its
-//! tactics level (E17 M5 T4c2a: Tactics, the phase with it), no other skills or artifacts;
-//! stepping Red's hero east starts the battle
+//! tactics level (E17 M5 T4c2a: Tactics, the phase with it), no other skills or artifacts; its
+//! experience and a Tavern town of its player by the scenario's retreat facts (E17 M6 T5b2a: what
+//! the computer's retreat test reads, Auto Combat's question); stepping Red's hero east starts
+//! the battle
 //! (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
 //! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
@@ -186,6 +188,8 @@ fn situation(options: &Options) -> Result<(), String> {
         }
         map.objects.push(siege_town(siege, &objects, options.tile)?);
     }
+    map.objects
+        .extend(tavern_towns(&battle, &objects, options.tile).map_err(|e| format!("{id}: {e}"))?);
     let bytes = write(&map).map_err(|e| format!("the map: {e}"))?;
     if let Some(dir) = options.out.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -298,7 +302,18 @@ const FORT_BITS: [u8; 3] = [3, 4, 5];
 /// Red stands south of the entrance ([`map`]) and steps north into the town (the situation's
 /// `key = "Up"`, `h3drive.py`).
 fn siege_town(siege: &SiegeTown, objects: &str, tile: (u8, u8)) -> Result<MapObject, String> {
-    let (town, fort) = (siege.town, siege.fort);
+    town_object((siege.town, 1), (tile, siege.fort), &siege.built, objects)
+}
+
+/// A town of type `town` owned by player `owner` (0 Red, 1 Blue), its entrance on `tile`, of
+/// fort level `fort` and with the buildings of the map's bits `others` besides ([`siege_town`]'s
+/// map object).
+fn town_object(
+    (town, owner): (usize, u8),
+    (tile, fort): ((u8, u8), u8),
+    others: &[u8],
+    objects: &str,
+) -> Result<MapObject, String> {
     let anchor = (tile.0 + 2, tile.1);
     if tile.0 < 5 || tile.1 < 5 || anchor.0 > 35 || tile.1 > 34 {
         return Err(format!(
@@ -316,7 +331,7 @@ fn siege_town(siege: &SiegeTown, objects: &str, tile: (u8, u8)) -> Result<MapObj
         .ok_or(format!("Objects.txt has no town of type {town}"))?;
     let template = ObjectTemplate::from_objects_txt(line).map_err(|e| e.to_string())?;
     let mut built = [0u8; 6];
-    for &bit in FORT_BITS.iter().take(usize::from(fort)).chain(&siege.built) {
+    for &bit in FORT_BITS.iter().take(usize::from(fort)).chain(others) {
         let byte = built
             .get_mut(usize::from(bit / 8))
             .ok_or(format!("building bit {bit} is not a map's (0 to 47)"))?;
@@ -325,7 +340,7 @@ fn siege_town(siege: &SiegeTown, objects: &str, tile: (u8, u8)) -> Result<MapObj
     Ok(MapObject::Town(Town {
         tile: anchor,
         template,
-        owner: Some(1),
+        owner: Some(owner),
         garrison: Some([None; ARMY_SLOTS]),
         tight_formation: false,
         buildings: TownBuildings::Custom {
@@ -333,6 +348,39 @@ fn siege_town(siege: &SiegeTown, objects: &str, tile: (u8, u8)) -> Result<MapObj
             forbidden: [0; 6],
         },
     }))
+}
+
+/// The town types of the players' Tavern towns (E17 M6 T5b2a): Red's Castle, Blue's Stronghold
+/// (the players' allowed town types, [`map`]).
+const TAVERN_TOWNS: [usize; 2] = [0, 6];
+
+/// The map's building bit of the Tavern (`docs/formats/h3m.md`, "Town buildings").
+const TAVERN: u8 = 6;
+
+/// The Tavern towns of the sides whose retreat facts have one (E17 M6 T5b2a, design §12.19,
+/// *provisional*): each its player's, with a Tavern, its entrance in the map's south-west (Red)
+/// or south-east (Blue) corner, in its north when Blue's `tile` lies in the south. The other
+/// facts: the experience is the hero's ([`map`]); an artifacts' worth or a hero wanted by the
+/// victory condition are not written (an error: *not built*).
+fn tavern_towns(battle: &Sides, objects: &str, tile: (u8, u8)) -> Result<Vec<MapObject>, String> {
+    let row = if tile.1 < 18 { 30 } else { 6 };
+    let mut towns = Vec::new();
+    for (owner, facts) in battle.retreat.iter().enumerate() {
+        if facts.artifacts > 0 || facts.wanted {
+            return Err(
+                "the retreat facts' artifacts' worth and `wanted` are not written into the \
+                 original's map (not built: give the hero's `experience`)"
+                    .to_owned(),
+            );
+        }
+        if facts.tavern {
+            let entrance = ([6, 28][owner], row);
+            let built = [TAVERN];
+            let town = (TAVERN_TOWNS[owner], u8::try_from(owner).unwrap_or(u8::MAX));
+            towns.push(town_object(town, (entrance, 0), &built, objects)?);
+        }
+    }
+    Ok(towns)
 }
 
 /// The map terrain of a pack's terrain key (`base:grass`): the packs' land terrains in the map
@@ -437,7 +485,9 @@ fn map(
             hero_type,
             class,
             name: None,
-            experience: Some(0),
+            // The retreat facts' (E17 M6 T5b2a; *provisional*: whether the original levels such
+            // a hero up as the game starts is the recording's to tell, `hero:primary`).
+            experience: Some(battle.retreat[owner].experience),
             // The school skills behind the masteries (E17 M3 T7a-2b; none without a book), then
             // those behind the battle effects (T7b-2b-2a).
             skills: Some(
@@ -550,6 +600,7 @@ mod tests {
             human: [true, false],
             machines: [vec![(13, 4), (15, 6)], Vec::new()],
             siege: None,
+            retreat: Default::default(),
         }
     }
 
@@ -799,6 +850,57 @@ mod tests {
         001000000000000000000000000000000000000000000000 011111111 011111111 98 0 1 0\n\
         avchforx.def 000001110000011110001111111111111111111111111111 \
         001000000000000000000000000000000000000000000000 011111111 011111111 98 8 1 0\n";
+
+    #[test]
+    fn the_retreat_facts_give_the_hero_s_experience_and_a_tavern_town() {
+        // E17 M6 T5b2a: Red's experience in its hero, its Castle with a Tavern in the map's
+        // south-west (north-west when the battle lies in the south); Blue's Stronghold has none
+        // in `TOWNS`; an artifacts' worth is not written.
+        let mut battle = sides_of(Some("grass"), &[]);
+        battle.retreat[0] = h3_contracts::RetreatFacts {
+            experience: 5000,
+            tavern: true,
+            ..h3_contracts::RetreatFacts::default()
+        };
+        let map = map("t", &battle, &ids(), BLUE_TILE, false).unwrap();
+        let Some(MapObject::Hero(red)) = map.objects.first() else {
+            panic!("Red's hero");
+        };
+        assert_eq!(red.experience, Some(5000));
+        let towns = tavern_towns(&battle, TOWNS, BLUE_TILE).unwrap();
+        let [MapObject::Town(town)] = &towns[..] else {
+            panic!("one town: {towns:?}");
+        };
+        let TownBuildings::Custom { built, .. } = town.buildings else {
+            panic!("custom buildings");
+        };
+        assert_eq!(
+            (town.tile, town.owner, built[0]),
+            ((8, 30), Some(0), 1 << TAVERN)
+        );
+        let south = tavern_towns(&battle, TOWNS, (11, 30)).unwrap();
+        assert!(matches!(&south[..], [MapObject::Town(t)] if t.tile == (8, 6)));
+        battle.retreat[1].tavern = true;
+        assert!(
+            tavern_towns(&battle, TOWNS, BLUE_TILE)
+                .unwrap_err()
+                .contains("type 6")
+        );
+        battle.retreat[1] = h3_contracts::RetreatFacts {
+            artifacts: 1000,
+            ..h3_contracts::RetreatFacts::default()
+        };
+        assert!(
+            tavern_towns(&battle, TOWNS, BLUE_TILE)
+                .unwrap_err()
+                .contains("not built")
+        );
+        assert!(
+            tavern_towns(&sides_of(None, &[]), TOWNS, BLUE_TILE)
+                .unwrap()
+                .is_empty()
+        );
+    }
 
     #[test]
     fn a_siege_puts_blues_hero_into_its_town() {

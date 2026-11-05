@@ -217,7 +217,22 @@ put back the same way (`registry_values`), the viewer reading them from `sequenc
 (`setup.sh`'s Creatures 1 and Spells unset without them); sequences prepared for a recording wait
 in a `situations/to-record.toml` (`sequences situations/to-record.toml --only <id>`), each moved
 into `sequences.toml` with its commands once recorded, the file removed once empty (T5b1's
-`auto-cast` and `auto-cast-human` were recorded so). A situation's
+`auto-cast` and `auto-cast-human` were recorded so). Since E17 M6 T5b2a (design §12.19) Auto Combat's
+question: when the computer's retreat test says yes for the human's stack that plays itself,
+the original asks whether to retreat (GENRLTXT 414), its OK offering, with both heroes there and
+the gold enough, to save the army for its price (record 130, the gold's picture); in a
+sequence a `key:Return`, `key:Escape` or `click:` on a button between the action's millisecond
+and the answer that gave the command answers the box open (the question's, then the offer's),
+no stop, and the command after it is marked `question = true` with its `at` the last answer
+(`{ seat = "Attacker", command = { Retreat = {} }, at = 2000, question = true }`; *provisional*:
+the battle held behind the boxes, no idle step, the command the computer's from then). What the
+test reads comes from the scenario: `attacker_funds` (20 000, the harness's Normal),
+`difficulty = 1` (the harness's), `[scenario.attacker_retreat]` (`experience`, `tavern`) and
+the enemy's hero (`defender_hero`; the map needs one, so the Retreat without it is not
+recorded); `h3-view situation` writes the experience into the hero and, for `tavern`, a town of
+the side's player with a Tavern (Red's Castle, Blue's Stronghold; an `artifacts` worth or
+`wanted` it refuses: *not built*). Prepared: `to-record.toml`'s `auto-retreat-*` over
+`seq-auto-retreat.toml`. A situation's
 actions draw the cursor shadow at every move the battle takes, `key:F6` to `key:F8`'s and the
 options dialog's compositions (the stills take no spell's aim: an aim's shade is a sequence's,
 `aim:<k>:<n>` then `move:`). The setup
