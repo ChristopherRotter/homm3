@@ -1942,3 +1942,57 @@ fn the_wall_s_aim_keeps_its_last_hex_in_the_original_s_profile_alone() {
         );
     }
 }
+
+#[test]
+fn the_original_s_wall_aim_keeps_the_outline_and_names_the_spell_where_it_refuses() {
+    // E17 M6 T5a (design §12.17, `wall-hover`): the stack the mouse outlined before the aim keeps
+    // its outline through the original's wall aim, at a refused hex (91) and a taken one (87);
+    // the client's aims the wall as every other aim (CLT-Q56): the outline goes. Every refused hex
+    // says GENRLTXT 182 with the spell's name; a wall with no free hex opens all the same.
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let o = battle();
+        let mut legal = legal();
+        let nowhere = Aim {
+            targets: vec![],
+            ..wall(false)
+        };
+        legal.aims = vec![wall(true), nowhere];
+        let field = Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        let turns = [Turn { field, human: true }];
+        let to = |at, hex: u8| Input::Move {
+            at,
+            to: centre(hex),
+        };
+        let aim = |at, spell| Input::Aim {
+            at,
+            spell,
+            creature: false,
+        };
+        let inputs = [
+            to(5, 90),
+            aim(10, 11),
+            to(20, 91),
+            to(30, 87),
+            Input::Cancel { at: 40 },
+            to(45, 90),
+            aim(50, 12),
+            to(60, 104),
+            Input::Act { at: 70 },
+        ];
+        let shown = run(&[], &[], &turns, &inputs);
+        assert_eq!(shown.marked(5), Some(1), "{bugs:?}");
+        let kept = (bugs == Bugs::Original).then_some(1);
+        assert_eq!([20, 30].map(|t| shown.marked(t)), [kept; 2], "{bugs:?}");
+        let refused = status("WallRefused(11)", false);
+        assert!(shown.log.contains(&(20, refused)), "{bugs:?}");
+        // Force Field with no free hex: every hex refused, a press casts nothing.
+        let nowhere = status("WallRefused(12)", false);
+        assert!(shown.log.contains(&(60, nowhere)), "{bugs:?}");
+        assert_eq!(shown.aimed(70), None, "{bugs:?}");
+    }
+}

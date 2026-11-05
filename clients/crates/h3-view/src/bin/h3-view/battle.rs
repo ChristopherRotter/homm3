@@ -720,6 +720,19 @@ pub enum StatsDid {
 /// no-sound box, its close.
 pub type OptionsDid = h3_view::options::Did;
 
+/// What the spell book button did (E17 M5 T3a; its refusals E17 M6 T5a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Opened {
+    /// Nothing: the battle does not take it.
+    No,
+    /// The book opened.
+    Book,
+    /// A box told why the hero may not cast (an anti-magic garrison, the Orb of Inhibition;
+    /// design §12.17): the battle takes the mouse again (`hero_book_button`'s −1, the mouse
+    /// posted, 0x474F72).
+    Refused,
+}
+
 /// What the spell book did with an input (E17 M5 T3a).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BookDid {
@@ -1724,21 +1737,30 @@ impl<'g> Battle<'g> {
 
     /// Opens the acting hero's spell book at `at` (E17 M5 T3a; `hero_book_button` 0x59E900 from
     /// the panel's button or its key C): while the battle waits for a human whose hero's book the
-    /// panel's button takes. Whether it opened. *Not modelled:* the refusals' message boxes (an
-    /// anti-magic garrison, the Orb of Inhibition), T4's.
-    pub fn open_book(&mut self, at: u32) -> bool {
+    /// panel's button takes. Whether it opened, or a box told why not (E17 M6 T5a, design
+    /// §12.17: an anti-magic garrison, the Orb of Inhibition; [`crate::boxes::before_book`]).
+    pub fn open_book(&mut self, at: u32) -> Opened {
         if self.book.is_some() || !self.takes(at) {
-            return false;
+            return Opened::No;
         }
         let ground = self.ground;
         // The side to act's own view: its hero's spells (as its seat is sent them).
         let (Some(observation), Some(ruleset), Some(writer)) =
             (self.own_view(), ground.rules(), ground.writer.as_ref())
         else {
-            return false;
+            return Opened::No;
         };
         if !crate::spellbook::takes(&observation) {
-            return false;
+            return Opened::No;
+        }
+        let refused =
+            (self.facts()).and_then(|facts| crate::boxes::before_book(&facts, &writer.catalogue));
+        if let Some(text) = refused {
+            return if self.tell(at, &text, (Style::Ok, None), Asked::Told) {
+                Opened::Refused
+            } else {
+                Opened::No
+            };
         }
         let names = (&ground.tables, &writer.catalogue);
         let manifest = &self.record.header.manifest;
@@ -1748,7 +1770,7 @@ impl<'g> Battle<'g> {
             names,
             &ground.layout.book,
         ) else {
-            return false;
+            return Opened::No;
         };
         let open = h3_view::book::Open::new(&mut self.book_memory, hero, &writer.catalogue);
         // The hero's player's colours (the record names none: red, blue; CLT-Q6).
@@ -1757,7 +1779,58 @@ impl<'g> Battle<'g> {
             .colour
             .unwrap_or_else(|| u8::try_from(index).unwrap_or(0));
         self.book = Some((open, at, player));
-        true
+        Opened::Book
+    }
+
+    /// What the book's and the aim's refusals read now (E17 M6 T5a, design §12.17): the side to
+    /// act's own view and the battle's opening; each hero's magic from both sides' views for a
+    /// battle fought here, its own alone for a seat on a server (gap G1).
+    fn facts(&self) -> Option<crate::boxes::Facts> {
+        let own = self.own_view()?;
+        let first = self.record.first_snapshot()?;
+        let magic = match self.fight.as_ref()? {
+            Fight::Here(live) => live.magic(),
+            Fight::Server(_) => {
+                let mut magic = [None, None];
+                magic[usize::from(own.viewer == Side::Defender)] = own.own_hero.clone();
+                magic
+            }
+        };
+        let writer = self.ground.writer.as_ref()?;
+        let names = (
+            &self.record.header.manifest,
+            &self.ground.tables,
+            &writer.catalogue,
+        );
+        let [attacker, defender] = &magic;
+        Some(crate::boxes::Facts::of(
+            &own,
+            first,
+            [attacker.as_ref(), defender.as_ref()],
+            self.ground.previews(),
+            names,
+        ))
+    }
+
+    /// The box the aim's refusal of `spell` (its original number `original`) shows, the engine
+    /// giving it no target and no cast without one (E17 M6 T5a, design §12.17;
+    /// [`crate::boxes::after_book`] in the client's profile); none: no box.
+    fn refusal(&self, spell: u16, original: Option<u16>) -> Option<String> {
+        let original = u32::from(original?);
+        let level = self.ground.rules()?.spells().get(usize::from(spell))?.level;
+        let facts = self.facts()?;
+        let catalogue = &self.ground.writer.as_ref()?.catalogue;
+        crate::boxes::after_book(&facts, (original, level), Bugs::Fixed, catalogue)
+    }
+
+    /// Force Field's or Fire Wall's aim of `spell` with no free hex (E17 M6 T5a, design §12.17:
+    /// it opens all the same, every hex refused), at the hero's mastery its own view shows.
+    fn nowhere(&self, spell: u16) -> Option<mouse::aim::Aim> {
+        let own = self.own_view()?;
+        let mastery = (own.own_hero.as_ref()?.spell_book.iter())
+            .find(|b| b.spell == spell)
+            .map_or(0, |b| b.mastery);
+        Some(crate::aims::nowhere(self.ground.previews(), spell, mastery))
     }
 
     /// The open book's answer to `outcome` (E17 M5 T3a): closed, or closed on a spell, whose cast
@@ -1795,24 +1868,23 @@ impl<'g> Battle<'g> {
                     return BookDid::Cast(untargeted);
                 }
                 // A spell with a second target (Teleport, Sacrifice) has aims of its own (not
-                // built); a stack spell or Teleport the engine casts at nothing tells so
-                // (GENRLTXT 186, 0x59F135; E17 M5 T4a).
+                // built); a spell the engine refuses tells why as the original's book button and
+                // aim's entry do (E17 M5 T4a: a stack spell or Teleport no hex takes, GENRLTXT
+                // 186; E17 M6 T5a, design §12.17: the others), the posted move after the box as
+                // after the book; a wall with no free hex opens its aim all the same.
                 let keys = &self.record.header.manifest.keys.spells;
                 let original =
                     motion::spell_entry_in(keys, &self.ground.tables, spell).map(|e| e.original);
                 let second = self.second_target(spell, original);
-                let aim = self.hero_aim(spell);
-                if aim.is_none()
-                    && original.is_some_and(|o| crate::boxes::affects_someone_only(u32::from(o)))
-                {
-                    let text = self
-                        .ground
-                        .writer
-                        .as_ref()
-                        .map(|w| crate::boxes::no_one(&w.catalogue))
-                        .unwrap_or_default();
-                    self.tell(opened, &text, (Style::Ok, None), Asked::Told);
-                    return BookDid::Changed;
+                let mut aim = self.hero_aim(spell);
+                if aim.is_none() {
+                    if let Some(text) = self.refusal(spell, original) {
+                        self.tell(opened, &text, (Style::Ok, None), Asked::Told);
+                        return BookDid::Changed;
+                    }
+                    if original.is_some_and(h3_view::shades::wall) {
+                        aim = self.nowhere(spell);
+                    }
                 }
                 match aim.filter(|_| !second) {
                     Some(aim) => {

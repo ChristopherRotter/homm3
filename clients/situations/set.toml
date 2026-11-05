@@ -1060,6 +1060,67 @@ at = 100
 differing = 0
 why = "exact: Animate Dead with no corpse: \"That spell will affect no one!\" over the battle, the book closed (E17 M5 T4a)"
 
+# E17 M6 T5a (design §12.17): the book button's and the aim's entry's refusals, each a box of
+# style 1 over the battle once the book closed on the spell (*provisional*: to capture). Cursed
+# Ground's Lightning Bolt (748), Earthquake outside a siege (183), Land Mine against the other
+# side's natives (186, CLT-Q58), Remove Obstacle in a siege (713), Clone with no stack it takes
+# (186), Sacrifice with no stack to raise (186).
+[[situation]]
+id = "msg-cursed"
+scenario = "msg-cursed.toml"
+seat = "attacker"
+actions = ["key:c", "click:332,123"]
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "msg-quake"
+scenario = "msg-quake.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "msg-mine"
+scenario = "msg-mine.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "msg-remove"
+scenario = "msg-remove.toml"
+hot_seat = true
+key = "Up"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "msg-clone"
+scenario = "msg-clone.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "msg-sacrifice"
+scenario = "msg-sacrifice.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+
 # E17 M5 T4b1: the battle's result window (design §7.20), over the whole screen darkened, the
 # combat cursor's pointer at the park point. Retreat's question answered OK (dialogs.toml): Red's
 # side shown, the loser; no losses. Surrender's (result.toml: grass's battle, Red able to pay).

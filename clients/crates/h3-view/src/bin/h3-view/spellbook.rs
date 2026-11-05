@@ -267,17 +267,17 @@ impl Still {
 pub type Tell<'a> = dyn Fn(&str, Style, Option<&Picture>) -> Option<MessageBox> + 'a;
 
 /// What a situation's message boxes need (E17 M5 T4a; `crate::boxes`): how a box is laid out
-/// (its text, style and picture), how the side to act may leave, which of its hero's spells (by
-/// handle) no hex takes now (a stack spell's or Teleport's "affects no one"), the spells'
-/// pictures' DEF and size; the result window the battle ends with after a command a box's OK
-/// gives (E17 M5 T4b1).
+/// (its text, style and picture), how the side to act may leave, the box the aim's refusal of
+/// each of its hero's spells (by handle) shows now (a stack spell's or Teleport's "affects no
+/// one"; E17 M6 T5a, design §12.17: the others), the spells' pictures' DEF and size; the result
+/// window the battle ends with after a command a box's OK gives (E17 M5 T4b1).
 pub struct Boxes<'a> {
     /// Lays out a box (none without its fonts).
     pub tell: &'a Tell<'a>,
     /// How the side to act may leave.
     pub leave: Leave,
-    /// Whether the aim's entry tells that the spell affects no one.
-    pub no_one: &'a dyn Fn(u16) -> bool,
+    /// The box the aim's refusal of the spell shows once the book closed on it, if any.
+    pub refusal: &'a dyn Fn(u16) -> Option<String>,
     /// The spells' pictures' DEF and its size.
     pub pictures: (String, [i32; 2]),
     /// The result window after a command and its tune (none: the battle goes on, or no window).
@@ -355,7 +355,8 @@ struct Asking {
 /// stats dialog while held, else a turret's info its popup (E17 M6 T2b2), over the panel a
 /// control's help (T3a; the entry's last action); a `click:` over the battle opens a stack's stats dialog or a turret's info box (E17 M6
 /// T2a1, T2b2). The book's refusal and
-/// description open their boxes over it, a spell no hex takes "affects no one" over the battle.
+/// description open their boxes over it, a spell the engine refuses its box over the battle (E17 M6
+/// T5a: [`crate::boxes::after_book`]'s, the original's profile).
 /// A box's OK that gives a command (Retreat's, Surrender's) ends the battle in its result window
 /// (E17 M5 T4b1), which a later key or click takes as the box's. A move to the park point after a
 /// click is a move as the harness's is. Nothing else may come in a situation's actions.
@@ -417,17 +418,8 @@ pub fn still(
             }
             Outcome::Chosen(spell) => {
                 still.open = None;
-                let boxes = boxes?;
-                (boxes.no_one)(spell)
-                    .then(|| {
-                        tell(
-                            &crate::boxes::no_one(catalogue),
-                            Style::Ok,
-                            None,
-                            Asked::Told,
-                        )
-                    })
-                    .flatten()
+                let text = (boxes?.refusal)(spell)?;
+                tell(&text, Style::Ok, None, Asked::Told)
             }
         }
     };
@@ -1272,7 +1264,7 @@ pub(crate) mod tests {
                 retreat: true,
                 surrender: None,
             },
-            no_one: &|_| false,
+            refusal: &|_| None,
             pictures: (String::new(), [0, 0]),
             result: &result,
             opening: None,
@@ -1333,7 +1325,7 @@ pub(crate) mod tests {
         let boxes = Boxes {
             tell: &tell,
             leave: Leave::default(),
-            no_one: &|_| false,
+            refusal: &|_| None,
             pictures: (String::new(), [0, 0]),
             result: &|_| None,
             opening: None,
@@ -1390,7 +1382,7 @@ pub(crate) mod tests {
         let boxes = Boxes {
             tell: &tell,
             leave: Leave::default(),
-            no_one: &|_| false,
+            refusal: &|_| None,
             pictures: (String::new(), [0, 0]),
             result: &|_| None,
             opening: Some("{Tactics Phase}".into()),
@@ -1507,7 +1499,7 @@ pub(crate) mod tests {
                     retreat: false,
                     surrender: None,
                 },
-                no_one: &|_| false,
+                refusal: &|_| None,
                 pictures: (String::new(), [0, 0]),
                 result: &|_| None,
                 opening: None,

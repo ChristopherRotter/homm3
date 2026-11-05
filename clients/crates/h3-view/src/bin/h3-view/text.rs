@@ -23,10 +23,15 @@ pub fn default_keys() -> PathBuf {
     assets::clients_dir().join("text").join("keys.toml")
 }
 
+/// The artifacts the family `artifact` names (E17 M6 T5a): the original's 141 (0 to 140, the
+/// combinations among them), by their numbers.
+const ARTIFACTS: usize = 141;
+
 /// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1), the
 /// towns' moats by their faction (E17 M4 T2c-1) and their wall-shot targets' parts (E17 M4 T2c-2:
 /// `<faction>.<part>`, the town type's 18 parts in order), by qualified key, with their original
-/// ids.
+/// ids; the artifacts by their numbers (E17 M6 T5a: `artifact.<n>`, the book's refusals and the
+/// stats' capping artifacts).
 pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
     let entry = |key: &String, original: u16| Entry {
         key: key.clone(),
@@ -62,7 +67,14 @@ pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
             })
         })
         .collect();
+    let artifacts = (0..ARTIFACTS)
+        .map(|id| Entry {
+            key: id.to_string(),
+            id,
+        })
+        .collect();
     BTreeMap::from([
+        (String::from("artifact"), artifacts),
         (String::from("creature"), creatures),
         (String::from("hero"), heroes),
         (String::from("moat"), moats),
@@ -489,6 +501,10 @@ mod tests {
         assert!(keys.keys.contains_key("creature.base:pikeman"));
         assert!(keys.keys.contains_key("spell.sod:titans_lightning_bolt"));
         assert!(keys.keys.contains_key("hero.base:orrin"));
+        // E17 M6 T5a: the artifacts by number (the Orb of Inhibition 126), 0 to 140.
+        assert!(keys.keys.contains_key("artifact.126"));
+        assert!(keys.keys.contains_key("artifact.140"));
+        assert!(!keys.keys.contains_key("artifact.141"));
         // E17 M4 T2c-1: a town's moat by its faction.
         assert!(keys.keys.contains_key("moat.base:castle"));
         // E17 M4 T2c-2: a wall's part by its faction (the upper wall, part 6).

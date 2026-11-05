@@ -1764,3 +1764,94 @@ timeline = "timelines/shade-wall.txt"
 frames = "timelines/shade-wall-frames.txt"
 boxes = true
 command = [{ seat = "Attacker", at = 2200, command = { Defend = {} } }]
+
+# E17 M6 T5a (design §12.17, "To record" 9 and 10; *provisional*: to capture, its times and
+# commands the original's to read). `wall-edges` (`seq-wall-edges.toml`, hot seat): Orrin's Force
+# Field at Advanced over hex 8 (row 0), 25 (row 1: its third hex off the field), 83 (column 15 of
+# an even row: its second in column 16) and 108 (its second the obstacle's 92), refused (GENRLTXT
+# 182, the combat cursor's frame 0), then 47 (taken: the spell cursor, "Cast"), given up; the
+# Marksmen defend; Crag Hack's Fire Wall at Basic over 154 (column 1 of an odd row: its second in
+# column 0, refused) and 83 (taken), given up.
+[[sequence]]
+id = "wall-edges"
+scenario = "seq-wall-edges.toml"
+hot_seat = true
+actions = [
+    "aim:0:12", "at:300", "move:410,112", "at:600", "move:388,154", "at:900", "move:718,280",
+    "at:1200", "move:322,364", "at:1500", "move:630,196", "at:1800", "key:Escape", "at:2000",
+    "key:d", "turn:1.0", "at:2300", "aim:0:13", "at:2600", "move:80,490", "at:2900",
+    "move:718,280", "at:3200", "key:Escape",
+]
+ms = 400
+timeline = "timelines/wall-edges.txt"
+frames = "timelines/wall-edges-frames.txt"
+boxes = true
+command = [{ seat = "Attacker", at = 2000, command = { Defend = {} } }]
+
+# `wall-hover` (`seq-shade-wall.toml`, hot seat): the mouse over the Goblins (hex 100: the
+# Marksmen's shot, the Goblins outlined), Orrin's Fire Wall at Basic aimed from the book, the
+# mouse over hex 101 (column 16: refused) and 47 (taken), given up: in the original's profile the
+# Goblins keep their outline through the wall's aim (`aim_wall_handler` marks no stack and
+# unmarks none); the client's aims the wall as every other aim (CLT-Q56).
+[[sequence]]
+id = "wall-hover"
+scenario = "seq-shade-wall.toml"
+hot_seat = true
+actions = [
+    "move:696,322", "at:300", "aim:0:13", "at:600", "move:740,322", "at:900", "move:630,196",
+    "at:1200", "key:Escape",
+]
+ms = 400
+timeline = "timelines/wall-hover.txt"
+frames = "timelines/wall-hover-frames.txt"
+boxes = true
+
+# `summon-other` (`seq-summon-other.toml`, hot seat, design §12.17 "To record" 7; *provisional*:
+# to capture, its times the original's to read): round 1 Orrin summons Fire Elementals at the
+# Champions' turn (`cast:0`), the Champions, the elementals and the Archers defend; round 2 at the
+# Champions' turn the book's Summon Water Elemental (place 1): GENRLTXT 539 (Orrin, the Fire
+# Elementals, 540), closed by Enter. The viewer's sequences model neither the book over the
+# battle nor a box (`pointer::inputs`): the box's frames are the original's alone (masked, or a
+# viewer change, at the capture); the box's choice is `boxes::after_book`'s unit tests'.
+# `summon-other-female` the same with Valeska (541).
+[[sequence]]
+id = "summon-other"
+scenario = "seq-summon-other.toml"
+hot_seat = true
+actions = [
+    "cast:0", "key:d", "turn:0.1", "key:d", "turn:1.0", "key:d", "turn:0.0", "key:c",
+    "click:332,123", "step:500", "key:Return",
+]
+ms = 1000
+heroes = true
+screens = true
+timeline = "timelines/summon-other.txt"
+frames = "timelines/summon-other-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 65, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Defender", at = 1200, command = { Defend = {} } },
+]
+
+[[sequence]]
+id = "summon-other-female"
+scenario = "seq-summon-other-female.toml"
+hot_seat = true
+actions = [
+    "cast:0", "key:d", "turn:0.1", "key:d", "turn:1.0", "key:d", "turn:0.0", "key:c",
+    "click:332,123", "step:500", "key:Return",
+]
+ms = 1000
+heroes = true
+screens = true
+timeline = "timelines/summon-other-female.txt"
+frames = "timelines/summon-other-female-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 65, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Defender", at = 1200, command = { Defend = {} } },
+]

@@ -75,7 +75,9 @@ use h3_view::sound::Tune;
 
 use crate::assets;
 use crate::audio::{Library, Player};
-use crate::battle::{Battle, BookDid, CursorLook, Ground, MessageDid, Press, Source, StatsDid};
+use crate::battle::{
+    Battle, BookDid, CursorLook, Ground, MessageDid, Opened, Press, Source, StatsDid,
+};
 
 /// How far past the last change the window looks for the next one before it waits for input
 /// only (a battle that no longer changes).
@@ -1217,10 +1219,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         if h.id == h3_view::panel::AUTO_COMBAT {
                             grew |= battle.switch_auto(at)?;
                         }
-                        // C opens the spell book (E17 M5 T3a).
-                        if h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
-                            inputs.push(Input::Book { at });
-                            book_changed = true;
+                        // C opens the spell book (E17 M5 T3a), or its refusal's box (E17 M6 T5a).
+                        if h.id == h3_view::panel::SPELL_BOOK {
+                            book_changed |= opened(&mut inputs, at, battle.open_book(at));
                         }
                         // O opens the combat options dialog (E17 M6 T4a).
                         book_changed |= h.id == h3_view::panel::OPTIONS && battle.open_options(at);
@@ -1399,10 +1400,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         if h.over && h.id == h3_view::panel::AUTO_COMBAT {
                             grew |= battle.switch_auto(at)?;
                         }
-                        // The spell book opens as its button is released over it (E17 M5 T3a).
-                        if h.over && h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
-                            inputs.push(Input::Book { at });
-                            book_changed = true;
+                        // The spell book opens as its button is released over it (E17 M5 T3a),
+                        // or its refusal's box (E17 M6 T5a).
+                        if h.over && h.id == h3_view::panel::SPELL_BOOK {
+                            book_changed |= opened(&mut inputs, at, battle.open_book(at));
                         }
                         // The combat options dialog opens as its button is released over it (E17
                         // M6 T4a).
@@ -1679,6 +1680,23 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         ));
     }
     Ok((lines, ok))
+}
+
+/// What the spell book button's press at `at` led to (E17 M5 T3a): the book opened (the battle
+/// takes no move until it closes), or a box told why not (E17 M6 T5a, design §12.17: the mouse
+/// posted as after a book closed without a spell). Whether the screen changed.
+fn opened(inputs: &mut Vec<Input>, at: u32, opened: Opened) -> bool {
+    match opened {
+        Opened::No => false,
+        Opened::Book => {
+            inputs.push(Input::Book { at });
+            true
+        }
+        Opened::Refused => {
+            inputs.push(Input::Cancel { at });
+            true
+        }
+    }
 }
 
 /// What the spell book `did` at `at` (E17 M5 T3a): a change to draw, the cast it closed on
@@ -2084,7 +2102,7 @@ impl Presser {
     ) -> Result<bool, String> {
         let target = match wanted {
             Command::Cast { spell, target, .. } => {
-                if !battle.open_book(now) {
+                if battle.open_book(now) != Opened::Book {
                     return Err("the spell book does not open for a cast".to_owned());
                 }
                 inputs.push(Input::Book { at: now });

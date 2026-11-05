@@ -158,8 +158,15 @@ impl Aim {
     /// the immunity only where its creature's factor is 0 (0x44A4D0) and the default otherwise;
     /// the client takes any other refusal of the engine for it (the engine's tests are not
     /// public).
+    ///
+    /// Force Field's and Fire Wall's aim says the same wherever it refuses (GENRLTXT 182 with the
+    /// spell's name, `spell_fails_message`'s wall case 0x5A2C2B; E17 M6 T5a, design §12.17): their
+    /// flags lack 0x70, so no stack's reason applies.
     #[must_use]
     pub fn refusal(&self, field: &Field<'_>, hex: i32, side: Side) -> Hint {
+        if crate::shades::wall(self.original) {
+            return Hint::WallRefused(self.spell);
+        }
         let Some(stack) = u8::try_from(hex)
             .ok()
             .filter(|&h| self.stacks && h < COLUMNS * ROWS && self.target(field, h).is_none())

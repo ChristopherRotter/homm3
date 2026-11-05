@@ -11,6 +11,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - Never run the original from the installation (it writes into its folder): captures run the copy under `original-data/wine/`, the Wine prefix in a directory the shell's user owns; captures never enter git (ADR-0009).
 - The original's memory holds the frame drawn, the screen the one shown (design §7.1, §7.9): never render memory's poses as the screen (a cast's first frame: `before`). More in the runbook's "Traps".
 - A text table's record numbers are those of the file the game reads first, H3bitmap.lod's (the client's `bitmap_archives` order): `original-data/extracted/H3ab_bmp/` holds older copies (ARRAYTXT's records after 82 one lower: E17 M6 T2a2b2); count records with a quoted-field reader, a record may span lines.
+- A key family of `clients/text/keys.toml` resolves in the battle viewer only over the entries
+  `h3-view`'s `text::entries` lists (an `optional` family it does not list is skipped silently,
+  its keys shown as themselves: `artifact` until E17 M6 T5a); check a new key with
+  `h3-view text <key>` against the original's tables.
 - The wire's stack `morale` and `luck` already hold the timed effects (the engine's materialised, clamped values; its doc said "before" until the server lane's fix): never add Mirth's to Misfortune's again (T2a1 did).
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action

@@ -286,6 +286,13 @@ original = [{ at = "GENRLTXT:551" }]
 id = "battle.hint.select-target"
 original = [{ at = "GENRLTXT:24" }]
 
+# Force Field's and Fire Wall's aim over a hex it refuses (E17 M6 T5a, design §12.17:
+# `spell_fails_message`'s wall case 0x5A2C2B, the spell's name).
+[[key]]
+id = "battle.hint.wall-refused"
+args = { spell = "text" }
+original = [{ at = "GENRLTXT:182", printf = ["spell"] }]
+
 [[key]]
 id = "battle.hint.protects"
 args = { spell = "text", creature = "text" }
@@ -1016,6 +1023,53 @@ original = [{ at = "GENRLTXT:207", printf = ["cost", "mana"] }]
 [[key]]
 id = "aim.no-one"
 original = [{ at = "GENRLTXT:186" }]
+
+# The spell book button's refusals before the book opens (E17 M6 T5a, design §12.17;
+# `hero_book_button` 0x59E900): an anti-magic garrison (record 685); the Orb of Inhibition, the
+# wearer's name and the artifact's (684).
+[[key]]
+id = "book.garrison"
+original = [{ at = "GENRLTXT:685" }]
+
+[[key]]
+id = "book.orb"
+args = { hero = "text", artifact = "text" }
+original = [{ at = "GENRLTXT:684", printf = ["hero", "artifact"] }]
+
+# Its refusals after the book closed on a spell (E17 M6 T5a): a spell above level 1 on Cursed
+# Ground (748); above Recanter's Cloak's level, the artifact's name and the acting side's hero's
+# (537).
+[[key]]
+id = "aim.cursed"
+original = [{ at = "GENRLTXT:748" }]
+
+[[key]]
+id = "aim.cloak"
+args = { artifact = "text", hero = "text" }
+original = [{ at = "GENRLTXT:537", printf = ["artifact", "hero"] }]
+
+# The aim's entry's refusals (E17 M6 T5a; `enter_player_cast` 0x59EC50): Earthquake outside a
+# siege or at a town without a fort (183), Remove Obstacle with no obstacle to remove (713), the
+# side's stack records at their limit, their count (184; Clone's, and the Summons' in the
+# client's profile, CLT-Q57), a Summon Elemental bound to another elemental: the hero, the
+# elemental's plural name and the hero's pronoun (`word.possessive`) (539).
+[[key]]
+id = "aim.no-fort"
+original = [{ at = "GENRLTXT:183" }]
+
+[[key]]
+id = "aim.no-obstacle"
+original = [{ at = "GENRLTXT:713" }]
+
+[[key]]
+id = "aim.stack-limit"
+args = { stacks = "number" }
+original = [{ at = "GENRLTXT:184", printf = ["stacks"] }]
+
+[[key]]
+id = "aim.summoned"
+args = { hero = "text", creature = "text", pronoun = "text" }
+original = [{ at = "GENRLTXT:539", printf = ["hero", "creature", "pronoun"] }]
 
 # The battle's result window (E17 M5 T4b1; design §7.20; `battle_result_dialog` 0x4702D0): its
 # titles (GENRLTXT's records 408 to 410), a side's word by its fate (411, 412) and a side's row

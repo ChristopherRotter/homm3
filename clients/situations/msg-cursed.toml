@@ -1,0 +1,55 @@
+# E17 M6 T5a (design §12.17, "To record" 1): the still `msg-cursed`. The field, armies and
+# obstacles of `cursed-ground` (cursed-ground.toml); Orrin with 20 spell points (Knowledge 2) and
+# Magic Arrow (level 1) and Lightning Bolt (level 2): Lightning Bolt chosen in the book, the book
+# button's refusal after it (GENRLTXT 748) over the battle.
+
+[scenario]
+id = "msg-cursed"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): the panel's buttons
+# lit on the human's turn (E17 M3 T6a).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+battlefield = "base:cursed_ground"
+obstacles = [
+    { hexes = [94, 76, 60], anchor = 93, kind = "base:obstacle_15" },
+    { hexes = [46, 45, 44, 29, 28], anchor = 61, kind = "base:obstacle_41" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:magic_arrow", "base:lightning_bolt"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
