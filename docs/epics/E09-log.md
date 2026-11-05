@@ -1238,3 +1238,14 @@ merge, the defender's three kinds). The code, tests and docs by the agent; an in
   and a win without a fort); `h3-adventure`'s `state/tests/towns.rs` (the garrison's end, the
   capture's outcome, an allied town and a hero off the map). The town tests' fixtures take a core
   and a town pack (`towns_core_pack`, `rules_of`).
+- **The review** (independent, no behaviour bug in the reachable cases): a start whose tile is not
+  the town's entrance would be built as a siege but end as a field battle (`siege_setup` now
+  fights no siege there, tested; T8b2's queue entry says so); an attacker's win whose hero leaves
+  the map beats the garrison without a capture (as a mine's; TWN-CAP-003 says so, the original's
+  path not read); tests added for a defender's win without the +500 and the spell points after an
+  attacker's win; five texts (`AdventureOutcome::capture` and `reward_after`, the game's
+  `capture` module, `Rest::Won` and `run_rest` with TWN-CAP-003, TWN-SIE-005's terrain without a
+  native one).
+- **Gates:** `cargo fmt`; the scoped verify with the original data passed every step (clippy,
+  coverage 100 %, determinism, `bench-check`, `original-data`) but `check-lane` (by design on a
+  `cross-lane` branch); `check-lane --cross-lane`; `cargo check --workspace --all-targets`.

@@ -20,7 +20,8 @@ use crate::GameRuleset;
 /// 0x4643B0 takes a siege's terrain first, then the tile's special ground in every case;
 /// `installation.md` §7.26). A faction without a native terrain keeps the setup's. The obstacles
 /// are the caller's, drawn after this (`generate_setup_obstacles`: none at a town with a fort).
-/// A town the store lacks changes nothing (the store holds every town of the map).
+/// A town the store lacks, or a `tile` that is not its entrance, changes nothing: no siege (the
+/// store holds every town of the map; the battle's end finds the town of a siege by its tile).
 // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005
 pub(crate) fn siege_setup(
     (towns, adventure): (&Towns, &AdventureState),
@@ -28,7 +29,10 @@ pub(crate) fn siege_setup(
     (town, tile): (TownId, Pos),
     setup: &mut BattleSetup,
 ) {
-    let Some(record) = towns.get(town) else {
+    // The battle's town is its tile's at its end (`GameState::end_battle`): a tile that is not
+    // the town's entrance fights no siege.
+    let at_entrance = adventure.map().town_at(tile) == Some(town);
+    let Some(record) = towns.get(town).filter(|_| at_entrance) else {
         return;
     };
     let part = rules.towns();

@@ -27,7 +27,8 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
   `homm3-bench-regression`, and the adventure lane's trap on the walking search's loop); the
   merge of the garrison into the visitor's army (§10, TD-7 by the reading) with its events; the
   defender (`Defender::Hero`, `Garrison` for an owned town, `Guards` for a neutral one); the
-  battle's tile the entrance, its terrain the game's (T8b1); end-to-end tests through
+  battle's tile the entrance (T8b1's `siege_setup` fights no siege elsewhere, and the battle's end
+  finds a siege's town by its tile), its terrain the game's (T8b1); end-to-end tests through
   `GameState::apply` (a siege started by a step, played, captured with the attacker outside).
 - **Depends on:** T8b1 (its pull request). **Status:** next; its cut confirmed at its start.
 

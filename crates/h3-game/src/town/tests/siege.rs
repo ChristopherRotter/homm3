@@ -290,9 +290,15 @@ fn a_faction_without_a_native_terrain_keeps_the_tiles_and_a_battle_without_a_tow
         after.battle(RED).unwrap().state(),
         &battle(&rules, &expected)
     );
-    // Neither a battle without a town nor one naming a town the store lacks is a siege.
-    for town in [None, Some(TownId::new(9))] {
-        let (after, _) = started(&rules, &game, siege_start(&game, town));
+    // Neither a battle without a town, nor one naming a town the store lacks, nor one away from
+    // the town's entrance (town 0's, red's own) is a siege.
+    let elsewhere = BattleStart {
+        tile: Pos::new(1, 1, 0),
+        ..siege_start(&game, Some(T1))
+    };
+    let starts = [None, Some(TownId::new(9))].map(|town| siege_start(&game, town));
+    for start in starts.into_iter().chain([elsewhere]) {
+        let (after, _) = started(&rules, &game, start);
         assert!(h3_battle::computer::siege(after.battle(RED).unwrap().state()).is_none());
     }
 }
@@ -394,25 +400,29 @@ fn a_sieges_defending_hero_keeps_at_most_the_spell_points_it_had() {
         [Some(HERO), Some(BLUE_HERO)],
         BLUE_GATE,
     );
-    let end = |town: Option<TownId>, left: u16| {
+    let red_stack = red_stack(&game);
+    let end = |town: Option<TownId>, winner: BattleSide, left: u16| {
         let mut after = game.clone();
-        let outcome = ended(
-            BattleResult::Victory(BattleSide::Defender),
-            [&[], &[survivor]],
-            [red + 9, left],
-        );
+        let survivors: [&[ArmyStack]; 2] = match winner {
+            BattleSide::Attacker => [&[red_stack], &[]],
+            BattleSide::Defender => [&[], &[survivor]],
+        };
+        let outcome = ended(BattleResult::Victory(winner), survivors, [red + 9, left]);
         after.end_battle(&rules, sides, town, &outcome, &mut Vec::new());
         (
             after.hero(HERO).unwrap().mana,
             after.hero(BLUE_HERO).unwrap().mana,
         )
     };
-    // The town's 150 left over: back to those it had; fewer left: those. The attacker's are its
-    // own (red's hero left the map with its 9 more).
-    assert_eq!(end(Some(T1), before + 150), (red + 9, before));
-    assert_eq!(end(Some(T1), before - 1), (red + 9, before - 1));
+    // The town's 150 left over: back to those it had; fewer left: those; whoever won (the beaten
+    // visitor's details keep them). The attacker's are its own: its 9 more.
+    for winner in BattleSide::BOTH {
+        assert_eq!(end(Some(T1), winner, before + 150), (red + 9, before));
+        assert_eq!(end(Some(T1), winner, before - 1), (red + 9, before - 1));
+    }
     // Outside a siege the spell points left stand.
-    assert_eq!(end(None, before + 150).1, before + 150);
+    let defender = BattleSide::Defender;
+    assert_eq!(end(None, defender, before + 150).1, before + 150);
     assert_eq!((mana_after(3, 5), mana_after(9, 5)), (3, 5));
 }
 
@@ -570,6 +580,34 @@ fn a_sieges_attacking_winner_gains_500_more_experience() {
         Some(SIEGE_EXPERIENCE)
     );
     assert_eq!(experience(None, won, [&[stack], &[]]), None);
+    // A visitor that wins its siege gains none of it: the defeated hero's 500 alone.
+    let visited = GameState::new(&rules, &siege_setup(&rules, true, standard(false)), 7).unwrap();
+    let survivor = visited.adventure().hero(BLUE_HERO).unwrap().army[0];
+    let sides = (
+        [Some(RED), Some(BLUE)],
+        [Some(HERO), Some(BLUE_HERO)],
+        BLUE_GATE,
+    );
+    let mut after = visited.clone();
+    let mut events = Vec::new();
+    let lost = ended(
+        BattleResult::Victory(BattleSide::Defender),
+        [&[], &[survivor]],
+        [0, 0],
+    );
+    after.end_battle(&rules, sides, Some(T1), &lost, &mut events);
+    let gained: Vec<u32> = events
+        .iter()
+        .filter_map(|event| match event {
+            GameEvent::HeroChanged {
+                hero: BLUE_HERO,
+                change: HeroChange::GainExperience(gained),
+                ..
+            } => Some(*gained),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(gained, [500]);
     assert_eq!(
         (siege_experience(7, true), siege_experience(7, false)),
         (507, 7)

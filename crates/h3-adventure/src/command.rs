@@ -247,18 +247,22 @@ pub struct AdventureOutcome {
     /// The hero and the tile of a won battle against an object's guards whose reward comes after
     /// the winner's levels (GAM-DEC-007, E08 T63b; survey `E08-rewards.md` §8.1, the original's
     /// visit after 0x4DA720): a guarded artifact's, scroll's or pile's pickup, a Pandora's Box's
-    /// or an event's record, a Pyramid's loot and spell. The game holds it as a rest of the visit
-    /// and gives it with [`crate::AdventureState::give_won`] once the player has no open decision.
+    /// or an event's record, a Pyramid's loot and spell; a mine's flag (E08 T84a), a dwelling's
+    /// visit (E08 T95a2); since E09 T8b1 a town's capture after a siege won against its garrison
+    /// (TWN-CAP-003). The game holds it as a rest of the visit and gives it with
+    /// [`crate::AdventureState::give_won`] once the player has no open decision.
     pub reward_after: Option<(HeroId, Pos)>,
     /// The hero and the tile of an event that fires after the visit of the monster guarding its
     /// tile (ADV-OBJ-007, `ADV-QUIRK-29`; E08 T63b): the step onto it ended the move, the guard's
     /// visit is the outcome's. The game holds it as a rest of the visit (GAM-DEC-007) and fires
     /// it with [`crate::AdventureState::fire_held_event`] once the player has no open decision.
     pub event_after: Option<(HeroId, Pos)>,
-    /// The undefended town the step entered, which the game captures at once (TWN-VIS-001,
-    /// TWN-CAP-001; E09 T8a2, the town epic's design note §9 and §11): `h3_towns::reveal`, then
-    /// [`crate::AdventureState::capture_town`], then the Capitol's limit (TWN-CAP-002). The step
-    /// changes no owner itself.
+    /// The town the outcome captures for its player, which the game applies at once (TWN-CAP-001;
+    /// E09 T8a2, the town epic's design note §9 and §11): `h3_towns::reveal`, then
+    /// [`crate::AdventureState::capture_town`], then the Capitol's limit (TWN-CAP-002): the
+    /// undefended town a step entered (TWN-VIS-001); since E09 T8b1 a town whose siege the
+    /// player's hero won, given after the winner's levels
+    /// ([`crate::AdventureState::give_won`], TWN-CAP-003). The outcome changes no owner itself.
     pub capture: Option<TownId>,
 }
 
