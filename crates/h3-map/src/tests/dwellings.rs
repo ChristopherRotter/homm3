@@ -13,7 +13,7 @@ use super::import::{self as raw_import, ROE, SOD, object};
 use crate::import::codes;
 use crate::model::{Bits, Body, RandomDwelling, RawMap, TownBody};
 use crate::writer as w;
-use crate::{ImportError, Unsupported, import, import_map};
+use crate::{ImportError, import};
 
 /// The game's `Objects.txt` lines of the classes written here: a Guardhouse (17.56), the Dragon
 /// Cliffs (17.24), the Golem Factory (20.1), the Elemental Conflux (20.0), a Refugee Camp (78),
@@ -414,9 +414,10 @@ fn the_dwellings_map_imports_typed() {
 #[test]
 fn a_random_dwelling_tied_to_a_town_stays_a_blocker() {
     // ADV-STUB-13 until E09's random towns: an identifier a town or a random town of the map has
-    // keeps the object untyped, unowned and empty, whatever its levels and owner; an RoE town has
-    // no identifier, and an object of a town's class without a town's body names none.
-    let mut map = with_body(&raw(), 7, 5, Some((5, None)), Some((9, 9)));
+    // keeps the object untyped, unowned and empty; an RoE town has no identifier, and an object of
+    // a town's class without a town's body names none. Since E08 T97b1 (T97a's finding) its levels
+    // and its owner are checked first, as any random dwelling's (A-36, ADV-OWN-002).
+    let mut map = with_body(&raw(), 7, 0, Some((5, None)), Some((2, 4)));
     let town = |identifier| {
         Body::Town(Box::new(TownBody {
             identifier,
@@ -438,6 +439,26 @@ fn a_random_dwelling_tied_to_a_town_stays_a_blocker() {
         (None, None, &Holds::Nothing)
     );
     assert_eq!(dwelling.scenery, Scenery::Ownable);
+    // Its levels past the seventh or the lowest above the highest, then an owner nobody plays
+    // (colour 5): refused, as an untied one's.
+    let tied = |map: &RawMap, owner, levels| {
+        let mut map = map.clone();
+        map.objects[7].body = with_body(&raw(), 7, owner, Some((5, None)), levels).objects[7]
+            .body
+            .clone();
+        import(&map, &SOD)
+    };
+    for levels in [(9, 9), (4, 2)] {
+        assert_eq!(
+            tied(&map, 5, Some(levels)).unwrap_err(),
+            ImportError::DwellingLevels(7)
+        );
+    }
+    assert_eq!(
+        tied(&map, 5, Some((2, 4))).unwrap_err(),
+        ImportError::ObjectOwner(7)
+    );
+    assert!(tied(&map, 0xFF, None).is_ok());
     // The other identifiers name no town.
     let mut other = map.clone();
     other.objects[7].body = with_body(&raw(), 7, 0xFF, Some((6, None)), Some((0, 0))).objects[7]
@@ -532,20 +553,30 @@ fn the_import_refuses_what_the_original_cannot_load() {
     );
 }
 
-// covers: ADV-OWN-002
+// covers: ADV-OWN-002, ADV-DWL-004
 #[test]
-fn a_dwelling_entered_from_water_is_unsupported() {
-    // The ownable kinds' rule covers the dwellings and the random dwellings: Inferno's random
-    // dwelling's entrance on water.
+fn a_dwelling_entered_from_water_is_imported() {
+    // E08 T97b1 (survey `E08-dwellings.md` §17: a hero in a boat visits a dwelling as on land):
+    // the Pikeman's dwelling (class 17) and Inferno's random dwelling (218), each with its
+    // entrance on water, import as on land, typed and owned; the other ownable kinds stay
+    // unsupported there (`an_ownable_object_entered_from_water_is_unsupported`).
     let mut map = raw();
-    let layer = import_map(&map, &SOD).unwrap();
-    let dwelling = &layer.objects[7];
-    let (column, row) = dwelling.visitable.offsets().next().unwrap();
-    let x = usize::from(dwelling.anchor.x) - usize::from(column);
-    let y = usize::from(dwelling.anchor.y) - usize::from(row);
-    map.terrain.tiles[y * 36 + x].terrain = 8;
-    assert_eq!(
-        import(&map, &SOD).unwrap_err(),
-        ImportError::Unsupported(Unsupported::OwnedOnWater(9))
-    );
+    let before = import(&map, &SOD).unwrap();
+    for index in [0, 7] {
+        let dwelling = &before.map.objects[index];
+        let (column, row) = dwelling.visitable.offsets().next().unwrap();
+        let x = usize::from(dwelling.anchor.x) - usize::from(column);
+        let y = usize::from(dwelling.anchor.y) - usize::from(row);
+        map.terrain.tiles[y * 36 + x].terrain = 8;
+    }
+    let after = import(&map, &SOD).unwrap();
+    assert_ne!(after.map.tiles, before.map.tiles);
+    for index in [0, 7] {
+        let (a, b) = (&after.map.objects[index], &before.map.objects[index]);
+        assert_eq!(
+            (a.object_type, a.owner, &a.holds),
+            (b.object_type, b.owner, &b.holds)
+        );
+        assert!(a.object_type.is_some());
+    }
 }

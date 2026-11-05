@@ -1,11 +1,11 @@
 //! Tests of the step onto a town through the game and of the capture the game composes (E09 T8a2;
 //! the town epic's design note §9 and §11): an own town entered, an undefended one captured with
-//! its reveal and the Capitol's limit told where the town is seen, a defended one refused, the
-//! legal moves.
+//! its reveal and the Capitol's limit told where the town is seen, a defended one besieged (since
+//! E09 T8b2a), the legal moves.
 
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEventKind, Pos, Viewers};
+use h3_adventure::{AdventureCommand, AdventureEventKind, Pos, Viewers};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::{BuildingsSetup, SlotSet, TownFaction};
 
@@ -284,39 +284,41 @@ fn an_own_town_is_entered_without_a_capture() {
     assert_eq!(game.towns(), &towns);
 }
 
-// covers: TWN-VIS-001
+// covers: TWN-VIS-001, TWN-SIE-001
 #[test]
-fn a_defended_town_is_refused_until_the_siege() {
-    // `TWN-STUB-7`: a neutral town with its drawn garrison.
+fn a_defended_town_is_besieged_not_captured() {
+    // A neutral town with its drawn garrison: the step opens the siege against the neutral seat
+    // (E09 T8b2a; the siege's own tests in `siege.rs`).
     let rules = towns_rules();
     let mut setup = at(&rules, Pos::new(3, 1, 0), true);
     setup.towns[1].garrison = None;
     let mut game = GameState::new(&rules, &setup, 7).unwrap();
     assert!(!game.adventure().town_garrison(1).unwrap().is_empty());
-    assert_eq!(
-        step(&rules, &mut game, BLUE_GATE),
-        Err(GameCommandError::Adventure(AdventureCommandError::Visit {
-            step: 0
-        }))
-    );
+    step(&rules, &mut game, BLUE_GATE).unwrap();
+    let battle = game.battle(RED).unwrap();
+    assert_eq!(battle.owners(), [Some(RED), None]);
+    assert_eq!(battle.tile(), BLUE_GATE);
     assert_eq!(game.adventure().owner(1), None);
+    assert_eq!(game.adventure().hero(HERO).unwrap().pos, Pos::new(3, 1, 0));
 }
 
 // covers: TWN-VIS-001
 #[test]
-fn the_legal_moves_enter_an_own_or_undefended_town_not_a_defended_one() {
+fn the_legal_moves_reach_a_towns_entrance_defended_or_not() {
+    // An own or undefended town entered, a defended one visited from the tile before: each a
+    // destination.
     let rules = towns_rules();
     let actor = Actor::Player(RED);
     let mut defended = at(&rules, Pos::new(2, 1, 0), true);
     defended.towns[1].garrison = None;
-    for (setup, open) in [
-        (at(&rules, Pos::new(2, 1, 0), false), true),
-        (at(&rules, Pos::new(2, 1, 0), true), true),
-        (defended, false),
+    for setup in [
+        at(&rules, Pos::new(2, 1, 0), false),
+        at(&rules, Pos::new(2, 1, 0), true),
+        defended,
     ] {
         let game = GameState::new(&rules, &setup, 7).unwrap();
         let moves = legal_moves(&game, &rules, actor, HERO).unwrap();
         assert_eq!(moves.path(RED_GATE), Some([RED_GATE].to_vec()));
-        assert_eq!(moves.path(BLUE_GATE).is_some(), open);
+        assert_eq!(moves.path(BLUE_GATE), Some([BLUE_GATE].to_vec()));
     }
 }

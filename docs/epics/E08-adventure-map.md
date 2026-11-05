@@ -136,6 +136,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 258. **T97 in three, as increment 9's T87** (the user; recommended): **T97a** the audit of design §17's eight exit criteria, its gaps fixed, one pull request; **T97b** the dwellings entered from water settled in increment 10 (the sea survey's reading: another entrance on water is a normal step from a boat, `E08-sea.md` §4.1, §4.3; the dwelling's own visit, its guards' battlefield and the hire read, the typed refusal `OwnedOnWater` lifted for them; likely map import v19); **T97c** increment 10 closed and increment 11 refined (docs; ADV-Q44). Not chosen: two, the water dwellings carried into increment 11; two, the water dwellings first; the audit and the closure in one session, the water dwellings carried.
 
+### Decisions at T97b's start (2026-11-05, user)
+
+259. **T97b in two** (the user; recommended): **T97b1** the reading written up (survey `E08-dwellings.md` §17: a hero in a boat visits a dwelling entered from water as on land, its guards on the deck; VCMI agrees, the wiki is silent), the rule (ADV-DWL-004, ADV-OWN-002 amended), `OwnedOnWater` lifted for the dwellings and the random dwellings (the other ownable kinds keep it), the tests, the census, T97a's two findings (a random dwelling tied to a town has its levels and owner checked; the stale doc text) and one bump, map import v19 with the replays' headers, one pull request; **T97b2** the plans lay out dwellings entered from water (the property tests' oracles of a boat's visit; no version moved). Not chosen: T97b whole in one session; T97b1 alone, the plans' cover carried into increment 11.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -165,7 +169,9 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
   - **T96b2 The dwellings XL, its benchmarks and the census.** Done (2026-11-05, `adventure/e08-t96b2`, whole; `shared/e08-t96b2-benches`: the README's rows): `fixtures/maps/e08-dwellings-144.h3m` (`h3-map`'s `tests/dwellings_xl_map.rs`: 99 dwellings of class 17, 14 of class 20, 30 random dwellings, 9 camps, the shipped maps' most on one map); the workloads `day-start-dwellings-xl-144`, `fork-dwellings-xl-144` (`h3 adventure bench --dwelling 1`, `AdventureState::dwellings_written`) and `random-play-dwellings-36` baselined; the census checks each resolved random dwelling's entrance on the map and prints the most of each class on one map; no version moved.
 - **T97 The audit** (round 8; design §17): increment 10 against its exit criteria, the four shipped maps refused as `OwnedOnWater` (decision 256), increment 10 closed, increment 11 refined; in three (decision 258):
   - **T97a The audit.** Done (2026-11-05, `adventure/e08-t97a`): the eight criteria against the code, the catalog and the gates; batch E10's rows cited where survey §16 planned them, ADV-HIR-001 and ADV-RFG-001 `verified`, `ADV-QUIRK-36` to `-38` linked; tests for a month's kind at a dwelling and a camp, the random dwelling's own entrance, no Leave Guards, a declined guards' question, a camp's purchase by another player, the base pack's Angel Portal moved, a 216's and a 218's owners; criterion 5's wording; the town lane told of the week's creature; two findings to T97b; no version moved.
-  - **T97b The dwellings entered from water.** Queued.
+  - **T97b The dwellings entered from water.** In two (decision 259):
+    - **T97b1 The rule and the import.** Done (2026-11-05, #742, `adventure/e08-t97b1`): survey §17 (the step, the visit and the hire test no boat; the guards on the deck; VCMI agrees); `OwnedOnWater` lifted for the dwellings and random dwellings (map import v19), a tied random dwelling's levels and owner checked; a boat's visit tested end to end; the census; the 47 adventure replays' headers; ADV-DWL-004, -005, ADV-OWN-002 amended.
+    - **T97b2 The plans' dwellings on water.** Queued.
   - **T97c Increment 10 closed; increment 11 refined.** Queued.
 
 ## Later increments (sketch)

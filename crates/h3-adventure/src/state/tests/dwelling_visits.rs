@@ -625,3 +625,101 @@ fn the_dwellings_writer_keeps_the_block_as_it_was_when_nothing_changes() {
     assert!(s.dwellings.is_none() && s.check_dwellings());
     assert_eq!(s, built);
 }
+
+// covers: ADV-DWL-004, ADV-SEA-005, GAM-BAT-001, ADV-HIR-002
+#[test]
+fn a_hero_in_a_boat_visits_a_dwelling_entered_from_water_as_on_land() {
+    // E08 T97b1 (survey `E08-dwellings.md` §17; the original's `visit_dwelling` and
+    // `dwelling_offer_hire` test no boat): red's hero aboard the boat at (1, 0) sails onto the
+    // entrance at (3, 0) of a neutral `t:d5` on the water. Its guards' question, their battle on
+    // the deck at the entrance, the flag and the hire question after the win, the hire dialog and
+    // a purchase into the hero's army, the hero in its boat on the entrance throughout; then it
+    // sails off and the dwelling stays red's.
+    use crate::testing::{coasted, hero_at};
+    let rules = rules();
+    let parts = (&rules.0, &rules.1, &[][..]);
+    let (c5, w5) = (creature(&rules, "t:c5"), creature(&rules, "t:w5"));
+    let at = Pos::new(3, 0, 0);
+    let mut setup = coasted(
+        &["gb~~g", "ggggg"],
+        vec![
+            hero_at(1, 0, Pos::new(0, 1, 0), &[PEASANT]),
+            hero_at(2, 1, Pos::new(4, 1, 0), &[PEASANT]),
+        ],
+    );
+    setup.map.objects = vec![placed(
+        &rules,
+        "t:d5",
+        (at.x, at.y),
+        mask(&[(0, 0)]),
+        mask(&[(0, 0)]),
+    )];
+    let mut s = started(&rules, &setup).unwrap();
+    s.put_aboard(HERO, 0);
+    let hero = &mut s.heroes[0];
+    (hero.movement, hero.max_movement) = (1500, 1500);
+    let aboard = |s: &AdventureState| {
+        let hero = s.hero(HERO).unwrap();
+        assert!(s.check_boats(&rules.1));
+        (hero.pos, hero.boat)
+    };
+    // The step onto the entrance: the guards' question.
+    let sail = |s: &mut AdventureState, path: Vec<Pos>| {
+        let walk = AdventureCommand::MoveHero { hero: HERO, path };
+        s.apply(&rules.0, &rules.1, &[], RED, &walk, &mut Vec::new())
+            .unwrap()
+    };
+    let outcome = sail(&mut s, vec![Pos::new(2, 0, 0), at]);
+    let ask = Offer {
+        hero: HERO,
+        object_type: type_of(&rules, "t:d5"),
+        anchor: at,
+        kind: OfferKind::Guarded {
+            creature: c5,
+            count_word: 2,
+        },
+    };
+    assert_eq!(outcome.offer, Some(ask.clone()));
+    assert_eq!(aboard(&s), (at, Some(0)));
+    // Accepted: the battle on the deck, at the entrance, the guards unsplit and unowned.
+    let (accepted, _) = accept(&rules, &mut s, &ask);
+    let start = battle(&accepted);
+    let terrains = rules.1.params().battle_terrains().unwrap();
+    assert_eq!(
+        (start.tile, start.terrain, start.battlefield.clone()),
+        (at, terrains.sea, Some(terrains.deck.clone()))
+    );
+    let army = vec![stack(0, c5, 6), stack(1, w5, 6)];
+    assert_eq!(start.defender, Defender::Guards { army });
+    // Won: after the levels the flag, then the hire question; the hero still aboard.
+    let mut events = Vec::new();
+    let ended = s.end_unowned_battle(parts, (HERO, at), (&[], true), &mut events);
+    assert_eq!(ended.reward_after, Some((HERO, at)));
+    let given = s.give_won(parts, (HERO, at), &mut events);
+    let question = Offer {
+        kind: OfferKind::Hire {
+            creatures: vec![c5, w5],
+        },
+        ..ask
+    };
+    assert_eq!(given.offer, Some(question.clone()));
+    assert_eq!(s.owner(0), Some(RED));
+    assert_eq!(aboard(&s), (at, Some(0)));
+    // The hire dialog, a purchase into the army of the hero in its boat.
+    let (accepted, _) = accept(&rules, &mut s, &question);
+    let dialog = accepted.hire.unwrap();
+    let purchase = s
+        .check_hire((&rules.0, &rules.1), &dialog, (c5, 1))
+        .unwrap();
+    s.hire(purchase, &mut Vec::new());
+    assert_eq!(
+        s.hero(HERO).unwrap().army,
+        vec![stack(0, PEASANT, 1), stack(1, c5, 1)]
+    );
+    assert_eq!(s.dwelling_counts(0), Some(&[1, 2][..]));
+    assert_eq!(aboard(&s), (at, Some(0)));
+    // Sailing off: the boat leaves the entrance, the dwelling stays red's.
+    sail(&mut s, vec![Pos::new(2, 0, 0)]);
+    assert_eq!(aboard(&s), (Pos::new(2, 0, 0), Some(0)));
+    assert_eq!(s.owner(0), Some(RED));
+}

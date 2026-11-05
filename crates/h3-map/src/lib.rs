@@ -68,8 +68,11 @@ pub use parse::parse;
 /// supported; a placed hero right of a town's entrance moved onto it (TWN-SET-010), one on a
 /// town's entrance supported; a main town that is no town's entrance and a random town's
 /// alignment past the colours refused. v18 (E09 T8a1): the towns (77, 98) typed (the type `town`),
-/// each with its owner (a colour nobody plays refused) and its garrison's formation.
-pub const MAP_IMPORT_VERSION: u32 = 18;
+/// each with its owner (a colour nobody plays refused) and its garrison's formation. v19 (E08
+/// T97b1): a dwelling or a random dwelling entered from water supported (the other ownable kinds
+/// stay unsupported there); a random dwelling tied to a town of the map has its levels and owner
+/// checked before it stays a blocker.
+pub const MAP_IMPORT_VERSION: u32 = 19;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///
