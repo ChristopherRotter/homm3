@@ -49,9 +49,10 @@ struct Unseen {
     /// one (SoD's plans) keeps its default, drawn from the seed before the objects' contents.
     experience: Vec<Option<u32>>,
     /// (E08 T86b1) Another owner at load for each ownable object the viewer never sees, in the
-    /// map's order (cyclically; empty: kept): a playing colour but the viewer's by its index
-    /// (modulo their number), or none (neutral). Its owner shows only with the object (ADV-OWN-003),
-    /// and its reveal at the start is its owner's (ADV-OWN-001).
+    /// map's order (cyclically; empty: kept; one the viewer owns is kept, E08 T96b1, [`vary`]): a
+    /// playing colour but the viewer's by its index (modulo their number), or none (neutral). Its
+    /// owner shows only with the object (ADV-OWN-003), and its reveal at the start is its owner's
+    /// (ADV-OWN-001).
     owners: Vec<Option<u8>>,
 }
 
@@ -154,7 +155,10 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 /// ground (E08 decision 40: a monster shows on the fringe in either profile). A hero's tile stays
 /// land, and no blocker is added over it; (E08 T75b) a boat's tile stays water, and no blocker is
 /// added over it (the setup refuses both, ADV-SEA-001), while a boat the viewer never sees may be
-/// removed as a blocker is.
+/// removed as a blocker is. (E08 T96b1) An object the viewer owns at load stays, and stays its
+/// own, wherever it lies: what it owns is its own, and so its income (GAM-RES-003), which the
+/// start's reveal does not always show (ADV-OWN-002: an object visited from no tile of the map, as
+/// a mine anchored on the map's first column, has no entrance and reveals nothing).
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -179,11 +183,17 @@ fn vary(
         .map(|o| (o.pos.x, o.pos.y, o.pos.z))
         .collect();
     // E08 T86b1: an ownable object's entrance stays land, as a hero's tile (the import refuses one
-    // on water: `OwnedOnWater`).
+    // on water: `OwnedOnWater`); (E08 T96b1) an abandoned mine's too, which is ownable (`lay_out`'s
+    // `OWNABLE`) though neutral at load, with no owner in its body.
     let entrances: Vec<Spot> = m
         .objects
         .iter()
-        .filter(|o| matches!(o.body, Body::Mine { .. } | Body::Owned { .. }))
+        .filter(|o| {
+            matches!(
+                o.body,
+                Body::Mine { .. } | Body::AbandonedMine(_) | Body::Owned { .. }
+            )
+        })
         .flat_map(|o| {
             let (_, visitable) = masks(usize::try_from(o.template - 1).unwrap());
             visitable.iter().filter_map(|&(column, row)| {
@@ -232,6 +242,10 @@ fn vary(
             objects(spot) && (!monster || ground(spot)) && !seen_monsters.contains(&spot)
         })
     };
+    let own = |o: &Object| match o.body {
+        Body::Mine { owner } | Body::Owned { owner } => owner == u32::from(colour),
+        _ => false,
+    };
     let mut blocker = 0;
     m.objects.retain(|o| {
         if o.template == HERO_TEMPLATE {
@@ -241,7 +255,7 @@ fn vary(
         let index = blocker;
         blocker += 1;
         let removed = unseen.removed.get(index % unseen.removed.len().max(1)) == Some(&true);
-        !(removed && unseen_blocker((o.pos.x, o.pos.y, o.pos.z), template))
+        own(o) || !(removed && unseen_blocker((o.pos.x, o.pos.y, o.pos.z), template))
     });
     for &((x, y, z), template) in &unseen.added {
         let anchor = (x % side, y % side, z % levels);
@@ -278,6 +292,9 @@ fn vary(
         }
         let index = ownable;
         ownable += 1;
+        if *owner == u32::from(colour) {
+            continue;
+        }
         match unseen.owners.get(index % unseen.owners.len().max(1)) {
             Some(Some(n)) if !playing.is_empty() => {
                 *owner = u32::from(playing[usize::from(*n) % playing.len()]);
