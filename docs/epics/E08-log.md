@@ -11848,3 +11848,66 @@ the records.
   closed; design §8's and §13's "As built"; decision 255; the inboxes of the town lane (the dialog
   to reuse, E09 decision 4) and the AI lane (v7); T96 queued.
 - **Versions:** game state hash v25, adventure replay format v10, the env's action encoding v7.
+
+### Increment 10, round 8: T96a, the dwellings map and its replays (2026-11-05, `adventure/e08-t96a`)
+
+**The cut** (decision 256, the user at T96's start): T96 in three as increment 9's T86, the map
+and its replays first; the plans' properties (with the inbox's `view.rs` seeds and the plan
+generator's `OwnedOnWater` case) second, the XL with its benchmarks and the census third; the
+four shipped maps refused as `OwnedOnWater` go to T97's audit. **Baseline:** `master` a415b1d
+(#727 merged); the sandbox's full verify green on it (`verify-once`: no fingerprint yet, the full
+run). The original data staged at the start (the computer's shell did not start, staging worked;
+the computer left mid-session as the user said). Built by three narrow sub-agents (the map; the
+random replays' search; the scripted replays).
+
+- **The dwellings map** (`fixtures/maps/e08-dwellings-36.h3m`; `h3-map`'s
+  `tests/dwellings_map.rs`, `the_dwellings_map_is_committed_as_written`): SoD, 36 × 36 of grass,
+  no underground, no sea, written by `h3_map::writer` with the original's templates (T89a's
+  lines in `tests/dwellings.rs`, now `pub(super)`, and the Barracks' 17.58 from `Objects.txt`):
+  a neutral Guardhouse (13, 4) and Barracks (13, 9), the neutral Dragon Cliffs (8, 4) (three
+  Green Dragons guard it), red's Golem Factory (18, 6) and blue's Elemental Conflux (10, 27)
+  (class 20, owned at load, guarded), the random dwellings 216 on (18, 27) (neutral; Castle,
+  Rampart or Tower, levels 1 to 7), 217 on (20, 11) (red's, level 3) and 218 on (23, 27) (blue's,
+  Inferno's levels 1 to 4), Refugee Camps on (9, 12) and (14, 31); red's Orrin (ten archangels),
+  Valeska (five halberdiers) and Thorgrim (seven stacks, D-52), blue's Adela and Rion. A timed
+  event takes every player's crystal on day 1 (the format holds no starting resources): red holds
+  gold and no crystal, so the Cliffs' dialog refuses for the treasury. The test reads the file
+  back, imports it (every class in order, the owners, the random dwellings' sets and levels, the
+  event) and builds it for seed 1 (the Cliffs' guards; each random dwelling a dwelling of its set
+  and levels with its type's footprint at the moved anchor: a Homestead entered at (17, 27), a
+  second Golem Factory, a Demon Gate). 147 of the seeds 1 to 3 000 draw the Angel Portal from
+  the 216, its anchor moved to (19, 27), entered at (18, 27).
+- **The golden replays** (`adventure_replays.rs` lists what each meets; the test expects 47):
+  random play `dwellings-s765-d22`, `-s1087-d22`, `-s2192-d22` (`--seed N --agent-seed N --days
+  22`, three week starts), the union of three in a scratch search over the seeds 1 to 3 000 that
+  meets 19 of the 22 features counted (the guards asked, fought, won and lost with survivors
+  kept, flags with and without guards, the hire question both ways, free creatures refused for
+  room, dialogs of one creature and of several, a camp's purchase, the Angel Portal drawn and
+  asked at its moved entrance, a hero battle, the search's only level-up); free creatures joining,
+  a camp visited again in its week and a refill visited are in no chosen game (154, 8 and 15 of
+  3 000 have them) and the scripted ones hold them. Scripted (`--seed 1 --checkpoint-every 5
+  --script`): `dwellings-guards-s1` (a guards' battle lost, then won and the flag; the Cliffs'
+  dialog lists no `Buy`), `dwellings-free-s1` (free creatures refused for room, then joined;
+  `NoneToRecruit`), `dwellings-dialog-s1` (refused for room, the most, a purchase of less, the
+  dialog of several open until closed, a one-creature dialog closing), `dwellings-camp-s1` (a
+  camp twice in a day, deserted the next day, the week's new creature), `dwellings-random-s1` (the
+  Homestead at its drawn entrance, flagged and hired from; the 217's Golem Factory owned at
+  load). The moves came from a scratch probe walking each hero toward its tile, the battles'
+  commands from E23's `h3_battle_ai::choose` for both sides. **A refusal is in no replay:**
+  `Replay::record_commands` stops at the first rejected command, so a refusal shows as the legal
+  set without that `Buy`, then `Close`; the probe sent the purchase on a copy (`CannotPay`,
+  `Hire(NoRoom)`, the state unchanged).
+- *Found on the way* (nothing wrong in the rules): a purchase's joins are `CreaturesJoined` as
+  the free creatures' are (an event count must tell them apart by the answer before); every flag
+  sends `TilesRevealed` even with nothing new (`count: 0`, as the mines' flags); a level-up is
+  rare on this map (one game of 3 000: the Cliffs' 540 experience reaches no level 2).
+- *Not scripted:* a guards' battle whose guards lose some creatures (Valeska kills none; the
+  random `-s765` has survivors kept); the Angel Portal's moved anchor in a scripted replay (seed 1
+  draws a Homestead; `-s2192` asks it at its moved entrance).
+- *Agent's calls (change freely):* the map's heroes, armies and positions; the crystal event; the
+  seeds; the scripts' paths.
+- **Gates:** the scoped verify with the original data passed every step, `check-lane`
+  included (no cross-lane path): coverage, determinism with the 47 replays, bench-check (the 17
+  workloads inside the gate, the sandbox's drift as at T95b: the forks +1.4 to +1.9 %, the rest
+  −0.2 to +0.8 %; T96a changes no engine code), original-data.
+- **Versions:** none.
