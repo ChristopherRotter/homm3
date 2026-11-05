@@ -709,3 +709,38 @@ committed in `crates/h3-map/proptest-regressions/tests/play.txt`):
   (design note E09 §14), so the seed-0 draws after them move on maps with towns (the census's
   guarded dwellings 691, 695 before).
   (Done by E08 T95a2, #724: T95b's queue entry, the HANDOFF and design §15 say v25.)
+
+## Inbox notes acted upon (moved 2026-11-05, E08 T96b1)
+
+The three failing seeds of `h3-map`'s `tests::view::a_viewer_learns_nothing_it_cannot_see`, verbatim;
+fixed by T96b1 in the test's `vary` (no engine change), the seeds committed in
+`crates/h3-map/proptest-regressions/tests/view.txt`:
+
+- 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **for the 2026-11-03 note's task**):
+  another seed of `h3-map`'s `tests::view::a_viewer_learns_nothing_it_cannot_see` failing on
+  `master` ae59f3b at `view.rs:1207` (the viewer's events at day 2's start differ by a
+  `ResourceGained` of player 1): `cc e44ebd639ea55b7cce88a74f668c8a98053fa52b72eeaee3c64f471260697aba`
+  (an RoE plan, side 15, two levels; not committed).
+- 2026-11-04 (the town lane, E09 T7a2, `town/e09-t7a2`; **a failing property case on `master`'s
+  import, for a task of yours**): the scoped verify's coverage run found a case of `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` whose laid-out map the import refuses:
+  `start_on` (`tests/play.rs:1478`) unwraps `Err(Unsupported(OwnedOnWater(12)))` (an RoE plan,
+  side 15, one level, its third tile water). T7a2 changes neither the import, the writer nor these
+  tests, so `master` has it too (CI's runs passed on other random cases). Proptest's persisted
+  seed, not committed by T7a2 (it would fail every later run): adding the line
+  `cc f1e6f5bccdc743b549410caa31f1089b743afa8f5432e8ffc10073eb14d036fc` to
+  `crates/h3-map/proptest-regressions/tests/view.txt` replays it. Likely the plan generator
+  placing an ownable object (T93b's dwellings) where it is entered from water.
+
+- 2026-11-03 (the adventure lane, E08 T89a, PR #688; **a failing property case on `master`'s code,
+  for a task of its own**): CI's full verify on #688 (run 41694189742) found a case of `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` that fails at `view.rs:1405`: the viewer's
+  events at day 2's start differ between the game and its copy with the unseen changes,
+  `ResourceGained { player: PlayerId(2), resource: #5, amount: 1 }` in one and not the other (the
+  viewer's own income moved by something it cannot see). Independent of T89a (the test lays out a
+  `RawMap`, no writer); reproduced locally in 12 s by appending `cc
+  4ceb0bd67ba12482c10781aa43bd0edf62cdcbf92752404a3c05e6a995b42fdf` to
+  `crates/h3-map/proptest-regressions/tests/view.txt` (not committed: it would fail every run until
+  fixed). The shrunk plan: RoE, side 5, one level, the full input in that run's job log
+  (`gh api repos/ChristopherRotter/homm3/actions/jobs/<id>/logs` reads it). Commit the seed with
+  the fix.
