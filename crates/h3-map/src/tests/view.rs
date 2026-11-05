@@ -661,7 +661,8 @@ fn check_told(
                 kind: AdventureEventKind::TownCaptured { .. },
                 ..
             }) => prop_assert!(false, "a plan without towns told {:?}", event),
-            // E09 T8a2: a captured town's Capitol demoted; likewise never told.
+            // E09 T8a2: a captured town's Capitol demoted, told to the capture's viewers; likewise
+            // never told.
             GameEvent::TownChanged { .. } => {
                 prop_assert!(false, "a plan without towns told {:?}", event)
             }

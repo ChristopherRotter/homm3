@@ -272,8 +272,9 @@ ADR-0015's amendment point 3, in the import's order:
   player that sees the town and the new owner, `TilesRevealed` to the new owner alone.
 - **The game composes it** (ADR-0017's amendment point 7): `h3_towns::reveal`, then the adventure's
   capture, then the Capitol's limit (`capitol_limit` with whether the new owner holds another
-  standing Capitol; the start never applies it), `TownChanged { town, capitol }` when it changes
-  (public with the picture). One infallible application: the checks are the step's.
+  standing Capitol; the start never applies it), `TownChanged { town, capitol, seen_by }` when it
+  changes, to `TownCaptured`'s viewers (§12). One infallible application: the checks are the
+  step's.
 - **After a siege won** (§8.2, row 4): the attacker stays on the tile it attacked from with its
   points; the town is captured; a later step finds it own. A defender's win or no winner changes
   no owner; the survivors stay in the armies that fought (the visitor's, else the garrison's as a

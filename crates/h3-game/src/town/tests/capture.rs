@@ -1,14 +1,17 @@
 //! Tests of the step onto a town through the game and of the capture the game composes (E09 T8a2;
 //! the town epic's design note §9 and §11): an own town entered, an undefended one captured with
-//! its reveal and the Capitol's limit, a defended one refused, the legal moves.
+//! its reveal and the Capitol's limit told where the town is seen, a defended one refused, the
+//! legal moves.
 
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEventKind, Pos};
+use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEventKind, Pos, Viewers};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::{BuildingsSetup, SlotSet, TownFaction};
 
-use super::{CAPITOL_SLOT, faction, towns_rules, towns_setup};
+use super::{
+    CAPITOL_SLOT, LOOKOUT_RADIUS, LOOKOUT_SLOT, faction, towns_rules, towns_rules_on, towns_setup,
+};
 use crate::{
     Actor, GameCommand, GameCommandError, GameEvent, GameRuleset, GameSetup, GameState, Viewer,
     apply, legal_moves, project,
@@ -131,11 +134,13 @@ fn a_captured_capitol_is_demoted_when_its_new_owner_holds_another() {
         kind(&events[1]),
         Some(AdventureEventKind::TownCaptured { town: T1, .. })
     ));
+    // Told to the capture's viewers: red, its new owner, and blue, which sees it.
     assert_eq!(
         events[3],
         GameEvent::TownChanged {
             town: T1,
             capitol: false,
+            seen_by: Viewers::NONE.with(RED).with(BLUE),
         }
     );
     // Its Capitol out of the ever-built set, its City Hall in; red's own keeps its Capitol.
@@ -144,9 +149,86 @@ fn a_captured_capitol_is_demoted_when_its_new_owner_holds_another() {
     assert!(!built.contains(capitol) && built.contains(city_hall));
     assert!(!towns.capitol(T1, rules.towns()));
     assert!(towns.capitol(T0, rules.towns()));
-    // Public, as the town's picture (until E09 T8c).
+    // Each viewer told alone.
     for player in [RED, BLUE] {
-        assert_eq!(project(&events[3], Viewer::Player(player)), Some(events[3]));
+        assert_eq!(
+            project(&events[3], Viewer::Player(player)),
+            Some(GameEvent::TownChanged {
+                town: T1,
+                capitol: false,
+                seen_by: Viewers::NONE.with(player),
+            })
+        );
+    }
+}
+
+/// Town 1's entrance on the 48 × 48 map of the capture far from blue.
+const FAR_GATE: Pos = Pos::new(40, 40, 0);
+
+// covers: TWN-CAP-001, TWN-CAP-002
+#[test]
+fn a_capture_reveals_the_towns_radius_and_tells_its_change_where_it_is_seen() {
+    // [`at`]'s neutral town 1 on (40, 40) of a 48 × 48 map with its Capitol and a Lookout, red's
+    // hero below it on (40, 41), red's town 0 on (1, 1) with its Capitol; blue's hero on (2, 2).
+    let rules = towns_rules_on(false, 48);
+    let mut setup = at(&rules, Pos::new(40, 41, 0), true);
+    let tile = setup.map.tiles[0];
+    (setup.map.width, setup.map.height) = (48, 48);
+    setup.map.tiles = [tile; 48 * 48].to_vec();
+    setup.map.objects[1].anchor = FAR_GATE;
+    setup.towns[0].buildings = with_capitol();
+    setup.towns[1].buildings = BuildingsSetup::Custom {
+        built: SlotSet::EMPTY.with(CAPITOL_SLOT).with(LOOKOUT_SLOT),
+        forbidden: SlotSet::EMPTY,
+    };
+    let mut game = GameState::new(&rules, &setup, 7).unwrap();
+    let tiles = || (0..48).flat_map(|y| (0..48).map(move |x| Pos::new(x, y, 0)));
+    let explored = |game: &GameState| -> Vec<bool> {
+        tiles()
+            .map(|pos| game.adventure().is_explored(RED, pos))
+            .collect()
+    };
+    // ADV-FOG-002's disc of `radius` around the entrance (the tiles within `r² + r`).
+    let disc = |radius: u32, pos: Pos| {
+        let (dx, dy) = (pos.x.abs_diff(FAR_GATE.x), pos.y.abs_diff(FAR_GATE.y));
+        u32::from(dx).pow(2) + u32::from(dy).pow(2) <= radius * radius + radius
+    };
+    let before = explored(&game);
+    assert!(!game.adventure().is_explored(BLUE, FAR_GATE));
+    let events = step(&rules, &mut game, FAR_GATE).unwrap();
+    assert_eq!(events.len(), 4, "{events:?}");
+    // The town's reveal, `h3_towns::reveal`: the Lookout's radius, past the step's own (the
+    // hero's scouting radius 5, no Scouting) and the part's 5.
+    let radius = u32::from(LOOKOUT_RADIUS);
+    let new = tiles()
+        .zip(&before)
+        .filter(|&(pos, &seen)| !seen && disc(radius, pos) && !disc(5, pos))
+        .count();
+    assert!(new > 0);
+    assert!(matches!(
+        kind(&events[2]),
+        Some(AdventureEventKind::TilesRevealed { count, .. }) if count == u32::try_from(new).unwrap()
+    ));
+    for ((pos, seen), now) in tiles().zip(before).zip(explored(&game)) {
+        assert_eq!(now, seen || disc(radius, pos), "{pos:?}");
+    }
+    // Blue, which does not see the town, is told neither the capture nor its change.
+    let alone = Viewers::NONE.with(RED);
+    let GameEvent::Adventure(captured) = events[1] else {
+        panic!("{events:?}");
+    };
+    assert_eq!(captured.seen_by, alone);
+    assert_eq!(
+        events[3],
+        GameEvent::TownChanged {
+            town: T1,
+            capitol: false,
+            seen_by: alone,
+        }
+    );
+    for event in [&events[1], &events[3]] {
+        assert_eq!(project(event, Viewer::Player(RED)), Some(*event));
+        assert_eq!(project(event, Viewer::Player(BLUE)), None);
     }
 }
 

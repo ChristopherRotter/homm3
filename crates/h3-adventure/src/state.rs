@@ -2473,6 +2473,21 @@ impl AdventureState {
         part.object_type(id).map(|ty| (index, id, ty))
     }
 
+    /// The index of [`Self::tile_object`]'s object, typed or not: the one a step onto `pos`
+    /// meets (E09 T8a2: [`Self::besieges`] reads it as [`Self::visit_at`] does). The same lookup
+    /// as `tile_object`'s, which keeps its own copy: calling this one there put the lookup out of
+    /// line in the walking search's visits (`bench-check`: reach-lifted-xl-144 +2.8 %).
+    pub(crate) fn tile_index(&self, pos: Pos) -> Option<usize> {
+        self.added_visited_from(pos).or_else(|| {
+            self.map
+                .visited_from(pos)
+                .iter()
+                .rev()
+                .copied()
+                .find(|&index| !self.is_removed(index))
+        })
+    }
+
     /// What a step of `player`'s hero onto `pos` meets, if the visit of its object is built
     /// ([`ObjectKind::effect`]): the object of [`Self::tile_object`], how it is visited, whether
     /// the player passes it instead and what the visit does. The visit mode is the type's, but per

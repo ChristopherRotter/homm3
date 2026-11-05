@@ -614,13 +614,16 @@ pub enum GameEvent {
     },
     /// A town's picture changed (TWN-CAP-002, E09 T8a2; the town epic's design note §11): at its
     /// capture the Capitol's limit took its Capitol away, its City Hall standing instead; told
-    /// after the capture's `TownCaptured` and `TilesRevealed`. Public, as the town's picture
-    /// (E09 T8c narrows the viewers, design note §12).
+    /// after the capture's `TownCaptured` and `TilesRevealed`. Seen where the town is seen
+    /// (design note §12): by `TownCaptured`'s viewers, the players that see the town and its new
+    /// owner.
     TownChanged {
         /// The town.
         town: TownId,
         /// Whether it now has a Capitol (a standing building of role `hall` 4).
         capitol: bool,
+        /// The players that see it (the viewer alone in a projection).
+        seen_by: Viewers,
     },
 }
 

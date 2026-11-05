@@ -73,12 +73,19 @@ impl AdventureState {
     /// Whether a step of `player`'s hero onto `other`, another hero, is the siege of the town it
     /// visits (TWN-VIS-002; survey `E09-towns.md` §7.1, the original's `visit_hero` 0x4A2800
     /// sending such a hero to the town's visit): `other` is of another team and stands on a
-    /// town's entrance. The step and the reachable tiles refuse it until the siege (E09 T8b,
-    /// `TWN-STUB-7`), never a field battle.
+    /// town's entrance, the town the tile's object ([`Self::tile_index`], the object
+    /// [`Self::visit_at`] reads, so that the step and the reachable tiles meet the same one). The
+    /// step and the reachable tiles refuse it until the siege (E09 T8b, `TWN-STUB-7`), never a
+    /// field battle.
     // rule: TWN-VIS-002
     #[inline(never)]
     pub(crate) fn besieges(&self, player: PlayerId, other: &HeroOnMap) -> bool {
-        !allied(other.owner, player) && self.map().town_at(other.pos).is_some()
+        let map = self.map();
+        !allied(other.owner, player)
+            && self.tile_index(other.pos).is_some_and(|index| {
+                map.town_id(index).is_some()
+                    && map.objects()[index].entrance(map) == Some(other.pos)
+            })
     }
 
     /// Whether the town at object index `index` is defended against `player`'s hero
@@ -126,8 +133,10 @@ impl AdventureState {
     /// ([`AdventureEventKind::TownCaptured`]), then what `reveal` shows around its entrance (its
     /// anchor for a town visited from no tile of the map) explored for the new owner, told to it
     /// alone with the number it had not explored ([`AdventureEventKind::TilesRevealed`]).
-    /// Infallible: the step checked it; a `TownId` the map does not have changes nothing. The
-    /// game composes it: `h3_towns::reveal`, then this, then the Capitol's limit (TWN-CAP-002).
+    /// Returns the players it told of the capture, `TownCaptured`'s viewers, whom the game tells
+    /// of the town's change too (TWN-CAP-002). Infallible: the step checked it; a `TownId` the map
+    /// does not have changes nothing (`None`). The game composes it: `h3_towns::reveal`, then
+    /// this, then the Capitol's limit (TWN-CAP-002).
     // rule: TWN-CAP-001
     pub fn capture_town<S: Sink>(
         &mut self,
@@ -136,27 +145,26 @@ impl AdventureState {
         player: PlayerId,
         reveal: TownReveal,
         sink: &mut S,
-    ) {
+    ) -> Option<Viewers> {
         let map = self.map();
-        let Some((index, object_type)) = map.town_object(town).and_then(|index| {
+        let (index, object_type) = map.town_object(town).and_then(|index| {
             map.objects()[index]
                 .object_type
                 .map(|object_type| (index, object_type))
-        }) else {
-            return;
-        };
+        })?;
         self.set_owner(index, player);
         self.set_army_left(index, Vec::new());
         let object = self.object_at(index);
         let anchor = object.anchor;
         let entrance = object.entrance(self.map()).unwrap_or(anchor);
+        let seen_by = self.object_viewers(core, object).with(player);
         sink.emit(AdventureEvent {
             kind: AdventureEventKind::TownCaptured {
                 town,
                 anchor,
                 owner: player,
             },
-            seen_by: self.object_viewers(core, object).with(player),
+            seen_by,
         });
         let (grid, map) = self.explored_mut(player);
         let before = grid.count();
@@ -168,5 +176,6 @@ impl AdventureState {
             },
             seen_by: Viewers::NONE.with(player),
         });
+        Some(seen_by)
     }
 }

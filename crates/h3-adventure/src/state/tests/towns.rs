@@ -474,6 +474,38 @@ fn another_players_visitor_is_refused_until_the_siege_and_an_allied_one_met() {
     }
 }
 
+// covers: TWN-VIS-002
+#[test]
+fn the_visitors_town_is_the_tiles_object_the_step_meets() {
+    // A town and a sawmill both entered on (4, 4), blue's hero there: the step meets the tile's
+    // object, the last in map order (ADV-OBJ-003). The town: its siege, refused by the step and
+    // left out of the reachable tiles alike (`TWN-STUB-7`); the sawmill: a battle with the hero,
+    // which both offer alike.
+    let rules = town_rules();
+    let town = object(&rules, "t:town", (4, 4), None);
+    let mine = object(&rules, "t:sawmill", (4, 4), None);
+    for (objects, siege) in [
+        (vec![town.clone(), mine.clone()], false),
+        (vec![mine, town], true),
+    ] {
+        let mut setup = town_setup(objects, vec![vec![]]);
+        setup.heroes[0].pos = p(4, 5);
+        setup.heroes[1].pos = ENTRANCE;
+        let mut state = started(&rules, &setup).unwrap();
+        let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+        assert_eq!(reach.points_left(ENTRANCE).is_some(), !siege);
+        let result = walk(&rules, &mut state, &[], &[ENTRANCE]);
+        if siege {
+            assert_eq!(
+                result.unwrap_err(),
+                AdventureCommandError::Visit { step: 0 }
+            );
+        } else {
+            assert!(result.unwrap().0.battle.is_some());
+        }
+    }
+}
+
 // covers: TWN-CAP-001
 #[test]
 fn a_capture_writes_the_owner_empties_the_garrison_and_reveals_around_the_entrance() {
@@ -484,13 +516,14 @@ fn a_capture_writes_the_owner_empties_the_garrison_and_reveals_around_the_entran
     // Red's town for blue, by a radius of 2: red sees it (its own), blue as its new owner.
     let before = state.explored(BLUE).unwrap().count();
     let mut events = Vec::new();
-    state.capture_town(
+    let told = state.capture_town(
         &rules.0,
         TownId::new(0),
         BLUE,
         TownReveal::Radius(2),
         &mut events,
     );
+    assert_eq!(told, Some(Viewers::NONE.with(RED).with(BLUE)));
     assert_eq!((state.owner(1), state.owner(2)), (Some(BLUE), None));
     assert_eq!(state.town_garrison(1), Some(&[][..]));
     assert!(state.check_owners(&rules.1));
@@ -521,7 +554,7 @@ fn a_capture_writes_the_owner_empties_the_garrison_and_reveals_around_the_entran
     assert!(blue.count() > before);
     // The neutral town for red: nobody else has explored it.
     let mut events = Vec::new();
-    state.capture_town(
+    let told = state.capture_town(
         &rules.0,
         TownId::new(1),
         RED,
@@ -529,12 +562,14 @@ fn a_capture_writes_the_owner_empties_the_garrison_and_reveals_around_the_entran
         &mut events,
     );
     assert_eq!(state.owner(2), Some(RED));
+    assert_eq!(told, Some(Viewers::NONE.with(RED)));
     assert_eq!(events[0].seen_by, Viewers::NONE.with(RED));
     assert!(state.explored(RED).unwrap().get(at(24, 4)));
     // A `TownId` the map does not have changes nothing.
     let before = state.clone();
     let mut events = Vec::new();
-    state.capture_town(&rules.0, TownId::new(2), BLUE, TownReveal::All, &mut events);
+    let told = state.capture_town(&rules.0, TownId::new(2), BLUE, TownReveal::All, &mut events);
+    assert_eq!(told, None);
     assert_eq!(state, before);
     assert!(events.is_empty());
 }
