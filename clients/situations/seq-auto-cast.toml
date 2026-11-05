@@ -2,10 +2,11 @@
 # battle of `seq-cast.toml` (the Champions' turn first, speed 9, then the Marksmen's, the Wolf
 # Riders' and the Goblins'), Orrin's book holding Bless alone and his mana four casts. With Combat
 # Auto Spells set, Auto Combat's switch at the opening runs the Champions' turn start again: the
-# computer is asked for Orrin's cast (0x422DA0) and, by the engine's computer, casts nothing; as
-# the Marksmen's turn starts it is asked again and casts Bless on them, before their action (Creatures set: the computer's shot; cleared: the human's,
-# the turn waiting after the cast). Prepared for the recordings `auto-cast` and `auto-cast-human`
-# (`to-record.toml`); on grass at the capture set's tile (grass.toml's obstacles).
+# computer is asked for Orrin's cast (0x422DA0) and casts nothing; as the Marksmen's turn starts
+# it is asked again and casts Bless on them, before their action (Creatures set: the computer's
+# shot; cleared: the human's, the turn waiting after the cast), the original's computer as the
+# engine's. The battle of the recorded sequences `auto-cast` and `auto-cast-human`; on grass at
+# the capture set's tile (grass.toml's obstacles).
 
 [scenario]
 id = "sequence-auto-cast"

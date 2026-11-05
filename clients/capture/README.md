@@ -215,8 +215,9 @@ Combat Mouse Hex`, `Combat Shade Level`; `h3drive.SHADES`), a situation's copied
 options it runs at (`Combat Auto Creatures`, `Combat Auto Spells`; `h3drive.AUTO`), written and
 put back the same way (`registry_values`), the viewer reading them from `sequences.toml`
 (`setup.sh`'s Creatures 1 and Spells unset without them); sequences prepared for a recording wait
-in `situations/to-record.toml` (`sequences situations/to-record.toml --only <id>`), each moved
-into `sequences.toml` with its commands once recorded. A situation's
+in a `situations/to-record.toml` (`sequences situations/to-record.toml --only <id>`), each moved
+into `sequences.toml` with its commands once recorded, the file removed once empty (T5b1's
+`auto-cast` and `auto-cast-human` were recorded so). A situation's
 actions draw the cursor shadow at every move the battle takes, `key:F6` to `key:F8`'s and the
 options dialog's compositions (the stills take no spell's aim: an aim's shade is a sequence's,
 `aim:<k>:<n>` then `move:`). The setup
