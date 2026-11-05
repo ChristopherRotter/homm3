@@ -980,6 +980,35 @@ fn a_siege_against_a_visitor_keeps_its_merged_army_or_captures_the_town_with_the
 
 // covers: TWN-SIE-002
 #[test]
+fn a_neutral_towns_garrison_slots_are_told_to_nobody() {
+    // Blue's hero placed on a neutral town's entrance (TWN-SET-010 allows any owner): the merge
+    // as in an owned town; blue is told its own slots, nobody the neutral garrison's.
+    let rules = merge_rules();
+    let imp = rules.core().creature_by_key("t:imp").unwrap();
+    let mut setup = visited(&rules, vec![stack(1, imp, 9)]);
+    setup.map.objects[1].owner = None;
+    setup.towns[1] = TownSetup {
+        faction: TownFaction::Fixed(faction(&rules, "t:town")),
+        ..setup.towns[1].clone()
+    };
+    let mut game = GameState::new(&rules, &setup, 7).unwrap();
+    let events = step_onto_gate(&rules, &mut game);
+    let (army, rest) = merged(&rules);
+    let hero = |slot: u8| GameEvent::StackChanged {
+        player: BLUE,
+        at: ArmySlot {
+            army: ArmyRef::Hero(BLUE_HERO),
+            slot,
+        },
+        stack: Some(army[usize::from(slot)]),
+    };
+    assert_eq!(stacks_changed(&events), [&hero(0), &hero(1)]);
+    assert_eq!(garrison(&game), &rest[..]);
+    assert_eq!(game.battle(RED).unwrap().owners(), [Some(RED), Some(BLUE)]);
+}
+
+// covers: TWN-SIE-002
+#[test]
 fn a_visitors_siege_with_nothing_to_merge_tells_no_stack() {
     // Blue's visitor of two stacks of three gogs (300 each): the imps (200), without room, gain
     // nothing; the garrison stays as it is and nothing is told before the battle.

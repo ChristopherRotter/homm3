@@ -495,8 +495,8 @@ pub enum GameEvent {
     /// slot the command names, the stack's, then its target's, with what it holds now (a slot of
     /// an army dialog's group too, `ArmyRef::Group`: T51b). Since E09 T8b2b also each slot the
     /// garrison's merge into a town's defending visitor's army changed before the siege, the
-    /// visitor's, then the garrison's (`ArmyRef::Garrison`; TWN-SIE-002), told to the visitor's
-    /// owner. Seen by the owner.
+    /// visitor's, then the garrison's (`ArmyRef::Garrison`; TWN-SIE-002; a neutral town's slots
+    /// to nobody). Seen by the owner.
     StackChanged {
         /// The army's owner.
         player: PlayerId,

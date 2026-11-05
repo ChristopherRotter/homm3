@@ -221,7 +221,7 @@ impl AdventureState {
     /// original's `garrison_merge` 0x44B820, TD-7 confirmed by batch TWN-1's row 3): [`merge`]
     /// with the part's army slots and a stack's most creatures (ADV-ARM-007), both armies
     /// written. Returns the slots it changed, the visitor's ([`ArmyRef::Hero`]) then the
-    /// garrison's ([`ArmyRef::Garrison`]), each in slot order, which the game tells the visitor's
+    /// garrison's ([`ArmyRef::Garrison`]), each in slot order, which the game tells each army's
     /// owner; none without a visitor or a change. The game calls it as it starts the siege the
     /// step gave ([`Self::siege_start`]'s [`Defender::Hero`]); what stays in the garrison does not
     /// fight, and is lost if the town falls (its capture empties it, TWN-CAP-001).

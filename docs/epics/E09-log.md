@@ -1338,7 +1338,8 @@ hero's slots plus a new garrison event). The code, tests and docs by the agent.
   (the adventure's `held` refuses it).
 - **`h3-game`:** `town::merge` (`src/town/siege.rs`), called by `settle_outcome` before
   `start_battle` for a siege whose defender is a hero: the merge, the battle's defending army the
-  merged one, each changed slot told as `StackChanged` to the visitor's owner (`stack_at` reads a
+  merged one, each changed slot told as `StackChanged` to its army's owner (the visitor's to its
+  owner, the garrison's to the town's, a neutral town's to nobody; `stack_at` reads a
   garrison's slot) before `BattleStarted`. The manage check `admits` refuses a command naming a
   garrison on either end. `StackChanged`'s doc.
 - **Other crates:** `h3-cli`'s slot text `t<town>:<slot>` (format and parse; the round-trip

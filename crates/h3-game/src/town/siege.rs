@@ -9,7 +9,7 @@
 
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureState, ArmySlot, BattleStart, Defender, Pos};
+use h3_adventure::{AdventureState, ArmyRef, ArmySlot, BattleStart, Defender, Pos};
 use h3_content::HeroParams;
 use h3_contracts::{BattleHero, BattleSetup, PlayerId, TownId};
 use h3_towns::{DefenderBonus, Towns, defender_bonus, siege};
@@ -20,18 +20,20 @@ use crate::GameRuleset;
 /// design note §10; E09 T8b2b): when `start` is a siege ([`BattleStart::town`]) whose defender is
 /// a hero (the town's visitor, whom the step besieged), the adventure merges the town's
 /// garrison into that hero's army ([`AdventureState::merge_garrison`]) and the battle's defending
-/// army becomes the merged one. Returns the hero's owner and the slots the merge changed, which
-/// the game tells it as the army dialog's (`GameEvent::StackChanged`, *agent's call*), before
-/// `BattleStarted`; none for every other battle, which it leaves as it is. What stays in the
-/// garrison does not fight (survey `E09-towns.md` §9.2).
+/// army becomes the merged one. Returns the slots the merge changed, the visitor's then the
+/// garrison's, each with the player the game tells it to as the army dialog's
+/// (`GameEvent::StackChanged`, *agent's call*), before `BattleStarted`: its army's owner, the
+/// visitor's for its slots, the town's for the garrison's (none for a neutral town's: nobody is
+/// told). None for every other battle, which it leaves as it is. What stays in the garrison does
+/// not fight (survey `E09-towns.md` §9.2).
 // rule: TWN-SIE-002
 pub(crate) fn merge(
     adventure: &mut AdventureState,
     rules: &GameRuleset,
     start: &mut BattleStart,
-) -> Option<(PlayerId, Vec<ArmySlot>)> {
+) -> Vec<(PlayerId, ArmySlot)> {
     let (Some(town), Defender::Hero(visitor)) = (start.town, &mut start.defender) else {
-        return None;
+        return Vec::new();
     };
     let slots = adventure.merge_garrison(rules.core(), rules.adventure(), town);
     // The visitor is on the map: the step that started the siege met it there.
@@ -39,7 +41,15 @@ pub(crate) fn merge(
         .hero(visitor.hero)
         .map(|hero| hero.army.clone())
         .unwrap_or_default();
-    Some((visitor.owner, slots))
+    let index = adventure.map().town_object(town);
+    let keeper = index.and_then(|index| adventure.owner(index));
+    slots
+        .into_iter()
+        .filter_map(|at| match at.army {
+            ArmyRef::Garrison(_) => keeper.map(|keeper| (keeper, at)),
+            _ => Some((visitor.owner, at)),
+        })
+        .collect()
 }
 
 /// Puts the siege of `town`, fought at `tile`, its entrance, into `setup`, built as every battle

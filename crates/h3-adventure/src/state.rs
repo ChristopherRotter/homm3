@@ -2514,12 +2514,12 @@ impl AdventureState {
         pos: Pos,
     ) -> Option<StepVisit<'p>> {
         let (object, object_type, ty) = self.tile_object(part, pos)?;
-        ty.kind.effect().and_then(|effect| {
+        ty.kind.effect().map(|effect| {
             let mode = match effect {
                 Effect::Town => self.town_visit(object, player),
                 _ => ty.visit,
             };
-            Some(StepVisit {
+            StepVisit {
                 object,
                 object_type,
                 tile: pos,
@@ -2527,7 +2527,7 @@ impl AdventureState {
                 pass: matches!(effect, Effect::Gate(key) if self.has_key(player, key)),
                 from_above: ty.from_above,
                 effect,
-            })
+            }
         })
     }
 

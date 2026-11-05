@@ -316,7 +316,8 @@ ADR-0015's amendment point 3, in the import's order:
   `room` with the part's slots and a stack's most, ADV-ARM-007; a creature the ruleset lacks is
   worth 0), writes both armies (the garrison only when it changed) and returns the slots it
   changed, the visitor's then the garrison's, each in slot order; the game sets the battle's
-  defending army to the merged one and tells each slot as `StackChanged` to the visitor's owner
+  defending army to the merged one and tells each slot as `StackChanged` to its army's owner (the
+  visitor's to the visitor's owner, the garrison's to the town's, a neutral town's to nobody)
   (the events' **agent's call**, the user's choice of three: a new `ArmyRef::Garrison(TownId)`,
   which no army command may name before increment 3's town screen, `ArmyCommandError::Garrison`
   in the adventure and the game's `admits`; `h3-cli`'s slot text `t<town>:<slot>`), before

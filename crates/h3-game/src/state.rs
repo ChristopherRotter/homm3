@@ -485,7 +485,7 @@ impl GameState {
     /// closes, ADV-RWD-001, E08 T63b), then
     /// the offer ([`Self::open`]) with whatever follows one that does not open, then the battle
     /// ([`Self::start_battle`]; a siege its town's visitor defends after the garrison's merge into
-    /// the visitor's army, each slot it changed told to the visitor's owner as `StackChanged`:
+    /// the visitor's army, each slot it changed told to its army's owner as `StackChanged`:
     /// [`town::merge`], TWN-SIE-002, E09 T8b2b), the meeting ([`Self::meet`], E08 T51b), the army
     /// dialog ([`Self::open_army_dialog`], T51b), the choice ([`Self::open_choice`], T63a), the
     /// University ([`Self::open_university`], T63a) or the hire dialog ([`Self::open_hire`], E08
@@ -531,15 +531,13 @@ impl GameState {
                 .and_then(|offer| self.open(rules, player, offer, sink));
             if let Some(mut battle) = outcome.battle {
                 // rule: TWN-SIE-002
-                if let Some((owner, slots)) = town::merge(&mut self.adventure, rules, &mut battle) {
-                    for at in slots {
-                        let stack = self.stack_at(owner, at);
-                        sink.emit(GameEvent::StackChanged {
-                            player: owner,
-                            at,
-                            stack,
-                        });
-                    }
+                for (owner, at) in town::merge(&mut self.adventure, rules, &mut battle) {
+                    let stack = self.stack_at(owner, at);
+                    sink.emit(GameEvent::StackChanged {
+                        player: owner,
+                        at,
+                        stack,
+                    });
                 }
                 self.start_battle(rules, player, battle, sink);
             }

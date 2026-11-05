@@ -862,6 +862,14 @@ fn a_garrison_stack_joins_where_the_army_has_room_and_a_worthless_one_never() {
     expected.extend((2..6).map(|slot| stack(slot, CENTAUR, 1)));
     expected.push(stack(6, PIKE, 2));
     assert_eq!((army, garrison), (expected, vec![]));
+    // Equal gains, one with room (the pikemen, 320) and one without (the centaurs, 400 − 80):
+    // the first slot's, whichever kind; the centaurs change places with the weakest pikeman, and
+    // then nothing gains (the army has no pikemen left).
+    let mut full = vec![stack(0, PIKE, 1)];
+    full.extend((1..7).map(|slot| stack(slot, SWORDSMAN, 1)));
+    let (army, garrison) = merge(full, vec![stack(0, CENTAUR, 4), stack(1, PIKE, 4)]);
+    assert_eq!(army[0], stack(0, CENTAUR, 4));
+    assert_eq!(garrison, vec![stack(0, PIKE, 1), stack(1, PIKE, 4)]);
     // A stack worth no more than the weakest, without room, never changes places.
     let (army, garrison) = merge(
         (0..7).map(|slot| stack(slot, CENTAUR, 2)).collect(),
