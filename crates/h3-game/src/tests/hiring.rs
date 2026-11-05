@@ -5,7 +5,8 @@
 //! army, every amount in the range accepted; each refusal leaves the state as it was; a purchase
 //! pays, joins and keeps a dialog of several creatures open, closes one of a single creature;
 //! `Close`, the system's default; no move or end of the turn while it is open; the guard's visit
-//! after it closes (GAM-DEC-007).
+//! after it closes (GAM-DEC-007). E08 T97a: a Plague or a creature's month leaves the hut's and
+//! the camp's week as their growth (ADV-DWL-003).
 
 use std::num::{NonZeroU8, NonZeroU16};
 

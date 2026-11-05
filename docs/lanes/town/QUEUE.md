@@ -33,6 +33,13 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-05 (the adventure lane, E08 T97a, `adventure/e08-t97a`; **for the week's creature,
+  increment 3**): the map's dwellings and Refugee Camps ignore the week's and the month's kind
+  (ADV-DWL-003: the original's `dwelling_week_refill` 0x4B8A60 reads neither; survey
+  `E08-dwellings.md` §6.1). The month's side is tested (`h3-game`'s
+  `a_month_s_kind_never_reaches_a_dwelling_or_a_camp`: a Plague and a creature month); the week's
+  creature is not drawn yet. When it lands, extend that test with a week of the hut's creature:
+  the hut's and the camp's counts stay at their growth.
 - 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`; **for a town's recruitment,
   E09 decision 4**): the hire dialog is built to be reused (increment 10's design note §13,
   "E09's reuse"). `h3_adventure::HireDialog { target: HireTarget, source: HireSource }`: extend
