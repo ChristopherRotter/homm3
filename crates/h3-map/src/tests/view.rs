@@ -19,9 +19,9 @@ use proptest::test_runner::TestCaseError;
 
 use super::import::object;
 use super::play::{
-    BLOCKERS, FAITHFUL, HERO_TEMPLATE, KINDS, MONSTER_OBJECTS, STRICT, Slots, Spot, Step,
-    all_objects, army, experience, experienced, lay_out, masks, object_index, object_reach,
-    options, plan, player_of, resolve, slots, start_on, steps, tile,
+    BLOCKERS, DWELLINGS, FAITHFUL, HERO_TEMPLATE, KINDS, MONSTER_OBJECTS, STRICT, Slots, Spot,
+    Step, all_objects, army, at_sea, experience, experienced, lay_out, masks, object_index,
+    object_reach, options, plan, player_of, resolve, slots, start_on, steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
@@ -189,20 +189,18 @@ fn vary(
         .collect();
     // E08 T86b1: an ownable object's entrance stays land, as a hero's tile (the import refuses one
     // on water: `OwnedOnWater`); (E08 T96b1) an abandoned mine's too, which is ownable (`lay_out`'s
-    // `OWNABLE`) though neutral at load, with no owner in its body; and a random dwelling's, ownable
-    // too (`lay_out`'s `ownable`; a placed dwelling's body is `Owned`): its template's entrance at
-    // the map's anchor, which the import checks before the build resolves it.
+    // `OWNABLE`) though neutral at load, with no owner in its body. (E08 T97b1) Not a dwelling's
+    // (whose body is `Owned`) nor a random dwelling's: the import builds one entered from water
+    // and `lay_out` lays it out there (survey `E08-dwellings.md` §17).
     let entrances: Vec<Spot> = m
         .objects
         .iter()
         .filter(|o| {
             matches!(
                 o.body,
-                Body::Mine { .. }
-                    | Body::AbandonedMine(_)
-                    | Body::Owned { .. }
-                    | Body::RandomDwelling(_)
-            )
+                Body::Mine { .. } | Body::AbandonedMine(_) | Body::Owned { .. }
+            ) && !(DWELLINGS.0..DWELLINGS.0 + DWELLINGS.1)
+                .contains(&(usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()))
         })
         .flat_map(|o| {
             let (_, visitable) = masks(usize::try_from(o.template - 1).unwrap());
@@ -507,9 +505,11 @@ fn check_told(
     let mut removed = Vec::new();
     let mut words = Vec::new();
     // E08 T75b: the empty boats the viewer sees, and the heroes it is told boarded (their boat's
-    // type) or landed or left (none).
+    // type) or landed or left (none); (E08 T97b2) the heroes told stepping into its sight, whose
+    // boat shows as it stands.
     let mut boats = before.adventure.boats.clone();
     let mut aboard: Vec<(HeroId, Option<u8>)> = Vec::new();
+    let mut returned: Vec<HeroId> = Vec::new();
     let mut treasury = before.treasury.clone();
     // E08 T85b: the timed events that fired at the viewer's turn start today, told by their
     // firing; a new day starts with none.
@@ -1026,6 +1026,14 @@ fn check_told(
                     }
                     (None, to) => heroes.push((hero, to.unwrap())),
                 }
+                // E08 T97b2: a hero stepping into the viewer's sight shows its boat as it stands
+                // (ADV-FOG-006): a boarding or a landing on a water tile the viewer does not see
+                // is told only to those that see that tile (`Landed`, ADV-FOG-008), so what it was
+                // told of the hero's boat before stops holding.
+                if from.is_none() {
+                    aboard.retain(|&(id, _)| id != hero);
+                    returned.push(hero);
+                }
                 stepped.push(hero);
             }
         }
@@ -1070,7 +1078,10 @@ fn check_told(
         }
     }
     // E08 T75b: the empty boats change only as told, but where the viewer's sight grew; a hero's
-    // boat only by a boarding, a landing or its leaving (ADV-FOG-006, ADV-FOG-008).
+    // boat only by a boarding, a landing or its leaving (ADV-FOG-006, ADV-FOG-008), or (E08
+    // T97b2) as it stands once the hero steps into the viewer's sight (the boat plans found a
+    // hero that sailed out of it, landed where the viewer does not see the boat's tile and walked
+    // back into it).
     for boat in &boats {
         prop_assert!(
             after.adventure.boats.contains(boat),
@@ -1087,7 +1098,7 @@ fn check_told(
         let was = before.adventure.hero(hero.id).map(|h| h.boat);
         if let Some(&(_, boat)) = told {
             prop_assert_eq!(hero.boat, boat, "{:?}", hero);
-        } else if let Some(was) = was {
+        } else if let Some(was) = was.filter(|_| !returned.contains(&hero.id)) {
             prop_assert_eq!(hero.boat, was, "{:?} changed boats untold", hero);
         }
     }
@@ -2224,4 +2235,50 @@ fn increment_9_s_objects_show_their_owners_never_their_draws() {
         assert_eq!(view(&game, blue), blues, "seed {seed}");
     }
     assert!(drawn.len() > 1);
+}
+
+/// What the viewers are told of the boat plans' games (E08 T97b2; survey `E08-dwellings.md`
+/// §17): over the first 128 cases of `play.rs`'s `afloat_plans` (proptest's deterministic runner,
+/// as `the_plans_visit_dwellings_from_a_boat`'s), each player's view moves as the events it is
+/// told say ([`check_told`]) and shows the dwellings and camps as they stand
+/// ([`check_hire_sources`]), dwellings visited from a boat among them. The 117th case is a hero
+/// that sails out of a viewer's sight, lands where the viewer does not see its boat's tile and
+/// walks back into it: its boat shows as it stands (`check_told`'s heroes stepping into sight).
+#[test]
+fn boat_visits_are_told_as_they_happen() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = super::play::afloat_plans();
+    for _ in 0..128 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start_on(&lay_out(&plan), rules, seed);
+        let players: Vec<PlayerId> = (0..u8::try_from(state.players()).unwrap())
+            .map(PlayerId::new)
+            .collect();
+        let mut views: Vec<GameObservation> = players
+            .iter()
+            .map(|&p| observe(&state, rules, Viewer::Player(p)))
+            .collect();
+        for (&player, view) in players.iter().zip(&views) {
+            check_hire_sources(&state, rules, player, view, &[]).unwrap();
+        }
+        for (step, sea) in &steps {
+            let mut legal = options(&state, rules);
+            if *sea {
+                legal = at_sea(&state, legal);
+            }
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let mut events = Vec::new();
+            let result = apply(&mut state, rules, actor, command, &mut events);
+            for (&player, view) in players.iter().zip(&mut views) {
+                let after = observe(&state, rules, Viewer::Player(player));
+                let own = Actor::Player(player) == actor && result.is_ok();
+                let told = told(&events, player);
+                check_told(player, (view, &after), &told, own).unwrap();
+                check_hire_sources(&state, rules, player, &after, &told).unwrap();
+                *view = after;
+            }
+        }
+    }
 }

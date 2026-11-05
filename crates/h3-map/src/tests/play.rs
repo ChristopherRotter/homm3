@@ -1465,9 +1465,11 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         let reach = dwelling_reach(kind, &body, (ax, ay, az), side);
         let shared = names.iter().any(|name| named.contains(name));
         let refused = heroes.iter().any(|&(at, _)| reach.contains(&at));
-        // E08 T86b1: an ownable object takes the next owner; one entered on water is left out
-        // (the import refuses it: `Unsupported::OwnedOnWater`, ADV-MAP-002); (E08 T96b1) a
-        // dwelling and a random dwelling too.
+        // E08 T86b1: an ownable object takes the next owner ((E08 T96b1) a dwelling and a random
+        // dwelling too); one of [`OWNABLE`] entered on water is left out (the import refuses it:
+        // `Unsupported::OwnedOnWater`, ADV-OWN-002). (E08 T97b1) A dwelling or a random dwelling
+        // entered on water is laid out, as the import builds it: a hero in a boat visits it as on
+        // land (survey `E08-dwellings.md` §17, ADV-DWL-004).
         let owner = ownable(kind).then(|| {
             ownables += 1;
             let drawn = plan.owners.get((ownables - 1) % plan.owners.len().max(1));
@@ -1475,7 +1477,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
                 u32::from(colours[usize::from(n) % colours.len()])
             })
         });
-        let afloat = owner.is_some()
+        let afloat = OWNABLE.contains(&kind)
             && visitable.iter().any(|&(column, row)| {
                 let (Some(ex), Some(ey)) = (ax.checked_sub(column), ay.checked_sub(row)) else {
                     return false;
@@ -7131,14 +7133,15 @@ impl Fought {
 /// won and lost; their offers to join, to join for gold and to flee, and groups that join. Since
 /// E08 T21a guarded piles too: their questions, and their battles won and lost. Since E08 T31 the
 /// winners' level-ups too, opened and answered, and levels given at once, the heroes' levels
-/// checked after every command ([`check_progression`]).
+/// checked after every command ([`check_progression`]). E08 T97b2: 320 cases (192 before): the
+/// dwellings laid out on water changed the games, and a guarded pile was no longer won.
 #[test]
 fn the_plans_play_battles_to_a_victory() {
     use proptest::strategy::ValueTree;
     let mut runner = proptest::test_runner::TestRunner::deterministic();
     let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
     let mut fought = Fought::default();
-    for _ in 0..192 {
+    for _ in 0..320 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start(&plan, rules, seed);
@@ -7259,7 +7262,8 @@ impl Moved {
 /// the three skills, and random play moves flyers over water and over tiles objects block, water
 /// walkers over water and heroes with Nomads, and refuses paths that end where their heroes may
 /// only pass (`NoStop`); every accepted move ends where its hero may stop
-/// (`every_step_keeps_the_commands_invariants`).
+/// (`every_step_keeps_the_commands_invariants`). E08 T97b2: 96 cases (64 before): the dwellings
+/// laid out on water changed the games, and no `NoStop` was left.
 // covers: ADV-MOV-007, ADV-MOV-009, ADV-MOV-010
 #[test]
 fn the_plans_fly_and_walk_on_water() {
@@ -7267,7 +7271,7 @@ fn the_plans_fly_and_walk_on_water() {
     let mut runner = proptest::test_runner::TestRunner::deterministic();
     let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
     let mut moved = Moved::default();
-    for _ in 0..64 {
+    for _ in 0..96 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start(&plan, rules, seed);
@@ -8183,4 +8187,138 @@ fn the_plans_visit_dwellings_and_hire() {
         h.none_to_recruit > 0 && h.camps_deserted > 0 && h.camp_weeks > 0,
         "{h:?}"
     );
+}
+
+/// What the plans' games did at a dwelling entered from water (E08 T97b2; survey
+/// `E08-dwellings.md` §17): the questions a dwelling (a random one as the build resolved it) asked
+/// a hero in a boat (its guards' question or its hire question), the flags it took for that hero's
+/// owner, the guards' battles fought on the deck at its entrance (the visitor in its boat, no
+/// defending hero), and the creatures that joined a hero in a boat there (free, or bought in the
+/// hire dialog).
+#[derive(Debug, Default)]
+struct Afloat {
+    questions: usize,
+    flags: usize,
+    deck: usize,
+    joined: usize,
+}
+
+impl Afloat {
+    /// Counts what `command` did on its way from `before` to `after`.
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        (before, after): (&GameState, &GameState),
+        command: &GameCommand,
+        events: &[GameEvent],
+    ) {
+        let part = rules.adventure();
+        let player = acting(before);
+        let in_boat = |state: &GameState, hero| {
+            state
+                .adventure()
+                .hero(hero)
+                .is_some_and(|h| h.boat.is_some())
+        };
+        let dwelling = |object_type| {
+            matches!(
+                part.object_type(object_type).map(|t| &t.kind),
+                Some(ObjectKind::Dwelling { .. })
+            )
+        };
+        // The visitor of the command: a hero in a boat moving, or the attacker of a battle the
+        // command ended.
+        let sailor = as_move(command)
+            .map(|(hero, _)| hero)
+            .or_else(|| ended(events).first().and_then(|(heroes, _)| heroes[0]))
+            .filter(|&hero| in_boat(before, hero));
+        let hiring = matches!(
+            before.decision(player).map(|o| &o.kind),
+            Some(OfferKind::Hire { .. })
+        ) || hire_view(before, rules, player).is_some();
+        for event in events {
+            match *event {
+                GameEvent::OfferOpened {
+                    hero, object_type, ..
+                } if dwelling(object_type) && in_boat(after, hero) => self.questions += 1,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::ObjectFlagged { object_type, .. },
+                    ..
+                }) if dwelling(object_type) && sailor.is_some() => self.flags += 1,
+                GameEvent::BattleStarted {
+                    heroes: [Some(hero), None],
+                    tile,
+                    ..
+                } if in_boat(after, hero) => {
+                    let ty = visited_at(before, tile)
+                        .and_then(|i| before.adventure().object(i))
+                        .and_then(|o| o.object_type);
+                    self.deck += usize::from(ty.is_some_and(dwelling));
+                }
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::CreaturesJoined { hero, .. },
+                    ..
+                }) if hiring && in_boat(after, hero) => self.joined += 1,
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The boat plans (E08 T97b2): a plan, the profile (strict or not), the seed and up to 119 steps
+/// that prefer a boarding or a move of a hero in a boat when one is legal (the step's flag:
+/// [`at_sea`]) and enter a dwelling or a camp ([`Step::Hire`]); what
+/// [`the_plans_visit_dwellings_from_a_boat`] counts and `view.rs`'s
+/// `boat_visits_are_told_as_they_happen` checks, over proptest's deterministic runner.
+pub(super) fn afloat_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<(Step, bool)>)> {
+    let steps = vec(
+        prop_oneof![
+            3 => any::<u16>().prop_map(|n| (Step::Visit(n), true)),
+            3 => any::<u16>().prop_map(|n| (Step::Legal(n), true)),
+            4 => any::<u16>().prop_map(|n| (Step::Hire(n), true)),
+            1 => any::<u16>().prop_map(|n| (Step::Legal(n), false)),
+            1 => Just((Step::EndTurn, false)),
+        ],
+        0..120,
+    );
+    (plan(), any::<bool>(), any::<u64>(), steps)
+}
+
+/// The plans' games visit dwellings entered from water from a boat (E08 T97b2; survey
+/// `E08-dwellings.md` §17, increment 10's exit criteria): over a fixed set of cases (proptest's
+/// deterministic runner), with steps that prefer a boarding or a move of a hero in a boat when one
+/// is legal and steps that enter a dwelling ([`afloat_plans`]), a hero in a boat is
+/// asked a dwelling's questions, flags one, fights its guards on the deck at the entrance and takes
+/// its creatures: every count of [`Afloat`] above zero, so that the properties' checks run on such
+/// visits ([`check_decisions`]' guards' and hire questions and [`free_creatures`],
+/// [`check_dwelling_battle_end`], [`check_hire`], [`check_sea_move`]; `view.rs`'s
+/// `check_hire_sources`).
+// covers: ADV-DWL-004, ADV-OWN-002, ADV-SEA-005
+#[test]
+fn the_plans_visit_dwellings_from_a_boat() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = afloat_plans();
+    let mut afloat = Afloat::default();
+    for _ in 0..512 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for (step, sea) in &steps {
+            let mut legal = options(&state, rules);
+            if *sea {
+                legal = at_sea(&state, legal);
+            }
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
+                afloat.count(rules, (&before, &state), &command, &events);
+            }
+        }
+    }
+    let a = &afloat;
+    eprintln!("{a:?}");
+    assert!(a.questions > 0 && a.flags > 0, "{a:?}");
+    assert!(a.deck > 0 && a.joined > 0, "{a:?}");
 }

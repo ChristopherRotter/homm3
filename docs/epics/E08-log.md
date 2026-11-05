@@ -12174,3 +12174,34 @@ amended; `docs/exe/map.toml`'s three visits noted.
 dwellings tied to a town (all to random towns) pass the new checks. **Left** to T97b2: the plans
 (`play.rs`'s `lay_out`) still leave out a dwelling entered from water as `afloat`, their comments
 citing the refusal. **Versions:** map import v19.
+
+### Increment 10, round 8: T97b2, the plans' dwellings on water (2026-11-05, `adventure/e08-t97b2`)
+
+**Baseline:** `master` 7f8c8c5 (#742 merged minutes before the start); the original data staged
+at the start (the computer's shell did not start; staging worked; none needed by the task). The
+setup's full baseline (`verify-once`, the fingerprint not yet verified by CI) ran while the
+change was written in a `git worktree` under `target/`. Done whole by the main session.
+
+**Built** (`h3-map`'s tests only): `play.rs`'s `lay_out` leaves out an object entered on water
+only for the kinds of `OWNABLE` (the mines, the abandoned mine, the Lighthouse, the Shipyard: the
+import's `OwnedOnWater`); a dwelling or a random dwelling entered on water is laid out, its owner
+drawn as before (the owners' count unchanged, so a plan without one is byte-identical: the
+committed fixtures did not move). `view.rs`'s `vary` keeps the entrances of `OWNABLE`'s kinds land,
+no longer a dwelling's or a random dwelling's. The comments cite ADV-OWN-002 (the old one named
+ADV-MAP-002, an unrelated rule). **The boat plans** (`afloat_plans`: steps preferring a boarding or
+a move at sea, `at_sea`, and a dwelling's entry, `Step::Hire`): `the_plans_visit_dwellings_from_a_boat`
+counts, over 512 deterministic cases, the questions a dwelling asks a hero in a boat (47), the
+flags it takes for that hero's owner (16), the guards' battles on the deck at its entrance (4) and
+the creatures joining a hero in a boat (11); with T97b1's `lay_out` the deck count is 0 (the other
+three are 2, 1, 1, from random dwellings whose resolved entrance lies on water). Every check of
+`every_step_keeps_the_commands_invariants` ran on those 512 cases in a throwaway test (19 hold a
+boat's visit of a dwelling): all passed. `view.rs`'s checks on them (`check_told`,
+`check_hire_sources`) failed once: a hero sailed out of a viewer's sight, landed where the viewer
+does not see the boat's tile (`Landed` is told only to those that see it, by design) and walked
+back into sight; `check_told` now lets a hero told stepping into sight show its boat as it stands.
+`boat_visits_are_told_as_they_happen` keeps those checks on the first 128 cases (the found case
+the 117th; 13 questions, 3 deck battles among them). The new maps cost two rare counts of the
+deterministic cover tests (the trap): `the_plans_fly_and_walk_on_water` 64 to 96 cases (`no_stop`
+3), `the_plans_play_battles_to_a_victory` 192 to 320 (`piles_won` 3, `gold_offered` 2).
+
+**Versions:** none (the plans are tests; no engine code, replay or fixture changed).
