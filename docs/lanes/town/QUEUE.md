@@ -48,6 +48,16 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`; **for a town's recruitment,
+  E09 decision 4**): the hire dialog is built to be reused (increment 10's design note §13,
+  "E09's reuse"). `h3_adventure::HireDialog { target: HireTarget, source: HireSource }`: extend
+  `HireSource` with a town's dwelling and `HireTarget` with the garrison; the map's purchase rule
+  stays one (`AdventureState::hire_stock`, `hire_room`, `check_hire` → `HirePurchase`, `hire`;
+  ADV-HIR-002), and so does the game's decision (`h3-game`'s `state/hire.rs`: `Decision::Hire`,
+  `Answer::Hire(HireAnswer::{Buy, Close})`, the legal set of each creature's most, `hire_range`,
+  `DecisionView::Hire`, `GameState::hire_dialog`; GAM-DEC-008). The env's four purchases (action
+  encoding v7) take the source's order, so a town's dwelling of up to four creatures needs no
+  new entry. Game state hash v25 is T95b's.
 - 2026-11-04 (the adventure lane, E08 T94b, `adventure/e08-t94b`; **for the towns' external
   dwellings' growth**; its versions half done by E09 T8a1, v21): A dwelling's counts and guards as
   they stand:

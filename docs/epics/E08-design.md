@@ -241,6 +241,18 @@ untouched (typed errors). The dialog lists the source's creatures, as the origin
 record's four (no class-17 dwelling of level 1 opens it; class 20 has none of level 1). The most a
 player may buy, `min(count, each resource ÷ its cost)` (§5.2), is part C's legal set.
 
+- **As built (T95b, decision 255; *agent's calls*, change freely):** `HireDialog { target:
+  HireTarget::Hero(hero), source: HireSource::Object { index, object_type, anchor } }` (enums for
+  E09; no `read_only`: the ally's branch is E10's) in `AdventureOutcome::hire`, from
+  `accept_hire` at one's own dwelling holding a creature above `free_level` and at a camp.
+  `hire_stock` (the creatures and counts in the source's order), `hire_room` (§13's bound),
+  `check_hire` (`NoSource` for a hero off the map or a source not the object it names, then
+  `NotOffered`, `Amount`, `NoRoom`) giving a `HirePurchase` (its `price()`: cost × amount by
+  resource in the core's order, nonzero only), and the infallible `hire(purchase)`: the count
+  lowered through `write_dwelling` or the camp's, the creatures at the room `check_hire` found
+  (`monsters.rs`'s `add_stack` split into `room` and `join_at`), `CreaturesJoined` to the hero's
+  owner. The hero's tile is not compared with the entrance: the open dialog blocks its moves.
+
 ### 9. The week's step (ADV-DWL-003, ADV-RFG-001; GAM-CAL-002 amended)
 
 In `AdventureState::start_week`, before the weekly objects' contents: **every dwelling refilled**
@@ -369,6 +381,15 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
   recruitment opens the same decision with a town dwelling as the source and the hero's or the
   garrison's army as the target: `HireDialog` names its source and target as enums E09 extends;
   the purchase rule (§8) and the answer stay one.
+
+- **As built (T95b, decision 255; *agent's calls*, change freely):** `h3-game`'s
+  `state/hire.rs`. `Decision::Hire { owner, dialog }` (hash tag 7: the owner, the target, the
+  source); `GameEvent::HireOpened { player, target, object_type, anchor }` (no object index in an
+  event, ADR-0016 point 6); `Answer::Hire(HireAnswer::{Buy { creature, amount }, Close})`; the
+  map's refusals as `GameCommandError::Hire(HireError)`, the treasury's as `CannotPay`;
+  `GameState::hire_dialog` public (as `university`); `hire_range` also empty while the game waits
+  for another player's level-up, so every amount in it is accepted. `DecisionView::Hire(HireView {
+  target, object_type, anchor, creatures: [HireCreature { creature, count, cost }] })`.
 
 ### 14. The env, replays, fixtures, properties, benchmarks
 
