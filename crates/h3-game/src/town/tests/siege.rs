@@ -2,14 +2,15 @@
 //! §15): its setup from the town (the facts, the town's terrain and the tile's special ground,
 //! the obstacles, the defending hero's bonuses), the defending hero's spell points and the
 //! attacking winner's experience after it, the garrison's survivors, and the capture after an
-//! attacker's win, after the winner's levels, the attacker staying outside.
+//! attacker's win, after the winner's levels, the attacker staying outside. Since E09 T8b2a the
+//! siege started by a step onto a town its garrison defends (TWN-SIE-001), through `apply`.
 
 use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureEventKind, BattleStart, Combatant, Defender, Holds, ObjectSetup, Pos, Scenery,
-    TileMask,
+    AdventureCommand, AdventureEventKind, BattleStart, Combatant, Defender, Holds, ObjectSetup,
+    Pos, Scenery, TileMask,
 };
 use h3_battle::{BattleState, Command};
 use h3_content::{Formation, HeroParams, Ruleset, TerrainId};
@@ -21,17 +22,17 @@ use h3_heroes::HeroChange;
 use h3_kernel::Rng;
 use h3_towns::{
     BuildingDef, BuildingRoles, BuildingsSetup, DefenderBonus, GarrisonCreature, GarrisonStack,
-    SlotSet,
+    SlotSet, TownFaction, TownSetup,
 };
 
-use super::{rules_of, town_pack, towns_core_pack, towns_rules, towns_setup};
+use super::{faction, rules_of, town_pack, towns_core_pack, towns_rules, towns_setup};
 use crate::tests::key;
 use crate::town::pool::HeroStatus;
 use crate::town::siege::{SIEGE_EXPERIENCE, raise};
 use crate::town::{mana_after, siege_experience};
 use crate::{
     Actor, Answer, GameCommand, GameEvent, GameRuleset, GameSetup, GameState, SkillOffer, apply,
-    legal_commands,
+    legal_commands, legal_moves,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -166,25 +167,29 @@ fn expected_setup(
 ) -> (BattleSetup, u64) {
     let core = rules.core();
     let machines = |id: HeroId| h3_heroes::war_machines(before.hero(id).unwrap(), core);
+    // A garrison without a hero in the town's formation (E09 T8b2a).
+    let town = before.adventure().map().town_formation(T1).unwrap();
     let (army, hero, machine, formation, owner) = match &start.defender {
         Defender::Hero(side) => (
             side.army.clone(),
             Some(battle_hero(before, rules, side.hero)),
             machines(side.hero),
             side.formation,
-            side.owner,
+            Some(side.owner),
         ),
-        Defender::Garrison { owner, army } => (
-            army.clone(),
-            None,
-            Default::default(),
-            Formation::default(),
-            *owner,
-        ),
+        Defender::Garrison { owner, army } => {
+            (army.clone(), None, Default::default(), town, Some(*owner))
+        }
+        Defender::Guards { army } => (army.clone(), None, Default::default(), town, None),
         other => panic!("{other:?} defends no siege here"),
     };
     let surrender = rules.battle().battle().surrender.unwrap().resource;
-    let gold = |player: PlayerId| before.treasury(player).unwrap()[usize::from(surrender.raw())];
+    let gold = |player: Option<PlayerId>| {
+        player.map_or(0, |player| {
+            before.treasury(player).unwrap()[usize::from(surrender.raw())]
+        })
+    };
+    let human = |player: Option<PlayerId>| player.is_some_and(|p| before.human(p).unwrap());
     let record = before.towns().get(T1).unwrap();
     let mut setup = BattleSetup {
         attacker: Army {
@@ -196,11 +201,11 @@ fn expected_setup(
         battlefield: battlefield.map(key),
         war_machines: [machines(HERO), machine],
         formations: [start.attacker.formation, formation],
-        funds: [gold(RED), gold(owner)],
+        funds: [gold(Some(RED)), gold(owner)],
         difficulty: before.adventure().difficulty(),
-        human: [RED, owner].map(|player| before.human(player).unwrap()),
+        human: [Some(RED), owner].map(human),
         background: Some(2),
-        colours: [Some(0), Some(1)],
+        colours: [Some(0), owner.map(|_| 1)],
         siege: Some(h3_towns::siege(record, rules.towns())),
         ..BattleSetup::default()
     };
@@ -616,11 +621,12 @@ fn a_sieges_attacking_winner_gains_500_more_experience() {
 }
 
 /// Plays `game`'s battle to its end, each owner to act giving `pick` of its legal battle
-/// commands (ADR-0017 point 6: the garrison's owner outside its turn); the events.
+/// commands (ADR-0017 point 6: the garrison's owner outside its turn; the system actor an
+/// unowned side's, E08 T20b2); the events.
 fn play(
     game: &mut GameState,
     rules: &GameRuleset,
-    pick: impl Fn(PlayerId, &[GameCommand]) -> GameCommand,
+    pick: impl Fn(Actor, &[GameCommand]) -> GameCommand,
 ) -> Vec<GameEvent> {
     let mut events = Vec::new();
     for _ in 0..2000 {
@@ -628,16 +634,16 @@ fn play(
             return events;
         };
         let side = battle.state().side_to_act().unwrap();
-        let owner = battle.owners()[side.index()].unwrap();
-        let listed = legal_commands(game, rules, Actor::Player(owner));
-        let command = pick(owner, &listed);
-        apply(game, rules, Actor::Player(owner), command, &mut events).unwrap();
+        let actor = battle.owners()[side.index()].map_or(Actor::System, Actor::Player);
+        let listed = legal_commands(game, rules, actor);
+        let command = pick(actor, &listed);
+        apply(game, rules, actor, command, &mut events).unwrap();
     }
     panic!("the siege did not end");
 }
 
 /// The last legal command that fights on (an attack where there is one).
-fn fight(_: PlayerId, listed: &[GameCommand]) -> GameCommand {
+fn fight(_: Actor, listed: &[GameCommand]) -> GameCommand {
     let fights = |c: &&GameCommand| !matches!(c, GameCommand::Battle(c) if c.leaves_battle());
     listed.iter().rfind(fights).unwrap().clone()
 }
@@ -650,11 +656,11 @@ fn a_siege_played_to_its_end_is_settled_as_a_siege() {
     let game = GameState::new(&rules, &siege_setup(&rules, false, standard(true)), 7).unwrap();
     let imps = garrison(&game).to_vec();
     let (mut after, _) = started(&rules, &game, siege_start(&game, Some(T1)));
-    let events = play(&mut after, &rules, |owner, listed| {
-        if owner == RED {
+    let events = play(&mut after, &rules, |actor, listed| {
+        if actor == Actor::Player(RED) {
             GameCommand::Battle(Command::Retreat)
         } else {
-            fight(owner, listed)
+            fight(actor, listed)
         }
     });
     assert!(after.adventure().hero(HERO).is_none() && !captured(&events));
@@ -680,4 +686,117 @@ fn a_siege_played_to_its_end_is_settled_as_a_siege() {
         _ => None,
     });
     assert_eq!(gained, Some(4 * imp + SIEGE_EXPERIENCE));
+}
+
+/// [`siege_setup`] without a visitor, town 1 in a tight formation, neutral (of `t:town`, its
+/// garrison and buildings kept) when `neutral`, with a Fort when `fort`.
+fn garrisoned(rules: &GameRuleset, neutral: bool, fort: bool) -> GameSetup {
+    let mut setup = siege_setup(rules, false, standard(fort));
+    setup.map.objects[1].holds = Holds::Town {
+        formation: Formation::Tight,
+    };
+    if neutral {
+        setup.map.objects[1].owner = None;
+        setup.towns[1] = TownSetup {
+            faction: TownFaction::Fixed(faction(rules, "t:town")),
+            ..setup.towns[1].clone()
+        };
+    }
+    setup
+}
+
+/// Red's hero stepped from [`OUTSIDE`] onto blue's town 1's entrance through `apply`: the events.
+fn step_onto_gate(rules: &GameRuleset, game: &mut GameState) -> Vec<GameEvent> {
+    let command = GameCommand::Adventure(AdventureCommand::MoveHero {
+        hero: HERO,
+        path: vec![BLUE_GATE],
+    });
+    let mut events = Vec::new();
+    apply(game, rules, Actor::Player(RED), command, &mut events).unwrap();
+    events
+}
+
+/// Whether `events` hold a step of a hero.
+fn stepped(events: &[GameEvent]) -> bool {
+    events.iter().any(|event| {
+        matches!(event, GameEvent::Adventure(event)
+            if matches!(event.kind, AdventureEventKind::HeroStepped { .. }))
+    })
+}
+
+// covers: TWN-SIE-001, TWN-VIS-001, GAM-BAT-001
+#[test]
+fn a_step_onto_a_town_its_garrison_defends_starts_its_siege_from_the_tile_before() {
+    let rules = siege_rules();
+    for neutral in [false, true] {
+        let game = GameState::new(&rules, &garrisoned(&rules, neutral, true), 7).unwrap();
+        let moves = legal_moves(&game, &rules, Actor::Player(RED), HERO).unwrap();
+        assert_eq!(moves.path(BLUE_GATE), Some(vec![BLUE_GATE]));
+        let left = moves.points_left(BLUE_GATE).unwrap();
+        let mut after = game.clone();
+        let events = step_onto_gate(&rules, &mut after);
+        // The battle the visit gives (the step draws nothing): the garrison without a hero in
+        // the town's formation, on its owner's side or the neutral seat's.
+        let mut start = siege_start(&game, Some(T1));
+        if neutral {
+            start.defender = Defender::Guards {
+                army: garrison(&game).to_vec(),
+            };
+        }
+        let expected = expected_setup(&game, &rules, &start, (ROCK, None));
+        assert_eq!(expected.0.formations[1], Formation::Tight);
+        let battle_at = after.battle(RED).unwrap();
+        assert_eq!(battle_at.state(), &battle(&rules, &expected));
+        let owner = (!neutral).then_some(BLUE);
+        assert_eq!(battle_at.owners(), [Some(RED), owner]);
+        assert_eq!(battle_at.heroes(), [Some(HERO), None]);
+        assert_eq!(battle_at.tile(), BLUE_GATE);
+        // Visited from the tile before: no step, its points paid; the town as it was.
+        assert!(!stepped(&events), "{events:?}");
+        assert!(
+            events
+                .iter()
+                .any(|event| matches!(event, GameEvent::BattleStarted { .. }))
+        );
+        let hero = after.adventure().hero(HERO).unwrap();
+        assert_eq!((hero.pos, hero.movement), (OUTSIDE, left));
+        assert_eq!(garrison(&after), garrison(&game));
+        assert_eq!(after.adventure().owner(1), owner);
+    }
+}
+
+// covers: TWN-SIE-001, TWN-CAP-003, TWN-VIS-001
+#[test]
+fn a_siege_a_step_started_is_played_and_captures_the_town_with_the_attacker_outside() {
+    let rules = siege_rules();
+    // Without a fort red's nine imps beat the four, blue's or the neutral seat's.
+    for neutral in [false, true] {
+        let mut game = GameState::new(&rules, &garrisoned(&rules, neutral, false), 7).unwrap();
+        let mut events = step_onto_gate(&rules, &mut game);
+        events.extend(play(&mut game, &rules, fight));
+        assert!(captured(&events), "{events:?}");
+        let adventure = game.adventure();
+        assert_eq!(adventure.owner(1), Some(RED));
+        assert_eq!(adventure.hero(HERO).unwrap().pos, OUTSIDE);
+        assert!(garrison(&game).is_empty());
+        // The next step enters the town, red's now.
+        let events = step_onto_gate(&rules, &mut game);
+        assert!(stepped(&events) && !captured(&events), "{events:?}");
+        assert_eq!(game.adventure().town_visitor(T1), Some(HERO));
+    }
+    // Behind a neutral town's walls red's hero retreats; the system actor's garrison keeps it.
+    let mut game = GameState::new(&rules, &garrisoned(&rules, true, true), 7).unwrap();
+    let imps = garrison(&game).to_vec();
+    let mut events = step_onto_gate(&rules, &mut game);
+    events.extend(play(&mut game, &rules, |actor, listed| {
+        if actor == Actor::Player(RED) {
+            GameCommand::Battle(Command::Retreat)
+        } else {
+            fight(actor, listed)
+        }
+    }));
+    assert!(game.battle(RED).is_none() && !captured(&events));
+    assert!(game.adventure().hero(HERO).is_none());
+    assert_eq!(garrison(&game), &imps[..]);
+    assert_eq!(game.adventure().owner(1), None);
 }

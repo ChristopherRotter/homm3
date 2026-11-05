@@ -323,7 +323,8 @@ proptest! {
     /// so that boardings, sailing, landings and visits from and to a boat are walked. E09 T8a2:
     /// up to three towns on land tiles without an object, red's, blue's or neutral, with a
     /// garrison or none, a hero standing on one's entrance its visitor: an own or undefended town
-    /// entered, a defended one and another team's visitor never reached (`TWN-STUB-7`).
+    /// entered; since E09 T8b2a one its garrison defends visited from the tile before (the
+    /// siege); another team's visitor never reached (`TWN-STUB-7`).
     #[test]
     fn the_query_and_move_hero_agree(
         cells in proptest::collection::vec(0usize..TILES.len(), 64),

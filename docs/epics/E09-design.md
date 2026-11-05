@@ -247,7 +247,8 @@ ADR-0015's amendment point 3, in the import's order:
   tile (a destination reached from a neighbour, not passed) and the rest as an entered object; the
   test is per entrance tile the search meets (a town is rare), measured against `master`
   (`homm3-bench-regression`).
-- **As built (T8a2):** `h3_adventure`'s `src/town.rs`. A town's entrance is a typed visit
+- **As built (T8a2;** its defended town's refusal superseded by §10's T8b2a: `town_defended`
+  became `town_visit`**):** `h3_adventure`'s `src/town.rs`. A town's entrance is a typed visit
   (`StaticMap::place`; `Effect::Town`; `StaticMap::town_at(pos)`), so ADV-OBJ-004 reads the town:
   a hero on the entrance does not leave it upwards and the guard test skips the row above.
   `town_visitor(id)` the hero on the entrance. `town_defended(index, player)`: the owner not
@@ -286,6 +287,21 @@ ADR-0015's amendment point 3, in the import's order:
   { army }` for a neutral one (the neutral seat; *agent's call*, no new variant).
 - **Events:** the merge's changes to the town's owner as the army dialog's (`StackChanged` per
   slot, the hero's and the garrison's; *agent's call*), then the game's `BattleStarted`.
+- **As built (T8b2a; T8b2 cut in two at its start, the user, 2026-11-05: the town its garrison
+  alone defends, then T8b2b the visitor with the merge):** `AdventureState::town_visit(index,
+  player) -> Option<Visit>` (was `town_defended`): `Enter` for a town of the player's team or an
+  undefended one, `Neighbour` when its owner is of another team or none and a creature stands in
+  its garrison, none while a hero of another team stands on its entrance (`TWN-STUB-7`, narrowed
+  to that visitor). `visit_at` takes a town's visit mode from it, so the step (ADV-OBJ-003's
+  neighbour mode: the step paid, ADV-MOV-006's drop, the hero stays), the passage (a flight passes
+  over the entrance, as over a monster's tile) and the reach (a destination, as a monster's; its
+  walking loop untouched) read one answer. `visit_town(part, (player, hero), (index, mode))`: a
+  neighbour visit gives `siege_start`: the garrison by slot as it stands, `Defender::Garrison {
+  owner, army }` for an owned town, `Defender::Guards { army }` for a neutral one (the system
+  actor plays it), `battle_at` the entrance with `town: Some(TownId)`; nothing else changes until
+  the battle ends (T8b1's end). `StaticMap::town_formation(TownId)`: the game's `siege_setup`
+  puts the town's formation (§8's byte) on the defending side when no hero defends. The merge,
+  `Defender::Hero` and `besieges`' siege are T8b2b's. No version moved.
 
 ### 11. Capture (TWN-CAP-001 to -003; T8a, the siege's case T8b)
 
@@ -596,7 +612,8 @@ by T8a2), `TWN-STUB-5` the build's empty garrisons and flag radius for the towns
 T8a1; narrowed by T7b2a to a whole-map reveal at the start, which reaches only the town's level;
 lifted with the capture's reveal, T8a2); `TWN-STUB-6` a main town's hero learning no guild spell
 at the start (registered by T7b2b; increment 4, TD-10); `TWN-STUB-7` a defended town refused
-until the siege's start (registered by T8a2; T8b2's); `TWN-STUB-8` a walled Stronghold's natural
+until the siege's start (registered by T8a2; narrowed by T8b2a to a visitor of another team;
+T8b2b's); `TWN-STUB-8` a walled Stronghold's natural
 obstacles (registered by T8b1; a siege-aware draw in `h3-battle`).
 
 ### 20. Batch TWN-1 (T3)

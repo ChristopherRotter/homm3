@@ -1249,3 +1249,64 @@ merge, the defender's three kinds). The code, tests and docs by the agent; an in
 - **Gates:** `cargo fmt`; the scoped verify with the original data passed every step (clippy,
   coverage 100 %, determinism, `bench-check`, `original-data`) but `check-lane` (by design on a
   `cross-lane` branch); `check-lane --cross-lane`; `cargo check --workspace --all-targets`.
+
+### T8b2a — the step onto a town its garrison defends: the siege's start (2026-11-05)
+
+One session, the user present; branch `town/e09-t8b2a` (`cross-lane`: `h3-adventure`'s
+`state.rs`, `state/passage.rs`, `reach.rs`, `ruleset/objects.rs` and tests; `h3-game`'s
+`legal.rs`). Starting point: `master` at 0e2f186 (#738 merged; CI green on 618a232; the sandbox
+restarted during the setup's full baseline, so CI's green run stood for it; the original data
+staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`; the user's
+computer's shell unavailable, staging worked; `master`'s #740 merged in before the pull request).
+**At its start** (the user): T8b2 cut in two at
+the visitor: T8b2a the town its garrison alone defends (the step, the reach with the bench, the
+defender's two kinds without a hero, end-to-end tests), T8b2b the visitor (the merge and its
+events, `Defender::Hero`, a step onto the visitor, `TWN-STUB-7` lifted). The code, tests and docs
+by the agent; an independent review.
+
+- **`h3-adventure`:** `src/town.rs`' `town_visit(index, player) -> Option<Visit>` (was
+  `town_defended`): `Enter` for a town of the player's team or an undefended one, `Neighbour` for
+  one of another team or none with a creature in its garrison, none while a hero of another team
+  stands on the entrance (`TWN-STUB-7`); `visit_at` takes a town's mode from it, so the walking
+  step, the passage (a flight passes over it; from a pass node no visit, `NoStop`) and the reach
+  (a destination, as a monster's) read one answer; `visit_town(part, (player, hero), (index,
+  mode))` gives a neighbour visit's `siege_start` (`Defender::Garrison { owner, army }` for an
+  owned town, `Defender::Guards { army }` for a neutral one, `battle_at` the entrance with
+  `town: Some(TownId)`); `StaticMap::town_formation` and `holds_formation`. The step pays, drops
+  (ADV-MOV-006) and stays as for a monster; nothing else changes until T8b1's end.
+- **`h3-game`:** `town::siege_setup` puts the town's formation on a garrison without a hero
+  (design §8's byte); `legal_moves`' doc. No version moved; no replay touched (no fixture map
+  has a town).
+- **The reach:** its walking loop untouched (`visit_at` stays out of line). Bench against a built
+  `master` worktree (the same toolchain), nothing re-baselined: `reach-xl-144` −0.008 %,
+  `reach-lifted-xl-144` −0.004 %, `reach-sea-xl-144` −0.000 %, `random-play-duel-36` −0.005 %,
+  `random-play-sea-36` +0.001 %, `random-play-economy-36` −0.003 %, `random-play-rewards-36`
+  −0.010 %, `random-play-dwellings-36` −0.003 %; after the coverage fix (`visit_at`'s
+  combinator) `reach-xl-144` −0.013 %, `reach-lifted-xl-144` −0.007 %, `random-play-duel-36`
+  −0.008 %.
+- **Rules, stubs:** TWN-SIE-001 (who defends: the garrison alone now, the visitor with T8b2b);
+  TWN-VIS-001 (the defended case besieged) and TWN-VIS-002 (T8b2b's) amended; `TWN-STUB-7`
+  narrowed to a visitor of another team.
+- **Tests:** `h3-adventure`'s `state/tests/towns.rs`
+  (`a_town_its_garrison_defends_is_besieged_from_the_tile_before`: blue's and a neutral town, a
+  walker, a water walker and a flyer: the reach's destination, the outcome's battle, the hero
+  outside with the reach's points, no event, a flyer's pass and its `NoStop` from a pass node;
+  an own garrisoned town entered; the formation), the reach's property test (its doc: a
+  garrisoned town now a neighbour's visit); `h3-game`'s `town/tests/siege.rs` (a step's siege
+  equal to the expected setup in the town's tight formation, blue's side or the neutral seat's,
+  the hero outside with the legal moves' points; played to a capture with the attacker outside
+  and the next step entering, blue's and neutral; a retreat behind a neutral town's walls, the
+  system actor playing it) and `town/tests/capture.rs` (a defended neutral town besieged; the
+  legal moves reach a defended entrance).
+- **The review** (independent, no behaviour bug: the step, the passage, the reach, a boat, a hero
+  starting on the entrance, a shared entrance tile, the battle's end all agree): a walled neutral
+  siege never played to its end (tested: a retreat); a flight's visit from a pass node untested
+  (tested); a `None` from `siege_start` would leave the step paid without a battle (unreachable,
+  said in its doc); two texts (the batch's "with its points", the T8a2 "As built" pointing to
+  §10).
+- **Gates:** `cargo fmt`; the workspace tests; the scoped verify with the original data passed
+  every step (clippy, check-rules, coverage 100 %, determinism, `bench-check`, `original-data`)
+  but `check-lane` (by design on a `cross-lane` branch); `check-lane --cross-lane`; `cargo check
+  --workspace --all-targets`. A first verify found two regions never run (`visit_at`'s `?` on a
+  kind without a visit, `siege_setup`'s `if let` without an `else`): written as a combinator and
+  an `unwrap_or`.

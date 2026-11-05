@@ -8,29 +8,34 @@ Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
-T8a2, then T8b (cut in two: T8b1, T8b2; rounds 2 to 6, T7a, T7b, T8a1, T8a2, T8b1 are done,
-`E09-log.md`); each later round's entries are written when it comes
-(the epic's list), each task's cut confirmed at its start. Every entry's
-acceptance includes the Definition of Done (`docs/05-testing.md`).
+T8a2, then T8b (cut in two: T8b1, T8b2, itself cut in two: T8b2a, T8b2b; rounds 2 to 6, T7a, T7b,
+T8a1, T8a2, T8b1, T8b2a are done, `E09-log.md`); each later round's entries are written when it
+comes (the epic's list), each task's cut confirmed at its start. Every entry's acceptance includes
+the Definition of Done (`docs/05-testing.md`).
 
-**E09 T8b2 — the step onto a defended town** (`cross-lane`; T8b cut in two at its start, the user,
-2026-11-05: T8b1, the siege's battle and its end, is done, `E09-log.md`)
+**E09 T8b2b — the siege against a town's visitor** (`cross-lane`; T8b2 cut in two at its start,
+the user, 2026-11-05: T8b2a, the step onto a town its garrison alone defends, is done,
+`E09-log.md`)
 
-- **Scope:** design §9 case 2 and §10 (TWN-SIE-001, -002; TWN-VIS-001, -002 amended):
-  `TWN-STUB-7` lifted: a defended town of another team or none (a creature in its garrison, or a
-  visitor of another team) visited from the tile before (ADV-OBJ-003's neighbour mode: the step
-  paid, ADV-MOV-006's drop, the hero stays), its outcome the siege (`BattleStart::town`, T8b1);
-  a step onto another team's hero on a town's entrance the same siege, never a field battle
-  (`besieges` in `check_step` and `passage`); the reach and the legal moves list a defended
-  entrance as a neighbour's destination (today `visit_at`'s refusal through `town_defended` and
-  the reach's cold `unmark_visitors`: measured against `master`, skill
-  `homm3-bench-regression`, and the adventure lane's trap on the walking search's loop); the
-  merge of the garrison into the visitor's army (§10, TD-7 by the reading) with its events; the
-  defender (`Defender::Hero`, `Garrison` for an owned town, `Guards` for a neutral one); the
-  battle's tile the entrance (T8b1's `siege_setup` fights no siege elsewhere, and the battle's end
-  finds a siege's town by its tile), its terrain the game's (T8b1); end-to-end tests through
-  `GameState::apply` (a siege started by a step, played, captured with the attacker outside).
-- **Depends on:** T8b1 (its pull request). **Status:** next; its cut confirmed at its start.
+- **Scope:** design §10 (TWN-SIE-001's visitor, TWN-SIE-002; TWN-VIS-002 amended): `TWN-STUB-7`
+  lifted: a town a visitor of another team defends (`AdventureState::town_visit` gives none today)
+  visited from the tile before, the siege against the visitor (`Defender::Hero` with
+  `BattleStart::town`, `siege_start`); a step onto that visitor itself the same siege, never a
+  field battle (`besieges` in `check_step` and `passage`: today a refusal; a flight passes);
+  the reach's cold `unmark_visitors` pass kept or dropped by the bench against `master` (skill
+  `homm3-bench-regression`; the adventure lane's trap on the walking search's loop: the occupied
+  branch and a town's visit give the same destination); **the merge** of the garrison into the
+  visitor's army before the battle (§10, survey §9.2, TD-7 by the reading, batch TWN-1's row 3):
+  rounds of the visitor's weakest stack (the least AI value × count, of equal ones the last slot),
+  each garrison stack's gain, the greatest positive one (the first slot of equal ones) joining its
+  creature's stack or the first empty slot, else changing places with the weakest; what stays
+  does not fight; **its events** to the town's owner (design: `StackChanged` per slot, the hero's
+  and the garrison's, *agent's call*: the garrison has no `ArmyRef` today, so the event's shape is
+  this task's call, a new variant on the wire maps in `h3-protocol`, the global HANDOFF's trap);
+  end-to-end tests through `GameState::apply` (both steps, the merge seen in the battle's
+  armies, a defender's win keeping the merged army, an attacker's win capturing with the
+  attacker outside: T8b1's end).
+- **Depends on:** T8b2a (its pull request). **Status:** next; its cut confirmed at its start.
 
 ## Inbox
 
