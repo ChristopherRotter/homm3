@@ -5405,3 +5405,37 @@ the effects, their waits and Bloodlust's glow) and chose T5a (M5's items 5, 9, 8
   `Battle`-level tests of the server's facts, §12.17's server behaviour stated once (the entry's
   box meanwhile, `CLT-STUB-1`), a server of other content's wall aim noted (24, the bare aim),
   §7.18's quoted text dropped.
+
+### M6 T5b1 — the computer's casts for the human's hero (2026-11-05)
+
+On `client/e17-m6-t5b1`, stacked on the battle lane's `battle/clt-auto-combat-parts` (PR #739:
+`h3_battle_ai::Decision`, `Sight`). T5b in two (T5b1 the casts and the window's computer, T5b2
+the retreat question); the user decided (2026-11-05): the fair actor by default for the computer
+opponent and Auto Combat, a toggle for the all-seeing original; the window's computer the
+engine's whole choice.
+
+- **Read** (the T5b reading; design §12.18): `ai_hero_cast_turn` 0x422DA0's gates and its calls at
+  the end of `battle_controls_state` (each activation, Auto Combat's stop and switch); the cast
+  dispatched as action 1 at the loop's next pass before the stack's action, the turn going on.
+- **Built** (a builder agent; design §12.18, "The client's"): `live::Computer` (`Original(Sight)`
+  the window's, `--sight fair|all-seeing`, *provisional*; `Greedy` for `play` and the fixtures),
+  each side's seat stream from the battle's seed; a human's side under Auto Combat by the parts
+  (`Live::set_cast`, `cast_again`: `Decision::hero_cast` once a turn, then `Decision::action`
+  without the retreat test, `CLT-STUB-2`); `Battle::auto_turn` (Auto Combat's play and the cast's
+  ask for the turn a command starts or the one going on after a cast), the switch's ask
+  (`hand_over`, `computer_at`); `h3_view::auto::boxes_at` and `Auto::asks_cast`; the presser kept
+  the fixed bot, its check a re-fight by what asked for each command (`live::Ask`, `refight`); the
+  sequences' Auto Combat boxes (`auto_creatures`, `auto_spells`: `AutoBoxes`, the harness's
+  `AUTO`), the parser taking a key after `key:a` as the human's own with Creatures clear;
+  `seq-auto-cast.toml` and `to-record.toml` (`auto-cast`, `auto-cast-human`) prepared for a
+  capture agent. `h3-battle-ai` in the client workspace (and `clients.yml`'s path filter, a CI
+  file: to route as a shared change).
+- **Checked:** unit tests (`live.rs`: the original computer by its seat's stream, the casts
+  asked once a turn, the re-fight; `auto/tests.rs`; the sequences' boxes); `check.sh` passed,
+  coverage 100 %; `h3-view gate`; `drawn` 245 the same; four unattended `window --check 40` runs
+  (`seq-auto-cast.toml --auto 1`, fair and all-seeing: Bless at the Marksmen's turn start, then
+  their shot; `battle.toml` with a human, and with `--auto 2` all-seeing): every frame read back
+  exact, each battle its re-fight's; `check-docs`, `check-stubs`, `check-lane --cross-lane`.
+- **Not built:** the retreat question (T5b2); the stop read between the computer's cast and a
+  self-playing stack's action (the client's stop waits for the next turn's start); the
+  recordings.

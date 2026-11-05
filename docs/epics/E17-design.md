@@ -5790,8 +5790,7 @@ in `cursor_attack_slots` (0x4746DA), `cursor_attack_from_hex` (0x474A43), `battl
   asked for the hero's cast only with Auto Combat on (or a remote turn) and Combat Auto Spells set,
   or in a hidden battle (0x422E42); once a round (+0x54B4), never in the tactics phase nor at a war
   machine's turn (+0x84 bit 6). So with Spells set the computer casts for the human on the turns
-  the human plays too, and on the switch's own turn. T5's (the client's bot casts nothing): kept
-  only.
+  the human plays too, and on the switch's own turn. Built in M6 T5b1 (§12.18).
 - **The other sites:** `active_stack_automatic` (the overlay left empty, §7.23), the cursor's
   attack slots and from-hex (none for a stack that plays itself), `battle_buttons`' mouse move and
   F (nothing while the active stack plays itself under Auto Combat), `round_start`'s end of the
@@ -5852,9 +5851,9 @@ in `cursor_attack_slots` (0x4746DA), `cursor_attack_from_hex` (0x474A43), `battl
     original's press acting on that turn is the record's command in the comparisons; their
     sequences' parser still takes every `key:`, `hex:` and `click:` after `key:a` as a stop (*not
     built*: a sequence pressing for a human-played turn under Auto Combat, with its recording).
-  - Not built: the computer's casts for the human's hero (Spells, T5's); the engine's own choices
-    for the commanded machines (BAT-WAR-002, -003, -008, BAT-SIE-011, crate-private in
-    `h3_battle`); the recording (a commanded Ballista, Artillery, under Auto Combat with Combat
+  - Not built: the computer's casts for the human's hero (Spells; built in M6 T5b1, §12.18); the
+    engine's own choices for the commanded machines (BAT-WAR-002, -003, -008, BAT-SIE-011,
+    crate-private in `h3_battle`); the recording (a commanded Ballista, Artillery, under Auto Combat with Combat
     Ballista off: oddities 1 and 2).
 
 ### 12.14 Creature Info's level: F5 and the status line's damage (M6 T4b2a)
@@ -6763,3 +6762,103 @@ to 0x5A3109) and `spell_target_cursor`'s refusal (0x59F83E to 0x59F889) to compa
     pauses the battle's idle steps.
   - *Not built:* the hero's press opening the book (CLT-Q60, its post fixed once built);
     Teleport's and Sacrifice's aims; a still's refusals before the book (unreachable).
+
+### 12.18 The computer's casts for the human's hero (M6 T5b1)
+
+Read (the T5b reading, recorded here; the engine's computer is the battle lane's PR #739,
+`h3_battle_ai::Decision`): `ai_hero_cast_turn` 0x422DA0 whole to its gates (0x422DA0 to
+0x422E7B, 0x422E42) and its two call sites at the very end of `battle_controls_state` 0x4782D0
+(0x478861, 0x47887D: after the panel is set, the mouse posted and the action +0x3C cleared);
+`battle_controls_state`'s callers: every stack activation (`stack_activation` 0x46580E), Auto
+Combat's stop (0x47425B) and its switch (0x474E73); `battle_loop_turn` 0x4740D0's dispatch of a
+set action (0x474477 to `action_dispatcher` 0x478D80) before the computer's action (0x4744C0), and
+the next stack after a cast only when it killed the active stack (0x47905B).
+
+- **When the computer is asked** (`ai_hero_cast_turn`, at the end of every
+  `battle_controls_state`), in order: none if the side's hero cast this round (+0x54B4), in the
+  tactics phase (+0x13D68), at a war machine's turn (the active stack's +0x84 bit 6); for a side
+  whose player is human (0x4CE940) only when Auto Combat is on (+0x132C4) or the turn is remote,
+  and Combat Auto Spells (0x698798) is set, or the battle is hidden; then the anti-magic garrison
+  (+0x53C4), the hero wearing a spell book, the Orb of Inhibition (126) on neither hero. The
+  hero's own tests are the engine's (`hero::cast`: the book, cast this round, a war machine, the
+  forbidding; `Decision::hero_cast` adds the tactics phase).
+- **What it does:** a cast is action 1, dispatched at the loop's next pass (0x474477) before the
+  stack's own action; the stack's turn goes on after it (another stack only if the cast killed the
+  active one). So with Auto Combat on and Spells set the computer is asked for the human hero's
+  cast at each human stack's turn start, whether the stack plays itself (then its action after
+  the cast, the computer's) or the human plays it (Creatures cleared: the turn waits for the human
+  after the cast); and on the switch's own turn (the switch runs `battle_controls_state` again),
+  whoever plays the stack. Once a round in effect (the hero's casts); every ask draws the
+  computer's dice whether it casts or not. The stop runs `battle_controls_state` without Auto
+  Combat, which clears a cast set (+0x3C) and asks none: a stop found as a turn starts cancels
+  that turn's cast. A box changed in the options dialog runs nothing (§12.13): no cast asked.
+- **Oddities:** none new; the panel over a human-played turn under Auto Combat (lit, the button
+  unselected while the computer casts for the hero) is CLT-Q45 (1)'s, fixed in the client's
+  profile. Two candidates for the lane's review (not asked yet): (1) the stop read between the
+  computer's cast and the action of a stack that plays itself (below, *not built*); (2) with
+  Creatures cleared and Spells set, the computer spends the hero's cast of the round at the start
+  of a turn the human plays, before the human could open the book (the option's meaning:
+  recommended copy, built so).
+- **The client's (M6 T5b1, *provisional* where marked):**
+  - The window's computer (the user, 2026-11-05): `live::Computer::Original(sight)`, the engine's
+    original computer, its whole choice for its side (`h3_battle_ai::choose_fair` for
+    `Sight::Fair`, the default; `choose` for `Sight::AllSeeing`): it may cast and retreat. The
+    window's `--sight fair|all-seeing` chooses it (*provisional*: a flag only, not in the
+    settings file, whose `[battle]` table holds the original's registry values; refused with a
+    server's seat, whose computer is the server's). `h3-view play` keeps the fixed bot on both
+    sides (`Computer::Greedy`, a fixture), as `scenario::fought` and the connect and online
+    tests' seats do.
+  - Each side draws from its own stream, `Rng::for_stream(seed, StreamId::seat(side))` from the
+    battle's seed, as the engine's batches seed their seats; a battle is fought once (Restart and
+    a seek back move the clock only, the battle made again before any command when the sound
+    opens), so the same seed gives the same commands.
+  - A human's side under Auto Combat by the computer's parts (`Live::next`): first the hero's
+    cast when the battle asks it (`Live::set_cast`: `Decision::hero_cast`, none when it declines),
+    then for a stack that plays itself `Decision::action`, without the retreat test
+    (CLT-STUB-2, T5b2). `Live::set_cast` holds once a turn (`Cast::No`, `Due`, `Asked`; a turn
+    started clears it); `Live::cast_again` is the switch's. A cast asked that gives none goes on
+    to the action in the same ask, or leaves the turn the human's.
+  - The battle (`battle.rs`): `Battle::auto_turn` gives, for the turn a command starts (or the
+    turn under way after a cast, `Played::turned` false: Auto Combat from when it handed the turn
+    over, `Auto::plays`), whether Auto Combat plays it and whether its start asks the cast
+    (`h3_view::auto::Auto::asks_cast`: on as it started, its stop read, and Spells by the boxes
+    then, `auto::boxes_at`); `take` tells `Live` both, `play_next` again as the turn starts (a
+    stop since). A cast declined over a human-played turn makes it wait, outlined from its start
+    (`outline_waiting`, as a stop). The switch (`hand_over`): with Auto Combat now on and Spells
+    set (the boxes now) the cast is asked first (`Battle::computer_at`, at the switch's time),
+    then the action if the stack plays itself, else the turn waits on. The computer's cast is
+    pushed as the computer's command (no time: one idle step, the stack outlined at that tick,
+    the cast clearing and restoring the outline, §7.9), also on a human-played turn, where the
+    original's outline before it is not known (the recording's question). A key or a press while
+    the computer casts on a human-played turn is no stop (`Battle::auto_on`): the original reads
+    none on that turn, the key reaching it after the cast; the client drops it, as CLT-Q45 (2)
+    drops a press made before such a turn.
+  - The unattended presser keeps the fixed bot (`Live::choice`, *provisional*: a player that
+    draws from no stream, leaves never and casts nothing), and its check fights the battle again
+    by what asked for each command (`live::Ask`: a press, the computer's whole choice, a cast
+    asked, Auto Combat's action; `live::refight`): each press the presser's choice, the computer's
+    asked again in the same order from the streams afresh.
+  - The comparisons: a sequence names the Auto Combat boxes it was recorded at (`auto_creatures`,
+    `auto_spells`, 0 or 1; `setup.sh`'s Creatures 1 and Spells 0 without them; `sequences.rs`'
+    `AutoBoxes` into `pointer::captured` and `shown`), the harness writing them into the prefix's
+    registry before the game starts and putting the prefix's back after (`h3drive.AUTO`,
+    `registry_values`, as the grid's). The computer's casts are the record's commands without a
+    time. With Creatures clear the parser takes a key or a press after `key:a` as the human's
+    turn's own, not a stop (*provisional*: such a sequence presses on the human's turns only).
+- **To record** (`clients/situations/to-record.toml`, `seq-auto-cast.toml`: the Champions' turn
+  first, Orrin's book Bless alone, 20 spell points; the engine's computer declines at the
+  Champions' turn and casts Bless as the Marksmen's turn starts):
+  1. `auto-cast` (Creatures and Spells set): A at 0 ms; the Champions played at once; at the
+     Marksmen's turn start Bless, then their shot, the panel dimmed and Auto Combat selected.
+  2. `auto-cast-human` (Creatures cleared, Spells set): A at 0 ms (nothing shown), D (the
+     Champions defend); at the Marksmen's turn start Bless, then the turn waits for the human.
+  The questions for the recordings: the stack's outline before the computer's cast (from the
+  turn's start, as a human's turn, or one tick later, the client's), the cast's timing (one idle
+  step after the turn's start), the panel through the cast; and whether the original's computer
+  casts as the engine's does (else a finding for the battle lane).
+- **Not built:** the retreat question (T5b2, CLT-STUB-2: the test not asked, so a human's side
+  under Auto Combat never leaves); the stop read between the cast and the action (the original
+  reads a key pressed during the computer's cast for a stack that plays itself at the pass after
+  the cast, so that stack's action is the human's; the client's stop waits for the next turn's
+  start, its `Auto::of` taking stops at turn starts only); the recordings (a separate capture
+  agent); a hidden battle's and a remote turn's asks (no such battle here).
