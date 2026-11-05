@@ -2170,7 +2170,7 @@ again; built: `h3_view::book`, `ui`'s new kinds, the layout's `[book]`, the bina
   follows at once), so `book-hint` compares from 100 ms. In the window (Xvfb, `xdotool`): C opens
   the book, the hint over a place, the corner turns the page, Death Ripple cast from it.
 - **Not modelled** (later): the message boxes (a spell above the mana, an adventure spell's
-  description, `hero_book_button`'s refusals: T4, the dialogs); the right button's help; the
+  description: T4, the dialogs; `hero_book_button`'s refusals: §12.17); the right button's help; the
   page turn's video; the aim (T3b); the book on the adventure map; an unattended run's casts
   through the book (they are given without a press).
 
@@ -2194,7 +2194,7 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   (0x59F6AC): Quicksand and Land Mine cast at once; Earthquake at once in a siege, else a
   message; the stack spells (15 to 19, 24 to 39, 41 to 58, 60 to 62) scan the field's inner hexes
   for one the target test 0x5A39C0 accepts (Chain Lightning leaving out the side's own stacks),
-  none: "That spell will affect no one!" (GENRLTXT 186, a message box); a mass spell at the
+  none: GENRLTXT 186 (the spell affects no one, a message box); a mass spell at the
   mastery (0x59E060) cast at once; else the aim. The area spells (20 to 23 and Berserk) aim at
   once (no scan). Force Field and Fire Wall (0x5A3250), Teleport (0x5A3570, 0x5A37D0) and
   Sacrifice (0x5A2D00, 0x5A2E90) have aims of their own (not read); Remove Obstacle and Clone the
@@ -2292,12 +2292,14 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   server's aim know none), Berserk's area in the side columns.
 - **Not modelled:** the aims of Teleport and Sacrifice (the book closes on them and casts
   nothing; a second target is the ruleset's, `aims::second_target`, by the original's number
-  only in a server's game of other content: E17 M5 T8b2, R4b-4); Force Field's and Fire Wall's
-  own aim (0x5A3250, not read): they take the common aim, a click casting at the hex it took
-  (*provisional*: no wall's shape shown, the refusal 24 instead of their 182; R4b-3); the
-  message boxes (T4); the area's shading (an option off in the harness); the Faerie Dragon's
+  only in a server's game of other content: E17 M5 T8b2, R4b-4); the message boxes (T4); the
+  area's shading (an option off in the harness); the Faerie Dragon's
   cast by the mouse (its cursor kind 20: once its side's hero has cast, the key does nothing, as
   the original's, and the window gives no cast then).
+- **Force Field's and Fire Wall's own aim** (`aim_wall_handler` 0x5A3250; R4b-3 settled by
+  §12.17, M6 T5a): the shape the engine's targets (no wall's shape drawn but Fire Wall's shade,
+  §12.16), GENRLTXT 182 on every refused hex, the aim open with no free hex; the book's and the
+  aim's entry's other refusals there too.
 
 ### 7.19 The message box, Retreat and Surrender (M5 T4a)
 
@@ -2380,19 +2382,16 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   (0x7805) makes the action 4. **Surrender** (2001, `S`): the price (`surrender_price`
   0x695030, as the computer's), then style 2 with GENRLTXT 33 formatted with the other side's
   hero's name and the price; OK: when the side's player's gold (game +0x20B84 by player) is below
-  the price, style 1 with GENRLTXT 30 ("You don't have enough gold!") and nothing else, else the
+  the price, style 1 with GENRLTXT 30 and nothing else, else the
   action 5 with the price. Both buttons are enabled as §9.7 says (`battle_controls_state`).
 - **The book's boxes** (style 1, no picture unless said): a spell above the hero's spell points
   with the combat bookmark, GENRLTXT 207 formatted with the cost and the points (0x59D462); an
   adventure spell clicked in battle, its whole description at the hero's mastery
   (`spell_book_text` with the flag 0) with the spell's picture (type 9, 0x59D4DC). The aim's
   entry (0x59F085): a stack spell (15 to 19, 24 to 39, 41 to 58, 60 to 62) or Teleport with no
-  inner hex its target test passes, GENRLTXT 186 ("That spell will affect no one!"). *Not
-  built:* the other entry refusals (Sacrifice's twice, GENRLTXT 186; Remove Obstacle's 713;
-  Clone's and the Summons' limits, formatted; Earthquake outside a siege; Land Mine against
-  natives) and `hero_book_button` 0x59E900's (an anti-magic garrison GENRLTXT 685, the Orb of
-  Inhibition 684 formatted with the hero and the artifact, a spell above level 1 on Cursed Ground
-  748, Recanter's Cloak): they need facts the client lacks (the engine refuses those casts);
+  inner hex its target test passes, GENRLTXT 186 (the spell affects no one). The other
+  entry refusals and `hero_book_button` 0x59E900's (the garrison, the Orb, Cursed Ground, the
+  Cloak): §12.17 (M6 T5a; on a server the other hero's Orb and Cloak not, gap G1). *Not built:*
   the right button's popups (style 4: the book's 0x59D0EC and 0x59D19B).
 - **The text tables' quotes** (`text_table_records` 0x5BBBA0, from `H3TextFile::Load`): a
   record that starts with a quote starts after it and loses its last character before the CR
@@ -3790,7 +3789,7 @@ loader 0x5B98B0). Built: `h3_view::mouse` (`spot`, `neighbour`, `distance`, `Leg
   d(n) = n up to 6 and 6 − n above (so 11 beats 1 for slot 0, and 7 beats 1 too: the
   executable's measure), the copies made earlier counting for later slots.
 - **The status line** (`battle_status_line`, written by `battle_log_add(text, 0, forced)`,
-  §9.8): 0 "No shots left!" (GENRLTXT:299) for a shooter (flag 4) with no shots left and a target
+  §9.8): 0 GENRLTXT 299 for a shooter (flag 4) with no shots left and a target
   still set (+0x10, +0x14, which a hex outside the field or a side column leaves as the last one
   set: T6c-2), else empty; 1 "Move %s here." (295) and 2 "Fly %s here." (296), the acting stack's
   name by its count; 3 and 15 "Attack %s" (221) with the target's name by its count, forced,
@@ -3868,7 +3867,7 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   at 0 ms: "Attack Pikemen" over the defend's line 0 ms old), the others not. **The target**
   (+0x10, +0x14 of the acting stack) is cleared over every hex of the field (0x476686), set over
   an enemy (0x47679D), cleared again where neither a shot nor a strike reaches it (0x476837), and
-  left by nothing, a side column or a hero: there a shooter without shots shows "No shots left!"
+  left by nothing, a side column or a hero: there a shooter without shots shows GENRLTXT 299
   (GENRLTXT:299, `battle.hint.no-shots`) for the last enemy it could strike.
 - **Entering a stack** (`battle_mouse_stack`): over the stack already marked nothing; else the
   old one unmarked and the new one marked, its group 1 started at frame 0 (or, showing it, it
@@ -6506,3 +6505,261 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
   timed so that none of the original's stalls falls inside a sequence (§7.2). Not recorded: a
   targeted aim's frozen shade (oddity 4, CLT-Q54) and the wall's last hex (oddity 6, CLT-Q56),
   their profiles' unit tests'.
+
+### 12.17 The book's and the aims' refusals, the walls' aim (M6 T5a)
+
+Read: `hero_book_button` 0x59E900 whole and its callers' ends (the book's command 0x474F63 to
+0x474F9C; `battle_click_action`'s hero case 0x476CD5 to 0x476E17); `spell_book_proc`'s spell click
+again (0x59D3E3 to 0x59D4F0); `enter_player_cast` 0x59EC50's head and dispatch (to 0x59ED5A), the
+walls' start (0x59F04B to 0x59F083), the cases of Teleport, Sacrifice, Remove Obstacle, Clone and
+the Summons and the end (0x59F085 to 0x59F67B); `aim_wall_handler` 0x5A3250 whole again,
+`spell_target_test` 0x5A39C0's wall cases and Remove Obstacle's (0x5A3A4E to 0x5A3C61),
+`spell_fails_message`'s wall case (0x5A2BC6 to 0x5A2C52), `aim_handler`'s move and press (0x5A309D
+to 0x5A3109) and `spell_target_cursor`'s refusal (0x59F83E to 0x59F889) to compare;
+`string_printf` 0x50C600. The texts are cited by GENRLTXT's record (the table's line less 1, as
+§7.19), never copied.
+
+- **The boxes.** Every refusal below is a `message_box` of style 1 (the OK alone, Enter; §7.19)
+  at the screen's centre (x = y = −1), no picture, its text a GENRLTXT record, formatted where
+  said; the battle stands behind it. None reopens the book.
+- **The spell book button** (`hero_book_button`; from the panel's button 2008 and its key C,
+  0x474F65, and from a left press on the acting side's own hero, cursor kind 4, 0x476CE5), in
+  order:
+  1. the acting side (+0x132C0) has no hero (+0x53CC): −1, nothing shown;
+  2. its hero cast this round (+0x54B4, unless the typed codes' +0x13D74): −1, nothing shown (the
+     panel's button is dimmed then, §9.7);
+  3. an anti-magic garrison (+0x53C4): the box of record 685, no argument; −1;
+  4. the Orb of Inhibition (126) on either hero (`hero_wears_artifact`, the attacker's tested
+     first): record 684 with two names, **the wearer's** (hero +0x23) then the artifact's (its
+     record in the artifacts' setup); both wearing it, the attacker named; −1;
+  5. the book (`spell_book_dialog`, §7.17); its Cancel (0x7801): −1. Its own boxes over the
+     book, the book staying open: a spell above the spell points (207) and an adventure spell's
+     description (§7.19). A combat spell within the points closes it with the spell; the book
+     tests no level, no artifact and no field;
+  6. after the book closed, a spell above level 1 (the spell record's +0x18) on Cursed Ground
+     (the field +0x53C0 = 2): record 748, no argument; −1;
+  7. a spell above level 2 while either hero wears Recanter's Cloak (83): record 537 with the
+     Cloak's name then **the acting side's hero's** name (who is kept from casting), whichever
+     hero wears it; −1;
+  8. else the spell.
+  The button's path then calls `enter_player_cast` with the answer (−1 returns at once,
+  0x59EC97) and, the battle shown and a local human's turn, forgets the mouse's hex and posts the
+  mouse (0x474F72, §7.18): after any of these boxes the battle's cursor and hint where the mouse
+  rests. The hero's press (outside the tactics phase, +0x13D68): −1 returns at once, no post
+  (oddity 4); a spell hides the six army info windows (§12.15), sets the combat cursor's frame 6
+  (0x476DA6), enters the cast and then posts the mouse as the button's path (0x476DB9 to
+  0x476E17). Its repeat of test 2 after the book (record 129, 0x476D10) is unreachable.
+- **The aim's entry** (`enter_player_cast`; the mastery the acting hero's on the field,
+  0x59ECB4), by the spell's number:
+  - **Land Mine** (11): the other side's natives byte (+0x1329C, its index 1 − side; set at the
+    battle's start when any stack of that side fights on its native terrain, the battlefield's
+    terrain, none on Cursed Ground; natives that die or appear later change nothing:
+    `installation.md` §7.16, §7.17): record 186, nothing cast (oddity 1); else cast at once.
+  - **Earthquake** (14): the fort level +0x132F4 above 0 casts at once; else record 183, also at a
+    town without a fort.
+  - **The stack spells and Teleport**: record 186 when no inner hex takes them (built, §7.19).
+  - **Sacrifice** (40): two scans of the inner hexes (columns 1 to 15) with `spell_target_test`:
+    a stack to raise (its fifth argument 1), none: record 186; a victim (0), none: record 186;
+    then its two aims (§7.18, not read). The scans are independent (whether one living stack
+    with losses passes both, the second cursor then refusing it, 0x5A2F3B: not checked).
+  - **Remove Obstacle** (64): the first inner hex the test accepts (an object's index on it, by
+    the mastery's case 0x5A3C64: None and Basic an object without the spell bits 0x3C, a natural
+    obstacle; Advanced also Fire Wall's; Expert any; `installation.md` §7.15), none: record 713;
+    else the common aim (§7.18).
+  - **Clone** (65): the side's records in use (+0x54BC, dead stacks included) 20 or more: record
+    184 formatted with that count (`%d`; oddity 2); else a scan for a target, none: record 186;
+    else the common aim.
+  - **The Summons** (66 to 69): the side's records below 20 and its summoned elemental
+    (+0x132A8) none or the spell's own (66 Fire 114, 67 Earth 113, 68 Water 115, 69 Air 112):
+    cast at once. Else record 539 formatted with three texts: the acting side's hero's name, the
+    summoned elemental's plural name (the creature table's +0x18; none summoned: the empty text
+    0x691210) and record 540 or 541 by the hero's sex (+0x3D5, H3API's isFemale): oddity 3.
+  - The exits: the boxes of Land Mine, Earthquake, the stack spells and the Summons end through
+    the common end (the combat cursor's frame 6, 0x59F65C); Teleport's, Sacrifice's, Remove
+    Obstacle's and Clone's return at once. Unseen: both callers post the mouse after either, and
+    the key F reaches only the stack spells (copied without a question).
+- **The walls' aim** (Force Field 12, Fire Wall 13; settles R4b-3, the M5 review's item 84):
+  - It starts with no scan (no free place: the aim opens all the same, every hex refused) and no
+    cursor call (0x59F07C; CLT-Q56), the shadows as §12.16.
+  - **The wall's hexes** (`spell_target_test`'s cases, 0x5A3AAF and 0x5A3B83; the cast's,
+    `installation.md` §7.15): 2 below Advanced, 3 from it (the hero's mastery on the field, read
+    at each move, 0x5A32F0). Fire Wall: the hovered hex h; the attacker's (side +0x132C0 0) h − 16
+    on an even row, h − 17 on an odd one (its upper right neighbour), the defender's h − 17 and
+    h − 18 (its upper left); the third h − 34 (two rows up in h's column: the second's upper
+    left, resp. upper right). Force Field: its descriptor's offsets 0, −16 (and −34; 0x63CF18,
+    0x63CF2C), one less where h's row is odd and the hex's row even: the attacker's Fire Wall's
+    hexes, for both sides. The hovered hex is the wall's bottom; it grows upwards. Each hex must
+    lie in 0 to 186, outside columns 0 and 16, with none of the object bits 0x3F (+0x10: natural
+    obstacles and their anchors, every spell object, the other side's hidden mines and pits too)
+    and no living stack (+0x18; a corpse does not count). So row 0 is refused, row 1 too from
+    Advanced, the attacker's wall in column 15 of an even row (its second hex in column 16), the
+    defender's in column 1 of an odd row (column 0).
+  - **A move** (type 4 with no move queued behind it; `screen_to_hex`) to another hex than the
+    wall's last (0x688328): accepted, the last that hex, `SetCursor(spell + 1, 3)` (the spell
+    cursor, §7.18), the line `aim_cast_line(spell, hex, 1)`: record 27 with the spell's name (no
+    stack can stand there), Fire Wall's shade (§12.16), no stack marked. Refused (any other: the
+    side columns, the heroes' rectangles 0xFC and 0xFD, the panel and the margins −1): the last
+    −1, `SetCursor(0, 2)` (the combat cursor's frame 0), the line record 182 with the spell's name
+    (`spell_fails_message`'s wall case 0x5A2C2B, the spell record's +0x10), written not forced
+    (`battle_log_add(text, 0, 0)`, as the common aim's 0x5A2C60), Fire Wall's empty shade; the
+    mouse's stack is not unmarked (the common aim's refusal does, 0x59F872): a stack the mouse
+    outlined when the key C opened the book keeps its outline through the wall's aim (the
+    original's profile; the client's aims the wall as every other aim, CLT-Q56's answer).
+  - **A left press** (type 8): the last −1, nothing; else +0x44 = it and the loop ends (the cast).
+    Escape (type 1, scan code 1) or the right button (type 0x20): +0x3C = 0, the end. The last
+    hex is never reset (CLT-Q56).
+  - So the original shows no wall's shape but Fire Wall's cursor shade (an option, §12.16); what
+    the client lacks is record 182 (it says 24) and the aim with no free place (its book closes on
+    nothing, `aims::hero` answering none for an empty list). The engine places a wall over the
+    other side's hidden obstacles (Q-0002, BAT-MAG-031) where the original refuses it, giving
+    them away: the client follows the engine's targets in both profiles (a server never sends
+    hidden obstacles); listed, no question.
+- **The facts** (local: the client's `h3_battle::BattleState`, observed with `map::observe`;
+  server: the seat's `Observation` and the server's targets):
+  - the garrison: `Observation.anti_magic`, both;
+  - the Orb's wearer (684) and the Cloak (537): the engine folds both into its magic limits
+    (`MagicLimits`: `no_casting`, `max_level`; `computer::casting_forbidden` public). Each side's
+    `OwnHero.no_casting` and `level_limit` say which hero: local exact, from both sides' own
+    views (`map::observe(state, ruleset, Viewer::Side(s))`, as `aims::hero` does for its side);
+    on a server only the seat's own hero's: **gap G1** (below);
+  - the names: the catalogue's families `artifact` (ARTRAITS: 126, 83), `hero` (the side's
+    `Hero.hero_type`), `creature`'s plural (`SideView.summoned`), `spell` (the walls); the sex
+    `Hero.sex`, else the hero type's;
+  - Cursed Ground: `Observation.battlefield`'s `max_spell_level` (the ruleset; a server's game
+    of other content: the key `base:cursed_ground`, the original's field 2) against the spell's
+    level (`Aim::level`'s source);
+  - Land Mine's natives: the battle's first observation, any stack of the other side with
+    `Stack.native` (the engine's sight, BAT-MAG-031, BAT-Q34), both;
+  - Earthquake: `Observation.siege` with `fort` above 0, both;
+  - Clone's limit and count: the side's stacks in `Observation.stacks` (every stack, the dead
+    too, as the engine's `has_room`) against `side_stack_limit` (the ruleset's, 20), both;
+  - the Summons: `SideView.summoned` and the same count, both;
+  - "no target" (Sacrifice, Remove Obstacle, Clone, the stack spells): the engine's
+    `cast_targets` empty (a server's `targets`), both; the walls' targets the same, their mastery
+    `Aim::mastery`, the side the acting stack's.
+  The trigger stays the engine's refusal (no target and no untargeted cast listed): the client
+  only chooses the box, by the original's order and the spell's original number.
+- **The client's** (to build; where each piece plugs in):
+  - `bin/h3-view/battle.rs` `Battle::open_book` (its *not modelled* refusals): 685, then 684,
+    before the book, as `tell(…, (Style::Ok, None), Asked::Told)`; `Battle::book_did`'s
+    `Outcome::Chosen`: 748, then 537, then the entry's box by the original number (today's 186
+    for the stack spells and Teleport, 0x59F135), the posted move after it as today; a wall with
+    no free hex opens its aim with no target.
+  - `bin/h3-view/boxes.rs`: the texts beside `no_one` and the number sets beside
+    `affects_someone_only`; the facts as one record built by `aims.rs` (local, both sides' views)
+    or from the seat's view (a server).
+  - `clients/text/keys.toml`: records 685, 684 (printf hero, artifact), 748, 537 (artifact,
+    hero), 183, 713, 184 (count), 539 (hero, creature, pronoun), 540, 541; the hint 182 (spell).
+  - `mouse::aim`: `Aim::refusal` gives a new `Hint` of record 182 for the originals 12 and 13 on
+    every refused hex (their flags lack 0x70: no stack's reason applies).
+  - The stills' boxes go through `spellbook::still` as `msg-no-one`'s.
+  - *Not built:* the hero's press opening the book (cursor kind 4: the client's press there gives
+    nothing, `mouse::click`; M5 T3a's path was the button and C); Teleport's and Sacrifice's aims
+    (§7.18); on a server, the other hero's Orb and Cloak (G1, CLT-STUB-1: below).
+- **Gap G1.** The wire tells a seat neither whether the other side's hero forbids casting nor
+  its level limit (`OwnHero` is private, ADR-0013 point 9), though the original's boxes name the
+  Orb's wearer to both sides. Options: (a) a public fact per side in `SideView` (forbids casting,
+  level limit), the battle lane's `observe` and the server lane's wire (a version); (b) infer on
+  a server by elimination (every spell refused with the garrison, the own hero and the field
+  clear), which cannot show 684 before the book opens; (c) no box on a server. Recommended (a),
+  (c) meanwhile; local play is exact.
+  **Answer** (the user, 2026-11-05): (a), required by the user (a server's game must behave
+  exactly as a local one), requested from the battle and server lanes (their inboxes);
+  CLT-STUB-1 meanwhile: on a server the seat knows its own hero's limits alone
+  (`boxes::seat_magic`), so where the other hero's Orb or Cloak refuses the spell the entry's box
+  shows (e.g. 186, 713), or a wall's aim with every hex refused, where local play shows 684 or
+  537; the stub is lifted once the wire carries both sides' two facts.
+- **Oddities** (asked: 1 as CLT-Q58, 2 as CLT-Q59, 3 as CLT-Q57, 4 as CLT-Q60; answered by the
+  user, 2026-11-05: 1 and 2 copied, *provisional* (HD or HotA may have fixes), 3 fixed (GENRLTXT
+  184 with the count), 4 fixed once the hero's press is built; the original's for the comparisons
+  only):
+  1. Land Mine refused for the other side's natives says the spell affects no one (186).
+  2. Clone's limit counts the side's dead stacks in the number it prints.
+  3. The Summons' box at the 20 records' limit gives the side's summoned elemental as the
+     reason: none summoned, an empty name in its place; the same elemental summoned, the one the
+     spell would summon again.
+  4. The hero's press posts no move after a book closed without a spell (Cancel, 748, 537): the
+     status line keeps the book's last hint until the mouse leaves the hero's rectangle (the
+     battle's hex +0x132D4 not forgotten); the button's path posts one.
+- **To record** (stills unless said; the boxes at 100 ms as `msg-no-one`):
+  1. `msg-cursed`: `cursed-ground.toml`'s field and armies, Orrin's book with Magic Arrow (1) and
+     Lightning Bolt (2): `key:c`, `click:` Lightning Bolt's place; 748 over the battle.
+  2. `msg-quake`: on grass, Earthquake in the book: `key:c`, `click:` its place; 183.
+  3. `msg-mine`: `rough.toml`'s Stronghold defenders (natives on rough), Land Mine: 186.
+  4. `msg-remove`: `siege-castle.toml` with Remove Obstacle at Basic in the attacker's book: 713
+     (a siege's field holds no obstacle object, to confirm).
+  5. `msg-clone`: the attacker's army of Champions alone (level 6, above Clone's 5 without Water
+     Magic), Clone: 186.
+  6. `msg-sacrifice`: Sacrifice at the opening (no corpse): 186.
+  7. `summon-other` (a sequence, `boxes = true`): Summon Fire Elemental in round 1, at the hero's
+     next round Summon Water Elemental: 539 with the Fire Elementals and 540; again with a female
+     hero type (541).
+  8. `shade-wall` (recorded, §12.16): its log masked at 600 to 800 ms (the refused Goblins' hex)
+     must compare exact with 182.
+  9. `wall-edges` (a sequence): Force Field at Advanced over rows 0 and 1, column 15 of an even
+     row and a hex beside an obstacle (refused), one accepted; the defender's Fire Wall over
+     column 1 of an odd row (refused) and column 15 of an even row (accepted): cursor and line.
+  10. `wall-hover` (a sequence): `move:` over the Goblins (their outline), `aim:` Fire Wall,
+      `move:` over a refused and an accepted hex: the outline kept (the original's profile).
+  Not reachable by the harness: the anti-magic garrison (its battles are hero against hero or a
+  siege; it needs a garrison object of subtype 1 on the map and the engine's `anti_magic`), the
+  Orb and the Cloak (the situations' heroes carry no artifact but war machines,
+  `clients/capture/README.md`), Clone's and the Summons' 20 records (7 army stacks and 4 war
+  machines leave 9 to create, a round each): their unit tests'.
+- **As built** (M6 T5a, *provisional* where marked; captured):
+  - The facts and the choice: `bin/h3-view/boxes.rs` `Facts::of` (the seat's own view, the side to
+    act the active stack's controller as the engine's `side_to_act`: a hypnotized stack's turn names
+    its controller's hero in 537 and 539; the battle's opening for the natives, each side's
+    `OwnHero` as known, the ruleset when the content is the client's: the field's level limit and
+    `side_stack_limit`; else Cursed Ground by its key and 20), `HeroFacts` (the name, the sex: the
+    map's else the hero type's, the asset tables' new `female`, harvested from the hero table's +0),
+    `before_book` (685, 684) and `after_book` (748, 537, then the entry's boxes by the original
+    number; the Summons by the profile: CLT-Q57's 184 in the client's, 539 in the original's). Land
+    Mine's 186 (CLT-Q58) and Clone's count with the dead (CLT-Q59): copied, *provisional* (HD or
+    HotA may have fixes).
+  - Local play: `aims::magic` (both sides' views), `Live::magic`. A server's seat: its own
+    hero's alone (`Battle::facts`, `boxes::seat_magic`; gap G1, CLT-STUB-1): where the other
+    hero's Orb or Cloak refuses the spell, the entry's box shows (e.g. 186, 713), or a wall's aim
+    with every hex refused, where local play shows 684 or 537. The user requires parity with
+    local play (2026-11-05, G1's answer (a)): the stub reads the other side's two facts once the
+    wire carries them.
+  - The window: `Battle::open_book` answers `Opened` (`No`, `Book`, `Refused`: the box);
+    `Battle::book_did`'s `Outcome::Chosen` asks `Battle::refusal` when the engine gives no aim and
+    no cast (`BookDid::Refused`: the box), else opens a wall's aim with no target
+    (`Battle::nowhere`, `aims::nowhere`). The refusals' boxes (`Asked::Refused`) are modal: the
+    battle sees no move while one is open, and their OK (`MessageDid::Refused`,
+    `window::refusal_closed`) posts the mouse where it then rests (a move, then `Input::Cancel`), as
+    the button's path after `enter_player_cast` (0x474F72); the other boxes are unchanged. The
+    stills: `Boxes::refusal` from `scenario::opening_refusals` (the original's profile). The
+    catalogue: `book.garrison`, `book.orb`, `aim.cursed`, `aim.cloak`, `aim.no-fort`,
+    `aim.no-obstacle`, `aim.stack-limit`, `aim.summoned` (with `word.possessive`),
+    `battle.hint.wall-refused`; the family `artifact` over the artifacts 0 to 140 (`text::entries`:
+    the battle viewer listed none before, so the stats' capping artifact, the Spirit of Oppression's
+    or the Hourglass's line, showed its key; no still shows one).
+  - The walls' aim: `Aim::refusal` gives `Hint::WallRefused` (182) for the originals 12 and 13
+    on every refused hex; the hexes the engine's targets (`aims` test: §12.17's shape by side,
+    mastery and row parity, the side columns, obstacles and living stacks, equal on
+    `seq-shade-wall`); in the original's profile the wall's aim neither marks nor unmarks
+    (`track::aim_at`), the client's as every aim (CLT-Q56). The exception: a server's game of
+    other content, whose wall aim with no free hex is the bare one (`aims::nowhere(None, …)`,
+    `original` 0, as `aims::served`'s bare aim): `Aim::refusal` gives 24 there and Fire Wall no
+    shade.
+  - Recorded (M6 T5a's capture): the stills `msg-cursed` (748), `msg-quake` (183), `msg-mine`
+    (186), `msg-clone` (186) and `msg-sacrifice` (186) exact; `msg-remove` (a Fort's siege, the
+    Catapult's turn) 713 the box exact, 548 pixels at the lower tower: after the book closes the
+    original draws the lower wall's last strip over the lower tower, the viewer keeps the
+    opening's order (recorded with that reason). The sequences: `shade-wall` 47 frames exact
+    (600 to 800 ms exact with 182, no longer masked); `wall-edges` 46 frames, every cursor and
+    line exact but 2 300 to 2 500 ms, 269 pixels each: at the second aim's start the original
+    keeps the battle's move cursor where the viewer draws the book's arrow (the book changes its
+    cursor only when the mouse moves over another item than the last, 0x684B4C never reset,
+    §7.17); `wall-hover` 9 frames exact, acting at 0 to 400 ms with `ms = 90` (its log listed at
+    100 and 132 ms: the original keeps the hover's hint through the book into the wall's aim,
+    the viewer writes an empty line at the book, `Input::Book` in `track.rs`); `summon-other`
+    and `summon-other-female` 27 frames each (Champions, so that round 2 opens with the
+    attacker's stack in the engine too), the turns at 1 200 ms, 539 with 540 resp. 541: the
+    box's two frames (1 200 and 1 221 ms) the original's alone (the viewer's sequences model
+    neither the book nor a box), the rest exact; the box closed at 1 250 ms, since kept open it
+    pauses the battle's idle steps.
+  - *Not built:* the hero's press opening the book (CLT-Q60, its post fixed once built);
+    Teleport's and Sacrifice's aims; a still's refusals before the book (unreachable).

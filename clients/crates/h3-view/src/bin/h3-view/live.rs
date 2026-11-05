@@ -141,6 +141,12 @@ impl<'r> Live<'r> {
         targets.iter().any(|t| *t == h3_battle::CastTarget::None)
     }
 
+    /// Each side's hero's private part now (E17 M6 T5a: the Orb's and the Cloak's refusals know
+    /// both heroes here, design §12.17).
+    pub fn magic(&self) -> [Option<h3_protocol::wire::OwnHero>; 2] {
+        crate::aims::magic(&self.state, self.ruleset)
+    }
+
     /// The side to act's own observation (E17 M5 T3a: its hero's spell book, as its seat is sent
     /// it), none once the battle is over.
     pub fn own_view(&self) -> Option<Observation> {

@@ -207,6 +207,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
 - **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
   question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
   not drawn yet and their sounds' waits (M5's items 5, 9, 24, 42, 45, 79, 84), each as far as read.
+  Cut in four by the user (2026-11-05): **T5a** (done 2026-11-05, design §12.17) the book's
+  refusals, the aim's other messages and Force Field's and Fire Wall's aim (items 5, 9, 84),
+  CLT-Q57 to Q60 asked and answered, six stills and five sequences recorded; **T5b** the bot's casts and retreat question
+  (24); **T5c** Eagle Eye's message and the experience after the window (79); **T5d** the effects,
+  their waits and Bloodlust's glow (42, 45).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through
   `h3_ui::paint`, the purity test's holes (R2-15), R4-2 and R4-9.
@@ -453,3 +458,15 @@ The next milestone's list starts here.
     closing, a given-up area aim's outline until the next idle step, a whole redraw's pose a
     deadline early), listed, not copied. Not built: the battle's decided and hidden tests, a later
     battle's save picture, the deferred composition +0x53B8.
+44. The book's and the aims' refusals, the walls' aim (T5a, *provisional* where marked; design
+    §12.17): built in both profiles, CLT-Q57 fixed through `h3_render::Bugs` (the Summons' limit
+    says 184 with the count; the original's 539 in the comparisons), Q58 and Q59 copied
+    *provisional* (HD or HotA may have fixes: to compare when known), Q60 for the hero's press
+    (not built). A server game shows the entry's box where a local one shows the other hero's Orb
+    (684) or Cloak (537): `CLT-STUB-1`, the user's requirement of parity with local play, the
+    facts requested from the battle and server lanes (G1). New in the asset tables: the heroes'
+    `female` flag (harvested). Recorded: six stills (five exact, `msg-remove` 548 pixels of the
+    original's redraw after the book) and five sequences; listed, not copied: the book's cursor
+    kept from its last item at a second aim (`wall-edges`), the hover's hint kept through the book
+    (`wall-hover`), the 539 box's frames (the viewer's sequences draw no box). Not built: the
+    hero's press opening the book, Teleport's and Sacrifice's aims.

@@ -1,0 +1,58 @@
+# E17 M6 T5a (design §12.17, "To record" 9): the walls' edges, in hot seat. `shade-wall`'s ground,
+# obstacles and armies (seq-shade-wall.toml): at the opening the Marksmen's turn (hex 86); Orrin
+# aims Force Field at Advanced (the hex, its upper right neighbour, the hex two rows up: the
+# attacker's Fire Wall's for both sides) over row 0 (hex 8) and row 1 (hex 25), column 15 of an
+# even row (hex 83: its second hex in column 16) and beside an obstacle (hex 108: 92 the
+# obstacle's), all refused (GENRLTXT 182), then hex 47 (taken); the Marksmen defend; at the
+# Goblins' turn (hex 100) Crag Hack's Fire Wall at Basic (the hex and its upper left neighbour)
+# over column 1 of an odd row (hex 154: 136 in column 0, refused) and column 15 of an even row
+# (hex 83: taken).
+
+[scenario]
+id = "sequence-wall-edges"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but knowledge 2 (20 spell points, the
+# original's hero starts with 10 per knowledge); Orrin's book Force Field, Advanced Earth Magic;
+# Crag Hack's Fire Wall, Basic Fire Magic (the masteries ask the school skills of the original's
+# map).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:force_field"]
+masteries = { "base:force_field" = 2 }
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:fire_wall"]
+masteries = { "base:fire_wall" = 1 }

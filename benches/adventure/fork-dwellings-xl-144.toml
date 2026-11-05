@@ -1,0 +1,32 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "100 000 forks of the env on the dwellings XL map once a visit has written a dwelling (E08 T96b2, increment 10's design note §14: `--dwelling 1`, a player's heroes seek the dwellings, the random agent answers; the forks carry the dwellings' week block, shared): the play stops after 11 steps, on day 1; 3 766 Ir a fork (fork-economy-xl-144's 3 708: the dwellings' and the camps' blocks are reference counts), 51 % in malloc and free, 14 % cloning the heroes; counts only inside h3_cli::adventure::bench::fork_workload"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-dwellings-144.h3m",
+    "--workload",
+    "fork",
+    "--games",
+    "1",
+    "--days",
+    "7",
+    "--forks",
+    "100000",
+    "--seed",
+    "1",
+    "--dwelling",
+    "1",
+]
+collect = "*fork_workload*"
+instructions = 376600055
+threshold_percent = 2

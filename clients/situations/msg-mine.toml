@@ -1,0 +1,57 @@
+# E17 M6 T5a (design §12.17, "To record" 3): the still `msg-mine`. The ground, obstacles and
+# armies of `rough` (rough.toml): the defender's Ogres and Wolf Riders (Stronghold) native on
+# rough; Orrin with 20 spell points (Knowledge 2) and Land Mine: chosen in the book, refused for
+# the other side's natives: GENRLTXT 186 over the battle (oddity 1, CLT-Q58: copied,
+# *provisional*).
+
+[scenario]
+id = "msg-mine"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): the panel's buttons
+# lit on the human's turn (E17 M3 T6a).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:rough"
+obstacles = [
+    { hexes = [94, 76, 60], anchor = 93, kind = "base:obstacle_15" },
+    { hexes = [46, 45, 44, 29, 28], anchor = 61, kind = "base:obstacle_41" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 4
+creature = "base:zealot"
+count = 6
+
+[[defender]]
+slot = 1
+creature = "base:ogre"
+count = 6
+
+[[defender]]
+slot = 5
+creature = "base:wolf_rider"
+count = 8
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, and Crag Hack, a Barbarian, each with 1 in every primary skill.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:land_mine"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

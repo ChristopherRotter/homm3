@@ -1,0 +1,69 @@
+# The original's kept frames (h3drive.py frames): numbers only.
+
+[[frame]]
+t = 0
+file = "t00000b.npz"
+fidgets = [[1, 0, 1, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 33
+file = "t00033.npz"
+fidgets = [[1, 0, 1, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [696, 322]
+
+[[frame]]
+t = 100
+file = "t00100b.npz"
+fidgets = [[1, 0, 1, 1]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
+cursor = [696, 322]
+
+[[frame]]
+t = 132
+file = "t00132.npz"
+fidgets = [[1, 0, 1, 1]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [246, 123]
+
+[[frame]]
+t = 200
+file = "t00200b.npz"
+fidgets = [[1, 0, 1, 2]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
+cursor = [246, 123]
+
+[[frame]]
+t = 231
+file = "t00231.npz"
+fidgets = [[1, 0, 1, 2]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [740, 322]
+
+[[frame]]
+t = 300
+file = "t00300b.npz"
+fidgets = [[1, 0, 1, 3]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
+cursor = [740, 322]
+
+[[frame]]
+t = 330
+file = "t00330.npz"
+fidgets = [[1, 0, 1, 3]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [630, 196]
+
+[[frame]]
+t = 400
+file = "t00400b.npz"
+fidgets = [[1, 0, 1, 4]]
+heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
+cursor = [630, 196]

@@ -6,6 +6,7 @@
 
 mod dwellings;
 mod dwellings_map;
+mod dwellings_xl_map;
 mod economy;
 mod economy_map;
 mod economy_xl_map;

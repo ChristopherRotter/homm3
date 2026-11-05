@@ -190,6 +190,10 @@ pub struct Hero {
     /// result window, 0x47055A), none if not harvested.
     #[serde(default)]
     pub portrait: Option<String>,
+    /// The hero type is female (`hero_table` 0x679DD0's +0; E17 M6 T5a: the Summons' box names
+    /// the hero's pronoun by it, GENRLTXT 540 or 541, where the map gives no sex).
+    #[serde(default)]
+    pub female: bool,
 }
 
 /// A spell's sign, sound and magic animation (`spell_table` 0x685450, its records' +0, +4 and +8;

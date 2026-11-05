@@ -1764,3 +1764,108 @@ timeline = "timelines/shade-wall.txt"
 frames = "timelines/shade-wall-frames.txt"
 boxes = true
 command = [{ seat = "Attacker", at = 2200, command = { Defend = {} } }]
+
+# E17 M6 T5a (design §12.17, "To record" 9 and 10; captured at T5a). `wall-edges`
+# (`seq-wall-edges.toml`, hot seat): Orrin's Force Field at Advanced over hex 8 (row 0), 25 (row 1:
+# its third hex off the field), 83 (column 15 of an even row: its second in column 16) and 108 (its
+# second the obstacle's 92), refused (GENRLTXT 182, the combat cursor's frame 0), then 47 (taken:
+# the spell cursor, "Cast"), given up; the Marksmen defend; Crag Hack's Fire Wall at Basic over 154
+# (column 1 of an odd row: its second in column 0, refused) and 83 (taken), given up. Every cursor
+# and line exact; but 2 300 to 2 500 ms (269 pixels each, the cursor): at Crag Hack's aim's start
+# the original keeps the battle's move cursor (memory: type 2 frame 1 throughout) where the viewer
+# draws the book's arrow (`Look::Arrow`, as `shade-wall`'s three aims): the book sets its cursor
+# only on a move over another item than its last (0x684B4C, never reset, design §7.17), and the
+# mouse there (630, 196) was likely over the item it last took at the opening's book (not
+# modelled: the viewer's sequences draw no book).
+[[sequence]]
+id = "wall-edges"
+scenario = "seq-wall-edges.toml"
+hot_seat = true
+actions = [
+    "aim:0:12", "at:300", "move:410,112", "at:600", "move:388,154", "at:900", "move:718,280",
+    "at:1200", "move:322,364", "at:1500", "move:630,196", "at:1800", "key:Escape", "at:2000",
+    "key:d", "turn:1.0", "at:2300", "aim:0:13", "at:2600", "move:80,490", "at:2900",
+    "move:718,280", "at:3200", "key:Escape",
+]
+ms = 400
+timeline = "timelines/wall-edges.txt"
+frames = "timelines/wall-edges-frames.txt"
+boxes = true
+command = [{ seat = "Attacker", at = 2000, command = { Defend = {} } }]
+
+# `wall-hover` (`seq-shade-wall.toml`, hot seat): the mouse over the Goblins (hex 100: the
+# Marksmen's shot, the Goblins outlined), Orrin's Fire Wall at Basic aimed from the book, the
+# mouse over hex 101 (column 16: refused) and 47 (taken), given up: in the original's profile the
+# Goblins keep their outline through the wall's aim (`aim_wall_handler` marks no stack and
+# unmarks none); the client's aims the wall as every other aim (CLT-Q56). It ends at 490 ms: the
+# Goblins' group 1 stalls at the idle steps of 500 and 700 ms in every run (the original's own
+# draws, 8 in 101; `wall-edges`' unentered Goblins stall at their fifth and seventh steps too),
+# which the viewer's entered stacks do not (`anim::entered`). Exact; the log item listed at 100
+# and 132 ms (` log`): the original keeps the hover's hint ("Attack Goblins") through the book
+# into the wall's aim, which writes no line at its start, the viewer's book writes the empty one
+# (`Input::Book`; the line's pixels compared again from the first move).
+[[sequence]]
+id = "wall-hover"
+scenario = "seq-shade-wall.toml"
+hot_seat = true
+actions = [
+    "move:696,322", "at:100", "aim:0:13", "at:200", "move:740,322", "at:300", "move:630,196",
+    "at:400", "key:Escape",
+]
+ms = 90
+timeline = "timelines/wall-hover.txt"
+frames = "timelines/wall-hover-frames.txt"
+boxes = true
+
+# `summon-other` (`seq-summon-other.toml`, hot seat, design §12.17 "To record" 7; captured at
+# T5a): round 1 Orrin summons Fire Elementals at the Champions' turn (`cast:0`), the Champions, the
+# elementals and the Archers defend (all at 1 200 ms); round 2 at the Champions' turn the book's
+# Summon Water Elemental (place 1): GENRLTXT 539 (Orrin, the Fire Elementals, 540), closed by
+# Enter at 1 250 ms. The viewer's sequences model neither the book over the battle nor a box
+# (`pointer::inputs`): the box's two frames (1 200, 1 221: its arrow at the park point) are the
+# original's alone (65 501 and 65 485 pixels, listed); the box's choice is
+# `boxes::after_book`'s unit tests'. The box holds the battle's idle steps (two in 500 ms), so a
+# box kept to 1 700 ms left the outline's pulse and the flags behind the viewer's after it (728
+# to 787 pixels a frame): closed within the idle step, every frame after it is exact.
+# `summon-other-female` the same with Valeska (541).
+[[sequence]]
+id = "summon-other"
+scenario = "seq-summon-other.toml"
+hot_seat = true
+actions = [
+    "cast:0", "key:d", "turn:0.1", "key:d", "turn:1.0", "key:d", "turn:0.0", "key:c",
+    "click:332,123", "at:1250", "key:Return",
+]
+ms = 1000
+heroes = true
+screens = true
+timeline = "timelines/summon-other.txt"
+frames = "timelines/summon-other-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 65, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Defender", at = 1200, command = { Defend = {} } },
+]
+
+[[sequence]]
+id = "summon-other-female"
+scenario = "seq-summon-other-female.toml"
+hot_seat = true
+actions = [
+    "cast:0", "key:d", "turn:0.1", "key:d", "turn:1.0", "key:d", "turn:0.0", "key:c",
+    "click:332,123", "at:1250", "key:Return",
+]
+ms = 1000
+heroes = true
+screens = true
+timeline = "timelines/summon-other-female.txt"
+frames = "timelines/summon-other-female-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 65, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Defender", at = 1200, command = { Defend = {} } },
+]

@@ -196,6 +196,7 @@ def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL000pl.PCX"
+female = true
 
 [[hero]]
 key = "thunar"
@@ -204,6 +205,7 @@ def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL001pl.PCX"
+female = true
 
 [[hero]]
 key = "ignissa"
@@ -212,6 +214,7 @@ def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL002pl.PCX"
+female = true
 
 [[hero]]
 key = "lacus"
@@ -220,6 +223,7 @@ def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL003pl.PCX"
+female = true
 
 [[hero]]
 key = "monere"
@@ -260,6 +264,7 @@ def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL000el.PCX"
+female = true
 
 [[hero]]
 key = "brissa"
@@ -268,6 +273,7 @@ def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL001el.PCX"
+female = true
 
 [[hero]]
 key = "ciele"
@@ -276,6 +282,7 @@ def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL002el.PCX"
+female = true
 
 [[hero]]
 key = "labetha"
@@ -284,6 +291,7 @@ def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL003el.PCX"
+female = true
 
 [[hero]]
 key = "inteus"
@@ -332,6 +340,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL000Sh.PCX"
+female = true
 
 [[hero]]
 key = "catherine"
@@ -340,6 +349,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL128Qc.PCX"
+female = true
 
 [[hero]]
 key = "dracon"
@@ -380,6 +390,7 @@ def = "CH11.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL007Sh.PCX"
+female = true
 
 [[hero]]
 key = "roland"
@@ -396,6 +407,7 @@ def = "CH11.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL008Sh.PCX"
+female = true
 
 [[hero]]
 key = "boragus"

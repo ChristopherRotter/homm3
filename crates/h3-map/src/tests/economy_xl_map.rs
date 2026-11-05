@@ -26,24 +26,24 @@ use h3_game::{Actor, GameCommand, GameEvent, GameState, MonthKind, apply};
 /// The committed file's name.
 const NAME: &str = "e08-economy-144.h3m";
 /// The map's side.
-const SIDE: u8 = 144;
+pub(super) const SIDE: u8 = 144;
 /// The objects' lattice: one object in a cell of `CELL` × `CELL` tiles, its position on the
 /// cell's tile (5, 5), so its picture (at most four columns by three rows) and a free ring around
 /// it stay inside the cell.
-const CELL: u8 = 8;
+pub(super) const CELL: u8 = 8;
 /// The surface's last land column: the sea fills the columns east of it, the Lighthouses and the
 /// Shipyards stand on it. The surface's lattice ends four columns west of the coast's objects.
 const COAST: u8 = 127;
 const SURFACE_COLUMNS: u8 = 15;
 /// The heroes' tiles on each level (a cell's tile (1, 1), off every object's ring): red's two in
 /// the west, blue's two in the east.
-const HEROES: [(u8, u8); 4] = [(9, 9), (9, 73), (105, 73), (105, 137)];
+pub(super) const HEROES: [(u8, u8); 4] = [(9, 9), (9, 73), (105, 73), (105, 137)];
 /// The heroes' types by level (the map's order: the surface's four, then the underground's; SoD's
 /// 156, one of each class's first eight in turn).
-const TYPES: [[u8; 4]; 2] = [[0, 17, 68, 85], [34, 51, 102, 119]];
+pub(super) const TYPES: [[u8; 4]; 2] = [[0, 17, 68, 85], [34, 51, 102, 119]];
 /// A wandering monster stands on every `MONSTER_EVERY`-th free land tile (one no object's ring and
 /// no hero's two tiles cover), in level, row and column order.
-const MONSTER_EVERY: usize = 100;
+pub(super) const MONSTER_EVERY: usize = 100;
 
 /// The shipped maps' most of each mine on one map (survey §1), by subclass (sawmill … gold mine).
 const MINES: [usize; 7] = [26, 14, 20, 13, 13, 12, 18];
@@ -107,16 +107,16 @@ const KEYS: [(&str, usize); 13] = [
 ];
 
 /// The first `n` of `count` items for the surface: the larger half.
-const fn surface_share(count: usize) -> usize {
+pub(super) const fn surface_share(count: usize) -> usize {
     count.div_ceil(2)
 }
 
 /// One object of a level's lattice before its cell is chosen.
-type Placing = Box<dyn Fn((u8, u8)) -> w::MapObject>;
+pub(super) type Placing = Box<dyn Fn((u8, u8)) -> w::MapObject>;
 
 /// Takes one item of each group in turn until all are taken, so that each kind spreads over the
 /// lattice.
-fn interleave(mut groups: Vec<Vec<Placing>>) -> Vec<Placing> {
+pub(super) fn interleave(mut groups: Vec<Vec<Placing>>) -> Vec<Placing> {
     for group in &mut groups {
         group.reverse();
     }
@@ -193,7 +193,7 @@ fn lattice(underground: bool, mines_before: &mut usize) -> Vec<Placing> {
 
 /// The tiles an object on `at` and the ring around its picture cover (at most four columns left
 /// and three rows above its position, one beyond).
-fn ring((x, y): (u8, u8)) -> impl Iterator<Item = (u8, u8)> {
+pub(super) fn ring((x, y): (u8, u8)) -> impl Iterator<Item = (u8, u8)> {
     let xs = x.saturating_sub(4)..=x.saturating_add(1).min(SIDE - 1);
     let ys = y.saturating_sub(3)..=y.saturating_add(1).min(SIDE - 1);
     ys.flat_map(move |y| xs.clone().map(move |x| (x, y)))
@@ -201,7 +201,7 @@ fn ring((x, y): (u8, u8)) -> impl Iterator<Item = (u8, u8)> {
 
 /// A wandering monster on `at`, the `n`-th of the map's: gnolls and pikemen in turn, 5 to 45 of
 /// them, each disposition in turn, one in seven never fleeing, one in 25 never growing.
-fn wandering(n: usize, at: (u8, u8)) -> w::MapObject {
+pub(super) fn wandering(n: usize, at: (u8, u8)) -> w::MapObject {
     w::MapObject::Monster(w::Monster {
         tile: at,
         template: template(if n.is_multiple_of(2) {

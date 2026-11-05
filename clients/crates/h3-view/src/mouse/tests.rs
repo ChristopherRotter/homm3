@@ -39,6 +39,7 @@ const PACK: &str = r#"{
             "turret": "Tower.",
             "remove-obstacle": "Clear.",
             "select-target": "Pick.",
+            "wall-refused": "No {{spell}} here",
             "protects": "{{spell}} keeps {{creature}}",
             "hostile-only": "{{spell}}: foes",
             "friendly-only": "{{spell}}: friends",
@@ -424,6 +425,9 @@ fn hints_are_worded_by_the_catalogue() {
     // or by its plural name whatever its number, a stack without a name by nothing.
     assert_eq!(text(Hint::RemoveObstacle), "Clear.");
     assert_eq!(text(Hint::SelectTarget), "Pick.");
+    // E17 M6 T5a: a wall's refused hex names the spell.
+    assert_eq!(text(Hint::WallRefused(54)), "No Slow here");
+    assert!(!Hint::WallRefused(54).forced());
     assert_eq!(text(Hint::Protects(54, 1)), "Slow keeps Ants");
     assert_eq!(text(Hint::HostileOnly(54)), "Slow: foes");
     assert_eq!(text(Hint::FriendlyOnly(7)), ": friends");

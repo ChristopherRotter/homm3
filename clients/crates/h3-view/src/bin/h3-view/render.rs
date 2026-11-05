@@ -348,7 +348,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     .flatten()
             };
             // The message boxes (E17 M5 T4a): laid out in the layout's fonts, in the viewing
-            // player's colours; the side's ways to leave; its hero's spells no hex takes.
+            // player's colours; the side's ways to leave; its hero's spells' refusals (E17 M6
+            // T5a).
             let writer =
                 crate::log::Writer::new(&tables, &layout, (&archives, &exe), Bugs::Original)?;
             let viewing = viewing_player(observation);
@@ -366,17 +367,22 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     Some((b.spell, u32::from(entry.original)))
                 })
                 .collect();
-            let no_one = if options.scenario() {
-                crate::scenario::opening_no_one(
+            let refusals = if options.scenario() {
+                crate::scenario::opening_refusals(
                     &options.input,
                     &options.packs,
                     options.seed,
                     &spells,
+                    (manifest, &tables, &catalogue),
                 )?
             } else {
                 Vec::new()
             };
-            let no_one = |spell: u16| no_one.contains(&spell);
+            let refusal = |spell: u16| {
+                (refusals.iter())
+                    .find(|(handle, _)| *handle == spell)
+                    .map(|(_, text)| text.clone())
+            };
             let def = layout.message.spell_pictures.clone();
             let size = lookup(&archives, &def)
                 .ok()
@@ -580,7 +586,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
                 leave,
-                no_one: &no_one,
+                refusal: &refusal,
                 pictures: (def, size),
                 result: &result,
                 opening: told
