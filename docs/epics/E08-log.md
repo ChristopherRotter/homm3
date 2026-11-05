@@ -12134,3 +12134,43 @@ full stack of the free creature (ADV-ARM-007's room), a one-creature dwelling's 
 `dwellings-dialog-s1` replay and the property cover it), the projection's unit test (the view
 property covers it), counters in the plans' cover test for `JoinRefused` and the guards' lost,
 retreated or drawn battles. **Versions:** none.
+
+### Increment 10, round 8: T97b1, the dwellings entered from water (2026-11-05, `adventure/e08-t97b1`)
+
+**The cut** (decision 259, the user at T97b's start): T97b in two, the rule and the import with
+T97a's two findings and one bump first, the plans' dwellings on water (T97b2) second.
+**Baseline:** `master` 273b55d (#738 merged; a `shared/` workflow change on top); the original
+data staged at the start (the computer's shell did not start; staging
+worked). The setup's full baseline run (a fingerprint not yet verified by CI then) died with a
+VM restart in its coverage step; CI's green full verify on 0e2f186 and 273b55d stands for it.
+Done whole by the main session.
+
+**The reading** (survey `E08-dwellings.md` §17): the step from a boat onto a dwelling's entrance
+on water is `hero_move_step`'s default case (an entered class steps; after the step a hero in a
+boat goes to the visit without the flyer's test); `visit_dwelling`, `dwelling_offer_hire` and
+`visit_refugee_camp` hold no test of the in-boat bit or the boat; the guards' battle is on the
+deck (`battle_setup_battlefield`'s attacker test, sea survey §7.1). VCMI 1.7.5 (the sail layer's
+`VISIT`, `CGDwelling::onHeroVisit`, the water tile's deck) agrees; the wiki is silent. The engine
+already did all of it (ADV-SEA-005, GAM-BAT-001), so only the import changed.
+
+**Built:** `h3-map`'s import refuses `OwnedOnWater` only for an ownable kind other than
+`Dwelling` and `RandomDwelling` (its reason's text says so); a random dwelling tied to a town of
+the map has its levels and owner checked (`DwellingLevels`, `ObjectOwner`) before it stays a
+blocker (T97a's finding; its faction set is the town's, not checked); the doc comments and
+ADV-OWN-002's summary no longer say no shipped map has one. **Map import v19**; the 47 adventure
+replays re-recorded from their commands: only `import_version` moved. The census counts the typed
+dwellings entered from water. Tests: `a_hero_in_a_boat_visits_a_dwelling_entered_from_water_as_on_land`
+(`h3-adventure`'s `dwelling_visits.rs`: the boat's step onto the entrance, the guards' question,
+their battle on the deck at the entrance, the win, the flag and the hire question, the dialog and
+a purchase into the army, the hero in its boat throughout, the dwelling still red's after it sails
+off), `a_dwelling_entered_from_water_is_imported` (a class-17 and a 218, typed and owned; replaces
+`a_dwelling_entered_from_water_is_unsupported`), `a_random_dwelling_tied_to_a_town_stays_a_blocker`
+(now refused for levels past the seventh, the lowest above the highest, an owner nobody plays).
+ADV-DWL-004 (summary, an `original-data` and a `vcmi` source), ADV-DWL-005 and ADV-OWN-002
+amended; `docs/exe/map.toml`'s three visits noted.
+
+**The census** (`original_data`, seed 0): all 160 shipped maps import, validate and build (v18:
+156); 9 dwellings entered from water typed, all on the four maps refused before; the 1 397 random
+dwellings tied to a town (all to random towns) pass the new checks. **Left** to T97b2: the plans
+(`play.rs`'s `lay_out`) still leave out a dwelling entered from water as `afloat`, their comments
+citing the refusal. **Versions:** map import v19.

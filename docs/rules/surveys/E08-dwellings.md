@@ -736,3 +736,8 @@ followed.
   other ownable kinds (mines, abandoned mines, Lighthouses, Shipyards, towns) keep
   `OwnedOnWater`, unread. Only a hero in a boat reaches such an entrance in the engine (an
   object's tile on water is closed to a walk, to a flight, D-46, and to a water walk).
+- **The census** (map import v19, `original_data`, seed 0): all 160 shipped maps import, validate
+  and build (v18: 156); the 9 dwellings entered from water are typed, all on the four maps
+  refused before (Adventures of Jared Haret, Rise of the Phoenix and its Allied version, Serpents
+  Treasure). With the same bump T97a's finding: a random dwelling tied to a town (1 397, all to
+  random towns) has its levels and owner checked before it stays a blocker; every one passes.

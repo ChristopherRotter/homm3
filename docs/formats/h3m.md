@@ -434,6 +434,12 @@ with all eight factions allowed. 176 random heroes (18 with a custom experience)
 onto an entrance, none left in a town. The allowed heroes: 144 to 155 types on 91 maps, 128 to
 143 on 51, fewer on 14; hero masks on 9 maps (832); 86 prisoners.
 
+E08 T97b1's census (import v19, the 160 shipped maps; `original_data`): all 160 import, validate
+and build (v18: 156; the 4 refused as `OwnedOnWater` import whole). 9 dwellings entered from
+water are typed, all on those four maps (Adventures of Jared Haret, Rise of the Phoenix and its
+Allied version, Serpents Treasure); the 1 397 random dwellings tied to a town (all to random
+towns) pass the levels and owner checks.
+
 E09 T7a2's census (the same import): the game's new checks of the towns and the players' starts
 (`GameSetupError::TownFaction`, `TownAlignment`, `Choice`, `MainTown`, `Pick`, `PickTaken`,
 `RandomHeroOwner`, run before `TWN-STUB-3`'s refusal) refuse none of the 156 maps that import;
