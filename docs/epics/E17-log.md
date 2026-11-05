@@ -5352,5 +5352,6 @@ CLT-Q52 to Q56 (all fixed, the original's for the comparisons only, `h3_render::
   `shade-area` (three aims, the Goblins marked too) met the original's random stalls of the marks'
   group 1, which the timeline compares: cut in two and timed so that none falls inside. A
   sandbox stop mid-capture left `Show Combat Grid` 1 in the prefix (the harness puts back what it
-  finds): the next run's captures showed the grid; set unset again and captured anew. `drawn`:
-  DRAWN_RESULT. `check.sh`: CHECK_RESULT.
+  finds): the next run's captures showed the grid; set unset again and captured anew. `drawn` (all
+  235): 219 the same, 16 new (recorded, `drawn --record --only`). `check.sh`: all gates passed,
+  coverage 100 %.
