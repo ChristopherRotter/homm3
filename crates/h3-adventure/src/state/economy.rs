@@ -19,9 +19,9 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::dwellings::{Camp, draw_camp};
 use super::{AdventureState, StaticMap, pick};
-use crate::fog::reveal;
 use crate::ruleset::{AdventureRuleset, ObjectKind};
 use crate::setup::ObjectSetup;
+use crate::town::TownReveal;
 
 /// A weekly object's contents this week and its visited marks (ADV-WEK-001 to -003, E08 T83b1;
 /// increment 9's design note §6; survey `E08-economy.md` §9).
@@ -215,6 +215,17 @@ impl AdventureState {
             .and_then(|(owners, place)| owners.get(place).copied().flatten())
     }
 
+    /// Writes `player` as the owner of the ownable object at object index `index` (E09 T8a2: a
+    /// captured town's, as [`Self::flag`] writes a flagged object's); nothing for an object that is
+    /// not ownable.
+    pub(crate) fn set_owner(&mut self, index: usize, player: PlayerId) {
+        let place = self.map.ownable_index(index);
+        self.owners
+            .iter_mut()
+            .zip(place)
+            .for_each(|(owners, place)| Arc::make_mut(owners)[place] = Some(player));
+    }
+
     /// The sea points `player`'s Lighthouses add to each of its heroes' day's sea points
     /// (ADV-OWN-005, HER-ADV-009's input; E08 T84b1, increment 9's design note §7; survey
     /// `E08-economy.md` §4, the original's `hero_max_land_movement` 0x4E4A18: the count of the
@@ -359,26 +370,24 @@ impl AdventureState {
     /// the tiles within the part's flag radius of its entrance, to its owner (its team from E10),
     /// a Lighthouse's and a Shipyard's too, as the original's `reveal_owned` 0x4C7C50 from
     /// `adventure_manager_start` (batch E9's E9-4 and E9-6; A-33 withdrawn) and VCMI's
-    /// `initFogOfWar`. Since E09 T8a1 a town's within its radius in `town_radii` by `TownId`, the
-    /// game's (its buildings', the town context's), the flag radius for a town past the slice. No
-    /// event, as the start's other reveals.
+    /// `initFogOfWar`. Since E09 T8a1 a town's by its reveal in `towns` by `TownId`, the game's
+    /// (its buildings', the town context's; since E09 T8a2 [`TownReveal::All`] every tile of
+    /// every level), the flag radius for a town past the slice. No event, as the start's other
+    /// reveals.
     // rule: ADV-OWN-002
-    pub(super) fn reveal_owned(&mut self, part: &AdventureRuleset, town_radii: &[u8]) {
-        let flag = part.params().flag_radius();
+    pub(super) fn reveal_owned(&mut self, part: &AdventureRuleset, towns: &[TownReveal]) {
+        let flag = TownReveal::Radius(part.params().flag_radius());
         let owners = self.owners.as_deref().unwrap_or(&[]);
         for (owner, &index) in owners.iter().zip(self.map.ownables()) {
-            let radius = self
+            let town = self
                 .map
                 .town_id(index)
-                .and_then(|town| town_radii.get(town.index()).copied())
+                .and_then(|town| towns.get(town.index()).copied())
                 .unwrap_or(flag);
             let entrance = self.map.objects()[index].entrance(&self.map);
             if let (Some(owner), Some(entrance)) = (owner, entrance) {
-                reveal(
-                    &mut self.explored[usize::from(owner.raw())],
-                    entrance,
-                    radius,
-                );
+                let grid = &mut self.explored[usize::from(owner.raw())];
+                town.reveal(grid, &self.map, entrance);
             }
         }
     }

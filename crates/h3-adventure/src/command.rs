@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_content::{ContentKey, CreatureTypeId, Formation, ResourceId, SkillId, TerrainId};
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_heroes::{HeroChange, PrimarySkill};
 
 use crate::ruleset::ObjectTypeId;
@@ -255,6 +255,11 @@ pub struct AdventureOutcome {
     /// visit is the outcome's. The game holds it as a rest of the visit (GAM-DEC-007) and fires
     /// it with [`crate::AdventureState::fire_held_event`] once the player has no open decision.
     pub event_after: Option<(HeroId, Pos)>,
+    /// The undefended town the step entered, which the game captures at once (TWN-VIS-001,
+    /// TWN-CAP-001; E09 T8a2, the town epic's design note §9 and §11): `h3_towns::reveal`, then
+    /// [`crate::AdventureState::capture_town`], then the Capitol's limit (TWN-CAP-002). The step
+    /// changes no owner itself.
+    pub capture: Option<TownId>,
 }
 
 /// What a visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): each change passes
@@ -949,6 +954,18 @@ pub enum AdventureEventKind {
     ObjectFlagged {
         /// The object's type.
         object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// Its new owner.
+        owner: PlayerId,
+    },
+    /// A town got a new owner by its capture (TWN-CAP-001, E09 T8a2; the town epic's design note
+    /// §11): an undefended town entered ([`crate::AdventureState::capture_town`]). Seen by the
+    /// players that see the town, as a flag ([`Self::ObjectFlagged`]), and by its new owner. Its
+    /// reveal follows, told to the owner alone ([`Self::TilesRevealed`]).
+    TownCaptured {
+        /// The town.
+        town: TownId,
         /// Its anchor.
         anchor: Pos,
         /// Its new owner.

@@ -13,7 +13,7 @@ use h3_adventure::{
     ObjectTypeId, Pick, Pos, Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId};
-use h3_contracts::{ArmyStack, BattleResult, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, BattleResult, HeroId, PlayerId, TownId};
 use h3_heroes::{Choice, HeroChange, PrimarySkill};
 
 use crate::manage::{Manage, ManageError};
@@ -611,6 +611,19 @@ pub enum GameEvent {
         hero: HeroId,
         /// The lost stack.
         stack: ArmyStack,
+    },
+    /// A town's picture changed (TWN-CAP-002, E09 T8a2; the town epic's design note §11): at its
+    /// capture the Capitol's limit took its Capitol away, its City Hall standing instead; told
+    /// after the capture's `TownCaptured` and `TilesRevealed`. Seen where the town is seen
+    /// (design note §12): by `TownCaptured`'s viewers, the players that see the town and its new
+    /// owner.
+    TownChanged {
+        /// The town.
+        town: TownId,
+        /// Whether it now has a Capitol (a standing building of role `hall` 4).
+        capitol: bool,
+        /// The players that see it (the viewer alone in a projection).
+        seen_by: Viewers,
     },
 }
 

@@ -10,18 +10,19 @@ use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
-use h3_contracts::{HeroId, PlayerId};
+use h3_content::{Formation, Ruleset, SecondarySkillDef};
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
 
 use super::*;
 use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind};
 use crate::movement::DIRECTIONS;
-use crate::setup::ObjectSetup;
+use crate::ruleset::{ObjectKindDef, ObjectTypeDef, TerrainWalkerDef, Visit};
+use crate::setup::{Holds, ObjectSetup, Scenery, TileMask};
 use crate::testing::{
     ADMIRAL, FLYING, GNOLL, PEASANT, PIKEMAN, WATER_WALKING, WINDS, WOLF, coasted, hero_at,
-    hero_details, hero_rules_with, hero_skills, lying, movement_rules, sea_skills, started, world,
-    world_state,
+    hero_details, hero_skills, key, lying, movement_rules, movement_rules_with, sea_skills,
+    started, world, world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -279,6 +280,30 @@ fn the_query_keeps_to_the_explored_tiles() {
     assert_eq!(reach.points_left(p(11, 0)), None);
 }
 
+/// `hero_rules_with`'s rules (the wolf walks sand as swamp) with `skills` and a town `t:town`,
+/// entered and not from above (E09 T8a2), its type the part's last.
+fn town_hero_rules(faithful: bool, skills: Vec<SecondarySkillDef>) -> (Ruleset, AdventureRuleset) {
+    movement_rules_with(
+        faithful,
+        16,
+        |core| core.skills = skills,
+        |part| {
+            part.terrain_walkers = vec![TerrainWalkerDef {
+                creature: key("t:wolf"),
+                terrain: key("t:sand"),
+                counts_as: key("t:swamp"),
+            }];
+            part.object_types.push(ObjectTypeDef {
+                key: key("t:town"),
+                name: "Town".into(),
+                visit: Visit::Enter,
+                from_above: false,
+                kind: ObjectKindDef::Town,
+            });
+        },
+    )
+}
+
 proptest! {
     /// On random maps, armies and profiles, from the hero's tile and after up to three moves
     /// along reported paths: every reported path is accepted and ends with the reported points,
@@ -295,7 +320,10 @@ proptest! {
     /// sometimes water-walks too), over the two kinds of node. E08 T73b: the map's coast flagged,
     /// with empty boats and Favorable Winds; the hero starts in a boat in a quarter of the cases,
     /// another hero may be in one, and half the heroes board free (the Admiral's Hat's effect),
-    /// so that boardings, sailing, landings and visits from and to a boat are walked.
+    /// so that boardings, sailing, landings and visits from and to a boat are walked. E09 T8a2:
+    /// up to three towns on land tiles without an object, red's, blue's or neutral, with a
+    /// garrison or none, a hero standing on one's entrance its visitor: an own or undefended town
+    /// entered, a defended one and another team's visitor never reached (`TWN-STUB-7`).
     #[test]
     fn the_query_and_move_hero_agree(
         cells in proptest::collection::vec(0usize..TILES.len(), 64),
@@ -308,8 +336,9 @@ proptest! {
         picks in proptest::collection::vec(0usize..1000, 0..4),
         key in any::<bool>(),
         (mode, level, both, free) in (0usize..4, 1u8..=3, any::<bool>(), any::<bool>()),
+        towns in proptest::collection::vec((0usize..8, 0usize..8, 0usize..6), 0..4),
     ) {
-        let rules = hero_rules_with(faithful, [hero_skills(), sea_skills()].concat());
+        let rules = town_hero_rules(faithful, [hero_skills(), sea_skills()].concat());
         let mut skills: Vec<_> = match mode {
             1 if both => vec![(FLYING, level), (WATER_WALKING, 4 - level)],
             1 => vec![(FLYING, level)],
@@ -385,6 +414,39 @@ proptest! {
             anchor,
             ..monster.clone()
         }));
+        // A town blocks and is entered on its one tile, of red, blue or none by `kind % 3`,
+        // defended from `kind` 3 on.
+        let mut placed: Vec<Pos> = Vec::new();
+        for &(x, y, kind) in &towns {
+            let (x, y) = (x % width, y % height);
+            let anchor = p(x as u16, y as u16);
+            if !matches!(grid[y][x], 'g' | 's' | 'w' | 'G' | 'S' | 'W' | 'd')
+                || placed.contains(&anchor)
+            {
+                continue;
+            }
+            placed.push(anchor);
+            setup.map.objects.push(ObjectSetup {
+                scenery: Scenery::Ownable,
+                anchor,
+                blocked: TileMask::from_bits(1),
+                visitable: TileMask::from_bits(1),
+                object_type: rules.1.object_type_by_key("t:town"),
+                amount: None,
+                drawn: TileMask::default(),
+                monster: None,
+                guards: None,
+                holds: Holds::Town {
+                    formation: Formation::Loose,
+                },
+                owner: [Some(RED), Some(PlayerId::new(1)), None][kind % 3],
+            });
+            setup.garrisons.push(if kind >= 3 {
+                vec![ArmyStack { slot: 0, creature: PEASANT, count: 1 }]
+            } else {
+                vec![]
+            });
+        }
         let mut state = started(&rules, &setup).unwrap();
         for (hero, at) in aboard {
             let boat = state.boats().position(|(_, b)| b.tile == at).unwrap();
@@ -414,7 +476,7 @@ proptest! {
                 let visit = other
                     || state
                         .visit_at(&rules.1, RED, pos)
-                        .is_some_and(|v| !v.pass && v.mode == crate::ruleset::Visit::Neighbour);
+                        .is_some_and(|v| !v.pass && v.mode == Visit::Neighbour);
                 prop_assert_eq!(steps + usize::from(visit), path.len());
                 prop_assert!(events.len() <= steps + 1);
                 let at = match path.len().checked_sub(2) {

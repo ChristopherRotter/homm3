@@ -226,7 +226,9 @@ fn battle_commands(
 /// decision, by `apply`'s own checks (GAM-DEC-001), or the hero is not the actor's.
 ///
 /// The query keeps one path per tile; `apply` accepts every path the hero can pay, also another
-/// one to a listed tile or one back to the hero's own. A longer path may rarely reach a tile the
+/// one to a listed tile or one back to the hero's own (not for a hero that starts on the
+/// entrance of a defended town its team does not own, TWN-SET-010's heroes: its step back onto
+/// it is refused until the siege, `TWN-STUB-7`). A longer path may rarely reach a tile the
 /// query does not list ([`Reach`]); every tile one step away is listed. A client may so compute
 /// its own paths: `apply` checks each step against the state and the actor.
 pub fn legal_moves(
