@@ -10,11 +10,12 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 
 ## Inbox
 
-- 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's request**, after the battle
-  lane's `SideView` fields): **carry each side's casting limits on the wire** (whether its hero
+- 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
+  behaves exactly as a local one; after the battle lane's `SideView` fields): **carry each side's casting limits on the wire** (whether its hero
   forbids casting, its spell level limit; public, as the original's book names the Orb's wearer
   and the Cloak's limit to both sides, `docs/epics/E17-design.md` §12.17). The battle lane's
-  inbox holds the request for the observation; map it once it is there (a version).
+  inbox holds the request for the observation; map it once it is there (a version). The client
+  reads it then (`CLT-STUB-2`).
 
 - 2026-11-04 (the client lane, E17 M6 T4b2a, CLT-Q46; **the user's request**, when online play
   needs it): **the attack and shot previews on a seat's wire.** With Creature Info on, the battle

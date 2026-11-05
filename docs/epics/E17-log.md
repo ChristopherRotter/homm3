@@ -5365,3 +5365,43 @@ CLT-Q52 to Q56 (all fixed, the original's for the comparisons only, `h3_render::
   phase shade (`Cells::phase`); `shades::movement` dropped; the tests of Force Field's taken hex
   and of F6's pointer made to see their branches. Unit tests for each; `drawn` all the same;
   `check.sh` passed, coverage 100 %.
+
+### M6 T5a — the book's and the aims' refusals, the walls' aim (2026-11-05)
+
+On `client/e17-m6-t5a`. The user cut T5 in four at its start (2026-11-05: T5a, T5b the Auto
+Combat bot's casts and retreat question, T5c Eagle Eye and the experience after the window, T5d
+the effects, their waits and Bloodlust's glow) and chose T5a (M5's items 5, 9, 84).
+
+- **Read** (a reader agent; design §12.17, `docs/exe/map.toml` 12 entries): `hero_book_button`
+  0x59E900 whole (the garrison GENRLTXT 685, the Orb 684 with the wearer and the Orb, the
+  attacker tested first; after the book, Cursed Ground 748 and Recanter's Cloak 537 with the Cloak
+  and the acting hero), `enter_player_cast`'s entry refusals (Land Mine 186 for the other side's
+  natives, Earthquake 183, Sacrifice's two scans 186, Remove Obstacle 713, Clone 184 with the
+  count or 186, the Summons 539 with 540 or 541), `aim_wall_handler` 0x5A3250's shape and its
+  refusal 182. CLT-Q57 to Q60 asked and answered at once: Q57 fixed (the Summons' limit says
+  184 with the count), Q58 and Q59 copied, *provisional* (HD or HotA may have fixes), Q60 fixed
+  once the hero's press is built. Gap G1 (a server's seat does not know the other hero's Orb and
+  Cloak): first answered "request, no box meanwhile"; at the review the user required a server
+  game to behave exactly as a local one: the battle and server lanes are to carry each side's
+  two facts (their inboxes), the client's `CLT-STUB-2` waits for them.
+- **Built** (a builder agent; design §12.17, "As built"): `boxes::Facts` and `before_book` /
+  `after_book` (the order of the original's tests, the box only when the engine refuses),
+  `Battle::open_book`'s `Opened`, `Battle::refusal` and `nowhere`, the mouse posted after the
+  boxes; `Aim::refusal`'s `Hint::WallRefused` (182 with the spell's name), a wall's aim with no
+  free hex opened with every hex refused (`aims::nowhere`), the original's profile's wall aim
+  keeping a stack's outline; the heroes' `female` flag in the client's asset tables (harvested,
+  52 + 12 heroes), the viewer's catalogue listing the artifacts (`text::entries`; the `artifact`
+  family was silently skipped, a TRAPS entry). Unit tests; `check.sh` passed, coverage 100 %.
+- **Recorded** (a capture agent): six stills, `msg-cursed`, `msg-quake`, `msg-mine`,
+  `msg-clone`, `msg-sacrifice` exact, `msg-remove` its box exact and 548 pixels at the lower
+  tower (the original's redraw after the book closes, listed); sequences `shade-wall` 47 frames
+  exact (182 now compared, no longer masked), `wall-edges` 46 frames (269 pixels at 2 300 to
+  2 500 ms: the book's cursor kept from its last item, §7.17), `wall-hover` 9 exact (its log listed
+  at 100 and 132 ms: the original keeps the hover's hint through the book), `summon-other` and
+  `summon-other-female` 27 frames each (the 539 box's two frames the original's alone: the
+  viewer's sequences draw no box). `drawn`: 245, all the same after `--record`.
+- **The review's findings fixed** (a fresh reviewer, then a fixer): the acting side by the stack's
+  controller (`Facts::of`), the mouse posted after a refusal box's OK rather than at its opening,
+  `Battle`-level tests of the server's facts, §12.17's server behaviour stated once (the entry's
+  box meanwhile, `CLT-STUB-2`), a server of other content's wall aim noted (24, the bare aim),
+  §7.18's quoted text dropped.

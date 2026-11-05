@@ -21,14 +21,16 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
-- 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's request**, with the server
-  lane's wire): **a public per-side fact of the heroes' casting limits.** The original's book
+- 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
+  behaves exactly as a local one; with the server lane's wire): **a public per-side fact of the
+  heroes' casting limits.** The original's book
   shows the Orb of Inhibition's box naming its wearer (GENRLTXT 684) and Recanter's Cloak's
   limit (537) to both sides (`docs/epics/E17-design.md` §12.17); a seat's observation holds only
   its own hero's `no_casting` and `level_limit` (`OwnHero`, private, ADR-0013 point 9). Asked:
   each side's in `SideView` (whether its hero forbids casting, its spell level limit), public as
   the original shows them; the server lane maps it (a version). Until then a server's client
-  shows no box for the other hero's Orb or Cloak; local play is exact.
+  shows the entry's box where a local one shows the Orb's or the Cloak's (the client's
+  `CLT-STUB-2`); local play is exact.
 
 - 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **a failing property case on `master`'s
   code, for a task of yours**): a local `cargo test --workspace` found a case of `h3-battle`'s

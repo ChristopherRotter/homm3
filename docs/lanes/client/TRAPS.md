@@ -174,6 +174,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
   runs breaks (or changes) the release binary's comparisons of the batch (M4 T3b-1: an unknown
   field); keep the layout with the binary it was built for until the batch ends.
+- A stack the mouse rests on pauses its animation in the original about 500 ms in, by the
+  original's own draws and the same in every run (E17 M6 T5a: `wall-hover`'s Goblins at 500 and
+  700 ms, `wall-edges`' stacks alike); the timeline check compares the hovered stack and the
+  viewer draws no such pause, so a sequence whose mouse rests on a stack that long fails its
+  check: act before it (`wall-hover` acts from 0 to 400 ms), as T4c timed `shade-area` around
+  the marks' stalls.
 - A capture times out at the main menu when the CPU is busy: run it alone. A fresh sandbox's
   first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches.
   A stopped run leaves the game running (and `pkill -f wine` kills the calling shell too): kill
