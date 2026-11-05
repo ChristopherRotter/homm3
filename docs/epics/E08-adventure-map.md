@@ -132,6 +132,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 257. **T96b1 whole, in one pull request** (the user; the agent had recommended two, the three failing seeds first): the three `view.rs` seeds with their fixes, the plans' `DWELLINGS` classes and design §14's checks in `play.rs` and `view.rs`, the cover test's hire answers. The user merges the pull request (not the agent). Not chosen: two parts, the seeds now and the plans in the next session; two parts, both in this session.
 
+### Decisions at T97's start (2026-11-05, user)
+
+258. **T97 in three, as increment 9's T87** (the user; recommended): **T97a** the audit of design §17's eight exit criteria, its gaps fixed, one pull request; **T97b** the dwellings entered from water settled in increment 10 (the sea survey's reading: another entrance on water is a normal step from a boat, `E08-sea.md` §4.1, §4.3; the dwelling's own visit, its guards' battlefield and the hire read, the typed refusal `OwnedOnWater` lifted for them; likely map import v19); **T97c** increment 10 closed and increment 11 refined (docs; ADV-Q44). Not chosen: two, the water dwellings carried into increment 11; two, the water dwellings first; the audit and the closure in one session, the water dwellings carried.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
