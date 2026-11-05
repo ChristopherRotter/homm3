@@ -21,7 +21,8 @@
 //! with it, each of its dwellings typed), and since E08 T94a the dwellings the game's build gives
 //! (the random ones resolved, checked) and the maps it refuses for a random dwelling's tiles, and
 //! since E08 T94b the weeks it gives: the dwellings' counts and guards and the Refugee Camps'
-//! creatures and counts (checked).
+//! creatures and counts (checked); since E08 T96b2 each resolved random dwelling's entrance on the
+//! map (checked) and the most dwellings, random dwellings and Refugee Camps on one map.
 //! Since E09 T7a1 the towns, the players' starts, the random heroes, the heroes moved onto a
 //! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import; since E09 T7b1 the
 //! random heroes are drawn. Since E09 T8a1 the towns are typed (their owners at load and
@@ -360,6 +361,7 @@ fn check(
     }
     // E08 T94b: the dwellings' and the camps' weeks it builds (ADV-DWL-002, ADV-RFG-001).
     built_weeks(&built, rules, name, &mut peaks.7)?;
+    most_dwellings(&map, &setup.map, peaks, name);
     let (visitable, stacked) = stacked(&map, &setup.map);
     peaks.2 += visitable;
     if !stacked.is_empty() {
@@ -1072,7 +1074,7 @@ fn built_economy(
 /// the start. Checked (an error fails the map): the dwellings and the camps are the built objects
 /// of their kinds in object order; each typed object of 216 to 218 holds a set and a range and is
 /// resolved, its type its set's tables' at a level of its range, its anchor moved right by the
-/// type's shift.
+/// type's shift, its entrance (the first tile it is visited from) on the map (E08 T96b2).
 fn built_dwellings(
     game: &GameState,
     raw: &RawMap,
@@ -1166,6 +1168,10 @@ fn built_dwellings(
                  the type's shift",
             ));
         };
+        // E08 T96b2 (increment 10's design note §14): visited from a tile of the map.
+        if resolved.entrance(map).is_none() {
+            return Err(at("has no entrance on the map"));
+        }
         let class = match class {
             216 => "random dwellings of class 216 resolved",
             217 => "random dwellings of class 217 resolved",
@@ -1190,6 +1196,33 @@ fn built_dwellings(
         }
     }
     Ok(edge)
+}
+
+/// Notes the map's typed objects of increment 10's classes as peaks (E08 T96b2, the most on one
+/// map that the dwellings XL holds, increment 10's design note §14): the dwellings of class 17 and
+/// of class 20, the random dwellings of 216 to 218 (those tied to a town are blockers, untyped)
+/// and the Refugee Camps.
+fn most_dwellings(raw: &RawMap, setup: &MapSetup, peaks: &mut Peaks, name: &str) {
+    let mut counts = [0; 4];
+    for ((_, class), object) in placed(raw).zip(&setup.objects) {
+        let slot = match class {
+            17 => 0,
+            20 => 1,
+            216..=218 => 2,
+            78 => 3,
+            _ => continue,
+        };
+        counts[slot] += usize::from(object.object_type.is_some());
+    }
+    let what = [
+        "dwellings of class 17 on a map",
+        "dwellings of class 20 on a map",
+        "random dwellings typed on a map",
+        "Refugee Camps on a map",
+    ];
+    for (what, n) in what.into_iter().zip(counts) {
+        peaks.note(what, n, name);
+    }
 }
 
 /// Counts the dwellings' and the Refugee Camps' weeks the game's build gives (E08 T94b;
