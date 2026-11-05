@@ -42,12 +42,14 @@ const CASTS: i32 = 7;
 /// with the test's answer ([`choose`]). With BAT-QUIRK-25 (survey slip 26) the choice reads what
 /// the test's predictions left, when it got that far ([`SpellContext::after_retreat`]). The
 /// policy plays any side as the computer's: the original's tests for a human side are not asked
-/// (ADR-0027 point 8).
+/// (ADR-0027 point 8), but with `human` the retreat test is asked as for a human's side
+/// ([`retreat::asked`]: [`crate::Decision::human`]'s).
 // rule: BAT-AI-017
 pub(crate) fn cast(
     state: &BattleState,
     ruleset: &BattleRuleset,
     (id, side): (StackId, BattleSide),
+    human: bool,
     rng: &mut Rng,
 ) -> Option<Command> {
     let hero = state.hero(side)?;
@@ -61,7 +63,7 @@ pub(crate) fn cast(
     let ctx = computer::context(state, ruleset, side);
     let mut sc = SpellContext::new(state, ruleset, (&ctx, side), rng);
     let slips = ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
-    let answer = retreat::test(state, ruleset, side, rng, slips);
+    let answer = retreat::asked(state, ruleset, (side, human), rng, slips);
     if let Some(predicted) = answer.predicted {
         sc.after_retreat(&predicted);
     }

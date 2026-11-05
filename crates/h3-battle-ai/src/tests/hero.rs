@@ -48,6 +48,7 @@ pub(super) fn cast(state: &BattleState, r: &BattleRuleset) -> Option<Command> {
         state,
         r,
         (state.active().unwrap(), side),
+        false,
         &mut Rng::from_seed(5),
     )
 }

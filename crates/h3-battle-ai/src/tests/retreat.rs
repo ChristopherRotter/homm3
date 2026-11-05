@@ -17,11 +17,12 @@ use h3_kernel::arith::{DOUBLE_BITS, X87};
 use super::hero::until_side;
 use super::{
     ARCHER, BALLISTA, GOG, IMP, RUNNER, TENT, active, at_town, decide, hero, hero_with, on, play,
-    ruleset, ruleset_as, setup, spell,
+    priced, ruleset, ruleset_as, setup, spell,
 };
 use crate::predict::Overwrite;
 use crate::retreat::{self, Answer, below, scaled, strengths, threshold};
 use crate::spells::SpellContext;
+use crate::{Decision, Leaving, Sight};
 
 const ATTACKER: BattleSide = BattleSide::Attacker;
 const DEFENDER: BattleSide = BattleSide::Defender;
@@ -119,6 +120,125 @@ fn a_hopeless_hero_worth_keeping_retreats() {
     // Ten Imps against one: no.
     let s = led((&[(IMP, 10)], &[(IMP, 1)]), KEEPER, 10_000, 2);
     assert!(!answer(&BattleState::new(&r, &s, 1).unwrap(), &r, 1).retreat);
+}
+
+/// The decision for `side` in `state` on the whole battle, a human's side's with `human`.
+fn decision<'a>(
+    state: &'a BattleState,
+    r: &'a BattleRuleset,
+    side: BattleSide,
+    human: bool,
+) -> Decision<'a> {
+    let d = Decision::new(state, r, side, Sight::AllSeeing, &Rng::from_seed(1)).unwrap();
+    if human { d.human() } else { d }
+}
+
+/// A human's side is asked the test without the Easy and Normal gate (0x41E590; E17 M6 T5b2):
+/// on Easy and at every Normal draw its hopeless hero would leave, also in the hero's cast.
+// covers: BAT-AI-024, BAT-AI-017
+#[test]
+fn a_human_side_is_asked_without_the_easy_and_normal_gate() {
+    let r = ruleset();
+    let easy = hopeless(KEEPER, 10_000, 0);
+    let mut stream = Rng::from_seed(1);
+    assert!(!decision(&easy, &r, ATTACKER, false).retreat_test(&mut stream));
+    assert_eq!(stream, Rng::from_seed(1), "no draw");
+    assert!(decision(&easy, &r, ATTACKER, true).retreat_test(&mut stream));
+    let normal = hopeless(KEEPER, 10_000, 1);
+    for seed in 0..12 {
+        let human = retreat::asked(
+            &normal,
+            &r,
+            (ATTACKER, true),
+            &mut Rng::from_seed(seed),
+            false,
+        );
+        assert!(human.retreat, "{seed}");
+    }
+    // The hero's cast asks it so too: on Easy the human's hero casts its damage spell in retreat.
+    let mut s = led((&[(IMP, 1)], &[(GOG, 20)]), KEEPER, 10_000, 0);
+    s.heroes[0] = Some(hero_with(&r, &["bolt"], 1, 50));
+    let state = BattleState::new(&r, &s, 1).unwrap();
+    assert!(matches!(
+        decision(&state, &r, ATTACKER, true).hero_cast(&mut Rng::from_seed(1)),
+        Some(Command::Cast { spell: s, .. }) if s == spell(&r, "bolt")
+    ));
+}
+
+/// `count` Imps of a hero with `funds` against twenty Gogs, both sides led by a hero, on Hard,
+/// on the priced ruleset: the attacker's army is worth 100 × `count` gold, its expected price
+/// half of it.
+fn offered(count: u32, funds: u32) -> BattleSetup {
+    let mut s = led((&[(IMP, count)], &[(GOG, 20)]), KEEPER, funds, 2);
+    s.heroes[1] = Some(hero(0));
+    s
+}
+
+/// What the computer does after the retreat test's yes (0x477FEE to 0x47828E; E17 M6 T5b2): a
+/// human's side with both heroes, its funds at least the expected price and 2500, an army worth
+/// more than that and outside its own town is offered the surrender at the battle's price; else
+/// and for a computer side, Retreat. No draws.
+// covers: BAT-AI-026
+#[test]
+fn a_human_side_worth_saving_is_offered_the_surrender() {
+    let r = priced();
+    let leaving = |s: &BattleSetup, side, human| {
+        let state = BattleState::new(&r, s, 1).unwrap();
+        let price = state.surrender_price(&r, side);
+        (decision(&state, &r, side, human).leaving(), price)
+    };
+    // Sixty Imps: worth 6000, the expected price 3000, the battle's the same.
+    let (offer, price) = leaving(&offered(60, 5500), ATTACKER, true);
+    assert_eq!(price, Some(3000));
+    assert_eq!(offer, Leaving::Offer { price: 3000 });
+    // A computer side retreats.
+    assert_eq!(
+        leaving(&offered(60, 5500), ATTACKER, false).0,
+        Leaving::Retreat
+    );
+    // Short of the price and 2500 by one gold.
+    assert_eq!(
+        leaving(&offered(60, 5499), ATTACKER, true).0,
+        Leaving::Retreat
+    );
+    // Fifty Imps are worth the price and 2500 (5000), fifty-one more (5100 against 5050).
+    assert_eq!(
+        leaving(&offered(50, 10_000), ATTACKER, true).0,
+        Leaving::Retreat
+    );
+    assert_eq!(
+        leaving(&offered(51, 10_000), ATTACKER, true).0,
+        Leaving::Offer { price: 2550 }
+    );
+    // Without a hero on the other side, or on its own.
+    let mut s = offered(60, 10_000);
+    s.heroes[1] = None;
+    assert_eq!(leaving(&s, ATTACKER, true).0, Leaving::Retreat);
+    let mut s = offered(60, 10_000);
+    s.heroes[0] = None;
+    assert_eq!(leaving(&s, ATTACKER, true).0, Leaving::Retreat);
+    // The town's defender retreats; the defender on the field is offered it.
+    let mut s = offered(1, 10_000);
+    s.funds[1] = 20_000;
+    s.retreat[1] = KEEPER;
+    let field = leaving(&s, DEFENDER, true);
+    assert_eq!(field.0, Leaving::Offer { price: 9000 });
+    let mut town = at_town(
+        &r,
+        (&[(IMP, 1)], &[(GOG, 20)]),
+        (FortLevel::None, Moat::Absent, 0),
+    );
+    town.heroes = s.heroes;
+    town.funds = s.funds;
+    town.retreat = s.retreat;
+    assert_eq!(leaving(&town, DEFENDER, true).0, Leaving::Retreat);
+    // The test ruleset prices no surrender: Retreat.
+    let unpriced = ruleset();
+    let state = BattleState::new(&unpriced, &offered(60, 10_000), 1).unwrap();
+    assert_eq!(
+        decision(&state, &unpriced, ATTACKER, true).leaving(),
+        Leaving::Retreat
+    );
 }
 
 // covers: BAT-AI-024

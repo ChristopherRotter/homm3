@@ -6,13 +6,17 @@
 //! yes of its retreat test a question to the human instead of the retreat (0x477F56). Chained
 //! (the cast; else Retreat on the test's yes; else the action) they give [`crate::choose`]'s
 //! command with [`Sight::AllSeeing`] and [`crate::choose_fair`]'s with [`Sight::Fair`], and leave
-//! the stream where those leave it (the property tests).
+//! the stream where those leave it (the property tests). [`Decision::human`] asks the parts as
+//! the original asks them of a human's side (the retreat test without its Easy and Normal gate,
+//! 0x41E590), and [`Decision::leaving`] says what the computer does after the test's yes
+//! (0x477FEE; BAT-AI-026): for a human's side the question's OK (E17 M6 T5b2).
 
 use h3_battle::{BattleSide, BattleState, Command, StackTraits, validate};
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Rng;
 
-use crate::{acting, checked, hero, retreat, stack, tactics};
+use crate::retreat::{self, Leaving};
+use crate::{acting, checked, hero, stack, tactics};
 
 /// Which battle the computer decides on (ADR-0027 point 4 as amended).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -36,6 +40,8 @@ pub struct Decision<'a> {
     side: BattleSide,
     /// The side's world ([`Sight::Fair`]), else none: the battle itself.
     world: Option<BattleState>,
+    /// The side is a human's that the computer plays ([`Decision::human`]).
+    human: bool,
 }
 
 impl<'a> Decision<'a> {
@@ -60,7 +66,20 @@ impl<'a> Decision<'a> {
             ruleset,
             side,
             world,
+            human: false,
         })
+    }
+
+    /// The decision as the original's computer takes it for a side whose player is human, which
+    /// it plays under Auto Combat (E17 M6 T5b2): the retreat test, the hero's cast's and the
+    /// action's, asked without the Easy and Normal gate and its draw (the side's +0x54A4,
+    /// 0x41E590; BAT-AI-024), and [`Decision::leaving`] an offer where the original asks. Without
+    /// it the parts are the policy's, which plays every side as the computer's (ADR-0027 point
+    /// 8).
+    #[must_use]
+    pub fn human(mut self) -> Self {
+        self.human = true;
+        self
     }
 
     /// The battle the decision is made on.
@@ -78,14 +97,17 @@ impl<'a> Decision<'a> {
         let seen = self.seen();
         acting(seen, self.side)
             .filter(|_| seen.tactics().is_none())
-            .and_then(|id| hero::cast(seen, self.ruleset, (id, self.side), rng))
+            .and_then(|id| hero::cast(seen, self.ruleset, (id, self.side), self.human, rng))
             .filter(|&cast| validate(self.state, self.ruleset, self.side, cast).is_ok())
     }
 
     /// The retreat test before the active stack's action (0x477EE0's 0x41E570; BAT-AI-024,
-    /// [`retreat::test`]): never when `side` is not to act, in the tactics phase, or at a
-    /// commanded Catapult's or First Aid Tent's turn (their own turns ask none). A yes is the
-    /// computer's Retreat; the original asks a human's side instead (0x477F56): the caller's.
+    /// [`retreat::test`]; with [`Decision::human`] [`retreat::asked`]'s): never when `side` is
+    /// not to act, in the tactics phase, or at a commanded Catapult's or First Aid Tent's turn
+    /// (their own turns ask none). A yes is the computer's Retreat; the original asks a human's
+    /// side instead (0x477F56) once a battle, its OK [`Decision::leaving`]'s: the caller's. The
+    /// original asks the test (and draws) at every such action, also after the question's
+    /// Cancel.
     // rule: BAT-AI-024
     pub fn retreat_test(&self, rng: &mut Rng) -> bool {
         let seen = self.seen();
@@ -95,7 +117,15 @@ impl<'a> Decision<'a> {
                 let me = &seen.stacks()[id.index()];
                 !me.is_catapult() && !me.has(StackTraits::FIRST_AID)
             })
-            && retreat::test(seen, self.ruleset, self.side, rng, false).retreat
+            && retreat::asked(seen, self.ruleset, (self.side, self.human), rng, false).retreat
+    }
+
+    /// What the computer does for the side after the retreat test's yes (0x477FEE to 0x47828E;
+    /// BAT-AI-026, [`Leaving`]): Retreat, or with [`Decision::human`] where the original asks a
+    /// human's side, the offer to save the army for the battle's surrender price. No draws.
+    // rule: BAT-AI-026
+    pub fn leaving(&self) -> Leaving {
+        retreat::leaving(self.seen(), self.ruleset, (self.side, self.human))
     }
 
     /// The active stack's action without the hero's cast and the retreat test (0x4221F0 and the

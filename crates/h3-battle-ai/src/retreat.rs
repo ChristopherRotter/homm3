@@ -5,7 +5,7 @@
 //! the computer never surrenders, 0x47815A).
 //!
 //! In its order: no without a hero; on Easy no, on Normal no at `random(1, 100)` ≤ 50 (the policy
-//! plays every side as the computer's, ADR-0027 point 8); no when the side may not retreat (either
+//! plays every side as the computer's, ADR-0027 point 8; a human's side skips it, [`asked`]); no when the side may not retreat (either
 //! hero's Shackles of War, a town's defender without the Escape Tunnel; BAT-FLE-001,
 //! BAT-SIE-024), when the scenario wants the hero defeated or no Tavern town could hire it again
 //! (the setup's retreat facts, ADR-0027 point 14); yes when the side is walled out of a siege
@@ -14,7 +14,8 @@
 //! predictions with flag 1 ([`predict::plan_both`]): yes when no living stack of the side but the
 //! war machines keeps hit points after the planned damage; no when the funds fall short of the
 //! price and 2500 more; else yes when the side's share of the battle's Fight Value falls below its
-//! threshold ([`threshold`], [`strengths`], [`below`]).
+//! threshold ([`threshold`], [`strengths`], [`below`]). After its yes at the stack's action:
+//! [`leaving`] (BAT-AI-026).
 
 use h3_battle::computer::{self, Planned};
 use h3_battle::{BattleSide, BattleState, StackFlags, StackId, StackTraits};
@@ -62,7 +63,8 @@ const IMPOSSIBLE: u8 = 4;
 
 /// The retreat test's answer for `side` (0x41E570; BAT-AI-024), its draws from `rng`: the Normal
 /// difficulty's and the predictions' walkers'. With `slips` the flag-1 predictions are kept when
-/// the test got that far, for the hero's choice that follows (survey slip 26).
+/// the test got that far, for the hero's choice that follows (survey slip 26). The policy's:
+/// [`asked`] for a side played as the computer's (ADR-0027 point 8).
 // rule: BAT-AI-024
 pub(crate) fn test(
     state: &BattleState,
@@ -71,13 +73,29 @@ pub(crate) fn test(
     rng: &mut Rng,
     slips: bool,
 ) -> Answer {
+    asked(state, ruleset, (side, false), rng, slips)
+}
+
+/// [`test`] for `side` as the original asks it of a side whose player is `human` (the side's
+/// +0x54A4, 0x41E590): such a side skips the Easy and Normal gate and its draw. The policy plays
+/// every side as the computer's (ADR-0027 point 8, [`test`]); [`crate::Decision::human`] asks it
+/// as the original does for a human's side the computer plays under Auto Combat (E17 M6 T5b2).
+// rule: BAT-AI-024
+pub(crate) fn asked(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (side, human): (BattleSide, bool),
+    rng: &mut Rng,
+    slips: bool,
+) -> Answer {
     let no = Answer::default();
     if state.hero(side).is_none() {
         return no;
     }
     let difficulty = computer::difficulty(state);
-    if difficulty == 0
-        || (difficulty == NORMAL && rng.range_inclusive(DRAW.0, DRAW.1) <= NO_AT_MOST)
+    if !human
+        && (difficulty == 0
+            || (difficulty == NORMAL && rng.range_inclusive(DRAW.0, DRAW.1) <= NO_AT_MOST))
     {
         return no;
     }
@@ -109,6 +127,84 @@ pub(crate) fn test(
     let sums = strengths(state, ruleset, side);
     let (own, other) = (sums[side.index()], sums[side.opponent().index()]);
     answer(below(own, other, x))
+}
+
+/// What the computer does for `side` once the retreat test said yes at the stack's action
+/// (0x477FEE to 0x47828E; BAT-AI-026), the side's player `human` or not: Retreat without a hero
+/// on either side, for a town's defender (the battle's town, +0x53C8, and the defender), when
+/// the side's funds fall short of the price it expects ([`computer::retreat_price`], 0x477A00's
+/// sum, here computed inline into 0x695030) and 2500 more, when its army's worth
+/// ([`worth`]) is at most that, and always for a computer side (0x47815A); else the offer to a
+/// human's side to save its army. The original's offer names that price and its OK pays it
+/// (+0x40); the engine's Surrender pays the battle's own (BAT-FLE-002), which the offer names, and
+/// a surrender the engine refuses ([`BattleState::may_surrender`]) is a Retreat. No draws.
+// rule: BAT-AI-026
+pub(crate) fn leaving(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (side, human): (BattleSide, bool),
+) -> Leaving {
+    let price = i64::from(computer::retreat_price(state, ruleset, side));
+    let at_town = side == BattleSide::Defender && computer::siege(state).is_some();
+    let stays = state.hero(side).is_none()
+        || state.hero(side.opponent()).is_none()
+        || at_town
+        || i64::from(computer::funds(state, side)) < price + RESERVE
+        || i64::from(worth(state, ruleset, side)) <= price + RESERVE
+        || !human;
+    match state.surrender_price(ruleset, side) {
+        Some(price) if !stays && state.may_surrender(ruleset, side) => Leaving::Offer { price },
+        _ => Leaving::Retreat,
+    }
+}
+
+/// The worth of `side`'s army in gold (0x477FEE to 0x47806D): over its first [`RECORDS`] stacks,
+/// those with creatures add their count times the creature's cost in the ruleset's surrender
+/// resource (the original's gold), the created stacks, the war machines and the turrets too,
+/// summed as the original's 32-bit integers.
+fn worth(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> i32 {
+    let Some(params) = ruleset.battle().surrender else {
+        return 0;
+    };
+    state
+        .stacks()
+        .iter()
+        .filter(|s| s.side == side)
+        .take(RECORDS)
+        .filter_map(|s| {
+            i32::try_from(s.count)
+                .ok()
+                .filter(|&c| c > 0)
+                .map(|c| (s, c))
+        })
+        .fold(0i32, |sum, (s, count)| {
+            let cost = ruleset.creature_info(s.creature).map_or(0i32, |info| {
+                info.cost
+                    .iter()
+                    .filter(|(resource, _)| *resource == params.resource)
+                    .fold(0i32, |sum, &(_, amount)| {
+                        sum.wrapping_add(i32::try_from(amount).unwrap_or(i32::MAX))
+                    })
+            });
+            sum.wrapping_add(cost.wrapping_mul(count))
+        })
+}
+
+/// What the computer does for a side whose hero would leave the battle ([`leaving`]; BAT-AI-026):
+/// the answer of [`crate::Decision::leaving`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Leaving {
+    /// The side retreats (the original's action 4).
+    Retreat,
+    /// The original asks a human's side whether to save its army for `price` (0x478160: GENRLTXT's
+    /// record 130 with the hero's name and the price, the price's gold as its picture, type 6; a
+    /// box of OK and Cancel): its OK is the side's surrender at the price (the action 5), its
+    /// Cancel the retreat (4). The price is the battle's ([`BattleState::surrender_price`]), the
+    /// side's private part: show it to that side only.
+    Offer {
+        /// The surrender's price in the ruleset's surrender resource.
+        price: u32,
+    },
 }
 
 /// The retreat test's answer (0x41E570's return) and, when it got as far as its predictions and
