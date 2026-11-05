@@ -211,7 +211,7 @@ pub struct HeroFacts {
 
 /// What the spell book button's and the aim's entry's refusals read (E17 M6 T5a, design §12.17):
 /// the battle's facts as the side to act may know them. Local play knows every one (both sides'
-/// own views); a server's seat its own hero's magic alone ([`seat_magic`]; gap G1, CLT-STUB-2:
+/// own views); a server's seat its own hero's magic alone ([`seat_magic`]; gap G1, CLT-STUB-1:
 /// the other hero's Orb and Cloak show no box until the wire carries them).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Facts {
@@ -326,7 +326,7 @@ impl Facts {
 /// wire, read here once they are.
 pub fn seat_magic(own: &Observation) -> [Option<OwnHero>; 2] {
     let mut magic = [None, None];
-    // stub: CLT-STUB-2 (the other side's forbids-casting and level-limit facts, once on the wire)
+    // stub: CLT-STUB-1 (the other side's forbids-casting and level-limit facts, once on the wire)
     magic[usize::from(own.viewer == Side::Defender)] = own.own_hero.clone();
     magic
 }
@@ -794,7 +794,7 @@ mod tests {
 
     #[test]
     fn a_seat_on_a_server_knows_its_own_hero_s_magic_alone() {
-        // E17 M6 T5a (`Battle::facts`' server branch; gap G1, CLT-STUB-2): the seat's own hero's
+        // E17 M6 T5a (`Battle::facts`' server branch; gap G1, CLT-STUB-1): the seat's own hero's
         // limits filled, the other side's none (its Orb shows no 684 there), the public facts
         // (the garrison, Cursed Ground by its key without the ruleset) present all the same.
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

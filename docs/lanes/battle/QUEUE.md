@@ -30,7 +30,7 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   each side's in `SideView` (whether its hero forbids casting, its spell level limit), public as
   the original shows them; the server lane maps it (a version). Until then a server's client
   shows the entry's box where a local one shows the Orb's or the Cloak's (the client's
-  `CLT-STUB-2`); local play is exact.
+  `CLT-STUB-1`); local play is exact.
 
 - 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **a failing property case on `master`'s
   code, for a task of yours**): a local `cargo test --workspace` found a case of `h3-battle`'s

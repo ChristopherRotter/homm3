@@ -2382,7 +2382,7 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   (0x7805) makes the action 4. **Surrender** (2001, `S`): the price (`surrender_price`
   0x695030, as the computer's), then style 2 with GENRLTXT 33 formatted with the other side's
   hero's name and the price; OK: when the side's player's gold (game +0x20B84 by player) is below
-  the price, style 1 with GENRLTXT 30 ("You don't have enough gold!") and nothing else, else the
+  the price, style 1 with GENRLTXT 30 and nothing else, else the
   action 5 with the price. Both buttons are enabled as §9.7 says (`battle_controls_state`).
 - **The book's boxes** (style 1, no picture unless said): a spell above the hero's spell points
   with the combat bookmark, GENRLTXT 207 formatted with the cost and the points (0x59D462); an
@@ -3789,7 +3789,7 @@ loader 0x5B98B0). Built: `h3_view::mouse` (`spot`, `neighbour`, `distance`, `Leg
   d(n) = n up to 6 and 6 − n above (so 11 beats 1 for slot 0, and 7 beats 1 too: the
   executable's measure), the copies made earlier counting for later slots.
 - **The status line** (`battle_status_line`, written by `battle_log_add(text, 0, forced)`,
-  §9.8): 0 "No shots left!" (GENRLTXT:299) for a shooter (flag 4) with no shots left and a target
+  §9.8): 0 GENRLTXT 299 for a shooter (flag 4) with no shots left and a target
   still set (+0x10, +0x14, which a hex outside the field or a side column leaves as the last one
   set: T6c-2), else empty; 1 "Move %s here." (295) and 2 "Fly %s here." (296), the acting stack's
   name by its count; 3 and 15 "Attack %s" (221) with the target's name by its count, forced,
@@ -3867,7 +3867,7 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   at 0 ms: "Attack Pikemen" over the defend's line 0 ms old), the others not. **The target**
   (+0x10, +0x14 of the acting stack) is cleared over every hex of the field (0x476686), set over
   an enemy (0x47679D), cleared again where neither a shot nor a strike reaches it (0x476837), and
-  left by nothing, a side column or a hero: there a shooter without shots shows "No shots left!"
+  left by nothing, a side column or a hero: there a shooter without shots shows GENRLTXT 299
   (GENRLTXT:299, `battle.hint.no-shots`) for the last enemy it could strike.
 - **Entering a stack** (`battle_mouse_stack`): over the stack already marked nothing; else the
   old one unmarked and the new one marked, its group 1 started at frame 0 (or, showing it, it
@@ -6655,7 +6655,7 @@ to 0x5A3109) and `spell_target_cursor`'s refusal (0x59F83E to 0x59F889) to compa
   - The stills' boxes go through `spellbook::still` as `msg-no-one`'s.
   - *Not built:* the hero's press opening the book (cursor kind 4: the client's press there gives
     nothing, `mouse::click`; M5 T3a's path was the button and C); Teleport's and Sacrifice's aims
-    (§7.18); on a server, the other hero's Orb and Cloak (G1, CLT-STUB-2: below).
+    (§7.18); on a server, the other hero's Orb and Cloak (G1, CLT-STUB-1: below).
 - **Gap G1.** The wire tells a seat neither whether the other side's hero forbids casting nor
   its level limit (`OwnHero` is private, ADR-0013 point 9), though the original's boxes name the
   Orb's wearer to both sides. Options: (a) a public fact per side in `SideView` (forbids casting,
@@ -6665,7 +6665,7 @@ to 0x5A3109) and `spell_target_cursor`'s refusal (0x59F83E to 0x59F889) to compa
   (c) meanwhile; local play is exact.
   **Answer** (the user, 2026-11-05): (a), required by the user (a server's game must behave
   exactly as a local one), requested from the battle and server lanes (their inboxes);
-  CLT-STUB-2 meanwhile: on a server the seat knows its own hero's limits alone
+  CLT-STUB-1 meanwhile: on a server the seat knows its own hero's limits alone
   (`boxes::seat_magic`), so where the other hero's Orb or Cloak refuses the spell the entry's box
   shows (e.g. 186, 713), or a wall's aim with every hex refused, where local play shows 684 or
   537; the stub is lifted once the wire carries both sides' two facts.
@@ -6718,7 +6718,7 @@ to 0x5A3109) and `spell_target_cursor`'s refusal (0x59F83E to 0x59F889) to compa
     Mine's 186 (CLT-Q58) and Clone's count with the dead (CLT-Q59): copied, *provisional* (HD or
     HotA may have fixes).
   - Local play: `aims::magic` (both sides' views), `Live::magic`. A server's seat: its own
-    hero's alone (`Battle::facts`, `boxes::seat_magic`; gap G1, CLT-STUB-2): where the other
+    hero's alone (`Battle::facts`, `boxes::seat_magic`; gap G1, CLT-STUB-1): where the other
     hero's Orb or Cloak refuses the spell, the entry's box shows (e.g. 186, 713), or a wall's aim
     with every hex refused, where local play shows 684 or 537. The user requires parity with
     local play (2026-11-05, G1's answer (a)): the stub reads the other side's two facts once the

@@ -1810,7 +1810,7 @@ impl<'g> Battle<'g> {
         let first = self.record.first_snapshot()?;
         let magic = match self.fight.as_ref()? {
             Fight::Here(live) => live.magic(),
-            // The seat's own hero's alone (gap G1, CLT-STUB-2).
+            // The seat's own hero's alone (gap G1, CLT-STUB-1).
             Fight::Server(_) => crate::boxes::seat_magic(&own),
         };
         let writer = self.ground.writer.as_ref()?;

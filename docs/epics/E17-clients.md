@@ -463,7 +463,7 @@ The next milestone's list starts here.
     says 184 with the count; the original's 539 in the comparisons), Q58 and Q59 copied
     *provisional* (HD or HotA may have fixes: to compare when known), Q60 for the hero's press
     (not built). A server game shows the entry's box where a local one shows the other hero's Orb
-    (684) or Cloak (537): `CLT-STUB-2`, the user's requirement of parity with local play, the
+    (684) or Cloak (537): `CLT-STUB-1`, the user's requirement of parity with local play, the
     facts requested from the battle and server lanes (G1). New in the asset tables: the heroes'
     `female` flag (harvested). Recorded: six stills (five exact, `msg-remove` 548 pixels of the
     original's redraw after the book) and five sequences; listed, not copied: the book's cursor

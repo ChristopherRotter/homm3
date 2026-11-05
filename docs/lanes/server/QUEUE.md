@@ -15,7 +15,7 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
   forbids casting, its spell level limit; public, as the original's book names the Orb's wearer
   and the Cloak's limit to both sides, `docs/epics/E17-design.md` §12.17). The battle lane's
   inbox holds the request for the observation; map it once it is there (a version). The client
-  reads it then (`CLT-STUB-2`).
+  reads it then (`CLT-STUB-1`).
 
 - 2026-11-04 (the client lane, E17 M6 T4b2a, CLT-Q46; **the user's request**, when online play
   needs it): **the attack and shot previews on a seat's wire.** With Creature Info on, the battle

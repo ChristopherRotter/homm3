@@ -5383,7 +5383,7 @@ the effects, their waits and Bloodlust's glow) and chose T5a (M5's items 5, 9, 8
   once the hero's press is built. Gap G1 (a server's seat does not know the other hero's Orb and
   Cloak): first answered "request, no box meanwhile"; at the review the user required a server
   game to behave exactly as a local one: the battle and server lanes are to carry each side's
-  two facts (their inboxes), the client's `CLT-STUB-2` waits for them.
+  two facts (their inboxes), the client's `CLT-STUB-1` waits for them.
 - **Built** (a builder agent; design §12.17, "As built"): `boxes::Facts` and `before_book` /
   `after_book` (the order of the original's tests, the box only when the engine refuses),
   `Battle::open_book`'s `Opened`, `Battle::refusal` and `nowhere`, the mouse posted after the
@@ -5403,5 +5403,5 @@ the effects, their waits and Bloodlust's glow) and chose T5a (M5's items 5, 9, 8
 - **The review's findings fixed** (a fresh reviewer, then a fixer): the acting side by the stack's
   controller (`Facts::of`), the mouse posted after a refusal box's OK rather than at its opening,
   `Battle`-level tests of the server's facts, §12.17's server behaviour stated once (the entry's
-  box meanwhile, `CLT-STUB-2`), a server of other content's wall aim noted (24, the bare aim),
+  box meanwhile, `CLT-STUB-1`), a server of other content's wall aim noted (24, the bare aim),
   §7.18's quoted text dropped.
