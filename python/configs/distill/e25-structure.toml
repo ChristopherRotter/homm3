@@ -10,6 +10,11 @@
 # ladder (T27's). Decision 5's first gate: a candidate at 0.60 agreement at 4 M. From python/:
 #
 #   uv run --group train python -m h3env.train.distill --teacher system --config configs/distill/e25-structure.toml --out runs/structure-1
+#
+# It resumes (E25 T26a): Ctrl-C stops it at the next minibatch, scored and saved (a part under 2
+# hours, the user's rule); each later part continues it to the budget:
+#
+#   uv run --group train python -m h3env.train.distill --resume runs/structure-1
 run = "configs/e25-neutral.toml"
 seed = 7
 samples = 4_000_000
