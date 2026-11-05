@@ -39,8 +39,9 @@ In `TRAPS.md`.
 Baseline 7f8c8c5 (#741, #742 merged; the sandbox restarted during the setup's full run, CI's green
 run on `master` stood for it; the original data staged as before). At the start (the user,
 asked): T8b2b kept whole; the merge's events by a new `ArmyRef::Garrison` and `StackChanged`.
-No version moved; no replay touched; the reach's loop untouched. In progress at this note: the
-scoped verify, then the pull request.
+No version moved; no replay touched; the walking loop untouched, the bench inside its gate
+against `master` (the passage +0.7 %, `reach-lifted-xl-144` +0.24 %). An independent review
+found one bug (the garrison's slots told to the visitor's owner), fixed.
 
 ### 2026-11-05 — T8b2a: the siege of a town its garrison defends
 

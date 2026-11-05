@@ -1361,5 +1361,21 @@ hero's slots plus a new garrison event). The code, tests and docs by the agent.
   the legal moves, the three `StackChanged` to blue alone before `BattleStarted`, the battle's
   setup with the merged army; `a_siege_against_a_visitor_keeps_its_merged_army_or_captures_the_town_with_the_attacker_outside`:
   red's retreat, then a horde's win with the levels answered;
+  `a_neutral_towns_garrison_slots_are_told_to_nobody`;
   `a_visitors_siege_with_nothing_to_merge_tells_no_stack`) and `tests/manage.rs` (the refusal
   on either end); `h3-cli`'s round trip.
+- **The bench** against a built `master` worktree (the same toolchain; nothing re-baselined):
+  `reach-lifted-xl-144` +0.24 % and `random-play-duel-36` +0.16 %, both the passage's own count
+  (+0.7 %, its hero branch's new test; every other function equal), `reach-xl-144` −0.03 %; the
+  fork workloads equal to `master`'s (both +1.38 % over their baselines in this sandbox: the
+  heap's state, not the change). Every workload inside the gate.
+- **The review** (independent, read only): one behaviour bug, fixed: the garrison's slots were
+  told to the visitor's owner; now to the town's (a neutral town's to nobody; tested with a
+  visitor placed on a neutral town). Its test gaps: a tie between a gain with room and a swap's
+  (tested); survivors in merged slots after a defender's win with losses (the battle's own
+  write-back, not new here). The first verify's coverage found two regions never run (`visit_at`'s
+  `?` on `town_visit`, now total; the passage's own `NoStop` arm, now the shared object path).
+- **Gates:** `cargo fmt`; the scoped verify with the original data passed every step (clippy,
+  check-rules, check-stubs, coverage 100 %, determinism, `bench-check`, `original-data`) but
+  `check-lane` (by design on a `cross-lane` branch); `check-lane --cross-lane`; `cargo check
+  --workspace --all-targets`; `h3-cli`'s tests.

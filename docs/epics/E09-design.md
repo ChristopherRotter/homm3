@@ -307,8 +307,11 @@ ADR-0015's amendment point 3, in the import's order:
   by a map's placement, TWN-SET-010), so `TWN-STUB-7` is lifted: `check_step`'s and the passage's
   hero branch, meeting such a visitor (`besieges`), visit the town instead (`visit_at`: from the
   tile before, a flight's from a stop node only, passing otherwise; a boat's step stays
-  `sail_entry`'s landing refusal), and the reach's cold `unmark_visitors` pass is kept, the
-  search's loop untouched (no new read: the bench flat). `siege_start` gives the visitor
+  `sail_entry`'s landing refusal; the passage leaves such a visitor out of its hero, so the town
+  is visited on every neighbour object's path), and the reach's cold `unmark_visitors` pass is
+  kept, the walking loop untouched (the bench against `master`: the passage +0.7 % of its own
+  count, `reach-lifted-xl-144` +0.24 %, `random-play-duel-36` +0.16 %, `reach-xl-144` −0.03 %;
+  inside the gate). `siege_start` gives the visitor
   `Defender::Hero` (its army as it stands). **The merge** is the game's composition, as an army
   command's: `settle_outcome` calls `h3_game`'s `town::merge` before `start_battle` for a siege
   whose defender is a hero; it calls `AdventureState::merge_garrison(core, part, town)`, which
