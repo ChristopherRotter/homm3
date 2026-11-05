@@ -288,4 +288,13 @@ fn the_dwellings_map_is_committed_as_written() {
         assert_eq!(object.anchor, moved);
         assert_eq!(object.holds, Holds::Nothing);
     }
+    // E08 T97a's audit: with the base pack's Angel Portal drawn (the first such seed), the 216's
+    // anchor is moved one right, to (19, 27).
+    let portal = adventure.object_type_by_key("base:portal_of_glory");
+    let drawn = (0..64).find_map(|seed| {
+        let state = GameState::new(&FAITHFUL, &setup, seed).unwrap();
+        let object = &state.adventure().map().objects()[5];
+        (object.object_type == portal).then_some(object.anchor)
+    });
+    assert_eq!(drawn, Some(Pos::new(19, 27, 0)));
 }
