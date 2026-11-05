@@ -936,7 +936,13 @@ mod tests {
         let ruleset = crate::scenario::compiled(&def, &packs).unwrap();
         let mut setup = crate::scenario::set_up(&def, &ruleset, 1).unwrap();
         setup.human = [true, true];
-        let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, true]).unwrap();
+        let mut live = crate::live::Live::new(
+            &ruleset,
+            setup,
+            1,
+            ([true, true], crate::live::Computer::Greedy),
+        )
+        .unwrap();
         let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
         let snapshot = record.first_snapshot().unwrap();
         // Every creature's DEF groups, four frames each (the looks' numbers do not matter here).
@@ -1153,7 +1159,13 @@ mod tests {
         let (scenario, packs) = (dir.join("scenarios/battle.toml"), dir.join("../packs"));
         let (ruleset, mut setup) = crate::scenario::battle(&scenario, &packs, 1).unwrap();
         setup.human = [true, true];
-        let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, true]).unwrap();
+        let mut live = crate::live::Live::new(
+            &ruleset,
+            setup,
+            1,
+            ([true, true], crate::live::Computer::Greedy),
+        )
+        .unwrap();
         let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
         let attacks = |t: &Turned| {
             (t.commands.iter())
@@ -1358,7 +1370,13 @@ mod tests {
                     double_damage_chance_bp: 0,
                 });
             }
-            let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, false]).unwrap();
+            let mut live = crate::live::Live::new(
+                &ruleset,
+                setup,
+                1,
+                ([true, false], crate::live::Computer::Greedy),
+            )
+            .unwrap();
             let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
             let mut acting = Vec::new();
             for _ in 0..12 {

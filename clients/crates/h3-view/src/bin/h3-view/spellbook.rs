@@ -1116,7 +1116,13 @@ pub(crate) mod tests {
             crate::scenario::battle(&dir.join("situations/book.toml"), &dir.join("../packs"), 1)
                 .unwrap();
         let (observation, record) = {
-            let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, false]).unwrap();
+            let mut live = crate::live::Live::new(
+                &ruleset,
+                setup,
+                1,
+                ([true, false], crate::live::Computer::Greedy),
+            )
+            .unwrap();
             (live.own_view().unwrap(), live.record().unwrap())
         };
         let manifest = h3_view::record::parse(&record).unwrap().header.manifest;

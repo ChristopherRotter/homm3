@@ -91,19 +91,23 @@ commands:
          [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--settings <file>]
          [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute]
          [--check <s> | --measure <s>] [--leave retreat|surrender] [--auto <n>]
+         [--sight fair|all-seeing]
           a battle in a window (SDL 3, h3-sdl), as `play` loads it, at the original's frame
           times from --from ms: each frame is shown when it falls due, at the largest integer
           scale that fits the display (--scale), vsync off unless --vsync, the game's cursor as
           the hardware cursor (--drawn-cursor: drawn into the frame); past the end the battle
-          idles. --human: a scenario's sides a human plays here (hot seat with both), the bot
-          the others; on a human's turn the battle waits for a left press over the battlefield
+          idles. --human: a scenario's sides a human plays here (hot seat with both), the
+          computer the others (the engine's original computer, E17 M6 T5b1, provisional: on its
+          side's world, --sight fair, the default, or seeing the whole battle, all-seeing; it may
+          cast and retreat); on a human's turn the battle waits for a left press over the battlefield
           or the panel's Wait or Defend (their buttons or their keys W, D and Space), the spell
           book (its button or C; a spell that takes a target aimed: a press casts, Esc or the
           right button gives it up), a Faerie Dragon's spell (F aims it), Retreat or Surrender
           (their buttons or R and S, then the question's OK or Enter; Cancel or Esc keeps
-          fighting), Auto Combat (its button or A, against the bot: the bot plays the human's
-          stacks too, the panel dimmed but its button, selected; any key or press of the battle
-          stops it as the next turn starts), the combat options (its button or O: the dialog;
+          fighting), Auto Combat (its button or A, against the computer: the computer plays the
+          human's stacks too by the options' boxes, the panel dimmed but its button, selected,
+          and with Combat Auto Spells casts for the human's hero as each turn starts; any key or
+          press of the battle stops it as the next turn starts), the combat options (its button or O: the dialog;
           Default, the speeds, the volumes, the boxes; OK, Enter or Esc closes it; the right
           button over a control its help). A battle fought here ends in its result window over the screen darkened;
           its OK (or Enter or Esc) closes the window. With sound
@@ -132,8 +136,9 @@ commands:
           Combat options and the army info level are kept only. --measure runs
           <s> seconds unattended and prints how late each frame showed; --check also reads
           every frame back and compares it with the frame drawn headless (exit 1 on a
-          difference); unattended, a human's commands are the bot's choices pressed by the
-          window, the battle checked against the bot's at once; --leave makes the human side
+          difference); unattended, a human's commands are a fixed bot's choices pressed by the
+          window, the battle checked against the same battle fought again at once (the
+          computer's choices asked again in order); --leave makes the human side
           retreat or surrender through its question at its first turn it may; --auto switches
           Auto Combat on at the human's turn of that number (from 1) and stops it by a press
           two commands later. Instead of a scenario or a record, --server <ws://… | wss://…>
