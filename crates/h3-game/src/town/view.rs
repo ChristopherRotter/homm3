@@ -24,11 +24,13 @@ pub const OWNER_LEVEL: u8 = 3;
 /// a Tavern up to two.
 pub const TAVERN_LEVELS: u8 = 2;
 
+/// The level from which a viewer sees each stack's size word (TWN-VEW-002).
+const WORDS_LEVEL: u8 = 2;
+
 /// A town as a viewer sees it (TWN-VEW-001 to -003; E09 T8c1): what the original shows another
 /// player on the map, in the hint and in the right-click popup, and its owner's team more. Named
-/// by its `TownId` (ADR-0028 point 3), the object's [`h3_adventure::ObjectView::town`]. Never
-/// its other
-/// buildings, the ever-built set, the defender's bonuses or the Escape Tunnel, nor a draw's
+/// by its `TownId` (ADR-0028 point 3), the object's [`h3_adventure::ObjectView::town`]. Never its
+/// other buildings, the ever-built set, the defender's bonuses or the Escape Tunnel, nor a draw's
 /// values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TownView {
@@ -117,13 +119,15 @@ pub(crate) fn town_views(
         .iter()
         .filter_map(|object| {
             let town = object.town?;
-            let index = map.town_object(town)?;
             // rule: TWN-VEW-001
-            map.objects()[index]
-                .tiles(map)
-                .any(|pos| observation.is_explored(pos))
-                .then_some(())?;
-            let record = towns.get(town)?;
+            let (index, record) =
+                map.town_object(town)
+                    .zip(towns.get(town))
+                    .filter(|&(index, _)| {
+                        map.objects()[index]
+                            .tiles(map)
+                            .any(|pos| observation.is_explored(pos))
+                    })?;
             let ours = object.owner.is_some_and(|owner| allied(owner, viewer));
             // rule: TWN-VEW-002, TWN-VEW-003
             // stub: TWN-STUB-9 (a Rogue's Visions in reach, the top level too: E09 T8c2)
@@ -184,7 +188,7 @@ fn garrison_view(rules: &GameRuleset, army: &[ArmyStack], level: u8, ours: bool)
         army.iter()
             .map(|stack| GarrisonStackView {
                 creature: stack.creature,
-                count_word: (level >= TAVERN_LEVELS)
+                count_word: (level >= WORDS_LEVEL)
                     .then(|| words.map_or(0, |w| w.count_word(stack.count))),
                 count: (level >= OWNER_LEVEL).then_some(stack.count),
             })

@@ -26,8 +26,9 @@ packs' and the harvest's files; round 9, design §12, §17)
   town at `OWNER_LEVEL` (the counts and `owner_facts`, never `GarrisonView::army`, the owner's
   team's); the town part's hash bumps (v3) with the parameters in the three packs'
   `towns.toml`, the synthetic packs and the harvest's gap-fill. `docs/06-security.md`'s section
-  "Towns (E09 increment 1)" (design §12's words with T8c1's "As built": a `shared/` pull request,
-  merged first or beside). Inbox notes to the map client (E24: `GameObservation::towns`,
+  "Towns (E09 increment 1)" (design §12's words with T8c1's "As built", and that a seen town's
+  `TownId` tells how many towns come before it in object order, seen or not, as ADR-0028 point 3
+  allows: a `shared/` pull request, merged first or beside). Inbox notes to the map client (E24: `GameObservation::towns`,
   `ObjectView::town`) and the AI lane (the observation's new field, the day's town income).
 - **Depends on:** T8c1 (its pull request). **Status:** next; its cut confirmed at its start.
 

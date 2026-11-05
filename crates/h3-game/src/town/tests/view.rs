@@ -8,7 +8,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{Pos, TileSetup};
-use h3_content::{CreatureTypeId, ResourceId, TerrainId};
+use h3_content::{CreatureTypeId, ProfileDef, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{
     BuildingDef, BuildingRoles, BuildingsSetup, GarrisonCreature, GarrisonStack, SlotSet,
@@ -16,9 +16,10 @@ use h3_towns::{
 };
 
 use super::{
-    CAPITOL_SLOT, SILO_SLOT, faction, rules_of, town_object, town_pack, towns_core, towns_rules,
-    towns_rules_on, towns_setup,
+    CAPITOL_SLOT, SILO_SLOT, faction, rules_of, town_object, town_pack, towns_core,
+    towns_core_pack, towns_rules, towns_setup,
 };
+use crate::tests::key;
 use crate::{
     GameRuleset, GameSetup, GameState, GarrisonStackView, GarrisonView, OWNER_LEVEL, TownOwnerView,
     TownView, Viewer, observe,
@@ -257,11 +258,21 @@ fn a_neutral_town_is_nobodys_team() {
     }
 }
 
-// covers: TWN-VEW-001
-#[test]
-fn a_town_no_tile_of_which_the_viewer_sees_is_not_shown() {
-    let rules = towns_rules_on(false, 16);
-    let mut setup = towns_setup(&rules);
+/// The town tests' rules on a 16 × 16 map whose profile shows objects on the fringe
+/// (ADV-QUIRK-1, `faithful`'s).
+fn fringe_rules() -> GameRuleset {
+    let mut pack = towns_core_pack(false);
+    pack.profiles.push(ProfileDef {
+        key: key("t:fringe"),
+        quirks: vec![("quirk.adventure.fringe_shows_objects".to_string(), true)],
+    });
+    let core = Ruleset::compile(&[pack], "t:fringe").unwrap();
+    rules_of(core, &town_pack(false), false, 16)
+}
+
+/// [`towns_setup`] on a 16 × 16 map, blue's town at `blue`.
+fn wide(rules: &GameRuleset, blue: Pos) -> GameSetup {
+    let mut setup = towns_setup(rules);
     setup.map.width = 16;
     setup.map.height = 16;
     setup.map.tiles = vec![
@@ -273,15 +284,40 @@ fn a_town_no_tile_of_which_the_viewer_sees_is_not_shown() {
         };
         256
     ];
-    setup.map.objects[1].anchor = Pos::new(14, 14, 0);
-    let game = GameState::new(&rules, &setup, 7).unwrap();
+    setup.map.objects[1].anchor = blue;
+    setup
+}
+
+// covers: TWN-VEW-001
+#[test]
+fn a_town_no_tile_of_which_the_viewer_has_explored_is_not_shown() {
+    let rules = fringe_rules();
+    let far = Pos::new(14, 14, 0);
+    let game = GameState::new(&rules, &wide(&rules, far), 7).unwrap();
     let red = observe(&game, &rules, Viewer::Player(RED));
     let blue = observe(&game, &rules, Viewer::Player(BLUE));
     // Red's town's reveal and its hero's do not reach blue's town; blue's hero's reaches red's.
-    assert!(!red.adventure.is_explored(Pos::new(14, 14, 0)));
+    assert!(!red.adventure.is_explored(far));
     let towns = |towns: &[TownView]| towns.iter().map(|t| t.town).collect::<Vec<_>>();
     assert_eq!(towns(&red.towns), [T0]);
     assert_eq!(towns(&blue.towns), [T0, T1]);
-    let linked: Vec<_> = red.adventure.objects.iter().map(|o| o.town).collect();
-    assert_eq!(linked, [Some(T0)]);
+    let linked = |view: &crate::GameObservation| {
+        view.adventure
+            .objects
+            .iter()
+            .map(|o| o.town)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(linked(&red), [Some(T0)]);
+    // On red's fringe the profile shows blue's town as an object, linked, but gives no view: the
+    // popup reads an explored tile only.
+    let fringe = (0..16)
+        .map(|x| Pos::new(x, 1, 0))
+        .find(|&pos| red.adventure.is_fringe(pos))
+        .unwrap();
+    let game = GameState::new(&rules, &wide(&rules, fringe), 7).unwrap();
+    let red = observe(&game, &rules, Viewer::Player(RED));
+    assert!(red.adventure.is_fringe(fringe));
+    assert_eq!(linked(&red), [Some(T0), Some(T1)]);
+    assert_eq!(towns(&red.towns), [T0]);
 }

@@ -29,10 +29,13 @@ pub(crate) fn add_income(
         .filter(|&(&index, _)| adventure.owner(index) == Some(player))
         .filter_map(|(_, town)| towns.get(town));
     for town in owned {
-        for (resource, amount) in h3_towns::daily_income(town, part) {
-            if let Some(entry) = income.get_mut(resource.index()) {
-                *entry = entry.saturating_add(amount);
-            }
+        let daily = h3_towns::daily_income(town, part);
+        for (resource, entry) in income.iter_mut().enumerate() {
+            let amount = daily
+                .iter()
+                .find(|(r, _)| r.index() == resource)
+                .map_or(0, |&(_, amount)| amount);
+            *entry = entry.saturating_add(amount);
         }
     }
 }

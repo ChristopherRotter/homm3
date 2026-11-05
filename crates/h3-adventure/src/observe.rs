@@ -163,8 +163,8 @@ pub struct ObjectView {
     pub boat_tile: Option<Pos>,
     /// The town it is (E09 T8c1, the town epic's design note §17; ADR-0028 point 3: observations
     /// name a town by its `TownId`), for every viewer that sees it: what the viewer sees of the
-    /// town is the game's view of it under that id (`h3_game::TownView`); none for every other
-    /// object.
+    /// town is the game's view of it under that id (`h3_game::TownView`), which a town only on
+    /// the viewer's fringe has none of (TWN-VEW-001); none for every other object.
     pub town: Option<TownId>,
 }
 

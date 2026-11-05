@@ -384,7 +384,7 @@ The words for `docs/06-security.md` (a section "Towns (E09 increment 1)"):
   town's cursor).
 - **The garrison** to another team's viewer by its **level**, the number of the viewer's towns
   with a standing `tavern` building, at most 2: 0 nothing (not even whether it is empty); 1 each
-  stack's creature by slot; 2 also each stack's size word (E08's monster words). The counts, the
+  stack's creature, packed in slot order (never the slots); 2 also each stack's size word (E08's monster words). The counts, the
   hall, the day's income and the silo's resources for the **owner's team**, or a viewer one of
   whose heroes has a Rogue in its army with the town on its level within its Visions radius
   (Visions' expert factor × the hero's power, at least 3; the factor a town part parameter until
@@ -576,7 +576,8 @@ new owner the next day. Several Capitols at the start pay 4 000 each (§11.3).
 
 `GameObservation::towns: Vec<TownView>` in `TownId` order, the towns of which the viewer has
 explored a tile: `town`, `anchor`, `owner`, `faction`, `name`, `fort`, `capitol`, `garrison:
-GarrisonView` (`level`, then by level the creatures by slot, their words, their counts),
+GarrisonView` (`level`, then by level the creatures packed in slot order, their words, their
+counts),
 `owner_facts: Option<TownOwnerView { hall, income, silo }>` (§12's rules). The adventure's
 `ObjectView::town` links an object to its view. `project` passes `TownCaptured` and `TownChanged`
 to the viewers of §12. The map client (E24) and the env read the same (notes to their inboxes
