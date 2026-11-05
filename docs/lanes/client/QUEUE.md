@@ -31,8 +31,11 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 - **Acceptance:** each built and recorded, or its reason in M6's review list; `check.sh`.
 - **Depends on:** T4 (the Auto Combat options). **Status:** cut in four by the user
   (2026-11-05): **T5a** done (the book's refusals, the aim's other messages, the walls' aim;
-  design §12.17); **T5b**
-  the Auto Combat bot's casts for the human's hero and its retreat question (item 24); **T5c**
+  design §12.17); **T5b** cut in two by the user (2026-11-05): **T5b1** done (the window's
+  computer the engine's original one, `--sight`; its casts for the human's hero; design §12.18;
+  CLT-Q61, Q62 answered); **T5b2** the retreat question (0x477F56: the box, its OK and Cancel, a
+  human's surrender or retreat, asked once a battle; `Decision::retreat_test`, CLT-STUB-2) and
+  CLT-Q61's stop between the computer's cast and the stack's action, both recorded; **T5c**
   Eagle Eye's message and the experience given after the result window (item 79); **T5d** the
   effects not drawn yet, their sounds' waits and the Ogre Magi's Bloodlust glow (items 42, 45;
   cut again at its start if needed).

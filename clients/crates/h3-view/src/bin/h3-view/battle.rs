@@ -29,7 +29,7 @@ use h3_view::anim::{
     self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed, Stage,
 };
 use h3_view::army_info::Drawn;
-use h3_view::auto::{Acting, Auto, SPELLS, turn_at};
+use h3_view::auto::{Acting, Auto, turn_at};
 use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
@@ -1056,7 +1056,8 @@ impl<'g> Battle<'g> {
     /// computer or waits); the last turn started from when Auto Combat handed it over, a switch
     /// in it too (E17 M6 T5b1: its stack's action after the hero's cast). And whether its start
     /// asked the computer for a human's hero's cast (E17 M6 T5b1, design §12.18: Auto Combat on
-    /// as it started and Combat Auto Spells set then, `Auto::asks_cast`).
+    /// as it started and Combat Auto Spells set then, `Auto::asks_cast`; in the client's profile
+    /// only on a turn it plays, CLT-Q62).
     fn auto_turn(&self, next: bool) -> (bool, bool) {
         let mut starts: Vec<u32> = std::iter::once(0)
             .chain(self.played.timeline().turns.iter().map(|&(t, _)| t))
@@ -1071,7 +1072,7 @@ impl<'g> Battle<'g> {
         } else {
             auto.plays(k, u32::MAX)
         };
-        (plays, auto.asks_cast(k, self.boxes_at(k)))
+        (plays, auto.asks_cast(k, self.boxes_at(k), Bugs::Fixed))
     }
 
     /// The Auto Combat boxes as turn `k` started (E17 M6 T5b1, `h3_view::auto::boxes_at`): the
@@ -1151,13 +1152,13 @@ impl<'g> Battle<'g> {
     /// The computer's command for the turn `turn` waiting if Auto Combat plays it at `at` (a
     /// switch or a box set); E17 M6 T5b1 (design §12.18): a switch on runs the turn's start
     /// again, so with Combat Auto Spells set (the boxes now) the computer is asked for the
-    /// human's hero's cast first, whether the stack plays itself or not (after it, a stack that
-    /// does not waits for the human again). Else the panel made again (its button). Whether
-    /// anything changed.
+    /// human's hero's cast first; the original's whether the stack plays itself or not, the
+    /// client's (CLT-Q62) only when it does (`Auto::asks_cast_at`). Else the panel made again
+    /// (its button). Whether anything changed.
     fn hand_over(&mut self, turn: usize, at: u32, switched: bool) -> Result<bool, String> {
         let auto = self.auto();
         let plays = auto.plays(turn, at);
-        let cast = switched && auto.on(turn, at) && self.boxes_at(usize::MAX)[SPELLS];
+        let cast = switched && auto.asks_cast_at(turn, at, self.boxes_at(usize::MAX), Bugs::Fixed);
         if let Some(live) = Fight::here(self.fight.as_mut()) {
             live.set_auto(plays);
             if cast {

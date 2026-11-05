@@ -5446,4 +5446,11 @@ engine's whole choice.
   (130, 35 changes); `auto-cast-human` 41 frames exact, `auto-cast` 131 frames, 84 of them 2
   pixels of the walk's redraws over Orrin (artifacts, as `walk`'s), the rest exact; the client
   unchanged. A finding for the battle lane: the original's computer walked the Champions to 62,
-  the engine's to 45. `drawn`: 247, all the same after `--record`.
+  the engine's to 45 (its inbox, informational). `drawn`: 247, all the same after `--record`.
+- **Reviewed** (a fresh reviewer): no defect in the cast's timing, the stop and switch, the seat
+  streams or `--sight`; three small findings fixed (a test that checked a deleted file, §7.22's
+  "Not built", a comment). **Asked and answered** (the user, 2026-11-05): CLT-Q61 copy (the stop
+  between the cast and the action; not built, T5b2's), CLT-Q62 fixed in the client's profile (the
+  cast asked only on a turn Auto Combat plays: `Auto::asks_cast` and `asks_cast_at` take `Bugs`).
+  `check.sh`; the PRs: #739 (the engine's parts, cross-lane) and #740 (`clients.yml`, shared),
+  both merged first; the branch rebased on them.

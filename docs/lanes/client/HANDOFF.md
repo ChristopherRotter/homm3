@@ -18,9 +18,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#722). **T4c done** (kept whole by the user: the grid, the movement and cursor shadows, the
   aims' shades, F6 to F8 saved at once, §12.16; CLT-Q52 to Q56 answered, all fixed; 11 stills
   exact, 5 sequences; #729 merged). T4 done. **T5** cut in four by the user (2026-11-05):
-  **T5a done** (design §12.17; PR #736 from `client/e17-m6-t5a`: check it first). **Next: T5b**
-  (the Auto Combat bot's casts and retreat question), T5c, T5d (QUEUE), T6, T7; then M7 ranked
-  play and the server browser.
+  T5a done (#736, design §12.17); T5b cut in two by the user (2026-11-05): **T5b1 done** (design
+  §12.18: the window's computer the engine's original one, `--sight fair|all-seeing`, fair by
+  default; its casts for the human's hero; the PR from `client/e17-m6-t5b1`: check it first).
+  **Next: T5b2** (the retreat question and CLT-Q61's stop), T5c, T5d (QUEUE), T6, T7; then M7
+  ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -32,8 +34,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   situations M6 T6), CLT-Q42 (T3b2: copy recommended, built so), CLT-Q43 and Q44 (T4a: fixes
   recommended, built as the original's). `CLT-STUB-1` (T5a, G1: a server's seat lacks the other
   hero's Orb and Cloak; the user requires parity with local play, asked of the battle and server
-  lanes) is commented in `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/`
-  change). Next ids: CLT-Q61, CLT-STUB-2.
+  lanes) and `CLT-STUB-2` (T5b1: Auto Combat asks no retreat test, T5b2's) are commented in
+  `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/` change). An engine change
+  the lane needs goes as a small cross-lane PR with the user's consent (#739 was one). Next ids:
+  CLT-Q63, CLT-STUB-3.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -53,7 +57,18 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-05, E17 M6 T5a (done; PR #736: check it first).**
+- **2026-11-05, E17 M6 T5b1 (done; its PR: check it first).**
+  The original data staged (57 files, by the file tool: the device shell did not start); the VM
+  restarted during the baseline (CI's green `master` stood for it). The user cut T5b in two,
+  chose the engine's parts by a cross-lane PR (#739, `h3_battle_ai::Decision`, `Sight`; its
+  battle scoped verify passed) and the fair actor with an all-seeing toggle for the computer and
+  Auto Combat; `clients.yml`'s path went alone (#740); both merged, the branch rebased. A
+  builder, a capture agent (two sequences: the original casts as the engine; 41 and 131 frames,
+  the latter's 84 the walk's known 2-pixel artifacts), a fresh reviewer (three small findings
+  fixed); CLT-Q61 (copy, T5b2's) and Q62 (fixed in the client's profile, built) answered.
+  `check.sh`; a walk divergence to the battle lane's inbox.
+
+- **2026-11-05, E17 M6 T5a (done; #736 merged).**
   The original data staged (57 files, by the file tool; the device dropped twice, nothing lost);
   the baseline's `check.sh` passed. The user cut T5 in four and chose T5a. A reader (§12.17;
   CLT-Q57 to Q60 asked and answered at once: Q57 and Q60 fixed, Q58 and Q59 copied
@@ -68,12 +83,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   builder (`h3_view::shades`), the captures (11 stills exact, 5 sequences; the sandbox's server
   stopped overnight mid-capture: resumed, nothing lost) and a fresh reviewer (five findings
   fixed; the targeted aims call no `battle_set_shades`, read). `drawn` 219 the same, 16 new (235 the same after the review); `check.sh`.
-
-- **2026-11-04, E17 M6 T4b2b2 (done; #722 merged).**
-  The original data staged (93 files, by the file tool: the device shell did not start); #717
-  had merged; the baseline's `check.sh` passed. The task kept whole (its windows and a still's
-  status line are recorded together). A builder (`h3_view::army_info`'s stacks' windows, the
-  fill from the stats dialog's numbers, CLT-Q48 by profile, a still's previews), the captures
-  (six stills exact; kind 2's ids read from the original's memory), a fresh reviewer (five
-  findings: the still's same-slot line rewrite, docs, tests; fixed) and CLT-Q51 (negative
-  luck's icon) asked and answered: copied. `drawn` 213 the same, 6 new; `check.sh`.

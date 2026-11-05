@@ -15,6 +15,8 @@
 
 use alloc::vec::Vec;
 
+use h3_render::Bugs;
+
 use crate::mouse::track::Input;
 
 #[cfg(test)]
@@ -265,12 +267,23 @@ impl Auto {
     /// design §12.18: `ai_hero_cast_turn` 0x422DA0 at the end of `battle_controls_state`, its
     /// gate 0x422E42): Auto Combat on as the turn starts, its start's stop read (a stop found
     /// there runs `battle_controls_state` again without it, which clears the cast set: 0x47425B),
-    /// and Combat Auto Spells set among `boxes`, the boxes then ([`boxes_at`]); whether its stack
-    /// plays itself or not. The hero's own tests (cast this round, a war machine's turn, the
-    /// tactics phase, its book, the Orb, a garrison) are the engine's.
+    /// and Combat Auto Spells set among `boxes`, the boxes then ([`boxes_at`]). The original's
+    /// asks it whether the stack plays itself or not; the client's profile (`bugs`, CLT-Q62,
+    /// the user 2026-11-05) only on a turn Auto Combat plays from its start, a turn the human
+    /// plays keeping the hero's cast the human's. The hero's own tests (cast this round, a war
+    /// machine's turn, the tactics phase, its book, the Orb, a garrison) are the engine's.
     #[must_use]
-    pub fn asks_cast(&self, k: usize, boxes: [bool; 5]) -> bool {
-        boxes[SPELLS] && self.on_at_start(k)
+    pub fn asks_cast(&self, k: usize, boxes: [bool; 5], bugs: Bugs) -> bool {
+        boxes[SPELLS] && self.on_at_start(k) && (bugs == Bugs::Original || self.from_start(k))
+    }
+
+    /// Whether Auto Combat's switch at `t` in turn `k` asks the computer for the hero's cast (E17
+    /// M6 T5b1: the switch runs the turn's start again, 0x474E73): on at `t` and Combat Auto
+    /// Spells set among `boxes`, the boxes now; in the client's profile (CLT-Q62) only when it
+    /// then plays the turn.
+    #[must_use]
+    pub fn asks_cast_at(&self, k: usize, t: u32, boxes: [bool; 5], bugs: Bugs) -> bool {
+        boxes[SPELLS] && self.on(k, t) && (bugs == Bugs::Original || self.plays(k, t))
     }
 
     /// Whether a key or a button pressed while it was on waits at turn `k`'s end for the next

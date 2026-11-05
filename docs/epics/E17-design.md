@@ -6793,13 +6793,16 @@ the next stack after a cast only when it killed the active stack (0x47905B).
   computer's dice whether it casts or not. The stop runs `battle_controls_state` without Auto
   Combat, which clears a cast set (+0x3C) and asks none: a stop found as a turn starts cancels
   that turn's cast. A box changed in the options dialog runs nothing (§12.13): no cast asked.
-- **Oddities:** none new; the panel over a human-played turn under Auto Combat (lit, the button
-  unselected while the computer casts for the hero) is CLT-Q45 (1)'s, fixed in the client's
-  profile. Two candidates for the lane's review (not asked yet): (1) the stop read between the
-  computer's cast and the action of a stack that plays itself (below, *not built*); (2) with
-  Creatures cleared and Spells set, the computer spends the hero's cast of the round at the start
-  of a turn the human plays, before the human could open the book (the option's meaning:
-  recommended copy, built so).
+- **Oddities** (asked: 1 as CLT-Q61, 2 as CLT-Q62; answered by the user on 2026-11-05): the
+  panel over a human-played turn under Auto Combat (lit, the button unselected while the computer
+  casts for the hero) is CLT-Q45 (1)'s, fixed in the client's profile. (1) A key pressed during
+  the computer's cast for a stack that plays itself is read before that stack's action: Auto
+  Combat stops there and the action is the human's (CLT-Q61: **copy**; *not built*, T5b2's; the
+  client's stop waits for the next turn's start). (2) With Creatures cleared and Spells set, the
+  computer spends the hero's cast of the round at the start of a turn the human plays, before the
+  human could open the book (recorded, `auto-cast-human`; CLT-Q62: **fixed in the client's
+  profile**: the cast asked only on a turn Auto Combat plays, `Auto::asks_cast` and
+  `asks_cast_at` with `Bugs::Fixed`; the original's for the comparisons).
 - **The client's (M6 T5b1, *provisional* where marked):**
   - The window's computer (the user, 2026-11-05): `live::Computer::Original(sight)`, the engine's
     original computer, its whole choice for its side (`h3_battle_ai::choose_fair` for
@@ -6823,11 +6826,13 @@ the next stack after a cast only when it killed the active stack (0x47905B).
     turn under way after a cast, `Played::turned` false: Auto Combat from when it handed the turn
     over, `Auto::plays`), whether Auto Combat plays it and whether its start asks the cast
     (`h3_view::auto::Auto::asks_cast`: on as it started, its stop read, and Spells by the boxes
-    then, `auto::boxes_at`); `take` tells `Live` both, `play_next` again as the turn starts (a
+    then, `auto::boxes_at`; in the client's profile only on a turn Auto Combat plays from its
+    start, CLT-Q62); `take` tells `Live` both, `play_next` again as the turn starts (a
     stop since). A cast declined over a human-played turn makes it wait, outlined from its start
     (`outline_waiting`, as a stop). The switch (`hand_over`): with Auto Combat now on and Spells
-    set (the boxes now) the cast is asked first (`Battle::computer_at`, at the switch's time),
-    then the action if the stack plays itself, else the turn waits on. The computer's cast is
+    set (the boxes now; in the client's profile only when Auto Combat then plays the turn,
+    `Auto::asks_cast_at`, CLT-Q62) the cast is asked first (`Battle::computer_at`, at the
+    switch's time), then the action if the stack plays itself, else the turn waits on. The computer's cast is
     pushed as the computer's command (no time: an idle step only if one is due, the cast
     clearing and restoring the outline, §7.9), also on a human-played turn: as recorded (below,
     no outline before the cast in either case). A key or a press while
@@ -6888,8 +6893,8 @@ the next stack after a cast only when it killed the active stack (0x47905B).
   screen does and nowhere else. `auto-cast` ends at 9 000 ms, in the shot (the questions end at
   its start).
 - **Not built:** the retreat question (T5b2, CLT-STUB-2: the test not asked, so a human's side
-  under Auto Combat never leaves); the stop read between the cast and the action (the original
-  reads a key pressed during the computer's cast for a stack that plays itself at the pass after
-  the cast, so that stack's action is the human's; the client's stop waits for the next turn's
-  start, its `Auto::of` taking stops at turn starts only); a hidden battle's and a remote turn's
+  under Auto Combat never leaves); the stop read between the cast and the action (CLT-Q61, copy:
+  the original reads a key pressed during the computer's cast for a stack that plays itself at
+  the pass after the cast, so that stack's action is the human's; the client's stop waits for the
+  next turn's start, its `Auto::of` taking stops at turn starts only; T5b2's, with a recording); a hidden battle's and a remote turn's
   asks (no such battle here).
