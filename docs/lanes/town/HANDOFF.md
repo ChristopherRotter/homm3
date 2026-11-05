@@ -14,7 +14,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   defended town and another team's visitor are refused (`TWN-STUB-7`); the guild's spells at the
   start wait for increment 4 (`TWN-STUB-6`, TD-10). **Next: T8b** (the siege; its queue entry),
   once T8a2's pull request merges; then rounds 9, 10 in the epic's list.
-- **Open pull requests:** PR_T8A2, branch `town/e09-t8a2` (T8a2, `cross-lane`: `h3-adventure`'s
+- **Open pull requests:** #733, branch `town/e09-t8a2` (T8a2, `cross-lane`: `h3-adventure`'s
   `state.rs`, `reach.rs`, `command.rs`, `observe.rs`, `ruleset/objects.rs`, `state/passage.rs`,
   `state/economy.rs` and tests; `h3-game`'s `state.rs`, `command.rs`, `observe.rs`, `legal.rs`; `h3-map`'s
   `tests/view.rs`; the adventure lane's `TRAPS.md`).

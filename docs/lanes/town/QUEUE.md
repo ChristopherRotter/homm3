@@ -26,7 +26,7 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
   (§10), the defender (`Defender::Hero`, `Garrison`, `Guards`), the siege's `BattleSetup` (§15);
   the outcome: an attacker's win captures through T8a2's composition with the attacker outside
   (TWN-CAP-003), a beaten hero leaves the map back to the pool, the survivors as §11.
-- **Depends on:** T8a2 (PR_T8A2). **Status:** next; its cut confirmed at its start.
+- **Depends on:** T8a2 (#733). **Status:** next; its cut confirmed at its start.
 
 ## Inbox
 
