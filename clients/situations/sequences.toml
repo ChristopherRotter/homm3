@@ -1735,8 +1735,8 @@ cursor_shadow = 1
 actions = [
     "aim:0:13", "at:300", "move:630,196", "at:600", "move:696,322", "at:900", "move:542,196",
     "at:1200", "key:Escape", "at:1400", "aim:1:12", "at:1700", "move:608,154", "at:2000",
-    "key:Escape", "at:2200", "key:d", "turn:1.0", "aim:0:13", "at:4000", "move:542,196",
-    "at:4300", "move:608,238", "at:4600", "key:Escape",
+    "key:Escape", "at:2200", "key:d", "turn:1.0", "at:2400", "aim:0:13", "at:2700",
+    "move:542,196", "at:3000", "move:608,238", "at:3300", "key:Escape",
 ]
 ms = 400
 timeline = "timelines/shade-wall.txt"

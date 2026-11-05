@@ -49,6 +49,7 @@ fn aim(original: u16, area: Option<Area>) -> Aim {
         polarity: -1,
         level: 3,
         anti_magic: None,
+        unaffected: Vec::new(),
         mastery: 0,
     }
 }
@@ -138,6 +139,13 @@ fn an_area_aim_shades_its_hexes_and_off_the_field_the_original_s_alone() {
         [72, 73, 89, 90, 91, 106, 107]
     );
     assert!(area_shade(&aim(15, None), &fixed, 90).is_empty());
+    // A stack the spell may not affect (`shade-area`'s Efreeti): unmarked, its hexes left out.
+    let spared = Aim {
+        unaffected: vec![1],
+        ..fireball.clone()
+    };
+    assert!(spared.marks(&fixed, 90).is_empty());
+    assert_eq!(area_shade(&spared, &fixed, 90), [72, 73, 91, 106, 107]);
     // Inferno off the field: the original's hexes 1 and 18 and its marks of their stacks; the
     // client's none (CLT-Q55).
     let inferno = aim(22, Some(area(2, true)));

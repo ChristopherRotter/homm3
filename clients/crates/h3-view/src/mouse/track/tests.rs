@@ -572,6 +572,7 @@ fn arrow(creature: bool) -> Aim {
         polarity: -1,
         level: 1,
         anti_magic: None,
+        unaffected: Vec::new(),
         mastery: 0,
     }
 }

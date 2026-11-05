@@ -73,6 +73,11 @@ pub struct Aim {
     pub mastery: u8,
     /// Anti-Magic's handle (a stack under it "protects" from the spells below its level).
     pub anti_magic: Option<u16>,
+    /// The stacks the spell may not affect, by number, sorted (E17 M6 T4c: an area's marks and
+    /// shade leave them out, `aim_area_marks` 0x59F8A0 by `spell_effect_factor` 0x5A8090; the
+    /// engine's answer for a hero's aim, *provisional*: none known for a creature's or a
+    /// server's).
+    pub unaffected: Vec<u8>,
 }
 
 /// The executable's number of where the mouse is (`screen_to_hex`): a hex's own, the heroes'
@@ -188,8 +193,9 @@ impl Aim {
     /// Off the field the original's arithmetic takes a hex −1 as row 0's column −1, so Inferno's
     /// radius 2 marks the stacks on hexes 1 and 18 (§12.16's oddity 5, CLT-Q55: fixed, the
     /// original's for the comparisons only; Berserk's marks, `stacks_in_area`, not read: none).
-    /// *Provisional:* the executable marks only the stacks the spell may affect (0x5A8090 above
-    /// 0); the client marks every living stack of the area.
+    /// Only the stacks the spell may affect are marked (0x5A8090 above 0; E17 M6 T4c, recorded
+    /// in `shade-area`: the Efreeti under Fireball and Inferno): those of [`Aim::unaffected`]
+    /// are left out.
     #[must_use]
     pub fn marks(&self, field: &Field<'_>, hex: i32) -> BTreeSet<u8> {
         let on_field = (0..i32::from(COLUMNS * ROWS)).contains(&hex);
@@ -201,7 +207,7 @@ impl Aim {
         // By stack, not by hex (E17 M5 T8b2, R4b-5): each living stack whose hex of the area
         // finds it (the first living stack on a hex, as the scan by hex did).
         (field.observation.stacks.iter())
-            .filter(|s| s.alive)
+            .filter(|s| s.alive && self.unaffected.binary_search(&s.id).is_err())
             .filter(|s| {
                 (field.hexes(s).into_iter())
                     .any(|h| within(h) && field.at(h).is_some_and(|o| o.id == s.id))
