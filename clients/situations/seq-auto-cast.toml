@@ -1,0 +1,63 @@
+# E17 M6 T5b1 (design §12.18): the computer's casts for the human's hero under Auto Combat, the
+# battle of `seq-cast.toml` (the Champions' turn first, speed 9, then the Marksmen's, the Wolf
+# Riders' and the Goblins'), Orrin's book holding Bless alone and his mana four casts. With Combat
+# Auto Spells set, Auto Combat's switch at the opening runs the Champions' turn start again: the
+# computer is asked for Orrin's cast (0x422DA0) and casts nothing; as the Marksmen's turn starts
+# it is asked again and casts Bless on them, before their action (Creatures set: the computer's
+# shot; cleared: the human's, the turn waiting after the cast), the original's computer as the
+# engine's. The battle of the recorded sequences `auto-cast` and `auto-cast-human`; on grass at
+# the capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-auto-cast"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): Auto Combat's button is
+# disabled when both players are human (0x46BB40).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 30
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge, 2 (20 spell points:
+# Bless at 5 four times); Orrin's book Bless alone. Crag Hack has no book: the computer's own side
+# casts nothing.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:bless"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

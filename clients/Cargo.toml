@@ -45,6 +45,10 @@ h3-pack-battle = { path = "../crates/h3-pack-battle" }
 # battle as a map the original plays (`h3-view situation`), with h3-map's writer; and the ruleset's
 # type, which the scenario adapter names. Never in a pure crate.
 h3-content-battle = { path = "../crates/h3-content-battle" }
+# The original's computer (E17 M6 T5b1, ADR-0027): the window's computer opponent and Auto
+# Combat's parts for a human's side (`h3_battle_ai::choose`, `choose_fair`, `Decision`). Never in a
+# pure crate.
+h3-battle-ai = { path = "../crates/h3-battle-ai" }
 h3-content = { path = "../crates/h3-content" }
 h3-contracts = { path = "../crates/h3-contracts" }
 h3-map = { path = "../crates/h3-map" }

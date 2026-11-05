@@ -74,6 +74,40 @@ struct Sequence {
     /// harness writes them into the original's registry; 0 without them).
     #[serde(flatten)]
     shades: Shadows,
+    /// The Auto Combat boxes it was recorded at (E17 M6 T5b1, *provisional*).
+    #[serde(flatten)]
+    auto: AutoBoxes,
+}
+
+/// The Auto Combat boxes a sequence was recorded at (E17 M6 T5b1, design §12.18, *provisional*):
+/// the harness writes them into the original's registry before the game starts (`h3drive.AUTO`:
+/// `Combat Auto Creatures`, `Combat Auto Spells`), each 0 or 1; without them `setup.sh`'s,
+/// Creatures 1 and Spells 0 (`Settings::CAPTURE`). The machines' boxes stay clear.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+pub(crate) struct AutoBoxes {
+    /// Combat Auto Creatures (1 without it).
+    #[serde(default)]
+    auto_creatures: Option<u8>,
+    /// Combat Auto Spells (0 without it): the computer's casts for the human's hero, which the
+    /// record's commands hold (each without a time, the computer's).
+    #[serde(default)]
+    auto_spells: u8,
+}
+
+impl AutoBoxes {
+    /// The boxes (`what` names the sequence in an error).
+    pub(crate) fn boxes(self, what: &str) -> Result<[bool; 5], String> {
+        let flag = |name: &str, v: u8| match v {
+            0 | 1 => Ok(v == 1),
+            _ => Err(format!("{what}: {name} is 0 or 1")),
+        };
+        let mut boxes = h3_view::options::Settings::CAPTURE.auto;
+        if let Some(v) = self.auto_creatures {
+            boxes[h3_view::auto::CREATURES] = flag("auto_creatures", v)?;
+        }
+        boxes[h3_view::auto::SPELLS] = flag("auto_spells", self.auto_spells)?;
+        Ok(boxes)
+    }
 }
 
 /// The engine's seed unless a sequence names one.
@@ -440,6 +474,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let keys = &record.header.manifest.keys.spells;
         let handle =
             |original: u16| motion::spell_numbered_in(keys, &tables, original).map(|(h, _)| h);
+        // The Auto Combat boxes it was recorded at (E17 M6 T5b1).
+        let boxes = sequence.auto.boxes(&sequence.id)?;
         let inputs = pointer::inputs(
             &sequence.actions,
             sequence.pre,
@@ -448,6 +484,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             (
                 h3_view::tactics::told(snapshot),
                 sequence.shades.options(&sequence.id)?,
+                boxes[h3_view::auto::CREATURES],
             ),
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
@@ -476,7 +513,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             &turned,
             &inputs,
             (&layout, &catalogue),
-            (&tables, Bugs::Original),
+            (&tables, Bugs::Original, boxes),
         );
 
         pointer::entered(
@@ -534,8 +571,9 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 )
             });
             // Auto Combat as the actions switched it (E17 M5 T4c1), the stacks playing
-            // themselves by the harness's boxes and the original's button (E17 M6 T4b1).
-            let itself = pointer::captured(&record, &timeline, &turned, &tables);
+            // themselves by the harness's boxes and the original's button (E17 M6 T4b1), the
+            // sequence's own (E17 M6 T5b1).
+            let itself = pointer::captured(&record, &timeline, &turned, (&tables, boxes));
             let panels = log::panels(
                 &record,
                 (&shown.log, &timeline.controllers),
@@ -1168,6 +1206,17 @@ mod tests {
         );
         assert_eq!((melee.pre, melee.ms), (0, 7000));
         assert_eq!((melee.until(), melee.command[0].at), (7000, None));
+        // E17 M6 T5b1: every entry's Auto Combat boxes good; the two recorded with Spells set,
+        // `auto-cast-human` with Creatures cleared.
+        for s in &file.sequence {
+            assert!(s.auto.boxes(&s.id).is_ok(), "{}", s.id);
+        }
+        let boxes = |id: &str| {
+            let s = file.sequence.iter().find(|s| s.id == id).unwrap();
+            s.auto.boxes(id).unwrap()
+        };
+        assert_eq!(boxes("auto-cast"), [true, true, false, false, false]);
+        assert_eq!(boxes("auto-cast-human"), [false, true, false, false, false]);
     }
 
     #[test]
@@ -1190,5 +1239,45 @@ mod tests {
         .unwrap();
         assert_eq!(s.until(), 5000);
         assert_eq!((s.command[0].at, s.command[2].at), (None, Some(2000)));
+        // E17 M6 T5b1: the harness's boxes without its own, Creatures alone.
+        let capture = h3_view::options::Settings::CAPTURE.auto;
+        assert_eq!(s.auto.boxes("x"), Ok(capture));
+    }
+
+    #[test]
+    fn the_sequences_to_record_parse_with_their_boxes() {
+        // E17 M6 T5b1: the entries prepared for a recording (`to-record.toml`, read by the
+        // harness only until each moves into `sequences.toml`) parse as sequences, their boxes
+        // and scenarios good.
+        #[derive(Deserialize)]
+        struct Pending {
+            #[serde(default)]
+            sequence: Vec<Sequence>,
+        }
+        let dir = assets::default_dir().join("../situations");
+        let Ok(text) = fs::read_to_string(dir.join("to-record.toml")) else {
+            return;
+        };
+        let pending: Pending = toml::from_str(&text).unwrap();
+        for s in &pending.sequence {
+            assert!(s.auto.boxes(&s.id).is_ok(), "{}", s.id);
+            assert!(dir.join(&s.scenario).exists(), "{}", s.id);
+        }
+    }
+
+    #[test]
+    fn a_sequence_names_the_auto_combat_boxes_it_was_recorded_at() {
+        // E17 M6 T5b1 (design §12.18): Creatures cleared, Spells set; a value but 0 or 1 refused.
+        let entry = |boxes: &str| {
+            let text =
+                format!("id = \"x\"\nscenario = \"x.toml\"\ntimeline = \"x.txt\"\nms = 1\n{boxes}");
+            toml::from_str::<Sequence>(&text).unwrap()
+        };
+        let s = entry("auto_creatures = 0\nauto_spells = 1");
+        assert_eq!(s.auto.boxes("x"), Ok([false, true, false, false, false]));
+        let s = entry("auto_spells = 1");
+        assert_eq!(s.auto.boxes("x"), Ok([true, true, false, false, false]));
+        assert!(entry("auto_spells = 2").auto.boxes("x").is_err());
+        assert!(entry("auto_creatures = 3").auto.boxes("x").is_err());
     }
 }

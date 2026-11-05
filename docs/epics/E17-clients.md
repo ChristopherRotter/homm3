@@ -209,8 +209,12 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   not drawn yet and their sounds' waits (M5's items 5, 9, 24, 42, 45, 79, 84), each as far as read.
   Cut in four by the user (2026-11-05): **T5a** (done 2026-11-05, design §12.17) the book's
   refusals, the aim's other messages and Force Field's and Fire Wall's aim (items 5, 9, 84),
-  CLT-Q57 to Q60 asked and answered, six stills and five sequences recorded; **T5b** the bot's casts and retreat question
-  (24); **T5c** Eagle Eye's message and the experience after the window (79); **T5d** the effects,
+  CLT-Q57 to Q60 asked and answered, six stills and five sequences recorded; **T5b** the bot's
+  casts and retreat question (24), cut in two by the user (2026-11-05): **T5b1** (done
+  2026-11-05, design §12.18) the window's computer the engine's original one (`--sight`, fair by
+  default; the engine's parts by the cross-lane #739), its casts for the human's hero, CLT-Q61
+  and Q62 asked and answered, two sequences recorded; **T5b2** the retreat question and
+  CLT-Q61's stop; **T5c** Eagle Eye's message and the experience after the window (79); **T5d** the effects,
   their waits and Bloodlust's glow (42, 45).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through

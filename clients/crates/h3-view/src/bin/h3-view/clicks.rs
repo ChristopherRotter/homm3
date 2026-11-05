@@ -41,7 +41,10 @@ fn scenarios() -> Vec<PathBuf> {
             .filter(|p| p.extension().is_some_and(|e| e == "toml"))
             .filter(|p| {
                 let stem = p.file_stem().unwrap_or_default();
-                !["counts", "sequences", "set"].iter().any(|s| stem == *s)
+                // The sequences prepared for a recording (E17 M6 T5b1) are no scenario.
+                !["counts", "sequences", "set", "to-record"]
+                    .iter()
+                    .any(|s| stem == *s)
             })
             .collect();
         files.sort();

@@ -685,7 +685,11 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 &[],
                 &parked,
                 (&layout, &catalogue),
-                (&tables, Bugs::Fixed),
+                (
+                    &tables,
+                    Bugs::Fixed,
+                    h3_view::options::Settings::CAPTURE.auto,
+                ),
             );
             let panels = crate::log::panels(
                 &record,

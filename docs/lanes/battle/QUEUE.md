@@ -21,6 +21,16 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-05 (the client lane, E17 M6 T5b1; informational unless you take it): **a walk of the
+  original's computer the engine's chooses differently.** In `clients/situations/seq-auto-cast.toml`
+  (`seq-cast.toml`'s battle: the attacker's Champions first, speed 9, Orrin with Bless only;
+  `sequences.toml`'s `auto-cast`, recorded 2026-11-05) the original's computer, playing the
+  human's side under Auto Combat (Combat Auto Creatures and Spells set; a human side takes the
+  branches marked for Hard, ADR-0027 point 8), walked the Champions to hex 62 at the opening
+  turn; `h3_battle_ai::choose` and `choose_fair` (seed 1) walk them to 45. Its casts agree (none
+  at the Champions' turn, Bless at the Marksmen's). Not compared further: the recording's
+  commands are the original's. A candidate for E23's divergence checks if the walker's scoring
+  should match here.
 - 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
   behaves exactly as a local one; with the server lane's wire): **a public per-side fact of the
   heroes' casting limits.** The original's book

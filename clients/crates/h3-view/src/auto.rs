@@ -8,9 +8,14 @@
 //! a key or a button pressed while it plays stops it as the next turn starts, and does nothing
 //! else. This module says which turns it plays, from when. E17 M6 T4b1 (design §12.13): a human's
 //! stack plays itself only when its box is set ([`plays_itself`]); over one that does not, the
-//! turn is the human's while the flag stays on, its click switching it off (a toggle).
+//! turn is the human's while the flag stays on, its click switching it off (a toggle). E17 M6
+//! T5b1 (design §12.18): with Combat Auto Spells set the computer is asked for a human's hero's
+//! cast as each turn starts under it ([`Auto::asks_cast`], by the boxes then, [`boxes_at`]),
+//! whether the stack plays itself or not.
 
 use alloc::vec::Vec;
+
+use h3_render::Bugs;
 
 use crate::mouse::track::Input;
 
@@ -26,7 +31,8 @@ const ARROW_TOWER: u16 = 149;
 
 /// Combat Auto Creatures' place in `Settings::auto` (`crate::options::Settings`).
 pub const CREATURES: usize = 0;
-/// Combat Auto Spells' place (kept only: T5's).
+/// Combat Auto Spells' place: no stack's, the computer's casts for a human's hero
+/// ([`Auto::asks_cast`]).
 pub const SPELLS: usize = 1;
 /// Combat Catapult's place.
 pub const CATAPULT_BOX: usize = 2;
@@ -42,8 +48,8 @@ pub const TENT_BOX: usize = 4;
 /// oddity 3, copied), the First Aid Tent by Combat First Aid Tent, any other by Combat Auto
 /// Creatures. A war machine whose turn waits for a human is a commanded one (its hero has its
 /// skill): the engine plays the others itself (BAT-WAR-002, -003), so no skill is tested here.
-/// Combat Auto Spells (`boxes[SPELLS]`) is no stack's: it is kept only, the computer's casts for
-/// a human's hero (`ai_hero_cast_turn` 0x422DA0) being T5's (the client's bot casts nothing).
+/// Combat Auto Spells (`boxes[SPELLS]`) is no stack's: it rules the computer's casts for a
+/// human's hero (`ai_hero_cast_turn` 0x422DA0; E17 M6 T5b1, [`Auto::asks_cast`]).
 #[must_use]
 pub const fn plays_itself(creature: Option<u16>, boxes: [bool; 5]) -> bool {
     match creature {
@@ -109,6 +115,18 @@ pub fn itself(stacks: &[Acting], first: [bool; 5], changes: &[BoxChange]) -> Vec
             from
         })
         .collect()
+}
+
+/// The boxes as turn `k` starts (0 the opening's; E17 M6 T5b1, *provisional*): `first` the boxes
+/// the battle began with, `changes` the combat options dialog's closes since (in order, each with
+/// its turn): the last made in a turn before `k`, else `first`. A dialog opens only on a human's
+/// turn waiting, so a change in turn `k` comes after its start.
+#[must_use]
+pub fn boxes_at(first: [bool; 5], changes: &[BoxChange], k: usize) -> [bool; 5] {
+    (changes.iter())
+        .take_while(|&&(turn, _, _)| turn < k)
+        .last()
+        .map_or(first, |&(_, _, boxes)| boxes)
 }
 
 /// When Auto Combat plays a battle's turns: the opening's first, then each one started, in the
@@ -243,6 +261,29 @@ impl Auto {
     #[must_use]
     pub fn on_at_start(&self, k: usize) -> bool {
         self.turns.get(k).is_some_and(|turn| turn.on)
+    }
+
+    /// Whether the computer is asked for a human's hero's cast as turn `k` starts (E17 M6 T5b1,
+    /// design §12.18: `ai_hero_cast_turn` 0x422DA0 at the end of `battle_controls_state`, its
+    /// gate 0x422E42): Auto Combat on as the turn starts, its start's stop read (a stop found
+    /// there runs `battle_controls_state` again without it, which clears the cast set: 0x47425B),
+    /// and Combat Auto Spells set among `boxes`, the boxes then ([`boxes_at`]). The original's
+    /// asks it whether the stack plays itself or not; the client's profile (`bugs`, CLT-Q62,
+    /// the user 2026-11-05) only on a turn Auto Combat plays from its start, a turn the human
+    /// plays keeping the hero's cast the human's. The hero's own tests (cast this round, a war
+    /// machine's turn, the tactics phase, its book, the Orb, a garrison) are the engine's.
+    #[must_use]
+    pub fn asks_cast(&self, k: usize, boxes: [bool; 5], bugs: Bugs) -> bool {
+        boxes[SPELLS] && self.on_at_start(k) && (bugs == Bugs::Original || self.from_start(k))
+    }
+
+    /// Whether Auto Combat's switch at `t` in turn `k` asks the computer for the hero's cast (E17
+    /// M6 T5b1: the switch runs the turn's start again, 0x474E73): on at `t` and Combat Auto
+    /// Spells set among `boxes`, the boxes now; in the client's profile (CLT-Q62) only when it
+    /// then plays the turn.
+    #[must_use]
+    pub fn asks_cast_at(&self, k: usize, t: u32, boxes: [bool; 5], bugs: Bugs) -> bool {
+        boxes[SPELLS] && self.on(k, t) && (bugs == Bugs::Original || self.plays(k, t))
     }
 
     /// Whether a key or a button pressed while it was on waits at turn `k`'s end for the next
