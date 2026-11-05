@@ -12035,14 +12035,17 @@ staged at the start. Built by the main session.
   `h3-cli`'s bench test: 0 games without the mode, 1 with it, in fewer steps.
 - **The workloads** (`benches/adventure/`, `bench-check --update`; the README's rows in
   `shared/e08-t96b2-benches`):
-  - `day-start-dwellings-xl-144`: the step that starts day 8 in 4 random games of 7 days: 1 729 257
-    Ir, about 432 000 a day start (`day-start-xl-144`'s 322 000): 23 % the camps' draws
+  - `day-start-dwellings-xl-144`: the step that starts day 8 in 4 random games of 7 days: 1 741 156
+    Ir, about 435 000 a day start (`day-start-xl-144`'s 322 000): 23 % the camps' draws
     (`draw_camp` collects its level's random monsters anew each draw, about 10 900 Ir; left as is),
     21 % `start_week` itself (the refill of 143 dwellings, the monsters' growth), 22 % malloc.
   - `fork-dwellings-xl-144`: 100 000 forks after `--dwelling 1`'s 11 steps (day 1): 376 600 055 Ir,
     3 766 a fork (`fork-economy-xl-144`'s 3 708).
-  - `random-play-dwellings-36`: 5 games of 60 days on T96a's map: 3 079 914 956 Ir, 3 723 steps,
-    about 827 000 a step (69 % `Reach::search`); 16 questions accepted and 4 purchases over the
+  - First baselined on `master` 330f37b; measured again after #733 (E09 T8a2, the town lane: the
+    step onto a town, `reach.rs`) was merged in: the same games, +0.69 %, 0.00 % and −0.46 %; the
+    two that moved re-set at the merged code's count.
+  - `random-play-dwellings-36`: 5 games of 60 days on T96a's map: 3 065 623 967 Ir, 3 723 steps,
+    about 823 000 a step (69 % `Reach::search`); 16 questions accepted and 4 purchases over the
     five (`h3 adventure run --seed 1+g --agent-seed g` replays game g; 28 days held one purchase).
 - *Agent's calls (change freely):* the XL's dwelling types and random dwellings' bodies, the owners
   every fourth; the fork's seeking mode rather than a seed search; 60 days for random play.

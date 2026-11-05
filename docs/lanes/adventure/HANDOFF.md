@@ -22,7 +22,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-11-05 — increment 10, round 8: T96b2, the dwellings XL and its benchmarks
 
-Baseline: `master` 330f37b (#731; the setup's `verify-once` found CI's fingerprint, light gates only, passed); the original data staged at the start (the computer's shell did not start, staging worked). Done whole by the main session (no sub-agent; the agent's call: no engine change but a read-only accessor). Random play never reached a dwelling on the XL within six days (seeds 1 to 40), so the fork workload seeks them (`--dwelling 1`, as `--meeting 1`). The new day start's profile: a camp's draw collects its candidates anew each time (23 % of `day-start-dwellings-xl-144`; left as is, a candidate for a later speed task). No version moved.
+Baseline: `master` 330f37b (#731; the setup's `verify-once` found CI's fingerprint, light gates only, passed); the original data staged at the start (the computer's shell did not start, staging worked). Done whole by the main session (no sub-agent; the agent's call: no engine change but a read-only accessor). Random play never reached a dwelling on the XL within six days (seeds 1 to 40), so the fork workload seeks them (`--dwelling 1`, as `--meeting 1`). `master` moved mid-session (#733, E09 T8a2): merged in, the new workloads measured again and re-set (+0.69 %, −0.46 %). The new day start's profile: a camp's draw collects its candidates anew each time (23 % of `day-start-dwellings-xl-144`; left as is, a candidate for a later speed task). No version moved.
 
 ### 2026-11-05 — increment 10, round 8: T96b1, the dwellings plans' properties
 

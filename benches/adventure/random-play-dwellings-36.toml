@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 60 days on the dwellings map (E08 T96b2 on T96a's map, increment 10's design note §14: the dwellings' flags, guards' questions and battles, hire questions and dialogs, the Refugee Camps, eight week starts a game with the refill and the camps' draws): 3 723 steps, about 827 000 Ir a step, 69 % inside the reachable-tiles search (Reach::search); 16 hire or guards' questions accepted and 4 purchases over the five games (h3 adventure run --seed 1+g --agent-seed g --days 60 replays game g); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
+description = "5 random-vs-random games of 60 days on the dwellings map (E08 T96b2 on T96a's map, increment 10's design note §14: the dwellings' flags, guards' questions and battles, hire questions and dialogs, the Refugee Camps, eight week starts a game with the refill and the camps' draws): 3 723 steps, about 823 000 Ir a step, 69 % inside the reachable-tiles search (Reach::search); 16 hire or guards' questions accepted and 4 purchases over the five games (h3 adventure run --seed 1+g --agent-seed g --days 60 replays game g); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 3079914956
+instructions = 3065623967
 threshold_percent = 2
