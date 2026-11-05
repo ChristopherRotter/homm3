@@ -8,7 +8,7 @@ use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::num::NonZeroU16;
+use core::num::{NonZeroU8, NonZeroU16};
 
 use h3_adventure::{AdventureRuleset, Holds, ObjectSetup, Pos, Scenery, TileMask};
 use h3_content::{
@@ -267,7 +267,7 @@ fn towns_rules_with(elf: bool) -> GameRuleset {
 }
 
 /// [`towns_rules_with`] whose adventure part takes maps of up to `side` tiles a side (E09
-/// T7b2a: the start's reveal), not 4.
+/// T7b2a: the start's reveal), not 4, and of two levels (E09 T8a2: a reveal of every level).
 fn towns_rules_on(elf: bool, side: u16) -> GameRuleset {
     let core = Arc::new(towns_core(elf));
     let factions: &[&str] = if elf {
@@ -297,7 +297,9 @@ fn towns_rules_on(elf: bool, side: u16) -> GameRuleset {
     });
     let towns = TownRuleset::compile(&core, &[town_pack(elf)]).unwrap();
     let mut adventure = adventure_pack(vec![88, 25], 2);
-    adventure.params.as_mut().unwrap().max_map_size = NonZeroU16::new(side).unwrap();
+    let params = adventure.params.as_mut().unwrap();
+    params.max_map_size = NonZeroU16::new(side).unwrap();
+    params.max_levels = NonZeroU8::new(2).unwrap();
     GameRuleset::new(
         Arc::clone(&core),
         Arc::new(AdventureRuleset::compile(&core, &[adventure]).unwrap()),

@@ -21,7 +21,7 @@ pub(crate) mod build;
 pub(crate) mod heroes;
 pub(crate) mod pool;
 
-pub(crate) use build::{build_towns, draw_towns, start_radius};
+pub(crate) use build::{adventure_reveal, build_towns, draw_towns};
 pub(crate) use heroes::main_town_heroes;
 pub(crate) use pool::{HeroPool, draw_heroes};
 

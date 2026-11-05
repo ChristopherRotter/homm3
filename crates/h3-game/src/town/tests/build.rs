@@ -278,10 +278,15 @@ fn the_start_reveals_each_owned_towns_radius() {
     let r = u16::from(LOOKOUT_RADIUS);
     assert!(explored(&lookout, (20 + r, 20)) && explored(&lookout, (34, 34)));
     assert!(!explored(&lookout, (21 + r, 20)) && !explored(&lookout, (35, 34)));
-    // The Grail's every tile (of the town's level, `TWN-STUB-5`): the map's corners.
-    let grail = far_town(&rules, SlotSet::EMPTY.with(GRAIL_SLOT));
-    for corner in [(0, 47), (47, 0), (47, 47)] {
-        assert!(explored(&grail, corner));
+    // The Grail's every tile of every level (E09 T8a2): the corners of both levels.
+    let mut grail = far_town(&rules, SlotSet::EMPTY.with(GRAIL_SLOT));
+    grail.map.levels = 2;
+    grail.map.tiles = [grail.map.tiles.clone(), grail.map.tiles.clone()].concat();
+    let game = GameState::new(&rules, &grail, 7).unwrap();
+    for level in 0..2 {
+        for (x, y) in [(0, 0), (0, 47), (47, 0), (47, 47)] {
+            assert!(game.adventure().is_explored(RED, Pos::new(x, y, level)));
+        }
     }
     // A neutral town reveals nothing: not to red, nor to blue.
     let mut neutral = far_town(&rules, SlotSet::EMPTY.with(GRAIL_SLOT));

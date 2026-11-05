@@ -121,7 +121,7 @@ id       = "TWN-CAP-001"
 title    = "A town's capture: the reveal for its new owner"
 context  = "town"
 status   = "implemented"
-summary  = "When a town changes owner (a capture, and each owned town at the start) its new owner sees the tiles within the part's `reveal_radius` (the base pack's 5) of the town, or within the largest `reveal` of a building ever built when larger (the Tower's Lookout Tower, 20); a building that reveals `all` (the Tower's Grail) shows every tile of every level, over any radius; a part without parameters reveals a radius of 0. The capture itself, the owner change and its reveal on the map, are E09 T8a2's (design §11). E09 T6b (design §6): the reveal's radius, `h3_towns::reveal`. Since E09 T7b2a the start's reveal of each owned town takes it (`h3_game`'s `town::start_radius`, the adventure's `start_game` by `TownId`); a reveal of every tile reaches only the town's level there (the radius 255, `TWN-STUB-5`)."
+summary  = "When a town changes owner (a capture, and each owned town at the start) its new owner sees the tiles within the part's `reveal_radius` (the base pack's 5) of the town, or within the largest `reveal` of a building ever built when larger (the Tower's Lookout Tower, 20); a building that reveals `all` (the Tower's Grail) shows every tile of every level, over any radius; a part without parameters reveals a radius of 0. E09 T6b (design §6): the reveal's radius, `h3_towns::reveal`. Since E09 T7b2a the start's reveal of each owned town takes it (`h3_game`'s `town::adventure_reveal`, the adventure's `start_game` by `TownId`). Since E09 T8a2 (design §11) a reveal of every tile reaches every level (`TownReveal::All`), and the capture on the map is `AdventureState::capture_town`: the owner written, the garrison emptied, the reveal around the entrance for the new owner (`TownCaptured` to those who see the town and the new owner, then `TilesRevealed` to it alone)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -162,6 +162,47 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Halls"
   retrieved  = "2026-11-02"
   confidence = "medium"
+
+[[rule]]
+id       = "TWN-VIS-001"
+title    = "The step onto a town's entrance: entered, captured or refused"
+context  = "town"
+status   = "implemented"
+summary  = "A town is entered, not visited from above (ADV-OBJ-003, ADV-OBJ-004: the base type `town`). A hero's step onto its entrance is decided by the town's owner and garrison, for the hero's owner: a town of the hero's team (allied with its owner; the player alone until E10) is entered, the walk ending on the entrance with no service, no decision and no event beyond the step's (*agent's call*); a town of another player or of none without a creature in its garrison is entered and captured at once (`AdventureOutcome::capture`, which the game applies: TWN-CAP-001); one with a creature in its garrison is defended: the siege from the tile before (design §10, E09 T8b), until then refused as a visit not built (`AdventureCommandError::Visit`; the reachable tiles and the legal moves leave the entrance out, a flight passes over it; `TWN-STUB-7`). A visitor of another team defends a town too (TWN-VIS-002). E09 T8a2 (design §9): `AdventureState::visit_at`'s town branch (`town_defended`), `visit_town`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1; survey E09-towns.md sections 7.1 and 7.2): hero_move_step (0x4805E0), case 98 at 0x480E3B, finds the town by the tile's word; its owner on the current player's team (game +0x1F879): the ordinary step (0x480CB5), the hero enters; else town_defended (0x5BDFE0: a visiting hero, or any creature in the army town_garrison_army shows): the visit from the neighbouring tile (visit_from_neighbour 0x480240); else the hero enters. town_visit (0x4AAFD0) then opens an own or allied town without changing its owner and captures an undefended town of another team or none (section 8.1). Class 98 is on neither object_classes_not_entered (0x63AA58) nor object_classes_from_above (0x63AB00)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-1.md and E09-batch-1-run2.md, batch TWN-1 row TWN-1-4 (the capture harness under Wine, 2026-11-03; scored in survey E09-towns.md section 15): a defended town is attacked from the tile before, the attacker staying there with its points; the later step onto the gate of the town, then its own, enters it (the town screen, the hero the town's visitor)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-towns.md decision 16 (teams at a town: an own or allied town is entered, never captured; a defended town of another team or of none is attacked) and docs/epics/E09-design.md section 9 (the step's three cases)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-VIS-002"
+title    = "A town's visitor: the hero on its entrance"
+context  = "town"
+status   = "implemented"
+summary  = "A town's visitor is the hero standing on its entrance (the first tile it is visited from), never stored: a hero that entered it, the main town's hero (TWN-SET-001), a hero moved onto the entrance (TWN-SET-010). A step onto another hero on a town's entrance meets it when it is of the mover's team (GAM-MET-001); one of another team defends the town, and the step is the siege from the tile before (design §10, E09 T8b), never a field battle (GAM-BAT-004): until then it is refused (`AdventureCommandError::Visit`; the reachable tiles and the legal moves leave the tile out, a flight passes over it; `TWN-STUB-7`). E09 T8a2 (design §9): `AdventureState::town_visitor`, `StaticMap::town_at`, `besieges`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1; survey E09-towns.md sections 7.1 and 7.3): hero_show makes a hero put on a town's gate the town's visitor (+0x10) and hero_hide (0x4D76E0) clears it (0x4D77A5) when that hero leaves the gate or the map, so the visitor is exactly the hero on the gate; a hero on the gate is what hero_move_step (0x4805E0) meets: its own team's hero meets it, another team's visits it, and visit_hero (0x4A2800) sends a hero standing on a town's gate (town_at_entrance 0x4BB870) to the town's visit (0x4A2904) instead of the field battle"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 9 (the visitor, never stored: ADR-0016's amendment point 2; a step onto another team's hero on a town's entrance is the siege, never a field battle) and docs/epics/E09-towns.md decision 16"
+  confidence = "high"
 
 [[rule]]
 id       = "TWN-VEW-002"

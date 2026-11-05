@@ -1,13 +1,18 @@
 //! Tests of the town as a map object (E09 T8a1, the town epic's design note §8): the static map's
 //! towns and their `TownId`s, the garrisons on their objects, the towns among the ownable objects
 //! with their owners and the start's reveal by the game's radii, the formation the map holds and
-//! the hash, and the entrance not entered until T8a2 (`TWN-STUB-4`).
+//! the hash; since T8a2 the step onto a town (TWN-VIS-001), its visitor (TWN-VIS-002) and the
+//! capture with its reveal (TWN-CAP-001; the town epic's design note §9, §11).
 
+use h3_content::SkillId;
 use h3_kernel::hash::hash_of;
 
 use super::*;
 use crate::ruleset::{AdventurePack, ObjectKindDef, ObjectTypeDef, Visit};
-use crate::testing::{PEASANT, PIKEMAN, draws, hero_at, key, movement_rules_with, started, world};
+use crate::testing::{
+    FLYING, PEASANT, PIKEMAN, WATER_WALKING, draws, hero_at, hero_details, hero_skills, key,
+    movement_rules_with, started, world,
+};
 
 type Rules = (Ruleset, AdventureRuleset);
 
@@ -16,12 +21,13 @@ const BLUE: PlayerId = PlayerId::new(1);
 const HERO: HeroId = HeroId::new(1);
 
 /// [`movement_rules_with`] (faithful, maps up to 32 tiles) with a town `t:town` and a mine
-/// `t:sawmill`, both entered and not from above, and the part's flag radius 1.
+/// `t:sawmill`, both entered and not from above, and the part's flag radius 1; the skills of
+/// [`hero_skills`] (flying and water walking among them).
 fn town_rules() -> Rules {
     movement_rules_with(
         true,
         32,
-        |_| {},
+        |core| core.skills = hero_skills(),
         |part: &mut AdventurePack| {
             part.params.as_mut().unwrap().flag_radius = 1;
             let ty = |k: &str, kind| ObjectTypeDef {
@@ -247,7 +253,7 @@ fn the_start_reveals_around_a_town_with_the_games_radius() {
     objects[2].owner = Some(BLUE);
     let setup = town_setup(objects, vec![vec![], vec![]]);
     let mut state = build(&rules, &setup).unwrap();
-    state.start_game(&rules.0, &rules.1, &[], &[4]);
+    state.start_game(&rules.0, &rules.1, &[], &[TownReveal::Radius(4)]);
     let red = state.explored(RED).unwrap();
     let blue = state.explored(BLUE).unwrap();
     let at = |x, y| Pos::new(x, y, 0);
@@ -262,57 +268,308 @@ fn the_start_reveals_around_a_town_with_the_games_radius() {
     assert!(red.get(at(16, 4)) && !red.get(at(16, 5)));
 }
 
-// covers: ADV-OBJ-003
-#[test]
-fn a_towns_entrance_is_a_blockers_until_its_step_is_built() {
-    // `TWN-STUB-4`: the reach and the step meet a town's entrance as a blocker's, whose entrance
-    // no hero ends on or passes; a hero standing on it leaves it as from any tile, upwards too
-    // (a town is not visited from above, but its visit is not built).
-    let rules = town_rules();
-    let entrance = Pos::new(2, 1, 0);
-    let with = |object_type: Option<ObjectTypeId>, hero: Pos| {
-        let mut town = object(&rules, "t:town", (2, 1), Some(0));
-        if object_type.is_none() {
-            town.object_type = None;
-            town.holds = Holds::Nothing;
-            town.owner = None;
-        }
-        let mut setup = town_setup(vec![town], vec![]);
-        if object_type.is_some() {
-            setup.garrisons = vec![vec![]];
-        }
-        setup.heroes[0].pos = hero;
-        started(&rules, &setup).unwrap()
-    };
-    let town = rules.1.object_type_by_key("t:town");
-    let tiles = |state: &AdventureState| {
-        let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
-        reach.tiles().collect::<Vec<_>>()
-    };
-    for hero in [Pos::new(2, 2, 0), entrance] {
-        let typed = with(town, hero);
-        let blocker = with(None, hero);
-        assert_eq!(tiles(&typed), tiles(&blocker), "{hero:?}");
-        assert!(!tiles(&typed).iter().any(|&(pos, _)| pos == entrance));
-    }
-    // From the entrance a hero steps upwards.
-    let typed = with(town, entrance);
-    assert!(
-        tiles(&typed)
-            .iter()
-            .any(|&(pos, _)| pos == Pos::new(2, 0, 0))
-    );
-    // A step onto the entrance is refused as onto a blocker's.
+/// The entrance of [`at_town`]'s town, whose object also blocks the tile left of it.
+const ENTRANCE: Pos = Pos::new(4, 4, 0);
+
+/// [`town_setup`] with one town on (4, 4) of `owner` holding `garrison`, red's hero 1 below its
+/// entrance on (4, 5), blue's hero 2 on `blue` and, if `red` names a tile, red's hero 3 there.
+fn at_town(
+    rules: &Rules,
+    owner: Option<u8>,
+    garrison: Vec<ArmyStack>,
+    (blue, red): (Pos, Option<Pos>),
+) -> AdventureState {
+    let town = object(rules, "t:town", (4, 4), owner);
+    let mut setup = town_setup(vec![town], vec![garrison]);
+    setup.heroes[0].pos = Pos::new(4, 5, 0);
+    setup.heroes[1].pos = blue;
+    setup
+        .heroes
+        .extend(red.map(|pos| hero_at(3, 0, pos, &[PEASANT])));
+    started(rules, &setup).unwrap()
+}
+
+/// Blue's hero 2 where it starts in [`town_setup`], far from the town.
+const FAR: Pos = Pos::new(31, 15, 0);
+
+/// The store of heroes' details: hero 1 with `skills`, heroes 0, 2 and 3 without.
+fn store(skills: &[(SkillId, u8)]) -> Vec<Arc<HeroDetails>> {
+    vec![
+        Arc::new(hero_details(&[])),
+        Arc::new(hero_details(skills)),
+        Arc::new(hero_details(&[])),
+        Arc::new(hero_details(&[])),
+    ]
+}
+
+/// Red's hero 1 moved along `path` with the details of `heroes`, its events.
+fn walk(
+    rules: &Rules,
+    state: &mut AdventureState,
+    heroes: &[Arc<HeroDetails>],
+    path: &[Pos],
+) -> Result<(AdventureOutcome, Vec<AdventureEvent>), AdventureCommandError> {
     let walk = AdventureCommand::MoveHero {
         hero: HERO,
-        path: vec![entrance],
+        path: path.to_vec(),
     };
-    for object_type in [town, None] {
-        let mut state = with(object_type, Pos::new(2, 2, 0));
-        let mut events = Vec::new();
+    let mut events = Vec::new();
+    let outcome = state.apply(&rules.0, &rules.1, heroes, RED, &walk, &mut events)?;
+    Ok((outcome, events))
+}
+
+fn p(x: u16, y: u16) -> Pos {
+    Pos::new(x, y, 0)
+}
+
+// covers: TWN-VIS-001, TWN-VIS-002
+#[test]
+fn a_town_of_the_heros_team_is_entered_and_ends_the_walk() {
+    let rules = town_rules();
+    // Red's town, defended or not: entered; the walk ends on its entrance.
+    for garrison in [vec![], garrison()] {
+        let mut state = at_town(&rules, Some(0), garrison, (FAR, None));
+        let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+        assert_eq!(reach.path(ENTRANCE), Some(vec![ENTRANCE]));
+        // The tile above is reached around it, not through it.
+        assert!(
+            reach
+                .path(p(4, 3))
+                .is_some_and(|path| !path.contains(&ENTRANCE))
+        );
         assert_eq!(
-            state.apply(&rules.0, &rules.1, &[], RED, &walk, &mut events),
-            Err(AdventureCommandError::Visit { step: 0 })
+            walk(&rules, &mut state.clone(), &[], &[ENTRANCE, p(5, 3)]).unwrap_err(),
+            AdventureCommandError::PastVisit { step: 1 }
+        );
+        assert_eq!(state.town_visitor(TownId::new(0)), None);
+        let (outcome, events) = walk(&rules, &mut state, &[], &[ENTRANCE]).unwrap();
+        // No service, no decision, no event beyond the step's.
+        assert_eq!(outcome, AdventureOutcome::default());
+        assert_eq!(events.len(), 1);
+        assert!(matches!(
+            events[0].kind,
+            AdventureEventKind::HeroStepped { hero: HERO, .. }
+        ));
+        assert_eq!(state.hero(HERO).unwrap().pos, ENTRANCE);
+        assert_eq!(state.town_visitor(TownId::new(0)), Some(HERO));
+        assert_eq!(state.map().town_at(ENTRANCE), Some(TownId::new(0)));
+        assert_eq!(state.map().town_at(p(3, 4)), None);
+        // On the entrance the hero leaves it downwards only (ADV-OBJ-004: a town is not visited
+        // from above).
+        let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+        for (pos, _) in reach.tiles() {
+            assert!(reach.path(pos).unwrap()[0].y >= ENTRANCE.y, "{pos:?}");
+        }
+        assert_eq!(
+            walk(&rules, &mut state.clone(), &[], &[p(4, 3)]).unwrap_err(),
+            AdventureCommandError::FromAbove { step: 0 }
         );
     }
+    // No visitor for a town the map does not have.
+    let state = at_town(&rules, Some(0), vec![], (ENTRANCE, None));
+    assert_eq!(state.town_visitor(TownId::new(0)), Some(HeroId::new(2)));
+    assert_eq!(state.town_visitor(TownId::new(1)), None);
+}
+
+// covers: TWN-VIS-001
+#[test]
+fn an_undefended_town_of_another_player_or_none_is_entered_for_its_capture() {
+    let rules = town_rules();
+    for owner in [Some(1), None] {
+        let mut state = at_town(&rules, owner, vec![], (FAR, None));
+        let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+        assert_eq!(reach.path(ENTRANCE), Some(vec![ENTRANCE]));
+        let (outcome, events) = walk(&rules, &mut state, &[], &[ENTRANCE]).unwrap();
+        // The capture is the game's: the step changes no owner.
+        assert_eq!(
+            outcome,
+            AdventureOutcome {
+                capture: Some(TownId::new(0)),
+                ..AdventureOutcome::default()
+            }
+        );
+        assert_eq!(events.len(), 1);
+        assert_eq!(state.hero(HERO).unwrap().pos, ENTRANCE);
+        assert_eq!(state.owner(0), owner.map(PlayerId::new));
+        assert_eq!(state.town_visitor(TownId::new(0)), Some(HERO));
+    }
+}
+
+// covers: TWN-VIS-001
+#[test]
+fn a_defended_town_of_another_player_or_none_is_refused_until_the_siege() {
+    // `TWN-STUB-7`: no step ends on or passes its entrance; a flight passes over it.
+    let rules = town_rules();
+    let (flyer, walker) = (store(&[(FLYING, 3)]), store(&[(WATER_WALKING, 3)]));
+    for owner in [Some(1), None] {
+        let mut state = at_town(&rules, owner, garrison(), (FAR, None));
+        let before = state.clone();
+        for heroes in [&[][..], &walker] {
+            let reach = state.reach(&rules.0, &rules.1, heroes, HERO).unwrap();
+            assert_eq!(reach.points_left(ENTRANCE), None);
+            assert_eq!(
+                walk(&rules, &mut state, heroes, &[ENTRANCE]).unwrap_err(),
+                AdventureCommandError::Visit { step: 0 }
+            );
+            assert_eq!(state, before);
+        }
+        let reach = state.reach(&rules.0, &rules.1, &flyer, HERO).unwrap();
+        assert_eq!(reach.points_left(ENTRANCE), None);
+        assert!(reach.points_left(p(4, 3)).is_some());
+        walk(&rules, &mut state, &flyer, &[ENTRANCE, p(5, 4)]).unwrap();
+        assert_eq!(state.hero(HERO).unwrap().pos, p(5, 4));
+    }
+}
+
+// covers: TWN-VIS-002
+#[test]
+fn another_players_visitor_is_refused_until_the_siege_and_an_allied_one_met() {
+    // `TWN-STUB-7`: blue's hero on the entrance of any town defends it against red, whatever the
+    // town's owner; a flight passes over it, never stops there.
+    let rules = town_rules();
+    let (flyer, walker) = (store(&[(FLYING, 3)]), store(&[(WATER_WALKING, 3)]));
+    for owner in [Some(0), Some(1), None] {
+        let mut state = at_town(&rules, owner, vec![], (ENTRANCE, None));
+        assert_eq!(state.town_visitor(TownId::new(0)), Some(HeroId::new(2)));
+        let before = state.clone();
+        for heroes in [&[][..], &walker] {
+            let reach = state.reach(&rules.0, &rules.1, heroes, HERO).unwrap();
+            assert_eq!(reach.points_left(ENTRANCE), None);
+            assert_eq!(
+                walk(&rules, &mut state, heroes, &[ENTRANCE]).unwrap_err(),
+                AdventureCommandError::Visit { step: 0 }
+            );
+            assert_eq!(state, before);
+        }
+        let reach = state.reach(&rules.0, &rules.1, &flyer, HERO).unwrap();
+        assert_eq!(reach.points_left(ENTRANCE), None);
+        assert!(reach.points_left(p(4, 3)).is_some());
+        assert_eq!(
+            walk(&rules, &mut state, &flyer, &[ENTRANCE]).unwrap_err(),
+            AdventureCommandError::NoStop { step: 0 }
+        );
+        walk(&rules, &mut state, &flyer, &[ENTRANCE, p(5, 4)]).unwrap();
+        assert_eq!(state.hero(HERO).unwrap().pos, p(5, 4));
+    }
+    // Blue's hero off a town's entrance is met in a battle as before (GAM-BAT-004).
+    let mut state = at_town(&rules, Some(1), vec![], (p(5, 5), None));
+    let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+    assert!(reach.points_left(p(5, 5)).is_some());
+    let (outcome, _) = walk(&rules, &mut state, &[], &[p(5, 5)]).unwrap();
+    assert!(outcome.battle.is_some());
+    // Red's own hero on the entrance, of red's town or blue's: a meeting (GAM-MET-001).
+    for owner in [Some(0), Some(1)] {
+        let mut state = at_town(&rules, owner, garrison(), (FAR, Some(ENTRANCE)));
+        assert_eq!(state.town_visitor(TownId::new(0)), Some(HeroId::new(3)));
+        let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+        assert_eq!(reach.path(ENTRANCE), Some(vec![ENTRANCE]));
+        let (outcome, _) = walk(&rules, &mut state, &[], &[ENTRANCE]).unwrap();
+        assert_eq!(
+            outcome.meeting,
+            Some(Meeting {
+                visitor: HERO,
+                visited: HeroId::new(3),
+            })
+        );
+    }
+}
+
+// covers: TWN-CAP-001
+#[test]
+fn a_capture_writes_the_owner_empties_the_garrison_and_reveals_around_the_entrance() {
+    let rules = town_rules();
+    let setup = town_setup(objects(&rules), vec![garrison(), vec![]]);
+    let mut state = started(&rules, &setup).unwrap();
+    let town = rules.1.object_type_by_key("t:town").unwrap();
+    // Red's town for blue, by a radius of 2: red sees it (its own), blue as its new owner.
+    let before = state.explored(BLUE).unwrap().count();
+    let mut events = Vec::new();
+    state.capture_town(
+        &rules.0,
+        TownId::new(0),
+        BLUE,
+        TownReveal::Radius(2),
+        &mut events,
+    );
+    assert_eq!((state.owner(1), state.owner(2)), (Some(BLUE), None));
+    assert_eq!(state.town_garrison(1), Some(&[][..]));
+    assert!(state.check_owners(&rules.1));
+    let blue = state.explored(BLUE).unwrap();
+    let at = |x, y| Pos::new(x, y, 0);
+    assert!(blue.get(at(16, 5)) && !blue.get(at(16, 6)));
+    assert!(blue.get(at(18, 3)) && !blue.get(at(19, 3)));
+    assert_eq!(
+        events,
+        [
+            AdventureEvent {
+                kind: AdventureEventKind::TownCaptured {
+                    town: TownId::new(0),
+                    anchor: at(16, 3),
+                    owner: BLUE,
+                },
+                seen_by: Viewers::NONE.with(RED).with(BLUE),
+            },
+            AdventureEvent {
+                kind: AdventureEventKind::TilesRevealed {
+                    object_type: town,
+                    count: blue.count() - before,
+                },
+                seen_by: Viewers::NONE.with(BLUE),
+            },
+        ]
+    );
+    assert!(blue.count() > before);
+    // The neutral town for red: nobody else has explored it.
+    let mut events = Vec::new();
+    state.capture_town(
+        &rules.0,
+        TownId::new(1),
+        RED,
+        TownReveal::Radius(1),
+        &mut events,
+    );
+    assert_eq!(state.owner(2), Some(RED));
+    assert_eq!(events[0].seen_by, Viewers::NONE.with(RED));
+    assert!(state.explored(RED).unwrap().get(at(24, 4)));
+    // A `TownId` the map does not have changes nothing.
+    let before = state.clone();
+    let mut events = Vec::new();
+    state.capture_town(&rules.0, TownId::new(2), BLUE, TownReveal::All, &mut events);
+    assert_eq!(state, before);
+    assert!(events.is_empty());
+}
+
+/// A two-level grass map of 8 × 6 tiles a level with a town on (4, 4) of the surface, red's at
+/// the start, red's hero 1 on (0, 0) and blue's hero 2 on (7, 5) of the surface.
+fn two_levels(rules: &Rules) -> AdventureSetup {
+    let mut setup = world(
+        &["gggggggg"; 12],
+        2,
+        vec![
+            hero_at(1, 0, Pos::new(0, 0, 0), &[PEASANT]),
+            hero_at(2, 1, Pos::new(7, 5, 0), &[PEASANT]),
+        ],
+    );
+    setup.map.objects = vec![object(rules, "t:town", (4, 4), Some(0))];
+    setup.garrisons = vec![vec![]];
+    setup
+}
+
+// covers: TWN-CAP-001, ADV-OWN-002
+#[test]
+fn a_reveal_of_all_explores_every_tile_of_every_level() {
+    let rules = town_rules();
+    let setup = two_levels(&rules);
+    let every = 8 * 6 * 2;
+    // At the start, for the town's owner alone.
+    let mut state = AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap();
+    state.start_game(&rules.0, &rules.1, &[], &[TownReveal::All]);
+    assert_eq!(state.explored(RED).unwrap().count(), every);
+    assert!(state.explored(BLUE).unwrap().count() < every);
+    assert!(!state.explored(BLUE).unwrap().get(Pos::new(0, 0, 1)));
+    // At a capture, for its new owner.
+    let mut events = Vec::new();
+    state.capture_town(&rules.0, TownId::new(0), BLUE, TownReveal::All, &mut events);
+    assert_eq!(state.explored(BLUE).unwrap().count(), every);
+    assert_eq!(events.len(), 2);
 }

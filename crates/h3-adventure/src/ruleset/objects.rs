@@ -298,7 +298,9 @@ pub enum ObjectKind {
     /// original's classes 77 and 98): ownable, entered; its faction, buildings and the rest of its
     /// record are the town context's (`h3-towns`), its garrison the army on its object
     /// ([`crate::AdventureState::town_garrison`]), its place among the static map's towns its
-    /// `TownId` ([`crate::StaticMap::town_id`]). Its step comes with E09 T8a2 (`TWN-STUB-4`).
+    /// `TownId` ([`crate::StaticMap::town_id`]). Its step since E09 T8a2 ([`Effect::Town`]): an
+    /// ally's town entered, another player's or a neutral one captured when undefended
+    /// (TWN-VIS-001; the siege of a defended one comes with E09 T8b, `TWN-STUB-7`).
     Town,
 }
 
@@ -368,6 +370,10 @@ pub(crate) enum Effect<'k> {
     /// The hire question naming its week's creature, or, none left, that it is deserted (a
     /// Refugee Camp, ADV-RFG-001, E08 T95a1).
     Camp,
+    /// Entered by a hero of its owner's team, entered and captured when another player's or
+    /// neutral and undefended ([`crate::AdventureOutcome::capture`]); a defended one is not
+    /// visited until the siege (a town, TWN-VIS-001, E09 T8a2; `TWN-STUB-7`).
+    Town,
 }
 
 impl ObjectKind {
@@ -380,8 +386,8 @@ impl ObjectKind {
     /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds; T62b1: Pandora's
     /// Box and the Pyramid; T74a: the sea's finds, which leave, and the message; T84a: the mines
     /// and the abandoned mines; T84b1: the Lighthouses and the weekly objects; T84b2: the
-    /// Shipyards; T95a1: the dwellings and the Refugee Camps. Who reaches a kind's visit is the passage's: on water only a boat (ADV-PIK-018,
-    /// D-46).
+    /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns. Who reaches a
+    /// kind's visit is the passage's: on water only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -410,6 +416,7 @@ impl ObjectKind {
             Self::Shipyard { price, .. } => Some(Effect::Shipyard(price)),
             Self::Dwelling { creatures, .. } => Some(Effect::Dwelling(creatures)),
             Self::RefugeeCamp { .. } => Some(Effect::Camp),
+            Self::Town => Some(Effect::Town),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
@@ -417,13 +424,12 @@ impl ObjectKind {
             // kinds are typed; the dwellings' and the camps' visits came with T95a1. A random
             // dwelling becomes a dwelling when the game is built (ADV-DWL-005); one its draw
             // found no dwelling for stays random and is never visited. E09 T8a1: the town is
-            // typed; its step comes with E09 T8a2 (`TWN-STUB-4`).
+            // typed; its step came with E09 T8a2.
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling
-            | Self::Town => None,
+            | Self::RandomDwelling => None,
         }
     }
 

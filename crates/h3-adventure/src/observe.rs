@@ -583,6 +583,7 @@ impl AdventureEvent {
                 | AdventureEventKind::MessageRead { .. }
                 | AdventureEventKind::BoatRemoved { .. }
                 | AdventureEventKind::ObjectFlagged { .. }
+                | AdventureEventKind::TownCaptured { .. }
                 | AdventureEventKind::GuardsChanged { .. }
                 | AdventureEventKind::ObjectMarked { .. }
                 | AdventureEventKind::ObjectEmpty { .. }

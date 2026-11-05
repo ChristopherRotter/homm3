@@ -208,6 +208,9 @@ impl Reach {
                 afloat |= other.boat.is_some();
             }
         }
+        if !map.towns().is_empty() {
+            reach.unmark_visitors(state, hero, &mut occupied);
+        }
         let boats = state.boats().map(|(_, boat)| boat);
         for boat in boats.filter(|boat| !boat.aboard && !boat.gone) {
             if let Some(slot) = reach.slot(boat.tile) {
@@ -243,6 +246,26 @@ impl Reach {
             reach.search_walking::<false>(&search, hero.movement);
         }
         reach
+    }
+
+    /// Unmarks in `occupied` the tile of each hero of another team than `hero`'s that stands on a
+    /// town's entrance (E09 T8a2; TWN-VIS-002): the walking search meets the town there, which
+    /// that visitor defends (`visit_at`; the siege, `TWN-STUB-7`), as `MoveHero`'s step refuses
+    /// it, so that the search's loop tests nothing more; a map without towns never asks
+    /// (`bench-check`).
+    // rule: TWN-VIS-002
+    #[cold]
+    #[inline(never)]
+    fn unmark_visitors(&self, state: &AdventureState, hero: &HeroOnMap, occupied: &mut [bool]) {
+        for other in state.heroes().iter().filter(|h| h.id != hero.id) {
+            if let Some(slot) = self
+                .slot(other.pos)
+                .filter(|_| state.besieges(hero.owner, other))
+            {
+                // stub: TWN-STUB-7
+                occupied[slot] = false;
+            }
+        }
     }
 
     /// A walking hero's search: Dijkstra's over one node per tile, the most points first (ties by
