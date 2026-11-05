@@ -1666,3 +1666,80 @@ command = [
     { seat = "Attacker", at = 0, command = { ShootWall = { part = 2 } } },
     { seat = "Attacker", at = 3577, command = { Move = { to = 79 } } },
 ]
+
+# E17 M6 T4c (design §12.16): the grid's and the shadows' keys and the aims' shades. The entries'
+# `grid`, `cursor_shadow` and `movement_shadow` (0 or 1) are the options each runs at (the
+# harness writes them into the original's registry and puts them back; one whose key F6 to F8 an
+# action presses runs at 0). `shade-keys` (`hero-info.toml`, the Marksmen's turn): the mouse
+# resting over the empty hex 37, F7 (the cursor shadow on: the posted move shades the hex), F6
+# (the grid on: the whole redraw, the hex shaded again), F8 (the movement shadow on: the reach,
+# the hex quartered), F7 (the cursor shadow off: its shade goes).
+[[sequence]]
+id = "shade-keys"
+scenario = "hero-info.toml"
+actions = [
+    "move:190,196", "at:300", "key:F7", "at:600", "key:F6", "at:900", "key:F8", "at:1200",
+    "key:F7",
+]
+ms = 300
+timeline = "timelines/shade-keys.txt"
+frames = "timelines/shade-keys-frames.txt"
+boxes = true
+
+# `shade-area` (`seq-shades.toml`, the Angels' turn, the cursor shadow on): Fireball aimed over
+# hex 100 (the Wolf Riders' rear: its area holds them, the Goblins on 117 and the Efreeti on 83,
+# immune to it: their hex left out, unmarked), given up by Escape (oddity 3, CLT-Q53: its shade
+# stays until the mouse leaves the hex), the mouse to hex 97; Frost Ring over hex 100 (its centre
+# left out), given up; Inferno over hex 97 (19 hexes), over hex 99 (the Efreeti's hex left out),
+# onto the panel (oddity 5, CLT-Q55: hexes 1 and 18 shaded, the Pikemen on 1 marked), given up.
+[[sequence]]
+id = "shade-area"
+scenario = "seq-shades.toml"
+cursor_shadow = 1
+actions = [
+    "aim:0:21", "at:300", "move:696,322", "at:700", "key:Escape", "at:900", "move:564,322",
+    "at:1100", "aim:1:20", "at:1400", "move:696,322", "at:1800", "key:Escape",
+    "at:2000", "aim:2:22", "at:2300", "move:564,322", "at:2700", "move:652,322",
+    "at:3100", "move:618,580", "at:3500", "key:Escape",
+]
+ms = 400
+timeline = "timelines/shade-area.txt"
+frames = "timelines/shade-area-frames.txt"
+boxes = true
+
+# `shade-area-move` (`seq-shades.toml`, both shadows on): the Angels' reach shaded; Fireball's
+# aim turns the movement shadow off (`battle_set_shades`) and shades its area over hex 100;
+# given up by Escape, the movement shadow back on and the whole battle redrawn, the posted move
+# shading the mouse's hex.
+[[sequence]]
+id = "shade-area-move"
+scenario = "seq-shades.toml"
+cursor_shadow = 1
+movement_shadow = 1
+actions = ["aim:0:21", "at:300", "move:696,322", "at:700", "key:Escape"]
+ms = 400
+timeline = "timelines/shade-area-move.txt"
+frames = "timelines/shade-area-move-frames.txt"
+boxes = true
+
+# `shade-wall` (`seq-shade-wall.toml`, hot seat, the cursor shadow on): Orrin's Fire Wall at Basic
+# (side 0: the hex and its upper right neighbour) over hex 47, over the Goblins' hex 100
+# (refused: no shade), over hex 45, given up; Force Field over hex 30 (no shade), given up; the
+# Marksmen defend; at the Goblins' turn Crag Hack's Fire Wall at Advanced (side 1: the hex, its
+# upper left neighbour and the hex two rows up) over hex 45 and hex 64, given up.
+[[sequence]]
+id = "shade-wall"
+scenario = "seq-shade-wall.toml"
+hot_seat = true
+cursor_shadow = 1
+actions = [
+    "aim:0:13", "at:300", "move:630,196", "at:600", "move:696,322", "at:900", "move:542,196",
+    "at:1200", "key:Escape", "at:1400", "aim:1:12", "at:1700", "move:608,154", "at:2000",
+    "key:Escape", "at:2200", "key:d", "turn:1.0", "aim:0:13", "at:4000", "move:542,196",
+    "at:4300", "move:608,238", "at:4600", "key:Escape",
+]
+ms = 400
+timeline = "timelines/shade-wall.txt"
+frames = "timelines/shade-wall-frames.txt"
+boxes = true
+command = [{ seat = "Attacker", at = 2200, command = { Defend = {} } }]
