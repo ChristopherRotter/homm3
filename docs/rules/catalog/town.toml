@@ -55,7 +55,7 @@ id       = "TWN-SIE-001"
 title    = "Who defends a siege"
 context  = "town"
 status   = "implemented"
-summary  = "A siege is the battle a step starts at a town of another team or of none that it finds defended (TWN-VIS-001), fought at the town's entrance as the battle of its town (`BattleStart::town`: the town's facts, the defending hero's bonuses, its terrain; TWN-SIE-003 to -005), the attacker staying on the tile it attacked from (ADV-OBJ-003's neighbour mode: the step paid, ADV-MOV-006's drop). Its defender: a visitor of another team than the attacker's, the garrison merged into its army first (TWN-SIE-002), comes with E09 T8b2b (until then such a town is refused, `TWN-STUB-7`); without a visitor the garrison as an army without a hero, its stacks by slot as they stand, unsplit, in the town's formation (the map's byte, design section 8, *agent's call*): an owned town's on its owner's side, who plays it outside its turn as a mine's guards (`Defender::Garrison`, ADV-MIN-002), a neutral town's on the neutral seat, played by the system actor (`Defender::Guards`, *agent's call*: no new variant). A garrison hero (survey section 9.1's first and third rows) comes with increment 3. E09 T8b2a (design section 10): `AdventureState::town_visit`, `visit_town`, `siege_start`, `StaticMap::town_formation`; the game's `town::siege_setup` sets the garrison's formation."
+summary  = "A siege is the battle a step starts at a town of another team or of none that it finds defended (TWN-VIS-001), fought at the town's entrance as the battle of its town (`BattleStart::town`: the town's facts, the defending hero's bonuses, its terrain; TWN-SIE-003 to -005), the attacker staying on the tile it attacked from (ADV-OBJ-003's neighbour mode: the step paid, ADV-MOV-006's drop). Its defender: a visitor of another team than the attacker's (TWN-VIS-002; whoever owns the town), as itself on its owner's side (`Defender::Hero`), the garrison merged into its army first (TWN-SIE-002); without a visitor the garrison as an army without a hero, its stacks by slot as they stand, unsplit, in the town's formation (the map's byte, design section 8, *agent's call*): an owned town's on its owner's side, who plays it outside its turn as a mine's guards (`Defender::Garrison`, ADV-MIN-002), a neutral town's on the neutral seat, played by the system actor (`Defender::Guards`, *agent's call*: no new variant). A garrison hero (survey section 9.1's first and third rows) comes with increment 3. E09 T8b2a (design section 10): `AdventureState::town_visit`, `visit_town`, `siege_start`, `StaticMap::town_formation`; the game's `town::siege_setup` sets the garrison's formation. E09 T8b2b: the visitor's siege (`town_visit` gives a town a visitor of another team defends the neighbour's visit; `siege_start`'s `Defender::Hero`)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -79,6 +79,31 @@ numeric  = "integer"
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 10 (the defender: the visitor with the garrison merged in, else the garrison as an army without a hero, Defender::Garrison for an owned town, Defender::Guards for a neutral one) and section 8 (Holds::Town's formation, read when the garrison defends alone); docs/epics/E09-towns.md decision 16"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-SIE-002"
+title    = "The garrison's merge into a defending visitor's army"
+context  = "town"
+status   = "implemented"
+summary  = "Before a siege a town's visitor defends (TWN-SIE-001), the town's garrison joins the visitor's army by each stack's value (its creature's AI value times its count), round after round: the visitor's weakest stack (the least value, of equal ones the last slot); each garrison stack's gain, its value when the army has room for it (a stack of its creature that takes it within a stack's most, ADV-ARM-007, else a free slot: the original's army_add_stack), else its value less the weakest's; the stack of the greatest positive gain (of equal ones the first slot) joins the army where it has room, else changes places with the weakest stack (creatures and counts swapped, each keeping its slot), which stays in the garrison; until no stack gains. What stays in the garrison does not fight: it stays there after the defender's win (the visitor keeps the merged army) or a battle without a winner, and is lost with the town after the attacker's (TWN-CAP-001's capture empties it). The game merges as it starts the siege the step gave, and tells each slot the merge changed, the visitor's then the garrison's (`ArmyRef::Garrison`), to its army's owner as the army dialog's `StackChanged` (the visitor's slots to the visitor's owner, the garrison's to the town's, a neutral town's to nobody) (*agent's call*, the user's choice of 2026-11-05: a garrison army reference, which no army command may name before the town screen of increment 3: `ArmyCommandError::Garrison`), before `BattleStarted`. E09 T8b2b (design section 10): `h3_adventure`'s `town::merge` and `AdventureState::merge_garrison`; `h3_game`'s `town::merge`, called by `settle_outcome` before `start_battle`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1, garrison_merge 0x44B820 read whole; survey E09-towns.md section 9.2): a stack's value the creature's AI value (its record's +0x40) times its count; per round the visitor's weakest stack (the least value, the last slot of equal ones), each garrison stack's gain (its value with a stack of its creature or an empty slot in the visitor's army, else its value less the weakest's), the greatest positive gain (the first slot of equal ones) joining by army_add_stack (0x44ACE0), else changing places with the weakest; until no gain"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-1.md and E09-batch-1-run2.md, batch TWN-1 row TWN-1-3 (the capture harness under Wine, 2026-11-03; scored in survey E09-towns.md section 15, TD-7): both runs' opening stacks [Swordsman 4, Halberdier 16, Marksman 10, Griffin 5, Cavalier 1, Monk 3, Pikeman 15] and the garrison left [-, Centaur 4, Archer 5], the reading's prediction exactly (each of its three points moving a stack); after the defender's win (3a) the visitor kept the merged army and the garrison the leftovers; after the attacker's (3b) the garrison was empty"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 9.5: CGTownInstance::mergeGarrisonOnSiege merges before a siege the visitor defends, as many rounds as the garrison had stacks, each taking the stack of most power; refuted by batch TWN-1's row 3 (TD-7)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
 
 [[rule]]
 id       = "TWN-SIE-003"
@@ -269,7 +294,7 @@ id       = "TWN-VIS-002"
 title    = "A town's visitor: the hero on its entrance"
 context  = "town"
 status   = "implemented"
-summary  = "A town's visitor is the hero standing on its entrance (the first tile it is visited from), never stored: a hero that entered it, the main town's hero (TWN-SET-001), a hero moved onto the entrance (TWN-SET-010). A step onto another hero on a town's entrance meets it when it is of the mover's team (GAM-MET-001); one of another team defends the town, and the step is the siege from the tile before (design §10, E09 T8b2b), never a field battle (GAM-BAT-004): until then it is refused (`AdventureCommandError::Visit`; the reachable tiles and the legal moves leave the tile out, a flight passes over it; `TWN-STUB-7`). E09 T8a2 (design §9): `AdventureState::town_visitor`, `StaticMap::town_at`, `besieges` (the tile's object a town whose entrance it is, the object `visit_at` reads)."
+summary  = "A town's visitor is the hero standing on its entrance (the first tile it is visited from), never stored: a hero that entered it, the main town's hero (TWN-SET-001), a hero moved onto the entrance (TWN-SET-010). A step onto another hero on a town's entrance meets it when it is of the mover's team (GAM-MET-001); one of another team defends the town (whoever owns it: a step onto the entrance of an own town that only a map's placement gives another player's hero, TWN-SET-010, is its siege too), and the step onto it is the town's visit from the tile before, the siege against that visitor (TWN-SIE-001, TWN-SIE-002), never a field battle (GAM-BAT-004): a destination of the reachable tiles and the legal moves as a monster's, a flight's from a stop node only (it passes over the tile), never a boat's (a landing onto a hero). E09 T8a2 (design §9): `AdventureState::town_visitor`, `StaticMap::town_at`, `besieges` (the tile's object a town whose entrance it is, the object `visit_at` reads); E09 T8b2b: `check_step`'s and the passage's hero branch visit the town (`visit_at`, `town_visit`), the reach's cold `unmark_visitors` pass kept (the search's loop untouched)."
 numeric  = "integer"
 
   [[rule.source]]

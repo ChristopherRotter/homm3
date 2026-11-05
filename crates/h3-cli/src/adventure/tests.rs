@@ -213,6 +213,15 @@ fn commands_round_trip_through_their_text() {
             })),
             "1 army dismiss 12:4",
         ),
+        // E09 T8b2b: a town's garrison (no command manages it: the game refuses one that names it).
+        (
+            PlayerId::new(1),
+            manage(Manage::Army(ArmyCommand::Move {
+                from: slot(ArmyRef::Garrison(TownId::new(3)), 0),
+                to: slot(ArmyRef::Hero(hero), 5),
+            })),
+            "1 army move t3:0 12:5",
+        ),
         (
             PlayerId::new(2),
             manage(Manage::Formation {

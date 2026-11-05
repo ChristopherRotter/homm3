@@ -29,7 +29,7 @@ pub(crate) use build::{adventure_reveal, build_towns, draw_towns};
 pub(crate) use capture::capture;
 pub(crate) use heroes::main_town_heroes;
 pub(crate) use pool::{HeroPool, draw_heroes};
-pub(crate) use siege::{mana_after, siege_experience, siege_setup};
+pub(crate) use siege::{mana_after, merge, siege_experience, siege_setup};
 
 /// A set of the core's factions, a bit per faction below [`FactionSet::CAPACITY`] (the map's
 /// allowed towns, read through the ruleset's factions).

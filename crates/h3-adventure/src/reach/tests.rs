@@ -324,7 +324,8 @@ proptest! {
     /// up to three towns on land tiles without an object, red's, blue's or neutral, with a
     /// garrison or none, a hero standing on one's entrance its visitor: an own or undefended town
     /// entered; since E09 T8b2a one its garrison defends visited from the tile before (the
-    /// siege); another team's visitor never reached (`TWN-STUB-7`).
+    /// siege); since E09 T8b2b one another team's visitor defends the same, a step onto that
+    /// visitor included.
     #[test]
     fn the_query_and_move_hero_agree(
         cells in proptest::collection::vec(0usize..TILES.len(), 64),

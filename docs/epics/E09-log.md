@@ -1310,3 +1310,72 @@ by the agent; an independent review.
   --workspace --all-targets`. A first verify found two regions never run (`visit_at`'s `?` on a
   kind without a visit, `siege_setup`'s `if let` without an `else`): written as a combinator and
   an `unwrap_or`.
+
+### T8b2b — the siege against a town's visitor and the garrison's merge (2026-11-05)
+
+One session, the user present; branch `town/e09-t8b2b` (`cross-lane`: `h3-adventure`'s
+`army.rs`, `state.rs`, `state/manage.rs`, `state/monsters.rs`, `state/passage.rs`, `reach.rs`,
+`ruleset/objects.rs` and tests; `h3-game`'s `command.rs`, `state.rs`, `state/manage.rs` and
+tests; `h3-cli`'s `src/adventure/`; `h3-map`'s `tests/play.rs`). Starting point: `master` at
+7f8c8c5 (#741 and #742 merged; the sandbox restarted during the setup's full baseline, so CI's
+green run on `master` stood for it; the original data staged: `Heroes3.exe`, `H3bitmap.lod`,
+`H3ab_bmp.lod`, `maps.tar`, `extracted.tar`). **At its start** (the user, asked): T8b2b kept
+whole (the agent had proposed a cut at the merge); the merge's events by a new
+`ArmyRef::Garrison(TownId)` and `StackChanged` per slot (of three: that, one summary event, the
+hero's slots plus a new garrison event). The code, tests and docs by the agent.
+
+- **`h3-adventure`:** `town_visit` gives `Visit::Neighbour` also when a hero of another team
+  stands on the entrance, whoever owns the town (`TWN-STUB-7` lifted); `check_step`'s and the
+  passage's hero branch, meeting such a visitor (`besieges`), visit the town (`visit_at`; a
+  flight's from a stop node only, passing otherwise; a boat's step stays `sail_entry`'s landing
+  refusal); the reach's cold `unmark_visitors` pass kept (its doc), the walking loop untouched.
+  `siege_start` gives the visitor `Defender::Hero` (its army as it stands). The merge:
+  `town::merge(core, (slots, most), army, garrison)`, pure (survey §9.2's rounds; the room the
+  joins' `room` with a stack's most, ADV-ARM-007, so `room`, `join_at` and `Room` became
+  `pub(crate)`); `AdventureState::merge_garrison(core, part, town) -> Vec<ArmySlot>` writes both
+  armies (the garrison only when changed; `hero_mut` new) and returns the changed slots, the
+  visitor's then the garrison's. `ArmyRef::Garrison(TownId)` and `ArmyCommandError::Garrison`
+  (the adventure's `held` refuses it).
+- **`h3-game`:** `town::merge` (`src/town/siege.rs`), called by `settle_outcome` before
+  `start_battle` for a siege whose defender is a hero: the merge, the battle's defending army the
+  merged one, each changed slot told as `StackChanged` to its army's owner (the visitor's to its
+  owner, the garrison's to the town's, a neutral town's to nobody; `stack_at` reads a
+  garrison's slot) before `BattleStarted`. The manage check `admits` refuses a command naming a
+  garrison on either end. `StackChanged`'s doc.
+- **Other crates:** `h3-cli`'s slot text `t<town>:<slot>` (format and parse; the round-trip
+  test); `h3-map`'s plans' two matches on `ArmyRef`.
+- **Rules, stubs:** TWN-SIE-002 new (the merge, with the batch's row 3 and VCMI's refuted order);
+  TWN-SIE-001 (the visitor defends) and TWN-VIS-002 (the step onto the visitor the siege)
+  amended; `TWN-STUB-7` lifted.
+- **Tests:** `h3-adventure`'s `state/tests/towns.rs`
+  (`another_teams_visitor_defends_its_town_besieged_from_the_tile_before`: every owner, with a
+  garrison or none, a walker, a water walker and a flyer: the reach's destination, the siege's
+  `Defender::Hero`, the hero outside with the reach's points, a flight's pass and its `NoStop`;
+  `the_visitors_town_is_the_tiles_object_the_step_meets` now a siege;
+  `the_garrison_merges_by_the_greatest_gain_until_none_gains`: batch TWN-1's row 3 exactly;
+  `a_garrison_stack_joins_where_the_army_has_room_and_a_worthless_one_never`: a free slot, a
+  stack of its creature, a creature worth nothing or unknown, a stack past the most, no gain, an
+  empty army; `the_state_merges_a_towns_garrison_into_its_visitor_and_names_the_changed_slots`),
+  the army tests (the refusal, its text), the reach's property test's doc; `h3-game`'s
+  `town/tests/siege.rs` (`a_step_onto_a_towns_visitor_merges_the_garrison_into_its_army_and_besieges_it`:
+  the legal moves, the three `StackChanged` to blue alone before `BattleStarted`, the battle's
+  setup with the merged army; `a_siege_against_a_visitor_keeps_its_merged_army_or_captures_the_town_with_the_attacker_outside`:
+  red's retreat, then a horde's win with the levels answered;
+  `a_neutral_towns_garrison_slots_are_told_to_nobody`;
+  `a_visitors_siege_with_nothing_to_merge_tells_no_stack`) and `tests/manage.rs` (the refusal
+  on either end); `h3-cli`'s round trip.
+- **The bench** against a built `master` worktree (the same toolchain; nothing re-baselined):
+  `reach-lifted-xl-144` +0.24 % and `random-play-duel-36` +0.16 %, both the passage's own count
+  (+0.7 %, its hero branch's new test; every other function equal), `reach-xl-144` −0.03 %; the
+  fork workloads equal to `master`'s (both +1.38 % over their baselines in this sandbox: the
+  heap's state, not the change). Every workload inside the gate.
+- **The review** (independent, read only): one behaviour bug, fixed: the garrison's slots were
+  told to the visitor's owner; now to the town's (a neutral town's to nobody; tested with a
+  visitor placed on a neutral town). Its test gaps: a tie between a gain with room and a swap's
+  (tested); survivors in merged slots after a defender's win with losses (the battle's own
+  write-back, not new here). The first verify's coverage found two regions never run (`visit_at`'s
+  `?` on `town_visit`, now total; the passage's own `NoStop` arm, now the shared object path).
+- **Gates:** `cargo fmt`; the scoped verify with the original data passed every step (clippy,
+  check-rules, check-stubs, coverage 100 %, determinism, `bench-check`, `original-data`) but
+  `check-lane` (by design on a `cross-lane` branch); `check-lane --cross-lane`; `cargo check
+  --workspace --all-targets`; `h3-cli`'s tests.
