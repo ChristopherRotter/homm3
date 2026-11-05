@@ -225,8 +225,8 @@ impl From<Unsupported> for ImportError {
 /// # Errors
 ///
 /// The first [`ImportError`] found: the static map, its first object with guards or reward
-/// creatures it cannot represent (or, since E08 T83a, an ownable object entered from water), the
-/// players' main towns (E09 T7a1), the towns in the map's order, then the hero objects in the
+/// creatures it cannot represent (or, since E08 T83a, an ownable object entered from water; since
+/// E08 T97b1 not a dwelling), the players' main towns (E09 T7a1), the towns in the map's order, then the hero objects in the
 /// map's order, the banned sets, the timed events and the pool's inputs.
 pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportError> {
     let (mut players, colours) = players(map);
