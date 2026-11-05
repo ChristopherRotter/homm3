@@ -6827,9 +6827,9 @@ the next stack after a cast only when it killed the active stack (0x47905B).
     (`outline_waiting`, as a stop). The switch (`hand_over`): with Auto Combat now on and Spells
     set (the boxes now) the cast is asked first (`Battle::computer_at`, at the switch's time),
     then the action if the stack plays itself, else the turn waits on. The computer's cast is
-    pushed as the computer's command (no time: one idle step, the stack outlined at that tick,
-    the cast clearing and restoring the outline, §7.9), also on a human-played turn, where the
-    original's outline before it is not known (the recording's question). A key or a press while
+    pushed as the computer's command (no time: an idle step only if one is due, the cast
+    clearing and restoring the outline, §7.9), also on a human-played turn: as recorded (below,
+    no outline before the cast in either case). A key or a press while
     the computer casts on a human-played turn is no stop (`Battle::auto_on`): the original reads
     none on that turn, the key reaching it after the cast; the client drops it, as CLT-Q45 (2)
     drops a press made before such a turn.
@@ -6845,20 +6845,50 @@ the next stack after a cast only when it killed the active stack (0x47905B).
     `registry_values`, as the grid's). The computer's casts are the record's commands without a
     time. With Creatures clear the parser takes a key or a press after `key:a` as the human's
     turn's own, not a stop (*provisional*: such a sequence presses on the human's turns only).
-- **To record** (`clients/situations/to-record.toml`, `seq-auto-cast.toml`: the Champions' turn
-  first, Orrin's book Bless alone, 20 spell points; the engine's computer declines at the
-  Champions' turn and casts Bless as the Marksmen's turn starts):
-  1. `auto-cast` (Creatures and Spells set): A at 0 ms; the Champions played at once; at the
-     Marksmen's turn start Bless, then their shot, the panel dimmed and Auto Combat selected.
-  2. `auto-cast-human` (Creatures cleared, Spells set): A at 0 ms (nothing shown), D (the
-     Champions defend); at the Marksmen's turn start Bless, then the turn waits for the human.
-  The questions for the recordings: the stack's outline before the computer's cast (from the
-  turn's start, as a human's turn, or one tick later, the client's), the cast's timing (one idle
-  step after the turn's start), the panel through the cast; and whether the original's computer
-  casts as the engine's does (else a finding for the battle lane).
+- **Recorded** (M6 T5b1, a capture agent; `sequences.toml`'s `auto-cast`, Creatures and Spells
+  set, and `auto-cast-human`, Creatures cleared and Spells set, A at the Champions' turn and in
+  the second D; `seq-auto-cast.toml`: the Champions' turn first, Orrin's book Bless alone, 20
+  spell points; silent, as every capture). The recordings are the source of what follows; the
+  client's guesses they replace: the outline one tick later, the cast one idle step after the
+  turn's start.
+  1. *Where the original's computer casts:* as the engine's in both: nothing at the switch's
+     turn (the Champions'), Bless on the Marksmen as their turn starts, whether they play
+     themselves (`auto-cast`: their shot at the Goblins after it) or the human plays them
+     (`auto-cast-human`: the turn waits after it; the log the Champions' Defend line, then the
+     cast's). Not the casts: the original's computer walked the Champions from 35 to 62 (along
+     row 2 to 44, then 62), the engine's (fair and all-seeing, seed 1) to 45, as far; a finding
+     for the battle lane.
+  2. *The outline before the cast:* none in either, neither from the turn's start nor a tick
+     later. With Creatures set the original outlines no stack from the switch on (its active
+     stack, +0x132C8, empty) but the acting one for its action's tick (the Marksmen for the
+     100 ms from 8 180, their shot's first frame shown at 8 280: the computer's stack as it
+     acts, §7.9); with Creatures cleared the Marksmen show no outline from their turn's start
+     (0 ms) through the cast and are outlined from its end (2 900, the hero standing).
+  3. *The cast's timing:* the cast starts as the turn starts, with no idle step of its own (with
+     Creatures set at 5 280, as the Champions' standing frame after their walk, drawn at 5 180,
+     has had its 100 ms; with Creatures cleared at 0, the Defend's millisecond). From its
+     start: the hero's cast group 4, frames 0 to 4 every 100 ms; Bless's animation 36 over the
+     Marksmen, frames 0 to 19 every 100 ms from +500, gone at +2 500; the hero's frames 5 to 7
+     (+2 600 to +2 800); the hero standing at +2 900 and, in that tick, the stack's action (the
+     Marksmen's shot, group 15, from 8 180) or, on a human-played turn, its outline. The cast's
+     line is written at +500. Bless's sound (`Bless`, 1 920 ms) starts with the animation's
+     first frame and ends inside it: nothing waits for it (§8.3 lists no wait there; a run with
+     the sound on, not kept, recorded the same timeline).
+  4. *The panel* (`auto-cast-human`): lit through the cast and the wait, Auto Combat unselected
+     (its pixels the opening's), the spell book dimmed from the cast (Orrin cast this round), the
+     log the cast's line; the turn then waits outlined, the idle steps every 100 ms, the mouse
+     parked over the panel, its cursor unchanged. With Creatures set the panel is dimmed but
+     Auto Combat, selected, throughout (as `auto`'s).
+  The comparison (the client unchanged): both timelines as recorded (130 and 35 changes);
+  `auto-cast-human` 41 frames exact; `auto-cast` 131 frames, 84 of them differing in 2 pixels
+  each, all redraw artifacts (§7.11 (1), the Champions' walk redrawing over Orrin at (58, 113)
+  and (58, 114), 400 to 5 180 ms, as in `walk`), every frame from the cast on exact; the
+  viewer's outline, read every millisecond around both casts, changes where the original's
+  screen does and nowhere else. `auto-cast` ends at 9 000 ms, in the shot (the questions end at
+  its start).
 - **Not built:** the retreat question (T5b2, CLT-STUB-2: the test not asked, so a human's side
   under Auto Combat never leaves); the stop read between the cast and the action (the original
   reads a key pressed during the computer's cast for a stack that plays itself at the pass after
   the cast, so that stack's action is the human's; the client's stop waits for the next turn's
-  start, its `Auto::of` taking stops at turn starts only); the recordings (a separate capture
-  agent); a hidden battle's and a remote turn's asks (no such battle here).
+  start, its `Auto::of` taking stops at turn starts only); a hidden battle's and a remote turn's
+  asks (no such battle here).

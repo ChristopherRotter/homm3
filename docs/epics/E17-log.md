@@ -5437,5 +5437,13 @@ engine's whole choice.
   their shot; `battle.toml` with a human, and with `--auto 2` all-seeing): every frame read back
   exact, each battle its re-fight's; `check-docs`, `check-stubs`, `check-lane --cross-lane`.
 - **Not built:** the retreat question (T5b2); the stop read between the computer's cast and a
-  self-playing stack's action (the client's stop waits for the next turn's start); the
-  recordings.
+  self-playing stack's action (the client's stop waits for the next turn's start).
+- **Recorded** (a capture agent; design §12.18, "Recorded"): `auto-cast` and `auto-cast-human`
+  moved from `to-record.toml` (removed) into `sequences.toml`. The original's computer casts as
+  the engine's (none at the switch, Bless as the Marksmen's turn starts, in both); no outline
+  before the cast in either; the cast starts with the turn, no idle step of its own; the panel
+  lit with Auto Combat unselected through the human-played turn's cast. Timelines as recorded
+  (130, 35 changes); `auto-cast-human` 41 frames exact, `auto-cast` 131 frames, 84 of them 2
+  pixels of the walk's redraws over Orrin (artifacts, as `walk`'s), the rest exact; the client
+  unchanged. A finding for the battle lane: the original's computer walked the Champions to 62,
+  the engine's to 45. `drawn`: 247, all the same after `--record`.
