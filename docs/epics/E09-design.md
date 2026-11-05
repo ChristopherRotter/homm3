@@ -247,6 +247,29 @@ ADR-0015's amendment point 3, in the import's order:
   tile (a destination reached from a neighbour, not passed) and the rest as an entered object; the
   test is per entrance tile the search meets (a town is rare), measured against `master`
   (`homm3-bench-regression`).
+- **As built (T8a2):** `h3_adventure`'s `src/town.rs`. A town's entrance is a typed visit
+  (`StaticMap::place`; `Effect::Town`; `StaticMap::town_at(pos)`), so ADV-OBJ-004 reads the town:
+  a hero on the entrance does not leave it upwards and the guard test skips the row above.
+  `town_visitor(id)` the hero on the entrance. `town_defended(index, player)`: the owner not
+  allied (`allied`, the player alone until E10) and a creature in the garrison, or, whoever owns
+  it, a visitor not allied; `visit_at` gives no visit for a defended town, so the step refuses it
+  as `AdventureCommandError::Visit` and the reach leaves it out. `besieges(player, other)`: a step
+  onto a hero not allied standing on a town's entrance is refused the same way in `check_step`
+  and `passage` (a flight passes over it, as over any hero, never stops on it), never a field
+  battle. Both refusals are `TWN-STUB-7` until T8b's siege; case 2's visit from the tile before
+  and the `AllyInTown` refusal are not built (`TWN-STUB-1` stays E10's). `visit_town`: a town of
+  the hero's team gives nothing; another's or a neutral one, entered undefended, gives
+  `AdventureOutcome::capture: Some(TownId)`, the owner unchanged until the game composes the
+  capture (§11). The walking search's loop is master's: a first cut that tested the visitor in its
+  occupied branch cost +7.7 % on `reach-xl-144`, so `Reach::search` runs a `#[cold]`
+  `unmark_visitors` pass before the loop on a map with towns (a visitor not allied leaves its tile
+  unmarked, and `visit_at`, now `#[inline(never)]` as the compiler had it, meets it through
+  `town_defended`). Bench against `master` (the same toolchain): the seven reach and random-play
+  workloads within −0.8 % to +0.38 % (after the review's fixes). `besieges` (and so
+  `unmark_visitors`) reads the tile's object as `visit_at` does (`AdventureState::tile_index`, its
+  own copy of `tile_object`'s lookup: sharing it cost +2 to +2.8 %) and asks that tile to be the
+  town's entrance (the review: with a second typed object visited from the entrance tile, the reach
+  and the step disagreed).
 
 ### 10. The siege's start and the merge (TWN-SIE-001, TWN-SIE-002; T8b)
 
@@ -279,6 +302,21 @@ ADR-0015's amendment point 3, in the import's order:
   points; the town is captured; a later step finds it own. A defender's win or no winner changes
   no owner; the survivors stay in the armies that fought (the visitor's, else the garrison's as a
   mine's guards).
+- **As built (T8a2):** `AdventureState::capture_town(core, town, player, reveal: TownReveal,
+  sink)` (`core` for the viewers' fringe, as a mine's flag): the owner written through the
+  ownables' block, the garrison written empty, `TownCaptured { town, anchor, owner }` to the
+  players that see the town and the new owner, then `TilesRevealed` to the new owner alone;
+  `TownReveal { Radius(u8), All }`, `All` every tile of every level, also `start_game`'s
+  (`&[TownReveal]`; `h3_game::town::adventure_reveal`, which was `start_radius`): `TWN-STUB-5`
+  lifted. The game's `town::capture::capture`, called first in `settle_outcome`'s loop (before the
+  held rests, the gains and any decision): `adventure_reveal`, the adventure's capture, then the
+  Capitol's limit with `holds_another` = another town of the map owned by the new owner (the
+  adventure's owners, the captured town left out: its owner is already written) with a standing
+  Capitol (`Towns::capitol`), and `GameEvent::TownChanged { town, capitol, seen_by }` when the
+  limit changed it, told to the capture's viewers (`capture_town` returns them; §12's rule, the
+  review's call: no player that does not see the town learns its Capitol); the limit runs only
+  after a capture. A capture's events: the step's `HeroStepped`, `TownCaptured`,
+  `TilesRevealed`, then `TownChanged`.
 
 ### 12. Information (TWN-VEW-001 to -003; `docs/06-security.md`, T8c)
 
