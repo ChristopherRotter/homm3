@@ -6898,3 +6898,45 @@ the next stack after a cast only when it killed the active stack (0x47905B).
   the pass after the cast, so that stack's action is the human's; the client's stop waits for the
   next turn's start, its `Auto::of` taking stops at turn starts only; T5b2's, with a recording); a hidden battle's and a remote turn's
   asks (no such battle here).
+
+### 12.19 The retreat question (M6 T5b2a)
+
+T5b2 cut in two by the user (2026-11-05): T5b2a the retreat question, T5b2b CLT-Q61's stop. Read:
+`ai_battle_action` 0x477EE0 whole (0x477EE0 to 0x4782C4), the retreat test's head again
+(0x41E570 to 0x41E5CA: the human side's gate), `message_box_picture` 0x4F4EB0's resources' case
+(0x4F4F5A to 0x4F508E) and its common tail (0x4F5B94 to 0x4F5CF8), GENRLTXT's records 130 and 414.
+
+- **When** (0x477EE0, the action of a stack that plays itself, §7.22): the side's player human
+  (+0x54A4 + side, 0x4CE940); in the tactics phase the stack's turn (0x4221F0); else the retreat
+  test 0x41E570, asked (and drawing) at every such action, also after the question's Cancel. For a
+  human's side the test skips its Easy and Normal gate and the Normal draw (0x41E590: +0x54A4 +
+  side set), the rest as the computer's (BAT-AI-024). On no, the stack's turn.
+- **The question** (0x477F56), a human's side on the test's yes while +0x1402F is set (set as the
+  battle starts; once cleared, the stack's turn): GENRLTXT's record 414 (`%s feels that the odds
+  are overwhelming.` and, after a blank line, whether to retreat) with the side's hero's name
+  (hero +0x23), `message_box` style 2 (OK 0x7805, Enter; Cancel 0x7806, Escape; §7.19), no
+  picture, at (-1, -1). Cancel clears +0x1402F: the stack's turn now, and no question again this
+  battle (the test still asked at each action). OK leaves it set and goes on.
+- **After OK** (0x477FEE to 0x47828E; BAT-AI-026, the engine's `Decision::leaving`): the action 4
+  (Retreat) without a hero on either side; the expected price (0x477A00's sum inline: half the
+  gold of the side's first 20 records but the summoned and the temporary creatures, times
+  `hero_surrender_factor` 0x4E4580) into `surrender_price` 0x695030; Retreat for the town's
+  defender (+0x53C8 set, side 1), when the player's gold (game +0x20B84 by player) is below the
+  price + 2500, or when the army's worth (the creatures times their gold over the first 20 records,
+  no flag test) is at most that; a computer side always retreats (0x47815A). Else **the offer**:
+  GENRLTXT's record 130 (whether to save `%s`'s army for `%d` gold) with the hero's name and the
+  price, style 2 with one picture, type 6 (gold) and subtype the price. OK: the action 5
+  (Surrender) with the price (+0x40). Cancel: the action 4 (Retreat). No other box: the Retreat
+  button's question (GENRLTXT 29) and the Surrender button's (33, 30) are not shown.
+- **The gold picture** (0x4F4EB0, types 0 to 6, the resources): `resour82.def`, frame the type
+  (6); the caption by the subtype: above 0 `%d` of it (0x660A1C), 0 none, from -100 000 to -1
+  GENRLTXT 4 with its negation, below -100 000 `%d` of it + 100 000; then the common tail (§7.19:
+  the slot the DEF's size + 2, the caption measured in `smalfont.fnt`, 50 to 110 wide).
+- **The engine** (the battle lane's paths, a cross-lane PR with the user's consent, 2026-11-05):
+  `h3_battle_ai::Decision::human` (the parts as the original asks them of a human's side: the
+  retreat test without the gate, in the hero's cast too; the policy, `choose`, unchanged,
+  ADR-0027 point 8), `Decision::leaving` and `Leaving` (`Retreat`, `Offer { price }`; BAT-AI-026).
+  The offer names the battle's price (BAT-FLE-002, what the engine's Surrender pays), the
+  thresholds take the expected one (0x477A00), as the original's code does; the two agree but
+  where BAT-Q28 row 7 says.
+- **Oddities:** none found by the reading.
