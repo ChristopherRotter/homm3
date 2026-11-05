@@ -34,7 +34,7 @@ use h3_kernel::Rng;
 use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
 use proptest::test_runner::Config;
 
-use super::{POLICY_VERSION, checked, choose, unchecked};
+use super::{Decision, POLICY_VERSION, Sight, checked, choose, unchecked};
 use crate::walker::Walker;
 
 mod casts;
@@ -1950,6 +1950,51 @@ const ARMY: [usize; 14] = [
     DRAGON,
 ];
 
+/// [`Decision`]'s parts chained as [`unchecked`] chains them (E17 M6 T5b): the hero's cast; else
+/// Retreat on the retreat test's yes, checked; else the action.
+fn by_parts(
+    state: &BattleState,
+    r: &BattleRuleset,
+    side: BattleSide,
+    sight: Sight,
+    rng: &mut Rng,
+) -> Command {
+    let decision = Decision::new(state, r, side, sight, rng).unwrap();
+    decision.hero_cast(rng).unwrap_or_else(|| {
+        if decision.retreat_test(rng) {
+            checked(state, r, side, Command::Retreat)
+        } else {
+            decision.action(rng)
+        }
+    })
+}
+
+/// A side not to act gets no part of a decision: no cast, no retreat, Defend (E17 M6 T5b), on
+/// either battle; the side to act's parts on the battle are its command's.
+// covers: BAT-AI-001, BAT-AI-017, BAT-AI-024
+#[test]
+fn a_side_not_to_act_gets_no_part_of_a_decision() {
+    let r = ruleset();
+    let mut setup = setup(&[(IMP, 10)], &[(GOG, 10)]);
+    setup.heroes = [Some(hero(0)), Some(hero(0))];
+    let state = BattleState::new(&r, &setup, 1).unwrap();
+    let side = state.side_to_act().unwrap();
+    for sight in [Sight::AllSeeing, Sight::Fair] {
+        let mut rng = Rng::from_seed(2);
+        let other = Decision::new(&state, &r, side.opponent(), sight, &rng).unwrap();
+        assert_eq!(other.hero_cast(&mut rng), None);
+        assert!(!other.retreat_test(&mut rng));
+        assert_eq!(other.action(&mut rng), Command::Defend);
+        assert_eq!(rng, Rng::from_seed(2), "no draw");
+    }
+    assert_eq!(Sight::default(), Sight::Fair);
+    let mut parts = Rng::from_seed(3);
+    assert_eq!(
+        by_parts(&state, &r, side, Sight::AllSeeing, &mut parts),
+        choose(&state, &r, side, &mut Rng::from_seed(3))
+    );
+}
+
 proptest! {
     #![proptest_config(Config::with_cases(48))]
 
@@ -2024,6 +2069,9 @@ proptest! {
             prop_assert_eq!(command, choose(&state, &r, side, &mut b));
             prop_assert_eq!(command, proposed);
             prop_assert_eq!(&a, &b);
+            let mut parts = seat.clone();
+            prop_assert_eq!(by_parts(&state, &r, side, Sight::AllSeeing, &mut parts), command);
+            prop_assert_eq!(&parts, &a);
             seat = a;
             let played = if rng.below(3) == 0 {
                 legal_commands(&state, &r, side, &mut legal);

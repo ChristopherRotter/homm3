@@ -4,7 +4,8 @@
 //! observation, and writes nothing (ADR-0027 point 4); the computer's numbers the battle's rules
 //! use come from `h3-battle`'s public [`computer`] module, one implementation for both (point 6).
 //! Its callers are the AI lane's batch (`Policy::System`) and the adventure's neutral seat; they
-//! get it once a side without a hero is complete (E23 T4).
+//! get it once a side without a hero is complete (E23 T4). The battle client's Auto Combat asks
+//! it part by part for a human's side, as the original does ([`Decision`], E17 M6 T5b).
 //!
 //! So far (E23 T2, T3, T4): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
 //! `docs/formats/installation.md` §7.34). A stack that can shoot now shoots the computer's target
@@ -77,6 +78,7 @@ extern crate alloc;
 extern crate std;
 
 mod casts;
+mod decision;
 mod ends;
 mod gain;
 mod hero;
@@ -97,6 +99,8 @@ mod tests;
 use h3_battle::{BattleSide, BattleState, Command, StackId, StackTraits, computer};
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Rng;
+
+pub use decision::{Decision, Sight};
 
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
@@ -164,7 +168,7 @@ pub fn unchecked(
     side: BattleSide,
     rng: &mut Rng,
 ) -> Command {
-    let Some(id) = state.active().filter(|_| state.side_to_act() == Some(side)) else {
+    let Some(id) = acting(state, side) else {
         return Command::Defend;
     };
     if let Some(phase) = state.tactics() {
@@ -173,6 +177,26 @@ pub fn unchecked(
     if let Some(cast) = hero::cast(state, ruleset, (id, side), rng) {
         return cast;
     }
+    stack(state, ruleset, (id, side), rng, true)
+}
+
+/// The active stack of `side` when `side` is to act in `state`.
+fn acting(state: &BattleState, side: BattleSide) -> Option<StackId> {
+    state.active().filter(|_| state.side_to_act() == Some(side))
+}
+
+/// The stack's action outside the tactics phase (0x477EE0, 0x4221F0; BAT-AI-001): the commanded
+/// Catapult's shot and First Aid Tent's heal; for any other stack, with `retreat`, the retreat
+/// test first ([`retreat::test`], BAT-AI-024: a yes is Retreat), then a shooter's shot or a
+/// walker's turn. Without `retreat` the test is not asked (its draws not made): [`Decision`]'s
+/// action, the test its caller's.
+fn stack(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (id, side): (StackId, BattleSide),
+    rng: &mut Rng,
+    retreat: bool,
+) -> Command {
     let me = &state.stacks()[id.index()];
     if me.is_catapult() {
         return catapult(state, ruleset, id, rng);
@@ -180,7 +204,7 @@ pub fn unchecked(
     if me.has(StackTraits::FIRST_AID) {
         return tent(state, id);
     }
-    if retreat::test(state, ruleset, side, rng, false).retreat {
+    if retreat && retreat::test(state, ruleset, side, rng, false).retreat {
         return Command::Retreat;
     }
     if computer::shoots(state, ruleset, id) {
