@@ -141,7 +141,7 @@ id       = "TWN-CAP-002"
 title    = "The Capitol's limit: one per player after a capture"
 context  = "town"
 status   = "implemented"
-summary  = "After a capture, a town with a standing building of role `hall` 4 (the Capitol) whose new owner holds another town with a standing Capitol loses it: the Capitol leaves the ever-built set and the record's `capitol_demoted_to` (its hall-3 building, the City Hall) enters it, so that the City Hall stands; a neutral owner never loses it. The start never applies it, so a map may give a player several Capitols (survey §11.3). E09 T6b (design §6, §11): `h3_towns::capitol_limit`, written by the store's `Towns::apply_capitol_limit` (its caller the game's capture after the adventure's, E09 T8a)."
+summary  = "After a capture, a town with a standing building of role `hall` 4 (the Capitol) whose new owner holds another town with a standing Capitol loses it: the Capitol leaves the ever-built set and the record's `capitol_demoted_to` (its hall-3 building, the City Hall) enters it, so that the City Hall stands; a neutral owner never loses it. The start never applies it, so a map may give a player several Capitols (survey §11.3). E09 T6b (design §6, §11): `h3_towns::capitol_limit`, written by the store's `Towns::apply_capitol_limit` (its caller the game's capture after the adventure's: since E09 T8a2 `h3_game`'s `town::capture` on the step's `AdventureOutcome::capture`, with whether the new owner owns another town with a standing Capitol, telling the public `GameEvent::TownChanged` when it changes the town)."
 numeric  = "integer"
 
   [[rule.source]]

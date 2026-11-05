@@ -275,7 +275,8 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 /// public but a treasury's change, a timed event's firing (E08 T85b), an offer's, a hero's change and its level-ups, which show to
 /// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a, a meeting's
 /// and an army dialog's since T51b, a choice's and a University's since T63a, a hire dialog's
-/// since T95b), and a battle's, which show to the owners that see them (E08 T19a); an adventure
+/// since T95b), and a battle's, which show to the owners that see them (E08 T19a); a town's
+/// change is public (E09 T8a2, until T8c narrows it); an adventure
 /// or a battle event shows to the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
@@ -335,6 +336,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::DayStarted { .. }
         | GameEvent::WeekStarted { .. }
         | GameEvent::MonthStarted { .. }
-        | GameEvent::TurnStarted { .. } => Some(*event),
+        | GameEvent::TurnStarted { .. }
+        | GameEvent::TownChanged { .. } => Some(*event),
     }
 }

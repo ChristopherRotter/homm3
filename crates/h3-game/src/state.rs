@@ -472,7 +472,9 @@ impl GameState {
     }
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
-    /// point 10): first the visit of the monster guarding the hero's tile held as a rest of the
+    /// point 10): first the capture of the undefended town the step entered (TWN-CAP-001,
+    /// TWN-CAP-002, E09 T8a2: [`town::capture`]), at once; then the visit of the monster guarding
+    /// the hero's tile held as a rest of the
     /// visit (`AdventureOutcome::guard_after`, ADV-MON-006, GAM-DEC-007; E08 T63b), so that it
     /// waits for whatever the outcome opens, a won guards' battle's reward
     /// (`AdventureOutcome::reward_after`) and an event on a guarded tile
@@ -497,6 +499,11 @@ impl GameState {
     ) {
         let mut next = Some(outcome);
         while let Some(outcome) = next.take() {
+            // rule: TWN-CAP-001, TWN-CAP-002
+            if let Some(captured) = outcome.capture {
+                let (adventure, towns) = (&mut self.adventure, &mut self.towns);
+                town::capture(adventure, towns, rules, (captured, player), sink);
+            }
             if let Some(hero) = outcome.guard_after {
                 self.hold(player, hero, Rest::Guard);
             }

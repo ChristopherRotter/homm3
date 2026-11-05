@@ -661,6 +661,10 @@ fn check_told(
                 kind: AdventureEventKind::TownCaptured { .. },
                 ..
             }) => prop_assert!(false, "a plan without towns told {:?}", event),
+            // E09 T8a2: a captured town's Capitol demoted; likewise never told.
+            GameEvent::TownChanged { .. } => {
+                prop_assert!(false, "a plan without towns told {:?}", event)
+            }
             // E08 T84b1: a weekly object found empty, told to its visitor's owner alone; nothing
             // it sees changes. E08 T84b2: a Shipyard that makes no boat offer likewise.
             GameEvent::Adventure(AdventureEvent {

@@ -18,10 +18,12 @@ use h3_towns::TownFaction;
 use crate::{GameRuleset, GameSetup, GameSetupError, PlayerSetup};
 
 pub(crate) mod build;
+pub(crate) mod capture;
 pub(crate) mod heroes;
 pub(crate) mod pool;
 
 pub(crate) use build::{adventure_reveal, build_towns, draw_towns};
+pub(crate) use capture::capture;
 pub(crate) use heroes::main_town_heroes;
 pub(crate) use pool::{HeroPool, draw_heroes};
 
