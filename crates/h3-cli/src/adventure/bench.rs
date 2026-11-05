@@ -16,7 +16,10 @@
 //!   player's heroes seek each other and the play stops when a meeting opens, so the forks carry
 //!   the open meeting. On a map with increment 7's objects (E08 T64a: `e08-rewards-36.h3m`) a
 //!   game's visits write the state's visits block, which the forks then carry (counted in
-//!   [`BenchResult::visits`]).
+//!   [`BenchResult::visits`]); on a map with dwellings (E08 T96b2: `e08-dwellings-144.h3m`) a
+//!   purchase writes the dwellings' week block until the week's refill ([`BenchResult::dwellings`]);
+//!   with `--dwelling 1` (E08 T96b2) a player's heroes seek the dwellings and the play stops when a
+//!   visit writes one, so the forks carry the block.
 //! * `manage` (E08 T52): a player's heroes seek each other until a meeting opens, then both
 //!   heroes' management listing `--queries` times, inside [`management_queries`]
 //!   (`h3_game::legal_management` and every split range between the two armies).
@@ -92,6 +95,8 @@ pub struct BenchOptions {
     pub battle: bool,
     /// `fork`: the play stops when a meeting opens (within the day limit; E08 T52).
     pub meeting: bool,
+    /// `fork`: the play stops when a visit writes a dwelling (within the day limit; E08 T96b2).
+    pub dwelling: bool,
     /// `manage`: how many times both heroes' listing is asked for (E08 T52).
     pub queries: u32,
 }
@@ -113,6 +118,9 @@ pub struct BenchResult {
     /// `fork`: the games whose forks carried the visits block (E08 T64a: a visit wrote a mark,
     /// knowledge or a find's emptying).
     pub visits: u64,
+    /// `fork`: the games whose forks carried the dwellings' week block (E08 T96b2: a purchase,
+    /// free creatures or a guards' battle left a dwelling below its week since the last refill).
+    pub dwellings: u64,
     /// `fork`: the heroes in boats at the forks, over the games (E08 T75b: the forks carry the
     /// boats' records with a boat aboard).
     pub afloat: u64,
@@ -142,6 +150,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         battles: 0,
         meetings: 0,
         visits: 0,
+        dwellings: 0,
         afloat: 0,
         creature_months: 0,
         added: 0,
@@ -164,6 +173,8 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
             Workload::Fork => {
                 let steps = if options.meeting {
                     until_meeting(&mut env, g)
+                } else if options.dwelling {
+                    until_dwelling(&mut env, g)
                 } else if options.battle {
                     until_battle(&mut env)
                 } else {
@@ -173,6 +184,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                 result.battles += u64::from(open);
                 result.meetings += u64::from(meeting(&env).is_some());
                 result.visits += u64::from(env.state().adventure().visits().is_some());
+                result.dwellings += u64::from(env.state().adventure().dwellings_written());
                 let heroes = env.state().adventure().heroes();
                 let afloat = heroes.iter().filter(|h| h.boat.is_some()).count();
                 result.afloat += u64::try_from(afloat).unwrap_or(u64::MAX);
@@ -343,6 +355,85 @@ fn seek_own(env: &AdventureEnv, player: PlayerId) -> Action {
             own.iter()
                 .filter(|&&(id, other)| id != hero.id && other.level == pos.level)
                 .map(|(_, other)| other.x.abs_diff(pos.x).max(other.y.abs_diff(pos.y)))
+                .min()
+        };
+        let Some(here) = distance(hero.pos) else {
+            continue;
+        };
+        for (pos, _) in reach.tiles() {
+            let (Some(d), Some(tile)) = (distance(pos), tile_index(state, pos)) else {
+                continue;
+            };
+            if d < here && best.is_none_or(|(b, _)| d < b) {
+                best = Some((d, Action::move_to(slot, tile)));
+            }
+        }
+    }
+    best.map_or_else(Action::end_turn, |(_, action)| action)
+}
+
+/// Play until a visit writes a dwelling or the episode ends (`fork` with `dwelling`; E08 T96b2):
+/// on the map the acting player's heroes seek the dwellings ([`seek_dwelling`]); its offers (the
+/// flag's hire question, the guards' question, the hire dialog), level-ups, army dialogs and
+/// battles, and the neutral seat's battles, are the env's random agent's (agent seed
+/// `agent_seed`): the steps played. Random play seldom reaches a dwelling on a large map.
+fn until_dwelling(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
+    let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
+    let mut steps = 0;
+    loop {
+        let Some(seat) = env.to_move().next() else {
+            break;
+        };
+        let state = env.state();
+        if state.adventure().dwellings_written() {
+            break;
+        }
+        let action = match (seat, env.phase(seat)) {
+            (Seat::Player(player), Phase::Adventure)
+                if state.decision(player).is_none()
+                    && state.level_up(player).is_none()
+                    && state.army_dialog(player).is_none()
+                    && state.hire_dialog(player).is_none() =>
+            {
+                seek_dwelling(env, player)
+            }
+            _ => choose(env, seat, &mut rng),
+        };
+        // A legal action is always accepted (h3-sim's tests); a refusal would repeat.
+        if env.step(seat, action).is_err() {
+            break;
+        }
+        steps += 1;
+    }
+    steps
+}
+
+/// The acting player's step toward a dwelling (E08 T96b2): of its heroes' legal moves the one that
+/// ends nearest (in steps, on the same level) to a dwelling's entrance other than the tile its hero
+/// stands on (a hero does not revisit the object it stands on), the first slot's and tile's on a
+/// tie, an entrance itself (a visit) nearest of all; `EndTurn` when no move gets nearer than its
+/// hero stands.
+fn seek_dwelling(env: &AdventureEnv, player: PlayerId) -> Action {
+    let state = env.state();
+    let map = state.adventure().map();
+    let entrances: Vec<Pos> = map
+        .dwellings()
+        .iter()
+        .filter_map(|&index| map.objects()[index].entrance(map))
+        .collect();
+    let mut best: Option<(u16, Action)> = None;
+    for slot in 0..HERO_SLOTS {
+        let (Some(hero), Some(reach)) = (
+            hero_in_slot(state, player, slot).and_then(|id| state.adventure().hero(id)),
+            action::moves(state, env.rules(), player, slot),
+        ) else {
+            continue;
+        };
+        let distance = |pos: Pos| {
+            entrances
+                .iter()
+                .filter(|&&entrance| entrance != hero.pos && entrance.level == pos.level)
+                .map(|entrance| entrance.x.abs_diff(pos.x).max(entrance.y.abs_diff(pos.y)))
                 .min()
         };
         let Some(here) = distance(hero.pos) else {

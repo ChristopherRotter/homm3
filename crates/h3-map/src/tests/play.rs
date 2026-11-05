@@ -4941,7 +4941,10 @@ fn check_week(
 /// Camp's creature a random monster of its kind's levels (ADV-MON-003's set, read from the core:
 /// its level within them, no war machine, none of [`CAMP_NOT_RANDOM`]), its count that creature's
 /// growth.
-fn check_dwellings_week(rules: &GameRuleset, after: &GameState) -> Result<(), TestCaseError> {
+pub(super) fn check_dwellings_week(
+    rules: &GameRuleset,
+    after: &GameState,
+) -> Result<(), TestCaseError> {
     let (core, part, a) = (rules.core(), rules.adventure(), after.adventure());
     let growth = |creature: CreatureTypeId| u32::from(core.creature(creature).unwrap().growth);
     for &i in a.map().dwellings() {

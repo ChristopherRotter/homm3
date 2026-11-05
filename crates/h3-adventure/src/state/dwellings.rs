@@ -395,6 +395,14 @@ impl AdventureState {
             .map(|camp| (camp.creature, camp.count))
     }
 
+    /// Whether the state holds the dwellings' week block (E08 T94b's representation): a write left
+    /// a dwelling below its week (a purchase, free creatures joined, a guards' battle) and no
+    /// week's refill has filled them all since (E08 T96b2: what the `fork` benchmark's forks
+    /// carry).
+    pub fn dwellings_written(&self) -> bool {
+        self.dwellings.is_some()
+    }
+
     /// The dwellings' invariants (E08 T94b; increment 10's design note §6), which every command
     /// keeps: no week's block while every dwelling is as its week began, else an entry for each
     /// dwelling, one of them changed (the field's representation: equality reads it); each count

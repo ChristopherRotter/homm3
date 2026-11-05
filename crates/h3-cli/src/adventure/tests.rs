@@ -31,6 +31,8 @@ const SEA_XL: &str = "fixtures/maps/e08-sea-144.h3m";
 /// The economy map (E08 T86a) and the economy XL map (E08 T86b2): increment 9's objects.
 const ECONOMY: &str = "fixtures/maps/e08-economy-36.h3m";
 const ECONOMY_XL: &str = "fixtures/maps/e08-economy-144.h3m";
+/// The dwellings XL map (E08 T96b2): increment 10's dwellings, random dwellings and camps.
+const DWELLINGS_XL: &str = "fixtures/maps/e08-dwellings-144.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -822,6 +824,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 masks,
                 battle: false,
                 meeting: false,
+                dwelling: false,
                 queries: 0,
             },
         )
@@ -878,6 +881,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             masks: false,
             battle: false,
             meeting: false,
+            dwelling: false,
             queries: 0,
         },
     )
@@ -902,6 +906,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 masks: false,
                 battle: false,
                 meeting: false,
+                dwelling: false,
                 queries: 0,
             },
         )
@@ -932,6 +937,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 masks: false,
                 battle: false,
                 meeting: false,
+                dwelling: false,
                 queries: 0,
             },
         )
@@ -972,6 +978,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             masks: false,
             battle: true,
             meeting: false,
+            dwelling: false,
             queries: 0,
         },
     )
@@ -1000,6 +1007,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 masks: false,
                 battle: false,
                 meeting: true,
+                dwelling: false,
                 queries: 5,
             },
         )
@@ -1035,6 +1043,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 masks: false,
                 battle: false,
                 meeting: false,
+                dwelling: false,
                 queries: 0,
             },
         )
@@ -1053,6 +1062,38 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
         "{month:?}"
     );
     assert!(month.added > 0, "{month:?}");
+    // E08 T96b2: on the dwellings XL random play seldom reaches a dwelling and the step that
+    // starts day 8 refills them all, so its forks carry no dwellings' week block; with `dwelling`
+    // the heroes seek the dwellings until a visit writes one, which the forks then carry
+    // (`fork-dwellings-xl-144`).
+    let fork = |dwelling| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: DWELLINGS_XL.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload: bench::Workload::Fork,
+                games: 1,
+                days: 7,
+                seed: 1,
+                forks: 3,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: false,
+                dwelling,
+                queries: 0,
+            },
+        )
+        .unwrap()
+    };
+    let random = fork(false);
+    assert_eq!((random.operations, random.dwellings), (3, 0), "{random:?}");
+    let sought = fork(true);
+    assert_eq!((sought.operations, sought.dwellings), (3, 1), "{sought:?}");
+    assert!(sought.steps < random.steps, "{sought:?}");
     let dir = root().display().to_string();
     let packs = format!("{dir}/packs");
     let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
@@ -1087,6 +1128,8 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             "--battle",
             agent,
             "--meeting",
+            agent,
+            "--dwelling",
             agent,
             "--queries",
             "2",
