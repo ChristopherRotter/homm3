@@ -578,6 +578,15 @@ fn a_look_draws_its_cursor() {
             hot: [18, 27],
         }
     );
+    // E17 M6 T4c: the default cursor's arrow, as the book's.
+    let Draw::Cursor {
+        def, frame, hot, ..
+    } = look_cursor(&l, Look::Arrow, [5, 7])
+    else {
+        panic!("not a cursor");
+    };
+    assert_eq!((def.as_str(), frame), ("crdeflt.def", 0));
+    assert_eq!(hot, l.book.hot[0]);
 }
 
 /// A siege of a town of `fort` (E17 M4 T2c-2): the attacker's Catapult (4, its war machine on

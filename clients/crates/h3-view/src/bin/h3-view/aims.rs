@@ -272,7 +272,8 @@ mod tests {
         // stack 6: immune to the fire school), Frost Ring nobody; a stack spell has no area to
         // leave anyone out of.
         let scenario = repo().join("clients/situations/seq-shades.toml");
-        let (ruleset, setup) = crate::scenario::battle(&scenario, &repo().join("packs"), 1).unwrap();
+        let (ruleset, setup) =
+            crate::scenario::battle(&scenario, &repo().join("packs"), 1).unwrap();
         let state = BattleState::new(&ruleset, &setup, 1).unwrap();
         let handle = |key: &str| {
             let at = ruleset.spells().iter().position(|s| s.key.as_str() == key);

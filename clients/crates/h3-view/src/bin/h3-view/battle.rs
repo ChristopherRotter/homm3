@@ -1697,6 +1697,12 @@ impl<'g> Battle<'g> {
                 frame,
                 hot: mouse.spell_hot,
             },
+            // The book's arrow a wall's aim keeps in the original's profile (E17 M6 T4c).
+            Some(mouse::track::Look::Arrow) => CursorLook {
+                def: self.ground.layout.message.cursor.clone(),
+                frame: 0,
+                hot: hot_of(&self.ground.layout.book.hot, 0),
+            },
             look => {
                 let frame = match look {
                     Some(mouse::track::Look::Combat(frame)) => frame,

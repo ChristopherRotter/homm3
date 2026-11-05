@@ -1,0 +1,14 @@
+[[sequence]]
+id = "tmp-noshade"
+scenario = "seq-shades.toml"
+actions = ["aim:0:21", "at:300", "move:674,280", "at:700", "key:Escape"]
+ms = 50
+timeline = "timelines/tmp-noshade.txt"
+
+[[sequence]]
+id = "tmp-shade-side"
+scenario = "seq-shades.toml"
+cursor_shadow = 1
+actions = ["aim:0:21", "at:300", "move:762,322", "at:700", "key:Escape"]
+ms = 50
+timeline = "timelines/tmp-shade-side.txt"

@@ -761,6 +761,13 @@ pub fn look_cursor(layout: &BattleLayout, look: track::Look, [x, y]: [i32; 2]) -
             y,
             hot: layout.mouse.spell_hot,
         },
+        track::Look::Arrow => Draw::Cursor {
+            def: layout.message.cursor.clone(),
+            frame: 0,
+            x,
+            y,
+            hot: layout.book.hot.first().copied().unwrap_or_default(),
+        },
     }
 }
 

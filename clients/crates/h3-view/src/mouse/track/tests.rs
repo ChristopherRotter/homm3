@@ -1790,6 +1790,11 @@ fn the_wall_s_aim_keeps_its_last_hex_in_the_original_s_profile_alone() {
             vec![]
         };
         assert_eq!(cursor_at(&shown, 10), started, "{bugs:?}");
+        // The original's keeps the book's arrow until the aim's first cursor (`shade-wall`).
+        let mouse = &layout().mouse;
+        let arrow = (bugs == Bugs::Original).then_some(Look::Arrow);
+        assert_eq!(shown.look(10, mouse).filter(|l| *l == Look::Arrow), arrow);
+        assert_ne!(shown.look(20, mouse), Some(Look::Arrow));
         assert_eq!(cursor_at(&shown, 20), [87, 70, 53], "{bugs:?}");
         let aimed = if bugs == Bugs::Original { 87 } else { 104 };
         assert_eq!(shown.aimed(40), Some(aimed), "{bugs:?}");

@@ -218,14 +218,21 @@ pub struct Shown {
     pub shades: Vec<(u32, Drawn)>,
 }
 
-/// A cursor's look: the combat cursor's frame, or the spell cursor's (E17 M5 T3b).
+/// A cursor's look: the combat cursor's frame, or the spell cursor's (E17 M5 T3b), or the default
+/// cursor's arrow (E17 M6 T4c).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Look {
     /// `crcombat.DEF`'s frame (the mouse manager's type 2).
     Combat(u32),
     /// `crspell.DEF`'s frame (type 3).
     Spell(u32),
+    /// The default cursor's frame 0 (type 0, `crdeflt.def`): the spell book's, which the wall's
+    /// aim keeps as it starts in the original's profile (it calls no cursor, 0x59F07C; CLT-Q56).
+    Arrow,
 }
+
+/// The frame of [`Shown::frames`] that stands for [`Look::Arrow`] (no combat cursor's frame).
+pub const ARROW: u32 = u32::MAX;
 
 impl Shown {
     /// The cursor's frame at `t` (none before the mouse is anywhere).
@@ -253,7 +260,13 @@ impl Shown {
     pub fn look(&self, t: u32, mouse: &Mouse) -> Option<Look> {
         match last(&self.spell, t).copied().flatten() {
             Some(since) => Some(Look::Spell(spell_frame(since, t, mouse))),
-            None => self.frame(t).map(Look::Combat),
+            None => self.frame(t).map(|f| {
+                if f == ARROW {
+                    Look::Arrow
+                } else {
+                    Look::Combat(f)
+                }
+            }),
         }
     }
 
@@ -879,6 +892,9 @@ pub fn follow_on<'l>(
                         .map_or(-1, |p| screen_hex(spot(layout, p, turn.field.rects())));
                     let walled = shades::wall(aim.original) && h.bugs == Bugs::Original;
                     let taken = if walled {
+                        // The book's arrow stays until the aim's first cursor (recorded in
+                        // `shade-wall`).
+                        h.set_frame(now, ARROW);
                         h.wall_last
                     } else {
                         h.aim_at(now, (aim, hex), &turn.field, name)
