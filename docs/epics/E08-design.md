@@ -224,7 +224,9 @@ Every seat gets the same questions (as increment 9's Leave Guards: the original 
 computer player's hiring is E10's). A hero standing on an owned dwelling's entrance hides it, as
 any owned object (ADR-0016 point 3); a hero does not revisit the dwelling it stands on.
 
-- **As built (T95a1, decision 253; *agent's calls*, change freely):** `Effect::Dwelling(creatures)` and `Effect::Camp`; a random dwelling has no visit (it is resolved when the game is built). The visit (`AdventureState::visit_dwelling`): of the visitor's team, the hire question; another's or neutral with its guards standing, nothing until T95a2 (ADV-STUB-14); else `flag`, then the question. `OfferKind::Hire { creatures }` (the game's decision hash: tag 11, then the creatures' number and each). The camp (`visit_refugee_camp`): `ObjectEmpty` at 0, else the question with its creature. Accepted (`accept_hire`): the owner is read at the acceptance (another player of the turn group may flag the dwelling meanwhile); at one's own dwelling each creature of `free_level` or less: `NoneToRecruit` at 0, else all of it into ADV-ARM-007's room (`monsters::add_stack`, no merge) with `CreaturesJoined` and its count set to 0, else `JoinRefused` and the count kept (a hero no longer on the map counts as no room); no dialog until T95b (ADV-STUB-15). The writer `write_dwelling(index, edit)`: a write that changes nothing keeps the block shared with the forks; one that leaves every dwelling full drops it (§6's normalisation).
+- **As built (T95a1, decision 253; *agent's calls*, change freely):** `Effect::Dwelling(creatures)` and `Effect::Camp`; a random dwelling has no visit (it is resolved when the game is built). The visit (`AdventureState::visit_dwelling`): of the visitor's team, the hire question; another's or neutral with its guards standing, nothing until T95a2 (ADV-STUB-14); else `flag`, then the question. `OfferKind::Hire { creatures }` (the game's decision hash: tag 11, then the creatures' number and each). The camp (`visit_refugee_camp`): `ObjectEmpty` at 0, else the question with its creature. Accepted (`accept_hire`): the owner is read at the acceptance (defensive only: under sequential play nothing changes the dwelling between the question and the acceptance, decision 254); at one's own dwelling each creature of `free_level` or less: `NoneToRecruit` at 0, else all of it into ADV-ARM-007's room (`monsters::add_stack`, no merge) with `CreaturesJoined` and its count set to 0, else `JoinRefused` and the count kept (a hero no longer on the map counts as no room); no dialog until T95b (ADV-STUB-15). The writer `write_dwelling(index, edit)`: a write that changes nothing keeps the block shared with the forks; one that leaves every dwelling full drops it (§6's normalisation).
+
+- **As built (T95a2, decision 254; *agent's calls*, change freely):** `OfferKind::Guarded { creature, count_word }` (`guards_question`: the first occupied slot's creature and the word of the total). `enter_dwelling` (the flag unless of the visitor's team, then the hire question) is shared by the visit, the acceptance and `give_won`. The acceptance (`fight_for_dwelling`) re-reads the dwelling: not of the acceptor's team with guards standing, their battle (§12); else the visit's rest (unreachable under sequential play, decision 254); nothing for a hero off the map.
 
 ### 8. The purchase's map side (ADV-HIR-002 in part)
 
@@ -238,6 +240,18 @@ treasury before and pays after (ADR-0004: nothing from the payload). A refusal l
 untouched (typed errors). The dialog lists the source's creatures, as the original's lists the
 record's four (no class-17 dwelling of level 1 opens it; class 20 has none of level 1). The most a
 player may buy, `min(count, each resource ÷ its cost)` (§5.2), is part C's legal set.
+
+- **As built (T95b, decision 255; *agent's calls*, change freely):** `HireDialog { target:
+  HireTarget::Hero(hero), source: HireSource::Object { index, object_type, anchor } }` (enums for
+  E09; no `read_only`: the ally's branch is E10's) in `AdventureOutcome::hire`, from
+  `accept_hire` at one's own dwelling holding a creature above `free_level` and at a camp.
+  `hire_stock` (the creatures and counts in the source's order), `hire_room` (§13's bound),
+  `check_hire` (`NoSource` for a hero off the map or a source not the object it names, then
+  `NotOffered`, `Amount`, `NoRoom`) giving a `HirePurchase` (its `price()`: cost × amount by
+  resource in the core's order, nonzero only), and the infallible `hire(purchase)`: the count
+  lowered through `write_dwelling` or the camp's, the creatures at the room `check_hire` found
+  (`monsters.rs`'s `add_stack` split into `room` and `join_at`), `CreaturesJoined` to the hero's
+  owner. The hero's tile is not compared with the entrance: the open dialog blocks its moves.
 
 ### 9. The week's step (ADV-DWL-003, ADV-RFG-001; GAM-CAL-002 amended)
 
@@ -318,6 +332,8 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
   levels) flags the dwelling (§7 step 3) and asks the hire question. The experience and the rest
   of GAM-BAT-002 as any battle's.
 
+- **As built (T95a2; *agent's calls*, change freely):** `fight_for_dwelling` opens `Defender::Guards { army: dwelling_guards }` at the hero's tile through `battle_at`, no terrain set. `end_unowned_battle`'s `ObjectKind::Dwelling` arm (`end_dwelling_battle`): the survivors by slot through `write_dwelling` (`DwellingWeek::set_guards`), none when won, then `reward_after` when won; no event. `give_won`'s dwelling arm (`dwelling_won`): with the guards none and the hero on the map, `enter_dwelling` for the hero's owner; else nothing. The game's decision hash: `Guarded` tag 12, then its creature and word; `give_won`'s offer opens through the rest's `settle_outcome` unchanged.
+
 ### 13. The game (`h3-game`; GAM-DEC-008; game state hash v23)
 
 - **Two offers** (`Answer::Offer`, the system actor's `Decline`): the guards' question (§12) and
@@ -365,6 +381,15 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
   recruitment opens the same decision with a town dwelling as the source and the hero's or the
   garrison's army as the target: `HireDialog` names its source and target as enums E09 extends;
   the purchase rule (§8) and the answer stay one.
+
+- **As built (T95b, decision 255; *agent's calls*, change freely):** `h3-game`'s
+  `state/hire.rs`. `Decision::Hire { owner, dialog }` (hash tag 7: the owner, the target, the
+  source); `GameEvent::HireOpened { player, target, object_type, anchor }` (no object index in an
+  event, ADR-0016 point 6); `Answer::Hire(HireAnswer::{Buy { creature, amount }, Close})`; the
+  map's refusals as `GameCommandError::Hire(HireError)`, the treasury's as `CannotPay`;
+  `GameState::hire_dialog` public (as `university`); `hire_range` also empty while the game waits
+  for another player's level-up, so every amount in it is accepted. `DecisionView::Hire(HireView {
+  target, object_type, anchor, creatures: [HireCreature { creature, count, cost }] })`.
 
 ### 14. The env, replays, fixtures, properties, benchmarks
 
@@ -415,7 +440,7 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
 | adventure ruleset part v16 | the three kinds, `[params.dwellings]`, `[[random_dwelling]]` (§1, §2) | T93a |
 | map import v16 | classes 17, 20, 78, 216–218, the owners, the refusals (§4) | T93b |
 | adventure state hash v20 | the owners, a dwelling's week, the camps, the resolved random dwellings (§5, §6) | T94 |
-| game state hash v23 | the hire dialog (§13) | T95b |
+| game state hash v25 (E09 T7b1 took v23, T7b2a v24) | the hire dialog (§13) | T95b |
 | adventure replay format v10 (E09's T5a2 took v9) | `Answer::Hire` | T95b |
 | env action encoding v7 (the AI lane's) | the four hire entries | T95b (`cross-lane`) |
 

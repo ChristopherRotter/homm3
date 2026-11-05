@@ -25,7 +25,7 @@ use crate::setup::Pos;
 /// stack of the creature that takes the group whole within `most` (the original's first stack,
 /// which takes any), else its first free slot of `slots` if the group fits a stack, else none.
 // rule: ADV-ARM-007
-fn room(
+pub(super) fn room(
     army: &[ArmyStack],
     (slots, most): (u8, u32),
     creature: CreatureTypeId,
@@ -40,9 +40,29 @@ fn room(
         .map(Room::Slot)
 }
 
+/// The most `creature`s `army` has room for (ADV-ARM-007, ADV-HIR-002; E08 T95b, increment 10's
+/// design note §13): `most` if one of its `slots` is free, else `most` less the smallest count
+/// among its stacks of the creature, else 0. A group of 1 up to it is exactly one [`room`] finds
+/// room for.
+// rule: ADV-ARM-007, ADV-HIR-002
+pub(super) fn room_bound(
+    army: &[ArmyStack],
+    (slots, most): (u8, u32),
+    creature: CreatureTypeId,
+) -> u32 {
+    if (0..slots).any(|slot| army.iter().all(|s| s.slot != slot)) {
+        return most;
+    }
+    army.iter()
+        .filter(|s| s.creature == creature)
+        .map(|s| most.saturating_sub(s.count))
+        .max()
+        .unwrap_or(0)
+}
+
 /// Where a group goes in an army ([`room`]): onto the stack at this index, or into this free slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Room {
+pub(super) enum Room {
     Stack(usize),
     Slot(u8),
 }
@@ -58,13 +78,18 @@ pub(super) fn add_stack(
     creature: CreatureTypeId,
     count: u32,
 ) -> bool {
-    match room(army, rules, creature, count) {
-        None => false,
-        Some(Room::Stack(index)) => {
-            army[index].count += count;
-            true
-        }
-        Some(Room::Slot(slot)) => {
+    room(army, rules, creature, count)
+        .map(|found| join_at(army, found, creature, count))
+        .is_some()
+}
+
+/// Adds `count` of `creature` to `army` at `room`, which [`room`] found for them: onto the stack
+/// at its index, or as a stack in its free slot, the army kept in slot order.
+// rule: ADV-ARM-007
+pub(super) fn join_at(army: &mut Vec<ArmyStack>, room: Room, creature: CreatureTypeId, count: u32) {
+    match room {
+        Room::Stack(index) => army[index].count += count,
+        Room::Slot(slot) => {
             let at = army
                 .iter()
                 .position(|s| s.slot > slot)
@@ -77,7 +102,6 @@ pub(super) fn add_stack(
                     count,
                 },
             );
-            true
         }
     }
 }

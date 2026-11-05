@@ -2,7 +2,8 @@
 hex's neighbours, a stack is drawn on its hexes, an empty slot is not seen and the slots' order
 does not matter to the context, the field's size holds on real battles, the visualization counts
 the convolutions; the normalisation keeps the field and the defaults are the networks before it,
-the transformer blocks' feed-forward width (E25 T24). They need the group `train`."""
+the transformer blocks' feed-forward width (E25 T24); E25 T25's keys (`mask_input`, `order`,
+`attack_hex`) on the structured kinds. They need the group `train`."""
 
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from h3env.train.run import Config, ConfigError, load_config
 torch = pytest.importorskip("torch")
 
 from h3env.train.entity import Entity  # noqa: E402
+from h3env.train.geometry import attack_hexes, attack_table  # noqa: E402
 from h3env.train.hexnet import (  # noqa: E402
     FIELD_HEIGHT,
     FIELD_WIDTH,
@@ -31,7 +33,7 @@ from h3env.train.hexnet import (  # noqa: E402
     neighbours,
 )
 from h3env.train.network import hex_mermaid, parts  # noqa: E402
-from h3env.train.policy import Mlp, build  # noqa: E402
+from h3env.train.policy import Mlp, build, symlog  # noqa: E402
 
 KINDS = ["hexconv", "hexconv-norm", "hexformer"]
 
@@ -298,3 +300,189 @@ def test_the_feed_forward_width_and_the_new_keys_config() -> None:
     ):
         with pytest.raises(ConfigError, match=match):
             load_config(text)
+
+
+def test_the_defaults_are_the_networks_before_t25() -> None:
+    # A network file before E25 T25 has no `mask_input`: it builds the network it was (the same
+    # parameters by name and shape) and encodes as it did, its entry mask handed or not (the
+    # MLP's trunk bit for bit as `Mlp.encode` before T25).
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    for kind in ("mlp", "entity", "hexconv", "hexformer"):
+        config = asdict(Config(kind=kind, hidden=32, width=16, layers=2, heads=2, embed=8))
+        old = {k: v for k, v in config.items() if k not in ("mask_input", "attack_hex")}
+        torch.manual_seed(0)
+        net = build(old, batch).eval()
+        torch.manual_seed(0)
+        same = build(config, batch)
+        shapes = {k: v.shape for k, v in net.state_dict().items()}
+        assert shapes == {k: v.shape for k, v in same.state_dict().items()}
+        assert not net.reads_mask
+        with torch.no_grad():
+            plain, given = net.encode(obs), net.encode(obs, mask)
+            assert all(torch.equal(a, b) for a, b in zip(plain, given, strict=True))
+            assert len(given) == (1 if kind == "mlp" else 3)
+            assert torch.equal(net.values(obs), net.values(obs, mask))
+            if kind == "mlp":
+                assert shapes["trunk.0.weight"] == (32, L.ORDER)
+                assert torch.equal(given[0], net.trunk(symlog(obs[:, : L.ORDER])))
+    batch.close()
+
+
+def test_the_t25_keys_config() -> None:
+    # E25 T25: `mask_input` and `order` are every kind's, `attack_hex` the structured kinds'
+    # (`run.validate` refuses it on the MLP, `policy.build` too).
+    for kind in STRUCTURED:
+        text = f"[network]\nkind = '{kind}'\nmask_input = true\norder = true\nattack_hex = true\n"
+        config = load_config(text)
+        assert config.mask_input and config.order and config.attack_hex
+    with pytest.raises(ConfigError, match="`attack_hex` is the structured kinds'"):
+        load_config("[network]\nattack_hex = true\n")
+    batch = mixed_batch()
+    with pytest.raises(ValueError, match="`attack_hex` is the structured kinds'"):
+        build(asdict(Config(hidden=32, embed=8, attack_hex=True)), batch)
+    batch.close()
+    assert load_config("[network]\nmask_input = true\norder = true\n").mask_input
+    assert not load_config("").attack_hex
+
+
+STRUCTURED = ["entity", "hexconv", "hexformer"]
+#: Each E25 T25 key's new modules.
+NEW_MODULES = {
+    "mask_input": {"mask_hex_in", "mask_stack_in", "mask_fixed_in"},
+    "order": {"order_in"},
+    "attack_hex": {"attack_hex_head"},
+}
+
+
+def keyed(kind: str, batch, **keys):
+    torch.manual_seed(0)
+    config = Config(kind=kind, width=16, layers=1, heads=2, embed=8, **keys)
+    return build(asdict(config), batch).eval()
+
+
+def legal_attacks(mask: torch.Tensor) -> torch.Tensor:
+    return mask[:, L.ATTACK_BASE : L.SHOOT_BASE].reshape(-1, L.STACK_CAPACITY, L.ATTACK_SLOTS)
+
+
+@pytest.mark.parametrize("key", list(NEW_MODULES))
+@pytest.mark.parametrize("kind", STRUCTURED)
+def test_a_t25_key_adds_its_modules_to_the_network_without_it(kind, key) -> None:
+    # A key's modules come after the others: with the same seed the network with it has the
+    # other's weights, and with its new weights at 0 computes the other's outputs; with them as
+    # made it computes others, finite. `mask_input` and `attack_hex` read the entry mask and
+    # refuse an encoding without it.
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    plain, net = keyed(kind, batch), keyed(kind, batch, **{key: True})
+    batch.close()
+    old, new = plain.state_dict(), net.state_dict()
+    assert set(old) <= set(new) and all(torch.equal(v, new[k]) for k, v in old.items())
+    assert {name.split(".")[0] for name in set(new) - set(old)} == NEW_MODULES[key]
+    assert net.reads_mask == (key != "order") and net.reads_order == (key == "order")
+    if net.reads_mask:
+        for call in (net.encode, net.values):
+            with pytest.raises(ValueError, match="reads the legal entry mask"):
+                call(obs)
+    with torch.no_grad():
+        h, base = net.encode(obs, mask), plain.encode(obs, mask)
+        assert len(h) == (4 if key == "attack_hex" else 3) and len(base) == 3
+        logits = net.entry_logits(h)
+        assert torch.isfinite(logits).all()
+        assert not torch.allclose(logits, plain.entry_logits(base))
+        for name in NEW_MODULES[key]:
+            for p in getattr(net, name).parameters():
+                p.zero_()
+        h = net.encode(obs, mask)
+        assert all(torch.equal(a, b) for a, b in zip(h[:3], base, strict=True))
+        assert torch.equal(net.entry_logits(h), plain.entry_logits(base))
+        assert torch.equal(net.values(obs, mask), plain.values(obs, mask))
+
+
+@pytest.mark.parametrize("kind", STRUCTURED)
+def test_the_mask_input_reads_the_moves_the_attacks_and_the_fixed_entries(kind) -> None:
+    # Flipping a legal move, a legal attack (its slot's entries and its from-hex's plane) or a
+    # fixed entry (End tactics) of one row moves that row's encoding only.
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    net = keyed(kind, batch, mask_input=True)
+    batch.close()
+    move = torch.nonzero(mask[:, L.MOVE_BASE : L.ATTACK_BASE])[0] + torch.tensor([0, L.MOVE_BASE])
+    attack = torch.nonzero(mask[:, L.ATTACK_BASE : L.SHOOT_BASE])[0]
+    attack = attack + torch.tensor([0, L.ATTACK_BASE])
+    row = int(torch.nonzero(mask[:, L.END_TACTICS])[0, 0]) if mask[:, L.END_TACTICS].any() else 0
+    with torch.no_grad():
+        context = net.encode(obs, mask)[0]
+        for r, entry in (move.tolist(), attack.tolist(), [row, L.END_TACTICS]):
+            other = mask.clone()
+            other[r, entry] = ~other[r, entry]
+            moved = net.encode(obs, other)[0]
+            assert not torch.equal(moved[r], context[r])
+            rest = torch.arange(len(obs)) != r
+            assert torch.equal(moved[rest], context[rest])
+
+
+@pytest.mark.parametrize("kind", STRUCTURED)
+def test_the_stack_tokens_read_the_turn_order_with_order(kind) -> None:
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    plain, net = keyed(kind, batch), keyed(kind, batch, order=True)
+    batch.close()
+    moved = obs.clone()
+    moved[:, L.ORDER :] += 5.0
+    with torch.no_grad():
+        assert not torch.equal(net.encode(obs, mask)[1], net.encode(moved, mask)[1])
+        assert all(
+            torch.equal(a, b)
+            for a, b in zip(plain.encode(obs, mask), plain.encode(moved, mask), strict=True)
+        )
+
+
+@pytest.mark.parametrize("kind", STRUCTURED)
+def test_a_melee_entry_scores_the_hex_it_attacks_from(kind) -> None:
+    # `attack_hex`: the encoding's fourth tensor is the legal attack entries' from-hexes
+    # (`geometry.attack_hexes` where the entry is legal, -1 elsewhere). The head's term is added
+    # to the legal entries only (its output bias moves exactly them), and a from-hex's vector
+    # moves exactly the legal entries of its row made from it.
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    net = keyed(kind, batch, attack_hex=True)
+    batch.close()
+    table = torch.from_numpy(attack_table(*net_field(net)))
+    expected = attack_hexes(obs, table, net_field(net)[0])
+    expected = torch.where(legal_attacks(mask), expected, torch.full_like(expected, -1))
+    attacks = slice(L.ATTACK_BASE, L.SHOOT_BASE)
+    with torch.no_grad():
+        h = net.encode(obs, mask)
+        legal_from = h[3]
+        assert torch.equal(legal_from, expected) and (legal_from >= 0).sum() > 0
+        before = net.entry_logits(h)
+        net.attack_hex_head.out.bias += 1.0
+        after = net.entry_logits(h)
+        net.attack_hex_head.out.bias -= 1.0
+        legal = (legal_from >= 0).flatten(1).to(before.dtype)
+        assert torch.allclose(after[:, attacks] - before[:, attacks], legal, atol=1e-5)
+        assert torch.equal(after[:, : L.ATTACK_BASE], before[:, : L.ATTACK_BASE])
+        assert torch.equal(after[:, L.SHOOT_BASE :], before[:, L.SHOOT_BASE :])
+        row, slot, k = (int(i) for i in torch.nonzero(legal_from >= 0)[0])
+        at = int(legal_from[row, slot, k])
+        hexes = h[2].clone()
+        hexes[row, at] += torch.randn(hexes.shape[2])
+        moved = net.entry_logits((h[0], h[1], hexes, h[3]))
+        changed = (moved[:, attacks] != before[:, attacks]).view_as(legal_from)
+        same_hex = torch.zeros_like(changed)
+        same_hex[row] = legal_from[row] == at
+        assert changed[row, slot, k] and torch.equal(changed, same_hex)
+        # An illegal entry's term is 0 and its logit finite.
+        assert torch.isfinite(moved).all()
+
+
+def net_field(net) -> tuple[int, int]:
+    if isinstance(net, Entity):
+        return FIELD_WIDTH, FIELD_HEIGHT
+    return net.grid.width, net.grid.height

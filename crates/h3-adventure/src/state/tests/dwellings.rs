@@ -29,7 +29,8 @@ fn cells(offsets: &[(u8, u8)]) -> Vec<(u8, u8)> {
 }
 
 /// [`movement_rules_with`] (faithful) with seven creatures of each level for the castle (`t:c1`
-/// to `t:c7`), the fortress (`t:f1` to `t:f7`) and the wild (`t:w1` to `t:w7`), and their
+/// to `t:c7`), the fortress (`t:f1` to `t:f7`) and the wild (`t:w1` to `t:w7`), each of growth 2
+/// costing 10 gold a level, the wild's also a wood a level above the first, and their
 /// dwellings: the castle's and the wild's share `t:d1` to `t:d7` (each with both creatures of its
 /// level), blocking the anchor and the cell left of it, entered at the anchor, `t:d3` also
 /// blocking the cell above the left one, `t:d7` an Angel Portal (its anchor free, entered one
@@ -43,15 +44,26 @@ pub(super) fn rules() -> Rules {
         16,
         |core: &mut ContentPack| {
             for (faction, prefix) in [("t:castle", "c"), ("t:fortress", "f"), ("t:wild", "w")] {
-                core.creatures.extend((1..=7).map(|level| CreatureDef {
-                    key: key(&format!("t:{prefix}{level}")),
-                    speed: 4,
-                    info: CreatureInfoDef {
-                        faction: Some(key(faction)),
-                        level,
-                        growth: 2,
-                        ..CreatureInfoDef::default()
-                    },
+                core.creatures.extend((1..=7).map(|level| {
+                    // The wild's also cost wood, listed after the gold (the price's order is the
+                    // core's: wood first), 0 at level 1.
+                    let gold = (key("t:gold"), 10 * u32::from(level));
+                    let cost = if prefix == "w" {
+                        vec![gold, (key("t:wood"), u32::from(level) - 1)]
+                    } else {
+                        vec![gold]
+                    };
+                    CreatureDef {
+                        key: key(&format!("t:{prefix}{level}")),
+                        speed: 4,
+                        info: CreatureInfoDef {
+                            faction: Some(key(faction)),
+                            level,
+                            growth: 2,
+                            cost,
+                            ..CreatureInfoDef::default()
+                        },
+                    }
                 }));
             }
         },

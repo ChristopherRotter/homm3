@@ -110,7 +110,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - A network is made only by `policy.build` from a config (a saved file's: without `kind` an
   MLP); `Mlp`'s parameter names stay, so older files load. A new `[network]` key defaults to the
   network before it and is read with `config.get` (a saved file lacks it; E25 T24's `norm`,
-  `feed_forward`), with a test that the defaults build and compute what the older code did. Time
+  `feed_forward`; T25's `mask_input`, `order`, `attack_hex`), with a test that the defaults build
+  and compute what the older code did. Every caller of `encode` and `values` hands the rows' entry
+  mask, the one the logits are masked with there (`act`'s bounded one; E25 T25): a network that
+  reads it refuses none; a melee entry's attack hex is `geometry.attack_hexes`, never a copy. Time
   a kind with `python -m h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats
   30`), a bench's students side by side with `--bench`.
 - A user's run: they upload `record.json`, `metrics.jsonl`, `best.pt`; `evaluate.load` builds

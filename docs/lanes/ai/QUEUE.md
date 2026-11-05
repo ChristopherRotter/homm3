@@ -10,26 +10,18 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 to 6 closed (`E25-archive.md`); **`e25-imitate-1` #2 the current best** (AI-Q16, T23: 0.458 and
 0.462 against the fair and the all-seeing system actor, the neutral set +0.287). **Increment 7, a
 network that reads the battle's structure** (refined at T23, 2026-11-04, AI-Q16; its decisions in
-the epic file; the code facts below from the refinement's survey, re-check them when a task starts):
+the epic file; **T25 done** 2026-11-04, the heads read the geometry, `E25-log.md`):
 
-- **T25 The heads read the geometry.** *Scope:* the sandbox's CPU. A melee entry's attack
-  position k scores the hex the attack is made from (today `Pointed`'s heads read the target
-  stack and the context only, `entity.py`): a port of `Field::attack_positions`
-  (`h3-battle`'s `geometry.rs`, as `h3-sim`'s `action.rs` calls it) tested against the env's legal attack entries on real battles;
-  `[network] mask_input` for every kind, the MLP's included (the legal moves and attack hexes as
-  hex planes or inputs), passed through `encode` in PPO, the bench and `evaluate`; `order` for the
-  structured kinds. No encoding moves (decision 4, the user). *Acceptance:* the tests pass, older
-  network files load and play bit for bit; CPU smokes of a PPO run and a clone per kind; the cost
-  change on the CPU. *Depends on:* T24 (done 2026-11-04). *Status:* next.
-- **T26 The structure sweep.** *Scope:* the user's GPU, one run of about 3 to 5 hours:
-  `configs/distill/e25-structure.toml`, T16's bench with about 8 students (the MLP 2 × 512, the
-  MLP with the mask, three structured candidates at two learning rates each, within the cost
-  cap), first `network --bench configs/distill/e25-grid.toml --time --rows 512 --device cuda`
-  for the grid (T24's CPU table puts most of decision 2's ranges above the cap: the user's call
-  on the cap with the GPU's table, `E25-log.md` T24); its record
-  `records/distill/structure-1.json` uploaded. *Acceptance:* a read ranking agreement (overall,
-  moves, melee) against the GPU's µs, decision 5's first gate applied (0.60 at 4 M). *Depends
-  on:* T25. *Status:* waiting.
+- **T26 The structure sweep.** *Scope:* the user's GPU, one run of about 7 to 8 hours (the
+  grid's µs, two passes of 4 M samples a student): `uv run --group train python -m
+  h3env.train.distill --teacher system --config configs/distill/e25-structure.toml --out
+  runs/structure-1` (prepared at T25: the MLP, the MLP with the mask, `entity` 256 × 4, `hexconv`
+  normalised 96 × 6, `hexformer` 96 × 4, the three with T25's keys at two learning rates each;
+  the user's cap of about 700 µs a sample-pass, `E25-log.md` T25; dropping the structured
+  families' second rates saves about 3.5 hours); its record `records/distill/structure-1.json`
+  uploaded. *Acceptance:* a read ranking agreement (overall, moves, melee) against the GPU's µs
+  (the bench's `us_per_sample_pass`, T25's keys included), decision 5's first gate applied (0.60
+  at 4 M). *Depends on:* T25 (done 2026-11-04). *Status:* next.
 - **T27 The long clone.** *Scope:* the user's GPU: T20's bench (`configs/distill/e25-clone-2.toml`,
   16 M samples) with T26's best student (the best two if within 0.02); its ladder against both
   system actors and on the neutral set; T19's tool per category; the student uploaded (under
@@ -37,7 +29,8 @@ the epic file; the code facts below from the refinement's survey, re-check them 
   beside 0.411 ± 0.018, decision 5's second gate applied. *Depends on:* T26 (its gate passed).
   *Status:* waiting.
 - **T28 The A/B.** *Scope:* a CPU smoke of `configs/e25-imitate-structure.toml` in the sandbox
-  (the candidate's network, `[ppo] minibatches` for its memory, the imitation loss on that kind),
+  (the candidate's network, `[ppo] minibatches` for its memory, the imitation loss on that kind;
+  the bench's `warmup` and `weight_decay` are not PPO's, T25's smokes: whether T28 needs them),
   then the user's GPU: `--init-from` T27's student, 20 M samples, seed 1. *Acceptance:* the final
   ladder, the head-to-head against `e25-imitate-1` #2, the samples a second, T19's tool after RL.
   *Depends on:* T27 (its gate passed). *Status:* waiting.
@@ -52,6 +45,18 @@ origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: 
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
+
+**From the adventure lane** (E08 T95b; the adventure agents' action space grows):
+
+- 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`, `cross-lane` with the user's
+  consent, E08 decision 243; **the env's action encoding v7, for the adventure agents**):
+  `crates/h3-sim/src/adventure/action.rs` appends four entries `HIRE_BASE + c` (18 to 21,
+  `HIRE_SLOTS = 4`; `ENTRY_COUNT` 22): buy the most of creature `c`, in its source's order, of
+  the player's open hire dialog (masked by `legal_commands`: a creature of none to buy is
+  masked); the dialog's `Close` is entry 10. The most only, as the original's Max then
+  Recruit: an amount head is the AI lane's call. A policy trained on v6 sees four new entries,
+  masked on every map without a dwelling or a Refugee Camp (no committed map has one before
+  E08 T96).
 
 **From the battle lane** (CLT-Q40, BAT-Q64; `claude/keen-cori-oaahgi`, `cross-lane`; for your
 information and one choice):
@@ -138,7 +143,8 @@ information and one choice):
 
 **For E25's closure** (a `shared/` pull request): `docs/07-simulation-and-ai.md` §1.2, the
 pipeline as built, gains E25's training levers: shaping (T2a), the tactics bound (T4a), the
-hex networks and the MLP's depth (T7a), the distillation bench (T7b); the two system actors (T14:
+hex networks and the MLP's depth (T7a), the distillation bench (T7b), the networks' keys of
+increment 7 (T24's `norm`, `feed_forward`; T25's `mask_input`, `order`, `attack_hex`); the two system actors (T14:
 `system` the fair one, `system-all-seeing`, C ABI v36).
 
 **For E25's later increments** (the epic's candidates; E06's leftovers, T9a; increment 1's

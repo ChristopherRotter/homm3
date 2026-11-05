@@ -13,6 +13,7 @@ mod dwellings;
 mod events;
 mod exchanges;
 mod heroes;
+mod hiring;
 mod legal;
 mod level_ups;
 mod levels;
@@ -407,7 +408,7 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
 }
 
 /// [`part_with`]'s pack (E08 T85b: the calendar's tests edit its parameters).
-fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
+pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
     let cost = NonZeroU16::new(100).unwrap();
     AdventurePack {
         terrains: vec![

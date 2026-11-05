@@ -56,13 +56,17 @@ mod tests;
 
 pub use command::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError, GameEvent,
-    NoopSink, SchoolChoice, Sink, SkillOffer, UniversityAnswer, apply,
+    HireAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, UniversityAnswer, apply,
 };
 /// The army commands a [`Manage::Army`] carries (E08 T51a; `h3_adventure`'s, ADR-0016 point 3).
 pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 /// A choice's and a University's views (E08 T63a; `h3_adventure`'s types): what
 /// [`DecisionView::Choice`] and [`DecisionView::University`] show.
 pub use h3_adventure::{Choice, ChoiceKind, UniversityVisit};
+/// A hire dialog, its army, source and refusals (E08 T95b; `h3_adventure`'s types): what
+/// [`GameState::hire_dialog`], [`GameEvent::HireOpened`], [`DecisionView::Hire`] and
+/// [`GameCommandError::Hire`] carry.
+pub use h3_adventure::{HireDialog, HireError, HireSource, HireTarget};
 /// A University's slot state for a hero (`h3_heroes`' derivation, HER-CHG-004), which
 /// [`DecisionView::University`] shows (E08 T63a).
 pub use h3_heroes::SlotState;
@@ -82,10 +86,13 @@ pub use h3_towns::{
     BuildingsSetup, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup, TownFaction,
     TownSetup,
 };
-pub use legal::{default_answer, legal_commands, legal_management, legal_moves, split_range};
+pub use legal::{
+    default_answer, hire_range, legal_commands, legal_management, legal_moves, split_range,
+};
 pub use manage::{Manage, ManageError};
 pub use observe::{
-    DecisionView, GameObservation, HeroInfo, LevelUpView, PlayerView, Viewer, observe, project,
+    DecisionView, GameObservation, HeroInfo, HireCreature, HireView, LevelUpView, PlayerView,
+    Viewer, observe, project,
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
@@ -93,7 +100,7 @@ pub use setup::{
     HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, MonthKind, OpenBattle};
-pub use town::{FactionChoice, FactionSet, HeroDraw, MainTown, PlayerStart};
+pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):
@@ -114,5 +121,7 @@ pub use town::{FactionChoice, FactionSet, HeroDraw, MainTown, PlayerStart};
 /// adventure state hash v16). v21 (E08 T84a): an army dialog's holder (a join's group or a
 /// mine's guards, the Leave Guards dialog). v22 (E08 T85b): the month's kind and the map's
 /// timed events. v23 (E09 T7b1): the hero pool (TWN-SET-005: each hero type's status and colour
-/// mask), after the store of heroes.
-pub const GAME_STATE_HASH_VERSION: u32 = 23;
+/// mask), after the store of heroes. v24 (E09 T7b2a): the store of towns (`h3_towns::Towns`'
+/// encoding, the town state hash), after the hero pool. v25 (E08 T95b): the hire dialogs among the
+/// decisions (GAM-DEC-008: the owner, the target, the source).
+pub const GAME_STATE_HASH_VERSION: u32 = 25;

@@ -70,3 +70,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = fixed, strict-fixed = fixed
 - Regression test: `crates/h3-towns/src/setup/tests.rs`, `twn_quirk_5_a_custom_sets_horde_never_leaves_its_dwelling_standing`
 - Decided by / date: the user, 2026-11-03 (TWN-Q6; decision 29)
+
+### TWN-QUIRK-6 — A main town's hero is drawn over the town's visitor
+- Class: fix, no flag (state-corrupting: two heroes on one tile, which AGENTS.md always fixes; quirk candidate T-7)
+- Context / rules affected: town, TWN-SET-009 (the main town's hero; E09 T7b2b), TWN-SET-010 (a hero right of a town's entrance starts on it)
+- Original behavior: `main_town_heroes` (0x4CA040) puts the main town's hero on the town's entrance (`town_hero_place` 0x5C13B0) without testing for a hero already there; a placed hero that `placed_heroes_setup` (0x4CAE10) moved onto the same entrance stays the town's visitor (+0x10, `hero_show`), the new hero is drawn over it on the same tile, and the guild's spells (0x5BE030) then go to that visitor, not to the new hero.
+- Intended/expected behavior: the build refuses the setup: the adventure's check of the heroes' tiles refuses the main town's hero, whose id follows the setup's heroes, on a tile another hero stands on (`h3_game::GameSetupError::Adventure` with `SetupError::HeroTile` and `StandError::Occupied`).
+- Impact: none on the shipped maps (no hero moved onto an entrance stands in a main town that generates a hero, survey §4.6; the census: all 156 maps that import build); a hand-made map with one is refused instead of starting with two heroes on one tile.
+- Community status: VCMI 1.7.5 asserts that the tile is free when it places a starting hero.
+- Sources: code reading of `main_town_heroes` 0x4CA040 and `placed_heroes_setup` 0x4CAE10 (E09 T1a2, read again in T7b2b; survey `docs/rules/surveys/E09-towns.md` §4.5, §4.6; `docs/exe/map.toml`).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-game/src/town/tests/heroes.rs`, `twn_quirk_6_a_main_towns_hero_is_refused_on_a_visitors_entrance`
+- Decided by / date: the agent, 2026-11-05 (state-corrupting, so fixed; the refusal proposed to the user at the task's start, the user told of it after the reading); entered by E09 T7b2b, 2026-11-05

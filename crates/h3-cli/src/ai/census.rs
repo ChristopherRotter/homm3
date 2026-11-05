@@ -349,7 +349,15 @@ impl Accumulator {
         let raw = h3_map::read(file, limits).map_err(|e| format!("read: {e}"))?;
         let map = h3_map::import_map(&raw, rules).map_err(|e| format!("static layer: {e}"))?;
         // Since E09 T8a1 the game takes one town record per town of the static map
-        // (`GameSetupError::TownCount`): a random town of no alignment each, which no start reads.
+        // (`GameSetupError::TownCount`): since E09 T7b2a of the first faction with a town record
+        // each, which no start reads (a random town its owner's start would).
+        let faction = rules
+            .towns()
+            .towns()
+            .first()
+            .map_or(TownFaction::Random { alignment: None }, |record| {
+                TownFaction::Fixed(record.faction)
+            });
         let towns = map
             .objects
             .iter()
@@ -360,7 +368,7 @@ impl Accumulator {
                     .is_some_and(|ty| ty.kind == ObjectKind::Town)
             })
             .map(|_| TownSetup {
-                faction: TownFaction::Random { alignment: None },
+                faction,
                 buildings: BuildingsSetup::Standard { fort: false },
                 garrison: None,
                 name: None,

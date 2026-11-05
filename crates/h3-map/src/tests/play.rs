@@ -42,9 +42,10 @@ use h3_content::{ArtifactTypeId, CreatureTypeId, Formation, ResourceId};
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
-    ChoiceKind, Consent, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState,
-    HeroChange, Manage, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState,
-    UniversityAnswer, apply, legal_commands, legal_management, legal_moves, split_range,
+    ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError, GameEvent, GameRuleset,
+    GameState, HeroChange, HireAnswer, HireTarget, HireView, Manage, OpenBattle, Position,
+    SchoolChoice, Sink, SkillOffer, SlotState, UniversityAnswer, Viewer, apply, hire_range,
+    legal_commands, legal_management, legal_moves, observe, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -1793,8 +1794,9 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
 /// stands (an attack, on the other hero's tile, is nearest of all; the heroes seek each other as
 /// the fork benchmark's do: random play seldom meets); `EndTurn` when none gets nearer.
 /// The acting player's answer to its open decision but a battle, if it has one (E08 T63a): an
-/// offer declined, a level-up's first offer taken, a meeting or an army dialog closed, a choice
-/// or a University answered with the `n`-th of its legal answers.
+/// offer declined, a level-up's first offer taken, a meeting or an army dialog closed, a choice,
+/// a University or (E08 T95b) a hire dialog answered with the `n`-th of its legal answers (a hire
+/// dialog's: a `Buy` of each creature's most, then `Close`).
 fn settle(state: &GameState, legal: &[GameCommand], n: u16) -> Option<GameCommand> {
     let actor = acting(state);
     if state.decision(actor).is_some() {
@@ -1806,8 +1808,35 @@ fn settle(state: &GameState, legal: &[GameCommand], n: u16) -> Option<GameComman
     if state.meeting(actor).is_some() || state.army_dialog(actor).is_some() {
         return Some(CLOSE);
     }
-    (state.choice(actor).is_some() || state.university(actor).is_some())
+    (state.choice(actor).is_some() || state.university(actor).is_some() || hiring(state, actor))
         .then(|| legal[usize::from(n) % legal.len()].clone())
+}
+
+/// Whether `player`'s first open decision is a hire dialog (GAM-DEC-008, E08 T95b): an open
+/// decision of none of the other kinds, as `GameState` shows a hire dialog only through its
+/// owner's observation ([`hire_view`]).
+fn hiring(state: &GameState, player: PlayerId) -> bool {
+    state.has_decision(player)
+        && state.battle(player).is_none()
+        && state.decision(player).is_none()
+        && state.level_up(player).is_none()
+        && state.meeting(player).is_none()
+        && state.army_dialog(player).is_none()
+        && state.choice(player).is_none()
+        && state.university(player).is_none()
+}
+
+/// `player`'s open hire dialog as its observation shows it (GAM-DEC-008, E08 T95b): its army, its
+/// source by type and anchor, and the source's creatures with their counts and the cost of one;
+/// none without one.
+fn hire_view(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Option<HireView> {
+    if !hiring(state, player) {
+        return None;
+    }
+    match observe(state, rules, Viewer::Player(player)).decision? {
+        DecisionView::Hire(view) => Some(view),
+        _ => None,
+    }
 }
 
 fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
@@ -1849,7 +1878,8 @@ fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
 /// The armies the acting player may manage now (E08 T52; ADR-0017 point 6): a meeting's two
 /// heroes, an army dialog's hero and group, else each of its heroes alone; none while it may
 /// not manage (a battle, an offer or a level-up open, the game waiting for another player; since
-/// E08 T64b's plans a choice or a University open, GAM-DEC-005, GAM-DEC-006).
+/// E08 T64b's plans a choice or a University open, GAM-DEC-005, GAM-DEC-006; since E08 T95b a
+/// hire dialog, GAM-DEC-008).
 fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
     let player = acting(state);
     if actor(state) != Actor::Player(player)
@@ -1857,6 +1887,7 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
         || state.decision(player).is_some()
         || state.choice(player).is_some()
         || state.university(player).is_some()
+        || hiring(state, player)
         || state.waiting_for().is_some()
     {
         return Vec::new();
@@ -2749,6 +2780,246 @@ fn choice_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> V
     answers.into_iter().map(GameCommand::Answer).collect()
 }
 
+/// The creatures the hire dialog's source of `object_type` on `anchor` sells on `state`, with
+/// their counts as they stand (ADV-HIR-002, E08 T95b), read apart from the dialog: a dwelling's
+/// kind's creatures in its order with the dwelling's counts, a Refugee Camp's week's creature and
+/// count.
+fn hire_stock(
+    rules: &GameRuleset,
+    state: &GameState,
+    (object_type, anchor): (ObjectTypeId, TilePos),
+) -> Vec<(CreatureTypeId, u32)> {
+    let index = object_index(state, object_type, anchor).unwrap();
+    let adventure = state.adventure();
+    match rules.adventure().object_type(object_type).map(|t| &t.kind) {
+        Some(ObjectKind::Dwelling { creatures, .. }) => {
+            let counts = adventure.dwelling_counts(index).unwrap();
+            creatures
+                .iter()
+                .copied()
+                .zip(counts.iter().copied())
+                .collect()
+        }
+        Some(ObjectKind::RefugeeCamp { .. }) => adventure.camp(index).into_iter().collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// The cost of one `creature` (ADV-HIR-002, E08 T95b): its core cost's resources of more than 0,
+/// in the core's order.
+fn unit_cost(rules: &GameRuleset, creature: CreatureTypeId) -> Vec<(ResourceId, u32)> {
+    let cost = &rules.core().creature(creature).unwrap().cost;
+    let mut cost: Vec<(ResourceId, u32)> = cost.iter().copied().filter(|&(_, n)| n > 0).collect();
+    cost.sort_unstable();
+    cost
+}
+
+/// The most of `creature` of a source holding `count` of it that `player` may buy now into
+/// `hero`'s army (GAM-DEC-008, ADV-ARM-007; E08 T95b), by an independent reading: the least of
+/// the count, the treasury divided by the cost of one for each resource it costs, and the room, a
+/// stack's most with a slot free, else the most less the least count among the army's stacks of
+/// the creature, else 0.
+fn hire_most(
+    rules: &GameRuleset,
+    state: &GameState,
+    (player, hero): (PlayerId, HeroId),
+    (creature, count): (CreatureTypeId, u32),
+) -> u32 {
+    let params = rules.adventure().params();
+    let (slots, most) = (params.army_slots(), params.max_stack_count());
+    let army = &state.adventure().hero(hero).unwrap().army;
+    let room = if army.len() < usize::from(slots) {
+        most
+    } else {
+        army.iter()
+            .filter(|s| s.creature == creature)
+            .map(|s| most.saturating_sub(s.count))
+            .max()
+            .unwrap_or(0)
+    };
+    let treasury = state.treasury(player).unwrap();
+    unit_cost(rules, creature)
+        .iter()
+        .map(|&(resource, each)| treasury[usize::from(resource.raw())] / each)
+        .fold(count.min(room), u32::min)
+}
+
+/// The answers to `player`'s open hire dialog as `legal_commands` must list them (GAM-DEC-008,
+/// E08 T95b), from the source's stock, the treasury and the army read independently
+/// ([`hire_stock`], [`hire_most`]): a `Buy` of the most of each creature in the source's order
+/// whose most is at least 1, then `Close`. None without a hire dialog.
+fn hire_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
+    let Some(view) = hire_view(state, rules, player) else {
+        return Vec::new();
+    };
+    let HireTarget::Hero(hero) = view.target;
+    hire_stock(rules, state, (view.object_type, view.anchor))
+        .into_iter()
+        .map(|(creature, count)| {
+            (
+                creature,
+                hire_most(rules, state, (player, hero), (creature, count)),
+            )
+        })
+        .filter(|&(_, most)| most > 0)
+        .map(|(creature, amount)| Answer::Hire(HireAnswer::Buy { creature, amount }))
+        .chain([Answer::Hire(HireAnswer::Close)])
+        .map(GameCommand::Answer)
+        .collect()
+}
+
+/// An open hire dialog's answers (GAM-DEC-008, ADV-HIR-002, ADV-ARM-007; E08 T95b, increment 10's
+/// design note §14), `view` the actor's: the view shows the source's stock as it stands, each
+/// creature with the cost of one; [`hire_range`] is 1 to each creature's most ([`hire_most`]),
+/// empty for a creature the source does not sell; a `Buy` of 0 or of one past the range's end, and
+/// one of a creature the source does not sell, is rejected with the state unchanged; every listed
+/// `Buy` applies, pays its price (the cost of one times the amount, `ResourcePaid` per resource),
+/// joins the amount to the army where ADV-ARM-007's room is (its first stack of the creature that
+/// takes them within a stack's most, else its first free slot; `CreaturesJoined` to the owner
+/// alone) and lowers the source's count by it, the dialog closing (`DecisionClosed`) exactly when
+/// its source sells one creature; `Close` closes it and does nothing else.
+fn check_hire(
+    state: &GameState,
+    rules: &GameRuleset,
+    (actor, view): (PlayerId, &HireView),
+    legal: &[GameCommand],
+) -> Result<(), TestCaseError> {
+    let HireTarget::Hero(hero) = view.target;
+    let source = (view.object_type, view.anchor);
+    let stock = hire_stock(rules, state, source);
+    let shown: Vec<(CreatureTypeId, u32)> = view
+        .creatures
+        .iter()
+        .map(|c| (c.creature, c.count))
+        .collect();
+    prop_assert_eq!(&shown, &stock);
+    for shown in &view.creatures {
+        prop_assert_eq!(&shown.cost, &unit_cost(rules, shown.creature));
+    }
+    let probe = |command: &GameCommand| {
+        let mut probe = state.clone();
+        let mut events = Vec::new();
+        let command = command.clone();
+        let result = apply(
+            &mut probe,
+            rules,
+            Actor::Player(actor),
+            command,
+            &mut events,
+        );
+        (probe, events, result)
+    };
+    let hash = state.state_hash();
+    let buy =
+        |creature, amount| GameCommand::Answer(Answer::Hire(HireAnswer::Buy { creature, amount }));
+    let mut refused = Vec::new();
+    for &(creature, count) in &stock {
+        let most = hire_most(rules, state, (actor, hero), (creature, count));
+        let range = hire_range(state, rules, actor, creature);
+        prop_assert_eq!(range.clone(), 1..=most, "{:?}", creature);
+        refused.extend([buy(creature, 0), buy(creature, range.end() + 1)]);
+    }
+    let other = (0..rules.core().creature_count())
+        .filter_map(CreatureTypeId::from_index)
+        .find(|&c| stock.iter().all(|&(sold, _)| sold != c));
+    if let Some(other) = other {
+        prop_assert!(hire_range(state, rules, actor, other).is_empty());
+        refused.push(buy(other, 1));
+    }
+    for command in &refused {
+        let (after, events, result) = probe(command);
+        prop_assert!(result.is_err(), "{:?} accepted", command);
+        prop_assert_eq!(&after, state);
+        prop_assert_eq!(after.state_hash(), hash);
+        prop_assert!(events.is_empty());
+    }
+    let single = stock.len() == 1;
+    let (slots, most) = {
+        let params = rules.adventure().params();
+        (params.army_slots(), params.max_stack_count())
+    };
+    for command in legal {
+        let (after, events, result) = probe(command);
+        prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
+        let GameCommand::Answer(Answer::Hire(HireAnswer::Buy { creature, amount })) = *command
+        else {
+            prop_assert_eq!(
+                command,
+                &GameCommand::Answer(Answer::Hire(HireAnswer::Close))
+            );
+            prop_assert_eq!(
+                &events[..],
+                &[GameEvent::DecisionClosed { player: actor }][..]
+            );
+            prop_assert!(hire_view(&after, rules, actor).is_none());
+            continue;
+        };
+        let price: Vec<(ResourceId, u32)> = unit_cost(rules, creature)
+            .into_iter()
+            .map(|(resource, each)| (resource, each * amount))
+            .collect();
+        let mut expected: Vec<GameEvent> = price
+            .iter()
+            .map(|&(resource, amount)| GameEvent::ResourcePaid {
+                player: actor,
+                resource,
+                amount,
+            })
+            .collect();
+        expected.push(GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::CreaturesJoined {
+                hero,
+                creature,
+                count: amount,
+            },
+            seen_by: Viewers::NONE.with(actor),
+        }));
+        expected.extend(single.then_some(GameEvent::DecisionClosed { player: actor }));
+        prop_assert_eq!(&events, &expected);
+        let mut treasury = state.treasury(actor).unwrap().to_vec();
+        for &(resource, paid) in &price {
+            treasury[usize::from(resource.raw())] -= paid;
+        }
+        prop_assert_eq!(after.treasury(actor).unwrap(), &treasury[..]);
+        let mut army = state.adventure().hero(hero).unwrap().army.clone();
+        let fits = |s: &h3_contracts::ArmyStack| {
+            s.creature == creature && s.count.saturating_add(amount) <= most
+        };
+        if let Some(at) = army.iter().position(fits) {
+            army[at].count += amount;
+        } else {
+            let slot = (0..slots).find(|&slot| army.iter().all(|s| s.slot != slot));
+            let slot = slot.ok_or_else(|| fail(format!("{command:?} bought without room")))?;
+            let at = army
+                .iter()
+                .position(|s| s.slot > slot)
+                .unwrap_or(army.len());
+            army.insert(
+                at,
+                h3_contracts::ArmyStack {
+                    slot,
+                    creature,
+                    count: amount,
+                },
+            );
+        }
+        prop_assert_eq!(&after.adventure().hero(hero).unwrap().army, &army);
+        let mut left = stock.clone();
+        let place = left.iter().position(|&(sold, _)| sold == creature).unwrap();
+        left[place].1 -= amount;
+        prop_assert_eq!(hire_stock(rules, &after, source), left);
+        let open = hire_view(&after, rules, actor);
+        prop_assert_eq!(open.is_none(), single, "{:?}", command);
+        if let Some(open) = open {
+            prop_assert_eq!(
+                (open.target, open.object_type, open.anchor),
+                (view.target, source.0, source.1)
+            );
+        }
+    }
+    Ok(())
+}
+
 /// Legality consistency, before a step: only the actor has legal commands, `EndTurn`, or with an
 /// open decision (only ever the acting player's in sequential play) its answers and nothing else
 /// (GAM-DEC-001, E08 T14b), `Decline` alone if the offer no longer stands (T15a; never in
@@ -2761,7 +3032,8 @@ fn choice_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> V
 /// visit from a neighbour) with the points the query reports there, one event per step. A
 /// level-up (E08 T30) is a decision too, its answers `First` and `Second`, each of which applies;
 /// it holds the game, so its owner acts (in its turn or not: a battle's defender that won) and no
-/// one else lists a command.
+/// one else lists a command. A hire dialog (E08 T95b) lists its answers ([`hire_answers`]), each
+/// checked by [`check_hire`].
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,
@@ -2777,6 +3049,8 @@ fn check_legal(
     let exchanging = state.meeting(actor).is_some() || state.army_dialog(actor).is_some();
     // E08 T63a: a choice or a University.
     let choosing = state.choice(actor).is_some() || state.university(actor).is_some();
+    // E08 T95b: a hire dialog, as its owner sees it.
+    let hiring = hire_view(state, rules, actor);
     let system = legal_commands(state, rules, Actor::System);
     prop_assert_eq!(system.is_empty(), who != Actor::System);
     prop_assert!(system.iter().all(|c| matches!(c, GameCommand::Battle(_))));
@@ -2805,6 +3079,8 @@ fn check_legal(
                 vec![CLOSE]
             } else if choosing {
                 choice_answers(state, rules, player)
+            } else if hiring.is_some() {
+                hire_answers(state, rules, player)
             } else {
                 // E08 T86b1: then the Shipyards' boats it may build (ADV-SHY-003).
                 core::iter::once(GameCommand::EndTurn)
@@ -2819,6 +3095,7 @@ fn check_legal(
                 && !decided
                 && !exchanging
                 && !choosing
+                && hiring.is_none()
                 && !levelling
                 && !fighting
                 && state.adventure().hero(*hero).map(|h| h.owner) == Some(actor);
@@ -2951,6 +3228,11 @@ fn check_legal(
             prop_assert!(probe.choice(actor).is_none());
         }
         return Ok(());
+    }
+    // E08 T95b: a hire dialog's answers, each applied ([`check_hire`]).
+    if let Some(view) = &hiring {
+        prop_assert_eq!(legal, &hire_answers(state, rules, actor)[..]);
+        return check_hire(state, rules, (actor, view), legal);
     }
     prop_assert_eq!(legal.first(), Some(&GameCommand::EndTurn));
     check_build_boat(state, rules, actor, legal)?;
@@ -3436,7 +3718,8 @@ fn check_timed(
 /// event's record (a positive amount a gain, a negative one a loss the treasury is told it lost,
 /// never below 0), a find's contents at the visit that empties it, and the prices of a School's
 /// choice and a University's purchases; a hero's details change by its changes and its levels
-/// in the order it is told them (a reward's rest after a level-up, GAM-DEC-007).
+/// in the order it is told them (a reward's rest after a level-up, GAM-DEC-007). Since E08 T95b a
+/// hire dialog's purchase pays the cost of one times the amount and joins the amount as a join does.
 fn check_conservation(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -3706,9 +3989,11 @@ fn check_conservation(
                     amount,
                 } => {
                     // E08 T64b: or a School's choice (GAM-DEC-005) or a University's purchase
-                    // (GAM-DEC-006) answered.
+                    // (GAM-DEC-006) answered; (E08 T95b) or a hire dialog's purchase (GAM-DEC-008).
                     let answered = matches!(command, GameCommand::Answer(_))
-                        && (before.choice(owner).is_some() || before.university(owner).is_some());
+                        && (before.choice(owner).is_some()
+                            || before.university(owner).is_some()
+                            || hiring(before, owner));
                     prop_assert!(
                         accepted == Some(owner) || answered || boat.is_some(),
                         "{:?} without an offer",
@@ -3736,12 +4021,29 @@ fn check_conservation(
             prop_assert_eq!(&paid[..], choice.price());
         } else if let Some(visit) = before.university(player).filter(|_| !paid.is_empty()) {
             prop_assert_eq!(&paid[..], &visit.price[..]);
+        } else if let GameCommand::Answer(Answer::Hire(HireAnswer::Buy { creature, amount })) =
+            *command
+            && hiring(before, player)
+            && !paid.is_empty()
+        {
+            // E08 T95b: a purchase's price, the cost of one times the amount (ADV-HIR-002).
+            let price: Vec<(ResourceId, u32)> = unit_cost(rules, creature)
+                .into_iter()
+                .map(|(resource, each)| (resource, each * amount))
+                .collect();
+            prop_assert_eq!(&paid[..], &price[..]);
         }
     }
     let mut expected = armies(before);
+    // E08 T95b: into the first stack of the creature that takes them within a stack's most, else
+    // the first free slot (ADV-ARM-007; a purchase may not fit the first stack).
+    let most = rules.adventure().params().max_stack_count();
     for &(hero, creature, count) in &joined {
         let (_, army) = expected.iter_mut().find(|(id, _)| *id == hero).unwrap();
-        if let Some(stack) = army.iter_mut().find(|s| s.creature == creature) {
+        let fits = |s: &&mut h3_contracts::ArmyStack| {
+            s.creature == creature && s.count.saturating_add(count) <= most
+        };
+        if let Some(stack) = army.iter_mut().find(fits) {
             stack.count += count;
         } else {
             let slot = (0..7).find(|&slot| army.iter().all(|s| s.slot != slot));
@@ -4779,7 +5081,9 @@ fn check_battle_end(
 /// winner's level-up is left open, its guards beaten meanwhile; else it stays, its guards'
 /// survivors by slot each of its stack's creature and at most its count (none after a draw). An
 /// event held on the tile fires after the guard's visit ([`records`]). No treasury changes
-/// otherwise; no side surrenders to them or pays them.
+/// otherwise; no side surrenders to them or pays them. A mine's guards (E08 T86b1:
+/// [`check_mine_battle_end`]) and a dwelling's (E08 T95a2: [`check_dwelling_battle_end`]) have
+/// their own.
 fn check_unowned_battle_end(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -4798,17 +5102,21 @@ fn check_unowned_battle_end(
         .or(started)
         .unwrap();
     let (adventure, map) = (before.adventure(), before.adventure().map());
-    // E08 T86b1: a mine's guards ([`check_mine_battle_end`]).
-    let mine = visited_at(before, tile).filter(|&i| {
+    // E08 T86b1: a mine's guards ([`check_mine_battle_end`]); E08 T95a2: a dwelling's
+    // ([`check_dwelling_battle_end`]).
+    let guarded = visited_at(before, tile).and_then(|i| {
         let ty = adventure.object(i).and_then(|o| o.object_type);
-        matches!(
-            ty.and_then(|ty| rules.adventure().object_type(ty))
-                .map(|t| &t.kind),
-            Some(ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. })
-        )
+        let kind = ty.and_then(|ty| rules.adventure().object_type(ty));
+        kind.map(|t| (i, &t.kind))
     });
-    if let Some(index) = mine {
-        return check_mine_battle_end(rules, (before, after), events, (visitor, index, result));
+    match guarded {
+        Some((index, ObjectKind::Mine { .. } | ObjectKind::AbandonedMine { .. })) => {
+            return check_mine_battle_end(rules, (before, after), events, (visitor, index, result));
+        }
+        Some((index, ObjectKind::Dwelling { .. })) => {
+            return check_dwelling_battle_end((before, after), events, (visitor, index, result));
+        }
+        _ => {}
     }
     // E08 T86b1: a found index may be a monster's added in play (a creature month's), read
     // through `object` (`docs/lanes/adventure/TRAPS.md`, objects added in play).
@@ -5026,6 +5334,99 @@ fn check_mine_battle_end(
         )
     });
     prop_assert!(!removed, "{:?}", events);
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        prop_assert_eq!(before.treasury(player), after.treasury(player));
+    }
+    Ok(())
+}
+
+/// The end of a battle against a dwelling's guards (E08 T95a2; ADV-DWL-004, GAM-BAT-001 amended,
+/// increment 10's design note §7 step 2, §12), a neutral dwelling's or another player's (the
+/// system played its guards, unsplit, whoever its owner): its creatures' counts are kept, no
+/// object leaves the map, no treasury changes, and nothing tells its guards or its emptiness. Won,
+/// the guards are gone; after the winner's levels (GAM-DEC-007) the visit goes on for a visitor
+/// still on the map: the dwelling is flagged for the visitor's owner, told as its flag, then asks
+/// that player's hero the hire question (its kind: [`check_decisions`]), in this command unless the
+/// winner's level-up is left open, its owner kept meanwhile. Else its owner is kept, nothing is
+/// flagged or asked, and its guards are survivors, each of a stack it had by slot and creature
+/// with at most its count, some unless after a draw (none).
+fn check_dwelling_battle_end(
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    (visitor, index, result): (HeroId, usize, BattleResult),
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    let owner = b.hero(visitor).unwrap().owner;
+    // A found index read through `object` (`docs/lanes/adventure/TRAPS.md`, objects added in
+    // play).
+    let object = b.object(index).unwrap();
+    let (object_type, anchor) = (object.object_type.unwrap(), object.anchor);
+    let (had, left) = (b.dwelling_guards(index), a.dwelling_guards(index));
+    prop_assert_eq!(a.dwelling_counts(index), b.dwelling_counts(index));
+    let flagged = events.iter().position(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectFlagged {
+                    object_type: t,
+                    anchor: at,
+                    ..
+                },
+                ..
+            }) if (*t, *at) == (object_type, anchor)
+        )
+    });
+    let asked = events.iter().position(|e| {
+        matches!(
+            e,
+            GameEvent::OfferOpened {
+                player,
+                hero,
+                object_type: t,
+                anchor: at,
+            } if (*player, *hero, *t, *at) == (owner, visitor, object_type, anchor)
+        )
+    });
+    let told = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved { .. }
+                    | AdventureEventKind::ObjectEmpty { .. }
+                    | AdventureEventKind::GuardsChanged { .. },
+                ..
+            })
+        )
+    });
+    prop_assert!(!told, "{:?}", events);
+    if result.winner() == Some(BattleSide::Attacker) {
+        prop_assert!(left.is_empty(), "{:?} left after a win", left);
+        let levels = events
+            .iter()
+            .any(|e| matches!(e, GameEvent::LevelUpOpened { hero, .. } if *hero == visitor));
+        let rest = !levels && a.hero(visitor).is_some();
+        prop_assert_eq!(flagged.is_some(), rest, "{:?}", events);
+        prop_assert_eq!(asked.is_some(), rest, "{:?}", events);
+        prop_assert!(
+            flagged <= asked,
+            "the flag after the question: {:?}",
+            events
+        );
+        let expected = if rest { Some(owner) } else { b.owner(index) };
+        prop_assert_eq!(a.owner(index), expected);
+    } else {
+        prop_assert_eq!((flagged, asked), (None, None), "{:?}", events);
+        prop_assert_eq!(a.owner(index), b.owner(index));
+        prop_assert!(
+            left.iter().all(|s| had
+                .iter()
+                .any(|h| (h.slot, h.creature) == (s.slot, s.creature) && h.count >= s.count)),
+            "{:?} of {:?}",
+            left,
+            had
+        );
+        prop_assert_eq!(left.is_empty(), result == BattleResult::Draw, "{:?}", left);
+    }
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         prop_assert_eq!(before.treasury(player), after.treasury(player));
     }
@@ -5336,7 +5737,8 @@ fn left_with(before: &GameState, after: &GameState) -> Vec<(u16, Option<u16>)> {
 /// nothing else changes either. Since E08 T64b increment 7's offers too: a guarded artifact's or
 /// scroll's question as a pile's, a gift's price (the Tree of Knowledge's drawn one; a School's
 /// choice refused so when the treasury cannot pay), the Warrior's Tomb's, a box's and the
-/// Pyramid's questions, never refused; a choice and a University open and close as told.
+/// Pyramid's questions, never refused; a choice and a University open and close as told. Since
+/// E08 T95b an accepted hire question's dialog opens where [`hire_opens`] says, and closes as told.
 fn check_decisions(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -5463,22 +5865,67 @@ fn check_decisions(
                         }
                     }
                     // E08 T95a1: a dwelling's hire question, of its kind's creatures, never
-                    // refused (no price): its visitor's own at once, else unguarded and flagged
-                    // for the visitor first (a guarded one asks nothing yet, ADV-STUB-14;
-                    // ADV-DWL-004, ADV-OWN-001).
+                    // refused (no price): its visitor's own at once, unflagged, else flagged for
+                    // the visitor first, told as its flag (ADV-DWL-004, ADV-OWN-001). E08 T95a2
+                    // (increment 10's design note §7 step 2, §12): one not its own whose guards
+                    // stand asks the guards' question instead, never refused, its owner kept and
+                    // nothing flagged: the creature of their first occupied slot and the word of
+                    // their total count; once the visitor's hero beat them, in this command's
+                    // battle after the winner's levels (GAM-DEC-007), it is flagged, then asks
+                    // the hire question.
                     ObjectKind::Dwelling { creatures, .. } => {
-                        prop_assert!(opened, "{:?}: a hire question is never refused", event);
-                        let index = object_index(before, object_type, anchor).unwrap();
-                        let was = before.adventure().owner(index);
-                        let guarded = !before.adventure().dwelling_guards(index).is_empty();
                         prop_assert!(
-                            was == Some(actor) || !guarded,
-                            "{:?} of guards standing",
+                            opened,
+                            "{:?}: a dwelling's question is never refused",
                             event
                         );
-                        prop_assert_eq!(after.adventure().owner(index), Some(actor));
-                        OfferKind::Hire {
-                            creatures: creatures.clone(),
+                        let index = object_index(before, object_type, anchor).unwrap();
+                        let (b, a) = (before.adventure(), after.adventure());
+                        let (was, guards) = (b.owner(index), b.dwelling_guards(index));
+                        let won = events.iter().any(|e| {
+                            matches!(
+                                e,
+                                GameEvent::BattleEnded { heroes, result, .. }
+                                    if heroes[BattleSide::Attacker.index()] == Some(hero)
+                                        && result.winner() == Some(BattleSide::Attacker)
+                            )
+                        });
+                        let flagged = events.iter().any(|e| {
+                            matches!(
+                                e,
+                                GameEvent::Adventure(AdventureEvent {
+                                    kind: AdventureEventKind::ObjectFlagged {
+                                        object_type: t,
+                                        anchor: at,
+                                        owner,
+                                    },
+                                    ..
+                                }) if (*t, *at, *owner) == (object_type, anchor, actor)
+                            )
+                        });
+                        if was != Some(actor) && !guards.is_empty() && !won {
+                            prop_assert!(!flagged, "{:?} flagged with guards standing", event);
+                            prop_assert_eq!(a.owner(index), was);
+                            prop_assert_eq!(a.dwelling_guards(index), guards.clone());
+                            let total = guards
+                                .iter()
+                                .fold(0, |sum: u32, s| sum.saturating_add(s.count));
+                            let words = rules.adventure().params().monsters();
+                            OfferKind::Guarded {
+                                creature: guards[0].creature,
+                                count_word: words.map_or(0, |m| m.count_word(total)),
+                            }
+                        } else {
+                            prop_assert_eq!(flagged, was != Some(actor), "{:?}", event);
+                            prop_assert_eq!(a.owner(index), Some(actor));
+                            prop_assert!(
+                                was == Some(actor) || a.dwelling_guards(index).is_empty(),
+                                "{:?} flagged with guards standing",
+                                event
+                            );
+                            OfferKind::Hire {
+                                creatures: creatures.clone(),
+                            }
                         }
                     }
                     // E08 T95a1: a Refugee Camp's, naming its week's creature while it has some
@@ -5546,6 +5993,42 @@ fn check_decisions(
                             .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
                         prop_assert!(fought, "{:?} without its battle", event);
                     }
+                    // E08 T95a2: an accepted guards' question of a dwelling is their battle
+                    // (ADV-DWL-004, GAM-BAT-001 amended; increment 10's design note §7 step 2,
+                    // §12), on the tile its visitor stands on, without a defending hero; while it
+                    // is open, unowned whoever owns the dwelling (the system plays it), its
+                    // defenders the guards as they stood, unsplit, each by slot.
+                    (true, OfferKind::Guarded { .. }) => {
+                        let tile = before.adventure().hero(open.hero).unwrap().pos;
+                        let fought = events.iter().any(|e| {
+                            matches!(
+                                e,
+                                GameEvent::BattleStarted { heroes, tile: at, .. }
+                                    if *heroes == [Some(open.hero), None] && *at == tile
+                            )
+                        });
+                        prop_assert!(fought, "{:?} without its battle", event);
+                        if let Some(battle) = after.battle(actor) {
+                            prop_assert_eq!(battle.owners(), [Some(actor), None]);
+                            prop_assert_eq!(battle.tile(), tile);
+                            let mut defending: Vec<_> = battle
+                                .state()
+                                .stacks()
+                                .iter()
+                                .filter(|s| s.side == BattleSide::Defender)
+                                .map(|s| (s.slot, s.creature, s.count))
+                                .collect();
+                            defending.sort_by_key(|&(slot, ..)| slot);
+                            let index = object_index(before, object_type, anchor).unwrap();
+                            let guards: Vec<_> = before
+                                .adventure()
+                                .dwelling_guards(index)
+                                .iter()
+                                .map(|s| (s.slot, s.creature, s.count))
+                                .collect();
+                            prop_assert_eq!(defending, guards);
+                        }
+                    }
                     // E08 T62a, T62b1: a gift's price, a find's, a box's and the Pyramid's
                     // questions (their gains: `check_rewards`, E08 T64b).
                     (
@@ -5570,7 +6053,9 @@ fn check_decisions(
                         prop_assert!(built, "{:?} without its boat", event);
                     }
                     // E08 T95a1: an accepted hire question gives exactly its free creatures
-                    // ([`free_creatures`]); the hire dialog is T95b's (ADV-STUB-15).
+                    // ([`free_creatures`]); (E08 T95b) after them the hire dialog opens, told to
+                    // the actor as `HireOpened` with the visitor's army and the source, where
+                    // [`hire_opens`] says, nowhere else (ADV-HIR-002, GAM-DEC-008).
                     (true, OfferKind::Hire { creatures }) => {
                         let told: Vec<AdventureEventKind> = events
                             .iter()
@@ -5595,6 +6080,38 @@ fn check_decisions(
                         let offer = (open.hero, object_type, anchor);
                         let expected = free_creatures(rules, before, actor, offer, &creatures);
                         prop_assert_eq!(told, expected);
+                        let opened: Vec<GameEvent> = events
+                            .iter()
+                            .filter(|e| matches!(e, GameEvent::HireOpened { .. }))
+                            .copied()
+                            .collect();
+                        let source = (object_type, anchor);
+                        let opens = hire_opens(rules, before, actor, source, &creatures);
+                        let expected = GameEvent::HireOpened {
+                            player: actor,
+                            target: HireTarget::Hero(open.hero),
+                            object_type,
+                            anchor,
+                        };
+                        prop_assert_eq!(
+                            opened,
+                            opens.then_some(expected).into_iter().collect::<Vec<_>>()
+                        );
+                        let at = events.iter().position(|e| *e == expected);
+                        let late = at.is_some_and(|at| {
+                            events[at..].iter().any(|e| {
+                                matches!(
+                                    e,
+                                    GameEvent::Adventure(AdventureEvent {
+                                        kind: AdventureEventKind::CreaturesJoined { .. }
+                                            | AdventureEventKind::JoinRefused { .. }
+                                            | AdventureEventKind::NoneToRecruit { .. },
+                                        ..
+                                    })
+                                )
+                            })
+                        });
+                        prop_assert!(!late, "a free creature after the dialog: {:?}", events);
                     }
                     (false, _) => {}
                 }
@@ -5642,11 +6159,17 @@ fn check_decisions(
     // heroes, GAM-MET-001), an army dialog as told (an accepted join without room), each when
     // neither is open, and each closes as told (its `Decline`; GAM-DEC-003, GAM-DEC-004).
     // E08 T64b (T63a): a choice and a University open as told, each when nothing of these is
-    // open, and close as told (GAM-DEC-005, GAM-DEC-006).
+    // open, and close as told (GAM-DEC-005, GAM-DEC-006); (E08 T95b) a hire dialog too, which a
+    // purchase of a single creature's closes (GAM-DEC-008; its purchases: [`check_hire`]).
     let dialog = |state: &GameState| state.army_dialog(actor).map(|(hero, _)| hero);
     let choosing = |state: &GameState| {
         let hero = state.choice(actor).map(|c| c.hero);
-        hero.or_else(|| state.university(actor).map(|u| u.hero))
+        let hero = hero.or_else(|| state.university(actor).map(|u| u.hero));
+        // E08 T95b: or a hire dialog, by its army's hero.
+        hero.or_else(|| {
+            let HireTarget::Hero(hero) = hire_view(state, rules, actor)?.target;
+            Some(hero)
+        })
     };
     let mut exchange = (before.meeting(actor), dialog(before), choosing(before));
     let mut guards = false;
@@ -5686,7 +6209,12 @@ fn check_decisions(
                 exchange.1 = Some(hero);
             }
             GameEvent::ChoiceOpened { player, hero, .. }
-            | GameEvent::UniversityOpened { player, hero, .. } => {
+            | GameEvent::UniversityOpened { player, hero, .. }
+            | GameEvent::HireOpened {
+                player,
+                target: HireTarget::Hero(hero),
+                ..
+            } => {
                 prop_assert_eq!((player, exchange), (actor, (None, None, None)));
                 prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
                 exchange.2 = Some(hero);
@@ -5710,6 +6238,32 @@ fn check_decisions(
     prop_assert!(after.adventure().bought(actor).eq(bought));
     prop_assert_eq!(after.adventure().keys(actor), keys);
     Ok(())
+}
+
+/// Whether an accepted hire question of `actor` naming `creatures` at the object of `object_type`
+/// on `anchor` opens the hire dialog on `before`, the state it is accepted on (ADV-HIR-002; E08
+/// T95b, increment 10's design note §13): at a dwelling `actor` owns, when one of its creatures'
+/// levels is above the part's `free_level`; at a Refugee Camp, always.
+fn hire_opens(
+    rules: &GameRuleset,
+    before: &GameState,
+    actor: PlayerId,
+    (object_type, anchor): (ObjectTypeId, TilePos),
+    creatures: &[CreatureTypeId],
+) -> bool {
+    let part = rules.adventure();
+    let free = part.params().dwellings().map_or(0, |p| p.free_level);
+    let index = object_index(before, object_type, anchor).unwrap();
+    match part.object_type(object_type).map(|t| &t.kind) {
+        Some(ObjectKind::Dwelling { .. }) => {
+            before.adventure().owner(index) == Some(actor)
+                && creatures
+                    .iter()
+                    .any(|&c| rules.core().creature(c).unwrap().level > free)
+        }
+        Some(ObjectKind::RefugeeCamp { .. }) => true,
+        _ => false,
+    }
 }
 
 /// The price of the gift `gift` of the object of `object_type` on `anchor` in `state` (E08
@@ -6387,6 +6941,8 @@ impl Rewarded {
             Some(_) => "offer",
             None if before.choice(player).is_some() => "choice",
             None if before.university(player).is_some() => "university",
+            // E08 T95b: a hire dialog's purchase or close.
+            None if hiring(before, player) => "hire",
             None if before.army_dialog(player).is_some() => "dialog",
             None if before.level_up(player).is_some() => "level-up",
             None => "other",

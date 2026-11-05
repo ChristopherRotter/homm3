@@ -7,31 +7,10 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
-(the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2, T8a2, then T8b (rounds 2
-to 6, T7a, T7b1 and T8a1 are done, `E09-log.md`); each later round's entries are written when it comes
+(the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
+T8a2, then T8b (rounds 2 to 6, T7a, T7b, T8a1 are done, `E09-log.md`); each later round's entries are written when it comes
 (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T7b2 — the towns' draws and the store** (`cross-lane`)
-
-- **Scope:** the towns' half of round 7 (design §14; T7b cut in two at its start, the user,
-  2026-11-04; T7b1 built the pool and the heroes' draws): step 2's random towns (a town's faction,
-  TWN-SET-002: an alignment to a colour that plays gives that colour's resolved faction, else the
-  owner's, else uniform over the factions with a town record), after the random heroes (T7b1's
-  draws do not move); step 3, each main town's hero (TWN-SET-009: a human player's pick, else the
-  draw `HeroPool::draw`, on the town's entrance as its visitor, its hero id after the setup's
-  heroes), the unused picks freed after it; step 4, each town's `h3_towns::town_setup` (T6c) by
-  owned or neutral; the store of towns beside the adventure's state, the garrisons and reveal
-  radii into the adventure's setup; `town::needs_faction` (and so `Choice`) gains a random town
-  the player owns; `TWN-STUB-3` lifted; a game state hash version (the store); the replays
-  rehashed (skill `homm3-rerecord-replays`).
-- **Acceptance:** as T7a's; the determinism replays green; the census's 125 maps refused for a
-  main town's hero build or are refused by a typed check.
-- **Notes:** each town's owner and object come with T8a1 (the static map's town list, towns
-  ownable, the adventure's garrison and radius inputs, which the game fills with empty garrisons and
-  the flag radius until this task: `TWN-STUB-5`, lifted here).
-- **Depends on:** T8a1 (its pull request merged). **Status:** waiting; its cut confirmed at its
-  start.
 
 **E09 T8a2 — the step onto a town** (`cross-lane`)
 
@@ -41,14 +20,26 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
   legal moves (a defended entrance as a monster's tile; measured against `master`, skill
   `homm3-bench-regression`), `AdventureState::capture_town` and the game's composition
   (`h3_towns::reveal`, the Capitol's limit, `TownCaptured`, `TownChanged`); `TWN-STUB-4` lifted.
-- **Depends on:** T7b2 (the garrisons and the store). **Status:** waiting; its cut confirmed at its
-  start.
+- **Also:** `TWN-STUB-5` (narrowed by T7b2a): a town that reveals every tile (a Tower's Grail)
+  reveals only its own level at the start (`h3_game`'s `town::start_radius`, the radius 255); the
+  capture's reveal needs the adventure to take a whole-map reveal, the start's then too.
+- **Depends on:** T7b2b (done). **Status:** next; its cut confirmed at its start.
 
 ## Inbox
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`; **for a town's recruitment,
+  E09 decision 4**): the hire dialog is built to be reused (increment 10's design note §13,
+  "E09's reuse"). `h3_adventure::HireDialog { target: HireTarget, source: HireSource }`: extend
+  `HireSource` with a town's dwelling and `HireTarget` with the garrison; the map's purchase rule
+  stays one (`AdventureState::hire_stock`, `hire_room`, `check_hire` → `HirePurchase`, `hire`;
+  ADV-HIR-002), and so does the game's decision (`h3-game`'s `state/hire.rs`: `Decision::Hire`,
+  `Answer::Hire(HireAnswer::{Buy, Close})`, the legal set of each creature's most, `hire_range`,
+  `DecisionView::Hire`, `GameState::hire_dialog`; GAM-DEC-008). The env's four purchases (action
+  encoding v7) take the source's order, so a town's dwelling of up to four creatures needs no
+  new entry. Game state hash v25 is T95b's.
 - 2026-11-04 (the adventure lane, E08 T94b, `adventure/e08-t94b`; **for the towns' external
   dwellings' growth**; its versions half done by E09 T8a1, v21): A dwelling's counts and guards as
   they stand:

@@ -81,18 +81,6 @@ where  = "crates/h3-map/src/import/mod.rs::typed"
 reason = "A random dwelling tied to a town (classes 216 and 217 with a town identifier a town of the map has) takes the town's drawn faction in the original (random_dwellings_resolve 0x502B60; survey E08-dwellings.md §3.2); the import keeps it an untyped blocker until E09's random towns resolve it (E08 decision 231; increment 10's design note §4; 1 397 on the shipped maps, all tied to random towns)"
 epic   = "E09"
 
-[[stub]]
-id     = "ADV-STUB-14"
-where  = "crates/h3-adventure/src/state/dwellings.rs::AdventureState::visit_dwelling"
-reason = "A neutral dwelling's or another team's visit while its guards stand does nothing: the guards' question (an offer naming the first occupied slot's creature and the size word of their total count, GENRLTXT 422), their battle unsplit and unowned (Defender::Guards), the survivors kept until the week's step, and after a win the flag and the hire question (GAM-DEC-007) are E08 T95a2's (ADV-DWL-004; increment 10's design note §7 step 2, §12)"
-epic   = "E08"
-
-[[stub]]
-id     = "ADV-STUB-15"
-where  = "crates/h3-adventure/src/state/dwellings.rs::AdventureState::accept_hire"
-reason = "An accepted hire question gives a dwelling's free creatures only (ADV-HIR-001): the hire dialog that opens after them when the dwelling has a creature above free_level, and always for a Refugee Camp (its creature and count), the outcome's AdventureOutcome::hire (a HireDialog: the hero, the source, read_only for an ally's dwelling), and the purchase are E08 T95b's (ADV-HIR-002; increment 10's design note §7 step 4, §8, §13)"
-epic   = "E08"
-
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---
@@ -108,12 +96,6 @@ reason = "The start's two forbids the original adds before a town's buildings (E
 epic   = "E09"
 
 [[stub]]
-id     = "TWN-STUB-3"
-where  = "crates/h3-game/src/town.rs::main_town_heroes"
-reason = "The main towns' heroes and the towns' draws (design note E09-design.md section 14; E09 T7b2, after T8a): a setup whose main town generates a hero is refused with `GameSetupError::HeroDraw` until the main towns' heroes (TWN-SET-009) and the towns' factions, buildings and garrisons are built. The hero pool and the random heroes' draws exist since E09 T7b1. Of the 160 shipped maps 156 import; since T7b1 31 build whole and the other 125 are refused here (the census, `h3-map`'s example `original_data`)"
-epic   = "E09"
-
-[[stub]]
 id     = "TWN-STUB-4"
 where  = "crates/h3-adventure/src/state.rs::StaticMap::place"
 reason = "A town's entrance is not entered until its step (design note E09-design.md section 9; E09 T8a2): since E09 T8a1 a town is typed (ObjectKind::Town, ownable, entered, not from above) but its object marks no typed visit on its entrance (StaticMap's typed_visits), so the step, the reachable tiles and the legal moves meet a blocker's entrance there exactly as before the town was typed: no hero ends on or passes it (AdventureCommandError::Visit), and a hero standing on it leaves it upwards too (the from-above test, ADV-OBJ-004, reads no town). The reach's and the step's loops test nothing more. T8a2 marks the entrance, builds the step's three cases and lifts this"
@@ -121,8 +103,14 @@ epic   = "E09"
 
 [[stub]]
 id     = "TWN-STUB-5"
-where  = "crates/h3-game/src/setup.rs::GameSetup::adventure_setup"
-reason = "The towns' garrisons and reveal radii from the game (design note E09-design.md section 8; E09 T7b2, the towns' draws and the store of towns): since E09 T8a1 the adventure takes one garrison per town (AdventureSetup::garrisons) and each town's reveal radius at the start (AdventureState::start_game's town_radii, by TownId), but until the game resolves its towns' records it passes every town an empty garrison (here) and the part's flag radius (GameState::new): a map's custom garrison and a town's own radius are not read yet"
+where  = "crates/h3-game/src/town/build.rs::start_radius"
+reason = "A town whose start reveals every tile (h3_towns::Reveal::All: a Tower with its Grail, the Skyship, ever built) reveals only its own level (design note E09-design.md section 8; since E09 T7b2a, narrowed from the towns' garrisons and radii, which the game now passes): the adventure's start takes one radius per town (AdventureState::start_game's town_radii, a u8 by TownId), and the game gives Reveal::All a radius of 255, whose disc covers every tile of the town's level on a map of up to 181 tiles a side (the base pack's largest is 144) but not the other level of a two-level map, which the original reveals too (survey E09-towns.md section 8.3 step 8). A whole-map reveal at the start (and at T8a2's capture) needs the adventure to take one. The census (h3-map's example original_data): none in the 156 shipped maps that build (since E09 T7b2b; 31 before); 9 towns of the imported maps have a custom set with such a Grail built (an upper bound: a random town's Grail slot counts)"
+epic   = "E09"
+
+[[stub]]
+id     = "TWN-STUB-6"
+where  = "crates/h3-game/src/town/heroes.rs::main_town_heroes"
+reason = "A main town's hero learns none of the town's guild spells at the start (TWN-SET-009; E09 T7b2b): the original's main_town_heroes calls town_heroes_learn_spells 0x5BE030 at 0x4CA1A2 after placing the hero, which teaches the town's visitor and garrison hero the spells of the town's Mage Guild when that hero has a spell book and the town has its Mage Guild ever built (building 0); VCMI 1.7.5 teaches them nothing at the start: a dispute for increment 4, when the guild's spells are drawn (they are not yet). The census (h3-map's example original_data, seed 0): 33 of the 523 main towns' heroes of the 156 shipped maps that build start with a spell book in a main town with a Mage Guild built"
 epic   = "E09"
 
 # --- ai (AI-STUB-<n>) ---

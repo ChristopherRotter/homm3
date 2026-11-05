@@ -24,6 +24,8 @@
 //!     "0 end-turn",                   #   without the hero's own tile), `<player> end-turn`
 //!     "1 answer offer accept",        #   `<player> answer <kind> …`: an answer to the
 //!     "1 answer level-up first",      #   player's open decision, of its kind
+//!     "0 answer hire buy 2 14",       #   (a hire dialog's: `buy <creature> <amount>`,
+//!     "0 answer hire close",          #   `close`; format 10, E08 T95b)
 //!     "1 battle attack 3 41",         #   `<player> battle <command>`: a command in its battle,
 //!     "system battle wait",           #   the battle replays' text without the side letter;
 //!                                     #   `system battle …`: the unowned side's
@@ -35,7 +37,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 9
+//! format = 10
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -72,12 +74,12 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, ObjectTypeId, Pos};
-use h3_content::Formation;
+use h3_content::{CreatureTypeId, Formation};
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
-    Consent, GameCommand, GameRuleset, GameSetup, Manage, Position, SchoolChoice, SkillOffer,
-    UniversityAnswer,
+    Consent, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage, Position, SchoolChoice,
+    SkillOffer, UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, RecordError, RecordOptions, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -333,12 +335,18 @@ fn format_answer(answer: Answer) -> String {
             return format!("university buy {slot}");
         }
         Answer::University(UniversityAnswer::Leave) => "university leave",
+        // Format v10 (E08 T95b).
+        Answer::Hire(HireAnswer::Buy { creature, amount }) => {
+            return format!("hire buy {} {amount}", creature.raw());
+        }
+        Answer::Hire(HireAnswer::Close) => "hire close",
         Answer::Close => "close",
     };
     words.to_owned()
 }
 
-/// Parses the words of an answer after `answer` (format v7, [`format_answer`]); none for others.
+/// Parses the words of an answer after `answer` (format v7, [`format_answer`]; a hire dialog's
+/// since v10); none for others.
 fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> {
     let answer = match (words.next()?, words.next()) {
         ("offer", Some("accept")) => Answer::Offer(Consent::Accept),
@@ -356,6 +364,11 @@ fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> 
             Answer::University(UniversityAnswer::Buy(words.next()?.parse().ok()?))
         }
         ("university", Some("leave")) => Answer::University(UniversityAnswer::Leave),
+        ("hire", Some("buy")) => Answer::Hire(HireAnswer::Buy {
+            creature: CreatureTypeId::from_raw(words.next()?.parse().ok()?),
+            amount: words.next()?.parse().ok()?,
+        }),
+        ("hire", Some("close")) => Answer::Hire(HireAnswer::Close),
         ("close", None) => return Some(Answer::Close),
         _ => return None,
     };

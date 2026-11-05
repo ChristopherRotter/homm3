@@ -27,6 +27,7 @@ use crate::action as battle;
 
 mod battles;
 mod decisions;
+mod hiring;
 mod monsters;
 mod shipyards;
 
@@ -140,7 +141,7 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
         mask,
         [
             true, true, true, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false, false
+            false, false, false, false, false, false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -174,9 +175,10 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 6);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 18));
+    assert_eq!(ACTION_ENCODING_VERSION, 7);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 22));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
+    assert_eq!((HIRE_BASE, HIRE_SLOTS), (18, 4));
     assert_eq!(Action::end_turn(), Action::Adventure(MapAction::default()));
     let map = |entry, tile| Action::Adventure(MapAction { entry, tile });
     assert_eq!(Action::move_to(2, 9), map(3, 9));
@@ -187,6 +189,7 @@ fn tiles_and_actions_encode_as_documented() {
         (map(11, 0), map(12, 0), map(16, 0))
     );
     assert_eq!(Action::build_boat(40), map(17, 40));
+    assert_eq!((Action::hire(0), Action::hire(3)), (map(18, 0), map(21, 0)));
     assert_eq!(hero_in_slot(state, PlayerId::new(0), HERO_SLOTS), None);
     assert_eq!(hero_in_slot(state, PlayerId::new(1), 2), None);
     assert!(hero_in_slot(state, PlayerId::new(1), 1).is_some());

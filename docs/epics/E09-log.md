@@ -1022,3 +1022,115 @@ review and the docs by the agent.
   `ai::tests::the_census_counts_a_known_map`) built its game with no town records, refused by
   `TownCount`; the census now gives each town a neutral record as `h3-map`'s does, and the
   workspace's tests pass (a trap in `TRAPS.md`).
+
+### T7b2a — the towns resolved and stored, game state hash v24 (2026-11-04)
+
+One session, the user present; branch `town/e09-t7b2a` (`cross-lane`: `h3-game`'s `lib.rs`,
+`setup.rs`, `state.rs` and tests, `h3-map`'s census example, `h3-cli`'s `src/ai/census.rs` (the
+ai lane's), two adventure bench workloads, the 39 adventure replays, the adventure lane's HANDOFF
+versions line). Starting point: `master` at ae59f3b (#719 merged; CI green there; the sandbox's
+baseline the light gates; the original data staged: `Heroes3.exe`, `H3bitmap.lod`,
+`H3ab_bmp.lod`, `maps.tar`, `extracted.tar`); `master` merged in before the pull request (#720,
+#721, #722: no version, replay or workload moved). **At its start** (the user): T7b2 cut in two at
+the store (design note §14): T7b2a now, T7b2b (the main towns' heroes) next. The code, the census,
+the bench and the replays by one sub-agent; the review and the docs by the agent.
+
+- **`h3-game`:** `town::build` (`draw_towns`: step 2's random towns after the random heroes,
+  TWN-SET-002; `build_towns`: step 4, `h3_towns::town_setup` by `TownId`, owned or neutral,
+  TWN-SET-003, -004, before the starting armies; `start_radius`: TWN-CAP-001's start).
+  `check_starts` returns the towns' owners; `draw_heroes` takes them and returns the players'
+  resolved factions; `needs_faction` also reads a random town the player owns. `GameState`'s store
+  of towns (`Towns`; `GameState::towns`), hashed after the pool; `AdventureSetup::garrisons` the
+  built garrisons, `start_game`'s radii each town's reveal. No new error variant: `TownFaction`
+  widened (a random town when no faction has a town record), `Choice` widened (a random town the
+  player owns).
+- **Agent's calls:** step 4 cannot fail after the checks (a town it could not build is left out
+  and the adventure would refuse the garrisons' count; no `?` on an error never reached, which the
+  coverage gate counted as a region); `Towns::new(..).unwrap_or_default()` (at most `MAX_TOWNS`
+  built); an owner that is no player draws as a neutral town (the adventure refuses it later,
+  `ObjectOwner`); `Reveal::All` the radius 255 (the town's level on any map up to 181 a side, not
+  the other level: `TWN-STUB-5` narrowed, not lifted); the censuses' static-layer games give each
+  town the first faction with a town record, fixed (else `Choice` refuses the owned ones); the test
+  part gained a Lookout Tower (radius 20) and a Grail that reveals every tile.
+- **Versions:** game state hash v24. The 39 replays re-recorded from their own commands: only the
+  checkpoint and final hashes and `game_state_hash_version` moved; the bot reports unchanged (the
+  part did not move).
+- **The census** (`original_data`, 160 maps): 156 import, 4 refused (`OwnedOnWater`); 31 build,
+  125 refused for a main town's hero (`TWN-STUB-3`), as before; none refused by a new check. The
+  31 build 294 towns: 139 random towns by their owner, 52 drawn, none aligned; 79 neutral towns
+  with a drawn garrison (16 drawn empty); no start radius other than 5. The 156 imported: 47
+  random towns aligned, 813 not (553 owned at the start); 9 custom sets with a Grail revealing
+  every tile (an upper bound: a random town's Grail slot counts), 4 with a Lookout Tower. The
+  dwellings' seed-0 counts moved (691 dwellings with guards, 695 before): step 4's draws come
+  before them in the setup stream.
+- **Bench** (`master` built in a worktree, per function): every fork +0.24 % to +0.36 % (only
+  `AdventureEnv::fork` +6 Ir and the state's drop +3 Ir a fork: the field's clone and drop); boxes
+  and stones re-baselined (+2.07 % against their stored counts, `master` already +1.71 %), the
+  other forks +1.37 % to +1.91 % against theirs (fork-rewards-36 the next to reach the gate); the
+  rest −0.19 % to +0.68 %.
+- **Docs:** the design note's §14 (the cut, "As built"), §19; `stubs.toml` `TWN-STUB-5` narrowed;
+  `town.toml` TWN-SET-002, -003, -004, TWN-CAP-001; the queue's T7b2b and T8a2 entries; the
+  inboxes of the battle and adventure lanes (two failing property cases on `master`'s code).
+- **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
+  `cross-lane`); `check-lane --cross-lane` passes; `cargo test --workspace --exclude xtask
+  --all-targets` passes but two random property cases independent of this task: `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` (fails the same way on `master`) and
+  `h3-battle`'s `a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden` (a crate that
+  depends on nothing this task changed); both seeds in the lanes' inboxes.
+
+### T7b2b — the main towns' heroes (2026-11-05)
+
+One session, the user present; branch `town/e09-t7b2b` (`cross-lane`: `h3-game`'s `lib.rs`,
+`setup.rs`, `state.rs` and tests, `h3-map`'s census example and `tests/towns.rs`). Starting point:
+`master` at f720585 (#724 merged; the sandbox's baseline the light gates on 1c906d6, CI's
+fingerprint there; the original data staged: `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`,
+`maps.tar`, `extracted.tar`, and the editor `h3maped.exe` with its help file for the reading; the
+user's computer's shell unavailable, staging worked). **At its start** (the user): T7b2b whole;
+the agent's two calls (a second hero on an entrance refused; the guild's spells at the start in
+increment 4) proposed, and the user asked whether a hero right of a town's entrance is not rather
+the town's garrison hero, with another visiting. Two readings by sub-agents (the executable;
+VCMI 1.7.5, the format's docs and the wiki), then the code, census and gates by one sub-agent; the
+review and the docs by the agent.
+
+- **The reading** (`docs/exe/map.toml`, `structs.toml`; survey §4.5, §4.6, TD-10): the visitor,
+  never the garrison hero: `load_hero_body` stores a hero's start tile as its template's
+  visitable tile, one column left of the object's anchor, and the 23 shipped heroes lie on their
+  town's anchor; `placed_heroes_setup` moves such a hero onto the entrance, `hero_show` makes it
+  the visitor; nothing at a new game writes a town's garrison hero (`town_init` 0x5BDE80 clears
+  it; the swap 0x5BE450 and the moves 0x4B9FC0, 0x5BE390 are the town screen's and the computer's,
+  not reached from `new_game_load`); the map's town record has no hero field. VCMI 1.7.5 the same
+  (`placeHeroesInTowns`, `initVisitingAndGarrisonedHeroes`; its `placeStartingHero` asserts on an
+  entrance already taken). `main_town_heroes` never tests the entrance: the new hero is drawn over
+  a visitor, which stays the visitor and then learns the guild's spells (T-7). The guild's spells
+  are drawn in `setup_towns` (`town_setup_spells` 0x5BE600) before the main towns' heroes;
+  `town_heroes_learn_spells` 0x5BE030 (read whole) teaches the visitor, then the garrison hero,
+  with a spell book in a town with its Mage Guild, the levels up to Wisdom's + 2 and the highest
+  built; VCMI teaches none at the start (TD-10). The editor's code and help file not read (the
+  help file is compressed).
+- **`h3-game`:** `town::heroes::main_town_heroes` (TWN-SET-009; design note §14 "As built
+  (T7b2b)"); `check_starts` returns the towns' owners and each generating main town's entrance
+  (`MainTown` also refuses one without an entrance); `draw_heroes` returns `Drawn` (the pool, the
+  types, the factions, the unused picks) and frees nothing; `HeroPool::take`; the main towns'
+  heroes chained after the setup's in `adventure_setup`'s loops and `GameState::new`'s sexes and
+  level seeds; the heroes' count includes them. `HeroDraw`, `GameSetupError::HeroDraw` and the
+  stub gone (`TWN-STUB-3` lifted).
+- **Rules, quirks, stubs:** TWN-SET-009 in `town.toml` (TWN-SET-005 to -008's forward references
+  refreshed); `TWN-QUIRK-6` (T-7: a main town's hero over a visitor, refused through the
+  adventure's `SetupError::HeroTile` with `Occupied`); `TWN-STUB-6` (the guild's spells at the
+  start, increment 4); `TWN-STUB-5`'s census over the 156 maps.
+- **Tests:** 10 in `town/tests/heroes.rs` (a human's pick; the pick used by a random hero; a
+  computer's pick ignored and freed after step 3; the draw; `NoFreeHero`; the heroes' ids,
+  tiles and draw order; the first entrance on the map; two heroes on an entrance; no generating
+  town keeps the stream).
+- **The census** (`h3-map`'s `original_data`, seed 0; `h3m.md`): all 156 imported maps build
+  (31 before; 125 refused for a main town's hero), none refused by a new check; 523 main towns'
+  heroes, all drawn (the import picks none), 84 on maps of 36 tiles a side; 33 with a spell book
+  in a main town with its Mage Guild; 1 437 towns; 54 heroes levelled at load (304 levels).
+- **Replay:** none added: the replays play committed maps of `fixtures/maps/` written by the
+  engine; the shipped maps are original files (ADR-0009) and CI has none.
+- **Bench:** inside its gate, nothing re-baselined: forks +1.38 % to +1.91 % against the stored
+  counts (the same count on the base f720585: `master`'s, not this task's), day-start +0.75 %,
+  the rest within ±0.4 %.
+- **Gates:** the scoped verify with `--with-original-data` passes but `check-lane` (by design,
+  `cross-lane`); `check-lane --cross-lane` and `cargo test --workspace --exclude xtask
+  --all-targets` pass. No version moved; the 39 replays unchanged.

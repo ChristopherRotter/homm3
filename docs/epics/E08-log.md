@@ -11739,3 +11739,112 @@ replays, the bench and the bot reports' check); the main session wrote the recor
 - **Docs:** ADV-DWL-004 (its first half) and ADV-HIR-001 new; ADV-OWN-001, ADV-RFG-001 amended;
   ADV-STUB-14 (T95a2), ADV-STUB-15 (T95b); design §7's "As built"; T95a2 queued.
 - **Versions:** none.
+
+### Increment 10, round 7: T95a2, the guards (2026-11-04, `adventure/e08-t95a2`)
+
+**The cut** (decision 254; asked at the start, `AskUserQuestion`): T95a2 whole. The user also
+settled the acceptance with no guards standing: the visit's rest, as a mine's, unreachable under
+sequential play (no two players may interact with one object at the same time). Built by two
+narrow sub-agents (the code and its tests; the plans' oracles); the main session wrote the records.
+
+- **The question** (`h3-adventure`'s `state/dwellings.rs`; design §7 step 2, §12, their "As
+  built"; ADV-DWL-004 whole): `OfferKind::Guarded { creature, count_word }`, no price
+  (`guards_question`: the first occupied slot's creature, `MonsterParams::count_word` of the total,
+  GENRLTXT 422). `visit_dwelling`: not of the visitor's team with guards standing, the question;
+  else `enter_dwelling` (the flag unless of the team, then the hire question), which the
+  acceptance and `give_won` share.
+- **The battle** (`fight_for_dwelling`, `accept_offer`'s `Guarded` arm; GAM-BAT-001 amended):
+  `Defender::Guards { army }` even for one stack, at the hero's tile through `battle_at`, no type
+  terrain; the system actor plays it whoever owns the dwelling. With no guards standing at the
+  acceptance, the visit's rest (decision 254); a hero off the map, nothing (*agent's call*: one
+  let-else with an offer type that is no dwelling's).
+- **Its end** (`end_unowned_battle`'s `ObjectKind::Dwelling` arm, `end_dwelling_battle`): the
+  survivors by slot through `write_dwelling` (`DwellingWeek::set_guards`, moved out of
+  `DwellingWeek::new`), none when won; no event; `reward_after` when won. A beaten dwelling's empty
+  guards differ from the full week's, so the block stays until `start_week` (checked).
+- **After a win** (`give_won`'s dwelling arm, `dwelling_won`): with the guards none and the hero on
+  the map, `enter_dwelling` for its owner; the game opens the offer through the rest's
+  `settle_outcome` unchanged.
+- **The game** (`h3-game`): the decision hash's `Guarded` arm (tag 12, then the creature and the
+  word); no recorded hash moved, so no version.
+- **The plans' oracles** (`h3-map`'s `play.rs`): a dwelling's visit asks `Guarded` (its creature
+  and word, nothing flagged) when not the actor's and guarded, else `Hire` with the flag exactly
+  when it was not the actor's (also right after a won battle); an accepted `Guarded` opens a battle
+  at the hero's tile without a defending hero, unowned, its stacks the guards unsplit;
+  `check_dwelling_battle_end`: counts and treasuries unchanged, no removal or guards' event; won,
+  the guards none and, unless a level-up is open or the hero left the map, the flag then the hire
+  question; else the owner kept and the guards a subset by slot (*agent's call*: survivors are only
+  bounded, as the mines' and piles' oracles, since `BattleEnded` carries no army). **No plan places
+  a dwelling yet**: the arms run once T96 adds them.
+- **Tests:** `state/tests/dwelling_visits.rs` (the guards' question replacing the stub's test; the
+  accepted question's battle, unsplit and unowned on the hero's tile; the acceptance with none
+  standing; the end lost, drawn and won with `give_won`), `h3-game`'s
+  `another_s_guarded_dwelling_is_fought_by_the_system_and_a_win_flags_it_then_asks` (blue's
+  dwelling, the defender unowned, a whole battle, the levels, then the flag and the hire question)
+  and `a_lost_guards_battle_takes_the_hero_off_the_map_and_keeps_the_survivors`.
+- **Verify** (scoped, with the original data): every step passed: coverage 100 %, determinism (the
+  39 replays unchanged: no recorded command visits a dwelling), bench-check (all 17 adventure
+  workloads inside the gate: the reaches and random plays within ±0.4 %, day-start-xl-144
+  +0.71 %, the forks' +1.1 to +1.7 % over the stored baselines the sandbox's drift, as T95a1's),
+  original-data. The AI lane's bot reports unchanged (the adventure part's content hash did not
+  move).
+- **Docs:** ADV-DWL-004 whole, GAM-BAT-001 amended; ADV-STUB-14 closed; design §7's and §12's "As
+  built"; decision 254; T95a1's hedge on the acceptance's owner reworded as defensive only.
+- **Versions:** none.
+
+### Increment 10, round 7: T95b, the purchase and the hire dialog (2026-11-05, `adventure/e08-t95b`, `cross-lane`)
+
+**The cut** (decision 255; asked at the start, `AskUserQuestion`): T95b whole, against the
+agent's recommendation of two at the env. Built by four narrow sub-agents in turn (the map side;
+the game side; then in parallel the env with the replays and the plans' oracles), reviewed by a
+fifth that had not seen the work; the main session made `GameState::hire_dialog` public and wrote
+the records.
+
+- **The map's purchase** (`h3-adventure`'s `state/dwellings.rs`; design §8's "As built";
+  ADV-HIR-002 new): `HireDialog { target: HireTarget::Hero, source: HireSource::Object { index,
+  object_type, anchor } }` in `AdventureOutcome::hire`, from `accept_hire` at one's own dwelling
+  holding a creature above `free_level` (after the free creatures) and at a Refugee Camp; the
+  ADV-STUB-15 site gone. `hire_stock`, `hire_room` (a stack's most with a free slot, else the most
+  less the smallest count of the creature's stacks, else 0), `check_hire` (`HireError::{NoSource,
+  NotOffered, Amount, NoRoom}`, in that order) → `HirePurchase` (`price()`; not `Clone`), the
+  infallible `hire` (the count lowered saturating, the creatures at the room found, `CreaturesJoined`
+  to the hero's owner). `monsters.rs`'s `add_stack` split into `room` and `join_at`, so the
+  purchase joins where the check looked. *Agent's calls:* no `read_only` (E10's ally's branch);
+  the hero's tile not compared with the entrance (the dialog blocks its moves); the price ordered
+  through a `BTreeMap` (no sort).
+- **The game's dialog** (`h3-game`'s `state/hire.rs`; design §13's "As built"; GAM-DEC-008 new):
+  `Decision::Hire { owner, dialog }` (hash tag 7), opened with `HireOpened { player, target,
+  object_type, anchor }` to the owner (no object index in an event); `Answer::Hire(HireAnswer::Buy
+  { creature, amount } | Close)`; the map's refusals as `GameCommandError::Hire`, then the treasury's
+  `CannotPay`; `ResourcePaid` per resource, the purchase, `DecisionClosed` after a one-creature
+  source's; `Close` and the system actor's default close it, and the held rest of the visit runs.
+  The legal set: each creature's `Buy` of its most (count, each resource's treasury ÷ cost, the
+  room), then `Close`; `hire_range` gives `1..=most` (empty while the game waits for another
+  player's level-up); `DecisionView::Hire(HireView)` to the owner; `GameState::hire_dialog` public.
+  `h3-map`'s `view.rs` matches the new event and view.
+- **The env** (`h3-sim`'s `action.rs`, the AI lane's path, decision 243): action encoding v7,
+  `HIRE_BASE` 18 + `c`, `HIRE_SLOTS` 4, `ENTRY_COUNT` 22: the listed `Buy` of creature `c`'s most
+  in the source's order; `Close` on 10; a masked hire entry decodes to a `Buy` of 0, which `apply`
+  rejects. The stock's order read through `hire_dialog` and `hire_stock` (a first cut read the
+  whole observation). Tests: `tests/hiring.rs` (a pack with two unguarded dwellings).
+- **Replays:** format v10 (`h3-cli`'s text: `answer hire buy <creature> <amount>`, `answer hire
+  close`); the 39 adventure replays re-recorded from their own commands, only the checkpoints,
+  `final_hash`, `game_state_hash_version` and `format` lines moved; battle replays and the AI
+  lane's bot reports untouched (no ruleset hash moved).
+- **The plans' oracles** (`h3-map`'s `play.rs`): `HireOpened` exactly where the map opens a dialog,
+  after the free creatures; the listed answers against the view's stock and `hire_range`; every
+  listed `Buy` tried on a copy (the price paid, the army and the count moved by the amount, closed
+  only for one creature); a `Buy` of 0, past the range or of another creature refused with the hash
+  unchanged; the plans answer it as a University. **No plan places a dwelling yet** (T96).
+- **The review** (no correctness finding; two notes fixed): a purchase kept past a change of the
+  state could have wrapped a count (unreachable through `apply`): not `Clone`, saturating; two doc
+  lines.
+- **Verify** (scoped, with the original data): every step passed but `check-lane` (by design;
+  `--cross-lane` passes): coverage 100 %, determinism (the rehashed replays), bench-check (17
+  workloads inside the gate: reaches and random plays −0.2 to +0.4 %, manage-army-12 +0.64 %,
+  day-start-xl-144 +0.69 %, the forks +1.4 to +1.9 % over the stored baselines, the sandbox's drift
+  as at T95a1 and T95a2), original-data.
+- **Docs:** ADV-HIR-002 and GAM-DEC-008 new, ADV-HIR-001 and ADV-RFG-001 amended; ADV-STUB-15
+  closed; design §8's and §13's "As built"; decision 255; the inboxes of the town lane (the dialog
+  to reuse, E09 decision 4) and the AI lane (v7); T96 queued.
+- **Versions:** game state hash v25, adventure replay format v10, the env's action encoding v7.

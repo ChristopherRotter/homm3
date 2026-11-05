@@ -235,6 +235,12 @@ pub struct AdventureOutcome {
     /// The University the visit opens (ADV-TCH-007, E08 T62a): the game opens it as the player's
     /// decision, its purchases made through `h3_heroes::university_slot` (GAM-DEC-006).
     pub university: Option<UniversityVisit>,
+    /// The hire dialog an accepted hire question opens (ADV-HIR-002, E08 T95b): at the visitor's
+    /// own dwelling with a creature above the part's `free_level`, after its free creatures, and
+    /// at a Refugee Camp. The game opens it as the player's decision (GAM-DEC-008), checks each
+    /// purchase with [`crate::AdventureState::check_hire`], pays its price and makes it with
+    /// [`crate::AdventureState::hire`].
+    pub hire: Option<HireDialog>,
     /// The steps of the move's path not taken (ADV-MOV-011, E08 T62b2): an event fired on the
     /// tile of an earlier step and ended the move there; 0 for every other outcome.
     pub dropped: usize,
@@ -385,6 +391,76 @@ pub struct UniversityVisit {
     pub price: Vec<(ResourceId, u32)>,
 }
 
+/// The hire dialog an accepted hire question opens (ADV-HIR-002; E08 T95b, increment 10's design
+/// note §8, §13; survey `E08-dwellings.md` §5, the original's `H3RecruitMgr`): the army the
+/// creatures join and the source they are bought from, by name only. Its creatures and counts are
+/// the state's, read at each view and purchase ([`crate::AdventureState::hire_stock`]); a
+/// purchase is [`crate::AdventureState::hire`]. Both halves are enums so E09's town recruitment
+/// names a town's dwelling and a garrison through the same dialog (design note §13, "E09's
+/// reuse"). *Agent's call:* no read-only flag yet: an ally's dialog (E10's teams, the original
+/// disabling every button) is unreachable while `allied` is the player alone, so its branch is
+/// left out until then (design note §13).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HireDialog {
+    /// The army the bought creatures join.
+    pub target: HireTarget,
+    /// Where they are bought.
+    pub source: HireSource,
+}
+
+/// The army a hire dialog's creatures join ([`HireDialog`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HireTarget {
+    /// The army of the hero on the source's entrance.
+    Hero(HeroId),
+}
+
+/// Where a hire dialog's creatures are bought ([`HireDialog`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HireSource {
+    /// An object on the map: a dwelling (its kind's creatures and their counts) or a Refugee Camp
+    /// (its week's creature and count), named by index, type and anchor.
+    Object {
+        /// The object's index.
+        index: usize,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+}
+
+/// Why a purchase in a hire dialog was refused ([`crate::AdventureState::check_hire`], in this
+/// order; ADV-HIR-002, ADV-ARM-007); nothing changed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HireError {
+    /// The dialog's hero is not on the map, or its source is not the dwelling or Refugee Camp it
+    /// names.
+    NoSource,
+    /// The creature is not one of the source's.
+    NotOffered(CreatureTypeId),
+    /// The amount is 0 or above the source's count of the creature.
+    Amount(u32),
+    /// The army has no room for the amount (ADV-ARM-007: no stack of the creature takes it
+    /// within a stack's most, and no slot is free; the original's GENRLTXT 426).
+    NoRoom,
+}
+
+impl fmt::Display for HireError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoSource => f.write_str("the hire dialog's hero or source is not on the map"),
+            Self::NotOffered(creature) => {
+                write!(f, "creature {} is not the source's", creature.raw())
+            }
+            Self::Amount(amount) => write!(f, "{amount} is not an amount the source holds"),
+            Self::NoRoom => f.write_str("the army has no room for the creatures"),
+        }
+    }
+}
+
+impl core::error::Error for HireError {}
+
 /// Two heroes of one player met by a step (GAM-MET-001, E08 T50): the visitor's move ended on the
 /// tile beside the visited hero, at the step's price (ADR-0016 point 4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -473,7 +549,8 @@ pub enum Defender {
     },
     /// A guarded pile's guards (ADV-PIK-004, E08 T21a), unowned: their stacks by slot as they
     /// stand, which defend unsplit (the original passes the map's army, 0x4A4876). Since E08
-    /// T62b1 a Pandora's Box's too (ADV-PIK-013).
+    /// T62b1 a Pandora's Box's too (ADV-PIK-013); since E08 T95a2 a dwelling's, whatever its
+    /// owner (ADV-DWL-004; D-51: the original's owner −1).
     Guards {
         /// The stacks by slot.
         army: Vec<ArmyStack>,
@@ -561,7 +638,8 @@ impl Offer {
             | OfferKind::Search
             | OfferKind::OpenBox
             | OfferKind::SearchPyramid
-            | OfferKind::Hire { .. } => &[],
+            | OfferKind::Hire { .. }
+            | OfferKind::Guarded { .. } => &[],
         }
     }
 }
@@ -630,11 +708,23 @@ pub enum OfferKind {
     /// Camp's 112), without a price: a dwelling's, after its flag when it was not the visitor's
     /// team's, and a camp's with creatures left. Accepted, on the visitor's own dwelling, each
     /// creature of the part's `free_level` or less joins free where its army has room
-    /// ([`crate::AdventureState::accept_offer`]); the hire dialog for the rest, and a camp's, is
-    /// T95b's. Declined, nothing (the flag stays).
+    /// ([`crate::AdventureState::accept_offer`]); then the hire dialog for the rest, and a camp's
+    /// ([`AdventureOutcome::hire`], E08 T95b). Declined, nothing (the flag stays).
     Hire {
         /// The creatures it names: the dwelling's, in its kind's order; a camp's week's one.
         creatures: Vec<CreatureTypeId>,
+    },
+    /// A dwelling's guards' question (ADV-DWL-004; E08 T95a2, increment 10's design note §7 step
+    /// 2, §12: the original's GENRLTXT 422), without a price: a neutral dwelling's or another
+    /// team's whose guards stand. It names the creature of the guards' first occupied slot and the
+    /// word of their total count (VCMI reads the first stack's: a text difference only).
+    /// Accepted, the hero fights the guards, or, when none stand any more, the visit goes on (the
+    /// flag, then [`Self::Hire`]); declined, nothing (the hero stays on the entrance).
+    Guarded {
+        /// The creature of the guards' first occupied slot.
+        creature: CreatureTypeId,
+        /// The word of the guards' total count ([`crate::MonsterParams::count_word`]).
+        count_word: u8,
     },
 }
 

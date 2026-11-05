@@ -16,13 +16,15 @@
 //! | 12 | Its second answer (E08 T30: a level-up's right offer; T63a) |
 //! | 13 + s, s < 4 | Buy the skill in slot `s` of the player's open University (E08 T63a) |
 //! | 17 | Build a boat at the player's or an ally's Shipyard anchored on the tile in the tile head (E08 T85b2b) |
+//! | 18 + c, c < 4 | Buy the most of the creature in place `c` of the player's open hire dialog (E08 T95b) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
 //! when a hero of a lower id joins or leaves the player (a battle's loser leaves the map). The
 //! tile head is a tile of the map, `(level × height + row) × width + column`, the observation's
 //! order; its size is the map's tile count ([`crate::adventure::AdventureEnv::tile_count`]). After
-//! an entry that takes no tile (`EndTurn`, the answers) the tile head allows exactly 0, as the
+//! an entry that takes no tile (`EndTurn`, the answers, the hire dialog's purchases) the tile head
+//! allows exactly 0, as the
 //! battle's heads after a non-cast entry (a policy that always samples the head never meets an
 //! empty mask on a legal entry). After [`BUILD_BOAT`] it allows the anchors of the Shipyards
 //! whose `BuildBoat` [`legal_commands`] lists (ADV-SHY-003: the player's or an ally's, its boat
@@ -41,9 +43,12 @@
 //! ([`answer_entry`]): an offer's `Accept` and `Decline`, a level-up's two offers (GAM-DEC-002), a
 //! meeting's or an army dialog's `Close` (GAM-DEC-003, GAM-DEC-004), a chest's, the Arena's and a
 //! School's two answers and a School's leaving (GAM-DEC-005), a University's purchases of the
-//! first [`UNIVERSITY_SLOTS`] slots and its leaving (GAM-DEC-006). With no open decision of that
-//! role the entry decodes to the offer's or the level-up's answer, or the purchase, which `apply`
-//! rejects.
+//! first [`UNIVERSITY_SLOTS`] slots and its leaving (GAM-DEC-006), a hire dialog's purchase of the
+//! most of each of the first [`HIRE_SLOTS`] creatures in its source's order (the `Buy`
+//! `legal_commands` lists for it, so an entry is legal when that creature's most is 1 or more) and
+//! its `Close` (GAM-DEC-008). With no open decision of that role the entry decodes to the offer's
+//! or the level-up's answer, or the purchase (a hire entry's: a `Buy` of 0, [`hire_answer`]),
+//! which `apply` rejects.
 //!
 //! In the battle phase an action is one of the battle lane's encoding (`crate::action`, its own
 //! version: entries and the spell and target heads), for the side the player owns; its masks
@@ -65,19 +70,22 @@
 //! University's purchases. Version 6 (E08 T85b2b, the adventure lane's `cross-lane` change with
 //! the user's consent, decision 203; ADR-0017 point 8) appended `BuildBoat` (ADV-SHY-003), whose
 //! tile head names the Shipyard by its anchor's tile: one action per Shipyard the player may use.
+//! Version 7 (E08 T95b, the adventure lane's `cross-lane` change with the user's consent, decision
+//! 243) appended the hire dialog's four purchases: the most only; an amount head is the AI lane's.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
+use h3_content::CreatureTypeId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset, GameState,
-    SchoolChoice, SkillOffer, UniversityAnswer, legal_commands, legal_moves,
+    HireAnswer, SchoolChoice, SkillOffer, UniversityAnswer, legal_commands, legal_moves,
 };
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 6;
+pub const ACTION_ENCODING_VERSION: u32 = 7;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -91,8 +99,8 @@ pub const MOVE_BASE: usize = 1;
 /// The entry that accepts the player's open offer.
 pub const ACCEPT: usize = MOVE_BASE + HERO_SLOTS;
 
-/// The entry that declines the player's open offer, closes its meeting or army dialog, or leaves
-/// its School or University (E08 T63a).
+/// The entry that declines the player's open offer, closes its meeting, army dialog (E08 T63a) or
+/// hire dialog (E08 T95b), or leaves its School or University (E08 T63a).
 pub const DECLINE: usize = ACCEPT + 1;
 
 /// The entry of the first answer of the player's open two-way decision: a level-up's first offer
@@ -115,8 +123,16 @@ pub const BUY_BASE: usize = SECOND + 1;
 /// tile head (E08 T85b2b; ADV-SHY-003).
 pub const BUILD_BOAT: usize = BUY_BASE + UNIVERSITY_SLOTS;
 
+/// The hire dialog's creatures the entries buy (E08 T95b): the original's dialog's four (a pack's
+/// dwelling with more creatures sells the rest to no agent of this encoding).
+pub const HIRE_SLOTS: usize = 4;
+
+/// The entry that buys the most of the creature in place 0 of the player's open hire dialog, in
+/// its source's order; place `c` is `HIRE_BASE + c` (E08 T95b).
+pub const HIRE_BASE: usize = BUILD_BOAT + 1;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = BUILD_BOAT + 1;
+pub const ENTRY_COUNT: usize = HIRE_BASE + HIRE_SLOTS;
 
 /// Which entries are legal.
 pub type EntryMask = [bool; ENTRY_COUNT];
@@ -224,6 +240,11 @@ impl Action {
         Self::map(BUILD_BOAT, tile)
     }
 
+    /// Buys the most of the creature in `place` of the open hire dialog (E08 T95b).
+    pub const fn hire(place: usize) -> Self {
+        Self::map(HIRE_BASE + place, 0)
+    }
+
     /// The map phase's action of `entry` with `tile`.
     pub const fn map(entry: usize, tile: u32) -> Self {
         Self::Adventure(MapAction { entry, tile })
@@ -311,9 +332,10 @@ pub fn moves(
 /// Fills `mask` with the legal map entries of `seat`: the commands [`legal_commands`] lists
 /// (`EndTurn` while its turn runs, and [`BUILD_BOAT`] when it lists a `BuildBoat`, E08 T85b2b;
 /// or with an open decision its answers alone: `Decline`, and `Accept` while the offer stands,
-/// E08 T15a; a level-up's `First` and `Second`, E08 T30), and each hero slot with a tile to move
-/// to ([`legal_moves`]: none with a decision open); none in the battle phase, where the listed
-/// commands are the battle's and no hero moves, so none for the neutral seat.
+/// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
+/// creatures' places, E08 T95b), and each hero slot with a tile to move to ([`legal_moves`]: none
+/// with a decision open); none in the battle phase, where the listed commands are the battle's
+/// and no hero moves, so none for the neutral seat.
 pub fn legal_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -322,8 +344,10 @@ pub fn legal_mask(
 ) {
     let seat = seat.into();
     mask.fill(false);
-    for command in legal_commands(state, rules, seat.actor()) {
-        if let Some(entry) = command_entry(&command) {
+    let listed = legal_commands(state, rules, seat.actor());
+    let hire = listed_hire(state, rules, seat, &listed);
+    for command in &listed {
+        if let Some(entry) = command_entry(command, &hire) {
             mask[entry] = true;
         }
     }
@@ -348,9 +372,11 @@ pub fn tile_mask(
     mask.clear();
     mask.resize(tile_count(state), false);
     if tileless(entry) {
-        mask[0] = legal_commands(state, rules, seat.actor())
+        let listed = legal_commands(state, rules, seat.actor());
+        let hire = listed_hire(state, rules, seat, &listed);
+        mask[0] = listed
             .iter()
-            .any(|command| tileless_entry(command) == Some(entry));
+            .any(|command| tileless_entry(command, &hire) == Some(entry));
     } else if entry == BUILD_BOAT {
         for command in legal_commands(state, rules, seat.actor()) {
             if let GameCommand::Adventure(AdventureCommand::BuildBoat { anchor, .. }) = command
@@ -435,22 +461,27 @@ pub fn second_mask(
     }
 }
 
-/// Whether `entry` takes no tile: `EndTurn` or an answer.
+/// Whether `entry` takes no tile: `EndTurn` or an answer (a hire dialog's purchase too).
 const fn tileless(entry: usize) -> bool {
-    entry == END_TURN || (entry >= ACCEPT && entry < BUILD_BOAT)
+    entry == END_TURN
+        || (entry >= ACCEPT && entry < BUILD_BOAT)
+        || (entry >= HIRE_BASE && entry < ENTRY_COUNT)
 }
 
 /// The entry of `answer` by its role (E08 T63a; the module's table): an offer's acceptance; a
-/// declined offer, a closed meeting or army dialog, a School or a University left; the first or
-/// the second of a level-up's, a chest's, the Arena's or a School's answers; a University's
-/// purchase of one of its first [`UNIVERSITY_SLOTS`] slots (none for a later one).
+/// declined offer, a closed meeting, army dialog or hire dialog (E08 T95b), a School or a
+/// University left; the first or the second of a level-up's, a chest's, the Arena's or a School's
+/// answers; a University's purchase of one of its first [`UNIVERSITY_SLOTS`] slots (none for a
+/// later one). None for a hire dialog's purchase, whose entry is its creature's place in the
+/// dialog's source, which the answer does not carry ([`hire_entry`], E08 T95b).
 pub const fn answer_entry(answer: Answer) -> Option<usize> {
     match answer {
         Answer::Offer(Consent::Accept) => Some(ACCEPT),
         Answer::Offer(Consent::Decline)
         | Answer::Close
         | Answer::School(SchoolChoice::Leave)
-        | Answer::University(UniversityAnswer::Leave) => Some(DECLINE),
+        | Answer::University(UniversityAnswer::Leave)
+        | Answer::Hire(HireAnswer::Close) => Some(DECLINE),
         Answer::LevelUp(SkillOffer::First)
         | Answer::Chest(ChestChoice::Gold)
         | Answer::Arena(ArenaChoice::Attack)
@@ -467,15 +498,98 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
                 None
             }
         }
+        Answer::Hire(HireAnswer::Buy { .. }) => None,
     }
 }
 
-/// The answer an answer entry names for `seat`'s player (E08 T63a): the answer of its role that
+/// The creatures of `player`'s open hire dialog in its source's order (E08 T95b): its source's
+/// stock (`GameState::hire_dialog`, `AdventureState::hire_stock`), as its owner's view
+/// (`DecisionView::Hire`) lists them; none when its first open decision is no hire dialog. Read
+/// only for a hire entry or a listed purchase ([`listed_hire`]).
+fn hire_creatures(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<CreatureTypeId> {
+    state
+        .hire_dialog(player)
+        .and_then(|dialog| {
+            state
+                .adventure()
+                .hire_stock(rules.adventure(), &dialog.source)
+        })
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(creature, _)| creature)
+        .collect()
+}
+
+/// [`hire_creatures`] of `seat`'s player when `listed`, its legal commands, hold a hire dialog's
+/// purchase; none otherwise, without reading the view.
+fn listed_hire(
+    state: &GameState,
+    rules: &GameRuleset,
+    seat: Seat,
+    listed: &[GameCommand],
+) -> Vec<CreatureTypeId> {
+    let buys = listed.iter().any(|command| {
+        matches!(
+            command,
+            GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. }))
+        )
+    });
+    match seat.player() {
+        Some(player) if buys => hire_creatures(state, rules, player),
+        _ => Vec::new(),
+    }
+}
+
+/// The entry of a hire dialog's purchase of `creature` (E08 T95b): its place among `hire`, the
+/// dialog's creatures in its source's order ([`hire_creatures`]); none past [`HIRE_SLOTS`] or for
+/// a creature the dialog does not sell.
+fn hire_entry(hire: &[CreatureTypeId], creature: CreatureTypeId) -> Option<usize> {
+    hire.iter()
+        .take(HIRE_SLOTS)
+        .position(|&sold| sold == creature)
+        .map(|place| HIRE_BASE + place)
+}
+
+/// The answer the hire entry of `place` names for `player` (E08 T95b): a `Buy` of the
+/// creature in `place` of its open hire dialog, in its source's order, of the most, the amount of
+/// the `Buy` [`legal_commands`] lists for it; while none is listed (its most is 0: no count left,
+/// no room, the treasury short; or the game waits) a `Buy` of 0 of it, and with no creature in
+/// that place (no hire dialog open, or `place` past its source's creatures) a `Buy` of 0 of
+/// creature handle 0, a placeholder: each of which `apply` rejects (the amount, no decision, the
+/// wrong kind or a creature the source does not sell).
+fn hire_answer(state: &GameState, rules: &GameRuleset, player: PlayerId, place: usize) -> Answer {
+    let creature = hire_creatures(state, rules, player).get(place).copied();
+    let amount = creature.and_then(|creature| {
+        legal_commands(state, rules, Actor::Player(player))
+            .into_iter()
+            .find_map(|command| match command {
+                GameCommand::Answer(Answer::Hire(HireAnswer::Buy {
+                    creature: listed,
+                    amount,
+                })) if listed == creature => Some(amount),
+                _ => None,
+            })
+    });
+    Answer::Hire(HireAnswer::Buy {
+        creature: creature.unwrap_or_default(),
+        amount: amount.unwrap_or(0),
+    })
+}
+
+/// The answer an answer entry names for `player` (E08 T63a): the answer of its role that
 /// [`legal_commands`] lists for its open decision, else the entry's answer to an offer or a
 /// level-up, or its purchase, which `apply` rejects with the reason (no decision, the wrong
-/// kind, the slot or the price).
-fn answer_of(state: &GameState, rules: &GameRuleset, seat: Seat, entry: usize) -> Option<Answer> {
-    legal_commands(state, rules, seat.actor())
+/// kind, the slot or the price); a hire entry's: [`hire_answer`] (E08 T95b).
+fn answer_of(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    entry: usize,
+) -> Option<Answer> {
+    if let Some(place) = entry.checked_sub(HIRE_BASE) {
+        return Some(hire_answer(state, rules, player, place));
+    }
+    legal_commands(state, rules, Actor::Player(player))
         .into_iter()
         .find_map(|command| match command {
             GameCommand::Answer(answer) if answer_entry(answer) == Some(entry) => Some(answer),
@@ -492,22 +606,26 @@ fn answer_of(state: &GameState, rules: &GameRuleset, seat: Seat, entry: usize) -
         })
 }
 
-/// The entry of a command that takes no tile: `EndTurn` or an answer ([`answer_entry`]).
-const fn tileless_entry(command: &GameCommand) -> Option<usize> {
+/// The entry of a command that takes no tile: `EndTurn` or an answer ([`answer_entry`]; a hire
+/// dialog's purchase by its creature's place among `hire`, the dialog's creatures, [`hire_entry`]).
+fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usize> {
     match command {
         GameCommand::EndTurn => Some(END_TURN),
+        GameCommand::Answer(Answer::Hire(HireAnswer::Buy { creature, .. })) => {
+            hire_entry(hire, *creature)
+        }
         GameCommand::Answer(answer) => answer_entry(*answer),
         // E08 T51a: the management commands have no entry (decision 99: the AI lane's call).
         GameCommand::Adventure(_) | GameCommand::Battle(_) | GameCommand::Manage(_) => None,
     }
 }
 
-/// The entry of a command [`legal_commands`] lists outside a battle: [`tileless_entry`]'s, or
-/// [`BUILD_BOAT`] for a `BuildBoat` (E08 T85b2b).
-const fn command_entry(command: &GameCommand) -> Option<usize> {
+/// The entry of a command [`legal_commands`] lists outside a battle: [`tileless_entry`]'s (with
+/// `hire`, the open hire dialog's creatures), or [`BUILD_BOAT`] for a `BuildBoat` (E08 T85b2b).
+fn command_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usize> {
     match command {
         GameCommand::Adventure(AdventureCommand::BuildBoat { .. }) => Some(BUILD_BOAT),
-        other => tileless_entry(other),
+        other => tileless_entry(other, hire),
     }
 }
 
@@ -534,7 +652,7 @@ fn build_boat(
 }
 
 /// The command `seat` issues with `action`, if the action names one. In the map phase:
-/// `EndTurn` or an answer with tile 0, a move of one of its player's heroes to a tile its
+/// `EndTurn` or an answer with tile 0 (a hire entry's: [`hire_answer`], E08 T95b), a move of one of its player's heroes to a tile its
 /// reachable-tiles query lists (not its own) along the query's path, or a `BuildBoat` at a
 /// Shipyard its player may use, anchored on the tile ([`build_boat`], E08 T85b2b); none for the
 /// neutral seat. In the battle phase: the battle command the battle's encoding decodes the action
@@ -562,7 +680,7 @@ pub fn decode(
         if action.entry == END_TURN {
             return Some(GameCommand::EndTurn);
         }
-        return answer_of(state, rules, seat, action.entry).map(GameCommand::Answer);
+        return answer_of(state, rules, player, action.entry).map(GameCommand::Answer);
     }
     if action.entry == BUILD_BOAT {
         return build_boat(state, rules, player, tile_pos(state, action.tile)?);
@@ -580,12 +698,13 @@ pub fn decode(
 }
 
 /// The action that names `command` of `seat`, if one does: `EndTurn` and the answers by their
-/// entries (tile 0), a move of one of its player's heroes by the hero's slot and the path's last
-/// tile, a `BuildBoat` by its Shipyard's anchor (E08 T85b2b; none of these for the neutral seat),
-/// a battle command by the battle's encoding for the seat's battle ([`battle::encode`]).
-/// [`decode`] gives the command back when a move's path is the one the hero's query chose (a move
-/// along another path decodes to the query's path to the same tile) and a `BuildBoat`'s Shipyard
-/// is one the player may use.
+/// entries (tile 0; a hire dialog's purchase by its creature's place when it is the `Buy`
+/// [`legal_commands`] lists for it, of the most: an entry buys no other amount, E08 T95b), a move
+/// of one of its player's heroes by the hero's slot and the path's last tile, a `BuildBoat` by
+/// its Shipyard's anchor (E08 T85b2b; none of these for the neutral seat), a battle command by the
+/// battle's encoding for the seat's battle ([`battle::encode`]). [`decode`] gives the command back
+/// when a move's path is the one the hero's query chose (a move along another path decodes to the
+/// query's path to the same tile) and a `BuildBoat`'s Shipyard is one the player may use.
 pub fn encode(
     state: &GameState,
     rules: &GameRuleset,
@@ -603,7 +722,16 @@ pub fn encode(
         GameCommand::Adventure(AdventureCommand::BuildBoat { anchor, .. }) => {
             return tile_index(state, *anchor).map(Action::build_boat);
         }
-        other => return tileless_entry(other).map(|entry| Action::map(entry, 0)),
+        GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) => {
+            let listed = legal_commands(state, rules, seat.actor());
+            let hire = if listed.contains(command) {
+                hire_creatures(state, rules, player)
+            } else {
+                Vec::new()
+            };
+            return tileless_entry(command, &hire).map(|entry| Action::map(entry, 0));
+        }
+        other => return tileless_entry(other, &[]).map(|entry| Action::map(entry, 0)),
     };
     let slot = (0..HERO_SLOTS).find(|&slot| hero_in_slot(state, player, slot) == Some(hero))?;
     let tile = tile_index(state, *path.last()?)?;
