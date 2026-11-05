@@ -831,8 +831,10 @@ pub fn hire_price(core: &Ruleset, creature: CreatureTypeId, amount: u32) -> Vec<
 /// pays (GAM-DEC-008, ADR-0004), and where it goes, which [`AdventureState::hire`] then makes
 /// without a check of its own (the design's infallible purchase: no refusal the game could not
 /// reach). It holds for the state that checked it as that state stands: nothing of the adventure
-/// changes between the check and the purchase.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// changes between the check and the purchase. Not `Clone`, so one check buys once; a count is
+/// lowered saturating, so a purchase kept past a change of the state cannot wrap it (*agent's
+/// call*, T95b's review: the game checks and buys in one command).
+#[derive(Debug, PartialEq, Eq)]
 pub struct HirePurchase {
     /// The price, by resource in the core's order ([`hire_price`]).
     price: Vec<(ResourceId, u32)>,
@@ -1010,10 +1012,13 @@ impl AdventureState {
         match self.map.camp_index(index) {
             Some(camp) => {
                 let mut camps = self.camps.as_deref().unwrap_or_default().to_vec();
-                camps[camp].count -= amount;
+                camps[camp].count = camps[camp].count.saturating_sub(amount);
                 self.camps = Some(camps.into());
             }
-            None => self.write_dwelling(index, |week| week.counts_mut()[place] -= amount),
+            None => self.write_dwelling(index, |week| {
+                let count = &mut week.counts_mut()[place];
+                *count = count.saturating_sub(amount);
+            }),
         }
     }
 }

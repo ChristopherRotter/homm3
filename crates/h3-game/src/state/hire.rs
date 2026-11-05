@@ -105,7 +105,7 @@ impl GameState {
     /// for each resource it costs more than 0 of (integer division), and the room's bound
     /// ([`h3_adventure::AdventureState::hire_room`]). *Agent's call* (increment 10's design note
     /// §13): the room in the bound, so every amount from 1 to the most is accepted; the original's
-    /// slider leaves it out and refuses at Recruit, the same rule. None for a source that is gone
+    /// slider leaves it out and refuses at Recruit, the same rule. Empty for a source that is gone
     /// (defensive: nothing moves the hero or the source while the dialog is open).
     // rule: GAM-DEC-008, ADV-HIR-002
     pub(crate) fn hire_mosts(
