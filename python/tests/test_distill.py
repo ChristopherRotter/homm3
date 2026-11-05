@@ -1,13 +1,14 @@
 """The distillation bench (E25 T7b, `h3env.train.distill`): its config, its scores (a student
 that is the teacher scores KL 0 and full agreement), a bench run end to end whose students learn
 and whose files load; its optimizer (Adam's steps without weight decay, the decay on the matrices
-only) and schedule (the warm-up, then the fall as before) and each student's cost (E25 T24). They
-need the group `train`."""
+only) and schedule (the warm-up, then the fall as before) and each student's cost (E25 T24); a
+stopped bench resuming to its budget (E25 T26a). They need the group `train`."""
 
 from __future__ import annotations
 
 import copy
 import json
+import signal
 from dataclasses import asdict, replace
 from pathlib import Path
 
@@ -15,7 +16,7 @@ import pytest
 
 from h3env import _ffi
 from h3env.train import layout as L
-from h3env.train.run import Config, ConfigError
+from h3env.train.run import Config, ConfigError, ResumeError, Stop, segment_seed
 
 torch = pytest.importorskip("torch")
 
@@ -30,7 +31,9 @@ from h3env.train.distill import (  # noqa: E402
     evaluate,
     learning_rate,
     load_bench,
+    main,
     optimizer,
+    resume,
     run,
     steps_of,
     student_config,
@@ -270,5 +273,155 @@ def test_a_bench_trains_its_students_and_saves_them(tmp_path) -> None:
     assert file["format"] == CHECKPOINT_FORMAT and file["config"]["kind"] == "hexconv"
     assert asdict(Config(**file["config"])) == file["config"]
     assert any("held-out set" in line for line in lines)
-    with pytest.raises(ConfigError, match="does not resume"):
+    with pytest.raises(ConfigError, match="not empty"):
         run(path, bench, tmp_path / "bench")
+
+
+def same(a, b) -> None:
+    """`a` and `b` (state dicts, nested) hold equal tensors and values."""
+    assert a.keys() == b.keys()
+    for k, v in a.items():
+        if isinstance(v, dict):
+            same(v, b[k])
+        elif torch.is_tensor(v):
+            assert torch.equal(v, b[k])
+        else:
+            assert v == b[k]
+
+
+def test_a_stopped_bench_resumes_to_its_budget(tmp_path) -> None:
+    # Ctrl+C at the first evaluation past the start (E25 T26a): the bench stops at that batch
+    # boundary, saved. A resume refuses a change to the training; one stopped at once saves the
+    # students as it restored them; the next continues to a larger budget, the report the whole
+    # run's.
+    path = teacher_file(tmp_path)
+    bench = Bench(
+        seed=7,
+        samples=600,
+        heldout=150,
+        eval_every=300,
+        envs=8,
+        threads=2,
+        rollout=16,
+        epochs=2,
+        minibatch=64,
+        lr=3e-3,
+        device="cpu",
+        students={
+            "mlp": {"kind": "mlp", "hidden": 32},
+            "conv": {"kind": "hexconv", "width": 8, "layers": 1, "warmup": 200},
+        },
+    )
+    out = tmp_path / "bench"
+
+    def interrupt(line: str) -> None:
+        if line.startswith("at ") and not line.startswith("at 0 "):
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = run(path, bench, out, log=interrupt)
+    assert stopped["ended"] == "stop" and 300 <= stopped["samples"] < 600
+    assert [e["samples"] for e in stopped["evaluations"]] == [0, stopped["samples"]]
+    state = torch.load(out / "checkpoint.pt", weights_only=True)
+    assert (state["format"], state["mode"], state["segment"], state["finished"]) == (
+        1,
+        "distill",
+        0,
+        False,
+    )
+    assert (state["samples"], state["next_eval"], state["horizon"]) == (
+        stopped["samples"],
+        600,
+        600,
+    )
+    assert state["metrics_length"] == (out / "metrics.jsonl").stat().st_size
+    assert json.loads(state["report"]) == json.loads((out / "report.json").read_text())
+    for name in bench.students:
+        saved = torch.load(out / "students" / f"{name}.pt", weights_only=True)
+        same(saved["policy"], state["students"][name]["policy"])
+        assert state["students"][name]["rows"] > 0
+    heldout = (out / "heldout.npz").read_bytes()
+
+    before = (out / "metrics.jsonl").read_bytes()
+    with pytest.raises(ConfigError, match="lr would change the training"):
+        resume(out, ["lr=1e-3"])
+    with pytest.raises(SystemExit):
+        main(["--resume", str(out), "--config", "x.toml"])
+    assert (out / "metrics.jsonl").read_bytes() == before
+    assert torch.load(out / "checkpoint.pt", weights_only=True)["segment"] == 0
+
+    # Stopped before its first batch: the students as restored, saved again in segment 1.
+    halt = Stop()
+    halt.request()
+    again = resume(out, stop=halt)
+    assert again["ended"] == "stop" and again["samples"] == stopped["samples"]
+    restored = torch.load(out / "checkpoint.pt", weights_only=True)
+    assert restored["segment"] == 1
+    for name in bench.students:
+        same(restored["students"][name], state["students"][name])
+    assert (out / "metrics.jsonl").read_bytes() == before
+
+    finished = resume(out, ["samples=900"])
+    assert finished["ended"] == "budget" and finished["samples"] >= 900
+    samples = [e["samples"] for e in finished["evaluations"]]
+    assert samples[0] == 0 and samples == sorted(set(samples)) and samples[-1] >= 900
+    assert [(s["segment"], s["ended"]) for s in finished["segments"]] == [
+        (0, "stop"),
+        (1, "stop"),
+        (2, "budget"),
+    ]
+    third = finished["segments"][2]
+    assert third["changed"] == {"samples": [600, 900]} and third["samples"] == stopped["samples"]
+    assert third["seed"] == segment_seed(7, 2) != 7 and finished["bench"]["samples"] == 900
+    saved = json.loads((out / "report.json").read_text())
+    assert saved == json.loads(json.dumps(finished))
+    lines = (out / "metrics.jsonl").read_text().splitlines()
+    assert [json.loads(line) for line in lines] == saved["evaluations"]
+    # The training counts on across the segments; the held-out set stays the one collected.
+    first, last = (finished["evaluations"][i]["students"]["mlp"] for i in (0, -1))
+    middle = stopped["evaluations"][-1]["students"]["mlp"]
+    assert last["seconds"] > middle["seconds"] and last["kl"]["entry"] < first["kl"]["entry"]
+    assert (out / "heldout.npz").read_bytes() == heldout
+    end = torch.load(out / "checkpoint.pt", weights_only=True)
+    assert end["finished"] and end["horizon"] == 600 and end["samples"] == finished["samples"]
+    with pytest.raises(ResumeError, match="extend it"):
+        resume(out)
+    with pytest.raises(ResumeError, match="no checkpoint"):
+        resume(tmp_path / "none")
+
+
+def test_a_stop_inside_a_batch_counts_its_samples_pro_rata(tmp_path, monkeypatch) -> None:
+    # E25 T26a: Ctrl+C during the third student step (the second minibatch's first student) of
+    # the first batch: the second minibatch finishes, the bench stops before the third, and the
+    # batch counts the share of its samples its steps took.
+    from h3env.train import distill
+
+    calls = 0
+    real = distill.step
+
+    def counted(*args, **kwargs) -> None:
+        nonlocal calls
+        calls += 1
+        real(*args, **kwargs)
+        if calls == 3:
+            signal.raise_signal(signal.SIGINT)
+
+    monkeypatch.setattr(distill, "step", counted)
+    bench = Bench(
+        seed=7,
+        samples=600,
+        heldout=64,
+        envs=8,
+        threads=2,
+        rollout=16,
+        epochs=2,
+        minibatch=16,
+        device="cpu",
+        students={"a": {"kind": "mlp", "hidden": 16}, "b": {"kind": "mlp", "hidden": 8}},
+    )
+    report = run(teacher_file(tmp_path), bench, tmp_path / "bench")
+    state = torch.load(tmp_path / "bench" / "checkpoint.pt", weights_only=True)
+    assert calls == 4 and report["ended"] == "stop"
+    assert [state["students"][s]["rows"] for s in ("a", "b")] == [32, 32]
+    # Two of the batch's 2 × (n // 16) minibatches: its n samples' share, rounded down.
+    assert 0 < state["samples"] == report["samples"] < 128
+    assert [e["samples"] for e in report["evaluations"]] == [0, state["samples"]]

@@ -291,8 +291,22 @@ another seed scores them: the KL per head, the agreement of the most likely entr
 (the teacher's beside it), the training seconds and the cost (the µs a sample-pass, on CUDA the
 peak memory of a step; E25 T24). Its files: `report.json`, `metrics.jsonl`,
 `students/<name>.pt` (run network files: `--init-from` starts a run from one). `--set key=value`
-changes a top-level setting (`samples`, `device`, …). It does not resume; Ctrl-C scores and
-saves what it has. Bench configs live in `configs/distill/`.
+changes a top-level setting (`samples`, `device`, …). Bench configs live in `configs/distill/`.
+
+A bench resumes (E25 T26a, both modes): it checkpoints (`checkpoint.pt`) every
+`checkpoint_minutes` (10 by default), after each evaluation and at a stop; Ctrl-C stops it at the
+next minibatch, scored and saved (a second Ctrl-C aborts at once, losing what came after the
+last checkpoint), and `--resume DIR` continues it to its budget, its settings and teacher the
+checkpoint's (`--set` changes only `samples`, `threads`, `device`, `checkpoint_minutes`):
+
+```sh
+uv run --group train python -m h3env.train.distill --resume runs/distill-1
+```
+
+The resumed teacher plays new battles on the segment's seed; the metrics and the report go on as
+the whole run's (`report.json`'s `segments`); the held-out set is kept in `heldout.npz`, a network
+teacher in `teacher.pt`. A stop before or during the clone mode's ladders leaves the rest to the
+resume.
 
 **The clone mode** (E25 T16, `h3env.train.clone`): `--teacher system` clones the fair system
 actor into a run's network, a warm start for PPO (`--init-from`):

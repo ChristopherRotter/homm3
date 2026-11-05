@@ -1287,3 +1287,75 @@ an entry only where a task builds on it.
   (595) and `hexformer` 96 × 4 (682), each with the three keys at two learning rates (5e-4 and
   2e-4; `hexconv` 1e-3 and 3e-4), a warm-up of 131 072 samples, weight decay 0.01. By the grid,
   about 7 to 8 hours (4 M samples, two passes each).
+
+## T26 — The structure sweep: a first segment, stopped (2026-11-05)
+
+- **The user's run** of `configs/distill/e25-structure.toml` on the GTX 1070, stopped after about
+  1.5 hours at its first evaluation (`eval_every` 500 k; by the students' training seconds over
+  their µs about 0.45 M samples of 4 M). The bench does not resume, so the run is lost but for
+  this table; **the user's rule: every run over 2 hours resumes** (T26a makes the bench do so):
+
+  | Student | CE entry | CE cast | Agreement | Moves | Melee | Shots | Value | Seconds | µs | MB |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | MLP 2 × 512 | 1.805 | 2.336 | 0.464 | 0.239 | 0.292 | 0.530 | 0.247 | 21 | 24 | 100 |
+  | MLP with the mask | 1.642 | 2.343 | 0.495 | 0.345 | 0.310 | 0.519 | 0.270 | 21 | 24 | 102 |
+  | `entity` 256 × 4, 5e-4 | 1.395 | 1.980 | 0.594 | 0.296 | 0.541 | 0.672 | 0.318 | 302 | 340 | 1 451 |
+  | … 2e-4 | 1.564 | 2.138 | 0.550 | 0.105 | 0.502 | 0.622 | 0.231 | 301 | 339 | 1 453 |
+  | `hexconv` normalised 96 × 6, 1e-3 | **1.136** | **1.884** | **0.619** | 0.414 | 0.513 | 0.593 | 0.330 | 583 | 658 | 3 071 |
+  | … 3e-4 | 1.263 | 2.199 | 0.590 | **0.428** | 0.486 | 0.565 | **0.370** | 583 | 658 | 2 455 |
+  | `hexformer` 96 × 4, 5e-4 | 1.320 | 2.103 | 0.578 | 0.402 | 0.446 | 0.595 | 0.295 | 657 | 742 | 1 829 |
+  | … 2e-4 | 1.475 | 2.346 | 0.541 | 0.384 | 0.418 | 0.555 | 0.370 | 659 | 743 | 1 829 |
+
+- **The read (early, one evaluation):** every structured student is ahead of both MLPs by 0.05
+  to 0.15 agreement at about an eighth of the budget (the MLP 0.464 here, 0.531 at 4 M in T16);
+  `hexconv` at 1e-3 already passes decision 5's gate value (0.60, due at 4 M). The melee hexes
+  gain most (0.42 to 0.54 against 0.29 to 0.31: T25's attack hex), the moves least (`entity` at
+  2e-4 0.105). The higher of each family's two rates leads in agreement. The mask alone gains the
+  MLP 0.03 (its moves 0.24 to 0.35). The keys' cost on the GPU: `entity` 340 µs against the
+  grid's 293, `hexconv` 658 against 595, `hexformer` 742 against 682 (the cap about 700).
+- **The time:** about 1.5 hours for the first 0.5 M (the teacher's play, the held-out set and
+  the evaluation beside 52 minutes of the students' steps), so the whole bench is about 10 to 12
+  hours, not T25's 7 to 8 (which counted the students only).
+
+## T26a — The resumable bench (2026-11-05)
+
+- **The user's rule** (2026-11-05, after T26's lost first segment): every run over 2 hours
+  resumes. Both bench modes now run one loop, `distill.go`, which a mode hands its parts
+  (`distill_parts`, `clone.parts`: the teacher's play of the segment and of the held-out set,
+  the loss, the scores, the table, the clone's ladders as `finish`). A new bench draws as before
+  (the same seeds, minibatch orders and schedule; the old tests pass unchanged but for the
+  refusal's wording).
+- **The checkpoint** (`checkpoint.pt`, `BENCH_FORMAT` 1, not the trainer's): at a batch boundary
+  every `checkpoint_minutes` (a new key, 10 by default), after each evaluation, at a stop and at
+  the end; each student's network, AdamW state, seconds, rows and peak memory, the samples, the
+  next evaluation, the learning rate's horizon (the budget at the start, kept as the trainer's),
+  the run config, the report so far (JSON) and the teacher's statistics (JSON), the metrics'
+  length, torch's generators. Written once: the held-out set (`heldout.npz`, compressed) and a
+  network teacher (`teacher.pt`). `report.json` is rewritten at every checkpoint, with
+  `segments` (each one's seed, start, commit, device, samples at its start, `--set`s, end).
+- **The stop:** Ctrl-C (`run.Stop`) is taken at the next minibatch or teacher's batch call: a
+  batch the students were training on counts its samples pro rata of the steps taken (as the
+  warm-up's `seen`), one the teacher was still playing is dropped; then the evaluation, the
+  students' files and the checkpoint. A second Ctrl-C aborts at once. A stop before or during the
+  clone's ladders leaves the unplayed ones pending (each saved as it ends).
+- **The resume:** `python -m h3env.train.distill --resume DIR` (`distill.resume`), the settings and
+  teacher the checkpoint's; `--set` changes only `RESUMABLE` (`samples`, `threads`, `device`,
+  `checkpoint_minutes`; others refused before anything changes); a finished bench only with a
+  larger budget. The segment's teacher plays on `run.segment_seed(seed, segment)` (the open
+  episodes of the stop dropped), the metrics are cut back to the checkpoint, the clone's
+  statistics continue.
+- **Tests:** `test_a_stopped_bench_resumes_to_its_budget` (distill: a stop at an evaluation, a
+  refused `--set lr`, a resume stopped at once saving the students as restored, a resume to a
+  larger budget, three segments), `test_a_stopped_clone_bench_resumes_its_training_and_its_ladder`
+  (a stop in training, one at the ladder, the ladder played at the last resume),
+  `test_a_stop_inside_a_batch_counts_its_samples_pro_rata`. The Python suite 241 passed.
+- **The smoke** (the sandbox's CPU): T25's clone smoke (`e25-clone.toml`, its four students, 49 152
+  samples, the held-out set 4 096) with `rollout` 32 (batches of about 8 192), an evaluation every
+  16 384 and a checkpoint every 2 minutes, by the command line: SIGINT at 576 s, 20 s into a
+  batch; stopped 16 s later at 17 615 samples (785 of that batch pro rata), resumed with
+  `--resume` to 51 334 in segment 1; 1 614 s in all. Agreement 0.393, 0.438, 0.419, 0.426 (T25's
+  0.401, 0.451, 0.466, 0.432 at its own batch size; too early to rank). The checkpoint 124 MB;
+  the held-out set 156 MB as written then, 2.5 MB compressed (1.2 s; compressed since).
+- **For T26b:** the structure sweep's eight students hold 23.9 M parameters, a checkpoint about
+  300 MB; its commands in parts in `QUEUE.md`. Dropping a student needs a new bench (a resume
+  keeps the students), so the lower rates' call comes before the first part.
