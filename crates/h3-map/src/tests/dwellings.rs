@@ -396,6 +396,18 @@ fn the_dwellings_map_imports_typed() {
         Some((0, 6)),
     );
     assert_eq!(placed(&several, 5), holds(&[0, 2, 7, 8], (1, 7)));
+    // E08 T97a's audit: the owners of the random classes the map leaves neutral or owned, a blue
+    // 216 and a neutral 218.
+    let owner = |map: &RawMap, index: usize| import(map, &SOD).unwrap().map.objects[index].owner;
+    let castle = Some((0, Some(Bits(vec![1, 0]))));
+    assert_eq!(
+        owner(&with_body(&raw(), 7, 1, castle, Some((6, 6))), 5),
+        blue
+    );
+    assert_eq!(
+        owner(&with_body(&raw(), 9, 0xFF, None, Some((0, 2))), 7),
+        None
+    );
 }
 
 // covers: ADV-DWL-005

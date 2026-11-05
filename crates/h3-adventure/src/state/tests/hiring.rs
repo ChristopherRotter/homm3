@@ -2,8 +2,8 @@
 //! stock (a dwelling's creatures and counts, a camp's, none for another object), the room's bound
 //! (a free slot, the room on the stacks of the creature, none), the price in the core's resource
 //! order, a purchase at a dwelling of two creatures and at a camp (the count lowered, the creatures
-//! joined where ADV-ARM-007's room is, the owner told) and each refusal in order, leaving the state
-//! as it was.
+//! joined where ADV-ARM-007's room is, the owner told; E08 T97a: a camp's by another player's hero
+//! too) and each refusal in order, leaving the state as it was.
 
 use std::string::ToString;
 
@@ -275,6 +275,27 @@ fn a_camp_s_purchase_lowers_its_count() {
     );
     assert!(s.check_camps(&rules.0, &rules.1));
     assert_ne!(s.state_hash(), before.state_hash());
+    // Any player's hero (E08 T97a's audit, criterion 5): blue's, on the entrance in red's stead,
+    // buys from the same week's count, told to blue alone.
+    let mut s = before.clone();
+    let blue_hero = HeroId::new(2);
+    s.heroes[0].pos = Pos::new(0, 7, 0);
+    s.heroes[1].pos = ENTRANCE;
+    let open = dialog(&rules, blue_hero, "t:camp");
+    let (bought, events) = buy(&rules, &mut s, &open, ("t:c3", 1));
+    assert_eq!(bought, Ok(vec![(GOLD, 30)]));
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::CreaturesJoined {
+                hero: blue_hero,
+                creature: c3,
+                count: 1,
+            },
+            seen_by: Viewers::NONE.with(BLUE),
+        }]
+    );
+    assert_eq!(s.camp(0), Some((c3, 1)));
 }
 
 // covers: ADV-HIR-002, ADV-ARM-007

@@ -610,6 +610,11 @@ fn a_hero_may_not_stand_where_a_random_dwelling_could_lie() {
             );
         }
     }
+    // Its own entrances refuse a hero whatever its outcomes cover (E08 T97a's audit): one entered
+    // also from the cell left of its bottom pair, which no outcome covers.
+    let mut wide = castle();
+    wide.visitable = mask(&[(0, 0), (1, 0), (2, 0)]);
+    assert_eq!(build(&rules, &with_hero(vec![wide], (3, 3)), 0), refused(0));
     // The first random dwelling that could cover the tile is named; a later object, the hero's
     // own checks before it (a duplicate, an unknown owner) come first.
     let objects = vec![

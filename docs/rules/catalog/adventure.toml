@@ -1115,6 +1115,12 @@ quirks   = ["BAT-QUIRK-19"]
   retrieved  = "2026-10-13"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10b.md E10-9 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a Refugee Camp held a Phoenix (level 7) with its growth of 2 in week 1 and Obsidian Gargoyles with their growth of 9 in week 2, each a random monster of levels 1 to 7"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-MON-004"
 title    = "A monster's random count"
@@ -2571,6 +2577,12 @@ numeric  = "integer"
   retrieved  = "2026-10-30"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10a.md E10-1, E10-3 and E10-6 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a neutral dwelling was flagged the visitor's after its guards' battle was won (three dwellings) or at once when unguarded (a Guardhouse, nothing joined); an ally's dwellings were not flagged. Not observed: the flag's reveal"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-OWN-002"
 title    = "An ownable object's owner at the start"
@@ -2626,6 +2638,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
   retrieved  = "2026-10-30"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10b.md E10-10 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a dwelling's hint and right-click popup showed its name and, owned, its owner's line (ARRAYTXT 23), never its counts or guards; a Refugee Camp's its name alone, to the player who had bought there that day too"
+  retrieved  = "2026-11-03"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-OWN-005"
@@ -2957,7 +2975,7 @@ title    = "Creature dwellings: the kinds of classes 17 and 20, their creatures,
 context  = "adventure"
 status   = "implemented"
 summary  = "A creature dwelling is content: an object type of the kind `dwelling` with one to four distinct core creatures in the original's record order (class 17 one creature by subclass, the 80 of `dwelling_creatures`; class 20 four: the Elemental Conflux's Air, Fire, Earth and Water Elementals, the Golem Factory's Stone, Iron, Gold and Diamond Golems), no war machine; its footprint, the blocked and visitable cells of its class and subclass's last template (the import's masks, the entrance blocked and visitable), which a random dwelling becomes (ADV-DWL-005); its name the type's (`CrGen1.txt`, `CrGen4.txt` by subclass). Ownable and entered, not visitable from above. Derived when the part is compiled: its full guards, for each creature of `guard_level` (5) or more a stack of `guard_factor` (3) times its growth, one stack each in creature order (paid out by ADV-DWL-002), and its shift, the free bottom-row cells left of the anchor (only the Angel Portal's is 1). The `base` pack holds the RoE objects (subclasses 0 to 58 and 68, both class-20 kinds), `ab` the objects AB added (59 to 67, 69 to 79). E08 T93a (increment 10's design note §1 to §3; adventure ruleset part v16): `ObjectKind::Dwelling`, `[params.dwellings]`. The import of classes 17 and 20 by subclass, each to the type of the pack that introduced its object, with its owner, and its refusals of classes 18 and 19 and of subclasses past the tables (A-36, ADV-QUIRK-38): E08 T93b (ADV-OBJ-002)."
-quirks   = []
+quirks   = ["ADV-QUIRK-38"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -3016,6 +3034,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "observation"
   ref        = "experiments/results/E08-batch-10a.md E10-1, E10-5 and E10-7 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): the records before any visit, D 1 Green Dragon with 3 Green Dragons' guards, F 6, 6, 3, 2 golems with 9 Gold and 6 Diamond Golems, X 6, 5, 4, 6 elementals with 12 Earth Elementals, one stack each in creature order; an owned Dragon Cliffs guarded at load; a resolved Angel Portal 1 Angel with 3 Angels, a resolved Golem Factory its four golems and guards, a Dwarf Cottage 8 Dwarves and no guards"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10b.md E10-8 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a Golem Factory never visited held its four counts and its guards of 9 Gold and 6 Diamond Golems on days 1, 2, 7 and 8, never more than its growth"
   retrieved  = "2026-11-03"
   confidence = "high"
 
@@ -3081,13 +3105,19 @@ numeric  = "integer"
   retrieved  = "2026-11-03"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10a.md E10-1, E10-3, E10-5 and E10-6 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a neutral Dragon Cliffs, Golem Factory and Elemental Conflux each asked the guards' question (GENRLTXT 422, the size word of the guards' total), fought on the tile's grass with the guards unsplit by slot and the defending side unowned, and after the win were flagged the visitor's and asked the hire question (ADVEVENT 35; 36 for four creatures); a neutral unguarded Guardhouse was flagged, then asked, the flag kept with nothing joined; an owned guarded Dragon Cliffs asked no guards' question; an ally's two dwellings, one guarded, were neither fought nor flagged and asked the hire question. Not observed: a declined guards' question, a lost or retreated battle's survivors kept until the week"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-DWL-005"
 title    = "Random dwellings: the faction's table and what one becomes"
 context  = "adventure"
 status   = "implemented"
 summary  = "A random dwelling (216 to 218) becomes, when the game is built, the dwelling of a faction drawn uniformly among its set (218: its subclass) and a level drawn uniformly in its range (217: its subclass): the part's table `[[random_dwelling]]` names for each faction the seven dwelling types a random dwelling of level 1 to 7 becomes, each one with a creature of that faction and level that is no creature's upgrade (the original's `town_creatures[faction x 14 + level]`, the unupgraded one); the type is the last class-17 subclass listing that creature, the Golem Factory for the Stone Golem, so the duplicates 7, 13, 16, 47 and 51 are never drawn (62 outcomes for the 63 creatures). The object takes the type, its footprint as its masks and its anchor moved right by the type's shift (the Angel Portal's 1). E08 T93a (increment 10's design note §2, §3; adventure ruleset part v16): the kind `random_dwelling`, the table and its checks, the base pack's eight RoE factions and ab's Conflux, a test of the table against the original's derivation. The import (E08 T93b, ADV-OBJ-002): 216 to 218 not tied to a town the random dwelling with its owner, its faction set and its level range (`Holds::RandomDwelling`, checked when the game is built: distinct core factions with a table, levels within 1 to 7); its bounds refused (A-34 to A-36, ADV-QUIRK-36 to -38); one tied to a town of the map a blocker until E09 (ADV-STUB-13). The draw (E08 T94a, increment 10's design note §5; decision 251): in the static map's placement walk, in object order and before every other draw of the static map (ADR-0017 point 4), a faction uniform among the set, then a level uniform in the range; the object takes the table's type, its footprint as its masks and its anchor moved right by the type's shift (one column past the map's right edge at most, where only its free cell lies: a cell off the map is ignored), holding nothing, its owner and scenery the setup's; nothing remembers it was random (`state/dwellings.rs`' `resolve`). So that whether a setup is valid never depends on the draw (agent's calls): a hero (`SetupError::RandomDwellingTile`, before its tile's check) or a boat (`SetupError::Boat`) on a random dwelling's entrance or on any tile an outcome of its set and range covers is refused, and the name check (`SharedAnchor`) takes every outcome's type and moved anchor. The static map lists the dwellings (placed and resolved, the dwelling index) and the Refugee Camps (the camp index). The census (`h3-map`'s `original_data`, `built_dwellings`, seed 0): the 160 shipped maps' static layers build with 2 267 dwellings, 2 061 placed and 206 resolved (216: 79, 217: 126, 218: 1), 8 anchors moved (the Angel Portals), none past the right edge, 321 camps, 15 dwellings owned at the start; no hero or boat refused. Their counts, guards and the week: T94b."
-quirks   = []
+quirks   = ["ADV-QUIRK-36", "ADV-QUIRK-37", "ADV-QUIRK-38"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -3112,7 +3142,7 @@ numeric  = "integer"
 id       = "ADV-RFG-001"
 title    = "The Refugee Camp"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "The Refugee Camp (class 78) holds a creature drawn, when the game is built and at each week's start, uniformly among the random monsters of levels 1 to 7 (ADV-MON-003's set: no war machine, not the part's `not_random_monsters`, the ruleset's packs' creatures), its count that creature's growth; any player's hero may hire from it through the hire dialog (ADV-HIR-002); it is never flagged, has no guards and gives no free creatures. E08 T93a (increment 10's design note §1; adventure ruleset part v16): the kind `refugee_camp` with its inclusive levels, the base pack's type. The import: E08 T93b (class 78, ADV-OBJ-002). The draws (E08 T94b, increment 10's design note §6, §9; adventure state hash v20): the state's camps' block by camp index (`StaticMap::camps`), each camp's creature and count (`AdventureState::camp`, checked by `check_camps`), none for a map without camps; drawn when the game is built in one pass with the weekly objects' first week, in object order, from the setup stream, and at each week's step in one pass with their refill, from the game's stream (the original's map scan holds case 78 beside the weekly objects'; agent's call: one pass, so the stream's order follows the object order); no event. Its creature and count are never shown (ADV-OWN-003). E08 T95a1 (increment 10's design note §7, §13; the original's `visit_refugee_camp` 0x4A4600): the visit, any player's hero, `AdventureState::visit_refugee_camp`: with creatures left, the hire question naming its week's creature (`OfferKind::Hire`, the original's ADVEVENT 112); with none, `ObjectEmpty` to the visitor's owner alone (ADVEVENT 44, \"deserted\"), no question; no flag, no guards, and an accepted question gives no free creatures (ADV-HIR-001), whatever the creature's level. E08 T95b (increment 10's design note §8, §13): an accepted question opens the hire dialog for its creature and count (ADV-HIR-002: `AdventureOutcome::hire`), a purchase lowering the count (`AdventureState::hire`)."
 quirks   = []
 numeric  = "integer"
@@ -3146,7 +3176,7 @@ numeric  = "integer"
 id       = "ADV-HIR-001"
 title    = "A dwelling's free creatures"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "An accepted hire question (ADV-DWL-004) at a dwelling the accepting player owns gives, for each of its creatures of the part's `free_level` or less (`[params.dwellings]`, 1 in the packs: the original's level 1; the creature's core level), in its kind's order: with a count of 0, nothing, told as none here (`NoneToRecruit`, the original's GENRLTXT 423); else, where ADV-ARM-007's room is (the hero's first stack of the creature that takes the whole count within a stack's most, else its first free slot: the original's `army_add_stack`), all of it joins and the dwelling's count is set to 0 (`CreaturesJoined`, GENRLTXT 424); with no room, none of it joins and the count is kept (`JoinRefused`, GENRLTXT 426; D-52 as the original, E08 decision 235: the hero's stacks are not merged to make room, where VCMI's `mergeOnRecruit` merges two). Each is told to the owner alone. No dwelling class of the packs holds creatures of level 1 and of level 2 or more, so the original's second pass in `dwelling_offer_hire` changes nothing. A creature above `free_level` is left to the hire dialog (ADV-HIR-002), which opens after the free creatures when the dwelling's kind has one (the original's `dwelling_offer_hire` with a creature of level 2 or more: no class-17 dwelling of level 1 opens it), and a Refugee Camp's always: a camp gives no free creatures (ADV-RFG-001); an ally's dwelling (E10's teams) neither, its read-only dialog E10's. E08 T95a1 (increment 10's design note §7 step 4, §13): `AdventureState::accept_offer`'s hire arm (`accept_hire`, the owner read at acceptance: an agent's call), the dwellings' writer (`write_dwelling`, keeping T94b's normalised block, copied at a write). E08 T95b (increment 10's design note §8, §13): the acceptance's outcome opens the dialog (`AdventureOutcome::hire`)."
 quirks   = []
 numeric  = "integer"
@@ -3169,6 +3199,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGDwelling.cpp"
   retrieved  = "2026-11-03"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10a.md E10-3 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): at a neutral unguarded Guardhouse, accepted, 14 Pikemen joined in the hero's first empty slot and the count went to 0 (GENRLTXT 424); accepted again, none (423); a hero with seven stacks, two of them Archers, was refused (426): nothing joined, the count of 14 kept, the hero's stacks not merged (D-52 as the original, not VCMI's merge); no hire dialog at a level-1 dwelling"
+  retrieved  = "2026-11-03"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-HIR-002"
@@ -3197,3 +3233,9 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Creature_dwelling"
   retrieved  = "2026-11-03"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10a.md E10-4, E10-5 and E10-6 and experiments/results/E08-batch-10b.md E10-8 and E10-9 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a Barracks' dialog offered at most 3 of 4 Swordsmen with 1 000 gold, 3 bought for 900, the count 1; an owned Dragon Cliffs' at most 0 without crystal and 1 with one, 1 Green Dragon bought for 2 400 gold and 1 crystal, the count 0; a Barracks bought down by 2 of 4; a Refugee Camp's at most its count, 1 of 2 Phoenixes bought for 2 000 gold and 1 mercury, the count 1; an ally's dialog computed its most with its buttons disabled (E10's read-only dialog). Not observed: the army's room as the bound, a purchase at a four-creature dwelling"
+  retrieved  = "2026-11-03"
+  confidence = "high"

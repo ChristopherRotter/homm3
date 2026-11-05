@@ -12055,3 +12055,82 @@ staged at the start. Built by the main session.
   inside the gate; the 17 old ones unmoved), original-data (the census's new lines); `h3-cli`'s
   clippy and adventure tests (outside the scope) passed.
 - **Versions:** none.
+
+### Increment 10, round 8: T97a, the audit of increment 10's exit criteria (2026-11-05, `adventure/e08-t97a`)
+
+**The cut** (decision 258, the user at T97's start): T97 in three as T87, the audit first, then
+the dwellings entered from water (T97b, settled in increment 10) and the closure with increment
+11's refinement (T97c). **Baseline:** `master` e66c754 (#735 T96b2 and #736 merged; the setup's
+`verify-once` found the engine code verified on e11917c, light gates only, passed); the original
+data staged at the start (the computer's shell did not start; staging worked). The criteria 1 to
+3 and 4 to 6 handed in turn to two read-only sub-agents (a table per clause), 7 and 8 and the gaps
+by the main session. **The audit** (design §17), on `master`'s code:
+
+1. Typed imports with owners, A-34 to A-36 refused, those tied to a town blockers: tested
+   (`h3-map`'s `dwellings.rs`, `dwellings_map.rs`, `dwellings_xl_map.rs`). **Partial:** an owned
+   216 and a neutral 218 only through the XL's count of owned objects. **Found:** a random dwelling
+   tied to a town returns as a blocker (`import/mod.rs`, the town identifier's arm) before the
+   level check and the owner check, so a tied one with levels past 7 or an owner nobody plays
+   imports (the test `a_random_dwelling_tied_to_a_town_stays_a_blocker` asserts it); harmless
+   while they stay blockers. *Agent's call (change freely):* to T97b, whose import bump it rides
+   (a fix moves `MAP_IMPORT_VERSION`, as T87b's 220.0).
+2. The resolution, the footprint, the moved anchor, a hero or a boat on an outcome's tile refused:
+   tested (`h3-adventure`'s `state/tests/dwellings.rs`, `play.rs`'s `check_resolved`). **Partial:**
+   the random dwelling's own entrances (`refused_tiles`) were never the only reason for a refusal
+   (every test outcome covers both bottom cells); the base pack's Angel Portal drawn and moved only
+   through the generic shift check; the right edge at the adventure level only (the import moves
+   no anchor).
+3. The counts and guards from the build and each week, owned or not; the camps: tested
+   (`dwelling_weeks.rs`, `check_dwellings_week`). **Gaps:** no test met a month's kind with a
+   dwelling (only random play reaching day 29); the week's creature is not drawn yet (E09).
+4. The guards' question, the unsplit unowned battle, the survivors, the flag, one's own team:
+   tested (`dwelling_visits.rs`, `h3-game`'s `tests/dwellings.rs`, the plans' checks, the
+   `dwellings-guards-s1` replay). **Gap:** no Leave Guards at a dwelling only implicit. **Partial:**
+   a declined question compared by owner, position and guards; the flag's radius through the
+   shared flag's mine tests; a retreat at the adventure level only (the loss's path); the survivors
+   into the next week through `set_dwelling` (the refill's test).
+5. The free creatures (D-52), the dialog, the purchase's bounds, refusals, payment, a one-creature
+   dialog closing: tested (`hiring.rs` of both crates, the plans' `check_hire`, the replays).
+   **Partial:** a camp's dialog for a visitor other than red only in the random property.
+   Wording: the dialog opens after the free creatures only for a kind with a creature above the
+   free level (design §7 step 4; no class-17 dwelling mixes the two); the criterion now says so.
+6. The views and the visitor's owner alone: tested (`dwelling_weeks.rs`, `dwellings.rs`, `view.rs`'s
+   `check_hire_sources` in the view properties).
+7. Every new rule (ADV-DWL-001 to -005, ADV-HIR-001, -002, ADV-RFG-001, GAM-DEC-008) has its id,
+   sources and markers (`check-rules`); `ADV-QUIRK-36` to `-38` in the ledger **but linked from no
+   rule**; the gates green in CI's full verify on `master` e11917c (#735; the engine code
+   `verify-once` found verified); the three new workloads baselined (T96b2); the env plays the dialog (`h3-sim`'s
+   `a_hire_dialog_is_answered_through_the_env`). **Found:** `Unsupported::OwnedOnWater`'s doc
+   comment and ADV-OWN-002's summary still say no shipped map has one (four do since T93b): to
+   T97b, which rewrites both.
+8. Batch E10 run and scored (T91). **Gap:** survey §16 planned rows not cited: E10-3, E10-4, E10-6
+   and E10-10 by no rule, E10-1 not by ADV-DWL-004, ADV-OWN-001 or GAM-BAT-001, E10-5 not by
+   ADV-DWL-004 or ADV-HIR-002, E10-8 not by ADV-DWL-002, E10-9 not by ADV-HIR-002 or ADV-MON-003.
+
+**The gaps fixed:** the rows cited as `observation` sources where §16 planned them (ADV-DWL-002,
+-004, ADV-HIR-001, -002, ADV-OWN-001, -003, ADV-MON-003, GAM-DEC-008, GAM-BAT-001), each naming
+what it did not observe; **ADV-HIR-001 and ADV-RFG-001 `verified`** (E10-3 and E10-9 confirm each
+whole: the joins, none, the refusal with the count kept; the camp's creature and growth, its
+question, dialog, purchase, emptiness and the next week's creature). Still `implemented`, by
+design (as T87b's): ADV-DWL-001 (the refusals of 18, 19 and the tables unobserved), ADV-DWL-004
+(a declined question, a lost or retreated battle's survivors), ADV-DWL-005 (the import's bounds,
+a draw among several factions), ADV-HIR-002 (the room's bound, a four-creature purchase),
+GAM-DEC-008 (a four-creature dialog staying open), and the amended ADV-OWN-001, -003,
+ADV-MON-003, GAM-BAT-001, wider than increment 10. `ADV-QUIRK-36` to `-38` linked from
+ADV-DWL-005, `-38` from ADV-DWL-001. Tests: `a_month_s_kind_never_reaches_a_dwelling_or_a_camp`
+(`h3-game`'s `tests/hiring.rs`: a Plague and a creature month, the hut bought down and the camp
+back at their growth); `a_hero_may_not_stand_where_a_random_dwelling_could_lie` (one entered from
+a cell no outcome covers refuses a hero there; checked by disabling the branch);
+`the_dwellings_map_imports_typed` (a blue 216 and a neutral 218);
+`the_dwellings_map_is_committed_as_written` (the first seed drawing the base pack's Angel Portal
+moves the 216's anchor to (19, 27)); `an_own_dwelling_asks_the_hire_question_without_a_flag_or_its_guards`
+(the whole outcome: no Leave Guards); `a_guarded_dwelling_not_of_the_visitor_s_team_asks_the_guards_question`
+(a declined question leaves the state as the question left it); `a_camp_s_purchase_lowers_its_count`
+(blue's hero buys at the camp, told to blue alone). Criterion 5's wording. **The town lane's
+inbox** told: the week's creature, when it lands, gets the month's test's week (ADV-DWL-003).
+
+**Left, recorded:** the edge end to end, the flag's radius at a dwelling, a game-level retreat, a
+full stack of the free creature (ADV-ARM-007's room), a one-creature dwelling's dialog (the
+`dwellings-dialog-s1` replay and the property cover it), the projection's unit test (the view
+property covers it), counters in the plans' cover test for `JoinRefused` and the guards' lost,
+retreated or drawn battles. **Versions:** none.

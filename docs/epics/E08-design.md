@@ -532,7 +532,8 @@ confirmed at its start). **Batch E10 runs before the build and before the shared
    its entrance, their survivors kept until the week; won or unguarded it is flagged (radius 3);
    one's own team's skips both; no Leave Guards (ADV-DWL-004, ADV-OWN-001, GAM-BAT-001).
 5. The hire question on one's own dwelling joins the free creatures (all of each or none, D-52)
-   and opens the hire dialog; a purchase is bounded by the count, the treasury and the room, paid
+   and opens the hire dialog for a kind with a creature above the free level (§7 step 4; T97a's
+   wording); a purchase is bounded by the count, the treasury and the room, paid
    and counted down; the dialog stays open until closed, a one-creature dialog closing after its
    purchase; a camp's for any visitor (ADV-HIR-001, -002, GAM-DEC-008, ADV-RFG-001).
 6. A viewer sees a dwelling's type and owner, never its counts or guards nor a camp's creature;

@@ -132,6 +132,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
 
 257. **T96b1 whole, in one pull request** (the user; the agent had recommended two, the three failing seeds first): the three `view.rs` seeds with their fixes, the plans' `DWELLINGS` classes and design §14's checks in `play.rs` and `view.rs`, the cover test's hire answers. The user merges the pull request (not the agent). Not chosen: two parts, the seeds now and the plans in the next session; two parts, both in this session.
 
+### Decisions at T97's start (2026-11-05, user)
+
+258. **T97 in three, as increment 9's T87** (the user; recommended): **T97a** the audit of design §17's eight exit criteria, its gaps fixed, one pull request; **T97b** the dwellings entered from water settled in increment 10 (the sea survey's reading: another entrance on water is a normal step from a boat, `E08-sea.md` §4.1, §4.3; the dwelling's own visit, its guards' battlefield and the hire read, the typed refusal `OwnedOnWater` lifted for them; likely map import v19); **T97c** increment 10 closed and increment 11 refined (docs; ADV-Q44). Not chosen: two, the water dwellings carried into increment 11; two, the water dwellings first; the audit and the closure in one session, the water dwellings carried.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T87c Increment 10 refined** (with increment 9's closure). Done (2026-11-03, `adventure/e08-t87c`; decisions 231, 232): dwellings and hiring; the first round queued (T88a, T88b).
@@ -159,7 +163,10 @@ Refined with the user on 2026-11-03 (T87c; ADV-Q41, asked at T87's start). Built
   - **T96a The dwellings map and its replays.** Done (2026-11-05, `adventure/e08-t96a`): `fixtures/maps/e08-dwellings-36.h3m` (`h3-map`'s `tests/dwellings_map.rs`; every class of increment 10, owners at load, the random dwellings resolved at their moved anchors); golden replays `dwellings-s765-d22`, `-s1087-d22`, `-s2192-d22` (random play, the union of a search over 3 000 seeds) and `dwellings-guards-s1`, `-free-s1`, `-dialog-s1`, `-camp-s1`, `-random-s1` (design §14's paths); 47 replays. No version moved.
   - **T96b1 The dwellings plans' properties.** Done (2026-11-05, `adventure/e08-t96b1`, whole, decision 257): the plans' `DWELLINGS` (ten kinds, owners at load, `Step::Hire`), §14's checks (`check_dwellings`, `check_camps`, `check_dwellings_week`, `check_resolved`; `check_hire_sources` in the view properties), the cover test `the_plans_visit_dwellings_and_hire`; the inbox's three failing `view.rs` seeds fixed in the test's `vary` (no engine leak); no version moved.
   - **T96b2 The dwellings XL, its benchmarks and the census.** Done (2026-11-05, `adventure/e08-t96b2`, whole; `shared/e08-t96b2-benches`: the README's rows): `fixtures/maps/e08-dwellings-144.h3m` (`h3-map`'s `tests/dwellings_xl_map.rs`: 99 dwellings of class 17, 14 of class 20, 30 random dwellings, 9 camps, the shipped maps' most on one map); the workloads `day-start-dwellings-xl-144`, `fork-dwellings-xl-144` (`h3 adventure bench --dwelling 1`, `AdventureState::dwellings_written`) and `random-play-dwellings-36` baselined; the census checks each resolved random dwelling's entrance on the map and prints the most of each class on one map; no version moved.
-- **T97 The audit** (round 8; design §17): increment 10 against its exit criteria, the four shipped maps refused as `OwnedOnWater` (decision 256), increment 10 closed, increment 11 refined. Queued.
+- **T97 The audit** (round 8; design §17): increment 10 against its exit criteria, the four shipped maps refused as `OwnedOnWater` (decision 256), increment 10 closed, increment 11 refined; in three (decision 258):
+  - **T97a The audit.** Done (2026-11-05, `adventure/e08-t97a`): the eight criteria against the code, the catalog and the gates; batch E10's rows cited where survey §16 planned them, ADV-HIR-001 and ADV-RFG-001 `verified`, `ADV-QUIRK-36` to `-38` linked; tests for a month's kind at a dwelling and a camp, the random dwelling's own entrance, no Leave Guards, a declined guards' question, a camp's purchase by another player, the base pack's Angel Portal moved, a 216's and a 218's owners; criterion 5's wording; the town lane told of the week's creature; two findings to T97b; no version moved.
+  - **T97b The dwellings entered from water.** Queued.
+  - **T97c Increment 10 closed; increment 11 refined.** Queued.
 
 ## Later increments (sketch)
 

@@ -5,11 +5,14 @@
 //! army, every amount in the range accepted; each refusal leaves the state as it was; a purchase
 //! pays, joins and keeps a dialog of several creatures open, closes one of a single creature;
 //! `Close`, the system's default; no move or end of the turn while it is open; the guard's visit
-//! after it closes (GAM-DEC-007).
+//! after it closes (GAM-DEC-007). E08 T97a: a Plague or a creature's month leaves the hut's and
+//! the camp's week as their growth (ADV-DWL-003).
+
+use std::num::{NonZeroU8, NonZeroU16};
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, HireError, HireTarget, Holds, ObjectSetup, ObjectTypeId,
-    Viewers,
+    AdventureEvent, AdventureEventKind, HireError, HireTarget, Holds, MonthParamsDef, ObjectSetup,
+    ObjectTypeId, Viewers,
 };
 use h3_content::ResourceId;
 
@@ -18,6 +21,7 @@ use super::dwellings::{ANCHOR, BLUE, GOG, RED, RED_HERO, hut_type, rules_edited}
 use super::manage::imp;
 use super::rewards::{guard, reward_at, starts_battle};
 use super::*;
+use crate::MonthKind;
 
 const GOLD: ResourceId = ResourceId::from_raw(0);
 const GEM: ResourceId = ResourceId::from_raw(1);
@@ -27,7 +31,17 @@ const GEM: ResourceId = ResourceId::from_raw(1);
 /// the price's order is the core's) and 100 gold each (a gem mine, as the abandoned mine needs a
 /// mine of each resource), and a Refugee Camp `t:camp` of level 2: the gogs.
 fn rules() -> GameRuleset {
+    rules_months(None)
+}
+
+/// [`rules`] with these months, the gogs' adventure count 2 to 3 with them (E08 T97a).
+fn rules_months(months: Option<MonthParamsDef>) -> GameRuleset {
     rules_edited(5, |core, part| {
+        if months.is_some() {
+            // A month's creature has an adventure count (its monsters' draw).
+            core.creatures[1].info.adventure_count = [2, 3];
+        }
+        part.params.as_mut().unwrap().months = months;
         core.resources.push(ResourceDef {
             key: key("t:gem"),
             name: "Gem".into(),
@@ -415,4 +429,44 @@ fn the_guard_visits_once_the_dialog_closes() {
     let events = play(&mut state, &rules, RED, HIRE_CLOSE).unwrap();
     assert_eq!(events[0], GameEvent::DecisionClosed { player: RED });
     assert!(starts_battle(&events), "{events:?}");
+}
+
+// covers: ADV-DWL-003, ADV-RFG-001, GAM-CAL-002
+#[test]
+fn a_month_s_kind_never_reaches_a_dwelling_or_a_camp() {
+    // ADV-DWL-003 (E08 T97a's audit, criterion 3): the week's step that starts a Plague month or
+    // the gogs' month sets red's hut, bought down, back to its growth and the camp to its
+    // creature's, neither halved nor doubled (the original's `dwelling_week_refill` reads no
+    // month's kind, survey `E08-dwellings.md` §6.1).
+    for (odds, kind) in [
+        ([0, 0, 1], MonthKind::Plague),
+        ([0, 1, 0], MonthKind::Creature(GOG)),
+    ] {
+        let rules = rules_months(Some(MonthParamsDef {
+            odds,
+            creatures: vec![key("t:gog")],
+            monster: key("t:monster"),
+            spawn_one_in: NonZeroU16::new(1).unwrap(),
+            spawn_factor: NonZeroU8::new(2).unwrap(),
+            spawn_aggression: [10, 10],
+        }));
+        let camp = ObjectSetup {
+            anchor: Pos::new(3, 0, 0),
+            ..reward_at(&rules, "t:camp", Holds::Nothing)
+        };
+        let mut state = game_of(&rules, vec![own_hut(&rules), camp], vec![imp(1, 9)], 100);
+        open(&mut state, &rules);
+        play(&mut state, &rules, RED, buy(GOG, 2)).unwrap();
+        play(&mut state, &rules, RED, HIRE_CLOSE).unwrap();
+        assert_eq!(state.adventure().dwelling_counts(0), Some(&[0, 4][..]));
+        let mut events = Vec::new();
+        while state.day() < 29 {
+            for player in [RED, BLUE] {
+                state.end_turn(&rules, player, &mut events).unwrap();
+            }
+        }
+        assert_eq!(state.month(), kind);
+        assert_eq!(state.adventure().dwelling_counts(0), Some(&[3, 6][..]));
+        assert_eq!(state.adventure().camp(1), Some((GOG, 6)));
+    }
 }

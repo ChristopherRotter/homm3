@@ -124,10 +124,17 @@ fn an_own_dwelling_asks_the_hire_question_without_a_flag_or_its_guards() {
     assert!(events.is_empty(), "{events:?}");
     assert_eq!(s.owner(0), Some(RED));
     assert_eq!(s.dwelling_counts(0), before.dwelling_counts(0));
-    // A guarded level-5 one of red's: no guards' question, the question at once.
+    // A guarded level-5 one of red's: no guards' question, the question at once, and the whole
+    // outcome else default: no Leave Guards (E08 T97a's audit, criterion 4).
     let mut s = game(&rules, at_entrance(&rules, "t:d5", Some(RED)), peasant());
     let (outcome, events) = visit(&rules, &mut s);
-    assert_eq!(outcome.offer, Some(hire(&rules, "t:d5", &["t:c5", "t:w5"])));
+    assert_eq!(
+        outcome,
+        AdventureOutcome {
+            offer: Some(hire(&rules, "t:d5", &["t:c5", "t:w5"])),
+            ..AdventureOutcome::default()
+        }
+    );
     assert!(events.is_empty(), "{events:?}");
     assert_eq!(s.dwelling_guards(0).len(), 2);
 }
@@ -210,6 +217,7 @@ fn a_guarded_dwelling_not_of_the_visitor_s_team_asks_the_guards_question() {
         assert!(events.is_empty(), "{events:?}");
         assert_eq!(s.owner(0), owner);
         assert!(s.offer_stands(&ask));
+        let asked = s.clone();
         // Declined: nothing, the hero stays on the entrance.
         let mut events = Vec::new();
         let declined = s.decline_offer(parts, &ask, &mut events);
@@ -218,6 +226,8 @@ fn a_guarded_dwelling_not_of_the_visitor_s_team_asks_the_guards_question() {
         assert_eq!(s.hero(HERO).unwrap().pos, ENTRANCE);
         assert_eq!(s.owner(0), owner);
         assert_eq!(s.dwelling_guards(0), before.dwelling_guards(0));
+        // E08 T97a's audit: the whole state as the question left it.
+        assert!(s == asked);
     }
     // Slot 0 empty: the first occupied slot's creature, the word of its 4 (the first word).
     let mut s = game(&rules, at_entrance(&rules, "t:d5", None), peasant());

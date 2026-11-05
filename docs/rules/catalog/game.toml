@@ -685,6 +685,12 @@ numeric  = "integer"
   ref        = "ADR-0017 point 6 (a decision like the University, open until closed, each purchase checked against the state and the treasury); increment 10's design note section 13 in E08-design.md (the decision, the answer, the legal set's most with the room, hire_range, the view)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10a.md E10-4 and experiments/results/E08-batch-10b.md E10-8 and E10-9 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): the dialog opened after the hire question, stayed open until a purchase or Close and at a one-creature source closed after the purchase, of the whole most (E10-4, 3 Swordsmen) or of part of it (E10-8 2 of 4, E10-9 1 of 2). Not observed: a four-creature dialog staying open after a purchase"
+  retrieved  = "2026-11-03"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-BAT-001"
 title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
@@ -733,6 +739,12 @@ quirks   = ["ADV-QUIRK-5", "ADV-QUIRK-8"]
   kind       = "observation"
   ref        = "experiments/results/E08-batch-9a.md E9-1 and E9-2 (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md section 19): mines on grass: the two abandoned mines' and the crystal cavern's battles on the subterranean field, the sawmill's on grass, no special field; an owned mine's guards the defending side of its owner, Blue, human and at the machine, each of its stacks waiting for Blue's order; a neutral abandoned mine's side no player's"
   retrieved  = "2026-10-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-10a.md E10-1 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a neutral dwelling's guards fought on the entrance tile's own grass with no special field, the defending stacks the guards unsplit by slot, the defending side without an owner and not human, no hero"
+  retrieved  = "2026-11-03"
   confidence = "high"
 
 [[rule]]
