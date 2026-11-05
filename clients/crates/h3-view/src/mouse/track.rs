@@ -500,6 +500,11 @@ impl Handler<'_> {
         name: &dyn Fn(&Hint, &Observation) -> String,
     ) -> Option<u8> {
         let taken = aim.takes(field, hex);
+        // The original's wall aim (`aim_wall_handler` 0x5A3250) neither marks the stack under the
+        // mouse nor unmarks it: a stack outlined before the book opened keeps its outline through
+        // the aim (E17 M6 T5a, design §12.17); the client's aims the wall as every other aim
+        // (CLT-Q56's answer).
+        let marks = !(shades::wall(aim.original) && self.bugs == Bugs::Original);
         // Fire Wall's hexes, or none at a refusal (0x5A334D, E17 M6 T4c, design §12.16); Force
         // Field's aim shades nothing (CLT-Q54 (2), copied).
         if aim.original == shades::FIRE_WALL {
@@ -515,7 +520,7 @@ impl Handler<'_> {
             if aim.area.is_some() {
                 self.set_area(now, aim.marks(field, hex));
                 self.area_shade(aim, field, hex);
-            } else {
+            } else if marks {
                 // `battle_mouse_stack`: nothing over the stack already marked.
                 let stack = field.at(h).map(|s| s.id);
                 if stack.is_none() || stack != self.marked {
@@ -531,7 +536,9 @@ impl Handler<'_> {
             let side = field.acting().map_or(Side::Attacker, |s| s.controller);
             self.write(now, &aim.refusal(field, hex, side), Some(field), name);
             // `battle_clear_highlight` 0x477E10.
-            self.set_marked(now, None);
+            if marks {
+                self.set_marked(now, None);
+            }
             if aim.area.is_some() {
                 self.set_area(now, aim.marks(field, hex));
                 self.area_shade(aim, field, hex);

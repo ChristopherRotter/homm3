@@ -483,6 +483,9 @@ pub enum Hint {
     /// A spell aimed elsewhere ("Select Spell Target", 24; E17 M5 T3b, `spell_fails_message`
     /// 0x5A2880's default).
     SelectTarget,
+    /// Force Field's or Fire Wall's aim over a hex it refuses (GENRLTXT 182 with the spell's
+    /// name; E17 M6 T5a, design §12.17: `spell_fails_message`'s wall case 0x5A2C2B).
+    WallRefused(u16),
     /// "%s protects the %s" (171): Anti-Magic's name (its handle) and the stack's by its number.
     Protects(u16, u8),
     /// "%s can only be cast on hostile creatures" (172), the spell.
@@ -611,6 +614,10 @@ impl Hint {
             Self::Control(key) => catalogue.text(key, &Args::new()),
             Self::RemoveObstacle => catalogue.text("battle.hint.remove-obstacle", &Args::new()),
             Self::SelectTarget => catalogue.text("battle.hint.select-target", &Args::new()),
+            Self::WallRefused(handle) => {
+                let args = Args::new().text("spell", &spell_name(*handle));
+                catalogue.text("battle.hint.wall-refused", &args)
+            }
             Self::Protects(anti_magic, id) => {
                 let creature = name(*id, false).unwrap_or_default();
                 let args = Args::new()

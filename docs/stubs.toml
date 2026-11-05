@@ -85,6 +85,15 @@ epic   = "E09"
 
 # --- client (CLT-STUB-<n>) ---
 
+# CLT-STUB-1 is kept as a comment until `cargo xtask check-stubs` also scans `clients/crates/`
+# (today it reads `crates/` alone, so a registered client stub finds no marker: a shared/ change);
+# its marker `// stub: CLT-STUB-1` is in the code already. Uncomment it with that change.
+# [[stub]]
+# id     = "CLT-STUB-1"
+# where  = "clients/crates/h3-view/src/bin/h3-view/boxes.rs::seat_magic"
+# reason = "On a server a seat knows only its own hero's casting limits (OwnHero is private, ADR-0013 point 9): the other side's Orb of Inhibition (GENRLTXT 684) and Recanter's Cloak (537) show no box there, where local play shows them; the entry's box (e.g. 186, 713) or a wall's aim with every hex refused comes instead (gap G1, E17-design.md section 12.17). The user (2026-11-05) requires a server's game to behave exactly as a local one: G1's answer (a), each side's two facts (forbids casting, spell level limit) public on the wire, requested from the battle and server lanes; read here once they are"
+# epic   = "E17"
+
 # --- map-client (MCL-STUB-<n>) ---
 
 # --- town (TWN-STUB-<n>) ---

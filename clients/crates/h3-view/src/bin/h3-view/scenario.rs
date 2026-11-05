@@ -16,6 +16,7 @@ use h3_pack_battle::ScenarioDef;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Manifest, Observation, Seat, ServerMessage};
 use h3_protocol::{codec, map};
+use h3_render::Bugs;
 use h3_towns::{BuildingId, TownRuleset};
 use h3_view::mouse::aim::Aim;
 
@@ -593,26 +594,41 @@ pub fn opening_previews(
         .unwrap_or_default())
 }
 
-/// The spells of the side to act's hero that the aim's entry tells affect no one at the opening
-/// of `scenario` (E17 M5 T4a; `enter_player_cast` 0x59F085): the stack spells and Teleport no hex
-/// takes (the engine gives no aim), by handle, among `spells` (their original numbers).
-pub fn opening_no_one(
+/// The boxes the aim's refusals of the side to act's hero's `spells` (their handles and original
+/// numbers) show at the opening of `scenario` once the book closed on them (E17 M5 T4a: the stack
+/// spells and Teleport no hex takes; E17 M6 T5a, design §12.17: the others), by handle: those the
+/// engine casts neither at once nor at a target, named by `names`, in the original's profile
+/// (the stills compare with its captures).
+pub fn opening_refusals(
     scenario: &Path,
     packs: &Path,
     seed: u64,
     spells: &[(u16, u32)],
-) -> Result<Vec<u16>, String> {
+    names: crate::boxes::Names<'_>,
+) -> Result<Vec<(u16, String)>, String> {
     let (ruleset, state) = opening(scenario, packs, seed)?;
     let Some(side) = state.side_to_act() else {
         return Ok(Vec::new());
     };
+    let own = map::observe(&state, &ruleset, Viewer::Side(side));
+    let [attacker, defender] = crate::aims::magic(&state, &ruleset);
+    let magic = [attacker.as_ref(), defender.as_ref()];
+    let facts = crate::boxes::Facts::of(&own, &own, magic, Some(&ruleset), names);
+    let refused = |handle: u16| {
+        let mut found = h3_battle::CastTargets::new();
+        let id = h3_kernel::Handle::from_raw(handle);
+        h3_battle::cast_targets(&state, &ruleset, side, id, &mut found);
+        found.is_empty()
+    };
     Ok(spells
         .iter()
-        .filter(|&&(handle, original)| {
-            crate::boxes::affects_someone_only(original)
-                && crate::aims::hero(&state, &ruleset, side, handle).is_none()
+        .filter(|&&(handle, _)| refused(handle))
+        .filter_map(|&(handle, original)| {
+            let level = ruleset.spells().get(usize::from(handle))?.level;
+            let shown = (original, level);
+            let text = crate::boxes::after_book(&facts, shown, Bugs::Original, names.2)?;
+            Some((handle, text))
         })
-        .map(|&(handle, _)| handle)
         .collect())
 }
 
@@ -940,6 +956,70 @@ mod tests {
             .iter()
             .all(|o| o.kind.is_some());
         assert!(typed);
+    }
+
+    #[test]
+    fn the_stills_spells_are_refused_with_the_original_s_boxes() {
+        // E17 M6 T5a (design §12.17, "To record" 1 to 6): at each still's opening the engine
+        // gives the spell no target and no cast without one, and the box is the original's by
+        // its order (the catalogue words each by its key): Cursed Ground's Lightning Bolt (Magic
+        // Arrow cast), Earthquake outside a siege, Land Mine against the Stronghold's natives on
+        // rough, Remove Obstacle in a siege, Clone with only Champions, Sacrifice with no loss.
+        let packs = repo().join("packs");
+        let tables =
+            crate::assets::load(&repo().join("clients/assets"), crate::assets::ALL).unwrap();
+        let catalogue = h3_ui::text::Catalogue::default();
+        type Case<'a> = (&'a str, &'a [&'a str], &'a [(&'a str, &'a str)]);
+        let cases: [Case<'_>; 6] = [
+            (
+                "msg-cursed",
+                &["base:magic_arrow", "base:lightning_bolt"],
+                &[("base:lightning_bolt", "aim.cursed")],
+            ),
+            (
+                "msg-quake",
+                &["base:earthquake"],
+                &[("base:earthquake", "aim.no-fort")],
+            ),
+            (
+                "msg-mine",
+                &["base:land_mine"],
+                &[("base:land_mine", "aim.no-one")],
+            ),
+            (
+                "msg-remove",
+                &["base:remove_obstacle"],
+                &[("base:remove_obstacle", "aim.no-obstacle")],
+            ),
+            (
+                "msg-clone",
+                &["base:clone"],
+                &[("base:clone", "aim.no-one")],
+            ),
+            (
+                "msg-sacrifice",
+                &["base:sacrifice"],
+                &[("base:sacrifice", "aim.no-one")],
+            ),
+        ];
+        for (id, keys, expected) in cases {
+            let scenario = repo().join(format!("clients/situations/{id}.toml"));
+            let text = record_of(&scenario, &packs, 1, Seat::Attacker).unwrap();
+            let manifest = h3_view::record::parse(&text).unwrap().header.manifest;
+            let (ruleset, _) = battle(&scenario, &packs, 1).unwrap();
+            let handle = |key: &str| ruleset.spell_by_key(key).unwrap().raw();
+            let spells: Vec<(u16, u32)> = keys
+                .iter()
+                .map(|&k| (handle(k), u32::from(tables.spells[k].original)))
+                .collect();
+            let names = (&manifest, &tables, &catalogue);
+            let refused = opening_refusals(&scenario, &packs, 1, &spells, names).unwrap();
+            let expected: Vec<(u16, String)> = expected
+                .iter()
+                .map(|&(k, text)| (handle(k), text.to_owned()))
+                .collect();
+            assert_eq!(refused, expected, "{id}");
+        }
     }
 
     #[test]

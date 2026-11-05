@@ -1,0 +1,48 @@
+# E17 M6 T5a (design §12.17, "To record" 7): a Summon Elemental bound to another elemental, in hot
+# seat. `summon`'s ground and Archers (seq-summon.toml), the attacker's five Champions (speed 9:
+# round 2 opens with their turn in the original and the engine alike, whose created stacks' order
+# differs, `summon-turn`); Orrin with 50 spell points (Knowledge 5), Summon Fire Elemental (place
+# 0) and Summon Water Elemental (place 1): round 1 the Fire Elementals summoned at the Champions'
+# turn, everyone defends; round 2 at the Champions' turn Water Elemental chosen in the book:
+# GENRLTXT 539 with Orrin, the Fire Elementals and 540 (his), closed by Enter.
+
+[scenario]
+id = "sequence-summon-other"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[defender]]
+slot = 0
+creature = "base:archer"
+count = 80
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but the attacker's knowledge.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 5
+mana = 50
+max_mana = 50
+spell_book = ["base:fire_elemental", "base:water_elemental"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

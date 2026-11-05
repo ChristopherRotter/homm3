@@ -75,7 +75,9 @@ use h3_view::sound::Tune;
 
 use crate::assets;
 use crate::audio::{Library, Player};
-use crate::battle::{Battle, BookDid, CursorLook, Ground, MessageDid, Press, Source, StatsDid};
+use crate::battle::{
+    Battle, BookDid, CursorLook, Ground, MessageDid, Opened, Press, Source, StatsDid,
+};
 
 /// How far past the last change the window looks for the next one before it waits for input
 /// only (a battle that no longer changes).
@@ -1075,15 +1077,25 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         // down, its key's release clicking it.
                         Do::Message(k) => {
                             let did = battle.message_key(k, key.name());
-                            grew |=
-                                message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                            grew |= message_did(
+                                &mut battle,
+                                &mut inputs,
+                                (at, pointer),
+                                did,
+                                &mut book_changed,
+                            )?;
                         }
                         // The result window's OK (E17 M5 T4b1): down, its key's release closing
                         // the battle's screen.
                         Do::ResultOk => {
                             let did = battle.message_key(h3_view::message::Key::Ok, key.name());
-                            grew |=
-                                message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                            grew |= message_did(
+                                &mut battle,
+                                &mut inputs,
+                                (at, pointer),
+                                did,
+                                &mut book_changed,
+                            )?;
                         }
                         // The combat options dialog's OK down, its key's release closing it (E17
                         // M6 T4a).
@@ -1179,7 +1191,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::KeyUp(key) if battle.message_open() => {
                     let did = battle.message_key_up(key.name());
-                    grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                    grew |= message_did(
+                        &mut battle,
+                        &mut inputs,
+                        (at, pointer),
+                        did,
+                        &mut book_changed,
+                    )?;
                 }
                 Event::KeyUp(key) if battle.stats_open() => {
                     let did = battle.stats_key_up(key.name());
@@ -1217,10 +1235,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         if h.id == h3_view::panel::AUTO_COMBAT {
                             grew |= battle.switch_auto(at)?;
                         }
-                        // C opens the spell book (E17 M5 T3a).
-                        if h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
-                            inputs.push(Input::Book { at });
-                            book_changed = true;
+                        // C opens the spell book (E17 M5 T3a), or its refusal's box (E17 M6 T5a).
+                        if h.id == h3_view::panel::SPELL_BOOK {
+                            book_changed |= opened(&mut inputs, at, battle.open_book(at));
                         }
                         // O opens the combat options dialog (E17 M6 T4a).
                         book_changed |= h.id == h3_view::panel::OPTIONS && battle.open_options(at);
@@ -1241,11 +1258,23 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     at: (x, y),
                 } if battle.message_open() => {
                     let did = battle.message_press([x, y]);
-                    grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                    grew |= message_did(
+                        &mut battle,
+                        &mut inputs,
+                        (at, pointer),
+                        did,
+                        &mut book_changed,
+                    )?;
                 }
                 Event::Click { down: false, .. } if battle.message_open() => {
                     let did = battle.message_release();
-                    grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                    grew |= message_did(
+                        &mut battle,
+                        &mut inputs,
+                        (at, pointer),
+                        did,
+                        &mut book_changed,
+                    )?;
                 }
                 // A stack's stats dialog over the battle (E17 M6 T2a2a): its moves, its OK.
                 Event::Pointer(p) if battle.stats_open() => {
@@ -1399,10 +1428,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         if h.over && h.id == h3_view::panel::AUTO_COMBAT {
                             grew |= battle.switch_auto(at)?;
                         }
-                        // The spell book opens as its button is released over it (E17 M5 T3a).
-                        if h.over && h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
-                            inputs.push(Input::Book { at });
-                            book_changed = true;
+                        // The spell book opens as its button is released over it (E17 M5 T3a),
+                        // or its refusal's box (E17 M6 T5a).
+                        if h.over && h.id == h3_view::panel::SPELL_BOOK {
+                            book_changed |= opened(&mut inputs, at, battle.open_book(at));
                         }
                         // The combat options dialog opens as its button is released over it (E17
                         // M6 T4a).
@@ -1681,6 +1710,32 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     Ok((lines, ok))
 }
 
+/// What the spell book button's press at `at` led to (E17 M5 T3a): the book opened (the battle
+/// takes no move until it closes), or a box tells why not (E17 M6 T5a, design §12.17: the mouse
+/// posted after its OK, [`refusal_closed`]). Whether the screen changed.
+fn opened(inputs: &mut Vec<Input>, at: u32, opened: Opened) -> bool {
+    match opened {
+        Opened::No => false,
+        Opened::Book => {
+            inputs.push(Input::Book { at });
+            true
+        }
+        Opened::Refused => true,
+    }
+}
+
+/// A refusal's box of the spell book button or of the aim's entry closed by its OK at `at`, the
+/// mouse at `pointer` (E17 M6 T5a, design §12.17): the box being modal, the battle saw no move
+/// while it was open; now the button's path forgets the mouse's hex and posts the mouse where it
+/// rests (0x474F72), as after a book closed without a spell, so the cursor and the hint are
+/// those of the hex under it.
+fn refusal_closed(inputs: &mut Vec<Input>, at: u32, pointer: Option<(i32, i32)>) {
+    if let Some((x, y)) = pointer {
+        inputs.push(Input::Move { at, to: [x, y] });
+    }
+    inputs.push(Input::Cancel { at });
+}
+
 /// What the spell book `did` at `at` (E17 M5 T3a): a change to draw, the cast it closed on
 /// given, or the aim it closed on started (E17 M5 T3b); whether the battle took a command.
 fn book_did(
@@ -1709,6 +1764,8 @@ fn book_did(
             });
             Ok(false)
         }
+        // A refusal's box over the battle (E17 M6 T5a): the mouse posted after its OK.
+        BookDid::Refused => Ok(false),
     }
 }
 
@@ -1873,12 +1930,12 @@ fn key_hides(battle: &Battle<'_>, at: u32, pointer: Option<(i32, i32)>) -> Optio
         .then_some(Input::Hide { at, key: true })
 }
 
-/// What a message box `did` at `at` (E17 M5 T4a): a change to draw, or the command its OK gave
-/// (Retreat, Surrender); whether the battle took a command.
+/// What a message box `did` at `at`, the mouse at `pointer` (E17 M5 T4a): a change to draw, or
+/// the command its OK gave (Retreat, Surrender); whether the battle took a command.
 fn message_did(
     battle: &mut Battle<'_>,
     inputs: &mut Vec<Input>,
-    at: u32,
+    (at, pointer): (u32, Option<(i32, i32)>),
     did: MessageDid,
     changed: &mut bool,
 ) -> Result<bool, String> {
@@ -1888,6 +1945,11 @@ fn message_did(
         // A turret's info closed (E17 M6 T2b2): the battle takes the mouse again (0x476E34).
         MessageDid::Looked => {
             inputs.push(Input::Looked { at });
+            Ok(false)
+        }
+        // A refusal's box closed (E17 M6 T5a): the mouse posted where it rests.
+        MessageDid::Refused => {
+            refusal_closed(inputs, at, pointer);
             Ok(false)
         }
         MessageDid::Nothing | MessageDid::Changed | MessageDid::Ended => Ok(false),
@@ -2067,6 +2129,12 @@ impl Presser {
                 inputs.push(Input::Looked { at: now });
                 Ok(true)
             }
+            // A refusal's box (E17 M6 T5a; the bot's casts are legal, so none comes): the mouse
+            // posted where the battle last saw it.
+            MessageDid::Refused => {
+                refusal_closed(inputs, now, None);
+                Ok(true)
+            }
             MessageDid::Changed | MessageDid::Nothing | MessageDid::Ended => Ok(true),
         }
     }
@@ -2084,7 +2152,7 @@ impl Presser {
     ) -> Result<bool, String> {
         let target = match wanted {
             Command::Cast { spell, target, .. } => {
-                if !battle.open_book(now) {
+                if battle.open_book(now) != Opened::Book {
                     return Err("the spell book does not open for a cast".to_owned());
                 }
                 inputs.push(Input::Book { at: now });
@@ -2312,6 +2380,28 @@ mod tests {
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn a_refusal_s_box_posts_the_mouse_after_its_ok() {
+        // E17 M6 T5a (the review, design §12.17): the box is modal, so the button's path posts
+        // the mouse (0x474F72) after its OK, where the mouse then rests; nothing as it opens.
+        let mut inputs = Vec::new();
+        assert!(opened(&mut inputs, 10, Opened::Refused));
+        assert!(inputs.is_empty());
+        assert!(!opened(&mut inputs, 10, Opened::No));
+        assert!(opened(&mut inputs, 10, Opened::Book));
+        assert_eq!(inputs, [Input::Book { at: 10 }]);
+        inputs.clear();
+        refusal_closed(&mut inputs, 900, Some((320, 240)));
+        let moved = Input::Move {
+            at: 900,
+            to: [320, 240],
+        };
+        assert_eq!(inputs, [moved, Input::Cancel { at: 900 }]);
+        inputs.clear();
+        refusal_closed(&mut inputs, 900, None);
+        assert_eq!(inputs, [Input::Cancel { at: 900 }]);
     }
 
     #[test]

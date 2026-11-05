@@ -275,7 +275,9 @@ on the M1 review list):
 - `[[hero]]`: `key` (a hero type's), `original` (its hero type, its record among
   `hotraits.txt`'s; M3 T7b-1), `def`, its battle picture (by its class's town and its sex, design
   §4.5; M3 T3a), and from the same record `cast` (its cast point in the DEF's frame, x, y) and
-  `cast_frames` (the casting group's frames played before the spell; M3 T7b-1, design §7.16).
+  `cast_frames` (the casting group's frames played before the spell; M3 T7b-1, design §7.16);
+  `female = true` for a female hero type (the static hero table's +0; E17 M6 T5a: the Summons'
+  box's pronoun, design §12.17).
 - `[[spell]]` (M3 T7b-1): `key`, `original` (its spell number, its record among `sptraits.txt`'s
   spell rows), optional `animation` (its magic animation's number, the spell record's +8),
   `sound` (the record's +4, an entry name without its extension) and `projectile` with

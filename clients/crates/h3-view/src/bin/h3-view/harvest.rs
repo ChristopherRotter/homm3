@@ -301,6 +301,9 @@ struct Harvest {
     hero_casts: Vec<([i32; 2], u32)>,
     /// The heroes' large portraits (the static hero table's +0x34; E17 M5 T4b1), by hero type.
     hero_portraits: Vec<String>,
+    /// Whether each hero type is female (the static hero table's +0; E17 M6 T5a: the Summons'
+    /// box, GENRLTXT 540 or 541), by hero type.
+    hero_female: Vec<bool>,
     hero_names: Vec<String>,
     flags: [String; 2],
     /// The magic animations: DEF, place, translucent.
@@ -514,6 +517,7 @@ fn read_harvest(
     let mut hero_defs = Vec::new();
     let mut hero_casts = Vec::new();
     let mut hero_portraits = Vec::new();
+    let mut hero_female = Vec::new();
     for id in 0..HERO_INFO.1 {
         let info = bytes(
             &image,
@@ -526,6 +530,7 @@ fn read_harvest(
         if female > 1 || class >= HERO_CLASSES.1 {
             return Err(format!("hero {id}: female {female}, class {class}"));
         }
+        hero_female.push(female == 1);
         let town = u32_at(
             &bytes(
                 &image,
@@ -675,6 +680,7 @@ fn read_harvest(
         hero_defs,
         hero_casts,
         hero_portraits,
+        hero_female,
         hero_names: hero_names(hotraits),
         flags: [string(FLAGS[0])?, string(FLAGS[1])?],
         magic,
@@ -1036,6 +1042,10 @@ fn write_table(
             numbers(point),
             plain(portrait)?
         );
+        // Only a female hero type says so (E17 M6 T5a).
+        if h.hero_female.get(n) == Some(&true) {
+            let _ = writeln!(t, "female = true");
+        }
     }
     // The spells (E17 M3 T7b-1): by `sptraits.txt`'s name, as the packs' harvester numbers them.
     for spell in &pack.spell {

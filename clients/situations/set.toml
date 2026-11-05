@@ -1058,7 +1058,80 @@ actions = ["key:c", "click:332,123"]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "exact: Animate Dead with no corpse: \"That spell will affect no one!\" over the battle, the book closed (E17 M5 T4a)"
+why = "exact: Animate Dead with no corpse: GENRLTXT 186 over the battle, the book closed (E17 M5 T4a)"
+
+# E17 M6 T5a (design §12.17): the book button's and the aim's entry's refusals, each a box of
+# style 1 over the battle once the book closed on the spell (captured at T5a). Cursed
+# Ground's Lightning Bolt (748), Earthquake outside a siege (183), Land Mine against the other
+# side's natives (186, CLT-Q58), Remove Obstacle in a siege (713), Clone with no stack it takes
+# (186), Sacrifice with no stack to raise (186).
+[[situation]]
+id = "msg-cursed"
+scenario = "msg-cursed.toml"
+seat = "attacker"
+actions = ["key:c", "click:332,123"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Lightning Bolt chosen on Cursed Ground: GENRLTXT 748 over the battle, the book closed (E17 M6 T5a)"
+
+[[situation]]
+id = "msg-quake"
+scenario = "msg-quake.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Earthquake outside a siege: GENRLTXT 183 over the battle, the book closed (E17 M6 T5a)"
+
+[[situation]]
+id = "msg-mine"
+scenario = "msg-mine.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Land Mine against the defenders native to rough: GENRLTXT 186 over the battle (CLT-Q58 as the original shows it; E17 M6 T5a)"
+
+[[situation]]
+id = "msg-remove"
+scenario = "msg-remove.toml"
+hot_seat = true
+key = "Up"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+differing = 548
+why = "Remove Obstacle in a Fort's siege: GENRLTXT 713 exact; 548 pixels at the lower tower (x 628 to 656, y 522 to 555): after the book closes the original draws the lower wall's last strip over the lower tower (the book opened and closed by Esc alone gives the same 548 at 0 and 100 ms), the viewer the opening's order, the tower over it (not modelled; E17 M6 T5a)"
+
+[[situation]]
+id = "msg-clone"
+scenario = "msg-clone.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Clone with only the Champions (level 6): GENRLTXT 186 over the battle (CLT-Q59; E17 M6 T5a)"
+
+[[situation]]
+id = "msg-sacrifice"
+scenario = "msg-sacrifice.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Sacrifice at the opening, no stack to raise: GENRLTXT 186 over the battle (E17 M6 T5a)"
 
 # E17 M5 T4b1: the battle's result window (design §7.20), over the whole screen darkened, the
 # combat cursor's pointer at the park point. Retreat's question answered OK (dialogs.toml): Red's

@@ -136,6 +136,16 @@ fn a_refusal_says_why() {
             ..a.clone()
         };
         assert_eq!(hexes.refusal(field, 86, side), Hint::SelectTarget);
+        // E17 M6 T5a: Force Field's and Fire Wall's every refused hex names the spell (182).
+        for original in [12, 13] {
+            let wall = Aim {
+                original,
+                ..hexes.clone()
+            };
+            for hex in [86, 100, -1, 187] {
+                assert_eq!(wall.refusal(field, hex, side), Hint::WallRefused(7));
+            }
+        }
         // Anti-Magic, a hostile spell at an own stack, a friendly one at an enemy.
         assert_eq!(a.refusal(field, 100, side), Hint::Protects(9, 3));
         let high = Aim {

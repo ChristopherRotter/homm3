@@ -1,0 +1,48 @@
+# E17 M6 T5a (design §12.17, "To record" 5): the still `msg-clone`. The ground and obstacles of
+# `dialogs` (dialogs.toml); the attacker's army five Champions alone (level 6, above the level 5
+# Clone takes without Water Magic); Orrin with 30 spell points (Knowledge 3) and Clone: chosen in
+# the book, no stack to clone: GENRLTXT 186 over the battle.
+
+[scenario]
+id = "msg-clone"
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:clone"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
