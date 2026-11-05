@@ -281,6 +281,12 @@ impl Legal {
         &self.attacks
     }
 
+    /// Whether it may shoot at all (E17 M6 T4c: the movement shadow's shooter, which marks every
+    /// enemy).
+    pub(crate) fn shoots_any(&self) -> bool {
+        !self.shots.is_empty()
+    }
+
     /// Whether it may shoot `target`.
     fn shoots(&self, target: u8) -> bool {
         self.shots

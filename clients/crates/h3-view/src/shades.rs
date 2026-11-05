@@ -207,9 +207,12 @@ pub fn wall_shade(original: u16, hex: u8, (side, mastery): (Side, u8)) -> Vec<u8
 /// (1): §7.23's overlay 0x4937D0 over the reach map `ai_pathfinder_map` at the stack's speed):
 /// none without a living acting stack or for one no human plays here (+0x54A6); else the stack's
 /// own hexes, every position it may move to with its front hex there by its facing now (+0x4A,
-/// +0x4B), and the hexes of every stack it may strike in melee (0x4938F9). *Provisional:* the
-/// engine's legal moves and strikes stand for the original's reach map, the strikes' targets for
-/// the stacks of the other side its search marks.
+/// +0x4B), the hexes of every stack it may strike in melee (0x4938F9), and for a stack that may
+/// shoot now the hexes of every living stack of the other side on the field (the map's
+/// `ai_map_shooter_marks` 0x4B2F18: every enemy but the dead and the arrow towers, outside the
+/// tactics phase; recorded, `shade-move`'s Marksmen). *Provisional:* the engine's legal moves
+/// and strikes stand for the original's reach map, the strikes' targets for the stacks of the
+/// other side its search marks, a listed shot for `stack_can_shoot_now` 0x4428F0.
 #[must_use]
 pub fn reach(field: &Field<'_>) -> BTreeSet<u8> {
     let mut shaded = BTreeSet::new();
@@ -230,6 +233,13 @@ pub fn reach(field: &Field<'_>) -> BTreeSet<u8> {
     for &(target, _) in field.legal.attacks() {
         let stacks = observation.stacks.iter();
         for stack in stacks.filter(|s| s.alive && s.id == target) {
+            shaded.extend(field.hexes(stack));
+        }
+    }
+    if field.legal.shoots_any() {
+        let enemies = (observation.stacks.iter())
+            .filter(|s| s.alive && s.side != mover.controller && s.hex < COLUMNS * ROWS);
+        for stack in enemies {
             shaded.extend(field.hexes(stack));
         }
     }

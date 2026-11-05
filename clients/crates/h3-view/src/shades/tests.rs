@@ -204,6 +204,21 @@ fn the_movement_shadow_shades_the_acting_stack_s_reach() {
         ..wide
     };
     assert_eq!(reach(&turned), BTreeSet::from([69, 70, 85, 86, 87, 89, 90]));
+    // A stack that may shoot marks every living enemy on the field (`shade-move`'s Marksmen):
+    // both of the defender's, whichever it may shoot; not the own one, a dead or a turret.
+    o.stacks[0].two_hex = false;
+    let shooter = Legal::new(&[
+        Command::Move { to: 87 },
+        Command::Shoot { target: 1, at: 90 },
+    ]);
+    let shoots = field(&o, &shooter, Bugs::Fixed);
+    assert_eq!(reach(&shoots), BTreeSet::from([1, 86, 87, 89, 90]));
+    let mut gone = o.clone();
+    gone.stacks[3].alive = false;
+    gone.stacks[1].hex = 200;
+    let gone_field = field(&gone, &shooter, Bugs::Fixed);
+    assert_eq!(reach(&gone_field), BTreeSet::from([86, 87]));
+    o.stacks[0].two_hex = true;
     // None for a stack no human plays, a dead one or none.
     o.sides[0].human = false;
     assert!(reach(&field(&o, &legal, Bugs::Fixed)).is_empty());
