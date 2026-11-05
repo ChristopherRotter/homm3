@@ -104,6 +104,8 @@ fn a_written_dwelling_stands_until_the_week_refills_every_dwelling() {
     assert_eq!(s.dwelling_guards(0), vec![stack(1, w5, 4)]);
     assert_eq!(s.dwelling_counts(1), Some(&[0, 2][..]));
     assert!(s.check_dwellings());
+    // E08 T96b2: the block stands while a dwelling is written (`dwellings_written`).
+    assert!(s.dwellings_written() && !built.dwellings_written());
     assert_ne!(s, built);
     assert_ne!(s.state_hash(), built.state_hash());
     let mut beaten = built.clone();
@@ -115,7 +117,7 @@ fn a_written_dwelling_stands_until_the_week_refills_every_dwelling() {
         state.start_week(&rules.0, &rules.1, &mut draws, &mut events);
         assert!(events.is_empty());
         assert_eq!(draws.next_u64(), stream(3).next_u64());
-        assert!(state.dwellings.is_none());
+        assert!(state.dwellings.is_none() && !state.dwellings_written());
         assert_eq!(state.dwelling_counts(0), Some(&[2, 2][..]));
         assert_eq!(state.dwelling_guards(0), full_guards(&rules));
         assert_eq!(state.dwelling_counts(1), Some(&[2, 2][..]));

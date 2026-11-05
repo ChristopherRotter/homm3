@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the step that starts day 8 (the last EndTurn of day 7: the week's step with the dwellings' refill and the Refugee Camps' draws, the income, the spell points, the next turn's start) in each of 4 random games of 7 days on the dwellings XL map (E08 T96b2, increment 10's design note §14: 144 x 144 with an underground; the shipped maps' most dwellings of class 17 (99) and of class 20 (14), typed random dwellings (30) and Refugee Camps (9) on one map, every fourth dwelling owned at load; a monster on every hundredth free tile): about 435 000 Ir a day start (day-start-xl-144's about 322 000), 23 % the Refugee Camps' draws (draw_camp: each draw collects its level's random monsters anew, about 10 900 Ir), 21 % the week's step itself (AdventureState::start_week: the refill of 143 dwellings, the monsters' growth), 22 % in malloc; the fork that tries the step is dropped before it, as day-start-xl-144's; counts only inside h3_cli::adventure::bench::day_start_step (the env's step)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-dwellings-144.h3m",
+    "--workload",
+    "day-start",
+    "--games",
+    "4",
+    "--days",
+    "7",
+    "--seed",
+    "1",
+]
+collect = "*day_start_step*"
+instructions = 1741156
+threshold_percent = 2

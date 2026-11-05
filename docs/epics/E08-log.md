@@ -11995,3 +11995,63 @@ changes), reviewed by a fourth.
   determinism with the 47 replays (none changed), bench-check (the 17 workloads inside the
   gate; T96b1 changes no engine code), original-data.
 - **Versions:** none.
+
+### Increment 10, round 8: T96b2, the dwellings XL and its benchmarks (2026-11-05, `adventure/e08-t96b2`)
+
+**The cut:** whole (the agent's call, told to the user at the start: a test map, three workloads
+and a few census lines, no engine change). **Baseline:** #731 (T96b1) merged (`master` 330f37b;
+the setup's `verify-once` found CI's fingerprint, light gates only, passed); the original data
+staged at the start. Built by the main session.
+
+- **The census first** (`h3-map`'s `original_data`): design §14's list against what T93b to T94b
+  built: every item counted and checked but "its entrance on the map". `built_dwellings` now fails
+  a map whose resolved random dwelling has no entrance on it (`MapObject::entrance`): none of the
+  206. `most_dwellings` notes the most typed objects of each class on one map: class 17 99
+  (`Pandora's Box `), class 20 14 (`Golems Aplenty Allied`), random dwellings 30 (`Thousand Islands
+  (allies)`), Refugee Camps 9 (`Battle of the Sexes Allied`). The output otherwise identical to
+  `master`'s (whose weeks' lines moved since T94b's log with E09's draws: 691 dwellings with
+  guards, 749 stacks, 4 998 creatures, the camps by level [42, 51, 50, 40, 56, 47, 35]).
+- **The dwellings XL** (`fixtures/maps/e08-dwellings-144.h3m`; `h3-map`'s
+  `tests/dwellings_xl_map.rs`): SoD, 144 × 144 of grass over subterranean ground, the economy XL's
+  heroes, cells and monsters (its helpers now `pub(super)`) without the sea: 99 dwellings of class
+  17 (Castle's, Necropolis' and Dungeon's levels 1 to 7 in turn, `Objects.txt`'s lines), 14 of
+  class 20 (Golem Factory, Elemental Conflux in turn), 30 random dwellings (12 of 216: the sets
+  all nine, Castle to Tower, Inferno and Conflux, the commonest ranges; 15 of 217: levels 1 to 7 in
+  turn, all nine factions or one; 3 of 218: Inferno, Dungeon, Conflux), 9 Refugee Camps; the
+  larger half of each group on the surface, interleaved; every fourth dwelling owned at load (36);
+  366 wandering monsters, one on every hundredth free tile. Tests: `the_dwellings_xl_map_is_committed_as_written`
+  (the classes, owners and holds; built: every dwelling typed, each random one resolved with an
+  entrance on the map, `play.rs`' `check_dwellings_week`, now `pub(super)`, at the build) and
+  `the_dwellings_xl_map_starts_weeks` (to day 15: two week starts, the checks after each, the
+  camps drawn anew each week).
+- **The fork's dwelling:** random play on the XL never wrote a dwelling within six days (seeds 1
+  to 40; the heroes rarely pick an entrance among their reachable tiles) and the step that
+  starts day 8 refills every dwelling, dropping the block. `h3 adventure bench --dwelling 1`
+  (`until_dwelling`, `seek_dwelling`, as `--meeting 1`): the acting player's heroes walk toward
+  the nearest dwelling's entrance other than the one a hero stands on, the env's random agent
+  answering the questions, the dialog and the battles, until a visit writes one; the forks then
+  carry the block. `BenchResult::dwellings` counts such games, read by
+  `AdventureState::dwellings_written` (new, read-only; tested in `dwelling_weeks.rs`). Tested in
+  `h3-cli`'s bench test: 0 games without the mode, 1 with it, in fewer steps.
+- **The workloads** (`benches/adventure/`, `bench-check --update`; the README's rows in
+  `shared/e08-t96b2-benches`):
+  - `day-start-dwellings-xl-144`: the step that starts day 8 in 4 random games of 7 days: 1 741 156
+    Ir, about 435 000 a day start (`day-start-xl-144`'s 322 000): 23 % the camps' draws
+    (`draw_camp` collects its level's random monsters anew each draw, about 10 900 Ir; left as is),
+    21 % `start_week` itself (the refill of 143 dwellings, the monsters' growth), 22 % malloc.
+  - `fork-dwellings-xl-144`: 100 000 forks after `--dwelling 1`'s 11 steps (day 1): 376 600 055 Ir,
+    3 766 a fork (`fork-economy-xl-144`'s 3 708).
+  - First baselined on `master` 330f37b; measured again after #733 (E09 T8a2, the town lane: the
+    step onto a town, `reach.rs`) was merged in: the same games, +0.69 %, 0.00 % and −0.46 %; the
+    two that moved re-set at the merged code's count.
+  - `random-play-dwellings-36`: 5 games of 60 days on T96a's map: 3 065 623 967 Ir, 3 723 steps,
+    about 823 000 a step (69 % `Reach::search`); 16 questions accepted and 4 purchases over the
+    five (`h3 adventure run --seed 1+g --agent-seed g` replays game g; 28 days held one purchase).
+- *Agent's calls (change freely):* the XL's dwelling types and random dwellings' bodies, the owners
+  every fourth; the fork's seeking mode rather than a seed search; 60 days for random play.
+- **Gates:** the scoped verify with the original data passed every step it runs, `check-lane`
+  included, on the branch with `master` (#733) merged in: coverage (the accessor tested in
+  `h3-adventure`), determinism with the 47 replays (none changed), bench-check (the 20 workloads
+  inside the gate; the 17 old ones unmoved), original-data (the census's new lines); `h3-cli`'s
+  clippy and adventure tests (outside the scope) passed.
+- **Versions:** none.

@@ -432,6 +432,20 @@ work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
   RoE-format maps, T93b's census), the owners at load, the 206 random dwellings resolved for a fixed seed (each a
   dwelling of its set and range, its entrance on the map), the 1 397 tied to towns as blockers
   (ADV-STUB-13), the 321 camps; the harvest's check (§3).
+- **As built (T96b2; *agent's calls*, change freely):** `e08-dwellings-144.h3m`
+  (`h3-map`'s `tests/dwellings_xl_map.rs`, the economy XL's lattice without its sea): 99 dwellings
+  of class 17 (Castle's, Necropolis' and Dungeon's seven levels in turn), 14 of class 20 (Golem
+  Factory and Elemental Conflux in turn), 30 typed random dwellings (12 of 216, 15 of 217, 3 of
+  218) and 9 Refugee Camps, the census's most on one map; every fourth dwelling owned at load; the
+  larger half of each group on the surface. Random play seldom reaches a dwelling on it (no seed
+  of 1 to 40 within six days) and the step that starts day 8 refills them all, so
+  `fork-dwellings-xl-144` plays `h3 adventure bench --dwelling 1`: a player's heroes seek the
+  dwellings' entrances (the random agent answers) until a visit writes one
+  (`AdventureState::dwellings_written`, the bench's `dwellings` count); its forks carry the block
+  as a reference count. `random-play-dwellings-36` runs 60 days (eight week starts; 4 purchases in
+  its five games). The census found every item of this list built by T93b to T94b but the
+  entrance: each resolved random dwelling's entrance on the map is now checked, and the most of
+  each class on one map is printed (the XL's counts).
 
 ### 15. Versions, rule ids, quirks
 
