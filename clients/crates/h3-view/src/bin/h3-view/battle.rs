@@ -597,6 +597,9 @@ pub struct Battle<'g> {
     /// and what its OK does. The battle (and the book, when the box is the book's) stands still
     /// behind it (its modal loop runs no idle step).
     message: Option<(h3_view::message::Open, u32, Asked)>,
+    /// When Auto Combat's question opened (E17 M6 T5b2a): the battle stands still from then
+    /// until the answer that gives its command (`Battle::answer`, `anim::Growing::hold`).
+    asked_at: Option<u32>,
     /// The combat options dialog open over the battle and when it opened (E17 M6 T4a; design
     /// §12.12): the battle stands as it was then (`battle_combat_options`' modal loop runs no
     /// idle step); a box over it (its help, the no-sound box) is `message`.
@@ -928,6 +931,7 @@ impl<'g> Battle<'g> {
             stats_memory: h3_view::stats::Memory::new(Bugs::Fixed),
             look_aim: false,
             message: None,
+            asked_at: None,
             options: None,
             options_arrow: false,
             options_save: false,
@@ -1058,7 +1062,7 @@ impl<'g> Battle<'g> {
         }
         self.head = Playhead::new(self.timeline());
         if asked {
-            self.open_question(end)?;
+            self.open_question(end);
         }
         Ok(())
     }
@@ -1196,7 +1200,7 @@ impl<'g> Battle<'g> {
         };
         let Some(played) = live.next()? else {
             // Auto Combat's question at the switch's own turn (E17 M6 T5b2a).
-            return self.open_question(at);
+            return Ok(self.open_question(at));
         };
         self.grow_from_waiting(at, played)?;
         Ok(true)
@@ -1206,28 +1210,19 @@ impl<'g> Battle<'g> {
     /// T5b2a, design §12.19; `crate::boxes::question`) at `at`, the battle standing still behind
     /// it; whether it opened (none waits, a box is open, or no text tables). *Not built* for a
     /// seat on a server: it plays no Auto Combat (`Battle::takes_auto`), so asks no question.
-    fn open_question(&mut self, at: u32) -> Result<bool, String> {
+    fn open_question(&mut self, at: u32) -> bool {
         let Some(question) = Fight::here_ref(self.fight.as_ref()).and_then(Live::question) else {
-            return Ok(false);
+            return false;
         };
         if self.message.is_some() {
-            return Ok(false);
-        }
-        // No stack outlined behind it (Auto Combat's switch over a stack that plays itself
-        // empties the active stack, §12.18 (2)): the turn waiting shown so, followed again.
-        if let Played::Waiting(growing, tail) = &mut self.played
-            && growing.unoutline(at.max(growing.timeline().end))
-        {
-            **tail = growing.waiting();
-            self.head = Playhead::new(self.timeline());
-            self.follow()?;
+            return false;
         }
         // The resources' pictures' DEF, for its size (the offer's gold).
         let def = self.ground.layout.message.resources.clone();
         let size = match question {
             crate::live::Question::Offer { .. } => {
                 if self.load_names(vec![def.to_ascii_uppercase()]).is_err() {
-                    return Ok(false);
+                    return false;
                 }
                 self.batch.sprite(&def).map_or([0, 0], |s| {
                     [s.def.width, s.def.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
@@ -1236,31 +1231,34 @@ impl<'g> Battle<'g> {
             crate::live::Question::Retreat => [0, 0],
         };
         let (Some(writer), Some(own)) = (self.ground.writer.as_ref(), self.own_view()) else {
-            return Ok(false);
+            return false;
         };
         let hero_types = &self.record.header.manifest.keys.hero_types;
         let (text, picture, asked) =
             crate::boxes::question(question, &own, hero_types, &writer.catalogue, (&def, size));
-        Ok(self.tell(at, &text, (Style::OkCancel, picture.as_ref()), asked))
+        let opened = self.tell(at, &text, (Style::OkCancel, picture.as_ref()), asked);
+        if opened && self.asked_at.is_none() {
+            self.asked_at = Some(at);
+        }
+        opened
     }
 
     /// The human's answer `ok` at `at` to Auto Combat's question or offer, its box closed (E17 M6
     /// T5b2a, `Live::answer`): the computer's command for the side (the stack's action, the
-    /// Retreat or the Surrender) starts at `at`, the battle having stood still behind the box
-    /// since the action's millisecond (`Growing::hold`: no idle step ran; the command the
-    /// computer's, *provisional*); or the offer's box opens at once. Whether anything changed.
+    /// Retreat or the Surrender) starts at `at`, the battle having stood still behind the boxes
+    /// since the question opened (`Growing::hold`: its outline kept, no idle step, the loop's one
+    /// tick at the answer; recorded); or the offer's box opens at once. Whether anything changed.
     pub fn answer(&mut self, at: u32, ok: bool) -> Result<bool, String> {
         let (Some(live), Played::Waiting(..)) = (Fight::here(self.fight.as_mut()), &self.played)
         else {
             return Ok(false);
         };
         let Some(played) = live.answer(ok)? else {
-            return self.open_question(at);
+            return Ok(self.open_question(at));
         };
         let placeholder = Played::Finished(Box::default());
         if let Played::Waiting(mut growing, _) = std::mem::replace(&mut self.played, placeholder) {
-            let end = growing.timeline().end;
-            growing.hold((end, at));
+            growing.hold((self.asked_at.take().unwrap_or(at), at));
             self.played = Played::Growing(growing);
             self.take(None, played)?;
         }

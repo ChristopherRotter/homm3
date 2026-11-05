@@ -1191,7 +1191,8 @@ def timeline(states, heroes=False):
 
 
 def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, frames=False,
-             hot_seat=False, heroes=False, screens=False, fail=(), key="Right"):
+             hot_seat=False, heroes=False, screens=False, fail=(), key="Right", experience=None,
+             wait_idle=False):
     """The battle of the map: its opening, `pre` ms on, the actions, then `ms` steps of 1 ms,
     each followed by the game's state (h3mem); returns the states (times in ms after the
     opening, the clocks relative to it). An action `at:<ms>` (M3 T1a) steps 1 ms at a time, each
@@ -1207,7 +1208,14 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     (`changed`), which the timeline lists. With `fail` (M3 T7b-2b-1) every draw of those rolls
     (ROLLS) fails them but those a `roll:` action forces; a forced draw no roll took fails the
     sequence. `key` steps the hero into the battle (E17 M4 T2b: `Up` into a siege's town). Each
-    state holds the hovered dialog item (E17 M4 T3b, `h3mem.Mem.hovered_item`)."""
+    state holds the hovered dialog item (E17 M4 T3b, `h3mem.Mem.hovered_item`). `experience`
+    (E17 M6 T5b2a, `scenario_experience`) maps a player's colour to its hero's experience,
+    written into the game's memory on the adventure map before the battle (the map gives none:
+    the original would level the hero up for it as the game starts). With `wait_idle` (E17 M6
+    T5b2a, an entry's `wait_idle = true`) each action at the frozen clock is followed by a wait
+    until the game has read the stopped clock 500 times (idle again): a computer's decision longer
+    than the action's settle (Auto Combat's retreat test over 3000 Wolf Riders, its question's
+    box drawn after the state was read) is over before the next state is read."""
     import hashlib
     import json
 
@@ -1224,6 +1232,8 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         h3adv.to_hot_seat(game, ["Red", "Blue"], gold=True)
     else:
         to_scenario(game, gold=True)
+    if experience:
+        write_experience(experience)
     if game.sound:
         sounds_settled(game)
         heard = len(sounds(game))  # the samples before the step into the battle (R7-1)
@@ -1313,6 +1323,8 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
             turns.append(now - t0)
         else:
             act(game, a)
+            if wait_idle:
+                game.clock("step 0", settle_reads=500, timeout=60.0)
     if not stalled:
         states.append(state(now))
         for _ in range(ms):
@@ -1347,6 +1359,35 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
                 if "kept" in s:
                     f.write(json.dumps({"frame": s.pop("kept"), **s}) + "\n")
     return states
+
+
+def scenario_experience(set_path, entry):
+    """The experience of each side's hero by its player's colour (E17 M6 T5b2a, design §12.19):
+    the scenario's retreat facts (`[scenario.attacker_retreat]`, Red's hero;
+    `[scenario.defender_retreat]`, Blue's), those above 0, for `sequence`'s `experience`."""
+    scenario = tomllib.loads((set_path.parent / entry["scenario"]).read_text())["scenario"]
+    found = {}
+    for colour, side in enumerate(("attacker", "defender")):
+        value = scenario.get(f"{side}_retreat", {}).get("experience", 0)
+        if value:
+            found[colour] = value
+    return found
+
+
+def write_experience(experience):
+    """Each player's hero's experience (`sequence`'s `experience`, E17 M6 T5b2a), checked: the
+    player of a colour has one hero (the situations' maps)."""
+    import h3mem
+
+    mem = h3mem.Mem()
+    for colour, value in sorted(experience.items()):
+        owned = [h for h in mem.heroes() if h["owner"] == colour]
+        if len(owned) != 1:
+            raise RuntimeError(f"player {colour} has {len(owned)} heroes, not one: no experience "
+                               "written")
+        mem.write_experience(owned[0]["index"], value)
+        if mem.hero(owned[0]["index"])["experience"] != value:
+            raise RuntimeError(f"player {colour}'s hero's experience not written")
 
 
 def sequence_command(map_path, out, rest):
@@ -1436,7 +1477,8 @@ def run_sequences(rest):
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                      hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False),
                      screens=e.get("screens", False), fail=e.get("fail", ()),
-                     key=e.get("key", "Right"))
+                     key=e.get("key", "Right"), experience=scenario_experience(set_path, e),
+                     wait_idle=e.get("wait_idle", False))
         finally:
             game.stop()
         recorded = set_path.parent / e["timeline"]
@@ -1597,7 +1639,8 @@ def run_frames(rest):
             try:
                 sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                          frames=True, hot_seat=e.get("hot_seat", False), fail=e.get("fail", ()),
-                         key=e.get("key", "Right"))
+                         key=e.get("key", "Right"), experience=scenario_experience(set_path, e),
+                     wait_idle=e.get("wait_idle", False))
             finally:
                 game.stop()
         kept = [json.loads(line) for line in (here / "frames.jsonl").read_text().splitlines()]

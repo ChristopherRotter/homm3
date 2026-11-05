@@ -511,7 +511,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let snapshot = record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
-        // Each held from the command before's end (the first from `pre`, the switch's).
+        // Each held from its box's opening: the first command's at `pre` (the switch's), a
+        // later one's at the end of the command before (0: at least there).
         let held: Vec<(usize, u32, u32)> = (holds.iter())
             .map(|&(i, until)| (i, if i == 0 { sequence.pre } else { 0 }, until))
             .collect();

@@ -1,0 +1,324 @@
+# The original's kept frames (h3drive.py frames): numbers only.
+
+[[frame]]
+t = 0
+file = "t00000b.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 1000
+file = "t01000.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2000
+file = "t02000.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2200
+file = "t02200.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2266
+file = "t02266.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2333
+file = "t02333.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2400
+file = "t02400.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2466
+file = "t02466.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2533
+file = "t02533.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2600
+file = "t02600.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2666
+file = "t02666.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2733
+file = "t02733.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2800
+file = "t02800.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2866
+file = "t02866.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 2933
+file = "t02933.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3000
+file = "t03000.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3066
+file = "t03066.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3133
+file = "t03133.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3200
+file = "t03200.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3266
+file = "t03266.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3333
+file = "t03333.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3400
+file = "t03400.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3466
+file = "t03466.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3533
+file = "t03533.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3600
+file = "t03600.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3666
+file = "t03666.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3733
+file = "t03733.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3800
+file = "t03800.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3866
+file = "t03866.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 3933
+file = "t03933.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4000
+file = "t04000.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4066
+file = "t04066.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4133
+file = "t04133.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4200
+file = "t04200.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4266
+file = "t04266.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4333
+file = "t04333.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4400
+file = "t04400.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4466
+file = "t04466.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4533
+file = "t04533.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4600
+file = "t04600.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4666
+file = "t04666.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4733
+file = "t04733.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4799
+file = "t04799.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4866
+file = "t04866.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4933
+file = "t04933.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
+
+[[frame]]
+t = 4999
+file = "t04999.npz"
+fidgets = []
+heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]

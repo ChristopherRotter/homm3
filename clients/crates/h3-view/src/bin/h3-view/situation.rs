@@ -6,10 +6,10 @@
 //! machines (E17 M3 T3b: their artifacts) and its spell book (M3 T7a-2a: the book in its slot,
 //! its spells, and the school skills behind its masteries, M3 T7a-2b), the secondary skills
 //! behind its battle effects (M3 T7b-2b-2a: Leadership for its morale, Luck for its luck) and its
-//! tactics level (E17 M5 T4c2a: Tactics, the phase with it), no other skills or artifacts; its
-//! experience and a Tavern town of its player by the scenario's retreat facts (E17 M6 T5b2a: what
-//! the computer's retreat test reads, Auto Combat's question); stepping Red's hero east starts
-//! the battle
+//! tactics level (E17 M5 T4c2a: Tactics, the phase with it), no other skills or artifacts, no
+//! experience (the harness writes the retreat facts' into the original's memory, E17 M6 T5b2a)
+//! and a Tavern town of its player by the scenario's retreat facts (what the computer's retreat
+//! test reads, Auto Combat's question); stepping Red's hero east starts the battle
 //! (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
 //! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
@@ -360,8 +360,9 @@ const TAVERN: u8 = 6;
 /// The Tavern towns of the sides whose retreat facts have one (E17 M6 T5b2a, design §12.19,
 /// *provisional*): each its player's, with a Tavern, its entrance in the map's south-west (Red)
 /// or south-east (Blue) corner, in its north when Blue's `tile` lies in the south. The other
-/// facts: the experience is the hero's ([`map`]); an artifacts' worth or a hero wanted by the
-/// victory condition are not written (an error: *not built*).
+/// facts: the experience is the harness's (written into the original's memory, [`map`]); an
+/// artifacts' worth or a hero wanted by the victory condition are not written (an error: *not
+/// built*).
 fn tavern_towns(battle: &Sides, objects: &str, tile: (u8, u8)) -> Result<Vec<MapObject>, String> {
     let row = if tile.1 < 18 { 30 } else { 6 };
     let mut towns = Vec::new();
@@ -485,9 +486,11 @@ fn map(
             hero_type,
             class,
             name: None,
-            // The retreat facts' (E17 M6 T5b2a; *provisional*: whether the original levels such
-            // a hero up as the game starts is the recording's to tell, `hero:primary`).
-            experience: Some(battle.retreat[owner].experience),
+            // None (E17 M6 T5b2a, recorded: the original levels a hero up for its map's
+            // experience as the game starts (5000: level 5, its primary and secondary skills
+            // raised), so the retreat facts' experience is the harness's, written into the
+            // game's memory before the battle, `h3drive.scenario_experience`).
+            experience: Some(0),
             // The school skills behind the masteries (E17 M3 T7a-2b; none without a book), then
             // those behind the battle effects (T7b-2b-2a).
             skills: Some(
@@ -853,7 +856,8 @@ mod tests {
 
     #[test]
     fn the_retreat_facts_give_the_hero_s_experience_and_a_tavern_town() {
-        // E17 M6 T5b2a: Red's experience in its hero, its Castle with a Tavern in the map's
+        // E17 M6 T5b2a: no experience in Red's hero (the harness writes it into the original's
+        // memory: the map's would level the hero up), its Castle with a Tavern in the map's
         // south-west (north-west when the battle lies in the south); Blue's Stronghold has none
         // in `TOWNS`; an artifacts' worth is not written.
         let mut battle = sides_of(Some("grass"), &[]);
@@ -866,7 +870,7 @@ mod tests {
         let Some(MapObject::Hero(red)) = map.objects.first() else {
             panic!("Red's hero");
         };
-        assert_eq!(red.experience, Some(5000));
+        assert_eq!(red.experience, Some(0));
         let towns = tavern_towns(&battle, TOWNS, BLUE_TILE).unwrap();
         let [MapObject::Town(town)] = &towns[..] else {
             panic!("one town: {towns:?}");
