@@ -51,6 +51,36 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "TWN-SIE-001"
+title    = "Who defends a siege"
+context  = "town"
+status   = "implemented"
+summary  = "A siege is the battle a step starts at a town of another team or of none that it finds defended (TWN-VIS-001), fought at the town's entrance as the battle of its town (`BattleStart::town`: the town's facts, the defending hero's bonuses, its terrain; TWN-SIE-003 to -005), the attacker staying on the tile it attacked from (ADV-OBJ-003's neighbour mode: the step paid, ADV-MOV-006's drop). Its defender: a visitor of another team than the attacker's, the garrison merged into its army first (TWN-SIE-002), comes with E09 T8b2b (until then such a town is refused, `TWN-STUB-7`); without a visitor the garrison as an army without a hero, its stacks by slot as they stand, unsplit, in the town's formation (the map's byte, design section 8, *agent's call*): an owned town's on its owner's side, who plays it outside its turn as a mine's guards (`Defender::Garrison`, ADV-MIN-002), a neutral town's on the neutral seat, played by the system actor (`Defender::Guards`, *agent's call*: no new variant). A garrison hero (survey section 9.1's first and third rows) comes with increment 3. E09 T8b2a (design section 10): `AdventureState::town_visit`, `visit_town`, `siege_start`, `StaticMap::town_formation`; the game's `town::siege_setup` sets the garrison's formation."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b1; survey E09-towns.md sections 7.1, 7.2 and 9.1): hero_move_step's case 98 (0x480E3B) visits a town defended by town_defended (0x5BDFE0) from the neighbouring tile (visit_from_neighbour 0x480240); town_visit (0x4AB25A to 0x4AB338) then fights a siege: against the visitor (the garrison merged in first, garrison_merge 0x44B820) when there is one and no garrison hero, else against the garrison hero, else against the town's own army (+0xE0) without a hero; in a siege the defending side's player is the town's owner (+0x1; -1 neutral)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-1.md and E09-batch-1-run2.md, batch TWN-1 row TWN-1-4 (the capture harness under Wine, 2026-11-03; scored in survey E09-towns.md section 15): a defended town is attacked from the tile before, the attacker staying there with its points"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 9.5: CGTownInstance::onHeroVisit makes an enemy facing a garrison with stacks, a garrison hero or a visitor fight the visitor, else the garrison hero, else the town"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 10 (the defender: the visitor with the garrison merged in, else the garrison as an army without a hero, Defender::Garrison for an owned town, Defender::Guards for a neutral one) and section 8 (Holds::Town's formation, read when the garrison defends alone); docs/epics/E09-towns.md decision 16"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-SIE-003"
 title    = "The siege's facts from the town"
 context  = "town"
@@ -213,10 +243,10 @@ numeric  = "integer"
 
 [[rule]]
 id       = "TWN-VIS-001"
-title    = "The step onto a town's entrance: entered, captured or refused"
+title    = "The step onto a town's entrance: entered, captured or besieged"
 context  = "town"
 status   = "implemented"
-summary  = "A town is entered, not visited from above (ADV-OBJ-003, ADV-OBJ-004: the base type `town`). A hero's step onto its entrance is decided by the town's owner and garrison, for the hero's owner: a town of the hero's team (allied with its owner; the player alone until E10) is entered, the walk ending on the entrance with no service, no decision and no event beyond the step's (*agent's call*); a town of another player or of none without a creature in its garrison is entered and captured at once (`AdventureOutcome::capture`, which the game applies: TWN-CAP-001); one with a creature in its garrison is defended: the siege from the tile before (design §10, E09 T8b), until then refused as a visit not built (`AdventureCommandError::Visit`; the reachable tiles and the legal moves leave the entrance out, a flight passes over it; `TWN-STUB-7`). A visitor of another team defends a town too (TWN-VIS-002). E09 T8a2 (design §9): `AdventureState::visit_at`'s town branch (`town_defended`), `visit_town`."
+summary  = "A town is entered, not visited from above (ADV-OBJ-003, ADV-OBJ-004: the base type `town`). A hero's step onto its entrance is decided by the town's owner and garrison, for the hero's owner: a town of the hero's team (allied with its owner; the player alone until E10) is entered, the walk ending on the entrance with no service, no decision and no event beyond the step's (*agent's call*); a town of another player or of none without a creature in its garrison is entered and captured at once (`AdventureOutcome::capture`, which the game applies: TWN-CAP-001); one with a creature in its garrison is defended: visited from the tile before (ADV-OBJ-003's neighbour mode: the step paid, ADV-MOV-006's drop, the hero stays; the reachable tiles and the legal moves list the entrance as a destination, as a monster's; a flight passes over it), the siege (TWN-SIE-001; E09 T8b2a). A visitor of another team defends a town too (TWN-VIS-002): until its siege (E09 T8b2b) such a town is refused as a visit not built (`AdventureCommandError::Visit`; `TWN-STUB-7`). E09 T8a2 (design §9): `AdventureState::visit_at`'s town branch, `visit_town`; since T8b2a `town_visit` (the visit's mode for the player).
 numeric  = "integer"
 
   [[rule.source]]
@@ -239,7 +269,7 @@ id       = "TWN-VIS-002"
 title    = "A town's visitor: the hero on its entrance"
 context  = "town"
 status   = "implemented"
-summary  = "A town's visitor is the hero standing on its entrance (the first tile it is visited from), never stored: a hero that entered it, the main town's hero (TWN-SET-001), a hero moved onto the entrance (TWN-SET-010). A step onto another hero on a town's entrance meets it when it is of the mover's team (GAM-MET-001); one of another team defends the town, and the step is the siege from the tile before (design §10, E09 T8b), never a field battle (GAM-BAT-004): until then it is refused (`AdventureCommandError::Visit`; the reachable tiles and the legal moves leave the tile out, a flight passes over it; `TWN-STUB-7`). E09 T8a2 (design §9): `AdventureState::town_visitor`, `StaticMap::town_at`, `besieges` (the tile's object a town whose entrance it is, the object `visit_at` reads)."
+summary  = "A town's visitor is the hero standing on its entrance (the first tile it is visited from), never stored: a hero that entered it, the main town's hero (TWN-SET-001), a hero moved onto the entrance (TWN-SET-010). A step onto another hero on a town's entrance meets it when it is of the mover's team (GAM-MET-001); one of another team defends the town, and the step is the siege from the tile before (design §10, E09 T8b2b), never a field battle (GAM-BAT-004): until then it is refused (`AdventureCommandError::Visit`; the reachable tiles and the legal moves leave the tile out, a flight passes over it; `TWN-STUB-7`). E09 T8a2 (design §9): `AdventureState::town_visitor`, `StaticMap::town_at`, `besieges` (the tile's object a town whose entrance it is, the object `visit_at` reads)."
 numeric  = "integer"
 
   [[rule.source]]

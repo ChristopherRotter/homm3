@@ -2,19 +2,24 @@
 //! `E09-towns.md` §7, §8): the step onto a town's entrance by its owner's team and the town's
 //! garrison (TWN-VIS-001), the visitor, the hero standing on the entrance (TWN-VIS-002), and the
 //! capture of an undefended town with its reveal (TWN-CAP-001). The siege's end (E09 T8b1): its
-//! garrison's survivors and the capture after an attacker's win (TWN-CAP-003). The step onto a
-//! defended town, the siege's start, comes with E09 T8b2 (`TWN-STUB-7`); until then such a step is
-//! refused as a visit not built.
+//! garrison's survivors and the capture after an attacker's win (TWN-CAP-003). The siege's start
+//! (E09 T8b2a): a town its garrison alone defends is visited from the tile before, the siege
+//! against the garrison (TWN-SIE-001). A town a visitor of another team defends comes with E09
+//! T8b2b (`TWN-STUB-7`, the garrison's merge into the visitor's army, TWN-SIE-002); until then
+//! such a step is refused as a visit not built.
 
 use alloc::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content::{Formation, Ruleset};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 
-use crate::command::{AdventureEvent, AdventureEventKind, AdventureOutcome, Sink, Viewers};
+use crate::command::{
+    AdventureEvent, AdventureEventKind, AdventureOutcome, BattleStart, Defender, Sink, Viewers,
+};
 use crate::fog;
 use crate::persistent::BitGrid;
-use crate::setup::Pos;
+use crate::ruleset::{AdventureRuleset, Visit};
+use crate::setup::{Holds, Pos};
 use crate::state::{AdventureState, HeroOnMap, StaticMap, allied};
 
 /// What a town reveals to its owner (TWN-CAP-001; the town epic's design note §11): at the start
@@ -56,6 +61,23 @@ impl StaticMap {
                 .filter(|_| self.objects()[index].entrance(self) == Some(pos))
         })
     }
+
+    /// The formation of `town`'s garrison when it defends without a hero (E09 T8b2a; the town
+    /// epic's design note §8, *agent's call*: the map's byte, [`Holds::Town`]); none for a
+    /// `TownId` the map does not have.
+    pub fn town_formation(&self, town: TownId) -> Option<Formation> {
+        self.town_object(town)
+            .and_then(|index| holds_formation(&self.objects()[index].holds))
+    }
+}
+
+/// The formation `holds` names: a town's ([`Holds::Town`], which every town holds: the setup
+/// refuses another); none for every other holding.
+pub(crate) const fn holds_formation(holds: &Holds) -> Option<Formation> {
+    match holds {
+        Holds::Town { formation } => Some(*formation),
+        _ => None,
+    }
 }
 
 impl AdventureState {
@@ -77,8 +99,8 @@ impl AdventureState {
     /// sending such a hero to the town's visit): `other` is of another team and stands on a
     /// town's entrance, the town the tile's object ([`Self::tile_index`], the object
     /// [`Self::visit_at`] reads, so that the step and the reachable tiles meet the same one). The
-    /// step and the reachable tiles refuse it until the siege (E09 T8b, `TWN-STUB-7`), never a
-    /// field battle.
+    /// step and the reachable tiles refuse it until the siege against a visitor (E09 T8b2b,
+    /// `TWN-STUB-7`), never a field battle.
     // rule: TWN-VIS-002
     #[inline(never)]
     pub(crate) fn besieges(&self, player: PlayerId, other: &HeroOnMap) -> bool {
@@ -90,42 +112,99 @@ impl AdventureState {
             })
     }
 
-    /// Whether the town at object index `index` is defended against `player`'s hero
-    /// (TWN-VIS-001's second case; survey `E09-towns.md` §7.1, the original's `town_defended`
-    /// 0x5BDFE0): its owner of another team or none and a creature in its garrison, or, whoever
-    /// owns it, a visitor of another team (TWN-VIS-002). The step meets a visitor first and
-    /// refuses it ([`Self::besieges`]); the walking search, which leaves such a hero's tile
-    /// unmarked, meets it here. Until the siege (E09 T8b, `TWN-STUB-7`) the step onto a defended
-    /// town is refused as a visit not built, and the reachable tiles leave it out.
+    /// How `player`'s hero visits the town at object index `index` (TWN-VIS-001; survey
+    /// `E09-towns.md` §7.1, the original's step 0x480E3B with `town_defended` 0x5BDFE0): entered
+    /// ([`Visit::Enter`], the type's) when the town is of its team or undefended; from the tile
+    /// before ([`Visit::Neighbour`], ADV-OBJ-003's neighbour mode: the step paid, ADV-MOV-006's
+    /// drop, the hero stays; E09 T8b2a) when its owner is of another team or none and a creature
+    /// stands in its garrison, the siege against the garrison ([`Self::visit_town`],
+    /// TWN-SIE-001). None, whoever owns it, when a visitor of another team stands on its entrance
+    /// (TWN-VIS-002): the siege against that visitor comes with E09 T8b2b (`TWN-STUB-7`), until
+    /// then the visit is not built. The step meets such a visitor first and refuses it
+    /// ([`Self::besieges`]); the walking search, which leaves its tile unmarked, meets it here.
     // rule: TWN-VIS-001, TWN-VIS-002
     #[inline(never)]
-    pub(crate) fn town_defended(&self, index: usize, player: PlayerId) -> bool {
+    pub(crate) fn town_visit(&self, index: usize, player: PlayerId) -> Option<Visit> {
         let map = self.map();
+        // stub: TWN-STUB-7 (a visitor of another team defends it: the siege against it, T8b2b)
+        let visitor = map.objects()[index].entrance(map).is_some_and(|entrance| {
+            self.heroes()
+                .iter()
+                .any(|hero| hero.pos == entrance && !allied(hero.owner, player))
+        });
+        if visitor {
+            return None;
+        }
         let own = self.owner(index).is_some_and(|owner| allied(owner, player));
-        (!own
+        let defended = !own
             && self
                 .town_garrison(index)
-                .is_some_and(|army| !army.is_empty()))
-            || map.objects()[index].entrance(map).is_some_and(|entrance| {
-                self.heroes()
-                    .iter()
-                    .any(|hero| hero.pos == entrance && !allied(hero.owner, player))
-            })
+                .is_some_and(|army| !army.is_empty());
+        Some(if defended {
+            Visit::Neighbour
+        } else {
+            Visit::Enter
+        })
     }
 
-    /// The visit of the town at object index `index` by `player`'s hero, which entered it
-    /// (TWN-VIS-001; the town epic's design note §9; survey `E09-towns.md` §7.2, the original's
-    /// `town_visit` 0x4AAFD0): a town of the hero's team gives nothing (no service, no decision,
-    /// no event beyond the step's, *agent's call*); another player's or a neutral one, which the
-    /// step entered undefended, the capture ([`AdventureOutcome::capture`]), which the game
-    /// applies at once ([`Self::capture_town`]).
-    // rule: TWN-VIS-001
-    pub(crate) fn visit_town(&self, player: PlayerId, index: usize) -> AdventureOutcome {
+    /// The visit of the town at object index `index` by `player`'s hero `hero` (TWN-VIS-001; the
+    /// town epic's design note §9; survey `E09-towns.md` §7.2, the original's `town_visit`
+    /// 0x4AAFD0), as [`Self::town_visit`] said the step makes it (`mode`): a town of the hero's
+    /// team gives nothing (no service, no decision, no event beyond the step's, *agent's call*);
+    /// another player's or a neutral one, which the step entered undefended, the capture
+    /// ([`AdventureOutcome::capture`]), which the game applies at once ([`Self::capture_town`]);
+    /// one its garrison defends, visited from the tile before, the siege (E09 T8b2a; the town
+    /// epic's design note §10, survey §9.1's last row: [`Self::siege_start`]).
+    // rule: TWN-VIS-001, TWN-SIE-001
+    pub(crate) fn visit_town(
+        &self,
+        part: &AdventureRuleset,
+        (player, hero): (PlayerId, HeroId),
+        (index, mode): (usize, Visit),
+    ) -> AdventureOutcome {
+        if mode == Visit::Neighbour {
+            return AdventureOutcome {
+                battle: self.siege_start(part, hero, index),
+                ..AdventureOutcome::default()
+            };
+        }
         let own = self.owner(index).is_some_and(|owner| allied(owner, player));
         AdventureOutcome {
             capture: self.map().town_id(index).filter(|_| !own),
             ..AdventureOutcome::default()
         }
+    }
+
+    /// The siege the hero `hero` starts against the garrison of the town at object index `index`
+    /// (TWN-SIE-001; E09 T8b2a; the town epic's design note §10; survey `E09-towns.md` §9.1's
+    /// last row, `town_visit` 0x4AB25A to 0x4AB338): the garrison as an army without a hero, its
+    /// stacks by slot as they stand, unsplit: its owner's side for an owned town
+    /// ([`Defender::Garrison`], played by its owner outside its turn, as a mine's guards,
+    /// ADV-MIN-002), the neutral seat's for a neutral one ([`Defender::Guards`], *agent's call*: no
+    /// new variant); fought at the town's entrance ([`Self::battle_at`]) as the battle of its town
+    /// ([`BattleStart::town`]), which the game builds from the town (TWN-SIE-003 to -005). None
+    /// when `hero` is not on the map or `index` is not a town's (the step checked both).
+    // rule: TWN-SIE-001
+    fn siege_start(
+        &self,
+        part: &AdventureRuleset,
+        hero: HeroId,
+        index: usize,
+    ) -> Option<BattleStart> {
+        let map = self.map();
+        let army = self.town_garrison(index).unwrap_or_default().to_vec();
+        let defender = match self.owner(index) {
+            Some(owner) => Defender::Garrison { owner, army },
+            None => Defender::Guards { army },
+        };
+        let entrance = map.objects()[index].entrance(map);
+        map.town_id(index)
+            .zip(entrance)
+            .zip(self.hero(hero))
+            .map(|((town, entrance), attacker)| BattleStart {
+                town: Some(town),
+                ..self.battle_at(part, attacker, defender, entrance)
+            })
     }
 
     /// Captures `town` for `player`, a player of the game (TWN-CAP-001; the town epic's design

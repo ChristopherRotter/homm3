@@ -395,30 +395,75 @@ fn an_undefended_town_of_another_player_or_none_is_entered_for_its_capture() {
     }
 }
 
-// covers: TWN-VIS-001
+// covers: TWN-VIS-001, TWN-SIE-001
 #[test]
-fn a_defended_town_of_another_player_or_none_is_refused_until_the_siege() {
-    // `TWN-STUB-7`: no step ends on or passes its entrance; a flight passes over it.
+fn a_town_its_garrison_defends_is_besieged_from_the_tile_before() {
+    // Blue's or a neutral town with a garrison: a walker, a water walker and a flyer each reach
+    // its entrance as a destination from the tile below, as a monster's; the step is paid with
+    // its drop and the hero stays; the siege against the garrison at the entrance, the town's
+    // battle, its owner's side or the neutral seat's (survey §9.1's last row).
     let rules = town_rules();
     let (flyer, walker) = (store(&[(FLYING, 3)]), store(&[(WATER_WALKING, 3)]));
     for owner in [Some(1), None] {
-        let mut state = at_town(&rules, owner, garrison(), (FAR, None));
-        let before = state.clone();
-        for heroes in [&[][..], &walker] {
+        for heroes in [&[][..], &walker, &flyer] {
+            let mut state = at_town(&rules, owner, garrison(), (FAR, None));
+            let army = state.town_garrison(0).unwrap().to_vec();
             let reach = state.reach(&rules.0, &rules.1, heroes, HERO).unwrap();
-            assert_eq!(reach.points_left(ENTRANCE), None);
+            assert_eq!(reach.path(ENTRANCE), Some(vec![ENTRANCE]));
+            let left = reach.points_left(ENTRANCE).unwrap();
+            // A walk's visit ends the move there; a flight passes over it (ADV-MOV-009, as over a
+            // monster's tile) and reaches the tile above.
+            let past = walk(&rules, &mut state.clone(), heroes, &[ENTRANCE, p(5, 4)]);
+            if heroes == &flyer[..] {
+                assert!(past.unwrap().0.battle.is_none());
+                assert!(reach.points_left(p(4, 3)).is_some());
+            } else {
+                assert_eq!(
+                    past.unwrap_err(),
+                    AdventureCommandError::PastVisit { step: 1 }
+                );
+            }
+            let (outcome, events) = walk(&rules, &mut state, heroes, &[ENTRANCE]).unwrap();
+            let battle = outcome.battle.clone().unwrap();
             assert_eq!(
-                walk(&rules, &mut state, heroes, &[ENTRANCE]).unwrap_err(),
-                AdventureCommandError::Visit { step: 0 }
+                outcome,
+                AdventureOutcome {
+                    battle: Some(battle.clone()),
+                    ..AdventureOutcome::default()
+                }
             );
-            assert_eq!(state, before);
+            let defender = match owner {
+                Some(owner) => Defender::Garrison {
+                    owner: PlayerId::new(owner),
+                    army: army.clone(),
+                },
+                None => Defender::Guards { army: army.clone() },
+            };
+            assert_eq!(battle.defender, defender);
+            assert_eq!(
+                (battle.attacker.hero, battle.tile, battle.town),
+                (HERO, ENTRANCE, Some(TownId::new(0)))
+            );
+            // The hero has not moved: no step's event; nothing else changed yet.
+            assert!(events.is_empty(), "{events:?}");
+            let hero = state.hero(HERO).unwrap();
+            assert_eq!((hero.pos, hero.movement), (p(4, 5), left));
+            assert_eq!(state.owner(0), owner.map(PlayerId::new));
+            assert_eq!(state.town_garrison(0), Some(&army[..]));
+            assert_eq!(state.town_visitor(TownId::new(0)), None);
         }
-        let reach = state.reach(&rules.0, &rules.1, &flyer, HERO).unwrap();
-        assert_eq!(reach.points_left(ENTRANCE), None);
-        assert!(reach.points_left(p(4, 3)).is_some());
-        walk(&rules, &mut state, &flyer, &[ENTRANCE, p(5, 4)]).unwrap();
-        assert_eq!(state.hero(HERO).unwrap().pos, p(5, 4));
     }
+    // Red's own town with a garrison is entered, not besieged (TWN-VIS-001's first case).
+    let mut state = at_town(&rules, Some(0), garrison(), (FAR, None));
+    let (outcome, _) = walk(&rules, &mut state, &[], &[ENTRANCE]).unwrap();
+    assert_eq!(outcome, AdventureOutcome::default());
+    // The garrison's formation is the map's (the town epic's design note §8).
+    assert_eq!(
+        state.map().town_formation(TownId::new(0)),
+        Some(Formation::Loose)
+    );
+    assert_eq!(state.map().town_formation(TownId::new(1)), None);
+    assert_eq!(crate::town::holds_formation(&Holds::Nothing), None);
 }
 
 // covers: TWN-VIS-002

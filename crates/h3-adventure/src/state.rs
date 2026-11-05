@@ -2133,7 +2133,9 @@ impl AdventureState {
     /// nothing given, no question. Since E08 T84a a mine ([`Self::visit_mine`]), since T84b1 a
     /// Lighthouse ([`Self::visit_lighthouse`]) and a weekly object ([`Self::visit_weekly`]), since
     /// T84b2 a Shipyard ([`Self::visit_shipyard`]), since T95a1 a dwelling
-    /// ([`Self::visit_dwelling`]) and a Refugee Camp ([`Self::visit_refugee_camp`]).
+    /// ([`Self::visit_dwelling`]) and a Refugee Camp ([`Self::visit_refugee_camp`]). Since E09
+    /// T8a2 a town ([`Self::visit_town`]: entered, or captured; since T8b2a besieged from the tile
+    /// before).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001
     fn visit<S: Sink>(
@@ -2214,7 +2216,9 @@ impl AdventureState {
                     self.visit_dwelling((core, rules.1), (player, hero), object, creatures, sink);
             }
             Effect::Camp => outcome = self.visit_refugee_camp((player, hero), object, sink),
-            Effect::Town => outcome = self.visit_town(player, visit.object),
+            Effect::Town => {
+                outcome = self.visit_town(rules.1, (player, hero), (visit.object, visit.mode));
+            }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {
@@ -2494,11 +2498,12 @@ impl AdventureState {
     /// the player passes it instead and what the visit does. The visit mode is the type's, but per
     /// player: a border gate whose key `player` holds is passed, not visited (ADV-VIS-005, E08
     /// T15b; the original's step, 0x480EE2, and its pathfinder, 0x56ABB1, test the player's key
-    /// bit). Since E09 T8a2 a town defended against `player` is not visited until the siege
-    /// (TWN-VIS-001's second case, [`Self::town_defended`], `TWN-STUB-7`). `MoveHero` and the
-    /// reachable-tiles query both ask here. The caller has checked that `pos` is visitable as it
-    /// stands now. Out of line, as the compiler kept it before the town's test, which made it
-    /// inline it into the walking search (`bench-check`, E09 T8a2).
+    /// bit); a town ([`Self::town_visit`], TWN-VIS-001) its garrison defends against `player` is
+    /// visited from the tile before, the siege (E09 T8b2a), and one a visitor of another team
+    /// defends is not visited until the siege against it (`TWN-STUB-7`, E09 T8b2b). `MoveHero`
+    /// and the reachable-tiles query both ask here. The caller has checked that `pos` is
+    /// visitable as it stands now. Out of line, as the compiler kept it before the town's test,
+    /// which made it inline it into the walking search (`bench-check`, E09 T8a2).
     // rule: ADV-VIS-005, TWN-VIS-001
     #[inline(never)]
     pub(crate) fn visit_at<'p>(
@@ -2508,15 +2513,16 @@ impl AdventureState {
         pos: Pos,
     ) -> Option<StepVisit<'p>> {
         let (object, object_type, ty) = self.tile_object(part, pos)?;
-        // stub: TWN-STUB-7 (a defended town of another team or none is refused until the siege)
-        let open = |effect: &Effect<'_>| {
-            !matches!(effect, Effect::Town) || !self.town_defended(object, player)
+        let effect = ty.kind.effect()?;
+        let mode = match effect {
+            Effect::Town => self.town_visit(object, player)?,
+            _ => ty.visit,
         };
-        ty.kind.effect().filter(open).map(|effect| StepVisit {
+        Some(StepVisit {
             object,
             object_type,
             tile: pos,
-            mode: ty.visit,
+            mode,
             pass: matches!(effect, Effect::Gate(key) if self.has_key(player, key)),
             from_above: ty.from_above,
             effect,
@@ -2582,7 +2588,7 @@ impl AdventureState {
         // in a battle at once (E08 T19a), an own one in a meeting (T50); not across the top of an
         // object's tile it stands on or the visitor stands on. Since E09 T8a2 another team's
         // hero on a town's entrance is refused ([`Self::besieges`]: the siege, never a field
-        // battle, E09 T8b).
+        // battle, E09 T8b2b).
         // rule: GAM-BAT-004, GAM-MET-001, TWN-VIS-002
         if let Some(other) = self
             .heroes
@@ -2592,7 +2598,7 @@ impl AdventureState {
             if closed() {
                 return Err(AdventureCommandError::FromAbove { step });
             }
-            // stub: TWN-STUB-7 (another team's hero on a town's entrance: the siege, E09 T8b)
+            // stub: TWN-STUB-7 (another team's hero on a town's entrance: the siege, E09 T8b2b)
             if self.besieges(player, &self.heroes[other]) {
                 return Err(AdventureCommandError::Visit { step });
             }
