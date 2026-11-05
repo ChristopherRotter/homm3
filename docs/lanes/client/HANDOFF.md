@@ -18,7 +18,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#722). **T4c done** (kept whole by the user: the grid, the movement and cursor shadows, the
   aims' shades, F6 to F8 saved at once, §12.16; CLT-Q52 to Q56 answered, all fixed; 11 stills
   exact, 5 sequences; #729 merged). T4 done. **T5** cut in four by the user (2026-11-05):
-  **T5a done** (design §12.17; the PR from `client/e17-m6-t5a`: check it first). **Next: T5b**
+  **T5a done** (design §12.17; PR #736 from `client/e17-m6-t5a`: check it first). **Next: T5b**
   (the Auto Combat bot's casts and retreat question), T5c, T5d (QUEUE), T6, T7; then M7 ranked
   play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -53,7 +53,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-05, E17 M6 T5a (done; the PR from `client/e17-m6-t5a`: check it first).**
+- **2026-11-05, E17 M6 T5a (done; PR #736: check it first).**
   The original data staged (57 files, by the file tool; the device dropped twice, nothing lost);
   the baseline's `check.sh` passed. The user cut T5 in four and chose T5a. A reader (§12.17;
   CLT-Q57 to Q60 asked and answered at once: Q57 and Q60 fixed, Q58 and Q59 copied
