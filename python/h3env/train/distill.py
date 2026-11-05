@@ -34,10 +34,10 @@ at a batch boundary every `checkpoint_minutes` of wall clock, after each evaluat
 and at the end: each student's network and AdamW state, seconds, rows and peak memory, the
 samples seen (the learning rate's warm-up and fall continue), the next evaluation, the report so
 far (its evaluations) and the teacher's statistics; the held-out set is written once
-(`heldout.npz`), a network teacher copied (`teacher.pt`). Ctrl-C stops it at the next minibatch
-or teacher's batch call (a batch cut short counts its samples pro rata of the steps taken, one
-the teacher is still playing is dropped), scored and saved; a second Ctrl-C aborts at once,
-losing what came after the last checkpoint.
+(`heldout.npz`, compressed: the observations are sparse), a network teacher copied
+(`teacher.pt`). Ctrl-C stops it at the next minibatch or teacher's batch call (a batch cut short
+counts its samples pro rata of the steps taken, one the teacher is still playing is dropped),
+scored and saved; a second Ctrl-C aborts at once, losing what came after the last checkpoint.
 `--resume DIR` continues it in a new segment to its budget, as the trainer's segments do: the
 teacher plays new battles on the segment's seed (`run.segment_seed`), the metrics are cut back to
 the checkpoint, the report is the whole run's (`segments`: each one's seed, start, device and
@@ -706,7 +706,7 @@ def go(
                 report["teacher"]["heldout"] = {
                     k: v for k, v in held.stats.items() if k != "seconds"
                 }
-            atomic_write(out / HELDOUT, lambda f: np.savez(f, **heldout))
+            atomic_write(out / HELDOUT, lambda f: np.savez_compressed(f, **heldout))
             samples, next_eval, horizon = 0, 0, bench.samples
         else:
             report = json.loads(state["report"])

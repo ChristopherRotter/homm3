@@ -55,7 +55,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - The branch started from `master` with T26's records (`claude/determined-mayer-t1waz5`, no pull
   request). The setup's baseline ran only the light gates (code verified on `master`); `cargo
   build --release -p h3-ffi` 56 s, `uv sync --group train` from the cache. The Python suite 241
-  (3.5 minutes); the stop-and-resume smoke of T25's clone (in progress: see the log entry).
+  (3.5 minutes); the stop-and-resume smoke of T25's clone by the command line 27 minutes
+  (`E25-log.md` T26a), which showed the held-out file's 156 MB (now compressed).
 
 ### 2026-11-04 — E25 T25
 
