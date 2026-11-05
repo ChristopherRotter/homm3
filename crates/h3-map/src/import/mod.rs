@@ -63,9 +63,12 @@ pub enum Unsupported {
     /// and 178: batch E8's E8-5 showed the original keeping such a hero on foot without a boat,
     /// VCMI gives it one; none of the shipped maps has one).
     HeroOnWater(usize),
-    /// The ownable object at this index has its entrance on water (E08 T83a; increment 9's design
-    /// note §4: how a hero reaches an entered object on water was not read, survey
-    /// `E08-economy.md` §4; none of the shipped maps has one).
+    /// The ownable object at this index, not a dwelling, has its entrance on water (E08 T83a;
+    /// increment 9's design note §4: how a hero reaches such an object on water was not read,
+    /// survey `E08-economy.md` §4; none of the shipped maps has one). A dwelling or a random
+    /// dwelling entered from water is supported since E08 T97b1 (map import v19; ADV-OWN-002,
+    /// ADV-DWL-004: a hero in a boat visits it as on land, survey `E08-dwellings.md` §17); until
+    /// then four shipped maps were refused for one.
     OwnedOnWater(usize),
 }
 
@@ -80,7 +83,7 @@ impl Unsupported {
             Self::HeroInTown(_) => "a hero standing in a town",
             Self::RewardArmy(_) => "a reward of more creature stacks than an army's slots",
             Self::HeroOnWater(_) => "a hero placed on water",
-            Self::OwnedOnWater(_) => "an ownable object entered from water",
+            Self::OwnedOnWater(_) => "an ownable object other than a dwelling entered from water",
         }
     }
 }
@@ -222,8 +225,8 @@ impl From<Unsupported> for ImportError {
 /// # Errors
 ///
 /// The first [`ImportError`] found: the static map, its first object with guards or reward
-/// creatures it cannot represent (or, since E08 T83a, an ownable object entered from water), the
-/// players' main towns (E09 T7a1), the towns in the map's order, then the hero objects in the
+/// creatures it cannot represent (or, since E08 T83a, an ownable object entered from water; since
+/// E08 T97b1 not a dwelling), the players' main towns (E09 T7a1), the towns in the map's order, then the hero objects in the
 /// map's order, the banned sets, the timed events and the pool's inputs.
 pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportError> {
     let (mut players, colours) = players(map);
@@ -370,9 +373,11 @@ fn skill_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SkillId>, ImportErr
 /// water) and an abandoned mine with its set of resources. Since E08 T93b the dwellings (17 and
 /// 20), the Refugee Camp (78) and the random dwellings (216 to 218) are typed, a dwelling and a
 /// random dwelling with its owner, a random dwelling with its faction set and level range
-/// ([`Holds::RandomDwelling`]); one tied to a town of the map stays a blocker (ADV-STUB-13), and
-/// classes 18 and 19 are refused. Since E09 T8a1 the towns (77 and 98) are typed, each with its
-/// owner and its garrison's formation ([`Holds::Town`]).
+/// ([`Holds::RandomDwelling`]); one tied to a town of the map stays a blocker (ADV-STUB-13), its
+/// levels and owner checked since E08 T97b1, and classes 18 and 19 are refused. Since E09 T8a1
+/// the towns (77 and 98) are typed, each with its owner and its garrison's formation
+/// ([`Holds::Town`]). Since E08 T97b1 a dwelling or a random dwelling entered from water is no
+/// longer refused (the whole [`import`] keeps refusing the other ownable kinds there).
 ///
 /// # Errors
 ///
@@ -417,11 +422,20 @@ fn static_layer(
         )?;
         unsupported = unsupported.or(what);
         // rule: ADV-OWN-002
-        let ownable = setup
+        // E08 T97b1: a dwelling or a random dwelling entered from water is built (a hero in a
+        // boat visits it as on land, survey `E08-dwellings.md` §17); the other ownable kinds keep
+        // the refusal.
+        let refused = setup
             .object_type
             .and_then(|id| rules.adventure().object_type(id))
-            .is_some_and(|ty| ty.kind.ownable());
-        if ownable && entrances(&setup).any(|pos| water_at(rules, (side, &tiles), pos)) {
+            .is_some_and(|ty| {
+                ty.kind.ownable()
+                    && !matches!(
+                        ty.kind,
+                        ObjectKind::Dwelling { .. } | ObjectKind::RandomDwelling
+                    )
+            });
+        if refused && entrances(&setup).any(|pos| water_at(rules, (side, &tiles), pos)) {
             unsupported = unsupported.or(Some(Unsupported::OwnedOnWater(index)));
         }
         placed.push(setup);
@@ -666,12 +680,13 @@ fn town_identifiers(objects: &[(usize, &Object, &Template)]) -> BTreeSet<u32> {
 
 /// A random dwelling's owner and holds (ADV-DWL-005, E08 T93b; increment 10's design note §4), or
 /// none for one tied to a town of the map (`towns`, its identifiers; ADV-STUB-13 until E09's random
-/// towns). The format gives 216 a town (or, for none, a faction set) and levels, 217 a town (or
-/// set) and 218 levels: what the body lacks the subclass gives, 217's level code and 218's
-/// faction code. The faction set is bit i for faction code i ([`codes::FACTIONS`]), in the core's
-/// order; the level codes 0 to 6 are levels 1 to 7. Checked in this order: the subclass (a level
-/// code past 6 or a faction code past 8: [`ImportError::Subclass`], A-36), the town (an identifier
-/// no town of the map has: [`ImportError::DwellingTown`], A-35), the faction set (a bit past 8:
+/// towns), once its levels and owner pass (E08 T97b1). The format gives 216 a town (or, for none,
+/// a faction set) and levels, 217 a town (or set) and 218 levels: what the body lacks the subclass
+/// gives, 217's level code and 218's faction code. The faction set is bit i for faction code i
+/// ([`codes::FACTIONS`]), in the core's order; the level codes 0 to 6 are levels 1 to 7. Checked
+/// in this order: the subclass (a level code past 6 or a faction code past 8:
+/// [`ImportError::Subclass`], A-36), the town (an identifier no town of the map has:
+/// [`ImportError::DwellingTown`], A-35), the faction set but for one tied to a town (a bit past 8:
 /// [`ImportError::UnknownCode`]; none: [`ImportError::DwellingFactions`], A-34; a faction the
 /// ruleset lacks: [`ImportError::MissingContent`]), the levels (a code past 6 or the lowest above
 /// the highest: [`ImportError::DwellingLevels`], A-36), the owner ([`object_owner`]).
@@ -689,22 +704,27 @@ fn random_dwelling(
     {
         return Err(ImportError::Subclass(index));
     }
-    let numbers: Vec<u32> = match &body.faction {
-        Some((0, set)) => set
-            .iter()
-            .flat_map(Bits::bytes)
-            .zip(0u32..)
-            .flat_map(|(&byte, i)| {
-                (0..8)
-                    .filter(move |b| byte >> b & 1 == 1)
-                    .map(move |b| 8 * i + b)
-            })
-            .collect(),
-        Some((town, _)) if towns.contains(town) => return Ok(None),
+    let numbers: Option<Vec<u32>> = match &body.faction {
+        Some((0, set)) => Some(
+            set.iter()
+                .flat_map(Bits::bytes)
+                .zip(0u32..)
+                .flat_map(|(&byte, i)| {
+                    (0..8)
+                        .filter(move |b| byte >> b & 1 == 1)
+                        .map(move |b| 8 * i + b)
+                })
+                .collect(),
+        ),
+        // Tied to a town of the map: its faction is the town's, drawn with it; the levels and the
+        // owner are checked as any random dwelling's (E08 T97b1, T97a's finding).
+        Some((town, _)) if towns.contains(town) => None,
         Some(_) => return Err(ImportError::DwellingTown(index)),
-        None => vec![subclass],
+        None => Some(vec![subclass]),
     };
-    let factions = faction_set(rules, index, &numbers)?;
+    let factions = numbers
+        .map(|numbers| faction_set(rules, index, &numbers))
+        .transpose()?;
     let levels = match body.levels {
         Some((low, high)) => {
             if low > high || u32::from(high) >= level_codes {
@@ -718,6 +738,10 @@ fn random_dwelling(
         }
     };
     let owner = object_owner(colours, index, body.owner)?;
+    // stub: ADV-STUB-13 (a random dwelling tied to a town: E09's random towns)
+    let Some(factions) = factions else {
+        return Ok(None);
+    };
     Ok(Some((owner, Holds::RandomDwelling { factions, levels })))
 }
 

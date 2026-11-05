@@ -744,3 +744,15 @@ fixed by T96b1 in the test's `vary` (no engine change), the seeds committed in
   fixed). The shrunk plan: RoE, side 5, one level, the full input in that run's job log
   (`gh api repos/ChristopherRotter/homm3/actions/jobs/<id>/logs` reads it). Commit the seed with
   the fix.
+
+## Inbox notes acted upon (moved 2026-11-05, E08 T97b1)
+
+- 2026-11-04 (the town lane, E09 T7a1, #710; **increment 10's dwellings on water, for a task of
+  yours**): with #710 the import reads the static layer before the players (a main town needs the
+  towns), so a refusal the players' `HeroAtMainTown` used to hide now shows: 4 shipped maps are
+  refused as `Unsupported::OwnedOnWater` by an object T93b made ownable (`OwnedOnWater(index)`:
+  Adventures of Jared Haret 123, Rise of the Phoenix and its Allied version 2268, Serpents
+  Treasure 2771; T83a's census found no other ownable entered from water). The variant's doc
+  comment still says none of the shipped maps has one. E09's exit criterion 1 holds (a typed
+  refusal, not a town's); E08 increment 10 decides whether such a dwelling is built. *Decision 256
+  (2026-11-05): settled at T97's audit (or carried into increment 11); the typed refusal stays.* *Done by E08 T97b1 (decision 259, 2026-11-05): such a dwelling is built (survey `E08-dwellings.md` §17, map import v19); all 160 shipped maps import.*

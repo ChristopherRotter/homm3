@@ -697,3 +697,47 @@ ADV-HIR-002, ADV-OWN-001; E10-7 ADV-DWL-005, ADV-DWL-002; E10-8 ADV-DWL-003, GAM
 amends. No `ADV-Q`; D-51 stays as decided (decision 238; E10-1 shows the reading's owner −1 at
 neutral dwellings, the owned case dropped with E10-2); A-34 to A-36 are refused at the import and
 not in the batch.
+
+## 17. A dwelling entered from water (T97b1)
+
+Read 2026-11-05 (E08 T97b1, decision 259; the inbox's note of 2026-11-04 and decision 256: four
+shipped maps were refused as `Unsupported::OwnedOnWater` for a dwelling whose entrance lies on
+water). The human player's path, a hero in a boat; the computer's (`ai_dwelling_visit`) not
+followed.
+
+- **The step.** A boat's search takes another entrance on water as a normal step (`E08-sea.md`
+  §4.1 point 3). The move: `hero_move_step`'s class switch (0x480C12) sends 17, 20 and 216 to 218
+  (the random ones are dwellings by the game's start) to its default case 0x480F27, where a class
+  whose `object_settings` +0 is clear (entered, not on the "cannot be entered" list) goes on as a
+  step (0x480F34 to 0x480CB5); after the step the tile's entrance bit (+0xD bit 0x10) sends a hero
+  in a boat to the visit without the flyer's test (0x48143B, 0x48145B). The hero stays in its boat
+  on the entrance.
+- **The visit and the hire.** `visit_dwelling` 0x4A18B0, `dwelling_offer_hire` 0x4ABA50 and
+  `visit_refugee_camp` 0x4A4600 (all read whole by T88a) hold no test of the hero's in-boat bit
+  (+0x105 bit 18, as 0x40000 or as a byte of +0x105 to +0x107) and no call to `hero_boat`
+  0x4CE900: the guards' question, the flag, the hire question, the free creatures and the hire
+  dialog (into the hero's army, `recruit_dialog_init` with it) are §4's and §5's.
+- **The guards' battle.** `adventure_battle` with the visitor attacking at the entrance;
+  `battle_setup_battlefield` 0x4643B0 tests the attacker's hero for the in-boat bit first, so it
+  is fought on water and the deck (`E08-sea.md` §7.1); a special ground on the tile would replace
+  the picture (none lies on water). After a win the hero stays in its boat; a loss or a retreat
+  frees its boat with it (`E08-sea.md` §7.3).
+- **VCMI 1.7.5:** on the sail layer a visitable object that is no boat, hero, town, garrison or
+  border gate is a `VISIT` (`lib/pathfinder/PathfindingRules.cpp`, `DestinationActionRule`);
+  `CGDwelling::onHeroVisit` tests no boat; the guards' battle (`startBattle` at the dwelling's
+  visitable tile) takes water's battlefield, the deck (`CGameState::battleGetBattlefieldType`,
+  `E08-sea.md` §7.4). **Wiki:** the Creature dwelling page says nothing of water or boats; the
+  Combat page's "Boat (Deck)" battlefield covers "monsters or locations on a boat" (§7.4).
+  **Consensus**: a dwelling entered from water is visited from a boat as on land.
+- **The engine** already behaves so (ADV-SEA-005: an entered object's tile on water is entered
+  from a boat; GAM-BAT-001: a battle with the attacker in a boat on the deck; `visit_dwelling`,
+  the hire question and `check_hire` know no boat), so only the import's refusal goes: a dwelling
+  or a random dwelling entered from water imports (map import v19, ADV-OWN-002, ADV-DWL-004); the
+  other ownable kinds (mines, abandoned mines, Lighthouses, Shipyards, towns) keep
+  `OwnedOnWater`, unread. Only a hero in a boat reaches such an entrance in the engine (an
+  object's tile on water is closed to a walk, to a flight, D-46, and to a water walk).
+- **The census** (map import v19, `original_data`, seed 0): all 160 shipped maps import, validate
+  and build (v18: 156); the 9 dwellings entered from water are typed, all on the four maps
+  refused before (Adventures of Jared Haret, Rise of the Phoenix and its Allied version, Serpents
+  Treasure). With the same bump T97a's finding: a random dwelling tied to a town (1 397, all to
+  random towns) has its levels and owner checked before it stays a blocker; every one passes.

@@ -22,7 +22,8 @@
 //! (the random ones resolved, checked) and the maps it refuses for a random dwelling's tiles, and
 //! since E08 T94b the weeks it gives: the dwellings' counts and guards and the Refugee Camps'
 //! creatures and counts (checked); since E08 T96b2 each resolved random dwelling's entrance on the
-//! map (checked) and the most dwellings, random dwellings and Refugee Camps on one map.
+//! map (checked) and the most dwellings, random dwellings and Refugee Camps on one map; since E08
+//! T97b1 the typed dwellings entered from water.
 //! Since E09 T7a1 the towns, the players' starts, the random heroes, the heroes moved onto a
 //! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import; since E09 T7b1 the
 //! random heroes are drawn. Since E09 T8a1 the towns are typed (their owners at load and
@@ -938,7 +939,7 @@ fn census(
     events(setup, rules, &mut add);
     sea(setup, rules, &mut add);
     economy(map, setup, rules, &mut add);
-    dwellings(map, setup, &mut add);
+    dwellings(map, setup, rules, &mut add);
     let mut lying = BTreeMap::<(u16, u16, u8), usize>::new();
     let ground = |object: &&h3_adventure::ObjectSetup| {
         matches!(
@@ -1460,8 +1461,14 @@ fn economy(
 /// (17, 20) and the Refugee Camps (78) typed by class, the random dwellings (216 to 218) typed by
 /// class, those with a faction set (the survey: 206), and those
 /// tied to a town, which stay blockers (ADV-STUB-13), with those tied to a random town (the
-/// survey: about 1 397, all to random towns).
-fn dwellings(map: &RawMap, setup: &MapSetup, add: &mut impl FnMut(&'static str, usize)) {
+/// survey: about 1 397, all to random towns); since E08 T97b1 the typed ones entered from water
+/// (imported since map import v19, ADV-OWN-002).
+fn dwellings(
+    map: &RawMap,
+    setup: &MapSetup,
+    rules: &GameRuleset,
+    add: &mut impl FnMut(&'static str, usize),
+) {
     let random_towns: BTreeSet<u32> = placed(map)
         .filter(|&(_, class)| class == 77)
         .filter_map(|(object, _)| match &object.body {
@@ -1481,6 +1488,28 @@ fn dwellings(map: &RawMap, setup: &MapSetup, add: &mut impl FnMut(&'static str, 
             _ => continue,
         };
         add(what, usize::from(typed));
+        let afloat = entry.visitable.offsets().any(|(column, row)| {
+            let (Some(x), Some(y)) = (
+                entry.anchor.x.checked_sub(u16::from(column)),
+                entry.anchor.y.checked_sub(u16::from(row)),
+            ) else {
+                return false;
+            };
+            let index = (usize::from(entry.anchor.level) * usize::from(setup.height)
+                + usize::from(y))
+                * usize::from(setup.width)
+                + usize::from(x);
+            setup.tiles.get(index).is_some_and(|t| {
+                matches!(
+                    rules.adventure().passage(t.terrain),
+                    Some(h3_adventure::Passage::Water(_))
+                )
+            })
+        });
+        add(
+            "dwellings: typed ones entered from water (E08 T97b1)",
+            usize::from(typed && afloat),
+        );
         let Body::RandomDwelling(body) = &object.body else {
             continue;
         };

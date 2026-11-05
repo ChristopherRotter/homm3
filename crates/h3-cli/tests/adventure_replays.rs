@@ -148,7 +148,9 @@
 //! map object) re-recorded all thirty-nine from their commands: only the hashes and the versions
 //! moved. E08 T95b (game state hash v25: the hire dialog; replay format v10: its answers; none of
 //! the maps holds a dwelling, a random dwelling or a camp) re-recorded all thirty-nine from their
-//! commands: only the hashes and the versions moved.
+//! commands: only the hashes and the versions moved. E08 T97b1 (map import v19: a dwelling entered
+//! from water imported, a tied random dwelling's checks; none of the maps holds either)
+//! re-recorded all forty-seven from their commands: only `import_version` moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts
