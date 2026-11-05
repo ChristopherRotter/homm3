@@ -207,6 +207,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
 - **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
   question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
   not drawn yet and their sounds' waits (M5's items 5, 9, 24, 42, 45, 79, 84), each as far as read.
+  Cut in four by the user (2026-11-05): **T5a** the book's refusals, the aim's other messages and
+  Force Field's and Fire Wall's aim (items 5, 9, 84); **T5b** the bot's casts and retreat question
+  (24); **T5c** Eagle Eye's message and the experience after the window (79); **T5d** the effects,
+  their waits and Bloodlust's glow (42, 45).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through
   `h3_ui::paint`, the purity test's holes (R2-15), R4-2 and R4-9.

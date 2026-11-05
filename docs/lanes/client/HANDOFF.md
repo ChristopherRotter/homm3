@@ -17,8 +17,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (2026-11-04): T4b2b1 done (#717, the heroes' windows, §12.15; CLT-Q47 to Q50) and T4b2b2 done
   (#722). **T4c done** (kept whole by the user: the grid, the movement and cursor shadows, the
   aims' shades, F6 to F8 saved at once, §12.16; CLT-Q52 to Q56 answered, all fixed; 11 stills
-  exact, 5 sequences; the PR from `client/e17-m6-t4c`: check it first). T4 done. **Next: T5**
-  (M5's gaps, cut at its start), T6, T7; then M7 ranked play and the server browser.
+  exact, 5 sequences; #729 merged). T4 done. **T5** cut in four by the user (2026-11-05):
+  **T5a in progress** (the book's refusals, the aim's other messages, Force Field's and Fire
+  Wall's aim; branch `client/e17-m6-t5a`), then T5b, T5c, T5d (QUEUE), T6, T7; then M7 ranked
+  play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -48,7 +50,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-04/05, E17 M6 T4c (done; the PR from `client/e17-m6-t4c`: check it first).**
+- **2026-11-05, E17 M6 T5a (in progress, branch `client/e17-m6-t5a`).**
+  The original data staged (57 files, by the file tool; the device dropped once mid-staging and
+  came back); #729 merged; the baseline's `check.sh` running. The user cut T5 in four and chose
+  T5a. Next: the reader (design §12.17), the builder, the captures, a fresh reviewer.
+
+- **2026-11-04/05, E17 M6 T4c (done; #729 merged).**
   The original data staged (60 files, by the file tool: the device shell did not start); the
   baseline's `check.sh` passed. The user kept T4c whole. A reader (§12.16: `battle_shade_hexes`,
   `shade_mouse_hex` 0x494390, the aims'; CLT-Q52 to Q56 asked and answered at once: fix all), a
@@ -64,12 +71,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   (six stills exact; kind 2's ids read from the original's memory), a fresh reviewer (five
   findings: the still's same-slot line rewrite, docs, tests; fixed) and CLT-Q51 (negative
   luck's icon) asked and answered: copied. `drawn` 213 the same, 6 new; `check.sh`.
-
-- **2026-11-04, E17 M6 T4b2b1 (done; #717 merged).**
-  The original data staged (93 files, by the file tool: the device shell did not start); #714 had
-  merged; the baseline's `check.sh` passed. The user cut T4b2b in two and chose the heroes first;
-  CLT-Q47 to Q50 asked and answered at once. A reader (§12.15, both kinds of window, every hide
-  and show), a builder (`h3_view::army_info`, `track::Shown`'s `army`, the stills' `army_info` and
-  `right-click:`), the captures (the harness's registry level; four stills exact) and a fresh reviewer
-  (four findings fixed: two tests that missed their path, no hide at the tactics phase's end;
-  two gaps of the stills' model written down). `drawn` 209 the same, 4 new; `check.sh`.

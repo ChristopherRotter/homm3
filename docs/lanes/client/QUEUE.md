@@ -29,7 +29,13 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   drain, regeneration, Poison's damage, Death Blow, Ice Bolt's explosion, the Familiars'
   channel).
 - **Acceptance:** each built and recorded, or its reason in M6's review list; `check.sh`.
-- **Depends on:** T4 (the Auto Combat options). **Status:** ready; cut at its start.
+- **Depends on:** T4 (the Auto Combat options). **Status:** cut in four by the user
+  (2026-11-05): **T5a** the book's refusals, the aim's entry's other messages and Force Field's
+  and Fire Wall's own aim (items 5, 9, 84; *in progress*, branch `client/e17-m6-t5a`); **T5b**
+  the Auto Combat bot's casts for the human's hero and its retreat question (item 24); **T5c**
+  Eagle Eye's message and the experience given after the result window (item 79); **T5d** the
+  effects not drawn yet, their sounds' waits and the Ogre Magi's Bloodlust glow (items 42, 45;
+  cut again at its start if needed).
 
 ### E17 M6 T6 — the inbox's waiting items
 
