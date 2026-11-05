@@ -53,11 +53,12 @@ fn tavern_rules() -> GameRuleset {
     rules_of(towns_core(false), &towns, false, 4)
 }
 
-/// [`towns_setup`] with blue's town holding 12 imps in slot 0 and 4 gogs in slot 3.
+/// [`towns_setup`] with blue's town holding 12 imps in slot 0 and 4 gogs in slot 1 (the test
+/// part's two).
 fn garrisoned(rules: &GameRuleset) -> GameSetup {
     let mut setup = towns_setup(rules);
     setup.towns[1].garrison = Some(
-        [(0, IMP, 12), (3, GOG, 4)]
+        [(0, IMP, 12), (1, GOG, 4)]
             .map(|(slot, creature, count)| GarrisonStack {
                 slot,
                 creature: GarrisonCreature::Creature(creature),
@@ -176,7 +177,7 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
                     count: 12,
                 },
                 ArmyStack {
-                    slot: 3,
+                    slot: 1,
                     creature: GOG,
                     count: 4,
                 },
@@ -227,6 +228,16 @@ fn the_garrisons_level_is_the_viewers_towns_with_a_tavern_at_most_two() {
         (blue.level, blue.stacks.len(), blue.army.as_ref()),
         (2, 0, None)
     );
+    // The stacks are packed: the gogs alone in slot 1 are the only stack, their slot unsaid.
+    let mut setup = garrisoned(&rules);
+    setup.towns[1].garrison.as_mut().unwrap().remove(0);
+    let red = towns_seen(&rules, &setup, RED);
+    let gogs = GarrisonStackView {
+        creature: GOG,
+        count_word: None,
+        count: None,
+    };
+    assert_eq!(red[1].garrison.stacks, [gogs]);
 }
 
 // covers: TWN-VEW-002, TWN-VEW-003
