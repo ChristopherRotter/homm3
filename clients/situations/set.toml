@@ -2148,7 +2148,7 @@ grid = 1
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: `ccellgrd.pcx` at every hex but the side columns, under the stacks and the obstacles (E17 M6 T4c)"
 
 [[situation]]
 id = "shade-move"
@@ -2158,7 +2158,7 @@ movement_shadow = 1
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: the Marksmen's reach halved (the obstacle's hexes left out) and, as they may shoot, both enemies' hexes (`ai_map_shooter_marks` 0x4B2F18) (E17 M6 T4c)"
 
 [[situation]]
 id = "shade-move-fly"
@@ -2168,7 +2168,7 @@ movement_shadow = 1
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: the Angels' reach over the field, the Wolf Riders they may strike (E17 M6 T4c)"
 
 [[situation]]
 id = "shade-move-wide"
@@ -2178,7 +2178,7 @@ movement_shadow = 1
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: the Champions' positions and their front hexes by their facing, no enemy in reach (E17 M6 T4c)"
 
 [[situation]]
 id = "shade-cursor"
@@ -2189,7 +2189,7 @@ mouse = [190, 196]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: the reachable empty hex 37 halved under `ccellshd.pcx` (E17 M6 T4c)"
 
 [[situation]]
 id = "shade-cursor-far"
@@ -2200,7 +2200,7 @@ mouse = [410, 532]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: the unreachable row-10 hex 178 halved, its block cut to 50 rows (E17 M6 T4c)"
 
 [[situation]]
 id = "shade-cursor-enemy"
@@ -2211,7 +2211,7 @@ mouse = [674, 196]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: hex 48 alone, the Wolf Riders' front hex, under the Angels' attack cursor (E17 M6 T4c)"
 
 [[situation]]
 id = "shade-cursor-self"
@@ -2222,7 +2222,7 @@ mouse = [102, 196]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: the acting Marksmen's hex 35 halved (E17 M6 T4c)"
 
 [[situation]]
 id = "shades-all"
@@ -2235,7 +2235,7 @@ mouse = [190, 196]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: hex 37 quartered, the grid's lines in it halved by the cursor's shade alone (oddity 7) (E17 M6 T4c)"
 
 [[situation]]
 id = "shades-all-out"
@@ -2248,7 +2248,7 @@ mouse = [410, 196]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: hex 42 beside the reach halved, its grid's lines too (E17 M6 T4c)"
 
 [[situation]]
 id = "shade-dialog"
@@ -2261,4 +2261,4 @@ actions = ["key:o", "click:199,151", "key:Return", "move:234,196"]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "(E17 M6 T4c)"
+why = "exact: the grid composed at the close, no shade under the resting mouse; the move to hex 38 puts hex 37's block from before the dialog back, without the grid's lines (oddity 2, CLT-Q52) (E17 M6 T4c)"

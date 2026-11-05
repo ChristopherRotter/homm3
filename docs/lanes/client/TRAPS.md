@@ -173,7 +173,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - A capture times out at the main menu when the CPU is busy: run it alone. A fresh sandbox's
   first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches.
   A stopped run leaves the game running (and `pkill -f wine` kills the calling shell too): kill
-  the leftovers by process id before the next run, or it crawls. A `turn:` that never comes
+  the leftovers by process id before the next run, or it crawls. It also leaves an entry's
+  registry options written (`army_info`, `grid`, `cursor_shadow`, `movement_shadow`), which the
+  next run then puts back as found: unset them (`h3drive.set_setting_dword(name, None)`) first. A `turn:` that never comes
   steps 30 000 ms at about 20 a second (25 minutes): probe the turn order with `at:<ms>` first.
 - Sieges: machines acting on their own at the opening act before the record opens (CLT-Q20: the
   defender commands its turrets); the turrets' counts need `structures = 1`; in hot seat the

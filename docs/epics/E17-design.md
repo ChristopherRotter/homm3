@@ -2287,7 +2287,9 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   it up, F11 for full screen), an unattended run's casts pressed through the book (turned to the
   spell's page) and the aim. *Provisional:* the refusal's immunity (the client takes any refusal
   the engine makes that the other reasons do not explain for it), the area's marks of stacks the
-  spell would not affect, Berserk's area in the side columns.
+  spell would not affect (since E17 M6 T4c a hero's aim leaves out those the engine's cast may not
+  affect, `Aim::unaffected`: `computer::spell_affects` stands for 0x5A8090; a creature's and a
+  server's aim know none), Berserk's area in the side columns.
 - **Not modelled:** the aims of Teleport and Sacrifice (the book closes on them and casts
   nothing; a second target is the ruleset's, `aims::second_target`, by the original's number
   only in a server's game of other content: E17 M5 T8b2, R4b-4); Force Field's and Fire Wall's
@@ -6240,7 +6242,11 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
   it stands (the overlay +0x107 of an active stack that does not play itself and whose side has
   +0x54A6; at a turn's start, 0x478375; cleared at an action's start, 0x478E51; each hex of a
   non-zero overlay halved under `ccellshd.pcx` at its box's (left, top), twice where two cells'
-  pixels overlap), with the option on every human turn now, not only the phase's; (2) **the grid**
+  pixels overlap), with the option on every human turn now, not only the phase's; outside the
+  phase the reach map of a stack that may shoot now also marks every enemy but the dead and the
+  arrow towers (`ai_map_shooter_marks` 0x4B2F18, not the Catapult; read at the capture, E17 M6
+  T4c: `shade-move`'s Marksmen shade both enemies, §7.23's overlay then gives their hexes 1);
+  (2) **the grid**
   (Show Combat Grid 0x6987BC): `ccellgrd.pcx` (45 × 52) at each hex's (left, top), index 0 skipped
   (0x44FC70's flag), hexes 0 to 186 but columns 0 and 16, after the shade, so its lines are not
   halved by it; drawn again whenever the call restored or shaded a hex, or after a full
@@ -6414,7 +6420,8 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
   - The movement shadow outside the tactics phase: `shades::reach` (*provisional*: the engine's
     legal moves, each with its front hex by the stack's facing now, and the hexes of the stacks it
     may strike stand for the reach map and its search's marks; the flyer's run of hexes is the
-    engine's), from a human turn's start to the next action's start; the phase's stays
+    engine's; a stack with a listed shot shades every living enemy on the field, the map's
+    shooter marks), from a human turn's start to the next action's start; the phase's stays
     `tactics::shade` whatever the option.
   - The mouse's follow (`mouse::track`, `Shown::shades`, a tenth list): `Input::Shades { options,
     keyed }` (the opening's and the dialog's close compose; F6 to F8 are `battle_set_shades`'
@@ -6425,8 +6432,8 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     aims: with both shadows on (not Teleport, Sacrifice) `Options::aiming` at the start, the
     movement shadow back at `end_aim`; an area aim's `area_shade` forced at the start, at each
     other hex and for a refused one (a hex whose living stack the marks leave out is left out:
-    the client's marks hold every living stack, §7.18's *provisional*, so no immune stack's hexes
-    are left out yet); Fire Wall's `wall_shade` at each other hex (its mastery `Aim::mastery`, the
+    `Aim::unaffected`, the stacks the engine's cast may not affect, *provisional*: `computer::
+    spell_affects` for 0x5A8090; recorded, `shade-area`'s Efreeti); Fire Wall's `wall_shade` at each other hex (its mastery `Aim::mastery`, the
     side the acting stack's); Force Field's nothing.
   - The fixes (the user's answers of 2026-11-04, by `h3_render::Bugs`: `Fixed` the window's,
     `Original` the comparisons'): CLT-Q52 `Cells::compose` forgets the list and the last key;
@@ -6435,7 +6442,8 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     (Force Field's lack copied); CLT-Q55 `area_shade` none off the field, and `Aim::marks` holds
     the original's hexes 1 and 18's stacks off the field for a radius-2 aim but Berserk's in the
     original's profile alone; CLT-Q56 the wall's aim in the original's profile calls no cursor
-    as it starts and takes the follow's `wall_last` (a click before a move casts there), in the
+    as it starts (the book's arrow stays, `Look::Arrow`, until its first cursor: recorded) and
+    takes the follow's `wall_last` (a click before a move casts there), in the
     client's it is aimed as every other aim (the hex under the mouse kept, CLT-Q27 (2)).
   - The window: the keys `grid` F6, `cursor-shadow` F7 and `movement-shadow` F8
     (`keys::Command::Shades`, the battle's context; Ctrl+F5 to Ctrl+F8 stay the window's own),
@@ -6464,3 +6472,27 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     a targeted aim and the walls by profile; `scene/tests.rs`: the layers' order and a block's
     rectangle; `keys/tests.rs`: F6 to F8); the binary's (`pointer.rs`: a sequence's keys); the
     gate; `drawn`'s digests the same.
+- **Recorded** (M6 T4c's capture, 2026-11-05; the comparison profile): the stills `grid`,
+  `shade-move` (a walker that may shoot), `shade-move-fly`, `shade-move-wide` (a two-hex walker),
+  `shade-cursor` (a reachable empty hex), `shade-cursor-far` (row 10, unreachable),
+  `shade-cursor-enemy` (a two-hex enemy's front hex under the attack cursor), `shade-cursor-self`,
+  `shades-all`, `shades-all-out` and `shade-dialog` (oddity 2, CLT-Q52): all exact. The sequences
+  `shade-keys` (F7, F6, F8, F7 over the resting mouse: 17 frames exact), `shade-wall` (Fire Wall
+  at Basic by the attacker and at Advanced by the defender, a refused hex, Force Field: 47 exact),
+  `shade-area` (Fireball over the immune Efreeti given up, oddity 3, CLT-Q53; Frost Ring: 26
+  frames, 16 exact), `shade-area-inferno` (19 hexes, then the panel, oddity 5, CLT-Q55: 19, 14
+  exact) and `shade-area-move` (both shadows on: 14, 13 exact). Found by them and fixed in the
+  client: the shooter's marks (layer (1) above); the hexes and marks of stacks the spell may not
+  affect (`Aim::unaffected`); the book's arrow at a wall aim's start in the original's profile.
+  **Listed differences**, redraw artifacts not copied (as `spell-aim`'s 71 pixels, §7.18; the
+  user, 2026-10-14): (1) the book's closing leaves stacks' shadows drawn twice where it stood
+  until a redraw (`shade-area` and `shade-area-inferno` 0 to 200 ms, 620 pixels, 568 of them
+  extra shadows; `shade-area` 1 100 to 1 300 ms, 125, all shadows); (2) a given-up area aim takes
+  its marks off (`set_area_mark` 0 at 0x5A31D9) without a redraw, so their outline 0x70 stays
+  until the stacks' next idle step draws them (`shade-area` 700 and 1 800 ms, 546 and 560
+  pixels; `shade-area-inferno` 1 100, 308, the Pikemen); (3) the whole redraw after a given-up
+  aim with both shadows on draws the marked Wolf Riders at the pose memory holds, standing, a
+  deadline before the screen's (§7.1; `shade-area-move` 700, 217). The marked stacks' group 1 is
+  timed so that none of the original's stalls falls inside a sequence (§7.2). Not recorded: a
+  targeted aim's frozen shade (oddity 4, CLT-Q54) and the wall's last hex (oddity 6, CLT-Q56),
+  their profiles' unit tests'.

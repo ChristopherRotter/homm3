@@ -5325,14 +5325,32 @@ CLT-Q52 to Q56 (all fixed, the original's for the comparisons only, `h3_render::
 - ***Provisional*** (the agent's): the reach is the engine's legal moves (each with its front hex
   by the facing now) and strikes' targets; an action's start clears the blocks put back (the
   overlay's redraw taken for a composition); a block put back keeps one composition; the area's
-  shade leaves out the hexes of living stacks the marks leave out (none yet: §7.18's marks hold
-  every living stack); F6 to F8 act only while the battle takes keys and are carried by Auto
+  shade leaves out the hexes of living stacks the marks leave out (since the capture the stacks
+  the engine's cast may not affect, `Aim::unaffected`); F6 to F8 act only while the battle takes keys and are carried by Auto
   Combat's stop as F5; the idle step's move (oddity 10) not modelled; the stills take no aim
   (an aim's shade is recorded as a sequence).
-- **Not built:** the recordings (§12.16's "To record": the capture agent's); the battle's
-  decided and hidden tests, a later battle's save picture, the deferred composition +0x53B8.
+- **Not built:** the battle's decided and hidden tests, a later battle's save picture, the deferred composition +0x53B8.
 - **Checked:** unit tests (`shades/tests.rs`, `track/tests.rs`, `scene/tests.rs`,
   `keys/tests.rs`; the binary's `pointer.rs` and `spellbook.rs`), clippy, `fmt`, the real-asset
   gate, `check-exe-map`, `check-docs`, `h3-view`'s coverage 100 %, `drawn` on the aims', the
   options dialog's, the tactics phase's and the army info stills' entries the same,
   `check.sh`.
+- **Recorded** (the capture agent, 2026-11-05; design §12.16, "Recorded"): 11 stills, all exact
+  (`grid`, `shade-move`, `shade-move-fly`, `shade-move-wide`, `shade-cursor`, `shade-cursor-far`,
+  `shade-cursor-enemy`, `shade-cursor-self`, `shades-all`, `shades-all-out`, `shade-dialog`: the
+  CLT-Q52 witness) and 5 sequences (`shade-keys` 17 frames exact, `shade-wall` 47 exact,
+  `shade-area` 16 of 26 exact with the CLT-Q53 witness, `shade-area-inferno` 14 of 19 with the
+  CLT-Q55 witness, `shade-area-move` 13 of 14), their other frames the three listed redraw
+  artifacts (the book's closing, a given-up area aim's outline until the next idle step, a whole
+  redraw's pose a deadline early). Two new scenarios, `seq-shades.toml` (seven defender stacks:
+  the Efreeti beside the Wolf Riders; the Pikemen on hex 1) and `seq-shade-wall.toml` (hot seat,
+  Fire Wall at Basic and Advanced). Fixed in the client from the recordings: a shooter's movement
+  shadow marks every enemy (`ai_map_shooter_marks` 0x4B2F18, read; `shades::reach`,
+  `Legal::shoots_any`); an area's marks and shade leave out the stacks the spell may not affect
+  (`Aim::unaffected` from `computer::spell_affects`, the known gap); a wall's aim in the original's
+  profile keeps the book's arrow as it starts (`Look::Arrow`). Each with a unit test. A first
+  `shade-area` (three aims, the Goblins marked too) met the original's random stalls of the marks'
+  group 1, which the timeline compares: cut in two and timed so that none falls inside. A
+  sandbox stop mid-capture left `Show Combat Grid` 1 in the prefix (the harness puts back what it
+  finds): the next run's captures showed the grid; set unset again and captured anew. `drawn`:
+  DRAWN_RESULT. `check.sh`: CHECK_RESULT.
