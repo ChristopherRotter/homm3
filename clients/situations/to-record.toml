@@ -1,0 +1,56 @@
+# Sequences prepared for a recording in the original, not recorded yet (E17 M6 T5b1, design
+# §12.18). `h3drive.py drawn` and `h3-view sequences` read `sequences.toml` only, so these change
+# nothing until recorded. The capture agent records each in the harness's format:
+#   python3 capture/h3drive.py sequences situations/to-record.toml --only <id>
+# then moves the entry into `sequences.toml` with its engine commands as the recording shows them
+# (the original's computer chooses the casts and the stacks' actions: a command without `at` is
+# the computer's), records its frames (`frames --only <id>`) and its digests (`drawn --record`),
+# and deletes it here. Each entry's `auto_creatures` and `auto_spells` are written into the
+# prefix's registry for its run (`h3drive.AUTO`; setup.sh's Creatures 1, Spells unset without
+# them) and read by the viewer (`sequences.rs`' `AutoBoxes`).
+
+# (a) Auto Combat with Combat Auto Creatures and Combat Auto Spells set (`seq-auto-cast.toml`,
+# Orrin's book Bless alone). A at the Champions' turn (0 ms) switches it on and runs the turn's
+# start again: the computer is asked for Orrin's cast (the engine's computer casts nothing there)
+# and plays the Champions at once (their walk, as `auto`'s Angels). As the Marksmen's turn starts
+# the computer is asked again and casts Bless on them (no time: the computer's), then shoots (no
+# time), the panel dimmed, Auto Combat selected throughout. The engine's computer (fair or
+# all-seeing, seed 1) gives: the Champions' walk, Bless at the Marksmen, their two shots at the
+# Goblins, the Wolf Riders' strike at the Champions, the Goblins' walk and strike; round 2 the
+# Champions' walk and strike, Bless again as the Marksmen's turn starts. To show (the questions for the recording, design §12.18): whether the
+# Marksmen are outlined from their turn's start or one tick later before the cast (the client:
+# the computer's, one tick later), the cast's hero frames and Bless's animation (36) and sound,
+# the shot one tick after the cast's end. `ms`: through the Marksmen's shot and the Wolf Riders'
+# turn (trim to what the recording needs).
+[[sequence]]
+id = "auto-cast"
+scenario = "seq-auto-cast.toml"
+actions = ["key:a"]
+ms = 9000
+auto_spells = 1
+heroes = true
+timeline = "timelines/auto-cast.txt"
+frames = "timelines/auto-cast-frames.txt"
+boxes = true
+
+# (b) Combat Auto Creatures cleared, Combat Auto Spells set (the same battle). A at the
+# Champions' turn switches Auto Combat on over a stack it does not play: nothing shown (the panel
+# lit, the button unselected), the turn's start run again asks the computer for Orrin's cast
+# (none, the engine's computer); D defends the Champions (the human's turn, `at` 0; the viewer
+# takes it as the turn's own, not a stop: `auto_creatures = 0`). As the
+# Marksmen's turn starts, a human's turn under Auto Combat (no stop's read), the computer casts
+# Bless on them (no time), then the turn waits for the human: the panel lit, the Marksmen
+# outlined, the mouse parked. The questions for the recording: the outline before the cast (from
+# the turn's start, as a human's turn, or one tick later, the client's), the panel through the
+# cast (lit, Auto Combat unselected: 0x47864A in the original's profile), the cast's timing.
+[[sequence]]
+id = "auto-cast-human"
+scenario = "seq-auto-cast.toml"
+actions = ["key:a", "key:d"]
+ms = 4000
+auto_creatures = 0
+auto_spells = 1
+heroes = true
+timeline = "timelines/auto-cast-human.txt"
+frames = "timelines/auto-cast-human-frames.txt"
+boxes = true
