@@ -2650,9 +2650,10 @@ kinds), `ai_battle_action` 0x477EE0's head, `ai_hero_cast_turn` 0x422DA0's head.
   (0x478857) but the stop's read drops the move: moved over the battlefield, the mouse keeps the
   pointer and marks and enters nothing, as on the computer's turns (`Turn::human` false).
 - **Not built** (the client's bot neither casts nor leaves): the computer's cast of the human's
-  hero at a turn's start (`ai_hero_cast_turn` 0x422E42, under the setting 0x698798), and its
-  question to the human, once a battle (+0x1402F), when it would retreat or surrender for them
-  (0x477F56: a two-button box of GENRLTXT's row; Cancel keeps fighting and asks no more).
+  hero at a turn's start (`ai_hero_cast_turn` 0x422E42, under the setting 0x698798; built in M6
+  T5b1 by the engine's original computer, §12.18), and its question to the human, once a battle
+  (+0x1402F), when it would retreat or surrender for them (0x477F56: a two-button box of
+  GENRLTXT's row; Cancel keeps fighting and asks no more; T5b2, CLT-STUB-2).
 - **Built:** `h3_view::auto` (`Auto::of`: per turn whether it plays from its start or from a time
   in it, from the inputs `Input::Auto` and `Input::Stop` and the turns' starts), the panel's
   `Autoplay` (`panel::shown`) and `Panels::with_auto`, the mouse's automatic turns

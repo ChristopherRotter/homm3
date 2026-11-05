@@ -1206,6 +1206,17 @@ mod tests {
         );
         assert_eq!((melee.pre, melee.ms), (0, 7000));
         assert_eq!((melee.until(), melee.command[0].at), (7000, None));
+        // E17 M6 T5b1: every entry's Auto Combat boxes good; the two recorded with Spells set,
+        // `auto-cast-human` with Creatures cleared.
+        for s in &file.sequence {
+            assert!(s.auto.boxes(&s.id).is_ok(), "{}", s.id);
+        }
+        let boxes = |id: &str| {
+            let s = file.sequence.iter().find(|s| s.id == id).unwrap();
+            s.auto.boxes(id).unwrap()
+        };
+        assert_eq!(boxes("auto-cast"), [true, true, false, false, false]);
+        assert_eq!(boxes("auto-cast-human"), [false, true, false, false, false]);
     }
 
     #[test]
@@ -1251,10 +1262,6 @@ mod tests {
         for s in &pending.sequence {
             assert!(s.auto.boxes(&s.id).is_ok(), "{}", s.id);
             assert!(dir.join(&s.scenario).exists(), "{}", s.id);
-        }
-        if let Some(human) = pending.sequence.iter().find(|s| s.id == "auto-cast-human") {
-            let boxes = human.auto.boxes(&human.id).unwrap();
-            assert_eq!(boxes, [false, true, false, false, false]);
         }
     }
 

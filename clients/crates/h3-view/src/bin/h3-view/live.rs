@@ -492,7 +492,7 @@ mod tests {
     }
 
     /// The battle prepared for the recordings of the computer's casts for the human's hero (E17
-    /// M6 T5b1, `seq-auto-cast.toml`): Orrin's book holding Slow, the Champions' turn first.
+    /// M6 T5b1, `seq-auto-cast.toml`): Orrin's book holding Bless, the Champions' turn first.
     fn auto_cast() -> (BattleRuleset, BattleSetup) {
         let scenario = repo().join("clients/situations/seq-auto-cast.toml");
         let (ruleset, mut setup) =
