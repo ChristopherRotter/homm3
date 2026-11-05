@@ -131,7 +131,7 @@ fn groups() -> [(Vec<Placing>, Vec<Placing>); 4] {
     let [golem, conflux] = [LINES[2], LINES[3]];
     let class_20: Vec<Placing> = (0..DWELLINGS_20)
         .map(|n| {
-            let (line, owner) = (if n % 2 == 0 { golem } else { conflux }, owner());
+            let (line, owner) = (if n.is_multiple_of(2) { golem } else { conflux }, owner());
             Box::new(move |at| owned(line, at, Owner(owner))) as Placing
         })
         .collect();
@@ -145,7 +145,11 @@ fn groups() -> [(Vec<Placing>, Vec<Placing>); 4] {
             } else if n < RANDOM - RANDOM_218 {
                 // 217 by level code 0 to 6 in turn, all nine factions or one in turn.
                 let k = n - RANDOM_216;
-                let set = if k % 2 == 0 { 0x1FF } else { 1 << (k / 2 % 9) };
+                let set = if k.is_multiple_of(2) {
+                    0x1FF
+                } else {
+                    1 << (k / 2 % 9)
+                };
                 (line(RANDOM_BY_LEVEL, k % 7 + 1, k % 7), Some(set), None)
             } else {
                 let (faction, levels) = RANDOM_218_BODIES[n - (RANDOM - RANDOM_218)];

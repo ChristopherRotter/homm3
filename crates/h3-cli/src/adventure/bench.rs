@@ -374,8 +374,8 @@ fn seek_own(env: &AdventureEnv, player: PlayerId) -> Action {
 
 /// Play until a visit writes a dwelling or the episode ends (`fork` with `dwelling`; E08 T96b2):
 /// on the map the acting player's heroes seek the dwellings ([`seek_dwelling`]); its offers (the
-/// flag's hire question, the guards' question, the hire dialog), level-ups, army dialogs and
-/// battles, and the neutral seat's battles, are the env's random agent's (agent seed
+/// flag's hire question, the guards' question, the hire dialog), level-ups, meetings, army dialogs
+/// and battles, and the neutral seat's battles, are the env's random agent's (agent seed
 /// `agent_seed`): the steps played. Random play seldom reaches a dwelling on a large map.
 fn until_dwelling(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
     let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
@@ -393,6 +393,7 @@ fn until_dwelling(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
                 if state.decision(player).is_none()
                     && state.level_up(player).is_none()
                     && state.army_dialog(player).is_none()
+                    && state.meeting(player).is_none()
                     && state.hire_dialog(player).is_none() =>
             {
                 seek_dwelling(env, player)
