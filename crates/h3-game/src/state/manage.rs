@@ -165,11 +165,17 @@ impl GameState {
         Ok(())
     }
 
-    /// The stack at `at`: in its hero's army on the map, or in `player`'s open army dialog's group.
-    fn stack_at(&self, player: PlayerId, at: ArmySlot) -> Option<ArmyStack> {
+    /// The stack at `at`: in its hero's army on the map, in `player`'s open army dialog's group, or
+    /// since E09 T8b2b in a town's garrison (the slots of the garrison's merge, TWN-SIE-002).
+    pub(crate) fn stack_at(&self, player: PlayerId, at: ArmySlot) -> Option<ArmyStack> {
         let army = match at.army {
             ArmyRef::Hero(hero) => self.adventure.hero(hero).map(|h| &h.army[..]),
             ArmyRef::Group => self.army_dialog(player).map(|(_, group)| group),
+            ArmyRef::Garrison(town) => self
+                .adventure
+                .map()
+                .town_object(town)
+                .and_then(|index| self.adventure.town_garrison(index)),
         };
         army.and_then(|army| army.iter().find(|s| s.slot == at.slot))
             .copied()
@@ -243,6 +249,10 @@ impl Together {
     ) -> Result<(), GameCommandError> {
         let no_group = ManageError::Army(ArmyCommandError::NoGroup);
         let error = match (self, (from, to)) {
+            // E09 T8b2b: a town's garrison is not managed before the town screen.
+            (_, (ArmyRef::Garrison(town), _) | (_, Some(ArmyRef::Garrison(town)))) => {
+                Some(ManageError::Army(ArmyCommandError::Garrison(town)))
+            }
             (Self::Alone, (ArmyRef::Hero(_), None)) | (Self::Dialog(_), _) => None,
             (Self::Alone, (_, Some(_))) => Some(ManageError::NotTogether),
             (Self::Alone | Self::Meeting(_), (ArmyRef::Group, _) | (_, Some(ArmyRef::Group))) => {
@@ -254,7 +264,7 @@ impl Together {
         let heroes = [Some(from), to].into_iter().flatten();
         self.admits_heroes(heroes.filter_map(|army| match army {
             ArmyRef::Hero(hero) => Some(hero),
-            ArmyRef::Group => None,
+            ArmyRef::Group | ArmyRef::Garrison(_) => None,
         }))
     }
 }

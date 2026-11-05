@@ -1,16 +1,46 @@
 //! A siege's battle as the game builds it (E09 T8b1; the town epic's design note §15, ADR-0023
 //! points 2, 3 and 5): the town's facts in the battle's setup, the defending hero raised by the
 //! town's buildings, the battle's terrain and battlefield, and after the battle the defending
-//! hero's spell points and the attacking winner's experience. The battle is opened and ended as every battle on the map
-//! (`GameState::start_battle`, `end_battle`); its capture after the attacker's win is the
-//! adventure's (`AdventureState::give_won`, TWN-CAP-003) composed by [`super::capture`].
+//! hero's spell points and the attacking winner's experience. The battle is opened and ended as
+//! every battle on the map (`GameState::start_battle`, `end_battle`); its capture after the
+//! attacker's win is the adventure's (`AdventureState::give_won`, TWN-CAP-003) composed by
+//! [`super::capture`]. Since E09 T8b2b the garrison's merge into the defending visitor's army
+//! before it ([`merge`], TWN-SIE-002; the town epic's design note §10).
 
-use h3_adventure::{AdventureState, Pos};
+use alloc::vec::Vec;
+
+use h3_adventure::{AdventureState, ArmySlot, BattleStart, Defender, Pos};
 use h3_content::HeroParams;
-use h3_contracts::{BattleHero, BattleSetup, TownId};
+use h3_contracts::{BattleHero, BattleSetup, PlayerId, TownId};
 use h3_towns::{DefenderBonus, Towns, defender_bonus, siege};
 
 use crate::GameRuleset;
+
+/// The garrison's merge before a siege its town's visitor defends (TWN-SIE-002; the town epic's
+/// design note §10; E09 T8b2b): when `start` is a siege ([`BattleStart::town`]) whose defender is
+/// a hero (the town's visitor, whom the step besieged), the adventure merges the town's
+/// garrison into that hero's army ([`AdventureState::merge_garrison`]) and the battle's defending
+/// army becomes the merged one. Returns the hero's owner and the slots the merge changed, which
+/// the game tells it as the army dialog's (`GameEvent::StackChanged`, *agent's call*), before
+/// `BattleStarted`; none for every other battle, which it leaves as it is. What stays in the
+/// garrison does not fight (survey `E09-towns.md` §9.2).
+// rule: TWN-SIE-002
+pub(crate) fn merge(
+    adventure: &mut AdventureState,
+    rules: &GameRuleset,
+    start: &mut BattleStart,
+) -> Option<(PlayerId, Vec<ArmySlot>)> {
+    let (Some(town), Defender::Hero(visitor)) = (start.town, &mut start.defender) else {
+        return None;
+    };
+    let slots = adventure.merge_garrison(rules.core(), rules.adventure(), town);
+    // The visitor is on the map: the step that started the siege met it there.
+    visitor.army = adventure
+        .hero(visitor.hero)
+        .map(|hero| hero.army.clone())
+        .unwrap_or_default();
+    Some((visitor.owner, slots))
+}
 
 /// Puts the siege of `town`, fought at `tile`, its entrance, into `setup`, built as every battle
 /// on the map (GAM-BAT-001): `siege` the town's facts ([`h3_towns::siege`], TWN-SIE-003); the

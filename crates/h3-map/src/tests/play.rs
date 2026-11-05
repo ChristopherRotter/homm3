@@ -2194,12 +2194,17 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
         .collect()
 }
 
-/// The stack at `at` (E08 T52): in its hero's army on the map, or in the acting player's army
-/// dialog's group.
+/// The stack at `at` (E08 T52): in its hero's army on the map, in the acting player's army
+/// dialog's group, or in a town's garrison (E09 T8b2b).
 fn stack_at(state: &GameState, at: ArmySlot) -> Option<h3_contracts::ArmyStack> {
+    let adventure = state.adventure();
     let army = match at.army {
-        ArmyRef::Hero(hero) => state.adventure().hero(hero).map(|h| &h.army[..]),
+        ArmyRef::Hero(hero) => adventure.hero(hero).map(|h| &h.army[..]),
         ArmyRef::Group => state.army_dialog(acting(state)).map(|(_, group)| group),
+        ArmyRef::Garrison(town) => adventure
+            .map()
+            .town_object(town)
+            .and_then(|index| adventure.town_garrison(index)),
     };
     army.and_then(|army| army.iter().find(|s| s.slot == at.slot).copied())
 }
@@ -5340,7 +5345,7 @@ fn check_managing(state: &GameState, rules: &GameRuleset) -> Result<(), TestCase
         .flatten()
         .filter_map(|&army| match army {
             ArmyRef::Hero(hero) => Some(hero),
-            ArmyRef::Group => None,
+            ArmyRef::Group | ArmyRef::Garrison(_) => None,
         })
         .collect();
     let seed = state.state_hash();

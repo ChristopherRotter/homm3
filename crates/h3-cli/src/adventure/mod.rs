@@ -75,7 +75,7 @@ use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, ObjectTypeId, Pos};
 use h3_content::{CreatureTypeId, Formation};
-use h3_contracts::{BattleSide, HeroId, PlayerId};
+use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
     Consent, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage, Position, SchoolChoice,
@@ -375,11 +375,13 @@ fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> 
     words.next().is_none().then_some(answer)
 }
 
-/// An army slot as `<army>:<slot>`: the army a hero's id, or `g` for the group.
+/// An army slot as `<army>:<slot>`: the army a hero's id, `g` for the group, or `t<town>` for a
+/// town's garrison (E09 T8b2b: the garrison's merge's events; no command names it).
 fn format_slot(at: ArmySlot) -> String {
     match at.army {
         ArmyRef::Hero(hero) => format!("{}:{}", hero.raw(), at.slot),
         ArmyRef::Group => format!("g:{}", at.slot),
+        ArmyRef::Garrison(town) => format!("t{}:{}", town.raw(), at.slot),
     }
 }
 
@@ -428,7 +430,10 @@ fn parse_slot(word: &str) -> Option<ArmySlot> {
     let (army, slot) = word.split_once(':')?;
     let army = match army {
         "g" => ArmyRef::Group,
-        id => ArmyRef::Hero(HeroId::new(id.parse().ok()?)),
+        id => match id.strip_prefix('t') {
+            Some(town) => ArmyRef::Garrison(TownId::new(town.parse().ok()?)),
+            None => ArmyRef::Hero(HeroId::new(id.parse().ok()?)),
+        },
     };
     Some(ArmySlot {
         army,

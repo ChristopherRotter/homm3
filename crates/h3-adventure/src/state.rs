@@ -109,6 +109,7 @@ pub use dwellings::{HirePurchase, hire_price};
 pub use economy::Weekly;
 pub(crate) use economy::allied;
 use flags::Flags;
+pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Mode, Node};
 pub use visits::Visits;
@@ -2498,9 +2499,9 @@ impl AdventureState {
     /// the player passes it instead and what the visit does. The visit mode is the type's, but per
     /// player: a border gate whose key `player` holds is passed, not visited (ADV-VIS-005, E08
     /// T15b; the original's step, 0x480EE2, and its pathfinder, 0x56ABB1, test the player's key
-    /// bit); a town ([`Self::town_visit`], TWN-VIS-001) its garrison defends against `player` is
-    /// visited from the tile before, the siege (E09 T8b2a), and one a visitor of another team
-    /// defends is not visited until the siege against it (`TWN-STUB-7`, E09 T8b2b). `MoveHero`
+    /// bit); a town ([`Self::town_visit`], TWN-VIS-001) its garrison or a visitor of another team
+    /// defends against `player` is visited from the tile before, the siege (E09 T8b2a, T8b2b).
+    /// `MoveHero`
     /// and the reachable-tiles query both ask here. The caller has checked that `pos` is
     /// visitable as it stands now. Out of line, as the compiler kept it before the town's test,
     /// which made it inline it into the walking search (`bench-check`, E09 T8a2).
@@ -2587,9 +2588,9 @@ impl AdventureState {
         let closed = || across.is_some_and(|at| self.closed_above(part, at));
         // ADR-0016 point 4: another hero is visited from the neighbouring tile: another player's
         // in a battle at once (E08 T19a), an own one in a meeting (T50); not across the top of an
-        // object's tile it stands on or the visitor stands on. Since E09 T8a2 another team's
-        // hero on a town's entrance is refused ([`Self::besieges`]: the siege, never a field
-        // battle, E09 T8b2b).
+        // object's tile it stands on or the visitor stands on. Another team's hero on a town's
+        // entrance: the town's visit instead ([`Self::besieges`]; since E09 T8b2b the siege
+        // against that visitor from the tile before, never a field battle).
         // rule: GAM-BAT-004, GAM-MET-001, TWN-VIS-002
         if let Some(other) = self
             .heroes
@@ -2599,11 +2600,14 @@ impl AdventureState {
             if closed() {
                 return Err(AdventureCommandError::FromAbove { step });
             }
-            // stub: TWN-STUB-7 (another team's hero on a town's entrance: the siege, E09 T8b2b)
+            let tile = self.live(pos, self.map.at(pos));
             if self.besieges(player, &self.heroes[other]) {
-                return Err(AdventureCommandError::Visit { step });
+                return self
+                    .visit_at(part, player, pos)
+                    .map(|town| (tile, Some(Meets::Object(town))))
+                    .ok_or(AdventureCommandError::Visit { step });
             }
-            return Ok((self.live(pos, self.map.at(pos)), Some(Meets::Hero(other))));
+            return Ok((tile, Some(Meets::Hero(other))));
         }
         let (tile, boat) = match self.check_tile(part, pos, Some(mover)) {
             Ok(tile) => (tile, None),
@@ -2810,6 +2814,15 @@ impl AdventureState {
             .binary_search_by_key(&id, |h| h.id)
             .ok()
             .map(|index| &self.heroes[index])
+    }
+
+    /// The hero `id` on the map, to change (E09 T8b2b: the garrison's merge into a town's
+    /// visitor's army, TWN-SIE-002).
+    pub(crate) fn hero_mut(&mut self, id: HeroId) -> Option<&mut HeroOnMap> {
+        self.heroes
+            .binary_search_by_key(&id, |h| h.id)
+            .ok()
+            .map(|index| &mut self.heroes[index])
     }
 
     /// The canonical state hash (ADR-0003 point 12, ADR-0016 point 2): content only, whatever

@@ -2,16 +2,20 @@
 //! towns and their `TownId`s, the garrisons on their objects, the towns among the ownable objects
 //! with their owners and the start's reveal by the game's radii, the formation the map holds and
 //! the hash; since T8a2 the step onto a town (TWN-VIS-001), its visitor (TWN-VIS-002) and the
-//! capture with its reveal (TWN-CAP-001; the town epic's design note §9, §11).
+//! capture with its reveal (TWN-CAP-001; the town epic's design note §9, §11); since T8b2b the
+//! siege against a visitor of another team and the garrison's merge into its army (TWN-SIE-001,
+//! TWN-SIE-002; design note §10).
 
 use h3_content::SkillId;
+use h3_content::{CreatureDef, CreatureInfoDef};
 use h3_kernel::hash::hash_of;
 
 use super::*;
+use crate::army::{ArmyRef, ArmySlot};
 use crate::ruleset::{AdventurePack, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::testing::{
-    FLYING, PEASANT, PIKEMAN, WATER_WALKING, draws, hero_at, hero_details, hero_skills, key,
-    movement_rules_with, started, world,
+    FLYING, MAX_STACK, PEASANT, PIKEMAN, WATER_WALKING, draws, hero_at, hero_details, hero_skills,
+    key, movement_rules_with, started, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -20,14 +24,49 @@ const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
 const HERO: HeroId = HeroId::new(1);
 
+/// The creatures [`town_rules`] adds after [`movement_rules_with`]'s four, with their AI values:
+/// batch TWN-1's row 3 (`experiments/specs/E09-batch-1.toml`, `CRTRAITS.TXT`'s values).
+const MERGED: [(&str, u32); 9] = [
+    ("t:swordsman", 445),
+    ("t:centaur", 100),
+    ("t:archer", 126),
+    ("t:griffin", 351),
+    ("t:pikeman80", 80),
+    ("t:monk", 485),
+    ("t:cavalier", 1946),
+    ("t:halberdier", 115),
+    ("t:marksman", 184),
+];
+const SWORDSMAN: CreatureTypeId = CreatureTypeId::from_raw(4);
+const CENTAUR: CreatureTypeId = CreatureTypeId::from_raw(5);
+const ARCHER: CreatureTypeId = CreatureTypeId::from_raw(6);
+const GRIFFIN: CreatureTypeId = CreatureTypeId::from_raw(7);
+/// A pikeman worth 80 (the test rulesets' [`PIKEMAN`] is worth nothing).
+const PIKE: CreatureTypeId = CreatureTypeId::from_raw(8);
+const MONK: CreatureTypeId = CreatureTypeId::from_raw(9);
+const CAVALIER: CreatureTypeId = CreatureTypeId::from_raw(10);
+const HALBERDIER: CreatureTypeId = CreatureTypeId::from_raw(11);
+const MARKSMAN: CreatureTypeId = CreatureTypeId::from_raw(12);
+
 /// [`movement_rules_with`] (faithful, maps up to 32 tiles) with a town `t:town` and a mine
 /// `t:sawmill`, both entered and not from above, and the part's flag radius 1; the skills of
-/// [`hero_skills`] (flying and water walking among them).
+/// [`hero_skills`] (flying and water walking among them) and the creatures of [`MERGED`].
 fn town_rules() -> Rules {
     movement_rules_with(
         true,
         32,
-        |core| core.skills = hero_skills(),
+        |core| {
+            core.skills = hero_skills();
+            core.creatures
+                .extend(MERGED.iter().map(|&(k, ai_value)| CreatureDef {
+                    key: key(k),
+                    speed: 5,
+                    info: CreatureInfoDef {
+                        ai_value,
+                        ..CreatureInfoDef::default()
+                    },
+                }));
+        },
         |part: &mut AdventurePack| {
             part.params.as_mut().unwrap().flag_radius = 1;
             let ty = |k: &str, kind| ObjectTypeDef {
@@ -471,42 +510,70 @@ fn a_town_its_garrison_defends_is_besieged_from_the_tile_before() {
     assert_eq!(crate::town::holds_formation(&Holds::Nothing), None);
 }
 
-// covers: TWN-VIS-002
+// covers: TWN-VIS-002, TWN-SIE-001
 #[test]
-fn another_players_visitor_is_refused_until_the_siege_and_an_allied_one_met() {
-    // `TWN-STUB-7`: blue's hero on the entrance of any town defends it against red, whatever the
-    // town's owner; a flight passes over it, never stops there.
+fn another_teams_visitor_defends_its_town_besieged_from_the_tile_before() {
+    // Blue's hero on the entrance of any town, red's own included, with a garrison or none,
+    // defends it against red (survey §7.1, §7.2 step 3): a walker, a water walker and a flyer each
+    // reach the entrance as a destination from the tile below, as a monster's; the step onto the
+    // visitor is the siege against it from there, never a field battle: the step paid with its
+    // drop, the hero stays, the visitor the defending hero at the entrance in the town's battle.
+    // The garrison is merged into its army by the game as the battle starts (TWN-SIE-002).
     let rules = town_rules();
     let (flyer, walker) = (store(&[(FLYING, 3)]), store(&[(WATER_WALKING, 3)]));
     for owner in [Some(0), Some(1), None] {
-        let mut state = at_town(&rules, owner, vec![], (ENTRANCE, None));
-        assert_eq!(state.town_visitor(TownId::new(0)), Some(HeroId::new(2)));
-        let before = state.clone();
-        for heroes in [&[][..], &walker] {
-            let reach = state.reach(&rules.0, &rules.1, heroes, HERO).unwrap();
-            assert_eq!(reach.points_left(ENTRANCE), None);
-            assert_eq!(
-                walk(&rules, &mut state, heroes, &[ENTRANCE]).unwrap_err(),
-                AdventureCommandError::Visit { step: 0 }
-            );
-            assert_eq!(state, before);
+        for army in [vec![], garrison()] {
+            for heroes in [&[][..], &walker, &flyer] {
+                let mut state = at_town(&rules, owner, army.clone(), (ENTRANCE, None));
+                let visitor = state.hero(HeroId::new(2)).unwrap().combatant();
+                let kept = state.town_garrison(0).unwrap().to_vec();
+                let reach = state.reach(&rules.0, &rules.1, heroes, HERO).unwrap();
+                assert_eq!(reach.path(ENTRANCE), Some(vec![ENTRANCE]));
+                let left = reach.points_left(ENTRANCE).unwrap();
+                let past = walk(&rules, &mut state.clone(), heroes, &[ENTRANCE, p(5, 4)]);
+                if heroes == &flyer[..] {
+                    // A flight passes over the visitor (ADV-MOV-009) and reaches the tile above;
+                    // its siege is made from a stop node only.
+                    assert!(past.unwrap().0.battle.is_none());
+                    assert!(reach.points_left(p(4, 3)).is_some());
+                    assert_eq!(
+                        walk(&rules, &mut state.clone(), heroes, &[p(3, 4), ENTRANCE]).unwrap_err(),
+                        AdventureCommandError::NoStop { step: 1 }
+                    );
+                } else {
+                    assert_eq!(
+                        past.unwrap_err(),
+                        AdventureCommandError::PastVisit { step: 1 }
+                    );
+                }
+                let (outcome, events) = walk(&rules, &mut state, heroes, &[ENTRANCE]).unwrap();
+                let battle = outcome.battle.clone().unwrap();
+                assert_eq!(
+                    outcome,
+                    AdventureOutcome {
+                        battle: Some(battle.clone()),
+                        ..AdventureOutcome::default()
+                    }
+                );
+                assert_eq!(battle.defender, Defender::Hero(visitor.clone()));
+                assert_eq!(
+                    (battle.attacker.hero, battle.tile, battle.town),
+                    (HERO, ENTRANCE, Some(TownId::new(0)))
+                );
+                assert!(events.is_empty(), "{events:?}");
+                let hero = state.hero(HERO).unwrap();
+                assert_eq!((hero.pos, hero.movement), (p(4, 5), left));
+                assert_eq!(state.town_garrison(0), Some(&kept[..]));
+                assert_eq!(state.town_visitor(TownId::new(0)), Some(HeroId::new(2)));
+            }
         }
-        let reach = state.reach(&rules.0, &rules.1, &flyer, HERO).unwrap();
-        assert_eq!(reach.points_left(ENTRANCE), None);
-        assert!(reach.points_left(p(4, 3)).is_some());
-        assert_eq!(
-            walk(&rules, &mut state, &flyer, &[ENTRANCE]).unwrap_err(),
-            AdventureCommandError::NoStop { step: 0 }
-        );
-        walk(&rules, &mut state, &flyer, &[ENTRANCE, p(5, 4)]).unwrap();
-        assert_eq!(state.hero(HERO).unwrap().pos, p(5, 4));
     }
     // Blue's hero off a town's entrance is met in a battle as before (GAM-BAT-004).
     let mut state = at_town(&rules, Some(1), vec![], (p(5, 5), None));
     let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
     assert!(reach.points_left(p(5, 5)).is_some());
     let (outcome, _) = walk(&rules, &mut state, &[], &[p(5, 5)]).unwrap();
-    assert!(outcome.battle.is_some());
+    assert_eq!(outcome.battle.unwrap().town, None);
     // Red's own hero on the entrance, of red's town or blue's: a meeting (GAM-MET-001).
     for owner in [Some(0), Some(1)] {
         let mut state = at_town(&rules, owner, garrison(), (FAR, Some(ENTRANCE)));
@@ -528,9 +595,8 @@ fn another_players_visitor_is_refused_until_the_siege_and_an_allied_one_met() {
 #[test]
 fn the_visitors_town_is_the_tiles_object_the_step_meets() {
     // A town and a sawmill both entered on (4, 4), blue's hero there: the step meets the tile's
-    // object, the last in map order (ADV-OBJ-003). The town: its siege, refused by the step and
-    // left out of the reachable tiles alike (`TWN-STUB-7`); the sawmill: a battle with the hero,
-    // which both offer alike.
+    // object, the last in map order (ADV-OBJ-003). The town: its siege against the hero (E09
+    // T8b2b); the sawmill: a field battle with the hero; the step and the reachable tiles agree.
     let rules = town_rules();
     let town = object(&rules, "t:town", (4, 4), None);
     let mine = object(&rules, "t:sawmill", (4, 4), None);
@@ -543,16 +609,11 @@ fn the_visitors_town_is_the_tiles_object_the_step_meets() {
         setup.heroes[1].pos = ENTRANCE;
         let mut state = started(&rules, &setup).unwrap();
         let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
-        assert_eq!(reach.points_left(ENTRANCE).is_some(), !siege);
-        let result = walk(&rules, &mut state, &[], &[ENTRANCE]);
-        if siege {
-            assert_eq!(
-                result.unwrap_err(),
-                AdventureCommandError::Visit { step: 0 }
-            );
-        } else {
-            assert!(result.unwrap().0.battle.is_some());
-        }
+        let left = reach.points_left(ENTRANCE).unwrap();
+        let (outcome, _) = walk(&rules, &mut state, &[], &[ENTRANCE]).unwrap();
+        let town = siege.then_some(TownId::new(0));
+        assert_eq!(outcome.battle.unwrap().town, town);
+        assert_eq!(state.hero(HERO).unwrap().movement, left);
     }
 }
 
@@ -705,4 +766,162 @@ fn a_sieges_end_keeps_the_garrisons_survivors_or_captures_the_town_after_the_win
     let (mut other, _) = end(&[], true);
     let gone = other.give_won(context, (HeroId::new(9), ENTRANCE), &mut Vec::new());
     assert_eq!(gone, AdventureOutcome::default());
+}
+
+/// Batch TWN-1's row 3 (`experiments/specs/E09-batch-1.toml`): the visitor's seven stacks, worth
+/// 1 780, 400, 630, 1 755, 400, 1 455 and 800.
+fn row_3_army() -> Vec<ArmyStack> {
+    vec![
+        stack(0, SWORDSMAN, 4),
+        stack(1, CENTAUR, 4),
+        stack(2, ARCHER, 5),
+        stack(3, GRIFFIN, 5),
+        stack(4, PIKE, 5),
+        stack(5, MONK, 3),
+        stack(6, PIKE, 10),
+    ]
+}
+
+/// Batch TWN-1's row 3: the garrison's three stacks, worth 1 946, 1 840 and 1 840.
+fn row_3_garrison() -> Vec<ArmyStack> {
+    vec![
+        stack(0, CAVALIER, 1),
+        stack(1, HALBERDIER, 16),
+        stack(2, MARKSMAN, 10),
+    ]
+}
+
+/// Batch TWN-1's row 3 after the merge, as both runs read it (survey §15).
+fn row_3_merged() -> Vec<ArmyStack> {
+    vec![
+        stack(0, SWORDSMAN, 4),
+        stack(1, HALBERDIER, 16),
+        stack(2, MARKSMAN, 10),
+        stack(3, GRIFFIN, 5),
+        stack(4, CAVALIER, 1),
+        stack(5, MONK, 3),
+        stack(6, PIKE, 15),
+    ]
+}
+
+/// The army slots and a stack's most creatures of [`town_rules`].
+const SLOTS: (u8, u32) = (7, MAX_STACK);
+
+// covers: TWN-SIE-002
+#[test]
+fn the_garrison_merges_by_the_greatest_gain_until_none_gains() {
+    // Batch TWN-1's row 3 (TD-7, confirmed): (1) the weakest is the last of the two worth 400
+    // (slot 4's pikemen), the cavalier gains the most and changes places with it; (2) the first of
+    // the two equal gains (the halberdiers before the marksmen) changes places with slot 1's
+    // centaurs; (3) the marksmen with slot 2's archers; (4) the swapped-out pikemen join slot 6's
+    // (their creature's stack: room, the gain their whole value); (5) nothing gains.
+    let rules = town_rules();
+    let (mut army, mut garrison) = (row_3_army(), row_3_garrison());
+    crate::town::merge(&rules.0, SLOTS, &mut army, &mut garrison);
+    assert_eq!(army, row_3_merged());
+    assert_eq!(garrison, vec![stack(1, CENTAUR, 4), stack(2, ARCHER, 5)]);
+}
+
+// covers: TWN-SIE-002
+#[test]
+fn a_garrison_stack_joins_where_the_army_has_room_and_a_worthless_one_never() {
+    let rules = town_rules();
+    let merge = |mut army: Vec<ArmyStack>, mut garrison: Vec<ArmyStack>| {
+        crate::town::merge(&rules.0, SLOTS, &mut army, &mut garrison);
+        (army, garrison)
+    };
+    // Room, a stack of its creature or a free slot, makes the gain its whole value: the pikemen
+    // (160) join slot 2's, then the centaur (100, less than the weakest's 240) the first free
+    // slot. The peasants and a creature the ruleset does not have are worth nothing: they stay.
+    let unknown = CreatureTypeId::from_raw(99);
+    let (army, garrison) = merge(
+        vec![stack(0, CAVALIER, 1), stack(2, PIKE, 1)],
+        vec![
+            stack(3, PIKE, 2),
+            stack(5, CENTAUR, 1),
+            stack(6, PEASANT, 50),
+            stack(1, unknown, 9),
+        ],
+    );
+    assert_eq!(
+        army,
+        vec![
+            stack(0, CAVALIER, 1),
+            stack(1, CENTAUR, 1),
+            stack(2, PIKE, 3)
+        ]
+    );
+    assert_eq!(garrison, vec![stack(6, PEASANT, 50), stack(1, unknown, 9)]);
+    // A full army whose pikemen's stack cannot take two more (ADV-ARM-007): no room, so the
+    // pikemen gain their value less the weakest's (160 − 100) and change places with the last of
+    // the equal centaurs, which then joins the first centaurs' stack (room: its whole value).
+    let mut full = vec![stack(0, PIKE, MAX_STACK - 1)];
+    full.extend((1..7).map(|slot| stack(slot, CENTAUR, 1)));
+    let (army, garrison) = merge(full, vec![stack(0, PIKE, 2)]);
+    let mut expected = vec![stack(0, PIKE, MAX_STACK - 1), stack(1, CENTAUR, 2)];
+    expected.extend((2..6).map(|slot| stack(slot, CENTAUR, 1)));
+    expected.push(stack(6, PIKE, 2));
+    assert_eq!((army, garrison), (expected, vec![]));
+    // A stack worth no more than the weakest, without room, never changes places.
+    let (army, garrison) = merge(
+        (0..7).map(|slot| stack(slot, CENTAUR, 2)).collect(),
+        vec![stack(0, PIKE, 2), stack(1, ARCHER, 1)],
+    );
+    assert_eq!(army.len(), 7);
+    assert_eq!(garrison, vec![stack(0, PIKE, 2), stack(1, ARCHER, 1)]);
+    // An army without a stack (never a hero's) takes nothing.
+    let (army, garrison) = merge(vec![], row_3_garrison());
+    assert_eq!((army, garrison), (vec![], row_3_garrison()));
+}
+
+// covers: TWN-SIE-002
+#[test]
+fn the_state_merges_a_towns_garrison_into_its_visitor_and_names_the_changed_slots() {
+    let rules = town_rules();
+    let blue = HeroId::new(2);
+    // Blue's town with row 3's garrison, blue's hero on its entrance with row 3's army.
+    let mut state = at_town(&rules, Some(1), row_3_garrison(), (ENTRANCE, None));
+    state.hero_mut(blue).unwrap().army = row_3_army();
+    let slots = state.merge_garrison(&rules.0, &rules.1, TownId::new(0));
+    let hero = |slot| ArmySlot {
+        army: ArmyRef::Hero(blue),
+        slot,
+    };
+    let town = |slot| ArmySlot {
+        army: ArmyRef::Garrison(TownId::new(0)),
+        slot,
+    };
+    // The visitor's slots, then the garrison's, each in slot order.
+    assert_eq!(
+        slots,
+        vec![
+            hero(1),
+            hero(2),
+            hero(4),
+            hero(6),
+            town(0),
+            town(1),
+            town(2)
+        ]
+    );
+    assert_eq!(state.hero(blue).unwrap().army, row_3_merged());
+    let left = [stack(1, CENTAUR, 4), stack(2, ARCHER, 5)];
+    assert_eq!(state.town_garrison(0), Some(&left[..]));
+    // Again: nothing gains, nothing changes, the garrison's block as it was.
+    let before = state.clone();
+    assert_eq!(
+        state.merge_garrison(&rules.0, &rules.1, TownId::new(0)),
+        vec![]
+    );
+    assert_eq!(state, before);
+    // A town without a visitor, or one the map does not have: nothing.
+    let mut alone = at_town(&rules, Some(1), row_3_garrison(), (FAR, None));
+    let before = alone.clone();
+    for id in [0, 1] {
+        assert_eq!(
+            alone.merge_garrison(&rules.0, &rules.1, TownId::new(id)),
+            vec![]
+        );
+    }
+    assert_eq!(alone, before);
 }

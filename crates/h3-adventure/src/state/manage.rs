@@ -32,12 +32,14 @@ impl AdventureState {
             .ok_or(ArmyCommandError::NotYourHero(id))
     }
 
-    /// The army `army` of `player`: its hero's, or the group when one is open.
+    /// The army `army` of `player`: its hero's, or the group when one is open; never a town's
+    /// garrison (E09 T8b2b: not managed before the town screen, E09 increment 3).
     fn held(&self, player: PlayerId, army: ArmyRef, open: bool) -> Result<Held, ArmyCommandError> {
         match army {
             ArmyRef::Hero(id) => self.own_hero(player, id).map(Held::Hero),
             ArmyRef::Group if open => Ok(Held::Group),
             ArmyRef::Group => Err(ArmyCommandError::NoGroup),
+            ArmyRef::Garrison(town) => Err(ArmyCommandError::Garrison(town)),
         }
     }
 

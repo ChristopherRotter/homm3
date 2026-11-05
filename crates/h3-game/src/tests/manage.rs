@@ -4,7 +4,7 @@
 
 use h3_adventure::AdventureCommand;
 use h3_battle::observe as observe_battle;
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleSide, TownId};
 use h3_heroes::{
     ArtifactInstance, ArtifactMove, ArtifactPlace, CombineError, HeroDetails, MoveError, Position,
     apply_change, assemble_changes, disassemble_changes, move_changes, wearing,
@@ -86,6 +86,14 @@ pub(super) const fn slot(hero: HeroId, slot: u8) -> ArmySlot {
 pub(super) const fn group(slot: u8) -> ArmySlot {
     ArmySlot {
         army: ArmyRef::Group,
+        slot,
+    }
+}
+
+/// A slot of town `0`'s garrison (E09 T8b2b: no command manages it).
+const fn garrison(slot: u8) -> ArmySlot {
+    ArmySlot {
+        army: ArmyRef::Garrison(TownId::new(0)),
         slot,
     }
 }
@@ -203,6 +211,15 @@ fn a_player_rearranges_a_heros_army_in_its_turn() {
         (
             dismiss(group(0)),
             ManageError::Army(ArmyCommandError::NoGroup),
+        ),
+        // E09 T8b2b: a town's garrison is not managed before the town screen, on either end.
+        (
+            to(garrison(0)),
+            ManageError::Army(ArmyCommandError::Garrison(TownId::new(0))),
+        ),
+        (
+            dismiss(garrison(1)),
+            ManageError::Army(ArmyCommandError::Garrison(TownId::new(0))),
         ),
         (
             dismiss(slot(BLUE_HERO, 0)),

@@ -3,7 +3,9 @@
 //! the obstacles, the defending hero's bonuses), the defending hero's spell points and the
 //! attacking winner's experience after it, the garrison's survivors, and the capture after an
 //! attacker's win, after the winner's levels, the attacker staying outside. Since E09 T8b2a the
-//! siege started by a step onto a town its garrison defends (TWN-SIE-001), through `apply`.
+//! siege started by a step onto a town its garrison defends (TWN-SIE-001), through `apply`; since
+//! T8b2b by a step onto a visitor of another team, with the garrison merged into its army first
+//! (TWN-SIE-002).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -12,8 +14,9 @@ use h3_adventure::{
     AdventureCommand, AdventureEventKind, BattleStart, Combatant, Defender, Holds, ObjectSetup,
     Pos, Scenery, TileMask,
 };
+use h3_adventure::{ArmyRef, ArmySlot};
 use h3_battle::{BattleState, Command};
-use h3_content::{Formation, HeroParams, Ruleset, TerrainId};
+use h3_content::{ContentPack, Formation, HeroParams, Ruleset, TerrainId};
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, FortLevel,
     HeroId, HeroOutcome, PlayerId, StackOrigin, StackRecord, TownId,
@@ -31,8 +34,8 @@ use crate::town::pool::HeroStatus;
 use crate::town::siege::{SIEGE_EXPERIENCE, raise};
 use crate::town::{mana_after, siege_experience};
 use crate::{
-    Actor, Answer, GameCommand, GameEvent, GameRuleset, GameSetup, GameState, SkillOffer, apply,
-    legal_commands, legal_moves,
+    Actor, Answer, GameCommand, GameEvent, GameRuleset, GameSetup, GameState, HeroArmy, SkillOffer,
+    Viewer, apply, legal_commands, legal_moves, project,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -55,8 +58,14 @@ const ROCK: TerrainId = TerrainId::from_raw(1);
 /// [`DEFENDER_SLOT`] raising a siege's defending hero by 20 attack, 2 defense, 1 power and 150
 /// spell points.
 fn siege_rules() -> GameRuleset {
+    siege_rules_with(|_| {})
+}
+
+/// [`siege_rules`] with its core pack changed by `edit` first.
+fn siege_rules_with(edit: impl FnOnce(&mut ContentPack)) -> GameRuleset {
     let mut core = towns_core_pack(false);
     core.factions[0].native_terrain = Some(key("t:rock"));
+    edit(&mut core);
     let mut towns = town_pack(false);
     towns.towns[0].buildings.push(BuildingDef {
         key: "b12".into(),
@@ -799,4 +808,190 @@ fn a_siege_a_step_started_is_played_and_captures_the_town_with_the_attacker_outs
     assert!(game.adventure().hero(HERO).is_none());
     assert_eq!(garrison(&game), &imps[..]);
     assert_eq!(game.adventure().owner(1), None);
+}
+
+/// [`siege_rules`] whose imp is worth 50, gog 100, and with the test core's extra elf, worth 1
+/// (E09 T8b2b: the garrison's merge reads the creatures' AI values, TWN-SIE-002; the battle part
+/// knows the elf).
+fn merge_rules() -> GameRuleset {
+    siege_rules_with(|core| {
+        core.creatures[0].info.ai_value = 50;
+        core.creatures[1].info.ai_value = 100;
+        let mut elf = core.creatures[0].clone();
+        elf.key = key("t:elf");
+        elf.info.ai_value = 1;
+        core.creatures.push(elf);
+    })
+}
+
+/// A stack.
+const fn stack(slot: u8, creature: h3_content::CreatureTypeId, count: u32) -> ArmyStack {
+    ArmyStack {
+        slot,
+        creature,
+        count,
+    }
+}
+
+/// [`siege_setup`] with blue's hero the visitor of its town 1, without a fort, its army (the part's
+/// two slots) three gogs and a gog, and the garrison's four imps in slot 1 joined by ten elves in
+/// slot 0; red's hero with `red` for its army.
+fn visited(rules: &GameRuleset, red: Vec<ArmyStack>) -> GameSetup {
+    let core = rules.core();
+    let (gog, elf) = (
+        core.creature_by_key("t:gog").unwrap(),
+        core.creature_by_key("t:elf").unwrap(),
+    );
+    let mut setup = siege_setup(rules, true, standard(false));
+    setup.heroes[0].army = HeroArmy::Custom(red);
+    setup.heroes[1].army = HeroArmy::Custom(vec![stack(0, gog, 3), stack(1, gog, 1)]);
+    setup.towns[1]
+        .garrison
+        .as_mut()
+        .unwrap()
+        .push(GarrisonStack {
+            slot: 0,
+            creature: GarrisonCreature::Creature(elf),
+            count: 10,
+        });
+    setup
+}
+
+/// [`visited`]'s armies after the merge (survey §9.2): the gog of slot 1, the weakest, changes
+/// places with the four imps (no room for them; 200 − 100), then joins slot 0's gogs (room: its
+/// whole value); the elves, without room and worth less than the weakest (the imps' 200), stay.
+/// The visitor's army, then the garrison.
+fn merged(rules: &GameRuleset) -> (Vec<ArmyStack>, Vec<ArmyStack>) {
+    let core = rules.core();
+    let [imp, gog, elf] = ["t:imp", "t:gog", "t:elf"].map(|k| core.creature_by_key(k).unwrap());
+    (
+        vec![stack(0, gog, 4), stack(1, imp, 4)],
+        vec![stack(0, elf, 10)],
+    )
+}
+
+/// The merge's events among `events`, as their owners see them: each `StackChanged`.
+fn stacks_changed(events: &[GameEvent]) -> Vec<&GameEvent> {
+    events
+        .iter()
+        .filter(|event| matches!(event, GameEvent::StackChanged { .. }))
+        .collect()
+}
+
+// covers: TWN-SIE-002, TWN-SIE-001, TWN-VIS-002, GAM-BAT-001
+#[test]
+fn a_step_onto_a_towns_visitor_merges_the_garrison_into_its_army_and_besieges_it() {
+    let rules = merge_rules();
+    let imps = vec![stack(1, rules.core().creature_by_key("t:imp").unwrap(), 9)];
+    let game = GameState::new(&rules, &visited(&rules, imps), 7).unwrap();
+    // The legal moves reach the visitor's tile from the tile before, as a monster's.
+    let moves = legal_moves(&game, &rules, Actor::Player(RED), HERO).unwrap();
+    assert_eq!(moves.path(BLUE_GATE), Some(vec![BLUE_GATE]));
+    let left = moves.points_left(BLUE_GATE).unwrap();
+    let mut after = game.clone();
+    let events = step_onto_gate(&rules, &mut after);
+    // The merge's slots, the visitor's then the garrison's, told to blue alone, before the battle.
+    let (army, rest) = merged(&rules);
+    let at = |army, slot| ArmySlot { army, slot };
+    let changed = |army, slot, stack| GameEvent::StackChanged {
+        player: BLUE,
+        at: at(army, slot),
+        stack,
+    };
+    let hero = ArmyRef::Hero(BLUE_HERO);
+    assert_eq!(
+        stacks_changed(&events),
+        [
+            &changed(hero, 0, Some(army[0])),
+            &changed(hero, 1, Some(army[1])),
+            &changed(ArmyRef::Garrison(T1), 1, None),
+        ]
+    );
+    let first = |f: fn(&GameEvent) -> bool| events.iter().position(f).unwrap();
+    assert!(
+        first(|e| matches!(e, GameEvent::StackChanged { .. }))
+            < first(|e| matches!(e, GameEvent::BattleStarted { .. }))
+    );
+    for event in stacks_changed(&events) {
+        assert_eq!(project(event, Viewer::Player(RED)), None);
+        assert_eq!(project(event, Viewer::Player(BLUE)).as_ref(), Some(event));
+    }
+    // The siege against the visitor with its merged army, in the town; red's hero outside with
+    // the legal moves' points, no step.
+    let mut start = siege_start(&game, Some(T1));
+    let Defender::Hero(visitor) = &mut start.defender else {
+        panic!("{:?}", start.defender);
+    };
+    visitor.army = army.clone();
+    let expected = expected_setup(&game, &rules, &start, (ROCK, None));
+    let battle_at = after.battle(RED).unwrap();
+    assert_eq!(battle_at.state(), &battle(&rules, &expected));
+    assert_eq!(battle_at.owners(), [Some(RED), Some(BLUE)]);
+    assert_eq!(battle_at.heroes(), [Some(HERO), Some(BLUE_HERO)]);
+    assert!(!stepped(&events), "{events:?}");
+    let adventure = after.adventure();
+    let red = adventure.hero(HERO).unwrap();
+    assert_eq!((red.pos, red.movement), (OUTSIDE, left));
+    assert_eq!(adventure.hero(BLUE_HERO).unwrap().army, army);
+    assert_eq!(garrison(&after), &rest[..]);
+    assert_eq!(adventure.owner(1), Some(BLUE));
+}
+
+// covers: TWN-SIE-002, TWN-CAP-003
+#[test]
+fn a_siege_against_a_visitor_keeps_its_merged_army_or_captures_the_town_with_the_attacker_outside()
+{
+    let rules = merge_rules();
+    let (army, rest) = merged(&rules);
+    let imp = rules.core().creature_by_key("t:imp").unwrap();
+    // Red retreats at once: blue's visitor wins and keeps the merged army, the garrison what the
+    // merge left; red's hero leaves the map.
+    let mut game = GameState::new(&rules, &visited(&rules, vec![stack(1, imp, 9)]), 7).unwrap();
+    let mut events = step_onto_gate(&rules, &mut game);
+    events.extend(play(&mut game, &rules, |actor, listed| {
+        if actor == Actor::Player(RED) {
+            GameCommand::Battle(Command::Retreat)
+        } else {
+            fight(actor, listed)
+        }
+    }));
+    assert!(game.battle(RED).is_none() && !captured(&events));
+    let adventure = game.adventure();
+    assert!(adventure.hero(HERO).is_none());
+    assert_eq!(adventure.hero(BLUE_HERO).unwrap().army, army);
+    assert_eq!(garrison(&game), &rest[..]);
+    assert_eq!(adventure.owner(1), Some(BLUE));
+    // Red's horde of imps beats the merged army: the visitor off the map, the capture after
+    // red's levels with the merge's leftovers lost, red's hero outside.
+    let mut game = GameState::new(&rules, &visited(&rules, vec![stack(1, imp, 4000)]), 7).unwrap();
+    let mut events = step_onto_gate(&rules, &mut game);
+    events.extend(play(&mut game, &rules, fight));
+    while game.level_up(RED).is_some() {
+        let answer = GameCommand::Answer(Answer::LevelUp(SkillOffer::First));
+        apply(&mut game, &rules, Actor::Player(RED), answer, &mut events).unwrap();
+    }
+    assert!(captured(&events), "{events:?}");
+    let adventure = game.adventure();
+    assert!(adventure.hero(BLUE_HERO).is_none());
+    assert_eq!(adventure.owner(1), Some(RED));
+    assert_eq!(adventure.hero(HERO).unwrap().pos, OUTSIDE);
+    assert!(garrison(&game).is_empty());
+}
+
+// covers: TWN-SIE-002
+#[test]
+fn a_visitors_siege_with_nothing_to_merge_tells_no_stack() {
+    // Blue's visitor of two stacks of three gogs (300 each): the imps (200), without room, gain
+    // nothing; the garrison stays as it is and nothing is told before the battle.
+    let rules = merge_rules();
+    let gog = rules.core().creature_by_key("t:gog").unwrap();
+    let mut setup = visited(&rules, vec![stack(1, gog, 9)]);
+    setup.heroes[1].army = HeroArmy::Custom(vec![stack(0, gog, 3), stack(1, gog, 3)]);
+    setup.towns[1].garrison.as_mut().unwrap().truncate(1);
+    let mut game = GameState::new(&rules, &setup, 7).unwrap();
+    let before = garrison(&game).to_vec();
+    let events = step_onto_gate(&rules, &mut game);
+    assert!(stacks_changed(&events).is_empty(), "{events:?}");
+    assert!(game.battle(RED).is_some());
+    assert_eq!(garrison(&game), &before[..]);
 }

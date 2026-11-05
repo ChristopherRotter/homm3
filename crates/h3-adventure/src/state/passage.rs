@@ -83,8 +83,8 @@ impl AdventureState {
     ///   about a hidden tile leaks), then a step down onto the visitable tile of an object not
     ///   visited from above (never): rejected; a step up off such a tile is a flight's pass only
     ///   (ADV-OBJ-004);
-    /// - another team's hero on a town's entrance (E09 T8a2, TWN-VIS-002: the siege against it,
-    ///   E09 T8b2b, `TWN-STUB-7`) a flight passes, never stops on; nothing else enters it;
+    /// - another team's hero on a town's entrance (E09 T8a2, TWN-VIS-002): the town's siege
+    ///   against it from a stop node (E09 T8b2b, as a neighbour's object), and a flight passes it;
     /// - a hero in a boat ([`Mode::Sail`]): [`Self::sail_entry`]'s rows;
     /// - rock: never; water (E08 T73, ADR-0016 point 4): a hero in a boat is visited from a stop
     ///   node and a flight passes it; an empty boat is boarded from a stop node
@@ -152,14 +152,20 @@ impl AdventureState {
             .heroes
             .iter()
             .position(|h| h.pos == pos && h.id != mover);
-        // Another team's hero on a town's entrance: no stop until the siege (TWN-VIS-002, E09
-        // T8a2), a flight passes it.
-        // stub: TWN-STUB-7 (the siege against the visitor, E09 T8b2b)
-        if hero.is_some_and(|other| self.besieges(player, &self.heroes[other])) {
-            return if fly {
-                Ok(pass)
-            } else {
-                Err(AdventureCommandError::Visit { step })
+        // Another team's hero on a town's entrance (TWN-VIS-002): the town's siege from the tile
+        // before, from a stop node only, as a neighbour's object (E09 T8b2b); a flight passes it.
+        // A boat's step there is a landing onto a hero, which `sail_entry` refuses.
+        let besieged = hero.is_some_and(|other| self.besieges(player, &self.heroes[other]));
+        if besieged && !matches!(mode, Mode::Sail(_)) {
+            let town = self.visit_at(part, player, pos);
+            let stop = town.filter(|_| node == Node::Stop).map(Meets::Object);
+            return match (stop, fly) {
+                (None, false) => Err(AdventureCommandError::NoStop { step }),
+                (stop, _) => Ok(Entry {
+                    tile,
+                    stop: stop.map(Some),
+                    pass: fly,
+                }),
             };
         }
         if let Mode::Sail(boat) = mode {
