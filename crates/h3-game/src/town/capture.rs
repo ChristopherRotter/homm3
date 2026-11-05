@@ -1,6 +1,7 @@
-//! The capture of an undefended town as the game composes it (TWN-CAP-001, TWN-CAP-002; E09 T8a2,
-//! the town epic's design note §11, ADR-0017's amendment point 7): the step that entered the town
-//! returned it (`AdventureOutcome::capture`), the game applies it at once.
+//! The capture of a town as the game composes it (TWN-CAP-001, TWN-CAP-002; E09 T8a2, the town
+//! epic's design note §11, ADR-0017's amendment point 7): the step that entered an undefended
+//! town, or since E09 T8b1 a siege won (after the winner's levels, TWN-CAP-003), returned it
+//! (`AdventureOutcome::capture`), and the game applies it at once.
 
 use h3_adventure::AdventureState;
 use h3_contracts::{PlayerId, TownId};
@@ -10,7 +11,8 @@ use super::adventure_reveal;
 use crate::GameRuleset;
 use crate::command::{AdventureSink, GameEvent, Sink};
 
-/// Captures `town` for `player`, whose hero entered it undefended: the town's reveal
+/// Captures `town` for `player`, whose hero entered it undefended or won its siege: the town's
+/// reveal
 /// (`h3_towns::reveal`, [`adventure_reveal`]), then the adventure's capture
 /// ([`AdventureState::capture_town`]: the owner, the empty garrison, the reveal; `TownCaptured`
 /// then `TilesRevealed`), then, only after a capture, the Capitol's limit on the store of towns

@@ -128,10 +128,11 @@ impl AdventureState {
     /// nothing changes (its guards' losses are not kept). Else, since E08 T62b2, an event's
     /// guards' battle at its tile, where its visitor stands ([`Self::end_event_battle`],
     /// ADV-OBJ-007). A dwelling's guards' (ADV-DWL-004, E08 T95a2: [`Self::end_dwelling_battle`],
-    /// the survivors kept in its week's entry). Infallible: nothing when none of them is at
-    /// `tile`.
+    /// the survivors kept in its week's entry). A town's garrison's (E09 T8b1, TWN-CAP-003:
+    /// [`Self::end_town_battle`], a siege's without a hero). Infallible: nothing when none of
+    /// them is at `tile`.
     // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, GAM-DEC-007
-    // rule: ADV-MIN-002, ADV-DWL-004
+    // rule: ADV-MIN-002, ADV-DWL-004, TWN-CAP-003
     pub fn end_unowned_battle<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -162,6 +163,7 @@ impl AdventureState {
             ObjectKind::Dwelling { .. } => {
                 self.end_dwelling_battle(index, (hero, tile), (survivors, won))
             }
+            ObjectKind::Town => self.end_town_battle(index, (hero, tile), (survivors, won)),
             _ if self.object_at(index).guards.is_some() => {
                 let left = if won { Vec::new() } else { survivors.to_vec() };
                 self.army_left.set(index, Some(left));
@@ -180,11 +182,13 @@ impl AdventureState {
     /// Pyramid not looted is looted and teaches its spell ([`Self::loot_pyramid`]); an event whose
     /// guards are beaten gives its record ([`Self::give_event`]); a dwelling whose guards are
     /// beaten goes on with the visit's rest, its flag and its hire question (ADV-DWL-004, E08
-    /// T95a2: [`Self::dwelling_won`]). Read when it is given: the levels' skills decide what the
-    /// hero can receive or learn (the Pyramid's spell, E7-22). Nothing when none of them is at
-    /// `tile` any more.
+    /// T95a2: [`Self::dwelling_won`]); a town whose siege the hero won, at its entrance, is
+    /// captured for the hero's owner (E09 T8b1, TWN-CAP-003: [`Self::town_won`],
+    /// [`AdventureOutcome::capture`], which the game applies). Read when it is given: the levels'
+    /// skills decide what the hero can receive or learn (the Pyramid's spell, E7-22). Nothing when
+    /// none of them is at `tile` any more.
     // rule: GAM-DEC-007, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, ADV-MIN-002
-    // rule: ADV-DWL-004
+    // rule: ADV-DWL-004, TWN-CAP-003
     pub fn give_won<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -195,6 +199,9 @@ impl AdventureState {
         let beaten = |s: &Self, index: usize| {
             s.object_at(index).guards.is_some() && s.guards_left(index).is_empty()
         };
+        if let Some(town) = self.map().town_at(tile) {
+            return self.town_won(hero, town);
+        }
         if let Some(mine) = self.mine_at(part, tile) {
             self.flag_won((core, part), hero, mine, sink);
             return AdventureOutcome::default();

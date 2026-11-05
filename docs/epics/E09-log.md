@@ -1192,3 +1192,60 @@ fixes by a fourth; the docs by the agent.
   original data every step passed (coverage 100 %, determinism, `bench-check`, `original-data`)
   but `check-lane` (by design on a `cross-lane` branch); `check-lane --cross-lane`; the workspace
   tests. No version moved; no replay touched.
+
+### T8b1 — the siege's battle: its setup from the town and its end (2026-11-05)
+
+One session, the user present; branch `town/e09-t8b1` (`cross-lane`: `h3-adventure`'s
+`command.rs`, `state.rs`, `state/piles.rs` and tests; `h3-game`'s `state/battle.rs` and tests;
+`docs/rules/catalog/game.toml`). Starting point: `master` at 9d65268 (#733 merged; CI green
+there, the sandbox's baseline the light gates; the original data staged: `Heroes3.exe`,
+`H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`). **At its start** (the user): T8b
+cut in two, T8b1 the siege's battle (its setup and its end, testable by starting such a battle
+directly, `TWN-STUB-7` kept), T8b2 the step onto a defended town (the reach and the bench, the
+merge, the defender's three kinds). The code, tests and docs by the agent; an independent review.
+
+- **`h3-adventure`:** `BattleStart::town: Option<TownId>` (`battle_at` gives none);
+  `src/town.rs`' `end_town_battle` (a garrison's siege without a hero: the garrison written,
+  empty after the win, else the survivors; the capture held by `reward_after`) and `town_won`
+  (the capture for the hero's owner unless allied by then; nothing for a hero off the map), the
+  arms of `end_unowned_battle` (`ObjectKind::Town`) and `give_won` (first, by
+  `StaticMap::town_at`).
+- **`h3-game`:** `src/town/siege.rs`: `siege_setup` (the facts, the defending hero `raise`d, the
+  native terrain, the special ground on the entrance), `mana_after`, `siege_experience` and
+  `SIEGE_EXPERIENCE`; `start_battle` calls `siege_setup` before the obstacles' draw;
+  `settle` derives an ended battle's town (its state's siege, its tile's town) and passes it to
+  `end_battle` (a new parameter; the tests' calls pass `None`), which caps the defender's spell
+  points, adds the attacker's 500 and, against a visitor, holds `Rest::Won(entrance)` for the
+  winning attacker. No version moved (the town is derived, `OpenBattle` unchanged); no replay
+  touched; no hot path (the reach and the step are T8b2's).
+- **Readings and calls:** the special ground stays in a siege (`installation.md` §7.26: "in every
+  case", against the design's agent's call "no special battlefield"); the attacker's +500
+  (ADR-0023 point 1) re-read at 0x46A416, not in the design note: TWN-SIE-006; the defender's
+  skills raised at most `primary_max` (the original raises the hero's own skills, which its
+  effective skills hold within the highest). **A gap found:** the base pack's walled Stronghold
+  draws the usual obstacles (TWN-SIE-005), but the original's placement keeps them off the walls
+  by a branch for town type 6 not read (0x466147 to 0x466194) and the battle's generator knows no
+  walls (the battle refuses an obstacle on a wall): `TWN-STUB-8`, none drawn, a note in the battle
+  lane's inbox. The full pack set (with SoD) never meets it.
+- **Rules, stubs:** TWN-SIE-006 and TWN-CAP-003 new; TWN-SIE-003 to -005 and GAM-BAT-001
+  amended; `TWN-STUB-8` registered; `TWN-STUB-7`'s reason names T8b2.
+- **Tests:** `h3-game`'s `town/tests/siege.rs` (nine: a siege's state equal to the expected setup
+  with and without a fort and on a holy ground; a faction without a native terrain, a battle
+  without a town and one naming a town the store lacks; the defending hero raised; `raise`'s
+  limits; the defender's spell points after it; an attacker's win over the garrison captured
+  after the rests, a loss and a draw; over the visitor after the winner's level-up, its type
+  free, the leftovers lost; the +500; two sieges played to their ends, a retreat behind the walls
+  and a win without a fort); `h3-adventure`'s `state/tests/towns.rs` (the garrison's end, the
+  capture's outcome, an allied town and a hero off the map). The town tests' fixtures take a core
+  and a town pack (`towns_core_pack`, `rules_of`).
+- **The review** (independent, no behaviour bug in the reachable cases): a start whose tile is not
+  the town's entrance would be built as a siege but end as a field battle (`siege_setup` now
+  fights no siege there, tested; T8b2's queue entry says so); an attacker's win whose hero leaves
+  the map beats the garrison without a capture (as a mine's; TWN-CAP-003 says so, the original's
+  path not read); tests added for a defender's win without the +500 and the spell points after an
+  attacker's win; five texts (`AdventureOutcome::capture` and `reward_after`, the game's
+  `capture` module, `Rest::Won` and `run_rest` with TWN-CAP-003, TWN-SIE-005's terrain without a
+  native one).
+- **Gates:** `cargo fmt`; the scoped verify with the original data passed every step (clippy,
+  coverage 100 %, determinism, `bench-check`, `original-data`) but `check-lane` (by design on a
+  `cross-lane` branch); `check-lane --cross-lane`; `cargo check --workspace --all-targets`.

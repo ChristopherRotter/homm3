@@ -120,7 +120,7 @@ fn end(
 ) -> (GameState, Vec<(PlayerId, HeroId, HeroChange)>) {
     let mut ended = game.clone();
     let mut events = Vec::new();
-    ended.end_battle(rules, sides, outcome, &mut events);
+    ended.end_battle(rules, sides, None, outcome, &mut events);
     let changes = events
         .iter()
         .filter_map(|e| match *e {
@@ -368,7 +368,7 @@ fn the_heroes_removal_comes_before_their_changes() {
     let mut ended = game.clone();
     let mut events = Vec::new();
     let outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
-    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    ended.end_battle(&rules, SIDES, None, &outcome, &mut events);
     let removed = events.iter().position(|e| {
         matches!(
             e,
@@ -440,7 +440,7 @@ fn the_winners_necromancy_raises_from_every_killed_record_into_its_army() {
     let outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
     let mut ended = game.clone();
     let mut events = Vec::new();
-    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    ended.end_battle(&rules, SIDES, None, &outcome, &mut events);
     // 70 % of each killed record's hit points at most the imp's 4, in imps (4 hit points), at
     // most the record's killed: 4 imps 2 (2.8), 2 gogs 1 (1.4), the cart 0 (0.7), 3 summoned imps
     // 2 (2.1), 2 raised imps 1 (1.4).
@@ -486,7 +486,7 @@ fn the_winners_necromancy_raises_from_every_killed_record_into_its_army() {
         BattleResult::Surrender(BattleSide::Defender),
     ] {
         let (mut again, mut events) = (game.clone(), Vec::new());
-        again.end_battle(&rules, SIDES, &outcome_of(result), &mut events);
+        again.end_battle(&rules, SIDES, None, &outcome_of(result), &mut events);
         assert_eq!(raised(&events), [(RED, RED_HERO, IMP, 6)], "{result:?}");
     }
 }
@@ -505,12 +505,12 @@ fn necromancy_raises_at_least_one_and_nothing_from_nothing() {
     let mut outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
     outcome.stacks[1] = vec![record(StackOrigin::WarMachine, CART, 1, 0)];
     let (mut ended, mut events) = (game.clone(), Vec::new());
-    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    ended.end_battle(&rules, SIDES, None, &outcome, &mut events);
     assert_eq!(raised(&events), [(RED, RED_HERO, IMP, 1)]);
     // Nothing killed: nothing raised, no event.
     outcome.stacks[1] = vec![record(StackOrigin::Army(0), IMP, 4, 4)];
     let (mut ended, mut events) = (game.clone(), Vec::new());
-    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    ended.end_battle(&rules, SIDES, None, &outcome, &mut events);
     assert!(raised(&events).is_empty());
     assert_eq!(
         ended.adventure().hero(RED_HERO).unwrap().army,
@@ -520,7 +520,7 @@ fn necromancy_raises_at_least_one_and_nothing_from_nothing() {
     let game = GameState::new(&rules, &equipped(&rules), 5).unwrap();
     let outcome = outcome_of(BattleResult::Victory(BattleSide::Attacker));
     let (mut ended, mut events) = (game, Vec::new());
-    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    ended.end_battle(&rules, SIDES, None, &outcome, &mut events);
     assert!(raised(&events).is_empty());
 }
 
@@ -534,7 +534,7 @@ fn with_quirk_q0005_the_count_is_the_originals_single_precision_arithmetic() {
         let mut outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
         outcome.stacks[1] = vec![record(StackOrigin::Army(0), IMP, 10, 0)];
         let (mut ended, mut events) = (game, Vec::new());
-        ended.end_battle(&rules, SIDES, &outcome, &mut events);
+        ended.end_battle(&rules, SIDES, None, &outcome, &mut events);
         assert_eq!(raised(&events), [(RED, RED_HERO, IMP, count)]);
     }
 }
@@ -572,7 +572,7 @@ fn the_winner_learns_its_eagle_eye_picks_with_its_book_up_to_its_level() {
     // After the raised creatures, before the capture; the store learned them.
     let game = GameState::new(&rules, &necromancer(&rules, 3, 1, true), 5).unwrap();
     let (mut ended, mut events) = (game, Vec::new());
-    ended.end_battle(&rules, SIDES, &outcome, &mut events);
+    ended.end_battle(&rules, SIDES, None, &outcome, &mut events);
     let raise = events
         .iter()
         .position(|e| matches!(e, GameEvent::CreaturesRaised { .. }))
@@ -644,7 +644,7 @@ fn every_heros_battle_bonuses_end_with_the_battle_before_the_winners_levels() {
         game.apply_hero_change(rules.core(), BLUE_HERO, pyramid);
         let mut ended = game.clone();
         let mut events = Vec::new();
-        ended.end_battle(&rules, SIDES, &outcome_of(result), &mut events);
+        ended.end_battle(&rules, SIDES, None, &outcome_of(result), &mut events);
         for (player, hero) in [(RED, RED_HERO), (BLUE, BLUE_HERO)] {
             let details = ended.hero(hero).unwrap();
             assert_eq!(details.bonuses, BattleBonuses::default(), "{result:?}");
@@ -664,7 +664,7 @@ fn every_heros_battle_bonuses_end_with_the_battle_before_the_winners_levels() {
         // A hero without bonuses is told nothing.
         let mut quiet = GameState::new(&rules, &setup, 5).unwrap();
         let mut events = Vec::new();
-        quiet.end_battle(&rules, SIDES, &outcome_of(result), &mut events);
+        quiet.end_battle(&rules, SIDES, None, &outcome_of(result), &mut events);
         assert!(!events.contains(&cleared(RED, RED_HERO)));
     }
 }

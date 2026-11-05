@@ -31,7 +31,17 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   the original shows them; the server lane maps it (a version). Until then a server's client
   shows the entry's box where a local one shows the Orb's or the Cloak's (the client's
   `CLT-STUB-1`); local play is exact.
-
+- 2026-11-05 (the town lane, E09 T8b1, `town/e09-t8b1`; **for a task of yours when RoE and AB
+  rules are played**, `TWN-STUB-8`): the base pack's walled Stronghold (a Citadel or a Castle)
+  draws the usual natural obstacles in a siege (TWN-SIE-005, `h3_towns::siege_obstacles`; the
+  SoD pack clears it). The game cannot draw them yet: `generate_setup_obstacles` places none at a
+  fort and `generate_battlefield_obstacles` knows no walls, so an obstacle on a wall hex makes
+  `BattleState::start` refuse the siege (`SetupError::InvalidSiege`). The original's 0x466010
+  keeps each obstacle hex off a blocked hex (the walls get the blocked bit first, 0x4662E3) and
+  takes a branch for a siege of town type 6 on the game's version (0x466147 to 0x466194, not read;
+  `installation.md` §7.26). Wanted: that branch read and a draw that keeps off the walls (a
+  siege-aware `generate_*`, or the walls' hexes as an input); the game then calls it for a siege
+  whose town draws natural obstacles (`h3_game`'s `town::siege_setup`, `TWN-STUB-8`).
 - 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **a failing property case on `master`'s
   code, for a task of yours**): a local `cargo test --workspace` found a case of `h3-battle`'s
   `tests::properties::a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden`

@@ -13,7 +13,8 @@ use core::num::{NonZeroU8, NonZeroU16};
 
 use h3_adventure::{AdventureRuleset, Holds, ObjectSetup, Pos, Scenery, TileMask};
 use h3_content::{
-    CreatureDef, FactionDef, FactionId, Formation, HeroClassDef, HeroTypeDef, HeroTypeId, Ruleset,
+    ContentPack, CreatureDef, FactionDef, FactionId, Formation, HeroClassDef, HeroTypeDef,
+    HeroTypeId, Ruleset,
 };
 use h3_content_battle::{
     BallisticsRecord, BattleCreatureDef, SiegeDef, SiegeFieldDef, WallKind, WallTarget,
@@ -67,6 +68,11 @@ fn a_players_start_defaults_to_none_of_it() {
 /// the knights `t:k0` to `t:k16`. With `elf`, the extra creature `t:elf` is `t:other`'s level 1
 /// and its copy `t:ent` its level 2.
 fn towns_core(elf: bool) -> Ruleset {
+    Ruleset::compile(&[towns_core_pack(elf)], "t:faithful").unwrap()
+}
+
+/// [`towns_core`]'s pack.
+pub(super) fn towns_core_pack(elf: bool) -> ContentPack {
     let mut pack = core_pack(elf);
     if elf {
         let ent = CreatureDef {
@@ -109,7 +115,7 @@ fn towns_core(elf: bool) -> Ruleset {
     });
     pack.heroes
         .extend((0..17).map(|i| hero_type(&format!("t:k{i}"), &[], &[])));
-    Ruleset::compile(&[pack], "t:faithful").unwrap()
+    pack
 }
 
 /// The battle tests' siege field (`h3-battle`'s `tests::support::siege_field`).
@@ -164,7 +170,7 @@ pub(super) const LOOKOUT_SLOT: u8 = 21;
 /// [`town_pack`]'s lookout's reveal radius; its part's is 5.
 pub(super) const LOOKOUT_RADIUS: u8 = 20;
 
-fn town_pack(elf: bool) -> TownPack {
+pub(super) fn town_pack(elf: bool) -> TownPack {
     let mut roles: Vec<BuildingRoles> = (1..=4)
         .map(|level| BuildingRoles {
             hall: Some(level),
@@ -277,7 +283,13 @@ fn towns_rules_with(elf: bool) -> GameRuleset {
 /// [`towns_rules_with`] whose adventure part takes maps of up to `side` tiles a side (E09
 /// T7b2a: the start's reveal), not 4, and of two levels (E09 T8a2: a reveal of every level).
 fn towns_rules_on(elf: bool, side: u16) -> GameRuleset {
-    let core = Arc::new(towns_core(elf));
+    rules_of(towns_core(elf), &town_pack(elf), elf, side)
+}
+
+/// The game's rules of [`towns_rules_on`] on `core` and the town part of `towns` (E09 T8b1: a
+/// faction's native terrain, a defender's bonus).
+pub(super) fn rules_of(core: Ruleset, towns: &TownPack, elf: bool, side: u16) -> GameRuleset {
+    let core = Arc::new(core);
     let factions: &[&str] = if elf {
         &["t:town", "t:other"]
     } else {
@@ -303,7 +315,7 @@ fn towns_rules_on(elf: bool, side: u16) -> GameRuleset {
             })
             .collect();
     });
-    let towns = TownRuleset::compile(&core, &[town_pack(elf)]).unwrap();
+    let towns = TownRuleset::compile(&core, core::slice::from_ref(towns)).unwrap();
     let mut adventure = adventure_pack(vec![88, 25], 2);
     let params = adventure.params.as_mut().unwrap();
     params.max_map_size = NonZeroU16::new(side).unwrap();
@@ -873,3 +885,4 @@ mod build;
 mod capture;
 mod heroes;
 mod pool;
+mod siege;
