@@ -1,14 +1,15 @@
 //! Tests of a player's start and of the setup's checks of the starts and the towns (E09 T7a2;
 //! since T8a1 the towns' count and the main town's owner); the pool and the build's draws in
 //! [`pool`] (E09 T7b1); the towns' draws, the store of towns and the start's reveal in [`build`]
-//! (E09 T7b2a); the main towns' heroes in [`heroes`] (E09 T7b2b).
+//! (E09 T7b2a); the main towns' heroes in [`heroes`] (E09 T7b2b); the step onto a town and its
+//! capture in [`capture`] (E09 T8a2).
 
 use alloc::format;
 use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::num::NonZeroU16;
+use core::num::{NonZeroU8, NonZeroU16};
 
 use h3_adventure::{AdventureRuleset, Holds, ObjectSetup, Pos, Scenery, TileMask};
 use h3_content::{
@@ -153,8 +154,10 @@ fn siege_field() -> SiegeFieldDef {
 
 /// `t:town`'s town record: the roles every record needs, its two levels the imp and the gog; with
 /// `elf`, `t:other`'s too, its two levels the elf and the ent.
-/// The map slots of [`town_pack`]'s Grail building (`b9`, it reveals every tile), its silo
-/// (`b10`) and its lookout (`b11`, it reveals [`LOOKOUT_RADIUS`]); its other buildings have none.
+/// The map slots of [`town_pack`]'s Capitol (`b3`, its hall 4; its part demotes it to `b2`), its
+/// Grail building (`b9`, it reveals every tile), its silo (`b10`) and its lookout (`b11`, it
+/// reveals [`LOOKOUT_RADIUS`]); its other buildings have none.
+pub(super) const CAPITOL_SLOT: u8 = 13;
 pub(super) const GRAIL_SLOT: u8 = 26;
 pub(super) const SILO_SLOT: u8 = 15;
 pub(super) const LOOKOUT_SLOT: u8 = 21;
@@ -198,9 +201,14 @@ fn town_pack(elf: bool) -> TownPack {
         .map(|(roles, i)| BuildingDef {
             key: format!("b{i}"),
             name: "Building".into(),
-            slot: [(9, GRAIL_SLOT), (10, SILO_SLOT), (11, LOOKOUT_SLOT)]
-                .into_iter()
-                .find_map(|(building, slot)| (building == i).then_some(slot)),
+            slot: [
+                (3, CAPITOL_SLOT),
+                (9, GRAIL_SLOT),
+                (10, SILO_SLOT),
+                (11, LOOKOUT_SLOT),
+            ]
+            .into_iter()
+            .find_map(|(building, slot)| (building == i).then_some(slot)),
             supersedes: vec![],
             forbidden_with: None,
             auto_with: vec![],
@@ -267,7 +275,7 @@ fn towns_rules_with(elf: bool) -> GameRuleset {
 }
 
 /// [`towns_rules_with`] whose adventure part takes maps of up to `side` tiles a side (E09
-/// T7b2a: the start's reveal), not 4.
+/// T7b2a: the start's reveal), not 4, and of two levels (E09 T8a2: a reveal of every level).
 fn towns_rules_on(elf: bool, side: u16) -> GameRuleset {
     let core = Arc::new(towns_core(elf));
     let factions: &[&str] = if elf {
@@ -297,7 +305,9 @@ fn towns_rules_on(elf: bool, side: u16) -> GameRuleset {
     });
     let towns = TownRuleset::compile(&core, &[town_pack(elf)]).unwrap();
     let mut adventure = adventure_pack(vec![88, 25], 2);
-    adventure.params.as_mut().unwrap().max_map_size = NonZeroU16::new(side).unwrap();
+    let params = adventure.params.as_mut().unwrap();
+    params.max_map_size = NonZeroU16::new(side).unwrap();
+    params.max_levels = NonZeroU8::new(2).unwrap();
     GameRuleset::new(
         Arc::clone(&core),
         Arc::new(AdventureRuleset::compile(&core, &[adventure]).unwrap()),
@@ -860,5 +870,6 @@ fn a_placed_heros_unknown_type_is_refused_before_any_draw() {
 }
 
 mod build;
+mod capture;
 mod heroes;
 mod pool;

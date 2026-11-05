@@ -12,7 +12,8 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureOutcome, AdventureState, Choice, ChoiceKind, Garrison, HeroGains, HireDialog,
-    HireSource, HireTarget, Meeting, ObjectTypeId, Offer, OfferKind, Pick, Pos, UniversityVisit,
+    HireSource, HireTarget, Meeting, ObjectTypeId, Offer, OfferKind, Pick, Pos, TownReveal,
+    UniversityVisit,
 };
 use h3_content::{HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
@@ -326,9 +327,9 @@ impl GameState {
         let mut adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
             .map_err(GameSetupError::Adventure)?;
         // rule: TWN-CAP-001
-        let town_radii: Vec<u8> = towns
+        let reveals: Vec<TownReveal> = towns
             .iter()
-            .map(|(town, _)| town::start_radius(town, rules))
+            .map(|(town, _)| town::adventure_reveal(town, rules))
             .collect();
         // Step 4 builds `MAX_TOWNS` towns at most (`town::build_towns`), so the store is never
         // refused here (the adventure refused a map with more, `SetupError::Towns`).
@@ -350,8 +351,9 @@ impl GameState {
             Arc::new(heroes.into_iter().map(Arc::new).collect());
         // ADR-0017 point 1 (E08 T40): the adventure's start of the game after the levels at
         // load, then day 1's start-of-day step (ADV-MOV-002, ADV-FOG-003). Since E09 T8a1 each
-        // town's radius by `TownId` (ADV-OWN-002), since E09 T7b2a its own (TWN-CAP-001).
-        adventure.start_game(rules.core(), rules.adventure(), &heroes, &town_radii);
+        // town's radius by `TownId` (ADV-OWN-002), since E09 T7b2a its own (TWN-CAP-001), since
+        // E09 T8a2 every tile of every level for a reveal of all.
+        adventure.start_game(rules.core(), rules.adventure(), &heroes, &reveals);
         adventure.start_day(rules.core(), rules.adventure(), &heroes);
         let players: Vec<PlayerState> = setup
             .players
@@ -470,7 +472,9 @@ impl GameState {
     }
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
-    /// point 10): first the visit of the monster guarding the hero's tile held as a rest of the
+    /// point 10): first the capture of the undefended town the step entered (TWN-CAP-001,
+    /// TWN-CAP-002, E09 T8a2: [`town::capture`]), at once; then the visit of the monster guarding
+    /// the hero's tile held as a rest of the
     /// visit (`AdventureOutcome::guard_after`, ADV-MON-006, GAM-DEC-007; E08 T63b), so that it
     /// waits for whatever the outcome opens, a won guards' battle's reward
     /// (`AdventureOutcome::reward_after`) and an event on a guarded tile
@@ -495,6 +499,11 @@ impl GameState {
     ) {
         let mut next = Some(outcome);
         while let Some(outcome) = next.take() {
+            // rule: TWN-CAP-001, TWN-CAP-002
+            if let Some(captured) = outcome.capture {
+                let (adventure, towns) = (&mut self.adventure, &mut self.towns);
+                town::capture(adventure, towns, rules, (captured, player), sink);
+            }
             if let Some(hero) = outcome.guard_after {
                 self.hold(player, hero, Rest::Guard);
             }

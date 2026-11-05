@@ -91,7 +91,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `Trainer.state` and `restore` together, and into `test_a_stopped_run_resumes_to_its_budget`'s
   comparisons (checkpoint format 3, T4a; the promoted networks and the league's stay in their
   files, which a resume reads: a file the checkpoint names is deleted only after the next one); `resume` checks before `Run(…, resume=…)` cuts the metrics (a refused resume
-  changes nothing). `h3env.train.run` stays free of torch
+  changes nothing). The benches' likewise (E25 T26a): a piece of a bench's state goes into
+  `distill.go`'s `checkpoint` and its restore together, and into
+  `test_a_stopped_bench_resumes_to_its_budget`'s comparisons (`BENCH_FORMAT`); a new `Bench`
+  key that changes the training stays out of `distill.RESUMABLE`. `h3env.train.run` stays free of torch
   (the package loads its torch modules lazily); `tests/test_run.py` runs without torch
   (to block it: a `torch.py` raising `ModuleNotFoundError` first on `PYTHONPATH`; pytest 9). In a background shell `cd`
   may not hold: run `uv --directory python run …` (a plain `uv run` from the root takes the
@@ -116,6 +119,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   reads it refuses none; a melee entry's attack hex is `geometry.attack_hexes`, never a copy. Time
   a kind with `python -m h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats
   30`), a bench's students side by side with `--bench`.
+- **A user's run over 2 hours must resume** (the user, 2026-11-05; no overnight runs): the
+  trainer's `--resume`, the benches' since E25 T26a; a run that cannot resume is split into parts
+  under 2 hours or not handed over.
 - A user's run: they upload `record.json`, `metrics.jsonl`, `best.pt`; `evaluate.load` builds
   a network on the CPU. The upload takes at most 30 MB: a network file is 4 bytes a parameter
   (2 × 512 about 24 MB, 2 × 1 024 49.5 MB), so a larger network's scripts (`battles.py`, a

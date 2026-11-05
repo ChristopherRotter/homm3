@@ -11911,3 +11911,87 @@ random replays' search; the scripted replays).
   workloads inside the gate, the sandbox's drift as at T95b: the forks +1.4 to +1.9 %, the rest
   −0.2 to +0.8 %; T96a changes no engine code), original-data.
 - **Versions:** none.
+
+### Increment 10, round 8: T96b1, the dwellings plans' properties (2026-11-05, `adventure/e08-t96b1`)
+
+**The cut** (decision 257, the user at T96b1's start): whole, in one pull request (the agent had
+recommended the three seeds first); the user merges it. **Baseline:** #728 (T96a) merged
+(`master` a132160; the setup's `verify-once` found CI's fingerprint, light gates only, passed);
+the original data staged at the start. Built by three narrow sub-agents in turn (the seeds; the
+plans and `play.rs`'s checks; `view.rs`'s checks, with a review of the second's `view.rs`
+changes), reviewed by a fourth.
+
+- **The three failing seeds** (the inbox's of 2026-11-03 and -04; committed in
+  `proptest-regressions/tests/view.txt`): all in the hygiene property's `vary`, none an engine
+  leak. `4ceb0bd6` and `e44ebd63`: a mine the viewer owns at load, anchored on the map's first
+  column (its entrance off the map, so no start reveal), counted as unseen and given to another
+  player or made neutral, so the viewer's own income moved; `vary` keeps an object the viewer
+  owns, with its owner, and never removes it. `f1e6f5bc`: `vary` kept entrances on land only for
+  mines and owned objects, so an abandoned mine's turned to water and the import refused the map
+  (`OwnedOnWater(12)`; not a dwelling, nor the plan generator); an abandoned mine's entrance stays
+  land too. `lay_out` unchanged.
+- **The plans' dwelling classes** (`KINDS` 86 to 95, `DWELLINGS`, appended): the Guardhouse, the
+  Imp Crucible, the Dwarf Cottage, the Barracks, the Monastery and the Elemental Conflux (class 20)
+  guarded, the random dwellings 216 to 218 and the Refugee Camp, drawn last (`dwellings()`: one to
+  six within two tiles of a hero in seven plans of eight), owned at load through `Plan::owners`
+  (`ownable`). `lay_out` leaves out a dwelling entered from water (the import's `OwnedOnWater`), a
+  random dwelling whose outcomes' tiles hold a hero (the setup refuses it) and a dwelling whose
+  type and anchor another's outcome could take; boats keep off the outcomes' tiles. **Each random
+  dwelling has one outcome** (one faction, one level, varied over the objects): its resolution is
+  public, so the hygiene property's hidden differences (the seed among them) must not move it; the
+  draw among several outcomes stays covered by `h3-adventure`'s
+  `a_random_dwelling_draws_its_faction_then_its_level` and
+  `a_random_dwelling_holds_its_factions_and_levels`, and by T96a's replays. Plans without the new
+  draw lay out as before (the fixtures and regression files unchanged).
+- **The steps:** `Step::Hire` runs enter dwellings and camps, accept or decline the guards' and
+  the hire questions (one in four declined), buy in the dialog and close it.
+- **The checks** (design §14): §6's invariants after every command (`check_invariants` adds
+  `check_dwellings`, `check_camps`); the listed `Buy`s accepted, a past-range amount or another
+  creature rejected with the state unchanged, the treasury and the army moved by the price and
+  the amount (T95b's `check_hire` and `check_conservation`, now met); after a week's step every
+  dwelling full and every camp's creature drawn anew of its set (`check_dwellings_week`, from
+  `check_week`); a resolved random dwelling of its holds with its type's footprint at the moved
+  anchor (`check_resolved`, at the build). `check_hire` lets a closing answer be followed by the
+  visit's held rest (a guarding monster's visit, GAM-DEC-007; the seed committed in `play.txt`).
+- **The view properties** (exit criterion 6, design §10): `check_hire_sources`, for every player
+  after every command in `views_move_as_the_events_say` and for the viewer in both games of
+  `a_viewer_learns_nothing_it_cannot_see`: a dwelling or camp a viewer sees shows its type,
+  anchor, footprint and (a dwelling) the state's owner only, and none is among its known objects;
+  the questions and the hire dialog are of a hero of its own on the source's entrance; the joins,
+  the refusals, `NoneToRecruit` and a deserted camp are its own hero's; a source's flag carries
+  the state's owner; no `GuardsChanged`, `MonsterChanged` or `ObjectMarked` names a source. The
+  hygiene comparison varies the owners at load (the random dwellings' after every other ownable's,
+  so earlier seeds keep theirs), how many sources exist (a random dwelling removed only where the
+  viewer sees none of its reach) and the camps' creatures (through the seed); it ends only where
+  the two games' decisions differ at the viewer's own source question (`OfferOpened` names the
+  object only; a seed committed in `view.txt`). **Not varied:** the guards (another player's
+  hidden battle must go the same in both games, and the state's setters are `pub(crate)`: an
+  engine API this task does not add); counts only through another player's free creatures joined
+  in one game and refused in the other (none in 400 cases). `check_hire_sources` covers both
+  directly. `vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show` pins `vary`'s new rules.
+- **The cover test** `the_plans_visit_dwellings_and_hire` (256 plans; 128 left the Barracks
+  unvisited): visits by kind 9, 22, 23, 7, 10, 19, 32, 14, 21, 24; hire questions accepted 101,
+  declined 54; guards' questions accepted 12, declined 6; 12 guards' battles, 5 won; 17 free
+  joins; 25 dwelling and 7 camp purchases; 53 closes; 24 refills; 156 random dwellings resolved.
+  `the_plans_visit_every_kind_and_answer_every_decision` lost its one accepted gift and was raised
+  from 512 to 1024 plans (TRAPS: raise the cases, not the draw); it now holds one accept, no
+  margin, stable while the strategy is.
+- **The review** (a fourth sub-agent, read-only; no trap or determinism finding), fixed: a camp's
+  creature after the week read from the core (its level within the camp's, no war machine, not
+  one of ADV-RFG-001's six, `CAMP_NOT_RANDOM`), not the engine's pool; `check_resolved` reads
+  each random dwelling's outcome from the map's bytes (`dwelling_outcomes`) and its anchor moved
+  by that outcome's shift; `check_hire` allows events after a close only when a monster guards
+  the hero's tile and the first is its `OfferOpened` or `BattleStarted`, the treasury and army
+  checked always; the hygiene comparison asserts equal decisions at a dwelling whose counts are
+  the same in both games (it stops only at a camp or differing counts); `NoneToRecruit` needs
+  one of the viewer's heroes on the entrance; the cover test counts `NoneToRecruit` (2), a
+  deserted camp (3) and a week with a camp (243), each asserted.
+- *Agent's calls (change freely):* the ten kinds and their levels and factions; the draw's
+  weights and distance; one in four questions declined; the cover test's 256 plans.
+- **Test time** (`h3-map`'s lib tests, debug): 178 s on `master`, 187 s with the plans, 210 s
+  with the view checks, 216 s after the review's fixes.
+- **Gates:** the scoped verify with the original data passed every step it runs, `check-lane`
+  included (no cross-lane path), on the branch with `master` (#730) merged in: coverage,
+  determinism with the 47 replays (none changed), bench-check (the 17 workloads inside the
+  gate; T96b1 changes no engine code), original-data.
+- **Versions:** none.

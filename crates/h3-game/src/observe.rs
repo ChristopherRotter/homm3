@@ -275,8 +275,9 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 /// public but a treasury's change, a timed event's firing (E08 T85b), an offer's, a hero's change and its level-ups, which show to
 /// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a, a meeting's
 /// and an army dialog's since T51b, a choice's and a University's since T63a, a hire dialog's
-/// since T95b), and a battle's, which show to the owners that see them (E08 T19a); an adventure
-/// or a battle event shows to the players who see it, naming the viewer alone among them
+/// since T95b), a battle's, which show to the owners that see them (E08 T19a), and a town's
+/// change, to the players that see the town (E09 T8a2); an adventure or a battle event shows to
+/// the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
     let Viewer::Player(player) = viewer;
@@ -307,6 +308,15 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         } => seen_by.contains(player).then_some(GameEvent::BattleEnded {
             heroes,
             result,
+            seen_by: alone,
+        }),
+        GameEvent::TownChanged {
+            town,
+            capitol,
+            seen_by,
+        } => seen_by.contains(player).then_some(GameEvent::TownChanged {
+            town,
+            capitol,
             seen_by: alone,
         }),
         GameEvent::ResourceGained { player: owner, .. }

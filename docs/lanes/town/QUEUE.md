@@ -8,22 +8,25 @@ Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `
 
 Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
-T8a2, then T8b (rounds 2 to 6, T7a, T7b, T8a1 are done, `E09-log.md`); each later round's entries are written when it comes
+T8a2, then T8b (rounds 2 to 6, T7a, T7b, T8a1, T8a2 are done, `E09-log.md`); each later round's entries are written when it comes
 (the epic's list), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T8a2 — the step onto a town** (`cross-lane`)
+**E09 T8b — the siege** (`cross-lane`)
 
-- **Scope:** design §9 and §11 (TWN-VIS-001, -002, TWN-CAP-001, -002): the step's three cases by
-  the owner's team, the garrison and the visitor (entered; defended: visited from the tile before,
-  its siege T8b's; undefended: entered and captured), the visitor on the entrance, the reach and the
-  legal moves (a defended entrance as a monster's tile; measured against `master`, skill
-  `homm3-bench-regression`), `AdventureState::capture_town` and the game's composition
-  (`h3_towns::reveal`, the Capitol's limit, `TownCaptured`, `TownChanged`); `TWN-STUB-4` lifted.
-- **Also:** `TWN-STUB-5` (narrowed by T7b2a): a town that reveals every tile (a Tower's Grail)
-  reveals only its own level at the start (`h3_game`'s `town::start_radius`, the radius 255); the
-  capture's reveal needs the adventure to take a whole-map reveal, the start's then too.
-- **Depends on:** T7b2b (done). **Status:** next; its cut confirmed at its start.
+- **Scope:** design §10 and §15 (TWN-SIE-001 to -005, GAM-BAT-001 amended, TWN-CAP-003):
+  `TWN-STUB-7` lifted: a defended town of another team or none (a creature in its garrison, or a
+  visitor of another team) visited from the tile before (ADV-OBJ-003's neighbour mode: the step
+  paid, ADV-MOV-006's drop, the hero stays), its outcome the siege (`BattleStart::town`); a step
+  onto another team's hero on a town's entrance the same siege, never a field battle (T8a2's
+  `besieges`); the reach and the legal moves then list a defended entrance as a neighbour's
+  destination (today `visit_at`'s refusal through `town_defended` and the reach's cold
+  `unmark_visitors`: measured against `master`, skill `homm3-bench-regression`, and the adventure
+  lane's trap on the walking search's loop); the merge of the garrison into the visitor's army
+  (§10), the defender (`Defender::Hero`, `Garrison`, `Guards`), the siege's `BattleSetup` (§15);
+  the outcome: an attacker's win captures through T8a2's composition with the attacker outside
+  (TWN-CAP-003), a beaten hero leaves the map back to the pool, the survivors as §11.
+- **Depends on:** T8a2 (#733). **Status:** next; its cut confirmed at its start.
 
 ## Inbox
 

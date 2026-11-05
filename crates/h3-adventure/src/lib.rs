@@ -51,6 +51,7 @@ mod ruleset;
 mod setup;
 mod split;
 mod state;
+mod town;
 
 #[cfg(test)]
 mod testing;
@@ -96,6 +97,7 @@ pub use state::{
     AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, HirePurchase, MapObject, Monster, Resolved,
     StaticMap, StaticTile, Visits, Weekly, hire_price,
 };
+pub use town::TownReveal;
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
 /// "Versions"; owned by the adventure lane). Bump it with any change to what the hash covers.

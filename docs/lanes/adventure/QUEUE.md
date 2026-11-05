@@ -4,35 +4,14 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237). T88b in two by side (decision 239; D-51 settled as the original, decision 238): T88b1 done (`adventure/e08-t88b1`: `E08-design.md` parts A and B, ADR-0016's draft), T88b2 done whole (decision 240; `adventure/e08-t88b2`: part C, ADR-0017's draft, the cut; its checkpoint ADV-Q43, decisions 241–243). The cut (design §17): rounds 2 to 8, T89 to T97, batch E10 first. T89 in two at the code's seam (decision 244): T89a done (`adventure/e08-t89a`: the writer's classes and teams, the spec's fields, `cross-lane`), T89b done whole (decision 246; `adventure/e08-t89b`, `cross-lane`: the specs `E08-batch-10a` and `-10b`). T90 done (`adventure/e08-t90`: the harness reads and both batches' runs), T91 done whole (decision 247; `adventure/e08-t91`: survey §16, every row as read). T92 done whole (decision 247; `shared/e08-t92`: the ADRs, the glossary, the security lines). Round 5: T93 in two at the design's seam (decision 248): T93a done whole (`adventure/e08-t93a`, `cross-lane`, decision 249: the kinds, the parameters, the table, the packs, the check against the original data; part v16); T93b done whole (decision 250; `adventure/e08-t93b`: the import, map import v16). Round 6: T94 in two at the design's seam (decision 251): T94a done (`adventure/e08-t94a`: the build, the refusals, the resolution, the lists, the census); T94b done whole (decision 252; `adventure/e08-t94b`: the dwellings' and camps' week state, adventure state hash v20). Round 7: T95a in two at the guards (decision 253): T95a1 done (`adventure/e08-t95a1`: the visits without a battle, the hire question, the free creatures, the camp's visit, the writer); T95a2 done whole (decision 254; `adventure/e08-t95a2`: the guards' question, their battle, its end, the flag and the hire question after a win); T95b done whole (decision 255; `adventure/e08-t95b`, `cross-lane`: the purchase, the hire dialog, the env's v7, replay format v10, game state hash v25). Round 8: T96 in three (decision 256, as increment 9's T86): T96a done (`adventure/e08-t96a`: the map `e08-dwellings-36`, its three random and five scripted replays); T96b1 and T96b2 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T96b1 — the dwellings plans' properties** (design §17's round 8; design §14's "Properties"; decision 256)
-
-- **Scope:** the plans' `DWELLINGS` classes in `h3-map`'s `play.rs` and `view.rs` (the end of turn over weeks; the oracles of T95a1 to T95b exercised; the cover test asserts the hire answers; §14's checks: §6's invariants after every command, every listed `Buy` accepted, an amount past the range or another creature rejected with the state unchanged, the treasury and the army moved by the price and the amount, every dwelling full and every camp's creature of its set after a week's step, a resolved random dwelling of its holds at the moved anchor, no viewer seeing counts, guards or a camp's creature). With them the inbox's three failing `view.rs` seeds (`ResourceGained` at day 2's start; the seeds in the inbox entries of 2026-11-03 and -04, committed with the fix) and the plan generator's `OwnedOnWater` case (an ownable object entered from water: the generator, not the import).
-- **Depends on:** T96a (`adventure/e08-t96a`). **Status:** ready once T96a merges; its cut confirmed at its start.
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T88a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 9 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03; increment 9, mines, the week and owned objects, by T87's audit). **Increment 10, dwellings and hiring**, refined with the user at T87 (ADV-Q41; decisions 231, 232): round 1, the survey and the ADR amendment drafts first: T88a done (whole, decision 233; survey `docs/rules/surveys/E08-dwellings.md`, its checkpoint ADV-Q42: decisions 234–237). T88b in two by side (decision 239; D-51 settled as the original, decision 238): T88b1 done (`adventure/e08-t88b1`: `E08-design.md` parts A and B, ADR-0016's draft), T88b2 done whole (decision 240; `adventure/e08-t88b2`: part C, ADR-0017's draft, the cut; its checkpoint ADV-Q43, decisions 241–243). The cut (design §17): rounds 2 to 8, T89 to T97, batch E10 first. T89 in two at the code's seam (decision 244): T89a done (`adventure/e08-t89a`: the writer's classes and teams, the spec's fields, `cross-lane`), T89b done whole (decision 246; `adventure/e08-t89b`, `cross-lane`: the specs `E08-batch-10a` and `-10b`). T90 done (`adventure/e08-t90`: the harness reads and both batches' runs), T91 done whole (decision 247; `adventure/e08-t91`: survey §16, every row as read). T92 done whole (decision 247; `shared/e08-t92`: the ADRs, the glossary, the security lines). Round 5: T93 in two at the design's seam (decision 248): T93a done whole (`adventure/e08-t93a`, `cross-lane`, decision 249: the kinds, the parameters, the table, the packs, the check against the original data; part v16); T93b done whole (decision 250; `adventure/e08-t93b`: the import, map import v16). Round 6: T94 in two at the design's seam (decision 251): T94a done (`adventure/e08-t94a`: the build, the refusals, the resolution, the lists, the census); T94b done whole (decision 252; `adventure/e08-t94b`: the dwellings' and camps' week state, adventure state hash v20). Round 7: T95a in two at the guards (decision 253): T95a1 done (`adventure/e08-t95a1`: the visits without a battle, the hire question, the free creatures, the camp's visit, the writer); T95a2 done whole (decision 254; `adventure/e08-t95a2`: the guards' question, their battle, its end, the flag and the hire question after a win); T95b done whole (decision 255; `adventure/e08-t95b`, `cross-lane`: the purchase, the hire dialog, the env's v7, replay format v10, game state hash v25). Round 8: T96 in three (decision 256, as increment 9's T86): T96a done (`adventure/e08-t96a`: the map `e08-dwellings-36`, its three random and five scripted replays); T96b1 done whole (decision 257; `adventure/e08-t96b1`: the plans' dwellings, their checks and cover test, the three failing `view.rs` seeds fixed in the test); T96b2 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T96b2 — the dwellings XL and its benchmarks** (design §14's "Benchmarks" and "`--with-original-data`"; decision 256)
 
 - **Scope:** `e08-dwellings-144.h3m` (`h3-map`'s `tests/dwellings_xl_map.rs`, as `economy_xl_map.rs`: the shipped maps' most dwellings (99) and camps, random dwellings, a monster on every hundredth free tile) and the workloads `day-start-dwellings-xl-144`, `fork-dwellings-xl-144`, `random-play-dwellings-36` baselined (`homm3-bench-regression`); the census's remaining lines in `crates/h3-map/examples/original_data.rs` (design §14's list against what T93b to T94b built), run with `--with-original-data`.
-- **Depends on:** T96a. **Status:** after T96b1 or beside it (no shared files but `fixtures/maps/README.md`).
+- **Depends on:** T96a. **Status:** ready (its cut confirmed at its start);
 
 ## Inbox
-
-- 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **for the 2026-11-03 note's task**):
-  another seed of `h3-map`'s `tests::view::a_viewer_learns_nothing_it_cannot_see` failing on
-  `master` ae59f3b at `view.rs:1207` (the viewer's events at day 2's start differ by a
-  `ResourceGained` of player 1): `cc e44ebd639ea55b7cce88a74f668c8a98053fa52b72eeaee3c64f471260697aba`
-  (an RoE plan, side 15, two levels; not committed).
-- 2026-11-04 (the town lane, E09 T7a2, `town/e09-t7a2`; **a failing property case on `master`'s
-  import, for a task of yours**): the scoped verify's coverage run found a case of `h3-map`'s
-  `tests::view::a_viewer_learns_nothing_it_cannot_see` whose laid-out map the import refuses:
-  `start_on` (`tests/play.rs:1478`) unwraps `Err(Unsupported(OwnedOnWater(12)))` (an RoE plan,
-  side 15, one level, its third tile water). T7a2 changes neither the import, the writer nor these
-  tests, so `master` has it too (CI's runs passed on other random cases). Proptest's persisted
-  seed, not committed by T7a2 (it would fail every later run): adding the line
-  `cc f1e6f5bccdc743b549410caa31f1089b743afa8f5432e8ffc10073eb14d036fc` to
-  `crates/h3-map/proptest-regressions/tests/view.txt` replays it. Likely the plan generator
-  placing an ownable object (T93b's dwellings) where it is entered from water.
 
 - 2026-11-04 (the town lane, E09 T7a1, #710; **increment 10's dwellings on water, for a task of
   yours**): with #710 the import reads the static layer before the players (a main town needs the
@@ -43,19 +22,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   comment still says none of the shipped maps has one. E09's exit criterion 1 holds (a typed
   refusal, not a town's); E08 increment 10 decides whether such a dwelling is built. *Decision 256
   (2026-11-05): settled at T97's audit (or carried into increment 11); the typed refusal stays.*
-
-- 2026-11-03 (the adventure lane, E08 T89a, PR #688; **a failing property case on `master`'s code,
-  for a task of its own**): CI's full verify on #688 (run 41694189742) found a case of `h3-map`'s
-  `tests::view::a_viewer_learns_nothing_it_cannot_see` that fails at `view.rs:1405`: the viewer's
-  events at day 2's start differ between the game and its copy with the unseen changes,
-  `ResourceGained { player: PlayerId(2), resource: #5, amount: 1 }` in one and not the other (the
-  viewer's own income moved by something it cannot see). Independent of T89a (the test lays out a
-  `RawMap`, no writer); reproduced locally in 12 s by appending `cc
-  4ceb0bd67ba12482c10781aa43bd0edf62cdcbf92752404a3c05e6a995b42fdf` to
-  `crates/h3-map/proptest-regressions/tests/view.txt` (not committed: it would fail every run until
-  fixed). The shrunk plan: RoE, side 5, one level, the full input in that run's job log
-  (`gh api repos/ChristopherRotter/homm3/actions/jobs/<id>/logs` reads it). Commit the seed with
-  the fix.
 
 - 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
   unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,

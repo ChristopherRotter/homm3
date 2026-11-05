@@ -5,6 +5,7 @@
 
 use alloc::vec::Vec;
 
+use h3_adventure::TownReveal;
 use h3_content::FactionId;
 use h3_contracts::PlayerId;
 use h3_kernel::Rng;
@@ -84,17 +85,14 @@ pub(crate) fn build_towns(
         .collect()
 }
 
-/// The radius `town` reveals to its owner at the start (TWN-CAP-001, the start's half; design note
-/// §8, the adventure's `start_game` by `TownId`): `h3_towns::reveal`'s radius, or for
-/// [`Reveal::All`] (a Tower's Grail) [`u8::MAX`], whose disc (`h3_adventure`'s, the tiles within
-/// `r² + r`) covers every tile of the town's level on a map of up to 181 tiles a side (`180² +
-/// 180² ≤ 255² + 255`; the base pack's largest is 144), not the map's other level
-/// (`TWN-STUB-5`).
+/// What `town` reveals to its owner (TWN-CAP-001; design note §8 and §11), as the adventure takes
+/// it: at the start (`start_game` by `TownId`) and at a capture (`capture_town`):
+/// `h3_towns::reveal`'s radius, or for [`Reveal::All`] (a Tower's Grail) every tile of every
+/// level (E09 T8a2).
 // rule: TWN-CAP-001
-pub(crate) fn start_radius(town: &Town, rules: &GameRuleset) -> u8 {
+pub(crate) fn adventure_reveal(town: &Town, rules: &GameRuleset) -> TownReveal {
     match h3_towns::reveal(town, rules.towns()) {
-        Reveal::Radius(radius) => radius,
-        // stub: TWN-STUB-5
-        Reveal::All => u8::MAX,
+        Reveal::Radius(radius) => TownReveal::Radius(radius),
+        Reveal::All => TownReveal::All,
     }
 }

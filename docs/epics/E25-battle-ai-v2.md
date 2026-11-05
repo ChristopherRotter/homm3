@@ -161,7 +161,8 @@ against the fair actor before any RL run.
 |---|---|---|
 | T24 | The kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the bench's report | done 2026-11-04 (`hexconv`'s `norm`, `feed_forward`, the bench's `warmup` and `weight_decay`, the cost per student, `network --bench` and the grid's CPU table) |
 | T25 | The heads read the geometry: a melee entry's attack hex, the legal mask as an input, `order` for the structured kinds | done 2026-11-04 (`geometry`'s port checked on 18 823 real attacks; `encode(obs, mask)`; `[network] mask_input`, `order`, `attack_hex`; T26's bench prepared at the user's cap of about 700 µs) |
-| T26 | The structure sweep on the cloning bench, against decision 5's first gate | next (the user's machine) |
+| T26a | The resumable bench: the distillation bench and its clone mode resume to their budget (the user, 2026-11-05: every run over 2 hours resumes) | done 2026-11-05 (the shared loop `distill.go`: `checkpoint.pt`, Ctrl-C at a batch boundary, `--resume DIR`, the clone's ladders pending across a stop) |
+| T26b | The structure sweep on the cloning bench, against decision 5's first gate (a first segment stopped at 0.45 M, `E25-log.md` T26) | next (the user's machine, in parts under 2 hours) |
 | T27 | The long clone of the best candidate, its ladder against decision 5's second gate | after T26 (the user's machine) |
 | T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | after T27 (the user's machine) |
 | T29 | The checkpoint: structure against the MLP (clone, RL, cost), the current best, increment 8 | after T28 or a failed gate |
