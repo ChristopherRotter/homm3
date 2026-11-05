@@ -11990,3 +11990,8 @@ changes), reviewed by a fourth.
   weights and distance; one in four questions declined; the cover test's 256 plans.
 - **Test time** (`h3-map`'s lib tests, debug): 178 s on `master`, 187 s with the plans, 210 s
   with the view checks, 216 s after the review's fixes.
+- **Gates:** the scoped verify with the original data passed every step it runs, `check-lane`
+  included (no cross-lane path), on the branch with `master` (#730) merged in: coverage,
+  determinism with the 47 replays (none changed), bench-check (the 17 workloads inside the
+  gate; T96b1 changes no engine code), original-data.
+- **Versions:** none.
