@@ -30,7 +30,7 @@ adventure).
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag. |
-| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed, since E08 T100a Replay Opponent Turn played on the frozen clock and a step played only on a tile; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
@@ -769,6 +769,45 @@ the game plays a computer player inside the end-turn without showing it as the c
 (or too fast to poll). Read what Tan did from its own state (`treasury:tan`, its hero by the name
 the map gives it: `hero[<name>]:tile`, `hero[<name>]:points`); the step returns at the next human's turn
 as before.
+
+**Teleporters and Replay Opponent Turn** (E08 T100a, batch E11a; `docs/rules/surveys/E08-teleporters.md`
+§10, §12). A step `replay = true` (or `{ watch = [x0, y0, x1, y1], dumps = <n> }`) selects its
+hero, clicks the panel's Adventure Options button (the map dialog's item 9: `adventure_command`
+0x409A70's control 9 runs `adventure_options_run` 0x41AB00), and in its dialog (vtable 0x63A610,
+observed; items View World 1, the Puzzle Map 2, the scenario's information 3, Dig 4, Replay
+Opponent Turn 5, OK 30722, and 200, 201) clicks Replay Opponent Turn. It plays on the **frozen
+clock**, stepped 20 ms at a time: after each step the replay's flag (the byte 0x696A04, set by
+`turn_records_replay` 0x49D7A0 while it plays) and the view's top-left tile and level are read,
+each new view kept with its time and, once the screen rests, dumped (`<out>/replay-<n>.xwd`, at
+most `dumps`, 60; `dumps = "every"` after every step, at most 150); a dump taken in real time
+showed the view before (the first run's). Nothing
+started in 5 s of the game's time (the item disabled: its state 0x26 on day 1, 0x6 with records)
+leaves the dialog by its OK. Observations: `replay` (`played (1020 ms of the game's time, …)`, `not started: …`),
+`replay:views` (`35,22,0 → 35,22,1 → …`), `replay:watched` (the views holding a tile of `watch`,
+with their dumps; `none`), `replay:options` (the dialog's vtable, the item's state, its ids),
+`view:before`, `view:after` (the view's corner before the dialog and after the replay),
+`view:size` (MAP_AREA's whole tiles, `18 x 17`). The dumps are the original's screen: look at
+them, describe them in the log, never commit them (ADR-0009).
+
+The other reads: `explored:x0,y0..x1,y1[,level][:colour]` a box's tiles row by row (`43,29 no,
+44,29 no, …`); a step's `at_opening = ["<observation>", …]` reads them as its first battle opens
+(before it is fought; `at_opening:<observation>`, `no battle (or not read)` without one, a
+colour named: the battle's step has no hero record then); `battles` every battle of the step
+(`1. at 10,50,0: defender 1 Peasant, winner attacker`); `exchange` whom a meeting showed as it
+opened (the swap manager's +0x40, +0x44: `E11-6 (left, the visitor) and E11-6b (right)`;
+`none`); `army:rows` the step's hero's army before and after it as a table's rows (slot,
+creature, count before, count after; a `row:` field); `hero:in_boat` (yes or no: status bit
+18). A `key` step (Space: `key = "space"`, a visit again) plays what the key brings by the step's
+`answer`, `battle` and `level_up`, as a walk does. A row's branch: `only_if = { at = [x, y] }`
+(or `[x, y, level]`) plays the step only while its hero stands there, and a skipped step leaves a
+field another step filled (two branches of one row, the one that may lead onto the other's tile
+first: E11-8's); `again_if = { marks = "any" }` clicks a second time only when the first click
+showed a path. Observed (E11a, three runs): a monolith's, a gate's or a Whirlpool's jump
+settles as a walk does (the hero's tile the exit's); the meeting at a gate's exit opens the
+exchange, closed unchanged by its close; the replay of day 2 took about one second of the
+game's time, its view at five corners (each jump's exit among them), and at a jump the screen
+faded the old view out without drawing the exit's (the dumps of `dumps = "every"`): read what
+the screen shows from the dumps, not from the view's corner alone.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`

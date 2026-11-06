@@ -143,13 +143,23 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      E11-18's hero with the Admiral's Hat), boarded on Blue's day 1 and jumping on its day 2 (a
      boarding without the Admiral's Hat leaves 0 points), one entrance W1 for all.
 
+### Decision at T100's start (2026-11-06, user)
+
+278. **T100 in two by spec** (the user at T100's start, `AskUserQuestion`; recommended, as
+     decision 277): **T100a** batch E11a (E11-1 to E11-13, E11-18, E11-19; two days): the
+     harness's reads and keys it needs, the recipe `batches/E08-batch-11a.toml`, its runs and the
+     filled template; **T100b** batch E11b (E11-14 to E11-17): Space repeated with a read after
+     each press, the Whirlpools' list and the tiles' words, its recipe, runs and template. Each
+     with the harness check and the client and map-client lanes' inboxes (CLT-Q18). Not chosen:
+     11a finer by land and water, whole (as T90), by layer (the reads, then both runs).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
 - **T98a The teleporters survey** (decision 261), in two (decision 262): **T98a1** done (2026-11-05, `adventure/e08-t98a1`: survey `E08-teleporters.md` §0 to §8, the census, the channels, the jump, the arrival; D-53 to D-57, A-37 to A-40; 18 address map entries); **T98a2** done (2026-11-06, `adventure/e08-t98a2`, whole: decision 263; §9 to §14, the paths, the views, the space key, the interfaces' sketch, batch E11's plan, ADV-TEL; D-58, A-41; §4.1's one-candidate draw corrected; the checkpoint ADV-Q45, decisions 264–269).
 - **T98b The ADR amendment drafts, the design note and the cut** (decision 261; with the checkpoint's answers, decisions 264–269; batch E11 first, decision 269), in two by side (decision 270): **T98b1** done (2026-11-06, `adventure/e08-t98b1`: `E08-design.md` parts A and B, the draft `adr-drafts/0016-increment-11.md`; the agent's calls for the checkpoint, A-42 proposed); **T98b2** done (2026-11-06, `claude/sweet-dirac-9oz8pd`, whole: decision 271; part C §12 to §18, the draft `adr-drafts/0017-increment-11.md`, `Revisit`'s lines in ADR-0016's; the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted).
 - **T99 Batch E11's maps** (decisions 269, 274), in two at the code's seam (decision 275): **T99a** done (2026-11-06, `adventure/e08-t99a`, `cross-lane`: the writer's classes 43 to 45, 103 and 111 on either level, the spec's `level`, the gates' `pair` and `vcmi_pair`, a boat on a Whirlpool's tile and its `vcmi_tile`); **T99b** in two by land and water (decision 276): **T99b1** done (2026-11-06, `adventure/e08-t99b1`: the spec `E08-batch-11a` with E11-1 to E11-9, E11-18 and E11-19, its template, each walk priced and the fog checked on the written map, a fresh review); **T99b2** in two by spec (decision 277): **T99b2a** done (2026-11-06, `adventure/e08-t99b2a`: 11a's Whirlpool rows E11-10 to E11-13, every Whirlpool army Blue's, boarded on day 1 and jumping on day 2 through one entrance; E11-18's hero with the Admiral's Hat; the walks priced, a fresh review); **T99b2b** done (2026-11-06, `adventure/e08-t99b2b`, `cross-lane`: the spec `E08-batch-11b` with E11-14 to E11-17, E11-16's sides swapped (the agent's call), its template, the walks priced, the setup's Whirlpools' list read for a boat's tile, a fresh review; the batch's row in the experiments README). Round 2 done.
-- **T100 Batch E11's harness reads, recipes and runs** (design §16, §17's round 3): queued (its cut confirmed at its start); then **T101** the scoring.
+- **T100 Batch E11's harness reads, recipes and runs** (design §16, §17's round 3), in two by spec (decision 278): **T100a** done (2026-11-06, `adventure/e08-t100a`: the harness's replay on the frozen clock, branches by tile, box and opening reads; the recipe `E08-batch-11a`, three runs, the template filled); **T100b** batch E11b; then **T101** the scoring.
 - **T102 to T107** (design §17's rounds 4 to 8): the `shared/` task, the kinds and the import, the build, the jump and the game, the fixtures and benchmarks, the audit; each queued when the round before it is done.
 
 ## Later increments (sketch)

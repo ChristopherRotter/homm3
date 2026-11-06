@@ -1,0 +1,332 @@
+# E08 batch E11a played by the capture harness (E08 T100a; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-11a.toml as steps, on Easy, the starting bonus gold, with T100a's
+# reads (README, "Teleporters and Replay Opponent Turn"). Hot seat, Red and Blue human. In the
+# spec's order: day 1, Red: E11-1 (rows E11-1 to E11-3), E11-4 (E11-5, then E11-4), E11-6, E11-9
+# (then E11-8), E11-19, E11-7's and E11-18's first reads; Blue: E11-7b's step, E11-18's, the six
+# boardings; day 2, Red: E11-18's reads and replay, E11-7's step and battle; Blue: the six steps
+# onto W1 (E11-10 to E11-13), E11-18's hero's legs.
+#
+# A row's branch after a jump is a step `only_if = { at = [x, y] }` (played only while the hero
+# stands there; a skipped step leaves the field another step filled). A walk that may show no
+# path clicks again only if it showed one (`again_if = { marks = "any" }`). The explored bits are
+# Red's (`:red`), read by tile boxes (`explored:x0,y0..x1,y1`); `at_opening` reads them as E11-7's
+# battle opens. A message's text is its record (`ADVEVENT:70`), never the text (ADR-0009).
+
+spec = "experiments/specs/E08-batch-11a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Day 1, Red: E11-1 to E11-3 ------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-1"
+hero = "E11-1"
+record = { "E11-1 before: points; day's maximum; explored (12, 11), (16, 13), (16, 14), (17, 10), (18, 10)" = ["text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:explored: ", "explored:12,11..12,11:red", "explored:16,13..16,14:red", "explored:17,10..18,10:red"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "the date at the start" = "date", "the game's version" = "map_kind", "the difficulty" = "difficulty" }
+
+[[step]]
+encounter = "E11-1"
+hero = "E11-1"
+walk = [12, 10]
+again_if = { marks = "any" }
+battle = "auto"
+record = { "E11-1: the path to B (12, 10) (its tiles, or none); if one showed, the walk: its steps, messages, battles" = ["text:the path: ", "path_tiles", "text:clicked again: ", "again", "text:messages: ", "messages", "text:battles: ", "battles", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:explored: ", "explored:12,11..12,11:red", "explored:16,13..16,14:red", "explored:17,10..18,10:red"] }
+note = { "the walk to B: the marks' colours" = "mark" }
+
+[[step]]
+encounter = "E11-1"
+hero = "E11-1"
+only_if = { at = [8, 10] }
+walk = [9, 10]
+battle = "auto"
+record = { "E11-1: the path to A (its tiles)" = "path_tiles", "E11-2: after the step onto A: messages; battles; E11-1's tile, points and day's maximum; moved on after the jump?" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:on A (9, 10) after it: ", "arrived"], "E11-2: explored after: (12, 11), (16, 13), (16, 14), (17, 10), (18, 10)" = ["explored:12,11..12,11:red", "explored:16,13..16,14:red", "explored:17,10..18,10:red"], "E11-3: the battle on arrival, if any (the defender, the result)" = "battles" }
+note = { "the step onto A: the dialogs and screens" = "screens" }
+
+[[step]]
+encounter = "E11-1"
+hero = "E11-1"
+only_if = { at = [12, 10] }
+walk = [13, 10]
+battle = "auto"
+record = { "E11-3's control: the step to (13, 10): the battle or none; E11-1's tile after" = ["text:battles: ", "battles", "text:tile after: ", "hero:tile", "text:points: ", "hero:points", "text:P (13, 11) after: ", "monster:13,11"] }
+note = { "the control's level-ups" = "level_up_dialogs", "the control's messages" = "messages" }
+
+# --- Day 1, Red: E11-5, then E11-4 ---------------------------------------------------------------
+
+[[step]]
+encounter = "E11-4"
+hero = "E11-5"
+walk = [40, 10]
+expect = { dialogs = true }
+record = { "E11-5: the message after the step onto X4 (its text)" = "messages", "E11-5 after: tile; points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+note = { "E11-5 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E11-4"
+hero = "E11-4"
+walk = [32, 10]
+battle = "auto"
+record = { "E11-4: messages or battles after the step onto E4" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:screens: ", "screens", "text:sound: ", "text:not read (a run without sound)"], "E11-4 after: tile; points. E11-5's tile" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:E11-5's tile: ", "hero[E11-5]:tile"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+# --- Day 1, Red: E11-6 ---------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-6"
+hero = "E11-6b"
+walk = [51, 10]
+battle = "auto"
+record = { "E11-6b: messages or dialogs after the step onto G6" = ["text:messages: ", "messages", "text:screens: ", "screens", "text:battles: ", "battles"], "E11-6b after: tile (level); points; day's maximum" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points"] }
+note = { "E11-6b worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E11-6"
+hero = "E11-6"
+walk = [51, 10]
+battle = "auto"
+record = { "E11-6 before its step: explored underground (50, 9) to (52, 11), (53, 10)" = ["before:explored:50,9..52,11,1:red", "before:explored:53,10..53,10,1:red"], "E11-6: the dialog after its step onto G6 (its kind; the heroes it shows)" = ["text:screens: ", "screens", "text:shows: ", "exchange", "text:messages: ", "messages", "text:battles: ", "battles"], "after: E11-6's tile (level) and points; E11-6b's tile (level)" = ["text:E11-6's tile: ", "hero:tile", "text:points: ", "hero:points", "text:E11-6b's tile: ", "hero[E11-6b]:tile"], "after: explored underground (50, 9) to (52, 11), (53, 10)" = ["explored:50,9..52,11,1:red", "explored:53,10..53,10,1:red"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "E11-6's army after the meeting" = "hero:slots", "E11-6b's army after the meeting" = "hero[E11-6b]:slots" }
+
+# --- Day 1, Red: E11-9, then E11-8 ---------------------------------------------------------------
+
+[[step]]
+encounter = "E11-9"
+hero = "E11-9"
+walk = [20, 30]
+battle = "auto"
+record = { "E11-9: messages after the step onto G9" = ["text:messages: ", "messages", "text:screens: ", "screens", "text:battles: ", "battles"], "E11-9 after: tile (level); points; day's maximum; which gate (Uf or Un)" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:gate: ", "text:Uf is 17,27,1, Un 16,30,1"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+# E11-8's two branches, the one from Un first: the branch from Uf ends on Un (ADVEVENT 153, the
+# hero stays), where the branch from Un would play next (T100a's first run played both, the
+# second walking back onto Uf and jumping to G9). From Un, the walk onto Uf jumps (Uf's pair G9).
+[[step]]
+encounter = "E11-9"
+hero = "E11-9"
+only_if = { at = [16, 30, 1] }
+walk = [17, 27, 1]
+battle = "auto"
+record = { "E11-8: the gate stepped onto; the path's tiles; the message after the step (its text)" = ["text:the gate: ", "text:Uf (17, 27) underground", "text:the path: ", "path_tiles", "text:messages: ", "messages"], "E11-8 after: tile (level); points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E11-9"
+hero = "E11-9"
+only_if = { at = [17, 27, 1] }
+walk = [16, 30, 1]
+battle = "auto"
+record = { "E11-8: the gate stepped onto; the path's tiles; the message after the step (its text)" = ["text:the gate: ", "text:Un (16, 30) underground", "text:the path: ", "path_tiles", "text:messages: ", "messages"], "E11-8 after: tile (level); points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E11-19 --------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-19"
+hero = "E11-19"
+walk = [10, 50]
+battle = "auto"
+record = { "E11-19 before: points" = "before:hero:points", "the step onto A19: battles in order (which Peasant; the result); messages" = ["text:battles: ", "battles", "text:messages: ", "messages", "text:M (9, 51) after: ", "monster:9,51", "text:N (31, 50) after: ", "monster:31,50"], "after it: E11-19's tile; points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "the step's level-ups" = "level_up_dialogs" }
+
+[[step]]
+encounter = "E11-19"
+hero = "E11-19"
+only_if = { at = [30, 50] }
+key = "space"
+battle = "auto"
+record = { "Space on B19: battles (which Peasant); messages" = ["text:battles: ", "battles", "text:messages: ", "messages", "text:what the key did: ", "key", "text:M (9, 51) after: ", "monster:9,51", "text:N (31, 50) after: ", "monster:31,50"], "after Space: E11-19's tile; points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+note = { "the key's level-ups" = "level_up_dialogs" }
+
+[[step]]
+encounter = "E11-19"
+hero = "E11-19"
+only_if = { at = [10, 50] }
+walk = [10, 51]
+battle = "auto"
+record = { "the control: the step to (10, 51): the battle or none; E11-19's tile after" = ["text:battles: ", "battles", "text:tile after: ", "hero:tile", "text:points: ", "hero:points", "text:M (9, 51) after: ", "monster:9,51", "text:N (31, 50) after: ", "monster:31,50"] }
+note = { "the control's level-ups" = "level_up_dialogs" }
+
+# --- Day 1, Red: E11-7's and E11-18's first reads ------------------------------------------------
+
+[[step]]
+encounter = "E11-7"
+hero = "E11-7"
+record = { "day 1: explored underground (43, 29) to (45, 31), (46, 30), (49, 30), (50, 30)" = ["explored:43,29..45,31,1:red", "explored:46,30..46,30,1:red", "explored:49,30..50,30,1:red"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E11-18"
+hero = "E11-7"
+record = { "day 1, Red: explored (66, 60), (65, 60), (67, 60), (66, 59), (66, 61); the boardings' (51, 61), (51, 62), (51, 66)" = ["explored:65,60..67,60:red", "explored:66,59..66,59:red", "explored:66,61..66,61:red", "text:the boardings': ", "explored:51,61..51,62:red", "explored:51,66..51,66:red"] }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E11-7b, E11-18, the six boardings ---------------------------------------------
+
+[[step]]
+encounter = "E11-7"
+hero = "E11-7b"
+walk = [44, 30]
+battle = "auto"
+record = { "E11-7b: messages after its step onto G7; its tile (level) after" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:tile: ", "hero:tile"] }
+note = { "E11-7b worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E11-18"
+hero = "E11-18"
+walk = [48, 33]
+battle = "auto"
+record = { "E11-18: messages after its step onto M18; its tile after" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E11-10"
+hero = "E11-10"
+walk = [50, 62]
+record = { "day 1, after the boarding: tile; points; day's maximum; in a boat" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "the boarding's messages" = "messages" }
+
+[[step]]
+encounter = "E11-11"
+hero = "E11-11"
+walk = [51, 62]
+record = { "day 1, after the boarding: tile; points; day's maximum; in a boat" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "the boarding's messages" = "messages" }
+
+[[step]]
+encounter = "E11-12"
+hero = "E11-12"
+walk = [52, 62]
+record = { "E11-12" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+note = { "E11-12 worn at the start (the starting bonus)" = "hero:equipment", "E11-12's boarding's messages" = "messages" }
+
+[[step]]
+encounter = "E11-12"
+hero = "E11-12b"
+walk = [50, 65]
+record = { "E11-12b" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+note = { "E11-12b worn at the start (the starting bonus)" = "hero:equipment", "E11-12b's boarding's messages" = "messages" }
+
+[[step]]
+encounter = "E11-12"
+hero = "E11-12c"
+walk = [51, 65]
+record = { "E11-12c" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+note = { "E11-12c worn at the start (the starting bonus)" = "hero:equipment", "E11-12c's boarding's messages" = "messages" }
+
+[[step]]
+encounter = "E11-13"
+hero = "E11-13"
+walk = [52, 65]
+record = { "E11-13, day 1 after the boarding: tile; points; day's maximum; in a boat" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "the boarding's messages" = "messages" }
+
+[[step]]
+end_turn = true
+
+# --- Day 2, Red: E11-18's reads and replay, then E11-7's step and battle -------------------------
+
+[[step]]
+encounter = "E11-18"
+hero = "E11-7"
+record = { "day 2, before the replay: the same eight explored bits" = ["explored:65,60..67,60:red", "explored:66,59..66,59:red", "explored:66,61..66,61:red", "text:the boardings': ", "explored:51,61..51,62:red", "explored:51,66..51,66:red"], "the view's size in tiles (columns, rows)" = "view:size" }
+note = { "the date" = "date" }
+
+[[step]]
+encounter = "E11-18"
+hero = "E11-7"
+replay = { watch = [50, 61, 52, 66], dumps = "every" }
+record = { "the replay: the view's corners (tile, level) in order; what each part shows" = ["text:the replay: ", "replay", "text:the view before: ", "view:before", "text:the views in order: ", "replay:views", "text:the view after: ", "view:after"], "the replay: a view holding tiles of the boardings (50, 61) to (52, 66), or none; the heroes and boats drawn there (a screenshot)" = "replay:watched", "after the replay: the same eight explored bits; E11-7's underground bits" = ["explored:65,60..67,60:red", "explored:66,59..66,59:red", "explored:66,61..66,61:red", "text:the boardings': ", "explored:51,61..51,62:red", "explored:51,66..51,66:red", "text:E11-7's underground: ", "explored:43,29..45,31,1:red", "explored:46,30..46,30,1:red", "explored:49,30..50,30,1:red"] }
+note = { "the Adventure Options dialog" = "replay:options" }
+
+[[step]]
+encounter = "E11-7"
+hero = "E11-7"
+walk = [44, 30]
+battle = { attack = "Pikeman", by = "attacker", then = "attack" }
+at_opening = ["explored:43,29..45,31,1:red", "explored:46,30..46,30,1:red", "explored:49,30..50,30,1:red"]
+record = { "day 2 before the step: the same explored bits" = ["before:explored:43,29..45,31,1:red", "before:explored:46,30..46,30,1:red", "before:explored:49,30..50,30,1:red"], "E11-7: messages or dialogs after its step onto G7" = ["text:screens: ", "screens", "text:questions: ", "questions"], "the battle's opening: terrain, battlefield; attacker; defender (stacks)" = ["opening:field", "text:special field: ", "battlefield", "text:sides: ", "opening:sides", "text:stacks: ", "stacks:start", "text:E11-7's tile at the opening: ", "battle:tile"], "at the opening: the same explored bits" = ["at_opening:explored:43,29..45,31,1:red", "at_opening:explored:46,30..46,30,1:red", "at_opening:explored:49,30..50,30,1:red"], "the result; the messages after the battle" = ["text:winner: ", "winner", "text:stacks at the end: ", "stacks:end", "text:messages: ", "messages", "text:level-ups: ", "level_up_dialogs"], "after: E11-7's tile (level); points; the same explored bits" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:explored: ", "explored:43,29..45,31,1:red", "explored:46,30..46,30,1:red", "explored:49,30..50,30,1:red"] }
+note = { "E11-7's experience after the battle" = "hero:experience", "E11-7b on the map after it" = "hero[E11-7b]:on_map" }
+
+[[step]]
+end_turn = true
+
+# --- Day 2, Blue: E11-10 to E11-13 onto W1, then E11-18's hero -----------------------------------
+
+[[step]]
+encounter = "E11-10"
+hero = "E11-10"
+walk = [50, 63]
+record = { "day 2, before the step: points; day's maximum" = ["text:points: ", "before:hero:points", "text:day's maximum: ", "before:hero:day_points"], "row:slot" = "army:rows", "the step onto W1: messages (their text)" = "messages", "after: tile (W2 or W3; column, row); points; day's maximum; in a boat" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+note = { "the army slot by slot after the step" = "hero:slots", "the dialogs and screens" = "screens" }
+
+[[step]]
+encounter = "E11-11"
+hero = "E11-11"
+walk = [51, 63]
+record = { "day 2, before the step: points; day's maximum" = ["text:points: ", "before:hero:points", "text:day's maximum: ", "before:hero:day_points"], "row:slot" = "army:rows", "the step onto W1: messages (their text)" = "messages", "after: tile (W2 or W3; column, row); points; day's maximum; in a boat" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+note = { "the army slot by slot after the step" = "hero:slots", "the dialogs and screens" = "screens" }
+
+[[step]]
+encounter = "E11-12"
+hero = "E11-12"
+walk = [52, 63]
+record = { "E11-12 | day 2 before: points; maximum; army" = ["text:points: ", "before:hero:points", "text:maximum: ", "before:hero:day_points", "text:army: ", "before:hero:slots"], "E11-12 | messages after the step onto W1" = "messages", "E11-12 | army after" = "hero:slots", "E11-12 | tile after (W2 or W3)" = "hero:tile", "E11-12 | points after; in a boat" = ["hero:points", "hero:in_boat"] }
+
+[[step]]
+encounter = "E11-12"
+hero = "E11-12b"
+walk = [50, 64]
+record = { "E11-12b | day 2 before: points; maximum; army" = ["text:points: ", "before:hero:points", "text:maximum: ", "before:hero:day_points", "text:army: ", "before:hero:slots"], "E11-12b | messages after the step onto W1" = "messages", "E11-12b | army after" = "hero:slots", "E11-12b | tile after (W2 or W3)" = "hero:tile", "E11-12b | points after; in a boat" = ["hero:points", "hero:in_boat"] }
+
+[[step]]
+encounter = "E11-12"
+hero = "E11-12c"
+walk = [51, 64]
+record = { "E11-12c | day 2 before: points; maximum; army" = ["text:points: ", "before:hero:points", "text:maximum: ", "before:hero:day_points", "text:army: ", "before:hero:slots"], "E11-12c | messages after the step onto W1" = "messages", "E11-12c | army after" = "hero:slots", "E11-12c | tile after (W2 or W3)" = "hero:tile", "E11-12c | points after; in a boat" = ["hero:points", "hero:in_boat"] }
+
+[[step]]
+encounter = "E11-13"
+hero = "E11-13"
+walk = [52, 64]
+record = { "E11-13, day 2 before: points; day's maximum; army" = ["text:points: ", "before:hero:points", "text:day's maximum: ", "before:hero:day_points", "text:army: ", "before:hero:slots"], "E11-13: messages after the step onto W1; army after; tile after (W2 or W3); points after; in a boat" = ["text:messages: ", "messages", "text:army: ", "hero:slots", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:in a boat: ", "hero:in_boat"] }
+note = { "worn on day 2" = "hero:equipment" }
+
+[[step]]
+encounter = "E11-13"
+hero = "E11-18"
+record = { "E11-18's hero, day 2 before: tile; points; day's maximum; army" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:army: ", "hero:slots"] }
+note = { "E11-18's hero worn on day 2" = "hero:equipment" }
+
+[[step]]
+encounter = "E11-13"
+hero = "E11-18"
+walk = [66, 61]
+note = { "E11-18's hero's step to (66, 61): tile; points" = ["hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E11-13"
+hero = "E11-18"
+walk = [66, 62]
+record = { "E11-18's hero after the boarding: points; day's maximum; in a boat" = ["text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E11-13"
+hero = "E11-18"
+walk = [52, 63]
+again_if = { marks = "any" }
+record = { "+E11-18's hero: the path to W1's (52, 63) from the boat (its tiles, or none); if none, after the first leg (tile; points) and the second leg's path" = ["text:from the boat: ", "path_tiles", "text:clicked again: ", "again"], "E11-18's hero: messages after the step onto W1; army after; tile after (W2 or W3); points after; day's maximum; in a boat" = ["text:messages: ", "messages", "text:army: ", "hero:slots", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
+
+[[step]]
+encounter = "E11-13"
+hero = "E11-18"
+only_if = { at = [66, 62] }
+walk = [61, 63]
+record = { "+E11-18's hero: the path to W1's (52, 63) from the boat (its tiles, or none); if none, after the first leg (tile; points) and the second leg's path" = ["text:the first leg: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E11-13"
+hero = "E11-18"
+only_if = { at = [61, 63] }
+walk = [52, 63]
+record = { "+E11-18's hero: the path to W1's (52, 63) from the boat (its tiles, or none); if none, after the first leg (tile; points) and the second leg's path" = ["text:the second leg's path: ", "path_tiles"], "E11-18's hero: messages after the step onto W1; army after; tile after (W2 or W3); points after; day's maximum; in a boat" = ["text:messages: ", "messages", "text:army: ", "hero:slots", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat"] }
