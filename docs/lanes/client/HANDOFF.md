@@ -24,8 +24,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   §12.21: Eagle Eye's message and the box with pictures, two sequences exact; CLT-Q65 and Q66
   asked; #762 merged; the user added **T5e**, the captured artifacts' message). T5d cut in two
   by the user (2026-11-06): **T5d1 done** (design §12.22: the Wraiths' mana drain,
-  regeneration, Poison's tenth; `starts` and `starts-sound` exact in the three; the PR named
-  below: check it first). **Next: T5d2** (Death Blow, Ice Bolt's explosion, the Familiars'
+  regeneration, Poison's tenth; `starts` and `starts-sound` exact in the three; #771: check
+  it first). **Next: T5d2** (Death Blow, Ice Bolt's explosion, the Familiars'
   channel, the Ogre Magi's Bloodlust glow; QUEUE), T5e, T6, T7; then M7 ranked play and the
   server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -65,7 +65,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-06, E17 M6 T5d1 (done; `client/e17-m6-t5d1`, PR named in "Current state").**
+- **2026-11-06, E17 M6 T5d1 (done; `client/e17-m6-t5d1`, #771).**
   The user cut T5d in two. The original data staged by the file tool (the PC's shell did not
   start). Read, built (`anim/starts.rs`), recorded by a capture agent (`starts`,
   `starts-sound`: the three effects exact; `motion::magic` now loads their animations), reviewed
