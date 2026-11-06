@@ -2058,3 +2058,62 @@ command = [
     { seat = "Defender", command = { Move = { to = 146 } } },
     { seat = "Attacker", command = { Wait = {} }, at = 7787, question = true },
 ]
+
+# E17 M6 T5c (design §12.21, "Recorded"): Eagle Eye's message after the result window
+# (`seq-eagle-eye.toml`, hot seat). Crag Hack casts Slow (round 1), Bless (2), Disrupting Ray (3),
+# a Force Field at hex 63 (4) and Chain Lightning (5), each followed by the Wolf Riders' and the
+# Pikemen's defends; Chain Lightning's second strike kills the Wolf Riders (both reactions from
+# the loop's first iteration): the battle ends at 12159, Orrin's window shows; its Enter at 14000
+# opens Eagle Eye's box, all five picks (3 + 2 pictures, by spell number) over the window as it
+# last showed. `seed`: the engine's seed whose draws pick all five, as the original did. 164
+# frames exact.
+[[sequence]]
+id = "eagle-eye"
+scenario = "seq-eagle-eye.toml"
+hot_seat = true
+seed = 2
+actions = [
+    "turn:1.0", "cast:1:86", "key:d", "turn:0.0", "key:d",
+    "turn:1.0", "cast:0:100", "key:d", "turn:0.0", "key:d",
+    "turn:1.0", "cast:2:86", "key:d", "turn:0.0", "key:d",
+    "turn:1.0", "cast:3:63", "key:d", "turn:0.0", "key:d",
+    "turn:1.0", "cast:4:86", "at:14000", "key:Return",
+]
+ms = 1000
+heroes = true
+timeline = "timelines/eagle-eye.txt"
+frames = "timelines/eagle-eye-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Cast = { spell = 54, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Defender", at = 2900, command = { Defend = {} } },
+    { seat = "Attacker", at = 2900, command = { Defend = {} } },
+    { seat = "Defender", at = 2900, command = { Cast = { spell = 41, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+    { seat = "Defender", at = 5800, command = { Defend = {} } },
+    { seat = "Attacker", at = 5800, command = { Defend = {} } },
+    { seat = "Defender", at = 5800, command = { Cast = { spell = 47, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Defender", at = 8859, command = { Defend = {} } },
+    { seat = "Attacker", at = 8859, command = { Defend = {} } },
+    { seat = "Defender", at = 8859, command = { Cast = { spell = 12, target = { Hex = { hex = 63 } }, second = { None = {} } } } },
+    { seat = "Defender", at = 9959, command = { Defend = {} } },
+    { seat = "Attacker", at = 9959, command = { Defend = {} } },
+    { seat = "Defender", at = 9959, command = { Cast = { spell = 19, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+]
+
+# `eagle-eye-one`: the same battle, Chain Lightning in round 1 (the Pikemen struck, the Wolf
+# Riders killed): the battle ends at 2000, Orrin's window; its Enter at 3200 (a clip's decode in
+# that millisecond, shown first) opens Eagle Eye's box with one picture, the window's clip strip
+# above it as of 3200. 37 frames exact.
+[[sequence]]
+id = "eagle-eye-one"
+scenario = "seq-eagle-eye.toml"
+hot_seat = true
+actions = ["turn:1.0", "cast:4:86", "at:3200", "key:Return"]
+ms = 1000
+heroes = true
+timeline = "timelines/eagle-eye-one.txt"
+frames = "timelines/eagle-eye-one-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Cast = { spell = 19, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+]

@@ -11,8 +11,8 @@
 //! The clip it plays in its slot at (107, 70), 256 × 120 (`video_play_in_dialog` 0x597570 from
 //! 0x471A24; E17 M5 T4b2b): [`clip`] its draw, `crate::clip` which and when; without the video
 //! archives the slot stays bare, as the original shows it then. *Not built:* a network game's
-//! timeout (0x471BBB); what `battle_end` does after the window closes: the experience given
-//! (0x477948) and Eagle Eye's message (the spells its hero learnt).
+//! timeout (0x471BBB). After the window closes (E17 M6 T5c, design §12.21) the experience given
+//! (0x477948) shows nothing on the battle screen; Eagle Eye's message is [`crate::eagle_eye`]'s.
 
 use alloc::collections::BTreeMap;
 use alloc::format;

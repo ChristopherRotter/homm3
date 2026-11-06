@@ -185,6 +185,12 @@ pub struct Still {
     /// The result window a box's OK ended the battle with (E17 M5 T4b1: Retreat's, Surrender's),
     /// over the whole screen darkened, with its tune (E17 M5 T4b2b: its clip's).
     pub result: Option<(MessageBox, Tune)>,
+    /// The result window closed and Eagle Eye's message followed (E17 M6 T5c): the screen stays
+    /// darkened, with the message's box (`message`) while one is open.
+    pub darkened: bool,
+    /// The result window under Eagle Eye's boxes, with its tune (E17 M6 T5c, recorded: it stays
+    /// as it showed until the battle's screen ends).
+    pub window: Option<(MessageBox, Tune)>,
     /// The mouse after the actions.
     pub mouse: [i32; 2],
     /// When the actions were made (ms after the opening: a situation's at once, 0); the battle
@@ -231,6 +237,8 @@ impl Still {
             open: None,
             message: None,
             result: None,
+            darkened: false,
+            window: None,
             mouse,
             at: 0,
             opening: false,
@@ -258,6 +266,7 @@ impl Still {
         self.open.is_some()
             || self.message.is_some()
             || self.result.is_some()
+            || self.darkened
             || self.stats.is_some()
             || self.options.is_some()
     }
@@ -265,6 +274,11 @@ impl Still {
 
 /// Lays out a message box: its text, its style, its picture (none without its fonts).
 pub type Tell<'a> = dyn Fn(&str, Style, Option<&Picture>) -> Option<MessageBox> + 'a;
+
+/// How a command ends the battle (E17 M5 T4b1): its result window and its tune, then the boxes of
+/// Eagle Eye's message the window's OK opens one after another (E17 M6 T5c, design §12.21; empty:
+/// none).
+pub type Ended = (MessageBox, Tune, Vec<MessageBox>);
 
 /// What a situation's message boxes need (E17 M5 T4a; `crate::boxes`): how a box is laid out
 /// (its text, style and picture), how the side to act may leave, the box the aim's refusal of
@@ -280,8 +294,9 @@ pub struct Boxes<'a> {
     pub refusal: &'a dyn Fn(u16) -> Option<String>,
     /// The spells' pictures' DEF and its size.
     pub pictures: (String, [i32; 2]),
-    /// The result window after a command and its tune (none: the battle goes on, or no window).
-    pub result: &'a dyn Fn(Command) -> Option<(MessageBox, Tune)>,
+    /// The result window after a command, its tune and Eagle Eye's boxes after it (none: the
+    /// battle goes on, or no window).
+    pub result: &'a dyn Fn(Command) -> Option<Ended>,
     /// The tactics phase's message the battle opens with (E17 M5 T4c2a; none: it opens without).
     pub opening: Option<String>,
     /// The stats dialog a press at a point over the battle opens in a memory's profile (E17 M6
@@ -358,8 +373,9 @@ struct Asking {
 /// description open their boxes over it, a spell the engine refuses its box over the battle (E17 M6
 /// T5a: [`crate::boxes::after_book`]'s, the original's profile).
 /// A box's OK that gives a command (Retreat's, Surrender's) ends the battle in its result window
-/// (E17 M5 T4b1), which a later key or click takes as the box's. A move to the park point after a
-/// click is a move as the harness's is. Nothing else may come in a situation's actions.
+/// (E17 M5 T4b1), which a later key or click takes as the box's; its OK opens Eagle Eye's boxes
+/// one after another (E17 M6 T5c), the screen darkened behind them. A move to the park point after
+/// a click is a move as the harness's is. Nothing else may come in a situation's actions.
 pub fn still(
     actions: &[String],
     mouse: [i32; 2],
@@ -376,6 +392,8 @@ pub fn still(
     let mut hero: Option<Hero> = None;
     let mut still = Still::new(mouse);
     let mut result: Option<(h3_view::message::Open, Tune)> = None;
+    // Eagle Eye's boxes still to open after the result window (E17 M6 T5c).
+    let mut eagle_eye: Vec<MessageBox> = Vec::new();
     let mut asking: Option<Asking> = None;
     let opening = boxes.and_then(|b| b.opening.as_deref());
     let keys = Keys::original();
@@ -430,9 +448,29 @@ pub fn still(
         // Auto Combat's boxes (E17 M6 T5b2a) open in no still.
         Answered::Closed | Answered::Auto(_) => Next::Box(None),
     };
-    // The result window a command ends the battle with.
-    let ended = |command: Command| -> Option<(h3_view::message::Open, Tune)> {
-        (boxes?.result)(command).map(|(window, tune)| (h3_view::message::Open::new(window), tune))
+    // The result window a command ends the battle with, and Eagle Eye's boxes after it.
+    let ended = |command: Command, eagle_eye: &mut Vec<MessageBox>| {
+        let (window, tune, after) = (boxes?.result)(command)?;
+        *eagle_eye = after;
+        Some((h3_view::message::Open::new(window), tune))
+    };
+    // The next of Eagle Eye's boxes, once the result window (`closed`) or the box before closed
+    // (E17 M6 T5c): the window under them; after them the screen stays darkened (without a box
+    // or the window, as before: *provisional*, the battle's screen is over).
+    let next_eagle = |still: &mut Still,
+                      eagle_eye: &mut Vec<MessageBox>,
+                      closed: Option<(h3_view::message::Open, Tune)>| {
+        still.darkened |= !eagle_eye.is_empty();
+        if let Some((window, tune)) = closed {
+            still.window = Some((crate::results::released(&window.message), tune));
+        }
+        if eagle_eye.is_empty() {
+            still.window = None;
+        }
+        (!eagle_eye.is_empty()).then(|| Asking {
+            open: h3_view::message::Open::new(eagle_eye.remove(0)),
+            asked: Asked::EagleEye,
+        })
     };
     // The tactics phase's message, open as the battle opens (E17 M5 T4c2a), the mouse over it.
     if let Some(text) = opening {
@@ -569,7 +607,7 @@ pub fn still(
                             // The result window's OK by its key: the window closed.
                             let _ = r.key(h3_view::message::Key::Ok, &key);
                             if let h3_view::message::Outcome::Closed(_) = r.key_up(&key) {
-                                result = None;
+                                asking = next_eagle(&mut still, &mut eagle_eye, result.take());
                             }
                         }
                     }
@@ -580,10 +618,13 @@ pub fn still(
                             if let h3_view::message::Outcome::Closed(id) = a.open.key_up(&key) {
                                 let asked = a.asked;
                                 match answered(id, asked) {
+                                    _ if asked == Asked::EagleEye => {
+                                        asking = next_eagle(&mut still, &mut eagle_eye, None);
+                                    }
                                     Next::Box(next) => asking = next.map(|a| *a),
                                     Next::Give(command) => {
                                         asking = None;
-                                        result = ended(command);
+                                        result = ended(command, &mut eagle_eye);
                                     }
                                 }
                             }
@@ -656,17 +697,20 @@ pub fn still(
                 if let Some((r, _)) = result.as_mut() {
                     let _ = r.press(to);
                     if let h3_view::message::Outcome::Closed(_) = r.release() {
-                        result = None;
+                        asking = next_eagle(&mut still, &mut eagle_eye, result.take());
                     }
                 } else if let Some(a) = asking.as_mut() {
                     let _ = a.open.press(to);
                     if let h3_view::message::Outcome::Closed(id) = a.open.release() {
                         let asked = a.asked;
                         match answered(id, asked) {
+                            _ if asked == Asked::EagleEye => {
+                                asking = next_eagle(&mut still, &mut eagle_eye, None);
+                            }
                             Next::Box(next) => asking = next.map(|a| *a),
                             Next::Give(command) => {
                                 asking = None;
-                                result = ended(command);
+                                result = ended(command, &mut eagle_eye);
                             }
                         }
                     }
@@ -1261,9 +1305,13 @@ pub(crate) mod tests {
         // follows, which a key or a click on its OK closes again.
         let tell = |_: &str, _, _: Option<&Picture>| Some(one_button(h3_view::message::YES));
         let given = std::cell::RefCell::new(Vec::new());
+        // Eagle Eye's message after the window (E17 M6 T5c): two boxes once the battle was
+        // fought with a pick each (`eagle` set), none else.
+        let eagle = std::cell::Cell::new(0);
         let result = |command| {
             given.borrow_mut().push(command);
-            Some((one_button(h3_view::result::OK), Tune::Retreat))
+            let after = vec![one_button(h3_view::message::OK); eagle.get()];
+            Some((one_button(h3_view::result::OK), Tune::Retreat, after))
         };
         let boxes = Boxes {
             tell: &tell,
@@ -1311,6 +1359,40 @@ pub(crate) mod tests {
         let still = played(&["key:r", "click:20,20", "click:20,20"]);
         assert!(still.result.is_none() && !still.dialog());
         assert_eq!(still.mouse, crate::pointer::PARK);
+        // The window's OK opens Eagle Eye's first box over the screen darkened and the window as
+        // it showed, its OK up (recorded, `eagle-eye`), its OK (Enter or a click) the next; after
+        // the last the screen stays darkened, without the window.
+        eagle.set(2);
+        let still = played(&["key:r", "key:Return", "key:Return"]);
+        assert!(still.result.is_none() && still.message.is_some() && still.darkened);
+        let (window, tune) = still.window.clone().unwrap();
+        assert_eq!(tune, Tune::Retreat);
+        assert!(window.shown.states.values().all(|s| !s.pressed));
+        let still = played(&["key:r", "key:Return", "key:Return", "click:20,20"]);
+        assert!(still.message.is_some() && still.darkened && still.dialog());
+        assert!(still.window.is_some());
+        // A second click closes the second box: the first click advanced the chain (the
+        // reviewer).
+        let still = played(&[
+            "key:r",
+            "key:Return",
+            "key:Return",
+            "click:20,20",
+            "click:20,20",
+        ]);
+        assert!(still.message.is_none() && still.darkened && still.window.is_none());
+        let still = played(&[
+            "key:r",
+            "click:20,20",
+            "click:20,20",
+            "key:Return",
+            "key:Return",
+        ]);
+        assert!(still.message.is_none() && still.darkened && still.dialog());
+        assert!(still.window.is_none());
+        // Escape is not the box's: it stays.
+        let still = played(&["key:r", "key:Return", "key:Return", "key:Escape"]);
+        assert!(still.message.is_some());
     }
 
     #[test]

@@ -108,6 +108,7 @@ thunderbolt_sound = "LightBlt"
 wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
 wall_sounds = ["WallHit", "WallMiss"]
 siege_sounds = ["drawbrg", "landkill"]
+pickup_sounds = ["pickup01", "pickup02", "pickup03", "pickup04", "pickup05", "pickup06", "pickup07"]
 
 [[creature]]
 key = "pikeman"

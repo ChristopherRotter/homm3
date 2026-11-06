@@ -218,8 +218,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   offer (the engine's part by the cross-lane #745), three sequences recorded; **T5b2b** (done
   2026-11-06, kept whole by the user, design §12.20) CLT-Q61's stop at the cast's end, a question
   at a later turn and a human's turn right after an answer, three sequences recorded, CLT-Q64
-  asked; **T5c** Eagle Eye's message and the experience after the window (79); **T5d** the effects,
-  their waits and Bloodlust's glow (42, 45).
+  asked; **T5c** (done 2026-11-06, kept whole by the user, design §12.21) Eagle Eye's message
+  after the window and the message box with two to eight pictures (the experience after the
+  window shows nothing on the battle screen: its levels come on the map), CLT-Q65 and Q66 asked,
+  two sequences exact; **T5d** the effects, their waits and Bloodlust's glow (42, 45); **T5e**
+  (added by the user at T5c) the captured artifacts' message after Eagle Eye's (§12.21).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through
   `h3_ui::paint`, the purity test's holes (R2-15), R4-2 and R4-9.

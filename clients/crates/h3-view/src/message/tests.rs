@@ -531,3 +531,151 @@ fn a_popup_has_no_buttons_and_a_narrower_least_box() {
     // The text centred in the height left by no buttons: 30 + (128 - 76) / 2.
     assert_eq!(label(&m, TEXT).at[1], 56);
 }
+
+/// `n` spells' pictures (83 × 61, slots 85 × 63), captions of two glyphs.
+fn spells(n: u32) -> Vec<Picture> {
+    (0..n)
+        .map(|i| Picture {
+            def: "spellScr.def".to_string(),
+            frame: i,
+            size: [83, 61],
+            caption: alloc::format!("S{i}"),
+        })
+        .collect()
+}
+
+/// Each picture's DEF item's corner and the box's size, in slot order.
+fn corners(message: &MessageBox) -> (Vec<[i32; 2]>, [i32; 2]) {
+    let defs = (0..SLOTS)
+        .filter_map(|slot| match message.dialog.item(slot_ids(slot)[0]) {
+            Some(Item::Def(d)) => Some(d.at),
+            _ => None,
+        })
+        .collect();
+    (defs, message.dialog.shadow.unwrap())
+}
+
+fn with_pictures(pictures: &[Picture]) -> MessageBox {
+    let medium = font(8, 16);
+    let small = font(5, 10);
+    super::pictures(&assets(), (&medium, &small), "x", pictures, 2)
+}
+
+#[test]
+fn one_to_four_pictures_make_one_row_placed_by_its_count() {
+    // One: as the one picture of `layout`, the text at x 25 (the call's corner: centred).
+    let one = with_pictures(&spells(1));
+    assert_eq!(corners(&one), (vec![[85, 103]], [256, 256]));
+    assert_eq!(label(&one, TEXT).at, [25, 30 + (256 - 219) / 2]);
+    // Two: the row 2 × 85 + 40 + 40 = 250 wide, a box of 256; the pair split around the centre
+    // by the gap (the overhang 0 and 40).
+    assert_eq!(
+        corners(&with_pictures(&spells(2))).0,
+        [[23, 103], [148, 103]]
+    );
+    // Three: 375, a box of 384; the middle one centred, 40 beside it.
+    assert_eq!(
+        corners(&with_pictures(&spells(3))),
+        (vec![[24, 103], [149, 103], [274, 103]], [384, 256])
+    );
+    // Four: 500, a box of 512.
+    assert_eq!(
+        corners(&with_pictures(&spells(4))),
+        (
+            vec![[26, 103], [151, 103], [276, 103], [401, 103]],
+            [512, 256]
+        )
+    );
+}
+
+#[test]
+fn five_to_eight_pictures_make_two_rows_the_first_the_larger() {
+    // Five: 3 + 2, the box 384 × 320 (16 + 60 + 20 + 73 + 20 + 73 + 50 = 312); the first row's
+    // captions raised by the second row's 20 + 73 above the buttons' room's 30.
+    let five = with_pictures(&spells(5));
+    assert_eq!(
+        corners(&five),
+        (
+            vec![[24, 74], [149, 74], [274, 74], [87, 167], [212, 167]],
+            [384, 320]
+        )
+    );
+    assert_eq!(label(&five, TEXT).at, [25, 34]);
+    // Each caption under its picture, centred on it (85 wide: the picture's).
+    let caption = label(&five, slot_ids(3)[1]);
+    assert_eq!((caption.at, caption.size), ([87, 230], [85, 10]));
+    assert_eq!(five.shown.texts[&slot_ids(4)[1]], "S4");
+    // Six: 3 + 3; seven: 4 + 3; eight: 4 + 4.
+    let (six, _) = corners(&with_pictures(&spells(6)));
+    assert_eq!(six[3..], [[24, 167], [149, 167], [274, 167]]);
+    let (seven, size) = corners(&with_pictures(&spells(7)));
+    assert_eq!(size, [512, 320]);
+    assert_eq!(seven[..4], [[26, 74], [151, 74], [276, 74], [401, 74]]);
+    assert_eq!(seven[4..], [[88, 167], [213, 167], [338, 167]]);
+    let (eight, _) = corners(&with_pictures(&spells(8)));
+    assert_eq!(eight[4..], [[26, 167], [151, 167], [276, 167], [401, 167]]);
+    // A ninth is not shown (eight slots).
+    let (nine, _) = corners(&with_pictures(&spells(9)));
+    assert_eq!(nine, eight);
+    // The pictures keep their own colours; the frame's pieces take the player's.
+    let m = with_pictures(&spells(8));
+    assert!(m.shown.players.keys().all(|&id| id < PICTURES));
+    assert!(m.shown.players.values().all(|&p| p == 2));
+}
+
+#[test]
+fn wide_captions_spread_the_pictures_by_their_overhang() {
+    // Slots 40 × 20, captions of one word 72 wide: `widest` 72, the overhang 32; the row
+    // 4 × 72 + 3 × 72 + 40 = 544, a box of 576.
+    let pictures: Vec<Picture> = (0..4)
+        .map(|i| Picture {
+            def: "spellScr.def".to_string(),
+            frame: i,
+            size: [38, 18],
+            caption: "x".repeat(14),
+        })
+        .collect();
+    let m = with_pictures(&pictures);
+    let (xs, size) = corners(&m);
+    assert_eq!(size, [576, 192]);
+    // The middle two the gap with the overhang apart, the outer ones 40 from them.
+    let xs: Vec<i32> = xs.iter().map(|at| at[0]).collect();
+    assert_eq!(xs, [132, 212, 324, 404]);
+    // The captions centred on their pictures, past them by half the overhang.
+    let caption = label(&m, slot_ids(0)[1]);
+    assert_eq!((caption.at[0], caption.size), (116, [72, 10]));
+}
+
+#[test]
+fn a_second_rows_heights_place_the_rows_below_the_first() {
+    // Five, the second row's captions two lines high: the rows raised by the second row's
+    // heights, the second row's captions lowered by them (the executable's, 0x4F626E), so its
+    // captions end 20 above the buttons' room, its pictures 30 below the first row's captions.
+    let mut five = spells(5);
+    for p in &mut five[3..] {
+        p.caption = "xxxxxxxxxx xxxxxxxxxx".to_string();
+    }
+    let m = with_pictures(&five);
+    let (at, size) = corners(&m);
+    assert_eq!(size, [384, 384]);
+    assert_eq!(at[0][1], 191 - 63);
+    assert_eq!(at[3][1], 294 - 63);
+    let caption = label(&m, slot_ids(3)[1]);
+    assert_eq!((caption.at[1], caption.size), (294, [85, 20]));
+}
+
+#[test]
+fn an_empty_caption_has_no_item() {
+    // Only a caption that is not empty (`message_box_build`'s picture items); the slot keeps
+    // its place.
+    let mut two = spells(2);
+    two[1].caption = String::new();
+    let m = with_pictures(&two);
+    assert!(m.dialog.item(slot_ids(1)[1]).is_none());
+    assert!(!m.shown.texts.contains_key(&slot_ids(1)[1]));
+    assert_eq!(corners(&m).0, [[23, 103], [148, 103]]);
+    // Without pictures: the text's box alone, an OK.
+    let none = with_pictures(&[]);
+    assert_eq!(corners(&none), (Vec::new(), [256, 128]));
+    assert!(none.dialog.item(OK).is_some());
+}

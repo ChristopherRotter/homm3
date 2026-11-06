@@ -1161,6 +1161,28 @@ original = [{ at = "GENRLTXT:311" }]
 id = "result.lost-army"
 original = [{ at = "GENRLTXT:312" }]
 
+# Eagle Eye's message after the window (E17 M6 T5c; docs/epics/E17-design.md §12.21,
+# `eagle_eye_message` 0x476FE0): a box's first spell in GENRLTXT 222 with the hero's name, each
+# later one after ", " (0x66032C), the set's last or the box's eighth after GENRLTXT 142, then
+# "." (0x6603EC). The battle client's own keys, as the map's list (`map.hint.comma`, `map.hint.and`)
+# reads the same strings (the lanes keep their keys apart).
+[[key]]
+id = "result.eagle-eye.learnt"
+args = { hero = "text", spell = "text" }
+original = [{ at = "GENRLTXT:222", printf = ["hero", "spell"] }]
+
+[[key]]
+id = "result.eagle-eye.comma"
+original = [{ at = "EXE:0x66032C" }]
+
+[[key]]
+id = "result.eagle-eye.and"
+original = [{ at = "GENRLTXT:142" }]
+
+[[key]]
+id = "result.eagle-eye.stop"
+original = [{ at = "EXE:0x6603EC" }]
+
 # A stack's stats dialog's lines (E17 M6 T2a1; design §12.1; 0x5F5340 to 0x5F62F0): the attack's
 # and the defense's labels are the primary skills' names (PRISKILL.TXT's first two records,
 # `primary_skill_names` 0x6A5390), the others GENRLTXT's records 199, 200, 389, 201 and 194.

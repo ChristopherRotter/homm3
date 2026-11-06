@@ -113,6 +113,22 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Recommendation.** (b): the same slip as CLT-Q45 (1), whose answer (the button selected while Auto Combat is on) already covers it. **Built:** the original's profile copies it (the comparisons, `panel::Autoplay::switched`); the client's profile shows the button selected while Auto Combat is on (`Autoplay::on`, CLT-Q45 (1)'s answer).
 
+#### CLT-Q65 — Eagle Eye's message names spells the hero did not learn (E17 M6 T5c)
+
+**Context.** Read (`docs/epics/E17-design.md` §12.21): after the result window of a winner played by a human here, `eagle_eye_message` 0x476FE0 names every spell the side's Eagle Eye picked in the battle ("is able to learn …", GENRLTXT 222), but `eagle_eye_learn` 0x469FE0 taught the hero only those it can learn: while it wears a Spell Book and the spell's level is at most its Wisdom + 2 (HER-SPL-006). A winner without its book, or with a level 3 or 4 pick and too little Wisdom, is told it learns spells it does not get.
+
+**Options.** (a) Copy. (b) Fix in the client's profile: name only the spells the hero learns, the original's for the comparisons only. The battle's outcome reports the picks (`HeroOutcome::learned`); who learns them is the orchestrator's (BAT-Q24), so in a whole game the client takes the game's answer, and in a battle without a map (no hero kept after it) the picks of a hero that has a spell book. (c) An option.
+
+**Recommendation.** (b), once a whole game's battle tells the viewer what its hero learned (the map client's battles, E24 M4 T5, or the server's whole game, E16 M5); until then the picks are all the client knows. **Built:** as the original's (every pick named) in both profiles. **Recorded** (M6 T5c, `eagle-eye`): Orrin without Wisdom is told he learns Force Field (level 3) and Chain Lightning (level 4).
+
+#### CLT-Q66 — The result window stays under Eagle Eye's boxes (E17 M6 T5c)
+
+**Context.** Recorded (`eagle-eye`, `eagle-eye-one`; `docs/epics/E17-design.md` §12.21, "Recorded"): the window's OK closes it, but nothing redraws the screen before Eagle Eye's first box opens: every box stands over the window as it last showed (its OK up, its clip's frame of the close's millisecond, still), over the battle darkened, until the last box's OK ends the battle's screen. The window looks open while it no longer takes input, and its clip stands still where a smaller box leaves it visible.
+
+**Options.** (a) Copy. (b) Fix in the client's profile: the boxes over the darkened battle alone, the original's for the comparisons only. (c) An option.
+
+**Recommendation.** (a): harmless, and the boxes read as the window's report continued (the spoils beside the casualties). **Built:** as the original's in both profiles (`results::released`, the sequences' and stills' `window`, `Battle::window_behind`).
+
 ### Map client lane (`MCL-Q<n>`)
 
 (no open questions)

@@ -120,6 +120,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   plays the window's clip.
   `Battle::end_tune` and the result window's opening run every loop pass: what they read from
   the record's end is computed once and kept (`Battle::survivors`, `Battle::end_seen`; T8b2).
+  Eagle Eye's boxes after it (E17 M6 T5c) are `Asked::EagleEye`, not `result_open()`: what
+  stands behind both goes by `Battle::darkened`. A sequence's `key:Return`, `key:Escape` or
+  `click:` from the battle's end on closes the window, then each box (`Interface::closes`),
+  giving the battle nothing.
 - The result window's clip (E17 M5 T4b2b, design §7.21): `BINKW32.DLL` reads `timeGetTime`
   through its own import, which `xdd.dll` redirects too (the ack's eighth field 1): an `xdd.dll`
   without it runs the clip in real time under the frozen clock. The DLL counts every decode, a

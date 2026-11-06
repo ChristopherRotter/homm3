@@ -117,6 +117,11 @@ pub struct Battle {
     /// Mine's blast (`land_mine_trigger` 0x59FC5E: `landkill`).
     #[serde(default)]
     pub siege_sounds: Option<[String; 2]>,
+    /// The pickup sounds a box of Eagle Eye's message plays as it opens (E17 M6 T5c, design
+    /// §12.21; `eagle_eye_message` 0x4771C3: the format `pickup%02d.82M` with N from 1 to 7), by
+    /// N − 1, category 3 as good luck's.
+    #[serde(default)]
+    pub pickup_sounds: Option<[String; 7]>,
 }
 
 impl Battle {
@@ -132,6 +137,7 @@ impl Battle {
             .chain(&self.thunderbolt_sound)
             .chain(self.wall_sounds.iter().flatten())
             .chain(self.siege_sounds.iter().flatten())
+            .chain(self.pickup_sounds.iter().flatten())
     }
 }
 
@@ -405,7 +411,8 @@ impl Sounds {
             | Sound::WallHit
             | Sound::WallMiss
             | Sound::Drawbridge
-            | Sound::Mine => None,
+            | Sound::Mine
+            | Sound::Pickup(_) => None,
         }
     }
 
@@ -928,6 +935,7 @@ thunderbolt_sound = "LightBlt"
 wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
 wall_sounds = ["WallHit", "WallMiss"]
 siege_sounds = ["drawbrg", "landkill"]
+pickup_sounds = ["pickup01", "pickup02", "pickup03", "pickup04", "pickup05", "pickup06", "pickup07"]
 
 [[hero]]
 key = "orrin"
@@ -1055,7 +1063,8 @@ at = [124, 254]
             t.battle.sounds().collect::<Vec<_>>(),
             [
                 "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck", "DrainLif",
-                "LightBlt", "WallHit", "WallMiss", "drawbrg", "landkill"
+                "LightBlt", "WallHit", "WallMiss", "drawbrg", "landkill", "pickup01", "pickup02",
+                "pickup03", "pickup04", "pickup05", "pickup06", "pickup07"
             ]
         );
         assert_eq!(
@@ -1522,6 +1531,7 @@ at = [124, 254]
             Sound::WallMiss,
             Sound::Drawbridge,
             Sound::Mine,
+            Sound::Pickup(1),
         ] {
             assert_eq!(pikeman.name(none), None);
         }
@@ -1545,7 +1555,8 @@ at = [124, 254]
             names,
             [
                 "BADMRLE", "DRAINLIF", "DRAWBRG", "FEAR", "GOODLUCK", "GOODMRLE", "LANDKILL",
-                "LIGHTBLT", "MAGICRES", "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE",
+                "LIGHTBLT", "MAGICRES", "PICKUP01", "PICKUP02", "PICKUP03", "PICKUP04", "PICKUP05",
+                "PICKUP06", "PICKUP07", "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE",
                 "REGENER", "SLOW", "WALLHIT", "WALLMISS"
             ]
         );

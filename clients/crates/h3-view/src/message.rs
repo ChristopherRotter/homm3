@@ -8,10 +8,14 @@
 //! Style 4, the right button's popup (E17 M6 T2a2b1, design §12.3), is a box without buttons
 //! shown while the right button is held (`popup_run_held` 0x602A40).
 //!
+//! The box with up to eight pictures (`message_box_pictures` 0x4F7690; E17 M6 T5c, design
+//! §12.21: Eagle Eye's message after the result window): [`pictures`], an OK and its pictures in
+//! up to two rows of four, the first row the larger share, laid out from the bottom.
+//!
 //! *Not built* (no battle caller needs them): a text above 200 pixels high (the executable's
-//! scrolling text), two to eight pictures, the styles 3 and 10 (their OK and Cancel of other
-//! ids) and 5 to 9, the hidden frame around a picture (a choice's mark), the network game's
-//! timeout.
+//! scrolling text), the styles 3 and 10 (their OK and Cancel of other ids) and 5 to 9, the
+//! hidden frame around a picture (a choice's mark, hidden at once: never drawn), the network
+//! game's timeout.
 //!
 //! *The client's* (E17 M5 T8b2): the text's width stops at 578 when a word is wider (the
 //! executable's box takes the word whole, past the screen) and the box at 768 × 576, so a
@@ -19,6 +23,7 @@
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 use h3_assets::fnt::Font;
 use h3_render::Bugs;
@@ -40,6 +45,19 @@ pub const YES: u16 = 0x7805;
 pub const NO: u16 = 0x7806;
 /// The picture's DEF item and its caption (the executable's −1).
 pub const PICTURE: u16 = 0xFFFF;
+/// The most pictures a box shows (its eight slots, 0x4F5DA6).
+pub const SLOTS: usize = 8;
+/// The first of the ids [`pictures`] gives its pictures' items, which the executable gives −1
+/// (E17 M6 T5c): slot n's DEF item `PICTURES + 2n`, its caption `PICTURES + 2n + 1`, so that each
+/// caption's text is told apart ([`Shown::texts`]).
+pub const PICTURES: u16 = 0xFF00;
+
+/// The ids of slot `slot`'s DEF item and caption in a box of [`pictures`].
+#[must_use]
+pub fn slot_ids(slot: usize) -> [u16; 2] {
+    let def = PICTURES.saturating_add(u16::try_from(2 * slot).unwrap_or(u16::MAX));
+    [def, def.saturating_add(1)]
+}
 
 /// The box's assets and fonts (the layout's `[message]`; E17 M5 T4a): the executable's literals.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -172,7 +190,8 @@ pub fn framed(bugs: Bugs, viewing: u8, acting: Option<u8>) -> u8 {
 /// 0x48FF00, 0x4F6990), its frame in the colours of `player` ([`framed`]), centred on the
 /// screen, in the profile `bugs`: the executable's text at x 20, 5 pixels left of the box's
 /// centre, the client's centred on the box (CLT-Q28 (1), answered (c) at E17 M5 T8c with the
-/// user's directive: a text the original sets off its centre is centred).
+/// user's directive: a text the original sets off its centre is centred). The picture's DEF item
+/// and caption take the id [`PICTURE`].
 #[must_use]
 pub fn layout(
     layout: &MessageLayout,
@@ -182,8 +201,60 @@ pub fn layout(
     picture: Option<&Picture>,
     (player, bugs): (u8, Bugs),
 ) -> MessageBox {
+    let pictures: Vec<(&Picture, [u16; 2])> =
+        picture.map(|p| (p, [PICTURE; 2])).into_iter().collect();
+    build(
+        layout,
+        (medium, small),
+        text,
+        (style, bugs == Bugs::Fixed),
+        &pictures,
+        player,
+    )
+}
+
+/// Lays out the box `message_box_pictures` 0x4F7690 shows (E17 M6 T5c, design §12.21): an OK
+/// (style 1), `text` and the first [`SLOTS`] of `pictures` in up to two rows (0x4F5D80's
+/// pictures), as [`layout`] otherwise; the text's corner at x 25 (the call's own, in both
+/// profiles: the text centred on the box). Each picture's items take their slot's ids
+/// ([`slot_ids`]).
+#[must_use]
+pub fn pictures(
+    layout: &MessageLayout,
+    (medium, small): (&Font, &Font),
+    text: &str,
+    pictures: &[Picture],
+    player: u8,
+) -> MessageBox {
+    let pictures: Vec<(&Picture, [u16; 2])> = pictures
+        .iter()
+        .take(SLOTS)
+        .enumerate()
+        .map(|(slot, p)| (p, slot_ids(slot)))
+        .collect();
+    build(
+        layout,
+        (medium, small),
+        text,
+        (Style::Ok, true),
+        &pictures,
+        player,
+    )
+}
+
+/// The box of `style` with `text` and `pictures` (each with its DEF item's and caption's ids), the
+/// text centred on the box (`centred`: x 25) or at x 20 (0x4F5D80, 0x48FF00, 0x4F6990).
+fn build(
+    layout: &MessageLayout,
+    (medium, small): (&Font, &Font),
+    text: &str,
+    (style, centred): (Style, bool),
+    pictures: &[(&Picture, [u16; 2])],
+    player: u8,
+) -> MessageBox {
     let bytes = encode_1252(text).0;
-    let slot = picture.map(|p| Slot::of(small, p));
+    let slots: Vec<Slot> = pictures.iter().map(|(p, _)| Slot::of(small, p)).collect();
+    let rows = Rows::of(&slots);
     let font_height = i64::from(medium.height);
     // The text's width: its widest word, widened while it wraps too high, then its widest line.
     // A word wider than 578 is broken there (the client's: the executable's box takes it whole).
@@ -205,31 +276,27 @@ pub fn layout(
         text_width = (3 * text_width / 2).min(TEXT_WIDTH_MOST);
     }
     let text_height = text_height.min(TEXT_HEIGHT_MOST);
-    // The box's width: the text's, or the picture's row's.
-    let row = slot.map_or(40, |s| s.size[0].max(s.caption[0]) + 40);
+    // The box's width: the text's, or the pictures' rows'.
     let least = if style == Style::Popup {
         POPUP_LEAST_WIDTH
     } else {
         BOX_LEAST[0]
     };
-    let width = up64(row.max(text_width + TEXT_MARGIN)).clamp(least, BOX_MOST[0]);
+    let width = up64(rows.width().max(text_width + TEXT_MARGIN)).clamp(least, BOX_MOST[0]);
     let text_width = width - TEXT_MARGIN;
-    // The box's height: the text's and the picture's, the buttons'.
-    let mut used = text_height + 60;
-    if let Some(s) = slot {
-        used += 20 + s.size[1] + s.caption[1];
-    }
-    // A popup has no buttons, nor their room.
+    // The box's height: the text's and the pictures' rows', the buttons'. A popup has no
+    // buttons, nor their room.
     let buttons = if style == Style::Popup { 0 } else { BUTTONS };
-    used += buttons;
+    let used = text_height + 60 + rows.height() + buttons;
     let height = up64(used).clamp(BOX_LEAST[1], BOX_MOST[1]);
     let text_top = TEXT_TOP + (height - used) / 2;
     let place = [(SCREEN[0] - width) / 2, (SCREEN[1] - height) / 2];
     let mut items = frame(layout, [width, height]);
     let last_piece = items.iter().map(Item::id).max().unwrap_or(BACKGROUND);
-    let text_left = match bugs {
-        Bugs::Original => TEXT_LEFT,
-        Bugs::Fixed => (width - text_width) / 2,
+    let text_left = if centred {
+        (width - text_width) / 2
+    } else {
+        TEXT_LEFT
     };
     items.push(Item::Label(Label {
         id: TEXT,
@@ -264,12 +331,12 @@ pub fn layout(
     }
     let mut texts = BTreeMap::new();
     texts.insert(TEXT, String::from(text));
-    if let (Some(p), Some(s)) = (picture, slot) {
-        // One picture: centred, its caption's top 30 above the buttons' room.
-        let caption_top = height - s.caption[1] - CAPTION_BOTTOM - buttons;
-        let x = (width - s.size[0]) / 2;
+    // The pictures in slot order (0x4F7154 to 0x4F7377): each DEF item, then its caption when it
+    // has one; the hidden frame around it (a choice's mark) is never drawn.
+    let places = rows.places(&slots, width, height - buttons);
+    for (((p, [def, caption]), s), (x, caption_top)) in pictures.iter().zip(&slots).zip(places) {
         items.push(Item::Def(Def {
-            id: PICTURE,
+            id: *def,
             def: Some(p.def.clone()),
             at: [i32_of(x), i32_of(caption_top - s.size[1])],
             size: [i32_of(s.size[0]), i32_of(s.size[1])],
@@ -280,8 +347,11 @@ pub fn layout(
             frames_of: None,
             repeat: None,
         }));
+        if p.caption.is_empty() {
+            continue;
+        }
         items.push(Item::Label(Label {
-            id: PICTURE,
+            id: *caption,
             at: [
                 i32_of(x + (s.size[0] - s.caption[0]) / 2),
                 i32_of(caption_top),
@@ -294,13 +364,13 @@ pub fn layout(
             hint: None,
             repeat: None,
         }));
-        texts.insert(PICTURE, p.caption.clone());
+        texts.insert(*caption, p.caption.clone());
     }
     // The frame's pieces in the viewing player's colours (0x4F6B5D); the tiles keep theirs.
     let players = items
         .iter()
         .filter_map(|item| match item {
-            Item::Def(d) if d.id != PICTURE && d.id <= last_piece => Some((d.id, player)),
+            Item::Def(d) if d.id <= last_piece => Some((d.id, player)),
             _ => None,
         })
         .collect();
@@ -315,6 +385,118 @@ pub fn layout(
             players,
             ..Shown::default()
         },
+    }
+}
+
+/// The pictures' rows (0x4F5D80's pictures, design §12.21): at most four a row, the first row the
+/// larger share; over the slots `widest` the largest picture's or caption's width and `overhang`
+/// the largest caption's width beyond its picture's (at least 0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Rows {
+    /// How many pictures each row shows (the second 0 with one row; both 0 without pictures).
+    counts: [usize; 2],
+    widest: i64,
+    overhang: i64,
+    /// Each row's picture height and caption height: the largest of its slots' (a slot's row its
+    /// index divided by the first row's count).
+    heights: [[i64; 2]; 2],
+}
+
+/// The space between two pictures of a row beside the captions' overhang (40).
+const PICTURE_GAP: i64 = 40;
+/// The space above the first row and between two rows (20).
+const ROW_GAP: i64 = 20;
+
+impl Rows {
+    /// The rows of `slots` (0x4F5D9D to 0x4F5E7D).
+    fn of(slots: &[Slot]) -> Self {
+        let n = slots.len();
+        let rows = n.div_ceil(4);
+        let first = if rows == 0 { 0 } else { n.div_ceil(rows) };
+        let mut out = Self {
+            counts: [first, n - first],
+            widest: 0,
+            overhang: 0,
+            heights: [[0; 2]; 2],
+        };
+        for (i, s) in slots.iter().enumerate() {
+            out.widest = out.widest.max(s.size[0]).max(s.caption[0]);
+            out.overhang = out.overhang.max(s.caption[0] - s.size[0]);
+            // Its row: the first's count divides at most eight slots in two.
+            let row = &mut out.heights[(i / first).min(1)];
+            row[0] = row[0].max(s.size[1]);
+            row[1] = row[1].max(s.caption[1]);
+        }
+        out
+    }
+
+    /// The box's least width for them (0x4F5E83 to 0x4F5EC0): the first row's pictures at the
+    /// widest, the gaps with the overhang between them, 40 more (40 without pictures).
+    fn width(&self) -> i64 {
+        let k = i64::try_from(self.counts[0]).unwrap_or(0);
+        if k == 0 {
+            return PICTURE_GAP;
+        }
+        k * self.widest + (k - 1) * (self.overhang + PICTURE_GAP) + PICTURE_GAP
+    }
+
+    /// The height they add to the box (0x4F6014 to 0x4F6032): 20, each row's picture and caption
+    /// heights, 20 between two rows (0 without pictures).
+    fn height(&self) -> i64 {
+        let shown = self
+            .counts
+            .iter()
+            .zip(&self.heights)
+            .filter(|(k, _)| **k > 0);
+        let (rows, sum) = shown.fold((0_i64, 0_i64), |(r, h), (_, [p, c])| (r + 1, h + p + c));
+        if rows == 0 {
+            return 0;
+        }
+        ROW_GAP + sum + ROW_GAP * (rows - 1)
+    }
+
+    /// Each slot's picture x and caption top in a box `width` wide whose buttons' room starts at
+    /// `bottom` (0x4F60BB to 0x4F627C): the first row's captions 30 above it, raised by a second
+    /// row's height and caption height and 20; a later row's captions lower by the **second**
+    /// row's heights and 20 (with captions of one height, its picture 20 under the row above).
+    fn places(&self, slots: &[Slot], width: i64, bottom: i64) -> Vec<(i64, i64)> {
+        let [first, second] = self.heights;
+        let mut caption_top = bottom - first[1] - CAPTION_BOTTOM;
+        if self.counts[1] > 0 {
+            caption_top -= ROW_GAP + second[1] + second[0];
+        }
+        let gap = self.overhang + PICTURE_GAP;
+        let mut out = Vec::new();
+        let mut row_slots = slots;
+        for &k in self.counts.iter().filter(|&&k| k > 0) {
+            let (row, rest) = row_slots.split_at(k.min(row_slots.len()));
+            row_slots = rest;
+            let widths: Vec<i64> = row.iter().map(|s| s.size[0]).collect();
+            let xs = row_xs(width, &widths, gap);
+            out.extend(xs.into_iter().map(|x| (x, caption_top)));
+            caption_top += second[1] + second[0] + ROW_GAP;
+        }
+        out
+    }
+}
+
+/// The pictures' x in a row of the pictures `widths` (one to four) in a box `width` wide, `gap`
+/// the space between the middle two (the overhang's and 40), 40 beside the outer ones (the switch
+/// at 0x4F6129; halves rounded toward zero).
+fn row_xs(width: i64, widths: &[i64], gap: i64) -> Vec<i64> {
+    let w = |i: usize| widths.get(i).copied().unwrap_or(0);
+    match widths.len() {
+        1 => vec![(width - w(0)) / 2],
+        2 => vec![(width - gap) / 2 - w(0), (width + gap) / 2],
+        3 => {
+            let x1 = (width - w(1)) / 2;
+            vec![x1 - w(0) - PICTURE_GAP, x1, x1 + w(1) + PICTURE_GAP]
+        }
+        _ => {
+            let x1 = (width - gap) / 2 - w(1);
+            let x2 = (width + gap) / 2;
+            vec![x1 - w(0) - PICTURE_GAP, x1, x2, x2 + w(2) + PICTURE_GAP]
+        }
     }
 }
 
