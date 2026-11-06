@@ -13152,8 +13152,9 @@ slots with one merge; a water zone apart from the land rows' fog (B's east side,
 
 ### Increment 11, round 2: T99b2a, batch E11a's Whirlpool rows (2026-11-06, `adventure/e08-t99b2a`)
 
-Baseline: `master` at 3c39559 (#763, T99b1, merged; CI green on it; the sandbox's baseline ran the
-full gates without the original data, its `Objects.txt` staged inside `extracted.tar`). The
+Baseline: `master` at 3c39559 (#763, T99b1, merged; CI green on it, standing in for the sandbox's
+baseline, which a VM restart stopped in its coverage step; `master` then took the town lane's #764,
+merged in). The
 executables, the DLLs, the four LODs, the sound and video archives, `maps.tar`, `extracted.tar` and
 the 40 MP3s staged at the start (the computer's shell did not start). **The cut** (decision 277):
 T99b2 in two by spec; T99b2a this. No code; the spec, its template and the docs.
