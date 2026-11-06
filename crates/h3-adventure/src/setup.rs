@@ -173,6 +173,18 @@ pub enum Holds {
         /// The lowest and the highest level it may take.
         levels: (u8, u8),
     },
+    /// A random dwelling tied to a town (ADV-DWL-005, E09 T11; classes 216 and 217 whose identifier
+    /// a town of the map has): the town whose faction it takes when the game is built
+    /// ([`AdventureSetup::town_factions`], the original's `random_dwellings_resolve` 0x502B60), a
+    /// town of the static map by its `TownId`, and its level range as
+    /// [`Holds::RandomDwelling`]'s; it then draws its level and becomes that faction's dwelling
+    /// as a random dwelling with a set does.
+    LinkedDwelling {
+        /// The town whose faction it takes.
+        town: TownId,
+        /// The lowest and the highest level it may take.
+        levels: (u8, u8),
+    },
     /// A town's (E09 T8a1, the town epic's design note §8): its garrison's formation in battle,
     /// the map's byte, which a battle reads when the garrison defends alone (*agent's call*).
     Town {
@@ -337,6 +349,11 @@ pub struct AdventureSetup {
     /// resolved garrisons of its towns' records. The state writes each on its town's object
     /// ([`crate::AdventureState::town_garrison`]).
     pub garrisons: Vec<Vec<ArmyStack>>,
+    /// Each town's faction at the start, by `TownId` (E09 T11): one per town of the static map,
+    /// the game's resolved factions of its towns (a random town's drawn), which a random dwelling
+    /// tied to a town takes ([`Holds::LinkedDwelling`]). Each faction a linked dwelling reads has
+    /// a `[[random_dwelling]]` table ([`crate::AdventureRuleset::random_dwelling`]).
+    pub town_factions: Vec<FactionId>,
 }
 
 /// A player's seat as an event tests it (ADV-OBJ-007, E08 T62b2): the game's player's colour and
@@ -488,6 +505,8 @@ pub enum SetupError {
     Towns(usize),
     /// The garrisons do not give one per town of the static map (E09 T8a1); their number.
     Garrisons(usize),
+    /// The towns' factions do not give one per town of the static map (E09 T11); their number.
+    TownFactions(usize),
     /// The town's garrison has stacks and is not a valid army (E09 T8a1).
     Garrison {
         /// The town.
@@ -573,6 +592,7 @@ impl fmt::Display for SetupError {
             Self::Objects(n) => write!(f, "{n} objects are too many"),
             Self::Towns(n) => write!(f, "{n} towns are too many"),
             Self::Garrisons(n) => write!(f, "{n} garrisons do not give one per town"),
+            Self::TownFactions(n) => write!(f, "{n} town factions do not give one per town"),
             Self::Garrison { town, error } => {
                 write!(f, "town {}'s garrison: {error}", town.raw())
             }

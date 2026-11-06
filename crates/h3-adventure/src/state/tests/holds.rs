@@ -4,8 +4,10 @@
 
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentPack, CreatureDef,
-    CreatureInfoDef, HeroEffect, SkillId, SpellCategory, SpellDef, SpellId, SpellSchoolDef,
+    CreatureInfoDef, FactionId, HeroEffect, SkillId, SpellCategory, SpellDef, SpellId,
+    SpellSchoolDef,
 };
+use h3_contracts::TownId;
 use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 use h3_kernel::hash::hash_of;
 
@@ -615,7 +617,7 @@ fn the_hash_sees_what_objects_hold() {
 
 /// [`movement_rules_with`] with the castle's seven dwellings `t:d1` to `t:d7` (its creature
 /// `t:c1` to `t:c7` of each level), the random dwelling `t:random` and the castle's random
-/// dwelling table (E08 T93b); the fortress and the wild have none.
+/// dwelling table (E08 T93b); the fortress and the wild have none. Since E09 T11 a town `t:town`.
 fn dwelling_rules() -> Rules {
     use core::num::NonZeroU16;
 
@@ -655,6 +657,7 @@ fn dwelling_rules() -> Rules {
             }));
             part.object_types
                 .push(ty("t:random", ObjectKindDef::RandomDwelling));
+            part.object_types.push(ty("t:town", ObjectKindDef::Town));
             part.random_dwellings = vec![RandomDwellingDef {
                 faction: key("t:castle"),
                 dwellings: core::array::from_fn(|i| key(&format!("t:d{}", i + 1))),
@@ -758,4 +761,62 @@ fn a_random_dwelling_holds_its_factions_and_levels() {
     let hash = |levels| hash_of(&built(&rules, vec![random(vec![castle], levels)]).unwrap());
     assert_ne!(hash((3, 3)), hash((4, 4)));
     assert_ne!(hash((1, 1)), hash((7, 7)));
+}
+
+// covers: ADV-DWL-005
+#[test]
+fn a_random_dwelling_tied_to_a_town_holds_its_town_and_levels() {
+    // E09 T11: its levels as one with a set's; its town one of the map's, whose faction (the
+    // setup's, by `TownId`) has a table; checked when the game is built, the town in the walk and
+    // the factions' count after it.
+    let rules = dwelling_rules();
+    let faction = |k| rules.0.faction_by_key(k).unwrap();
+    let (castle, fortress) = (faction("t:castle"), faction("t:fortress"));
+    let linked = |k, town, levels| {
+        let town = TownId::new(town);
+        object(&rules, 3, k, Holds::LinkedDwelling { town, levels })
+    };
+    let town = || {
+        let formation = Formation::Loose;
+        object(&rules, 9, "t:town", Holds::Town { formation })
+    };
+    let built_with = |dwelling: ObjectSetup, factions: Vec<FactionId>| {
+        let mut setup = setup(vec![dwelling, town()]);
+        setup.garrisons = vec![Vec::new()];
+        setup.town_factions = factions;
+        crate::testing::started(&rules, &setup)
+    };
+    let state = built_with(linked("t:random", 0, (2, 6)), vec![castle]).unwrap();
+    let resolved = &state.map().objects()[0];
+    assert_eq!(resolved.holds, Holds::Nothing);
+    let table = rules.1.random_dwelling(castle).unwrap();
+    let level = table
+        .iter()
+        .position(|&ty| Some(ty) == resolved.object_type);
+    assert!(level.is_some_and(|level| (1..=5).contains(&level)));
+    for (town, levels, factions) in [
+        (0, (0, 3), vec![castle]),
+        (0, (4, 3), vec![castle]),
+        (0, (1, 8), vec![castle]),
+        // A town past the towns' factions, a core faction without a table, none of the core's.
+        (1, (1, 7), vec![castle]),
+        (0, (1, 7), vec![fortress]),
+        (0, (1, 7), vec![FactionId::from_raw(9)]),
+    ] {
+        assert_eq!(
+            built_with(linked("t:random", town, levels), factions).err(),
+            Some(SetupError::Holds(0)),
+            "{town} {levels:?}"
+        );
+    }
+    // Only a random dwelling holds a town.
+    assert_eq!(
+        built_with(linked("t:d1", 0, (1, 7)), vec![castle]).err(),
+        Some(SetupError::Holds(0))
+    );
+    // A town past the map's but not past the factions given: their count refuses the setup.
+    assert_eq!(
+        built_with(linked("t:random", 1, (1, 7)), vec![castle, castle]).err(),
+        Some(SetupError::TownFactions(2))
+    );
 }

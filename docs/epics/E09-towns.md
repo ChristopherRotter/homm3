@@ -46,9 +46,9 @@ Refined with the user on 2026-11-06 (T10; `TWN-Q7`, asked at T10's start with a 
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
-- **T11 The random dwellings tied to a town** (`ADV-STUB-13`, decision 39; `cross-lane`). Queued.
+- **T11 The random dwellings tied to a town** (`ADV-STUB-13`, decision 39; `cross-lane`). Done 2026-11-06 (map import v20; `E09-log.md`).
 - **T12 The construction survey** (decision 38): the code reading of the build command's checks, the requirements and costs (`building_tables_init` 0x4EB730 and `town_build` 0x5BE930, read in part by T5b1, survey §16), the day's limit and the town events' day; VCMI and the wiki compared; a census of the shipped maps (forbidden buildings, custom sets, the town events); the disputes (TD-9 first) and quirk candidates; the checkpoint with the user. Queued after T11.
-- **T13 The ADR amendment drafts, the design note (Part D of `E09-design.md`, from §23) and the cut**, accepted by the user before the build.
+- **T13 The ADR amendment drafts, the design note (Part D of `E09-design.md`, from §23) and the cut**, accepted by the user before the build; the drafts also amend ADR-0016 point 4's sentence on the tied random dwellings (T11).
 - The build's rounds, queued as the round before is done; the audit last.
 
 ### Exit criteria
