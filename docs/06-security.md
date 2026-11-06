@@ -95,6 +95,43 @@ Increment 10 (dwellings and hiring; ADR-0016 points 4 and 6, ADR-0017 points 6, 
 - **A visit's questions and gifts** are the visitor's owner's alone: the guards' question (the guards' first creature and the size word of their total), the hire question (its creatures; a camp's creature), the free creatures joined or refused for want of room, a camp found deserted. The guards' battle is its sides' owners': the guards' side is unowned, the neutral seat's whoever owns the dwelling (ADR-0017 point 11), so an owner learns of a battle at its dwelling only what other viewers do. Other players see its effects where they see the dwelling: the flag (`ObjectFlagged`, its reveal to the new owner alone, as a mine's) and a hero's leaving the map.
 - **The hire dialog** (GAM-DEC-008) is its owner's alone: its view (the source by type and anchor, each creature's count and cost) and its purchases (the price paid, `ResourcePaid`; the creatures joined) reach no other player. A purchase is validated against the trusted actor and the open decision, never the payload's price: the creature must be the source's, the amount from 1 to its count, the hero's army must have room and the treasury pay the cost times the amount, each checked before anything changes and refused typed with the state untouched (ADR-0004). An ally's dialog (E10's teams) is read-only, `Close` alone: an ally sees the offer, buys nothing and never flags (the original's disabled dialog, E10-6).
 
+### What a viewer may know: a town (E09 increment 1)
+
+The list the town epic owns (ADR-0028; the design note `epics/E09-design.md` §12 and §17,
+survey `rules/surveys/E09-towns.md` §12: the original's map picture, hint and right-click popup;
+rules TWN-VEW-001 to -003); `h3_game::observe` (`GameObservation::towns`) and `project` implement
+it (E09 T8a2, T8b1, T8c1, T8c2), `h3-game`'s `town/tests/view.rs` checks it. Until E10's teams a
+player's team is the player alone; a neutral town is nobody's team.
+
+- **Public where the viewer has explored a tile of the town** (a tile only on its fringe gives
+  no view): its object links to it (`ObjectView::town`), its owner (the flag), faction, name, fort
+  level and whether it has a Capitol. Whether it is defended only as the step and the legal moves
+  tell it (a reachable town's cursor).
+- **The garrison** to a viewer of another team by its level, the number of the viewer's own towns
+  with a standing Tavern, at most 2: 0 nothing, not even whether it is empty; 1 each stack's
+  creature, packed in slot order (never the slots); 2 also each stack's size word (the monsters'
+  words).
+- **The top level** (3): the stacks' counts, the hall level and the day's income (the gold and
+  the silo's resources), to the owner's team, and to a viewer one of whose own heroes on the map
+  has a Visions creature in its army (the AB pack's Rogue) and stands on the level of the town's
+  entrance within its Visions radius (the town part's factor, 3, times the hero's Power, at least
+  3; E09 T8c2), as the original's popup shows them. The garrison by slot (the town screen's,
+  which the garrison's `StackChanged` events change) is the owner's team's only.
+- **Never public:** the town's other buildings, its ever-built and forbidden sets, the Escape
+  Tunnel and the defender's bonuses; a merge's stacks (the visitor's owner's); a draw's values
+  (a random town's faction before it is seen, a neutral garrison, the start's dwelling), drawn
+  from server-only streams.
+- **Events:** a capture (`TownCaptured`) and a change of the town's picture (`TownChanged`) to the
+  players that see the town and to its new owner; the capture's reveal to the new owner alone
+  (`TilesRevealed`). A siege is told as any battle, to its sides' owners; others learn its
+  effects where they see the town. The day's income is told to its owner alone, in its
+  `ResourceGained` with the mines' and the heroes'.
+- **A town's `TownId`** (ADR-0028 point 3: its index among the map's towns in object order) names
+  it in the views and events, so a seen town's id tells how many towns come before it in object
+  order, seen or not. Kept, as ADR-0028 point 3 names a town by it in the commands, events and
+  observations (unlike an object, named by type and anchor); in the original each player of a
+  game holds the map file, which lists the same towns.
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).
