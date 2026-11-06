@@ -7011,6 +7011,14 @@ T5b2 cut in two by the user (2026-11-05): T5b2a the retreat question, T5b2b CLT-
   an answer (the loop ticking again a millisecond after it).
   **Oddities:** none in the battle; the level-up for the map's experience is the game's own
   (the harness writes around it).
-- **Not built:** a server's seat (no Auto Combat there); the facts' artifacts' worth and
+- **Reviewed** (a fresh reviewer, 2026-11-06): no defect in the engine's leaving against
+  0x477FEE, the draws, the world kept, the once-a-battle flag, the boxes; fixed: a question
+  coming while another box is open (a held popup) waited unshown, the battle stuck: `Battle::poll`
+  opens it once none is, and a box that cannot be shown (no text tables, not laid out) is
+  answered Cancel, the offer's gold left out when its DEF is not loaded. Left as the Surrender
+  box's: the name the hero type's (the original's the hero's own, +0x23; the same for a hero not
+  renamed). Found: CLT-Q63 (the question at an automatic Ballista's turn).
+- **Not built:** the question at an automatic war machine's turn (CLT-Q63: the engine plays it
+  itself); a server's seat (no Auto Combat there); the facts' artifacts' worth and
   `wanted` in the original's map; the original's map without the enemy's hero (a monster's
   split); CLT-Q61's stop (T5b2b).

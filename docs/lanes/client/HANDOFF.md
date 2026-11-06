@@ -33,12 +33,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5 (its
   situations M6 T6), CLT-Q42 (T3b2: copy recommended, built so), CLT-Q43 and Q44 (T4a: fixes
-  recommended, built as the original's). `CLT-STUB-1` (T5a, G1: a server's seat lacks the other
+  recommended, built as the original's), CLT-Q63 (T5b2a: copy recommended, not built). `CLT-STUB-1` (T5a, G1: a server's seat lacks the other
   hero's Orb and Cloak; the user requires parity with local play, asked of the battle and server
   lanes) is commented in `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/`
   change). An engine change the lane needs goes as a small cross-lane PR with the user's consent
   (#739 and #745 were). Next ids:
-  CLT-Q63, CLT-STUB-3.
+  CLT-Q64, CLT-STUB-3.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -66,7 +66,8 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   gate, in the hero's cast too; `Decision::leaving`; BAT-AI-026; battle scoped verify passed,
   CI green). A reading (§12.19), a builder, a capture agent (three sequences, timelines as
   recorded, frames exact but the result window's clip, CLT-Q30's; Orrin's map experience levels
-  him up in the original: the harness writes it into memory instead), a fresh reviewer.
+  him up in the original: the harness writes it into memory instead), a fresh reviewer (a
+  stuck question fixed; CLT-Q63 asked: the question at an automatic Ballista's turn).
   `check.sh`. The sandbox's server stopped once and the VM restarted four times: nothing lost.
 
 - **2026-11-05, E17 M6 T5b1 (done; #743 merged).**

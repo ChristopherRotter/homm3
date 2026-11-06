@@ -1062,7 +1062,7 @@ impl<'g> Battle<'g> {
         }
         self.head = Playhead::new(self.timeline());
         if asked {
-            self.open_question(end);
+            self.open_question(end)?;
         }
         Ok(())
     }
@@ -1200,7 +1200,7 @@ impl<'g> Battle<'g> {
         };
         let Some(played) = live.next()? else {
             // Auto Combat's question at the switch's own turn (E17 M6 T5b2a).
-            return Ok(self.open_question(at));
+            return self.open_question(at);
         };
         self.grow_from_waiting(at, played)?;
         Ok(true)
@@ -1208,22 +1208,27 @@ impl<'g> Battle<'g> {
 
     /// Opens the box of Auto Combat's question or offer waiting for the human's answer (E17 M6
     /// T5b2a, design §12.19; `crate::boxes::question`) at `at`, the battle standing still behind
-    /// it; whether it opened (none waits, a box is open, or no text tables). *Not built* for a
-    /// seat on a server: it plays no Auto Combat (`Battle::takes_auto`), so asks no question.
-    fn open_question(&mut self, at: u32) -> bool {
+    /// it; whether it opened (none waits, or a box is open: [`Battle::poll`] opens it once that
+    /// one closed). Without the text tables or the side's view it cannot be shown: the question
+    /// is answered Cancel (the battle fights on; never a battle waiting on a box it cannot
+    /// show); the offer's gold, its DEF not loaded, is left out. *Not built* for a seat on a
+    /// server: it plays no Auto Combat (`Battle::takes_auto`), so asks no question.
+    ///
+    /// # Errors
+    /// The answer's, played (`Battle::answer`).
+    fn open_question(&mut self, at: u32) -> Result<bool, String> {
         let Some(question) = Fight::here_ref(self.fight.as_ref()).and_then(Live::question) else {
-            return false;
+            return Ok(false);
         };
         if self.message.is_some() {
-            return false;
+            return Ok(false);
         }
         // The resources' pictures' DEF, for its size (the offer's gold).
         let def = self.ground.layout.message.resources.clone();
         let size = match question {
             crate::live::Question::Offer { .. } => {
-                if self.load_names(vec![def.to_ascii_uppercase()]).is_err() {
-                    return false;
-                }
+                // Not loaded: no size, the picture's slot empty.
+                let _ = self.load_names(vec![def.to_ascii_uppercase()]);
                 self.batch.sprite(&def).map_or([0, 0], |s| {
                     [s.def.width, s.def.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
                 })
@@ -1231,16 +1236,19 @@ impl<'g> Battle<'g> {
             crate::live::Question::Retreat => [0, 0],
         };
         let (Some(writer), Some(own)) = (self.ground.writer.as_ref(), self.own_view()) else {
-            return false;
+            return self.answer(at, false);
         };
         let hero_types = &self.record.header.manifest.keys.hero_types;
         let (text, picture, asked) =
             crate::boxes::question(question, &own, hero_types, &writer.catalogue, (&def, size));
-        let opened = self.tell(at, &text, (Style::OkCancel, picture.as_ref()), asked);
-        if opened && self.asked_at.is_none() {
+        if !self.tell(at, &text, (Style::OkCancel, picture.as_ref()), asked) {
+            // Not laid out: as without the tables.
+            return self.answer(at, false);
+        }
+        if self.asked_at.is_none() {
             self.asked_at = Some(at);
         }
-        opened
+        Ok(true)
     }
 
     /// The human's answer `ok` at `at` to Auto Combat's question or offer, its box closed (E17 M6
@@ -1254,7 +1262,7 @@ impl<'g> Battle<'g> {
             return Ok(false);
         };
         let Some(played) = live.answer(ok)? else {
-            return Ok(self.open_question(at));
+            return self.open_question(at);
         };
         let placeholder = Played::Finished(Box::default());
         if let Played::Waiting(mut growing, _) = std::mem::replace(&mut self.played, placeholder) {
@@ -1434,6 +1442,17 @@ impl<'g> Battle<'g> {
     /// # Errors
     /// The connection's fault, a refusal, another game's record at a re-join.
     pub fn poll(&mut self, at: u32, now: u64) -> Result<bool, String> {
+        // Auto Combat's question come while another box was open (a held popup): opens once none
+        // is, not before its own time (E17 M6 T5b2a's review: never a battle waiting on a box
+        // not shown).
+        if self.message.is_none()
+            && Fight::here_ref(self.fight.as_ref())
+                .and_then(Live::question)
+                .is_some()
+        {
+            let end = self.timeline().end;
+            return self.open_question(at.max(end));
+        }
         let Some(Fight::Server(online)) = &self.fight else {
             return Ok(false);
         };

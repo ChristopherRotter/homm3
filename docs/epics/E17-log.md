@@ -5484,3 +5484,9 @@ question, T5b2b CLT-Q61's stop.
   tick at the answer. The map's experience levels the hero up in the original: the harness
   writes it into memory (`scenario_experience`) and waits for idle (`wait_idle`). `drawn`: three
   new, the rest the same (`auto-cast`, `auto-cast-human` unchanged).
+- **Reviewed** (a fresh reviewer): no defect in the engine's leaving, the draws, the world, the
+  flag or the boxes; a question coming while another box was open waited unshown (the battle
+  stuck): fixed (`Battle::poll`; a box that cannot be shown answered Cancel). **Asked:** CLT-Q63
+  (the original asks at an automatic Ballista's turn too; copy recommended, not built: the
+  engine plays it; the battle lane's inbox). `check.sh`; the PRs: #745 (the engine's part,
+  cross-lane) first, then this one.
