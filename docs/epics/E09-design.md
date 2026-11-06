@@ -1,5 +1,9 @@
 # E09 design note
 
+Increment 1's note (closed 2026-11-06 by T10; Parts A to C, §1 to §22, kept here as the code cites
+them: the epic's decision 40). Increment 2's note (construction, decision 37) joins this file as
+Part D from §23, written by T13; until then nothing below is open.
+
 Increment 1's note: towns on the map (the epic's decision 5). A handover, not binding
 (`docs/adr/README.md`): the working detail behind ADR-0028 and E09's amendments of ADR-0015,
 -0016, -0017 and -0023 (drafted in T2a, accepted at TWN-Q4, moved into `docs/adr/` by T4a), written by T2b from the survey
@@ -713,9 +717,9 @@ the ADRs are applied once with the rows' verdicts:
 | 7 | **T7a** + **T7b** | T7a: the import and the setup's checks (§7, §13; map import v17, the census). T7b: the pool and the build's draws (§14; game state hash v23) |
 | 8 | **T8a** + **T8b** | T8a: the kind, the step, entering and an undefended capture (§8, §9, §11; part v16, state hash v20). T8b: the siege, cut in two (the user): T8b1 the battle's setup and its end (§15, §11; done), T8b2 the step onto a defended town, the merge, the defender (§9, §10) |
 | 9 | **T8c** + **T9** | T8c: the income, the views, the observation, `docs/06-security.md` (§12, §16, §17), cut in two (the user): T8c1 the income and the observation's towns (done), T8c2 the Rogue's Visions, the security doc, the notes. T9: the fixtures, replays, properties, benchmarks, the env (§18) |
-| 10 | **T10** | The audit against the exit criteria; increment 1 closed; increment 2 refined |
+| 10 | **T10** | The audit against the exit criteria; increment 1 closed; increment 2 refined (done, 2026-11-06) |
 
-**Increment 1's exit criteria** are the epic's seven; T10 checks each against its rules and tests.
+**Increment 1's exit criteria** are the epic's seven (moved to `E09-archive.md` at the closure); T10 checked each against its rules and tests (all hold: `E09-log.md`, T10).
 
 ### 22. Risks and open points
 

@@ -1801,3 +1801,93 @@ sandbox cloned from GitHub, the shipped maps and the text tables staged with the
   moat and hall level (`h3_towns::siege`, `hall_level`) and the owned towns' day's income
   (`daily_income`: 643 000 gold a day over the towns owned at the start, 7 with a silo's resource).
 - **Versions:** none (no engine code changed).
+
+### T10 — the audit; increment 1 closed; increment 2 refined (2026-11-06)
+
+One session, the user present; branch `town/e09-t10`, docs only (the epic, its archive, log and
+design note's header, `town.toml`'s statuses, the lane's HANDOFF, QUEUE and answered questions).
+Starting point: `master` at 798b2e2 (#767 and #768 merged; CI green there; the setup's
+`verify-once` found CI's fingerprint: the light gates only). The user's computer's shell did not
+start: a sandbox cloned from GitHub, no original data needed. **At its start** (the user, asked
+with a first look at the audit, `TWN-Q7`): T10 whole (decision 36) and increment 2's three
+questions (decisions 37 to 39).
+
+**The audit of increment 1's exit criteria** (`E09-archive.md`), on `master`'s code:
+
+1. **The import.** T9c's census (`h3-map`'s `original_data`; `docs/formats/h3m.md`, "Import"):
+   all 160 shipped maps import, validate and build, none refused by a town's or a start's check;
+   the 128 once refused for a main town's hero build (538 main towns' heroes drawn, TWN-SET-009),
+   the 3 for a hero in a town too (TWN-SET-010), the random heroes drawn (TWN-SET-008). No typed
+   refusal is left, so none names a gap. **Holds.**
+2. **Entered and captured, the siege on the battle's rules.** TWN-VIS-001, -002, TWN-CAP-001 to
+   -003, TWN-SIE-001 to -006: `h3-game`'s `town/tests/capture.rs`
+   (`an_undefended_town_of_another_player_or_none_is_captured_by_the_step`,
+   `an_own_town_is_entered_without_a_capture`, `a_defended_town_is_besieged_not_captured`,
+   `a_captured_capitol_is_demoted_when_its_new_owner_holds_another`) and `town/tests/siege.rs`
+   (`a_siege_is_fought_on_its_towns_facts_and_native_terrain`,
+   `a_step_onto_a_town_its_garrison_defends_starts_its_siege_from_the_tile_before`,
+   `a_siege_a_step_started_is_played_and_captures_the_town_with_the_attacker_outside`,
+   `a_step_onto_a_towns_visitor_merges_the_garrison_into_its_army_and_besieges_it`,
+   `a_siege_played_to_its_end_is_settled_as_a_siege`): the siege's facts derived by
+   `h3_towns::siege` into `BattleStart::town`, the battle the battle lane's siege (ADR-0023).
+   Golden replays `towns-capture-s1`, `towns-siege-s1`, `towns-visitor-s1`, `towns-capitol-s1`
+   and the three seeds' `towns-s*-d21`. Observed: batch TWN-1's rows 3 and 4. **Holds.**
+3. **The hall pays.** TWN-INC-001, -002: `town/tests/income.rs`
+   (`a_towns_income_joins_its_owners_mines_in_one_gain_per_resource`,
+   `several_capitols_at_the_start_each_pay_theirs`,
+   `a_neutral_town_pays_nobody_and_a_captured_one_its_new_owner_from_the_next_day`), the golden
+   `towns-income-s1`, `check_income` in the plans; the census's 643 000 gold a day. **Holds.**
+4. **Ids, sources, tests; the readings at risk.** `check-rules` passes (438 rules): the 26
+   `TWN-*` rules each with sources and tests, the amended `ADV-`/`GAM-` rules with E09's lines.
+   TD-3, TD-5, TD-7 and the siege's aftermath confirmed by batch TWN-1 (survey `E09-towns.md`
+   §15); TD-1, -2, -4, -6 by the reading (decisions 13, 14), TD-8 by the code (decision 30); TD-9
+   (increment 2) and TD-10 (increment 4, `TWN-STUB-6`) recorded as disputes (survey §16.9's table).
+   Building 23, the batch's one surprise, read and settled (decisions 25, 27). The quirks ledger
+   `quirks-town.md` holds `TWN-QUIRK-1` to `-6`, each with its regression test. **Holds.**
+5. **The gates.** `h3-towns`, `h3-adventure` and `h3-game` are logic crates under the 100 %
+   coverage gate with no town file in `coverage-exclusions.toml`; `h3-map`'s town modules sit in
+   an adapter crate the gate does not cover, tested by its tests and the census. Golden replays
+   with a town captured (above). The benchmarks: T9c's `siege-towns-36`, `day-start-towns-36`,
+   `reach-towns-36`, `fork-towns-36`, `fork-xl-144` re-set inside its gate. The property plans
+   play towns: `the_plans_capture_and_besiege_towns` (T9b1), `town_views_move_as_the_events_say`
+   (T9b2a), the hygiene property's `vary` with towns (T9b2b). CI's full verify green on `master`
+   at 798b2e2 (#768). **Holds.**
+6. **The views.** `docs/06-security.md`, "What a viewer may know: a town (E09 increment 1)";
+   TWN-VEW-001 to -003: `town/tests/view.rs`
+   (`a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners`,
+   `the_garrisons_level_is_the_viewers_towns_with_a_tavern_at_most_two`,
+   `a_heros_visions_creature_shows_another_teams_town_at_the_top_level_within_its_radius`,
+   `only_the_viewers_own_heroes_see_by_visions`), `h3-map`'s `town_views_move_as_the_events_say`
+   and `vary_changes_the_towns_the_viewer_never_sees_only`. **Holds.**
+7. **The env.** `h3-sim`'s `the_env_plays_the_town_map_to_its_end_of_days`,
+   `town_map_rollouts_and_forks_are_deterministic` and the main property's town map (T9c).
+   **Holds.**
+
+**The gaps fixed:** five rules cite batch TWN-1's rows and matched them in every point but stayed
+`implemented`: now `verified` (TWN-SIE-001, rows 3 and 4: a visitor with the garrison merged, a
+garrison alone, the attacker on the tile before, its source now naming both rows; TWN-SIE-002, row
+3; TWN-CAP-003, rows 3b and 4; TWN-SET-003, row 1; TWN-SET-004, row 2). Stay `implemented`:
+TWN-SIE-003 (its observation, E04c's batch 3g, shows the morale and luck bonuses only) and
+TWN-VIS-001 (no row steps onto an undefended town of another player or none). The other nineteen
+rest on the reading with VCMI and the wiki. **Left open, by design:** `TWN-STUB-2` (increments 2
+and 4), `TWN-STUB-6` (increment 4), `TWN-STUB-8` (the battle lane's inbox), the teams'
+`TWN-STUB-1` (E10's, reserved), and `ADV-STUB-13`, E09's since E08 decision 231: the random
+dwellings tied to a town wait for the random towns increment 1 draws; T11 (decision 39). Noticed
+for T11: `docs/formats/h3m.md`'s "Import" heading still names `MAP_IMPORT_VERSION` 18 (19 since
+E08 T97b1).
+
+**Increment 1 closed** (2026-11-06): its starting point, scope, decisions 8 to 35, task list and
+exit criteria moved verbatim to `E09-archive.md`; its design note stays in `E09-design.md`
+(decision 40, *agent's call*: about 85 lines of code comments in 37 files cite its sections).
+
+**Increment 2 refined** (`TWN-Q7`; decisions 37 to 39): construction with the town events (the
+build command; the requirements, costs and the day's limit; the forbidden buildings; the map's
+town events' buildings and resources, their creatures with increment 3), from survey §1.3's
+census (574 custom sets, 173 forbidding something; 369 town events on 110 towns: 70 build, 105
+give resources, 56 add creatures). First T11 (`ADV-STUB-13`), then the survey T12 and the drafts
+T13; the queue holds T11 and T12.
+
+**Verify:** no fingerprinted path changed (`scripts/verify-once.sh engine --base origin/master`:
+the light gates, check-rules, check-stubs, check-docs and check-exe-map, passed), `check-lane`
+passed (the town lane's paths and one common); the engine's code is `master`'s, which CI's full
+verify passed at 798b2e2. CI on the pull request is the record.

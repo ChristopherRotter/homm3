@@ -4,21 +4,36 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 ## Tasks
 
-Epic: `docs/epics/E09-towns.md` (increment 1: towns on the map); done tasks in `E09-log.md`.
+Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN-Q7`); done tasks
+in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. First T11 (decision 39), then
+increment 2's first round (decision 38): the survey T12, the drafts with the design note and the
+cut T13 (queued when T12's checkpoint is done). Each task's cut confirmed at its start; every
+entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch TWN-1 first. Round 8
-(the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
-T8a2, then T8b (cut in two: T8b1, T8b2, itself cut in two: T8b2a, T8b2b; rounds 2 to 6, T7a, T7b,
-T8a1, T8a2, T8b1, T8b2a, T8b2b are done, `E09-log.md`). Round 9: T8c cut in two at its start (the
-user, 2026-11-05: at the Rogue; T8c1, T8c2 done), T9 cut in three (T9a, T9b, T9c done; T9b cut
-in two, T9b2 in two again); each later round's entries are written when it comes (the epic's
-list; round 10's below), each task's cut confirmed at its start. Every entry's
-acceptance includes the Definition of Done (`docs/05-testing.md`).
+**E09 T11 — the random dwellings tied to a town** (`ADV-STUB-13`; decision 39; `cross-lane` in the
+adventure lane's `h3-map` import and the build, consent given): a random dwelling of class 216 or
+217 whose identifier a town of the map has (1 397 on the shipped maps, all tied to random towns;
+untyped blockers since E08 T93b, `h3-map`'s `import/mod.rs`, `codes.rs`) takes that town's faction
+once the build has drawn it (`random_dwellings_resolve` 0x502B60: the town searched from the end
+of the town list, its random town already resolved; survey `E08-dwellings.md` §3.2), then its
+level and dwelling as E08's random dwellings not tied to a town (E08 T94a), its draw after the
+towns' in the placement walk (ADR-0017 point 4). Its holds name the town (`TownId`), not a faction
+set; the import's checks as they stand (A-35's identifier no town has: `DwellingTown`). Versions:
+map import (v20; `h3m.md`'s "Import" heading still says 18), and whatever the holds and the build
+move (the adventure lane's versions, in order with its open pull requests); the replays and the
+census re-run with the original data (`maps.tar`, `extracted.tar`), the stub lifted, the
+adventure lane's inbox told. Its cut confirmed at its start. **Status:** next.
 
-**E09 T10 — the audit** (round 10, the epic's task list; design §21): the increment's exit
-criteria checked one by one (the epic's "Exit criteria"), increment 1 closed (its scope, decisions
-and task list to `E09-archive.md`), increment 2 refined with the user. Its cut confirmed at its
-start. **Status:** next.
+**E09 T12 — the construction survey** (decision 38; increment 2's first round): survey
+`docs/rules/surveys/E09-construction.md` (or the next sections of `E09-towns.md`, the task's
+call): the code reading of the build command's checks (the requirements, the costs, one a town a
+day, one Capitol per player, the Shipyard's water, the Grail building), the requirement and cost
+tables (`building_tables_init` 0x4EB730, `town_build` 0x5BE930; survey `E09-towns.md` §16 read the
+lists and supersedes), the town events' day and their buildings and resources; VCMI 1.7.5 and the
+wiki compared; a census of the shipped maps (forbidden buildings, custom sets, the town events);
+the disputes (TD-9 first) and quirk candidates; the checkpoint with the user. Needs the original
+data (the executable, the LODs, the text tables). Its cut confirmed at its start. **Status:**
+after T11.
 
 ## Inbox
 
