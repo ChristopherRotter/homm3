@@ -65,6 +65,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-06, E17 M6 T5d2a (in progress; `client/e17-m6-t5d2a`).** The user cut T5d2 in two:
+  T5d2a Death Blow and the Ogre Magi's Bloodlust glow, T5d2b Ice Bolt's explosion and the
+  Familiars' channel. Done: the reading (design §12.23), the build (`anim/creature.rs`), the
+  harness's roll `death_blow`; pushed. Next: the recording (a hot-seat sequence), a fresh
+  reviewer, the gates, the docs, the pull request.
 - **2026-11-06, E17 M6 T5d1 (done; `client/e17-m6-t5d1`, #771).**
   The user cut T5d in two. The original data staged by the file tool (the PC's shell did not
   start). Read, built (`anim/starts.rs`), recorded by a capture agent (`starts`,
