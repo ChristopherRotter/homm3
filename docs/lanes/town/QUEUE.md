@@ -18,12 +18,19 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 lane's fixtures, replays, plans and benches, `h3-sim`'s env test; round 9, design §18), cut in
 three at its start (the user, 2026-11-06; decision 32):
 
-- **T9b — the plans' towns and their properties.** The plans (`crates/h3-map/src/tests/play.rs`;
-  `view.rs` where the hygiene property meets towns) play towns: one owner per town, the garrison
-  empty after a capture, the store forks and hashes as the state, no hero on another team's
-  entrance. The plans lay out a `RawMap` themselves (`lay_out`; the town bodies as the import's
-  tests in `tests/towns.rs` build them), not through the writer. **Depends on:** T9a (done,
-  `E09-log.md`). **Status:** next; its cut confirmed at its start.
+- **T9b2 — the view properties with towns** (T9b cut in two at its start, the user, 2026-11-06;
+  decision 33; T9b1 done, `E09-log.md`). `crates/h3-map/src/tests/view.rs` meets the plans' towns
+  (`play.rs`' `TownPlan`, laid out after every other object by `towns_laid_out`, each with a
+  template of its own): drop `view.rs`' `townless` (the two properties) and the boat test's
+  clearing; `vary` learns towns (a town's template is no `KINDS` entry: the town lane's
+  `TRAPS.md`; what it may change where the viewer never sees a town: its owner, garrison and
+  record, a town removed or added, by TWN-VEW-001 to -003's levels, the viewer's taverns and a
+  Rogue's Visions, `docs/06-security.md`'s "Towns"); `check_told` tells `TownCaptured`,
+  `TownChanged`, a siege's `BattleStarted` and the merge's `StackChanged`s of `ArmyRef::Garrison`
+  to whom design §11 and §12 say (it refuses them today: "a plan without towns told …"); a check
+  of `GameObservation::towns` (`TownView`) and `ObjectView::town` against the state, as
+  `check_hire_sources` for the dwellings. **Depends on:** T9b1. **Status:** next; its cut
+  confirmed at its start.
 - **T9c — the benchmarks, the env, the census.** Benchmarks (`benches/adventure/`): `fork-xl-144`,
   `day-start-towns-36` (new), the reach on the town map, a siege's setup. The env (`h3-sim`, the
   AI lane's, consent as decision 7): a test playing the town map to its end of days, the bot

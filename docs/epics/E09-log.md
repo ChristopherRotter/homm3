@@ -1546,3 +1546,73 @@ scripted replays by two narrow sub-agents in turn (scratch probes, not committed
   passed): coverage, determinism with the 55 replays, bench-check (no engine code changed).
 - **Versions:** none (the writer is not read by the game; no import, state or replay format
   change).
+
+### T9b1 — the plans play towns (2026-11-06)
+
+One session, the user present; branch `town/e09-t9b1` (`cross-lane`: `h3-map`'s `tests/`
+(`play.rs`, `view.rs`, `fixtures.rs`, `towns.rs`), its `Cargo.toml` (`h3-towns` a dev-dependency,
+which `arch.toml` already allowed) and `proptest-regressions/tests/play.txt`). Starting point:
+`master` at bdbd6c6 (#756, #757 merged; CI green on 3b18baa, the same engine code; the setup's
+baseline lost to a VM restart, replaced by that run). **At its start** (the user, asked): T9b cut
+in two (decision 33), the plans first. Built by the agent alone; no original data needed.
+
+- **The plans' towns** (`TownPlan`, `Plan::towns`, drawn last by `towns()`, so that every earlier
+  draw and a plan without towns stay as they were; the committed fixtures unchanged): in three
+  plans of four one to four towns, each of a fixed faction (98, modulo the version's factions) in
+  three of four or random (77, a SoD alignment to a playing colour in one of two), owned in two of
+  three, its garrison the editor's (one of six), none at all (two), one weak stack of a level-1
+  creature (two) or seven slots of any base creature (one), the standard set with or without a
+  Fort or a custom set of the halls to the Capitol with or without one, a tight formation in one
+  of two; in one of three visited at load (the entrance on a hero's tile, the town its owner's,
+  so that sieges meet visitors with garrisons to merge). `towns_laid_out` (after every other
+  object but the boats, a template each: `towns.rs`' `town_template`, now `pub(super)`): the
+  entrance one to four rows above a hero, two columns either side, its anchor on the map, the
+  entrance on land, no tile a hero's (but a visitor's entrance) or another object's; the body as
+  the reader gives it back (the identifier and required spells from AB on, nine bytes of banned
+  spells), so the round trip holds.
+- **The steps:** `Step::Town` and its runs of 16 to 64 in `steps()`: in a battle as `Fight` (a
+  siege's either side, the system's for a neutral garrison), a decision settled as `seek` does,
+  else an option that ends on a town's entrance (another's in three steps of four when it has
+  one), else one that gets nearer to a town not its own, else `EndTurn`; on a map without towns
+  as `Step::Hire` (first, before its settling, which would decline every hire question and moved
+  the dwellings' cover test: `camps_deserted` 0).
+- **The checks:** `check_towns` after every command (each town's one owner, the adventure's,
+  changes only by one `TownCaptured` naming it, never to its old owner, the captured garrison
+  empty; the store's towns and factions kept, a record rebuilt only at a capture, told by
+  `TownChanged` with the store's Capitol); in `check_invariants` no hero on the entrance of a town
+  of another team or none (`h3_adventure::allied`); `check_town_battle_end` for a siege against a
+  garrison without a hero (`check_unowned_battle_end`'s town arm: won, the garrison empty and the
+  capture told in the battle's last command unless the attacker left the map or its owner's
+  decision holds it; else the owner kept and the survivors by slot, none after a draw; no
+  removal, no treasury change); `check_income` adds each owned town's `h3_towns::daily_income`;
+  `check_isolation` lets a siege's merge change the besieged visitor's army as its
+  `StackChanged`s tell (`told_army`; the failing seed committed in `play.txt`) and a capture's
+  reveal grow its captor's explored tiles in another player's command; `landing` takes a
+  capture's `TownCaptured` and `TilesRevealed`; the forks' property compares the parent's store
+  of towns after a fork played other steps. `the_plans_visit_dwellings_and_hire`'s kinds skip the
+  towns (a town's template is no `KINDS` entry: the lane's `TRAPS.md`).
+- **The cover test** `the_plans_capture_and_besiege_towns` (512 plans, three to six towns each):
+  360 towns built; 357 own towns entered; undefended captures 17 neutral, 59 of another player;
+  sieges against a garrison alone 50 (won 32, lost 16) and against a visitor 73 (won 25, lost 43);
+  11 merges; 133 captures in all; 5 Capitols limited. Each asserted above zero.
+- **`view.rs`** draws its plans without towns (`townless`, and the boat test's strategy cleared):
+  its `check_told` refuses a town's events today ("a plan without towns told …"), and `vary`
+  reads kinds from templates; both are T9b2's.
+- *Found on the way* (nothing wrong in the engine): every failure was the tests' own (the landing
+  pattern of a capture, the income without towns, the isolation without the merge, the unowned
+  battle's end without a town arm). Stressed once with 400 cases of the two properties and 200
+  of the invariants with three to six towns per plan, all passing (then set back to 48). CI's
+  first run on the pull request found one more with its own seed: a town's owner, playing its
+  garrison's side, ended the siege by its own command with the attacker's win, and the capture
+  revealed around the town to the attacker in another player's command; `check_isolation` lets a
+  captor's explored tiles grow (only grow) in a command with its `TownCaptured`. The case was
+  replayed here from CI's log (failing before the fix, passing after; too large to commit), then
+  700 more cases with three to six towns per plan passed.
+- *Agent's calls (change freely):* the draws' weights, the four building sets, the weak garrisons'
+  creatures, the offsets, the runs' length, the cover test's 512 plans and its town-heavy draw.
+- **Test time** (`h3-map`'s lib tests, debug, two threads here): 121 s with the towns, the cover
+  test 28 s of it.
+- **Gates:** the scoped verify (no original data staged) passed every step it runs but
+  `check-lane`, which fails by design on a `cross-lane` branch (`check-lane --cross-lane`
+  passed).
+- **Versions:** none (tests only).
