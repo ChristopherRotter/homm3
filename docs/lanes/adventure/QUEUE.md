@@ -4,38 +4,23 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), T98a1 done, T98a2 next, then T98b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T98a2 — the teleporters survey, its second part** (decisions 261, 262; survey
-`docs/rules/surveys/E08-teleporters.md` §9 to §14)
-
-- **Scope:** the reach and the paths through a teleporter (the original's: `pathfinder_pass_through`
-  reads the monolith lists at 0x56AE39 and 0x56AE81, whose paths those are; the engine's reach and
-  passage, the hot path); the space key's visit (`key_space_visit` 0x408E65: its full gate, which
-  classes, RoE) and whether the increment takes it as a command; what a viewer sees of a hero
-  passing (`hero_relocate_inner` 0x49CF50, the network message, the wiki's exit shown in the
-  shroud); the interfaces' sketch (commands, decisions, events, the observation, replays,
-  benchmarks); batch E11's plan on the client lane's harness (decision 261's agent's call), with
-  rows for the points resting on the reading alone (survey §8's open points); the proposed rule ids;
-  the checkpoint's questions (D-53 to D-57, A-37's fix, A-38, A-39, A-40), asked at its end.
-- **Inputs:** survey §0 to §8 (T98a1); decisions 260 to 262; ADR-0015 to -0017 (ADR-0016 points 3
-  and 4, ADR-0017's streams); the lane's `TRAPS.md` (a new read in the reach's or the passage's
-  loops; a test's blocker of a class that gets a kind); the inbox's performance note of 2026-10-23
-  (a lifted hero's reach); surveys `E08-hero-movement.md` (the reach, flying, A-13) and `E08-sea.md`
-  (a boat's entrances).
-- **Depends on:** T98a1 (done). **Status:** ready (the original data staged: `Heroes3.exe` for the
-  reading, the shipped maps for the batch's plan).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T98b — the ADR amendment drafts, the design note and the cut** (decision 261; as T88b)
 
 - **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
   11 (its pointer replaced; increment 10's note in `E08-log.md` as the model), the reach's and the
   passage's cost planned against the gated workloads (the hot path, `homm3-bench-regression`), the
-  building rounds cut, batch E11 first; the checkpoint's question: the user accepts the drafts
-  before anything is built (decision 261).
-- **Inputs:** the survey `docs/rules/surveys/E08-teleporters.md` (its interfaces' sketch, the
-  batch's plan, the proposed ids, its checkpoint's answers); decisions 260, 261.
-- **Depends on:** T98a. **Status:** after T98a; its cut confirmed with the user at its start.
+  building rounds cut, batch E11 first (decision 269: its spec and recipe the first round); the
+  draw's stream (ADR-0017's streams; no draw for one candidate, survey §4.1); `Revisit`'s name,
+  validation and the env's action (decision 268, the AI lane's encoding, `cross-lane`); A-37's
+  battle as a visit's rest (decision 265); the quirk ledger's entries for A-37 to A-41; the
+  fixtures' and tests' blockers of the five classes (TRAPS); the checkpoint's question: the user
+  accepts the drafts before anything is built (decision 261).
+- **Inputs:** the survey `docs/rules/surveys/E08-teleporters.md` (§9's reach, §10's views, §11's
+  interfaces' sketch, §12's batch plan, §13's proposed ids, §14's answers); decisions 260, 261,
+  264–269.
+- **Depends on:** T98a (done). **Status:** ready; its cut confirmed with the user at its start. Needs no original data (the survey holds the readings).
 
 ## Inbox
 

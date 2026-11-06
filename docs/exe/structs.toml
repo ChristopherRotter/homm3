@@ -441,6 +441,7 @@ fields = [
   { offset = 0x4E77C, name = "whirlpool_tiles", type = "vector", summary = "every Whirlpool's six visitable tiles, any subclass (setup_whirlpools 0x4C1F88)", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §3.1"] },
   { offset = 0x4E78C, name = "gates", type = "vector", summary = "the Subterranean Gates' packed positions (begin +0x4E790, end +0x4E794; setup_gates 0x4C16C1); a gate tile's word is its index", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §3.1"] },
   { offset = 0x4E79C, name = "gate_pairs", type = "vector", summary = "per gate the index of its pair, -1 none (begin +0x4E7A0; gates_pair 0x4C0B60, gate_exit 0x4CDE40)", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §3.2"] },
+  { offset = 0x4E7AC, name = "turn_records", type = "vector", summary = "the map changes of the players' turns (begin +0x4E7B0, end +0x4E7B4), records with a vtable and the acting player at +4, appended by the steps, the owners' changes, the reveals and hide_disk, hero_relocate_inner 0x49CF50 (a teleport's); a player's run dropped when its next turn starts (turn_records_drop 0x49D6C0), played back by the Replay Opponent Turn (turn_records_replay 0x49D7A0); also touched by the saved game's load (inferred)", confidence = "read", refs = ["rules/surveys/E08-teleporters.md §10"] },
 ]
 
 [[struct]]

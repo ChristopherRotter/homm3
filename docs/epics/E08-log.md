@@ -12851,7 +12851,7 @@ case about 380, one shared draw 0x4CDB80 561); the user cut T98a in two as the q
   ignored; no bound on a monolith subclass); `gates_pair` 0x4C0B60 (greedy in the walk's order,
   truncated Euclidean distance, first on a tie).
 - **The jump** (§4): `teleport_exit_draw` 0x4CDB80 (the candidates: the channel's other tiles but
-  those with a hero of the mover's team; `random_between(1, n)`, one draw even for one candidate);
+  those with a hero of the mover's team; `random_between(1, n)`, one draw even for one candidate: *corrected by T98a2, no draw for one*);
   the monoliths' handlers (an enemy on the exit fought first, radius-1 reveal); the one-way exit's
   ADVEVENT 70 for a human; the gate's pair, ADVEVENT 153 without a pair, the meeting with a hero of
   the team and no move; the Whirlpool (the losses first, then the draw; no hero test at the drawn
@@ -12884,3 +12884,63 @@ lists, the tile word of the teleporters. `scripts/exe.py check` agrees with the 
 **Verify:** docs and the address map only: `check-docs`, `check-rules`, `check-stubs`,
 `check-exe-map`, `check-lane` and `doc-drift` pass, `scripts/exe.py check` agrees with the
 executable. No code, version or replay moved; CI's run on the pull request is the record.
+
+### Increment 11, round 1: T98a2, the teleporters survey's second part (2026-11-06, `adventure/e08-t98a2`)
+
+Baseline: `master` 01c36d2 (#749, T98a1, merged before the start). The sandbox VM was fresh; the
+original data staged at the start (the four LODs, the executables, the five DLLs, the sound and
+video archives, `maps.tar`, `extracted.tar`, the 40 MP3s; the computer's shell did not start,
+staging worked). The reading measured first (about 1.3 KB: the pathfinder's four cases about 270
+bytes, `hero_relocate_inner` 523, the space key's case about 420); the user took T98a2 whole
+(decision 263, `AskUserQuestion`; recommended had been two parts, the readings first).
+
+**The survey** `docs/rules/surveys/E08-teleporters.md` §9 to §14, with §0, §4.1, §6, §7 and §8
+brought up to date:
+
+- **The paths** (§9.1): `pathfinder_pass_through`'s cases 43, 45, 103, 111 answer no in every
+  mode, and a human's mouse path (mode 0) never reaches them: a human's path ends at an entrance.
+  In the modes from 3 they first hand the channel's exits to the search (every candidate relaxed,
+  priced with the list's length; mode 4 weighs a guarded exit by `ai_fight_answer`); every
+  `pathfinder_run` caller but the mouse's lies under `ai_player_turn` 0x525E80: the computer's
+  (E10's). VCMI 1.7.5 plans through two-way monoliths and gates and through Whirlpools for a
+  protected hero by default: **D-58**.
+- **The engine's reach** (§9.2): an entrance typed as an entered object is a destination by the
+  rows both searches already have (ADV-OBJ-003), the original's mode 0; no new read in the reach's
+  or the passage's loops; the channels read by the visit alone; a Whirlpool entered by a boat, the
+  boat moved with the hero.
+- **What a player sees** (§10): `hero_relocate_inner` (read whole) appends a record of the move
+  to the game's `turn_records` (+0x4E7AC) for the others' Replay Opponent Turn (the Adventure
+  Options, `adventure_options_run` 0x41AB00; a player's records dropped at its next turn,
+  `turn_records_drop` read whole); no rule's state. The wiki's exit shown in the shroud: **A-41**.
+- **The space key** (§11, its case read whole): any entered class but 3 under a selected hero of
+  a human's turn, no teleporter or version test, no points; the wiki agrees (AB and SoD, not RoE).
+- **The interfaces' sketch** (§11: the jump as `MoveHero`'s visit, `Revisit`, no new decision,
+  the events, the observation, the versions, the draw, replays and workloads), **batch E11's
+  plan** (§12: two runs, E11-1 to E11-18, the harness's and the spec's gaps), **the ids** (§13:
+  the family ADV-TEL, -001 to -008, and five amendments) and **the checkpoint** (§14).
+- **A correction of T98a1:** `random_between` 0x50B230 (read whole) returns an equal bound without
+  `crt_rand`, so the exit's draw takes **no draw for one candidate** (§4.1; the map's
+  `teleport_exit_draw`). The same holds for the Catapult's tie of one wall (`catapult_tie_draw`,
+  E17's "drawn even for k = 1"): the client and battle lanes' inboxes told.
+- **The wiki's 1 776 Azure Dragons** (A-38's "bug") is the bound's exact count by fight value
+  (56 315 × 1 776 passes 99 999 999, 1 775 does not; by AI value it would be 1 269): it supports
+  the measure (D-54) and the bound.
+
+**The checkpoint** (ADV-Q45, `AskUserQuestion`, two rounds): every point as recommended,
+decisions 264–269: D-53 to D-58 the original, A-37 fixed by the battle, A-38 no bound, A-39
+refused at the import, A-40 and A-41 not reproduced, `Revisit` in increment 11 with the original's
+gate, batch E11 before the build.
+
+**The address map:** 8 new entries (7 functions: `pathfinder_entrance_guarded`, `pathfinder_teleport_exits`,
+`pathfinder_gate_exit`, `ai_player_turn`, `adventure_options_run`, `turn_records_drop`,
+`turn_records_replay`; `structs.toml`'s `turn_records`), `hero_relocate_inner` read whole,
+`pathfinder_pass_through`, `random_between`, `teleport_exit_draw` and `catapult_tie_draw` brought
+up to date. `scripts/exe.py check` agrees with the executable.
+
+**The queue:** the T98a2 entry moved verbatim to `QUEUE-ARCHIVE.md`; T98b's entry takes the
+answers and batch E11 first; inbox notes to the client lane (the Catapult's tie, `E17-design.md`
+§10.2) and the battle lane (the same; the RoE space key for the epic E11's catalogue).
+
+**Verify:** docs and the address map only: the docs gates (`check-docs`, `check-rules`,
+`check-stubs`, `check-exe-map`, `check-lane`, `doc-drift`) and `scripts/exe.py check`. No code,
+version or replay moved; CI's run on the pull request is the record.
