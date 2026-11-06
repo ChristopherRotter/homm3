@@ -49,6 +49,11 @@ const PACK: &str = r#"{
         "regenerated_other": "{{creature}} heal themselves.",
         "mana-drained_one": "{{creature}} drains {{hero}}.",
         "mana-drained_other": "{{creature}} drain {{hero}}.",
+        "death-blow_one": "{{creature}} blows!",
+        "death-blow_other": "{{creature}} blow!",
+        "creature-cast_one": "{{creature}} casts {{spell}}",
+        "creature-cast_other": "{{creature}} cast {{spell}}",
+        "creature-cast-on": " on {{creature}}",
         "summoned_one": "{{hero}} calls {{count}} {{creature}}.",
         "summoned_other": "{{hero}} calls {{count}} {{creature}}.",
         "acid-breath": "Acid: {{creature}} -{{defense}}.",
@@ -721,6 +726,28 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
     assert_eq!(worded(&drained(1, 0)).as_deref(), Some("Ant drains Mage."));
     assert_eq!(worded(&drained(5, 0)).as_deref(), Some("Ants drain Mage."));
     assert_eq!(worded(&drained(5, 1)), None);
+    // A Death Blow and a creature's cast (E17 M6 T5d2a): the striker's or the caster's name and
+    // verb by its number, the target's name by its own; nothing for a spell the record does not
+    // name.
+    let blow = |count| Logged::DeathBlow { stack: 2, count };
+    assert_eq!(worded(&blow(1)).as_deref(), Some("Bee blows!"));
+    assert_eq!(worded(&blow(3)).as_deref(), Some("Bees blow!"));
+    let lust = |count, spell, target_count| Logged::CreatureCast {
+        stack: 1,
+        count,
+        spell,
+        target: 2,
+        target_count,
+    };
+    assert_eq!(
+        worded(&lust(1, 15, 1)).as_deref(),
+        Some("Ant casts Dart on Bee")
+    );
+    assert_eq!(
+        worded(&lust(4, 15, 6)).as_deref(),
+        Some("Ants cast Dart on Bees")
+    );
+    assert_eq!(worded(&lust(4, 16, 6)), None);
     // A stack the record does not name writes nothing.
     for unnamed in [
         Logged::Drain {
@@ -756,6 +783,21 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
         Logged::Poisoned { stack: 9, count: 1 },
         Logged::Petrified { stack: 9, count: 1 },
         Logged::Regenerated { stack: 9, count: 1 },
+        Logged::DeathBlow { stack: 9, count: 1 },
+        Logged::CreatureCast {
+            stack: 9,
+            count: 1,
+            spell: 15,
+            target: 2,
+            target_count: 1,
+        },
+        Logged::CreatureCast {
+            stack: 1,
+            count: 1,
+            spell: 15,
+            target: 9,
+            target_count: 1,
+        },
         Logged::ManaDrained {
             stack: 9,
             count: 1,

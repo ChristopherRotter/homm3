@@ -225,7 +225,8 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   two by the user (2026-11-06): T5d1 done (the effects of a turn's and a round's start: the
   Wraiths' mana drain, regeneration, Poison's round damage; design §12.22; `starts`,
   `starts-sound`), **T5d2** the strikes'
-  and casts' (Death Blow, Ice Bolt's explosion, the Familiars' channel, Bloodlust's glow); **T5e**
+  and casts', cut in two by the user (2026-11-06): T5d2a done (Death Blow, the Ogre Magi's
+  Bloodlust glow; design §12.23), **T5d2b** Ice Bolt's explosion and the Familiars' channel; **T5e**
   (added by the user at T5c) the captured artifacts' message after Eagle Eye's (§12.21).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through
@@ -485,3 +486,13 @@ The next milestone's list starts here.
     kept from its last item at a second aim (`wall-edges`), the hover's hint kept through the book
     (`wall-hover`), the 539 box's frames (the viewer's sequences draw no box). Not built: the
     hero's press opening the book, Teleport's and Sacrifice's aims.
+45. Death Blow and an Ogre Mage's Bloodlust (T5d2a, *provisional* where marked; design §12.23;
+    M5's items 42 and 45 in part): built, `blows` and `blows-sound` as recorded, no correction to
+    the viewer (the frames' differences the redraw artifacts listed). *Provisional:* the Ogre
+    Mage's frames aim at the target's own hex (the original's the hex clicked); a Master Genie's
+    drawn Bloodlust takes the same path (no recorded case). Not built: the other creatures' casts
+    at a stack (the Master Genie's other spells, the elementals' protections, a Faerie Dragon's
+    spells at a stack) still take effect at once, without the caster's frames or a line;
+    the Ballista's double damage line (read, 0x4438DD); a human's Ogre Magi cast by a left click on
+    the friendly stack (the casters' cursors, §9.10, as the Faerie Dragon's: the window's mouse
+    shows a look there).

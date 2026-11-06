@@ -106,6 +106,7 @@ luck_sound = "goodluck"
 drain_sound = "DrainLif"
 thunderbolt_sound = "LightBlt"
 mana_drain_sound = "ManaDrai"
+death_blow_sound = "Deathblo"
 wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
 wall_sounds = ["WallHit", "WallMiss"]
 siege_sounds = ["drawbrg", "landkill"]

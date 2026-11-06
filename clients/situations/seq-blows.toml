@@ -1,0 +1,50 @@
+# E17 M6 T5d2a: Death Blow and an Ogre Mage's Bloodlust (design §12.23), in hot seat. Round 1:
+# the Black Dragon flies to the Dread Knights and strikes them; their strike back's Death Blow
+# falls (`roll:death_blow`: the line, `Deathblo.wav`, 73 over the Dragon); the Dread Knights wait;
+# the Ogre Mage casts Bloodlust on them (a click on them: its casting frames, the line, the glow);
+# in the wait phase the Dread Knights strike the Dragon and their Death Blow falls again; it
+# strikes back. The Black Dragon is immune to the Dread Knights' Curse (spells up to level 5), so
+# no Curse falls. Orrin's defence 7 keeps the Dragon's two strikes under one Dread Knight's hit
+# points (no kills). On grass at the capture set's tile, with its obstacles.
+
+[scenario]
+id = "sequence-blows"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:ogre_mage"
+count = 1
+
+[[attacker]]
+slot = 1
+creature = "base:dread_knight"
+count = 2
+
+[[defender]]
+slot = 0
+creature = "base:black_dragon"
+count = 1
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 7
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

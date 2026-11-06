@@ -40,10 +40,10 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   Eagle Eye's message and the box with pictures, the experience after the window nothing to
   show; design §12.21; CLT-Q65, Q66 asked); **T5d** the effects not drawn yet, their sounds'
   waits and the Ogre Magi's Bloodlust glow (items 42, 45), cut in two by the user (2026-11-06):
-  T5d1 done (design §12.22); **T5d2** the
-  strikes' and casts' effects: Death Blow (0x443B46, 73), Ice Bolt's explosion (0x5A0AFB,
-  `IceRayEx`), the Familiars' channel (0x5A2740, 0x5A2750: `MagChDrn`, `MagChFil`) and the Ogre
-  Magi's Bloodlust glow (item 42);
+  T5d1 done (design §12.22); **T5d2** the strikes' and casts' effects, cut in two by the user
+  (2026-11-06): T5d2a done (Death Blow and the Ogre Magi's Bloodlust glow, item 42; design
+  §12.23); **T5d2b** the hero's cast's: Ice Bolt's explosion (0x5A0AFB, `IceRayEx`) and the
+  Familiars' channel (`cast_spell`'s tail 0x5A2170, 0x5A2709 to 0x5A2750: `MagChDrn`, `MagChFil`);
   **T5e** (added by the user at T5c, 2026-11-06) the captured artifacts' message after Eagle
   Eye's (`captured_artifacts_message` 0x4772B0, design §12.21: GENRLTXT 31, eight artifact
   pictures a box, the pickup sound; its reading finished then): the heroes' worn artifacts and
