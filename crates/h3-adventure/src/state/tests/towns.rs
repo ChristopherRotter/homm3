@@ -6,8 +6,8 @@
 //! siege against a visitor of another team and the garrison's merge into its army (TWN-SIE-001,
 //! TWN-SIE-002; design note §10).
 
-use h3_content::SkillId;
 use h3_content::{CreatureDef, CreatureInfoDef};
+use h3_content::{FactionId, SkillId};
 use h3_kernel::hash::hash_of;
 
 use super::*;
@@ -127,6 +127,8 @@ fn town_setup(objects: Vec<ObjectSetup>, garrisons: Vec<Vec<ArmyStack>>) -> Adve
         ],
     );
     setup.map.objects = objects;
+    // E09 T11: a faction per town, which only a random dwelling tied to a town reads.
+    setup.town_factions = vec![FactionId::from_raw(0); garrisons.len()];
     setup.garrisons = garrisons;
     setup
 }
@@ -218,6 +220,17 @@ fn the_towns_garrisons_and_holds_are_checked() {
     assert_eq!(
         refused(&|s| s.garrisons.push(vec![])),
         SetupError::Garrisons(3)
+    );
+    // E09 T11: one faction per town, whether a random dwelling reads it or not.
+    let error = refused(&|s| s.town_factions.truncate(1));
+    assert_eq!(error, SetupError::TownFactions(1));
+    assert_eq!(
+        error.to_string(),
+        "1 town factions do not give one per town"
+    );
+    assert_eq!(
+        refused(&|s| s.town_factions.push(FactionId::from_raw(1))),
+        SetupError::TownFactions(3)
     );
     // A garrison with stacks is an army's; the first bad one by `TownId`.
     let error = refused(&|s| s.garrisons[1] = vec![stack(0, PEASANT, 1), stack(0, PIKEMAN, 1)]);
@@ -698,6 +711,7 @@ fn two_levels(rules: &Rules) -> AdventureSetup {
     );
     setup.map.objects = vec![object(rules, "t:town", (4, 4), Some(0))];
     setup.garrisons = vec![vec![]];
+    setup.town_factions = vec![FactionId::from_raw(0)];
     setup
 }
 

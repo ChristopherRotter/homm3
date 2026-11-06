@@ -47,3 +47,4 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 ## The game's setup (`h3-game` `src/town*`, `setup.rs`)
 
 - **A setup's towns match its map's** (E09 T8a1, `GameSetupError::TownCount`): a `GameSetup` whose static map has objects of the type `town` needs one `TownSetup` per such object, in object order; a test or tool that builds a game from a static layer alone gives each a neutral town record (`h3-map`'s census example and `h3-cli`'s `src/ai/census.rs` do).
+- **An `AdventureSetup` with towns gives one garrison and one faction per town** (`SetupError::Garrisons`, since E09 T11 `TownFactions`, checked first): a test that builds the adventure alone with towns sets both (`state/tests/towns.rs`' `town_setup`, `reach/tests.rs`); the game gives step 2's factions.

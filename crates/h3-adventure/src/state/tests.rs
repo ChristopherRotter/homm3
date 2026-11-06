@@ -122,6 +122,7 @@ fn setup() -> AdventureSetup {
         bans: Bans::default(),
         seats: crate::testing::seats(2),
         garrisons: Vec::new(),
+        town_factions: Vec::new(),
     }
 }
 

@@ -19,8 +19,9 @@ use crate::setup::{EventSetup, Holds, RewardRecord};
 /// ([`check_record`]); since E08 T83a an abandoned mine at least one resource of the ruleset, in
 /// the core's order without repeats; since E08 T93b a random dwelling at least one faction with a
 /// `[[random_dwelling]]` table, in the core's order without repeats, and levels within 1 to
-/// [`DWELLING_LEVELS`], the lowest not above the highest; since E09 T8a1 a town its garrison's
-/// formation; every other kind nothing.
+/// [`DWELLING_LEVELS`], the lowest not above the highest; since E09 T11 a random dwelling tied to a
+/// town such levels (its town is checked against the map's towns as the static map is built);
+/// since E09 T8a1 a town its garrison's formation; every other kind nothing.
 pub(super) fn check_holds(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -60,15 +61,15 @@ pub(super) fn check_holds(
         }
         // rule: ADV-DWL-005
         (Some(ObjectKind::RandomDwelling), Holds::RandomDwelling { factions, levels }) => {
-            let (low, high) = *levels;
             !factions.is_empty()
                 && factions.windows(2).all(|pair| pair[0] < pair[1])
                 && factions
                     .iter()
                     .all(|&faction| part.random_dwelling(faction).is_some())
-                && 1 <= low
-                && low <= high
-                && usize::from(high) <= DWELLING_LEVELS
+                && levels_fit(*levels)
+        }
+        (Some(ObjectKind::RandomDwelling), Holds::LinkedDwelling { levels, .. }) => {
+            levels_fit(*levels)
         }
         (Some(ObjectKind::Town), Holds::Town { .. }) => true,
         (
@@ -88,6 +89,12 @@ pub(super) fn check_holds(
         ) => false,
         (_, holds) => *holds == Holds::Nothing,
     }
+}
+
+/// A random dwelling's levels (ADV-DWL-005): from 1 to [`DWELLING_LEVELS`], the lowest not above
+/// the highest.
+fn levels_fit((low, high): (u8, u8)) -> bool {
+    1 <= low && low <= high && usize::from(high) <= DWELLING_LEVELS
 }
 
 /// A monster's treasure artifact (ADV-MON-011): one a hero may hold, without a spell.
@@ -203,6 +210,13 @@ impl CanonicalHash for Holds {
             Self::Town { formation } => {
                 h.write_u8(9);
                 h.write_bool(*formation == Formation::Tight);
+            }
+            // E09 T11: no built state holds it (resolved as the static map is built, or refused).
+            Self::LinkedDwelling { town, levels } => {
+                h.write_u8(10);
+                h.write_u16(town.raw());
+                h.write_u8(levels.0);
+                h.write_u8(levels.1);
             }
         }
     }

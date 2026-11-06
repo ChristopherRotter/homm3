@@ -250,18 +250,33 @@ fn outcome(part: &AdventureRuleset, faction: FactionId, level: u32) -> Option<Ou
 }
 
 /// Every outcome of what a random dwelling holds, faction by faction in the set's order, level by
-/// level from the lowest; none for anything else.
+/// level from the lowest; since E09 T11 a random dwelling tied to a town's, faction by faction of
+/// every table of the part, in its order (the town's faction is the build's, so these do not
+/// depend on it); none for anything else.
 fn outcomes<'a>(
     part: &'a AdventureRuleset,
     holds: &'a Holds,
 ) -> impl Iterator<Item = Outcome> + 'a {
-    let (factions, (low, high)) = match holds {
-        Holds::RandomDwelling { factions, levels } => (factions.as_slice(), *levels),
-        _ => (&[][..], (1, 0)),
+    let (set, tables, (low, high)) = match holds {
+        Holds::RandomDwelling { factions, levels } => (factions.as_slice(), &[][..], *levels),
+        Holds::LinkedDwelling { levels, .. } => (&[][..], part.random_dwellings(), *levels),
+        _ => (&[][..], &[][..], (1, 0)),
     };
-    factions.iter().flat_map(move |&faction| {
+    let factions = set
+        .iter()
+        .copied()
+        .chain(tables.iter().map(|&(faction, _)| faction));
+    factions.flat_map(move |faction| {
         (u32::from(low)..=u32::from(high)).filter_map(move |level| outcome(part, faction, level))
     })
+}
+
+/// Whether `holds` is a random dwelling's, with a set or tied to a town (E09 T11).
+const fn random(holds: &Holds) -> bool {
+    matches!(
+        holds,
+        Holds::RandomDwelling { .. } | Holds::LinkedDwelling { .. }
+    )
 }
 
 /// `object` as the game places it (ADV-DWL-005; increment 10's design note §5): a random dwelling
@@ -270,24 +285,28 @@ fn outcomes<'a>(
 /// table's dwelling type of that level, as a random resource becomes its drawn pile type
 /// (ADV-PIK-002): that type, the type's footprint as its masks, its anchor moved right by the
 /// type's shift, holding nothing and drawn on no further tile, as a placed dwelling; its owner and
-/// scenery stay the setup's. Nothing remembers it was random. Every other object as it is, with no
-/// draw. Called in the placement walk, in object order, before every other draw of the static map;
-/// E09's random towns, when built, draw their placeholders before it (ADR-0017 point 4).
+/// scenery stay the setup's. Since E09 T11 a random dwelling tied to a town
+/// ([`Holds::LinkedDwelling`]) takes its town's faction from `town_factions` (by `TownId`, the
+/// setup's; the original's `random_dwellings_resolve` 0x502B60), drawing none, then its level as
+/// one with a set; the static map checked that the faction has a table. Nothing remembers it was
+/// random. Every other object as it is, with no draw. Called in the placement walk, in object
+/// order, before every other draw of the static map; E09's random towns draw their factions before
+/// this walk (ADR-0017 point 4).
 // rule: ADV-DWL-005
 pub(super) fn resolve<'a>(
     part: &AdventureRuleset,
     object: &'a ObjectSetup,
+    town_factions: &[FactionId],
     draws: &mut Rng,
 ) -> Cow<'a, ObjectSetup> {
-    let Holds::RandomDwelling {
-        factions,
-        levels: (low, high),
-    } = &object.holds
-    else {
-        return Cow::Borrowed(object);
+    let (faction, (low, high)) = match &object.holds {
+        Holds::RandomDwelling { factions, levels } => (pick(factions, draws).copied(), *levels),
+        Holds::LinkedDwelling { town, levels } => {
+            (town_factions.get(town.index()).copied(), *levels)
+        }
+        _ => return Cow::Borrowed(object),
     };
-    let faction = pick(factions, draws).copied();
-    let level = draws.range_inclusive(u32::from(*low), u32::from(*high));
+    let level = draws.range_inclusive(u32::from(low), u32::from(high));
     let drawn = faction.and_then(|faction| outcome(part, faction, level));
     Cow::Owned(drawn.map_or(object.clone(), |outcome| ObjectSetup {
         anchor: outcome.anchor(object.anchor),
@@ -304,14 +323,15 @@ pub(super) fn resolve<'a>(
 /// static map's name check (`SetupError::SharedAnchor`): a typed object's own unless it is a
 /// `ground` (nothing names one); a random dwelling's, every outcome's type and moved anchor, so
 /// that the drawn one is checked and whether the setup is valid does not depend on the draw (an
-/// agent's call, E08 T94a, as [`refused_tiles`]).
+/// agent's call, E08 T94a, as [`refused_tiles`]; since E09 T11 one tied to a town's, every table's
+/// outcomes, so that it does not depend on the town's faction either).
 // rule: ADV-DWL-005
 pub(super) fn names<'a>(
     part: &'a AdventureRuleset,
     object: &'a ObjectSetup,
     ground: bool,
 ) -> impl Iterator<Item = (u16, Pos)> + 'a {
-    let random = matches!(object.holds, Holds::RandomDwelling { .. });
+    let random = random(&object.holds);
     let own = object
         .object_type
         .filter(|_| !ground && !random)
@@ -325,9 +345,10 @@ pub(super) fn names<'a>(
 /// The tiles of `map` no hero of the setup may stand on, each with the first random dwelling of
 /// `objects` (the setup's, unresolved) that refuses it (ADV-DWL-005; increment 10's design note §5,
 /// an agent's call): a random dwelling's visitable tiles, and every tile one of its outcomes covers
-/// from its moved anchor, for each faction of its set and each level of its range. Whatever the
-/// draw, a hero there could stand inside the dwelling, so the setup is refused before the hero's
-/// tile is checked on the resolved map, and whether it is valid does not depend on the draw.
+/// from its moved anchor, for each faction of its set (since E09 T11 of every table for one tied to a
+/// town) and each level of its range. Whatever the draw, a hero there could stand inside the
+/// dwelling, so the setup is refused before the hero's tile is checked on the resolved map, and
+/// whether it is valid does not depend on the draw.
 // rule: ADV-DWL-005
 pub(super) fn refused_tiles(
     part: &AdventureRuleset,
@@ -336,7 +357,7 @@ pub(super) fn refused_tiles(
 ) -> BTreeMap<Pos, usize> {
     let mut refused = BTreeMap::new();
     for (index, object) in objects.iter().enumerate() {
-        let random = matches!(object.holds, Holds::RandomDwelling { .. });
+        let random = random(&object.holds);
         let entrances = object
             .visitable
             .offsets()

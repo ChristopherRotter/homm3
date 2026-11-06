@@ -469,7 +469,7 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         225 => Some("sod:favorable_winds"),
         // E08 T93b (increment 10's design note §4): the dwellings by subclass, the Refugee Camp
         // and the random dwellings (216 to 218, a faction set and a level range the import
-        // reads from the object's body; one tied to a town stays a blocker, ADV-STUB-13).
+        // reads from the object's body; since E09 T11 one tied to a town holds its town).
         // rule: ADV-DWL-001
         17 => by_subclass(&DWELLINGS),
         20 => by_subclass(&DWELLINGS_4),
