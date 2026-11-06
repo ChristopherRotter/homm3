@@ -7254,3 +7254,52 @@ whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 w
   `message_did`); two boxes alike in a row did not empty the input queue at the second
   (`Battle::boxes_opened` in `box_shown`); a stills test that did not show the click advancing
   the boxes.
+
+### 12.22 The effects of a turn's and a round's start (M6 T5d1)
+
+T5d cut in two by the user (2026-11-06): T5d1 these three, T5d2 the strikes' and casts' (Death
+Blow, Ice Bolt's explosion, the Familiars' channel, the Ogre Magi's Bloodlust glow). Read:
+`stack_turn_start` 0x446E30 whole, `stack_activation` 0x465330 from the Wraith's branch
+(0x465548 to the end), `stack_round_start` 0x447120's tail (0x447220 to the end),
+`next_stack_to_act` 0x465080's pick (0x465209 to 0x465312), `round_start` 0x475ED0's calls and its
+end (0x4761E9, 0x4761EE). Each effect is skipped in a hidden or quick battle (`battle_is_hidden`,
+or for the drain game +0x1F69D, the network's case, `battle_tactics_global`, as §10's dissolve).
+
+- **The pick's order** (`next_stack_to_act`): outside the wait phase `stack_turn_start`
+  (0x46521D), then the blind, petrified and paralysed stacks passed over (0x465222), the bad
+  morale and Fear checks (0x465283, 0x465293), then `stack_activation` (0x465312), which ends by
+  clearing the outline (+0x132C8, 0x465804); the turn's start sets it (0x47837A). Both effects
+  below come before the turn starts, the stack that acted last outlined, as a freeze's (§7.16).
+- **Regeneration** (`stack_turn_start`, once a round by +0x4F0, not in the tactics phase
+  +0x13D68): with lost hit points (+0x58 > 0) and the creature a Wight, a Wraith or a Troll (60,
+  61, 144) or one the hero's Elixir of Life (artifact 131) reaches (the creature table's flag
+  0x10), the top creature's loss less 50 at most (the engine's BAT-TRN-005 gives the rule);
+  then `Regener.wav` as a file (category 2, 0x446F37: the heal's), the log's line GENRLTXT 371
+  with the singular name when the stack's number (+0x4C) is 1, else 372 with the plural
+  (0x44707B), animation 79 over it at 100 ms a frame without its hit (0x44708D: the heal's
+  `sp12_`), the sound waited for (0x447097, §8.3); then Frenzy's countdown.
+- **The Wraiths' mana drain** (`stack_activation` 0x465548, creature 61 outside the wait phase,
+  the hero opposite the controller with mana: 2 off, at least 0): `ManaDrai.wav` as a file
+  (0x46562B), the line GENRLTXT 374 (number 1, the singular) or 375 (the plural) with the creature's
+  name and the drained hero's (+0x23), written while the log exists (0x4657AD), animation 77
+  over the Wraiths at 100 ms without their hit (0x4657BD: `sp08_`, place 0), the sound waited for
+  (0x4657CA). The side's opening spells come before it (0x4653A8), the Enchanters' cast after.
+- **Poison's tenth** (`stack_round_start` 0x4472AB, per stack in the round's start before the
+  clones' dissolve, the objects and the round's line, `round_start` 0x47610D): when the tenth
+  lowered the hit points, the stack marked (+0x20) with its hit (+0xE9); `Poison.wav` as a file
+  (0x4472CA, Poison's spell sound), the line of Poison on a stack (`battle_log_cast` with the
+  creature kind 1, 0x4472DE: GENRLTXT 562 or 563, the strike's line), `strike_animation(67, 1)`
+  (0x4472F5: `sp11_` over the stack beside its hit, player 2, as a Land Mine's blast), the sound
+  waited for (0x44730E). The round's start clears the outline only at its end (0x4761EE), so
+  the stack that acted last stays outlined.
+- **Built** (`anim/starts.rs`): `regenerated`, `mana_drained` and `poison_tenth`, each with
+  its cue (`Sound::Heal`; the new `Sound::ManaDrain`, the asset tables' `mana_drain_sound`
+  harvested from 0x66FF94; `Sound::SpellFile` of Poison), its line (`Logged::Regenerated`,
+  `Logged::ManaDrained`, the keys `battle.log.regenerated` and `battle.log.mana-drained`;
+  `Logged::Poisoned`), its animation and `wait_for`. A `TurnStarted` draws the regeneration that
+  follows it and the drain of its activation (`drain_of`) before the turn's markers, a
+  `RoundStarted` every `Poisoned` of its start before the clones and objects.
+  *Provisional*: the drain is drawn before the effects of the side's opening spells the viewer
+  applies after it (the original casts those first; no recorded case); the hues a round's start
+  ends show at the turn's start as before (the original counts each stack down before its own
+  poison's redraws); several poisoned stacks go by stack id (the engine's order).

@@ -1007,6 +1007,9 @@ pub enum Sound {
     /// The Thunderbird's bolt, cued on the stack struck (`thunderbolt_sound`, `play_sound_file`
     /// from 0x4412FF).
     Thunderbolt,
+    /// A Wraith's mana drain, cued on the draining stack (`mana_drain_sound`, category 2:
+    /// `play_sound_file` from `stack_activation` 0x46562B; E17 M6 T5d1).
+    ManaDrain,
     /// The sound a spell's handler plays with each object it places (its handle: the asset
     /// tables' spell `object_sound`, `play_sample` 0x5A040A, Land Mine's 0x5A061A; E17 M3
     /// T7c-2), cued on no stack (stack 0).
@@ -3531,7 +3534,7 @@ impl Player<'_> {
                     ..
                 } => self.moat(stack, (damage.0, kills)),
                 Event::RoundStarted { .. } => {
-                    self.acting = None;
+                    let acted = self.acting.take();
                     self.happenings.push(Happening::Round);
                     // The objects whose last round passed go first, each with its vanish
                     // animation, then the round's line (`round_start` 0x476152 to 0x4761E9; E17
@@ -3543,6 +3546,13 @@ impl Player<'_> {
                             matches!(e, Event::TurnStarted { .. } | Event::RoundStarted { .. })
                         })
                         .unwrap_or(start.len());
+                    // Before them every stack's round start, which takes Poison's next tenth
+                    // (`round_start` 0x47610D; E17 M6 T5d1).
+                    for e in &start[..ends] {
+                        if let Event::Poisoned { stack, .. } = *e {
+                            self.poison_tenth(stack, acted);
+                        }
+                    }
                     // The clones whose rounds ran out first, in one dissolve (0x47614D; E17 M5
                     // T5a), after any gone with an original no death of the action played.
                     self.remove_gone(&[]);
@@ -3596,10 +3606,22 @@ impl Player<'_> {
                     // changed show (E17 M3 T7b-2a, `resist` at 2 900: Slow's end).
                     self.show_tints(self.clock.now);
                     self.defends(stack, false);
+                    // Its pick first runs its turn's start, which regenerates it, then its
+                    // checks, then its activation, which drains a hero's mana: both before the
+                    // turn starts (`next_stack_to_act` 0x46521D, 0x465312; E17 M6 T5d1).
+                    if let Some(&Event::Regenerated { stack: s, .. }) = events.get(i)
+                        && s == stack
+                    {
+                        i += 1;
+                        self.regenerated(stack);
+                    }
                     // A stack its pick freezes (bad morale, Fear) never becomes the active one:
                     // the pick goes on to the next (`next_stack_to_act` 0x465283; E17 M3
                     // T7b-2b-2b).
                     let frozen = freezes(&events[i..], stack);
+                    if let Some(side) = drain_of(&events[i..], stack) {
+                        self.mana_drained(stack, side);
+                    }
                     if !frozen {
                         self.turns.push((self.clock.now, stack));
                         let controller = self.controller(stack);
@@ -6306,6 +6328,7 @@ mod entered;
 mod playhead;
 mod raise;
 mod siege;
+mod starts;
 
 pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
 pub use created::{
@@ -6319,6 +6342,7 @@ pub use siege::{
     Blast, BlastKey, BridgeKey, Burst, DRAWBRIDGE_RECT, Landing, QuakeKey, SHAKE, SHAKES,
     SiegeStage, TARGET_POINTS, TurretKey, TurretPose, WallKey, shake_offsets, turret_record,
 };
+pub use starts::{MANA_DRAIN, POISON_TENTH, REGENERATION, drain_of};
 
 #[cfg(test)]
 pub(crate) mod tests;
