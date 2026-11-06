@@ -422,10 +422,10 @@ impl Rows {
         for (i, s) in slots.iter().enumerate() {
             out.widest = out.widest.max(s.size[0]).max(s.caption[0]);
             out.overhang = out.overhang.max(s.caption[0] - s.size[0]);
-            if let Some(row) = out.heights.get_mut(i / first) {
-                row[0] = row[0].max(s.size[1]);
-                row[1] = row[1].max(s.caption[1]);
-            }
+            // Its row: the first's count divides at most eight slots in two.
+            let row = &mut out.heights[(i / first).min(1)];
+            row[0] = row[0].max(s.size[1]);
+            row[1] = row[1].max(s.caption[1]);
         }
         out
     }
