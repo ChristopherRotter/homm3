@@ -6950,16 +6950,68 @@ T5b2 cut in two by the user (2026-11-05): T5b2a the retreat question, T5b2b CLT-
   - `boxes.rs`: `Asked::Question`, `Asked::Offer`, `answered`'s `Answered::Auto(Then)` for both
     buttons; `question` (keys `battle.auto.retreat.ask`, `battle.auto.surrender.ask`; the
     layout's `[message] resources`, frame `GOLD`, `gold_caption`).
-  - `battle.rs`: the box at the action's millisecond (`play_next`, `computer_at`), no stack
-    outlined behind it (`anim::Growing::unoutline`: a switch's, §12.18 (2)); `Battle::answer`
-    after `Growing::hold` (no idle step behind the box, the command the computer's;
-    *provisional*). Unattended `--auto-question cancel|retreat|surrender` (cancel
-    by default, *provisional*).
+  - `battle.rs`: the box at the action's millisecond (`play_next`, `computer_at`), the stack
+    outlined behind it as it was (recorded; the builder's `Growing::unoutline` removed);
+    `Battle::answer` after `Growing::hold((Battle::asked_at, answer))` (recorded: below).
+    Unattended `--auto-question cancel|retreat|surrender` (cancel by default, *provisional*).
   - The comparisons: a step `question = true` with the answer's `at` (`anim::held`); its span
     takes `key:Return`, `key:Escape`, `click:` as answers (`pointer::answering`,
     `sequences::asked_boxes`), the boxes drawn in the frames (`Interface::asked`).
     `h3-view situation` writes the facts' experience and a Tavern town (`tavern_towns`);
     prepared: `to-record.toml`'s `auto-retreat-*` over `seq-auto-retreat.toml`.
+- **Recorded** (M6 T5b2a, a capture agent; `sequences.toml`'s `auto-retreat-cancel`,
+  `auto-retreat-surrender`, `auto-retreat-flee`, A at the Champions' turn, Creatures set, then
+  Escape, or Enter and the offer's OK or Escape; `seq-auto-retreat.toml`; silent). The
+  recordings are the source of what follows; the guesses they replace are marked.
+  1. *The scenario in the original:* the map's experience levels the hero up as the game starts:
+     with 5000 Orrin began at level 5, his primary skills 2, 3, 2, 2 (the scenario's 1, 1, 1, 2),
+     Offense at Basic and First Aid at Expert learned (one run read). So `h3-view situation`
+     writes none and the harness writes the facts' experience into the hero's record on the
+     adventure map before the battle (`h3drive.scenario_experience`): Orrin at level 1 with the
+     scenario's skills and 5000 experience, which is all the test reads (BAT-AI-024). Red's gold
+     is the Normal 20 000 plus the Gold starting bonus (20 600 to 20 900 in the runs), above
+     every threshold here. The test's predictions over the 4 500 creatures outlast an action's
+     settle (the box drawn after the state of its millisecond was read, in one of four runs):
+     the entries' `wait_idle` waits for the game to be idle after each action.
+  2. *The question* opens in the switch's millisecond (0): GENRLTXT 414 with Orrin's name, 320 x
+     192 at (240, 204), its text item 270 x 80 at (260, 235), OK and Cancel 64 x 30 at (327, 335)
+     and (409, 335); the cursor the arrow (type 0, frame 0) at the parked point from then. Behind
+     it the battle stands as the switch left it: the Champions still the active stack and
+     outlined, the outline's colour and the flags those of the opening's idle step, no idle step
+     (the counter 1, 0x6989B8 and the deadline 0x698998 left at 100), the panel dimmed but Auto
+     Combat, selected. *Corrected:* the builder's no outline behind the box (T5b1's empty active
+     stack is read once the action runs, after the question); and the viewer had dropped the
+     opening's idle step (its pulse 0 at 0, the flags a step back).
+  3. *Cancel* (Escape at 1 000) clears +0x1402F. In that millisecond the original's computer has
+     the Champions wait (the log `The Champions pause, and wait for a better time to act.`), the
+     active stack empties, the Marksmen's turn starts and their double shot at the Goblins shows
+     its first frame at 1 000 (memory the second frame at 1 000, the third at 1 071), one idle
+     step at 1 000; the Marksmen's action asks no question. So at the answer the loop ticks once
+     (0x474040: the deadline passed moves on by max(the step, its lateness), here to now) and
+     the shot follows without another tick. *Corrected:* the builder's first frame at the grid's
+     next point (1 100).
+  4. *OK* (Enter at 1 000): the offer in the same millisecond, `surrender_price` 0x695030 3 750
+     (half of 5 x 1 200 + 10 x 150): GENRLTXT 130 `Do you wish to save Orrin's army for a cost of
+     3750 gold?`, 320 x 320 at (240, 140), its text 270 x 40 at (260, 189), the gold picture
+     (`resour82.def` frame 6) in its slot 84 x 95 at (358, 269) captioned `3750`, OK and Cancel at
+     (327, 399) and (409, 399). The offer's OK (a click at (359, 414), 2 000): the surrender, Red's
+     gold less 3 750, +0x132B2 side 0, the winner the defender; its Cancel (Escape): the retreat,
+     +0x132B0 side 0, the gold kept. Either way the result window at 2 000 at once, no idle step
+     at the answer (the counter still 1): the battle behind it one step on from the opening, the
+     Champions outlined.
+  The comparison (after the fixes): the three timelines as recorded (33, 7 and 7 changes);
+  `auto-retreat-cancel` 50 frames exact; `auto-retreat-surrender` 46 frames, the boxes' exact
+  (the question's frame and colours, the offer's picture and caption, the cursor), 18 of the
+  result window's differing in 2 or 3 pixels inside its clip (`Surrender`); `auto-retreat-flee`
+  46 frames, 32 of the result window's differing in up to 49 pixels inside its clip (`rtstart`,
+  `rtloop`): CLT-Q30's rounding, both listed there. The client now (`anim::Growing::hold` with
+  the box's opening and its answer, `Clock::hold`; the window's from `Battle::asked_at`): the
+  steps due as the box opens, none after it until the answer nor at it, the loop's one tick at
+  the answer; the outline kept. *Provisional still:* a question at a later turn (the computer's
+  tick as it acts, before its box, outlines its stack; none recorded) and a human's turn after
+  an answer (the loop ticking again a millisecond after it).
+  **Oddities:** none in the battle; the level-up for the map's experience is the game's own
+  (the harness writes around it).
 - **Not built:** a server's seat (no Auto Combat there); the facts' artifacts' worth and
   `wanted` in the original's map; the original's map without the enemy's hero (a monster's
   split); CLT-Q61's stop (T5b2b).

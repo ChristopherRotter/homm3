@@ -1531,7 +1531,12 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
         Speed::default(),
     )
     .unwrap();
-    let before: Vec<u32> = switched.steps.iter().copied().filter(|&t| t <= 3000).collect();
+    let before: Vec<u32> = switched
+        .steps
+        .iter()
+        .copied()
+        .filter(|&t| t <= 3000)
+        .collect();
     assert_eq!(before, [0, 100, 200, 300]);
     // No tick kept the deadline on its grid behind the box (recorded, `auto-retreat-cancel`): the
     // hold's one tick puts it at the answer, so the walk's first frame shows then, not at the
@@ -1542,6 +1547,31 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
         .collect();
     assert_eq!(shown.first(), Some(&3000), "{shown:?}");
     assert_eq!(shown.iter().filter(|&&t| t == 3000).count(), 1, "{shown:?}");
+    // A held command without frames (`auto-retreat-cancel`'s Wait), then the computer's: its
+    // tick as it acts at the answer, its first frame shown then (the hold's deadline kept
+    // through the starts until a frame shows), not at the grid's next point.
+    let passed = vec![Event::TurnStarted { stack: 1 }];
+    let then = [
+        Command {
+            at: None,
+            events: &passed,
+        },
+        Command {
+            at: None,
+            events: &second,
+        },
+    ];
+    let waited = held(
+        &o,
+        (&then, &[(0, 0, 3000)]),
+        &looks(),
+        stage,
+        Speed::default(),
+    )
+    .unwrap();
+    let walked = (waited.keys.iter()).find(|k| k.stack == 1 && k.shown >= 3000);
+    assert_eq!(walked.map(|k| k.shown), Some(3000), "{:?}", waited.keys);
+    assert!(waited.steps.contains(&3000), "{:?}", waited.steps);
     // A hold short of the deadline leaves it on its grid (the tick's step).
     let short = held(
         &o,

@@ -241,7 +241,7 @@ writes the facts' `experience` into the hero's record on the adventure map befor
 retreat test's predictions over the scenario's thousands of creatures can outlast an action's
 settle: an entry's `wait_idle = true` waits after each action at the frozen clock until the game
 has read it 500 times (without it the question's box was drawn after the state of its
-millisecond was read in one of two runs). Recorded (`sequences.toml`'s `auto-retreat-cancel`,
+millisecond was read in one of four runs). Recorded (`sequences.toml`'s `auto-retreat-cancel`,
 `auto-retreat-surrender`, `auto-retreat-flee` over `seq-auto-retreat.toml`): the offer's OK at
 (359, 414) (its box 320 × 320 at (240, 140), the buttons 64 × 30 at (327, 399) and (409, 399)). A
 situation's

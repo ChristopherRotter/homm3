@@ -2311,40 +2311,33 @@ impl<'a> Growing<'a> {
         // first frame shows (*provisional*, §7.9).
         let ran = player.steps.len();
         let computer_tick = !first && command.at.is_none();
-        let held = held.take().filter(|&(from, until)| until > player.clock.now.max(from));
-        if let Some((from, until)) = held {
-            // Held behind a box (E17 M6 T5b2a, `Growing::hold`): the battle as the box found it,
-            // the steps due as it opened (the opening's, a human's turn waiting up to the
-            // switch; a later command's computer tick, its stack outlined: *provisional*), then
-            // none until the answer, nor at it: the action goes on inside the computer's call
-            // (recorded: the Surrender's and the Retreat's ends one step on from the opening;
-            // the Wait's next turn ticks as it starts).
-            let Player { clock, idle, steps, .. } = &mut *player;
-            clock.start(from);
-            let at = clock.now;
-            if computer_tick {
-                if idle.once(at, steps) {
-                    outlines.push((at, *waiting));
-                }
-            } else {
-                idle.run(at, |t| steps.push(t));
-            }
-            // The loop ticks again after the answer (the next turn's start: the computer's
-            // tick, `Idle::once`; *provisional* for a human's turn, a millisecond on), not at it:
-            // a Surrender or Retreat ends the battle one step on from the box's opening.
-            clock.hold(until);
-            idle.next = idle.next.max(clock.now);
-            idle.from = idle.from.max(clock.now.saturating_add(1));
+        let held = held
+            .take()
+            .filter(|&(from, until)| until > player.clock.now.max(from));
+        // Held behind a box (E17 M6 T5b2a, `Growing::hold`): the battle as the box found it,
+        // the loop's tick as it opened (the opening's step, a human's turn waiting up to the
+        // switch; a later command's computer tick, its stack outlined: *provisional*).
+        if let Some((from, _)) = held {
+            player.clock.start(from);
         }
         let now = player.clock.now;
-        if held.is_some() {
-        } else if computer_tick {
+        if computer_tick {
             if player.idle.once(now, &mut player.steps) {
                 outlines.push((now, *waiting));
             }
         } else {
-            let Player { idle, steps, .. } = player;
+            let Player { idle, steps, .. } = &mut *player;
             idle.run(now, |t| steps.push(t));
+        }
+        // Then no step until the answer, nor at it: the action goes on inside the computer's
+        // call (recorded: the Surrender's and the Retreat's ends one step on from the opening;
+        // the Wait's next turn ticks as it starts, the computer's `Idle::once`; *provisional*
+        // for a human's turn, the loop ticking again a millisecond on).
+        if let Some((_, until)) = held {
+            let Player { clock, idle, .. } = &mut *player;
+            clock.hold(until);
+            idle.next = idle.next.max(clock.now);
+            idle.from = idle.from.max(clock.now.saturating_add(1));
         }
         // The last command's layer changes show with the battle's next redraw: the first idle
         // step since, if one ran, before any fidget (*provisional*, as at the end; E17 M2 T5c).
