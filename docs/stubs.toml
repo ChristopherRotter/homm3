@@ -116,12 +116,6 @@ where  = "crates/h3-game/src/town/siege.rs::siege_setup"
 reason = "A walled town whose faction's record draws natural obstacles in a siege (TWN-SIE-005, h3_towns::siege_obstacles: the base pack's Stronghold with a Citadel or a Castle, as RoE and AB play it; the SoD pack's override clears it, so the full pack set never meets it) gets none (E09 T8b1): the battle's generator (generate_setup_obstacles) places none at a town with a fort, and generate_battlefield_obstacles knows no walls, while the original's placement (0x466010) keeps every obstacle hex off a blocked hex (the walls) and takes a branch for a siege of town type 6 on the game's version that is not read (0x466147 to 0x466194; docs/formats/installation.md section 7.26). Lifted by a siege-aware draw in h3-battle (the battle lane's inbox) after that branch is read"
 epic   = "E09"
 
-[[stub]]
-id     = "TWN-STUB-9"
-where  = "crates/h3-game/src/town/view.rs::town_views"
-reason = "A viewer one of whose heroes has a Rogue in its army with the town within its Visions radius gets no top level of another team's town (TWN-VEW-003; E09 T8c1, the user's cut of 2026-11-05): the original's town_popup sets the level 3 also for Visions at level 3 in reach (hero_visions_level 0x4E5DE0, raised to 3 by a Rogue, creature 143; hero_visions_reach 0x4E5E10: on the town's level, the squared distance below the square of Visions' factor times the hero's power, at least 3; survey E09-towns.md section 12.3); the viewer sees the garrison by its taverns only. Lifted by E09 T8c2 (the factor a town part parameter until Visions is placed, design note E09-design.md section 12)"
-epic   = "E09"
-
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]

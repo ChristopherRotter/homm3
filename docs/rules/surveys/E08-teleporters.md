@@ -2,9 +2,10 @@
 
 Date: 2026-11-05. Scope: E08 increment 11 (decisions 260, 261), input for T98b's ADR amendment
 drafts, the design note and the cut. In two parts (the user at T98a's start, decision 262):
-**T98a1** (this part, §0 to §8: the census, the objects, the channels, the jump, the arrival, the
-move around a jump, VCMI and the wiki, the disputes) and **T98a2** (§9 to §14: the reach and the
-paths, what a player sees, the interfaces, batch E11's plan, the proposed ids, the checkpoint).
+**T98a1** (§0 to §8: the census, the objects, the channels, the jump, the arrival, the move
+around a jump, VCMI and the wiki, the disputes) and **T98a2** (§9 to §14: the reach and the paths,
+what a player sees, the interfaces, batch E11's plan, the proposed ids, the checkpoint; it also
+corrected §4.1's draw for one candidate and added D-58 and A-41 to §8).
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -14,21 +15,28 @@ its sources and tests.
   player's path. **Read whole:** `visit_object` 0x4A84F0 at its cases 43, 44, 45, 103 and 111;
   `visit_monolith_one_way` 0x4A8230, `visit_monolith_two_way` 0x4A8390, `teleport_exit_draw`
   0x4CDB80 and its three callers 0x4CDDC0, 0x4CDDF0, 0x4CDE20, `gate_exit` 0x4CDE40,
-  `gates_pair` 0x4C0B60, `whirlpool_losses` 0x4ACAA0. **Read in part:** `setup_map_objects`
+  `gates_pair` 0x4C0B60, `whirlpool_losses` 0x4ACAA0; T98a2: `random_between` 0x50B230,
+  `pathfinder_pass_through` 0x56AB40 at its cases 43, 45, 103 and 111, `adventure_key_down`'s
+  space key (0x408CC4 to 0x408E75), `hero_relocate_inner` 0x49CF50, `turn_records_drop` 0x49D6C0.
+  **Read in part:** `pathfinder_teleport_exits` 0x56A400 (T98a2); `setup_map_objects`
   0x4C0CC0 at its cases 44, 45, 103 and 111; `hero_relocate` 0x41D930 (its state: the tile, the
   reveal, what it does not touch; not its drawing); `hero_move_loop` 0x407B80 around the visit;
-  `adventure_key_down` 0x408C40 at the space key's visit (0x408E65). **Not followed:** the computer
-  player (its routes through teleporters are E10's), network play (`map_message_send` 0x482390,
-  the `SendData` calls), `hero_relocate`'s call 0x49CF50 (T98a2, what a player sees), the
-  pathfinder's use of the lists (T98a2), the sounds and pictures.
+  `adventure_key_down` 0x408C40 at the space key's visit (0x408E65; T98a2 read the case whole).
+  **Not followed:** the computer player (its routes through teleporters are E10's: T98a2 named
+  their entries, §9.1), network play (`map_message_send` 0x482390, the `SendData` calls), the
+  replay's drawing (`turn_records_replay` 0x49D7A0, §10), the sounds and pictures.
 - `vcmi`: VCMI 1.7.5 (tag `1.7.5`), `lib/mapObjects/MiscObjects.cpp` (`CGTeleport`, `CGMonolith`,
-  `CGSubterraneanGate`, `CGWhirlpool`), `server/CGameHandler.cpp` (`moveHero`),
+  `CGSubterraneanGate`, `CGWhirlpool`), `server/CGameHandler.cpp` (`moveHero`), T98a2:
+  `config/gameConfig.json` (`pathfinder`), `lib/pathfinder/PathfinderOptions.cpp`,
   `lib/mapObjects/army/CStackInstance.cpp` (`getPower`), `lib/mapping/MapFormatH3M.cpp`
   (`readObject`'s default case, `readGeneric`).
 - `wiki`: <https://heroes.thelazy.net/index.php/Whirlpool>,
   <https://heroes.thelazy.net/index.php/Subterranean_Gate>; the wiki's Monolith page through its
   mirror <https://heroes.shoutwiki.com/wiki/Lith> (a search engine's copy; the page refused a
-  direct fetch).
+  direct fetch); T98a2 (search engine copies, retrieved 2026-11-06): the mirror's
+  <https://heroes.shoutwiki.com/wiki/Subterranean_Gate>, `Adventure_Map` and `Trivia` (the space
+  bar), the Monolith page above (an enemy's exit shown in the shroud).
+- `original-data`, T98a2: `Help.txt` (H3bitmap.lod), the Adventure Options' Replay Opponent Turn.
 - The census (§1): a throwaway example over `h3_map::read` on the 160 shipped maps (not
   committed).
 
@@ -44,7 +52,7 @@ its sources and tests.
   gates paired greedily in the walk's order with the nearest unpaired gate of the other level by
   truncated Euclidean distance.
 - **The jump** (§4): a monolith's or Whirlpool's exit is **drawn** uniformly among the candidates
-  (`random_between(1, n)`, one draw even for one candidate); a candidate is any other tile of the
+  (`random_between(1, n)`, no draw for one candidate: corrected by T98a2); a candidate is any other tile of the
   channel unless a hero of the mover's team stands on it. An enemy on a monolith's or gate's exit is
   fought first; a hero of the team on a gate's exit is met and the mover stays. A Whirlpool costs a
   human's hero half of its weakest stack (fight value × count, rounded down kept) unless it wears
@@ -55,6 +63,13 @@ its sources and tests.
   odd counts, the gates' tie, the Whirlpool's two draws); **quirk candidates** A-37 to A-40 (a
   Whirlpool lands on an enemy hero, the 99 999 999 bound, a subclass past 7, the computer's
   exemption). §8.
+- **T98a2** (§9 to §14): **a human's path ends at an entrance**: the pathfinder adds a channel's
+  exits only in the computer's modes (§9.1; VCMI plans through them: D-58); the engine's reach
+  needs no new read, an entrance being an entered object's destination (§9.2). A jump leaves a
+  record for the others' Replay Opponent Turn and changes nothing else they see; the wiki's exit
+  shown in the shroud is A-41 (§10). **The space key** revisits any entered object under the hero,
+  at no points, no version test in SoD (§11). The interfaces' sketch (§11), batch E11's 18 rows
+  (§12), the family ADV-TEL (§13) and the checkpoint's six questions (§14).
 
 ## 1. The census
 
@@ -149,8 +164,9 @@ Arguments: a list, the out position, a class, a word to exclude. Over the list i
 **candidate** is a tile with the entrance bit (`map_item` +0xD 0x10) and either the list's class
 and a word other than the excluded one, or a hero (class 34) whose owner is not on the current
 player's team (game +0x1F879; an owner or current player below 0 counts as not). None: false.
-Else `r = random_between(1, n)` (0x50B230: `1 + rand() mod n`, the C runtime's one stream, **drawn
-even when `n` is 1**) and the `r`-th candidate in the list's order.
+Else `r = random_between(1, n)` (0x50B230: `1 + rand() mod n`, the C runtime's one stream) and the
+`r`-th candidate in the list's order. **No draw when `n` is 1:** `random_between` returns an equal
+bound at once, without `crt_rand` (0x50B236; T98a2's correction of T98a1, which read a draw there).
 
 - **One-way** (0x4CDDC0): the exits' list of the entrance's subclass, class 44, nothing excluded.
 - **Two-way** (0x4CDDF0): the two-way list of the subclass, class 45, the entrance's word excluded.
@@ -240,13 +256,13 @@ before the battle (§4.2).
   (`pathfinder_pass_through` with its fourth argument 0, E08 T55a4). Nothing goes on after the
   jump: the hero stands on the exit with its points.
 - **The pathfinder reads the monolith lists** (`pathfinder_pass_through` at 0x56AE39 and 0x56AE81,
-  the one-way and two-way lists): whose paths those are and how the reach treats a teleporter is
-  T98a2's (§9); the computer's routes are E10's.
+  the one-way and two-way lists) for the computer's paths only (§9.1, T98a2); the computer's
+  routes are E10's.
 - **The space key** visits the object under the hero again (`adventure_key_down` 0x408C40 →
   `visit_and_update` at the hero's own tile, 0x408E65, when that tile has the entrance bit and its
-  class is not 3; read in part). The wiki: the space bar takes a hero through a gate again without spending
-  movement points, likewise a two-way monolith (not in RoE) and a Whirlpool's square (AB and SoD). Its full gate and whether increment 11 takes it as a
-  command: T98a2 (§11).
+  class is not 3). The wiki: the space bar takes a hero through a gate again without spending
+  movement points, likewise a two-way monolith (not in RoE) and a Whirlpool's square (AB and SoD).
+  Its full gate (any entered class, T98a2) and the command's question: §11.
 - **After the jump** the hero stands on the exit object; stepping off and on again visits it again
   (a two-way monolith or a gate leads back, a one-way exit shows ADVEVENT 70).
 
@@ -267,7 +283,9 @@ before the battle (§4.2).
 | Protection | the Sea Captain's Hat, alone or in the Admiral's Hat | `WHIRLPOOL_PROTECTION`, a lone creature | either Hat |
 | The weakest stack | fight value × count, the first on a tie | AI value × count, the last on a tie (D-54) | total fight value |
 | The loss | keeps `⌊n / 2⌋`; a lone creature kept | takes `max(1, ⌊n / 2⌋)` (D-55) | 50 % rounded up lost |
-| The space key | visits the object under the hero (in part) | — | AB and SoD; two-way monoliths not in RoE |
+| The space key | visits any entered object under the hero, no points (§11) | — | AB and SoD, any repeatable object; not in RoE |
+| A path through a teleporter | none for a human (§9.1) | two-way and gates; Whirlpools if protected (D-58) | — |
+| An enemy's exit in the shroud | not read (the replay's drawing) | — | "shown" (A-41) |
 
 ## 8. Disputes, quirk candidates and open points
 
@@ -312,22 +330,234 @@ before the battle (§4.2).
   players' reports agree, the wiki is silent). The engine has no human or computer player
   (decision 16). Recommended: **not reproduced**, no flag: every hero loses as a human's, as A-27's
   Ocean Bottle (decision 166); revisited with E10.
+- **D-58 (T98a2; a path through a teleporter).** The original's human path ends at an entrance
+  (mode 0; only the computer's modes add a channel's exits, §9.1); VCMI's pathfinder plans through
+  two-way monoliths and gates, and Whirlpools for a protected hero, by default, its client naming
+  the exit (D-53). The wiki is silent. Gameplay: a destination past a channel in one command.
+  Recommended: **the original** (the entrance a destination; the env's action a reach's tile).
+- **A-41 (T98a2; quirk candidate). An enemy's exit shown in the shroud** (the wiki; §10): a viewer
+  watching an enemy hero enter a monolith in the open has its exit shown in its shroud. The reading
+  stops at the record (the drawing not read). A display's leak of a channel's exit; recommended:
+  **not reproduced**, no flag (a viewer learns nothing of a hidden tile, ADV-FOG).
 - **Open points:** the gate's ADVEVENT 153 has no human test (a message, nothing for the engine);
-  the space key's full gate (§6) and 0x49CF50 (§5) are T98a2's; the draw's stream (the original's
-  one `rand`; ADR-0017's streams) is T98b's; batch E11 (T98a2) should observe the points that rest
-  on the reading alone: the draw's uniformity, A-37, the gate's meeting without a move, the guards
-  silent at an exit, the points kept, the lone creature's message.
+  the draw's stream (the original's one `rand`; ADR-0017's streams) is T98b's; batch E11 (§12)
+  observes the points that rest on the reading alone: the draw's uniformity, A-37, the gate's
+  meeting without a move, the guards silent at an exit, the points kept, the lone creature's
+  message. **The wiki's 1 776 Azure Dragons** (A-38's "bug") is the bound's exact count by fight
+  value: 56 315 × 1 775 = 99 959 125 is below 99 999 999, × 1 776 = 100 015 440 is not (by AI
+  value, 78 845, the count would be 1 269): it supports the reading's measure (D-54) and bound.
 
-Next ids: disputes D-58, reading quirk candidates A-41.
+Next ids: disputes D-59, reading quirk candidates A-42.
 
 ## 9. The reach and the paths through a teleporter (T98a2)
 
+### 9.1 The original's paths (`pathfinder_pass_through` 0x56AB40 at its cases 43, 45, 103, 111, read whole)
+
+- `pathfinder_run` asks `pathfinder_pass_through` of a stop node it pops (0x56BB7C; E08 T58), and
+  a teleporter's entrance is one (§2: entered); and once at its start when the hero stands on an
+  entrance of class 43, 45 or 103 (not 111; 0x56B9AA), on a copy of the start node with its +0x1A
+  raised by 50 (the field the exits' price raises; not read). The test's fourth argument is the
+  run's mode (its sixth, passed at 0x56B9C9 and 0x56BB80).
+- **Mode 0** (the human's mouse path, from `movement_calculations_mouse` 0x41955B): no before the
+  switch for every class but 33 and 212 (0x56AB69 to 0x56AB80; E08 T55a4). **A human's path ends
+  at an entrance**: a tile beyond a teleporter gets a path around it or none, never one through.
+- **The cases** (0x56ADCB to 0x56AED8) answer no in every mode. Before that, in the modes from 3,
+  they hand the channel's exits to the search as successors of the entrance: 43 the one-way exits'
+  list of the tile's subclass (class 44, nothing excluded; 0x56AE39), 45 the two-way list (class
+  45, the tile's word excluded; 0x56AE81), 111 the Whirlpools' list (class 111, the word excluded)
+  to `pathfinder_teleport_exits` 0x56A400; 103 its pair (`gate_exit`) to `pathfinder_gate_exit`
+  0x56A730, unless `pathfinder_entrance_guarded` 0x56A360 says no. Read in part: every candidate
+  of §4.1's test is relaxed (all exits, no draw), its price raised with the list's length; in mode
+  4 a guarded exit of a one-way channel or a Whirlpool is weighed by `ai_fight_answer` and one too
+  strong drops the channel.
+- **Whose modes:** the four other functions that call `pathfinder_run` (modes 3, 2 or a value of
+  their own; listed in the address map's `ai_player_turn`) lie under `ai_player_turn` 0x525E80,
+  called from the adventure manager's procedure, whose per-player records share
+  `ai_player_values`' stride: the computer's (inferred). Its routes through teleporters are E10's.
+- **VCMI 1.7.5** plans a human's path through two-way monoliths and gates, and through Whirlpools
+  for a protected hero, by default (`config/gameConfig.json` `pathfinder`: `useMonolithTwoWay` and
+  `useWhirlpool` true, `useMonolithOneWayUnique` and `useMonolithOneWayRandom` false;
+  `lib/pathfinder/PathfinderOptions.cpp`); its client then names the path's exit (D-53). **D-58.**
+  The wiki is silent.
+
+### 9.2 The engine's reach and passage
+
+- **Today** the five classes are untyped blockers (T97c): the reach and `MoveHero` go around them.
+- **Typed as entered objects** (§2), an entrance is a visit's tile, a row both searches have: the
+  walking search's and `AdventureState::passage`'s entered object (ADV-OBJ-003: a visit ends the
+  move; reached from any node; on land a flight also passes over it, as over every entered
+  object's tile, ADV-MOV-009). That is the original's mode 0: the reach reports the entrance as a
+  destination with the points left after the step (the jump costs none, §5), never as a tile on
+  the way, and no exit. `MoveHero`'s last step may be onto the entrance; its visit is the jump.
+- **From above** (§2): a monolith's or a gate's entrance is not entered from, or left toward, the
+  three tiles above it (ADV-OBJ-004's rows; nothing new). The Whirlpool is entered from above.
+- **On water:** a Whirlpool's six tiles are a water object's visit tiles, closed to a flight and a
+  water walk (D-46's row) and entered by a hero in a boat (`sail_entry`'s entered object,
+  ADV-SEA-005). The jump moves the boat with the hero (it stays in it, `Mode::Sail`).
+- **A hero standing on an entrance** (a failed jump, a two-way exit, a gate after a jump) starts
+  its reach there as on any entered object; a step off and back on visits again (§6).
+- **The hot path:** no new read in the reach's or the passage's loops: the entrance's row comes
+  from the static tile's visit, which the kinds set. The channels (§3) are read by the visit alone,
+  once a jump (one list: at most 114 Whirlpool tiles on a shipped map, 19 Whirlpools), and are
+  built with the game from the static map, shared by forks (decision 6). T98b plans the measure:
+  `reach-xl-144` and the `random-play-*` workloads against `master` (TRAPS: a fixture's or test's
+  blocker of one of the five classes becomes typed), and a teleporters' workload.
+- **For the engine:** the reach and `MoveHero` keep the original's human paths (D-58 recommended):
+  an entrance is a destination, the env's action stays a destination among the reach's tiles
+  (ADR-0017 point 8). The computer's planning through channels (all exits, their pricing, the
+  guards) is E10's.
+
 ## 10. What a player sees (T98a2)
+
+- **The mover's team:** the exit revealed with the hero's scouting radius (§5); an occupied exit
+  radius 1 before the battle (§4.2).
+- **The record** (`hero_relocate_inner` 0x49CF50, read whole): before the hero's tile is written,
+  a record of the move (the acting player, the hero, its facing, the old tile and the new) is
+  appended to the game's `turn_records` (+0x4E7AC), the list of a turn's map changes (the steps,
+  the owners' changes and the reveals append to it too). A player's records live until its next
+  turn starts (`turn_records_drop` 0x49D6C0, read whole, from `next_player_turn`); the others play
+  them back with the Adventure Options' **Replay Opponent Turn** (`adventure_options_run` 0x41AB00
+  → `turn_records_replay` 0x49D7A0; `Help.txt`: the events since your last turn). No rule's state
+  changes. What a record shows a viewer whose fog hides one end: not read (the drawing).
+- **Network play:** `map_message_send` before the record (not followed).
+- **Hot seat:** another player sees the hero where its explored tiles show heroes (ADV-FOG-004):
+  gone from the entrance, at the exit if it explored it.
+- **The wiki** (the Monolith page's mirror): when an enemy hero enters a monolith in the open part
+  of the map, its exit is "shown" even in the shroud. The reading stops before the view that would
+  show it (the replay's or the live move's); a display, but it tells a viewer where a channel
+  leads. **A-41.**
+- **For the engine:** one event a jump, projected as a step's (`HeroStepped`; ADV-FOG-004, -005):
+  seen by the players that see the hero at either end, an end it does not see `None` in its
+  projection; A-41 not reproduced (recommended): no viewer learns a hidden exit.
 
 ## 11. Commands, decisions, events, the observation, replays and benchmarks (T98a2)
 
+For T98b's drafts and design note (ADR-0015 to -0017); a sketch, not decided.
+
+- **The jump needs no command:** `MoveHero`'s last step onto an entrance visits it (ADV-OBJ-003);
+  the jump is that visit, and no path goes on past it (§9).
+- **The space key** (`adventure_key_down`'s case 0x408CC4 to 0x408E75, read whole; `key_space_visit`
+  0x408E65): a selected hero, the current player human (both flags, 0x408C77: never on a
+  computer's turn), the hero chosen again when it stands (manager +0x20C clear: `hero_select` lifts
+  it, so its tile shows the object under it), then the tile visited (`visit_and_update`) when it is
+  an entrance (+0xD 0x10) of any class but 3 (`ObjNames.txt`'s Anchor Point). **No teleporter
+  test, no version test** in this executable (SoD; RoE's own is not readable here), **no points**
+  spent or required (the visit tests none). So Space repeats the visit of any entered object the
+  hero stands on: a two-way monolith or a gate back and forth, a Whirlpool with its losses again, a
+  one-way exit's message, a dwelling's hire question, a weekly object's "already visited", a town.
+  The wiki agrees: AB and SoD, without movement points, for every object with repeatable actions,
+  "unlimited cycling through two-way monoliths", not in RoE (the Subterranean Gate page, Trivia).
+  A two-way channel of three or more (34, §1) is re-drawn at will at 0 points. **For the engine:**
+  a command `Revisit { hero }` (a name for T98b): the player's hero, its tile an entered object's
+  built visit; no points; the step's own visit with its decisions. The checkpoint's question: in
+  increment 11 with the original's gate (every entered kind; recommended), teleporters only, or
+  later (a stub).
+- **Decisions:** none new. The exit is drawn (D-53), the Whirlpool and the gate ask nothing. An
+  occupied exit's battle is GAM-BAT-004's (the mover attacks the exit's hero), the move to the exit
+  the visit's rest after a won battle (GAM-DEC-007); a gate's hero of the team is GAM-MET-001's
+  meeting, the mover staying.
+- **Events:** the jump (§10), the reveal (`TilesRevealed`), the Whirlpool's loss (new: the hero,
+  the slot, the count lost, 0 for a lone creature kept; the owner alone, the original's ADVEVENT
+  168 also when nothing is lost), "leads nowhere" for a one-way exit's visit (ADVEVENT 70; a
+  human's only in the original, every owner's here, decision 16) and a gate without a pair
+  (ADVEVENT 153), the owner alone; a monolith without a candidate tells nothing (the original's
+  silence).
+- **The observation:** each kind public, a monolith's channel (its subclass: the picture's
+  colour) with it; no channel's exits or gate's pair listed (only the map's pictures show them).
+- **State:** the hero's tile (and a boat's), the army, the fog; the channels static (built with
+  the game, ADR-0015's static part). The adventure state hash likely unmoved; the ruleset part
+  (the kinds, v18) and the map import (the five classes, A-39's refusal; v20) bump; a new command
+  bumps the adventure replay format (v11) and the env's action encoding (the AI lane's,
+  `cross-lane`).
+- **The draw:** one from the adventure stream for two or more candidates, none for one (§4.1);
+  which stream: T98b (ADR-0017's streams).
+- **Replays and benchmarks:** golden replays of each kind's jump (a one-way channel with several
+  exits, a two-way of three, a gate, a Whirlpool with its loss, an occupied exit's battle, the
+  revisit if taken); §9.2's measure and a `random-play-teleporters-36` workload on a fixture map
+  with every kind (as increment 10's dwellings' map).
+
 ## 12. Batch E11's plan (T98a2)
+
+Increment 11's batch (named after the increment as batches E3 to E10; not the epic E11), **batch
+E11**, runs on the client lane's harness in SoD on Easy, hot seat, from maps `h3-experiment` writes
+(`docs/experiments/README.md`), as before (decision 261's agent's call); its spec and recipe are
+tasks of T98b's cut. **Two runs:** **E11a** the jumps (day 1 and 2), **E11b** the repetitions with
+the space key (one day). Rows for the points resting on the reading alone (§8): the draw's spread,
+A-37, the gate's meeting without a move, the guards silent at an exit, the points kept, the lone
+creature's message; and the disputes the batch can tell apart.
+
+| Row | Settles | Setup | Record | The reading predicts |
+|---|---|---|---|---|
+| E11-1 | §9.1, D-58 | Red's hero beside a two-way pair A, B; B's side reached by land only past the day's points | the path to a tile beside B; to A | none through A (around or none); A's ends on A |
+| E11-2 | §5, §6 | Red's hero steps onto A | tile, points before and after, explored tiles round B, the walk | on B; the step's price paid, no more; B's scouting radius explored; the walk ended |
+| E11-3 | §4.5, §5 | a monster on a tile next to B | battles on arrival | none (a guard fights only after a step) |
+| E11-4 | §4.2 | a one-way entrance whose only exit holds Red's second hero | tile, messages | stays on the entrance, nothing shown |
+| E11-5 | §4.2 | Red's hero steps onto a one-way exit | the message | ADVEVENT 70 |
+| E11-6 | §4.3 | a gate pair, Red's second hero on the exit | the dialog, both tiles | the meeting; the mover stays on the entrance |
+| E11-7 | §4.3 | a gate pair, Blue's hero on the exit | the battle; tiles after Red wins | the battle, then Red on the exit |
+| E11-8 | §4.3 | a gate with no pair (one level's gates outnumber the other's) | the message, the tile | ADVEVENT 153; stays |
+| E11-9 | §3.2, D-56 | a surface gate G, two underground gates at equal truncated distances from G and different squared ones, the farther (squared) first in the walk | which G leads to | the first in the walk (truncated); VCMI the nearer by squares |
+| E11-10 | §4.4, D-54, D-55 | Red's hero in a boat with 3 Pegasi (slot 0), 3 Dendroid Guards (slot 1) and a strong stack enters a Whirlpool | army after; the message | Pegasi 3 → 1 (fight value × count 1 221 < 2 070); VCMI halves the Dendroids by AI value (1 551 < 1 554) and keeps 2; ADVEVENT 168 |
+| E11-11 | §4.4, D-54's tie | 5 Pikemen in slots 0 and 2, a strong stack in 1 | army after | slot 0 keeps 2 (the first); VCMI slot 2 |
+| E11-12 | §4.4, A-38 | a lone Pikeman; a lone stack of 1 775, then 1 776 Azure Dragons | army; the message | 1 kept with the message; 1 775 → 887; 1 776 all kept (56 315 × 1 776 past 99 999 999) |
+| E11-13 | §4.4 | the Sea Captain's Hat worn; the Admiral's Hat worn | army; messages | nothing lost, no message |
+| E11-14 | §11's space key | Red's hero on B with 0 points (spent on the way to A) presses Space; then on a dwelling it owns | tile, points; the question | back on A at 0 points; the hire question again |
+| E11-15 | §4.1, D-53 | a two-way channel of four; Red's hero presses Space 60 times | the tile after each | each of the three others about 20 times, never the entrance |
+| E11-16 | A-37 | Whirlpools W1, W2; Blue's hero in a boat on a W2 tile; Red with the Sea Captain's Hat in a boat in W1 presses Space until it lands on Blue's tile | both heroes' tiles, the tile's object, the next turn | both on one tile, no battle (A-37); what follows recorded |
+| E11-17 | D-57 | three Whirlpools; Red's second hero in a boat on the W2 tile VCMI takes for its visitable one; Red presses Space 60 times from W1 | the Whirlpool and tile of each exit | W2's five other tiles and W3's six alike (5/11 on W2); VCMI never W2 |
+| E11-18 | §10, A-41 | Blue's hero enters a monolith Red sees, its exit in Red's shroud; on Red's turn the Replay Opponent Turn | the view's corner during the replay; Red's explored tiles after | the view goes to the exit (the wiki), nothing explored |
+
+**Not in the batch:** A-39 (refused at the import), A-40 and the computer's paths (E10), RoE's
+space key (E11 the epic), network play. **What the harness lacks** (`clients/capture/`, a common
+path: built with the harness check, the client and map-client lanes' inboxes told): the space key
+repeated with a read after each press (the step-by-step table's rows, E08 T68b), the adventure
+options' Replay item and the view's corner during it, the meeting dialog closed unchanged. **What
+the spec lacks** (`h3-experiment`, battle-owned: `cross-lane`; the writer `h3_map::writer` is this
+lane's): the five classes by picture and subclass on either level (`[[map.object]]`), a hero in a
+boat at the start beside or on a Whirlpool, worn Hats; E11-9's and E11-16's geometry is the spec's
+task to check (the gates' walk order, a hero standing on a Whirlpool tile).
 
 ## 13. The proposed rule ids (T98a2)
 
+A new family **ADV-TEL** (teleporters); the T98b drafts fix titles and cuts.
+
+| Id | Proposed rule | Rests on |
+|---|---|---|
+| ADV-TEL-001 | The kinds: classes 43, 44, 45 by subclass (the channel), 103, 111; entered, only the Whirlpool from above; the import refuses a monolith subclass past 7 (A-39) | §1, §2, §3.1 |
+| ADV-TEL-002 | The channels when the game is built: a list per one-way and two-way subclass, one of every Whirlpool tile; the gates paired greedily by truncated distance, the walk's order, the first on a tie (D-56) | §3 |
+| ADV-TEL-003 | The exit's draw: the candidates (another tile of the channel without a hero of the mover's team), uniform, one draw for two or more, none for one; none: no jump (D-53, D-57) | §4.1 |
+| ADV-TEL-004 | The monoliths: the draw; an enemy on the exit fought first (radius 1), the mover moves if it wins; a one-way exit leads nowhere | §4.2, §4.5 |
+| ADV-TEL-005 | The gate: its pair; none: nowhere; a hero of the team met, the mover stays; an enemy fought, the mover moves if it wins | §4.3 |
+| ADV-TEL-006 | The Whirlpool: the loss first (the weakest stack by fight value × count, the first slot, keeps half rounded down, a lone creature kept; no loss with the Sea Captain's Hat; D-54, D-55, A-38, A-40), then the draw; an enemy on the drawn tile per A-37's answer | §4.4 |
+| ADV-TEL-007 | The arrival: points kept, no guard, no visit, the scouting radius revealed; the move ends | §5, §6 |
+| ADV-TEL-008 | The revisit (if taken): the visit of the entered object under the hero again, without points | §11 |
+| ADV-FOG-004 (amended) | A jump seen as a step's two ends (A-41 not reproduced) | §10 |
+| ADV-OBJ-002 (amended) | The import's classes 43, 44, 45, 103, 111 and the refusal | §1, A-39 |
+| ADV-OBJ-003 (amended) | The five entered; no path through an entrance (D-58) | §2, §9 |
+| GAM-BAT-004, GAM-MET-001 (amended) | A battle or a meeting at a teleporter's exit, the mover on the entrance | §4.2, §4.3 |
+
 ## 14. For T98b: the checkpoint's questions (T98a2)
+
+Asked at T98a2's end (`docs/OPEN-QUESTIONS.md`, ADV-Q45; the answers in the epic as decisions
+from 264):
+
+1. **D-53 to D-58**, the disputes: the original in each (recommended): the exit drawn, never named
+   by a command (D-53); the weakest stack by fight value × count, the first slot (D-54); half kept
+   rounded down, a lone creature kept (D-55); the gates' truncated distance (D-56); one draw over
+   the Whirlpools' tiles (D-57); no path through a teleporter (D-58).
+2. **A-37's fix** (state-corrupting): the battle as at a monolith (recommended), the tile not a
+   candidate, or VCMI's (the mover stays, no battle).
+3. **A-38**: no bound (the least stack, a 64-bit product; recommended), or the lone stack past the
+   bound keeps its troops (the wiki's "bug", a `fix-optional` flag); the corrupting case is fixed
+   either way.
+4. **A-39** refused at the import, **A-40** not reproduced (every hero loses as a human's), **A-41**
+   not reproduced (recommended for each).
+5. **The space key:** `Revisit` in increment 11 with the original's gate (recommended), for
+   teleporters only, or later.
+6. **Batch E11** before the build (recommended, as batches E9 and E10), after it, or not at all.
+
+**Answered** (2026-11-06, `AskUserQuestion`, two rounds; the epic's decisions 264–269; ADV-Q45):
+each as recommended. (1) D-53 to D-58 **the original**; (2) A-37 **the battle**, as at a
+monolith; (3) A-38 **no bound**; (4) A-39 **refused at the import**, A-40 and A-41 **not
+reproduced**, no flags; (5) **`Revisit` in increment 11** with the original's gate (every entered
+kind, no points); (6) **batch E11 before the build**.

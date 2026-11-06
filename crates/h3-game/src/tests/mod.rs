@@ -1250,6 +1250,8 @@ fn a_town_needs_its_siege() {
             level_2_dwelling_chance: 50,
             neutral_garrison: [row; 4],
             capitol_demoted_to: "b2".into(),
+            visions_factor: 3,
+            visions_min_radius: 3,
         }),
         towns: vec![TownDef {
             faction: key("t:town"),

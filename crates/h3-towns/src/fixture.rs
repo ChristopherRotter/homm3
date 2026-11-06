@@ -336,6 +336,9 @@ fn params() -> TownParams {
             count: [1, 3],
         }; 4],
         capitol_demoted_to: "city_hall".into(),
+        visions_factor: 3,
+        visions_min_radius: 3,
+        visions_creatures: Vec::new(),
     }
 }
 

@@ -1428,3 +1428,52 @@ parameter, `docs/06-security.md` and the inbox notes. The code, tests and docs b
   nits (the words' level its own constant); its note that a seen town's `TownId` counts the
   towns before it (ADR-0028 point 3) goes to T8c2's security section. The first verify's
   coverage found four regions never run (a lookup's `?` each, now one; `add_income`'s index).
+
+### T8c2 — the Rogue's Visions, the security doc, the inbox notes (2026-11-06)
+
+One session, the user present; branch `town/e09-t8c2` (`cross-lane`, the user's consent at the
+start: `h3-heroes`' `derive.rs`, `lib.rs` and its test; `h3-game`'s `observe.rs` and
+`tests/mod.rs`; `h3-harvest`'s gap-fill, `gapfill.rs`, `towns.rs` and its test; the 47 adventure
+replays' `town_ruleset_hash` line) and `shared/e09-security-towns` (#752, `docs/06-security.md`).
+Starting point: `master` at a425d00 (#750 merged; CI green there; the setup's baseline lost to a
+VM restart, CI's run stood for it; the original data staged with the file tool, the user's
+computer's shell unavailable). **At its start** (the user, asked): T8c2 kept whole, with
+`h3_heroes::power` and the replays' header in the town PR. The code, tests and docs by the agent.
+
+- **The reading** (`hero_visions_reach` 0x4E5E10 read whole, `town_popup` 0x4167A0's loop): the
+  level +0x129, or 3 with creature 0x8F in the army; the Power +0x478 held to 1–99; the radius the
+  spell table's expert effect (3) times it, at least 3; true on the hero's level with
+  `dx² + dy²` strictly below the radius's square; `town_popup` asks each hero of the shown player
+  at the town's **entrance** (+0x5). The other three callers are the hero, garrison and monster
+  popups (`docs/exe/map.toml`, inferred; the adventure lane's inbox).
+- **The part** (v3; decision 31): `[town_params]`' `visions_factor`, `visions_min_radius`; any
+  pack's `[town_visions] creatures` (each of the naming pack's closure, once), compiled into
+  `TownParams::visions_creatures` in handle order; creatures without parameters `MissingParams`.
+  The harvester: `[towns.visions]` in the gap-fill (source `exe-town-visions`), the factor and
+  radius into base's parameters, each creature into its own pack's file (the AB pack's Rogue).
+  The synthetic pack 2 and 4, the synthetic expansion's `lurker`.
+- **The view:** `town_views` takes the game state; `visions` lists the viewer's own heroes on the
+  map with a Visions creature and their squared radii (`h3_heroes::power`, new, HER-ADV-001),
+  taken once an observation and only when a town of another team needs them; `in_visions` tests
+  the entrance (`StaticMap` object's `entrance`). Such a viewer gets `OWNER_LEVEL`'s counts and
+  `owner_facts`, never `GarrisonView::army`. `TWN-STUB-9` lifted; TWN-VEW-003 and HER-ADV-001
+  amended.
+- **Tests:** `h3-towns`' compile (handle order, closure, unknown, twice, without parameters, each
+  field in the hash, v3 pinned), `h3-pack-towns`' (the synthetic and the original packs: RoE
+  without the Rogue, AB and SoD with it; strictness), `h3-harvest`'s (both packs' tables, an
+  unknown creature, one twice), `h3-heroes`' `power`, `h3-game`'s `town/tests/view.rs` (the
+  radius's edges, strict; the creature needed; a neutral town; the least radius; from the
+  entrance of a three-tile town, not its anchor; only the viewer's own heroes; `in_visions`'
+  level).
+- **The replays:** the 47 adventure replays' `town_ruleset_hash` line (0x3003da8dd5ff664f), nothing
+  else; all verify.
+- **The bench:** the scoped verify's `bench-check` failed `day-start-xl-144` at +2.26 % on its
+  baseline; `master` built here at the same path length gave 1 295 278 Ir (+0.66 %, T8c1's
+  figure), the branch 1 315 827 (+1.6 %), with every counted function the same: glibc's
+  `_int_malloc` alone +12 % (the heap's state after the town part's few new allocations at the
+  build; the observation is not in the step). Re-baselined with the reason in the workload's
+  description; the trap in the lane's `TRAPS.md`. Every other workload inside its gate.
+- **The review** (independent, read only): no behaviour bug or leak; its test gaps fixed (the
+  entrance against the anchor, a neutral town by Visions), its docs (the catalog's rules, the
+  `OWNER_LEVEL` doc, a long doc line); its nit on the harvester's pack (a creature's pack is base
+  or ab by construction) left.

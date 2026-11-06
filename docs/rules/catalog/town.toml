@@ -363,10 +363,10 @@ numeric  = "integer"
 
 [[rule]]
 id       = "TWN-VEW-003"
-title    = "The owner's team's view of a town"
+title    = "The owner's team's view of a town, and a hero's Visions"
 context  = "town"
 status   = "implemented"
-summary  = "A viewer of a town's owner's team (the player alone until E10's teams; a neutral town is nobody's) sees it at the popup's top level, 3: its garrison's stacks with their counts (beside their words), its garrison by slot (the town screen's, which the garrison's `StackChanged` events change, E09 T8b2b), its hall level (1 the Village Hall to 4 the Capitol, TWN-INC-001) and its day's income, its gold and its silo's resources (TWN-INC-001, -002). The garrison hero's mark comes with the garrison hero (increment 3). Not yet: the same top level for a viewer one of whose heroes has a Rogue in its army with the town within its Visions radius (TWN-STUB-9, E09 T8c2). E09 T8c1 (design §12, §17): `h3_game::TownOwnerView`, `GarrisonView::army`."
+summary  = "A viewer of a town's owner's team (the player alone until E10's teams; a neutral town is nobody's) sees it at the popup's top level, 3: its garrison's stacks with their counts (beside their words), its garrison by slot (the town screen's, which the garrison's `StackChanged` events change, E09 T8b2b), its hall level (1 the Village Hall to 4 the Capitol, TWN-INC-001) and its day's income, its gold and its silo's resources (TWN-INC-001, -002). The garrison hero's mark comes with the garrison hero (increment 3). A viewer of another team (a neutral town's included) sees it at the top level too, all of that but the garrison by slot, when one of its own heroes on the map has a Visions creature in its army (the town part's, the AB pack's Rogue: Visions at its expert level) and stands on the level of the town's entrance with the squared distance to the entrance below the square of the radius: the part's Visions factor (3, Visions' expert effect) times the hero's Power (HER-ADV-001), at least the part's least radius (3). Visions itself is not cast on the map yet (E08). E09 T8c1 (design §12, §17): `h3_game::TownOwnerView`, `GarrisonView::army`; T8c2: `TownParams::visions_factor`, `visions_min_radius`, `visions_creatures` (town part v3, the packs' `[town_visions]`)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -375,8 +375,13 @@ numeric  = "integer"
   confidence = "high"
 
   [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T8c2; survey E09-towns.md section 12.3): town_popup (0x4167A0) asks each hero of the shown player (0x41685F to 0x4168C9) for hero_visions_reach (0x4E5E10) at the town's entrance (the town record's +0x5 to +0x7, packed at 0x416801 to 0x416834); hero_visions_reach takes the level as hero_visions_level (+0x129, or 3 with creature 143 in the army, 0x4E5E1A to 0x4E5E3C), the Power +0x478 held to 1-99 (0x4E5E42 to 0x4E5E5A), the radius the spell table's +0x144 + 4 x level (spell 2's expert effect, 3) times it, at least 3 (0x4E5E6F), and is true on the hero's level with dx^2 + dy^2 below the radius's square (0x4E5F14, jge false)"
+  confidence = "high"
+
+  [[rule.source]]
   kind       = "vcmi"
-  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 12.4: InfoAboutTown's details (the counts, the hall, the gold income, the silo, the garrison hero) for an own or allied town (hasAccess) or the selected hero's Visions in reach"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 12.4 (it asks the selected hero, the original every hero of the viewer's; the engine follows the original): InfoAboutTown's details (the counts, the hall, the gold income, the silo, the garrison hero) for an own or allied town (hasAccess) or the selected hero's Visions in reach"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/CGameInfoCallback.cpp"
   retrieved  = "2026-11-02"
   confidence = "medium"

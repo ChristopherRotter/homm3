@@ -1,13 +1,13 @@
 //! Tests of what a viewer sees of the towns (E09 T8c1, the town epic's design note §12, §17):
 //! the towns it sees a tile of, linked from their objects, with their public facts (TWN-VEW-001),
 //! the garrison by the viewer's level (TWN-VEW-002: its towns with a Tavern, at most two) and the
-//! owner's team's facts (TWN-VEW-003).
+//! owner's team's facts (TWN-VEW-003), which a hero's Visions also shows (E09 T8c2).
 
 use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::{Pos, TileSetup};
+use h3_adventure::{Pos, TileMask, TileSetup};
 use h3_content::{CreatureTypeId, ProfileDef, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{
@@ -20,9 +20,10 @@ use super::{
     towns_core_pack, towns_rules, towns_setup,
 };
 use crate::tests::key;
+use crate::town::view::in_visions;
 use crate::{
-    GameRuleset, GameSetup, GameState, GarrisonStackView, GarrisonView, OWNER_LEVEL, TownOwnerView,
-    TownView, Viewer, observe,
+    GameRuleset, GameSetup, GameState, GarrisonStackView, GarrisonView, HeroArmy, OWNER_LEVEL,
+    TownOwnerView, TownView, Viewer, observe,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -320,4 +321,147 @@ fn a_town_no_tile_of_which_the_viewer_has_explored_is_not_shown() {
     assert!(red.adventure.is_fringe(fringe));
     assert_eq!(linked(&red), [Some(T0), Some(T1)]);
     assert_eq!(towns(&red.towns), [T0]);
+}
+
+/// The town tests' rules on a 16 × 16 map whose town part names the gog a Visions creature (as
+/// the AB pack names the Rogue), with Visions' factor `factor` and least radius `least`.
+fn visions_rules(factor: u8, least: u8) -> GameRuleset {
+    let mut towns = town_pack(false);
+    towns.visions = vec![key("t:gog")];
+    let params = towns.params.as_mut().unwrap();
+    (params.visions_factor, params.visions_min_radius) = (factor, least);
+    rules_of(towns_core(false), &towns, false, 16)
+}
+
+/// [`wide`] with blue's town on (4, 0), its entrance, garrisoned as [`garrisoned`]'s, and red's
+/// hero on `(x, y)` with Power `power` and one of each of `army`.
+fn seer(rules: &GameRuleset, (x, y): (u16, u16), power: u8, army: &[CreatureTypeId]) -> GameSetup {
+    let mut setup = wide(rules, Pos::new(4, 0, 0));
+    setup.towns[1].garrison = garrisoned(rules).towns[1].garrison.clone();
+    let hero = &mut setup.heroes[0];
+    hero.pos = Pos::new(x, y, 0);
+    hero.army = HeroArmy::Custom(
+        army.iter()
+            .zip(0..)
+            .map(|(&creature, slot)| ArmyStack {
+                slot,
+                creature,
+                count: 1,
+            })
+            .collect(),
+    );
+    hero.details.primary = Some([0, 0, power, 1]);
+    setup
+}
+
+// covers: TWN-VEW-003
+#[test]
+fn a_heros_visions_creature_shows_another_teams_town_at_the_top_level_within_its_radius() {
+    let rules = visions_rules(3, 3);
+    let stack = |creature, count_word, count| GarrisonStackView {
+        creature,
+        count_word: Some(count_word),
+        count: Some(count),
+    };
+    // The popup's top level: the counts and the owner's facts, never the garrison by slot.
+    let top = TownView {
+        garrison: GarrisonView {
+            level: OWNER_LEVEL,
+            stacks: vec![stack(IMP, 2, 12), stack(GOG, 0, 4)],
+            army: None,
+        },
+        owner_facts: Some(TownOwnerView {
+            hall: 1,
+            income: vec![(GOLD, 500)],
+        }),
+        ..towns_seen(&rules, &seer(&rules, (0, 0), 1, &[IMP]), RED)[1].clone()
+    };
+    let sees = |at, power, army: &[CreatureTypeId]| {
+        let town = towns_seen(&rules, &seer(&rules, at, power, army), RED).remove(1);
+        if town == top {
+            true
+        } else {
+            // Unseen: red has no Tavern, so nothing of the garrison.
+            assert_eq!((town.garrison, town.owner_facts), (shown(0), None));
+            false
+        }
+    };
+    // From (0, 0) the entrance (4, 0) is 4 away: 3 × Power 2 reaches it, 3 × Power 1 does not.
+    assert!(sees((0, 0), 2, &[IMP, GOG]));
+    assert!(!sees((0, 0), 1, &[IMP, GOG]));
+    // The squared distance below the radius's: 3 away is out of 3, √5 in.
+    assert!(!sees((1, 0), 1, &[GOG]));
+    assert!(sees((2, 1), 1, &[GOG]));
+    // Without the creature no Visions, whatever the Power.
+    assert!(!sees((0, 0), 9, &[IMP]));
+    // A neutral town too: nobody's team.
+    let mut neutral = seer(&rules, (2, 1), 1, &[GOG]);
+    neutral.map.objects[1].owner = None;
+    neutral.towns[1] = super::town(TownFaction::Fixed(faction(&rules, "t:town")));
+    neutral.towns[1].garrison = garrisoned(&rules).towns[1].garrison.clone();
+    let town = &towns_seen(&rules, &neutral, RED)[1];
+    assert_eq!((town.owner, town.garrison.level), (None, OWNER_LEVEL));
+    assert!(town.garrison.army.is_none() && town.owner_facts.is_some());
+    // The least radius: 1 × Power 2 is below 4, which reaches 3 away but not 4.
+    let rules = visions_rules(1, 4);
+    let level = |at| {
+        towns_seen(&rules, &seer(&rules, at, 2, &[GOG]), RED)[1]
+            .garrison
+            .level
+    };
+    assert_eq!(level((1, 0)), OWNER_LEVEL);
+    assert_eq!(level((0, 0)), 0);
+}
+
+// covers: TWN-VEW-003
+#[test]
+fn visions_measure_from_the_towns_entrance() {
+    let rules = visions_rules(3, 3);
+    // Blue's town as the original's: its anchor on (6, 0), blocked over three columns, its
+    // entrance two left of the anchor, on (4, 0).
+    let level = |at| {
+        let mut setup = seer(&rules, at, 1, &[GOG]);
+        let town = &mut setup.map.objects[1];
+        town.anchor = Pos::new(6, 0, 0);
+        town.blocked = TileMask::from_bits(0b111);
+        town.visitable = TileMask::from_bits(0b100);
+        towns_seen(&rules, &setup, RED)[1].garrison.level
+    };
+    // √5 from the entrance and √17 from the anchor; √2 from the anchor and √10 from the entrance.
+    assert_eq!(level((2, 1)), OWNER_LEVEL);
+    assert_eq!(level((7, 1)), 0);
+}
+
+// covers: TWN-VEW-003
+#[test]
+fn only_the_viewers_own_heroes_see_by_visions() {
+    let rules = visions_rules(3, 3);
+    // Blue's hero beside red's town with gogs and Power 9: red's town is blue's to see by it,
+    // and red sees blue's town by its own heroes only (its hero has none).
+    let mut setup = seer(&rules, (0, 0), 9, &[IMP]);
+    let blue = &mut setup.heroes[1];
+    blue.army = HeroArmy::Custom(vec![ArmyStack {
+        slot: 0,
+        creature: GOG,
+        count: 1,
+    }]);
+    blue.details.primary = Some([0, 0, 9, 1]);
+    let red = towns_seen(&rules, &setup, RED);
+    assert_eq!((red[1].garrison.level, &red[1].owner_facts), (0, &None));
+    let blue = towns_seen(&rules, &setup, BLUE);
+    assert_eq!(blue[0].garrison.level, OWNER_LEVEL);
+    assert!(blue[0].garrison.army.is_none() && blue[0].owner_facts.is_some());
+    // Blue's own town keeps its garrison by slot.
+    assert!(blue[1].garrison.army.is_some());
+}
+
+// covers: TWN-VEW-003
+#[test]
+fn visions_reach_a_tile_on_the_heros_level_below_the_radius() {
+    let seers = [(Pos::new(5, 5, 0), 9)];
+    let reaches = |x, y, level| in_visions(&seers, Pos::new(x, y, level));
+    assert!(reaches(5, 7, 0) && reaches(7, 7, 0) && reaches(3, 3, 0));
+    assert!(!reaches(5, 8, 0) && !reaches(2, 5, 0));
+    assert!(!reaches(5, 5, 1));
+    assert!(!in_visions(&[], Pos::new(5, 5, 0)));
 }

@@ -44,6 +44,18 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
 
+**From the town lane** (E09 T8c1, T8c2; for your information, no encoding of yours moved):
+
+- 2026-11-06 (the town lane, E09 T8c1 `town/e09-t8c1` (#750, merged) and T8c2 `town/e09-t8c2`,
+  `cross-lane`): `h3_game::GameObservation` gains `towns: Vec<TownView>` (each seen town's public
+  facts, its garrison by the viewer's level, the owner's facts at the top level; design note
+  `E09-design.md` §17, `docs/06-security.md` "Towns") and `h3_adventure::ObjectView::town`. The
+  day's advance pays each owned town's `h3_towns::daily_income` (its hall's gold, the Grail's, its
+  silo's resources) from day 2, in the same `ResourceGained` as the mines' and the heroes'
+  (TWN-INC-001, -002). Since T8c2 a Rogue in a hero's army shows another team's town within its
+  Visions radius at the top level (TWN-VEW-003). The town part's hash (v3 since T8c2) is in the
+  adventure replays' headers only. E09 T9 (the env's town fixtures, design §18) comes next.
+
 **From the adventure lane** (E08 T95b; the adventure agents' action space grows):
 
 - 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`, `cross-lane` with the user's

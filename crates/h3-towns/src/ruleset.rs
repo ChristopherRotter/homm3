@@ -41,6 +41,11 @@ pub struct TownPack {
     pub towns: Vec<TownDef>,
     /// Changes to town records of packs in its dependency closure (ADR-0006's overrides).
     pub overrides: Vec<TownOverride>,
+    /// The creatures this pack names as giving their hero Visions at its expert level, for the
+    /// towns (TWN-VEW-003; the AB pack's Rogue, the original's creature 143 in
+    /// `hero_visions_level` 0x4E5DE0): creatures of its dependency closure, each named by one
+    /// pack at most.
+    pub visions: Vec<ContentKey>,
 }
 
 impl TownPack {
@@ -51,6 +56,7 @@ impl TownPack {
             params: None,
             towns: Vec::new(),
             overrides: Vec::new(),
+            visions: Vec::new(),
         }
     }
 }
@@ -76,6 +82,14 @@ pub struct TownParamsDef {
     /// The key of the hall-3 building every faction's record has, which a captured Capitol
     /// becomes when its new owner holds another (TWN-CAP-002).
     pub capitol_demoted_to: String,
+    /// Visions' factor at its expert level (TWN-VEW-003): a hero with a creature of
+    /// [`TownPack::visions`] in its army sees another team's town at the top level within this
+    /// many tiles per point of its Power (the original's spell 2's expert effect, read by
+    /// `hero_visions_reach` 0x4E5E10; a town part parameter until the adventure map places
+    /// Visions, E09 decision 31).
+    pub visions_factor: u8,
+    /// The least radius of that Visions (TWN-VEW-003; 0x4E5E6F).
+    pub visions_min_radius: u8,
 }
 
 /// A level's row of a neutral town's drawn garrison (TWN-SET-004): the stack is there with
@@ -253,7 +267,8 @@ pub enum TownCompileError {
     DuplicateTown(String),
     /// An override names a faction without a town record.
     UnknownTown(String),
-    /// A pack defines town records and no enabled pack provides the parameters.
+    /// A pack defines town records or Visions creatures and no enabled pack provides the
+    /// parameters.
     MissingParams,
     /// A second pack provides the parameters.
     DuplicateParams(String),
@@ -333,6 +348,13 @@ pub struct TownParams {
     /// The key of the hall a demoted Capitol becomes (each record holds its building as
     /// [`TownRecord::capitol_demoted_to`]).
     pub capitol_demoted_to: String,
+    /// Visions' expert factor, tiles per point of Power (TWN-VEW-003).
+    pub visions_factor: u8,
+    /// Visions' least radius (TWN-VEW-003).
+    pub visions_min_radius: u8,
+    /// The creatures that give their hero's army Visions at its expert level, every enabled
+    /// pack's [`TownPack::visions`] in handle order.
+    pub visions_creatures: Vec<CreatureTypeId>,
 }
 
 /// A faction's compiled town record.
@@ -491,19 +513,19 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v2 (E09 T5b2a; v1, T5a1's first, without the automatic set): version; the
-    /// parameters (0 for none, else 1, the gold resource's handle, the four hall amounts, the
-    /// Grail's, the reveal radius, the level-2 dwelling chance, the four garrison rows' chance and
-    /// bounds, the demoted Capitol's key); the records in faction order as their number and each
-    /// one's faction handle, moat (0 absent, 1 harmless, 2 damaging), natural obstacles, the silo
-    /// (length, each resource handle and amount), the creatures (length, each base handle and the
-    /// upgrade as an option), the buildings (length, each key, name, slot as an option, the
+    /// Encoding v3 (E09 T8c2; v2, T5b2a's, without Visions; v1, T5a1's first, without the automatic
+    /// set): version; the parameters (0 for none, else 1, the gold resource's handle, the four hall
+    /// amounts, the Grail's, the reveal radius, the level-2 dwelling chance, the four garrison
+    /// rows' chance and bounds, the demoted Capitol's key, Visions' factor and least radius, its
+    /// creatures as their number and handles); the records in faction order as their number and
+    /// each one's faction handle, moat (0 absent, 1 harmless, 2 damaging), natural obstacles, the
+    /// silo (length, each resource handle and amount), the creatures (length, each base handle and
+    /// the upgrade as an option), the buildings (length, each key, name, slot as an option, the
     /// superseded set's bits, the forbidden-with building as an option, the automatic set's bits
-    /// (`auto_with`), then the roles: hall and fort as options, tavern,
-    /// silo, grail, the dwelling as an option of its level and upgrade flag, morale, luck, the
-    /// escape tunnel, the defender's attack, defense, power and mana, the reveal as 0 none, 1 and
-    /// the radius, 2 all) and the demoted Capitol's building. The core's hash is not part of it:
-    /// replays record both.
+    /// (`auto_with`), then the roles: hall and fort as options, tavern, silo, grail, the dwelling
+    /// as an option of its level and upgrade flag, morale, luck, the escape tunnel, the defender's
+    /// attack, defense, power and mana, the reveal as 0 none, 1 and the radius, 2 all) and the
+    /// demoted Capitol's building. The core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(TOWN_RULESET_HASH_VERSION);
         hash_option(h, self.params.as_ref(), |h, p| {
@@ -517,6 +539,10 @@ impl CanonicalHash for TownRuleset {
                 row.count.iter().for_each(|&c| h.write_u16(c));
             }
             p.capitol_demoted_to.as_str().hash_into(h);
+            h.write_u8(p.visions_factor);
+            h.write_u8(p.visions_min_radius);
+            h.write_len(p.visions_creatures.len());
+            p.visions_creatures.iter().for_each(|c| c.hash_into(h));
         });
         h.write_len(self.towns.len());
         for t in &self.towns {

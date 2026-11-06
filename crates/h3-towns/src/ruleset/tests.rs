@@ -124,6 +124,8 @@ fn params() -> TownParamsDef {
             },
         ],
         capitol_demoted_to: "city_hall".into(),
+        visions_factor: 3,
+        visions_min_radius: 2,
     }
 }
 
@@ -248,9 +250,10 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
     }
 }
 
-/// The packs: `t` the parameters and the records of `t:keep` (harmless, its upgraded level-1
-/// dwelling too) and `t:wild` (absent), `u` the record of `u:marsh` (harmless) and overrides of
-/// `t:keep` (damaging) and of its own record (natural obstacles), `v` and `w` empty.
+/// The packs: `t` the parameters, the records of `t:keep` (harmless, its upgraded level-1
+/// dwelling too) and `t:wild` (absent) and the Visions creature `t:wisp`, `u` the record of
+/// `u:marsh` (harmless), overrides of `t:keep` (damaging) and of its own record (natural
+/// obstacles) and the Visions creatures `u:toad` and `u:frog`, `v` and `w` empty.
 fn packs() -> Vec<TownPack> {
     let mut keep = town(
         "t:keep",
@@ -265,6 +268,7 @@ fn packs() -> Vec<TownPack> {
             keep,
             town("t:wild", &[("t:imp", None), ("t:gog", None)], Moat::Absent),
         ],
+        visions: vec![key("t:wisp")],
         ..TownPack::new(manifest("t", &[]))
     };
     let u = TownPack {
@@ -290,6 +294,7 @@ fn packs() -> Vec<TownPack> {
                 },
             },
         ],
+        visions: vec![key("u:toad"), key("u:frog")],
         ..TownPack::new(manifest("u", &["t"]))
     };
     vec![
@@ -407,11 +412,20 @@ fn packs_without_towns_compile_to_the_empty_part() {
     assert_eq!(part, TownRuleset::empty(&core));
     assert!(part.towns().is_empty() && part.params().is_none());
     assert_eq!(part.core_hash(), core.content_hash());
-    // The parameters alone, without a record, are kept.
-    let mut with_params = empty;
+    // Visions creatures need the parameters, as records do.
+    let mut visions = empty.clone();
+    visions[1].visions.push(key("u:frog"));
+    assert_eq!(
+        TownRuleset::compile(&core, &visions).unwrap_err(),
+        TownCompileError::MissingParams
+    );
+    // The parameters alone, without a record, are kept, with the Visions creatures.
+    let mut with_params = visions;
     with_params[0].params = Some(params());
     let part = TownRuleset::compile(&core, &with_params).unwrap();
-    assert!(part.towns().is_empty() && part.params().is_some());
+    assert!(part.towns().is_empty());
+    let frog = core.creature_by_key("u:frog").unwrap();
+    assert_eq!(part.params().unwrap().visions_creatures, [frog]);
     assert_ne!(
         part.content_hash(),
         TownRuleset::empty(&core).content_hash()
@@ -424,9 +438,9 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The second encoding (v2): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0x4e68e5a3a7b59930);
-    assert_eq!(TownRuleset::empty(&core).content_hash(), 0x0cd92cf54dc615e5);
+    // The third encoding (v3): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0x1649ee874289951b);
+    assert_eq!(TownRuleset::empty(&core).content_hash(), 0x796ed797b92b1fd2);
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
     let other = TownRuleset::compile(&core, &changed).unwrap();
@@ -435,6 +449,31 @@ fn the_hash_is_pinned_and_follows_the_content() {
     keep_building(&mut automatic, "horde_up").auto_with.pop();
     let other = TownRuleset::compile(&core, &automatic).unwrap();
     assert_ne!(other.content_hash(), part.content_hash());
+    // The third (v3): Visions' factor, least radius and creatures.
+    let changes: [fn(&mut Vec<TownPack>); 3] = [
+        |p| p[0].params.as_mut().unwrap().visions_factor = 2,
+        |p| p[0].params.as_mut().unwrap().visions_min_radius = 3,
+        |p| drop(p[1].visions.pop()),
+    ];
+    for change in changes {
+        let mut changed = packs();
+        change(&mut changed);
+        let other = TownRuleset::compile(&core, &changed).unwrap();
+        assert_ne!(other.content_hash(), part.content_hash());
+    }
+}
+
+// covers: TWN-VEW-003
+#[test]
+fn the_visions_parameters_take_every_packs_creatures_in_handle_order() {
+    let (core, part) = compiled();
+    let params = part.params().unwrap();
+    assert_eq!((params.visions_factor, params.visions_min_radius), (3, 2));
+    let creature = |k: &str| core.creature_by_key(k).unwrap();
+    assert_eq!(
+        params.visions_creatures,
+        [creature("t:wisp"), creature("u:frog"), creature("u:toad")]
+    );
 }
 
 /// Compiles the packs after `change`.
@@ -545,6 +584,14 @@ fn references_are_checked() {
         E::UnknownCreature("t:nope".into())
     );
     assert_eq!(
+        refused(|p| p[0].visions.push(key("t:nope"))),
+        E::UnknownCreature("t:nope".into())
+    );
+    assert_eq!(
+        refused(|p| p[2].visions.push(key("t:wisp"))),
+        outside("t:wisp", "v")
+    );
+    assert_eq!(
         refused(|p| p[0].towns.push(town("t:keep", &[], Moat::Absent))),
         town_error("t:keep", "needs one to seven creature levels")
     );
@@ -589,6 +636,10 @@ fn the_parameters_are_checked() {
     let count = E::InvalidParams("a garrison row's count needs 1 <= least <= most");
     assert_eq!(param(|d| d.neutral_garrison[0].count = [0, 1]), count);
     assert_eq!(param(|d| d.neutral_garrison[1].count = [5, 3]), count);
+    assert_eq!(
+        refused(|p| p[3].visions.push(key("t:wisp"))),
+        E::InvalidParams("a Visions creature is named twice")
+    );
     assert_eq!(
         param(|d| d.capitol_demoted_to = "town_hall".into()),
         town_error(
