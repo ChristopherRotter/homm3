@@ -5617,3 +5617,10 @@ Magi's Bloodlust glow). The original data staged by the file tool (the PC's shel
   drain waits for `ManaDrai.wav` past its animation. `motion::magic` had loaded none of the three
   animations for a record (`start_effect` added). The other differences are the flight's
   redraw artifacts and the landing's boxes, as earlier sequences'.
+- **Reviewed** (a fresh reviewer; §12.22, "Reviewed"): no blocking finding; a passed stack no
+  longer takes the outline (`passes`), the round start's end clears it (0x4761EE); §8.3's and the
+  log's stale notes; seven tests added. Provisional: the own turn's ended effects after the drain,
+  the battle's first activation's drain (CLT-Q20).
+- **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (87 as recorded), `h3drive.py
+  drawn` (257 the same), `h3-view gate`, `check-docs`, `check-lane`, `check-exe-map`, the scoped
+  verify with original data.

@@ -222,8 +222,9 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   after the window and the message box with two to eight pictures (the experience after the
   window shows nothing on the battle screen: its levels come on the map), CLT-Q65 and Q66 asked,
   two sequences exact; **T5d** the effects, their waits and Bloodlust's glow (42, 45), cut in
-  two by the user (2026-11-06): **T5d1** the effects of a turn's and a round's start (the
-  Wraiths' mana drain, regeneration, Poison's round damage; design §12.22), **T5d2** the strikes'
+  two by the user (2026-11-06): T5d1 done (the effects of a turn's and a round's start: the
+  Wraiths' mana drain, regeneration, Poison's round damage; design §12.22; `starts`,
+  `starts-sound`), **T5d2** the strikes'
   and casts' (Death Blow, Ice Bolt's explosion, the Familiars' channel, Bloodlust's glow); **T5e**
   (added by the user at T5c) the captured artifacts' message after Eagle Eye's (§12.21).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`

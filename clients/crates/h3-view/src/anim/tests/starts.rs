@@ -16,8 +16,8 @@ use super::{
     timeline,
 };
 use crate::anim::{
-    BAD_MORALE, Command, Logged, MANA_DRAIN, MagicLook, POISON, POISON_TENTH, REGENERATION, Sound,
-    Speed, Stage, Timeline, drain_of, passes,
+    BAD_MORALE, Casts, Command, Logged, MANA_DRAIN, MagicLook, POISON, POISON_TENTH, REGENERATION,
+    Sound, Speed, Stage, Timeline, drain_of, passes,
 };
 use crate::sound::Lengths;
 
@@ -45,15 +45,30 @@ fn play_starts(
     commands: &[(Option<u32>, Vec<Event>)],
     lengths: Option<&Lengths>,
 ) -> Timeline {
+    play_with(
+        snapshot,
+        commands,
+        lengths,
+        &starts_magic(),
+        &strike_casts(),
+    )
+}
+
+/// [`play_starts`] with the stage's own animations and spells.
+fn play_with(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    lengths: Option<&Lengths>,
+    magic: &BTreeMap<u8, MagicLook>,
+    casts: &Casts,
+) -> Timeline {
     let layout = layout();
-    let magic = starts_magic();
-    let casts = strike_casts();
     let stage = Stage {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
-        magic: &magic,
-        casts: &casts,
+        magic,
+        casts,
         bugs: Bugs::Original,
         siege: None,
         lengths,
@@ -441,4 +456,68 @@ fn a_stack_the_timeline_does_not_know_draws_nothing() {
         assert!(shown(&t, number).is_empty());
     }
     assert!(cues(&t).iter().all(|c| c.1 != 9));
+}
+
+#[test]
+fn without_their_animations_the_effects_still_write_and_wait() {
+    // Tables without the three animations or Poison's spell: the lines still come, the
+    // regeneration's and drain's sounds still hold the turn; no animation is drawn and the tenth
+    // has no sound to wait for.
+    let events = vec![
+        moved(0, 86, 87),
+        Event::TurnStarted { stack: 1 },
+        Event::Regenerated {
+            stack: 1,
+            hit_points: 3,
+        },
+        Event::ManaDrained {
+            stack: 1,
+            side: Side::Attacker,
+            mana: 2,
+        },
+        Event::RoundStarted { round: 2 },
+        Event::Poisoned {
+            stack: 1,
+            hit_points: 4,
+        },
+        Event::TurnStarted { stack: 0 },
+    ];
+    let long = Lengths {
+        named: [(Sound::Heal, 1_000), (Sound::ManaDrain, 2_000)]
+            .into_iter()
+            .collect(),
+        ..Lengths::default()
+    };
+    let none = BTreeMap::new();
+    let t = play_with(
+        &two(),
+        &[(Some(0), events)],
+        Some(&long),
+        &none,
+        &Casts::default(),
+    );
+    assert!(t.magics.is_empty());
+    let line = logged(&t, |l| {
+        *l == Logged::Regenerated {
+            stack: 1,
+            count: 40,
+        }
+    });
+    let drain = Logged::ManaDrained {
+        stack: 1,
+        count: 40,
+        side: 0,
+    };
+    let line = line.unwrap_or_default();
+    assert_eq!(logged(&t, |l| *l == drain), Some(line + 1_000));
+    let tenth = logged(&t, |l| {
+        *l == Logged::Poisoned {
+            stack: 1,
+            count: 40,
+        }
+    });
+    // The hit still plays (`strike_animation` with no animation to show beside it).
+    assert!(tenth < logged(&t, |l| *l == Logged::Round));
+    assert!(tenth.is_some_and(|at| at >= line + 3_000));
+    assert!(cues(&t).iter().all(|c| !matches!(c.2, Sound::SpellFile(_))));
 }
