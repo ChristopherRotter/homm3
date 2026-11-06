@@ -23,6 +23,8 @@ h3-pack.workspace = true
 h3-pack-adventure.workspace = true
 h3-pack-battle.workspace = true
 h3-pack-towns.workspace = true
+# The town context (E09 T9b1): the plans' checks of the towns' income and records.
+h3-towns.workspace = true
 proptest.workspace = true
 
 # Batch E4's scorer (E08 T32a): its tests check its draws against the engine's.

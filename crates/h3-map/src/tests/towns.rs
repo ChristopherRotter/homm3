@@ -21,8 +21,9 @@ use crate::model::{
 use crate::{ImportError, Unsupported, import};
 
 /// A town's template: its picture blocks five tiles of its row and three of the row above, its
-/// entrance two columns left of its anchor is blocked and visited (the shipped towns' masks).
-fn town_template(class: u32, subclass: u32) -> crate::model::Template {
+/// entrance two columns left of its anchor is blocked and visited (the shipped towns' masks); the
+/// property plans' towns too (E09 T9b1, [`super::play::TownPlan`]).
+pub(super) fn town_template(class: u32, subclass: u32) -> crate::model::Template {
     crate::model::Template {
         subclass,
         ..template(

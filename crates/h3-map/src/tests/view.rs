@@ -25,6 +25,14 @@ use super::play::{
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
+/// The plans without their towns (E09 T9b1): the view properties meet the towns with E09 T9b2.
+fn townless() -> impl Strategy<Value = super::play::Plan> {
+    plan().prop_map(|plan| super::play::Plan {
+        towns: Vec::new(),
+        ..plan
+    })
+}
+
 /// What the hygiene test changes of a game where the viewer cannot see it, drawn as the plan is.
 #[derive(Debug, Clone)]
 struct Unseen {
@@ -1571,7 +1579,7 @@ proptest! {
     /// ([`check_hire_sources`]).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
-        plan in plan(),
+        plan in townless(),
         strict in any::<bool>(),
         seed in any::<u64>(),
         steps in steps(),
@@ -1792,7 +1800,7 @@ proptest! {
     /// shown of the dwellings and the camps ([`check_hire_sources`]), at the start too.
     #[test]
     fn views_move_as_the_events_say(
-        plan in plan(),
+        plan in townless(),
         strict in any::<bool>(),
         seed in any::<u64>(),
         steps in steps(),
@@ -1848,6 +1856,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        towns: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -1942,6 +1951,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         exchange: None,
         events: Vec::new(),
         owners: vec![Some(0)],
+        towns: Vec::new(),
     };
     let m = lay_out(&plan);
     let random = |m: &RawMap| -> Vec<(Spot, u32)> {
@@ -2015,6 +2025,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        towns: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -2085,6 +2096,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        towns: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {
@@ -2249,7 +2261,11 @@ fn increment_9_s_objects_show_their_owners_never_their_draws() {
 fn boat_visits_are_told_as_they_happen() {
     use proptest::strategy::ValueTree;
     let mut runner = proptest::test_runner::TestRunner::deterministic();
-    let strategy = super::play::afloat_plans();
+    // E09 T9b1: without the plans' towns, which the view properties meet with E09 T9b2.
+    let strategy = super::play::afloat_plans().prop_map(|(plan, strict, seed, steps)| {
+        let towns = Vec::new();
+        (super::play::Plan { towns, ..plan }, strict, seed, steps)
+    });
     for _ in 0..128 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };

@@ -33,6 +33,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-06 (the town lane, E09 T9b1, `town/e09-t9b1`, `cross-lane`; **for your plans**):
+  `h3-map`'s `play.rs` plays towns. `Plan` has a new field `towns` (`TownPlan`, drawn last by
+  `towns()`; a plan literal sets `towns: Vec::new()`), laid out by `towns_laid_out` after every
+  other object but the boats, each with a template of its own: a town's template is no `KINDS`
+  entry, so code that reads a kind from a template skips `Body::Town` first (the town lane's
+  `TRAPS.md`). New: `Step::Town` with its runs in `steps()` (as `Step::Hire` on a map without
+  towns), `check_towns`, `check_town_battle_end` (`check_unowned_battle_end`'s town arm), the
+  entrances in `check_invariants`, the towns' income in `check_income`, a siege's merge in
+  `check_isolation` (`told_army`), the cover test `the_plans_capture_and_besiege_towns`;
+  `h3-towns` a dev-dependency of `h3-map`. `view.rs` draws its plans without towns (`townless`)
+  until E09 T9b2 teaches `vary` and `check_told` the towns.
 - 2026-11-06 (the town lane, E09 T9a, `town/e09-t9a`, `cross-lane`; **for your replays and the
   writer**): `h3_map::writer`'s `MapObject` has two new variants, `AnyTown` (a town of any kind:
   random with its alignment, a main town in the header, a name, random garrison stacks) and
