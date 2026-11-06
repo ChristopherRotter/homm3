@@ -25,7 +25,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   asked; #762 merged; the user added **T5e**, the captured artifacts' message). T5d cut in two
   by the user (2026-11-06): T5d1 done (#771, design §12.22); T5d2 cut in two by the user
   (2026-11-06): **T5d2a done** (design §12.23: Death Blow, an Ogre Mage's Bloodlust and its
-  glow; `blows` and `blows-sound` as recorded; the PR named in the newest session: check it
+  glow; `blows` and `blows-sound` as recorded; #774: check it
   first). **Next: T5d2b** (Ice Bolt's explosion, the Familiars' channel; QUEUE), T5e, T6, T7;
   then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -65,7 +65,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-06, E17 M6 T5d2a (done; `client/e17-m6-t5d2a`).** The user cut T5d2 in two
+- **2026-11-06, E17 M6 T5d2a (done; `client/e17-m6-t5d2a`, #774).** The user cut T5d2 in two
   (T5d2b: Ice Bolt's explosion, the Familiars' channel). The original data staged by the file
   tool (the PC's shell did not start); the sandbox restarted during the setup's baseline (CI's
   green run on `master` stood in). Read and built (`anim/creature.rs`, the harness's roll
