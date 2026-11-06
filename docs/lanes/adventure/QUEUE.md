@@ -4,26 +4,30 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 next, T100 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles), T99b next; T100 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T99 — batch E11's maps: the writer's five classes, the spec's fields, the two specs**
-(decisions 269, 274; as T89 for batch E10)
+**E08 T99b — batch E11's specs E11a and E11b**
+(decisions 269, 274, 275; as T89b for batch E10)
 
-- **Scope:** `h3_map::writer` writes classes 43 to 45 (by subclass, the channel), 103 and 111 on
-  either level, without a body, as the import reads them (a round trip; its class table checked),
-  for the batch and for T106's fixtures; the spec's fields in `h3-experiment` (`cross-lane`, the
-  user's consent as T89's): the five classes by picture and subclass (`[[map.object]]`), a hero in
-  a boat on or beside a Whirlpool's tile and an empty boat on one (batch E8's boats), the worn
-  Hats (batch E8's artifacts), the checks of E11-9's walk order and truncated distances and of
-  E11-16's and E11-17's tiles; the specs `experiments/specs/E08-batch-11a.toml` (E11-1 to E11-13,
-  E11-18, E11-19; days 1 and 2) and `-11b.toml` (E11-14 to E11-17; one day) with their templates
-  and predictions (survey §12's rows, design §16's added row and predictions); each walk priced
-  (`TRAPS.md`).
-- **Inputs:** `E08-design.md` §16 (and §1, §4 for the classes); the survey
-  `docs/rules/surveys/E08-teleporters.md` §12 (the rows, what the spec lacks), §1 to §5; T89a's and
-  T89b's records in `E08-log.md` (batch E10's writer and specs); `docs/experiments/README.md`.
-- **Depends on:** T98b2 and its checkpoint ADV-Q46 (done). **Status:** ready; its cut confirmed
-  with the user at its start. Needs the original data staged for the spec's templates (as T89).
+- **Scope:** the specs `experiments/specs/E08-batch-11a.toml` (E11-1 to E11-13, E11-18, E11-19;
+  days 1 and 2; E11-18 needs Blue's turn and Red's next) and `-11b.toml` (E11-14 to E11-17; one
+  day), compiled with the staged tables into their maps and templates (the stamps), with their
+  predictions (survey §12's rows, design §16's added row and predictions) and the batch's row in
+  `docs/experiments/README.md`'s status (`cross-lane`, as T89b); each walk priced (`TRAPS.md`;
+  the priced copy without the boats on Whirlpools' tiles, which the engine's setup refuses); a
+  fresh reviewer against survey §12, the sections the rows cite and design §16.
+- **Built by T99a** (`docs/experiments/README.md`, "Increment 11's objects"): the five classes by
+  picture on either `level`; a gate's `pair` and `vcmi_pair`, checked (E11-9: one surface gate,
+  two below at one truncated distance, the farther by squares first in the walk; its leftover
+  gate can serve E11-8); an empty boat on a Whirlpool's tile, written after it, and `vcmi_tile`
+  (E11-17's W2 tile and its empty boat on W3); the Hats by name. A hero starts in no boat: it
+  boards one from the shore (on a Whirlpool's tile for E11-16 and E11-17: unread whether the
+  original's step from the shore onto such a tile boards the boat; the reviewer weighs a jump
+  into the Whirlpool as the fallback).
+- **Inputs:** `E08-design.md` §16; the survey `docs/rules/surveys/E08-teleporters.md` §12 (the
+  rows), §1 to §5; T89b's and T99a's records in `E08-log.md`; `docs/experiments/README.md`.
+- **Depends on:** T99a. **Status:** ready; its cut confirmed with the user at its start. Needs the
+  original data staged for the templates.
 
 ## Inbox
 

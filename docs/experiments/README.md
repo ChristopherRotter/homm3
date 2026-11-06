@@ -177,7 +177,7 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   `AVXmapw0` water, `AVXmaps0` land, `AVXmapu0` subterranean; since E08 T36a the trees, classes
   135, 137 and 155 in `Objects.txt` (`AVLtr3d0`, `avlautr0`, `AVLPNTR0`: one tile), and the
   Border Gates, `AVXbgt00` light blue … `AVXbgt70` black) and `at`, its bottom-right tile, on
-  the surface (the land Cartographer covers `at` and its entrance, the tile west of it; a Border
+  the surface or, since E08 T99a, on `level = 1` (the land Cartographer covers `at` and its entrance, the tile west of it; a Border
   Gate `at` and the two tiles west of it, the middle one its entrance). No hero, monster, pile or
   town stands on a tile it covers: a hero comes to it in play.
   `level_limit` (E08 T32a): the scenario's level limit (0, the default: none).
@@ -275,6 +275,29 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   its creature). `[map] teams = [["red", "blue"]]`: the map's alliances, each team's colours (a
   colour that plays, on one team at most; a playing colour in none plays alone); the template's
   top names them. A hero's seven stacks with a creature in several needed nothing new (`army`).
+  **Increment 11's objects** (E08 T99a, batch E11; survey `docs/rules/surveys/E08-teleporters.md`
+  §2, §12, increment 11's design note §16): `[[map.object]]` takes the teleporters on either
+  `level`, each by its picture, which names the class and the channel: the one-way entrances
+  `AVXmn1b0`, `AVXmn1r0`, `AVXmn1y0` (channels 0 to 2) and SoD's `AVXmn4i0` … `AVXmn8i0` (3 to
+  7), their exits `AVXmx1b0`, `AVXmx1r0`, `AVXmx1y0`, `AVXmn4o0` … `AVXmn8o0`, the two-way
+  monoliths `AVXmn2g0`, `AVXmn2o0`, `AVXmn2p0`, `AVXmn4b0` … `AVXmn8b0`: channels 0 to 3 entered
+  at `at`, 4 to 7 at the tile west of it, which they also block; the Subterranean Gate `AvTCave`
+  (three tiles ending on `at` and the middle one above them, entered at the tile west of `at`);
+  the Whirlpool `AVXwhrl0` (the 3 × 2 tiles ending on `at`, all six entered, on water). A gate
+  takes `pair` (the `at` of the gate on the other level it is paired with, or `"none"`) and
+  `vcmi_pair`, checked when the map is built: the original walks the gates' entrances by level,
+  row and column and pairs each unpaired one with the unpaired later one on another level at the
+  least truncated distance `⌊√(dx² + dy²)⌋`, the first on a tie; VCMI takes the least squared
+  distance in the same order (D-56); a failed check lists the other level's gates with both
+  distances. An empty boat may lie on a Whirlpool's tile (E11-16, E11-17), written after the
+  Whirlpool (the game takes a tile's last object, unread for a boat: the batch sees it), one a
+  tile; `vcmi_tile = true` checks that it is the tile VCMI takes for the Whirlpool's visitable
+  one (VCMI 1.7.5's `calculateVisitableOffset`: the visitable tile nearest the anchor, its row
+  first; for `AVXwhrl0` the anchor), `false` that it is another. No hero starts in a boat (the
+  map gives a hero placed on water none): a hero on the shore beside the boat boards it in play.
+  The engine refuses such a map (a boat on a tile an object covers), so a walk's price is read on
+  a copy without those boats. The worn Hats needed nothing new (`artifacts = { head = "Sea
+  Captain's Hat" }`, batch E8's).
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`

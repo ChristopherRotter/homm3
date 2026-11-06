@@ -13034,3 +13034,65 @@ as proposed. Both drafts' status accepted; T99 is ready.
 
 **Verify:** docs only: the docs gates (`check-docs`, `check-lane`, `doc-drift`). No code, version or
 replay moved; CI's run on the pull request is the record.
+
+### Increment 11, round 2: T99a, the writer's teleporters and the spec's fields (2026-11-06, `adventure/e08-t99a`, `cross-lane`)
+
+Baseline: `master` at 1b1792b (#759, T98b2, and the town lane's #758 merged; CI green on it; the
+sandbox's baseline verified its code with the original data). The executables, the DLLs, the four
+LODs, the sound and video archives, `maps.tar`, `extracted.tar` and the 40 MP3s staged at the
+start (the computer's shell did not start; its file tools left during the task, as announced).
+**The cut** (decision 275): T99 in two at the code's seam, as T89; T99a this.
+
+**The writer** (`h3_map::writer`): `PLAIN_OBJECTS` takes 43, 44, 45, 103 and 111 (26 classes; no
+body; a level's objects through `Underground::objects`, as before); the constants
+`MONOLITH_ONE_WAY_ENTRANCE_OBJECT`, `MONOLITH_ONE_WAY_EXIT_OBJECT`, `MONOLITH_TWO_WAY_OBJECT`,
+`SUBTERRANEAN_GATE_OBJECT`, `WHIRLPOOL_OBJECT`, `BOAT_OBJECT`. Tests (`tests/teleporters.rs`): the
+five classes on both levels (channels 0 and 7) and an empty boat on a Whirlpool's anchor read back
+as written, without a body, the templates' masks as the game's (a monolith of channels 0 to 3
+visited on its anchor, of 4 to 7 one left with two blocked, the gate one left with four blocked,
+the Whirlpool's six blocked and visitable, water only); the import as it reads them until T103:
+the class table gives no subclass of the five a type, each a blocker on its level with its
+picture's tiles, the boat the map's, and the setup refuses the boat on the Whirlpool's tile
+(`SetupError::Boat`, a boat on a tile an object covers; no shipped map holds one, survey §1).
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane` with the user's consent as T89a's):
+`[[map.object]]` takes `level` (1 needs `[map.underground]`) and the teleporters by picture
+(`Tables::plains` follows `PLAIN_OBJECTS`; its test with the five). A gate takes `pair` and
+`vcmi_pair` (the paired gate's `at`, or `"none"`), checked when the map is built: the gates'
+entrances in the walk's order (level, row, column), each unpaired one paired with the unpaired
+later one on another level at the least truncated distance (`u32::isqrt` of the squared one: exact,
+no float) or, VCMI's, the least squared one, the first on a tie; a failed check names the rule and
+lists the other level's gates with both distances. An empty boat may lie on a Whirlpool's tile,
+written after it, one a tile (left out of the two-objects test); `vcmi_tile` checks whether it is
+VCMI's visitable tile. Refused: `pair` off a gate, `vcmi_tile` off a boat, either on more than one
+copy, a `vcmi_tile` boat on no Whirlpool, a boat before its Whirlpool, two boats on one Whirlpool
+tile, a word other than `"none"`, a gate's template without one entrance, a level past the map's.
+Tests: `builds_the_teleporters` (E11-9's geometry: G above at (10, 10), Uf below at (14, 9), first
+in the walk at 17 squared, and Un at (6, 10) at 16, both truncated 4: the original pairs G with
+Uf, VCMI with Un), `gate_pairs_and_whirlpool_tiles_follow_the_rules`,
+`rejects_mistakes_in_the_teleporters`. Checked with the staged tables: a spec of SoD's channels 3
+and 7, a two-way channel 2 in a grid, E11-9's gates and a Whirlpool on each level with a boat on
+VCMI's tile compiles (in `/tmp`, not committed).
+
+**Agent's calls** (change freely): a hero in a boat is a hero on the shore beside an empty boat,
+as batch E8's (the map gives a hero placed on water none); for E11-16 and E11-17 the boat lies on
+the Whirlpool's tile, written after it so that it is the tile's last object (the game takes the
+last, as for two grounds; unread for a boat on a teleporter: the batch sees whether the shore's
+step boards it); the worn Hats needed nothing new (`artifacts = { head = … }`, batch E8's).
+
+**VCMI read** (1.7.5, for D-56 and D-57; survey §12's note): `CGSubterraneanGate::postInit` sorts
+every gate by `visitablePos` (level, row, column: the original's walk) and pairs only toward a
+deeper level (the same for two levels), the least squared distance, the first on a tie;
+`ObjectTemplate::calculateVisitableOffset` takes the visitable tile nearest the anchor (its row
+first, then its column; the map's masks read as `usedTiles[5 − i][7 − j]`), so a Whirlpool's VCMI
+tile is its anchor.
+
+**Versions:** none moved (the writer and the spec; the import reads the classes as before).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data`
+passed every step it runs but `check-lane` (by design on a `cross-lane` branch; `cargo xtask
+check-lane --cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo check --workspace
+--all-targets` and clippy with `-D warnings` on `h3-experiment` and `h3-map` clean (clippy's
+`type_complexity` asked for `LevelTile`). The writer's public types are unchanged (constants
+added, `PLAIN_OBJECTS` longer), so the clients' crates were not checked apart. CI's full verify on
+the pull request is the record.
