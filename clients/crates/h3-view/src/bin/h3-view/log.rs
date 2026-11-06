@@ -233,6 +233,26 @@ impl Writer {
         ))
     }
 
+    /// The box with up to eight pictures `message_box_pictures` shows (E17 M6 T5c, design
+    /// §12.21: Eagle Eye's message), `text` and `pictures`, its frame in `player`'s colours, laid
+    /// out in the layout's fonts; none without them.
+    pub fn pictures(
+        &self,
+        layout: &BattleLayout,
+        text: &str,
+        pictures: &[h3_view::message::Picture],
+        player: u8,
+    ) -> Option<h3_view::message::MessageBox> {
+        let (medium, small) = self.message_fonts.as_ref()?;
+        Some(h3_view::message::pictures(
+            &layout.message,
+            (medium, small),
+            text,
+            pictures,
+            player,
+        ))
+    }
+
     /// The panel over the record's battle through `logged`, each turn's acting side the
     /// timeline's `controllers` ([`panels`]; E17 M5 T5b2).
     pub fn panels(

@@ -235,7 +235,7 @@ pub fn end_tune(
 }
 
 /// The C library's `rand()`: 15 bits of a linear congruential sequence.
-fn rand(state: &mut u32) -> u32 {
+pub(crate) fn rand(state: &mut u32) -> u32 {
     *state = state.wrapping_mul(214_013).wrapping_add(2_531_011);
     (*state >> 16) & 0x7FFF
 }

@@ -1029,6 +1029,11 @@ pub enum Sound {
     /// A Land Mine's blast, cued on the stack it hurts (`landkill.wav`, `play_sound_file` from
     /// `land_mine_trigger` 0x59FC63), as [`Sound::Drawbridge`].
     Mine,
+    /// A pickup sound (`pickup0N.82M`, N from 1 to 7) as a box of Eagle Eye's message opens after
+    /// the result window (E17 M6 T5c, design §12.21): the battle's sound by name (the asset
+    /// tables' `pickup_sounds`), category 3 as good luck's (`play_sound_async` 0x4771E8); the
+    /// window plays it as the box opens, no timeline cues it.
+    Pickup(u8),
 }
 
 /// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the

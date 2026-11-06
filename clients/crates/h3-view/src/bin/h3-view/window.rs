@@ -1639,7 +1639,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             }
         }
         let battle_ms = clock.ms(now);
+        // A box of Eagle Eye's message opened (E17 M6 T5c): its pickup sound starts, category 3
+        // as good luck's, on no stack.
+        let pickup = battle.take_pickup();
         if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
+            if let Some(n) = pickup {
+                let cue = h3_view::anim::Cue {
+                    at: battle_ms,
+                    stack: 0,
+                    sound: h3_view::anim::Sound::Pickup(n),
+                    stop: false,
+                    creature: None,
+                };
+                p.cue(lib, &cue);
+            }
             if !clock.paused() {
                 while let Some(c) = battle
                     .timeline()
