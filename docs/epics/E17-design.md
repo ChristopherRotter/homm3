@@ -2343,7 +2343,7 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   half, to at most 110, while it takes more than one line and more than 2/3 of its width). One
   picture: its slot centred ((box − slot width) / 2), its bottom at box height − caption height −
   30 − 50; its caption below it, centred on it. (Two to eight pictures in up to two rows of four,
-  the caption's overhang and 40 between them: not needed by the battle, not built.)
+  the caption's overhang and 40 between them: §12.21, built at M6 T5c.)
 - **The frame** (0x48FF00 with the box's corner and size, flags 0x12): `diboxbck.pcx` (256 ×
   256) tiled from the box's corner over its size, each tile a picture item (ids from 200, flags
   0x800) cut to what is left of the box (a picture item draws at most its size of its picture
@@ -2510,9 +2510,9 @@ without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `bat
   no Learning (the client's heroes have none), a hero-less side's face not captured (the
   harness's maps give both sides a hero); a server's game whose content check is not `Same`
   reads no creature's values (the local ruleset's hit points and AI values may not be the
-  game's): its experience 0, a hero-less side no face (T8b2, R5b-2). *Not built:* what
-  `battle_end` does after the window closes: the experience given (0x477948) and Eagle Eye's
-  message (R5b-4).
+  game's): its experience 0, a hero-less side no face (T8b2, R5b-2). What `battle_end` does
+  after the window closes (R5b-4): §12.21 (M6 T5c: the experience shows nothing, Eagle Eye's
+  message built).
 - **Since T8b2 (R5b):** the window is always built, once: what the client lacks is drawn empty
   (a hero type the manifest does not name: a hero with an empty name, no portrait, its +500
   kept; a hero type without a portrait in the tables, a creature without an original id: a DEF
@@ -7178,7 +7178,7 @@ whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 w
   7: 4 + 3). Over the filled slots: `widest` the largest of every picture's and caption's width,
   `overhang` the largest caption width − picture width (at least 0), each row's height the largest
   picture height of its slots (slot index / the first row's count) and its caption height the
-  largest caption height. The box's least width for them: per row × `widest` + (per row − 1) ×
+  largest caption height of its slots (0x4F5E54: by row too). The box's least width for them: per row × `widest` + (per row − 1) ×
   (`overhang` + 40) + 40 (the box then as §7.19). Its height: the text's + 60, + 20 + each row's
   height and caption height + 20 between rows, + 50 for the buttons; up to 64, at least 128; the
   text's top 30 + (box − that) / 2. The rows from the bottom: the first row's caption top is box
@@ -7198,3 +7198,27 @@ whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 w
 - **The captured artifacts' message** (0x4772B0, for T5e; read in part): over the artifacts
   `battle_capture_artifacts` 0x46A070 took (before the window), in boxes of eight artifact
   pictures (type 8), each box GENRLTXT 31 and its own pickup sound as above, through 0x4F7690.
+- **Built (the client's):** `h3_view::message::pictures` (the box of 0x4F7690: style 1, the text
+  at x 25, the first eight pictures by `Rows`' `of`, `width`, `height`, `places` and `row_xs`;
+  each slot's DEF item and caption ids of their own, `slot_ids` from `PICTURES` 0xFF00; no item
+  for an empty caption, in `layout`'s box too; the hidden frame not drawn), `layout`'s one
+  picture through the same builder; `h3_view::eagle_eye` (`boxes`: `Pick`s by their original
+  number, eight a `Told`; `pickups`); the catalogue's `result.eagle-eye.learnt`, `.comma`, `.and`,
+  `.stop` (the battle client's own, as the map's `map.hint.comma` and `map.hint.and` read the
+  same strings); the asset tables' `pickup_sounds` (harvested from 0x670268), `anim::Sound::Pickup`
+  (category 3 at the loader's volume, as good luck's). The binary: `results::eagle_eye` (the
+  shown side's hero's `heroes[side].learned` by the manifest's spell keys; `winner_shown`, the
+  window's), `Battle::eagle_eye_boxes` (laid out as the window opens, its frame in the window's
+  player's colours), `Asked::EagleEye` (the window's OK opens the first box, each OK the next, the
+  last one's `MessageDid::Ended`; over the screen darkened, the battle behind at its end:
+  `Battle::darkened`; the default cursor's frame 0), `Battle::take_pickup` (the window cues the
+  box's sound as it opens), `Writer::pictures`; the stills' (`spellbook::Ended`,
+  `Still::darkened`) and the sequences' (`Interface::closes` and `eagle_eye`, `sequences::closes`:
+  a `key:Return`, `key:Escape` or `click:` from the battle's end on). *Provisional:* N from the C
+  library's `rand()` sequence at the viewer's seed (the battle's generator is the engine's, not
+  shared); a sequence's close by any of those actions (a click trusted to be on the OK, Escape
+  counted on Eagle Eye's box too, which has no Cancel); after the last box the darkened screen
+  alone (the original's adventure map is the map client's); a pick the tables lack left out. A
+  server's seat shows none: `results::served` leaves the heroes' outcomes empty, the wire telling
+  the picks only in a seat's own snapshot (`OwnHero::learned`) and no event a pick (the
+  protocol's gap, not changed here).
