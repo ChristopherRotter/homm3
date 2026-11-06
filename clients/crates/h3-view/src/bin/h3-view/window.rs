@@ -403,13 +403,15 @@ pub fn run(options: &Options) -> ExitCode {
 }
 
 /// A frame composed ahead of its time: the change it shows, its draw list, the frame and the
-/// frame widened.
+/// frame widened; `held`, at the end the battle holds at for the computer's cast (E17 M6 T5b2b,
+/// [`After::Held`]): the frame shown before, made again when it is due.
 #[derive(Debug)]
 struct Frame {
     t: u32,
     list: Vec<Draw>,
     screen: Screen,
     xrgb: Vec<u32>,
+    held: bool,
 }
 
 /// The times at which the battle may change, timed as far as needed: a battle still played is
@@ -455,27 +457,63 @@ impl Changes {
         Ok(self.times.get(i.wrapping_sub(1)).copied().unwrap_or(0))
     }
 
-    /// The first change after `t` (none within [`LOOK_AHEAD_MS`]).
-    fn after(&mut self, battle: &mut Battle<'_>, t: u32) -> Result<Option<u32>, String> {
+    /// The first change after `t` (none within [`LOOK_AHEAD_MS`]), and whether it is the end of
+    /// the computer's cast for the human's hero the battle holds at (E17 M6 T5b2b, [`After`]).
+    fn after(&mut self, battle: &mut Battle<'_>, t: u32) -> Result<Option<(u32, bool)>, String> {
         let limit = t.saturating_add(LOOK_AHEAD_MS);
         loop {
             let i = self.times.partition_point(|&c| c <= t);
             let next = self.times.get(i).copied();
-            if battle.playing() && next.is_none_or(|n| n >= battle.timeline().end) {
-                battle.grow_one()?;
-                self.grown(battle);
-                continue;
+            let grows = (battle.playing(), battle.timeline().end);
+            match after(next, t, grows, || battle.cast_end()) {
+                After::Grow => {
+                    battle.grow_one()?;
+                    self.grown(battle);
+                }
+                After::Held(end) => return Ok(Some((end, true))),
+                After::Change(n) => return Ok(Some((n, false))),
+                After::Further if self.until >= limit => return Ok(None),
+                After::Further => {
+                    let more = self.until.saturating_add(1);
+                    self.reach(battle, more)?;
+                }
             }
-            if next.is_some() {
-                return Ok(next);
-            }
-            if self.until >= limit {
-                return Ok(None);
-            }
-            let more = self.until.saturating_add(1);
-            self.reach(battle, more)?;
         }
     }
+}
+
+/// What [`Changes::after`] does with the first change `next` after `t`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum After {
+    /// It gives it.
+    Change(u32),
+    /// The battle plays on first: what comes at or past its timeline's end is the next
+    /// command's (E17 M5 T1b).
+    Grow,
+    /// It gives the timeline's end, the battle held there while the computer's cast for the
+    /// human's hero it played last on a turn Auto Combat plays lasts (E17 M6 T5b2b, CLT-Q61,
+    /// `Battle::cast_end`): the stack's action is asked only once the clock reaches that end, a
+    /// key or a button pressed before the cast's end stopping Auto Combat there (`at < end`, as
+    /// the comparisons'), its frame made then.
+    Held(u32),
+    /// None so far: the times are read further.
+    Further,
+}
+
+/// [`After`] by the first change `next` after `t`, whether the battle is `playing` with its
+/// timeline ending at `end`, and (asked only where it would play on) the end of the cast it
+/// holds for (`cast_end`; one passed by `t` holds nothing).
+fn after(
+    next: Option<u32>,
+    t: u32,
+    (playing, end): (bool, u32),
+    cast_end: impl FnOnce() -> Option<u32>,
+) -> After {
+    if playing && next.is_none_or(|n| n >= end) {
+        let held = cast_end().is_some_and(|e| t < e);
+        return if held { After::Held(end) } else { After::Grow };
+    }
+    next.map_or(After::Further, After::Change)
 }
 
 /// The frame of the change at `t`.
@@ -488,6 +526,7 @@ fn frame_at(battle: &mut Battle<'_>, t: u32) -> Result<Frame, String> {
         list,
         screen,
         xrgb,
+        held: false,
     })
 }
 
@@ -516,7 +555,18 @@ fn next_frame(
         };
     }
     let mut t = shown.t;
-    while let Some(next) = changes.after(battle, t)? {
+    while let Some((next, held)) = changes.after(battle, t)? {
+        // The end the battle holds at for the computer's cast (E17 M6 T5b2b): a frame to wake
+        // at, made then.
+        if held {
+            return Ok(Some(Frame {
+                t: next,
+                list: shown.list.clone(),
+                screen: shown.screen.clone(),
+                xrgb: shown.xrgb.clone(),
+                held,
+            }));
+        }
         // Past the end of a still battle only the idle steps come, each drawing the same.
         if !battle.playing() && next > battle.timeline().end && battle.timeline().still() {
             return Ok(None);
@@ -530,6 +580,7 @@ fn next_frame(
                 list,
                 screen,
                 xrgb,
+                held,
             }));
         }
         t = next;
@@ -811,12 +862,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
         // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it. A
         // human's turn Auto Combat does not play reads no stop (E17 M6 T4b1): its start drops
-        // the key, as with Auto Combat off (CLT-Q45 (2): the original's acts there).
+        // the key, as with Auto Combat off (CLT-Q45 (2): the original's acts there). E17 M6
+        // T5b2b (CLT-Q61): a stop read at the end of the computer's cast for the hero is that
+        // turn's, the key acting there (*provisional*: read, not recorded).
+        let cast_stop = stopped_by.and_then(|(_, turn)| battle.auto_stopped_at(turn));
         if let Some((command, turn)) = stopped_by
-            && let Some(&(start, _)) = battle.timeline().turns.get(turn - 1)
+            && let Some((start, read)) = stop_start(&battle.timeline().turns, turn, cast_stop)
         {
             let last = battle.timeline().turns.len();
-            let at_start = || battle.auto_at_start(turn);
+            let at_start = || read && battle.auto_at_start(turn);
             let carry = carry((battle.waiting(), last, turn), at_start);
             if carry != Carry::Wait {
                 stopped_by = None;
@@ -1612,10 +1666,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             None => None,
             Some(d) => {
                 let latest = changes.latest(&mut battle, battle_ms)?;
-                if latest <= d.t {
+                if latest <= d.t && !d.held {
                     Some(d)
                 } else {
-                    report.skipped += 1;
+                    // A later change due already; or the cast's end held (E17 M6 T5b2b): the
+                    // battle played on now, the clock there, its frame made now.
+                    report.skipped += usize::from(!d.held);
                     let late = frame_at(&mut battle, latest)?;
                     match shown.as_mut().filter(|s| s.list == late.list) {
                         Some(s) => {
@@ -1891,6 +1947,20 @@ fn carry((waiting, last, turn): (bool, usize, usize), at_start: impl FnOnce() ->
         Carry::Drop
     } else {
         Carry::Wait
+    }
+}
+
+/// When the key that stopped Auto Combat acts on the stop's turn `turn` (E17 M5 T4c1; E17 M6
+/// T5b2b, CLT-Q61): at the end of the computer's cast its stop was read at (`cast_stop`,
+/// `Battle::auto_stopped_at`: Auto Combat off there, no start to drop it), else at the turn's
+/// start in `turns` once it started; with whether Auto Combat's state at that start may drop it
+/// ([`carry`]'s `at_start`). None: the turn has not started.
+fn stop_start(turns: &[(u32, u8)], turn: usize, cast_stop: Option<u32>) -> Option<(u32, bool)> {
+    match cast_stop {
+        Some(end) => Some((end, false)),
+        None => (turn.checked_sub(1))
+            .and_then(|i| turns.get(i))
+            .map(|&(t, _)| (t, true)),
     }
 }
 
@@ -2583,6 +2653,50 @@ mod tests {
         assert_eq!(carry((true, 4, 3), || unreachable!()), Carry::Drop);
         assert_eq!(carry((false, 3, 3), || unreachable!()), Carry::Wait);
         assert_eq!(carry((true, 2, 3), || unreachable!()), Carry::Wait);
+    }
+
+    #[test]
+    fn the_stop_s_key_acts_at_the_cast_s_end_or_at_the_turn_s_start() {
+        // E17 M6 T5b2b (the reviewer, CLT-Q61): a stop read at the computer's cast's end (that
+        // turn's, Auto Combat off there) acts at that end, no start to drop it; else at the
+        // stop's turn's start once it started, Auto Combat's state then asked.
+        let turns = [(300, 0), (900, 1)];
+        assert_eq!(stop_start(&turns, 1, Some(600)), Some((600, false)));
+        assert_eq!(stop_start(&turns, 2, None), Some((900, true)));
+        assert_eq!(stop_start(&turns, 1, None), Some((300, true)));
+        assert_eq!(stop_start(&turns, 3, None), None);
+        assert_eq!(stop_start(&turns, 0, None), None);
+    }
+
+    #[test]
+    fn the_battle_holds_at_the_computer_s_cast_s_end_until_the_clock_reaches_it() {
+        // E17 M6 T5b2b (the reviewer, CLT-Q61): the cast (to 900) the battle's last action on a
+        // turn Auto Combat plays: the change at its end is given held, the battle not played on,
+        // from any time before it; from its end the next command comes first. Else a change
+        // before the end is given, one at or past it plays on, none reads further.
+        let held = || Some(900);
+        assert_eq!(after(Some(900), 850, (true, 900), held), After::Held(900));
+        assert_eq!(after(None, 100, (true, 900), held), After::Held(900));
+        assert_eq!(after(Some(1000), 900, (true, 900), held), After::Grow);
+        assert_eq!(after(Some(900), 850, (true, 900), || None), After::Grow);
+        // A timeline ending after the cast: held to its end, unless the cast's end passed.
+        assert_eq!(
+            after(Some(1000), 850, (true, 1000), held),
+            After::Held(1000)
+        );
+        assert_eq!(after(Some(1000), 950, (true, 1000), held), After::Grow);
+        assert_eq!(
+            after(Some(400), 300, (true, 900), || unreachable!()),
+            After::Change(400)
+        );
+        assert_eq!(
+            after(Some(950), 900, (false, 900), || unreachable!()),
+            After::Change(950)
+        );
+        assert_eq!(
+            after(None, 900, (false, 900), || unreachable!()),
+            After::Further
+        );
     }
 
     #[test]

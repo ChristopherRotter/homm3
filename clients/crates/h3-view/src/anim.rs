@@ -1715,7 +1715,7 @@ struct Clock {
     /// again there (`gate-sound`: the Hobgoblins' first step 100 ms after the wait's end).
     waited: Option<u32>,
     /// The battle stood still behind a box until now (E17 M6 T5b2a, [`Clock::hold`]): the
-    /// commands' starts leave the deadline where the hold's tick put it until a frame shows.
+    /// deadline where the box found it until a frame shows or the next turn's start ticks.
     held: bool,
 }
 
@@ -1727,10 +1727,21 @@ impl Clock {
         if let Some(end) = self.waited.take() {
             self.deadline = end;
         }
-        self.now = self.now.max(at);
+        // The loop's first tick after a box's answer, as the next turn starts (E17 M6 T5b2b,
+        // recorded): no tick kept the deadline on its grid behind the box, so a deadline passed
+        // moves on by max(the grid's step, its lateness), to now when it fell a step behind; the
+        // computer acts in that tick (`auto-retreat-cancel`'s shot, its first frame shown at the
+        // answer's 1 000 ms, its second drawn then), a human's command later from that grid.
         if self.held {
-            return;
+            self.held = false;
+            if self.deadline <= self.now {
+                self.deadline += self.grid.max(self.now - self.deadline);
+            }
+            if at <= self.now {
+                return;
+            }
         }
+        self.now = self.now.max(at);
         if self.deadline <= self.now {
             let behind = self.now - self.deadline;
             self.deadline += (behind / self.grid + 1) * self.grid;
@@ -1750,16 +1761,12 @@ impl Clock {
     }
 
     /// The battle held until `until` (E17 M6 T5b2a, a modal box over the computer's turn): the
-    /// clock moves there and the loop ticks once (0x474040): no tick kept the deadline on its
-    /// grid behind the box, so a deadline passed moves on by max(the grid's step, its lateness),
-    /// to now when it fell a step behind; the commands' [`Clock::start`]s leave it there until a
-    /// frame shows (`auto-retreat-cancel`: the Champions' Wait, then the Marksmen's shot, its
-    /// first frame shown at the answer's 1 000 ms, its second drawn then).
+    /// clock moves there, the deadline left where the box found it: the action goes on inside
+    /// the computer's call without a tick (E17 M6 T5b2b, recorded: `auto-retreat-later`'s walk
+    /// after the answer shows its two frames of group 20 at once), and the next turn's start
+    /// ticks ([`Clock::start`]).
     fn hold(&mut self, until: u32) {
         self.now = self.now.max(until);
-        if self.deadline <= self.now {
-            self.deadline += self.grid.max(self.now - self.deadline);
-        }
         self.held = true;
     }
 
@@ -2296,27 +2303,51 @@ impl<'a> Growing<'a> {
             held,
             ..
         } = self;
+        let humans = timeline.humans;
         let Timeline {
             outlines,
             fidgets,
             actions,
             ended,
+            turns: turns_before,
             ..
         } = timeline;
         let first = *commands == 0;
         let default = if first { 0 } else { player.clock.now };
-        player.clock.start(command.at.unwrap_or(default));
+        // The computer's turn opening a battle a human plays (E17 M6 T5b2b, recorded:
+        // `auto-retreat-human`'s Wolf Riders) acts inside the opening, before the loop's first
+        // tick: the frames' deadline is the opening's own, so its first frame shows at once
+        // (their group 20 on the battle's first screen), not at the grid's next point.
+        let opening_computer = first
+            && command.at.unwrap_or(0) == 0
+            && !player.tactics
+            && humans.contains(&true)
+            && (*waiting)
+                .and_then(|s| player.stacks.get(&s))
+                .is_some_and(|l| !humans[usize::from(l.side == Side::Defender)]);
+        if opening_computer {
+            player.clock.now = 0;
+        } else {
+            player.clock.start(command.at.unwrap_or(default));
+        }
         // A command without a time after the first is the computer's: the loop did not tick
         // since the last one ended, but once when it acts, which outlines its stack until its
         // first frame shows (*provisional*, §7.9).
         let ran = player.steps.len();
-        let computer_tick = !first && command.at.is_none();
         let held = held
             .take()
             .filter(|&(from, until)| until > player.clock.now.max(from));
+        // A box opened after the turn's start (E17 M6 T5b2b, recorded: `auto-retreat-human`'s
+        // A on the Dwarves' turn, the question at once): the turn waited for the human until the
+        // switch, its stack outlined from its start and the loop ticking up to the switch.
+        let switched_later = !first && held.is_some_and(|(from, _)| from > player.clock.now);
+        if switched_later {
+            outlines.extend(turns_before.last().map(|&(at, stack)| (at, Some(stack))));
+        }
+        let computer_tick = !first && command.at.is_none() && !switched_later;
         // Held behind a box (E17 M6 T5b2a, `Growing::hold`): the battle as the box found it,
         // the loop's tick as it opened (the opening's step, a human's turn waiting up to the
-        // switch; a later command's computer tick, its stack outlined: *provisional*).
+        // switch; a later command's computer tick).
         if let Some((from, _)) = held {
             player.clock.start(from);
         }
@@ -2330,13 +2361,19 @@ impl<'a> Growing<'a> {
             idle.run(now, |t| steps.push(t));
         }
         // Then no step until the answer, nor at it: the action goes on inside the computer's
-        // call (recorded: the Surrender's and the Retreat's ends one step on from the opening;
-        // the Wait's next turn ticks as it starts, the computer's `Idle::once`; *provisional*
-        // for a human's turn, the loop ticking again a millisecond on).
+        // call, and the loop ticks again only as the next turn starts (recorded, E17 M6 T5b2a
+        // and T5b2b: the Surrender's and the Retreat's ends one step on from the opening; after
+        // the Wait the computer's next turn ticks once as it starts, `Idle::once`, a human's
+        // twice in the answer's millisecond, the steps held up since the box opened, then on
+        // the grid from there: `auto-retreat-human`'s Ballista, below). A later command's box
+        // redraws the battle with the stack whose turn the computer plays outlined
+        // (`auto-retreat-later`'s Dwarves behind the question, until the walk's first frame).
         if let Some((_, until)) = held {
+            if computer_tick {
+                outlines.push((now, *waiting));
+            }
             let Player { clock, idle, .. } = &mut *player;
             clock.hold(until);
-            idle.next = idle.next.max(clock.now);
             idle.from = idle.from.max(clock.now.saturating_add(1));
         }
         // The last command's layer changes show with the battle's next redraw: the first idle
@@ -2365,11 +2402,13 @@ impl<'a> Growing<'a> {
         // A hero's cast (E17 M3 T7b-1, the recorded `cast`): its action clears the outline at
         // once (no stack active while it plays); its stack's turn goes on after it, outlined
         // again as the hero stands.
-        let cast = command
-            .events
-            .iter()
+        let caster = (command.events.iter())
             .take_while(|e| !matches!(e, Event::TurnStarted { .. }))
-            .any(|e| matches!(e, Event::SpellCast { .. }));
+            .find_map(|e| match *e {
+                Event::SpellCast { side, .. } => Some(side),
+                _ => None,
+            });
+        let cast = caster.is_some();
         if cast {
             outlines.push((started, None));
         }
@@ -2399,9 +2438,10 @@ impl<'a> Growing<'a> {
         } else if cast {
             outlines.push((player.clock.now, *waiting));
         }
-        // The loop ticks from the action's end (after an answer at once, from the next turn's
-        // start: E17 M6 T5b2a, above).
-        player.idle.from = if held.is_some() {
+        // The loop ticks from the action's end (after an answer from the next turn's start, none
+        // when the battle ends there: E17 M6 T5b2a and T5b2b, above).
+        let turned = player.turns.len() > turns;
+        player.idle.from = if held.is_some() && !turned {
             player.idle.from.max(player.clock.now)
         } else {
             player.clock.now
@@ -2418,6 +2458,7 @@ impl<'a> Growing<'a> {
             stands,
             unmarks,
             ends_tactics,
+            cast: caster,
         });
         if let Some(f) = fidgets.as_mut() {
             let drawn: Vec<u8> = player.keys[before..].iter().map(|k| k.stack).collect();

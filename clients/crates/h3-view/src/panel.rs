@@ -210,6 +210,14 @@ pub struct Autoplay {
     /// visibly (CLT-Q45 (1): the client's profile; the original's clears it, 0x47864A, and its
     /// comparisons leave this false).
     pub on: bool,
+    /// It plays the turn from a switch in it (E17 M6 T5b2b): the switch's click or A selected
+    /// its button (`auto`, `auto-retreat-cancel`; a box set in it too, *provisional*:
+    /// [`crate::auto::Auto::switched`]). A turn it plays from its start shows the
+    /// button as the turns before left it ([`Autoplay::selected`]; recorded,
+    /// `auto-retreat-later`: after a switch on a human's turn it did not play, the next one it
+    /// plays shows the button dimmed with the panel, unselected, where the reading had 0x4784F9
+    /// select it; the client's profile shows it selected while on, [`Autoplay::on`]).
+    pub switched: bool,
 }
 
 /// What the panel shows when the stacks of `side` (the active stack's controller; none before a
@@ -246,8 +254,9 @@ pub fn shown(
     let picture = players[index(kept.colours)];
     match side {
         // Auto Combat plays a human's turn (0x4784CA): dimmed as the computer's, its button
-        // enabled and selected (0x4784F9); in the tactics phase the panel's +0xC is 0x46C290,
-        // which dims its two too (E17 M5 T4c2b).
+        // enabled and selected (0x4784F9) when the turn's switch or the turns before selected it
+        // (E17 M6 T5b2b, recorded: else dimmed with the rest, [`Autoplay::switched`]); in the
+        // tactics phase the panel's +0xC is 0x46C290, which dims its two too (E17 M5 T4c2b).
         Some(s) if human(s) && auto.plays => {
             for id in BUTTONS {
                 states.insert(id, disabled);
@@ -256,13 +265,15 @@ pub fn shown(
                 states.insert(NEXT_CREATURE, disabled);
                 states.insert(START_COMBAT, disabled);
             }
-            states.insert(
-                AUTO_COMBAT,
-                State {
-                    selected: true,
-                    ..State::default()
-                },
-            );
+            if auto.switched || auto.selected || auto.on {
+                states.insert(
+                    AUTO_COMBAT,
+                    State {
+                        selected: true,
+                        ..State::default()
+                    },
+                );
+            }
         }
         Some(s) if human(s) => {
             let view = &observation.sides[index(s)];

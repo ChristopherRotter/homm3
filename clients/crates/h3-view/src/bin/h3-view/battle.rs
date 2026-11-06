@@ -1036,7 +1036,11 @@ impl<'g> Battle<'g> {
     /// press stopped it after the command before was played) waits; so does one whose start
     /// asked the computer for its hero's cast and got none (E17 M6 T5b1). E17 M6 T5b2a: Auto
     /// Combat's question (the retreat test's yes) waits for the human's answer from the action's
-    /// millisecond, its box open (*provisional*: no outline, the turn the computer's).
+    /// millisecond, its box open (*provisional*: no outline, the turn the computer's). E17 M6
+    /// T5b2b (CLT-Q61): so does a turn whose computer's cast for the hero a key or a button
+    /// stopped, from the cast's end: the cast put its outline back there (§12.18, as on a turn
+    /// the human plays; *provisional*: the outline's first tick and the panel's switch at that
+    /// millisecond, not recorded).
     fn play_next(&mut self) -> Result<(), String> {
         let (auto, cast) = self.auto_turn(false);
         let (Some(live), Played::Growing(_)) = (Fight::here(self.fight.as_mut()), &self.played)
@@ -1052,8 +1056,9 @@ impl<'g> Battle<'g> {
         let placeholder = Played::Finished(Box::default());
         let mut end = 0;
         if let Played::Growing(mut growing) = std::mem::replace(&mut self.played, placeholder) {
-            // Outlined from its start as a human's turn (pushed as the computer's).
-            if !asked {
+            // Outlined from its start as a human's turn (pushed as the computer's); after an
+            // action of its own (the computer's cast Auto Combat stopped at the end of) already.
+            if !asked && !within(growing.timeline()) {
                 growing.outline_waiting();
             }
             end = growing.timeline().end;
@@ -1071,10 +1076,11 @@ impl<'g> Battle<'g> {
     /// (E17 M5 T4c1): switched on before and no key or button pressed since, its stack playing
     /// itself (E17 M6 T4b1: by its box; the battle tells `Live` so, which then plays it by the
     /// computer or waits); the last turn started from when Auto Combat handed it over, a switch
-    /// in it too (E17 M6 T5b1: its stack's action after the hero's cast). And whether its start
-    /// asked the computer for a human's hero's cast (E17 M6 T5b1, design §12.18: Auto Combat on
-    /// as it started and Combat Auto Spells set then, `Auto::asks_cast`; in the client's profile
-    /// only on a turn it plays, CLT-Q62).
+    /// in it too (E17 M6 T5b1: its stack's action after the hero's cast; E17 M6 T5b2b: not after
+    /// a key or a button pressed during that cast, CLT-Q61, the stop read at its end). And
+    /// whether its start asked the computer for a human's hero's cast (E17 M6 T5b1, design
+    /// §12.18: Auto Combat on as it started and Combat Auto Spells set then, `Auto::asks_cast`;
+    /// in the client's profile only on a turn it plays, CLT-Q62).
     fn auto_turn(&self, next: bool) -> (bool, bool) {
         let mut starts: Vec<u32> = std::iter::once(0)
             .chain(self.played.timeline().turns.iter().map(|&(t, _)| t))
@@ -1083,7 +1089,8 @@ impl<'g> Battle<'g> {
             starts.push(u32::MAX);
         }
         let k = starts.len() - 1;
-        let auto = Auto::of(&self.switches, &starts, &self.itself(next));
+        let casts = crate::pointer::casts(&self.record, self.played.timeline());
+        let auto = Auto::casting(&self.switches, &starts, &self.itself(next), &casts);
         let plays = if next {
             auto.from_start(k)
         } else {
@@ -1121,7 +1128,18 @@ impl<'g> Battle<'g> {
     /// Auto Combat over the battle's turns as played so far (E17 M5 T4c1).
     fn auto(&self) -> Auto {
         let itself = self.itself(false);
-        crate::pointer::auto(&self.switches, self.played.timeline(), &itself)
+        let played = (
+            self.played.timeline(),
+            crate::pointer::human_sides(&self.record),
+        );
+        crate::pointer::auto(&self.switches, played, &itself)
+    }
+
+    /// When Auto Combat stopped in turn `k` at the end of the computer's cast for the human's
+    /// hero (E17 M6 T5b2b, CLT-Q61, `Auto::stopped_at`): the turn the human's from then, the key
+    /// that stopped it acting there.
+    pub fn auto_stopped_at(&self, k: usize) -> Option<u32> {
+        self.auto().stopped_at(k)
     }
 
     /// Whether a key or a button pressed now stops Auto Combat (E17 M5 T4c1;
@@ -1136,11 +1154,27 @@ impl<'g> Battle<'g> {
         }
         let timeline = self.played.timeline();
         let (auto, k) = (self.auto(), timeline.turns.len());
-        let start = timeline.turns.last().map_or(0, |&(t, _)| t);
         // An action of the last turn started, from its start on: the computer's cast (or one
         // that took no time and started it, whose press a turn not played drops all the same).
-        let within = (timeline.actions.last()).is_some_and(|a| a.start >= start);
+        let within = within(timeline);
         auto.on(k, u32::MAX) && !auto.stopped(k) && (auto.plays(k, u32::MAX) || !within)
+    }
+
+    /// While the battle fought here grows, the end of the computer's cast for the human's hero
+    /// it played last, on a turn Auto Combat plays (E17 M6 T5b2b, CLT-Q61, `Auto::holds`): the
+    /// stack's action is asked only once the clock reaches it (the window's `Changes::after`),
+    /// a key or a button pressed until then stopping Auto Combat there.
+    pub fn cast_end(&self) -> Option<u32> {
+        let timeline = self.played.timeline();
+        let here = matches!(self.fight, Some(Fight::Here(_)));
+        let cast = timeline.actions.last().is_some_and(|a| a.cast.is_some());
+        if !self.playing() || !here || !cast {
+            return None;
+        }
+        let k = timeline.turns.len();
+        let casts = crate::pointer::casts(&self.record, timeline);
+        let last = timeline.actions.len().saturating_sub(1);
+        self.auto().holds(k, casts.get(k).copied().flatten(), last)
     }
 
     /// Whether Auto Combat was on as turn `k` started (0 the opening's; E17 M6 T4b1): a stop
@@ -1322,15 +1356,21 @@ impl<'g> Battle<'g> {
     /// the next turn starts, the press doing nothing else; the stop joins the battle's. The
     /// index of the turn it stops at (none while it is off): the one after the turn started last
     /// by `at`, but never one the bot already played (T8b2, R5c-4: a press while Restart replays
-    /// the battle stops it at its next turn to come).
+    /// the battle stops it at its next turn to come). E17 M6 T5b2b (CLT-Q61): pressed during the
+    /// computer's cast for the human's hero on a turn Auto Combat plays, it stops at the cast's
+    /// end, that turn's (`Auto::casting`, `Auto::stop_comes`: only the press that made that stop,
+    /// a press after a switch back on waiting as any); the stack's action is asked only once the
+    /// clock reaches the cast's end (`Battle::cast_end`, the window's `Changes::after`), its
+    /// stop read before it (`Battle::play_next`). A press the battle reads after a later action
+    /// started (Restart's replay) counts from that action's start ([`stop_read`]), never for a
+    /// cast already passed.
     pub fn stop_auto(&mut self, at: u32) -> Option<usize> {
         if !self.auto_on() {
             return None;
         }
-        let turns = &self.played.timeline().turns;
-        let turn = turn_at(turns, at).max(turns.len().saturating_sub(1));
+        let (at, turn) = stop_read(self.played.timeline(), at);
         self.switches.push(Input::Stop { at, turn });
-        Some(turn + 1)
+        Some(self.auto().stop_comes(turn))
     }
 
     /// A human's `command`, pressed at `at` while the battle waits for it (E17 M5 T2b): sent
@@ -3694,9 +3734,69 @@ fn first_boxes(
     boxes.first().map_or(open.unwrap_or(settings), |c| c.2)
 }
 
+/// Whether an action of the last turn started in `timeline` was played, from its start on (E17
+/// M6 T5b1; T5b2b: the computer's cast for the human's hero, or a command that took no time and
+/// started the turn).
+fn within(timeline: &Timeline) -> bool {
+    let start = timeline.turns.last().map_or(0, |&(t, _)| t);
+    (timeline.actions.last()).is_some_and(|a| a.start >= start)
+}
+
+/// A stop pressed at `at` as the battle reads it in `timeline` ([`Battle::stop_auto`]): its time,
+/// never before the last action's start (E17 M6 T5b2b: a press read after it started, Restart's
+/// replay, counts from then), and its turn, the one started last by then but never one before
+/// the last (T8b2, R5c-4).
+fn stop_read(timeline: &Timeline, at: u32) -> (u32, usize) {
+    let at = at.max(timeline.actions.last().map_or(0, |a| a.start));
+    let turns = &timeline.turns;
+    (at, turn_at(turns, at).max(turns.len().saturating_sub(1)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A timeline whose turns start at `turns` (each the stack 0's) with the actions `actions`
+    /// (each from its start to its end).
+    fn timeline(turns: &[u32], actions: &[(u32, u32)]) -> Timeline {
+        Timeline {
+            turns: turns.iter().map(|&t| (t, 0)).collect(),
+            actions: (actions.iter())
+                .map(|&(start, end)| h3_view::hero::Action {
+                    start,
+                    end,
+                    ..h3_view::hero::Action::default()
+                })
+                .collect(),
+            ..Timeline::default()
+        }
+    }
+
+    #[test]
+    fn an_action_from_the_last_turn_s_start_is_within_it() {
+        // E17 M6 T5b2b (the reviewer): `play_next` outlines the turn waiting only when nothing of
+        // it was played yet; the cast Auto Combat stopped at the end of put the outline back.
+        assert!(!within(&timeline(&[], &[])));
+        assert!(within(&timeline(&[], &[(0, 300)])));
+        assert!(!within(&timeline(&[300], &[(0, 300)])));
+        assert!(within(&timeline(&[300], &[(0, 300), (300, 900)])));
+        assert!(within(&timeline(&[300], &[(0, 300), (300, 300)])));
+    }
+
+    #[test]
+    fn a_stop_is_read_from_the_last_action_s_start_in_the_turn_then() {
+        // E17 M6 T5b2b (the reviewer): during the cast (300 to 900, turn 1) a press at 500 is
+        // read then; one read after the stack's action started at 900 (Restart's replay of an
+        // earlier press) from 900, never inside the cast passed. T8b2 R5c-4: never a turn
+        // before the last.
+        let cast = timeline(&[300], &[(0, 300), (300, 900)]);
+        assert_eq!(stop_read(&cast, 500), (500, 1));
+        let action = timeline(&[300], &[(0, 300), (300, 900), (900, 1200)]);
+        assert_eq!(stop_read(&action, 500), (900, 1));
+        assert_eq!(stop_read(&action, 1000), (1000, 1));
+        assert_eq!(stop_read(&timeline(&[300, 600], &[]), 100), (100, 1));
+        assert_eq!(stop_read(&timeline(&[], &[]), 100), (100, 0));
+    }
 
     #[test]
     fn a_refusal_s_box_hands_the_mouse_back_as_it_closes() {

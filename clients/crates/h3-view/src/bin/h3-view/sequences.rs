@@ -162,10 +162,15 @@ fn holds(steps: &[Step]) -> Result<Vec<(usize, u32)>, String> {
         .collect()
 }
 
-/// Where Auto Combat's questions were open (E17 M6 T5b2a, *provisional*): each held command's
-/// from the action's millisecond (the command before's end in `timeline`, `pre` for the first)
-/// to its answer.
-fn asked_spans(holds: &[(usize, u32)], timeline: &Timeline, pre: u32) -> Vec<(u32, u32)> {
+/// Where Auto Combat's questions were open (E17 M6 T5b2a): each held command's from the
+/// action's millisecond (the command before's end in `timeline`, `pre` for the first; E17 M6
+/// T5b2b, recorded: the switch's when it came later, on a human's turn waiting,
+/// `auto-retreat-human`) to its answer; `actions` the sequence's.
+fn asked_spans(
+    holds: &[(usize, u32)],
+    timeline: &Timeline,
+    (pre, actions): (u32, &[String]),
+) -> Vec<(u32, u32)> {
     holds
         .iter()
         .map(|&(i, until)| {
@@ -173,9 +178,26 @@ fn asked_spans(holds: &[(usize, u32)], timeline: &Timeline, pre: u32) -> Vec<(u3
                 .checked_sub(1)
                 .and_then(|k| timeline.actions.get(k))
                 .map_or(pre, |a| a.end);
-            (from, until)
+            (from.max(switched(actions, pre, until)), until)
         })
         .collect()
+}
+
+/// When `actions` last switched Auto Combat on (`key:a`) at or before `until` (E17 M6 T5b2b),
+/// by the times their `at:` and `step:` reach from `pre`; `pre` without one. (A `turn:` waits for
+/// a turn's start, which a box's opening takes anyway: [`asked_spans`].)
+fn switched(actions: &[String], pre: u32, until: u32) -> u32 {
+    let (mut t, mut last) = (pre, pre);
+    for a in actions {
+        let (kind, arg) = a.split_once(':').unwrap_or((a, ""));
+        match kind {
+            "at" => t = arg.parse().unwrap_or(t),
+            "step" => t = t.saturating_add(arg.parse().unwrap_or(0)),
+            "key" if pointer::auto_combat(arg) && t <= until => last = t,
+            _ => {}
+        }
+    }
+    last
 }
 
 /// The boxes Auto Combat's questions showed (E17 M6 T5b2a): over each span of `spans`, the
@@ -512,14 +534,20 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
         // Each held from its box's opening: the first command's at `pre` (the switch's), a
-        // later one's at the end of the command before (0: at least there).
+        // later one's at the end of the command before (0: at least there) or the switch's
+        // after it (E17 M6 T5b2b, recorded: `auto-retreat-human`'s A on the Dwarves' turn).
         let held: Vec<(usize, u32, u32)> = (holds.iter())
-            .map(|&(i, until)| (i, if i == 0 { sequence.pre } else { 0 }, until))
+            .map(|&(i, until)| {
+                let from = if i == 0 { sequence.pre } else { 0 };
+                let switch = switched(&sequence.actions, sequence.pre, until);
+                (i, from.max(switch), until)
+            })
             .collect();
         let mut timeline = anim::held(snapshot, (&commands, &held), &looks, stage, options.speed)
             .map_err(|e| format!("{}: {e}", sequence.id))?
             .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
-        let spans = asked_spans(&holds, &timeline, sequence.pre);
+        let spans = asked_spans(&holds, &timeline, (sequence.pre, &sequence.actions));
+
         // The mouse as the harness moved it (E17 M3 T6c-2): its cursor, the stack it marks and
         // enters, the status line's hints, each turn's battle from the engine.
         let scenario_path = dir.join(&sequence.scenario);
@@ -543,6 +571,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
             |original: u16| motion::spell_numbered_in(keys, &tables, original).map(|(h, _)| h);
         // The Auto Combat boxes it was recorded at (E17 M6 T5b1).
         let boxes = sequence.auto.boxes(&sequence.id)?;
+        // Which turns play themselves under Auto Combat by them (E17 M6 T5b2b).
+        let plays = pointer::plays_itself(&record, &timeline, (&tables, boxes));
         let (inputs, answers) = pointer::answering(
             &sequence.actions,
             sequence.pre,
@@ -551,7 +581,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             (
                 h3_view::tactics::told(snapshot),
                 sequence.shades.options(&sequence.id)?,
-                boxes[h3_view::auto::CREATURES],
+                (boxes[h3_view::auto::CREATURES], &plays),
             ),
             &spans,
         )
@@ -654,7 +684,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             )?
             .with_auto(
                 snapshot,
-                pointer::auto(&inputs, &timeline, &itself),
+                pointer::auto(&inputs, (&timeline, pointer::human_sides(&record)), &itself),
                 Bugs::Original,
             );
             // Auto Combat's questions and offers (E17 M6 T5b2a): the side's own view before the
@@ -1427,9 +1457,18 @@ mod tests {
             ..h3_view::hero::Action::default()
         };
         timeline.actions = vec![action(0, 300), action(300, 450)];
-        let spans = asked_spans(&holds, &timeline, 7);
+        let spans = asked_spans(&holds, &timeline, (7, &[]));
         assert_eq!(spans, [(450, 900)]);
-        assert_eq!(asked_spans(&[(0, 50)], &timeline, 7), [(7, 50)]);
+        assert_eq!(asked_spans(&[(0, 50)], &timeline, (7, &[])), [(7, 50)]);
+        // E17 M6 T5b2b: a switch after the command before's end opens the box then; one before
+        // it, or after the answer, does not.
+        let actions = |a: &[&str]| a.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+        let later = actions(&["turn:0.0", "at:600", "key:a", "at:900", "key:Escape"]);
+        assert_eq!(asked_spans(&holds, &timeline, (7, &later)), [(600, 900)]);
+        let earlier = actions(&["step:93", "key:A", "at:1000", "key:a"]);
+        assert_eq!(asked_spans(&holds, &timeline, (7, &earlier)), [(450, 900)]);
+        assert_eq!(switched(&earlier, 7, 900), 100);
+        assert_eq!(switched(&actions(&["key:x:y", "at:z"]), 7, 900), 7);
         assert_eq!(
             asked_boxes(&spans, &holds, &[100, 600, 900]).unwrap(),
             [(450, 600, 2, false), (600, 900, 2, true)]

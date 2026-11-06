@@ -1982,3 +1982,79 @@ boxes = true
 command = [
     { seat = "Attacker", command = { Retreat = {} }, at = 2000, question = true },
 ]
+
+# E17 M6 T5b2b (design §12.20, "Recorded"): CLT-Q61's stop and Auto Combat's question at later
+# turns (prepared in `to-record.toml`, recorded by a capture agent). The commands without a time
+# are the original's computer's.
+# `auto-cast-stop`: `auto-cast`'s battle and boxes; a click on hex 120 at 6500, during Bless's
+# cast (5280 to 8180), then the mouse moved to (300, 350) (shown at 6501, the poll's grid): no
+# shot; at the cast's end (8180, the hero standing) the Marksmen's turn is the human's, outlined,
+# the panel lit with Auto Combat unselected and the book dimmed, the cursor the Marksmen's at
+# (300, 350), the idle steps every 100 ms from 8180. 139 frames: 84 differ in 2 pixels each, the
+# walk's redraws over Orrin (400 to 5180 ms, as `auto-cast`'s); every frame from the cast on exact.
+[[sequence]]
+id = "auto-cast-stop"
+scenario = "seq-auto-cast.toml"
+actions = ["key:a", "at:6500", "hex:120", "move:300,350"]
+ms = 3700
+auto_spells = 1
+heroes = true
+timeline = "timelines/auto-cast-stop.txt"
+frames = "timelines/auto-cast-stop-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Move = { to = 62 } } },
+    { seat = "Attacker", command = { Cast = { spell = 41, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+]
+
+# `auto-retreat-later` (`seq-auto-retreat-machine.toml`: 20 Dwarves and a Ballista Orrin commands
+# against 3000 Wolf Riders and 1500 Goblins, the machines' boxes clear, Creatures set; `fail`:
+# both armies of one town). The Wolf Riders' walk opens the battle, its first frame on the first
+# screen; the Goblins walk to 146. W at 6787 on the Dwarves' turn (from 6287), A at 7287 on the
+# Ballista's (the human's: nothing shown), D at 7787: it defends, the Dwarves' waited turn starts
+# and the question opens at once, the Dwarves outlined behind it, the panel dimmed with Auto
+# Combat dimmed too (unselected), no idle step; Escape at 8787: the original's computer walks the
+# Dwarves to 37, with no tick at the answer (group 20's two frames shown at once). 137 frames: 29
+# differ in 55 to 179 pixels, the walk's redraws over the Ballista's wheels (9192 to 10939).
+[[sequence]]
+id = "auto-retreat-later"
+scenario = "seq-auto-retreat-machine.toml"
+actions = [
+    "turn:0.0", "at:6787", "key:w", "turn:0.1", "at:7287", "key:a", "at:7787", "key:d",
+    "turn:0.0", "at:8787", "key:Escape",
+]
+ms = 2200
+wait_idle = true
+heroes = true
+fail = ["good_morale"]
+timeline = "timelines/auto-retreat-later.txt"
+frames = "timelines/auto-retreat-later-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Move = { to = 43 } } },
+    { seat = "Defender", command = { Move = { to = 146 } } },
+    { seat = "Attacker", at = 6787, command = { Wait = {} } },
+    { seat = "Attacker", at = 7787, command = { Defend = {} } },
+    { seat = "Attacker", command = { Move = { to = 37 } }, at = 8787, question = true },
+]
+
+# `auto-retreat-human` (the same battle): A at 6787 on the Dwarves' turn (waiting from 6287,
+# outlined), the question at once; Escape at 7787: the computer has them wait, the Ballista's turn
+# the human's at once, outlined, two idle steps in that millisecond (held up since the box
+# opened), then every 100 ms; the panel lit, Auto Combat unselected. 108 frames exact.
+[[sequence]]
+id = "auto-retreat-human"
+scenario = "seq-auto-retreat-machine.toml"
+actions = ["turn:0.0", "at:6787", "key:a", "at:7787", "key:Escape"]
+ms = 1500
+wait_idle = true
+heroes = true
+fail = ["good_morale"]
+timeline = "timelines/auto-retreat-human.txt"
+frames = "timelines/auto-retreat-human-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Move = { to = 43 } } },
+    { seat = "Defender", command = { Move = { to = 146 } } },
+    { seat = "Attacker", command = { Wait = {} }, at = 7787, question = true },
+]

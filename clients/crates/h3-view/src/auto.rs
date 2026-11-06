@@ -11,12 +11,19 @@
 //! turn is the human's while the flag stays on, its click switching it off (a toggle). E17 M6
 //! T5b1 (design §12.18): with Combat Auto Spells set the computer is asked for a human's hero's
 //! cast as each turn starts under it ([`Auto::asks_cast`], by the boxes then, [`boxes_at`]),
-//! whether the stack plays itself or not.
+//! whether the stack plays itself or not. E17 M6 T5b2b (design §12.20, CLT-Q61: copied): such a
+//! cast is an action of its own, dispatched at the loop's next pass (0x474477), which reads the
+//! input queue again: a key or a button pressed during the computer's cast on a turn Auto Combat
+//! plays stops it at the cast's end, the stack's action the human's ([`Auto::casting`]).
 
+use alloc::vec;
 use alloc::vec::Vec;
 
+use h3_protocol::wire::Side;
 use h3_render::Bugs;
 
+use crate::battle_log::Logged;
+use crate::hero::Action;
 use crate::mouse::track::Input;
 
 #[cfg(test)]
@@ -129,6 +136,50 @@ pub fn boxes_at(first: [bool; 5], changes: &[BoxChange], k: usize) -> [bool; 5] 
         .map_or(first, |&(_, _, boxes)| boxes)
 }
 
+/// A human's hero's cast in a turn (E17 M6 T5b2b; [`casts`]): its action's index among the
+/// timeline's actions, its start and its end (the hero standing).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Cast {
+    /// The action's index.
+    pub action: usize,
+    /// Its start.
+    pub start: u32,
+    /// Its end.
+    pub end: u32,
+}
+
+/// Each turn's first hero's cast by a side `human` names a human's (E17 M6 T5b2b; the opening's
+/// turn first, then one per `Logged::Turn` of `log`), `actions` the timeline's (one per
+/// `Logged::Action`): under Auto Combat the computer's cast for the human's hero, whose end
+/// reads a stop ([`Auto::casting`]); none in a turn without one.
+#[must_use]
+pub fn casts(log: &[(u32, Logged)], actions: &[Action], human: [bool; 2]) -> Vec<Option<Cast>> {
+    let mut out = vec![None];
+    let mut next = 0;
+    for (_, entry) in log {
+        match entry {
+            Logged::Turn(_) => out.push(None),
+            Logged::Action => {
+                let action = next;
+                next += 1;
+                let cast = (actions.get(action)).filter(|a| {
+                    a.cast
+                        .is_some_and(|s| human[usize::from(s == Side::Defender)])
+                });
+                if let (Some(a), Some(slot @ None)) = (cast, out.last_mut()) {
+                    *slot = Some(Cast {
+                        action,
+                        start: a.start,
+                        end: a.end,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
 /// When Auto Combat plays a battle's turns: the opening's first, then each one started, in the
 /// timeline's order.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -144,9 +195,12 @@ struct Turn {
     /// It plays the turn from its start (switched on in an earlier turn, its stack playing
     /// itself).
     from_start: bool,
-    /// From when it plays the turn (none: never).
-    from: Option<u32>,
-    /// The times of the switches the turn took (each toggles the flag).
+    /// When it plays the turn, in order: from a time until one (none: to the turn's end); none
+    /// at all: never. E17 M6 T5b2b: a stop read at the computer's cast's end ends the first, a
+    /// switch after it may start a second.
+    plays: Vec<(u32, Option<u32>)>,
+    /// The times of the switches the turn took (each toggles the flag; E17 M6 T5b2b: a stop read
+    /// at a cast's end too).
     switches: Vec<u32>,
     /// A key or a button pressed while it was on waits for the next turn's start.
     stopped: bool,
@@ -172,13 +226,32 @@ impl Auto {
     /// harness pressed it on such a turn).
     #[must_use]
     pub fn of(inputs: &[Input], starts: &[u32], itself: &[Option<u32>]) -> Self {
+        Self::casting(inputs, starts, itself, &[])
+    }
+
+    /// [`Auto::of`] with each turn's human's hero's cast `casts` ([`casts`]; E17 M6 T5b2b, design
+    /// §12.20, CLT-Q61: copied in both profiles). A cast that started while Auto Combat played
+    /// the turn (as it started, or at a switch: the computer's for the human's hero, §12.18) is
+    /// an action of its own, the stack's action dispatched at the loop's next pass (0x474477),
+    /// which reads the input queue again (0x4741F9): a stop pressed in the turn before the cast's
+    /// end stops Auto Combat there (0x474251), the turn the human's from then and the flag off,
+    /// not as the next turn starts. One at or after the cast's end, or in a turn without such a
+    /// cast, waits for the next turn's start as before (*provisional*: a press in the cast's
+    /// last millisecond, the original's action in that tick, is the next turn's).
+    #[must_use]
+    pub fn casting(
+        inputs: &[Input],
+        starts: &[u32],
+        itself: &[Option<u32>],
+        casts: &[Option<Cast>],
+    ) -> Self {
         let mut turns = Vec::with_capacity(starts.len());
         let (mut on, mut stopped) = (false, false);
         let mut inputs = inputs
             .iter()
             .filter_map(|input| match *input {
-                Input::Auto { at, turn } => Some((turn, Some(at))),
-                Input::Stop { turn, .. } => Some((turn, None)),
+                Input::Auto { at, turn } => Some((turn, Ok(at))),
+                Input::Stop { at, turn } => Some((turn, Err(at))),
                 _ => None,
             })
             .peekable();
@@ -195,28 +268,39 @@ impl Auto {
                 from_start: on && plays_at(start),
                 ..Turn::default()
             };
-            turn.from = turn.from_start.then_some(start);
+            // From when it plays the turn now (none: it does not).
+            let mut from = turn.from_start.then_some(start);
+            let cast = casts.get(k).copied().flatten();
             let last = k + 1 == starts.len();
-            while let Some((_, switch)) = inputs.next_if(|&(turn, _)| turn <= k || last) {
-                match switch {
-                    Some(at) => {
+            while let Some((_, input)) = inputs.next_if(|&(turn, _)| turn <= k || last) {
+                match input {
+                    Ok(at) => {
                         // A box set before it, while on, handed the turn over.
-                        if turn.from.is_none() && on {
-                            turn.from = itself.filter(|&from| from <= at).map(|f| f.max(start));
+                        if from.is_none() && on {
+                            from = itself.filter(|&from| from <= at).map(|f| f.max(start));
                         }
-                        if turn.from.is_some() {
+                        if from.is_some() {
                             continue;
                         }
                         on = !on;
                         turn.switches.push(at);
-                        turn.from = (on && plays_at(at)).then_some(at);
+                        from = (on && plays_at(at)).then_some(at);
                     }
-                    None => stopped |= on,
+                    // The computer's cast it played: read at its end (CLT-Q61).
+                    Err(at) => match (from, cast) {
+                        (Some(f), Some(c)) if on && f <= c.start && at < c.end => {
+                            turn.plays.push((f, Some(c.end)));
+                            turn.switches.push(c.end);
+                            (from, on) = (None, false);
+                        }
+                        _ => stopped |= on,
+                    },
                 }
             }
-            if turn.from.is_none() && on {
-                turn.from = itself.map(|from| from.max(start));
+            if from.is_none() && on {
+                from = itself.map(|from| from.max(start));
             }
+            turn.plays.extend(from.map(|f| (f, None)));
             turn.stopped = stopped;
             turns.push(turn);
         }
@@ -226,17 +310,71 @@ impl Auto {
     /// Whether Auto Combat plays turn `k` (0 the opening's) at `t`, a time in it.
     #[must_use]
     pub fn plays(&self, k: usize, t: u32) -> bool {
-        self.turns
-            .get(k)
-            .and_then(|turn| turn.from)
-            .is_some_and(|from| from <= t)
+        self.turns.get(k).is_some_and(|turn| {
+            (turn.plays.iter()).any(|&(from, until)| from <= t && until.is_none_or(|u| t < u))
+        })
     }
 
-    /// Whether Auto Combat played turn `k` at any time in it (its button shows selected since:
-    /// 0x4784F9).
+    /// Whether Auto Combat plays turn `k` at `t` from a switch in the turn (its click or A
+    /// selecting its button), not from the turn's start (E17 M6 T5b2b, the panel's
+    /// [`crate::panel::Autoplay::switched`]); so from a box set in the turn while it is on (the
+    /// options dialog's, handing the turn over: shown as a switch, *provisional*, not recorded).
+    #[must_use]
+    pub fn switched(&self, k: usize, t: u32) -> bool {
+        self.turns.get(k).is_some_and(|turn| {
+            (turn.plays.iter().enumerate()).any(|(i, &(from, until))| {
+                from <= t && until.is_none_or(|u| t < u) && (i > 0 || !turn.from_start)
+            })
+        })
+    }
+
+    /// Whether Auto Combat plays turn `k` at its end, having played it from a time in it (its
+    /// button shows selected since: 0x4784F9; E17 M6 T5b2b: a stop read at the computer's cast's
+    /// end runs the turn's start again without it, which unselects it, 0x47864A).
     #[must_use]
     pub fn played(&self, k: usize) -> bool {
-        self.turns.get(k).is_some_and(|turn| turn.from.is_some())
+        (self.turns.get(k)).is_some_and(|turn| turn.plays.last().is_some_and(|p| p.1.is_none()))
+    }
+
+    /// When Auto Combat stopped in turn `k`, at the end of the computer's cast for the human's
+    /// hero (E17 M6 T5b2b, CLT-Q61; [`Auto::casting`]): from then the turn is the human's,
+    /// waiting for its command as after a stop read as it started. None: no such stop.
+    #[must_use]
+    pub fn stopped_at(&self, k: usize) -> Option<u32> {
+        let turn = self.turns.get(k)?;
+        turn.plays.first().and_then(|&(_, until)| until)
+    }
+
+    /// The index of the turn the stop read last in turn `k` comes at (E17 M5 T4c1; E17 M6 T5b2b,
+    /// CLT-Q61): `k` itself when that stop ended Auto Combat's play at the computer's cast's end
+    /// ([`Auto::stopped_at`]; not one after a switch back on, which waits as any), else the next
+    /// turn's start, `k + 1`.
+    #[must_use]
+    pub fn stop_comes(&self, k: usize) -> usize {
+        if self.stopped_at(k).is_some() && !self.stopped(k) {
+            k
+        } else {
+            k + 1
+        }
+    }
+
+    /// The end of turn `k`'s cast `cast` ([`casts`]) while it is the battle's action `last` (its
+    /// last played) on a turn Auto Combat played as it started (E17 M6 T5b2b, CLT-Q61): a key or
+    /// a button pressed until then stops Auto Combat there, so the stack's action is asked only
+    /// once the clock reaches that end (the window's). None: no such cast.
+    #[must_use]
+    pub fn holds(&self, k: usize, cast: Option<Cast>, last: usize) -> Option<u32> {
+        cast.filter(|c| c.action == last && self.plays(k, c.start))
+            .map(|c| c.end)
+    }
+
+    /// The actions after which Auto Combat stopped (E17 M6 T5b2b): each by its index among
+    /// `casts`' (the ones [`Auto::casting`] took), with the stop's time, its end.
+    #[must_use]
+    pub fn handed(&self, casts: &[Option<Cast>]) -> Vec<(usize, u32)> {
+        (casts.iter().enumerate())
+            .filter_map(|(k, cast)| Some((cast.as_ref()?.action, self.stopped_at(k)?)))
+            .collect()
     }
 
     /// Whether Auto Combat plays turn `k` from its start, switched on in an earlier turn: the

@@ -217,7 +217,9 @@ put back the same way (`registry_values`), the viewer reading them from `sequenc
 (`setup.sh`'s Creatures 1 and Spells unset without them); sequences prepared for a recording wait
 in a `situations/to-record.toml` (`sequences situations/to-record.toml --only <id>`), each moved
 into `sequences.toml` with its commands once recorded, the file removed once empty (T5b1's
-`auto-cast` and `auto-cast-human` were recorded so). Since E17 M6 T5b2a (design §12.19) Auto Combat's
+`auto-cast` and `auto-cast-human` were recorded so, and T5b2b's `auto-cast-stop`,
+`auto-retreat-later` and `auto-retreat-human`, their prepared `step:` actions as `at:`: a step's
+states keep the time before it). Since E17 M6 T5b2a (design §12.19) Auto Combat's
 question: when the computer's retreat test says yes for the human's stack that plays itself,
 the original asks whether to retreat (GENRLTXT 414), its OK offering, with both heroes there and
 the gold enough, to save the army for its price (record 130, the gold's picture); in a

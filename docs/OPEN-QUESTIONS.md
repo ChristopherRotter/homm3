@@ -105,6 +105,14 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Recommendation.** (a) copy, built when the battle lane hands over the automatic war machines' turns (it also fixes the computer side's missed retreat); until then *not built* (design §12.19).
 
+#### CLT-Q64 — Auto Combat's button on a turn it plays after a switch on a human-played turn (E17 M6 T5b2b)
+
+**Context.** Recorded (`auto-retreat-later`, `docs/epics/E17-design.md` §12.20): A on a turn Auto Combat does not play (a commanded Ballista whose Combat Ballista box is clear: the turn stays the human's, CLT-Q45's case) sets the flag; the next turn it plays from its start (the Dwarves' waited turn) shows the panel dimmed with Auto Combat's button dimmed and unselected too. A turn it plays after a switch in that turn (`auto`, `auto-retreat-cancel`) shows the button enabled and selected; the code reading of 0x4784F9 (§12.13) had it so on every turn Auto Combat plays, a reading to recheck. So a player who switched Auto Combat on at a war machine's turn sees no sign of it on the turns it then plays, and no button to switch it off there (a key or a press still stops it as the next turn starts).
+
+**Options.** (a) Copy. (b) Fix in the client's profile: the button enabled and selected on every turn Auto Combat plays, the original's for the comparisons only. (c) An option.
+
+**Recommendation.** (b): the same slip as CLT-Q45 (1), whose answer (the button selected while Auto Combat is on) already covers it. **Built:** the original's profile copies it (the comparisons, `panel::Autoplay::switched`); the client's profile shows the button selected while Auto Combat is on (`Autoplay::on`, CLT-Q45 (1)'s answer).
+
 ### Map client lane (`MCL-Q<n>`)
 
 (no open questions)

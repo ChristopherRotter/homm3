@@ -5490,3 +5490,59 @@ question, T5b2b CLT-Q61's stop.
   (the original asks at an automatic Ballista's turn too; copy recommended, not built: the
   engine plays it; the battle lane's inbox). `check.sh`; the PRs: #745 (the engine's part,
   cross-lane) first, then this one.
+
+### M6 T5b2b — CLT-Q61's stop and the question's turns (2026-11-06)
+
+On `client/e17-m6-t5b2b`. Kept whole by the user (2026-11-06; a cut after the stop offered).
+
+- **Built** (a builder; design §12.20, CLT-Q61 copied in both profiles by §12.18's reading, no
+  new one): a key or a mouse button pressed during the computer's cast for the human's hero, on a
+  turn Auto Combat plays (from its start or from the switch), stops it at the cast's end: no
+  `Decision::action`, the turn waits for the human (outlined, the panel lit with Auto Combat
+  unselected, the book dimmed, the mouse posted). `Auto::casting` reads each turn's cast
+  (`auto::casts`, `hero::Action::cast`), `Battle::stop_auto` gives that turn,
+  `track::Start::hands_over` hands the mouse over; the comparisons' parser leaves a turn whose
+  stack does not play itself by the boxes the human's after `key:a` (`pointer::plays_itself`: a
+  commanded Ballista's). A press with no cast, or after its end, still stops as the next turn
+  starts; the re-fight unchanged (a `live` test). Prepared: `auto-cast-stop`
+  (`seq-auto-cast.toml`) and, over the new `seq-auto-retreat-machine.toml` (20 Dwarves and a
+  Ballista commanded by Orrin's Basic Artillery against 3 000 Wolf Riders and 1 500 Goblins; the
+  order Wolf Riders, Goblins, Dwarves, Ballista checked by `live`'s tests), `auto-retreat-later`
+  and `auto-retreat-human`.
+- **Recorded** (a capture agent; §12.20, "Recorded"; the prepared `step:` actions as `at:`, a
+  step jumping the clock): `auto-cast-stop`: the click at 6 500 during Bless (5 280 to 8 180)
+  stops Auto Combat at the cast's end, no shot; from 8 180 the Marksmen's turn the human's
+  (outlined, the panel lit, Auto Combat unselected, the book dimmed, the cursor at the moved
+  mouse), idle steps every 100 ms: the copy as built. `auto-retreat-later`: the original takes
+  Defend from the commanded Ballista (no log line); after A (7 287) its turn stays the human's;
+  at D (7 787) the Dwarves' waited turn and the question at once, the Dwarves outlined behind the
+  box, no idle step, the panel dimmed and Auto Combat's button dimmed and unselected (CLT-Q64);
+  Escape (8 787): the computer walks the Dwarves to 37 in that millisecond, no tick at the
+  answer. `auto-retreat-human`: after Escape (7 787) the computer's Wait and at once the
+  Ballista's turn, the human's (outlined, two idle steps in that millisecond, then every 100 ms,
+  the panel lit). The original's computer chose as the engine's (Wolf Riders to 43, Goblins to
+  146, Dwarves to 37, Wait): no finding for the battle lane.
+- **Corrected** (the client as recorded): a computer's turn opening the battle shows its first
+  frame at 0 (it was 100 ms late); the answer does not tick, the next turn's start does
+  (`Clock::start`), the idle steps resume there; behind a later turn's box the computer's stack is
+  outlined; a box opened by a switch after its turn's start leaves the turn the human's until the
+  switch (`sequences::switched`); Auto Combat's button on a turn it plays from its start shows as
+  the turns before left it (`panel::Autoplay::switched`; the client's profile selected while on,
+  CLT-Q45 (1)). Timelines as recorded (123, 126, 91 changes); `auto-retreat-human`'s 108 frames
+  exact, `auto-cast-stop`'s 139 and `auto-retreat-later`'s 137 with redraw artifacts only (the
+  walk over Orrin, over the Ballista's wheels: §7.11 (1)); `drawn` otherwise the same
+  (`auto-retreat-surrender` and `-flee` re-confirmed).
+- **Reviewed** (a fresh reviewer; fixed): a press after a re-switch on a cast-stopped turn
+  carried to that turn, not the next (`Auto::stop_comes`); the window grew the stack's action a
+  frame before the cast's end, so a press in its last frame stopped at the next turn (the window
+  now holds at the cast's end: `Battle::cast_end`, `Auto::holds`, `After::Held`); the parser's
+  stop decided per press (Auto Combat on and the press's own turn playing itself, `key:a`
+  toggling); `switched` takes `A`; the box-set case of `Auto::switched` documented
+  (*provisional*); tests for the binary's pure pieces (`within`, `stop_read`, `stop_start`,
+  `after`).
+- **Asked:** CLT-Q64 (Auto Combat's button over a turn it plays after a switch on a human-played
+  turn; fix recommended, CLT-Q45 (1)'s rule built). *Provisional still:* a press in the cast's
+  last millisecond, a carried ↑, ↓, F or F5 to F8 at the cast's end, an opening computer's action
+  other than a walk.
+- **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (83 as recorded), `check-docs`,
+  the scoped verify with original data.

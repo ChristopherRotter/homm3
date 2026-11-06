@@ -12,6 +12,7 @@ const NO_AUTO: Autoplay = Autoplay {
     selected: false,
     off: false,
     on: false,
+    switched: false,
 };
 
 /// What the panel keeps before any human turn: `side`'s colours, the scroll buttons as built.
@@ -417,6 +418,7 @@ fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
     let red = (by(Side::Attacker), NO_AUTO);
     let playing = Autoplay {
         plays: true,
+        switched: true,
         ..NO_AUTO
     };
     let auto = shown(&o, Some(Side::Attacker), (red.0, playing), "", RED_BLUE);
@@ -428,6 +430,30 @@ fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
     );
     let button = auto.state(AUTO_COMBAT);
     assert!(button.selected && !button.disabled);
+    // E17 M6 T5b2b (recorded, `auto-retreat-later`): a turn it plays from its start after a
+    // switch on a human's turn it did not play: the button dimmed with the rest, unselected;
+    // selected when the turns before left it so, or, in the client's profile, while it is on.
+    let from_start = Autoplay {
+        plays: true,
+        ..NO_AUTO
+    };
+    let dimmed = shown(&o, Some(Side::Attacker), (red.0, from_start), "", RED_BLUE);
+    assert_eq!(disabled(&dimmed).len(), 9);
+    assert!(!dimmed.state(AUTO_COMBAT).selected);
+    for kept in [
+        Autoplay {
+            selected: true,
+            ..from_start
+        },
+        Autoplay {
+            on: true,
+            ..from_start
+        },
+    ] {
+        let button =
+            shown(&o, Some(Side::Attacker), (red.0, kept), "", RED_BLUE).state(AUTO_COMBAT);
+        assert!(button.selected && !button.disabled);
+    }
     // The computer's turn after it: dimmed, Auto Combat still selected (0x46BF90 sets the
     // disabled state only, the selected frame drawn over it).
     let kept = Autoplay {

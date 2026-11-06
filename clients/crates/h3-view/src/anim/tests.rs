@@ -1448,8 +1448,8 @@ fn commands_start_at_their_time_or_by_default() {
 fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
     // E17 M6 T5b2a (design §12.19): Auto Combat's question holds the battle from its box's
     // opening (the end of the command before, the computer's tick there) until its answer: no
-    // idle step runs meanwhile nor at it, the computer's command starts then, the loop's one
-    // tick putting the deadline at most at now; nothing before the hold changed.
+    // idle step runs meanwhile nor at it, the computer's command starts then, no tick moving the
+    // deadline (E17 M6 T5b2b, recorded); nothing before the hold changed.
     let o = snapshot(vec![
         at(0, Side::Attacker, PIKEMAN, 35, false),
         at(1, Side::Defender, PIKEMAN, 50, false),
@@ -1491,7 +1491,7 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
     assert!(end < 5000 && stood.actions[0] == free.actions[0]);
     assert_eq!(stood.actions[1].start, 5000);
     // The computer's tick as it acts, before its box (its stack outlined behind it); no step
-    // until the answer nor at it (*provisional* for a later command).
+    // until the answer nor at it (E17 M6 T5b2b, recorded: `auto-retreat-later`).
     assert!(stood.steps.iter().all(|&t| t <= end || t > 5000));
     assert!(!stood.steps.contains(&5000), "{:?}", stood.steps);
     assert!(
@@ -1538,15 +1538,16 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
         .filter(|&t| t <= 3000)
         .collect();
     assert_eq!(before, [0, 100, 200, 300]);
-    // No tick kept the deadline on its grid behind the box (recorded, `auto-retreat-cancel`): the
-    // hold's one tick puts it at the answer, so the walk's first frame shows then, not at the
-    // grid's next point; one frame there, the next a frame's time later.
+    // No tick kept the deadline on its grid behind the box, nor moves it at the answer (E17 M6
+    // T5b2b, recorded: `auto-retreat-later`'s walk, its group 20's two frames shown at once):
+    // the walk's frames show at the answer until the deadline caught up, the next a frame's
+    // time later.
     let shown: Vec<u32> = (first.keys.iter())
         .filter(|k| k.stack == 0 && k.shown >= 3000)
         .map(|k| k.shown)
         .collect();
     assert_eq!(shown.first(), Some(&3000), "{shown:?}");
-    assert_eq!(shown.iter().filter(|&&t| t == 3000).count(), 1, "{shown:?}");
+    assert_eq!(shown.iter().filter(|&&t| t == 3000).count(), 2, "{shown:?}");
     // A held command without frames (`auto-retreat-cancel`'s Wait), then the computer's: its
     // tick as it acts at the answer, its first frame shown then (the hold's deadline kept
     // through the starts until a frame shows), not at the grid's next point.
@@ -1583,6 +1584,112 @@ fn a_command_held_behind_a_box_starts_at_its_end_without_idle_steps() {
     .unwrap();
     let first_shown = (short.keys.iter()).find(|k| k.stack == 0 && k.shown >= 50);
     assert_eq!(first_shown.map(|k| k.shown), Some(100), "{:?}", short.keys);
+    // So with a held command without frames: the next turn's tick leaves it there.
+    let short = held(
+        &o,
+        (&then, &[(0, 0, 50)]),
+        &looks(),
+        stage,
+        Speed::default(),
+    )
+    .unwrap();
+    let walked = (short.keys.iter()).find(|k| k.stack == 1 && k.shown >= 50);
+    assert_eq!(walked.map(|k| k.shown), Some(100), "{:?}", short.keys);
+}
+
+#[test]
+fn a_box_opened_after_its_turn_s_start_leaves_the_turn_the_human_s_until_then() {
+    // E17 M6 T5b2b (design §12.20, recorded: `auto-retreat-human`): the defender's turn waits
+    // for the human from the walk's end, outlined, the loop ticking, until the switch opens the
+    // box; the answer's Wait starts a human's turn: two idle steps in its millisecond (held up
+    // since the box opened), then every 100 ms.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 35, false),
+        at(1, Side::Defender, PIKEMAN, 50, false),
+    ]);
+    let first = vec![moved(0, 35, 36), Event::TurnStarted { stack: 1 }];
+    let wait = vec![Event::TurnStarted { stack: 0 }];
+    let commands = [
+        Command {
+            at: None,
+            events: &first,
+        },
+        Command {
+            at: None,
+            events: &wait,
+        },
+    ];
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic(),
+        casts: &Casts::default(),
+        bugs: Bugs::Original,
+        siege: None,
+        lengths: None,
+    };
+    let free = super::timeline(&o, &commands, &looks(), stage, Speed::default()).unwrap();
+    let end = free.actions[0].end;
+    let (switch, answer) = (end + 250, end + 1250);
+    // Then the human's walk 150 ms after the answer: on the grid the answer's tick started.
+    let on = vec![moved(0, 36, 37)];
+    let commands = [
+        commands[0],
+        commands[1],
+        Command {
+            at: Some(answer + 150),
+            events: &on,
+        },
+    ];
+    let t = held(
+        &o,
+        (&commands, &[(1, switch, answer)]),
+        &looks(),
+        stage,
+        Speed::default(),
+    )
+    .unwrap();
+    playhead::agrees(&t);
+    assert!(t.outlines.contains(&(end, Some(1))), "{:?}", t.outlines);
+    assert_eq!(t.outlined(switch), Some(1));
+    let waiting: Vec<u32> = (t.steps.iter().copied())
+        .filter(|&s| s > end && s <= switch)
+        .collect();
+    assert!(waiting.len() >= 2, "{:?}", t.steps);
+    assert!(
+        t.steps.iter().all(|&s| s <= switch || s >= answer),
+        "{:?}",
+        t.steps
+    );
+    assert_eq!(t.actions[1].start, answer);
+    assert_eq!(t.pulse(answer) - t.pulse(answer - 1), 2);
+    assert_eq!(t.pulse(answer + 99), t.pulse(answer));
+    assert_eq!(t.pulse(answer + 100), t.pulse(answer) + 1);
+    let walked = (t.keys.iter()).find(|k| k.stack == 0 && k.drawn >= answer + 150);
+    assert_eq!(walked.map(|k| k.shown), Some(answer + 200), "{:?}", t.keys);
+}
+
+#[test]
+fn the_computer_s_turn_opening_a_human_s_battle_shows_its_first_frame_at_once() {
+    // E17 M6 T5b2b (recorded: `auto-retreat-human`'s Wolf Riders): the walk starts inside the
+    // opening, its first frame on the first screen; without a human, or the human's turn first,
+    // a frame later.
+    let mut o = snapshot(vec![
+        at(1, Side::Defender, PIKEMAN, 50, false),
+        at(0, Side::Attacker, PIKEMAN, 35, false),
+    ]);
+    let walk = vec![moved(1, 50, 49), Event::TurnStarted { stack: 0 }];
+    let first_shown = |o: &Observation| {
+        let t = play(o, &[(None, walk.clone())]);
+        (t.keys.iter()).find(|k| k.stack == 1).map(|k| k.shown)
+    };
+    assert_eq!(first_shown(&o), Some(100));
+    o.sides[0].human = true;
+    assert_eq!(first_shown(&o), Some(0));
+    o.active = Some(0);
+    assert_eq!(first_shown(&o), Some(100));
 }
 
 #[test]

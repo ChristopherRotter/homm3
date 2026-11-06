@@ -87,6 +87,9 @@ pub struct Action {
     /// It ends the tactics phase (the engine's `EndTactics`): the original's Start Combat is no
     /// action (0x4751CC, design §7.24), its start hides no army info window (§12.15).
     pub ends_tactics: bool,
+    /// The side whose hero cast in it, if one did (E17 M6 T5b2b: the computer's cast for a
+    /// human's hero, whose end reads Auto Combat's stop, `crate::auto::casts`).
+    pub cast: Option<Side>,
 }
 
 /// The battle's heroes: each side's look (none: no hero), whose players are human, the groups,
