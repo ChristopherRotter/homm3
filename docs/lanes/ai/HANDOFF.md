@@ -34,7 +34,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   against the fair actor (the MLP 0.414), 0.473 against the all-seeing one, the neutral set
   +0.274: decision 5's second gate passed, the clone alone at the current best's level.
   **Next:** T28 on the user's GPU in parts (`configs/e25-imitate-structure.toml`, `[ppo]
-  accumulate` 8; the commands in `QUEUE.md`), T27's student file first for T19's tool.
+  accumulate` 8; the commands in `QUEUE.md`).
 - **Open pull requests:** the one of `claude/compassionate-ramanujan-wwkngo` (T27's records,
   T28's config and `[ppo] accumulate`). Merged: #721 (T24), #725 (T25), #730 (T26a), #748 (T26b).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
@@ -54,9 +54,9 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 - #748 merged; the branch started from `master`. The setup's baseline ran only the light gates;
   `cargo build --release -p h3-ffi` 65 s, `uv sync --group train` a few minutes. The user pasted
-  T27's ladder, then its table and `report.json` (not the student file); T28's smoke from a CPU
-  clone (72 s, then 2.3 minutes) showed `minibatches` 64 would change PPO's steps, so `[ppo]
-  accumulate`; the Python suite 243 (2.6 minutes).
+  T27's ladder, then its table and `report.json`, then the student (T19's tool, 2 minutes);
+  T28's smoke from a CPU clone (72 s, then 2.3 minutes) showed `minibatches` 64 would change
+  PPO's steps, so `[ppo] accumulate`; the Python suite 243 (2.6 minutes).
 
 ### 2026-11-05 — E25 T26a
 

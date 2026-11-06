@@ -1,0 +1,163 @@
+{
+ "teacher": {
+  "system": "system",
+  "system_policy": 19,
+  "run": "configs/e25-neutral.toml",
+  "kinds": [
+   78,
+   2,
+   100,
+   50,
+   25,
+   3
+  ],
+  "seed": 8
+ },
+ "draws": 8,
+ "decisions": 25600,
+ "episodes": 620,
+ "lost": 0,
+ "seconds": 69.52262617299999,
+ "networks": [
+  "runs/clone-3/students/hexconv-n-96x6-a.pt"
+ ],
+ "identity": {
+  "started": "2026-11-06T18:51:27Z",
+  "commit": "fe58dfc7c13fab91b26a5b60c8e08ad69de51cb0",
+  "dirty": false,
+  "abi": 37,
+  "observation_encoding": 22,
+  "action_encoding": 13,
+  "encounters": 1,
+  "system_policy": 19,
+  "torch": "2.14.1+cu126",
+  "os": "Linux-6.18.44-fc-v242-x86_64-with-glibc2.39",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "cores": 4,
+  "python": "3.12.3",
+  "numpy": "2.5.4"
+ },
+ "ceiling": {
+  "draws_scored": 204800,
+  "categories": {
+   "tactics": 40016,
+   "wait_defend": 9886,
+   "move": 28330,
+   "melee": 74456,
+   "shot": 27569,
+   "heal": 1784,
+   "cast": 21159,
+   "other": 1600
+  },
+  "mode": {
+   "all": 0.9724462890624999,
+   "by_category": {
+    "tactics": 0.9950269892043183,
+    "wait_defend": 0.9917054420392474,
+    "move": 0.9853159195199436,
+    "melee": 0.9411195874073274,
+    "shot": 0.9983677318727556,
+    "heal": 1.0,
+    "cast": 0.9771728342549268,
+    "other": 0.9787499999999999
+   }
+  },
+  "pair": {
+   "all": 0.9670256696428571,
+   "by_category": {
+    "tactics": 0.9939238590278179,
+    "wait_defend": 0.9882951359787294,
+    "move": 0.9835510060007001,
+    "melee": 0.9301907934120278,
+    "shot": 0.9977977334791142,
+    "heal": 1.0,
+    "cast": 0.9697730786629101,
+    "other": 0.9810714285714285
+   }
+  },
+  "entropy": {
+   "all": 0.04420417559028766,
+   "by_category": {
+    "tactics": 0.008136232421061788,
+    "wait_defend": 0.016476978061773836,
+    "move": 0.02083390097540404,
+    "melee": 0.09352870338833247,
+    "shot": 0.0029550610529169236,
+    "heal": 0.0,
+    "cast": 0.04190760874394393,
+    "other": 0.026472220946970847
+   }
+  },
+  "entropy_miller_madow": {
+   "all": 0.04947273027778712,
+   "by_category": {
+    "tactics": 0.009135832580997823,
+    "wait_defend": 0.018474752692564846,
+    "move": 0.02322094651017282,
+    "melee": 0.10466951138231398,
+    "shot": 0.0032837817174314146,
+    "heal": 0.0,
+    "cast": 0.047014773543792694,
+    "other": 0.029597220946970846
+   }
+  },
+  "distinct_entries": {
+   "all": 1.084296875,
+   "by_category": {
+    "tactics": 1.0159936025589764,
+    "wait_defend": 1.0319643940926564,
+    "move": 1.0381927285563008,
+    "melee": 1.1782529279037284,
+    "shot": 1.0052595306322318,
+    "heal": 1.0,
+    "cast": 1.0817146367975803,
+    "other": 1.05
+   }
+  },
+  "cast_draws": 21159,
+  "cast_heads": {
+   "spell": {
+    "mode": 0.943841009344021,
+    "draws": 21083
+   },
+   "target": {
+    "mode": 0.9997133438440591,
+    "draws": 20931
+   },
+   "second": {
+    "mode": 0.9992832226310508,
+    "draws": 20927
+   }
+  },
+  "networks": {
+   "runs/clone-3/students/hexconv-n-96x6-a.pt": {
+    "agreement": {
+     "all": 0.8104931640625,
+     "by_category": {
+      "tactics": 0.9233056777289085,
+      "wait_defend": 0.7860610965001011,
+      "move": 0.7702788563360395,
+      "melee": 0.7758810572687225,
+      "shot": 0.8189270557510246,
+      "heal": 0.9596412556053812,
+      "cast": 0.7480977361879105,
+      "other": 0.97625
+     }
+    },
+    "cross_entropy": {
+     "all": 0.4964325783547327,
+     "by_category": {
+      "tactics": 0.1616524475233616,
+      "wait_defend": 0.605058204690652,
+      "move": 0.6703752014190609,
+      "melee": 0.591159776744952,
+      "shot": 0.4615441275946543,
+      "heal": 0.11344191792545211,
+      "cast": 0.6226967143183627,
+      "other": 0.06853143022513575
+     }
+    }
+   }
+  }
+ }
+}

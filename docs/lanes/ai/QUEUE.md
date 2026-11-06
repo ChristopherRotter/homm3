@@ -15,9 +15,7 @@ the benches resume; **T26b done** 2026-11-05, decision 5's first gate passed by 
 normalised 96 × 6 at 1e-3, 0.755 at 4 M; **T27 done** 2026-11-06, the second gate passed, 0.809
 at 16 M and 0.481 ± 0.019 against the fair actor; `E25-log.md`):
 
-- **T28 The A/B.** *Scope:* first T27's student, `runs/clone-3/students/hexconv-n-96x6-a.pt`
-  (about 6 MB), uploaded for T19's tool (`h3env.train.ceiling --network`, T27's acceptance's last
-  part; the sandbox's CPU). Then the user's GPU, about 17 hours in parts under 2 hours, from
+- **T28 The A/B.** *Scope:* the user's GPU, about 17 hours in parts under 2 hours, from
   `python/`: the first part `uv run --group train python -m h3env.train --config
   configs/e25-imitate-structure.toml --init-from runs/clone-3/students/hexconv-n-96x6-a.pt --out
   runs/e25-structure-1`, Ctrl-C before 2 hours, each later part `uv run --group train python -m
@@ -28,7 +26,8 @@ at 16 M and 0.481 ± 0.019 against the fair actor; `E25-log.md`):
   --candidate runs/e25-structure-1/best.pt --best runs/e25-imitate-1/best.pt`, its output pasted.
   *Acceptance:* the final ladder beside `e25-imitate-1` #2's (0.458, −0.020; the neutral set
   +0.287) and T27's clone's (0.481, −0.020; +0.274), the head-to-head, the samples a second, T19's
-  tool before and after RL. *Depends on:* T27 (done, its gate passed). *Status:* next.
+  tool after RL (T27's student 0.810 before), `inspect` on the casts (the clone's 0.748).
+  *Depends on:* T27 (done, its gate passed). *Status:* next.
 - **T29 The checkpoint.** *Scope:* with the user: structure against the MLP (the clone, RL and
   the cost), the current best, increment 8 (whether the evidence asks for an encoding change).
   *Depends on:* T28, or the gate that stopped the increment. *Status:* waiting.

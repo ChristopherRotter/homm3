@@ -1441,8 +1441,8 @@ an entry only where a task builds on it.
   (0.750 to 0.809, about 0.03 a doubling, the MLP's 0.02), still rising. Its value's explained
   variance passes the MLP's by 16 M (0.658 against 0.626; T26b's 0.590 at 4 M was early), so
   PPO's critic starts no worse. One category falls: the cast entry, 0.794 at 2 M to 0.747 at 16
-  M, below the MLP's 0.819 (its targets 0.828 against 0.626): T19's tool on this student and T28's
-  `inspect` say whether it casts less or other spells. The agreement buys play: +0.067 win rate
+  M, below the MLP's 0.819 (its targets 0.828 against 0.626): T19's tool below confirms it on
+  T19's states. The agreement buys play: +0.067 win rate
   and +0.045 value against the fair actor over the MLP, in every kind (hero +0.077, siege hero
   +0.071, siege garrison +0.016).
 - **Decision 5's second gate passed:** 0.481 ± 0.019 against the fair actor, T20's 0.411 ± 0.018
@@ -1450,6 +1450,19 @@ an entry only where a task builds on it.
   (`e25-imitate-1` #2, 20 M of PPO: 0.458, the same value −0.020; inside the intervals), the
   neutral set 0.013 below it (+0.274 against +0.287, the target +0.285). Exit criterion 1 (above
   0.5 and a positive value) is not met by it. T28 next.
+- **T19's tool** (the sandbox's CPU, the uploaded student; `python/records/distill/ceiling/
+  ceiling-3.json`; commit `fe58dfc`, clean; T19's 25 600 states with 8 draws each, its ceiling
+  reproduced, 0.972 and 0.044 nats; 2 minutes):
+
+  | Network | All | Tactics | Wait, defend | Moves | Melee | Shots | Heal | Casts | Other | CE |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | T27's `hexconv` | **0.810** | 0.923 | 0.786 | 0.770 | 0.776 | 0.819 | 0.960 | 0.748 | 0.976 | **0.496** |
+  | T16's student (MLP, 4 M) | 0.531 | 0.788 | 0.485 | 0.298 | 0.360 | 0.608 | 0.699 | 0.841 | 0.924 | 1.514 |
+  | the ceiling (mode) | 0.972 | 0.995 | 0.992 | 0.985 | 0.941 | 0.998 | 1.000 | 0.977 | 0.979 | ≈0.05 |
+
+  The bench's held-out set and T19's states agree (0.809 and 0.810; casts 0.747 and 0.748): at a
+  quarter of the teacher's casts the student's most likely entry is another one. Whether it casts
+  later, another spell or not at all is T28's `inspect` (the tool scores the entry only).
 - **T28 prepared** (the sandbox's CPU): `configs/e25-imitate-structure.toml`, `e25-imitate.toml`
   with T27's student's network. A new `[ppo] accumulate` (the chunks a minibatch's gradient is
   summed over before its one step; 1 the update as before) keeps PPO's 8 minibatches of 4 096
