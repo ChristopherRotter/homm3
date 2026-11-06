@@ -19,19 +19,25 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **A plan's town has no `KINDS` entry** (E09 T9b1): `towns_laid_out` lays the plan's towns
   (`TownPlan`) out after every other object but the boats, each with a template appended after
   the objects'. Code that reads a plan object's kind from its template (`(template - 1) /
-  BLOCKERS.len()`: the cover tests' `kinds`, `view.rs`' `vary`) skips `Body::Town` first, or it
-  indexes past `KINDS` or misreads a kind.
+  BLOCKERS.len()`: the cover tests' `kinds`) skips `Body::Town` first, or it indexes past `KINDS`
+  or misreads a kind; `view.rs` has `kind` and `footprint` (E09 T9b2b), which do.
 - **The thin cover tests move with the steps:** a new run kind in `steps()` changes every
   property's and cover test's games. `Step::Town` on a map without towns plays as `Step::Hire`
   (before its own settling, which declines every question), so that the dwellings' cover test
   keeps its counts; raise a cover test's cases, not its draw (the adventure lane's `TRAPS.md`).
 
-- **A public draw under the hygiene property** (E09 T9b2a's cut): the hygiene property
-  (`a_viewer_learns_nothing_it_cannot_see`) builds its other game with another seed, so a setup
-  draw a viewer sees (a random town's faction, a neutral garrison, a random dwelling's type)
-  must have one outcome in its plans; and the towns' draws come first in the setup stream
-  (design §14), so an unseen town's change (owner, garrison, removal) moves every later draw. The told views
-  (`views_move_as_the_events_say`) vary nothing and play the plans' towns as drawn.
+- **A public draw under the hygiene property** (E09 T9b2a's cut; T9b2b's `hygienic`): the
+  hygiene property (`a_viewer_learns_nothing_it_cannot_see`) builds its other game with another
+  seed, so a setup draw a viewer sees (a random town's faction, a neutral garrison, a random
+  dwelling's type) must have one outcome in its plans; and the towns' draws come first in the
+  setup stream (design §14), so an unseen town's change (owner, garrison, removal) moves every
+  later draw. A new plan field that draws at the build goes through `hygienic_town`. The told
+  views (`views_move_as_the_events_say`) vary nothing and play the plans' towns as drawn.
+- **What the build picks from an object's surroundings shows later** (E09 T9b2b, a gap of
+  `master`'s): `vary` keeps the inputs of such a pick, a Shipyard's boat tile (ADV-SHY-001: its
+  offsets' terrain and objects) and a random dwelling's resolved footprint (`object_reach`); a
+  seen town's `TownId` counts the towns before it, so a town is removed only after every seen one
+  and added after every other.
 
 ## The import (`h3-map` `src/import/town.rs`)
 

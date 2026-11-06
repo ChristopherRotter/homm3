@@ -1681,3 +1681,63 @@ after every seen one). Built by the agent alone; no original data needed.
   fails by design on a `cross-lane` branch (`check-lane --cross-lane` passed); after the two fixes
   above the lib tests, clippy and fmt again.
 - **Versions:** none (tests only).
+
+### T9b2b — the hygiene property meets the plans' towns (2026-11-06)
+
+One session, the user present; branch `town/e09-t9b2b` (`cross-lane`: `h3-map`'s `tests/view.rs`,
+`tests/play.rs`, whose `LEVEL_1`, `TOWN_BUILDINGS`, `TOWN_BLOCKED` and `TOWN_ENTRANCE` are now
+`pub(super)` and whose town object is `add_town`, shared with `view.rs`, and
+`proptest-regressions/tests/view.txt`). Starting point: `master` at 0178a2c (#761 merged; CI green
+there; the setup's `verify-once` ran the full local verify, green). **At its start** (the agent,
+told to the user): kept whole, the seam offered (the plans' towns with the checks, then `vary`'s
+changes); the user's computer's shell did not start, so a sandbox cloned from GitHub. Built by the
+agent alone; no original data needed.
+
+- **`hygienic`** (the property's plans; `townless` gone): a random town made a town of a fixed
+  faction, a neutral town's editor garrison given (ten of a level-1 creature in its first slot), so
+  that the towns draw nothing a viewer may see (decision 34): only an owned standard set's level-2
+  dwelling with a Fort, which no view shows; no main town, so the viewer's heroes keep the armies
+  and experience the property gives them.
+- **`vary` learns towns** (`footprint`: a town's tiles by `TOWN_BLOCKED`, since its template is no
+  `KINDS` entry; `kind` skips heroes and towns): a town's entrance stays land, its tiles take no
+  hero moved and no blocker added; where the viewer sees none of its tiles, unless it owns the town,
+  another owner (after every other ownable object in `owners`' cycle; kept where a hero stands on
+  its entrance, its visitor at load), another garrison and buildings (`Unseen::towns`); removed as
+  a blocker, only after every town the viewer sees (a seen town's `TownId` counts the towns before
+  it), never one it owns; towns added after every other object (`Unseen::added_towns`, a plan's
+  town made `hygienic_town`, its owner a playing colour but the viewer's or none) where the viewer
+  sees none of its tiles, on no tile of a hero, a boat, another object or a seen monster, the
+  entrance on land.
+- **`outcome`** also compares the Capitols another player's command changed (`TownChanged`'s town
+  and Capitol): a capture takes the town's Capitol away when the captor holds another
+  (TWN-CAP-002), maybe in a town the viewer never sees, and the change is told to every viewer that
+  sees the town (the agent's call, told to the user at the start).
+- **The property:** `a_viewer_learns_nothing_it_cannot_see` draws `hygienic()` and checks the town
+  views in both games at the start and after every compared command (`check_town_views`, T9b2a's).
+- **Unit tests:** `vary_changes_the_towns_the_viewer_never_sees_only` (four towns: the viewer's own
+  kept; the others' owners, garrisons and buildings changed where unseen, the visited one's owner
+  kept; removal only after the seen town; a town added where unseen and not over another; the game
+  builds on each map); `vary_keeps_a_shipyard_s_boat_tiles` (below).
+- *Found on the way, a gap of `master`'s* (the first stress run, 400 cases; the case shrank to a
+  plan without towns): another player's boat built at a Shipyard landed on a tile the viewer saw in
+  the other game, as an earlier offset it never saw (ADV-SHY-001: the boat tile is the first free
+  water offset from the entrance, fixed at the build) had become land there. `vary` now keeps the
+  terrain and the objects of every Shipyard's twelve offsets (from each tile it is visited from;
+  the offsets read from the packs); the seed committed in `view.txt`.
+- **Stressed once** (then set back to 48 cases): 400 cases; 2 000 cases (433 with towns laid out,
+  311 seen at the start, 49 with towns changed, 23 removed, 154 added; 9 238 compared steps with
+  a town in view, 20 captures told); 2 000 cases of plans with three to six towns (923 with towns,
+  699 seen at the start, 117 changed, 43 removed, 173 added; 20 602 steps with a town in view, 49
+  captures told, 2 Capitols' changes told). All passed.
+- **Mutations of the test** (400 cases of plans with three to six towns each): a town removed
+  before a seen one, and random towns left random, each failed; a neutral town's editor garrison
+  left drawn passed, also with the viewer holding a Tavern town: a neutral town seen at a level
+  of 1 or more with an editor garrison under another seed is rare (one case of 400 saw one at the
+  start, with the same seed), so the call stands by its reasoning, not by a failing case.
+- *Agent's calls (change freely):* the given garrison; the added towns' share (none to two); the
+  owners' cycle shared with the other ownable objects; no cover test (the default 48 cases meet
+  towns in about one case of five).
+- **Test time:** the property's 48 cases 8 s here.
+- **Gates:** the scoped verify (no original data staged) passed every step it runs but
+  `check-lane`, which fails by design on a `cross-lane` branch (`check-lane --cross-lane` passed).
+- **Versions:** none (tests only).
