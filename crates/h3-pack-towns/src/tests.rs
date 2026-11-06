@@ -76,6 +76,11 @@ fn the_synthetic_record_compiles_with_its_override() {
     );
     assert_eq!(part.params().unwrap().capitol_demoted_to, "city_hall");
     assert_eq!(part.params().unwrap().neutral_garrison[1].count, [5, 7]);
+    // E09 T8c2: the synthetic pack's Visions parameters and the expansion's creature.
+    let params = part.params().unwrap();
+    assert_eq!((params.visions_factor, params.visions_min_radius), (2, 4));
+    let lurker = core.creature_by_key("synthetic-ext:lurker").unwrap();
+    assert_eq!(params.visions_creatures, [lurker]);
 }
 
 #[test]
@@ -204,6 +209,8 @@ fn parse(text: &str) -> Result<TownPack, TownPackError> {
 fn the_parser_is_strict() {
     let syntax = |text: &str| matches!(parse(text), Err(TownPackError::Syntax(_)));
     assert!(syntax("[town_params]\nbogus = 1"));
+    assert!(syntax("[town_visions]\nbogus = 1"));
+    assert!(syntax("[town_visions]\ncreatures = \"rogue\""));
     assert!(syntax(
         &VALE.replace("moat = \"harmless\"", "moat = \"deep\"")
     ));
@@ -232,6 +239,7 @@ fn the_parser_is_strict() {
     ));
     assert!(key(&VALE.replace("shard = 1", "Shard = 1")));
     assert!(key(&VALE_OVERRIDE.replace("synthetic:vale", "Vale")));
+    assert!(key(&VALE_OVERRIDE.replace("\"lurker\"", "\"Lurker\"")));
     assert!(key(
         &VALE_OVERRIDE.replace("synthetic:shard", "synthetic:Shard")
     ));
@@ -374,6 +382,14 @@ fn the_original_packs_compile_with_every_faction() {
         core.resources()[params.gold.index()].key.as_str(),
         "base:gold"
     );
+    // Visions (E09 T8c2): the expert factor and least radius; the Rogue from AB on.
+    assert_eq!((params.visions_factor, params.visions_min_radius), (3, 3));
+    let rogue = core.creature_by_key("ab:rogue").unwrap();
+    assert!(roe.params().unwrap().visions_creatures.is_empty());
+    let ab_rogue =
+        original_core(&[h3_pack::BASE_CORE, h3_pack::AB_CORE]).creature_by_key("ab:rogue");
+    assert_eq!(ab.params().unwrap().visions_creatures, [ab_rogue.unwrap()]);
+    assert_eq!(params.visions_creatures, [rogue]);
     // Roles of one faction each (survey §16.6), the hordes' upgrade (decision 29).
     let castle = sod.town(faction("base:castle")).unwrap();
     let brotherhood = building(castle, "brotherhood_of_the_sword");

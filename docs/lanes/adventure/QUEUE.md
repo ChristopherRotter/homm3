@@ -24,6 +24,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-06 (the town lane, E09 T8c2, `town/e09-t8c2`, `cross-lane` with the user's consent;
+  **for when E08 places Visions**): new `h3_heroes::power` (HER-ADV-001 amended: the effective
+  Power beside `attack_defense`); the 47 adventure replays' `town_ruleset_hash` line moved (town
+  part v3), nothing else. A Rogue's Visions for the towns is town part data (`TownParams::
+  visions_factor`, `visions_min_radius`, `visions_creatures`; the packs' `[town_visions]`, the AB
+  pack's Rogue; E09 decision 31). The original's same test (`hero_visions_level` 0x4E5DE0: the
+  day's cast, or expert with a Rogue; `hero_visions_reach` 0x4E5E10) also feeds the hero, garrison
+  and monster popups (`hero_popup` 0x416590, `garrison_popup` 0x416F80, `monster_popup` 0x417150,
+  inferred in `docs/exe/map.toml`): when you place Visions or the Rogue's effect on those views,
+  read the same parameters, or move them to the spell's record and the core with us (a town part
+  version to bump).
+
 - 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
   unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
   `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,

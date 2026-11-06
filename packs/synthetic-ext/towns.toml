@@ -1,5 +1,9 @@
 # The synthetic expansion's town data (E09 T5b2a; format: crates/h3-pack-towns). Invented values
-# for tests: an override of the synthetic pack's `vale`, as the SoD pack's of the moats.
+# for tests: an override of the synthetic pack's `vale`, as the SoD pack's of the moats, and a
+# Visions creature, as the AB pack's Rogue (E09 T8c2).
+
+[town_visions]
+creatures = ["lurker"]
 
 [[town_override]]
 faction = "synthetic:vale"

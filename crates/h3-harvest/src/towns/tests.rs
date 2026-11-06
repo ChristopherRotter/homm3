@@ -42,6 +42,12 @@ grail_gold = 5000
 reveal_radius = 5
 capitol_demoted_to = 12
 
+[towns.visions]
+sources = ["s"]
+factor = 3
+min_radius = 2
+creatures = [129, 100]
+
 [towns.moat]
 sources = ["s"]
 roe_ab = { moat = "harmless" }
@@ -259,8 +265,14 @@ fn harvests_the_town_files_that_compile() {
          grail_gold = 5000\nreveal_radius = 5\nlevel_2_dwelling_chance = 30\n\
          neutral_garrison = [\n  { chance = 33, count = [8, 15] },\n"
     ));
-    assert!(base.contains("capitol_demoted_to = \"city_hall\"\n"));
+    assert!(base.contains(
+        "capitol_demoted_to = \"city_hall\"\nvisions_factor = 3\nvisions_min_radius = 2\n"
+    ));
     assert!(!ab.contains("[town_params]") && !sod.contains("[town_params]"));
+    // Visions' creatures, each in its own pack's file (E09 T8c2).
+    assert!(base.contains("\n[town_visions]\ncreatures = [\"unit_100\"]\n"));
+    assert!(ab.contains("\n[town_visions]\ncreatures = [\"unit_129\"]\n"));
+    assert!(!sod.contains("[town_visions]"));
     // Alpha and Beta in base, Gamma in ab with its creatures' pack.
     assert!(
         base.contains("faction = \"alpha\"\nmoat = \"harmless\"\nsilo = { wood = 1, ore = 1 }\n")
@@ -424,6 +436,10 @@ fn gapfill_town_errors() {
     );
     let e = bad("gold = \"Gold\"", "gold = \"Mithril\"");
     assert!(e.contains("unknown resource `Mithril`"), "{e}");
+    let e = bad("creatures = [129, 100]", "creatures = [129, 999]");
+    assert!(e.contains("unknown Visions creature 999"), "{e}");
+    let e = bad("creatures = [129, 100]", "creatures = [129, 129]");
+    assert!(e.contains("do not compile"), "{e}");
     let e = bad("roles = { luck = 2 }", "roles = { luck = 9 }");
     assert!(e.contains("do not compile"), "{e}");
 }
