@@ -18,7 +18,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   town map `e09-towns-36.h3m`, its eight golden replays (55 adventure replays). **Next: T9b** (the
   plans' towns and their properties; its queue entry, its cut confirmed at its start), then T9c
   (the benchmarks, the env, the census), then round 10.
-- **Open pull requests:** T9a's, branch `town/e09-t9a` (`cross-lane`: `h3-map`'s `writer.rs`,
+- **Open pull requests:** #756, T9a's, branch `town/e09-t9a` (`cross-lane`: `h3-map`'s `writer.rs`,
   `tests/mod.rs`, `tests/towns_map.rs`; `fixtures/maps/`, `fixtures/replays/adventure/`, `h3-cli`'s
   `tests/adventure_replays.rs`, `docs/formats/h3m.md`; two match arms in `h3-experiment`).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, the adapter `h3-pack-towns` and each pack folder's `towns.toml` (T4b), the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and `src/writer/town*` of `h3-map`, `docs/rules/catalog/town.toml`, `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Everything else in the adventure lane's crates is the adventure lane's: a change there is `cross-lane`, merged in order with the adventure lane's pull requests.
