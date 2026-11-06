@@ -1,0 +1,76 @@
+# E17 M6 T5b2b (design §12.20): Auto Combat's question at a later turn than the switch's and a
+# human's turn right after an answer, the battle of `seq-auto-retreat.toml` (Normal, Red's 20 000
+# gold, Orrin's 5000 experience and a Tavern town, 3000 Wolf Riders and 1500 Goblins, Crag Hack,
+# the obstacles) with Orrin's army 20 Dwarves and a Ballista he commands (Basic Artillery). On
+# grass the order is the Wolf Riders (speed 6), the Goblins (5), the Dwarves (3, +1 native) and
+# the Ballista (0, the normal phase's last), then the stacks that waited; the Wolf Riders do not
+# reach the Dwarves in round 1. The captures keep the machines' Auto Combat boxes clear, so under
+# Auto Combat the Ballista's turn is the human's while the Dwarves play themselves, and the
+# retreat test says yes at their action (the human's side skips its Easy and Normal gate). Both
+# armies of one town (morale +1): the sequences fail the original's good morale. The sequences
+# prepared in `to-record.toml`.
+
+[scenario]
+id = "sequence-auto-retreat-machine"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): Auto Combat's button is
+# disabled when both players are human (0x46BB40).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+# The harness's game: Normal, Red's 20 000 gold.
+difficulty = 1
+attacker_funds = 20000
+attacker_war_machines = ["base:ballista"]
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:dwarf"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 3000
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 1500
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge, 2; Orrin's book
+# Bless alone (Combat Auto Spells clear: never cast). Crag Hack has no book.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:bless"]
+
+# Basic Artillery (the pack's): the Ballista waits for Orrin's commands (`h3-view situation`
+# writes the skill into the original's map).
+[scenario.attacker_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000
+
+# What Orrin would lose by a retreat (the retreat test's facts): 5000 experience, a Tavern town
+# (`h3-view situation` writes the town; the harness the experience, before the battle).
+[scenario.attacker_retreat]
+experience = 5000
+tavern = true
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

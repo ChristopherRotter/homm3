@@ -520,6 +520,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .map_err(|e| format!("{}: {e}", sequence.id))?
             .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
         let spans = asked_spans(&holds, &timeline, sequence.pre);
+
         // The mouse as the harness moved it (E17 M3 T6c-2): its cursor, the stack it marks and
         // enters, the status line's hints, each turn's battle from the engine.
         let scenario_path = dir.join(&sequence.scenario);
@@ -543,6 +544,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
             |original: u16| motion::spell_numbered_in(keys, &tables, original).map(|(h, _)| h);
         // The Auto Combat boxes it was recorded at (E17 M6 T5b1).
         let boxes = sequence.auto.boxes(&sequence.id)?;
+        // Which turns play themselves under Auto Combat by them (E17 M6 T5b2b).
+        let plays = pointer::plays_itself(&record, &timeline, (&tables, boxes));
         let (inputs, answers) = pointer::answering(
             &sequence.actions,
             sequence.pre,
@@ -551,7 +554,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             (
                 h3_view::tactics::told(snapshot),
                 sequence.shades.options(&sequence.id)?,
-                boxes[h3_view::auto::CREATURES],
+                (boxes[h3_view::auto::CREATURES], &plays),
             ),
             &spans,
         )
@@ -654,7 +657,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             )?
             .with_auto(
                 snapshot,
-                pointer::auto(&inputs, &timeline, &itself),
+                pointer::auto(&inputs, (&timeline, pointer::human_sides(&record)), &itself),
                 Bugs::Original,
             );
             // Auto Combat's questions and offers (E17 M6 T5b2a): the side's own view before the

@@ -53,6 +53,7 @@ fn legal() -> Legal {
 const UNMARKS: Start = Start {
     unmarks: true,
     ends_tactics: false,
+    hands_over: None,
 };
 
 /// The mouse followed through the battle, checked gone on from the marks of shorter follows too.
@@ -1995,4 +1996,71 @@ fn the_original_s_wall_aim_keeps_the_outline_and_names_the_spell_where_it_refuse
         assert!(shown.log.contains(&(60, nowhere)), "{bugs:?}");
         assert_eq!(shown.aimed(70), None, "{bugs:?}");
     }
+}
+
+#[test]
+fn a_stop_at_the_computer_s_cast_s_end_hands_the_turn_to_the_human() {
+    // E17 M6 T5b2b (CLT-Q61): the human's stack 0 acts at 10; its next turn (50) Auto Combat
+    // plays from its start, its first action the computer's cast for the hero, after which it
+    // stops (350). Through the cast the turn is the computer's: the pointer, the move at 100
+    // waiting; at its end the turn the human's as at its start: the log settled, the mouse posted
+    // where it rests (the move's hint and cursor), the moves after it taken.
+    let (o, legal) = (battle(), legal());
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [
+        Turn { field, human: true },
+        Turn {
+            field,
+            human: false,
+        },
+    ];
+    let log = [
+        (10, Logged::Action),
+        (50, Logged::Turn(0)),
+        (50, Logged::Action),
+        (200, Logged::Unmark),
+    ];
+    let cast = Start {
+        hands_over: Some(350),
+        ..UNMARKS
+    };
+    let starts = [UNMARKS, cast];
+    let moves = [
+        Input::Move {
+            at: 0,
+            to: centre(90),
+        },
+        Input::Move {
+            at: 100,
+            to: centre(87),
+        },
+    ];
+    let attack = run(&[], &[], &turns[..1], &moves[..1]).frames[0].1;
+    let mut inputs = moves.to_vec();
+    let shown = run(&log, &starts, &turns, &inputs);
+    assert_eq!(shown.frames, [(0, attack), (10, 6), (350, 1)]);
+    assert!(shown.log.contains(&(350, Logged::Settle)));
+    assert!(shown.log.contains(&(350, status("Move(0)", false))));
+    // A move after the stop is the human's: the hint of the hex it takes.
+    inputs.push(Input::Move {
+        at: 400,
+        to: centre(90),
+    });
+    let shown = run(&log, &starts, &turns, &inputs);
+    assert_eq!(
+        shown.frames,
+        [(0, attack), (10, 6), (350, 1), (400, attack)]
+    );
+    // Without the stop the turn stays the computer's: the moves wait for the next turn's start;
+    // and so without the turn's battle.
+    let shown = run(&log, &[UNMARKS, UNMARKS], &turns, &inputs);
+    assert_eq!(shown.frames, [(0, attack), (10, 6)]);
+    assert!(!shown.log.contains(&(350, Logged::Settle)));
+    let unread = follow(&log, &starts, &turns[..1], &inputs, &layout(), &name);
+    assert!(!unread.log.contains(&(350, Logged::Settle)));
 }

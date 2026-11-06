@@ -2365,11 +2365,13 @@ impl<'a> Growing<'a> {
         // A hero's cast (E17 M3 T7b-1, the recorded `cast`): its action clears the outline at
         // once (no stack active while it plays); its stack's turn goes on after it, outlined
         // again as the hero stands.
-        let cast = command
-            .events
-            .iter()
+        let caster = (command.events.iter())
             .take_while(|e| !matches!(e, Event::TurnStarted { .. }))
-            .any(|e| matches!(e, Event::SpellCast { .. }));
+            .find_map(|e| match *e {
+                Event::SpellCast { side, .. } => Some(side),
+                _ => None,
+            });
+        let cast = caster.is_some();
         if cast {
             outlines.push((started, None));
         }
@@ -2418,6 +2420,7 @@ impl<'a> Growing<'a> {
             stands,
             unmarks,
             ends_tactics,
+            cast: caster,
         });
         if let Some(f) = fidgets.as_mut() {
             let drawn: Vec<u8> = player.keys[before..].iter().map(|k| k.stack).collect();

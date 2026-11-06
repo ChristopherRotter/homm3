@@ -97,7 +97,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   human's hero, `live::Played::turned` false): `Battle::take` then asks Auto Combat of that turn
   (`Auto::plays` to its end), never of a turn to come; and every command the computer gives is
   logged by what asked for it (`live::Ask`), or the unattended check's re-fight (`refight`)
-  draws otherwise.
+  draws otherwise. Since T5b2b (CLT-Q61) a stop may be read at that cast's end, so every Auto
+  Combat over the battle's own turns takes the turns' casts (`Auto::casting`, `auto::casts`:
+  `pointer::auto`, `Follower`, `Battle::auto_turn`; `Auto::of` is the tests'), and the mouse
+  hands the turn over there (`track::Start::hands_over`, set by `pointer::hand_over`).
 - `clicks`' test fights every `situations/*.toml` but `counts`, `sequences`, `set` and
   `to-record` as a scenario: a new file there that is not one joins that list (E17 M6 T5b1).
 - A message box (E17 M5 T4a) is modal as the book: while `Battle::message_open` the window's

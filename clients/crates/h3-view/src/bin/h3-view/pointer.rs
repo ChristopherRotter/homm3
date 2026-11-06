@@ -8,7 +8,7 @@ use h3_protocol::wire::{Command, Manifest, Observation, Side, Stack};
 use h3_render::Bugs;
 use h3_ui::text::Catalogue;
 use h3_view::anim::Timeline;
-use h3_view::auto::{Acting, Auto, turn_at};
+use h3_view::auto::{Acting, Auto, Cast, turn_at};
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::aim::Aim;
 use h3_view::mouse::track::{self, Input, Lens, Shown, Start, Turn};
@@ -95,7 +95,8 @@ pub fn inputs(
     (told, shades, creatures): (bool, h3_view::shades::Options, bool),
 ) -> Result<Vec<Input>, String> {
     let at = (timeline, spells, handle);
-    answering(actions, pre, layout, at, (told, shades, creatures), &[]).map(|(inputs, _)| inputs)
+    let options = (told, shades, (creatures, &[][..]));
+    answering(actions, pre, layout, at, options, &[]).map(|(inputs, _)| inputs)
 }
 
 /// The mouse's inputs for the harness's `actions` (`h3drive.py`'s `act`), the first acting `pre`
@@ -123,8 +124,12 @@ pub fn inputs(
 /// ([`Input::Shades`]). E17 M6 T5b1 (design §12.18, *provisional*): with Combat Auto Creatures
 /// clear (`creatures`, the sequence's box) no creature of the human's plays itself, so a `key:`,
 /// `hex:` or `click:` after `key:a` is the human's turn's own, not a stop (such a sequence presses
-/// only on the human's turns). *Not modelled:* the book over the battlefield, the mouse moved
-/// over the phase's message.
+/// only on the human's turns). E17 M6 T5b2b: so after a `key:a` on any turn whose stack does not
+/// play itself by the sequence's boxes (`plays`, by turn as [`turn_at`] counts them, the
+/// opening's first; past them `creatures`): a commanded Ballista's with Creatures set. A stop
+/// pressed during the computer's cast for the hero stops Auto Combat at the cast's end
+/// (`Auto::casting`), the presses after it the turn's own. *Not modelled:* the book over the
+/// battlefield, the mouse moved over the phase's message.
 ///
 /// E17 M6 T5b2a: with Auto Combat's questions open over the spans `asked` (design
 /// §12.19, *provisional*: each from the action's millisecond to the answer that gave the
@@ -137,7 +142,7 @@ pub fn answering(
     pre: u32,
     layout: &BattleLayout,
     (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
-    (told, shades, creatures): (bool, h3_view::shades::Options, bool),
+    (told, shades, (creatures, plays)): (bool, h3_view::shades::Options, (bool, &[bool])),
     asked: &[(u32, u32)],
 ) -> Result<(Vec<Input>, Vec<u32>), String> {
     let open = |now: u32| {
@@ -252,11 +257,9 @@ pub fn answering(
                 turn: turn_at(&timeline.turns, now),
             }),
             "key" if auto_combat(arg) => {
-                auto = creatures;
-                out.push(Input::Auto {
-                    at: now,
-                    turn: turn_at(&timeline.turns, now),
-                });
+                let turn = turn_at(&timeline.turns, now);
+                auto = plays.get(turn).copied().unwrap_or(creatures);
+                out.push(Input::Auto { at: now, turn });
             }
             "move" => out.push(Input::Move {
                 at: now,
@@ -538,6 +541,31 @@ pub fn captured(
         .collect()
 }
 
+/// Whether each turn of `timeline` plays itself under Auto Combat by the boxes `boxes` (E17 M6
+/// T5b2b; the opening's, then each one started), its stack as the record's opening shows it: the
+/// sequences' parser's ([`answering`]), before the engine's battles are asked. A stack the opening
+/// lacks (one the battle created) plays itself, as the computer's.
+pub fn plays_itself(
+    record: &Record,
+    timeline: &Timeline,
+    (tables, boxes): (&Tables, [bool; 5]),
+) -> Vec<bool> {
+    let Some(snapshot) = record.first_snapshot() else {
+        return Vec::new();
+    };
+    let manifest = &record.header.manifest;
+    core::iter::once(snapshot.active)
+        .chain(timeline.turns.iter().map(|&(_, stack)| Some(stack)))
+        .map(|active| {
+            let observation = Observation {
+                active,
+                ..snapshot.clone()
+            };
+            stack_of(manifest, tables, &observation).plays_itself(boxes)
+        })
+        .collect()
+}
+
 /// What the mouse shows over the record's battle as `timeline` plays it: `turned` the battle and
 /// its legal commands before each command and after the last (`scenario::turned`; none for a
 /// record without its scenario: the opening's battle then stands for every turn, with no legal
@@ -589,9 +617,13 @@ fn followed(
         };
         battles.push((observation, legal, facing(timeline, t)));
     }
-    // A turn Auto Combat plays from its start is the computer's (E17 M5 T4c1).
+    // A turn Auto Combat plays from its start is the computer's (E17 M5 T4c1); one it stopped
+    // in at the computer's cast's end the human's from then (E17 M6 T5b2b).
     let starts: Vec<u32> = times.iter().map(|&(t, _)| t).collect();
-    let auto = Auto::of(inputs, &starts, itself);
+    let casts = casts(record, timeline);
+    let auto = Auto::casting(inputs, &starts, itself, &casts);
+    let mut actions = actions(timeline);
+    hand_over(&mut actions, &mut Vec::new(), &auto, &casts);
     let turns: Vec<Turn<'_>> = battles
         .iter()
         .enumerate()
@@ -605,14 +637,7 @@ fn followed(
             human: human(observation) && !auto.from_start(k),
         })
         .collect();
-    track::follow(
-        &timeline.log,
-        &actions(timeline),
-        &turns,
-        inputs,
-        layout,
-        name,
-    )
+    track::follow(&timeline.log, &actions, &turns, inputs, layout, name)
 }
 
 /// The turns the mouse reads in `timeline`: the opening's (its acting stack the record's
@@ -661,7 +686,8 @@ fn battle_of(
     Some((observation, Legal::default()))
 }
 
-/// The actions' starts as the mouse sees them.
+/// The actions' starts as the mouse sees them (E17 M6 T5b2b: none hands a turn over yet,
+/// [`hand_over`]).
 fn actions(timeline: &Timeline) -> Vec<Start> {
     timeline
         .actions
@@ -669,8 +695,39 @@ fn actions(timeline: &Timeline) -> Vec<Start> {
         .map(|a| Start {
             unmarks: a.unmarks,
             ends_tactics: a.ends_tactics,
+            hands_over: None,
         })
         .collect()
+}
+
+/// The sides a human plays here, as the record's opening says (E17 M6 T5b2b: whose hero's casts
+/// Auto Combat's stop reads, `h3_view::auto::casts`).
+pub fn human_sides(record: &Record) -> [bool; 2] {
+    record.first_snapshot().map_or([false; 2], |o| {
+        [0, 1].map(|s| o.sides.get(s).is_some_and(|v| v.human))
+    })
+}
+
+/// Each turn's human's hero's cast in `timeline` (E17 M6 T5b2b, `h3_view::auto::casts`).
+pub fn casts(record: &Record, timeline: &Timeline) -> Vec<Option<Cast>> {
+    h3_view::auto::casts(&timeline.log, &timeline.actions, human_sides(record))
+}
+
+/// The actions' starts `starts` with the turns Auto Combat handed over at a cast's end by `auto`
+/// (E17 M6 T5b2b, CLT-Q61; `casts` the turns' casts, [`Auto::handed`]): `handed` the indices
+/// set last, cleared first and set again.
+fn hand_over(starts: &mut [Start], handed: &mut Vec<usize>, auto: &Auto, casts: &[Option<Cast>]) {
+    for i in handed.drain(..) {
+        if let Some(start) = starts.get_mut(i) {
+            start.hands_over = None;
+        }
+    }
+    for (i, at) in auto.handed(casts) {
+        if let Some(start) = starts.get_mut(i) {
+            start.hands_over = Some(at);
+            handed.push(i);
+        }
+    }
 }
 
 /// The mouse over a battle as it grows (E17 M5 T8a, R3-1, *provisional*; the window's): what
@@ -689,6 +746,10 @@ pub struct Follower<'l> {
     starts: Vec<u32>,
     /// The actions' starts.
     actions: Vec<Start>,
+    /// Each turn's human's hero's cast (E17 M6 T5b2b, [`casts`]), and the actions' starts set as
+    /// handing a turn over ([`hand_over`]).
+    casts: Vec<Option<Cast>>,
+    handed: Vec<usize>,
     /// The lowest index of the engine's battles changed in place since the turns were read.
     touched: Option<usize>,
     mark: Option<track::Mark<'l>>,
@@ -776,6 +837,8 @@ impl<'l> Follower<'l> {
         self.starts = times.iter().map(|&(t, _)| t).collect();
         if grew {
             self.actions = actions(timeline);
+            self.casts = casts(record, timeline);
+            self.handed.clear();
         }
         if self.mark.as_ref().is_some_and(|m| changed < m.turn()) {
             self.mark = None;
@@ -794,11 +857,16 @@ impl<'l> Follower<'l> {
         (inputs, switches, itself): (&[Input], &[Input], &[Option<u32>]),
         (layout, name, bugs): (&'l BattleLayout, Name<'_>, Bugs),
     ) -> (Lens, Shown) {
-        let auto = Auto::of(switches, &self.starts, itself);
+        let auto = Auto::casting(switches, &self.starts, itself, &self.casts);
         let before = self.mark.as_ref().map_or(0, track::Mark::turn);
-        if (0..before).any(|k| auto.from_start(k) != self.auto.from_start(k)) {
+        let changed = |k| {
+            auto.from_start(k) != self.auto.from_start(k)
+                || auto.stopped_at(k) != self.auto.stopped_at(k)
+        };
+        if (0..before).any(changed) {
             self.mark = None;
         }
+        hand_over(&mut self.actions, &mut self.handed, &auto, &self.casts);
         let turns: Vec<Turn<'_>> = (self.turns.iter().enumerate())
             .map(|(k, (r, _))| Turn {
                 field: Field {
@@ -820,12 +888,18 @@ impl<'l> Follower<'l> {
 
 /// When Auto Combat plays `timeline`'s turns (the opening's, then each one started) by the mouse's
 /// and the keys' `inputs` (E17 M5 T4c1), their stacks playing themselves under it from when
-/// `itself` says (E17 M6 T4b1).
-pub fn auto(inputs: &[Input], timeline: &Timeline, itself: &[Option<u32>]) -> Auto {
+/// `itself` says (E17 M6 T4b1), its stops read at the ends of the casts of the heroes of the
+/// sides `human` names (E17 M6 T5b2b, [`human_sides`]).
+pub fn auto(
+    inputs: &[Input],
+    (timeline, human): (&Timeline, [bool; 2]),
+    itself: &[Option<u32>],
+) -> Auto {
     let starts: Vec<u32> = core::iter::once(0)
         .chain(timeline.turns.iter().map(|&(t, _)| t))
         .collect();
-    Auto::of(inputs, &starts, itself)
+    let casts = h3_view::auto::casts(&timeline.log, &timeline.actions, human);
+    Auto::casting(inputs, &starts, itself, &casts)
 }
 
 /// Which way the stacks face at `t` of `timeline`: those its poses then mirror face left.
@@ -1473,7 +1547,7 @@ mod tests {
         ]
         .map(String::from)
         .into();
-        let options = (false, h3_view::shades::Options::default(), true);
+        let options = (false, h3_view::shades::Options::default(), (true, &[][..]));
         let none = |_| None;
         let at: (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>) = (&timeline, &[], &none);
         let (got, answers) =
@@ -1536,7 +1610,7 @@ mod tests {
         );
         assert!(auto_combat("a") && auto_combat("A") && !auto_combat("d") && !auto_combat(""));
         // When it plays the timeline's turns: the opening's from 0.
-        let auto = auto(&got, &timeline, &[]);
+        let auto = auto(&got, (&timeline, [false; 2]), &[]);
         assert!(auto.plays(0, 0) && !auto.from_start(0));
         // E17 M6 T5b1: with Combat Auto Creatures clear nothing of the human's plays itself: the
         // key and the click after A are the human's turn's own.

@@ -6797,8 +6797,8 @@ the next stack after a cast only when it killed the active stack (0x47905B).
   panel over a human-played turn under Auto Combat (lit, the button unselected while the computer
   casts for the hero) is CLT-Q45 (1)'s, fixed in the client's profile. (1) A key pressed during
   the computer's cast for a stack that plays itself is read before that stack's action: Auto
-  Combat stops there and the action is the human's (CLT-Q61: **copy**; *not built*, T5b2's; the
-  client's stop waits for the next turn's start). (2) With Creatures cleared and Spells set, the
+  Combat stops there and the action is the human's (CLT-Q61: **copy**; built in T5b2b, §12.20).
+  (2) With Creatures cleared and Spells set, the
   computer spends the hero's cast of the round at the start of a turn the human plays, before the
   human could open the book (recorded, `auto-cast-human`; CLT-Q62: **fixed in the client's
   profile**: the cast asked only on a turn Auto Combat plays, `Auto::asks_cast` and
@@ -6892,10 +6892,8 @@ the next stack after a cast only when it killed the active stack (0x47905B).
   viewer's outline, read every millisecond around both casts, changes where the original's
   screen does and nowhere else. `auto-cast` ends at 9 000 ms, in the shot (the questions end at
   its start).
-- **Not built:** the retreat question (built in T5b2a, §12.19); the stop read between the cast and the action (CLT-Q61, copy:
-  the original reads a key pressed during the computer's cast for a stack that plays itself at
-  the pass after the cast, so that stack's action is the human's; the client's stop waits for the
-  next turn's start, its `Auto::of` taking stops at turn starts only; T5b2's, with a recording); a hidden battle's and a remote turn's
+- **Not built:** the retreat question (built in T5b2a, §12.19); the stop read between the cast
+  and the action (CLT-Q61, copy: built in T5b2b, §12.20); a hidden battle's and a remote turn's
   asks (no such battle here).
 
 ### 12.19 The retreat question (M6 T5b2a)
@@ -7021,4 +7019,52 @@ T5b2 cut in two by the user (2026-11-05): T5b2a the retreat question, T5b2b CLT-
 - **Not built:** the question at an automatic war machine's turn (CLT-Q63: the engine plays it
   itself); a server's seat (no Auto Combat there); the facts' artifacts' worth and
   `wanted` in the original's map; the original's map without the enemy's hero (a monster's
-  split); CLT-Q61's stop (T5b2b).
+  split); CLT-Q61's stop (built in T5b2b, §12.20).
+
+### 12.20 CLT-Q61's stop and the question's turns (M6 T5b2b)
+
+T5b2's second half (§12.19): the stop read between the computer's cast and the stack's action,
+copied (CLT-Q61, the user, 2026-11-05) by §12.18's reading (0x474477, 0x4741F9 to 0x47425B; no
+new reading), and sequences for the question's points §12.19 left provisional.
+
+- **What is copied** (both profiles): under Auto Combat a key or a mouse button pressed during
+  the computer's cast for the human's hero, on a turn Auto Combat plays (from its start, or from
+  the switch whose ask cast), stops it at the cast's end (+2 900 from its start, the hero
+  standing): no action of the computer's, the turn waits for the human as after a stop found as a
+  turn starts (`auto-stop`): the stack outlined (put back at the cast's end, §12.18), the panel lit
+  with Auto Combat unselected, the book dimmed (cast this round), the mouse posted. A press at or
+  after the cast's end, or with no cast (declined: the action in the same pass), waits for the
+  next turn's start; on a turn the human plays a press during the cast stays no stop.
+- **The client's (M6 T5b2b, *provisional* where marked):**
+  - `h3_view::auto`: `Auto::casting` with each turn's cast (`auto::casts`: the turn's first hero's
+    cast of a human's side, by the timeline's log and actions, `hero::Action::cast`): a stop in a
+    turn before the end of a cast that started while Auto Combat played it ends the play there,
+    the flag off from then (`stopped_at`, `handed`; `played` false: the button unselected for the
+    turns after, 0x47864A; a switch after it plays again from then). A press in the cast's last
+    millisecond is the next turn's (*provisional*: the original's action is in that tick).
+    `Auto::of` (no casts) is the tests'.
+  - The battle: `auto_turn` and `auto` read the casts, so `play_next` at the cast's end finds the
+    turn not played: `Live` waits (no `Decision::action`), no `outline_waiting` (the cast put the
+    outline back). `stop_auto` gives that turn itself for such a stop (a carried ↑, ↓, F or F5 to
+    F8 acts at the cast's end, *provisional*) and counts a press read after a later action started
+    (Restart's replay) from that action's start. The re-fight needs nothing new (`Ask::Cast`,
+    then `Pressed`).
+  - The mouse: `track::Start::hands_over` on the cast's action (`pointer::hand_over`): at its end
+    the turn is the human's as at a start (the movement shade, the log settled, the mouse's hex
+    forgotten and the mouse posted, its moves taken from then; *provisional*: the cursor's first
+    frame and the outline's first tick at the cast's end, not recorded).
+  - The comparisons: a press in the cast's span is that turn's, its stop read at the cast's end;
+    after a `key:a` on a turn whose stack does not play itself by the sequence's boxes
+    (`pointer::plays_itself`, by the opening's stacks: a commanded Ballista with Creatures set)
+    the presses are the turn's own.
+- **Prepared** (`to-record.toml`, the client's timelines): `auto-cast-stop` (`auto-cast`'s battle
+  and boxes, the click at 6 500 during Bless, 5 280 to 8 180: no shot, the Marksmen outlined and
+  the mouse posted at 8 180, the turn waiting to 10 200); over `seq-auto-retreat-machine.toml`
+  (`seq-auto-retreat.toml`'s with 20 Dwarves and a Ballista Orrin commands, Basic Artillery; the
+  engine's order Wolf Riders, Goblins, Dwarves, Ballista, the walks to 43 and 146 out of the
+  Dwarves' reach; the retreat test yes at the Dwarves' actions) `auto-retreat-later` (W on the
+  Dwarves' turn, A then D on the Ballista's, the question as the Dwarves' waited turn starts at
+  7 887, Escape at 8 887, the engine's walk to 37) and `auto-retreat-human` (A on the Dwarves'
+  turn, the question at 6 887, Escape at 7 887: Wait, then the Ballista's turn the human's from
+  7 887): §12.19's outline before a later turn's box and the loop's ticks after an answer on a
+  human's turn, to be read.

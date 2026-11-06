@@ -1,0 +1,89 @@
+# Sequences prepared for a recording in the original (`clients/capture/README.md`: `h3drive.py
+# sequences situations/to-record.toml --only <id>`), each moved into `sequences.toml` with its
+# recorded timeline and commands once recorded, this file removed once empty. The commands are as
+# the original's computer is expected to choose them (the engine's computer's here); a capture
+# agent replaces them with the recorded ones.
+
+# E17 M6 T5b2b (design §12.20, CLT-Q61: the user's answer, copy): a press during the computer's
+# cast for the human's hero stops Auto Combat at the cast's end, the stack's action the human's.
+# `auto-cast`'s battle and boxes (`seq-auto-cast.toml`, Creatures and Spells set): A at the
+# Champions' turn, the computer walks them (to 62 in the original) and, as the Marksmen's turn
+# starts (5 280 in the client), casts Bless on them; a click on hex 120 at 6 500, during the cast
+# (to 8 180, the hero standing), then the mouse moved to (300, 350). Expected: no shot; at the
+# cast's end the turn waits for the human as after a stop found at a turn's start (`auto-stop`):
+# the Marksmen outlined, the panel lit with Auto Combat unselected and the spell book dimmed (Orrin
+# cast this round), the mouse posted at (300, 350), the Marksmen's cursor there; about 2 s of the
+# waiting turn. To read: the outline's first tick, the panel's switch and the cursor's first
+# frame after the cast's end (the client's at 8 180, *provisional*).
+[[sequence]]
+id = "auto-cast-stop"
+scenario = "seq-auto-cast.toml"
+actions = ["key:a", "at:6500", "hex:120", "move:300,350"]
+ms = 3700
+auto_spells = 1
+heroes = true
+timeline = "timelines/auto-cast-stop.txt"
+frames = "timelines/auto-cast-stop-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Move = { to = 62 } } },
+    { seat = "Attacker", command = { Cast = { spell = 41, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+]
+
+# E17 M6 T5b2b (design §12.20): Auto Combat's question at a later turn than the switch's
+# (`seq-auto-retreat-machine.toml`: 20 Dwarves and a Ballista Orrin commands against 3000 Wolf
+# Riders and 1500 Goblins; the machines' boxes clear, Creatures set). Round 1: the computer walks
+# the Wolf Riders (to 43) and the Goblins (to 146), neither reaching the Dwarves; at the Dwarves'
+# turn W (they wait, 500 ms in); at the Ballista's turn A (500 ms in: Auto Combat on, the turn
+# still the human's, the panel lit) and D (500 ms later: the Ballista defends); the wait phase:
+# the Dwarves' turn plays itself, the retreat test says yes and the question opens at its start
+# (7 887 in the client); Escape 1 000 ms later: the computer's action (the engine's: the Dwarves
+# walk to 37). To read: the outline and the idle step before the box at a turn after the
+# switch's (the client's: the Dwarves not outlined, no tick, *provisional*), the Ballista's
+# Defend, the computer's choice after the answer. `wait_idle`: the test's predictions over 4500
+# creatures outlast an action's settle; `fail`: both armies of one town (morale +1).
+[[sequence]]
+id = "auto-retreat-later"
+scenario = "seq-auto-retreat-machine.toml"
+actions = [
+    "turn:0.0", "step:500", "key:w", "turn:0.1", "step:500", "key:a", "step:500", "key:d",
+    "turn:0.0", "step:1000", "key:Escape",
+]
+ms = 2300
+wait_idle = true
+heroes = true
+fail = ["good_morale"]
+timeline = "timelines/auto-retreat-later.txt"
+frames = "timelines/auto-retreat-later-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Move = { to = 43 } } },
+    { seat = "Defender", command = { Move = { to = 146 } } },
+    { seat = "Attacker", at = 6887, command = { Wait = {} } },
+    { seat = "Attacker", at = 7887, command = { Defend = {} } },
+    { seat = "Attacker", command = { Move = { to = 37 } }, at = 8887, question = true },
+]
+
+# E17 M6 T5b2b (design §12.20): a human's turn right after an answer (the same battle). Round 1:
+# the computer's two walks; at the Dwarves' turn A (500 ms in, 6 887 in the client): the question
+# at once; Escape 1 000 ms later: the computer's action (the engine's: Wait, outside the wait
+# phase, as `auto-retreat-cancel`'s Champions) and at once the Ballista's turn, the human's (its
+# box clear), waiting about 1.5 s. To read: the loop's ticks after the answer on a human's turn
+# (the client's: one at the answer, then the idle steps from the turn's start, *provisional*), the
+# Ballista outlined, the panel lit (Auto Combat on, unselected in the original's profile).
+[[sequence]]
+id = "auto-retreat-human"
+scenario = "seq-auto-retreat-machine.toml"
+actions = ["turn:0.0", "step:500", "key:a", "step:1000", "key:Escape"]
+ms = 1500
+wait_idle = true
+heroes = true
+fail = ["good_morale"]
+timeline = "timelines/auto-retreat-human.txt"
+frames = "timelines/auto-retreat-human-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Move = { to = 43 } } },
+    { seat = "Defender", command = { Move = { to = 146 } } },
+    { seat = "Attacker", command = { Wait = {} }, at = 7887, question = true },
+]

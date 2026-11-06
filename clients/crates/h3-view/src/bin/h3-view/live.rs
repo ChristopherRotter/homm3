@@ -1005,4 +1005,105 @@ mod tests {
         assert_eq!(asked.next().unwrap(), None);
         assert!(asked.waiting() && asked.asks() == [Ask::Cast]);
     }
+
+    #[test]
+    fn a_stop_read_at_the_cast_s_end_leaves_the_stack_s_action_to_the_human() {
+        // E17 M6 T5b2b (design §12.20, CLT-Q61), the shape of `auto-cast-stop`: under Auto
+        // Combat the computer casts Bless as the Marksmen's turn starts; a press during the cast
+        // stops it at the cast's end (the battle sets it off), so the turn waits for the human
+        // and the action is the human's. Fought again by the asks, the same battle.
+        let (ruleset, setup) = auto_cast();
+        let players = ([true, false], Computer::Original(Sight::Fair));
+        let mut live = Live::new(&ruleset, setup.clone(), 1, players).unwrap();
+        live.set_auto(true);
+        live.set_cast(true);
+        assert!(live.next().unwrap().unwrap().turned);
+        live.set_cast(true);
+        assert!(!live.next().unwrap().unwrap().turned);
+        live.set_auto(false);
+        assert!(live.waiting() && live.next().unwrap().is_none());
+        let pressed = live.choice().unwrap();
+        assert!(live.play(pressed).unwrap().unwrap().turned);
+        let asks = [Ask::Cast, Ask::Action, Ask::Cast, Ask::Pressed];
+        assert_eq!(live.asks(), asks);
+        let again = refight(&ruleset, setup, 1, players, &asks).unwrap();
+        assert_eq!(live.record().unwrap(), again);
+    }
+
+    /// The battle prepared for Auto Combat's question at a later turn and before a human's turn
+    /// (E17 M6 T5b2b, `seq-auto-retreat-machine.toml`): 20 Dwarves and a Ballista Orrin commands
+    /// against 3000 Wolf Riders and 1500 Goblins.
+    fn machine() -> (BattleRuleset, BattleSetup) {
+        let scenario = repo().join("clients/situations/seq-auto-retreat-machine.toml");
+        let (ruleset, mut setup) =
+            crate::scenario::battle(&scenario, &repo().join("packs"), 1).unwrap();
+        setup.human = [true, false];
+        (ruleset, setup)
+    }
+
+    /// The acting stack of `live`'s battle now.
+    fn active(live: &Live<'_>) -> Option<u8> {
+        live.turn().and_then(|t| t.observation.active)
+    }
+
+    #[test]
+    fn the_machine_battle_asks_at_a_later_turn_and_before_a_human_s_turn() {
+        // E17 M6 T5b2b (design §12.20), the sequences prepared in `to-record.toml`: on grass the
+        // Wolf Riders (2) and the Goblins (3) walk first, out of the Dwarves' reach, then the
+        // Dwarves (0), then the Ballista (1), Orrin's to command. `auto-retreat-later`: the
+        // Dwarves wait, the Ballista defends (a human's: its box clear under Auto Combat), the
+        // Dwarves' waited turn plays itself and asks, Cancel walks them to 37.
+        // `auto-retreat-human`: the Dwarves play themselves at once and ask, Cancel has them
+        // wait, and the Ballista's turn is the human's, waiting.
+        let (ruleset, setup) = machine();
+        let players = ([true, false], Computer::Original(Sight::Fair));
+        let walks = |live: &mut Live<'_>| {
+            for (stack, to) in [(2, 43), (3, 146)] {
+                assert_eq!(active(live), Some(stack));
+                let played = live.next().unwrap().unwrap();
+                let walked = |e: &Event| match *e {
+                    Event::Moved {
+                        stack: s, to: t, ..
+                    } => (s, t) == (stack, to),
+                    _ => false,
+                };
+                assert!(played.events.iter().any(|(e, _)| walked(e)), "{stack}");
+            }
+            assert!(live.waiting() && active(live) == Some(0));
+        };
+        let mut later = Live::new(&ruleset, setup.clone(), 1, players).unwrap();
+        walks(&mut later);
+        later.play(Command::Wait {}).unwrap().unwrap();
+        assert!(later.waiting() && active(&later) == Some(1));
+        later.play(Command::Defend {}).unwrap().unwrap();
+        assert_eq!(active(&later), Some(0));
+        later.set_auto(true);
+        assert_eq!(later.next().unwrap(), None);
+        assert_eq!(later.question(), Some(Question::Retreat));
+        let played = later.answer(false).unwrap().unwrap();
+        let walked = |e: &Event| {
+            matches!(
+                *e,
+                Event::Moved {
+                    stack: 0,
+                    to: 37,
+                    ..
+                }
+            )
+        };
+        assert!(played.events.iter().any(|(e, _)| walked(e)));
+        let mut human = Live::new(&ruleset, setup.clone(), 1, players).unwrap();
+        walks(&mut human);
+        human.set_auto(true);
+        assert_eq!(human.next().unwrap(), None);
+        assert_eq!(human.question(), Some(Question::Retreat));
+        let played = human.answer(false).unwrap().unwrap();
+        let waited = |e: &Event| matches!(*e, Event::Waited { stack: 0 });
+        assert!(played.events.iter().any(|(e, _)| waited(e)));
+        assert_eq!(active(&human), Some(1));
+        human.set_auto(false);
+        assert!(human.waiting());
+        let again = refight(&ruleset, setup, 1, players, human.asks()).unwrap();
+        assert_eq!(human.record().unwrap(), again);
+    }
 }

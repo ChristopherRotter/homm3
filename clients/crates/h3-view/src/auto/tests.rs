@@ -314,3 +314,107 @@ fn the_boxes_as_a_turn_starts_are_those_of_the_last_close_before_it() {
     assert_eq!(boxes_at(all, &changes, 3), none);
     assert_eq!(boxes_at(none, &changes, 5), all);
 }
+
+/// A cast's action `action` from `start` to `end`.
+const fn cast(action: usize, start: u32, end: u32) -> Option<Cast> {
+    Some(Cast { action, start, end })
+}
+
+#[test]
+fn a_press_during_the_computer_s_cast_stops_it_at_the_cast_s_end() {
+    // E17 M6 T5b2b (CLT-Q61, design §12.20): on at 30 in the opening's; turn 1 (from 100) plays
+    // itself from its start and its first action is the hero's cast, 100 to 400. A press at 250
+    // in it stops Auto Combat at 400, that turn's: the human's from then, the flag off, its button
+    // unselected; the turns after are the human's, no stop waiting.
+    let starts = [0, 100, 600, 900];
+    let casts = [None, cast(1, 100, 400)];
+    let auto = Auto::casting(&[switch(30, 0), stop(250, 1)], &starts, &[], &casts);
+    assert!(auto.from_start(1) && auto.plays(1, 399) && !auto.plays(1, 400));
+    assert!(auto.on(1, 399) && !auto.on(1, 400) && !auto.on(1, u32::MAX));
+    assert!(!auto.played(1) && !auto.stopped(1) && auto.stopped_at(1) == Some(400));
+    assert!(!auto.on_at_start(2) && !auto.played(2) && !auto.played(3));
+    assert_eq!(auto.handed(&casts), [(1, 400)]);
+    assert_eq!((auto.stopped_at(0), auto.stopped_at(9)), (None, None));
+    // At the cast's end or after it: the next turn's start, as without a cast; and so without
+    // `casts` (`Auto::of`).
+    for late in [
+        Auto::casting(&[switch(30, 0), stop(400, 1)], &starts, &[], &casts),
+        Auto::casting(&[switch(30, 0), stop(450, 1)], &starts, &[], &casts),
+        Auto::of(&[switch(30, 0), stop(250, 1)], &starts, &[]),
+    ] {
+        assert!(late.plays(1, u32::MAX) && late.played(1) && late.stopped(1));
+        assert!(late.stopped_at(1).is_none() && !late.played(2));
+        assert!(late.handed(&casts).is_empty());
+    }
+}
+
+#[test]
+fn a_cast_auto_combat_did_not_play_reads_no_stop_at_its_end() {
+    // E17 M6 T5b2b: the human's own cast at 120 on a turn it does not play, then A at 450: the
+    // press at 460 waits for the next turn's start. A stop while it is off does nothing. The
+    // switch's own cast (from 450) reads it at its end.
+    let starts = [0, 100, 900];
+    let casts = [None, cast(0, 120, 420)];
+    let own = Auto::casting(&[switch(450, 1), stop(460, 1)], &starts, &[], &casts);
+    assert!(own.stopped(1) && own.stopped_at(1).is_none() && own.played(1));
+    let off = Auto::casting(&[stop(200, 1)], &starts, &[], &casts);
+    assert!(!off.stopped(1) && off.stopped_at(1).is_none());
+    let switched = [None, cast(0, 450, 750)];
+    let auto = Auto::casting(&[switch(450, 1), stop(460, 1)], &starts, &[], &switched);
+    assert!(auto.plays(1, 450) && !auto.plays(1, 750) && auto.stopped_at(1) == Some(750));
+    assert!(!auto.from_start(1) && !auto.on(1, 750) && auto.on(1, 749));
+    // Switched on again after the stop: from then, and the turns after.
+    let again = Auto::casting(
+        &[switch(450, 1), stop(460, 1), switch(800, 1)],
+        &starts,
+        &[],
+        &switched,
+    );
+    assert!(again.plays(1, 700) && !again.plays(1, 799) && again.plays(1, 800));
+    assert!(again.played(1) && again.stopped_at(1) == Some(750) && again.from_start(2));
+    // A second press after it changes nothing more.
+    let twice = Auto::casting(
+        &[switch(450, 1), stop(460, 1), stop(700, 1)],
+        &starts,
+        &[],
+        &switched,
+    );
+    assert!(!twice.stopped(1) && !twice.on_at_start(2));
+}
+
+#[test]
+fn each_turn_s_cast_is_the_first_of_a_human_s_hero() {
+    // E17 M6 T5b2b: the opening's turn's walk, then turn 1's cast by the attacker (a human's)
+    // and its second one (another round's, not in a turn here: kept the first), turn 2's by the
+    // defender (the computer's), turn 3 without an action; an action past the list counts none.
+    let action = |start, end, cast| Action {
+        start,
+        end,
+        cast,
+        ..Action::default()
+    };
+    let actions = [
+        action(0, 100, None),
+        action(100, 400, Some(Side::Attacker)),
+        action(400, 500, Some(Side::Attacker)),
+        action(500, 800, Some(Side::Defender)),
+    ];
+    let log = [
+        (0, Logged::Action),
+        (100, Logged::Turn(1)),
+        (100, Logged::Action),
+        (300, Logged::Unmark),
+        (400, Logged::Action),
+        (500, Logged::Turn(2)),
+        (500, Logged::Action),
+        (800, Logged::Turn(3)),
+        (800, Logged::Action),
+    ];
+    let human = [true, false];
+    assert_eq!(
+        casts(&log, &actions, human),
+        [None, cast(1, 100, 400), None, None]
+    );
+    assert_eq!(casts(&log, &actions, [true; 2])[2], cast(3, 500, 800));
+    assert_eq!(casts(&[], &actions, human), [None]);
+}

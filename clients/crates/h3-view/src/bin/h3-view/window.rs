@@ -811,12 +811,21 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
         // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it. A
         // human's turn Auto Combat does not play reads no stop (E17 M6 T4b1): its start drops
-        // the key, as with Auto Combat off (CLT-Q45 (2): the original's acts there).
+        // the key, as with Auto Combat off (CLT-Q45 (2): the original's acts there). E17 M6
+        // T5b2b (CLT-Q61): a stop read at the end of the computer's cast for the hero is that
+        // turn's, the key acting there (*provisional*: read, not recorded).
+        let cast_stop = stopped_by.and_then(|(_, turn)| battle.auto_stopped_at(turn));
+        let turn_start = |turn: usize| {
+            let turns = &battle.timeline().turns;
+            turn.checked_sub(1)
+                .and_then(|i| turns.get(i))
+                .map(|&(t, _)| t)
+        };
         if let Some((command, turn)) = stopped_by
-            && let Some(&(start, _)) = battle.timeline().turns.get(turn - 1)
+            && let Some(start) = cast_stop.or_else(|| turn_start(turn))
         {
             let last = battle.timeline().turns.len();
-            let at_start = || battle.auto_at_start(turn);
+            let at_start = || cast_stop.is_none() && battle.auto_at_start(turn);
             let carry = carry((battle.waiting(), last, turn), at_start);
             if carry != Carry::Wait {
                 stopped_by = None;

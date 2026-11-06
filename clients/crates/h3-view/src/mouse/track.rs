@@ -184,6 +184,12 @@ pub struct Start {
     /// It ends the tactics phase: no action in the original (Start Combat 0x4751CC, design
     /// §7.24), it hides no army info window (§12.15).
     pub ends_tactics: bool,
+    /// The computer's cast for a human's hero at whose end, this time, Auto Combat stops (E17 M6
+    /// T5b2b, CLT-Q61: a key or a button pressed during it, `crate::auto::Auto::casting`): there
+    /// `battle_controls_state` runs again without it (0x47425B), as a human's turn's start: the
+    /// moves the cast held dropped, the mouse's hex forgotten and the mouse posted where it rests,
+    /// the log settled (*provisional*: read, not recorded), the turn the human's from then.
+    pub hands_over: Option<u32>,
 }
 
 /// What the mouse shows over time.
@@ -438,6 +444,11 @@ struct Handler<'l> {
     /// What the background draws, as last shown.
     drawn: Drawn,
     shown: Shown,
+    /// Auto Combat stops at this time, the end of the computer's cast under way (E17 M6 T5b2b,
+    /// [`Start::hands_over`]): the turn is handed to the human then.
+    handing: Option<u32>,
+    /// The turn now, the computer's as it started, is the human's since such a stop.
+    handed: bool,
 }
 
 /// A spell's aim under way (`enter_player_cast` 0x59EC50's loop, its handler 0x5A3070).
@@ -834,6 +845,7 @@ pub fn follow_on<'l>(
                 *t < input.at() || (*t == input.at() && !matches!(entry, Logged::Action))
             });
             if first {
+                h.hand_over(*t, turns, &at, name);
                 if matches!(entry, Logged::Turn(_)) && (input.is_some() || floor <= last) {
                     // The handler without what it showed, which stays the caller's.
                     let shown = core::mem::take(&mut h.shown);
@@ -857,9 +869,14 @@ pub fn follow_on<'l>(
                 continue;
             }
         }
-        let Some(input) = input else { break };
+        let Some(input) = input else {
+            // The stop at a cast's end after the last input and entry (E17 M6 T5b2b).
+            h.hand_over(u32::MAX, turns, &at, name);
+            break;
+        };
         j += 1;
         floor = 0;
+        h.hand_over(input.at(), turns, &at, name);
         match *input {
             Input::Aim {
                 at: now,
@@ -971,7 +988,7 @@ pub fn follow_on<'l>(
             Input::Looked { at: now } => {
                 h.dialog = false;
                 if let (Some(turn), Some(point)) = (turns.get(at.turn), h.point)
-                    && turn.human
+                    && h.human(turn)
                 {
                     h.hex = None;
                     h.shown.log.push((now, Logged::Settle));
@@ -1017,7 +1034,7 @@ pub fn follow_on<'l>(
                     // which shades its hex again; else the combat cursor's pointer.
                     h.cells.set(options);
                     match (turns.get(at.turn), h.point) {
-                        (Some(turn), Some(point)) if turn.human && !h.busy && !h.dialog => {
+                        (Some(turn), Some(point)) if h.human(turn) && !h.busy && !h.dialog => {
                             h.hex = None;
                             h.shown.log.push((now, Logged::Settle));
                             h.take(now, point, Some(&turn.field), name);
@@ -1050,7 +1067,9 @@ pub fn follow_on<'l>(
                 // spell book open takes it (E17 M5 T3b).
                 match turns.get(at.turn) {
                     _ if h.dialog => {}
-                    Some(turn) if turn.human && !h.busy => h.take(now, to, Some(&turn.field), name),
+                    Some(turn) if h.human(turn) && !h.busy => {
+                        h.take(now, to, Some(&turn.field), name)
+                    }
                     None if !h.busy => h.take(now, to, None, name),
                     _ => {}
                 }
@@ -1102,6 +1121,8 @@ impl<'l> Handler<'l> {
             wall_last: None,
             drawn: Drawn::default(),
             shown: Shown::default(),
+            handing: None,
+            handed: false,
         };
         h.cells
             .phase(turns.first().map_or_else(BTreeSet::new, phase));
@@ -1138,6 +1159,7 @@ impl Handler<'_> {
                 let start = starts.get(at.started).copied().unwrap_or_default();
                 at.started += 1;
                 self.busy = true;
+                self.handing = start.hands_over;
                 self.set_frame(now, self.layout.mouse.panel_frame);
                 if start.unmarks {
                     self.set_marked(now, None);
@@ -1156,6 +1178,7 @@ impl Handler<'_> {
                 at.turn += 1;
                 self.turn = at.turn;
                 self.busy = false;
+                (self.handing, self.handed) = (None, false);
                 let Some(turn) = turns.get(at.turn) else {
                     return;
                 };
@@ -1180,6 +1203,43 @@ impl Handler<'_> {
             _ => {}
         }
         self.show_shades(now);
+    }
+
+    /// Whether a human on this computer plays `turn` now: its own, or since Auto Combat stopped
+    /// at the computer's cast's end (E17 M6 T5b2b).
+    const fn human(&self, turn: &Turn<'_>) -> bool {
+        turn.human || self.handed
+    }
+
+    /// Auto Combat's stop at the computer's cast's end, if due by `now` (E17 M6 T5b2b,
+    /// [`Start::hands_over`]; `at` where [`follow`] is in `turns`): there the turn becomes the
+    /// human's as its start would make it (0x47425B runs `battle_controls_state` again): the
+    /// movement shade drawn, the log settled, the mouse's hex forgotten and the mouse posted where
+    /// it rests, its moves taken from then.
+    fn hand_over(
+        &mut self,
+        now: u32,
+        turns: &[Turn<'_>],
+        at: &Cursor,
+        name: &dyn Fn(&Hint, &Observation) -> String,
+    ) {
+        let Some(stop) = self.handing.filter(|&t| t <= now) else {
+            return;
+        };
+        self.handing = None;
+        if let Some(turn) = turns.get(at.turn) {
+            (self.handed, self.busy) = (true, false);
+            self.reach = reach(&Turn {
+                human: true,
+                ..*turn
+            });
+            self.shown.log.push((stop, Logged::Settle));
+            self.hex = None;
+            if let Some(point) = self.point {
+                self.take(stop, point, Some(&turn.field), name);
+            }
+            self.show_shades(stop);
+        }
     }
 }
 
