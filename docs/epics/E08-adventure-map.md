@@ -74,11 +74,21 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
 268. **The space key's revisit in increment 11** with the original's gate (survey §11; recommended): a command `Revisit { hero }` (its name T98b's) visits the entered object under the hero again, any kind with a built visit, the step's own visit and decisions, no points spent or required; the env's action encoding grows with it (the AI lane's, `cross-lane`). Not chosen: teleporters only; later, as a stub.
 269. **Batch E11 before the build** (recommended, as batches E9 and E10): its spec and recipe first in T98b's cut, the rules built on its results. Not chosen: after the build; not at all.
 
+### Decision at T98b's start (2026-11-06, user)
+
+270. **T98b in two by side** (the user at T98b's start, `AskUserQuestion`; recommended, as T88b,
+     decision 239): **T98b1** the design note's parts A and B (the kinds, the protection, the
+     packs, the import, the build's surfaces and channels, the state, the jump, the Whirlpool's
+     loss, the reach, information) and ADR-0016's draft (ADR-0015 needs none); **T98b2** part C
+     (the battle and the meeting at an exit, the jump as a rest, the stream, `Revisit`, the env,
+     replays, benchmarks, versions, ids, quirks, batch E11), ADR-0017's draft, the cut and the
+     checkpoint. Not chosen: whole in one session; the note first, then the drafts.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
 - **T98a The teleporters survey** (decision 261), in two (decision 262): **T98a1** done (2026-11-05, `adventure/e08-t98a1`: survey `E08-teleporters.md` §0 to §8, the census, the channels, the jump, the arrival; D-53 to D-57, A-37 to A-40; 18 address map entries); **T98a2** done (2026-11-06, `adventure/e08-t98a2`, whole: decision 263; §9 to §14, the paths, the views, the space key, the interfaces' sketch, batch E11's plan, ADV-TEL; D-58, A-41; §4.1's one-candidate draw corrected; the checkpoint ADV-Q45, decisions 264–269).
-- **T98b The ADR amendment drafts, the design note and the cut** (decision 261; with the checkpoint's answers, decisions 264–269; batch E11 first, decision 269). Queued.
+- **T98b The ADR amendment drafts, the design note and the cut** (decision 261; with the checkpoint's answers, decisions 264–269; batch E11 first, decision 269), in two by side (decision 270): **T98b1** done (2026-11-06, `adventure/e08-t98b1`: `E08-design.md` parts A and B, the draft `adr-drafts/0016-increment-11.md`; the agent's calls for the checkpoint, A-42 proposed); **T98b2** queued (part C, ADR-0017's draft, the cut, the checkpoint ADV-Q46).
 
 ## Later increments (sketch)
 

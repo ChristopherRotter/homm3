@@ -4,6 +4,22 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-06, E08 T98b1: the entry as it stood before T98b was cut in two by side, decision 270; T98b1's record in `E08-log.md`, T98b2 queued.)* **E08 T98b — the ADR amendment drafts, the design note and the cut** (decision 261; as T88b)
+
+- **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
+  11 (its pointer replaced; increment 10's note in `E08-log.md` as the model), the reach's and the
+  passage's cost planned against the gated workloads (the hot path, `homm3-bench-regression`), the
+  building rounds cut, batch E11 first (decision 269: its spec and recipe the first round); the
+  draw's stream (ADR-0017's streams; no draw for one candidate, survey §4.1); `Revisit`'s name,
+  validation and the env's action (decision 268, the AI lane's encoding, `cross-lane`); A-37's
+  battle as a visit's rest (decision 265); the quirk ledger's entries for A-37 to A-41; the
+  fixtures' and tests' blockers of the five classes (TRAPS); the checkpoint's question: the user
+  accepts the drafts before anything is built (decision 261).
+- **Inputs:** the survey `docs/rules/surveys/E08-teleporters.md` (§9's reach, §10's views, §11's
+  interfaces' sketch, §12's batch plan, §13's proposed ids, §14's answers); decisions 260, 261,
+  264–269.
+- **Depends on:** T98a (done). **Status:** ready; its cut confirmed with the user at its start. Needs no original data (the survey holds the readings).
+
 *(Moved 2026-11-06, E08 T98a2: done whole, decision 263; the checkpoint ADV-Q45, decisions 264–269; the record in `E08-log.md`.)* **E08 T98a2 — the teleporters survey, its second part** (decisions 261, 262; survey
 `docs/rules/surveys/E08-teleporters.md` §9 to §14)
 
