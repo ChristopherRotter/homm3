@@ -1277,7 +1277,7 @@ fn towns() -> impl Strategy<Value = Vec<TownPlan>> {
 }
 
 /// A plan's town ([`towns`]).
-fn town() -> impl Strategy<Value = TownPlan> {
+pub(super) fn town() -> impl Strategy<Value = TownPlan> {
     let weak = (proptest::sample::select(&LEVEL_1[..]), 1u16..=10, 0usize..7).prop_map(
         |(creature, count, slot)| {
             let mut slots = vec![None; 7];
