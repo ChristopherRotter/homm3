@@ -211,7 +211,8 @@ pub struct Autoplay {
     /// comparisons leave this false).
     pub on: bool,
     /// It plays the turn from a switch in it (E17 M6 T5b2b): the switch's click or A selected
-    /// its button (`auto`, `auto-retreat-cancel`). A turn it plays from its start shows the
+    /// its button (`auto`, `auto-retreat-cancel`; a box set in it too, *provisional*:
+    /// [`crate::auto::Auto::switched`]). A turn it plays from its start shows the
     /// button as the turns before left it ([`Autoplay::selected`]; recorded,
     /// `auto-retreat-later`: after a switch on a human's turn it did not play, the next one it
     /// plays shows the button dimmed with the panel, unselected, where the reading had 0x4784F9

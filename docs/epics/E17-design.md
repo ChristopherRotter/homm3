@@ -7045,18 +7045,22 @@ new reading), and sequences for the question's points §12.19 left provisional.
     `Auto::of` (no casts) is the tests'.
   - The battle: `auto_turn` and `auto` read the casts, so `play_next` at the cast's end finds the
     turn not played: `Live` waits (no `Decision::action`), no `outline_waiting` (the cast put the
-    outline back). `stop_auto` gives that turn itself for such a stop (a carried ↑, ↓, F or F5 to
-    F8 acts at the cast's end, *provisional*) and counts a press read after a later action started
-    (Restart's replay) from that action's start. The re-fight needs nothing new (`Ask::Cast`,
-    then `Pressed`).
+    outline back). `stop_auto` gives that turn itself for such a stop (`Auto::stop_comes`: only
+    the press that made it, one after a switch back on is the next turn's; a carried ↑, ↓, F or
+    F5 to F8 acts at the cast's end, *provisional*) and counts a press read after a later action
+    started (Restart's replay) from that action's start. The window asks the stack's action only
+    once the clock reaches the cast's end (`Battle::cast_end`, `Auto::holds`: `Changes::after`
+    holds there, the frame made then), so a press until then is the cast's, as the comparisons'.
+    The re-fight needs nothing new (`Ask::Cast`, then `Pressed`).
   - The mouse: `track::Start::hands_over` on the cast's action (`pointer::hand_over`): at its end
     the turn is the human's as at a start (the movement shade, the log settled, the mouse's hex
     forgotten and the mouse posted, its moves taken from then; recorded below: the cursor's
     first frame and the outline at the cast's end).
   - The comparisons: a press in the cast's span is that turn's, its stop read at the cast's end;
-    after a `key:a` on a turn whose stack does not play itself by the sequence's boxes
-    (`pointer::plays_itself`, by the opening's stacks: a commanded Ballista with Creatures set)
-    the presses are the turn's own.
+    with Auto Combat on a press stops it only on a turn whose stack plays itself by the sequence's
+    boxes (`pointer::plays_itself`, by the opening's stacks; decided per press by the turn it is
+    in, the one started before it or a `turn:`'s): on a commanded Ballista's with Creatures set
+    the presses are the turn's own, on a later turn played from its start a stop.
 - **Recorded** (M6 T5b2b, a capture agent; `sequences.toml`'s `auto-cast-stop` over
   `seq-auto-cast.toml`, `auto-retreat-later` and `auto-retreat-human` over
   `seq-auto-retreat-machine.toml`: `seq-auto-retreat.toml`'s battle with 20 Dwarves and a
@@ -7106,8 +7110,8 @@ new reading), and sequences for the question's points §12.19 left provisional.
   the computer plays; a box opened after its turn's start leaves the turn the human's until
   then (outlined from its start, the steps up to the switch; the comparisons' box opens at the
   switch, `sequences::switched`); the panel shows Auto Combat selected on a turn it plays only
-  from a switch in it, as the turns before left it, or (the client's profile) while it is on
-  (`panel::Autoplay::switched`, `Auto::switched`).
+  from a switch in it (or a box set in it, *provisional*), as the turns before left it, or (the
+  client's profile) while it is on (`panel::Autoplay::switched`, `Auto::switched`).
   The comparison: the three timelines as recorded (123, 126 and 91 changes);
   `auto-cast-stop` 139 frames, 84 differing in 2 pixels each, all redraw artifacts (the
   Champions' walk over Orrin, 400 to 5 180, as `auto-cast`'s), every frame from the cast on

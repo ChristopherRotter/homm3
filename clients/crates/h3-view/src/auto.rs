@@ -317,7 +317,8 @@ impl Auto {
 
     /// Whether Auto Combat plays turn `k` at `t` from a switch in the turn (its click or A
     /// selecting its button), not from the turn's start (E17 M6 T5b2b, the panel's
-    /// [`crate::panel::Autoplay::switched`]).
+    /// [`crate::panel::Autoplay::switched`]); so from a box set in the turn while it is on (the
+    /// options dialog's, handing the turn over: shown as a switch, *provisional*, not recorded).
     #[must_use]
     pub fn switched(&self, k: usize, t: u32) -> bool {
         self.turns.get(k).is_some_and(|turn| {
@@ -342,6 +343,29 @@ impl Auto {
     pub fn stopped_at(&self, k: usize) -> Option<u32> {
         let turn = self.turns.get(k)?;
         turn.plays.first().and_then(|&(_, until)| until)
+    }
+
+    /// The index of the turn the stop read last in turn `k` comes at (E17 M5 T4c1; E17 M6 T5b2b,
+    /// CLT-Q61): `k` itself when that stop ended Auto Combat's play at the computer's cast's end
+    /// ([`Auto::stopped_at`]; not one after a switch back on, which waits as any), else the next
+    /// turn's start, `k + 1`.
+    #[must_use]
+    pub fn stop_comes(&self, k: usize) -> usize {
+        if self.stopped_at(k).is_some() && !self.stopped(k) {
+            k
+        } else {
+            k + 1
+        }
+    }
+
+    /// The end of turn `k`'s cast `cast` ([`casts`]) while it is the battle's action `last` (its
+    /// last played) on a turn Auto Combat played as it started (E17 M6 T5b2b, CLT-Q61): a key or
+    /// a button pressed until then stops Auto Combat there, so the stack's action is asked only
+    /// once the clock reaches that end (the window's). None: no such cast.
+    #[must_use]
+    pub fn holds(&self, k: usize, cast: Option<Cast>, last: usize) -> Option<u32> {
+        cast.filter(|c| c.action == last && self.plays(k, c.start))
+            .map(|c| c.end)
     }
 
     /// The actions after which Auto Combat stopped (E17 M6 T5b2b): each by its index among

@@ -124,12 +124,13 @@ pub fn inputs(
 /// ([`Input::Shades`]). E17 M6 T5b1 (design §12.18, *provisional*): with Combat Auto Creatures
 /// clear (`creatures`, the sequence's box) no creature of the human's plays itself, so a `key:`,
 /// `hex:` or `click:` after `key:a` is the human's turn's own, not a stop (such a sequence presses
-/// only on the human's turns). E17 M6 T5b2b: so after a `key:a` on any turn whose stack does not
-/// play itself by the sequence's boxes (`plays`, by turn as [`turn_at`] counts them, the
-/// opening's first; past them `creatures`): a commanded Ballista's with Creatures set. A stop
-/// pressed during the computer's cast for the hero stops Auto Combat at the cast's end
-/// (`Auto::casting`), the presses after it the turn's own. *Not modelled:* the book over the
-/// battlefield, the mouse moved over the phase's message.
+/// only on the human's turns). E17 M6 T5b2b: so, Auto Combat on, any press on a turn whose stack
+/// does not play itself by the sequence's boxes (`plays`, by turn as [`turn_at`] counts them, the
+/// opening's first; past them `creatures`): a commanded Ballista's with Creatures set; a press
+/// on a later turn it plays from its start stops it (the reviewer: decided per press, the turn
+/// the press is in). A stop pressed during the computer's cast for the hero stops Auto Combat
+/// at the cast's end (`Auto::casting`), the presses after it the turn's own. *Not modelled:* the
+/// book over the battlefield, the mouse moved over the phase's message.
 ///
 /// E17 M6 T5b2a: with Auto Combat's questions open over the spans `asked` (design
 /// §12.19, *provisional*: each from the action's millisecond to the answer that gave the
@@ -153,7 +154,15 @@ pub fn answering(
     let mut answers = Vec::new();
     let mut told = told;
     let mut spells = spells.iter().copied();
+    // Auto Combat on (E17 M6 T5b2b: switched on by `key:a`, off by a second one or a stop), and
+    // whether the stack of the turn a press at `now` is in plays itself under it: the turn
+    // started last before then, or the one a `turn:` waited for (`named`; a command that takes
+    // no time starts the next turn in its press's millisecond: `auto-retreat-later`'s D).
     let (mut cast_pending, mut auto) = (false, false);
+    let itself = |now: u32, named: usize| {
+        let own = timeline.turns.partition_point(|&(t, _)| t < now).max(named);
+        plays.get(own).copied().unwrap_or(creatures)
+    };
     // The stats dialog's cast button's aim under way (E17 M6 T2a2b1): the dialog's close comes as
     // it ends.
     let mut look_aim = false;
@@ -201,7 +210,8 @@ pub fn answering(
                     point(arg)?
                 };
                 out.push(Input::Move { at: now, to });
-                out.push(if core::mem::take(&mut auto) {
+                out.push(if auto && itself(now, turns) {
+                    auto = false;
                     Input::Stop {
                         at: now,
                         turn: turn_at(&timeline.turns, now),
@@ -252,14 +262,19 @@ pub fn answering(
             // The tactics phase's message closed by its OK (E17 M5 T4c2b).
             "key" if arg == "Return" && core::mem::take(&mut told) => {}
             // A key while Auto Combat plays stops it (E17 M5 T4c1).
-            "key" if core::mem::take(&mut auto) => out.push(Input::Stop {
-                at: now,
-                turn: turn_at(&timeline.turns, now),
-            }),
+            "key" if auto && itself(now, turns) => {
+                auto = false;
+                out.push(Input::Stop {
+                    at: now,
+                    turn: turn_at(&timeline.turns, now),
+                });
+            }
             "key" if auto_combat(arg) => {
-                let turn = turn_at(&timeline.turns, now);
-                auto = plays.get(turn).copied().unwrap_or(creatures);
-                out.push(Input::Auto { at: now, turn });
+                auto = !auto;
+                out.push(Input::Auto {
+                    at: now,
+                    turn: turn_at(&timeline.turns, now),
+                });
             }
             "move" => out.push(Input::Move {
                 at: now,
@@ -373,7 +388,7 @@ fn toggle(key: &str) -> Option<h3_view::shades::Toggle> {
 
 /// Whether the harness's key `name` (xdotool's: `a`, `space`) is Auto Combat's in the original's
 /// table (E17 M5 T4c1).
-fn auto_combat(name: &str) -> bool {
+pub fn auto_combat(name: &str) -> bool {
     let mut chars = name.chars();
     let key: String = chars
         .next()
@@ -1635,6 +1650,51 @@ mod tests {
                 Input::Act { at: 0 },
                 Input::Move { at: 0, to: PARK },
             ]
+        );
+    }
+
+    #[test]
+    fn a_press_stops_auto_combat_by_the_turn_it_is_in() {
+        // E17 M6 T5b2b (the reviewer): turns from 100 (a commanded Ballista's, its box clear)
+        // and 200 (one that plays itself). A on the Ballista's turn and D there are its own
+        // (D at 200 too: its command takes no time, the next turn starting in its
+        // millisecond); a press in the later turn Auto Combat plays from its start stops it,
+        // the press after the stop the turn's own.
+        let layout = layout();
+        let timeline = Timeline {
+            turns: vec![(100, 1), (200, 0)],
+            ..Timeline::default()
+        };
+        let plays = [true, false, true];
+        let options = (
+            false,
+            h3_view::shades::Options::default(),
+            (true, &plays[..]),
+        );
+        let none = |_| None;
+        let at: (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>) = (&timeline, &[], &none);
+        let parsed = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|&a| a.to_owned()).collect();
+            answering(&actions, 0, &layout, at, options, &[]).unwrap().0[2..].to_vec()
+        };
+        let got = parsed(&["at:150", "key:a", "key:d", "at:250", "key:x", "key:d"]);
+        assert_eq!(
+            got,
+            [
+                Input::Auto { at: 150, turn: 1 },
+                Input::Act { at: 150 },
+                Input::Stop { at: 250, turn: 2 },
+                Input::Act { at: 250 },
+            ]
+        );
+        let got = parsed(&["at:150", "key:a", "at:200", "key:d", "at:250", "hex:40"]);
+        assert_eq!(got[1], Input::Act { at: 200 });
+        assert_eq!(got[3], Input::Stop { at: 250, turn: 2 });
+        // A second A on the Ballista's turn switches it off: the later press is the turn's own.
+        let got = parsed(&["at:150", "key:a", "key:a", "at:250", "key:x"]);
+        assert_eq!(
+            got[1..],
+            [Input::Auto { at: 150, turn: 1 }, Input::Act { at: 250 }]
         );
     }
 

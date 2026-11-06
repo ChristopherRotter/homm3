@@ -193,7 +193,7 @@ fn switched(actions: &[String], pre: u32, until: u32) -> u32 {
         match kind {
             "at" => t = arg.parse().unwrap_or(t),
             "step" => t = t.saturating_add(arg.parse().unwrap_or(0)),
-            "key" if arg == "a" && t <= until => last = t,
+            "key" if pointer::auto_combat(arg) && t <= until => last = t,
             _ => {}
         }
     }
@@ -1465,7 +1465,7 @@ mod tests {
         let actions = |a: &[&str]| a.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
         let later = actions(&["turn:0.0", "at:600", "key:a", "at:900", "key:Escape"]);
         assert_eq!(asked_spans(&holds, &timeline, (7, &later)), [(600, 900)]);
-        let earlier = actions(&["step:93", "key:a", "at:1000", "key:a"]);
+        let earlier = actions(&["step:93", "key:A", "at:1000", "key:a"]);
         assert_eq!(asked_spans(&holds, &timeline, (7, &earlier)), [(450, 900)]);
         assert_eq!(switched(&earlier, 7, 900), 100);
         assert_eq!(switched(&actions(&["key:x:y", "at:z"]), 7, 900), 7);

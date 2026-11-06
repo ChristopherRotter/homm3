@@ -263,6 +263,8 @@ fn a_box_set_under_auto_combat_hands_the_turn_under_way_over() {
     let boxed = [Some(0), Some(0), Some(270), Some(0)];
     let auto = Auto::of(&[switch(30, 0)], &starts, &boxed);
     assert!(!auto.plays(2, 269) && auto.plays(2, 270) && !auto.from_start(2));
+    // E17 M6 T5b2b (the reviewer): shown as from a switch (*provisional*).
+    assert!(!auto.switched(2, 269) && auto.switched(2, 270));
     // Switched off before the close: the box set changes nothing until it is switched on again,
     // from then.
     let off = Auto::of(&[switch(30, 0), switch(260, 2)], &starts, &boxed);
@@ -432,4 +434,45 @@ fn each_turn_s_cast_is_the_first_of_a_human_s_hero() {
     );
     assert_eq!(casts(&log, &actions, [true; 2])[2], cast(3, 500, 800));
     assert_eq!(casts(&[], &actions, human), [None]);
+}
+
+#[test]
+fn a_stop_comes_at_the_cast_s_end_only_for_the_press_that_made_it() {
+    // E17 M6 T5b2b (the reviewer): turn 1 from its start, its cast 100 to 400. A press at 250
+    // stops it at 400, that turn's; switched on again at 500 (the computer plays the stack's
+    // action), a press at 600 waits for the next turn's start, as one at the cast's end or with
+    // no cast.
+    let starts = [0, 100, 900];
+    let casts = [None, cast(1, 100, 400)];
+    let first = [switch(30, 0), stop(250, 1)];
+    assert_eq!(Auto::casting(&first, &starts, &[], &casts).stop_comes(1), 1);
+    let again = [switch(30, 0), stop(250, 1), switch(500, 1), stop(600, 1)];
+    let auto = Auto::casting(&again, &starts, &[], &casts);
+    assert!(auto.stopped(1) && auto.stopped_at(1) == Some(400));
+    assert_eq!(auto.stop_comes(1), 2);
+    let late = Auto::casting(&[switch(30, 0), stop(400, 1)], &starts, &[], &casts);
+    assert_eq!(late.stop_comes(1), 2);
+    assert_eq!(Auto::of(&first, &starts, &[]).stop_comes(1), 2);
+}
+
+#[test]
+fn the_stack_s_action_waits_for_the_end_of_the_cast_auto_combat_played() {
+    // E17 M6 T5b2b (the reviewer): turn 1's cast (action 1, 100 to 400) the last played under
+    // Auto Combat: held to 400, stopped there already or not; not once a later action is played,
+    // without a cast, or on a turn it does not play (the human's own cast).
+    let starts = [0, 100, 900];
+    let casts = [None, cast(1, 100, 400)];
+    let auto = Auto::casting(&[switch(30, 0)], &starts, &[], &casts);
+    assert_eq!(auto.holds(1, casts[1], 1), Some(400));
+    let stopped = Auto::casting(&[switch(30, 0), stop(250, 1)], &starts, &[], &casts);
+    assert_eq!(stopped.holds(1, casts[1], 1), Some(400));
+    assert_eq!(
+        (auto.holds(1, casts[1], 2), auto.holds(1, None, 1)),
+        (None, None)
+    );
+    let own = [None, cast(0, 120, 420)];
+    assert_eq!(
+        Auto::casting(&[], &starts, &[], &own).holds(1, own[1], 0),
+        None
+    );
 }
