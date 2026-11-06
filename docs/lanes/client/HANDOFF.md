@@ -22,7 +22,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   design §12.18); T5b2 cut in two by the user (2026-11-05): T5b2a done (#745, #751, design
   §12.19); T5b2b done (#757, design §12.20); **T5c done** (kept whole by the user, design
   §12.21: Eagle Eye's message and the box with pictures, two sequences exact; CLT-Q65 and Q66
-  asked; PR_T5C: check it first; the user added **T5e**, the captured artifacts' message).
+  asked; #762: check it first; the user added **T5e**, the captured artifacts' message).
   **Next: T5d** (the effects, their waits, Bloodlust's glow; QUEUE), T5e, T6, T7; then M7 ranked
   play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -62,7 +62,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-06, E17 M6 T5c (done; PR_T5C).**
+- **2026-11-06, E17 M6 T5c (done; #762).**
   Kept whole by the user, who queued the captured artifacts' message as T5e. The original data
   staged by the file tool (the PC's shell did not start; the PC went offline later, nothing
   missing). A reading (§12.21), a builder (the box with pictures, Eagle Eye's boxes, the pickup
