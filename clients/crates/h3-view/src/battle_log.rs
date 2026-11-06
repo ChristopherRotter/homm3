@@ -165,6 +165,29 @@ pub enum Logged {
         /// The side whose hero it drains (0 the attacker's).
         side: u8,
     },
+    /// A Dread Knight's Death Blow doubles its strike's damage (`damage_stage1_with_luck`
+    /// 0x443B19; E17 M6 T5d2a): before its sound and its animation over the stack struck.
+    DeathBlow {
+        /// The striker.
+        stack: u8,
+        /// Its number, which picks its name and verb.
+        count: u32,
+    },
+    /// A creature casts a spell on a stack as its action (`battle_log_cast` 0x5A902A, caster
+    /// kind 1, a spell without a row of its own; E17 M6 T5d2a): written after the spell's effect,
+    /// before its glow (Bloodlust's handler 0x5A1217).
+    CreatureCast {
+        /// The caster (the stack whose turn it is).
+        stack: u8,
+        /// Its number, which picks its name and verb.
+        count: u32,
+        /// The spell's handle.
+        spell: u16,
+        /// The stack it took effect on.
+        target: u8,
+        /// Its number, which picks its name.
+        target_count: u32,
+    },
     /// Death Stare (`striker_effects` 0x440FD3; E17 M3 T7b-2b-3): before its animation.
     DeathStare {
         /// The Gorgons.
@@ -550,6 +573,38 @@ pub fn word(
                 n.stack(count),
                 Args::new().text("hero", &hero),
             ))
+        }
+        Logged::DeathBlow { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(by_count(
+                catalogue,
+                "battle.log.death-blow",
+                n.stack(count),
+                Args::new(),
+            ))
+        }
+        Logged::CreatureCast {
+            stack,
+            count,
+            spell,
+            target,
+            target_count,
+        } => {
+            let (caster, count) = named(*stack, *count)?;
+            let (struck, target_count) = named(*target, *target_count)?;
+            let spell = catalogue.text(&key(Name::Spell(*spell))?, &Args::new());
+            let mut line = by_count(
+                catalogue,
+                "battle.log.creature-cast",
+                caster.stack(count),
+                Args::new().text("spell", &spell),
+            );
+            line.push_str(&named_line(
+                catalogue,
+                "battle.log.creature-cast-on",
+                struck.stack(target_count),
+            ));
+            Some(line)
         }
         Logged::Petrified { stack, count } => {
             let (n, count) = named(*stack, *count)?;

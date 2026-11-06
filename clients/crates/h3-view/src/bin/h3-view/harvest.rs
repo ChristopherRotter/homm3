@@ -158,6 +158,9 @@ const ROLL_SOUNDS: [u32; 4] = [0x66_FF6C, 0x66_FF7C, 0x66_FF88, 0x66_0A20];
 const STRIKE_SOUNDS: [u32; 2] = [0x66_0A40, 0x66_0A30];
 /// A Wraith's mana drain's sound (E17 M6 T5d1; `stack_activation` 0x465626, `ManaDrai.wav`).
 const MANA_DRAIN_SOUND: u32 = 0x66_FF94;
+/// A Dread Knight's Death Blow's sound (E17 M6 T5d2a; `damage_stage1_with_luck` 0x443B1E,
+/// `Deathblo.wav`).
+const DEATH_BLOW_SOUND: u32 = 0x66_0A50;
 /// A wall shot's explosions and sounds (E17 M4 T2b; `wall_shot_animate` 0x4462D5, 0x44618B):
 /// `SGEXPL.DEF`, `CSGRCK.DEF`, `WallHit.82m`, `WallMiss.82m`.
 const WALL_SHOT: [u32; 4] = [0x66_0A60, 0x66_0A6C, 0x66_0A78, 0x66_0A84];
@@ -321,6 +324,7 @@ struct Harvest {
     roll_sounds: [String; 4],
     strike_sounds: [String; 2],
     mana_drain_sound: String,
+    death_blow_sound: String,
     /// A wall shot's explosions (a hit's, a miss's) and sounds (E17 M4 T2b).
     wall_shot: [String; 4],
     /// The drawbridge's and a mine's blast's sounds (E17 M4 T2c-1).
@@ -574,6 +578,7 @@ fn read_harvest(
     let [drain, thunderbolt] = STRIKE_SOUNDS;
     let strike_sounds = [stem(&string(drain)?), stem(&string(thunderbolt)?)];
     let mana_drain_sound = stem(&string(MANA_DRAIN_SOUND)?);
+    let death_blow_sound = stem(&string(DEATH_BLOW_SOUND)?);
     let [hit_def, miss_def, hit_sound, miss_sound] = WALL_SHOT;
     let wall_shot = [
         string(hit_def)?,
@@ -709,6 +714,7 @@ fn read_harvest(
         roll_sounds,
         strike_sounds,
         mana_drain_sound,
+        death_blow_sound,
         wall_shot,
         siege_sounds,
         pickup_sounds,
@@ -971,6 +977,7 @@ fn write_table(
             plain(thunderbolt)?
         );
         let _ = writeln!(t, "mana_drain_sound = \"{}\"", plain(&h.mana_drain_sound)?);
+        let _ = writeln!(t, "death_blow_sound = \"{}\"", plain(&h.death_blow_sound)?);
         let [hit_def, miss_def, hit_sound, miss_sound] = &h.wall_shot;
         let _ = writeln!(
             t,

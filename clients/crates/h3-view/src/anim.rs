@@ -1010,6 +1010,9 @@ pub enum Sound {
     /// A Wraith's mana drain, cued on the draining stack (`mana_drain_sound`, category 2:
     /// `play_sound_file` from `stack_activation` 0x46562B; E17 M6 T5d1).
     ManaDrain,
+    /// A Dread Knight's Death Blow, cued on the striker (`death_blow_sound`, category 2:
+    /// `play_sound_file` from `damage_stage1_with_luck` 0x443B23; E17 M6 T5d2a).
+    DeathBlow,
     /// The sound a spell's handler plays with each object it places (its handle: the asset
     /// tables' spell `object_sound`, `play_sample` 0x5A040A, Land Mine's 0x5A061A; E17 M3
     /// T7c-2), cued on no stack (stack 0).
@@ -3331,6 +3334,10 @@ impl Player<'_> {
                         if flags.lucky {
                             self.luck(attacker);
                         }
+                        // A Death Blow as its damage is reckoned (E17 M6 T5d2a).
+                        if flags.death_blow {
+                            self.death_blow(attacker, target);
+                        }
                         // A breath's line is its target's, a multi-headed striker's every hit's
                         // (0x441B9B, 0x4404ED).
                         let around = hit.len() > 1
@@ -4868,7 +4875,8 @@ impl Player<'_> {
     /// (caster kind 1: no hero frames, no resistance roll) clears the outline in a redraw at once
     /// (0x5A004C), its spell's sound starts and an area spell's handler plays ([`Player::area`]),
     /// the caster standing outlined at its tail; then its sound ends and it turns back if it
-    /// turned (0x4486E2, 0x44872F). Other spells take effect at once (T7c-3).
+    /// turned (0x4486E2, 0x44872F). An Ogre Mage's Bloodlust so too, with its glow
+    /// ([`Player::creature_bloodlust`], E17 M6 T5d2a). Other spells take effect at once (T7c-3).
     fn creature_cast(&mut self, stack: u8, spell: u16, target: Target, effects: &[Event]) {
         let look = self
             .stage
@@ -4877,6 +4885,14 @@ impl Player<'_> {
             .get(&spell)
             .cloned()
             .unwrap_or_default();
+        // An Ogre Mage's Bloodlust (E17 M6 T5d2a): its frames, its line and the glow.
+        if let (Target::Stack { stack: t }, true, BLOODLUST) =
+            (target, self.stacks.contains_key(&stack), look.original)
+            && let Some(struck) = self.live(t)
+        {
+            self.creature_bloodlust((stack, spell), (t, &struck), effects);
+            return;
+        }
         let (Target::Hex { hex }, true, FROST_RING..=METEOR_SHOWER) =
             (target, self.stacks.contains_key(&stack), look.original)
         else {
@@ -6361,7 +6377,7 @@ pub use created::{
     BATTLEFIELD, Body, CREATION_STEP, CreatedKey, DISSOLVE_STEPS, Dissolve, DissolveArea,
     DissolveKey, Notice, TELEPORT, TELEPORT_STEP, created_stack,
 };
-pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
+pub use creature::{DEATH_BLOW, FIRE_SHIELD, SHIELD_RETURN};
 pub use playhead::Playhead;
 pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};
 pub use siege::{

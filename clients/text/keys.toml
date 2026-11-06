@@ -255,6 +255,38 @@ original = [
     { form = "other", at = "GENRLTXT:375", printf = ["creature", "hero"] },
 ]
 
+# A Dread Knight's Death Blow as its strike's damage doubles (`damage_stage1_with_luck` 0x4439F3
+# to 0x443B19, E17 M6 T5d2a): the striker's name and verb by its number. (The Ballista's double
+# damage, 0x44391D, writes the first row with the name by its number: not built.)
+[[key]]
+id = "battle.log.death-blow"
+args = { creature = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:366", printf = ["creature"] },
+    { form = "other", at = "GENRLTXT:367", printf = ["creature"] },
+]
+
+# A creature's cast as its action (`battle_log_cast` 0x5A902A to 0x5A9237, caster kind 1, the
+# spells without a row of their own; E17 M6 T5d2a): the caster (the stack whose turn it is) by its
+# number and the spell's name, then `battle.log.creature-cast-on` with the target's name when it has
+# one.
+[[key]]
+id = "battle.log.creature-cast"
+args = { creature = "text", spell = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:566", printf = ["creature", "spell"] },
+    { form = "other", at = "GENRLTXT:567", printf = ["creature", "spell"] },
+]
+
+# The target a creature's cast names (0x5A9163, appended to `battle.log.creature-cast`): its name by
+# its number.
+[[key]]
+id = "battle.log.creature-cast-on"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:568", printf = ["creature"] }]
+
 # Poison taking hold after a strike (`battle_log_cast` 0x5A8EFC, a creature's cast of Poison; E17 M3
 # T7b-2b-3): the stack's name, verb and pronoun by its number.
 [[key]]

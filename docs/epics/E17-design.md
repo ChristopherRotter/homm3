@@ -3329,10 +3329,10 @@ each waits for, in its order:
 | regeneration 0x447097 (M6 T5d1, §12.22) | `Regener`'s | after 79 over the stack |
 | the Wraiths' mana drain 0x4657CA (M6 T5d1) | `ManaDrai`'s | after 77 over the Wraiths |
 | Poison's tenth at a round's start 0x44730E (M6 T5d1) | `Poison`'s | after 67 over the stack |
+| Death Blow 0x443B46 (M6 T5d2a, §12.23) | `Deathblo`'s | after 73 over the stack struck |
 
-Not built, as their effects are not drawn yet (T5d2): Death Blow 0x443B46 (73), Ice Bolt's
-explosion 0x5A0AFB (`IceRayEx`), the Familiars' channel 0x5A2740 and 0x5A2750 (`MagChDrn`,
-`MagChFil`).
+Not built, as their effects are not drawn yet (T5d2b): Ice Bolt's explosion 0x5A0AFB
+(`IceRayEx`), the Familiars' channel 0x5A2740 and 0x5A2750 (`MagChDrn`, `MagChFil`).
 
 **Built.** A cue returns itself; a site waits from now until the cue's start plus its sample's
 length or now plus 4 s, whichever comes first (`Player::wait_for`; `wait_last` for a stack's own
@@ -7323,3 +7323,56 @@ or for the drain game +0x1F69D, the network's case, `battle_tactics_global`, as 
   animation's 2 000, `Poison.wav` and `Regener.wav` end inside theirs. `motion::magic` loads the
   three animations for a record's events (`start_effect`). The scenario's heroes hold the 10
   spell points the original's knowledge 1 gives (the engine's hero starts with none).
+
+### 12.23 Death Blow and an Ogre Mage's Bloodlust (M6 T5d2a)
+
+T5d2 cut in two by the user (2026-11-06): T5d2a the creatures' (Death Blow, the Ogre Magi's
+Bloodlust glow), T5d2b the hero's cast's (Ice Bolt's explosion, the Familiars' channel). Read:
+`damage_stage1_with_luck` 0x443840 whole, `physical_damage` 0x443F40's call (its arguments),
+`melee_strike` 0x441610's calls from good luck to the striker's group (0x4418B3 to 0x441AAF),
+`creature_cast_action`'s Ogre Mage case (0x4486A4), `cast_spell`'s Bloodlust case (0x5A11F3 to
+0x5A131B), its start (0x5A004C) and its common tail for a creature (0x5A2058 to 0x5A216B),
+`battle_log_cast` 0x5A8950's head and its creature's default (0x5A8BDD, 0x5A902A to the end).
+
+- **Death Blow** (`damage_stage1_with_luck`, this the striker, its third argument the stack
+  struck: `physical_damage` passes its target there, 0x443F77): after stage 1, for the Dread
+  Knight (creature 67) outside an estimate (the fourth argument: the status line's and the
+  computer's previews roll nothing), `random_between(1, 100)` ≤ 20 (0x4439B9, a literal: no
+  table) adds the base damage once more; then, unless the battle is hidden, the line GENRLTXT 366
+  with the striker's singular name when its number is 1, else 367 with the plural (0x443A04),
+  `battle_log_add`; `Deathblo.wav` as a file (category 2, 0x443B23); animation 73 (`sp03_`,
+  centred) over the stack *struck* at 100 ms a frame without its hit (0x443B3C); the sound waited
+  for (0x443B46). In `melee_strike` the damage is reckoned after good luck's 18 (0x4418B3) and
+  before the hit points fall and the striker's group plays (0x441A0E, 0x441A19, 0x441AAF), so the
+  blow comes between the two; a retaliation strikes through the same path. The Ballista (146)
+  takes the other branch: its hero's Artillery chance (0x63B810 by the controlling side's hero's
+  level, +0xDD) adds the base, and the line GENRLTXT 366 names it by `creature_name` (by its
+  number), with no sound or animation (0x443898 to 0x4439A2).
+- **An Ogre Mage's Bloodlust** (`creature_cast_action` 0x4486A4: `cast_spell`(43, the hex, caster
+  kind 1, no second hex, Advanced, power 6), after the caster's frames, §7.16): the cast's start
+  clears the outline and the mouse's stack (0x5A004C, 0x5A0055), the spell's sound starts, the
+  Bloodlust case (0x5A11F3) applies the effect to the stack on the hex (`stack_apply_spell`), writes
+  the line, and unless hidden glows as a hero's (0x5A122B: 20 redraws at trunc(100 F), the flag
+  cleared and a redraw at once, §7.26); no branch on the caster kind. The common tail (0x5A2058)
+  shows every box's count again and, for a creature (kind 1), `outline_turn_stack` (0x5A216B):
+  the caster standing, outlined, a redraw at once; then `creature_cast_action` waits for its shot
+  sound and turns back (0x4486E2).
+- **A creature's line** (`battle_log_cast`, caster kind 1, 0x5A8BDD): a switch on the spell gives
+  the spells 42, 62, 70 to 75 and 78 rows of their own (Stone Gaze 70, Poison 71 among them);
+  every other spell, Bloodlust's 43 among them, the default (0x5A902A): the stack whose turn it is
+  (+0x132B8, +0x132BC) by its number, GENRLTXT 566 ("casts", its singular name) or 567 (the plural)
+  with the spell's name (its record +0x10), then, with a target, 568 with the target's name by its
+  number appended (0x5A9163); no full stop. `battle_log_add`(text, 1, 0).
+- **Built** (`anim/creature.rs`): `death_blow` (the line `Logged::DeathBlow`, the key
+  `battle.log.death-blow`; the new `Sound::DeathBlow`, the asset tables' `death_blow_sound`
+  harvested from 0x660A50; animation `DEATH_BLOW` (73) over the stack struck; `wait_for`), drawn in
+  the melee arm after good luck for a strike or a retaliation flagged `death_blow`;
+  `creature_bloodlust` (the caster's frames by `creature_casting`, the cast's start, the spell's
+  cue, the effect, `Logged::CreatureCast` with the keys `battle.log.creature-cast` and
+  `battle.log.creature-cast-on`, `glow`, `stand_caster`, `creature_cast_over`), taken by
+  `creature_cast` for Bloodlust aimed at a stack the timeline follows; `motion::magic` loads 73
+  for a Death Blow (a lucky one too). *Provisional:* the caster's frames aim at the target's own
+  hex (the original's the hex clicked: a two-hex target's other hex may turn it otherwise); the
+  other creatures' casts at a stack (the Master Genie's, the elementals' protections, a Faerie
+  Dragon's spells at a stack) still take effect at once, without the caster's frames or a line;
+  the Ballista's double damage writes no line (read above, not built).

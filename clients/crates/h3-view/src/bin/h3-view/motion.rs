@@ -13,10 +13,10 @@ use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_view::anim::{
     ACID, ACID_BREATH, BAD_MORALE, BOLT, Body, Burst, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts,
-    DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL,
-    LAND_MINE, LIFE_DRAIN, LIGHTNING_BOLT, Look, MANA_DRAIN, MINE_BLAST, MagicLook, Missile,
-    ObjectLook, POISON_TENTH, RAISE, REGENERATION, RESISTED, RESURRECTION, SACRIFICED,
-    SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
+    DEATH_BLOW, DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK,
+    GOOD_MORALE, HEAL, LAND_MINE, LIFE_DRAIN, LIGHTNING_BOLT, Look, MANA_DRAIN, MINE_BLAST,
+    MagicLook, Missile, ObjectLook, POISON_TENTH, RAISE, REGENERATION, RESISTED, RESURRECTION,
+    SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -364,8 +364,14 @@ pub fn magic(
             Event::Frightened { .. } => {
                 numbers.insert(FEAR);
             }
-            Event::Struck { flags, .. } if flags.lucky => {
-                numbers.insert(GOOD_LUCK);
+            // Good luck's and a Death Blow's, one strike may have both (E17 M6 T5d2a).
+            Event::Struck { flags, .. } if flags.lucky || flags.death_blow => {
+                if flags.lucky {
+                    numbers.insert(GOOD_LUCK);
+                }
+                if flags.death_blow {
+                    numbers.insert(DEATH_BLOW);
+                }
             }
             Event::SpellCast { spell, .. }
             | Event::StrikeSpell { spell, .. }

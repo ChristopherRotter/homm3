@@ -117,6 +117,9 @@ static struct site sites[] = {
     /* the same for Stone Gaze, the Medusas' and Basilisks' (76, 77, 106, 107): <= 20 (E17 M5
        T5b1) */
     {"stone_gaze", 0x440780, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* damage_stage1_with_luck 0x443840: the Dread Knight's (67) Death Blow, random_between(1,
+       100) <= 20 outside an estimate (E17 M6 T5d2a) */
+    {"death_blow", 0x4439B9, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* The wall shots' rolls (E17 M4 T2b; design §10.2): wall_shot_once 0x445EC0's damage,
        random_between(1, 100) against the BALLIST.TXT record's chances for 0, 1, 2 (in that
        order: the draw falls into the first whose running sum reaches it) */

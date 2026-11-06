@@ -1,12 +1,19 @@
 //! The creatures' own animations (E17 M3 T7c-3; `docs/epics/E17-design.md` §7.16): Fire
 //! Shield's return on a striker (`fire_shield_damage_striker` 0x4409C0) and the explosion a
-//! Magog's or a Lich's projectile ends in (`stack_shot` 0x43FA15, 0x43FE07).
+//! Magog's or a Lich's projectile ends in (`stack_shot` 0x43FA15, 0x43FE07); a Dread Knight's
+//! Death Blow and an Ogre Mage's Bloodlust (E17 M6 T5d2a, design §12.23).
 
 use alloc::vec::Vec;
 
 use h3_render::Bugs;
 
-use super::{Explosion, MagicLook, Player, Riding, STANDING, STRUCK, Sound, SpotKey};
+use h3_protocol::wire::Event;
+use h3_render::recolour::Effect;
+
+use super::{
+    BLOODLUST_STEPS, Explosion, Live, MagicLook, Player, Riding, STANDING, STRUCK, Sound, SpotKey,
+    TICK,
+};
 use crate::battle_log::Logged;
 
 /// Fire Shield (the executable's spell number).
@@ -14,6 +21,9 @@ pub const FIRE_SHIELD: u16 = 29;
 /// Fire Shield's return over the shields that struck back (0x440B6D: Fire Shield's own
 /// animation).
 pub const SHIELD_RETURN: u8 = 11;
+/// A Dread Knight's Death Blow over the stack it strikes (`damage_stage1_with_luck` 0x443B3C:
+/// `sp03_`).
+pub const DEATH_BLOW: u8 = 73;
 
 impl Player<'_> {
     /// Fire Shield strikes back at `striker` with `damage`, killing `kills` (0x4409C0, after the
@@ -104,5 +114,63 @@ impl Player<'_> {
         }
         self.spots.push(key(self.clock.now, None));
         self.redraw();
+    }
+
+    /// `striker`'s Death Blow doubles its strike's damage on `target` (`damage_stage1_with_luck`
+    /// 0x4439A7 to 0x443B46, the Dread Knight's 20 % roll; E17 M6 T5d2a, design §12.23): the
+    /// log's line (GENRLTXT 366 or 367 by the striker's number), `Deathblo.wav` (category 2),
+    /// animation [`DEATH_BLOW`] over the stack struck without its hit at 100 ms a frame, then the
+    /// sound waited for. It comes as the strike's damage is reckoned: after good luck's animation,
+    /// before the striker's own (`melee_strike` 0x441A0E, after 0x4418B3), a retaliation's too.
+    pub(super) fn death_blow(&mut self, striker: u8, target: u8) {
+        let Some(live) = self.live(striker) else {
+            return;
+        };
+        let line = Logged::DeathBlow {
+            stack: striker,
+            count: live.count,
+        };
+        self.log.push((self.clock.now, line));
+        let cue = self.cue(striker, Sound::DeathBlow, false);
+        if let Some(struck) = self.live(target) {
+            let time = self.speed.scale(TICK);
+            self.over_one(DEATH_BLOW, (target, &struck), time, false);
+        }
+        self.wait_for(cue);
+    }
+
+    /// An Ogre Mage `stack` casts Bloodlust (`spell`, its handle) on `target` (`struck`, a stack
+    /// the timeline follows) as its action
+    /// (`creature_cast_action` 0x4486A4: Advanced, one stack; `cast_spell` 0x5A11F3; E17 M6 T5d2a,
+    /// design §12.23): its frames toward the target's hex ([`Player::creature_casting`]), the
+    /// cast's start (the outline and the mouse's stack cleared, a redraw at once), the spell's
+    /// sound, its effect, the log's line (GENRLTXT 566 or 567 by the caster's number, then 568
+    /// with the target's name), the glow over the target (as a hero's, [`Player::glow`]); at the
+    /// cast's tail the caster standing outlined (0x5A216B), then its shot sound waited for and
+    /// ended, and it turns back if it turned.
+    pub(super) fn creature_bloodlust(
+        &mut self,
+        (stack, spell): (u8, u16),
+        (target, struck): (u8, &Live),
+        effects: &[Event],
+    ) {
+        let turned = self.creature_casting(stack, struck.hex);
+        self.outlined.push((self.clock.now, None));
+        self.log.push((self.clock.now, Logged::Unmark));
+        self.redraw();
+        self.cue(stack, Sound::Spell(spell), false);
+        self.effects(effects);
+        let count = self.live(stack).map_or(0, |l| l.count);
+        let line = Logged::CreatureCast {
+            stack,
+            count,
+            spell,
+            target,
+            target_count: struck.count,
+        };
+        self.log.push((self.clock.now, line));
+        self.glow(&[target], &BLOODLUST_STEPS, Effect::Bloodlust);
+        self.stand_caster(stack);
+        self.creature_cast_over(stack, turned);
     }
 }

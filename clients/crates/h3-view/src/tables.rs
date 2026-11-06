@@ -109,6 +109,10 @@ pub struct Battle {
     /// `ManaDrai.wav`), category 2 as the heal's.
     #[serde(default)]
     pub mana_drain_sound: Option<String>,
+    /// A Dread Knight's Death Blow as its strike's damage doubles (E17 M6 T5d2a;
+    /// `damage_stage1_with_luck` 0x443B1E, `Deathblo.wav`), category 2 as the heal's.
+    #[serde(default)]
+    pub death_blow_sound: Option<String>,
     /// A wall shot's explosions (E17 M4 T2b; `wall_shot_animate` 0x4462D5): the one a shot with
     /// damage lands in (`SGEXPL.DEF`), then the one of a shot without (`CSGRCK.DEF`).
     #[serde(default)]
@@ -140,6 +144,7 @@ impl Battle {
             .chain(&self.drain_sound)
             .chain(&self.thunderbolt_sound)
             .chain(&self.mana_drain_sound)
+            .chain(&self.death_blow_sound)
             .chain(self.wall_sounds.iter().flatten())
             .chain(self.siege_sounds.iter().flatten())
             .chain(self.pickup_sounds.iter().flatten())
@@ -412,6 +417,7 @@ impl Sounds {
             | Sound::Drain
             | Sound::Thunderbolt
             | Sound::ManaDrain
+            | Sound::DeathBlow
             | Sound::SpellFile(_)
             | Sound::Object(_)
             | Sound::WallHit
@@ -939,6 +945,7 @@ luck_sound = "goodluck"
 drain_sound = "DrainLif"
 thunderbolt_sound = "LightBlt"
 mana_drain_sound = "ManaDrai"
+death_blow_sound = "Deathblo"
 wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
 wall_sounds = ["WallHit", "WallMiss"]
 siege_sounds = ["drawbrg", "landkill"]
@@ -1070,8 +1077,8 @@ at = [124, 254]
             t.battle.sounds().collect::<Vec<_>>(),
             [
                 "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck", "DrainLif",
-                "LightBlt", "ManaDrai", "WallHit", "WallMiss", "drawbrg", "landkill", "pickup01",
-                "pickup02", "pickup03", "pickup04", "pickup05", "pickup06", "pickup07"
+                "LightBlt", "ManaDrai", "Deathblo", "WallHit", "WallMiss", "drawbrg", "landkill",
+                "pickup01", "pickup02", "pickup03", "pickup04", "pickup05", "pickup06", "pickup07"
             ]
         );
         assert_eq!(
@@ -1533,6 +1540,7 @@ at = [124, 254]
             Sound::Drain,
             Sound::Thunderbolt,
             Sound::ManaDrain,
+            Sound::DeathBlow,
             Sound::SpellFile(79),
             Sound::TurretShot,
             Sound::WallHit,
@@ -1557,15 +1565,15 @@ at = [124, 254]
         // The archer has none; the tent's heal sound is the battle's (E17 M3 T3b), and so are
         // morale's, Fear's and good luck's (E17 M3 T7b-2b-2b), Life Drain's and the Thunderbird's
         // bolt's (E17 M3 T7b-2b-3), the wall shots' (E17 M4 T2b), the drawbridge's and a mine's
-        // blast's (E17 M4 T2c-1), the mana drain's (E17 M6 T5d1).
+        // blast's (E17 M4 T2c-1), the mana drain's (E17 M6 T5d1), Death Blow's (T5d2a).
         let names: Vec<String> = tables.sound_names().into_iter().collect();
         assert_eq!(
             names,
             [
-                "BADMRLE", "DRAINLIF", "DRAWBRG", "FEAR", "GOODLUCK", "GOODMRLE", "LANDKILL",
-                "LIGHTBLT", "MAGICRES", "MANADRAI", "PICKUP01", "PICKUP02", "PICKUP03", "PICKUP04",
-                "PICKUP05", "PICKUP06", "PICKUP07", "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE",
-                "PIKEWNCE", "REGENER", "SLOW", "WALLHIT", "WALLMISS"
+                "BADMRLE", "DEATHBLO", "DRAINLIF", "DRAWBRG", "FEAR", "GOODLUCK", "GOODMRLE",
+                "LANDKILL", "LIGHTBLT", "MAGICRES", "MANADRAI", "PICKUP01", "PICKUP02", "PICKUP03",
+                "PICKUP04", "PICKUP05", "PICKUP06", "PICKUP07", "PIKEATTK", "PIKEDFND", "PIKEKILL",
+                "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW", "WALLHIT", "WALLMISS"
             ]
         );
     }
