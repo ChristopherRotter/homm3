@@ -1399,3 +1399,65 @@ an entry only where a task builds on it.
   512 MLP as the control (decision 1; T20's student again on the same episodes, 12 minutes of
   steps). About 6 hours of the winner's steps by T26b's seconds, in parts under 2 hours; its
   file about 6 MB (1.49 M parameters).
+
+## T27 — The long clone (2026-11-06)
+
+- **The run** (the user's machine, the GTX 1070, the teacher on its 24 threads;
+  `python/records/distill/clone-3.json`; `configs/distill/e25-clone-3.toml`; C ABI v37, system
+  policy 19): two segments, the first on `fa04f04` (#748's merge, clean) stopped at 6 599 926
+  samples after 9 478 s, the second resumed on `bdbd6c6` (#757's merge, clean; between them only
+  two synthetic packs' `towns.toml`, which no battle reads) to the budget at 16 020 741 after
+  14 744 s. The teacher 16.06 M decisions in 308 353 episodes, none lost, 70 truncated, 805 s;
+  the students' passes 21 734 s (`hexconv`, 681 µs a sample-pass, peak 3 076 MB) and 729 s (the
+  MLP, 23 µs); the held-out set T20's (16 384 decisions, seed 8).
+
+  | Samples | Student | CE entry | Agreement | Tactics | Wait, defend | Moves | Melee | Shots | Casts | Value |
+  |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | 2 M | `hexconv` | 0.787 | 0.720 | 0.891 | 0.601 | 0.586 | 0.666 | 0.730 | 0.794 | 0.507 |
+  | 4 M | `hexconv` | 0.690 | 0.750 | 0.904 | 0.609 | 0.674 | 0.703 | 0.745 | 0.775 | 0.562 |
+  | 8 M | `hexconv` | 0.596 | 0.781 | 0.912 | 0.675 | 0.740 | 0.742 | 0.784 | 0.756 | 0.618 |
+  | 12 M | `hexconv` | 0.539 | 0.795 | 0.920 | 0.734 | 0.748 | 0.759 | 0.800 | 0.757 | 0.651 |
+  | 16 M | `hexconv` | **0.497** | **0.809** | **0.921** | **0.774** | **0.780** | **0.776** | **0.810** | 0.747 | **0.658** |
+  | 16 M | MLP 2 × 512 | 1.343 | 0.574 | 0.830 | 0.521 | 0.394 | 0.399 | 0.663 | **0.819** | 0.626 |
+  | 16 M | T20's MLP | 1.344 | 0.576 | 0.836 | 0.542 | 0.378 | 0.401 | 0.660 | 0.831 | 0.633 |
+  | | T19's ceiling | ≈0.05 | 0.972 | 0.995 | 0.992 | 0.985 | 0.941 | 0.998 | 0.977 | |
+
+  The cast heads at 16 M: `hexconv` spell 0.716, target 0.828, second 0.998; the MLP 0.696,
+  0.626, 0.996 (the ceiling 0.944, 1.000, 0.999).
+- **The ladders** (500 per kind, both system actors on the report set v1, the neutral set v1):
+
+  | Student | Fair actor | Hero | Siege hero | Siege garrison | All-seeing | Neutral set |
+  |---|---:|---:|---:|---:|---:|---:|
+  | `hexconv` | **0.481 ± 0.019, −0.020** | 0.481 | 0.471 | 0.500 | 0.473 ± 0.018, −0.021 | 0.989, **+0.274** |
+  | MLP 2 × 512 | 0.414 ± 0.018, −0.065 | 0.404 | 0.400 | 0.484 | 0.407 ± 0.018, −0.068 | 0.978, +0.251 |
+  | T20's MLP | 0.411 ± 0.018, −0.069 | 0.404 | 0.392 | 0.481 | 0.411, −0.071 | 0.982, +0.251 |
+  | `e25-imitate-1` #2 (T22, PPO) | 0.458, −0.020 | | | | 0.462, −0.022 | 0.983, +0.287 |
+
+  The neutral set's kinds: `hexconv` wandering 0.992, guards 0.988, siege_neutral 0.882; the MLP
+  0.982, 0.972, 0.864.
+- **The read:** the structure holds to 16 M: `hexconv` 0.809 against the MLP's 0.574 (+0.235;
+  the bench reproduces T20, 0.574 against 0.576), its moves 0.780 and melee 0.776 (the MLP's 0.39
+  and 0.40), the gap to the ceiling 0.163 (the MLP's 0.398). Four times the samples buy it +0.059
+  (0.750 to 0.809, about 0.03 a doubling, the MLP's 0.02), still rising. Its value's explained
+  variance passes the MLP's by 16 M (0.658 against 0.626; T26b's 0.590 at 4 M was early), so
+  PPO's critic starts no worse. One category falls: the cast entry, 0.794 at 2 M to 0.747 at 16
+  M, below the MLP's 0.819 (its targets 0.828 against 0.626): T19's tool on this student and T28's
+  `inspect` say whether it casts less or other spells. The agreement buys play: +0.067 win rate
+  and +0.045 value against the fair actor over the MLP, in every kind (hero +0.077, siege hero
+  +0.071, siege garrison +0.016).
+- **Decision 5's second gate passed:** 0.481 ± 0.019 against the fair actor, T20's 0.411 ± 0.018
+  (the intervals 0.462 and 0.429 apart). The clone alone plays at the current best's level
+  (`e25-imitate-1` #2, 20 M of PPO: 0.458, the same value −0.020; inside the intervals), the
+  neutral set 0.013 below it (+0.274 against +0.287, the target +0.285). Exit criterion 1 (above
+  0.5 and a positive value) is not met by it. T28 next.
+- **T28 prepared** (the sandbox's CPU): `configs/e25-imitate-structure.toml`, `e25-imitate.toml`
+  with T27's student's network. A new `[ppo] accumulate` (the chunks a minibatch's gradient is
+  summed over before its one step; 1 the update as before) keeps PPO's 8 minibatches of 4 096
+  rows and their 32 steps an update at 8 chunks of 512 rows, so only the network differs from the
+  current best's run (`minibatches` 64 would have made 256 smaller steps); its test updates the
+  same rollout both ways to the same weights and losses (and fails with the chunks' own advantage
+  normalisation). The smoke (`--init-from` an 8 192-sample CPU clone of the same network, 72 s;
+  then 2 841 samples, 16 envs, chunks of 16 rows, a gate of 8 pairs, ladders of 2 a kind; 2.3
+  minutes): the network loads strictly, the imitation loss and the gate run, the ladder plays.
+  The Python suite 243 passed, 1 skipped. No warm-up or weight decay:
+  PPO's Adam at 2.5e-4 starts from a network the bench took down to 1e-4.

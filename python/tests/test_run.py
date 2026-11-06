@@ -135,6 +135,7 @@ lr_schedule = "constant"
         ("seed = [", [], "not TOML"),
         ("", ["ppo.lr_schedule=cosine"], "linear or constant"),
         ("", ["samples=0"], "`samples` must be positive"),
+        ("", ["ppo.accumulate=0"], "`accumulate` must be positive"),
         ("", [f"seed={EVAL_SEED}"], "held-out set's batch seed"),
         ("", [f"seed={REPORT_V1_SEED + 3}"], "held-out set's batch seed"),
         ("", [f"seed={GATE_V1_SEED}"], "held-out set's batch seed"),

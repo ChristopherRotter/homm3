@@ -1,0 +1,1260 @@
+{
+ "teacher": {
+  "system": "system",
+  "system_policy": 19,
+  "run": "configs/e25-neutral.toml",
+  "config": {
+   "kind": "mlp",
+   "hidden": 512,
+   "embed": 32,
+   "width": 128,
+   "layers": 2,
+   "heads": 4,
+   "norm": "none",
+   "feed_forward": 2,
+   "field_width": 17,
+   "field_height": 11,
+   "preview": false,
+   "order": false,
+   "tactics_rounds": 3,
+   "mask_input": false,
+   "attack_hex": false
+  },
+  "kinds": [
+   78,
+   2,
+   100,
+   50,
+   25,
+   3
+  ],
+  "shaping": true,
+  "truncation_penalty": 1.0,
+  "max_steps": 2000,
+  "heldout": {
+   "decisions": 25600,
+   "lost": 0,
+   "past_bound": 0,
+   "episodes": 446,
+   "truncated": 0,
+   "by_kind": {
+    "siege_garrison": [
+     47,
+     0,
+     50
+    ],
+    "wandering": [
+     189,
+     0,
+     190
+    ],
+    "guards": [
+     8,
+     0,
+     9
+    ],
+    "hero": [
+     102,
+     0,
+     131
+    ],
+    "siege_neutral": [
+     11,
+     0,
+     11
+    ],
+    "siege_hero": [
+     40,
+     0,
+     55
+    ]
+   }
+  },
+  "stats": {
+   "decisions": 16064512,
+   "lost": 0,
+   "past_bound": 0,
+   "episodes": 308353,
+   "truncated": 70,
+   "by_kind": {
+    "guards": {
+     "episodes": 2328,
+     "attacker_won": 0.9853951890034365,
+     "truncated": 0.0
+    },
+    "hero": {
+     "episodes": 119495,
+     "attacker_won": 0.7079459391606343,
+     "truncated": 0.0004016904472990502
+    },
+    "siege_garrison": {
+     "episodes": 29749,
+     "attacker_won": 0.9453763151702578,
+     "truncated": 0.0
+    },
+    "siege_hero": {
+     "episodes": 59998,
+     "attacker_won": 0.5856361878729291,
+     "truncated": 0.0003666788892963099
+    },
+    "siege_neutral": {
+     "episodes": 3628,
+     "attacker_won": 0.8880926130099228,
+     "truncated": 0.0
+    },
+    "wandering": {
+     "episodes": 93155,
+     "attacker_won": 0.9935054479093983,
+     "truncated": 0.0
+    }
+   },
+   "seconds": 804.8563213149318
+  }
+ },
+ "bench": {
+  "seed": 7,
+  "samples": 16000000,
+  "heldout": 16384,
+  "eval_every": 2000000,
+  "envs": 256,
+  "threads": 24,
+  "rollout": 128,
+  "epochs": 2,
+  "minibatch": 512,
+  "lr": 0.0003,
+  "lr_floor": 0.1,
+  "warmup": 0,
+  "weight_decay": 0.0,
+  "value_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "device": "auto",
+  "checkpoint_minutes": 10.0,
+  "run": "configs/e25-neutral.toml",
+  "ladder": [
+   "system",
+   "system-all-seeing"
+  ],
+  "ladder_per_kind": 500,
+  "students": {
+   "mlp": {
+    "kind": "mlp"
+   },
+   "hexconv-n-96x6-a": {
+    "kind": "hexconv",
+    "norm": "layer",
+    "width": 96,
+    "layers": 6,
+    "mask_input": true,
+    "order": true,
+    "attack_hex": true,
+    "lr": 0.001,
+    "warmup": 131072,
+    "weight_decay": 0.01
+   }
+  }
+ },
+ "identity": {
+  "started": "2026-11-06T09:38:56Z",
+  "commit": "fa04f044fb154b3c05b4554989da63160f535498",
+  "dirty": false,
+  "abi": 37,
+  "observation_encoding": 22,
+  "action_encoding": 13,
+  "encounters": 1,
+  "system_policy": 19,
+  "torch": "2.14.1+cu126",
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce GTX 1070",
+  "os": "Windows-10-10.0.19045-SP0",
+  "cpu": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+  "cores": 24,
+  "python": "3.12.15",
+  "numpy": "2.5.4"
+ },
+ "students": {
+  "mlp": {
+   "network": {
+    "kind": "mlp",
+    "hidden": 512,
+    "embed": 32,
+    "width": 128,
+    "layers": 2,
+    "heads": 4,
+    "norm": "none",
+    "feed_forward": 2,
+    "field_width": 17,
+    "field_height": 11,
+    "preview": false,
+    "order": false,
+    "tactics_rounds": 3,
+    "mask_input": false,
+    "attack_hex": false
+   },
+   "lr": 0.0003,
+   "warmup": 0,
+   "weight_decay": 0.0,
+   "parameters": 5946617
+  },
+  "hexconv-n-96x6-a": {
+   "network": {
+    "kind": "hexconv",
+    "hidden": 512,
+    "embed": 32,
+    "width": 96,
+    "layers": 6,
+    "heads": 4,
+    "norm": "layer",
+    "feed_forward": 2,
+    "field_width": 17,
+    "field_height": 11,
+    "preview": false,
+    "order": true,
+    "tactics_rounds": 3,
+    "mask_input": true,
+    "attack_hex": true
+   },
+   "lr": 0.001,
+   "warmup": 131072,
+   "weight_decay": 0.01,
+   "parameters": 1485079
+  }
+ },
+ "evaluations": [
+  {
+   "samples": 0,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 3.918455183506012,
+      "spell": 2.0039291888699235,
+      "target": 1.6541102898045126,
+      "second": 0.019465228576043107
+     },
+     "agreement": 0.02374267578125,
+     "agreement_by_category": {
+      "tactics": 0.024343369634849454,
+      "wait_defend": 0.004026845637583893,
+      "move": 0.048901782014090345,
+      "melee": 0.01388650780044574,
+      "shot": 0.02475685234305924,
+      "heal": 0.2602739726027397,
+      "cast": 0.0,
+      "other": 0.12878787878787878
+     },
+     "cast_agreement": {
+      "spell": 0.2004621606008088,
+      "target": 0.28942807625649913,
+      "second": 0.9959560947429231
+     },
+     "value": {
+      "mse": 2.724431037902832,
+      "explained_variance": -1.6965681373221462
+     },
+     "seconds": 0.0,
+     "us_per_sample_pass": null,
+     "peak_memory_mb": null
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 3.921601504087448,
+      "spell": 2.0055778697348274,
+      "target": 1.6533621617784946,
+      "second": 0.019470122561573225
+     },
+     "agreement": 0.05767822265625,
+     "agreement_by_category": {
+      "tactics": 0.024983984625240232,
+      "wait_defend": 0.04563758389261745,
+      "move": 0.023207625362619146,
+      "melee": 0.09994856848962798,
+      "shot": 0.003094606542882405,
+      "heal": 0.3561643835616438,
+      "cast": 0.032351242056614674,
+      "other": 0.5984848484848485
+     },
+     "cast_agreement": {
+      "spell": 0.15020219526285383,
+      "target": 0.3304448295782785,
+      "second": 0.9959560947429231
+     },
+     "value": {
+      "mse": 0.0795314610004425,
+      "explained_variance": -1.552372158038183
+     },
+     "seconds": 0.0,
+     "us_per_sample_pass": null,
+     "peak_memory_mb": null
+    }
+   }
+  },
+  {
+   "samples": 2008955,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.6025827676057816,
+      "spell": 0.9043206446849839,
+      "target": 1.1802729249069417,
+      "second": 0.013871979878721453
+     },
+     "agreement": 0.50616455078125,
+     "agreement_by_category": {
+      "tactics": 0.7732222934016656,
+      "wait_defend": 0.4791946308724832,
+      "move": 0.2797347699958558,
+      "melee": 0.33584776272929884,
+      "shot": 0.5817860300618921,
+      "heal": 0.7328767123287672,
+      "cast": 0.7758521086077412,
+      "other": 0.9242424242424242
+     },
+     "cast_agreement": {
+      "spell": 0.6481802426343154,
+      "target": 0.5748122472559214,
+      "second": 0.9965337954939342
+     },
+     "value": {
+      "mse": 0.013800276443362236,
+      "explained_variance": 0.5429267465186995
+     },
+     "seconds": 89.34334849088918,
+     "us_per_sample_pass": 22.342986878523426,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.7867946736514568,
+      "spell": 0.883951859278599,
+      "target": 0.6384180670594425,
+      "second": 0.011850049976390747
+     },
+     "agreement": 0.72015380859375,
+     "agreement_by_category": {
+      "tactics": 0.8910954516335682,
+      "wait_defend": 0.6013422818791946,
+      "move": 0.5864069622876088,
+      "melee": 0.6655237442139551,
+      "shot": 0.7303271441202476,
+      "heal": 0.8013698630136986,
+      "cast": 0.7943385326400925,
+      "other": 0.9696969696969697
+     },
+     "cast_agreement": {
+      "spell": 0.6614673599075679,
+      "target": 0.7625649913344887,
+      "second": 0.9971114962449451
+     },
+     "value": {
+      "mse": 0.01496712863445282,
+      "explained_variance": 0.5071841343991379
+     },
+     "seconds": 2571.268558102078,
+     "us_per_sample_pass": 643.0229068557134,
+     "peak_memory_mb": 3075.8017578125
+    }
+   }
+  },
+  {
+   "samples": 4017738,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.5215156115591526,
+      "spell": 0.8664962938243705,
+      "target": 1.1130623004809754,
+      "second": 0.012978279886736062
+     },
+     "agreement": 0.5274658203125,
+     "agreement_by_category": {
+      "tactics": 0.7937219730941704,
+      "wait_defend": 0.47516778523489933,
+      "move": 0.3050145047658516,
+      "melee": 0.361220641179496,
+      "shot": 0.5928381962864722,
+      "heal": 0.6917808219178082,
+      "cast": 0.8105141536683997,
+      "other": 0.9242424242424242
+     },
+     "cast_agreement": {
+      "spell": 0.6718659734257655,
+      "target": 0.5834777585210861,
+      "second": 0.9959560947429231
+     },
+     "value": {
+      "mse": 0.013124929741024971,
+      "explained_variance": 0.565354021971805
+     },
+     "seconds": 180.65989168616943,
+     "us_per_sample_pass": 22.58971516962546,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.6898280493915081,
+      "spell": 0.8383914621354251,
+      "target": 0.5584847628209441,
+      "second": 0.011032400965897214
+     },
+     "agreement": 0.75,
+     "agreement_by_category": {
+      "tactics": 0.9035874439461884,
+      "wait_defend": 0.6093959731543624,
+      "move": 0.6742644011603812,
+      "melee": 0.7034116235213441,
+      "shot": 0.7453580901856764,
+      "heal": 0.8698630136986302,
+      "cast": 0.7752744078567302,
+      "other": 0.9696969696969697
+     },
+     "cast_agreement": {
+      "spell": 0.6770652801848642,
+      "target": 0.7874061236279607,
+      "second": 0.997689196995956
+     },
+     "value": {
+      "mse": 0.01364634558558464,
+      "explained_variance": 0.5620399052823895
+     },
+     "seconds": 5224.962600710569,
+     "us_per_sample_pass": 653.3293904937792,
+     "peak_memory_mb": 3075.8017578125
+    }
+   }
+  },
+  {
+   "samples": 6026179,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.4589344188570976,
+      "spell": 0.8633123394521518,
+      "target": 1.0937917291739303,
+      "second": 0.013202268012612628
+     },
+     "agreement": 0.5426025390625,
+     "agreement_by_category": {
+      "tactics": 0.8087764253683536,
+      "wait_defend": 0.45503355704697984,
+      "move": 0.3443845835060091,
+      "melee": 0.3667066689525116,
+      "shot": 0.621131741821397,
+      "heal": 0.7328767123287672,
+      "cast": 0.8220681686886193,
+      "other": 0.9166666666666666
+     },
+     "cast_agreement": {
+      "spell": 0.6759098786828422,
+      "target": 0.6025418833044482,
+      "second": 0.9965337954939342
+     },
+     "value": {
+      "mse": 0.013501442037522793,
+      "explained_variance": 0.5556367845107717
+     },
+     "seconds": 270.4486201835098,
+     "us_per_sample_pass": 22.54459928706434,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.6292399251833558,
+      "spell": 0.8086879384235314,
+      "target": 0.5538318822454126,
+      "second": 0.0076569602332454
+     },
+     "agreement": 0.771728515625,
+     "agreement_by_category": {
+      "tactics": 0.9090326713645099,
+      "wait_defend": 0.6389261744966444,
+      "move": 0.7227517612929962,
+      "melee": 0.7370135436310646,
+      "shot": 0.7683465959328029,
+      "heal": 0.8561643835616438,
+      "cast": 0.7498555748122473,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6811091854419411,
+      "target": 0.805314846909301,
+      "second": 0.998844598497978
+     },
+     "value": {
+      "mse": 0.0131040308624506,
+      "explained_variance": 0.5914246906691749
+     },
+     "seconds": 7899.626703307498,
+     "us_per_sample_pass": 658.512949419439,
+     "peak_memory_mb": 3075.8017578125
+    }
+   }
+  },
+  {
+   "samples": 6599926,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.44427952170372,
+      "spell": 0.8671989529068108,
+      "target": 1.0882591631011698,
+      "second": 0.011378244676044537
+     },
+     "agreement": 0.54583740234375,
+     "agreement_by_category": {
+      "tactics": 0.816463805253043,
+      "wait_defend": 0.5208053691275167,
+      "move": 0.3116452548694571,
+      "melee": 0.3730498885650609,
+      "shot": 0.6131741821396994,
+      "heal": 0.726027397260274,
+      "cast": 0.8451761987290584,
+      "other": 0.9242424242424242
+     },
+     "cast_agreement": {
+      "spell": 0.6695551704217215,
+      "target": 0.6060080878105142,
+      "second": 0.9965337954939342
+     },
+     "value": {
+      "mse": 0.012919282540678978,
+      "explained_variance": 0.5738534113353454
+     },
+     "seconds": 296.34199888189323,
+     "us_per_sample_pass": 22.554476134603604,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.6088682916015387,
+      "spell": 0.8224703382715747,
+      "target": 0.5245042494581588,
+      "second": 0.007209139914267467
+     },
+     "agreement": 0.77337646484375,
+     "agreement_by_category": {
+      "tactics": 0.9090326713645099,
+      "wait_defend": 0.661744966442953,
+      "move": 0.7157065893079154,
+      "melee": 0.7301560089147952,
+      "shot": 0.7639257294429708,
+      "heal": 0.8904109589041096,
+      "cast": 0.7914500288850376,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6880415944540728,
+      "target": 0.80473714615829,
+      "second": 0.9982668977469671
+     },
+     "value": {
+      "mse": 0.012169931083917618,
+      "explained_variance": 0.6059538952348882
+     },
+     "seconds": 8669.812602307182,
+     "us_per_sample_pass": 659.8561195106078,
+     "peak_memory_mb": 3075.8017578125
+    }
+   }
+  },
+  {
+   "samples": 8017343,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.4316736422479153,
+      "spell": 0.8544642956941407,
+      "target": 1.0566054784377004,
+      "second": 0.014090636367401176
+     },
+     "agreement": 0.54754638671875,
+     "agreement_by_category": {
+      "tactics": 0.8084561178731582,
+      "wait_defend": 0.4993288590604027,
+      "move": 0.34148363033568174,
+      "melee": 0.3730498885650609,
+      "shot": 0.6264367816091954,
+      "heal": 0.7397260273972602,
+      "cast": 0.8238012709416522,
+      "other": 0.9393939393939394
+     },
+     "cast_agreement": {
+      "spell": 0.6782206816868862,
+      "target": 0.6198729058347776,
+      "second": 0.9971114962449451
+     },
+     "value": {
+      "mse": 0.012151080183684826,
+      "explained_variance": 0.6004949145099701
+     },
+     "seconds": 363.1612469825195,
+     "us_per_sample_pass": 22.752913020874235,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.5955013046041131,
+      "spell": 0.801553109145316,
+      "target": 0.49994290956247067,
+      "second": 0.007493616665532174
+     },
+     "agreement": 0.781494140625,
+     "agreement_by_category": {
+      "tactics": 0.9119154388212685,
+      "wait_defend": 0.6751677852348993,
+      "move": 0.7397430584334853,
+      "melee": 0.7423281330361735,
+      "shot": 0.7838196286472149,
+      "heal": 0.9246575342465754,
+      "cast": 0.755632582322357,
+      "other": 0.9318181818181818
+     },
+     "cast_agreement": {
+      "spell": 0.682842287694974,
+      "target": 0.8122472559214327,
+      "second": 0.9971114962449451
+     },
+     "value": {
+      "mse": 0.011819738894701004,
+      "explained_variance": 0.6178376564148484
+     },
+     "seconds": 10619.768271308858,
+     "us_per_sample_pass": 665.353657050751,
+     "peak_memory_mb": 3076.2626953125
+    }
+   }
+  },
+  {
+   "samples": 10023450,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.3993639796972275,
+      "spell": 0.8274492652756433,
+      "target": 1.0505029776411756,
+      "second": 0.012674103920890857
+     },
+     "agreement": 0.5545654296875,
+     "agreement_by_category": {
+      "tactics": 0.816463805253043,
+      "wait_defend": 0.5275167785234899,
+      "move": 0.3402403646912557,
+      "melee": 0.3756214640836619,
+      "shot": 0.6317418213969939,
+      "heal": 0.7671232876712328,
+      "cast": 0.8463316002310803,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6857307914500289,
+      "target": 0.6279607163489312,
+      "second": 0.9971114962449451
+     },
+     "value": {
+      "mse": 0.01211871299892664,
+      "explained_variance": 0.6015829587781667
+     },
+     "seconds": 459.16150707984343,
+     "us_per_sample_pass": 23.005485057598868,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.567688113078475,
+      "spell": 0.7792115346466717,
+      "target": 0.47994813913558,
+      "second": 0.005767098504776627
+     },
+     "agreement": 0.78741455078125,
+     "agreement_by_category": {
+      "tactics": 0.9151185137732223,
+      "wait_defend": 0.7355704697986577,
+      "move": 0.7347699958557812,
+      "melee": 0.7533001885822047,
+      "shot": 0.7847038019451813,
+      "heal": 0.8904109589041096,
+      "cast": 0.7515886770652802,
+      "other": 0.9318181818181818
+     },
+     "cast_agreement": {
+      "spell": 0.6932409012131716,
+      "target": 0.8168688619295205,
+      "second": 0.9982668977469671
+     },
+     "value": {
+      "mse": 0.011120311915874481,
+      "explained_variance": 0.6317054692798736
+     },
+     "seconds": 13466.45817430783,
+     "us_per_sample_pass": 674.7133580035653,
+     "peak_memory_mb": 3076.2626953125
+    }
+   }
+  },
+  {
+   "samples": 12002591,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.374790497124195,
+      "spell": 0.8258313333829795,
+      "target": 1.0251438949646665,
+      "second": 0.013638896449048832
+     },
+     "agreement": 0.56268310546875,
+     "agreement_by_category": {
+      "tactics": 0.8225496476617553,
+      "wait_defend": 0.5046979865771812,
+      "move": 0.37753833402403647,
+      "melee": 0.3896794102520144,
+      "shot": 0.6392572944297082,
+      "heal": 0.7191780821917808,
+      "cast": 0.8180242634315424,
+      "other": 0.9393939393939394
+     },
+     "cast_agreement": {
+      "spell": 0.6787983824378971,
+      "target": 0.6320046216060081,
+      "second": 0.9971114962449451
+     },
+     "value": {
+      "mse": 0.011739995330572128,
+      "explained_variance": 0.6136845201081158
+     },
+     "seconds": 547.8492482773727,
+     "us_per_sample_pass": 22.925355937818562,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.5394031386822462,
+      "spell": 0.7556126945491198,
+      "target": 0.4608085176147249,
+      "second": 0.005621094654778536
+     },
+     "agreement": 0.7952880859375,
+     "agreement_by_category": {
+      "tactics": 0.9196028187059577,
+      "wait_defend": 0.7342281879194631,
+      "move": 0.7480314960629921,
+      "melee": 0.758957654723127,
+      "shot": 0.7997347480106101,
+      "heal": 0.9246575342465754,
+      "cast": 0.756787983824379,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6978625072212594,
+      "target": 0.8255343731946851,
+      "second": 0.9982668977469671
+     },
+     "value": {
+      "mse": 0.010601242072880268,
+      "explained_variance": 0.6509537079495913
+     },
+     "seconds": 16142.37075140851,
+     "us_per_sample_pass": 675.4953051772882,
+     "peak_memory_mb": 3076.2626953125
+    }
+   }
+  },
+  {
+   "samples": 14012219,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.3587643541395664,
+      "spell": 0.8076602477410293,
+      "target": 1.026315794867081,
+      "second": 0.012730997329086047
+     },
+     "agreement": 0.56915283203125,
+     "agreement_by_category": {
+      "tactics": 0.8315182575272262,
+      "wait_defend": 0.5342281879194631,
+      "move": 0.3858267716535433,
+      "melee": 0.39207954740270873,
+      "shot": 0.6405835543766578,
+      "heal": 0.7465753424657534,
+      "cast": 0.8255343731946851,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6943963027151935,
+      "target": 0.63316002310803,
+      "second": 0.9971114962449451
+     },
+     "value": {
+      "mse": 0.010601155459880829,
+      "explained_variance": 0.6492409268295783
+     },
+     "seconds": 638.0829017789802,
+     "us_per_sample_pass": 22.87043359643747,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.517600410617888,
+      "spell": 0.739693087969537,
+      "target": 0.4369994851635206,
+      "second": 0.007740204214429938
+     },
+     "agreement": 0.80474853515625,
+     "agreement_by_category": {
+      "tactics": 0.9180012812299808,
+      "wait_defend": 0.7449664429530202,
+      "move": 0.7679237463738086,
+      "melee": 0.7682153265900908,
+      "shot": 0.812555260831123,
+      "heal": 0.9178082191780822,
+      "cast": 0.7683419988445985,
+      "other": 0.9696969696969697
+     },
+     "cast_agreement": {
+      "spell": 0.706528018486424,
+      "target": 0.8324667822068169,
+      "second": 0.9982668977469671
+     },
+     "value": {
+      "mse": 0.010025826282799244,
+      "explained_variance": 0.6682785543895323
+     },
+     "seconds": 18927.673947607516,
+     "us_per_sample_pass": 678.4135869287406,
+     "peak_memory_mb": 3076.2626953125
+    }
+   }
+  },
+  {
+   "samples": 16020741,
+   "heldout": 16384,
+   "casts": 1731,
+   "categories": {
+    "tactics": 3122,
+    "wait_defend": 745,
+    "move": 2413,
+    "melee": 5833,
+    "shot": 2262,
+    "heal": 146,
+    "cast": 1731,
+    "other": 132
+   },
+   "returns": {
+    "mean": 0.06927161663770676,
+    "variance": 0.030184580013155937
+   },
+   "students": {
+    "mlp": {
+     "cross_entropy": {
+      "entry": 1.3428037986159325,
+      "spell": 0.7991238004000183,
+      "target": 1.014126636057765,
+      "second": 0.013617538290172556
+     },
+     "agreement": 0.5740966796875,
+     "agreement_by_category": {
+      "tactics": 0.8295964125560538,
+      "wait_defend": 0.5208053691275167,
+      "move": 0.3937007874015748,
+      "melee": 0.3989370821189782,
+      "shot": 0.6631299734748011,
+      "heal": 0.7397260273972602,
+      "cast": 0.8186019641825535,
+      "other": 0.9545454545454546
+     },
+     "cast_agreement": {
+      "spell": 0.6961294049682265,
+      "target": 0.6256499133448874,
+      "second": 0.9959560947429231
+     },
+     "value": {
+      "mse": 0.011324712075293064,
+      "explained_variance": 0.6259468629342527
+     },
+     "seconds": 729.3796243754914,
+     "us_per_sample_pass": 22.865551328342296,
+     "peak_memory_mb": 101.08251953125
+    },
+    "hexconv-n-96x6-a": {
+     "cross_entropy": {
+      "entry": 0.4970572330057621,
+      "spell": 0.7305986777955159,
+      "target": 0.43977618148600967,
+      "second": 0.007538597546582412
+     },
+     "agreement": 0.808837890625,
+     "agreement_by_category": {
+      "tactics": 0.9208840486867392,
+      "wait_defend": 0.774496644295302,
+      "move": 0.7803564028180688,
+      "melee": 0.7755871764100806,
+      "shot": 0.8103448275862069,
+      "heal": 0.9452054794520548,
+      "cast": 0.7469670710571924,
+      "other": 0.9772727272727273
+     },
+     "cast_agreement": {
+      "spell": 0.7163489312536107,
+      "target": 0.8278451761987291,
+      "second": 0.9982668977469671
+     },
+     "value": {
+      "mse": 0.010494482703506947,
+      "explained_variance": 0.6584398746009235
+     },
+     "seconds": 21733.672497800435,
+     "us_per_sample_pass": 681.3357371716232,
+     "peak_memory_mb": 3076.2626953125
+    }
+   }
+  }
+ ],
+ "segments": [
+  {
+   "segment": 0,
+   "seed": 7,
+   "started": "2026-11-06T09:38:56Z",
+   "commit": "fa04f044fb154b3c05b4554989da63160f535498",
+   "dirty": false,
+   "device": "cuda",
+   "gpu": "NVIDIA GeForce GTX 1070",
+   "samples": 0,
+   "changed": {},
+   "ended": "stop",
+   "seconds": 9477.608999999939
+  },
+  {
+   "segment": 1,
+   "seed": 7191089600892374487,
+   "started": "2026-11-06T13:49:54Z",
+   "commit": "bdbd6c6c6658a2d44def40a4cc4701a43c6fd90b",
+   "dirty": false,
+   "device": "cuda",
+   "gpu": "NVIDIA GeForce GTX 1070",
+   "samples": 6599926,
+   "changed": {},
+   "ended": "budget",
+   "seconds": 14743.780999999959
+  }
+ ],
+ "ended": "budget",
+ "samples": 16020741,
+ "ladders": {
+  "mlp": {
+   "report-v1": {
+    "system": {
+     "win_rate": 0.4140635556827941,
+     "interval": 0.018243733057460538,
+     "value": -0.06530854032022926,
+     "kinds": {
+      "hero": 0.4035991983967936,
+      "siege_hero": 0.4,
+      "siege_garrison": 0.4840480961923848
+     },
+     "sides": {
+      "hero": [
+       0.5991983967935872,
+       0.208
+      ],
+      "siege_hero": [
+       0.466,
+       0.334
+      ],
+      "siege_garrison": [
+       0.92,
+       0.04809619238476954
+      ]
+     },
+     "games": 2998,
+     "skipped": 2,
+     "truncated": 0.000333555703802535,
+     "seconds": 27.25
+    },
+    "system-all-seeing": {
+     "win_rate": 0.4067709705124534,
+     "interval": 0.018194921803746718,
+     "value": -0.0676733971720864,
+     "kinds": {
+      "hero": 0.3935871743486974,
+      "siege_hero": 0.394,
+      "siege_garrison": 0.4850480961923848
+     },
+     "sides": {
+      "hero": [
+       0.5871743486973948,
+       0.2
+      ],
+      "siege_hero": [
+       0.454,
+       0.334
+      ],
+      "siege_garrison": [
+       0.922,
+       0.04809619238476954
+      ]
+     },
+     "games": 2998,
+     "skipped": 2,
+     "truncated": 0.0,
+     "seconds": 14.844000000040978
+    }
+   },
+   "neutral-v1": {
+    "system": {
+     "win_rate": 0.9781818181818182,
+     "interval": 0.011061137837568341,
+     "value": 0.2510659966535894,
+     "kinds": {
+      "wandering": 0.982,
+      "guards": 0.972,
+      "siege_neutral": 0.864
+     },
+     "sides": {
+      "wandering": [
+       0.982
+      ],
+      "guards": [
+       0.972
+      ],
+      "siege_neutral": [
+       0.864
+      ]
+     },
+     "games": 1500,
+     "skipped": 0,
+     "truncated": 0.0,
+     "seconds": 3.0
+    }
+   }
+  },
+  "hexconv-n-96x6-a": {
+   "report-v1": {
+    "system": {
+     "win_rate": 0.48067935871743483,
+     "interval": 0.018672558355192485,
+     "value": -0.01961005602252013,
+     "kinds": {
+      "hero": 0.4806733466933868,
+      "siege_hero": 0.471,
+      "siege_garrison": 0.5000621242484969
+     },
+     "sides": {
+      "hero": [
+       0.6733466933867736,
+       0.288
+      ],
+      "siege_hero": [
+       0.524,
+       0.418
+      ],
+      "siege_garrison": [
+       0.938,
+       0.06212424849699399
+      ]
+     },
+     "games": 2998,
+     "skipped": 2,
+     "truncated": 0.000333555703802535,
+     "seconds": 293.875
+    },
+    "system-all-seeing": {
+     "win_rate": 0.47324849699398797,
+     "interval": 0.01849118893545643,
+     "value": -0.021271321902259773,
+     "kinds": {
+      "hero": 0.4656693386773547,
+      "siege_hero": 0.476,
+      "siege_garrison": 0.498062124248497
+     },
+     "sides": {
+      "hero": [
+       0.6693386773547094,
+       0.262
+      ],
+      "siege_hero": [
+       0.542,
+       0.41
+      ],
+      "siege_garrison": [
+       0.934,
+       0.06212424849699399
+      ]
+     },
+     "games": 2998,
+     "skipped": 2,
+     "truncated": 0.0,
+     "seconds": 95.18700000003446
+    }
+   },
+   "neutral-v1": {
+    "system": {
+     "win_rate": 0.988569696969697,
+     "interval": 0.007435819340566495,
+     "value": 0.27382477517437087,
+     "kinds": {
+      "wandering": 0.992,
+      "guards": 0.988,
+      "siege_neutral": 0.882
+     },
+     "sides": {
+      "wandering": [
+       0.992
+      ],
+      "guards": [
+       0.988
+      ],
+      "siege_neutral": [
+       0.882
+      ]
+     },
+     "games": 1500,
+     "skipped": 0,
+     "truncated": 0.0,
+     "seconds": 27.141000000061467
+    }
+   }
+  }
+ }
+}

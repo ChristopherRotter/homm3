@@ -763,6 +763,27 @@ def test_the_imitation_loss_pulls_the_learner_to_the_teacher_while_its_weight_la
     trainer.batch.close()
 
 
+def test_an_accumulated_update_steps_as_its_whole_minibatches_do() -> None:
+    # E25 T28 (`[ppo] accumulate`): the same rollout updated from the same weights, each
+    # minibatch in one pass or its gradient summed over chunks, takes the same steps up to
+    # rounding (the advantages normalised over the minibatch, the imitation term's mean over its
+    # labelled rows), and records the same losses.
+    small = {**SMALL, "envs": 4, "rollout": 16, "minibatches": 2}
+
+    def updated(accumulate: int) -> tuple[torch.Tensor, dict]:
+        trainer = Trainer(Config(**small, imitation_coef=1.0, accumulate=accumulate))
+        trainer.collect()
+        stats = trainer.update(trainer.config.lr)
+        trainer.batch.close()
+        return torch.cat([p.detach().reshape(-1) for p in trainer.policy.parameters()]), stats
+
+    whole, stats = updated(1)
+    chunked, chunked_stats = updated(3)
+    torch.testing.assert_close(chunked, whole, rtol=1e-4, atol=1e-6)
+    for name in ("policy_loss", "value_loss", "entropy", "kl", "clip", "imitation_loss"):
+        assert chunked_stats[name] == pytest.approx(stats[name], rel=1e-4, abs=1e-7), name
+
+
 def test_an_imitating_run_records_its_weight_and_labels(tmp_path) -> None:
     # E25 T21: the update records carry the weight falling to 0 over its horizon, the labels'
     # statistics and the cross-entropy while it is above 0; the record's curve their means.
