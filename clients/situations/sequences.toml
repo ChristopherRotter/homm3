@@ -2182,3 +2182,65 @@ command = [
     { seat = "Attacker", at = 15147, command = { Defend = {} } },
     { seat = "Defender", at = 17562, command = { Defend = {} } },
 ]
+
+# E17 M6 T5d2a: Death Blow and an Ogre Mage's Bloodlust (design §12.23), in hot seat
+# (`seq-blows.toml`). The Black Dragon flies to the Dread Knights and strikes them; their strike
+# back's Death Blow falls (`roll:death_blow`): the line (GENRLTXT 367), 73 over the Dragon (its
+# 20 frames at 100 ms, gone at 5 700), then their group. The Dread Knights wait; the Ogre Mage casts
+# Bloodlust on them by a click on their hex (the viewer's mouse shows a look there: casters'
+# cursors not modelled, §9.10): its frames (group 19, straight down), the line
+# (566, 568), the glow; in the wait phase the Dread Knights strike the Dragon, their Death Blow
+# falls again (73 at their turn's start, 9 696). Seed 10: the engine's Death Blows fall too and
+# its damage is the original's but for the strike's (87 against 81: the log masked from 13 196).
+# Frames: 148, all exact but 1 700 to 2 200 (the Dragon's landing: redraw artifacts only, 234 to
+# 260 pixels) and 2 400, the strike's first (202 artifacts and 188 other pixels: the Dread
+# Knights' count box moves behind them, its left part outside the strike's redraw rectangle,
+# §7.11 (3), the screen there as before).
+[[sequence]]
+id = "blows"
+scenario = "seq-blows.toml"
+hot_seat = true
+seed = 10
+actions = [
+    "roll:death_blow", "click:156,448", "turn:0.1", "key:w", "turn:0.0", "hex:137", "turn:0.1",
+    "roll:death_blow", "click:180,448",
+]
+fail = ["good_morale", "bad_morale", "luck", "death_blow"]
+ms = 4500
+screens = true
+timeline = "timelines/blows.txt"
+frames = "timelines/blows-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Attack = { target = 1, from = 140 } } },
+    { seat = "Attacker", at = 7200, command = { Wait = {} } },
+    { seat = "Attacker", at = 7200, command = { CreatureCast = { target = { Stack = { stack = 1 } } } } },
+    { seat = "Attacker", at = 9696, command = { Attack = { target = 2, from = 137 } } },
+]
+
+# `blows-sound`: the same with the original's sounds (`sound`, design §8.3). Each Death Blow waits
+# for `Deathblo.wav` (2 750 ms) past 73's 2 000: the strike back's group from 6 600 (its first two
+# frames passed in the wait), the strike's from 13 046; the Ogre Mage's shot sound (946) and
+# Bloodlust's (1 907) end inside its frames and the glow (the turns at 7 800 and 10 296). Frames:
+# as `blows`' differences; the log masked from 14 246.
+[[sequence]]
+id = "blows-sound"
+sound = true
+scenario = "seq-blows.toml"
+hot_seat = true
+seed = 10
+actions = [
+    "roll:death_blow", "click:156,448", "turn:0.1", "key:w", "turn:0.0", "hex:137", "turn:0.1",
+    "roll:death_blow", "click:180,448",
+]
+fail = ["good_morale", "bad_morale", "luck", "death_blow"]
+ms = 4500
+timeline = "timelines/blows-sound.txt"
+frames = "timelines/blows-sound-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Attack = { target = 1, from = 140 } } },
+    { seat = "Attacker", at = 7800, command = { Wait = {} } },
+    { seat = "Attacker", at = 7800, command = { CreatureCast = { target = { Stack = { stack = 1 } } } } },
+    { seat = "Attacker", at = 10296, command = { Attack = { target = 2, from = 137 } } },
+]
