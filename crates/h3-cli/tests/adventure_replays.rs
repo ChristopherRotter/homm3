@@ -394,6 +394,60 @@
 //!   for blue (ADV-OWN-001), the question, its seven Wood Elves bought at the most (ADV-HIR-002).
 //!   The next day Orrin visits red's random 217 on (20, 11), built as a second Golem Factory owned
 //!   at load: no flag, the dialog, its six Stone Golems bought, the dialog closed.
+//!
+//! **Towns** (E09 T9a, the town lane's increment 1), on `fixtures/maps/e09-towns-36.h3m` (written
+//! by `h3_map::writer`; `fixtures/maps/README.md`): red (Castle) and blue (Stronghold); red's Orrin
+//! (hero 0, ten archangels), Valeska (hero 1, five halberdiers), Sorsha (hero 2, eight Rogues), a
+//! random hero (hero 3) and the hero its main town generates (hero 6); blue's Yog (hero 4, fifteen
+//! Gorgons, moved onto the Tower's entrance: its visitor) and Gurnisson (hero 5); eight towns by
+//! `TownId`: red's main Castle with a Capitol, red's random town (random stacks), a neutral Inferno
+//! (garrison drawn) and Necropolis (empty), neutral random towns aligned to blue and drawn, blue's
+//! Tower (a garrison and Yog) and blue's main Stronghold (a Capitol, empty). Random play, recorded
+//! with `--map fixtures/maps/e09-towns-36.h3m --seed N --agent-seed N --days 21`: the three of a
+//! search over the seeds 1 to 5 000 (a scratch probe noting each game's captures with and without a
+//! battle by each player, sieges against a garrison alone and against a visitor with the merge, won
+//! and lost, the Capitol's limit, a hero entering its own town, hero battles, and heroes 3 and 6
+//! taking part; not committed: 858 games have red capture a town undefended, 158 blue; 845 win a
+//! siege against a garrison alone, 479 lose one; 5 win a siege against a visitor with the merge, 46
+//! lose one; 94 limit a Capitol; 1 687 enter an own town; 214 capture the other player's town; 958
+//! have a hero battle) whose union meets all twelve features counted:
+//!
+//! - `towns-s173-d21`: on day 2 Sorsha attacks blue's Tower, Yog defending with the garrison merged
+//!   into his army, and loses; on day 12 Valeska enters red's random town; on day 16 Yog besieges
+//!   the neutral town aligned to blue, its garrison alone, wins and captures it for blue.
+//! - `towns-s1702-d21`: on day 7 hero 6 besieges the Tower, its garrison alone after Yog left, and
+//!   loses; on day 12 the random hero takes blue's main Stronghold undefended, its Capitol limited
+//!   to a City Hall (`TownChanged`: red keeps Haven's); hero battles on days 16 (Gurnisson against
+//!   Orrin) and 20 (Yog against Orrin), each won by the defender.
+//! - `towns-s3435-d21`: on day 2 Orrin besieges the Tower held by Yog with the garrison merged and
+//!   wins: the Tower is red's; on day 11 Gurnisson retakes it undefended; on day 21 he enters
+//!   blue's main Stronghold.
+//!
+//! **Scripted** (E09 T9a: design note `docs/epics/E09-design.md` §18's), on the same map, recorded
+//! with `h3 adventure run --map fixtures/maps/e09-towns-36.h3m --seed 1 --checkpoint-every 5
+//! --script <script> --record <replay>` (the moves and the battles' commands from a scratch probe,
+//! E23's `h3_battle_ai::choose` for both sides; not committed); each ends with both players'
+//! turns. A move stops where the explored area ends, so a day's walk may take several.
+//!
+//! - `towns-capture-s1`: Valeska walks onto the neutral Necropolis' entrance (12, 18) and captures
+//!   it undefended (TWN-CAP-001: `TownCaptured`, the reveal; no battle). Red's next day's gold is
+//!   10 000 (`towns-income-s1`'s 9 500 and the Necropolis' Village Hall: a town captured in a day
+//!   pays its new owner from the next, TWN-INC-001); she steps off and enters it again, her own.
+//! - `towns-siege-s1`: Orrin besieges the neutral Inferno (18, 5), its drawn garrison alone (five
+//!   Hell Hounds; TWN-SIE-001): his archangels win before the garrison acts, the town is captured
+//!   for red after the battle (TWN-CAP-003), Orrin stays on (17, 6) and enters it the same day.
+//! - `towns-visitor-s1`: Sorsha attacks blue's Tower from (28, 11): the garrison merges into Yog's
+//!   army before the battle (TWN-SIE-002: `StackChanged` on the garrison's slots and his, the ten
+//!   Stone Gargoyles into his slot 1, the thirty Gremlins into his first free slot 2), blue plays
+//!   its side and wins; Sorsha leaves the map, the Tower stays blue's.
+//! - `towns-capitol-s1`: Sorsha walks south, away from Yog, and captures blue's main Stronghold
+//!   (29, 22), its garrison empty, while red holds Haven's Capitol: `TownChanged`, its Capitol
+//!   limited to the City Hall (TWN-CAP-002); red's next day's gold 11 500 (the City Hall's 2 000,
+//!   not a Capitol's 4 000), blue's 500.
+//! - `towns-income-s1`: both players end their turns to day 8: each of the seven day starts pays
+//!   red 9 500 gold (Haven's Capitol 4 000 and Grail 5 000, the random town's Village Hall 500),
+//!   1 wood and 1 ore (Haven's Resource Silo, the Castle's; TWN-INC-001, -002), blue 4 500 (its
+//!   Stronghold's Capitol, its Tower's Village Hall).
 
 use std::path::PathBuf;
 
@@ -408,8 +462,8 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 47,
-        "expected the E08 replay fixtures in {}",
+        files.len() >= 55,
+        "expected the E08 and E09 replay fixtures in {}",
         dir.display()
     );
     for file in &files {

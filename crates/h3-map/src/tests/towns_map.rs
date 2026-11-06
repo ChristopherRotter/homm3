@@ -49,12 +49,13 @@ const INFERNO: u32 = 3;
 const NECROPOLIS: u32 = 4;
 const STRONGHOLD: u32 = 6;
 
-/// Creature codes: Halberdiers, Archangels, Gremlins, Stone Gargoyles, Orcs, Rogues.
+/// Creature codes: Halberdiers, Archangels, Gremlins, Stone Gargoyles, Gorgons (a Fortress
+/// creature in a Stronghold hero's army), Rogues.
 const HALBERDIER: u16 = 1;
 const ARCHANGEL: u16 = 13;
 const GREMLIN: u16 = 28;
 const GARGOYLE: u16 = 30;
-const ORC: u16 = 102;
+const GORGON: u16 = 102;
 const ROGUE: u16 = 143;
 
 /// The heroes' tiles as placed, by hero id (the map's order): red's Orrin, Valeska, Sorsha (the
@@ -140,8 +141,8 @@ fn with_army(at: (u8, u8), owner: u8, hero_type: u8, army: &[(u16, u16)]) -> w::
 ///   with five halberdiers, Sorsha (hero 2) on (27, 12) with eight Rogues and Power 1 (Visions'
 ///   radius 3: blue's Tower's entrance (29, 10) at a squared distance of 8), a random hero (hero 3)
 ///   on (15, 8).
-/// - Blue's Yog (hero 4) on (30, 10), right of the Tower's entrance, with fifteen Orcs (moved onto
-///   the entrance, the Tower's visitor), Gurnisson (hero 5) on (27, 30), his type's army.
+/// - Blue's Yog (hero 4) on (30, 10), right of the Tower's entrance, with fifteen Gorgons (moved
+///   onto the entrance, the Tower's visitor), Gurnisson (hero 5) on (27, 30), his type's army.
 /// - The towns ([`TOWNS`]): red's main Castle "Haven" on (9, 5) (the Town Hall, City Hall and
 ///   Capitol, a Fort, a Tavern, a Resource Silo and the Grail building; it generates red's
 ///   starting hero), red's random town on (9, 12) (a level 1 random stack of 20 and an upgraded
@@ -176,7 +177,7 @@ fn map() -> w::Map {
             army: None,
             tight_formation: false,
         }),
-        w::MapObject::Hero(with_army(yog, 1, 96, &[(ORC, 15)])),
+        w::MapObject::Hero(with_army(yog, 1, 96, &[(GORGON, 15)])),
         w::MapObject::Hero(with_army(gurnisson, 1, 97, &[])),
     ];
     let [
