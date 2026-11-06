@@ -257,7 +257,7 @@ original = [
 
 # A Dread Knight's Death Blow as its strike's damage doubles (`damage_stage1_with_luck` 0x4439F3
 # to 0x443B19, E17 M6 T5d2a): the striker's name and verb by its number. (The Ballista's double
-# damage, 0x44391D, writes the first row with the name by its number: not built.)
+# damage, 0x44392A, writes the first row with the name by its number: not built.)
 [[key]]
 id = "battle.log.death-blow"
 args = { creature = "text" }

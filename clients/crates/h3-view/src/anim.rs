@@ -4875,7 +4875,7 @@ impl Player<'_> {
     /// (caster kind 1: no hero frames, no resistance roll) clears the outline in a redraw at once
     /// (0x5A004C), its spell's sound starts and an area spell's handler plays ([`Player::area`]),
     /// the caster standing outlined at its tail; then its sound ends and it turns back if it
-    /// turned (0x4486E2, 0x44872F). An Ogre Mage's Bloodlust so too, with its glow
+    /// turned (0x4486E2, 0x44872F). A creature's Bloodlust so too, with its glow
     /// ([`Player::creature_bloodlust`], E17 M6 T5d2a). Other spells take effect at once (T7c-3).
     fn creature_cast(&mut self, stack: u8, spell: u16, target: Target, effects: &[Event]) {
         let look = self
@@ -4885,7 +4885,8 @@ impl Player<'_> {
             .get(&spell)
             .cloned()
             .unwrap_or_default();
-        // An Ogre Mage's Bloodlust (E17 M6 T5d2a): its frames, its line and the glow.
+        // A creature's Bloodlust, the Ogre Magi's (a Master Genie's drawn one too, E17 M6 T5d2a):
+        // its frames, its line and the glow.
         if let (Target::Stack { stack: t }, true, BLOODLUST) =
             (target, self.stacks.contains_key(&stack), look.original)
             && let Some(struck) = self.live(t)

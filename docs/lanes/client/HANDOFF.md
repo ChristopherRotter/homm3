@@ -23,11 +23,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   §12.19); T5b2b done (#757, design §12.20); **T5c done** (kept whole by the user, design
   §12.21: Eagle Eye's message and the box with pictures, two sequences exact; CLT-Q65 and Q66
   asked; #762 merged; the user added **T5e**, the captured artifacts' message). T5d cut in two
-  by the user (2026-11-06): **T5d1 done** (design §12.22: the Wraiths' mana drain,
-  regeneration, Poison's tenth; `starts` and `starts-sound` exact in the three; #771: check
-  it first). **Next: T5d2** (Death Blow, Ice Bolt's explosion, the Familiars'
-  channel, the Ogre Magi's Bloodlust glow; QUEUE), T5e, T6, T7; then M7 ranked play and the
-  server browser.
+  by the user (2026-11-06): T5d1 done (#771, design §12.22); T5d2 cut in two by the user
+  (2026-11-06): **T5d2a done** (design §12.23: Death Blow, an Ogre Mage's Bloodlust and its
+  glow; `blows` and `blows-sound` as recorded; the PR named in the newest session: check it
+  first). **Next: T5d2b** (Ice Bolt's explosion, the Familiars' channel; QUEUE), T5e, T6, T7;
+  then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -65,11 +65,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-06, E17 M6 T5d2a (in progress; `client/e17-m6-t5d2a`).** The user cut T5d2 in two:
-  T5d2a Death Blow and the Ogre Magi's Bloodlust glow, T5d2b Ice Bolt's explosion and the
-  Familiars' channel. Done: the reading (design §12.23), the build (`anim/creature.rs`), the
-  harness's roll `death_blow`; pushed. Next: the recording (a hot-seat sequence), a fresh
-  reviewer, the gates, the docs, the pull request.
+- **2026-11-06, E17 M6 T5d2a (done; `client/e17-m6-t5d2a`).** The user cut T5d2 in two
+  (T5d2b: Ice Bolt's explosion, the Familiars' channel). The original data staged by the file
+  tool (the PC's shell did not start); the sandbox restarted during the setup's baseline (CI's
+  green run on `master` stood in). Read and built (`anim/creature.rs`, the harness's roll
+  `death_blow`), recorded by a capture agent (`blows`, `blows-sound`: as recorded on the first
+  run), reviewed (the Master Genie's drawn Bloodlust takes the same path: documented
+  provisional). Record: `E17-log.md`.
 - **2026-11-06, E17 M6 T5d1 (done; `client/e17-m6-t5d1`, #771).**
   The user cut T5d in two. The original data staged by the file tool (the PC's shell did not
   start). Read, built (`anim/starts.rs`), recorded by a capture agent (`starts`,
@@ -83,10 +85,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   corrections; CLT-Q66 asked), stopped by the user's interruption after its last digests: the
   session committed its work and ran its gates. A fresh reviewer. CLT-STUB-3 and the server
   lane's inbox: a seat's picks.
-- **2026-11-06, E17 M6 T5b2b (done; #757).**
-  Kept whole by the user. The original data staged by the file tool (the PC's shell did not
-  start). A builder (CLT-Q61's stop, the three sequences prepared over the new
-  `seq-auto-retreat-machine.toml`), a capture agent (all three recorded; five corrections: the
-  computer's opening frame, the answer's tick, the outline behind a later box, a late switch, the
-  button), a fresh reviewer (two defects and a parser risk fixed). CLT-Q64 asked. Gates:
-  `check.sh`, `h3-view sequences` 83 as recorded, `check-docs`, the scoped verify.

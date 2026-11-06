@@ -7370,11 +7370,15 @@ Bloodlust glow), T5d2b the hero's cast's (Ice Bolt's explosion, the Familiars' c
   `creature_bloodlust` (the caster's frames by `creature_casting`, the cast's start, the spell's
   cue, the effect, `Logged::CreatureCast` with the keys `battle.log.creature-cast` and
   `battle.log.creature-cast-on`, `glow`, `stand_caster`, `creature_cast_over`), taken by
-  `creature_cast` for Bloodlust aimed at a stack the timeline follows; `motion::magic` loads 73
-  for a Death Blow (a lucky one too). *Provisional:* the caster's frames aim at the target's own
-  hex (the original's the hex clicked: a two-hex target's other hex may turn it otherwise); the
-  other creatures' casts at a stack (the Master Genie's, the elementals' protections, a Faerie
-  Dragon's spells at a stack) still take effect at once, without the caster's frames or a line;
+  `creature_cast` for Bloodlust by a caster and at a stack the timeline follows, whichever
+  creature casts it; `motion::magic` loads 73 for a Death Blow (a lucky one too). *Provisional:*
+  the caster's frames aim at the target's own hex (the original's the hex clicked: a two-hex
+  target's other hex may turn it otherwise); a Master Genie's drawn Bloodlust takes the Ogre
+  Mage's path (the frames come before `creature_cast_action`'s cases, `master_genie_cast`
+  0x447EE0 casts at Advanced through `cast_spell`, whose case tests no caster; no recorded case);
+  the other creatures' casts at a stack (the Master Genie's other spells, the elementals'
+  protections, a Faerie Dragon's spells at a stack) still take effect at once, without the
+  caster's frames or a line;
   the Ballista's double damage writes no line (read above, not built).
 - **Recorded** (`blows`, `blows-sound` over `seq-blows.toml`, hot seat; the sequences' comments):
   the Black Dragon's strike, the Dread Knights' strike back with its Death Blow forced, their

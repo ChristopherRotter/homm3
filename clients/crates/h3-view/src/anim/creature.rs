@@ -139,10 +139,11 @@ impl Player<'_> {
         self.wait_for(cue);
     }
 
-    /// An Ogre Mage `stack` casts Bloodlust (`spell`, its handle) on `target` (`struck`, a stack
-    /// the timeline follows) as its action
-    /// (`creature_cast_action` 0x4486A4: Advanced, one stack; `cast_spell` 0x5A11F3; E17 M6 T5d2a,
-    /// design §12.23): its frames toward the target's hex ([`Player::creature_casting`]), the
+    /// A creature `stack` casts Bloodlust (`spell`, its handle) on `target` (`struck`, a stack
+    /// the timeline follows) as its action: an Ogre Mage's (`creature_cast_action` 0x4486A4:
+    /// Advanced, one stack; `cast_spell` 0x5A11F3, whose case tests no caster; E17 M6 T5d2a,
+    /// design §12.23), a Master Genie's drawn one the same (*provisional*, `master_genie_cast`
+    /// 0x447EE0 casts it at Advanced through `cast_spell`; no recorded case): its frames toward the target's hex ([`Player::creature_casting`]), the
     /// cast's start (the outline and the mouse's stack cleared, a redraw at once), the spell's
     /// sound, its effect, the log's line (GENRLTXT 566 or 567 by the caster's number, then 568
     /// with the target's name), the glow over the target (as a hero's, [`Player::glow`]); at the
