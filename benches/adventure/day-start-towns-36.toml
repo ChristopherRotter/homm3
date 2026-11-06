@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the step that starts day 8 (the last EndTurn of day 7: the week's step, each owned town's income, TWN-INC-001, -002, the spell points, the next turn's start) in each of 16 random games of 7 days on the town map (E09 T9c, the town epic's design note §18: e09-towns-36.h3m, 36 x 36, eight towns, four owned at load and those captured in the week): about 52 000 Ir a day start (day-start-xl-144's about 322 000 on its 144 x 144 map with an underground); the fork that tries the step is dropped before it, as day-start-xl-144's; counts only inside h3_cli::adventure::bench::day_start_step (the env's step)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e09-towns-36.h3m",
+    "--workload",
+    "day-start",
+    "--games",
+    "16",
+    "--days",
+    "7",
+    "--seed",
+    "1",
+]
+collect = "*day_start_step*"
+instructions = 832167
+threshold_percent = 2

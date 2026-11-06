@@ -1741,3 +1741,63 @@ agent alone; no original data needed.
 - **Gates:** the scoped verify (no original data staged) passed every step it runs but
   `check-lane`, which fails by design on a `cross-lane` branch (`check-lane --cross-lane` passed).
 - **Versions:** none (tests only).
+
+### T9c — the benchmarks, the env and the census on the town map (2026-11-06)
+
+One session, the user present; branch `town/e09-t9c` (`cross-lane`: the adventure lane's
+`benches/adventure/` and `benches/README.md`, `h3-cli`'s `src/adventure/bench.rs`, `cli.rs` and
+`tests.rs`, `h3-map`'s census example, `docs/formats/h3m.md`, `fixtures/maps/README.md`; the ai
+lane's `h3-sim` tests, consent as decision 7). Starting point: `master` at cf8325e (#764 merged;
+CI green there; the setup's `verify-once` found CI's fingerprint: the light gates only). **At its
+start** (the user, asked): kept whole (decision 35). The user's computer's shell did not start: a
+sandbox cloned from GitHub, the shipped maps and the text tables staged with the file tool
+(`maps.tar`, `extracted.tar`).
+
+- **The siege's workload** (`h3 adventure bench --workload siege`; `bench::play_to_siege`,
+  `seek_town`, `siege_step`): the acting player's heroes seek the entrances of the towns it does
+  not own (as `seek_dwelling` the dwellings'), the random agent answers the rest; each sought move
+  is first tried on a fork dropped before the count (as `starts_day`), and the one that opens a
+  battle on a town's entrance (every battle there a siege, TWN-SIE-003) is decoded, then played
+  inside `siege_step`, the game's step (`step_command`). `BenchResult::visitors` counts the sieges
+  a visitor defends. A first version counted the env's whole step: two thirds of it the move's
+  decode (its path's reachable-tiles query), which the reach workloads measure; the decode now
+  runs before the count. The CLI's test: on the town map 8 sieges in 8 games, 3 of a visitor; on
+  the duel (no towns) none.
+- **The workloads** (`benches/adventure/`, the README's rows; rustc 1.97.0, this sandbox):
+
+  | Workload | Args | Ir | A unit |
+  |---|---|---|---|
+  | `siege-towns-36` | 16 games of 7 days | 3 026 337 | about 189 000 a siege (11 of a garrison alone, 5 of a visitor with the merge) |
+  | `day-start-towns-36` | 16 games of 7 days | 832 167 | about 52 000 a day start |
+  | `reach-towns-36` | 2 games of 28 days | 719 414 631 | about 391 000 a query (1 840) |
+  | `fork-towns-36` | 100 000 forks after 7 days | 354 800 055 | 3 548 a fork |
+  | `fork-xl-144` (re-set) | as before | 375 500 024 | 3 755 a fork (+1.38 % against T86b2's 370 400 024) |
+
+- **Per function** (callgrind, for the descriptions): a siege's step is about 80 % the battle's
+  start (the stacks placed: `h3_battle::state::closest_free` alone 46 %; the battle heroes 16 %),
+  20 % the walk and its reveal; the siege's setup and the merge are each under 2 %. A reach query
+  on the town map costs 2.7 times one on the XL map: its heroes (archangels, Gorgons) reach most of
+  its 1 296 tiles, `Reach::search` itself 71 %; the towns' entrance test
+  (`AdventureState::town_visit`) is under 0.3 %. `fork-xl-144` re-set at `master`'s count (inside
+  its gate; this change touches no engine code): 51 Ir more a fork since T86b2, E08's increment 10
+  and E09's store of towns (an empty `Option<Arc>` there, about 9 Ir as T7b2a measured).
+- **The env** (`h3-sim`'s `adventure/tests/towns.rs`; exit criterion 7):
+  `the_env_plays_the_town_map_to_its_end_of_days` plays the golden replays' three seeds (173,
+  1702, 3435, the agent seed the same, as `h3 adventure run`) to day 22: each chosen action legal
+  by the masks and accepted, a captured town its new owner's in its observation; the union meets 4
+  undefended captures, 4 sieges (2 of a visitor with the merge), 2 won and 2 lost.
+  `town_map_rollouts_and_forks_are_deterministic` forks while Orrin's siege of the Tower is open.
+  The main property `steps_agree_with_the_masks_and_the_game` gets a fifth kind, the town map, its
+  `Chart` aimed at the towns' entrances. **Test time:** 8 s for the two town tests in a debug
+  build: the map's masks checked at every step took 30 s, so they are checked before a move onto a
+  town's entrance, after a step that changed a town and at every eighth step, every seat's at
+  every fortieth; the battle masks at every step (*agent's call*). **A mutation:** the env's tile
+  mask without the towns' entrances fails the test at the first one.
+- **The bot reports** (`h3 ai eval --set report-v1`, `--set neutral-v1`, release): regenerated
+  byte-identical (no part version moved).
+- **The census** (`original_data`, `docs/formats/h3m.md`'s "Import"): all 160 shipped maps import,
+  validate and build (T7b2b: 156; the 4 water refusals lifted by E08 T97b1), none refused by a
+  town's check: exit criterion 1. New counts (`built_town_facts`): each built town's fort level,
+  moat and hall level (`h3_towns::siege`, `hall_level`) and the owned towns' day's income
+  (`daily_income`: 643 000 gold a day over the towns owned at the start, 7 with a silo's resource).
+- **Versions:** none (no engine code changed).
