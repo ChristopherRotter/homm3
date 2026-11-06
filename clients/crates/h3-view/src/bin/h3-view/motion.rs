@@ -14,9 +14,9 @@ use h3_render::Bugs;
 use h3_view::anim::{
     ACID, ACID_BREATH, BAD_MORALE, BOLT, Body, Burst, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts,
     DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL,
-    LAND_MINE, LIFE_DRAIN, LIGHTNING_BOLT, Look, MINE_BLAST, MagicLook, Missile, ObjectLook, RAISE,
-    RESISTED, RESURRECTION, SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage,
-    THUNDERBOLT, TITAN_BOLT,
+    LAND_MINE, LIFE_DRAIN, LIGHTNING_BOLT, Look, MANA_DRAIN, MINE_BLAST, MagicLook, Missile,
+    ObjectLook, POISON_TENTH, RAISE, REGENERATION, RESISTED, RESURRECTION, SACRIFICED,
+    SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -305,7 +305,9 @@ fn missile(
 /// after a strike's, the bolt from the sky ([`BOLT`], the Thunderbird's [`THUNDERBOLT`] after it),
 /// Life Drain's, Death Stare's and the acid's ([`LIFE_DRAIN`], [`DEATH_STARE`], [`ACID`]); since
 /// E17 M3 T7c-2 each spell object's placing and vanishing ones; since E17 M4 T2c-1 a Land Mine's
-/// blast ([`MINE_BLAST`]); each with its DEF's frames and size. With `every` (E17 M5 T1b: a
+/// blast ([`MINE_BLAST`]); since E17 M6 T5d1 regeneration's, a Wraith's mana drain's and Poison's
+/// tenth's ([`REGENERATION`], [`MANA_DRAIN`], [`POISON_TENTH`]); each with its DEF's frames and
+/// size. With `every` (E17 M5 T1b: a
 /// battle fought as it is played, whose events are not known yet), every magic animation of the
 /// asset tables.
 pub fn magic(
@@ -410,7 +412,7 @@ pub fn magic(
             {
                 numbers.insert(MINE_BLAST);
             }
-            _ => {}
+            _ => numbers.extend(start_effect(event)),
         }
     }
     let mut looks = BTreeMap::new();
@@ -674,6 +676,18 @@ pub fn casts(
     Ok(casts)
 }
 
+/// The magic animation of a turn's or a round's start effect `event` draws (E17 M6 T5d1, design
+/// §12.22): regeneration's at a pick, a Wraith's mana drain at its activation, Poison's tenth at a
+/// round's start.
+fn start_effect(event: &Event) -> Option<u8> {
+    match event {
+        Event::Regenerated { .. } => Some(REGENERATION),
+        Event::ManaDrained { .. } => Some(MANA_DRAIN),
+        Event::Poisoned { .. } => Some(POISON_TENTH),
+        _ => None,
+    }
+}
+
 /// The record's events, in order.
 fn events(record: &Record) -> impl Iterator<Item = &Event> {
     record.messages.iter().flat_map(|m| match m {
@@ -761,5 +775,36 @@ pub fn stage<'a>(
         bugs: Bugs::Fixed,
         siege,
         lengths: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use h3_protocol::wire::{Event, Side};
+    use h3_view::anim::{MANA_DRAIN, POISON_TENTH, REGENERATION};
+
+    use super::start_effect;
+
+    /// The stage loads the three start effects' animations when the record has their events
+    /// (E17 M6 T5d1: `h3-view sequences starts` drew none of them before).
+    #[test]
+    fn start_effects_load_their_animations() {
+        let regenerated = Event::Regenerated {
+            stack: 2,
+            hit_points: 12,
+        };
+        let drained = Event::ManaDrained {
+            stack: 1,
+            side: Side::Attacker,
+            mana: 2,
+        };
+        let poisoned = Event::Poisoned {
+            stack: 2,
+            hit_points: 36,
+        };
+        assert_eq!(start_effect(&regenerated), Some(REGENERATION));
+        assert_eq!(start_effect(&drained), Some(MANA_DRAIN));
+        assert_eq!(start_effect(&poisoned), Some(POISON_TENTH));
+        assert_eq!(start_effect(&Event::Defended { stack: 1 }), None);
     }
 }

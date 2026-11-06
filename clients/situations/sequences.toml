@@ -2117,3 +2117,68 @@ boxes = true
 command = [
     { seat = "Defender", at = 0, command = { Cast = { spell = 19, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
 ]
+
+# E17 M6 T5d1 (design §12.22): the effects of a turn's and a round's start (`seq-starts.toml`, hot
+# seat). Round 1: the Wyvern Monarchs wait; the Wraiths' activation drains Orrin's spell points
+# (`ManaDrai.wav`, the line, 77 over them from 0 to 2 000 ms), they defend; the Trolls walk to hex
+# 144; in the wait phase the Monarchs strike them from the left (`roll:poison`: its line, 67 with
+# their hit at 9 032) and the Trolls strike back. Round 2's start (12 832): Poison's tenth on the
+# Trolls (`Poison.wav`, its line, 67 with their hit), then the round's line at 14 832; the Monarchs
+# defend as their turn starts (`at:14832`: from the strike back on the game names them the active
+# stack, so a `turn:0.0` would pass at once); the Wraiths drain again and defend (16 932); the
+# Trolls' pick regenerates them (`Regener.wav`, the line, 79 over them to 18 932), their turn at
+# 19 032. Good and bad morale failed (the Monarchs' +1; the Trolls' −1 beside the undead), and
+# every other poison roll. `seed`: the Monarchs' 136 damage (3 killed), its poison, and the strike
+# back's 83 (1 killed), as the original's. Frames: as the original's but the flight's redraw
+# artifacts (7 032 to 7 532, 169 pixels each) and the landing's boxes at 7 732 (280 pixels, as
+# `luck`'s, design §4.3).
+[[sequence]]
+id = "starts"
+scenario = "seq-starts.toml"
+hot_seat = true
+seed = 818
+actions = [
+    "key:w", "turn:1.0", "key:d", "turn:1.1", "hex:144", "turn:0.0", "roll:poison",
+    "click:392,448", "at:14832", "key:d", "turn:1.0", "key:d",
+]
+fail = ["good_morale", "bad_morale", "poison"]
+ms = 2600
+timeline = "timelines/starts.txt"
+frames = "timelines/starts-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Wait = {} } },
+    { seat = "Defender", at = 2100, command = { Defend = {} } },
+    { seat = "Defender", at = 2100, command = { Move = { to = 144 } } },
+    { seat = "Attacker", at = 5872, command = { Attack = { target = 2, from = 142 } } },
+    { seat = "Attacker", at = 14832, command = { Defend = {} } },
+    { seat = "Defender", at = 16932, command = { Defend = {} } },
+]
+
+# `starts-sound`: the same with the original's sounds (`sound`, design §8.3). Each drain waits
+# for `ManaDrai.wav` (2 415 ms) past its animation's 2 000 (the turns at 2 415 and 17 562);
+# `Poison.wav` (1 904) and `Regener.wav` (1 881) end inside theirs. Frames: as `starts`'
+# differences, 315 ms later (7 347 to 7 847, 169 pixels each; 8 047, 280).
+[[sequence]]
+id = "starts-sound"
+sound = true
+scenario = "seq-starts.toml"
+hot_seat = true
+seed = 818
+actions = [
+    "key:w", "turn:1.0", "key:d", "turn:1.1", "hex:144", "turn:0.0", "roll:poison",
+    "click:392,448", "at:15147", "key:d", "turn:1.0", "key:d",
+]
+fail = ["good_morale", "bad_morale", "poison"]
+ms = 2600
+timeline = "timelines/starts-sound.txt"
+frames = "timelines/starts-sound-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Wait = {} } },
+    { seat = "Defender", at = 2415, command = { Defend = {} } },
+    { seat = "Defender", at = 2415, command = { Move = { to = 144 } } },
+    { seat = "Attacker", at = 6187, command = { Attack = { target = 2, from = 142 } } },
+    { seat = "Attacker", at = 15147, command = { Defend = {} } },
+    { seat = "Defender", at = 17562, command = { Defend = {} } },
+]

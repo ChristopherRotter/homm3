@@ -7303,3 +7303,10 @@ or for the drain game +0x1F69D, the network's case, `battle_tactics_global`, as 
   applies after it (the original casts those first; no recorded case); the hues a round's start
   ends show at the turn's start as before (the original counts each stack down before its own
   poison's redraws); several poisoned stacks go by stack id (the engine's order).
+- **Recorded** (`starts`, `starts-sound` over `seq-starts.toml`, hot seat; the sequences'
+  comments): the Wraiths' drain in both rounds, Poison's tenth at round 2's start and the Trolls'
+  regeneration at their round-2 pick, every frame of the three exact (the stack that acted last
+  outlined through each); with sound each drain waits for `ManaDrai.wav` (2 415 ms) past its
+  animation's 2 000, `Poison.wav` and `Regener.wav` end inside theirs. `motion::magic` loads the
+  three animations for a record's events (`start_effect`). The scenario's heroes hold the 10
+  spell points the original's knowledge 1 gives (the engine's hero starts with none).
