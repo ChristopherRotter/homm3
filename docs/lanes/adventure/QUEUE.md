@@ -4,23 +4,32 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T98b — the ADR amendment drafts, the design note and the cut** (decision 261; as T88b)
+**E08 T98b2 — the game side of the design note, ADR-0017's draft, the cut and the checkpoint**
+(decisions 261, 270; as T88b2)
 
-- **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
-  11 (its pointer replaced; increment 10's note in `E08-log.md` as the model), the reach's and the
-  passage's cost planned against the gated workloads (the hot path, `homm3-bench-regression`), the
-  building rounds cut, batch E11 first (decision 269: its spec and recipe the first round); the
-  draw's stream (ADR-0017's streams; no draw for one candidate, survey §4.1); `Revisit`'s name,
-  validation and the env's action (decision 268, the AI lane's encoding, `cross-lane`); A-37's
-  battle as a visit's rest (decision 265); the quirk ledger's entries for A-37 to A-41; the
-  fixtures' and tests' blockers of the five classes (TRAPS); the checkpoint's question: the user
-  accepts the drafts before anything is built (decision 261).
-- **Inputs:** the survey `docs/rules/surveys/E08-teleporters.md` (§9's reach, §10's views, §11's
-  interfaces' sketch, §12's batch plan, §13's proposed ids, §14's answers); decisions 260, 261,
-  264–269.
-- **Depends on:** T98a (done). **Status:** ready; its cut confirmed with the user at its start. Needs no original data (the survey holds the readings).
+- **Scope:** `E08-design.md` part C (§12 to §18, named by T98b1): the battle and the meeting at an
+  exit (GAM-BAT-004, GAM-MET-001 amended: the defender on the exit, where it is fought, the
+  radius-1 reveal's place); the jump held as the visit's rest (GAM-DEC-007) and the visitor's
+  stream passed to `AdventureState::apply` (ADR-0017 point 4; no draw for one candidate, survey
+  §4.1); `Revisit`'s name, validation and the env's action (decision 268, the AI lane's encoding,
+  `cross-lane`), with its map-side lines added to `adr-drafts/0016-increment-11.md`; the env,
+  replays, fixtures, properties and benchmarks (the reach's and the passage's cost planned against
+  the gated workloads, `homm3-bench-regression`; a teleporters' map and workload; the gates'
+  pairing cost); versions, rule ids and the quirk entries (design §11's proposed ids); batch E11's
+  rows (survey §12, plus a row for design §7's entrance guards) with the spec's and harness's
+  needs; the building rounds cut, batch E11's spec and recipe first (decision 269); shared and
+  `cross-lane` work (the effect kind `whirlpool_protection`, design §2); the exit criteria and
+  risks. The draft `adr-drafts/0017-increment-11.md`. **The checkpoint** (a new `ADV-Q46`): the
+  user accepts the note, both drafts and the agent's calls (design §1, §2, §5's A-42, §7's empty
+  boat and entrance guards, §10's events) and the cut before anything is built (decision 261).
+- **Inputs:** `docs/epics/E08-design.md` parts A and B; `adr-drafts/0016-increment-11.md`; the
+  survey `docs/rules/surveys/E08-teleporters.md` (§4.2 to §4.5, §9 to §13); decisions 260, 261,
+  264–270; increment 10's part C and ADR-0017 draft as the model (`E08-log.md`, "Increment 10's
+  design note at its closure", §12 to §18).
+- **Depends on:** T98b1 (done). **Status:** ready; its cut confirmed with the user at its start.
+  Needs no original data (the survey holds the readings).
 
 ## Inbox
 

@@ -12944,3 +12944,48 @@ answers and batch E11 first; inbox notes to the client lane (the Catapult's tie,
 **Verify:** docs and the address map only: the docs gates (`check-docs`, `check-rules`,
 `check-stubs`, `check-exe-map`, `check-lane`, `doc-drift`) and `scripts/exe.py check`. No code,
 version or replay moved; CI's run on the pull request is the record.
+
+### Increment 11, round 1: T98b1, the map side of the design note and ADR-0016's draft (2026-11-06, `adventure/e08-t98b1`)
+
+Baseline: `master` 2f7b9c8 (#753 of the town lane; T98a2's #754 merged before it). Docs only, no
+original data needed (the survey holds the readings): nothing staged; the computer's shell did not
+start and its file tools left the session soon after, as the user announced. The user's cut at the
+start (decision 270, `AskUserQuestion`): **by side, as T88b** (recommended; not chosen: whole, or
+the note first and the drafts after).
+
+**The design note** `E08-design.md` written for increment 11, parts A and B (part C's sections
+named for T98b2): part A, the content (§1 the kinds `monolith` with a channel and a way,
+`subterranean_gate`, `whirlpool` with its divisor, all entered, only the Whirlpool from above; §2
+the protection as a core artifact effect kind `whirlpool_protection` read by
+`h3_heroes::whirlpool_protection`, as `free_boarding`: pack format v51, core ruleset hash v52 in
+the round's `shared/` task; §3 the packs, channels 0 to 2 in `base`, 3 to 7 in `sod`); part B, the
+map (§4 the import, map import v20, A-39 as `ImportError::Subclass`; §5 the build: the surfaces
+checked, the channels and the gates' pairs in the walk's order (the tile index, not `Pos`'s
+order), without a draw; §6 no new state block, the adventure state hash unmoved; §7 the jump by
+kind: the candidates, the draw from the visitor's stream (`AdventureState::apply` gains it; no
+draw for one), the battle at an exit with the jump as the visit's rest, the gate's meeting, the
+arrival; §8 the Whirlpool's loss; §9 the reach, no new read in the loops; §10 information; §11 the
+ids, the proposed ledger ids `ADV-QUIRK-39` to `-44`, the seams and versions).
+
+**The agent's calls for the checkpoint** (T98b2 asks): the one `monolith` kind with a way; the
+Whirlpool's divisor as data; the protection as a core effect kind (not the kind's parameter);
+**A-42**, a new candidate: a monolith's or gate's visitable tile on water, or a Whirlpool's on land,
+refused when the game is built (a jump between surfaces would put a hero in a boat on land; the
+original's case unread, none shipped); an empty boat's tile no candidate; **the entrance's guards**
+(not read by the survey: ADV-MON-006 as built would meet the exit's guard after a jump from a
+guarded entrance): a jump drops the entrance's held guard until batch E11 has a row for it; the
+events `HeroTeleported` (the step's projection), the Whirlpool's loss and "leads nowhere"; a
+jump's reveals told by the explored tiles alone (not `TilesRevealed`, against the survey's §11
+sketch).
+
+**The draft** `docs/lanes/adventure/adr-drafts/0016-increment-11.md`: ADR-0016 points 1 (the
+static channels, the surfaces' check), 3 (a jump moves a hero without a step; the loss), 4 (the
+kinds, the gates' pairs, the exit and its draw as the first visit that draws, the battle at an exit,
+the arrival, the import's bound), 5 (a jump's reveals) and 6 (a teleporter's type public, a jump
+seen as a step's two ends), with lines for the consequences, the alternatives and the history.
+ADR-0015 needs none (the import draws nothing; the channels are the static map's).
+
+**Docs:** decision 270 in the epic; T98b's entry to `QUEUE-ARCHIVE.md`, T98b2 queued.
+
+**Verify:** docs only: the docs gates (`check-docs`, `check-lane`). No code, version or replay
+moved; CI's run on the pull request is the record.
