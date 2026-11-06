@@ -35,7 +35,7 @@ In `TRAPS.md`.
 Baseline cf3e701 (#771 to #773 merged; CI green there; the setup's baseline lost to a VM restart).
 T12 cut in two at its start (the user, asked; recommended). The user's computer's shell did not
 start: a sandbox cloned from GitHub, `Heroes3.exe`, both LODs, `maps.tar` and `extracted.tar`
-staged with the file tool. Docs only: the survey §0 to §7, 33 code-map entries. VCMI 1.7.5 read
+staged with the file tool. Docs only: the survey §0 to §7, 34 code-map entries. VCMI 1.7.5 read
 from a sparse clone of its tag; the Lazy wiki's pages are not on the fetch allowlist (found by
 search only).
 

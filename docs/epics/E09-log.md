@@ -1964,7 +1964,7 @@ Capitol, the Shipyard's spot fixed at the start, the Grail's building), one a to
 town's +0x2; a computer-only team every other day on Easy and Normal), what a build does
 (`town_build_effects`), the costs (`Building.txt`'s three tables), the requirements (the nine
 lists' direct requirements, tested against the every-built set), VCMI 1.7.5 and the wiki compared.
-The code map gained 33 entries (the hall, the tests, the costs, the effects; three cost tables with
+The code map gained 34 entries (the hall, the tests, the costs, the effects; three cost tables with
 H3API's names confirmed); `town_boat_spot` and `grail_victory_town` are now read whole, `new_day`
 and `ai_town_visit` extended, and the town's +0x2 is named `built_today`.
 
