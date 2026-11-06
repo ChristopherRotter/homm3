@@ -69,9 +69,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-#### ADV-Q46 — Increment 11's checkpoint: the design note, both drafts, the agent's calls and the cut (E08 T98b2)
-
-**Context.** Nothing of increment 11 (the teleporters) is built before the user accepts the design note `docs/epics/E08-design.md` (parts A to C) and the drafts `docs/lanes/adventure/adr-drafts/0016-increment-11.md` and `0017-increment-11.md` (E08 decision 261). **Options:** (1) the map side's agent's calls (design §1, §2, §5, §7, §10): one `monolith` kind with a way, the Whirlpool's divisor as data, the protection as a core effect kind `whirlpool_protection` (a `shared/` change), A-42 refused when the game is built, an empty boat's tile no candidate, a jump dropping the entrance's held guard until batch E11's E11-19, the new events (`HeroTeleported`, the loss, "leads nowhere"); or the protecting artifacts as the kind's parameter, or a cross-surface exit no candidate. (2) The game side's (§12, §13, §14): the stream a parameter of `AdventureState::apply`, the jump after a won battle a held rest after the winner's levels (`Rest::Jump`), `Revisit` with one refusal and no guard test, the env's eight `Revisit` entries (v8), a `build` bench workload for the gates' pairing; or the revisit with the guard's test, or the jump given at the battle's end. (3) The cut (§17): rounds 2 to 8, T99 to T107, batch E11 first with its added row E11-19; or T102's shared code apart from its docs. **Recommendation:** each as written. **Blocked:** T99.
+(no open questions)
 
 ### Server lane (`SRV-Q<n>`)
 

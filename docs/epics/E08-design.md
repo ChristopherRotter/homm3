@@ -18,8 +18,8 @@ Written in two parts by side (decision 270): **parts A and B** by T98b1, the con
 with its `h3-heroes` derivation); **part C** by T98b2, the game, the env, batch E11 and the cut
 (§12 on). ADR-0015 needs no amendment: the import still draws nothing, and the channels are the
 static map's, built with the game (ADR-0016 point 1). *Agent's call (change freely)* marks a choice
-the user may still change at the checkpoint (T98b2), where the note and both drafts are accepted
-before anything is built (decision 261).
+the user could change at the checkpoint; **the checkpoint** (ADV-Q46, T98b2; decisions 272–274)
+accepted the note, both drafts, every agent's call and the cut (§17) as written.
 
 **The checkpoint's answers** (ADV-Q45, decisions 264–269), which this note builds on: every exit
 the original's (D-53 drawn, never named by a command; D-54 the weakest stack by fight value ×

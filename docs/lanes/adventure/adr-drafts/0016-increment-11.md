@@ -1,6 +1,7 @@
 # ADR-0016 amendment (draft): increment 11, the teleporters (the map side)
 
-- Status: Draft (E08 T98b1, 2026-11-06), from the survey `docs/rules/surveys/E08-teleporters.md`
+- Status: **Accepted** at T98b2's checkpoint (ADV-Q46, 2026-11-06; E08 decision 272; the revisit
+  with decision 273), to be applied by T102. Drafted by E08 T98b1 (2026-11-06), from the survey `docs/rules/surveys/E08-teleporters.md`
   and the user's answers at ADV-Q44 and ADV-Q45 (E08 decisions 260, 264–269); for the user's
   acceptance at T98b2's checkpoint before anything is built (decision 261), then into ADR-0016
   through the round's `shared/` pull request with batch E11's outcome.

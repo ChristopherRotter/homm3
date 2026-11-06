@@ -12989,3 +12989,48 @@ ADR-0015 needs none (the import draws nothing; the channels are the static map's
 
 **Verify:** docs only: the docs gates (`check-docs`, `check-lane`). No code, version or replay
 moved; CI's run on the pull request is the record.
+
+### Increment 11, round 1: T98b2, the game side of the design note, ADR-0017's draft and the cut (2026-11-06, `claude/sweet-dirac-9oz8pd`)
+
+Baseline: `master` f74684f (#755, T98b1, merged; CI on `master` green at 2f7b9c8, the same engine
+code). Docs only, no original data needed (the survey holds the readings): nothing staged. The
+user's cut at the start (decision 271, `AskUserQuestion`): **whole, as T88b2** (not chosen: two
+parts, the design then the plan, which was recommended; the note first, then the drafts).
+
+**The design note** `E08-design.md` part C: §12 the battle at an exit (`Defender::Hero` on the
+exit, fought at the exit's tile with its terrain, ground and background, the attacker's ground the
+entrance's, a Whirlpool's on the two boats; the radius-1 reveal in the visit before the outcome
+returns; its end as any hero battle's) and the gate's meeting (the outcome's `meeting`, the two
+heroes not neighbours, the mover on the entrance); §13 the game (the acting player's stream a
+parameter of `AdventureState::apply`, drawn after the whole command is checked, before the battle's
+draws; both profiles alike, the original's `rand()` not reproducible; the jump after a won battle
+as the outcome's `jump_after` held as `Rest::Jump`, given by `AdventureState::arrive` after the
+winner's levels, game state hash v26; the entrance's guard dropped by a jump, ADV-MON-006 amended;
+`Revisit { hero }`: its checks, `NothingToRevisit`, no points, no step, no guard test, every
+entered kind with a built visit, its legal set, replay format v11); §14 the env's v8 (`22 + h`,
+`Revisit` per hero slot), the replays on `e08-teleporters-36.h3m`, the properties, the benchmarks
+(measured first at T105a; `reach-teleporters-xl-144`, `random-play-teleporters-36`,
+`build-gates-xl-144`), `--with-original-data`; §15 the versions, rule ids (ADV-TEL-001 to -008;
+ADV-OBJ-002, -003, ADV-FOG-004, ADV-MON-006, HER-ADV-009, GAM-BAT-004, GAM-MET-001, GAM-DEC-007
+amended) and `ADV-QUIRK-39` to `-44`; §16 batch E11 (survey §12's rows in E11a and E11b, the added
+row E11-19 for the guards beside an entrance and its exit, predictions added to E11-6, E11-7 and
+E11-17; the writer and spec, the harness, the scoring); §17 the `shared/` and `cross-lane` work,
+the cut in rounds 2 to 8 (T99 to T107) and ten exit criteria; §18 the risks.
+
+**The draft** `docs/lanes/adventure/adr-drafts/0017-increment-11.md`: ADR-0017 points 1 (the
+command `Revisit`), 4 (the jump's draw from the acting player's stream through `apply`), 6 (no
+decision kind; the jump after a won battle a visit's rest; the gate's meeting), 8 (action encoding
+v8), 10 (the jump to hold, the loss as the army's change) and 11 (the battle at an exit), with the
+consequences, alternatives and history lines. `Revisit`'s map-side lines added to
+`0016-increment-11.md` (point 4's last bullet, point 6's line, the history).
+
+**The checkpoint** (ADV-Q46, asked interactively with the note and both drafts sent to the user;
+decisions 272–274): the user asked for the map side's agent's calls one by one (seven, in two
+rounds, each with its context) and took each as recommended; the game side's as written; the cut
+as proposed. Both drafts' status accepted; T99 is ready.
+
+**Docs:** decisions 271 to 274 in the epic; ADV-Q46 in `QUESTIONS-ANSWERED.md`; T98b2's entry to
+`QUEUE-ARCHIVE.md`, T99 queued.
+
+**Verify:** docs only: the docs gates (`check-docs`, `check-lane`, `doc-drift`). No code, version or
+replay moved; CI's run on the pull request is the record.

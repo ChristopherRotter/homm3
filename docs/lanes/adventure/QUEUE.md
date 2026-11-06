@@ -4,32 +4,26 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 next, T100 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T98b2 — the game side of the design note, ADR-0017's draft, the cut and the checkpoint**
-(decisions 261, 270; as T88b2)
+**E08 T99 — batch E11's maps: the writer's five classes, the spec's fields, the two specs**
+(decisions 269, 274; as T89 for batch E10)
 
-- **Scope:** `E08-design.md` part C (§12 to §18, named by T98b1): the battle and the meeting at an
-  exit (GAM-BAT-004, GAM-MET-001 amended: the defender on the exit, where it is fought, the
-  radius-1 reveal's place); the jump held as the visit's rest (GAM-DEC-007) and the visitor's
-  stream passed to `AdventureState::apply` (ADR-0017 point 4; no draw for one candidate, survey
-  §4.1); `Revisit`'s name, validation and the env's action (decision 268, the AI lane's encoding,
-  `cross-lane`), with its map-side lines added to `adr-drafts/0016-increment-11.md`; the env,
-  replays, fixtures, properties and benchmarks (the reach's and the passage's cost planned against
-  the gated workloads, `homm3-bench-regression`; a teleporters' map and workload; the gates'
-  pairing cost); versions, rule ids and the quirk entries (design §11's proposed ids); batch E11's
-  rows (survey §12, plus a row for design §7's entrance guards) with the spec's and harness's
-  needs; the building rounds cut, batch E11's spec and recipe first (decision 269); shared and
-  `cross-lane` work (the effect kind `whirlpool_protection`, design §2); the exit criteria and
-  risks. The draft `adr-drafts/0017-increment-11.md`. **The checkpoint** (a new `ADV-Q46`): the
-  user accepts the note, both drafts and the agent's calls (design §1, §2, §5's A-42, §7's empty
-  boat and entrance guards, §10's events) and the cut before anything is built (decision 261).
-- **Inputs:** `docs/epics/E08-design.md` parts A and B; `adr-drafts/0016-increment-11.md`; the
-  survey `docs/rules/surveys/E08-teleporters.md` (§4.2 to §4.5, §9 to §13); decisions 260, 261,
-  264–270; increment 10's part C and ADR-0017 draft as the model (`E08-log.md`, "Increment 10's
-  design note at its closure", §12 to §18).
-- **Depends on:** T98b1 (done). **Status:** ready; its cut confirmed with the user at its start.
-  Needs no original data (the survey holds the readings).
+- **Scope:** `h3_map::writer` writes classes 43 to 45 (by subclass, the channel), 103 and 111 on
+  either level, without a body, as the import reads them (a round trip; its class table checked),
+  for the batch and for T106's fixtures; the spec's fields in `h3-experiment` (`cross-lane`, the
+  user's consent as T89's): the five classes by picture and subclass (`[[map.object]]`), a hero in
+  a boat on or beside a Whirlpool's tile and an empty boat on one (batch E8's boats), the worn
+  Hats (batch E8's artifacts), the checks of E11-9's walk order and truncated distances and of
+  E11-16's and E11-17's tiles; the specs `experiments/specs/E08-batch-11a.toml` (E11-1 to E11-13,
+  E11-18, E11-19; days 1 and 2) and `-11b.toml` (E11-14 to E11-17; one day) with their templates
+  and predictions (survey §12's rows, design §16's added row and predictions); each walk priced
+  (`TRAPS.md`).
+- **Inputs:** `E08-design.md` §16 (and §1, §4 for the classes); the survey
+  `docs/rules/surveys/E08-teleporters.md` §12 (the rows, what the spec lacks), §1 to §5; T89a's and
+  T89b's records in `E08-log.md` (batch E10's writer and specs); `docs/experiments/README.md`.
+- **Depends on:** T98b2 and its checkpoint ADV-Q46 (done). **Status:** ready; its cut confirmed
+  with the user at its start. Needs the original data staged for the spec's templates (as T89).
 
 ## Inbox
 
