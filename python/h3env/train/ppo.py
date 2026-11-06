@@ -813,6 +813,69 @@ class Trainer:
         self.phi[b.done.astype(bool)] = 0.0
         return shaped
 
+    def _loss(
+        self,
+        m: dict[str, torch.Tensor],
+        bonus: float,
+        weight: float,
+        share: float = 1.0,
+        norm: tuple[float, float] | None = None,
+        labels: int | None = None,
+    ) -> dict[str, Any]:
+        """Backpropagates one minibatch's PPO loss or, accumulating (`[ppo] accumulate`), one
+        chunk's part of its minibatch's: scaled by `share` (the chunk's rows over the
+        minibatch's), the advantages normalised by `norm` (the minibatch's mean and standard
+        deviation; None: the rows' own), the imitation term's mean taken over `labels` rows (the
+        minibatch's labelled ones; None: the rows' own). Returns the parts' values on these rows,
+        `imitation` the term's part (None without a labelled row)."""
+        c = self.config
+        # `Policy.evaluate` in two halves, so that the teacher's labels share the pass.
+        h, logits, value = self.policy.entries(m["obs"], m["entry_mask"], m.get("preview"))
+        logp, ent = self.policy.along(
+            h, logits, m["entry"], m["cast"], tuple(m[n] for n in FIELDS[4:10])
+        )
+        assert ent is not None
+        old = m["logprob"]
+        a = m["adv"]
+        if norm is None:
+            a = (a - a.mean()) / (a.std() + 1e-8)
+        else:
+            a = (a - norm[0]) / (norm[1] + 1e-8)
+        ratio = torch.exp(logp - old)
+        pg = torch.max(-a * ratio, -a * ratio.clamp(1 - c.clip, 1 + c.clip)).mean()
+        v_loss = 0.5 * ((value - m["returns"]) ** 2).mean()
+        loss = pg - bonus * ent.mean() + c.value_coef * v_loss
+        if share != 1.0:
+            loss = loss * share
+        ce = None
+        if weight:
+            lab = torch.nonzero(m["teacher_labelled"]).squeeze(1)
+            if lab.numel():
+                teacher_logp, _ = self.policy.along(
+                    rows_of(h, lab),
+                    logits[lab],
+                    m["teacher_entry"][lab],
+                    m["teacher_cast"][lab],
+                    tuple(m[f"teacher_{n}"][lab] for n in FIELDS[4:10]),
+                    with_entropy=False,
+                )
+                term = -teacher_logp.mean() if labels is None else -teacher_logp.sum() / labels
+                loss = loss + weight * term
+                ce = term.item()
+        loss.backward()
+        with torch.no_grad():
+            log_ratio = logp - old
+            kl = ((ratio - 1) - log_ratio).mean().item()
+            clipped = ((ratio - 1).abs() > c.clip).float().mean().item()
+        return {
+            "policy_loss": pg.item(),
+            "value_loss": v_loss.item(),
+            "entropy": ent.mean().item(),
+            "kl": kl,
+            "clip": clipped,
+            "imitation": ce,
+        }
+
     def update(self, lr: float, entropy_coef: float | None = None) -> dict:
         """PPO's update over the rollout's samples at the learning rate `lr` and the entropy
         bonus `entropy_coef` (`[ppo] entropy_coef` when None; the run's schedule,
@@ -853,49 +916,44 @@ class Trainer:
         rng = np.random.default_rng(self.updates)
         # Two samples at least: a single one's advantage has no spread (NaN, E06 T9b).
         size = max(2, len(flat) // c.minibatches)
+        chunks = min(c.accumulate, size // 2)
+        flat_adv = arrays["adv"].reshape(-1)
+        flat_labelled = arrays["teacher_labelled"].reshape(-1) if weight else None
         for _ in range(c.epochs):
             order = rng.permutation(flat)
             for k in range(0, len(order) - size + 1, size):
-                m = self.staging.gather(arrays, np.sort(order[k : k + size]))
-                # `Policy.evaluate` in two halves, so that the teacher's labels share the pass.
-                h, logits, value = self.policy.entries(m["obs"], m["entry_mask"], m.get("preview"))
-                logp, ent = self.policy.along(
-                    h, logits, m["entry"], m["cast"], tuple(m[n] for n in FIELDS[4:10])
-                )
-                assert ent is not None
-                old = m["logprob"]
-                a = m["adv"]
-                a = (a - a.mean()) / (a.std() + 1e-8)
-                ratio = torch.exp(logp - old)
-                pg = torch.max(-a * ratio, -a * ratio.clamp(1 - c.clip, 1 + c.clip)).mean()
-                v_loss = 0.5 * ((value - m["returns"]) ** 2).mean()
-                loss = pg - bonus * ent.mean() + c.value_coef * v_loss
-                if weight:
-                    lab = torch.nonzero(m["teacher_labelled"]).squeeze(1)
-                    if lab.numel():
-                        teacher_logp, _ = self.policy.along(
-                            rows_of(h, lab),
-                            logits[lab],
-                            m["teacher_entry"][lab],
-                            m["teacher_cast"][lab],
-                            tuple(m[f"teacher_{n}"][lab] for n in FIELDS[4:10]),
-                            with_entropy=False,
-                        )
-                        ce = -teacher_logp.mean()
-                        loss = loss + weight * ce
-                        imitation[0] += ce.item()
-                        imitation[1] += 1
+                rows = np.sort(order[k : k + size])
                 self.optimizer.zero_grad()
-                loss.backward()
+                if chunks <= 1:
+                    parts = self._loss(self.staging.gather(arrays, rows), bonus, weight)
+                    ce = parts.pop("imitation")
+                    for name, value in parts.items():
+                        stats[name] += value
+                else:
+                    # The minibatch's advantage statistics (torch's `std` is the unbiased one)
+                    # and labelled rows, so that the chunks' losses sum to the minibatch's.
+                    adv_rows = flat_adv[rows].astype(np.float64)
+                    norm = (float(adv_rows.mean()), float(adv_rows.std(ddof=1)))
+                    labels = None if flat_labelled is None else int(flat_labelled[rows].sum())
+                    ce = None
+                    for part in np.array_split(rows, chunks):
+                        parts = self._loss(
+                            self.staging.gather(arrays, part),
+                            bonus,
+                            weight,
+                            share=len(part) / len(rows),
+                            norm=norm,
+                            labels=labels,
+                        )
+                        if parts["imitation"] is not None:
+                            ce = parts["imitation"] + (ce or 0.0)
+                        for name in stats:
+                            stats[name] += parts[name] * len(part) / len(rows)
+                if ce is not None:
+                    imitation[0] += ce
+                    imitation[1] += 1
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), c.max_grad_norm)
                 self.optimizer.step()
-                with torch.no_grad():
-                    log_ratio = logp - old
-                    stats["kl"] += ((ratio - 1) - log_ratio).mean().item()
-                    stats["clip"] += ((ratio - 1).abs() > c.clip).float().mean().item()
-                stats["policy_loss"] += pg.item()
-                stats["value_loss"] += v_loss.item()
-                stats["entropy"] += ent.mean().item()
                 steps += 1
         stats = {k: v / max(steps, 1) for k, v in stats.items()}
         stats["imitation_coef"] = weight

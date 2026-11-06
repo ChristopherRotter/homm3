@@ -31,7 +31,9 @@
 //! town of no alignment). Since E09 T7b2b the main towns' heroes are built (TWN-SET-009; until
 //! then a setup with one was counted as refused, `TWN-STUB-3`): counted by pick and draw, with a
 //! spell book in a town with a Mage Guild built (the guild's spells at the start, `TWN-STUB-6`),
-//! and on the maps of 36 tiles a side.
+//! and on the maps of 36 tiles a side. Since E09 T9c each built town's siege facts (its fort
+//! level, a moat; TWN-SIE-003) and hall level, and the owned towns' day's income (TWN-INC-001,
+//! -002).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -452,6 +454,9 @@ fn built_towns(
                 usize::from(empty),
             );
         }
+        if let Some(stored) = game.towns().get(h3_contracts::TownId::new(index)) {
+            built_town_facts(stored, owner.is_some(), rules.towns(), &mut add);
+        }
         let built = game
             .towns()
             .get(h3_contracts::TownId::new(index))
@@ -477,6 +482,58 @@ fn built_towns(
                 usize::from(all && setup.map.levels > 1),
             );
         }
+    }
+}
+
+/// E09 T9c: a built town's facts for a battle at it (TWN-SIE-003: its fort level, a moat) and its
+/// hall level (TWN-INC-001); for an owned one the day's income it pays from day 2 (TWN-INC-001,
+/// -002): its gold, summed, and whether it pays another resource (a Resource Silo).
+fn built_town_facts(
+    town: &h3_towns::Town,
+    owned: bool,
+    part: &h3_towns::TownRuleset,
+    add: &mut impl FnMut(&'static str, usize),
+) {
+    let siege = h3_towns::siege(town, part);
+    add(
+        match siege.fort {
+            h3_contracts::FortLevel::None => "E09 built: towns by fort level: none",
+            h3_contracts::FortLevel::Fort => "E09 built: towns by fort level: Fort",
+            h3_contracts::FortLevel::Citadel => "E09 built: towns by fort level: Citadel",
+            h3_contracts::FortLevel::Castle => "E09 built: towns by fort level: Castle",
+        },
+        1,
+    );
+    add(
+        "E09 built: towns with a moat",
+        usize::from(siege.moat != h3_towns::Moat::Absent),
+    );
+    add(
+        match h3_towns::hall_level(town, part) {
+            1 => "E09 built: towns by hall level: 1 (Village Hall)",
+            2 => "E09 built: towns by hall level: 2 (Town Hall)",
+            3 => "E09 built: towns by hall level: 3 (City Hall)",
+            _ => "E09 built: towns by hall level: 4 (Capitol)",
+        },
+        1,
+    );
+    if owned {
+        let income = h3_towns::daily_income(town, part);
+        let gold = part.params().map(|p| p.gold);
+        let paid = |id| {
+            income
+                .iter()
+                .find(|&&(r, _)| Some(r) == id)
+                .map_or(0, |&(_, n)| n)
+        };
+        add(
+            "E09 built: owned towns' day's income, gold summed",
+            usize::try_from(paid(gold)).unwrap_or(usize::MAX),
+        );
+        add(
+            "E09 built: owned towns paying a resource other than gold",
+            usize::from(income.iter().any(|&(r, _)| Some(r) != gold)),
+        );
     }
 }
 

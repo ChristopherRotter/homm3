@@ -1,0 +1,831 @@
+# Experiment batch E11a (E08 T99b1, T99b2a; decisions 261, 269, 274 to 277): the jumps of increment
+# 11's plan (survey docs/rules/surveys/E08-teleporters.md §12; docs/epics/E08-design.md §16) through
+# monoliths, Subterranean Gates and Whirlpools, in SoD on Easy, hot seat, two days. T99b1 wrote the
+# land and underground rows, T99b2a the Whirlpool rows E11-10 to E11-13 (decision 276: the cut by
+# land and water; 277: T99b2 by spec). Batch E11b (`E08-batch-11b`) is the repetitions with the
+# space key. Build: docs/experiments/README.md. Predictions are for the agent who evaluates the
+# results; the template never shows them.
+#
+# | row    | settles                                   | the reading (faithful)                       | the other source(s)                     |
+# | E11-1  | §9.1, D-58: a path past a teleporter       | no path to B (none through A, the way round | VCMI plans through A (A, then B)        |
+# |        |                                           | dark); the path to A ends on A              |                                         |
+# | E11-2  | §5, §6: the arrival                       | on B; 100 paid, no more; B's radius 5        | VCMI the same (points kept)             |
+# |        |                                           | explored; the walk ended                    |                                         |
+# | E11-3  | §4.5, §5: a guard beside the exit          | no battle on arrival; a step in its zone     | VCMI the same (IGNORE_GUARDS)           |
+# |        |                                           | after it is fought (the control)            |                                         |
+# | E11-5  | §4.2: a one-way exit visited               | ADVEVENT 70; the hero stays                  | VCMI the same                           |
+# | E11-4  | §4.2: the only exit holds Red's hero       | stays on the entrance, nothing shown         | VCMI the same exit test                 |
+# | E11-6  | §4.3: a gate's exit holds Red's hero       | the meeting; the mover stays                 | the wiki and VCMI the same              |
+# | E11-7  | §4.3: a gate's exit holds Blue's hero      | the 3 × 3 revealed, the battle on the        | VCMI a blocking visit (the battle)      |
+# |        |                                           | underground's battlefield, then Red on it   |                                         |
+# | E11-9  | §3.2, D-56: the gates' tie                 | G to Uf (the first of a truncated tie)       | VCMI G to Un (the nearer by squares)    |
+# | E11-8  | §4.3: a gate with no pair                  | ADVEVENT 153; the hero stays                 | VCMI and the wiki the same message      |
+# | E11-10 | §4.4, D-54, D-55: the weakest stack        | Pegasi 3 → 1 (fight value × count)           | VCMI the Dendroids 3 → 2 (AI value)     |
+# | E11-11 | §4.4, D-54: a tie                          | slot 1's Pikemen 5 → 2 (the first)           | VCMI slot 2 → 3 (the last)              |
+# | E11-12 | §4.4, D-55, A-38: lone stacks              | 1 kept with the message; 1 775 → 887;        | VCMI: 1 kept, no message; 888; 888      |
+# |        |                                           | 1 776 all kept (the bound), the message     |                                         |
+# | E11-13 | §4.4: the Hats                             | nothing lost, no message (both Hats)         | VCMI the same                           |
+# | E11-18 | §10, A-41: Replay Opponent Turn            | the view to the exit (the wiki); nothing     | not read past the record                |
+# |        |                                           | explored; Blue's boardings in the shroud    |                                         |
+# |        |                                           | not shown (the agent's call; a control)     |                                         |
+# | E11-19 | design §7, §13: the entrance's guards      | no battle at the jump; none at the revisit   | unread (the agent's call)               |
+#
+# **Design §16's additions:** E11-6 and E11-7 record the tiles explored within 1 of the pair before
+# the meeting or the battle (E11-6's a sanity check: its hero on the exit explored them), and E11-7
+# the battlefield (the exit's). **This spec's additions:** the points and the day's maximum after
+# every jump (E11-2's, E11-6b's, E11-9's); E11-3's and E11-19's controls (a step onto a plain tile
+# in the guard's zone after the readings, fought: the monster does guard); E11-8 played at E11-9's
+# leftover gate (whichever gate G was not paired with, by either rule), as T99a's record suggested;
+# E11-18's replay also shows E11-7b's gate jump of the same Blue turn into Red's shroud.
+#
+# **The guards** stand on their monolith's row or the row below: a tile whose object is not entered
+# from above leaves the row above out of its guard scan (ADV-MON-005; the original's 0x41A460, VCMI's
+# `checkForVisitableDir`), so a monster above a monolith would not guard it. P (13, 11) guards B, M
+# (9, 51) A19, N (31, 50) B19. B guarded, E11-1 reads the path to B itself: a guarded tile still ends
+# a path, so B is a destination by both rules (a tile past B would end at B by both).
+#
+# **The heroes.** Red has eight, the original's most on the map, and so has Blue: E11-7b and E11-18
+# on land, the six Whirlpool heroes E11-10 to E11-13 on the strait's shores; E11-18's hero also
+# plays E11-13's Admiral's Hat on day 2 (T99b2a's call: every Whirlpool army Blue's, below). Nobody
+# has Scouting, Pathfinding, Logistics or Navigation; no artifact but E11-13's Sea Captain's Hat and
+# E11-18's Admiral's Hat. Every Red army's slowest creature is an Angel or an Archangel, so every
+# Red hero has 2 000 land points a day (packs/base/adventure.toml `land_points`, by the slowest
+# speed from 0), Blue's Pikemen 1 560, Dendroid Guards (speed 3) 1 500, Azure Dragons 2 000; at sea
+# 1 500 (`sea_points`, no Navigation), with the Sea Captain's Hat 2 000, with the Admiral's Hat
+# 3 000. A step costs 100 on grass, dirt and water, 141 diagonally. A hero's scouting radius is 5
+# (ADV-FOG-002: dx² + dy² ≤ 30), a radius 1 the 3 × 3 square.
+#
+# **The Whirlpools** (T99b2a). The strait, water from (46, 62) to (71, 65), and the sea south-east
+# of it, (56, 66) to (71, 71), lie in Red's shroud. W1 covers (50, 63) to (52, 64), W2 (59, 68) to
+# (61, 69), W3 (65, 68) to (67, 69). No hero starts in a boat (the map gives a hero on water none),
+# and a boarding without the Admiral's Hat leaves 0 points (ADV-SEA-002; batch E8a), so the six
+# Whirlpool heroes board on Blue's day 1, from the shore, the empty boats beside W1: three on row
+# 62 north of W1's top row, three on row 65 south of its bottom row, each hero on the shore beyond
+# its boat; on Blue's day 2 each sails one straight step onto the W1 tile beside its boat. E11-18's
+# hero, on X18 since day 1, walks onto the boat at (66, 62) on day 2 (the Admiral's Hat's free
+# boarding keeps its points) and sails to W1's east side. **Why so:** a jump never lands on the
+# Whirlpool it left (the entrance's word excluded, survey §4.1), so W1, every hero's entrance, is
+# no exit and no landing blocks a later entry; every jumper is Blue's, so no jump draws an enemy's
+# tile (A-37 is batch E11b's E11-16) and Blue's own landed heroes are skipped (twelve tiles of W2
+# and W3 for seven jumps); Red is full and Blue had six free slots for seven armies, hence E11-18's
+# second part (no third human player: the spec gives Tan to the computer).
+#
+# **The pictures** (docs/experiments/README.md, "Increment 11's objects"): a monolith of channels 0
+# to 3 is the one tile `at`, entered there from any side but the three tiles above it; a gate
+# covers three tiles ending on `at` and the middle one above them and is entered at the tile west of
+# `at` (its entrance, the middle one), from the row below it. The surface is grass, the underground
+# dirt (the underground's battles are subterranean, GAM-BAT-001; the dirt tells the tile's own).
+#
+# **The channels.** Two-way 0 (green): A (9, 10) and B (12, 10). Two-way 1 (orange): A19 (10, 50)
+# and B19 (30, 50). One-way 0 (blue): the entrance E4 (32, 10), its one exit X4 (40, 10). One-way 1
+# (red): M18 (48, 33), its one exit X18 (66, 60). Every channel has one exit for each entrance, so
+# no jump draws (`random_between` returns an equal bound without a draw, survey §4.1). **The gates**
+# (entrances; the original pairs them in the walk's order: level, row, column): on the surface G6
+# (51, 10), G9 (20, 30), G7 (44, 30); underground U6 (51, 10), Uf (17, 27), Un (16, 30), U7
+# (44, 30). G6 pairs with U6 and G7 with U7 at distance 0; G9 is 4 from Uf (squared 18) and from Un
+# (squared 16) when truncated: the original pairs G9 with Uf (the first in the walk), VCMI with Un,
+# and the other is left without a pair. The compiler checks both pairings (`pair`, `vcmi_pair`).
+#
+# **The fog.** The zones lie apart so that each read's tiles are unexplored by Red until the row's
+# own move: B's east side (E11-2), U7's surroundings underground (E11-7) and X18's (E11-18) lie
+# beyond every Red hero's radius at the start and after every Red move of day 1. The strait and the
+# sea stay in Red's shroud through Red's day 2 (no Red hero comes within 5 of them), so Blue's six
+# boardings of day 1, which Red's Replay Opponent Turn plays back on day 2, lie wholly in Red's
+# shroud: E11-18's control.
+#
+# **The walks** (priced on the written map by a throwaway test, TRAPS.md; the teleporters import as
+# blockers until T103, so a step onto an entrance and a walk from an exit were priced by hand):
+# every Red move but E11-9's is one step (100 or 141); E11-9's day is 100 (onto G9), the jump, then
+# 623 to the other underground gate (five steps, either way); E11-19's is 100, the jump, the
+# revisit (0), then 100 (the control). Each target is within the hero's explored tiles at its
+# click; the fog's claims (each row's tiles unexplored by Red until its move) were checked on the
+# written map. T99b2a's: every boarding one straight step (100); every step onto W1 one straight
+# step at sea (100); E11-18's day 2 as its row says, in two legs (the second leg's tiles unexplored
+# by Blue until the first's). The Whirlpools import as blockers until T103, so each step onto W1 was
+# priced by hand.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or a resource; an artifact on a moving hero goes under "anything odd" (boots would move
+# the points).
+
+[map]
+name = "E08 batch E11a"
+description = "Engine-generated experiment map (E08, batch E11a): monoliths and Subterranean Gates: a path past a teleporter, the arrival, a guard beside an exit, a one-way exit, an exit held by one's own hero, a gate's meeting and battle, the gates' pairing tie, a gate without a pair, the replay of an enemy's jump, the guards at a jump and a revisit; Whirlpools: the weakest stack, a tie, lone stacks and the bound, the Hats. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-11a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of each later turn (save 2 Blue's day 1, save 3 Red's day 2, save 4 Blue's day 2).",
+    "Most records are the game's memory: a hero's tile (column, row, level), its movement points (hero +0x4D), the day's maximum (+0x49) and army (slot, creature, count), whether it is in a boat (its status +0x105, bit 18, 0x40000), a tile's explored bit for Red, the hero's path after a first click (its tiles, or none), the messages and dialogs shown (by their text's table and line), the meeting dialog, a battle's opening (terrain, sides, stacks), the adventure map's view during Replay Opponent Turn. The capture harness reads them (`clients/capture/batches/E08-batch-11a.toml`, E08 T100). Played by hand, read the screens instead (the level button under the minimap shows the underground; a tile is explored when it is not black) and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left; underground tiles say so. A walk: click the target once (the path's marks show), then again (the hero goes). A step onto a monolith or a gate: click its tile from the neighbouring tile named (twice). A boat: click it from the shore beside it (twice): the hero boards it and its walk ends there. A Whirlpool: from a boat beside it, click the Whirlpool's tile named (twice). **Space:** with the hero selected, press the space bar once.",
+    "Each battle against a monster by auto combat. E11-7's battle is between two human players, so auto combat is refused: play it, Red's stacks attacking, Blue's stack only waiting or defending (never a retreat or a surrender). A level-up's dialog after a battle (none is expected): take the left skill.",
+    "Order: day 1, Red's turn: E11-1 (rows E11-1 to E11-3), E11-4 (rows E11-5, then E11-4), E11-6, E11-9 (rows E11-9, then E11-8), E11-19; E11-7's and E11-18's first reads; end the turn. Blue's turn: E11-7's Blue step, then E11-18's; then the boardings of E11-10, E11-11, E11-12, E11-12b, E11-12c and E11-13, in that order; end the turn. Day 2, Red's turn: E11-18's replay and reads first, then E11-7's step and battle; end the turn. Blue's turn: E11-10, E11-11, E11-12 (E11-12, E11-12b, E11-12c), E11-13 (E11-13, then E11-18's hero); end the turn. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# The underground: dirt, open; the four underground gates stand on it.
+[map.underground]
+terrain = "dirt"
+
+# --- E11-1 to E11-3: the two-way pair A, B across a rock wall; a monster beside B ----------------------
+
+[[map.patch]]
+terrain = "rock"
+from = [10, 1]
+to = [11, 19]
+
+[[map.object]]
+picture = "AVXmn2g0"
+at = [9, 10]
+
+[[map.object]]
+picture = "AVXmn2g0"
+at = [12, 10]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [13, 11]
+
+# --- E11-4 and E11-5: one-way channel 0, its entrance E4 and its one exit X4 -----------------------------
+
+[[map.object]]
+picture = "AVXmn1b0"
+at = [32, 10]
+
+[[map.object]]
+picture = "AVXmx1b0"
+at = [40, 10]
+
+# --- The gates: G6/U6 (E11-6), G9 with Uf and Un (E11-9, E11-8), G7/U7 (E11-7) ---------------------------
+
+[[map.object]]
+picture = "AvTCave"
+at = [52, 10]
+pair = [52, 10]
+vcmi_pair = [52, 10]
+
+[[map.object]]
+picture = "AvTCave"
+at = [21, 30]
+pair = [18, 27]
+vcmi_pair = [17, 30]
+
+[[map.object]]
+picture = "AvTCave"
+at = [45, 30]
+pair = [45, 30]
+vcmi_pair = [45, 30]
+
+[[map.object]]
+picture = "AvTCave"
+at = [52, 10]
+level = 1
+pair = [52, 10]
+vcmi_pair = [52, 10]
+
+[[map.object]]
+picture = "AvTCave"
+at = [18, 27]
+level = 1
+pair = [21, 30]
+vcmi_pair = "none"
+
+[[map.object]]
+picture = "AvTCave"
+at = [17, 30]
+level = 1
+pair = "none"
+vcmi_pair = [21, 30]
+
+[[map.object]]
+picture = "AvTCave"
+at = [45, 30]
+level = 1
+pair = [45, 30]
+vcmi_pair = [45, 30]
+
+# --- E11-18: one-way channel 1, its entrance M18 in Red's sight and its one exit X18 in Red's shroud ---
+
+[[map.object]]
+picture = "AVXmn1r0"
+at = [48, 33]
+
+[[map.object]]
+picture = "AVXmx1r0"
+at = [66, 60]
+
+# --- E11-19: two-way channel 1, A19 and B19, a monster beside each ------------------------------------------
+
+[[map.object]]
+picture = "AVXmn2o0"
+at = [10, 50]
+
+[[map.object]]
+picture = "AVXmn2o0"
+at = [30, 50]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [9, 51]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [31, 50]
+
+# --- E11-10 to E11-13: the strait and the sea, three Whirlpools, seven boats (all in Red's shroud) ---------
+
+[[map.patch]]
+terrain = "water"
+from = [46, 62]
+to = [71, 65]
+
+[[map.patch]]
+terrain = "water"
+from = [56, 66]
+to = [71, 71]
+
+# W1, every jumper's entrance: (50, 63) to (52, 64).
+[[map.object]]
+picture = "AVXwhrl0"
+at = [52, 64]
+
+# W2: (59, 68) to (61, 69).
+[[map.object]]
+picture = "AVXwhrl0"
+at = [61, 69]
+
+# W3: (65, 68) to (67, 69).
+[[map.object]]
+picture = "AVXwhrl0"
+at = [67, 69]
+
+# The boats (a boat stands on the tile west of `at`): (50, 62), (51, 62), (52, 62) north of W1 for
+# E11-10, E11-11, E11-12; (50, 65), (51, 65), (52, 65) south of it for E11-12b, E11-12c, E11-13;
+# (66, 62) for E11-18's hero.
+[[map.object]]
+picture = "AVXboat0"
+at = [51, 62]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [52, 62]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [53, 62]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [51, 65]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [52, 65]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [53, 65]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [67, 62]
+
+# --- E11-1 to E11-3 ------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-1"
+title = "A path past a two-way monolith (E11-1), the step onto it (E11-2), a monster beside its exit (E11-3)"
+questions = ["D-58", "ADV-OBJ-003", "ADV-TEL-004", "ADV-TEL-007", "ADV-MOV-008", "ADV-MON-005"]
+procedure = [
+    "Day 1, Red's turn, first: E11-1 stands at (8, 10) with ten Archangels. East of it the two-way monolith A (9, 10), green; a rock wall fills columns 10 and 11 from row 1 to row 19; east of the wall the green monolith B (12, 10) and a Peasant P at (13, 11), south-east of B. Read E11-1's points and day's maximum and the explored bits of the tiles (12, 11), (16, 13), (16, 14), (17, 10) and (18, 10).",
+    "Click B (12, 10) once: note the path shown (its tiles, or that none shows). If none shows, do not click again and go on with the next step. **If a path shows**, click B again: E11-1 walks it. Note every step, any message or battle, then E11-1's tile, points and day's maximum, whether it moved on after a jump, and the explored bits of the five tiles of step 1; then skip the next step.",
+    "Click A (9, 10) once: note the path shown. Click it again: E11-1 steps onto A. Note any message or battle, then E11-1's tile, points and day's maximum, and the explored bits of the five tiles of step 1.",
+    "If E11-1 stands on B (12, 10): click (13, 10) (east of B, beside P) twice. Note the battle (auto combat) or that none came, and E11-1's tile after.",
+]
+record = [
+    { field = "E11-1 before: points; day's maximum; explored (12, 11), (16, 13), (16, 14), (17, 10), (18, 10)" },
+    { field = "E11-1: the path to B (12, 10) (its tiles, or none); if one showed, the walk: its steps, messages, battles" },
+    { field = "E11-1: the path to A (its tiles)" },
+    { field = "E11-2: after the step onto A: messages; battles; E11-1's tile, points and day's maximum; moved on after the jump?" },
+    { field = "E11-2: explored after: (12, 11), (16, 13), (16, 14), (17, 10), (18, 10)" },
+    { field = "E11-3: the battle on arrival, if any (the defender, the result)" },
+    { field = "E11-3's control: the step to (13, 10): the battle or none; E11-1's tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-1, the path** (survey §9.1, D-58; ADV-MOV-008): the human's mouse path (mode 0) stops at a
+  teleporter's entrance and never goes on through its exit, and it steps only onto explored tiles.
+  B is explored (from (8, 10): 16 ≤ 30) but cut off: the wall covers every explored row between,
+  and the way round lies in the dark. So **no path to B** (no marks). **VCMI 1.7.5** plans a
+  human's path through two-way monoliths (`useMonolithTwoWay`): **A, then B** (B is guarded, so a
+  path ends there by either rule; a destination past B would end at B too), its client naming B as
+  the exit. **The path to A:** the one tile A, ending on A.
+- **E11-2, the arrival** (§5, §6): the step onto A costs **100** (straight, grass), paid as any step;
+  the visit is the jump (two-way channel 0 has one other member: B, no draw); **no message**;
+  E11-1 stands on **B (12, 10)** with **1 900** points (2 000 − 100; the jump costs none) and the
+  day's maximum **2 000** kept; the walk ended there (the path was to A; nothing goes on past the
+  exit). The reveal: the step's own around A, then B's with the scouting radius 5: **(16, 13) and
+  (17, 10) explored** (from B 16 + 9 = 25 and 25), **(16, 14) and (18, 10) not** (32, 36); before
+  the step none of the four was (from (8, 10) 73, 81, 80, 100; from A at most 58). (12, 11)
+  explored throughout. VCMI: `TELEPORTATION` keeps the points too.
+- **E11-3** (§4.5, §5): P at (13, 11) guards B (its neighbour; B's guard scan leaves out only the
+  row above, ADV-MON-005), but `hero_relocate` runs **no guard test**: **no battle** on arrival.
+  **The control:** a step from B to (13, 10), in P's zone, ends with the guard's test
+  (`after_step_guard_check`): **a battle** at once (P savage, never flees), won by auto combat;
+  E11-1 on (13, 10) after it (the step's 100 paid). VCMI: `IGNORE_GUARDS` on the arrival, the same.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [8, 10]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E11-5, then E11-4 ---------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-4"
+title = "A one-way exit visited (E11-5); then its entrance, whose only exit holds Red's hero (E11-4)"
+questions = ["ADV-TEL-003", "ADV-TEL-004"]
+procedure = [
+    "Day 1, Red's turn, after E11-1: one-way channel 0 (blue) has one entrance E4 (32, 10) and one exit X4 (40, 10). E11-5 stands at (39, 10), west of X4; E11-4 at (31, 10), west of E4; each with one Angel.",
+    "E11-5: click X4 (40, 10) twice: E11-5 steps onto it. Note the message (and close it), then E11-5's tile and points.",
+    "E11-4: click E4 (32, 10) twice: E11-4 steps onto it. Note any message, sound or battle, then E11-4's tile and points, and E11-5's tile.",
+]
+record = [
+    { field = "E11-5: the message after the step onto X4 (its text)" },
+    { field = "E11-5 after: tile; points" },
+    { field = "E11-4: messages or battles after the step onto E4" },
+    { field = "E11-4 after: tile; points. E11-5's tile" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-5** (survey §4.2; class 44 at 0x4A9538): a human's visit of a one-way exit shows **ADVEVENT
+  70** (the monolith that leads nowhere) and nothing else: E11-5 stays on **X4 (40, 10)**, **1 900**
+  points (the step's 100). VCMI the same message.
+- **E11-4** (§4.1, §4.2, §4.5): the one-way draw over channel 0's exits finds no candidate (X4
+  holds E11-5, a hero of the mover's team), so **nothing at all**: no message, no sound, no
+  battle; E11-4 stays on **E4 (32, 10)** with **1 900** points; E11-5 still on X4. VCMI: its exit
+  test (`isExitPassable`) skips a tile with an allied hero too (whether it shows a message there
+  was not compared).
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [31, 10]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter.also]]
+type = "Christian"
+specialty = "creature Ballista"
+name = "E11-5"
+at = [39, 10]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E11-6 ------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-6"
+title = "A Subterranean Gate whose exit holds Red's other hero: the meeting, the mover staying"
+questions = ["ADV-TEL-005", "ADV-TEL-007", "GAM-MET-001"]
+procedure = [
+    "Day 1, Red's turn, after E11-4: the gate G6 (entrance (51, 10); it covers (50, 10) to (52, 10) and (51, 9)) leads to the underground gate U6 (entrance (51, 10) underground). E11-6b stands at (52, 11), E11-6 at (50, 11), each with one Angel.",
+    "E11-6b: click G6's entrance (51, 10) twice: E11-6b steps onto it. Note any message or dialog, then E11-6b's tile (level too), points and day's maximum.",
+    "E11-6: read the explored bits of the underground tiles (50, 9) to (52, 11) and (53, 10). Click G6's entrance (51, 10) twice: E11-6 steps onto it. Note the dialog that opens (which heroes it shows); close it at once without changing anything. Then read both heroes' tiles (level too) and E11-6's points, and the same explored bits again.",
+]
+record = [
+    { field = "E11-6b: messages or dialogs after the step onto G6" },
+    { field = "E11-6b after: tile (level); points; day's maximum" },
+    { field = "E11-6 before its step: explored underground (50, 9) to (52, 11), (53, 10)" },
+    { field = "E11-6: the dialog after its step onto G6 (its kind; the heroes it shows)" },
+    { field = "after: E11-6's tile (level) and points; E11-6b's tile (level)" },
+    { field = "after: explored underground (50, 9) to (52, 11), (53, 10)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-6b** (survey §4.3, §5): the gate's pair is U6 (the compiler checks it), free: no draw, no
+  message; E11-6b arrives on **U6 (51, 10) underground** with **1 859** points (2 000 − 141, the
+  diagonal step; the jump costs none) and the day's maximum 2 000, its radius 5 revealed there.
+- **E11-6** (§4.3; design §12): U6 holds E11-6b, a hero of the mover's team: the radius-1 reveal at
+  U6 (already explored by E11-6b's arrival: all ten tiles explored before and after, a sanity
+  check), then
+  `visit_hero`: **the meeting** of the two heroes (the hero exchange dialog, E11-6 the visitor),
+  although they stand on two levels; closed unchanged, **E11-6 stays on G6 (51, 10)** on the
+  surface (the move happens only if the exit is a gate again, never after a meeting, 0x4AA4A6)
+  with **1 859** points (its diagonal step), E11-6b on U6. The wiki and VCMI: the same (an allied
+  hero on the exit is met).
+"""
+[encounter.hero]
+type = "Cuthbert"
+specialty = "spell Weakness"
+at = [50, 11]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter.also]]
+type = "Ingham"
+specialty = "creature Monk"
+name = "E11-6b"
+at = [52, 11]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E11-9, then E11-8 ------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-9"
+title = "The gates' pairing at a truncated tie (E11-9); then the gate left without a pair (E11-8)"
+questions = ["D-56", "ADV-TEL-002", "ADV-TEL-005"]
+procedure = [
+    "Day 1, Red's turn, after E11-6: the gate G9 (entrance (20, 30); it covers (19, 30) to (21, 30) and (20, 29)). Underground two gates: Uf (entrance (17, 27); it covers (16, 27) to (18, 27) and (17, 26)) and Un (entrance (16, 30); it covers (15, 30) to (17, 30) and (16, 29)). E11-9 stands at (20, 31) with one Angel.",
+    "Click G9's entrance (20, 30) twice: E11-9 steps onto it. Note any message, then E11-9's tile (level too), points and day's maximum.",
+    "E11-8: E11-9 now stands on one of the two underground gates. Click the other one's entrance twice (Un (16, 30) if E11-9 stands on Uf, else Uf (17, 27)): E11-9 walks there and steps onto it. Note the path's tiles, the message (close it), then E11-9's tile (level too) and points.",
+]
+record = [
+    { field = "E11-9: messages after the step onto G9" },
+    { field = "E11-9 after: tile (level); points; day's maximum; which gate (Uf or Un)" },
+    { field = "E11-8: the gate stepped onto; the path's tiles; the message after the step (its text)" },
+    { field = "E11-8 after: tile (level); points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-9** (survey §3.2, D-56; `gates_pair` 0x4C0B60): the gates' entrances in the walk's order
+  are G6 (51, 10), G9 (20, 30), G7 (44, 30) on the surface, then U6 (51, 10), Uf (17, 27), Un
+  (16, 30), U7 (44, 30) underground. G6 takes U6 (0). G9 takes the least `⌊√(dx² + dy²)⌋` among
+  U7 (24), Uf (⌊√18⌋ = 4) and Un (⌊√16⌋ = 4): a tie, **the first in the walk: Uf** (row 27 before
+  row 30). G7 takes U7 (0); **Un keeps no pair**. So E11-9 arrives on **Uf (17, 27) underground**
+  with **1 900** points (the step's 100) and the day's maximum 2 000. **VCMI 1.7.5** (`CGSubterraneanGate::postInit`: the same
+  order, the least squared distance): G9 with **Un** (16 < 18), Uf without a pair. The wiki's tie
+  rule ("north, then west") is the walk's order and says Uf as the original.
+- **E11-8** (§4.3; `gate_exit` 0x4CDE40): the other underground gate has no pair (Un by the reading,
+  Uf by VCMI's): **ADVEVENT 153** (the tunnel that leads nowhere), shown without a human test, and
+  nothing else: E11-9 stays on that gate. The shortest walk from Uf costs **623** in five steps
+  (for one, (18, 28), (18, 29), (18, 30), (17, 31), then onto Un from below right: a gate is not
+  entered from the three tiles above its entrance), so **1 277** points are left; from Un to Uf the
+  same 623. VCMI and the wiki: the same message.
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+at = [20, 31]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E11-19 -------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-19"
+title = "Guards at both ends of a two-way pair: the step onto A19, the arrival at B19, the revisit by Space"
+questions = ["ADV-MON-005", "ADV-MON-006", "ADV-TEL-007", "ADV-TEL-008"]
+procedure = [
+    "Day 1, Red's turn, after E11-9: the two-way monoliths A19 (10, 50) and B19 (30, 50), orange (channel 1, no other member). A Peasant M at (9, 51), south-west of A19, a Peasant N at (31, 50), east of B19. E11-19 stands at (11, 50), east of A19, with ten Archangels. Read its points.",
+    "Click A19 (10, 50) twice: E11-19 steps onto it. Note every battle in order (by auto combat; which Peasant: M at (9, 51) or N at (31, 50)) and every message, then E11-19's tile and points.",
+    "If E11-19 stands on B19 (30, 50): press **Space** once. Note every battle and message, then E11-19's tile and points.",
+    "The control: if E11-19 stands on A19 (10, 50) and M is still there, click (10, 51) (south of A19, beside M) twice. Note the battle or that none came, and E11-19's tile after.",
+]
+record = [
+    { field = "E11-19 before: points" },
+    { field = "the step onto A19: battles in order (which Peasant; the result); messages" },
+    { field = "after it: E11-19's tile; points" },
+    { field = "Space on B19: battles (which Peasant); messages" },
+    { field = "after Space: E11-19's tile; points" },
+    { field = "the control: the step to (10, 51): the battle or none; E11-19's tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The guards** (ADV-MON-005): M at (9, 51) guards A19 and N at (31, 50) guards B19 (each on its
+  monolith's row or the row below, which a monolith's guard scan includes); E11-19's start (11, 50)
+  is outside M's zone (2 columns away).
+- **The agent's call** (design §7, §13; unread): the step onto A19 ends at the entrance, where the
+  visit jumps the hero away before any guard test can see it, and the arrival tests none (E11-3):
+  **no battle**, E11-19 on **B19 (30, 50)** with **1 900** points (the straight step's 100). A
+  battle with **M first** would say the guard is tested before the visit or at the step's tile (the
+  engine's rule then follows the row, design §13); **N** fought would say it is tested at the hero's
+  new tile.
+- **Space on B19** (§11, ADV-TEL-008): the visit of B19 again, at no points: the jump to A19 (one
+  other member, no draw); the key calls `visit_and_update` alone, and the guard's test belongs to a
+  step's end (`after_step_guard_check` 0x4800A5): **no battle**, E11-19 back on **A19 (10, 50)**
+  with **1 900** points (unchanged).
+- **The control:** the step from A19 to (10, 51), in M's zone: **a battle** with M at once (auto
+  combat, won), E11-19 on (10, 51) with **1 800** points (the straight step's 100). N stays at
+  (31, 50).
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+at = [11, 50]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E11-7: Blue's hero on a gate's exit (Blue's step on day 1, Red's on day 2) ----------------------------
+
+[[encounter]]
+id = "E11-7"
+title = "A Subterranean Gate whose exit holds Blue's hero: the reveal, the battle, the move"
+questions = ["ADV-TEL-005", "GAM-BAT-001", "GAM-BAT-004", "ADV-FOG-002"]
+procedure = [
+    "Day 1, Red's turn, last: the gate G7 (entrance (44, 30); it covers (43, 30) to (45, 30) and (44, 29)) leads to U7 (entrance (44, 30) underground). Red's E11-7 stands at (45, 31) with five Archangels, Blue's E11-7b at (43, 31) with one Pikeman. E11-7 does not move today. Read the explored bits of the underground tiles (43, 29) to (45, 31), (46, 30), (49, 30) and (50, 30).",
+    "Day 1, Blue's turn, first: E11-7b: click G7's entrance (44, 30) twice: E11-7b steps onto it. Note any message, then E11-7b's tile (level too).",
+    "Day 2, Red's turn, after E11-18: read the same explored bits again. E11-7: click G7's entrance (44, 30) twice: E11-7 steps onto it. At the battle's opening (before any command) note the terrain and battlefield, the attacker and the defender (heroes, stacks), and read the same explored bits. Play the battle: Red's stacks attack; Blue's Pikeman only waits or defends, never retreats or surrenders (two human sides: no auto combat). After it note the messages, then E11-7's tile (level too) and points, and read the explored bits once more.",
+]
+record = [
+    { field = "day 1: explored underground (43, 29) to (45, 31), (46, 30), (49, 30), (50, 30)" },
+    { field = "E11-7b: messages after its step onto G7; its tile (level) after" },
+    { field = "day 2 before the step: the same explored bits" },
+    { field = "E11-7: messages or dialogs after its step onto G7" },
+    { field = "the battle's opening: terrain, battlefield; attacker; defender (stacks)" },
+    { field = "at the opening: the same explored bits" },
+    { field = "the result; the messages after the battle" },
+    { field = "after: E11-7's tile (level); points; the same explored bits" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-7b** (Blue's day 1; survey §4.3): U7 free: Blue's hero arrives on **U7 (44, 30)
+  underground**, no message. Red sees it step onto G7 and vanish (E11-18's replay shows the record).
+- **Red's explored bits** underground stay unexplored on day 1 and at day 2's start: no Red hero
+  comes within 5 of U7 (U6 is 20 rows away, Uf and Un 27 columns).
+- **E11-7** (§4.3, design §12; ADV-TEL-005): the pair holds an enemy hero: **the radius-1 reveal at
+  U7** for Red (ADV-FOG-002's disk of radius 1: the 3 × 3 square), then `visit_hero`, **the battle**
+  at once (no question), E11-7 attacking from the entrance, E11-7b defending. **At the opening** the
+  3 × 3 tiles (43, 29) to (45, 31) explored, **(46, 30) not** (4 > 2), nor (49, 30), (50, 30).
+  **Where it is fought:** at the defender's tile, U7, underground: **the subterranean battlefield**
+  (GAM-BAT-001's order: the underground's first; the tile's own dirt or the entrance's grass would
+  say otherwise). Red wins (the hero's 500 and the Pikeman's experience: no level-up), E11-7b leaves
+  the map. **Then the move** (the exit is a gate again, 0x4AA4A6): E11-7 on **U7 (44, 30)
+  underground** with **1 859** points (the diagonal step), its radius 5 revealed: **(49, 30)
+  explored** (25), **(50, 30) not** (36). VCMI: a blocking visit, the battle, then the move.
+- **Scoring note:** E11-18's replay runs first on day 2 and plays E11-7b's gate jump. If the bits
+  are explored after it (day 2's "before" read), the radius-1 part is undecided, not failed (and
+  E11-18's "nothing explored" fails).
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [45, 31]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 5]]
+
+[[encounter.also]]
+type = "Loynis"
+specialty = "spell Prayer"
+owner = "blue"
+name = "E11-7b"
+at = [43, 31]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- E11-18: Blue's jump into Red's shroud and Red's Replay Opponent Turn -------------------------------------
+
+[[encounter]]
+id = "E11-18"
+title = "Blue's hero enters a one-way monolith Red sees, its exit in Red's shroud; Red's Replay Opponent Turn"
+questions = ["A-41", "ADV-FOG-004", "ADV-TEL-007"]
+procedure = [
+    "Day 1, Red's turn: one-way channel 1 (red) has one entrance M18 (48, 33), which Red's E11-7 at (45, 31) sees, and one exit X18 (66, 60), far in Red's shroud. Blue's E11-18 stands at (47, 33), west of M18, with ten Pikemen and the Admiral's Hat (it plays E11-13's second part on day 2). Read Red's explored bits of (66, 60), (65, 60), (67, 60), (66, 59), (66, 61), and of the boardings' tiles (51, 61), (51, 62), (51, 66).",
+    "Day 1, Blue's turn, after E11-7b's step: E11-18: click M18 (48, 33) twice: E11-18 steps onto it. Note any message, then E11-18's tile. (Blue's six boardings at the strait follow, E11-10 to E11-13.)",
+    "Day 2, Red's turn, first: read the five explored bits and the boardings' three again. Note the adventure view's size in tiles (columns, rows) once. Open the Adventure Options and choose **Replay Opponent Turn**. While it plays, note where the view goes (its top-left tile and level each time it moves) and what it shows (each Blue hero's moves; whether a view holds any tile of the six boardings, (50, 61) to (52, 66), and draws the heroes and boats there: a screenshot or a human's eye). When it ends, read the five explored bits again, the boardings' three, and Red's explored bits of the underground (43, 29) to (45, 31) (E11-7's). If the item is greyed out or plays nothing, note that and still read the bits.",
+]
+record = [
+    { field = "day 1, Red: explored (66, 60), (65, 60), (67, 60), (66, 59), (66, 61); the boardings' (51, 61), (51, 62), (51, 66)" },
+    { field = "E11-18: messages after its step onto M18; its tile after" },
+    { field = "day 2, before the replay: the same eight explored bits" },
+    { field = "the view's size in tiles (columns, rows)" },
+    { field = "the replay: the view's corners (tile, level) in order; what each part shows" },
+    { field = "the replay: a view holding tiles of the boardings (50, 61) to (52, 66), or none; the heroes and boats drawn there (a screenshot)" },
+    { field = "after the replay: the same eight explored bits; E11-7's underground bits" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-18** (Blue's day 1; survey §4.2, §5): one exit, free: no draw, Blue's hero arrives on **X18
+  (66, 60)**, no message (the sound `telptout.wav`).
+- **The record** (§10; `hero_relocate_inner` 0x49CF50): the jump appends a move record (the player,
+  the hero, its facing, the old tile and the new) to the turn's records, beside the steps' records,
+  in order: E11-7b's steps and its gate jump to U7, then E11-18's step and its jump to X18. Red's
+  Replay Opponent Turn plays them back. What a record shows a viewer whose fog hides one end was
+  not read. **The wiki** (the Monolith page): an enemy hero's exit is shown even in the shroud:
+  **the view goes to X18** (and, by the same record, to U7 for E11-7b's gate). **Nothing is
+  explored** by the replay: the five bits and E11-7's underground bits stay unexplored (the replay
+  changes no rule's state).
+- **The control** (T99b2a; unread, the agent's call): the six boardings at the strait come after
+  E11-18's jump in Blue's records; both ends of each lie in Red's shroud (no Red hero comes within
+  5 of the strait or the sea on day 1 or 2; checked on the written map), and no record of them is
+  a jump. **Not shown:** no view of the replay holds a tile of (50, 61) to (52, 66) (a view about
+  X18, (66, 60), holds none of them unless it is wider than 27 columns), no hero or boat is drawn
+  there, and the boardings' three bits stay unexplored. Shown, the replay draws an enemy's plain
+  steps in the shroud too, and what it shows of X18 is no monolith's rule (A-41 then the replay's
+  general drawing).
+- **For the engine** (A-41, not reproduced): no viewer learns a hidden exit; the row records what
+  the original shows.
+- E11-18's Admiral's Hat and ten Pikemen (for E11-13) change nothing here: the step onto M18 costs
+  100 on grass (the Pikemen's 1 560 a day), and the Hat acts only at sea and at a Whirlpool.
+"""
+[encounter.hero]
+type = "Clancy"
+specialty = "creature Unicorn"
+owner = "blue"
+at = [47, 33]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { head = "Admiral's Hat" }
+
+# --- E11-10 to E11-13: the Whirlpools' losses (Blue's boardings on day 1, its jumps on day 2) --------------
+
+[[encounter]]
+id = "E11-10"
+title = "A Whirlpool takes from the weakest stack: by fight value or by AI value"
+questions = ["D-54", "D-55", "ADV-TEL-006", "ADV-TEL-007", "ADV-SEA-002"]
+procedure = [
+    "The strait (water from (46, 62) to (71, 65)) and the sea south-east of it lie in Red's shroud. The Whirlpool W1 covers (50, 63) to (52, 64); W2 (59, 68) to (61, 69) and W3 (65, 68) to (67, 69) lie in the sea. Blue's E11-10 stands on the shore at (50, 61) with 3 Pegasi (slot 0), 3 Dendroid Guards (slot 1) and 2 Angels (slot 2); an empty boat lies at (50, 62), south of it.",
+    "Day 1, Blue's turn, after E11-18's step: click the boat (50, 62) twice: E11-10 boards it. Note its tile, points, day's maximum and whether it is in a boat.",
+    "Day 2, Blue's turn, first: read E11-10's points, day's maximum and army (slot, creature, count). Click W1's (50, 63) twice: E11-10 sails onto it. Note every message (its text; close it), then E11-10's army, its tile (which Whirlpool; column, row), points and day's maximum, and whether it is still in a boat.",
+]
+record = [
+    { field = "day 1, after the boarding: tile; points; day's maximum; in a boat" },
+    { field = "day 2, before the step: points; day's maximum" },
+    { table = ["slot", "creature", "count before", "count after"], rows = 7 },
+    { field = "the step onto W1: messages (their text)" },
+    { field = "after: tile (W2 or W3; column, row); points; day's maximum; in a boat" },
+    { field = "anything odd" },
+]
+predictions = """
+- **Day 1** (ADV-SEA-002; batch E8a): the step onto the boat costs 100 and ends the walk; aboard,
+  the points **0** and, without the Admiral's Hat, the land's maximum kept: **1 500** (the
+  Dendroid Guards' speed 3; A-28, `ADV-QUIRK-31`: the engine gives the sea's, not reproduced).
+- **Day 2**: the turn start gives a hero in a boat the sea's **1 500** points and maximum
+  (HER-ADV-009, no Navigation).
+- **The loss** (survey §4.4, D-54, D-55; `whirlpool_losses` 0x4ACAA0, before the draw): Blue is
+  human and wears no Hat; the least creature fight value × count, from 99 999 999 and strictly
+  less: Pegasi 407 × 3 = **1 221**, Dendroid Guards 690 × 3 = 2 070, Angels 3 585 × 2 = 7 170: the
+  Pegasi; more than one stack, so 3 >> 1: **1 Pegasus** left, the Dendroids' 3 and the Angels' 2
+  kept; then **ADVEVENT 168** (a plain message). **VCMI 1.7.5** (AI value × count: 518 × 3 =
+  1 554, 517 × 3 = 1 551, 5 019 × 2 = 10 038): the **Dendroid Guards**, taking max(1, ⌊3 / 2⌋) =
+  1: **2 Dendroids** left, the Pegasi 3. The wiki (the total fight value; "loses 50% rounded up"):
+  as the original.
+- **The jump** (§4.1, §4.4): the Whirlpool draw over the other Whirlpools' tiles, W2's and W3's
+  twelve (no hero on them yet), one draw; E11-10 in its boat on the drawn tile, **1 400** points
+  (the step's 100; the jump costs none, §5), the maximum 1 500 kept. No sound.
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+owner = "blue"
+at = [50, 61]
+primary = [1, 1, 1, 1]
+army = [["Pegasus", 3], ["Dendroid Guard", 3], ["Angel", 2]]
+
+[[encounter]]
+id = "E11-11"
+title = "A Whirlpool's tie between two equally weak stacks: the first slot or the last"
+questions = ["D-54", "D-55", "ADV-TEL-006"]
+procedure = [
+    "Blue's E11-11 stands on the shore at (51, 61) with 2 Angels (slot 0), 5 Pikemen (slot 1) and 5 Pikemen (slot 2); an empty boat lies at (51, 62), south of it.",
+    "Day 1, Blue's turn, after E11-10's boarding: click the boat (51, 62) twice: E11-11 boards it. Note its tile, points, day's maximum and whether it is in a boat.",
+    "Day 2, Blue's turn, after E11-10's step: read E11-11's points, day's maximum and army. Click W1's (51, 63) twice: E11-11 sails onto it. Note every message (close it), then E11-11's army, its tile (which Whirlpool; column, row), points and day's maximum.",
+]
+record = [
+    { field = "day 1, after the boarding: tile; points; day's maximum; in a boat" },
+    { field = "day 2, before the step: points; day's maximum" },
+    { table = ["slot", "creature", "count before", "count after"], rows = 7 },
+    { field = "the step onto W1: messages (their text)" },
+    { field = "after: tile (W2 or W3; column, row); points; day's maximum; in a boat" },
+    { field = "anything odd" },
+]
+predictions = """
+- **Day 1**: 0 points aboard, the land's maximum **1 560** kept (the Pikemen's speed 4; A-28).
+  **Day 2**: 1 500 and 1 500.
+- **The loss** (survey §4.4, D-54's tie): fight value × count 3 585 × 2 = 7 170, 100 × 5 = 500,
+  500: a tie at 500, and the strict test keeps the first: **slot 1**, 5 >> 1 = **2** Pikemen;
+  slot 0's Angels and slot 2's 5 Pikemen kept; ADVEVENT 168. **VCMI 1.7.5** (`CGWhirlpool::
+  onHeroVisit`, read in T99b2a: the target starts at the first slot, then a reverse scan takes a
+  slot only when strictly weaker; AI value × count 10 038, 400, 400): **slot 2** (the first slot
+  is no tied one, so the last of the tie), taking ⌊5 × 0.5⌋ = 2: **3** left there, slot 1's 5
+  kept. (Were the first slot in the tie, VCMI would keep it, as the original: survey §8's D-54
+  corrected.)
+- **The jump**: one draw over W2's and W3's tiles but E11-10's (a hero of Blue's, not a candidate,
+  §4.1); E11-11 on the drawn tile with **1 400** points.
+"""
+[encounter.hero]
+type = "Mephala"
+specialty = "skill Armorer"
+owner = "blue"
+at = [51, 61]
+primary = [1, 1, 1, 1]
+army = [["Angel", 2], ["Pikeman", 5], ["Pikeman", 5]]
+
+[[encounter]]
+id = "E11-12"
+title = "Lone stacks in a Whirlpool: one Pikeman; 1 775 Azure Dragons; 1 776, past the original's bound"
+questions = ["D-55", "A-38", "ADV-TEL-006"]
+procedure = [
+    "Three Blue heroes, each with one stack: E11-12 on the shore at (52, 61) with one Pikeman, its boat at (52, 62) south of it; E11-12b at (50, 66) with 1 775 Azure Dragons, its boat at (50, 65) north of it; E11-12c at (51, 66) with 1 776 Azure Dragons, its boat at (51, 65) north of it.",
+    "Day 1, Blue's turn, after E11-11's boarding: E11-12, then E11-12b, then E11-12c: click the hero's boat twice; it boards. Note each one's tile, points, day's maximum and whether it is in a boat.",
+    "Day 2, Blue's turn, after E11-11's step: E11-12: read its points, day's maximum and army; click W1's (52, 63) twice: it sails onto it. Note every message (close it), then its army, tile (which Whirlpool; column, row) and points. Then E11-12b the same way onto W1's (50, 64), then E11-12c onto W1's (51, 64).",
+]
+record = [
+    { table = ["hero", "day 1 after the boarding: tile; points; day's maximum; in a boat"], labels = ["E11-12", "E11-12b", "E11-12c"] },
+    { table = ["hero", "day 2 before: points; maximum; army", "messages after the step onto W1", "army after", "tile after (W2 or W3)", "points after; in a boat"], labels = ["E11-12", "E11-12b", "E11-12c"] },
+    { field = "anything odd" },
+]
+predictions = """
+- **Day 1**: each 0 points aboard, the land's maximum kept (A-28): E11-12 **1 560**, E11-12b and
+  E11-12c **2 000** (the Azure Dragons' speed 19). **Day 2**: 1 500 each; after the step 1 400.
+- **E11-12, one Pikeman** (survey §4.4, D-55): the weakest found (100 × 1); one stack, and only a
+  count above 1 is halved: **1 kept**; the message **ADVEVENT 168** all the same. **VCMI**: a lone
+  creature is protected (`isProtected`: one stack of one): nothing lost and **no message**.
+- **E11-12b, 1 775 Azure Dragons** (A-38): 56 315 × 1 775 = 99 959 125, below 99 999 999: the
+  weakest; one stack above 1: 1 775 >> 1 = **887**; ADVEVENT 168. **VCMI** takes ⌊1 775 / 2⌋ =
+  887: **888** left. The wiki ("50% rounded up" lost): 887.
+- **E11-12c, 1 776 Azure Dragons** (A-38; the wiki's "bug"): 56 315 × 1 776 = 100 015 440, not
+  below the bound: no stack is found and the slot stays −1; with one stack the count read at slot
+  −1 is the seventh slot's type (hero +0xA9; −1, the slot empty), not above 1: **all 1 776 kept**,
+  and **ADVEVENT 168 shown** (its call at 0x4ACB71 follows every path past the human and Hat tests;
+  read in T99b2a). **VCMI** (no bound): **888**. The engine (decision 266: no bound, a 64-bit
+  product): 888.
+- **The jumps**: each one draw over the free tiles of W2 and W3 (Blue's landed heroes skipped).
+"""
+[encounter.hero]
+type = "Ufretin"
+specialty = "creature Dwarf"
+owner = "blue"
+at = [52, 61]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+[[encounter.also]]
+type = "Thorgrim"
+specialty = "skill Resistance"
+owner = "blue"
+name = "E11-12b"
+at = [50, 66]
+primary = [1, 1, 1, 1]
+army = [["Azure Dragon", 1775]]
+
+[[encounter.also]]
+type = "Ivor"
+specialty = "creature Wood Elf"
+owner = "blue"
+name = "E11-12c"
+at = [51, 66]
+primary = [1, 1, 1, 1]
+army = [["Azure Dragon", 1776]]
+
+[[encounter]]
+id = "E11-13"
+title = "The Sea Captain's Hat and the Admiral's Hat in a Whirlpool"
+questions = ["ADV-TEL-006", "ADV-SEA-002", "HER-ADV-009"]
+procedure = [
+    "Blue's E11-13 stands on the shore at (52, 66) with ten Pikemen and the Sea Captain's Hat, its boat at (52, 65) north of it. E11-18's hero (Blue's, on X18 (66, 60) since its jump on day 1) has ten Pikemen and the Admiral's Hat; its boat lies at (66, 62).",
+    "Day 1, Blue's turn, after E11-12c's boarding: click the boat (52, 65) twice: E11-13 boards it. Note its tile, points, day's maximum and whether it is in a boat.",
+    "Day 2, Blue's turn, after E11-12c's step: E11-13: read its points, day's maximum and army; click W1's (52, 64) twice: it sails onto it. Note every message, then its army, tile (which Whirlpool; column, row) and points.",
+    "Then E11-18's hero: read its tile, points and day's maximum. Click (66, 61) twice (it walks one step south), then the boat (66, 62) twice: it boards. Note its points, day's maximum and whether it is in a boat. Click W1's (52, 63) once: note the path's tiles, or that none shows. If one shows, click again: it sails there. If none shows, click (61, 63) twice (it sails west; note its points there), then W1's (52, 63) twice (note the path's tiles). Note every message, then its army, tile (which Whirlpool; column, row), points, day's maximum and whether it is in a boat.",
+]
+record = [
+    { field = "E11-13, day 1 after the boarding: tile; points; day's maximum; in a boat" },
+    { field = "E11-13, day 2 before: points; day's maximum; army" },
+    { field = "E11-13: messages after the step onto W1; army after; tile after (W2 or W3); points after; in a boat" },
+    { field = "E11-18's hero, day 2 before: tile; points; day's maximum; army" },
+    { field = "E11-18's hero after the boarding: points; day's maximum; in a boat" },
+    { field = "E11-18's hero: the path to W1's (52, 63) from the boat (its tiles, or none); if none, after the first leg (tile; points) and the second leg's path" },
+    { field = "E11-18's hero: messages after the step onto W1; army after; tile after (W2 or W3); points after; day's maximum; in a boat" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-13, the Sea Captain's Hat** (survey §4.4; `hero_wears_artifact` 0x4D91F0, artifact 123):
+  the losses skipped whole: **10 Pikemen kept, no message**. Day 1: the boarding leaves **0**
+  points (the Sea Captain's Hat gives no free boarding), the land's maximum 1 560 kept (A-28). Day
+  2: 1 500 + the Hat's 500 = **2 000** points and maximum (HER-ADV-009); after the step **1 900**.
+- **E11-18's hero, the Admiral's Hat** (§4.4: the Hat test looks into combinations; the Admiral's
+  Hat holds the Sea Captain's): the same, **10 Pikemen kept, no message**. Day 2 on land: 1 560
+  and 1 560 (the land's, on X18). The step to (66, 61) costs 100; the boarding step 100 more, then
+  free boarding (ADV-SEA-002; D-41, the drop first: none, 1 360 ≥ 100): **1 360 × 3 000 / 1 560 =
+  2 615** (truncated) and the maximum **3 000** (1 500 + 500 + 1 000; batch E8a's E8-1). **The way
+  to W1** (TRAPS.md: a path steps only onto explored tiles, ADV-MOV-008): from the shore Blue's six
+  saw the strait to column 57, E11-18's hero from (66, 61) and (66, 62) to column 61; columns 58 to
+  60 are explored only if a landed hero's arrival saw them, and any hero landed on W2 does (from
+  each W2 tile its radius covers columns 58 to 60 on one of rows 63 to 65): after six jumps almost
+  surely (all six on W3 once in 924: 6! / (12 × 11 × 10 × 9 × 8 × 7)). **A path at once**, then,
+  along rows 62 and 63 with one diagonal: **1 441** (thirteen straight, one diagonal; more if it
+  must bend into rows 64 or 65), so **1 174** after the jump; **none**, then the two legs: **541** to (61, 63)
+  (four straight along row 62, then a diagonal: **2 074**), then **800** along row 63 and **100**
+  onto W1's (52, 63): **1 174** after the jump. The maximum 3 000 kept. (Priced on the written map
+  from (66, 61), X18 being a blocker in the engine until T103, with nothing landed: 2 807 aboard,
+  2 266 at (61, 63), 1 466 at (53, 63); no path from the boat to (53, 63) at once.)
+- **VCMI**: the same for both Hats (`WHIRLPOOL_PROTECTION`).
+- **The jumps**: one draw each over the free tiles of W2 and W3 (five Blue heroes landed before
+  E11-13, six before E11-18's).
+"""
+[encounter.hero]
+type = "Uland"
+specialty = "spell Cure"
+owner = "blue"
+at = [52, 66]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { head = "Sea Captain's Hat" }

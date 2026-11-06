@@ -10,33 +10,15 @@ Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch T
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
 T8a2, then T8b (cut in two: T8b1, T8b2, itself cut in two: T8b2a, T8b2b; rounds 2 to 6, T7a, T7b,
 T8a1, T8a2, T8b1, T8b2a, T8b2b are done, `E09-log.md`). Round 9: T8c cut in two at its start (the
-user, 2026-11-05: at the Rogue; T8c1, T8c2 done); each later round's entries are written when it
-comes (the epic's list; round 9's below), each task's cut confirmed at its start. Every entry's
+user, 2026-11-05: at the Rogue; T8c1, T8c2 done), T9 cut in three (T9a, T9b, T9c done; T9b cut
+in two, T9b2 in two again); each later round's entries are written when it comes (the epic's
+list; round 10's below), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T9 — the fixtures, replays, properties, benchmarks, the env** (`cross-lane`: the adventure
-lane's fixtures, replays, plans and benches, `h3-sim`'s env test; round 9, design §18), cut in
-three at its start (the user, 2026-11-06; decision 32):
-
-- **T9b2b — the hygiene property with towns** (T9b2 cut in two at its start, the user,
-  2026-11-06; decision 34). `a_viewer_learns_nothing_it_cannot_see`
-  meets the plans' towns, `townless` gone: its plans' towns draw nothing public (a random town
-  made fixed, a neutral town's editor garrison given), since it varies the seed and the towns'
-  draws come first in the setup stream (design §14: an owned random town's owner's choice, a
-  random town's faction, a neutral garrison), so that an unseen town's change moves every later
-  one; so made, the towns draw only an owned standard set's level-2 dwelling, which never shows,
-  and the viewer's heroes keep the armies and experience the property gives them; `vary` learns
-  towns (a town's template is no `KINDS` entry: the town lane's `TRAPS.md`; its tiles kept from
-  heroes moved and objects added, its entrance land; where the viewer never sees one: its owner,
-  garrison and buildings, a town removed only after every seen one, as a seen town's `TownId`
-  counts the towns before it, a town added after every other; a town the viewer owns, or whose
-  entrance a hero stands on, keeps its owner); T9b2a's town check in both games; `vary`'s unit
-  test with a town. **Depends on:** T9b2a (done, `E09-log.md`). **Status:** next.
-- **T9c — the benchmarks, the env, the census.** Benchmarks (`benches/adventure/`): `fork-xl-144`,
-  `day-start-towns-36` (new), the reach on the town map, a siege's setup. The env (`h3-sim`, the
-  AI lane's, consent as decision 7): a test playing the town map to its end of days, the bot
-  reports regenerated. With the original data: the 160 maps import and build (exit criterion 1).
-  **Depends on:** T9a (the map `e09-towns-36.h3m`, done).
+**E09 T10 — the audit** (round 10, the epic's task list; design §21): the increment's exit
+criteria checked one by one (the epic's "Exit criteria"), increment 1 closed (its scope, decisions
+and task list to `E09-archive.md`), increment 2 refined with the user. Its cut confirmed at its
+start. **Status:** next.
 
 ## Inbox
 

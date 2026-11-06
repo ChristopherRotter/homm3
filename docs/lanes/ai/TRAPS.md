@@ -83,8 +83,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - A hex network's activations (E25 T7a, `hexnet`) grow with the minibatch's rows: at PPO's (a
   rollout's samples over `[ppo] minibatches` 8, about 3 000) `hexconv` 64 × 6 or `hexformer`
   64 × 4 need several GB each (the sandbox's 15 GB ran out with six students, T7b): a run of
-  one on the user's 8 GB GPU raises `minibatches` (about 48: 512 rows), the bench uses
-  `minibatch` 512.
+  one on the user's 8 GB GPU sums each minibatch's gradient over chunks (`[ppo] accumulate`,
+  E25 T28: 8, 512 rows, `hexconv` 96 × 6's 3 076 MB at T27) and keeps `minibatches`, which
+  would change PPO's steps; the bench uses `minibatch` 512.
 - The trainer (`h3env.train`, ADR-0026): its tests are in the lane command (`uv run --group
   train pytest`); a run is a TOML config (`python/configs/`, `--set`), its budget and cadences in
   samples; its files go into `python/runs/` (ignored). A piece of training state goes into
