@@ -1316,7 +1316,8 @@ pub fn build_only(
         objects.push((m.level, map_monster(m, tables, size)?));
     }
     // Heroes and monsters stand on grounds; two grounds may overlap (the game takes the last). A
-    // plain object counts with every tile it covers.
+    // plain object counts with every tile it covers. A spec makes no town of any kind and no
+    // random hero (the town lane's writer objects, E09 T9a).
     let mut tiles: Vec<(u8, (u8, u8))> = objects
         .iter()
         .flat_map(|(level, o)| match o {
@@ -1336,7 +1337,7 @@ pub fn build_only(
                 .into_iter()
                 .map(|tile| (*level, tile))
                 .collect(),
-            MapObject::Ground(_) => vec![],
+            MapObject::Ground(_) | MapObject::AnyTown(_) | MapObject::RandomHero(_) => vec![],
         })
         .collect();
     tiles.sort_unstable();
@@ -3403,6 +3404,8 @@ mod tests {
                 | MapObject::Ground(_)
                 | MapObject::Plain(_)
                 | MapObject::Town(_)
+                | MapObject::AnyTown(_)
+                | MapObject::RandomHero(_)
                 | MapObject::Reward(_)
                 | MapObject::Owned(_) => None,
             })

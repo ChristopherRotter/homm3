@@ -607,6 +607,21 @@ resources all but wood (45 of 54), a town the standard buildings with a fort (28
 random dwelling every faction and level, a scroll spell 0 and the grail radius 0 (no default
 seen).
 
+**The town lane's additions** (E09 T9a, `writer::AnyTown`, `writer::RandomHero`; a map without them
+is written byte for byte as before): a **town of any kind**, of a fixed faction (98) or random (77,
+`AVCranx0.def`), with a name, a garrison whose stacks may be random (`writer::random_stack`: level
+1's code `0xFFFE`, upgraded `0xFFFD`, down to level 7's upgraded `0xFFF1`), a random town's SoD
+alignment byte (a colour that plays; `0xFF` none), and at most one **main town** per player, owned:
+the header's flag, SoD's generate-hero flag and town-type byte (the faction's subclass, `0xFF` for
+a random town: 382 of the 160 maps' 553 main towns, the other 171 hold 0),
+then its entrance's position (the template's visitable tile). A **random hero** (70,
+`ahrandom.def` with a hero's masks, as in all 36 of the maps' random heroes) has a placed hero's
+body with the type `0xFF`, its experience and army optional, and is left out of its owner's hero
+list. The writer refuses an alignment of a town of a fixed faction or to a colour nobody plays, a
+main town without an owner, with its entrance off the map or a second one of a player, a random
+stack of count 0, and both objects in RoE. `h3-map`'s `writer/town.rs` reads them back; the town
+map (`tests/towns_map.rs`) imports and builds them.
+
 **Town buildings** (a town's custom `built` and `forbidden` bits; VCMI 1.7.5's
 `config/gameConfig.json`, `mapFormat.restorationOfErathia`): 0 Town Hall, 1 City Hall, 2 Capitol,
 3 Fort, 4 Citadel, 5 Castle, 6 Tavern, 7 Blacksmith, 8 Marketplace, 9 Resource Silo, 10 the Tower's

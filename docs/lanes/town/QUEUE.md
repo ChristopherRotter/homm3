@@ -15,24 +15,29 @@ comes (the epic's list; round 9's below), each task's cut confirmed at its start
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E09 T9 — the fixtures, replays, properties, benchmarks, the env** (`cross-lane`: the adventure
-lane's fixtures, replays, plans and benches, `h3-sim`'s env test; round 9, design §18)
+lane's fixtures, replays, plans and benches, `h3-sim`'s env test; round 9, design §18), cut in
+three at its start (the user, 2026-11-06; decision 32):
 
-- **Scope:** the fixture map `e09-towns-36.h3m` written by `h3_map::writer`
-  (`crates/h3-map/src/tests/towns_map.rs`): owned towns of several factions with standard and
-  custom sets (a Capitol, the Grail building, a silo), a neutral town drawn and one empty, a random
-  town of each kind (aligned, owned, neutral), a main town that generates a hero, a random hero, a
-  hero right of an entrance, a garrison with random stacks, a Rogue whose Visions reach a town.
-  Golden replays `fixtures/replays/adventure/towns-*`: random play on it; scripted an undefended
-  capture, a siege won against a garrison, a siege lost against a visitor with the merge, a
-  Capitol limited, the day's income over a week. The plans (`crates/h3-map/src/tests/play.rs`)
-  play towns: one owner per town, the garrison empty after a capture, the store forks and hashes
-  as the state, no hero on another team's entrance. Benchmarks (`benches/adventure/`):
-  `fork-xl-144`, `day-start-towns-36` (new), the reach on the town map, a siege's setup. The env
-  (`h3-sim`, the AI lane's, consent as decision 7): a test playing the town map to its end of days,
-  the bot reports regenerated. With the original data: the 160 maps import and build (exit
-  criterion 1).
-- **Depends on:** T8c2 (its pull requests). **Status:** next; its cut confirmed at its start (a
-  likely seam: T9a the map, the replays and the properties; T9b the benchmarks and the env).
+- **T9a — the writer's town objects, the town map, its replays.** `h3_map::writer` writes a
+  player's main town (and its hero, a random type), random towns (class 77, an alignment), a
+  random hero (class 70) and a garrison's random stacks (new code in `src/writer/town*`). The
+  fixture map `e09-towns-36.h3m` (`crates/h3-map/src/tests/towns_map.rs`): owned towns of several
+  factions with standard and custom sets (a Capitol, the Grail building, a silo), a neutral town
+  drawn and one empty, a random town of each kind (aligned, owned, neutral), a main town that
+  generates a hero, a random hero, a hero right of an entrance, a garrison with random stacks, a
+  Rogue whose Visions reach a town; its test reads it back, imports it and builds it. Golden
+  replays `fixtures/replays/adventure/towns-*`: random play on it; scripted an undefended capture,
+  a siege won against a garrison, a siege lost against a visitor with the merge, a Capitol
+  limited, the day's income over a week. **Status:** in progress (`town/e09-t9a`).
+- **T9b — the plans' towns and their properties.** The plans (`crates/h3-map/src/tests/play.rs`;
+  `view.rs` where the hygiene property meets towns) play towns: one owner per town, the garrison
+  empty after a capture, the store forks and hashes as the state, no hero on another team's
+  entrance. **Depends on:** T9a (the writer's objects).
+- **T9c — the benchmarks, the env, the census.** Benchmarks (`benches/adventure/`): `fork-xl-144`,
+  `day-start-towns-36` (new), the reach on the town map, a siege's setup. The env (`h3-sim`, the
+  AI lane's, consent as decision 7): a test playing the town map to its end of days, the bot
+  reports regenerated. With the original data: the 160 maps import and build (exit criterion 1).
+  **Depends on:** T9a (the map).
 
 ## Inbox
 
