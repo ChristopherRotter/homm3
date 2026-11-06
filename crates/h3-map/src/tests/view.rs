@@ -20,19 +20,38 @@ use proptest::test_runner::TestCaseError;
 
 use super::import::object;
 use super::play::{
-    BLOCKERS, DWELLINGS, FAITHFUL, HERO_TEMPLATE, KINDS, MONSTER_OBJECTS, STRICT, Slots, Spot,
-    Step, all_objects, army, at_sea, experience, experienced, lay_out, masks, object_index,
-    object_reach, options, plan, player_of, resolve, slots, start_on, steps, tile,
+    BLOCKERS, DWELLINGS, FAITHFUL, HERO_TEMPLATE, KINDS, LEVEL_1, MONSTER_OBJECTS, SHIPYARD_OBJECT,
+    STRICT, Slots, Spot, Step, TOWN_BLOCKED, TOWN_BUILDINGS, TOWN_ENTRANCE, TownPlan, add_town,
+    all_objects, army, at_sea, experience, experienced, lay_out, masks, object_index, object_reach,
+    options, plan, player_of, resolve, slots, start_on, steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
-/// The plans without their towns (E09 T9b1): the hygiene property meets the towns with E09 T9b2b
-/// (the told views met them with T9b2a).
-fn townless() -> impl Strategy<Value = super::play::Plan> {
-    plan().prop_map(|plan| super::play::Plan {
-        towns: Vec::new(),
-        ..plan
+/// The plans whose towns draw nothing a viewer may see, for the hygiene property (E09 T9b2b;
+/// decision 34; [`hygienic_town`]). It builds its other game with another seed, and the towns'
+/// draws come first in the setup stream (the town epic's design note §14: a random town's faction,
+/// a town's buildings and garrison), so that a change of a town the viewer never sees ([`vary`])
+/// moves every later draw: a seen random town's faction or a neutral garrison would show another
+/// draw in the other game. So made, the towns draw only an owned standard set's level-2 dwelling
+/// with a Fort (TWN-SET-003), which no view shows, and no main town generates a hero, so that the
+/// viewer's heroes keep the armies and experience the property gives them.
+fn hygienic() -> impl Strategy<Value = super::play::Plan> {
+    plan().prop_map(|mut plan| {
+        plan.towns.iter_mut().for_each(hygienic_town);
+        plan
     })
+}
+
+/// A plan's town that draws nothing a viewer may see ([`hygienic`]): a random town made a town of
+/// a fixed faction (its hero's index as the code; its alignment then unused), a neutral town's
+/// editor garrison (drawn, TWN-SET-004) given as ten of a level-1 creature in its first slot.
+fn hygienic_town(town: &mut TownPlan) {
+    let faction = *town.faction.get_or_insert(town.at.1);
+    if town.owner.is_none() && !town.visited && town.garrison.is_none() {
+        let mut slots = vec![None; 7];
+        slots[0] = Some((LEVEL_1[usize::from(faction) % LEVEL_1.len()], 10));
+        town.garrison = Some(slots);
+    }
 }
 
 /// What the hygiene test changes of a game where the viewer cannot see it, drawn as the plan is.
@@ -63,8 +82,17 @@ struct Unseen {
     /// playing colour but the viewer's by its index (modulo their number), or none (neutral). Its
     /// owner shows only with the object (ADV-OWN-003), and its reveal at the start is its owner's
     /// (ADV-OWN-001). (E08 T96b1) A dwelling's too (increment 10's design note §10: its owner
-    /// shows with it), the random dwellings after every other ownable object.
+    /// shows with it), the random dwellings after every other ownable object; (E09 T9b2b) a
+    /// town's after them, one the viewer owns or whose entrance a hero stands on kept.
     owners: Vec<Option<u8>>,
+    /// (E09 T9b2b) For each town the viewer never sees and does not own, in the map's order
+    /// (cyclically; empty: kept): another garrison (none: kept; the editor's or seven slots) and
+    /// other buildings ([`TOWN_BUILDINGS`] by index; none: kept).
+    towns: Vec<(Option<Slots>, Option<usize>)>,
+    /// (E09 T9b2b) Towns added where the viewer never sees them, after every other object: anchor
+    /// (modulo the map) and town (its faction, owner, garrison, formation and buildings as a
+    /// plan's, made [`hygienic_town`]; its owner a playing colour but the viewer's by its index).
+    added_towns: Vec<(Spot, TownPlan)>,
 }
 
 /// Each kind of change in about half the cases, so that some cases keep the other players'
@@ -96,9 +124,21 @@ fn unseen() -> impl Strategy<Value = Unseen> {
             Just(Vec::new()),
             vec(proptest::option::of(any::<u8>()), 1..=4)
         ],
+        // E09 T9b2b, after them for the same reason.
+        prop_oneof![
+            Just(Vec::new()),
+            vec(
+                (
+                    proptest::option::weighted(0.5, army()),
+                    proptest::option::weighted(0.5, 0..TOWN_BUILDINGS.len()),
+                ),
+                1..=4
+            )
+        ],
+        vec((any::<Spot>(), super::play::town()), 0..=2),
     )
         .prop_map(
-            |(seed, armies, tiles, removed, added, moved, experience, owners)| Unseen {
+            |(
                 seed,
                 armies,
                 tiles,
@@ -107,6 +147,21 @@ fn unseen() -> impl Strategy<Value = Unseen> {
                 moved,
                 experience,
                 owners,
+                towns,
+                added_towns,
+            )| {
+                Unseen {
+                    seed,
+                    armies,
+                    tiles,
+                    removed,
+                    added,
+                    moved,
+                    experience,
+                    owners,
+                    towns,
+                    added_towns,
+                }
             },
         )
 }
@@ -138,6 +193,55 @@ fn covers(anchor: Spot, template: usize, side: u8) -> impl Iterator<Item = Spot>
             let y = ay.checked_sub(row).filter(|&y| y < side)?;
             Some((x, y, az))
         })
+}
+
+/// The tiles of the map a plan's object other than a hero covers ([`covers`]; E09 T9b2b: a town's
+/// [`town_covers`], since its template is no `KINDS` entry, the town lane's `TRAPS.md`).
+fn footprint(o: &Object, side: u8) -> Vec<Spot> {
+    let anchor = (o.pos.x, o.pos.y, o.pos.z);
+    if matches!(o.body, Body::Town(_)) {
+        town_covers(anchor, side).collect()
+    } else {
+        covers(anchor, usize::try_from(o.template - 1).unwrap(), side).collect()
+    }
+}
+
+/// The tiles a plan's town anchored at `anchor` covers on the map (E09 T9b2b; `play.rs`'s
+/// [`TOWN_BLOCKED`], its entrance among them).
+fn town_covers((ax, ay, az): Spot, side: u8) -> impl Iterator<Item = Spot> {
+    TOWN_BLOCKED.iter().filter_map(move |&(column, row)| {
+        let x = ax.checked_sub(column).filter(|&x| x < side)?;
+        Some((x, ay.checked_sub(row)?, az))
+    })
+}
+
+/// The entrance of a plan's town anchored at `anchor` (E09 T9b2b; `play.rs`'s
+/// [`TOWN_ENTRANCE`]), if it lies on the map.
+fn town_entrance((ax, ay, az): Spot) -> Option<Spot> {
+    Some((
+        ax.checked_sub(TOWN_ENTRANCE.0)?,
+        ay.checked_sub(TOWN_ENTRANCE.1)?,
+        az,
+    ))
+}
+
+/// A Shipyard's offsets from its entrance where its boat tile may lie (ADV-SHY-001), the packs'
+/// (every Shipyard's kind has the original's twelve).
+fn shipyard_offsets() -> &'static [(i8, i8)] {
+    let types = FAITHFUL.adventure().object_types();
+    types
+        .iter()
+        .find_map(|t| match &t.kind {
+            ObjectKind::Shipyard { offsets, .. } => Some(offsets.as_slice()),
+            _ => None,
+        })
+        .unwrap()
+}
+
+/// The class of a plan's object by its template (`KINDS`), none for a hero or (E09 T9b2b) a town.
+fn kind(o: &Object) -> Option<u32> {
+    (o.template != HERO_TEMPLATE && !matches!(o.body, Body::Town(_)))
+        .then(|| KINDS[usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()].0)
 }
 
 /// The heroes of `m`, in the map's order: each one's owner (a colour) and army.
@@ -173,7 +277,12 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 /// dwelling (increment 10's objects in the plans) shows as the dwelling the build resolves it to,
 /// whose footprint may lie past its template's at a moved anchor: it is removed, or its owner at
 /// load changed, only where the viewer sees none of the tiles it may cover once resolved
-/// ([`object_reach`]), and no hero is moved onto one of those tiles.
+/// ([`object_reach`]), and no hero is moved onto one of those tiles. (E09 T9b2b) A town the viewer
+/// never sees ([`footprint`]) may take another owner (not where a hero stands on its entrance),
+/// garrison and buildings, unless it is the viewer's; it is removed only after every town the
+/// viewer sees (a seen town's `TownId` counts the towns before it), and towns are added after
+/// every other object; its tiles take no hero moved and no object added, its entrance stays land.
+/// A Shipyard's offsets where its boat tile may lie (ADV-SHY-001) keep their terrain and objects.
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -193,15 +302,15 @@ fn vary(
     let afloat: Vec<Spot> = m
         .objects
         .iter()
-        .filter(|o| o.template != HERO_TEMPLATE)
-        .filter(|o| KINDS[usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()].0 == 8)
+        .filter(|o| kind(o) == Some(8))
         .map(|o| (o.pos.x, o.pos.y, o.pos.z))
         .collect();
     // E08 T86b1: an ownable object's entrance stays land, as a hero's tile (the import refuses one
     // on water: `OwnedOnWater`); (E08 T96b1) an abandoned mine's too, which is ownable (`lay_out`'s
     // `OWNABLE`) though neutral at load, with no owner in its body. (E08 T97b1) Not a dwelling's
     // (whose body is `Owned`) nor a random dwelling's: the import builds one entered from water
-    // and `lay_out` lays it out there (survey `E08-dwellings.md` §17).
+    // and `lay_out` lays it out there (survey `E08-dwellings.md` §17). (E09 T9b2b) A town's
+    // entrance too, as the plans lay them out (`play.rs`'s `towns_laid_out`).
     let entrances: Vec<Spot> = m
         .objects
         .iter()
@@ -222,11 +331,43 @@ fn vary(
                 ))
             })
         })
+        .chain(
+            m.objects
+                .iter()
+                .filter(|o| matches!(o.body, Body::Town(_)))
+                .filter_map(|o| town_entrance((o.pos.x, o.pos.y, o.pos.z))),
+        )
+        .collect();
+    // A Shipyard's boat tile is fixed when the game is built: the first of its kind's offsets from
+    // its entrance on water that no object blocks or is visited from (ADV-SHY-001), and a boat
+    // built there shows it to its builder and to the players that see the tile (ADV-SHY-002), so
+    // that these tiles keep their terrain and what objects cover them, from each tile a Shipyard is
+    // visited from (a case of `master`'s found by E09 T9b2b's stress: another player's boat built
+    // on a tile the viewer sees, as an earlier offset it never saw became land).
+    let harbour: Vec<Spot> = m
+        .objects
+        .iter()
+        .filter(|o| kind(o) == Some(87))
+        .flat_map(|o| {
+            let (_, visitable) = masks(usize::try_from(o.template - 1).unwrap());
+            let (ax, ay, az) = (o.pos.x, o.pos.y, o.pos.z);
+            visitable.iter().flat_map(move |&(column, row)| {
+                let entrance = ax.checked_sub(column).zip(ay.checked_sub(row));
+                shipyard_offsets().iter().filter_map(move |&(dx, dy)| {
+                    let (ex, ey) = entrance?;
+                    let x = ex.checked_add_signed(dx).filter(|&x| x < side)?;
+                    let y = ey.checked_add_signed(dy).filter(|&y| y < side)?;
+                    Some((x, y, az))
+                })
+            })
+        })
         .collect();
     let spots =
         (0..levels).flat_map(|z| (0..side).flat_map(move |y| (0..side).map(move |x| (x, y, z))));
     for ((spot, tile), new) in spots.zip(&mut m.terrain.tiles).zip(&unseen.tiles) {
-        if let Some((terrain, road, river)) = new.filter(|_| ground(spot)) {
+        if let Some((terrain, road, river)) =
+            new.filter(|_| ground(spot) && !harbour.contains(&spot))
+        {
             tile.terrain =
                 if terrain >= 8 && (standing.contains(&spot) || entrances.contains(&spot)) {
                     2
@@ -246,24 +387,25 @@ fn vary(
     let seen_monsters: Vec<Spot> = m
         .objects
         .iter()
-        .filter(|o| o.template != HERO_TEMPLATE)
-        .flat_map(|o| {
-            let template = usize::try_from(o.template - 1).unwrap();
-            let monster = KINDS[template / BLOCKERS.len()].0 == 54;
-            covers((o.pos.x, o.pos.y, o.pos.z), template, side).filter(move |_| monster)
-        })
+        .filter(|o| kind(o) == Some(54))
+        .flat_map(|o| footprint(o, side))
         .filter(|&spot| !ground(spot))
         .collect();
     let unseen_blocker = |anchor: Spot, template: usize| {
         let monster = KINDS[template / BLOCKERS.len()].0 == 54;
         covers(anchor, template, side).all(|spot| {
-            objects(spot) && (!monster || ground(spot)) && !seen_monsters.contains(&spot)
+            objects(spot)
+                && (!monster || ground(spot))
+                && !seen_monsters.contains(&spot)
+                && !harbour.contains(&spot)
         })
     };
-    // E08 T96b1: a random dwelling the viewer owns at load stays too (its body holds its owner).
+    // E08 T96b1: a random dwelling the viewer owns at load stays too (its body holds its owner);
+    // (E09 T9b2b) and a town.
     let own = |o: &Object| match o.body {
         Body::Mine { owner } | Body::Owned { owner } => owner == u32::from(colour),
         Body::RandomDwelling(ref d) => d.owner == u32::from(colour),
+        Body::Town(ref t) => t.owner == colour,
         _ => false,
     };
     // E08 T96b1: the tiles a random dwelling may cover once resolved past its template's
@@ -273,27 +415,57 @@ fn vary(
     let unseen_reach = |o: &Object| {
         object_reach(o, side)
             .into_iter()
-            .all(|spot| objects(spot) && !seen_monsters.contains(&spot))
+            .all(|spot| objects(spot) && !seen_monsters.contains(&spot) && !harbour.contains(&spot))
     };
-    let mut blocker = 0;
+    // E09 T9b2b: a town (whose tiles no other object's of a plan cover) is removed only where
+    // the viewer sees none of its tiles nor a monster there, as a blocker, and only after every
+    // town it sees: a seen town's `TownId`, which its view and its object's show, counts the towns
+    // before it (`docs/06-security.md`, "What a viewer may know: a town").
+    let unseen_town = |o: &Object| {
+        footprint(o, side)
+            .into_iter()
+            .all(|spot| objects(spot) && !seen_monsters.contains(&spot) && !harbour.contains(&spot))
+    };
+    let seen: Vec<bool> = m
+        .objects
+        .iter()
+        .filter(|o| matches!(o.body, Body::Town(_)))
+        .map(|o| !footprint(o, side).into_iter().all(&objects))
+        .collect();
+    let last_seen = seen.iter().rposition(|&seen| seen);
+    let (mut blocker, mut town) = (0, 0);
     m.objects.retain(|o| {
         if o.template == HERO_TEMPLATE {
             return true;
         }
-        let template = usize::try_from(o.template - 1).unwrap();
         let index = blocker;
         blocker += 1;
         let removed = unseen.removed.get(index % unseen.removed.len().max(1)) == Some(&true);
+        if matches!(o.body, Body::Town(_)) {
+            let ordinal = town;
+            town += 1;
+            let after = last_seen.is_none_or(|seen| ordinal > seen);
+            return own(o) || !(removed && after && unseen_town(o));
+        }
+        let template = usize::try_from(o.template - 1).unwrap();
         own(o)
             || !(removed
                 && unseen_blocker((o.pos.x, o.pos.y, o.pos.z), template)
                 && unseen_reach(o))
     });
+    // E09 T9b2b: the towns' tiles, which no blocker added covers.
+    let towns: Vec<Spot> = m
+        .objects
+        .iter()
+        .filter(|o| matches!(o.body, Body::Town(_)))
+        .flat_map(|o| footprint(o, side))
+        .collect();
     for &((x, y, z), template) in &unseen.added {
         let anchor = (x % side, y % side, z % levels);
         if unseen_blocker(anchor, template)
-            && covers(anchor, template, side)
-                .all(|spot| !standing.contains(&spot) && !afloat.contains(&spot))
+            && covers(anchor, template, side).all(|spot| {
+                !standing.contains(&spot) && !afloat.contains(&spot) && !towns.contains(&spot)
+            })
         {
             let mut o = object(
                 anchor.0,
@@ -317,10 +489,8 @@ fn vary(
     // ([`object_reach`]).
     let mut ownable = 0;
     let unseen_owner = |o: &Object| {
-        let at = (o.pos.x, o.pos.y, o.pos.z);
-        let template = usize::try_from(o.template.saturating_sub(1)).unwrap();
         o.template != HERO_TEMPLATE
-            && covers(at, template, side).all(&objects)
+            && footprint(o, side).into_iter().all(&objects)
             && object_reach(o, side).into_iter().all(&objects)
     };
     for random in [false, true] {
@@ -348,16 +518,90 @@ fn vary(
             }
         }
     }
+    // E09 T9b2b: the towns the viewer never sees, after every other ownable object: their owners
+    // (one a hero stands on the entrance of keeps it: its visitor at load, TWN-VIS-002, whose
+    // owner's team the town is), garrisons and buildings. One the viewer owns keeps all three: its
+    // view shows them to it (TWN-VEW-003's owner's facts), its Tavern the level of every other
+    // town's view (TWN-VEW-002), its garrison its own army.
+    let mut changed = 0;
+    for o in &mut m.objects {
+        if !matches!(o.body, Body::Town(_)) || !unseen_owner(o) {
+            continue;
+        }
+        let visited = town_entrance((o.pos.x, o.pos.y, o.pos.z))
+            .is_some_and(|entrance| standing.contains(&entrance));
+        let Body::Town(body) = &mut o.body else {
+            continue;
+        };
+        let index = ownable;
+        ownable += 1;
+        if body.owner == colour {
+            continue;
+        }
+        match unseen.owners.get(index % unseen.owners.len().max(1)) {
+            Some(Some(n)) if !playing.is_empty() && !visited => {
+                body.owner = playing[usize::from(*n) % playing.len()];
+            }
+            Some(None) if !visited => body.owner = u8::MAX,
+            _ => {}
+        }
+        let change = unseen.towns.get(changed % unseen.towns.len().max(1));
+        changed += 1;
+        let Some((garrison, buildings)) = change else {
+            continue;
+        };
+        if let Some(slots) = garrison {
+            body.garrison = slots.as_deref().map(stacks);
+        }
+        if let Some(buildings) = *buildings {
+            body.buildings = TOWN_BUILDINGS[buildings].clone();
+        }
+    }
+    // E09 T9b2b: towns added where the viewer never sees them, after every other object (so
+    // after every town, whose `TownId`s stay), as a plan's are laid out: on no tile of a hero, a
+    // boat or another object (nor one a random dwelling may cover once resolved), nor a monster
+    // the viewer sees, the entrance on the map's land.
+    for ((x, y, z), town) in &unseen.added_towns {
+        let anchor = (x % side, y % side, z % levels);
+        let taken: Vec<Spot> = m
+            .objects
+            .iter()
+            .filter(|o| o.template != HERO_TEMPLATE)
+            .flat_map(|o| footprint(o, side).into_iter().chain(object_reach(o, side)))
+            .collect();
+        let land = town_entrance(anchor).is_some_and(|(ex, ey, ez)| {
+            let at = (usize::from(ez) * usize::from(side) + usize::from(ey)) * usize::from(side)
+                + usize::from(ex);
+            m.terrain.tiles[at].terrain < 8
+        });
+        let free = town_covers(anchor, side).all(|spot| {
+            objects(spot)
+                && !seen_monsters.contains(&spot)
+                && !standing.contains(&spot)
+                && !afloat.contains(&spot)
+                && !taken.contains(&spot)
+                && !harbour.contains(&spot)
+        });
+        if land && free {
+            let mut town = TownPlan {
+                visited: false,
+                ..town.clone()
+            };
+            hygienic_town(&mut town);
+            let owner = town
+                .owner
+                .filter(|_| !playing.is_empty())
+                .map_or(u8::MAX, |n| playing[usize::from(n) % playing.len()]);
+            add_town(&mut m, anchor, &town, owner, None);
+        }
+    }
     // E08 T96b1: and the tiles a random dwelling may cover once resolved, whatever it draws (the
     // setup refuses a hero there, `SetupError::RandomDwellingTile`).
     let blocked: Vec<Spot> = m
         .objects
         .iter()
         .filter(|o| o.template != HERO_TEMPLATE)
-        .flat_map(|o| {
-            let template = usize::try_from(o.template - 1).unwrap();
-            covers((o.pos.x, o.pos.y, o.pos.z), template, side).chain(object_reach(o, side))
-        })
+        .flat_map(|o| footprint(o, side).into_iter().chain(object_reach(o, side)))
         .collect();
     let mut other = 0;
     for o in &mut m.objects {
@@ -1713,8 +1957,8 @@ fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
 
 /// Whether a command was accepted, each hero's move (id, columns, rows, levels), the steps told,
 /// the decisions opened (0), refused (1), declined (2) or accepted (3), (E08 T19a) every
-/// battle event, start and end, and the heroes removed, (E08 T31) whom the game waits for, and
-/// (E09 T9b2a) the guards' hints it changed.
+/// battle event, start and end, and the heroes removed, (E08 T31) whom the game waits for,
+/// (E09 T9b2a) the guards' hints it changed and (E09 T9b2b) the towns' Capitols it changed.
 type Outcome = (
     bool,
     Vec<(HeroId, i32, i32, i32)>,
@@ -1723,6 +1967,7 @@ type Outcome = (
     Vec<GameEvent>,
     Option<PlayerId>,
     Vec<AdventureEventKind>,
+    Vec<(TownId, bool)>,
 );
 
 /// What a command of `player` did in a game, as the hygiene test compares it between two games
@@ -1735,7 +1980,11 @@ type Outcome = (
 /// a hero leaves at its mine come from its army, which the test may change where the viewer never
 /// sees it, and their hint is every viewer's that sees the mine (ADV-OWN-003), as a battle shows
 /// its side the other's stacks (a case of `master` before T9b2a: another player's hero left
-/// guards of another creature in the other game at a mine the viewer saw).
+/// guards of another creature in the other game at a mine the viewer saw). (E09 T9b2b) And the
+/// Capitols it changed (`TownChanged`'s town and Capitol, not who sees it): a capture takes the
+/// town's Capitol away when its new owner holds another (TWN-CAP-002), which may stand in a town
+/// the viewer never sees, whose owner and buildings the test may change, and the change is told
+/// to every viewer that sees the town.
 fn outcome(
     (player, accepted): (PlayerId, bool),
     before: &[(HeroId, TilePos)],
@@ -1802,6 +2051,13 @@ fn outcome(
             _ => None,
         })
         .collect();
+    let capitols = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::TownChanged { town, capitol, .. } => Some((town, capitol)),
+            _ => None,
+        })
+        .collect();
     (
         accepted,
         moved,
@@ -1810,6 +2066,7 @@ fn outcome(
         battles,
         after.waiting_for(),
         guards,
+        capitols,
     )
 }
 
@@ -1848,10 +2105,15 @@ proptest! {
     /// of the viewer's at a camp, or at a dwelling whose counts differ between the two games, ends
     /// the comparison when the two games' differ; at any other dwelling the two are the same. And
     /// every step checks what the viewer is shown of them in both games
-    /// ([`check_hire_sources`]).
+    /// ([`check_hire_sources`]). Since E09 T9b2b the plans hold towns that draw nothing the viewer
+    /// may see ([`hygienic`]), and the other game may hold other owners, garrisons and buildings
+    /// of the towns the viewer never sees, fewer of them after every town it sees, more after
+    /// every other ([`vary`]); a capture's Capitol taken away (TWN-CAP-002) must go alike in both
+    /// games ([`outcome`]); and at the start and every step, what the viewer is shown of the towns
+    /// in both games ([`check_town_views`]).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
-        plan in townless(),
+        plan in hygienic(),
         strict in any::<bool>(),
         seed in any::<u64>(),
         steps in steps(),
@@ -1906,6 +2168,10 @@ proptest! {
         let mut a = start_on(&m, rules, seed);
         let mut b = start_on(&other, rules, unseen.seed.unwrap_or(seed));
         check_same(&a, &b, rules, viewer)?;
+        // E09 T9b2b: what the viewer is shown of the towns, in both games.
+        for game in [&a, &b] {
+            check_town_views(game, rules, viewer, &observe(game, rules, Viewer::Player(viewer)))?;
+        }
         for step in &steps {
             let legal = options(&a, rules);
             let (actor, command) = resolve(&a, rules, &legal, step);
@@ -1928,10 +2194,11 @@ proptest! {
             }
             let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
             // E08 T96b1: what the viewer is shown of the dwellings and the camps, in both games
-            // (the other's owners at load, armies and seed differ).
+            // (the other's owners at load, armies and seed differ); (E09 T9b2b) and of the towns.
             for (game, events) in [(&a, &ta), (&b, &tb)] {
                 let seen = observe(game, rules, Viewer::Player(viewer));
                 check_hire_sources(game, rules, viewer, &seen, events)?;
+                check_town_views(game, rules, viewer, &seen)?;
             }
             // A battle shows its side the other's stacks (survey `E08-battles.md` §9; E08
             // T19a): the comparison ends when the viewer's starts.
@@ -2252,6 +2519,8 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         moved: vec![Some((6, 2, 0))],
         experience: vec![Some(3_000)],
         owners: Vec::new(),
+        towns: Vec::new(),
+        added_towns: Vec::new(),
     };
     let other = vary(&m, 0, &unseen, |_| true, |_| true);
     // Every tile is swamp with a road and a river but the heroes', which stay land as swamp is.
@@ -2368,6 +2637,8 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         moved: Vec::new(),
         experience: Vec::new(),
         owners: vec![None],
+        towns: Vec::new(),
+        added_towns: Vec::new(),
     };
     let blue = |removed: bool, objects: &dyn Fn(Spot) -> bool| {
         random(&vary(&m, 1, &unseen(removed), |_| true, objects))
@@ -2379,6 +2650,230 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
     }
     let red = vary(&m, 0, &unseen(true), |_| true, |_| true);
     assert_eq!(random(&red), [((5, 3, 0), 0)]);
+}
+
+/// [`vary`] keeps the tiles where a Shipyard's boat tile may lie (ADV-SHY-001; a case of
+/// `master`'s found by E09 T9b2b's stress): with every tile unseen, the twelve offsets from the
+/// entrance of a Shipyard anchored at (4, 4), visited from (3, 4), keep their dirt while the other
+/// tiles turn to water (the heroes' and the entrance's to grass), a blocker on one of them stays
+/// and none is added over one, while elsewhere a blocker is removed and another added.
+#[test]
+fn vary_keeps_a_shipyard_s_boat_tiles() {
+    let plan = super::play::Plan {
+        version: crate::model::Version::Sod,
+        side: 8,
+        two_levels: false,
+        tiles: vec![(0, 0, 0); 64],
+        players: vec![(0, true), (1, true)],
+        heroes: vec![((1, 1, 0), None), ((6, 6, 0), None)],
+        hero_types: 0,
+        backpacks: vec![],
+        skills: vec![],
+        kits: vec![],
+        nomads: None,
+        blockers: vec![((4, 4, 0), SHIPYARD_OBJECT), ((2, 3, 0), 0), ((7, 0, 0), 0)],
+        difficulty: 1,
+        exchange: None,
+        events: Vec::new(),
+        owners: Vec::new(),
+        towns: Vec::new(),
+    };
+    let m = lay_out(&plan);
+    let unseen = Unseen {
+        seed: None,
+        armies: Vec::new(),
+        tiles: vec![Some((8, 0, 0)); 64],
+        removed: vec![true],
+        added: vec![((1, 4, 0), 0), ((0, 7, 0), 0)],
+        moved: Vec::new(),
+        experience: Vec::new(),
+        owners: Vec::new(),
+        towns: Vec::new(),
+        added_towns: Vec::new(),
+    };
+    let other = vary(&m, 0, &unseen, |_| true, |_| true);
+    let dirt: Vec<(usize, usize)> = (0..64)
+        .filter(|&i| other.terrain.tiles[i].terrain == 0)
+        .map(|i| (i % 8, i / 8))
+        .collect();
+    let mut offsets: Vec<(usize, usize)> = shipyard_offsets()
+        .iter()
+        .map(|&(dx, dy)| {
+            (
+                3usize.wrapping_add_signed(dx.into()),
+                4usize.wrapping_add_signed(dy.into()),
+            )
+        })
+        .collect();
+    offsets.sort_by_key(|&(x, y)| (y, x));
+    assert_eq!(dirt, offsets);
+    let grass = (0..64).filter(|&i| other.terrain.tiles[i].terrain == 2);
+    assert_eq!(
+        grass.map(|i| (i % 8, i / 8)).collect::<Vec<_>>(),
+        [(1, 1), (3, 4), (6, 6)]
+    );
+    let blockers = |m: &RawMap| -> Vec<(u8, u8)> {
+        let objects = m.objects.iter().filter(|o| o.template == 1);
+        objects.map(|o| (o.pos.x, o.pos.y)).collect()
+    };
+    assert_eq!(blockers(&m), [(2, 3), (7, 0)]);
+    assert_eq!(blockers(&other), [(2, 3), (0, 7)]);
+}
+
+/// [`vary`] and the towns (E09 T9b2b): Red's own town at (4, 12) keeps everything; where Red sees
+/// none of its tiles, Blue's at (15, 12), the neutral one at (4, 2) and Blue's at (15, 3), whose
+/// entrance Blue's hero stands on (its visitor at load), take another garrison and buildings and
+/// the first two another owner, Blue's visited one keeping its own; a town is removed only after
+/// every town Red sees; a town is added after every other where Red sees none of its tiles, on
+/// none of another object's; the games build on every map so changed.
+#[test]
+fn vary_changes_the_towns_the_viewer_never_sees_only() {
+    let town = |(at, hero): ((u8, u8), u8), owner, faction, visited| TownPlan {
+        at: (at, hero),
+        faction: Some(faction),
+        owner,
+        alignment: None,
+        garrison: None,
+        buildings: 0,
+        tight: false,
+        visited,
+    };
+    let plan = super::play::Plan {
+        version: crate::model::Version::Sod,
+        side: 16,
+        two_levels: false,
+        tiles: vec![(0, 0, 0); 256],
+        players: vec![(0, true), (1, true)],
+        // Red's, Blue's, Red's and Blue's.
+        heroes: vec![
+            ((2, 13, 0), None),
+            ((13, 13, 0), None),
+            ((2, 3, 0), None),
+            ((13, 3, 0), None),
+        ],
+        hero_types: 0,
+        backpacks: vec![],
+        skills: vec![],
+        kits: vec![],
+        nomads: None,
+        blockers: vec![],
+        difficulty: 1,
+        exchange: None,
+        events: Vec::new(),
+        owners: Vec::new(),
+        // Each entrance a row above its hero, the last one on its hero's tile.
+        towns: vec![
+            town(((2, 0), 0), Some(0), 0, false),
+            town(((2, 0), 1), Some(1), 1, false),
+            town(((2, 0), 2), None, 2, false),
+            town(((2, 0), 3), None, 3, true),
+        ],
+    };
+    let m = lay_out(&plan);
+    // Each town's anchor, owner, garrison and buildings.
+    type Town = (
+        Spot,
+        u8,
+        Option<Vec<Option<Stack>>>,
+        crate::model::Buildings,
+    );
+    let towns = |m: &RawMap| -> Vec<Town> {
+        m.objects
+            .iter()
+            .filter_map(|o| match &o.body {
+                Body::Town(t) => Some((
+                    (o.pos.x, o.pos.y, o.pos.z),
+                    t.owner,
+                    t.garrison.clone(),
+                    t.buildings.clone(),
+                )),
+                _ => None,
+            })
+            .collect()
+    };
+    let standard = TOWN_BUILDINGS[0].clone();
+    let at = [(4, 12, 0), (15, 12, 0), (4, 2, 0), (15, 3, 0)];
+    let owners = [0, 1, u8::MAX, 1];
+    let laid: Vec<Town> = at
+        .iter()
+        .zip(owners)
+        .map(|(&at, owner)| (at, owner, None, standard.clone()))
+        .collect();
+    assert_eq!(towns(&m), laid);
+    let pikemen = vec![Some((0, 5)), None, None, None, None, None, None];
+    let unseen = |removed: bool, added_towns| Unseen {
+        seed: None,
+        armies: Vec::new(),
+        tiles: Vec::new(),
+        removed: vec![removed],
+        added: Vec::new(),
+        moved: Vec::new(),
+        experience: Vec::new(),
+        owners: vec![None],
+        towns: vec![(Some(Some(pikemen.clone())), Some(2))],
+        added_towns,
+    };
+    let build = |m: &RawMap| assert_eq!(start_on(m, &FAITHFUL, 1).players(), 2);
+    // Nothing unseen: every town kept.
+    assert_eq!(
+        towns(&vary(
+            &m,
+            0,
+            &unseen(true, Vec::new()),
+            |_| false,
+            |_| false
+        )),
+        laid
+    );
+    // Everything unseen: Red's kept, the others changed, Blue's visited one still Blue's.
+    let changed = (Some(stacks(&pikemen)), TOWN_BUILDINGS[2].clone());
+    let other = vary(&m, 0, &unseen(false, Vec::new()), |_| true, |_| true);
+    let mut expected = vec![laid[0].clone()];
+    for (&at, owner) in at[1..].iter().zip([u8::MAX, u8::MAX, 1]) {
+        expected.push((at, owner, changed.0.clone(), changed.1.clone()));
+    }
+    assert_eq!(towns(&other), expected);
+    build(&other);
+    // Removed where unseen: all but Red's; with the neutral town seen, only the town after it.
+    let seen = |town: Spot| move |spot: Spot| !town_covers(town, 16).any(|t| t == spot);
+    let removed = vary(&m, 0, &unseen(true, Vec::new()), |_| true, |_| true);
+    assert_eq!(towns(&removed), [laid[0].clone()]);
+    build(&removed);
+    let removed = vary(&m, 0, &unseen(true, Vec::new()), |_| true, seen(at[2]));
+    assert_eq!(
+        towns(&removed),
+        [laid[0].clone(), expected[1].clone(), laid[2].clone()]
+    );
+    build(&removed);
+    // Added after every other object, Blue's (the only playing colour but Red's), where Red sees
+    // none of its tiles and no other object covers one.
+    let added = |at: Spot| {
+        let mut town = town(((0, 0), 0), Some(0), 3, true);
+        town.buildings = 1;
+        vec![(at, town)]
+    };
+    let other = vary(&m, 0, &unseen(false, added((8, 8, 0))), |_| true, |_| true);
+    let mut with = expected.clone();
+    with.push(((8, 8, 0), 1, None, TOWN_BUILDINGS[1].clone()));
+    assert_eq!(towns(&other), with);
+    assert!(matches!(other.objects.last().unwrap().body, Body::Town(_)));
+    build(&other);
+    let other = vary(
+        &m,
+        0,
+        &unseen(false, added((8, 8, 0))),
+        |_| true,
+        seen((8, 8, 0)),
+    );
+    assert_eq!(towns(&other), expected);
+    let other = vary(
+        &m,
+        0,
+        &unseen(false, added((16 + 15, 11, 0))),
+        |_| true,
+        |_| true,
+    );
+    assert_eq!(towns(&other), expected);
 }
 
 // covers: ADV-FOG-004, ADV-PIK-001, ADV-PIK-003

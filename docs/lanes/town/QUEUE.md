@@ -18,25 +18,11 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 lane's fixtures, replays, plans and benches, `h3-sim`'s env test; round 9, design §18), cut in
 three at its start (the user, 2026-11-06; decision 32):
 
-- **T9b2b — the hygiene property with towns** (T9b2 cut in two at its start, the user,
-  2026-11-06; decision 34). `a_viewer_learns_nothing_it_cannot_see`
-  meets the plans' towns, `townless` gone: its plans' towns draw nothing public (a random town
-  made fixed, a neutral town's editor garrison given), since it varies the seed and the towns'
-  draws come first in the setup stream (design §14: an owned random town's owner's choice, a
-  random town's faction, a neutral garrison), so that an unseen town's change moves every later
-  one; so made, the towns draw only an owned standard set's level-2 dwelling, which never shows,
-  and the viewer's heroes keep the armies and experience the property gives them; `vary` learns
-  towns (a town's template is no `KINDS` entry: the town lane's `TRAPS.md`; its tiles kept from
-  heroes moved and objects added, its entrance land; where the viewer never sees one: its owner,
-  garrison and buildings, a town removed only after every seen one, as a seen town's `TownId`
-  counts the towns before it, a town added after every other; a town the viewer owns, or whose
-  entrance a hero stands on, keeps its owner); T9b2a's town check in both games; `vary`'s unit
-  test with a town. **Depends on:** T9b2a (done, `E09-log.md`). **Status:** next.
 - **T9c — the benchmarks, the env, the census.** Benchmarks (`benches/adventure/`): `fork-xl-144`,
   `day-start-towns-36` (new), the reach on the town map, a siege's setup. The env (`h3-sim`, the
   AI lane's, consent as decision 7): a test playing the town map to its end of days, the bot
   reports regenerated. With the original data: the 160 maps import and build (exit criterion 1).
-  **Depends on:** T9a (the map `e09-towns-36.h3m`, done).
+  **Depends on:** T9a (the map `e09-towns-36.h3m`, done). **Status:** next.
 
 ## Inbox
 
