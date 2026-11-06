@@ -6,7 +6,8 @@
 //! machines (E17 M3 T3b: their artifacts) and its spell book (M3 T7a-2a: the book in its slot,
 //! its spells, and the school skills behind its masteries, M3 T7a-2b), the secondary skills
 //! behind its battle effects (M3 T7b-2b-2a: Leadership for its morale, Luck for its luck) and its
-//! tactics level (E17 M5 T4c2a: Tactics, the phase with it), no other skills or artifacts, no
+//! tactics level (E17 M5 T4c2a: Tactics, the phase with it), its Eagle Eye (E17 M6 T5c: the skill
+//! and the artifacts behind its chance), no other skills or artifacts, no
 //! experience (the harness writes the retreat facts' into the original's memory, E17 M6 T5b2a)
 //! and a Tavern town of its player by the scenario's retreat facts (what the computer's retreat
 //! test reads, Auto Combat's question); stepping Red's hero east starts the battle
@@ -425,14 +426,16 @@ fn army(
     Ok(army)
 }
 
-/// A hero's worn artifacts: its war machines only (E17 M3 T3b), each in its slot.
+/// A hero's worn artifacts: its war machines (E17 M3 T3b), its spell book (M3 T7a-2a) and those
+/// behind its Eagle Eye (E17 M6 T5c, `eagle`), each in its slot.
 fn worn(
     machines: &[(usize, u16)],
     book: Option<&Book>,
+    eagle: &[(usize, u16)],
 ) -> Result<[Option<u16>; ARTIFACT_SLOTS], String> {
     let mut worn = [None; ARTIFACT_SLOTS];
     let book = book.map(|b| (BOOK_SLOT, b.artifact));
-    for &(slot, artifact) in machines.iter().chain(&book) {
+    for &(slot, artifact) in machines.iter().chain(&book).chain(eagle) {
         *worn
             .get_mut(slot)
             .ok_or_else(|| format!("artifact {artifact}: no slot {slot}"))? = Some(artifact);
@@ -503,7 +506,7 @@ fn map(
             army: Some(army(&battle.stacks[owner], &numbers.creatures)?),
             tight_formation: battle.tight[owner],
             artifacts: Some(HeroArtifacts {
-                worn: worn(&battle.machines[owner], h.book.as_ref())?,
+                worn: worn(&battle.machines[owner], h.book.as_ref(), &h.worn)?,
                 backpack: Vec::new(),
             }),
             // A hero without a book keeps its type's spells (none for the scenarios' heroes).
@@ -592,6 +595,7 @@ mod tests {
                 primary: [1, 2, 3, 4],
                 book: None,
                 skills: Vec::new(),
+                worn: Vec::new(),
             })
         };
         Sides {
@@ -678,6 +682,7 @@ mod tests {
                 skills: vec![(17, 3)],
             }),
             skills: vec![(6, 1), (9, 3)],
+            worn: vec![(9, 63), (10, 65)],
             ..h
         });
         let lucky = super::map("t", &lucky, &ids(), BLUE_TILE, false).unwrap();
@@ -685,6 +690,9 @@ mod tests {
             panic!("a hero");
         };
         assert_eq!(lucky.skills, Some(vec![(17, 3), (6, 1), (9, 3)]));
+        // Eagle Eye's artifacts on their misc positions (E17 M6 T5c), beside the book.
+        let worn = lucky.artifacts.as_ref().unwrap().worn;
+        assert_eq!((worn[9], worn[10], worn[17]), (Some(63), Some(65), Some(0)));
         // Each side needs a hero, of a number the map holds.
         let mut alone = sides_of(Some("base:desert"), &[]);
         alone.heroes[1] = None;

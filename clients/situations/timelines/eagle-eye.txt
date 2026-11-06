@@ -1,0 +1,132 @@
+0 0.0 g2 f0 h86
+0 1.0 g2 f0 h100
+0 hero 0 g0 f0
+0 hero 1 g4 f0
+100 hero 1 g4 f1
+200 hero 1 g4 f2
+300 hero 1 g4 f3
+400 hero 1 g4 f4
+500 magic 19 f0 0.0
+600 magic 19 f1 0.0
+700 magic 19 f2 0.0
+800 magic 19 f3 0.0
+900 magic 19 f4 0.0
+1000 magic 19 f5 0.0
+1100 magic 19 f6 0.0
+1200 magic 19 f7 0.0
+1300 magic 19 f8 0.0
+1400 magic 19 f9 0.0
+1500 magic 19 f10 0.0
+1600 magic 19 f11 0.0
+1700 magic 19 f12 0.0
+1800 magic 19 f13 0.0
+1900 magic 19 f14 0.0
+2000 magic 19 f15 0.0
+2100 magic 19 f16 0.0
+2200 magic 19 f17 0.0
+2300 magic 19 f18 0.0
+2400 magic 19 f19 0.0
+2500 magic -
+2600 hero 1 g4 f5
+2700 hero 1 g4 f6
+2800 hero 1 g4 f7
+2900 hero 1 g4 f0
+3000 hero 1 g4 f1
+3100 hero 1 g4 f2
+3200 hero 1 g4 f3
+3300 hero 1 g4 f4
+3400 magic 36 f0 1.0
+3500 magic 36 f1 1.0
+3600 magic 36 f2 1.0
+3700 magic 36 f3 1.0
+3800 magic 36 f4 1.0
+3900 magic 36 f5 1.0
+4000 magic 36 f6 1.0
+4100 magic 36 f7 1.0
+4200 magic 36 f8 1.0
+4300 magic 36 f9 1.0
+4400 magic 36 f10 1.0
+4500 magic 36 f11 1.0
+4600 magic 36 f12 1.0
+4700 magic 36 f13 1.0
+4800 magic 36 f14 1.0
+4900 magic 36 f15 1.0
+5000 magic 36 f16 1.0
+5100 magic 36 f17 1.0
+5200 magic 36 f18 1.0
+5300 magic 36 f19 1.0
+5400 magic -
+5500 hero 1 g4 f5
+5600 hero 1 g4 f6
+5700 hero 1 g4 f7
+5800 hero 1 g4 f0
+5900 hero 1 g4 f1
+6000 hero 1 g4 f2
+6100 hero 1 g4 f3
+6200 hero 1 g4 f4
+7059 magic 14 f2 0.0
+7159 magic 14 f3 0.0
+7259 magic 14 f4 0.0
+7359 magic 14 f5 0.0
+7459 magic 14 f6 0.0
+7559 magic 14 f7 0.0
+7659 magic 14 f8 0.0
+7759 magic 14 f9 0.0
+7859 magic 14 f10 0.0
+7959 magic 14 f11 0.0
+8059 magic 14 f12 0.0
+8159 magic 14 f13 0.0
+8259 magic 14 f14 0.0
+8359 magic 14 f15 0.0
+8459 magic -
+8559 hero 1 g4 f5
+8659 hero 1 g4 f6
+8759 hero 1 g4 f7
+8859 hero 1 g4 f0
+8959 hero 1 g4 f1
+9059 hero 1 g4 f2
+9159 hero 1 g4 f3
+9259 hero 1 g4 f4
+9659 hero 1 g4 f5
+9759 hero 1 g4 f6
+9859 hero 1 g4 f7
+9959 hero 1 g4 f0
+10059 hero 1 g4 f1
+10159 hero 1 g4 f2
+10259 hero 1 g4 f3
+10359 hero 1 g4 f4
+10459 magic 37 f0 0.0
+10559 magic -
+10659 0.0 g4 f2 h86
+10659 1.0 g5 f2 h100
+10659 magic 38 f2 0.0 1.0
+10759 0.0 g4 f3 h86
+10759 1.0 g5 f3 h100
+10759 magic 38 f3 0.0 1.0
+10859 0.0 g4 f4 h86
+10859 1.0 g5 f4 h100
+10859 magic 38 f4 0.0 1.0
+10959 0.0 g4 f5 h86
+10959 1.0 g5 f5 h100
+10959 magic 38 f5 0.0 1.0
+11059 0.0 g4 f6 h86
+11059 1.0 g5 f6 h100
+11059 magic 38 f6 0.0 1.0
+11159 0.0 g4 f7 h86
+11159 magic 38 f7 0.0 1.0
+11259 0.0 g4 f8 h86
+11259 magic 38 f8 0.0 1.0
+11359 0.0 g4 f9 h86
+11359 magic 38 f9 0.0 1.0
+11459 0.0 g4 f10 h86
+11459 magic 38 f10 0.0 1.0
+11559 0.0 g4 f11 h86
+11559 magic 38 f11 0.0 1.0
+11659 0.0 g4 f12 h86
+11759 0.0 g2 f0 h86
+11859 hero 1 g4 f5
+11859 magic -
+11959 hero 1 g4 f6
+12059 hero 1 g4 f7
+12159 hero 1 g0 f0
+12159 end

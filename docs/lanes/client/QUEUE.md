@@ -36,10 +36,15 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   CLT-Q61, Q62 answered); **T5b2** cut in two by the user (2026-11-05): **T5b2a** done (the
   retreat question and the offer; design §12.19; the engine's part #745); **T5b2b** done (kept
   whole by the user: CLT-Q61's stop at the cast's end, a question at a later turn, a human's turn
-  right after an answer; design §12.20; CLT-Q64 asked); **T5c**
-  Eagle Eye's message and the experience given after the result window (item 79); **T5d** the
-  effects not drawn yet, their sounds' waits and the Ogre Magi's Bloodlust glow (items 42, 45;
-  cut again at its start if needed).
+  right after an answer; design §12.20; CLT-Q64 asked); **T5c** done (kept whole by the user:
+  Eagle Eye's message and the box with pictures, the experience after the window nothing to
+  show; design §12.21; CLT-Q65, Q66 asked); **T5d** the effects not drawn yet, their sounds'
+  waits and the Ogre Magi's Bloodlust glow (items 42, 45; cut again at its start if needed);
+  **T5e** (added by the user at T5c, 2026-11-06) the captured artifacts' message after Eagle
+  Eye's (`captured_artifacts_message` 0x4772B0, design §12.21: GENRLTXT 31, eight artifact
+  pictures a box, the pickup sound; its reading finished then): the heroes' worn artifacts and
+  the backpack the client's heroes do not carry yet (the scenario's and the wire's), the
+  capture's order HER-ART-004 (`h3_heroes::next_capture`), recorded.
 
 ### E17 M6 T6 — the inbox's waiting items
 

@@ -99,6 +99,9 @@ pub fn inputs(
     answering(actions, pre, layout, at, options, &[]).map(|(inputs, _)| inputs)
 }
 
+/// The answers [`answering`] reads: each box's answer's time and whether `key:Escape` gave it.
+pub type Answers = Vec<(u32, bool)>;
+
 /// The mouse's inputs for the harness's `actions` (`h3drive.py`'s `act`), the first acting `pre`
 /// ms after the opening, the mouse parked before the battle: `hex:<n>` and `click:<x>,<y>` move
 /// the mouse there, click (the command's action starts) and park it again; `move:<x>,<y>` moves
@@ -137,7 +140,8 @@ pub fn inputs(
 /// command, both included): there a `key:Return`, a `key:Escape` or a `click:` answers the box
 /// open (the question's, then the offer's after an OK), no stop of Auto Combat, no command (the
 /// click moves the mouse to the button and parks it after, the box taking both). With the
-/// inputs, the answers' times in order.
+/// inputs, the answers' times in order, each with whether `key:Escape` gave it (E17 M6 T5c: an
+/// OK-only box, Eagle Eye's, takes no Escape).
 pub fn answering(
     actions: &[String],
     pre: u32,
@@ -145,7 +149,7 @@ pub fn answering(
     (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
     (told, shades, (creatures, plays)): (bool, h3_view::shades::Options, (bool, &[bool])),
     asked: &[(u32, u32)],
-) -> Result<(Vec<Input>, Vec<u32>), String> {
+) -> Result<(Vec<Input>, Answers), String> {
     let open = |now: u32| {
         asked
             .iter()
@@ -191,9 +195,11 @@ pub fn answering(
         let after_cast = core::mem::take(&mut cast_pending);
         match kind {
             // Auto Combat's question or offer answered (E17 M6 T5b2a): its OK or its Cancel.
-            "key" if matches!(arg, "Return" | "Escape") && open(now) => answers.push(now),
+            "key" if matches!(arg, "Return" | "Escape") && open(now) => {
+                answers.push((now, arg == "Escape"));
+            }
             "click" if open(now) => {
-                answers.push(now);
+                answers.push((now, false));
                 out.extend([
                     Input::Move {
                         at: now,
@@ -1567,7 +1573,7 @@ mod tests {
         let at: (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>) = (&timeline, &[], &none);
         let (got, answers) =
             answering(&actions, 0, &layout, at, options, &[(50, 200), (300, 300)]).unwrap();
-        assert_eq!(answers, [100, 200, 300]);
+        assert_eq!(answers, [(100, false), (200, false), (300, true)]);
         assert_eq!(
             got[2..],
             [

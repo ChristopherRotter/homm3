@@ -200,6 +200,35 @@ fn switched(actions: &[String], pre: u32, until: u32) -> u32 {
     last
 }
 
+/// Whether the video archives `videos` hold the result window's clip of `tune` (E17 M5 T4b2b).
+fn held(videos: &crate::videos::Videos, tune: h3_view::sound::Tune) -> bool {
+    let clip = h3_view::clip::of(tune);
+    std::iter::once(clip.start)
+        .chain(clip.looped)
+        .all(|name| videos.has(name))
+}
+
+/// The times the result window and then each box of Eagle Eye's message after it closed (E17 M6
+/// T5c): the `answers` from the battle's `end` on, but those that answered one of Auto Combat's
+/// questions open over `spans` (a leaving given at the end's millisecond); a `key:Escape` closes
+/// the window (its OK's key) but no box of Eagle Eye's (style 1's OK takes Enter alone,
+/// `message_box_build` 0x4F6990; the reviewer).
+fn closes(answers: &[(u32, bool)], spans: &[(u32, u32)], end: Option<u32>) -> Vec<u32> {
+    let Some(end) = end else {
+        return Vec::new();
+    };
+    let mut out: Vec<u32> = Vec::new();
+    for &(t, escape) in answers {
+        let asked = spans
+            .iter()
+            .any(|&(from, until)| (from..=until).contains(&t));
+        if t >= end && !asked && !(escape && !out.is_empty()) {
+            out.push(t);
+        }
+    }
+    out
+}
+
 /// The boxes Auto Combat's questions showed (E17 M6 T5b2a): over each span of `spans`, the
 /// question until the first of `answers` in it, then, after a second one, the offer until it;
 /// each `[from, until)` with the index of its held command and whether it is the offer.
@@ -336,6 +365,14 @@ pub(crate) struct Interface<'a> {
     /// *provisional*): each drawn over the battle from its first time to before its second, the
     /// box's cursor at the mouse.
     pub asked: &'a [(u32, u32, h3_view::message::MessageBox)],
+    /// The times a sequence's actions closed the result window and then each box of Eagle Eye's
+    /// message after it (E17 M6 T5c, design §12.21), in order: from the first on the boxes of
+    /// `eagle_eye` follow one another over the screen darkened, the default cursor's frame 0 at
+    /// the mouse; after the last the darkened screen alone (*provisional*: the original's
+    /// adventure map is the map client's).
+    pub closes: &'a [u32],
+    /// The boxes of Eagle Eye's message after the result window (E17 M6 T5c).
+    pub eagle_eye: &'a [h3_view::message::MessageBox],
 }
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
@@ -573,6 +610,13 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let boxes = sequence.auto.boxes(&sequence.id)?;
         // Which turns play themselves under Auto Combat by them (E17 M6 T5b2b).
         let plays = pointer::plays_itself(&record, &timeline, (&tables, boxes));
+        // From the battle's end on a box is open too: the result window, then Eagle Eye's message
+        // (E17 M6 T5c), the window closed by a `key:Return`, a `key:Escape` or a `click:`, a box
+        // by a `key:Return` or a `click:` (a click trusted to be on its OK, *provisional*; [`closes`]),
+        // which then gives nothing to the battle.
+        let open: Vec<(u32, u32)> = (spans.iter().copied())
+            .chain(timeline.ended.map(|(end, _)| (end, u32::MAX)))
+            .collect();
         let (inputs, answers) = pointer::answering(
             &sequence.actions,
             sequence.pre,
@@ -583,9 +627,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 sequence.shades.options(&sequence.id)?,
                 (boxes[h3_view::auto::CREATURES], &plays),
             ),
-            &spans,
+            &open,
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
+        let closes = closes(&answers, &spans, timeline.ended.map(|(end, _)| end));
+        let answers: Vec<u32> = answers.iter().map(|&(t, _)| t).collect();
         let asked =
             asked_boxes(&spans, &holds, &answers).map_err(|e| format!("{}: {e}", sequence.id))?;
         // The spells the actions aim, each turn's aims of them (E17 M5 T3b).
@@ -662,11 +708,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 // The comparisons draw the original's (CLT-Q35).
                 bugs: Bugs::Original,
             };
-            let result = outcome.map(|o| {
+            let result = outcome.as_ref().map(|o| {
                 crate::results::window(
                     &sources,
                     snapshot,
-                    &o,
+                    o,
                     crate::render::viewing_player(snapshot),
                 )
             });
@@ -719,6 +765,27 @@ fn sequences(options: &Options) -> Result<usize, String> {
                     questions.push((from, until, message));
                 }
             }
+            // Eagle Eye's message after the result window (E17 M6 T5c), laid out as the window.
+            let spell_pictures = layout.message.spell_pictures.clone();
+            let spells_size = lookup(&archives, &spell_pictures)
+                .ok()
+                .and_then(|b| h3_assets::def::parse_def(&b).ok())
+                .map_or([0, 0], |d| {
+                    [d.width, d.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
+                });
+            let eagle_eye: Vec<h3_view::message::MessageBox> = outcome
+                .as_ref()
+                .map(|o| {
+                    let pictures = (spell_pictures.as_str(), spells_size);
+                    crate::results::eagle_eye(&sources, snapshot, o, pictures)
+                })
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|t| {
+                    let player = crate::render::viewing_player(snapshot);
+                    writer.pictures(&layout, &t.text, &t.pictures, player)
+                })
+                .collect();
             let interface = Interface {
                 panels: &panels,
                 legal: &Legal::default(),
@@ -728,6 +795,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 result: result.as_ref(),
                 videos: Some(&videos),
                 asked: &questions,
+                closes: &closes,
+                eagle_eye: &eagle_eye,
             };
             let drawn = draw_frames(
                 &here,
@@ -1089,24 +1158,44 @@ pub(crate) fn draw_frames(
         let message = interface
             .book
             .and_then(|b| Some((b.message.as_ref()?, b.mouse)));
-        // The result window (E17 M5 T4b1): a still's at once, a sequence's from its battle's end;
-        // over the whole screen darkened, the combat cursor's pointer at the mouse.
-        // With it the time it opened, for its clip (E17 M5 T4b2b).
+        // The result window (E17 M5 T4b1): a still's at once, a sequence's from its battle's end
+        // until the actions close it (E17 M6 T5c); over the whole screen darkened, the combat
+        // cursor's pointer at the mouse. With it the time it opened, for its clip (E17 M5 T4b2b).
+        let closed = interface.closes.partition_point(|&c| c <= frame.t);
+        let point = || {
+            interface
+                .shown
+                .and_then(|shown| frame.cursor.or_else(|| shown.point(frame.t)))
+                .or_else(|| pointer.as_ref().map(|(p, _)| *p))
+        };
+        let ended = interface
+            .result
+            .zip(timeline.ended.filter(|&(t, _)| frame.t >= t));
         let result = match interface
             .book
             .and_then(|b| Some((b.result.as_ref()?, b.mouse, b.at)))
         {
             Some((window, mouse, at)) => Some((window, Some(mouse), at)),
-            None => interface
-                .result
-                .zip(timeline.ended.filter(|&(t, _)| frame.t >= t))
-                .map(|(window, (end, _))| {
-                    let point = interface
-                        .shown
-                        .and_then(|shown| frame.cursor.or_else(|| shown.point(frame.t)))
-                        .or_else(|| pointer.as_ref().map(|(p, _)| *p));
-                    (window, point, end)
-                }),
+            None => ended
+                .filter(|_| closed == 0)
+                .map(|(window, (end, _))| (window, point(), end)),
+        };
+        // Eagle Eye's message after the window closed (E17 M6 T5c, design §12.21): over the
+        // screen still darkened, a still's box as its actions left it, a sequence's by the
+        // actions' closes; the default cursor's frame 0 at the mouse (`message_box_build`'s).
+        // Under a box the window stays as it last showed (recorded, `eagle-eye`: nothing redraws
+        // the screen before the box), its OK up, its clip's frame of its close's millisecond
+        // (`eagle-eye-one`: a decode in that millisecond came first; a still's at once: its
+        // first).
+        let darkened = match interface.book.filter(|b| b.darkened) {
+            Some(b) => Some(
+                (b.message.as_ref()).map(|m| (m, Some(b.mouse), b.window.as_ref().map(|w| (w, 0)))),
+            ),
+            None => ended.filter(|_| closed > 0).map(|(window, (end, _))| {
+                let first = interface.closes.first().copied().unwrap_or(end);
+                let since = first.saturating_sub(end);
+                (interface.eagle_eye.get(closed - 1)).map(|m| (m, point(), Some((window, since))))
+            }),
         };
         if let Some(((window, tune), mouse, opened)) = result {
             list.push(h3_view::result::backdrop(layout.frame));
@@ -1118,18 +1207,41 @@ pub(crate) fn draw_frames(
                     .map(scene::Draw::Dialog),
             );
             // Its clip over its slot, when the video archives hold it (E17 M5 T4b2b).
-            let clip = h3_view::clip::of(*tune);
-            let held = |videos: &crate::videos::Videos| {
-                std::iter::once(clip.start)
-                    .chain(clip.looped)
-                    .all(|name| videos.has(name))
-            };
-            if interface.videos.is_some_and(held) {
+            if interface.videos.is_some_and(|v| held(v, *tune)) {
                 let since = frame.t.saturating_sub(opened);
                 list.push(h3_view::result::clip(&layout.result, *tune, since));
             }
             if let Some(point) = mouse {
                 list.push(mouse::cursor(layout, h3_view::result::CURSOR_FRAME, point));
+            }
+        } else if let Some(shown) = darkened {
+            list.push(h3_view::result::backdrop(layout.frame));
+            if let Some((message, point, behind)) = shown {
+                if let Some(((window, tune), since)) = behind {
+                    let window = crate::results::released(window);
+                    list.extend(
+                        (window.dialog.draws(&window.shown, &layout.player_palette))
+                            .into_iter()
+                            .map(scene::Draw::Dialog),
+                    );
+                    if interface.videos.is_some_and(|v| held(v, *tune)) {
+                        list.push(h3_view::result::clip(&layout.result, *tune, since));
+                    }
+                }
+                list.extend(
+                    message
+                        .dialog
+                        .draws(&message.shown, &layout.player_palette)
+                        .into_iter()
+                        .map(scene::Draw::Dialog),
+                );
+                list.extend(point.map(|[x, y]| scene::Draw::Cursor {
+                    def: layout.message.cursor.clone(),
+                    frame: 0,
+                    x,
+                    y,
+                    hot: layout.book.hot.first().copied().unwrap_or_default(),
+                }));
             }
         } else if let Some((_, _, question)) =
             (interface.asked.iter()).find(|(from, until, _)| (*from..*until).contains(&frame.t))
@@ -1478,6 +1590,23 @@ mod tests {
             [(450, 900, 2, false)]
         );
         assert!(asked_boxes(&spans, &holds, &[100]).is_err());
+        // E17 M6 T5c: the answers from the battle's end on close the result window and then
+        // Eagle Eye's boxes, but a question's answer given at the end's millisecond; Escape
+        // closes the window, not a box after it (the reviewer).
+        let plain = |ts: &[u32]| ts.iter().map(|&t| (t, false)).collect::<Vec<_>>();
+        assert_eq!(
+            closes(&plain(&[100, 900, 1200, 1500]), &spans, Some(900)),
+            [1200, 1500]
+        );
+        assert_eq!(
+            closes(
+                &[(1200, true), (1300, true), (1500, false)],
+                &spans,
+                Some(900)
+            ),
+            [1200, 1500]
+        );
+        assert!(closes(&plain(&[100, 1200]), &spans, None).is_empty());
     }
 
     fn holds_of(file: &File) -> Result<Vec<(usize, u32)>, String> {

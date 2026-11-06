@@ -412,12 +412,16 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     // The comparisons draw the original's (CLT-Q35).
                     bugs: Bugs::Original,
                 };
-                Some(crate::results::window(
-                    &sources,
-                    observation,
-                    &outcome?,
-                    viewing,
-                ))
+                let outcome = outcome?;
+                let (window, tune) =
+                    crate::results::window(&sources, observation, &outcome, viewing);
+                // Eagle Eye's message after it (E17 M6 T5c), laid out as the window.
+                let told = crate::results::eagle_eye(&sources, observation, &outcome, (&def, size));
+                let after = told
+                    .iter()
+                    .filter_map(|t| writer.pictures(&layout, &t.text, &t.pictures, viewing))
+                    .collect();
+                Some((window, tune, after))
             };
             // A press on a stack to look at opens its stats dialog (E17 M6 T2a1): the stack
             // under the battle's cursor of kind 5, its creature's DEF's groups for its steps.
@@ -587,7 +591,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 tell: &tell,
                 leave,
                 refusal: &refusal,
-                pictures: (def, size),
+                pictures: (def.clone(), size),
                 result: &result,
                 opening: told
                     .then(|| catalogue.text("battle.tactics.phase", &h3_ui::text::Args::new())),
@@ -624,6 +628,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             result: None,
             videos: Some(&crate::videos::Videos::open(&options.install)),
             asked: &[],
+            closes: &[],
+            eagle_eye: &[],
         };
         let drawn = crate::sequences::draw_frames(
             dir,
