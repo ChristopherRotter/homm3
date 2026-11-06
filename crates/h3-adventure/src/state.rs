@@ -486,8 +486,8 @@ impl StaticMap {
             }
             let event = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Event));
             // rule: ADV-DWL-005
-            // Before every other draw of the static map; E09's random towns, when built, draw
-            // their placeholders before this walk (ADR-0017 point 4).
+            // Before every other draw of the static map; E09's random towns draw their factions
+            // before this walk (ADR-0017 point 4).
             map.place(
                 &dwellings::resolve(part, object, town_factions, draws),
                 guards,

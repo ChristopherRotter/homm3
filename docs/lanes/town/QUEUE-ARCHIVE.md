@@ -43,3 +43,14 @@ owner's heroes that bonus).
   shows them to everyone for the stats dialog. And the owner's Grail building that adds a hero's
   morale or luck (the Colossus, the Spirit Guardian) names itself as
   `EffectSource::Building { faction, index }` on that hero's `BattleEffect`, when the game gives it.
+
+Moved from the inbox by E09 T11 (2026-11-06; its `ADV-STUB-13` part done there, its T7a part by
+T7a1):
+
+- 2026-11-04 (the adventure lane, E08 T93b, `adventure/e08-t93b`; **for T7a, the import**):
+  `h3-map`'s `import/codes.rs` has `FACTIONS`, the original's faction codes 0 to 8 to the core
+  factions' keys (`base:castle` … `ab:conflux`), for the towns' import to reuse (E08 design §4,
+  §11). A random dwelling of class 216 or 217 whose town identifier names a town of the map stays
+  an untyped blocker (ADV-STUB-13, epic E09: it takes the town's drawn faction once random towns
+  are resolved); one whose identifier no town has is refused (`ImportError::DwellingTown`). Both
+  bump map import (T93b v16, E09 T7a1 v17).

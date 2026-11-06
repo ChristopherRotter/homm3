@@ -5,24 +5,10 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 ## Tasks
 
 Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN-Q7`); done tasks
-in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. First T11 (decision 39), then
+in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. T11 (decision 39) done;
 increment 2's first round (decision 38): the survey T12, the drafts with the design note and the
 cut T13 (queued when T12's checkpoint is done). Each task's cut confirmed at its start; every
 entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T11 — the random dwellings tied to a town** (`ADV-STUB-13`; decision 39; `cross-lane` in the
-adventure lane's `h3-map` import and the build, consent given): a random dwelling of class 216 or
-217 whose identifier a town of the map has (1 397 on the shipped maps, all tied to random towns;
-untyped blockers since E08 T93b, `h3-map`'s `import/mod.rs`, `codes.rs`) takes that town's faction
-once the build has drawn it (`random_dwellings_resolve` 0x502B60: the town searched from the end
-of the town list, its random town already resolved; survey `E08-dwellings.md` §3.2), then its
-level and dwelling as E08's random dwellings not tied to a town (E08 T94a), its draw after the
-towns' in the placement walk (ADR-0017 point 4). Its holds name the town (`TownId`), not a faction
-set; the import's checks as they stand (A-35's identifier no town has: `DwellingTown`). Versions:
-map import (v20; `h3m.md`'s "Import" heading still says 18), and whatever the holds and the build
-move (the adventure lane's versions, in order with its open pull requests); the replays and the
-census re-run with the original data (`maps.tar`, `extracted.tar`), the stub lifted, the
-adventure lane's inbox told. Its cut confirmed at its start. **Status:** next.
 
 **E09 T12 — the construction survey** (decision 38; increment 2's first round): survey
 `docs/rules/surveys/E09-construction.md` (or the next sections of `E09-towns.md`, the task's
@@ -33,7 +19,7 @@ lists and supersedes), the town events' day and their buildings and resources; V
 wiki compared; a census of the shipped maps (forbidden buildings, custom sets, the town events);
 the disputes (TD-9 first) and quirk candidates; the checkpoint with the user. Needs the original
 data (the executable, the LODs, the text tables). Its cut confirmed at its start. **Status:**
-after T11.
+next.
 
 ## Inbox
 
@@ -68,19 +54,11 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   dwellings' growth**, E09 survey §8.3; adventure design note §11): the static map lists the
   dwellings in object order (`StaticMap::dwellings`, `dwelling_index`; a random dwelling not tied
   to a town is resolved into its drawn faction's and level's dwelling when the game is built, so
-  it is listed as a placed one), their owners are `AdventureState::owner` (ownable since T93a, the
+  it is listed as a placed one; since E09 T11 one tied to a town too), their owners are `AdventureState::owner` (ownable since T93a, the
   setup's owner at the start) and their creatures the kind's (`ObjectKind::Dwelling::creatures`,
   each creature's faction the core's). Their counts and guards come with T94b (adventure state hash
-  v20). A random dwelling tied to a town still waits for your random towns (ADV-STUB-13); its draw
-  comes after theirs in the placement walk (ADR-0017 point 4).
-- 2026-11-04 (the adventure lane, E08 T93b, `adventure/e08-t93b`; **for T7a, the import**):
-  `h3-map`'s `import/codes.rs` has `FACTIONS`, the original's faction codes 0 to 8 to the core
-  factions' keys (`base:castle` … `ab:conflux`), for the towns' import to reuse (E08 design §4,
-  §11). A random dwelling of class 216 or 217 whose town identifier names a town of the map stays
-  an untyped blocker (ADV-STUB-13, epic E09: it takes the town's drawn faction once random towns
-  are resolved); one whose identifier no town has is refused (`ImportError::DwellingTown`). Both
-  bump map import (T93b v16, E09 T7a1 v17).
-
+  v20). A random dwelling tied to a town resolves since E09 T11, after the towns' draws (ADR-0017
+  point 4).
 - 2026-11-04 (the client lane, E17 M6 T3c3, `client/e17-m6-t3c3`; **when you change
   `h3-towns`' or `h3-pack-towns`' public API**): the battle client's binary now compiles the packs'
   town part (`h3_pack_towns::compile`) and reads `TownRuleset::town`, `TownRecord::building` and
@@ -97,7 +75,7 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   to build now**): E08's increment 10 is dwellings and hiring (decision 231): the map's creature
   dwellings (17, 20), the random dwellings with a faction set and the Refugee Camp, their weekly
   creatures and **the hire dialog**, built in the adventure lane first (E09 decision 4); the random
-  dwellings tied to a random town wait for your random towns. Its survey (T88a,
+  dwellings tied to a random town resolve since E09 T11. Its survey (T88a,
   `docs/rules/surveys/E08-dwellings.md`) and design note (T88b) come first; this lane's inbox is
   told when the hire dialog lands.
 - (adventure archive, 2026-10-03, E04a T3a) Not harvested: the spells' town chances and the hero

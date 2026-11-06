@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b; E09 T7a1, T8a1; `MAP_IMPORT_VERSION` 18)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1; E09 T7a1, T8a1, T11; `MAP_IMPORT_VERSION` 20)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -262,7 +262,7 @@ content and draws nothing; it rejects what the current increment cannot represen
   ADV-DWL-001, -005, ADV-RFG-001): 17 by subclass (0 to 79) and 20 by subclass (0 and 1) the
   dwellings (`codes.rs`'s tables, each the type of the pack that introduced its object: `base` the
   RoE ones, `ab` the ones AB added), 78 `base:refugee_camp`, 216 to 218 `base:random_dwelling`
-  when not tied to a town; 216 to 218 are ownable scenery as 17 and 20 (GAM-BAT-011). A dwelling's
+  (tied to a town too since v20); 216 to 218 are ownable scenery as 17 and 20 (GAM-BAT-011). A dwelling's
   and a random dwelling's owner as a mine's (`ObjectOwner`; on water imported since v19, E08
   T97b1). A random dwelling's
   holds (`Holds::RandomDwelling`, checked when the game is built): the factions, by the original's
@@ -270,8 +270,11 @@ content and draws nothing; it rejects what the current increment cannot represen
   216 and 217 the set's bits (one byte in RoE, two from AB), 218 its subclass; the levels, inclusive
   and one-based — 216 and 218 the two level codes plus one, 217 its subclass plus one. A random
   dwelling of 216 or 217 whose town identifier names a town of the map (`TownBody::identifier`)
-  stays a blocker until E09's random towns (ADV-STUB-13), since v19 (E08 T97b1) once its levels and
-  owner pass the checks below (its faction set is the town's). Refused, in this order for one object
+  holds that town instead of a set (`Holds::LinkedDwelling`, since v20, E09 T11; a blocker before,
+  ADV-STUB-13): its `TownId`, its place among the towns (77 and 98) in object order, of the last
+  town with the identifier, as the original searches its town list from the end
+  (`random_dwellings_resolve` 0x502B60), and its levels; its faction is the town's, taken when the
+  game is built. Its levels and owner pass the checks below (since v19, E08 T97b1). Refused, in this order for one object
   (input bounds, ADV-QUIRK-36 to -38): classes 18 and 19 (`DwellingClass`, A-36); a subclass past
   its table, 17 past 79, 20 past 1, 217 past 6, 218 past 8 (`Subclass`, A-36); a town identifier
   no town of the map has (`DwellingTown`, A-35); a faction bit past 8 (`UnknownCode`, `faction`); an
@@ -439,6 +442,16 @@ and build (v18: 156; the 4 refused as `OwnedOnWater` import whole). 9 dwellings 
 water are typed, all on those four maps (Adventures of Jared Haret, Rise of the Phoenix and its
 Allied version, Serpents Treasure); the 1 397 random dwellings tied to a town (all to random
 towns) pass the levels and owner checks.
+
+E09 T11's census (import v20, the 160 shipped maps; `original_data`, seed 0): all 160 import,
+validate and build. The 1 397 random dwellings tied to a town are typed (216: 276 typed in all,
+217: 1 326), 2 more typed ones entered from water (11); no two towns share an identifier, so the
+last town's rule picks nothing on these maps. In the static layer's games (each town of the first
+faction with a town record) all 1 397 resolve (1 603 random dwellings resolved; 3 664 dwellings;
+65 anchors moved by the Angel Portal's shift, 3 of them one column past the right edge, on Darwin's
+Prize and its Allied version and King of Pain, as E08 T94a allows), no hero or boat refused for
+their tiles. In the whole games each takes its town's faction as the build resolved it: 1 101 by
+the town's owner, 43 by its alignment, 253 drawn uniformly.
 
 E09 T7a2's census (the same import): the game's new checks of the towns and the players' starts
 (`GameSetupError::TownFaction`, `TownAlignment`, `Choice`, `MainTown`, `Pick`, `PickTaken`,

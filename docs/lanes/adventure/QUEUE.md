@@ -31,6 +31,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-06 (the town lane, E09 T11, `town/e09-t11`, `cross-lane`; **`ADV-STUB-13` lifted, map
+  import v20**): a random dwelling tied to a town is typed with `Holds::LinkedDwelling { town,
+  levels }` (the `TownId` of the last town with its identifier; the holds' hash tag 10, which no
+  built state holds). `AdventureSetup` has a new field `town_factions` (one faction per town by
+  `TownId`, the game's step-2 factions; `SetupError::TownFactions`, checked after the walk, before
+  `Garrisons`): a literal with towns sets it. In the placement walk a tied dwelling takes its
+  town's faction (no draw) then draws its level (`dwellings::resolve` takes the factions); its
+  tiles and names are checked against every table's outcomes. `GameSetupError::LinkedTown`
+  refuses a tied dwelling's town that may take a faction without a table. The 55 replays'
+  `import_version` moved alone; the property plans generate no tied dwelling (the writer writes
+  none: `OwnedBody::RandomDwelling` keeps identifier 0).
+
 - 2026-11-06 (the town lane, E09 T9b1, `town/e09-t9b1`, `cross-lane`; **for your plans**):
   `h3-map`'s `play.rs` plays towns. `Plan` has a new field `towns` (`TownPlan`, drawn last by
   `towns()`; a plan literal sets `towns: Vec::new()`), laid out by `towns_laid_out` after every

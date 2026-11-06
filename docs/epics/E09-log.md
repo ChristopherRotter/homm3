@@ -1891,3 +1891,57 @@ T13; the queue holds T11 and T12.
 the light gates, check-rules, check-stubs, check-docs and check-exe-map, passed), `check-lane`
 passed (the town lane's paths and one common); the engine's code is `master`'s, which CI's full
 verify passed at 798b2e2. CI on the pull request is the record.
+
+### T11 — the random dwellings tied to a town (2026-11-06)
+
+`ADV-STUB-13` (decision 39; `cross-lane` in the adventure lane's import, build and game, consent
+given at the refinement). Baseline e5a5840 (#769 to #771 merged; CI's fingerprint on `master`'s
+engine code, the light gates only). The user kept the task whole at its start
+(`AskUserQuestion`; recommended over a cut between the build and the import). The user's
+computer's shell did not start: a sandbox cloned from GitHub, `maps.tar` and `extracted.tar`
+staged with the file tool.
+
+**Built** (the original's `random_dwellings_resolve` 0x502B60, survey `E08-dwellings.md` §3.2):
+- *The import* (`h3-map`, map import v20): a random dwelling of 216 or 217 whose identifier a town
+  of the map has is typed (`base:random_dwelling`) with its owner and `Holds::LinkedDwelling {
+  town, levels }`: the `TownId` (the place among the towns, 77 and 98, in object order) of the
+  **last** town with the identifier, as the original searches its town list (in the objects'
+  order, survey `E09-towns.md` §2.1) from the end. A-35's `DwellingTown`, the levels' and the
+  owner's checks as they stood.
+- *The build* (`h3-adventure`): `AdventureSetup::town_factions`, one faction per town by `TownId`
+  (`SetupError::TownFactions` otherwise, after the walk); in the placement walk a tied dwelling
+  takes its town's faction, drawing none, then draws its level as one with a set and becomes the
+  table's dwelling (`dwellings::resolve`); a town past the factions or a faction without a table
+  is `SetupError::Holds`. Its tiles and names are checked against every table's outcomes, so the
+  validity does not depend on the town's faction. The holds' hash tag 10, which no built state
+  holds (resolved or refused): no adventure state hash bump, as E08 T93b's tag 8.
+- *The game* (`h3-game`): step 2's factions (`draw_towns`) into `town_factions`; the setup's
+  checks refuse a tied dwelling's town that may take a faction without a random-dwelling table
+  (`GameSetupError::LinkedTown`, after `TownFaction`: a fixed town's own, a random town's any with
+  a town record), so `validate` does not depend on the draw. *Changed from the plan shown to the
+  user:* the plan put this as a `GameRuleset` check (a town record's faction without a table, as
+  the siege record's `RulesetMismatch`); the `synthetic` pack has a town record and no tables, and
+  the game's town tests' parts too, so the refusal moved to the setups that hold a tied dwelling.
+- *Tests:* the adventure's resolution by the town's faction and its draws, the checks, the hash
+  tag; the game's refusal; the import's last town and 217's level; an end-to-end game from the
+  packs where a neutral random town's draw moves its dwelling's faction.
+
+**Versions:** map import v20 (the 55 adventure replays' `import_version` alone moved, confirmed by
+`h3-cli`'s replay test); no state, part or replay-format version moved.
+
+**The census** (`h3-map`'s `original_data`, seed 0; diffed with `master`'s run in a worktree): all
+160 maps import, validate and build; the 1 397 tied dwellings typed (216: 79 to 276 typed, 217:
+126 to 1 326) and resolved, in the static layer's games (every town of the first faction with a
+record: 1 603 random dwellings resolved, 3 664 dwellings, 65 Angel Portal shifts, 3 anchors one
+column past the right edge, on Darwin's Prize, its Allied version and King of Pain) and in the
+whole games by their town's faction (owner 1 101, alignment 43, drawn 253); no hero or boat
+refused; no identifier shared by two towns (the last town's rule picks nothing on these maps); 2
+more typed dwellings entered from water (11). The static layer's later draws moved with the new
+level draws (the guards and the camps' spreads), as expected. `h3m.md`'s "Import" heading now
+names v20 (T10's finding).
+
+**Docs:** `h3m.md` (the import, the census), ADV-DWL-005's summary, the stub lifted
+(`docs/stubs.toml`), the adventure lane's HANDOFF versions and inbox, `OVERVIEW.md`'s import line,
+the lane's `TRAPS.md` (one faction per town in an `AdventureSetup`). ADR-0016 point 4's sentence
+("a blocker until E09's random towns resolve it", ADV-STUB-13) is amended with increment 2's
+drafts (T13, a shared path).

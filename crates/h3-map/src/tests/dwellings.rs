@@ -5,6 +5,8 @@
 //! and the teams, read back as written in SoD and RoE; what the writer refuses; and, since E08
 //! T93b, what the import makes of them (increment 10's design note §4) and what it refuses.
 
+use std::collections::BTreeSet;
+
 use h3_adventure::{Holds, Scenery};
 use h3_contracts::{PlayerId, TownId};
 
@@ -505,6 +507,45 @@ fn a_random_dwelling_tied_to_a_town_holds_the_last_town_with_its_identifier() {
         import(&other, &SOD).unwrap_err(),
         ImportError::DwellingTown(7)
     );
+}
+
+// covers: ADV-DWL-005
+#[test]
+fn a_random_dwelling_tied_to_a_random_town_takes_its_drawn_faction() {
+    // E09 T11 end to end with the packs: the import's town (a neutral random town, drawing its
+    // faction among the nine with a town record) gives the game's build its faction, and the
+    // dwelling becomes that faction's random dwelling of a level in its range; over a few seeds
+    // the town's draw changes the dwelling's faction.
+    let mut map = with_body(&raw(), 7, 0xFF, Some((5, None)), Some((2, 4)));
+    let town = Body::Town(Box::new(TownBody {
+        identifier: Some(5),
+        owner: 0xFF,
+        alignment: 0xFF,
+        ..TownBody::default()
+    }));
+    let first = u32::try_from(map.templates.len()).unwrap();
+    map.templates
+        .push(raw_import::template(77, &[(0, 0)], &[(0, 0)]));
+    map.objects.push(object(30, 20, first, town));
+    let setup = import(&map, &SOD).unwrap();
+    let mut factions = BTreeSet::new();
+    for seed in 0..16 {
+        let state = h3_game::GameState::new(&SOD, &setup, seed).unwrap();
+        let faction = state.towns().get(TownId::new(0)).unwrap().faction();
+        let table = SOD.adventure().random_dwelling(faction).unwrap();
+        let resolved = &state.adventure().map().objects()[5];
+        let level = table
+            .iter()
+            .position(|&ty| Some(ty) == resolved.object_type)
+            .map(|at| at + 1);
+        assert!(
+            level.is_some_and(|level| (3..=5).contains(&level)),
+            "{seed}"
+        );
+        assert_eq!(resolved.holds, Holds::Nothing);
+        factions.insert(faction);
+    }
+    assert!(factions.len() > 1);
 }
 
 // covers: ADV-DWL-001, ADV-DWL-005, ADV-OWN-002

@@ -400,6 +400,7 @@ fn check(
                 Ok(game) => game,
             };
             built_towns(&setup, &game, rules, &mut peaks.5);
+            built_linked(&setup, &game, rules, name, &mut peaks.5)?;
             built_heroes(&setup, &game, rules, map.header.size, &mut peaks.5);
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
             // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
@@ -421,6 +422,67 @@ fn check(
         Err(e) => return Err(format!("import: {e}")),
     };
     Ok((map.header.version, outcome))
+}
+
+/// E09 T11: the random dwellings tied to a town in a game that builds (ADV-DWL-005): each the
+/// table's dwelling of its town's faction as the build resolved it (a random town's drawn, or its
+/// owner's), at a level of its range, counted by what gave the town its faction. Checked (an error
+/// fails the map).
+fn built_linked(
+    setup: &GameSetup,
+    game: &GameState,
+    rules: &GameRuleset,
+    name: &str,
+    counts: &mut BTreeMap<&'static str, usize>,
+) -> Result<(), String> {
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    let adventure = game.adventure();
+    for (index, object) in setup.map.objects.iter().enumerate() {
+        let Holds::LinkedDwelling {
+            town,
+            levels: (low, high),
+        } = object.holds
+        else {
+            continue;
+        };
+        let faction = game.towns().get(town).map(h3_towns::Town::faction);
+        let row = faction.and_then(|faction| rules.adventure().random_dwelling(faction));
+        let resolved = adventure
+            .map()
+            .objects()
+            .get(index)
+            .and_then(|o| o.object_type);
+        let level = row.and_then(|row| {
+            (low..=high).find(|&level| row.get(usize::from(level) - 1).copied() == resolved)
+        });
+        if level.is_none() {
+            return Err(format!(
+                "{name}: the random dwelling {index} is not its town {}'s table's at a level of \
+                 its range",
+                town.raw()
+            ));
+        }
+        add("E09 built: random dwellings tied to a town resolved", 1);
+        let owned = || {
+            adventure
+                .owner(adventure.map().towns()[town.index()])
+                .is_some()
+        };
+        let by = match setup.towns.get(town.index()).map(|t| t.faction) {
+            Some(TownFaction::Random { alignment: Some(_) }) => {
+                "E09 built: tied to a random town by its alignment"
+            }
+            Some(TownFaction::Random { alignment: None }) if owned() => {
+                "E09 built: tied to a random town by its owner"
+            }
+            Some(TownFaction::Random { alignment: None }) => {
+                "E09 built: tied to a random town drawn uniformly"
+            }
+            _ => "E09 built: tied to a fixed town",
+        };
+        add(by, 1);
+    }
+    Ok(())
 }
 
 /// E09 T7b2a: the towns of a game that builds as the build resolved them (TWN-SET-002 to -004,
@@ -1187,19 +1249,37 @@ fn built_dwellings(
                 object.anchor
             )
         };
-        let Holds::RandomDwelling {
-            factions,
-            levels: (low, high),
-        } = &object.holds
-        else {
-            if (216..=218).contains(&class) && object.object_type.is_some() {
-                return Err(at("holds no set and range"));
+        // E09 T11: one tied to a town takes the town's faction, here the static layer's (the
+        // first faction with a town record).
+        let town_faction = |town| {
+            game.towns()
+                .get(town)
+                .map(h3_towns::Town::faction)
+                .into_iter()
+                .collect()
+        };
+        let (factions, low, high): (Vec<_>, _, _) = match &object.holds {
+            Holds::RandomDwelling {
+                factions,
+                levels: (low, high),
+            } => (factions.clone(), low, high),
+            Holds::LinkedDwelling {
+                town,
+                levels: (low, high),
+            } => {
+                add("random dwellings tied to a town resolved", 1);
+                (town_faction(*town), low, high)
             }
-            add(
-                "dwellings placed by the map",
-                usize::from(map.dwelling_index(index).is_some()),
-            );
-            continue;
+            _ => {
+                if (216..=218).contains(&class) && object.object_type.is_some() {
+                    return Err(at("holds no set and range"));
+                }
+                add(
+                    "dwellings placed by the map",
+                    usize::from(map.dwelling_index(index).is_some()),
+                );
+                continue;
+            }
         };
         let resolved = &objects[index];
         let Some(ObjectKind::Dwelling { shift, .. }) = kind(resolved.object_type) else {
@@ -1258,7 +1338,7 @@ fn built_dwellings(
 
 /// Notes the map's typed objects of increment 10's classes as peaks (E08 T96b2, the most on one
 /// map that the dwellings XL holds, increment 10's design note §14): the dwellings of class 17 and
-/// of class 20, the random dwellings of 216 to 218 (those tied to a town are blockers, untyped)
+/// of class 20, the random dwellings of 216 to 218 (since E09 T11 those tied to a town typed too)
 /// and the Refugee Camps.
 fn most_dwellings(raw: &RawMap, setup: &MapSetup, peaks: &mut Peaks, name: &str) {
     let mut counts = [0; 4];
@@ -1517,9 +1597,10 @@ fn economy(
 /// Counts increment 10's dwellings (E08 T93b, increment 10's design note §3, §4): the dwellings
 /// (17, 20) and the Refugee Camps (78) typed by class, the random dwellings (216 to 218) typed by
 /// class, those with a faction set (the survey: 206), and those
-/// tied to a town, which stay blockers (ADV-STUB-13), with those tied to a random town (the
-/// survey: about 1 397, all to random towns); since E08 T97b1 the typed ones entered from water
-/// (imported since map import v19, ADV-OWN-002).
+/// tied to a town, holding it since E09 T11 (map import v20; ADV-STUB-13 before), with those tied
+/// to a random town (the survey: about 1 397, all to random towns), and the identifiers more than
+/// one town has (the import takes the last town's); since E08 T97b1 the typed ones entered from
+/// water (imported since map import v19, ADV-OWN-002).
 fn dwellings(
     map: &RawMap,
     setup: &MapSetup,
@@ -1533,6 +1614,18 @@ fn dwellings(
             _ => None,
         })
         .collect();
+    let mut shared: BTreeMap<u32, usize> = BTreeMap::new();
+    for (object, _) in placed(map).filter(|&(_, class)| matches!(class, 77 | 98)) {
+        if let Body::Town(town) = &object.body
+            && let Some(identifier) = town.identifier
+        {
+            *shared.entry(identifier).or_default() += 1;
+        }
+    }
+    add(
+        "towns: identifiers more than one town has (E09 T11)",
+        shared.values().filter(|&&n| n > 1).count(),
+    );
     for ((object, class), entry) in placed(map).zip(&setup.objects) {
         let typed = entry.object_type.is_some();
         let what = match class {
@@ -1570,16 +1663,16 @@ fn dwellings(
         let Body::RandomDwelling(body) = &object.body else {
             continue;
         };
-        match body.faction {
-            Some((0, _)) => add("dwellings: random dwellings with a faction set", 1),
-            Some((town, _)) if !typed => {
+        match (&body.faction, &entry.holds) {
+            (Some((0, _)), _) => add("dwellings: random dwellings with a faction set", 1),
+            (Some((town, _)), Holds::LinkedDwelling { .. }) => {
                 add(
-                    "dwellings: random dwellings tied to a town (blockers, ADV-STUB-13)",
+                    "dwellings: random dwellings tied to a town (holding it, E09 T11)",
                     1,
                 );
                 add(
                     "dwellings: random dwellings tied to a random town",
-                    usize::from(random_towns.contains(&town)),
+                    usize::from(random_towns.contains(town)),
                 );
             }
             _ => {}
