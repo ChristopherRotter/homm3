@@ -1029,6 +1029,11 @@ pub enum Sound {
     /// A Land Mine's blast, cued on the stack it hurts (`landkill.wav`, `play_sound_file` from
     /// `land_mine_trigger` 0x59FC63), as [`Sound::Drawbridge`].
     Mine,
+    /// A pickup sound (`pickup0N.82M`, N from 1 to 7) as a box of Eagle Eye's message opens after
+    /// the result window (E17 M6 T5c, design §12.21): the battle's sound by name (the asset
+    /// tables' `pickup_sounds`), category 3 as good luck's (`play_sound_async` 0x4771E8); the
+    /// window plays it as the box opens, no timeline cues it.
+    Pickup(u8),
 }
 
 /// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the
@@ -1620,6 +1625,7 @@ impl Timeline {
         let mut turrets_now: BTreeMap<u8, TurretPose> = BTreeMap::new();
         let mut turrets_printed: BTreeMap<u8, TurretPose> = BTreeMap::new();
         let mut walls_printed: Option<Walls> = None;
+        let mut magic_printed: Option<String> = None;
         for t in times {
             for key in self.keys.iter().filter(|k| k.drawn == t) {
                 now.insert(key.stack, key.pose);
@@ -1678,9 +1684,11 @@ impl Timeline {
                 walls_printed = Some(key.walls);
                 out.push_str(&siege::walls_line(t, &key.walls));
             }
-            // Each key drawn differs from the one before it (a frame on, or the erasure).
+            // A key drawn: a frame on, the erasure, or (a loop longer than the animation, E17 M6
+            // T5c: Chain Lightning's 38 under a defend of 13 frames) its last frame again, which
+            // the harness, listing changes, does not repeat.
             if let Some(key) = self.magics.iter().rev().find(|k| k.drawn == t) {
-                let _ = match key.frame {
+                let line = match key.frame {
                     Some(frame) => {
                         let over = key
                             .over
@@ -1690,10 +1698,14 @@ impl Timeline {
                             .map(|m| format!("{}.{}", u8::from(m.side == Side::Defender), m.record))
                             .collect();
                         let records = records.join(" ");
-                        writeln!(out, "{t} magic {} f{frame} {records}", key.animation)
+                        format!("magic {} f{frame} {records}", key.animation)
                     }
-                    None => writeln!(out, "{t} magic -"),
+                    None => String::from("magic -"),
                 };
+                if magic_printed.as_ref() != Some(&line) {
+                    let _ = writeln!(out, "{t} {line}");
+                    magic_printed = Some(line);
+                }
             }
             // The harness's `end`: the battle decided (E17 M3 T8).
             if self.ended.is_some_and(|(at, _)| at == t) {
@@ -5328,7 +5340,7 @@ impl Player<'_> {
         self.iterate(
             None,
             (0, 0, 0, 2),
-            (&reactions, false),
+            (&reactions, false, true),
             [STANDING, STRUCK],
             riding.as_ref(),
         );
@@ -5739,7 +5751,7 @@ impl Player<'_> {
         self.iterate(
             Some((attacker, &live)),
             (group, 0, frames, frames),
-            (&reactions, true),
+            (&reactions, true, false),
             [layer, STRUCK],
             None,
         );
@@ -5767,7 +5779,7 @@ impl Player<'_> {
     /// taken (E17 M2 T5c, the reviewer).
     fn react_alone(&mut self, hit: &[(u8, u32)], layers: [u8; 2]) {
         let reactions = self.reactions(hit);
-        self.iterate(None, (0, 0, 0, 2), (&reactions, false), layers, None);
+        self.iterate(None, (0, 0, 0, 2), (&reactions, false, false), layers, None);
     }
 
     /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4); returns when
@@ -5799,7 +5811,7 @@ impl Player<'_> {
             self.iterate(
                 Some((shooter, &live)),
                 (group, n, 0, 2),
-                (&reactions, false),
+                (&reactions, false, false),
                 [STANDING, STRUCK],
                 None,
             );
@@ -5826,7 +5838,7 @@ impl Player<'_> {
         self.iterate(
             Some((shooter, &live)),
             (group, climax, n - climax, 2),
-            (&reactions, false),
+            (&reactions, false, false),
             [STANDING, STRUCK],
             None,
         );
@@ -5948,7 +5960,8 @@ impl Player<'_> {
 
     /// The strike's iterations (`strike_animation` 0x468990): the striker (its id and how the
     /// timeline follows it; none: one it does not know) plays `frames` of `group` from frame
-    /// `from` and counts `counted` for the loop's length, each reaction ends with the loop; the
+    /// `from` and counts `counted` for the loop's length, each reaction ends with the loop (with
+    /// `together`, no striker in the original's loop: each starts with it); the
     /// striker and the struck stacks drawn in `layers`. Then everyone stands in standing's
     /// layer, a dead stack on its death's last frame among the corpses, shown with the next
     /// frame (*provisional*: the executable moves it to the corpses' list when its death ends).
@@ -5956,7 +5969,7 @@ impl Player<'_> {
         &mut self,
         striker: Option<(u8, &Live)>,
         (group, from, frames, counted): (u8, u32, u32, u32),
-        (reactions, melee): (&[Reaction], bool),
+        (reactions, melee, together): (&[Reaction], bool, bool),
         [striking, struck]: [u8; 2],
         riding: Option<&Riding>,
     ) {
@@ -6015,14 +6028,26 @@ impl Player<'_> {
                     },
                 ));
             }
+            // It reacts once the iterations left are no more than its frames; without a striker
+            // in the original's loop (`together`: a spell's) every reaction starts at once, its
+            // first two frames at the first iteration (E17 M6 T5c, `eagle-eye`: Chain Lightning's
+            // death of 7 frames beside a defend of 13, both from the loop's start; a lone
+            // reaction the same either way). A striker the timeline does not know
+            // (`react_alone`) is one in the original's loop: its reactions end together.
+            let lead = |r: &Reaction| {
+                if together {
+                    (counted + r.frames).saturating_sub(1).max(counted + 1)
+                } else {
+                    reacting
+                }
+            };
             for r in reactions {
-                if i == (reacting - 1).saturating_sub(r.frames) {
+                if i == (lead(r) - 1).saturating_sub(r.frames) {
                     self.cue(r.stack, r.sound, false);
                 }
             }
             for r in reactions {
-                // It reacts once the iterations left are no more than its frames.
-                let k = i64::from(i) - (i64::from(reacting) - 1 - i64::from(r.frames));
+                let k = i64::from(i) - (i64::from(lead(r)) - 1 - i64::from(r.frames));
                 // Without a striker a reaction at its last frame holds it while the iterations
                 // left are more than its frames (0x468EBA, 0x468FA1; E17 M4 T2c-1, `mine`: the
                 // Titans' 7 frames under the mine's 17).

@@ -5546,3 +5546,46 @@ On `client/e17-m6-t5b2b`. Kept whole by the user (2026-11-06; a cut after the st
   other than a walk.
 - **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (83 as recorded), `check-docs`,
   the scoped verify with original data.
+
+### M6 T5c — Eagle Eye's message and the box with pictures (2026-11-06)
+
+On `client/e17-m6-t5c`. Kept whole by the user (2026-11-06), who queued the captured artifacts'
+message the reading found as T5e.
+
+- **Read** (design §12.21): `battle_end`'s tail after the window, `eagle_eye_message` 0x476FE0,
+  `message_box_pictures` 0x4F7690 whole, the pictures' layout and items of 0x4F5D80 and
+  0x4F6990, the side's +0x54A6 (`player_id_is_human_here` at the setup). The experience after the
+  window shows nothing on the battle screen (a human winner's points without levels; the levels
+  and their dialog on the map, `adventure_battle` 0x4AD470: the map client's). The message names
+  every pick, learned or not (CLT-Q65).
+- **Built** (a builder; §12.21, "Built"): `h3_view::message::pictures` (one to eight pictures in
+  up to two rows, the text at x 25; the one-picture box through the same builder, unchanged),
+  `h3_view::eagle_eye` (`boxes`, `pickups`), the keys `result.eagle-eye.*`, the harvested
+  `pickup_sounds` and `anim::Sound::Pickup`; the binary's `results::eagle_eye`,
+  `Asked::EagleEye` (the window's OK opens the first box, the last box's OK ends the screen), the
+  stills' and sequences' boxes after the window's Enter. *Provisional:* the sound's number from
+  the C library's `rand()` at the viewer's seed; a sequence closes a box by Return, Escape or a
+  click; after the last box the darkened screen alone; a pick the tables lack left out.
+- **Recorded** (a capture agent; §12.21, "Recorded"; the agent was stopped by an interruption
+  after its last digests, its work committed by the session): `eagle-eye` (five picks, 3 + 2
+  pictures, the levels 3 and 4 named unlearned: CLT-Q65 confirmed) and `eagle-eye-one` (one
+  pick) over the new hot-seat `seq-eagle-eye.toml` (Orrin with Expert Eagle Eye and its three
+  artifacts, 90 %, no Wisdom; Crag Hack casting, his own Wolf Riders killed by Chain Lightning):
+  164 and 37 frames exact after three corrections (the result window stays under the boxes as it
+  last showed, CLT-Q66; a strike-less spell's reactions all start at the loop's first iteration;
+  a magic's held last frame one timeline line). `h3-view situation` writes the skill and the
+  artifacts behind a scenario's `eagle_eye` (`scenario::eagle_eye_parts`, *provisional*). Not
+  recorded: two boxes (nine picks), the pickup sound.
+- **Gap:** a server's seat shows no message: the wire tells a seat its hero's picks only in its
+  own snapshot (`OwnHero::learned`), no event or end message carries them (CLT-STUB-3; the server
+  lane's inbox).
+- **Asked:** CLT-Q65 (the unlearned picks named; fix once a whole game tells the viewer what was
+  learned), CLT-Q66 (the window under the boxes; copy recommended, built so).
+- **Reviewed** (a fresh reviewer; §12.21, "Reviewed"): two medium findings fixed (a striker the
+  timeline does not know got a spell's reactions, `iterate`'s `together`; a sequence's Escape
+  closed Eagle Eye's boxes, which take Enter alone), three low fixed (the window's clip under the
+  boxes at the close's millisecond, `Battle::window_closed_at`; two boxes alike in a row empty
+  the input queue, `Battle::boxes_opened`; a test that did not prove a click advancing the
+  boxes). The capture agent's `eagle_eye_parts` factored for clippy.
+- **Gates:** `check.sh` (100 % coverage), `h3drive.py drawn`, `h3-view sequences` (85 as
+  recorded), `check-docs`, `check-lane`, the scoped verify with original data.

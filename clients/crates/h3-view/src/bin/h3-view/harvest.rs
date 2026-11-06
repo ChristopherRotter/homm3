@@ -163,6 +163,11 @@ const WALL_SHOT: [u32; 4] = [0x66_0A60, 0x66_0A6C, 0x66_0A78, 0x66_0A84];
 /// 0x4673CD: `drawbrg.82m`) and a Land Mine's blast (`land_mine_trigger` 0x59FC5E,
 /// `landkill.wav`), each played as a file (category 2, volume 127).
 const SIEGE_SOUNDS: [u32; 2] = [0x66_FFB0, 0x68_8410];
+/// The pickup sounds' format (E17 M6 T5c): `pickup%02d.82M`, N from 1 to 7, a box of Eagle Eye's
+/// message's as it opens (`eagle_eye_message` 0x4771C3, `play_sound_async`: category 3).
+const PICKUP_SOUND: u32 = 0x67_0268;
+/// The pickup sounds' numbers (`random_between(1, 7)`, 0x4771BA).
+const PICKUPS: core::ops::RangeInclusive<u32> = 1..=7;
 /// The spell records (`spell_table`, 81 records of 0x88 bytes; E17 M3 T7b-1): +0 the spell's sign
 /// (1 positive, −1 negative, 0 neither; the count box's tint sums it, 0x43E6C7, E17 M3 T7b-2a),
 /// +4 the sound's name (none: 0), +8 the magic animation's number (−1: none).
@@ -317,6 +322,8 @@ struct Harvest {
     wall_shot: [String; 4],
     /// The drawbridge's and a mine's blast's sounds (E17 M4 T2c-1).
     siege_sounds: [String; 2],
+    /// The pickup sounds of Eagle Eye's message, by N − 1 (E17 M6 T5c).
+    pickup_sounds: Vec<String>,
     /// The spells' sounds and animations by original id, their projectiles' DEFs and angles,
     /// and `sptraits.txt`'s numbers by name.
     spells: Vec<(Option<String>, Option<u8>, i8)>,
@@ -572,6 +579,15 @@ fn read_harvest(
     ];
     let [drawbridge, mine] = SIEGE_SOUNDS;
     let siege_sounds = [stem(&string(drawbridge)?), stem(&string(mine)?)];
+    let pickup = string(PICKUP_SOUND)?;
+    if !pickup.contains("%02d") {
+        return Err(format!(
+            "the pickup sounds' format `{pickup}` has no `%02d`"
+        ));
+    }
+    let pickup_sounds = PICKUPS
+        .map(|n| stem(&pickup.replace("%02d", &format!("{n:02}"))))
+        .collect();
     let mut spells = Vec::new();
     for k in 0..SPELLS.1 {
         let record = bytes(&image, exe, SPELLS.0 + to_u32(k * SPELLS.2), 12)?;
@@ -690,6 +706,7 @@ fn read_harvest(
         strike_sounds,
         wall_shot,
         siege_sounds,
+        pickup_sounds,
         spells,
         projectiles,
         objects,
@@ -964,6 +981,12 @@ fn write_table(
             plain(drawbridge)?,
             plain(mine)?
         );
+        let pickups = h
+            .pickup_sounds
+            .iter()
+            .map(|n| plain(n).map(|n| format!("\"{n}\"")))
+            .collect::<Result<Vec<_>, _>>()?;
+        let _ = writeln!(t, "pickup_sounds = [{}]", pickups.join(", "));
     }
     for c in &pack.creature {
         let name = c.name.as_deref().unwrap_or_default();

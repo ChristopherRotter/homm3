@@ -132,7 +132,7 @@ impl Player<'_> {
         self.iterate(
             None,
             (0, 0, 0, 2),
-            (&reactions, false),
+            (&reactions, false, true),
             [STANDING, STRUCK],
             riding.as_ref(),
         );

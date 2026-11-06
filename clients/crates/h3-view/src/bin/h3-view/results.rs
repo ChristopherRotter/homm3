@@ -84,13 +84,7 @@ fn built(
         BattleResult::Surrender(side) => (Some(GaveUp::Surrender), Some(side.index())),
         BattleResult::Victory(_) | BattleResult::Draw => (None, None),
     };
-    let winner = result::winner(
-        outcome.result.winner().map(BattleSide::index),
-        gave_up.is_some(),
-        survivors(&outcome.stacks),
-    );
-    let human = [0, 1].map(|i| opening.sides.get(i).is_some_and(|s| s.human));
-    let shown = result::shown_side(winner, human);
+    let (winner, shown) = winner_shown(opening, outcome);
     let won = winner == Some(shown);
     // How the battle was given up as the window tells it: the shown side's enemy when it won, the
     // shown side itself when it lost. With no winner named (BAT-END-001) the original tells the
@@ -176,6 +170,80 @@ fn built(
     let texts = Texts::of(catalogue, text);
     let window = result::layout(&sources.layout.result, &texts, &sides, player);
     (window, tune(won, shown, town, told))
+}
+
+/// The side the window names the winner ([`result::winner`]: none after a side gave up against an
+/// opponent without army survivors) and the side it shows ([`result::shown_side`]: the winner's
+/// when its player is a human here, `opening`'s sides' `human`), of the battle that ended as
+/// `outcome`.
+fn winner_shown(opening: &Observation, outcome: &BattleOutcome) -> (Option<usize>, usize) {
+    let gave_up = matches!(
+        outcome.result,
+        BattleResult::Retreat(_) | BattleResult::Surrender(_)
+    );
+    let winner = result::winner(
+        outcome.result.winner().map(BattleSide::index),
+        gave_up,
+        survivors(&outcome.stacks),
+    );
+    let human = [0, 1].map(|i| opening.sides.get(i).is_some_and(|s| s.human));
+    (winner, result::shown_side(winner, human))
+}
+
+/// The result window as it stays under Eagle Eye's boxes (E17 M6 T5c, recorded: `eagle-eye`):
+/// its buttons up again (the OK its close pressed), the rest as it showed.
+pub fn released(window: &MessageBox) -> MessageBox {
+    let mut window = window.clone();
+    for state in window.shown.states.values_mut() {
+        state.pressed = false;
+    }
+    window
+}
+
+/// Eagle Eye's message after the result window [`window`] shows (E17 M6 T5c, design §12.21;
+/// `h3_view::eagle_eye::boxes`): when the window showed the winner and the winner has a hero, the
+/// boxes of the spells its Eagle Eye picked (the outcome's `heroes[side].learned`: each spell by
+/// its handle through the manifest's keys to its table entry, its original number and its name;
+/// a spell the tables lack is left out), their pictures from the spells' DEF `pictures` (its name
+/// and size). A hero whose type the manifest does not name is named empty, as in the window. A
+/// server's seat's outcome ([`served`]) has no heroes' outcomes, so no box (the wire carries the
+/// picks only in a seat's own snapshots, `OwnHero::learned`, and no event tells a pick).
+pub fn eagle_eye(
+    sources: &Sources<'_>,
+    opening: &Observation,
+    outcome: &BattleOutcome,
+    pictures: (&str, [i32; 2]),
+) -> Vec<h3_view::eagle_eye::Told> {
+    let (winner, shown) = winner_shown(opening, outcome);
+    let catalogue = sources.catalogue;
+    let hero = hero_key(sources, opening, shown).map(|key| {
+        key.map_or_else(String::new, |key| {
+            catalogue.text(&format!("hero.{key}"), &Args::new())
+        })
+    });
+    let keys = &sources.manifest.keys.spells;
+    let learned = outcome
+        .heroes
+        .get(shown)
+        .and_then(Option::as_ref)
+        .map_or(&[][..], |h| h.learned.as_slice());
+    let picks: Vec<h3_view::eagle_eye::Pick> = learned
+        .iter()
+        .filter_map(|spell| {
+            let key = keys.get(usize::from(spell.raw()))?;
+            let entry = sources.tables.spells.get(key)?;
+            Some(h3_view::eagle_eye::Pick {
+                original: u32::from(entry.original),
+                name: catalogue.text(&format!("spell.{key}"), &Args::new()),
+            })
+        })
+        .collect();
+    h3_view::eagle_eye::boxes(
+        catalogue,
+        (winner == Some(shown), hero.as_deref()),
+        &picks,
+        pictures,
+    )
 }
 
 /// The window's tune, and so its clip (`h3_view::clip::of`), by the branches that pick its text
@@ -339,6 +407,8 @@ pub fn served(
         war_machines: [Vec::new(), Vec::new()],
         stacks: records(opening, end),
         surrender_cost: None,
+        // stub: CLT-STUB-3 (a seat's own hero's Eagle Eye picks: no event or end message carries
+        // them, so a seat shows no Eagle Eye message; the server lane's inbox, 2026-11-06).
         heroes: [None, None],
         rounds: end.round,
     }

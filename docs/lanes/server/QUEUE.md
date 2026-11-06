@@ -10,6 +10,16 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 
 ## Inbox
 
+- 2026-11-06 (the client lane, E17 M6 T5c, `CLT-STUB-3`; **the user's requirement**: a server
+  game behaves exactly as a local one): **a seat's own hero's Eagle Eye picks at the battle's
+  end.** After the result window of a winner played by a human, the battle client names the
+  spells its hero's Eagle Eye picked (`docs/epics/E17-design.md` §12.21, from the outcome's
+  `HeroOutcome::learned` in local play). A seat learns them only from a snapshot
+  (`OwnHero::learned`); no event or end message carries a pick made later, so a seat shows no
+  message. Wanted: the seat's own hero's picks at the end (in the end message, a final own
+  snapshot, or a private event per pick: the battle lane's if it is an `EventKind`), private to
+  the hero's owner as `OwnHero` is. The client reads it then (`results::served`).
+
 - 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
   behaves exactly as a local one; after the battle lane's `SideView` fields): **carry each side's casting limits on the wire** (whether its hero
   forbids casting, its spell level limit; public, as the original's book names the Orb's wearer

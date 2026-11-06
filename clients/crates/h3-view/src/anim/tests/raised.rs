@@ -451,6 +451,52 @@ fn the_bolt_sequence_plays_as_recorded() {
 }
 
 #[test]
+fn chain_lightnings_reactions_start_together() {
+    // E17 M6 T5c (`eagle-eye`, recorded): Chain Lightning at the defending Pikemen (group 4, 13
+    // frames) on to a Swordsman, killed (group 5, fewer): without a striker both reactions start
+    // at the loop's first iteration, the death held on its last frame; the animation's last
+    // frame, kept to the loop's end, is listed once.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        counted(at(1, Side::Defender, SWORDSMAN, 100, false), 1),
+    ]);
+    let hurt = |target, damage, kills| Event::SpellDamage {
+        target,
+        value: WireU64(damage),
+        caster: WireU64(damage),
+        damage: WireU64(damage),
+        kills,
+    };
+    // (The cast in the Swordsman's turn, the Pikemen still defending: as `eagle-eye`'s, there
+    // the defender's hero's.)
+    let commands = [
+        (Some(0), defend(0, 1)),
+        (
+            Some(0),
+            vec![cast(CHAIN_LIGHTNING, 0), hurt(0, 65, 0), hurt(1, 32, 1)],
+        ),
+    ];
+    let lines = play_raised(&o, &commands, &raise_casts()).lines();
+    let first = |what: &str| {
+        lines
+            .lines()
+            .find(|l| l.contains(what))
+            .and_then(|l| l.split(' ').next())
+            .map(ToString::to_string)
+    };
+    assert!(first(" 0.0 g4 ").is_some());
+    assert_eq!(first(" 0.0 g4 "), first(" 1.0 g5 "));
+    let magic: Vec<&str> = lines
+        .lines()
+        .filter_map(|l| l.split_once(' ').map(|(_, rest)| rest))
+        .filter(|rest| rest.starts_with("magic"))
+        .collect();
+    let mut unique = magic.clone();
+    unique.dedup();
+    assert_eq!(magic, unique);
+}
+
+#[test]
 fn rays_take_the_kept_draws_first() {
     // The same chain from the original's draws: they turn the rays (E17 M3 T7c-3).
     let o = snapshot(vec![
