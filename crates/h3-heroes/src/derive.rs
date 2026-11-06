@@ -405,6 +405,19 @@ pub fn attack_defense(details: &HeroDetails, ruleset: &Ruleset) -> (u8, u8) {
     (value(PrimarySkill::Attack), value(PrimarySkill::Defense))
 }
 
+/// The hero's Power as the adventure map reads it (HER-ADV-001, E09 T8c2: the towns' Visions,
+/// TWN-VEW-003): its effective value as [`attack_defense`] takes Attack's and Defense's, the
+/// original's +0x478, which `hero_visions_reach` 0x4E5E10 holds to 1–99 (the original packs'
+/// bounds). A ruleset without hero parameters takes the base value, as [`attack_defense`] does.
+pub fn power(details: &HeroDetails, ruleset: &Ruleset) -> u8 {
+    // rule: HER-ADV-001
+    ruleset
+        .hero_params()
+        .map_or(details.primary[PrimarySkill::Power.index()], |params| {
+            effective_primary(details, ruleset, params, PrimarySkill::Power)
+        })
+}
+
 /// The most a hero's join bonus counts ([`join_bonus`]): Expert Diplomacy's.
 pub const MAX_JOIN_BONUS: u8 = 3;
 

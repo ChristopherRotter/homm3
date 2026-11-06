@@ -3813,6 +3813,13 @@ url = "docs/rules/surveys/E09-towns.md"
 retrieved = "2026-11-03"
 
 [[source]]
+id = "exe-town-visions"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-towns.md 12.3): hero_visions_level 0x4E5DE0 raises a hero's Visions level to 3 (expert) when its army holds creature 143 (the Rogue); hero_visions_reach 0x4E5E10 takes the radius as Visions' (spell 2's) effect for that level, 3 at expert (SPTRAITS.TXT), times the hero's Power held to 1-99, at least 3, and is true on the hero's level with the squared distance below the radius's square; town_popup 0x4167A0 measures from the town's entrance (its record's +0x5) and shows the top level"
+url = "docs/rules/surveys/E09-towns.md"
+retrieved = "2026-11-06"
+
+[[source]]
 id = "exe-town-siege"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/rules/surveys/E09-towns.md 9.4; installation.md 7.27 to 7.33; E04c-sieges.md S-29): from a Citadel the moat damages under SoD rules and does not under RoE or AB rules, a Tower has its land mines instead, a Stronghold none under RoE or AB rules and then the terrain's natural obstacles; the defender's morale +1 with the Tavern (5), +2 for a Castle with the Brotherhood of the Sword (22, which supersedes the Tavern); luck +2 for a Rampart with the Fountain of Fortune (21); a Stronghold's escape tunnel (17); the defending hero's bonuses: a Tower's Grail +150 spell points, an Inferno's 21 +2 power, a Dungeon's Grail +12 power, a Stronghold's Grail +20 attack, a Fortress' 21 +2 attack and 22 +2 defense (TD-8 by the code, E09 decision 30), its Grail +10 attack and defense"
@@ -3861,6 +3868,14 @@ hall_gold = [500, 1000, 2000, 4000]
 grail_gold = 5000
 reveal_radius = 5
 capitol_demoted_to = 12
+
+# Visions for the towns (TWN-VEW-003, E09 T8c2): its expert factor and least radius go into the
+# [town_params], the creatures that give it into their own pack's [town_visions] (the Rogue, AB's).
+[towns.visions]
+sources = ["exe-town-visions"]
+factor = 3
+min_radius = 3
+creatures = [143]
 
 # The moat from a Citadel and a walled siege's natural obstacles (E09 decisions 14 and 20): the
 # base and ab records as RoE and AB play them, the sod pack's overrides as SoD does (a Tower's

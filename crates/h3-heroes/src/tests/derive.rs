@@ -1607,6 +1607,28 @@ fn the_map_reads_attack_and_defense_as_the_battle_hero_has_them() {
     assert_eq!(attack_defense(&d, &r), (3, 4));
 }
 
+// covers: HER-ADV-001
+#[test]
+fn the_map_reads_power_as_the_battle_hero_has_it() {
+    let r = compile(effect_pack()).unwrap();
+    let d = details(&r);
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    assert_eq!(power(&d, &r), hero.power);
+    let mut d = details(&r);
+    d.worn = wearing(&r, &[art(&r, "t:band")]);
+    d.primary = [3, 4, 7, 1];
+    let least = r.hero_params().unwrap().primary_min[PrimarySkill::Power.index()];
+    assert_eq!(power(&d, &r), least.max(2), "7 - 5, at least the minimum");
+    d.worn.fill(None);
+    assert_eq!(power(&d, &r), 7);
+    // Without hero parameters (validation refuses them) the base value.
+    let mut p = effect_pack();
+    p.hero_params = None;
+    let r = compile(p).unwrap();
+    d.worn = wearing(&r, &[art(&r, "t:band")]);
+    assert_eq!(power(&d, &r), 7);
+}
+
 /// The effect pack with Offense standing for Diplomacy (a join bonus of 1/2/3) and `t:helm`
 /// adding 2 (E08 T20a1).
 fn join_pack() -> ContentPack {

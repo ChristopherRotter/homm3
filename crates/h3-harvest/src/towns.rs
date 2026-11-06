@@ -80,7 +80,10 @@ const PACKS: [(&str, &str); 3] = [
         "base",
         "The Restoration of Erathia's town records and the town part's parameters.",
     ),
-    ("ab", "Armageddon's Blade's town record: Conflux."),
+    (
+        "ab",
+        "Armageddon's Blade's town record, Conflux, and its Visions creature, the Rogue.",
+    ),
     (
         "sod",
         "The Shadow of Death: the moats as SoD plays them (overrides).",
@@ -250,6 +253,9 @@ pub fn harvest_towns(
         PACKS.iter().map(|&(id, line)| (id, header(line))).collect();
     let base = texts.entry("base").or_default();
     base.push_str(&params(&ctx)?);
+    for (pack, text) in visions(&ctx)? {
+        texts.entry(pack).or_default().push_str(&text);
+    }
     for (f, t) in data.factions.iter().enumerate() {
         let pack = if ab_factions.contains(factions[f].as_str()) {
             "ab"
@@ -324,14 +330,37 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
          reveal_radius = {}\n\
          level_2_dwelling_chance = {}\n\
          neutral_garrison = [\n{},\n]\n\
-         capitol_demoted_to = {}\n",
+         capitol_demoted_to = {}\n\
+         visions_factor = {}\n\
+         visions_min_radius = {}\n",
         quote(gold),
         p.grail_gold,
         p.reveal_radius,
         ctx.data.dwelling_2_chance,
         rows.join(",\n"),
         quote(&demoted),
+        ctx.spec.visions.factor,
+        ctx.spec.visions.min_radius,
     ))
+}
+
+/// Each pack's `[town_visions]` (E09 T8c2): the gap-fill's creatures, each in its own pack's file.
+fn visions(ctx: &Ctx<'_>) -> Result<BTreeMap<&'static str, String>, String> {
+    let mut by_pack: BTreeMap<&'static str, Vec<String>> = BTreeMap::new();
+    for id in &ctx.spec.visions.creatures {
+        let (key, pack) = ctx
+            .creatures
+            .get(id)
+            .ok_or_else(|| format!("gapfill: towns: unknown Visions creature {id}"))?;
+        by_pack.entry(pack).or_default().push(quote(key));
+    }
+    Ok(by_pack
+        .into_iter()
+        .map(|(pack, keys)| {
+            let text = format!("\n[town_visions]\ncreatures = [{}]\n", keys.join(", "));
+            (pack, text)
+        })
+        .collect())
 }
 
 /// The siege fields of a faction under RoE and AB rules and under SoD rules.

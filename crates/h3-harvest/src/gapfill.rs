@@ -65,6 +65,23 @@ pub struct Towns {
     pub moat: TownMoats,
     /// The buildings' roles (the dwellings' come from their ids).
     pub role: Vec<TownRole>,
+    /// Visions for the towns (E09 T8c2).
+    pub visions: TownVisions,
+}
+
+/// Visions for the towns (TWN-VEW-003, E09 T8c2): its factor and least radius go into the
+/// `[town_params]`, its creatures into their own pack's `[town_visions]`.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownVisions {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// Visions' expert factor, tiles per point of Power.
+    pub factor: u8,
+    /// Its least radius.
+    pub min_radius: u8,
+    /// The ids of the creatures that give a hero's army Visions at its expert level.
+    pub creatures: Vec<u16>,
 }
 
 /// The `[town_params]` fields the tables do not hold (the level-2 dwelling's chance and the
@@ -1009,6 +1026,7 @@ impl GapFill {
                         .sources
                         .iter()
                         .chain(&t.moat.sources)
+                        .chain(&t.visions.sources)
                         .chain(t.role.iter().flat_map(|r| &r.sources))
                 }));
         for r in refs {

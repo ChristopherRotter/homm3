@@ -2,9 +2,8 @@
 //! §12 and §17; survey `E09-towns.md` §12, the original's map picture, hint and right-click
 //! popup): every town a tile of which the viewer has explored, linked from its object on the
 //! adventure map ([`h3_adventure::ObjectView::town`]), with its public facts, its garrison by the
-//! viewer's level and, for its owner's team, the facts of the popup's top level. A Rogue's Visions
-//! (the top level for another team's viewer, `TWN-STUB-9`) and `docs/06-security.md`'s section
-//! "Towns" come with E09 T8c2.
+//! viewer's level and, for its owner's team or a viewer whose hero sees it by a Rogue's Visions
+//! (E09 T8c2), the facts of the popup's top level (`docs/06-security.md`, "Towns").
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -14,10 +13,10 @@ use h3_content::{CreatureTypeId, FactionId, ResourceId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{TownRuleset, Towns};
 
-use crate::GameRuleset;
+use crate::{GameRuleset, GameState};
 
-/// The garrison's level of a viewer of the town's owner's team (TWN-VEW-003): the popup's top
-/// level, every fact of the town's.
+/// The garrison's level of a viewer of the town's owner's team or whose hero sees it by Visions
+/// (TWN-VEW-003): the popup's top level, every fact of the town's but its garrison by slot.
 pub const OWNER_LEVEL: u8 = 3;
 
 /// The most a viewer's taverns give it (TWN-VEW-002): the original counts the viewer's towns with
@@ -51,8 +50,8 @@ pub struct TownView {
     pub capitol: bool,
     /// Its garrison as the viewer's level shows it.
     pub garrison: GarrisonView,
-    /// The popup's top level's facts, for a viewer of the owner's team ([`OWNER_LEVEL`]); none
-    /// for every other viewer.
+    /// The popup's top level's facts, for a viewer at [`OWNER_LEVEL`] (the owner's team, or a
+    /// hero's Visions in reach); none for every other viewer.
     pub owner_facts: Option<TownOwnerView>,
 }
 
@@ -63,8 +62,9 @@ pub struct TownView {
 /// hero is not in it: it stands on the entrance and is seen as a hero.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GarrisonView {
-    /// The viewer's level, 0 to [`OWNER_LEVEL`]: [`OWNER_LEVEL`] for the owner's team, else the
-    /// number of the viewer's towns with a standing Tavern, at most [`TAVERN_LEVELS`].
+    /// The viewer's level, 0 to [`OWNER_LEVEL`]: [`OWNER_LEVEL`] for the owner's team or a
+    /// viewer one of whose heroes sees the town by Visions, else the number of the viewer's towns
+    /// with a standing Tavern, at most [`TAVERN_LEVELS`].
     pub level: u8,
     /// The stacks as the level shows them, in slot order; none at level 0.
     pub stacks: Vec<GarrisonStackView>,
@@ -86,8 +86,8 @@ pub struct GarrisonStackView {
 }
 
 /// The facts of a town the popup shows only at its top level (TWN-VEW-003; survey
-/// `E09-towns.md` §12.3): to its owner's team. The garrison hero's mark comes with the garrison
-/// hero (increment 3).
+/// `E09-towns.md` §12.3): to its owner's team and to a viewer whose hero sees it by Visions. The
+/// garrison hero's mark comes with the garrison hero (increment 3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TownOwnerView {
     /// Its hall level, 1 the Village Hall to 4 the Capitol (`h3_towns::hall_level`).
@@ -97,23 +97,24 @@ pub struct TownOwnerView {
     pub income: Vec<(ResourceId, u32)>,
 }
 
-/// What the viewer of `observation`, the adventure map as it sees it ([`AdventureState::observe`]),
-/// sees of the towns (TWN-VEW-001 to -003): a view of each town among its objects a tile of which
-/// it has explored, in `TownId` order (the objects' order). A town only on its fringe, which the
-/// `faithful` profile shows as an object (ADV-QUIRK-1), has none: the original's popup reads an
-/// explored tile only (survey `E09-towns.md` §12.3; *agent's call*). Its garrison's level is
-/// [`OWNER_LEVEL`] for a town of the viewer's team (a neutral town is nobody's), else the number
-/// of the viewer's own towns with a standing Tavern (`h3_towns::has_tavern`), at most
-/// [`TAVERN_LEVELS`].
+/// What the viewer of `observation`, the adventure map of `state` as it sees it
+/// ([`AdventureState::observe`]), sees of the towns (TWN-VEW-001 to -003): a view of each town
+/// among its objects a tile of which it has explored, in `TownId` order (the objects' order). A
+/// town only on its fringe, which the `faithful` profile shows as an object (ADV-QUIRK-1), has
+/// none: the original's popup reads an explored tile only (survey `E09-towns.md` §12.3; *agent's
+/// call*). Its garrison's level is [`OWNER_LEVEL`] for a town of the viewer's team (a neutral town
+/// is nobody's) or one whose entrance a hero of the viewer's sees by Visions ([`visions`]), else
+/// the number of the viewer's own towns with a standing Tavern (`h3_towns::has_tavern`), at most
+/// [`TAVERN_LEVELS`]. The garrison by slot is the owner's team's only.
 // rule: TWN-VEW-001, TWN-VEW-002, TWN-VEW-003
 pub(crate) fn town_views(
-    adventure: &AdventureState,
-    towns: &Towns,
+    state: &GameState,
     rules: &GameRuleset,
     observation: &AdventureObservation,
 ) -> Vec<TownView> {
+    let (adventure, towns) = (state.adventure(), state.towns());
     let (part, map, viewer) = (rules.towns(), adventure.map(), observation.viewer);
-    let mut taverns = None;
+    let (mut taverns, mut seers) = (None, None);
     observation
         .objects
         .iter()
@@ -129,9 +130,14 @@ pub(crate) fn town_views(
                             .any(|pos| observation.is_explored(pos))
                     })?;
             let ours = object.owner.is_some_and(|owner| allied(owner, viewer));
+            // rule: TWN-VEW-003
+            let top = ours
+                || map.objects()[index].entrance(map).is_some_and(|entrance| {
+                    let seers = seers.get_or_insert_with(|| visions(state, rules, viewer));
+                    in_visions(seers, entrance)
+                });
             // rule: TWN-VEW-002, TWN-VEW-003
-            // stub: TWN-STUB-9 (a Rogue's Visions in reach, the top level too: E09 T8c2)
-            let level = if ours {
+            let level = if top {
                 OWNER_LEVEL
             } else {
                 *taverns.get_or_insert_with(|| tavern_level(adventure, towns, part, viewer))
@@ -147,13 +153,60 @@ pub(crate) fn town_views(
                 capitol: towns.capitol(town, part),
                 garrison: garrison_view(rules, army, level, ours),
                 // rule: TWN-VEW-003
-                owner_facts: ours.then(|| TownOwnerView {
+                owner_facts: top.then(|| TownOwnerView {
                     hall: h3_towns::hall_level(record, part),
                     income: h3_towns::daily_income(record, part),
                 }),
             })
         })
         .collect()
+}
+
+/// The tiles of `viewer`'s heroes that see towns by Visions, each with the square of its radius
+/// (TWN-VEW-003; survey `E09-towns.md` §12.3): the heroes on the map whose army holds a creature
+/// of the town part's Visions creatures (the original's `hero_visions_level` 0x4E5DE0, raised to
+/// expert by a Rogue; Visions itself is not cast yet), the radius the part's Visions factor times
+/// the hero's Power (`h3_heroes::power`), at least the part's least radius
+/// (`hero_visions_reach` 0x4E5E10). Only the viewer's own heroes, as the original's popup asks.
+// rule: TWN-VEW-003
+fn visions(state: &GameState, rules: &GameRuleset, viewer: PlayerId) -> Vec<(Pos, u64)> {
+    let heroes = state.adventure().heroes();
+    rules
+        .towns()
+        .params()
+        .into_iter()
+        .flat_map(|params| {
+            heroes
+                .iter()
+                .filter(move |hero| {
+                    hero.owner == viewer
+                        && hero
+                            .army
+                            .iter()
+                            .any(|stack| params.visions_creatures.contains(&stack.creature))
+                })
+                .map(move |hero| {
+                    let power = state
+                        .hero(hero.id)
+                        .map_or(0, |details| h3_heroes::power(details, rules.core()));
+                    let radius = (u64::from(params.visions_factor) * u64::from(power))
+                        .max(u64::from(params.visions_min_radius));
+                    (hero.pos, radius * radius)
+                })
+        })
+        .collect()
+}
+
+/// Whether one of `seers` ([`visions`]) sees the town whose entrance is `entrance` (TWN-VEW-003;
+/// `hero_visions_reach` 0x4E5E10, from the town's entrance as `town_popup` 0x4167A0 passes it):
+/// on its level, the squared distance below the squared radius.
+// rule: TWN-VEW-003
+pub(super) fn in_visions(seers: &[(Pos, u64)], entrance: Pos) -> bool {
+    seers.iter().any(|&(pos, reach)| {
+        let dx = u64::from(pos.x.abs_diff(entrance.x));
+        let dy = u64::from(pos.y.abs_diff(entrance.y));
+        pos.level == entrance.level && dx * dx + dy * dy < reach
+    })
 }
 
 /// The number of `viewer`'s own towns with a standing Tavern, at most [`TAVERN_LEVELS`]

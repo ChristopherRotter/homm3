@@ -207,7 +207,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
     let adventure = state
         .adventure()
         .observe(rules.core(), rules.adventure(), player);
-    let towns = town_views(state.adventure(), state.towns(), rules, &adventure);
+    let towns = town_views(state, rules, &adventure);
     GameObservation {
         viewer: player,
         day: state.day(),

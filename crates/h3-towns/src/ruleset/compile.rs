@@ -112,13 +112,15 @@ fn invalid_building(
     }
 }
 
-/// Compiles the packs into the parameters and the records in faction order.
+/// Compiles the packs into the parameters (with every pack's Visions creatures) and the records
+/// in faction order.
 pub(super) fn compile(
     core: &Ruleset,
     packs: &[TownPack],
 ) -> Result<(Option<TownParams>, Vec<TownRecord>)> {
     let order = load_order(core, packs)?;
     let mut params = None;
+    let mut visions = BTreeSet::new();
     let mut towns: BTreeMap<FactionId, Entry> = BTreeMap::new();
     for (pack, closure) in &order {
         let scope = Scope {
@@ -131,6 +133,13 @@ pub(super) fn compile(
                 return Err(TownCompileError::DuplicateParams(pack.manifest.id.clone()));
             }
             params = Some(compile_params(&scope, def)?);
+        }
+        for key in &pack.visions {
+            if !visions.insert(scope.creature(key)?) {
+                return Err(TownCompileError::InvalidParams(
+                    "a Visions creature is named twice",
+                ));
+            }
         }
         for def in &pack.towns {
             let faction = scope.faction(&def.faction)?;
@@ -160,10 +169,15 @@ pub(super) fn compile(
             entry.siege_obstacles = o.patch.siege_obstacles.unwrap_or(entry.siege_obstacles);
         }
     }
-    if towns.is_empty() {
-        return Ok((params, Vec::new()));
+    if params.is_none() && (!towns.is_empty() || !visions.is_empty()) {
+        return Err(TownCompileError::MissingParams);
     }
-    let params = params.ok_or(TownCompileError::MissingParams)?;
+    let Some(params) = params.map(|p| TownParams {
+        visions_creatures: visions.into_iter().collect(),
+        ..p
+    }) else {
+        return Ok((None, Vec::new()));
+    };
     let records = towns
         .into_values()
         .map(|entry| finish(&params, entry))
@@ -246,6 +260,9 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         level_2_dwelling_chance: def.level_2_dwelling_chance,
         neutral_garrison: def.neutral_garrison,
         capitol_demoted_to: def.capitol_demoted_to.clone(),
+        visions_factor: def.visions_factor,
+        visions_min_radius: def.visions_min_radius,
+        visions_creatures: Vec::new(),
     })
 }
 

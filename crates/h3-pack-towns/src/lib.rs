@@ -22,6 +22,12 @@
 //!   { chance = 33, count = [8, 15] }, { chance = 33, count = [5, 7] }, # count's bounds,
 //!   { chance = 20, count = [3, 5] },  { chance = 13, count = [1, 3] } ] # 1 <= least <= most
 //! capitol_demoted_to = "city_hall" # TWN-CAP-002: the key of a hall-3 building of every record
+//! visions_factor = 3               # TWN-VEW-003 (E09 T8c2): Visions' expert factor, tiles per
+//! visions_min_radius = 3           # point of Power, and its least radius
+//!
+//! [town_visions]                   # optional, in any pack (E09 T8c2): creatures that give
+//! creatures = ["rogue"]            # their hero Visions at its expert level for the towns
+//!                                  # (TWN-VEW-003), of the closure, each named by one pack
 //!
 //! [[town]]                         # one per faction with towns, a faction of the closure
 //! faction = "castle"
@@ -160,6 +166,7 @@ impl From<TownCompileError> for TownPackError {
 #[serde(deny_unknown_fields)]
 struct TownsFile {
     town_params: Option<ParamsDto>,
+    town_visions: Option<VisionsDto>,
     #[serde(default)]
     town: Vec<TownDto>,
     #[serde(default)]
@@ -176,6 +183,14 @@ struct ParamsDto {
     level_2_dwelling_chance: u8,
     neutral_garrison: [GarrisonDto; 4],
     capitol_demoted_to: String,
+    visions_factor: u8,
+    visions_min_radius: u8,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct VisionsDto {
+    creatures: Vec<String>,
 }
 
 #[derive(Deserialize, Clone, Copy)]
@@ -383,9 +398,17 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                     count: row.count,
                 }),
                 capitol_demoted_to: p.capitol_demoted_to,
+                visions_factor: p.visions_factor,
+                visions_min_radius: p.visions_min_radius,
             })
         })
         .transpose()?;
+    let visions = file
+        .town_visions
+        .map_or_else(Vec::new, |v| v.creatures)
+        .iter()
+        .map(|c| reference(pack, c))
+        .collect::<Result<_, _>>()?;
     let towns = file
         .town
         .into_iter()
@@ -410,6 +433,7 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
         params,
         towns,
         overrides,
+        visions,
     })
 }
 
