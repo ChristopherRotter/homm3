@@ -22,6 +22,7 @@ mod sea_map;
 mod sea_xl_map;
 mod strategy;
 mod towns;
+mod towns_map;
 mod view;
 
 use proptest::prelude::*;
