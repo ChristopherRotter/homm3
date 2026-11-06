@@ -13096,3 +13096,56 @@ check-lane --cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo ch
 `type_complexity` asked for `LevelTile`). The writer's public types are unchanged (constants
 added, `PLAIN_OBJECTS` longer), so the clients' crates were not checked apart. CI's full verify on
 the pull request is the record.
+
+### Increment 11, round 2: T99b1, batch E11a's land rows (2026-11-06, `adventure/e08-t99b1`)
+
+Baseline: `master` at 9881349 (#760, T99a, merged; the sandbox's baseline verified its code with
+the original data, exit 0). The executables, the DLLs, the four LODs, the sound and video archives,
+`maps.tar`, `extracted.tar` and the 40 MP3s staged at the start (the computer's shell did not
+start; its file tools left during the task, as announced). **The cut** (decision 276): T99b in two
+by land and water; T99b1 this. No code; the spec, its template and the docs.
+
+**The spec** `E08-batch-11a` (72 × 72, a dirt underground, two days, hot seat Red and Blue human;
+stamp in the template): E11-1 to E11-3 one hero at the green two-way pair A (9, 10), B (12, 10)
+across a rock wall (columns 10 and 11, rows 1 to 19) with the Peasant P beside B; E11-5 then E11-4
+at one-way channel 0 (E4 (32, 10), its one exit X4 (40, 10)); E11-6 at the gate pair G6/U6
+(entrances (51, 10)); E11-9 then E11-8: G9 (20, 30) with Uf (17, 27) and Un (16, 30) underground,
+4 truncated from G9 (squared 18 and 16), E11-8 at whichever gate G9 did not take; E11-19 at the
+orange pair A19 (10, 50), B19 (30, 50) with the Peasants M and N; E11-7 at G7/U7 (entrances (44,
+30)): Blue's hero onto G7 on day 1, Red's onto it on day 2 (the battle at U7); E11-18 at one-way
+channel 1 (M18 (48, 33) in E11-7's sight, X18 (66, 60) in Red's shroud), Red's Replay Opponent
+Turn first on day 2. Red holds eight heroes (the original's most), Blue two: every Red army's
+slowest an Angel or Archangel (2 000 points), Blue's Pikemen. Every channel has one exit per
+entrance (no draw); the gates' pairs checked by both rules at the compile. Agent's calls (change
+freely): E11-1 to E11-3 one setup and one hero; E11-4 and E11-5 one setup (the exit's visitor then
+holds it); E11-8 at E11-9's leftover gate (T99a's suggestion); E11-18 watched by E11-7's hero, its
+replay also showing E11-7b's gate jump; controls for E11-3 and E11-19 (a step onto a plain tile in
+the guard's zone); the points and the day's maximum read after every jump; an underground of dirt,
+so a battle there on the tile's own terrain would show (the underground's is subterranean).
+
+**The walks and the fog** (a throwaway test in `h3-map`'s tests on the written map, not committed;
+the teleporters import as blockers until T103, so the steps onto entrances were priced by hand):
+every Red move one step (100 or 141) but E11-9's day (100, the jump, then 623 to the other
+underground gate in five steps, either way); no engine path to B's side from E11-1's start; every
+fog claim (B's east side, U7's surroundings underground, X18's) unexplored by Red at the start;
+after the review, the guards' zones by `guard_of` (B, A19, B19 guarded; the starts not; the
+controls' tiles guarded).
+
+**The review** (a fresh agent against survey §12, the sections the rows cite, design §7, §12,
+§13, §16, the README and the catalog; eight findings, all taken): (1) the three Peasants stood in
+the row above their monoliths, which a monolith's guard scan leaves out (ADV-MON-005, 0x41A460),
+so no exit was guarded and E11-3 and E11-19 could only say "no battle": P to (13, 11), M to (9, 51)
+with E11-19's start at (11, 50), N to (31, 50); (2) with B guarded, E11-1 reads the path to B
+itself (a guarded tile still ends a path); (3) a path through A, if one shows, is walked and read;
+(4) the day's maximum (+0x49) read after every jump; (5) a scoring note: the replay first on day 2
+might explore U7's square (E11-7's radius-1 part then undecided); (6) Replay Opponent Turn's
+fallback; (7) and (8) wording (the five tiles of step 1; Blue's Pikeman never retreats or
+surrenders). Found right: the stamp, the footprints and entrances, the walk order and both
+pairings, E11-8's 623, every step's price, the disk tests, the fog, the heroes' setup, the hot
+seat's order, E11-4 to E11-9's predictions against the survey.
+
+**For T99b2:** Red is full (eight heroes); the Whirlpool rows need about seven armies (E11-10,
+E11-11, E11-12's three, E11-13's two): a third human player (its own turn) or Blue's six free
+slots with one merge; a water zone apart from the land rows' fog (B's east side, U7, X18).
+
+**Versions:** none moved (a spec and its template).
