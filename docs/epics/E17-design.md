@@ -6892,8 +6892,7 @@ the next stack after a cast only when it killed the active stack (0x47905B).
   viewer's outline, read every millisecond around both casts, changes where the original's
   screen does and nowhere else. `auto-cast` ends at 9 000 ms, in the shot (the questions end at
   its start).
-- **Not built:** the retreat question (T5b2, CLT-STUB-2: the test not asked, so a human's side
-  under Auto Combat never leaves); the stop read between the cast and the action (CLT-Q61, copy:
+- **Not built:** the retreat question (built in T5b2a, §12.19); the stop read between the cast and the action (CLT-Q61, copy:
   the original reads a key pressed during the computer's cast for a stack that plays itself at
   the pass after the cast, so that stack's action is the human's; the client's stop waits for the
   next turn's start, its `Auto::of` taking stops at turn starts only; T5b2's, with a recording); a hidden battle's and a remote turn's
