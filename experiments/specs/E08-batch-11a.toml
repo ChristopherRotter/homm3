@@ -1,0 +1,533 @@
+# Experiment batch E11a (E08 T99b1; decisions 261, 269, 274, 275, 276): the land and underground rows
+# of increment 11's plan (survey docs/rules/surveys/E08-teleporters.md §12; docs/epics/E08-design.md
+# §16), the jumps through monoliths and Subterranean Gates, in SoD on Easy, hot seat, two days.
+# Batch E11b (`E08-batch-11b`) is the repetitions with the space key. The Whirlpool rows E11-10 to
+# E11-13 join this spec in T99b2 (decision 276: the cut by land and water). Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the template
+# never shows them.
+#
+# | row    | settles                                   | the reading (faithful)                       | the other source(s)                     |
+# | E11-1  | §9.1, D-58: a path past a teleporter       | no path to B (none through A, the way round | VCMI plans through A (A, then B)        |
+# |        |                                           | dark); the path to A ends on A              |                                         |
+# | E11-2  | §5, §6: the arrival                       | on B; 100 paid, no more; B's radius 5        | VCMI the same (points kept)             |
+# |        |                                           | explored; the walk ended                    |                                         |
+# | E11-3  | §4.5, §5: a guard beside the exit          | no battle on arrival; a step in its zone     | VCMI the same (IGNORE_GUARDS)           |
+# |        |                                           | after it is fought (the control)            |                                         |
+# | E11-5  | §4.2: a one-way exit visited               | ADVEVENT 70; the hero stays                  | VCMI the same                           |
+# | E11-4  | §4.2: the only exit holds Red's hero       | stays on the entrance, nothing shown         | VCMI the same exit test                 |
+# | E11-6  | §4.3: a gate's exit holds Red's hero       | the meeting; the mover stays                 | the wiki and VCMI the same              |
+# | E11-7  | §4.3: a gate's exit holds Blue's hero      | the 3 × 3 revealed, the battle on the        | VCMI a blocking visit (the battle)      |
+# |        |                                           | underground's battlefield, then Red on it   |                                         |
+# | E11-9  | §3.2, D-56: the gates' tie                 | G to Uf (the first of a truncated tie)       | VCMI G to Un (the nearer by squares)    |
+# | E11-8  | §4.3: a gate with no pair                  | ADVEVENT 153; the hero stays                 | VCMI and the wiki the same message      |
+# | E11-18 | §10, A-41: Replay Opponent Turn            | the view to the exit (the wiki); nothing     | not read past the record                |
+# |        |                                           | explored                                    |                                         |
+# | E11-19 | design §7, §13: the entrance's guards      | no battle at the jump; none at the revisit   | unread (the agent's call)               |
+#
+# **Design §16's additions:** E11-6 and E11-7 record the tiles explored within 1 of the pair before
+# the meeting or the battle (E11-6's a sanity check: its hero on the exit explored them), and E11-7
+# the battlefield (the exit's). **This spec's additions:** the points and the day's maximum after
+# every jump (E11-2's, E11-6b's, E11-9's); E11-3's and E11-19's controls (a step onto a plain tile
+# in the guard's zone after the readings, fought: the monster does guard); E11-8 played at E11-9's
+# leftover gate (whichever gate G was not paired with, by either rule), as T99a's record suggested;
+# E11-18's replay also shows E11-7b's gate jump of the same Blue turn into Red's shroud.
+#
+# **The guards** stand on their monolith's row or the row below: a tile whose object is not entered
+# from above leaves the row above out of its guard scan (ADV-MON-005; the original's 0x41A460, VCMI's
+# `checkForVisitableDir`), so a monster above a monolith would not guard it. P (13, 11) guards B, M
+# (9, 51) A19, N (31, 50) B19. B guarded, E11-1 reads the path to B itself: a guarded tile still ends
+# a path, so B is a destination by both rules (a tile past B would end at B by both).
+#
+# **The heroes.** Red has eight, the original's most on the map; Blue two. Nobody has Scouting,
+# Pathfinding or Logistics or an artifact; every Red army's slowest creature is an Angel or an
+# Archangel, so every Red hero has 2 000 land points a day (packs/base/adventure.toml
+# `land_points`), Blue's Pikemen 1 560. A step costs 100 on grass and dirt, 141 diagonally. A
+# hero's scouting radius is 5 (ADV-FOG-002: dx² + dy² ≤ 30), a radius 1 the 3 × 3 square.
+#
+# **The pictures** (docs/experiments/README.md, "Increment 11's objects"): a monolith of channels 0
+# to 3 is the one tile `at`, entered there from any side but the three tiles above it; a gate
+# covers three tiles ending on `at` and the middle one above them and is entered at the tile west of
+# `at` (its entrance, the middle one), from the row below it. The surface is grass, the underground
+# dirt (the underground's battles are subterranean, GAM-BAT-001; the dirt tells the tile's own).
+#
+# **The channels.** Two-way 0 (green): A (9, 10) and B (12, 10). Two-way 1 (orange): A19 (10, 50)
+# and B19 (30, 50). One-way 0 (blue): the entrance E4 (32, 10), its one exit X4 (40, 10). One-way 1
+# (red): M18 (48, 33), its one exit X18 (66, 60). Every channel has one exit for each entrance, so
+# no jump draws (`random_between` returns an equal bound without a draw, survey §4.1). **The gates**
+# (entrances; the original pairs them in the walk's order: level, row, column): on the surface G6
+# (51, 10), G9 (20, 30), G7 (44, 30); underground U6 (51, 10), Uf (17, 27), Un (16, 30), U7
+# (44, 30). G6 pairs with U6 and G7 with U7 at distance 0; G9 is 4 from Uf (squared 18) and from Un
+# (squared 16) when truncated: the original pairs G9 with Uf (the first in the walk), VCMI with Un,
+# and the other is left without a pair. The compiler checks both pairings (`pair`, `vcmi_pair`).
+#
+# **The fog.** The zones lie apart so that each read's tiles are unexplored by Red until the row's
+# own move: B's east side (E11-2), U7's surroundings underground (E11-7) and X18's (E11-18) lie
+# beyond every Red hero's radius at the start and after every Red move of day 1.
+#
+# **The walks** (priced on the written map by a throwaway test, TRAPS.md; the teleporters import as
+# blockers until T103, so a step onto an entrance and a walk from an exit were priced by hand):
+# every Red move but E11-9's is one step (100 or 141); E11-9's day is 100 (onto G9), the jump, then
+# 623 to the other underground gate (five steps, either way); E11-19's is 100, the jump, the
+# revisit (0), then 100 (the control). Each target is within the hero's explored tiles at its
+# click; the fog's claims (each row's tiles unexplored by Red until its move) were checked on the
+# written map.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or a resource; an artifact on a moving hero goes under "anything odd" (boots would move
+# the points).
+
+[map]
+name = "E08 batch E11a"
+description = "Engine-generated experiment map (E08, batch E11a): monoliths and Subterranean Gates: a path past a teleporter, the arrival, a guard beside an exit, a one-way exit, an exit held by one's own hero, a gate's meeting and battle, the gates' pairing tie, a gate without a pair, the replay of an enemy's jump, the guards at a jump and a revisit. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-11a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of each later turn (save 2 Blue's day 1, save 3 Red's day 2).",
+    "Most records are the game's memory: a hero's tile (column, row, level), its movement points (hero +0x4D), the day's maximum (+0x49) and army, a tile's explored bit for Red, the hero's path after a first click (its tiles, or none), the messages and dialogs shown (by their text's table and line), the meeting dialog, a battle's opening (terrain, sides, stacks), the adventure map's view during Replay Opponent Turn. The capture harness reads them (`clients/capture/batches/E08-batch-11a.toml`, E08 T100). Played by hand, read the screens instead (the level button under the minimap shows the underground; a tile is explored when it is not black) and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left; underground tiles say so. A walk: click the target once (the path's marks show), then again (the hero goes). A step onto a monolith or a gate: click its tile from the neighbouring tile named (twice). **Space:** with the hero selected, press the space bar once.",
+    "Each battle against a monster by auto combat. E11-7's battle is between two human players, so auto combat is refused: play it, Red's stacks attacking, Blue's stack only waiting or defending (never a retreat or a surrender). A level-up's dialog after a battle (none is expected): take the left skill.",
+    "Order: day 1, Red's turn: E11-1 (rows E11-1 to E11-3), E11-4 (rows E11-5, then E11-4), E11-6, E11-9 (rows E11-9, then E11-8), E11-19; E11-7's and E11-18's first reads; end the turn. Blue's turn: E11-7's Blue step, then E11-18's; end the turn. Day 2, Red's turn: E11-18's replay and reads first, then E11-7's step and battle; end the turn. Blue's turn: end the turn. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# The underground: dirt, open; the four underground gates stand on it.
+[map.underground]
+terrain = "dirt"
+
+# --- E11-1 to E11-3: the two-way pair A, B across a rock wall; a monster beside B ----------------------
+
+[[map.patch]]
+terrain = "rock"
+from = [10, 1]
+to = [11, 19]
+
+[[map.object]]
+picture = "AVXmn2g0"
+at = [9, 10]
+
+[[map.object]]
+picture = "AVXmn2g0"
+at = [12, 10]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [13, 11]
+
+# --- E11-4 and E11-5: one-way channel 0, its entrance E4 and its one exit X4 -----------------------------
+
+[[map.object]]
+picture = "AVXmn1b0"
+at = [32, 10]
+
+[[map.object]]
+picture = "AVXmx1b0"
+at = [40, 10]
+
+# --- The gates: G6/U6 (E11-6), G9 with Uf and Un (E11-9, E11-8), G7/U7 (E11-7) ---------------------------
+
+[[map.object]]
+picture = "AvTCave"
+at = [52, 10]
+pair = [52, 10]
+vcmi_pair = [52, 10]
+
+[[map.object]]
+picture = "AvTCave"
+at = [21, 30]
+pair = [18, 27]
+vcmi_pair = [17, 30]
+
+[[map.object]]
+picture = "AvTCave"
+at = [45, 30]
+pair = [45, 30]
+vcmi_pair = [45, 30]
+
+[[map.object]]
+picture = "AvTCave"
+at = [52, 10]
+level = 1
+pair = [52, 10]
+vcmi_pair = [52, 10]
+
+[[map.object]]
+picture = "AvTCave"
+at = [18, 27]
+level = 1
+pair = [21, 30]
+vcmi_pair = "none"
+
+[[map.object]]
+picture = "AvTCave"
+at = [17, 30]
+level = 1
+pair = "none"
+vcmi_pair = [21, 30]
+
+[[map.object]]
+picture = "AvTCave"
+at = [45, 30]
+level = 1
+pair = [45, 30]
+vcmi_pair = [45, 30]
+
+# --- E11-18: one-way channel 1, its entrance M18 in Red's sight and its one exit X18 in Red's shroud ---
+
+[[map.object]]
+picture = "AVXmn1r0"
+at = [48, 33]
+
+[[map.object]]
+picture = "AVXmx1r0"
+at = [66, 60]
+
+# --- E11-19: two-way channel 1, A19 and B19, a monster beside each ------------------------------------------
+
+[[map.object]]
+picture = "AVXmn2o0"
+at = [10, 50]
+
+[[map.object]]
+picture = "AVXmn2o0"
+at = [30, 50]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [9, 51]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [31, 50]
+
+# --- E11-1 to E11-3 ------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-1"
+title = "A path past a two-way monolith (E11-1), the step onto it (E11-2), a monster beside its exit (E11-3)"
+questions = ["D-58", "ADV-OBJ-003", "ADV-TEL-004", "ADV-TEL-007", "ADV-MOV-008", "ADV-MON-005"]
+procedure = [
+    "Day 1, Red's turn, first: E11-1 stands at (8, 10) with ten Archangels. East of it the two-way monolith A (9, 10), green; a rock wall fills columns 10 and 11 from row 1 to row 19; east of the wall the green monolith B (12, 10) and a Peasant P at (13, 11), south-east of B. Read E11-1's points and day's maximum and the explored bits of the tiles (12, 11), (16, 13), (16, 14), (17, 10) and (18, 10).",
+    "Click B (12, 10) once: note the path shown (its tiles, or that none shows). If none shows, do not click again and go on with the next step. **If a path shows**, click B again: E11-1 walks it. Note every step, any message or battle, then E11-1's tile, points and day's maximum, whether it moved on after a jump, and the explored bits of the five tiles of step 1; then skip the next step.",
+    "Click A (9, 10) once: note the path shown. Click it again: E11-1 steps onto A. Note any message or battle, then E11-1's tile, points and day's maximum, and the explored bits of the five tiles of step 1.",
+    "If E11-1 stands on B (12, 10): click (13, 10) (east of B, beside P) twice. Note the battle (auto combat) or that none came, and E11-1's tile after.",
+]
+record = [
+    { field = "E11-1 before: points; day's maximum; explored (12, 11), (16, 13), (16, 14), (17, 10), (18, 10)" },
+    { field = "E11-1: the path to B (12, 10) (its tiles, or none); if one showed, the walk: its steps, messages, battles" },
+    { field = "E11-1: the path to A (its tiles)" },
+    { field = "E11-2: after the step onto A: messages; battles; E11-1's tile, points and day's maximum; moved on after the jump?" },
+    { field = "E11-2: explored after: (12, 11), (16, 13), (16, 14), (17, 10), (18, 10)" },
+    { field = "E11-3: the battle on arrival, if any (the defender, the result)" },
+    { field = "E11-3's control: the step to (13, 10): the battle or none; E11-1's tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-1, the path** (survey §9.1, D-58; ADV-MOV-008): the human's mouse path (mode 0) stops at a
+  teleporter's entrance and never goes on through its exit, and it steps only onto explored tiles.
+  B is explored (from (8, 10): 16 ≤ 30) but cut off: the wall covers every explored row between,
+  and the way round lies in the dark. So **no path to B** (no marks). **VCMI 1.7.5** plans a
+  human's path through two-way monoliths (`useMonolithTwoWay`): **A, then B** (B is guarded, so a
+  path ends there by either rule; a destination past B would end at B too), its client naming B as
+  the exit. **The path to A:** the one tile A, ending on A.
+- **E11-2, the arrival** (§5, §6): the step onto A costs **100** (straight, grass), paid as any step;
+  the visit is the jump (two-way channel 0 has one other member: B, no draw); **no message**;
+  E11-1 stands on **B (12, 10)** with **1 900** points (2 000 − 100; the jump costs none) and the
+  day's maximum **2 000** kept; the walk ended there (the path was to A; nothing goes on past the
+  exit). The reveal: the step's own around A, then B's with the scouting radius 5: **(16, 13) and
+  (17, 10) explored** (from B 16 + 9 = 25 and 25), **(16, 14) and (18, 10) not** (32, 36); before
+  the step none of the four was (from (8, 10) 73, 81, 80, 100; from A at most 58). (12, 11)
+  explored throughout. VCMI: `TELEPORTATION` keeps the points too.
+- **E11-3** (§4.5, §5): P at (13, 11) guards B (its neighbour; B's guard scan leaves out only the
+  row above, ADV-MON-005), but `hero_relocate` runs **no guard test**: **no battle** on arrival.
+  **The control:** a step from B to (13, 10), in P's zone, ends with the guard's test
+  (`after_step_guard_check`): **a battle** at once (P savage, never flees), won by auto combat;
+  E11-1 on (13, 10) after it (the step's 100 paid). VCMI: `IGNORE_GUARDS` on the arrival, the same.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [8, 10]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E11-5, then E11-4 ---------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-4"
+title = "A one-way exit visited (E11-5); then its entrance, whose only exit holds Red's hero (E11-4)"
+questions = ["ADV-TEL-003", "ADV-TEL-004"]
+procedure = [
+    "Day 1, Red's turn, after E11-1: one-way channel 0 (blue) has one entrance E4 (32, 10) and one exit X4 (40, 10). E11-5 stands at (39, 10), west of X4; E11-4 at (31, 10), west of E4; each with one Angel.",
+    "E11-5: click X4 (40, 10) twice: E11-5 steps onto it. Note the message (and close it), then E11-5's tile and points.",
+    "E11-4: click E4 (32, 10) twice: E11-4 steps onto it. Note any message, sound or battle, then E11-4's tile and points, and E11-5's tile.",
+]
+record = [
+    { field = "E11-5: the message after the step onto X4 (its text)" },
+    { field = "E11-5 after: tile; points" },
+    { field = "E11-4: messages or battles after the step onto E4" },
+    { field = "E11-4 after: tile; points. E11-5's tile" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-5** (survey §4.2; class 44 at 0x4A9538): a human's visit of a one-way exit shows **ADVEVENT
+  70** (the monolith that leads nowhere) and nothing else: E11-5 stays on **X4 (40, 10)**, **1 900**
+  points (the step's 100). VCMI the same message.
+- **E11-4** (§4.1, §4.2, §4.5): the one-way draw over channel 0's exits finds no candidate (X4
+  holds E11-5, a hero of the mover's team), so **nothing at all**: no message, no sound, no
+  battle; E11-4 stays on **E4 (32, 10)** with **1 900** points; E11-5 still on X4. VCMI: its exit
+  test (`isExitPassable`) skips a tile with an allied hero too (whether it shows a message there
+  was not compared).
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [31, 10]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter.also]]
+type = "Christian"
+specialty = "creature Ballista"
+name = "E11-5"
+at = [39, 10]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E11-6 ------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-6"
+title = "A Subterranean Gate whose exit holds Red's other hero: the meeting, the mover staying"
+questions = ["ADV-TEL-005", "ADV-TEL-007", "GAM-MET-001"]
+procedure = [
+    "Day 1, Red's turn, after E11-4: the gate G6 (entrance (51, 10); it covers (50, 10) to (52, 10) and (51, 9)) leads to the underground gate U6 (entrance (51, 10) underground). E11-6b stands at (52, 11), E11-6 at (50, 11), each with one Angel.",
+    "E11-6b: click G6's entrance (51, 10) twice: E11-6b steps onto it. Note any message or dialog, then E11-6b's tile (level too), points and day's maximum.",
+    "E11-6: read the explored bits of the underground tiles (50, 9) to (52, 11) and (53, 10). Click G6's entrance (51, 10) twice: E11-6 steps onto it. Note the dialog that opens (which heroes it shows); close it at once without changing anything. Then read both heroes' tiles (level too) and E11-6's points, and the same explored bits again.",
+]
+record = [
+    { field = "E11-6b: messages or dialogs after the step onto G6" },
+    { field = "E11-6b after: tile (level); points; day's maximum" },
+    { field = "E11-6 before its step: explored underground (50, 9) to (52, 11), (53, 10)" },
+    { field = "E11-6: the dialog after its step onto G6 (its kind; the heroes it shows)" },
+    { field = "after: E11-6's tile (level) and points; E11-6b's tile (level)" },
+    { field = "after: explored underground (50, 9) to (52, 11), (53, 10)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-6b** (survey §4.3, §5): the gate's pair is U6 (the compiler checks it), free: no draw, no
+  message; E11-6b arrives on **U6 (51, 10) underground** with **1 859** points (2 000 − 141, the
+  diagonal step; the jump costs none) and the day's maximum 2 000, its radius 5 revealed there.
+- **E11-6** (§4.3; design §12): U6 holds E11-6b, a hero of the mover's team: the radius-1 reveal at
+  U6 (already explored by E11-6b's arrival: all ten tiles explored before and after, a sanity
+  check), then
+  `visit_hero`: **the meeting** of the two heroes (the hero exchange dialog, E11-6 the visitor),
+  although they stand on two levels; closed unchanged, **E11-6 stays on G6 (51, 10)** on the
+  surface (the move happens only if the exit is a gate again, never after a meeting, 0x4AA4A6)
+  with **1 859** points (its diagonal step), E11-6b on U6. The wiki and VCMI: the same (an allied
+  hero on the exit is met).
+"""
+[encounter.hero]
+type = "Cuthbert"
+specialty = "spell Weakness"
+at = [50, 11]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter.also]]
+type = "Ingham"
+specialty = "creature Monk"
+name = "E11-6b"
+at = [52, 11]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E11-9, then E11-8 ------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-9"
+title = "The gates' pairing at a truncated tie (E11-9); then the gate left without a pair (E11-8)"
+questions = ["D-56", "ADV-TEL-002", "ADV-TEL-005"]
+procedure = [
+    "Day 1, Red's turn, after E11-6: the gate G9 (entrance (20, 30); it covers (19, 30) to (21, 30) and (20, 29)). Underground two gates: Uf (entrance (17, 27); it covers (16, 27) to (18, 27) and (17, 26)) and Un (entrance (16, 30); it covers (15, 30) to (17, 30) and (16, 29)). E11-9 stands at (20, 31) with one Angel.",
+    "Click G9's entrance (20, 30) twice: E11-9 steps onto it. Note any message, then E11-9's tile (level too), points and day's maximum.",
+    "E11-8: E11-9 now stands on one of the two underground gates. Click the other one's entrance twice (Un (16, 30) if E11-9 stands on Uf, else Uf (17, 27)): E11-9 walks there and steps onto it. Note the path's tiles, the message (close it), then E11-9's tile (level too) and points.",
+]
+record = [
+    { field = "E11-9: messages after the step onto G9" },
+    { field = "E11-9 after: tile (level); points; day's maximum; which gate (Uf or Un)" },
+    { field = "E11-8: the gate stepped onto; the path's tiles; the message after the step (its text)" },
+    { field = "E11-8 after: tile (level); points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-9** (survey §3.2, D-56; `gates_pair` 0x4C0B60): the gates' entrances in the walk's order
+  are G6 (51, 10), G9 (20, 30), G7 (44, 30) on the surface, then U6 (51, 10), Uf (17, 27), Un
+  (16, 30), U7 (44, 30) underground. G6 takes U6 (0). G9 takes the least `⌊√(dx² + dy²)⌋` among
+  U7 (24), Uf (⌊√18⌋ = 4) and Un (⌊√16⌋ = 4): a tie, **the first in the walk: Uf** (row 27 before
+  row 30). G7 takes U7 (0); **Un keeps no pair**. So E11-9 arrives on **Uf (17, 27) underground**
+  with **1 900** points (the step's 100) and the day's maximum 2 000. **VCMI 1.7.5** (`CGSubterraneanGate::postInit`: the same
+  order, the least squared distance): G9 with **Un** (16 < 18), Uf without a pair. The wiki's tie
+  rule ("north, then west") is the walk's order and says Uf as the original.
+- **E11-8** (§4.3; `gate_exit` 0x4CDE40): the other underground gate has no pair (Un by the reading,
+  Uf by VCMI's): **ADVEVENT 153** (the tunnel that leads nowhere), shown without a human test, and
+  nothing else: E11-9 stays on that gate. The shortest walk from Uf costs **623** in five steps
+  (for one, (18, 28), (18, 29), (18, 30), (17, 31), then onto Un from below right: a gate is not
+  entered from the three tiles above its entrance), so **1 277** points are left; from Un to Uf the
+  same 623. VCMI and the wiki: the same message.
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+at = [20, 31]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E11-19 -------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-19"
+title = "Guards at both ends of a two-way pair: the step onto A19, the arrival at B19, the revisit by Space"
+questions = ["ADV-MON-005", "ADV-MON-006", "ADV-TEL-007", "ADV-TEL-008"]
+procedure = [
+    "Day 1, Red's turn, after E11-9: the two-way monoliths A19 (10, 50) and B19 (30, 50), orange (channel 1, no other member). A Peasant M at (9, 51), south-west of A19, a Peasant N at (31, 50), east of B19. E11-19 stands at (11, 50), east of A19, with ten Archangels. Read its points.",
+    "Click A19 (10, 50) twice: E11-19 steps onto it. Note every battle in order (by auto combat; which Peasant: M at (9, 51) or N at (31, 50)) and every message, then E11-19's tile and points.",
+    "If E11-19 stands on B19 (30, 50): press **Space** once. Note every battle and message, then E11-19's tile and points.",
+    "The control: if E11-19 stands on A19 (10, 50) and M is still there, click (10, 51) (south of A19, beside M) twice. Note the battle or that none came, and E11-19's tile after.",
+]
+record = [
+    { field = "E11-19 before: points" },
+    { field = "the step onto A19: battles in order (which Peasant; the result); messages" },
+    { field = "after it: E11-19's tile; points" },
+    { field = "Space on B19: battles (which Peasant); messages" },
+    { field = "after Space: E11-19's tile; points" },
+    { field = "the control: the step to (10, 51): the battle or none; E11-19's tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The guards** (ADV-MON-005): M at (9, 51) guards A19 and N at (31, 50) guards B19 (each on its
+  monolith's row or the row below, which a monolith's guard scan includes); E11-19's start (11, 50)
+  is outside M's zone (2 columns away).
+- **The agent's call** (design §7, §13; unread): the step onto A19 ends at the entrance, where the
+  visit jumps the hero away before any guard test can see it, and the arrival tests none (E11-3):
+  **no battle**, E11-19 on **B19 (30, 50)** with **1 900** points (the straight step's 100). A
+  battle with **M first** would say the guard is tested before the visit or at the step's tile (the
+  engine's rule then follows the row, design §13); **N** fought would say it is tested at the hero's
+  new tile.
+- **Space on B19** (§11, ADV-TEL-008): the visit of B19 again, at no points: the jump to A19 (one
+  other member, no draw); the key calls `visit_and_update` alone, and the guard's test belongs to a
+  step's end (`after_step_guard_check` 0x4800A5): **no battle**, E11-19 back on **A19 (10, 50)**
+  with **1 900** points (unchanged).
+- **The control:** the step from A19 to (10, 51), in M's zone: **a battle** with M at once (auto
+  combat, won), E11-19 on (10, 51) with **1 800** points (the straight step's 100). N stays at
+  (31, 50).
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+at = [11, 50]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E11-7: Blue's hero on a gate's exit (Blue's step on day 1, Red's on day 2) ----------------------------
+
+[[encounter]]
+id = "E11-7"
+title = "A Subterranean Gate whose exit holds Blue's hero: the reveal, the battle, the move"
+questions = ["ADV-TEL-005", "GAM-BAT-001", "GAM-BAT-004", "ADV-FOG-002"]
+procedure = [
+    "Day 1, Red's turn, last: the gate G7 (entrance (44, 30); it covers (43, 30) to (45, 30) and (44, 29)) leads to U7 (entrance (44, 30) underground). Red's E11-7 stands at (45, 31) with five Archangels, Blue's E11-7b at (43, 31) with one Pikeman. E11-7 does not move today. Read the explored bits of the underground tiles (43, 29) to (45, 31), (46, 30), (49, 30) and (50, 30).",
+    "Day 1, Blue's turn, first: E11-7b: click G7's entrance (44, 30) twice: E11-7b steps onto it. Note any message, then E11-7b's tile (level too).",
+    "Day 2, Red's turn, after E11-18: read the same explored bits again. E11-7: click G7's entrance (44, 30) twice: E11-7 steps onto it. At the battle's opening (before any command) note the terrain and battlefield, the attacker and the defender (heroes, stacks), and read the same explored bits. Play the battle: Red's stacks attack; Blue's Pikeman only waits or defends, never retreats or surrenders (two human sides: no auto combat). After it note the messages, then E11-7's tile (level too) and points, and read the explored bits once more.",
+]
+record = [
+    { field = "day 1: explored underground (43, 29) to (45, 31), (46, 30), (49, 30), (50, 30)" },
+    { field = "E11-7b: messages after its step onto G7; its tile (level) after" },
+    { field = "day 2 before the step: the same explored bits" },
+    { field = "E11-7: messages or dialogs after its step onto G7" },
+    { field = "the battle's opening: terrain, battlefield; attacker; defender (stacks)" },
+    { field = "at the opening: the same explored bits" },
+    { field = "the result; the messages after the battle" },
+    { field = "after: E11-7's tile (level); points; the same explored bits" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-7b** (Blue's day 1; survey §4.3): U7 free: Blue's hero arrives on **U7 (44, 30)
+  underground**, no message. Red sees it step onto G7 and vanish (E11-18's replay shows the record).
+- **Red's explored bits** underground stay unexplored on day 1 and at day 2's start: no Red hero
+  comes within 5 of U7 (U6 is 20 rows away, Uf and Un 27 columns).
+- **E11-7** (§4.3, design §12; ADV-TEL-005): the pair holds an enemy hero: **the radius-1 reveal at
+  U7** for Red (ADV-FOG-002's disk of radius 1: the 3 × 3 square), then `visit_hero`, **the battle**
+  at once (no question), E11-7 attacking from the entrance, E11-7b defending. **At the opening** the
+  3 × 3 tiles (43, 29) to (45, 31) explored, **(46, 30) not** (4 > 2), nor (49, 30), (50, 30).
+  **Where it is fought:** at the defender's tile, U7, underground: **the subterranean battlefield**
+  (GAM-BAT-001's order: the underground's first; the tile's own dirt or the entrance's grass would
+  say otherwise). Red wins (the hero's 500 and the Pikeman's experience: no level-up), E11-7b leaves
+  the map. **Then the move** (the exit is a gate again, 0x4AA4A6): E11-7 on **U7 (44, 30)
+  underground** with **1 859** points (the diagonal step), its radius 5 revealed: **(49, 30)
+  explored** (25), **(50, 30) not** (36). VCMI: a blocking visit, the battle, then the move.
+- **Scoring note:** E11-18's replay runs first on day 2 and plays E11-7b's gate jump. If the bits
+  are explored after it (day 2's "before" read), the radius-1 part is undecided, not failed (and
+  E11-18's "nothing explored" fails).
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [45, 31]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 5]]
+
+[[encounter.also]]
+type = "Loynis"
+specialty = "spell Prayer"
+owner = "blue"
+name = "E11-7b"
+at = [43, 31]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- E11-18: Blue's jump into Red's shroud and Red's Replay Opponent Turn -------------------------------------
+
+[[encounter]]
+id = "E11-18"
+title = "Blue's hero enters a one-way monolith Red sees, its exit in Red's shroud; Red's Replay Opponent Turn"
+questions = ["A-41", "ADV-FOG-004", "ADV-TEL-007"]
+procedure = [
+    "Day 1, Red's turn: one-way channel 1 (red) has one entrance M18 (48, 33), which Red's E11-7 at (45, 31) sees, and one exit X18 (66, 60), far in Red's shroud. Blue's E11-18 stands at (47, 33), west of M18, with one Pikeman. Read Red's explored bits of (66, 60), (65, 60), (67, 60), (66, 59), (66, 61).",
+    "Day 1, Blue's turn, after E11-7b's step: E11-18: click M18 (48, 33) twice: E11-18 steps onto it. Note any message, then E11-18's tile.",
+    "Day 2, Red's turn, first: read the five explored bits again. Open the Adventure Options and choose **Replay Opponent Turn**. While it plays, note where the view goes (its top-left tile and level each time it moves) and what it shows (each Blue hero's moves). When it ends, read the five explored bits again, and Red's explored bits of the underground (43, 29) to (45, 31) (E11-7's). If the item is greyed out or plays nothing, note that and still read the bits.",
+]
+record = [
+    { field = "day 1, Red: explored (66, 60), (65, 60), (67, 60), (66, 59), (66, 61)" },
+    { field = "E11-18: messages after its step onto M18; its tile after" },
+    { field = "day 2, before the replay: the same explored bits" },
+    { field = "the replay: the view's corners (tile, level) in order; what each part shows" },
+    { field = "after the replay: the same explored bits; E11-7's underground bits" },
+    { field = "anything odd" },
+]
+predictions = """
+- **E11-18** (Blue's day 1; survey §4.2, §5): one exit, free: no draw, Blue's hero arrives on **X18
+  (66, 60)**, no message (the sound `telptout.wav`).
+- **The record** (§10; `hero_relocate_inner` 0x49CF50): the jump appends a move record (the player,
+  the hero, its facing, the old tile and the new) to the turn's records, beside the steps' records,
+  in order: E11-7b's steps and its gate jump to U7, then E11-18's step and its jump to X18. Red's
+  Replay Opponent Turn plays them back. What a record shows a viewer whose fog hides one end was
+  not read. **The wiki** (the Monolith page): an enemy hero's exit is shown even in the shroud:
+  **the view goes to X18** (and, by the same record, to U7 for E11-7b's gate). **Nothing is
+  explored** by the replay: the five bits and E11-7's underground bits stay unexplored (the replay
+  changes no rule's state).
+- **For the engine** (A-41, not reproduced): no viewer learns a hidden exit; the row records what
+  the original shows.
+"""
+[encounter.hero]
+type = "Clancy"
+specialty = "creature Unicorn"
+owner = "blue"
+at = [47, 33]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
