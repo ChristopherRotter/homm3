@@ -4,34 +4,28 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b (below), then T101; T102 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled), then T101 (below); T102 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T100b — batch E11b's harness reads, recipe and runs**
-(decisions 269, 274, 278; design §16's harness item and §17's round 3; T100a's record in
-`E08-log.md` the model)
+**E08 T101 — batch E11 scored**
+(decisions 269, 274; design §16's scoring item and §17's round 3; T100a's and T100b's records in
+`E08-log.md` the raw observations)
 
-- **Scope:** `clients/capture/` (common: run the harness check; the client and map-client lanes'
-  inboxes told, CLT-Q18): Space pressed again and again with a read after each press (the hero's
-  tile, points and army; E08 T68b's step-by-step rows: a `key` step repeated until a tile or 60
-  presses, each press a row), the Whirlpools' list (game +0x4E77C) and the tiles' words
-  (map_item +0x0), a tile's class (map_item +0x1E) and the hero on it, ADVEVENT 35 (an owned
-  Barracks' hire question); the recipe `clients/capture/batches/E08-batch-11b.toml`; the runs
-  (day 1 and the next turns), the filled template committed.
-- **From T99b2b:** E11-16 steps onto W1's (23, 15) when E11-17 stands on (24, 15) and presses
-  until it lands on E11-17's tile (at most 60); E11-17b's click may visit W2 instead of boarding
-  (record it, go on); a battle between the two humans (none expected) is played with Red attacking
-  (`battle = { attack = …, by = "attacker", then = "attack" }`); the next turns read the shared
-  tile on both days.
-- **From T100a:** `only_if = { at = [x, y] }`, `again_if = { marks = "any" }`, a `key` step's
-  `battle`, `explored:x0,y0..x1,y1`, `battles`, `hero:in_boat`, `army:rows` (README, "Teleporters
-  and Replay Opponent Turn"); a skipped branch keeps the field the other filled; order branches
-  so that the first one played cannot lead onto the other's tile.
-- **Inputs:** `E08-design.md` §16; the survey `E08-teleporters.md` §12; the spec and template
-  `E08-batch-11b`; `clients/capture/README.md` ("An experiment batch", "Teleporters and Replay
-  Opponent Turn"); `TRAPS.md` (the harness's group).
-- **Depends on:** T100a. **Status:** ready; needs the original data staged for the harness (the
-  executable, its DLLs, the LODs, the sound archives; `clients/capture/setup.sh` makes the Wine
-  copy). T101 scores both runs.
+- **Scope:** the survey `docs/rules/surveys/E08-teleporters.md` §15 (new): each of batch E11's
+  nineteen rows (E11-1 to E11-19) against its prediction (the specs `E08-batch-11a`, `-11b`) and
+  the readings it rests on (§4, §5, §8, §10, §11), with VCMI's and the wiki's verdicts; the spread
+  rows (E11-15, E11-17, E11-16's draws) over all three runs of E11b (run 3 in the template, runs 1
+  and 2 in T100b's record) against the predicted bounds; a row against the reading or the design
+  note opens an `ADV-Q` (asked before T102, which applies the ADR drafts with the outcome); the
+  rows each rule of the family ADV-TEL (design §15) cites, `observed` until built.
+- **From T100b:** the selected hero lifted off its tile's record and put back by a scroll (a view
+  matter, README and TRAPS: what the engine keeps of it, if anything); A-37's landing (two heroes
+  on one tile, no battle) and its next turns: E11-16 not drawn for Red once E11-17 was selected,
+  and E11-17 drawn twice after E11-16's step off (consequences of A-37's landing, which decision
+  265 replaces by the battle first: recorded with A-37, or a candidate, next `A-43`); E11-17b's boarding left W2's (18, 24) class 111 with word -1, a Whirlpool
+  tile outside the list (what a visit there would draw: read or noted).
+- **Inputs:** the filled templates `experiments/results/E08-batch-11a.md` and `-11b.md`; survey
+  §12 to §14; design §16; the drafts `adr-drafts/0016-increment-11.md`, `0017-increment-11.md`.
+- **Depends on:** T100a, T100b. **Status:** ready (docs only; no original data needed).
 
 ## Inbox
 

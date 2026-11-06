@@ -809,6 +809,38 @@ game's time, its view at five corners (each jump's exit among them), and at a ju
 faded the old view out without drawing the exit's (the dumps of `dumps = "every"`): read what
 the screen shows from the dumps, not from the view's corner alone.
 
+Since E08 T100b (batch E11b; survey §12): a `key` step's `repeat = { most = <n>, first = <k>,
+until = { with = "<hero>" } }` presses the key again and again (at most 60), each press as a
+`key` step's (the hero selected, the view centred, what the key brings played by `answer`,
+`battle` and `level_up`), read after it rests; with `until` it stops before a press once the
+step's hero stands on the named hero's tile (before the first too: no press). Its observations:
+`presses` (`60 presses`, `on E11-17's tile after 26 presses`), `presses:<columns>` a table row
+per press (`n` the row's number from `first`, `from` and `to` the places, `tile`, `points`,
+`army`, `messages`; a `row:` field) and `presses:changed` (the presses that moved the points or
+the army or showed something; `none`). A recipe's `[places]` names tiles or boxes (`M1 = [26,
+4]`, `W1 = [22, 15, 24, 16]`, a level last): `hero:place` the hero's place (else its tile),
+`hero:at` its tile as a cell (`x,y`). `whirlpools` the Whirlpools' list in its order (`16
+tiles: 22,15 23,15 …`; game +0x4E77C is the vector, its begin and end at +0x4E780 and +0x4E784,
+observed; `h3mem.whirlpools`); `tile:x0,y0..x1,y1[,level]` a box's tiles (word, class, a hero
+and what lies under it: `tile_text`), `tile:from` and `tile:here` the step's hero's tile before
+and after the step, `tile:hero[<name>]` another hero's tile now; `answers` each question's
+record with the answer given; `selected` the current player's selected hero; `target` a walk's
+target. A step `walk = "off"` steps onto the hero's first open neighbour (north, east, south,
+west, then the diagonals; water for a hero in a boat, land on foot; `h3mem.open_tiles`);
+`only_if = { at = [x, y], empty = [x, y] }` (or `occupied = [x, y]`) plays a step only while no
+hero (a hero) stands on that tile; a step `look = "<hero>"` (no `hero`) centres the view on that
+hero by the minimap, selecting nobody, for its reads (its `before:` ones read before the view
+moves) and its `dump`. Observed (E11b, three runs): **the selected hero is lifted off its tile's
+record** after its move and at its turn's start (the tile shows what lies under it: after
+E11-17b boarded the boat on W2's (18, 24) the tile read class 111, word -1; the landing E11-16
+left the tile naming E11-17), while the view still draws it; **a scroll of the view puts it
+back** (the minimap click every walk, key and `look` makes: before a `look`'s scroll the tile
+named E11-17, after it E11-16 over E11-17). So a read of a selected hero's tile depends on the
+harness's last scroll: read it with `before:` in a `look` and again after. The draws of a long
+run of presses differ from run to run (the game runs in real time between them), unlike batch
+E11a's few. The hot-seat turn's second OK in a townless game is the countdown, ARRAYTXT 128
+(`?`: h3lod's tables leave ARRAYTXT out).
+
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
 records its probes from the part of the screen that tells it apart (`--also`: the same screen in

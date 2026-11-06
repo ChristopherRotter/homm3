@@ -13333,3 +13333,87 @@ without sound); GENRLTXT 7 with a picture captioned Red after E11-3's control ba
 first (not identified further).
 
 **Versions:** none moved (the harness, a recipe, a filled template, docs).
+
+### Increment 11, round 3: T100b, batch E11b's harness reads and runs (2026-11-07, `adventure/e08-t100b`)
+
+Baseline: `master` cf3e701 (#773; the setup's baseline verified this code by CI's fingerprint,
+light gates only). The original data staged at the start (the computer's shell did not start).
+Whole (the size of T100a; the seam "harness and recipe" / "runs and template" was not needed).
+
+**The harness** (`clients/capture/h3adv.py`, `h3mem.py`, common; README "Teleporters and Replay
+Opponent Turn"): a `key` step's `repeat = { most, first, until = { with } }` (the key pressed
+again and again, at most 60, each press read after it rests; `until` stops before a press once the
+step's hero stands on the named hero's tile); a recipe's `[places]` (`hero:place`, `hero:at`); a
+step `look = "<hero>"` (the view centred by the minimap, nobody selected; its `before:` reads
+before the scroll); `walk = "off"` (the first open neighbour, straight ones first); `only_if`'s
+`empty` and `occupied`; the observations `presses`, `presses:<columns>`, `presses:changed`,
+`whirlpools` (the list's vector at game +0x4E77C holds its begin and end at +0x4E780, +0x4E784,
+observed by a probe: its first word 0, as the gates' at +0x4E78C), `tile:x0,y0..x1,y1`,
+`tile:from`, `tile:here`, `tile:hero[<name>]`, `answers`, `selected`, `target`. No existing
+step's behaviour changed. The harness check passed (23 steps). The client and map-client lanes'
+inboxes told.
+
+**The recipe** `clients/capture/batches/E08-batch-11b.toml` (33 steps, the spec's order) and
+**three runs** (the second and third with the `look` steps' reads before the scroll): every record
+but the draws agrees in all three; the draws differ from run to run (the game runs in real time
+between the presses; E11a's few draws had agreed). The template filled from the third
+(`experiments/results/E08-batch-11b.md`), with the agent's reading of the dumps in E11-16's last
+line.
+
+**Raw observations** (unscored; T101 scores them, survey §15): **E11-14**: 1 500 of 1 500; onto S
+ADVEVENT 35 (answered no), on S with 1 400; **Space on S: ADVEVENT 35 again**, 1 400, the hero
+unmoved; the legs 900 and 400; onto A: on **B** with 0, the maximum 1 500, no message; **Space at 0
+points: on A, then on B**, 0 each, no message. **E11-15**: onto M1 1 900, the presses keep 1 900;
+**never the monolith stood on** (0 of 183); per run M1/M2/M3/M4 13/18/14/16, 20/12/14/15, 14/18/14/15;
+over the three runs 47/48/42/46, the pairs from each monolith 13 to 23. **E11-17**: the list **16
+tiles in the walk's order: W1's six, W3's five, W2's five** (22,15 23,15 24,15 22,16 23,16 24,16
+28,19 29,19 30,19 28,20 30,20 16,23 17,23 18,23 16,24 17,24), the words W1 0, W3 1, W2 2; (18, 24)
+and (29, 20) class 8, words 2 and 3. E11-17b boarded the boat on (18, 24) (0 points, in a boat; no
+visit, no message); **after it the tile read class 111, word -1** (E11-17b selected, lifted:
+below). E11-17's boarding 2 850 of 3 000; the step onto W1 2 750, kept by every press; five
+Archangels throughout, no message. **W2 drawn** (per run W1/W2/W3 21/17/23, 22/21/18, 22/20/19;
+183 jumps: 65/58/60); **never (18, 24), never (29, 20), never the Whirlpool stood on**; every list
+tile landed on (7 to 19 times). **E11-16**: the boarding 2 807 of 3 000; onto W1's (24, 15) 2 707
+(every run: (24, 15) empty); **landed on E11-17's tile after 33, 26 and 1 presses: no battle, no
+message, no dialog**, both heroes on the tile, 2 707, one Pikeman. The tile (E11-16 selected): it
+names E11-17 (34, 7) over (111, 2); after the view's scroll E11-16 (34, 0x16) over (34, 7). **Red's
+day 2**: as its dialogs closed E11-16 over E11-17 (the same after the scroll); **E11-17 selected
+(a list click): the tile reads (111, 2)**, E11-16 gone from it; E11-17's step off (one straight
+step, 100 points), no battle, no meeting: the old tile (111, 2). **Blue's day 2**: as the dialogs
+closed and a moment later the tile names **E11-17 (34, 7)** (E11-16 lifted), after the scroll E11-16
+over E11-17; E11-16 selectable (selected at the turn's start); its step off (a diagonal, 141): **the
+old tile names E11-17 (34, 7)** while E11-17 stands one tile north. **The dumps** (three runs
+alike): the landing and Red's day 2's start draw E11-16 (Blue's flag) on the tile, E11-17 not;
+E11-17 selected draws it, E11-16 not; after E11-17's step off **the tile shows the Whirlpool alone
+(E11-16 not drawn for Red)**; Blue's day 2 draws E11-16 there; after E11-16's step off **a boat with
+Red's flag stays on the old tile besides E11-17's own: E11-17 drawn twice** (the predicted ghost).
+
+**The harness's reads** (README, TRAPS): the selected hero is lifted off its tile's record after its
+move and at its turn's start (the tile shows what lies under it), and a scroll of the view puts it
+back; the reads around each `look` show it. The turn's second OK (`?`) is the townless player's
+countdown, ARRAYTXT 128 (7 days left, then 6; its text read in a local log of runs 2 and 3, never
+committed; h3lod's tables leave ARRAYTXT out).
+
+**The other runs' draws** (the to-places in order, row 1 the step's; run 3's are the template's):
+- E11-15 run 1: M3 M1 M3 M4 M3 M4 M1 M2 M1 M2 M3 M2 M4 M2 M1 M4 M1 M3 M2 M3 M2 M3 M4 M2 M4 M2 M4 M2
+  M4 M2 M4 M1 M4 M2 M1 M4 M3 M1 M2 M1 M3 M2 M4 M2 M3 M4 M2 M3 M1 M4 M2 M3 M1 M2 M3 M1 M4 M2 M1 M4 M3.
+- E11-15 run 2: M4 M1 M3 M2 M3 M2 M3 M1 M4 M1 M2 M1 M4 M2 M1 M3 M1 M4 M1 M4 M2 M4 M2 M3 M1 M3 M1 M4
+  M1 M4 M1 M4 M3 M1 M2 M1 M3 M1 M4 M1 M4 M2 M1 M2 M4 M2 M3 M4 M3 M1 M3 M1 M2 M3 M1 M4 M3 M4 M2 M3 M1.
+- E11-17 run 1 (tiles): 29,19 22,16 30,20 24,16 28,20 22,15 28,20 16,24 29,19 17,23 29,19 16,24
+  29,19 24,15 17,24 28,19 24,15 29,19 24,15 30,19 23,16 30,20 18,23 23,16 29,19 23,15 18,23 22,15
+  28,20 23,16 28,20 24,15 28,19 23,16 28,20 22,15 28,20 22,16 16,24 22,16 17,23 23,15 28,20 17,23
+  29,19 17,24 29,19 17,24 28,20 18,23 24,15 17,23 28,19 16,24 23,15 17,23 28,19 23,16 16,24 23,15
+  17,23.
+- E11-17 run 2 (tiles): 18,23 29,19 17,24 23,16 28,19 24,16 28,20 22,15 28,20 22,16 17,23 28,19
+  23,15 30,20 23,16 17,24 28,19 17,24 23,15 17,23 28,19 22,15 17,24 22,16 28,20 18,23 23,15 30,19
+  23,16 16,24 29,19 24,16 16,23 22,16 17,24 30,19 16,23 23,15 28,19 17,24 23,15 28,20 22,15 17,23
+  29,19 24,15 16,23 24,16 28,20 17,24 22,15 16,23 23,16 18,23 23,15 17,24 28,19 16,23 30,20 23,15
+  16,23.
+- E11-16 run 1 (tiles): 18,23 28,19 24,16 29,19 16,23 29,19 22,16 30,20 22,16 28,19 22,16 28,20
+  22,15 28,19 23,16 30,20 18,23 28,19 16,23 30,20 24,16 17,24 29,19 24,15 30,20 23,15 28,20 24,16
+  30,20 16,24 30,19 22,16 28,19 17,23 (E11-17 on 17,23).
+- E11-16 run 2 (tiles): 18,23 22,15 17,23 22,16 30,19 18,23 29,19 16,24 22,16 29,19 23,16 29,19
+  23,15 30,19 24,16 17,24 22,16 28,19 23,15 17,24 30,19 18,23 30,19 17,24 23,16 30,20 16,23 (E11-17
+  on 16,23).
+
+**Versions:** none moved (the harness, a recipe, a filled template, docs).

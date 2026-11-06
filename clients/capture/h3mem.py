@@ -119,6 +119,10 @@ MAP_TEMPLATES, TEMPLATE_RECORD, TEMPLATE_CLASS = 0x4, 0x44, 0x38
 HERO_CLASS_FIELD, HERO_ID, HERO_FACING, HERO_STATUS, IN_BOAT = 0x30, 0x1A, 0x47, 0x105, 1 << 18
 BOATS, BOAT_RECORD, BOAT_FACING, BOAT_COLOUR = 0x4E3BC, 0x28, 0x1B, 0x1C
 HERO_OBJECT, BOAT_OBJECT, ENTRANCE = 34, 8, 0x10
+# The Whirlpools' list (E08 T100b, batch E11b; structs.toml game +0x4E77C, setup_whirlpools
+# 0x4C1F88): the vector's begin and end at +0x4E780, +0x4E784 (its first word, as the gates' at
+# +0x4E78C, is not a pointer; observed: begin there 0), packed positions (u32, `unpack`).
+WHIRLPOOLS = 0x4E780
 # The mines' and Lighthouses' records (E08 T79a, batch E9a; survey E08-economy §2.1, structs.toml
 # "mine_record"): a vector at game +0x4E38C (begin, end), 0x40 bytes each: the owner (i8 +0x0, -1
 # none), the resource (i8 +0x1: a mine's subclass 0-6, an abandoned mine's drawn one, 100 for a
@@ -1390,6 +1394,16 @@ class Mem:
                 if pointer and 0 < length < 4096 else ""
             out.append((bool(raw[0]), text))
         return out
+
+    def whirlpools(self):
+        """The Whirlpools' list in its order (E08 T100b, batch E11b; WHIRLPOOLS): [(x, y,
+        level)], every Whirlpool's visitable tiles but one whose class is a boat's (survey
+        E08-teleporters.md §3.1)."""
+        begin, end = struct.unpack("<II", self.read(self.game() + WHIRLPOOLS, 8))
+        if not 0 <= end - begin <= 4 * 4096 or (end - begin) % 4:
+            raise RuntimeError(f"the Whirlpools' list: begin {begin:#x}, end {end:#x}")
+        raw = self.read(begin, end - begin) if end > begin else b""
+        return [unpack(w) for w in struct.unpack(f"<{len(raw) // 4}I", raw)]
 
     def universities(self):
         """The game's Universities (E08 T57; game +0x4E3CC): each one's four skill ids, in the
