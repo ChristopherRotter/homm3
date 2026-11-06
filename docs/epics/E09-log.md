@@ -1945,3 +1945,32 @@ names v20 (T10's finding).
 the lane's `TRAPS.md` (one faction per town in an `AdventureSetup`). ADR-0016 point 4's sentence
 ("a blocker until E09's random towns resolve it", ADV-STUB-13) is amended with increment 2's
 drafts (T13, a shared path).
+
+### T12a — the construction survey: the build command, the costs and requirements (2026-11-07)
+
+Decision 38's survey, cut in two at its start (the user, `AskUserQuestion`, recommended over three
+parts and the whole): **T12a** the build command's checks, what a build does, the cost and
+requirement tables, VCMI and the wiki compared; **T12b** the town events, the census of the
+shipped maps and the checkpoint. Branch `town/e09-t12a`, docs only (the survey, the code map, the
+surveys' README, the lane's bookkeeping). Starting point: `master` at cf3e701 (#771 to #773 merged;
+CI green there; the setup's baseline lost to a VM restart, replaced by CI's run as the sandbox
+skill says). The user's computer's shell did not start: a sandbox cloned from GitHub,
+`Heroes3.exe`, both LODs, `maps.tar` and `extracted.tar` staged with the file tool.
+
+**Written:** `docs/rules/surveys/E09-construction.md` §0 to §7: the human's build through the
+town screen's hall (its slots and chains, a slot's state, the Build button, the payment from the
+current player's treasury), the tests (buildable now, ever buildable, the computer's buy, one
+Capitol, the Shipyard's spot fixed at the start, the Grail's building), one a town a day (the
+town's +0x2; a computer-only team every other day on Easy and Normal), what a build does
+(`town_build_effects`), the costs (`Building.txt`'s three tables), the requirements (the nine
+lists' direct requirements, tested against the every-built set), VCMI 1.7.5 and the wiki compared.
+The code map gained 33 entries (the hall, the tests, the costs, the effects; three cost tables with
+H3API's names confirmed); `town_boat_spot` and `grail_victory_town` are now read whole, `new_day`
+and `ai_town_visit` extended, and the town's +0x2 is named `built_today`.
+
+**Disputes:** TD-9 (the Conflux's upgraded Altar of Fire: the reading the Altar of Fire and the
+upgraded Altar of Air; VCMI and the fandom wiki the Altar of Fire) and the new **TD-11** (who
+builds and who pays: the reading finds no owner test on the hall's path and pays from the current
+player's treasury, so a visitor might build in an ally's town at its own cost; VCMI the owner
+only). No quirk candidate. Both disputes, the computer's every other day and the other open points
+go to T12b's checkpoint (survey §7). Ids: disputes next 12, quirk candidates next 8 (unchanged).
