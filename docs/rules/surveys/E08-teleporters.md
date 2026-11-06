@@ -145,6 +145,14 @@ positions in the game record:
   whose cell is (2, 1) in the object and copied by the others from it.
 - The subclass indexes eight lists of 16 bytes without a bound: a subclass from 8 writes past them
   (A-39).
+- *(T99b2b, read for batch E11b.)* The walk dispatches on the tile's class (map_item +0x1E,
+  0x4C0D96), the last object written there; class 8, a boat, has no case (0x4C216F), so a
+  Whirlpool tile whose class is a map-placed boat's is never appended to the list; a boat is its
+  tile's class whatever the order (`create_boat` 0x4BB250 shows it as class 8, and a tile's refresh
+  puts a boat back on top, `tile_refresh_around_heroes` 0x505A10; its word is the boat's index). The cell
+  (2, 1) the six copy their word from is the Whirlpool's top-left tile (0x4C1FAD: the tile at
+  column + x − 2, row + y − 1, cells counted from the anchor leftward and upward); none of the
+  shipped maps holds a boat on a Whirlpool (§1).
 
 ### 3.2 The gates' pairs (`gates_pair` 0x4C0B60, read whole; from `new_game_heroes` 0x4C0005)
 

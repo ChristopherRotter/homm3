@@ -1,0 +1,381 @@
+# Experiment batch E11b (E08 T99b2b; decisions 261, 269, 274 to 277): the repetitions with the space
+# key of increment 11's plan (survey docs/rules/surveys/E08-teleporters.md §12; docs/epics/E08-design.md
+# §16) at two-way monoliths, an owned dwelling and Whirlpools, in SoD on Easy, hot seat, day 1 and the
+# next turns. Batch E11a (`E08-batch-11a`) is the jumps. Build: docs/experiments/README.md.
+# Predictions are for the agent who evaluates the results; the template never shows them.
+#
+# | row    | settles                                    | the reading (faithful)                       | the other source(s)                     |
+# | E11-14 | §11: the space key without points          | the hire question again (no points spent);   | the wiki: AB and SoD, without points;   |
+# |        |                                            | at 0 points B → A → B, no draw               | VCMI not read                           |
+# | E11-15 | §4.1, D-53: a two-way channel of four      | each jump one of the three others, uniform;  | VCMI: the client names the exit (D-53)  |
+# |        |                                            | never the one stood on                       |                                         |
+# | E11-17 | §4.1, D-57: a Whirlpool's exit tile        | W2's five list tiles drawn as W3's (about    | VCMI never W2 (its visitable tile holds |
+# |        |                                            | 20 of 61); never a boat's tile               | a hero of the team)                     |
+# | E11-16 | A-37: a Whirlpool lands on an enemy hero   | both on one tile, no battle, no message;     | VCMI the mover stays (survey §8)        |
+# |        |                                            | the next turns unread (recorded)             |                                         |
+#
+# **The agent's call for E11-16** (the queue's, told at the start): the sides swapped. Red moves first,
+# and its turn holds E11-17's 60 presses, so the enemy on a Whirlpool's tile is E11-17's hero where its
+# presses left it, and Blue's E11-16 presses on Blue's day 1 until it lands there (at most 60 presses).
+# Red's day 2 and Blue's day 2 are "the next turn": a step off by each hero (a new day comes between
+# the landing and E11-17's turn, which changes nothing on the tile). **Design §16's addition:**
+# an empty boat on one of W3's tiles, never drawn.
+#
+# **Read at T99b2b** (`setup_map_objects` 0x4C0CC0): the setup's walk dispatches on the tile's class
+# (map_item +0x1E, 0x4C0D96), and class 8, the boat, has no case: a tile whose class is the boat's
+# is **not appended to the Whirlpools' list**, so it is never drawn, by any player, also after a hero
+# boards the boat there. The boat is the tile's class whatever the order (the review's reading of the
+# address map): `create_boat` 0x4BB250 shows it as class 8 (`hero_show` 0x4D75D0, which keeps the
+# class and word under it), and a tile's refresh takes a boat off and puts it back on top
+# (`tile_refresh_around_heroes` 0x505A10); the boats are written after the Whirlpools all the same
+# (T99a's call). A boat's tile holds its boat's index as its word (`hero_show`'s id).
+# The six tiles' shared word is copied from the tile of cell (2, 1) (0x4C1FAD: column + x − 2, row +
+# y − 1), the Whirlpool's **top-left** tile: neither boat lies on one. The list then holds 16 tiles in
+# the walk's order (row by row): W1's six, W3's five, W2's five; the words W1 0, W3 1, W2 2.
+#
+# **The rows.** E11-14: one hero (Dendroid Guards: 1 500 points a day) steps onto Red's own Barracks,
+# declines the hire question, presses Space (the question again), walks east along row 4 in three
+# legs onto A, the first of the green channel's two monoliths, with its last 100 points (14 straight
+# steps after the Barracks: 1 500 in all), jumps to B, and presses Space twice at 0 points (B → A →
+# B; one candidate each, no draw). E11-15: one hero steps onto M1 of the orange channel's four and
+# presses Space 60 times. E11-17: E11-17b boards the empty boat on W2's anchor (18, 24) from the
+# island east of it (VCMI's visitable tile of W2; `vcmi_tile`); E11-17, wearing the Admiral's Hat
+# (free boarding, no loss: it holds the Sea Captain's Hat), boards beside W1, sails onto it and
+# presses Space 60 times. E11-16 (Blue), also with the Admiral's Hat, boards beside W1 on Blue's day
+# 1, sails onto it and presses until it lands on E11-17's tile.
+#
+# **The heroes.** Red has four, Blue one. Nobody has Scouting, Pathfinding, Logistics or Navigation;
+# no artifact but the two Admiral's Hats (batch E8a had two). Land points (packs/base/adventure.toml
+# `land_points`, by the slowest speed from 0): E11-14's Dendroid Guards (speed 3) 1 500, the Angels
+# and Archangels 2 000, E11-16's Pikeman 1 560; at sea with the Admiral's Hat 3 000 (1 500 + 500 +
+# 1 000). A step costs 100 on grass and water, 141 diagonally. A hero's scouting radius is 5
+# (ADV-FOG-002: dx² + dy² ≤ 30); every click's target lies within the clicking hero's own radius.
+#
+# **The pictures** (docs/experiments/README.md, "Increment 11's objects"): a monolith of channels 0 to
+# 3 is the one tile `at`, entered there from any side but the three tiles above it; a Whirlpool is
+# the 3 × 2 tiles ending on `at`, all six entered, from above too; a boat stands on the tile west of
+# its `at`; the Barracks covers `at` and the tile west of it and is entered at `at`.
+#
+# **The places.** The Barracks S (5, 4) (it covers (4, 4)); the green two-way channel 0: A (19, 4), B
+# (12, 9); the orange two-way channel 1: M1 (26, 4), M2 (32, 4), M3 (26, 9), M4 (32, 9). The sea:
+# water from (14, 14) to (35, 35), with a grass island (19, 22) to (21, 24) east of W2. W1 (22, 15)
+# to (24, 16), W2 (16, 23) to (18, 24), W3 (28, 19) to (30, 20); every list tile has a plain water
+# tile beside it (the next turns' steps off). The boats: (22, 14) for E11-17 and (24, 14) for E11-16,
+# north of W1's top row; (18, 24), W2's anchor, for E11-17b; (29, 20), W3's bottom middle, empty.
+#
+# **The walks** (priced on the written map by a throwaway test, TRAPS.md, on a copy without the two
+# boats on Whirlpools' tiles, which the engine's setup refuses; the monoliths and Whirlpools import as
+# blockers until T103, so each step onto one was priced by hand): see each row's predictions.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or a resource; an artifact on a moving hero goes under "anything odd" (boots would move
+# the points).
+
+[map]
+name = "E08 batch E11b"
+description = "Engine-generated experiment map (E08, batch E11b): the space key at a two-way monolith with no points and at an owned dwelling, a two-way channel of four pressed 60 times, three Whirlpools pressed 60 times with a hero of the team on one's visitable tile and an empty boat on another's, a Whirlpool landing on an enemy hero. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-11b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of each later turn (save 2 Blue's day 1, save 3 Red's day 2, save 4 Blue's day 2).",
+    "Most records are the game's memory: a hero's tile (column, row), its movement points (hero +0x4D), the day's maximum (+0x49) and army (slot, creature, count), whether it is in a boat (its status +0x105, bit 18, 0x40000), a tile's class (its map_item record +0x1E) and the hero there, the Whirlpools' list (game +0x4E77C: its packed positions in order) and each Whirlpool tile's word (map_item +0x0), the messages and dialogs shown (by their text's table and line), a battle's opening (terrain, sides, stacks). The capture harness reads them (`clients/capture/batches/E08-batch-11b.toml`, E08 T100). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). A step onto a monolith, a dwelling or a Whirlpool: click its tile from the neighbouring tile named (twice). A boat: click it from the shore beside it (twice): the hero boards it and its walk ends there. **Space:** with the hero selected, press the space bar once; a row's \"presses\" are that, one at a time, with the reads after each.",
+    "A battle between Red's and Blue's heroes (none is expected): play it, Red's stacks attacking, Blue's Pikeman only waiting or defending (never a retreat or a surrender). A level-up's dialog after a battle: take the left skill.",
+    "Order: day 1, Red's turn: E11-14, E11-15, E11-17 (E11-17b's boarding, then E11-17's presses); end the turn. Blue's turn: E11-16's steps 1 to 3; end the turn. Day 2, Red's turn: E11-16's step 4; end the turn. Blue's turn: E11-16's step 5. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- E11-14: Red's Barracks S and the green two-way channel 0 (A, B) --------------------------------------
+
+[[map.ownable]]
+picture = "AVGswor0"
+at = [5, 4]
+owner = "red"
+
+[[map.object]]
+picture = "AVXmn2g0"
+at = [19, 4]
+
+[[map.object]]
+picture = "AVXmn2g0"
+at = [12, 9]
+
+# --- E11-15: the orange two-way channel 1, four monoliths ------------------------------------------------
+
+[[map.object]]
+picture = "AVXmn2o0"
+at = [26, 4]
+
+[[map.object]]
+picture = "AVXmn2o0"
+at = [32, 4]
+
+[[map.object]]
+picture = "AVXmn2o0"
+at = [26, 9]
+
+[[map.object]]
+picture = "AVXmn2o0"
+at = [32, 9]
+
+# --- E11-16, E11-17: the sea, the island, three Whirlpools, four boats ------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [14, 14]
+to = [35, 35]
+
+[[map.patch]]
+terrain = "grass"
+from = [19, 22]
+to = [21, 24]
+
+# W1, the pressers' entrance: (22, 15) to (24, 16).
+[[map.object]]
+picture = "AVXwhrl0"
+at = [24, 16]
+
+# W2: (16, 23) to (18, 24); its anchor (18, 24) is VCMI's visitable tile.
+[[map.object]]
+picture = "AVXwhrl0"
+at = [18, 24]
+
+# W3: (28, 19) to (30, 20).
+[[map.object]]
+picture = "AVXwhrl0"
+at = [30, 20]
+
+# The boats (a boat stands on the tile west of `at`), written after the Whirlpools: (22, 14) for
+# E11-17, (24, 14) for E11-16, (18, 24) on W2's anchor for E11-17b, (29, 20) on W3, empty.
+[[map.object]]
+picture = "AVXboat0"
+at = [23, 14]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [25, 14]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [19, 24]
+vcmi_tile = true
+
+[[map.object]]
+picture = "AVXboat0"
+at = [30, 20]
+vcmi_tile = false
+
+# --- E11-14 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-14"
+title = "The space key at an owned dwelling, then at a two-way monolith with 0 points"
+questions = ["ADV-TEL-008", "ADV-DWL-004", "ADV-TEL-004", "ADV-MOV-006"]
+procedure = [
+    "Day 1, Red's turn, first: Red owns the Barracks S (entrance (5, 4); it covers (4, 4) and (5, 4)). E11-14 stands at (5, 5), south of S, with five Dendroid Guards. The green two-way channel 0 has two monoliths only: A (19, 4) and B (12, 9). Read E11-14's points and day's maximum.",
+    "Click S's entrance (5, 4) twice: E11-14 steps onto it. Note the question (its text's table and line); answer **No**. Note E11-14's tile and points. Press Space once: note what is shown (the question again, another, or nothing); if a question, answer **No**. Note E11-14's tile and points.",
+    "Walk east along row 4 in three legs: click (10, 4) twice (note the points there), then (15, 4) twice (note the points), then A (19, 4) twice: E11-14 steps onto A. Note any message, then E11-14's tile, points and day's maximum.",
+    "Press Space once: note any message, E11-14's tile and points. Press Space again: the same.",
+]
+record = [
+    { field = "before: points; day's maximum" },
+    { field = "the step onto S: the question (table, line); E11-14's tile; points" },
+    { field = "Space on S: what is shown (table, line); tile; points" },
+    { field = "the legs: points at (10, 4); at (15, 4)" },
+    { field = "the step onto A: messages; tile after; points; day's maximum" },
+    { field = "Space 1: messages; tile; points" },
+    { field = "Space 2: messages; tile; points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The dwelling** (survey E08-dwellings.md §5.2; batch E10a's E10-4): Red's own Barracks, its
+  count 4 from the start (ADV-DWL-002): no guards, no flag; the hire question **ADVEVENT 35**; No:
+  nothing bought. E11-14 on **(5, 4)** with **1 400** points (1 500 − 100). **Space** (survey §11;
+  `key_space_visit` 0x408E65): the hero selected again, its tile visited: **ADVEVENT 35 again**,
+  the same question; **1 400** (the key spends and tests no points).
+- **The legs** (ADV-MOV-006): straight grass steps of 100 along row 4: **900** at (10, 4), **400**
+  at (15, 4); the third leg's four steps, the last onto A, take the last 400: **0** on A, paid in
+  full (no drop needed). Each leg's target lies within the hero's radius where it stands.
+- **The jump** (§4.1, §4.2, §5): channel 0 has one other member, so no draw (`random_between(1, 1)`
+  returns at once): on **B (12, 9)**, **0** points, the day's maximum **1 500** kept, no message
+  (the sound `telptout.wav`); the walk ended.
+- **Space at 0 points** (§11): B visited again: back on **A (19, 4)**, **0** points, no message; the
+  second press: on **B** again, **0**. The wiki: AB and SoD, without movement points ("unlimited
+  cycling through two-way monoliths"). **VCMI:** not read (survey §7).
+- **For the engine** (decision 268, ADV-TEL-008): `Revisit` needs and spends no points; the step's
+  own visit with its decisions (the hire question again).
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [5, 5]
+primary = [1, 1, 1, 1]
+army = [["Dendroid Guard", 5]]
+
+# --- E11-15 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-15"
+title = "A two-way channel of four, pressed 60 times: the exits' spread"
+questions = ["D-53", "ADV-TEL-003", "ADV-TEL-004", "ADV-TEL-008"]
+procedure = [
+    "Day 1, Red's turn, after E11-14: the orange two-way channel 1 has four monoliths: M1 (26, 4), M2 (32, 4), M3 (26, 9), M4 (32, 9). E11-15 stands at (25, 4), west of M1, with one Angel.",
+    "Click M1 (26, 4) twice: E11-15 steps onto it. Note any message, then its tile (which monolith) and points.",
+    "Press Space 60 times. After each press note E11-15's tile (which monolith). After the last, note its points.",
+]
+record = [
+    { field = "the step onto M1: messages; tile after (M1 to M4); points" },
+    { table = ["jump", "from", "to (M1 to M4)"], rows = 61 },
+    { field = "after the 60th press: points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The draw** (survey §4.1, D-53, decision 264): each visit draws among the channel's other three
+  monoliths (the entrance's word excluded; the hero on it besides), uniform, one
+  `random_between(1, 3)` from the C runtime's stream. **Never the one stood on** (0 of 61). Jump 1 is
+  the step's, from M1; the 60 presses follow from wherever the hero stands.
+- **The spread** (61 jumps; simulated): from each monolith each of the other three about a third;
+  each monolith about 15 landings, **9 to 21** at 99 % each (a count outside that is a mark against
+  a uniform draw; several, against it).
+- **Points:** 2 000 − 100 = **1 900** after the step, unchanged by the presses (§11). No message
+  (the sound each time).
+- **VCMI** (D-53): the server takes the exit the client names (from a path through the channel,
+  else its own pick): not observed here. **The wiki:** random among several.
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [25, 4]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E11-17 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-17"
+title = "Three Whirlpools pressed 60 times: a hero of the team on W2's visitable tile, an empty boat on W3"
+questions = ["D-57", "ADV-TEL-002", "ADV-TEL-003", "ADV-TEL-006", "ADV-TEL-008"]
+procedure = [
+    "Day 1, Red's turn, after E11-15. The sea: water from (14, 14) to (35, 35), a grass island (19, 22) to (21, 24). The Whirlpools: W1 (22, 15) to (24, 16), W2 (16, 23) to (18, 24), W3 (28, 19) to (30, 20). An empty boat lies on W2's (18, 24), its bottom-right tile (VCMI's visitable tile of W2), another on W3's (29, 20). Red's E11-17b stands on the island at (19, 24), east of W2's boat, with one Angel. Red's E11-17 stands on the shore at (22, 13) with five Archangels and the Admiral's Hat; its boat lies at (22, 14), south of it. Read the Whirlpools' list (its positions in order) and the word of each of the eighteen Whirlpool tiles; and the class of (18, 24) and of (29, 20).",
+    "E11-17b: click the boat on W2's (18, 24) twice. Note what is shown, then E11-17b's tile, points, army and whether it is in a boat, and the class of (18, 24). **If E11-17b is not in a boat on (18, 24)**, note where it is, and go on all the same.",
+    "E11-17: click the boat (22, 14) twice: it boards. Note its points, day's maximum and whether it is in a boat. Click W1's (22, 15) twice: it sails onto it. Note any message, then its tile (which Whirlpool; column, row), army and points.",
+    "Press Space 60 times. After each press note E11-17's tile (which Whirlpool; column, row). After the last, note its army and points, and E11-17b's tile.",
+]
+record = [
+    { field = "at the start: the Whirlpools' list (positions in order); each Whirlpool tile's word; the class of (18, 24) and of (29, 20)" },
+    { field = "E11-17b's click: what is shown; tile; points; army; in a boat; the class of (18, 24) after" },
+    { field = "E11-17 after the boarding: points; day's maximum; in a boat" },
+    { field = "the step onto W1's (22, 15): messages; tile after (Whirlpool; column, row); army; points" },
+    { table = ["jump", "from (Whirlpool)", "to (Whirlpool)", "tile"], rows = 61 },
+    { field = "after the 60th press: army; points; E11-17b's tile" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The list** (read at T99b2b, the header; survey §3.1): 16 tiles in the walk's order: W1's (22,
+  15), (23, 15), (24, 15), (22, 16), (23, 16), (24, 16); W3's (28, 19), (29, 19), (30, 19), (28,
+  20), (30, 20); W2's (16, 23), (17, 23), (18, 23), (16, 24), (17, 24); the words W1 0, W3 1, W2 2
+  (each counted at its top-left tile, the others copying it). **Not in it:** (18, 24) and (29, 20),
+  whose class is the boat's, 8, and whose words are their boats' indices (presumably 2 and 3, the
+  boats' records in the map's order; (18, 24)'s 2 equals W2's word by chance, it is no Whirlpool's).
+  *If the class of (18, 24) is the Whirlpool's (111)* (unlikely: the header) the tile is in the
+  list, and E11-17b's click shows no path and does nothing (from land a step goes onto water only
+  to a boat, a hero or class 85: survey `E08-sea.md` §3): E11-17b stays on (19, 24), W2's anchor
+  holds no hero, so VCMI too lands on W2 and D-57's contrast is lost (the original's spread still
+  recorded, with (18, 24) and (29, 20) as list tiles: an empty boat's tile then a candidate, a
+  landing there two vessels on one tile).
+- **E11-17b's boarding** (batch E8a; ADV-SEA-002): the step onto the boat costs 100 and boards it:
+  on **(18, 24)** in a boat, **0** points (no Admiral's Hat), no Whirlpool visit, no message; the
+  tile's class then the hero's, 34, its word E11-17b's hero id. A hero of the team on W2's anchor,
+  never a candidate.
+- **E11-17's boarding** (the Admiral's Hat's free boarding, D-41; batch E8a's E8-1): (2 000 − 100)
+  × 3 000 / 2 000 = **2 850** points, the maximum **3 000**; the step onto W1's (22, 15) **100**
+  (straight): **2 750**, kept by every jump. **No loss** (the Hat holds the Sea Captain's Hat;
+  `whirlpool_losses` skipped): five Archangels throughout, no message, no sound.
+- **The draws** (§4.1, §4.4, D-57, decision 264): one draw over the list's tiles of the other two
+  Whirlpools (the entrance's word excluded), uniform: from W1 **10** candidates (W2's five, W3's
+  five), from W2 or W3 **11** (W1's six and the other's five). **Never** (18, 24) (E11-17b's; not in
+  the list, and a hero of the team), **never** (29, 20) (the empty boat; not in the list), never
+  the Whirlpool stood on. Over the 61 jumps (simulated): W1 about 21, W2 and W3 about 20 each, **W2
+  14 to 25** at 99 %; within a Whirlpool its list tiles alike.
+- **VCMI 1.7.5** (D-57): a Whirlpool first, skipping one whose visitable tile (the anchor) holds a
+  hero of the team, then one of its tiles: **W2 never**; from W1 always W3, from W3 always W1. The
+  wiki: random. One landing on W2 tells the two apart.
+- **For the engine** (design §7): the draw's candidates as the original's; a tile with an empty boat
+  no candidate (the agent's call there; here the setup's list leaves such a tile out).
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [22, 13]
+primary = [1, 1, 1, 1]
+army = [["Archangel", 5]]
+artifacts = { head = "Admiral's Hat" }
+
+[[encounter.also]]
+type = "Christian"
+specialty = "creature Ballista"
+name = "E11-17b"
+at = [19, 24]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E11-16 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-16"
+title = "A Whirlpool's draw lands on an enemy hero's tile (Blue onto E11-17); the next turns"
+questions = ["A-37", "ADV-TEL-003", "ADV-TEL-006", "GAM-BAT-004"]
+procedure = [
+    "Day 1, Blue's turn: Blue's E11-16 stands on the shore at (24, 13) with one Pikeman and the Admiral's Hat; its boat lies at (24, 14), south of it. Read E11-17's tile (Red's; where its presses left it: by hand, E11-17's last table row) and E11-17b's.",
+    "Click the boat (24, 14) twice: E11-16 boards it. Note its points and day's maximum. Click W1's (24, 15) twice, or (23, 15) if a Red hero stands on (24, 15): it sails onto it. Note any message, dialog or battle, then its tile (which Whirlpool; column, row).",
+    "Unless E11-16 now stands on a Red hero's tile, press Space until it does, at most 60 times; after each press note E11-16's tile. On the Red hero's tile: note any message, dialog or battle; both heroes' tiles; the tile's class, word and the hero it names; which hero the map draws there (a screenshot); E11-16's army and points. **If it lands on none in the 60 presses** (or E11-17 stood on no Whirlpool tile at the start), note that, leave out the shared tile's reads below and still do each step off. End Blue's turn.",
+    "Day 2, Red's turn: note anything shown at the turn's start; both heroes' tiles; the shared tile's class, word and hero; which hero is drawn there. Select E11-17 in the hero list: note the tile's class, word and hero then, and what the map draws there. Click a plain water tile next to E11-17 (no Whirlpool's, no boat, no hero; name it) twice: note any battle, meeting or message, then both heroes' tiles, the old tile's class, word and hero, and which hero is drawn there. End Red's turn.",
+    "Day 2, Blue's turn: note E11-16's tile, whether it is drawn and whether it can be selected; selected, the tile's class, word and hero. Click a plain water tile next to it (name it) twice: note any battle, meeting or message, then its tile, and the old tile's class, word and hero and what the map draws there. Then the map is done.",
+]
+record = [
+    { field = "day 1, Blue, first: E11-17's tile; E11-17b's tile" },
+    { field = "after the boarding: points; day's maximum" },
+    { field = "the step onto W1 (which tile): messages, dialogs, battles; tile after" },
+    { table = ["jump", "from (Whirlpool)", "to (Whirlpool)", "tile"], rows = 61 },
+    { field = "on the Red hero's tile (or none in 60): messages, dialogs, battles; both heroes' tiles; the tile's class, word and hero; the hero drawn (a screenshot); E11-16's army; points" },
+    { field = "day 2, Red, at the start: anything shown; both tiles; the tile's class, word and hero; the hero drawn" },
+    { field = "E11-17 selected: the tile's class, word and hero; the hero drawn" },
+    { field = "E11-17's step off (to which tile): battles, meetings, messages; both tiles after; the old tile's class, word and hero; the hero drawn there" },
+    { field = "day 2, Blue: E11-16's tile; drawn; selectable; selected, the tile's class, word and hero" },
+    { field = "E11-16's step off (to which tile): battles, meetings, messages; its tile after; the old tile's class, word and hero; the hero drawn there" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The boarding** (D-41): (1 560 − 100) × 3 000 / 1 560 = **2 807** (truncated), the maximum
+  **3 000**; the step onto W1 100 straight (**2 707**) or 141 diagonally (**2 666**), kept by the
+  jumps. **No loss** (the Admiral's Hat), no message.
+- **The draws** (§4.1): over the list's tiles of the other two Whirlpools **and E11-17's tile
+  wherever it stands**: a hero of another team is a candidate whatever its tile's word, so also on
+  the Whirlpool E11-16 stands on. E11-17b's (18, 24) never (not in the list; the header). 10 to
+  12 candidates a draw, one of them E11-17's: the landing within **8** jumps at the median, 24 at
+  90 %; none in 61 about 0.3 % (simulated).
+- **A-37** (§4.4, §4.5; decision 265): the Whirlpool's case relocates without a hero test: E11-16
+  on **E11-17's tile, no battle, no message**, two heroes on one tile.
+- **The tile** (`hero_show` 0x4D75D0 and `hero_hide` 0x4D76E0, read whole at E09 T1a2: a shown
+  hero keeps the tile's class and word under it, a hero under it too, and a hidden one puts them
+  back): after the landing the tile names **E11-16 (34, its id)**, E11-16 keeping **(34, E11-17's
+  id)** under it, E11-17 still keeping its Whirlpool (111 and its word). **Red's day 2:** E11-17's
+  step off hides it and puts back **111 and the Whirlpool's word**: the tile names a Whirlpool while
+  E11-16 stands on it. Its selection lifts it the same way, if `hero_select` hides it (survey §11;
+  how was not read). **Blue's day 2:** E11-16's selection or step off puts back **(34, E11-17's
+  id)**: the old tile names E11-17, who stands elsewhere (a ghost). What is drawn, and what a click
+  on either does, not read: recorded.
+- **VCMI:** the mover stays, no battle (survey §8). **For the engine** (decision 265): the battle
+  first, as at a monolith's exit (GAM-BAT-004); the mover arrives only if it wins.
+"""
+[encounter.hero]
+type = "Clancy"
+specialty = "creature Unicorn"
+owner = "blue"
+at = [24, 13]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+artifacts = { head = "Admiral's Hat" }
