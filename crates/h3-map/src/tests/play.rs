@@ -7284,9 +7284,9 @@ fn told_army(
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
 /// player's army (but for a siege's merge into a town's visitor's army, E09 T9b1,
 /// [`told_army`]), explored tiles (but for a new day's reveal in strict-fixed, which only adds,
-/// E08 T40), treasury (but for a new day's income and the timed events at its turn's start, E08
-/// T85b), purchases, open decision (E08 T14b)
-/// or keys (T15a),
+/// E08 T40, and a town's capture after a siege its owner's garrison lost, E09 T9b1), treasury
+/// (but for a new day's income and the timed events at its turn's start, E08 T85b), purchases,
+/// open decision (E08 T14b) or keys (T15a),
 /// and changes another player's heroes' points only when that player's turn starts
 /// (ADV-MOV-002); but a battle (E08 T19a) the actor owns with another player: its commands play
 /// the battle both own, and the one that ends it changes the other's hero (its army, or its
@@ -7344,6 +7344,19 @@ fn check_isolation(
     let new_day = events
         .iter()
         .any(|e| matches!(e, GameEvent::DayStarted { .. }));
+    // E09 T9b1: a town captured after a siege the command ended reveals around it to its new
+    // owner (TWN-CAP-003), also when the town's owner, playing its garrison's side, ended the
+    // battle by its own command.
+    let captors: Vec<PlayerId> = events
+        .iter()
+        .filter_map(|e| match e {
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::TownCaptured { owner, .. },
+                ..
+            }) => Some(*owner),
+            _ => None,
+        })
+        .collect();
     let kept = |was: &h3_adventure::BitGrid, is: &h3_adventure::BitGrid| {
         (0..was.levels()).all(|z| {
             (0..was.height()).all(|y| {
@@ -7361,7 +7374,9 @@ fn check_isolation(
                 after.adventure().explored(player),
             );
             match (was, is) {
-                (Some(was), Some(is)) if new_day => prop_assert!(kept(was, is)),
+                (Some(was), Some(is)) if new_day || captors.contains(&player) => {
+                    prop_assert!(kept(was, is));
+                }
                 _ => prop_assert!(was == is),
             }
             if !partners.contains(&player) {

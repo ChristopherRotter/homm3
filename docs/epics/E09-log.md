@@ -1586,7 +1586,8 @@ in two (decision 33), the plans first. Built by the agent alone; no original dat
   decision holds it; else the owner kept and the survivors by slot, none after a draw; no
   removal, no treasury change); `check_income` adds each owned town's `h3_towns::daily_income`;
   `check_isolation` lets a siege's merge change the besieged visitor's army as its
-  `StackChanged`s tell (`told_army`; the failing seed committed in `play.txt`); `landing` takes a
+  `StackChanged`s tell (`told_army`; the failing seed committed in `play.txt`) and a capture's
+  reveal grow its captor's explored tiles in another player's command; `landing` takes a
   capture's `TownCaptured` and `TilesRevealed`; the forks' property compares the parent's store
   of towns after a fork played other steps. `the_plans_visit_dwellings_and_hire`'s kinds skip the
   towns (a town's template is no `KINDS` entry: the lane's `TRAPS.md`).
@@ -1600,7 +1601,13 @@ in two (decision 33), the plans first. Built by the agent alone; no original dat
 - *Found on the way* (nothing wrong in the engine): every failure was the tests' own (the landing
   pattern of a capture, the income without towns, the isolation without the merge, the unowned
   battle's end without a town arm). Stressed once with 400 cases of the two properties and 200
-  of the invariants with three to six towns per plan, all passing (then set back to 48).
+  of the invariants with three to six towns per plan, all passing (then set back to 48). CI's
+  first run on the pull request found one more with its own seed: a town's owner, playing its
+  garrison's side, ended the siege by its own command with the attacker's win, and the capture
+  revealed around the town to the attacker in another player's command; `check_isolation` lets a
+  captor's explored tiles grow (only grow) in a command with its `TownCaptured`. The case was
+  replayed here from CI's log (failing before the fix, passing after; too large to commit), then
+  700 more cases with three to six towns per plan passed.
 - *Agent's calls (change freely):* the draws' weights, the four building sets, the weak garrisons'
   creatures, the offsets, the runs' length, the cover test's 512 plans and its town-heavy draw.
 - **Test time** (`h3-map`'s lib tests, debug, two threads here): 121 s with the towns, the cover
