@@ -155,6 +155,11 @@ class Config:
     lr_horizon: int = field(default=0, metadata=_in("ppo"))
     epochs: int = field(default=4, metadata=_in("ppo"))
     minibatches: int = field(default=8, metadata=_in("ppo"))
+    #: The chunks each minibatch's gradient is summed over before its one optimizer step (E25
+    #: T28): a large network's activations then fit the GPU at the same minibatches, steps and
+    #: losses (the advantages normalised over the whole minibatch, the imitation term's mean over
+    #: its labelled rows). 1: the minibatch in one pass, as before T28.
+    accumulate: int = field(default=1, metadata=_in("ppo"))
     clip: float = field(default=0.2, metadata=_in("ppo"))
     value_coef: float = field(default=0.5, metadata=_in("ppo"))
     entropy_coef: float = field(default=0.01, metadata=_in("ppo"))
@@ -381,6 +386,7 @@ def resolve(config: Config) -> Config:
         "rollout",
         "epochs",
         "minibatches",
+        "accumulate",
         "hidden",
         "field_width",
         "field_height",

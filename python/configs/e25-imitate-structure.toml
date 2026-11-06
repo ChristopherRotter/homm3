@@ -1,0 +1,56 @@
+# E25 T28's structured arm (increment 7, AI-Q16, decision 6): `e25-imitate.toml`'s settings (the
+# neutral mix, 20 M samples, seed 1, shaping, the entropy bonus to 0, the imitation loss at 0.5
+# falling to 0 at 10 M) with T27's student's network, `hexconv` normalised 96 x 6 with T25's keys
+# (`configs/distill/e25-clone-3.toml`'s `hexconv-n-96x6-a`: `--init-from` checks the kind and
+# loads its weights strictly, so these keys must be its own). Against `e25-imitate-1` #2, the
+# current best (T23: 0.458 and 0.462 against the fair and the all-seeing system actor, the
+# neutral set +0.287). PPO's minibatches stay `e25-imitate.toml`'s (8 of 4 096 rows, 32 optimizer
+# steps an update), each one's gradient summed over 8 chunks of 512 rows, the bench's minibatch
+# (`[ppo] accumulate`, E25 T28), so the activations fit the 8 GB GPU (T27: 3 076 MB at 512 rows)
+# and only the network differs from the current best's run; the bench's warm-up and weight decay
+# are not PPO's (a start from a clone needs neither). About 15 hours of network time (20 M
+# samples, four epochs, 683 us a sample-pass on the GTX 1070), the rollouts', gates and ladders
+# beside it: in parts under 2 hours. From python/:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-imitate-structure.toml --init-from runs/clone-3/students/hexconv-n-96x6-a.pt --out runs/e25-structure-1
+#
+# Ctrl-C stops it at the next update boundary, checkpointed; each later part:
+#
+#   uv run --group train python -m h3env.train --resume runs/e25-structure-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+tactics_rounds = 3
+
+[ppo]
+accumulate = 8
+shaping = true
+entropy_floor = 0.0
+imitation_coef = 0.5
+imitation_horizon = 10_000_000
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

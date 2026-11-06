@@ -12,26 +12,22 @@ to 6 closed (`E25-archive.md`); **`e25-imitate-1` #2 the current best** (AI-Q16,
 network that reads the battle's structure** (refined at T23, 2026-11-04, AI-Q16; its decisions in
 the epic file; **T25 done** 2026-11-04, the heads read the geometry; **T26a done** 2026-11-05,
 the benches resume; **T26b done** 2026-11-05, decision 5's first gate passed by `hexconv`
-normalised 96 × 6 at 1e-3, 0.755 at 4 M; `E25-log.md`):
+normalised 96 × 6 at 1e-3, 0.755 at 4 M; **T27 done** 2026-11-06, the second gate passed, 0.809
+at 16 M and 0.481 ± 0.019 against the fair actor; `E25-log.md`):
 
-- **T27 The long clone.** *Scope:* the user's GPU, about 6 to 7 hours in parts under 2 hours
-  (T26a's resume), from `python/`: the first part `uv run --group train python -m
-  h3env.train.distill --teacher system --config configs/distill/e25-clone-3.toml --out
-  runs/clone-3`, Ctrl-C before 2 hours, each later part `uv run --group train python -m
-  h3env.train.distill --resume runs/clone-3` until it ends at its budget and its ladders (T20's
-  bench, 16 M samples, with T26b's winner `hexconv` normalised 96 × 6 at 1e-3 and the 2 × 512 MLP
-  as the control; its ladder against both system actors and on the neutral set). Uploaded:
-  `report.json` (to `records/distill/clone-3.json`) and the winner's
-  `students/hexconv-n-96x6-a.pt` (about 6 MB).
-  Then T19's tool per category on the winner. *Acceptance:* the agreement beside T20's (0.576;
-  moves 0.378, melee 0.401) and the MLP control's, the ladder beside 0.411 ± 0.018, decision 5's
-  second gate applied. *Depends on:* nothing (T26b's gate passed). *Status:* next.
-- **T28 The A/B.** *Scope:* a CPU smoke of `configs/e25-imitate-structure.toml` in the sandbox
-  (the candidate's network, `[ppo] minibatches` for its memory, the imitation loss on that kind;
-  the bench's `warmup` and `weight_decay` are not PPO's, T25's smokes: whether T28 needs them),
-  then the user's GPU: `--init-from` T27's student, 20 M samples, seed 1. *Acceptance:* the final
-  ladder, the head-to-head against `e25-imitate-1` #2, the samples a second, T19's tool after RL.
-  *Depends on:* T27 (its gate passed). *Status:* waiting.
+- **T28 The A/B.** *Scope:* the user's GPU, about 17 hours in parts under 2 hours, from
+  `python/`: the first part `uv run --group train python -m h3env.train --config
+  configs/e25-imitate-structure.toml --init-from runs/clone-3/students/hexconv-n-96x6-a.pt --out
+  runs/e25-structure-1`, Ctrl-C before 2 hours, each later part `uv run --group train python -m
+  h3env.train --resume runs/e25-structure-1` until it ends at its budget (20 M samples, seed 1,
+  `e25-imitate.toml`'s settings with T27's network, `[ppo] accumulate` 8 for its memory; the CPU
+  smoke done, `E25-log.md` T27). Uploaded: `record.json`, `metrics.jsonl`, `best.pt` (about 6
+  MB); the head-to-head on the user's machine, `uv run --group train python -m h3env.train.gate
+  --candidate runs/e25-structure-1/best.pt --best runs/e25-imitate-1/best.pt`, its output pasted.
+  *Acceptance:* the final ladder beside `e25-imitate-1` #2's (0.458, −0.020; the neutral set
+  +0.287) and T27's clone's (0.481, −0.020; +0.274), the head-to-head, the samples a second, T19's
+  tool after RL (T27's student 0.810 before), `inspect` on the casts (the clone's 0.748).
+  *Depends on:* T27 (done, its gate passed). *Status:* next.
 - **T29 The checkpoint.** *Scope:* with the user: structure against the MLP (the clone, RL and
   the cost), the current best, increment 8 (whether the evidence asks for an encoding change).
   *Depends on:* T28, or the gate that stopped the increment. *Status:* waiting.
@@ -154,7 +150,7 @@ information and one choice):
 **For E25's closure** (a `shared/` pull request): `docs/07-simulation-and-ai.md` §1.2, the
 pipeline as built, gains E25's training levers: shaping (T2a), the tactics bound (T4a), the
 hex networks and the MLP's depth (T7a), the distillation bench (T7b), the networks' keys of
-increment 7 (T24's `norm`, `feed_forward`; T25's `mask_input`, `order`, `attack_hex`); the two system actors (T14:
+increment 7 (T24's `norm`, `feed_forward`; T25's `mask_input`, `order`, `attack_hex`), PPO's `[ppo] accumulate` (T28); the two system actors (T14:
 `system` the fair one, `system-all-seeing`, C ABI v36).
 
 **For E25's later increments** (the epic's candidates; E06's leftovers, T9a; increment 1's

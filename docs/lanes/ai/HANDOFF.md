@@ -25,20 +25,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   teacher unless the loss holds it (0.317 against 0.276), and the lineage moved about 0.01 (T22).
   **Increment 7, a network that reads the battle's structure** (refined at T23 with the user: the
   legal mask an input, the cost cap hexconv 64 × 6's 466 µs a sample-pass on the GTX 1070),
-  measured first on the cloning bench against the fair actor. **T24 done** (`hexconv`'s `norm`,
-  `feed_forward`, the bench's warm-up, AdamW and cost, `network --bench`). **T25 done** (the
-  heads read the geometry: `geometry`'s port of the attack positions, `encode(obs, mask)`,
-  `[network] mask_input`, `order`, `attack_hex`; `E25-log.md` T25). The user's GPU grid and cap:
-  about 700 µs a sample-pass (decision 3 as amended). T26's first segment (the user, stopped at
-  0.45 M; `E25-log.md` T26): every structured student ahead of the MLPs, `hexconv` 96 × 6 at
-  0.619. **T26a done** (the benches resume, both modes: `distill.go`, `checkpoint.pt`, Ctrl-C at
-  the next minibatch, `--resume DIR`). **T26b done** (the user's GPU, `E25-log.md` T26b): decision
-  5's first gate passed by `hexconv` normalised 96 × 6 at 1e-3, **0.755 at 4 M** (moves 0.669,
-  melee 0.718; 683 µs), `entity` 256 × 4 0.719 at half the cost, the MLP 0.533; its value 0.590
-  (below the MLP's 0.624: T28's to watch). **Next:** T27 on the user's GPU in parts
-  (`configs/distill/e25-clone-3.toml`, its commands in `QUEUE.md`).
-- **Open pull requests:** the one of `claude/gifted-keller-2dtp2o` (T26b's records, T27's
-  config, T26b's record, the segments' seconds). Merged: #721 (T24), #725 (T25), #730 (T26a).
+  measured first on the cloning bench against the fair actor. **T24 to T26a done** (the kinds
+  built properly, the heads read the geometry, the cap about 700 µs a sample-pass by decision 3
+  as amended, the benches resume; `E25-log.md`). **T26b done** (decision 5's first gate passed
+  by `hexconv` normalised 96 × 6 at 1e-3, 0.755 at 4 M, 683 µs; the MLP 0.533). **T27 done** (the
+  user's GPU, `E25-log.md` T27): `hexconv` **0.809 at 16 M** (moves 0.780, melee 0.776; the
+  MLP 0.574), its value 0.658 (the MLP's 0.626); its ladder **0.481 ± 0.019, value −0.020**
+  against the fair actor (the MLP 0.414), 0.473 against the all-seeing one, the neutral set
+  +0.274: decision 5's second gate passed, the clone alone at the current best's level.
+  **Next:** T28 on the user's GPU in parts (`configs/e25-imitate-structure.toml`, `[ppo]
+  accumulate` 8; the commands in `QUEUE.md`).
+- **Open pull requests:** the one of `claude/compassionate-ramanujan-wwkngo` (T27's records,
+  T28's config and `[ppo] accumulate`). Merged: #721 (T24), #725 (T25), #730 (T26a), #748 (T26b).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -51,6 +49,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-06 — E25 T27
+
+- #748 merged; the branch started from `master`. The setup's baseline ran only the light gates;
+  `cargo build --release -p h3-ffi` 65 s, `uv sync --group train` a few minutes. The user pasted
+  T27's ladder, then its table and `report.json`, then the student (T19's tool, 2 minutes);
+  T28's smoke from a CPU clone (72 s, then 2.3 minutes) showed `minibatches` 64 would change
+  PPO's steps, so `[ppo] accumulate`; the Python suite 243 (2.6 minutes).
 
 ### 2026-11-05 — E25 T26a
 
@@ -70,11 +76,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   (AI-Q16's decision 3). Four narrow workers in turn (the port, the mask through `encode`, the
   structured kinds, the smokes); the VM restarted once during the smokes, the finished PPO runs
   kept and the rest rerun (the clone smoke 22 minutes).
-
-### 2026-11-04 — E25 T24
-
-- #718 merged; the branch `claude/cool-mccarthy-cfodpk` started from `master`. The setup's
-  baseline ran only the light gates (CI had verified `master`'s code); `cargo build --release -p
-  h3-ffi` 90 s, `uv sync --group train` a few minutes (no stall). The Python suite 205 passed
-  (3 minutes), the grid's CPU table 197 s, the CPU clone smoke 35 minutes (the hex transformer
-  alone 25 of them).
