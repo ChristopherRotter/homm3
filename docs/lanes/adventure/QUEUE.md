@@ -4,35 +4,44 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles), T99b next; T100 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T98b2 — the game side of the design note, ADR-0017's draft, the cut and the checkpoint**
-(decisions 261, 270; as T88b2)
+**E08 T99b — batch E11's specs E11a and E11b**
+(decisions 269, 274, 275; as T89b for batch E10)
 
-- **Scope:** `E08-design.md` part C (§12 to §18, named by T98b1): the battle and the meeting at an
-  exit (GAM-BAT-004, GAM-MET-001 amended: the defender on the exit, where it is fought, the
-  radius-1 reveal's place); the jump held as the visit's rest (GAM-DEC-007) and the visitor's
-  stream passed to `AdventureState::apply` (ADR-0017 point 4; no draw for one candidate, survey
-  §4.1); `Revisit`'s name, validation and the env's action (decision 268, the AI lane's encoding,
-  `cross-lane`), with its map-side lines added to `adr-drafts/0016-increment-11.md`; the env,
-  replays, fixtures, properties and benchmarks (the reach's and the passage's cost planned against
-  the gated workloads, `homm3-bench-regression`; a teleporters' map and workload; the gates'
-  pairing cost); versions, rule ids and the quirk entries (design §11's proposed ids); batch E11's
-  rows (survey §12, plus a row for design §7's entrance guards) with the spec's and harness's
-  needs; the building rounds cut, batch E11's spec and recipe first (decision 269); shared and
-  `cross-lane` work (the effect kind `whirlpool_protection`, design §2); the exit criteria and
-  risks. The draft `adr-drafts/0017-increment-11.md`. **The checkpoint** (a new `ADV-Q46`): the
-  user accepts the note, both drafts and the agent's calls (design §1, §2, §5's A-42, §7's empty
-  boat and entrance guards, §10's events) and the cut before anything is built (decision 261).
-- **Inputs:** `docs/epics/E08-design.md` parts A and B; `adr-drafts/0016-increment-11.md`; the
-  survey `docs/rules/surveys/E08-teleporters.md` (§4.2 to §4.5, §9 to §13); decisions 260, 261,
-  264–270; increment 10's part C and ADR-0017 draft as the model (`E08-log.md`, "Increment 10's
-  design note at its closure", §12 to §18).
-- **Depends on:** T98b1 (done). **Status:** ready; its cut confirmed with the user at its start.
-  Needs no original data (the survey holds the readings).
+- **Scope:** the specs `experiments/specs/E08-batch-11a.toml` (E11-1 to E11-13, E11-18, E11-19;
+  days 1 and 2; E11-18 needs Blue's turn and Red's next) and `-11b.toml` (E11-14 to E11-17; one
+  day), compiled with the staged tables into their maps and templates (the stamps), with their
+  predictions (survey §12's rows, design §16's added row and predictions) and the batch's row in
+  `docs/experiments/README.md`'s status (`cross-lane`, as T89b); each walk priced (`TRAPS.md`;
+  the priced copy without the boats on Whirlpools' tiles, which the engine's setup refuses); a
+  fresh reviewer against survey §12, the sections the rows cite and design §16.
+- **Built by T99a** (`docs/experiments/README.md`, "Increment 11's objects"): the five classes by
+  picture on either `level`; a gate's `pair` and `vcmi_pair`, checked (E11-9: one surface gate,
+  two below at one truncated distance, the farther by squares first in the walk; its leftover
+  gate can serve E11-8); an empty boat on a Whirlpool's tile, written after it, and `vcmi_tile`
+  (E11-17's W2 tile and its empty boat on W3); the Hats by name. A hero starts in no boat: it
+  boards one from the shore (on a Whirlpool's tile for E11-16 and E11-17: unread whether the
+  original's step from the shore onto such a tile boards the boat; the reviewer weighs a jump
+  into the Whirlpool as the fallback).
+- **Inputs:** `E08-design.md` §16; the survey `docs/rules/surveys/E08-teleporters.md` §12 (the
+  rows), §1 to §5; T89b's and T99a's records in `E08-log.md`; `docs/experiments/README.md`.
+- **Depends on:** T99a. **Status:** ready; its cut confirmed with the user at its start. Needs the
+  original data staged for the templates.
 
 ## Inbox
 
+- 2026-11-06 (the town lane, E09 T9b1, `town/e09-t9b1`, `cross-lane`; **for your plans**):
+  `h3-map`'s `play.rs` plays towns. `Plan` has a new field `towns` (`TownPlan`, drawn last by
+  `towns()`; a plan literal sets `towns: Vec::new()`), laid out by `towns_laid_out` after every
+  other object but the boats, each with a template of its own: a town's template is no `KINDS`
+  entry, so code that reads a kind from a template skips `Body::Town` first (the town lane's
+  `TRAPS.md`). New: `Step::Town` with its runs in `steps()` (as `Step::Hire` on a map without
+  towns), `check_towns`, `check_town_battle_end` (`check_unowned_battle_end`'s town arm), the
+  entrances in `check_invariants`, the towns' income in `check_income`, a siege's merge in
+  `check_isolation` (`told_army`), the cover test `the_plans_capture_and_besiege_towns`;
+  `h3-towns` a dev-dependency of `h3-map`. `view.rs` draws its plans without towns (`townless`)
+  until E09 T9b2 teaches `vary` and `check_told` the towns.
 - 2026-11-06 (the town lane, E09 T9a, `town/e09-t9a`, `cross-lane`; **for your replays and the
   writer**): `h3_map::writer`'s `MapObject` has two new variants, `AnyTown` (a town of any kind:
   random with its alignment, a main town in the header, a name, random garrison stacks) and

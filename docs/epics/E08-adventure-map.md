@@ -84,11 +84,53 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      replays, benchmarks, versions, ids, quirks, batch E11), ADR-0017's draft, the cut and the
      checkpoint. Not chosen: whole in one session; the note first, then the drafts.
 
+### Decision at T98b2's start (2026-11-06, user)
+
+271. **T98b2 whole** (the user at T98b2's start, `AskUserQuestion`; as T88b2, decision 240):
+     design part C (§12 to §18), ADR-0017's draft with `Revisit`'s lines in ADR-0016's, the cut
+     and the checkpoint ADV-Q46 in one session and one pull request. Not chosen: two parts, the
+     design (§12 to §14 and the drafts) then the plan (§15 to §18 and the checkpoint), which was
+     recommended; the note first, then the drafts.
+
+### Decisions at the drafts' checkpoint (2026-11-06, user; ADV-Q46)
+
+272. **The design note's parts A and B and ADR-0016's draft accepted as written** (the user asked
+     for the map side's calls one by one, `AskUserQuestion`, two rounds; each as recommended): one
+     `monolith` kind with a channel and a way (not three kinds); the Whirlpool's divisor as data,
+     2 by default (not a constant); the protection as a core artifact effect kind
+     `whirlpool_protection`, a `shared/` change in T102 (not the kind's parameter); **A-42** refused
+     when the game is built (not an exit on the other surface left out); an empty boat's tile never
+     an exit (not a candidate with the boats merged); a jump drops the entrance's held guard until
+     batch E11's E11-19 says otherwise (not the guard fought first); the new events
+     `HeroTeleported`, the Whirlpool's loss and "leads nowhere", a jump's reveals without an event
+     (not `HeroStepped`).
+273. **Part C's game side and ADR-0017's draft accepted as written** (recommended): the acting
+     player's stream a parameter of `AdventureState::apply`; the jump after a won battle at an
+     exit held as a rest after the winner's levels (`Rest::Jump`, game state hash v26); `Revisit`
+     with one refusal (`NothingToRevisit`) and no guard test; the env's action encoding v8 with a
+     `Revisit` entry per hero slot, `cross-lane` in T105b with the user's consent; a `build` bench
+     workload for the gates' pairing. Not chosen: the revisit with the guard's test; the jump given
+     at the battle's end, before the levels.
+274. **The cut as proposed** (design §17; recommended): rounds 2 to 8, T99 (batch E11's maps) to
+     T107 (the audit), batch E11 first with the added row E11-19 and design §16's added
+     predictions; T102 one `shared/` pull request (`cross-lane`) with the ADRs, the glossary, the
+     security doc and the effect kind. Not chosen: T102's code apart from its docs.
+
+### Decision at T99's start (2026-11-06, user)
+
+275. **T99 in two at the code's seam** (the user at T99's start, `AskUserQuestion`; recommended, as
+     T89, decision 244): **T99a** the writer's five classes with their round trip and the import as
+     it reads them, and the spec's fields and checks (`cross-lane`); **T99b** the specs
+     `E08-batch-11a` and `-11b` with their templates and predictions, each walk priced. Not chosen:
+     whole in one session; three parts (the writer and the fields, then E11a, then E11b).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
 - **T98a The teleporters survey** (decision 261), in two (decision 262): **T98a1** done (2026-11-05, `adventure/e08-t98a1`: survey `E08-teleporters.md` §0 to §8, the census, the channels, the jump, the arrival; D-53 to D-57, A-37 to A-40; 18 address map entries); **T98a2** done (2026-11-06, `adventure/e08-t98a2`, whole: decision 263; §9 to §14, the paths, the views, the space key, the interfaces' sketch, batch E11's plan, ADV-TEL; D-58, A-41; §4.1's one-candidate draw corrected; the checkpoint ADV-Q45, decisions 264–269).
-- **T98b The ADR amendment drafts, the design note and the cut** (decision 261; with the checkpoint's answers, decisions 264–269; batch E11 first, decision 269), in two by side (decision 270): **T98b1** done (2026-11-06, `adventure/e08-t98b1`: `E08-design.md` parts A and B, the draft `adr-drafts/0016-increment-11.md`; the agent's calls for the checkpoint, A-42 proposed); **T98b2** queued (part C, ADR-0017's draft, the cut, the checkpoint ADV-Q46).
+- **T98b The ADR amendment drafts, the design note and the cut** (decision 261; with the checkpoint's answers, decisions 264–269; batch E11 first, decision 269), in two by side (decision 270): **T98b1** done (2026-11-06, `adventure/e08-t98b1`: `E08-design.md` parts A and B, the draft `adr-drafts/0016-increment-11.md`; the agent's calls for the checkpoint, A-42 proposed); **T98b2** done (2026-11-06, `claude/sweet-dirac-9oz8pd`, whole: decision 271; part C §12 to §18, the draft `adr-drafts/0017-increment-11.md`, `Revisit`'s lines in ADR-0016's; the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted).
+- **T99 Batch E11's maps** (decisions 269, 274), in two at the code's seam (decision 275): **T99a** done (2026-11-06, `adventure/e08-t99a`, `cross-lane`: the writer's classes 43 to 45, 103 and 111 on either level, the spec's `level`, the gates' `pair` and `vcmi_pair`, a boat on a Whirlpool's tile and its `vcmi_tile`); **T99b** next (the specs E11a and E11b with their templates and predictions).
+- **T100 to T107** (design §17's rounds 3 to 8): the harness and the runs, the scoring, the `shared/` task, the kinds and the import, the build, the jump and the game, the fixtures and benchmarks, the audit; each queued when the round before it is done.
 
 ## Later increments (sketch)
 

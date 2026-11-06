@@ -1546,3 +1546,138 @@ scripted replays by two narrow sub-agents in turn (scratch probes, not committed
   passed): coverage, determinism with the 55 replays, bench-check (no engine code changed).
 - **Versions:** none (the writer is not read by the game; no import, state or replay format
   change).
+
+### T9b1 — the plans play towns (2026-11-06)
+
+One session, the user present; branch `town/e09-t9b1` (`cross-lane`: `h3-map`'s `tests/`
+(`play.rs`, `view.rs`, `fixtures.rs`, `towns.rs`), its `Cargo.toml` (`h3-towns` a dev-dependency,
+which `arch.toml` already allowed) and `proptest-regressions/tests/play.txt`). Starting point:
+`master` at bdbd6c6 (#756, #757 merged; CI green on 3b18baa, the same engine code; the setup's
+baseline lost to a VM restart, replaced by that run). **At its start** (the user, asked): T9b cut
+in two (decision 33), the plans first. Built by the agent alone; no original data needed.
+
+- **The plans' towns** (`TownPlan`, `Plan::towns`, drawn last by `towns()`, so that every earlier
+  draw and a plan without towns stay as they were; the committed fixtures unchanged): in three
+  plans of four one to four towns, each of a fixed faction (98, modulo the version's factions) in
+  three of four or random (77, a SoD alignment to a playing colour in one of two), owned in two of
+  three, its garrison the editor's (one of six), none at all (two), one weak stack of a level-1
+  creature (two) or seven slots of any base creature (one), the standard set with or without a
+  Fort or a custom set of the halls to the Capitol with or without one, a tight formation in one
+  of two; in one of three visited at load (the entrance on a hero's tile, the town its owner's,
+  so that sieges meet visitors with garrisons to merge). `towns_laid_out` (after every other
+  object but the boats, a template each: `towns.rs`' `town_template`, now `pub(super)`): the
+  entrance one to four rows above a hero, two columns either side, its anchor on the map, the
+  entrance on land, no tile a hero's (but a visitor's entrance) or another object's; the body as
+  the reader gives it back (the identifier and required spells from AB on, nine bytes of banned
+  spells), so the round trip holds.
+- **The steps:** `Step::Town` and its runs of 16 to 64 in `steps()`: in a battle as `Fight` (a
+  siege's either side, the system's for a neutral garrison), a decision settled as `seek` does,
+  else an option that ends on a town's entrance (another's in three steps of four when it has
+  one), else one that gets nearer to a town not its own, else `EndTurn`; on a map without towns
+  as `Step::Hire` (first, before its settling, which would decline every hire question and moved
+  the dwellings' cover test: `camps_deserted` 0).
+- **The checks:** `check_towns` after every command (each town's one owner, the adventure's,
+  changes only by one `TownCaptured` naming it, never to its old owner, the captured garrison
+  empty; the store's towns and factions kept, a record rebuilt only at a capture, told by
+  `TownChanged` with the store's Capitol); in `check_invariants` no hero on the entrance of a town
+  of another team or none (`h3_adventure::allied`); `check_town_battle_end` for a siege against a
+  garrison without a hero (`check_unowned_battle_end`'s town arm: won, the garrison empty and the
+  capture told in the battle's last command unless the attacker left the map or its owner's
+  decision holds it; else the owner kept and the survivors by slot, none after a draw; no
+  removal, no treasury change); `check_income` adds each owned town's `h3_towns::daily_income`;
+  `check_isolation` lets a siege's merge change the besieged visitor's army as its
+  `StackChanged`s tell (`told_army`; the failing seed committed in `play.txt`) and a capture's
+  reveal grow its captor's explored tiles in another player's command; `landing` takes a
+  capture's `TownCaptured` and `TilesRevealed`; the forks' property compares the parent's store
+  of towns after a fork played other steps. `the_plans_visit_dwellings_and_hire`'s kinds skip the
+  towns (a town's template is no `KINDS` entry: the lane's `TRAPS.md`).
+- **The cover test** `the_plans_capture_and_besiege_towns` (512 plans, three to six towns each):
+  360 towns built; 357 own towns entered; undefended captures 17 neutral, 59 of another player;
+  sieges against a garrison alone 50 (won 32, lost 16) and against a visitor 73 (won 25, lost 43);
+  11 merges; 133 captures in all; 5 Capitols limited. Each asserted above zero.
+- **`view.rs`** draws its plans without towns (`townless`, and the boat test's strategy cleared):
+  its `check_told` refuses a town's events today ("a plan without towns told …"), and `vary`
+  reads kinds from templates; both are T9b2's.
+- *Found on the way* (nothing wrong in the engine): every failure was the tests' own (the landing
+  pattern of a capture, the income without towns, the isolation without the merge, the unowned
+  battle's end without a town arm). Stressed once with 400 cases of the two properties and 200
+  of the invariants with three to six towns per plan, all passing (then set back to 48). CI's
+  first run on the pull request found one more with its own seed: a town's owner, playing its
+  garrison's side, ended the siege by its own command with the attacker's win, and the capture
+  revealed around the town to the attacker in another player's command; `check_isolation` lets a
+  captor's explored tiles grow (only grow) in a command with its `TownCaptured`. The case was
+  replayed here from CI's log (failing before the fix, passing after; too large to commit), then
+  700 more cases with three to six towns per plan passed.
+- *Agent's calls (change freely):* the draws' weights, the four building sets, the weak garrisons'
+  creatures, the offsets, the runs' length, the cover test's 512 plans and its town-heavy draw.
+- **Test time** (`h3-map`'s lib tests, debug, two threads here): 121 s with the towns, the cover
+  test 28 s of it.
+- **Gates:** the scoped verify (no original data staged) passed every step it runs but
+  `check-lane`, which fails by design on a `cross-lane` branch (`check-lane --cross-lane`
+  passed).
+- **Versions:** none (tests only).
+
+### T9b2a — the told views meet the plans' towns (2026-11-06)
+
+One session, the user present; branch `town/e09-t9b2a` (`cross-lane`: `h3-map`'s `tests/view.rs`,
+`tests/play.rs`, whose `town()` is now `pub(super)`, and `proptest-regressions/tests/view.txt`). Starting point: `master` at 1b1792b
+(#758 merged; CI green there; the setup's `verify-once` found CI's fingerprint). **At its start**
+(the user, asked): T9b2 cut in two, the told views first (decision 34), with the agent's call for
+T9b2b told in the question (the hygiene property's towns draw nothing public; a town removed only
+after every seen one). Built by the agent alone; no original data needed.
+
+- **`check_told`** follows the town events (it refused them before): `TownCaptured` is told to its
+  new owner or to a viewer that saw the town's object, whose owner it changes (the object loop's
+  `flagged`); `TownChanged` only after the town's capture in the same batch; a garrison's
+  `StackChanged` (`ArmyRef::Garrison`, the merge) only to a viewer that saw that garrison by slot,
+  applied to it as a client would. A town's view stays once shown, its anchor, faction, name and
+  fort as they were, its owner and Capitol as it is told, its garrison by slot as the merge's
+  slots say unless a battle of the viewer's ended or the town was captured; a town comes into
+  view only where the viewer's explored tiles grew. A siege's effects on a garrison another
+  viewer sees are not followed there: they show untold (`docs/06-security.md`), and the state
+  check below holds the view to the state.
+- **`check_town_views`** (for every player after every command, and at the start; as
+  `check_hire_sources` for the dwellings): each object a viewer sees names its town if it is one;
+  a town's object shows its type, anchor, footprint, owner and `TownId` and nothing else; each
+  town a tile of which the viewer explored has a view in `TownId` order with the state's anchor,
+  owner, faction, name, fort and Capitol and its garrison by the viewer's level, read apart from
+  `town_views` (the owner's team or a Visions hero's entrance in reach: the top level; else the
+  viewer's own towns with a standing Tavern, at most 2), the slots to the owner's team alone, the
+  hall and income at the top alone; a town only on the fringe has an object and no view.
+- **The properties:** `views_move_as_the_events_say` draws `plan()` with its towns;
+  `boat_visits_are_told_as_they_happen` no longer clears them (its doc's 117th case is the one it
+  was without towns); `a_viewer_learns_nothing_it_cannot_see` keeps `townless` until T9b2b.
+- **The cover test** `town_views_move_as_the_events_say` (256 cases of plans with three to six
+  towns, the first two the first player's and the first of the standard set, so that it holds two
+  Taverns or a Capitol): views by level 45 163, 3 994, 232 and 35 324 (0 to 3), 930 of a neutral
+  town with its stacks, captures told to their captor 66 and to another viewer 106, 2 Capitols'
+  changes, 8 merges' garrison slots, 25 towns coming into view; each asserted above zero. A
+  siege's effects seen untold by a third viewer at level 1 or more met none (a lost siege at a
+  town such a viewer sees is rare), so it is not asserted. Without the bias 256 such cases met no
+  level 2 and no Capitol's change.
+- **Mutations** (the engine changed here and back, the cover test run): the taverns' level capped
+  at 1 (`check_town_views`), a capture told to its captor alone (`check_told`'s owner of a
+  town's view), the merge's garrison slots untold (`check_told`'s garrison by slot): each
+  failed.
+- *Found on the way* (nothing wrong in the engine): the first draft passed at once, and the 48
+  cases of the property met captures 13 times and one merge, hence the cover test. Stressed once
+  with 400 cases of plans with three to six towns: a viewer's explored tiles grew in another's
+  command on the same day, a capture's reveal to its captor when the siege's last command is the
+  system's or the defender's (T9b1 met it in `check_isolation`); `check_told` now lets a capture
+  told to the viewer as the new owner widen its sight as a new day does (the explored tiles only
+  grow; heroes and boats may show in them). Then 800 such cases passed (then set back to 48).
+- *Found on `master`* (the full lib tests here, a random seed): the hygiene property (without
+  towns) failed where another player's hero left guards at a mine the viewer saw, of another
+  creature in the other game (`vary` changes the other players' armies; the guards' hint is
+  public, ADV-OWN-003). The same seed fails on `master`'s `view.rs`. `outcome` now compares the
+  guards' hints another player's command changed (`GuardsChanged`'s kind, not its viewers), so
+  that the comparison ends there as at a battle; the seed committed in `view.txt`; 200 cases of
+  the property passed (then set back).
+- *Agent's calls (change freely):* the cover test's cases and bias, its counts.
+- **Test time** (`h3-map`'s lib tests, debug, two threads here): 218 s; `master`'s 185 s in the
+  same sandbox (T9b1's 121 s were another machine's); the cover test 42 s of it.
+- **Gates:** the scoped verify (no original data staged) passed every step it runs but clippy
+  (one collapsible `if`, fixed; clippy on `h3-map`'s targets then clean) and `check-lane`, which
+  fails by design on a `cross-lane` branch (`check-lane --cross-lane` passed); after the two fixes
+  above the lib tests, clippy and fmt again.
+- **Versions:** none (tests only).

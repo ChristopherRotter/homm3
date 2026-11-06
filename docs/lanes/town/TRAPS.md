@@ -14,6 +14,25 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   first (skill `homm3-bench-regression`); with every counted function the same, re-baseline the
   workload with the reason in its description.
 
+## The property plans (`h3-map` `src/tests/play.rs`, `view.rs`; the adventure lane's files)
+
+- **A plan's town has no `KINDS` entry** (E09 T9b1): `towns_laid_out` lays the plan's towns
+  (`TownPlan`) out after every other object but the boats, each with a template appended after
+  the objects'. Code that reads a plan object's kind from its template (`(template - 1) /
+  BLOCKERS.len()`: the cover tests' `kinds`, `view.rs`' `vary`) skips `Body::Town` first, or it
+  indexes past `KINDS` or misreads a kind.
+- **The thin cover tests move with the steps:** a new run kind in `steps()` changes every
+  property's and cover test's games. `Step::Town` on a map without towns plays as `Step::Hire`
+  (before its own settling, which declines every question), so that the dwellings' cover test
+  keeps its counts; raise a cover test's cases, not its draw (the adventure lane's `TRAPS.md`).
+
+- **A public draw under the hygiene property** (E09 T9b2a's cut): the hygiene property
+  (`a_viewer_learns_nothing_it_cannot_see`) builds its other game with another seed, so a setup
+  draw a viewer sees (a random town's faction, a neutral garrison, a random dwelling's type)
+  must have one outcome in its plans; and the towns' draws come first in the setup stream
+  (design §14), so an unseen town's change (owner, garrison, removal) moves every later draw. The told views
+  (`views_move_as_the_events_say`) vary nothing and play the plans' towns as drawn.
+
 ## The import (`h3-map` `src/import/town.rs`)
 
 - **A town's entrance is blocked and visitable** in the shipped maps' templates: a test "does a town block this tile" also hits the entrance, where a moved hero (TWN-SET-010) and a town's visitor stand. Use `town::in_town` (a blocked tile that is not an entrance), not `blocks` (E09 T7a1, found by the census).

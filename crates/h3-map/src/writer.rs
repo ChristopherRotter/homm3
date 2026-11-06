@@ -244,10 +244,28 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// hero beside an empty boat that boards it in the game. Since E08 T78 increment 9's weekly
 /// objects (batch E9; survey `docs/rules/surveys/E08-economy.md` §9): the Mystical Garden (55),
 /// the Water Wheel (109) and the Windmill (112). Since E08 T89a increment 10's Refugee Camp (78;
-/// batch E10, survey `docs/rules/surveys/E08-dwellings.md` §7: no body).
-pub const PLAIN_OBJECTS: [u32; 21] = [
-    8, 13, 22, 29, 55, 63, 78, 82, 86, 100, 101, 104, 105, 108, 109, 112, 124, 135, 137, 155, 212,
+/// batch E10, survey `docs/rules/surveys/E08-dwellings.md` §7: no body). Since E08 T99a increment
+/// 11's teleporters (batch E11; survey `docs/rules/surveys/E08-teleporters.md` §2, no body): the
+/// Monoliths One Way Entrance (43), One Way Exit (44) and Two-Way (45), their subclass the channel
+/// (0 to 2 in every version, 3 to 7 in SoD); the Subterranean Gate (103) and the Whirlpool (111),
+/// subclass 0, its six tiles all blocked and visitable, on water. On either level (a level's
+/// objects, [`Underground::objects`]).
+pub const PLAIN_OBJECTS: [u32; 26] = [
+    8, 13, 22, 29, 43, 44, 45, 55, 63, 78, 82, 86, 100, 101, 103, 104, 105, 108, 109, 111, 112,
+    124, 135, 137, 155, 212,
 ];
+/// Object class of a one-way monolith's entrance (E08 T99a; subclass the channel).
+pub const MONOLITH_ONE_WAY_ENTRANCE_OBJECT: u32 = 43;
+/// Object class of a one-way monolith's exit (E08 T99a; subclass the channel).
+pub const MONOLITH_ONE_WAY_EXIT_OBJECT: u32 = 44;
+/// Object class of a two-way monolith (E08 T99a; subclass the channel).
+pub const MONOLITH_TWO_WAY_OBJECT: u32 = 45;
+/// Object class of a Subterranean Gate (E08 T99a; subclass 0).
+pub const SUBTERRANEAN_GATE_OBJECT: u32 = 103;
+/// Object class of a Whirlpool (E08 T99a; subclass 0).
+pub const WHIRLPOOL_OBJECT: u32 = 111;
+/// Object class of an empty boat (subclass its type 0 to 2; E08 T67).
+pub const BOAT_OBJECT: u32 = 8;
 /// Object class of a town of a fixed faction (subclass = faction, `TOWNTYPE.TXT` order: Castle 0
 /// … Conflux 8; E04c T5b).
 pub const TOWN_OBJECT: u32 = 98;

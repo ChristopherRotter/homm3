@@ -463,6 +463,7 @@ fn duel() -> Plan {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        towns: Vec::new(),
     }
 }
 
@@ -505,6 +506,7 @@ fn xl() -> Plan {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        towns: Vec::new(),
     }
 }
 
@@ -541,6 +543,7 @@ fn army() -> Plan {
         }),
         events: Vec::new(),
         owners: Vec::new(),
+        towns: Vec::new(),
     }
 }
 

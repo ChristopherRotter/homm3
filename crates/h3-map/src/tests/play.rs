@@ -24,8 +24,13 @@
 //! `the_plans_visit_every_kind_and_answer_every_decision`); since T86b1 with increment 9's objects
 //! ([`ECONOMY`]) and weeks and months of play: the flags, the mines' questions, battles and Leave
 //! Guards, the boats bought and built, the weekly visits, the week's step and a creature month's
-//! monsters met as placed ones (`the_plans_flag_guard_build_and_grow`). What a viewer may learn is
-//! T8b2b's ([`super::view`]), on the same maps and driver.
+//! monsters met as placed ones (`the_plans_flag_guard_build_and_grow`); since T96b1 with increment
+//! 10's dwellings and hiring (`the_plans_visit_dwellings_and_hire`); since E09 T9b1 with towns
+//! ([`TownPlan`], [`Step::Town`]): own towns entered, undefended ones captured, sieges against a
+//! garrison and against a visitor with the garrison merged, won and lost, the Capitol's limit, and
+//! the towns' invariants ([`check_towns`], the entrances in [`check_invariants`], the store of
+//! towns in the forks; `the_plans_capture_and_besiege_towns`). What a viewer may learn is
+//! T8b2b's ([`super::view`]), on the same maps and driver (without the towns until E09 T9b2).
 
 use std::ops::RangeInclusive;
 use std::sync::{Arc, LazyLock};
@@ -39,7 +44,7 @@ use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
 };
 use h3_content::{ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, ResourceId};
-use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId};
+use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
     ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError, GameEvent, GameRuleset,
@@ -59,8 +64,8 @@ use super::sample;
 use super::strategy::version;
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Bits, Body, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure,
-    RandomDwelling, RawMap, Rewards, Stack, Template, Text, Tile, TimedEvent, Version,
+    Artifacts, Bits, Body, Buildings, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure,
+    RandomDwelling, RawMap, Rewards, Stack, Template, Text, Tile, TimedEvent, TownBody, Version,
 };
 use crate::{Limits, import, parse};
 
@@ -743,7 +748,58 @@ pub(super) struct Plan {
     /// `n`-th's (cyclically), a playing colour by its index (modulo the players) or none
     /// (neutral); empty: every one neutral.
     pub(super) owners: Vec<Option<u8>>,
+    /// (E09 T9b1; the town epic's design note §18) The towns ([`TownPlan`], [`towns`]), laid
+    /// out after every other object.
+    pub(super) towns: Vec<TownPlan>,
 }
+
+/// A plan's town (E09 T9b1; the town epic's design note §18), laid out as the import's tests
+/// build one (`towns.rs`: the shipped towns' masks, five tiles of its row and three above, the
+/// entrance in the middle of its row, so that it is entered from the row below).
+#[derive(Debug, Clone)]
+pub(super) struct TownPlan {
+    /// Its entrance's offset from a hero's tile, two columns left of it to two right and one to
+    /// four rows above, and the hero (modulo the plan's).
+    pub(super) at: ((u8, u8), u8),
+    /// A town of this faction's code (class 98; modulo the version's factions), or none: a random
+    /// town (class 77).
+    pub(super) faction: Option<u8>,
+    /// The owner at load: a playing colour by its index (modulo the players), or none (neutral).
+    pub(super) owner: Option<u8>,
+    /// A random town's alignment on a SoD map: a playing colour by its index (modulo the
+    /// players), or none (the owner's).
+    pub(super) alignment: Option<u8>,
+    /// The garrison: none the editor's (an owned town's empty, a neutral town's drawn,
+    /// TWN-SET-004), or seven slots as creature code and count (all empty: none at all).
+    pub(super) garrison: Option<Vec<Option<(u16, u16)>>>,
+    /// The buildings ([`TOWN_BUILDINGS`]).
+    pub(super) buildings: usize,
+    /// The garrison's formation is tight.
+    pub(super) tight: bool,
+    /// Its entrance on the hero's tile instead, the town the hero's owner's: the hero its visitor
+    /// at load (TWN-VIS-002), so that sieges meet visitors with garrisons to merge (TWN-SIE-002).
+    pub(super) visited: bool,
+}
+
+/// The plans' towns' buildings (E09 T9b1; building bits, `docs/formats/h3m.md`, "Town
+/// buildings"): the standard set without a Fort and with one, and custom sets of the Town Hall,
+/// the City Hall and the Capitol (TWN-CAP-002: one Capitol per player after a capture) with a
+/// Fort and without one.
+const TOWN_BUILDINGS: [Buildings; 4] = [
+    Buildings::Standard { fort: false },
+    Buildings::Standard { fort: true },
+    Buildings::Custom {
+        built: [0b1111, 0, 0, 0, 0, 0],
+        forbidden: [0; 6],
+    },
+    Buildings::Custom {
+        built: [0b0111, 0, 0, 0, 0, 0],
+        forbidden: [0; 6],
+    },
+];
+/// The level-1 creatures of the eight base factions (Pikemen, Centaurs, Gremlins, Imps,
+/// Skeletons, Troglodytes, Goblins and Gnolls): a plan's weak garrisons (E09 T9b1).
+const LEVEL_1: [u16; 8] = [0, 14, 28, 42, 56, 70, 84, 98];
 
 /// Elixir of Life's three parts (E08 T52; HER-ART-006: a SoD combination of artifacts every map
 /// version holds), as code and position in a map's worn slots: Ring of Vitality (94) and Ring of
@@ -959,6 +1015,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 economy(),
                 // E08 T96b1, drawn last for the same reason.
                 dwellings(),
+                // E09 T9b1, drawn last for the same reason.
+                towns(),
             ),
         ),
     )
@@ -980,7 +1038,18 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     mut skills,
                     beside,
                     pile,
-                    (mut kits, lifts, nomads, exchange, rewards, sea, events, economy, dwellings),
+                    (
+                        mut kits,
+                        lifts,
+                        nomads,
+                        exchange,
+                        rewards,
+                        sea,
+                        events,
+                        economy,
+                        dwellings,
+                        towns,
+                    ),
                 ),
             )| {
                 // In three plans of four (E08 T42) a flyer and a water walker: the first two
@@ -1142,6 +1211,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     exchange,
                     events,
                     owners: economy.owners,
+                    towns,
                 }
             },
         )
@@ -1191,6 +1261,58 @@ fn dwellings() -> impl Strategy<Value = Vec<((u8, u8), u8, usize)>> {
         1 => Just(Vec::new()),
         7 => vec(((0u8..5, 0u8..5), any::<u8>(), object), 1..=6),
     ]
+}
+
+/// A plan's towns (E09 T9b1; the town epic's design note §18): in three plans of four, one to
+/// four ([`TownPlan`]); each of a fixed faction in three of four, owned in two of three, a random
+/// town's alignment in one of two (SoD), visited at load in one of three; its garrison the
+/// editor's in one of six, none at all in two, one weak stack of a level-1 creature in two, seven
+/// slots of any base creature in one ([`slots`]), so that visits capture, sieges are won and lost
+/// and garrisons merge.
+fn towns() -> impl Strategy<Value = Vec<TownPlan>> {
+    prop_oneof![
+        1 => Just(Vec::new()),
+        3 => vec(town(), 1..=4),
+    ]
+}
+
+/// A plan's town ([`towns`]).
+pub(super) fn town() -> impl Strategy<Value = TownPlan> {
+    let weak = (proptest::sample::select(&LEVEL_1[..]), 1u16..=10, 0usize..7).prop_map(
+        |(creature, count, slot)| {
+            let mut slots = vec![None; 7];
+            slots[slot] = Some((creature, count));
+            Some(slots)
+        },
+    );
+    let garrison = prop_oneof![
+        1 => Just(None),
+        2 => Just(Some(vec![None; 7])),
+        2 => weak,
+        1 => slots().prop_map(Some),
+    ];
+    (
+        ((0u8..5, 0u8..4), any::<u8>()),
+        proptest::option::weighted(0.75, any::<u8>()),
+        proptest::option::weighted(0.67, any::<u8>()),
+        proptest::option::weighted(0.5, any::<u8>()),
+        garrison,
+        0..TOWN_BUILDINGS.len(),
+        any::<bool>(),
+        proptest::option::weighted(0.33, Just(())),
+    )
+        .prop_map(
+            |(at, faction, owner, alignment, garrison, buildings, tight, visited)| TownPlan {
+                at,
+                faction,
+                owner,
+                alignment,
+                garrison,
+                buildings,
+                tight,
+                visited: visited.is_some(),
+            },
+        )
 }
 
 /// A plan's timed events (E08 T85b; GAM-CAL-004): none to three, each for some colours (those
@@ -1512,6 +1634,11 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             );
         }
     }
+    // E09 T9b1: each hero's owner, as the heroes are laid out below.
+    let owners: Vec<u8> = (0..heroes.len())
+        .map(|i| colours[if Some(i) == mate { 0 } else { i } % colours.len()])
+        .collect();
+    towns_laid_out(&mut m, plan, &heroes, &owners, &mut covered);
     boats_laid_out(&mut m, &boats, &mut covered);
     // E08 T42: the hero with Nomads (AB and SoD know the creature).
     let nomads = plan
@@ -1611,6 +1738,98 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         m.objects.push(o);
     }
     m
+}
+
+/// The tiles a town blocks (its entrance among them), as `(column, row)` left of and above its
+/// anchor ([`super::towns::town_template`]'s), and its entrance.
+const TOWN_BLOCKED: Mask = &[
+    (0, 0),
+    (1, 0),
+    (2, 0),
+    (3, 0),
+    (4, 0),
+    (1, 1),
+    (2, 1),
+    (3, 1),
+];
+const TOWN_ENTRANCE: (u8, u8) = (2, 0);
+
+/// The plan's towns laid out after its other objects but the boats (E09 T9b1; [`TownPlan`]), each
+/// with a template of its own after the others: its anchor on the map, its entrance on the map's
+/// land, none of its tiles a hero's (the import refuses a hero in a town, a hero on its entrance
+/// would be its visitor at load) or another object's (`covered`, which takes its tiles); a town
+/// anywhere else is left out. Plans without towns keep their maps (the committed ones,
+/// `fixtures.rs`).
+fn towns_laid_out(
+    m: &mut RawMap,
+    plan: &Plan,
+    heroes: &[(Spot, &Slots)],
+    owners: &[u8],
+    covered: &mut Vec<Spot>,
+) {
+    let (v, side) = (plan.version, plan.side);
+    let colours: Vec<u8> = plan.players.iter().map(|&(colour, _)| colour).collect();
+    let colour = |n: u8| colours[usize::from(n) % colours.len()];
+    for town in &plan.towns {
+        let ((dx, dy), hero) = town.at;
+        let hero = usize::from(hero) % heroes.len();
+        let ((hx, hy, hz), _) = heroes[hero];
+        let (ex, ey) = if town.visited {
+            (hx, hy)
+        } else {
+            ((hx + side + dx - 2) % side, (hy + side - 1 - dy) % side)
+        };
+        let (ax, ay) = (ex + TOWN_ENTRANCE.0, ey + TOWN_ENTRANCE.1);
+        let tiles: Vec<Spot> = TOWN_BLOCKED
+            .iter()
+            .filter_map(|&(column, row)| Some((ax.checked_sub(column)?, ay.checked_sub(row)?, hz)))
+            .collect();
+        let index = (usize::from(hz) * usize::from(side) + usize::from(ey)) * usize::from(side)
+            + usize::from(ex);
+        let visitor = |t: &Spot| town.visited && *t == (ex, ey, hz);
+        let taken =
+            |t: &Spot| covered.contains(t) || heroes.iter().any(|&(at, _)| at == *t && !visitor(t));
+        if ax >= side || m.terrain.tiles[index].terrain >= 8 || tiles.iter().any(taken) {
+            continue;
+        }
+        let factions = if v == Version::RoE { 8 } else { 9 };
+        let (class, subclass) = town
+            .faction
+            .map_or((77, 0), |f| (98, u32::from(f % factions)));
+        let alignment = town
+            .alignment
+            .filter(|_| class == 77 && v == Version::Sod)
+            .map_or(u8::MAX, colour);
+        let garrison = town.garrison.as_ref().map(|slots| {
+            slots
+                .iter()
+                .map(|slot| slot.map(|(creature, count)| Stack { creature, count }))
+                .collect()
+        });
+        let identifier = u32::try_from(m.objects.len()).unwrap();
+        let body = TownBody {
+            identifier: (v != Version::RoE).then_some(identifier),
+            owner: if town.visited {
+                owners[hero]
+            } else {
+                town.owner.map_or(u8::MAX, colour)
+            },
+            garrison,
+            formation: u8::from(town.tight),
+            buildings: TOWN_BUILDINGS[town.buildings].clone(),
+            required_spells: (v != Version::RoE).then(|| Bits(vec![0; 9])),
+            banned_spells: Bits(vec![0; 9]),
+            alignment,
+            ..TownBody::default()
+        };
+        let template = u32::try_from(m.templates.len()).unwrap();
+        m.templates
+            .push(super::towns::town_template(class, subclass));
+        let mut o = object(ax, ay, template, Body::Town(Box::new(body)));
+        o.pos.z = hz;
+        m.objects.push(o);
+        covered.extend(tiles);
+    }
 }
 
 /// The plan's boats laid out after its other objects (E08 T75b), each where the setup takes it
@@ -1825,6 +2044,10 @@ pub(super) enum Step {
     /// the `n`-th of its legal answers (a `Buy` or `Close`); on the map the acting player's `n`-th
     /// option that enters a dwelling or a Refugee Camp ([`hire`]); else as `Garrison(n)`.
     Hire(u16),
+    /// (E09 T9b1; the town epic's design note §18) In a battle as `Fight(n)`; on the map the
+    /// acting player's `n`-th option that enters a town, else one that gets nearer to a town not
+    /// its own ([`visit_town`]); as `Hire(n)` on a map without towns.
+    Town(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -2062,6 +2285,9 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             .chain(ns.into_iter().map(Step::Hire))
             .collect()
     });
+    // E09 T9b1: runs of towns, `Step::Town`s, which walk heroes to the towns' entrances, enter,
+    // capture and besiege them, and play the sieges' battles.
+    let town = vec(any::<u16>(), 16..64).prop_map(|ns| ns.into_iter().map(Step::Town).collect());
     vec(
         prop_oneof![
             12 => step().prop_map(|step| vec![step]),
@@ -2072,6 +2298,7 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             1 => boat,
             1 => days,
             1 => hire,
+            1 => town,
         ],
         0..40,
     )
@@ -2428,6 +2655,87 @@ fn hire(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
     garrison(state, rules, legal, n)
 }
 
+/// [`Step::Town`] (E09 T9b1; the town epic's design note §18): in a battle as [`fight`] (a
+/// siege's too, either side's); an open decision settled as [`seek`] settles it; on the map the
+/// `n`-th of its options that end on a town's entrance (its own entered, TWN-VIS-001; another
+/// player's or a neutral one captured or besieged, TWN-CAP-001, TWN-SIE-001; another team's
+/// visitor besieged with the garrison merged, TWN-SIE-002), in three steps of four of a town not
+/// its own if it has such options; else the `n`-th of those that end nearer to the entrance of a
+/// town not its own on the hero's level than the hero stands; else `EndTurn`, so that the turns
+/// pass until a hero gets there. On a map without towns, as [`hire`].
+fn visit_town(
+    state: &GameState,
+    rules: &GameRuleset,
+    legal: &[GameCommand],
+    n: u16,
+) -> GameCommand {
+    let (adventure, player) = (state.adventure(), acting(state));
+    let map = adventure.map();
+    if map.towns().is_empty() {
+        return hire(state, rules, legal, n);
+    }
+    if battle_of(state, actor(state)).is_some() {
+        return fight(state, rules, legal, n);
+    }
+    if let Some(answer) = settle(state, legal, n) {
+        return answer;
+    }
+    let towns: Vec<(TilePos, bool)> = map
+        .towns()
+        .iter()
+        .filter_map(|&i| {
+            let entrance = map.objects()[i].entrance(map)?;
+            Some((entrance, adventure.owner(i) == Some(player)))
+        })
+        .collect();
+    let moves: Vec<(&GameCommand, HeroId, &[TilePos])> = legal
+        .iter()
+        .filter_map(|c| as_move(c).map(|(hero, path)| (c, hero, path)))
+        .collect();
+    let entering = |own: bool| -> Vec<&GameCommand> {
+        moves
+            .iter()
+            .filter(|(_, _, path)| {
+                path.last()
+                    .is_some_and(|to| towns.iter().any(|&(e, o)| e == *to && (own || !o)))
+            })
+            .map(|&(c, _, _)| c)
+            .collect()
+    };
+    let mut visits = entering(n % 4 == 3);
+    if visits.is_empty() {
+        visits = entering(true);
+    }
+    if !visits.is_empty() {
+        return visits[usize::from(n) % visits.len()].clone();
+    }
+    let distance = |pos: TilePos| {
+        towns
+            .iter()
+            .filter(|&&(e, own)| !own && e.level == pos.level)
+            .map(|(e, _)| e.x.abs_diff(pos.x).max(e.y.abs_diff(pos.y)))
+            .min()
+    };
+    let mut best: Vec<&GameCommand> = Vec::new();
+    let mut nearest = u16::MAX;
+    for &(command, hero, path) in &moves {
+        let here = adventure.hero(hero).and_then(|h| distance(h.pos));
+        let there = path.last().and_then(|&to| distance(to));
+        if let (Some(here), Some(there)) = (here, there)
+            && there < here
+            && there <= nearest
+        {
+            if there < nearest {
+                best.clear();
+                nearest = there;
+            }
+            best.push(command);
+        }
+    }
+    best.get(usize::from(n) % best.len().max(1))
+        .map_or(GameCommand::EndTurn, |&command| command.clone())
+}
+
 /// On the map (E08 T52): the acting player's open offer declined, its level-up's first offer
 /// taken, its meeting or army dialog managed (the `n`-th of [`managing`], `Close` if none), its
 /// choice or University answered as [`settle`] does (E08 T63a);
@@ -2619,8 +2927,17 @@ fn landing(
             AdventureEventKind::ObjectEmpty { .. }
         ]
     );
+    // (E09 T9b1) An undefended town's capture reveals around it too (TWN-CAP-001): its
+    // `TilesRevealed` follows.
+    let captured = matches!(
+        visit,
+        [
+            AdventureEventKind::TownCaptured { .. },
+            AdventureEventKind::TilesRevealed { .. }
+        ]
+    );
     prop_assert!(
-        kinds.len() <= steps + 1 || leaves || flagged || marked,
+        kinds.len() <= steps + 1 || leaves || flagged || marked || captured,
         "{:?}",
         kinds
     );
@@ -2881,6 +3198,7 @@ pub(super) fn resolve(
         Step::Join(n) => (who, join(state, rules, legal, *n)),
         Step::Garrison(n) => (who, garrison(state, rules, legal, *n)),
         Step::Hire(n) => (who, hire(state, rules, legal, *n)),
+        Step::Town(n) => (who, visit_town(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boats: Vec<&GameCommand> = legal
                 .iter()
@@ -3932,8 +4250,10 @@ fn free_creatures(
 /// A new day's income (GAM-RES-003 to -005, E08 T85b; increment 9's design note §14), from the
 /// day's events (its `DayStarted` on): every player in id order is told, as one gain per resource
 /// with an amount in the core's order, exactly what an independent sum of its parts gives on the
-/// state before the day: the production of the mines it owns, its heroes' `daily_income`, and on
-/// a week's first day each creature type with a weekly resource in its heroes' armies once.
+/// state before the day: the production of the mines it owns, (E09 T9b1) the day's income of the
+/// towns it owns (TWN-INC-001, -002: `h3_towns::daily_income` of each town's record), its heroes'
+/// `daily_income`, and on a week's first day each creature type with a weekly resource in its
+/// heroes' armies once.
 fn check_income(
     rules: &GameRuleset,
     before: &GameState,
@@ -3968,6 +4288,14 @@ fn check_income(
                 income[resource.index()] += amount;
             }
         }
+        for (place, &i) in adventure.map().towns().iter().enumerate() {
+            if adventure.owner(i) == Some(player) {
+                let town = before.towns().get(town_id(place)).unwrap();
+                for (resource, amount) in h3_towns::daily_income(town, rules.towns()) {
+                    income[resource.index()] += amount;
+                }
+            }
+        }
         let heroes: Vec<_> = adventure
             .heroes()
             .iter()
@@ -3998,6 +4326,11 @@ fn check_income(
     }
     prop_assert_eq!(gains, expected);
     Ok(())
+}
+
+/// The `TownId` of the town at `place` among the map's towns (E09 T9b1).
+fn town_id(place: usize) -> TownId {
+    TownId::new(u16::try_from(place).unwrap())
 }
 
 /// The map's timed events at the turn starts among a command's events (GAM-CAL-004, E08 T85b),
@@ -5020,6 +5353,70 @@ const CAMP_NOT_RANDOM: [&str; 6] = [
     "ab:sharpshooter",
 ];
 
+/// The towns across a command (E09 T9b1; the town epic's design note §18): every town has one
+/// owner, the adventure's (the store of towns holds none, ADR-0028), a player of the game or
+/// none; it changes only by the town's capture, told by one `TownCaptured` naming the new owner
+/// (TWN-CAP-001, -003), and a captured town's garrison is empty (its leftovers lost with it,
+/// design §11); the store keeps the number of towns and each record's faction, and a record's
+/// buildings change only by the Capitol's limit at a capture, told by `TownChanged` with the
+/// town's Capitol as the store has it after (TWN-CAP-002).
+fn check_towns(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let (adventure, part) = (after.adventure(), rules.towns());
+    let players = after.players();
+    prop_assert_eq!(after.towns().len(), adventure.map().towns().len());
+    prop_assert_eq!(after.towns().len(), before.towns().len());
+    for (place, &i) in adventure.map().towns().iter().enumerate() {
+        let town = town_id(place);
+        let (was, now) = (before.adventure().owner(i), adventure.owner(i));
+        prop_assert!(
+            now.is_none_or(|p| p.index() < players),
+            "{:?}: {:?}",
+            town,
+            now
+        );
+        let captured: Vec<PlayerId> = events
+            .iter()
+            .filter_map(|e| match e {
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::TownCaptured { town: t, owner, .. },
+                    ..
+                }) if *t == town => Some(*owner),
+                _ => None,
+            })
+            .collect();
+        if captured.is_empty() {
+            prop_assert_eq!(was, now, "{:?} changed owner untold", town);
+        } else {
+            prop_assert_eq!(&captured, &[now.unwrap()], "{:?}", town);
+            prop_assert_ne!(was, now, "{:?} captured by its owner", town);
+            prop_assert_eq!(adventure.town_garrison(i), Some(&[][..]), "{:?}", town);
+        }
+        let (old, new) = (before.towns().get(town), after.towns().get(town));
+        let (old, new) = (old.unwrap(), new.unwrap());
+        prop_assert_eq!(old.faction(), new.faction());
+        let changed: Vec<bool> = events
+            .iter()
+            .filter_map(|e| match *e {
+                GameEvent::TownChanged {
+                    town: t, capitol, ..
+                } if t == town => Some(capitol),
+                _ => None,
+            })
+            .collect();
+        if old == new {
+            prop_assert!(changed.is_empty(), "{:?}: {:?}", town, changed);
+        } else {
+            prop_assert!(!captured.is_empty(), "{:?} rebuilt without a capture", town);
+            prop_assert_eq!(&changed, &[after.towns().capitol(town, part)], "{:?}", town);
+        }
+    }
+    Ok(())
+}
+
 /// A Leave Guards dialog's close (E08 T86b1; ADV-MIN-002, GAM-DEC-004 amended, increment 9's
 /// design note §15's `Step::Garrison`): the group as it stood becomes the mine's guards, by slot
 /// (empty: none), and the mine stays its owner's.
@@ -5302,6 +5699,27 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
     // within the full guards; each camp's creature of its levels, its count at most its growth.
     prop_assert!(adventure.check_dwellings());
     prop_assert!(adventure.check_camps(rules.core(), rules.adventure()));
+    // E09 T9b1: no hero stands on the entrance of a town of another team or of none (TWN-VIS-002:
+    // a town's visitor is of its owner's team; another team's hero besieges it from the tile
+    // before, an undefended town is captured as it is entered).
+    let map = adventure.map();
+    for &i in map.towns() {
+        let entrance = map.objects()[i].entrance(map);
+        for hero in adventure
+            .heroes()
+            .iter()
+            .filter(|h| Some(h.pos) == entrance)
+        {
+            let owner = adventure.owner(i);
+            prop_assert!(
+                owner.is_some_and(|o| h3_adventure::allied(o, hero.owner)),
+                "{:?} on town {} of {:?}",
+                hero.id,
+                i,
+                owner
+            );
+        }
+    }
     for player in (0..state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let own = |hero: HeroId| {
             state
@@ -5584,6 +6002,9 @@ fn check_unowned_battle_end(
         Some((index, ObjectKind::Dwelling { .. })) => {
             return check_dwelling_battle_end((before, after), events, (visitor, index, result));
         }
+        Some((index, ObjectKind::Town)) => {
+            return check_town_battle_end((before, after), events, (visitor, index, result));
+        }
         _ => {}
     }
     // E08 T86b1: a found index may be a monster's added in play (a creature month's), read
@@ -5740,6 +6161,82 @@ fn check_unowned_battle_end(
         if player != owner {
             prop_assert_eq!(before.treasury(player), after.treasury(player));
         }
+    }
+    Ok(())
+}
+
+/// The end of a siege against a town's garrison without a hero (E09 T9b1; TWN-CAP-003, design
+/// §11), a neutral town's (the system played it) or another player's (its owner did): won, the
+/// garrison is empty and the town is captured for the attacker's owner in the battle's last
+/// command, told by its `TownCaptured` ([`check_towns`]), unless the attacker left the map (a win
+/// with only created stacks) or its owner's decision (the winner's level-up) holds the capture,
+/// which keeps the owner; else the owner is kept and the garrison holds survivors, each of a
+/// stack it had by slot and creature with at most its count (none after a draw). No object leaves
+/// the map; no treasury changes.
+fn check_town_battle_end(
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    (visitor, index, result): (HeroId, usize, BattleResult),
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    let owner = b.hero(visitor).unwrap().owner;
+    let (had, left) = (
+        b.town_garrison(index).unwrap(),
+        a.town_garrison(index).unwrap(),
+    );
+    let captured = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::TownCaptured { .. },
+                ..
+            })
+        )
+    });
+    if result.winner() == Some(BattleSide::Attacker) {
+        prop_assert!(left.is_empty(), "{:?} after a win", left);
+        let stays = a.hero(visitor).is_some();
+        if captured {
+            prop_assert!(stays);
+            prop_assert_eq!(a.owner(index), Some(owner));
+        } else {
+            prop_assert!(
+                !stays || after.has_decision(owner),
+                "{:?} not captured",
+                result
+            );
+            prop_assert_eq!(a.owner(index), b.owner(index));
+        }
+    } else {
+        prop_assert!(!captured);
+        prop_assert_eq!(a.owner(index), b.owner(index));
+        prop_assert!(
+            left.iter().all(|s| had
+                .iter()
+                .any(|h| (h.slot, h.creature) == (s.slot, s.creature) && h.count >= s.count)),
+            "{:?} of {:?}",
+            left,
+            had
+        );
+        prop_assert_eq!(
+            left.is_empty(),
+            result == BattleResult::Draw,
+            "{:?}",
+            result
+        );
+    }
+    let removed = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved { .. },
+                ..
+            })
+        )
+    });
+    prop_assert!(!removed);
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        prop_assert_eq!(before.treasury(player), after.treasury(player));
     }
     Ok(())
 }
@@ -6755,11 +7252,41 @@ fn gift_price(
     gift.prices.get(drawn).cloned().unwrap_or_default()
 }
 
+/// `army`, the army of `hero` before a command, with each slot its `StackChanged`s in `events`
+/// tell (E09 T9b1): a town's garrison merged into its visitor's army before a siege
+/// (TWN-SIE-002), told to the visitor's owner.
+fn told_army(
+    army: &[h3_contracts::ArmyStack],
+    hero: HeroId,
+    events: &[GameEvent],
+) -> Vec<h3_contracts::ArmyStack> {
+    let mut army = army.to_vec();
+    for event in events {
+        if let GameEvent::StackChanged {
+            at:
+                ArmySlot {
+                    army: ArmyRef::Hero(h),
+                    slot,
+                },
+            stack,
+            ..
+        } = event
+            && *h == hero
+        {
+            army.retain(|s| s.slot != *slot);
+            army.extend(stack);
+            army.sort_by_key(|s| s.slot);
+        }
+    }
+    army
+}
+
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
-/// player's army, explored tiles (but for a new day's reveal in strict-fixed, which only adds,
-/// E08 T40), treasury (but for a new day's income and the timed events at its turn's start, E08
-/// T85b), purchases, open decision (E08 T14b)
-/// or keys (T15a),
+/// player's army (but for a siege's merge into a town's visitor's army, E09 T9b1,
+/// [`told_army`]), explored tiles (but for a new day's reveal in strict-fixed, which only adds,
+/// E08 T40, and a town's capture after a siege its owner's garrison lost, E09 T9b1), treasury
+/// (but for a new day's income and the timed events at its turn's start, E08 T85b), purchases,
+/// open decision (E08 T14b) or keys (T15a),
 /// and changes another player's heroes' points only when that player's turn starts
 /// (ADV-MOV-002); but a battle (E08 T19a) the actor owns with another player: its commands play
 /// the battle both own, and the one that ends it changes the other's hero (its army, or its
@@ -6785,7 +7312,17 @@ fn check_isolation(
         if b.owner == actor {
             continue;
         }
-        prop_assert_eq!((b.pos, &b.army), (a.pos, &a.army));
+        // E09 T9b1: a siege against a town's visitor merges the garrison into its army first
+        // (TWN-SIE-002), as the `StackChanged`s of its slots tell its owner.
+        let besieged = events.iter().any(
+            |e| matches!(e, GameEvent::BattleStarted { heroes: [_, Some(h)], .. } if *h == b.id),
+        );
+        let army = if besieged {
+            told_army(&b.army, b.id, events)
+        } else {
+            b.army.clone()
+        };
+        prop_assert_eq!((b.pos, &army), (a.pos, &a.army));
         let started = events.contains(&GameEvent::TurnStarted { player: b.owner });
         prop_assert!(started || b.movement == a.movement);
     }
@@ -6807,6 +7344,19 @@ fn check_isolation(
     let new_day = events
         .iter()
         .any(|e| matches!(e, GameEvent::DayStarted { .. }));
+    // E09 T9b1: a town captured after a siege the command ended reveals around it to its new
+    // owner (TWN-CAP-003), also when the town's owner, playing its garrison's side, ended the
+    // battle by its own command.
+    let captors: Vec<PlayerId> = events
+        .iter()
+        .filter_map(|e| match e {
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::TownCaptured { owner, .. },
+                ..
+            }) => Some(*owner),
+            _ => None,
+        })
+        .collect();
     let kept = |was: &h3_adventure::BitGrid, is: &h3_adventure::BitGrid| {
         (0..was.levels()).all(|z| {
             (0..was.height()).all(|y| {
@@ -6824,7 +7374,9 @@ fn check_isolation(
                 after.adventure().explored(player),
             );
             match (was, is) {
-                (Some(was), Some(is)) if new_day => prop_assert!(kept(was, is)),
+                (Some(was), Some(is)) if new_day || captors.contains(&player) => {
+                    prop_assert!(kept(was, is));
+                }
                 _ => prop_assert!(was == is),
             }
             if !partners.contains(&player) {
@@ -6866,7 +7418,7 @@ proptest! {
     /// random play on imported maps, in both profiles; since E08 T31 the heroes' levels by their
     /// experience in every state ([`check_progression`]), in half the cases with heroes of a
     /// custom experience ([`experience`]: levels at load, and level-ups in play from the first
-    /// battle).
+    /// battle); since E09 T9b1 the towns' owners, garrisons and records ([`check_towns`]).
     #[test]
     fn every_step_keeps_the_commands_invariants(
         plan in plan(),
@@ -6928,6 +7480,7 @@ proptest! {
             check_conservation(rules, (&before, &state), &command, &events)?;
             check_mine_guards(rules, (&before, &state))?;
             check_week(rules, (&before, &state), &events)?;
+            check_towns(rules, (&before, &state), &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -6938,8 +7491,9 @@ proptest! {
         check_invariants(rules, &state)?;
     }
 
-    /// Clone equivalence: a fork playing other commands leaves its parent as it was, and a fork
-    /// and its parent evolve identically under the same commands.
+    /// Clone equivalence: a fork playing other commands leaves its parent as it was (since E09
+    /// T9b1 its store of towns too, shared until the fork's first write), and a fork and its
+    /// parent evolve identically under the same commands.
     #[test]
     fn forks_evolve_as_their_parent(
         plan in plan(),
@@ -6951,11 +7505,14 @@ proptest! {
         let (prefix, rest) = steps.split_at(split.index(steps.len()));
         let (mut state, _, _) = play(&plan, rules, seed, prefix);
         let hash = state.state_hash();
+        // E09 T9b1: the store of towns, shared by the fork and copied on its first write.
+        let towns = state.towns().clone();
         let mut wild = state.clone();
         for step in rest.iter().rev() {
             let _ = advance(&mut wild, rules, step, &mut Vec::new());
         }
         prop_assert_eq!(state.state_hash(), hash);
+        prop_assert_eq!(state.towns(), &towns);
         prop_assert_eq!(&state, &play(&plan, rules, seed, prefix).0);
         let mut fork = state.clone();
         for step in rest {
@@ -7641,6 +8198,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        towns: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
@@ -8159,11 +8717,12 @@ fn the_plans_visit_dwellings_and_hire() {
         let mut state = start_on(&m, rules, seed);
         hired.resolved += check_resolved(rules, &m, &state).unwrap();
         // The plan's kind of each object of the static map (the import keeps every object but
-        // the heroes and the boats, in the map's order).
+        // the heroes and the boats, in the map's order); (E09 T9b1) the towns, laid out after
+        // the other objects, have none.
         let kinds: Vec<usize> = m
             .objects
             .iter()
-            .filter(|o| o.template != HERO_TEMPLATE)
+            .filter(|o| o.template != HERO_TEMPLATE && !matches!(o.body, Body::Town(_)))
             .map(|o| usize::try_from(o.template - 1).unwrap() / BLOCKERS.len())
             .filter(|&kind| KINDS[kind].0 != 8)
             .collect();
@@ -8326,4 +8885,151 @@ fn the_plans_visit_dwellings_from_a_boat() {
     eprintln!("{a:?}");
     assert!(a.questions > 0 && a.flags > 0, "{a:?}");
     assert!(a.deck > 0 && a.joined > 0, "{a:?}");
+}
+
+/// What the plans' games did with their towns (E09 T9b1; the town epic's design note §18): the
+/// towns the builds made; the own towns entered (TWN-VIS-001); the undefended towns captured by a
+/// step, neutral and another player's (TWN-CAP-001); the sieges against a garrison alone and
+/// against a visitor (TWN-SIE-001, -002), each won (the town captured after, TWN-CAP-003) or not;
+/// the merges that changed a garrison's slots before a siege (TWN-SIE-002); the captures, every
+/// way; and the Capitols the limit took (TWN-CAP-002).
+#[derive(Debug, Default)]
+struct Besieged {
+    towns: usize,
+    entered: usize,
+    undefended: [usize; 2],
+    sieges: [usize; 2],
+    won: [usize; 2],
+    lost: [usize; 2],
+    merges: usize,
+    captures: usize,
+    limited: usize,
+    /// The sieges in progress: the attacking hero, and whether a visitor defends.
+    open: Vec<(HeroId, usize)>,
+}
+
+impl Besieged {
+    /// Counts what `command` did on its way from `before` to `after`.
+    fn count(
+        &mut self,
+        (before, after): (&GameState, &GameState),
+        command: &GameCommand,
+        events: &[GameEvent],
+    ) {
+        let map = before.adventure().map();
+        let entrances: Vec<(TilePos, usize)> = map
+            .towns()
+            .iter()
+            .filter_map(|&i| Some((map.objects()[i].entrance(map)?, i)))
+            .collect();
+        let town_at = |pos: TilePos| entrances.iter().find(|&&(e, _)| e == pos).map(|&(_, i)| i);
+        let mut captured = false;
+        for event in events {
+            match event {
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::TownCaptured { town, .. },
+                    ..
+                }) => {
+                    self.captures += 1;
+                    captured = true;
+                    if as_move(command).is_some() {
+                        let i = map.town_object(*town).unwrap();
+                        self.undefended[usize::from(before.adventure().owner(i).is_some())] += 1;
+                    }
+                }
+                GameEvent::BattleStarted { heroes, tile, .. } if town_at(*tile).is_some() => {
+                    let visitor = usize::from(heroes[1].is_some());
+                    self.sieges[visitor] += 1;
+                    self.open.push((heroes[0].unwrap(), visitor));
+                }
+                GameEvent::BattleEnded { heroes, result, .. } => {
+                    let siege = self.open.iter().position(|&(h, _)| Some(h) == heroes[0]);
+                    if let Some(siege) = siege {
+                        let (_, visitor) = self.open.swap_remove(siege);
+                        let won = matches!(
+                            result,
+                            BattleResult::Victory(BattleSide::Attacker)
+                                | BattleResult::Retreat(BattleSide::Defender)
+                                | BattleResult::Surrender(BattleSide::Defender)
+                        );
+                        if won {
+                            self.won[visitor] += 1;
+                        } else {
+                            self.lost[visitor] += 1;
+                        }
+                    }
+                }
+                GameEvent::TownChanged { capitol: false, .. } => self.limited += 1,
+                _ => {}
+            }
+        }
+        let merged = events.iter().any(|e| {
+            matches!(
+                e,
+                GameEvent::StackChanged {
+                    at: ArmySlot {
+                        army: ArmyRef::Garrison(_),
+                        ..
+                    },
+                    ..
+                }
+            )
+        });
+        self.merges += usize::from(merged);
+        if let Some((hero, _)) = as_move(command)
+            && !captured
+            && let Some(h) = after.adventure().hero(hero)
+            && let Some(i) = town_at(h.pos)
+            && before.adventure().owner(i) == Some(h.owner)
+            && before
+                .adventure()
+                .hero(hero)
+                .is_some_and(|b| b.pos != h.pos)
+        {
+            self.entered += 1;
+        }
+    }
+}
+
+/// The plans play towns (E09 T9b1; the town epic's design note §18, exit criterion 5): over a
+/// fixed set of cases (proptest's deterministic runner), random play with the towns' runs
+/// ([`steps`], [`Step::Town`]) enters own towns, captures undefended ones (neutral and another
+/// player's), besieges towns defended by their garrison alone and by a visitor with the garrison
+/// merged, and wins and loses both, and the Capitol's limit takes a Capitol, so the properties
+/// above ([`check_towns`], the entrances in [`check_invariants`], the forks' store) see each.
+#[test]
+fn the_plans_capture_and_besiege_towns() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    // More towns than the properties' plans have, so that their games meet each case.
+    let towns = (plan(), vec(town(), 3..=6)).prop_map(|(plan, towns)| Plan { towns, ..plan });
+    let strategy = (towns, any::<bool>(), any::<u64>(), steps());
+    let mut besieged = Besieged::default();
+    for _ in 0..512 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        besieged.towns += state.towns().len();
+        besieged.open.clear();
+        for step in &steps {
+            let legal = options(&state, rules);
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
+                besieged.count((&before, &state), &command, &events);
+            }
+        }
+    }
+    let b = &besieged;
+    eprintln!("{b:?}");
+    assert!(b.towns > 0 && b.entered > 0, "{b:?}");
+    assert!(b.undefended.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.sieges.iter().all(|&n| n > 0), "{b:?}");
+    assert!(
+        b.won.iter().all(|&n| n > 0) && b.lost.iter().all(|&n| n > 0),
+        "{b:?}"
+    );
+    assert!(b.merges > 0 && b.limited > 0, "{b:?}");
+    assert!(b.captures > b.undefended.iter().sum::<usize>(), "{b:?}");
 }
