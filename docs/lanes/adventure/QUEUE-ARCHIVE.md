@@ -4,6 +4,26 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-06, E08 T98a2: done whole, decision 263; the checkpoint ADV-Q45, decisions 264–269; the record in `E08-log.md`.)* **E08 T98a2 — the teleporters survey, its second part** (decisions 261, 262; survey
+`docs/rules/surveys/E08-teleporters.md` §9 to §14)
+
+- **Scope:** the reach and the paths through a teleporter (the original's: `pathfinder_pass_through`
+  reads the monolith lists at 0x56AE39 and 0x56AE81, whose paths those are; the engine's reach and
+  passage, the hot path); the space key's visit (`key_space_visit` 0x408E65: its full gate, which
+  classes, RoE) and whether the increment takes it as a command; what a viewer sees of a hero
+  passing (`hero_relocate_inner` 0x49CF50, the network message, the wiki's exit shown in the
+  shroud); the interfaces' sketch (commands, decisions, events, the observation, replays,
+  benchmarks); batch E11's plan on the client lane's harness (decision 261's agent's call), with
+  rows for the points resting on the reading alone (survey §8's open points); the proposed rule ids;
+  the checkpoint's questions (D-53 to D-57, A-37's fix, A-38, A-39, A-40), asked at its end.
+- **Inputs:** survey §0 to §8 (T98a1); decisions 260 to 262; ADR-0015 to -0017 (ADR-0016 points 3
+  and 4, ADR-0017's streams); the lane's `TRAPS.md` (a new read in the reach's or the passage's
+  loops; a test's blocker of a class that gets a kind); the inbox's performance note of 2026-10-23
+  (a lifted hero's reach); surveys `E08-hero-movement.md` (the reach, flying, A-13) and `E08-sea.md`
+  (a boat's entrances).
+- **Depends on:** T98a1 (done). **Status:** ready (the original data staged: `Heroes3.exe` for the
+  reading, the shipped maps for the batch's plan).
+
 *(Moved 2026-11-05, E08 T98a1: its entry as it stood before the user cut it in two, decision 262; T98a2 queued in its place; the record in `E08-log.md`.)* **E08 T98a — the teleporters survey** (decision 261; as T88a for increment 10: survey file
 `docs/rules/surveys/E08-teleporters.md`)
 
