@@ -353,9 +353,11 @@ Next ids: disputes D-59, reading quirk candidates A-42.
 
 ### 9.1 The original's paths (`pathfinder_pass_through` 0x56AB40 at its cases 43, 45, 103, 111, read whole)
 
-- `pathfinder_run` asks `pathfinder_pass_through` only of a stop node (0x56BB7C; E08 T58), and a
-  teleporter's entrance is one (§2: entered). The test's fourth argument is the run's mode (its
-  sixth, passed at 0x56B9C9 and 0x56BB80).
+- `pathfinder_run` asks `pathfinder_pass_through` of a stop node it pops (0x56BB7C; E08 T58), and
+  a teleporter's entrance is one (§2: entered); and once at its start when the hero stands on an
+  entrance of class 43, 45 or 103 (not 111; 0x56B9AA), on a copy of the start node with its +0x1A
+  raised by 50 (the field the exits' price raises; not read). The test's fourth argument is the
+  run's mode (its sixth, passed at 0x56B9C9 and 0x56BB80).
 - **Mode 0** (the human's mouse path, from `movement_calculations_mouse` 0x41955B): no before the
   switch for every class but 33 and 212 (0x56AB69 to 0x56AB80; E08 T55a4). **A human's path ends
   at an entrance**: a tile beyond a teleporter gets a path around it or none, never one through.
@@ -368,8 +370,8 @@ Next ids: disputes D-59, reading quirk candidates A-42.
   of §4.1's test is relaxed (all exits, no draw), its price raised with the list's length; in mode
   4 a guarded exit of a one-way channel or a Whirlpool is weighed by `ai_fight_answer` and one too
   strong drops the channel.
-- **Whose modes:** every other caller of `pathfinder_run` (mode 3 at 0x4281F8 and 0x42DF8F, 2 at
-  0x42F8A0, a value of its own at 0x42E33C and 0x42F6B5) lies under `ai_player_turn` 0x525E80,
+- **Whose modes:** the four other functions that call `pathfinder_run` (modes 3, 2 or a value of
+  their own; listed in the address map's `ai_player_turn`) lie under `ai_player_turn` 0x525E80,
   called from the adventure manager's procedure, whose per-player records share
   `ai_player_values`' stride: the computer's (inferred). Its routes through teleporters are E10's.
 - **VCMI 1.7.5** plans a human's path through two-way monoliths and gates, and through Whirlpools
