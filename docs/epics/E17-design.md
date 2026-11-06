@@ -7083,7 +7083,7 @@ new reading), and sequences for the question's points §12.19 left provisional.
      Dwarves' waited turn starts and the question opens in that millisecond. Behind it the
      Dwarves are outlined, the Ballista's outline gone, no idle step (the Ballista's turn's
      7 787 step the last), the panel dimmed with Auto Combat dimmed too, *unselected* (below,
-     candidate), the cursor the arrow at the parked point. Escape at 8 787: the original's
+     CLT-Q64), the cursor the arrow at the parked point. Escape at 8 787: the original's
      computer walks the Dwarves to 37 (as the engine's) in that millisecond with no tick at the
      answer: the deadline still the box's (7 887), group 20's two frames show at once, memory
      group 0's frame 0 at 8 787 (shown at 8 887), then every 61 ms; the outline goes with the
@@ -7120,4 +7120,4 @@ new reading), and sequences for the question's points §12.19 left provisional.
   **Oddities:** Auto Combat's button dimmed and unselected over a turn it plays from its start
   after a switch on a human's turn it did not play (the reading had 0x4784F9 give it back its
   enabled and selected states for a human's side): built so in the original's profile, the
-  client's showing it selected while on (CLT-Q45 (1)'s); a candidate question.
+  client's showing it selected while on (CLT-Q45 (1)'s); asked as CLT-Q64 (fix recommended).

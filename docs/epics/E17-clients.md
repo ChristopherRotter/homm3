@@ -215,8 +215,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   default; the engine's parts by the cross-lane #739), its casts for the human's hero, CLT-Q61
   and Q62 asked and answered, two sequences recorded; **T5b2** cut in two by the user
   (2026-11-05): **T5b2a** (done 2026-11-06, design §12.19) Auto Combat's retreat question and the
-  offer (the engine's part by the cross-lane #745), three sequences recorded; **T5b2b** CLT-Q61's
-  stop; **T5c** Eagle Eye's message and the experience after the window (79); **T5d** the effects,
+  offer (the engine's part by the cross-lane #745), three sequences recorded; **T5b2b** (done
+  2026-11-06, kept whole by the user, design §12.20) CLT-Q61's stop at the cast's end, a question
+  at a later turn and a human's turn right after an answer, three sequences recorded, CLT-Q64
+  asked; **T5c** Eagle Eye's message and the experience after the window (79); **T5d** the effects,
   their waits and Bloodlust's glow (42, 45).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through

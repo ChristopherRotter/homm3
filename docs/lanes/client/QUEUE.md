@@ -34,10 +34,9 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   design §12.17); **T5b** cut in two by the user (2026-11-05): **T5b1** done (the window's
   computer the engine's original one, `--sight`; its casts for the human's hero; design §12.18;
   CLT-Q61, Q62 answered); **T5b2** cut in two by the user (2026-11-05): **T5b2a** done (the
-  retreat question and the offer; design §12.19; the engine's part #745); **T5b2b** CLT-Q61's
-  stop between the computer's cast and a self-playing stack's action (copy: the read built and
-  recorded; also a question at a later turn than the switch's and a human's turn right after an
-  answer, recorded); **T5c**
+  retreat question and the offer; design §12.19; the engine's part #745); **T5b2b** done (kept
+  whole by the user: CLT-Q61's stop at the cast's end, a question at a later turn, a human's turn
+  right after an answer; design §12.20; CLT-Q64 asked); **T5c**
   Eagle Eye's message and the experience given after the result window (item 79); **T5d** the
   effects not drawn yet, their sounds' waits and the Ogre Magi's Bloodlust glow (items 42, 45;
   cut again at its start if needed).
