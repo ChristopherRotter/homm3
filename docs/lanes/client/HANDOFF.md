@@ -58,6 +58,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-06, E17 M6 T5b2b (in progress, `client/e17-m6-t5b2b`).**
+  The original data staged (57 files, by the file tool: the device shell did not start); the
+  baseline `check.sh` passed at a425d00. The user kept T5b2b whole. Done: a builder (b97061c,
+  pushed: CLT-Q61's stop at the cast's end, copy, design §12.20; `to-record.toml`'s
+  `auto-cast-stop`, `auto-retreat-later`, `auto-retreat-human` over the new
+  `seq-auto-retreat-machine.toml`). Next: a capture agent records the three, then a fresh
+  reviewer, the docs and the PR.
+
 - **2026-11-05/06, E17 M6 T5b2a (done; its PR and #745: check them first).**
   The original data staged (57 files, by the file tool: the device shell did not start); the
   first baseline lost a test binary mid-run, its re-run passed. The user cut T5b2 in two (T5b2a
@@ -80,11 +88,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   the latter's 84 the walk's known 2-pixel artifacts), a fresh reviewer (three small findings
   fixed); CLT-Q61 (copy, T5b2's) and Q62 (fixed in the client's profile, built) answered.
   `check.sh`; a walk divergence to the battle lane's inbox.
-
-- **2026-11-05, E17 M6 T5a (done; #736 merged).**
-  The original data staged (57 files, by the file tool; the device dropped twice, nothing lost);
-  the baseline's `check.sh` passed. The user cut T5 in four and chose T5a. A reader (§12.17;
-  CLT-Q57 to Q60 asked and answered at once: Q57 and Q60 fixed, Q58 and Q59 copied
-  *provisional*), a builder, the captures (six stills, five exact; five sequences; `drawn` 245 the
-  same), a fresh reviewer (six findings fixed; G1 made the user's requirement: a server game as a
-  local one, `CLT-STUB-1`). `check.sh`.
