@@ -22,7 +22,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   design §12.18); T5b2 cut in two by the user (2026-11-05): T5b2a done (#745, #751, design
   §12.19); **T5b2b done** (kept whole by the user, design §12.20: CLT-Q61's stop at the cast's
   end, a question at a later turn, a human's turn right after an answer, three sequences
-  recorded; CLT-Q64 asked; the PR from `client/e17-m6-t5b2b`: check it first). **Next: T5c**
+  recorded; CLT-Q64 asked; #757: check it first). **Next: T5c**
   (Eagle Eye's message, item 79), T5d (QUEUE), T6, T7; then M7 ranked play and the server
   browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
@@ -59,7 +59,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-06, E17 M6 T5b2b (done; the PR from `client/e17-m6-t5b2b`).**
+- **2026-11-06, E17 M6 T5b2b (done; #757).**
   Kept whole by the user. The original data staged by the file tool (the PC's shell did not
   start). A builder (CLT-Q61's stop, the three sequences prepared over the new
   `seq-auto-retreat-machine.toml`), a capture agent (all three recorded; five corrections: the
