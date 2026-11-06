@@ -225,7 +225,8 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   two by the user (2026-11-06): T5d1 done (the effects of a turn's and a round's start: the
   Wraiths' mana drain, regeneration, Poison's round damage; design §12.22; `starts`,
   `starts-sound`), **T5d2** the strikes'
-  and casts' (Death Blow, Ice Bolt's explosion, the Familiars' channel, Bloodlust's glow); **T5e**
+  and casts', cut in two by the user (2026-11-06): T5d2a done (Death Blow, the Ogre Magi's
+  Bloodlust glow; design §12.23), **T5d2b** Ice Bolt's explosion and the Familiars' channel; **T5e**
   (added by the user at T5c) the captured artifacts' message after Eagle Eye's (§12.21).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through
