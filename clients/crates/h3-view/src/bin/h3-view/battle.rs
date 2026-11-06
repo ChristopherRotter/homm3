@@ -628,6 +628,9 @@ pub struct Battle<'g> {
     /// The pickup sound of the box of Eagle Eye's message that opened last (its N), until the
     /// window takes it to play ([`Battle::take_pickup`]).
     pickup: Option<u8>,
+    /// The result window under Eagle Eye's boxes (E17 M6 T5c, recorded: `eagle-eye`), its OK up:
+    /// when it opened, and its clip's time frozen at the first box's first draw.
+    window_behind: Option<(MessageBox, u32, Option<u32>)>,
     /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
     behind: h3_view::result::Behind,
     /// The battle's end as the record shows it (`Battle::end_seen`), replayed once (E17 M5 T8b2,
@@ -952,6 +955,7 @@ impl<'g> Battle<'g> {
             result_closed: false,
             eagle_eye: Vec::new(),
             pickup: None,
+            window_behind: None,
             behind: h3_view::result::Behind::default(),
             end_seen: std::cell::OnceCell::new(),
             survivors: std::cell::OnceCell::new(),
@@ -3016,21 +3020,26 @@ impl<'g> Battle<'g> {
             Outcome::Changed => return MessageDid::Changed,
             Outcome::Closed(id) => id,
         };
-        self.message = None;
+        let taken = self.message.take();
         // The tactics phase's message closed: the first turn starts (E17 M5 T4c2a).
         self.opening = false;
         // The result window's OK, then each box's of Eagle Eye's message (E17 M6 T5c, design
-        // §12.21): the next box opens, its pickup sound starting, over the screen darkened as the
-        // window was, the battle standing at its end; the last one's ends the battle's screen.
-        // The experience given after the window shows nothing here (§12.21).
+        // §12.21): the next box opens, its pickup sound starting, over the screen darkened and
+        // the window as it showed, the battle standing at its end; the last one's ends the
+        // battle's screen. The experience given after the window shows nothing here (§12.21).
         let after_window = matches!(asked, Asked::Result | Asked::EagleEye);
         if after_window && !self.eagle_eye.is_empty() {
+            if let Some((window, opened, Asked::Result)) = taken {
+                let window = crate::results::released(&window.message);
+                self.window_behind = Some((window, opened, None));
+            }
             let (next, pickup) = self.eagle_eye.remove(0);
             self.message = Some((h3_view::message::Open::new(next), at, Asked::EagleEye));
             self.pickup = Some(pickup);
             return MessageDid::Changed;
         }
         self.result_closed |= after_window;
+        self.window_behind = None;
         if let Some(did) = closed(asked) {
             return did;
         }
@@ -3530,11 +3539,32 @@ impl<'g> Battle<'g> {
                     .map(Draw::Dialog),
             );
         }
+        // The window under Eagle Eye's boxes (E17 M6 T5c), its clip held at the millisecond
+        // before the first box's first draw (*provisional*, as the sequences': the box hides it).
+        let eagle_eye = matches!(self.message, Some((_, _, Asked::EagleEye)));
+        let behind = match self.window_behind.as_mut() {
+            Some((window, opened, since)) if eagle_eye => {
+                let since = *since.get_or_insert(t.saturating_sub(*opened).saturating_sub(1));
+                Some((window.clone(), since))
+            }
+            _ => None,
+        };
         if let Some((open, opened, asked)) = &self.message {
             // The result window over the whole screen darkened (E17 M5 T4b1), Eagle Eye's boxes
             // after it too (E17 M6 T5c).
             if matches!(asked, Asked::Result | Asked::EagleEye) {
                 list.push(h3_view::result::backdrop(self.ground.layout.frame));
+            }
+            if let Some((window, since)) = &behind {
+                let palette = &self.ground.layout.player_palette;
+                list.extend(
+                    window
+                        .dialog
+                        .draws(&window.shown, palette)
+                        .into_iter()
+                        .map(Draw::Dialog),
+                );
+                list.extend(self.clip(*since));
             }
             let message = &open.message;
             list.extend(

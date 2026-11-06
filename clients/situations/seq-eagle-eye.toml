@@ -1,0 +1,69 @@
+# E17 M6 T5c (design §12.21, "Recorded"): Eagle Eye's message after the result window. Orrin
+# (Red, the attacker) with Expert Eagle Eye and its three artifacts (the Bird of Perception, the
+# Stoic Watchman, the Emblem of Cognizance: 60 % + 5 % + 10 % + 15 %, the original's `f32` sum
+# 0x3F666668, 90 % to roll against), an empty Spell Book and no Wisdom (`h3-view situation`
+# writes the skill and the artifacts behind `eagle_eye`); Crag Hack (Blue) casts one of his five
+# spells a round: Slow at the Pikemen (place 1), Bless on the Swordsmen (place 0;
+# not on undead, BAT-MAG-067), Disrupting
+# Ray at the Pikemen (place 2), a Force Field at hex 63 (place 3, row 3, column 12, away from the
+# obstacles) and Chain Lightning at the Pikemen (place 4; his book by level, then school: Bless,
+# water, before Slow, earth), then the Swordsmen retreat: Orrin wins, his window shows, then
+# the box of the spells his Eagle Eye picked (Wisdom 0: Force Field, level 3, and Chain
+# Lightning, level 4, named but not learned, CLT-Q65). Each other stack defends. Hot seat; on
+# grass at the capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-eagle-eye"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 3
+
+# Orrin's Eagle Eye picks from Crag Hack's five spells (the Heroes context would list every
+# combat spell up to level 4 Orrin has not learned: only these five are cast).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+spell_book = []
+
+[scenario.attacker_hero.eagle_eye]
+chance_bp = 9000
+single = 1063675496
+spells = [
+    "base:slow", "base:bless", "base:disrupting_ray", "base:force_field", "base:chain_lightning",
+]
+
+# Crag Hack: 60 spell points (Bless 5, Slow 6, Disrupting Ray 10, Force Field 12, Chain
+# Lightning 24), power 1 (Slow and Bless last a round).
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 6
+mana = 60
+max_mana = 60
+spell_book = [
+    "base:slow", "base:bless", "base:disrupting_ray", "base:force_field", "base:chain_lightning",
+]

@@ -200,6 +200,14 @@ fn switched(actions: &[String], pre: u32, until: u32) -> u32 {
     last
 }
 
+/// Whether the video archives `videos` hold the result window's clip of `tune` (E17 M5 T4b2b).
+fn held(videos: &crate::videos::Videos, tune: h3_view::sound::Tune) -> bool {
+    let clip = h3_view::clip::of(tune);
+    std::iter::once(clip.start)
+        .chain(clip.looped)
+        .all(|name| videos.has(name))
+}
+
 /// The times the result window and then each box of Eagle Eye's message after it closed (E17 M6
 /// T5c): the `answers` from the battle's `end` on, but those that answered one of Auto Combat's
 /// questions open over `spans` (a leaving given at the end's millisecond).
@@ -1171,11 +1179,18 @@ pub(crate) fn draw_frames(
         // Eagle Eye's message after the window closed (E17 M6 T5c, design §12.21): over the
         // screen still darkened, a still's box as its actions left it, a sequence's by the
         // actions' closes; the default cursor's frame 0 at the mouse (`message_box_build`'s).
+        // Under a box the window stays as it last showed (recorded, `eagle-eye`: nothing redraws
+        // the screen before the box), its OK up, its clip's frame of the millisecond before its
+        // close (a still's at once: its first; *provisional*, the box hides the clip).
         let darkened = match interface.book.filter(|b| b.darkened) {
-            Some(b) => Some(b.message.as_ref().map(|m| (m, Some(b.mouse)))),
-            None => ended
-                .filter(|_| closed > 0)
-                .map(|_| interface.eagle_eye.get(closed - 1).map(|m| (m, point()))),
+            Some(b) => Some(
+                (b.message.as_ref()).map(|m| (m, Some(b.mouse), b.window.as_ref().map(|w| (w, 0)))),
+            ),
+            None => ended.filter(|_| closed > 0).map(|(window, (end, _))| {
+                let first = interface.closes.first().copied().unwrap_or(end);
+                let since = first.saturating_sub(end).saturating_sub(1);
+                (interface.eagle_eye.get(closed - 1)).map(|m| (m, point(), Some((window, since))))
+            }),
         };
         if let Some(((window, tune), mouse, opened)) = result {
             list.push(h3_view::result::backdrop(layout.frame));
@@ -1187,13 +1202,7 @@ pub(crate) fn draw_frames(
                     .map(scene::Draw::Dialog),
             );
             // Its clip over its slot, when the video archives hold it (E17 M5 T4b2b).
-            let clip = h3_view::clip::of(*tune);
-            let held = |videos: &crate::videos::Videos| {
-                std::iter::once(clip.start)
-                    .chain(clip.looped)
-                    .all(|name| videos.has(name))
-            };
-            if interface.videos.is_some_and(held) {
+            if interface.videos.is_some_and(|v| held(v, *tune)) {
                 let since = frame.t.saturating_sub(opened);
                 list.push(h3_view::result::clip(&layout.result, *tune, since));
             }
@@ -1202,7 +1211,18 @@ pub(crate) fn draw_frames(
             }
         } else if let Some(shown) = darkened {
             list.push(h3_view::result::backdrop(layout.frame));
-            if let Some((message, point)) = shown {
+            if let Some((message, point, behind)) = shown {
+                if let Some(((window, tune), since)) = behind {
+                    let window = crate::results::released(window);
+                    list.extend(
+                        (window.dialog.draws(&window.shown, &layout.player_palette))
+                            .into_iter()
+                            .map(scene::Draw::Dialog),
+                    );
+                    if interface.videos.is_some_and(|v| held(v, *tune)) {
+                        list.push(h3_view::result::clip(&layout.result, *tune, since));
+                    }
+                }
                 list.extend(
                     message
                         .dialog

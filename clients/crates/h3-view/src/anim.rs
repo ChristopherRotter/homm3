@@ -1625,6 +1625,7 @@ impl Timeline {
         let mut turrets_now: BTreeMap<u8, TurretPose> = BTreeMap::new();
         let mut turrets_printed: BTreeMap<u8, TurretPose> = BTreeMap::new();
         let mut walls_printed: Option<Walls> = None;
+        let mut magic_printed: Option<String> = None;
         for t in times {
             for key in self.keys.iter().filter(|k| k.drawn == t) {
                 now.insert(key.stack, key.pose);
@@ -1683,9 +1684,11 @@ impl Timeline {
                 walls_printed = Some(key.walls);
                 out.push_str(&siege::walls_line(t, &key.walls));
             }
-            // Each key drawn differs from the one before it (a frame on, or the erasure).
+            // A key drawn: a frame on, the erasure, or (a loop longer than the animation, E17 M6
+            // T5c: Chain Lightning's 38 under a defend of 13 frames) its last frame again, which
+            // the harness, listing changes, does not repeat.
             if let Some(key) = self.magics.iter().rev().find(|k| k.drawn == t) {
-                let _ = match key.frame {
+                let line = match key.frame {
                     Some(frame) => {
                         let over = key
                             .over
@@ -1695,10 +1698,14 @@ impl Timeline {
                             .map(|m| format!("{}.{}", u8::from(m.side == Side::Defender), m.record))
                             .collect();
                         let records = records.join(" ");
-                        writeln!(out, "{t} magic {} f{frame} {records}", key.animation)
+                        format!("magic {} f{frame} {records}", key.animation)
                     }
-                    None => writeln!(out, "{t} magic -"),
+                    None => String::from("magic -"),
                 };
+                if magic_printed.as_ref() != Some(&line) {
+                    let _ = writeln!(out, "{t} {line}");
+                    magic_printed = Some(line);
+                }
             }
             // The harness's `end`: the battle decided (E17 M3 T8).
             if self.ended.is_some_and(|(at, _)| at == t) {
@@ -6020,14 +6027,24 @@ impl Player<'_> {
                     },
                 ));
             }
+            // It reacts once the iterations left are no more than its frames; without a striker
+            // every reaction starts at once, its first two frames at the first iteration (E17 M6
+            // T5c, `eagle-eye`: Chain Lightning's death of 7 frames beside a defend of 13, both
+            // from the loop's start; a lone reaction the same either way).
+            let lead = |r: &Reaction| {
+                if striker.is_none() {
+                    (counted + r.frames).saturating_sub(1).max(counted + 1)
+                } else {
+                    reacting
+                }
+            };
             for r in reactions {
-                if i == (reacting - 1).saturating_sub(r.frames) {
+                if i == (lead(r) - 1).saturating_sub(r.frames) {
                     self.cue(r.stack, r.sound, false);
                 }
             }
             for r in reactions {
-                // It reacts once the iterations left are no more than its frames.
-                let k = i64::from(i) - (i64::from(reacting) - 1 - i64::from(r.frames));
+                let k = i64::from(i) - (i64::from(lead(r)) - 1 - i64::from(r.frames));
                 // Without a striker a reaction at its last frame holds it while the iterations
                 // left are more than its frames (0x468EBA, 0x468FA1; E17 M4 T2c-1, `mine`: the
                 // Titans' 7 frames under the mine's 17).

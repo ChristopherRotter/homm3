@@ -190,6 +190,16 @@ fn winner_shown(opening: &Observation, outcome: &BattleOutcome) -> (Option<usize
     (winner, result::shown_side(winner, human))
 }
 
+/// The result window as it stays under Eagle Eye's boxes (E17 M6 T5c, recorded: `eagle-eye`):
+/// its buttons up again (the OK its close pressed), the rest as it showed.
+pub fn released(window: &MessageBox) -> MessageBox {
+    let mut window = window.clone();
+    for state in window.shown.states.values_mut() {
+        state.pressed = false;
+    }
+    window
+}
+
 /// Eagle Eye's message after the result window [`window`] shows (E17 M6 T5c, design §12.21;
 /// `h3_view::eagle_eye::boxes`): when the window showed the winner and the winner has a hero, the
 /// boxes of the spells its Eagle Eye picked (the outcome's `heroes[side].learned`: each spell by

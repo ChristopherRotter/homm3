@@ -188,6 +188,9 @@ pub struct Still {
     /// The result window closed and Eagle Eye's message followed (E17 M6 T5c): the screen stays
     /// darkened, with the message's box (`message`) while one is open.
     pub darkened: bool,
+    /// The result window under Eagle Eye's boxes, with its tune (E17 M6 T5c, recorded: it stays
+    /// as it showed until the battle's screen ends).
+    pub window: Option<(MessageBox, Tune)>,
     /// The mouse after the actions.
     pub mouse: [i32; 2],
     /// When the actions were made (ms after the opening: a situation's at once, 0); the battle
@@ -235,6 +238,7 @@ impl Still {
             message: None,
             result: None,
             darkened: false,
+            window: None,
             mouse,
             at: 0,
             opening: false,
@@ -450,11 +454,19 @@ pub fn still(
         *eagle_eye = after;
         Some((h3_view::message::Open::new(window), tune))
     };
-    // The next of Eagle Eye's boxes, once the result window or the box before closed (E17 M6
-    // T5c): the screen stays darkened (without a box, as before: *provisional*, the battle's
-    // screen is over).
-    let next_eagle = |still: &mut Still, eagle_eye: &mut Vec<MessageBox>| {
+    // The next of Eagle Eye's boxes, once the result window (`closed`) or the box before closed
+    // (E17 M6 T5c): the window under them; after them the screen stays darkened (without a box
+    // or the window, as before: *provisional*, the battle's screen is over).
+    let next_eagle = |still: &mut Still,
+                      eagle_eye: &mut Vec<MessageBox>,
+                      closed: Option<(h3_view::message::Open, Tune)>| {
         still.darkened |= !eagle_eye.is_empty();
+        if let Some((window, tune)) = closed {
+            still.window = Some((crate::results::released(&window.message), tune));
+        }
+        if eagle_eye.is_empty() {
+            still.window = None;
+        }
         (!eagle_eye.is_empty()).then(|| Asking {
             open: h3_view::message::Open::new(eagle_eye.remove(0)),
             asked: Asked::EagleEye,
@@ -595,8 +607,7 @@ pub fn still(
                             // The result window's OK by its key: the window closed.
                             let _ = r.key(h3_view::message::Key::Ok, &key);
                             if let h3_view::message::Outcome::Closed(_) = r.key_up(&key) {
-                                result = None;
-                                asking = next_eagle(&mut still, &mut eagle_eye);
+                                asking = next_eagle(&mut still, &mut eagle_eye, result.take());
                             }
                         }
                     }
@@ -608,7 +619,7 @@ pub fn still(
                                 let asked = a.asked;
                                 match answered(id, asked) {
                                     _ if asked == Asked::EagleEye => {
-                                        asking = next_eagle(&mut still, &mut eagle_eye);
+                                        asking = next_eagle(&mut still, &mut eagle_eye, None);
                                     }
                                     Next::Box(next) => asking = next.map(|a| *a),
                                     Next::Give(command) => {
@@ -686,8 +697,7 @@ pub fn still(
                 if let Some((r, _)) = result.as_mut() {
                     let _ = r.press(to);
                     if let h3_view::message::Outcome::Closed(_) = r.release() {
-                        result = None;
-                        asking = next_eagle(&mut still, &mut eagle_eye);
+                        asking = next_eagle(&mut still, &mut eagle_eye, result.take());
                     }
                 } else if let Some(a) = asking.as_mut() {
                     let _ = a.open.press(to);
@@ -695,7 +705,7 @@ pub fn still(
                         let asked = a.asked;
                         match answered(id, asked) {
                             _ if asked == Asked::EagleEye => {
-                                asking = next_eagle(&mut still, &mut eagle_eye);
+                                asking = next_eagle(&mut still, &mut eagle_eye, None);
                             }
                             Next::Box(next) => asking = next.map(|a| *a),
                             Next::Give(command) => {
@@ -1349,13 +1359,18 @@ pub(crate) mod tests {
         let still = played(&["key:r", "click:20,20", "click:20,20"]);
         assert!(still.result.is_none() && !still.dialog());
         assert_eq!(still.mouse, crate::pointer::PARK);
-        // The window's OK opens Eagle Eye's first box over the screen darkened, its OK (Enter or
-        // a click) the next; after the last the screen stays darkened.
+        // The window's OK opens Eagle Eye's first box over the screen darkened and the window as
+        // it showed, its OK up (recorded, `eagle-eye`), its OK (Enter or a click) the next; after
+        // the last the screen stays darkened, without the window.
         eagle.set(2);
         let still = played(&["key:r", "key:Return", "key:Return"]);
         assert!(still.result.is_none() && still.message.is_some() && still.darkened);
+        let (window, tune) = still.window.clone().unwrap();
+        assert_eq!(tune, Tune::Retreat);
+        assert!(window.shown.states.values().all(|s| !s.pressed));
         let still = played(&["key:r", "key:Return", "key:Return", "click:20,20"]);
         assert!(still.message.is_some() && still.darkened && still.dialog());
+        assert!(still.window.is_some());
         let still = played(&[
             "key:r",
             "click:20,20",
@@ -1364,6 +1379,7 @@ pub(crate) mod tests {
             "key:Return",
         ]);
         assert!(still.message.is_none() && still.darkened && still.dialog());
+        assert!(still.window.is_none());
         // Escape is not the box's: it stays.
         let still = played(&["key:r", "key:Return", "key:Return", "key:Escape"]);
         assert!(still.message.is_some());

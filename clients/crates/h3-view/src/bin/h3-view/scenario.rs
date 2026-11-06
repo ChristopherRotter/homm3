@@ -8,9 +8,11 @@ use std::fs;
 use std::path::Path;
 
 use h3_battle::{BattleSetup, BattleSide, BattleState, NoopSink, Viewer};
-use h3_content::{CompiledHeroEffect, HeroEffect};
+use h3_content::{CompiledHeroEffect, HeroEffect, SpellCategory, SpellId};
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{BattleEffect, BattleHero, EffectSource, FortLevel, MachineControl, Siege};
+use h3_contracts::{
+    BattleEffect, BattleHero, EagleEye, EffectSource, FortLevel, MachineControl, Siege,
+};
 use h3_kernel::{Rng, StreamId};
 use h3_pack_battle::ScenarioDef;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
@@ -179,6 +181,10 @@ pub struct SideHero {
     pub primary: [u8; 4],
     pub book: Option<Book>,
     pub skills: Vec<(u8, u8)>,
+    /// The artifacts behind its Eagle Eye's chance (E17 M6 T5c, [`eagle_eye_parts`]): each its
+    /// worn position (a misc one, 9 to 12, `ArtSlots.txt`'s order) and its number, the original's
+    /// when the packs come in their order.
+    pub worn: Vec<(usize, u16)>,
 }
 
 /// A hero's spell book for the original's map (E17 M3 T7a-2a): the book's artifact number
@@ -401,6 +407,10 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
             effect_skills(&ruleset, &h.effects).map_err(|e| format!("{}: {e}", t.name))?;
         skills.extend(machine_skills(&ruleset, &h.war_machines)?);
         skills.extend(tactics_skill(&ruleset, h.tactics)?);
+        let known = h.magic.spell_book.as_deref().unwrap_or_default();
+        let (eagle, worn) = eagle_eye_parts(&ruleset, h.magic.eagle_eye.as_ref(), known)
+            .map_err(|e| format!("{}: {e}", t.name))?;
+        skills.extend(eagle);
         skills.sort_unstable();
         Ok(Some(SideHero {
             hero_type: h.hero_type.index(),
@@ -409,6 +419,7 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
             primary: [h.attack, h.defense, h.power, h.knowledge],
             book,
             skills,
+            worn,
         }))
     };
     let heroes = [hero(0)?, hero(1)?];
@@ -550,6 +561,90 @@ fn tactics_skill(ruleset: &BattleRuleset, level: u8) -> Result<Option<(u8, u8)>,
         return Ok(None);
     }
     Ok(Some((skill_number(ruleset, "tactics")?, level)))
+}
+
+/// The map's worn positions of the misc artifacts (`ArtSlots.txt`'s order: misc 1 to 4; the fifth,
+/// SoD's 18, left out).
+const MISC_POSITIONS: [usize; 4] = [9, 10, 11, 12];
+
+/// The skill and the artifacts behind a hero's Eagle Eye on the original's map (E17 M6 T5c,
+/// *provisional*; HER-SPL-004, `installation.md` §7.24): the skill at the lowest level whose
+/// `eagle_eye` effect's `max_level` reaches the highest level among the scenario's spells, and
+/// the fewest of the first four artifacts with an `eagle_eye` effect whose basis points make up
+/// the rest of the chance (of as many, the lowest set as a bit mask in the ruleset's order), each
+/// on the next misc position. Every spell must be a combat spell, not in the hero's book
+/// (`known`), as the Heroes context derives them; the chance's own single-precision value is the
+/// battle's, not read here. None without Eagle Eye. The skill's number and level; the positions
+/// and the artifacts' numbers.
+pub fn eagle_eye_parts(
+    ruleset: &BattleRuleset,
+    eagle: Option<&EagleEye>,
+    known: &[SpellId],
+) -> Result<(Option<(u8, u8)>, Vec<(usize, u16)>), String> {
+    let Some(eagle) = eagle else {
+        return Ok((None, Vec::new()));
+    };
+    let core = &**ruleset;
+    let effect = |effects: &[CompiledHeroEffect]| {
+        effects.iter().find_map(|e| match *e {
+            HeroEffect::EagleEye { bp, max_level } => Some((u32::from(bp), max_level)),
+            _ => None,
+        })
+    };
+    let mut highest = 0;
+    for &spell in &eagle.spells {
+        let level = core
+            .spell(spell)
+            .filter(|s| s.category == SpellCategory::Combat && !known.contains(&spell))
+            .map(|s| s.level);
+        let Some(level) = level else {
+            return Err(format!(
+                "Eagle Eye: spell {} is no combat spell outside the book",
+                spell.index()
+            ));
+        };
+        highest = highest.max(level);
+    }
+    let number = skill_number(ruleset, "eagle_eye")?;
+    let skill = &core.skills()[usize::from(number)];
+    let (level, base) = (1..=3)
+        .find_map(|l| {
+            effect(skill.effects(l))
+                .filter(|&(_, max)| max >= highest)
+                .map(|(bp, _)| (l, bp))
+        })
+        .ok_or_else(|| format!("Eagle Eye: no level reaches spell level {highest}"))?;
+    let artifacts: Vec<(u16, u32)> = core
+        .artifacts()
+        .iter()
+        .enumerate()
+        .filter_map(|(i, a)| effect(&a.effects).map(|(bp, _)| (i, bp)))
+        .map(|(i, bp)| (u16::try_from(i).unwrap_or(u16::MAX), bp))
+        .take(MISC_POSITIONS.len())
+        .collect();
+    let chosen = |set: u32| {
+        artifacts
+            .iter()
+            .enumerate()
+            .filter(move |&(i, _)| set & 1 << i != 0)
+            .map(|(_, &a)| a)
+    };
+    let rest = eagle.chance.bp.checked_sub(base);
+    let set = (0..1_u32 << artifacts.len())
+        .filter(|&set| Some(chosen(set).map(|(_, bp)| bp).sum()) == rest)
+        .min_by_key(|&set| set.count_ones())
+        .ok_or_else(|| {
+            format!(
+                "Eagle Eye: {} basis points at level {level} ({base}): no artifacts make up the rest",
+                eagle.chance.bp
+            )
+        })?;
+    let worn = MISC_POSITIONS
+        .into_iter()
+        .zip(chosen(set))
+        .map(|(position, (artifact, _))| (position, artifact))
+        .collect();
+    Ok((Some((number, level)), worn))
 }
 
 /// The number of the skill whose key ends in `name`: the ruleset's, which is the original's
@@ -1067,6 +1162,60 @@ mod tests {
         let grass = repo().join("clients/situations/grass.toml");
         let sides = super::sides(&grass, &repo().join("packs")).unwrap();
         assert_eq!(sides.machines, [Vec::new(), Vec::new()]);
+    }
+
+    #[test]
+    fn eagle_eye_becomes_its_skill_and_artifacts() {
+        // E17 M6 T5c: seq-eagle-eye.toml's 90 % with Chain Lightning (level 4): Expert Eagle Eye
+        // (skill 11, level 3) and the Bird of Perception, the Stoic Watchman and the Emblem of
+        // Cognizance (63, 64, 65) on the misc positions 9 to 11; Crag Hack has none.
+        let scenario = repo().join("clients/situations/seq-eagle-eye.toml");
+        let sides = sides(&scenario, &repo().join("packs")).unwrap();
+        let [Some(orrin), Some(crag)] = &sides.heroes else {
+            panic!("two heroes");
+        };
+        assert_eq!(orrin.skills, vec![(11, 3)]);
+        assert_eq!(orrin.worn, vec![(9, 63), (10, 64), (11, 65)]);
+        assert_eq!(
+            (crag.skills.clone(), crag.worn.clone()),
+            (Vec::new(), Vec::new())
+        );
+        let ruleset = compiled(&definition(&scenario).unwrap(), &repo().join("packs")).unwrap();
+        let spell = |key: &str| ruleset.spell_by_key(key).unwrap();
+        let eagle = |bp, keys: &[&str]| EagleEye {
+            chance: h3_contracts::Rate::bp(bp),
+            spells: keys.iter().map(|k| spell(k)).collect(),
+        };
+        let parts = |e: &EagleEye, known: &[SpellId]| eagle_eye_parts(&ruleset, Some(e), known);
+        assert_eq!(eagle_eye_parts(&ruleset, None, &[]), Ok((None, Vec::new())));
+        // The level from the highest spell's, the rest of the chance from the fewest artifacts:
+        // the Emblem alone for 15 %, not the Bird and the Watchman.
+        let cases: [(u32, &str, u8, &[(usize, u16)]); 4] = [
+            (6000, "base:chain_lightning", 3, &[]),
+            (5500, "base:slow", 1, &[(9, 65)]),
+            (6500, "base:force_field", 2, &[(9, 65)]),
+            (7000, "base:slow", 1, &[(9, 63), (10, 64), (11, 65)]),
+        ];
+        for (bp, key, level, worn) in cases {
+            assert_eq!(
+                parts(&eagle(bp, &[key]), &[]),
+                Ok((Some((11, level)), worn.to_vec())),
+                "{bp} {key}"
+            );
+        }
+        // Refused: a spell of the book, an adventure spell, a spell the ruleset lacks, one above
+        // level 4, a chance below the level's or one no artifacts make up.
+        let slow = spell("base:slow");
+        assert!(parts(&eagle(6000, &["base:slow"]), &[slow]).is_err());
+        assert!(parts(&eagle(6000, &["base:fly"]), &[]).is_err());
+        let unknown = EagleEye {
+            chance: h3_contracts::Rate::bp(6000),
+            spells: vec![SpellId::from_index(9999).unwrap()],
+        };
+        assert!(parts(&unknown, &[]).unwrap_err().contains("9999"));
+        assert!(parts(&eagle(6000, &["base:sacrifice"]), &[]).is_err());
+        assert!(parts(&eagle(3000, &["base:slow"]), &[]).is_err());
+        assert!(parts(&eagle(4100, &["base:slow"]), &[]).is_err());
     }
 
     #[test]
