@@ -4,6 +4,31 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-06, E08 T98b2: its entry as it stood before it was done whole, decision 271; the record in `E08-log.md`, T99 queued.)* **E08 T98b2 — the game side of the design note, ADR-0017's draft, the cut and the checkpoint**
+(decisions 261, 270; as T88b2)
+
+- **Scope:** `E08-design.md` part C (§12 to §18, named by T98b1): the battle and the meeting at an
+  exit (GAM-BAT-004, GAM-MET-001 amended: the defender on the exit, where it is fought, the
+  radius-1 reveal's place); the jump held as the visit's rest (GAM-DEC-007) and the visitor's
+  stream passed to `AdventureState::apply` (ADR-0017 point 4; no draw for one candidate, survey
+  §4.1); `Revisit`'s name, validation and the env's action (decision 268, the AI lane's encoding,
+  `cross-lane`), with its map-side lines added to `adr-drafts/0016-increment-11.md`; the env,
+  replays, fixtures, properties and benchmarks (the reach's and the passage's cost planned against
+  the gated workloads, `homm3-bench-regression`; a teleporters' map and workload; the gates'
+  pairing cost); versions, rule ids and the quirk entries (design §11's proposed ids); batch E11's
+  rows (survey §12, plus a row for design §7's entrance guards) with the spec's and harness's
+  needs; the building rounds cut, batch E11's spec and recipe first (decision 269); shared and
+  `cross-lane` work (the effect kind `whirlpool_protection`, design §2); the exit criteria and
+  risks. The draft `adr-drafts/0017-increment-11.md`. **The checkpoint** (a new `ADV-Q46`): the
+  user accepts the note, both drafts and the agent's calls (design §1, §2, §5's A-42, §7's empty
+  boat and entrance guards, §10's events) and the cut before anything is built (decision 261).
+- **Inputs:** `docs/epics/E08-design.md` parts A and B; `adr-drafts/0016-increment-11.md`; the
+  survey `docs/rules/surveys/E08-teleporters.md` (§4.2 to §4.5, §9 to §13); decisions 260, 261,
+  264–270; increment 10's part C and ADR-0017 draft as the model (`E08-log.md`, "Increment 10's
+  design note at its closure", §12 to §18).
+- **Depends on:** T98b1 (done). **Status:** ready; its cut confirmed with the user at its start.
+  Needs no original data (the survey holds the readings).
+
 *(Moved 2026-11-06, E08 T98b1: the entry as it stood before T98b was cut in two by side, decision 270; T98b1's record in `E08-log.md`, T98b2 queued.)* **E08 T98b — the ADR amendment drafts, the design note and the cut** (decision 261; as T88b)
 
 - **Scope:** the drafts in `docs/lanes/adventure/adr-drafts/`, `E08-design.md` written for increment
