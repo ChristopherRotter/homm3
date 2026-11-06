@@ -47,8 +47,9 @@ impl CanonicalHash for Weekly {
 }
 
 /// Whether `a` and `b` are of one team: the player alone until E10's teams (increment 9's design
-/// note §19, "Teams"; an allied map plays its allies as enemies, as before).
-pub(crate) fn allied(a: PlayerId, b: PlayerId) -> bool {
+/// note §19, "Teams"; an allied map plays its allies as enemies, as before). Public since E09
+/// T8c1: the game's town views read the owner's team by it.
+pub fn allied(a: PlayerId, b: PlayerId) -> bool {
     a == b
 }
 

@@ -95,7 +95,7 @@ pub use split::{TileRand, split, split_with_second};
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
     AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, HirePurchase, MapObject, Monster, Resolved,
-    StaticMap, StaticTile, Visits, Weekly, hire_price,
+    StaticMap, StaticTile, Visits, Weekly, allied, hire_price,
 };
 pub use town::TownReveal;
 

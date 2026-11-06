@@ -1379,3 +1379,52 @@ hero's slots plus a new garrison event). The code, tests and docs by the agent.
   check-rules, check-stubs, coverage 100 %, determinism, `bench-check`, `original-data`) but
   `check-lane` (by design on a `cross-lane` branch); `check-lane --cross-lane`; `cargo check
   --workspace --all-targets`; `h3-cli`'s tests.
+
+### T8c1 — the towns' income and the observation's towns (2026-11-05)
+
+One session, the user present; branch `town/e09-t8c1` (`cross-lane`: `h3-adventure`'s
+`lib.rs`, `observe.rs`, `state.rs`, `state/economy.rs` and the observe tests; `h3-game`'s
+`lib.rs`, `observe.rs`, `state/day.rs`; `h3-map`'s `tests/view.rs`; `game.toml`). Starting
+point: `master` at c584f7e (#746 merged; CI green there; the setup's full baseline passed in the
+sandbox; the original data staged). **At its start** (the user, asked): T8c cut in two at the
+Rogue: T8c1 the income and the observation's towns, T8c2 the Rogue's Visions with its part
+parameter, `docs/06-security.md` and the inbox notes. The code, tests and docs by the agent.
+
+- **The income:** `h3_game`'s `town::add_income` (`src/town/income.rs`) adds each town the
+  player owns (the adventure's owners by `TownId`) its `h3_towns::daily_income` into
+  `pay_income`'s vector after the heroes', so the towns join the mines and the heroes in one
+  `ResourceGained` per resource, from day 2; a neutral town pays nobody, a town captured today
+  its new owner from the next day (and its old owner no more).
+- **The views:** `ObjectView::town: Option<TownId>` (`StaticMap::town_id` of every seen object;
+  an object added in play is never a town). `GameObservation::towns` from `town::view::town_views`
+  over the adventure observation's objects (so in `TownId` order): a town a tile of which the
+  viewer has explored; one only on the fringe, which `faithful` shows as an object, keeps its
+  object's `town` but gets no view (the popup reads an explored tile only, *agent's call*).
+  `TownView` (anchor, owner, faction, name, fort, capitol, `GarrisonView`, `owner_facts`);
+  `GarrisonView { level, stacks, army }`: the stacks packed in slot order (the creature from
+  level 1, the word from 2, the count at 3), `army` the garrison by slot to the owner's team only
+  (as a mine's `GuardsView`; T8b2b's garrison `StackChanged` change it); `TownOwnerView { hall,
+  income }`. The level: `OWNER_LEVEL` for the owner's team (`h3_adventure::allied`, made public),
+  else the viewer's own towns with `has_tavern`, at most `TAVERN_LEVELS`, counted once an
+  observation. `project` was §12's already (T8a2, T8b1).
+- **Rules, stubs:** TWN-VEW-001 and -003 new; TWN-VEW-002 (packed stacks, the view), TWN-INC-001
+  and -002 (where they are paid) amended; GAM-RES-003's and -004's "Not here" lines; `TWN-STUB-9`
+  registered (a Rogue's Visions, T8c2).
+- **Tests:** `h3-game`'s `town/tests/income.rs` (the hall, the Grail and the silo from day 2
+  and every day; several Capitols at the start; a town beside a mine in one gain; a neutral town
+  pays nobody, a captured one its new owner the next day; blue's town captured: its income and
+  its view change hands) and `town/tests/view.rs` (each town's public facts and the owner's,
+  linked from its objects; the garrison's levels by the viewer's own taverns, at most two, the
+  stacks packed; a neutral town nobody's team; a town unexplored, and one only on the fringe of
+  a profile with ADV-QUIRK-1, not shown).
+- **The bench:** `day-start-xl-144` against `master` built in this sandbox: 1 295 034 → 1 295 278
+  Ir (+0.02 %, the towns' loop over a map without towns); the scoped verify's `bench-check`
+  inside the gate on every workload (its +0.64 % on `day-start-xl-144` is `master`'s own in this
+  sandbox, the fork workloads' +1.38 % as T8b2b's). No version moved: the state is unchanged
+  and no fixture map has a town, so no replay moved.
+- **The review** (independent, read only): no behaviour bug or leak; its test gaps fixed (the
+  fringe guard untested, a town beside a mine, a capture from another player with the view's
+  change of hands), its docs (`ObjectView::town`'s fringe case, §12's "by slot" now packed) and
+  nits (the words' level its own constant); its note that a seen town's `TownId` counts the
+  towns before it (ADR-0028 point 3) goes to T8c2's security section. The first verify's
+  coverage found four regions never run (a lookup's `?` each, now one; `add_income`'s index).

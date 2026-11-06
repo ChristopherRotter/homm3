@@ -8,7 +8,7 @@ id       = "TWN-INC-001"
 title    = "A town's day's gold: its hall and the Grail"
 context  = "town"
 status   = "implemented"
-summary  = "A town's hall level is its highest standing building of role `hall` (1 the Village Hall to 4 the Capitol); a town without a standing hall counts as level 1 (the original pays the Village Hall's gold without testing for it). Its day's gold is the part's `hall_gold` of that level (the base pack's 500, 1 000, 2 000, 4 000), plus `grail_gold` (5 000) when a building of role `grail` was ever built; the faction plays no other part (at most 9 000 in the original packs), gold being the part's `gold` resource. Several Capitols at the start each pay 4 000 (the start never applies TWN-CAP-002). Paid at each day's start from day 2 to the town's owner only (a neutral town pays nobody; a town captured during a day pays its new owner the next day): the day's advance, E09 T8c (design §16). E09 T6b (design §6): `h3_towns::hall_level`, `h3_towns::daily_income`'s gold."
+summary  = "A town's hall level is its highest standing building of role `hall` (1 the Village Hall to 4 the Capitol); a town without a standing hall counts as level 1 (the original pays the Village Hall's gold without testing for it). Its day's gold is the part's `hall_gold` of that level (the base pack's 500, 1 000, 2 000, 4 000), plus `grail_gold` (5 000) when a building of role `grail` was ever built; the faction plays no other part (at most 9 000 in the original packs), gold being the part's `gold` resource. Several Capitols at the start each pay 4 000 (the start never applies TWN-CAP-002). Paid at each day's start from day 2 to the town's owner only (a neutral town pays nobody; a town captured during a day pays its new owner the next day), beside its mines and heroes in one `ResourceGained` per resource (GAM-RES-003). E09 T6b (design §6): `h3_towns::hall_level`, `h3_towns::daily_income`'s gold; E09 T8c1 (design §16): the day's advance, `GameState::pay_income` with the game's `town::add_income`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -35,7 +35,7 @@ id       = "TWN-INC-002"
 title    = "The Resource Silo's day's resources"
 context  = "town"
 status   = "implemented"
-summary  = "A town with a standing building of role `silo` (the Resource Silo) gets its faction's record's `silo` resources each day beside its gold (TWN-INC-001): the base pack's 1 wood and 1 ore for the Castle, the Necropolis, the Stronghold and the Fortress, 1 crystal for the Rampart, 1 gems for the Tower, 1 mercury for the Inferno and Conflux, 1 sulfur for the Dungeon; no faction's silo pays gold in the original, a part's that does is summed with the hall's. The day's income is each resource once in the core's resource order, none 0, the sums saturating; paid as TWN-INC-001's gold (E09 T8c, design §16). E09 T6b (design §6): `h3_towns::daily_income`."
+summary  = "A town with a standing building of role `silo` (the Resource Silo) gets its faction's record's `silo` resources each day beside its gold (TWN-INC-001): the base pack's 1 wood and 1 ore for the Castle, the Necropolis, the Stronghold and the Fortress, 1 crystal for the Rampart, 1 gems for the Tower, 1 mercury for the Inferno and Conflux, 1 sulfur for the Dungeon; no faction's silo pays gold in the original, a part's that does is summed with the hall's. The day's income is each resource once in the core's resource order, none 0, the sums saturating; paid as TWN-INC-001's gold (E09 T8c1, design §16). E09 T6b (design §6): `h3_towns::daily_income`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -308,11 +308,38 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "TWN-VEW-001"
+title    = "What every viewer sees of a town"
+context  = "town"
+status   = "implemented"
+summary  = "Every viewer that has explored a tile of a town (its blocked, visitable or drawn tiles) sees it, named by its `TownId` (ADR-0028 point 3; its object's `ObjectView::town` on the adventure map): its owner (its flag; none for a neutral town), its faction (its picture and hint), its name as the map gives it (the hint; an unnamed town's name is the client's), its fort level (the right-click popup's: none, Fort, Citadel or Castle, a finer fact than the picture's) and whether it has a Capitol (its picture); whether it is defended only as the step and the legal moves tell it (the attack cursor). Never its other buildings, the ever-built set, the defender's bonuses or the Escape Tunnel, nor a draw's values. A town only on the viewer's fringe, which the `faithful` profile shows as an object (ADV-QUIRK-1), gets no view: the popup reads an explored tile only (*agent's call*). Its garrison by the viewer's level: TWN-VEW-002, -003. E09 T8c1 (design §12, §17): `h3_game::TownView`, `GameObservation::towns` in `TownId` order."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a; survey E09-towns.md sections 12.1 to 12.3): object_template_redraw (0x4C9990) draws the faction's picture (the Capitol's, else the fort's, else the bare one) and the flag in the owner's colour; map_hint (0x40B150) case 98 gives the name and faction to every viewer; the right-click on an explored tile (tile_click_path 0x40A5D0, 0x40A802) opens town_popup (0x4167A0), whose town_quick_view_create (0x530120) shows the name and the fort level at every level; an unexplored tile's right-click reads object_popup_text (0x4137C0) instead"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 12.4: InfoAboutTown::initFromTown gives every viewer the name, faction, fort level and built set (the picture)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/CGameInfoCallback.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Halls (survey E09-towns.md section 12.4): the fort level shows in the right-click window for all, the hall level for allies only; a Capitol's town looks fortified"
+  url        = "https://heroes.thelazy.net/index.php/Halls"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
 id       = "TWN-VEW-002"
 title    = "The garrison's levels a viewer sees"
 context  = "town"
 status   = "implemented"
-summary  = "Another team's viewer sees a town's garrison by its level, the number of the viewer's towns with a standing building of role `tavern` (the Tavern, or Castle's Brotherhood of the Sword that supersedes it), at most 2: 0 nothing (not even whether it is empty), 1 each stack's creature by slot, 2 also each stack's size word (E08's monster words); the counts are the owner's team's and Visions' (TWN-VEW-003). E09 T6b (design §6): what a town counts, `h3_towns::has_tavern`; the level and the views are E09 T8c's (design §12)."
+summary  = "Another team's viewer sees a town's garrison by its level, the number of the viewer's own towns with a standing building of role `tavern` (the Tavern, or Castle's Brotherhood of the Sword that supersedes it), at most 2: 0 nothing (not even whether it is empty), 1 each stack's creature, packed in slot order (how many stacks and of which creatures, never their slots), 2 also each stack's size word (E08's monster words, `MonsterParams::count_word`); the counts are the owner's team's and Visions' (TWN-VEW-003). The garrison is the town's own (a garrison hero's army comes with increment 3); the visitor is seen as a hero. A neutral town is nobody's team: every viewer sees it by its taverns. E09 T6b (design §6): what a town counts, `h3_towns::has_tavern`; E09 T8c1 (design §12, §17): the level and the view, `h3_game::GarrisonView`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -331,6 +358,33 @@ numeric  = "integer"
   kind       = "wiki"
   ref        = "Heroes 3 wiki, Tavern (survey E09-towns.md section 12.4): no Tavern, an opponent's town looks empty; one, the stacks without numbers; two or more, the stacks and their approximate numbers"
   url        = "https://heroes.thelazy.net/index.php/Tavern"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-VEW-003"
+title    = "The owner's team's view of a town"
+context  = "town"
+status   = "implemented"
+summary  = "A viewer of a town's owner's team (the player alone until E10's teams; a neutral town is nobody's) sees it at the popup's top level, 3: its garrison's stacks with their counts (beside their words), its garrison by slot (the town screen's, which the garrison's `StackChanged` events change, E09 T8b2b), its hall level (1 the Village Hall to 4 the Capitol, TWN-INC-001) and its day's income, its gold and its silo's resources (TWN-INC-001, -002). The garrison hero's mark comes with the garrison hero (increment 3). Not yet: the same top level for a viewer one of whose heroes has a Rogue in its army with the town within its Visions radius (TWN-STUB-9, E09 T8c2). E09 T8c1 (design §12, §17): `h3_game::TownOwnerView`, `GarrisonView::army`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a; survey E09-towns.md section 12.3): town_popup (0x4167A0) sets the level 3 at 0x416E63 when the town's owner and the viewer are of one team (game +0x1F879) or Visions at level 3 is in reach; at level 3 town_quick_view_create (0x530120) shows the hall (itmtls.def), the garrison hero's mark, the silo's resources and the gold income (town_gold_income with the silo flag 1), quick_view_army (0x530990) each stack's count"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 12.4: InfoAboutTown's details (the counts, the hall, the gold income, the silo, the garrison hero) for an own or allied town (hasAccess) or the selected hero's Visions in reach"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/CGameInfoCallback.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Halls and Visions (survey E09-towns.md section 12.4): the hall level in the right-click window for allies only; expert Visions shows an enemy town's statistics and garrison"
+  url        = "https://heroes.thelazy.net/index.php/Visions"
   retrieved  = "2026-11-02"
   confidence = "medium"
 
