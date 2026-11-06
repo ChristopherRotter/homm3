@@ -109,6 +109,15 @@ Towns as the original plays them, on the adventure map of E08: the town context 
     test; `view.rs` keeps plans without towns); **T9b2** the view properties with towns
     (`view.rs`: the hygiene property's changes and the told views). Not chosen: T9b whole; three
     parts (the layout and invariants, the steps and the cover test, the views).
+34. **T9b2 in two, the told views first** (the user, 2026-11-06, at its start): **T9b2a**
+    `views_move_as_the_events_say` and the boat test with the plans' towns (`check_told`'s town
+    events, a check of the town views against the state); **T9b2b** the hygiene property with
+    towns (`vary` learns them; `townless` gone). The agent's call told with the question: the
+    hygiene property varies the seed, and a seen random town's faction or a neutral garrison is a
+    public draw, so its plans' towns draw nothing public (as E08 T96b1's random dwellings of one
+    outcome), and `vary` removes a town only after every seen one (a seen town's `TownId` counts
+    the towns before it, `docs/06-security.md`). Not chosen: T9b2 whole; the hygiene property
+    first.
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, the cut confirmed at each checkpoint)
 

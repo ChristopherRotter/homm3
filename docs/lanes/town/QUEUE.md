@@ -18,19 +18,24 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 lane's fixtures, replays, plans and benches, `h3-sim`'s env test; round 9, design §18), cut in
 three at its start (the user, 2026-11-06; decision 32):
 
-- **T9b2 — the view properties with towns** (T9b cut in two at its start, the user, 2026-11-06;
-  decision 33; T9b1 done, `E09-log.md`). `crates/h3-map/src/tests/view.rs` meets the plans' towns
-  (`play.rs`' `TownPlan`, laid out after every other object by `towns_laid_out`, each with a
-  template of its own): drop `view.rs`' `townless` (the two properties) and the boat test's
-  clearing; `vary` learns towns (a town's template is no `KINDS` entry: the town lane's
-  `TRAPS.md`; what it may change where the viewer never sees a town: its owner, garrison and
-  record, a town removed or added, by TWN-VEW-001 to -003's levels, the viewer's taverns and a
-  Rogue's Visions, `docs/06-security.md`'s "Towns"); `check_told` tells `TownCaptured`,
-  `TownChanged`, a siege's `BattleStarted` and the merge's `StackChanged`s of `ArmyRef::Garrison`
-  to whom design §11 and §12 say (it refuses them today: "a plan without towns told …"); a check
-  of `GameObservation::towns` (`TownView`) and `ObjectView::town` against the state, as
-  `check_hire_sources` for the dwellings. **Depends on:** T9b1. **Status:** next; its cut
-  confirmed at its start.
+- **T9b2a — the told views with towns** (T9b2 cut in two at its start, the user, 2026-11-06;
+  decision 34). `crates/h3-map/src/tests/view.rs`: `views_move_as_the_events_say` and
+  `boat_visits_are_told_as_they_happen` play the plans' towns (`play.rs`' `TownPlan`; drop the
+  boat test's clearing); `check_told` follows `TownCaptured`, `TownChanged` and the merge's
+  `StackChanged`s of `ArmyRef::Garrison` as design §11 and §12 tell them (it refuses them today:
+  "a plan without towns told …"), and a town's view as they say; a check of
+  `GameObservation::towns` (`TownView`) and `ObjectView::town` against the state, as
+  `check_hire_sources` for the dwellings. **Depends on:** T9b1. **Status:** in progress
+  (2026-11-06, `town/e09-t9b2a`).
+- **T9b2b — the hygiene property with towns** (decision 34). `a_viewer_learns_nothing_it_cannot_see`
+  meets the plans' towns, `townless` gone: its plans' towns draw nothing public (a random town
+  made fixed, a neutral town's editor garrison given), since it varies the seed; `vary` learns
+  towns (a town's template is no `KINDS` entry: the town lane's `TRAPS.md`; its tiles kept from
+  heroes moved and objects added, its entrance land; where the viewer never sees one: its owner,
+  garrison and buildings, a town removed only after every seen one, as a seen town's `TownId`
+  counts the towns before it, a town added after every other; a town the viewer owns, or whose
+  entrance a hero stands on, keeps its owner); T9b2a's town check in both games; `vary`'s unit
+  test with a town. **Depends on:** T9b2a.
 - **T9c — the benchmarks, the env, the census.** Benchmarks (`benches/adventure/`): `fork-xl-144`,
   `day-start-towns-36` (new), the reach on the town map, a siege's setup. The env (`h3-sim`, the
   AI lane's, consent as decision 7): a test playing the town map to its end of days, the bot
