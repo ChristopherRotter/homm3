@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the step that opens a siege in each of 16 games on the town map (E09 T9c, the town epic's design note §18: e09-towns-36.h3m, 36 x 36, eight towns; each player's heroes seek the towns of other owners, each sought move first tried on a fork dropped before the count; on day 1 a hero besieges a town in every game, 11 a garrison alone (TWN-SIE-001), 5 the Tower's visitor with the garrison merged into his army (TWN-SIE-002)): about 189 000 Ir a siege, the game's step only (the move action is decoded, its reachable-tiles query, before the count): about 80 % the battle's start with the town's facts (TWN-SIE-003: the stacks placed, h3_battle::state::closest_free alone 46 %; the battle heroes 16 %), 20 % the walk and its reveal; counts only inside h3_cli::adventure::bench::siege_step"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e09-towns-36.h3m",
+    "--workload",
+    "siege",
+    "--games",
+    "16",
+    "--days",
+    "7",
+    "--seed",
+    "1",
+]
+collect = "*siege_step*"
+instructions = 3026337
+threshold_percent = 2

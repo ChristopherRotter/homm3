@@ -5,7 +5,8 @@
 //! the nearest tile, also for the underground heroes: the duel's own two are farther), the open decisions ([`decisions`]);
 //! with blue's hero two steps from red's, the battles (E08 T19b1, [`battles`]); with a monster
 //! beside red's hero, its battle and the neutral seat (E08 T20b3a, [`monsters`]); with a
-//! Shipyard of each player's beside its hero, `BuildBoat` (E08 T85b2b, [`shipyards`]).
+//! Shipyard of each player's beside its hero, `BuildBoat` (E08 T85b2b, [`shipyards`]). On the
+//! committed town map `fixtures/maps/e09-towns-36.h3m`, the towns (E09 T9c, [`towns`]).
 
 use std::sync::{Arc, LazyLock};
 
@@ -30,6 +31,7 @@ mod decisions;
 mod hiring;
 mod monsters;
 mod shipyards;
+mod towns;
 
 const DUEL: &[u8] = include_bytes!("../../../../fixtures/maps/e08-duel-36.h3m");
 
@@ -511,8 +513,9 @@ proptest! {
     /// hero, or (E08 T19b1) with blue's hero two steps from red's ([`battles::battle_setup`]), or
     /// (E08 T20b3a) with a monster beside red's hero ([`monsters::monster_setup`], aimed at by
     /// `Chart`), or (E08 T85b2b) with a Shipyard of each player's beside its hero
-    /// ([`shipyards::shipyard_setup`], aimed at by `Chart`), at any difficulty (4, impossible,
-    /// cannot pay an offer): the masks of both phases
+    /// ([`shipyards::shipyard_setup`], aimed at by `Chart`), or (E09 T9c) on the town map
+    /// ([`towns::town_setup`], `Chart` aimed at the towns' entrances: captures and sieges), at any
+    /// difficulty (4, impossible, cannot pay an offer): the masks of both phases
     /// agree with the game for every seat, the neutral one included; a legal action is accepted
     /// and does what `apply` does with its command under the seat's actor; an action outside the
     /// masks is refused and leaves the environment as it was.
@@ -520,12 +523,13 @@ proptest! {
     fn steps_agree_with_the_masks_and_the_game(
         seed in any::<u64>(),
         strict in any::<bool>(),
-        kind in 0u8..4,
+        kind in 0u8..5,
         difficulty in 0u8..5,
         picks in proptest::collection::vec(pick(), 1..60),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let (setup, charts) = match kind {
+            4 => (towns::town_setup(rules, difficulty), Vec::new()),
             0 => {
                 let setup = chart_setup(rules, difficulty);
                 let charts = charts(&setup);
@@ -543,6 +547,7 @@ proptest! {
             }
         };
         let mut env = AdventureEnv::new(rules.clone(), setup, seed, 0).unwrap();
+        let charts = if kind == 4 { towns::entrances(env.state()) } else { charts };
         let players = u8::try_from(env.state().players()).unwrap();
         let seats: Vec<Seat> = (0..players)
             .map(|p| Seat::Player(PlayerId::new(p)))

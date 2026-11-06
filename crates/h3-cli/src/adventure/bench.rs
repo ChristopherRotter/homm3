@@ -28,6 +28,11 @@
 //!   advance (the week's step on day 8, 15, …; the month's on day 29, 57, …, with a creature
 //!   month's walk over the map's free land tiles), the income, the spell points
 //!   (`day-start-xl-144`, `month-start-xl-144` on the economy XL map).
+//! * `siege` (E09 T9c, the town epic's design note §18): the acting player's heroes seek the
+//!   towns of other owners ([`seek_town`]) until a step opens a battle on a town's entrance, a
+//!   siege, whose game step runs inside [`siege_step`] (the action decoded before it): the walk,
+//!   the town's facts in the battle's setup (TWN-SIE-003), the garrison's merge into a defending
+//!   visitor's army (TWN-SIE-002), the battle's start (`siege-towns-36` on the town map).
 //!
 //! Two variants measure what an agent adds (wall time only, for the docs): `--observe 1`, the
 //! acting player's observation before each step; `--masks 1`, the entry mask and the chosen
@@ -42,7 +47,8 @@ use h3_adventure::Pos;
 use h3_battle::LegalCommands;
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
-    Actor, ArmyRef, ArmySlot, MonthKind, legal_management, legal_moves, movement, split_range,
+    Actor, ArmyRef, ArmySlot, GameCommand, MonthKind, NoopSink, legal_management, legal_moves,
+    movement, split_range,
 };
 use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
@@ -66,6 +72,8 @@ pub enum Workload {
     Manage,
     /// The step that starts the day after the day limit (E08 T86b2).
     DayStart,
+    /// The step that opens a siege (E09 T9c).
+    Siege,
 }
 
 /// What [`run`] plays.
@@ -105,7 +113,7 @@ pub struct BenchOptions {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BenchResult {
     /// Counted operations: steps (`play`), queries (`reach`), forks (`fork`), listings
-    /// (`manage`) or day starts (`day-start`).
+    /// (`manage`), day starts (`day-start`) or sieges opened (`siege`).
     pub operations: u64,
     /// Steps played in all.
     pub steps: u64,
@@ -129,6 +137,9 @@ pub struct BenchResult {
     pub creature_months: u64,
     /// `day-start`: the monsters the counted day starts added (a creature month's; E08 T86b2).
     pub added: u64,
+    /// `siege`: the counted sieges a hero defended, the town's visitor with the garrison merged
+    /// into its army (E09 T9c; the others a garrison alone).
+    pub visitors: u64,
 }
 
 /// Runs a workload on a map below `root` with the packs of `packs_dir`.
@@ -154,6 +165,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         afloat: 0,
         creature_months: 0,
         added: 0,
+        visitors: 0,
     };
     for g in 0..options.games {
         // The setup built the first game: a reset cannot fail.
@@ -211,6 +223,11 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                 result.creature_months += u64::from(started.creature_month);
                 result.added += started.added;
                 (started.counted, started.steps, started.seconds)
+            }
+            Workload::Siege => {
+                let besieged = play_to_siege(&mut env, g);
+                result.visitors += u64::from(besieged.visitor);
+                (besieged.counted, besieged.steps, besieged.seconds)
             }
         };
         result.operations += operations;
@@ -670,6 +687,150 @@ fn month_start(env: &AdventureEnv) -> bool {
 pub fn day_start_step(env: &mut AdventureEnv, seat: Seat, action: Action) -> u32 {
     let _ = env.step(seat, action);
     env.state().day()
+}
+
+/// What [`play_to_siege`] played and measured.
+struct Besieged {
+    /// The sieges counted: 1, or 0 when the episode ended before one opened.
+    counted: u64,
+    /// The steps played, the counted one's included.
+    steps: u64,
+    /// Seconds spent in the counted step.
+    seconds: f64,
+    /// A hero defends the counted siege: the town's visitor, the garrison merged into its army.
+    visitor: bool,
+}
+
+/// Play until a step opens a siege or the episode ends (`siege`; E09 T9c): on the map the acting
+/// player's heroes seek the towns of other owners ([`seek_town`]); its offers, level-ups,
+/// meetings, army and hire dialogs and battles, and the neutral seat's battles, are the env's
+/// random agent's (agent seed `agent_seed`). Each sought move is first tried on a fork, outside
+/// the count and dropped before it (as [`starts_day`]'s); the one that opens a siege is decoded,
+/// then played inside [`siege_step`] (the counted and timed part). An undefended town captured on
+/// the way is the player's and no longer sought.
+fn play_to_siege(env: &mut AdventureEnv, agent_seed: u64) -> Besieged {
+    let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
+    let mut steps = 0;
+    loop {
+        let Some(seat) = env.to_move().next() else {
+            break;
+        };
+        let state = env.state();
+        let sought = match (seat, env.phase(seat)) {
+            (Seat::Player(player), Phase::Adventure)
+                if state.decision(player).is_none()
+                    && state.level_up(player).is_none()
+                    && state.army_dialog(player).is_none()
+                    && state.meeting(player).is_none()
+                    && state.hire_dialog(player).is_none() =>
+            {
+                Some(seek_town(env, player))
+            }
+            _ => None,
+        };
+        let action = sought.unwrap_or_else(|| choose(env, seat, &mut rng));
+        steps += 1;
+        let opens =
+            sought.is_some_and(|a| a != Action::end_turn()) && opens_siege(env, seat, action);
+        // The move's path, its reachable-tiles query, outside the count (the `reach` workloads').
+        if let Some(command) =
+            action::decode(env.state(), env.rules(), seat, action).filter(|_| opens)
+        {
+            let start = Instant::now();
+            black_box(siege_step(env, seat, command));
+            let seconds = start.elapsed().as_secs_f64();
+            return Besieged {
+                counted: 1,
+                steps,
+                seconds,
+                visitor: siege(env).is_some_and(|heroes| heroes[1].is_some()),
+            };
+        }
+        // A legal action is always accepted (h3-sim's tests); a refusal would repeat.
+        if env.step(seat, action).is_err() {
+            break;
+        }
+    }
+    Besieged {
+        counted: 0,
+        steps,
+        seconds: 0.0,
+        visitor: false,
+    }
+}
+
+/// The heroes by side of a siege open in `env`, if one is: a player's battle on a town's
+/// entrance (the town epic's design note §15: every battle there is a siege, TWN-SIE-003),
+/// whichever side is to act (a neutral garrison's is the neutral seat's).
+fn siege(env: &AdventureEnv) -> Option<[Option<HeroId>; 2]> {
+    let state = env.state();
+    let map = state.adventure().map();
+    (0..state.players())
+        .filter_map(|p| state.battle(PlayerId::new(u8::try_from(p).ok()?)))
+        .find(|battle| map.town_at(battle.tile()).is_some())
+        .map(|battle| battle.heroes())
+}
+
+/// Whether `seat`'s `action` opens a siege, tried on a fork of `env` dropped before the counted
+/// step (see [`starts_day`]).
+fn opens_siege(env: &AdventureEnv, seat: Seat, action: Action) -> bool {
+    let mut probe = env.fork();
+    probe.step(seat, action).is_ok() && siege(&probe).is_some()
+}
+
+/// The acting player's step toward a town of another owner (E09 T9c): of its heroes' legal moves
+/// the one that ends nearest (in steps, on the same level) to the entrance of a town it does not
+/// own, other than the tile its hero stands on, the first slot's and tile's on a tie, an entrance
+/// itself (a capture, a siege, or a visit of an ally's town) nearest of all; `EndTurn` when no
+/// move gets nearer than its hero stands.
+fn seek_town(env: &AdventureEnv, player: PlayerId) -> Action {
+    let state = env.state();
+    let adventure = state.adventure();
+    let map = adventure.map();
+    let entrances: Vec<Pos> = map
+        .towns()
+        .iter()
+        .filter(|&&index| adventure.owner(index) != Some(player))
+        .filter_map(|&index| map.objects()[index].entrance(map))
+        .collect();
+    let mut best: Option<(u16, Action)> = None;
+    for slot in 0..HERO_SLOTS {
+        let (Some(hero), Some(reach)) = (
+            hero_in_slot(state, player, slot).and_then(|id| adventure.hero(id)),
+            action::moves(state, env.rules(), player, slot),
+        ) else {
+            continue;
+        };
+        let distance = |pos: Pos| {
+            entrances
+                .iter()
+                .filter(|&&entrance| entrance != hero.pos && entrance.level == pos.level)
+                .map(|entrance| entrance.x.abs_diff(pos.x).max(entrance.y.abs_diff(pos.y)))
+                .min()
+        };
+        let Some(here) = distance(hero.pos) else {
+            continue;
+        };
+        for (pos, _) in reach.tiles() {
+            let (Some(d), Some(tile)) = (distance(pos), tile_index(state, pos)) else {
+                continue;
+            };
+            if d < here && best.is_none_or(|(b, _)| d < b) {
+                best = Some((d, Action::move_to(slot, tile)));
+            }
+        }
+    }
+    best.map_or_else(Action::end_turn, |(_, action)| action)
+}
+
+/// The step of `seat` that opens a siege (E09 T9c), its action decoded to `command`: the `siege`
+/// workload counts the instructions inside this function (the game's step: the hero's walk to the
+/// town's entrance and its reveal, the siege's setup from the town, the garrison's merge into a
+/// defending visitor's army, the battle's start). Returns the steps.
+#[inline(never)]
+pub fn siege_step(env: &mut AdventureEnv, seat: Seat, command: GameCommand) -> u32 {
+    let _ = env.step_command(seat, command, &mut NoopSink);
+    env.steps()
 }
 
 /// `forks` forks of `env`, each dropped at once: the `fork` workload counts the instructions

@@ -7,7 +7,7 @@
 //!                  [--checkpoint-every N] [--script <commands.txt|replay.toml>]
 //!                  [--record <out.toml>]
 //! h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
-//! h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage|day-start]
+//! h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage|day-start|siege]
 //!                    [--packs-dir packs] [--root .] [--profile base:faithful] [--difficulty 1]
 //!                    [--games N] [--days N] [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]
 //!                    [--battle 0|1] [--meeting 0|1] [--dwelling 0|1] [--queries N]
@@ -39,7 +39,7 @@ pub const USAGE: &str = "usage:
                    [--checkpoint-every N] [--script <commands.txt|replay.toml>]
                    [--record <out.toml>]
   h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
-  h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage|day-start]
+  h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage|day-start|siege]
                      [--packs-dir packs] [--root .] [--profile base:faithful] [--difficulty 1]
                      [--games N] [--days N] [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]
                      [--battle 0|1] [--meeting 0|1] [--dwelling 0|1] [--queries N]";
@@ -248,9 +248,10 @@ fn bench(args: &Args) -> Result<(), String> {
         "fork" => Workload::Fork,
         "manage" => Workload::Manage,
         "day-start" => Workload::DayStart,
+        "siege" => Workload::Siege,
         other => {
             return Err(format!(
-                "--workload: `{other}` is not play, reach, fork, manage or day-start"
+                "--workload: `{other}` is not play, reach, fork, manage, day-start or siege"
             ));
         }
     };
@@ -285,6 +286,7 @@ fn bench(args: &Args) -> Result<(), String> {
         Workload::Fork => "forks",
         Workload::Manage => "listings",
         Workload::DayStart => "day starts",
+        Workload::Siege => "sieges",
     };
     let counted = if workload == Workload::Play {
         String::new()
@@ -314,6 +316,12 @@ fn bench(args: &Args) -> Result<(), String> {
         println!(
             "creature months started: {} of {} games, monsters added: {}",
             r.creature_months, options.games, r.added
+        );
+    }
+    if workload == Workload::Siege {
+        println!(
+            "sieges opened: {} of {} games, a visitor defending: {}",
+            r.operations, options.games, r.visitors
         );
     }
     if workload == Workload::Manage || options.meeting {

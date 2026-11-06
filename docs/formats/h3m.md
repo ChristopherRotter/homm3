@@ -477,6 +477,18 @@ a main town with a Mage Guild built (the guild's spells at the start, `TWN-STUB-
 486 neutral towns draw a garrison (105 of them empty); every owned town reveals the radius 5 at the
 start. 54 heroes level at load, with 304 levels.
 
+E09 T9c's census (import v19, the 160 shipped maps; seed 0): all 160 import, validate and build
+(T7b2b: 156; the 4 then refused as `OwnedOnWater` import since E08 T97b1), none refused by a check
+of the towns or the starts: exit criterion 1 holds with no typed refusal left. 538 main towns'
+heroes, all drawn (84 on maps of 36 tiles a side; 33 with a spell book in a main town with a Mage
+Guild built, `TWN-STUB-6`). The 160 build 1 468 towns: 561 random towns take their owner's faction,
+47 their alignment's, 268 a drawn one; 497 neutral towns draw a garrison (110 of them empty). Since
+T9c each built town's siege facts and hall level (`h3_towns::siege`, `hall_level`; TWN-SIE-003,
+TWN-INC-001): 308 without a fort, 1 089 with a Fort, 26 with a Citadel, 45 with a Castle, 71 with a
+moat; 1 098 at a Village Hall, 258 a Town Hall, 89 a City Hall, 23 a Capitol. The towns owned at the
+start pay 643 000 gold a day in all (`daily_income`, from day 2), 7 of them another resource too (a
+Resource Silo). 60 heroes level at load, with 338 levels (T7b2b's 156 maps: 54, 304).
+
 ## The subset we write (E04a T2)
 
 ### Order of a SoD map (version `0x1C`), as we write it
