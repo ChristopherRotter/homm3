@@ -7376,3 +7376,18 @@ Bloodlust glow), T5d2b the hero's cast's (Ice Bolt's explosion, the Familiars' c
   other creatures' casts at a stack (the Master Genie's, the elementals' protections, a Faerie
   Dragon's spells at a stack) still take effect at once, without the caster's frames or a line;
   the Ballista's double damage writes no line (read above, not built).
+- **Recorded** (`blows`, `blows-sound` over `seq-blows.toml`, hot seat; the sequences' comments):
+  the Black Dragon's strike, the Dread Knights' strike back with its Death Blow forced, their
+  wait, the Ogre Mage's Bloodlust on them, their strike with its Death Blow forced; both
+  timelines as recorded and every frame exact but the Dragon's landing's redraw artifacts and,
+  at the strike's first frame, the Dread Knights' count box moved behind them outside the
+  strike's redraw rectangle (§7.11 (3), 188 pixels); no correction to the viewer. Animation 73 has
+  20 frames (2 000 ms). With sound each Death Blow waits for `Deathblo.wav` (2 750 ms) past 73,
+  the striker's group shown from its frame 2 at the wait's end (the viewer's clock so too); the
+  Ogre Magi's shot sound (946 ms) and Bloodlust's (1 907) end inside the glow. The log's last
+  line is masked (the engine's strike does 87 damage, the original's 81). A human's Ogre Magi
+  cast by a left click on the friendly stack's hex (as a Faerie Dragon's, §7.16; the cursor there
+  not captured: the harness parks the mouse in the same millisecond); the viewer's mouse shows a
+  look there (casters' cursors not modelled, §9.10).
+  The Black Dragon is immune to the Dread Knights' Curse (spells up to level 5), so the
+  scenario needs no forced roll for it (none in the harness).
