@@ -1887,5 +1887,7 @@ census (574 custom sets, 173 forbidding something; 369 town events on 110 towns:
 give resources, 56 add creatures). First T11 (`ADV-STUB-13`), then the survey T12 and the drafts
 T13; the queue holds T11 and T12.
 
-**Verify:** the scoped `cargo xtask verify --scope town --summary` (below); CI's full verify on
-the pull request is the record.
+**Verify:** no fingerprinted path changed (`scripts/verify-once.sh engine --base origin/master`:
+the light gates, check-rules, check-stubs, check-docs and check-exe-map, passed), `check-lane`
+passed (the town lane's paths and one common); the engine's code is `master`'s, which CI's full
+verify passed at 798b2e2. CI on the pull request is the record.
