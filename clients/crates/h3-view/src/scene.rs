@@ -801,6 +801,7 @@ impl Panels {
             selected: selected.get(k).copied().unwrap_or_default(),
             off: self.auto_off,
             on: self.auto_shown_on && auto.on(k, t),
+            switched: auto.switched(k, t),
         };
         (now, kept, autoplay)
     }

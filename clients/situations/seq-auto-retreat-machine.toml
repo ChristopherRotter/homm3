@@ -8,7 +8,7 @@
 # Auto Combat the Ballista's turn is the human's while the Dwarves play themselves, and the
 # retreat test says yes at their action (the human's side skips its Easy and Normal gate). Both
 # armies of one town (morale +1): the sequences fail the original's good morale. The sequences
-# prepared in `to-record.toml`.
+# `auto-retreat-later` and `auto-retreat-human` (`sequences.toml`, recorded at E17 M6 T5b2b).
 
 [scenario]
 id = "sequence-auto-retreat-machine"

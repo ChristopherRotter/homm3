@@ -7051,20 +7051,73 @@ new reading), and sequences for the question's points §12.19 left provisional.
     then `Pressed`).
   - The mouse: `track::Start::hands_over` on the cast's action (`pointer::hand_over`): at its end
     the turn is the human's as at a start (the movement shade, the log settled, the mouse's hex
-    forgotten and the mouse posted, its moves taken from then; *provisional*: the cursor's first
-    frame and the outline's first tick at the cast's end, not recorded).
+    forgotten and the mouse posted, its moves taken from then; recorded below: the cursor's
+    first frame and the outline at the cast's end).
   - The comparisons: a press in the cast's span is that turn's, its stop read at the cast's end;
     after a `key:a` on a turn whose stack does not play itself by the sequence's boxes
     (`pointer::plays_itself`, by the opening's stacks: a commanded Ballista with Creatures set)
     the presses are the turn's own.
-- **Prepared** (`to-record.toml`, the client's timelines): `auto-cast-stop` (`auto-cast`'s battle
-  and boxes, the click at 6 500 during Bless, 5 280 to 8 180: no shot, the Marksmen outlined and
-  the mouse posted at 8 180, the turn waiting to 10 200); over `seq-auto-retreat-machine.toml`
-  (`seq-auto-retreat.toml`'s with 20 Dwarves and a Ballista Orrin commands, Basic Artillery; the
-  engine's order Wolf Riders, Goblins, Dwarves, Ballista, the walks to 43 and 146 out of the
-  Dwarves' reach; the retreat test yes at the Dwarves' actions) `auto-retreat-later` (W on the
-  Dwarves' turn, A then D on the Ballista's, the question as the Dwarves' waited turn starts at
-  7 887, Escape at 8 887, the engine's walk to 37) and `auto-retreat-human` (A on the Dwarves'
-  turn, the question at 6 887, Escape at 7 887: Wait, then the Ballista's turn the human's from
-  7 887): §12.19's outline before a later turn's box and the loop's ticks after an answer on a
-  human's turn, to be read.
+- **Recorded** (M6 T5b2b, a capture agent; `sequences.toml`'s `auto-cast-stop` over
+  `seq-auto-cast.toml`, `auto-retreat-later` and `auto-retreat-human` over
+  `seq-auto-retreat-machine.toml`: `seq-auto-retreat.toml`'s battle with 20 Dwarves and a
+  Ballista Orrin commands, Basic Artillery, the machines' boxes clear, Creatures set; silent; the
+  prepared `step:` actions recorded as `at:`, a step leaving its states stamped with the time
+  before it). The recordings are the source of what follows; the guesses they replace are marked.
+  1. *The stop* (`auto-cast-stop`: A at the Champions' turn, the click on hex 120 at 6 500 during
+     Bless, 5 280 to 8 180, the mouse moved to (300, 350)): as `auto-cast`'s to the cast's end,
+     then no shot: at 8 180, the hero standing, the Marksmen's turn is the human's (the active
+     stack, an idle step at 8 180, then every 100 ms), the Marksmen outlined, the panel lit with
+     Auto Combat unselected and the book dimmed, the cursor at (300, 350) the Marksmen's from
+     8 180 (memory names the mouse's hex and the cursor's kind at 8 181; the screen at 8 180).
+     The move itself shows at 6 501 (the mouse poll's grid), the cursor's kind unchanged until
+     8 180. So the client's copy of CLT-Q61 stands, its provisional timings as recorded.
+  2. *The opening's computer turn* (both others): the Wolf Riders' walk starts inside the opening,
+     before the loop's first tick, the deadline the opening's: its first frame (group 20, one
+     frame) is on the battle's first screen at 0, memory group 0's frame 0 at 0 and frame 1 at
+     100. *Corrected:* the client's first frame at the grid's next point (100), every later time
+     100 ms late (`Growing::push`: the opening's turn of a side no human plays).
+  3. *A question at a later turn* (`auto-retreat-later`; the original's computer walks the Wolf
+     Riders to 43 and the Goblins to 146, as the engine's): the Dwarves' turn at 6 287, W at
+     6 787 (the Ballista's turn the human's at once), A at 7 287 (nothing shown: the panel lit,
+     Auto Combat unselected), D at 7 787: the Ballista defends (no log line, as the client's), the
+     Dwarves' waited turn starts and the question opens in that millisecond. Behind it the
+     Dwarves are outlined, the Ballista's outline gone, no idle step (the Ballista's turn's
+     7 787 step the last), the panel dimmed with Auto Combat dimmed too, *unselected* (below,
+     candidate), the cursor the arrow at the parked point. Escape at 8 787: the original's
+     computer walks the Dwarves to 37 (as the engine's) in that millisecond with no tick at the
+     answer: the deadline still the box's (7 887), group 20's two frames show at once, memory
+     group 0's frame 0 at 8 787 (shown at 8 887), then every 61 ms; the outline goes with the
+     walk's first frame, the button stays dimmed. *Corrected:* the client's tick at the answer
+     (the deadline put at now: group 20's second frame shown at 8 887) and its Dwarves not
+     outlined behind the box.
+  4. *A human's turn right after an answer* (`auto-retreat-human`): A at 6 787 on the Dwarves'
+     turn (from 6 287, waiting: outlined, the steps every 100 ms, the panel lit) opens the
+     question at once; Escape at 7 787: the computer's Wait (its line), the Ballista's turn the
+     human's at once, outlined from 7 787, two idle steps in that millisecond (the counter 9 to
+     11: the steps held up since the box opened, 6 887), then every 100 ms from there (7 887,
+     …), the panel lit with Auto Combat unselected, the cursor as parked. *Corrected:* the
+     client's box from the Dwarves' turn's start (the comparisons' box opened at the command
+     before's end, not the switch's) and its computer's tick there (one step at the switch, the
+     turn not outlined), its one step at the answer and again a millisecond on.
+  The client now: `anim::Clock::hold` leaves the deadline where the box found it and the next
+  turn's start ticks (`Clock::start`: max(the grid's step, the lateness), the computer acting in
+  that tick: `auto-retreat-cancel`'s shot as recorded); the idle steps resume at the answer
+  (`Idle::from`; twice when held up 100 ms or more); a later command's box outlines the stack
+  the computer plays; a box opened after its turn's start leaves the turn the human's until
+  then (outlined from its start, the steps up to the switch; the comparisons' box opens at the
+  switch, `sequences::switched`); the panel shows Auto Combat selected on a turn it plays only
+  from a switch in it, as the turns before left it, or (the client's profile) while it is on
+  (`panel::Autoplay::switched`, `Auto::switched`).
+  The comparison: the three timelines as recorded (123, 126 and 91 changes);
+  `auto-cast-stop` 139 frames, 84 differing in 2 pixels each, all redraw artifacts (the
+  Champions' walk over Orrin, 400 to 5 180, as `auto-cast`'s), every frame from the cast on
+  exact; `auto-retreat-human` 108 frames exact; `auto-retreat-later` 137 frames, 29 differing
+  in 55 to 179 pixels, all redraw artifacts (§7.11 (1): the Dwarves' walk redrawing over the
+  Ballista's wheels, (56, 225) to (104, 252), 9 192 to 10 939). The other recorded sequences
+  as recorded (`drawn`). *Provisional still:* a press in the cast's last millisecond; a carried
+  ↑, ↓, F or F5 to F8 at the cast's end; an opening computer's action other than a walk (a
+  shot's, a turn's first frame; a Defend's next turn).
+  **Oddities:** Auto Combat's button dimmed and unselected over a turn it plays from its start
+  after a switch on a human's turn it did not play (the reading had 0x4784F9 give it back its
+  enabled and selected states for a human's side): built so in the original's profile, the
+  client's showing it selected while on (CLT-Q45 (1)'s); a candidate question.

@@ -26,6 +26,21 @@ fn the_switch_plays_its_turn_from_then_and_the_turns_after_from_their_start() {
     }
     // No such turn.
     assert!(!auto.plays(4, 500) && !auto.played(4) && !auto.from_start(4));
+    // E17 M6 T5b2b: the switch's turn is played from a switch (its button selected by it), the
+    // turns after from their start.
+    assert!(auto.switched(0, 30) && !auto.switched(0, 29));
+    assert!(!auto.switched(1, 100) && !auto.switched(4, 500));
+}
+
+#[test]
+fn a_switch_again_after_a_stop_at_a_cast_s_end_plays_from_a_switch() {
+    // E17 M6 T5b2b: turn 1 played from its start, stopped at its cast's end (400), switched on
+    // again at 500: from 500 a switch's play.
+    let starts = [0, 100, 900];
+    let casts = [None, cast(1, 100, 400)];
+    let inputs = [switch(30, 0), stop(250, 1), switch(500, 1)];
+    let auto = Auto::casting(&inputs, &starts, &[], &casts);
+    assert!(!auto.switched(1, 300) && !auto.switched(1, 450) && auto.switched(1, 500));
 }
 
 #[test]

@@ -315,6 +315,18 @@ impl Auto {
         })
     }
 
+    /// Whether Auto Combat plays turn `k` at `t` from a switch in the turn (its click or A
+    /// selecting its button), not from the turn's start (E17 M6 T5b2b, the panel's
+    /// [`crate::panel::Autoplay::switched`]).
+    #[must_use]
+    pub fn switched(&self, k: usize, t: u32) -> bool {
+        self.turns.get(k).is_some_and(|turn| {
+            (turn.plays.iter().enumerate()).any(|(i, &(from, until))| {
+                from <= t && until.is_none_or(|u| t < u) && (i > 0 || !turn.from_start)
+            })
+        })
+    }
+
     /// Whether Auto Combat plays turn `k` at its end, having played it from a time in it (its
     /// button shows selected since: 0x4784F9; E17 M6 T5b2b: a stop read at the computer's cast's
     /// end runs the turn's start again without it, which unselects it, 0x47864A).

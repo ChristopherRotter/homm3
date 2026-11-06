@@ -1048,8 +1048,8 @@ mod tests {
 
     #[test]
     fn the_machine_battle_asks_at_a_later_turn_and_before_a_human_s_turn() {
-        // E17 M6 T5b2b (design §12.20), the sequences prepared in `to-record.toml`: on grass the
-        // Wolf Riders (2) and the Goblins (3) walk first, out of the Dwarves' reach, then the
+        // E17 M6 T5b2b (design §12.20), the sequences `auto-retreat-later` and `-human`: on grass
+        // the Wolf Riders (2) and the Goblins (3) walk first, out of the Dwarves' reach, then the
         // Dwarves (0), then the Ballista (1), Orrin's to command. `auto-retreat-later`: the
         // Dwarves wait, the Ballista defends (a human's: its box clear under Auto Combat), the
         // Dwarves' waited turn plays itself and asks, Cancel walks them to 37.
