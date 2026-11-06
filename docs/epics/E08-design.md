@@ -305,14 +305,306 @@ and unguarded, then with B guarded too.
   unmoved; shared: pack format v51, core ruleset hash v52 (note §2). A town-lane bump of the same
   rows in between: the second to merge bumps again (part C §15 orders them).
 
-##### Part C — the game, the env, batch E11 and the cut (T98b2)
+##### Part C — the game, the env, batch E11 and the cut
 
-Named here for T98b2 (decision 270): §12 the battle and the meeting at an exit (GAM-BAT-004 and
-GAM-MET-001 amended: the defender on the exit, where the battle is fought, the radius-1 reveal's
-place), §13 the game (the jump held as a rest, GAM-DEC-007; the visitor's stream, ADR-0017 point 4;
-`Revisit`: its name, validation and the env's action, with its map-side lines added to
-`0016-increment-11.md`), §14 the env, replays, fixtures, properties and benchmarks (the reach's and
-the passage's measure, a teleporters' map and workload, the gates' pairing cost), §15 versions, rule
-ids, quirks, §16 batch E11 (its spec and recipe the first building round, decision 269; the row for
-note §7's entrance guards), §17 shared and `cross-lane` work, the building tasks and the exit
-criteria, §18 risks and open points. ADR-0017's amendment is drafted there.
+Written by T98b2 (decision 270; whole: decision 271): §12 the battle and the meeting at an exit,
+§13 the game (the visitor's stream, the jump held as a rest, `Revisit`), §14 the env, replays,
+fixtures, properties and benchmarks, §15 versions, rule ids, quirks, §16 batch E11, §17 shared and
+`cross-lane` work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
+(points 1, 4, 6, 8, 10, 11) is drafted in `adr-drafts/0017-increment-11.md`; `Revisit`'s map-side
+lines are added to `0016-increment-11.md` (point 4).
+
+###### 12. The battle and the meeting at an exit (GAM-BAT-004, GAM-MET-001 amended)
+
+- **The defender** (note §7's battle at an exit): the hero on the exit, of another team by the
+  candidates' test (a gate's pair by its own, note §7 item 4), as `Defender::Hero`, the mover the
+  attacker; the outcome's `battle`, opened by the game at once and without a question as every
+  hero battle (ADR-0017 point 11). The defender's owner plays outside its turn, as any defender.
+- **Where it is fought:** at the **exit**, the defender's tile (`BattleStart::tile`, GAM-BAT-001):
+  its battle terrain in the original's order (the sea's with a boat on either side, the
+  underground's, the coast's, the tile's own), its special ground, the background from the tiles
+  around it (GAM-BAT-011), the obstacles from its tile seed under `ADV-QUIRK-5`; the attacker's
+  ground (GAM-BAT-013) is the special ground under the mover's own tile, the entrance. A
+  Whirlpool's (A-37, decision 265): both heroes in boats, so on the two boats (increment 8's,
+  `sea_battle_ground`); a monolith's or a gate's on land (A-42 keeps both ends there). *Agent's
+  call:* nothing new in the setup; the original's `visit_hero` 0x4A2800 from the entrance (§4.2)
+  is read as GAM-BAT-001's battle at the defender's tile (E08 T17a's reading); batch E11's E11-7
+  records the battlefield (§16).
+- **The radius-1 reveal's place:** in the visit, the adventure's own, before the outcome returns:
+  the tiles within 1 of the exit (ADV-FOG-002's disk) explored by the mover's owner, no event (note
+  §10), so its observation shows the defender before the battle opens, as the original reveals
+  before `visit_hero`. The same before a gate's meeting.
+- **What a viewer sees:** the step onto the entrance as any step (`HeroStepped`); the battle's
+  start, events and end as any battle's, to its two owners (GAM-BAT-001): `BattleStarted` names
+  the exit, where the defender's owner sees its own hero, and the entrance is named to no one but
+  through the step. The jump's event comes with the held jump (§13), not before.
+- **Its end** (GAM-BAT-002, -003, -004 as any hero battle's): won, the defender leaves the map (in
+  a boat with its boat, ADV-SEA-006), the winner gains the battle's experience with the 500 and
+  the loser's artifacts, then its levels, then **the held jump** (§13); lost, retreated or
+  surrendered, the mover leaves the map (with its boat) and the held jump finds no hero; a draw,
+  both leave.
+- **The meeting at a gate** (GAM-MET-001 amended; note §7 item 4): a hero of the mover's team on
+  the pair: the radius-1 reveal at the pair, then the outcome's **`meeting`** (the mover the
+  visitor, the pair's hero the visited), opened by the game as increment 6's meeting (Scholar,
+  HER-SPL-007; the exchange, GAM-DEC-003) although the two heroes are not neighbours: neither
+  reads a distance (the decision names both heroes). The mover stays on the entrance; the
+  meeting's events are its owner's alone, so no other viewer learns the pair through them. Once
+  it closes, the entrance's guard visits as after any visit (note §7, ADV-MON-006). *Agent's
+  call:* the meeting as the original's `visit_hero` gives it (batch E11-6 records the dialog and
+  that the mover stays); an ally's hero on the pair (E10's teams) is E10's.
+
+###### 13. The game (`h3-game`; GAM-DEC-007 amended, ADV-TEL-008; game state hash v26)
+
+- **The visitor's stream** (ADV-TEL-003; ADR-0017 point 4's draft): `AdventureState::apply` gains
+  `draws: &mut Rng`, the acting player's stream (its record in `GameState`), which the game passes
+  for every adventure command; only `MoveHero` and `Revisit` can draw. The adventure draws only
+  after the whole command is checked, so a rejected command leaves the stream untouched as the rest
+  of the state (a property, §14). Within one command the jump's draw comes first, then the game's
+  draws for the battle it opens (its seed; under `strict-fixed` its obstacles: point 4), in that
+  order from the same stream. The answers and the rests take no stream: none draws (a held jump's
+  exit was drawn at the visit). *Agent's call:* a parameter, not a stream inside `AdventureState`
+  (the streams are the game's, ADR-0017 point 4; forks and the adventure state hash stay as they
+  are). **Both profiles alike:** the original's draw is the C runtime's one `rand()` stream (§4.1),
+  which no profile can reproduce (its position depends on every earlier call in the session), so
+  the player's stream replaces it as for every draw a command causes; no quirk.
+- **The jump held as the visit's rest** (GAM-DEC-007 amended, a fifth rest): the adventure's
+  outcome gains **`jump_after: Option<(HeroId, Pos)>`** (the mover and the exit), set beside
+  `battle` when the exit holds an enemy hero (§12). The game holds it at once as `Rest::Jump(exit)`
+  (the held rest's hash: the tag 4, then the tile; **game state hash v26**), so it waits for the
+  battle and the winner's levels as every rest waits for its owner's open decisions, and gives it
+  with **`AdventureState::arrive(context, (hero, exit), sink)`**: nothing when the hero left the map
+  or the exit holds a hero or an empty boat (unreachable after a win, as the original's test that
+  the exit is a gate again, 0x4AA4A6; tested so that a rest never corrupts the map), else note §7's
+  arrival with its event (note §10). Its outcome opens nothing. *Agent's call:* the outcome's field
+  and the rest, as `reward_after` and `Rest::Won`. Not chosen: the exit kept in the open battle and
+  given at its end, which would move the hero before its levels (the original gives the levels
+  first, 0x4DA720, then `hero_relocate`).
+- **The entrance's guard** (ADV-MON-006 amended; note §7): a visit that jumps or holds a jump sets
+  no `guard_after`; a failed jump, "leads nowhere" and a gate's meeting set it as any visit. Batch
+  E11's E11-19 decides the original's order (§16); the rule follows the row.
+- **`Revisit { hero }`** (ADV-TEL-008; decision 268; the original's space key, §11): an adventure
+  command, **`AdventureCommand::Revisit { hero }`**, the entered object under the hero visited
+  again.
+  - **Its checks**, in order, each typed and leaving the state and the stream untouched: the
+    game's (the player's turn, no open decision, `DecisionOpen`; no level-up holding the game);
+    then the adventure's: the hero not the player's or not on the map (`NotYourHero`); the hero's
+    tile not the visitable tile of an entered object whose kind has a built visit
+    (**`NothingToRevisit`**, new; *agent's call:* one error for every case, naming nothing but the
+    player's own tile).
+  - **What it does:** that object's visit as a step's last step onto it gives it (the kind's visit
+    at the hero's tile), with its decisions, events and outcome; **no points spent or required**
+    (the original's visit tests none: a revisit at 0 points), the points and the day's maximum
+    unchanged; **no step**, so no step event and no reveal of its own; **no guard test** (*agent's
+    call:* the original tests a guard only at a step's end, `after_step_guard_check` 0x4800A5,
+    §5, and the key calls `visit_and_update` alone; E11-19's last part checks it). A hero in a boat
+    on a Whirlpool's tile revisits it (the loss again, the draw again).
+  - **Which kinds:** every entered kind with a built visit (the original's gate: any entered class
+    but 3, the Anchor Point, which the engine does not type): the teleporters, the Cartographer,
+    the observatories, the Keymaster's tents, the weekly objects, the mines, the dwellings and the
+    camps, the entered teachers and finds, a town (the town lane's visit; its inbox told: a revisit
+    of the hero's own town). Not: a neighbour-visited object (the hero never stands on it), a boat
+    (boarding is a step's), a tile without an object.
+  - **The legal set** (`legal_commands`): a `Revisit` of each of the player's heroes on such a tile,
+    in hero order after the `BuildBoat`s; `legal_moves` unchanged. Its replay line `revisit
+    <hero>` (**adventure replay format v11**).
+  - **Every player alike** (decision 16): the original's key works on a human's turn only and a
+    computer never presses it; a computer player's use is E10's.
+- **No new decision kind and no new view:** the jump's battle is a battle (ADR-0017 point 6), a
+  gate's meeting increment 6's, the rest no decision; the observation shows the hero on the object,
+  and a client offers the key where `legal_commands` lists it.
+- **Events:** the adventure's new ones (note §8's loss, note §10's `HeroTeleported` and "leads
+  nowhere") reach viewers through `GameEvent::Adventure` with their projections; the game adds
+  none.
+
+###### 14. The env, replays, fixtures, properties, benchmarks
+
+- **The env** (`h3-sim`, the AI lane's; `cross-lane` in the game's task with the user's consent,
+  as decisions 138, 203 and 243): **action encoding v8** appends eight entries, `22 + h`, `h < 8`:
+  `Revisit` of the hero in slot `h` (the move entries' slots), masked by `legal_commands`, the tile
+  head ignored. *Agent's call:* one entry per hero slot; a jump needs none (a destination among
+  the reach's tiles, ADR-0017 point 8). The observation the env returns is `GameObservation`
+  (decision 187): the kinds' types in the objects' views, nothing else. A revisit at 0 points can
+  repeat within a turn (§18).
+- **Replays:** adventure replay format **v11** (`revisit`); every golden replay rehashed (the
+  versions of §15; no recorded map holds a teleporter: the generators use 118, the lane's
+  `TRAPS.md`). New, on **`e08-teleporters-36.h3m`** (`h3-map`'s `src/tests/teleporters_map.rs`,
+  `h3_map::writer`), two levels and two players: a one-way channel of one entrance and three
+  exits, a two-way channel of three, a lone one-way exit, two gate pairs and a gate without a pair,
+  three Whirlpools in a sea with a boat for each player, the Sea Captain's Hat on one hero, a
+  monster beside one entrance, a weekly object and a dwelling to revisit. Random play over 28 days
+  (`teleporters-s<seed>-d28`, seeds by the search for jumps, losses and revisits); scripted ones
+  (`teleporters-*-s1`): each kind's jump (a one-way's exits drawn, a two-way of three, a gate), a
+  one-way exit's and an unpaired gate's "leads nowhere", a monolith without a candidate, the
+  meeting at a gate, a battle at a monolith's exit won (the jump after the levels) and lost, a
+  Whirlpool's losses (several stacks, a tie, a lone creature, the Hat) and A-37's battle, the
+  entrance's guard, a revisit of a gate, a Whirlpool and the dwelling at 0 points.
+- **Properties** (`h3-map`'s `play.rs`, `view.rs`): the plans place the five classes
+  (`TELEPORTERS`) and play `Revisit`; checks after every command: the map's invariants (a hero in a
+  boat on water, a walker on land, one hero a tile, no boat on land); a jump keeps the points and
+  the day's maximum; the exit was a candidate (never a tile of a hero of the team, never the
+  entrance, a Whirlpool's never one of its own six); a fork's channels are a fresh build's; a
+  Whirlpool's loss only in the weakest slot by fight value × count, the army never empty; a
+  rejected `MoveHero` or `Revisit` leaves the state and the player's stream untouched (the stream's
+  position compared); no viewer is told an end of a jump it does not see, nor a channel's exits or
+  a gate's pair.
+- **Benchmarks** (`benches/adventure/`): **measured first** against `master` right after the first
+  build that makes the entrances visits (T105a; `homm3-bench-regression`): `reach-xl-144`,
+  `reach-lifted-xl-144`, `reach-sea-xl-144` and the `random-play-*` workloads hold no teleporter
+  (the generators use 118), so a change is the dispatch's or the new parameter's and is fixed, not
+  re-baselined, unless its reason is written. **New**, on **`e08-teleporters-144.h3m`** (both levels
+  and a sea for the Whirlpools, `e08-sea-144.h3m`'s generator the model: the shipped maps' most of
+  each kind on one map, each channel's exits spread over the map, a monster on every hundredth free
+  tile):
+  `reach-teleporters-xl-144` (the walkers' queries meeting the entrances as stop nodes),
+  `random-play-teleporters-36` (jumps, losses and revisits in random play) and
+  **`build-gates-xl-144`** (*agent's call:* a new bench workload `build`, the game's build of an XL
+  map with a gate on every fifth free tile of both levels, about 8 000, the pairing's worst case,
+  note §5), each baselined at its first count. If the pairing dominates the build, the lever is a
+  nearest search by row bands that keeps the original's walk order and tie (§18).
+- **`--with-original-data`** (`crates/h3-map/examples/original_data.rs`): every shipped map's
+  static layer with the five classes typed (the census's 1 671 objects: 602 gates, 845 monoliths
+  by way and channel, 224 Whirlpools; §1), the channels, the gates' 301 pairs as the census found
+  them (the 18 gates not with their nearest), no shipped map refused by A-39 or A-42; the harvest's
+  check (note §3).
+
+###### 15. Versions, rule ids, quirks
+
+| Version | Change | Task |
+|---|---|---|
+| pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102 |
+| adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a |
+| map import v20 | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b |
+| game state hash v26 | the held jump `Rest::Jump` (§13) | T105b |
+| adventure replay format v11 | `revisit` (§13) | T105b |
+| env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b (`cross-lane`) |
+
+The adventure state hash stays v21 (note §6). The town lane's E09 bumps the same rows: **the second
+to merge bumps again**, each change once (the table's numbers are this increment's if it merges
+first).
+
+Rule ids (survey §13): ADV-TEL-001 to -008 new; amended: ADV-OBJ-002, ADV-OBJ-003, ADV-FOG-004,
+ADV-MON-006 (§13: a jump drops the entrance's guard), HER-ADV-009 (note §2), GAM-BAT-004,
+GAM-MET-001 (§12), GAM-DEC-007 (§13). Quirks (note §11): `ADV-QUIRK-39` A-37, `-40` A-38, `-41`
+A-39, `-42` A-40, `-43` A-41, `-44` A-42, none with a flag; each entry written by the task that
+builds its rule (§17). Stubs: none (a computer player's revisit and its paths through a channel
+are E10's; no player meets them).
+
+###### 16. Batch E11
+
+Survey §12's eighteen rows and one added, in two runs (decision 269), on the harness
+(`clients/capture/`, common) in SoD on Easy, hot seat, from maps `h3-experiment` writes: **E11a**
+the jumps (E11-1 to E11-13, E11-18, E11-19; days 1 and 2), **E11b** the repetitions with the space
+key (E11-14 to E11-17; one day).
+
+| Row | Settles | Setup | Record | The reading predicts |
+|---|---|---|---|---|
+| E11-19 | note §7's entrance guards, §13's revisit | a weak monster M beside a two-way monolith A, another N beside its pair B | Red steps onto A: the battles, in order, and the tile after; then, on B, Red presses Space | unread; *the agent's call:* no battle (not M: the hero jumped; not N: the arrival tests no guard, E11-3), on B; at Space no battle (the guard test is a step's), on A |
+
+One setup for note §7's two (M alone, then N too): M fought first tells a guard tested before the
+visit or at the step's tile; N fought, one tested at the hero's new tile. **Predictions added to
+the survey's rows:** E11-6 and E11-7 record the tiles explored within 1 of the pair before the
+meeting or the battle (§12), and E11-7 the battlefield (the exit's terrain, §12); E11-17 adds an
+empty boat on one of W3's tiles, never drawn (note §7's empty boat: the reading tests the tile's
+top class, not read for a boat).
+
+- **The writer and the spec's fields** (T99; `h3-experiment` is the battle lane's, `cross-lane`;
+  the writer this lane's): the five classes by picture and subclass on either level
+  (`[[map.object]]`; written without a body, the writer's class table checked; T89a the model), a
+  hero in a boat on or beside a Whirlpool's tile and an empty boat on one (batch E8's boats), the
+  worn Hats (batch E8's artifacts); the spec's checks of E11-9's walk order and truncated
+  distances and of E11-16's and E11-17's tiles. **The specs:** `E08-batch-11a.toml`, `-11b.toml`
+  and their templates; E11-18 needs Blue's turn and Red's next (day 2).
+- **The harness** (T100; common, CLT-Q18: built with the harness check, the client and map-client
+  lanes' inboxes told): Space repeated with a read after each press (the hero's tile, points and
+  army; the step-by-step table's rows, E08 T68b), the Adventure Options' Replay Opponent Turn and
+  the view's corner during it (E11-18), the meeting dialog closed unchanged (E11-6), the messages'
+  texts (ADVEVENT 70, 153, 168); the recipes, the runs.
+- **The scoring** (T101): survey §15 (new), each row against its prediction; a row against the
+  reading opens an `ADV-Q` before the shared task; the rows each new rule cites (`verified` when
+  built).
+- **Not in the batch** (survey §12): A-39 (refused at the import), A-40 and the computer's paths
+  (E10), RoE's space key, network play; A-42 (refused when the game is built, whatever the original
+  does; none on the shipped maps).
+
+###### 17. Shared and `cross-lane` work; the building tasks; the exit criteria
+
+**Shared and `cross-lane`:** the `shared/` task (T102, `cross-lane`, as increment 8's T70):
+ADR-0016's and -0017's drafts applied with batch E11's outcome; `docs/03-domain.md`'s terms
+(teleporter, channel, entrance, exit, jump, monolith, Subterranean Gate, Whirlpool, a Whirlpool's
+loss, revisit); `docs/06-security.md`'s lines (note §10, §13); the effect kind
+**`whirlpool_protection`** (`h3-content`'s artifact effect kinds: its code, name and hash;
+`h3-pack`'s syntax; pack format v51, core ruleset hash v52; note §2) with the harvester's gap-fill
+(the battle lane's: the Sea Captain's Hat's effect). `cross-lane` elsewhere: batch E11's spec
+(`h3-experiment`, T99), the harness (common, T100), the env's encoding (`h3-sim`, T105b). The
+inboxes: the AI lane's (v8, T105b), the map client's (the five kinds' types, T103a; the new events,
+T105a), the town lane's (the stream in `AdventureState::apply` for its callers, T105a; a town's
+revisit, T105b), the client lane's (the harness, T100).
+
+**The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut confirmed
+at its start). **Batch E11 runs before the build and before the shared task** (decision 269), so the
+ADRs are applied once with the rows' verdicts:
+
+| Round | Tasks | Content |
+|---|---|---|
+| 2 | **T99** | Batch E11's maps: the writer's five classes, the spec's fields (`cross-lane`), the two specs and templates (§16) |
+| 3 | **T100** + **T101** | T100: the harness's reads and keys, the recipes, the runs E11a and E11b. T101: scored (survey §15) |
+| 4 | **T102** | `shared/` (`cross-lane`): the two ADRs with T101's outcome, the glossary, `docs/06-security.md`, the effect kind with the harvester's gap-fill (pack format v51, core ruleset hash v52) |
+| 5 | **T103** | T103a: the kinds, the packs, the harvest's check, `h3_heroes::whirlpool_protection` (note §1 to §3; part v18). T103b: the import, A-39's refusal and its entry (note §4; map import v20); a step onto an entrance refused as any unbuilt visit's until T105a |
+| 6 | **T104** | The build: the surfaces (A-42 and its entry), the channels, the gates' pairs (note §5); `build-gates-xl-144` |
+| 7 | **T105** | T105a: the stream in `apply`, the jump (the candidates, the draw, each kind, the arrival), the Whirlpool's loss, the events and views, the entrance's guard, the reach's measure against `master` (note §7 to §10, §13's stream; A-38's, A-40's, A-41's entries). T105b: the battle and the meeting at an exit, the held jump, `Revisit` and its legal set, the env (§12, §13, §14's env; game state hash v26, replay format v11, `cross-lane` v8; A-37's entry) |
+| 8 | **T106** + **T107** | T106: the teleporters' maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T107: the audit against the exit criteria; increment 11 closed; increment 12 refined |
+
+**Increment 11's exit criteria:**
+1. The five classes import typed (a monolith's channel and way by its class and subclass, the gate,
+   the Whirlpool) by the packs of their expansions; A-39 is refused and recorded (ADV-TEL-001,
+   ADV-OBJ-002).
+2. The game's build makes the channels and the gates' pairs in the walk's order as the original
+   (D-56) without a draw, and refuses A-42 (ADV-TEL-002).
+3. A step onto an entrance ends the move and jumps: a monolith to a candidate of its channel (one
+   uniform draw from the visitor's stream for two or more, none for one), a gate to its pair, a
+   Whirlpool after its loss to another's tile; a one-way exit and an unpaired gate lead nowhere, a
+   monolith without a candidate does nothing (ADV-TEL-003 to -006).
+4. An enemy hero on the exit is fought first (radius 1 revealed), the mover jumping after its
+   levels if it wins, A-37 so fixed; a hero of the team on a gate's pair is met, the mover staying
+   (GAM-BAT-004, GAM-MET-001, GAM-DEC-007).
+5. The arrival keeps the points, fights no guard, visits nothing and reveals the scouting radius;
+   the Whirlpool's loss takes D-54 and D-55 without the bound (A-38), every hero alike (A-40)
+   unless protected by the Hats (ADV-TEL-006, -007, HER-ADV-009).
+6. No path goes through a teleporter: the reach and `MoveHero` meet an entrance as a destination;
+   the reach's workloads hold their baselines (ADV-OBJ-003, D-58).
+7. `Revisit` visits the entered object under the hero again without points, every entered kind
+   with a built visit; the env plays it (ADV-TEL-008).
+8. A viewer sees a teleporter's type, never its exits or its pair, and a jump as a step's two ends,
+   never a hidden exit (A-41); the loss and "leads nowhere" are the visitor's owner's alone
+   (ADV-FOG-004).
+9. Every new rule has its id, source and tests; `ADV-QUIRK-39` to `-44` recorded; the gates pass
+   (coverage, determinism with the new and rehashed replays, the benchmarks at their baselines and
+   the new ones baselined).
+10. Batch E11 run and scored (T101); the consensus rows `verified`.
+
+###### 18. Risks and open points
+
+- **Two lanes in the same crates:** the town lane's E09 tasks bump the versions of §15 and touch
+  `h3-game`'s outcome and rests and `AdventureState::apply`'s callers; each merges in order, the
+  second rebasing and bumping again (the town lane's `TRAPS.md`). The new parameter of `apply`
+  (T105a) touches every caller (the game, the crates' tests, the CLI's benches, the properties): a
+  wide, mechanical change, its own commit, the town lane told first.
+- **Revisit at 0 points repeats** (the original's "unlimited cycling", decision 268): an agent or
+  random play can revisit without end within a turn (a two-way channel re-drawn, a Whirlpool's
+  losses again). The property plans and the random-play workloads bound their commands a turn;
+  the env's rollout needs a step cap (the AI lane's call, its inbox told with v8).
+- **The reach's stop nodes:** a map with many entrances gains destinations; §14's measure decides,
+  with `reach-teleporters-xl-144` as the new baseline.
+- **The gates' pairing is quadratic:** harmless on the shipped maps (at most a few dozen gates a
+  map), about 17 M comparisons on a crafted XL (note §5); `build-gates-xl-144` measures it, the
+  row-band search is the lever (§14).
+- **The entrance's guard** rests on an agent's call until E11-19 (note §7, §13); a row against it
+  amends ADV-MON-006 and the design before T105a.
+- **A-42 refuses** a crafted map the original loads (none shipped); the map client's inbox hears of
+  the refusal with T104.
+- **Not read** (survey §5, §9.1, §10): `hero_relocate`'s network message, the Replay Opponent
+  Turn's display (A-41 not reproduced either way), the computer's paths through a channel
+  (`pathfinder_teleport_exits` 0x56A400 in part, `ai_fight_answer`; E10), RoE's space key.
+- **Not in increment 11** (decision 260): garrisons and the other visitables, the adventure spells
+  (Dimension Door, Fly, Town Portal), creature banks, quests, simultaneous play, towns (E09), a
+  computer player's routes and revisits (E10).

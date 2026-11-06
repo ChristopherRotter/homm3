@@ -8,7 +8,8 @@
   part); its consequences, alternatives and revision history.
 - Detail: `docs/epics/E08-design.md` parts A and B (§1 to §11). The game's side (the battle and the
   meeting at an exit, the jump held as a rest, the visitor's stream, `Revisit`, the env) is
-  ADR-0017's draft (T98b2), which also adds `Revisit`'s lines to point 4 here.
+  ADR-0017's draft `0017-increment-11.md` (T98b2, design part C), which also added `Revisit`'s
+  lines to point 4 here (its last bullet).
 - ADR-0015 needs no amendment: the import still draws nothing, and the channels are the static
   map's, built with the game.
 
@@ -82,6 +83,15 @@ subclass, 103 and 111; every one entered, none ownable, only the Whirlpool visit
   destination, never its exits.
 - **The import** refuses a monolith subclass past 7 (A-39: the original writes past its eight
   lists): an input bound, no flag.
+- **The revisit** (ADV-TEL-008; E08 decision 268, the original's space key; added by T98b2): a
+  hero standing on the visitable tile of an entered object whose kind has a built visit may visit
+  it again (ADR-0017's `Revisit`): the kind's own visit with what it opens, as the step onto the
+  tile gives it, but without a step (no points spent or required, the points and the day's maximum
+  kept, no step's reveal or event) and without the guard's test (the original tests a guard only at
+  a step's end; subject to batch E11's E11-19). Every entered kind alike: a two-way monolith or a
+  gate leads back and a Whirlpool takes its loss again, a one-way exit tells "leads nowhere" again,
+  a weekly object tells it was visited; a neighbour-visited object, a boat or a tile without an
+  object has no revisit.
 
 **Point 5** (fog), after increment 10's text: from increment 11 a **jump** reveals the tiles within
 the hero's scouting radius of the exit to its owner, as a step's reveal; an exit a hero occupies
@@ -94,7 +104,8 @@ or a gate's pair. A **jump** is seen as a step's two ends by the players that se
 either (a new event with the step's fields and projection): a viewer that sees one end only is told
 that one, so no viewer learns a hidden exit (A-41 not reproduced). A jump's reveals are told by the
 explored tiles alone. A Whirlpool's loss and "leads nowhere" are told to the visitor's owner alone;
-a battle at an exit is seen as any battle, a meeting at a gate as any meeting.
+a battle at an exit is seen as any battle, a meeting at a gate as any meeting; a revisit is told
+only by what its visit tells (no step).
 `docs/06-security.md` lists it (the round's `shared/` task).
 
 **Consequences**, a line: increment 11 makes the five classes typed objects (adventure ruleset part
@@ -114,6 +125,6 @@ instead of A-42's refusal.
 **Revision history**, a line: points 1, 3, 4, 5 and 6 amended for E08 increment 11, the
 teleporters: the static channels and the gates' pairs, the surfaces' check; a jump moves a hero
 without a step; the kinds monolith, Subterranean Gate and Whirlpool with the drawn exit, the battle
-at an exit, the arrival and the Whirlpool's loss, the import's bound; a jump's reveals; a
-teleporter's type public, a jump seen as a step's two ends. Drafted in E08 T98b1 (survey
-`E08-teleporters.md`); batch E11's outcome folded in.
+at an exit, the arrival and the Whirlpool's loss, the import's bound, the revisit of an entered
+object; a jump's reveals; a teleporter's type public, a jump seen as a step's two ends. Drafted in
+E08 T98b1 (survey `E08-teleporters.md`; the revisit by T98b2); batch E11's outcome folded in.

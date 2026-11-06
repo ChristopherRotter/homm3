@@ -84,6 +84,14 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      replays, benchmarks, versions, ids, quirks, batch E11), ADR-0017's draft, the cut and the
      checkpoint. Not chosen: whole in one session; the note first, then the drafts.
 
+### Decision at T98b2's start (2026-11-06, user)
+
+271. **T98b2 whole** (the user at T98b2's start, `AskUserQuestion`; as T88b2, decision 240):
+     design part C (§12 to §18), ADR-0017's draft with `Revisit`'s lines in ADR-0016's, the cut
+     and the checkpoint ADV-Q46 in one session and one pull request. Not chosen: two parts, the
+     design (§12 to §14 and the drafts) then the plan (§15 to §18 and the checkpoint), which was
+     recommended; the note first, then the drafts.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
