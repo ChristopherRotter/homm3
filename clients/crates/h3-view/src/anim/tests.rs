@@ -2914,13 +2914,15 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::AreaDamage { .. }
             | Logged::Raised { .. }
             | Logged::Summoned { .. }
-            | Logged::Created { .. } => "spell",
+            | Logged::Created { .. }
+            | Logged::CreatureCast { .. } => "spell",
             Logged::Drain { .. }
             | Logged::DeathStare { .. }
             | Logged::Thunderbolt { .. }
             | Logged::Poisoned { .. }
             | Logged::Petrified { .. }
-            | Logged::AcidBreath { .. } => "striker",
+            | Logged::AcidBreath { .. }
+            | Logged::DeathBlow { .. } => "striker",
             Logged::Regenerated { .. } | Logged::ManaDrained { .. } => "start",
             Logged::Turret { .. } | Logged::Moat { .. } => "siege",
         })
@@ -5730,6 +5732,7 @@ fn objects_outside_casts_and_without_their_looks() {
     assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
 }
 
+mod blows;
 pub(crate) mod created;
 mod looks;
 pub(crate) mod playhead;

@@ -463,6 +463,7 @@ pub fn battle_sounds(record: &Record, tables: &Tables) -> BTreeMap<Sound, String
         (Sound::Drain, battle.drain_sound.clone()),
         (Sound::Thunderbolt, battle.thunderbolt_sound.clone()),
         (Sound::ManaDrain, battle.mana_drain_sound.clone()),
+        (Sound::DeathBlow, battle.death_blow_sound.clone()),
         // A siege's drawbridge and a mine's blast (E17 M4 T2c-1).
         (
             Sound::Drawbridge,
