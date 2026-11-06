@@ -1,0 +1,60 @@
+commands = [
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x53239621ecde9201",
+    "0x1627ba1b02bf39b8",
+]
+
+[replay]
+format = 10
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x962e87e7a01056f6"
+adventure_ruleset_hash = "0xf7865aeae57de535"
+town_ruleset_hash = "0x3003da8dd5ff664f"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 25
+adventure_state_hash_version = 21
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e09-towns-36.h3m"
+hash = "0x2f996b94548f5ae2"
+import_version = 19
+
+[result]
+day = 8
+final_hash = "0x57a58fc4564a1e4d"

@@ -33,6 +33,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-06 (the town lane, E09 T9a, `town/e09-t9a`, `cross-lane`; **for your replays and the
+  writer**): `h3_map::writer`'s `MapObject` has two new variants, `AnyTown` (a town of any kind:
+  random with its alignment, a main town in the header, a name, random garrison stacks) and
+  `RandomHero` (the code in the town lane's `src/writer/town.rs`; `docs/formats/h3m.md`, "The town
+  lane's additions"); a map without them is written as before. The new fixture
+  `e09-towns-36.h3m` and its replays `towns-*` make the adventure replays 55 (the skill
+  `homm3-rerecord-replays`' count and `adventure_replays.rs`' least): re-record them with yours at
+  each bump.
 - 2026-11-06 (the town lane, E09 T8c2, `town/e09-t8c2`, `cross-lane` with the user's consent;
   **for when E08 places Visions**): new `h3_heroes::power` (HER-ADV-001 amended: the effective
   Power beside `attack_defense`); the 47 adventure replays' `town_ruleset_hash` line moved (town

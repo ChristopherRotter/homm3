@@ -39,10 +39,15 @@
 //! 20) with their owners and the random dwellings (216 to 218) with their faction sets and levels
 //! ([`OwnedBody::RandomDwelling`]), the Refugee Camp (78) as a [`Plain`] object and the map's
 //! teams ([`Map::teams`]).
+//!
+//! Since E09 T9a (the town map, design note `docs/epics/E09-design.md` §18) it writes a town of
+//! any kind ([`AnyTown`]: random towns with their alignments, a player's main town in the header,
+//! a name, random garrison stacks) and random heroes ([`RandomHero`]).
 
 mod economy;
 mod extras;
 mod rewards;
+mod town;
 
 use std::fmt;
 
@@ -57,6 +62,9 @@ pub use rewards::{
     ARTIFACT_OBJECT, EVENT_OBJECT, Event, Message, PANDORA_OBJECT, RANDOM_ARTIFACT_OBJECTS,
     RewardBody, RewardObject, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, SPELL_COUNT, Treasure,
     WITCH_HUT_OBJECT, WITCH_HUT_SKILLS,
+};
+pub use town::{
+    AnyTown, MainTown, RANDOM_HERO_OBJECT, RANDOM_TOWN_OBJECT, RandomHero, random_stack,
 };
 
 use crate::gzip::crc32;
@@ -617,8 +625,12 @@ pub enum MapObject {
     /// increment 7's (a chest, a Corpse, the Pyramid, …), since E08 T67 increment 8's (a boat,
     /// the sea's pickups but the Ocean Bottle, a hole).
     Plain(Plain),
-    /// A town.
+    /// A town of a fixed faction (E04c T5b).
     Town(Town),
+    /// A town of any kind (E09 T9a): random, a main town, a name, random garrison stacks.
+    AnyTown(AnyTown),
+    /// A random hero (E09 T9a).
+    RandomHero(RandomHero),
     /// An object that hands a visiting hero something, with its body (E08 T56; since E08 T67 an
     /// Ocean Bottle's or a sign's message).
     Reward(RewardObject),
@@ -857,6 +869,8 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
             MapObject::Pile(pile) => write_pile(&mut out, pile)?,
             MapObject::Ground(_) | MapObject::Plain(_) => {} // no body
             MapObject::Town(town) => write_town(&mut out, town, identifier),
+            MapObject::AnyTown(town) => town::write_body(&mut out, town, identifier)?,
+            MapObject::RandomHero(hero) => town::write_hero(&mut out, hero, identifier)?,
             MapObject::Reward(reward) => rewards::write_body(&mut out, &reward.body)?,
             MapObject::Owned(owned) => economy::write_body(&mut out, owned.body),
         }
@@ -939,6 +953,8 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
             MapObject::Ground(ground) => ground.tile,
             MapObject::Plain(plain) => plain.tile,
             MapObject::Town(town) => town.tile,
+            MapObject::AnyTown(town) => town.tile,
+            MapObject::RandomHero(hero) => hero.tile,
             MapObject::Reward(reward) => reward.tile,
             MapObject::Owned(owned) => owned.tile,
         };
@@ -955,10 +971,13 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
             MapObject::Ground(ground) => validate_ground(ground)?,
             MapObject::Plain(plain) => validate_plain(plain)?,
             MapObject::Town(town) => validate_town(map, town, codes)?,
+            MapObject::AnyTown(town) => town::validate(map, town, codes)?,
+            MapObject::RandomHero(hero) => town::validate_hero(map, hero, codes)?,
             MapObject::Reward(reward) => rewards::validate(reward, codes)?,
             MapObject::Owned(owned) => economy::validate(map, owned, codes)?,
         }
     }
+    town::validate_main_towns(map)?;
     for event in &map.events {
         economy::validate_event(event, codes)?;
     }
@@ -1081,29 +1100,7 @@ fn validate_town(map: &Map, town: &Town, codes: &Codes) -> Result<(), WriteError
     if town.template.class != TOWN_OBJECT {
         return Err(out_of_range("town object class", town.template.class));
     }
-    codes.refuse("town in an RoE map", town.template.subclass)?;
-    if town.template.subclass >= FACTION_COUNT {
-        return Err(out_of_range("town faction", town.template.subclass));
-    }
-    if let Some(owner) = town.owner
-        && map
-            .players
-            .get(usize::from(owner))
-            .and_then(Option::as_ref)
-            .is_none()
-    {
-        return Err(out_of_range("town owner (no playable player)", owner));
-    }
-    if let Some(garrison) = &town.garrison {
-        codes.army(garrison)?;
-    }
-    if let TownBuildings::Custom { built, forbidden } = &town.buildings {
-        let last = MAP_BUILDINGS % 8;
-        if built[5] >> last != 0 || forbidden[5] >> last != 0 {
-            return Err(out_of_range("town building (bit)", MAP_BUILDINGS));
-        }
-    }
-    Ok(())
+    town::validate(map, &AnyTown::from(town), codes)
 }
 
 fn write_player(
@@ -1134,7 +1131,7 @@ fn write_player(
         out.u8(player.towns.to_le_bytes()[0]);
     }
     out.bool(false); // town not random
-    out.bool(false); // no main town
+    town::write_main_town(out, map, u8::try_from(colour).unwrap_or(u8::MAX));
     let heroes: Vec<u8> = map
         .placed()
         .filter_map(|(_, object)| match object {
@@ -1232,6 +1229,8 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
         MapObject::Ground(ground) => ground.template.clone(),
         MapObject::Plain(plain) => plain.template.clone(),
         MapObject::Town(town) => town.template.clone(),
+        MapObject::AnyTown(town) => town.template.clone(),
+        MapObject::RandomHero(_) => ObjectTemplate::random_hero(),
         MapObject::Reward(reward) => reward.template.clone(),
         MapObject::Owned(owned) => owned.template.clone(),
     }
@@ -1259,6 +1258,8 @@ fn position(object: &MapObject) -> (u8, u8) {
         MapObject::Ground(ground) => ground.tile,
         MapObject::Plain(plain) => plain.tile,
         MapObject::Town(town) => town.tile,
+        MapObject::AnyTown(town) => town.tile,
+        MapObject::RandomHero(hero) => (hero.tile.0.saturating_add(1), hero.tile.1),
         MapObject::Reward(reward) => reward.tile,
         MapObject::Owned(owned) => owned.tile,
     }
@@ -1359,33 +1360,10 @@ fn write_army(out: &mut Out, army: &[Option<(u16, u16)>; ARMY_SLOTS]) {
     out.army(army);
 }
 
-/// A town's body (`docs/formats/h3m.md`, classes 77 and 98): no name, no required or banned
-/// spells, no events, the alignment of its owner.
+/// A town of a fixed faction's body (`docs/formats/h3m.md`, classes 77 and 98): no name, no
+/// required or banned spells, no events, the alignment of its owner.
 fn write_town(out: &mut Out, town: &Town, identifier: u32) {
-    out.u32(identifier);
-    out.u8(town.owner.unwrap_or(0xff));
-    out.bool(false); // no custom name
-    out.bool(town.garrison.is_some());
-    if let Some(garrison) = &town.garrison {
-        write_army(out, garrison);
-    }
-    out.bool(town.tight_formation);
-    match &town.buildings {
-        TownBuildings::Standard { fort } => {
-            out.bool(false);
-            out.bool(*fort);
-        }
-        TownBuildings::Custom { built, forbidden } => {
-            out.bool(true);
-            out.bytes(built);
-            out.bytes(forbidden);
-        }
-    }
-    out.bytes(&[0; 9]); // no required spells
-    out.bytes(&[0; 9]); // no banned spells
-    out.u32(0); // no events
-    out.u8(0xff); // alignment: the owner's
-    out.bytes(&[0; 3]);
+    town::write_unnamed(out, town, identifier);
 }
 
 fn len32(len: usize) -> u32 {
