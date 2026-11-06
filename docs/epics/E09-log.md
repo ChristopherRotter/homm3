@@ -1477,3 +1477,72 @@ computer's shell unavailable). **At its start** (the user, asked): T8c2 kept who
   entrance against the anchor, a neutral town by Visions), its docs (the catalog's rules, the
   `OWNER_LEVEL` doc, a long doc line); its nit on the harvester's pack (a creature's pack is base
   or ab by construction) left.
+
+### T9a — the writer's town objects, the town map, its replays (2026-11-06)
+
+One session, the user present; branch `town/e09-t9a` (`cross-lane`: `h3-map`'s `writer.rs` and
+`tests/` (`mod.rs`, `towns_map.rs`), `fixtures/maps/`, `fixtures/replays/adventure/`, `h3-cli`'s
+`tests/adventure_replays.rs`, `docs/formats/h3m.md`; two match arms in the battle lane's
+`h3-experiment`). Starting point: `master` at 2f7b9c8 (#752, #753 merged; CI green there; the
+setup's `verify-once` found CI's fingerprint). **At its start** (the user, asked): T9 cut in three
+as E08's T96 (decision 32). The writer and the map by the agent; the replays' seed search and the
+scripted replays by two narrow sub-agents in turn (scratch probes, not committed).
+
+- **The writer** (`h3_map::writer`, the town lane's `src/writer/town.rs`; `h3m.md`, "The town
+  lane's additions"): `MapObject::AnyTown` (a town of a fixed faction or random, class 77
+  `AVCranx0.def`; a random town's SoD alignment; a player's `MainTown` with its generate-hero flag,
+  at most one, owned; a name; garrison codes that may be `random_stack`'s, level 1's `0xFFFE` to
+  level 7's upgraded `0xFFF1`) and `MapObject::RandomHero` (class 70, `ahrandom.def` with a hero's
+  masks: all 36 of the shipped maps' random heroes; a placed hero's body of type `0xFF`, left out
+  of the header's hero list). The header's main town: the flag, SoD's generate-hero flag and
+  town-type byte (the faction's subclass, `0xFF` random: 382 of the 160 maps' 553 main towns, the
+  other 171 hold 0), the entrance's position (the template's visitable tile, finding 3).
+  E04c's `Town` is written as an `AnyTown` without these (its bytes unchanged; `write_town` kept
+  for the extras). Refused: an alignment of a fixed town or to a colour nobody plays, a main town
+  unowned, its entrance off the map or a player's second, a random stack of count 0, both objects
+  in RoE, a name the format cannot hold. *Agent's call:* new variants rather than new fields of
+  `Player`, `Map` or `Town` (their literals are in the battle, AI and client lanes' crates; the
+  variants touch two exhaustive matches in `h3-experiment` only); the player's `random_town` and
+  `random_hero` header flags stay false (the import reads `random_hero`, no fixture needs it).
+- **The map** `fixtures/maps/e09-towns-36.h3m` (`tests/towns_map.rs`, `fixtures/maps/README.md`):
+  SoD, 36 × 36 of grass; red (Castle) and blue (Stronghold); red's Orrin (ten archangels), Valeska
+  (five halberdiers), Sorsha (eight Rogues, Power 1: Visions' radius 3 reaches blue's Tower) and a
+  random hero; blue's Yog (fifteen Gorgons) right of the Tower's entrance, moved onto it
+  (TWN-SET-010), and Gurnisson. Eight towns: red's main Castle "Haven" (the halls to the Capitol,
+  a Fort, a Tavern, a Resource Silo, the Grail building; it generates red's starting hero), red's
+  random town (random stacks of level 1 and upgraded level 2), a neutral Inferno (garrison drawn)
+  and Necropolis (empty), neutral random towns aligned to blue and drawn, blue's Tower (Gremlins,
+  Stone Gargoyles) and blue's main Stronghold (a Capitol, empty, no hero generated). The test reads
+  the file back, imports it (the starts' choices and main towns, the heroes, each town's faction,
+  buildings, garrison, name and owner) and builds it for seed 1: the random towns red's Castle,
+  blue's Stronghold and a faction with a town record; the main town's hero (id 6) on its entrance,
+  it and the random hero of a Castle class; the random stacks drawn of their levels; the Visions'
+  top level for blue's Tower and the neutral Inferno at red's two Taverns' level. Seed 1 draws
+  Ingham (the random hero), Adelaide (the main town's), five Hell Hounds in the Inferno.
+- **The golden replays** (`adventure_replays.rs` lists what each meets; 55, the test's least):
+  random play `towns-s173-d21`, `-s1702-d21`, `-s3435-d21` (`--seed N --agent-seed N --days 21`),
+  the union of a search over the seeds 1 to 5 000 that meets all twelve features counted (an
+  undefended capture by each player, a siege against a garrison alone won and lost, against a
+  visitor with the merge won (5 of 5 000 games) and lost (46), the Capitol's limit (94), an own
+  town entered, a neutral town and the other player's captured, hero battles, heroes 3 and 6
+  taking part). Scripted (`--seed 1 --checkpoint-every 5 --script`): `towns-capture-s1` (the
+  empty Necropolis captured, its Village Hall in red's next day's 10 000 gold, entered again),
+  `towns-siege-s1` (Orrin wins against the Inferno's Hell Hounds, the capture after the battle, the
+  town entered the same day), `towns-visitor-s1` (Sorsha against Yog, the Tower's garrison merged
+  into his army first, she loses and leaves the map), `towns-capitol-s1` (Sorsha takes blue's
+  Stronghold: `TownChanged`, the Capitol limited; red's next day's gold 11 500), `towns-income-s1`
+  (seven day starts: red 9 500 gold, 1 wood, 1 ore; blue 4 500).
+- *Found on the way* (nothing wrong in the rules): a move stops where the explored area ends, so a
+  day's walk may take several moves; the merge fills Yog's slot of each creature, else his first
+  free one (TWN-SIE-002, not the garrison's order); no game of the search has a monster battle
+  (the map has none); 3 of 5 000 games besiege a visitor without a merge, each after the garrison
+  had merged or been emptied by a capture. The map's `GORGON` (code 102) was first named an Orc
+  (88); the map kept its Gorgons, the names fixed.
+- *Agent's calls (change freely):* the map's heroes, armies, towns and positions; 21 days and the
+  seeds; the scripts' paths.
+- **Gates:** the scoped verify (without the original data: only `maps.tar`, `extracted.tar` and
+  `Objects.txt` staged, for the templates and the main towns' census) passed every step it runs
+  but `check-lane`, which fails by design on a `cross-lane` branch (`check-lane --cross-lane`
+  passed): coverage, determinism with the 55 replays, bench-check (no engine code changed).
+- **Versions:** none (the writer is not read by the game; no import, state or replay format
+  change).
