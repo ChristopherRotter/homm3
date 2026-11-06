@@ -1738,4 +1738,6 @@ agent alone; no original data needed.
   owners' cycle shared with the other ownable objects; no cover test (the default 48 cases meet
   towns in about one case of five).
 - **Test time:** the property's 48 cases 8 s here.
+- **Gates:** the scoped verify (no original data staged) passed every step it runs but
+  `check-lane`, which fails by design on a `cross-lane` branch (`check-lane --cross-lane` passed).
 - **Versions:** none (tests only).
