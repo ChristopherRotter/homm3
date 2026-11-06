@@ -5654,3 +5654,10 @@ shell did not start); the sandbox restarted once during the setup's baseline (CI
   the Dragon's landing's redraw artifacts and the count box's strip at its first strike frame
   (§7.11 (3)); the log masked after the engine's 87 damage against the original's 81. Animation
   73 has 20 frames; with sound each Death Blow waits for `Deathblo.wav` (2 750 ms) past them.
+- **Reviewed** (a fresh reviewer): no correctness finding; a Master Genie's drawn Bloodlust
+  takes the same path (the caster's frames come before `creature_cast_action`'s cases,
+  `cast_spell`'s case tests no caster): documented *provisional*, no recorded case; three doc
+  nits fixed (the map's 0x443840 and 0x4438DD summaries, the keys' address).
+- **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (89 as recorded), `h3drive.py
+  drawn` (259: the two new sequences new, the rest the same; recorded), `h3-view gate`,
+  `exe.py check` and `cited`, the scoped verify with original data.
