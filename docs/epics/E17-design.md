@@ -7125,3 +7125,76 @@ new reading), and sequences for the question's points §12.19 left provisional.
   after a switch on a human's turn it did not play (the reading had 0x4784F9 give it back its
   enabled and selected states for a human's side): built so in the original's profile, the
   client's showing it selected while on (CLT-Q45 (1)'s); asked as CLT-Q64 (fix recommended).
+
+### 12.21 Eagle Eye's message and the experience after the window (M6 T5c)
+
+T5c kept whole by the user (2026-11-06), the captured artifacts' message, read here in part, queued
+as T5e. Read: `battle_end` 0x477470's tail (0x477891 to 0x4779D3), `eagle_eye_message` 0x476FE0
+whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 whole,
+`message_box_layout` 0x4F5D80's pictures (0x4F5D9D to 0x4F5EC0, 0x4F5FFE to 0x4F6282),
+`message_box_build` 0x4F6990's picture items (0x4F7154 to 0x4F7377), `hero_gain_experience`
+0x4E33B0's calls, `battle_side_setup` 0x4639F0's player flags (0x463AA3 to 0x463ABD),
+`captured_artifacts_message` 0x4772B0 in part.
+
+- **The branch** (0x477891): a winner (not −1) whose owner (+0x54A8) is a human here
+  (`player_id_is_human_here` 0x4CE970) is shown the window (§7.20); when it closed (0x47791F) and
+  the side has a hero: `hero_gain_experience(points, levels, 1)` (0x477948), `eagle_eye_message`
+  (0x477951) and `captured_artifacts_message` (0x47795D, T5e), in this order. The window shown for
+  the loser (0x477964 on) is followed by nothing.
+- **The experience after the window shows nothing on the battle screen.** The side's +0x54A6 is
+  `player_id_is_human_here` of its owner at the setup (0x463ABD; +0x54A4 `player_id_is_human`
+  0x4CE940), the branch's own test: a winner played by a human here gets its experience only now
+  and without its levels (the second argument is +0x54A6 clear, so 0), any other before the window
+  with them (0x477766, a computer's choice). Without levels the call adds the points and tells
+  the owner only when the scenario's level limit (game +0x1F877) caps them (its message box,
+  0x4E34ED); a battle the client plays has no map and no level limit. The levels and their
+  dialog (`level_up_dialog` 0x4F8880) come on the adventure map after the battle
+  (`adventure_battle` 0x4AD470 calls `hero_level_up` at 0x4AE324 to 0x4AE42C): the map client's.
+  Nothing to build.
+- **Eagle Eye's message** (0x476FE0; the battle, the side, a timeout 0): with the side's hero
+  (+0x53CC), over the side's Eagle Eye set (+0x545C + 16 × side: the picks of the battle,
+  `installation.md` §7.24, a sorted set, so by spell number), each spell in turn: one that starts a
+  box sets the text to GENRLTXT 222 with the hero's name (+0x23) and the spell's name (the spell
+  record's +0x10); a later one appends ", " (0x66032C), or GENRLTXT 142 (" and ") when it is the
+  set's last or the box's eighth, then its name; each adds its picture (type 9, the spell). At the
+  box's eighth or the set's last the text gets "." (0x6603EC), the sound `pickup0N.82M` with N =
+  `random_between(1, 7)` (the battle's generator, one draw per box) starts (`play_sound_async`, as
+  the luck's, category 3) and the box opens (0x4F7690, x = y = −1); its OK closes it, and a ninth
+  spell starts a new box with a new sentence. So each box names only its own spells. An empty set
+  shows nothing.
+- **What it names.** `eagle_eye_learn` (0x469FE0, before the window, 0x477776) teaches the hero
+  each spell of the set while it wears a Spell Book and the spell's level is at most its Wisdom
+  + 2, but never takes a spell out of the set, so **the message names every pick, the ones the
+  hero did not learn too** (no book, a level above Wisdom + 2): an oddity, CLT-Q65.
+- **The box with pictures** (`message_box_pictures` 0x4F7690, fastcall: the text, a vector of
+  (type, subtype) pairs; on the stack x, y, a timeout): for each run of at most eight pictures of
+  the vector, in order, a box of style 1 (the OK) showing the same text and those pictures: its
+  record as `message_box` 0x4F6570 fills it (256 × 128, the slots by `message_box_picture`
+  0x4F4EB0, the rest empty) but the text's corner (25, 30), not (20, 30): the text centred on the
+  box, as the client's profile centres every box (CLT-Q28 (1)); laid out, built and run, then the
+  next run. An empty vector still shows one box (the loop tests at its end).
+- **The pictures' layout** (0x4F5D80 for 1 to 8 filled slots; one picture as §7.19): rows =
+  (n + 3) / 4, at most 4 a row, the first row the larger share (n + rows − 1) / rows (5: 3 + 2;
+  7: 4 + 3). Over the filled slots: `widest` the largest of every picture's and caption's width,
+  `overhang` the largest caption width − picture width (at least 0), each row's height the largest
+  picture height of its slots (slot index / the first row's count) and its caption height the
+  largest caption height. The box's least width for them: per row × `widest` + (per row − 1) ×
+  (`overhang` + 40) + 40 (the box then as §7.19). Its height: the text's + 60, + 20 + each row's
+  height and caption height + 20 between rows, + 50 for the buttons; up to 64, at least 128; the
+  text's top 30 + (box − that) / 2. The rows from the bottom: the first row's caption top is box
+  height − its caption height − 30 − 50, raised with a second row by 20 + the second row's
+  caption height and height; the next row's caption top is the row's + the **second** row's
+  caption height and height + 20 (the same with captions of one height). In a row of k pictures
+  (k = what is left divided by the rows left, rounded up), box width W, picture widths w, `gap` =
+  `overhang` + 40, halves rounded toward zero: k = 1: (W − w0) / 2; k = 2: x0 = (W − gap) / 2 −
+  w0, x1 = (W + gap) / 2; k = 3: x1 = (W − w1) / 2, x0 = x1 − w0 − 40, x2 = x1 + w1 + 40; k = 4:
+  x1 = (W − gap) / 2 − w1, x0 = x1 − w0 − 40, x2 = (W + gap) / 2, x3 = x2 + w2 + 40 (the outer
+  gaps without the overhang). Each picture's top is its caption's top − its height; its caption
+  at picture x + (w − caption width) / 2.
+- **The pictures' items** (0x4F6990, after the buttons, in slot order): the DEF item (the slot's
+  place and size, the DEF's + 2; id −1, its frame, flags 0x10), its caption (`smalfont.fnt`,
+  colour 1, centred, id −1; only a caption that is not empty), then a frame item around it (one
+  pixel out, id 0x7809 + slot) hidden at once (a choice's mark: not drawn).
+- **The captured artifacts' message** (0x4772B0, for T5e; read in part): over the artifacts
+  `battle_capture_artifacts` 0x46A070 took (before the window), in boxes of eight artifact
+  pictures (type 8), each box GENRLTXT 31 and its own pickup sound as above, through 0x4F7690.
